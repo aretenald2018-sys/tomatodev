@@ -2,6 +2,28 @@
 // calc.js — 순수 비즈니스 로직 (사이드이펙트 없음, 테스트 가능)
 // ================================================================
 
+import {
+  calcSetVolume,
+  calcVolume,
+  calcVolumeAll,
+  getVolumeHistory,
+  getLastSession,
+  getLastActivitySession,
+  getVolumeHistoryByMovement,
+  getVolumeHistoryMulti,
+} from './calc/volume.js';
+
+export {
+  calcSetVolume,
+  calcVolume,
+  calcVolumeAll,
+  getVolumeHistory,
+  getLastSession,
+  getLastActivitySession,
+  getVolumeHistoryByMovement,
+  getVolumeHistoryMulti,
+} from './calc/volume.js';
+
 const DEFAULT_DIET_PLAN = {
   height: 0, weight: 0, bodyFatPct: 0, age: 0,
   targetWeight: 0, targetBodyFatPct: 0,
@@ -117,7 +139,9 @@ export function calcDietMetrics(plan) {
 export function calcExerciseCalorieCredit(plan, dayData) {
   if (!plan.advancedMode || !plan.exerciseCalorieCredit || !dayData) return 0;
   let credit = 0;
-  const hasGym = (dayData.exercises || []).length > 0;
+  const hasGym = (dayData.exercises || []).some(ex =>
+    (ex.sets || []).some(s => s && (s.done === true || ((s.kg || 0) > 0 && (s.reps || 0) > 0)))
+  );
   if (hasGym)          credit += (plan.exerciseKcalGym      || 250);
   if (dayData.cf)      credit += (plan.exerciseKcalCF       || 300);
   if (dayData.swimming) credit += (plan.exerciseKcalSwimming || 200);
@@ -412,113 +436,6 @@ export function getQuarterKey(date) {
   return `${d.getFullYear()}-Q${q}`;
 }
 
-/**
- * 운동 볼륨 계산 (워밍업 제외)
- */
-export function calcVolume(sets) {
-  return (sets || []).reduce((sum, s) => {
-    if (s.setType === 'warmup') return sum;
-    if (!s.done && s.done !== undefined) return sum;
-    return sum + (s.kg || 0) * (s.reps || 0);
-  }, 0);
-}
-
-/**
- * 운동 볼륨 계산 (워밍업 포함)
- */
-export function calcVolumeAll(sets) {
-  return (sets || []).reduce((sum, s) => sum + (s.kg || 0) * (s.reps || 0), 0);
-}
-
-/**
- * 특정 운동의 볼륨 히스토리
- * @param {object} cache - 전체 캐시 데이터
- * @param {string} exerciseId - 운동 ID
- */
-export function getVolumeHistory(cache, exerciseId) {
-  return Object.entries(cache)
-    .filter(([, day]) => (day.exercises || []).some(e => e.exerciseId === exerciseId))
-    .map(([key, day]) => {
-      const entry = day.exercises.find(e => e.exerciseId === exerciseId);
-      return { date: key, volume: calcVolume(entry.sets) };
-    })
-    .filter(h => h.volume > 0)
-    .sort((a, b) => a.date.localeCompare(b.date));
-}
-
-/**
- * 특정 운동의 마지막 세션
- * @param {object} cache - 전체 캐시 데이터
- * @param {string} exerciseId - 운동 ID
- */
-export function getLastSession(cache, exerciseId, excludeDateKey = null) {
-  const entries = Object.entries(cache)
-    .filter(([key, day]) => key !== excludeDateKey && (day.exercises || []).some(e => e.exerciseId === exerciseId))
-    .sort(([a], [b]) => b.localeCompare(a));
-  if (!entries.length) return null;
-  const [date, day] = entries[0];
-  const entry = day.exercises.find(e => e.exerciseId === exerciseId);
-  return { date, sets: entry.sets };
-}
-
-/**
- * 특정 activity 타입의 마지막 세션
- * @param {object} cache - 전체 캐시 데이터
- * @param {'cf'|'running'|'swimming'|'stretching'} type
- * @param {string|null} excludeDateKey - 제외할 날짜 key
- */
-export function getLastActivitySession(cache, type, excludeDateKey = null) {
-  const matchers = {
-    cf: (day) => !!day.cf,
-    running: (day) => !!day.running,
-    swimming: (day) => !!day.swimming,
-    stretching: (day) => !!day.stretching,
-  };
-  const isMatch = matchers[type];
-  if (!isMatch) return null;
-
-  const entries = Object.entries(cache)
-    .filter(([key, day]) => key !== excludeDateKey && isMatch(day))
-    .sort(([a], [b]) => b.localeCompare(a));
-
-  if (!entries.length) return null;
-
-  const [date, day] = entries[0];
-  if (type === 'cf') {
-    return {
-      date,
-      wod: day.cfWod || '',
-      durationMin: day.cfDurationMin || 0,
-      durationSec: day.cfDurationSec || 0,
-      memo: day.cfMemo || '',
-    };
-  }
-  if (type === 'running') {
-    return {
-      date,
-      distance: day.runDistance || 0,
-      durationMin: day.runDurationMin || 0,
-      durationSec: day.runDurationSec || 0,
-      memo: day.runMemo || '',
-    };
-  }
-  if (type === 'swimming') {
-    return {
-      date,
-      distance: day.swimDistance || 0,
-      durationMin: day.swimDurationMin || 0,
-      durationSec: day.swimDurationSec || 0,
-      stroke: day.swimStroke || '',
-      memo: day.swimMemo || '',
-    };
-  }
-  return {
-    date,
-    duration: day.stretchDuration || 0,
-    memo: day.stretchMemo || '',
-  };
-}
-
 // ════════════════════════════════════════════════════════════════
 // 전문가 모드 — RPE / 1RM / 추천 무게 (순수함수, 사이드이펙트 0)
 // ────────────────────────────────────────────────────────────────
@@ -595,39 +512,6 @@ const _KG_PER_LB = 0.45359237;
 export function kgToLb(kg) { return (Number(kg) || 0) / _KG_PER_LB; }
 export function lbToKg(lb) { return (Number(lb) || 0) * _KG_PER_LB; }
 
-/**
- * movementId 기준 볼륨 히스토리. exList에서 movementId 매칭되는
- * exerciseId들을 모아 날짜별 볼륨 합산 → [{ date, volume }].
- */
-export function getVolumeHistoryByMovement(cache, exList, movementId) {
-  if (!cache || !movementId) return [];
-  const ids = (exList || [])
-    .filter(e => e && e.movementId === movementId)
-    .map(e => e.id);
-  if (ids.length === 0) return [];
-  return getVolumeHistoryMulti(cache, ids);
-}
-
-/**
- * 여러 exerciseId를 한 번에 합산한 날짜별 볼륨 히스토리.
- * calcVolume 재사용 — 워밍업 제외, done 판정은 calcVolume 규칙과 동일.
- */
-export function getVolumeHistoryMulti(cache, exerciseIds) {
-  if (!cache || !exerciseIds?.length) return [];
-  const idSet = new Set(exerciseIds);
-  const byDate = {};
-  for (const [key, day] of Object.entries(cache)) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) continue;
-    const entries = (day.exercises || []).filter(e => idSet.has(e.exerciseId));
-    if (!entries.length) continue;
-    const vol = entries.reduce((sum, e) => sum + calcVolume(e.sets), 0);
-    if (vol > 0) byDate[key] = (byDate[key] || 0) + vol;
-  }
-  return Object.entries(byDate)
-    .map(([date, volume]) => ({ date, volume }))
-    .sort((a, b) => a.date.localeCompare(b.date));
-}
-
 export function normalizeWorkoutTrack(track) {
   const t = String(track || '').trim().toUpperCase();
   if (t === 'H' || t === 'HEAVY' || t === 'INTENSITY' || t === 'STRENGTH') return 'H';
@@ -677,7 +561,7 @@ export function calcTrackSessionMetric(entry = {}, track = '') {
   if (t === 'H') {
     return Math.max(...workSets.map(s => estimate1RM(s.kg, s.reps) || Number(s.kg) || 0));
   }
-  return workSets.reduce((sum, s) => sum + (Number(s.kg) || 0) * (Number(s.reps) || 0), 0);
+  return workSets.reduce((sum, s) => sum + calcSetVolume(s), 0);
 }
 
 export function getTrackMetricHistory(cache, exList, exerciseId) {
@@ -916,7 +800,7 @@ export function getSessionMajorMuscles(day, exList, movements) {
 /**
  * 하루치 세션을 "지정 대분류(majors)에 속한 종목만" 집계.
  *   - workSets    : 작업세트 합
- *   - totalVolume : kg*reps 합 (작업세트만)
+ *   - totalVolume : kg*reps*ROM% 합 (작업세트만)
  *   - topKg       : 해당 부위 종목들 중 단일 세트 최대 무게
  *   - subBalance  : { subPattern: workSets } — chest_upper/mid/lower 등
  *   - exercises   : [{ exerciseId, name, subPattern, workSets, topKg, volume, sets:[{kg,reps,rpe,setType,done}] }]
@@ -939,7 +823,7 @@ export function summarizeMuscleSession(day, exList, movements, majors) {
     const workSets = (entry.sets || []).filter(_isWorkSet);
     if (workSets.length === 0) continue;
     const topKg = workSets.reduce((a, s) => Math.max(a, Number(s.kg) || 0), 0);
-    const volume = workSets.reduce((a, s) => a + (Number(s.kg) || 0) * (Number(s.reps) || 0), 0);
+    const volume = workSets.reduce((a, s) => a + calcSetVolume(s), 0);
     out.workSets += workSets.length;
     out.totalVolume += volume;
     if (topKg > out.topKg) out.topKg = topKg;
@@ -957,6 +841,8 @@ export function summarizeMuscleSession(day, exList, movements, majors) {
         setNo: i + 1,
         kg: Number(s.kg) || 0,
         reps: Number(s.reps) || 0,
+        romPct: s.romPct == null ? null : Math.max(0, Math.min(100, Math.round(Number(s.romPct) || 0))),
+        volume: Math.round(calcSetVolume(s)),
         rpe: s.rpe ?? null,
         setType: s.setType || 'main',
         done: s.done !== false,
@@ -1613,7 +1499,7 @@ function _exerciseVolume(w) {
       const kg = _safeNum(s.kg);
       const reps = _safeNum(s.reps);
       if (kg > 0 && reps > 0) {
-        volume += kg * reps;
+        volume += calcSetVolume(s);
         if (kg > topWeight) topWeight = kg;
       }
     }

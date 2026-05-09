@@ -36,6 +36,21 @@ import {
   renderMaxPlanEditor,
   normalizeMaxCycleTracks,
 } from './max-cycle.js';
+import {
+  CAT_LABEL,
+  MAX_DEFAULTS,
+  MAX_FRAMEWORKS,
+  MAX_MAIN_LIFTS,
+  MAX_DEFAULT_TARGET_SETS,
+  WEAK_PARTS,
+  WEAK_LABEL,
+  MAJOR_PARTS,
+  MAJOR_LABEL,
+} from './max-config.js';
+import {
+  detectMaxMajorsLoose,
+  renderNextSameMuscleDayAdvice,
+} from './max-same-day-advice.js';
 
 function _esc(s) { return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function _toast(msg, type='info') {
@@ -62,97 +77,6 @@ async function _saveMaxCycleSafe(cycle) {
   return savedToSettings;
 }
 
-// 카테고리 라벨 (칩에 짧게 표시)
-const CAT_LABEL = {
-  barbell:'바벨', dumbbell:'덤벨', smith:'스미스',
-  machine:'머신', cable:'케이블', bodyweight:'맨몸',
-};
-
-const MAX_DEFAULTS = {
-  goal: 'hypertrophy',
-  daysPerWeek: 6,
-  sessionMinutes: 90,
-  preferredRpe: '8-9',
-};
-
-const MAX_FRAMEWORKS = {
-  dual_track_progression_v2: {
-    label: '6주 듀얼 트랙',
-    short: '6주',
-    copy: '부위별 벤치마크를 볼륨/강도 트랙으로 나눠 6주 뒤 목표 중량까지 선형 진행합니다.',
-  },
-  adaptive_volume: {
-    label: 'Adaptive Volume',
-    short: 'Adaptive',
-    copy: '최근 기록과 이번 주 세트 간극으로 오늘 처방을 조정합니다.',
-  },
-  rp_lite: {
-    label: 'RP Lite',
-    short: 'RP',
-    copy: '부위별 세트 목표를 MEV에서 MAV 쪽으로 천천히 올립니다.',
-  },
-  wendler531: {
-    label: '5/3/1',
-    short: '5/3/1',
-    copy: '메인 리프트는 Training Max 기준 주차별 강도로 진행합니다.',
-  },
-  hybrid: {
-    label: 'Hybrid',
-    short: 'Hybrid',
-    copy: '메인 리프트는 5/3/1, 보조 종목은 볼륨 간극으로 추천합니다.',
-  },
-};
-
-const MAX_MAIN_LIFTS = {
-  barbell_bench: 'bench',
-  back_squat: 'squat',
-  deadlift: 'deadlift',
-  ohp: 'ohp',
-};
-
-const MAX_DEFAULT_TARGET_SETS = {
-  chest: 12,
-  back: 14,
-  lower: 12,
-  shoulder: 10,
-  glute: 8,
-  bicep: 8,
-  tricep: 8,
-  abs: 8,
-};
-
-const WEAK_PARTS = [
-  { id:'chest_all', label:'가슴 전체', coach:'가슴 전반' },
-  { id:'chest_upper', label:'가슴 상부', coach:'상부 볼륨' },
-  { id:'chest_mid', label:'가슴 중부', coach:'중부 기준' },
-  { id:'chest_lower', label:'가슴 하부', coach:'하부 라인' },
-  { id:'back_all', label:'등 전체', coach:'등 전반' },
-  { id:'back_width', label:'등 넓이', coach:'광배/풀다운' },
-  { id:'back_thickness', label:'등 두께', coach:'로우/수축' },
-  { id:'shoulder_front', label:'어깨 전면', coach:'프레스 전면' },
-  { id:'shoulder_side', label:'어깨 측면', coach:'측면 볼륨' },
-  { id:'rear_delt', label:'어깨 후면', coach:'후면 안정' },
-  { id:'bicep', label:'이두', coach:'컬 볼륨' },
-  { id:'tricep', label:'삼두', coach:'프레스 보조' },
-  { id:'core', label:'복근/코어', coach:'중량 코어' },
-  { id:'quad', label:'대퇴사두', coach:'스쿼트/익스텐션' },
-  { id:'hamstring', label:'대퇴이두', coach:'컬/힌지 보강' },
-  { id:'glute', label:'둔근', coach:'힙 파워' },
-  { id:'calf', label:'종아리', coach:'하퇴 볼륨' },
-];
-
-const WEAK_LABEL = Object.fromEntries(WEAK_PARTS.map(p => [p.id, p.label]));
-const MAJOR_PARTS = [
-  { id:'chest', label:'가슴', coach:'프레스/플라이' },
-  { id:'back', label:'등', coach:'넓이/두께' },
-  { id:'lower', label:'하체', coach:'스쿼트/프레스' },
-  { id:'shoulder', label:'어깨', coach:'프레스/측면' },
-  { id:'glute', label:'둔부', coach:'힙힌지/킥백' },
-  { id:'bicep', label:'이두', coach:'컬 볼륨' },
-  { id:'tricep', label:'삼두', coach:'푸쉬다운/프레스' },
-  { id:'abs', label:'복근', coach:'중량 코어' },
-];
-const MAJOR_LABEL = Object.fromEntries(MAJOR_PARTS.map(p => [p.id, p.label]));
 let _weakTimerInterval = null;
 
 function _targetRirLabel(targetRpe) {
@@ -1299,76 +1223,168 @@ function _renderMajorRecommendationBoard({
   `;
 }
 
-function _detectMajorsLoose(day, exList, movements) {
-  const out = new Set();
-  const exById  = new Map((exList || []).map(e => [e.id, e]));
-  const movById = new Map((movements || []).map(m => [m.id, m]));
-  const entries = (day?.exercises) || (S?.workout?.exercises) || [];
-  for (const entry of entries) {
-    const ex = exById.get(entry.exerciseId);
-    let major = null;
-    const muscleIds = (ex && Array.isArray(ex.muscleIds) && ex.muscleIds.length)
-      ? ex.muscleIds
-      : (Array.isArray(entry?.muscleIds) ? entry.muscleIds : []);
-    if (muscleIds.length > 0) {
-      const sp = muscleIds[0];
-      major = SUBPATTERN_TO_MAJOR[sp] || sp;
-    }
-    if (!major) {
-      const movId = ex?.movementId || entry?.movementId || null;
-      if (movId) {
-        const mov = movById.get(movId);
-        if (mov?.primary) major = mov.primary;
-        else if (mov?.subPattern) major = SUBPATTERN_TO_MAJOR[mov.subPattern] || null;
-      }
-    }
-    if (!major) {
-      const leg = ex?.muscleId || entry?.muscleId;
-      if (leg) major = SUBPATTERN_TO_MAJOR[leg] || leg;
-    }
-    if (major) out.add(major);
-  }
-  return out;
+function _formatMaxMajorCombo(majors = []) {
+  const labels = [...new Set((majors || []).map(_normalizeMaxMajor).filter(Boolean))]
+    .map(id => MAJOR_LABEL[id] || id);
+  return labels.length ? labels.join(' + ') : '아직 선택 전';
 }
 
-function _renderMaxTodayMajorGate({ selectedMajors = [] } = {}) {
-  const selectedSet = new Set((selectedMajors || []).map(_normalizeMaxMajor).filter(Boolean));
+function _renderMaxEntryMajorRows(selectedSet) {
+  return MAJOR_PARTS.map(part => {
+    const selected = selectedSet.has(part.id);
+    return `
+      <button type="button"
+              class="bench ${selected ? 'is-selected' : ''}"
+              data-action="toggle-major-part"
+              data-major-part="${_esc(part.id)}">
+        <span>
+          <b>${_esc(part.label)}</b>
+          <small>${_esc(part.coach)}</small>
+        </span>
+        <strong class="${selected ? '' : 'muted'}">${selected ? '포함' : '추가'}</strong>
+      </button>
+    `;
+  }).join('');
+}
+
+function _renderMaxEntryChart(snapshot = null) {
+  const week = snapshot ? `W${snapshot.weekIndex}` : 'W-';
   return `
-    <section class="wt-v4-board wt-v4-major-gate" id="wt-max-cycle-card">
-      <div class="wt-v4-head">
-        <button type="button" class="wt-v4-icon" onclick="wtExcSwitchToNormalView()" aria-label="일반 모드로">‹</button>
-        <button type="button" class="wt-v4-head-center" data-action="open-max-plan-editor">
-          <strong>오늘 부위 선택</strong>
-          <span>테스트 모드</span>
-        </button>
-        <button type="button" class="wt-v4-icon" data-action="open-max-plan-editor" aria-label="계획 조정">⋯</button>
-      </div>
-      <div class="wt-v4-major-copy">
-        <b>오늘 헬스장에서 할 큰 부위를 먼저 고르세요.</b>
-        <span>선택한 부위 기준으로만 벤치마크와 6주 성장판을 보여줍니다.</span>
-      </div>
-      <div class="wt-v4-major-grid">
-        ${MAJOR_PARTS.map(part => `
-          <button type="button"
-                  class="${selectedSet.has(part.id) ? 'on' : ''}"
-                  data-action="toggle-major-part"
-                  data-major-part="${_esc(part.id)}">
-            <strong>${_esc(part.label)}</strong>
-            <small>${_esc(part.coach)}</small>
-          </button>
-        `).join('')}
-      </div>
-      <div class="wt-v4-last-ten">
-        <div class="wt-v4-last-dot"></div>
+    <section class="card wt-v4-entry-chart">
+      <div class="card-head">
         <div>
-          <b>벤치마크는 선택한 부위만 표시</b>
-          <span>선택 전에는 기본 가슴/등/하체 목록을 임의로 보여주지 않습니다.</span>
+          <b>성장판 미리보기</b>
+          <span>오늘 위치와 6주 목표를 한 번에 봅니다.</span>
+        </div>
+        <div class="badge">${_esc(week)}</div>
+      </div>
+      <div class="chart">
+        <svg viewBox="0 0 330 132" aria-label="6주 성장판 계획 실제 그래프">
+          <path d="M12 106 H318" stroke="#ededf0"/><path d="M12 76 H318" stroke="#ededf0"/><path d="M12 46 H318" stroke="#ededf0"/>
+          <path d="M18 104 C76 91, 91 78, 145 73 C205 68, 224 52, 312 42" fill="none" stroke="#fa342c" stroke-width="3" stroke-linecap="round"/>
+          <path d="M18 108 C82 100, 94 84, 145 80 C205 76, 224 63, 312 55" fill="none" stroke="#111114" stroke-width="3" stroke-linecap="round"/>
+          <text x="18" y="124" font-size="10" fill="#707078">W1</text><text x="145" y="124" font-size="10" fill="#707078">오늘</text><text x="292" y="124" font-size="10" fill="#707078">W6</text>
+          <circle cx="145" cy="80" r="5" fill="#111114"/><circle cx="145" cy="73" r="5" fill="#fa342c"/>
+        </svg>
+        <div class="wt-v4-line-legend">
+          <span><i class="planned"></i>빨간선: 6주 계획 페이스</span>
+          <span><i class="actual"></i>검은선: 실제 수행 페이스</span>
         </div>
       </div>
-      <div class="wt-v4-cta">
-        <button type="button" class="wt-v4-ghost" data-action="open-max-plan-editor">계획 조정</button>
-        <button type="button" class="wt-v4-primary" data-action="confirm-max-majors" ${selectedSet.size ? '' : 'disabled'}>
-          ${selectedSet.size ? `${selectedSet.size}개 부위 벤치마크 보기` : '부위를 선택하세요'}
+    </section>
+  `;
+}
+
+function _renderMaxEntryBenchmarkPreview({ cycle = null, cache = {}, exList = [], todayKey = _todayKey(), isDraft = false } = {}) {
+  const snapshot = cycle ? buildRenderedMaxCycleSnapshot({ cycle, cache, exList, todayKey }) : null;
+  const rows = (snapshot?.benchmarks || []).slice(0, 5);
+  if (!rows.length) {
+    return `
+      <section class="card wt-v4-accordion is-collapsed">
+        <button type="button" class="card-head wt-v4-accordion-toggle" data-action="toggle-v4-accordion" aria-expanded="false">
+          <div><b>오늘 열릴 벤치마크</b><span>선택한 부위의 벤치마크가 아직 없습니다.</span></div>
+          <div class="badge warn wt-v4-accordion-label">펼치기</div>
+        </button>
+        <div class="wt-v4-accordion-body">
+          <div class="coach">
+            <b>시작 전 코치</b>
+            <p>계획 조정에서 벤치마크를 1개만 연결하면, 오늘부터 이 카드 안에서 계획값과 이전 성공값을 바로 볼 수 있습니다.</p>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+  const benchmarkRows = rows.map(b => {
+    const track = b.activeTrack || snapshot.track || 'M';
+    const planned = b.planned || {};
+    const plannedKg = planned.plannedKg ?? planned.startKg ?? '-';
+    const reps = planned.targetReps || (track === 'H' ? 6 : 12);
+    const setCount = track === 'H' ? 3 : 4;
+    const latest = b.latest ? `이전 ${b.latest.kg}kg x ${b.latest.reps} · ${_formatShortDate(b.latest.dateKey)}` : '이전 성공값 없음';
+    const state = b.onPlan === false ? '조정' : '준비';
+    return `
+      <div class="bench">
+        <div>
+          <b>${_esc(b.label)}</b>
+          <span>계획 ${_esc(plannedKg)}kg x ${_esc(reps)} · ${setCount}세트 · ${track === 'H' ? '강도' : '볼륨'} 트랙</span>
+          <span>${_esc(latest)}</span>
+        </div>
+        <strong class="${b.onPlan === false ? 'warn' : ''}">${state}</strong>
+      </div>
+    `;
+  }).join('');
+  return `
+    ${_renderMaxEntryChart(snapshot)}
+    <section class="card wt-v4-accordion is-collapsed">
+      <button type="button" class="card-head wt-v4-accordion-toggle" data-action="toggle-v4-accordion" aria-expanded="false">
+        <div><b>오늘 열릴 벤치마크</b><span>모달을 열지 않고 이 카드 안에서 오늘 계획값을 확인합니다.</span></div>
+        <div class="badge wt-v4-accordion-label">${rows.length}개 · 펼치기</div>
+      </button>
+      <div class="wt-v4-accordion-body">
+        <div class="bench-list">${benchmarkRows}</div>
+        <div class="coach">
+          <b>오늘 시작 전 코치</b>
+          <p>${isDraft ? '성장판 초안입니다. 시작하면 현재 선택 조합과 벤치마크가 저장됩니다.' : '벤치마크를 먼저 수행하고, 마지막 10분은 부족한 세부 부위 보강으로 이어가세요.'}</p>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function _renderMaxTodayMajorGate({ selectedMajors = [], steeringHtml = '', cycle = null, cache = {}, exList = [], todayKey = _todayKey(), isDraft = false } = {}) {
+  const selectedSet = new Set((selectedMajors || []).map(_normalizeMaxMajor).filter(Boolean));
+  const snapshot = cycle ? buildRenderedMaxCycleSnapshot({ cycle, cache, exList, todayKey }) : null;
+  const combo = _formatMaxMajorCombo([...selectedSet]);
+  const benchmarkCount = snapshot?.benchmarks?.length || 0;
+  return `
+    <section class="wt-v4-board wt-v4-major-gate wt-v4-entry" id="wt-max-cycle-card">
+      <div class="topbar">
+        <button type="button" class="icon" onclick="wtExcSwitchToNormalView()" aria-label="일반 모드로">‹</button>
+        <button type="button" class="title" data-action="open-max-plan-editor">
+          <strong>테스트모드 시작</strong>
+          <span>6주 성장판</span>
+        </button>
+        <button type="button" class="icon" data-action="open-max-plan-editor" aria-label="계획 조정">⋯</button>
+      </div>
+
+      <section class="hero">
+        <div class="hero-kicker">오늘의 시작점</div>
+        <h1>여러 부위를 고르면 오늘 조합이 만들어져요</h1>
+        <p>가슴, 삼두처럼 단일 부위를 탭해 조합을 만들면 그 기준으로 성장판, 벤치마크, 마지막 10분 보강이 이어집니다.</p>
+        <div class="score-row">
+          <div class="score"><b>${snapshot ? `W${snapshot.weekIndex}` : '-'}</b><span>6주 성장판</span></div>
+          <div class="score"><b>${benchmarkCount ? `${benchmarkCount}개` : `${selectedSet.size}개`}</b><span>${benchmarkCount ? '열릴 벤치마크' : '선택한 부위'}</span></div>
+          <div class="score"><b>10분</b><span>마무리 보강</span></div>
+        </div>
+      </section>
+
+      <div class="section-label">오늘 선택한 부위 조합</div>
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <b>${_esc(combo)}</b>
+            <span>미리 정해진 조합을 고르는 게 아니라, 선택한 부위들이 오늘 조합이 됩니다.</span>
+          </div>
+          <div class="badge ${selectedSet.size ? '' : 'muted'}">${selectedSet.size ? `${selectedSet.size}개 포함` : '선택 전'}</div>
+        </div>
+        <div class="bench-list wt-v4-major-list">${_renderMaxEntryMajorRows(selectedSet)}</div>
+      </section>
+
+      ${selectedSet.size
+        ? _renderMaxEntryBenchmarkPreview({ cycle, cache, exList, todayKey, isDraft })
+        : `<div class="wt-v4-last-ten">
+            <div class="wt-v4-last-dot"></div>
+            <div>
+              <b>벤치마크는 선택한 부위만 표시</b>
+              <span>선택 전에는 기본 가슴/등/하체 목록을 임의로 보여주지 않습니다.</span>
+            </div>
+          </div>`}
+      ${steeringHtml || ''}
+
+      <div class="next-actions">
+        <button type="button" class="ghost" data-action="open-max-plan-editor">계획 조정</button>
+        <button type="button" class="primary" data-action="confirm-max-majors" ${selectedSet.size ? '' : 'disabled'}>
+          ${selectedSet.size ? '선택 조합으로 시작' : '부위를 선택하세요'}
         </button>
       </div>
     </section>
@@ -1397,11 +1413,12 @@ function _renderMaxCycleRecommendationPanel({
   weakPartsForToday = [],
   weakPartsOutOfScope = [],
   meta = _ensureMaxMeta(),
+  comparison = null,
 } = {}) {
   const majorSet = majors instanceof Set ? majors : new Set(majors || []);
   if (!majorSet.size) return '';
   const takenIds = (S?.workout?.exercises || []).map(e => e.exerciseId).filter(Boolean);
-  const comparison = buildMuscleComparison(comparisonCache, exList, MOVEMENTS, todayKey, majorSet, 2);
+  const muscleComparison = comparison || buildMuscleComparison(comparisonCache, exList, MOVEMENTS, todayKey, majorSet, 2);
   const weakCoachGroups = _suggestWeakTargetBoosts(weakPartsForToday, takenIds);
   const outOfScopeWeakGroups = _suggestWeakTargetBoosts(weakPartsOutOfScope, takenIds);
   const fixedMovements = detectMaxFixedMovements({
@@ -1416,7 +1433,7 @@ function _renderMaxCycleRecommendationPanel({
   let boardHtml = '';
   let context = '오늘 선택한 부위와 최근 기록을 기준으로 추천합니다.';
 
-  if (!comparison.previous?.length) {
+  if (!muscleComparison.previous?.length) {
     boardHtml = _renderMajorRecommendationBoard({
       majors: [...majorSet],
       starterGroups: _suggestMajorStarters([...majorSet], takenIds),
@@ -1425,7 +1442,7 @@ function _renderMaxCycleRecommendationPanel({
       meta,
     });
     context = '직전/직직전 같은 부위 기록이 부족해서, 오늘 시작하기 좋은 후보를 먼저 보여줍니다.';
-  } else if (!comparison.imbalance) {
+  } else if (!muscleComparison.imbalance) {
     boardHtml = _renderMajorRecommendationBoard({
       majors: [...majorSet],
       starterGroups: _suggestMajorStarters([...majorSet], takenIds),
@@ -1435,11 +1452,11 @@ function _renderMaxCycleRecommendationPanel({
       takenIds,
       meta,
     });
-    const prevDates = comparison.previous.map(p => _formatShortDate(p.dateKey)).join(' · ');
+    const prevDates = muscleComparison.previous.map(p => _formatShortDate(p.dateKey)).join(' · ');
     context = `최근 ${prevDates} 기준 큰 불균형은 없어서, 자주 하던 종목과 선택 약점을 우선합니다.`;
   } else {
     const groups = suggestMaxBoosts({
-      comparison,
+      comparison: muscleComparison,
       exList,
       movements: MOVEMENTS,
       preferredCategories: MAX_PREFERRED_CATEGORIES,
@@ -1455,20 +1472,23 @@ function _renderMaxCycleRecommendationPanel({
       takenIds,
       meta,
     });
-    const prevDates = comparison.previous.map(p => _formatShortDate(p.dateKey)).join(' · ');
+    const prevDates = muscleComparison.previous.map(p => _formatShortDate(p.dateKey)).join(' · ');
     context = `최근 ${prevDates} 수행과 오늘 선택한 운동을 비교해 부족한 세부 부위를 보강합니다.`;
   }
 
   if (!boardHtml) return '';
   return `
-    <section class="wt-v4-rec-panel">
-      <div class="wt-v4-rec-head">
+    <section class="card wt-v4-rec-panel wt-v4-accordion is-collapsed">
+      <button type="button" class="card-head wt-v4-rec-head wt-v4-accordion-toggle" data-action="toggle-v4-accordion" aria-expanded="false">
         <div>
-          <b>오늘 추가하면 좋은 종목</b>
+          <b>오늘 보강 종목</b>
           <span>${_esc(context)}</span>
         </div>
+        <div class="badge wt-v4-accordion-label">펼치기</div>
+      </button>
+      <div class="wt-v4-accordion-body">
+        ${boardHtml}
       </div>
-      ${boardHtml}
     </section>
   `;
 }
@@ -1522,7 +1542,49 @@ export function renderMaxCard(host) {
   const day = cache[todayKey] || { exercises: S?.workout?.exercises || [] };
   const majors = new Set(selectedMajors);
   if (meta.majorGateOpen || majors.size === 0) {
-    host.innerHTML = _renderMaxTodayMajorGate({ selectedMajors });
+    const gateComparisonCache = cache[todayKey] ? cache : { ...cache, [todayKey]: day };
+    const weakScope = _splitWeakPartsByMajors(meta.selectedWeakParts, selectedMajors);
+    const gateComparison = majors.size ? buildMuscleComparison(gateComparisonCache, exList, MOVEMENTS, todayKey, majors, 2) : null;
+    const savedCycleForGate = _getMaxCycleSafe();
+    const cycleDraftForGate = majors.size
+      ? (savedCycleForGate || createDefaultMaxCycle({
+        todayKey,
+        majors: [...majors],
+        movements: MOVEMENTS,
+        currentGymId: S?.workout?.currentGymId || getExpertPreset()?.currentGymId || null,
+        allowFallback: false,
+      }))
+      : null;
+    const todayCycleForGate = majors.size && cycleDraftForGate
+      ? _cycleForTodayMajors(cycleDraftForGate, majors, todayKey)
+      : null;
+    const nextAdviceHtml = gateComparison ? renderNextSameMuscleDayAdvice({
+      comparison: gateComparison,
+      cache: gateComparisonCache,
+      exList,
+      majors,
+      movements: MOVEMENTS,
+    }) : '';
+    const recommendationHtml = gateComparison ? _renderMaxCycleRecommendationPanel({
+      comparisonCache: gateComparisonCache,
+      exList,
+      todayKey,
+      majors,
+      weakPartsForToday: weakScope.inScope,
+      weakPartsOutOfScope: weakScope.outOfScope,
+      meta,
+      comparison: gateComparison,
+    }) : '';
+    const steeringHtml = `${nextAdviceHtml}${recommendationHtml}`;
+    host.innerHTML = _renderMaxTodayMajorGate({
+      selectedMajors,
+      steeringHtml,
+      cycle: todayCycleForGate,
+      cache: gateComparisonCache,
+      exList,
+      todayKey,
+      isDraft: !savedCycleForGate,
+    });
     _bindMaxHost(host);
     _ensureWeakTimerTick();
     return;
@@ -1540,6 +1602,14 @@ export function renderMaxCard(host) {
     allowFallback: false,
   });
   const todayCycle = _cycleForTodayMajors(cycleDraft, majors, todayKey);
+  const dashboardComparison = buildMuscleComparison(comparisonCache, exList, MOVEMENTS, todayKey, majors, 2);
+  const nextAdviceHtml = renderNextSameMuscleDayAdvice({
+    comparison: dashboardComparison,
+    cache: comparisonCache,
+    exList,
+    majors,
+    movements: MOVEMENTS,
+  });
   const recommendationHtml = _renderMaxCycleRecommendationPanel({
     comparisonCache,
     exList,
@@ -1548,6 +1618,7 @@ export function renderMaxCard(host) {
     weakPartsForToday,
     weakPartsOutOfScope,
     meta,
+    comparison: dashboardComparison,
   });
   const cycleHtml = renderMaxCycleDashboard({
     cycle: todayCycle,
@@ -1555,7 +1626,9 @@ export function renderMaxCard(host) {
     exList,
     todayKey,
     isDraft: !savedCycle,
+    majors: [...majors],
     recommendationHtml,
+    nextAdviceHtml,
   });
   host.innerHTML = cycleHtml;
   _bindMaxHost(host);
@@ -1763,12 +1836,29 @@ export function renderMaxCard(host) {
   _ensureWeakTimerTick();
 }
 
+function _toggleV4Accordion(btn) {
+  const card = btn?.closest?.('.wt-v4-accordion');
+  if (!card) return;
+  const label = btn.querySelector('.wt-v4-accordion-label');
+  if (label && !label.dataset.collapsedLabel) {
+    label.dataset.collapsedLabel = (label.textContent || '').trim() || '펼치기';
+  }
+  const expanded = !card.classList.toggle('is-collapsed');
+  btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+  if (label) label.textContent = expanded ? '접기' : (label.dataset.collapsedLabel || '펼치기');
+}
+
 function _bindMaxHost(host) {
   if (!host) return;
   // 칩 onclick 이벤트 위임 (innerHTML 갱신 후에도 살아있도록 host 단위로 1회만 바인딩)
   if (!host.dataset.maxBound) {
     host.dataset.maxBound = '1';
     host.addEventListener('click', (e) => {
+      const accordionBtn = e.target.closest('[data-action="toggle-v4-accordion"]');
+      if (accordionBtn) {
+        _toggleV4Accordion(accordionBtn);
+        return;
+      }
       const btn = e.target.closest('[data-action="apply-max"]');
       if (btn) {
         const movId = btn.getAttribute('data-movement-id');
@@ -2099,7 +2189,7 @@ export async function startMaxCycle() {
     ? meta.selectedMajors.map(_normalizeMaxMajor).filter(Boolean)
     : [];
   const day = getCache()[todayKey] || { exercises: S?.workout?.exercises || [] };
-  const detectedMajors = _detectMajorsLoose(day, getExList(), MOVEMENTS);
+  const detectedMajors = detectMaxMajorsLoose(day, getExList(), MOVEMENTS, S?.workout?.exercises || []);
   const majors = selectedMajors.length ? selectedMajors : [...detectedMajors];
   if (!majors.length) {
     _toast('오늘 할 큰 부위를 먼저 선택하세요', 'warning');
@@ -3536,7 +3626,7 @@ export async function applyMaxSuggestion(movementId, weakPart = null, recMeta = 
   // 실패 시 rollback — in-memory와 Firestore 불일치 방지 (data-guardian 권장).
   try {
     const { saveWorkoutDay } = await import('../save.js');
-    await saveWorkoutDay();
+    await saveWorkoutDay({ silent: true });
   } catch (e) {
     console.warn('[applyMaxSuggestion.save]:', e);
     // push한 항목 제거 (마지막 요소가 우리가 추가한 것이라고 가정)
@@ -3776,7 +3866,7 @@ export function toggleMaxWeakBlockTimer() {
 
 function _saveMaxMetaSoon() {
   import('../save.js')
-    .then(m => m.saveWorkoutDay?.())
+    .then(m => m.saveWorkoutDay?.({ silent: true }))
     .catch(e => console.warn('[maxMeta.save]:', e));
 }
 

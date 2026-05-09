@@ -15,6 +15,8 @@ import {
   weightRange,
   kgToLb,
   lbToKg,
+  calcSetVolume,
+  calcVolume,
   getVolumeHistoryByMovement,
   getVolumeHistoryMulti,
   inferWorkoutTrack,
@@ -95,6 +97,17 @@ test('kgToLb/lbToKg 왕복 정확도', () => {
   assert.ok(Math.abs(lbToKg(kgToLb(kg)) - kg) < 1e-6);
 });
 
+test('ROM · 볼륨은 kg×reps×ROM% 로 계산한다', () => {
+  assert.equal(calcSetVolume({ kg: 100, reps: 10, romPct: 80 }), 800);
+  assert.equal(calcSetVolume({ kg: 100, reps: 10 }), 1000);
+  assert.equal(calcVolume([
+    { kg: 100, reps: 10, romPct: 80, done: true },
+    { kg: 50, reps: 10, romPct: 50, done: true },
+    { kg: 100, reps: 10, romPct: 20, done: false },
+    { kg: 100, reps: 10, romPct: 20, done: true, setType: 'warmup' },
+  ]), 1050);
+});
+
 // ── getVolumeHistoryMulti / ByMovement ────────────────────────
 const _sampleCache = {
   '2026-04-01': {
@@ -146,13 +159,13 @@ test('inferWorkoutTrack · 명시 트랙 우선, 없으면 반복수로 분류',
 });
 test('getTrackMetricHistory · 볼륨/강도 그래프 데이터를 분리하고 미분류는 제외', () => {
   const cache = {
-    '2026-04-01': { exercises: [{ exerciseId: 'bench', sets: [{ kg: 50, reps: 12, done: true }] }] },
+    '2026-04-01': { exercises: [{ exerciseId: 'bench', sets: [{ kg: 50, reps: 12, romPct: 80, done: true }] }] },
     '2026-04-08': { exercises: [{ exerciseId: 'bench', sets: [{ kg: 70, reps: 5, done: true }] }] },
     '2026-04-15': { exercises: [{ exerciseId: 'bench', sets: [{ kg: 60, reps: 9, done: true }] }] },
   };
   const h = getTrackMetricHistory(cache, [{ id: 'bench' }], 'bench');
   assert.equal(h.M.length, 1);
-  assert.equal(h.M[0].value, 600);
+  assert.equal(h.M[0].value, 480);
   assert.equal(h.H.length, 1);
   assert.ok(Math.abs(h.H[0].value - 81.67) < 0.1);
   assert.equal(h.unclassified, 1);

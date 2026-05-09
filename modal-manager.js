@@ -49,7 +49,7 @@ export async function loadAndInjectModals() {
   const container = document.getElementById('modals-container');
   if (!container) return;
 
-  const cacheKey = '?v=20260414b';
+  const cacheKey = '?v=20260507-test-mode-fixes';
   const results = await Promise.allSettled(
     MODALS.map(cfg => import(cfg.path + cacheKey).then(m => m[cfg.export] || ''))
   );

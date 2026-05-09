@@ -90,14 +90,14 @@ export function wtAddSet(entryIdx) {
   const prev = S.workout.exercises[entryIdx].sets.slice(-1)[0];
   S.workout.exercises[entryIdx].sets.push({ kg: prev?.kg||0, reps: prev?.reps||0, setType:'main', done:false });
   _renderSets(entryIdx);
-  saveWorkoutDay().catch(e => console.error('Save error:', e));
+  saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
 }
 
 export function wtRemoveSet(entryIdx, si) {
   // Undo Toast 3초: 세트 객체와 원래 위치를 기억해두고 복원 지원
   const removed = S.workout.exercises[entryIdx].sets.splice(si, 1)[0];
   _renderSets(entryIdx);
-  saveWorkoutDay().catch(e => console.error('Save error:', e));
+  saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
   if (!removed) return;
   window.showToast?.('세트 삭제됨', 3000, 'info', {
     action: '실행 취소',
@@ -105,7 +105,7 @@ export function wtRemoveSet(entryIdx, si) {
       if (!S.workout.exercises[entryIdx]) return;
       S.workout.exercises[entryIdx].sets.splice(si, 0, removed);
       _renderSets(entryIdx);
-      saveWorkoutDay().catch(e => console.error('Restore error:', e));
+      saveWorkoutDay({ silent: true }).catch(e => console.error('Restore error:', e));
     },
   });
 }
@@ -434,7 +434,7 @@ export function wtToggleMaxEntryTrack(entryIdx) {
     entry.sets = (entry.sets || []).map(set => set.done === true ? set : { ...set, kg: nextKg || set.kg || 0, reps: nextReps, rpe: next === 'H' ? 9 : 8 });
   }
   _renderExerciseList();
-  saveWorkoutDay().catch(e => console.error('Save max entry track:', e));
+  saveWorkoutDay({ silent: true }).catch(e => console.error('Save max entry track:', e));
 }
 
 function _rpeToRir(rpe) {
@@ -451,20 +451,36 @@ function _rirToRpe(rir) {
   return Math.max(1, Math.min(10, 10 - n));
 }
 
+function _normalizeRpe(val) {
+  if (val === '' || val == null) return null;
+  const n = Number(val);
+  if (!Number.isFinite(n)) return null;
+  return Math.max(1, Math.min(10, Math.round(n * 2) / 2));
+}
+
+function _normalizeRomPct(val) {
+  if (val === '' || val == null) return null;
+  const n = Number(val);
+  if (!Number.isFinite(n)) return null;
+  return Math.max(0, Math.min(100, Math.round(n)));
+}
+
 export function wtUpdateSet(entryIdx, si, field, val) {
   // RPE 빈 값은 null로 저장 — 0과 구분해 _computeExpertRec의 prevRpeKnown 판정을 명확히.
   let parsed;
   if (field === 'setType') parsed = val;
-  else if (field === 'rpe') parsed = (val === '' || val == null) ? null : (parseFloat(val) || null);
+  else if (field === 'rpe') parsed = _normalizeRpe(val);
+  else if (field === 'romPct') parsed = _normalizeRomPct(val);
   else parsed = (parseFloat(val) || 0);
-  S.workout.exercises[entryIdx].sets[si][field] = parsed;
+  if (field === 'romPct' && parsed == null) delete S.workout.exercises[entryIdx].sets[si].romPct;
+  else S.workout.exercises[entryIdx].sets[si][field] = parsed;
   if (field === 'kg' || field === 'reps') {
     S.workout.exercises[entryIdx].sets[si].done = false;
     // 의미 있는 수치(>0)가 들어왔을 때만 타이머 자동시작. 실수로 0 치고 나가는 건 무시.
     if ((parsed || 0) > 0) _ensureWorkoutTimerStarted();
   }
   _renderSets(entryIdx);
-  saveWorkoutDay().catch(e => console.error('Save error:', e));
+  saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
 }
 
 export function wtUpdateSetRir(entryIdx, si, val) {
@@ -475,7 +491,7 @@ export function wtToggleSetDone(entryIdx, si) {
   const wasDone = S.workout.exercises[entryIdx].sets[si].done;
   S.workout.exercises[entryIdx].sets[si].done = !wasDone;
   _renderSets(entryIdx);
-  saveWorkoutDay().then(() => {
+  saveWorkoutDay({ silent: true }).then(() => {
     _renderExerciseList();
     if (!wasDone) showToast('저장되었습니다', 1500, 'success');
   }).catch(e => console.error('Save error:', e));
@@ -493,7 +509,7 @@ export function wtToggleSetDone(entryIdx, si) {
 export function wtUpdateSetType(entryIdx, si, val) {
   S.workout.exercises[entryIdx].sets[si].setType = val;
   _renderSets(entryIdx);
-  saveWorkoutDay().catch(e => console.error('Save error:', e));
+  saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
 }
 
 export function wtMoveSet(entryIdx, si, direction) {
@@ -502,7 +518,7 @@ export function wtMoveSet(entryIdx, si, direction) {
   if (targetIdx < 0 || targetIdx >= sets.length) return;
   [sets[si], sets[targetIdx]] = [sets[targetIdx], sets[si]];
   _renderSets(entryIdx);
-  saveWorkoutDay().then(() => showToast('순서가 변경되었습니다', 1500, 'success')).catch(e => console.error('Save error:', e));
+  saveWorkoutDay({ silent: true }).then(() => showToast('순서가 변경되었습니다', 1500, 'success')).catch(e => console.error('Save error:', e));
 }
 
 export function wtRemoveExerciseEntry(entryIdx) {
@@ -510,7 +526,7 @@ export function wtRemoveExerciseEntry(entryIdx) {
   _normalizeExpertSessionAfterExerciseChange();
   _renderExerciseList();
   _syncExpertTopArea();
-  saveWorkoutDay().catch(e => console.error('Save error:', e));
+  saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
 }
 
 // ── Scene 12 UI 헬퍼 (프로 모드 전용) ─────────────────────────
@@ -744,7 +760,7 @@ export function _renderExerciseList() {
   if (!container.dataset.sceneInteractive) {
     container.dataset.sceneInteractive = '1';
     container.addEventListener('click', (e) => {
-      if (!_isExpertUiEnabled()) return;
+      if (!_isExpertUiEnabled() || _isMaxWorkoutMode()) return;
       // RPE 세그 클릭 → expert section 재렌더 (추천 무게 재계산)
       const rpe = e.target.closest('.rpe-seg');
       if (rpe) {
@@ -771,6 +787,7 @@ export function _renderExerciseList() {
   const allMuscles = getMuscleParts();
   const isExpert = _isExpertUiEnabled();
   const isMaxMode = _isMaxWorkoutMode();
+  const isProExpertMode = isExpert && !isMaxMode;
 
   // Finding 2: 오늘 세션 제외 → 자기참조 방지. 최근 기록(today 제외).
   const todayKey = _todayDateKey();
@@ -797,7 +814,7 @@ export function _renderExerciseList() {
     // chips/footer는 prior 우선, 없으면 오늘 entry의 완료 본세트로 폴백.
     let expertHtml = '';
     let poPillHtml = '';
-    if (isExpert) {
+    if (isProExpertMode) {
       const lastForRec = _resolveLastForRec(idx, entry.exerciseId);
       const presetRpe = _presetTargetRpe();
       expertHtml = _buildExpertSceneBlock({ entryIdx: idx, exerciseId: entry.exerciseId, last: lastForRec, targetRpe: presetRpe });
@@ -815,8 +832,7 @@ export function _renderExerciseList() {
           ${maxCollapsed
             ? `<button class="ex-max-v2-secondary ex-max-v2-expand-card" data-idx="${idx}">세트 다시 보기</button>`
             : `<button class="ex-add-set-btn ex-max-v2-secondary" data-idx="${idx}">세트 추가</button>`}
-        </div>
-        ${expertHtml}`;
+        </div>`;
     } else {
       block.innerHTML = `
         <div class="ex-block-header">
@@ -877,13 +893,13 @@ export function _renderExerciseList() {
         // C-1: 종목 세트 복사도 활동 복사와 동일하게 Undo 토스트 제공.
         const prevSets = JSON.parse(JSON.stringify(S.workout.exercises[idx].sets || []));
         S.workout.exercises[idx].sets = JSON.parse(JSON.stringify(last.sets)).map(s => ({ ...s, done: false }));
-        saveWorkoutDay().then(() => _renderExerciseList()).catch(e => console.error('Save error:', e));
+        saveWorkoutDay({ silent: true }).then(() => _renderExerciseList()).catch(e => console.error('Save error:', e));
         showToast('직전 세트를 불러왔어요', 3000, 'success', {
           action: '실행 취소',
           onAction: () => {
             if (!S.workout.exercises[idx]) return;
             S.workout.exercises[idx].sets = prevSets;
-            saveWorkoutDay().then(() => _renderExerciseList()).catch(e => console.error('Undo save:', e));
+            saveWorkoutDay({ silent: true }).then(() => _renderExerciseList()).catch(e => console.error('Undo save:', e));
           },
         });
       });
@@ -910,6 +926,8 @@ function _renderSets(entryIdx) {
     const isWarmup = set.setType === 'warmup';
     const isDrop = set.setType === 'drop';
     const isDone   = set.done !== false;
+    const romPct = _normalizeRomPct(set.romPct);
+    const romValue = romPct == null ? 100 : romPct;
     const vol = (set.kg && set.reps && !isWarmup && isDone)
       ? `<span style="color:var(--accent)">${(set.kg*set.reps).toLocaleString()}vol</span>`
       : (isWarmup ? '<span style="color:var(--muted);font-size:9px">웜업</span>' : '');
@@ -926,13 +944,21 @@ function _renderSets(entryIdx) {
     const row = document.createElement('div');
     row.className = isMaxMode ? `set-row ex-max-v2-set${isDone ? ' done' : ''}` : 'set-row';
     row.innerHTML = isMaxMode ? `
-      <button type="button" class="ex-max-v2-type-btn ${isWarmup ? 'warmup' : (isDrop ? 'drop' : 'main')}" title="세트 타입">${_maxSetTypeLabel(set.setType)}</button>
-      <label class="ex-max-v2-field"><span>KG</span><input class="set-input" type="number" placeholder="kg" min="0" step="0.5" value="${set.kg||''}"></label>
-      <label class="ex-max-v2-field"><span>REP</span><input class="set-input" type="number" placeholder="회" min="1" step="1" value="${set.reps||''}"></label>
-      <label class="ex-max-v2-field"><span>RIR</span><input class="set-rir-input" type="number" placeholder="-" min="0" max="9" step="0.5" value="${_rpeToRir(set.rpe)}"></label>
-      <button class="set-done-btn ${isDone?'done':''}" title="완료 체크">✓</button>
-      <button class="set-remove-btn" title="세트 삭제">×</button>
-      <span class="set-drag-handle" title="드래그하여 순서 변경"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg></span>`
+      <div class="ex-max-v2-main-row">
+        <button type="button" class="ex-max-v2-type-btn ${isWarmup ? 'warmup' : (isDrop ? 'drop' : 'main')}" title="세트 타입">${_maxSetTypeLabel(set.setType)}</button>
+        <label class="ex-max-v2-field"><span>KG</span><input class="set-input" type="number" placeholder="kg" min="0" step="0.5" value="${set.kg||''}"></label>
+        <label class="ex-max-v2-field"><span>REP</span><input class="set-input" type="number" placeholder="회" min="1" step="1" value="${set.reps||''}"></label>
+        <label class="ex-max-v2-field"><span>RPE</span><input class="set-rpe-input" type="number" placeholder="-" min="1" max="10" step="0.5" value="${_normalizeRpe(set.rpe) ?? ''}"></label>
+        <button class="set-done-btn ${isDone?'done':''}" title="완료 체크">✓</button>
+        <button class="set-remove-btn" title="세트 삭제">×</button>
+        <span class="set-drag-handle" title="드래그하여 순서 변경"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg></span>
+      </div>
+      <label class="ex-max-v2-rom">
+        <span>ROM</span>
+        <input class="set-rom-range" type="range" min="0" max="100" step="5" value="${romValue}" style="--rom-pct:${romValue}%" aria-label="가동범위 퍼센트">
+        <input class="set-rom-input" type="number" min="0" max="100" step="1" value="${romValue}" aria-label="가동범위 퍼센트 직접 입력">
+        <em>%</em>
+      </label>`
       : `
         <span class="set-num">${si+1}</span>
         <select class="set-type-select ${isWarmup ? 'warmup' : (isDrop ? 'drop' : 'main')}" data-idx="${si}">
@@ -961,8 +987,25 @@ function _renderSets(entryIdx) {
     row.querySelector('.set-remove-btn').addEventListener('click', () => wtRemoveSet(entryIdx, si));
     const rpeSel = row.querySelector('.set-rpe-select');
     if (rpeSel) rpeSel.addEventListener('change', e => wtUpdateSet(entryIdx, si, 'rpe', e.target.value));
-    const rirInput = row.querySelector('.set-rir-input');
-    if (rirInput) rirInput.addEventListener('change', e => wtUpdateSetRir(entryIdx, si, e.target.value));
+    const maxRpeInput = row.querySelector('.set-rpe-input');
+    if (maxRpeInput) maxRpeInput.addEventListener('change', e => wtUpdateSet(entryIdx, si, 'rpe', e.target.value));
+    const romRange = row.querySelector('.set-rom-range');
+    const romInput = row.querySelector('.set-rom-input');
+    if (romRange && romInput) {
+      romRange.addEventListener('input', e => {
+        romInput.value = e.target.value;
+        romRange.style.setProperty('--rom-pct', `${e.target.value}%`);
+      });
+      romRange.addEventListener('change', e => wtUpdateSet(entryIdx, si, 'romPct', e.target.value));
+      romInput.addEventListener('input', e => {
+        const next = _normalizeRomPct(e.target.value);
+        if (next != null) {
+          romRange.value = String(next);
+          romRange.style.setProperty('--rom-pct', `${next}%`);
+        }
+      });
+      romInput.addEventListener('change', e => wtUpdateSet(entryIdx, si, 'romPct', e.target.value));
+    }
     el.appendChild(row);
   });
 
@@ -981,7 +1024,7 @@ function _renderSets(entryIdx) {
         const [moved] = S.workout.exercises[entryIdx].sets.splice(oldIndex, 1);
         S.workout.exercises[entryIdx].sets.splice(newIndex, 0, moved);
         _renderSets(entryIdx);
-        saveWorkoutDay().then(() => showToast('순서가 변경되었습니다', 1500, 'success')).catch(e => console.error('Save error:', e));
+        saveWorkoutDay({ silent: true }).then(() => showToast('순서가 변경되었습니다', 1500, 'success')).catch(e => console.error('Save error:', e));
       }
     });
   }
@@ -1061,7 +1104,7 @@ window._wtSetPickerCategoryFilter = window._wtSetPickerMuscleFilter;
 window._wtSetPickerGymFilter = (gymId) => {
   _pickerGymFilter = gymId || null;
   if (S?.workout) S.workout.pickerGymFilter = _pickerGymFilter;
-  saveWorkoutDay().catch(e => console.warn('[pickerGymFilter.save]:', e));
+  saveWorkoutDay({ silent: true }).catch(e => console.warn('[pickerGymFilter.save]:', e));
   _renderPickerList();
 };
 
@@ -1278,7 +1321,7 @@ export function _renderPickerList() {
           const timerBar = document.getElementById('wt-workout-timer-bar');
           if (timerBar && !timerBar.classList.contains('wt-open')) timerBar.classList.add('wt-open');
           if (!S.workout.workoutStartTime && S.workout.workoutDuration === 0) wtStartWorkoutTimer();
-          saveWorkoutDay().catch(e => console.error('Save error:', e));
+          saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
         });
       }
       group.appendChild(btn);
@@ -1418,6 +1461,7 @@ export async function wtSaveExerciseFromEditor() {
   const name     = document.getElementById('ex-editor-name').value.trim();
   const muscleSelect = document.getElementById('ex-editor-muscle');
   const gymId = document.getElementById('ex-editor-gym-scope')?.value || null;
+  const saveBtn = editor?.querySelector('[data-action="save-exercise-editor"]');
   let muscleId = muscleSelect.value;
   if (!name) { window.showToast?.('종목 이름을 입력해주세요', 2500, 'warning'); return; }
   if (muscleId === NEW_MUSCLE_OPTION) {
@@ -1428,7 +1472,7 @@ export async function wtSaveExerciseFromEditor() {
   }
   const editingId = editor.dataset.editingId;
   const existing = editingId ? getExList().find(e => e.id === editingId) : null;
-  await saveExercise({
+  const record = {
     ...(existing || {}),
     id: editingId || `custom_${Date.now()}`,
     muscleId,
@@ -1437,10 +1481,25 @@ export async function wtSaveExerciseFromEditor() {
     gymId: gymId || null,
     primaryGymId: gymId || null,
     gymTags: gymId ? [gymId] : ['*'],
-  });
+  };
+  try {
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '저장 중...'; }
+    await saveExercise(record);
+    const saved = getExList().find(e => e.id === record.id);
+    if (!saved || saved.name !== record.name || saved.muscleId !== record.muscleId) {
+      throw new Error('saveExercise verification failed');
+    }
+  } catch (e) {
+    console.warn('[wtSaveExerciseFromEditor]:', e);
+    window.showToast?.('종목 저장 실패 — 다시 시도해주세요', 2800, 'error');
+    return;
+  } finally {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '저장'; }
+  }
   editor.classList.remove('open');
   _setWorkoutModalLock(false);
   wtOpenExercisePicker();
+  window.showToast?.('종목 저장 완료', 1600, 'success');
 }
 
 export async function wtDeleteExerciseFromEditor() {

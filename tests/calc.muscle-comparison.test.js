@@ -145,6 +145,22 @@ test('summarizeMuscleSession · 워밍업 제외 + done=false 제외', () => {
   assert.equal(out.totalVolume, 80 * 8 + 80 * 6);
 });
 
+test('summarizeMuscleSession · ROM%는 볼륨에 반영되고 세트 로그에 남는다', () => {
+  const day = {
+    exercises: [
+      { exerciseId: 'bp', sets: [
+        workSet(100, 10, { romPct: 70 }),
+        workSet(80, 10, { romPct: 100 }),
+      ] },
+    ],
+  };
+  const out = summarizeMuscleSession(day, EX_LIST, MOVEMENTS, ['chest']);
+  assert.equal(out.workSets, 2);
+  assert.equal(out.totalVolume, 1500);
+  assert.equal(out.exercises[0].sets[0].romPct, 70);
+  assert.equal(out.exercises[0].sets[0].volume, 700);
+});
+
 // ── findRecentSameMuscleSessions ───────────────────────────────
 test('findRecentSameMuscleSessions · 오늘 가슴 → 직전/직직전 가슴 dateKey', () => {
   const cache = {

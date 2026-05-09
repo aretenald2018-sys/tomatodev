@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { isExerciseDaySuccess, hasDietRecordData, dietDayOk } from '../calc.js';
+import { isExerciseDaySuccess, hasDietRecordData, dietDayOk, calcExerciseCalorieCredit } from '../calc.js';
 
 // ── isExerciseDaySuccess — stretching/running/swimming ──────────
 test('isExerciseDaySuccess · stretching=true → 성공', () => {
@@ -50,6 +50,13 @@ test('isExerciseDaySuccess · 세트 없는 운동 항목만 → 실패', () => 
   assert.strictEqual(isExerciseDaySuccess({
     exercises: [{ sets: [] }]
   }), false);
+});
+
+test('calcExerciseCalorieCredit · 테스트모드 초안 종목은 헬스 크레딧 제외', () => {
+  const plan = { advancedMode: true, exerciseCalorieCredit: true, exerciseKcalGym: 250 };
+  assert.strictEqual(calcExerciseCalorieCredit(plan, {
+    exercises: [{ sets: [{ done: false, kg: 0, reps: 0 }] }]
+  }), 0);
 });
 
 // ── 혼합 케이스 ──────────────────────────────────────────────────

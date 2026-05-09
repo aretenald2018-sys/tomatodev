@@ -11,7 +11,7 @@
 
 import { S }                        from './state.js';
 import { showCenterToast }          from '../home/utils.js';
-import { saveDay, dateKey, isFuture, trackEvent, getExList } from '../data.js';
+import { saveDay, dateKey, isFuture, trackEvent, getExList, getExpertMode } from '../data.js';
 import { WORKOUT_PAYLOAD_KEYS, DIET_PAYLOAD_KEYS } from './save-schema.js';
 import { deriveActivityFlagsFromDetails, deriveDietSuccessFromWorkout } from './cross-domain.js';
 import { MOVEMENTS } from '../config.js';
@@ -211,7 +211,15 @@ function _refreshTabDots() {
   });
 }
 
-function _cleanExercises(includeNotes) {
+function _hasSaveWorthySet(set) {
+  return !!(set && (set.done === true || (set.kg || 0) > 0 || (set.reps || 0) > 0));
+}
+
+function _shouldKeepDraftExercises() {
+  return S.workout.maxMeta?.mode === 'max' || getExpertMode?.() === 'max';
+}
+
+function _cleanExercises(includeNotes, includeDrafts = false) {
   // 저장 시점에 exList에서 movementId/muscleIds 스냅샷 (삭제된 종목·커스텀 종목 대응).
   const exById = new Map((getExList() || []).map(e => [e.id, e]));
   return S.workout.exercises
@@ -226,15 +234,19 @@ function _cleanExercises(includeNotes) {
       //   (예: "줍스님이 mo3t9kmdbvia7rssnh4을(를) 오늘부터 루틴에 다시 추가했어요").
       //   커스텀 종목 이름은 작성자 본인의 exList 에만 있으므로 스냅샷이 필수.
       const name = e.name || lib?.name || null;
+      const rawSets = Array.isArray(e.sets) ? e.sets.filter(Boolean) : [];
+      const sets = includeDrafts
+        ? (rawSets.length ? rawSets : [{ kg: 0, reps: 0, setType: 'main', done: false }])
+        : rawSets.filter(_hasSaveWorthySet);
       return {
         ...e,
         name,
         movementId,
         muscleIds,
-        sets: e.sets.filter(s => s && (s.done === true || (s.kg || 0) > 0 || (s.reps || 0) > 0)),
+        sets,
       };
     })
-    .filter(e => e.sets.length > 0 || (includeNotes && e.note));
+    .filter(e => e.sets.length > 0 || (includeNotes && e.note) || (includeDrafts && e.exerciseId));
 }
 
 // ── 공통 저장 prep ──────────────────────────────────────────────
@@ -282,18 +294,19 @@ function _prepareSave({ syncWorkoutDetails }) {
     S.workout.stretching = derived.stretching;
   }
 
-  const cleanEx = _cleanExercises(!syncWorkoutDetails);  // 식단 경로는 메모만 있는 종목도 보존
+  const cleanEx = _cleanExercises(!syncWorkoutDetails, syncWorkoutDetails && _shouldKeepDraftExercises());  // 식단 경로는 메모만 있는 종목도 보존
   const isDietSuccess = deriveDietSuccessFromWorkout(S.workout, S.diet, S.shared.date, cleanEx);
   return { y, m, d, cleanEx, isDietSuccess };
 }
 
 // ── 명시적 저장 (운동 도메인) ───────────────────────────────────
-export async function saveWorkoutDay() {
+export async function saveWorkoutDay(options = {}) {
+  const { silent = false } = options || {};
   const ctx = _prepareSave({ syncWorkoutDetails: true });
   if (!ctx) return;
   const { y, m, d, cleanEx, isDietSuccess } = ctx;
 
-  const btn = document.getElementById('wt-save-btn');
+  const btn = silent ? null : document.getElementById('wt-save-btn');
   if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
 
   const payload = _buildWorkoutPayload(cleanEx, isDietSuccess);
@@ -308,7 +321,8 @@ export async function saveWorkoutDay() {
   }
 
   // analytics
-  if (cleanEx.length > 0 || S.workout.cf || S.workout.swimming || S.workout.running) {
+  const hasLoggedSet = cleanEx.some(e => (e.sets || []).some(_hasSaveWorthySet));
+  if (hasLoggedSet || S.workout.cf || S.workout.swimming || S.workout.running) {
     trackEvent('core', 'exercise_logged');
   }
 
@@ -316,7 +330,7 @@ export async function saveWorkoutDay() {
   _refreshTabDots();
   document.dispatchEvent(new CustomEvent('sheet:saved'));
 
-  window.showToast?.('저장 완료', 2000, 'success');
+  if (!silent) window.showToast?.('저장 완료', 2000, 'success');
 }
 
 // ── 식단 자동 저장 (식단 도메인) ────────────────────────────────

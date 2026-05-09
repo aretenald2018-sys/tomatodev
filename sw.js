@@ -3,7 +3,7 @@
 
 // 캐시 버전: 타임스탬프 기반 자동 생성 — 파일 수정 시 SW 자동 업데이트
 // (SW 파일 내용이 1바이트라도 바뀌면 브라우저가 새 SW로 인식)
-const CACHE_VERSION = 'tomatofarm-v20260504-v33-track-split-graphs';
+const CACHE_VERSION = 'tomatofarm-v20260507-v44-test-mode-rpe-rom-inputs';
 const RUNTIME_CACHE = 'dashboard3-runtime';
 const STATIC_ASSETS = [
   './',
@@ -61,7 +61,12 @@ const STATIC_ASSETS = [
   './workout/expert/onboarding.js',
   './workout/expert/migrate-gym-v1.js',
   './workout/expert/max.js',
+  './workout/expert/max-config.js',
+  './workout/expert/max-same-day-advice.js',
   './workout/expert/max-cycle.js',
+  './workout/expert/max-cycle-core.js',
+  './workout/expert/max-cycle-render.js',
+  './calc/volume.js',
   './render-cooking.js',
   './render-stats.js',
   './render-admin.js',
