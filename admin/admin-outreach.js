@@ -1,6 +1,6 @@
 import {
   getAccountList, sendNotification, getAdminOutreachHistory, saveHeroMessage, saveAccount, deleteUserAccount,
-  createPatchnote,
+  createPatchnote, getDeveloperLetterStatus, getDeveloperLetterStatusMeta,
 } from '../data.js';
 import {
   exportUsersReport, exportDailyActivity,
@@ -124,13 +124,27 @@ function _fillTemplate(templateId, uid, data) {
   return body;
 }
 
+function _letterStatusChip(letter) {
+  const meta = getDeveloperLetterStatusMeta(getDeveloperLetterStatus(letter));
+  const palette = {
+    pending: ['#eef0f4', '#596273'],
+    'in-progress': ['rgba(33, 124, 249, 0.12)', '#1664d9'],
+    done: ['rgba(7, 145, 113, 0.12)', '#04765b'],
+    failed: ['rgba(250, 52, 44, 0.12)', '#c9231d'],
+  }[meta.key] || ['var(--hig-surface-elevated)', 'var(--hig-gray1)'];
+  return `<span style="display:inline-flex;align-items:center;justify-content:center;min-height:24px;padding:0 8px;border-radius:999px;background:${palette[0]};color:${palette[1]};font-size:11px;font-weight:800;white-space:nowrap;">${escapeHtml(meta.label)}</span>`;
+}
+
 function _lettersTab(data) {
   return `
     <div class="hig-card-grouped">
       <div class="hig-list-row"><div class="hig-headline">유저 메시지 수신함</div></div>
       ${(data.letters || []).slice(0, 30).map((letter) => `
         <div class="hig-list-row" style="align-items:flex-start;flex-direction:column;">
-          <div class="hig-subhead">${escapeHtml(letter.fromName || data.resolveName(letter.from))}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;">
+            <div class="hig-subhead">${escapeHtml(letter.fromName || data.resolveName(letter.from))}</div>
+            ${_letterStatusChip(letter)}
+          </div>
           <div class="hig-caption1" style="color:var(--hig-gray1);">${fmtDate(letter.createdAt)}</div>
           <div class="hig-subhead" style="margin-top:4px;white-space:pre-wrap;">${escapeHtml(letter.message || '')}</div>
         </div>
@@ -195,6 +209,37 @@ async function _loadHistoryTable(data) {
       .sort((a, b) => b.createdAt - a.createdAt)
       .slice(0, 6);
 
+    const patchnoteNotifs = notifs.filter((n) => n.type === 'patchnote');
+    const patchnoteBatches = new Map();
+    patchnoteNotifs.forEach((n) => {
+      const patchKey = String(n.patchnoteId || '').trim();
+      const fallbackKey = `${Math.floor((n.createdAt || 0) / 60000)}_${String(n.title || '').trim()}`;
+      const key = patchKey || fallbackKey;
+      if (!patchnoteBatches.has(key)) {
+        patchnoteBatches.set(key, {
+          key,
+          createdAt: n.createdAt || 0,
+          title: String(n.title || '').trim() || '패치노트',
+          total: 0,
+          read: 0,
+          unread: 0,
+          unknown: 0,
+          sampleUnread: [],
+        });
+      }
+      const row = patchnoteBatches.get(key);
+      row.total += 1;
+      if (n.read === true) row.read += 1;
+      else if (n.read === false) {
+        row.unread += 1;
+        const unreadName = accountMap[n.to] || n.to || '-';
+        if (row.sampleUnread.length < 3 && unreadName) row.sampleUnread.push(unreadName);
+      } else row.unknown += 1;
+    });
+    const patchnoteRows = Array.from(patchnoteBatches.values())
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 5);
+
     const batchCard = batchRows.length ? `
       <div class="hig-card-grouped" style="margin-bottom:12px;">
         <div class="hig-list-row"><div class="hig-headline">배치별 요약</div></div>
@@ -214,7 +259,25 @@ async function _loadHistoryTable(data) {
       </div>
     ` : '';
 
+    const patchnoteCard = patchnoteRows.length ? `
+      <div class="hig-card-grouped" style="margin-bottom:12px;">
+        <div class="hig-list-row"><div class="hig-headline">변경 전달 확인 (패치노트)</div></div>
+        ${patchnoteRows.map((row) => {
+          const readRate = row.total ? Math.round((row.read / row.total) * 100) : 0;
+          const unreadHint = row.sampleUnread.length ? `미읽음 예시: ${row.sampleUnread.map((name) => escapeHtml(name)).join(', ')}` : '';
+          return `
+            <div class="hig-list-row" style="display:block;">
+              <div class="hig-subhead" style="font-weight:700;">${escapeHtml(row.title)}</div>
+              <div class="hig-caption2" style="color:var(--hig-gray1);margin-top:4px;">${fmtDate(row.createdAt)} · ${row.read}/${row.total} 읽음 (${readRate}%) · 미읽음 ${row.unread}${row.unknown ? ` · 기록없음 ${row.unknown}` : ''}</div>
+              ${unreadHint ? `<div class="hig-caption2" style="color:var(--hig-red);margin-top:2px;">${unreadHint}</div>` : ''}
+            </div>
+          `;
+        }).join('')}
+      </div>
+    ` : '';
+
     container.innerHTML = `
+      ${patchnoteCard}
       ${batchCard}
       <div class="hig-card-grouped">
         <div class="hig-list-row" style="justify-content:space-between;">

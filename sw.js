@@ -3,12 +3,13 @@
 
 // 캐시 버전: 타임스탬프 기반 자동 생성 — 파일 수정 시 SW 자동 업데이트
 // (SW 파일 내용이 1바이트라도 바뀌면 브라우저가 새 SW로 인식)
-const CACHE_VERSION = 'tomatofarm-v20260512-v47-diet-report-publisher';
+const CACHE_VERSION = 'tomatofarm-v20260513-v58-letter-delivery-visibility';
 const RUNTIME_CACHE = 'dashboard3-runtime';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './manifest.json',
+  './build-info.json',
   './style.css',
   './styles/tokens.css',
   './styles/components.css',
@@ -50,6 +51,7 @@ const STATIC_ASSETS = [
   './workout/index.js',
   './workout/state.js',
   './workout/save.js',
+  './workout/save-pure.js',
   './workout/save-schema.js',
   './workout/cross-domain.js',
   './workout/render.js',
@@ -66,6 +68,7 @@ const STATIC_ASSETS = [
   './workout/expert/max-cycle.js',
   './workout/expert/max-cycle-core.js',
   './workout/expert/max-cycle-render.js',
+  './workout/expert/max-benchmark-picker.js',
   './calc/volume.js',
   './render-cooking.js',
   './render-stats.js',
@@ -98,6 +101,7 @@ const STATIC_ASSETS = [
   './utils/format.js',
   './utils/haptics.js',
   './utils/action-router.js',
+  './utils/build-info.js',
   './home/personalize.js',
   './home/streak-warning.js',
   './home/admin-onboarding.js',
@@ -132,6 +136,7 @@ const STATIC_ASSETS = [
   './admin/admin-cheers.js',
   './modals/weight-result-modal.js',
   './modals/guild-info-modal.js',
+  './modals/settings-modal.js',
   './modals/self-cheer-modal.js',
   './modals/patchnote-modal.js',
   // 전문가 모드 (Scene 02~13)
@@ -199,6 +204,10 @@ self.addEventListener('activate', (event) => {
       );
     }).then(() => self.clients.claim())
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event?.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('fetch', (event) => {
