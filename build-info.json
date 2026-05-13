@@ -1,0 +1,10 @@
+{
+  "app": "tomatofarm",
+  "commit": "3ba66381c7afd6755a456b8613084ac90ef69801",
+  "shortCommit": "3ba66381c7af",
+  "branch": "main",
+  "deployedAt": "2026-05-13T11:25:13.738Z",
+  "cacheVersion": "tomatofarm-v20260513z62-runtime-asset-guard",
+  "runId": null,
+  "runAttempt": null
+}

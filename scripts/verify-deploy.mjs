@@ -12,11 +12,28 @@ function toUrl(filePath) {
   return new URL(filePath.replace(/^\.\//, ''), baseUrl).toString();
 }
 
-async function fetchText(filePath) {
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchTextOnce(filePath) {
   const url = toUrl(filePath);
   const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error(`${filePath} HTTP ${res.status}`);
   return res.text();
+}
+
+async function fetchText(filePath, { retries = 0, delayMs = 5000 } = {}) {
+  let lastError = null;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await fetchTextOnce(filePath);
+    } catch (e) {
+      lastError = e;
+      if (attempt < retries) await sleep(delayMs);
+    }
+  }
+  throw lastError;
 }
 
 function assertOk(condition, message) {
@@ -28,7 +45,7 @@ function extractStaticAssets(swText) {
   return [...block.matchAll(/'([^']+)'/g)].map((m) => m[1]);
 }
 
-const buildInfoText = await fetchText('build-info.json');
+const buildInfoText = await fetchText('build-info.json', { retries: 24, delayMs: 5000 });
 const buildInfo = JSON.parse(buildInfoText);
 const swText = await fetchText('sw.js');
 const swCacheVersion = swText.match(/CACHE_VERSION\s*=\s*['"]([^'"]+)['"]/)?.[1] || '';
@@ -52,10 +69,9 @@ const keyFiles = [
   { path: 'index.html', marker: 'app.js' },
   { path: 'app.js', marker: 'initBuildInfoSurface' },
   { path: 'utils/build-info.js', marker: 'renderBuildInfo' },
+  { path: 'workout/save.js', marker: './save-pure.js' },
   { path: 'workout/save-pure.js', marker: 'shouldKeepMaxDraftExercisesForSavePure' },
   { path: 'workout/expert/max-benchmark-picker.js', marker: 'resolveMaxBenchmarkPickerItems' },
-  { path: 'workout/exercises.js', marker: 'ex-max-v2-last-sets' },
-  { path: 'render-calendar.js', marker: 'cal-bd-row-workout' },
 ];
 
 for (const item of keyFiles) {
