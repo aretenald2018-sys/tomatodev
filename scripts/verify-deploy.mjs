@@ -1,5 +1,5 @@
 const baseArg = process.argv[2];
-const expectedCommit = process.argv[3] || process.env.GITHUB_SHA || '';
+const expectedCommit = process.argv[3] || '';
 
 if (!baseArg) {
   console.error('Usage: node scripts/verify-deploy.mjs <base-url> [expected-commit]');

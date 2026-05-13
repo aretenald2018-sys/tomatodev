@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Verify Pages Runtime Assets
 
 on:
   push:
@@ -7,40 +7,17 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: "pages"
+  group: "pages-runtime-assets"
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  verify:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Generate build info
-        run: node scripts/generate-build-info.mjs
-
       - name: Verify runtime assets
         run: node scripts/verify-runtime-assets.mjs
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
-      - name: Verify deployed build
-        run: node scripts/verify-deploy.mjs "${{ steps.deployment.outputs.page_url }}" "${{ github.sha }}"
