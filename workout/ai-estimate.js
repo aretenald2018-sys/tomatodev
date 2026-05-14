@@ -19,7 +19,9 @@ function _makeEstimateError(code, message) {
 function _isNonFoodArtifactName(name) {
   const n = String(name || '').trim();
   return /^(gemini|제미나이|google|구글|ai|인공지능|분석|분석\s*결과|음식\s*사진|이미지)$/i.test(n)
-    || /(gemini|제미나이)\s*(응답|분석|결과|추정)/i.test(n);
+    || /(gemini|제미나이|google|구글)\s*(응답|분석|결과|추정|출력)/i.test(n)
+    || /^(ai|인공지능)\s*(응답|분석|결과|추정|출력)/i.test(n)
+    || /(제공자|모델|프롬프트|텍스트\s*출력|json)/i.test(n);
 }
 
 // ── 반상 prior 보정 ──────────────────────────────────────────────
@@ -91,9 +93,12 @@ export function normalizeItems(estimate) {
       kcalCorrected: corrected || undefined,
     };
   });
-  // 총합 재계산 (sanity check로 값이 바뀌었을 수 있음)
+  // 총합 재계산 (artifact 제거와 sanity check로 값이 바뀔 수 있음)
   const totalKcal = Math.round(items.reduce((s, i) => s + (i.kcal || 0), 0));
-  return { ...estimate, detectedItems: items, totalKcal };
+  const totalProtein = Math.round(items.reduce((s, i) => s + (i.protein || 0), 0) * 10) / 10;
+  const totalCarbs = Math.round(items.reduce((s, i) => s + (i.carbs || 0), 0) * 10) / 10;
+  const totalFat = Math.round(items.reduce((s, i) => s + (i.fat || 0), 0) * 10) / 10;
+  return { ...estimate, detectedItems: items, totalKcal, totalProtein, totalCarbs, totalFat };
 }
 
 export function applyCafeteriaPortionGuard(estimate) {

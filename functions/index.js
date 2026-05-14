@@ -5,6 +5,7 @@ const { defineSecret } = require("firebase-functions/params");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
+const crypto = require("crypto");
 
 initializeApp();
 
@@ -708,5 +709,223 @@ exports.ocrProxy = onCall(
       usedAfter: reservedCount,
       limit: OCR_MONTHLY_LIMIT,
     };
+  }
+);
+
+const RENEWD_AUTH_USER = "joonsoo";
+const RENEWD_AUTH_SALT = "renewd-local-gate-v1";
+const RENEWD_AUTH_HASH = "73172ab99dd1c2d57380bd78e77c85c113418e1dc64797fdb29f2902be6f1eb4";
+const RENEWD_DATABASE_ID = "renewd-clinic";
+const RENEWD_INSTANCE_ID = "clinic-main";
+const RENEWD_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
+const RENEWD_READ_COLLECTIONS = [
+  "patients",
+  "visits",
+  "bodyCompositions",
+  "reports",
+  "payments",
+  "photos",
+  "appointments",
+  "messages",
+  "careTasks",
+  "actionTemplates",
+  "sourceRecords",
+  "patientAliases",
+  "dataQualityIssues",
+  "imports",
+];
+const RENEWD_WRITE_COLLECTIONS = [
+  "patients",
+  "visits",
+  "bodyCompositions",
+  "reports",
+  "payments",
+  "photos",
+  "appointments",
+  "messages",
+  "careTasks",
+  "actionTemplates",
+];
+
+function _renewdHash(loginId, password) {
+  return crypto
+    .createHash("sha256")
+    .update(`${RENEWD_AUTH_SALT}:${String(loginId || "").trim()}:${String(password || "")}`)
+    .digest("hex");
+}
+
+function _renewdSafeEqual(a, b) {
+  const left = Buffer.from(String(a || ""), "utf8");
+  const right = Buffer.from(String(b || ""), "utf8");
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+
+function _renewdCreateSessionToken() {
+  const payload = Buffer.from(JSON.stringify({
+    u: RENEWD_AUTH_USER,
+    e: Date.now() + RENEWD_SESSION_TTL_MS,
+  })).toString("base64url");
+  const signature = crypto
+    .createHmac("sha256", RENEWD_AUTH_HASH)
+    .update(payload)
+    .digest("base64url");
+  return `${payload}.${signature}`;
+}
+
+function _renewdVerifySessionToken(token) {
+  const [payload, signature] = String(token || "").split(".");
+  if (!payload || !signature) return false;
+  const expected = crypto
+    .createHmac("sha256", RENEWD_AUTH_HASH)
+    .update(payload)
+    .digest("base64url");
+  if (!_renewdSafeEqual(signature, expected)) return false;
+  try {
+    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    return parsed.u === RENEWD_AUTH_USER && Number(parsed.e) > Date.now();
+  } catch (err) {
+    return false;
+  }
+}
+
+function _renewdAuthorize(body) {
+  if (_renewdVerifySessionToken(body?.sessionToken)) {
+    return { ok: true, sessionToken: body.sessionToken };
+  }
+  const loginId = String(body?.loginId || "").trim();
+  const password = String(body?.password || "");
+  const hash = _renewdHash(loginId, password);
+  if (loginId === RENEWD_AUTH_USER && _renewdSafeEqual(hash, RENEWD_AUTH_HASH)) {
+    return { ok: true, sessionToken: _renewdCreateSessionToken() };
+  }
+  return { ok: false, sessionToken: "" };
+}
+
+function _renewdPlainValue(value) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value?.toDate === "function") return value.toDate().toISOString();
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.map(_renewdPlainValue).filter((item) => item !== undefined);
+  if (typeof value === "object") {
+    const out = {};
+    Object.entries(value).forEach(([key, item]) => {
+      const plain = _renewdPlainValue(item);
+      if (plain !== undefined) out[key] = plain;
+    });
+    return out;
+  }
+  return value;
+}
+
+function _renewdCleanRecord(record) {
+  const plain = _renewdPlainValue(record);
+  if (!plain || typeof plain !== "object" || Array.isArray(plain)) return null;
+  const id = String(plain.id || "").trim();
+  if (!id) return null;
+  return { ...plain, id };
+}
+
+function _renewdCollectionRef(db, name) {
+  return db.collection("_instances").doc(RENEWD_INSTANCE_ID).collection(name);
+}
+
+async function _renewdReadCollections() {
+  const db = getFirestore(RENEWD_DATABASE_ID);
+  const entries = await Promise.all(RENEWD_READ_COLLECTIONS.map(async (name) => {
+    const snap = await _renewdCollectionRef(db, name).get();
+    const rows = snap.docs.map((doc) => _renewdPlainValue({ id: doc.id, ...doc.data() }));
+    return [name, rows];
+  }));
+  return Object.fromEntries(entries);
+}
+
+async function _renewdReplaceCollections(collections) {
+  const db = getFirestore(RENEWD_DATABASE_ID);
+  const counts = {};
+  for (const name of RENEWD_WRITE_COLLECTIONS) {
+    const incoming = Array.isArray(collections?.[name]) ? collections[name].map(_renewdCleanRecord).filter(Boolean) : null;
+    if (!incoming) continue;
+    const ref = _renewdCollectionRef(db, name);
+    const existing = await ref.get();
+    const incomingIds = new Set(incoming.map((record) => record.id));
+    const writes = [];
+    existing.docs.forEach((doc) => {
+      if (!incomingIds.has(doc.id)) writes.push({ type: "delete", ref: doc.ref });
+    });
+    incoming.forEach((record) => {
+      writes.push({
+        type: "set",
+        ref: ref.doc(record.id),
+        data: { ...record, updatedAt: FieldValue.serverTimestamp() },
+      });
+    });
+    for (let i = 0; i < writes.length; i += 450) {
+      const batch = db.batch();
+      writes.slice(i, i + 450).forEach((write) => {
+        if (write.type === "delete") batch.delete(write.ref);
+        else batch.set(write.ref, write.data);
+      });
+      await batch.commit();
+    }
+    counts[name] = incoming.length;
+  }
+  return counts;
+}
+
+function _renewdCors(res) {
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Headers", "Content-Type");
+  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.set("Cache-Control", "no-store");
+}
+
+exports.renewdLoadClinicData = onRequest(
+  { cors: true, region: "asia-northeast3", timeoutSeconds: 60, memory: "512MiB" },
+  async (req, res) => {
+    _renewdCors(res);
+    if (req.method === "OPTIONS") return res.status(204).send("");
+    if (req.method !== "POST") return res.status(405).json({ error: "method-not-allowed" });
+
+    const auth = _renewdAuthorize(req.body || {});
+    if (!auth.ok) return res.status(401).json({ error: "unauthorized" });
+
+    try {
+      const collections = await _renewdReadCollections();
+      const counts = Object.fromEntries(Object.entries(collections).map(([key, rows]) => [key, rows.length]));
+      return res.json({
+        instanceId: RENEWD_INSTANCE_ID,
+        sessionToken: auth.sessionToken,
+        collections,
+        counts,
+      });
+    } catch (err) {
+      console.error("[renewdLoadClinicData] failed:", err?.message || err);
+      return res.status(500).json({ error: "firestore-read-failed" });
+    }
+  }
+);
+
+exports.renewdSaveClinicData = onRequest(
+  { cors: true, region: "asia-northeast3", timeoutSeconds: 60, memory: "512MiB" },
+  async (req, res) => {
+    _renewdCors(res);
+    if (req.method === "OPTIONS") return res.status(204).send("");
+    if (req.method !== "POST") return res.status(405).json({ error: "method-not-allowed" });
+
+    const auth = _renewdAuthorize(req.body || {});
+    if (!auth.ok) return res.status(401).json({ error: "unauthorized" });
+
+    try {
+      const counts = await _renewdReplaceCollections(req.body?.collections || {});
+      return res.json({
+        instanceId: RENEWD_INSTANCE_ID,
+        sessionToken: auth.sessionToken,
+        counts,
+      });
+    } catch (err) {
+      console.error("[renewdSaveClinicData] failed:", err?.message || err);
+      return res.status(500).json({ error: "firestore-write-failed" });
+    }
   }
 );

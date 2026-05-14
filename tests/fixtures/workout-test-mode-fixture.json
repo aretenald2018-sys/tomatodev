@@ -1,0 +1,98 @@
+{
+  "todayKey": "2026-05-12",
+  "currentGymId": "gym_moon",
+  "exList": [
+    {
+      "id": "dev_bench_moon",
+      "name": "문정 바벨 벤치프레스",
+      "movementId": "barbell_bench",
+      "gymId": "gym_moon",
+      "gymTags": ["gym_moon"],
+      "equipment_category": "barbell",
+      "maxTrackPreference": "H"
+    },
+    {
+      "id": "dev_bench_other",
+      "name": "타 지점 바벨 벤치프레스",
+      "movementId": "barbell_bench",
+      "gymId": "gym_other",
+      "gymTags": ["gym_other"],
+      "equipment_category": "barbell"
+    },
+    {
+      "id": "dev_db_bench",
+      "name": "공용 덤벨 벤치프레스",
+      "movementId": "dumbbell_bench",
+      "gymTags": ["*"],
+      "equipment_category": "dumbbell"
+    }
+  ],
+  "cache": {
+    "2026-05-06": {
+      "exercises": [
+        {
+          "exerciseId": "dev_bench_moon",
+          "movementId": "barbell_bench",
+          "recommendationMeta": { "track": "H" },
+          "sets": [
+            { "kg": 105, "reps": 5, "done": true, "setType": "main" },
+            { "kg": 105, "reps": 5, "done": true, "setType": "main" },
+            { "kg": 105, "reps": 5, "done": true, "setType": "main" },
+            { "kg": 95, "reps": 8, "done": true, "setType": "main" },
+            { "kg": 95, "reps": 8, "done": true, "setType": "main" }
+          ]
+        }
+      ]
+    },
+    "2026-05-08": {
+      "exercises": [
+        {
+          "exerciseId": "dev_bench_moon",
+          "movementId": "barbell_bench",
+          "recommendationMeta": { "track": "M" },
+          "sets": [
+            { "kg": 100, "reps": 10, "romPct": 80, "done": true, "setType": "main" },
+            { "kg": 80, "reps": 10, "done": true, "setType": "main" }
+          ]
+        },
+        {
+          "exerciseId": "dev_bench_other",
+          "movementId": "barbell_bench",
+          "recommendationMeta": { "track": "H" },
+          "sets": [
+            { "kg": 140, "reps": 3, "done": true, "setType": "main" }
+          ]
+        }
+      ]
+    }
+  },
+  "cycle": {
+    "id": "dev_max_cycle",
+    "status": "active",
+    "framework": "dual_track_progression_v2",
+    "startDate": "2026-05-04",
+    "weeks": 6,
+    "primaryGymId": "gym_moon",
+    "benchmarks": [
+      {
+        "id": "bm_chest_dev_bench_moon",
+        "exerciseId": "dev_bench_moon",
+        "movementId": "barbell_bench",
+        "label": "문정 바벨 벤치프레스",
+        "primaryMajor": "chest",
+        "tracks": {
+          "M": { "startKg": 90, "targetKg": 105, "incrementKg": 2.5, "startReps": 10, "targetReps": 10, "enabled": true },
+          "H": { "startKg": 100, "targetKg": 115, "incrementKg": 2.5, "startReps": 5, "targetReps": 5, "enabled": true }
+        }
+      }
+    ]
+  },
+  "expected": {
+    "lastSummary": "105kg×5 3세트 / 95kg×8 2세트",
+    "romVolume": 800,
+    "romIntensity": 93.33,
+    "trackVolume": 1600,
+    "exactActualIds": ["dev_bench_moon"],
+    "excludedActualIds": ["dev_bench_other"]
+  }
+}

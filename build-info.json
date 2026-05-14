@@ -1,10 +1,10 @@
 {
   "app": "tomatofarm",
-  "commit": "legacy-pages-main",
-  "shortCommit": "legacy-pages",
+  "commit": "1f368cbeebe9d09cbc061548905ea465c50686ac",
+  "shortCommit": "1f368cbeebe9",
   "branch": "main",
-  "deployedAt": "main branch root",
-  "cacheVersion": "tomatofarm-v20260513z63-legacy-pages-assets",
+  "deployedAt": "2026-05-14T02:38:37.623Z",
+  "cacheVersion": "tomatofarm-v20260514z81-light-plan-status",
   "runId": null,
   "runAttempt": null
 }

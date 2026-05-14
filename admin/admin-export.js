@@ -1,4 +1,4 @@
-import { TODAY } from '../data.js';
+import { TODAY, getDeveloperLetterStatus, getDeveloperLetterStatusMeta } from '../data.js';
 
 function _esc(value) {
   if (value === null || value === undefined) return '';
@@ -130,12 +130,13 @@ export function exportSocialInteractions(data) {
 
 export function exportLettersAndPatchnotes(data) {
   const lines = [];
-  lines.push(_row(['type', 'from', 'title', 'message', 'read', 'createdAt']));
+  lines.push(_row(['type', 'from', 'title', 'message', 'status', 'read', 'createdAt']));
   data.letters.forEach((item) => {
-    lines.push(_row(['letter', item.fromName || data.resolveName(item.from), '', item.message || '', item.read ? 'Y' : 'N', item.createdAt || '']));
+    const status = getDeveloperLetterStatusMeta(getDeveloperLetterStatus(item)).label;
+    lines.push(_row(['letter', item.fromName || data.resolveName(item.from), '', item.message || '', status, item.read ? 'Y' : 'N', item.createdAt || '']));
   });
   data.patchnotes.forEach((item) => {
-    lines.push(_row(['patchnote', 'admin', item.title || '', item.body || '', (item.readBy || []).length, item.createdAt || '']));
+    lines.push(_row(['patchnote', 'admin', item.title || '', item.body || '', '', (item.readBy || []).length, item.createdAt || '']));
   });
 
   _download(`tomatofarm_letters_patchnotes_${_dateStamp()}.csv`, lines);

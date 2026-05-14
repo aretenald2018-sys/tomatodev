@@ -4,7 +4,7 @@
 
 // ── 서브모듈 import ─────────────────────────────────────────────
 export { loadWorkoutDate, changeWorkoutDate, goToTodayWorkout }
-  from './load.js';
+  from './load.js?v=20260514v72';
 
 export { saveWorkoutDay }
   from './save.js';
@@ -23,7 +23,7 @@ export { wtAddSet, wtRemoveSet, wtUpdateSet,
          wtOpenExercisePicker, wtCloseExercisePicker,
          wtOpenExerciseEditor, wtCloseExerciseEditor,
          wtSaveExerciseFromEditor, wtDeleteExerciseFromEditor }
-  from './exercises.js';
+  from './exercises.js?v=20260514v72';
 
 export { wtStartWorkoutTimer, wtPauseWorkoutTimer,
          wtResetWorkoutTimer, wtTogglePauseWorkoutTimer,
@@ -40,7 +40,7 @@ import { wtToggleMealSkipped }                     from './status.js';
 import { wtOpenExercisePicker, wtCloseExercisePicker,
          wtOpenExerciseEditor, wtCloseExerciseEditor,
          wtSaveExerciseFromEditor,
-         wtDeleteExerciseFromEditor }              from './exercises.js';
+         wtDeleteExerciseFromEditor }              from './exercises.js?v=20260514v72';
 import { wtStartWorkoutTimer, wtTogglePauseWorkoutTimer,
          wtResetWorkoutTimer, wtFinishWorkout, wtRecoverTimers,
          wtRestTimerStart, wtRestTimerSkip,

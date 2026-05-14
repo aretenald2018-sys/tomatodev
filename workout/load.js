@@ -17,8 +17,65 @@ import { _renderRunningForm, _renderCfForm,
          _renderStretchForm, _renderSwimForm }
                                      from './activity-forms.js';
 import { _initButtonEventListeners } from './status.js';
-import { _renderExerciseList }       from './exercises.js';
-import { getDay, isFuture, TODAY, isExpertModeEnabled, getExpertPreset } from '../data.js';
+import { _renderExerciseList }       from './exercises.js?v=20260514v72';
+import { getDay, isFuture, TODAY, isExpertModeEnabled, getExpertPreset, dateKey } from '../data.js';
+
+function _isActualWorkoutSet(set) {
+  if (!set || set.setType === 'warmup') return false;
+  if (set.done === true) return true;
+  if (set.done === false) return false;
+  return (Number(set.kg) || 0) > 0 && (Number(set.reps) || 0) > 0;
+}
+
+function _isActualWorkoutEntry(entry) {
+  if (!entry || typeof entry !== 'object') return false;
+  if ((entry.note || '').toString().trim()) return true;
+  return (entry.sets || []).some(_isActualWorkoutSet);
+}
+
+function _isMaxDraftEntry(entry) {
+  return !!(entry && (
+    entry.recommendationMeta?.mode === 'max' ||
+    entry.maxPrescription ||
+    entry.maxWeakPart
+  ));
+}
+
+function _normalizeLoadedMaxMeta(day, key) {
+  const raw = day?.maxMeta && typeof day.maxMeta === 'object'
+    ? JSON.parse(JSON.stringify(day.maxMeta))
+    : null;
+  if (!raw) return { meta: null, rejectedLegacy: false };
+  if (raw.dateKey && raw.dateKey !== key) return { meta: null, rejectedLegacy: false };
+
+  const hasActualWorkout = (day?.exercises || []).some(_isActualWorkoutEntry)
+    || !!(day?.cf || day?.stretching || day?.swimming || day?.running)
+    || (Number(day?.workoutDuration) || 0) > 0
+    || (Number(day?.runDistance) || 0) > 0
+    || (Number(day?.swimDistance) || 0) > 0;
+  const weakBlock = raw.weakBlock || {};
+  const weakSummary = raw.weakSummary || {};
+  const hasWeakWork = (Number(weakBlock.durationSec) || 0) > 0
+    || !!weakBlock.activeStartedAt
+    || (Number(weakSummary.sets) || 0) > 0
+    || (Number(weakSummary.volume) || 0) > 0;
+  const hasLegacySelection = !raw.dateKey && (
+    (Array.isArray(raw.selectedMajors) && raw.selectedMajors.length > 0) ||
+    (Array.isArray(raw.selectedWeakParts) && raw.selectedWeakParts.length > 0)
+  );
+  if (hasLegacySelection && !hasActualWorkout && !hasWeakWork) {
+    return { meta: null, rejectedLegacy: true };
+  }
+
+  if (!raw.dateKey) raw.dateKey = key;
+  return { meta: raw, rejectedLegacy: false };
+}
+
+function _restoreWorkoutExercises(day, rejectedLegacyMaxMeta) {
+  const exercises = JSON.parse(JSON.stringify(day.exercises || []));
+  if (!rejectedLegacyMaxMeta) return exercises;
+  return exercises.filter(entry => _isActualWorkoutEntry(entry) || !_isMaxDraftEntry(entry));
+}
 
 // ── 날짜 로드 ────────────────────────────────────────────────────
 export function loadWorkoutDate(y, m, d) {
@@ -44,11 +101,13 @@ export function loadWorkoutDate(y, m, d) {
   }
 
   S.shared.date = { y, m, d };
+  const currentKey = dateKey(y, m, d);
   const day  = getDay(y, m, d);
+  const loadedMax = _normalizeLoadedMaxMeta(day, currentKey);
 
   // 운동 도메인 복원
   const w = S.workout;
-  w.exercises   = JSON.parse(JSON.stringify(day.exercises || []));
+  w.exercises   = _restoreWorkoutExercises(day, loadedMax.rejectedLegacy);
   w.cf          = !!day.cf;
   w.stretching  = !!day.stretching;
   w.swimming    = !!day.swimming;
@@ -82,7 +141,7 @@ export function loadWorkoutDate(y, m, d) {
   // 테스트모드도 그날 헬스장/기구 필터를 유지해야 하므로 gymId를 복원한다.
   w.routineMeta  = day.routineMeta || null;
   w.pickerGymFilter = day.pickerGymFilter || null;
-  w.maxMeta = day.maxMeta ? JSON.parse(JSON.stringify(day.maxMeta)) : null;
+  w.maxMeta = loadedMax.meta;
   const _preset = getExpertPreset();
   w.currentGymId = day.gymId || (isExpertModeEnabled() ? (_preset.currentGymId || null) : null);
 

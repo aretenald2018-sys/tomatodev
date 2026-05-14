@@ -1,4 +1,8 @@
-import { deleteUserAccount } from '../data.js';
+import {
+  DIET_PREMIUM_REPORT_TARGETS,
+  deleteUserAccount,
+  publishDietPremiumReportIssue,
+} from '../data.js';
 import {
   exportUsersReport, exportDailyActivity,
   exportSocialInteractions, exportLettersAndPatchnotes,
@@ -7,6 +11,57 @@ import {
 import { escapeHtml } from './admin-utils.js';
 
 let _rerender = null;
+let _dietReportPeriod = 'weekly';
+let _dietReportLastPublish = null;
+
+function _targetLabel(target) {
+  return `${target.name}${target.nick ? `(${target.nick})` : ''}`;
+}
+
+function _renderDietReportPublisher() {
+  const periodButtons = [
+    ['weekly', '주간'],
+    ['monthly', '월간'],
+  ].map(([period, label]) => `
+    <button
+      class="${_dietReportPeriod === period ? 'hig-btn-primary' : 'hig-btn-secondary'}"
+      type="button"
+      onclick="window._adminSetDietReportPeriod('${period}')"
+    >${label}</button>
+  `).join('');
+  const targetChips = DIET_PREMIUM_REPORT_TARGETS.map((target) => `
+    <span style="display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;background:var(--hig-fill-tertiary);color:var(--hig-text);font-size:12px;font-weight:700;">
+      ${escapeHtml(_targetLabel(target))}
+    </span>
+  `).join('');
+  const lastPublish = _dietReportLastPublish ? `
+    <div class="hig-caption1" style="margin-top:10px;color:var(--hig-gray1);">
+      마지막 발간: ${escapeHtml(_dietReportLastPublish.title)} · ${escapeHtml(_dietReportLastPublish.cycleLabel)} · ${escapeHtml(String(_dietReportLastPublish.deliveredCount))}명 배송
+    </div>
+  ` : '';
+
+  return `
+    <div class="hig-card">
+      <div class="hig-headline">식단 프리미엄 리포트 발간</div>
+      <div class="hig-caption1" style="color:var(--hig-gray1);margin-top:6px;">
+        선택한 주기 기준으로 최신 리포트 ID를 생성하고, 대상 계정의 다음 접속 때 1회성 모달로 배송합니다.
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+        ${periodButtons}
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;">
+        ${targetChips}
+      </div>
+      <button id="admin-diet-report-publish-button" class="hig-btn-primary" style="margin-top:12px;" onclick="window._adminPublishDietReport()">
+        지금 리포트 발간/배송
+      </button>
+      <div class="hig-caption1" style="color:var(--hig-gray1);margin-top:8px;">
+        같은 주 또는 같은 달에 다시 발간하면 같은 ID를 사용해, 이미 확인한 사용자에게는 중복 자동 노출되지 않습니다.
+      </div>
+      ${lastPublish}
+    </div>
+  `;
+}
 
 async function _askDelete(uid, name) {
   const ok = await (window.confirmAction?.({
@@ -45,6 +100,8 @@ export function renderSettingsSection(container, data, rerender) {
         </div>
       </div>
 
+      ${_renderDietReportPublisher()}
+
       <div class="hig-card">
         <div class="hig-headline">함께 축하해요 관리</div>
         <div class="hig-caption1" style="color:var(--hig-gray1);margin-top:4px;">감지 모듈 on/off 및 수동 축하 작성</div>
@@ -80,6 +137,44 @@ export function renderSettingsSection(container, data, rerender) {
 }
 
 window._adminConfirmDeleteUser = (uid, name) => _askDelete(uid, name);
+
+window._adminSetDietReportPeriod = (period) => {
+  _dietReportPeriod = period === 'monthly' ? 'monthly' : 'weekly';
+  if (_rerender) _rerender();
+};
+
+window._adminPublishDietReport = async () => {
+  const periodLabel = _dietReportPeriod === 'monthly' ? '월간' : '주간';
+  const ok = await (window.confirmAction?.({
+    title: `${periodLabel} 식단 리포트를 발간할까요?`,
+    message: DIET_PREMIUM_REPORT_TARGETS.map(_targetLabel).join(', ') + ' 계정에 다음 접속 1회성 모달로 배송됩니다.',
+    confirmLabel: '발간',
+    cancelLabel: '취소',
+  }) || Promise.resolve(window.confirm?.(`${periodLabel} 식단 리포트를 발간할까요?`) ?? true));
+  if (!ok) return;
+
+  const button = document.getElementById('admin-diet-report-publish-button');
+  if (button) {
+    button.disabled = true;
+    button.textContent = '발간 중...';
+  }
+
+  try {
+    const result = await publishDietPremiumReportIssue({
+      period: _dietReportPeriod,
+      targetUserIds: DIET_PREMIUM_REPORT_TARGETS.map((target) => target.id),
+    });
+    _dietReportLastPublish = result;
+    window.showToast?.(`${result.title}를 ${result.deliveredCount}명에게 배송했습니다`, 3000, 'success');
+    if (_rerender) _rerender();
+  } catch (error) {
+    window.showToast?.(`리포트 발간 실패: ${error.message}`, 3500, 'error');
+    if (button) {
+      button.disabled = false;
+      button.textContent = '지금 리포트 발간/배송';
+    }
+  }
+};
 
 window._adminExportSettings = (type) => {
   if (!window.__adminDataCache) return;

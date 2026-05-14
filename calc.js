@@ -221,9 +221,12 @@ export function isExerciseDaySuccess(dayData) {
   if (!dayData) return false;
   const w = dayData;
   const hasCompletedSet = (w.exercises || []).some(ex =>
-    (ex.sets || []).some(s =>
-      s && (s.done === true || ((s.kg || 0) > 0 && (s.reps || 0) > 0))
-    )
+    (ex.sets || []).some(s => {
+      if (!s || s.setType === 'warmup') return false;
+      if (s.done === true) return true;
+      if (s.done === false) return false;
+      return (Number(s.kg) || 0) > 0 && (Number(s.reps) || 0) > 0;
+    })
   );
   if (hasCompletedSet) return true;
   if (w.cf || w.swimming || w.running || w.stretching) return true;
@@ -610,6 +613,34 @@ export function getTrackMetricHistory(cache, exList, exerciseId) {
     unclassified,
     total,
   };
+}
+
+export function getLastTrackSession(cache, exList, exerciseId, track, excludeDateKey = null) {
+  const targetTrack = normalizeWorkoutTrack(track);
+  if (!cache || !exerciseId || !targetTrack) return null;
+  const exById = new Map((exList || []).map(ex => [ex.id, ex]));
+  const dateKeys = Object.keys(cache)
+    .filter(key => /^\d{4}-\d{2}-\d{2}$/.test(key))
+    .filter(key => !excludeDateKey || key < excludeDateKey)
+    .sort((a, b) => b.localeCompare(a));
+
+  for (const key of dateKeys) {
+    const entries = (cache[key]?.exercises || []).filter(e => e?.exerciseId === exerciseId);
+    for (const entry of entries) {
+      if (!_trackWorkSets(entry?.sets).length) continue;
+      const ex = exById.get(entry.exerciseId) || null;
+      const inferred = inferWorkoutTrack(entry, ex);
+      if (normalizeWorkoutTrack(inferred.track) !== targetTrack) continue;
+      return {
+        date: key,
+        sets: entry.sets || [],
+        entry,
+        track: targetTrack,
+        trackSource: inferred.source || null,
+      };
+    }
+  }
+  return null;
 }
 
 /**
@@ -1384,15 +1415,46 @@ export function buildMaxCycleSchedule(cycle) {
   return rows;
 }
 
-export function findBenchmarkActuals(cache = {}, exList = [], movementId, todayKey = null) {
-  const ids = new Set((exList || []).filter(e => e?.movementId === movementId).map(e => e.id));
+export function resolveMovementExercises(movementId, exList = [], { gymId = null } = {}) {
+  if (!movementId) return [];
+  return (exList || []).filter(e => {
+    if (!e?.id || e?.movementId !== movementId) return false;
+    if (!gymId) return true;
+    const ids = [
+      e.gymId,
+      e.primaryGymId,
+      ...(Array.isArray(e.gymIds) ? e.gymIds : []),
+      ...(Array.isArray(e.gymTags) ? e.gymTags : []),
+    ].filter(Boolean);
+    return !ids.length || ids.includes('*') || ids.includes(gymId);
+  });
+}
+
+export function resolveBenchmarkExercise(benchmark = {}, exList = [], { gymId = null } = {}) {
+  const exerciseId = benchmark?.exerciseId || null;
+  if (exerciseId) {
+    return (exList || []).find(e => e?.id === exerciseId) || { id: exerciseId, movementId: benchmark?.movementId || null, missing: true };
+  }
+  return resolveMovementExercises(benchmark?.movementId || benchmark?.id, exList, { gymId })[0] || null;
+}
+
+export function findBenchmarkActuals(cache = {}, exList = [], benchmarkOrMovementId, todayKey = null, maybeExerciseId = null) {
+  const benchmark = typeof benchmarkOrMovementId === 'object'
+    ? benchmarkOrMovementId
+    : { movementId: benchmarkOrMovementId, exerciseId: maybeExerciseId };
+  const movementId = benchmark?.movementId || benchmark?.id || null;
+  const exerciseId = benchmark?.exerciseId || null;
+  const ids = new Set(exerciseId ? [exerciseId] : (exList || []).filter(e => e?.movementId === movementId).map(e => e.id));
   const points = [];
   for (const [date, day] of Object.entries(cache || {})) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
     if (todayKey && date > todayKey) continue;
     for (const entry of day?.exercises || []) {
       const entryMovementId = entry.movementId || (ids.has(entry.exerciseId) ? movementId : null);
-      if (entryMovementId !== movementId && !ids.has(entry.exerciseId)) continue;
+      const match = exerciseId
+        ? entry.exerciseId === exerciseId
+        : (entryMovementId === movementId || ids.has(entry.exerciseId));
+      if (!match) continue;
       let best = null;
       for (const set of entry.sets || []) {
         if (set?.setType === 'warmup') continue;
@@ -1403,10 +1465,14 @@ export function findBenchmarkActuals(cache = {}, exList = [], movementId, todayK
         const e1rm = estimateSet1RM(set);
         if (!best || e1rm > best.e1rm) best = { kg, reps, e1rm: Math.round(e1rm * 10) / 10 };
       }
-      if (best) points.push({ dateKey: date, ...best });
+      if (best) points.push({ dateKey: date, exerciseId: entry.exerciseId || null, movementId: entryMovementId || movementId || null, ...best });
     }
   }
   return points.sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+}
+
+export function buildBenchmarkActuals({ cache = {}, exList = [], benchmark = null, movementId = null, exerciseId = null, todayKey = null } = {}) {
+  return findBenchmarkActuals(cache, exList, benchmark || { movementId, exerciseId }, todayKey);
 }
 
 export function buildMaxCycleSnapshot({
@@ -1422,7 +1488,7 @@ export function buildMaxCycleSnapshot({
   const schedule = buildMaxCycleSchedule(cycle);
   const benchmarks = cycle.benchmarks.map(b => {
     const planned = predictBenchmarkProgression(b, cycle, todayKey);
-    const actuals = findBenchmarkActuals(cache, exList, b.movementId, todayKey);
+    const actuals = buildBenchmarkActuals({ cache, exList, benchmark: b, todayKey });
     const latest = actuals[actuals.length - 1] || null;
     const delta = latest ? Math.round((latest.kg - planned.plannedKg) * 10) / 10 : null;
     return {
@@ -1930,8 +1996,7 @@ export function calcDayScore(ctx) {
 
   const actualKcal = (day.bKcal||0) + (day.lKcal||0) + (day.dKcal||0) + (day.sKcal||0);
   const hasAnyLog = actualKcal > 0
-    || (Array.isArray(day.exercises) && day.exercises.length > 0)
-    || day.cf || day.running || day.swimming;
+    || isExerciseDaySuccess(day);
 
   if (!hasAnyLog) {
     return { score: null, band: 'none', hasData: false, breakdown: null };

@@ -50,8 +50,15 @@ test('isActiveWorkoutDayData: 빈 객체 → false', () => {
   assert.equal(isActiveWorkoutDayData({}), false);
 });
 
-test('isActiveWorkoutDayData: exercises 1개 이상 → true', () => {
-  assert.equal(isActiveWorkoutDayData({ exercises: [{ muscleId:'chest' }] }), true);
+test('isActiveWorkoutDayData: 완료 세트가 있는 exercises → true', () => {
+  assert.equal(isActiveWorkoutDayData({ exercises: [{ muscleId:'chest', sets:[{ kg:80, reps:8, done:true }] }] }), true);
+});
+
+test('isActiveWorkoutDayData: 테스트모드 초안 exercises만 있으면 false', () => {
+  assert.equal(isActiveWorkoutDayData({
+    exercises: [{ muscleId:'chest', sets:[{ kg:80, reps:8, done:false }], recommendationMeta:{ mode:'max' } }],
+    maxMeta: { mode:'max', selectedMajors:['chest'] },
+  }), false);
 });
 
 test('isActiveWorkoutDayData: cf/swimming/running/stretching boolean → true', () => {

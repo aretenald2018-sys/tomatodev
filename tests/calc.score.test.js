@@ -544,10 +544,14 @@ describe('calcDayScore', () => {
     assert.equal(r.hasData, true);
   });
 
-  test('exercises만 있어도 hasData:true', () => {
-    const r = calcDayScore({ day: { exercises: [{ sets: [] }] }, burnedKcal: 50 });
+  test('완료된 exercises만 있어도 hasData:true', () => {
+    const r = calcDayScore({ day: { exercises: [{ sets: [{ kg: 60, reps: 8, done: true }] }] }, burnedKcal: 50 });
     assert.equal(r.hasData, true);
   });
 
-});
+  test('테스트모드 초안 exercises만 있으면 hasData:false', () => {
+    const r = calcDayScore({ day: { exercises: [{ sets: [{ kg: 60, reps: 8, done: false }] }] }, burnedKcal: 0 });
+    assert.equal(r.hasData, false);
+  });
 
+});

@@ -32,10 +32,24 @@ export function _sanitizeTabList(list) {
 }
 
 // ── isActiveWorkoutDayData — day 객체가 "기록 있음" 상태인지 pure 판정 ──
+function _hasActualWorkoutSet(set) {
+  if (!set || set.setType === 'warmup') return false;
+  if (set.done === true) return true;
+  if (set.done === false) return false;
+  return (Number(set.kg) || 0) > 0 && (Number(set.reps) || 0) > 0;
+}
+
+function _hasActualWorkoutExercise(ex) {
+  return !!(ex && (
+    (ex.note || '').toString().trim() ||
+    (ex.sets || []).some(_hasActualWorkoutSet)
+  ));
+}
+
 export function isActiveWorkoutDayData(workoutData) {
   if (!workoutData) return false;
   const w = workoutData;
-  if ((w.exercises || []).length > 0) return true;
+  if ((w.exercises || []).some(_hasActualWorkoutExercise)) return true;
   if (w.cf || w.swimming || w.running || w.stretching) return true;
   if ((w.muscles || []).length > 0) return true;
   if ((w.workoutDuration || 0) > 0) return true;

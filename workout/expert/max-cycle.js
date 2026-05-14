@@ -9,11 +9,11 @@ export {
   detectPlateau,
   createDefaultMaxCycle,
   buildRenderedMaxCycleSnapshot,
-} from './max-cycle-core.js';
+} from './max-cycle-core.js?v=20260514v81';
 
 export {
   renderMaxCycleDashboard,
   renderMaxCycleBoard,
   renderMaxPlanEditor,
   renderMaxCycleSettle,
-} from './max-cycle-render.js';
+} from './max-cycle-render.js?v=20260514v81';

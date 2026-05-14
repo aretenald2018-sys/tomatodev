@@ -218,6 +218,7 @@ export let _settings = {
   streak_freezes: [],
   expert_preset:   { ...DEFAULT_EXPERT_PRESET },
   max_cycle: null,
+  diet_premium_report_inbox: null,
   diet_premium_report_seen: {},
   // 2026-04-21: 운동 타이머 running 상태의 cross-day SoT.
   //   { startedAt: number(ms), date: {y,m,d} } | null

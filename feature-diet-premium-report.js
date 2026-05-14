@@ -5,11 +5,13 @@
 
 import {
   getCurrentUser,
+  DIET_PREMIUM_CONTENT_VERSION,
+  getDietPremiumReportInbox,
   getDietPremiumReportSeen,
   saveDietPremiumReportSeen,
 } from './data.js';
 
-const REPORT_ID = 'diet_premium_20260512';
+const DEFAULT_REPORT_ID = DIET_PREMIUM_CONTENT_VERSION;
 
 const REPORTS = {
   '최_준수': {
@@ -417,11 +419,12 @@ async function _closeReport({ persist = true } = {}) {
   document.body.style.overflow = _activeReport?.previousOverflow || '';
 
   const userId = _activeReport?.userId;
+  const reportId = _activeReport?.reportId || DEFAULT_REPORT_ID;
   _activeReport = null;
   if (!persist || !userId) return;
 
   try {
-    await saveDietPremiumReportSeen(REPORT_ID, {
+    await saveDietPremiumReportSeen(reportId, {
       seenAt: Date.now(),
       userId,
     });
@@ -431,7 +434,7 @@ async function _closeReport({ persist = true } = {}) {
   }
 }
 
-function _showReport(userId, { persist = true } = {}) {
+function _showReport(userId, { persist = true, reportId = DEFAULT_REPORT_ID } = {}) {
   const report = REPORTS[userId];
   if (!report || document.getElementById('diet-premium-report-modal')) return false;
 
@@ -442,7 +445,7 @@ function _showReport(userId, { persist = true } = {}) {
   overlay.innerHTML = `<div class="dpr-sheet" role="dialog" aria-modal="true" aria-label="식단 프리미엄 리포트">${_renderReport(report)}</div>`;
 
   const previousOverflow = document.body.style.overflow;
-  _activeReport = { userId, previousOverflow };
+  _activeReport = { userId, reportId, previousOverflow };
   document.body.style.overflow = 'hidden';
   document.body.appendChild(overlay);
 
@@ -459,8 +462,10 @@ export async function showDietPremiumReportIfNeeded() {
   const user = getCurrentUser();
   const userId = user?.id;
   if (!REPORTS[userId]) return false;
-  if (getDietPremiumReportSeen(REPORT_ID)) return false;
-  return _showReport(userId, { persist: true });
+  const inbox = getDietPremiumReportInbox();
+  const reportId = inbox?.reportId || DEFAULT_REPORT_ID;
+  if (getDietPremiumReportSeen(reportId)) return false;
+  return _showReport(userId, { persist: true, reportId });
 }
 
 if (['localhost', '127.0.0.1'].includes(window.location.hostname)) {

@@ -10,6 +10,7 @@ export const MODAL_HTML = `
           📲 앱 다운로드 (홈 화면에 추가)
         </button>
       </div>
+      <div id="settings-build-info" class="settings-build-info">버전 확인 중...</div>
       <div id="settings-nutrition-db-list" style="display:none"></div>
     </div>
   </div>

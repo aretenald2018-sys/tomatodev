@@ -6,7 +6,7 @@ import { CONFIG, MUSCLES, MOVEMENTS } from './config.js';
 
 // ── data-core: 공유 상태 + Firebase 기반 ─────────────────────────
 import {
-  db, doc, setDoc, deleteDoc, getDoc, collection, getDocs,
+  db, doc, setDoc, deleteDoc, getDoc, collection, getDocs, query, where,
   getCurrentUserRef, setCurrentUserRef,
   ADMIN_ID, ADMIN_GUEST_ID, getDataOwnerId,
   _col, _doc,
@@ -718,6 +718,143 @@ export const saveStreakWarningAck = (dateStr) => _saveSetting('streak_warning_ac
 // ── 관리자 모드 onboarding ack (1회성) ─────────────────────────────
 export const getAdminOnboardingAck = () => !!_settings.ui_admin_onboarding_ack;
 export const saveAdminOnboardingAck = () => _saveSetting('ui_admin_onboarding_ack', true);
+
+const DEVELOPER_LETTER_STATUS_META = Object.freeze({
+  pending: { key: 'pending', label: '시행전' },
+  in_progress: { key: 'in-progress', label: '진행중' },
+  done: { key: 'done', label: '완료' },
+  failed: { key: 'failed', label: '확인필요' },
+});
+
+export function getDeveloperLetterStatusMeta(status) {
+  const raw = String(status || '').trim().toLowerCase();
+  if (['in_progress', 'progress', 'processing', 'running', 'started', '진행중'].includes(raw)) {
+    return DEVELOPER_LETTER_STATUS_META.in_progress;
+  }
+  if (['done', 'complete', 'completed', 'deployed', 'closed', 'resolved', '완료'].includes(raw)) {
+    return DEVELOPER_LETTER_STATUS_META.done;
+  }
+  if (['failed', 'error', 'blocked', 'skipped', 'needs_review', '실패', '보류', '확인필요'].includes(raw)) {
+    return DEVELOPER_LETTER_STATUS_META.failed;
+  }
+  return DEVELOPER_LETTER_STATUS_META.pending;
+}
+
+export function getDeveloperLetterStatus(letter) {
+  return letter?.automationStatus || letter?.status || letter?.requestStatus || letter?.devStatus || 'pending';
+}
+
+export async function sendDeveloperLetter(message) {
+  const user = getCurrentUserRef();
+  if (!user) throw new Error('로그인이 필요해요.');
+
+  const text = String(message || '').trim();
+  if (!text) throw new Error('내용을 입력해주세요.');
+
+  const now = Date.now();
+  const id = `letter_${now}_${Math.random().toString(36).slice(2, 6)}`;
+  const letter = {
+    id,
+    from: user.id,
+    fromName: user.nickname || `${user.lastName || ''}${user.firstName || ''}` || user.id,
+    message: text,
+    createdAt: now,
+    read: false,
+    status: 'pending',
+    automationStatus: 'pending',
+    statusUpdatedAt: now,
+  };
+
+  await _fbOp('sendDeveloperLetter', async () => {
+    await setDoc(doc(db, '_letters', id), letter);
+    await sendNotification(ADMIN_ID, {
+      type: 'letter',
+      from: user.id,
+      message: '개발자에게 편지를 보냈어요 ✉️',
+    });
+  }, { rethrow: true });
+
+  return letter;
+}
+
+export async function getMyDeveloperLetters(maxItems = 8) {
+  const user = getCurrentUserRef();
+  if (!user) return [];
+
+  const snap = await getDocs(query(collection(db, '_letters'), where('from', '==', user.id)));
+  const letters = [];
+  snap.forEach((docSnap) => letters.push({ id: docSnap.id, ...docSnap.data() }));
+  return letters
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+    .slice(0, Math.max(1, Number(maxItems) || 8));
+}
+
+export const DIET_PREMIUM_CONTENT_VERSION = 'diet_premium_20260512';
+export const DIET_PREMIUM_REPORT_TARGETS = Object.freeze([
+  { id: '최_준수', name: '최준수', nick: '줍스' },
+  { id: '김_태우', name: '김태우', nick: '문정토마토' },
+  { id: '이_재헌', name: '이재헌', nick: '이재헌' },
+]);
+
+const _pad2 = (n) => String(n).padStart(2, '0');
+
+function _getIsoWeekKey(date = new Date()) {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const day = d.getDay() || 7;
+  d.setDate(d.getDate() + 4 - day);
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  const week = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return `${d.getFullYear()}-W${_pad2(week)}`;
+}
+
+function _getDietReportCycle(period, date = new Date()) {
+  const normalized = period === 'monthly' ? 'monthly' : 'weekly';
+  if (normalized === 'monthly') {
+    return {
+      period: normalized,
+      cycleKey: `${date.getFullYear()}-${_pad2(date.getMonth() + 1)}`,
+      cycleLabel: `${date.getFullYear()}년 ${date.getMonth() + 1}월`,
+    };
+  }
+  return {
+    period: normalized,
+    cycleKey: _getIsoWeekKey(date),
+    cycleLabel: `${_getIsoWeekKey(date)} 주간`,
+  };
+}
+
+export const getDietPremiumReportInbox = () => _settings.diet_premium_report_inbox || null;
+
+export async function publishDietPremiumReportIssue({ period = 'weekly', targetUserIds = null } = {}) {
+  const cycle = _getDietReportCycle(period);
+  const targets = Array.isArray(targetUserIds) && targetUserIds.length
+    ? targetUserIds
+    : DIET_PREMIUM_REPORT_TARGETS.map((target) => target.id);
+  const publishedAt = Date.now();
+  const reportId = `diet_premium_${cycle.period}_${cycle.cycleKey}`;
+  const baseIssue = {
+    reportId,
+    period: cycle.period,
+    cycleKey: cycle.cycleKey,
+    cycleLabel: cycle.cycleLabel,
+    contentVersion: DIET_PREMIUM_CONTENT_VERSION,
+    publishedAt,
+    title: cycle.period === 'monthly' ? '월간 식단 프리미엄 리포트' : '주간 식단 프리미엄 리포트',
+    targetUserIds: targets,
+  };
+
+  await _fbOp('publishDietPremiumReportIssue', () => Promise.all(targets.map((userId) => (
+    setDoc(doc(db, 'users', userId, 'settings', 'diet_premium_report_inbox'), {
+      value: { ...baseIssue, recipientUserId: userId },
+    })
+  ))), { rethrow: true });
+
+  if (targets.includes(getDataOwnerId())) {
+    _settings.diet_premium_report_inbox = { ...baseIssue, recipientUserId: getDataOwnerId() };
+  }
+
+  return { ...baseIssue, deliveredCount: targets.length };
+}
 
 export const getDietPremiumReportSeen = (reportId) => !!(_settings.diet_premium_report_seen || {})[reportId];
 export const saveDietPremiumReportSeen = (reportId, value = true) => {

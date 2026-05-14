@@ -239,6 +239,56 @@ export function _dedupeBenchmarkOptions(items = []) {
   return [...grouped.values()];
 }
 
+function _exerciseGymIds(ex = {}) {
+  return [
+    ex.gymId,
+    ex.primaryGymId,
+    ...(Array.isArray(ex.gymIds) ? ex.gymIds : []),
+    ...(Array.isArray(ex.gymTags) ? ex.gymTags : []),
+  ].filter(Boolean);
+}
+
+function _exerciseMatchesGym(ex = {}, gymId = null) {
+  if (!gymId) return true;
+  const ids = _exerciseGymIds(ex);
+  if (!ids.length || ids.includes('*')) return true;
+  return ids.includes(gymId);
+}
+
+export function resolveMovementExercises(movementId, exList = [], { gymId = null } = {}) {
+  if (!movementId) return [];
+  return (exList || [])
+    .filter(ex => ex?.id && ex?.movementId === movementId)
+    .filter(ex => _exerciseMatchesGym(ex, gymId));
+}
+
+export function resolveBenchmarkExercise(benchmark = {}, exList = [], { gymId = null } = {}) {
+  const exerciseId = _benchmarkExerciseId(benchmark);
+  if (exerciseId) {
+    const exact = (exList || []).find(ex => ex?.id === exerciseId);
+    if (exact) return exact;
+    return { id: exerciseId, movementId: _benchmarkMovementId(benchmark), missing: true };
+  }
+  const movementId = _benchmarkMovementId(benchmark);
+  const scoped = resolveMovementExercises(movementId, exList, { gymId });
+  return scoped[0] || null;
+}
+
+function _entryTrack(entry = {}, best = null) {
+  const raw = entry?.recommendationMeta?.track
+    || entry?.recommendationMeta?.benchmarkTrack
+    || entry?.maxPrescription?.benchmarkTrack
+    || entry?.maxPrescription?.track
+    || entry?.maxTrackPreference
+    || entry?.benchmarkTrack
+    || '';
+  if (raw === 'H' || raw === 'M') return raw;
+  const reps = Number(best?.reps) || 0;
+  if (reps >= 9) return 'M';
+  if (reps > 0 && reps <= 8) return 'H';
+  return null;
+}
+
 function _actuals(cache = {}, exList = [], benchmarkOrMovementId, todayKey, maybeExerciseId = null) {
   const benchmark = typeof benchmarkOrMovementId === 'object'
     ? benchmarkOrMovementId
@@ -267,10 +317,17 @@ function _actuals(cache = {}, exList = [], benchmarkOrMovementId, todayKey, mayb
         const e1rm = _estimateSet1RM(set);
         if (!best || e1rm > best.e1rm) best = { kg, reps, e1rm: Math.round(e1rm * 10) / 10 };
       }
-      if (best) points.push({ dateKey: date, ...best });
+      if (best) points.push({ dateKey: date, exerciseId: entry.exerciseId || null, movementId: entry.movementId || movementId || null, track: _entryTrack(entry, best), ...best });
     }
   }
   return points.sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+}
+
+export function buildBenchmarkActuals({ cache = {}, exList = [], benchmark = null, movementId = null, exerciseId = null, todayKey = null, track = null } = {}) {
+  const target = benchmark || { movementId, exerciseId };
+  const points = _actuals(cache, exList, target, todayKey);
+  const normalizedTrack = track === 'H' || track === 'M' ? track : null;
+  return normalizedTrack ? points.filter(p => p?.track === normalizedTrack) : points;
 }
 
 function _weekActual(actuals = [], weekStartKey, todayKey = null) {
@@ -347,7 +404,7 @@ export function buildMaxCycleSnapshot({ cycle = null, cache = {}, exList = [], t
       M: predictBenchmarkProgression(b, normalized, todayKey, 'M'),
       H: predictBenchmarkProgression(b, normalized, todayKey, 'H'),
     };
-    const actuals = _actuals(cache, exList, b, todayKey);
+    const actuals = buildBenchmarkActuals({ cache, exList, benchmark: b, todayKey });
     const hasRegisteredExercise = b.exerciseId
       ? !!(exList || []).some(ex => ex?.id === b.exerciseId)
       : !!(exList || []).some(ex => ex?.movementId === b.movementId);

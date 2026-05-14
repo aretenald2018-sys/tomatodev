@@ -38,8 +38,14 @@ test('isExerciseDaySuccess · done=true 세트 → 성공', () => {
 });
 test('isExerciseDaySuccess · kg>0 reps>0 레거시 세트 → 성공', () => {
   assert.strictEqual(isExerciseDaySuccess({
-    exercises: [{ sets: [{ done: false, kg: 60, reps: 10 }] }]
+    exercises: [{ sets: [{ kg: 60, reps: 10 }] }]
   }), true);
+});
+
+test('isExerciseDaySuccess · kg/reps가 있어도 done:false 초안은 실패', () => {
+  assert.strictEqual(isExerciseDaySuccess({
+    exercises: [{ sets: [{ done: false, kg: 60, reps: 10 }] }]
+  }), false);
 });
 test('isExerciseDaySuccess · AI 로드만(kg=0,reps=10,done=false) → 실패', () => {
   assert.strictEqual(isExerciseDaySuccess({
