@@ -13,7 +13,8 @@ import { TODAY, getCurrentUser, getMyFriends, getAccountList,
          getTomatoState, dateKey, recordAction, getAllMuscles,
          getAllGuilds }  from '../data.js';
 import { CONFIG } from '../config.js';
-import { resolveNickname, showToast, haptic, formatTimeAgo } from './utils.js';
+import { mealDisplayText } from '../ai/meal-artifact-filter.js';
+import { resolveNickname, showToast, haptic, formatTimeAgo, escapeHtml } from './utils.js';
 
 // 순환 참조 방지: renderHome, renderFriendFeed, refreshNotifCenter 주입
 let _renderHomeFn = null;
@@ -96,7 +97,7 @@ window.openFriendProfile = async function(friendId, friendName, scrollToSection,
       const memoText = todayW[m.memo] || '';
       const photo = todayW[photoKeys[m.memo]];
       if (foods.length || memoText || photo) {
-        const foodNames = foods.map(f => f.name).join(', ') || memoText;
+        const foodNames = mealDisplayText(foods, memoText, photo ? '사진 기록' : '메뉴 미기록');
         const kcal = foods.reduce((s, f) => s + (f.kcal || 0), 0);
         const photoThumb = photo ? `<div style="width:40px;height:40px;border-radius:8px;overflow:hidden;flex-shrink:0;cursor:pointer;margin-right:8px;" onclick="event.stopPropagation();openMealPhotoLightbox('${photo.replace(/'/g,"\\'")}')"><img src="${photo}" style="width:100%;height:100%;object-fit:cover;display:block;"></div>` : '';
         const mealField = 'meal_' + m.memo;
@@ -110,7 +111,7 @@ window.openFriendProfile = async function(friendId, friendName, scrollToSection,
           <div style="display:flex;align-items:center;justify-content:space-between;">
             ${photoThumb}
             <span style="color:var(--text-secondary);flex-shrink:0;">${m.label}</span>
-            <span style="color:var(--text);flex:1;text-align:right;margin:0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${foodNames}${kcal ? ` <span style="color:var(--text-tertiary);">${kcal}kcal</span>` : ''}</span>
+            <span style="color:var(--text);flex:1;text-align:right;margin:0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(foodNames)}${kcal ? ` <span style="color:var(--text-tertiary);">${kcal}kcal</span>` : ''}</span>
             ${reactionBtn}
             ${mealCommentBtn}
           </div>

@@ -9,11 +9,17 @@ export {
   detectPlateau,
   createDefaultMaxCycle,
   buildRenderedMaxCycleSnapshot,
-} from './max-cycle-core.js?v=20260514v81';
+  buildMaxPlanMovementOptionSeeds,
+  isMaxTrackEnabled,
+  isMaxVolumeOnlyMajor,
+  isMaxVolumeOnlyBenchmark,
+  maxBenchmarkTrackList,
+  selectPersistedMaxCycle,
+} from './max-cycle-core.js?v=20260515v12';
 
 export {
   renderMaxCycleDashboard,
   renderMaxCycleBoard,
   renderMaxPlanEditor,
   renderMaxCycleSettle,
-} from './max-cycle-render.js?v=20260514v81';
+} from './max-cycle-render.js?v=20260515v13';

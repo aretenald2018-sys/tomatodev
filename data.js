@@ -139,6 +139,12 @@ import {
   loadAll, migrateDataToUser, _sanitizeTabList, isActiveWorkoutDayData,
 } from './data/data-load.js';
 import { saveDay } from './data/data-save.js';
+import {
+  buildMaxCycleCanonicalPlan,
+  inferExerciseMovementId,
+  removeExerciseFromMaxCycle,
+  selectMaxCycleForExerciseCleanup,
+} from './data/data-pure.js';
 export { loadAll, migrateDataToUser, saveDay, isActiveWorkoutDayData };
 
 // ═══════════════════════════════════════════════════════════════
@@ -172,6 +178,10 @@ export async function saveExercise(ex) {
   // movementId가 있고 category가 없으면 MOVEMENTS에서 equipment_category 자동 주입.
   // 피커의 장비 카테고리 필터가 movementId 없는 커스텀에도 점진적으로 동작하게 됨.
   const record = { ...ex };
+  if (!record.movementId || record.movementId === 'unknown') {
+    const inferred = inferExerciseMovementId(record, MOVEMENTS);
+    if (inferred) record.movementId = inferred;
+  }
   if (!record.category && record.movementId) {
     const mv = MOVEMENTS.find(m => m.id === record.movementId);
     if (mv?.equipment_category) record.category = mv.equipment_category;
@@ -198,11 +208,33 @@ export async function saveExercise(ex) {
   }, { sync: false });
 }
 
+function _maxCycleHasExercise(cycle = null, exerciseId = '') {
+  return Array.isArray(cycle?.benchmarks)
+    && cycle.benchmarks.some(benchmark => benchmark?.exerciseId === exerciseId);
+}
+
+async function _removeExerciseFromMaxCycleStores(exerciseId) {
+  if (!exerciseId) return;
+  const presetCycle = _settings.expert_preset?.maxCycle || null;
+  const settingCycle = _settings.max_cycle || null;
+  if (!_maxCycleHasExercise(presetCycle, exerciseId) && !_maxCycleHasExercise(settingCycle, exerciseId)) return;
+  const source = selectMaxCycleForExerciseCleanup(presetCycle, settingCycle);
+  if (!source) {
+    await saveMaxCycle(null);
+    return;
+  }
+  const result = removeExerciseFromMaxCycle(source, exerciseId, Date.now());
+  if (result.changed) await saveMaxCycle(result.cycle);
+}
+
 export async function deleteExercise(id) {
-  return _fbOp('deleteExercise', async () => {
+  const deleted = await _fbOp('deleteExercise', async () => {
     await deleteDoc(_doc('exercises', id));
     _setExList(_exList.filter(e => e.id !== id));
+    return true;
   }, { sync: false });
+  if (deleted) await _removeExerciseFromMaxCycleStores(id);
+  return deleted;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -639,22 +671,51 @@ export const getExpertPreset = () => {
   }
   return merged;
 };
+function _normalizeMaxCycleSetting(cycle, updatedAt) {
+  return cycle && typeof cycle === 'object'
+    ? { ...cycle, updatedAt }
+    : null;
+}
+function _stripLegacyMaxCycle(preset) {
+  const cleaned = { ...(preset || {}) };
+  delete cleaned.maxCycle;
+  return cleaned;
+}
 export async function saveExpertPreset(patch) {
-  const merged = { ...getExpertPreset(), ...patch, updatedAt: Date.now() };
+  const now = Date.now();
+  const hasMaxCyclePatch = Object.prototype.hasOwnProperty.call(patch || {}, 'maxCycle');
+  const maxCycleRecord = hasMaxCyclePatch
+    ? _normalizeMaxCycleSetting(patch.maxCycle, now)
+    : undefined;
+  const presetPatch = { ...(patch || {}) };
+  delete presetPatch.maxCycle;
+  const merged = _stripLegacyMaxCycle({
+    ...getExpertPreset(),
+    ...presetPatch,
+    updatedAt: now,
+  });
   // mode <-> enabled 동기화: mode='normal'은 enabled=false, 그 외는 enabled=true.
   if (merged.mode === 'normal') merged.enabled = false;
   else if (merged.mode === 'pro' || merged.mode === 'max') merged.enabled = true;
-  return _saveSetting('expert_preset', merged);
+  await _saveSetting('expert_preset', merged);
+  if (hasMaxCyclePatch) await _saveSetting('max_cycle', maxCycleRecord);
+  return merged;
 }
 export const isExpertModeEnabled = () => !!_settings.expert_preset?.enabled;
 // 2026-04-25: 'normal' | 'pro' | 'max' 모드 discriminator.
 export const getExpertMode = () => getExpertPreset().mode || 'normal';
 export const getMaxCycle = () => _settings.max_cycle || null;
 export async function saveMaxCycle(cycle) {
-  const record = cycle && typeof cycle === 'object'
-    ? { ...cycle, updatedAt: Date.now() }
-    : null;
-  return _saveSetting('max_cycle', record);
+  const now = Date.now();
+  const record = _normalizeMaxCycleSetting(cycle, now);
+  await _saveSetting('max_cycle', record);
+  const cleanup = buildMaxCycleCanonicalPlan({
+    expertPreset: _settings.expert_preset,
+    settingCycle: record,
+    now,
+  });
+  if (cleanup.shouldWriteExpertPreset) await _saveSetting('expert_preset', cleanup.cleanedPreset);
+  return record;
 }
 
 export function calcStreaks() {

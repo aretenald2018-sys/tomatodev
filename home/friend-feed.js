@@ -9,7 +9,8 @@ import { TODAY, getCurrentUser, getMyFriends, getAccountList,
          isAdmin, isAdminGuest, getAdminId, getAdminGuestId,
          recordAction }  from '../data.js';
 import { isExerciseDaySuccess } from '../calc.js';
-import { resolveNickname, showToast, haptic, formatTimeAgo } from './utils.js';
+import { mealDisplayText } from '../ai/meal-artifact-filter.js';
+import { resolveNickname, showToast, haptic, formatTimeAgo, escapeHtml } from './utils.js';
 import { updateHeroSocialProof } from './hero.js';
 import { confirmAction } from '../utils/confirm-modal.js';
 
@@ -202,16 +203,23 @@ export async function renderFriendFeed() {
         if ((w.muscles || []).length > 0) {
           items += '<div class="friend-feed-item"><span>🏋️ ' + (w.muscles || []).slice(0, 3).join(', ') + '</span></div>';
         }
-        const feedMealMap = {breakfast:{foods:'bFoods',memo:'breakfast'},lunch:{foods:'lFoods',memo:'lunch'},dinner:{foods:'dFoods',memo:'dinner'},snack:{foods:'sFoods',memo:'snack'}};
+        const feedMealMap = {
+          breakfast:{foods:'bFoods',memo:'breakfast',photo:'bPhoto'},
+          lunch:{foods:'lFoods',memo:'lunch',photo:'lPhoto'},
+          dinner:{foods:'dFoods',memo:'dinner',photo:'dPhoto'},
+          snack:{foods:'sFoods',memo:'snack',photo:'sPhoto'}
+        };
         ['breakfast','lunch','dinner','snack'].forEach(meal => {
           const mk = feedMealMap[meal];
           const foods = w[mk.foods] || [];
           const memo = w[mk.memo] || '';
-          if (foods.length || memo) {
-            const foodText = foods.map(x => x.name).join(', ').slice(0, 30) || memo;
+          const photo = w[mk.photo] || '';
+          if (foods.length || memo || photo) {
+            const foodText = mealDisplayText(foods, memo, photo ? '사진 기록' : '메뉴 미기록').slice(0, 30);
             const kcal = foods.reduce((s, x) => s + (x.kcal || 0), 0);
             const lb = {breakfast:'🌅',lunch:'☀️',dinner:'🌙',snack:'🥤'}[meal];
-            items += '<div class="friend-feed-item"><span>' + lb + ' ' + (foodText) + (kcal ? ' (' + kcal + 'kcal)' : '') + '</span></div>';
+            const photoThumb = photo ? `<button type="button" aria-label="${lb} 식단 사진 보기" onclick="event.stopPropagation();openMealPhotoLightbox('${String(photo).replace(/'/g,"\\'")}')" style="width:34px;height:34px;border:0;border-radius:8px;overflow:hidden;padding:0;flex-shrink:0;background:var(--surface2);cursor:pointer;"><img src="${escapeHtml(photo)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;"></button>` : '';
+            items += '<div class="friend-feed-item"><span style="display:flex;align-items:center;gap:8px;min-width:0;">' + photoThumb + '<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + lb + ' ' + escapeHtml(foodText) + (kcal ? ' (' + kcal + 'kcal)' : '') + '</span></span></div>';
           }
         });
       }

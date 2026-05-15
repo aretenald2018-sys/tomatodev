@@ -1,5 +1,18 @@
 # 토마토팜 (dashboard3) - AI 컨텍스트 가이드
 
+## Default AI Workflow (Required)
+
+- For any request that may change code, docs, data, config, tests, deployment, or UX, follow `docs/ai/WORKFLOW.md` by default.
+- The required order is: planning session -> execution session -> review session.
+- AI가 생성하는 계획, 리뷰, ADR, 로드맵, 핸드오프 문서는 기본적으로 한국어로 작성한다. 코드 식별자, 파일 경로, 명령어, API 이름, 라이브러리 이름, 인용 원문은 원래 언어를 유지한다.
+- 기본 트리거: 기능, 디자인, UX, 아키텍처, 모호한 변경 요청에는 `/grill-me`를 자동 적용한다. 버그, 오류, 실패, 회귀, UI 깨짐, 성능 문제에는 `/diagnose`를 자동 적용한다. 둘 다 해당될 수 있으면 `/diagnose`를 먼저 적용한다.
+- 자동 진행: 세션 시작 시 `docs/ai/NEXT_ACTION.md`를 먼저 확인한다. 대기 중인 다음 단계가 있고 사용자의 새 요청과 충돌하지 않으면 다음/리뷰 프롬프트를 사용자에게 요구하지 말고 그 단계로 바로 진행한다. 각 단계 종료 시 이 파일을 갱신한다.
+- If the user asks to "just implement", "fix", "build", or "change" something without naming an approved `docs/ai/features/*.md` plan, create or update the plan first and do not edit app code yet.
+- In a planning session, only edit `docs/ai/` or `docs/adr/` unless the user explicitly identifies an approved plan and asks for a specific execution slice.
+- In an execution session, implement exactly one approved slice from the plan. Do not combine adjacent features or opportunistic refactors.
+- In a review session, review against the plan and changed files. Do not add new feature work during review.
+- Durable handoff matters more than chat memory: every substantial request must leave a plan, review, or ADR document that a fresh session can read.
+
 ## 프로젝트 개요
 건강/생산성 추적 PWA. Vanilla JS(ES6), Firebase, Vercel. 빌드 스텝 없는 단일 index.html.
 - **참조 문서:** @ARCHITECTURE.md (구조 레퍼런스), @prd.md (제품 요구사항), @plan.md (작업 진행)
@@ -13,17 +26,23 @@
 5. **SW 캐시 버전 범프** — `sw.js`의 `STATIC_ASSETS`에 등록된 파일을 수정했으면 `CACHE_VERSION`을 반드시 범프 + `sw.js` 함께 커밋.
 6. **소스 트루스는 루트** — `www/`는 `scripts/copy-www.js` 의 Capacitor 빌드 산출물이다. **`www/` 직접 수정 금지**. 수정은 항상 루트 파일(`index.html`, `app.js`, `style.css`, `workout/*.js` 등)에만. `bash scripts/dev-start.sh` 는 루트를 서빙함.
 
-## 🖥️ Dev Server (MANDATORY)
+## 🖥️ Dev Server (User-run)
 
-코드 변경 후 서버가 필요하면 `bash scripts/dev-start.sh` 사용.
+코드 변경 후 서버가 필요하면 사용자가 일반 로컬 터미널에서 아래 명령을 실행하게 안내한다.
+
+```powershell
+cd "C:\Users\USER\Desktop\Tomato Project\tomatofarm(for lite version)"; npm.cmd run dev
+```
+
+- `npm.cmd run dev`는 `bash scripts/dev-start.sh`를 실행한다.
 - 이 스크립트는 **idempotent**함: 이미 헬시한 Python 서버가 떠 있으면 재실행해도 기존 서버를 **재사용**(kill 안 함).
-- Python은 `nohup + subshell` 조합으로 **완전 detach** 실행됨 → Claude 백그라운드 태스크가 종료돼도 서버는 살아있음.
 - 포트 충돌 자동 해결: 다른 프로그램이 점유하면 5501, 5502... 순서로 빈 포트 자동 탐색. 이전 세션의 stale Python만 선택적으로 kill.
+- Codex/Claude 샌드박스 세션에서 장기 실행 dev server를 직접 시작하지 말고, 샌드박스에서 시작한 서버를 검증 완료로 주장하지 말 것.
+- 사용자가 서버를 실행하지 않았거나 실제 UI flow를 exercise하지 못했으면 `not verified yet`이라고 말하고, 필요한 명령/URL/검증 기준을 제공한다.
 - **🚫 절대 금지 (과거 로그인 다운 원인)**:
-  - `python -m http.server`를 직접 실행하지 말 것 — 반드시 스크립트 사용
+  - `python -m http.server`를 직접 실행하지 말 것 — 반드시 `npm.cmd run dev` 또는 그 내부 스크립트 사용
   - 수동 `taskkill`/포트 kill 금지 — 스크립트가 처리함
-  - **이미 5500에 서버가 떠 있으면 `dev-start.sh`를 재실행하지 말 것.** `curl -s -o /dev/null -w "%{http_code}" http://localhost:5500/` 로 확인만. (과거: 무심코 재실행 → 스크립트가 "기존 Python kill 후 새로 띄움" 로직을 돌려 브라우저 세션 끊김 → SW 캐시 버전 불일치로 로그인 실패 루프)
-- 스크립트 출력에서 **실제 사용 포트를 확인**하고 사용자에게 알려줄 것
+  - 이미 서버가 떠 있으면 같은 포트에 대해 반복 실행하지 말 것. 사용자가 출력한 실제 URL을 기준으로 확인한다.
 - 다른 프로젝트(biz 등) 프로세스는 건드리지 않음
 
 ## Communication Protocol
@@ -258,7 +277,7 @@ CSS 클래스:
 ## "go" 워크플로우
 1. `@plan.md`에서 다음 미완료 체크박스 확인
 2. 기존 파일 패턴과 위 규칙에 맞춰 구현
-3. localhost에서 동작 확인 (`bash scripts/dev-start.sh`)
+3. 사용자 로컬 터미널에서 `npm.cmd run dev` 실행 후 출력된 localhost URL에서 동작 확인. 직접 확인하지 못했으면 `not verified yet`으로 보고
 4. Conventional Commits (feat/fix/refactor/style/docs) 형식 커밋
 5. `@plan.md` 진행 상태 업데이트
 

@@ -7,6 +7,7 @@ import { SUBPATTERN_TO_MAJOR } from '../../calc.js';
 import {
   buildMaxCycleSnapshot,
   createDefaultMaxCycle,
+  isMaxTrackEnabled,
   normalizeMaxCycleTracks,
   predictBenchmarkProgression,
   resolveBenchmarkExercise,
@@ -41,6 +42,65 @@ export function cycleForMaxPickerMajors(cycle, majors = [], {
   });
 }
 
+function _pickerExerciseGymIds(ex = {}) {
+  return [...new Set([
+    ex?.gymId,
+    ex?.primaryGymId,
+    ...(Array.isArray(ex?.gymIds) ? ex.gymIds : []),
+    ...(Array.isArray(ex?.gymTags) ? ex.gymTags : []),
+  ].filter(Boolean))];
+}
+
+function _pickerExerciseMatchesGym(ex = {}, gymId = null) {
+  if (!gymId) return true;
+  const ids = _pickerExerciseGymIds(ex);
+  if (!ids.length || ids.includes('*')) return true;
+  return ids.includes(gymId);
+}
+
+function _movementForExercise(ex = {}, movements = []) {
+  const movementId = ex?.movementId || null;
+  if (!movementId) return null;
+  return (movements || []).find(m => m?.id === movementId) || null;
+}
+
+function _exerciseMajorIds(ex = {}, movements = []) {
+  const ids = new Set();
+  const direct = normalizeMaxPickerMajor(ex?.muscleId);
+  if (direct) ids.add(direct);
+  (Array.isArray(ex?.muscleIds) ? ex.muscleIds : []).forEach(id => {
+    const normalized = normalizeMaxPickerMajor(id);
+    if (normalized) ids.add(normalized);
+  });
+  const movement = _movementForExercise(ex, movements);
+  const movementPrimary = normalizeMaxPickerMajor(movement?.primary || movement?.primaryMajor);
+  const movementSub = normalizeMaxPickerMajor(movement?.subPattern);
+  if (movementPrimary) ids.add(movementPrimary);
+  if (movementSub) ids.add(movementSub);
+  return [...ids];
+}
+
+function _normalizePickerExercise(ex = {}, major = null, movements = []) {
+  const primaryMajor = normalizeMaxPickerMajor(ex?.muscleId)
+    || normalizeMaxPickerMajor(major)
+    || _exerciseMajorIds(ex, movements)[0]
+    || null;
+  return {
+    ...ex,
+    muscleId: primaryMajor || ex?.muscleId || null,
+    muscleIds: Array.isArray(ex?.muscleIds) && ex.muscleIds.length
+      ? ex.muscleIds
+      : [primaryMajor].filter(Boolean),
+    movementId: ex?.movementId || null,
+    name: ex?.name || ex?.nameKo || ex?.label || ex?.id,
+  };
+}
+
+function _exerciseNameCompare(a = {}, b = {}) {
+  return String(a?.name || a?.nameKo || a?.id || '')
+    .localeCompare(String(b?.name || b?.nameKo || b?.id || ''), 'ko');
+}
+
 export function resolveMaxBenchmarkPickerItems({
   cycle = null,
   exList = [],
@@ -59,6 +119,9 @@ export function resolveMaxBenchmarkPickerItems({
   const benchmarks = snapshot?.benchmarks || scopedCycle.benchmarks || [];
   const seen = new Set();
   const items = [];
+  const selectedMajorSet = new Set((selectedMajors || []).map(normalizeMaxPickerMajor).filter(Boolean));
+  const benchmarkMajorSet = new Set((benchmarks || []).map(b => normalizeMaxPickerMajor(b?.primaryMajor)).filter(Boolean));
+  const targetMajorSet = selectedMajorSet.size ? selectedMajorSet : benchmarkMajorSet;
   for (const benchmark of benchmarks) {
     const resolved = resolveBenchmarkExercise(benchmark, exList, { gymId: currentGymId });
     if (!resolved?.id || resolved.missing || seen.has(resolved.id)) continue;
@@ -76,6 +139,29 @@ export function resolveMaxBenchmarkPickerItems({
       benchmark,
       cycle: scopedCycle,
       snapshot,
+      kind: 'benchmark',
+    });
+  }
+
+  const extras = (exList || [])
+    .filter(ex => ex?.id && !seen.has(ex.id))
+    .filter(ex => _pickerExerciseMatchesGym(ex, currentGymId))
+    .map(ex => {
+      const majors = _exerciseMajorIds(ex, fallbackMovements);
+      const major = majors.find(id => targetMajorSet.has(id)) || null;
+      return major ? _normalizePickerExercise(ex, major, fallbackMovements) : null;
+    })
+    .filter(Boolean)
+    .sort(_exerciseNameCompare);
+
+  for (const exercise of extras) {
+    seen.add(exercise.id);
+    items.push({
+      exercise,
+      benchmark: null,
+      cycle: scopedCycle,
+      snapshot,
+      kind: 'exercise',
     });
   }
   return items;
@@ -152,13 +238,16 @@ export function buildMaxBenchmarkPickerEntry({
 } = {}) {
   if (!exercise?.id || !benchmark) return null;
   const normalizedCycle = normalizeMaxCycleTracks(cycle) || cycle || {};
-  const activeTrack = benchmark.activeTrack === 'H' || benchmark.activeTrack === 'M'
+  const requestedTrack = benchmark.activeTrack === 'H' || benchmark.activeTrack === 'M'
     ? benchmark.activeTrack
     : (benchmark.defaultTrack === 'H' || benchmark.defaultTrack === 'M' ? benchmark.defaultTrack : 'M');
+  const activeTrack = requestedTrack === 'H' && !isMaxTrackEnabled(benchmark, 'H') ? 'M' : requestedTrack;
   const trackAlternatives = {
     M: _makeTrackPrescription({ benchmark, cycle: normalizedCycle, todayKey, track: 'M' }),
-    H: _makeTrackPrescription({ benchmark, cycle: normalizedCycle, todayKey, track: 'H' }),
   };
+  if (isMaxTrackEnabled(benchmark, 'H')) {
+    trackAlternatives.H = _makeTrackPrescription({ benchmark, cycle: normalizedCycle, todayKey, track: 'H' });
+  }
   const prescription = {
     ...trackAlternatives[activeTrack],
     exerciseId: exercise.id,

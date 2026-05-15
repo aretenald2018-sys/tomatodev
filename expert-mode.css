@@ -2263,6 +2263,9 @@
   gap: 6px;
   background: #fff;
 }
+.wt-max-cycle-dual-cell.is-single {
+  grid-template-columns: 1fr;
+}
 .wt-max-cycle-dual-cell span {
   min-width: 0;
   padding: 7px 6px;
@@ -2844,6 +2847,51 @@
   line-height: 16px;
   font-weight: 650;
 }
+.wt-v4-entry .wt-v4-growth-coach {
+  padding: 9px 11px;
+  background: #fbfbfc;
+  border-color: #eeeef1;
+}
+.wt-v4-entry .wt-v4-growth-coach-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin-bottom: 7px;
+}
+.wt-v4-entry .wt-v4-growth-coach-label,
+.wt-v4-entry .wt-v4-growth-coach-summary {
+  font-size: 10px;
+  line-height: 14px;
+}
+.wt-v4-entry .wt-v4-growth-coach-label {
+  color: var(--v4-ink-3);
+  font-weight: 650;
+}
+.wt-v4-entry .wt-v4-growth-coach-summary {
+  color: var(--v4-ink-4);
+  font-weight: 500;
+}
+.wt-v4-entry .wt-v4-growth-coach-list {
+  display: grid;
+  gap: 6px;
+}
+.wt-v4-entry .wt-v4-growth-plan .wt-v4-growth-coach-copy,
+.wt-v4-entry .wt-v4-growth-plan .wt-v4-growth-coach-evidence {
+  margin: 0;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 500;
+}
+.wt-v4-entry .wt-v4-growth-plan .wt-v4-growth-coach-copy {
+  color: var(--v4-ink-2);
+}
+.wt-v4-entry .wt-v4-growth-plan .wt-v4-growth-coach-evidence {
+  margin-top: 1px;
+  color: var(--v4-ink-4);
+  font-size: 10px;
+  line-height: 14px;
+}
 .wt-v4-entry .wt-v4-growth-rec-panel.wt-v4-rec-panel {
   margin: 0 14px 14px;
   padding: 12px;
@@ -3263,6 +3311,14 @@
   transition: transform .2s ease;
 }
 .wt-v4-track.is-h i { transform: translateX(100%); }
+.wt-v4-track.is-single {
+  grid-template-columns: 1fr;
+}
+.wt-v4-track.is-single button {
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(10,10,12,.08);
+  cursor: default;
+}
 .wt-v4-track button {
   position: relative; z-index: 1;
   height: 30px;
@@ -3295,6 +3351,16 @@
   transition: transform .18s ease;
 }
 .wt-v4-row-track.is-h i { transform: translateX(100%); }
+.wt-v4-row-track.is-single {
+  grid-template-columns: 1fr;
+  width: 86px;
+}
+.wt-v4-row-track.is-single button {
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(10,10,12,.08);
+  cursor: default;
+}
 .wt-v4-row-track button {
   position: relative;
   z-index: 1;
@@ -4354,6 +4420,7 @@
   font-weight: 800;
 }
 .wt-v4-field select,
+.wt-v4-field input,
 .wt-v4-inline-create input,
 .wt-v4-bench-edit select,
 .wt-v4-bench-edit input,
@@ -4432,6 +4499,18 @@
   height: 16px;
   accent-color: #fa342c;
 }
+.wt-v4-track-single-note {
+  align-self: center;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: #fff;
+  color: #6b6b6f;
+  font-size: 11px;
+  font-weight: 800;
+}
 .wt-v4-bench-actions {
   display: flex;
   align-items: center;
@@ -4466,6 +4545,11 @@
   display: grid;
   gap: 10px;
   margin-bottom: 12px;
+}
+.wt-v4-plan-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 180px);
+  gap: 10px;
 }
 .wt-v4-plan-major-tabs {
   display: flex;
@@ -4592,15 +4676,7 @@
 }
 .wt-v4-plan-stair-graph::before {
   content: "";
-  position: absolute;
-  top: 7px;
-  bottom: auto;
-  left: calc(8px + (var(--active-week, 1) - 1) * (100% - 16px) / var(--weeks, 6));
-  width: calc((100% - 16px) / var(--weeks, 6));
-  height: 112px;
-  border-radius: 10px;
-  background: rgba(54, 132, 245, .08);
-  pointer-events: none;
+  display: none;
 }
 .wt-v4-plan-stair-graph svg {
   position: relative;

@@ -13,14 +13,14 @@ import { getExList, getGlobalExList, getGymExList, getGyms, getLastSession, dete
          deleteExercise, getMuscleParts,
          saveCustomMuscle,
          isExpertModeEnabled,
-         getExpertPreset, getExpertMode }              from '../data.js';
+         getExpertPreset, getExpertMode, getMaxCycle }              from '../data.js';
 import { estimate1RM, estimateSet1RM, rpeRepsToPct, targetWeightKg, weightRange, SUBPATTERN_TO_MAJOR,
          getTrackMetricHistory, getLastTrackSession, normalizeWorkoutTrack, calcSetVolume } from '../calc.js?v=20260514v72';
 import { MOVEMENTS } from '../config.js';
 import {
   buildMaxBenchmarkPickerEntry,
   resolveMaxBenchmarkPickerItems,
-} from './expert/max-benchmark-picker.js';
+} from './expert/max-benchmark-picker.js?v=20260515v14';
 // resolveCurrentGymId는 expert.js의 단일 진실원 (preset + S.workout.currentGymId 동기화).
 // isExpertViewShown은 세션 뷰 상태 (일반 모드 뷰 ↔ 프로 모드 뷰) 조회용.
 // expert.js는 exercises.js를 static import 하지 않으므로 순환 참조 없음.
@@ -1151,7 +1151,7 @@ function _renderSets(entryIdx) {
 function _getMaxBenchmarkPickerPool() {
   if (!_isMaxWorkoutMode() || !_isExpertSessionActive()) return [];
   const preset = getExpertPreset?.();
-  const cycle = preset?.maxCycle || null;
+  const cycle = getMaxCycle?.() || preset?.maxCycle || null;
   if (!cycle?.benchmarks?.length) return [];
   const selectedMajors = Array.isArray(S?.workout?.maxMeta?.selectedMajors)
     ? S.workout.maxMeta.selectedMajors
@@ -1170,6 +1170,7 @@ function _getMaxBenchmarkPickerPool() {
     __maxBenchmarkPicker: true,
     __maxBenchmark: item.benchmark,
     __maxCycle: item.cycle,
+    __maxPickerKind: item.kind || (item.benchmark ? 'benchmark' : 'exercise'),
   }));
 }
 
@@ -1187,7 +1188,11 @@ function _isMaxBenchmarkPickerExercise(ex) {
 
 function _renderMaxBenchmarkPickerMeta(ex) {
   const b = ex?.__maxBenchmark || null;
-  if (!b) return '';
+  if (!b) {
+    return ex?.__maxPickerKind === 'exercise'
+      ? `<span class="ex-picker-benchmark-meta">같은 부위 추가</span>`
+      : '';
+  }
   const track = b.activeTrack === 'H' ? '강도' : '볼륨';
   const planned = b.planned || {};
   const kg = Number(planned.plannedKg) > 0 ? `${planned.plannedKg}kg` : '계획 중량';
@@ -1400,7 +1405,9 @@ export function _renderPickerList() {
   if (isMaxBenchmarkPicker) {
     const scope = document.createElement('div');
     scope.className = 'ex-picker-filter-active-bar ex-picker-benchmark-scope';
-    scope.innerHTML = `<span class="ex-picker-filter-active-text"><b>오늘 벤치마크 ${rawPool.length}개</b>와 같은 목록입니다.</span>`;
+    const benchmarkCount = rawPool.filter(ex => !!ex?.__maxBenchmark).length;
+    const extraCount = Math.max(0, rawPool.length - benchmarkCount);
+    scope.innerHTML = `<span class="ex-picker-filter-active-text"><b>오늘 벤치마크 ${benchmarkCount}개</b> + 같은 부위 추가 종목 ${extraCount}개</span>`;
     container.appendChild(scope);
   }
 

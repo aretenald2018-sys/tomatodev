@@ -17,12 +17,37 @@ import {
   _dedupeBenchmarkOptions,
   buildBenchmarkActuals,
   buildRenderedMaxCycleSnapshot,
+  isMaxTrackEnabled,
+  maxBenchmarkTrackList,
   normalizeMaxCycleTracks,
   predictBenchmarkProgression,
-} from './max-cycle-core.js?v=20260514v81';
+} from './max-cycle-core.js?v=20260515v12';
+
+const PLAN_MAJOR_ORDER = Object.keys(MAJOR_LABEL);
+
+function _planMajorKeys(benchmarks = []) {
+  const seen = new Set();
+  const keys = [];
+  for (const major of PLAN_MAJOR_ORDER) {
+    if (!seen.has(major)) {
+      seen.add(major);
+      keys.push(major);
+    }
+  }
+  for (const benchmark of benchmarks || []) {
+    const major = benchmark?.primaryMajor || 'custom';
+    if (major && !seen.has(major)) {
+      seen.add(major);
+      keys.push(major);
+    }
+  }
+  return keys;
+}
 
 function _renderV4Lift(benchmark, snapshot, cycle, index = 0) {
-  const track = benchmark.activeTrack || snapshot.track || 'M';
+  const hasIntensity = isMaxTrackEnabled(benchmark, 'H');
+  const requestedTrack = benchmark.activeTrack || snapshot.track || 'M';
+  const track = requestedTrack === 'H' && hasIntensity ? 'H' : 'M';
   const reps = `${benchmark.planned.startReps || (track === 'H' ? 8 : 12)}-${benchmark.planned.targetReps || (track === 'H' ? 6 : 12)}`;
   const latest = benchmark.latest;
   const displayKg = _displayKg(cycle, snapshot.todayKey, benchmark, track);
@@ -42,11 +67,17 @@ function _renderV4Lift(benchmark, snapshot, cycle, index = 0) {
         </div>
         <button type="button" class="wt-v4-expand" data-action="toggle-max-lift" aria-label="상세 보기">${expanded ? '접기' : '상세'}</button>
       </div>
-      <div class="wt-v4-row-track${track === 'H' ? ' is-h' : ''}" role="tablist" aria-label="${_esc(benchmark.label)} 트랙">
-        <i></i>
-        <button type="button" class="${track === 'M' ? 'on' : ''}" data-action="set-max-benchmark-track" data-benchmark-id="${_esc(benchmark.id)}" data-track="M">볼륨</button>
-        <button type="button" class="${track === 'H' ? 'on' : ''}" data-action="set-max-benchmark-track" data-benchmark-id="${_esc(benchmark.id)}" data-track="H">강도</button>
-      </div>
+      ${hasIntensity ? `
+        <div class="wt-v4-row-track${track === 'H' ? ' is-h' : ''}" role="tablist" aria-label="${_esc(benchmark.label)} 트랙">
+          <i></i>
+          <button type="button" class="${track === 'M' ? 'on' : ''}" data-action="set-max-benchmark-track" data-benchmark-id="${_esc(benchmark.id)}" data-track="M">볼륨</button>
+          <button type="button" class="${track === 'H' ? 'on' : ''}" data-action="set-max-benchmark-track" data-benchmark-id="${_esc(benchmark.id)}" data-track="H">강도</button>
+        </div>
+      ` : `
+        <div class="wt-v4-row-track is-single" role="status" aria-label="${_esc(benchmark.label)} 볼륨 단일 트랙">
+          <button type="button" class="on" disabled>볼륨 단일</button>
+        </div>
+      `}
       <div class="wt-v4-lift-main">
         <div class="wt-v4-weight-wrap">
           <button type="button" class="wt-v4-weight${changed ? ' is-changed' : ''}"
@@ -95,17 +126,18 @@ function _renderMatrix(snapshot) {
       </div>
       ${rows.map(row => `
         <div class="wt-max-cycle-matrix-row${row.week === snapshot.weekIndex ? ' is-today' : ''}" role="row">
-          <div>W${row.week}<small>볼륨+강도</small></div>
+          <div>W${row.week}<small>계획</small></div>
            ${bms.map(b => {
              const cell = row.cells.find(c => c.benchmarkId === b.id);
+             const hasIntensity = isMaxTrackEnabled(b, 'H');
              const volume = cell?.plannedByTrack?.M || predictBenchmarkProgression(b, snapshot, row.dateKey, 'M');
-             const intensity = cell?.plannedByTrack?.H || predictBenchmarkProgression(b, snapshot, row.dateKey, 'H');
              const volumeStatus = _trackWeekStatus(b, row, volume, 'M', snapshot);
-             const intensityStatus = _trackWeekStatus(b, row, intensity, 'H', snapshot);
+             const intensity = hasIntensity ? (cell?.plannedByTrack?.H || predictBenchmarkProgression(b, snapshot, row.dateKey, 'H')) : null;
+             const intensityStatus = intensity ? _trackWeekStatus(b, row, intensity, 'H', snapshot) : null;
              return `
-               <div class="wt-max-cycle-dual-cell">
+               <div class="wt-max-cycle-dual-cell${hasIntensity ? '' : ' is-single'}">
                  <span class="track-m is-${_esc(volumeStatus.state)}"><em>볼륨</em><b>${_esc(volume.plannedKg)}</b><small>${_esc(volume.targetReps || _targetRepsForTrack('M'))}회</small><i>${_esc(volumeStatus.label)}</i></span>
-                 <span class="track-h is-${_esc(intensityStatus.state)}"><em>강도</em><b>${_esc(intensity.plannedKg)}</b><small>${_esc(intensity.targetReps || _targetRepsForTrack('H'))}회</small><i>${_esc(intensityStatus.label)}</i></span>
+                 ${intensity ? `<span class="track-h is-${_esc(intensityStatus.state)}"><em>강도</em><b>${_esc(intensity.plannedKg)}</b><small>${_esc(intensity.targetReps || _targetRepsForTrack('H'))}회</small><i>${_esc(intensityStatus.label)}</i></span>` : ''}
                </div>
              `;
           }).join('')}
@@ -192,9 +224,10 @@ export function renderMaxCycleDashboard({ cycle, cache, exList, todayKey, isDraf
   const snapshot = buildRenderedMaxCycleSnapshot({ cycle, cache, exList, todayKey });
   if (!snapshot) return '';
   snapshot.todayKey = todayKey;
-  const trackLabel = _targetTrackLabel(snapshot.track);
   const combo = _snapshotMajorCombo(snapshot, majors);
   const benchmarkCount = (snapshot.benchmarks || []).length;
+  const hasIntensityBenchmarks = (snapshot.benchmarks || []).some(b => isMaxTrackEnabled(b, 'H'));
+  const trackLabel = hasIntensityBenchmarks ? _targetTrackLabel(snapshot.track) : '볼륨 단일';
   return `
     <section class="wt-v4-board wt-v4-entry" id="wt-max-cycle-card">
       <div class="topbar">
@@ -220,14 +253,20 @@ export function renderMaxCycleDashboard({ cycle, cache, exList, todayKey, isDraf
       ${growthPreviewHtml || `${_renderV4CycleChart(snapshot)}${nextAdviceHtml || ''}`}
       <section class="card wt-v4-track-card">
         <div class="card-head">
-          <div><b>오늘 트랙</b><span>벤치마크별로도 볼륨/강도 전환이 가능합니다.</span></div>
+          <div><b>오늘 트랙</b><span>${hasIntensityBenchmarks ? '벤치마크별로도 볼륨/강도 전환이 가능합니다.' : '복근·삼두·이두는 볼륨 트랙만 운영합니다.'}</span></div>
           <div class="badge">${_esc(trackLabel)}</div>
         </div>
-        <div class="wt-v4-track${snapshot.track === 'H' ? ' is-h' : ''}" role="tablist" aria-label="오늘 트랙">
-          <i></i>
-          <button type="button" class="${snapshot.track === 'M' ? 'on' : ''}" data-action="set-max-track" data-track="M">볼륨</button>
-          <button type="button" class="${snapshot.track === 'H' ? 'on' : ''}" data-action="set-max-track" data-track="H">강도</button>
-        </div>
+        ${hasIntensityBenchmarks ? `
+          <div class="wt-v4-track${snapshot.track === 'H' ? ' is-h' : ''}" role="tablist" aria-label="오늘 트랙">
+            <i></i>
+            <button type="button" class="${snapshot.track === 'M' ? 'on' : ''}" data-action="set-max-track" data-track="M">볼륨</button>
+            <button type="button" class="${snapshot.track === 'H' ? 'on' : ''}" data-action="set-max-track" data-track="H">강도</button>
+          </div>
+        ` : `
+          <div class="wt-v4-track is-single" role="status" aria-label="오늘 트랙 볼륨 단일">
+            <button type="button" class="on" disabled>볼륨 단일</button>
+          </div>
+        `}
       </section>
       ${growthPreviewHtml ? '' : `${_renderV4BenchmarkCard(snapshot, cycle)}${recommendationHtml || ''}`}
       <div class="wt-v4-last-ten">
@@ -300,6 +339,11 @@ function _planActiveWeek(cycle, todayKey = null) {
   return Math.max(1, Math.min(weeks, Math.floor((today - start) / 604800000) + 1));
 }
 
+function _planStartDateValue(cycle = {}) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(cycle?.startDate || ''))) return cycle.startDate;
+  return _dateKeyFromLocalDate(new Date());
+}
+
 function _planKg(v) {
   const n = Number(v) || 0;
   return Number.isInteger(n) ? String(n) : String(Math.round(n * 10) / 10);
@@ -323,6 +367,20 @@ function _actualShortLabel(actual = {}) {
   return [date, load].filter(Boolean).join(' ');
 }
 
+function _addDaysKey(key, days = 0) {
+  const d = new Date(`${key || ''}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return '';
+  d.setDate(d.getDate() + Number(days || 0));
+  return _dateKeyFromLocalDate(d);
+}
+
+function _weekActuals(actuals = [], weekStartKey, todayKey = null) {
+  const weekEndKey = _addDaysKey(weekStartKey, 7);
+  return (actuals || [])
+    .filter(p => p?.dateKey >= weekStartKey && p.dateKey < weekEndKey && (!todayKey || p.dateKey <= todayKey))
+    .sort((a, b) => String(a.dateKey || '').localeCompare(String(b.dateKey || '')) || (Number(a.e1rm) || 0) - (Number(b.e1rm) || 0));
+}
+
 function _planTrackPoints(cycle, benchmark, track, { actuals = [], todayKey = null } = {}) {
   const weeks = _planWeekCount(cycle);
   const weekIndex = _planActiveWeek(cycle, todayKey);
@@ -343,6 +401,7 @@ function _planTrackPoints(cycle, benchmark, track, { actuals = [], todayKey = nu
     const issueLabel = state === 'behind' && status?.actual?.dateKey
       ? `${_actualShortLabel(status.actual)} 미달`
       : (state === 'missed' ? '미수행' : '');
+    const actualsInWeek = _weekActuals(actuals, dateKey, todayKey);
     return {
       week,
       kg: Number(planned?.plannedKg) || 0,
@@ -354,6 +413,7 @@ function _planTrackPoints(cycle, benchmark, track, { actuals = [], todayKey = nu
       issue,
       cleared,
       actual: status?.actual || null,
+      actuals: actualsInWeek,
       clearLabel: cleared && status?.actual?.dateKey ? `${_actualShortLabel(status.actual)} 돌파` : '',
       issueLabel,
     };
@@ -380,7 +440,7 @@ function _stairGeometry(points, activeWeek) {
   const n = Math.max(1, points.length);
   const values = [
     ...points.map(p => Number(p.kg) || 0),
-    ...points.map(p => Number(p.actual?.kg) || 0).filter(v => v > 0),
+    ...points.flatMap(p => (p.actuals || []).map(actual => Number(actual?.kg) || 0)).filter(v => v > 0),
   ];
   const min = Math.min(...values);
   const max = Math.max(...values);
@@ -393,21 +453,32 @@ function _stairGeometry(points, activeWeek) {
     const y = yFor(p.kg);
     return { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 };
   });
-  const actualCoords = points
-    .map((p, idx) => {
-      const kg = Number(p.actual?.kg) || 0;
+  const spacing = n > 1 ? Math.abs(coords[1].x - coords[0].x) : 44;
+  const actualCoords = points.flatMap((p, idx) => {
+    const actuals = Array.isArray(p.actuals) ? p.actuals : [];
+    const count = actuals.length;
+    return actuals.map((actual, actualIdx) => {
+      const kg = Number(actual?.kg) || 0;
       if (kg <= 0) return null;
-      const x = n === 1 ? (left + right) / 2 : left + ((right - left) / (n - 1)) * idx;
+      const reps = Number(actual?.reps) || 0;
+      const baseX = coords[idx]?.x ?? (n === 1 ? (left + right) / 2 : left + ((right - left) / (n - 1)) * idx);
+      const spread = Math.min(12, spacing * 0.18);
+      const offset = count > 1 ? (actualIdx - ((count - 1) / 2)) * spread : 0;
+      const x = Math.max(left, Math.min(right, baseX + offset));
       const y = yFor(kg);
+      const actualCleared = kg >= (Number(p.kg) || 0) && reps >= (Number(p.reps) || 0);
       return {
         ...p,
+        actual,
         x: Math.round(x * 10) / 10,
         y: Math.round(y * 10) / 10,
         actualKg: kg,
-        actualReps: Number(p.actual?.reps) || 0,
+        actualReps: reps,
+        issue: !actualCleared,
+        cleared: actualCleared,
       };
-    })
-    .filter(Boolean);
+    }).filter(Boolean);
+  });
   const d = coords.reduce((path, coord, idx) => {
     if (idx === 0) return `M${coord.x} ${coord.y}`;
     return `${path} H${coord.x} V${coord.y}`;
@@ -542,11 +613,12 @@ export function renderMaxBenchmarkPlanPreview({ cycle = {}, benchmark = null, ma
   const b = normalized.benchmarks?.[0] || benchmark;
   const previewCycle = { ...normalized, weeks: 6 };
   const activeWeek = _planActiveWeek(previewCycle, todayKey);
-  const selectedTrack = b.activeTrack === 'M' || _trackSpec(b, 'H').enabled === false ? 'M' : 'H';
-  const actualsByTrack = {
-    M: buildBenchmarkActuals({ cache, exList, benchmark: b, todayKey, track: 'M' }),
-    H: buildBenchmarkActuals({ cache, exList, benchmark: b, todayKey, track: 'H' }),
-  };
+  const trackList = maxBenchmarkTrackList(b);
+  const selectedTrack = trackList.includes(b.activeTrack) ? b.activeTrack : trackList[0];
+  const actualsByTrack = Object.fromEntries(trackList.map(track => [
+    track,
+    buildBenchmarkActuals({ cache, exList, benchmark: b, todayKey, track }),
+  ]));
   return `
     <article class="wt-v4-growth-card wt-v4-growth-card-plan wt-v4-plan-benchmark" data-benchmark-id="${_esc(b.id)}" data-major="${_esc(majorId)}">
       <div class="wt-v4-growth-head">
@@ -565,15 +637,14 @@ export function renderMaxBenchmarkPlanPreview({ cycle = {}, benchmark = null, ma
         ${extraBenchmarks ? `<small>외 ${extraBenchmarks}개</small>` : ''}
       </div>
       <div class="wt-v4-plan-stairs">
-        ${_renderPlanStairLane({ cycle: previewCycle, benchmark: b, track: 'M', activeWeek, selected: selectedTrack === 'M', actuals: actualsByTrack.M, todayKey, interactive: false })}
-        ${_renderPlanStairLane({ cycle: previewCycle, benchmark: b, track: 'H', activeWeek, selected: selectedTrack === 'H', actuals: actualsByTrack.H, todayKey, interactive: false })}
+        ${trackList.map(track => _renderPlanStairLane({ cycle: previewCycle, benchmark: b, track, activeWeek, selected: selectedTrack === track, actuals: actualsByTrack[track], todayKey, interactive: false })).join('')}
       </div>
       ${detailHtml}
     </article>
   `;
 }
 
-function _renderPlanTrackInputs(benchmark, track, activeWeek, selectedTrack, weeks = 6) {
+function _renderPlanTrackInputs(benchmark, track, activeWeek, selectedTrack, weeks = 6, { lockEnabled = false } = {}) {
   const spec = _trackSpec(benchmark, track);
   const increment = Number(spec.incrementKg) || 2.5;
   const applyLabel = activeWeek >= weeks
@@ -586,17 +657,20 @@ function _renderPlanTrackInputs(benchmark, track, activeWeek, selectedTrack, wee
       <label>목표 <input data-bench-track="${track}" data-bench-field="targetKg" type="number" min="0" max="400" step="${increment}" value="${_esc(spec.targetKg)}"></label>
       <label>증량폭 <input data-bench-track="${track}" data-bench-field="incrementKg" type="number" min="0.5" max="20" step="0.5" value="${_esc(increment)}"></label>
       <label>반복 <input data-bench-track="${track}" data-bench-field="targetReps" type="number" min="1" max="30" step="1" value="${_esc(spec.targetReps)}"></label>
-      <label class="wt-v4-track-enabled"><input data-bench-track="${track}" data-bench-field="enabled" type="checkbox" ${spec.enabled === false ? '' : 'checked'}> 사용</label>
+      ${lockEnabled
+        ? '<span class="wt-v4-track-single-note">볼륨 단일</span>'
+        : `<label class="wt-v4-track-enabled"><input data-bench-track="${track}" data-bench-field="enabled" type="checkbox" ${spec.enabled === false ? '' : 'checked'}> 사용</label>`}
       <button type="button" data-action="apply-max-plan-increment" data-track="${track}" data-week="${activeWeek}">${applyLabel}</button>
     </div>
   `;
 }
 
-export function renderMaxPlanEditor({ cycle, gyms = [], currentGymId = null, movements = [], cache = {}, exList = [], focusBenchmarkId = null, focusAddBenchmark = false, todayKey = null } = {}) {
+export function renderMaxPlanEditor({ cycle, gyms = [], currentGymId = null, movements = [], cache = {}, exList = [], focusBenchmarkId = null, focusAddBenchmark = false, activeMajorId = null, todayKey = null } = {}) {
   const benchmarks = Array.isArray(cycle?.benchmarks) ? normalizeMaxCycleTracks(cycle).benchmarks : [];
   const exerciseOptions = _dedupeBenchmarkOptions(Array.isArray(movements) ? movements : []);
   const weeks = 6;
   const activeWeek = _planActiveWeek({ ...cycle, weeks }, todayKey);
+  const startDateValue = _planStartDateValue(cycle);
   const selectedOptionValue = (b) => {
     const exact = exerciseOptions.find(m => _benchmarkOptionValue(m) === b.exerciseId);
     if (exact) return _benchmarkOptionValue(exact);
@@ -626,9 +700,11 @@ export function renderMaxPlanEditor({ cycle, gyms = [], currentGymId = null, mov
     const hasSelected = exerciseOptions.some(m => _benchmarkOptionValue(m) === selectedValue);
     return hasSelected ? '' : '<small class="wt-v4-bench-missing">현재 운동추가 목록에서 찾을 수 없습니다. 이 카드에서 다른 종목으로 연결하거나 삭제할 수 있어요.</small>';
   };
-  const majorKeys = [...new Set(benchmarks.map(b => b.primaryMajor || 'custom').filter(Boolean))];
+  const majorKeys = _planMajorKeys(benchmarks);
   const focusBenchmark = focusBenchmarkId ? benchmarks.find(b => b.id === focusBenchmarkId) : null;
-  const activeMajor = focusBenchmark?.primaryMajor || majorKeys[0] || 'custom';
+  const firstBenchmarkMajor = benchmarks.find(b => b?.primaryMajor)?.primaryMajor || null;
+  const requestedMajor = activeMajorId && majorKeys.includes(activeMajorId) ? activeMajorId : null;
+  const activeMajor = focusBenchmark?.primaryMajor || requestedMajor || firstBenchmarkMajor || majorKeys[0] || 'custom';
   return `
     <div class="wt-v4-sheet-body wt-v4-plan-editor">
       <div class="wt-v4-modal-head">
@@ -637,6 +713,12 @@ export function renderMaxPlanEditor({ cycle, gyms = [], currentGymId = null, mov
         <button type="button" class="wt-v4-save" data-action="save-max-plan-editor">저장</button>
       </div>
       <input type="hidden" id="max-plan-weeks-value" value="6">
+      <section class="wt-v4-plan-section wt-v4-plan-meta">
+        <label class="wt-v4-field">
+          <span>W1 시작일</span>
+          <input id="max-plan-start-date" type="date" value="${_esc(startDateValue)}">
+        </label>
+      </section>
       <section class="wt-v4-plan-section${focusAddBenchmark ? ' is-add-focused' : ''} wt-v4-plan-lanes">
         <h4>벤치마크 성장판</h4>
         <div class="wt-v4-plan-major-tabs">
@@ -644,14 +726,17 @@ export function renderMaxPlanEditor({ cycle, gyms = [], currentGymId = null, mov
             <button type="button" class="${major === activeMajor ? 'on' : ''}" data-action="select-max-plan-major" data-major="${_esc(major)}">${_esc(MAJOR_LABEL[major] || '기타')}</button>
           `).join('') : '<span>벤치마크 없음</span>'}
         </div>
-        ${benchmarks.length ? majorKeys.map(major => `
+        ${majorKeys.map(major => {
+          const rows = benchmarks.filter(b => (b.primaryMajor || 'custom') === major);
+          return `
           <div class="wt-v4-plan-major-panel${major === activeMajor ? ' is-active' : ''}" data-major="${_esc(major)}">
-            ${benchmarks.filter(b => (b.primaryMajor || 'custom') === major).map(b => {
-              const selectedTrack = _trackSpec(b, 'H').enabled === false ? 'M' : 'H';
-              const actualsByTrack = {
-                M: buildBenchmarkActuals({ cache, exList, benchmark: b, todayKey, track: 'M' }),
-                H: buildBenchmarkActuals({ cache, exList, benchmark: b, todayKey, track: 'H' }),
-              };
+            ${rows.length ? rows.map(b => {
+              const trackList = maxBenchmarkTrackList(b);
+              const selectedTrack = trackList.includes('H') ? 'H' : 'M';
+              const actualsByTrack = Object.fromEntries(trackList.map(track => [
+                track,
+                buildBenchmarkActuals({ cache, exList, benchmark: b, todayKey, track }),
+              ]));
               return `
                 <article class="wt-v4-plan-benchmark wt-v4-bench-edit${b.id === focusBenchmarkId ? ' is-focused' : ''}" data-benchmark-id="${_esc(b.id)}" data-major="${_esc(major)}" data-selected-week="${activeWeek}" data-selected-track="${selectedTrack}" data-current-week="${activeWeek}" data-default-track="${selectedTrack}">
                   <div class="wt-v4-plan-bench-head">
@@ -667,30 +752,29 @@ export function renderMaxPlanEditor({ cycle, gyms = [], currentGymId = null, mov
                     ${renderMissing(b)}
                   </label>
                   <div class="wt-v4-plan-stairs">
-                    ${_renderPlanStairLane({ cycle: { ...cycle, weeks }, benchmark: b, track: 'M', activeWeek, selected: selectedTrack === 'M', actuals: actualsByTrack.M, todayKey })}
-                    ${_renderPlanStairLane({ cycle: { ...cycle, weeks }, benchmark: b, track: 'H', activeWeek, selected: selectedTrack === 'H', actuals: actualsByTrack.H, todayKey })}
+                    ${trackList.map(track => _renderPlanStairLane({ cycle: { ...cycle, weeks }, benchmark: b, track, activeWeek, selected: selectedTrack === track, actuals: actualsByTrack[track], todayKey })).join('')}
                   </div>
                   <div class="wt-v4-plan-stair-editor">
                     <div>
                       <b class="wt-v4-plan-stair-editor-title">선택 계단 · W${activeWeek} ${_planTrackLabel(selectedTrack)}</b>
                       <span class="wt-v4-plan-stair-editor-sub">아래 시작/목표/증량폭을 바꾸면 저장 후 계획선에 반영됩니다.</span>
                     </div>
-                    <small data-bench-default-note>${_esc(b.benchmarkSourceLabel || '볼륨/강도 트랙을 따로 계산합니다.')}</small>
+                    <small data-bench-default-note>${_esc(b.benchmarkSourceLabel || (trackList.length === 1 ? '볼륨 트랙 단일 운영입니다.' : '볼륨/강도 트랙을 따로 계산합니다.'))}</small>
                   </div>
                   <div class="wt-v4-track-edit wt-v4-plan-track-fields">
-                    ${_renderPlanTrackInputs(b, 'M', activeWeek, selectedTrack, weeks)}
-                    ${_renderPlanTrackInputs(b, 'H', activeWeek, selectedTrack, weeks)}
+                    ${trackList.map(track => _renderPlanTrackInputs(b, track, activeWeek, selectedTrack, weeks, { lockEnabled: trackList.length === 1 })).join('')}
                   </div>
                 </article>
               `;
-            }).join('')}
+            }).join('') : `
+              <div class="wt-v4-plan-empty">
+                <b>${_esc(MAJOR_LABEL[major] || '기타')} 벤치마크가 아직 없습니다.</b>
+                <span>이 부위를 선택한 상태에서 아래 버튼을 누르면 해당 부위 종목을 연결합니다.</span>
+              </div>
+            `}
           </div>
-        `).join('') : `
-          <div class="wt-v4-plan-empty">
-            <b>아직 연결된 벤치마크가 없습니다.</b>
-            <span>아래 버튼으로 현재 운동추가 목록의 종목을 불러와 시작할 수 있어요.</span>
-          </div>
-        `}
+        `;
+        }).join('')}
         <button type="button" class="wt-v4-bench-add${focusAddBenchmark ? ' is-focused' : ''}" data-action="add-max-benchmark">벤치마크 추가</button>
       </section>
     </div>

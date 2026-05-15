@@ -10,7 +10,7 @@ import {
   wtAddFoodItem, wtRemoveFoodItem,
   openNutritionPhotoUpload,
   wtStartWorkoutTimer, wtRestTimerShowIdle, wtRestTimerHideIdle,
-} from './render-workout.js';
+} from './render-workout.js?v=20260515v6';
 
 // ── 운동 유형 단일 탭 ────────────────────────────────────────────
 // 이전: 복수 선택(Set). 현재: 한 번에 한 탭만 노출. 기록은 각 탭 독립 저장.
@@ -89,18 +89,18 @@ window.uploadMealPhoto = async function(meal, input) {
   try {
     const b64 = await imageToBase64(file, maxDim, quality);
     window._mealPhotos[meal] = 'data:image/jpeg;base64,' + b64;
-    const { _renderMealPhotos } = await import('./render-workout.js');
+    const { _renderMealPhotos } = await import('./render-workout.js?v=20260515v6');
     _renderMealPhotos();
-    const { saveWorkoutDay } = await import('./render-workout.js');
+    const { saveWorkoutDay } = await import('./render-workout.js?v=20260515v6');
     saveWorkoutDay().catch(e => console.error('Auto-save after photo:', e));
   } catch(e) { console.error('Photo upload error:', e); }
   input.value = '';
 };
 window.removeMealPhoto = async function(meal) {
   delete window._mealPhotos[meal];
-  const { _renderMealPhotos } = await import('./render-workout.js');
+  const { _renderMealPhotos } = await import('./render-workout.js?v=20260515v6');
   _renderMealPhotos();
-  const { saveWorkoutDay } = await import('./render-workout.js');
+  const { saveWorkoutDay } = await import('./render-workout.js?v=20260515v6');
   saveWorkoutDay().catch(e => console.error('Auto-save after photo remove:', e));
 };
 
@@ -121,7 +121,7 @@ window.uploadMealPhotoAI = async function(meal, input) {
     // 1) 사진은 바로 끼니에 표시 (일반 사진 업로드와 동일한 시각 UX)
     window._mealPhotos = window._mealPhotos || {};
     window._mealPhotos[meal] = dataUrl;
-    const { _renderMealPhotos } = await import('./render-workout.js');
+    const { _renderMealPhotos } = await import('./render-workout.js?v=20260515v6');
     _renderMealPhotos();
 
     // 2) AI 추정 배너 시작 (pending → preview/error)
@@ -129,7 +129,7 @@ window.uploadMealPhotoAI = async function(meal, input) {
     startAIEstimate(meal, dataUrl);
 
     // 3) 사진 자체는 서버에 저장 (AI 확정 전에도 사진은 보존)
-    const { saveWorkoutDay } = await import('./render-workout.js');
+    const { saveWorkoutDay } = await import('./render-workout.js?v=20260515v6');
     saveWorkoutDay().catch(e => console.error('Auto-save after AI photo upload:', e));
   } catch (e) {
     console.error('[uploadMealPhotoAI] error:', e);
@@ -269,7 +269,7 @@ window.runBulkMealAIUpload = async function(input) {
   try {
     const { imageToBase64 } = await import('./data.js');
     const { runAIEstimate } = await import('./workout/ai-estimate.js');
-    const { _renderMealPhotos } = await import('./render-workout.js');
+    const { _renderMealPhotos } = await import('./render-workout.js?v=20260515v6');
     const { _autoSaveDiet } = await import('./workout/save.js');
     const { S } = await import('./workout/state.js');
     const startDateKey = _bulkDateKeyFromState(S);

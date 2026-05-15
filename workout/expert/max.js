@@ -23,7 +23,7 @@ import { MOVEMENTS, MAX_PREFERRED_CATEGORIES } from '../../config.js';
 import {
   getCache, getExList, getExpertPreset, saveExpertPreset, saveExercise, deleteExercise,
   getMuscleParts, dateKey, TODAY,
-  getGyms, saveGym,
+  getGyms, saveGym, getActiveEquipmentForGym, getMaxCycle, saveMaxCycle,
   saveDay,
 } from '../../data.js';
 import { S } from '../state.js';
@@ -35,7 +35,10 @@ import {
   renderMaxCycleBoard,
   renderMaxPlanEditor,
   normalizeMaxCycleTracks,
-} from './max-cycle.js?v=20260514v81';
+  buildMaxPlanMovementOptionSeeds,
+  isMaxTrackEnabled,
+  isMaxVolumeOnlyMajor,
+} from './max-cycle.js?v=20260515v13';
 import {
   CAT_LABEL,
   MAX_DEFAULTS,
@@ -50,7 +53,7 @@ import {
 import {
   detectMaxMajorsLoose,
   renderMaxGrowthPreview,
-} from './max-same-day-advice.js?v=20260514v81';
+} from './max-same-day-advice.js?v=20260515v13';
 
 function _esc(s) { return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function _toast(msg, type='info') {
@@ -58,23 +61,15 @@ function _toast(msg, type='info') {
 }
 
 function _getMaxCycleSafe() {
-  const cycle = getExpertPreset()?.maxCycle || null;
+  const cycle = (typeof getMaxCycle === 'function' ? getMaxCycle() : null)
+    || getExpertPreset()?.maxCycle
+    || null;
   return normalizeMaxCycleTracks(cycle);
 }
 
 async function _saveMaxCycleSafe(cycle) {
-  let savedToSettings = false;
-  try {
-    const data = await import('../../data.js');
-    if (typeof data.saveMaxCycle === 'function') {
-      await data.saveMaxCycle(cycle);
-      savedToSettings = true;
-    }
-  } catch (err) {
-    console.warn('[saveMaxCycle.dynamic]:', err);
-  }
-  await saveExpertPreset({ maxCycle: cycle });
-  return savedToSettings;
+  await saveMaxCycle(cycle);
+  return true;
 }
 
 let _weakTimerInterval = null;
@@ -2433,37 +2428,91 @@ function _benchmarkDefaultsForExercise(ex, movement = null, primary = null) {
   };
 }
 
+function _currentMaxPlanGymId() {
+  return document.getElementById('max-plan-gym-id')?.value
+    || S?.workout?.currentGymId
+    || getExpertPreset()?.currentGymId
+    || null;
+}
+
+function _activeEquipmentForPlanGym(gymId) {
+  try {
+    return typeof getActiveEquipmentForGym === 'function'
+      ? getActiveEquipmentForGym(gymId)
+      : [];
+  } catch (err) {
+    console.warn('[maxPlan.equipment.active]:', err);
+    return [];
+  }
+}
+
+function _equipmentStepKg(item = {}, movement = null) {
+  const variations = item?.variations || {};
+  return Number(variations.stepKg)
+    || Number(variations.weightStack?.step)
+    || Number(variations.weights?.step)
+    || Number(movement?.stepKg)
+    || 2.5;
+}
+
+function _equipmentSourceLabel(item = null, gymId = null) {
+  if (!item) return '';
+  const category = item.category || '';
+  if (item.scope === 'gym') {
+    const ownerGymId = item.ownerGymId || item.gymId || gymId || null;
+    const gym = (getGyms() || []).find(g => g.id === ownerGymId) || null;
+    return `${gym?.name || '헬스장 전용'} · ${item.name || CAT_LABEL[category] || category || '기구'}`;
+  }
+  return `활성 공통 · ${item.name || CAT_LABEL[category] || category || '기구'}`;
+}
+
 function _movementsForPlanEditor() {
-  const gymId = S?.workout?.currentGymId || getExpertPreset()?.currentGymId || null;
+  const gymId = _currentMaxPlanGymId();
   const exList = getExList();
+  const activeEquipment = _activeEquipmentForPlanGym(gymId);
+  const seeds = buildMaxPlanMovementOptionSeeds({
+    exList,
+    movements: MOVEMENTS,
+    activeEquipment,
+    currentGymId: gymId,
+  });
   const options = [];
-  for (const ex of exList || []) {
-    if (!ex?.id) continue;
-    const mov = MOVEMENTS.find(m => m.id === ex.movementId) || null;
-    const tags = Array.isArray(ex.gymTags) ? ex.gymTags : [];
-    const category = ex.category || mov?.equipment_category || '';
-    const isShared = ['barbell', 'dumbbell', 'bodyweight'].includes(category);
-    const isGlobal = isShared || tags.includes('*') || (!ex.gymId && !ex.primaryGymId);
-    const isGymMatch = gymId && (ex.gymId === gymId || ex.primaryGymId === gymId || tags.includes(gymId));
-    if (!isGlobal && !isGymMatch) continue;
+  for (const seed of seeds) {
+    const ex = seed.exercise || {};
+    const mov = seed.movement || MOVEMENTS.find(m => m.id === ex.movementId) || null;
+    if (!mov?.id) continue;
     const primary = _exercisePrimaryMajor(ex, mov);
-    const benchmarkDefaults = _benchmarkDefaultsForExercise(ex, mov, primary);
+    const category = ex.category || seed.equipment?.category || mov?.equipment_category || '';
+    const sourceExercise = seed.kind === 'movement'
+      ? {
+        id: null,
+        movementId: mov.id,
+        name: mov.nameKo,
+        category,
+        incrementKg: _equipmentStepKg(seed.equipment, mov),
+      }
+      : ex;
+    const benchmarkDefaults = _benchmarkDefaultsForExercise(sourceExercise, mov, primary);
+    const sourceLabel = seed.equipment
+      ? _equipmentSourceLabel(seed.equipment, gymId)
+      : _exerciseSourceLabel(ex, mov, gymId);
     options.push({
       ...(mov || {}),
-      id: ex.id,
-      exerciseId: ex.id,
-      movementId: ex.movementId || mov?.id || null,
-      nameKo: ex.name || mov?.nameKo || ex.id,
+      id: ex.id || `movement:${mov.id}`,
+      exerciseId: ex.id || null,
+      movementId: ex.movementId || mov.id,
+      nameKo: ex.name || mov.nameKo || mov.id,
       originalNameKo: mov?.nameKo || '',
       primary,
       subPattern: (Array.isArray(ex.muscleIds) && ex.muscleIds[0]) || mov?.subPattern || ex.muscleId || null,
       equipment_category: category || mov?.equipment_category || 'custom',
-      stepKg: Number(ex.incrementKg) > 0 ? Number(ex.incrementKg) : (Number(mov?.stepKg) || 2.5),
+      stepKg: Number(ex.incrementKg) > 0 ? Number(ex.incrementKg) : _equipmentStepKg(seed.equipment, mov),
       gymId: ex.gymId || null,
       primaryGymId: ex.primaryGymId || null,
-      gymTags: tags,
+      gymTags: Array.isArray(ex.gymTags) ? ex.gymTags : (seed.equipment?.scope === 'gym' && gymId ? [gymId] : ['*']),
+      equipmentPoolId: seed.equipment?.id || null,
       benchmarkDefaults,
-      optionLabel: `${MAJOR_LABEL[primary] || primary || '기타'} · ${ex.name || mov?.nameKo || ex.id} · ${_exerciseSourceLabel(ex, mov, gymId)}`,
+      optionLabel: `${MAJOR_LABEL[primary] || primary || '기타'} · ${ex.name || mov.nameKo || mov.id} · ${sourceLabel}`,
     });
   }
   return _dedupeBenchmarkOptions(options, gymId)
@@ -2475,15 +2524,20 @@ function _findCycleBenchmark(cycle, benchmarkId) {
 }
 
 export async function setMaxCycleTrack(track) {
-  const nextTrack = track === 'H' ? 'H' : 'M';
-  const cycle = { ..._cycleOrDraft(), status: 'active', todayTrack: nextTrack };
+  const requestedTrack = track === 'H' ? 'H' : 'M';
+  const current = normalizeMaxCycleTracks(_cycleOrDraft()) || {};
+  const hasAnyIntensity = (current.benchmarks || []).some(b => isMaxTrackEnabled(b, 'H'));
+  const nextTrack = requestedTrack === 'H' && !hasAnyIntensity ? 'M' : requestedTrack;
+  const cycle = { ...current, status: 'active', todayTrack: nextTrack };
   await _saveMaxCycleSafe(cycle);
   if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
 }
 
 export async function setMaxBenchmarkTrack(benchmarkId, track) {
-  const nextTrack = track === 'H' ? 'H' : 'M';
-  const cycle = _cycleOrDraft();
+  const requestedTrack = track === 'H' ? 'H' : 'M';
+  const cycle = normalizeMaxCycleTracks(_cycleOrDraft()) || {};
+  const benchmark = _findCycleBenchmark(cycle, benchmarkId);
+  const nextTrack = requestedTrack === 'H' && !isMaxTrackEnabled(benchmark, 'H') ? 'M' : requestedTrack;
   const todayKey = _todayKey();
   const next = {
     ...cycle,
@@ -2703,18 +2757,9 @@ function _handleMaxV4SheetClick(e) {
     const hidden = document.getElementById('max-plan-weeks-value');
     if (hidden) hidden.value = String(value);
     document.getElementById('max-v4-sheet')?.querySelectorAll('[data-plan-weeks]').forEach(btn => btn.classList.toggle('on', btn === weekBtn));
+    const activeMajor = _activeMaxPlanMajor();
     const current = _draftMaxPlanEditorCycle(normalizeMaxCycleTracks(_cycleOrDraft()) || {});
-    const body = document.getElementById('max-v4-sheet-body');
-    if (body) body.innerHTML = renderMaxPlanEditor({
-      cycle: current,
-      gyms: getGyms(),
-      currentGymId: current.primaryGymId || S?.workout?.currentGymId || getExpertPreset()?.currentGymId || null,
-      movements: _movementsForPlanEditor(),
-      cache: getCache(),
-      exList: getExList(),
-      todayKey: _todayKey(),
-    });
-    _primeMaxPlanDefaultSelection(document);
+    _renderMaxPlanEditorDraft(current, { activeMajorId: activeMajor });
     return;
   }
   const majorTab = e.target.closest('[data-action="select-max-plan-major"]');
@@ -2802,6 +2847,13 @@ function _handleMaxV4SheetClick(e) {
 }
 
 function _handleMaxV4SheetChange(e) {
+  const startDateInput = e.target.closest('#max-plan-start-date');
+  if (startDateInput) {
+    const activeMajor = _activeMaxPlanMajor();
+    const current = _draftMaxPlanEditorCycle(normalizeMaxCycleTracks(_cycleOrDraft()) || {});
+    _renderMaxPlanEditorDraft(current, { activeMajorId: activeMajor });
+    return;
+  }
   const gymSelect = e.target.closest('#max-plan-gym-id');
   if (gymSelect) {
     const gymId = gymSelect.value || null;
@@ -2812,11 +2864,16 @@ function _handleMaxV4SheetChange(e) {
   }
   const benchmarkSelect = e.target.closest('#max-v4-sheet select[data-bench-field="exerciseId"]');
   if (benchmarkSelect) {
-    applyMaxBenchmarkDefaultsToEditorRow(
-      benchmarkSelect.closest('.wt-v4-bench-edit'),
-      benchmarkSelect.value,
-    );
-    _syncMaxPlanIncrementLabels(benchmarkSelect.closest('.wt-v4-bench-edit'));
+    const row = benchmarkSelect.closest('.wt-v4-bench-edit');
+    const benchmarkId = row?.getAttribute('data-benchmark-id') || null;
+    applyMaxBenchmarkDefaultsToEditorRow(row, benchmarkSelect.value);
+    _syncMaxPlanIncrementLabels(row);
+    const current = _draftMaxPlanEditorCycle(normalizeMaxCycleTracks(_cycleOrDraft()) || {});
+    const nextBenchmark = (current.benchmarks || []).find(b => b.id === benchmarkId);
+    _renderMaxPlanEditorDraft(current, {
+      focusBenchmarkId: benchmarkId,
+      activeMajorId: nextBenchmark?.primaryMajor || _activeMaxPlanMajor(),
+    });
     return;
   }
   const trackIncrement = e.target.closest('#max-v4-sheet [data-bench-field="incrementKg"]');
@@ -2915,8 +2972,12 @@ function _selectedMovement(movementId) {
 
 function _selectedExerciseOption(value) {
   const raw = String(value || '');
-  if (!raw || raw.startsWith('movement:')) return null;
-  return _movementsForPlanEditor().find(option => option.exerciseId === raw || option.id === raw) || null;
+  if (!raw) return null;
+  return _movementsForPlanEditor().find(option => (
+    _exerciseOptionValue(option) === raw
+    || option.exerciseId === raw
+    || option.id === raw
+  )) || null;
 }
 
 function _movementIdFromOptionValue(value, option = null, original = {}) {
@@ -2941,10 +3002,17 @@ function _benchmarkFromExerciseOption(optionOrValue) {
     ? Number(defaults.startKg)
     : (major === 'lower' ? 100 : (major === 'back' ? 60 : (major === 'shoulder' ? 25 : 40)));
   const targetKg = Number(defaults?.targetKg) > 0 ? Number(defaults.targetKg) : startKg + growth;
-  const tracks = defaults?.tracks || {
+  const defaultTracks = {
     M: { startKg, targetKg, incrementKg: step, startReps: 12, targetReps: 12, enabled: true },
     H: { startKg: startKg + step * 2, targetKg: startKg + step * 2 + growth, incrementKg: step, startReps: 8, targetReps: 6, enabled: true },
   };
+  const tracks = defaults?.tracks && !Array.isArray(defaults.tracks)
+    ? { M: { ...defaultTracks.M, ...(defaults.tracks.M || {}) }, H: { ...defaultTracks.H, ...(defaults.tracks.H || {}) } }
+    : defaultTracks;
+  if (isMaxVolumeOnlyMajor(major)) {
+    tracks.M = { ...tracks.M, enabled: true };
+    tracks.H = { ...tracks.H, enabled: false };
+  }
   return {
     id: `bm_${major}_${exerciseId || movementId || Date.now()}_${Date.now()}`,
     exerciseId,
@@ -2954,8 +3022,10 @@ function _benchmarkFromExerciseOption(optionOrValue) {
     startKg,
     targetKg,
     incrementKg: step,
+    equipmentPoolId: option?.equipmentPoolId || null,
     benchmarkSource: defaults?.source || null,
     benchmarkSourceLabel: defaults?.sourceLabel || null,
+    ...(isMaxVolumeOnlyMajor(major) ? { defaultTrack: 'M' } : {}),
     tracks,
   };
 }
@@ -2983,6 +3053,31 @@ function applyMaxBenchmarkDefaultsToEditorRow(row, optionValue) {
   if (note) note.textContent = defaults.sourceLabel || '최근 기록 기반';
 }
 
+function _activeMaxPlanMajor() {
+  const raw = document
+    .querySelector('#max-v4-sheet [data-action="select-max-plan-major"].on')
+    ?.getAttribute('data-major');
+  return _normalizeMaxMajor(raw) || raw || null;
+}
+
+function _renderMaxPlanEditorDraft(current, { focusBenchmarkId = null, focusAddBenchmark = false, activeMajorId = null } = {}) {
+  const body = document.getElementById('max-v4-sheet-body');
+  if (!body) return;
+  body.innerHTML = renderMaxPlanEditor({
+    cycle: current,
+    gyms: getGyms(),
+    currentGymId: current.primaryGymId || S?.workout?.currentGymId || getExpertPreset()?.currentGymId || null,
+    movements: _movementsForPlanEditor(),
+    cache: getCache(),
+    exList: getExList(),
+    focusBenchmarkId,
+    focusAddBenchmark,
+    activeMajorId,
+    todayKey: _todayKey(),
+  });
+  _primeMaxPlanDefaultSelection(document);
+}
+
 function _readMaxPlanEditorBenchmarks(current = normalizeMaxCycleTracks(_cycleOrDraft())) {
   const rows = Array.from(document.querySelectorAll('#max-v4-sheet .wt-v4-bench-edit'));
   if (!rows.length) return Array.isArray(current?.benchmarks) ? current.benchmarks : [];
@@ -2998,6 +3093,7 @@ function _readMaxPlanEditorBenchmarks(current = normalizeMaxCycleTracks(_cycleOr
     const exerciseId = exerciseOption?.exerciseId
       || (!String(selectedValue || '').startsWith('movement:') ? (selectedValue || original.exerciseId || null) : null);
     const primaryMajor = _normalizeMaxMajor(exerciseOption?.primary || mov?.primary || original.primaryMajor) || 'chest';
+    const volumeOnly = isMaxVolumeOnlyMajor(primaryMajor);
     const originalM = original.tracks?.M || {};
     const tracks = {};
     for (const track of ['M', 'H']) {
@@ -3006,7 +3102,10 @@ function _readMaxPlanEditorBenchmarks(current = normalizeMaxCycleTracks(_cycleOr
       const startKg = Math.max(0, Number(row.querySelector(`${q}[data-bench-field="startKg"]`)?.value) || Number(base.startKg) || 0);
       const targetKg = Math.max(0, Number(row.querySelector(`${q}[data-bench-field="targetKg"]`)?.value) || Number(base.targetKg) || startKg);
       const targetReps = Math.max(1, Number(row.querySelector(`${q}[data-bench-field="targetReps"]`)?.value) || Number(base.targetReps) || (track === 'H' ? 6 : 12));
-      const enabled = row.querySelector(`${q}[data-bench-field="enabled"]`)?.checked !== false;
+      const enabledInput = row.querySelector(`${q}[data-bench-field="enabled"]`);
+      const enabled = volumeOnly && track === 'H'
+        ? false
+        : (enabledInput ? enabledInput.checked !== false : (track === 'H' ? base.enabled !== false : true));
       const incrementKg = Math.max(0.5, Number(row.querySelector(`${q}[data-bench-field="incrementKg"]`)?.value) || Number(base.incrementKg) || Number(original.incrementKg) || Number(exerciseOption?.benchmarkDefaults?.incrementKg) || 2.5);
       tracks[track] = { ...base, startKg: Math.round(startKg * 10) / 10, targetKg: Math.round(targetKg * 10) / 10, targetReps, incrementKg, enabled };
     }
@@ -3018,11 +3117,13 @@ function _readMaxPlanEditorBenchmarks(current = normalizeMaxCycleTracks(_cycleOr
       movementId,
       label: exerciseOption?.nameKo || exerciseOption?.name || mov?.nameKo || original.label || movementId || '벤치마크',
       primaryMajor,
+      equipmentPoolId: exerciseOption?.equipmentPoolId || original.equipmentPoolId || null,
       benchmarkSource: exerciseOption?.benchmarkDefaults?.source || original.benchmarkSource || null,
       benchmarkSourceLabel: sourceNote || exerciseOption?.benchmarkDefaults?.sourceLabel || original.benchmarkSourceLabel || null,
       startKg: tracks.M.startKg,
       targetKg: tracks.M.targetKg,
       incrementKg: tracks.M.incrementKg,
+      ...(volumeOnly ? { defaultTrack: 'M' } : {}),
       tracks,
     };
   });
@@ -3035,8 +3136,12 @@ function _draftMaxPlanEditorCycle(current = normalizeMaxCycleTracks(_cycleOrDraf
     || getExpertPreset()?.currentGymId
     || null;
   const weeks = Math.max(4, Math.min(12, Number(document.getElementById('max-plan-weeks-value')?.value) || Number(current?.weeks) || 6));
+  const startDate = document.getElementById('max-plan-start-date')?.value
+    || current?.startDate
+    || _weekStartKey(_todayKey());
   return {
     ...current,
+    startDate,
     weeks,
     primaryGymId: gymId,
     benchmarks: _readMaxPlanEditorBenchmarks(current),
@@ -3047,24 +3152,20 @@ function addMaxBenchmarkEditorRow() {
   const current = _draftMaxPlanEditorCycle(normalizeMaxCycleTracks(_cycleOrDraft()) || {});
   const used = new Set(Array.from(document.querySelectorAll('#max-v4-sheet .wt-v4-bench-edit select[data-bench-field="exerciseId"]')).map(el => el.value));
   const candidates = _movementsForPlanEditor();
-  const mov = candidates.find(m => !used.has(_exerciseOptionValue(m))) || candidates[0] || null;
+  const activeMajor = _activeMaxPlanMajor();
+  const available = candidates.filter(m => !used.has(_exerciseOptionValue(m)));
+  const scoped = activeMajor
+    ? available.filter(m => _normalizeMaxMajor(m.primary || m.primaryMajor || m.subPattern) === activeMajor)
+    : available;
+  const mov = scoped[0] || (!activeMajor ? available[0] : null);
   if (!mov) {
-    _toast('운동추가 목록에 등록된 종목이 없어요. 기구 관리에서 먼저 추가하세요.', 'warning');
+    const label = activeMajor ? (MAJOR_LABEL[activeMajor] || activeMajor) : '';
+    _toast(label ? `${label}에 추가 가능한 등록 종목이 없어요. 기구 관리에서 먼저 추가하세요.` : '운동추가 목록에 등록된 종목이 없어요. 기구 관리에서 먼저 추가하세요.', 'warning');
     return;
   }
   const next = { ...current, benchmarks: [...(current.benchmarks || []), _benchmarkFromExerciseOption(mov)] };
-  const body = document.getElementById('max-v4-sheet-body');
-  if (body) body.innerHTML = renderMaxPlanEditor({
-    cycle: next,
-    gyms: getGyms(),
-    currentGymId: next.primaryGymId || S?.workout?.currentGymId || getExpertPreset()?.currentGymId || null,
-    movements: _movementsForPlanEditor(),
-    cache: getCache(),
-    exList: getExList(),
-    focusBenchmarkId: next.benchmarks[next.benchmarks.length - 1]?.id || null,
-    todayKey: _todayKey(),
-  });
-  _primeMaxPlanDefaultSelection(document);
+  const focusBenchmarkId = next.benchmarks[next.benchmarks.length - 1]?.id || null;
+  _renderMaxPlanEditorDraft(next, { focusBenchmarkId, activeMajorId: activeMajor || mov.primary || null });
 }
 
 export async function saveMaxPlanEditorSheet() {
@@ -3076,16 +3177,20 @@ export async function saveMaxPlanEditorSheet() {
     || getExpertPreset()?.currentGymId
     || null;
   const weeks = Math.max(4, Math.min(12, Number(document.getElementById('max-plan-weeks-value')?.value) || Number(current.weeks) || 6));
+  const startDate = document.getElementById('max-plan-start-date')?.value
+    || current.startDate
+    || _weekStartKey(_todayKey());
   const next = {
     ...current,
     status: current.status === 'draft' ? 'active' : current.status,
+    startDate,
     weeks,
     primaryGymId: gymId,
     benchmarks: nextBenchmarks,
     updatedAt: Date.now(),
   };
   if (S?.workout) S.workout.currentGymId = gymId;
-  await saveExpertPreset({ currentGymId: gymId, maxCycle: next, mode: 'max', enabled: true });
+  await saveExpertPreset({ currentGymId: gymId, mode: 'max', enabled: true });
   await _saveMaxCycleSafe(next);
   closeMaxV4Sheet();
   if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
@@ -3340,12 +3445,22 @@ export async function addMaxEquipmentFromPoolModal() {
   openMaxEquipmentPoolModal();
 }
 
+async function _removeBenchmarksFromMaxCycle(predicate) {
+  const cycle = _getMaxCycleSafe();
+  if (!cycle || !Array.isArray(cycle.benchmarks) || typeof predicate !== 'function') return false;
+  const benchmarks = cycle.benchmarks.filter(benchmark => !predicate(benchmark));
+  if (benchmarks.length === cycle.benchmarks.length) return false;
+  await saveMaxCycle({ ...cycle, benchmarks, updatedAt: Date.now() });
+  return true;
+}
+
 export async function deleteMaxEquipmentFromPool(poolId) {
   if (!poolId) return;
   if (!window.confirm('이 헬스장 전용 기구를 삭제할까요? 삭제하면 이 기구는 추천 후보에서 빠집니다.')) return;
   const pool = await import('../../data/data-equipment-pool.js');
   await pool.deleteEquipment(poolId);
-  _toast('기구를 삭제했어요', 'success');
+  const removedBenchmarks = await _removeBenchmarksFromMaxCycle(benchmark => benchmark?.equipmentPoolId === poolId);
+  _toast(removedBenchmarks ? '기구와 연결 벤치마크를 삭제했어요' : '기구를 삭제했어요', 'success');
   openMaxEquipmentPoolModal();
 }
 
@@ -3840,7 +3955,7 @@ export async function applyMaxSuggestion(movementId, weakPart = null, recMeta = 
     return;
   }
   try {
-    const { _renderExerciseList } = await import('../exercises.js');
+    const { _renderExerciseList } = await import('../exercises.js?v=20260515v5');
     _renderExerciseList();
   } catch (e) { console.warn('[applyMaxSuggestion.renderList]:', e); }
 

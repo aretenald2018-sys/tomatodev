@@ -8,7 +8,7 @@
 // isActiveWorkoutDayData: day 객체가 "기록 있음" 상태인지 판정.
 // ================================================================
 
-import { CONFIG } from '../config.js';
+import { CONFIG, MOVEMENTS } from '../config.js';
 import {
   db, doc, setDoc, collection, getDocs,
   getCurrentUserRef, ADMIN_ID, getDataOwnerId,
@@ -27,8 +27,15 @@ import { loadEquipmentPool } from './data-equipment-pool.js';
 
 // ── Pure 헬퍼 (Firebase 비의존) ─────────────────────────────────
 // node:test 에서 import 가능하도록 data/data-pure.js 로 분리. 여기서는 re-export.
-import { _sanitizeTabList, isActiveWorkoutDayData } from './data-pure.js';
-export { _sanitizeTabList, isActiveWorkoutDayData };
+import {
+  EXERCISE_CATALOG_SEED_KEY,
+  buildExerciseCatalogSeedPlan,
+  buildMaxCycleCanonicalPlan,
+  normalizeExerciseMovementRecord,
+  _sanitizeTabList,
+  isActiveWorkoutDayData,
+} from './data-pure.js';
+export { _sanitizeTabList, isActiveWorkoutDayData, buildExerciseCatalogSeedPlan };
 
 // ═══════════════════════════════════════════════════════════════
 // Admin ↔ Admin(guest) twin-account workout merge
@@ -160,11 +167,27 @@ export async function loadAll() {
         await _mergeWorkoutTwinCache(getDataOwnerId());
       }
 
-    const custom = [];
-    exSnap.forEach(d => custom.push(d.data()));
-    const customIds = new Set(custom.map(e => e.id));
-    const defaults  = CONFIG.DEFAULT_EXERCISES.filter(e => !customIds.has(e.id));
-    _setExList(_sortExList([...defaults, ...custom]));
+    const fbMap = {};
+    settingsSnap.forEach(d => { fbMap[d.id] = d.data().value; });
+
+    const storedExercises = [];
+    exSnap.forEach(d => storedExercises.push(d.data()));
+    const seedPlan = buildExerciseCatalogSeedPlan({
+      defaultExercises: CONFIG.DEFAULT_EXERCISES,
+      storedExercises,
+      seedState: fbMap[EXERCISE_CATALOG_SEED_KEY],
+      now: Date.now(),
+    });
+    if (seedPlan.needsSeed) {
+      try {
+        await Promise.all(seedPlan.seedExercises.map(ex => setDoc(_doc('exercises', ex.id), ex)));
+        await setDoc(_doc('settings', EXERCISE_CATALOG_SEED_KEY), { value: seedPlan.seedMarker });
+        fbMap[EXERCISE_CATALOG_SEED_KEY] = seedPlan.seedMarker;
+      } catch (e) {
+        console.warn('[data] exercise catalog seed skipped:', e?.message || e);
+      }
+    }
+    _setExList(_sortExList(seedPlan.exercises.map(ex => normalizeExerciseMovementRecord(ex, MOVEMENTS))));
     try {
       const customMuscleSnap = await getDocs(_col('custom_muscles'));
       const customMuscles = [];
@@ -195,8 +218,6 @@ export async function loadAll() {
     }
 
     { const tc = []; tomatoSnap.forEach(d => tc.push(d.data())); _setTomatoCycles(tc); }
-    const fbMap = {};
-    settingsSnap.forEach(d => { fbMap[d.id] = d.data().value; });
 
     _settings.quest_order    = fbMap.quest_order    ?? _migrateFromLS('quest_order',    ['quarterly','monthly','weekly','daily']);
     _settings.section_titles = fbMap.section_titles ?? _migrateFromLS('section_titles', {});
@@ -223,6 +244,7 @@ export async function loadAll() {
     _settings.unit_goal_start  = fbMap.unit_goal_start  ?? null;
     _settings.active_timer     = fbMap.active_timer     ?? null;
     _settings.max_cycle        = fbMap.max_cycle        ?? null;
+    _settings.exercise_catalog_seed = fbMap.exercise_catalog_seed ?? null;
     _settings.cheer_last_seen  = fbMap.cheer_last_seen  ?? 0;
     _settings.tomato_state     = fbMap.tomato_state     ?? { quarterlyTomatoes: {}, totalTomatoes: 0, giftedReceived: 0, giftedSent: 0 };
     _settings.farm_state       = fbMap.farm_state       ?? null;
@@ -233,6 +255,23 @@ export async function loadAll() {
     _settings.expert_preset    = fbMap.expert_preset
       ? { ...DEFAULT_EXPERT_PRESET, ...fbMap.expert_preset }
       : { ...DEFAULT_EXPERT_PRESET };
+    const maxCyclePlan = buildMaxCycleCanonicalPlan({
+      expertPreset: _settings.expert_preset,
+      settingCycle: _settings.max_cycle,
+      now: Date.now(),
+    });
+    if (maxCyclePlan.shouldWriteMaxCycle) {
+      _settings.max_cycle = maxCyclePlan.canonicalCycle;
+      fbMap.max_cycle = maxCyclePlan.canonicalCycle;
+      await setDoc(_doc('settings', 'max_cycle'), { value: maxCyclePlan.canonicalCycle })
+        .catch(e => console.warn('[data] max_cycle migration failed:', e?.message || e));
+    }
+    if (maxCyclePlan.shouldWriteExpertPreset) {
+      _settings.expert_preset = maxCyclePlan.cleanedPreset;
+      fbMap.expert_preset = maxCyclePlan.cleanedPreset;
+      await setDoc(_doc('settings', 'expert_preset'), { value: maxCyclePlan.cleanedPreset })
+        .catch(e => console.warn('[data] expert_preset maxCycle cleanup failed:', e?.message || e));
+    }
     if (_settings.diet_plan) _setDietPlan({ ...DEFAULT_DIET_PLAN, ..._settings.diet_plan });
 
     // 전문가 모드: Gym / RoutineTemplate 로드 (실패해도 전체 앱 동작 유지)

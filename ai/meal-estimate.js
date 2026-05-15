@@ -8,6 +8,7 @@
 // ================════════════════════════════════════════════════
 
 import { _callGeminiJSON } from './llm-core.js';
+import { isNonFoodArtifactName } from './meal-artifact-filter.js';
 
 const _PLATE_TYPES = ['cafeteria', 'single_dish', 'pasta', 'sushi_set', 'lean_protein', 'steak', 'dessert', 'unknown'];
 
@@ -171,7 +172,7 @@ function _shapeEstimate(data, plateType) {
     protein: Number(it.protein) || 0,
     carbs: Number(it.carbs) || 0,
     fat: Number(it.fat) || 0,
-  })).filter(it => it.name && it.kcal > 0 && !_isNonFoodArtifactName(it.name));
+  })).filter(it => it.name && it.kcal > 0 && !isNonFoodArtifactName(it.name));
   const totals = {
     kcal: cleaned.reduce((s, i) => s + i.kcal, 0),
     protein: cleaned.reduce((s, i) => s + i.protein, 0),
@@ -190,15 +191,6 @@ function _shapeEstimate(data, plateType) {
     confidence: Math.min(1, Math.max(0, Number(data.confidence) || 0.5)),
     detectedItems: cleaned,
   };
-}
-
-function _isNonFoodArtifactName(name) {
-  const n = String(name || '').trim();
-  if (!n) return true;
-  return /^(gemini|제미나이|google|구글|ai|인공지능|분석|분석\s*결과|음식\s*사진|이미지)$/i.test(n)
-    || /(gemini|제미나이|google|구글)\s*(응답|분석|결과|추정|출력)/i.test(n)
-    || /^(ai|인공지능)\s*(응답|분석|결과|추정|출력)/i.test(n)
-    || /(제공자|모델|프롬프트|텍스트\s*출력|json)/i.test(n);
 }
 
 function _repairChickenAsLeanProtein(plateType, items) {

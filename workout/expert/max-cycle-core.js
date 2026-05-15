@@ -3,6 +3,8 @@
 // 테스트모드 v2 — 6주 성장판 렌더/사이클 helper
 // ================================================================
 
+import { inferEquipmentMovementIds, inferExerciseMovementId } from '../../data/data-pure.js';
+
 export function _esc(s) { return String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
 
 export const MAJOR_LABEL = {
@@ -15,6 +17,25 @@ export const MAJOR_LABEL = {
   tricep: '삼두',
   abs: '복근',
 };
+
+export const MAX_VOLUME_ONLY_MAJORS = new Set(['bicep', 'tricep', 'abs']);
+
+export function isMaxVolumeOnlyMajor(major) {
+  return MAX_VOLUME_ONLY_MAJORS.has(String(major || '').trim());
+}
+
+export function isMaxVolumeOnlyBenchmark(benchmark = {}) {
+  return isMaxVolumeOnlyMajor(benchmark?.primaryMajor);
+}
+
+export function isMaxTrackEnabled(benchmark = {}, track = 'M') {
+  if (track !== 'H') return true;
+  return _trackSpec(benchmark, 'H').enabled !== false;
+}
+
+export function maxBenchmarkTrackList(benchmark = {}) {
+  return isMaxTrackEnabled(benchmark, 'H') ? ['M', 'H'] : ['M'];
+}
 
 const DEFAULT_BENCHMARK_BY_MAJOR = {
   chest: 'barbell_bench',
@@ -83,7 +104,11 @@ export function _trackSpec(benchmark, track = 'M') {
     },
   };
   const tracks = benchmark?.tracks && !Array.isArray(benchmark.tracks) ? benchmark.tracks : {};
-  return { ...legacy[key], ...(tracks[key] || {}) };
+  const merged = { ...legacy[key], ...(tracks[key] || {}) };
+  if (!isMaxVolumeOnlyBenchmark(benchmark)) return merged;
+  return key === 'H'
+    ? { ...merged, enabled: false }
+    : { ...merged, enabled: true };
 }
 
 export function normalizeMaxCycleTracks(cycle) {
@@ -93,8 +118,12 @@ export function normalizeMaxCycleTracks(cycle) {
     benchmarks: cycle.benchmarks.map(b => {
       const m = _trackSpec(b, 'M');
       const h = _trackSpec(b, 'H');
+      const defaultTrack = h.enabled === false
+        ? 'M'
+        : (b.defaultTrack === 'H' || b.defaultTrack === 'M' ? b.defaultTrack : null);
       return {
         ...b,
+        ...(defaultTrack ? { defaultTrack } : {}),
         tracks: { M: m, H: h },
         startKg: m.startKg,
         targetKg: m.targetKg,
@@ -104,6 +133,39 @@ export function normalizeMaxCycleTracks(cycle) {
       };
     }),
   };
+}
+
+function _storedCycleTime(cycle = null) {
+  return Math.max(0, Number(cycle?.updatedAt) || 0, Number(cycle?.createdAt) || 0);
+}
+
+function _storedCycleTrackScore(cycle = null) {
+  if (!cycle || !Array.isArray(cycle.benchmarks)) return 0;
+  return cycle.benchmarks.reduce((score, benchmark) => {
+    const tracks = benchmark?.tracks && !Array.isArray(benchmark.tracks) ? benchmark.tracks : {};
+    const hasM = tracks.M && typeof tracks.M === 'object';
+    const hasH = tracks.H && typeof tracks.H === 'object';
+    return score + 1 + (hasM ? 2 : 0) + (hasH ? 2 : 0);
+  }, 0);
+}
+
+export function selectPersistedMaxCycle(presetCycle = null, settingCycle = null) {
+  const presetValid = presetCycle && Array.isArray(presetCycle.benchmarks) ? presetCycle : null;
+  const settingValid = settingCycle && Array.isArray(settingCycle.benchmarks) ? settingCycle : null;
+  if (!presetValid) return settingValid;
+  if (!settingValid) return presetValid;
+
+  const presetTime = _storedCycleTime(presetValid);
+  const settingTime = _storedCycleTime(settingValid);
+  if (settingTime > presetTime) return settingValid;
+  if (presetTime > settingTime) return presetValid;
+
+  const presetScore = _storedCycleTrackScore(presetValid);
+  const settingScore = _storedCycleTrackScore(settingValid);
+  if (settingScore > presetScore) return settingValid;
+  if (presetScore > settingScore) return presetValid;
+
+  return settingValid;
 }
 
 export function _shortDate(key) {
@@ -237,6 +299,135 @@ export function _dedupeBenchmarkOptions(items = []) {
     if (!current || _benchmarkOptionRank(item) > _benchmarkOptionRank(current)) grouped.set(key, item);
   }
   return [...grouped.values()];
+}
+
+const BENCHMARK_SHARED_CATEGORIES = new Set(['barbell', 'dumbbell', 'bodyweight']);
+const BENCHMARK_CATEGORY_EQUIPMENT_CATEGORIES = new Set(['barbell', 'dumbbell', 'bodyweight', 'cable']);
+const BENCHMARK_SCOPED_CATEGORY_FALLBACKS = new Set(['machine', 'smith', 'cable']);
+
+function _planExerciseGymIds(ex = {}) {
+  return [
+    ex.gymId,
+    ex.primaryGymId,
+    ...(Array.isArray(ex.gymIds) ? ex.gymIds : []),
+    ...(Array.isArray(ex.gymTags) ? ex.gymTags.filter(tag => tag && tag !== '*') : []),
+  ].filter(Boolean);
+}
+
+function _planExerciseMatchesGym(ex = {}, gymId = null) {
+  if (!gymId) return false;
+  return _planExerciseGymIds(ex).includes(gymId);
+}
+
+function _planExerciseIsShared(ex = {}, category = '') {
+  const tags = Array.isArray(ex.gymTags) ? ex.gymTags : [];
+  const gymIds = _planExerciseGymIds(ex);
+  return BENCHMARK_SHARED_CATEGORIES.has(category)
+    || tags.includes('*')
+    || (!gymIds.length && !ex.gymId && !ex.primaryGymId);
+}
+
+function _planEquipmentMovementIds(item = {}, movements = []) {
+  return inferEquipmentMovementIds(item, movements);
+}
+
+function _planEquipmentByMovement(activeEquipment = [], movements = []) {
+  const byMovement = new Map();
+  const sourceRank = { category: 1, name: 2, explicit: 3 };
+  const rankRef = (ref) => (ref?.item?.scope === 'gym' ? 10 : 0) + (sourceRank[ref?.source] || 0);
+  const setEquipment = (movementId, item, source = 'explicit') => {
+    if (!movementId) return;
+    const current = byMovement.get(movementId);
+    const next = { item, source };
+    if (!current || rankRef(next) > rankRef(current)) {
+      byMovement.set(movementId, next);
+    }
+  };
+
+  for (const item of activeEquipment || []) {
+    const explicitIds = Array.isArray(item?.movementIds) ? item.movementIds.filter(Boolean) : [];
+    const source = explicitIds.length ? 'explicit' : 'name';
+    for (const movementId of _planEquipmentMovementIds(item, movements)) {
+      setEquipment(movementId, item, source);
+    }
+  }
+
+  for (const item of activeEquipment || []) {
+    const category = item?.category || '';
+    if (!BENCHMARK_CATEGORY_EQUIPMENT_CATEGORIES.has(category)) continue;
+    for (const mov of movements || []) {
+      if (mov?.equipment_category === category) setEquipment(mov.id, item, 'category');
+    }
+  }
+  return byMovement;
+}
+
+export function buildMaxPlanMovementOptionSeeds({
+  exList = [],
+  movements = [],
+  activeEquipment = [],
+  currentGymId = null,
+} = {}) {
+  const movementById = new Map((movements || []).map(m => [m.id, m]));
+  const equipmentByMovement = _planEquipmentByMovement(activeEquipment, movements);
+  const seeds = [];
+  const scopedFallbacks = new Map();
+
+  for (const ex of exList || []) {
+    const movementId = inferExerciseMovementId(ex, movements);
+    if (!ex?.id || !movementId) continue;
+    const mov = movementById.get(movementId) || null;
+    if (!mov) continue;
+    const category = ex.category || mov?.equipment_category || '';
+    const isCurrentGym = _planExerciseMatchesGym(ex, currentGymId);
+    const isSharedOrRegistered = _planExerciseIsShared(ex, category);
+    const equipmentRef = equipmentByMovement.get(movementId) || null;
+    if (!isCurrentGym && !isSharedOrRegistered) continue;
+    seeds.push({
+      kind: 'exercise',
+      exercise: movementId === ex.movementId ? ex : { ...ex, movementId },
+      movement: mov,
+      equipment: equipmentRef?.item || null,
+    });
+    if (BENCHMARK_SCOPED_CATEGORY_FALLBACKS.has(category) && mov?.primary) {
+      scopedFallbacks.set(`${category}:${mov.primary}`, { category, primary: mov.primary });
+    }
+  }
+
+  for (const fallback of scopedFallbacks.values()) {
+    for (const mov of movements || []) {
+      if (!mov?.id || mov.equipment_category !== fallback.category || mov.primary !== fallback.primary) continue;
+      const exists = seeds.some(seed => seed.movement?.id === mov.id);
+      if (exists) continue;
+      seeds.push({
+        kind: 'movement',
+        exercise: null,
+        movement: mov,
+        equipment: null,
+      });
+    }
+  }
+
+  for (const [movementId, equipmentRef] of equipmentByMovement.entries()) {
+    if (equipmentRef?.source !== 'explicit' && equipmentRef?.source !== 'name') continue;
+    const equipment = equipmentRef.item;
+    const mov = movementById.get(movementId);
+    if (!mov) continue;
+    const hasExercise = seeds.some(seed => {
+      if (seed.exercise?.movementId !== movementId) return false;
+      if (equipment?.scope !== 'gym') return true;
+      return _planExerciseMatchesGym(seed.exercise, currentGymId);
+    });
+    if (hasExercise) continue;
+    seeds.push({
+      kind: 'movement',
+      exercise: null,
+      movement: mov,
+      equipment,
+    });
+  }
+
+  return seeds;
 }
 
 function _exerciseGymIds(ex = {}) {
@@ -392,13 +583,16 @@ export function buildMaxCycleSnapshot({ cycle = null, cache = {}, exList = [], t
   if (!cycle || !Array.isArray(cycle.benchmarks)) return null;
   const weekIndex = _weekIndex(cycle, todayKey);
   const weeks = Math.max(1, Number(cycle.weeks) || 6);
-  const track = cycle.todayTrack === 'M' || cycle.todayTrack === 'H' ? cycle.todayTrack : (weekIndex % 2 === 0 ? 'H' : 'M');
-  const todayTracks = todayKey && cycle.todayTracks?.[todayKey] ? cycle.todayTracks[todayKey] : {};
   const normalized = normalizeMaxCycleTracks(cycle);
+  const requestedTrack = cycle.todayTrack === 'M' || cycle.todayTrack === 'H' ? cycle.todayTrack : (weekIndex % 2 === 0 ? 'H' : 'M');
+  const hasAnyIntensity = (normalized.benchmarks || []).some(b => isMaxTrackEnabled(b, 'H'));
+  const track = requestedTrack === 'H' && !hasAnyIntensity ? 'M' : requestedTrack;
+  const todayTracks = todayKey && cycle.todayTracks?.[todayKey] ? cycle.todayTracks[todayKey] : {};
   const benchmarks = normalized.benchmarks.map(b => {
-    const activeTrack = todayTracks?.[b.id] === 'H' || todayTracks?.[b.id] === 'M'
+    const requestedActiveTrack = todayTracks?.[b.id] === 'H' || todayTracks?.[b.id] === 'M'
       ? todayTracks[b.id]
       : (b.defaultTrack === 'H' || b.defaultTrack === 'M' ? b.defaultTrack : track);
+    const activeTrack = requestedActiveTrack === 'H' && !isMaxTrackEnabled(b, 'H') ? 'M' : requestedActiveTrack;
     const planned = predictBenchmarkProgression(b, normalized, todayKey, activeTrack);
     const plannedByTrack = {
       M: predictBenchmarkProgression(b, normalized, todayKey, 'M'),
@@ -413,7 +607,7 @@ export function buildMaxCycleSnapshot({ cycle = null, cache = {}, exList = [], t
     const actualPct = latest && planned.targetKg > planned.startKg
       ? Math.max(0, Math.min(100, Math.round(((latest.kg - planned.startKg) / (planned.targetKg - planned.startKg)) * 100)))
       : null;
-    return { ...b, activeTrack, planned, plannedByTrack, actuals, latest, delta, actualPct, onPlan: delta === null ? null : delta >= 0, hasRegisteredExercise };
+    return { ...b, activeTrack, availableTracks: maxBenchmarkTrackList(b), planned, plannedByTrack, actuals, latest, delta, actualPct, onPlan: delta === null ? null : delta >= 0, hasRegisteredExercise };
   });
   const actualProgressVals = benchmarks
     .map(b => b.actualPct)
@@ -475,6 +669,7 @@ export function createDefaultMaxCycle({
     const step = Number(defaults?.incrementKg) > 0 ? Number(defaults.incrementKg) : (Number(mov?.stepKg) > 0 ? Number(mov.stepKg) : 2.5);
     const startKg = Number(defaults?.startKg) > 0 ? Number(defaults.startKg) : fallbackStart;
     const targetKg = Number(defaults?.targetKg) > 0 ? Number(defaults.targetKg) : startKg + _kgStepForMajor(major);
+    const primaryMajor = _benchmarkPrimary(mov) || major;
     const defaultTracks = {
       M: { startKg, targetKg, incrementKg: step, startReps: 12, targetReps: 12, enabled: true },
       H: {
@@ -492,12 +687,17 @@ export function createDefaultMaxCycle({
         H: { ...defaultTracks.H, ...(defaults.tracks.H || {}) },
       }
       : defaultTracks;
+    if (isMaxVolumeOnlyMajor(primaryMajor)) {
+      tracks.M = { ...tracks.M, enabled: true };
+      tracks.H = { ...tracks.H, enabled: false };
+    }
     return {
       id: `bm_${major}_${exerciseId || movementId || 'custom'}`,
       exerciseId,
       movementId,
       label: mov?.nameKo || mov?.name || MAJOR_LABEL[major] || major,
-      primaryMajor: _benchmarkPrimary(mov) || major,
+      primaryMajor,
+      ...(isMaxVolumeOnlyMajor(primaryMajor) ? { defaultTrack: 'M' } : {}),
       benchmarkSource: defaults?.source || null,
       benchmarkSourceLabel: defaults?.sourceLabel || null,
       tracks,

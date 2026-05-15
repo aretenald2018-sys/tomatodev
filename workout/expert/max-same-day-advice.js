@@ -11,7 +11,7 @@ import {
   SAME_DAY_DETAIL_PARTS,
   WEAK_LABEL,
 } from './max-config.js';
-import { renderMaxBenchmarkPlanPreview } from './max-cycle-render.js?v=20260514v81';
+import { renderMaxBenchmarkPlanPreview } from './max-cycle-render.js?v=20260515v13';
 
 function _esc(s) { return String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
 
@@ -545,9 +545,102 @@ function _renderGrowthDetailPanel({ history = [], detailProfile = null } = {}) {
   `;
 }
 
+function _combinedGrowthSubBalance(comparison) {
+  const counts = {};
+  const sessions = [comparison?.today, ...((comparison?.previous || []))].filter(Boolean);
+  for (const session of sessions) {
+    for (const [part, value] of Object.entries(session?.subBalance || {})) {
+      counts[part] = (counts[part] || 0) + (Number(value) || 0);
+    }
+  }
+  return counts;
+}
+
+function _buildGrowthImbalancePlans(comparison, majors = [], movements = MOVEMENTS) {
+  const weakSubs = comparison?.imbalance?.weakSubPatterns;
+  if (!Array.isArray(weakSubs) || !weakSubs.length) return [];
+  const allowedMajors = new Set((majors || []).map(_normalizeMaxMajor).filter(Boolean));
+  const counts = _combinedGrowthSubBalance(comparison);
+  const byMajor = new Map();
+  for (const part of weakSubs) {
+    const major = _normalizeMaxMajor(SUBPATTERN_TO_MAJOR[part] || part);
+    if (!major || (allowedMajors.size && !allowedMajors.has(major))) continue;
+    if (!byMajor.has(major)) byMajor.set(major, []);
+    byMajor.get(major).push(part);
+  }
+
+  return [...byMajor.entries()].map(([major, parts]) => {
+    const labels = parts.map(_finePartLabel);
+    const strongest = comparison?.imbalance?.strongest || null;
+    const strongestMajor = _normalizeMaxMajor(SUBPATTERN_TO_MAJOR[strongest] || strongest);
+    const dominant = strongest && strongestMajor === major ? _finePartLabel(strongest) : '';
+    const movementNames = _sameDayDetailMovementNames(parts, movements);
+    const move = _sameDayFocusMoveCopy(movementNames, `${labels.join('/')} 보조 종목 1개`);
+    const countText = parts
+      .map(part => `${_finePartLabel(part)} ${Number(counts[part]) || 0}세트`)
+      .join(', ');
+    return {
+      major,
+      label: MAJOR_LABEL[major] || major,
+      focus: `${labels.join('/')} 보강`,
+      priority: 'warn',
+      copy: dominant
+        ? `최근 같은 부위 기록이 ${dominant} 위주라 ${labels.join('/')}가 부족합니다. 다음엔 ${move}를 벤치마크 뒤 2-3세트로 넣으세요.`
+        : `최근 같은 부위 기록에서 ${labels.join('/')} 비중이 낮습니다. 다음엔 ${move}를 벤치마크 뒤 2-3세트로 넣으세요.`,
+      evidence: countText ? `근거: 최근 합산 ${countText}` : '',
+    };
+  });
+}
+
+function _renderGrowthWeakCoachPanel({ comparison, cache, exList, majors, movements = MOVEMENTS } = {}) {
+  const majorList = _sameDayMajorList(majors, comparison);
+  if (!majorList.length) return '';
+  const recentPlans = _buildSameDayMajorPlans({ comparison, cache, exList, majors: majorList, movements })
+    .filter(plan => plan && plan.priority !== 'ok');
+  const rows = [];
+  const seenMajors = new Set();
+  for (const plan of recentPlans) {
+    if (!plan?.major || seenMajors.has(plan.major)) continue;
+    seenMajors.add(plan.major);
+    rows.push(plan);
+  }
+  for (const plan of _buildGrowthImbalancePlans(comparison, majorList, movements)) {
+    if (!plan?.major || seenMajors.has(plan.major)) continue;
+    seenMajors.add(plan.major);
+    rows.push(plan);
+  }
+  if (!rows.length) return '';
+
+  const summary = rows
+    .slice(0, 3)
+    .map(row => {
+      const focus = String(row.focus || '');
+      return focus.startsWith(row.label) ? focus : `${row.label} ${focus}`;
+    })
+    .join(' · ');
+
+  return `
+      <div class="wt-v4-growth-plan wt-v4-growth-coach">
+        <div class="wt-v4-growth-coach-head">
+          <span class="wt-v4-growth-coach-label">보완 코멘트</span>
+          ${summary ? `<span class="wt-v4-growth-coach-summary">${_esc(summary)}</span>` : ''}
+        </div>
+        <div class="wt-v4-growth-coach-list">
+          ${rows.map(row => `
+            <div class="wt-v4-growth-coach-row">
+              <p class="wt-v4-growth-coach-copy">${_esc(row.label)} · ${_esc(row.copy)}</p>
+              ${row.evidence ? `<p class="wt-v4-growth-coach-evidence">${_esc(row.evidence)}</p>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+  `;
+}
+
 export function renderMaxGrowthPreview({ comparison, cache, exList, majors, movements = MOVEMENTS, snapshot = null, recommendationHtml = '' } = {}) {
   const majorList = _sameDayMajorList(majors, comparison);
   if (!majorList.length) return '';
+  const coachHtml = _renderGrowthWeakCoachPanel({ comparison, cache, exList, majors: majorList, movements });
   const cards = majorList.map(major => {
     const benchmarks = _majorBenchmarks(snapshot, major);
     const benchmark = benchmarks[0] || null;
@@ -598,6 +691,7 @@ export function renderMaxGrowthPreview({ comparison, cache, exList, majors, move
         </div>
         <div class="badge">통합</div>
       </div>
+      ${coachHtml}
       <div class="wt-v4-growth-list">${cards}</div>
     </section>
   `;

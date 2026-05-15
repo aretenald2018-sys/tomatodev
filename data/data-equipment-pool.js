@@ -13,6 +13,8 @@ import {
   _equipmentPool, _setEquipmentPool,
   _gyms, _setGyms,
 } from './data-core.js';
+import { inferEquipmentMovementIds, normalizeEquipmentCategory } from './data-pure.js';
+import { MOVEMENTS } from '../config.js';
 
 const DEFAULT_GLOBAL_POOL = [
   {
@@ -55,13 +57,15 @@ const DEFAULT_GLOBAL_POOL = [
 
 function _normalizeEquipment(item = {}) {
   const scope = item.scope === 'gym' ? 'gym' : 'global';
+  const category = normalizeEquipmentCategory(item.category || 'machine') || 'machine';
+  const movementIds = inferEquipmentMovementIds({ ...item, category }, MOVEMENTS);
   return {
     id: item.id || _generateId(),
     scope,
     ownerGymId: scope === 'gym' ? (item.ownerGymId || item.gymId || null) : null,
     name: String(item.name || '').trim(),
-    category: item.category || 'machine',
-    movementIds: Array.isArray(item.movementIds) ? item.movementIds.filter(Boolean) : [],
+    category,
+    movementIds,
     variations: item.variations && typeof item.variations === 'object' ? item.variations : {},
     notes: item.notes || '',
     createdAt: item.createdAt || Date.now(),

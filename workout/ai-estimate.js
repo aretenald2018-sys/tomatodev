@@ -8,20 +8,13 @@
 // ================================================================
 
 import { estimateInOnePass } from '../ai.js';
+import { isNonFoodArtifactName } from '../ai/meal-artifact-filter.js';
 import { normalizeFood, sanityCheckKcal } from '../data/korean-food-normalize.js';
 
 function _makeEstimateError(code, message) {
   const err = new Error(message);
   err.code = code;
   return err;
-}
-
-function _isNonFoodArtifactName(name) {
-  const n = String(name || '').trim();
-  return /^(gemini|제미나이|google|구글|ai|인공지능|분석|분석\s*결과|음식\s*사진|이미지)$/i.test(n)
-    || /(gemini|제미나이|google|구글)\s*(응답|분석|결과|추정|출력)/i.test(n)
-    || /^(ai|인공지능)\s*(응답|분석|결과|추정|출력)/i.test(n)
-    || /(제공자|모델|프롬프트|텍스트\s*출력|json)/i.test(n);
 }
 
 // ── 반상 prior 보정 ──────────────────────────────────────────────
@@ -82,7 +75,7 @@ function _scaleEstimate(estimate, targetKcal) {
 // ── 아이템 이름 정규화 + kcal sanity check ───────────────────────
 export function normalizeItems(estimate) {
   if (!estimate || !Array.isArray(estimate.detectedItems)) return estimate;
-  const items = estimate.detectedItems.filter(it => !_isNonFoodArtifactName(it?.name)).map(it => {
+  const items = estimate.detectedItems.filter(it => !isNonFoodArtifactName(it?.name)).map(it => {
     const canonical = normalizeFood(it.name);
     const { kcal, corrected } = sanityCheckKcal(canonical, it.kcal, it.grams);
     return {
