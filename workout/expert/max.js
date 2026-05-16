@@ -38,9 +38,10 @@ import {
   normalizeMaxCycleTracks,
   buildMaxPlanMovementOptionSeeds,
   dedupeMaxBenchmarkOptions,
+  overlayCurrentWorkoutDay,
   isMaxTrackEnabled,
   isMaxVolumeOnlyMajor,
-} from './max-cycle.js?v=20260516v4';
+} from './max-cycle.js?v=20260516v6';
 import {
   CAT_LABEL,
   MAX_DEFAULTS,
@@ -55,7 +56,7 @@ import {
 import {
   detectMaxMajorsLoose,
   renderMaxGrowthPreview,
-} from './max-same-day-advice.js?v=20260516v4';
+} from './max-same-day-advice.js?v=20260516v6';
 
 function _esc(s) { return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function _toast(msg, type='info') {
@@ -1544,10 +1545,11 @@ export function renderMaxCard(host) {
   const selectedMajors = Array.isArray(meta.selectedMajors)
     ? meta.selectedMajors.map(_normalizeMaxMajor).filter(Boolean)
     : [];
-  const day = cache[todayKey] || { exercises: S?.workout?.exercises || [] };
+  const comparisonCache = overlayCurrentWorkoutDay(cache, todayKey, S?.workout?.exercises || []);
+  const day = comparisonCache[todayKey] || { exercises: [] };
   const majors = new Set(selectedMajors);
   if (meta.majorGateOpen || majors.size === 0) {
-    const gateComparisonCache = cache[todayKey] ? cache : { ...cache, [todayKey]: day };
+    const gateComparisonCache = comparisonCache;
     const weakScope = _splitWeakPartsByMajors(meta.selectedWeakParts, selectedMajors);
     const gateComparison = majors.size ? buildMuscleComparison(gateComparisonCache, exList, MOVEMENTS, todayKey, majors, 2) : null;
     const savedCycleForGate = _getMaxCycleSafe();
@@ -1605,7 +1607,6 @@ export function renderMaxCard(host) {
   const weakScope = _splitWeakPartsByMajors(meta.selectedWeakParts, [...majors]);
   const weakPartsForToday = weakScope.inScope;
   const weakPartsOutOfScope = weakScope.outOfScope;
-  const comparisonCache = cache[todayKey] ? cache : { ...cache, [todayKey]: day };
   const savedCycle = _getMaxCycleSafe();
   const cycleDraft = savedCycle || createDefaultMaxCycle({
     todayKey,

@@ -55,6 +55,29 @@
   - 성장판 근거 문구의 `직전 볼륨/강도`는 `기준 볼륨/강도`로 바꿔 사이클 시작 전 기준 기록임을 명확히 한다.
   - 회귀 테스트를 추가한다.
 
+### Slice 3: 오늘 운동 화면의 저장 cache/current draft SSOT 통일
+
+- 상태: 완료
+- 문제: `renderMaxCard`는 오늘 cache가 있으면 `S.workout.exercises`의 현재 편집 중 세트를 덮어보지 않는다. 그래서 운동 편집기에는 오늘 세트가 있는데 성장판 미리보기는 저장된 cache만 보고 `계획 미수행`처럼 보일 수 있다.
+- 실행 결과: 오늘 화면에서 성장판/추천/미리보기용 cache를 만들 때 `S.workout.exercises`를 `cache[todayKey].exercises`에 overlay하도록 변경했다. 저장된 오늘 기록이 이미 있어도 현재 편집 중인 세트가 우선한다.
+- 검증 결과: `node --check`, `node --test tests/calc.max.test.js`, `git diff --check` 통과.
+- 실행:
+  - 오늘 화면용 cache를 만들 때 항상 `S.workout.exercises`를 `cache[todayKey].exercises`에 overlay한다.
+  - 이 overlay를 순수 helper로 두고 테스트한다.
+  - query version과 `sw.js` `CACHE_VERSION`을 갱신한다.
+
+### Slice 4: 사이클 전 기준 기록을 W0 시작점으로 표시
+
+- 상태: 완료
+- 문제: W1이 `계획 미수행`이어도 카드 하단에는 사이클 시작 전 기준 기록이 보여 같은 주차의 수행 기록처럼 읽힐 수 있다.
+- 목표: 사이클 시작 전 `baselineLatest`를 계단 그래프의 W0 기준점으로 표시해, W1 이후 주차 수행 여부와 시작 기준 기록을 같은 SSOT에서 시각적으로 분리한다.
+- 실행 결과: 성장판 계단에 현재 트랙의 `baselineLatest`를 W0 기준점으로 추가했다. W0은 날짜/중량/반복과 `기준` 상태만 표시하고 계획 주차 선택 액션에서는 제외된다.
+- 검증 결과: `node --check`, `node --test tests/calc.max.test.js`, `git diff --check` 통과.
+- 실행:
+  - 성장판 계단 렌더러가 `baselineLatest`를 현재 트랙의 W0 기준점으로 삽입한다.
+  - W0은 계획 선택 액션 대상에서 제외하고 `기준` 날짜/중량/반복만 보여준다.
+  - 회귀 테스트와 query version, `sw.js` `CACHE_VERSION`을 갱신한다.
+
 ## 제외
 
 - UX 문구/디자인 변경은 하지 않는다.
@@ -69,7 +92,8 @@
 - UI 검증은 로컬 일반 터미널에서 `npm.cmd run dev` 실행 후:
   - 테스트모드 → 계획 조정 → 벤치마크 종목 select에서 같은 공통 운동이 1개만 보이는지 확인
   - 테스트모드 → 오늘 운동 선택 모달에서 같은 `movementId` 후보가 1개만 보이는지 확인
+  - 테스트모드 → 성장판 미리보기에서 사이클 전 기준 기록이 W0으로 표시되고 W1 미수행과 분리되는지 확인
 
 ## 다음 세션 시작 프롬프트
 
-`docs/ai/features/2026-05-16-max-picker-ssot-dedupe.md`의 Slice 1을 실행하고 리뷰까지 진행한다.
+새 요청을 기준으로 `docs/ai/NEXT_ACTION.md`를 확인하고 다음 계획을 작성한다.

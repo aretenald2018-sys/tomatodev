@@ -21,7 +21,7 @@ import {
   maxBenchmarkTrackList,
   normalizeMaxCycleTracks,
   predictBenchmarkProgression,
-} from './max-cycle-core.js?v=20260516v4';
+} from './max-cycle-core.js?v=20260516v5';
 
 const PLAN_MAJOR_ORDER = Object.keys(MAJOR_LABEL);
 
@@ -420,7 +420,40 @@ function _planTrackPoints(cycle, benchmark, track, { actuals = [], todayKey = nu
   });
 }
 
+function _baselinePointForTrack(benchmark = {}, track = 'M') {
+  const matchesTrack = (point = {}) => {
+    const pointTrack = point.track === 'H' || point.track === 'M' ? point.track : null;
+    return !pointTrack || pointTrack === track;
+  };
+  const baseline = [
+    ...(Array.isArray(benchmark?.baselineActuals) ? benchmark.baselineActuals : []),
+    benchmark?.baselineLatest || null,
+  ]
+    .filter(point => point && matchesTrack(point))
+    .sort((a, b) => String(a.dateKey || '').localeCompare(String(b.dateKey || '')))
+    .at(-1) || null;
+  if (!baseline) return null;
+  const kg = Number(baseline.kg) || 0;
+  const reps = Number(baseline.reps) || 0;
+  if (kg <= 0 || reps <= 0) return null;
+  const label = _actualShortLabel(baseline);
+  return {
+    week: 0,
+    kg,
+    reps,
+    dateKey: baseline.dateKey || null,
+    state: 'baseline',
+    actual: baseline,
+    actuals: [],
+    baselineLabel: label ? `${label} 기준` : '기준',
+  };
+}
+
 function _statusLabelHtml(point = {}) {
+  if (point.baselineLabel) {
+    const detail = _monthDay(point.dateKey) || '시작';
+    return `<em title="${_esc(point.baselineLabel)}"><i>${_esc(detail)}</i><span class="wt-v4-plan-status">기준</span></em>`;
+  }
   const label = point.clearLabel || point.issueLabel || '';
   if (!label) return '<em></em>';
   const pieces = /^(.*)\s+(돌파|미달|미수행)$/.exec(label);
@@ -497,10 +530,12 @@ function _stairGeometry(points, activeWeek) {
 
 function _renderPlanStairLane({ cycle, benchmark, track, activeWeek, selected = false, actuals = [], todayKey = null, interactive = true }) {
   const spec = _trackSpec(benchmark, track);
-  const points = _planTrackPoints(cycle, benchmark, track, { actuals, todayKey });
-  const geom = _stairGeometry(points, activeWeek);
+  const planPoints = _planTrackPoints(cycle, benchmark, track, { actuals, todayKey });
+  const baselinePoint = _baselinePointForTrack(benchmark, track);
+  const points = baselinePoint ? [baselinePoint, ...planPoints] : planPoints;
+  const geom = _stairGeometry(points, baselinePoint ? (Number(activeWeek) || 1) + 1 : activeWeek);
   const weeks = points.length;
-  const increment = Number(spec.incrementKg) || points[0]?.incrementKg || 2.5;
+  const increment = Number(spec.incrementKg) || planPoints[0]?.incrementKg || 2.5;
   const disabled = spec.enabled === false;
   const actualD = geom.actualCoords
     .map((p, idx) => `${idx === 0 ? 'M' : 'L'}${p.x} ${p.y}`)
@@ -512,7 +547,7 @@ function _renderPlanStairLane({ cycle, benchmark, track, activeWeek, selected = 
       <title>${_esc(`${_monthDay(p.actual.dateKey)} · ${p.actualKg}kg x ${p.actualReps}회`)}</title>
     </g>
   `).join('');
-  const actionAttrs = (p) => interactive
+  const actionAttrs = (p) => !p.baselineLabel && interactive
     ? `data-action="select-max-plan-step" data-benchmark-id="${_esc(benchmark.id)}" data-track="${track}" data-week="${p.week}"`
     : `tabindex="-1" aria-disabled="true" data-track="${track}" data-week="${p.week}"`;
   return `

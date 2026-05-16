@@ -1,10 +1,10 @@
 {
   "app": "tomatofarm",
-  "commit": "c5103b24e616874cce48b4fdb81fe67ecb6df503",
-  "shortCommit": "c5103b24e616",
+  "commit": "cc66bc44cb2c2bf9fb8dce5ad4eb2abdeec3b4cd",
+  "shortCommit": "cc66bc44cb2c",
   "branch": "main",
-  "deployedAt": "2026-05-16T02:06:54.171Z",
-  "cacheVersion": "tomatofarm-v20260516z4-max-cycle-baseline-scope",
+  "deployedAt": "2026-05-16T02:25:44.946Z",
+  "cacheVersion": "tomatofarm-v20260516z6-w0-baseline",
   "runId": null,
   "runAttempt": null
 }

@@ -12,16 +12,17 @@ export {
   buildMaxPlanMovementOptionSeeds,
   dedupeMaxBenchmarkOptions,
   getMaxBenchmarkOptionGroupKey,
+  overlayCurrentWorkoutDay,
   isMaxTrackEnabled,
   isMaxVolumeOnlyMajor,
   isMaxVolumeOnlyBenchmark,
   maxBenchmarkTrackList,
   selectPersistedMaxCycle,
-} from './max-cycle-core.js?v=20260516v4';
+} from './max-cycle-core.js?v=20260516v5';
 
 export {
   renderMaxCycleDashboard,
   renderMaxCycleBoard,
   renderMaxPlanEditor,
   renderMaxCycleSettle,
-} from './max-cycle-render.js?v=20260516v4';
+} from './max-cycle-render.js?v=20260516v6';

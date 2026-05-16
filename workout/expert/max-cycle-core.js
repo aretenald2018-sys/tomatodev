@@ -552,6 +552,17 @@ export function buildBenchmarkActuals({ cache = {}, exList = [], benchmark = nul
   return normalizedTrack ? points.filter(p => p?.track === normalizedTrack) : points;
 }
 
+export function overlayCurrentWorkoutDay(cache = {}, todayKey = null, currentExercises = null) {
+  if (!todayKey || !Array.isArray(currentExercises)) return cache || {};
+  return {
+    ...(cache || {}),
+    [todayKey]: {
+      ...((cache || {})[todayKey] || {}),
+      exercises: currentExercises,
+    },
+  };
+}
+
 function _weekActual(actuals = [], weekStartKey, todayKey = null) {
   const weekEndKey = _addDaysKey(weekStartKey, 7);
   return (actuals || [])

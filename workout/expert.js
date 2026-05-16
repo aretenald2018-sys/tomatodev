@@ -77,7 +77,7 @@ import {
   adjustMaxBenchmarkWeight,
   setMaxBenchmarkWeight,
   _initMaxOnboardingEvents,
-} from './expert/max.js?v=20260516v4';
+} from './expert/max.js?v=20260516v6';
 
 // ── 공용 소규모 헬퍼 (onboarding.js 에도 동일 정의 — 순환 import 회피) ─
 function _esc(s) { return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }

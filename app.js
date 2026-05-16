@@ -15,7 +15,7 @@ import './feature-fatsecret.js';
 import './feature-checkin.js';
 import './feature-misc.js';
 import './workout-ui.js';
-import './workout/expert.js?v=20260516v4';  // 전문가 모드 (window.* 노출 + 렌더)
+import './workout/expert.js?v=20260516v6';  // 전문가 모드 (window.* 노출 + 렌더)
 import { showTutorialIfNeeded } from './feature-tutorial.js';
 import { initFCM, showPWAInstallBanner, updateInstallBtn } from './pwa-fcm.js';
 import { initTabDrag, initSwipeNavigation, applyTabOrder, applyVisibleTabs } from './navigation.js';

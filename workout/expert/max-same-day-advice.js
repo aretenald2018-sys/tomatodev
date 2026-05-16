@@ -11,7 +11,7 @@ import {
   SAME_DAY_DETAIL_PARTS,
   WEAK_LABEL,
 } from './max-config.js';
-import { renderMaxBenchmarkPlanPreview } from './max-cycle-render.js?v=20260516v4';
+import { renderMaxBenchmarkPlanPreview } from './max-cycle-render.js?v=20260516v6';
 
 function _esc(s) { return String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
 
