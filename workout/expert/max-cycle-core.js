@@ -3,7 +3,7 @@
 // 테스트모드 v2 — 6주 성장판 렌더/사이클 helper
 // ================================================================
 
-import { inferEquipmentMovementIds, inferExerciseMovementId } from '../../data/data-pure.js';
+import { inferEquipmentMovementIds, inferExerciseMovementId, normalizeEquipmentCategory } from '../../data/data-pure.js';
 
 export function _esc(s) { return String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
 
@@ -265,6 +265,30 @@ function _benchmarkPrimary(item) {
   return item?.primary || item?.primaryMajor || null;
 }
 
+function _benchmarkOptionCategory(item = {}) {
+  const candidates = [
+    item?.movementEquipmentCategory,
+    item?.equipment_category,
+    item?.category,
+    item?.equipmentCategory,
+  ];
+  for (const candidate of candidates) {
+    const normalized = normalizeEquipmentCategory(candidate);
+    if (normalized) return normalized;
+  }
+  return '';
+}
+
+function _benchmarkOptionGymIds(item = {}) {
+  return [...new Set([
+    item?.gymId,
+    item?.primaryGymId,
+    item?.ownerGymId,
+    ...(Array.isArray(item?.gymIds) ? item.gymIds : []),
+    ...(Array.isArray(item?.gymTags) ? item.gymTags.filter(tag => tag && tag !== '*') : []),
+  ].filter(Boolean))];
+}
+
 export function _benchmarkOptionValue(item) {
   const exerciseId = _benchmarkExerciseId(item);
   if (exerciseId) return exerciseId;
@@ -272,33 +296,40 @@ export function _benchmarkOptionValue(item) {
   return movementId ? `movement:${movementId}` : '';
 }
 
-function _benchmarkOptionGroupKey(item) {
+export function getMaxBenchmarkOptionGroupKey(item, { currentGymId = null } = {}) {
   if (item?.benchmarkOptionKey) return item.benchmarkOptionKey;
   const movementId = _benchmarkMovementId(item);
-  const category = item?.equipment_category || '';
+  const category = _benchmarkOptionCategory(item);
   const tags = Array.isArray(item?.gymTags) ? item.gymTags : [];
-  const shared = ['barbell', 'dumbbell', 'bodyweight'].includes(category) || tags.includes('*');
+  const shared = BENCHMARK_SHARED_CATEGORIES.has(category) || tags.includes('*') || item?.scope === 'global' || item?.scope === 'common';
   if (movementId && shared) return `shared:${movementId}`;
-  const gymKey = item?.gymId || item?.primaryGymId || tags.find(tag => tag && tag !== '*') || (shared ? '*' : 'ungrouped');
+  const gymKey = _benchmarkOptionGymIds(item)[0] || (shared ? '*' : 'ungrouped');
   if (movementId) return `gym:${gymKey}:${movementId}`;
   const nameKey = String(item?.nameKo || item?.name || item?.id || '').trim().toLowerCase();
   return `custom:${gymKey}:${nameKey}`;
 }
 
-function _benchmarkOptionRank(item) {
+function _benchmarkOptionRank(item, { currentGymId = null } = {}) {
   const sourceScore = ({ exact: 3, legacy: 2, empty: 1 })[item?.benchmarkDefaults?.source] || 0;
   const sessions = Number(item?.benchmarkDefaults?.sessions) || 0;
-  return sourceScore * 1000 + sessions * 20 + (_benchmarkExerciseId(item) ? 1 : 0);
+  const gymMatch = currentGymId && _benchmarkOptionGymIds(item).includes(currentGymId) ? 1 : 0;
+  return sourceScore * 1000 + sessions * 20 + gymMatch * 10 + (_benchmarkExerciseId(item) ? 1 : 0);
 }
 
-export function _dedupeBenchmarkOptions(items = []) {
+export function dedupeMaxBenchmarkOptions(items = [], options = {}) {
+  const context = typeof options === 'string' ? { currentGymId: options } : (options || {});
   const grouped = new Map();
   for (const item of items || []) {
-    const key = _benchmarkOptionGroupKey(item);
+    const key = getMaxBenchmarkOptionGroupKey(item, context);
     const current = grouped.get(key);
-    if (!current || _benchmarkOptionRank(item) > _benchmarkOptionRank(current)) grouped.set(key, item);
+    const next = { ...item, benchmarkOptionKey: key };
+    if (!current || _benchmarkOptionRank(next, context) > _benchmarkOptionRank(current, context)) grouped.set(key, next);
   }
   return [...grouped.values()];
+}
+
+export function _dedupeBenchmarkOptions(items = [], options = {}) {
+  return dedupeMaxBenchmarkOptions(items, options);
 }
 
 const BENCHMARK_SHARED_CATEGORIES = new Set(['barbell', 'dumbbell', 'bodyweight']);
@@ -528,6 +559,16 @@ function _weekActual(actuals = [], weekStartKey, todayKey = null) {
     .sort((a, b) => (Number(b.e1rm) || 0) - (Number(a.e1rm) || 0) || (Number(b.kg) || 0) - (Number(a.kg) || 0))[0] || null;
 }
 
+function _actualsOnOrAfter(actuals = [], startDate = null) {
+  if (!startDate) return actuals || [];
+  return (actuals || []).filter(p => p?.dateKey >= startDate);
+}
+
+function _actualsBefore(actuals = [], startDate = null) {
+  if (!startDate) return [];
+  return (actuals || []).filter(p => p?.dateKey < startDate);
+}
+
 export function _trackWeekStatus(benchmark, row, planned, track, snapshot) {
   const todayKey = snapshot?.todayKey || null;
   const actual = _weekActual(benchmark?.actuals || [], row?.dateKey, todayKey);
@@ -536,7 +577,7 @@ export function _trackWeekStatus(benchmark, row, planned, track, snapshot) {
   const isFuture = todayKey && row?.dateKey > todayKey;
   if (isFuture) return { state: 'future', label: '예정', actual: null };
   if (!actual) {
-    if (row?.week < snapshot?.weekIndex) return { state: 'missed', label: '미수행', actual: null };
+    if (row?.week < snapshot?.weekIndex) return { state: 'missed', label: '계획 미수행', actual: null };
     return { state: 'challenge', label: '도전 전', actual: null };
   }
   const kg = Number(actual.kg) || 0;
@@ -598,16 +639,19 @@ export function buildMaxCycleSnapshot({ cycle = null, cache = {}, exList = [], t
       M: predictBenchmarkProgression(b, normalized, todayKey, 'M'),
       H: predictBenchmarkProgression(b, normalized, todayKey, 'H'),
     };
-    const actuals = buildBenchmarkActuals({ cache, exList, benchmark: b, todayKey });
+    const allActuals = buildBenchmarkActuals({ cache, exList, benchmark: b, todayKey });
+    const actuals = _actualsOnOrAfter(allActuals, normalized.startDate);
+    const baselineActuals = _actualsBefore(allActuals, normalized.startDate);
     const hasRegisteredExercise = b.exerciseId
       ? !!(exList || []).some(ex => ex?.id === b.exerciseId)
       : !!(exList || []).some(ex => ex?.movementId === b.movementId);
     const latest = actuals[actuals.length - 1] || null;
+    const baselineLatest = baselineActuals[baselineActuals.length - 1] || null;
     const delta = latest ? Math.round((latest.kg - planned.plannedKg) * 10) / 10 : null;
     const actualPct = latest && planned.targetKg > planned.startKg
       ? Math.max(0, Math.min(100, Math.round(((latest.kg - planned.startKg) / (planned.targetKg - planned.startKg)) * 100)))
       : null;
-    return { ...b, activeTrack, availableTracks: maxBenchmarkTrackList(b), planned, plannedByTrack, actuals, latest, delta, actualPct, onPlan: delta === null ? null : delta >= 0, hasRegisteredExercise };
+    return { ...b, activeTrack, availableTracks: maxBenchmarkTrackList(b), planned, plannedByTrack, actuals, baselineActuals, baselineLatest, latest, delta, actualPct, onPlan: delta === null ? null : delta >= 0, hasRegisteredExercise };
   });
   const actualProgressVals = benchmarks
     .map(b => b.actualPct)

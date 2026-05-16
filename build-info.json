@@ -1,10 +1,10 @@
 {
   "app": "tomatofarm",
-  "commit": "aaebde7be3ec76e6e00fbf9d4663c26bccbcc891",
-  "shortCommit": "aaebde7be3ec",
+  "commit": "c5103b24e616874cce48b4fdb81fe67ecb6df503",
+  "shortCommit": "c5103b24e616",
   "branch": "main",
-  "deployedAt": "2026-05-16T01:39:42.932Z",
-  "cacheVersion": "tomatofarm-v20260516z2-max-picker-infer-extra",
+  "deployedAt": "2026-05-16T02:06:54.171Z",
+  "cacheVersion": "tomatofarm-v20260516z4-max-cycle-baseline-scope",
   "runId": null,
   "runAttempt": null
 }

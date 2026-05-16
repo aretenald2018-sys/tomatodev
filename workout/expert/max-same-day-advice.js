@@ -11,7 +11,7 @@ import {
   SAME_DAY_DETAIL_PARTS,
   WEAK_LABEL,
 } from './max-config.js';
-import { renderMaxBenchmarkPlanPreview } from './max-cycle-render.js?v=20260515v13';
+import { renderMaxBenchmarkPlanPreview } from './max-cycle-render.js?v=20260516v4';
 
 function _esc(s) { return String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
 
@@ -495,8 +495,9 @@ function _renderGrowthGraph(points) {
 
 function _growthEvidenceText(point) {
   if (!point || point.empty) return '기준 기록 없음';
+  const role = point.roleLabel ? `${point.roleLabel} ` : '';
   const date = point.dateKey ? `${_formatShortDate(point.dateKey)} · ` : '';
-  return `${date}${point.trackLabel} · ${point.name} · ${point.text}`;
+  return `${role}${point.trackLabel} ${date}${point.name} · ${point.text}`;
 }
 
 function _subtractWeeksKey(dateKey, weeksBack = 0) {
@@ -662,7 +663,9 @@ export function renderMaxGrowthPreview({ comparison, cache, exList, majors, move
       major,
       benchmark,
       dateKey: slot.dateKey,
-      roleLabel: idx === 0 ? '직전' : '직직전',
+      roleLabel: benchmarkOnly
+        ? (idx === 0 ? '기준' : '이전 기준')
+        : (idx === 0 ? '직전' : '직직전'),
       benchmarkOnly,
     }));
     const latest = history[0] || null;

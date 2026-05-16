@@ -20,6 +20,7 @@ import {
   SUBPATTERN_TO_MAJOR,
 } from '../../calc.js';
 import { MOVEMENTS, MAX_PREFERRED_CATEGORIES } from '../../config.js';
+import { normalizeEquipmentCategory } from '../../data/data-pure.js';
 import {
   getCache, getExList, getExpertPreset, saveExpertPreset, saveExercise, deleteExercise,
   getMuscleParts, dateKey, TODAY,
@@ -36,9 +37,10 @@ import {
   renderMaxPlanEditor,
   normalizeMaxCycleTracks,
   buildMaxPlanMovementOptionSeeds,
+  dedupeMaxBenchmarkOptions,
   isMaxTrackEnabled,
   isMaxVolumeOnlyMajor,
-} from './max-cycle.js?v=20260515v13';
+} from './max-cycle.js?v=20260516v4';
 import {
   CAT_LABEL,
   MAX_DEFAULTS,
@@ -53,7 +55,7 @@ import {
 import {
   detectMaxMajorsLoose,
   renderMaxGrowthPreview,
-} from './max-same-day-advice.js?v=20260515v13';
+} from './max-same-day-advice.js?v=20260516v4';
 
 function _esc(s) { return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function _toast(msg, type='info') {
@@ -504,7 +506,9 @@ function _benchmarkPrescription(prescription, movement, { weakTarget = false } =
   const planned = benchmark.plannedByTrack?.[track] || benchmark.planned;
   const kg = Number(active.startKg) || Number(planned?.plannedKg) || 0;
   const trackLabel = track === 'H' ? '강도' : '볼륨';
-  const latest = benchmark.latest ? `${benchmark.latest.kg}kg x ${benchmark.latest.reps}회` : '실측 없음';
+  const recent = benchmark.latest || benchmark.baselineLatest || null;
+  const latest = recent ? `${recent.kg}kg x ${recent.reps}회` : '실측 없음';
+  const latestLabel = benchmark.latest ? '최근 실측' : (benchmark.baselineLatest ? '기준 기록' : '최근 실측');
   return {
     ...prescription,
     ...active,
@@ -513,13 +517,13 @@ function _benchmarkPrescription(prescription, movement, { weakTarget = false } =
     transparency: {
       type: 'benchmark_cycle',
       label: track === 'H' && (benchmark.primaryMajor === 'lower' || benchmark.primaryMajor === 'glute') ? '하체 강도 기준' : '벤치마크 기준',
-      detail: `오늘 계획 ${kg}kg · 목표 ${planned?.targetKg || benchmark.targetKg}kg · 현재 ${latest}`,
+      detail: `오늘 계획 ${kg}kg · 목표 ${planned?.targetKg || benchmark.targetKg}kg · ${latestLabel} ${latest}`,
     },
     evidence: [
       ...(prescription?.evidence || []),
       { label: '성장판', value: `W${snapshot.weekIndex}/${snapshot.weeks} · ${trackLabel} 트랙` },
       { label: '계획 중량', value: `${kg}kg` },
-      { label: '최근 실측', value: latest },
+      { label: latestLabel, value: latest },
     ],
     exerciseId: benchmark.exerciseId || prescription?.exerciseId || null,
     movementId: benchmark.movementId || movement.id || null,
@@ -2260,7 +2264,7 @@ function _exercisePrimaryMajor(ex, movement = null) {
 }
 
 function _exerciseSourceLabel(ex, movement = null, gymId = null) {
-  const category = ex?.category || movement?.equipment_category || '';
+  const category = _canonicalEquipmentCategory(movement?.equipment_category, ex?.category);
   const tags = Array.isArray(ex?.gymTags) ? ex.gymTags : [];
   const sharedByCategory = ['barbell', 'dumbbell', 'bodyweight'].includes(category);
   if (sharedByCategory || tags.includes('*') || (!ex?.gymId && !ex?.primaryGymId)) {
@@ -2276,39 +2280,6 @@ function _exerciseOptionValue(option) {
   if (option.exerciseId) return option.exerciseId;
   if (option.movementId) return `movement:${option.movementId}`;
   return option.id || '';
-}
-
-function _benchmarkOptionGroupKey(option) {
-  const movementId = option?.movementId || '';
-  const category = option?.equipment_category || '';
-  const tags = Array.isArray(option?.gymTags) ? option.gymTags : [];
-  const shared = ['barbell', 'dumbbell', 'bodyweight'].includes(category) || tags.includes('*');
-  if (movementId && shared) return `shared:${movementId}`;
-  const gymKey = option?.gymId || option?.primaryGymId || tags.find(tag => tag && tag !== '*') || (shared ? '*' : 'ungrouped');
-  if (movementId) return `gym:${gymKey}:${movementId}`;
-  const nameKey = String(option?.nameKo || option?.name || option?.id || '').trim().toLowerCase();
-  return `custom:${gymKey}:${nameKey}`;
-}
-
-function _benchmarkOptionRank(option, currentGymId = null) {
-  const sourceScore = ({ exact: 3, legacy: 2, empty: 1 })[option?.benchmarkDefaults?.source] || 0;
-  const sessions = Number(option?.benchmarkDefaults?.sessions) || 0;
-  const tags = Array.isArray(option?.gymTags) ? option.gymTags : [];
-  const gymMatch = currentGymId && (option?.gymId === currentGymId || option?.primaryGymId === currentGymId || tags.includes(currentGymId)) ? 1 : 0;
-  return sourceScore * 1000 + sessions * 20 + gymMatch * 10 + (option?.exerciseId ? 1 : 0);
-}
-
-function _dedupeBenchmarkOptions(options = [], currentGymId = null) {
-  const grouped = new Map();
-  for (const option of options || []) {
-    const key = _benchmarkOptionGroupKey(option);
-    const current = grouped.get(key);
-    const next = { ...option, benchmarkOptionKey: key };
-    if (!current || _benchmarkOptionRank(next, currentGymId) > _benchmarkOptionRank(current, currentGymId)) {
-      grouped.set(key, next);
-    }
-  }
-  return [...grouped.values()];
 }
 
 function _benchmarkGrowthKg(major, step = 2.5) {
@@ -2457,13 +2428,26 @@ function _equipmentStepKg(item = {}, movement = null) {
 
 function _equipmentSourceLabel(item = null, gymId = null) {
   if (!item) return '';
-  const category = item.category || '';
+  const category = _canonicalEquipmentCategory(item.category);
   if (item.scope === 'gym') {
     const ownerGymId = item.ownerGymId || item.gymId || gymId || null;
     const gym = (getGyms() || []).find(g => g.id === ownerGymId) || null;
     return `${gym?.name || '헬스장 전용'} · ${item.name || CAT_LABEL[category] || category || '기구'}`;
   }
   return `활성 공통 · ${item.name || CAT_LABEL[category] || category || '기구'}`;
+}
+
+const PLAN_EQUIPMENT_CATEGORIES = new Set(['barbell', 'dumbbell', 'bodyweight', 'cable', 'smith', 'machine']);
+
+function _canonicalEquipmentCategory(...values) {
+  let fallback = '';
+  for (const value of values) {
+    const normalized = normalizeEquipmentCategory(value);
+    if (!normalized) continue;
+    if (!fallback) fallback = normalized;
+    if (PLAN_EQUIPMENT_CATEGORIES.has(normalized)) return normalized;
+  }
+  return fallback;
 }
 
 function _movementsForPlanEditor() {
@@ -2482,7 +2466,7 @@ function _movementsForPlanEditor() {
     const mov = seed.movement || MOVEMENTS.find(m => m.id === ex.movementId) || null;
     if (!mov?.id) continue;
     const primary = _exercisePrimaryMajor(ex, mov);
-    const category = ex.category || seed.equipment?.category || mov?.equipment_category || '';
+    const category = _canonicalEquipmentCategory(mov?.equipment_category, seed.equipment?.category, ex.category);
     const sourceExercise = seed.kind === 'movement'
       ? {
         id: null,
@@ -2506,6 +2490,8 @@ function _movementsForPlanEditor() {
       primary,
       subPattern: (Array.isArray(ex.muscleIds) && ex.muscleIds[0]) || mov?.subPattern || ex.muscleId || null,
       equipment_category: category || mov?.equipment_category || 'custom',
+      category: category || null,
+      movementEquipmentCategory: _canonicalEquipmentCategory(mov?.equipment_category),
       stepKg: Number(ex.incrementKg) > 0 ? Number(ex.incrementKg) : _equipmentStepKg(seed.equipment, mov),
       gymId: ex.gymId || null,
       primaryGymId: ex.primaryGymId || null,
@@ -2515,7 +2501,7 @@ function _movementsForPlanEditor() {
       optionLabel: `${MAJOR_LABEL[primary] || primary || '기타'} · ${ex.name || mov.nameKo || mov.id} · ${sourceLabel}`,
     });
   }
-  return _dedupeBenchmarkOptions(options, gymId)
+  return dedupeMaxBenchmarkOptions(options, { currentGymId: gymId })
     .sort((a, b) => String(a.optionLabel).localeCompare(String(b.optionLabel)));
 }
 
@@ -3254,7 +3240,7 @@ export function openMaxAdjustSheet(benchmarkId) {
         <button type="button" data-adjust-sheet data-benchmark-id="${_esc(benchmarkId)}" data-delta="${step * 2}">+${step * 2}<small>kg</small></button>
       </div>
       <div class="wt-v4-anchor">
-        <span>지난 성공 ${row.latest?.kg || base.startKg}kg</span>
+        <span>${row.latest ? '지난 성공' : '기준 기록'} ${(row.latest || row.baselineLatest)?.kg || base.startKg}kg</span>
         <b>오늘 ${_esc(kg)}kg</b>
         <span>6주 목표 ${base.targetKg}kg</span>
       </div>

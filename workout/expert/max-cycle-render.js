@@ -21,7 +21,7 @@ import {
   maxBenchmarkTrackList,
   normalizeMaxCycleTracks,
   predictBenchmarkProgression,
-} from './max-cycle-core.js?v=20260515v12';
+} from './max-cycle-core.js?v=20260516v4';
 
 const PLAN_MAJOR_ORDER = Object.keys(MAJOR_LABEL);
 
@@ -400,7 +400,7 @@ function _planTrackPoints(cycle, benchmark, track, { actuals = [], todayKey = nu
     const issue = state === 'behind' || state === 'missed';
     const issueLabel = state === 'behind' && status?.actual?.dateKey
       ? `${_actualShortLabel(status.actual)} 미달`
-      : (state === 'missed' ? '미수행' : '');
+      : (state === 'missed' ? (status?.label || '계획 미수행') : '');
     const actualsInWeek = _weekActuals(actuals, dateKey, todayKey);
     return {
       week,
@@ -667,7 +667,7 @@ function _renderPlanTrackInputs(benchmark, track, activeWeek, selectedTrack, wee
 
 export function renderMaxPlanEditor({ cycle, gyms = [], currentGymId = null, movements = [], cache = {}, exList = [], focusBenchmarkId = null, focusAddBenchmark = false, activeMajorId = null, todayKey = null } = {}) {
   const benchmarks = Array.isArray(cycle?.benchmarks) ? normalizeMaxCycleTracks(cycle).benchmarks : [];
-  const exerciseOptions = _dedupeBenchmarkOptions(Array.isArray(movements) ? movements : []);
+  const exerciseOptions = _dedupeBenchmarkOptions(Array.isArray(movements) ? movements : [], { currentGymId });
   const weeks = 6;
   const activeWeek = _planActiveWeek({ ...cycle, weeks }, todayKey);
   const startDateValue = _planStartDateValue(cycle);

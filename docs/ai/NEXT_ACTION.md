@@ -3,10 +3,10 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-05-16-max-picker-pwa-update-regression.md`
+- 계획 문서: `docs/ai/features/2026-05-16-max-picker-ssot-dedupe.md`
 - 현재 단계: `review complete`
-- 현재 슬라이스: `Slice 2: 테스트모드 피커 실데이터 회귀 보강`
-- 마지막 완료: `PWA 업데이트 중복 안내 및 테스트모드 피커 실데이터 회귀 수정/검증/리뷰`
+- 현재 슬라이스: `Slice 2: 기준 기록과 주차 수행 기록의 의미 분리`
+- 마지막 완료: `기준 기록/주차 수행 SSOT 수정/검증/리뷰`
 - 다음 액션: 없음
 - 차단 사유: 없음
 

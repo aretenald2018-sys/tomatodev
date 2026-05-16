@@ -4,10 +4,12 @@
 // ================================================================
 
 import { SUBPATTERN_TO_MAJOR } from '../../calc.js';
-import { inferExerciseMovementId } from '../../data/data-pure.js';
+import { inferExerciseMovementId, normalizeEquipmentCategory } from '../../data/data-pure.js';
 import {
   buildMaxCycleSnapshot,
   createDefaultMaxCycle,
+  dedupeMaxBenchmarkOptions,
+  getMaxBenchmarkOptionGroupKey,
   isMaxTrackEnabled,
   normalizeMaxCycleTracks,
   predictBenchmarkProgression,
@@ -91,6 +93,13 @@ function _exerciseMajorIds(ex = {}, movements = []) {
 
 function _normalizePickerExercise(ex = {}, major = null, movements = []) {
   const matchedMajor = normalizeMaxPickerMajor(major);
+  const movement = _movementForExercise(ex, movements);
+  const equipmentCategory = normalizeEquipmentCategory(
+    movement?.equipment_category
+    || ex?.equipment_category
+    || ex?.category
+    || ''
+  );
   const primaryMajor = matchedMajor
     || normalizeMaxPickerMajor(ex?.muscleId)
     || _exerciseMajorIds(ex, movements)[0]
@@ -103,6 +112,9 @@ function _normalizePickerExercise(ex = {}, major = null, movements = []) {
       : [primaryMajor].filter(Boolean),
     movementId: _movementIdForExercise(ex, movements),
     name: ex?.name || ex?.nameKo || ex?.label || ex?.id,
+    equipment_category: equipmentCategory || ex?.equipment_category || ex?.category || null,
+    category: equipmentCategory || ex?.category || null,
+    movementEquipmentCategory: normalizeEquipmentCategory(movement?.equipment_category || ''),
   };
 }
 
@@ -127,25 +139,30 @@ export function resolveMaxBenchmarkPickerItems({
 
   const snapshot = buildMaxCycleSnapshot({ cycle: scopedCycle, cache, exList, todayKey });
   const benchmarks = snapshot?.benchmarks || scopedCycle.benchmarks || [];
-  const seen = new Set();
+  const seenIds = new Set();
+  const seenKeys = new Set();
   const items = [];
   const selectedMajorSet = new Set((selectedMajors || []).map(normalizeMaxPickerMajor).filter(Boolean));
   const benchmarkMajorSet = new Set((benchmarks || []).map(b => normalizeMaxPickerMajor(b?.primaryMajor)).filter(Boolean));
   const targetMajorSet = selectedMajorSet.size ? selectedMajorSet : benchmarkMajorSet;
   for (const benchmark of benchmarks) {
     const resolved = resolveBenchmarkExercise(benchmark, exList, { gymId: currentGymId });
-    if (!resolved?.id || resolved.missing || seen.has(resolved.id)) continue;
-    seen.add(resolved.id);
+    if (!resolved?.id || resolved.missing || seenIds.has(resolved.id)) continue;
+    const exercise = _normalizePickerExercise({
+      ...resolved,
+      muscleId: resolved.muscleId || normalizeMaxPickerMajor(benchmark.primaryMajor) || null,
+      muscleIds: Array.isArray(resolved.muscleIds) && resolved.muscleIds.length
+        ? resolved.muscleIds
+        : [normalizeMaxPickerMajor(benchmark.primaryMajor)].filter(Boolean),
+      movementId: resolved.movementId || benchmark.movementId || null,
+      name: resolved.name || benchmark.label || resolved.id,
+    }, benchmark.primaryMajor, fallbackMovements);
+    const key = getMaxBenchmarkOptionGroupKey(exercise, { currentGymId });
+    if (seenKeys.has(key)) continue;
+    seenIds.add(resolved.id);
+    seenKeys.add(key);
     items.push({
-      exercise: {
-        ...resolved,
-        muscleId: resolved.muscleId || normalizeMaxPickerMajor(benchmark.primaryMajor) || null,
-        muscleIds: Array.isArray(resolved.muscleIds) && resolved.muscleIds.length
-          ? resolved.muscleIds
-          : [normalizeMaxPickerMajor(benchmark.primaryMajor)].filter(Boolean),
-        movementId: resolved.movementId || benchmark.movementId || null,
-        name: resolved.name || benchmark.label || resolved.id,
-      },
+      exercise,
       benchmark,
       cycle: scopedCycle,
       snapshot,
@@ -154,7 +171,7 @@ export function resolveMaxBenchmarkPickerItems({
   }
 
   const extras = (exList || [])
-    .filter(ex => ex?.id && !seen.has(ex.id))
+    .filter(ex => ex?.id && !seenIds.has(ex.id))
     .filter(ex => _pickerExerciseMatchesGym(ex, currentGymId))
     .map(ex => {
       const majors = _exerciseMajorIds(ex, fallbackMovements);
@@ -162,10 +179,16 @@ export function resolveMaxBenchmarkPickerItems({
       return major ? _normalizePickerExercise(ex, major, fallbackMovements) : null;
     })
     .filter(Boolean)
+    .filter(exercise => !seenKeys.has(getMaxBenchmarkOptionGroupKey(exercise, { currentGymId })));
+
+  const dedupedExtras = dedupeMaxBenchmarkOptions(extras, { currentGymId })
     .sort(_exerciseNameCompare);
 
-  for (const exercise of extras) {
-    seen.add(exercise.id);
+  for (const exercise of dedupedExtras) {
+    const key = getMaxBenchmarkOptionGroupKey(exercise, { currentGymId });
+    if (seenIds.has(exercise.id) || seenKeys.has(key)) continue;
+    seenIds.add(exercise.id);
+    seenKeys.add(key);
     items.push({
       exercise,
       benchmark: null,

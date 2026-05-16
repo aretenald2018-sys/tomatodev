@@ -1475,6 +1475,16 @@ export function buildBenchmarkActuals({ cache = {}, exList = [], benchmark = nul
   return findBenchmarkActuals(cache, exList, benchmark || { movementId, exerciseId }, todayKey);
 }
 
+function _maxCycleActualsOnOrAfter(actuals = [], startDate = null) {
+  if (!startDate) return actuals || [];
+  return (actuals || []).filter(p => p?.dateKey >= startDate);
+}
+
+function _maxCycleActualsBefore(actuals = [], startDate = null) {
+  if (!startDate) return [];
+  return (actuals || []).filter(p => p?.dateKey < startDate);
+}
+
 export function buildMaxCycleSnapshot({
   cycle = null,
   cache = {},
@@ -1488,13 +1498,18 @@ export function buildMaxCycleSnapshot({
   const schedule = buildMaxCycleSchedule(cycle);
   const benchmarks = cycle.benchmarks.map(b => {
     const planned = predictBenchmarkProgression(b, cycle, todayKey);
-    const actuals = buildBenchmarkActuals({ cache, exList, benchmark: b, todayKey });
+    const allActuals = buildBenchmarkActuals({ cache, exList, benchmark: b, todayKey });
+    const actuals = _maxCycleActualsOnOrAfter(allActuals, cycle.startDate);
+    const baselineActuals = _maxCycleActualsBefore(allActuals, cycle.startDate);
     const latest = actuals[actuals.length - 1] || null;
+    const baselineLatest = baselineActuals[baselineActuals.length - 1] || null;
     const delta = latest ? Math.round((latest.kg - planned.plannedKg) * 10) / 10 : null;
     return {
       ...b,
       planned,
       actuals,
+      baselineActuals,
+      baselineLatest,
       latest,
       delta,
       onPlan: delta === null ? null : delta >= 0,
