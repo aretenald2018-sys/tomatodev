@@ -3,10 +3,10 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-05-16-max-picker-ssot-dedupe.md`
+- 계획 문서: `docs/ai/features/2026-05-17-max-picker-regular-catalog-ssot.md`
 - 현재 단계: `review complete`
-- 현재 슬라이스: `Slice 4: 사이클 전 기준 기록을 W0 시작점으로 표시`
-- 마지막 완료: `W0 기준점 렌더링 구현/검증/리뷰`
+- 현재 슬라이스: `Slice 1: 테스트모드 후보의 등록 운동 카탈로그 SSOT화`
+- 마지막 완료: `테스트모드 등록 운동 카탈로그 SSOT 복구 구현/검증/리뷰`
 - 다음 액션: 없음
 - 차단 사유: 없음
 

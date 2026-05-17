@@ -1069,6 +1069,62 @@ test('resolveMaxBenchmarkPickerItems · 같은 공통 movementId 후보는 현�
   assert.ok(items.some(item => item.exercise.id === 'ex_dips'));
 });
 
+test('resolveMaxBenchmarkPickerItems · 테스트모드 운동추가는 일반모드 등록 운동 전체를 유지한다', () => {
+  const cycle = {
+    id: 'cycle_picker_all_registered',
+    status: 'active',
+    framework: 'dual_track_progression_v2',
+    startDate: '2026-05-04',
+    weeks: 6,
+    benchmarks: [{
+      id: 'bm_chest_bench',
+      exerciseId: 'ex_bench',
+      movementId: 'barbell_bench',
+      label: '바벨 벤치프레스',
+      primaryMajor: 'chest',
+      startKg: 80,
+      targetKg: 85,
+      incrementKg: 2.5,
+    }],
+  };
+  const exList = [
+    { id: 'ex_bench', name: '바벨 벤치프레스', movementId: 'barbell_bench', muscleId: 'chest', gymTags: ['gym_moon'] },
+    { id: 'ex_lateral_raise', name: '사이드 레터럴 레이즈', movementId: 'lateral_raise', muscleId: 'shoulder', gymTags: ['*'] },
+    { id: 'ex_lat', name: '랫풀다운', movementId: 'lat_pulldown', muscleId: 'back', gymTags: ['gym_moon'] },
+    { id: 'ex_other_lat', name: '다른 헬스장 랫풀다운', movementId: 'lat_pulldown', muscleId: 'back', gymTags: ['gym_other'] },
+  ];
+
+  const scopedItems = resolveMaxBenchmarkPickerItems({
+    cycle,
+    exList,
+    selectedMajors: ['chest'],
+    currentGymId: 'gym_moon',
+    todayKey: '2026-05-11',
+    cache: {},
+    fallbackMovements: MOVEMENTS_FIXTURE,
+  });
+  assert.deepEqual(scopedItems.map(item => item.exercise.id), ['ex_bench']);
+
+  const allRegisteredItems = resolveMaxBenchmarkPickerItems({
+    cycle,
+    exList,
+    selectedMajors: ['chest'],
+    currentGymId: 'gym_moon',
+    todayKey: '2026-05-11',
+    cache: {},
+    fallbackMovements: MOVEMENTS_FIXTURE,
+    includeAllRegisteredExercises: true,
+  });
+  const ids = allRegisteredItems.map(item => item.exercise.id);
+
+  assert.equal(allRegisteredItems[0].kind, 'benchmark');
+  assert.equal(allRegisteredItems[0].exercise.id, 'ex_bench');
+  assert.ok(ids.includes('ex_lateral_raise'));
+  assert.ok(ids.includes('ex_lat'));
+  assert.ok(!ids.includes('ex_other_lat'));
+  assert.equal(allRegisteredItems.find(item => item.exercise.id === 'ex_lateral_raise')?.kind, 'exercise');
+});
+
 test('resolveMaxBenchmarkPickerItems · 등 선택 시 랫풀다운은 벤치마크가 아니어도 추가 후보로 보인다', () => {
   const cycle = {
     id: 'cycle_picker_back_scope',

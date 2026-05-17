@@ -131,6 +131,7 @@ export function resolveMaxBenchmarkPickerItems({
   todayKey = null,
   cache = {},
   fallbackMovements = [],
+  includeAllRegisteredExercises = false,
 } = {}) {
   const scopedCycle = Array.isArray(selectedMajors) && selectedMajors.length
     ? cycleForMaxPickerMajors(cycle, selectedMajors, { todayKey, movements: fallbackMovements, currentGymId })
@@ -175,7 +176,9 @@ export function resolveMaxBenchmarkPickerItems({
     .filter(ex => _pickerExerciseMatchesGym(ex, currentGymId))
     .map(ex => {
       const majors = _exerciseMajorIds(ex, fallbackMovements);
-      const major = majors.find(id => targetMajorSet.has(id)) || null;
+      const major = includeAllRegisteredExercises
+        ? (majors.find(id => targetMajorSet.has(id)) || majors[0] || null)
+        : (majors.find(id => targetMajorSet.has(id)) || null);
       return major ? _normalizePickerExercise(ex, major, fallbackMovements) : null;
     })
     .filter(Boolean)

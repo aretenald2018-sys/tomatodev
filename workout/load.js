@@ -17,7 +17,7 @@ import { _renderRunningForm, _renderCfForm,
          _renderStretchForm, _renderSwimForm }
                                      from './activity-forms.js';
 import { _initButtonEventListeners } from './status.js';
-import { _renderExerciseList }       from './exercises.js?v=20260515v6';
+import { _renderExerciseList }       from './exercises.js?v=20260517v1';
 import { getDay, isFuture, TODAY, isExpertModeEnabled, getExpertPreset, dateKey } from '../data.js';
 
 function _isActualWorkoutSet(set) {
