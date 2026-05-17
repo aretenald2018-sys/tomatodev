@@ -34,7 +34,7 @@ import { showDietPremiumReportIfNeeded } from './feature-diet-premium-report.js'
 import {
   loadWorkoutDate, changeWorkoutDate, goToTodayWorkout, saveWorkoutDay,
   openNutritionPhotoUpload, wtRecoverTimers,
-} from './render-workout.js?v=20260517v1';
+} from './render-workout.js?v=20260517v2';
 
 // ── 레이지 로딩 탭 캐시 ──
 const _lazyModules = {};

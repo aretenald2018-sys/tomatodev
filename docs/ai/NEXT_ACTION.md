@@ -5,8 +5,8 @@
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-05-17-max-picker-regular-catalog-ssot.md`
 - 현재 단계: `review complete`
-- 현재 슬라이스: `Slice 1: 테스트모드 후보의 등록 운동 카탈로그 SSOT화`
-- 마지막 완료: `테스트모드 등록 운동 카탈로그 SSOT 복구 구현/검증/리뷰`
+- 현재 슬라이스: `Slice 2: 등록 운동별 exerciseId 보존`
+- 마지막 완료: `테스트모드 운동추가에서 같은 movementId 등록 운동을 exerciseId별로 보존하도록 구현/검증/리뷰`
 - 다음 액션: 없음
 - 차단 사유: 없음
 

@@ -71,6 +71,36 @@
 - `git diff --check`
 - UI 실사용 검증은 프로젝트 규칙상 장기 dev server를 이 세션에서 띄우지 않아 아직 `not verified yet`이다.
 
+### Slice 2: 등록 운동별 exerciseId 보존
+
+- 상태: 완료
+- 문제:
+  - Slice 1은 테스트모드 운동추가에 전체 등록 운동을 다시 넣었지만, 이후 `dedupeMaxBenchmarkOptions()`가 같은 `movementId` 후보를 canonical key로 접는다.
+  - 그래서 일반모드에는 `암컬`/`바벨 컬`처럼 별도 등록 종목이 함께 보이는데, 테스트모드에는 대표 1개만 남아 SSOT가 다시 어긋난다.
+- 실행:
+  - `includeAllRegisteredExercises`가 켜진 테스트모드 운동추가 경로에서는 benchmark가 아닌 등록 운동 extras를 `exercise.id` 기준으로 보존한다.
+  - benchmark exact exercise는 기존처럼 benchmark entry로 우선 표시한다.
+  - 같은 `movementId`의 다른 등록 운동은 `같은 부위 추가` 일반 entry로 함께 표시한다.
+  - 기존 기본 resolver 호출은 canonical dedupe 동작을 유지해 계획 조정/기존 테스트를 흔들지 않는다.
+  - 정적 asset 변경에 맞춰 ESM query와 `sw.js` `CACHE_VERSION`을 갱신한다.
+- 테스트:
+  - 같은 `movementId`를 가진 공통 종목과 헬스장 전용 종목이 테스트모드 운동추가에 둘 다 남는 회귀 테스트.
+  - benchmark exact exercise는 여전히 첫 번째 benchmark entry로 유지되는 테스트.
+
+#### 실행 결과
+
+- `includeAllRegisteredExercises`가 켜진 경로에서는 `dedupeMaxBenchmarkOptions()`를 적용하지 않고 등록 운동 extras를 `exercise.id` 기준으로 보존하도록 수정했다.
+- benchmark exact exercise는 기존처럼 `seenIds`로 benchmark entry에만 남고, 같은 `movementId`의 다른 등록 운동은 일반 `exercise` entry로 표시된다.
+- 기본 resolver 호출은 기존 canonical dedupe를 유지하므로 계획 조정/기존 중복 정리 테스트는 그대로 통과한다.
+- `workout/exercises.js`와 상위 import query, `sw.js` `CACHE_VERSION`을 갱신했다.
+
+#### 검증
+
+- `node --check workout/expert/max-benchmark-picker.js workout/exercises.js workout/index.js workout/load.js workout/expert.js workout/expert/max.js render-workout.js app.js sw.js`
+- `node --test tests/calc.max.test.js`
+- `git diff --check`
+- UI 실사용 검증은 프로젝트 규칙상 장기 dev server를 이 세션에서 띄우지 않아 아직 `not verified yet`이다.
+
 ## 제외
 
 - Firestore 저장 구조 변경은 하지 않는다.

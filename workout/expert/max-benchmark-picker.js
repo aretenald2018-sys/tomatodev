@@ -182,16 +182,16 @@ export function resolveMaxBenchmarkPickerItems({
       return major ? _normalizePickerExercise(ex, major, fallbackMovements) : null;
     })
     .filter(Boolean)
-    .filter(exercise => !seenKeys.has(getMaxBenchmarkOptionGroupKey(exercise, { currentGymId })));
+    .filter(exercise => includeAllRegisteredExercises || !seenKeys.has(getMaxBenchmarkOptionGroupKey(exercise, { currentGymId })));
 
-  const dedupedExtras = dedupeMaxBenchmarkOptions(extras, { currentGymId })
+  const dedupedExtras = (includeAllRegisteredExercises ? extras : dedupeMaxBenchmarkOptions(extras, { currentGymId }))
     .sort(_exerciseNameCompare);
 
   for (const exercise of dedupedExtras) {
     const key = getMaxBenchmarkOptionGroupKey(exercise, { currentGymId });
-    if (seenIds.has(exercise.id) || seenKeys.has(key)) continue;
+    if (seenIds.has(exercise.id) || (!includeAllRegisteredExercises && seenKeys.has(key))) continue;
     seenIds.add(exercise.id);
-    seenKeys.add(key);
+    if (!includeAllRegisteredExercises) seenKeys.add(key);
     items.push({
       exercise,
       benchmark: null,
