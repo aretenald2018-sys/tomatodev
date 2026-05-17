@@ -3942,7 +3942,7 @@ export async function applyMaxSuggestion(movementId, weakPart = null, recMeta = 
     return;
   }
   try {
-    const { _renderExerciseList } = await import('../exercises.js?v=20260517v2');
+    const { _renderExerciseList } = await import('../exercises.js?v=20260517v3');
     _renderExerciseList();
   } catch (e) { console.warn('[applyMaxSuggestion.renderList]:', e); }
 

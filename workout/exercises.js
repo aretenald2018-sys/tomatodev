@@ -20,7 +20,7 @@ import { MOVEMENTS } from '../config.js';
 import {
   buildMaxPickerExerciseEntry,
   resolveMaxBenchmarkPickerItems,
-} from './expert/max-benchmark-picker.js?v=20260517v2';
+} from './expert/max-benchmark-picker.js?v=20260517v3';
 // resolveCurrentGymId는 expert.js의 단일 진실원 (preset + S.workout.currentGymId 동기화).
 // isExpertViewShown은 세션 뷰 상태 (일반 모드 뷰 ↔ 프로 모드 뷰) 조회용.
 // expert.js는 exercises.js를 static import 하지 않으므로 순환 참조 없음.

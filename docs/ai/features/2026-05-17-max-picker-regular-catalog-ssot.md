@@ -71,6 +71,24 @@
 - `git diff --check`
 - UI 실사용 검증은 프로젝트 규칙상 장기 dev server를 이 세션에서 띄우지 않아 아직 `not verified yet`이다.
 
+### Slice 3: 테스트모드 전체 등록 카탈로그의 헬스장 scope 필터 제거
+
+- 상태: 완료
+- 문제:
+  - Slice 2 이후에도 `includeAllRegisteredExercises` extras 앞단에서 `_pickerExerciseMatchesGym(ex, currentGymId)`를 먼저 적용했다.
+  - 그래서 테스트모드 현재 헬스장이 `강남점`이면 일반모드에 보이는 `문정점` 전용 `암컬`/`케이블` 같은 등록 종목이 빠지고, 공통 `바벨 컬`만 남았다.
+- 실행 결과:
+  - `includeAllRegisteredExercises`가 켜진 테스트모드 운동추가 경로에서는 extras의 current gym 필터를 건너뛰도록 수정했다.
+  - benchmark exact resolve는 기존 경로를 유지하고, 추가 종목 extras만 일반모드 등록 카탈로그처럼 전체 헬스장 scope를 보존한다.
+  - 같은 fixture에서 `바벨 컬`, `암컬`, `케이블`이 모두 남는 회귀 테스트를 추가했다.
+  - `workout/exercises.js`와 상위 import query, `sw.js` `CACHE_VERSION`을 갱신했다.
+- 검증:
+  - `node --check workout/expert/max-benchmark-picker.js workout/exercises.js workout/index.js workout/load.js workout/expert.js workout/expert/max.js render-workout.js app.js sw.js`
+  - `node --test tests/calc.max.test.js`
+  - `git diff --check`
+  - 순수 재현: 현재 테스트모드 헬스장이 `gym_gangnam`이어도 `gym_moon` 전용 `custom_armcurl`/`custom_cable`이 resolver 결과에 포함됨.
+  - UI 실사용 검증은 프로젝트 규칙상 장기 dev server를 이 세션에서 띄우지 않아 아직 `not verified yet`이다.
+
 ### Slice 2: 등록 운동별 exerciseId 보존
 
 - 상태: 완료

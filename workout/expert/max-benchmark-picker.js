@@ -173,7 +173,7 @@ export function resolveMaxBenchmarkPickerItems({
 
   const extras = (exList || [])
     .filter(ex => ex?.id && !seenIds.has(ex.id))
-    .filter(ex => _pickerExerciseMatchesGym(ex, currentGymId))
+    .filter(ex => includeAllRegisteredExercises || _pickerExerciseMatchesGym(ex, currentGymId))
     .map(ex => {
       const majors = _exerciseMajorIds(ex, fallbackMovements);
       const major = includeAllRegisteredExercises

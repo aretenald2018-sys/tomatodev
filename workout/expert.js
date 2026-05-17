@@ -398,7 +398,7 @@ async function _persistWorkoutBeforeModeSwitch() {
 
 async function _rerenderWorkoutAfterModeSwitch() {
   try {
-    const mod = await import('./exercises.js?v=20260517v2');
+    const mod = await import('./exercises.js?v=20260517v3');
     if (typeof mod._renderExerciseList === 'function') mod._renderExerciseList();
   } catch (err) {
     console.warn('[modeSwitch.renderExercises]:', err);
@@ -1413,7 +1413,7 @@ export async function routineCandidatesSelect() {
           })),
         };
       });
-    const { _renderExerciseList } = await import('./exercises.js?v=20260517v2');
+    const { _renderExerciseList } = await import('./exercises.js?v=20260517v3');
     _renderExerciseList();
     // 즉시 persist — 새로고침/이탈해도 루틴 유지
     try {
@@ -2767,7 +2767,7 @@ window.openRoutineSuggestWithRecent = async () => {
         }),
       };
     }).filter(e => exById[e.exerciseId]);
-    const { _renderExerciseList } = await import('./exercises.js?v=20260517v2');
+    const { _renderExerciseList } = await import('./exercises.js?v=20260517v3');
     _renderExerciseList();
     renderExpertTopArea();
     // 즉시 persist (P0-1b) — 새로고침해도 루틴 유지
@@ -2915,7 +2915,7 @@ async function _switchToGym(gymId) {
     renderExpertTopArea();
     if (hasActiveSession) {
       try {
-        const { _renderExerciseList } = await import('./exercises.js?v=20260517v2');
+        const { _renderExerciseList } = await import('./exercises.js?v=20260517v3');
         _renderExerciseList();
       } catch { /* ignore */ }
     }
