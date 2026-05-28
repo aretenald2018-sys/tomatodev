@@ -15,6 +15,16 @@ function _dateStamp(date = TODAY) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
+function _num(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function _fmtNum(value, digits = 1) {
+  const n = _num(value);
+  return n === null ? '' : n.toFixed(digits);
+}
+
 function _download(name, lines) {
   const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -53,6 +63,14 @@ function _socialStyle(uid, data) {
   if (sent >= received * 1.2) return '적극형';
   if (received > sent * 1.2) return '수동형';
   return '균형형';
+}
+
+function _checkinLabel(rec, data) {
+  const name = data.resolveName ? data.resolveName(rec.uid) : rec.uid;
+  const weight = _fmtNum(rec.weight, 1);
+  const bodyFat = _fmtNum(rec.bodyFatPct, 1);
+  const suffix = bodyFat ? ` / ${bodyFat}%` : '';
+  return `${name}: ${weight}kg${suffix}`;
 }
 
 export function exportUsersReport(data) {
@@ -97,18 +115,46 @@ export function exportUsersReport(data) {
 
 export function exportDailyActivity(data) {
   const lines = [];
-  lines.push(_row(['date', 'dau', 'exerciseUsers', 'dietUsers', 'coreLoopUsers']));
+  lines.push(_row([
+    'date', 'dau', 'exerciseUsers', 'dietUsers', 'coreLoopUsers',
+    'weightCheckins', 'weightCheckinUsers', 'avgWeightKg', 'weightRecords',
+  ]));
 
   data.dateKeys30.slice().reverse().forEach((key) => {
     const wk = data.workoutMap[key] || {};
+    const checkins = data.bodyCheckinMap?.[key] || [];
+    const weights = checkins.map((rec) => _num(rec.weight)).filter((n) => n !== null);
+    const uniqueUsers = new Set(checkins.map((rec) => rec.uid).filter(Boolean)).size;
+    const avgWeight = weights.length
+      ? (weights.reduce((sum, n) => sum + n, 0) / weights.length).toFixed(1)
+      : '';
+    const records = checkins.map((rec) => _checkinLabel(rec, data)).join('; ');
     const dau = Object.values(wk).filter((v) => v.any).length;
     const ex = Object.values(wk).filter((v) => v.exercise).length;
     const diet = Object.values(wk).filter((v) => v.diet).length;
     const core = Object.values(wk).filter((v) => v.exercise && v.diet).length;
-    lines.push(_row([key, dau, ex, diet, core]));
+    lines.push(_row([key, dau, ex, diet, core, checkins.length, uniqueUsers, avgWeight, records]));
   });
 
   _download(`tomatofarm_daily_${_dateStamp()}.csv`, lines);
+}
+
+export function exportBodyCheckins(data) {
+  const lines = [];
+  lines.push(_row(['date', 'name', 'uid', 'weightKg', 'bodyFatPct', 'note']));
+
+  (data.bodyCheckins || []).forEach((rec) => {
+    lines.push(_row([
+      rec.date || '',
+      data.resolveName ? data.resolveName(rec.uid) : rec.uid,
+      rec.uid || '',
+      _fmtNum(rec.weight, 1),
+      _fmtNum(rec.bodyFatPct, 1),
+      rec.note || '',
+    ]));
+  });
+
+  _download(`tomatofarm_body_checkins_${_dateStamp()}.csv`, lines);
 }
 
 export function exportSocialInteractions(data) {
@@ -145,8 +191,9 @@ export function exportLettersAndPatchnotes(data) {
 export function exportAll(data) {
   exportUsersReport(data);
   setTimeout(() => exportDailyActivity(data), 250);
-  setTimeout(() => exportSocialInteractions(data), 500);
-  setTimeout(() => exportLettersAndPatchnotes(data), 750);
+  setTimeout(() => exportBodyCheckins(data), 500);
+  setTimeout(() => exportSocialInteractions(data), 750);
+  setTimeout(() => exportLettersAndPatchnotes(data), 1000);
 }
 
 export function exportAIJson(data) {

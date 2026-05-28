@@ -3,10 +3,10 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-05-17-max-picker-regular-catalog-ssot.md`
+- 계획 문서: `docs/ai/features/2026-05-28-admin-csv-body-checkins.md`
 - 현재 단계: `review complete`
-- 현재 슬라이스: `Slice 3: 테스트모드 전체 등록 카탈로그의 헬스장 scope 필터 제거`
-- 마지막 완료: `테스트모드 운동추가에서 다른 헬스장 전용 등록 종목도 일반모드 카탈로그처럼 보존하도록 구현/검증/리뷰`
+- 현재 슬라이스: `Slice 1: 관리자 CSV 체중 기록 포함`
+- 마지막 완료: `관리자 CSV 체중 기록 포함 구현/검증/리뷰`
 - 다음 액션: 없음
 - 차단 사유: 없음
 

@@ -82,6 +82,20 @@ async function _getRecentWorkouts(userId, dateKeys) {
   return workouts;
 }
 
+async function _getRecentBodyCheckins(userId, dateKeys) {
+  const checkins = [];
+  const batches = _chunk(dateKeys, 30);
+  for (const batch of batches) {
+    if (!batch.length) continue;
+    const snap = await getDocs(query(
+      collection(db, 'users', userId, 'body_checkins'),
+      where('date', 'in', batch),
+    ));
+    snap.forEach((docSnap) => checkins.push({ id: docSnap.id, ...docSnap.data() }));
+  }
+  return checkins;
+}
+
 function _hasActivity(w) {
   if (!w) return false;
   return !!(_hasExercise(w) || _hasDiet(w) ||
@@ -154,6 +168,41 @@ async function _fetchWorkouts(realAccs, dateKeys30) {
   return workoutMap;
 }
 
+async function _fetchBodyCheckins(realAccs, dateKeys30) {
+  const bodyCheckinMap = Object.fromEntries(dateKeys30.map((key) => [key, []]));
+  const bodyCheckins = [];
+  const checkinResults = await Promise.all(
+    realAccs.map(async (acc) => ({
+      uid: acc.id,
+      checkins: await _getRecentBodyCheckins(acc.id, dateKeys30),
+    })),
+  );
+
+  checkinResults.forEach(({ uid, checkins }) => {
+    checkins.forEach((raw) => {
+      const date = raw.date || '';
+      if (!date || !bodyCheckinMap[date]) return;
+      const rec = {
+        uid,
+        id: raw.id || '',
+        date,
+        weight: raw.weight ?? null,
+        bodyFatPct: raw.bodyFatPct ?? null,
+        note: raw.note || '',
+      };
+      bodyCheckinMap[date].push(rec);
+      bodyCheckins.push(rec);
+    });
+  });
+
+  bodyCheckins.sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.uid || '').localeCompare(b.uid || ''));
+  Object.values(bodyCheckinMap).forEach((items) => {
+    items.sort((a, b) => (a.uid || '').localeCompare(b.uid || ''));
+  });
+
+  return { bodyCheckinMap, bodyCheckins };
+}
+
 async function _loadCoreData() {
   // NOTE: persist: true 를 붙이지 않는 이유 — 반환값에 resolveName(function)이 포함되어
   // JSON 직렬화가 불가능하고, 데이터 부피(수백 KB)도 sessionStorage 쓰기 비용이 크다.
@@ -163,7 +212,10 @@ async function _loadCoreData() {
     for (let i = 0; i < 30; i++) dateKeys30.push(_dk(_daysAgo(i)));
 
     const [base, social] = await Promise.all([_fetchBase(), _fetchSocial()]);
-    const workoutMap = await _fetchWorkouts(base.realAccs, dateKeys30);
+    const [workoutMap, bodyCheckinData] = await Promise.all([
+      _fetchWorkouts(base.realAccs, dateKeys30),
+      _fetchBodyCheckins(base.realAccs, dateKeys30),
+    ]);
 
     const resolveName = nameResolver(base.accs);
     return {
@@ -171,6 +223,8 @@ async function _loadCoreData() {
       ...social,
       unreadLetters: social.letters.filter((l) => !l.read).length,
       workoutMap,
+      bodyCheckinMap: bodyCheckinData.bodyCheckinMap,
+      bodyCheckins: bodyCheckinData.bodyCheckins,
       dateKeys30,
       resolveName,
     };
