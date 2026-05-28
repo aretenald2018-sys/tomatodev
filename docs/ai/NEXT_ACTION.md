@@ -3,10 +3,10 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-05-28-admin-csv-body-checkins.md`
+- 계획 문서: `docs/ai/features/2026-05-28-diet-horizontal-overflow-fix.md`
 - 현재 단계: `review complete`
-- 현재 슬라이스: `Slice 1: 관리자 CSV 체중 기록 포함`
-- 마지막 완료: `관리자 CSV 체중 기록 포함 구현/검증/리뷰`
+- 현재 슬라이스: `Slice 1: 식단 탭 가로 오버플로 방어`
+- 마지막 완료: `식단 탭 가로 밀림 수정 검증/리뷰 및 배포 준비`
 - 다음 액션: 없음
 - 차단 사유: 없음
 

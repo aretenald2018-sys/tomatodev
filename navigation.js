@@ -185,6 +185,11 @@ export function initSwipeNavigation() {
     }
   }, { passive: true });
 
+  document.body.addEventListener('touchcancel', () => {
+    tracking = false;
+    _cleanupSwipe();
+  }, { passive: true });
+
   function _cleanupSwipe() {
     if (curPanel) curPanel.style.cssText = '';
     if (nextPanel) { nextPanel.style.cssText = ''; nextPanel.classList.remove('active'); }

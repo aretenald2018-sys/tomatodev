@@ -1476,11 +1476,15 @@ body.wt-modal-scroll-lock {
 .meal-food-list { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
 .meal-food-chip {
   display: flex; align-items: center; gap: 6px;
+  min-width: 0; max-width: 100%;
   background: var(--surface3); border: 1px solid var(--border);
   border-radius: 6px; padding: 5px 10px; font-size: 11px;
 }
-.meal-food-chip-name { flex: 1; color: var(--text); }
-.meal-food-chip-kcal { color: var(--text-secondary); font-family: var(--font-mono); }
+.meal-food-chip-name {
+  flex: 1 1 auto; min-width: 0; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.meal-food-chip-kcal { color: var(--text-secondary); font-family: var(--font-mono); flex-shrink: 0; }
 .meal-food-chip-del {
   background: none; border: none; color: var(--text-secondary); font-size: 10px;
   cursor: pointer; padding: 0 2px; -webkit-tap-highlight-color: transparent; flex-shrink: 0;
@@ -4340,6 +4344,14 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 #tab-diet .workout-date-label { font-family: var(--font-sans) !important; font-size: var(--seed-t5); font-weight: 700; color: var(--seed-fg-neutral); letter-spacing: -0.02em; }
 #tab-diet .wt-today-btn { background: var(--primary-bg); color: var(--primary); border: 1px solid var(--primary); border-radius: var(--seed-r-full); font-size: var(--seed-t2); font-weight: 700; padding: var(--seed-x1) var(--seed-x3); }
 #tab-diet .section-category-title { font-size: var(--seed-t6); font-weight: 700; color: var(--seed-fg-neutral); padding-bottom: var(--seed-x3); border-bottom: 2px solid var(--seed-stroke-neutral); margin-bottom: var(--seed-x4); margin-top: var(--seed-x2); gap: var(--seed-x2); }
+#tab-diet .workout-tab-content,
+#tab-diet .diet-toss-list,
+#tab-diet .diet-toss-row,
+#tab-diet .diet-toss-body,
+#tab-diet .diet-toss-header {
+  min-width: 0;
+  max-width: 100%;
+}
 
 /* ── 식단탭 토스 스타일 끼니 리스트 (Seed Design 타이포) ── */
 .diet-toss-list {
@@ -4413,8 +4425,8 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 #tab-diet .diet-meal-actions { gap: var(--seed-x1); }
 #tab-diet .diet-meal-actions .diet-db-btn, #tab-diet .diet-meal-actions .diet-skip-btn { background: var(--seed-bg-neutral-weak); border: 1px solid var(--seed-stroke-neutral); border-radius: var(--seed-r-full); color: var(--seed-fg-muted); font-size: var(--seed-t2); padding: var(--seed-x1) var(--seed-x2); transition: all var(--seed-d3) var(--seed-ease); }
 #tab-diet .diet-skip-btn.active { background: var(--seed-bg-critical-weak); border-color: var(--seed-red-600); color: var(--seed-fg-critical); }
-#tab-diet .meal-food-chip { background: var(--seed-bg-fill); border: 1px solid var(--seed-stroke-neutral); border-radius: var(--seed-r-full); padding: var(--seed-x1) var(--seed-x3); font-size: var(--seed-t2); gap: var(--seed-x2); }
-#tab-diet .meal-food-chip-name { color: var(--seed-fg-neutral); font-weight: 500; }
+#tab-diet .meal-food-chip { background: var(--seed-bg-fill); border: 1px solid var(--seed-stroke-neutral); border-radius: var(--seed-r-full); padding: var(--seed-x1) var(--seed-x3); font-size: var(--seed-t2); gap: var(--seed-x2); min-width: 0; max-width: 100%; }
+#tab-diet .meal-food-chip-name { color: var(--seed-fg-neutral); font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #tab-diet .meal-food-chip-kcal { color: var(--seed-fg-subtle); font-size: var(--seed-t1); }
 #tab-diet .diet-badge { border-radius: var(--seed-r-full); font-size: var(--seed-t1); font-weight: 700; padding: 2px var(--seed-x2); border: none; }
 #tab-diet .diet-badge.ok { background: var(--seed-bg-positive-weak); color: var(--seed-fg-positive); }
