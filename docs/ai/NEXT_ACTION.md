@@ -3,10 +3,10 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-05-28-diet-horizontal-overflow-fix.md`
+- 계획 문서: `docs/ai/features/2026-05-28-mobile-vertical-drag-scroll-fix.md`
 - 현재 단계: `review complete`
-- 현재 슬라이스: `Slice 1: 식단 탭 가로 오버플로 방어`
-- 마지막 완료: `식단 탭 가로 밀림 수정 검증/리뷰 및 배포 준비`
+- 현재 슬라이스: `Slice 1: 모바일 루트 스크롤 CSS 보정`
+- 마지막 완료: `모바일 세로 드래그 스크롤 CSS 보정 실행 및 리뷰 완료`
 - 다음 액션: 없음
 - 차단 사유: 없음
 
