@@ -70,7 +70,7 @@ cd "C:\Users\USER\Desktop\Tomato Project\tomatofarm(for lite version)"; npm.cmd 
   app.js / data.js / calc.js / config.js / ai.js / sheet.js / sw.js / index.html / style.css
   render-home.js / render-workout.js / render-stats.js / render-admin.js / render-cooking.js  ← 탭 엔트리/shim
   feature-*.js  ← checkin, diet-plan, fatsecret, misc, nutrition, tutorial
-  workout-ui.js / farm-canvas.js / modal-manager.js / navigation.js / pwa-fcm.js
+  workout-ui.js / modal-manager.js / navigation.js / pwa-fcm.js
   app-modal-goals.js / app-modal-quests.js
 
 서브디렉토리:

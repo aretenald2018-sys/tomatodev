@@ -35,7 +35,7 @@ index.html (단일 SPA)
   ├── calc.js             — 순수 비즈니스 로직 (사이드이펙트 없음)
   ├── feature-*.js        — checkin, diet-plan, fatsecret, misc, nutrition, tutorial
   ├── workout-ui.js       — 운동탭 상태 머신 (wtSelectStatus, wtToggleType)
-  ├── farm-canvas.js      — 토마토 농장 캔버스 렌더링
+  ├── home/farm.js        — 토마토 농장 DOM 렌더링
   ├── modal-manager.js    — 29개 모달 동적 주입
   ├── navigation.js       — 탭 드래그 정렬, 스와이프
   ├── sheet.js            — 과거 날짜 편집 시트

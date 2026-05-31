@@ -11,7 +11,6 @@
     "build": "node scripts/bump-cache.js && node scripts/generate-build-info.mjs && node scripts/copy-www.js",
     "cap:sync": "npm run build && npx cap sync android",
     "cap:open": "npx cap open android",
-    "crawl": "node tools/crawl-movies.js",
     "server": "node tools/api-server.js",
     "audit:ai-diet": "node scripts/audit-ai-diet-account.mjs",
     "verify:assets": "node scripts/generate-build-info.mjs && node scripts/verify-runtime-assets.mjs",
@@ -20,7 +19,6 @@
     "verify:workout": "node scripts/verify-workout-fixture.mjs"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.24.3",
     "@capacitor/android": "^8.3.0",
     "@capacitor/cli": "^8.3.0",
     "@capacitor/core": "^8.3.0",

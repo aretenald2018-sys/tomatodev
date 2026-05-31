@@ -21,7 +21,7 @@ function _writeStorage(key, entry) {
   } catch (_) { /* quota / serialization ignore */ }
 }
 
-export function getCached(key, ttlMs) {
+function getCached(key, ttlMs) {
   const mem = _mem.get(key);
   if (mem && (_now() - mem.at) < ttlMs) return mem.value;
   const store = _readStorage(key);
@@ -32,7 +32,7 @@ export function getCached(key, ttlMs) {
   return undefined;
 }
 
-export function setCached(key, value, { persist = false } = {}) {
+function setCached(key, value, { persist = false } = {}) {
   const entry = { at: _now(), value };
   _mem.set(key, entry);
   if (persist) _writeStorage(key, entry);

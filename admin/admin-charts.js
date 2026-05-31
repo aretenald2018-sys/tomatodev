@@ -175,30 +175,6 @@ export function renderFeatureAdoption(container, featureLabels, percentages) {
   });
 }
 
-export function renderStreakDonut(container, chartId, label, distribution) {
-  const canvas = _getOrCreateCanvas(container, chartId, 140);
-  new Chart(canvas, {
-    type: 'doughnut',
-    data: {
-      labels: ['0d', '1-2d', '3-6d', '7d+'],
-      datasets: [{
-        data: distribution,
-        backgroundColor: [COLORS.gray, COLORS.orange, COLORS.tomatoSub, COLORS.green],
-        borderWidth: 0,
-      }],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: '62%',
-      plugins: {
-        legend: { position: 'bottom', labels: { color: COLORS.gray, font: { size: 10 } } },
-        title: { display: true, text: label, color: COLORS.text, font: { size: 12, weight: '600' } },
-      },
-    },
-  });
-}
-
 export function renderSocialStacked(container, labels, datasets) {
   const canvas = _getOrCreateCanvas(container, 'admin-social-chart', 180);
   const palette = [COLORS.purple, COLORS.teal, COLORS.tomato, COLORS.orange];

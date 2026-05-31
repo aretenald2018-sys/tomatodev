@@ -55,7 +55,7 @@ function _lastLoginScore(lastLoginAt, nowTs) {
   return Math.max(0, Math.round((1 - Math.min(14, diffDays) / 14) * 30));
 }
 
-export function classifyLifecycleStage(account, workoutMap, analytics30d, dateKeysArg = []) {
+function classifyLifecycleStage(account, workoutMap, analytics30d, dateKeysArg = []) {
   const dateKeys = _resolveDateKeys(workoutMap, dateKeysArg);
   const analyticsByKey = _analyticsMap(analytics30d);
   const uid = account?.id;
@@ -84,7 +84,7 @@ export function classifyLifecycleStage(account, workoutMap, analytics30d, dateKe
   return 'activated';
 }
 
-export function classifyEngagementTier(uid, workoutMap, analytics7d = [], dateKeysArg = []) {
+function classifyEngagementTier(uid, workoutMap, analytics7d = [], dateKeysArg = []) {
   const dateKeys = _resolveDateKeys(workoutMap, dateKeysArg).slice(0, 7);
   const analyticsByKey = _analyticsMap(analytics7d);
   const activeDays = _countActiveDays(uid, workoutMap, dateKeys, analyticsByKey, 0, 7);
@@ -96,7 +96,7 @@ export function classifyEngagementTier(uid, workoutMap, analytics7d = [], dateKe
   return 'inactive';
 }
 
-export function calcTrajectory(uid, workoutMap, dateKeysArg = [], analytics30d = []) {
+function calcTrajectory(uid, workoutMap, dateKeysArg = [], analytics30d = []) {
   const dateKeys = _resolveDateKeys(workoutMap, dateKeysArg);
   const analyticsByKey = _analyticsMap(analytics30d);
   const recent7 = _countActiveDays(uid, workoutMap, dateKeys, analyticsByKey, 0, 7);
@@ -107,7 +107,7 @@ export function calcTrajectory(uid, workoutMap, dateKeysArg = [], analytics30d =
   return 'stable';
 }
 
-export function calcHealthScore(uid, account, workoutMap, analytics = [], socialData = {}, dateKeysArg = []) {
+function calcHealthScore(uid, account, workoutMap, analytics = [], socialData = {}, dateKeysArg = []) {
   const dateKeys = _resolveDateKeys(workoutMap, dateKeysArg);
   const nowTs = Date.now();
   const lastLoginPart = _lastLoginScore(account?.lastLoginAt, nowTs);
@@ -134,7 +134,7 @@ export function calcHealthScore(uid, account, workoutMap, analytics = [], social
   return Math.max(0, Math.min(100, lastLoginPart + streakPart + featurePart + socialPart + contentPart));
 }
 
-export function getRecommendedActions(uid, stage, tier, score, trajectory, account = {}) {
+function getRecommendedActions(uid, stage, tier, score, trajectory, account = {}) {
   const actions = [];
   if (stage === 'dormant') {
     actions.push('환영 복귀 푸시 전송', '히어로 메시지 설정');

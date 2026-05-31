@@ -3,12 +3,17 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-05-28-mobile-vertical-drag-scroll-fix.md`
+- 계획 문서: `docs/ai/features/2026-05-31-unused-code-cleanup.md`
 - 현재 단계: `review complete`
-- 현재 슬라이스: `Slice 1: 모바일 루트 스크롤 CSS 보정`
-- 마지막 완료: `모바일 세로 드래그 스크롤 CSS 보정 실행 및 리뷰 완료`
+- 현재 슬라이스: `Slice 3: 함수/export 단위 dead code 감사`
+- 마지막 완료: `전체 미사용 코드 삭제 리팩토링 실행 및 리뷰 완료`
 - 다음 액션: 없음
-- 차단 사유: 없음
+- 차단 사유: 없음. 단, dev/API server 장기 실행은 Codex 세션에서 수행하지 않았고 `node scripts/verify-runtime-assets.mjs`는 기존 baseline인 미추적 `mockups/trio-renewal/shared.css` 참조 때문에 실패한다.
+
+## 다음 실행 대상
+
+- 계획 문서: `docs/ai/features/2026-05-31-unused-code-cleanup.md`
+- 실행 슬라이스: 없음
 
 ## 상태값
 
