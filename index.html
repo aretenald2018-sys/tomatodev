@@ -624,7 +624,7 @@
           </div>
           <div class="diet-toss-body">
             <div class="diet-meal-actions">
-              <button class="diet-add-btn" onclick="openNutritionSearch('breakfast')">+ 음식 추가</button>
+              <button class="diet-add-btn" type="button" data-action="addFood" data-meal="breakfast">+ 음식 추가</button>
               <button class="diet-skip-btn" id="wt-breakfast-skipped" onclick="wtSkipMeal('breakfast')">안 먹었어요</button>
             </div>
             <div class="meal-content-row" id="wt-meal-content-breakfast">
@@ -647,7 +647,7 @@
           </div>
           <div class="diet-toss-body">
             <div class="diet-meal-actions">
-              <button class="diet-add-btn" onclick="openNutritionSearch('lunch')">+ 음식 추가</button>
+              <button class="diet-add-btn" type="button" data-action="addFood" data-meal="lunch">+ 음식 추가</button>
               <button class="diet-skip-btn" id="wt-lunch-skipped" onclick="wtSkipMeal('lunch')">안 먹었어요</button>
             </div>
             <div class="meal-content-row" id="wt-meal-content-lunch">
@@ -670,7 +670,7 @@
           </div>
           <div class="diet-toss-body">
             <div class="diet-meal-actions">
-              <button class="diet-add-btn" onclick="openNutritionSearch('dinner')">+ 음식 추가</button>
+              <button class="diet-add-btn" type="button" data-action="addFood" data-meal="dinner">+ 음식 추가</button>
               <button class="diet-skip-btn" id="wt-dinner-skipped" onclick="wtSkipMeal('dinner')">안 먹었어요</button>
             </div>
             <div class="meal-content-row" id="wt-meal-content-dinner">
@@ -693,7 +693,7 @@
           </div>
           <div class="diet-toss-body">
             <div class="diet-meal-actions">
-              <button class="diet-add-btn" onclick="openNutritionSearch('snack')">+ 음식 추가</button>
+              <button class="diet-add-btn" type="button" data-action="addFood" data-meal="snack">+ 음식 추가</button>
             </div>
             <div class="meal-content-row" id="wt-meal-content-snack">
               <div class="meal-food-list" id="wt-foods-snack"></div>
@@ -810,9 +810,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
 <script src="feature-login.js?v=20260513b"></script>
-<script type="module" src="app.js?v=20260517v4"></script>
+<script type="module" src="app.js?v=20260601a"></script>
 
 <!-- PWA Service Worker 등록 -->
-<script src="pwa-register.js?v=20260517v1"></script>
+<script src="pwa-register.js?v=20260528a"></script>
 </body>
 </html>

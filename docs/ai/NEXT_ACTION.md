@@ -3,16 +3,16 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-05-31-unused-code-cleanup.md`
+- 계획 문서: `docs/ai/features/2026-06-01-diet-add-button-click-fix.md`
 - 현재 단계: `review complete`
-- 현재 슬라이스: `Slice 3: 함수/export 단위 dead code 감사`
-- 마지막 완료: `전체 미사용 코드 삭제 리팩토링 실행 및 리뷰 완료`
+- 현재 슬라이스: `Slice 1: 식단 음식 추가 버튼 바인딩 복구`
+- 마지막 완료: `식단 음식 추가 버튼 바인딩 복구 실행 및 리뷰 완료`
 - 다음 액션: 없음
-- 차단 사유: 없음. 단, dev/API server 장기 실행은 Codex 세션에서 수행하지 않았고 `node scripts/verify-runtime-assets.mjs`는 기존 baseline인 미추적 `mockups/trio-renewal/shared.css` 참조 때문에 실패한다.
+- 차단 사유: 없음. 단, 실제 브라우저 클릭 검증은 로컬 dev server가 응답하지 않아 수행하지 못했고, 런타임 자산 검증은 기존 mockup 미추적 참조 때문에 실패한다.
 
 ## 다음 실행 대상
 
-- 계획 문서: `docs/ai/features/2026-05-31-unused-code-cleanup.md`
+- 계획 문서: `docs/ai/features/2026-06-01-diet-add-button-click-fix.md`
 - 실행 슬라이스: 없음
 
 ## 상태값

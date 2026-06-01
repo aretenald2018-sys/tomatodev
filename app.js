@@ -21,7 +21,7 @@ import { initFCM, showPWAInstallBanner, updateInstallBtn } from './pwa-fcm.js';
 import { initTabDrag, initSwipeNavigation, applyTabOrder, applyVisibleTabs } from './navigation.js';
 import { initUxPolish } from './utils/ux-polish.js';
 import { initActionRouter } from './utils/action-router.js';
-import { initBuildInfoSurface } from './utils/build-info.js?v=20260517v1';
+import { initBuildInfoSurface } from './utils/build-info.js?v=20260528a';
 import './utils/confirm-modal.js'; // window.confirmAction / confirmSimple 등록
 import './utils/form-guard.js';    // window.createFormGuard / registerFormGuard 등록
 import './utils/format.js';        // window.fmtKcal / fmtDate 등 로케일 포맷
@@ -382,20 +382,35 @@ function _initDietInputButtons() {
   const dietGrid = document.querySelector('.diet-grid');
   if (!dietGrid) return;
 
-  dietGrid.addEventListener('click', (e) => {
+  dietGrid.addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
+    e.preventDefault();
     e.stopPropagation();
 
     const action = btn.dataset.action;
-    const meal = btn.dataset.meal; // 끼니 (breakfast/lunch/dinner/snack)
+    const meal = btn.dataset.meal || btn.closest('[data-meal]')?.dataset.meal; // 끼니 (breakfast/lunch/dinner/snack)
 
     // meal이 있으면 해당 끼니를 미리 선택
     if (meal) window._nutritionSearchMeal = meal;
 
     if (action === 'addFood') {
-      // 2026-04-20: bare 호출은 nutrition-item-modal 의 window 노출에 의존. 명시적으로.
-      window.openNutritionItemEditor?.(null);
+      if (!meal) {
+        console.warn('[diet-input] addFood meal 누락');
+        showToast?.('끼니 정보를 찾지 못했어요. 새로고침 후 다시 시도해주세요.', 2500, 'error');
+        return;
+      }
+      if (typeof window.openNutritionSearch !== 'function') {
+        console.error('[diet-input] openNutritionSearch 미등록');
+        showToast?.('음식 추가를 준비하지 못했어요. 새로고침 후 다시 시도해주세요.', 2500, 'error');
+        return;
+      }
+      try {
+        await window.openNutritionSearch(meal);
+      } catch (err) {
+        console.error('[diet-input] 음식 검색 모달 열기 실패:', err);
+        showToast?.('음식 추가 창을 열지 못했어요. 잠시 후 다시 시도해주세요.', 2500, 'error');
+      }
     } else if (action === 'photoUpload') {
       openNutritionPhotoUpload();
     }
