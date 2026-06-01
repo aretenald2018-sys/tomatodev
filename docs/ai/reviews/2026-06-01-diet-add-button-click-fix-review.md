@@ -25,4 +25,8 @@
 - PASS: `git diff --check`
 - PASS: `node --test tests/*.test.js` (`373` tests)
 - not verified yet: `node scripts/verify-runtime-assets.mjs`는 기존 baseline인 미추적 mockup 참조 때문에 실패했다.
-- not verified yet: 로컬 dev server가 응답하지 않아 실제 UI 클릭은 확인하지 못했다.
+- PASS: 배포 URL `https://aretenald2018-sys.github.io/tomatofarm/` HTTP `200 OK`.
+- PASS: 배포 `sw.js`에서 `tomatofarm-v20260601-diet-add-btn` 확인.
+- PASS: 배포 `index.html`에서 네 끼니 버튼의 `data-action="addFood"`와 `app.js?v=20260601a` 확인.
+- PASS: Puppeteer 배포 페이지 클릭 검증에서 `#nutrition-search-modal.open`, `window._nutritionSearchMeal === 'breakfast'`, add 버튼 4개 확인.
+- 참고: 로컬 dev server는 응답하지 않아 로컬 UI 클릭은 별도 실행하지 않았다.

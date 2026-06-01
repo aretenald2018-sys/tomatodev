@@ -67,4 +67,8 @@ UI 확인 기준:
 - PASS: `git diff --check`
 - PASS: `node --test tests/*.test.js` (`373` tests)
 - not verified yet: `node scripts/verify-runtime-assets.mjs`는 기존 baseline인 미추적 mockup 파일 참조 때문에 실패했다. 이번 변경 파일(`app.js`, `index.html`, `sw.js`) 누락은 보고되지 않았다.
-- not verified yet: 로컬 dev server가 `localhost:5500`, `5501`, `5502`에서 응답하지 않아 실제 브라우저 클릭 플로우는 이 세션에서 확인하지 못했다.
+- PASS: 배포 URL `https://aretenald2018-sys.github.io/tomatofarm/`이 HTTP `200 OK`를 반환했다.
+- PASS: 배포 `sw.js`가 `tomatofarm-v20260601-diet-add-btn`를 반환했다. CDN 캐시 회피를 위해 `Cache-Control: no-cache`로 확인했다.
+- PASS: 배포 `index.html`에서 네 끼니 버튼이 `data-action="addFood"`와 `data-meal`을 포함하고, `app.js?v=20260601a`를 로드하는 것을 확인했다.
+- PASS: Puppeteer로 배포 페이지에서 아침 `+ 음식 추가` 버튼을 클릭해 `#nutrition-search-modal.open`과 `window._nutritionSearchMeal === 'breakfast'`를 확인했다.
+- 참고: 로컬 dev server는 `localhost:5500`, `5501`, `5502`에서 응답하지 않아 로컬 UI 플로우는 별도 실행하지 않았다.
