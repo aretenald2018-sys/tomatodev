@@ -1325,6 +1325,19 @@ window._wtResetAllPickerFilters = () => {
   window._wtClearPickerSearch();
 };
 
+async function _openPickerEquipmentManager() {
+  try {
+    const mod = await import('./expert/max.js');
+    if (typeof mod.openMaxEquipmentPoolModal === 'function') {
+      await mod.openMaxEquipmentPoolModal({ gymId: _currentPickerGymId() });
+      return;
+    }
+  } catch (err) {
+    console.warn('[picker.openEquipmentManager]:', err);
+  }
+  window.showToast?.('기구 관리 화면을 열 수 없어요', 2400, 'error');
+}
+
 function _normalizeMajorMuscleId(id) {
   if (!id) return null;
   return SUBPATTERN_TO_MAJOR[id] || id;
@@ -1442,20 +1455,22 @@ export function _renderPickerList() {
     container.appendChild(filters);
   }
 
-  // P1-5: 맞춤 루틴 모드에서는 선택 전용 — 편집/삭제/신규 종목 추가는 숨김.
-  // 오늘 할 운동을 고르는 순간에 카탈로그 편집 UI가 섞이면 멘탈모델이 깨짐.
-  // '일반 모드 뷰'에서는 preset.enabled=true여도 일반 모드처럼 편집 UI 노출.
   let renderedGroupCount = 0;
-  if (!isMaxBenchmarkPicker) {
-    const quickAdd = document.createElement('div');
-    quickAdd.className = 'ex-picker-quick-add';
-    quickAdd.innerHTML = `
-      <button type="button" class="ex-picker-add primary">+ 종목 추가(선택)</button>
+  const quickAdd = document.createElement('div');
+  quickAdd.className = `ex-picker-quick-add${isMaxBenchmarkPicker ? ' max-crud' : ''}`;
+  quickAdd.innerHTML = isMaxBenchmarkPicker
+    ? `
+      <button type="button" class="ex-picker-add primary" data-action="add-picker-exercise">+ 종목 추가</button>
+      <button type="button" class="ex-picker-add" data-action="open-picker-equipment">기구 관리</button>
+      <span>운동종목 · 헬스장 기구</span>
+    `
+    : `
+      <button type="button" class="ex-picker-add primary" data-action="add-picker-exercise">+ 종목 추가(선택)</button>
       <span>${isExpert ? '현재 필터의 헬스장 범위로 저장됩니다.' : '직접 종목을 추가합니다.'}</span>
     `;
-    quickAdd.querySelector('button')?.addEventListener('click', () => wtOpenExerciseEditor(null, _pickerMuscleFilter || null));
-    container.appendChild(quickAdd);
-  }
+  quickAdd.querySelector('[data-action="add-picker-exercise"]')?.addEventListener('click', () => wtOpenExerciseEditor(null, _pickerMuscleFilter || null));
+  quickAdd.querySelector('[data-action="open-picker-equipment"]')?.addEventListener('click', () => _openPickerEquipmentManager());
+  container.appendChild(quickAdd);
   allMuscles.forEach(muscle => {
     const list = pool
       .filter(e => _exerciseMajorIds(e).includes(muscle.id))
@@ -1473,7 +1488,22 @@ export function _renderPickerList() {
       btn.className = 'ex-picker-item' + (alreadyAdded ? ' already' : '');
       const editable = _isExerciseEditable(ex);
       if (isMaxBenchmarkPicker) {
-        btn.innerHTML = `${_renderExercisePickerName(ex, alreadyAdded)}${_renderMaxBenchmarkPickerMeta(ex)}`;
+        btn.innerHTML = `${_renderExercisePickerName(ex, alreadyAdded)}
+          <span class="ex-picker-row-side">
+            ${_renderMaxBenchmarkPickerMeta(ex)}
+            <span class="ex-picker-actions">
+              <span class="ex-picker-edit" data-exid="${ex.id}" title="종목 수정">✏️</span>
+              ${editable ? `<span class="ex-picker-delete" data-exid="${ex.id}" title="종목 삭제">삭제</span>` : ''}
+            </span>
+          </span>`;
+        btn.querySelector('.ex-picker-edit')?.addEventListener('click', e => {
+          e.stopPropagation();
+          wtOpenExerciseEditor(ex.id, null);
+        });
+        btn.querySelector('.ex-picker-delete')?.addEventListener('click', e => {
+          e.stopPropagation();
+          wtOpenExerciseEditor(ex.id, null);
+        });
       } else if (isExpert) {
         btn.innerHTML = `${_renderExercisePickerName(ex, alreadyAdded)}
           <div class="ex-picker-actions">

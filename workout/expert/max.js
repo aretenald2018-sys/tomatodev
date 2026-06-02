@@ -2438,6 +2438,12 @@ function _equipmentSourceLabel(item = null, gymId = null) {
   return `활성 공통 · ${item.name || CAT_LABEL[category] || category || '기구'}`;
 }
 
+function _equipmentCategoryOptions(selected = 'machine') {
+  return ['machine', 'cable', 'smith', 'barbell', 'dumbbell', 'bodyweight']
+    .map(category => `<option value="${_esc(category)}" ${category === selected ? 'selected' : ''}>${_esc(CAT_LABEL[category] || category)}</option>`)
+    .join('');
+}
+
 const PLAN_EQUIPMENT_CATEGORIES = new Set(['barbell', 'dumbbell', 'bodyweight', 'cable', 'smith', 'machine']);
 
 function _canonicalEquipmentCategory(...values) {
@@ -3331,6 +3337,12 @@ function _ensureMaxEquipmentPoolModal() {
       addMaxEquipmentFromPoolModal().catch(err => console.warn('[addMaxEquipmentFromPoolModal]:', err));
       return;
     }
+    const save = e.target.closest('[data-action="save-max-equipment"]');
+    if (save) {
+      updateMaxEquipmentFromPoolModal(save.getAttribute('data-pool-id'), save.closest('[data-equipment-row]'))
+        .catch(err => console.warn('[updateMaxEquipmentFromPoolModal]:', err));
+      return;
+    }
     const del = e.target.closest('[data-action="delete-max-equipment"]');
     if (del) {
       deleteMaxEquipmentFromPool(del.getAttribute('data-pool-id'))
@@ -3340,11 +3352,21 @@ function _ensureMaxEquipmentPoolModal() {
   return el;
 }
 
-export async function openMaxEquipmentPoolModal() {
+function _currentEquipmentModalGymId() {
+  return document.getElementById('max-equipment-pool-modal')?.dataset?.gymId
+    || S?.workout?.currentGymId
+    || getExpertPreset()?.currentGymId
+    || null;
+}
+
+export async function openMaxEquipmentPoolModal(options = {}) {
   const el = _ensureMaxEquipmentPoolModal();
   const body = document.getElementById('max-equipment-pool-body');
-  const selectedGymId = document.getElementById('max-plan-gym-id')?.value || null;
+  const requestedGymId = typeof options === 'string' ? options : (options?.gymId || null);
+  const selectedGymId = requestedGymId || document.getElementById('max-plan-gym-id')?.value || null;
   const gymId = selectedGymId || S?.workout?.currentGymId || getExpertPreset()?.currentGymId || null;
+  if (gymId) el.dataset.gymId = gymId;
+  else delete el.dataset.gymId;
   if (selectedGymId && S?.workout) S.workout.currentGymId = selectedGymId;
   if (selectedGymId) await saveExpertPreset({ currentGymId: selectedGymId, mode: 'max', enabled: true });
   const gym = (getGyms() || []).find(g => g.id === gymId) || null;
@@ -3380,20 +3402,20 @@ export async function openMaxEquipmentPoolModal() {
       <div class="wt-max-equipment-create">
         <input id="max-equipment-name" type="text" placeholder="기구 이름">
         <select id="max-equipment-category">
-          <option value="machine">머신</option>
-          <option value="cable">케이블</option>
-          <option value="smith">스미스</option>
-          <option value="barbell">바벨</option>
-          <option value="dumbbell">덤벨</option>
-          <option value="bodyweight">맨몸</option>
+          ${_equipmentCategoryOptions('machine')}
         </select>
         <button type="button" data-action="add-max-equipment" ${gym ? '' : 'disabled'}>추가</button>
       </div>
       ${(gymItems.length ? gymItems : []).map(item => `
-        <div class="wt-max-equipment-row">
-          <span>${_esc(item.name)}</span>
-          <small>${_esc(item.category)}</small>
-          <button type="button" data-action="delete-max-equipment" data-pool-id="${_esc(item.id)}">삭제</button>
+        <div class="wt-max-equipment-row wt-max-equipment-edit-row" data-equipment-row data-pool-id="${_esc(item.id)}">
+          <div class="wt-max-equipment-edit-fields">
+            <input type="text" data-equipment-field="name" value="${_esc(item.name)}" aria-label="기구 이름">
+            <select data-equipment-field="category" aria-label="기구 카테고리">${_equipmentCategoryOptions(item.category || 'machine')}</select>
+          </div>
+          <div class="wt-max-equipment-row-actions">
+            <button type="button" data-action="save-max-equipment" data-pool-id="${_esc(item.id)}">저장</button>
+            <button type="button" class="danger" data-action="delete-max-equipment" data-pool-id="${_esc(item.id)}">삭제</button>
+          </div>
         </div>
       `).join('') || '<div class="wt-max-equipment-empty">이 헬스장 전용 기구가 아직 없어요.</div>'}
     </div>
@@ -3403,7 +3425,7 @@ export async function openMaxEquipmentPoolModal() {
 }
 
 export async function toggleMaxPoolItem(poolId, enabled) {
-  const gymId = S?.workout?.currentGymId || getExpertPreset()?.currentGymId || null;
+  const gymId = _currentEquipmentModalGymId();
   if (!gymId || !poolId) {
     _toast('헬스장을 먼저 선택하세요', 'warning');
     return;
@@ -3411,11 +3433,11 @@ export async function toggleMaxPoolItem(poolId, enabled) {
   const pool = await import('../../data/data-equipment-pool.js');
   await pool.toggleGymPool(gymId, poolId, !!enabled);
   _toast(enabled ? '공통 기구를 켰어요' : '공통 기구를 껐어요', 'success');
-  openMaxEquipmentPoolModal();
+  openMaxEquipmentPoolModal({ gymId });
 }
 
 export async function addMaxEquipmentFromPoolModal() {
-  const gymId = S?.workout?.currentGymId || getExpertPreset()?.currentGymId || null;
+  const gymId = _currentEquipmentModalGymId();
   if (!gymId) {
     _toast('헬스장을 먼저 선택하세요', 'warning');
     return;
@@ -3429,7 +3451,23 @@ export async function addMaxEquipmentFromPoolModal() {
   const pool = await import('../../data/data-equipment-pool.js');
   await pool.createGymExclusive(gymId, { name, category, movementIds: [] });
   _toast(`${name} 추가 완료`, 'success');
-  openMaxEquipmentPoolModal();
+  openMaxEquipmentPoolModal({ gymId });
+}
+
+export async function updateMaxEquipmentFromPoolModal(poolId, row = null) {
+  if (!poolId) return;
+  const target = row || Array.from(document.querySelectorAll('[data-equipment-row]'))
+    .find(item => item.getAttribute('data-pool-id') === poolId);
+  const name = String(target?.querySelector('[data-equipment-field="name"]')?.value || '').trim();
+  const category = target?.querySelector('[data-equipment-field="category"]')?.value || 'machine';
+  if (!name) {
+    _toast('기구 이름을 입력하세요', 'warning');
+    return;
+  }
+  const pool = await import('../../data/data-equipment-pool.js');
+  await pool.updateEquipment(poolId, { name, category });
+  _toast(`${name} 수정 완료`, 'success');
+  openMaxEquipmentPoolModal({ gymId: _currentEquipmentModalGymId() });
 }
 
 async function _removeBenchmarksFromMaxCycle(predicate) {
@@ -3444,11 +3482,12 @@ async function _removeBenchmarksFromMaxCycle(predicate) {
 export async function deleteMaxEquipmentFromPool(poolId) {
   if (!poolId) return;
   if (!window.confirm('이 헬스장 전용 기구를 삭제할까요? 삭제하면 이 기구는 추천 후보에서 빠집니다.')) return;
+  const gymId = _currentEquipmentModalGymId();
   const pool = await import('../../data/data-equipment-pool.js');
   await pool.deleteEquipment(poolId);
   const removedBenchmarks = await _removeBenchmarksFromMaxCycle(benchmark => benchmark?.equipmentPoolId === poolId);
   _toast(removedBenchmarks ? '기구와 연결 벤치마크를 삭제했어요' : '기구를 삭제했어요', 'success');
-  openMaxEquipmentPoolModal();
+  openMaxEquipmentPoolModal({ gymId });
 }
 
 export function closeMaxEquipmentPoolModal(event) {

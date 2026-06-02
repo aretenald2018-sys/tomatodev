@@ -1568,6 +1568,17 @@ body.wt-modal-scroll-lock {
   background: var(--primary);
   color: #fff;
 }
+.ex-picker-quick-add.max-crud {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.ex-picker-quick-add.max-crud .ex-picker-add {
+  min-height: 34px;
+  padding: 8px 10px;
+  text-align: center;
+}
+.ex-picker-quick-add.max-crud span {
+  grid-column: 1 / -1;
+}
 .ex-picker-quick-add span {
   color: var(--text-tertiary);
   font-size: 11px;
@@ -1663,6 +1674,14 @@ body.wt-modal-scroll-lock {
   line-height: 14px;
   white-space: nowrap;
 }
+.ex-picker-row-side {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+  min-width: 0;
+}
 .ex-picker-actions { display: flex; align-items: center; gap: 6px; margin-left: 8px; flex-shrink: 0; }
 .ex-picker-edit { font-size: 14px; padding: 4px 6px; color: var(--text-secondary); cursor: pointer; border-radius: 4px; transition: all var(--transition); }
 .ex-picker-edit:hover { background: rgba(250,52,44,0.1); color: #fa342c; }
@@ -1690,6 +1709,16 @@ body.wt-modal-scroll-lock {
   -webkit-tap-highlight-color: transparent; transition: all var(--transition);
 }
 .ex-picker-add:active { background: var(--surface2); }
+
+@media (max-width: 430px) {
+  .ex-picker-row-side {
+    flex-wrap: wrap;
+    max-width: 48%;
+  }
+  .ex-picker-row-side .ex-picker-benchmark-meta {
+    margin-left: 0;
+  }
+}
 
 /* ── Exercise Editor Form ── */
 .ex-editor-form { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }

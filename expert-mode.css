@@ -4425,7 +4425,9 @@
 .wt-v4-bench-edit select,
 .wt-v4-bench-edit input,
 .wt-max-equipment-create input,
-.wt-max-equipment-create select {
+.wt-max-equipment-create select,
+.wt-max-equipment-edit-fields input,
+.wt-max-equipment-edit-fields select {
   width: 100%;
   min-height: 40px;
   border: 1px solid #ececef;
@@ -4446,6 +4448,22 @@
 }
 .wt-max-equipment-create select {
   grid-column: 1 / -1;
+}
+.wt-max-equipment-edit-row {
+  align-items: stretch;
+}
+.wt-max-equipment-edit-fields {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  gap: 8px;
+}
+.wt-max-equipment-row-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .wt-v4-bench-edit {
   display: grid;
@@ -4900,6 +4918,11 @@
   font-weight: 800;
   padding: 6px 10px;
 }
+.wt-max-equipment-row button.danger {
+  color: #b42318;
+  border-color: #ffd6d3;
+  background: #fff1f0;
+}
 .wt-max-equipment-create button {
   color: #fff;
   border-color: #fa342c;
@@ -4938,6 +4961,15 @@
   .wt-v4-plan-track-fields .wt-v4-track-edit-row b,
   .wt-v4-plan-track-fields .wt-v4-track-edit-row button {
     grid-column: 1 / -1;
+  }
+  .wt-max-equipment-edit-row {
+    flex-direction: column;
+  }
+  .wt-max-equipment-edit-fields {
+    grid-template-columns: 1fr;
+  }
+  .wt-max-equipment-row-actions button {
+    flex: 1;
   }
   .wt-v4-plan-stair-editor {
     grid-template-columns: 1fr;
