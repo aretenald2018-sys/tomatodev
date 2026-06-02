@@ -1190,15 +1190,42 @@ function _isMaxBenchmarkPickerExercise(ex) {
 function _renderMaxBenchmarkPickerMeta(ex) {
   const b = ex?.__maxBenchmark || null;
   if (!b) {
-    return ex?.__maxPickerKind === 'exercise'
-      ? `<span class="ex-picker-benchmark-meta">같은 부위 추가</span>`
-      : '';
+    return `<span class="ex-picker-benchmark-meta is-empty">데이터 없음</span>`;
   }
   const track = b.activeTrack === 'H' ? '강도' : '볼륨';
   const planned = b.planned || {};
   const kg = Number(planned.plannedKg) > 0 ? `${planned.plannedKg}kg` : '계획 중량';
   const reps = Number(planned.targetReps) > 0 ? `${planned.targetReps}회` : '목표 반복';
   return `<span class="ex-picker-benchmark-meta">${_escPicker(track)} · ${_escPicker(kg)} x ${_escPicker(reps)}</span>`;
+}
+
+function _pickerEditIconSvg() {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4.6L18.8 9.8a2.1 2.1 0 0 0 0-3L17.2 5.2a2.1 2.1 0 0 0-3 0L4 15.4V20Z"/><path d="m13.5 6.5 4 4"/></svg>`;
+}
+
+async function _deletePickerExercise(ex) {
+  if (!ex?.id) {
+    window.showToast?.('삭제할 종목을 찾지 못했어요', 2200, 'error');
+    return;
+  }
+  const name = ex.name || ex.id;
+  const ok = await (window.confirmAction?.({
+    title: '종목을 삭제할까요?',
+    message: `"${name}" 종목을 선택 후보에서 삭제합니다.\n과거 운동 기록은 유지됩니다.`,
+    confirmLabel: '삭제',
+    cancelLabel: '취소',
+    destructive: true,
+    longPress: 1200,
+  }) || Promise.resolve(window.confirm?.(`"${name}" 종목을 삭제할까요?`) ?? false));
+  if (!ok) return;
+  try {
+    await deleteExercise(ex.id);
+    _renderPickerList();
+    window.showToast?.('종목이 삭제됐어요', 1800, 'info');
+  } catch (err) {
+    console.warn('[picker.deleteExercise]:', err);
+    window.showToast?.('종목 삭제 실패 — 다시 시도해주세요', 2600, 'error');
+  }
 }
 
 function _buildPickerExerciseEntry(ex) {
@@ -1492,8 +1519,8 @@ export function _renderPickerList() {
           <span class="ex-picker-row-side">
             ${_renderMaxBenchmarkPickerMeta(ex)}
             <span class="ex-picker-actions">
-              <span class="ex-picker-edit" data-exid="${ex.id}" title="종목 수정">✏️</span>
-              ${editable ? `<span class="ex-picker-delete" data-exid="${ex.id}" title="종목 삭제">삭제</span>` : ''}
+              <span class="ex-picker-icon-btn ex-picker-edit" data-exid="${ex.id}" role="button" tabindex="0" aria-label="종목 수정" title="종목 수정">${_pickerEditIconSvg()}</span>
+              <span class="ex-picker-delete" data-exid="${ex.id}" role="button" tabindex="0" title="종목 삭제">삭제</span>
             </span>
           </span>`;
         btn.querySelector('.ex-picker-edit')?.addEventListener('click', e => {
@@ -1502,12 +1529,12 @@ export function _renderPickerList() {
         });
         btn.querySelector('.ex-picker-delete')?.addEventListener('click', e => {
           e.stopPropagation();
-          wtOpenExerciseEditor(ex.id, null);
+          _deletePickerExercise(ex);
         });
       } else if (isExpert) {
         btn.innerHTML = `${_renderExercisePickerName(ex, alreadyAdded)}
           <div class="ex-picker-actions">
-            <span class="ex-picker-edit" data-exid="${ex.id}" title="종목 수정">✏️</span>
+            <span class="ex-picker-icon-btn ex-picker-edit" data-exid="${ex.id}" role="button" tabindex="0" aria-label="종목 수정" title="종목 수정">${_pickerEditIconSvg()}</span>
             ${editable ? `<span class="ex-picker-delete" data-exid="${ex.id}" title="종목 삭제">삭제</span>` : ''}
           </div>`;
         btn.querySelector('.ex-picker-edit')?.addEventListener('click', e => {
@@ -1523,7 +1550,7 @@ export function _renderPickerList() {
         //     실제로는 "이 헬스장에선 안 써요" 의미라 파괴적 삭제가 아님.
         btn.innerHTML = `${_renderExercisePickerName(ex, alreadyAdded)}
           <div class="ex-picker-actions">
-            <span class="ex-picker-edit" data-exid="${ex.id}" title="종목 수정">✏️</span>
+            <span class="ex-picker-icon-btn ex-picker-edit" data-exid="${ex.id}" role="button" tabindex="0" aria-label="종목 수정" title="종목 수정">${_pickerEditIconSvg()}</span>
             <span class="ex-picker-hide" data-exid="${ex.id}" title="이 헬스장 목록에서 숨기기" aria-label="이 헬스장 목록에서 숨기기">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
             </span>

@@ -1674,6 +1674,10 @@ body.wt-modal-scroll-lock {
   line-height: 14px;
   white-space: nowrap;
 }
+.ex-picker-benchmark-meta.is-empty {
+  background: rgba(107, 114, 128, 0.12);
+  color: var(--text-secondary);
+}
 .ex-picker-row-side {
   display: flex;
   align-items: center;
@@ -1683,14 +1687,40 @@ body.wt-modal-scroll-lock {
   min-width: 0;
 }
 .ex-picker-actions { display: flex; align-items: center; gap: 6px; margin-left: 8px; flex-shrink: 0; }
-.ex-picker-edit { font-size: 14px; padding: 4px 6px; color: var(--text-secondary); cursor: pointer; border-radius: 4px; transition: all var(--transition); }
-.ex-picker-edit:hover { background: rgba(250,52,44,0.1); color: #fa342c; }
+.ex-picker-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.ex-picker-icon-btn svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ex-picker-icon-btn:hover,
+.ex-picker-icon-btn:active {
+  background: rgba(250,52,44,0.1);
+  border-color: rgba(250,52,44,0.28);
+  color: #fa342c;
+}
 .ex-picker-delete {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 26px;
-  padding: 4px 8px;
+  min-height: 30px;
+  padding: 5px 9px;
   border-radius: 8px;
   color: #b42318;
   background: #fff1f0;
@@ -1713,9 +1743,12 @@ body.wt-modal-scroll-lock {
 @media (max-width: 430px) {
   .ex-picker-row-side {
     flex-wrap: wrap;
-    max-width: 48%;
+    max-width: 58%;
   }
   .ex-picker-row-side .ex-picker-benchmark-meta {
+    margin-left: 0;
+  }
+  .ex-picker-row-side .ex-picker-actions {
     margin-left: 0;
   }
 }

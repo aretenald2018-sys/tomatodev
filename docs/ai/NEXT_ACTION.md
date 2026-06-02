@@ -5,10 +5,10 @@
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-02-max-picker-exercise-equipment-crud.md`
 - 현재 단계: `review complete`
-- 현재 슬라이스: `Slice 1: 맥스 종목 선택 시트 CRUD 진입 및 기구 수정 보강`
-- 마지막 완료: `맥스 종목 선택 시트 CRUD 진입 및 기구 수정 보강 실행/리뷰 완료`
+- 현재 슬라이스: `Slice 2: 맥스 피커 삭제/빈 데이터/수정 아이콘 후속 보정`
+- 마지막 완료: `Slice 2 실행/리뷰 완료`
 - 다음 액션: 없음
-- 차단 사유: 없음. 실제 브라우저 UI 클릭 플로우는 dev server를 Codex 세션에서 장기 실행하지 않는 프로젝트 규칙 때문에 not verified yet이며, 런타임 자산 검증은 기존 mockup 미추적 참조 때문에 실패했다.
+- 차단 사유: 없음. 실제 브라우저 UI 클릭 플로우는 dev server를 Codex 세션에서 장기 실행하지 않는 프로젝트 규칙 때문에 not verified yet이다.
 
 ## 다음 실행 대상
 
