@@ -3,16 +3,16 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-03-remove-today-track-and-last-ten-cards.md`
+- 계획 문서: `docs/ai/features/2026-06-03-exercise-picker-today-muscle-prefilter.md`
 - 현재 단계: `review complete`
-- 현재 슬라이스: `Slice 1: 성장판 화면 카드 제거`
+- 현재 슬라이스: `Slice 1: Max 종목 피커의 오늘 부위 스코프 고정`
 - 마지막 완료: `Slice 1 실행/리뷰 완료`
 - 다음 액션: 없음
-- 차단 사유: 실제 모바일 UI 플로우는 dev server를 Codex 세션에서 장기 실행하지 않는 프로젝트 규칙 때문에 not verified yet이다.
+- 차단 사유: 로컬 dev server가 실행 중이지 않아 실제 모달 UI 플로우는 not verified yet이다.
 
 ## 다음 실행 대상
 
-- 계획 문서: `docs/ai/features/2026-06-03-remove-today-track-and-last-ten-cards.md`
+- 계획 문서: `docs/ai/features/2026-06-03-exercise-picker-today-muscle-prefilter.md`
 - 실행 슬라이스: 없음
 
 ## 상태값

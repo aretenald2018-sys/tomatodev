@@ -1428,6 +1428,14 @@ function _normalizeMajorMuscleId(id) {
   return SUBPATTERN_TO_MAJOR[id] || id;
 }
 
+function _todayPickerMajorScope() {
+  if (!_isMaxWorkoutMode() || !_isExpertSessionActive()) return [];
+  const selected = Array.isArray(S?.workout?.maxMeta?.selectedMajors)
+    ? S.workout.maxMeta.selectedMajors
+    : [];
+  return [...new Set(selected.map(_normalizeMajorMuscleId).filter(Boolean))];
+}
+
 // Exercise → 대분류 부위 역조회 (muscleId / muscleIds[] / movementId 기반)
 function _exerciseMajorIds(ex) {
   const ids = new Set();
@@ -1456,18 +1464,26 @@ export function _renderPickerList() {
   const currentGymId = _currentPickerGymId();
   const isExpert = _isExpertSessionActive();
   const isMaxBenchmarkPicker = rawPool.some(_isMaxBenchmarkPickerExercise);
+  const todayMajorScope = isMaxBenchmarkPicker ? _todayPickerMajorScope() : [];
+  const todayMajorSet = new Set(todayMajorScope);
+  const basePool = todayMajorSet.size
+    ? rawPool.filter(e => _exerciseMajorIds(e).some(id => todayMajorSet.has(id)))
+    : rawPool;
   if (isMaxBenchmarkPicker) _pickerGymFilter = 'all';
   if (isExpert && !_pickerGymFilter) _pickerGymFilter = 'all';
-  const availableMuscles = new Set(rawPool.flatMap(_exerciseMajorIds).filter(Boolean));
-  const availableGymIds = new Set(rawPool.flatMap(_exerciseGymIds).filter(Boolean));
+  const availableMuscles = new Set(basePool
+    .flatMap(_exerciseMajorIds)
+    .filter(id => id && (!todayMajorSet.size || todayMajorSet.has(id))));
+  const availableGymIds = new Set(basePool.flatMap(_exerciseGymIds).filter(Boolean));
+  const visibleMuscles = allMuscles.filter(m => availableMuscles.has(m.id));
 
   // 필터 유효성 체크: 현재 풀에 해당 부위가 없으면 자동 해제
   if (_pickerMuscleFilter && !availableMuscles.has(_pickerMuscleFilter)) {
     _pickerMuscleFilter = null;
   }
   const muscleFiltered = _pickerMuscleFilter
-    ? rawPool.filter(e => _exerciseMajorIds(e).includes(_pickerMuscleFilter))
-    : rawPool;
+    ? basePool.filter(e => _exerciseMajorIds(e).includes(_pickerMuscleFilter))
+    : basePool;
   const gymFiltered = (() => {
     if (!_pickerGymFilter || _pickerGymFilter === 'all') return muscleFiltered;
     if (_pickerGymFilter === 'usable') return muscleFiltered.filter(_isExerciseUsableAtCurrentGym);
@@ -1504,8 +1520,8 @@ export function _renderPickerList() {
   if (isMaxBenchmarkPicker) {
     const scope = document.createElement('div');
     scope.className = 'ex-picker-filter-active-bar ex-picker-benchmark-scope';
-    const benchmarkCount = rawPool.filter(ex => !!ex?.__maxBenchmark).length;
-    const extraCount = Math.max(0, rawPool.length - benchmarkCount);
+    const benchmarkCount = basePool.filter(ex => !!ex?.__maxBenchmark).length;
+    const extraCount = Math.max(0, basePool.length - benchmarkCount);
     scope.innerHTML = `<span class="ex-picker-filter-active-text"><b>오늘 벤치마크 ${benchmarkCount}개</b> + 같은 부위 추가 종목 ${extraCount}개</span>`;
     container.appendChild(scope);
   }
@@ -1518,8 +1534,7 @@ export function _renderPickerList() {
       <div class="ex-picker-filter-title">부위</div>
       <div class="ex-picker-filter-bar">
         <button type="button" class="ex-picker-filter-chip${muscleAllActive?' active':''}" onclick="window._wtSetPickerMuscleFilter(null)">전체</button>
-        ${allMuscles
-          .filter(m => availableMuscles.has(m.id))
+        ${visibleMuscles
           .map(m => `<button type="button" class="ex-picker-filter-chip${_pickerMuscleFilter===m.id?' active':''}" onclick="window._wtSetPickerMuscleFilter('${m.id}')">${m.name}</button>`)
           .join('')}
       </div>
@@ -1553,10 +1568,10 @@ export function _renderPickerList() {
       <button type="button" class="ex-picker-add primary" data-action="add-picker-exercise">+ 종목 추가(선택)</button>
       <span>${isExpert ? '현재 필터의 헬스장 범위로 저장됩니다.' : '직접 종목을 추가합니다.'}</span>
     `;
-  quickAdd.querySelector('[data-action="add-picker-exercise"]')?.addEventListener('click', () => wtOpenExerciseEditor(null, _pickerMuscleFilter || null));
+  quickAdd.querySelector('[data-action="add-picker-exercise"]')?.addEventListener('click', () => wtOpenExerciseEditor(null, _pickerMuscleFilter || todayMajorScope[0] || null));
   quickAdd.querySelector('[data-action="open-picker-equipment"]')?.addEventListener('click', () => _openPickerEquipmentManager());
   container.appendChild(quickAdd);
-  allMuscles.forEach(muscle => {
+  visibleMuscles.forEach(muscle => {
     const list = pool
       .filter(e => _exerciseMajorIds(e).includes(muscle.id))
       .filter(e => isMaxBenchmarkPicker || !S.workout.hiddenExercises.includes(e.id));
