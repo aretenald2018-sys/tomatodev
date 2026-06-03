@@ -251,31 +251,7 @@ export function renderMaxCycleDashboard({ cycle, cache, exList, todayKey, isDraf
       </section>
 
       ${growthPreviewHtml || `${_renderV4CycleChart(snapshot)}${nextAdviceHtml || ''}`}
-      <section class="card wt-v4-track-card">
-        <div class="card-head">
-          <div><b>오늘 트랙</b><span>${hasIntensityBenchmarks ? '벤치마크별로도 볼륨/강도 전환이 가능합니다.' : '복근·삼두·이두는 볼륨 트랙만 운영합니다.'}</span></div>
-          <div class="badge">${_esc(trackLabel)}</div>
-        </div>
-        ${hasIntensityBenchmarks ? `
-          <div class="wt-v4-track${snapshot.track === 'H' ? ' is-h' : ''}" role="tablist" aria-label="오늘 트랙">
-            <i></i>
-            <button type="button" class="${snapshot.track === 'M' ? 'on' : ''}" data-action="set-max-track" data-track="M">볼륨</button>
-            <button type="button" class="${snapshot.track === 'H' ? 'on' : ''}" data-action="set-max-track" data-track="H">강도</button>
-          </div>
-        ` : `
-          <div class="wt-v4-track is-single" role="status" aria-label="오늘 트랙 볼륨 단일">
-            <button type="button" class="on" disabled>볼륨 단일</button>
-          </div>
-        `}
-      </section>
       ${growthPreviewHtml ? '' : `${_renderV4BenchmarkCard(snapshot, cycle)}${recommendationHtml || ''}`}
-      <div class="wt-v4-last-ten">
-        <div class="wt-v4-last-dot"></div>
-        <div>
-          <b>마지막 10분 보강</b>
-          <span>벤치마크를 끝내면 부족분 1-2개만 제안합니다.</span>
-        </div>
-      </div>
       <div class="next-actions">
         <button type="button" class="ghost" data-action="clear-max-major">오늘 부위 변경</button>
         <button type="button" class="primary" data-action="${isDraft || snapshot.status === 'draft' ? 'start-max-cycle' : 'start-max-session'}">
