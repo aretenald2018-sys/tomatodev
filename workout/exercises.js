@@ -1162,7 +1162,7 @@ function _getMaxBenchmarkPickerPool() {
     selectedMajors,
     currentGymId: _currentPickerGymId(),
     todayKey: _todayDateKey(),
-    cache: getCache(),
+    cache: _cacheWithCurrentPickerWorkout(),
     fallbackMovements: MOVEMENTS,
     includeAllRegisteredExercises: true,
   });
@@ -1171,6 +1171,7 @@ function _getMaxBenchmarkPickerPool() {
     __maxBenchmarkPicker: true,
     __maxBenchmark: item.benchmark,
     __maxCycle: item.cycle,
+    __maxPickerLatest: item.latest || null,
     __maxPickerKind: item.kind || (item.benchmark ? 'benchmark' : 'exercise'),
   }));
 }
@@ -1187,9 +1188,66 @@ function _isMaxBenchmarkPickerExercise(ex) {
   return !!ex?.__maxBenchmarkPicker;
 }
 
+function _cacheWithCurrentPickerWorkout() {
+  const currentKey = _todayDateKey();
+  const cache = getCache() || {};
+  const currentEntries = Array.isArray(S?.workout?.exercises)
+    ? S.workout.exercises.filter(entry => entry?.exerciseId)
+    : [];
+  if (!currentKey || !currentEntries.length) return cache;
+  const existingDay = cache[currentKey] || {};
+  const currentIds = new Set(currentEntries.map(entry => entry.exerciseId));
+  const preserved = (existingDay.exercises || []).filter(entry => !currentIds.has(entry?.exerciseId));
+  return {
+    ...cache,
+    [currentKey]: {
+      ...existingDay,
+      exercises: [...preserved, ...currentEntries],
+    },
+  };
+}
+
+function _pickerDisplaySetScore(set = {}) {
+  const kg = Number(set?.kg) || 0;
+  const reps = Number(set?.reps) || 0;
+  return kg > 0 ? kg * 1000 + reps : reps;
+}
+
+function _bestPickerCurrentSet(exerciseId) {
+  const entry = (S?.workout?.exercises || []).find(item => item?.exerciseId === exerciseId);
+  if (!entry) return null;
+  return (entry.sets || [])
+    .filter(set => set && set.setType !== 'warmup')
+    .map(set => ({
+      kg: Math.max(0, Number(set?.kg) || 0),
+      reps: Number(set?.reps) || 0,
+    }))
+    .filter(set => set.reps > 0)
+    .sort((a, b) => _pickerDisplaySetScore(b) - _pickerDisplaySetScore(a))[0] || null;
+}
+
+function _formatPickerSetBadge(set) {
+  if (!set || !(Number(set.reps) > 0)) return '';
+  const kg = Number(set.kg) || 0;
+  const reps = Number(set.reps) || 0;
+  return kg > 0
+    ? `${_fmtNum(kg)}kg x ${_fmtNum(reps)}회`
+    : `${_fmtNum(reps)}회`;
+}
+
 function _renderMaxBenchmarkPickerMeta(ex) {
   const b = ex?.__maxBenchmark || null;
   if (!b) {
+    const currentSet = _bestPickerCurrentSet(ex?.id);
+    const currentLabel = _formatPickerSetBadge(currentSet);
+    if (currentLabel) {
+      return `<span class="ex-picker-benchmark-meta">${_escPicker('오늘')} · ${_escPicker(currentLabel)}</span>`;
+    }
+    const latest = ex?.__maxPickerLatest || null;
+    const latestLabel = _formatPickerSetBadge(latest);
+    if (latestLabel) {
+      return `<span class="ex-picker-benchmark-meta">${_escPicker('최근')} · ${_escPicker(latestLabel)}</span>`;
+    }
     return `<span class="ex-picker-benchmark-meta is-empty">데이터 없음</span>`;
   }
   const track = b.activeTrack === 'H' ? '강도' : '볼륨';

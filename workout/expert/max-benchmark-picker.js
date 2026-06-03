@@ -123,6 +123,48 @@ function _exerciseNameCompare(a = {}, b = {}) {
     .localeCompare(String(b?.name || b?.nameKo || b?.id || ''), 'ko');
 }
 
+function _pickerDisplaySetScore(set = {}) {
+  const kg = Number(set?.kg) || 0;
+  const reps = Number(set?.reps) || 0;
+  return kg > 0 ? kg * 1000 + reps : reps;
+}
+
+function _bestPickerDisplaySet(sets = []) {
+  return (sets || [])
+    .filter(set => set && set.setType !== 'warmup' && (set.done === true || set.done === undefined))
+    .map(set => ({
+      kg: Math.max(0, Number(set?.kg) || 0),
+      reps: Number(set?.reps) || 0,
+    }))
+    .filter(set => set.reps > 0)
+    .sort((a, b) => _pickerDisplaySetScore(b) - _pickerDisplaySetScore(a))[0] || null;
+}
+
+function _latestPickerExerciseActual(cache = {}, exercise = {}, todayKey = null) {
+  if (!exercise?.id) return null;
+  let latest = null;
+  for (const [dateKey, day] of Object.entries(cache || {})) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) continue;
+    if (todayKey && dateKey > todayKey) continue;
+    for (const entry of day?.exercises || []) {
+      if (entry?.exerciseId !== exercise.id) continue;
+      const best = _bestPickerDisplaySet(entry?.sets || []);
+      if (!best) continue;
+      const point = {
+        dateKey,
+        exerciseId: entry.exerciseId || exercise.id,
+        movementId: entry.movementId || exercise.movementId || null,
+        kg: best.kg,
+        reps: best.reps,
+      };
+      if (!latest || dateKey > latest.dateKey || (dateKey === latest.dateKey && _pickerDisplaySetScore(point) > _pickerDisplaySetScore(latest))) {
+        latest = point;
+      }
+    }
+  }
+  return latest;
+}
+
 export function resolveMaxBenchmarkPickerItems({
   cycle = null,
   exList = [],
@@ -167,6 +209,7 @@ export function resolveMaxBenchmarkPickerItems({
       benchmark,
       cycle: scopedCycle,
       snapshot,
+      latest: benchmark?.latest || null,
       kind: 'benchmark',
     });
   }
@@ -192,11 +235,13 @@ export function resolveMaxBenchmarkPickerItems({
     if (seenIds.has(exercise.id) || (!includeAllRegisteredExercises && seenKeys.has(key))) continue;
     seenIds.add(exercise.id);
     if (!includeAllRegisteredExercises) seenKeys.add(key);
+    const latest = _latestPickerExerciseActual(cache, exercise, todayKey);
     items.push({
       exercise,
       benchmark: null,
       cycle: scopedCycle,
       snapshot,
+      latest,
       kind: 'exercise',
     });
   }

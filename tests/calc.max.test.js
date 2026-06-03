@@ -49,6 +49,8 @@ const MOVEMENTS_FIXTURE = [
   // shoulder_side
   { id:'lateral_raise',          nameKo:'사이드 레터럴 레이즈',         primary:'shoulder', subPattern:'shoulder_side', sizeClass:'small', equipment_category:'dumbbell' },
   { id:'cable_lateral_raise',    nameKo:'케이블 사레레',                primary:'shoulder', subPattern:'shoulder_side', sizeClass:'small', equipment_category:'cable' },
+  { id:'cable_crunch',           nameKo:'케이블 크런치',                primary:'abs', subPattern:'abs_core', sizeClass:'small', equipment_category:'cable' },
+  { id:'plank',                  nameKo:'플랭크',                       primary:'abs', subPattern:'abs_core', sizeClass:'small', equipment_category:'bodyweight' },
 ];
 
 function makeComparison(weakSubPatterns) {
@@ -1241,6 +1243,61 @@ test('resolveMaxBenchmarkPickerItems · 테스트모드 운동추가는 다른 �
   assert.ok(ids.includes('bicep_1'));
   assert.ok(ids.includes('custom_armcurl'));
   assert.ok(ids.includes('custom_cable'));
+});
+
+test('resolveMaxBenchmarkPickerItems · 벤치마크가 아닌 후보도 최근 세트 데이터를 보존한다', () => {
+  const cycle = {
+    id: 'cycle_picker_extra_latest',
+    status: 'active',
+    framework: 'dual_track_progression_v2',
+    startDate: '2026-05-04',
+    weeks: 6,
+    benchmarks: [{
+      id: 'bm_abs_cable_crunch',
+      exerciseId: 'ex_cable_crunch',
+      movementId: 'cable_crunch',
+      label: '케이블 크런치',
+      primaryMajor: 'abs',
+      startKg: 25,
+      targetKg: 30,
+      incrementKg: 2.5,
+    }],
+  };
+  const exList = [
+    { id: 'ex_cable_crunch', name: '케이블 크런치', movementId: 'cable_crunch', muscleId: 'abs', gymTags: ['gym_moon'] },
+    { id: 'ex_plank', name: '플랭크', movementId: 'plank', muscleId: 'abs', gymTags: ['*'] },
+  ];
+  const cache = {
+    '2026-05-09': {
+      exercises: [{
+        exerciseId: 'ex_plank',
+        movementId: 'plank',
+        sets: [{ kg: 0, reps: 45, done: true, setType: 'main' }],
+      }],
+    },
+  };
+
+  const items = resolveMaxBenchmarkPickerItems({
+    cycle,
+    exList,
+    selectedMajors: ['abs'],
+    currentGymId: 'gym_moon',
+    todayKey: '2026-05-11',
+    cache,
+    fallbackMovements: MOVEMENTS_FIXTURE,
+    includeAllRegisteredExercises: true,
+  });
+  const plank = items.find(item => item.exercise.id === 'ex_plank');
+
+  assert.equal(plank?.kind, 'exercise');
+  assert.equal(plank?.benchmark, null);
+  assert.deepEqual(plank?.latest, {
+    dateKey: '2026-05-09',
+    exerciseId: 'ex_plank',
+    movementId: 'plank',
+    kg: 0,
+    reps: 45,
+  });
 });
 
 test('resolveMaxBenchmarkPickerItems · 등 선택 시 랫풀다운은 벤치마크가 아니어도 추가 후보로 보인다', () => {
