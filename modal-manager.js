@@ -39,27 +39,40 @@ const MODALS = [
 
 // 모달들이 로드되었는지 추적
 let _modalsLoaded = false;
+let _modalsLoadPromise = null;
 
 /**
  * 모든 모달을 동적으로 로드하고 DOM에 주입
  */
 export async function loadAndInjectModals() {
   if (_modalsLoaded) return;
+  if (_modalsLoadPromise) return _modalsLoadPromise;
 
-  const container = document.getElementById('modals-container');
-  if (!container) return;
+  _modalsLoadPromise = (async () => {
+    const container = document.getElementById('modals-container');
+    if (!container) {
+      console.warn('[modal-manager] modals-container 를 찾지 못했습니다');
+      return;
+    }
 
-  const cacheKey = '?v=20260507-test-mode-fixes';
-  const results = await Promise.allSettled(
-    MODALS.map(cfg => import(cfg.path + cacheKey).then(m => m[cfg.export] || ''))
-  );
-  const htmlParts = results
-    .filter(r => r.status === 'fulfilled' && r.value)
-    .map(r => r.value);
+    const cacheKey = '?v=20260507-test-mode-fixes';
+    const results = await Promise.allSettled(
+      MODALS.map(cfg => import(cfg.path + cacheKey).then(m => m[cfg.export] || ''))
+    );
+    const htmlParts = results
+      .filter(r => r.status === 'fulfilled' && r.value)
+      .map(r => r.value);
 
-  container.innerHTML = htmlParts.join('\n');
-  _modalsLoaded = true;
-  console.log('[modal-manager] 모달 로드 완료 (' + htmlParts.length + '/' + MODALS.length + ')');
+    container.innerHTML = htmlParts.join('\n');
+    _modalsLoaded = true;
+    console.log('[modal-manager] 모달 로드 완료 (' + htmlParts.length + '/' + MODALS.length + ')');
+  })();
+
+  try {
+    await _modalsLoadPromise;
+  } finally {
+    if (!_modalsLoaded) _modalsLoadPromise = null;
+  }
 }
 
 /**

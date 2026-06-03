@@ -7,6 +7,7 @@ import { searchNutritionDB, getNutritionDB, getRecentNutritionItems,
 import { loadCSVDatabase, searchCSVFood, searchGovFoodAPI } from './fatsecret-api.js';
 import { searchRawIngredients } from './data/raw-ingredients.js';
 import { wtAddFoodItem } from './render-workout.js';
+import { loadAndInjectModals } from './modal-manager.js';
 
 // ── 상태 ──────────────────────────────────────────────────────────
 let _nutritionSearchMeal = null;
@@ -20,10 +21,22 @@ let _lastSearchQuery = null;
 // 2) 식약처 공공API(searchGovFoodAPI) 보조로 처리.
 
 // ── 영양 검색 모달 ────────────────────────────────────────────────
+async function _getNutritionSearchElements() {
+  await loadAndInjectModals();
+  const modal = document.getElementById('nutrition-search-modal');
+  const input = document.getElementById('nutrition-search-input');
+  const results = document.getElementById('nutrition-search-results');
+  if (!modal || !input || !results) {
+    throw new Error('nutrition-search-modal is not ready');
+  }
+  return { modal, input, results };
+}
+
 export async function openNutritionSearch(mealId) {
   _nutritionSearchMeal = mealId;
   window._nutritionSearchMeal = mealId;
-  document.getElementById('nutrition-search-input').value = '';
+  const { modal, input } = await _getNutritionSearchElements();
+  input.value = '';
 
   if (!window._nutritionCSVLoaded) {
     try {
@@ -37,15 +50,21 @@ export async function openNutritionSearch(mealId) {
   }
 
   renderNutritionSearchInitial();
-  document.getElementById('nutrition-search-modal').classList.add('open');
-  setTimeout(() => document.getElementById('nutrition-search-input').focus(), 100);
+  if (typeof window._openModal === 'function') {
+    window._openModal('nutrition-search-modal');
+  } else {
+    modal.classList.add('open');
+  }
+  setTimeout(() => input?.focus(), 100);
 }
 
 export function closeNutritionSearch(e) { window._closeModal('nutrition-search-modal', e); }
 
 // ── 검색 디바운싱 ────────────────────────────────────────────────
 export function debouncedNutritionSearch() {
-  const q = (document.getElementById('nutrition-search-input').value || '').trim();
+  const input = document.getElementById('nutrition-search-input');
+  if (!input) return;
+  const q = (input.value || '').trim();
   if (q === _lastSearchQuery) return;
   _lastSearchQuery = q;
 
@@ -94,6 +113,7 @@ function _renderNutritionSection(title, items, options = {}) {
 // ── 초기 검색 결과 ────────────────────────────────────────────────
 export function renderNutritionSearchInitial() {
   const container = document.getElementById('nutrition-search-results');
+  if (!container) return;
   const recentItems = getRecentNutritionItems(10);
 
   let html = _renderNutritionSection('⭐ 최근 항목', recentItems, { removable: true });
@@ -108,8 +128,10 @@ export function renderNutritionSearchInitial() {
 
 // ── 검색 결과 렌더링 ────────────────────────────────────────────────
 export async function renderNutritionSearchResults() {
-  const q = (document.getElementById('nutrition-search-input').value || '').trim();
+  const input = document.getElementById('nutrition-search-input');
   const container = document.getElementById('nutrition-search-results');
+  if (!input || !container) return;
+  const q = (input.value || '').trim();
 
   let html = '';
   let allNames = new Set();
