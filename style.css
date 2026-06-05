@@ -1643,6 +1643,19 @@ body.wt-modal-scroll-lock {
   line-height: 14px;
   font-weight: 800;
 }
+.ex-picker-source[data-gym-filter] {
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+  transition: transform 0.1s ease-in-out, box-shadow 0.1s ease-in-out;
+}
+.ex-picker-source[data-gym-filter]:active {
+  transform: scale(0.97);
+}
+.ex-picker-source[data-gym-filter]:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
 .ex-picker-source b,
 .ex-picker-source small {
   font: inherit;

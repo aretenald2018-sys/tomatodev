@@ -1319,12 +1319,14 @@ function _exerciseSourceMeta(ex) {
   const gym = gymId ? gyms.find(g => g.id === gymId) : null;
   const currentGym = currentGymId ? gyms.find(g => g.id === currentGymId) : null;
   if (_isExerciseGlobalScope(ex)) {
-    return { label: '공통', detail: '모든 헬스장', cls: 'global' };
+    return { label: '공통', detail: '모든 헬스장', cls: 'global', filterId: 'global', actionLabel: '공통 기구만 보기' };
   }
   if (currentGymId && gymIds.includes(currentGymId)) {
-    return { label: gym?.name || currentGym?.name || '현재 헬스장', detail: '전용 기구', cls: 'current' };
+    const label = currentGym?.name || gym?.name || '현재 헬스장';
+    return { label, detail: '전용 기구', cls: 'current', filterId: currentGymId, actionLabel: `${label} 기구만 보기` };
   }
-  return { label: gym?.name || '다른 헬스장', detail: '전용 기구', cls: 'other' };
+  const label = gym?.name || '다른 헬스장';
+  return { label, detail: '전용 기구', cls: 'other', filterId: gymId, actionLabel: `${label} 기구만 보기` };
 }
 
 function _exerciseGymIds(ex) {
@@ -1357,15 +1359,35 @@ function _isExerciseEditable(ex) {
 
 function _renderExercisePickerName(ex, alreadyAdded) {
   const source = _exerciseSourceMeta(ex);
+  const sourceAttrs = source.filterId
+    ? ` data-gym-filter="${_escPicker(source.filterId)}" role="button" tabindex="0" aria-label="${_escPicker(source.actionLabel)}" title="${_escPicker(source.actionLabel)}"`
+    : '';
   return `
     <span class="ex-picker-main">
       <span class="ex-picker-name">${_escPicker(ex.name)}${alreadyAdded ? ' ✓' : ''}</span>
-      <span class="ex-picker-source ${source.cls}">
+      <span class="ex-picker-source ${source.cls}"${sourceAttrs}>
         <b>${_escPicker(source.label)}</b>
         <small>${_escPicker(source.detail)}</small>
       </span>
     </span>
   `;
+}
+
+function _bindPickerSourceFilter(btn) {
+  const source = btn?.querySelector?.('.ex-picker-source[data-gym-filter]');
+  if (!source) return;
+  const apply = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const filterId = source.getAttribute('data-gym-filter');
+    if (!filterId) return;
+    window._wtSetPickerGymFilter?.(filterId);
+  };
+  source.addEventListener('click', apply);
+  source.addEventListener('keydown', event => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    apply(event);
+  });
 }
 
 function _escPicker(s) {
@@ -1469,7 +1491,6 @@ export function _renderPickerList() {
   const basePool = todayMajorSet.size
     ? rawPool.filter(e => _exerciseMajorIds(e).some(id => todayMajorSet.has(id)))
     : rawPool;
-  if (isMaxBenchmarkPicker) _pickerGymFilter = 'all';
   if (isExpert && !_pickerGymFilter) _pickerGymFilter = 'all';
   const availableMuscles = new Set(basePool
     .flatMap(_exerciseMajorIds)
@@ -1649,6 +1670,7 @@ export function _renderPickerList() {
           });
         });
       }
+      _bindPickerSourceFilter(btn);
 
       if (!alreadyAdded) {
         btn.addEventListener('click', () => {
@@ -1700,9 +1722,7 @@ export async function wtOpenExercisePicker() {
   if (!modal) { console.error('[workout] ex-picker-modal not found'); return; }
   // 피커 열 때마다 부위/검색은 초기화하되, 헬스장 필터는 그날 세션 동안 유지한다.
   _pickerMuscleFilter = null;
-  _pickerGymFilter = _getMaxBenchmarkPickerPool().length
-    ? 'all'
-    : _isExpertSessionActive()
+  _pickerGymFilter = _isExpertSessionActive()
     ? (S?.workout?.pickerGymFilter || 'all')
     : null;
   _pickerSearchQuery = '';
