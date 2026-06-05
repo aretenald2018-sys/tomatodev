@@ -16,6 +16,7 @@
 - `workout/exercises.js`
 - `style.css`
 - `sw.js`
+- `build-info.json`
 
 작업:
 
@@ -25,6 +26,7 @@
 - Max/벤치마크용 피커에서도 배지 필터가 유지되도록 렌더 중 `all` 강제 초기화를 제거한다.
 - 클릭 가능 상태가 보이도록 스타일을 보강한다.
 - `STATIC_ASSETS` 대상 파일 변경에 맞춰 `sw.js`의 `CACHE_VERSION`을 bump한다.
+- 배포 검증 스크립트가 `sw.js`와 비교하는 `build-info.json` cacheVersion도 같은 값으로 갱신한다.
 
 비범위:
 
@@ -45,7 +47,7 @@
 ## 실행 결과
 
 - 상태: 실행 완료
-- 변경 파일: `workout/exercises.js`, `style.css`, `sw.js`
+- 변경 파일: `workout/exercises.js`, `style.css`, `sw.js`, `build-info.json`
 - 검증:
   - `node --check workout/exercises.js` 통과
   - `node --test tests/calc.max.test.js` 통과

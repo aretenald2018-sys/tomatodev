@@ -3,7 +3,7 @@
 ## 리뷰 대상
 
 - 계획 문서: `docs/ai/features/2026-06-05-ex-picker-gym-badge-filter.md`
-- 변경 파일: `workout/exercises.js`, `style.css`, `sw.js`
+- 변경 파일: `workout/exercises.js`, `style.css`, `sw.js`, `build-info.json`
 
 ## 결과
 
@@ -19,6 +19,8 @@
   - 배지의 클릭 가능 상태와 키보드 포커스 상태만 추가했고 레이아웃 크기 변경 위험은 낮다.
 - `sw.js`
   - `workout/exercises.js`와 `style.css`가 `STATIC_ASSETS`에 포함되어 있어 `CACHE_VERSION`을 함께 갱신했다.
+- `build-info.json`
+  - 배포 검증 스크립트가 `sw.js`의 `CACHE_VERSION`과 같은 cacheVersion을 요구하므로 같은 값으로 갱신했다.
 
 ## 검증
 
