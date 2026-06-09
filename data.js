@@ -20,6 +20,7 @@ import {
 
 import { dateKey, TODAY } from './data/data-date.js';
 import { _getQuarterKeyNow, _sortExList } from './data/data-helpers.js';
+import { bodyCheckinSequence, getEffectiveDailyBodyCheckins } from './data/body-checkins.js';
 import { isAdmin, isAdminGuest } from './data/data-auth.js';
 import { getAccountList, saveAccount } from './data/data-account.js';
 import { _socialId, _isMySocialId } from './data/data-social-friends.js';
@@ -300,7 +301,9 @@ export function findDietEntriesByRecipeId(recipeId) {
 const _checkinCRUD = _createCRUD('body_checkins', () => _bodyCheckins, v => _setBodyCheckins(v));
 export const saveBodyCheckin   = (rec) => _checkinCRUD.save(rec);
 export const deleteBodyCheckin = (id)  => _checkinCRUD.delete(id);
-export const getBodyCheckins = () => [..._bodyCheckins].sort((a,b) => (a.date||'').localeCompare(b.date||''));
+export const getRawBodyCheckins = () => [..._bodyCheckins]
+  .sort((a,b) => (a.date||'').localeCompare(b.date||'') || bodyCheckinSequence(a) - bodyCheckinSequence(b));
+export const getBodyCheckins = () => getEffectiveDailyBodyCheckins(_bodyCheckins);
 
 // ═══════════════════════════════════════════════════════════════
 // Nutrition DB

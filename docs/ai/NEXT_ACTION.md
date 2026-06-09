@@ -3,16 +3,16 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/diagnoses/2026-06-09-localhost-5500-dev-server.md`
+- 계획 문서: `docs/ai/diagnoses/2026-06-09-zoops-checkin-weight-trend.md`
 - 현재 단계: `review complete`
-- 현재 슬라이스: `localhost 5500 dev server 수정`
-- 마지막 완료: `Windows bash 의존 제거 및 localhost 5500 HTTP 200 검증 완료`
+- 현재 슬라이스: `줍스 체중/체지방 추이 중복 체크인 보정`
+- 마지막 완료: `줍스 원본 체크인 정합성 확인 및 날짜별 최신 체크인 표시/저장 중복 방지 수정`
 - 다음 액션: 없음
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
 
-- 계획 문서: `docs/ai/diagnoses/2026-06-09-localhost-5500-dev-server.md`
+- 계획 문서: `docs/ai/diagnoses/2026-06-09-zoops-checkin-weight-trend.md`
 - 실행 슬라이스: 없음
 - 리뷰 대상 파일: 없음
 

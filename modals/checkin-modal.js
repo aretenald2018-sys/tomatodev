@@ -25,7 +25,7 @@ export const MODAL_HTML = `
       <div class="ex-editor-actions">
         <button class="tds-btn cancel-btn ghost md" id="ci-delete-btn" onclick="deleteCheckinFromModal()" style="display:none;color:var(--diet-bad)">삭제</button>
         <button class="tds-btn cancel-btn ghost md" onclick="closeCheckinModal()">취소</button>
-        <button class="tds-btn fill md" onclick="saveCheckinFromModal()">저장하기</button>
+        <button class="tds-btn fill md" id="ci-save-btn" onclick="saveCheckinFromModal()">저장하기</button>
       </div>
     </div>
   </div>

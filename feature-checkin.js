@@ -9,6 +9,15 @@ import { confirmAction } from './utils/confirm-modal.js';
 
 let _checkinId = null;
 let _bodyFatEnabled = false;
+let _checkinSaving = false;
+
+function _setCheckinSaving(saving) {
+  _checkinSaving = !!saving;
+  const btn = document.getElementById('ci-save-btn');
+  if (!btn) return;
+  btn.disabled = _checkinSaving;
+  btn.textContent = _checkinSaving ? '저장 중...' : '저장하기';
+}
 
 function _setBodyFatEnabled(enabled, { clearWhenOff = false } = {}) {
   _bodyFatEnabled = !!enabled;
@@ -22,6 +31,7 @@ function _setBodyFatEnabled(enabled, { clearWhenOff = false } = {}) {
 
 function openCheckinModal(id) {
   _checkinId = id || null;
+  _setCheckinSaving(false);
   if (id) {
     const rec = getBodyCheckins().find(c => c.id === id);
     if (rec) {
@@ -48,23 +58,34 @@ function closeCheckinModal(e) { window._closeModal('checkin-modal', e); }
 function toggleCheckinBodyFat() { _setBodyFatEnabled(!_bodyFatEnabled, { clearWhenOff: !_bodyFatEnabled ? false : true }); }
 
 async function saveCheckinFromModal() {
+  if (_checkinSaving) return;
   const date   = document.getElementById('ci-date').value;
   const weight = parseFloat(document.getElementById('ci-weight').value);
   const bf     = parseFloat(document.getElementById('ci-bodyfat').value);
   const note   = document.getElementById('ci-note').value.trim();
   if (!date || !weight) { window.showToast?.('날짜와 체중을 입력해주세요', 2500, 'warning'); return; }
+  const existingForDate = !_checkinId ? getBodyCheckins().find(c => c.date === date) : null;
   const rec = {
-    id:         _checkinId || `ci_${Date.now()}`,
+    id:         _checkinId || existingForDate?.id || `ci_${Date.now()}`,
     date,
     weight,
     bodyFatPct: _bodyFatEnabled && Number.isFinite(bf) ? bf : null,
     note:       note || null,
   };
-  await saveBodyCheckin(rec);
+  _setCheckinSaving(true);
+  try {
+    await saveBodyCheckin(rec);
+  } catch (error) {
+    console.error('[checkin] save failed:', error);
+    showToast('체크인 저장에 실패했어요', 2500, 'error');
+    _setCheckinSaving(false);
+    return;
+  }
 
   const checkins = getBodyCheckins().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
   document.getElementById('checkin-modal').classList.remove('open');
+  _setCheckinSaving(false);
   window.renderAll();
   if (checkins.length < 2) {
     showToast('첫 기록 완료!', 1800, 'success');
