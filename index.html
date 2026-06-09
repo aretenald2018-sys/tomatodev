@@ -18,7 +18,7 @@
 <link rel="stylesheet" href="styles/components.css">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="admin/admin-hig.css">
-<link rel="stylesheet" href="expert-mode.css?v=20260515v12">
+<link rel="stylesheet" href="expert-mode.css?v=20260609a12">
 </head>
 <body>
 
@@ -748,6 +748,10 @@
 <button class="stats-view-btn" data-stats-view="deep" type="button">심층통계</button>
 </div>
 <div id="stats-overall-panel" class="stats-view-panel active">
+<div class="stats-block">
+<div class="stats-block-title">📋 전체 기록 리포트</div>
+<div id="stats-metadata-summary"></div>
+</div>
 <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
 <button class="export-btn" onclick="openExportModal()">📊 CSV 내보내기</button>
 </div>
@@ -809,10 +813,10 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
-<script src="feature-login.js?v=20260513b"></script>
-<script type="module" src="app.js?v=20260601a"></script>
+<script src="feature-login.js?v=20260609a"></script>
+<script type="module" src="app.js?v=20260609a"></script>
 
 <!-- PWA Service Worker 등록 -->
-<script src="pwa-register.js?v=20260528a"></script>
+<script src="pwa-register.js?v=20260609a"></script>
 </body>
 </html>

@@ -11,7 +11,6 @@ import { getDietRec, getWorkoutRec,
 // ── 분리된 모듈 ──
 import './feature-nutrition.js';
 import './feature-diet-plan.js';
-import './feature-fatsecret.js';
 import './feature-checkin.js';
 import './feature-misc.js';
 import './workout-ui.js';
@@ -245,7 +244,7 @@ function openWorkoutTab(y, m, d) {
 // ── 탭 드래그/스와이프/가시성은 navigation.js로 분리됨 ──────────
 // ── 목표 및 퀨스트 모달 함수는 app-modal-*.js에서 import됨 ───────────────
 
-// ── 다이어트 플랜/체크인/FatSecret은 feature-*.js로 분리됨 ──────
+// ── 다이어트 플랜/체크인은 feature-*.js로 분리됨 ──────
 // ── 초기화 ───────────────────────────────────────────────────────
 async function init() {
   let bootUser = null;

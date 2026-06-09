@@ -165,7 +165,7 @@ test('pickDefaultServing · 빈 배열 → null', () => {
 });
 
 // ══════════════════════════════════════════════════════════════════
-// normalizeFromCsv  — CSV(fatsecret) → canonical
+// normalizeFromCsv  — CSV(food DB) → canonical
 // ══════════════════════════════════════════════════════════════════
 
 test('normalizeFromCsv · 가공식품 CSV → per_100g base + 1인분 추정 포함', () => {

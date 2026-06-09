@@ -24,21 +24,21 @@
 3. **배포는 유저의 명시적 지시가 있을 때만** — 평소에는 push/배포 자동 실행 금지. 단, 유저가 명시적으로 "배포해", "푸시해", "배포까지 해" 등으로 지시한 경우에는 항상 `tomatofarm` 리모트에 push 가능. localhost 확인은 유저가 완료했다고 간주.
 4. **순수 로직은 calc.js** — BMR, 칼로리, 스트릭, 토마토 사이클 계산 등 사이드이펙트 없는 함수만. DOM 접근·Firebase 호출 금지.
 5. **SW 캐시 버전 범프** — `sw.js`의 `STATIC_ASSETS`에 등록된 파일을 수정했으면 `CACHE_VERSION`을 반드시 범프 + `sw.js` 함께 커밋.
-6. **소스 트루스는 루트** — `www/`는 `scripts/copy-www.js` 의 Capacitor 빌드 산출물이다. **`www/` 직접 수정 금지**. 수정은 항상 루트 파일(`index.html`, `app.js`, `style.css`, `workout/*.js` 등)에만. `bash scripts/dev-start.sh` 는 루트를 서빙함.
+6. **소스 트루스는 루트** — `www/`는 `scripts/copy-www.js` 의 Capacitor 빌드 산출물이다. **`www/` 직접 수정 금지**. 수정은 항상 루트 파일(`index.html`, `app.js`, `style.css`, `workout/*.js` 등)에만. `node scripts/dev-start.mjs` 는 루트를 서빙함.
 
-## 🖥️ Dev Server (User-run)
+## 🖥️ Dev Server (Agent-run)
 
-코드 변경 후 서버가 필요하면 사용자가 일반 로컬 터미널에서 아래 명령을 실행하게 안내한다.
+코드 변경 후 로컬 UI 검증이 필요하면 에이전트가 프로젝트 루트에서 아래 명령을 직접 실행한다.
 
 ```powershell
 cd "C:\Users\USER\Desktop\Tomato Project\tomatofarm(for lite version)"; npm.cmd run dev
 ```
 
-- `npm.cmd run dev`는 `bash scripts/dev-start.sh`를 실행한다.
+- `npm.cmd run dev`는 `node scripts/dev-start.mjs`를 실행한다.
 - 이 스크립트는 **idempotent**함: 이미 헬시한 Python 서버가 떠 있으면 재실행해도 기존 서버를 **재사용**(kill 안 함).
-- 포트 충돌 자동 해결: 다른 프로그램이 점유하면 5501, 5502... 순서로 빈 포트 자동 탐색. 이전 세션의 stale Python만 선택적으로 kill.
-- Codex/Claude 샌드박스 세션에서 장기 실행 dev server를 직접 시작하지 말고, 샌드박스에서 시작한 서버를 검증 완료로 주장하지 말 것.
-- 사용자가 서버를 실행하지 않았거나 실제 UI flow를 exercise하지 못했으면 `not verified yet`이라고 말하고, 필요한 명령/URL/검증 기준을 제공한다.
+- 포트 충돌 자동 해결: 다른 프로그램이 점유하면 죽이지 않고 5501, 5502... 순서로 빈 포트 자동 탐색.
+- Codex/Claude 세션은 필요한 경우 `npm.cmd run dev`를 직접 실행하고, 출력된 실제 URL을 기준으로 HTTP 200과 대상 UI flow를 확인한다.
+- dev server 실행이 실패했거나 실제 UI flow를 exercise하지 못했으면 `not verified yet`이라고 말하고, 실패 명령/URL/검증 기준을 제공한다.
 - **🚫 절대 금지 (과거 로그인 다운 원인)**:
   - `python -m http.server`를 직접 실행하지 말 것 — 반드시 `npm.cmd run dev` 또는 그 내부 스크립트 사용
   - 수동 `taskkill`/포트 kill 금지 — 스크립트가 처리함
@@ -58,7 +58,7 @@ cd "C:\Users\USER\Desktop\Tomato Project\tomatofarm(for lite version)"; npm.cmd 
 - 사진 필드(`bPhoto`, `lPhoto`, `dPhoto`, `sPhoto`, `workoutPhoto`)를 저장 객체에 빠뜨리면 setDoc 전체 덮어쓰기로 사진 삭제됨.
 - **레이지 로드 모듈의 함수를 동기 코드에서 직접 호출하면 `ReferenceError`** — `render-cooking.js` 등 `_lazy()`로 로드되는 모듈의 export 함수는 **호출부를 async로 바꿔 `await _lazy()`로 가져올 것**.
 - **이벤트 위임(`document.addEventListener`)과 HTML `onclick`이 같은 버튼에 동시 등록되면 핸들러가 2번 실행됨** — 토글 함수가 2번 불리면 원복되어 "안 눌리는" 증상. 하나의 버튼에는 **이벤트 위임 또는 onclick 중 하나만** 사용.
-- **SW 캐시 버전 안 올리면 코드 변경이 배포에 반영 안 됨** — 현재 `CACHE_VERSION = 'tomatofarm-v20260417z3-ai-food-profile'`. `STATIC_ASSETS` 파일을 하나라도 수정했으면 범프 필수.
+- **SW 캐시 버전 안 올리면 코드 변경이 배포에 반영 안 됨** — 현재 `CACHE_VERSION = 'tomatofarm-v20260606-fatsecret-legacy-cleanup'`. `STATIC_ASSETS` 파일을 하나라도 수정했으면 범프 필수.
 - **커밋 시 의존 파일 누락 → 배포 사이트 런타임 에러** — 예: `home/tomato.js`가 `calc.js`의 `isExerciseDaySuccess`를 import하는데 `calc.js`를 커밋 안 하면 `SyntaxError: does not provide an export named`. **파일 A를 커밋할 때, A가 import하는 다른 파일의 미커밋 변경을 반드시 확인.** 특히 `calc.js ↔ home/tomato.js`, `data/* ↔ home/*.js`, `workout/* ↔ render-workout.js` 간 export/import 의존성.
 - **`localStorage`는 기기 단위, 유저별 아님** — 멀티 유저에서 마이그레이션 플래그 등을 `localStorage`에 저장하면 다른 유저에게도 적용됨. 유저별 상태는 **Firestore `_settings`(tomato_state 등)에 저장**. `localStorage`는 UI 상태/캐시/단말별 API 키 전용.
 - **`unit_goal_start` 같은 설정은 모든 사용자 경로에서 자동설정 필요** — `renderUnitGoal()`이 admin 전용이라 비관리자는 `unit_goal_start`가 영원히 null이었음. 특정 사용자 유형에서만 호출되는 함수에 초기화 로직 넣지 말 것. `settleTomatoCycleIfNeeded()` 같은 공통 경로에서 처리.
@@ -69,7 +69,7 @@ cd "C:\Users\USER\Desktop\Tomato Project\tomatofarm(for lite version)"; npm.cmd 
 루트:
   app.js / data.js / calc.js / config.js / ai.js / sheet.js / sw.js / index.html / style.css
   render-home.js / render-workout.js / render-stats.js / render-admin.js / render-cooking.js  ← 탭 엔트리/shim
-  feature-*.js  ← checkin, diet-plan, fatsecret, misc, nutrition, tutorial
+  feature-*.js  ← checkin, diet-plan, misc, nutrition, tutorial
   workout-ui.js / modal-manager.js / navigation.js / pwa-fcm.js
   app-modal-goals.js / app-modal-quests.js
 
@@ -92,7 +92,7 @@ cd "C:\Users\USER\Desktop\Tomato Project\tomatofarm(for lite version)"; npm.cmd 
                     nutrition-text-parser.js, ux-polish.js, confirm-modal.js, index.js,
                     action-router.js(전역 data-action 이벤트 위임)
   tests/     1개  — calc.expert.test.js (node:test 기반, Vitest 미도입)
-  scripts/        — dev-start.sh, copy-www.js, verify-cheers.mjs
+  scripts/        — dev-start.mjs, static-dev-server.mjs, copy-www.js, verify-cheers.mjs
   api/, functions/, tools/, android/, public/, www/, mockups/, docs/
 ```
 **삭제된 탭:** finance, wine, movie, dev (경량화 2026-04). `render-*.js` 없음. Firestore 컬렉션(`wines`, `stocks`, `movies`)은 데이터 보존.
@@ -255,7 +255,7 @@ CSS 클래스:
 
 ## 📁 파일 패턴
 - 새 탭 엔트리: `render-*.js` (shim) + 실제 로직은 하위 디렉토리 (예: `workout/`, `home/`, `admin/`)
-- 새 기능 모듈: `feature-*.js` (checkin, diet-plan, fatsecret, misc, nutrition, tutorial)
+- 새 기능 모듈: `feature-*.js` (checkin, diet-plan, misc, nutrition, tutorial)
 - 새 모달: `modals/*-modal.js` → `modal-manager.js`의 MODALS 배열에 등록
 - 운동 탭 UX 상태 머신: `workout-ui.js` (wtSelectStatus, wtToggleType 등)
 - 탭 네비게이션: `navigation.js` (드래그 정렬, 스와이프)
@@ -277,7 +277,7 @@ CSS 클래스:
 ## "go" 워크플로우
 1. `@plan.md`에서 다음 미완료 체크박스 확인
 2. 기존 파일 패턴과 위 규칙에 맞춰 구현
-3. 사용자 로컬 터미널에서 `npm.cmd run dev` 실행 후 출력된 localhost URL에서 동작 확인. 직접 확인하지 못했으면 `not verified yet`으로 보고
+3. 에이전트가 프로젝트 루트에서 `npm.cmd run dev`를 직접 실행한 뒤 출력된 localhost URL에서 HTTP 200과 대상 UI flow를 확인. 직접 확인하지 못했으면 `not verified yet`으로 보고
 4. Conventional Commits (feat/fix/refactor/style/docs) 형식 커밋
 5. `@plan.md` 진행 상태 업데이트
 

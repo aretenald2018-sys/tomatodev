@@ -21,12 +21,12 @@
 | D | 각 검색 소스(CSV/공공API/raw/local DB)가 서로 다른 필드명 (`energy` vs `kcal`, `nutrition.kcal` vs flat) | `feature-nutrition.js:63` (`isCSV` 분기) | 소비 쪽 코드가 조건부로 분기해야 함. 추가 소스 넣기 어려움 |
 | E | 사용자 저장 시 `servingSize = 사용자 입력 중량` 으로 덮어씀 | `modals/nutrition-weight-modal.js:156` | 최초 저장이 "쌀밥 300g=495kcal" 라면, 이후 같은 아이템의 servingSize는 300g. 자체는 self-consistent지만 의미가 "1인분=300g인 쌀밥"으로 오염 |
 | F | 검색 모달 표기 — 어떨 땐 "1인분 300g · 495kcal", 어떨 땐 "100g · 165kcal", 어떨 땐 "1공기 165kcal" — 신호 혼란 | `feature-nutrition.js:78` | 사용자가 어느 단위 기준인지 알 수 없음 |
-| G | 단위 전환(100g↔1인분↔ml) UI가 없음. 중량 입력만 있음 | `modals/nutrition-weight-modal.js:21-24` | FatSecret처럼 드롭다운으로 단위 바꾸는 UX 부재 |
+| G | 단위 전환(100g↔1인분↔ml) UI가 없음. 중량 입력만 있음 | `modals/nutrition-weight-modal.js:21-24` | serving-size 드롭다운 UX 부재 |
 | H | 영양성분표 `%영양성분기준치` 값을 실제 g/mg 값으로 오인 | Gemini 프롬프트에 명시 경고 없음 | kcal이 터무니없이 작거나(ex 30) 크게 잡힘 |
 
 ## 2. 목표 (North Star)
 
-**FatSecret의 Serving size UX를 경량 차용:**
+**Serving size UX를 경량 차용:**
 1. 검색 결과는 "해당 제품의 **대표 1회 제공량**" 기준으로 kcal 표시 (가공식품/메뉴). 원재료는 100g 기준.
 2. 선택 후 모달에서 **단위 드롭다운**으로 `100g / 1회 제공량 XXg / 1인분 XXg / ml 기반 액체`로 전환.
 3. **수량**(×0.5, ×1, ×2 등)을 배수로 입력할 수 있게.
@@ -138,7 +138,7 @@
 ## 6. 리스크
 
 - **Gemini 응답이 새 JSON shape을 못 지킬 수 있음** → `_normalizeNutritionParse`에서 legacy shape도 계속 받되 base를 추론해 채워주기
-- **FatSecret 스타일 UX는 모달 재구성이 큼** → Phase C를 두 패스로 분할: C-1 단위 토글만 추가, C-2 배수/stepper 추가
+- **Serving size UX는 모달 재구성이 큼** → Phase C를 두 패스로 분할: C-1 단위 토글만 추가, C-2 배수/stepper 추가
 - **SW 캐시 갱신 누락** → `sw.js` `CACHE_VERSION` + `STATIC_ASSETS` 체크리스트 엄수
 
 ## 7. 체크리스트 (plan.md로 이관)

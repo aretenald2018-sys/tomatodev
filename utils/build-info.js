@@ -4,6 +4,7 @@
 
 let _buildInfoCache = null;
 let _updateReloadRequested = false;
+const APP_SW_SCOPE = '/tomatofarm/';
 
 function _updateBannerState() {
   if (typeof window === 'undefined') {
@@ -199,9 +200,58 @@ function _ensureAppUpdateIndicator() {
   return root;
 }
 
-function _reloadForAppUpdate(registration = null, button = null) {
+function _waitForWorkerState(worker, targetStates, timeoutMs = 8000) {
+  if (!worker || targetStates.includes(worker.state)) return Promise.resolve(worker || null);
+  return new Promise((resolve) => {
+    let done = false;
+    let timer = null;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      if (timer) clearTimeout(timer);
+      worker.removeEventListener?.('statechange', onStateChange);
+      resolve(worker);
+    };
+    const onStateChange = () => {
+      if (targetStates.includes(worker.state)) finish();
+    };
+    worker.addEventListener?.('statechange', onStateChange);
+    timer = setTimeout(finish, timeoutMs);
+  });
+}
+
+async function _resolveLatestAppSWRegistration(registration = null) {
+  if (typeof navigator === 'undefined' || !navigator.serviceWorker) {
+    return registration;
+  }
+
+  let latest = registration
+    || _updateBannerState().latestRegistration
+    || window.__tomatoAppSWRegistration
+    || null;
+
+  try {
+    if (typeof window.__refreshTomatoAppSWRegistration === 'function') {
+      latest = await window.__refreshTomatoAppSWRegistration(latest);
+    } else {
+      latest = latest || await navigator.serviceWorker.getRegistration(APP_SW_SCOPE);
+      if (latest && typeof latest.update === 'function') {
+        latest = await latest.update();
+      }
+    }
+  } catch (error) {
+    console.warn('[PWA] 최신 업데이트 확인 실패:', error?.message || error);
+  }
+
+  if (latest?.installing) {
+    await _waitForWorkerState(latest.installing, ['installed', 'activated', 'redundant']);
+  }
+
+  return latest || registration;
+}
+
+async function _reloadForAppUpdate(registration = null, button = null) {
   const state = _updateBannerState();
-  const targetRegistration = registration || state.latestRegistration;
   if (_updateReloadRequested || state.reloadRequested) return;
   _updateReloadRequested = true;
   state.reloadRequested = true;
@@ -209,6 +259,9 @@ function _reloadForAppUpdate(registration = null, button = null) {
     button.disabled = true;
     button.textContent = '새로고침 중...';
   }
+
+  const targetRegistration = await _resolveLatestAppSWRegistration(registration);
+  state.latestRegistration = targetRegistration || state.latestRegistration;
 
   const waiting = targetRegistration?.waiting;
   if (waiting && typeof navigator !== 'undefined' && navigator.serviceWorker) {

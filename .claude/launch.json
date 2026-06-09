@@ -9,6 +9,13 @@
       "autoPort": true
     },
     {
+      "name": "mockup-static",
+      "runtimeExecutable": "npx.cmd",
+      "runtimeArgs": ["--yes", "http-server", ".", "-p", "5599", "-c-1", "--silent"],
+      "port": 5599,
+      "autoPort": true
+    },
+    {
       "name": "api-server",
       "runtimeExecutable": "node",
       "runtimeArgs": ["api-server.js"],

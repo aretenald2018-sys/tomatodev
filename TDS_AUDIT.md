@@ -357,7 +357,6 @@ TDS Mobile은 4px 그리드를 권장. 패딩/마진은 `4 / 8 / 12 / 16 / 20 / 
 | `modals/nutrition-item-modal.js` | 15 | 저장/에러/검증 메시지 모두 toast로 |
 | `admin/admin-cheers.js` | 6 | success/error 타입 분리 |
 | `admin/admin-actions.js` | 2 | 계정 삭제 확인은 커스텀 confirm |
-| `feature-fatsecret.js` | 1 | info/error |
 | `feature-diet-plan.js` | 2 | success/error |
 | `feature-checkin.js` | 1 | success |
 | `workout/exercises.js` | 2 | success/error |

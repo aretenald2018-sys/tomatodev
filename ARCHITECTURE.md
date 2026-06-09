@@ -33,7 +33,7 @@ index.html (단일 SPA)
   │       ├── data-external.js           — 환율, Fear & Greed API
   │       └── data-helpers.js            — 정렬, 분기 키 유틸
   ├── calc.js             — 순수 비즈니스 로직 (사이드이펙트 없음)
-  ├── feature-*.js        — checkin, diet-plan, fatsecret, misc, nutrition, tutorial
+  ├── feature-*.js        — checkin, diet-plan, misc, nutrition, tutorial
   ├── workout-ui.js       — 운동탭 상태 머신 (wtSelectStatus, wtToggleType)
   ├── home/farm.js        — 토마토 농장 DOM 렌더링
   ├── modal-manager.js    — 29개 모달 동적 주입
@@ -54,7 +54,7 @@ index.html (단일 SPA)
 | 호스팅 | Vercel + GitHub Pages |
 | 모바일 | Capacitor 8.x (Android) |
 | 함수 | Firebase Cloud Functions (`functions/`) |
-| API 서버 | Node/Express (`tools/api-server.js`) — FatSecret, 식품DB 프록시 |
+| API 서버 | Node/Express (`tools/api-server.js`) — 식품DB 프록시 |
 | 테스트 | `node:test` 기반, `tests/calc.expert.test.js` 1개 (Vitest 미도입) |
 | 디자인 | **TDS Mobile** (tossmini-docs.toss.im/tds-mobile) — 컬러 스케일만 커스텀 |
 
@@ -242,7 +242,7 @@ index.html (단일 SPA)
 - `sw.js` `CACHE_VERSION` 변수 범프 → 신규 자산 페치
 - `STATIC_ASSETS` 목록의 파일 수정 시 필수 범프
 - `firebase-messaging-sw.js`는 FCM 푸시 전용 (별도 SW)
-- 현재: `CACHE_VERSION = 'tomatofarm-v20260417z3-ai-food-profile'`
+- 현재: `CACHE_VERSION = 'tomatofarm-v20260606-fatsecret-legacy-cleanup'`
 
 ## 16. 에이전트 (`.claude/agents/`)
 

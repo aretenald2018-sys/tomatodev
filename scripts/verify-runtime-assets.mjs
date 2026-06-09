@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const skipDirs = new Set(['.git', 'node_modules', 'www', 'exports', 'android', 'functions/node_modules']);
+const skipDirs = new Set(['.git', 'node_modules', 'www', 'exports', 'mockups', 'android', 'functions/node_modules']);
 const sourceExts = new Set(['.js', '.mjs', '.html', '.css', '.yml', '.yaml', '.json']);
 
 function rel(filePath) {

@@ -37,15 +37,8 @@ python -m http.server 5500
 
 ## 🔧 환경 설정
 
-### FatSecret API 설정 (음식 검색 기능)
-1. `.env.example`을 `.env.local`로 복사
-2. [FatSecret API](https://platform.fatsecret.com) 가입 후 키 발급
-3. `.env.local`에 API 키 입력:
-```
-FATSECRET_CONSUMER_KEY=your_key
-FATSECRET_CONSUMER_SECRET=your_secret
-```
-자세한 설정은 `FATSECRET_SETUP.md` 참고
+### 음식 검색 기능
+별도 외부 음식 API 설정은 사용하지 않습니다. 음식 검색은 로컬 CSV와 식품의약품안전처 식품영양성분 공공DB를 사용합니다.
 
 ## 📋 주요 기능
 
@@ -56,7 +49,7 @@ FATSECRET_CONSUMER_SECRET=your_secret
 
 ### 🥗 식단 탭
 - 아침, 점심, 저녁, 간식 기록
-- FatSecret 음식 검색으로 영양 정보 자동 계산
+- 음식 DB 검색으로 영양 정보 자동 계산
 - 칼로리, 단백질, 탄수화물, 지방 추적
 - 와인프리 토글
 
@@ -76,7 +69,7 @@ FATSECRET_CONSUMER_SECRET=your_secret
 ├── style.css               # 스타일시트
 ├── data.js                 # 데이터 관리
 ├── ai.js                   # Claude AI 통합
-├── fatsecret-api.js        # FatSecret API
+├── fatsecret-api.js        # CSV + 식품영양성분 공공DB 검색
 ├── render-*.js             # 각 탭 렌더링 모듈
 ├── modals/                 # 모달 HTML
 ├── public/                 # 정적 파일
@@ -92,8 +85,7 @@ FATSECRET_CONSUMER_SECRET=your_secret
 
 ## 🔐 개인정보
 
-이 앱은 로컬에서만 작동하며, 개인 데이터가 서버로 전송되지 않습니다.
-(FatSecret 검색 제외)
+이 앱은 로컬 중심으로 작동하며, 음식 검색 시 식품영양성분 공공DB 조회가 발생할 수 있습니다.
 
 ## 📝 라이선스
 

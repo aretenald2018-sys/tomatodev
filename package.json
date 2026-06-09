@@ -6,7 +6,7 @@
   "main": "app.js",
   "scripts": {
     "start": "node tools/api-server.js",
-    "dev": "bash scripts/dev-start.sh",
+    "dev": "node scripts/dev-start.mjs",
     "bump": "node scripts/bump-cache.js",
     "build": "node scripts/bump-cache.js && node scripts/generate-build-info.mjs && node scripts/copy-www.js",
     "cap:sync": "npm run build && npx cap sync android",

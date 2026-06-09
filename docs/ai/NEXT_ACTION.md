@@ -3,17 +3,18 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-05-ex-picker-gym-badge-filter.md`
+- 계획 문서: `docs/ai/diagnoses/2026-06-09-localhost-5500-dev-server.md`
 - 현재 단계: `review complete`
-- 현재 슬라이스: `Slice 1: 배지 클릭으로 picker gym filter 전환`
-- 마지막 완료: `Slice 1 실행/리뷰 완료`
+- 현재 슬라이스: `localhost 5500 dev server 수정`
+- 마지막 완료: `Windows bash 의존 제거 및 localhost 5500 HTTP 200 검증 완료`
 - 다음 액션: 없음
-- 차단 사유: 로컬 dev server가 실행 중이지 않아 실제 로컬 UI 플로우는 not verified yet이다. 사용자가 로컬 또는 배포 URL에서 배지 탭 동작을 확인해야 한다.
+- 차단 사유: `없음`
 
 ## 다음 실행 대상
 
-- 계획 문서: `docs/ai/features/2026-06-05-ex-picker-gym-badge-filter.md`
+- 계획 문서: `docs/ai/diagnoses/2026-06-09-localhost-5500-dev-server.md`
 - 실행 슬라이스: 없음
+- 리뷰 대상 파일: 없음
 
 ## 상태값
 

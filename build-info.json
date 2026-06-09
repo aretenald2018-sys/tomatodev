@@ -1,10 +1,10 @@
 {
   "app": "tomatofarm",
-  "commit": "0e1c7828c2467daae1c242830777dc256aa3d62e",
-  "shortCommit": "0e1c7828c246",
+  "commit": "204f39a04950e84f63afd11a3886a4dfad591d8f",
+  "shortCommit": "204f39a04950",
   "branch": "main",
-  "deployedAt": "2026-06-05T03:05:07.250Z",
-  "cacheVersion": "tomatofarm-v20260605-ex-picker-gym-badge-filter-r2",
+  "deployedAt": "2026-06-09T14:09:01.501Z",
+  "cacheVersion": "tomatofarm-v20260609z2-stats-metadata-summary",
   "runId": null,
   "runAttempt": null
 }

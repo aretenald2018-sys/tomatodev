@@ -19,7 +19,6 @@ const MODALS = [
   { id: 'nutrition-search-modal', path: './modals/nutrition-search-modal.js', export: 'MODAL_HTML' },
   { id: 'nutrition-item-modal',   path: './modals/nutrition-item-modal.js',   export: 'MODAL_HTML' },
   { id: 'nutrition-weight-modal', path: './modals/nutrition-weight-modal.js', export: 'WEIGHT_MODAL_HTML' },
-  { id: 'fatsecret-modal',        path: './modals/fatsecret-modal.js',        export: 'MODAL_HTML' },
   { id: 'streak-milestone-modal', path: './modals/streak-milestone-modal.js', export: 'MODAL_HTML' },
   { id: 'guild-modal',            path: './modals/guild-modal.js',            export: 'MODAL_HTML' },
   { id: 'guild-info-modal',       path: './modals/guild-info-modal.js',       export: 'MODAL_HTML' },

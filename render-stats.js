@@ -10,7 +10,7 @@ import { TODAY, getMuscles, getCF, getDiet, dietDayOk,
          getVolumeHistory, getCache, calcVolume, getExpertPreset,
          getExercises, dateKey, getBodyCheckins,
          hasExerciseRecord }    from './data.js';
-import { SUBPATTERN_TO_MAJOR }                       from './calc.js';
+import { SUBPATTERN_TO_MAJOR, calcBurnedKcal }       from './calc.js';
 
 let _period             = 30;
 let _selectedExerciseId = null;
@@ -26,6 +26,7 @@ let _checkinChart = null;
 
 export function renderStats() {
   _bindStatsViewTabs();
+  _renderOverallMetadata();
   _renderMuscle14d();
   _renderMusclePeriod();
   _renderVolumeSection();
@@ -61,8 +62,15 @@ function _keyOffset(daysAgo) {
   d.setDate(d.getDate() - daysAgo);
   return dateKey(d.getFullYear(), d.getMonth(), d.getDate());
 }
+const META_MISSING = '데이터가 존재하지 않습니다.';
+const FOOD_KEYS = ['bFoods', 'lFoods', 'dFoods', 'sFoods'];
+const MEAL_PREFIXES = ['b', 'l', 'd', 's'];
+const SKELETAL_KEYS = ['skeletalMuscleMassKg', 'skeletalMuscleMass', 'skeletalMuscleKg', 'muscleMassKg', 'muscleMass', 'smmKg', 'smm'];
+const BODY_FAT_MASS_KEYS = ['bodyFatMassKg', 'fatMassKg', 'bodyFatKg', 'fatKg'];
 function _dayKcal(day) { return (day?.bKcal||0)+(day?.lKcal||0)+(day?.dKcal||0)+(day?.sKcal||0); }
 function _dayProtein(day) { return (day?.bProtein||0)+(day?.lProtein||0)+(day?.dProtein||0)+(day?.sProtein||0); }
+function _dayCarbs(day) { return (day?.bCarbs||0)+(day?.lCarbs||0)+(day?.dCarbs||0)+(day?.sCarbs||0); }
+function _dayFat(day) { return (day?.bFat||0)+(day?.lFat||0)+(day?.dFat||0)+(day?.sFat||0); }
 const MAJOR_LABELS = { chest:'가슴', back:'등', lower:'하체', shoulder:'어깨', bicep:'이두', tricep:'삼두', abs:'복근', core:'복근' };
 const LANDMARKS = {
   chest: { label:'가슴', low:8, good:14, high:22 },
@@ -123,6 +131,241 @@ function _topSetE1rm(entry) {
   }
   return best;
 }
+
+function _num(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+function _maybeNum(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+function _firstNumber(obj, keys) {
+  for (const key of keys) {
+    const n = _maybeNum(obj?.[key]);
+    if (n !== null) return n;
+  }
+  return null;
+}
+function _fmt(n, digits = 0) {
+  return Number(n).toLocaleString('ko-KR', {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+}
+function _fmtSigned(n, digits = 1, unit = 'kg') {
+  return `${n >= 0 ? '+' : ''}${_fmt(n, digits)} ${unit}`;
+}
+function _dateEntries() {
+  const todayKey = _keyOffset(0);
+  return Object.entries(getCache())
+    .filter(([key]) => /^\d{4}-\d{2}-\d{2}$/.test(key) && key <= todayKey)
+    .sort(([a], [b]) => a.localeCompare(b));
+}
+function _foodItems(day) {
+  return FOOD_KEYS.flatMap(key => Array.isArray(day?.[key]) ? day[key] : []);
+}
+function _foodName(food) {
+  return String(food?.name || food?.foodName || food?.label || '').trim();
+}
+function _foodKcal(food) {
+  return _num(food?.kcal ?? food?.calories ?? food?.energy);
+}
+function _sumMealFields(day, suffixes) {
+  let total = 0, seen = false;
+  MEAL_PREFIXES.forEach(prefix => suffixes.forEach(suffix => {
+    const n = _maybeNum(day?.[`${prefix}${suffix}`]);
+    if (n !== null) { total += n; seen = true; }
+  }));
+  return seen ? total : null;
+}
+function _sumFoodFields(day, keys) {
+  let total = 0, seen = false;
+  _foodItems(day).forEach(food => {
+    const n = _firstNumber(food, keys);
+    if (n !== null) { total += n; seen = true; }
+  });
+  return seen ? total : null;
+}
+function _daySugar(day) {
+  return _sumMealFields(day, ['Sugar', 'Sugars']) ?? _sumFoodFields(day, ['sugar', 'sugars']);
+}
+function _daySodium(day) {
+  return _sumMealFields(day, ['Sodium', 'SodiumMg']) ?? _sumFoodFields(day, ['sodium', 'sodiumMg']);
+}
+function _bodyFatMass(checkin) {
+  const direct = _firstNumber(checkin, BODY_FAT_MASS_KEYS);
+  if (direct !== null) return direct;
+  const weight = _maybeNum(checkin?.weight);
+  const pct = _maybeNum(checkin?.bodyFatPct);
+  if (weight !== null && pct !== null) return weight * pct / 100;
+  return null;
+}
+function _avgFrom(list, getter) {
+  let total = 0, count = 0;
+  list.forEach(item => {
+    const n = getter(item);
+    if (n !== null && Number.isFinite(n)) { total += n; count++; }
+  });
+  return count ? total / count : null;
+}
+function _weightOnOrBefore(checkins, key) {
+  for (let i = checkins.length - 1; i >= 0; i--) {
+    const c = checkins[i];
+    if ((c?.date || '') <= key) {
+      const n = _maybeNum(c.weight);
+      if (n !== null) return n;
+    }
+  }
+  return null;
+}
+function _joinedMetrics(values) {
+  if (values.every(v => !v)) return null;
+  return values.map(v => v || '데이터 없음').join(' | ');
+}
+function _avgDayMetric(entries, specs) {
+  let total = 0, count = 0;
+  entries.forEach(([, day]) => {
+    for (const spec of specs) {
+      const n = _firstNumber(day, spec.keys);
+      if (n === null) continue;
+      total += n * (spec.scale || 1);
+      count++;
+      break;
+    }
+  });
+  return count ? total / count : null;
+}
+function _metaRow(label, value) {
+  const hasValue = !!value;
+  const valueStyle = [
+    'text-align:right',
+    'white-space:normal',
+    'line-height:1.45',
+    'max-width:64%',
+    hasValue ? '' : 'color:var(--muted);font-weight:500',
+  ].filter(Boolean).join(';');
+  return `
+    <div class="diet-stat-row">
+      <span class="diet-stat-label" style="line-height:1.35">${_esc(label)}</span>
+      <span class="diet-stat-val" style="${valueStyle}">${_esc(value || META_MISSING)}</span>
+    </div>`;
+}
+function _renderOverallMetadata() {
+  const root = document.getElementById('stats-metadata-summary');
+  if (!root) return;
+
+  const entries = _dateEntries();
+  const checkins = getBodyCheckins().filter(c => (c?.date || '') <= _keyOffset(0));
+  const avgWeight = _avgFrom(checkins, c => _maybeNum(c.weight));
+  const avgSkeletal = _avgFrom(checkins, c => _firstNumber(c, SKELETAL_KEYS));
+  const avgFatMass = _avgFrom(checkins, _bodyFatMass);
+  const foodsByName = new Map();
+  let topFoodDay = null;
+  let topExerciseDay = null;
+  let foodKcalTotal = 0, foodKcalDays = 0;
+  let exerciseKcalTotal = 0, exerciseKcalDays = 0;
+  const macro = { carbs: 0, protein: 0, fat: 0, days: 0 };
+  const sugar = { total: 0, days: 0 };
+  const sodium = { total: 0, days: 0 };
+
+  entries.forEach(([key, day]) => {
+    const kcal = _dayKcal(day);
+    if (kcal > 0) {
+      foodKcalTotal += kcal;
+      foodKcalDays++;
+      if (!topFoodDay || kcal > topFoodDay.kcal) topFoodDay = { key, kcal };
+    }
+
+    _foodItems(day).forEach(food => {
+      const name = _foodName(food);
+      if (!name) return;
+      const next = foodsByName.get(name) || { name, count: 0, kcalTotal: 0 };
+      next.count++;
+      next.kcalTotal += _foodKcal(food);
+      foodsByName.set(name, next);
+    });
+
+    const weight = _weightOnOrBefore(checkins, key) ?? avgWeight ?? 70;
+    const burned = calcBurnedKcal(day, weight).total;
+    if (burned > 0) {
+      exerciseKcalTotal += burned;
+      exerciseKcalDays++;
+      if (!topExerciseDay || burned > topExerciseDay.kcal) topExerciseDay = { key, kcal: burned };
+    }
+
+    const carbs = _dayCarbs(day);
+    const protein = _dayProtein(day);
+    const fat = _dayFat(day);
+    if (carbs + protein + fat > 0) {
+      macro.carbs += carbs;
+      macro.protein += protein;
+      macro.fat += fat;
+      macro.days++;
+    }
+    const daySugar = _daySugar(day);
+    if (daySugar !== null) { sugar.total += daySugar; sugar.days++; }
+    const daySodium = _daySodium(day);
+    if (daySodium !== null) { sodium.total += daySodium; sodium.days++; }
+  });
+
+  const topFood = [...foodsByName.values()]
+    .sort((a, b) => (b.count - a.count) || (b.kcalTotal - a.kcalTotal) || a.name.localeCompare(b.name))[0];
+
+  const monthPrefix = dateKey(TODAY.getFullYear(), TODAY.getMonth(), 1).slice(0, 7);
+  const monthCheckins = checkins.filter(c => (c?.date || '').startsWith(monthPrefix));
+  const monthFirst = monthCheckins.length >= 2 ? monthCheckins[0] : null;
+  const monthLast = monthCheckins.length >= 2 ? monthCheckins[monthCheckins.length - 1] : null;
+  const monthWeightFirst = monthFirst ? _maybeNum(monthFirst.weight) : null;
+  const monthWeightLast = monthLast ? _maybeNum(monthLast.weight) : null;
+  const monthWeightDelta = monthWeightFirst !== null && monthWeightLast !== null ? monthWeightLast - monthWeightFirst : null;
+  const monthSkeletalFirst = monthFirst ? _firstNumber(monthFirst, SKELETAL_KEYS) : null;
+  const monthSkeletalLast = monthLast ? _firstNumber(monthLast, SKELETAL_KEYS) : null;
+  const monthSkeletalDelta = monthSkeletalFirst !== null && monthSkeletalLast !== null ? monthSkeletalLast - monthSkeletalFirst : null;
+  const monthFatFirst = monthFirst ? _bodyFatMass(monthFirst) : null;
+  const monthFatLast = monthLast ? _bodyFatMass(monthLast) : null;
+  const monthFatDelta = monthFatFirst !== null && monthFatLast !== null ? monthFatLast - monthFatFirst : null;
+  const avgSteps = _avgDayMetric(entries, [{ keys: ['steps', 'stepCount', 'dailySteps', 'walkSteps', 'walkingSteps'] }]);
+  const avgStepKcal = _avgDayMetric(entries, [{ keys: ['stepsKcal', 'stepKcal', 'walkKcal', 'walkingKcal'] }]);
+  const avgWaterMl = _avgDayMetric(entries, [
+    { keys: ['waterMl', 'waterIntakeMl', 'hydrationMl', 'drinkWaterMl'] },
+    { keys: ['waterL', 'waterLiter'], scale: 1000 },
+    { keys: ['waterCups', 'waterCupCount'], scale: 250 },
+  ]);
+  const avgBowel = _avgDayMetric(entries, [{ keys: ['bowelCount', 'bowelMovementCount', 'stoolCount', 'poopCount', 'defecationCount'] }]);
+
+  const hasAnyNutrient = macro.days || sugar.days || sodium.days;
+  const nutrientValue = hasAnyNutrient ? [
+    macro.days ? `탄수화물 (${_fmt(macro.carbs / macro.days, 1)}g)` : '탄수화물 데이터 없음',
+    macro.days ? `단백질 (${_fmt(macro.protein / macro.days, 1)}g)` : '단백질 데이터 없음',
+    macro.days ? `지방 (${_fmt(macro.fat / macro.days, 1)}g)` : '지방 데이터 없음',
+    sugar.days ? `당류 (${_fmt(sugar.total / sugar.days, 1)}g)` : '당류 데이터 없음',
+    sodium.days ? `나트륨 (${_fmt(sodium.total / sodium.days, 0)}mg)` : '나트륨 데이터 없음',
+  ].join(' | ') : null;
+
+  root.innerHTML = [
+    _metaRow('가장 많이 먹은 음식 및 칼로리', topFood ? `${topFood.name} | ${_fmt(Math.round(topFood.kcalTotal / Math.max(topFood.count, 1)))} kcal | ${topFood.count}회` : null),
+    _metaRow('가장 많이 먹은 날', topFoodDay ? `${topFoodDay.key} (${_fmt(topFoodDay.kcal)} kcal)` : null),
+    _metaRow('운동을 가장 많이 한 날', topExerciseDay ? `${topExerciseDay.key} (${_fmt(topExerciseDay.kcal)} kcal)` : null),
+    _metaRow('평균 음식 칼로리', foodKcalDays ? `${_fmt(Math.round(foodKcalTotal / foodKcalDays))} kcal` : null),
+    _metaRow('평균 운동 칼로리', exerciseKcalDays ? `${_fmt(Math.round(exerciseKcalTotal / exerciseKcalDays))} kcal` : null),
+    _metaRow('평균 몸무게 | 골격근량 | 체지방량', _joinedMetrics([
+      avgWeight !== null ? `${_fmt(avgWeight, 1)} kg` : null,
+      avgSkeletal !== null ? `${_fmt(avgSkeletal, 1)} kg` : null,
+      avgFatMass !== null ? `${_fmt(avgFatMass, 1)} kg` : null,
+    ])),
+    _metaRow('이달의 감량 몸무게 | 골격근량 | 체지방량', _joinedMetrics([
+      monthWeightDelta !== null && Number.isFinite(monthWeightDelta) ? _fmtSigned(monthWeightDelta) : null,
+      monthSkeletalDelta !== null ? _fmtSigned(monthSkeletalDelta) : null,
+      monthFatDelta !== null ? _fmtSigned(monthFatDelta) : null,
+    ])),
+    _metaRow('평균 걸음 수', avgSteps !== null ? `${_fmt(Math.round(avgSteps))} 걸음${avgStepKcal !== null ? ` | ${_fmt(Math.round(avgStepKcal))}kcal` : ''}` : null),
+    _metaRow('평균 물 섭취량', avgWaterMl !== null ? `${_fmt(Math.round(avgWaterMl))} ml` : null),
+    _metaRow('평균 배변 횟수', avgBowel !== null ? `${_fmt(avgBowel, 1)}회` : null),
+    _metaRow('평균 영양소별 섭취량', nutrientValue),
+  ].join('');
+}
+
 function _linearSlope(points) {
   const pts = points.filter(p => Number.isFinite(p.y));
   if (pts.length < 2) return 0;

@@ -13,6 +13,21 @@ const _pendingAppSWUpdates = new Map();
 let _appSWUpdateSeq = 0;
 let _latestAppSWUpdateSeq = 0;
 
+async function _refreshAppSWRegistration(registration = null) {
+  if (!('serviceWorker' in navigator)) return registration;
+  const current = registration || window.__tomatoAppSWRegistration || await navigator.serviceWorker.getRegistration(APP_SW_SCOPE);
+  if (!current || typeof current.update !== 'function') return current || null;
+  try {
+    const updated = await current.update();
+    window.__tomatoAppSWRegistration = updated || current;
+    return window.__tomatoAppSWRegistration;
+  } catch (error) {
+    console.warn('[PWA] 최신 Service Worker 확인 실패:', error?.message || error);
+    window.__tomatoAppSWRegistration = current;
+    return current;
+  }
+}
+
 function _appSWUpdateKey(registration, worker = null) {
   const scriptURL = worker?.scriptURL || registration?.waiting?.scriptURL || 'sw.js';
   return `${registration?.scope || APP_SW_SCOPE}|${scriptURL}`;
@@ -43,6 +58,14 @@ function _requestAppUpdateBanner(registration, worker = null) {
   }
 }
 
+function _requestLatestAppUpdateBanner(registration, worker = null) {
+  if (!registration || !navigator.serviceWorker.controller) return;
+  _refreshAppSWRegistration(registration).then((latestRegistration) => {
+    const latestWorker = latestRegistration?.waiting || latestRegistration?.installing || worker;
+    _requestAppUpdateBanner(latestRegistration || registration, latestWorker);
+  });
+}
+
 function registerFirebaseMessagingWorker() {
   if (_isLocalDev || !('serviceWorker' in navigator)) return Promise.resolve(null);
   if (window.__tomatoFcmSWRegistrationPromise) return window.__tomatoFcmSWRegistrationPromise;
@@ -63,6 +86,7 @@ function registerFirebaseMessagingWorker() {
 }
 
 window.__getTomatoFcmSWRegistration = registerFirebaseMessagingWorker;
+window.__refreshTomatoAppSWRegistration = _refreshAppSWRegistration;
 
 if (_isLocalDev) {
   // 로컬 환경: 기존 SW 전부 해제하여 깨끗한 fetch 보장
@@ -83,7 +107,7 @@ if (_isLocalDev) {
         console.log('[PWA] Service Worker 등록 성공:', registration);
         console.log('[PWA] Service Worker 상태 - Active:', !!registration.active, 'Installing:', !!registration.installing, 'Waiting:', !!registration.waiting);
         if (registration.waiting && navigator.serviceWorker.controller) {
-          _requestAppUpdateBanner(registration, registration.waiting);
+          _requestLatestAppUpdateBanner(registration, registration.waiting);
         }
 
         // 업데이트 확인
