@@ -1,10 +1,10 @@
 {
   "app": "tomatofarm",
-  "commit": "8d20348e5d98632bfff6f659a706ba85b697db1f",
-  "shortCommit": "8d20348e5d98",
+  "commit": "3dd73a39890e163f96e19b9ce1f96a5b578f042d",
+  "shortCommit": "3dd73a39890e",
   "branch": "main",
-  "deployedAt": "2026-06-09T14:28:44.362Z",
-  "cacheVersion": "tomatofarm-v20260609z4-checkin-dedupe",
+  "deployedAt": "2026-06-11T06:04:53.027Z",
+  "cacheVersion": "tomatofarm-v20260611z1-hide-stats-volume-selector",
   "runId": null,
   "runAttempt": null
 }

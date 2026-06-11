@@ -3,17 +3,17 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/diagnoses/2026-06-09-zoops-checkin-weight-trend.md`
+- 계획 문서: `docs/ai/features/2026-06-11-hide-stats-volume-selector.md`
 - 현재 단계: `review complete`
-- 현재 슬라이스: `줍스 체중/체지방 추이 중복 체크인 보정`
-- 마지막 완료: `줍스 원본 체크인 정합성 확인 및 날짜별 최신 체크인 표시/저장 중복 방지 수정`
+- 현재 슬라이스: `통계 종목별 볼륨 추이 상단 운동명 칩 미표출`
+- 마지막 완료: `로컬 HTTP 200 및 통계 볼륨 영역 DOM 검증, 리뷰 문서 작성`
 - 다음 액션: 없음
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
 
-- 계획 문서: `docs/ai/diagnoses/2026-06-09-zoops-checkin-weight-trend.md`
-- 실행 슬라이스: 없음
+- 계획 문서: `docs/ai/features/2026-06-11-hide-stats-volume-selector.md`
+- 실행 슬라이스: 완료
 - 리뷰 대상 파일: 없음
 
 ## 상태값

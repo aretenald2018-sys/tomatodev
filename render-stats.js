@@ -613,7 +613,6 @@ function _renderMusclePeriod() {
 // ── 종목별 볼륨 추이 ──────────────────────────────────────────────
 function _renderVolumeSection() {
   const container=document.getElementById('volume-section');container.innerHTML='';
-  const allMuscles = getAllMuscles();
   const usedExIds=new Set();
   Object.values(getCache()).forEach(day=>(day.exercises||[]).forEach(e=>usedExIds.add(e.exerciseId)));
 
@@ -621,19 +620,6 @@ function _renderVolumeSection() {
     container.innerHTML='<div style="font-size:12px;color:var(--muted)">운동 기록이 없어요.</div>';
     return;
   }
-
-  const selector=document.createElement('div');selector.className='vol-selector';
-  allMuscles.forEach(muscle=>{
-    getExList().filter(e=>e.muscleId===muscle.id&&usedExIds.has(e.id)).forEach(ex=>{
-      const btn=document.createElement('button');
-      btn.className='vol-ex-btn'+(_selectedExerciseId===ex.id?' active':'');
-      btn.style.setProperty('--mc',muscle.color);
-      btn.textContent=ex.name;
-      btn.addEventListener('click',()=>{_selectedExerciseId=ex.id;_renderVolumeSection();});
-      selector.appendChild(btn);
-    });
-  });
-  container.appendChild(selector);
 
   if(!_selectedExerciseId||!usedExIds.has(_selectedExerciseId))
     _selectedExerciseId=[...usedExIds][0];
