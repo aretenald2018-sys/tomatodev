@@ -1835,6 +1835,25 @@ body.wt-modal-scroll-lock {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius-md); padding: 16px; margin-bottom: 14px;
 }
+.stats-chart-wrap {
+  position: relative;
+  width: 100%;
+  height: 220px;
+}
+.stats-chart-meta {
+  min-height: 16px;
+  margin: -4px 0 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-align: right;
+}
+.stats-empty {
+  padding: 20px 0;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
 .deep-hero {
   display: flex;
   align-items: flex-end;
@@ -2292,6 +2311,94 @@ body.wt-modal-scroll-lock {
 .diet-stat-row:last-child { border-bottom: none; }
 .diet-stat-label { font-size: 12px; color: var(--text-tertiary); }
 .diet-stat-val { font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--text); }
+.stats-meta-row {
+  display: grid;
+  grid-template-columns: minmax(106px, 0.42fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+.stats-meta-label {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  line-height: 1.35;
+}
+.stats-meta-val {
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  line-height: 1.45;
+  text-align: right;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.stats-meta-val::-webkit-scrollbar { display: none; }
+.stats-meta-val.is-empty {
+  color: var(--muted);
+  font-weight: 500;
+}
+.calorie-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.calorie-summary-grid div,
+.calorie-meal-cell {
+  min-width: 0;
+  padding: 10px 6px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+}
+.calorie-summary-grid div:last-child,
+.calorie-meal-cell:last-child { border-right: none; }
+.calorie-summary-grid span,
+.calorie-meal-cell span {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.calorie-summary-grid b,
+.calorie-meal-cell b {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  color: var(--primary);
+  line-height: 1.2;
+}
+.calorie-summary-grid small,
+.calorie-meal-cell small {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+.calorie-meal-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.calorie-meal-cell b {
+  font-size: 16px;
+  color: var(--text);
+}
+
+@media (max-width: 380px) {
+  .stats-block { padding: 14px; }
+  .stats-meta-row { grid-template-columns: minmax(96px, 0.38fr) minmax(0, 1fr); gap: 8px; }
+  .stats-meta-label { font-size: 11px; }
+  .stats-meta-val { font-size: 12px; }
+  .stats-chart-wrap { height: 210px; }
+  .calorie-summary-grid b { font-size: 16px; }
+  .calorie-meal-cell b { font-size: 14px; }
+}
 
 /* ══════════════════════════════════════════════════════════════════
    Weekly Streak Calendar
