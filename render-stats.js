@@ -14,6 +14,7 @@ import { SUBPATTERN_TO_MAJOR, calcBurnedKcal }       from './calc.js';
 
 let _period             = 30;
 let _selectedExerciseId = null;
+let _selectedVolumeDate = null;
 
 export function setPeriod(days, btn) {
   _period = days;
@@ -627,6 +628,109 @@ function _renderMusclePeriod() {
 }
 
 // ── 종목별 볼륨 추이 ──────────────────────────────────────────────
+function _volumeDateLabel(date) {
+  return String(date || '').replace(/-/g, '/');
+}
+
+function _volumeExerciseOptions(usedExIds) {
+  const exById = new Map(getExList().map(ex => [ex.id, ex]));
+  const muscleById = new Map(getAllMuscles().map(m => [m.id, m]));
+  return [...usedExIds].map(id => {
+    const ex = exById.get(id);
+    const history = getVolumeHistory(id);
+    const muscle = muscleById.get(ex?.muscleId);
+    return {
+      id,
+      name: ex?.name || id,
+      color: muscle?.color || '#14b8a6',
+      muscleName: muscle?.name || ex?.muscleId || '종목',
+      latestDate: history.at(-1)?.date || '',
+      history,
+    };
+  })
+    .filter(opt => opt.history.length)
+    .sort((a, b) => b.latestDate.localeCompare(a.latestDate) || a.name.localeCompare(b.name, 'ko'));
+}
+
+function _volumeSetRowsHtml(entry) {
+  const rows = (entry?.sets || []).map((set, idx) => {
+    const vol = calcVolume([set]);
+    const counted = vol > 0;
+    const kg = _maybeNum(set?.kg);
+    const reps = _maybeNum(set?.reps);
+    const rpe = _maybeNum(set?.rpe);
+    const rom = _maybeNum(set?.romPct);
+    const kind = set?.setType === 'warmup' ? '워밍업' : (set?.done === false ? '미완료' : '본세트');
+    const parts = [
+      kg !== null ? `${_fmt(kg, kg % 1 ? 1 : 0)}kg` : '무게 없음',
+      reps !== null ? `${_fmt(reps, reps % 1 ? 1 : 0)}회` : '횟수 없음',
+    ];
+    if (rom !== null && rom > 0 && rom < 100) parts.push(`ROM ${_fmt(rom)}%`);
+    if (rpe !== null && rpe > 0) parts.push(`RPE ${_fmt(rpe, rpe % 1 ? 1 : 0)}`);
+    return `
+      <div class="vol-set-row ${counted ? '' : 'is-muted'}">
+        <span class="vol-set-no">${idx + 1}</span>
+        <span class="vol-set-main">${_esc(parts.join(' × '))}<small>${_esc(kind)}</small></span>
+        <b>${counted ? `${_fmt(Math.round(vol))} vol` : '-'}</b>
+      </div>`;
+  }).join('');
+  return rows || '<div class="vol-set-empty">세트 기록이 없어요.</div>';
+}
+
+function _volumeEntryDetailHtml(entry, selectedExerciseId) {
+  const ex = getExList().find(item => item.id === entry?.exerciseId);
+  const muscle = getAllMuscles().find(m => m.id === (ex?.muscleId || entry?.muscleId));
+  const total = calcVolume(entry?.sets || []);
+  const countedSets = (entry?.sets || []).filter(set => calcVolume([set]) > 0).length;
+  const isSelected = entry?.exerciseId === selectedExerciseId;
+  const color = muscle?.color || '#14b8a6';
+  return `
+    <div class="vol-entry ${isSelected ? 'is-selected' : ''}" style="--mc:${_esc(color)}">
+      <div class="vol-entry-head">
+        <div>
+          <span>${_esc(muscle?.name || '운동')}</span>
+          <b>${_esc(ex?.name || entry?.name || entry?.exerciseId || '운동')}</b>
+        </div>
+        <strong>${_fmt(Math.round(total))} vol</strong>
+      </div>
+      <div class="vol-entry-meta">${countedSets}개 본세트 반영</div>
+      <div class="vol-set-list">${_volumeSetRowsHtml(entry)}</div>
+    </div>`;
+}
+
+function _renderVolumeDayDetail(detailEl, exerciseId, date, pointVolume = null) {
+  if (!detailEl) return;
+  const day = getCache()[date] || {};
+  const entries = Array.isArray(day.exercises) ? day.exercises : [];
+  const selectedEntry = entries.find(entry => entry.exerciseId === exerciseId);
+  const selectedEx = getExList().find(ex => ex.id === exerciseId);
+  const selectedVolume = pointVolume ?? (selectedEntry ? calcVolume(selectedEntry.sets || []) : 0);
+  const dayVolume = entries.reduce((sum, entry) => sum + calcVolume(entry.sets || []), 0);
+  const selectedSets = (selectedEntry?.sets || []).filter(set => calcVolume([set]) > 0).length;
+  const orderedEntries = [
+    ...entries.filter(entry => entry.exerciseId === exerciseId),
+    ...entries.filter(entry => entry.exerciseId !== exerciseId),
+  ];
+  detailEl.innerHTML = `
+    <div class="vol-detail-head">
+      <div><span>선택일</span><b>${_esc(_volumeDateLabel(date))}</b></div>
+      <div><span>그래프값</span><b>${_fmt(Math.round(selectedVolume))} vol</b></div>
+      <div><span>기준 세트</span><b>${selectedSets}세트</b></div>
+    </div>
+    <div class="vol-detail-note">
+      ${_esc(selectedEx?.name || exerciseId)} 기준 ${_fmt(Math.round(selectedVolume))} vol · 해당일 전체 ${_fmt(Math.round(dayVolume))} vol
+    </div>
+    <div class="vol-entry-list">
+      ${orderedEntries.length ? orderedEntries.map(entry => _volumeEntryDetailHtml(entry, exerciseId)).join('') : '<div class="vol-set-empty">해당일 운동 기록이 없어요.</div>'}
+    </div>`;
+}
+
+function _syncVolumeRows(container) {
+  container.querySelectorAll('[data-volume-date]').forEach(row => {
+    row.classList.toggle('active', row.dataset.volumeDate === _selectedVolumeDate);
+  });
+}
+
 function _renderVolumeSection() {
   const container=document.getElementById('volume-section');container.innerHTML='';
   const usedExIds=new Set();
@@ -637,19 +741,64 @@ function _renderVolumeSection() {
     return;
   }
 
-  if(!_selectedExerciseId||!usedExIds.has(_selectedExerciseId))
-    _selectedExerciseId=[...usedExIds][0];
+  const options = _volumeExerciseOptions(usedExIds);
+  if(!options.length){
+    container.innerHTML+='<div style="font-size:12px;color:var(--muted);margin-top:8px">볼륨 기록이 없어요.</div>';
+    return;
+  }
 
-  const history=getVolumeHistory(_selectedExerciseId);
+  if(!_selectedExerciseId || !options.some(opt => opt.id === _selectedExerciseId)) {
+    _selectedExerciseId = options[0].id;
+    _selectedVolumeDate = null;
+  }
+
+  const selectedOption = options.find(opt => opt.id === _selectedExerciseId) || options[0];
+  const history=selectedOption.history;
   if(!history.length){
     container.innerHTML+='<div style="font-size:12px;color:var(--muted);margin-top:8px">기록이 없어요.</div>';
     return;
   }
 
+  if(!_selectedVolumeDate || !history.some(h => h.date === _selectedVolumeDate))
+    _selectedVolumeDate = history.at(-1)?.date || history[0].date;
+
+  const basis=document.createElement('div');
+  basis.className='vol-basis';
+  basis.style.setProperty('--mc', selectedOption.color);
+  basis.innerHTML=`
+    <div class="vol-basis-copy">
+      <span>기준 종목</span>
+      <b>${_esc(selectedOption.name)}</b>
+      <small>완료 본세트의 kg × 횟수 합산 · ROM 보정 포함</small>
+    </div>
+    ${options.length > 1 ? `<select class="vol-select" aria-label="볼륨 그래프 기준 종목">
+      ${options.map(opt => `<option value="${_esc(opt.id)}" ${opt.id === _selectedExerciseId ? 'selected' : ''}>${_esc(opt.name)}</option>`).join('')}
+    </select>` : ''}`;
+  container.appendChild(basis);
+  basis.querySelector('.vol-select')?.addEventListener('change', (event) => {
+    _selectedExerciseId = event.target.value;
+    _selectedVolumeDate = null;
+    _renderVolumeSection();
+  });
+
   const chartWrap=document.createElement('div');
-  chartWrap.style.cssText='position:relative;width:100%;height:200px;margin-top:14px;';
+  chartWrap.className='vol-chart-wrap';
   const canvas=document.createElement('canvas');canvas.id='vol-chart';
   chartWrap.appendChild(canvas);container.appendChild(chartWrap);
+
+  const detailEl=document.createElement('div');
+  detailEl.className='vol-detail';
+  container.appendChild(detailEl);
+
+  const selectDate = (date) => {
+    const point = history.find(h => h.date === date) || history.at(-1);
+    if (!point) return;
+    _selectedVolumeDate = point.date;
+    _renderVolumeDayDetail(detailEl, _selectedExerciseId, point.date, point.volume);
+    _syncVolumeRows(container);
+    const chart = typeof Chart !== 'undefined' ? Chart.getChart(canvas) : null;
+    if (chart) chart.update();
+  };
 
   const recent=history.slice(-5).reverse();
   const tableWrap=document.createElement('div');tableWrap.className='vol-table';
@@ -658,29 +807,45 @@ function _renderVolumeSection() {
       const prev=recent[i+1],diff=prev?h.volume-prev.volume:0;
       const arrow=diff>0?'↑':diff<0?'↓':'→';
       const col=diff>0?'var(--diet-ok)':diff<0?'var(--diet-bad)':'var(--muted)';
-      return `<div class="vol-row">
+      return `<button type="button" class="vol-row" data-volume-date="${_esc(h.date)}" aria-label="${_esc(_volumeDateLabel(h.date))} 운동 상세">
         <span class="vol-date">${h.date.replace(/-/g,'/')}</span>
         <span class="vol-val">${h.volume.toLocaleString()} vol</span>
         <span class="vol-diff" style="color:${col}">${diff!==0?arrow+Math.abs(diff).toLocaleString():arrow}</span>
-      </div>`;
+      </button>`;
     }).join('');
   container.appendChild(tableWrap);
-  requestAnimationFrame(()=>_drawVolumeChart(canvas,history));
+
+  tableWrap.querySelectorAll('[data-volume-date]').forEach(row => {
+    row.addEventListener('click', () => selectDate(row.dataset.volumeDate));
+  });
+  selectDate(_selectedVolumeDate);
+  requestAnimationFrame(()=>_drawVolumeChart(canvas,history,selectDate,selectedOption.color));
 }
 
-function _drawVolumeChart(canvas,history){
+function _drawVolumeChart(canvas,history,onSelect,color){
   if(typeof Chart==='undefined')return;
   const existing=Chart.getChart(canvas);if(existing)existing.destroy();
-  const ex=getExList().find(e=>e.id===_selectedExerciseId);
-  const mc=getAllMuscles().find(m=>m.id===ex?.muscleId);
-  const color=mc?.color||'#f97316';
   new Chart(canvas,{
     type:'line',
     data:{labels:history.map(h=>h.date.slice(5)),
-      datasets:[{data:history.map(h=>h.volume),borderColor:color,backgroundColor:color+'22',tension:.3,fill:true,pointRadius:4,pointBackgroundColor:color}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      datasets:[{data:history.map(h=>h.volume),borderColor:color,backgroundColor:color+'22',tension:.3,fill:true,
+        pointRadius:ctx=>history[ctx.dataIndex]?.date===_selectedVolumeDate?6:4,
+        pointHoverRadius:7,
+        pointHitRadius:14,
+        pointBorderWidth:ctx=>history[ctx.dataIndex]?.date===_selectedVolumeDate?2:0,
+        pointBorderColor:'#fff',
+        pointBackgroundColor:color}]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'nearest',intersect:false},onClick:(evt,elements,chart)=>{
+        const hit=elements?.[0]||chart.getElementsAtEventForMode(evt,'nearest',{intersect:false},true)?.[0];
+        const point=history[hit?.index];
+        if(point)onSelect(point.date);
+      },
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        title:items=>_volumeDateLabel(history[items[0]?.dataIndex]?.date),
+        label:ctx=>`볼륨: ${_fmt(Math.round(ctx.parsed.y))} vol`,
+      }}},
       scales:{x:{ticks:{color:'#5c6478',font:{size:10}},grid:{color:document.documentElement.classList.contains('light') ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}},
-              y:{ticks:{color:'#5c6478',font:{size:10}},grid:{color:document.documentElement.classList.contains('light') ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}}}},
+              y:{title:{display:true,text:'vol',color:'#5c6478',font:{size:10}},ticks:{color:'#5c6478',font:{size:10}},grid:{color:document.documentElement.classList.contains('light') ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}}}},
   });
 }
 

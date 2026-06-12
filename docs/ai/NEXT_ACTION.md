@@ -3,16 +3,16 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-11-discord-stats-calorie-weight.md`
+- 계획 문서: `docs/ai/features/2026-06-11-volume-chart-point-details.md`
 - 현재 단계: `review complete`
-- 현재 슬라이스: `통계 탭 칼로리/체중 개선`
-- 마지막 완료: `Discord 인입 통계 개선 구현, 로컬 HTTP 200 및 desktop/mobile UI 검증, 리뷰 문서 작성`
+- 현재 슬라이스: `종목별 볼륨 그래프 기준 표시 및 일자 상세`
+- 마지막 완료: `기준 문구, 점/행 클릭 상세 패널, 캐시 버전 범프 구현, 로컬 검증, 리뷰 문서 작성`
 - 다음 액션: 없음
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
 
-- 계획 문서: `docs/ai/features/2026-06-11-discord-stats-calorie-weight.md`
+- 계획 문서: `docs/ai/features/2026-06-11-volume-chart-point-details.md`
 - 실행 슬라이스: 완료
 - 리뷰 대상 파일: 없음
 
