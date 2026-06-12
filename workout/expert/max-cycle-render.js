@@ -16,8 +16,10 @@ import {
   _benchmarkOptionValue,
   _dedupeBenchmarkOptions,
   buildBenchmarkActuals,
+  buildMaxGrowthStairs,
   buildRenderedMaxCycleSnapshot,
   isMaxTrackEnabled,
+  maxBenchmarkProgram,
   maxBenchmarkTrackList,
   normalizeMaxCycleTracks,
   predictBenchmarkProgression,
@@ -172,27 +174,96 @@ function _snapshotMajorCombo(snapshot, majors = []) {
   return fromBenchmarks.length ? fromBenchmarks.join(' + ') : '오늘 부위';
 }
 
-function _renderV4CycleChart(snapshot) {
+// ── 성장 계단 카드 — 정산 1회 = 계단 1개. 사이클 히스토리 + 현재 + 예약 성장 ──
+
+function _benchmarkRepresentativeIncrement(benchmark = {}) {
+  if (maxBenchmarkProgram(benchmark) === 'wendler' && Number(benchmark.wendler?.incrementKg) > 0) {
+    return Number(benchmark.wendler.incrementKg);
+  }
+  const inc = Number(_trackSpec(benchmark, 'M').incrementKg);
+  return inc > 0 ? inc : 2.5;
+}
+
+function _incrementRangeLabel(benchmarks = []) {
+  const incs = (benchmarks || []).map(_benchmarkRepresentativeIncrement).filter(v => v > 0);
+  if (!incs.length) return '+2.5kg';
+  const min = Math.min(...incs);
+  const max = Math.max(...incs);
+  return min === max ? `+${_planKg(min)}kg` : `+${_planKg(min)}~${_planKg(max)}kg`;
+}
+
+function _cycleSettleDday(snapshot) {
+  const start = new Date(`${snapshot?.startDate}T00:00:00`);
+  const today = new Date(`${snapshot?.todayKey}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(today.getTime())) return null;
+  const end = new Date(start);
+  end.setDate(start.getDate() + (Number(snapshot.weeks) || 6) * 7 - 1);
+  return Math.ceil((end - today) / 86400000);
+}
+
+function _stairPathFrom(coords = []) {
+  return coords.reduce((path, coord, idx) => {
+    if (idx === 0) return `M${coord.x} ${coord.y}`;
+    return `${path} H${coord.x} V${coord.y}`;
+  }, '');
+}
+
+function _renderV4GrowthStairsCard(snapshot, cycle, history = []) {
+  const lanes = buildMaxGrowthStairs(history, cycle);
+  const first = snapshot?.benchmarks?.[0] || null;
+  const firstKey = first?.movementId || first?.id || null;
+  const lane = lanes.find(l => l.id === firstKey) || lanes[0] || null;
+  const current = lane?.points?.find(p => p.kind === 'current') || null;
+  if (!lane || !current) return '';
+  const settled = lane.points.filter(p => p.kind === 'settled');
+  const seq = [
+    ...settled.map(p => ({ ...p, role: 'settled' })),
+    { ...current, role: 'current' },
+    { kg: current.afterKg, incrementKg: current.incrementKg, role: 'next' },
+  ];
+  const currentIdx = seq.findIndex(p => p.role === 'current');
+  const geom = _stairGeometry(seq.map((p, idx) => ({ week: idx + 1, kg: p.kg, actuals: [] })), currentIdx + 1);
+  const solidD = _stairPathFrom(geom.coords.slice(0, currentIdx + 1));
+  const dashedD = _stairPathFrom(geom.coords.slice(currentIdx));
+  const dday = _cycleSettleDday(snapshot);
+  const settleReady = snapshot.weekIndex >= snapshot.weeks;
+  const incLabel = `+${_planKg(current.incrementKg)}kg`;
+  const cellLabel = (p, idx) => {
+    if (p.role === 'settled') {
+      return `<button type="button" class="is-done" aria-disabled="true" tabindex="-1"><span>${_planKg(p.kg)}kg</span><small>+${_planKg(p.incrementKg)} 확정</small><em><i>${_esc(_monthDay(p.endDate) || `C${idx + 1}`)} 정산</i><span class="wt-v4-plan-status">돌파</span></em></button>`;
+    }
+    if (p.role === 'current') {
+      return `<button type="button" class="is-current is-selected" aria-disabled="true" tabindex="-1"><span>${_planKg(p.kg)}kg</span><small>진행 W${snapshot.weekIndex}/${snapshot.weeks}</small><em><i>${settleReady ? '정산 가능' : (dday === null ? '' : `정산 D-${Math.max(0, dday)}`)}</i></em></button>`;
+    }
+    return `<button type="button" class="is-challenge" aria-disabled="true" tabindex="-1"><span>${_planKg(p.kg)}kg</span><small>+${_planKg(p.incrementKg)} 예약</small><em></em></button>`;
+  };
   return `
-    <section class="card wt-v4-entry-chart">
+    <section class="card wt-v4-growth-stairs-card">
       <div class="card-head">
         <div>
-          <b>오늘 수행 궤적</b>
-          <span>계획 페이스와 실제 수행 페이스를 함께 봅니다.</span>
+          <b>성장 계단</b>
+          <span>6주 정산마다 설정한 증량폭만큼 오릅니다.</span>
         </div>
-        <div class="badge">W${snapshot.weekIndex}</div>
+        <div class="badge">${settleReady ? '정산 가능' : `${_esc(incLabel)} 예약`}</div>
       </div>
-      <div class="chart">
-        <svg viewBox="0 0 330 132" aria-label="6주 성장판 계획 실제 그래프">
-          <path d="M12 106 H318" stroke="#ededf0"/><path d="M12 76 H318" stroke="#ededf0"/><path d="M12 46 H318" stroke="#ededf0"/>
-          <path d="M18 104 C76 91, 91 78, 145 73 C205 68, 224 52, 312 42" fill="none" stroke="#fa342c" stroke-width="3" stroke-linecap="round"/>
-          <path d="M18 108 C82 100, 94 84, 145 80 C205 76, 224 63, 312 55" fill="none" stroke="#111114" stroke-width="3" stroke-linecap="round"/>
-          <text x="18" y="124" font-size="10" fill="#707078">W1</text><text x="145" y="124" font-size="10" fill="#707078">오늘</text><text x="292" y="124" font-size="10" fill="#707078">W${_esc(snapshot.weeks)}</text>
-          <circle cx="145" cy="80" r="5" fill="#111114"/><circle cx="145" cy="73" r="5" fill="#fa342c"/>
-        </svg>
-        <div class="wt-v4-line-legend">
-          <span><i class="planned"></i>빨간선: 6주 계획 페이스</span>
-          <span><i class="actual"></i>검은선: 실제 수행 페이스</span>
+      <div class="wt-v4-plan-stair-lane is-selected" data-track="M">
+        <div class="wt-v4-plan-stair-title">
+          <b>${_esc(lane.label || '벤치마크')}${maxBenchmarkProgram(first || {}) === 'wendler' ? ' · TM' : ''}</b>
+          <span>사이클 단위 · ${_esc(incLabel)}/정산</span>
+        </div>
+        <div class="wt-v4-plan-stair-graph" style="--weeks:${seq.length}; --active-week:${currentIdx + 1};">
+          <svg viewBox="0 0 360 108" aria-label="${_esc(lane.label || '벤치마크')} 사이클 성장 계단">
+            <path d="M18 92 H342 M18 62 H342 M18 32 H342" class="wt-v4-plan-stair-grid"></path>
+            <path d="${_esc(solidD)}" class="wt-v4-plan-stair-line"></path>
+            <path d="${_esc(dashedD)}" class="wt-v4-plan-stair-line" style="stroke-dasharray:5 5; opacity:.55;"></path>
+            ${seq.map((p, idx) => {
+              const x = geom.coords[idx]?.x ?? 18;
+              return `<text x="${x}" y="104" text-anchor="middle" class="${p.role === 'current' ? 'is-current' : ''}">${p.role === 'next' ? '예약' : `C${idx + 1}`}</text>`;
+            }).join('')}
+          </svg>
+          <div class="wt-v4-plan-stair-hitgrid">
+            ${seq.map((p, idx) => cellLabel(p, idx)).join('')}
+          </div>
         </div>
       </div>
     </section>
@@ -220,14 +291,15 @@ function _renderV4BenchmarkCard(snapshot, cycle) {
   `;
 }
 
-export function renderMaxCycleDashboard({ cycle, cache, exList, todayKey, isDraft = false, majors = [], recommendationHtml = '', nextAdviceHtml = '', growthPreviewHtml = '' } = {}) {
+export function renderMaxCycleDashboard({ cycle, cache, exList, todayKey, isDraft = false, majors = [], history = [] } = {}) {
   const snapshot = buildRenderedMaxCycleSnapshot({ cycle, cache, exList, todayKey });
   if (!snapshot) return '';
   snapshot.todayKey = todayKey;
   const combo = _snapshotMajorCombo(snapshot, majors);
   const benchmarkCount = (snapshot.benchmarks || []).length;
-  const hasIntensityBenchmarks = (snapshot.benchmarks || []).some(b => isMaxTrackEnabled(b, 'H'));
-  const trackLabel = hasIntensityBenchmarks ? _targetTrackLabel(snapshot.track) : '볼륨 단일';
+  const draft = isDraft || snapshot.status === 'draft';
+  const settleReady = !draft && snapshot.weekIndex >= snapshot.weeks;
+  const incrementLabel = _incrementRangeLabel(snapshot.benchmarks || []);
   return `
     <section class="wt-v4-board wt-v4-entry" id="wt-max-cycle-card">
       <div class="topbar">
@@ -242,21 +314,23 @@ export function renderMaxCycleDashboard({ cycle, cache, exList, todayKey, isDraf
       <section class="hero">
         <div class="hero-kicker">오늘의 성장판</div>
         <h1>${_esc(combo)} 조합으로 진행해요</h1>
-        <p>${isDraft || snapshot.status === 'draft' ? '성장판 초안입니다. 시작하면 현재 조합과 벤치마크가 저장됩니다.' : `${snapshot.startDate} 시작 · 계획 ${snapshot.progressPct}%${snapshot.actualProgressPct === null ? '' : ` · 실제 ${snapshot.actualProgressPct}%`} 진행 중입니다.`}</p>
+        <p>${draft ? '성장판 초안입니다. 시작하면 현재 조합과 벤치마크가 저장됩니다.' : `${snapshot.startDate} 시작 · 계획 ${snapshot.progressPct}%${snapshot.actualProgressPct === null ? '' : ` · 실제 ${snapshot.actualProgressPct}%`} 진행 중입니다.`}</p>
         <div class="score-row">
           <div class="score"><b>W${snapshot.weekIndex}</b><span>6주 성장판</span></div>
           <div class="score"><b>${benchmarkCount}개</b><span>오늘 벤치마크</span></div>
-          <div class="score"><b>${_esc(trackLabel)}</b><span>오늘 트랙</span></div>
+          <div class="score"><b>${_esc(incrementLabel)}</b><span>정산 시 성장</span></div>
         </div>
       </section>
 
-      ${growthPreviewHtml || `${_renderV4CycleChart(snapshot)}${nextAdviceHtml || ''}`}
-      ${growthPreviewHtml ? '' : `${_renderV4BenchmarkCard(snapshot, cycle)}${recommendationHtml || ''}`}
+      ${draft ? '' : _renderV4GrowthStairsCard(snapshot, cycle, history)}
+      ${_renderV4BenchmarkCard(snapshot, cycle)}
       <div class="next-actions">
         <button type="button" class="ghost" data-action="clear-max-major">오늘 부위 변경</button>
-        <button type="button" class="primary" data-action="${isDraft || snapshot.status === 'draft' ? 'start-max-cycle' : 'start-max-session'}">
-          ${isDraft || snapshot.status === 'draft' ? '6주 성장판 시작' : '종목 추가(선택)'}
-        </button>
+        ${settleReady
+          ? '<button type="button" class="primary" data-action="settle-max-cycle">6주 정산하기</button>'
+          : `<button type="button" class="primary" data-action="${draft ? 'start-max-cycle' : 'start-max-session'}">
+          ${draft ? '6주 성장판 시작' : '종목 추가(선택)'}
+        </button>`}
       </div>
     </section>
   `;

@@ -59,7 +59,6 @@ import {
 } from './max-config.js';
 import {
   detectMaxMajorsLoose,
-  renderMaxGrowthPreview,
 } from './max-same-day-advice.js?v=20260516v6';
 
 function _esc(s) { return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -1267,34 +1266,6 @@ function _renderMaxEntryMajorRows(selectedSet) {
   }).join('');
 }
 
-function _renderMaxEntryChart(snapshot = null) {
-  const week = snapshot ? `W${snapshot.weekIndex}` : 'W-';
-  return `
-    <section class="card wt-v4-entry-chart">
-      <div class="card-head">
-        <div>
-          <b>성장판 미리보기</b>
-          <span>오늘 위치와 6주 목표를 한 번에 봅니다.</span>
-        </div>
-        <div class="badge">${_esc(week)}</div>
-      </div>
-      <div class="chart">
-        <svg viewBox="0 0 330 132" aria-label="6주 성장판 계획 실제 그래프">
-          <path d="M12 106 H318" stroke="#ededf0"/><path d="M12 76 H318" stroke="#ededf0"/><path d="M12 46 H318" stroke="#ededf0"/>
-          <path d="M18 104 C76 91, 91 78, 145 73 C205 68, 224 52, 312 42" fill="none" stroke="#fa342c" stroke-width="3" stroke-linecap="round"/>
-          <path d="M18 108 C82 100, 94 84, 145 80 C205 76, 224 63, 312 55" fill="none" stroke="#111114" stroke-width="3" stroke-linecap="round"/>
-          <text x="18" y="124" font-size="10" fill="#707078">W1</text><text x="145" y="124" font-size="10" fill="#707078">오늘</text><text x="292" y="124" font-size="10" fill="#707078">W6</text>
-          <circle cx="145" cy="80" r="5" fill="#111114"/><circle cx="145" cy="73" r="5" fill="#fa342c"/>
-        </svg>
-        <div class="wt-v4-line-legend">
-          <span><i class="planned"></i>빨간선: 6주 계획 페이스</span>
-          <span><i class="actual"></i>검은선: 실제 수행 페이스</span>
-        </div>
-      </div>
-    </section>
-  `;
-}
-
 function _renderMaxEntryBenchmarkPreview({ cycle = null, cache = {}, exList = [], todayKey = _todayKey(), isDraft = false } = {}) {
   const snapshot = cycle ? buildRenderedMaxCycleSnapshot({ cycle, cache, exList, todayKey }) : null;
   const rows = (snapshot?.benchmarks || []).slice(0, 5);
@@ -1334,7 +1305,6 @@ function _renderMaxEntryBenchmarkPreview({ cycle = null, cache = {}, exList = []
     `;
   }).join('');
   return `
-    ${_renderMaxEntryChart(snapshot)}
     <section class="card wt-v4-accordion is-collapsed">
       <button type="button" class="card-head wt-v4-accordion-toggle" data-action="toggle-v4-accordion" aria-expanded="false">
         <div><b>오늘 열릴 벤치마크</b><span>모달을 열지 않고 이 카드 안에서 오늘 계획값을 확인합니다.</span></div>
@@ -1351,7 +1321,7 @@ function _renderMaxEntryBenchmarkPreview({ cycle = null, cache = {}, exList = []
   `;
 }
 
-function _renderMaxTodayMajorGate({ selectedMajors = [], steeringHtml = '', cycle = null, cache = {}, exList = [], todayKey = _todayKey(), isDraft = false } = {}) {
+function _renderMaxTodayMajorGate({ selectedMajors = [], cycle = null, cache = {}, exList = [], todayKey = _todayKey(), isDraft = false } = {}) {
   const selectedSet = new Set((selectedMajors || []).map(_normalizeMaxMajor).filter(Boolean));
   const combo = _formatMaxMajorCombo([...selectedSet]);
   return `
@@ -1378,7 +1348,7 @@ function _renderMaxTodayMajorGate({ selectedMajors = [], steeringHtml = '', cycl
       </section>
 
       ${selectedSet.size
-        ? (steeringHtml || _renderMaxEntryBenchmarkPreview({ cycle, cache, exList, todayKey, isDraft }))
+        ? _renderMaxEntryBenchmarkPreview({ cycle, cache, exList, todayKey, isDraft })
         : `<div class="wt-v4-last-ten">
             <div class="wt-v4-last-dot"></div>
             <div>
@@ -1409,98 +1379,6 @@ function _cycleForTodayMajors(cycle, majors, todayKey) {
     currentGymId: S?.workout?.currentGymId || getExpertPreset()?.currentGymId || null,
     allowFallback: false,
   });
-}
-
-function _renderMaxCycleRecommendationPanel({
-  comparisonCache = {},
-  exList = [],
-  todayKey = _todayKey(),
-  majors = new Set(),
-  weakPartsForToday = [],
-  weakPartsOutOfScope = [],
-  meta = _ensureMaxMeta(),
-  comparison = null,
-  inline = false,
-} = {}) {
-  const majorSet = majors instanceof Set ? majors : new Set(majors || []);
-  if (!majorSet.size) return '';
-  const takenIds = (S?.workout?.exercises || []).map(e => e.exerciseId).filter(Boolean);
-  const muscleComparison = comparison || buildMuscleComparison(comparisonCache, exList, MOVEMENTS, todayKey, majorSet, 2);
-  const weakCoachGroups = _suggestWeakTargetBoosts(weakPartsForToday, takenIds);
-  const outOfScopeWeakGroups = _suggestWeakTargetBoosts(weakPartsOutOfScope, takenIds);
-  const fixedMovements = detectMaxFixedMovements({
-    cache: comparisonCache,
-    exList,
-    movements: MOVEMENTS,
-    todayKey,
-    majors: majorSet,
-    lookbackSessions: 4,
-    minHits: 2,
-  });
-  let boardHtml = '';
-
-  if (!muscleComparison.previous?.length) {
-    boardHtml = _renderMajorRecommendationBoard({
-      majors: [...majorSet],
-      starterGroups: _suggestMajorStarters([...majorSet], takenIds),
-      outOfScopeWeakGroups,
-      takenIds,
-      meta,
-    });
-  } else if (!muscleComparison.imbalance) {
-    boardHtml = _renderMajorRecommendationBoard({
-      majors: [...majorSet],
-      starterGroups: _suggestMajorStarters([...majorSet], takenIds),
-      fixedMovements,
-      weakCoachGroups,
-      outOfScopeWeakGroups,
-      takenIds,
-      meta,
-    });
-  } else {
-    const groups = suggestMaxBoosts({
-      comparison: muscleComparison,
-      exList,
-      movements: MOVEMENTS,
-      preferredCategories: MAX_PREFERRED_CATEGORIES,
-      takenExerciseIds: takenIds,
-      limit: Math.max(4, majorSet.size * 4),
-    });
-    boardHtml = _renderMajorRecommendationBoard({
-      majors: [...majorSet],
-      fixedMovements,
-      weakCoachGroups,
-      outOfScopeWeakGroups,
-      balanceGroups: groups,
-      takenIds,
-      meta,
-    });
-  }
-
-  if (!boardHtml) return '';
-  if (inline) {
-    return `
-      <div class="wt-v4-growth-rec-panel wt-v4-rec-panel">
-        <div class="wt-v4-growth-rec-head">
-          <b>오늘 보강 종목</b>
-        </div>
-        ${boardHtml}
-      </div>
-    `;
-  }
-  return `
-    <section class="card wt-v4-rec-panel wt-v4-accordion is-collapsed">
-      <button type="button" class="card-head wt-v4-rec-head wt-v4-accordion-toggle" data-action="toggle-v4-accordion" aria-expanded="false">
-        <div>
-          <b>오늘 보강 종목</b>
-        </div>
-        <div class="badge wt-v4-accordion-label">펼치기</div>
-      </button>
-      <div class="wt-v4-accordion-body">
-        ${boardHtml}
-      </div>
-    </section>
-  `;
 }
 
 // ── 메인: 맥스 모드 카드 렌더 ─────────────────────────────────────
@@ -1553,9 +1431,6 @@ export function renderMaxCard(host) {
   const day = comparisonCache[todayKey] || { exercises: [] };
   const majors = new Set(selectedMajors);
   if (meta.majorGateOpen || majors.size === 0) {
-    const gateComparisonCache = comparisonCache;
-    const weakScope = _splitWeakPartsByMajors(meta.selectedWeakParts, selectedMajors);
-    const gateComparison = majors.size ? buildMuscleComparison(gateComparisonCache, exList, MOVEMENTS, todayKey, majors, 2) : null;
     const savedCycleForGate = _getMaxCycleSafe();
     const cycleDraftForGate = majors.size
       ? (savedCycleForGate || createDefaultMaxCycle({
@@ -1569,37 +1444,10 @@ export function renderMaxCard(host) {
     const todayCycleForGate = majors.size && cycleDraftForGate
       ? _cycleForTodayMajors(cycleDraftForGate, majors, todayKey)
       : null;
-    const recommendationHtml = gateComparison ? _renderMaxCycleRecommendationPanel({
-      comparisonCache: gateComparisonCache,
-      exList,
-      todayKey,
-      majors,
-      weakPartsForToday: weakScope.inScope,
-      weakPartsOutOfScope: weakScope.outOfScope,
-      meta,
-      comparison: gateComparison,
-      inline: true,
-    }) : '';
-    const gateSnapshot = todayCycleForGate ? buildRenderedMaxCycleSnapshot({
-      cycle: todayCycleForGate,
-      cache: gateComparisonCache,
-      exList,
-      todayKey,
-    }) : null;
-    const growthPreviewHtml = gateComparison ? renderMaxGrowthPreview({
-      comparison: gateComparison,
-      cache: gateComparisonCache,
-      exList,
-      majors: [...majors],
-      movements: MOVEMENTS,
-      snapshot: gateSnapshot,
-      recommendationHtml,
-    }) : '';
     host.innerHTML = _renderMaxTodayMajorGate({
       selectedMajors,
-      steeringHtml: growthPreviewHtml,
       cycle: todayCycleForGate,
-      cache: gateComparisonCache,
+      cache: comparisonCache,
       exList,
       todayKey,
       isDraft: !savedCycleForGate,
@@ -1608,9 +1456,6 @@ export function renderMaxCard(host) {
     _ensureWeakTimerTick();
     return;
   }
-  const weakScope = _splitWeakPartsByMajors(meta.selectedWeakParts, [...majors]);
-  const weakPartsForToday = weakScope.inScope;
-  const weakPartsOutOfScope = weakScope.outOfScope;
   const savedCycle = _getMaxCycleSafe();
   const cycleDraft = savedCycle || createDefaultMaxCycle({
     todayKey,
@@ -1620,33 +1465,6 @@ export function renderMaxCard(host) {
     allowFallback: false,
   });
   const todayCycle = _cycleForTodayMajors(cycleDraft, majors, todayKey);
-  const dashboardComparison = buildMuscleComparison(comparisonCache, exList, MOVEMENTS, todayKey, majors, 2);
-  const recommendationHtml = _renderMaxCycleRecommendationPanel({
-    comparisonCache,
-    exList,
-    todayKey,
-    majors,
-    weakPartsForToday,
-    weakPartsOutOfScope,
-    meta,
-    comparison: dashboardComparison,
-    inline: true,
-  });
-  const dashboardSnapshot = todayCycle ? buildRenderedMaxCycleSnapshot({
-    cycle: todayCycle,
-    cache: comparisonCache,
-    exList,
-    todayKey,
-  }) : null;
-  const growthPreviewHtml = renderMaxGrowthPreview({
-    comparison: dashboardComparison,
-    cache: comparisonCache,
-    exList,
-    majors: [...majors],
-    movements: MOVEMENTS,
-    snapshot: dashboardSnapshot,
-    recommendationHtml,
-  });
   const cycleHtml = renderMaxCycleDashboard({
     cycle: todayCycle,
     cache: comparisonCache,
@@ -1654,7 +1472,7 @@ export function renderMaxCard(host) {
     todayKey,
     isDraft: !savedCycle,
     majors: [...majors],
-    growthPreviewHtml,
+    history: getMaxCycleHistory(),
   });
   host.innerHTML = cycleHtml;
   _bindMaxHost(host);
