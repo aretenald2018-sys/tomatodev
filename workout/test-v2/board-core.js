@@ -1,0 +1,800 @@
+// ================================================================
+// workout/test-v2/board-core.js — 테스트모드 v2 "성장 보드" 순수 로직
+// ----------------------------------------------------------------
+// 계획: docs/ai/features/2026-06-12-test-mode-v2-board.md (계약 1~13)
+// DOM/Firebase 접근 금지 — node:test 단위 테스트 대상.
+// 데이터는 _settings.test_board_v2 한 키에 통째로 저장(저장은 data.js 경유,
+// 호출부 책임). 이 모듈은 board 객체를 받아 변형/파생만 한다.
+//
+// 핵심 모델:
+//   board.benchmarks[].seed[track] = { kg, reps }  ← 트랙의 "현재 대표 무게"
+//   board.steps[]   = 보드 칸(스텝). 같은 처방이 span 주 동안 병합.
+//   기본 계획 = 사이클당 1스텝(6주 유지) + 정산 성장폭(상체 2.5/하체 10)
+//   웬들러 벤치마크는 스텝 없이 wendler 설정에서 주차 처방 파생.
+// ================================================================
+
+import {
+  normalizeWendlerConfig,
+  wendlerWeekPrescription,
+  defaultWendlerIncrement,
+  isWendlerAllowedMajor,
+  roundToPlate,
+} from './wendler.js';
+
+export { roundToPlate, isWendlerAllowedMajor };
+
+// ----------------------------------------------------------------
+// 상수
+// ----------------------------------------------------------------
+
+export const TM2_DEFAULTS = { incrementUpperKg: 2.5, incrementLowerKg: 10 };
+
+export const TM2_GROUPS = [
+  { id: 'chest',    label: '가슴', bodyRegion: 'upper', majors: ['chest'],            order: 0 },
+  { id: 'back',     label: '등',   bodyRegion: 'upper', majors: ['back'],             order: 1 },
+  { id: 'shoulder', label: '어깨', bodyRegion: 'upper', majors: ['shoulder'],         order: 2 },
+  { id: 'lower',    label: '하체', bodyRegion: 'lower', majors: ['lower', 'glute'],   order: 3 },
+  { id: 'arm',      label: '팔',   bodyRegion: 'upper', majors: ['bicep', 'tricep'],  order: 4 },
+];
+
+export const TM2_TRACKS = ['volume', 'intensity'];
+export const TM2_TRACK_LABELS = { volume: '볼륨', intensity: '강도' };
+
+export function groupForMajor(major) {
+  const m = String(major || '').trim();
+  return TM2_GROUPS.find(g => g.majors.includes(m)) || null;
+}
+
+export function defaultIncrementForGroup(groupId) {
+  const g = TM2_GROUPS.find(x => x.id === groupId);
+  return g?.bodyRegion === 'lower' ? TM2_DEFAULTS.incrementLowerKg : TM2_DEFAULTS.incrementUpperKg;
+}
+
+// ----------------------------------------------------------------
+// 날짜 유틸 (dateKey: 'YYYY-MM-DD', 주 = 월요일 시작)
+// ----------------------------------------------------------------
+
+export function parseKey(key) {
+  const [y, m, d] = String(key || '').split('-').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+}
+
+export function toKey(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+export function addDays(key, n) {
+  const dt = parseKey(key);
+  dt.setDate(dt.getDate() + n);
+  return toKey(dt);
+}
+
+export const addWeeks = (key, n) => addDays(key, n * 7);
+
+/** 해당 날짜가 속한 주의 월요일 dateKey */
+export function mondayOf(key) {
+  const dt = parseKey(key);
+  const dow = dt.getDay(); // 0=일
+  const diff = dow === 0 ? -6 : 1 - dow;
+  dt.setDate(dt.getDate() + diff);
+  return toKey(dt);
+}
+
+/** 두 dateKey 사이 주 차이 (a 기준 b가 몇 주 뒤인가, 월요일 정규화) */
+export function weeksBetween(a, b) {
+  const ms = parseKey(mondayOf(b)) - parseKey(mondayOf(a));
+  return Math.round(ms / (7 * 24 * 3600 * 1000));
+}
+
+/** 사이클 내 1-based 주차 (범위 밖이면 0 또는 weeks 초과값) */
+export function weekIndexOf(cycle, todayKey) {
+  return weeksBetween(cycle.startDate, todayKey) + 1;
+}
+
+export function isCycleFinished(cycle, todayKey) {
+  return weekIndexOf(cycle, todayKey) > (cycle.weeks || 6);
+}
+
+/** 'M/D' 표기 */
+export function shortDate(key) {
+  const dt = parseKey(key);
+  return `${dt.getMonth() + 1}/${dt.getDate()}`;
+}
+
+// ----------------------------------------------------------------
+// ID / 클론
+// ----------------------------------------------------------------
+
+let _seq = 0;
+const _id = (prefix) => `${prefix}_${Date.now().toString(36)}_${(_seq++).toString(36)}`;
+
+export function cloneBoard(board) {
+  return JSON.parse(JSON.stringify(board));
+}
+
+// ----------------------------------------------------------------
+// 온보딩 후보 / 보드 생성 (계약 11)
+// ----------------------------------------------------------------
+
+const TM2_DEFAULT_ON = new Set([
+  'barbell_bench', 'incline_barbell_bench', 'chest_fly', 'dips',
+  'lat_pulldown', 'barbell_row', 'seated_row', 'arm_pulldown',
+  'ohp', 'lateral_raise', 'rear_delt_fly', 'front_raise',
+  'back_squat', 'leg_press', 'leg_extension', 'leg_curl',
+  'barbell_curl', 'hammer_curl', 'cable_tricep_pushdown', 'overhead_tricep_ext',
+]);
+
+const TM2_INTENSITY_DEFAULT = new Set(['barbell_bench', 'back_squat', 'lat_pulldown']);
+
+/**
+ * 온보딩 후보 목록 — v1 max_cycle 벤치마크(있으면 우선) + 운동 라이브러리.
+ * v1 데이터는 읽기 전용 입력(파라미터)으로만 받는다 (금지 목록 준수).
+ * 반환: [{ movementId, label, groupId, defaultOn, tracks:{volume,intensity}, source, wendler? }]
+ *   tracks[t] = { kg, reps, from } | null (트랙 비활성) | { manual:true } (직접 입력 필요)
+ */
+export function buildOnboardingCandidates({ v1Cycle = null, movements = [] } = {}) {
+  const out = [];
+  const seen = new Set();
+
+  const v1Benchmarks = Array.isArray(v1Cycle?.benchmarks) ? v1Cycle.benchmarks : [];
+  for (const bm of v1Benchmarks) {
+    const group = groupForMajor(bm.primaryMajor);
+    if (!group) continue; // abs 등 그룹 외 부위는 제외
+    const movementId = bm.movementId || bm.exerciseId || bm.id;
+    if (!movementId || seen.has(movementId)) continue;
+    seen.add(movementId);
+    const trackOf = (spec, fallbackReps) => {
+      if (!spec || spec.enabled === false) return null;
+      const kg = Number(spec.startKg) || 0;
+      const reps = Number(spec.startReps) || fallbackReps;
+      return kg > 0 ? { kg, reps, from: 'v1 기록' } : { manual: true, reps };
+    };
+    out.push({
+      movementId,
+      label: bm.label || movementId,
+      groupId: group.id,
+      defaultOn: true,
+      source: 'v1',
+      tracks: {
+        volume: trackOf(bm.tracks?.M, 12) || { manual: true, reps: 12 },
+        intensity: trackOf(bm.tracks?.H, 8),
+      },
+      wendler: bm.program === 'wendler' && bm.wendler ? { ...bm.wendler } : null,
+    });
+  }
+
+  for (const mv of movements) {
+    const group = groupForMajor(mv.primary);
+    if (!group) continue;
+    if (seen.has(mv.id)) continue;
+    seen.add(mv.id);
+    out.push({
+      movementId: mv.id,
+      label: mv.nameKo || mv.id,
+      groupId: group.id,
+      defaultOn: v1Benchmarks.length === 0 && TM2_DEFAULT_ON.has(mv.id),
+      source: 'library',
+      tracks: {
+        volume: { manual: true, reps: 12 },
+        intensity: v1Benchmarks.length === 0 && TM2_INTENSITY_DEFAULT.has(mv.id) ? { manual: true, reps: 8 } : null,
+      },
+      wendler: null,
+    });
+  }
+  return out;
+}
+
+function _makeBenchmark(candidate, order) {
+  const groupId = candidate.groupId;
+  const increment = Number(candidate.incrementKg) > 0
+    ? Number(candidate.incrementKg)
+    : defaultIncrementForGroup(groupId);
+  const tracks = [];
+  const seed = {};
+  for (const t of TM2_TRACKS) {
+    const spec = candidate.tracks?.[t];
+    if (!spec) continue;
+    tracks.push(t);
+    seed[t] = {
+      kg: Number(spec.kg) > 0 ? Number(spec.kg) : 0,
+      reps: Number(spec.reps) > 0 ? Number(spec.reps) : (t === 'intensity' ? 8 : 12),
+    };
+  }
+  if (!tracks.length) {
+    tracks.push('volume');
+    seed.volume = { kg: 0, reps: 12 };
+  }
+  const bm = {
+    id: _id('bm'),
+    movementId: candidate.movementId || null,
+    groupId,
+    label: candidate.label || '종목',
+    short: candidate.short || String(candidate.label || '종목').slice(0, 4),
+    order,
+    status: 'active',
+    tracks,
+    seed,
+    setsDefault: 4,
+    incrementKg: increment,
+    program: candidate.wendler ? 'wendler' : 'stair',
+    meta: {
+      rirTarget: candidate.meta?.rirTarget ?? 2,
+      formNote: candidate.meta?.formNote || '',
+      gymNote: candidate.meta?.gymNote || '',
+    },
+  };
+  if (bm.program === 'wendler') {
+    const major = TM2_GROUPS.find(g => g.id === groupId)?.majors?.[0] || null;
+    bm.wendler = normalizeWendlerConfig(candidate.wendler, {
+      primaryMajor: major,
+      trackSpec: seed.volume ? { startKg: seed.volume.kg, startReps: seed.volume.reps } : null,
+    });
+    bm.wendlerLog = {};
+  }
+  return bm;
+}
+
+function _makeCycle(groupId, startDate, weeks = 6) {
+  return {
+    id: _id(`cy_${groupId}`),
+    groupId,
+    startDate,
+    weeks,
+    status: 'active',
+    settle: null,
+  };
+}
+
+function _makeStep(benchmark, track, cycle, kg, reps, weekStart = null, span = null) {
+  return {
+    id: _id('st'),
+    benchmarkId: benchmark.id,
+    track,
+    cycleId: cycle.id,
+    weekStart: weekStart || cycle.startDate,
+    span: span || cycle.weeks,
+    kg,
+    reps,
+    state: 'planned',
+    weekLog: {},
+  };
+}
+
+/** 활성 사이클에 벤치마크의 기본 계획 스텝 생성 (사이클당 1스텝=6주 유지) */
+function _planBenchmarkSteps(board, benchmark, cycle, fromWeek = null) {
+  if (benchmark.program === 'wendler') return; // 웬들러는 파생
+  for (const t of benchmark.tracks) {
+    const seed = benchmark.seed[t] || { kg: 0, reps: 12 };
+    const weekStart = fromWeek || cycle.startDate;
+    const span = Math.max(1, cycle.weeks - weeksBetween(cycle.startDate, weekStart));
+    board.steps.push(_makeStep(benchmark, t, cycle, seed.kg, seed.reps, weekStart, span));
+  }
+}
+
+/**
+ * 온보딩 → 보드 생성.
+ * selections: buildOnboardingCandidates 결과 중 켜진 항목 (tracks[t].kg 채워진 상태)
+ */
+export function buildBoardFromOnboarding({ selections = [], startDate, source = 'manual' } = {}) {
+  const start = mondayOf(startDate);
+  const board = {
+    version: 2,
+    bootstrappedFrom: source,
+    defaults: { ...TM2_DEFAULTS },
+    groups: TM2_GROUPS.map(g => ({ id: g.id, label: g.label, bodyRegion: g.bodyRegion, order: g.order })),
+    benchmarks: [],
+    cycles: [],
+    steps: [],
+    lineups: {},
+    history: [],
+    createdAt: null, // 호출부에서 Date.now() 주입 가능
+  };
+  const groupsUsed = new Set();
+  selections.forEach((cand, i) => {
+    const bm = _makeBenchmark(cand, i);
+    board.benchmarks.push(bm);
+    groupsUsed.add(bm.groupId);
+  });
+  for (const gid of groupsUsed) {
+    const cycle = _makeCycle(gid, start);
+    board.cycles.push(cycle);
+    for (const bm of board.benchmarks.filter(b => b.groupId === gid)) {
+      _planBenchmarkSteps(board, bm, cycle);
+    }
+  }
+  return board;
+}
+
+// ----------------------------------------------------------------
+// 조회 헬퍼
+// ----------------------------------------------------------------
+
+export const activeBenchmarks = (board, groupId) =>
+  (board.benchmarks || [])
+    .filter(b => b.status === 'active' && (!groupId || b.groupId === groupId))
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+export const activeCycleOf = (board, groupId) =>
+  (board.cycles || []).filter(c => c.groupId === groupId && c.status === 'active')
+    .sort((a, b) => (a.startDate < b.startDate ? 1 : -1))[0] || null;
+
+export const settledCyclesOf = (board, groupId) =>
+  (board.cycles || []).filter(c => c.groupId === groupId && c.status === 'settled')
+    .sort((a, b) => (a.startDate < b.startDate ? -1 : 1));
+
+export const benchmarkById = (board, id) => (board.benchmarks || []).find(b => b.id === id) || null;
+
+const _stepsOf = (board, benchmarkId, track, cycleId) =>
+  (board.steps || [])
+    .filter(s => s.benchmarkId === benchmarkId && s.track === track && (!cycleId || s.cycleId === cycleId))
+    .sort((a, b) => (a.weekStart < b.weekStart ? -1 : 1));
+
+const _stepCoveringWeek = (board, benchmarkId, track, weekStart) =>
+  (board.steps || []).find(s =>
+    s.benchmarkId === benchmarkId && s.track === track &&
+    weeksBetween(s.weekStart, weekStart) >= 0 &&
+    weeksBetween(s.weekStart, weekStart) < s.span) || null;
+
+/** 트랙의 현재 대표 무게 (마지막 스텝 kg, 없으면 seed) */
+export function currentKgOf(board, benchmark, track) {
+  const steps = _stepsOf(board, benchmark.id, track);
+  const last = steps[steps.length - 1];
+  if (last && Number(last.kg) > 0) return { kg: last.kg, reps: last.reps };
+  const seed = benchmark.seed?.[track];
+  return { kg: Number(seed?.kg) || 0, reps: Number(seed?.reps) || 12 };
+}
+
+// ----------------------------------------------------------------
+// 셀 전개 (보드 렌더의 데이터원)
+// ----------------------------------------------------------------
+
+function _stepCellState(step, cycle, todayKey) {
+  const todayMon = mondayOf(todayKey);
+  const stepEnd = addWeeks(step.weekStart, step.span); // exclusive
+  const weeks = [];
+  for (let i = 0; i < step.span; i++) {
+    const wk = addWeeks(step.weekStart, i);
+    const log = step.weekLog?.[wk] || null;
+    weeks.push({ weekStart: wk, painted: !!log?.paintedAt, missed: !!log?.missed && !log?.paintedAt });
+  }
+  const allPainted = weeks.length > 0 && weeks.every(w => w.painted);
+  const anyMissed = weeks.some(w => w.missed);
+  const isCurrent = weeksBetween(step.weekStart, todayMon) >= 0 && todayMon < stepEnd;
+  let state;
+  if (allPainted || step.state === 'done') state = 'done';
+  else if (anyMissed || step.state === 'missed') state = 'miss';
+  else if (isCurrent) state = 'now';
+  else state = 'plan';
+  return { state, weeks, isCurrent };
+}
+
+/**
+ * 벤치마크×트랙×사이클의 셀 목록.
+ * stair → [{ kind:'stair', weekStart, span, kg, reps, state, dots, stepId, isCurrent }]
+ *   (스텝이 안 덮는 주는 { kind:'rest', weekStart, span })
+ * wendler → 주당 1칸 [{ kind:'wendler', weekStart, span:1, kg(톱세트), repsLabel, subLabel, state, week }]
+ */
+export function expandColumnCells(board, benchmarkId, track, cycleId, todayKey) {
+  const bm = benchmarkById(board, benchmarkId);
+  const cycle = (board.cycles || []).find(c => c.id === cycleId);
+  if (!bm || !cycle) return [];
+  const todayMon = mondayOf(todayKey);
+
+  if (bm.program === 'wendler') {
+    const cells = [];
+    for (let w = 1; w <= cycle.weeks; w++) {
+      const weekStart = addWeeks(cycle.startDate, w - 1);
+      const rx = wendlerWeekPrescription(bm.wendler, w);
+      const log = bm.wendlerLog?.[weekStart] || null;
+      let state = 'plan';
+      if (log?.paintedAt) state = 'done';
+      else if (log?.missed) state = 'miss';
+      else if (weekStart === todayMon) state = 'now';
+      const top = rx.topSet;
+      cells.push({
+        kind: 'wendler',
+        weekStart,
+        span: 1,
+        week: w,
+        kg: top?.kg ?? 0,
+        repsLabel: top ? `×${top.reps}${top.amrap ? '+' : ''}` : '',
+        subLabel: top
+          ? `${top.pct}%${rx.supplemental ? ` · ${rx.supplemental.label} ${rx.supplemental.kg}` : ''}`
+          : '',
+        state,
+        isCurrent: weekStart === todayMon,
+      });
+    }
+    return cells;
+  }
+
+  const steps = _stepsOf(board, benchmarkId, track, cycleId);
+  const cells = [];
+  let cursor = cycle.startDate;
+  const cycleEnd = addWeeks(cycle.startDate, cycle.weeks); // exclusive
+  for (const step of steps) {
+    if (weeksBetween(cursor, step.weekStart) > 0) {
+      cells.push({ kind: 'rest', weekStart: cursor, span: weeksBetween(cursor, step.weekStart) });
+    }
+    const clippedSpan = Math.min(step.span, weeksBetween(step.weekStart, cycleEnd));
+    if (clippedSpan <= 0) continue;
+    const st = _stepCellState(step, cycle, todayKey);
+    cells.push({
+      kind: 'stair',
+      weekStart: step.weekStart,
+      span: clippedSpan,
+      kg: step.kg,
+      reps: step.reps,
+      sets: step.sets || null,
+      state: st.state,
+      dots: st.weeks.slice(0, clippedSpan).map(w => ({ weekStart: w.weekStart, on: w.painted, missed: w.missed })),
+      stepId: step.id,
+      isCurrent: st.isCurrent,
+    });
+    cursor = addWeeks(step.weekStart, clippedSpan);
+  }
+  if (weeksBetween(cursor, cycleEnd) > 0) {
+    cells.push({ kind: 'rest', weekStart: cursor, span: weeksBetween(cursor, cycleEnd) });
+  }
+  return cells;
+}
+
+// ----------------------------------------------------------------
+// 색칠 / 못 채움 (계약 4·5)
+// ----------------------------------------------------------------
+
+/** 달성 색칠 — 유저의 명시적 액션. log: { at, actualReps, rir, note, amrapReps, suppDone } */
+export function paintWeek(board, { benchmarkId, track = 'volume', weekStart, log = {} }) {
+  const bm = benchmarkById(board, benchmarkId);
+  if (!bm) return false;
+  const wk = mondayOf(weekStart);
+  const entry = {
+    paintedAt: log.at || null,
+    actualReps: log.actualReps ?? null,
+    rir: log.rir ?? null,
+    note: log.note || '',
+  };
+  if (bm.program === 'wendler') {
+    bm.wendlerLog = bm.wendlerLog || {};
+    bm.wendlerLog[wk] = { ...entry, amrapReps: log.amrapReps ?? null, suppDone: log.suppDone ?? null };
+    return true;
+  }
+  const step = _stepCoveringWeek(board, benchmarkId, track, wk);
+  if (!step) return false;
+  step.weekLog = step.weekLog || {};
+  step.weekLog[wk] = entry;
+  const allPainted = Array.from({ length: step.span }, (_, i) => addWeeks(step.weekStart, i))
+    .every(w => step.weekLog[w]?.paintedAt);
+  if (allPainted) step.state = 'done';
+  return true;
+}
+
+/**
+ * 못 채운 날 기록 + 계획 조정 (계약 5 — 1순위 "한 주 더 도전").
+ * choice: 'extend' | 'lowerKg' | 'lowerReps' | 'none'(기록만)
+ */
+export function recordMiss(board, { benchmarkId, track = 'volume', weekStart, log = {}, choice = 'none', params = {} }) {
+  const bm = benchmarkById(board, benchmarkId);
+  if (!bm) return false;
+  const wk = mondayOf(weekStart);
+  const missEntry = { missed: true, missedAt: log.at || null, actualReps: log.actualReps ?? null, rir: log.rir ?? null, note: log.note || '' };
+
+  if (bm.program === 'wendler') {
+    bm.wendlerLog = bm.wendlerLog || {};
+    bm.wendlerLog[wk] = { ...(bm.wendlerLog[wk] || {}), ...missEntry };
+    return true;
+  }
+
+  const step = _stepCoveringWeek(board, benchmarkId, track, wk);
+  if (!step) return false;
+  step.weekLog = step.weekLog || {};
+  step.weekLog[wk] = { ...(step.weekLog[wk] || {}), ...missEntry };
+  step.state = 'missed';
+
+  const cycle = (board.cycles || []).find(c => c.id === step.cycleId);
+  const cycleEnd = cycle ? addWeeks(cycle.startDate, cycle.weeks) : null;
+
+  if (choice === 'extend') {
+    // 이 칸을 1주 연장, 같은 트랙의 뒤 스텝들을 1주씩 밀고 사이클 끝에서 클립
+    step.span += 1;
+    const after = _stepsOf(board, benchmarkId, track, step.cycleId)
+      .filter(s => s.id !== step.id && weeksBetween(step.weekStart, s.weekStart) > 0);
+    for (const s of after) s.weekStart = addWeeks(s.weekStart, 1);
+    if (cycleEnd) {
+      for (const s of [step, ...after]) {
+        const room = weeksBetween(s.weekStart, cycleEnd);
+        if (room <= 0) {
+          board.steps = board.steps.filter(x => x.id !== s.id); // 다음 사이클로 이월(정산 때 재생성)
+        } else if (s.span > room) {
+          s.span = room;
+        }
+      }
+    }
+  } else if (choice === 'lowerKg') {
+    const delta = Number(params.deltaKg) > 0 ? Number(params.deltaKg) : 2.5;
+    step.kg = Math.max(0, roundToPlate(step.kg - delta, 0.5));
+    step.state = 'planned'; // 새 기준으로 재도전
+  } else if (choice === 'lowerReps') {
+    const reps = Math.max(1, Math.round(Number(params.reps) || (step.reps - 2)));
+    step.reps = reps;
+    step.state = 'planned';
+  }
+  return true;
+}
+
+/** 조정 미리보기 — 복제 보드에 적용 후 before/after 셀 요약 반환 */
+export function previewAdjust(board, args, todayKey) {
+  const bm = benchmarkById(board, args.benchmarkId);
+  const step = _stepCoveringWeek(board, args.benchmarkId, args.track || 'volume', mondayOf(args.weekStart));
+  const cycleId = step?.cycleId || activeCycleOf(board, bm?.groupId)?.id;
+  const summarize = (b) => expandColumnCells(b, args.benchmarkId, args.track || 'volume', cycleId, todayKey)
+    .filter(c => c.kind === 'stair')
+    .map(c => ({ kg: c.kg, reps: c.reps, weekStart: c.weekStart, span: c.span, state: c.state }));
+  const before = summarize(board);
+  const clone = cloneBoard(board);
+  recordMiss(clone, args);
+  const after = summarize(clone);
+  return { before, after };
+}
+
+// ----------------------------------------------------------------
+// 오늘의 배열 (계약 13)
+// ----------------------------------------------------------------
+
+export function getLineup(board, dateKeyStr) {
+  const list = board.lineups?.[dateKeyStr];
+  return Array.isArray(list) ? [...list].sort((a, b) => (a.order || 0) - (b.order || 0)) : [];
+}
+
+/** 오늘 행 칸 담기/빼기. 반환: 현재 배열 */
+export function toggleLineup(board, dateKeyStr, benchmarkId, track = 'volume') {
+  board.lineups = board.lineups || {};
+  const cur = getLineup(board, dateKeyStr);
+  const idx = cur.findIndex(x => x.benchmarkId === benchmarkId && x.track === track);
+  if (idx >= 0) {
+    cur.splice(idx, 1);
+    cur.forEach((x, i) => { x.order = i; });
+  } else {
+    cur.push({ benchmarkId, track, order: cur.length });
+  }
+  board.lineups[dateKeyStr] = cur;
+  // 보관: 최근 40일치만 유지
+  const keys = Object.keys(board.lineups).sort();
+  while (keys.length > 40) delete board.lineups[keys.shift()];
+  return cur;
+}
+
+// ----------------------------------------------------------------
+// 정산 (계약 6·7·8)
+// ----------------------------------------------------------------
+
+export function isSettleDue(board, groupId, todayKey) {
+  const cycle = activeCycleOf(board, groupId);
+  return !!cycle && isCycleFinished(cycle, todayKey);
+}
+
+function _missedCount(board, bm, track, cycleId) {
+  if (bm.program === 'wendler') {
+    const cycle = (board.cycles || []).find(c => c.id === cycleId);
+    if (!cycle) return 0;
+    let n = 0;
+    for (let w = 0; w < cycle.weeks; w++) {
+      const log = bm.wendlerLog?.[addWeeks(cycle.startDate, w)];
+      if (log?.missed && !log?.paintedAt) n++;
+    }
+    return n;
+  }
+  let n = 0;
+  for (const s of _stepsOf(board, bm.id, track, cycleId)) {
+    for (const log of Object.values(s.weekLog || {})) {
+      if (log?.missed && !log?.paintedAt) n++;
+    }
+    if (s.state === 'missed') n = Math.max(n, 1);
+  }
+  return n;
+}
+
+/** 정산 행 — 트랙별(stair) / 벤치마크별(wendler). 못 채운 종목은 '유지' 기본(계약 7). */
+export function buildSettleRows(board, groupId) {
+  const cycle = activeCycleOf(board, groupId);
+  if (!cycle) return [];
+  const rows = [];
+  for (const bm of activeBenchmarks(board, groupId)) {
+    if (bm.program === 'wendler') {
+      const missed = _missedCount(board, bm, null, cycle.id);
+      rows.push({
+        key: bm.id,
+        benchmarkId: bm.id,
+        program: 'wendler',
+        label: bm.label,
+        trackLabel: '웬들러',
+        currentKg: bm.wendler.tmKg,
+        incrementKg: bm.wendler.incrementKg,
+        nextKg: roundToPlate(bm.wendler.tmKg + bm.wendler.incrementKg, 0.5),
+        missedCount: missed,
+        defaultDecision: missed > 0 ? 'hold' : 'grow',
+        isTm: true,
+      });
+      continue;
+    }
+    for (const t of bm.tracks) {
+      const cur = currentKgOf(board, bm, t);
+      const missed = _missedCount(board, bm, t, cycle.id);
+      rows.push({
+        key: `${bm.id}:${t}`,
+        benchmarkId: bm.id,
+        track: t,
+        program: 'stair',
+        label: bm.label,
+        trackLabel: TM2_TRACK_LABELS[t],
+        currentKg: cur.kg,
+        currentReps: cur.reps,
+        incrementKg: bm.incrementKg,
+        nextKg: roundToPlate(cur.kg + bm.incrementKg, 0.5),
+        missedCount: missed,
+        defaultDecision: missed > 0 ? 'hold' : 'grow',
+        isTm: false,
+      });
+    }
+  }
+  return rows;
+}
+
+/**
+ * 정산 확정 — 성장폭은 종목별 설정값 그대로(계약 7, 하드코딩 금지).
+ * decisions: { [row.key]: 'grow'|'hold' } (없으면 row.defaultDecision)
+ */
+export function applySettle(board, groupId, decisions = {}, todayKey, now = null) {
+  const cycle = activeCycleOf(board, groupId);
+  if (!cycle) return null;
+  const rows = buildSettleRows(board, groupId);
+  const results = [];
+
+  for (const row of rows) {
+    const bm = benchmarkById(board, row.benchmarkId);
+    const decision = decisions[row.key] || row.defaultDecision;
+    const grow = decision === 'grow';
+    if (row.program === 'wendler') {
+      const before = bm.wendler.tmKg;
+      if (grow) bm.wendler.tmKg = roundToPlate(before + bm.wendler.incrementKg, 0.5);
+      results.push({ benchmarkId: bm.id, program: 'wendler', before, after: bm.wendler.tmKg, decision });
+    } else {
+      const before = currentKgOf(board, bm, row.track).kg;
+      const after = grow ? roundToPlate(before + bm.incrementKg, 0.5) : before;
+      bm.seed[row.track] = { kg: after, reps: currentKgOf(board, bm, row.track).reps };
+      results.push({ benchmarkId: bm.id, track: row.track, program: 'stair', before, after, decision });
+    }
+  }
+
+  cycle.status = 'settled';
+  cycle.settle = { decisions: { ...decisions }, settledAt: now };
+
+  // 다음 사이클 생성 + 기본 계획(스텝) 재생성
+  const candidate = addWeeks(cycle.startDate, cycle.weeks);
+  const todayMon = mondayOf(todayKey);
+  const nextStart = weeksBetween(candidate, todayMon) > 0 ? todayMon : candidate;
+  const nextCycle = _makeCycle(groupId, nextStart, cycle.weeks);
+  board.cycles.push(nextCycle);
+  for (const bm of activeBenchmarks(board, groupId)) {
+    _planBenchmarkSteps(board, bm, nextCycle);
+  }
+
+  const entry = {
+    cycleId: cycle.id,
+    groupId,
+    period: { start: cycle.startDate, end: addDays(addWeeks(cycle.startDate, cycle.weeks), -1) },
+    settledAt: now,
+    results,
+  };
+  board.history = [...(board.history || []), entry].slice(-60);
+  return { entry, nextCycle };
+}
+
+// ----------------------------------------------------------------
+// 종목 추가/삭제 (계약 12 — 빼기=보관, 기록 보존, 재추가 시 이어서)
+// ----------------------------------------------------------------
+
+export function archiveBenchmark(board, benchmarkId) {
+  const bm = benchmarkById(board, benchmarkId);
+  if (!bm) return false;
+  bm.status = 'archived';
+  return true;
+}
+
+/**
+ * 종목 추가 — 같은 movementId의 보관 종목이 있으면 복원(이어서),
+ * 없으면 새로 생성. 활성 사이클의 남은 주에 스텝 생성(다음 주 월요일부터).
+ */
+export function addBenchmark(board, candidate, todayKey) {
+  const archived = (board.benchmarks || []).find(b =>
+    b.status === 'archived' && b.movementId && b.movementId === candidate.movementId && b.groupId === candidate.groupId);
+  let bm;
+  if (archived) {
+    archived.status = 'active';
+    bm = archived;
+  } else {
+    bm = _makeBenchmark(candidate, (board.benchmarks || []).length);
+    board.benchmarks.push(bm);
+  }
+  let cycle = activeCycleOf(board, bm.groupId);
+  if (!cycle) {
+    cycle = _makeCycle(bm.groupId, mondayOf(todayKey));
+    board.cycles.push(cycle);
+  }
+  if (bm.program !== 'wendler') {
+    const nextMonday = addWeeks(mondayOf(todayKey), 1);
+    const fromWeek = weeksBetween(cycle.startDate, nextMonday) < cycle.weeks && weeksBetween(cycle.startDate, nextMonday) >= 0
+      ? nextMonday : null;
+    for (const t of bm.tracks) {
+      const has = _stepsOf(board, bm.id, t, cycle.id).length > 0;
+      if (!has && fromWeek) {
+        const seed = currentKgOf(board, bm, t);
+        const span = Math.max(1, cycle.weeks - weeksBetween(cycle.startDate, fromWeek));
+        board.steps.push(_makeStep(bm, t, cycle, seed.kg, seed.reps, fromWeek, span));
+      }
+    }
+  }
+  return bm;
+}
+
+// ----------------------------------------------------------------
+// 줌아웃 미니맵 데이터 (계약 10)
+// ----------------------------------------------------------------
+
+export function buildMinimapData(board, todayKey) {
+  const allCycles = (board.cycles || []).slice().sort((a, b) => (a.startDate < b.startDate ? -1 : 1));
+  if (!allCycles.length) return { fromKey: mondayOf(todayKey), totalWeeks: 0, groups: [] };
+  const fromKey = allCycles[0].startDate;
+  let endKey = fromKey;
+  for (const c of allCycles) {
+    const e = addWeeks(c.startDate, c.weeks);
+    if (weeksBetween(endKey, e) > 0) endKey = e;
+  }
+  const totalWeeks = Math.max(1, weeksBetween(fromKey, endKey));
+  const groups = (board.groups || []).map(g => {
+    const cols = [];
+    for (const bm of activeBenchmarks(board, g.id)) {
+      for (const t of (bm.program === 'wendler' ? ['volume'] : bm.tracks)) {
+        const segs = [];
+        for (const c of (board.cycles || []).filter(x => x.groupId === g.id)) {
+          for (const cell of expandColumnCells(board, bm.id, t, c.id, todayKey)) {
+            segs.push({
+              offset: weeksBetween(fromKey, cell.weekStart),
+              span: cell.span,
+              state: cell.kind === 'rest' ? 'rest' : cell.state,
+            });
+          }
+        }
+        segs.sort((a, b) => a.offset - b.offset);
+        cols.push({ benchmarkId: bm.id, track: t, label: bm.short, segs });
+      }
+    }
+    return { id: g.id, label: g.label, cols };
+  }).filter(g => g.cols.length);
+  return { fromKey, totalWeeks, groups, todayOffset: weeksBetween(fromKey, todayKey) };
+}
+
+// ----------------------------------------------------------------
+// 최근 기록 (셀 시트 "최근 기록" 섹션)
+// ----------------------------------------------------------------
+
+export function recentPaintLogs(board, benchmarkId, track, beforeWeek, limit = 2) {
+  const bm = benchmarkById(board, benchmarkId);
+  if (!bm) return [];
+  const out = [];
+  if (bm.program === 'wendler') {
+    for (const [wk, log] of Object.entries(bm.wendlerLog || {})) {
+      if (log?.paintedAt && weeksBetween(wk, beforeWeek) > 0) out.push({ weekStart: wk, kg: null, reps: log.amrapReps, rir: log.rir });
+    }
+  } else {
+    for (const s of _stepsOf(board, benchmarkId, track)) {
+      for (const [wk, log] of Object.entries(s.weekLog || {})) {
+        if (log?.paintedAt && weeksBetween(wk, beforeWeek) > 0) out.push({ weekStart: wk, kg: s.kg, reps: s.reps, rir: log.rir });
+      }
+    }
+  }
+  return out.sort((a, b) => (a.weekStart < b.weekStart ? 1 : -1)).slice(0, limit);
+}
