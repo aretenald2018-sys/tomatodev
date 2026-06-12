@@ -18,6 +18,7 @@ export {
   isMaxVolumeOnlyBenchmark,
   maxBenchmarkTrackList,
   selectPersistedMaxCycle,
+  buildBenchmarkActuals,
   maxBenchmarkProgram,
   buildMaxCycleSettleResult,
   buildMaxCycleHistoryEntry,

@@ -24,6 +24,12 @@ import {
   normalizeMaxCycleTracks,
   predictBenchmarkProgression,
 } from './max-cycle-core.js?v=20260612w1';
+import {
+  WENDLER_SCHEMES,
+  isWendlerAllowedMajor,
+  normalizeWendlerConfig,
+  wendlerCycleOverview,
+} from './max-wendler.js?v=20260612w1';
 
 const PLAN_MAJOR_ORDER = Object.keys(MAJOR_LABEL);
 
@@ -729,6 +735,109 @@ export function renderMaxBenchmarkPlanPreview({ cycle = {}, benchmark = null, ma
   `;
 }
 
+// ── 웬들러 모듈 에디터 (플랜 시트 벤치마크 카드 내부) ──
+
+function _renderProgramToggle(benchmark) {
+  const isWendler = maxBenchmarkProgram(benchmark) === 'wendler';
+  const allowed = isWendlerAllowedMajor(benchmark.primaryMajor);
+  return `
+    <div class="wt-v4-row-track wt-v4-program-toggle${isWendler ? ' is-h' : ''}" role="tablist" aria-label="${_esc(benchmark.label || '벤치마크')} 진행 프로그램">
+      <i></i>
+      <button type="button" class="${isWendler ? '' : 'on'}" data-action="set-max-benchmark-program" data-benchmark-id="${_esc(benchmark.id)}" data-program="linear">기본 트랙</button>
+      <button type="button" class="${isWendler ? 'on' : ''}" data-action="set-max-benchmark-program" data-benchmark-id="${_esc(benchmark.id)}" data-program="wendler" ${allowed ? '' : 'disabled'}>웬들러</button>
+    </div>
+  `;
+}
+
+function _renderWendlerEditor(benchmark, activeWeek = 1) {
+  const cfg = normalizeWendlerConfig(benchmark.wendler || {}, {
+    primaryMajor: benchmark.primaryMajor,
+    trackSpec: _trackSpec(benchmark, isMaxTrackEnabled(benchmark, 'H') ? 'H' : 'M'),
+  });
+  const overview = wendlerCycleOverview(cfg);
+  const points = overview.map(w => ({ week: w.week, kg: Number(w.topSet?.kg) || 0, actuals: [] }));
+  const geom = _stairGeometry(points, activeWeek);
+  const schemeTabs = [
+    ...Object.entries(WENDLER_SCHEMES).map(([id, preset]) => ({ id, label: preset.label })),
+    { id: 'custom', label: '커스텀' },
+  ];
+  return `
+    <div class="wt-v4-plan-major-tabs wt-v4-wendler-scheme" role="tablist" aria-label="웬들러 스킴 프리셋">
+      ${schemeTabs.map(tab => `
+        <button type="button" class="${cfg.scheme === tab.id ? 'on' : ''}" data-action="set-wendler-scheme" data-benchmark-id="${_esc(benchmark.id)}" data-scheme="${_esc(tab.id)}">${_esc(tab.label)}</button>
+      `).join('')}
+    </div>
+    <div class="wt-v4-plan-stairs">
+      <div class="wt-v4-plan-stair-lane is-selected" data-track="W">
+        <div class="wt-v4-plan-stair-title">
+          <b>메인 톱세트</b>
+          <span>%TM × TM ${_planKg(cfg.tmKg)}kg · 라운딩 ${_planKg(cfg.roundKg)}kg</span>
+        </div>
+        <div class="wt-v4-plan-stair-graph" style="--weeks:${overview.length}; --active-week:${activeWeek};">
+          <svg viewBox="0 0 360 108" aria-label="웬들러 주차별 톱세트">
+            <path d="M18 92 H342 M18 62 H342 M18 32 H342" class="wt-v4-plan-stair-grid"></path>
+            <path d="${_esc(geom.d)}" class="wt-v4-plan-stair-line"></path>
+            ${points.map((p, idx) => {
+              const x = geom.coords[idx]?.x ?? 18;
+              return `<text x="${x}" y="104" text-anchor="middle" class="${p.week === activeWeek ? 'is-current' : ''}">W${p.week}</text>`;
+            }).join('')}
+          </svg>
+          <div class="wt-v4-plan-stair-hitgrid">
+            ${overview.map(w => `
+              <button type="button" class="${w.week === activeWeek ? 'is-current is-selected' : 'is-challenge'}" aria-disabled="true" tabindex="-1">
+                <span>${_esc(w.pctLabel)}%</span>
+                <small>${_esc(w.repsLabel)} · ${_planKg(w.topSet?.kg)}kg</small>
+                <em></em>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="wt-v4-plan-stair-editor">
+      <div>
+        <b class="wt-v4-plan-stair-editor-title">주차표 직접 편집</b>
+        <span class="wt-v4-plan-stair-editor-sub">세트별 %TM과 반복을 바꾸면 스킴이 커스텀으로 저장됩니다. 마지막 세트는 AMRAP(+).</span>
+      </div>
+      <small>기본 프리셋 = 3주 웨이브 ×2 (W1–3 / W4–6)</small>
+    </div>
+    <div class="wt-v4-wendler-week-table">
+      ${cfg.weekMap.map((week, weekIdx) => `
+        <div class="wt-v4-wendler-week-row${weekIdx + 1 === activeWeek ? ' is-current' : ''}">
+          <b>W${weekIdx + 1}</b>
+          ${week.sets.map((set, setIdx) => `
+            <label class="wt-v4-wendler-set">
+              <input type="number" min="30" max="110" step="2.5" value="${_esc(set.pct)}" data-wendler-week="${weekIdx + 1}" data-wendler-set="${setIdx}" data-wendler-prop="pct" aria-label="W${weekIdx + 1} ${setIdx + 1}세트 %TM"><small>%</small>
+              <input type="number" min="1" max="20" step="1" value="${_esc(set.reps)}" data-wendler-week="${weekIdx + 1}" data-wendler-set="${setIdx}" data-wendler-prop="reps" aria-label="W${weekIdx + 1} ${setIdx + 1}세트 반복"><small>${set.amrap ? '+' : '회'}</small>
+            </label>
+          `).join('')}
+        </div>
+      `).join('')}
+    </div>
+    <div class="wt-v4-track-edit wt-v4-plan-track-fields wt-v4-wendler-fields">
+      <div class="wt-v4-track-edit-row is-selected-track" data-track="TM">
+        <b>TM<small>Training Max</small></b>
+        <label>TM <input data-wendler-field="tmKg" type="number" min="0" max="500" step="0.5" value="${_esc(cfg.tmKg)}"></label>
+        <label>증량폭 <input data-wendler-field="incrementKg" type="number" min="0.5" max="20" step="0.5" value="${_esc(cfg.incrementKg)}"></label>
+        <label>라운딩 <input data-wendler-field="roundKg" type="number" min="0.5" max="10" step="0.5" value="${_esc(cfg.roundKg)}"></label>
+        <button type="button" data-action="suggest-wendler-tm" data-benchmark-id="${_esc(benchmark.id)}">최근 기록으로 TM 제안</button>
+      </div>
+      <div class="wt-v4-track-edit-row" data-track="SUPP">
+        <b>보조<small>볼륨 모듈</small></b>
+        <label>모듈 <select data-wendler-field="suppKind">
+          <option value="none" ${cfg.supplemental.kind === 'none' ? 'selected' : ''}>없음</option>
+          <option value="bbb" ${cfg.supplemental.kind === 'bbb' ? 'selected' : ''}>BBB</option>
+          <option value="fsl" ${cfg.supplemental.kind === 'fsl' ? 'selected' : ''}>FSL</option>
+        </select></label>
+        <label>%TM <input data-wendler-field="suppPct" type="number" min="30" max="100" step="2.5" value="${_esc(cfg.supplemental.pct)}" ${cfg.supplemental.kind === 'bbb' ? '' : 'disabled'}></label>
+        <label>세트 <input data-wendler-field="suppSets" type="number" min="1" max="10" step="1" value="${_esc(cfg.supplemental.sets)}" ${cfg.supplemental.kind === 'none' ? 'disabled' : ''}></label>
+        <label>반복 <input data-wendler-field="suppReps" type="number" min="1" max="20" step="1" value="${_esc(cfg.supplemental.reps)}" ${cfg.supplemental.kind === 'none' ? 'disabled' : ''}></label>
+      </div>
+    </div>
+    <small class="wt-v4-wendler-note">정산 시 TM이 +${_planKg(cfg.incrementKg)}kg 성장합니다. 주차 처방은 %TM × TM을 ${_planKg(cfg.roundKg)}kg 단위로 라운딩합니다.</small>
+  `;
+}
+
 function _renderPlanTrackInputs(benchmark, track, activeWeek, selectedTrack, weeks = 6, { lockEnabled = false } = {}) {
   const spec = _trackSpec(benchmark, track);
   const increment = Number(spec.incrementKg) || 2.5;
@@ -818,24 +927,12 @@ export function renderMaxPlanEditor({ cycle, gyms = [], currentGymId = null, mov
             ${rows.length ? rows.map(b => {
               const trackList = maxBenchmarkTrackList(b);
               const selectedTrack = trackList.includes('H') ? 'H' : 'M';
-              const actualsByTrack = Object.fromEntries(trackList.map(track => [
+              const isWendler = maxBenchmarkProgram(b) === 'wendler' && isWendlerAllowedMajor(b.primaryMajor);
+              const actualsByTrack = isWendler ? {} : Object.fromEntries(trackList.map(track => [
                 track,
                 buildBenchmarkActuals({ cache, exList, benchmark: b, todayKey, track }),
               ]));
-              return `
-                <article class="wt-v4-plan-benchmark wt-v4-bench-edit${b.id === focusBenchmarkId ? ' is-focused' : ''}" data-benchmark-id="${_esc(b.id)}" data-major="${_esc(major)}" data-selected-week="${activeWeek}" data-selected-track="${selectedTrack}" data-current-week="${activeWeek}" data-default-track="${selectedTrack}">
-                  <div class="wt-v4-plan-bench-head">
-                    <div>
-                      <span>${_esc(MAJOR_LABEL[major] || '기타')}</span>
-                      <b>${_esc(b.label || '벤치마크')}</b>
-                    </div>
-                    <button type="button" data-action="delete-max-benchmark" data-benchmark-id="${_esc(b.id)}" aria-label="벤치마크 삭제">×</button>
-                  </div>
-                  <label class="wt-v4-plan-bench-select">
-                    <span>연결 종목</span>
-                    <select data-bench-field="exerciseId">${renderOptions(b)}</select>
-                    ${renderMissing(b)}
-                  </label>
+              const linearBody = isWendler ? '' : `
                   <div class="wt-v4-plan-stairs">
                     ${trackList.map(track => _renderPlanStairLane({ cycle: { ...cycle, weeks }, benchmark: b, track, activeWeek, selected: selectedTrack === track, actuals: actualsByTrack[track], todayKey })).join('')}
                   </div>
@@ -848,7 +945,23 @@ export function renderMaxPlanEditor({ cycle, gyms = [], currentGymId = null, mov
                   </div>
                   <div class="wt-v4-track-edit wt-v4-plan-track-fields">
                     ${trackList.map(track => _renderPlanTrackInputs(b, track, activeWeek, selectedTrack, weeks, { lockEnabled: trackList.length === 1 })).join('')}
+                  </div>`;
+              return `
+                <article class="wt-v4-plan-benchmark wt-v4-bench-edit${b.id === focusBenchmarkId ? ' is-focused' : ''}" data-benchmark-id="${_esc(b.id)}" data-major="${_esc(major)}" data-program="${isWendler ? 'wendler' : 'linear'}" data-selected-week="${activeWeek}" data-selected-track="${selectedTrack}" data-current-week="${activeWeek}" data-default-track="${selectedTrack}">
+                  <div class="wt-v4-plan-bench-head">
+                    <div>
+                      <span>${_esc(MAJOR_LABEL[major] || '기타')}</span>
+                      <b>${_esc(b.label || '벤치마크')}</b>
+                    </div>
+                    <button type="button" data-action="delete-max-benchmark" data-benchmark-id="${_esc(b.id)}" aria-label="벤치마크 삭제">×</button>
                   </div>
+                  <label class="wt-v4-plan-bench-select">
+                    <span>연결 종목</span>
+                    <select data-bench-field="exerciseId">${renderOptions(b)}</select>
+                    ${renderMissing(b)}
+                  </label>
+                  ${_renderProgramToggle(b)}
+                  ${isWendler ? _renderWendlerEditor(b, activeWeek) : linearBody}
                 </article>
               `;
             }).join('') : `

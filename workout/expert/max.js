@@ -45,7 +45,15 @@ import {
   buildMaxCycleSettleResult,
   buildMaxCycleHistoryEntry,
   buildNextMaxCycleFromSettle,
+  buildBenchmarkActuals,
+  maxBenchmarkProgram,
 } from './max-cycle.js?v=20260612w1';
+import {
+  WENDLER_SCHEMES,
+  isWendlerAllowedMajor,
+  normalizeWendlerConfig,
+  suggestWendlerTm,
+} from './max-wendler.js?v=20260612w1';
 import {
   CAT_LABEL,
   MAX_DEFAULTS,
@@ -2592,6 +2600,21 @@ function _handleMaxV4SheetClick(e) {
     _selectMaxPlanStep(planStep);
     return;
   }
+  const programBtn = e.target.closest('[data-action="set-max-benchmark-program"]');
+  if (programBtn) {
+    setMaxPlanBenchmarkProgram(programBtn);
+    return;
+  }
+  const schemeBtn = e.target.closest('[data-action="set-wendler-scheme"]');
+  if (schemeBtn) {
+    setMaxPlanWendlerScheme(schemeBtn);
+    return;
+  }
+  const suggestTmBtn = e.target.closest('[data-action="suggest-wendler-tm"]');
+  if (suggestTmBtn) {
+    suggestMaxPlanWendlerTm(suggestTmBtn);
+    return;
+  }
   const applyIncrement = e.target.closest('[data-action="apply-max-plan-increment"]');
   if (applyIncrement) {
     _applyMaxPlanIncrement(applyIncrement);
@@ -2925,6 +2948,12 @@ function _readMaxPlanEditorBenchmarks(current = normalizeMaxCycleTracks(_cycleOr
       tracks[track] = { ...base, startKg: Math.round(startKg * 10) / 10, targetKg: Math.round(targetKg * 10) / 10, targetReps, incrementKg, enabled };
     }
     const sourceNote = row.querySelector('[data-bench-default-note]')?.textContent?.trim() || '';
+    const requestedProgram = row.getAttribute('data-program') === 'wendler'
+      || (!row.hasAttribute('data-program') && original.program === 'wendler');
+    const program = requestedProgram && isWendlerAllowedMajor(primaryMajor) ? 'wendler' : 'linear';
+    const wendler = program === 'wendler'
+      ? _readWendlerConfigFromRow(row, original, { primaryMajor, tracks })
+      : (original.wendler && typeof original.wendler === 'object' ? original.wendler : null);
     return {
       ...original,
       id: original.id || `bm_${primaryMajor || 'custom'}_${exerciseId || movementId || Date.now()}`,
@@ -2940,6 +2969,8 @@ function _readMaxPlanEditorBenchmarks(current = normalizeMaxCycleTracks(_cycleOr
       incrementKg: tracks.M.incrementKg,
       ...(volumeOnly ? { defaultTrack: 'M' } : {}),
       tracks,
+      program,
+      ...(wendler ? { wendler } : {}),
     };
   });
 }
@@ -2981,6 +3012,133 @@ function addMaxBenchmarkEditorRow() {
   const next = { ...current, benchmarks: [...(current.benchmarks || []), _benchmarkFromExerciseOption(mov)] };
   const focusBenchmarkId = next.benchmarks[next.benchmarks.length - 1]?.id || null;
   _renderMaxPlanEditorDraft(next, { focusBenchmarkId, activeMajorId: activeMajor || mov.primary || null });
+}
+
+// ── 웬들러 프로그램 전환/모듈 편집 (플랜 시트 드래프트 위에서 동작) ──
+
+function _latestActualForBenchmark(benchmark) {
+  const points = buildBenchmarkActuals({
+    cache: getCache(),
+    exList: getExList(),
+    benchmark,
+    todayKey: _todayKey(),
+  });
+  return points[points.length - 1] || null;
+}
+
+function _setPlanBenchmarkPatch(benchmarkId, patchFn) {
+  if (!benchmarkId) return;
+  const current = _draftMaxPlanEditorCycle(normalizeMaxCycleTracks(_cycleOrDraft()) || {});
+  const next = {
+    ...current,
+    benchmarks: (current.benchmarks || []).map(b => (b.id === benchmarkId ? patchFn(b) : b)),
+  };
+  const target = (next.benchmarks || []).find(b => b.id === benchmarkId);
+  _renderMaxPlanEditorDraft(next, {
+    focusBenchmarkId: benchmarkId,
+    activeMajorId: target?.primaryMajor || _activeMaxPlanMajor(),
+  });
+}
+
+function setMaxPlanBenchmarkProgram(btn) {
+  const benchmarkId = btn.getAttribute('data-benchmark-id');
+  const program = btn.getAttribute('data-program') === 'wendler' ? 'wendler' : 'linear';
+  _setPlanBenchmarkPatch(benchmarkId, (b) => {
+    if (program === 'linear') return { ...b, program: 'linear' };
+    if (!isWendlerAllowedMajor(b.primaryMajor)) {
+      _toast('웬들러는 가슴/등/하체/어깨/둔부 벤치마크에만 적용할 수 있어요', 'warning');
+      return b;
+    }
+    const wendler = normalizeWendlerConfig(b.wendler || {}, {
+      primaryMajor: b.primaryMajor,
+      trackSpec: b.tracks?.H?.enabled === false ? b.tracks?.M : (b.tracks?.H || b.tracks?.M),
+      latest: _latestActualForBenchmark(b),
+    });
+    return { ...b, program: 'wendler', wendler };
+  });
+}
+
+function setMaxPlanWendlerScheme(btn) {
+  const benchmarkId = btn.getAttribute('data-benchmark-id');
+  const scheme = btn.getAttribute('data-scheme');
+  _setPlanBenchmarkPatch(benchmarkId, (b) => {
+    if (maxBenchmarkProgram(b) !== 'wendler') return b;
+    const cfg = normalizeWendlerConfig(b.wendler || {}, { primaryMajor: b.primaryMajor });
+    if (scheme === 'custom') return { ...b, wendler: { ...cfg, scheme: 'custom' } };
+    const preset = WENDLER_SCHEMES[scheme];
+    if (!preset) return b;
+    return {
+      ...b,
+      wendler: {
+        ...cfg,
+        scheme,
+        weekMap: preset.weekMap.map(week => ({ sets: week.sets.map(set => ({ ...set })) })),
+      },
+    };
+  });
+}
+
+function suggestMaxPlanWendlerTm(btn) {
+  const benchmarkId = btn.getAttribute('data-benchmark-id');
+  _setPlanBenchmarkPatch(benchmarkId, (b) => {
+    if (maxBenchmarkProgram(b) !== 'wendler') return b;
+    const cfg = normalizeWendlerConfig(b.wendler || {}, { primaryMajor: b.primaryMajor });
+    const latest = _latestActualForBenchmark(b);
+    const tm = suggestWendlerTm({
+      latest,
+      trackSpec: b.tracks?.H?.enabled === false ? b.tracks?.M : (b.tracks?.H || b.tracks?.M),
+      roundKg: cfg.roundKg,
+    });
+    if (!(tm > 0)) {
+      _toast('TM을 추정할 기록이 없어요. 직접 입력하세요.', 'warning');
+      return b;
+    }
+    _toast(latest ? `최근 ${latest.kg}kg×${latest.reps} 기준 TM ${tm}kg 제안` : `트랙 설정 기준 TM ${tm}kg 제안`, 'info');
+    return { ...b, wendler: { ...cfg, tmKg: tm } };
+  });
+}
+
+function _readWendlerWeekMapFromRow(row, fallbackWeekMap = []) {
+  const inputs = row?.querySelectorAll('[data-wendler-week]');
+  const weekMap = (fallbackWeekMap || []).map(week => ({ sets: (week.sets || []).map(set => ({ ...set })) }));
+  if (!inputs || !inputs.length) return weekMap;
+  inputs.forEach(input => {
+    const weekIdx = Number(input.getAttribute('data-wendler-week')) - 1;
+    const setIdx = Number(input.getAttribute('data-wendler-set'));
+    const prop = input.getAttribute('data-wendler-prop');
+    const value = Number(input.value);
+    const target = weekMap[weekIdx]?.sets?.[setIdx];
+    if (!target || !Number.isFinite(value) || value <= 0) return;
+    if (prop === 'pct') target.pct = value;
+    if (prop === 'reps') target.reps = Math.round(value);
+  });
+  return weekMap;
+}
+
+function _readWendlerConfigFromRow(row, original, { primaryMajor, tracks } = {}) {
+  const baseCfg = normalizeWendlerConfig(original?.wendler || {}, {
+    primaryMajor,
+    trackSpec: tracks?.H?.enabled === false ? tracks?.M : (tracks?.H || tracks?.M),
+  });
+  const num = (field, fallback) => {
+    const value = Number(row?.querySelector(`[data-wendler-field="${field}"]`)?.value);
+    return Number.isFinite(value) && value > 0 ? value : fallback;
+  };
+  const suppKindRaw = row?.querySelector('[data-wendler-field="suppKind"]')?.value;
+  const suppKind = ['none', 'bbb', 'fsl'].includes(suppKindRaw) ? suppKindRaw : baseCfg.supplemental.kind;
+  return normalizeWendlerConfig({
+    ...baseCfg,
+    tmKg: num('tmKg', baseCfg.tmKg),
+    incrementKg: num('incrementKg', baseCfg.incrementKg),
+    roundKg: num('roundKg', baseCfg.roundKg),
+    weekMap: _readWendlerWeekMapFromRow(row, baseCfg.weekMap),
+    supplemental: {
+      kind: suppKind,
+      pct: num('suppPct', baseCfg.supplemental.pct),
+      sets: num('suppSets', baseCfg.supplemental.sets),
+      reps: num('suppReps', baseCfg.supplemental.reps),
+    },
+  }, { primaryMajor });
 }
 
 export async function saveMaxPlanEditorSheet() {

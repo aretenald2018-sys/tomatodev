@@ -4882,6 +4882,84 @@
   font-size: 12px;
   font-weight: 900;
 }
+/* ── 웬들러 모듈 에디터 (플랜 시트) ── */
+.wt-v4-program-toggle {
+  margin: 10px 0 12px;
+}
+.wt-v4-wendler-scheme {
+  margin-bottom: 10px;
+}
+.wt-v4-wendler-week-table {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 12px;
+}
+.wt-v4-wendler-week-row {
+  display: grid;
+  grid-template-columns: 32px repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  align-items: center;
+}
+.wt-v4-wendler-week-row > b {
+  color: #6b6b6f;
+  font-size: 12px;
+  font-weight: 800;
+}
+.wt-v4-wendler-week-row.is-current > b {
+  color: #fa342c;
+}
+.wt-v4-wendler-set {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  min-height: 34px;
+  padding: 4px 6px;
+  border: 1px solid #ececef;
+  border-radius: 10px;
+  background: #fff;
+}
+.wt-v4-wendler-week-row.is-current .wt-v4-wendler-set {
+  border-color: rgba(250, 52, 44, .35);
+}
+.wt-v4-wendler-set input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: #1c1c1e;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: right;
+}
+.wt-v4-wendler-set input:focus {
+  outline: none;
+}
+.wt-v4-wendler-set small {
+  flex: 0 0 auto;
+  color: #a8a8ac;
+  font-size: 10px;
+  font-weight: 800;
+}
+.wt-v4-wendler-fields label select {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 4px;
+  border: 1px solid #ececef;
+  border-radius: 8px;
+  background: #fff;
+  color: #1c1c1e;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+.wt-v4-wendler-note {
+  display: block;
+  margin-top: 8px;
+  color: #8e8e93;
+  font-size: 11px;
+  line-height: 16px;
+}
 .wt-v4-plan-empty {
   display: grid;
   gap: 4px;
