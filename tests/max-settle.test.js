@@ -205,7 +205,7 @@ test('진입 카드: 웬들러 벤치마크 행은 %TM 처방으로 렌더된다
   }];
   const html = renderMaxCycleDashboard({ cycle, cache: {}, exList: EX_LIST, todayKey: TODAY });
   assert.match(html, /is-wendler/);
-  assert.match(html, /웬들러 5\/3\/1 \+ BBB · TM 152\.5kg/);
+  assert.match(html, /웬들러 · TM 152\.5kg/);
   assert.match(html, /BBB 77\.5kg × 10 × 5세트/); // 50%TM 라운딩
   assert.match(html, /정산 시 TM \+5kg/);
   // 웬들러 행에는 볼륨/강도 트랙 토글이 없다

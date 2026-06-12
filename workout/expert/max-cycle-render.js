@@ -80,7 +80,7 @@ function _renderV4WendlerLift(benchmark, snapshot) {
         <button type="button" class="wt-v4-expand" data-action="toggle-max-lift" aria-label="상세 보기">${expanded ? '접기' : '상세'}</button>
       </div>
       <div class="wt-v4-row-track is-single" role="status" aria-label="${_esc(benchmark.label)} 웬들러 프로그램">
-        <button type="button" class="on" disabled>웬들러 ${_esc(schemeLabel)}${supp ? ` + ${_esc(supp.label)}` : ''} · TM ${_planKg(rx.tmKg)}kg</button>
+        <button type="button" class="on" disabled>웬들러 · TM ${_planKg(rx.tmKg)}kg</button>
       </div>
       <div class="wt-v4-lift-main">
         <div class="wt-v4-weight-wrap">

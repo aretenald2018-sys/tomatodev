@@ -4940,6 +4940,7 @@
 .wt-v4-wendler-week-row.is-current > b {
   color: #fa342c;
 }
+.wt-v4-bench-edit label.wt-v4-wendler-set,
 .wt-v4-wendler-set {
   display: flex;
   gap: 3px;
@@ -4953,16 +4954,30 @@
 .wt-v4-wendler-week-row.is-current .wt-v4-wendler-set {
   border-color: rgba(250, 52, 44, .35);
 }
+/* 제네릭 .wt-v4-bench-edit input 룰(min-height 40/padding 8px 10px)을 무력화 —
+   좁은 주차표 셀에서 number 값이 클리핑되지 않도록 패딩 제거 */
+.wt-v4-bench-edit .wt-v4-wendler-set input,
 .wt-v4-wendler-set input {
-  width: 100%;
+  flex: 1 1 0;
+  width: auto;
   min-width: 0;
+  min-height: 0;
+  padding: 0;
   border: 0;
+  border-radius: 0;
   background: transparent;
   color: #1c1c1e;
   font: inherit;
   font-size: 12px;
   font-weight: 800;
   text-align: right;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.wt-v4-wendler-set input::-webkit-outer-spin-button,
+.wt-v4-wendler-set input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 .wt-v4-wendler-set input:focus {
   outline: none;
