@@ -19,4 +19,5 @@ export {
   wtRestTimerStart, wtRestTimerSkip, wtRestTimerAdjust,
   wtRestTimerShowIdle, wtRestTimerHideIdle,
   wtOpenRestPresetSheet,
+  tm2RenderEntry,
 } from './workout/index.js?v=20260517v3';
