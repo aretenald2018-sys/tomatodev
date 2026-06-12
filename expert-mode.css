@@ -4914,7 +4914,46 @@
   font-size: 12px;
   font-weight: 900;
 }
+/* ── 성장 예약 카드 (진입 카드) ── */
+.wt-v4-growth-summary .wt-max-cycle-settle-row b {
+  margin-left: auto;
+}
+.wt-v4-growth-delta {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: rgba(250, 52, 44, .08);
+  color: #ca1d13;
+  font-size: 11px;
+  font-weight: 900;
+}
+.wt-v4-growth-summary-foot {
+  padding-top: 10px;
+  color: #8e8e93;
+  font-size: 11px;
+  line-height: 16px;
+}
+
 /* ── 웬들러 모듈 에디터 (플랜 시트) ── */
+.wt-v4-plan-program {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 12px;
+}
+.wt-v4-plan-program > span {
+  color: #6b6b6f;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 800;
+}
+.wt-v4-plan-program > small {
+  color: #8e8e93;
+  font-size: 11px;
+  line-height: 16px;
+}
+.wt-v4-plan-program .wt-v4-program-toggle {
+  margin: 0;
+}
 .wt-v4-program-toggle {
   margin: 10px 0 12px;
 }

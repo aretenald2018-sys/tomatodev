@@ -73,14 +73,14 @@ function _renderV4WendlerLift(benchmark, snapshot) {
     <article class="wt-v4-lift is-wendler${expanded ? ' is-expanded' : ''}${benchmark.hasRegisteredExercise === false ? ' is-missing-exercise' : ''}" data-benchmark-id="${_esc(benchmark.id)}">
       <div class="wt-v4-lift-top">
         <div>
-          <div class="wt-v4-lift-part">${_esc(MAJOR_LABEL[benchmark.primaryMajor] || benchmark.primaryMajor)}</div>
+          <div class="wt-v4-lift-part">${_esc(MAJOR_LABEL[benchmark.primaryMajor] || benchmark.primaryMajor)} · 웬들러</div>
           <div class="wt-v4-lift-name">${_esc(benchmark.label)} <em>${_esc(schemeLabel)}</em></div>
           ${benchmark.hasRegisteredExercise === false ? '<div class="wt-v4-lift-warning">등록 종목에서 삭제됨 · 벤치마크를 바꾸세요</div>' : ''}
         </div>
         <button type="button" class="wt-v4-expand" data-action="toggle-max-lift" aria-label="상세 보기">${expanded ? '접기' : '상세'}</button>
       </div>
       <div class="wt-v4-row-track is-single" role="status" aria-label="${_esc(benchmark.label)} 웬들러 프로그램">
-        <button type="button" class="on" disabled>웬들러 · TM ${_planKg(rx.tmKg)}kg</button>
+        <button type="button" class="on" data-action="open-max-benchmark-editor" data-benchmark-id="${_esc(benchmark.id)}" aria-label="웬들러 모듈 설정 열기">웬들러 · TM ${_planKg(rx.tmKg)}kg · 설정 ›</button>
       </div>
       <div class="wt-v4-lift-main">
         <div class="wt-v4-weight-wrap">
@@ -98,6 +98,7 @@ function _renderV4WendlerLift(benchmark, snapshot) {
       <div class="wt-v4-detail">
         <div class="wt-v4-pace ${paceClass}">${_esc(paceText)}</div>
         <div class="wt-v4-impact"><strong>웬들러 처방.</strong> 정산 시 TM +${_planKg(cfg.incrementKg)}kg → ${_planKg(rx.tmKg + cfg.incrementKg)}kg 기준으로 다음 사이클을 진행합니다.</div>
+        <button type="button" class="wt-v4-benchmark-edit-entry" data-action="open-max-benchmark-editor" data-benchmark-id="${_esc(benchmark.id)}">웬들러 모듈 설정 (스킴 · TM · 주차표)</button>
       </div>
     </article>
   `;
@@ -123,7 +124,7 @@ function _renderV4Lift(benchmark, snapshot, cycle, index = 0) {
     <article class="wt-v4-lift${changed ? ' is-changed' : ''}${expanded ? ' is-expanded' : ''}${benchmark.hasRegisteredExercise === false ? ' is-missing-exercise' : ''}" data-benchmark-id="${_esc(benchmark.id)}">
       <div class="wt-v4-lift-top">
         <div>
-          <div class="wt-v4-lift-part">${_esc(MAJOR_LABEL[benchmark.primaryMajor] || benchmark.primaryMajor)}</div>
+          <div class="wt-v4-lift-part">${_esc(MAJOR_LABEL[benchmark.primaryMajor] || benchmark.primaryMajor)} · 기본 트랙</div>
           <div class="wt-v4-lift-name">${_esc(benchmark.label)} <em>${track === 'H' ? '강도' : '볼륨'}</em></div>
           ${benchmark.hasRegisteredExercise === false ? '<div class="wt-v4-lift-warning">등록 종목에서 삭제됨 · 벤치마크를 바꾸세요</div>' : ''}
         </div>
@@ -171,6 +172,7 @@ function _renderV4Lift(benchmark, snapshot, cycle, index = 0) {
             <span>목표 ${_esc(benchmark.planned.targetKg)}kg</span>
           </div>
         </div>
+        <button type="button" class="wt-v4-benchmark-edit-entry" data-action="open-max-benchmark-editor" data-benchmark-id="${_esc(benchmark.id)}">계획·프로그램 설정${isWendlerAllowedMajor(benchmark.primaryMajor) ? ' (웬들러 전환 가능)' : ''}</button>
       </div>
     </article>
   `;
@@ -261,71 +263,41 @@ function _cycleSettleDday(snapshot) {
   return Math.ceil((end - today) / 86400000);
 }
 
-function _stairPathFrom(coords = []) {
-  return coords.reduce((path, coord, idx) => {
-    if (idx === 0) return `M${coord.x} ${coord.y}`;
-    return `${path} H${coord.x} V${coord.y}`;
-  }, '');
-}
-
-function _renderV4GrowthStairsCard(snapshot, cycle, history = []) {
+function _renderV4GrowthSummaryCard(snapshot, cycle, history = []) {
   const lanes = buildMaxGrowthStairs(history, cycle);
-  const first = snapshot?.benchmarks?.[0] || null;
-  const firstKey = first?.movementId || first?.id || null;
-  const lane = lanes.find(l => l.id === firstKey) || lanes[0] || null;
-  const current = lane?.points?.find(p => p.kind === 'current') || null;
-  if (!lane || !current) return '';
-  const settled = lane.points.filter(p => p.kind === 'settled');
-  const seq = [
-    ...settled.map(p => ({ ...p, role: 'settled' })),
-    { ...current, role: 'current' },
-    { kg: current.afterKg, incrementKg: current.incrementKg, role: 'next' },
-  ];
-  const currentIdx = seq.findIndex(p => p.role === 'current');
-  const geom = _stairGeometry(seq.map((p, idx) => ({ week: idx + 1, kg: p.kg, actuals: [] })), currentIdx + 1);
-  const solidD = _stairPathFrom(geom.coords.slice(0, currentIdx + 1));
-  const dashedD = _stairPathFrom(geom.coords.slice(currentIdx));
+  const laneByKey = new Map(lanes.map(lane => [lane.id, lane]));
   const dday = _cycleSettleDday(snapshot);
   const settleReady = snapshot.weekIndex >= snapshot.weeks;
-  const incLabel = `+${_planKg(current.incrementKg)}kg`;
-  const cellLabel = (p, idx) => {
-    if (p.role === 'settled') {
-      return `<button type="button" class="is-done" aria-disabled="true" tabindex="-1"><span>${_planKg(p.kg)}kg</span><small>+${_planKg(p.incrementKg)} 확정</small><em><i>${_esc(_monthDay(p.endDate) || `C${idx + 1}`)} 정산</i><span class="wt-v4-plan-status">돌파</span></em></button>`;
-    }
-    if (p.role === 'current') {
-      return `<button type="button" class="is-current is-selected" aria-disabled="true" tabindex="-1"><span>${_planKg(p.kg)}kg</span><small>진행 W${snapshot.weekIndex}/${snapshot.weeks}</small><em><i>${settleReady ? '정산 가능' : (dday === null ? '' : `정산 D-${Math.max(0, dday)}`)}</i></em></button>`;
-    }
-    return `<button type="button" class="is-challenge" aria-disabled="true" tabindex="-1"><span>${_planKg(p.kg)}kg</span><small>+${_planKg(p.incrementKg)} 예약</small><em></em></button>`;
-  };
+  const rows = (snapshot.benchmarks || []).map(b => {
+    const lane = laneByKey.get(b.movementId || b.id);
+    const current = lane?.points?.find(p => p.kind === 'current');
+    if (!current) return '';
+    const settled = lane.points.filter(p => p.kind === 'settled');
+    const grownTotal = settled.reduce((sum, p) => sum + (p.decision === 'grow' ? (Number(p.afterKg) - Number(p.kg)) : 0), 0);
+    const histText = settled.length
+      ? `지난 정산 ${settled.length}회 · 누적 +${_planKg(grownTotal)}kg`
+      : '첫 사이클';
+    const isWendler = maxBenchmarkProgram(b) === 'wendler';
+    return `
+      <div class="wt-max-cycle-settle-row">
+        <span>${_esc(b.label)}${isWendler ? ' (TM)' : ''}<small class="wt-v4-settle-status">${_esc(histText)}</small></span>
+        <b>${_planKg(current.kg)} → ${_planKg(current.afterKg)}kg</b>
+        <small class="wt-v4-growth-delta">+${_planKg(current.incrementKg)}</small>
+      </div>
+    `;
+  }).join('');
+  if (!rows.trim()) return '';
   return `
-    <section class="card wt-v4-growth-stairs-card">
+    <section class="card wt-v4-growth-summary">
       <div class="card-head">
         <div>
-          <b>성장 계단</b>
-          <span>6주 정산마다 설정한 증량폭만큼 오릅니다.</span>
+          <b>성장 예약</b>
+          <span>이 사이클을 정산하면 지금 무게가 이만큼 오릅니다.</span>
         </div>
-        <div class="badge">${settleReady ? '정산 가능' : `${_esc(incLabel)} 예약`}</div>
+        <div class="badge">${settleReady ? '지금 정산 가능' : (dday === null ? `W${snapshot.weekIndex}/${snapshot.weeks}` : `정산 D-${Math.max(0, dday)}`)}</div>
       </div>
-      <div class="wt-v4-plan-stair-lane is-selected" data-track="M">
-        <div class="wt-v4-plan-stair-title">
-          <b>${_esc(lane.label || '벤치마크')}${maxBenchmarkProgram(first || {}) === 'wendler' ? ' · TM' : ''}</b>
-          <span>사이클 단위 · ${_esc(incLabel)}/정산</span>
-        </div>
-        <div class="wt-v4-plan-stair-graph" style="--weeks:${seq.length}; --active-week:${currentIdx + 1};">
-          <svg viewBox="0 0 360 108" aria-label="${_esc(lane.label || '벤치마크')} 사이클 성장 계단">
-            <path d="M18 92 H342 M18 62 H342 M18 32 H342" class="wt-v4-plan-stair-grid"></path>
-            <path d="${_esc(solidD)}" class="wt-v4-plan-stair-line"></path>
-            <path d="${_esc(dashedD)}" class="wt-v4-plan-stair-line" style="stroke-dasharray:5 5; opacity:.55;"></path>
-            ${seq.map((p, idx) => {
-              const x = geom.coords[idx]?.x ?? 18;
-              return `<text x="${x}" y="104" text-anchor="middle" class="${p.role === 'current' ? 'is-current' : ''}">${p.role === 'next' ? '예약' : `C${idx + 1}`}</text>`;
-            }).join('')}
-          </svg>
-          <div class="wt-v4-plan-stair-hitgrid">
-            ${seq.map((p, idx) => cellLabel(p, idx)).join('')}
-          </div>
-        </div>
-      </div>
+      ${rows}
+      <div class="wt-v4-growth-summary-foot">증량폭은 계획·프로그램 설정에서 벤치마크별로 바꿀 수 있어요.</div>
     </section>
   `;
 }
@@ -345,7 +317,7 @@ function _renderV4BenchmarkCard(snapshot, cycle) {
         <div class="wt-v4-lift-list">
           ${(snapshot.benchmarks || []).slice(0, 5).map((b, idx) => _renderV4Lift(b, snapshot, cycle, idx)).join('')}
         </div>
-        <button type="button" class="wt-v4-benchmark-edit-entry" data-action="open-max-plan-editor">벤치마크 종목 수정</button>
+        <button type="button" class="wt-v4-benchmark-edit-entry" data-action="open-max-plan-editor">벤치마크 · 프로그램 조정</button>
       </div>
     </section>
   `;
@@ -378,11 +350,11 @@ export function renderMaxCycleDashboard({ cycle, cache, exList, todayKey, isDraf
         <div class="score-row">
           <div class="score"><b>W${snapshot.weekIndex}</b><span>6주 성장판</span></div>
           <div class="score"><b>${benchmarkCount}개</b><span>오늘 벤치마크</span></div>
-          <div class="score"><b>${_esc(incrementLabel)}</b><span>정산 시 성장</span></div>
+          <div class="score"><b>${_esc(incrementLabel.replace(/kg$/, ''))}</b><span>kg · 정산 시 성장</span></div>
         </div>
       </section>
 
-      ${draft ? '' : _renderV4GrowthStairsCard(snapshot, cycle, history)}
+      ${draft ? '' : _renderV4GrowthSummaryCard(snapshot, cycle, history)}
       ${_renderV4BenchmarkCard(snapshot, cycle)}
       <div class="next-actions">
         <button type="button" class="ghost" data-action="clear-max-major">오늘 부위 변경</button>
@@ -795,10 +767,16 @@ function _renderProgramToggle(benchmark) {
   const isWendler = maxBenchmarkProgram(benchmark) === 'wendler';
   const allowed = isWendlerAllowedMajor(benchmark.primaryMajor);
   return `
-    <div class="wt-v4-row-track wt-v4-program-toggle${isWendler ? ' is-h' : ''}" role="tablist" aria-label="${_esc(benchmark.label || '벤치마크')} 진행 프로그램">
-      <i></i>
-      <button type="button" class="${isWendler ? '' : 'on'}" data-action="set-max-benchmark-program" data-benchmark-id="${_esc(benchmark.id)}" data-program="linear">기본 트랙</button>
-      <button type="button" class="${isWendler ? 'on' : ''}" data-action="set-max-benchmark-program" data-benchmark-id="${_esc(benchmark.id)}" data-program="wendler" ${allowed ? '' : 'disabled'}>웬들러</button>
+    <div class="wt-v4-plan-program">
+      <span>진행 프로그램</span>
+      <div class="wt-v4-row-track wt-v4-program-toggle${isWendler ? ' is-h' : ''}" role="tablist" aria-label="${_esc(benchmark.label || '벤치마크')} 진행 프로그램">
+        <i></i>
+        <button type="button" class="${isWendler ? '' : 'on'}" data-action="set-max-benchmark-program" data-benchmark-id="${_esc(benchmark.id)}" data-program="linear">기본 트랙</button>
+        <button type="button" class="${isWendler ? 'on' : ''}" data-action="set-max-benchmark-program" data-benchmark-id="${_esc(benchmark.id)}" data-program="wendler" ${allowed ? '' : 'disabled'}>웬들러</button>
+      </div>
+      <small>${allowed
+        ? (isWendler ? '웬들러: 아래에서 스킴(5/3/1·8/6/3)·TM·주차표·보조(BBB/FSL)를 설정합니다.' : '웬들러를 선택하면 5/3/1·8/6/3 모듈과 TM 기반 %처방으로 바뀝니다.')
+        : '이 부위는 볼륨 전용이라 기본 트랙만 사용합니다.'}</small>
     </div>
   `;
 }
