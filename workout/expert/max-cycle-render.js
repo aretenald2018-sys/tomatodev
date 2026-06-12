@@ -29,6 +29,7 @@ import {
   isWendlerAllowedMajor,
   normalizeWendlerConfig,
   wendlerCycleOverview,
+  wendlerWeekPrescription,
 } from './max-wendler.js?v=20260612w1';
 
 const PLAN_MAJOR_ORDER = Object.keys(MAJOR_LABEL);
@@ -52,7 +53,60 @@ function _planMajorKeys(benchmarks = []) {
   return keys;
 }
 
+function _renderV4WendlerLift(benchmark, snapshot) {
+  const cfg = normalizeWendlerConfig(benchmark.wendler || {}, {
+    primaryMajor: benchmark.primaryMajor,
+    trackSpec: _trackSpec(benchmark, isMaxTrackEnabled(benchmark, 'H') ? 'H' : 'M'),
+  });
+  const rx = wendlerWeekPrescription(cfg, snapshot.weekIndex);
+  const schemeLabel = cfg.scheme === 'custom' ? '커스텀' : (WENDLER_SCHEMES[cfg.scheme]?.label || cfg.scheme);
+  const latest = benchmark.latest;
+  const setsLabel = (rx.sets || []).map(s => `${_planKg(s.kg)}×${s.reps}${s.amrap ? '+' : ''}`).join(' · ');
+  const supp = rx.supplemental;
+  const topOk = latest && rx.topSet ? latest.kg >= rx.topSet.kg : null;
+  const paceClass = topOk === null ? 'is-empty' : (topOk ? 'is-on' : 'is-behind');
+  const paceText = topOk === null
+    ? (rx.topSet?.amrap ? `AMRAP ${rx.topSet.reps}+ 목표` : '실측 없음')
+    : (topOk ? '톱세트 달성' : `톱세트 ${_planKg(rx.topSet.kg)}kg 도전`);
+  const expanded = topOk === false;
+  return `
+    <article class="wt-v4-lift is-wendler${expanded ? ' is-expanded' : ''}${benchmark.hasRegisteredExercise === false ? ' is-missing-exercise' : ''}" data-benchmark-id="${_esc(benchmark.id)}">
+      <div class="wt-v4-lift-top">
+        <div>
+          <div class="wt-v4-lift-part">${_esc(MAJOR_LABEL[benchmark.primaryMajor] || benchmark.primaryMajor)}</div>
+          <div class="wt-v4-lift-name">${_esc(benchmark.label)} <em>${_esc(schemeLabel)}</em></div>
+          ${benchmark.hasRegisteredExercise === false ? '<div class="wt-v4-lift-warning">등록 종목에서 삭제됨 · 벤치마크를 바꾸세요</div>' : ''}
+        </div>
+        <button type="button" class="wt-v4-expand" data-action="toggle-max-lift" aria-label="상세 보기">${expanded ? '접기' : '상세'}</button>
+      </div>
+      <div class="wt-v4-row-track is-single" role="status" aria-label="${_esc(benchmark.label)} 웬들러 프로그램">
+        <button type="button" class="on" disabled>웬들러 ${_esc(schemeLabel)}${supp ? ` + ${_esc(supp.label)}` : ''} · TM ${_planKg(rx.tmKg)}kg</button>
+      </div>
+      <div class="wt-v4-lift-main">
+        <div class="wt-v4-weight-wrap">
+          <button type="button" class="wt-v4-weight" data-action="open-max-benchmark-editor" data-benchmark-id="${_esc(benchmark.id)}" aria-label="웬들러 모듈 설정 열기">
+            <span>${_planKg(rx.topSet?.kg)}</span><small>kg</small>
+          </button>
+        </div>
+        <div class="wt-v4-reps">
+          <div>W${rx.week} · ${_esc(setsLabel)}</div>
+          <small>${supp
+            ? `${_esc(supp.label)} ${_planKg(supp.kg)}kg × ${supp.reps} × ${supp.sets}세트`
+            : (latest ? `이전 ${latest.kg} × ${latest.reps} · ${_shortDate(latest.dateKey)}` : '보조 모듈 없음')}</small>
+        </div>
+      </div>
+      <div class="wt-v4-detail">
+        <div class="wt-v4-pace ${paceClass}">${_esc(paceText)}</div>
+        <div class="wt-v4-impact"><strong>웬들러 처방.</strong> 정산 시 TM +${_planKg(cfg.incrementKg)}kg → ${_planKg(rx.tmKg + cfg.incrementKg)}kg 기준으로 다음 사이클을 진행합니다.</div>
+      </div>
+    </article>
+  `;
+}
+
 function _renderV4Lift(benchmark, snapshot, cycle, index = 0) {
+  if (maxBenchmarkProgram(benchmark) === 'wendler' && isWendlerAllowedMajor(benchmark.primaryMajor)) {
+    return _renderV4WendlerLift(benchmark, snapshot);
+  }
   const hasIntensity = isMaxTrackEnabled(benchmark, 'H');
   const requestedTrack = benchmark.activeTrack || snapshot.track || 'M';
   const track = requestedTrack === 'H' && hasIntensity ? 'H' : 'M';
@@ -979,19 +1033,43 @@ export function renderMaxPlanEditor({ cycle, gyms = [], currentGymId = null, mov
   `;
 }
 
-export function renderMaxCycleSettle(cycle, snapshot) {
+export function renderMaxCycleSettle(cycle, snapshot, settleResult = null) {
   if (!snapshot) return '';
+  const rows = settleResult?.rows || [];
+  const early = snapshot.weekIndex < snapshot.weeks;
   return `
-    <div class="wt-max-cycle-settle">
-      <div class="wt-max-cycle-settle-title">사이클 정산</div>
-      ${(snapshot.benchmarks || []).map(b => `
-        <div class="wt-max-cycle-settle-row">
-          <span>${_esc(b.label)}</span>
-          <b>${b.planned.startKg} → ${b.latest?.kg || b.planned.plannedKg}kg</b>
-          <small>${b.onPlan === false ? '보류/재시도' : '진행 유지'}</small>
-        </div>
-      `).join('')}
-      <div class="wt-max-cycle-settle-note">다음 사이클은 현재 실측값을 시작값으로 자동 시드합니다.</div>
+    <div class="wt-v4-sheet-body wt-v4-settle-sheet">
+      <div class="wt-v4-modal-head">
+        <button type="button" class="wt-v4-icon" data-action="close-max-sheet">‹</button>
+        <strong>사이클 정산 · W${snapshot.weekIndex}/${snapshot.weeks}</strong>
+        <button type="button" class="wt-v4-icon" data-action="close-max-sheet">×</button>
+      </div>
+      <div class="wt-max-cycle-settle">
+        <div class="wt-max-cycle-settle-title">${early ? '아직 사이클 중입니다 — 지금 정산하면 조기 종료됩니다.' : '6주 완주 — 설정한 증량폭만큼 성장을 확정하세요.'}</div>
+        ${rows.map(r => {
+          const grow = r.decision === 'grow';
+          const rep = r.representative || {};
+          const kgText = grow
+            ? `${_planKg(rep.before)} → ${_planKg(rep.after)}kg (+${_planKg(rep.incrementKg)})`
+            : `${_planKg(rep.before)} → ${_planKg(rep.before)}kg`;
+          const statusText = r.onPlan === true ? '계획 달성' : (r.onPlan === false ? '실측 미달' : '실측 없음');
+          return `
+            <div class="wt-max-cycle-settle-row" data-settle-benchmark="${_esc(r.id)}" data-decision="${grow ? 'grow' : 'hold'}">
+              <span>${_esc(r.label)}${r.program === 'wendler' ? ' (TM)' : ''}<small class="wt-v4-settle-status">${statusText}</small></span>
+              <b>${kgText}</b>
+              <small class="wt-v4-settle-choice">
+                <button type="button" class="${grow ? 'on' : ''}" data-action="set-settle-decision" data-benchmark-id="${_esc(r.id)}" data-decision="grow">성장</button>
+                <button type="button" class="${grow ? '' : 'on'}" data-action="set-settle-decision" data-benchmark-id="${_esc(r.id)}" data-decision="hold">유지</button>
+              </small>
+            </div>
+          `;
+        }).join('')}
+        <div class="wt-max-cycle-settle-note">성장폭은 계획 조정 시트의 증량폭(웬들러는 TM 증량폭) 그대로입니다. 미달 벤치마크는 유지가 기본이며, 확정하면 다음 사이클이 바로 시작되고 이번 사이클은 성장 계단에 보존됩니다.</div>
+      </div>
+      <div class="wt-v4-sheet-actions">
+        <button type="button" data-action="close-max-sheet">나중에</button>
+        <button type="button" class="primary" data-action="confirm-max-settle">확정하고 다음 사이클 시작</button>
+      </div>
     </div>
   `;
 }

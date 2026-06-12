@@ -35,6 +35,7 @@ import {
   renderMaxCycleDashboard,
   buildRenderedMaxCycleSnapshot,
   renderMaxCycleBoard,
+  renderMaxCycleSettle,
   renderMaxPlanEditor,
   normalizeMaxCycleTracks,
   buildMaxPlanMovementOptionSeeds,
@@ -1815,7 +1816,7 @@ function _bindMaxHost(host) {
         return;
       }
       if (e.target.closest('[data-action="settle-max-cycle"]')) {
-        settleMaxCycle().catch(err => console.warn('[settleMaxCycle]:', err));
+        openMaxSettleSheet();
         return;
       }
       if (e.target.closest('[data-action="open-equipment-pool"]')) {
@@ -2615,6 +2616,22 @@ function _handleMaxV4SheetClick(e) {
     suggestMaxPlanWendlerTm(suggestTmBtn);
     return;
   }
+  const settleDecision = e.target.closest('[data-action="set-settle-decision"]');
+  if (settleDecision) {
+    const decisions = _readSettleDecisionsFromSheet();
+    const id = settleDecision.getAttribute('data-benchmark-id');
+    const decision = settleDecision.getAttribute('data-decision') === 'grow' ? 'grow' : 'hold';
+    if (id) decisions[id] = decision;
+    _renderMaxSettleSheet(decisions);
+    return;
+  }
+  const confirmSettle = e.target.closest('[data-action="confirm-max-settle"]');
+  if (confirmSettle) {
+    settleMaxCycle({ decisions: _readSettleDecisionsFromSheet(), skipConfirm: true })
+      .then(() => closeMaxV4Sheet())
+      .catch(err => console.warn('[confirmMaxSettle]:', err));
+    return;
+  }
   const applyIncrement = e.target.closest('[data-action="apply-max-plan-increment"]');
   if (applyIncrement) {
     _applyMaxPlanIncrement(applyIncrement);
@@ -3243,6 +3260,44 @@ export function openMaxAdjustSheet(benchmarkId) {
     </div>
   `;
   el.classList.add('open');
+}
+
+function _readSettleDecisionsFromSheet() {
+  const decisions = {};
+  document.querySelectorAll('#max-v4-sheet [data-settle-benchmark]').forEach(row => {
+    const id = row.getAttribute('data-settle-benchmark');
+    const decision = row.getAttribute('data-decision');
+    if (id && (decision === 'grow' || decision === 'hold')) decisions[id] = decision;
+  });
+  return decisions;
+}
+
+function _renderMaxSettleSheet(decisions = {}) {
+  const cycle = _getMaxCycleSafe();
+  if (!cycle) {
+    _toast('먼저 6주 성장판을 시작하세요', 'warning');
+    return;
+  }
+  const todayKey = _todayKey();
+  const snapshot = buildRenderedMaxCycleSnapshot({
+    cycle,
+    cache: getCache(),
+    exList: getExList(),
+    todayKey,
+  });
+  if (!snapshot) {
+    _toast('정산할 벤치마크가 없어요', 'warning');
+    return;
+  }
+  const settle = buildMaxCycleSettleResult(cycle, snapshot, { decisions });
+  const el = _ensureMaxV4Sheet();
+  const body = document.getElementById('max-v4-sheet-body');
+  if (body) body.innerHTML = renderMaxCycleSettle(cycle, snapshot, settle);
+  el.classList.add('open');
+}
+
+export function openMaxSettleSheet() {
+  _renderMaxSettleSheet({});
 }
 
 export async function settleMaxCycle({ decisions = {}, skipConfirm = false } = {}) {

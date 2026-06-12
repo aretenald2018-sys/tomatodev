@@ -14,6 +14,8 @@ import {
   buildMaxCycleHistoryEntry,
   buildNextMaxCycleFromSettle,
   buildMaxGrowthStairs,
+  renderMaxCycleDashboard,
+  renderMaxCycleSettle,
 } from '../workout/expert/max-cycle.js';
 
 const EX_LIST = [
@@ -175,6 +177,39 @@ test('성장 계단: 웬들러 벤치마크는 TM을 대표 무게로 사용', (
   const lanes = buildMaxGrowthStairs([], cycle);
   assert.equal(lanes[0].points[0].kg, 152.5);
   assert.equal(lanes[0].points[0].afterKg, 157.5);
+});
+
+test('정산 시트: 벤치마크별 성장/유지 선택과 확정 액션을 렌더한다 (onclick 금지)', () => {
+  const cycle = makeCycle();
+  const snapshot = buildRenderedMaxCycleSnapshot({ cycle, cache: makeCache({ kg: 105 }), exList: EX_LIST, todayKey: TODAY });
+  const settle = buildMaxCycleSettleResult(cycle, snapshot, {});
+  const html = renderMaxCycleSettle(cycle, snapshot, settle);
+  assert.match(html, /data-settle-benchmark="bm_chest_bench"/);
+  assert.match(html, /data-decision="grow"/);
+  assert.match(html, /data-action="set-settle-decision"/);
+  assert.match(html, /data-action="confirm-max-settle"/);
+  assert.match(html, /100 → 102\.5kg \(\+2\.5\)/);
+  assert.doesNotMatch(html, /onclick=/);
+  // 유지 결정이면 무게 변화 없는 표기
+  const held = buildMaxCycleSettleResult(cycle, snapshot, { decisions: { bm_chest_bench: 'hold' } });
+  const heldHtml = renderMaxCycleSettle(cycle, snapshot, held);
+  assert.match(heldHtml, /100 → 100kg/);
+});
+
+test('진입 카드: 웬들러 벤치마크 행은 %TM 처방으로 렌더된다', () => {
+  const cycle = makeCycle();
+  cycle.benchmarks = [{
+    ...cycle.benchmarks[0],
+    program: 'wendler',
+    wendler: { tmKg: 152.5, incrementKg: 5, roundKg: 2.5, scheme: 'w531', supplemental: { kind: 'bbb', pct: 50, sets: 5, reps: 10 } },
+  }];
+  const html = renderMaxCycleDashboard({ cycle, cache: {}, exList: EX_LIST, todayKey: TODAY });
+  assert.match(html, /is-wendler/);
+  assert.match(html, /웬들러 5\/3\/1 \+ BBB · TM 152\.5kg/);
+  assert.match(html, /BBB 77\.5kg × 10 × 5세트/); // 50%TM 라운딩
+  assert.match(html, /정산 시 TM \+5kg/);
+  // 웬들러 행에는 볼륨/강도 트랙 토글이 없다
+  assert.doesNotMatch(html, /data-action="set-max-benchmark-track"/);
 });
 
 test('정산: 웬들러 벤치마크 성장은 TM에 적용', () => {
