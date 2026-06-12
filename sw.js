@@ -3,7 +3,7 @@
 
 // 캐시 버전: 타임스탬프 기반 자동 생성 — 파일 수정 시 SW 자동 업데이트
 // (SW 파일 내용이 1바이트라도 바뀌면 브라우저가 새 SW로 인식)
-const CACHE_VERSION = 'tomatofarm-v20260612z6-max-growth-summary-program-entry';
+const CACHE_VERSION = 'tomatofarm-v20260612z7-test-board-v2';
 const RUNTIME_CACHE = 'dashboard3-runtime';
 const STATIC_ASSETS = [
   './',
@@ -65,6 +65,13 @@ const STATIC_ASSETS = [
   './workout/expert/migrate-gym-v1.js',
   './workout/expert/max.js',
   './workout/expert/max-wendler.js',
+  // 테스트모드 v2 — 성장 보드 (workout/test-v2/)
+  './test-mode-v2.css',
+  './workout/test-v2/entry.js',
+  './workout/test-v2/board-core.js',
+  './workout/test-v2/board-render.js',
+  './workout/test-v2/onboarding.js',
+  './workout/test-v2/wendler.js',
   './workout/expert/max-config.js',
   './workout/expert/max-same-day-advice.js',
   './workout/expert/max-cycle.js',

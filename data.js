@@ -729,6 +729,16 @@ export async function appendMaxCycleHistory(entry) {
   return next;
 }
 
+// ── 테스트모드 v2 "성장 보드" (workout/test-v2/) ──────────────────
+// 별도 키 test_board_v2 — v1 max_cycle은 v2 경로에서 절대 쓰지 않는다
+// (docs/ai/features/2026-06-12-test-mode-v2-board.md 금지 목록).
+export const getTestBoardV2 = () => _settings.test_board_v2 || null;
+export async function saveTestBoardV2(board) {
+  if (!board || typeof board !== 'object') return null;
+  await _saveSetting('test_board_v2', board);
+  return board;
+}
+
 export function calcStreaks() {
   return _calcStreaks(_cache, TODAY, getDietPlan(), dateKey);
 }

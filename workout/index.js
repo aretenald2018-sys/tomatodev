@@ -2,6 +2,9 @@
 // workout/index.js — 오케스트레이터: re-export + window.* 등록
 // ================================================================
 
+// ── 테스트모드 v2 성장 보드 진입 카드 (side-effect: #tm2-entry 렌더) ──
+import './test-v2/entry.js';
+
 // ── 서브모듈 import ─────────────────────────────────────────────
 export { loadWorkoutDate, changeWorkoutDate, goToTodayWorkout }
   from './load.js?v=20260517v3';
