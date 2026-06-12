@@ -720,6 +720,14 @@ export async function saveMaxCycle(cycle) {
   if (cleanup.shouldWriteExpertPreset) await _saveSetting('expert_preset', cleanup.cleanedPreset);
   return record;
 }
+// 테스트모드 사이클 히스토리 — 정산 1회당 요약 1개 (성장 계단 데이터원)
+export const getMaxCycleHistory = () => (Array.isArray(_settings.max_cycle_history) ? _settings.max_cycle_history : []);
+export async function appendMaxCycleHistory(entry) {
+  if (!entry || typeof entry !== 'object') return getMaxCycleHistory();
+  const next = [...getMaxCycleHistory(), entry].slice(-24);
+  await _saveSetting('max_cycle_history', next);
+  return next;
+}
 
 export function calcStreaks() {
   return _calcStreaks(_cache, TODAY, getDietPlan(), dateKey);

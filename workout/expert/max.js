@@ -25,6 +25,7 @@ import {
   getCache, getExList, getExpertPreset, saveExpertPreset, saveExercise, deleteExercise,
   getMuscleParts, dateKey, TODAY,
   getGyms, saveGym, getActiveEquipmentForGym, getMaxCycle, saveMaxCycle,
+  getMaxCycleHistory, appendMaxCycleHistory,
   saveDay,
 } from '../../data.js';
 import { S } from '../state.js';
@@ -41,7 +42,10 @@ import {
   overlayCurrentWorkoutDay,
   isMaxTrackEnabled,
   isMaxVolumeOnlyMajor,
-} from './max-cycle.js?v=20260516v6';
+  buildMaxCycleSettleResult,
+  buildMaxCycleHistoryEntry,
+  buildNextMaxCycleFromSettle,
+} from './max-cycle.js?v=20260612w1';
 import {
   CAT_LABEL,
   MAX_DEFAULTS,
@@ -3265,41 +3269,42 @@ export function openMaxAdjustSheet(benchmarkId) {
   el.classList.add('open');
 }
 
-export async function settleMaxCycle() {
+export async function settleMaxCycle({ decisions = {}, skipConfirm = false } = {}) {
   const cycle = _getMaxCycleSafe();
   if (!cycle) {
     _toast('먼저 6주 성장판을 시작하세요', 'warning');
     return;
   }
+  const todayKey = _todayKey();
   const snapshot = buildRenderedMaxCycleSnapshot({
     cycle,
     cache: getCache(),
     exList: getExList(),
-    todayKey: _todayKey(),
+    todayKey,
   });
-  const nextBenchmarks = (snapshot?.benchmarks || []).map(b => ({
-    id: b.id,
-    movementId: b.movementId,
-    label: b.label,
-    primaryMajor: b.primaryMajor,
-    tracks: b.tracks || ['M', 'H'],
-    startKg: b.latest?.kg || b.planned?.plannedKg || b.startKg,
-    startReps: b.latest?.reps || b.startReps || 12,
-    targetKg: (b.latest?.kg || b.planned?.plannedKg || b.startKg || 0) + (b.primaryMajor === 'lower' || b.primaryMajor === 'glute' ? 5 : 2.5),
-    targetReps: b.targetReps || 12,
-    incrementKg: b.incrementKg || 2.5,
-  }));
-  const completed = { ...cycle, status: 'completed', completedAt: Date.now() };
-  await _saveMaxCycleSafe({
-    ...completed,
-    nextSeed: {
-      framework: 'dual_track_progression_v2',
-      weeks: 6,
-      benchmarks: nextBenchmarks,
-      seededAt: Date.now(),
-    },
-  });
-  _toast('사이클을 정산했어요. 다음 사이클 시드가 준비됐습니다.', 'success');
+  if (!snapshot) {
+    _toast('정산할 벤치마크가 없어요', 'warning');
+    return;
+  }
+  // 성장은 정산 1회당 설정 증량폭만큼. 미달(onPlan!==true)은 유지가 기본.
+  const settle = buildMaxCycleSettleResult(cycle, snapshot, { decisions });
+  if (!skipConfirm) {
+    const early = snapshot.weekIndex < snapshot.weeks
+      ? `아직 W${snapshot.weekIndex}/${snapshot.weeks}입니다. 지금 정산하면 사이클이 조기 종료됩니다.\n`
+      : '';
+    const ok = await confirmAction({
+      title: '사이클 정산',
+      message: `${early}성장 확정 ${settle.grown}개 · 유지 ${settle.held}개\n확정하면 다음 사이클이 바로 시작됩니다.`,
+      confirmLabel: '정산하고 다음 사이클 시작',
+    });
+    if (!ok) return;
+  }
+  const now = Date.now();
+  const historyEntry = buildMaxCycleHistoryEntry(cycle, settle, { settledAt: now, todayKey });
+  const nextCycle = buildNextMaxCycleFromSettle(cycle, settle, { todayKey, now });
+  await appendMaxCycleHistory(historyEntry);
+  await _saveMaxCycleSafe(nextCycle);
+  _toast(`정산 완료 — 성장 ${settle.grown}개 · 유지 ${settle.held}개. 다음 사이클이 시작됐어요.`, 'success');
   if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
 }
 

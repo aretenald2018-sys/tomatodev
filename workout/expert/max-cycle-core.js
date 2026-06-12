@@ -782,3 +782,197 @@ export function createDefaultMaxCycle({
 export function buildRenderedMaxCycleSnapshot({ cycle, cache, exList, todayKey }) {
   return buildMaxCycleSnapshot({ cycle, cache, exList, todayKey });
 }
+
+// ================================================================
+// 정산(6주 1회 성장) — 순수 헬퍼
+//   규칙: 성장은 정산 시점에만 일어나고, 성장폭은 사용자가 설정한
+//   증량폭(트랙별 incrementKg / 웬들러 TM incrementKg) 그대로다.
+//   실측이 계획 미달(onPlan !== true)인 벤치마크는 '유지'가 기본.
+// ================================================================
+
+function _plus(kg, delta) {
+  return Math.round(((Number(kg) || 0) + (Number(delta) || 0)) * 10) / 10;
+}
+
+export function maxBenchmarkProgram(benchmark = {}) {
+  return benchmark?.program === 'wendler' ? 'wendler' : 'linear';
+}
+
+/**
+ * 정산 결과 계산 (저장 없음).
+ * @returns {{ rows: Array, grown: number, held: number }}
+ */
+export function buildMaxCycleSettleResult(cycle, snapshot, { decisions = {} } = {}) {
+  const normalized = normalizeMaxCycleTracks(cycle) || {};
+  const snapshotRows = new Map((snapshot?.benchmarks || []).map(b => [b.id, b]));
+  const rows = (normalized.benchmarks || []).map(base => {
+    const snap = snapshotRows.get(base.id) || null;
+    const program = maxBenchmarkProgram(base);
+    const requested = decisions[base.id];
+    const decision = requested === 'grow' || requested === 'hold'
+      ? requested
+      : (snap?.onPlan === true ? 'grow' : 'hold');
+    const tracks = {};
+    for (const track of ['M', 'H']) {
+      const spec = _trackSpec(base, track);
+      const incrementKg = Number(spec.incrementKg) > 0 ? Number(spec.incrementKg) : 2.5;
+      const delta = decision === 'grow' ? incrementKg : 0;
+      tracks[track] = {
+        ...spec,
+        incrementKg,
+        before: Number(spec.startKg) || 0,
+        startKg: _plus(spec.startKg, delta),
+        targetKg: _plus(spec.targetKg, delta),
+      };
+    }
+    let wendler = null;
+    if (program === 'wendler' && base.wendler && typeof base.wendler === 'object') {
+      const incrementKg = Number(base.wendler.incrementKg) > 0
+        ? Number(base.wendler.incrementKg)
+        : tracks.M.incrementKg;
+      const delta = decision === 'grow' ? incrementKg : 0;
+      wendler = {
+        ...base.wendler,
+        incrementKg,
+        before: Number(base.wendler.tmKg) || 0,
+        tmKg: _plus(base.wendler.tmKg, delta),
+      };
+    }
+    const representative = wendler
+      ? { kind: 'tm', before: wendler.before, after: wendler.tmKg, incrementKg: wendler.incrementKg }
+      : { kind: 'startKg', before: tracks.M.before, after: tracks.M.startKg, incrementKg: tracks.M.incrementKg };
+    return {
+      id: base.id,
+      label: base.label || base.movementId || '벤치마크',
+      primaryMajor: base.primaryMajor || 'custom',
+      program,
+      decision,
+      onPlan: snap?.onPlan ?? null,
+      latest: snap?.latest || null,
+      representative,
+      tracks,
+      wendler,
+    };
+  });
+  return {
+    rows,
+    grown: rows.filter(r => r.decision === 'grow').length,
+    held: rows.filter(r => r.decision === 'hold').length,
+  };
+}
+
+/** 사이클 히스토리 보존용 요약 엔트리 (Firestore _settings.max_cycle_history 원소). */
+export function buildMaxCycleHistoryEntry(cycle, settleResult, { settledAt = 0, todayKey = null } = {}) {
+  return {
+    cycleId: cycle?.id || null,
+    startDate: cycle?.startDate || null,
+    endDate: todayKey,
+    weeks: Math.max(1, Number(cycle?.weeks) || 6),
+    settledAt: Number(settledAt) || 0,
+    grown: settleResult?.grown || 0,
+    held: settleResult?.held || 0,
+    benchmarks: (settleResult?.rows || []).map(r => ({
+      id: r.id,
+      movementId: (cycle?.benchmarks || []).find(b => b.id === r.id)?.movementId || null,
+      label: r.label,
+      primaryMajor: r.primaryMajor,
+      program: r.program,
+      decision: r.decision,
+      representative: r.representative,
+      latest: r.latest ? { kg: r.latest.kg, reps: r.latest.reps, dateKey: r.latest.dateKey } : null,
+    })),
+  };
+}
+
+/** 정산 결과로 다음 사이클 생성 (벤치마크 id/연결 종목/설정 보존, 당일 상태 초기화). */
+export function buildNextMaxCycleFromSettle(cycle, settleResult, { todayKey, now = 0 } = {}) {
+  const normalized = normalizeMaxCycleTracks(cycle) || {};
+  const rowById = new Map((settleResult?.rows || []).map(r => [r.id, r]));
+  const startDate = _weekStartKey(_addDaysKey(todayKey || normalized.startDate, 7));
+  const benchmarks = (normalized.benchmarks || []).map(base => {
+    const row = rowById.get(base.id);
+    if (!row) return base;
+    const tracks = {
+      M: { ...(base.tracks?.M || {}), startKg: row.tracks.M.startKg, targetKg: row.tracks.M.targetKg, incrementKg: row.tracks.M.incrementKg },
+      H: { ...(base.tracks?.H || {}), startKg: row.tracks.H.startKg, targetKg: row.tracks.H.targetKg, incrementKg: row.tracks.H.incrementKg },
+    };
+    return {
+      ...base,
+      tracks,
+      startKg: tracks.M.startKg,
+      targetKg: tracks.M.targetKg,
+      incrementKg: tracks.M.incrementKg,
+      ...(row.wendler ? { wendler: { ...base.wendler, tmKg: row.wendler.tmKg, incrementKg: row.wendler.incrementKg } } : {}),
+    };
+  });
+  const next = { ...normalized };
+  delete next.todayOverrides;
+  delete next.todayTracks;
+  delete next.todayTrack;
+  delete next.nextSeed;
+  delete next.completedAt;
+  return {
+    ...next,
+    id: `max_cycle_${String(startDate).replaceAll('-', '')}`,
+    status: 'active',
+    startDate,
+    weeks: Math.max(1, Number(normalized.weeks) || 6),
+    benchmarks,
+    createdAt: Number(now) || 0,
+    updatedAt: Number(now) || 0,
+  };
+}
+
+/**
+ * 히스토리 → 벤치마크별 성장 계단 시리즈.
+ * 각 포인트 = 사이클 1개 (정산 1회). 마지막에 현재 사이클 + 예약 성장 점 추가.
+ */
+export function buildMaxGrowthStairs(history = [], cycle = null, { maxPoints = 6 } = {}) {
+  const normalized = cycle ? normalizeMaxCycleTracks(cycle) : null;
+  const series = new Map();
+  const push = (key, point, meta) => {
+    if (!series.has(key)) series.set(key, { id: key, label: meta.label, primaryMajor: meta.primaryMajor, points: [] });
+    const lane = series.get(key);
+    lane.label = meta.label || lane.label;
+    lane.points.push(point);
+  };
+  for (const entry of history || []) {
+    for (const b of entry?.benchmarks || []) {
+      const key = b.movementId || b.id;
+      if (!key) continue;
+      push(key, {
+        kind: 'settled',
+        kg: Number(b.representative?.before) || 0,
+        afterKg: Number(b.representative?.after) || 0,
+        decision: b.decision,
+        incrementKg: Number(b.representative?.incrementKg) || 0,
+        settledAt: entry.settledAt || 0,
+        startDate: entry.startDate || null,
+        endDate: entry.endDate || null,
+      }, { label: b.label, primaryMajor: b.primaryMajor });
+    }
+  }
+  for (const b of normalized?.benchmarks || []) {
+    const key = b.movementId || b.id;
+    if (!key) continue;
+    const program = maxBenchmarkProgram(b);
+    const spec = _trackSpec(b, 'M');
+    const representativeKg = program === 'wendler'
+      ? (Number(b.wendler?.tmKg) || 0)
+      : (Number(spec.startKg) || 0);
+    const incrementKg = program === 'wendler'
+      ? (Number(b.wendler?.incrementKg) > 0 ? Number(b.wendler.incrementKg) : (Number(spec.incrementKg) || 2.5))
+      : (Number(spec.incrementKg) > 0 ? Number(spec.incrementKg) : 2.5);
+    push(key, {
+      kind: 'current',
+      kg: representativeKg,
+      afterKg: _plus(representativeKg, incrementKg),
+      incrementKg,
+      startDate: normalized.startDate || null,
+    }, { label: b.label, primaryMajor: b.primaryMajor });
+  }
+  return [...series.values()].map(lane => ({
+    ...lane,
+    points: lane.points.slice(-Math.max(2, maxPoints)),
+  }));
+}

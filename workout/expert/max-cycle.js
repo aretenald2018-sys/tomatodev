@@ -18,7 +18,12 @@ export {
   isMaxVolumeOnlyBenchmark,
   maxBenchmarkTrackList,
   selectPersistedMaxCycle,
-} from './max-cycle-core.js?v=20260516v5';
+  maxBenchmarkProgram,
+  buildMaxCycleSettleResult,
+  buildMaxCycleHistoryEntry,
+  buildNextMaxCycleFromSettle,
+  buildMaxGrowthStairs,
+} from './max-cycle-core.js?v=20260612w1';
 
 export {
   renderMaxCycleDashboard,

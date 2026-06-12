@@ -21,7 +21,7 @@ import {
   maxBenchmarkTrackList,
   normalizeMaxCycleTracks,
   predictBenchmarkProgression,
-} from './max-cycle-core.js?v=20260516v5';
+} from './max-cycle-core.js?v=20260612w1';
 
 const PLAN_MAJOR_ORDER = Object.keys(MAJOR_LABEL);
 
