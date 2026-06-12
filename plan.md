@@ -49,6 +49,22 @@
 
 ## Phase 현재: 기능 개발
 
+### 2026-06-12 테스트모드 v2 — 6주 성장 보드 ✅ (S0~S7 전체 구현)
+설계: `docs/ai/features/2026-06-12-test-mode-v2-board.md` (필수 계약 13 + 용어 사전), 목업: `docs/ai/mockups/2026-06-12-test-mode-v2-board.html`
+v1(Max V4) 동결 — 신규 모듈 `workout/test-v2/` + `tm2-` 네임스페이스 + `_settings.test_board_v2` (v1 키 쓰기 0건)
+
+- [x] S0 순수 로직 — `workout/test-v2/board-core.js` (칸 전개/병합, 색칠, 못 채움 조정 3종+미리보기, 오늘의 배열, 정산, 종목 보관/복원, 미니맵, v1 부트스트랩) + `wendler.js`(v1에서 복사, 하체 기본 +10) + `tests/test-v2.board-core.test.js` 19개 PASS
+- [x] S1 첫 설정 + 보드 렌더 — `onboarding.js`(메뉴 만들기/무게 상속·직접입력/시작일) + `board-render.js`(그룹 칩, 사이클 밴드, 셀 병합, 오늘 행, 정산 스트립, FAB) + `test-mode-v2.css` + `entry.js` 진입 카드(#tm2-entry, lazy import)
+- [x] S2 오늘의 배열 — 오늘 행 칸 담기(①②③ 배지) + 하단 배열 바 + [운동 시작] 순차 진행
+- [x] S3 셀 시트 색칠 — 처방/오늘의 기준(여유 횟수·자세 메모·헬스장별 기구)/최근 기록/입력 + 색칠 토스트
+- [x] S4 못 채운 날 조정 — 한 주 더 도전(추천)/무게 내리기/횟수 낮추기 + 적용 전 미리보기
+- [x] S5 웬들러 — 주 단위 %TM 칸 + 셀 시트 "메인 8/6/3 → 바로 BBB" 세션 순서 + 종목 설정 모듈 편집(TM/스킴/커스텀/보조)
+- [x] S6 6주 정산 — 종목별 성장/유지(못 채움=유지 기본), 증량폭=설정값(상체 2.5/하체 10 시드), 다음 6주 칸 생성 + history
+- [x] S7 종목 설정/관리 + 줌아웃 미니맵 — 트랙/세트/증량/RIR/자세/기구, 메뉴에서 빼기(보관)/라이브러리 추가
+- [x] 통합 — `data.js` getTestBoardV2/saveTestBoardV2, `index.html` #tm2-entry+CSS 링크, `workout/index.js` entry import, `sw.js` CACHE_VERSION `tomatofarm-v20260612z7-test-board-v2` + 자산 6개 등록
+- [x] 검증 — `node --test tests/` 424개 전부 PASS, localhost:5599 비로그인 인메모리로 온보딩→보드→배열→색칠→조정→웬들러 전환→미니맵 전 플로우 실클릭 확인 (콘솔 런타임 에러 0)
+- [ ] 수동 검증 (유저, 로그인 필요): 보드 생성 후 Firestore `test_board_v2` 저장/재로드 왕복, 정산 시트 실확정
+
 ### 2026-04-18 영양정보 파이프라인 리팩토링 🛠
 설계: `@NUTRITION_REFACTOR_PLAN.md`
 
