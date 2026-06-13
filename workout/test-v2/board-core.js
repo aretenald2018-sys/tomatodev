@@ -494,6 +494,15 @@ export function expandColumnCells(board, benchmarkId, track, cycleId, todayKey) 
     const clippedSpan = Math.min(step.span, weeksBetween(step.weekStart, cycleEnd));
     if (clippedSpan <= 0) continue;
     const st = _stepCellState(step, cycle, todayKey);
+    const todayMon = mondayOf(todayKey);
+    // 주별 상태 — 병합 칸이 "그 주까지 비례적으로" 채워지도록 (계약: 진행 색칠)
+    const weekStates = st.weeks.slice(0, clippedSpan).map(w => {
+      if (w.painted) return 'done';
+      if (w.missed) return 'miss';
+      if (w.weekStart === todayMon) return 'now';
+      if (weeksBetween(w.weekStart, todayMon) > 0) return 'past';   // 지난 주 미색칠
+      return 'plan';
+    });
     cells.push({
       kind: 'stair',
       weekStart: step.weekStart,
@@ -502,6 +511,7 @@ export function expandColumnCells(board, benchmarkId, track, cycleId, todayKey) 
       reps: step.reps,
       sets: step.sets || null,
       state: st.state,
+      weekStates,
       dots: st.weeks.slice(0, clippedSpan).map(w => ({ weekStart: w.weekStart, on: w.painted, missed: w.missed })),
       stepId: step.id,
       isCurrent: st.isCurrent,

@@ -171,18 +171,26 @@ function _cellHtml(cell, col) {
   const lineup = getLineup(S.board, _todayKey());
   const pickIdx = lineup.findIndex(x => x.benchmarkId === col.bm.id && x.track === col.track);
   const pick = (cell.isCurrent && pickIdx >= 0) ? `<span class="tm2-pick">${pickIdx + 1}</span>` : '';
-  const args = `data-action="tm2:cell" data-bm="${col.bm.id}" data-track="${col.track}" data-week="${cell.weekStart}" data-state="${cell.state}" data-current="${cell.isCurrent ? 1 : 0}"`;
+  // 병합 칸을 탭하면 "이번 주"를 타겟 (칸 시작 주가 아니라)
+  const tapWeek = cell.isCurrent ? mondayOf(_todayKey()) : cell.weekStart;
+  const args = `data-action="tm2:cell" data-bm="${col.bm.id}" data-track="${col.track}" data-week="${tapWeek}" data-state="${cell.state}" data-current="${cell.isCurrent ? 1 : 0}"`;
+  const kgLabel = cell.kg > 0 ? cell.kg : '<span style="opacity:.5">—</span>';
   if (cell.kind === 'wendler') {
     return `<button class="tm2-cell tm2-${cell.state}" style="--tm2-s:1" ${args}>
       ${pick}<b>${cell.kg}</b><i>${_esc(cell.repsLabel)}</i><u>${_esc(cell.subLabel)}</u>
     </button>`;
   }
-  const dots = cell.span > 1 || cell.isCurrent
-    ? `<span class="tm2-dots">${cell.dots.map(d => `<s class="${d.on ? 'tm2-dot-on' : ''}"></s>`).join('')}</span>`
-    : '';
-  const kgLabel = cell.kg > 0 ? cell.kg : '<span style="opacity:.5">—</span>';
+  // 병합(span>1) stair 칸 — 주별 세그먼트로 "그 주까지" 비례 색칠
+  if (cell.weekStates && cell.span > 1) {
+    const segs = cell.weekStates.map(ws => `<i class="tm2-seg tm2-seg-${ws}"></i>`).join('');
+    return `<button class="tm2-cell tm2-stair-seg" style="--tm2-s:${cell.span}" ${args}>
+      <span class="tm2-segs">${segs}</span>
+      <span class="tm2-cell-label">${pick}<b>${kgLabel}</b><i>${cell.reps}</i></span>
+    </button>`;
+  }
+  // 단일 주 칸
   return `<button class="tm2-cell tm2-${cell.state}" style="--tm2-s:${cell.span}" ${args}>
-    ${pick}<b>${kgLabel}</b><i>${cell.reps}</i>${cell.state === 'miss' ? '<u>못 채움 → 조정</u>' : dots}
+    ${pick}<b>${kgLabel}</b><i>${cell.reps}</i>${cell.state === 'miss' ? '<u>못 채움 → 조정</u>' : ''}
   </button>`;
 }
 
@@ -502,6 +510,51 @@ function _cardSetRow(set, si) {
     </div>`;
 }
 
+// 진행 그래프 — 실제 운동기록(getCache) 세션별 톱세트 무게 추이 (기존 테스트모드 그래프 계승)
+function _buildCardSparkline(bm) {
+  let cache = {};
+  try { cache = getCache() || {}; } catch { cache = {}; }
+  const pts = [];
+  for (const dk of Object.keys(cache).sort()) {
+    const exs = Array.isArray(cache[dk]?.exercises) ? cache[dk].exercises : [];
+    const e = exs.find(x => (bm.exerciseId && x.exerciseId === bm.exerciseId) || (x.name && x.name === bm.label));
+    if (!e) continue;
+    let top = 0, reps = 0;
+    for (const s of (Array.isArray(e.sets) ? e.sets : [])) {
+      if (s?.setType === 'warmup' || s?.done === false) continue;
+      const kg = Number(s?.kg) || 0;
+      if (kg > top) { top = kg; reps = Number(s?.reps) || 0; }
+    }
+    if (top > 0) pts.push({ dk, kg: top, reps });
+  }
+  const last = pts.slice(-8);
+  if (last.length < 2) {
+    return `<div class="tm2-spark-empty">운동 기록이 2회 이상 쌓이면 성장 그래프가 그려져요${last.length ? ` · 현재 ${last[0].kg}kg×${last[0].reps}` : ''}</div>`;
+  }
+  const kgs = last.map(p => p.kg);
+  const min = Math.min(...kgs), max = Math.max(...kgs);
+  const W = 260, H = 52, pad = 8, span = (max - min) || 1;
+  const xs = (i) => pad + (W - 2 * pad) * (i / (last.length - 1));
+  const ys = (kg) => pad + (H - 2 * pad) * (1 - (kg - min) / span);
+  const line = last.map((p, i) => `${xs(i).toFixed(1)},${ys(p.kg).toFixed(1)}`).join(' ');
+  const area = `${xs(0).toFixed(1)},${H - pad} ${line} ${xs(last.length - 1).toFixed(1)},${H - pad}`;
+  const lp = last[last.length - 1];
+  const growth = Math.round((lp.kg - last[0].kg) * 10) / 10;
+  return `
+    <div class="tm2-spark">
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="tm2-spark-svg" aria-hidden="true">
+        <polygon points="${area}" fill="rgba(33,166,107,0.10)"></polygon>
+        <polyline points="${line}" fill="none" stroke="var(--tm2-now)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"></polyline>
+        <circle cx="${xs(last.length - 1).toFixed(1)}" cy="${ys(lp.kg).toFixed(1)}" r="3.2" fill="var(--tm2-tomato)"></circle>
+      </svg>
+      <div class="tm2-spark-meta">
+        <span>최근 ${last.length}회</span>
+        <b>${lp.kg}kg×${lp.reps}</b>
+        <em class="${growth >= 0 ? 'up' : 'down'}">${growth >= 0 ? '+' : ''}${growth}kg</em>
+      </div>
+    </div>`;
+}
+
 function _renderWorkoutCard() {
   const { bmId, track, weekStart, plan, sets } = S.card;
   const bm = benchmarkById(S.board, bmId);
@@ -519,6 +572,8 @@ function _renderWorkoutCard() {
     <div class="tm2-rx"><span>오늘 성공 기준</span><b>${plan.kg || '—'}</b><span>kg ×</span><b style="font-size:24px">${plan.reps || ''}</b><span>회${plan.amrap ? '+' : ''}</span></div>
     ${_metaRowsHtml(bm)}
     ${wndHint}
+    <div class="tm2-sec-label">성장 그래프 — 세션별 톱세트</div>
+    ${_buildCardSparkline(bm)}
     <div class="tm2-sec-label">최근 기록</div>
     <div class="tm2-hist">${recents}</div>
     <div class="tm2-sec-label">세트 기록 — KG · REP · 남은 횟수(RIR) · 가동범위(ROM)</div>

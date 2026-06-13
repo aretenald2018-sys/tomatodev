@@ -111,6 +111,23 @@
 .tm2-cell.tm2-miss u { opacity: 0.9; font-weight: 700; }
 .tm2-cell.tm2-rest { background: transparent; color: var(--tm2-ink4); border: 1px dashed #e3e4e8; }
 .tm2-cell.tm2-future { background: #f6f9f7; color: #9fb3a7; border: 1px dashed #dceae2; }
+
+/* 병합 칸 — 주별 세그먼트(그 주까지 비례 색칠) */
+.tm2-cell.tm2-stair-seg { background: transparent; padding: 0; overflow: hidden; color: var(--tm2-ink1); }
+.tm2-segs { position: absolute; inset: 0; display: flex; flex-direction: column; border-radius: 8px; overflow: hidden; }
+.tm2-seg { flex: 1 1 0; min-height: 0; border-top: 1px solid rgba(255,255,255,0.5); }
+.tm2-seg:first-child { border-top: 0; }
+.tm2-seg-done { background: var(--tm2-done); }
+.tm2-seg-now { background: var(--tm2-now-bg); box-shadow: inset 2px 0 0 var(--tm2-now); }
+.tm2-seg-plan { background: var(--tm2-plan-bg); }
+.tm2-seg-past { background: #eef0f2; }
+.tm2-seg-miss { background: repeating-linear-gradient(135deg, var(--tm2-miss-bg) 0 6px, #ffe9c2 6px 12px); }
+.tm2-cell-label {
+  position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.86); border-radius: 9px; padding: 3px 10px; backdrop-filter: blur(1px);
+}
+.tm2-cell-label b { font-size: 14px; font-weight: 800; line-height: 1.1; color: var(--tm2-ink1); }
+.tm2-cell-label i { font-style: normal; font-size: 9.5px; color: var(--tm2-ink3); }
 .tm2-cell.tm2-future b { font-weight: 700; }
 
 /* 연속 그리드 + 붉은 "오늘" 타임라인 (18주 가시화) */
@@ -226,6 +243,16 @@
 .tm2-btn-ghost { display: block; width: 100%; background: none; border: 0; color: var(--tm2-ink3); font-size: 12.5px; font-weight: 600; padding: 12px; text-align: center; }
 .tm2-btn-primary { display: block; width: 100%; background: var(--tm2-tomato); color: #fff; border: 0; border-radius: 14px; padding: 15px; font-size: 15px; font-weight: 800; margin-top: 14px; }
 .tm2-btn-addset { display: block; width: 100%; background: var(--tm2-soft); border: 0; border-radius: 12px; color: var(--tm2-ink2); font-size: 12.5px; font-weight: 700; padding: 11px; margin-top: 8px; }
+
+/* 진행 그래프 (운동 카드) */
+.tm2-spark { border: 1px solid var(--tm2-line); border-radius: 14px; padding: 10px 12px; }
+.tm2-spark-svg { width: 100%; height: 52px; display: block; }
+.tm2-spark-meta { display: flex; align-items: baseline; gap: 8px; margin-top: 4px; font-size: 11px; color: var(--tm2-ink3); }
+.tm2-spark-meta b { font-size: 13px; color: var(--tm2-ink1); }
+.tm2-spark-meta em { font-style: normal; font-weight: 800; margin-left: auto; }
+.tm2-spark-meta em.up { color: var(--tm2-now); }
+.tm2-spark-meta em.down { color: var(--tm2-miss); }
+.tm2-spark-empty { font-size: 11.5px; color: var(--tm2-ink4); background: var(--tm2-soft); border-radius: 12px; padding: 12px; text-align: center; }
 
 /* 운동 카드 — 세트별 KG/REP/RIR/ROM (tm2 자급자족, 기존 운동카드 패리티) */
 .tm2-card-sets { display: flex; flex-direction: column; gap: 8px; }

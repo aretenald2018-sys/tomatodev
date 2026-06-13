@@ -39,10 +39,10 @@ export function openOnboarding({ onComplete } = {}) {
   let recentMap = {}, exList = [];
   try { recentMap = buildRecentMap(getCache() || {}); } catch { recentMap = {}; }
   try { exList = getExList() || []; } catch { exList = []; }
-  // 실제 등록 종목(운동할 때와 동일 출처)을 1순위로 — 켜진 것이 먼저 보이게 정렬
+  // 실제 등록 종목(운동할 때와 동일 출처) — 최근 기록 있는 것이 먼저 보이게 정렬
   OB.candidates = buildOnboardingCandidates({ exList, v1Cycle: getMaxCycle(), movements: MOVEMENTS, recentMap })
     .sort((a, b) => (b.defaultOn ? 1 : 0) - (a.defaultOn ? 1 : 0));
-  OB.enabled = new Set(OB.candidates.filter(c => c.defaultOn).map(candKey));
+  OB.enabled = new Set();   // 기본값: 모두 해제 — 유저가 할 종목만 직접 켠다
   OB.weights = {};
   for (const c of OB.candidates) {
     const k = candKey(c);
@@ -88,7 +88,7 @@ function _render() {
     const tks = ['volume', 'intensity'].filter(t => c.tracks[t])
       .map(t => `<span class="tm2-tk ${t === 'intensity' ? 'tm2-tk-h' : ''}">${TM2_TRACK_LABELS[t]}</span>`).join('');
     const recent = c.tracks.volume && !c.tracks.volume.manual ? `${c.tracks.volume.kg}kg×${c.tracks.volume.reps}` : '';
-    const note = on ? (recent ? `최근 ${recent}` : '메뉴에 추가') : '꺼둠';
+    const note = recent ? `최근 ${recent}` : (on ? '직접 입력' : '');
     return `
     <button class="tm2-ob-row ${on ? '' : 'tm2-dim'}" data-action="tm2ob:toggle" data-cand="${_esc(k)}">
       <span class="tm2-ck ${on ? '' : 'tm2-off'}">✓</span>
