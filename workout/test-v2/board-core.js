@@ -129,60 +129,130 @@ const TM2_DEFAULT_ON = new Set([
 
 const TM2_INTENSITY_DEFAULT = new Set(['barbell_bench', 'back_squat', 'lat_pulldown']);
 
+// 세부 부위(subPattern) → 그룹 매핑 (groupForMajor가 못 잡는 것 보충)
+const TM2_SUB_TO_GROUP = {
+  quad: 'lower', hamstring: 'lower', calf: 'lower', glute: 'lower', posterior: 'lower',
+  chest_upper: 'chest', chest_mid: 'chest', chest_lower: 'chest',
+  back_width: 'back', back_thickness: 'back',
+  shoulder_front: 'shoulder', shoulder_side: 'shoulder', rear_delt: 'shoulder', traps: 'shoulder',
+  bicep: 'arm', tricep: 'arm',
+};
+
 /**
- * 온보딩 후보 목록 — v1 max_cycle 벤치마크(있으면 우선) + 운동 라이브러리.
- * v1 데이터는 읽기 전용 입력(파라미터)으로만 받는다 (금지 목록 준수).
- * 반환: [{ movementId, label, groupId, defaultOn, tracks:{volume,intensity}, source, wendler? }]
- *   tracks[t] = { kg, reps, from } | null (트랙 비활성) | { manual:true } (직접 입력 필요)
+ * 실제 등록 종목(getExList 원소)의 부위 그룹 판정.
+ * muscleId/muscleIds/movementId 기반. 못 잡으면 null(보드에서 제외 — abs/코어 등).
  */
-export function buildOnboardingCandidates({ v1Cycle = null, movements = [] } = {}) {
+export function exerciseGroupId(ex = {}, movements = []) {
+  const tryIds = [ex.muscleId, ex.primaryMajor, ex.major, ex.primary, ...(Array.isArray(ex.muscleIds) ? ex.muscleIds : [])].filter(Boolean);
+  for (const id of tryIds) { const g = groupForMajor(id); if (g) return g.id; }
+  for (const id of tryIds) { if (TM2_SUB_TO_GROUP[id]) return TM2_SUB_TO_GROUP[id]; }
+  const mv = movements.find(m => m.id === (ex.movementId || ex.id));
+  if (mv) {
+    const g = groupForMajor(mv.primary);
+    if (g) return g.id;
+    if (TM2_SUB_TO_GROUP[mv.subPattern]) return TM2_SUB_TO_GROUP[mv.subPattern];
+  }
+  return null;
+}
+
+/**
+ * 운동 기록 캐시(_cache)에서 종목별 최근 본세트 무게 맵 생성 (순수).
+ * 반환: { 'id:<exerciseId>': {kg,reps,dateKey}, 'mv:<movementId>':..., 'nm:<name>':... }
+ */
+export function buildRecentMap(cache = {}) {
+  const map = {};
+  for (const dk of Object.keys(cache).sort()) { // 오름차순 — 뒤(최근)가 덮어씀
+    const exs = Array.isArray(cache[dk]?.exercises) ? cache[dk].exercises : [];
+    for (const ex of exs) {
+      let best = null;
+      for (const s of (Array.isArray(ex?.sets) ? ex.sets : [])) {
+        if (s?.done === false || s?.setType === 'warmup') continue;
+        const kg = Number(s?.kg) || 0, reps = Number(s?.reps) || 0;
+        if (kg <= 0 || reps <= 0) continue;
+        if (!best || kg > best.kg) best = { kg, reps };
+      }
+      if (!best) continue;
+      const entry = { kg: best.kg, reps: best.reps, dateKey: dk };
+      if (ex.exerciseId) map[`id:${ex.exerciseId}`] = entry;
+      if (ex.movementId) map[`mv:${ex.movementId}`] = entry;
+      if (ex.name) map[`nm:${ex.name}`] = entry;
+    }
+  }
+  return map;
+}
+
+const recentForExercise = (ex, recentMap) =>
+  recentMap[`id:${ex.id}`] || (ex.movementId && recentMap[`mv:${ex.movementId}`]) || (ex.name && recentMap[`nm:${ex.name}`]) || null;
+
+/**
+ * 온보딩/종목추가 후보 목록 — **사용자 실제 등록 종목(exList)이 1순위**.
+ * 운동할 때 참조하는 리스트와 동일 출처(getExList). v1 max_cycle은 시작무게/웬들러 상속용 읽기 전용.
+ * exList가 비면 generic MOVEMENTS로 폴백.
+ * 반환: [{ exerciseId, movementId, muscleId, label, groupId, defaultOn, tracks, source, wendler? }]
+ */
+export function buildOnboardingCandidates({ exList = [], v1Cycle = null, movements = [], recentMap = {} } = {}) {
   const out = [];
   const seen = new Set();
 
-  const v1Benchmarks = Array.isArray(v1Cycle?.benchmarks) ? v1Cycle.benchmarks : [];
-  for (const bm of v1Benchmarks) {
-    const group = groupForMajor(bm.primaryMajor);
-    if (!group) continue; // abs 등 그룹 외 부위는 제외
-    const movementId = bm.movementId || bm.exerciseId || bm.id;
-    if (!movementId || seen.has(movementId)) continue;
-    seen.add(movementId);
-    const trackOf = (spec, fallbackReps) => {
-      if (!spec || spec.enabled === false) return null;
-      const kg = Number(spec.startKg) || 0;
-      const reps = Number(spec.startReps) || fallbackReps;
-      return kg > 0 ? { kg, reps, from: 'v1 기록' } : { manual: true, reps };
-    };
+  // v1 벤치마크 lookup (movementId/exerciseId 키) — 시작무게·웬들러·강도 트랙 상속용
+  const v1ByKey = {};
+  for (const bm of (Array.isArray(v1Cycle?.benchmarks) ? v1Cycle.benchmarks : [])) {
+    const k = bm.movementId || bm.exerciseId || bm.id;
+    if (k) v1ByKey[k] = bm;
+  }
+
+  const exercises = Array.isArray(exList) ? exList : [];
+  for (const ex of exercises) {
+    if (!ex?.id || seen.has(ex.id)) continue;
+    const groupId = exerciseGroupId(ex, movements);
+    if (!groupId) continue;
+    seen.add(ex.id);
+    const v1 = v1ByKey[ex.movementId] || v1ByKey[ex.id] || null;
+    const recent = recentForExercise(ex, recentMap);
+    const volSpec = recent
+      ? { kg: recent.kg, reps: recent.reps, from: '최근 기록' }
+      : (v1 && Number(v1.tracks?.M?.startKg) > 0
+        ? { kg: Number(v1.tracks.M.startKg), reps: Number(v1.tracks.M.startReps) || 12, from: 'v1 기록' }
+        : { manual: true, reps: 12 });
+    const intSpec = (v1 && v1.tracks?.H && v1.tracks.H.enabled !== false && Number(v1.tracks.H.startKg) > 0)
+      ? { kg: Number(v1.tracks.H.startKg), reps: Number(v1.tracks.H.startReps) || 8, from: 'v1 기록' }
+      : null;
     out.push({
-      movementId,
-      label: bm.label || movementId,
-      groupId: group.id,
-      defaultOn: true,
-      source: 'v1',
-      tracks: {
-        volume: trackOf(bm.tracks?.M, 12) || { manual: true, reps: 12 },
-        intensity: trackOf(bm.tracks?.H, 8),
-      },
-      wendler: bm.program === 'wendler' && bm.wendler ? { ...bm.wendler } : null,
+      exerciseId: ex.id,
+      movementId: ex.movementId || null,
+      muscleId: ex.muscleId || null,
+      label: ex.name || ex.id,
+      groupId,
+      gymNote: ex.__gymNote || '',
+      defaultOn: !!recent || !!v1,   // 최근에 했거나 v1 벤치마크면 기본 on
+      source: 'registry',
+      tracks: { volume: volSpec, intensity: intSpec },
+      wendler: v1?.program === 'wendler' && v1.wendler ? { ...v1.wendler } : null,
     });
   }
 
-  for (const mv of movements) {
-    const group = groupForMajor(mv.primary);
-    if (!group) continue;
-    if (seen.has(mv.id)) continue;
-    seen.add(mv.id);
-    out.push({
-      movementId: mv.id,
-      label: mv.nameKo || mv.id,
-      groupId: group.id,
-      defaultOn: v1Benchmarks.length === 0 && TM2_DEFAULT_ON.has(mv.id),
-      source: 'library',
-      tracks: {
-        volume: { manual: true, reps: 12 },
-        intensity: v1Benchmarks.length === 0 && TM2_INTENSITY_DEFAULT.has(mv.id) ? { manual: true, reps: 8 } : null,
-      },
-      wendler: null,
-    });
+  // 폴백: 등록 종목이 하나도 없을 때만 generic MOVEMENTS
+  if (!out.length) {
+    for (const mv of movements) {
+      const group = groupForMajor(mv.primary);
+      if (!group || seen.has(mv.id)) continue;
+      seen.add(mv.id);
+      out.push({
+        exerciseId: null,
+        movementId: mv.id,
+        muscleId: mv.primary,
+        label: mv.nameKo || mv.id,
+        groupId: group.id,
+        gymNote: '',
+        defaultOn: TM2_DEFAULT_ON.has(mv.id),
+        source: 'library',
+        tracks: {
+          volume: { manual: true, reps: 12 },
+          intensity: TM2_INTENSITY_DEFAULT.has(mv.id) ? { manual: true, reps: 8 } : null,
+        },
+        wendler: null,
+      });
+    }
   }
   return out;
 }
@@ -209,10 +279,12 @@ function _makeBenchmark(candidate, order) {
   }
   const bm = {
     id: _id('bm'),
+    exerciseId: candidate.exerciseId || null,   // 실제 운동 기록 연결 (계약 1·통합)
     movementId: candidate.movementId || null,
+    muscleId: candidate.muscleId || null,
     groupId,
     label: candidate.label || '종목',
-    short: candidate.short || String(candidate.label || '종목').slice(0, 4),
+    short: candidate.short || String(candidate.label || '종목').slice(0, 5),
     order,
     status: 'active',
     tracks,
@@ -223,7 +295,7 @@ function _makeBenchmark(candidate, order) {
     meta: {
       rirTarget: candidate.meta?.rirTarget ?? 2,
       formNote: candidate.meta?.formNote || '',
-      gymNote: candidate.meta?.gymNote || '',
+      gymNote: candidate.meta?.gymNote || candidate.gymNote || '',
     },
   };
   if (bm.program === 'wendler') {
@@ -438,6 +510,49 @@ export function expandColumnCells(board, benchmarkId, track, cycleId, todayKey) 
   }
   if (weeksBetween(cursor, cycleEnd) > 0) {
     cells.push({ kind: 'rest', weekStart: cursor, span: weeksBetween(cursor, cycleEnd) });
+  }
+  return cells;
+}
+
+/**
+ * 활성 사이클 이후 미래 사이클들의 "투영" 셀 (계약: 최소 18주 가시화).
+ * 정산 전이므로 실제 cycle/step을 만들지 않고 계산값만 — 각 미래 사이클 = 현재 대표 + 증량폭×offset.
+ * minAheadWeeks: 활성 사이클 끝 기준 앞으로 최소 몇 주를 채울지.
+ */
+export function projectFutureCells(board, benchmarkId, track, minAheadWeeks = 12) {
+  const bm = benchmarkById(board, benchmarkId);
+  if (!bm) return [];
+  const active = activeCycleOf(board, bm.groupId);
+  if (!active) return [];
+  const cells = [];
+  let projStart = addWeeks(active.startDate, active.weeks);
+  let offset = 1;
+  const isWnd = bm.program === 'wendler';
+  const baseKg = isWnd ? bm.wendler.tmKg : currentKgOf(board, bm, track).kg;
+  const baseReps = isWnd ? 0 : currentKgOf(board, bm, track).reps;
+  const inc = isWnd ? bm.wendler.incrementKg : bm.incrementKg;
+  const limit = addWeeks(addWeeks(active.startDate, active.weeks), minAheadWeeks);
+  while (weeksBetween(projStart, limit) > 0 && offset <= 6) {
+    if (isWnd) {
+      const tm = roundToPlate(baseKg + inc * offset, 0.5);
+      for (let w = 1; w <= active.weeks; w++) {
+        const rx = wendlerWeekPrescription({ ...bm.wendler, tmKg: tm }, w);
+        const top = rx.topSet;
+        cells.push({
+          kind: 'wendler', weekStart: addWeeks(projStart, w - 1), span: 1, week: w,
+          kg: top?.kg ?? 0, repsLabel: top ? `×${top.reps}${top.amrap ? '+' : ''}` : '',
+          subLabel: top ? `${top.pct}%` : '', state: 'future', isCurrent: false, projected: true, offset,
+        });
+      }
+    } else {
+      const kg = roundToPlate(baseKg + inc * offset, 0.5);
+      cells.push({
+        kind: 'stair', weekStart: projStart, span: active.weeks, kg, reps: baseReps,
+        state: 'future', dots: [], isCurrent: false, projected: true, offset,
+      });
+    }
+    projStart = addWeeks(projStart, active.weeks);
+    offset++;
   }
   return cells;
 }
@@ -709,8 +824,9 @@ export function archiveBenchmark(board, benchmarkId) {
  * 없으면 새로 생성. 활성 사이클의 남은 주에 스텝 생성(다음 주 월요일부터).
  */
 export function addBenchmark(board, candidate, todayKey) {
+  const candKey = candidate.exerciseId || candidate.movementId;
   const archived = (board.benchmarks || []).find(b =>
-    b.status === 'archived' && b.movementId && b.movementId === candidate.movementId && b.groupId === candidate.groupId);
+    b.status === 'archived' && candKey && (b.exerciseId || b.movementId) === candKey && b.groupId === candidate.groupId);
   let bm;
   if (archived) {
     archived.status = 'active';

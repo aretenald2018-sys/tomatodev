@@ -9,18 +9,21 @@
 // 빈 보드로 시작시키지 않는다.
 // ================================================================
 
-import { getMaxCycle } from '../../data.js';
+import { getMaxCycle, getExList, getCache } from '../../data.js';
 import { MOVEMENTS } from '../../config.js';
 import {
   TM2_GROUPS, TM2_TRACK_LABELS, TM2_DEFAULTS,
-  buildOnboardingCandidates, buildBoardFromOnboarding,
+  buildOnboardingCandidates, buildBoardFromOnboarding, buildRecentMap,
   mondayOf, addWeeks, shortDate, toKey,
 } from './board-core.js';
 
+// 후보 키 — 실제 등록 종목은 exerciseId, 폴백 라이브러리는 movementId
+const candKey = (c) => c.exerciseId || c.movementId || '';
+
 const OB = {
   candidates: [],
-  enabled: new Set(),      // movementId
-  weights: {},             // `${movementId}:${track}` → { kg, reps }
+  enabled: new Set(),      // candKey
+  weights: {},             // `${candKey}:${track}` → { kg, reps }
   tab: 'chest',
   startChoice: 'next',     // 'next' | 'this'
   onComplete: null,
@@ -33,14 +36,20 @@ const _todayKey = () => toKey(new Date());
 
 export function openOnboarding({ onComplete } = {}) {
   OB.onComplete = onComplete;
-  OB.candidates = buildOnboardingCandidates({ v1Cycle: getMaxCycle(), movements: MOVEMENTS });
-  OB.enabled = new Set(OB.candidates.filter(c => c.defaultOn).map(c => c.movementId));
+  let recentMap = {}, exList = [];
+  try { recentMap = buildRecentMap(getCache() || {}); } catch { recentMap = {}; }
+  try { exList = getExList() || []; } catch { exList = []; }
+  // 실제 등록 종목(운동할 때와 동일 출처)을 1순위로 — 켜진 것이 먼저 보이게 정렬
+  OB.candidates = buildOnboardingCandidates({ exList, v1Cycle: getMaxCycle(), movements: MOVEMENTS, recentMap })
+    .sort((a, b) => (b.defaultOn ? 1 : 0) - (a.defaultOn ? 1 : 0));
+  OB.enabled = new Set(OB.candidates.filter(c => c.defaultOn).map(candKey));
   OB.weights = {};
   for (const c of OB.candidates) {
+    const k = candKey(c);
     for (const t of ['volume', 'intensity']) {
       const spec = c.tracks[t];
-      if (spec && !spec.manual) OB.weights[`${c.movementId}:${t}`] = { kg: spec.kg, reps: spec.reps };
-      else if (spec) OB.weights[`${c.movementId}:${t}`] = { kg: '', reps: spec.reps || (t === 'intensity' ? 8 : 12) };
+      if (spec && !spec.manual) OB.weights[`${k}:${t}`] = { kg: spec.kg, reps: spec.reps };
+      else if (spec) OB.weights[`${k}:${t}`] = { kg: '', reps: spec.reps || (t === 'intensity' ? 8 : 12) };
     }
   }
   OB.tab = TM2_GROUPS[0].id;
@@ -69,26 +78,29 @@ function _render() {
   if (!layer) return;
 
   const tabBtns = TM2_GROUPS.map(g => {
-    const n = OB.candidates.filter(c => c.groupId === g.id && OB.enabled.has(c.movementId)).length;
+    const n = OB.candidates.filter(c => c.groupId === g.id && OB.enabled.has(candKey(c))).length;
     return `<button class="${OB.tab === g.id ? 'tm2-on' : ''}" data-action="tm2ob:tab" data-group="${g.id}">${g.label} ${n}</button>`;
   }).join('');
 
-  const listRows = OB.candidates.filter(c => c.groupId === OB.tab).slice(0, 12).map(c => {
-    const on = OB.enabled.has(c.movementId);
+  const listRows = OB.candidates.filter(c => c.groupId === OB.tab).slice(0, 16).map(c => {
+    const k = candKey(c);
+    const on = OB.enabled.has(k);
     const tks = ['volume', 'intensity'].filter(t => c.tracks[t])
       .map(t => `<span class="tm2-tk ${t === 'intensity' ? 'tm2-tk-h' : ''}">${TM2_TRACK_LABELS[t]}</span>`).join('');
-    const note = c.source === 'v1' ? '하던 종목' : '라이브러리';
+    const recent = c.tracks.volume && !c.tracks.volume.manual ? `${c.tracks.volume.kg}kg×${c.tracks.volume.reps}` : '';
+    const note = on ? (recent ? `최근 ${recent}` : '메뉴에 추가') : '꺼둠';
     return `
-    <button class="tm2-ob-row ${on ? '' : 'tm2-dim'}" data-action="tm2ob:toggle" data-movement="${_esc(c.movementId)}">
+    <button class="tm2-ob-row ${on ? '' : 'tm2-dim'}" data-action="tm2ob:toggle" data-cand="${_esc(k)}">
       <span class="tm2-ck ${on ? '' : 'tm2-off'}">✓</span>
       <b>${_esc(c.label)}</b>${on ? tks : ''}
-      <small>${on ? note : '꺼둠'}</small>
+      <small>${note}</small>
     </button>`;
   }).join('');
 
-  const weightRows = OB.candidates.filter(c => OB.enabled.has(c.movementId)).flatMap(c =>
+  // 시작 무게 — "그 날 하겠다고 체크한 종목만" (계약: 켜진 종목만 노출)
+  const weightRows = OB.candidates.filter(c => OB.enabled.has(candKey(c))).flatMap(c =>
     ['volume', 'intensity'].filter(t => c.tracks[t]).map(t => {
-      const key = `${c.movementId}:${t}`;
+      const key = `${candKey(c)}:${t}`;
       const w = OB.weights[key] || { kg: '', reps: 12 };
       const inherited = c.tracks[t] && !c.tracks[t].manual;
       return `
@@ -98,7 +110,7 @@ function _render() {
         <span class="tm2-ob-weight">
           <input data-ob-key="${_esc(key)}" data-ob-field="kg" inputmode="decimal" value="${w.kg}" placeholder="kg"><i>kg ×</i>
           <input data-ob-key="${_esc(key)}" data-ob-field="reps" inputmode="numeric" value="${w.reps}" style="width:44px"><i>회</i>
-          ${inherited ? '<span class="tm2-ob-from">기록 이어받음</span>' : '<span class="tm2-ob-from" style="color:#b7791f">직접 입력</span>'}
+          ${inherited ? `<span class="tm2-ob-from">${c.tracks[t].from || '기록'} 이어받음</span>` : '<span class="tm2-ob-from" style="color:#b7791f">직접 입력</span>'}
         </span>
       </div>`;
     })
@@ -146,11 +158,11 @@ async function _create() {
   const selections = [];
   const missing = [];
   for (const c of OB.candidates) {
-    if (!OB.enabled.has(c.movementId)) continue;
+    if (!OB.enabled.has(candKey(c))) continue;
     const tracks = {};
     for (const t of ['volume', 'intensity']) {
       if (!c.tracks[t]) { tracks[t] = null; continue; }
-      const w = OB.weights[`${c.movementId}:${t}`] || {};
+      const w = OB.weights[`${candKey(c)}:${t}`] || {};
       const kg = Number(w.kg);
       const reps = Math.max(1, Math.round(Number(w.reps) || (t === 'intensity' ? 8 : 12)));
       if (!Number.isFinite(kg) || kg <= 0) { missing.push(`${c.label}(${TM2_TRACK_LABELS[t]})`); tracks[t] = { kg: 0, reps }; }
@@ -185,7 +197,7 @@ function _onObAction(e) {
     case 'tm2ob:tab': _syncInputs(); OB.tab = btn.dataset.group; _render(); break;
     case 'tm2ob:toggle': {
       _syncInputs();
-      const id = btn.dataset.movement;
+      const id = btn.dataset.cand;
       if (OB.enabled.has(id)) OB.enabled.delete(id);
       else OB.enabled.add(id);
       _render();

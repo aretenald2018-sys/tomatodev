@@ -110,6 +110,30 @@
 .tm2-cell.tm2-miss { background: repeating-linear-gradient(135deg, var(--tm2-miss-bg) 0 6px, #ffe9c2 6px 12px); color: var(--tm2-miss); }
 .tm2-cell.tm2-miss u { opacity: 0.9; font-weight: 700; }
 .tm2-cell.tm2-rest { background: transparent; color: var(--tm2-ink4); border: 1px dashed #e3e4e8; }
+.tm2-cell.tm2-future { background: #f6f9f7; color: #9fb3a7; border: 1px dashed #dceae2; }
+.tm2-cell.tm2-future b { font-weight: 700; }
+
+/* 연속 그리드 + 붉은 "오늘" 타임라인 (18주 가시화) */
+.tm2-grid { position: relative; }
+.tm2-rail span.tm2-band-start { border-top: 1.5px solid #d8dade; }
+.tm2-cyc-tag {
+  position: absolute; left: 2px; top: 1px; font-style: normal; font-size: 7.5px; font-weight: 800;
+  color: var(--tm2-ink3); background: #eceef1; border-radius: 4px; padding: 0 3px; line-height: 1.4;
+}
+.tm2-cyc-tag.tm2-proj { color: #9aa0a8; background: #f3f4f6; }
+.tm2-rail span { position: relative; }
+.tm2-now-line {
+  position: absolute; left: 0; right: 0; height: 0; z-index: 4; pointer-events: none;
+  border-top: 2px solid var(--tm2-tomato);
+}
+.tm2-now-line span {
+  position: absolute; right: 2px; top: -8px; font-size: 9px; font-weight: 800; color: #fff;
+  background: var(--tm2-tomato); border-radius: 5px; padding: 1px 6px; line-height: 1.4;
+}
+.tm2-now-line::before {
+  content: ''; position: absolute; left: 0; top: -4px; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--tm2-tomato);
+}
 .tm2-cell .tm2-pick {
   position: absolute; top: 3px; right: 3px; width: 15px; height: 15px; border-radius: 50%;
   background: var(--tm2-ink1); color: #fff; font-size: 9px; font-weight: 800;
@@ -201,6 +225,40 @@
 .tm2-btn-paint:disabled { opacity: 0.45; }
 .tm2-btn-ghost { display: block; width: 100%; background: none; border: 0; color: var(--tm2-ink3); font-size: 12.5px; font-weight: 600; padding: 12px; text-align: center; }
 .tm2-btn-primary { display: block; width: 100%; background: var(--tm2-tomato); color: #fff; border: 0; border-radius: 14px; padding: 15px; font-size: 15px; font-weight: 800; margin-top: 14px; }
+.tm2-btn-addset { display: block; width: 100%; background: var(--tm2-soft); border: 0; border-radius: 12px; color: var(--tm2-ink2); font-size: 12.5px; font-weight: 700; padding: 11px; margin-top: 8px; }
+
+/* 운동 카드 — 세트별 KG/REP/RIR/ROM (tm2 자급자족, 기존 운동카드 패리티) */
+.tm2-card-sets { display: flex; flex-direction: column; gap: 8px; }
+.tm2-card-sets .set-row { border: 1px solid var(--tm2-line); border-radius: 14px; padding: 9px 10px; background: #fff; }
+.tm2-card-sets .set-row.done { background: var(--tm2-now-bg); border-color: #bfe5d2; }
+.tm2-card-sets .ex-max-v2-main-row { display: flex; align-items: center; gap: 6px; }
+.tm2-card-sets .ex-max-v2-type-btn {
+  flex: none; width: 30px; height: 30px; border: 0; border-radius: 9px; font-size: 11px; font-weight: 800;
+  background: #eceef1; color: var(--tm2-ink2);
+}
+.tm2-card-sets .ex-max-v2-type-btn.warmup { background: #fff3da; color: var(--tm2-miss); }
+.tm2-card-sets .ex-max-v2-type-btn.drop { background: #fdecea; color: var(--tm2-tomato); }
+.tm2-card-sets .ex-max-v2-field { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.tm2-card-sets .ex-max-v2-field span { font-size: 8.5px; font-weight: 700; color: var(--tm2-ink4); padding-left: 2px; }
+.tm2-card-sets .set-input {
+  width: 100%; border: 1.5px solid var(--tm2-line); border-radius: 9px; padding: 6px 7px;
+  font-size: 15px; font-weight: 700; color: var(--tm2-ink1); text-align: center; font-family: inherit; outline: none;
+}
+.tm2-card-sets .set-input:focus { border-color: var(--tm2-tomato); }
+.tm2-card-sets .set-done-btn, .tm2-card-sets .set-remove-btn {
+  flex: none; width: 28px; height: 28px; border: 0; border-radius: 8px; font-size: 13px; font-weight: 800;
+}
+.tm2-card-sets .set-done-btn { background: #e8eaed; color: #b6bcc4; }
+.tm2-card-sets .set-done-btn.done { background: var(--tm2-now); color: #fff; }
+.tm2-card-sets .set-remove-btn { background: none; color: var(--tm2-ink4); }
+.tm2-card-sets .ex-max-v2-rom { display: flex; align-items: center; gap: 7px; margin-top: 7px; }
+.tm2-card-sets .ex-max-v2-rom span { font-size: 8.5px; font-weight: 700; color: var(--tm2-ink4); flex: none; }
+.tm2-card-sets .set-rom-range { flex: 1; accent-color: var(--tm2-now); height: 4px; }
+.tm2-card-sets .set-rom-input {
+  flex: none; width: 46px; border: 1.5px solid var(--tm2-line); border-radius: 8px; padding: 4px 6px;
+  font-size: 12px; font-weight: 700; color: var(--tm2-ink1); text-align: center; font-family: inherit; outline: none;
+}
+.tm2-card-sets .ex-max-v2-rom em { font-style: normal; font-size: 10px; color: var(--tm2-ink4); flex: none; }
 
 /* 조정 옵션 */
 .tm2-opt { display: flex; gap: 10px; border: 1.5px solid var(--tm2-line); border-radius: 14px; padding: 11px 13px; margin-top: 8px; font-size: 12px; color: var(--tm2-ink3); background: #fff; width: 100%; text-align: left; }

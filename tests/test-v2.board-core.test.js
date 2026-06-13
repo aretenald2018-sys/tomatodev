@@ -10,10 +10,10 @@ import assert from 'node:assert/strict';
 import {
   TM2_DEFAULTS, TM2_GROUPS,
   mondayOf, addWeeks, weeksBetween, weekIndexOf, isCycleFinished, shortDate,
-  groupForMajor, defaultIncrementForGroup,
+  groupForMajor, defaultIncrementForGroup, exerciseGroupId, buildRecentMap,
   buildOnboardingCandidates, buildBoardFromOnboarding,
   activeBenchmarks, activeCycleOf, benchmarkById, currentKgOf,
-  expandColumnCells, paintWeek, recordMiss, previewAdjust,
+  expandColumnCells, projectFutureCells, paintWeek, recordMiss, previewAdjust,
   getLineup, toggleLineup,
   isSettleDue, buildSettleRows, applySettle,
   archiveBenchmark, addBenchmark,
@@ -98,31 +98,56 @@ test('보드 생성: 그룹별 사이클 + 사이클당 1스텝(6주 유지) 기
   assert.equal(b.steps.filter(s => s.benchmarkId === squat.id).length, 0);
 });
 
-test('온보딩 후보: v1 벤치마크 우선 + 라이브러리 보충, abs 제외, 기록 없으면 manual', () => {
-  const v1Cycle = {
-    benchmarks: [
-      { id: 'bm_chest_x', movementId: 'barbell_bench', label: '바벨 벤치프레스', primaryMajor: 'chest',
-        tracks: { M: { enabled: true, startKg: 77.5, startReps: 12 }, H: { enabled: true, startKg: 87.5, startReps: 8 } } },
-      { id: 'bm_abs_x', movementId: 'cable_crunch', label: '케이블 크런치', primaryMajor: 'abs',
-        tracks: { M: { enabled: true, startKg: 20, startReps: 15 } } },
-    ],
+test('exerciseGroupId: muscleId/subPattern/movementId로 그룹 판정, abs는 null', () => {
+  assert.equal(exerciseGroupId({ muscleId: 'lower' }), 'lower');
+  assert.equal(exerciseGroupId({ muscleId: 'glute' }), 'lower');     // 둔부 → 하체 그룹
+  assert.equal(exerciseGroupId({ muscleId: 'tricep' }), 'arm');
+  assert.equal(exerciseGroupId({ muscleId: 'quad' }), 'lower');      // subPattern
+  assert.equal(exerciseGroupId({ muscleId: 'chest_upper' }), 'chest');
+  assert.equal(exerciseGroupId({ muscleId: 'abs' }), null);          // 그룹 외
+  assert.equal(exerciseGroupId({ muscleId: 'muscle_custom123', movementId: 'back_squat' }, [{ id: 'back_squat', primary: 'lower' }]), 'lower');
+});
+
+test('buildRecentMap: 캐시에서 종목별 최근 본세트 최대 무게', () => {
+  const cache = {
+    '2026-05-01': { exercises: [{ exerciseId: 'ex1', name: '스쿼트', sets: [{ kg: 90, reps: 5, done: true, setType: 'main' }] }] },
+    '2026-06-01': { exercises: [{ exerciseId: 'ex1', name: '스쿼트', sets: [{ kg: 40, reps: 10, setType: 'warmup', done: true }, { kg: 100, reps: 5, done: true }, { kg: 110, reps: 3, done: true }] }] },
   };
-  const movements = [
-    { id: 'barbell_bench', nameKo: '바벨 벤치프레스', primary: 'chest' },
-    { id: 'chest_fly', nameKo: '플라이', primary: 'chest' },
-    { id: 'plank', nameKo: '플랭크', primary: 'abs' },
+  const map = buildRecentMap(cache);
+  assert.equal(map['id:ex1'].kg, 110);   // 최근 날짜 + 최대 본세트
+  assert.equal(map['id:ex1'].reps, 3);
+  assert.equal(map['nm:스쿼트'].kg, 110);
+});
+
+test('온보딩 후보: 실제 등록 종목(exList) 1순위 + v1 시작무게/최근 기록 상속 + abs 제외', () => {
+  const exList = [
+    { id: 'custom_bench', name: '바벨 벤치프레스', muscleId: 'chest', movementId: 'barbell_bench' },
+    { id: 'custom_squat_wide', name: '스쿼트(와이드)', muscleId: 'lower', movementId: 'back_squat' },
+    { id: 'custom_fly', name: '플라이', muscleId: 'chest', movementId: 'chest_fly' },
+    { id: 'custom_crunch', name: '케이블 크런치', muscleId: 'abs', movementId: 'cable_crunch' },
   ];
-  const cands = buildOnboardingCandidates({ v1Cycle, movements });
-  const bench = cands.find(c => c.movementId === 'barbell_bench');
-  assert.equal(bench.source, 'v1');
+  const v1Cycle = { benchmarks: [
+    { id: 'bm_chest', movementId: 'barbell_bench', primaryMajor: 'chest',
+      tracks: { M: { enabled: true, startKg: 77.5, startReps: 12 }, H: { enabled: true, startKg: 87.5, startReps: 8 } } },
+  ] };
+  const recentMap = buildRecentMap({
+    '2026-06-01': { exercises: [{ exerciseId: 'custom_squat_wide', name: '스쿼트(와이드)', sets: [{ kg: 100, reps: 5, done: true }, { kg: 110, reps: 3, done: true }] }] },
+  });
+  const cands = buildOnboardingCandidates({ exList, v1Cycle, movements: [], recentMap });
+  const bench = cands.find(c => c.exerciseId === 'custom_bench');
+  assert.equal(bench.source, 'registry');
+  assert.equal(bench.groupId, 'chest');
+  assert.equal(bench.tracks.volume.kg, 77.5);      // 최근 기록 없음 → v1 상속
+  assert.equal(bench.tracks.intensity.kg, 87.5);   // v1 강도 트랙 상속
   assert.equal(bench.defaultOn, true);
-  assert.equal(bench.tracks.volume.kg, 77.5);   // 기록 상속
-  assert.equal(bench.tracks.intensity.kg, 87.5);
-  assert.ok(!cands.some(c => c.movementId === 'cable_crunch')); // abs 제외
-  assert.ok(!cands.some(c => c.movementId === 'plank'));
-  const fly = cands.find(c => c.movementId === 'chest_fly');
-  assert.equal(fly.source, 'library');
-  assert.equal(fly.tracks.volume.manual, true); // 기록 없음 → 직접 입력
+  const squat = cands.find(c => c.exerciseId === 'custom_squat_wide');
+  assert.equal(squat.groupId, 'lower');
+  assert.equal(squat.tracks.volume.kg, 110);       // 최근 기록(최대 본세트) 우선
+  assert.equal(squat.tracks.volume.from, '최근 기록');
+  const fly = cands.find(c => c.exerciseId === 'custom_fly');
+  assert.equal(fly.tracks.volume.manual, true);    // 기록·v1 없음 → 직접 입력
+  assert.equal(fly.defaultOn, false);
+  assert.ok(!cands.some(c => c.exerciseId === 'custom_crunch')); // abs 제외
 });
 
 // ----------------------------------------------------------------
@@ -155,6 +180,23 @@ test('셀 전개(wendler): 주당 1칸, 8/6/3 톱세트 %TM 환산 (TM150 → 10
   assert.match(cells[0].subLabel, /BBB 75/); // 50%TM
   assert.equal(cells[0].state, 'now');
   assert.equal(cells[1].state, 'plan');
+});
+
+test('투영 셀(계약: 18주): 활성 이후 미래 사이클 = 현재 + 증량폭×offset', () => {
+  const b = fixtureBoard();
+  const bench = b.benchmarks.find(x => x.movementId === 'barbell_bench');
+  const proj = projectFutureCells(b, bench.id, 'volume', 12); // 활성 6주 + 앞으로 12주 = 18주
+  assert.ok(proj.length >= 2);                 // 최소 2개 미래 사이클(stair 1칸씩)
+  assert.equal(proj[0].kg, 82.5);              // 80 + 2.5×1
+  assert.equal(proj[0].state, 'future');
+  assert.equal(proj[0].projected, true);
+  assert.equal(proj[0].weekStart, addWeeks(START, 6)); // 활성 사이클 직후
+  assert.equal(proj[1].kg, 85);                // 80 + 2.5×2
+  // 하체 웬들러 투영: TM + 10×offset → 주당 1칸
+  const squat = b.benchmarks.find(x => x.movementId === 'back_squat');
+  const wProj = projectFutureCells(b, squat.id, 'volume', 12);
+  assert.equal(wProj.length >= 12, true);      // 미래 사이클당 6칸
+  assert.equal(wProj[0].kg, 112.5);            // TM 160(150+10)의 70% = 112
 });
 
 // ----------------------------------------------------------------

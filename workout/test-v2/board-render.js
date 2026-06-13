@@ -10,16 +10,19 @@
 // 용어는 용어 사전 준수: 볼륨/강도 · 여유 횟수 · 자세 메모 · 1주차 · 칸.
 // ================================================================
 
-import { getTestBoardV2, saveTestBoardV2, getMaxCycle } from '../../data.js';
+import { getTestBoardV2, saveTestBoardV2, getMaxCycle, getExList, getCache } from '../../data.js';
 import { MOVEMENTS } from '../../config.js';
+import { S as WS } from '../state.js';
+import { saveWorkoutDay } from '../save.js';
+import { loadWorkoutDate } from '../load.js';
 import {
   TM2_TRACK_LABELS,
   mondayOf, addWeeks, weeksBetween, weekIndexOf, isCycleFinished, shortDate, toKey,
   activeBenchmarks, activeCycleOf, settledCyclesOf, benchmarkById, currentKgOf,
-  expandColumnCells, paintWeek, recordMiss, previewAdjust,
+  expandColumnCells, projectFutureCells, paintWeek, recordMiss, previewAdjust,
   getLineup, toggleLineup,
   isSettleDue, buildSettleRows, applySettle,
-  archiveBenchmark, addBenchmark, buildOnboardingCandidates,
+  archiveBenchmark, addBenchmark, buildOnboardingCandidates, buildRecentMap,
   buildMinimapData, recentPaintLogs, defaultIncrementForGroup,
 } from './board-core.js';
 import {
@@ -27,11 +30,22 @@ import {
   wendlerWeekPrescription, wendlerCycleOverview, isWendlerAllowedMajor,
 } from './wendler.js';
 
+// 온보딩/종목관리 후보 — 실제 등록 종목(getExList) 기반 (운동할 때와 동일 출처)
+function _candidates(groupId = null) {
+  let recentMap = {};
+  try { recentMap = buildRecentMap(getCache() || {}); } catch { recentMap = {}; }
+  let exList = [];
+  try { exList = getExList() || []; } catch { exList = []; }
+  const all = buildOnboardingCandidates({ exList, v1Cycle: getMaxCycle(), movements: MOVEMENTS, recentMap });
+  return groupId ? all.filter(c => c.groupId === groupId) : all;
+}
+
 const S = {
   board: null,
   groupId: 'chest',
   view: 'board',        // 'board' | 'minimap'
   sheet: null,          // { kind, ctx }
+  card: null,           // 운동 카드 { bmId, track, weekStart, plan, sets }
   missChoice: 'extend',
   settleDecisions: {},
   session: null,        // 오늘의 배열 진행 { keys:[], idx }
@@ -140,9 +154,19 @@ function _columnsOf(groupId) {
   return cols;
 }
 
-function _cellHtml(cell, col, todayMon) {
+const TM2_ROW_H = 46;
+const _weekRange = (start, n) => Array.from({ length: n }, (_, i) => addWeeks(start, i));
+
+function _cellHtml(cell, col) {
   if (cell.kind === 'rest') {
     return `<div class="tm2-cell tm2-rest" style="--tm2-s:${cell.span}"><i>쉼</i></div>`;
+  }
+  // 투영(미래 사이클) — 탭 불가, 옅은 계획
+  if (cell.state === 'future' || cell.projected) {
+    if (cell.kind === 'wendler') {
+      return `<div class="tm2-cell tm2-future" style="--tm2-s:1"><b>${cell.kg}</b><i>${_esc(cell.repsLabel)}</i></div>`;
+    }
+    return `<div class="tm2-cell tm2-future" style="--tm2-s:${cell.span}"><b>${cell.kg > 0 ? cell.kg : '—'}</b><i>${cell.reps}</i></div>`;
   }
   const lineup = getLineup(S.board, _todayKey());
   const pickIdx = lineup.findIndex(x => x.benchmarkId === col.bm.id && x.track === col.track);
@@ -162,46 +186,91 @@ function _cellHtml(cell, col, todayMon) {
   </button>`;
 }
 
-function _cycleBlockHtml(cycle, cols, todayKey, label) {
-  const todayMon = mondayOf(todayKey);
-  const wkIdx = weekIndexOf(cycle, todayKey);
-  const due = isCycleFinished(cycle, todayKey);
-  const railHtml = Array.from({ length: cycle.weeks }, (_, i) => {
-    const wk = addWeeks(cycle.startDate, i);
-    return `<span class="${wk === todayMon ? 'tm2-today' : ''}">${shortDate(wk)}</span>`;
-  }).join('');
-  const colsHtml = cols.map(col => {
-    const cells = expandColumnCells(S.board, col.bm.id, col.track, cycle.id, todayKey);
-    return `<div class="tm2-bcol">${cells.map(c => _cellHtml(c, col, todayMon)).join('')}</div>`;
-  }).join('');
-  let headRight;
-  if (cycle.status === 'settled') headRight = '<i class="tm2-ok">정산 완료</i>';
-  else if (due) headRight = '<i class="tm2-dday">정산할 시간!</i>';
-  else headRight = `<i class="tm2-dday">${Math.min(wkIdx, cycle.weeks)}주차 · 정산 D-${Math.max(0, weeksBetween(todayMon, addWeeks(cycle.startDate, cycle.weeks)) * 7 - 7 + (7 - (parseInt(todayKey.slice(8), 10) ? 0 : 0)))}</i>`;
-  // D-day: 사이클 종료(마지막 주 일요일)까지 남은 일수
-  const endDay = addWeeks(cycle.startDate, cycle.weeks);
-  const msLeft = (new Date(endDay) - new Date(todayKey)) / 86400000;
-  if (cycle.status !== 'settled' && !due) headRight = `<i class="tm2-dday">${Math.min(wkIdx, cycle.weeks)}주차 · 정산 D-${Math.max(0, Math.round(msLeft))}</i>`;
-  return `
-  <div class="tm2-cyc">
-    <div class="tm2-cyc-head"><b>${_esc(label)}</b><span>${shortDate(cycle.startDate)} – ${shortDate(addWeeks(cycle.startDate, cycle.weeks - 1))}</span>${headRight}</div>
-    <div class="tm2-bgrid" style="--tm2-n:${cols.length}">
-      <div class="tm2-rail">${railHtml}</div>
-      ${colsHtml}
-    </div>
-  </div>`;
+// 보드 모델 — 과거 1사이클 + 활성 + 미래 투영(최소 18주). 행=주, 셀 정렬은 행 인덱스 기준.
+function _boardModel(todayKey) {
+  const settled = settledCyclesOf(S.board, S.groupId);
+  const active = activeCycleOf(S.board, S.groupId);
+  const settledShown = settled.length ? [settled[settled.length - 1]] : [];
+  const bands = [];
+  settledShown.forEach((cy, i) => bands.push({ cycle: cy, start: cy.startDate, weeks: cy.weeks, label: `C${settled.length}`, projected: false }));
+  if (active) bands.push({ cycle: active, start: active.startDate, weeks: active.weeks, label: `C${settled.length + 1}`, projected: false });
+  if (active) {
+    const nProj = Math.max(2, Math.ceil(12 / active.weeks)); // 활성 6주 + ≥12주 투영 = ≥18주
+    for (let o = 1; o <= nProj; o++) {
+      bands.push({ cycle: null, start: addWeeks(active.startDate, active.weeks * o), weeks: active.weeks, label: `C${settled.length + 1 + o} 예정`, projected: true, offset: o });
+    }
+  }
+  const weeksList = [];
+  const bandStartAt = {};
+  for (const band of bands) {
+    const ws = _weekRange(band.start, band.weeks);
+    bandStartAt[ws[0]] = { label: band.label, projected: band.projected };
+    weeksList.push(...ws);
+  }
+  return { bands, weeksList, bandStartAt, active, settledCount: settled.length };
 }
 
-function _settleStripHtml(groupId) {
-  const entries = (S.board.history || []).filter(h => h.groupId === groupId);
-  const last = entries[entries.length - 1];
-  if (!last) return '';
-  const parts = last.results.slice(0, 4).map(r => {
-    const bm = benchmarkById(S.board, r.benchmarkId);
-    const name = bm?.short || bm?.label || '';
-    return r.decision === 'grow' ? `${_esc(name)} +${Math.round((r.after - r.before) * 10) / 10}` : `${_esc(name)} 유지`;
-  });
-  return `<div class="tm2-settle-strip"><em>✓</em>${shortDate(last.period.end)} 정산 — ${parts.join(' · ')}</div>`;
+// 한 열의 전체 셀(과거+활성+투영) — 행 인덱스로 weeksList와 정렬됨
+function _columnCells(col, model, todayKey) {
+  const cells = [];
+  for (const band of model.bands) {
+    if (band.cycle) cells.push(...expandColumnCells(S.board, col.bm.id, col.track, band.cycle.id, todayKey));
+  }
+  cells.push(...projectFutureCells(S.board, col.bm.id, col.track, 12));
+  return cells;
+}
+
+function _colHeadHtml(cols) {
+  const groupNames = (() => {
+    const parts = [];
+    let i = 0;
+    while (i < cols.length) {
+      const bm = cols[i].bm;
+      let span = 1;
+      while (i + span < cols.length && cols[i + span].bm.id === bm.id) span++;
+      const wndEm = bm.program === 'wendler' ? `<em>웬들러 · 기준 ${bm.wendler.tmKg}</em>` : '';
+      parts.push(`<button class="tm2-ch-grp" style="grid-column:span ${span}" data-action="tm2:column" data-bm="${bm.id}"><span class="tm2-ch-name">${_esc(bm.short || bm.label)}</span>${wndEm}</button>`);
+      i += span;
+    }
+    return parts.join('');
+  })();
+  const trackChips = cols.map(c => c.wendler
+    ? `<div class="tm2-ch-trk tm2-wnd">${_esc(WENDLER_SCHEMES[c.bm.wendler.scheme]?.label || '커스텀')}</div>`
+    : `<div class="tm2-ch-trk">${TM2_TRACK_LABELS[c.track]}</div>`).join('');
+  return `
+    <div class="tm2-colhead" style="--tm2-n:${cols.length}">
+      <div class="tm2-ch-rail">주</div>
+      ${groupNames}
+      <div></div>
+      ${trackChips}
+    </div>`;
+}
+
+// 연속 그리드 + 붉은 "오늘" 타임라인 (계약: 18주 가시화 + 현재 위치)
+function _renderBoardView(cols, todayKey) {
+  const model = _boardModel(todayKey);
+  const todayMon = mondayOf(todayKey);
+  const railHtml = model.weeksList.map(wk => {
+    const band = model.bandStartAt[wk];
+    const tag = band ? `<em class="tm2-cyc-tag${band.projected ? ' tm2-proj' : ''}">${_esc(band.label)}</em>` : '';
+    return `<span class="${wk === todayMon ? 'tm2-today' : ''}${band ? ' tm2-band-start' : ''}">${tag}${shortDate(wk)}</span>`;
+  }).join('');
+  const colsHtml = cols.map(col => {
+    const cells = _columnCells(col, model, todayKey);
+    return `<div class="tm2-bcol">${cells.map(c => _cellHtml(c, col)).join('')}</div>`;
+  }).join('');
+  const todayIdx = model.weeksList.indexOf(todayMon);
+  const nowLine = todayIdx >= 0 ? `<div class="tm2-now-line" style="top:${todayIdx * TM2_ROW_H}px"><span>오늘</span></div>` : '';
+  const settleCta = model.active && isSettleDue(S.board, S.groupId, todayKey)
+    ? `<button class="tm2-settle-cta" data-action="tm2:settle">6주 정산하기 — 성장/유지 결정</button>` : '';
+  return `
+    ${_colHeadHtml(cols)}
+    <div class="tm2-bgrid tm2-grid" style="--tm2-n:${cols.length}">
+      <div class="tm2-rail">${railHtml}</div>
+      ${colsHtml}
+      ${nowLine}
+    </div>
+    ${settleCta}`;
 }
 
 export function renderBoard() {
@@ -219,41 +288,9 @@ export function renderBoard() {
   const cols = _columnsOf(S.groupId);
   const cycle = activeCycleOf(S.board, S.groupId);
 
-  let bodyHtml = '';
-  if (!cols.length) {
-    bodyHtml = `<div class="tm2-empty-note">이 부위에는 아직 종목이 없어요.<br>✚ 버튼으로 운동 메뉴에 종목을 추가해 주세요.</div>`;
-  } else {
-    const colHead = `
-      <div class="tm2-colhead" style="--tm2-n:${cols.length}">
-        <div class="tm2-ch-rail">주</div>
-        ${(() => {
-          const parts = [];
-          let i = 0;
-          while (i < cols.length) {
-            const bm = cols[i].bm;
-            let span = 1;
-            while (i + span < cols.length && cols[i + span].bm.id === bm.id) span++;
-            const wndEm = bm.program === 'wendler' ? `<em>웬들러 · 기준 ${bm.wendler.tmKg}</em>` : '';
-            parts.push(`<button class="tm2-ch-grp" style="grid-column:span ${span}" data-action="tm2:column" data-bm="${bm.id}"><span class="tm2-ch-name">${_esc(bm.short || bm.label)}</span>${wndEm}</button>`);
-            i += span;
-          }
-          return parts.join('');
-        })()}
-        <div></div>
-        ${cols.map(c => c.wendler
-          ? `<div class="tm2-ch-trk tm2-wnd">${_esc(WENDLER_SCHEMES[c.bm.wendler.scheme]?.label || '커스텀')}</div>`
-          : `<div class="tm2-ch-trk">${TM2_TRACK_LABELS[c.track]}</div>`).join('')}
-      </div>`;
-
-    const settled = settledCyclesOf(S.board, S.groupId);
-    const prev = settled[settled.length - 1];
-    const prevHtml = prev ? _cycleBlockHtml(prev, cols, todayKey, `C${settled.length}`) : '';
-    const strip = prev ? _settleStripHtml(S.groupId) : '';
-    const curHtml = cycle ? _cycleBlockHtml(cycle, cols, todayKey, `C${settled.length + 1}`) : '';
-    const settleCta = cycle && isSettleDue(S.board, S.groupId, todayKey)
-      ? `<button class="tm2-settle-cta" data-action="tm2:settle">6주 정산하기 — 성장/유지 결정</button>` : '';
-    bodyHtml = colHead + prevHtml + strip + curHtml + settleCta;
-  }
+  const bodyHtml = !cols.length
+    ? `<div class="tm2-empty-note">이 부위에는 아직 종목이 없어요.<br>✚ 버튼으로 운동 메뉴에 종목을 추가해 주세요.</div>`
+    : _renderBoardView(cols, todayKey);
 
   // 오늘의 배열 바 (계약 13)
   const lineup = getLineup(S.board, todayKey);
@@ -382,90 +419,271 @@ function _kickerOf(bm, weekStart) {
   return `${group?.label || ''} · ${wk}주차 — ${shortDate(weekStart)} 주${isThisWeek ? ' (이번 주)' : ''}`;
 }
 
+// 셀 탭 → 미래는 계획 미리보기, 과거는 기록 요약, 이번 주는 실제 운동카드(통합).
 function openCellSheet(bmId, track, weekStart) {
   const bm = benchmarkById(S.board, bmId);
   if (!bm) return;
-  S.sheet = { kind: 'cell', ctx: { bmId, track, weekStart } };
-  if (bm.program === 'wendler') { _renderWendlerCellSheet(bm, weekStart); return; }
-
-  const cycle = activeCycleOf(S.board, bm.groupId);
-  const cells = cycle ? expandColumnCells(S.board, bm.id, track, cycle.id, _todayKey()) : [];
-  const cell = cells.find(c => c.kind === 'stair' && weeksBetween(c.weekStart, weekStart) >= 0 && weeksBetween(c.weekStart, weekStart) < c.span);
-  if (!cell) { _toast('이 주에는 계획된 칸이 없어요', 'info'); return; }
   const wkMon = mondayOf(weekStart);
-  const log = (S.board.steps.find(s => s.id === cell.stepId)?.weekLog || {})[wkMon] || null;
-  const painted = !!log?.paintedAt;
-  const isFuture = weeksBetween(mondayOf(_todayKey()), wkMon) > 0;
-  const recents = recentPaintLogs(S.board, bm.id, track, wkMon)
-    .map(r => `<b>✓</b> ${shortDate(r.weekStart)} · ${r.kg}kg×${r.reps} 성공${r.rir != null ? ` (여유 ${r.rir})` : ''}`)
-    .join(' &nbsp;·&nbsp; ') || '아직 색칠한 기록이 없어요';
-  const inLineup = getLineup(S.board, _todayKey()).some(x => x.benchmarkId === bm.id && x.track === track);
-  const sets = bm.setsDefault || 4;
+  const thisMon = mondayOf(_todayKey());
+  const rel = weeksBetween(thisMon, wkMon);
+  if (rel > 0) { _openPlanPreview(bm, track, wkMon); return; }      // 미래
+  if (rel < 0) { _openPastSummary(bm, track, wkMon); return; }      // 과거
+  _openWorkoutCard(bm, track, wkMon);                               // 이번 주
+}
 
+// 이번 주 칸의 계획 처방
+function _cellPlan(bm, track, wkMon) {
+  const cycle = activeCycleOf(S.board, bm.groupId);
+  if (bm.program === 'wendler') {
+    const wk = cycle ? Math.max(1, Math.min(cycle.weeks, weekIndexOf(cycle, wkMon))) : 1;
+    const rx = wendlerWeekPrescription(bm.wendler, wk);
+    return { kind: 'wendler', kg: rx.topSet?.kg || 0, reps: rx.topSet?.reps || 0, amrap: !!rx.topSet?.amrap, rx };
+  }
+  const cells = cycle ? expandColumnCells(S.board, bm.id, track, cycle.id, _todayKey()) : [];
+  const cell = cells.find(c => c.kind === 'stair' && weeksBetween(c.weekStart, wkMon) >= 0 && weeksBetween(c.weekStart, wkMon) < c.span);
+  return { kind: 'stair', kg: cell?.kg || 0, reps: cell?.reps || 0, sets: bm.setsDefault || 4 };
+}
+
+const _CARD_TYPES = ['main', 'warmup', 'drop'];
+const _cardTypeLabel = (t) => (t === 'warmup' ? '웜업' : t === 'drop' ? '드랍' : '본');
+
+function _prefillCardSets(bm, plan) {
+  const rir = bm.meta?.rirTarget ?? 2;
+  if (plan.kind === 'wendler') {
+    const sets = plan.rx.sets.map(s => ({ kg: s.kg, reps: s.reps, rir, romPct: 100, setType: 'main', done: false }));
+    const supp = plan.rx.supplemental;
+    if (supp) for (let i = 0; i < supp.sets; i++) sets.push({ kg: supp.kg, reps: supp.reps, rir, romPct: 100, setType: 'main', done: false });
+    return sets;
+  }
+  return Array.from({ length: plan.sets || 4 }, () => ({ kg: plan.kg, reps: plan.reps, rir, romPct: 100, setType: 'main', done: false }));
+}
+
+// 오늘 실제 운동기록에 이 종목이 이미 있으면 그 세트를 카드로 복원
+function _existingTodaySets(bm) {
+  const now = new Date();
+  const d = WS?.shared?.date;
+  if (!d || d.y !== now.getFullYear() || d.m !== now.getMonth() || d.d !== now.getDate()) return null;
+  const e = (WS.workout.exercises || []).find(x => (bm.exerciseId && x.exerciseId === bm.exerciseId) || (x.name && x.name === bm.label));
+  if (!e || !Array.isArray(e.sets) || !e.sets.length) return null;
+  return e.sets.map(s => ({
+    kg: Number(s.kg) || 0, reps: Number(s.reps) || 0,
+    rir: s.rpe != null ? Math.max(0, 10 - Number(s.rpe)) : (bm.meta?.rirTarget ?? 2),
+    romPct: s.romPct ?? 100, setType: s.setType || 'main', done: s.done !== false,
+  }));
+}
+
+function _openWorkoutCard(bm, track, wkMon) {
+  const plan = _cellPlan(bm, track, wkMon);
+  const sets = _existingTodaySets(bm) || _prefillCardSets(bm, plan);
+  S.card = { bmId: bm.id, track, weekStart: wkMon, plan, sets };
+  S.sheet = { kind: 'card', ctx: { bmId: bm.id, track, weekStart: wkMon } };
+  _renderWorkoutCard();
+}
+
+function _cardSetRow(set, si) {
+  const rom = set.romPct == null ? 100 : set.romPct;
+  const typeCls = set.setType === 'warmup' ? 'warmup' : set.setType === 'drop' ? 'drop' : 'main';
+  return `
+    <div class="set-row ex-max-v2-set${set.done ? ' done' : ''}" data-si="${si}">
+      <div class="ex-max-v2-main-row">
+        <button type="button" class="ex-max-v2-type-btn ${typeCls}" data-action="tm2:card-settype" data-si="${si}" title="세트 타입">${_cardTypeLabel(set.setType)}</button>
+        <label class="ex-max-v2-field"><span>KG</span><input class="set-input tm2-cset" data-si="${si}" data-f="kg" type="number" inputmode="decimal" min="0" step="0.5" value="${set.kg || ''}"></label>
+        <label class="ex-max-v2-field"><span>REP</span><input class="set-input tm2-cset" data-si="${si}" data-f="reps" type="number" inputmode="numeric" min="0" step="1" value="${set.reps || ''}"></label>
+        <label class="ex-max-v2-field"><span>RIR</span><input class="set-input tm2-cset" data-si="${si}" data-f="rir" type="number" inputmode="decimal" min="0" max="9" step="0.5" value="${set.rir ?? ''}"></label>
+        <button class="set-done-btn ${set.done ? 'done' : ''}" data-action="tm2:card-done" data-si="${si}" title="완료 체크">✓</button>
+        <button class="set-remove-btn" data-action="tm2:card-remove" data-si="${si}" title="세트 삭제">×</button>
+      </div>
+      <label class="ex-max-v2-rom">
+        <span>ROM</span>
+        <input class="set-rom-range tm2-cset" data-si="${si}" data-f="romPct" type="range" min="0" max="100" step="5" value="${rom}" style="--rom-pct:${rom}%">
+        <input class="set-rom-input tm2-cset" data-si="${si}" data-f="romPct" type="number" min="0" max="100" step="1" value="${rom}">
+        <em>%</em>
+      </label>
+    </div>`;
+}
+
+function _renderWorkoutCard() {
+  const { bmId, track, weekStart, plan, sets } = S.card;
+  const bm = benchmarkById(S.board, bmId);
+  const isWnd = plan.kind === 'wendler';
+  const trackLabel = isWnd ? `웬들러 · ${_esc(WENDLER_SCHEMES[bm.wendler.scheme]?.label || '커스텀')}` : TM2_TRACK_LABELS[track];
+  const recents = recentPaintLogs(S.board, bm.id, track, weekStart)
+    .map(r => `<b>✓</b> ${shortDate(r.weekStart)} · ${r.kg ? `${r.kg}kg×` : ''}${r.reps ?? ''}`)
+    .join(' &nbsp;·&nbsp; ') || '아직 기록이 없어요';
+  const wndHint = isWnd ? `
+    <div class="tm2-note">메인 ${plan.rx.sets.length}세트(마지막 한계까지) → <b>쉬지 말고 바로 BBB</b>까지가 한 세션이에요. 아래 세트로 그대로 채워뒀어요.</div>` : '';
   _openSheet(`
     <div class="tm2-grab"></div>
-    <div class="tm2-sh-kicker">${_esc(_kickerOf(bm, wkMon))}</div>
-    <div class="tm2-sh-title">${_esc(bm.label)} <small>${TM2_TRACK_LABELS[track]}</small></div>
-    <div class="tm2-rx"><span>${sets}세트 ×</span><b>${cell.kg || '—'}</b><span>kg ×</span><b style="font-size:24px">${cell.reps}</b><span>회</span></div>
+    <div class="tm2-sh-kicker">${_esc(_kickerOf(bm, weekStart))} · 운동 카드</div>
+    <div class="tm2-sh-title">${_esc(bm.label)} <small>${trackLabel}</small></div>
+    <div class="tm2-rx"><span>오늘 성공 기준</span><b>${plan.kg || '—'}</b><span>kg ×</span><b style="font-size:24px">${plan.reps || ''}</b><span>회${plan.amrap ? '+' : ''}</span></div>
     ${_metaRowsHtml(bm)}
+    ${wndHint}
     <div class="tm2-sec-label">최근 기록</div>
     <div class="tm2-hist">${recents}</div>
-    ${painted ? `
-      <div class="tm2-note"><b>색칠 완료</b> — ${log.actualReps ? `횟수 ${_esc(log.actualReps)}` : '기록됨'}${log.rir != null ? ` · 여유 ${log.rir}회` : ''}${log.note ? ` · ${_esc(log.note)}` : ''}</div>
-      <button class="tm2-btn-ghost" data-action="tm2:sheet-close">닫기</button>
-    ` : `
-      <div class="tm2-sec-label">오늘 한 만큼</div>
-      <div class="tm2-inps">
-        <div class="tm2-inp">횟수<input id="tm2-in-reps" inputmode="numeric" placeholder="12 · 12 · 12 · 11"></div>
-        <div class="tm2-inp">여유<input id="tm2-in-rir" inputmode="numeric" placeholder="${bm.meta?.rirTarget ?? 2}"></div>
-        <div class="tm2-inp">메모<input id="tm2-in-note" placeholder="선택"></div>
-      </div>
-      <button class="tm2-btn-paint" data-action="tm2:paint" ${isFuture ? 'disabled' : ''}>${isFuture ? '아직 미래 칸이에요' : '성공 — 칸 색칠하기'}</button>
-      ${isFuture ? '' : `<button class="tm2-btn-ghost" data-action="tm2:miss-open">목표를 못 채웠어요 ›</button>`}
-      ${inLineup ? `<button class="tm2-btn-ghost" data-action="tm2:lineup-remove">오늘의 배열에서 빼기</button>` : ''}
-    `}
+    <div class="tm2-sec-label">세트 기록 — KG · REP · 남은 횟수(RIR) · 가동범위(ROM)</div>
+    <div class="tm2-card-sets" id="tm2-card-sets">${sets.map((s, i) => _cardSetRow(s, i)).join('')}</div>
+    <button class="tm2-btn-addset" data-action="tm2:card-addset">＋ 세트 추가</button>
+    <button class="tm2-btn-paint" data-action="tm2:card-commit">운동 완료 — 칸 색칠</button>
+    <button class="tm2-btn-ghost" data-action="tm2:sheet-close">닫기 (나중에)</button>
+  `);
+  _bindCardInputs();
+}
+
+function _bindCardInputs() {
+  const root = document.getElementById('tm2-card-sets');
+  if (!root) return;
+  root.querySelectorAll('.tm2-cset').forEach(inp => {
+    const si = Number(inp.dataset.si), f = inp.dataset.f;
+    const handler = (e) => {
+      if (!S.card?.sets?.[si]) return;
+      const v = e.target.value;
+      S.card.sets[si][f] = (f === 'kg' || f === 'rir') ? (v === '' ? (f === 'rir' ? '' : 0) : Number(v)) : Math.round(Number(v) || 0);
+      if (f === 'romPct') {
+        const row = e.target.closest('.set-row');
+        row?.querySelectorAll('.tm2-cset[data-f="romPct"]').forEach(x => { if (x !== e.target) x.value = v; });
+        row?.querySelector('.set-rom-range')?.style.setProperty('--rom-pct', `${v}%`);
+      }
+    };
+    inp.addEventListener('change', handler);
+    if (inp.classList.contains('set-rom-range')) inp.addEventListener('input', handler);
+  });
+}
+
+function _syncCardInputs() {
+  document.querySelectorAll('#tm2-card-sets .tm2-cset').forEach(inp => {
+    const si = Number(inp.dataset.si), f = inp.dataset.f;
+    if (!S.card?.sets?.[si]) return;
+    const v = inp.value;
+    if (f === 'kg') S.card.sets[si].kg = Number(v) || 0;
+    else if (f === 'reps') S.card.sets[si].reps = Math.round(Number(v) || 0);
+    else if (f === 'rir') S.card.sets[si].rir = v === '' ? '' : Number(v);
+    else if (f === 'romPct') S.card.sets[si].romPct = Math.max(0, Math.min(100, Math.round(Number(v) || 0)));
+  });
+}
+
+async function _ensureTodayLoaded() {
+  const now = new Date();
+  const d = WS?.shared?.date;
+  if (d && d.y === now.getFullYear() && d.m === now.getMonth() && d.d === now.getDate()) return;
+  try { await loadWorkoutDate(now.getFullYear(), now.getMonth(), now.getDate()); }
+  catch (e) { console.error('[tm2] loadWorkoutDate failed', e); }
+}
+
+// 운동 완료 — 실제 workouts에 저장 + 목표 달성 시 칸 색칠 (계약: 실제 운동기록 통합)
+async function _commitWorkoutCard() {
+  _syncCardInputs();
+  const { bmId, track, weekStart, plan, sets } = S.card;
+  const bm = benchmarkById(S.board, bmId);
+  if (!bm) return;
+
+  // 1) 실제 운동기록(workouts)에 반영
+  await _ensureTodayLoaded();
+  // 채워진 세트(kg·reps>0)는 수행한 것으로 간주 — ✓ 체크를 강제하지 않음
+  const filled = (s) => Number(s.kg) > 0 && Number(s.reps) > 0;
+  const entry = {
+    muscleId: bm.muscleId || bm.groupId || 'chest',
+    exerciseId: bm.exerciseId || null,
+    name: bm.label,
+    movementId: bm.movementId || null,
+    sets: sets.filter(filled).map(s => ({
+      kg: Number(s.kg) || 0,
+      reps: Math.round(Number(s.reps) || 0),
+      rpe: (s.rir === '' || s.rir == null) ? null : Math.max(1, Math.min(10, 10 - Number(s.rir))),
+      romPct: s.romPct == null ? 100 : Math.max(0, Math.min(100, Math.round(Number(s.romPct)))),
+      setType: s.setType || 'main',
+      done: true,
+    })),
+  };
+  if (!entry.sets.length) { _toast('세트의 무게·횟수를 입력해 주세요', 'warning'); return; }
+  const list = WS.workout.exercises;
+  const idx = list.findIndex(x => (bm.exerciseId && x.exerciseId === bm.exerciseId) || x.name === bm.label);
+  if (idx >= 0) list[idx] = { ...list[idx], ...entry };
+  else list.push(entry);
+  try { await saveWorkoutDay({ silent: true }); }
+  catch (e) { console.error('[tm2] saveWorkoutDay failed', e); _toast('운동기록 저장 실패 — 네트워크를 확인해 주세요', 'error'); }
+
+  // 2) 목표 달성 판정 → 색칠 or 조정 (채워진 본세트 기준)
+  const working = sets.filter(s => s.setType !== 'warmup' && filled(s));
+  const best = working.reduce((m, s) => (!m || Number(s.kg) > Number(m.kg) || (Number(s.kg) === Number(m.kg) && Number(s.reps) > Number(m.reps))) ? s : m, null);
+  const hit = !!best && Number(best.kg) >= plan.kg && Number(best.reps) >= plan.reps;
+
+  if (hit) {
+    paintWeek(S.board, {
+      benchmarkId: bmId, track, weekStart,
+      log: { at: Date.now(), actualReps: working.map(s => s.reps).join(' · '), rir: best.rir === '' ? null : best.rir, amrapReps: best.reps, note: '' },
+    });
+    await _persist();
+    closeSheet();
+    renderBoard();
+    _toast('성공! 칸을 색칠했어요 🟩 · 운동기록에 저장됨', 'success');
+    _advanceLineup(weekStart);
+    return;
+  }
+  // 미달 — 운동기록은 저장됨. 웬들러는 기록만, stair는 조정 시트.
+  if (bm.program === 'wendler') {
+    recordMiss(S.board, { benchmarkId: bmId, track, weekStart, choice: 'none', log: { at: Date.now(), actualReps: best ? String(best.reps) : '', amrapReps: best?.reps ?? null } });
+    await _persist();
+    closeSheet(); renderBoard();
+    _toast('운동기록 저장됨 — 목표 미달, 다음 정산에 반영돼요', 'info');
+    return;
+  }
+  _toast('운동기록 저장됨 — 목표 미달, 계획을 조정할 수 있어요', 'info');
+  S.sheet = { kind: 'cell', ctx: { bmId, track, weekStart } };
+  openMissSheet();
+}
+
+// 배열 진행 — 다음 미완료 종목 카드로
+function _advanceLineup(weekStart) {
+  const wkMon = mondayOf(_todayKey());
+  if (mondayOf(weekStart) !== wkMon) return;
+  const next = getLineup(S.board, _todayKey()).find(x => {
+    const b = benchmarkById(S.board, x.benchmarkId);
+    if (!b) return false;
+    if (b.program === 'wendler') return !b.wendlerLog?.[wkMon]?.paintedAt;
+    return !S.board.steps.some(s => s.benchmarkId === x.benchmarkId && s.track === x.track && s.weekLog?.[wkMon]?.paintedAt);
+  });
+  if (next) setTimeout(() => openCellSheet(next.benchmarkId, next.track, wkMon), 380);
+}
+
+// 미래 칸 — 계획 미리보기 (탭 불가 처방만)
+function _openPlanPreview(bm, track, wkMon) {
+  const plan = _cellPlan(bm, track, wkMon);
+  S.sheet = { kind: 'preview', ctx: {} };
+  const seq = plan.kind === 'wendler'
+    ? plan.rx.sets.map(s => `${s.kg}×${s.reps}${s.amrap ? '+' : ''}`).join(' → ')
+    : `${bm.setsDefault || 4}세트 × ${plan.kg}kg × ${plan.reps}회`;
+  _openSheet(`
+    <div class="tm2-grab"></div>
+    <div class="tm2-sh-kicker">${_esc(_kickerOf(bm, wkMon))} · 예정</div>
+    <div class="tm2-sh-title">${_esc(bm.label)} <small>${plan.kind === 'wendler' ? '웬들러' : TM2_TRACK_LABELS[track]}</small></div>
+    <div class="tm2-rx"><span>계획</span><b>${plan.kg || '—'}</b><span>kg ×</span><b style="font-size:24px">${plan.reps || ''}</b><span>회${plan.amrap ? '+' : ''}</span></div>
+    <div class="tm2-note">${_esc(seq)}</div>
+    <div class="tm2-note">아직 미래 칸이에요 — 이번 주 칸부터 운동 카드로 기록해요.</div>
+    <button class="tm2-btn-ghost" data-action="tm2:sheet-close">닫기</button>
   `);
 }
 
-function _renderWendlerCellSheet(bm, weekStart) {
-  const cycle = activeCycleOf(S.board, bm.groupId);
-  const wk = cycle ? Math.max(1, Math.min(cycle.weeks, weekIndexOf(cycle, weekStart))) : 1;
-  const rx = wendlerWeekPrescription(bm.wendler, wk);
-  const wkMon = mondayOf(weekStart);
-  const log = bm.wendlerLog?.[wkMon] || null;
-  const painted = !!log?.paintedAt;
-  const isFuture = weeksBetween(mondayOf(_todayKey()), wkMon) > 0;
-  const top = rx.topSet;
-  const mainSeq = rx.sets.map(s => `${s.kg}×${s.reps}${s.amrap ? '+' : ''}`).join(' → ');
-  const supp = rx.supplemental;
-  const lineup = getLineup(S.board, _todayKey());
-  const inLineup = lineup.some(x => x.benchmarkId === bm.id);
-
+// 과거 칸 — 기록 요약 (읽기 전용)
+function _openPastSummary(bm, track, wkMon) {
+  S.sheet = { kind: 'past', ctx: {} };
+  let painted = false, detail = '';
+  if (bm.program === 'wendler') {
+    const log = bm.wendlerLog?.[wkMon];
+    painted = !!log?.paintedAt;
+    detail = log?.amrapReps != null ? `한계 세트 ${log.amrapReps}회` : (log?.missed ? '목표 미달로 기록됨' : '');
+  } else {
+    const step = (S.board.steps || []).find(s => s.benchmarkId === bm.id && s.track === track && s.weekLog?.[wkMon]);
+    const log = step?.weekLog?.[wkMon];
+    painted = !!log?.paintedAt;
+    detail = log?.actualReps ? `횟수 ${log.actualReps}` : (log?.missed ? '목표 미달로 조정됨' : '');
+  }
   _openSheet(`
     <div class="tm2-grab"></div>
-    <div class="tm2-sh-kicker">${_esc(_kickerOf(bm, wkMon))}</div>
-    <div class="tm2-sh-title">${_esc(bm.label)} <small>웬들러 · ${_esc(WENDLER_SCHEMES[bm.wendler.scheme]?.label || '커스텀')}</small></div>
-    <div class="tm2-rx"><span>톱세트</span><b>${top?.kg ?? '—'}</b><span>kg ×</span><b style="font-size:24px">${top?.reps ?? ''}</b><span>회${top?.amrap ? ' — 마지막은 한계까지' : ''}</span></div>
-    <div class="tm2-sec-label">오늘 순서 — 메인 치고 바로 보조까지</div>
-    <div class="tm2-std">
-      <div class="tm2-std-row"><span class="tm2-ic">1️⃣</span><div><b>메인 — ${_esc(mainSeq)}</b><small>기준 ${rx.tmKg}kg의 ${rx.sets.map(s => s.pct + '%').join('·')} · 마지막 세트는 한계까지</small></div></div>
-      ${supp ? `<div class="tm2-std-row"><span class="tm2-ic">2️⃣</span><div><b>바로 이어서 ${supp.label} — ${supp.kg}kg × ${supp.reps}회 × ${supp.sets}세트</b><small>기준의 ${supp.pct}% · 메인 끝나고 쉬지 말고 그대로</small></div></div>` : ''}
-      ${bm.meta?.formNote ? `<div class="tm2-std-row"><span class="tm2-ic">📐</span><div><b>${_esc(bm.meta.formNote)}</b><small>자세 메모</small></div></div>` : ''}
-    </div>
-    ${painted ? `
-      <div class="tm2-note"><b>색칠 완료</b> — 한계 세트 ${log.amrapReps ?? '-'}회${log.note ? ` · ${_esc(log.note)}` : ''}</div>
-      <button class="tm2-btn-ghost" data-action="tm2:sheet-close">닫기</button>
-    ` : `
-      <div class="tm2-sec-label">오늘 한 만큼</div>
-      <div class="tm2-inps">
-        <div class="tm2-inp">한계 세트(${top?.kg}kg)<input id="tm2-in-amrap" inputmode="numeric" placeholder="${top?.reps ?? ''}회 이상?"></div>
-        <div class="tm2-inp">메모<input id="tm2-in-note" placeholder="선택"></div>
-      </div>
-      <div class="tm2-note">한계 세트 횟수가 목표보다 많으면 다음 정산에서 기준 무게 <b>+${bm.wendler.incrementKg}kg</b>의 근거가 돼요.</div>
-      <button class="tm2-btn-paint" data-action="tm2:paint" ${isFuture ? 'disabled' : ''}>${isFuture ? '아직 미래 칸이에요' : '성공 — 칸 색칠하기'}</button>
-      ${isFuture ? '' : `<button class="tm2-btn-ghost" data-action="tm2:miss-record">목표를 못 채웠어요 — 기록만 남기기</button>`}
-      ${inLineup ? `<button class="tm2-btn-ghost" data-action="tm2:lineup-remove">오늘의 배열에서 빼기</button>` : ''}
-    `}
+    <div class="tm2-sh-kicker">${_esc(_kickerOf(bm, wkMon))} · 지난 주</div>
+    <div class="tm2-sh-title">${_esc(bm.label)} <small>${bm.program === 'wendler' ? '웬들러' : TM2_TRACK_LABELS[track]}</small></div>
+    <div class="tm2-note">${painted ? `<b>✓ 색칠 완료</b>${detail ? ` — ${_esc(detail)}` : ''}` : (detail ? _esc(detail) : '이 주는 기록이 없어요.')}</div>
+    <button class="tm2-btn-ghost" data-action="tm2:sheet-close">닫기</button>
   `);
 }
 
@@ -793,27 +1011,29 @@ function _renderManageSheet() {
       <button class="tm2-mg-out" data-action="tm2:manage-archive" data-bm="${bm.id}">메뉴에서 빼기</button>
     </div>`).join('') || '<div class="tm2-mg-row"><small>아직 종목이 없어요</small></div>';
 
-  const candidates = buildOnboardingCandidates({ v1Cycle: getMaxCycle(), movements: MOVEMENTS })
-    .filter(c => c.groupId === S.groupId)
-    .filter(c => !actives.some(b => b.movementId === c.movementId));
-  const archivedIds = new Set((S.board.benchmarks || []).filter(b => b.status === 'archived').map(b => b.movementId));
+  const candKey = (x) => x.exerciseId || x.movementId || '';
+  const activeKeys = new Set(actives.map(candKey));
+  const candidates = _candidates(S.groupId).filter(c => !activeKeys.has(candKey(c)));
+  const archivedKeys = new Set((S.board.benchmarks || []).filter(b => b.status === 'archived').map(candKey));
   const adding = S.sheet.ctx.adding;
-  const libRows = candidates.slice(0, 14).map(c => {
-    const wasHere = archivedIds.has(c.movementId);
+  const libRows = candidates.slice(0, 16).map(c => {
+    const key = candKey(c);
+    const wasHere = archivedKeys.has(key);
     const known = c.tracks.volume && !c.tracks.volume.manual ? `${c.tracks.volume.kg}kg×${c.tracks.volume.reps}` : null;
-    if (adding === c.movementId) {
+    const gym = c.gymNote ? ` · ${_esc(c.gymNote)}` : '';
+    if (adding === key) {
       return `
       <div class="tm2-mg-row">
         <b>${_esc(c.label)}</b>
         <span class="tm2-ob-weight"><input id="tm2-add-kg" inputmode="decimal" value="${known ? c.tracks.volume.kg : ''}" placeholder="kg"><i>kg ×</i><input id="tm2-add-reps" inputmode="numeric" value="${c.tracks.volume?.reps || 12}" style="width:44px"><i>회</i></span>
-        <button class="tm2-mg-in" data-action="tm2:manage-add-confirm" data-movement="${_esc(c.movementId)}">확인</button>
+        <button class="tm2-mg-in" data-action="tm2:manage-add-confirm" data-cand="${_esc(key)}">확인</button>
       </div>`;
     }
     return `
     <div class="tm2-mg-row">
       <b>${_esc(c.label)}</b>
-      <small>${wasHere ? '기록 있음 — 이어서 시작' : known ? `최근 ${known}` : '기록 없음'}</small>
-      <button class="tm2-mg-in" data-action="tm2:manage-add" data-movement="${_esc(c.movementId)}">＋ 추가</button>
+      <small>${wasHere ? '기록 있음 — 이어서 시작' : known ? `최근 ${known}${gym}` : `기록 없음${gym}`}</small>
+      <button class="tm2-mg-in" data-action="tm2:manage-add" data-cand="${_esc(key)}">＋ 추가</button>
     </div>`;
   }).join('') || '<div class="tm2-mg-row"><small>추가할 수 있는 종목이 없어요</small></div>';
 
@@ -830,13 +1050,12 @@ function _renderManageSheet() {
   `);
 }
 
-async function _confirmAdd(movementId) {
-  const c = buildOnboardingCandidates({ v1Cycle: getMaxCycle(), movements: MOVEMENTS })
-    .find(x => x.movementId === movementId && x.groupId === S.groupId);
+async function _confirmAdd(candKeyVal) {
+  const c = _candidates(S.groupId).find(x => (x.exerciseId || x.movementId) === candKeyVal);
   if (!c) return;
   const kg = _num('tm2-add-kg', 0);
   const reps = Math.max(1, Math.round(_num('tm2-add-reps', 12)));
-  const archived = (S.board.benchmarks || []).find(b => b.status === 'archived' && b.movementId === movementId && b.groupId === S.groupId);
+  const archived = (S.board.benchmarks || []).find(b => b.status === 'archived' && (b.exerciseId || b.movementId) === candKeyVal && b.groupId === S.groupId);
   if (!archived && kg <= 0) { _toast('시작 무게를 입력해 주세요', 'warning'); return; }
   addBenchmark(S.board, {
     ...c,
@@ -953,6 +1172,38 @@ async function _onAction(e) {
     case 'tm2:settle': openSettleSheet(); break;
     case 'tm2:start': _startSession(); break;
     case 'tm2:sheet-close': closeSheet(); break;
+    case 'tm2:card-settype': {
+      const si = Number(d.si);
+      _syncCardInputs();
+      if (S.card?.sets?.[si]) {
+        const cur = S.card.sets[si].setType || 'main';
+        S.card.sets[si].setType = _CARD_TYPES[(_CARD_TYPES.indexOf(cur) + 1) % _CARD_TYPES.length];
+        _renderWorkoutCard();
+      }
+      break;
+    }
+    case 'tm2:card-done': {
+      const si = Number(d.si);
+      _syncCardInputs();
+      if (S.card?.sets?.[si]) { S.card.sets[si].done = !(S.card.sets[si].done !== false); _renderWorkoutCard(); }
+      break;
+    }
+    case 'tm2:card-remove': {
+      const si = Number(d.si);
+      _syncCardInputs();
+      if (S.card?.sets) { S.card.sets.splice(si, 1); if (!S.card.sets.length) S.card.sets.push({ kg: S.card.plan.kg, reps: S.card.plan.reps, rir: 2, romPct: 100, setType: 'main', done: false }); _renderWorkoutCard(); }
+      break;
+    }
+    case 'tm2:card-addset': {
+      _syncCardInputs();
+      if (S.card?.sets) {
+        const last = S.card.sets[S.card.sets.length - 1] || { kg: S.card.plan.kg, reps: S.card.plan.reps, rir: 2, romPct: 100 };
+        S.card.sets.push({ kg: last.kg, reps: last.reps, rir: last.rir, romPct: last.romPct ?? 100, setType: 'main', done: false });
+        _renderWorkoutCard();
+      }
+      break;
+    }
+    case 'tm2:card-commit': await _commitWorkoutCard(); break;
     case 'tm2:paint': await _paintCurrent(); break;
     case 'tm2:miss-open': openMissSheet(); break;
     case 'tm2:miss-choice': S.missChoice = d.choice; _renderMissSheet(); break;
@@ -991,8 +1242,8 @@ async function _onAction(e) {
       _toast('메뉴에서 뺐어요 — 기록은 보존돼요', 'info');
       break;
     }
-    case 'tm2:manage-add': S.sheet.ctx.adding = d.movement; _renderManageSheet(); break;
-    case 'tm2:manage-add-confirm': await _confirmAdd(d.movement); break;
+    case 'tm2:manage-add': S.sheet.ctx.adding = d.cand; _renderManageSheet(); break;
+    case 'tm2:manage-add-confirm': await _confirmAdd(d.cand); break;
     default: break;
   }
 }
