@@ -43,6 +43,23 @@ function _isMaxWorkoutMode() {
 }
 
 const NEW_MUSCLE_OPTION = '__new_custom_muscle__';
+const _embeddedMaxCards = new Map();
+
+function _isEmbeddedMaxEntry(entryIdx) {
+  const slot = _embeddedMaxCards.get(entryIdx);
+  return !!slot?.container?.isConnected;
+}
+
+function _isMaxEntryMode(entryIdx) {
+  return _isEmbeddedMaxEntry(entryIdx) || _isMaxWorkoutMode();
+}
+
+function _rerenderMaxEntryOwner(entryIdx) {
+  const slot = _embeddedMaxCards.get(entryIdx);
+  if (!slot?.container?.isConnected) return false;
+  renderEmbeddedMaxExerciseCard(slot.container, entryIdx, slot.options);
+  return true;
+}
 
 function _syncExpertTopArea() {
   if (typeof window.renderExpertTopArea === 'function') {
@@ -473,9 +490,9 @@ function _nextMaxSetType(type) {
   return 'warmup';
 }
 
-export function wtToggleMaxEntryTrack(entryIdx) {
+function _switchMaxEntryTrack(entryIdx) {
   const entry = S.workout.exercises[entryIdx];
-  if (!entry) return;
+  if (!entry) return false;
   const current = normalizeWorkoutTrack(entry.recommendationMeta?.track || entry.maxPrescription?.benchmarkTrack || entry.maxPrescription?.track) || 'M';
   const next = current === 'H' ? 'M' : 'H';
   const alternative = entry.maxPrescription?.trackAlternatives?.[next] || null;
@@ -516,7 +533,12 @@ export function wtToggleMaxEntryTrack(entryIdx) {
     };
     entry.sets = (entry.sets || []).map(set => set.done === true ? set : { ...set, kg: nextKg || set.kg || 0, reps: nextReps, rpe: next === 'H' ? 9 : 8 });
   }
-  _renderExerciseList();
+  return true;
+}
+
+export function wtToggleMaxEntryTrack(entryIdx) {
+  if (!_switchMaxEntryTrack(entryIdx)) return;
+  if (!_rerenderMaxEntryOwner(entryIdx)) _renderExerciseList();
   saveWorkoutDay({ silent: true }).catch(e => console.error('Save max entry track:', e));
 }
 
@@ -575,11 +597,16 @@ export function wtUpdateSet(entryIdx, si, field, val) {
     // 의미 있는 수치(>0)가 들어왔을 때만 타이머 자동시작. 실수로 0 치고 나가는 건 무시.
     if ((parsed || 0) > 0) _ensureWorkoutTimerStarted();
   }
-  if (_isMaxWorkoutMode() && _setFieldAffectsTrackMetric(field)) _renderExerciseList();
+  const isMaxEntry = _isMaxEntryMode(entryIdx);
+  if (isMaxEntry && _setFieldAffectsTrackMetric(field)) {
+    if (!_rerenderMaxEntryOwner(entryIdx)) _renderExerciseList();
+  }
   else _renderSets(entryIdx);
   saveWorkoutDay({ silent: true })
     .then(() => {
-      if (_isMaxWorkoutMode() && _setFieldAffectsTrackMetric(field)) _renderExerciseList();
+      if (isMaxEntry && _setFieldAffectsTrackMetric(field)) {
+        if (!_rerenderMaxEntryOwner(entryIdx)) _renderExerciseList();
+      }
     })
     .catch(e => console.error('Save error:', e));
 }
@@ -591,10 +618,12 @@ export function wtUpdateSetRir(entryIdx, si, val) {
 export function wtToggleSetDone(entryIdx, si) {
   const wasDone = S.workout.exercises[entryIdx].sets[si].done;
   S.workout.exercises[entryIdx].sets[si].done = !wasDone;
-  if (_isMaxWorkoutMode()) _renderExerciseList();
+  if (_isMaxEntryMode(entryIdx)) {
+    if (!_rerenderMaxEntryOwner(entryIdx)) _renderExerciseList();
+  }
   else _renderSets(entryIdx);
   saveWorkoutDay({ silent: true }).then(() => {
-    _renderExerciseList();
+    if (!_rerenderMaxEntryOwner(entryIdx)) _renderExerciseList();
     if (!wasDone) showToast('저장되었습니다', 1500, 'success');
   }).catch(e => console.error('Save error:', e));
   if (!wasDone) {
@@ -1018,6 +1047,96 @@ export function _renderExerciseList() {
   });
 }
 
+export function renderEmbeddedMaxExerciseCard(container, entryIdx, options = {}) {
+  if (!container || !S.workout.exercises[entryIdx]) return null;
+  _embeddedMaxCards.set(entryIdx, { container, options });
+
+  const entry = S.workout.exercises[entryIdx];
+  const allMuscles = getMuscleParts();
+  const todayKey = _todayDateKey();
+  const ex = getExList().find(e => e.id === entry.exerciseId);
+  const mc = allMuscles.find(m => m.id === entry.muscleId);
+  const maxTrackLast = getLastTrackSession(getCache(), getExList(), entry.exerciseId, _activeMaxTrack(entry, ex), todayKey);
+  const maxLastSummary = _buildMaxLastSessionSummary(maxTrackLast, { ...entry, _idx: entryIdx }, ex);
+  const sparkline = _buildMaxTrackSparkline(entry, ex);
+  const maxAllDone = (entry.sets || []).length > 0 && (entry.sets || []).every(s => s.done !== false);
+  const maxCollapsed = !!entry.uiCollapsed && maxAllDone;
+
+  const block = document.createElement('div');
+  block.className = `ex-block ex-block--max-v2${maxAllDone ? ' is-complete' : ''}${maxCollapsed ? ' is-collapsed' : ''}${options.className ? ` ${options.className}` : ''}`;
+  block.innerHTML = `
+    ${_buildMaxExerciseCardHeader(entry, ex, mc, entryIdx, sparkline)}
+    ${maxLastSummary}
+    <div class="ex-sets ex-max-v2-sets" id="wt-sets-${entryIdx}"></div>
+    <div class="ex-max-v2-actions">
+      <button class="ex-max-v2-primary${maxAllDone ? ' is-done' : ''}" data-idx="${entryIdx}">${maxAllDone ? '운동 완료' : '다음 세트 완료'}</button>
+      ${maxCollapsed
+        ? `<button class="ex-max-v2-secondary ex-max-v2-expand-card" data-idx="${entryIdx}">세트 다시 보기</button>`
+        : `<button class="ex-add-set-btn ex-max-v2-secondary" data-idx="${entryIdx}">세트 추가</button>`}
+    </div>`;
+
+  const removeBtn = block.querySelector('.ex-remove-btn');
+  if (removeBtn && options.hideRemove !== false) {
+    removeBtn.remove();
+  } else {
+    removeBtn?.addEventListener('click', () => {
+      if (typeof options.onRemove === 'function') options.onRemove(entryIdx);
+      else wtRemoveExerciseEntry(entryIdx);
+    });
+  }
+
+  block.querySelector('.ex-add-set-btn')?.addEventListener('click', () => wtAddSet(entryIdx));
+  const maxHead = block.querySelector('[data-action="toggle-max-entry-track"]');
+  maxHead?.addEventListener('click', (e) => {
+    if (e.target.closest('.ex-remove-btn')) return;
+    if (options.allowTrackToggle === false) return;
+    if (!_switchMaxEntryTrack(entryIdx)) return;
+    if (typeof options.onTrackChange === 'function') options.onTrackChange(S.workout.exercises[entryIdx]);
+    renderEmbeddedMaxExerciseCard(container, entryIdx, options);
+    saveWorkoutDay({ silent: true }).catch(err => console.error('Save embedded max entry track:', err));
+  });
+  maxHead?.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    if (options.allowTrackToggle === false) return;
+    if (!_switchMaxEntryTrack(entryIdx)) return;
+    if (typeof options.onTrackChange === 'function') options.onTrackChange(S.workout.exercises[entryIdx]);
+    renderEmbeddedMaxExerciseCard(container, entryIdx, options);
+    saveWorkoutDay({ silent: true }).catch(err => console.error('Save embedded max entry track:', err));
+  });
+  block.querySelector('.ex-max-v2-expand-card')?.addEventListener('click', () => {
+    S.workout.exercises[entryIdx].uiCollapsed = false;
+    renderEmbeddedMaxExerciseCard(container, entryIdx, options);
+  });
+  block.querySelector('.ex-max-v2-primary')?.addEventListener('click', () => {
+    const cur = S.workout.exercises[entryIdx];
+    if (!cur) return;
+    if ((cur.sets || []).length && (cur.sets || []).every(s => s.done !== false)) {
+      if (typeof options.onComplete === 'function') {
+        options.onComplete(entryIdx);
+        return;
+      }
+      cur.uiCollapsed = true;
+      renderEmbeddedMaxExerciseCard(container, entryIdx, options);
+      return;
+    }
+    const target = (cur.sets || []).findIndex(s => s.done === false);
+    if (target >= 0 && cur.sets?.[target]) {
+      wtToggleSetDone(entryIdx, target);
+      return;
+    }
+    const exName = ex?.name || cur?.name || cur.exerciseId;
+    cur.uiCollapsed = true;
+    renderEmbeddedMaxExerciseCard(container, entryIdx, options);
+    showToast(`${exName} 종료. 다음 종목으로 넘어가도 좋아요`, 2200, 'success');
+  });
+
+  container.innerHTML = '';
+  container.appendChild(block);
+  _renderSets(entryIdx);
+  return block;
+}
+
 // ── 세트 행 렌더 ────────────────────────────────────────────────
 function _renderSets(entryIdx) {
   const el = document.getElementById(`wt-sets-${entryIdx}`);
@@ -1026,7 +1145,7 @@ function _renderSets(entryIdx) {
   el.innerHTML = '';
 
   const isExpert = _isExpertUiEnabled();
-  const isMaxMode = _isMaxWorkoutMode();
+  const isMaxMode = _isMaxEntryMode(entryIdx);
   if (isMaxMode && S.workout.exercises[entryIdx]?.uiCollapsed && sets.length > 0 && sets.every(s => s.done !== false)) {
     el.innerHTML = '<div class="ex-max-v2-collapsed-note">모든 세트 완료 · 카드가 접혔어요</div>';
     return;

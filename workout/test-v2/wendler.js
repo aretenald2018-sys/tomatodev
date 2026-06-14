@@ -51,6 +51,15 @@ export const WENDLER_SUPPLEMENTS = {
   fsl: { label: 'FSL', sets: 3, reps: 5 },
 };
 
+export const WENDLER_WARMUP_DEFAULT = {
+  enabled: true,
+  sets: [
+    { pct: 40, reps: 5 },
+    { pct: 50, reps: 5 },
+    { pct: 60, reps: 3 },
+  ],
+};
+
 // 웬들러 허용 부위 — 대근육 컴파운드만 (볼륨 전용 부위 제외)
 export const WENDLER_ALLOWED_MAJORS = new Set(['chest', 'back', 'lower', 'shoulder', 'glute']);
 
@@ -74,6 +83,18 @@ function _clampReps(reps, fallback = 5) {
   const n = Math.round(Number(reps));
   if (!Number.isFinite(n) || n <= 0) return fallback;
   return Math.max(1, Math.min(20, n));
+}
+
+function _clampWeek(value, weeks = 6) {
+  const n = Math.round(Number(value));
+  if (!Number.isFinite(n) || n <= 0) return 1;
+  return Math.max(1, Math.min(weeks, n));
+}
+
+function _clampCycleNo(value) {
+  const n = Math.round(Number(value));
+  if (!Number.isFinite(n) || n <= 0) return 1;
+  return Math.max(1, Math.min(99, n));
 }
 
 function _normalizeWeekMap(weekMap, scheme = 'w531', weeks = 6) {
@@ -138,6 +159,8 @@ export function normalizeWendlerConfig(wendler = {}, { primaryMajor = null, trac
     : suggestWendlerTm({ latest, trackSpec, roundKg });
   const baseScheme = scheme === 'custom' ? 'w863' : scheme;
   const weekMap = _normalizeWeekMap(wendler?.weekMap, baseScheme, 6);
+  const startWeek = _clampWeek(wendler?.startWeek, weekMap.length);
+  const cycleNo = _clampCycleNo(wendler?.cycleNo);
   const suppKind = ['none', 'bbb', 'fsl'].includes(wendler?.supplemental?.kind) ? wendler.supplemental.kind : 'bbb';
   const suppDefaults = WENDLER_SUPPLEMENTS[suppKind] || {};
   const supplemental = {
@@ -147,19 +170,36 @@ export function normalizeWendlerConfig(wendler = {}, { primaryMajor = null, trac
     reps: _clampReps(wendler?.supplemental?.reps, suppDefaults.reps || 10),
     timing: 'after-main',   // 메인 직후 같은 세션 (계약 8)
   };
+  const warmup = {
+    enabled: wendler?.warmup?.enabled !== false,
+    sets: (Array.isArray(wendler?.warmup?.sets) && wendler.warmup.sets.length ? wendler.warmup.sets : WENDLER_WARMUP_DEFAULT.sets)
+      .slice(0, 5)
+      .map((set, idx) => ({
+        pct: _clampPct(set?.pct, WENDLER_WARMUP_DEFAULT.sets[idx]?.pct || 40),
+        reps: _clampReps(set?.reps, WENDLER_WARMUP_DEFAULT.sets[idx]?.reps || 5),
+      })),
+  };
   const effectiveScheme = weekMapMatchesScheme(weekMap, baseScheme) ? baseScheme : 'custom';
-  return { scheme: effectiveScheme, tmKg, incrementKg, roundKg, weekMap, supplemental };
+  return { scheme: effectiveScheme, cycleNo, startWeek, tmKg, incrementKg, roundKg, weekMap, warmup, supplemental };
 }
 
 /** 특정 주차의 처방 — 메인 세트(kg 환산) + 보조 모듈 세트. */
 export function wendlerWeekPrescription(wendler = {}, weekIndex = 1) {
   const cfg = normalizeWendlerConfig(wendler);
   const weeks = cfg.weekMap.length;
-  const idx = Math.max(1, Math.min(weeks, Math.round(Number(weekIndex) || 1))) - 1;
-  const sets = (cfg.weekMap[idx]?.sets || []).map(set => ({
+  const boardIdx = Math.max(1, Math.min(weeks, Math.round(Number(weekIndex) || 1))) - 1;
+  const schemeIdx = (boardIdx + (cfg.startWeek || 1) - 1) % weeks;
+  const sets = (cfg.weekMap[schemeIdx]?.sets || []).map(set => ({
     ...set,
     kg: roundToPlate(cfg.tmKg * set.pct / 100, cfg.roundKg),
   }));
+  const warmup = cfg.warmup?.enabled ? {
+    enabled: true,
+    sets: (cfg.warmup.sets || []).map(set => ({
+      ...set,
+      kg: roundToPlate(cfg.tmKg * set.pct / 100, cfg.roundKg),
+    })),
+  } : { enabled: false, sets: [] };
   const topSet = sets[sets.length - 1] || null;
   let supplemental = null;
   if (cfg.supplemental.kind === 'bbb') {
@@ -181,7 +221,7 @@ export function wendlerWeekPrescription(wendler = {}, weekIndex = 1) {
       reps: cfg.supplemental.reps,
     };
   }
-  return { week: idx + 1, weeks, tmKg: cfg.tmKg, roundKg: cfg.roundKg, sets, topSet, supplemental };
+  return { week: schemeIdx + 1, boardWeek: boardIdx + 1, weeks, tmKg: cfg.tmKg, roundKg: cfg.roundKg, warmup, sets, topSet, supplemental };
 }
 
 /** 6주 전체 톱세트 요약 — 주차표 시각화용. */
@@ -189,12 +229,14 @@ export function wendlerCycleOverview(wendler = {}) {
   const cfg = normalizeWendlerConfig(wendler);
   return cfg.weekMap.map((week, idx) => {
     const rx = wendlerWeekPrescription(cfg, idx + 1);
+    const sets = rx.sets || [];
     return {
       week: idx + 1,
+      schemeWeek: rx.week,
       sets: rx.sets,
       topSet: rx.topSet,
-      pctLabel: week.sets.map(s => `${Number.isInteger(s.pct) ? s.pct : s.pct.toFixed(1)}`).join('·'),
-      repsLabel: week.sets.map((s, i) => `${s.reps}${i === week.sets.length - 1 && s.amrap ? '+' : ''}`).join('/'),
+      pctLabel: sets.map(s => `${Number.isInteger(s.pct) ? s.pct : s.pct.toFixed(1)}`).join('·'),
+      repsLabel: sets.map((s, i) => `${s.reps}${i === sets.length - 1 && s.amrap ? '+' : ''}`).join('/'),
     };
   });
 }

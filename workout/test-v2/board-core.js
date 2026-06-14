@@ -35,6 +35,7 @@ export const TM2_GROUPS = [
   { id: 'shoulder', label: '어깨', bodyRegion: 'upper', majors: ['shoulder'],         order: 2 },
   { id: 'lower',    label: '하체', bodyRegion: 'lower', majors: ['lower', 'glute'],   order: 3 },
   { id: 'arm',      label: '팔',   bodyRegion: 'upper', majors: ['bicep', 'tricep'],  order: 4 },
+  { id: 'abs',      label: '복부', bodyRegion: 'upper', majors: ['abs'],              order: 5 },
 ];
 
 export const TM2_TRACKS = ['volume', 'intensity'];
@@ -125,6 +126,7 @@ const TM2_DEFAULT_ON = new Set([
   'ohp', 'lateral_raise', 'rear_delt_fly', 'front_raise',
   'back_squat', 'leg_press', 'leg_extension', 'leg_curl',
   'barbell_curl', 'hammer_curl', 'cable_tricep_pushdown', 'overhead_tricep_ext',
+  'hanging_leg_raise', 'ab_wheel', 'cable_crunch',
 ]);
 
 const TM2_INTENSITY_DEFAULT = new Set(['barbell_bench', 'back_squat', 'lat_pulldown']);
@@ -136,11 +138,12 @@ const TM2_SUB_TO_GROUP = {
   back_width: 'back', back_thickness: 'back',
   shoulder_front: 'shoulder', shoulder_side: 'shoulder', rear_delt: 'shoulder', traps: 'shoulder',
   bicep: 'arm', tricep: 'arm',
+  core: 'abs',
 };
 
 /**
  * 실제 등록 종목(getExList 원소)의 부위 그룹 판정.
- * muscleId/muscleIds/movementId 기반. 못 잡으면 null(보드에서 제외 — abs/코어 등).
+ * muscleId/muscleIds/movementId 기반. 못 잡으면 null(보드에서 제외).
  */
 export function exerciseGroupId(ex = {}, movements = []) {
   const tryIds = [ex.muscleId, ex.primaryMajor, ex.major, ex.primary, ...(Array.isArray(ex.muscleIds) ? ex.muscleIds : [])].filter(Boolean);
@@ -181,6 +184,54 @@ export function buildRecentMap(cache = {}) {
   return map;
 }
 
+export function sessionExerciseId(entry = {}, idx = 0) {
+  const name = String(entry.name || '').trim();
+  return entry.exerciseId || entry.id || (name ? `session:${name}` : `session:${idx}`);
+}
+
+export function mergeSessionExercises(exList = [], entries = []) {
+  const out = Array.isArray(exList) ? [...exList] : [];
+  const seen = new Set();
+  for (const ex of out) {
+    if (ex?.id) seen.add(`id:${ex.id}`);
+    if (ex?.name) seen.add(`nm:${ex.name}`);
+  }
+  (Array.isArray(entries) ? entries : []).forEach((entry, idx) => {
+    const name = String(entry?.name || '').trim();
+    const id = sessionExerciseId(entry, idx);
+    if (!id || !name) return;
+    if (seen.has(`id:${id}`) || seen.has(`nm:${name}`)) return;
+    seen.add(`id:${id}`);
+    seen.add(`nm:${name}`);
+    out.push({
+      id,
+      name,
+      movementId: entry.movementId || null,
+      muscleId: entry.muscleId || entry.primaryMajor || entry.major || null,
+      muscleIds: Array.isArray(entry.muscleIds) ? entry.muscleIds.filter(Boolean) : [],
+      __gymNote: entry.gymTagAtTime || entry.gymName || '오늘 운동',
+    });
+  });
+  return out;
+}
+
+export function sessionRecentMap(entries = []) {
+  const map = {};
+  for (const [idx, entry] of (Array.isArray(entries) ? entries : []).entries()) {
+    const sets = (Array.isArray(entry?.sets) ? entry.sets : [])
+      .filter(s => s && s.setType !== 'warmup' && s.done !== false && Number(s.kg) > 0 && Number(s.reps) > 0);
+    const set = sets[sets.length - 1];
+    if (!set) continue;
+    const spec = { kg: Number(set.kg), reps: Math.round(Number(set.reps)) || 12, from: '오늘 운동' };
+    const id = sessionExerciseId(entry, idx);
+    const name = String(entry?.name || '').trim();
+    if (id) map[`id:${id}`] = spec;
+    if (entry?.movementId) map[`mv:${entry.movementId}`] = spec;
+    if (name) map[`nm:${name}`] = spec;
+  }
+  return map;
+}
+
 const recentForExercise = (ex, recentMap) =>
   recentMap[`id:${ex.id}`] || (ex.movementId && recentMap[`mv:${ex.movementId}`]) || (ex.name && recentMap[`nm:${ex.name}`]) || null;
 
@@ -210,13 +261,14 @@ export function buildOnboardingCandidates({ exList = [], v1Cycle = null, movemen
     const v1 = v1ByKey[ex.movementId] || v1ByKey[ex.id] || null;
     const recent = recentForExercise(ex, recentMap);
     const volSpec = recent
-      ? { kg: recent.kg, reps: recent.reps, from: '최근 기록' }
+      ? { kg: recent.kg, reps: recent.reps, from: '최근 기록', dateKey: recent.dateKey || null }
       : (v1 && Number(v1.tracks?.M?.startKg) > 0
         ? { kg: Number(v1.tracks.M.startKg), reps: Number(v1.tracks.M.startReps) || 12, from: 'v1 기록' }
         : { manual: true, reps: 12 });
     const intSpec = (v1 && v1.tracks?.H && v1.tracks.H.enabled !== false && Number(v1.tracks.H.startKg) > 0)
       ? { kg: Number(v1.tracks.H.startKg), reps: Number(v1.tracks.H.startReps) || 8, from: 'v1 기록' }
       : null;
+    const defaultOn = !!recent || !!v1 || TM2_DEFAULT_ON.has(ex.movementId || ex.id);
     out.push({
       exerciseId: ex.id,
       movementId: ex.movementId || null,
@@ -224,7 +276,7 @@ export function buildOnboardingCandidates({ exList = [], v1Cycle = null, movemen
       label: ex.name || ex.id,
       groupId,
       gymNote: ex.__gymNote || '',
-      defaultOn: !!recent || !!v1,   // 최근에 했거나 v1 벤치마크면 기본 on
+      defaultOn,   // 최근/v1 또는 v2 기본 동작이면 기본 on
       source: 'registry',
       tracks: { volume: volSpec, intensity: intSpec },
       wendler: v1?.program === 'wendler' && v1.wendler ? { ...v1.wendler } : null,

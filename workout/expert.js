@@ -153,6 +153,15 @@ function _renderWorkoutModeEntry(activeMode = 'normal') {
           icon: '▦',
           onclick: 'wtExcShowMaxView()',
         })}
+        ${card({
+          id: 'growth',
+          label: '성장 보드',
+          desc: '6주 계획표를 엑셀처럼 한눈에 보고 칸을 색칠합니다.',
+          meta: '<b>계획표</b><i></i><span>중장기 조망</span><i></i><span>칸 색칠</span>',
+          action: '열기',
+          icon: '▣',
+          onclick: 'tm2OpenBoard()',
+        })}
       </div>
     </section>
   `;
@@ -2908,7 +2917,7 @@ async function _switchToGym(gymId) {
     }
     await saveExpertPreset({ currentGymId: gymId });
     S.workout.currentGymId = gymId;
-    // 비워진 세션 + 새 gymId로 자동 저장 (save.js _buildSavePayload가 새 gymId로 기록)
+    // 비워진 세션 + 새 gymId로 자동 저장 (save.js _buildWorkoutPayload가 새 gymId로 기록)
     const { saveWorkoutDay } = await import('./save.js');
     saveWorkoutDay().catch(e => console.warn('[switch-save]:', e));
     _toast(`${gym.name}으로 전환했어요`, 'success');

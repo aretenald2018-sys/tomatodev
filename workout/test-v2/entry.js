@@ -1,9 +1,8 @@
 // ================================================================
-// workout/test-v2/entry.js — 성장 보드(테스트모드 v2) 진입 카드
+// workout/test-v2/entry.js — 성장 보드(테스트모드 v2) 진입 연결
 // ----------------------------------------------------------------
 // workout/index.js에서 eager import. 무거운 보드 모듈(board-render.js)은
-// 카드 클릭 시 dynamic import — Lazy Module Button Rule 준수:
-// 버튼 핸들러는 여기서 직접 바인딩하고 인라인 onclick을 쓰지 않는다.
+// 운동 방식 카드에서 tm2OpenBoard() 호출 시 dynamic import한다.
 // ================================================================
 
 let _opening = false;
@@ -25,26 +24,19 @@ async function _open() {
 
 export function tm2RenderEntry() {
   const host = document.getElementById('tm2-entry');
-  if (!host || host.dataset.tm2Ready) return;
+  if (!host) return;
   host.dataset.tm2Ready = '1';
   host.classList.add('tm2-root');
-  host.innerHTML = `
-    <button type="button" class="tm2-entry-card" id="tm2-entry-btn">
-      <span class="tm2-entry-icon">🟩</span>
-      <span class="tm2-entry-text">
-        <b>성장 보드</b>
-        <span>6주 계획표 — 엑셀처럼 한눈에, 색칠로 달성</span>
-      </span>
-      <span class="tm2-entry-arrow">›</span>
-    </button>`;
-  host.querySelector('#tm2-entry-btn').addEventListener('click', _open);
+  host.hidden = true;
+  host.setAttribute('aria-hidden', 'true');
+  host.innerHTML = '';
 }
 
 // 디버그/외부 진입용 전역 노출
 window.tm2OpenBoard = _open;
 window.tm2RenderEntry = tm2RenderEntry;
 
-// 모듈 로드 시점에 카드 렌더 (정적 #tm2-entry 컨테이너 — index.html)
+// 모듈 로드 시점에 예전 정적 진입 카드 자리를 비운다. 실제 진입은 운동 방식 목록에서 처리한다.
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', tm2RenderEntry, { once: true });
 } else {
