@@ -2,24 +2,20 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
-- 계획 문서: `docs/ai/features/2026-06-12-test-mode-v2-board.md` (테스트모드 v2 — 6주 성장 보드, rev 1.2)
-- 현재 단계: `execution complete — S0~S7 전체 구현 (사용자 "전부 구현해" 지시)`
-- 마지막 완료: `테스트모드 v2 전체 구현 — 신규 workout/test-v2/ 5개 모듈(board-core 순수 로직 / wendler 엔진(v1 복사, 하체 +10) / board-render 보드+시트 6종 / onboarding 첫 설정 / entry 진입 카드) + test-mode-v2.css(tm2- 네임스페이스) + data.js getTestBoardV2/saveTestBoardV2(_settings.test_board_v2) + index.html #tm2-entry + sw.js 범프(tomatofarm-v20260612z7-test-board-v2). 검증: node --test 424 PASS(신규 19), localhost:5599 비로그인 인메모리 실클릭으로 온보딩(메뉴/무게 상속·직접입력/시작일)→보드 렌더(5열·6주 레일·now 셀)→오늘의 배열(① 배지+바)→셀 시트 색칠(도트 채움)→못 채움 조정(미리보기→빗금+감량)→웬들러 전환(TM 제안 137.5, %TM 6칸+BBB)→미니맵(5그룹+오늘선) 전 플로우 확인, 런타임 에러 0`
-- 다음 액션: 리뷰 세션 — 계획 문서(계약 13 + 금지 목록 + 용어 사전) 대비 변경 파일 리뷰 + 아래 수동 검증
-- 차단 사유: `없음. 단, 로그인 필요 플로우는 not verified yet — (1) Firestore test_board_v2 저장→재로드 왕복, (2) 정산 시트 실확정(6주 경과 또는 시작일 조정 필요), (3) v1 max_cycle 보유 계정에서 온보딩 후보가 v1 기록을 상속하는지`
+- 상태: `complete`
+- 계획 문서: `docs/ai/features/2026-06-16-stats-csv-weight-export.md` (통계 CSV 몸무게 누락 수정)
+- 현재 단계: `review complete — Slice 1 완료`
+- 마지막 완료: `scripts/export-kim-taewoo-records.mjs에 체크인 체중 alias 헬퍼와 carry-forward 계산을 추가. daily CSV weight_kg를 같은 날 체크인 또는 이전 최신 체크인으로 채우고 weight_source_id를 출력하도록 변경. 실제 export 재실행 결과 exports/tomatofarm_kim_taewoo_daily_to_2026-05-31.csv 71행 중 weight_kg 66행 채움, 남은 5행은 첫 체크인 전 날짜.`
+- 다음 액션: `없음 — 이번 요청 완료. 기존 보류 중인 테스트모드 v2 리뷰는 별도 세션에서 재개 가능`
+- 차단 사유: `없음`
 
 ## 다음 실행 대상
 
-- 리뷰 대상 파일: `workout/test-v2/board-core.js`(신규) · `workout/test-v2/wendler.js`(신규) · `workout/test-v2/board-render.js`(신규) · `workout/test-v2/onboarding.js`(신규) · `workout/test-v2/entry.js`(신규) · `test-mode-v2.css`(신규) · `tests/test-v2.board-core.test.js`(신규) · `data.js` · `workout/index.js` · `index.html` · `sw.js` · `plan.md`
-- 리뷰 기준 (계획 문서의 회귀 판정 기준):
-  - 필수 구현 계약 13 — 특히 1(보드가 메인), 4(색칠=명시적 탭), 7(증량 하드코딩 금지), 8(메인→바로 BBB), 13(오늘의 배열=보드 위 선택)
-  - 금지 목록 — wt-v4-* 미사용, max*.js 미수정/미import, `_settings.max_cycle` 쓰기 0건, 용어 사전 준수(중/고·W1·스텝 미노출)
-- 수동 검증 체크리스트 (로그인 필요):
-  1. 운동 탭 → "성장 보드" 카드 → 첫 설정 → [6주 칸 채우기] → Firestore 저장 → 새로고침 후 보드 유지
-  2. 오늘 행 칸 담기 → 색칠 → 재로드 후 도트/색칠 유지
-  3. 종목 설정에서 스쿼트 웬들러 전환 → 저장 → 재로드 후 %TM 칸 유지
-  4. (시작일을 과거로 만든 테스트 보드에서) [6주 정산하기] → 성장/유지 → 다음 6주 칸 생성 확인
+- 완료 파일: `scripts/export-kim-taewoo-records.mjs` · `docs/ai/features/2026-06-16-stats-csv-weight-export.md` · `docs/ai/reviews/2026-06-16-stats-csv-weight-export-review.md` · `docs/ai/NEXT_ACTION.md` · `exports/tomatofarm_kim_taewoo_*_to_2026-05-31.csv`
+- 검증 완료:
+  1. `node --check scripts/export-kim-taewoo-records.mjs`
+  2. `node scripts/export-kim-taewoo-records.mjs 김_태우 "김_태우(guest)" 2026-05-31 kim_taewoo`
+  3. Python `csv.DictReader` 확인: daily CSV 71행 중 `weight_kg` 66행, `weight_source_id` 66행 채움
 
 ## 보류 중 (이전 흐름)
 
