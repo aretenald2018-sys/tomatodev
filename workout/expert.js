@@ -102,11 +102,48 @@ let _stepperSeeded = false;
 // ── Scene 09 · 운동탭 상단 전문가 카드 (Mockup A — One Card Stepper) ──
 // 구조: 모드 배지(전문가/일반 전환) → 카드(헤더 + 세그먼트 + 3-스텝)
 // 상태 'done' → 3-스텝 표시 / 'skip'·'health' → 안내 메시지
+const _modeEntryBoundHosts = new WeakSet();
+
+async function _openGrowthBoardEntry() {
+  try {
+    if (typeof window.tm2OpenBoard !== 'function') {
+      await import('./test-v2/entry.js');
+    }
+    if (typeof window.tm2OpenBoard === 'function') {
+      await window.tm2OpenBoard();
+      return;
+    }
+    throw new Error('tm2OpenBoard is not registered');
+  } catch (e) {
+    console.error('[tm2] entry open failed', e);
+    if (typeof window.showToast === 'function') window.showToast('성장 보드를 여는 데 실패했어요', 2200, 'error');
+  }
+}
+
+function _runWorkoutModeEntryAction(action) {
+  if (action === 'normal') return window.wtExcSwitchToNormalView?.();
+  if (action === 'pro') return window.wtExcShowProView?.();
+  if (action === 'max') return window.wtExcShowMaxView?.();
+  if (action === 'growth') return _openGrowthBoardEntry();
+  return undefined;
+}
+
+function _bindWorkoutModeEntry(host) {
+  if (!host || _modeEntryBoundHosts.has(host)) return;
+  _modeEntryBoundHosts.add(host);
+  host.addEventListener('click', (event) => {
+    const card = event.target.closest('.wt-mode-entry-card[data-mode-action]');
+    if (!card || !host.contains(card)) return;
+    event.preventDefault();
+    _runWorkoutModeEntryAction(card.dataset.modeAction);
+  });
+}
+
 function _renderWorkoutModeEntry(activeMode = 'normal') {
   const mode = activeMode === 'max' || activeMode === 'pro' ? activeMode : 'normal';
-  const card = ({ id, label, desc, meta, action, icon, onclick }) => `
-    <article class="wt-mode-entry-card ${mode === id ? 'is-active' : ''}">
-      <button type="button" class="wt-mode-entry-main" onclick="${onclick}">
+  const card = ({ id, label, desc, meta, action, icon, modeAction }) => `
+    <article class="wt-mode-entry-card ${mode === id ? 'is-active' : ''}" data-mode-action="${modeAction}">
+      <button type="button" class="wt-mode-entry-main" aria-label="${label} ${action}">
         <span class="wt-mode-entry-icon">${icon}</span>
         <span class="wt-mode-entry-copy">
           <strong>${label}</strong>
@@ -133,7 +170,7 @@ function _renderWorkoutModeEntry(activeMode = 'normal') {
           meta: '<b>빠름</b><i></i><span>추천 없음</span><i></i><span>자유 기록</span>',
           action: '기록',
           icon: '+',
-          onclick: 'wtExcSwitchToNormalView()',
+          modeAction: 'normal',
         })}
         ${card({
           id: 'pro',
@@ -142,7 +179,7 @@ function _renderWorkoutModeEntry(activeMode = 'normal') {
           meta: '<b>운영</b><i></i><span>헬스장/기구</span><i></i><span>루틴 추천</span>',
           action: '관리',
           icon: '⌂',
-          onclick: 'wtExcShowProView()',
+          modeAction: 'pro',
         })}
         ${card({
           id: 'max',
@@ -151,7 +188,7 @@ function _renderWorkoutModeEntry(activeMode = 'normal') {
           meta: '<b>추천</b><i></i><span>계획값 자동 입력</span><i></i><span>조정 가능</span>',
           action: '시작',
           icon: '▦',
-          onclick: 'wtExcShowMaxView()',
+          modeAction: 'max',
         })}
         ${card({
           id: 'growth',
@@ -160,7 +197,7 @@ function _renderWorkoutModeEntry(activeMode = 'normal') {
           meta: '<b>계획표</b><i></i><span>중장기 조망</span><i></i><span>칸 색칠</span>',
           action: '열기',
           icon: '▣',
-          onclick: 'tm2OpenBoard()',
+          modeAction: 'growth',
         })}
       </div>
     </section>
@@ -170,6 +207,7 @@ function _renderWorkoutModeEntry(activeMode = 'normal') {
 export function renderExpertTopArea() {
   const host = document.getElementById('expert-top-area');
   if (!host) return;
+  _bindWorkoutModeEntry(host);
 
   // 모드 enum: 'normal' | 'pro' | 'max'
   const mode = getExpertMode();

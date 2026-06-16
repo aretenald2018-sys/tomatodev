@@ -3,19 +3,22 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-16-stats-csv-weight-export.md` (통계 CSV 몸무게 누락 수정)
+- 계획 문서: `docs/ai/features/2026-06-16-growth-board-card-click.md` (성장 보드 카드 클릭 범위 수정)
 - 현재 단계: `review complete — Slice 1 완료`
-- 마지막 완료: `scripts/export-kim-taewoo-records.mjs에 체크인 체중 alias 헬퍼와 carry-forward 계산을 추가. daily CSV weight_kg를 같은 날 체크인 또는 이전 최신 체크인으로 채우고 weight_source_id를 출력하도록 변경. 실제 export 재실행 결과 exports/tomatofarm_kim_taewoo_daily_to_2026-05-31.csv 71행 중 weight_kg 66행 채움, 남은 5행은 첫 체크인 전 날짜.`
-- 다음 액션: `없음 — 이번 요청 완료. 기존 보류 중인 테스트모드 v2 리뷰는 별도 세션에서 재개 가능`
+- 마지막 완료: `workout/expert.js에서 운동 방식 카드 전체 클릭 위임을 추가하고 inline onclick 의존을 제거했다. sw.js CACHE_VERSION을 범프했다. node --check 2건과 http://localhost:5500 Puppeteer 모바일 검증에서 성장 보드 카드 하단 메타 영역과 열기 CTA가 모두 #tm2-sheets.tm2-open을 여는 것을 확인했다.`
+- 다음 액션: `없음 — 이번 Discord 요청 완료`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
 
-- 완료 파일: `scripts/export-kim-taewoo-records.mjs` · `docs/ai/features/2026-06-16-stats-csv-weight-export.md` · `docs/ai/reviews/2026-06-16-stats-csv-weight-export-review.md` · `docs/ai/NEXT_ACTION.md` · `exports/tomatofarm_kim_taewoo_*_to_2026-05-31.csv`
+- 완료 파일: `workout/expert.js` · `sw.js` · `docs/ai/features/2026-06-16-growth-board-card-click.md` · `docs/ai/reviews/2026-06-16-growth-board-card-click-review.md` · `docs/ai/NEXT_ACTION.md`
 - 검증 완료:
-  1. `node --check scripts/export-kim-taewoo-records.mjs`
-  2. `node scripts/export-kim-taewoo-records.mjs 김_태우 "김_태우(guest)" 2026-05-31 kim_taewoo`
-  3. Python `csv.DictReader` 확인: daily CSV 71행 중 `weight_kg` 66행, `weight_source_id` 66행 채움
+  1. `node --check workout/expert.js`
+  2. `node --check sw.js`
+  3. `npm.cmd run dev` → `http://localhost:5500`
+  4. Puppeteer 모바일 뷰 HTTP 200
+  5. 운동 탭 → 성장 보드 카드 하단 메타 영역 클릭 시 `#tm2-sheets.tm2-open`
+  6. 운동 탭 → 성장 보드 `열기` CTA 클릭 시 `#tm2-sheets.tm2-open`
 
 ## 보류 중 (이전 흐름)
 
