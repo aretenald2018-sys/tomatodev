@@ -25,6 +25,9 @@
 - 통과: Puppeteer 모바일 뷰에서 `http://localhost:5500` HTTP 200
 - 통과: 운동 탭 → 성장 보드 카드 하단 메타 영역 클릭 → `#tm2-sheets.tm2-open`
 - 통과: 운동 탭 → 성장 보드 `열기` CTA 클릭 → `#tm2-sheets.tm2-open`
+- 통과: `git push tomatofarm main`
+- 통과: `https://aretenald2018-sys.github.io/tomatofarm/sw.js`가 `tomatofarm-v20260616z1-growth-board-card-click`를 반환
+- 통과: 배포 URL `https://aretenald2018-sys.github.io/tomatofarm/`에서 운동 탭 상태로 전환 후 성장 보드 카드 하단 메타 영역 클릭 → `#tm2-sheets.tm2-open`
 
 ## 남은 리스크
 
