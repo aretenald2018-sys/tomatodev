@@ -133,9 +133,9 @@ const TM2_INTENSITY_DEFAULT = new Set(['barbell_bench', 'back_squat', 'lat_pulld
 
 // 세부 부위(subPattern) → 그룹 매핑 (groupForMajor가 못 잡는 것 보충)
 const TM2_SUB_TO_GROUP = {
-  quad: 'lower', hamstring: 'lower', calf: 'lower', glute: 'lower', posterior: 'lower',
+  quad: 'lower', hamstring: 'lower', calf: 'lower', glute: 'lower',
   chest_upper: 'chest', chest_mid: 'chest', chest_lower: 'chest',
-  back_width: 'back', back_thickness: 'back',
+  back_width: 'back', back_thickness: 'back', posterior: 'back',
   shoulder_front: 'shoulder', shoulder_side: 'shoulder', rear_delt: 'shoulder', traps: 'shoulder',
   bicep: 'arm', tricep: 'arm',
   core: 'abs',

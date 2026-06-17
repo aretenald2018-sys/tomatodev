@@ -109,6 +109,21 @@ test('exerciseGroupId: muscleId/subPattern/movementId로 그룹 판정, abs는 �
   assert.equal(exerciseGroupId({ muscleId: 'muscle_custom123', movementId: 'back_squat' }, [{ id: 'back_squat', primary: 'lower' }]), 'lower');
 });
 
+test('exerciseGroupId: posterior 계열 등 운동은 성장 보드 등 그룹으로 분류된다', () => {
+  const movements = [
+    { id: 'rdl', primary: 'back', subPattern: 'posterior' },
+    { id: 'lat_pulldown', primary: 'back', subPattern: 'back_width' },
+  ];
+  assert.equal(exerciseGroupId({ muscleIds: ['posterior'], movementId: 'rdl' }, movements), 'back');
+
+  const cands = buildOnboardingCandidates({
+    exList: [{ id: 'ex_rdl', name: '루마니안 데드리프트', movementId: 'rdl', muscleIds: ['posterior'] }],
+    movements,
+    recentMap: {},
+  });
+  assert.equal(cands.find(c => c.exerciseId === 'ex_rdl')?.groupId, 'back');
+});
+
 test('buildRecentMap: 캐시에서 종목별 최근 본세트 최대 무게', () => {
   const cache = {
     '2026-05-01': { exercises: [{ exerciseId: 'ex1', name: '스쿼트', sets: [{ kg: 90, reps: 5, done: true, setType: 'main' }] }] },

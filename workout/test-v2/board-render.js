@@ -74,9 +74,9 @@ function _normalizeGroupId(id) {
   const mv = MOVEMENTS.find(m => m.id === raw);
   if (mv) return _normalizeGroupId(mv.primary || mv.subPattern);
   const subMap = {
-    quad: 'lower', hamstring: 'lower', calf: 'lower', posterior: 'lower',
+    quad: 'lower', hamstring: 'lower', calf: 'lower',
     chest_upper: 'chest', chest_mid: 'chest', chest_lower: 'chest',
-    back_width: 'back', back_thickness: 'back',
+    back_width: 'back', back_thickness: 'back', posterior: 'back',
     shoulder_front: 'shoulder', shoulder_side: 'shoulder', rear_delt: 'shoulder', traps: 'shoulder',
   };
   return subMap[raw] || null;
