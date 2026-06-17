@@ -5,8 +5,8 @@
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-17-growth-board-back-group-visibility.md` (성장 보드 등 그룹 표시 누락 수정)
 - 현재 단계: `review complete — Slice 1 완료`
-- 마지막 완료: `성장 보드 v2에서 posterior 계열 등 운동을 back 그룹으로 분류하도록 board-core/board-render를 수정하고 sw.js CACHE_VERSION을 범프했다. 회귀 테스트, node --check, http://localhost:5500 브라우저 검증에서 등 칩과 등 · 1주차 표시를 확인했고 리뷰에서 차단 이슈는 없었다.`
-- 다음 액션: `없음 — Discord devreq_discord_1516270292027052164 로컬 구현/검증 완료`
+- 마지막 완료: `성장 보드 v2에서 posterior 계열 등 운동을 back 그룹으로 분류하도록 board-core/board-render를 수정하고 sw.js CACHE_VERSION을 범프했다. 회귀 테스트, node --check, http://localhost:5500 브라우저 검증에서 등 칩과 등 · 1주차 표시를 확인했고 tomatofarm main push 후 배포 URL에서도 HTTP 200, 새 sw.js 버전, 등 칩/등 · 1주차/루마니안 열 헤더를 확인했다.`
+- 다음 액션: `없음 — Discord devreq_discord_1516270292027052164 구현/검증/배포 완료`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상

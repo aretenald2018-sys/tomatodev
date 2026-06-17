@@ -30,6 +30,10 @@
 - 통과: `http://localhost:5500/` HTTP 200
 - 통과: Puppeteer 브라우저 검증에서 `posterior` RDL 테스트 보드 진입 시 성장 보드 overlay가 열리고 `등` 칩, `등 · 1주차`, `루마니안` 열 헤더가 표시됨
 - 통과: `git diff --check`
+- 통과: `git push tomatofarm main` (`4930fd5`)
+- 통과: 배포 URL `https://aretenald2018-sys.github.io/tomatofarm/` HTTP 200
+- 통과: 배포 URL `https://aretenald2018-sys.github.io/tomatofarm/sw.js`에서 `tomatofarm-v20260617z1-growth-board-back-group` 확인
+- 통과: 배포 URL Puppeteer 검증에서 `posterior` RDL 테스트 보드 진입 시 `등` 칩, `등 · 1주차`, `루마니안` 열 헤더 표시
 
 ## 남은 리스크
 
