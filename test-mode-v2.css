@@ -239,6 +239,12 @@
   padding: 6px 20px calc(22px + env(safe-area-inset-bottom));
   box-shadow: 0 -16px 36px rgba(10,10,12,0.16);
 }
+body:has(#tm2-sheets.tm2-open) #wt-workout-timer-bar.wt-open {
+  z-index: 10080;
+}
+body:has(#tm2-sheets.tm2-open) #tm2-sheets .tm2-sheet {
+  padding-bottom: calc(92px + env(safe-area-inset-bottom, 0));
+}
 .tm2-grab { width: 44px; height: 5px; border-radius: 3px; background: #e3e4e8; margin: 8px auto 14px; }
 .tm2-sh-kicker { font-size: 11px; font-weight: 600; color: var(--tm2-ink3); }
 .tm2-sh-title { font-size: 18px; font-weight: 800; color: var(--tm2-ink1); margin: 2px 0 12px; }
@@ -290,27 +296,6 @@
 /* 운동 카드 — 세트별 KG/REP/RIR/ROM (tm2 자급자족, 기존 운동카드 패리티) */
 .tm2-card-host { margin-top: 10px; }
 .tm2-card-host .ex-block--max-v2 { margin-bottom: 10px; }
-.tm2-card-host .ex-max-v2-sets { padding: 4px 10px 10px; gap: 7px; }
-.tm2-card-host .ex-max-v2-set { padding: 7px; border-radius: 12px; gap: 7px; }
-.tm2-card-host .ex-max-v2-main-row {
-  grid-template-columns: 40px minmax(62px, 1fr) minmax(54px, .9fr) minmax(50px, .85fr) 34px 20px 14px;
-  gap: 6px;
-}
-.tm2-card-host .ex-max-v2-type-btn { width: 40px; height: 30px; font-size: 11px; border-radius: 9px; }
-.tm2-card-host .ex-max-v2-field { grid-template-columns: 24px minmax(0, 1fr); gap: 4px; }
-.tm2-card-host .ex-max-v2-field span { font-size: 9px; line-height: 11px; }
-.tm2-card-host .ex-max-v2-field input,
-.tm2-card-host .ex-max-v2-rom input[type="number"] {
-  height: 32px; border-radius: 9px; font-size: 15px; line-height: 18px; font-weight: 750;
-}
-.tm2-card-host .ex-max-v2-set .set-done-btn { width: 32px; height: 32px; border-radius: 9px; }
-.tm2-card-host .ex-max-v2-set .set-done-btn::before { left: 10px; top: 11px; }
-.tm2-card-host .ex-max-v2-set .set-remove-btn { width: 20px; height: 32px; }
-.tm2-card-host .ex-max-v2-rom { grid-template-columns: 40px minmax(0, 1fr) 54px 12px; gap: 7px; }
-.tm2-card-host .ex-max-v2-rom span,
-.tm2-card-host .ex-max-v2-rom em { font-size: 9px; }
-.tm2-card-host .ex-max-v2-rom input[type="range"] { height: 28px; }
-.tm2-card-host .ex-max-v2-actions { padding-bottom: 10px; }
 .tm2-wendler-card-note {
   margin-top: 8px; border: 1px solid #e7defc; background: var(--tm2-wendler-bg);
   border-radius: 13px; padding: 10px 12px; color: var(--tm2-wendler);
@@ -375,9 +360,29 @@
   color: #b7bdc5; font-size: 18px; font-weight: 700;
 }
 .tm2-card-sets { display: flex; flex-direction: column; gap: 8px; }
-.tm2-card-sets .set-row { border: 1px solid var(--tm2-line); border-radius: 14px; padding: 9px 10px; background: #fff; }
+.tm2-card-sets .set-row {
+  border: 1px solid var(--tm2-line); border-radius: 14px; padding: 9px 10px; background: #fff;
+}
+.tm2-card-sets .ex-max-v2-set {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 7px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+.tm2-card-sets .ex-max-v2-set * { box-sizing: border-box; }
 .tm2-card-sets .set-row.done { background: var(--tm2-now-bg); border-color: #bfe5d2; }
-.tm2-card-sets .ex-max-v2-main-row { display: flex; align-items: center; gap: 6px; }
+.tm2-card-sets .ex-max-v2-main-row {
+  display: grid;
+  grid-template-columns: 32px minmax(54px, 1fr) minmax(46px, .85fr) minmax(42px, .78fr) 30px 18px;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  max-width: 100%;
+}
 .tm2-card-sets .ex-max-v2-type-btn {
   flex: none; width: 30px; height: 30px; border: 0; border-radius: 9px; font-size: 11px; font-weight: 800;
   background: #eceef1; color: var(--tm2-ink2);
@@ -387,7 +392,7 @@
 .tm2-card-sets .ex-max-v2-field { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .tm2-card-sets .ex-max-v2-field span { font-size: 8.5px; font-weight: 700; color: var(--tm2-ink4); padding-left: 2px; }
 .tm2-card-sets .set-input {
-  width: 100%; border: 1.5px solid var(--tm2-line); border-radius: 9px; padding: 6px 7px;
+  width: 100%; min-width: 0; border: 1.5px solid var(--tm2-line); border-radius: 9px; padding: 6px 7px;
   font-size: 15px; font-weight: 700; color: var(--tm2-ink1); text-align: center; font-family: inherit; outline: none;
 }
 .tm2-card-sets .set-input:focus { border-color: var(--tm2-tomato); }
@@ -396,12 +401,19 @@
 }
 .tm2-card-sets .set-done-btn { background: #e8eaed; color: #b6bcc4; }
 .tm2-card-sets .set-done-btn.done { background: var(--tm2-now); color: #fff; }
-.tm2-card-sets .set-remove-btn { background: none; color: var(--tm2-ink4); }
-.tm2-card-sets .ex-max-v2-rom { display: flex; align-items: center; gap: 7px; margin-top: 7px; }
+.tm2-card-sets .set-remove-btn { width: 18px; background: none; color: var(--tm2-ink4); }
+.tm2-card-sets .set-drag-handle { display: none; }
+.tm2-card-sets .ex-max-v2-rom {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 46px 10px;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+}
 .tm2-card-sets .ex-max-v2-rom span { font-size: 8.5px; font-weight: 700; color: var(--tm2-ink4); flex: none; }
-.tm2-card-sets .set-rom-range { flex: 1; accent-color: var(--tm2-now); height: 4px; }
+.tm2-card-sets .set-rom-range { min-width: 0; accent-color: var(--tm2-now); height: 4px; }
 .tm2-card-sets .set-rom-input {
-  flex: none; width: 46px; border: 1.5px solid var(--tm2-line); border-radius: 8px; padding: 4px 6px;
+  width: 100%; min-width: 0; border: 1.5px solid var(--tm2-line); border-radius: 8px; padding: 4px 6px;
   font-size: 12px; font-weight: 700; color: var(--tm2-ink1); text-align: center; font-family: inherit; outline: none;
 }
 .tm2-card-sets .ex-max-v2-rom em { font-style: normal; font-size: 10px; color: var(--tm2-ink4); flex: none; }
@@ -606,16 +618,18 @@
   .tm2-wset-row { padding: 7px 9px; }
   .tm2-wset-row input { height: 36px; font-size: 15px; padding: 5px 6px; }
   .tm2-wset-remove { width: 24px; }
-  .tm2-card-host .ex-max-v2-main-row {
-    grid-template-columns: 36px minmax(54px, 1fr) minmax(48px, .9fr) minmax(44px, .8fr) 30px 18px 0;
+  .tm2-sheet { padding-left: 14px; padding-right: 14px; }
+  .tm2-card-sets .set-row { padding: 8px; }
+  .tm2-card-sets .ex-max-v2-main-row {
+    grid-template-columns: 30px minmax(50px, 1fr) minmax(42px, .82fr) minmax(38px, .72fr) 28px 16px;
     gap: 4px;
   }
-  .tm2-card-host .ex-max-v2-type-btn { width: 36px; }
-  .tm2-card-host .ex-max-v2-field { grid-template-columns: 20px minmax(0, 1fr); gap: 3px; }
-  .tm2-card-host .ex-max-v2-field input,
-  .tm2-card-host .ex-max-v2-rom input[type="number"] { height: 30px; font-size: 14px; }
-  .tm2-card-host .ex-max-v2-set .set-done-btn { width: 30px; height: 30px; }
-  .tm2-card-host .ex-max-v2-set .set-remove-btn { width: 18px; }
-  .tm2-card-host .ex-max-v2-set .set-drag-handle { display: none; }
-  .tm2-card-host .ex-max-v2-rom { grid-template-columns: 36px minmax(0, 1fr) 50px 10px; gap: 5px; }
+  .tm2-card-sets .ex-max-v2-type-btn { width: 30px; font-size: 10px; }
+  .tm2-card-sets .set-done-btn { width: 28px; }
+  .tm2-card-sets .set-remove-btn { width: 16px; }
+  .tm2-card-sets .set-input { font-size: 14px; padding: 6px 5px; }
+  .tm2-card-sets .ex-max-v2-rom {
+    grid-template-columns: 30px minmax(0, 1fr) 44px 10px;
+    gap: 5px;
+  }
 }

@@ -3,22 +3,22 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-19-growth-board-today-selection-reflection.md` (성장 보드 당일 선택 운동 반영 수정)
+- 계획 문서: `docs/ai/features/2026-06-19-growth-board-modal-rom-timer.md` (성장 보드 모달 ROM 잘림 및 타이머 가림 수정)
 - 현재 단계: `review complete — Slice 1 완료`
-- 마지막 완료: `성장 보드 v2 온보딩/종목관리 후보가 오늘 세션 운동을 병합하도록 연결했고, 그룹 필터의 arm/abs 기본 포함을 제거했다. 세션 entry가 exerciseId만 가져도 등록 운동 부위로 복원하는 회귀 테스트를 추가했고 sw.js CACHE_VERSION을 범프했다.`
-- 다음 액션: `없음 — 당일 선택 운동 반영 수정 완료, 실제 브라우저 UI 플로우는 사용자 로컬 dev server에서 수동 확인 필요`
+- 마지막 완료: `성장 보드 모달의 ROM 잘림과 하단 타이머 가림을 test-mode-v2.css에서 보정했고 sw.js CACHE_VERSION을 범프했다. 모바일 360px fixture와 정적 검증을 통과했다.`
+- 다음 액션: `없음 — 배포 후 https://aretenald2018-sys.github.io/tomatofarm/ 및 /sw.js 캐시 버전 확인만 남음`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
 
-- 완료 파일: `workout/test-v2/board-core.js` · `workout/test-v2/onboarding.js` · `workout/test-v2/board-render.js` · `tests/test-v2.board-core.test.js` · `sw.js` · `docs/ai/features/2026-06-19-growth-board-today-selection-reflection.md` · `docs/ai/reviews/2026-06-19-growth-board-today-selection-reflection-review.md` · `docs/ai/NEXT_ACTION.md`
+- 완료 파일: `test-mode-v2.css` · `sw.js` · `docs/ai/features/2026-06-19-growth-board-modal-rom-timer.md` · `docs/ai/reviews/2026-06-19-growth-board-modal-rom-timer-review.md` · `docs/ai/NEXT_ACTION.md`
 - 검증 완료:
-  1. `node --test tests/test-v2.board-core.test.js`
-  2. `node --check workout/test-v2/board-core.js`
-  3. `node --check workout/test-v2/onboarding.js`
-  4. `node --check workout/test-v2/board-render.js`
-  5. `node --check sw.js`
-  6. not verified yet: 사용자 상위 지침에 따라 이번 세션에서는 장기 dev server를 시작하지 않아 실제 브라우저 UI 플로우는 미확인
+  1. `node --check sw.js`
+  2. `node --check workout/exercises.js`
+  3. `git diff --check`
+  4. `node scripts/verify-runtime-assets.mjs`
+  5. `npm.cmd run dev` 후 `http://localhost:5500/index.html` HTTP 200
+  6. Chrome 360px fixture에서 ROM overflow 없음 및 하단 타이머 레이어 표시 확인
 
 ## 보류 중 (이전 흐름)
 
