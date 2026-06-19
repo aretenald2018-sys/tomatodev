@@ -23,6 +23,7 @@ import {
   expandColumnCells, projectFutureCells, paintWeek, recordMiss, previewAdjust,
   isSettleDue, buildSettleRows, applySettle,
   archiveBenchmark, addBenchmark, buildOnboardingCandidates, buildRecentMap,
+  mergeSessionExercises, sessionRecentMap, resolveSessionEntryGroupId,
   buildMinimapData, defaultIncrementForGroup,
 } from './board-core.js';
 import {
@@ -30,12 +31,22 @@ import {
   wendlerWeekPrescription, wendlerCycleOverview, isWendlerAllowedMajor,
 } from './wendler.js';
 
-// 온보딩/종목관리 후보 — 실제 등록 종목(getExList) 기반 (운동할 때와 동일 출처)
+function _currentSessionEntries() {
+  return (Array.isArray(WS.workout?.exercises) ? WS.workout.exercises : [])
+    .filter(entry => entry && (entry.exerciseId || entry.id || entry.name));
+}
+
+function _registryExercises() {
+  try { return getExList() || []; } catch { return []; }
+}
+
+// 온보딩/종목관리 후보 — 실제 등록 종목 + 오늘 세션 기반 (운동할 때와 동일 출처)
 function _candidates(groupId = null) {
   let recentMap = {};
   try { recentMap = buildRecentMap(getCache() || {}); } catch { recentMap = {}; }
-  let exList = [];
-  try { exList = getExList() || []; } catch { exList = []; }
+  const sessionEntries = _currentSessionEntries();
+  recentMap = { ...recentMap, ...sessionRecentMap(sessionEntries) };
+  const exList = mergeSessionExercises(_registryExercises(), sessionEntries);
   const all = buildOnboardingCandidates({ exList, v1Cycle: getMaxCycle(), movements: MOVEMENTS, recentMap });
   return groupId ? all.filter(c => c.groupId === groupId) : all;
 }
@@ -59,7 +70,6 @@ const _num = (id, fallback = 0) => {
   return Number.isFinite(v) && v > 0 ? v : fallback;
 };
 const _txt = (id) => (document.getElementById(id)?.value || '').trim();
-const TM2_ALWAYS_GROUP_IDS = new Set(['arm', 'abs']);
 
 function _normalizeGroupId(id) {
   const raw = String(id || '').trim();
@@ -83,24 +93,12 @@ function _normalizeGroupId(id) {
 }
 
 function _entryGroupId(entry = {}) {
-  const ids = [
-    entry.muscleId,
-    entry.primaryMajor,
-    entry.major,
-    entry.primary,
-    ...(Array.isArray(entry.muscleIds) ? entry.muscleIds : []),
-  ];
-  for (const id of ids) {
-    const gid = _normalizeGroupId(id);
-    if (gid) return gid;
-  }
-  const mv = MOVEMENTS.find(m => m.id === (entry.movementId || entry.exerciseId));
-  return mv ? _normalizeGroupId(mv.primary || mv.subPattern) : null;
+  return resolveSessionEntryGroupId(entry, { exList: _registryExercises(), movements: MOVEMENTS });
 }
 
 function _readTodayGroupIds() {
-  const ids = new Set(TM2_ALWAYS_GROUP_IDS);
-  for (const entry of (Array.isArray(WS.workout?.exercises) ? WS.workout.exercises : [])) {
+  const ids = new Set();
+  for (const entry of _currentSessionEntries()) {
     const gid = _entryGroupId(entry);
     if (gid) ids.add(gid);
   }
@@ -108,6 +106,8 @@ function _readTodayGroupIds() {
     const gid = _normalizeGroupId(id);
     if (gid) ids.add(gid);
   }
+  if (ids.size) return ids;
+
   document.querySelectorAll('[data-muscle].prefer, [data-muscle].active, [data-muscle].selected').forEach(el => {
     const gid = _normalizeGroupId(el.getAttribute('data-muscle'));
     if (gid) ids.add(gid);

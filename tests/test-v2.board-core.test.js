@@ -11,6 +11,7 @@ import {
   TM2_DEFAULTS, TM2_GROUPS,
   mondayOf, addWeeks, weeksBetween, weekIndexOf, isCycleFinished, shortDate,
   groupForMajor, defaultIncrementForGroup, exerciseGroupId, buildRecentMap,
+  resolveSessionEntryGroupId,
   mergeSessionExercises, sessionRecentMap,
   buildOnboardingCandidates, buildBoardFromOnboarding,
   activeBenchmarks, activeCycleOf, benchmarkById, currentKgOf,
@@ -122,6 +123,21 @@ test('exerciseGroupId: posterior 계열 등 운동은 성장 보드 등 그룹�
     recentMap: {},
   });
   assert.equal(cands.find(c => c.exerciseId === 'ex_rdl')?.groupId, 'back');
+});
+
+test('resolveSessionEntryGroupId: 오늘 세션 entry가 exerciseId만 가져도 등록 운동 부위로 복원한다', () => {
+  const exList = [
+    { id: 'custom_bench_today', name: '오늘 벤치', muscleId: 'chest', movementId: 'barbell_bench' },
+    { id: 'custom_curl_today', name: '오늘 컬', muscleId: 'bicep', movementId: 'barbell_curl' },
+  ];
+  assert.equal(
+    resolveSessionEntryGroupId({ exerciseId: 'custom_bench_today', sets: [{ kg: 60, reps: 10 }] }, { exList, movements: [] }),
+    'chest'
+  );
+  assert.equal(
+    resolveSessionEntryGroupId({ exerciseId: 'custom_curl_today', sets: [{ kg: 20, reps: 12 }] }, { exList, movements: [] }),
+    'arm'
+  );
 });
 
 test('buildRecentMap: 캐시에서 종목별 최근 본세트 최대 무게', () => {

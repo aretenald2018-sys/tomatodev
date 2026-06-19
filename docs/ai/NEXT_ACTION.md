@@ -3,22 +3,22 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-17-growth-board-back-group-visibility.md` (성장 보드 등 그룹 표시 누락 수정)
+- 계획 문서: `docs/ai/features/2026-06-19-growth-board-today-selection-reflection.md` (성장 보드 당일 선택 운동 반영 수정)
 - 현재 단계: `review complete — Slice 1 완료`
-- 마지막 완료: `성장 보드 v2에서 posterior 계열 등 운동을 back 그룹으로 분류하도록 board-core/board-render를 수정하고 sw.js CACHE_VERSION을 범프했다. 회귀 테스트, node --check, http://localhost:5500 브라우저 검증에서 등 칩과 등 · 1주차 표시를 확인했고 tomatofarm main push 후 배포 URL에서도 HTTP 200, 새 sw.js 버전, 등 칩/등 · 1주차/루마니안 열 헤더를 확인했다.`
-- 다음 액션: `없음 — Discord devreq_discord_1516270292027052164 구현/검증/배포 완료`
+- 마지막 완료: `성장 보드 v2 온보딩/종목관리 후보가 오늘 세션 운동을 병합하도록 연결했고, 그룹 필터의 arm/abs 기본 포함을 제거했다. 세션 entry가 exerciseId만 가져도 등록 운동 부위로 복원하는 회귀 테스트를 추가했고 sw.js CACHE_VERSION을 범프했다.`
+- 다음 액션: `없음 — 당일 선택 운동 반영 수정 완료, 실제 브라우저 UI 플로우는 사용자 로컬 dev server에서 수동 확인 필요`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
 
-- 완료 파일: `workout/test-v2/board-core.js` · `workout/test-v2/board-render.js` · `tests/test-v2.board-core.test.js` · `sw.js` · `docs/ai/features/2026-06-17-growth-board-back-group-visibility.md` · `docs/ai/reviews/2026-06-17-growth-board-back-group-visibility-review.md` · `docs/ai/NEXT_ACTION.md`
+- 완료 파일: `workout/test-v2/board-core.js` · `workout/test-v2/onboarding.js` · `workout/test-v2/board-render.js` · `tests/test-v2.board-core.test.js` · `sw.js` · `docs/ai/features/2026-06-19-growth-board-today-selection-reflection.md` · `docs/ai/reviews/2026-06-19-growth-board-today-selection-reflection-review.md` · `docs/ai/NEXT_ACTION.md`
 - 검증 완료:
   1. `node --test tests/test-v2.board-core.test.js`
   2. `node --check workout/test-v2/board-core.js`
-  3. `node --check workout/test-v2/board-render.js`
-  4. `node --check sw.js`
-  5. `npm.cmd run dev` → `http://localhost:5500/`
-  6. HTTP 200 및 성장 보드 `등` 칩/`등 · 1주차` 표시 확인
+  3. `node --check workout/test-v2/onboarding.js`
+  4. `node --check workout/test-v2/board-render.js`
+  5. `node --check sw.js`
+  6. not verified yet: 사용자 상위 지침에 따라 이번 세션에서는 장기 dev server를 시작하지 않아 실제 브라우저 UI 플로우는 미확인
 
 ## 보류 중 (이전 흐름)
 

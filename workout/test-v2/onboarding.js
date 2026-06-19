@@ -15,6 +15,7 @@ import { S as WS } from '../state.js';
 import {
   TM2_GROUPS, TM2_TRACK_LABELS, TM2_DEFAULTS,
   buildOnboardingCandidates, buildBoardFromOnboarding, buildRecentMap,
+  mergeSessionExercises, sessionRecentMap,
   mondayOf, shortDate, toKey,
 } from './board-core.js';
 import {
@@ -37,6 +38,7 @@ const OB = {
   creating: false,
   lastCreatePointerAt: 0,
   editor: null,          // { id, mode }
+  todayKeys: new Set(),
 };
 
 const _esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -151,6 +153,28 @@ function _visibleExerciseList() {
   return exList.filter(ex => ex?.id && !hidden.has(ex.id));
 }
 
+function _currentSessionEntries() {
+  return (Array.isArray(WS.workout?.exercises) ? WS.workout.exercises : [])
+    .filter(entry => entry && (entry.exerciseId || entry.id || entry.name));
+}
+
+function _candidateMatchesSession(c, entries) {
+  const label = String(c?.label || '').trim();
+  return (Array.isArray(entries) ? entries : []).some((entry) => {
+    const entryId = entry?.exerciseId || entry?.id || '';
+    const entryName = String(entry?.name || '').trim();
+    return (entryId && c.exerciseId === entryId)
+      || (entry?.movementId && c.movementId === entry.movementId)
+      || (entryName && label === entryName);
+  });
+}
+
+function _initialTab() {
+  const today = OB.candidates.find(c => OB.todayKeys.has(candKey(c)));
+  if (today?.groupId) return today.groupId;
+  return TM2_GROUPS[0].id;
+}
+
 function _initCandidateState(c) {
   const k = candKey(c);
   if (!k) return;
@@ -168,9 +192,17 @@ function _initCandidateState(c) {
 function _reloadCandidates({ resetState = false } = {}) {
   let recentMap = {}, exList = [];
   try { recentMap = buildRecentMap(getCache() || {}); } catch { recentMap = {}; }
-  exList = _visibleExerciseList();
-  // 종목 선택 피커와 같은 getExList() 순서를 원본으로 쓴다. 오늘 세션 병합/최근순 재정렬 없음.
+  const sessionEntries = _currentSessionEntries();
+  const sessionMap = sessionRecentMap(sessionEntries);
+  recentMap = { ...recentMap, ...sessionMap };
+  exList = mergeSessionExercises(_visibleExerciseList(), sessionEntries);
   OB.candidates = buildOnboardingCandidates({ exList, v1Cycle: getMaxCycle(), movements: MOVEMENTS, recentMap });
+  OB.todayKeys = new Set(
+    OB.candidates
+      .filter(c => _candidateMatchesSession(c, sessionEntries))
+      .map(candKey)
+      .filter(Boolean)
+  );
   if (resetState) {
     OB.enabled = new Set();
     OB.weights = {};
@@ -186,8 +218,8 @@ function _reloadCandidates({ resetState = false } = {}) {
 export function openOnboarding({ onComplete } = {}) {
   OB.onComplete = onComplete;
   _reloadCandidates({ resetState: true });
-  OB.enabled = new Set();   // 기본값: 모두 해제 — 유저가 할 종목만 직접 켠다
-  OB.tab = TM2_GROUPS[0].id;
+  OB.enabled = new Set(OB.todayKeys);
+  OB.tab = _initialTab();
   OB.editor = null;
 
   const layer = document.getElementById('tm2-sheets');

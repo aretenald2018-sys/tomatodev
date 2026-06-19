@@ -138,7 +138,7 @@ const TM2_SUB_TO_GROUP = {
   back_width: 'back', back_thickness: 'back', posterior: 'back',
   shoulder_front: 'shoulder', shoulder_side: 'shoulder', rear_delt: 'shoulder', traps: 'shoulder',
   bicep: 'arm', tricep: 'arm',
-  core: 'abs',
+  core: 'abs', abs_core: 'abs',
 };
 
 /**
@@ -149,13 +149,37 @@ export function exerciseGroupId(ex = {}, movements = []) {
   const tryIds = [ex.muscleId, ex.primaryMajor, ex.major, ex.primary, ...(Array.isArray(ex.muscleIds) ? ex.muscleIds : [])].filter(Boolean);
   for (const id of tryIds) { const g = groupForMajor(id); if (g) return g.id; }
   for (const id of tryIds) { if (TM2_SUB_TO_GROUP[id]) return TM2_SUB_TO_GROUP[id]; }
-  const mv = movements.find(m => m.id === (ex.movementId || ex.id));
+  const mv = movements.find(m => m.id === (ex.movementId || ex.id || ex.exerciseId));
   if (mv) {
     const g = groupForMajor(mv.primary);
     if (g) return g.id;
     if (TM2_SUB_TO_GROUP[mv.subPattern]) return TM2_SUB_TO_GROUP[mv.subPattern];
   }
   return null;
+}
+
+export function resolveSessionEntryGroupId(entry = {}, { exList = [], movements = [] } = {}) {
+  const direct = exerciseGroupId(entry, movements);
+  if (direct) return direct;
+
+  const entryId = entry.exerciseId || entry.id;
+  const registered = (Array.isArray(exList) ? exList : []).find(ex => ex?.id && ex.id === entryId) || null;
+  if (registered) {
+    const merged = { ...registered };
+    ['movementId', 'muscleId', 'primaryMajor', 'major', 'primary'].forEach((key) => {
+      if (entry[key]) merged[key] = entry[key];
+    });
+    if (Array.isArray(entry.muscleIds) && entry.muscleIds.length) merged.muscleIds = entry.muscleIds;
+    const registeredGroup = exerciseGroupId(merged, movements);
+    if (registeredGroup) return registeredGroup;
+  }
+
+  const movementId = entry.movementId || registered?.movementId || entryId;
+  const mv = (Array.isArray(movements) ? movements : []).find(m => m.id === movementId);
+  if (!mv) return null;
+  const byPrimary = groupForMajor(mv.primary);
+  if (byPrimary) return byPrimary.id;
+  return TM2_SUB_TO_GROUP[mv.subPattern] || null;
 }
 
 /**
