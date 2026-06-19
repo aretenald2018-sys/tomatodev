@@ -32,4 +32,9 @@
 ## 잔여 리스크
 
 - 로그인된 실제 사용자 데이터로 성장 보드 셀을 탭하는 완전한 end-to-end 흐름은 이 세션의 무인 브라우저에서 인증 상태가 없어 fixture 기반으로 검증했다.
-- 배포 후 GitHub Pages 캐시 반영은 `/sw.js`에서 새 `CACHE_VERSION` 확인이 필요하다.
+- 배포 확인:
+  - PASS: `git push tomatofarm main` (`6a6145a`)
+  - PASS: 배포 URL HTTP 200
+  - PASS: 원격 `/sw.js`가 `tomatofarm-v20260619z2-growth-board-rom-timer`를 반환
+  - PASS: 원격 `test-mode-v2.css`가 타이머 레이어 보정 CSS를 반환
+- 잔여 갭: 기존 `build-info.json`이 오래된 `93581936...` 커밋을 가리키므로 `scripts/verify-deploy.mjs`의 commit check는 실패한다.

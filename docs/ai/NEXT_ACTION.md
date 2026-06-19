@@ -5,8 +5,8 @@
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-19-growth-board-modal-rom-timer.md` (성장 보드 모달 ROM 잘림 및 타이머 가림 수정)
 - 현재 단계: `review complete — Slice 1 완료`
-- 마지막 완료: `성장 보드 모달의 ROM 잘림과 하단 타이머 가림을 test-mode-v2.css에서 보정했고 sw.js CACHE_VERSION을 범프했다. 모바일 360px fixture와 정적 검증을 통과했다.`
-- 다음 액션: `없음 — 배포 후 https://aretenald2018-sys.github.io/tomatofarm/ 및 /sw.js 캐시 버전 확인만 남음`
+- 마지막 완료: `성장 보드 모달의 ROM 잘림과 하단 타이머 가림을 test-mode-v2.css에서 보정했고 sw.js CACHE_VERSION을 범프했다. 모바일 360px fixture, 정적 검증, GitHub Pages live 파일 반영 확인을 통과했다.`
+- 다음 액션: `없음 — 요청 완료. 참고로 기존 build-info.json은 stale 상태라 verify-deploy commit check는 실패한다.`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
@@ -19,6 +19,8 @@
   4. `node scripts/verify-runtime-assets.mjs`
   5. `npm.cmd run dev` 후 `http://localhost:5500/index.html` HTTP 200
   6. Chrome 360px fixture에서 ROM overflow 없음 및 하단 타이머 레이어 표시 확인
+  7. `git push tomatofarm main` (`6a6145a`)
+  8. `https://aretenald2018-sys.github.io/tomatofarm/` HTTP 200, 원격 `sw.js` 캐시 버전 확인
 
 ## 보류 중 (이전 흐름)
 

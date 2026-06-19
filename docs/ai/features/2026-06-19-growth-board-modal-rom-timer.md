@@ -53,4 +53,8 @@
   - PASS: `npm.cmd run dev` 후 `http://localhost:5500/index.html` HTTP 200
   - PASS: Chrome 360px fixture에서 `sheet.scrollWidth === sheet.clientWidth`, `row.scrollWidth === row.clientWidth`, ROM 입력 우측 `311px <= 360px`, 타이머 `z-index: 10080`, 타이머가 최상단 hit target임을 확인
 - 남은 배포 검증:
-  - 배포 후 `https://aretenald2018-sys.github.io/tomatofarm/`와 `/sw.js` 캐시 버전을 확인한다.
+  - PASS: `git push tomatofarm main` (`6a6145a`)
+  - PASS: `https://aretenald2018-sys.github.io/tomatofarm/` HTTP 200
+  - PASS: 원격 `sw.js`에서 `tomatofarm-v20260619z2-growth-board-rom-timer` 확인
+  - PASS: 원격 `test-mode-v2.css`에서 `z-index: 10080` 확인
+  - 참고: `node scripts/verify-deploy.mjs https://aretenald2018-sys.github.io/tomatofarm/ 6a6145a`는 기존 `build-info.json`이 `93581936...`를 가리켜 실패한다. 실제 앱 파일과 service worker는 반영되어 있다.
