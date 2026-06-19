@@ -3,24 +3,21 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-19-growth-board-modal-rom-timer.md` (성장 보드 모달 ROM 잘림 및 타이머 가림 수정)
+- 계획 문서: `docs/ai/features/2026-06-19-workout-timer-live-elapsed.md` (운동 타이머 live elapsed 정지 수정)
 - 현재 단계: `review complete — Slice 1 완료`
-- 마지막 완료: `성장 보드 모달의 ROM 잘림과 하단 타이머 가림을 test-mode-v2.css에서 보정했고 sw.js CACHE_VERSION을 범프했다. 모바일 360px fixture, 정적 검증, GitHub Pages live 파일 반영 확인을 통과했다.`
-- 다음 액션: `없음 — 요청 완료. 참고로 기존 build-info.json은 stale 상태라 verify-deploy commit check는 실패한다.`
+- 마지막 완료: `workout/timers.js에서 running 타이머의 날짜 포인터와 interval을 자가 복구하도록 보정했고 sw.js CACHE_VERSION을 범프했다. 정적 검증은 통과했으며, 장기 dev server는 세션 지침상 새로 띄우지 않아 브라우저 UI flow는 not verified yet이다.`
+- 다음 액션: `없음 — 요청 완료. 사용자는 npm.cmd run dev 후 운동 탭에서 타이머 숫자가 1초 단위로 증가하는지 확인하면 된다.`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
 
-- 완료 파일: `test-mode-v2.css` · `sw.js` · `docs/ai/features/2026-06-19-growth-board-modal-rom-timer.md` · `docs/ai/reviews/2026-06-19-growth-board-modal-rom-timer-review.md` · `docs/ai/NEXT_ACTION.md`
+- 완료 파일: `workout/timers.js` · `sw.js` · `docs/ai/features/2026-06-19-workout-timer-live-elapsed.md` · `docs/ai/reviews/2026-06-19-workout-timer-live-elapsed-review.md` · `docs/ai/NEXT_ACTION.md`
 - 검증 완료:
-  1. `node --check sw.js`
-  2. `node --check workout/exercises.js`
-  3. `git diff --check`
-  4. `node scripts/verify-runtime-assets.mjs`
-  5. `npm.cmd run dev` 후 `http://localhost:5500/index.html` HTTP 200
-  6. Chrome 360px fixture에서 ROM overflow 없음 및 하단 타이머 레이어 표시 확인
-  7. `git push tomatofarm main` (`6a6145a`)
-  8. `https://aretenald2018-sys.github.io/tomatofarm/` HTTP 200, 원격 `sw.js` 캐시 버전 확인
+  1. `node --check workout/timers.js`
+  2. `node --check sw.js`
+  3. `node scripts/verify-runtime-assets.mjs`
+  4. `git diff --check`
+  5. 브라우저 UI flow: not verified yet — 장기 dev server를 새로 띄우지 않음
 
 ## 보류 중 (이전 흐름)
 

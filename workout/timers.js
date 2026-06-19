@@ -12,6 +12,62 @@ import { getActiveTimer, saveActiveTimer, clearActiveTimer, getCurrentUser } fro
 // startedAt 이 너무 오래되었다면 OS kill/탭 종료로 정산 못한 유령 세션으로 간주, 복원하지 않음.
 const _MAX_LIVE_TIMER_MS = 24 * 60 * 60 * 1000;
 
+function _normalizeTimerDate(date) {
+  if (!date || typeof date !== 'object') return null;
+  const y = Number(date.y);
+  const m = Number(date.m);
+  const d = Number(date.d);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return null;
+  return { y: Math.trunc(y), m: Math.trunc(m), d: Math.trunc(d) };
+}
+
+function _todayTimerDate() {
+  const now = new Date();
+  return { y: now.getFullYear(), m: now.getMonth(), d: now.getDate() };
+}
+
+function _currentWorkoutTimerDate() {
+  return _normalizeTimerDate(S.shared.date) || _todayTimerDate();
+}
+
+function _sameTimerDate(a, b) {
+  const da = _normalizeTimerDate(a);
+  const db = _normalizeTimerDate(b);
+  return !!da && !!db && da.y === db.y && da.m === db.m && da.d === db.d;
+}
+
+function _ensureWorkoutTimerDate() {
+  const current = _normalizeTimerDate(S.workout.workoutTimerDate);
+  if (current) {
+    S.workout.workoutTimerDate = current;
+    return current;
+  }
+  if (!S.workout.workoutStartTime) return null;
+  const fallback = _currentWorkoutTimerDate();
+  S.workout.workoutTimerDate = fallback;
+  return fallback;
+}
+
+function _ensureWorkoutTimerInterval() {
+  if (!S.workout.workoutStartTime || S.workout.workoutTimerInterval) return;
+  S.workout.workoutTimerInterval = setInterval(_renderWorkoutTimer, 1000);
+}
+
+function _activeTimerState() {
+  if (!S.workout.workoutStartTime) return null;
+  return {
+    startedAt: S.workout.workoutStartTime,
+    date: _ensureWorkoutTimerDate(),
+  };
+}
+
+function _persistActiveTimerState(context) {
+  const activeState = _activeTimerState();
+  if (!activeState?.date) return;
+  _lsWriteTimer(activeState);
+  saveActiveTimer(activeState).catch(e => console.error(`[${context}] saveActiveTimer error:`, e));
+}
+
 // localStorage 백업(동기/로컬) — Firestore write 가 네트워크 실패했을 때의 안전망.
 //   CLAUDE.md: localStorage 는 기기 단위이므로 유저별 키를 써서 다른 계정으로 로그인 시
 //   유령 타이머가 살아나지 않게 한다.
@@ -36,10 +92,10 @@ function _lsClearTimer() {
   try { localStorage.removeItem(_lsKey()); } catch {}
 }
 function _isValidActiveTimer(t) {
-  return !!t && typeof t.startedAt === 'number' && t.startedAt > 0 &&
-         (Date.now() - t.startedAt) < _MAX_LIVE_TIMER_MS &&
-         t.date && typeof t.date.y === 'number' &&
-         typeof t.date.m === 'number' && typeof t.date.d === 'number';
+  const startedAt = Number(t?.startedAt);
+  return !!t && Number.isFinite(startedAt) && startedAt > 0 &&
+         (Date.now() - startedAt) < _MAX_LIVE_TIMER_MS &&
+         !!_normalizeTimerDate(t.date);
 }
 
 // ── 운동 시간 측정 ───────────────────────────────────────────────
@@ -47,17 +103,25 @@ function _isValidActiveTimer(t) {
 // 사용자가 다른 날짜를 보는 중에도 타이머는 계속 흐르지만, 표시/저장 경로는
 // "현재 보고 있는 날짜 === 타이머의 날짜"일 때만 live elapsed를 합산함.
 export function _isViewingTimerDate() {
-  const td = S.workout.workoutTimerDate, cd = S.shared.date;
-  if (!td || !cd) return false;
-  return td.y === cd.y && td.m === cd.m && td.d === cd.d;
+  const td = _normalizeTimerDate(S.workout.workoutTimerDate);
+  const cd = _normalizeTimerDate(S.shared.date) || (S.workout.workoutStartTime ? td : null);
+  return _sameTimerDate(td, cd);
 }
 
 export function wtStartWorkoutTimer() {
-  if (S.workout.workoutStartTime) return;
+  if (S.workout.workoutStartTime) {
+    _ensureWorkoutTimerDate();
+    _ensureWorkoutTimerInterval();
+    _renderWorkoutTimer();
+    _renderTimerControls();
+    _persistActiveTimerState('timer already-running');
+    return;
+  }
   S.workout.workoutStartTime = Date.now();
   // 타이머가 속한 날짜 고정 (현재 보고 있는 날짜가 기준).
-  S.workout.workoutTimerDate = S.shared.date ? { ...S.shared.date } : null;
-  S.workout.workoutTimerInterval = setInterval(_renderWorkoutTimer, 1000);
+  S.workout.workoutTimerDate = _currentWorkoutTimerDate();
+  if (S.workout.workoutTimerInterval) { clearInterval(S.workout.workoutTimerInterval); S.workout.workoutTimerInterval = null; }
+  _ensureWorkoutTimerInterval();
   _renderWorkoutTimer();
   _renderTimerControls();
   // 2-layer persistence:
@@ -65,12 +129,7 @@ export function wtStartWorkoutTimer() {
   //       즉시 리로드 시 여기서 복원 가능. 유저 범주 키로 타 유저 계정 간 유령 방지.
   //   (2) _settings/active_timer (Firestore) — cross-device, cross-day SoT.
   //       saveWorkoutDay 를 건들지 않으므로 sheet:saved / 저장 완료 토스트 미발생.
-  const activeState = {
-    startedAt: S.workout.workoutStartTime,
-    date:      S.workout.workoutTimerDate,
-  };
-  _lsWriteTimer(activeState);
-  saveActiveTimer(activeState).catch(e => console.error('[timer start] saveActiveTimer error:', e));
+  _persistActiveTimerState('timer start');
 }
 
 export function wtPauseWorkoutTimer() {
@@ -128,6 +187,7 @@ export async function wtResetWorkoutTimer() {
 export function _renderWorkoutTimer() {
   const el = document.getElementById('wt-workout-timer');
   if (!el) return;
+  _ensureWorkoutTimerDate();
   // 현재 보고 있는 날짜가 타이머의 날짜일 때만 live elapsed를 합산.
   // 다른 날짜를 보고 있으면 그 날짜의 저장된 workoutDuration만 표시.
   const onTimerDate = _isViewingTimerDate();
@@ -162,6 +222,7 @@ function _hasWorkoutRecord() {
 }
 
 export function _renderTimerControls() {
+  _ensureWorkoutTimerDate();
   const onTimerDate = _isViewingTimerDate();
   const timerActiveElsewhere = !!S.workout.workoutStartTime && !onTimerDate;
   const isRunning = !!S.workout.workoutStartTime && onTimerDate;
@@ -276,14 +337,18 @@ export function wtRecoverTimers() {
     else if (_isValidActiveTimer(fromLs)) restored = fromLs;
 
     if (restored) {
-      S.workout.workoutStartTime = restored.startedAt;
-      S.workout.workoutTimerDate = { y: restored.date.y, m: restored.date.m, d: restored.date.d };
+      const normalizedRestored = {
+        startedAt: Number(restored.startedAt),
+        date: _normalizeTimerDate(restored.date),
+      };
+      S.workout.workoutStartTime = normalizedRestored.startedAt;
+      S.workout.workoutTimerDate = normalizedRestored.date;
       // Firestore 가 비어있고 localStorage 로 복원한 경우 → Firestore 에 재기록.
       if (!fromFs && fromLs) {
-        saveActiveTimer(restored).catch(e => console.error('[timer recover→fs] error:', e));
+        saveActiveTimer(normalizedRestored).catch(e => console.error('[timer recover→fs] error:', e));
       }
       // localStorage 가 비어있고 Firestore 로 복원한 경우 → localStorage 에 재기록.
-      if (fromFs && !fromLs) _lsWriteTimer(restored);
+      if (fromFs && !fromLs) _lsWriteTimer(normalizedRestored);
     } else {
       // 유령 세션(24h 초과 등) 또는 불완전 포인터 → 양쪽 청소.
       if (fromLs) _lsClearTimer();
@@ -291,9 +356,8 @@ export function wtRecoverTimers() {
     }
   }
 
-  if (S.workout.workoutStartTime && !S.workout.workoutTimerInterval) {
-    S.workout.workoutTimerInterval = setInterval(_renderWorkoutTimer, 1000);
-  }
+  if (S.workout.workoutStartTime) _ensureWorkoutTimerDate();
+  _ensureWorkoutTimerInterval();
   _renderWorkoutTimer();
   _renderTimerControls();
 
