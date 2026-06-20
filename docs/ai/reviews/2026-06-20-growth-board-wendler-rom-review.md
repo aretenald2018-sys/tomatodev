@@ -28,6 +28,8 @@
 - PASS: `node --test tests/test-v2.board-core.test.js` — 29개 통과
 - PASS: Node REPL source smoke — `romPct` 입력, `ROM` 헤더, 0-100 클램프, 6열 CSS, 캐시 버전 확인
 - PASS: Puppeteer 360px layout smoke — ROM 입력 존재, `rowOverflow=0`, `sheetOverflow=0`, `romRight=289 <= 360`
+- PASS: 배포 검증 — `node scripts/verify-deploy.mjs https://aretenald2018-sys.github.io/tomatofarm/ 35a7adf575dc`
+- PASS: 원격 직접 확인 — `/` HTTP 200, 원격 `sw.js` 캐시 버전, 원격 `board-render.js`의 `romPct`/`ROM` 마커, 원격 CSS 6열 grid 확인
 
 ## 잔여 리스크
 

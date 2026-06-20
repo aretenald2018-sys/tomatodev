@@ -53,3 +53,15 @@
   - PASS: `node --test tests/test-v2.board-core.test.js` — 29개 통과
   - PASS: Node REPL source smoke — `romPct` 입력, `ROM` 헤더, 0-100 클램프, 6열 CSS, 캐시 버전 확인
   - PASS: Puppeteer 360px layout smoke — ROM 입력 존재, `rowOverflow=0`, `sheetOverflow=0`, `romRight=289 <= 360`
+
+## 배포 결과
+
+- PASS: `git push tomatofarm main` — `7359ef8..fdc487f`
+- PASS: `node scripts/verify-deploy.mjs https://aretenald2018-sys.github.io/tomatofarm/ 35a7adf575dc`
+  - 원격 `build-info.json`: `35a7adf575dc`
+  - 원격 `sw.js`: `tomatofarm-v20260620z6-growth-board-wendler-rom`
+  - 정적 자산 151개 확인
+- PASS: 원격 직접 확인
+  - `https://aretenald2018-sys.github.io/tomatofarm/` HTTP 200
+  - 원격 `workout/test-v2/board-render.js`에 `data-tm2-wset-field="romPct"`와 `ROM` 헤더 반영
+  - 원격 `test-mode-v2.css`에 웬들러 6열 grid 반영
