@@ -12,7 +12,7 @@ import {
   mondayOf, addWeeks, weeksBetween, weekIndexOf, isCycleFinished, shortDate,
   groupForMajor, defaultIncrementForGroup, exerciseGroupId, buildRecentMap,
   resolveSessionEntryGroupId,
-  mergeSessionExercises, sessionRecentMap,
+  mergeSessionExercises, sessionRecentMap, sortCandidatesByRecent,
   buildOnboardingCandidates, buildBoardFromOnboarding,
   activeBenchmarks, activeCycleOf, benchmarkById, currentKgOf,
   expandColumnCells, projectFutureCells, paintWeek, recordMiss, previewAdjust,
@@ -205,6 +205,21 @@ test('온보딩 후보: 오늘 세션의 커스텀 하체 종목도 후보와 �
   assert.equal(sumo.tracks.volume.kg, 85);
   assert.equal(sumo.tracks.volume.reps, 8);
   assert.equal(sumo.defaultOn, true);
+});
+
+test('종목 추가 후보: 같은 부위 안에서 최근 수행일이 최신인 운동이 먼저 온다', () => {
+  const exList = [
+    { id: 'leg_press', name: '레그 프레스 머신', muscleId: 'lower', movementId: 'leg_press' },
+    { id: 'squat', name: '스쿼트', muscleId: 'lower', movementId: 'back_squat' },
+    { id: 'lunge', name: '런지', muscleId: 'lower', movementId: 'lunge' },
+  ];
+  const recentMap = buildRecentMap({
+    '2026-06-01': { exercises: [{ exerciseId: 'squat', name: '스쿼트', sets: [{ kg: 100, reps: 5, done: true }] }] },
+    '2026-06-15': { exercises: [{ exerciseId: 'leg_press', name: '레그 프레스 머신', sets: [{ kg: 120, reps: 12, done: true }] }] },
+  });
+  const candidates = buildOnboardingCandidates({ exList, movements: [], recentMap }).filter(c => c.groupId === 'lower');
+  const sorted = sortCandidatesByRecent(candidates);
+  assert.deepEqual(sorted.map(c => c.exerciseId), ['leg_press', 'squat', 'lunge']);
 });
 
 // ----------------------------------------------------------------

@@ -239,14 +239,14 @@ export function mergeSessionExercises(exList = [], entries = []) {
   return out;
 }
 
-export function sessionRecentMap(entries = []) {
+export function sessionRecentMap(entries = [], dateKeyStr = null) {
   const map = {};
   for (const [idx, entry] of (Array.isArray(entries) ? entries : []).entries()) {
     const sets = (Array.isArray(entry?.sets) ? entry.sets : [])
       .filter(s => s && s.setType !== 'warmup' && s.done !== false && Number(s.kg) > 0 && Number(s.reps) > 0);
     const set = sets[sets.length - 1];
     if (!set) continue;
-    const spec = { kg: Number(set.kg), reps: Math.round(Number(set.reps)) || 12, from: '오늘 운동' };
+    const spec = { kg: Number(set.kg), reps: Math.round(Number(set.reps)) || 12, from: '오늘 운동', dateKey: dateKeyStr || null };
     const id = sessionExerciseId(entry, idx);
     const name = String(entry?.name || '').trim();
     if (id) map[`id:${id}`] = spec;
@@ -258,6 +258,26 @@ export function sessionRecentMap(entries = []) {
 
 const recentForExercise = (ex, recentMap) =>
   recentMap[`id:${ex.id}`] || (ex.movementId && recentMap[`mv:${ex.movementId}`]) || (ex.name && recentMap[`nm:${ex.name}`]) || null;
+
+const candidateRecentDateKey = (candidate = {}) => String(
+  candidate?.tracks?.volume?.dateKey
+  || candidate?.tracks?.intensity?.dateKey
+  || ''
+);
+
+export function sortCandidatesByRecent(candidates = []) {
+  return (Array.isArray(candidates) ? candidates : [])
+    .map((candidate, index) => ({ candidate, index, recentDateKey: candidateRecentDateKey(candidate) }))
+    .sort((a, b) => {
+      if (a.recentDateKey && b.recentDateKey && a.recentDateKey !== b.recentDateKey) {
+        return b.recentDateKey.localeCompare(a.recentDateKey);
+      }
+      if (a.recentDateKey && !b.recentDateKey) return -1;
+      if (!a.recentDateKey && b.recentDateKey) return 1;
+      return a.index - b.index;
+    })
+    .map(item => item.candidate);
+}
 
 /**
  * 온보딩/종목추가 후보 목록 — **사용자 실제 등록 종목(exList)이 1순위**.

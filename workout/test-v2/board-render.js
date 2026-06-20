@@ -24,6 +24,7 @@ import {
   isSettleDue, buildSettleRows, applySettle,
   archiveBenchmark, addBenchmark, buildOnboardingCandidates, buildRecentMap,
   mergeSessionExercises, sessionRecentMap, resolveSessionEntryGroupId,
+  sortCandidatesByRecent,
   buildMinimapData, defaultIncrementForGroup, getLineup, toggleLineup,
 } from './board-core.js';
 import {
@@ -45,10 +46,11 @@ function _candidates(groupId = null) {
   let recentMap = {};
   try { recentMap = buildRecentMap(getCache() || {}); } catch { recentMap = {}; }
   const sessionEntries = _currentSessionEntries();
-  recentMap = { ...recentMap, ...sessionRecentMap(sessionEntries) };
+  recentMap = { ...recentMap, ...sessionRecentMap(sessionEntries, _todayKey()) };
   const exList = mergeSessionExercises(_registryExercises(), sessionEntries);
   const all = buildOnboardingCandidates({ exList, v1Cycle: getMaxCycle(), movements: MOVEMENTS, recentMap });
-  return groupId ? all.filter(c => c.groupId === groupId) : all;
+  const scoped = groupId ? all.filter(c => c.groupId === groupId) : all;
+  return sortCandidatesByRecent(scoped);
 }
 
 const S = {
