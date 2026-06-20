@@ -314,10 +314,45 @@ test('못 채움 + 한 주 더 도전(계약 5): 다중 스텝에서 뒤 칸이 
   const cells = expandColumnCells(b, bench.id, 'volume', cy.id, TODAY);
   const stair = cells.filter(c => c.kind === 'stair');
   assert.equal(stair[0].span, 4);                 // 80×12 한 주 연장
-  assert.equal(stair[0].state, 'miss');
+  assert.equal(stair[0].state, 'attempted');
+  assert.equal(stair[0].weekStates[2], 'attempted');
+  assert.equal(stair[0].dots[2].attempted, true);
   assert.equal(stair[1].weekStart, addWeeks(START, 4)); // 뒤 칸 1주 밀림
   assert.equal(stair[1].span, 2);                 // 사이클 끝 클립 (6주 안)
   assert.equal(stair[0].span + stair[1].span, 6);
+});
+
+test('목표 미달 수행 칸은 attempted 상태지만 정산 missed count는 유지한다', () => {
+  const b = fixtureBoard();
+  const bench = b.benchmarks.find(x => x.movementId === 'barbell_bench');
+  const cy = activeCycleOf(b, 'chest');
+  recordMiss(b, {
+    benchmarkId: bench.id,
+    track: 'intensity',
+    weekStart: START,
+    choice: 'none',
+    log: { at: 1, actualKg: 102.5, actualReps: '5' },
+  });
+
+  const cells = expandColumnCells(b, bench.id, 'intensity', cy.id, TODAY);
+  assert.equal(cells[0].state, 'attempted');
+  assert.equal(cells[0].weekStates[0], 'attempted');
+  assert.equal(cells[0].dots[0].attempted, true);
+
+  const row = buildSettleRows(b, 'chest').find(r => r.benchmarkId === bench.id && r.track === 'intensity');
+  assert.equal(row.missedCount, 1);
+  assert.equal(row.defaultDecision, 'hold');
+});
+
+test('수행 값 없이 못 채운 칸은 기존 miss 상태를 유지한다', () => {
+  const b = fixtureBoard();
+  const fly = b.benchmarks.find(x => x.movementId === 'chest_fly');
+  const cy = activeCycleOf(b, 'chest');
+  recordMiss(b, { benchmarkId: fly.id, track: 'volume', weekStart: START, choice: 'none' });
+
+  const cells = expandColumnCells(b, fly.id, 'volume', cy.id, TODAY);
+  assert.equal(cells[0].state, 'miss');
+  assert.equal(cells[0].weekStates[0], 'miss');
 });
 
 test('못 채움 + 무게 내리기/횟수 낮추기', () => {

@@ -499,6 +499,16 @@ export function currentKgOf(board, benchmark, track) {
 // 셀 전개 (보드 렌더의 데이터원)
 // ----------------------------------------------------------------
 
+const _hasMissValue = (value) => value != null && String(value).trim() !== '';
+const _missWasAttempted = (log) => !!(
+  log?.attempted === true ||
+  log?.performed === true ||
+  log?.missedAt ||
+  _hasMissValue(log?.actualKg) ||
+  _hasMissValue(log?.actualReps) ||
+  _hasMissValue(log?.amrapReps)
+);
+
 function _stepCellState(step, cycle, todayKey) {
   const todayMon = mondayOf(todayKey);
   const stepEnd = addWeeks(step.weekStart, step.span); // exclusive
@@ -506,13 +516,21 @@ function _stepCellState(step, cycle, todayKey) {
   for (let i = 0; i < step.span; i++) {
     const wk = addWeeks(step.weekStart, i);
     const log = step.weekLog?.[wk] || null;
-    weeks.push({ weekStart: wk, painted: !!log?.paintedAt, missed: !!log?.missed && !log?.paintedAt });
+    const attempted = !!log?.missed && !log?.paintedAt && _missWasAttempted(log);
+    weeks.push({
+      weekStart: wk,
+      painted: !!log?.paintedAt,
+      attempted,
+      missed: !!log?.missed && !log?.paintedAt && !attempted,
+    });
   }
   const allPainted = weeks.length > 0 && weeks.every(w => w.painted);
+  const anyAttempted = weeks.some(w => w.attempted);
   const anyMissed = weeks.some(w => w.missed);
   const isCurrent = weeksBetween(step.weekStart, todayMon) >= 0 && todayMon < stepEnd;
   let state;
   if (allPainted || step.state === 'done') state = 'done';
+  else if (anyAttempted) state = 'attempted';
   else if (anyMissed || step.state === 'missed') state = 'miss';
   else if (isCurrent) state = 'now';
   else state = 'plan';
@@ -539,6 +557,7 @@ export function expandColumnCells(board, benchmarkId, track, cycleId, todayKey) 
       const log = bm.wendlerLog?.[weekStart] || null;
       let state = 'plan';
       if (log?.paintedAt) state = 'done';
+      else if (log?.missed && _missWasAttempted(log)) state = 'attempted';
       else if (log?.missed) state = 'miss';
       else if (weekStart === todayMon) state = 'now';
       const top = rx.topSet;
@@ -574,6 +593,7 @@ export function expandColumnCells(board, benchmarkId, track, cycleId, todayKey) 
     // 주별 상태 — 병합 칸이 "그 주까지 비례적으로" 채워지도록 (계약: 진행 색칠)
     const weekStates = st.weeks.slice(0, clippedSpan).map(w => {
       if (w.painted) return 'done';
+      if (w.attempted) return 'attempted';
       if (w.missed) return 'miss';
       if (w.weekStart === todayMon) return 'now';
       if (weeksBetween(w.weekStart, todayMon) > 0) return 'past';   // 지난 주 미색칠
@@ -588,7 +608,7 @@ export function expandColumnCells(board, benchmarkId, track, cycleId, todayKey) 
       sets: step.sets || null,
       state: st.state,
       weekStates,
-      dots: st.weeks.slice(0, clippedSpan).map(w => ({ weekStart: w.weekStart, on: w.painted, missed: w.missed })),
+      dots: st.weeks.slice(0, clippedSpan).map(w => ({ weekStart: w.weekStart, on: w.painted, missed: w.missed, attempted: w.attempted })),
       stepId: step.id,
       isCurrent: st.isCurrent,
     });
@@ -681,7 +701,17 @@ export function recordMiss(board, { benchmarkId, track = 'volume', weekStart, lo
   const bm = benchmarkById(board, benchmarkId);
   if (!bm) return false;
   const wk = mondayOf(weekStart);
-  const missEntry = { missed: true, missedAt: log.at || null, actualReps: log.actualReps ?? null, rir: log.rir ?? null, note: log.note || '' };
+  const attempted = log.attempted === true || log.performed === true || !!log.at ||
+    _hasMissValue(log.actualKg) || _hasMissValue(log.actualReps) || _hasMissValue(log.amrapReps);
+  const missEntry = {
+    missed: true,
+    attempted,
+    missedAt: log.at || null,
+    actualKg: log.actualKg ?? null,
+    actualReps: log.actualReps ?? null,
+    rir: log.rir ?? null,
+    note: log.note || '',
+  };
 
   if (bm.program === 'wendler') {
     bm.wendlerLog = bm.wendlerLog || {};

@@ -25,6 +25,22 @@
 - `sw.js`
   - `test-mode-v2.css`가 `STATIC_ASSETS`에 포함되어 있으므로 `CACHE_VERSION`을 범프한다.
 
+### Slice 2
+
+- Steering 추가: 목표 달성이 안 됐는데 운동은 수행한 칸은 진한 초록 채움이 아니라 연한 초록 배경과 진녹색 테두리로 표시한다.
+- `workout/test-v2/board-core.js`
+  - 목표 미달 기록(`recordMiss`)에 수행 여부를 남기고, 셀 전개 시 `miss`와 별도의 `attempted` 상태로 반환한다.
+  - 웬들러/계단식 보드 모두 목표 미달 수행 칸이 `attempted` 상태가 되게 한다.
+- `workout/test-v2/board-render.js`
+  - 운동 카드 완료 버튼 문구에서 무조건 칸 색칠을 암시하지 않도록 수정한다.
+  - 목표 미달 후 조정 시트로 넘어가는 경로에도 수행 여부를 보존한다.
+- `test-mode-v2.css`
+  - `.tm2-attempted` 상태를 연한 초록 배경 + 진녹색 테두리로 추가한다.
+- `tests/test-v2.board-core.test.js`
+  - 목표 미달 수행 기록이 `attempted` 상태로 전개되는 회귀 테스트를 추가/수정한다.
+- `sw.js`
+  - `STATIC_ASSETS`에 포함된 파일 변경이므로 `CACHE_VERSION`을 범프한다.
+
 ## 제외
 
 - 세트 저장 로직, 운동 데이터 모델, Firebase 경로는 변경하지 않는다.
@@ -34,9 +50,14 @@
 
 1. `node --check sw.js`
 2. `node --check workout/exercises.js`
-3. `npm.cmd run dev`로 출력된 URL HTTP 200 확인
-4. 모바일 폭에서 성장 보드 모달을 열었을 때 `ROM` 입력이 잘리지 않고, 하단 타이머 공간이 보이는지 확인
-5. 배포 후 `https://aretenald2018-sys.github.io/tomatofarm/` HTTP 200 및 `sw.js` 캐시 버전 확인
+3. `node --check workout/test-v2/board-core.js`
+4. `node --check workout/test-v2/board-render.js`
+5. `node --test tests/test-v2.board-core.test.js`
+6. `node scripts/verify-runtime-assets.mjs`
+7. `npm.cmd run dev`로 출력된 URL HTTP 200 확인
+8. 모바일 폭에서 성장 보드 모달을 열었을 때 `ROM` 입력이 잘리지 않고, 하단 타이머 공간이 보이는지 확인
+9. 목표 미달 수행 칸이 연한 초록 배경 + 진녹색 테두리로 표시되는지 확인
+10. 배포 후 `https://aretenald2018-sys.github.io/tomatofarm/` HTTP 200 및 `sw.js` 캐시 버전 확인
 
 ## 실행 결과
 
@@ -58,3 +79,23 @@
   - PASS: 원격 `sw.js`에서 `tomatofarm-v20260619z2-growth-board-rom-timer` 확인
   - PASS: 원격 `test-mode-v2.css`에서 `z-index: 10080` 확인
   - 참고: `node scripts/verify-deploy.mjs https://aretenald2018-sys.github.io/tomatofarm/ 6a6145a`는 기존 `build-info.json`이 `93581936...`를 가리켜 실패한다. 실제 앱 파일과 service worker는 반영되어 있다.
+
+## Slice 2 실행 결과
+
+- 상태: Slice 2 완료
+- 변경:
+  - `workout/test-v2/board-core.js`: `recordMiss`에 `attempted` 의미를 추가하고, 수행 값이 있는 목표 미달 칸은 `attempted` 상태로 전개되게 했다. 기존 missed 집계는 유지한다.
+  - `workout/test-v2/board-render.js`: 운동 카드 완료 버튼 문구를 `운동 완료`로 바꾸고, 목표 미달 시 최고 수행 kg/reps를 조정 시트와 miss 기록에 보존한다.
+  - `test-mode-v2.css`: `.tm2-attempted` 상태를 연한 초록 배경 + 진녹색 테두리로 추가했다.
+  - `tests/test-v2.board-core.test.js`: 목표 미달 수행 칸은 `attempted`, 수행 값 없는 미달은 `miss`로 남는 회귀 테스트를 추가했다.
+  - `sw.js`: `CACHE_VERSION`을 `tomatofarm-v20260620z2-growth-board-attempted`로 범프했다.
+- 검증:
+  - PASS: `node --check sw.js`
+  - PASS: `node --check workout/test-v2/board-core.js`
+  - PASS: `node --check workout/test-v2/board-render.js`
+  - PASS: `node --test tests/test-v2.board-core.test.js` — 28개 통과
+  - PASS: `node scripts/verify-runtime-assets.mjs`
+  - PASS: `git diff --check`
+  - PASS: `npm.cmd run dev` 후 `http://localhost:5500/index.html` HTTP 200
+  - PASS: Puppeteer 360px smoke — `attempted` 칸 배경 `rgb(221, 242, 231)`, 테두리 `rgb(20, 55, 39)`, `done` 칸은 기존 진녹색 유지
+  - PASS: Puppeteer 360px smoke — ROM 입력 우측 `317px <= 360px`, 시트/행 가로 overflow 없음, 타이머 `z-index: 10080` 및 hit target 확인

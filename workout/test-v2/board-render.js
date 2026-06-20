@@ -949,7 +949,7 @@ function _renderWorkoutCard() {
     ${_metaRowsHtml(bm)}
     ${wendlerNote}
     <div id="tm2-card-host" class="tm2-card-host"></div>
-    <button class="tm2-btn-paint" data-action="tm2:card-commit">운동 완료 — 칸 색칠</button>
+    <button class="tm2-btn-paint" data-action="tm2:card-commit">운동 완료</button>
     <button class="tm2-btn-ghost" data-action="tm2:sheet-close">닫기 (나중에)</button>
   `);
   const host = document.getElementById('tm2-card-host');
@@ -1115,14 +1115,38 @@ async function _commitWorkoutCard() {
   }
   // 미달 — 운동기록은 저장됨. 웬들러는 기록만, stair는 조정 시트.
   if (bm.program === 'wendler') {
-    recordMiss(S.board, { benchmarkId: bmId, track, weekStart, choice: 'none', log: { at: Date.now(), actualReps: best ? String(best.reps) : '', amrapReps: best?.reps ?? null } });
+    recordMiss(S.board, {
+      benchmarkId: bmId,
+      track,
+      weekStart,
+      choice: 'none',
+      log: {
+        at: Date.now(),
+        attempted: working.length > 0,
+        actualKg: best?.kg ?? null,
+        actualReps: best ? String(best.reps) : '',
+        amrapReps: best?.reps ?? null,
+      },
+    });
     await _persist();
     closeSheet(); renderBoard();
-    _toast('운동기록 저장됨 — 목표 미달, 다음 정산에 반영돼요', 'info');
+    _toast('운동기록 저장됨 — 목표 미달, 테두리로 표시돼요', 'info');
     return;
   }
   _toast('운동기록 저장됨 — 목표 미달, 계획을 조정할 수 있어요', 'info');
-  S.sheet = { kind: 'cell', ctx: { bmId, track, weekStart } };
+  S.sheet = {
+    kind: 'cell',
+    ctx: {
+      bmId,
+      track,
+      weekStart,
+      attempted: working.length > 0,
+      actualKg: best?.kg ?? null,
+      actualReps: best ? String(best.reps) : '',
+      rir: best?.rir === '' ? '' : best?.rir ?? '',
+      note: '',
+    },
+  };
   openMissSheet();
 }
 
@@ -1172,10 +1196,26 @@ function _openPastSummary(bm, track, wkMon) {
 // ----------------------------------------------------------------
 
 function openMissSheet() {
-  const { bmId, track, weekStart } = S.sheet.ctx;
+  const prev = S.sheet?.ctx || {};
+  const { bmId, track, weekStart } = prev;
   const bm = benchmarkById(S.board, bmId);
   if (!bm) return;
-  S.sheet = { kind: 'miss', ctx: { bmId, track, weekStart, actualReps: _txt('tm2-in-reps'), rir: _txt('tm2-in-rir'), note: _txt('tm2-in-note') } };
+  const domReps = _txt('tm2-in-reps');
+  const domRir = _txt('tm2-in-rir');
+  const domNote = _txt('tm2-in-note');
+  S.sheet = {
+    kind: 'miss',
+    ctx: {
+      bmId,
+      track,
+      weekStart,
+      attempted: prev.attempted === true || domReps !== '',
+      actualKg: prev.actualKg ?? null,
+      actualReps: domReps !== '' ? domReps : (prev.actualReps ?? ''),
+      rir: domRir !== '' ? domRir : (prev.rir ?? ''),
+      note: domNote !== '' ? domNote : (prev.note ?? ''),
+    },
+  };
   S.missChoice = 'extend';
   _renderMissSheet();
 }
@@ -1219,7 +1259,7 @@ function _renderMissSheet() {
 }
 
 async function _applyMiss() {
-  const { bmId, track, weekStart, actualReps, rir, note } = S.sheet.ctx;
+  const { bmId, track, weekStart, actualKg, actualReps, rir, note, attempted } = S.sheet.ctx;
   const bm = benchmarkById(S.board, bmId);
   const cur = currentKgOf(S.board, bm, track);
   const delta = Math.min(2.5, bm.incrementKg) || 2.5;
@@ -1227,12 +1267,12 @@ async function _applyMiss() {
     benchmarkId: bmId, track, weekStart: mondayOf(weekStart),
     choice: S.missChoice,
     params: { deltaKg: delta, reps: Math.max(1, cur.reps - 2) },
-    log: { at: Date.now(), actualReps, rir: rir === '' ? null : Number(rir), note },
+    log: { at: Date.now(), attempted: attempted === true, actualKg, actualReps, rir: rir === '' ? null : Number(rir), note },
   });
   await _persist();
   closeSheet();
   renderBoard();
-  _toast('계획을 조정했어요 — 보드에 반영됐어요', 'success');
+  _toast('계획을 조정했어요 — 수행 칸은 테두리로 표시돼요', 'success');
 }
 
 // ----------------------------------------------------------------
