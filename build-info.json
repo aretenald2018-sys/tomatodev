@@ -1,10 +1,10 @@
 {
   "app": "tomatofarm",
-  "commit": "93581936a93e1fde4822b0fda3848e4c3fe15683",
-  "shortCommit": "93581936a93e",
+  "commit": "7359ef8f0aa40a2f0cf3fde4c9f58f07c861fff5",
+  "shortCommit": "7359ef8f0aa4",
   "branch": "main",
-  "deployedAt": "2026-06-12T05:22:34.382Z",
-  "cacheVersion": "tomatofarm-v20260611z4-volume-chart-details",
+  "deployedAt": "2026-06-20T02:26:12.034Z",
+  "cacheVersion": "tomatofarm-v20260620z6-growth-board-wendler-rom",
   "runId": null,
   "runAttempt": null
 }

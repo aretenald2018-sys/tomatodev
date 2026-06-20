@@ -886,12 +886,15 @@ function _wendlerSectionHtml(role, sets, plan, bm) {
   const rows = sets.map(({ set, idx }, rowIdx) => {
     const pct = set.wendlerPct ? `<small>${_esc(set.wendlerPct)}%</small>` : '';
     const plus = set.amrap ? '<em>+</em>' : '';
+    const romPct = Number(set.romPct);
+    const romValue = Number.isFinite(romPct) ? Math.max(0, Math.min(100, Math.round(romPct))) : 100;
     return `
       <div class="tm2-wset-row ${set.done ? 'tm2-done' : ''}">
         <button type="button" class="tm2-wset-check ${set.done ? 'tm2-on' : ''}" data-action="tm2:wset-done" data-si="${idx}" aria-label="세트 완료"></button>
         <div class="tm2-wset-no"><b>${rowIdx + 1}</b>${pct}</div>
         <label><span>반복 횟수</span><input data-tm2-wset-field="reps" data-si="${idx}" inputmode="numeric" value="${_esc(set.reps ?? '')}">${plus}</label>
         <label><span>kg</span><input data-tm2-wset-field="kg" data-si="${idx}" inputmode="decimal" value="${_esc(_fmtKg(set.kg))}"></label>
+        <label class="tm2-wset-rom"><span>ROM</span><input data-tm2-wset-field="romPct" data-si="${idx}" inputmode="numeric" min="0" max="100" value="${_esc(romValue)}" aria-label="가동범위 퍼센트"><em>%</em></label>
         <button type="button" class="tm2-wset-remove" data-action="tm2:wset-remove" data-si="${idx}" aria-label="세트 삭제">×</button>
       </div>`;
   }).join('');
@@ -901,7 +904,7 @@ function _wendlerSectionHtml(role, sets, plan, bm) {
         <div><b>${_esc(title)}</b><span>${_esc(meta.sub)}</span></div>
         <button type="button" data-action="tm2:wset-add" data-role="${role}">세트 추가</button>
       </div>
-      <div class="tm2-wset-head"><span></span><span>세트#</span><span>반복 횟수</span><span>kg</span><span></span></div>
+      <div class="tm2-wset-head"><span></span><span>세트#</span><span>반복 횟수</span><span>kg</span><span>ROM</span><span></span></div>
       <div class="tm2-wset-list">${rows}</div>
     </section>`;
 }
@@ -1003,9 +1006,18 @@ function _onSheetChange(e) {
   const field = inp.dataset.tm2WsetField;
   if (!entry || !Array.isArray(entry.sets) || !entry.sets[idx]) return;
   const n = Number(inp.value);
+  const next = (() => {
+    if (field === 'romPct') {
+      const pct = Number.isFinite(n) ? Math.max(0, Math.min(100, Math.round(n))) : 100;
+      inp.value = String(pct);
+      return pct;
+    }
+    if (!Number.isFinite(n) || n < 0) return '';
+    return field === 'reps' ? Math.round(n) : Math.round(n * 10) / 10;
+  })();
   entry.sets[idx] = {
     ...entry.sets[idx],
-    [field]: Number.isFinite(n) && n >= 0 ? (field === 'reps' ? Math.round(n) : Math.round(n * 10) / 10) : '',
+    [field]: next,
   };
   _stampCurrentWendlerMeta();
   _saveWorkoutDraft();
