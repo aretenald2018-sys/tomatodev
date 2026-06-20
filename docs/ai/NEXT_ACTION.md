@@ -27,7 +27,7 @@
 ## 보류 중 (이전 흐름)
 
 - `docs/ai/features/2026-06-12-test-mode-simplify-wendler.md` — v1 개편 실행 완료(커밋 2922b64까지), 리뷰 미수행. **v2 구현으로 v1은 동결 상태** — 해당 리뷰는 폐기 권장.
-- `docs/ai/features/2026-06-20-calendar-workout-tab.md` — Slice 1 구현 및 리뷰 완료. 정적 검증과 기존 `http://localhost:5500/index.html` HTTP 200 통과. 브라우저에서 하단 `캘린더` 클릭이 홈에서 전환되지 않아 캘린더 UI 플로우는 not verified yet. 현재 ROM fix + 배포 흐름이 우선되어 캘린더 수동 UI 확인은 후속으로 보류.
+- `docs/ai/features/2026-06-20-calendar-workout-tab.md` — Slice 1 구현, 리뷰, tomatofarm 원격 배포 완료. 원격 `/` HTTP 200, `build-info.json` shortCommit `d06e5b523882`, `sw.js` 캐시 버전 `tomatofarm-v20260620z7-growth-board-wendler-rom-calendar-workout-tab` 확인. 브라우저에서 하단 `캘린더` 클릭이 홈에서 전환되지 않아 캘린더 UI 플로우는 not verified yet.
 
 ## 상태값
 

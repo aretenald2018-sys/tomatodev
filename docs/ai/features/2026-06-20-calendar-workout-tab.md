@@ -50,3 +50,12 @@
   4. PASS: `git diff --check`
   5. PASS: 기존 실행 중인 `http://localhost:5500/index.html` HTTP 200 확인
   6. not verified yet: 브라우저에서 하단 `캘린더` 버튼 클릭 후에도 활성 탭이 `home`에 머물고 `#calendar-root`가 비어 있어 실제 캘린더 UI 플로우는 확인하지 못했다.
+
+## 배포 결과
+
+- PASS: `git push tomatofarm main` — `8188d7f..ad1169f`
+- PASS: `node scripts/verify-deploy.mjs https://aretenald2018-sys.github.io/tomatofarm/ d06e5b523882`
+- 원격 확인:
+  - `https://aretenald2018-sys.github.io/tomatofarm/` HTTP 200
+  - 원격 `build-info.json`: `shortCommit` = `d06e5b523882`
+  - 원격 `sw.js`: `tomatofarm-v20260620z7-growth-board-wendler-rom-calendar-workout-tab`

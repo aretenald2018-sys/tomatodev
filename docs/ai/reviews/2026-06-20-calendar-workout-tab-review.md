@@ -28,3 +28,9 @@
 ## 남은 리스크
 
 - 브라우저에서 `캘린더 → 운동` 탭 전환과 운동 기록 날짜 클릭 모달은 아직 직접 확인하지 못했다. 현재 로컬 페이지에서는 캘린더 하단 탭 클릭이 홈에서 전환되지 않는다.
+
+## 배포 확인
+
+- PASS: `git push tomatofarm main` — `8188d7f..ad1169f`
+- PASS: `node scripts/verify-deploy.mjs https://aretenald2018-sys.github.io/tomatofarm/ d06e5b523882`
+- PASS: 원격 `/` HTTP 200, `build-info.json` shortCommit `d06e5b523882`, `sw.js` 캐시 버전 `tomatofarm-v20260620z7-growth-board-wendler-rom-calendar-workout-tab`
