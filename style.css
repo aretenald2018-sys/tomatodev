@@ -8303,6 +8303,9 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 .cal-workout-cell {
   padding: 4px 4px 5px;
 }
+.cal-workout-cell .cal-cell-date {
+  font-size: 9px;
+}
 .cal-workout-cell-active {
   border-left: 3px solid #2563eb;
   background: #f8fbff;
@@ -8311,8 +8314,8 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   background: var(--seed-bg-layer, #fff);
 }
 .cal-workout-dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 999px;
   background: var(--primary);
   flex-shrink: 0;
@@ -8320,18 +8323,18 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 .cal-workout-bars {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   min-width: 0;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 .cal-workout-bar {
-  min-height: 14px;
-  padding: 1px 4px;
-  border-radius: 4px;
+  min-height: 12px;
+  padding: 1px 3px;
+  border-radius: 3px;
   background: #2f4d83;
   color: #fff;
-  font-size: 9px;
-  line-height: 12px;
+  font-size: 8px;
+  line-height: 10px;
   font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -8340,9 +8343,10 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 .cal-workout-bar-time {
   background: #fa342c;
 }
-.cal-workout-bar-name {
+.cal-workout-bar-name,
+.cal-workout-bar-part {
   background: #4167a8;
-  font-weight: 600;
+  font-weight: 700;
 }
 .cal-workout-bar-more {
   width: fit-content;
@@ -8353,8 +8357,8 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   min-height: 12px;
   margin-top: auto;
   color: var(--muted);
-  font-size: 9px;
-  line-height: 12px;
+  font-size: 8px;
+  line-height: 11px;
   font-weight: 600;
   text-align: right;
   overflow: hidden;

@@ -3,31 +3,28 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-20-growth-board-wendler-rom.md` (성장 보드 웬들러 ROM 입력)
-- 현재 단계: `review complete — 배포 완료`
-- 마지막 완료: `웬들러 전용 운동 카드의 준비 운동/메인/BBB 세트 행에 ROM 입력을 추가했고, tomatofarm 원격 배포 및 원격 ROM 마커 확인까지 완료했다.`
-- 다음 액션: `없음 — 사용자가 캘린더 운동탭 보류 작업을 재개하면 해당 계획을 다시 읽고 진행한다.`
-- 차단 사유: `없음`
+- 계획 문서: `docs/ai/features/2026-06-20-growth-board-wendler-default-history.md` (성장 보드 웬들러 기본값 및 과거 기록 표시)
+- 현재 단계: `review complete — 로컬 정적 검증 완료, 브라우저 UI 검증은 not verified yet`
+- 마지막 완료: `성장 보드가 v2 보드의 웬들러 설정을 다음 기본값으로 상속하게 했고, 과거 셀 시트가 보드 색칠 로그가 없어도 같은 주 실제 운동기록을 fallback으로 표시하게 했다.`
+- 다음 액션: `사용자 로컬 일반 터미널에서 npm.cmd run dev 실행 후 성장 보드 하체 과거 2026-06-08 주차 스모데드 셀을 열어 운동기록 있음 표시를 확인한다.`
+- 차단 사유: `이 세션 지침상 장기 dev server를 sandbox에서 시작하지 않으므로 실제 브라우저 UI 검증은 로컬 일반 터미널에서 필요하다.`
 
 ## 다음 실행 대상
 
-- 완료 파일: `workout/test-v2/board-render.js` · `test-mode-v2.css` · `sw.js` · `build-info.json` · `docs/ai/features/2026-06-20-growth-board-wendler-rom.md` · `docs/ai/reviews/2026-06-20-growth-board-wendler-rom-review.md` · `docs/ai/NEXT_ACTION.md`
+- 완료 파일: `workout/test-v2/board-core.js` · `workout/test-v2/board-render.js` · `workout/test-v2/onboarding.js` · `tests/test-v2.board-core.test.js` · `sw.js` · `docs/ai/features/2026-06-20-growth-board-wendler-default-history.md` · `docs/ai/reviews/2026-06-20-growth-board-wendler-default-history-review.md` · `docs/ai/NEXT_ACTION.md`
 - 검증 완료:
-  1. PASS: `npm.cmd run verify:assets`
+  1. PASS: `node --check workout/test-v2/board-core.js`
   2. PASS: `node --check workout/test-v2/board-render.js`
-  3. PASS: `node --check sw.js`
-  4. PASS: `git diff --check`
-  5. PASS: `node --test tests/test-v2.board-core.test.js` — 29개 통과
-  6. PASS: Node REPL source smoke — `romPct` 입력, `ROM` 헤더, 0-100 클램프, 6열 CSS, 캐시 버전 확인
-  7. PASS: Puppeteer 360px layout smoke — ROM 입력 존재, `rowOverflow=0`, `sheetOverflow=0`, `romRight=289 <= 360`
-  8. PASS: `git push tomatofarm main` — `7359ef8..fdc487f`
-  9. PASS: `node scripts/verify-deploy.mjs https://aretenald2018-sys.github.io/tomatofarm/ 35a7adf575dc`
-  10. PASS: 원격 직접 확인 — `/` HTTP 200, `sw.js` z6, `board-render.js` ROM 마커, CSS 6열 grid
+  3. PASS: `node --check workout/test-v2/onboarding.js`
+  4. PASS: `node --check sw.js`
+  5. PASS: `node --test tests/test-v2.board-core.test.js` — 31개 통과
+  6. PASS: `git diff --check`
+  7. not verified yet: 브라우저에서 성장 보드 하체 과거 2026-06-08 주차 스모데드 셀을 여는 UI 검증은 로컬 일반 터미널 dev server가 필요하다.
 
 ## 보류 중 (이전 흐름)
 
 - `docs/ai/features/2026-06-12-test-mode-simplify-wendler.md` — v1 개편 실행 완료(커밋 2922b64까지), 리뷰 미수행. **v2 구현으로 v1은 동결 상태** — 해당 리뷰는 폐기 권장.
-- `docs/ai/features/2026-06-20-calendar-workout-tab.md` — Slice 1 구현, 리뷰, tomatofarm 원격 배포 완료. 원격 `/` HTTP 200, `build-info.json` shortCommit `d06e5b523882`, `sw.js` 캐시 버전 `tomatofarm-v20260620z7-growth-board-wendler-rom-calendar-workout-tab` 확인. 브라우저에서 하단 `캘린더` 클릭이 홈에서 전환되지 않아 캘린더 UI 플로우는 not verified yet.
+- `docs/ai/features/2026-06-20-calendar-workout-tab.md` — Slice 1 구현, 리뷰, tomatofarm 원격 배포 완료. 후속 Slice 2는 로컬 정적 검증 완료, 브라우저 UI 플로우는 not verified yet.
 
 ## 상태값
 

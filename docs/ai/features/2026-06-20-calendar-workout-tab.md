@@ -17,12 +17,18 @@
    - 캘린더 내부 세그먼트, 운동 월간 요약, 운동 셀, 운동 상세 모달 스타일을 추가한다.
 3. `sw.js`
    - `render-calendar.js`와 `style.css`가 `STATIC_ASSETS`에 포함되어 있으므로 `CACHE_VERSION`을 범프한다.
+4. 후속 Slice 2: 운동 캘린더 셀 부위 요약
+   - 월간 운동 캘린더 셀의 대표 라벨을 운동종목명 대신 주동근 대분류 부위별 세트 수로 표시한다.
+   - 예: `케이블 크런치`, `랫풀다운` 같은 종목명 대신 `복부 4`, `등 10`처럼 표시한다.
+   - 셀 안 바 텍스트 크기와 높이를 줄여 첨부 참고 화면처럼 시간, 총 세트, 복수 부위 라인이 함께 들어가게 한다.
+   - 상세 모달의 개별 운동/세트 목록은 기존처럼 유지한다.
 
 ## 제외
 
 - 운동 기록 저장 구조, 운동탭 입력 플로우, 식단/점수 산정 로직은 변경하지 않는다.
 - `www/` 산출물은 직접 수정하지 않는다.
 - 배포/푸시는 하지 않는다.
+- Slice 2에서는 운동 상세 모달의 개별 종목 표시를 제거하지 않는다.
 
 ## 검증
 
@@ -33,6 +39,7 @@
 5. `npm.cmd run dev` 후 실제 URL HTTP 200 확인
 6. 캘린더 화면에서 `종합`/`운동` 탭 전환 확인
 7. 운동탭에서 운동 기록이 있는 날짜 클릭 시 그날 운동 상세 목록이 모달에 표시되는지 확인
+8. Slice 2: 운동 캘린더 셀에서 종목명이 아니라 `가슴 12`, `등 8` 같은 부위별 세트 라인이 표시되는지 확인
 
 ## 실행 결과
 
@@ -59,3 +66,17 @@
   - `https://aretenald2018-sys.github.io/tomatofarm/` HTTP 200
   - 원격 `build-info.json`: `shortCommit` = `d06e5b523882`
   - 원격 `sw.js`: `tomatofarm-v20260620z7-growth-board-wendler-rom-calendar-workout-tab`
+
+## 후속 Slice 2 실행 결과
+
+- 상태: 구현 및 로컬 정적 검증 완료, 브라우저 UI 검증은 not verified yet
+- 변경:
+  - `render-calendar.js`: 운동 캘린더 셀 라벨을 운동종목명에서 주동근 대분류 부위별 세트 수(`가슴 12`, `등 8`)로 변경했다.
+  - `style.css`: 운동 캘린더 셀 바/날짜/kcal 폰트와 바 높이를 줄여 복수 부위 라인이 더 들어가게 했다.
+  - `sw.js`: `STATIC_ASSETS` 대상 변경 반영을 위해 `CACHE_VERSION`을 `tomatofarm-v20260620z10-calendar-workout-bodyparts`로 범프했다.
+- 검증:
+  1. PASS: `node --check render-calendar.js`
+  2. PASS: `node --check sw.js`
+  3. PASS: `node scripts/verify-runtime-assets.mjs`
+  4. PASS: `git diff --check`
+  5. not verified yet: 이 세션 지침상 장기 dev server를 sandbox에서 시작하지 않았으므로 실제 캘린더 UI 클릭 검증은 사용자 로컬 일반 터미널에서 필요하다.

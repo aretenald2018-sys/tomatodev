@@ -7,6 +7,8 @@ import {
   getCache,
   getBodyCheckins,
   getDietPlan,
+  getExList,
+  getMuscleParts,
   getLatestCheckinWeight,
 } from './data.js';
 import {
@@ -14,8 +16,10 @@ import {
   getDayTargetKcal,
   calcBurnedKcal,
   calcDayScore,
+  SUBPATTERN_TO_MAJOR,
 } from './calc.js';
 import { calcSetVolume } from './calc/volume.js';
+import { MOVEMENTS } from './config.js';
 import { dateKey, TODAY, isFuture, isBeforeStart } from './data/data-date.js';
 import { openModal, closeModal } from './utils/dom.js';
 
@@ -312,7 +316,80 @@ function _activityRows(day) {
   return rows;
 }
 
-function _exerciseRows(day) {
+const FALLBACK_MAJOR_LABELS = {
+  chest: '가슴',
+  back: '등',
+  shoulder: '어깨',
+  lower: '하체',
+  glute: '둔부',
+  bicep: '이두',
+  tricep: '삼두',
+  abs: '복부',
+  other: '기타',
+};
+
+function _buildWorkoutLookup() {
+  return {
+    exById: new Map((getExList() || []).filter(Boolean).map(ex => [ex.id, ex])),
+    movById: new Map((MOVEMENTS || []).filter(Boolean).map(mv => [mv.id, mv])),
+    muscleById: new Map((getMuscleParts() || []).filter(Boolean).map(m => [m.id, m])),
+  };
+}
+
+function _primaryFromIds(value) {
+  return Array.isArray(value) ? value.find(Boolean) : null;
+}
+
+function _normalizeMajorId(id) {
+  if (!id) return null;
+  return SUBPATTERN_TO_MAJOR[id] || id;
+}
+
+function _resolveExerciseMajorId(entry, lookup) {
+  const lib = lookup?.exById?.get(entry?.exerciseId);
+  const primaryId = _primaryFromIds(entry?.muscleIds) || _primaryFromIds(lib?.muscleIds);
+  if (primaryId) return _normalizeMajorId(primaryId);
+
+  const movementId = entry?.movementId || lib?.movementId || null;
+  const movement = movementId ? lookup?.movById?.get(movementId) : null;
+  if (movement?.primary) return movement.primary;
+  if (movement?.subPattern) return _normalizeMajorId(movement.subPattern);
+
+  return _normalizeMajorId(entry?.muscleId || lib?.muscleId);
+}
+
+function _majorLabel(id, lookup) {
+  if (!id) return FALLBACK_MAJOR_LABELS.other;
+  return lookup?.muscleById?.get(id)?.name || FALLBACK_MAJOR_LABELS[id] || id;
+}
+
+function _partDisplayLabels(exercises, lookup) {
+  const byMajor = new Map();
+  exercises.forEach((row) => {
+    if (row.setCount <= 0) return;
+    const id = row.majorId || 'other';
+    if (!byMajor.has(id)) {
+      byMajor.set(id, {
+        id,
+        name: _majorLabel(id, lookup),
+        setCount: 0,
+        volume: 0,
+        order: byMajor.size,
+      });
+    }
+    const item = byMajor.get(id);
+    item.setCount += row.setCount;
+    item.volume += row.volume;
+  });
+  return [...byMajor.values()]
+    .sort((a, b) => (b.setCount - a.setCount) || (b.volume - a.volume) || (a.order - b.order))
+    .map(item => ({
+      text: `${item.name} ${item.setCount}`,
+      title: `${item.name} ${item.setCount}세트`,
+    }));
+}
+
+function _exerciseRows(day, lookup = _buildWorkoutLookup()) {
   return (Array.isArray(day?.exercises) ? day.exercises : [])
     .map((entry) => {
       const sets = (Array.isArray(entry?.sets) ? entry.sets : []).filter(_isActualWorkoutSet);
@@ -320,8 +397,11 @@ function _exerciseRows(day) {
       if (!sets.length && !note) return null;
       const volume = sets.reduce((sum, set) => sum + calcSetVolume(set), 0);
       const topSet = [...sets].sort((a, b) => calcSetVolume(b) - calcSetVolume(a))[0] || null;
+      const majorId = _resolveExerciseMajorId(entry, lookup);
       return {
         name: entry?.name || entry?.exerciseName || entry?.exerciseId || '운동',
+        majorId,
+        majorName: _majorLabel(majorId, lookup),
         setCount: sets.length,
         volume,
         topSetText: topSet ? _formatSetText(topSet) : '세트 기록 없음',
@@ -332,9 +412,9 @@ function _exerciseRows(day) {
     .filter(Boolean);
 }
 
-function _workoutMetrics(key, day, bodyWeight) {
+function _workoutMetrics(key, day, bodyWeight, lookup = _buildWorkoutLookup()) {
   const d = day || {};
-  const exercises = _exerciseRows(d);
+  const exercises = _exerciseRows(d, lookup);
   const activities = _activityRows(d);
   const burned = calcBurnedKcal(d, bodyWeight);
   const workoutDurationSec = Math.max(0, Math.round(_num(d.workoutDuration)));
@@ -343,10 +423,14 @@ function _workoutMetrics(key, day, bodyWeight) {
   const durationSec = Math.max(gymDurationSec + activityDurationSec, workoutDurationSec, activityDurationSec);
   const setCount = exercises.reduce((sum, row) => sum + row.setCount, 0);
   const volume = exercises.reduce((sum, row) => sum + row.volume, 0);
-  const labels = [
-    ...exercises.map(row => row.name),
-    ...activities.map(row => row.label),
-  ].filter(Boolean);
+  const displayLabels = [
+    ..._partDisplayLabels(exercises, lookup),
+    ...activities.map(row => ({
+      text: row.label,
+      title: row.main ? `${row.label} · ${row.main}` : row.label,
+    })),
+  ].filter(row => row?.text);
+  const labels = displayLabels.map(row => row.text);
   const hasWorkout = exercises.length > 0 || activities.length > 0 || workoutDurationSec > 0 || burned.total > 0;
   return {
     key,
@@ -360,6 +444,7 @@ function _workoutMetrics(key, day, bodyWeight) {
     setCount,
     volume,
     labels,
+    displayLabels,
     primaryLabel: labels[0] || '',
     hasWorkout,
   };
@@ -368,6 +453,7 @@ function _workoutMetrics(key, day, bodyWeight) {
 function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, daysCount }) {
   let monthSum = { days: 0, durationSec: 0, sets: 0, volume: 0, kcalBurn: 0 };
   const cells = [];
+  const lookup = _buildWorkoutLookup();
   for (let i = 0; i < firstDow; i++) cells.push(`<div class="cal-cell cal-cell-empty"></div>`);
 
   for (let d = 1; d <= daysCount; d++) {
@@ -378,7 +464,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
     const today = k === dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
     const disabled = future || before;
     const bodyWeight = _weightAt(checkins, k) ?? getLatestCheckinWeight() ?? plan?.weight ?? 70;
-    const wx = _workoutMetrics(k, day, bodyWeight);
+    const wx = _workoutMetrics(k, day, bodyWeight, lookup);
 
     if (wx.hasWorkout) {
       monthSum.days += 1;
@@ -396,13 +482,14 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
       wx.hasWorkout ? 'cal-workout-cell-active' : 'cal-workout-cell-rest',
     ].filter(Boolean).join(' ');
     const onclick = disabled ? '' : `onclick="window._calOpenDay('${k}')"`;
-    const labelLines = wx.labels.slice(0, 2);
-    const moreCount = Math.max(0, wx.labels.length - labelLines.length);
+    const maxLabelLines = wx.durationSec > 0 && wx.setCount > 0 ? 3 : 4;
+    const labelLines = wx.displayLabels.slice(0, maxLabelLines);
+    const moreCount = Math.max(0, wx.displayLabels.length - labelLines.length);
     const detailHtml = wx.hasWorkout ? `
       <div class="cal-workout-bars">
         ${wx.durationSec > 0 ? `<span class="cal-workout-bar cal-workout-bar-time">${_formatDurationShort(wx.durationSec)}</span>` : ''}
         ${wx.setCount > 0 ? `<span class="cal-workout-bar">${wx.setCount}세트</span>` : ''}
-        ${labelLines.map(label => `<span class="cal-workout-bar cal-workout-bar-name">${_esc(label)}</span>`).join('')}
+        ${labelLines.map(label => `<span class="cal-workout-bar cal-workout-bar-part" title="${_esc(label.title || label.text)}">${_esc(label.text)}</span>`).join('')}
         ${moreCount > 0 ? `<span class="cal-workout-bar cal-workout-bar-more">+${moreCount}</span>` : ''}
       </div>
       <div class="cal-workout-cell-kcal">${wx.burned.total > 0 ? `${wx.burned.total} kcal` : ''}</div>
@@ -614,7 +701,7 @@ function _openWorkoutDay(key) {
   const plan = getDietPlan() || null;
   const checkins = _sortedCheckins();
   const bodyWeight = _weightAt(checkins, key) ?? getLatestCheckinWeight() ?? plan?.weight ?? 70;
-  const wx = _workoutMetrics(key, day, bodyWeight);
+  const wx = _workoutMetrics(key, day, bodyWeight, _buildWorkoutLookup());
 
   const [yy, mm, dd] = key.split('-').map(n => parseInt(n, 10));
   const d = new Date(yy, mm - 1, dd);
