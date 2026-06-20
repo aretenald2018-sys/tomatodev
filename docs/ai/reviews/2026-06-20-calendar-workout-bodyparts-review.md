@@ -21,7 +21,12 @@
 2. PASS: `node --check sw.js`
 3. PASS: `node scripts/verify-runtime-assets.mjs`
 4. PASS: `git diff --check`
-5. not verified yet: 이 세션 지침상 장기 dev server를 sandbox에서 시작하지 않았으므로 실제 브라우저에서 `캘린더 -> 운동` 셀 표시 확인은 사용자 로컬 일반 터미널에서 필요하다.
+5. PASS: `npm.cmd run verify:assets`
+6. PASS: `git push tomatofarm main` — `4e7808c..634014a`
+7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 7dfc8644fee5`
+8. PASS: 원격 `build-info.json` shortCommit `7dfc8644fee5`, `sw.js` 캐시 버전 `tomatofarm-v20260620z10-calendar-workout-bodyparts`
+9. PASS: 원격 `render-calendar.js`에 `displayLabels`, `cal-workout-bar-part`, 부위별 세트 title 마커 존재. 원격 `style.css`에 `.cal-workout-bar-part`, `font-size: 8px` 존재.
+10. not verified yet: 원격 브라우저에서 하단 `캘린더` 클릭 후에도 활성 패널이 `tab-home`에 남고 `window.switchTab`이 `undefined`라 실제 캘린더 UI 클릭 플로우는 기존 네비게이션 문제로 확인하지 못했다.
 
 ## 수동 확인 흐름
 
