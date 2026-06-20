@@ -46,6 +46,30 @@ export function groupForMajor(major) {
   return TM2_GROUPS.find(g => g.majors.includes(m)) || null;
 }
 
+export function groupIdForPart(partId) {
+  const raw = String(partId || '').trim();
+  if (!raw) return null;
+  if (raw === 'glute') return 'lower';
+  if (raw === 'core' || raw === 'abs_core') return 'abs';
+  if (raw === 'bicep' || raw === 'tricep') return 'arm';
+  const direct = TM2_GROUPS.find(g => g.id === raw);
+  if (direct) return direct.id;
+  return groupForMajor(raw)?.id || null;
+}
+
+export function visibleGroupIdsForSelectedParts(parts = []) {
+  const ids = new Set();
+  for (const part of (Array.isArray(parts) ? parts : [])) {
+    const groupId = groupIdForPart(part);
+    if (groupId) ids.add(groupId);
+  }
+  if (ids.size) {
+    ids.add('arm');
+    ids.add('abs');
+  }
+  return ids;
+}
+
 export function defaultIncrementForGroup(groupId) {
   const g = TM2_GROUPS.find(x => x.id === groupId);
   return g?.bodyRegion === 'lower' ? TM2_DEFAULTS.incrementLowerKg : TM2_DEFAULTS.incrementUpperKg;

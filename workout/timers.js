@@ -11,6 +11,8 @@ import { getActiveTimer, saveActiveTimer, clearActiveTimer, getCurrentUser } fro
 // running 타이머가 "이 정도 이상 방치되면 freak-out" 가드 (24h). active_timer 의
 // startedAt 이 너무 오래되었다면 OS kill/탭 종료로 정산 못한 유령 세션으로 간주, 복원하지 않음.
 const _MAX_LIVE_TIMER_MS = 24 * 60 * 60 * 1000;
+const _GROWTH_BOARD_AUTO_MAX_SEC = 2 * 60 * 60;
+const _GROWTH_BOARD_AUTO_GRACE_MS = 10 * 60 * 1000;
 
 function _normalizeTimerDate(date) {
   if (!date || typeof date !== 'object') return null;
@@ -34,6 +36,13 @@ function _sameTimerDate(a, b) {
   const da = _normalizeTimerDate(a);
   const db = _normalizeTimerDate(b);
   return !!da && !!db && da.y === db.y && da.m === db.m && da.d === db.d;
+}
+
+function _timerDateKey(date) {
+  const d = _normalizeTimerDate(date);
+  if (!d) return null;
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.y}-${pad(d.m + 1)}-${pad(d.d)}`;
 }
 
 function _ensureWorkoutTimerDate() {
@@ -72,12 +81,20 @@ function _persistActiveTimerState(context) {
 //   CLAUDE.md: localStorage 는 기기 단위이므로 유저별 키를 써서 다른 계정으로 로그인 시
 //   유령 타이머가 살아나지 않게 한다.
 const _LS_TIMER_KEY_PREFIX = 'tomatofarm_active_timer_';
+const _LS_GROWTH_BOARD_TIMER_KEY_PREFIX = 'tomatofarm_growth_board_auto_timer_';
 function _lsKey() {
   try {
     const u = getCurrentUser();
     const uid = (u && (u.uid || u.id || u.username)) || '_anon';
     return _LS_TIMER_KEY_PREFIX + uid;
   } catch { return _LS_TIMER_KEY_PREFIX + '_anon'; }
+}
+function _lsGrowthBoardTimerKey() {
+  try {
+    const u = getCurrentUser();
+    const uid = (u && (u.uid || u.id || u.username)) || '_anon';
+    return _LS_GROWTH_BOARD_TIMER_KEY_PREFIX + uid;
+  } catch { return _LS_GROWTH_BOARD_TIMER_KEY_PREFIX + '_anon'; }
 }
 function _lsWriteTimer(state) {
   try { localStorage.setItem(_lsKey(), JSON.stringify(state)); } catch {}
@@ -91,11 +108,93 @@ function _lsReadTimer() {
 function _lsClearTimer() {
   try { localStorage.removeItem(_lsKey()); } catch {}
 }
+function _lsWriteGrowthBoardTimer(state) {
+  try { localStorage.setItem(_lsGrowthBoardTimerKey(), JSON.stringify(state)); } catch {}
+}
+function _lsReadGrowthBoardTimer() {
+  try {
+    const raw = localStorage.getItem(_lsGrowthBoardTimerKey());
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+function _lsClearGrowthBoardTimer() {
+  try { localStorage.removeItem(_lsGrowthBoardTimerKey()); } catch {}
+}
 function _isValidActiveTimer(t) {
   const startedAt = Number(t?.startedAt);
   return !!t && Number.isFinite(startedAt) && startedAt > 0 &&
          (Date.now() - startedAt) < _MAX_LIVE_TIMER_MS &&
          !!_normalizeTimerDate(t.date);
+}
+
+let _growthBoardAutoTimer = null;
+
+function _normalizeGrowthBoardAutoTimer(state) {
+  if (!state || typeof state !== 'object') return null;
+  const dateKey = String(state.dateKey || '');
+  const startedAt = Number(state.startedAt);
+  const lastActivityAt = Number(state.lastActivityAt);
+  if (!dateKey || !Number.isFinite(startedAt) || startedAt <= 0) return null;
+  return {
+    source: state.source || 'growth-board',
+    dateKey,
+    startedAt,
+    lastActivityAt: Number.isFinite(lastActivityAt) && lastActivityAt >= startedAt ? lastActivityAt : null,
+  };
+}
+
+function _growthBoardAutoTimerForDate(dateKey) {
+  if (!dateKey) return null;
+  const current = _normalizeGrowthBoardAutoTimer(_growthBoardAutoTimer);
+  if (current?.dateKey === dateKey) {
+    _growthBoardAutoTimer = current;
+    return current;
+  }
+  const stored = _normalizeGrowthBoardAutoTimer(_lsReadGrowthBoardTimer());
+  if (stored?.dateKey === dateKey) {
+    _growthBoardAutoTimer = stored;
+    return stored;
+  }
+  if (stored && stored.dateKey !== dateKey) _lsClearGrowthBoardTimer();
+  _growthBoardAutoTimer = null;
+  return null;
+}
+
+function _saveGrowthBoardAutoTimer(state) {
+  const normalized = _normalizeGrowthBoardAutoTimer(state);
+  if (!normalized) return null;
+  _growthBoardAutoTimer = normalized;
+  _lsWriteGrowthBoardTimer(normalized);
+  return normalized;
+}
+
+function _clearGrowthBoardAutoTimer() {
+  _growthBoardAutoTimer = null;
+  _lsClearGrowthBoardTimer();
+}
+
+function _growthBoardAutoDurationSec() {
+  const dateKey = _timerDateKey(_ensureWorkoutTimerDate() || _currentWorkoutTimerDate());
+  const state = _growthBoardAutoTimerForDate(dateKey);
+  if (!state?.lastActivityAt) return null;
+  const sec = Math.floor((state.lastActivityAt + _GROWTH_BOARD_AUTO_GRACE_MS - state.startedAt) / 1000);
+  if (!Number.isFinite(sec) || sec <= 0) return null;
+  return Math.min(_GROWTH_BOARD_AUTO_MAX_SEC, sec);
+}
+
+function _measuredWorkoutDurationSec(now = Date.now()) {
+  let total = Math.max(0, Math.floor(Number(S.workout.workoutDuration) || 0));
+  if (S.workout.workoutStartTime && _isViewingTimerDate()) {
+    total += Math.max(0, Math.floor((now - S.workout.workoutStartTime) / 1000));
+  }
+  return total;
+}
+
+function _finalWorkoutDurationSec(now = Date.now()) {
+  const measured = _measuredWorkoutDurationSec(now);
+  const growthBoardAuto = _growthBoardAutoDurationSec();
+  if (growthBoardAuto == null) return measured;
+  return Math.min(_GROWTH_BOARD_AUTO_MAX_SEC, Math.max(measured, growthBoardAuto));
 }
 
 // ── 운동 시간 측정 ───────────────────────────────────────────────
@@ -106,6 +205,32 @@ export function _isViewingTimerDate() {
   const td = _normalizeTimerDate(S.workout.workoutTimerDate);
   const cd = _normalizeTimerDate(S.shared.date) || (S.workout.workoutStartTime ? td : null);
   return _sameTimerDate(td, cd);
+}
+
+export function wtStartGrowthBoardAutoTimer() {
+  const dateKey = _timerDateKey(_currentWorkoutTimerDate());
+  if (!dateKey) return null;
+  const current = _growthBoardAutoTimerForDate(dateKey);
+  const startedAt = current?.startedAt || Date.now();
+  const state = _saveGrowthBoardAutoTimer({
+    source: 'growth-board',
+    dateKey,
+    startedAt,
+    lastActivityAt: current?.lastActivityAt || null,
+  });
+  const bar = document.getElementById('wt-workout-timer-bar');
+  if (bar) bar.classList.add('wt-open');
+  wtStartWorkoutTimer();
+  return state;
+}
+
+export function wtMarkGrowthBoardExerciseAdded() {
+  const state = wtStartGrowthBoardAutoTimer();
+  if (!state) return null;
+  return _saveGrowthBoardAutoTimer({
+    ...state,
+    lastActivityAt: Date.now(),
+  });
 }
 
 export function wtStartWorkoutTimer() {
@@ -179,6 +304,7 @@ export async function wtResetWorkoutTimer() {
   saveWorkoutDay()
     .then(() => {
       _lsClearTimer();
+      _clearGrowthBoardAutoTimer();
       return clearActiveTimer();
     })
     .catch(e => console.error('[timer reset] persist chain error:', e));
@@ -285,16 +411,11 @@ export function wtTogglePauseWorkoutTimer() {
 //      _cache[key]=data는 동기 경로에서 이미 갱신되지만, Firebase round-trip까지
 //      기다려야 다른 레이어(getCache 소비자, analytics 등)와의 순서가 명확해진다.
 export function wtFinishWorkout() {
+  const finalDuration = _finalWorkoutDurationSec();
   if (S.workout.workoutStartTime) {
-    // 타이머 날짜와 현재 보고 있는 날짜가 다를 수 있음.
-    // 누적은 타이머의 날짜 document에만 반영되어야 함 — 아래 saveWorkoutDay가
-    // 타이머 날짜 기준으로 저장할 수 있도록 여기서는 workoutDuration만 합산.
-    // (_isViewingTimerDate 시점에서만 S.workout.workoutDuration이 타이머 날짜의 값임)
-    if (_isViewingTimerDate()) {
-      S.workout.workoutDuration += Math.floor((Date.now() - S.workout.workoutStartTime) / 1000);
-    }
     S.workout.workoutStartTime = null;
   }
+  S.workout.workoutDuration = finalDuration;
   S.workout.workoutTimerDate = null;
   if (S.workout.workoutTimerInterval) { clearInterval(S.workout.workoutTimerInterval); S.workout.workoutTimerInterval = null; }
   _renderWorkoutTimer();
@@ -320,6 +441,7 @@ export function wtFinishWorkout() {
   //   경로가 이어받아 유저가 재시도 가능 (2026-04-21 Codex 지적 #2).
   return saveWorkoutDay().then(() => {
     _lsClearTimer();
+    _clearGrowthBoardAutoTimer();
     clearActiveTimer().catch(e => console.error('[timer finish] clearActiveTimer error:', e));
   });
 }

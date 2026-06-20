@@ -410,11 +410,15 @@ body:has(#tm2-sheets.tm2-open) #tm2-sheets .tm2-sheet {
 .tm2-card-sets .ex-max-v2-type-btn.drop { background: #fdecea; color: var(--tm2-tomato); }
 .tm2-card-sets .ex-max-v2-field { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .tm2-card-sets .ex-max-v2-field span { font-size: 8.5px; font-weight: 700; color: var(--tm2-ink4); padding-left: 2px; }
-.tm2-card-sets .set-input {
+.tm2-card-sets .set-input,
+.tm2-card-sets .set-rpe-input {
   width: 100%; min-width: 0; border: 1.5px solid var(--tm2-line); border-radius: 9px; padding: 6px 7px;
   font-size: 15px; font-weight: 700; color: var(--tm2-ink1); text-align: center; font-family: inherit; outline: none;
+  background: #fff;
 }
-.tm2-card-sets .set-input:focus { border-color: var(--tm2-tomato); }
+.tm2-card-sets .set-input:focus,
+.tm2-card-sets .set-rpe-input:focus,
+.tm2-card-sets .set-rom-input:focus { border-color: var(--tm2-tomato); }
 .tm2-card-sets .set-done-btn, .tm2-card-sets .set-remove-btn {
   flex: none; width: 28px; height: 28px; border: 0; border-radius: 8px; font-size: 13px; font-weight: 800;
 }
@@ -658,7 +662,8 @@ body:has(#tm2-sheets.tm2-open) #tm2-sheets .tm2-sheet {
   .tm2-card-sets .ex-max-v2-type-btn { width: 30px; font-size: 10px; }
   .tm2-card-sets .set-done-btn { width: 28px; }
   .tm2-card-sets .set-remove-btn { width: 16px; }
-  .tm2-card-sets .set-input { font-size: 14px; padding: 6px 5px; }
+  .tm2-card-sets .set-input,
+  .tm2-card-sets .set-rpe-input { font-size: 14px; padding: 6px 5px; }
   .tm2-card-sets .ex-max-v2-rom {
     grid-template-columns: 30px minmax(0, 1fr) 44px 10px;
     gap: 5px;

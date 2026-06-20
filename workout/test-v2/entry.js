@@ -6,13 +6,14 @@
 // ================================================================
 
 let _opening = false;
+const TM2_MODULE_VERSION = '20260620z27-selected-scope';
 
 async function _open() {
   if (_opening) return;
   _opening = true;
   try {
     // 주의: 이 파일은 workout/test-v2/ 깊이 — 동적 import 상대 경로는 ./ 기준
-    const mod = await import('./board-render.js');
+    const mod = await import(`./board-render.js?v=${TM2_MODULE_VERSION}`);
     await mod.tm2OpenBoard();
   } catch (e) {
     console.error('[tm2] open failed', e);

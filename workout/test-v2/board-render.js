@@ -16,17 +16,19 @@ import { S as WS } from '../state.js';
 import { saveWorkoutDay } from '../save.js';
 import { loadWorkoutDate } from '../load.js';
 import { renderEmbeddedMaxExerciseCard } from '../exercises.js';
+import { wtStartGrowthBoardAutoTimer, wtMarkGrowthBoardExerciseAdded } from '../timers.js';
 import {
   TM2_GROUPS, TM2_TRACK_LABELS,
   mondayOf, addWeeks, weeksBetween, weekIndexOf, isCycleFinished, shortDate, toKey,
-  groupForMajor, activeBenchmarks, activeCycleOf, settledCyclesOf, benchmarkById, currentKgOf,
+  activeBenchmarks, activeCycleOf, settledCyclesOf, benchmarkById, currentKgOf,
+  groupIdForPart, visibleGroupIdsForSelectedParts,
   expandColumnCells, projectFutureCells, paintWeek, recordMiss, previewAdjust,
   isSettleDue, buildSettleRows, applySettle,
   archiveBenchmark, addBenchmark, buildOnboardingCandidates, buildRecentMap,
   mergeSessionExercises, sessionRecentMap, resolveSessionEntryGroupId,
   sortCandidatesByRecent, workoutRecordsForBenchmarkWeek,
   buildMinimapData, defaultIncrementForGroup, getLineup, toggleLineup,
-} from './board-core.js';
+} from './board-core.js?v=20260620z27-selected-scope';
 import {
   WENDLER_SCHEMES, WENDLER_SCHEME_IDS, normalizeWendlerConfig,
   wendlerWeekPrescription, wendlerCycleOverview, isWendlerAllowedMajor,
@@ -64,6 +66,7 @@ const S = {
 };
 
 const _todayKey = () => toKey(new Date());
+const TM2_MODULE_VERSION = '20260620z27-selected-scope';
 const _esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const _toast = (msg, type = 'info') => { if (typeof window.showToast === 'function') window.showToast(msg, 2200, type); };
 const _num = (id, fallback = 0) => {
@@ -73,16 +76,23 @@ const _num = (id, fallback = 0) => {
 };
 const _txt = (id) => (document.getElementById(id)?.value || '').trim();
 
+function _isTodayKey(dateKey) {
+  return dateKey === _todayKey();
+}
+
+function _startGrowthBoardTimerForDate(dateKey) {
+  if (_isTodayKey(dateKey)) wtStartGrowthBoardAutoTimer();
+}
+
+function _markGrowthBoardExerciseAddedForDate(dateKey) {
+  if (_isTodayKey(dateKey)) wtMarkGrowthBoardExerciseAdded();
+}
+
 function _normalizeGroupId(id) {
   const raw = String(id || '').trim();
   if (!raw) return null;
-  if (raw === 'glute') return 'lower';
-  if (raw === 'core') return 'abs';
-  if (raw === 'bicep' || raw === 'tricep') return 'arm';
-  const direct = TM2_GROUPS.find(g => g.id === raw);
-  if (direct) return direct.id;
-  const byMajor = groupForMajor(raw);
-  if (byMajor) return byMajor.id;
+  const directGroup = groupIdForPart(raw);
+  if (directGroup) return directGroup;
   const mv = MOVEMENTS.find(m => m.id === raw);
   if (mv) return _normalizeGroupId(mv.primary || mv.subPattern);
   const subMap = {
@@ -98,23 +108,32 @@ function _entryGroupId(entry = {}) {
   return resolveSessionEntryGroupId(entry, { exList: _registryExercises(), movements: MOVEMENTS });
 }
 
-function _readTodayGroupIds() {
+function _readSelectedMajorGroupIds() {
+  const parts = Array.isArray(WS.workout?.maxMeta?.selectedMajors)
+    ? WS.workout.maxMeta.selectedMajors
+    : [];
+  return visibleGroupIdsForSelectedParts(parts);
+}
+
+function _readSessionGroupIds() {
   const ids = new Set();
   for (const entry of _currentSessionEntries()) {
     const gid = _entryGroupId(entry);
     if (gid) ids.add(gid);
   }
-  for (const id of (Array.isArray(WS.workout?.maxMeta?.selectedMajors) ? WS.workout.maxMeta.selectedMajors : [])) {
-    const gid = _normalizeGroupId(id);
-    if (gid) ids.add(gid);
-  }
-  if (ids.size) return ids;
+  if (ids.size) return visibleGroupIdsForSelectedParts([...ids]);
 
   document.querySelectorAll('[data-muscle].prefer, [data-muscle].active, [data-muscle].selected').forEach(el => {
     const gid = _normalizeGroupId(el.getAttribute('data-muscle'));
     if (gid) ids.add(gid);
   });
-  return ids;
+  return ids.size ? visibleGroupIdsForSelectedParts([...ids]) : ids;
+}
+
+function _activeBoardGroupIds(board = S.board) {
+  return new Set((board?.benchmarks || [])
+    .filter(bm => bm?.status === 'active' && bm.groupId)
+    .map(bm => bm.groupId));
 }
 
 function _boardGroups() {
@@ -141,9 +160,25 @@ function _ensureBoardGroups() {
 
 function _visibleGroups() {
   const groups = _boardGroups();
-  const wanted = _readTodayGroupIds();
-  const filtered = groups.filter(g => wanted.has(g.id));
-  return filtered.length ? filtered : groups;
+  const activeIds = _activeBoardGroupIds();
+  const selectedGroupIds = _readSelectedMajorGroupIds();
+  const selected = groups.filter(g => selectedGroupIds.has(g.id));
+  const activeGroups = groups.filter(g => activeIds.has(g.id));
+
+  if (selected.length) return selected;
+
+  const currentScope = S.groupId ? visibleGroupIdsForSelectedParts([S.groupId]) : new Set();
+  const scoped = groups.filter(g => currentScope.has(g.id));
+  if (scoped.length) return scoped;
+
+  const wanted = _readSessionGroupIds();
+  if (wanted.size) {
+    const filtered = groups.filter(g => wanted.has(g.id));
+    if (filtered.length) return filtered;
+  }
+
+  const filtered = groups.filter(g => activeIds.has(g.id));
+  return filtered.length ? filtered : (activeGroups.length ? activeGroups : groups);
 }
 
 function _syncActiveGroup() {
@@ -152,6 +187,17 @@ function _syncActiveGroup() {
     const withBm = groups.find(g => activeBenchmarks(S.board, g.id).length);
     S.groupId = (withBm || groups[0] || { id: 'chest' }).id;
   }
+}
+
+function _firstActiveGroupId(board = S.board, preferredGroupId = null) {
+  const activeIds = _activeBoardGroupIds(board);
+  const preferred = _normalizeGroupId(preferredGroupId);
+  if (preferred && activeIds.has(preferred)) return preferred;
+  return _boardGroups().find(g => activeIds.has(g.id))?.id || null;
+}
+
+function _firstSelectedMajorGroupId() {
+  return _boardGroups().find(g => _readSelectedMajorGroupIds().has(g.id))?.id || null;
 }
 
 async function _persist() {
@@ -206,10 +252,11 @@ export async function tm2OpenBoard() {
   await _ensureTodayLoaded();
   const board = getTestBoardV2();
   if (!board || !Array.isArray(board.benchmarks) || !board.benchmarks.length) {
-    const mod = await import('./onboarding.js');
+    const mod = await import(`./onboarding.js?v=${TM2_MODULE_VERSION}`);
     mod.openOnboarding({
-      onComplete: async (newBoard) => {
+      onComplete: async (newBoard, meta = {}) => {
         S.board = newBoard;
+        S.groupId = _firstActiveGroupId(newBoard, meta.preferredGroupId) || S.groupId;
         await _persist();
         _toast('6주 칸을 채웠어요 — 성장 보드 시작!', 'success');
         _afterBoardReady();
@@ -218,6 +265,7 @@ export async function tm2OpenBoard() {
     return;
   }
   S.board = board;
+  S.groupId = _firstActiveGroupId(board, _firstSelectedMajorGroupId()) || S.groupId;
   _afterBoardReady();
 }
 
@@ -240,11 +288,12 @@ export function tm2CloseBoard() {
 async function _backToOnboarding() {
   tm2CloseBoard();
   _ensureRoots();
-  const mod = await import('./onboarding.js');
+  const mod = await import(`./onboarding.js?v=${TM2_MODULE_VERSION}`);
   mod.openOnboarding({
     board: S.board,
-    onComplete: async (newBoard) => {
+    onComplete: async (newBoard, meta = {}) => {
       S.board = newBoard;
+      S.groupId = _firstActiveGroupId(newBoard, meta.preferredGroupId) || S.groupId;
       await _persist();
       _toast('6주 칸을 다시 채웠어요 — 성장 보드로 돌아갈게요', 'success');
       _afterBoardReady();
@@ -700,6 +749,26 @@ function _shouldKeepWendlerSets(cur, keepSets, plan, signature) {
   return _hasWendlerPlanShape(cur?.sets, plan);
 }
 
+function _isEmptyDraftSet(set = {}) {
+  return !Number(set?.kg)
+    && !Number(set?.reps)
+    && set?.done === false
+    && (set?.setType == null || set.setType === 'main')
+    && (set?.rpe == null || set.rpe === '')
+    && (set?.romPct == null || Number(set.romPct) === 100);
+}
+
+function _shouldKeepWorkoutCardSets(cur, code, wkMon, prescription) {
+  const sameCard = cur?.recommendationMeta?.track === code
+    && cur?.recommendationMeta?.boardV2WeekStart === wkMon;
+  if (!sameCard) return false;
+  const sets = Array.isArray(cur?.sets) ? cur.sets.filter(Boolean) : [];
+  if (!sets.length) return false;
+  const expectedCount = Math.max(1, Number(prescription?.targetSets) || (prescription?.sets || []).length || 4);
+  if (expectedCount > 1 && sets.length === 1 && _isEmptyDraftSet(sets[0])) return false;
+  return true;
+}
+
 function _wendlerRxLabel(plan) {
   if (plan?.kind !== 'wendler') return '';
   const supp = plan.rx?.supplemental;
@@ -801,6 +870,7 @@ function _upsertWorkoutEntryForBenchmark(bm, track, wkMon, override = null) {
   const wendlerSignature = plan.kind === 'wendler' ? _wendlerPlanSignature(plan) : '';
   const list = WS.workout.exercises || (WS.workout.exercises = []);
   const idx = _workoutEntryIndexForBenchmark(list, bm);
+  const created = idx < 0;
   const cycle = activeCycleOf(S.board, bm.groupId);
   const baseEntry = {
     muscleId: bm.muscleId || bm.groupId || 'chest',
@@ -823,7 +893,7 @@ function _upsertWorkoutEntryForBenchmark(bm, track, wkMon, override = null) {
   let entryIdx = idx;
   if (entryIdx >= 0) {
     const cur = list[entryIdx];
-    const keepSets = cur.recommendationMeta?.track === code && cur.recommendationMeta?.boardV2WeekStart === wkMon && Array.isArray(cur.sets) && cur.sets.length;
+    const keepSets = _shouldKeepWorkoutCardSets(cur, code, wkMon, prescription);
     const keepWendlerSets = plan.kind === 'wendler' && _shouldKeepWendlerSets(cur, keepSets, plan, wendlerSignature);
     const sets = plan.kind === 'wendler'
       ? (keepWendlerSets ? cur.sets : prescription.sets)
@@ -851,12 +921,13 @@ function _upsertWorkoutEntryForBenchmark(bm, track, wkMon, override = null) {
       sets: plan.kind === 'wendler' ? _ensureWendlerSetRoles(prescription.sets, plan, bm, wendlerSignature) : prescription.sets,
     });
   }
-  return { entryIdx, plan, prescription };
+  return { entryIdx, plan, prescription, created };
 }
 
 async function _openWorkoutCard(bm, track, wkMon) {
   await _ensureTodayLoaded();
-  const { entryIdx, plan } = _upsertWorkoutEntryForBenchmark(bm, track, wkMon);
+  const { entryIdx, plan, created } = _upsertWorkoutEntryForBenchmark(bm, track, wkMon);
+  if (created && wkMon === mondayOf(_todayKey())) _markGrowthBoardExerciseAddedForDate(_todayKey());
   S.card = { bmId: bm.id, track, weekStart: wkMon, plan, entryIdx };
   S.sheet = { kind: 'card', ctx: { bmId: bm.id, track, weekStart: wkMon } };
   _renderWorkoutCard();
@@ -1580,6 +1651,7 @@ function _isCurrentLineupCtx(ctx = S.sheet?.ctx) {
 
 function openLineupSheet(weekStart, dateKey) {
   S.sheet = { kind: 'lineup', ctx: { weekStart: mondayOf(weekStart), dateKey, adding: null } };
+  _startGrowthBoardTimerForDate(dateKey);
   _renderLineupSheet();
 }
 
@@ -1671,6 +1743,7 @@ async function _toggleLineupSelection(bmId, track) {
   if (!ctx || !bm) return;
   const wasPicked = _lineupHas(ctx.dateKey, bm.id, track);
   toggleLineup(S.board, ctx.dateKey, bm.id, track);
+  if (!wasPicked) _markGrowthBoardExerciseAddedForDate(ctx.dateKey);
   let workoutSaved = false;
   let workoutFailed = false;
   if (!wasPicked && _isCurrentLineupCtx(ctx)) {
@@ -1708,6 +1781,7 @@ async function _confirmLineupAddCandidate(candKeyVal) {
     tracks: { volume: { kg, reps }, intensity: null },
   }, _todayKey());
   if (!_lineupHas(ctx.dateKey, bm.id, 'volume')) toggleLineup(S.board, ctx.dateKey, bm.id, 'volume');
+  _markGrowthBoardExerciseAddedForDate(ctx.dateKey);
 
   let workoutSaved = false;
   let workoutFailed = false;
@@ -1822,6 +1896,7 @@ async function _onCellTap(d) {
   const isFutureWeek = weeksBetween(mondayOf(todayKey), wkMon) > 0;
 
   if (current === '1') {
+    _startGrowthBoardTimerForDate(todayKey);
     await openCellSheet(bmId, track, wkMon);
     return;
   }

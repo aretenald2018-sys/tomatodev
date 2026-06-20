@@ -16,8 +16,8 @@ import {
   TM2_GROUPS, TM2_TRACK_LABELS, TM2_DEFAULTS,
   buildOnboardingCandidates, buildBoardFromOnboarding, buildRecentMap,
   mergeSessionExercises, sessionRecentMap,
-  mondayOf, shortDate, toKey,
-} from './board-core.js';
+  groupIdForPart, visibleGroupIdsForSelectedParts, mondayOf, shortDate, toKey,
+} from './board-core.js?v=20260620z27-selected-scope';
 import {
   WENDLER_SCHEMES, WENDLER_WARMUP_DEFAULT,
   normalizeWendlerConfig, suggestWendlerTm, wendlerWeekPrescription,
@@ -40,6 +40,7 @@ const OB = {
   lastCreatePointerAt: 0,
   editor: null,          // { id, mode }
   todayKeys: new Set(),
+  scopedGroupId: null,
 };
 
 const _esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -97,10 +98,10 @@ function _defaultWendler(c) {
 const _programOf = (c) => (_canWendler(c) ? (OB.programs[candKey(c)] || (c.wendler ? 'wendler' : 'stair')) : 'stair');
 const _isWendler = (c) => _programOf(c) === 'wendler';
 const _wendlerOf = (c) => OB.wendler[candKey(c)] || (OB.wendler[candKey(c)] = _defaultWendler(c));
-const _selectedCount = () => OB.candidates.filter(c => OB.enabled.has(candKey(c))).length;
+const _selectedCount = () => _visibleCandidates().filter(c => OB.enabled.has(candKey(c))).length;
 const _missingWeights = () => {
   const missing = [];
-  for (const c of OB.candidates) {
+  for (const c of _visibleCandidates()) {
     if (!OB.enabled.has(candKey(c))) continue;
     if (_isWendler(c)) {
       const tm = Number(_wendlerOf(c).tmKg);
@@ -135,8 +136,9 @@ function _candidateRecordDate(c) {
 }
 
 function _referenceInfo() {
-  const selected = OB.candidates.filter(c => OB.enabled.has(candKey(c)));
-  const pool = selected.length ? selected : OB.candidates;
+  const visible = _visibleCandidates();
+  const selected = visible.filter(c => OB.enabled.has(candKey(c)));
+  const pool = selected.length ? selected : visible;
   const latestRecord = pool.map(_candidateRecordDate).filter(Boolean).sort().pop() || null;
   const basisDate = latestRecord || _todayKey();
   return {
@@ -170,10 +172,64 @@ function _candidateMatchesSession(c, entries) {
   });
 }
 
+function _normalizeGroupId(id) {
+  const raw = String(id || '').trim();
+  if (!raw) return null;
+  return groupIdForPart(raw);
+}
+
+function _selectedMajorGroupIds() {
+  const ids = new Set();
+  for (const id of (Array.isArray(WS.workout?.maxMeta?.selectedMajors) ? WS.workout.maxMeta.selectedMajors : [])) {
+    const gid = _normalizeGroupId(id);
+    if (gid) ids.add(gid);
+  }
+  return ids;
+}
+
+function _selectedVisibleGroupIds() {
+  const parts = Array.isArray(WS.workout?.maxMeta?.selectedMajors)
+    ? WS.workout.maxMeta.selectedMajors
+    : [];
+  const selected = visibleGroupIdsForSelectedParts(parts);
+  if (selected.size) return selected;
+  const todayGroups = OB.candidates
+    .filter(c => OB.todayKeys.has(candKey(c)) && c.groupId)
+    .map(c => c.groupId);
+  const today = visibleGroupIdsForSelectedParts(todayGroups);
+  if (today.size) return today;
+  return OB.scopedGroupId ? visibleGroupIdsForSelectedParts([OB.scopedGroupId]) : new Set();
+}
+
+function _visibleGroups() {
+  const visibleIds = _selectedVisibleGroupIds();
+  return visibleIds.size ? TM2_GROUPS.filter(g => visibleIds.has(g.id)) : TM2_GROUPS;
+}
+
+function _visibleCandidates() {
+  const visibleIds = _selectedVisibleGroupIds();
+  return visibleIds.size ? OB.candidates.filter(c => visibleIds.has(c.groupId)) : OB.candidates;
+}
+
+function _pruneEnabledToVisibleGroups() {
+  const visibleIds = _selectedVisibleGroupIds();
+  if (!visibleIds.size) return;
+  const visibleKeys = new Set(_visibleCandidates().map(candKey).filter(Boolean));
+  OB.enabled = new Set([...OB.enabled].filter(k => visibleKeys.has(k)));
+}
+
+function _ensureVisibleTab() {
+  const groups = _visibleGroups();
+  if (!groups.some(g => g.id === OB.tab)) OB.tab = groups[0]?.id || 'chest';
+}
+
 function _initialTab() {
-  const today = OB.candidates.find(c => OB.todayKeys.has(candKey(c)));
+  const selectedGroups = _selectedMajorGroupIds();
+  const selected = TM2_GROUPS.find(g => selectedGroups.has(g.id));
+  if (selected) return selected.id;
+  const today = _visibleCandidates().find(c => OB.todayKeys.has(candKey(c)));
   if (today?.groupId) return today.groupId;
-  return TM2_GROUPS[0].id;
+  return _visibleGroups()[0]?.id || TM2_GROUPS[0].id;
 }
 
 function _initCandidateState(c) {
@@ -214,6 +270,7 @@ function _reloadCandidates({ resetState = false } = {}) {
     OB.enabled = new Set([...OB.enabled].filter(k => live.has(k)));
   }
   for (const c of OB.candidates) _initCandidateState(c);
+  if (!resetState) _pruneEnabledToVisibleGroups();
 }
 
 export function openOnboarding({ onComplete, board = null } = {}) {
@@ -221,7 +278,9 @@ export function openOnboarding({ onComplete, board = null } = {}) {
   OB.sourceBoard = board || null;
   _reloadCandidates({ resetState: true });
   OB.enabled = new Set(OB.todayKeys);
+  _pruneEnabledToVisibleGroups();
   OB.tab = _initialTab();
+  OB.scopedGroupId = _selectedVisibleGroupIds().size ? OB.tab : null;
   OB.editor = null;
 
   const layer = document.getElementById('tm2-sheets');
@@ -444,14 +503,19 @@ function _render() {
   const layer = document.getElementById('tm2-sheets');
   if (!layer) return;
 
-  const tabBtns = TM2_GROUPS.map(g => {
+  _pruneEnabledToVisibleGroups();
+  _ensureVisibleTab();
+  const groups = _visibleGroups();
+  const candidates = _visibleCandidates();
+
+  const tabBtns = groups.map(g => {
     const total = OB.candidates.filter(c => c.groupId === g.id).length;
     const n = OB.candidates.filter(c => c.groupId === g.id && OB.enabled.has(candKey(c))).length;
     return `<button type="button" class="${OB.tab === g.id ? 'tm2-on' : ''}" data-action="tm2ob:tab" data-group="${g.id}">${g.label} ${n}/${total}</button>`;
   }).join('');
 
   const editorHtml = _renderEditor();
-  const listRows = OB.candidates.filter(c => c.groupId === OB.tab).map(c => {
+  const listRows = candidates.filter(c => c.groupId === OB.tab).map(c => {
     const k = candKey(c);
     const on = OB.enabled.has(k);
     const canWnd = _canWendler(c);
@@ -488,7 +552,7 @@ function _render() {
   }).join('');
 
   // 시작 무게 — "그 날 하겠다고 체크한 종목만" (계약: 켜진 종목만 노출)
-  const weightRows = OB.candidates.filter(c => OB.enabled.has(candKey(c))).map(c => {
+  const weightRows = candidates.filter(c => OB.enabled.has(candKey(c))).map(c => {
     if (_isWendler(c)) return _renderWendlerWeightRow(c);
     return ['volume', 'intensity'].filter(t => c.tracks[t]).map(t => {
       const key = `${candKey(c)}:${t}`;
@@ -601,14 +665,15 @@ async function _create() {
   if (OB.creating) return;
   const selections = [];
   const missing = _missingWeights();
-  if (!OB.enabled.size) { _refreshCreateAction(); _toast('종목을 1개 이상 켜 주세요', 'warning'); return; }
+  const candidates = _visibleCandidates();
+  if (!_selectedCount()) { _refreshCreateAction(); _toast('종목을 1개 이상 켜 주세요', 'warning'); return; }
   if (missing.length) {
     _refreshCreateAction();
     _focusProblemInput(missing);
     _toast(`시작 무게를 입력해 주세요 — ${missing.slice(0, 2).map(m => m.label).join(', ')}${missing.length > 2 ? ` 외 ${missing.length - 2}개` : ''}`, 'warning');
     return;
   }
-  for (const c of OB.candidates) {
+  for (const c of candidates) {
     if (!OB.enabled.has(candKey(c))) continue;
     if (_isWendler(c)) {
       const cfg = _wendlerConfigForCreate(c);
@@ -638,6 +703,9 @@ async function _create() {
   }
 
   const startDate = _referenceInfo().weekStart;
+  const preferredGroupId = selections.some(c => c.groupId === OB.tab)
+    ? OB.tab
+    : (selections.find(c => c.groupId)?.groupId || null);
   const board = buildBoardFromOnboarding({
     selections,
     startDate,
@@ -648,7 +716,7 @@ async function _create() {
   OB.creating = true;
   _refreshCreateAction();
   try {
-    if (typeof OB.onComplete === 'function') await OB.onComplete(board);
+    if (typeof OB.onComplete === 'function') await OB.onComplete(board, { preferredGroupId });
     const layer = document.getElementById('tm2-sheets');
     if (layer) { layer.classList.remove('tm2-open'); layer.innerHTML = ''; }
   } catch (e) {
@@ -667,7 +735,12 @@ function _onObAction(e) {
   if (!action.startsWith('tm2ob:')) return;
   e.preventDefault();
   switch (action) {
-    case 'tm2ob:tab': _syncInputs(); OB.tab = btn.dataset.group; _render(); break;
+    case 'tm2ob:tab':
+      _syncInputs();
+      OB.tab = btn.dataset.group;
+      OB.scopedGroupId = OB.tab;
+      _render();
+      break;
     case 'tm2ob:toggle': {
       _syncInputs();
       const id = btn.dataset.cand;
