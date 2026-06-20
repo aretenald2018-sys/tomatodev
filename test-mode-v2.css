@@ -77,7 +77,7 @@
 
 /* ---------- 보드 그리드 ---------- */
 .tm2-colhead {
-  display: grid; grid-template-columns: 34px repeat(var(--tm2-n, 5), 1fr);
+  display: grid; grid-template-columns: 34px repeat(var(--tm2-n, 5), minmax(0, 1fr)) 42px;
   column-gap: 2px; align-items: end; margin-bottom: 6px;
   position: sticky; top: 0; background: var(--tm2-bg); z-index: 2; padding-top: 4px;
 }
@@ -86,8 +86,10 @@
 .tm2-ch-grp:active { background: var(--tm2-soft); }
 .tm2-ch-grp em { display: block; font-style: normal; font-size: 8.5px; font-weight: 700; color: var(--tm2-wendler); }
 .tm2-ch-grp .tm2-ch-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tm2-ch-add { border: 1.5px dashed #d6d7db; color: var(--tm2-ink4); background: #fff; }
 .tm2-ch-trk { text-align: center; font-size: 9px; font-weight: 700; color: var(--tm2-ink4); background: var(--tm2-soft); border-radius: 8px; padding: 2px 0; margin-top: 2px; }
 .tm2-ch-trk.tm2-wnd { background: var(--tm2-wendler-bg); color: var(--tm2-wendler); }
+.tm2-ch-add-trk { background: #fff; border: 1px dashed #e0e2e7; color: var(--tm2-ink4); }
 
 .tm2-cyc { border: 1px solid var(--tm2-line); border-radius: 14px; background: #fff; overflow: hidden; margin-top: 8px; }
 .tm2-cyc-head { display: flex; align-items: center; gap: 8px; font-size: 10.5px; color: var(--tm2-ink3); background: var(--tm2-soft); padding: 6px 10px; }
@@ -95,12 +97,24 @@
 .tm2-cyc-head i { font-style: normal; margin-left: auto; font-weight: 700; }
 .tm2-cyc-head i.tm2-ok { color: var(--tm2-now); }
 .tm2-cyc-head i.tm2-dday { color: var(--tm2-tomato); }
-.tm2-bgrid { display: grid; grid-template-columns: 34px repeat(var(--tm2-n, 5), 1fr); column-gap: 2px; padding: 0 2px 2px; }
+.tm2-bgrid { display: grid; grid-template-columns: 34px repeat(var(--tm2-n, 5), minmax(0, 1fr)) 42px; column-gap: 2px; padding: 0 2px 2px; }
 .tm2-rail { display: flex; flex-direction: column; }
 .tm2-rail span { height: 46px; display: flex; align-items: center; font-size: 9.5px; color: var(--tm2-ink4); padding-left: 6px; border-top: 1px dashed #eef0f2; }
 .tm2-rail span.tm2-today { color: var(--tm2-tomato); font-weight: 800; }
 .tm2-rail span.tm2-today::before { content: '●'; font-size: 7px; margin-right: 3px; }
 .tm2-bcol { display: flex; flex-direction: column; gap: 2px; padding-top: 2px; min-width: 0; }
+.tm2-addcol { min-width: 0; }
+.tm2-add-cell {
+  height: calc(46px - 2px); width: 100%; border: 1.5px dashed #d8dbe2; border-radius: 8px;
+  background: #fff; color: var(--tm2-ink4); font-family: inherit;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 0; text-align: center;
+}
+.tm2-add-cell b { font-size: 15px; line-height: 1; font-weight: 850; }
+.tm2-add-cell i { margin-top: 2px; font-style: normal; font-size: 8px; font-weight: 800; line-height: 1; }
+.tm2-add-cell.tm2-has { border-style: solid; border-color: #bfe5d2; background: #f1fbf6; color: var(--tm2-now); }
+.tm2-add-cell.tm2-today { box-shadow: inset 0 0 0 1px rgba(255, 76, 76, 0.22); }
+.tm2-add-cell:active { transform: scale(0.98); }
 
 .tm2-week-cell {
   height: calc(46px - 2px);
@@ -585,6 +599,17 @@ body:has(#tm2-sheets.tm2-open) #tm2-sheets .tm2-sheet {
 .tm2-mg-row small { color: var(--tm2-ink4); font-size: 10px; flex: none; }
 .tm2-mg-out { margin-left: auto; font-size: 11px; font-weight: 700; color: var(--tm2-ink4); border: 1px solid var(--tm2-line); border-radius: 8px; padding: 4px 9px; background: #fff; flex: none; }
 .tm2-mg-in { margin-left: auto; font-size: 11px; font-weight: 700; color: var(--tm2-now); border: 1px solid #bfe5d2; border-radius: 8px; padding: 4px 9px; background: #fff; flex: none; }
+.tm2-lineup-std { padding: 2px 13px; }
+.tm2-lineup-row.is-selected { background: #f1fbf6; margin-left: -7px; margin-right: -7px; padding-left: 7px; padding-right: 7px; border-radius: 10px; }
+.tm2-lineup-row.is-editing { align-items: center; }
+.tm2-lineup-selected-row b { flex: 1; }
+.tm2-lineup-order {
+  flex: none; width: 18px; height: 18px; border-radius: 999px; background: var(--tm2-soft);
+  color: var(--tm2-ink4); display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 850;
+}
+.tm2-lineup-row.is-selected .tm2-lineup-order,
+.tm2-lineup-selected-row .tm2-lineup-order { background: var(--tm2-now); color: #fff; }
 
 /* 줌아웃 미니맵 */
 .tm2-mini-wrap { padding: 14px 4px; }
