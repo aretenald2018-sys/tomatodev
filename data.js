@@ -539,6 +539,18 @@ export const getMuscleParts = () => getAllMuscles().filter(m => (m.kind || 'part
 export const getCache     = ()      => _cache;
 export const getAllDateKeys = () => Object.keys(_cache).filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k));
 export const getDay       = (y,m,d) => _cache[dateKey(y,m,d)] || {};
+export async function ensureWorkoutDayCached(key) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(key || ''))) return {};
+  const existing = _cache[key];
+  if (existing && typeof existing === 'object' && Object.keys(existing).length > 0) return existing;
+  const snap = await getDoc(_doc('workouts', key));
+  if (snap.exists()) {
+    _cache[key] = snap.data() || {};
+    return _cache[key];
+  }
+  _cache[key] = _cache[key] || {};
+  return _cache[key];
+}
 
 // 가장 최근 body_checkin의 날짜/체중. 없으면 null.
 // 실제 체중 시계열은 body_checkins 컬렉션이 진실(기존 체크인 모달이 쓰는 경로).

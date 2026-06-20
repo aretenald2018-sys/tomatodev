@@ -10,7 +10,7 @@
 // 용어는 용어 사전 준수: 볼륨/강도 · 여유 횟수 · 자세 메모 · 1주차 · 칸.
 // ================================================================
 
-import { getTestBoardV2, saveTestBoardV2, getMaxCycle, getExList, getCache } from '../../data.js';
+import { getTestBoardV2, saveTestBoardV2, getMaxCycle, getExList, getCache, ensureWorkoutDayCached } from '../../data.js';
 import { MOVEMENTS } from '../../config.js';
 import { S as WS } from '../state.js';
 import { saveWorkoutDay } from '../save.js';
@@ -24,7 +24,7 @@ import {
   isSettleDue, buildSettleRows, applySettle,
   archiveBenchmark, addBenchmark, buildOnboardingCandidates, buildRecentMap,
   mergeSessionExercises, sessionRecentMap, resolveSessionEntryGroupId,
-  sortCandidatesByRecent,
+  sortCandidatesByRecent, workoutRecordsForBenchmarkWeek,
   buildMinimapData, defaultIncrementForGroup, getLineup, toggleLineup,
 } from './board-core.js';
 import {
@@ -48,7 +48,7 @@ function _candidates(groupId = null) {
   const sessionEntries = _currentSessionEntries();
   recentMap = { ...recentMap, ...sessionRecentMap(sessionEntries, _todayKey()) };
   const exList = mergeSessionExercises(_registryExercises(), sessionEntries);
-  const all = buildOnboardingCandidates({ exList, v1Cycle: getMaxCycle(), movements: MOVEMENTS, recentMap });
+  const all = buildOnboardingCandidates({ exList, v1Cycle: getMaxCycle(), v2Board: S.board, movements: MOVEMENTS, recentMap });
   const scoped = groupId ? all.filter(c => c.groupId === groupId) : all;
   return sortCandidatesByRecent(scoped);
 }
@@ -242,6 +242,7 @@ async function _backToOnboarding() {
   _ensureRoots();
   const mod = await import('./onboarding.js');
   mod.openOnboarding({
+    board: S.board,
     onComplete: async (newBoard) => {
       S.board = newBoard;
       await _persist();
@@ -567,7 +568,7 @@ async function openCellSheet(bmId, track, weekStart) {
   const thisMon = mondayOf(_todayKey());
   const rel = weeksBetween(thisMon, wkMon);
   if (rel > 0) { _openPlanPreview(bm, track, wkMon); return; }      // 미래
-  if (rel < 0) { _openPastSummary(bm, track, wkMon); return; }      // 과거
+  if (rel < 0) { await _openPastSummary(bm, track, wkMon); return; } // 과거
   await _openWorkoutCard(bm, track, wkMon);                         // 이번 주
 }
 
@@ -1182,8 +1183,34 @@ function _openPlanPreview(bm, track, wkMon) {
   `);
 }
 
+function _actualWorkoutSummaryHtml(bm, wkMon) {
+  let records = [];
+  try { records = workoutRecordsForBenchmarkWeek(getCache() || {}, bm, wkMon); }
+  catch { records = []; }
+  if (!records.length) return '';
+  const rows = records.map((record) => {
+    const setLabel = record.sets
+      .map(s => `${_fmtKg(s.kg)}kg×${s.reps}${s.romPct != null && s.romPct < 100 ? ` · ROM ${s.romPct}%` : ''}`)
+      .join(' / ');
+    return `<div class="tm2-std-row"><span class="tm2-ic">✓</span><div><b>${shortDate(record.dateKey)} ${_fmtKg(record.best?.kg)}kg × ${record.best?.reps || ''}</b><small>${_esc(setLabel)}</small></div></div>`;
+  }).join('');
+  return `<div class="tm2-note"><b>운동기록 있음</b> — 보드 색칠은 아직 안 된 주예요.</div><div class="tm2-std">${rows}</div>`;
+}
+
+function _addDaysKey(key, days) {
+  const d = new Date(`${key}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return toKey(d);
+}
+
+async function _ensureWeekWorkoutCache(wkMon) {
+  const keys = Array.from({ length: 7 }, (_, i) => _addDaysKey(wkMon, i));
+  await Promise.all(keys.map(key => ensureWorkoutDayCached(key).catch(() => null)));
+}
+
 // 과거 칸 — 기록 요약 (읽기 전용)
-function _openPastSummary(bm, track, wkMon) {
+async function _openPastSummary(bm, track, wkMon) {
+  await _ensureWeekWorkoutCache(wkMon);
   S.sheet = { kind: 'past', ctx: {} };
   let painted = false, detail = '';
   if (bm.program === 'wendler') {
@@ -1196,11 +1223,15 @@ function _openPastSummary(bm, track, wkMon) {
     painted = !!log?.paintedAt;
     detail = log?.actualReps ? `횟수 ${log.actualReps}` : (log?.missed ? '목표 미달로 조정됨' : '');
   }
+  const actualHtml = !painted ? _actualWorkoutSummaryHtml(bm, wkMon) : '';
+  const noteHtml = painted
+    ? `<div class="tm2-note"><b>✓ 색칠 완료</b>${detail ? ` — ${_esc(detail)}` : ''}</div>`
+    : (actualHtml || `<div class="tm2-note">${detail ? _esc(detail) : '이 주는 기록이 없어요.'}</div>`);
   _openSheet(`
     <div class="tm2-grab"></div>
     <div class="tm2-sh-kicker">${_esc(_kickerOf(bm, wkMon))} · 지난 주</div>
     <div class="tm2-sh-title">${_esc(bm.label)} <small>${bm.program === 'wendler' ? '웬들러' : TM2_TRACK_LABELS[track]}</small></div>
-    <div class="tm2-note">${painted ? `<b>✓ 색칠 완료</b>${detail ? ` — ${_esc(detail)}` : ''}` : (detail ? _esc(detail) : '이 주는 기록이 없어요.')}</div>
+    ${noteHtml}
     <button class="tm2-btn-ghost" data-action="tm2:sheet-close">닫기</button>
   `);
 }

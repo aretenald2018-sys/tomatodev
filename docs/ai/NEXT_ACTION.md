@@ -5,21 +5,22 @@
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-20-growth-board-wendler-default-history.md` (성장 보드 웬들러 기본값 및 과거 기록 표시)
 - 현재 단계: `review complete — 로컬 정적 검증 완료, 브라우저 UI 검증은 not verified yet`
-- 마지막 완료: `성장 보드가 v2 보드의 웬들러 설정을 다음 기본값으로 상속하게 했고, 과거 셀 시트가 보드 색칠 로그가 없어도 같은 주 실제 운동기록을 fallback으로 표시하게 했다.`
+- 마지막 완료: `성장 보드가 v2 보드의 웬들러 설정을 다음 기본값으로 상속하게 했고, 과거 셀 시트가 보드 색칠 로그가 없어도 해당 주 7일 운동 문서를 직접 캐시에 보강한 뒤 실제 운동기록을 fallback으로 표시하게 했다.`
 - 다음 액션: `사용자 로컬 일반 터미널에서 npm.cmd run dev 실행 후 성장 보드 하체 과거 2026-06-08 주차 스모데드 셀을 열어 운동기록 있음 표시를 확인한다.`
 - 차단 사유: `이 세션 지침상 장기 dev server를 sandbox에서 시작하지 않으므로 실제 브라우저 UI 검증은 로컬 일반 터미널에서 필요하다.`
 
 ## 다음 실행 대상
 
-- 완료 파일: `workout/test-v2/board-core.js` · `workout/test-v2/board-render.js` · `workout/test-v2/onboarding.js` · `tests/test-v2.board-core.test.js` · `sw.js` · `docs/ai/features/2026-06-20-growth-board-wendler-default-history.md` · `docs/ai/reviews/2026-06-20-growth-board-wendler-default-history-review.md` · `docs/ai/NEXT_ACTION.md`
+- 완료 파일: `data.js` · `workout/test-v2/board-core.js` · `workout/test-v2/board-render.js` · `workout/test-v2/onboarding.js` · `tests/test-v2.board-core.test.js` · `sw.js` · `docs/ai/features/2026-06-20-growth-board-wendler-default-history.md` · `docs/ai/reviews/2026-06-20-growth-board-wendler-default-history-review.md` · `docs/ai/NEXT_ACTION.md`
 - 검증 완료:
-  1. PASS: `node --check workout/test-v2/board-core.js`
-  2. PASS: `node --check workout/test-v2/board-render.js`
-  3. PASS: `node --check workout/test-v2/onboarding.js`
-  4. PASS: `node --check sw.js`
-  5. PASS: `node --test tests/test-v2.board-core.test.js` — 31개 통과
-  6. PASS: `git diff --check`
-  7. not verified yet: 브라우저에서 성장 보드 하체 과거 2026-06-08 주차 스모데드 셀을 여는 UI 검증은 로컬 일반 터미널 dev server가 필요하다.
+  1. PASS: `node --check data.js`
+  2. PASS: `node --check workout/test-v2/board-core.js`
+  3. PASS: `node --check workout/test-v2/board-render.js`
+  4. PASS: `node --check workout/test-v2/onboarding.js`
+  5. PASS: `node --check sw.js`
+  6. PASS: `node --test tests/test-v2.board-core.test.js` — 31개 통과
+  7. PASS: `git diff --check`
+  8. not verified yet: 브라우저에서 성장 보드 하체 과거 2026-06-08 주차 스모데드 셀을 여는 UI 검증은 로컬 일반 터미널 dev server가 필요하다.
 
 ## 보류 중 (이전 흐름)
 

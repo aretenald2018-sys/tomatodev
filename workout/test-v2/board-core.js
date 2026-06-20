@@ -265,6 +265,16 @@ const candidateRecentDateKey = (candidate = {}) => String(
   || ''
 );
 
+function _benchmarkLookup(benchmarks = []) {
+  const byKey = {};
+  for (const bm of (Array.isArray(benchmarks) ? benchmarks : [])) {
+    for (const key of [bm?.exerciseId, bm?.movementId, bm?.id].filter(Boolean)) {
+      if (!byKey[key]) byKey[key] = bm;
+    }
+  }
+  return byKey;
+}
+
 export function sortCandidatesByRecent(candidates = []) {
   return (Array.isArray(candidates) ? candidates : [])
     .map((candidate, index) => ({ candidate, index, recentDateKey: candidateRecentDateKey(candidate) }))
@@ -281,13 +291,17 @@ export function sortCandidatesByRecent(candidates = []) {
 
 /**
  * 온보딩/종목추가 후보 목록 — **사용자 실제 등록 종목(exList)이 1순위**.
- * 운동할 때 참조하는 리스트와 동일 출처(getExList). v1 max_cycle은 시작무게/웬들러 상속용 읽기 전용.
+ * 운동할 때 참조하는 리스트와 동일 출처(getExList).
+ * v2 보드가 있으면 현재/보관 벤치마크의 운동방식을 우선 상속하고,
+ * 없을 때만 v1 max_cycle을 시작무게/웬들러 상속용으로 읽는다.
  * exList가 비면 generic MOVEMENTS로 폴백.
  * 반환: [{ exerciseId, movementId, muscleId, label, groupId, defaultOn, tracks, source, wendler? }]
  */
-export function buildOnboardingCandidates({ exList = [], v1Cycle = null, movements = [], recentMap = {} } = {}) {
+export function buildOnboardingCandidates({ exList = [], v1Cycle = null, v2Board = null, movements = [], recentMap = {} } = {}) {
   const out = [];
   const seen = new Set();
+
+  const v2ByKey = _benchmarkLookup(v2Board?.benchmarks || []);
 
   // v1 벤치마크 lookup (movementId/exerciseId 키) — 시작무게·웬들러·강도 트랙 상속용
   const v1ByKey = {};
@@ -302,17 +316,25 @@ export function buildOnboardingCandidates({ exList = [], v1Cycle = null, movemen
     const groupId = exerciseGroupId(ex, movements);
     if (!groupId) continue;
     seen.add(ex.id);
+    const v2 = v2ByKey[ex.id] || (ex.movementId && v2ByKey[ex.movementId]) || null;
     const v1 = v1ByKey[ex.movementId] || v1ByKey[ex.id] || null;
     const recent = recentForExercise(ex, recentMap);
     const volSpec = recent
       ? { kg: recent.kg, reps: recent.reps, from: '최근 기록', dateKey: recent.dateKey || null }
+      : (v2 && Number(v2.seed?.volume?.kg) > 0
+        ? { kg: Number(v2.seed.volume.kg), reps: Number(v2.seed.volume.reps) || 12, from: 'v2 보드' }
       : (v1 && Number(v1.tracks?.M?.startKg) > 0
         ? { kg: Number(v1.tracks.M.startKg), reps: Number(v1.tracks.M.startReps) || 12, from: 'v1 기록' }
-        : { manual: true, reps: 12 });
-    const intSpec = (v1 && v1.tracks?.H && v1.tracks.H.enabled !== false && Number(v1.tracks.H.startKg) > 0)
+        : { manual: true, reps: 12 }));
+    const intSpec = (v2 && (v2.tracks || []).includes('intensity') && Number(v2.seed?.intensity?.kg) > 0)
+      ? { kg: Number(v2.seed.intensity.kg), reps: Number(v2.seed.intensity.reps) || 8, from: 'v2 보드' }
+      : (v1 && v1.tracks?.H && v1.tracks.H.enabled !== false && Number(v1.tracks.H.startKg) > 0)
       ? { kg: Number(v1.tracks.H.startKg), reps: Number(v1.tracks.H.startReps) || 8, from: 'v1 기록' }
       : null;
-    const defaultOn = !!recent || !!v1 || TM2_DEFAULT_ON.has(ex.movementId || ex.id);
+    const defaultOn = !!recent || !!v2 || !!v1 || TM2_DEFAULT_ON.has(ex.movementId || ex.id);
+    const inheritedWendler = v2
+      ? (v2.program === 'wendler' && v2.wendler ? { ...v2.wendler } : null)
+      : (v1?.program === 'wendler' && v1.wendler ? { ...v1.wendler } : null);
     out.push({
       exerciseId: ex.id,
       movementId: ex.movementId || null,
@@ -323,7 +345,7 @@ export function buildOnboardingCandidates({ exList = [], v1Cycle = null, movemen
       defaultOn,   // 최근/v1 또는 v2 기본 동작이면 기본 on
       source: 'registry',
       tracks: { volume: volSpec, intensity: intSpec },
-      wendler: v1?.program === 'wendler' && v1.wendler ? { ...v1.wendler } : null,
+      wendler: inheritedWendler,
     });
   }
 
@@ -333,6 +355,21 @@ export function buildOnboardingCandidates({ exList = [], v1Cycle = null, movemen
       const group = groupForMajor(mv.primary);
       if (!group || seen.has(mv.id)) continue;
       seen.add(mv.id);
+      const v2 = v2ByKey[mv.id] || null;
+      const v1 = v1ByKey[mv.id] || null;
+      const inheritedWendler = v2
+        ? (v2.program === 'wendler' && v2.wendler ? { ...v2.wendler } : null)
+        : (v1?.program === 'wendler' && v1.wendler ? { ...v1.wendler } : null);
+      const volumeSeed = v2 && Number(v2.seed?.volume?.kg) > 0
+        ? { kg: Number(v2.seed.volume.kg), reps: Number(v2.seed.volume.reps) || 12, from: 'v2 보드' }
+        : (v1 && Number(v1.tracks?.M?.startKg) > 0
+          ? { kg: Number(v1.tracks.M.startKg), reps: Number(v1.tracks.M.startReps) || 12, from: 'v1 기록' }
+          : { manual: true, reps: 12 });
+      const intensitySeed = v2 && (v2.tracks || []).includes('intensity') && Number(v2.seed?.intensity?.kg) > 0
+        ? { kg: Number(v2.seed.intensity.kg), reps: Number(v2.seed.intensity.reps) || 8, from: 'v2 보드' }
+        : (v1 && v1.tracks?.H && v1.tracks.H.enabled !== false && Number(v1.tracks.H.startKg) > 0
+          ? { kg: Number(v1.tracks.H.startKg), reps: Number(v1.tracks.H.startReps) || 8, from: 'v1 기록' }
+          : (TM2_INTENSITY_DEFAULT.has(mv.id) ? { manual: true, reps: 8 } : null));
       out.push({
         exerciseId: null,
         movementId: mv.id,
@@ -340,13 +377,13 @@ export function buildOnboardingCandidates({ exList = [], v1Cycle = null, movemen
         label: mv.nameKo || mv.id,
         groupId: group.id,
         gymNote: '',
-        defaultOn: TM2_DEFAULT_ON.has(mv.id),
+        defaultOn: !!v2 || !!v1 || TM2_DEFAULT_ON.has(mv.id),
         source: 'library',
         tracks: {
-          volume: { manual: true, reps: 12 },
-          intensity: TM2_INTENSITY_DEFAULT.has(mv.id) ? { manual: true, reps: 8 } : null,
+          volume: volumeSeed,
+          intensity: intensitySeed,
         },
-        wendler: null,
+        wendler: inheritedWendler,
       });
     }
   }
@@ -1049,4 +1086,61 @@ export function recentPaintLogs(board, benchmarkId, track, beforeWeek, limit = 2
     }
   }
   return out.sort((a, b) => (a.weekStart < b.weekStart ? 1 : -1)).slice(0, limit);
+}
+
+function _workoutEntryMatchesBenchmark(entry = {}, benchmark = {}) {
+  if (!entry || !benchmark) return false;
+  const entryName = _normalizeWorkoutName(entry.name);
+  const benchmarkName = _normalizeWorkoutName(benchmark.label || benchmark.short);
+  return (benchmark.exerciseId && entry.exerciseId === benchmark.exerciseId)
+    || (benchmark.movementId && entry.movementId === benchmark.movementId)
+    || (entry.recommendationMeta?.boardV2BenchmarkId && entry.recommendationMeta.boardV2BenchmarkId === benchmark.id)
+    || (entryName && benchmarkName && (entryName === benchmarkName || entryName.includes(benchmarkName) || benchmarkName.includes(entryName)));
+}
+
+function _normalizeWorkoutName(name = '') {
+  return String(name || '')
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/[()（）\[\]{}·ㆍ\-_]/g, '');
+}
+
+function _workSetsOf(entry = {}) {
+  return (Array.isArray(entry?.sets) ? entry.sets : [])
+    .filter(s => s && s.setType !== 'warmup' && s.done !== false && Number(s.kg) > 0 && Number(s.reps) > 0)
+    .map(s => ({
+      kg: Number(s.kg),
+      reps: Math.round(Number(s.reps)) || 0,
+      rir: s.rir == null || s.rir === '' ? null : Number(s.rir),
+      romPct: s.romPct == null || s.romPct === '' ? null : Number(s.romPct),
+    }));
+}
+
+export function workoutRecordsForBenchmarkWeek(cache = {}, benchmark = {}, weekStart = null) {
+  const wk = mondayOf(weekStart || toKey(new Date()));
+  const out = [];
+  for (const dateKey of Object.keys(cache || {}).sort()) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) continue;
+    if (mondayOf(dateKey) !== wk) continue;
+    const entries = Array.isArray(cache[dateKey]?.exercises) ? cache[dateKey].exercises : [];
+    for (const entry of entries) {
+      if (!_workoutEntryMatchesBenchmark(entry, benchmark)) continue;
+      const sets = _workSetsOf(entry);
+      if (!sets.length) continue;
+      const best = sets.reduce((max, set) => (
+        !max || set.kg > max.kg || (set.kg === max.kg && set.reps > max.reps)
+          ? set
+          : max
+      ), null);
+      out.push({
+        dateKey,
+        exerciseId: entry.exerciseId || null,
+        movementId: entry.movementId || null,
+        name: entry.name || benchmark.label || '',
+        sets,
+        best,
+      });
+    }
+  }
+  return out;
 }

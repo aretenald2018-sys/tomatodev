@@ -34,6 +34,7 @@ const OB = {
   wendler: {},             // candKey → { tmKg, cycleNo, startWeek, ... }
   tab: 'chest',
   onComplete: null,
+  sourceBoard: null,
   bound: false,
   creating: false,
   lastCreatePointerAt: 0,
@@ -196,7 +197,7 @@ function _reloadCandidates({ resetState = false } = {}) {
   const sessionMap = sessionRecentMap(sessionEntries);
   recentMap = { ...recentMap, ...sessionMap };
   exList = mergeSessionExercises(_visibleExerciseList(), sessionEntries);
-  OB.candidates = buildOnboardingCandidates({ exList, v1Cycle: getMaxCycle(), movements: MOVEMENTS, recentMap });
+  OB.candidates = buildOnboardingCandidates({ exList, v1Cycle: getMaxCycle(), v2Board: OB.sourceBoard, movements: MOVEMENTS, recentMap });
   OB.todayKeys = new Set(
     OB.candidates
       .filter(c => _candidateMatchesSession(c, sessionEntries))
@@ -215,8 +216,9 @@ function _reloadCandidates({ resetState = false } = {}) {
   for (const c of OB.candidates) _initCandidateState(c);
 }
 
-export function openOnboarding({ onComplete } = {}) {
+export function openOnboarding({ onComplete, board = null } = {}) {
   OB.onComplete = onComplete;
+  OB.sourceBoard = board || null;
   _reloadCandidates({ resetState: true });
   OB.enabled = new Set(OB.todayKeys);
   OB.tab = _initialTab();
