@@ -4,10 +4,10 @@
 
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-23-home-life-zone-card.md` (홈탭 라이프존 카드 개편)
-- 현재 단계: `review complete — Slice 10 모바일 요약 구획 표준화`
-- 마지막 완료: `모바일에서만 라이프존 하단 요약이 1열로 쌓이던 media query를 제거해 PC와 같은 좌우 2칸 구획을 표준으로 맞췄다.`
-- 다음 액션: `관련 변경만 커밋하고 tomatofarm main에 push한 다음 배포 URL을 검증한다.`
-- 차단 사유: `not verified yet. push와 배포 URL 검증이 남아 있다.`
+- 현재 단계: `deploy complete — Slice 10 모바일 요약 구획 표준화`
+- 마지막 완료: `모바일에서만 라이프존 하단 요약이 1열로 쌓이던 media query를 제거해 PC와 같은 좌우 2칸 구획을 표준으로 맞추고 운영 URL 배포 검증을 완료했다.`
+- 다음 액션: `없음. 새 홈탭/라이프존 요청이 들어오면 이 계획 문서의 다음 Slice로 이어간다.`
+- 차단 사유: `없음.`
 
 ## 다음 실행 대상
 
@@ -33,7 +33,8 @@
   13. PASS: `node --test tests/home-life-zone-state.test.js` — 10개 통과
   14. PASS: `python scripts/validate-life-zone-assets.py`
   15. PASS: 정적 CSS 검증 — `.lz-summary-strip` 기본 2컬럼 유지, 모바일 summary 1열 override 제거
-  16. not verified yet: 배포 URL HTTP 200과 모바일 홈탭 실제 UI flow는 push 후 확인한다.
+  16. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ ad948cc74b97`
+  17. PASS: 운영 URL HTTP 200, 배포된 `style.css`에서 `.lz-summary-strip` 기본 2컬럼 유지와 모바일 summary 1열 override 제거 확인
 
 ## 보류 중 (이전 흐름)
 
