@@ -1,10 +1,10 @@
 {
   "app": "tomatofarm",
-  "commit": "add15d70b1393de24083e734caf58028d6785211",
-  "shortCommit": "add15d70b139",
-  "branch": "codex/diet-report-off-deploy",
-  "deployedAt": "2026-06-23T12:11:36.553Z",
-  "cacheVersion": "tomatofarm-v20260623z9-diet-report-off",
+  "commit": "8769e744b2b46a5f676abf4ac9379d14bc42b7a1",
+  "shortCommit": "8769e744b2b4",
+  "branch": "local",
+  "deployedAt": "2026-06-23T12:26:20.150Z",
+  "cacheVersion": "tomatofarm-v20260623z10-stats-muscle-fatigue",
   "runId": null,
   "runAttempt": null
 }
