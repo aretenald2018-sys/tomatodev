@@ -1,10 +1,10 @@
 {
   "app": "tomatofarm",
-  "commit": "6e947ef85ccfec17d667e2c178a84d759e3fc5a2",
-  "shortCommit": "6e947ef85ccf",
-  "branch": "main",
-  "deployedAt": "2026-06-23T09:45:21.713Z",
-  "cacheVersion": "tomatofarm-v20260623z7-life-zone-diet-read",
+  "commit": "add15d70b1393de24083e734caf58028d6785211",
+  "shortCommit": "add15d70b139",
+  "branch": "codex/diet-report-off-deploy",
+  "deployedAt": "2026-06-23T12:11:36.553Z",
+  "cacheVersion": "tomatofarm-v20260623z9-diet-report-off",
   "runId": null,
   "runAttempt": null
 }
