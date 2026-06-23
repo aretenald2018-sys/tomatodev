@@ -236,6 +236,15 @@ test('isActiveWorkoutDayData: runDistance/workoutDuration 양수 → true', () =
   assert.equal(isActiveWorkoutDayData({ workoutDuration: 600 }), true);
 });
 
+test('isActiveWorkoutDayData: workoutSessions 내부 운동 기록 → true', () => {
+  assert.equal(isActiveWorkoutDayData({
+    workoutSessions: [
+      { exercises: [] },
+      { exercises: [{ name: '벤치 프레스', sets: [{ kg: 80, reps: 5, done: true }] }] },
+    ],
+  }), true);
+});
+
 test('isActiveWorkoutDayData: 식단 기록 (bKcal/bFoods/breakfast) → true', () => {
   assert.equal(isActiveWorkoutDayData({ bKcal: 300 }), true);
   assert.equal(isActiveWorkoutDayData({ bFoods: [{ name:'사과' }] }), true);

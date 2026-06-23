@@ -5,9 +5,9 @@
 import { TODAY, calcStreaks, countLocalWeeklyActiveDays,
          getMilestoneShown, saveMilestoneShown,
          getStreakFreezes, getTomatoState, useStreakFreeze,
-         getGlobalWeeklyRanking, getMyFriends, getAccountList, getCurrentUser,
-         getFriendWorkout, dateKey, isAdmin, _isMySocialId, isActiveWorkoutDayData,
-         computeGuildStats, getHeroMessage, markHeroMessageRead }  from '../data.js';
+         getMyFriends, getAccountList, getCurrentUser,
+         getFriendWorkout, getFriendData, dateKey, isAdmin, _isMySocialId, isActiveWorkoutDayData,
+         getAllDateKeys, getDay, getHeroMessage, markHeroMessageRead }  from '../data.js';
 import { setText, showToast, haptic, resolveNickname } from './utils.js';
 import { confirmSimple } from '../utils/confirm-modal.js';
 
@@ -171,23 +171,213 @@ window.useStreakFreezeUI = async function() {
   if (_renderHomeFn) _renderHomeFn();
 };
 
-// ── 주간 리더보드 (글로벌 랭킹 + 이웃 폴백) ─────────────────────
-let _leaderboardTab = 'individual';
+// ── 랭킹 (누적 기본 + 주간 선택 저장) ─────────────────────────────
+const LEADERBOARD_PERIOD_STORAGE_KEY = 'tomatofarm.home.leaderboard.period';
+const LEADERBOARD_PERIODS = new Set(['cumulative', 'weekly']);
+const LEADERBOARD_DISPLAY_LIMIT = 5;
+let _leaderboardPeriod = _readLeaderboardPeriod();
 
-export function switchLeaderboardTab(tab) {
-  _leaderboardTab = tab;
-  // 세그먼트 UI 업데이트
-  const btns = document.querySelectorAll('#lb-segmented .tds-segmented-item');
-  btns.forEach(b => b.classList.toggle('active', b.textContent.trim() === (tab === 'individual' ? '개인' : '길드')));
+function _readLeaderboardPeriod() {
+  try {
+    const saved = localStorage.getItem(LEADERBOARD_PERIOD_STORAGE_KEY);
+    if (LEADERBOARD_PERIODS.has(saved)) return saved;
+  } catch (_) { /* ignore */ }
+  return 'cumulative';
+}
+
+function _saveLeaderboardPeriod(period) {
+  try { localStorage.setItem(LEADERBOARD_PERIOD_STORAGE_KEY, period); }
+  catch (_) { /* ignore */ }
+}
+
+function _syncLeaderboardSegmented(period) {
+  const btns = [...document.querySelectorAll('#lb-segmented .tds-segmented-item')];
+  btns.forEach((btn) => btn.classList.toggle('active', btn.dataset.period === period));
   const indicator = document.getElementById('lb-seg-indicator');
-  if (indicator && btns.length === 2) {
-    const idx = tab === 'individual' ? 0 : 1;
-    indicator.style.left = `${btns[idx].offsetLeft}px`;
-    indicator.style.width = `${btns[idx].offsetWidth}px`;
+  const activeBtn = btns.find((btn) => btn.dataset.period === period);
+  if (indicator && activeBtn) {
+    indicator.style.left = `${activeBtn.offsetLeft}px`;
+    indicator.style.width = `${activeBtn.offsetWidth}px`;
   }
+}
+
+export function switchLeaderboardTab(period) {
+  const nextPeriod = LEADERBOARD_PERIODS.has(period) ? period : 'cumulative';
+  _leaderboardPeriod = nextPeriod;
+  _saveLeaderboardPeriod(nextPeriod);
+  _syncLeaderboardSegmented(nextPeriod);
   renderLeaderboard();
 }
 window.switchLeaderboardTab = switchLeaderboardTab;
+
+function _weekKeys(baseDateLike = TODAY) {
+  const keys = [];
+  const now = new Date(baseDateLike);
+  const dayOfWeek = now.getDay() || 7;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - dayOfWeek + 1);
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    keys.push(dateKey(d.getFullYear(), d.getMonth(), d.getDate()));
+  }
+  return keys;
+}
+
+function _countActiveDays(items) {
+  return (items || []).reduce((sum, item) => sum + (isActiveWorkoutDayData(item) ? 1 : 0), 0);
+}
+
+function _countLocalCumulativeActiveDays() {
+  return getAllDateKeys().reduce((sum, key) => {
+    const [y, m, d] = String(key).split('-').map(Number);
+    if (!y || !m || !d) return sum;
+    return sum + (isActiveWorkoutDayData(getDay(y, m - 1, d)) ? 1 : 0);
+  }, 0);
+}
+
+async function _buildParticipants(user) {
+  const accounts = await getAccountList();
+  const byKey = new Map();
+
+  for (const acc of accounts) {
+    if (!acc?.id) continue;
+    const isMe = _isMySocialId(acc.id);
+    const key = isMe ? '__me__' : acc.id;
+    if (byKey.has(key)) continue;
+    byKey.set(key, {
+      id: acc.id,
+      name: isMe ? '나' : resolveNickname(acc, accounts),
+      isMe,
+    });
+  }
+
+  if (!byKey.has('__me__')) {
+    byKey.set('__me__', { id: user.id, name: '나', isMe: true });
+  }
+
+  return [...byKey.values()];
+}
+
+async function _buildCumulativeRows(user) {
+  const participants = await _buildParticipants(user);
+  const results = await Promise.allSettled(
+    participants.map(async (p) => {
+      if (p.isMe) return { ...p, days: _countLocalCumulativeActiveDays() };
+      const days = _countActiveDays(await getFriendData(p.id, 'workouts'));
+      return { ...p, days };
+    })
+  );
+  return results
+    .filter((r) => r.status === 'fulfilled')
+    .map((r) => ({ ...r.value, userId: r.value.id }))
+    .sort((a, b) => b.days - a.days);
+}
+
+async function _buildWeeklyBoard(user) {
+  const weekKeys = _weekKeys(TODAY);
+  const participants = await _buildParticipants(user);
+  const results = await Promise.allSettled(
+    participants.map(async (p) => {
+      if (p.isMe) return { ...p, days: countLocalWeeklyActiveDays(TODAY) };
+      let days = 0;
+      const dayResults = await Promise.allSettled(weekKeys.map(k => getFriendWorkout(p.id, k)));
+      for (const r of dayResults) {
+        if (r.status !== 'fulfilled' || !r.value) continue;
+        if (isActiveWorkoutDayData(r.value)) days++;
+      }
+      return { ...p, days };
+    })
+  );
+  return {
+    board: results
+      .filter((r) => r.status === 'fulfilled')
+      .map((r) => ({ ...r.value, userId: r.value.id }))
+      .sort((a, b) => b.days - a.days),
+    updatedAt: null,
+  };
+}
+
+function _escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function _escapeJsSingle(value) {
+  return String(value ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\r?\n/g, ' ');
+}
+
+function _leaderboardContext(period, active) {
+  const activeCount = active.length;
+  if (period === 'weekly') {
+    if (activeCount === 0) return '이번 주 첫 기록의 주인공이 되어보세요!';
+    if (activeCount === 1 && active[0].isMe) return '이번 주 첫 기록을 시작했어요!';
+    return `${activeCount}명이 이번 주 기록 중이에요`;
+  }
+  if (activeCount === 0) return '아직 누적 기록이 없어요';
+  if (activeCount === 1 && active[0].isMe) return '내 누적 기록을 쌓는 중이에요';
+  return `${activeCount}명의 누적 기록을 비교하고 있어요`;
+}
+
+function _renderLeaderboardHtml({ board, period, updatedAt, friendIdSet }) {
+  const visibleBoard = board.slice(0, LEADERBOARD_DISPLAY_LIMIT);
+  const active = visibleBoard.filter(p => p.days > 0).sort((a, b) => b.days - a.days);
+  const inactive = visibleBoard.filter(p => p.days === 0);
+  const proofNames = active
+    .filter((p) => !p.isMe && friendIdSet.has(p.userId))
+    .slice(0, 2)
+    .map((p) => p.name);
+  if (period === 'weekly' && proofNames.length > 0) updateHeroSocialProof(proofNames);
+
+  const rankIcons = ['🥇', '🥈', '🥉'];
+  const maxDays = period === 'weekly' ? 7 : Math.max(1, ...active.map((p) => Number(p.days) || 0));
+  const inactiveLabel = period === 'weekly' ? '아직 이번 주 기록 없음' : '아직 누적 기록 없음';
+  let html = `<div class="lb-context">${_escapeHtml(_leaderboardContext(period, active))}</div>`;
+
+  for (let i = 0; i < active.length; i++) {
+    const p = active[i];
+    const rank = rankIcons[i] || `${i + 1}`;
+    const pct = Math.max(0, Math.min(100, Math.round(((Number(p.days) || 0) / maxDays) * 100)));
+    const initial = p.isMe ? '나' : String(p.name || '').charAt(0);
+    const clickAttr = p.isMe ? '' : ` onclick="openFriendProfile('${_escapeJsSingle(p.userId)}','${_escapeJsSingle(p.name)}')" style="cursor:pointer;"`;
+    html += `<div class="lb-row${p.isMe ? ' lb-me' : ''}"${clickAttr}>
+      <span class="lb-rank">${rank}</span>
+      <div class="lb-avatar active">${_escapeHtml(initial)}</div>
+      <span class="lb-name">${_escapeHtml(p.isMe ? '나' : p.name)}</span>
+      <div class="lb-bar-track"><div class="lb-bar-fill" style="width:${pct}%"></div></div>
+      <span class="lb-days">${Number(p.days) || 0}일</span>
+    </div>`;
+  }
+
+  if (inactive.length > 0) {
+    html += `<div class="lb-inactive-label">${inactiveLabel}</div>`;
+    html += '<div class="lb-inactive-row">';
+    for (const p of inactive) {
+      const initial = p.isMe ? '나' : String(p.name || '').charAt(0);
+      const inactiveClickAttr = p.isMe ? '' : ` onclick="openFriendProfile('${_escapeJsSingle(p.userId)}','${_escapeJsSingle(p.name)}')" style="cursor:pointer;"`;
+      html += `<div class="lb-inactive-item${p.isMe ? ' lb-me-inactive' : ''}"${inactiveClickAttr}>
+        <div class="lb-avatar inactive">${_escapeHtml(initial)}</div>
+        <span class="lb-inactive-name">${_escapeHtml(p.isMe ? '나' : p.name)}</span>
+      </div>`;
+    }
+    html += '</div>';
+  }
+
+  if (period === 'weekly' && updatedAt) {
+    const diffMin = Math.floor((Date.now() - updatedAt) / 60000);
+    const freshness = diffMin < 1 ? '방금 업데이트' : diffMin < 60 ? `${diffMin}분 전 업데이트` : `${Math.floor(diffMin / 60)}시간 전 업데이트`;
+    html += `<div class="lb-freshness">${freshness}</div>`;
+  }
+
+  return html;
+}
 
 export async function renderLeaderboard() {
   const cardEl = document.getElementById('card-leaderboard');
@@ -197,238 +387,36 @@ export async function renderLeaderboard() {
   try {
     const user = getCurrentUser();
     if (!user) return;
+    _leaderboardPeriod = _readLeaderboardPeriod();
+    _syncLeaderboardSegmented(_leaderboardPeriod);
+
     const friends = await getMyFriends();
     const friendIdSet = new Set(friends.map((f) => f.friendId));
+    const result = _leaderboardPeriod === 'weekly'
+      ? await _buildWeeklyBoard(user)
+      : { board: await _buildCumulativeRows(user), updatedAt: null };
 
-    // 길드 탭이면 길드 랭킹 렌더링
-    if (_leaderboardTab === 'guild') {
-      cardEl.style.display = '';
-      await _renderGuildLeaderboard(contentEl, user);
+    const board = result.board || [];
+    if (!board.length) {
+      cardEl.style.display = 'none';
       return;
     }
 
-    // 글로벌 랭킹 우선 시도, 없으면 이웃 기반 폴백
-    const globalData = await getGlobalWeeklyRanking();
-    let board, total, isGlobal;
-
-    if (globalData && globalData.rankings && globalData.rankings.length) {
-      // ── 글로벌 랭킹 모드 (내 활동일은 로컬 실시간 계산) ──
-      // 내 이번 주 활동일 로컬 계산
-      const myLocalDays = countLocalWeeklyActiveDays(TODAY);
-
-      const mergedBoard = new Map();
-      globalData.rankings.forEach((r) => {
-        const isMe = _isMySocialId(r.userId);
-        const key = isMe ? '__me__' : r.userId;
-        const next = {
-          userId: r.userId,
-          name: isMe ? '나' : r.name,
-          days: isMe ? Math.max(r.activeDays, myLocalDays) : r.activeDays,
-          isMe,
-        };
-        const prev = mergedBoard.get(key);
-        if (!prev) {
-          mergedBoard.set(key, next);
-          return;
-        }
-        mergedBoard.set(key, {
-          userId: prev.userId,
-          name: prev.isMe || isMe ? '나' : (prev.name || next.name),
-          days: Math.max(prev.days || 0, next.days || 0),
-          isMe: prev.isMe || isMe,
-        });
-      });
-      board = [...mergedBoard.values()];
-      // 내가 글로벌 랭킹에 없으면 추가
-      if (!board.some(b => b.isMe) && myLocalDays > 0) {
-        board.push({ userId: user.id, name: '나', days: myLocalDays, isMe: true });
-      }
-      total = board.length;
-      isGlobal = true;
-    } else {
-      // ── 이웃 폴백 모드 ──
-      if (!friends.length) { cardEl.style.display = 'none'; return; }
-      const accounts = await getAccountList();
-
-      const weekKeys = [];
-      const now = new Date(TODAY);
-      const dayOfWeek = now.getDay() || 7;
-      const monday = new Date(now);
-      monday.setDate(now.getDate() - dayOfWeek + 1);
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(monday);
-        d.setDate(monday.getDate() + i);
-        weekKeys.push(dateKey(d.getFullYear(), d.getMonth(), d.getDate()));
-      }
-
-      const participants = [{ id: user.id, name: '나', isMe: true }];
-      for (const f of friends) {
-        const acc = accounts.find(a => a.id === f.friendId);
-        const name = acc ? resolveNickname(acc, accounts) : f.friendId.replace(/_/g, '');
-        participants.push({ id: f.friendId, name, isMe: _isMySocialId(f.friendId) });
-      }
-
-      const results = await Promise.allSettled(
-        participants.map(async p => {
-          if (p.isMe) {
-            const days = countLocalWeeklyActiveDays(TODAY);
-            return { ...p, days };
-          } else {
-            let days = 0;
-            const dayResults = await Promise.allSettled(weekKeys.map(k => getFriendWorkout(p.id, k)));
-            for (const r of dayResults) {
-              if (r.status !== 'fulfilled' || !r.value) continue;
-              if (isActiveWorkoutDayData(r.value)) days++;
-            }
-            return { ...p, days };
-          }
-        })
-      );
-
-      board = results.filter(r => r.status === 'fulfilled')
-        .map(r => ({ ...r.value, userId: r.value.id }))
-        .sort((a, b) => b.days - a.days);
-
-      if (board.length <= 1) { cardEl.style.display = 'none'; return; }
-      total = board.length;
-      isGlobal = false;
-    }
-
-    // ── 공통 렌더링: 전원 표시, 활동 강조 ──
-
-    // 활동자 / 미활동자 분리
-    const active = board.filter(p => p.days > 0).sort((a, b) => b.days - a.days);
-    const inactive = board.filter(p => p.days === 0);
-    const activeCount = active.length;
-
-    // 히어로 소셜프루프 업데이트
-    const proofNames = active
-      .filter((p) => !p.isMe && friendIdSet.has(p.userId))
-      .slice(0, 2)
-      .map((p) => p.name);
-    if (proofNames.length > 0) updateHeroSocialProof(proofNames);
-
-    // 집단 컨텍스트 문구
-    let contextMsg = '';
-    if (activeCount === 0) {
-      contextMsg = '이번 주 첫 기록의 주인공이 되어보세요!';
-    } else if (activeCount === 1 && active[0].isMe) {
-      contextMsg = '🔥 이번 주 첫 기록을 시작했어요!';
-    } else {
-      contextMsg = `🔥 ${activeCount}명이 함께 달리고 있어요`;
-    }
-
-    // HTML 렌더링
-    const rankIcons = ['🥇', '🥈', '🥉'];
-    let html = `<div class="lb-context">${contextMsg}</div>`;
-
-    // 활동자: 아바타 + 순위 + 프로그레스 바
-    for (let i = 0; i < active.length; i++) {
-      const p = active[i];
-      const rank = rankIcons[i] || `${i + 1}`;
-      const pct = Math.round((p.days / 7) * 100);
-      const initial = p.isMe ? '나' : p.name.charAt(0);
-      const clickAttr = p.isMe ? '' : ` onclick="openFriendProfile('${p.userId}','${p.name}')" style="cursor:pointer;"`;
-      html += `<div class="lb-row${p.isMe ? ' lb-me' : ''}"${clickAttr}>
-        <span class="lb-rank">${rank}</span>
-        <div class="lb-avatar active">${initial}</div>
-        <span class="lb-name">${p.isMe ? '나' : p.name}</span>
-        <div class="lb-bar-track"><div class="lb-bar-fill" style="width:${pct}%"></div></div>
-        <span class="lb-days">${p.days}일</span>
-      </div>`;
-    }
-
-    // 미활동자: 순위 번호 없이, 하단 분리
-    if (inactive.length > 0) {
-      html += `<div class="lb-inactive-label">아직 이번 주 기록 없음</div>`;
-      html += `<div class="lb-inactive-row">`;
-      for (const p of inactive) {
-        const initial = p.isMe ? '나' : p.name.charAt(0);
-        const inactiveClickAttr = p.isMe ? '' : ` onclick="openFriendProfile('${p.userId}','${p.name}')" style="cursor:pointer;"`;
-        html += `<div class="lb-inactive-item${p.isMe ? ' lb-me-inactive' : ''}"${inactiveClickAttr}>
-          <div class="lb-avatar inactive">${initial}</div>
-          <span class="lb-inactive-name">${p.isMe ? '나' : p.name}</span>
-        </div>`;
-      }
-      html += `</div>`;
-    }
-
-    // 글로벌 모드일 때 업데이트 시각 표시
-    if (isGlobal && globalData.updatedAt) {
-      const diffMin = Math.floor((Date.now() - globalData.updatedAt) / 60000);
-      const freshness = diffMin < 1 ? '방금 업데이트' : diffMin < 60 ? `${diffMin}분 전 업데이트` : `${Math.floor(diffMin / 60)}시간 전 업데이트`;
-      html += `<div class="lb-freshness">${freshness}</div>`;
-    }
-
-    contentEl.innerHTML = html;
+    contentEl.innerHTML = _renderLeaderboardHtml({
+      board,
+      period: _leaderboardPeriod,
+      updatedAt: result.updatedAt,
+      friendIdSet,
+    });
     cardEl.style.display = '';
+    _syncLeaderboardSegmented(_leaderboardPeriod);
   } catch(e) { console.warn('[leaderboard]', e); }
 }
 
-// ── 길드 리더보드 ────────────────────────────────────────────────
-async function _renderGuildLeaderboard(contentEl, user) {
-  try {
-    const myGuilds = new Set(user.guilds || []);
-    const myLocalDays = countLocalWeeklyActiveDays(TODAY);
-    const { guilds: rankings, updatedAt } = await computeGuildStats({ myLocalDays });
-
-    if (!rankings.length && myGuilds.size === 0) {
-      contentEl.innerHTML = `<div class="lb-context" style="text-align:center;padding:20px 0;">
-        길드에 가입하면 길드 랭킹에 참여할 수 있어요
-        <div style="margin-top:8px;"><button class="tds-btn fill md" onclick="openGuildModal()" style="font-size:12px;">길드 가입하기</button></div>
-      </div>`;
-      return;
-    }
-    if (!rankings.length) {
-      contentEl.innerHTML = '<div class="lb-context" style="text-align:center;padding:16px 0;">아직 길드 데이터가 없어요</div>';
-      return;
-    }
-    const rankIcons = ['🥇', '🥈', '🥉'];
-
-    let html = `<div class="lb-context">🏠 ${rankings.length}개 길드가 경쟁 중</div>`;
-
-    for (let i = 0; i < rankings.length; i++) {
-      const g = rankings[i];
-      const rank = rankIcons[i] || `${i + 1}`;
-      const pct = Math.round((g.avgActiveDays / 7) * 100);
-      const isMine = myGuilds.has(g.guildId);
-      const myCls = isMine ? ' lb-my-guild' : '';
-
-      const nameLen = g.guildName.length;
-      const nameFontSize = nameLen > 4 ? '11px' : '13px';
-
-      const guildIcon = g.guildIcon || '🏠';
-      const avatarHtml = String(guildIcon).startsWith('data:')
-        ? `<div class="lb-avatar lb-avatar-photo"><img src="${guildIcon}" alt="${String(g.guildName || '').replace(/"/g, '&quot;')}"></div>`
-        : `<div class="lb-avatar active" style="font-size:14px;overflow:hidden;">${guildIcon}</div>`;
-
-      html += `<div class="lb-row${myCls}" onclick="openGuildInfoModal('${String(g.guildName || '').replace(/'/g, "\\'")}')" style="cursor:pointer;">
-        <span class="lb-rank">${rank}</span>
-        ${avatarHtml}
-        <span class="lb-name lb-name-guild" style="font-size:${nameFontSize};">${g.guildName}</span>
-        <div class="lb-bar-track"><div class="lb-bar-fill" style="width:${pct}%"></div></div>
-        <span class="lb-days"><span class="lb-guild-info">${g.memberCount}명</span> ${Number(g.avgActiveDays || 0).toFixed(1)}일</span>
-      </div>`;
-    }
-
-    // 업데이트 시각
-    if (updatedAt) {
-      const diffMin = Math.floor((Date.now() - updatedAt) / 60000);
-      const freshness = diffMin < 1 ? '방금 업데이트' : diffMin < 60 ? `${diffMin}분 전 업데이트` : `${Math.floor(diffMin / 60)}시간 전 업데이트`;
-      html += `<div class="lb-freshness">${freshness}</div>`;
-    }
-
-    // 산정 방법 안내
-    html += `<div style="margin-top:12px;padding:10px 14px;background:var(--surface2);border-radius:var(--seed-r2,8px);font-size:11px;line-height:1.6;color:var(--text-tertiary);">
-      <span style="font-weight:600;color:var(--text-secondary);">산정 방법</span><br>
-      이번 주 (월~일) 멤버별 활동일의 평균으로 순위를 매겨요.<br>
-      운동 기록 또는 식단 입력이 있는 날을 활동일로 인정합니다.
-    </div>`;
-
-    contentEl.innerHTML = html;
-  } catch(e) {
-    console.warn('[guild-leaderboard]', e);
-    contentEl.innerHTML = '<div class="lb-context">길드 랭킹을 불러올 수 없어요</div>';
-  }
-}
+export const __leaderboardTest__ = {
+  _countActiveDays,
+  _leaderboardContext,
+  _renderLeaderboardHtml,
+  LEADERBOARD_DISPLAY_LIMIT,
+};
 

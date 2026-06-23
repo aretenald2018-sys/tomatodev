@@ -6,6 +6,7 @@ const indexHtml = readFileSync('index.html', 'utf8');
 const appJs = readFileSync('app.js', 'utf8');
 const featureNutritionJs = readFileSync('feature-nutrition.js', 'utf8');
 const modalManagerJs = readFileSync('modal-manager.js', 'utf8');
+const workoutUiJs = readFileSync('workout-ui.js', 'utf8');
 
 test('diet add buttons use delegated addFood actions for every meal', () => {
   const meals = ['breakfast', 'lunch', 'dinner', 'snack'];
@@ -49,4 +50,10 @@ test('modal manager shares an in-flight modal injection promise', () => {
   assert.match(modalManagerJs, /let _modalsLoadPromise = null;/);
   assert.match(modalManagerJs, /if \(_modalsLoadPromise\) return _modalsLoadPromise;/);
   assert.match(modalManagerJs, /_modalsLoadPromise = \(async \(\) =>/);
+});
+
+test('meal photo uploads save through the diet path with a meal hint', () => {
+  assert.match(workoutUiJs, /if \(meal === 'workout'\)/);
+  assert.match(workoutUiJs, /const \{ _autoSaveDiet \} = await import\('\.\/workout\/save\.js'\);/);
+  assert.match(workoutUiJs, /_autoSaveDiet\(\{ meal \}\)/);
 });

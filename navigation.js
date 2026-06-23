@@ -216,11 +216,22 @@ export function applyTabOrder(order) {
 
 // ── 하단 탭 가시성 ──────────────────────────────────────────────
 const ALL_CONFIGURABLE_TABS = [
-  { id: 'home',     icon: '🏠', label: '홈',      fixed: true },
-  { id: 'diet',     icon: '🥗', label: '식단' },
-  { id: 'workout',  icon: '💪', label: '운동' },
-  { id: 'stats',    icon: '📊', label: '통계' },
+  { id: 'home',     icon: 'home', label: '홈',      fixed: true },
+  { id: 'diet',     icon: 'diet', label: '식단' },
+  { id: 'workout',  icon: 'workout', label: '운동' },
+  { id: 'stats',    icon: 'stats', label: '통계' },
 ];
+
+function createTabIcon(icon) {
+  const span = document.createElement('span');
+  span.className = `tab-icon nav-icon nav-icon-${icon}`;
+  span.setAttribute('aria-hidden', 'true');
+  return span;
+}
+
+function tabIconHtml(icon) {
+  return `<span class="tab-icon nav-icon nav-icon-${icon}" aria-hidden="true"></span>`;
+}
 
 export function applyVisibleTabs(visibleTabs) {
   const nav = document.getElementById('tab-nav');
@@ -239,7 +250,9 @@ export function applyVisibleTabs(visibleTabs) {
       const item = document.createElement('button');
       item.className = 'more-menu-item tab-btn';
       item.dataset.tab = t.id;
-      item.textContent = `${t.icon} ${t.label}`;
+      const label = document.createElement('span');
+      label.textContent = t.label;
+      item.append(createTabIcon(t.icon), label);
       item.onclick = () => { window.switchTab(t.id); toggleMoreMenu(); };
       dynamicContainer.appendChild(item);
     }
@@ -255,7 +268,7 @@ export function openTabSettingsModal() {
     const checked = current.includes(t.id) ? 'checked' : '';
     return `<label style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:var(--radius-md);background:var(--surface2);cursor:pointer;">
       <input type="checkbox" data-tab-id="${t.id}" ${checked} style="width:18px;height:18px;accent-color:var(--primary);">
-      <span style="font-size:18px;">${t.icon}</span>
+      ${tabIconHtml(t.icon)}
       <span style="font-size:14px;font-weight:500;color:var(--text);">${t.label}</span>
     </label>`;
   }).join('');

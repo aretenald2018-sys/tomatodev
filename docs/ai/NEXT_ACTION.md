@@ -3,29 +3,117 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-20-growth-board-wendler-default-history.md` (성장 보드 웬들러 기본값 및 과거 기록 표시)
-- 현재 단계: `review complete — 로컬 정적 검증 완료, 브라우저 UI 검증은 not verified yet`
-- 마지막 완료: `성장 보드가 v2 보드의 웬들러 설정을 다음 기본값으로 상속하게 했고, 과거 셀 시트가 보드 색칠 로그가 없어도 해당 주 7일 운동 문서를 직접 캐시에 보강한 뒤 실제 운동기록을 fallback으로 표시하게 했다.`
-- 다음 액션: `사용자 로컬 일반 터미널에서 npm.cmd run dev 실행 후 성장 보드 하체 과거 2026-06-08 주차 스모데드 셀을 열어 운동기록 있음 표시를 확인한다.`
-- 차단 사유: `이 세션 지침상 장기 dev server를 sandbox에서 시작하지 않으므로 실제 브라우저 UI 검증은 로컬 일반 터미널에서 필요하다.`
+- 계획 문서: `docs/ai/features/2026-06-23-workout-tab-calendar-home.md` (운동탭 캘린더 홈 개편)
+- 현재 단계: `review complete — Slice 6 날짜 상세 운동 카드 형태 교체`
+- 마지막 완료: `날짜 상세 운동 카드의 기존 썸네일/하단 체크형 표시를 제거하고, 접힘/펼침 상태를 테스트모드형 요약 카드/세트 행 카드로 교체했다.`
+- 다음 액션: `없음. 이 계획의 마지막 슬라이스까지 완료.`
+- 차단 사유: `없음. 단, 현재 로그인 데이터에 최근 6개월 운동 기록이 없어 새 카드 형태의 실제 브라우저 시각 검증은 not verified yet이다.`
 
 ## 다음 실행 대상
 
-- 완료 파일: `data.js` · `workout/test-v2/board-core.js` · `workout/test-v2/board-render.js` · `workout/test-v2/onboarding.js` · `tests/test-v2.board-core.test.js` · `sw.js` · `docs/ai/features/2026-06-20-growth-board-wendler-default-history.md` · `docs/ai/reviews/2026-06-20-growth-board-wendler-default-history-review.md` · `docs/ai/NEXT_ACTION.md`
-- 검증 완료:
-  1. PASS: `node --check data.js`
-  2. PASS: `node --check workout/test-v2/board-core.js`
-  3. PASS: `node --check workout/test-v2/board-render.js`
-  4. PASS: `node --check workout/test-v2/onboarding.js`
-  5. PASS: `node --check sw.js`
-  6. PASS: `node --test tests/test-v2.board-core.test.js` — 31개 통과
-  7. PASS: `git diff --check`
-  8. not verified yet: 브라우저에서 성장 보드 하체 과거 2026-06-08 주차 스모데드 셀을 여는 UI 검증은 로컬 일반 터미널 dev server가 필요하다.
+- 계획 파일: `docs/ai/features/2026-06-23-workout-tab-calendar-home.md`
+- 다음 실행 대상:
+  - 없음.
+
+- 방금 완료한 Slice 6:
+  1. `render-calendar.js` 운동 카드에서 기존 참고 이미지 1 형태의 썸네일/하단 체크형 마크업 제거
+  2. collapsed 상태를 성공 기준/트랙/볼륨/오늘 기록/접힘 안내/`세트 다시 보기` 카드로 변경
+  3. expanded 상태를 KG/REP/RIR/ROM 세트 행 카드로 변경
+  4. `style.css`에 `.wt-max-read-card` 계열 스타일과 모바일 보정 추가
+  5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260623-workout-card-shape`로 bump
+  6. `docs/ai/reviews/2026-06-23-workout-tab-card-shape-review.md` 작성
+
+- 검증:
+  1. PASS: `node --check render-calendar.js`
+  2. PASS: `node --check sw.js`
+  3. PASS: `git diff --check`
+  4. not verified yet: 현재 로그인 데이터에 최근 6개월 운동 기록이 없어 새 카드 형태의 실제 브라우저 시각 검증은 미확인
+
+## 이전 흐름 요약
+
+- 이전 홈 라이프존 Slice 9:
+  1. `home/life-zone-state.js`에 actor owner id 후보와 `readAccountId` 추가
+  2. `home/life-zone.js`에서 이웃 actor의 오늘 문서를 owner id 후보로 읽도록 보정
+  3. 방금 입력한 기록이 바로 반영되도록 라이프존 actor 상태 캐시 비활성화
+  4. `tests/home-life-zone-state.test.js`에 줍스 식단-only 상태 회귀 테스트 추가
+  5. `sw.js` `CACHE_VERSION` bump
+  6. `docs/ai/reviews/2026-06-23-home-life-zone-diet-read-review.md` 작성
+
+- 방금 완료한 Slice 8:
+  1. `home/life-zone-state.js`에서 `workoutDuration > 0`을 운동 활동으로 판정
+  2. `tests/home-life-zone-state.test.js`에 운동 시간만 입력된 날의 라이프존 회귀 테스트 추가
+  3. `sw.js` `CACHE_VERSION` bump
+  4. `docs/ai/reviews/2026-06-23-home-life-zone-duration-review.md` 작성
+
+- 방금 완료한 Slice 7:
+  1. `style.css` `.lz-speech` 배경을 반투명 흰색으로 변경
+  2. `style.css` `.lz-speech`에 `backdrop-filter` 추가
+  3. `sw.js` `CACHE_VERSION` bump
+
+- 방금 완료한 Slice 6:
+  1. `home/life-zone-state.js`에 운동/식단/업무 말풍선 문구 생성 로직 추가
+  2. `home/life-zone.js`에서 actor sprite 위 말풍선 렌더링 추가
+  3. `style.css`에 `.lz-speech` 스타일 추가
+  4. `tests/home-life-zone-state.test.js`에 대근육/식단 말풍선 테스트 추가
+  5. `sw.js` `CACHE_VERSION` bump
+  6. `docs/ai/reviews/2026-06-23-home-life-zone-speech-review.md` 작성
+
+- 방금 완료한 Slice 5:
+  1. `scripts/make-life-zone-base-alpha.py`에서 anti-aliased outline 생성으로 변경
+  2. `assets/home/life-zone/base-room-alpha.png` 재생성
+  3. `style.css` `.lz-base`를 `image-rendering:auto`로 변경
+  4. `docs/pixel-life-zone-mockup.html` base preview 렌더링 변경
+  5. `scripts/validate-life-zone-assets.py` outline 검증 기준 변경
+  6. `sw.js` `CACHE_VERSION` bump
+  7. `docs/ai/reviews/2026-06-23-home-life-zone-soft-border-review.md` 작성
+
+- 방금 완료한 Slice 3:
+  1. `home/hero.js`에서 랭킹 렌더링 대상을 상위 5명으로 제한
+  2. `sw.js` `CACHE_VERSION` bump
+  3. `docs/ai/reviews/2026-06-23-home-ranking-top5-review.md` 작성
+
+- 방금 완료한 Slice 2:
+  1. `home/hero.js`에서 랭킹 참가자 소스를 전체 계정으로 변경
+  2. 누적/주간 모두 전체 계정의 기록을 읽어 계산
+  3. `sw.js` `CACHE_VERSION` bump
+  4. `docs/ai/reviews/2026-06-23-home-ranking-all-accounts-review.md` 작성
+
+- 방금 완료한 Slice:
+  1. `index.html`에서 함께 축하해요 카드와 길드 카드를 제거하고 랭킹 UI를 `랭킹`/`누적·주간`으로 변경
+  2. `home/index.js`에서 공용 축하 카드와 홈 길드 카드 렌더 호출 제거
+  3. `home/hero.js`에서 랭킹 상태를 `cumulative/weekly`로 전환하고 선택값 저장
+  4. `sw.js` `CACHE_VERSION` bump
+  5. `docs/ai/reviews/2026-06-23-home-ranking-cleanup-review.md` 작성
+
+## 이전 완료 항목
+
+- 계획 파일: `docs/ai/features/2026-06-23-home-life-zone-card.md`
+- 방금 완료한 Slice 0:
+  1. `assets/home/life-zone/base-room.png`
+  2. `assets/home/life-zone/sprites/*.png` 27개
+  3. `assets/home/life-zone/manifest.json`
+  4. `scripts/process-life-zone-sprites.py`
+  5. `docs/pixel-life-zone-mockup.html`
+- 방금 완료한 Slice 1:
+  1. `home/life-zone-state.js`
+  2. `home/life-zone.js`
+  3. `home/tomato.js`
+  4. `style.css`
+  5. `sw.js`
+  6. `tests/home-life-zone-state.test.js`
+  7. `assets/home/life-zone/base-room-alpha.png`
+  8. `scripts/make-life-zone-base-alpha.py`
+- 다음 실행 후보:
+  1. 계정 id 고정 매핑: `줍스`, `문정토마토`, `이재헌`의 실제 account id를 roster에 반영
+  2. Slice 4: 저장 시점 activity snapshot으로 "방금 올림/방금 운동함" 최근성 반영
+  3. 운동 모션 실험: lat pulldown 2프레임 sprite를 만들고 낮은 비용의 frame animation으로 검증
 
 ## 보류 중 (이전 흐름)
 
+- `docs/ai/features/2026-06-23-pixel-life-zone-mockup.md` — bitmap 생성/정적 검증 완료, HTTP/UI 시각 검증은 not verified yet.
 - `docs/ai/features/2026-06-12-test-mode-simplify-wendler.md` — v1 개편 실행 완료(커밋 2922b64까지), 리뷰 미수행. **v2 구현으로 v1은 동결 상태** — 해당 리뷰는 폐기 권장.
 - `docs/ai/features/2026-06-20-calendar-workout-tab.md` — Slice 1 구현, 리뷰, tomatofarm 원격 배포 완료. 후속 Slice 2는 로컬 정적 검증 완료, 브라우저 UI 플로우는 not verified yet.
+- `docs/ai/features/2026-06-20-growth-board-wendler-default-history.md` — 로컬 정적 검증 완료, 브라우저 UI 플로우는 not verified yet.
 
 ## 상태값
 

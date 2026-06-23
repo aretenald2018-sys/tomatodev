@@ -16,6 +16,7 @@ import { calcTomatoCycle, evaluateCycleResult, getQuarterKey,
          getDayTargetKcal as calcDayTarget }  from '../calc.js';
 import { checkStreakMilestone } from './hero.js';
 import { renderCharacterSVG } from './character.js';
+import { hydrateLifeZoneCard, renderLifeZoneCard } from './life-zone.js';
 import { showToast, haptic, resolveNickname } from './utils.js';
 import { confirmSimple } from '../utils/confirm-modal.js';
 
@@ -838,6 +839,7 @@ export function renderTomatoCard() {
 
   document.getElementById('tf-meal-card')?.remove();
   document.getElementById('tf-weight-card')?.remove();
+  document.getElementById('tf-life-zone-card')?.remove();
 
   const homeHero = document.getElementById('home-hero');
   const todayDietData = getDiet(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
@@ -846,41 +848,7 @@ export function renderTomatoCard() {
   const kcalState = totalIntake <= 0 ? '' : totalIntake <= todayTarget + 50 ? 'ok' : 'over';
   const remaining = Math.max(todayTarget - totalIntake, 0);
 
-  const mealCard = document.createElement('div');
-  mealCard.id = 'tf-meal-card';
-  mealCard.className = 'home-card tf-summary-card';
-  mealCard.onclick = () => switchTab('diet');
-  mealCard.innerHTML = `
-    <div class="tf-sum-row">
-      <div class="tf-sum-left">
-        <span class="tf-sum-title">오늘의 칼로리</span>
-        <div class="tf-sum-nums">
-          <span class="tf-sum-big ${kcalState === 'over' ? 'tf-over' : ''}">${totalIntake > 0 ? totalIntake.toLocaleString() : '—'}</span>
-          <span class="tf-sum-sep">/</span>
-          <span class="tf-sum-target">${todayTarget.toLocaleString()}<span class="tf-sum-unit">kcal</span></span>
-        </div>
-        ${totalIntake > 0 && todayTarget > 0 ? `<span class="tf-sum-remaining ${kcalState}">${kcalState === 'over' ? `${(totalIntake - todayTarget).toLocaleString()}kcal 초과` : `${remaining.toLocaleString()}kcal 남음`}</span>` : '<span class="tf-sum-remaining">아직 기록이 없어요</span>'}
-      </div>
-      <div class="tf-sum-ring-wrap">
-        <svg class="tf-sum-ring" viewBox="0 0 48 48">
-          <circle cx="24" cy="24" r="20" fill="none" stroke="var(--surface2)" stroke-width="5"/>
-          <circle cx="24" cy="24" r="20" fill="none"
-            stroke="${kcalState === 'over' ? '#e53935' : 'var(--primary)'}"
-            stroke-width="5" stroke-linecap="round"
-            stroke-dasharray="${Math.round(125.66 * Math.min(kcalPct, 100) / 100)} 125.66"
-            transform="rotate(-90 24 24)"
-            style="transition:stroke-dasharray 0.5s ease;"/>
-        </svg>
-        <span class="tf-sum-ring-text">${kcalPct}%</span>
-      </div>
-    </div>
-    <div class="tf-sum-footer">
-      <span class="tf-sum-hint">식단 탭에서 상세 보기</span>
-      <span class="tf-sum-arrow">›</span>
-    </div>
-  `;
-  homeHero.after(mealCard);
-
+  let weightSummary = null;
   if (plan._userSet && plan.weight) {
     const checkins = getBodyCheckins();
     const latest = checkins.length ? checkins[checkins.length - 1] : null;
@@ -888,49 +856,31 @@ export function renderTomatoCard() {
     const wTarget = plan.targetWeight || (plan.weight - (metrics.totalWeightLoss || 0));
     const wStart = plan.weight;
     const lost = Math.max(wStart - curWeight, 0);
-    const wRange = wStart - wTarget;
-    const wProgress = wRange > 0 ? Math.min(Math.round(Math.max(wStart - curWeight, 0) / wRange * 100), 100) : 0;
-    const wProgressVisual = (wStart - curWeight) > 0 ? Math.max(wProgress, 8) : 0;
 
     const daysSince = daysSinceLastCheckin();
     const isStale = daysSince >= 7;
     const hintText = isStale ? '바뀐 몸무게 입력하기 ›' : '몸무게 입력 ›';
-    const staleSub = isStale && daysSince !== Infinity
-      ? `<span class="tf-wt-stale-sub">${daysSince}일째 미입력</span>`
-      : '';
-
-    const weightCard = document.createElement('div');
-    weightCard.id = 'tf-weight-card';
-    weightCard.className = 'home-card tf-summary-card' + (isStale ? ' tf-weight-card-stale' : '');
-    weightCard.onclick = () => openCheckinModal();
-    weightCard.innerHTML = `
-      <div class="tf-sum-row">
-        <div class="tf-sum-left">
-          <span class="tf-sum-title">체중${staleSub}</span>
-          <div class="tf-sum-nums">
-            <span class="tf-sum-big">${curWeight.toFixed(1)}</span>
-            <span class="tf-sum-unit-lg">kg</span>
-            ${lost > 0 ? `<span class="tf-wt-delta">-${lost.toFixed(1)}</span>` : ''}
-          </div>
-        </div>
-        <div class="tf-sum-right-text">
-          <span class="tf-sum-hint${isStale ? ' tf-sum-hint-stale' : ''}">${hintText}</span>
-        </div>
-      </div>
-      <div class="tf-wt-journey">
-        <div class="tf-wt-journey-bar">
-          <div class="tf-wt-journey-fill tf-wt-animate" data-width="${wProgressVisual}"></div>
-          <div class="tf-wt-journey-marker tf-wt-animate-marker" data-left="${wProgressVisual}"></div>
-        </div>
-      </div>
-    `;
-    mealCard.after(weightCard);
-
-    setTimeout(() => {
-      const fill = weightCard.querySelector('.tf-wt-animate');
-      const marker = weightCard.querySelector('.tf-wt-animate-marker');
-      if (fill) { fill.style.width = fill.dataset.width + '%'; }
-      if (marker) { marker.style.left = marker.dataset.left + '%'; }
-    }, 50);
+    weightSummary = {
+      current: Number(curWeight) || 0,
+      target: wTarget,
+      start: wStart,
+      lost,
+      isStale,
+      hint: isStale && daysSince !== Infinity ? `${daysSince}일째 미입력` : hintText
+    };
   }
+
+  if (!homeHero) return;
+  const lifeZoneCard = renderLifeZoneCard({
+    totalIntake,
+    todayTarget,
+    kcalState,
+    remaining,
+    kcalPct,
+    weightSummary,
+    onDietClick: () => switchTab('diet'),
+    onWeightClick: () => openCheckinModal()
+  });
+  homeHero.after(lifeZoneCard);
+  hydrateLifeZoneCard(lifeZoneCard);
 }

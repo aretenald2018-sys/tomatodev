@@ -3,7 +3,7 @@
 
 // 캐시 버전: 타임스탬프 기반 자동 생성 — 파일 수정 시 SW 자동 업데이트
 // (SW 파일 내용이 1바이트라도 바뀌면 브라우저가 새 SW로 인식)
-const CACHE_VERSION = 'tomatofarm-v20260620z27-growth-board-scope-bust';
+const CACHE_VERSION = 'tomatofarm-v20260623z3-stats-muscle-fatigue-life-zone-last-activity';
 const RUNTIME_CACHE = 'dashboard3-runtime';
 const STATIC_ASSETS = [
   './',
@@ -14,6 +14,16 @@ const STATIC_ASSETS = [
   './styles/tokens.css',
   './styles/components.css',
   './firebase-messaging-sw.js',
+  './assets/nav-icons/admin.svg',
+  './assets/nav-icons/calendar.svg',
+  './assets/nav-icons/cooking.svg',
+  './assets/nav-icons/diet.svg',
+  './assets/nav-icons/home.svg',
+  './assets/nav-icons/more.svg',
+  './assets/nav-icons/settings.svg',
+  './assets/nav-icons/stats.svg',
+  './assets/nav-icons/workout.svg',
+  './assets/stats/muscle-fatigue-body.png',
   // 코어 모듈
   './app.js',
   './app.js?v=20260620z27-selected-scope',
@@ -42,6 +52,8 @@ const STATIC_ASSETS = [
   './home/goals-quests.js',
   './home/unit-goal.js',
   './home/tomato.js',
+  './home/life-zone.js',
+  './home/life-zone-state.js',
   './home/character.js',
   './home/farm.js',
   './home/notifications.js',
@@ -54,6 +66,7 @@ const STATIC_ASSETS = [
   './workout/index.js',
   './workout/index.js?v=20260620z27-selected-scope',
   './workout/state.js',
+  './workout/sessions.js',
   './workout/save.js',
   './workout/save-pure.js',
   './workout/save-schema.js',
@@ -178,6 +191,36 @@ const STATIC_ASSETS = [
   './render-calendar.js',
   './modals/calendar-day-modal.js',
   './modals/custom-muscles-modal.js',
+  './assets/home/life-zone/base-room.png',
+  './assets/home/life-zone/base-room-alpha.png',
+  './assets/home/life-zone/manifest.json',
+  './assets/home/life-zone/sprites/jups-workout-lat.png',
+  './assets/home/life-zone/sprites/jups-workout-bench.png',
+  './assets/home/life-zone/sprites/jups-workout-squat.png',
+  './assets/home/life-zone/sprites/jups-diet-left.png',
+  './assets/home/life-zone/sprites/jups-diet-center.png',
+  './assets/home/life-zone/sprites/jups-diet-right.png',
+  './assets/home/life-zone/sprites/jups-office-upper.png',
+  './assets/home/life-zone/sprites/jups-office-center.png',
+  './assets/home/life-zone/sprites/jups-office-lower.png',
+  './assets/home/life-zone/sprites/moonjung-tomato-workout-lat.png',
+  './assets/home/life-zone/sprites/moonjung-tomato-workout-bench.png',
+  './assets/home/life-zone/sprites/moonjung-tomato-workout-squat.png',
+  './assets/home/life-zone/sprites/moonjung-tomato-diet-left.png',
+  './assets/home/life-zone/sprites/moonjung-tomato-diet-center.png',
+  './assets/home/life-zone/sprites/moonjung-tomato-diet-right.png',
+  './assets/home/life-zone/sprites/moonjung-tomato-office-upper.png',
+  './assets/home/life-zone/sprites/moonjung-tomato-office-center.png',
+  './assets/home/life-zone/sprites/moonjung-tomato-office-lower.png',
+  './assets/home/life-zone/sprites/lee-jaeheon-workout-lat.png',
+  './assets/home/life-zone/sprites/lee-jaeheon-workout-bench.png',
+  './assets/home/life-zone/sprites/lee-jaeheon-workout-squat.png',
+  './assets/home/life-zone/sprites/lee-jaeheon-diet-left.png',
+  './assets/home/life-zone/sprites/lee-jaeheon-diet-center.png',
+  './assets/home/life-zone/sprites/lee-jaeheon-diet-right.png',
+  './assets/home/life-zone/sprites/lee-jaeheon-office-upper.png',
+  './assets/home/life-zone/sprites/lee-jaeheon-office-center.png',
+  './assets/home/life-zone/sprites/lee-jaeheon-office-lower.png',
 ];
 
 self.addEventListener('install', (event) => {

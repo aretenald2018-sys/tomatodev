@@ -91,8 +91,13 @@ window.uploadMealPhoto = async function(meal, input) {
     window._mealPhotos[meal] = 'data:image/jpeg;base64,' + b64;
     const { _renderMealPhotos } = await import('./render-workout.js?v=20260515v6');
     _renderMealPhotos();
-    const { saveWorkoutDay } = await import('./render-workout.js?v=20260515v6');
-    saveWorkoutDay().catch(e => console.error('Auto-save after photo:', e));
+    if (meal === 'workout') {
+      const { saveWorkoutDay } = await import('./render-workout.js?v=20260515v6');
+      saveWorkoutDay().catch(e => console.error('Auto-save after workout photo:', e));
+    } else {
+      const { _autoSaveDiet } = await import('./workout/save.js');
+      _autoSaveDiet({ meal }).catch(e => console.error('Auto-save after meal photo:', e));
+    }
   } catch(e) { console.error('Photo upload error:', e); }
   input.value = '';
 };
@@ -100,8 +105,13 @@ window.removeMealPhoto = async function(meal) {
   delete window._mealPhotos[meal];
   const { _renderMealPhotos } = await import('./render-workout.js?v=20260515v6');
   _renderMealPhotos();
-  const { saveWorkoutDay } = await import('./render-workout.js?v=20260515v6');
-  saveWorkoutDay().catch(e => console.error('Auto-save after photo remove:', e));
+  if (meal === 'workout') {
+    const { saveWorkoutDay } = await import('./render-workout.js?v=20260515v6');
+    saveWorkoutDay().catch(e => console.error('Auto-save after workout photo remove:', e));
+  } else {
+    const { _autoSaveDiet } = await import('./workout/save.js');
+    _autoSaveDiet({ meal }).catch(e => console.error('Auto-save after meal photo remove:', e));
+  }
 };
 
 // ── AI 추정 전용 업로드 ─────────────────────────────────────────
@@ -129,8 +139,8 @@ window.uploadMealPhotoAI = async function(meal, input) {
     startAIEstimate(meal, dataUrl);
 
     // 3) 사진 자체는 서버에 저장 (AI 확정 전에도 사진은 보존)
-    const { saveWorkoutDay } = await import('./render-workout.js?v=20260515v6');
-    saveWorkoutDay().catch(e => console.error('Auto-save after AI photo upload:', e));
+    const { _autoSaveDiet } = await import('./workout/save.js');
+    _autoSaveDiet({ meal }).catch(e => console.error('Auto-save after AI photo upload:', e));
   } catch (e) {
     console.error('[uploadMealPhotoAI] error:', e);
     try {

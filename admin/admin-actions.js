@@ -1,4 +1,5 @@
 import {
+  DIET_PREMIUM_REPORT_AUTO_DELIVERY_ENABLED,
   DIET_PREMIUM_REPORT_TARGETS,
   deleteUserAccount,
   publishDietPremiumReportIssue,
@@ -19,6 +20,7 @@ function _targetLabel(target) {
 }
 
 function _renderDietReportPublisher() {
+  const publishDisabled = !DIET_PREMIUM_REPORT_AUTO_DELIVERY_ENABLED;
   const periodButtons = [
     ['weekly', '주간'],
     ['monthly', '월간'],
@@ -42,9 +44,11 @@ function _renderDietReportPublisher() {
 
   return `
     <div class="hig-card">
-      <div class="hig-headline">식단 프리미엄 리포트 발간</div>
+      <div class="hig-headline">식단 프리미엄 리포트 발간${publishDisabled ? ' 중지됨' : ''}</div>
       <div class="hig-caption1" style="color:var(--hig-gray1);margin-top:6px;">
-        선택한 주기 기준으로 최신 리포트 ID를 생성하고, 대상 계정의 다음 접속 때 1회성 모달로 배송합니다.
+        ${publishDisabled
+          ? '기존 사용자에게 불필요한 리포트 모달이 뜨지 않도록 자동 배송을 중지했습니다.'
+          : '선택한 주기 기준으로 최신 리포트 ID를 생성하고, 대상 계정의 다음 접속 때 1회성 모달로 배송합니다.'}
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
         ${periodButtons}
@@ -52,11 +56,13 @@ function _renderDietReportPublisher() {
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;">
         ${targetChips}
       </div>
-      <button id="admin-diet-report-publish-button" class="hig-btn-primary" style="margin-top:12px;" onclick="window._adminPublishDietReport()">
-        지금 리포트 발간/배송
+      <button id="admin-diet-report-publish-button" class="hig-btn-primary" style="margin-top:12px;" onclick="window._adminPublishDietReport()"${publishDisabled ? ' disabled' : ''}>
+        ${publishDisabled ? '자동 배송 중지됨' : '지금 리포트 발간/배송'}
       </button>
       <div class="hig-caption1" style="color:var(--hig-gray1);margin-top:8px;">
-        같은 주 또는 같은 달에 다시 발간하면 같은 ID를 사용해, 이미 확인한 사용자에게는 중복 자동 노출되지 않습니다.
+        ${publishDisabled
+          ? '수동 미리보기는 localhost 개발 환경에서만 유지됩니다.'
+          : '같은 주 또는 같은 달에 다시 발간하면 같은 ID를 사용해, 이미 확인한 사용자에게는 중복 자동 노출되지 않습니다.'}
       </div>
       ${lastPublish}
     </div>
@@ -144,6 +150,11 @@ window._adminSetDietReportPeriod = (period) => {
 };
 
 window._adminPublishDietReport = async () => {
+  if (!DIET_PREMIUM_REPORT_AUTO_DELIVERY_ENABLED) {
+    window.showToast?.('식단 프리미엄 리포트 자동 배송은 중지되어 있습니다', 3000, 'info');
+    return;
+  }
+
   const periodLabel = _dietReportPeriod === 'monthly' ? '월간' : '주간';
   const ok = await (window.confirmAction?.({
     title: `${periodLabel} 식단 리포트를 발간할까요?`,

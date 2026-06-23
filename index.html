@@ -18,8 +18,8 @@
 <link rel="stylesheet" href="styles/components.css">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="admin/admin-hig.css">
-<link rel="stylesheet" href="expert-mode.css?v=20260611a12">
-<link rel="stylesheet" href="test-mode-v2.css?v=20260620z27-selected-scope">
+<link rel="stylesheet" href="expert-mode.css?v=20260623a12">
+<link rel="stylesheet" href="test-mode-v2.css?v=20260623a27-selected-scope">
 </head>
 <body>
 
@@ -212,19 +212,19 @@
 <!-- 하단 탭 네비게이션 -->
 <nav class="bottom-tabs" id="tab-nav">
   <button class="tab-btn active" data-tab="home" onclick="switchTab('home')">
-    <span class="tab-icon">🏠</span><span>홈</span>
+    <span class="tab-icon nav-icon nav-icon-home" aria-hidden="true"></span><span class="tab-label">홈</span>
   </button>
   <button class="tab-btn" data-tab="diet" onclick="switchTab('diet')">
-    <span class="tab-icon">🥗</span><span>식단</span>
+    <span class="tab-icon nav-icon nav-icon-diet" aria-hidden="true"></span><span class="tab-label">식단</span>
   </button>
   <button class="tab-btn" data-tab="workout" onclick="switchTab('workout')">
-    <span class="tab-icon">💪</span><span>운동</span>
+    <span class="tab-icon nav-icon nav-icon-workout" aria-hidden="true"></span><span class="tab-label">운동</span>
   </button>
   <button class="tab-btn" data-tab="calendar" onclick="switchTab('calendar')">
-    <span class="tab-icon">📅</span><span>캘린더</span>
+    <span class="tab-icon nav-icon nav-icon-calendar" aria-hidden="true"></span><span class="tab-label">캘린더</span>
   </button>
   <button class="tab-btn tab-more-btn" data-tab="more" onclick="toggleMoreMenu()">
-    <span class="tab-icon">⋯</span><span>더보기</span>
+    <span class="tab-icon nav-icon nav-icon-more" aria-hidden="true"></span><span class="tab-label">더보기</span>
   </button>
 </nav>
 
@@ -233,15 +233,23 @@
   <div class="more-menu-backdrop" onclick="toggleMoreMenu()"></div>
   <div class="more-menu-sheet">
     <div id="more-menu-dynamic-tabs"></div>
-    <button class="more-menu-item tab-btn" data-tab="stats" onclick="switchTab('stats');toggleMoreMenu()">📊 통계</button>
-    <button class="more-menu-item tab-btn" data-tab="cooking" onclick="switchTab('cooking');toggleMoreMenu()">🍳 요리</button>
+    <button class="more-menu-item tab-btn" data-tab="stats" onclick="switchTab('stats');toggleMoreMenu()">
+      <span class="tab-icon nav-icon nav-icon-stats" aria-hidden="true"></span><span>통계</span>
+    </button>
+    <button class="more-menu-item tab-btn" data-tab="cooking" onclick="switchTab('cooking');toggleMoreMenu()">
+      <span class="tab-icon nav-icon nav-icon-cooking" aria-hidden="true"></span><span>요리</span>
+    </button>
     <div id="admin-menu-items" style="display:none;">
       <div style="border-top:1px solid var(--border);margin-top:4px;padding-top:4px">
-        <button class="more-menu-item tab-btn" data-tab="admin" onclick="switchTab('admin');toggleMoreMenu()">🍅 토마토어드민</button>
+        <button class="more-menu-item tab-btn" data-tab="admin" onclick="switchTab('admin');toggleMoreMenu()">
+          <span class="tab-icon nav-icon nav-icon-admin" aria-hidden="true"></span><span>토마토어드민</span>
+        </button>
       </div>
     </div>
     <div style="border-top:1px solid var(--border);margin-top:4px;padding-top:4px">
-      <button class="more-menu-item" onclick="openTabSettingsModal();toggleMoreMenu()">⚙️ 탭 설정</button>
+      <button class="more-menu-item" onclick="openTabSettingsModal();toggleMoreMenu()">
+        <span class="tab-icon nav-icon nav-icon-settings" aria-hidden="true"></span><span>탭 설정</span>
+      </button>
     </div>
   </div>
 </div>
@@ -351,20 +359,17 @@
       <div id="diet-goal-content"></div>
     </div>
 
-    <!-- 함께 축하해요! (기존 체중카드는 home/tomato.js에서 동적 렌더) -->
-    <div class="home-card cheers-card" id="card-celebrations" style="display:none;"></div>
-
     <div id="home-cheer-slot"></div>
 
-    <!-- 주간 랭킹 -->
+    <!-- 랭킹 -->
     <div class="home-card" id="card-leaderboard" style="display:none;">
       <div class="home-card-header">
-        <span class="home-card-title">🏆 주간 랭킹</span>
+        <span class="home-card-title">랭킹</span>
       </div>
       <div class="tds-segmented" id="lb-segmented" style="margin-bottom:12px;">
         <div class="tds-segmented-indicator" id="lb-seg-indicator"></div>
-        <button class="tds-segmented-item active" onclick="switchLeaderboardTab('individual')">개인</button>
-        <button class="tds-segmented-item" onclick="switchLeaderboardTab('guild')">길드</button>
+        <button class="tds-segmented-item active" data-period="cumulative" onclick="switchLeaderboardTab('cumulative')">누적</button>
+        <button class="tds-segmented-item" data-period="weekly" onclick="switchLeaderboardTab('weekly')">주간</button>
       </div>
       <div id="leaderboard-content"></div>
     </div>
@@ -379,19 +384,13 @@
       <div id="friend-feed"></div>
     </div>
 
-    <div class="home-card" id="card-guild" style="display:none;">
-      <div class="home-card-header">
-        <span class="home-card-title">길드</span>
-        <button class="section-title-edit-btn" onclick="openGuildModal()">관리</button>
-      </div>
-      <div id="guild-card-content"></div>
-    </div>
-
   </div>
 </div>
 
 <!-- ═══ 운동·식단 탭 ═══ -->
-<div id="tab-workout" class="tab-panel">
+<div id="tab-workout" class="tab-panel wt-calendar-home-mode">
+  <div id="workout-calendar-root" class="workout-calendar-root"></div>
+
   <div class="workout-date-nav">
     <button class="wt-date-nav-btn" onclick="changeWorkoutDate(-1)">◀</button>
     <span id="wt-date-label" class="workout-date-label"></span>
@@ -752,6 +751,9 @@
 <button class="stats-view-btn" data-stats-view="deep" type="button">심층통계</button>
 </div>
 <div id="stats-overall-panel" class="stats-view-panel active">
+<div class="stats-block stats-muscle-fatigue-block">
+<div id="stats-muscle-fatigue"></div>
+</div>
 <div class="stats-block">
 <div class="stats-block-title">📋 전체 기록 리포트</div>
 <div id="stats-metadata-summary"></div>
@@ -829,10 +831,10 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
-<script src="feature-login.js?v=20260611a"></script>
-<script type="module" src="app.js?v=20260620z27-selected-scope"></script>
+<script src="feature-login.js?v=20260623a"></script>
+<script type="module" src="app.js?v=20260623a27-selected-scope"></script>
 
 <!-- PWA Service Worker 등록 -->
-<script src="pwa-register.js?v=20260611a"></script>
+<script src="pwa-register.js?v=20260623a"></script>
 </body>
 </html>

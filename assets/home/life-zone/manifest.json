@@ -1,0 +1,119 @@
+{
+  "baseRoom": {
+    "src": "./assets/home/life-zone/base-room-alpha.png",
+    "width": 1672,
+    "height": 941
+  },
+  "actors": [
+    {
+      "id": "jups",
+      "displayName": "줍스",
+      "color": "red",
+      "dotColor": "#ff525c",
+      "spritePrefix": "jups"
+    },
+    {
+      "id": "moonjung-tomato",
+      "displayName": "문정토마토",
+      "color": "blue",
+      "dotColor": "#52a6ff",
+      "spritePrefix": "moonjung-tomato"
+    },
+    {
+      "id": "lee-jaeheon",
+      "displayName": "이재헌",
+      "color": "green",
+      "dotColor": "#5ada7e",
+      "spritePrefix": "lee-jaeheon"
+    }
+  ],
+  "stateSlots": {
+    "workout": [
+      {
+        "id": "lat",
+        "pose": "workout-lat",
+        "label": "랫풀다운",
+        "x": 246,
+        "y": 260,
+        "width": 238,
+        "z": 30
+      },
+      {
+        "id": "bench",
+        "pose": "workout-bench",
+        "label": "벤치프레스",
+        "x": 70,
+        "y": 540,
+        "width": 260,
+        "z": 42
+      },
+      {
+        "id": "squat",
+        "pose": "workout-squat",
+        "label": "스쿼트",
+        "x": 500,
+        "y": 245,
+        "width": 214,
+        "z": 26
+      }
+    ],
+    "diet": [
+      {
+        "id": "island-left",
+        "pose": "diet-left",
+        "label": "아일랜드 왼쪽 의자",
+        "x": 548,
+        "y": 548,
+        "width": 142,
+        "z": 58
+      },
+      {
+        "id": "island-center",
+        "pose": "diet-center",
+        "label": "아일랜드 가운데 의자",
+        "x": 678,
+        "y": 610,
+        "width": 136,
+        "z": 64
+      },
+      {
+        "id": "island-right",
+        "pose": "diet-right",
+        "label": "아일랜드 오른쪽 의자",
+        "x": 878,
+        "y": 558,
+        "width": 132,
+        "z": 60
+      }
+    ],
+    "office": [
+      {
+        "id": "desk-upper",
+        "pose": "office-upper",
+        "label": "상단 업무 의자",
+        "x": 1190,
+        "y": 382,
+        "width": 154,
+        "z": 46
+      },
+      {
+        "id": "desk-center",
+        "pose": "office-center",
+        "label": "중앙 업무 의자",
+        "x": 1394,
+        "y": 486,
+        "width": 148,
+        "z": 52
+      },
+      {
+        "id": "desk-lower",
+        "pose": "office-lower",
+        "label": "하단 업무 의자",
+        "x": 1316,
+        "y": 610,
+        "width": 152,
+        "z": 66
+      }
+    ]
+  }
+}

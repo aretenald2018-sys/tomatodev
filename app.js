@@ -85,6 +85,7 @@ async function _lazyRenderStats()   { _showTabSkeleton('tab-stats');   try { con
 async function _lazyRenderAdmin()   { _showTabSkeleton('tab-admin');   try { const m = await _lazy('admin',   './render-admin.js?v=20260410e');  m.renderAdmin();   return m; } finally { _hideTabSkeleton('tab-admin'); } }
 async function _lazyRenderCooking() { _showTabSkeleton('tab-cooking'); try { const m = await _lazy('cooking', './render-cooking.js');            m.renderCooking(); return m; } finally { _hideTabSkeleton('tab-cooking'); } }
 async function _lazyRenderCalendar(){ _showTabSkeleton('tab-calendar');try { const m = await _lazy('calendar',  './render-calendar.js');           m.renderCalendar();return m; } finally { _hideTabSkeleton('tab-calendar'); } }
+async function _lazyRenderWorkoutCalendarHome(){ const m = await _lazy('calendar', './render-calendar.js'); m.renderWorkoutCalendarHome?.(); return m; }
 import { loadAndInjectModals } from './modal-manager.js';
 
 // ── 분리된 모달 핸들러 import ──────────────────────────────────
@@ -169,8 +170,8 @@ function _syncNavigationForCurrentRole() {
     moreBtn.style.display = '';
     moreBtn.dataset.mode = adminOnlyMode ? 'admin-only' : 'default';
     moreBtn.innerHTML = adminOnlyMode
-      ? '<span class="tab-icon">🍅</span><span>토마토어드민</span>'
-      : '<span class="tab-icon">⋯</span><span>더보기</span>';
+      ? '<span class="tab-icon nav-icon nav-icon-admin" aria-hidden="true"></span><span class="tab-label">토마토어드민</span>'
+      : '<span class="tab-icon nav-icon nav-icon-more" aria-hidden="true"></span><span class="tab-label">더보기</span>';
     moreBtn.onclick = adminOnlyMode ? (() => switchTab('admin')) : (() => toggleMoreMenu());
     moreBtn.classList.toggle('active', _currentTab === 'admin' && adminOnlyMode);
   }
@@ -181,6 +182,16 @@ function _syncNavigationForCurrentRole() {
   if (topNav) topNav.style.display = adminOnlyMode && _currentTab === 'admin' ? 'none' : '';
   if (moreMenu && adminOnlyMode) moreMenu.style.display = 'none';
 }
+
+let _workoutSurface = 'home';
+function _setWorkoutSurface(surface) {
+  _workoutSurface = surface === 'edit' ? 'edit' : 'home';
+  const panel = document.getElementById('tab-workout');
+  if (!panel) return;
+  panel.classList.toggle('wt-calendar-home-mode', _workoutSurface === 'home');
+  panel.classList.toggle('wt-calendar-edit-mode', _workoutSurface === 'edit');
+}
+const _isWorkoutCalendarHome = () => _workoutSurface === 'home';
 
 async function switchTab(tab, options = {}) {
   if (isAdmin() && tab !== 'admin') tab = 'admin';
@@ -198,7 +209,12 @@ async function switchTab(tab, options = {}) {
   if (tab === 'home')     renderHome();
   if (tab === 'workout') {
     const targetDate = options?.workoutDate || null;
-    if (targetDate && Number.isFinite(Number(targetDate.y)) && Number.isFinite(Number(targetDate.m)) && Number.isFinite(Number(targetDate.d))) {
+    const hasTargetDate = targetDate
+      && Number.isFinite(Number(targetDate.y))
+      && Number.isFinite(Number(targetDate.m))
+      && Number.isFinite(Number(targetDate.d));
+    _setWorkoutSurface(hasTargetDate ? 'edit' : 'home');
+    if (hasTargetDate) {
       loadWorkoutDate(Number(targetDate.y), Number(targetDate.m), Number(targetDate.d));
     } else {
       loadWorkoutDate(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
@@ -215,6 +231,7 @@ async function switchTab(tab, options = {}) {
   if (tab === 'admin')    await _lazyRenderAdmin();
   if (tab === 'cooking')  await _lazyRenderCooking();
   if (tab === 'calendar') await _lazyRenderCalendar();
+  if (tab === 'workout' && _isWorkoutCalendarHome()) await _lazyRenderWorkoutCalendarHome();
 }
 
 async function renderAll() {
@@ -227,7 +244,10 @@ async function renderAll() {
   if (_currentTab === 'stats')    await _lazyRenderStats();
   if (_currentTab === 'cooking')  await _lazyRenderCooking();
   if (_currentTab === 'calendar') await _lazyRenderCalendar();
-  if (_currentTab === 'workout' && typeof window.renderExpertTopArea === 'function') {
+  if (_currentTab === 'workout' && _isWorkoutCalendarHome()) {
+    await _lazyRenderWorkoutCalendarHome();
+  }
+  if (_currentTab === 'workout' && !_isWorkoutCalendarHome() && typeof window.renderExpertTopArea === 'function') {
     window.renderExpertTopArea();
   }
 }

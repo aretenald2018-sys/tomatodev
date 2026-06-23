@@ -12,6 +12,8 @@
 
 // 운동 경로가 쓰는 필드. 이 외 필드는 운동 저장에서 Firestore 로 가지 않음 → 식단 데이터 보호.
 export const WORKOUT_PAYLOAD_KEYS = Object.freeze([
+  'workoutSessions',
+  'lifeZoneWorkoutActivity', 'lifeZoneLastActivity',
   'exercises', 'cf', 'stretching', 'swimming', 'running',
   'runDistance', 'runDurationMin', 'runDurationSec', 'runMemo',
   'cfWod', 'cfDurationMin', 'cfDurationSec', 'cfMemo',
@@ -25,6 +27,7 @@ export const WORKOUT_PAYLOAD_KEYS = Object.freeze([
 
 // 식단 경로가 쓰는 필드. 이 외 필드는 식단 저장에서 Firestore 로 가지 않음 → 운동 데이터 보호.
 export const DIET_PAYLOAD_KEYS = Object.freeze([
+  'lifeZoneDietActivity', 'lifeZoneLastActivity',
   'breakfast_skipped', 'lunch_skipped', 'dinner_skipped',
   'breakfast', 'lunch', 'dinner', 'snack',
   'bKcal', 'lKcal', 'dKcal', 'sKcal',
@@ -41,4 +44,4 @@ export const DIET_PAYLOAD_KEYS = Object.freeze([
 ]);
 
 // 공유 필드 — 양쪽 payload 에 의도적으로 포함. 값은 동일한 _computeMealOk 계산 결과.
-export const SHARED_PAYLOAD_KEYS = Object.freeze(['bOk', 'lOk', 'dOk', 'sOk']);
+export const SHARED_PAYLOAD_KEYS = Object.freeze(['bOk', 'lOk', 'dOk', 'sOk', 'lifeZoneLastActivity']);

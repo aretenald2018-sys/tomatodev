@@ -53,6 +53,7 @@ function _getWorkoutTwinOwnerId(ownerId) {
 // 과거: 전체 day 객체 단위로 판정 → owner 에 식단만 있고 운동 없는 날엔 twin 의 운동이
 //       병합 안 돼 스트릭이 계정 로그인 시마다 1↔5 로 흔들렸다 (문정토마토 이슈).
 const _TWIN_WORKOUT_FIELDS = [
+  'workoutSessions',
   'exercises', 'cf', 'swimming', 'running', 'stretching',
   'runDistance', 'runDurationMin', 'runDurationSec', 'runMemo',
   'swimDistance', 'swimDurationMin', 'swimDurationSec', 'swimStroke', 'swimMemo',

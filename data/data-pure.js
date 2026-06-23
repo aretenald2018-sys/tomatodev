@@ -264,6 +264,7 @@ function _hasActualWorkoutExercise(ex) {
 export function isActiveWorkoutDayData(workoutData) {
   if (!workoutData) return false;
   const w = workoutData;
+  if ((w.workoutSessions || []).some(session => isActiveWorkoutDayData(session))) return true;
   if ((w.exercises || []).some(_hasActualWorkoutExercise)) return true;
   if (w.cf || w.swimming || w.running || w.stretching) return true;
   if ((w.muscles || []).length > 0) return true;

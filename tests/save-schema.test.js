@@ -31,8 +31,8 @@ test('WORKOUT_PAYLOAD_KEYS 중복 없음', () => {
 test('DIET_PAYLOAD_KEYS 중복 없음', () => {
   assert.equal(dietSet.size, DIET_PAYLOAD_KEYS.length);
 });
-test('SHARED_PAYLOAD_KEYS = {bOk,lOk,dOk,sOk}', () => {
-  assert.deepEqual([...sharedSet].sort(), ['bOk', 'dOk', 'lOk', 'sOk']);
+test('SHARED_PAYLOAD_KEYS = meal ok fields + lifeZoneLastActivity', () => {
+  assert.deepEqual([...sharedSet].sort(), ['bOk', 'dOk', 'lOk', 'lifeZoneLastActivity', 'sOk']);
 });
 
 // ── 교집합 = shared ─────────────────────────────────────────────
@@ -45,6 +45,8 @@ test('workout ∩ diet = SHARED_PAYLOAD_KEYS (정확히 공유 필드만 겹침)
 
 // ── 핵심 회귀 방지: 운동 필드는 식단 저장이 건드리지 않아야 함 ──
 const WORKOUT_ONLY_SAMPLES = [
+  'workoutSessions',
+  'lifeZoneWorkoutActivity',
   'exercises', 'cf', 'swimming', 'running', 'stretching',
   'runDistance', 'cfWod', 'swimStroke', 'stretchDuration',
   'workoutDuration', 'wine_free', 'memo',
@@ -60,6 +62,7 @@ for (const key of WORKOUT_ONLY_SAMPLES) {
 
 // ── 핵심 회귀 방지: 식단 필드는 운동 저장이 건드리지 않아야 함 ──
 const DIET_ONLY_SAMPLES = [
+  'lifeZoneDietActivity',
   'breakfast', 'lunch', 'dinner', 'snack',
   'bKcal', 'lKcal', 'dKcal', 'sKcal',
   'bFoods', 'lFoods', 'dFoods', 'sFoods',

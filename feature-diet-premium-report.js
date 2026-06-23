@@ -6,6 +6,7 @@
 import {
   getCurrentUser,
   DIET_PREMIUM_CONTENT_VERSION,
+  DIET_PREMIUM_REPORT_AUTO_DELIVERY_ENABLED,
   getDietPremiumReportInbox,
   getDietPremiumReportSeen,
   saveDietPremiumReportSeen,
@@ -459,6 +460,8 @@ function _showReport(userId, { persist = true, reportId = DEFAULT_REPORT_ID } = 
 }
 
 export async function showDietPremiumReportIfNeeded() {
+  if (!DIET_PREMIUM_REPORT_AUTO_DELIVERY_ENABLED) return false;
+
   const user = getCurrentUser();
   const userId = user?.id;
   if (!REPORTS[userId]) return false;

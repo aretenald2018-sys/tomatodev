@@ -11,12 +11,14 @@
 
 import { S }                        from './state.js';
 import { showCenterToast }          from '../home/utils.js';
-import { saveDay, dateKey, isFuture, trackEvent, getExList } from '../data.js';
+import { saveDay, dateKey, isFuture, trackEvent, getExList, getDay } from '../data.js';
 import { WORKOUT_PAYLOAD_KEYS, DIET_PAYLOAD_KEYS } from './save-schema.js';
 import { deriveActivityFlagsFromDetails, deriveDietSuccessFromWorkout } from './cross-domain.js';
 import { MOVEMENTS } from '../config.js';
 import { calcSetVolume } from '../calc/volume.js';
 import { shouldKeepMaxDraftExercisesForSavePure } from './save-pure.js';
+import { upsertWorkoutSession } from './sessions.js';
+import { hasLifeZoneDietActivity, hasLifeZoneWorkoutActivity } from '../home/life-zone-state.js';
 
 // 미래 날짜 저장 가드 — 어떤 경로로든 미래 날짜 쓰기 금지 (B-3).
 function _blockIfFutureDate() {
@@ -119,6 +121,63 @@ function _buildWorkoutPayload(cleanEx, isDietSuccess) {
     routineMeta: w.routineMeta || null,
     maxMeta: _buildMaxMeta(cleanEx),
     ..._computeMealOk(isDietSuccess),
+  };
+}
+
+function _buildWorkoutPayloadWithSessions(ctxKey, payload) {
+  const sessionIndex = Math.max(0, Math.floor(Number(S.workout.sessionIndex) || 0));
+  const [yy, mm, dd] = ctxKey.split('-').map(part => parseInt(part, 10));
+  const existingDay = getDay(yy, mm - 1, dd);
+  const sessionResult = upsertWorkoutSession(existingDay, payload, sessionIndex, { now: Date.now() });
+  return {
+    ...payload,
+    ...sessionResult.aggregate,
+    workoutSessions: sessionResult.workoutSessions,
+  };
+}
+
+function _attachLifeZoneWorkoutSnapshot(payload) {
+  const active = hasLifeZoneWorkoutActivity(payload);
+  const snapshot = active ? { state: 'workout', updatedAt: Date.now() } : null;
+  return {
+    ...payload,
+    lifeZoneWorkoutActivity: snapshot,
+    lifeZoneLastActivity: snapshot,
+  };
+}
+
+const LIFE_ZONE_MEAL_KEYS = ['breakfast', 'lunch', 'dinner', 'snack'];
+
+function _resolveLifeZoneDietMeal(payload, requestedMeal = null) {
+  if (requestedMeal && LIFE_ZONE_MEAL_KEYS.includes(requestedMeal)) return requestedMeal;
+  const mealMap = {
+    breakfast: ['breakfast', 'bFoods', 'bKcal', 'bPhoto', 'breakfast_skipped'],
+    lunch: ['lunch', 'lFoods', 'lKcal', 'lPhoto', 'lunch_skipped'],
+    dinner: ['dinner', 'dFoods', 'dKcal', 'dPhoto', 'dinner_skipped'],
+    snack: ['snack', 'sFoods', 'sKcal', 'sPhoto'],
+  };
+  for (const meal of [...LIFE_ZONE_MEAL_KEYS].reverse()) {
+    const keys = mealMap[meal];
+    const hasRecord = keys.some((key) => {
+      const value = payload?.[key];
+      if (Array.isArray(value)) return value.length > 0;
+      if (typeof value === 'number') return value > 0;
+      return !!value;
+    });
+    if (hasRecord) return meal;
+  }
+  return null;
+}
+
+function _attachLifeZoneDietSnapshot(payload, options = {}) {
+  const active = hasLifeZoneDietActivity(payload);
+  const snapshot = active
+    ? { state: 'diet', meal: _resolveLifeZoneDietMeal(payload, options.meal), updatedAt: Date.now() }
+    : null;
+  return {
+    ...payload,
+    lifeZoneDietActivity: snapshot,
+    lifeZoneLastActivity: snapshot,
   };
 }
 
@@ -355,7 +414,9 @@ export async function saveWorkoutDay(options = {}) {
   const btn = silent ? null : document.getElementById('wt-save-btn');
   if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
 
-  const payload = _buildWorkoutPayload(cleanEx, isDietSuccess);
+  const payload = _attachLifeZoneWorkoutSnapshot(
+    _buildWorkoutPayloadWithSessions(ctxKey, _buildWorkoutPayload(cleanEx, isDietSuccess))
+  );
   _assertSchemaParity('workout', payload, WORKOUT_PAYLOAD_KEYS);
   try {
     if (!_isWorkoutDateStill(startedKey, 'before-write')) return;
@@ -382,7 +443,7 @@ export async function saveWorkoutDay(options = {}) {
 
 // ── 식단 자동 저장 (식단 도메인) ────────────────────────────────
 // 식단 페이로드만 merge 저장 — 운동 필드 전부 제외 → 자동저장이 운동을 건드리지 못함.
-export async function _autoSaveDiet() {
+export async function _autoSaveDiet(options = {}) {
   const startedKey = _workoutDateKeyFromState();
   const ctx = _prepareSave({ syncWorkoutDetails: false });
   if (!ctx) {
@@ -400,7 +461,7 @@ export async function _autoSaveDiet() {
   });
 
   try {
-    const payload = _buildDietPayload(isDietSuccess);
+    const payload = _attachLifeZoneDietSnapshot(_buildDietPayload(isDietSuccess), options);
     _assertSchemaParity('diet', payload, DIET_PAYLOAD_KEYS);
     if (!_isWorkoutDateStill(startedKey, 'diet-before-write')) return;
     await saveDay(ctxKey, payload, { rethrow: true, mode: 'merge' });
@@ -416,6 +477,7 @@ export async function _autoSaveDiet() {
 
     console.log('[render-workout] 식단 자동 저장 완료');
     _refreshTabDots();
+    document.dispatchEvent(new CustomEvent('sheet:saved'));
     showCenterToast('저장되었습니다');
   } catch(e) {
     console.error('[render-workout] 자동 저장 실패:', e);

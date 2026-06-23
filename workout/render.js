@@ -309,7 +309,7 @@ export function wtAddFoodItem(meal, item) {
   _recalcMealMacros(meal);
   _renderMealFoodItems(meal);
   _renderDietResults();
-  _autoSaveDiet();
+  _autoSaveDiet({ meal });
 }
 
 export function wtRemoveFoodItem(meal, idx) {
@@ -330,7 +330,7 @@ export function wtRemoveFoodItem(meal, idx) {
   }
   _renderMealFoodItems(meal);
   _renderDietResults();
-  _autoSaveDiet();
+  _autoSaveDiet({ meal });
   if (!removed) return;
   // Undo Toast 3초 — 원래 위치에 복원
   window.showToast?.(`'${removed.name || '음식'}' 삭제됨`, 3000, 'info', {
@@ -342,7 +342,7 @@ export function wtRemoveFoodItem(meal, idx) {
       _recalcMealMacros(meal);
       _renderMealFoodItems(meal);
       _renderDietResults();
-      _autoSaveDiet();
+      _autoSaveDiet({ meal });
     },
   });
 }
