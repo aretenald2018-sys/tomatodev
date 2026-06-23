@@ -3,38 +3,31 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-23-home-life-zone-card.md` (홈탭 라이프존 카드 개편)
-- 현재 단계: `deploy complete — Slice 10 모바일 요약 구획 표준화`
-- 마지막 완료: `모바일에서만 라이프존 하단 요약이 1열로 쌓이던 media query를 제거해 PC와 같은 좌우 2칸 구획을 표준으로 맞추고 운영 URL 배포 검증을 완료했다.`
-- 다음 액션: `없음. 새 홈탭/라이프존 요청이 들어오면 이 계획 문서의 다음 Slice로 이어간다.`
+- 계획 문서: `docs/ai/features/2026-06-23-diet-premium-report-auto-hide.md` (식단 프리미엄 리포트 자동 노출 중지)
+- 현재 단계: `deploy complete — Slice 1 자동 배송/자동 표시 중지`
+- 마지막 완료: `식단 프리미엄 리포트 자동 배송 플래그를 꺼 사용자 화면 모달 생성과 관리자 재발행을 차단하고 운영 URL 배포 검증을 완료했다.`
+- 다음 액션: `없음. 리포트를 다시 운영하려면 DIET_PREMIUM_REPORT_AUTO_DELIVERY_ENABLED를 켠 별도 계획을 작성한다.`
 - 차단 사유: `없음.`
 
 ## 다음 실행 대상
 
-- 완료 파일: `index.html` · `style.css` · `home/hero.js` · `home/index.js` · `home/tomato.js` · `home/life-zone.js` · `home/life-zone-state.js` · `assets/home/life-zone/**` · `tests/home-life-zone-state.test.js` · `sw.js` · `docs/ai/features/2026-06-23-home-life-zone-card.md` · `docs/ai/features/2026-06-23-home-ranking-cleanup.md` · `docs/ai/features/2026-06-23-pixel-life-zone-mockup.md` · `docs/ai/reviews/2026-06-23-home-life-zone-*.md` · `docs/ai/reviews/2026-06-23-home-ranking-*.md`
-- 방금 완료한 Slice 10:
-  1. `style.css` 모바일 media query에서 `.lz-summary-strip` 1열 전환 제거
-  2. `style.css` 모바일 media query에서 요약 버튼 하단 border override 제거
-  3. `style.css` 모바일 요약 버튼 padding/숫자 크기만 소폭 조정
-  4. `docs/ai/reviews/2026-06-23-home-life-zone-mobile-summary-review.md` 작성
+- 완료 파일: `data.js` · `feature-diet-premium-report.js` · `admin/admin-actions.js` · `index.html` · `sw.js` · `build-info.json` · `docs/ai/features/2026-06-23-diet-premium-report-auto-hide.md` · `docs/ai/reviews/2026-06-23-diet-premium-report-auto-hide-review.md`
+- 방금 완료한 Slice 1:
+  1. `DIET_PREMIUM_REPORT_AUTO_DELIVERY_ENABLED = false` 추가
+  2. 사용자 자동 표시 진입점 `showDietPremiumReportIfNeeded()` 즉시 종료
+  3. 관리자 리포트 발행 UI/직접 호출 비활성화
+  4. `sw.js` 캐시 버전 `tomatofarm-v20260623z9-diet-report-off`로 갱신
+  5. 운영 `tomatofarm/main` 배포 및 URL 검증
 - 검증 완료:
-  1. PASS: `node --check workout/test-v2/board-core.js`
-  2. PASS: `node --check workout/test-v2/board-render.js`
-  3. PASS: `node --check workout/test-v2/onboarding.js`
-  4. PASS: `node --check workout/test-v2/entry.js`
-  5. PASS: `node --check workout/index.js`
-  6. PASS: `node --check render-workout.js`
-  7. PASS: `node --check app.js`
-  8. PASS: `node --check sw.js`
-  9. PASS: `node --test tests/test-v2.board-core.test.js` — 31개 통과
-  10. PASS: `git diff --check`
-  11. PASS: `node --check home/life-zone.js`
-  12. PASS: `node --check home/life-zone-state.js`
-  13. PASS: `node --test tests/home-life-zone-state.test.js` — 10개 통과
-  14. PASS: `python scripts/validate-life-zone-assets.py`
-  15. PASS: 정적 CSS 검증 — `.lz-summary-strip` 기본 2컬럼 유지, 모바일 summary 1열 override 제거
-  16. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ ad948cc74b97`
-  17. PASS: 운영 URL HTTP 200, 배포된 `style.css`에서 `.lz-summary-strip` 기본 2컬럼 유지와 모바일 summary 1열 override 제거 확인
+  1. PASS: `node --check feature-diet-premium-report.js`
+  2. PASS: `node --check data.js`
+  3. PASS: `node --check admin/admin-actions.js`
+  4. PASS: `node --check sw.js`
+  5. PASS: `node --test tests/save-schema.test.js tests/workout-sessions.test.js tests/data.load-save.test.js tests/home-life-zone-state.test.js` — 87개 통과
+  6. PASS: `node scripts/verify-runtime-assets.mjs` — `refs=785`
+  7. PASS: 로컬 `http://localhost:5500` HTTP 200, `feature-diet-premium-report.js` guard 확인, 브라우저 DOM `#diet-premium-report-modal` 0개
+  8. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ add15d70b139`
+  9. PASS: 운영 URL 브라우저 DOM `#diet-premium-report-modal` 0개, `식단 프리미엄 리포트` 텍스트 미노출
 
 ## 보류 중 (이전 흐름)
 

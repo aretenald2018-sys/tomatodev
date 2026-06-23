@@ -2,7 +2,7 @@
 
 ## 상태
 
-- 상태: `approved`
+- 상태: `complete`
 - 요청일: `2026-06-23`
 - 요청: 기존 사용자에게 `식단 프리미엄 리포트` 팝업이 반복 노출되지 않도록 처리하고 운영계까지 반영한다.
 
@@ -33,10 +33,19 @@
 
 ## 검증 계획
 
-- `node --check feature-diet-premium-report.js`
-- `node --check data.js`
-- `node --check admin/admin-actions.js`
-- `node --check sw.js`
-- 관련 테스트 스위트 실행
-- 로컬 dev server에서 HTTP 200 및 `#diet-premium-report-modal` 미생성 확인
-- 운영 URL에서 HTTP 200, 새 `sw.js` 캐시 버전, 배포된 `feature-diet-premium-report.js` 차단 guard 확인
+- PASS: `node --check feature-diet-premium-report.js`
+- PASS: `node --check data.js`
+- PASS: `node --check admin/admin-actions.js`
+- PASS: `node --check sw.js`
+- PASS: `node --test tests/save-schema.test.js tests/workout-sessions.test.js tests/data.load-save.test.js tests/home-life-zone-state.test.js` — 87개 통과
+- PASS: `node scripts/verify-runtime-assets.mjs` — `refs=785`
+- PASS: 로컬 dev server `http://localhost:5500` HTTP 200 및 브라우저 DOM `#diet-premium-report-modal` 0개
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ add15d70b139`
+- PASS: 운영 URL 브라우저 DOM `#diet-premium-report-modal` 0개, `식단 프리미엄 리포트` 텍스트 미노출
+
+## 배포
+
+- 소스 커밋: `add15d70b139`
+- 운영 메타 커밋: `c00daaa`
+- 운영 URL: `https://aretenald2018-sys.github.io/tomatofarm/`
+- 캐시 버전: `tomatofarm-v20260623z9-diet-report-off`
