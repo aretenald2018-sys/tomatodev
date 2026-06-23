@@ -4,14 +4,19 @@
 
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-23-home-life-zone-card.md` (홈탭 라이프존 카드 개편)
-- 현재 단계: `execution/review/deploy in progress — lite 운영 repo 반영`
-- 마지막 완료: `refactor repo에서 홈 라이프존 카드, actor 상태 말풍선, 랭킹 정리, 라이프존 asset과 회귀 테스트를 lite 운영 repo에 반영했다.`
-- 다음 액션: `정적 검증과 빌드 후 관련 변경만 커밋하고 tomatofarm main에 push한 다음 배포 URL을 검증한다.`
-- 차단 사유: `not verified yet. 정적 검증, 빌드, push, 배포 URL 검증이 남아 있다.`
+- 현재 단계: `review complete — Slice 10 모바일 요약 구획 표준화`
+- 마지막 완료: `모바일에서만 라이프존 하단 요약이 1열로 쌓이던 media query를 제거해 PC와 같은 좌우 2칸 구획을 표준으로 맞췄다.`
+- 다음 액션: `관련 변경만 커밋하고 tomatofarm main에 push한 다음 배포 URL을 검증한다.`
+- 차단 사유: `not verified yet. push와 배포 URL 검증이 남아 있다.`
 
 ## 다음 실행 대상
 
 - 완료 파일: `index.html` · `style.css` · `home/hero.js` · `home/index.js` · `home/tomato.js` · `home/life-zone.js` · `home/life-zone-state.js` · `assets/home/life-zone/**` · `tests/home-life-zone-state.test.js` · `sw.js` · `docs/ai/features/2026-06-23-home-life-zone-card.md` · `docs/ai/features/2026-06-23-home-ranking-cleanup.md` · `docs/ai/features/2026-06-23-pixel-life-zone-mockup.md` · `docs/ai/reviews/2026-06-23-home-life-zone-*.md` · `docs/ai/reviews/2026-06-23-home-ranking-*.md`
+- 방금 완료한 Slice 10:
+  1. `style.css` 모바일 media query에서 `.lz-summary-strip` 1열 전환 제거
+  2. `style.css` 모바일 media query에서 요약 버튼 하단 border override 제거
+  3. `style.css` 모바일 요약 버튼 padding/숫자 크기만 소폭 조정
+  4. `docs/ai/reviews/2026-06-23-home-life-zone-mobile-summary-review.md` 작성
 - 검증 완료:
   1. PASS: `node --check workout/test-v2/board-core.js`
   2. PASS: `node --check workout/test-v2/board-render.js`
@@ -23,7 +28,12 @@
   8. PASS: `node --check sw.js`
   9. PASS: `node --test tests/test-v2.board-core.test.js` — 31개 통과
   10. PASS: `git diff --check`
-  11. not verified yet: 배포 URL HTTP 200과 성장 보드 실제 UI flow는 안전한 배포 커밋/푸시가 막혀 확인하지 못했다.
+  11. PASS: `node --check home/life-zone.js`
+  12. PASS: `node --check home/life-zone-state.js`
+  13. PASS: `node --test tests/home-life-zone-state.test.js` — 10개 통과
+  14. PASS: `python scripts/validate-life-zone-assets.py`
+  15. PASS: 정적 CSS 검증 — `.lz-summary-strip` 기본 2컬럼 유지, 모바일 summary 1열 override 제거
+  16. not verified yet: 배포 URL HTTP 200과 모바일 홈탭 실제 UI flow는 push 후 확인한다.
 
 ## 보류 중 (이전 흐름)
 

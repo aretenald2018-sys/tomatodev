@@ -5477,12 +5477,9 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   .lz-head { padding: 12px 14px 8px; }
   .lz-title { font-size: 14px; }
   .lz-sync { display: none; }
-  .lz-summary-strip { grid-template-columns: 1fr; }
-  .lz-summary-btn {
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .lz-summary-btn:last-child { border-bottom: 0; }
+  .lz-summary-btn { padding: 12px 12px; }
+  .lz-summary-main { font-size: 18px; }
+  .lz-summary-main small { font-size: 10px; }
 }
 
 /* ── 체중 여정 바 ── */

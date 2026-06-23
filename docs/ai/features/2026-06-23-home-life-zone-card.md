@@ -297,6 +297,18 @@
   - 줍스가 점심 식단만 입력한 경우 `diet` 상태, 식사존 slot, `점심냠냠` 말풍선이 나오는 회귀 테스트를 추가한다.
   - `home/life-zone.js`, `home/life-zone-state.js`, `sw.js`는 `STATIC_ASSETS` 대상이므로 `CACHE_VERSION`을 bump한다.
 - 상태: 2026-06-23 실행 완료. 브라우저 UI 플로우는 not verified yet.
+
+### Slice 10 — 모바일 요약 구획 표준화
+
+- 목표: 모바일에서도 PC 렌더링과 같은 좌우 2칸 요약 구획을 표준으로 사용한다.
+- 원인:
+  - 기본 `.lz-summary-strip`은 `grid-template-columns: minmax(0, 1fr) minmax(0, 0.82fr)`라 PC에서는 좌우 2칸으로 구획된다.
+  - 그러나 `@media (max-width: 420px)`에서 `.lz-summary-strip { grid-template-columns: 1fr; }`와 버튼 border override를 적용해 모바일만 세로 1열로 바뀌었다.
+- 내용:
+  - 모바일 media query에서 1열 전환과 하단 border override를 제거한다.
+  - 좁은 화면에서 텍스트가 무리 없이 들어가도록 요약 버튼 padding과 숫자 크기만 소폭 줄인다.
+  - `style.css`와 `sw.js`는 `STATIC_ASSETS` 대상이므로 `CACHE_VERSION`을 bump한다.
+- 상태: 2026-06-23 실행 완료. 브라우저 UI 플로우는 not verified yet.
 - 리스크: `줍스/문정토마토/이재헌` 이름이 계정 id와 다르거나 사용자의 친구가 아닐 수 있다.
   - 대안: `lifeZoneRoster` 설정을 두고 account id를 명시한다. 없으면 현재 유저/이웃 중 닉네임 매칭으로 fallback.
 - 리스크: 실시간 입력 중 상태는 현재 데이터만으로 판정할 수 없다.
