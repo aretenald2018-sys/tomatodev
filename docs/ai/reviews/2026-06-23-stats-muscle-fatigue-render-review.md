@@ -37,6 +37,8 @@
 8. PASS: `npm.cmd run build`
 9. PASS: `build-info.json`, `sw.js`, `www/sw.js` 캐시 버전이 `tomatofarm-v20260623z10-stats-muscle-fatigue`로 일치
 10. PASS: `www/assets/stats/muscle-fatigue-body.png` 생성 확인
+11. PASS: `git push tomatofarm HEAD:main` — `6342c13..7d8ab9b`
+12. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 8769e744b2b4` — `static=192`
 
 ## 운영 확인 기준
 
@@ -46,3 +48,10 @@
   2. `/sw.js`에서 `tomatofarm-v20260623z10-stats-muscle-fatigue` 확인
   3. 통계 탭 상단에 `근육 피로도` 카드가 보임
   4. `일별/주별/월별` 버튼 클릭 시 활성 버튼이 바뀜
+
+## 배포 결과
+
+- `tomatofarm/main`: `7d8ab9b`
+- 앱 빌드 기준 커밋: `8769e744b2b4`
+- 캐시 버전: `tomatofarm-v20260623z10-stats-muscle-fatigue`
+- 운영 검증: PASS
