@@ -884,6 +884,7 @@ export async function getMyDeveloperLetters(maxItems = 8) {
 }
 
 export const DIET_PREMIUM_CONTENT_VERSION = 'diet_premium_20260512';
+export const DIET_PREMIUM_REPORT_AUTO_DELIVERY_ENABLED = false;
 export const DIET_PREMIUM_REPORT_TARGETS = Object.freeze([
   { id: '최_준수', name: '최준수', nick: '줍스' },
   { id: '김_태우', name: '김태우', nick: '문정토마토' },
@@ -936,6 +937,10 @@ export async function publishDietPremiumReportIssue({ period = 'weekly', targetU
     title: cycle.period === 'monthly' ? '월간 식단 프리미엄 리포트' : '주간 식단 프리미엄 리포트',
     targetUserIds: targets,
   };
+
+  if (!DIET_PREMIUM_REPORT_AUTO_DELIVERY_ENABLED) {
+    return { ...baseIssue, deliveredCount: 0, disabled: true };
+  }
 
   await _fbOp('publishDietPremiumReportIssue', () => Promise.all(targets.map((userId) => (
     setDoc(doc(db, 'users', userId, 'settings', 'diet_premium_report_inbox'), {
