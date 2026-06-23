@@ -5244,6 +5244,247 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 .tf-sum-arrow { font-size: 16px; color: var(--text-tertiary); font-weight: 300; }
 .tf-sum-right-text { flex-shrink: 0; }
 
+/* ── 홈 라이프존 카드 ── */
+.lz-card {
+  padding: 0 !important;
+  overflow: hidden;
+  background: var(--surface);
+}
+.lz-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 10px;
+}
+.lz-eyebrow {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.lz-title {
+  margin: 0;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+.lz-sync {
+  flex-shrink: 0;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+.lz-scene {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 1672 / 941;
+  background: var(--surface);
+}
+.lz-base {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: auto;
+}
+.lz-actor-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.lz-actor {
+  position: absolute;
+  left: calc(var(--lz-x) / 1672 * 100%);
+  top: calc(var(--lz-y) / 941 * 100%);
+  z-index: var(--lz-z);
+  width: calc(var(--lz-w) / 1672 * 100%);
+  height: auto;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.28));
+}
+.lz-speech {
+  position: absolute;
+  left: calc(var(--lz-bx) / 1672 * 100%);
+  top: calc(var(--lz-by) / 941 * 100%);
+  transform: translate(-50%, -100%);
+  max-width: min(132px, 24vw);
+  padding: 4px 7px;
+  border: 1px solid color-mix(in srgb, var(--lz-actor-color, #94a3b8) 48%, #ffffff);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(2px) saturate(1.08);
+  -webkit-backdrop-filter: blur(2px) saturate(1.08);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.16);
+  color: #1f2933;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.lz-speech::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 8px;
+  height: 8px;
+  border-right: 1px solid color-mix(in srgb, var(--lz-actor-color, #94a3b8) 42%, #ffffff);
+  border-bottom: 1px solid color-mix(in srgb, var(--lz-actor-color, #94a3b8) 42%, #ffffff);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(2px) saturate(1.08);
+  -webkit-backdrop-filter: blur(2px) saturate(1.08);
+  transform: translateX(-50%) rotate(45deg);
+}
+@media (max-width: 420px) {
+  .lz-speech {
+    max-width: 92px;
+    padding: 3px 5px;
+    border-radius: 7px;
+    font-size: 9px;
+  }
+}
+.lz-status-row {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--border);
+  -webkit-overflow-scrolling: touch;
+}
+.lz-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+.lz-status-chip b {
+  color: var(--text);
+  font-weight: 800;
+}
+.lz-status-chip.is-muted {
+  opacity: 0.68;
+}
+.lz-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lz-actor-color, var(--text-tertiary));
+}
+.lz-summary-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.82fr);
+  border-top: 1px solid rgba(255, 255, 255, 0.02);
+}
+.lz-summary-btn {
+  min-width: 0;
+  border: 0;
+  border-right: 1px solid var(--border);
+  padding: 12px 14px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.lz-summary-btn:last-child {
+  border-right: 0;
+}
+.lz-summary-btn:active {
+  background: var(--surface2);
+}
+.lz-summary-label,
+.lz-summary-sub {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lz-summary-label {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.lz-summary-main {
+  display: block;
+  margin-top: 5px;
+  color: var(--text);
+  font-size: 19px;
+  font-weight: 850;
+  line-height: 1.05;
+}
+.lz-summary-main small {
+  margin-left: 3px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 700;
+}
+.lz-summary-main em {
+  margin-left: 5px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #fdf0f0;
+  color: #fa342c;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  vertical-align: 2px;
+}
+.lz-summary-main.is-over,
+.lz-summary-sub.over {
+  color: #e53935;
+}
+.lz-summary-sub {
+  margin-top: 5px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.lz-summary-sub.ok {
+  color: var(--primary);
+}
+.lz-summary-btn.is-stale .lz-summary-sub {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--primary-bg);
+  color: var(--primary);
+  animation: tds-shine-btn 2.4s ease-in-out infinite;
+}
+@media (max-width: 420px) {
+  .lz-head { padding: 12px 14px 8px; }
+  .lz-title { font-size: 14px; }
+  .lz-sync { display: none; }
+  .lz-summary-strip { grid-template-columns: 1fr; }
+  .lz-summary-btn {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .lz-summary-btn:last-child { border-bottom: 0; }
+}
+
 /* ── 체중 여정 바 ── */
 .tf-wt-delta {
   font-size: 13px; font-weight: 700; color: #fa342c;
@@ -6660,7 +6901,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   100% { box-shadow: 0 0 0 0 rgba(250,52,44,0); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .tf-weight-card-stale, .tf-weight-card-stale .tf-sum-hint-stale { animation: none; }
+  .tf-weight-card-stale, .tf-weight-card-stale .tf-sum-hint-stale, .lz-summary-btn.is-stale .lz-summary-sub { animation: none; }
 }
 
 /* ══════════════════════════════════════════════════════════

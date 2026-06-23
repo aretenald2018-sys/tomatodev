@@ -3,24 +3,27 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-20-growth-board-wendler-default-history.md` (성장 보드 웬들러 기본값 및 과거 기록 표시)
-- 현재 단계: `review complete — 로컬 정적 검증 완료, 브라우저 UI 검증은 not verified yet`
-- 마지막 완료: `성장 보드가 v2 보드의 웬들러 설정을 다음 기본값으로 상속하게 했고, 과거 셀 시트가 보드 색칠 로그가 없어도 해당 주 7일 운동 문서를 직접 캐시에 보강한 뒤 실제 운동기록을 fallback으로 표시하게 했다.`
-- 다음 액션: `사용자 로컬 일반 터미널에서 npm.cmd run dev 실행 후 성장 보드 하체 과거 2026-06-08 주차 스모데드 셀을 열어 운동기록 있음 표시를 확인한다.`
-- 차단 사유: `이 세션 지침상 장기 dev server를 sandbox에서 시작하지 않으므로 실제 브라우저 UI 검증은 로컬 일반 터미널에서 필요하다.`
+- 계획 문서: `docs/ai/features/2026-06-23-home-life-zone-card.md` (홈탭 라이프존 카드 개편)
+- 현재 단계: `execution/review/deploy in progress — lite 운영 repo 반영`
+- 마지막 완료: `refactor repo에서 홈 라이프존 카드, actor 상태 말풍선, 랭킹 정리, 라이프존 asset과 회귀 테스트를 lite 운영 repo에 반영했다.`
+- 다음 액션: `정적 검증과 빌드 후 관련 변경만 커밋하고 tomatofarm main에 push한 다음 배포 URL을 검증한다.`
+- 차단 사유: `not verified yet. 정적 검증, 빌드, push, 배포 URL 검증이 남아 있다.`
 
 ## 다음 실행 대상
 
-- 완료 파일: `data.js` · `workout/test-v2/board-core.js` · `workout/test-v2/board-render.js` · `workout/test-v2/onboarding.js` · `tests/test-v2.board-core.test.js` · `sw.js` · `docs/ai/features/2026-06-20-growth-board-wendler-default-history.md` · `docs/ai/reviews/2026-06-20-growth-board-wendler-default-history-review.md` · `docs/ai/NEXT_ACTION.md`
+- 완료 파일: `index.html` · `style.css` · `home/hero.js` · `home/index.js` · `home/tomato.js` · `home/life-zone.js` · `home/life-zone-state.js` · `assets/home/life-zone/**` · `tests/home-life-zone-state.test.js` · `sw.js` · `docs/ai/features/2026-06-23-home-life-zone-card.md` · `docs/ai/features/2026-06-23-home-ranking-cleanup.md` · `docs/ai/features/2026-06-23-pixel-life-zone-mockup.md` · `docs/ai/reviews/2026-06-23-home-life-zone-*.md` · `docs/ai/reviews/2026-06-23-home-ranking-*.md`
 - 검증 완료:
-  1. PASS: `node --check data.js`
-  2. PASS: `node --check workout/test-v2/board-core.js`
-  3. PASS: `node --check workout/test-v2/board-render.js`
-  4. PASS: `node --check workout/test-v2/onboarding.js`
-  5. PASS: `node --check sw.js`
-  6. PASS: `node --test tests/test-v2.board-core.test.js` — 31개 통과
-  7. PASS: `git diff --check`
-  8. not verified yet: 브라우저에서 성장 보드 하체 과거 2026-06-08 주차 스모데드 셀을 여는 UI 검증은 로컬 일반 터미널 dev server가 필요하다.
+  1. PASS: `node --check workout/test-v2/board-core.js`
+  2. PASS: `node --check workout/test-v2/board-render.js`
+  3. PASS: `node --check workout/test-v2/onboarding.js`
+  4. PASS: `node --check workout/test-v2/entry.js`
+  5. PASS: `node --check workout/index.js`
+  6. PASS: `node --check render-workout.js`
+  7. PASS: `node --check app.js`
+  8. PASS: `node --check sw.js`
+  9. PASS: `node --test tests/test-v2.board-core.test.js` — 31개 통과
+  10. PASS: `git diff --check`
+  11. not verified yet: 배포 URL HTTP 200과 성장 보드 실제 UI flow는 안전한 배포 커밋/푸시가 막혀 확인하지 못했다.
 
 ## 보류 중 (이전 흐름)
 

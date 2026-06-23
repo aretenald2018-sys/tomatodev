@@ -18,8 +18,8 @@
 <link rel="stylesheet" href="styles/components.css">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="admin/admin-hig.css">
-<link rel="stylesheet" href="expert-mode.css?v=20260611a12">
-<link rel="stylesheet" href="test-mode-v2.css?v=20260620z27-selected-scope">
+<link rel="stylesheet" href="expert-mode.css?v=20260623aa12">
+<link rel="stylesheet" href="test-mode-v2.css?v=20260623aa1-helper-chip-scope">
 </head>
 <body>
 
@@ -351,20 +351,17 @@
       <div id="diet-goal-content"></div>
     </div>
 
-    <!-- 함께 축하해요! (기존 체중카드는 home/tomato.js에서 동적 렌더) -->
-    <div class="home-card cheers-card" id="card-celebrations" style="display:none;"></div>
-
     <div id="home-cheer-slot"></div>
 
-    <!-- 주간 랭킹 -->
+    <!-- 랭킹 -->
     <div class="home-card" id="card-leaderboard" style="display:none;">
       <div class="home-card-header">
-        <span class="home-card-title">🏆 주간 랭킹</span>
+        <span class="home-card-title">랭킹</span>
       </div>
       <div class="tds-segmented" id="lb-segmented" style="margin-bottom:12px;">
         <div class="tds-segmented-indicator" id="lb-seg-indicator"></div>
-        <button class="tds-segmented-item active" onclick="switchLeaderboardTab('individual')">개인</button>
-        <button class="tds-segmented-item" onclick="switchLeaderboardTab('guild')">길드</button>
+        <button class="tds-segmented-item active" data-period="cumulative" onclick="switchLeaderboardTab('cumulative')">누적</button>
+        <button class="tds-segmented-item" data-period="weekly" onclick="switchLeaderboardTab('weekly')">주간</button>
       </div>
       <div id="leaderboard-content"></div>
     </div>
@@ -377,14 +374,6 @@
       </div>
       <div id="friend-notifications" style="display:none;"></div>
       <div id="friend-feed"></div>
-    </div>
-
-    <div class="home-card" id="card-guild" style="display:none;">
-      <div class="home-card-header">
-        <span class="home-card-title">길드</span>
-        <button class="section-title-edit-btn" onclick="openGuildModal()">관리</button>
-      </div>
-      <div id="guild-card-content"></div>
     </div>
 
   </div>
@@ -829,10 +818,10 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
-<script src="feature-login.js?v=20260611a"></script>
-<script type="module" src="app.js?v=20260620z27-selected-scope"></script>
+<script src="feature-login.js?v=20260623aa"></script>
+<script type="module" src="app.js?v=20260623aa1-current-week-add"></script>
 
 <!-- PWA Service Worker 등록 -->
-<script src="pwa-register.js?v=20260611a"></script>
+<script src="pwa-register.js?v=20260623aa"></script>
 </body>
 </html>
