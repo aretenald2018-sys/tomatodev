@@ -1835,6 +1835,168 @@ body.wt-modal-scroll-lock {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius-md); padding: 16px; margin-bottom: 14px;
 }
+.stats-muscle-fatigue-block {
+  padding: 0;
+  overflow: hidden;
+  background: #101012;
+  border-color: rgba(255,255,255,0.08);
+  color: #f7f7f8;
+}
+.stats-fatigue-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 16px 8px;
+}
+.stats-fatigue-head span {
+  display: block;
+  margin-bottom: 8px;
+  color: rgba(255,255,255,0.78);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 18px;
+}
+.stats-fatigue-head h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 24px;
+}
+.stats-fatigue-head p {
+  margin: 4px 0 0;
+  color: rgba(255,255,255,0.58);
+  font-size: 12px;
+  line-height: 17px;
+}
+.stats-fatigue-tabs {
+  flex: 0 0 auto;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+}
+.stats-fatigue-tabs button {
+  min-width: 40px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255,255,255,0.58);
+  font-size: 11px;
+  font-weight: 800;
+}
+.stats-fatigue-tabs button.active {
+  background: rgba(250,52,44,0.14);
+  color: #ff4a40;
+}
+.stats-fatigue-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  padding: 0 16px 14px;
+}
+.stats-fatigue-figure {
+  position: relative;
+  width: min(100%, 430px);
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #111;
+  isolation: isolate;
+}
+.stats-fatigue-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.stats-fatigue-hotspot {
+  position: absolute;
+  z-index: 2;
+  border-radius: 999px;
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--mf) 88%, #fff 12%) 0%, var(--mf) 56%, transparent 74%);
+  filter: blur(7px) saturate(1.2);
+  mix-blend-mode: color;
+  pointer-events: none;
+  transform: rotate(var(--r));
+}
+.stats-fatigue-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.stats-fatigue-summary div {
+  min-width: 0;
+  padding: 10px 0;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.stats-fatigue-summary span {
+  display: block;
+  color: rgba(255,255,255,0.46);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 14px;
+}
+.stats-fatigue-summary b {
+  display: block;
+  overflow: hidden;
+  margin-top: 2px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 17px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stats-fatigue-rows {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px 12px;
+  padding: 0 16px 16px;
+}
+.stats-fatigue-row {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 38px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.stats-fatigue-name {
+  color: rgba(255,255,255,0.84);
+  font-size: 11px;
+  font-weight: 800;
+}
+.stats-fatigue-meter {
+  position: relative;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.09);
+}
+.stats-fatigue-meter i {
+  display: block;
+  width: var(--pct);
+  height: 100%;
+  border-radius: inherit;
+  background: var(--mf);
+}
+.stats-fatigue-row b {
+  color: var(--mf);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  text-align: right;
+}
+.stats-fatigue-row small {
+  grid-column: 2 / -1;
+  margin-top: -6px;
+  color: rgba(255,255,255,0.42);
+  font-size: 10px;
+  line-height: 14px;
+}
 .stats-chart-wrap {
   position: relative;
   width: 100%;
@@ -3294,6 +3456,13 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 
 /* 통계 라이트 모드 */
 :root.light .stats-block { background: #fff; border-color: var(--border); box-shadow: var(--shadow-sm); }
+:root.light .stats-block.stats-muscle-fatigue-block,
+.stats-block.stats-muscle-fatigue-block {
+  padding: 0;
+  background: #101012;
+  border-color: rgba(255,255,255,0.08);
+  box-shadow: none;
+}
 :root.light .period-btn.active { background: var(--primary); color: #fff; }
 :root.light .heatmap-cell { background: var(--surface2); }
 

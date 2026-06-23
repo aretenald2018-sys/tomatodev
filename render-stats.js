@@ -15,6 +15,7 @@ import { SUBPATTERN_TO_MAJOR, calcBurnedKcal }       from './calc.js';
 let _period             = 30;
 let _selectedExerciseId = null;
 let _selectedVolumeDate = null;
+let _selectedFatiguePeriod = 'week';
 
 export function setPeriod(days, btn) {
   _period = days;
@@ -29,6 +30,7 @@ let _calorieMonthChart = null;
 
 export function renderStats() {
   _bindStatsViewTabs();
+  _renderMuscleFatigue();
   _renderOverallMetadata();
   _renderMuscle14d();
   _renderMusclePeriod();
@@ -86,6 +88,41 @@ const LANDMARKS = {
   tricep: { label:'삼두', low:6, good:14, high:18 },
   abs: { label:'복근', low:0, good:12, high:25 },
 };
+const FATIGUE_PERIODS = {
+  day: { label: '일별', title: '오늘', days: 1 },
+  week: { label: '주별', title: '이번 주', days: 7 },
+  month: { label: '월별', title: '이번 달', days: 30 },
+};
+const FATIGUE_GROUPS = [
+  {
+    id: 'back', label: '등', color: '#22c55e', majors: ['back'],
+    spots: [{ x: 62, y: 16, w: 24, h: 29, r: -6 }, { x: 65, y: 35, w: 18, h: 16, r: 8 }],
+  },
+  {
+    id: 'shoulder', label: '어깨', color: '#38bdf8', majors: ['shoulder'],
+    spots: [{ x: 11, y: 18, w: 29, h: 10, r: 3 }, { x: 63, y: 15, w: 26, h: 10, r: -2 }],
+  },
+  {
+    id: 'arms', label: '팔', color: '#f97316', majors: ['bicep', 'tricep'],
+    spots: [{ x: 7, y: 23, w: 10, h: 28, r: -8 }, { x: 32, y: 27, w: 9, h: 27, r: -12 }, { x: 58, y: 23, w: 9, h: 29, r: 10 }, { x: 83, y: 23, w: 8, h: 30, r: -10 }],
+  },
+  {
+    id: 'chest', label: '가슴', color: '#ef4444', majors: ['chest'],
+    spots: [{ x: 17, y: 20, w: 22, h: 15, r: 5 }],
+  },
+  {
+    id: 'legs', label: '다리', color: '#84cc16', majors: ['lower', 'glute'],
+    spots: [{ x: 12, y: 50, w: 27, h: 39, r: 4 }, { x: 64, y: 49, w: 25, h: 40, r: -3 }],
+  },
+  {
+    id: 'core', label: '코어', color: '#a78bfa', majors: ['abs', 'core'],
+    spots: [{ x: 21, y: 32, w: 16, h: 19, r: 2 }],
+  },
+];
+const FATIGUE_GROUP_BY_MAJOR = FATIGUE_GROUPS.reduce((acc, group) => {
+  group.majors.forEach(major => { acc[major] = group.id; });
+  return acc;
+}, {});
 const PHASE_LABELS = { ACCUMULATION:'쌓는 구간', DELOAD:'회복 구간', RESET:'재정렬 구간' };
 function _setsBand(sets, lm) {
   if (sets < lm.low) return { tone:'under', label:'부족', msg:`주 ${lm.low - sets}세트만 더` };
@@ -135,6 +172,160 @@ function _topSetE1rm(entry) {
     best = Math.max(best, _setE1rm(set));
   }
   return best;
+}
+
+function _fmtDateShort(key) {
+  return String(key || '').slice(5).replace('-', '.');
+}
+
+function _normalizeFatigueMajor(major) {
+  if (major === 'glute') return 'glute';
+  if (major === 'core') return 'abs';
+  return major || 'etc';
+}
+
+function _emptyFatigueGroups() {
+  return FATIGUE_GROUPS.map(group => ({
+    ...group,
+    score: 0,
+    sets: 0,
+    volume: 0,
+    days: new Set(),
+    lastDate: '',
+    level: 0,
+  }));
+}
+
+function _buildMuscleFatigue(periodKey) {
+  const period = FATIGUE_PERIODS[periodKey] || FATIGUE_PERIODS.week;
+  const groups = _emptyFatigueGroups();
+  const byId = new Map(groups.map(group => [group.id, group]));
+  const exById = new Map(getExList().map(ex => [ex.id, ex]));
+  const movById = new Map(MOVEMENTS.map(mov => [mov.id, mov]));
+  const todayKey = _keyOffset(0);
+  const sinceKey = _keyOffset(period.days - 1);
+  let trainingDays = 0;
+
+  Object.entries(getCache())
+    .filter(([key]) => /^\d{4}-\d{2}-\d{2}$/.test(key) && key >= sinceKey && key <= todayKey)
+    .forEach(([key, day]) => {
+      let touched = false;
+      const date = _dateFromKey(key);
+      const daysAgo = date ? Math.max(0, Math.round((new Date(TODAY) - date) / 86400000)) : 0;
+      const recency = 1 - Math.min(daysAgo, Math.max(period.days - 1, 1)) / Math.max(period.days, 1) * 0.3;
+
+      for (const entry of day?.exercises || []) {
+        const major = _normalizeFatigueMajor(_entryMajor(entry, exById, movById));
+        const groupId = FATIGUE_GROUP_BY_MAJOR[major];
+        const group = byId.get(groupId);
+        if (!group) continue;
+
+        const sets = (entry.sets || []).filter(_isHardSet).length;
+        const volume = calcVolume(entry.sets || []);
+        if (sets <= 0 && volume <= 0) continue;
+
+        group.sets += sets;
+        group.volume += volume;
+        group.score += (sets || Math.min(volume / 500, 1)) * recency;
+        group.days.add(key);
+        group.lastDate = group.lastDate && group.lastDate > key ? group.lastDate : key;
+        touched = true;
+      }
+
+      if (touched) trainingDays++;
+    });
+
+  const maxScore = Math.max(...groups.map(group => group.score), 1);
+  groups.forEach(group => {
+    group.level = group.score > 0 ? _clamp(group.score / maxScore, 0.18, 1) : 0;
+    group.days = group.days.size;
+    group.volume = Math.round(group.volume);
+  });
+
+  const active = groups.filter(group => group.level > 0).sort((a, b) => b.score - a.score);
+  return {
+    period,
+    groups,
+    active,
+    top: active[0] || null,
+    trainingDays,
+    totalSets: groups.reduce((sum, group) => sum + group.sets, 0),
+    totalVolume: groups.reduce((sum, group) => sum + group.volume, 0),
+  };
+}
+
+function _fatigueHotspotsHtml(groups) {
+  return groups.filter(group => group.level > 0).flatMap(group => {
+    const opacity = (0.26 + group.level * 0.52).toFixed(2);
+    return group.spots.map((spot, idx) => `
+      <i class="stats-fatigue-hotspot" aria-hidden="true"
+         style="left:${spot.x}%;top:${spot.y}%;width:${spot.w}%;height:${spot.h}%;--mf:${group.color};--r:${spot.r || 0}deg;opacity:${opacity}"
+         data-muscle="${_esc(group.id)}-${idx}"></i>`);
+  }).join('');
+}
+
+function _fatigueRowsHtml(groups) {
+  return groups.map(group => {
+    const pct = Math.round(group.level * 100);
+    const volume = group.volume ? `${_fmt(group.volume / 1000, 1)}k` : '0.0k';
+    return `
+      <div class="stats-fatigue-row ${group.level ? 'is-active' : ''}" style="--mf:${group.color};--pct:${pct}%">
+        <span class="stats-fatigue-name">${_esc(group.label)}</span>
+        <span class="stats-fatigue-meter"><i></i></span>
+        <b>${_esc(volume)}</b>
+        <small>${group.sets ? `${group.sets}세트` : '0세트'}</small>
+      </div>`;
+  }).join('');
+}
+
+function _renderMuscleFatigue() {
+  const root = document.getElementById('stats-muscle-fatigue');
+  if (!root) return;
+
+  const state = _buildMuscleFatigue(_selectedFatiguePeriod);
+  const headline = state.top
+    ? `${state.period.title} ${state.top.label} 활성`
+    : `${state.period.title} 기록 없음`;
+  const summary = state.top
+    ? `${state.trainingDays}일 운동 · ${state.totalSets}세트 · ${_fmt(state.totalVolume)}vol`
+    : '선택 기간의 운동 기록이 아직 없어요.';
+  const lastDate = state.top?.lastDate ? _fmtDateShort(state.top.lastDate) : '-';
+
+  root.innerHTML = `
+    <div class="stats-fatigue-head">
+      <div>
+        <span>근육 피로도</span>
+        <h3>${_esc(headline)}</h3>
+        <p>${_esc(summary)}</p>
+      </div>
+      <div class="stats-fatigue-tabs" role="tablist" aria-label="근육 피로도 기간">
+        ${Object.entries(FATIGUE_PERIODS).map(([key, period]) => `
+          <button type="button" class="${key === _selectedFatiguePeriod ? 'active' : ''}" data-fatigue-period="${_esc(key)}" role="tab" aria-selected="${key === _selectedFatiguePeriod ? 'true' : 'false'}">${_esc(period.label)}</button>
+        `).join('')}
+      </div>
+    </div>
+    <div class="stats-fatigue-body">
+      <div class="stats-fatigue-figure" aria-label="활성 근육 렌더링">
+        <img src="./assets/stats/muscle-fatigue-body.png" alt="">
+        ${_fatigueHotspotsHtml(state.groups)}
+      </div>
+      <div class="stats-fatigue-summary">
+        <div><span>활성 부위</span><b>${state.active.length ? state.active.map(group => group.label).join(' · ') : '-'}</b></div>
+        <div><span>최근 기록</span><b>${_esc(lastDate)}</b></div>
+        <div><span>총 볼륨</span><b>${_fmt(state.totalVolume)}vol</b></div>
+      </div>
+    </div>
+    <div class="stats-fatigue-rows">${_fatigueRowsHtml(state.groups)}</div>
+  `;
+
+  root.querySelectorAll('[data-fatigue-period]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const next = btn.dataset.fatiguePeriod;
+      if (!FATIGUE_PERIODS[next] || next === _selectedFatiguePeriod) return;
+      _selectedFatiguePeriod = next;
+      _renderMuscleFatigue();
+    });
+  });
 }
 
 function _num(v) {

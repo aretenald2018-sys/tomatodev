@@ -3,7 +3,7 @@
 
 // 캐시 버전: 타임스탬프 기반 자동 생성 — 파일 수정 시 SW 자동 업데이트
 // (SW 파일 내용이 1바이트라도 바뀌면 브라우저가 새 SW로 인식)
-const CACHE_VERSION = 'tomatofarm-v20260623z9-diet-report-off';
+const CACHE_VERSION = 'tomatofarm-v20260623z10-stats-muscle-fatigue';
 const RUNTIME_CACHE = 'dashboard3-runtime';
 const STATIC_ASSETS = [
   './',
@@ -14,6 +14,7 @@ const STATIC_ASSETS = [
   './styles/tokens.css',
   './styles/components.css',
   './firebase-messaging-sw.js',
+  './assets/stats/muscle-fatigue-body.png',
   // 코어 모듈
   './app.js',
   './app.js?v=20260623z1-current-week-add',
