@@ -34,7 +34,7 @@
 - PASS: `git diff --check` — CRLF 변환 경고만 출력
 - PASS: `npm.cmd run dev` — `http://localhost:5500` 재사용
 - PASS: `GET http://localhost:5500/index.html` HTTP 200
-- PASS: `GET http://localhost:5500/sw.js` HTTP 200, `CACHE_VERSION = tomatofarm-v20260623z2-diet-report-off`
+- PASS: `GET http://localhost:5500/sw.js` HTTP 200, `CACHE_VERSION = tomatofarm-v20260623z5-diet-report-off`
 - PASS: `GET http://localhost:5500/feature-diet-premium-report.js` HTTP 200, disabled guard 포함
 - PASS: 브라우저 DOM — `#diet-premium-report-modal` 0개, `식단 프리미엄 리포트` 텍스트 미노출
 

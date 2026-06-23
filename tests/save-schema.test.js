@@ -6,7 +6,7 @@
 // 핵심 주장:
 //   (1) WORKOUT_PAYLOAD_KEYS 는 운동 도메인 필드 + 공유 bOk/lOk/dOk/sOk 만 포함.
 //   (2) DIET_PAYLOAD_KEYS 는 식단 도메인 필드 + 공유 bOk/lOk/dOk/sOk 만 포함.
-//   (3) 교집합 = SHARED_PAYLOAD_KEYS (즉 {bOk,lOk,dOk,sOk}).
+//   (3) 교집합 = SHARED_PAYLOAD_KEYS (meal ok 필드 + lifeZoneLastActivity).
 //   (4) 운동 필드는 식단 키셋에 없음 (식단 저장이 운동 데이터 파괴 못함).
 //   (5) 식단 필드는 운동 키셋에 없음 (운동 저장이 식단 데이터 파괴 못함).
 // ================================================================

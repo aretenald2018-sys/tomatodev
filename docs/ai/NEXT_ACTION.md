@@ -3,31 +3,42 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-23-workout-tab-calendar-home.md` (운동탭 캘린더 홈 개편)
-- 현재 단계: `review complete — Slice 6 날짜 상세 운동 카드 형태 교체`
-- 마지막 완료: `날짜 상세 운동 카드의 기존 썸네일/하단 체크형 표시를 제거하고, 접힘/펼침 상태를 테스트모드형 요약 카드/세트 행 카드로 교체했다.`
+- 계획 문서: `docs/ai/features/2026-06-23-home-life-zone-card.md` (홈 라이프존 카드)
+- 현재 단계: `review complete — Slice 4 최근성/presence snapshot 보강`
+- 마지막 완료: `문정토마토가 간식을 입력해도 오늘 가슴 완료로 남는 원인을 재진단하고, 마지막 사용자 정보 업데이트를 lifeZoneLastActivity로 반영하며 식단 사진 저장 경로가 운동 저장으로 찍히던 문제를 수정했다.`
 - 다음 액션: `없음. 이 계획의 마지막 슬라이스까지 완료.`
-- 차단 사유: `없음. 단, 현재 로그인 데이터에 최근 6개월 운동 기록이 없어 새 카드 형태의 실제 브라우저 시각 검증은 not verified yet이다.`
+- 차단 사유: `없음. 단, 로그인된 실제 문정토마토 계정에서 간식 저장 후 홈 라이프존이 간식냠냠으로 바뀌는 브라우저 UI 플로우는 not verified yet이다.`
 
 ## 다음 실행 대상
 
-- 계획 파일: `docs/ai/features/2026-06-23-workout-tab-calendar-home.md`
+- 계획 파일: `docs/ai/features/2026-06-23-home-life-zone-card.md`
 - 다음 실행 대상:
   - 없음.
 
-- 방금 완료한 Slice 6:
-  1. `render-calendar.js` 운동 카드에서 기존 참고 이미지 1 형태의 썸네일/하단 체크형 마크업 제거
-  2. collapsed 상태를 성공 기준/트랙/볼륨/오늘 기록/접힘 안내/`세트 다시 보기` 카드로 변경
-  3. expanded 상태를 KG/REP/RIR/ROM 세트 행 카드로 변경
-  4. `style.css`에 `.wt-max-read-card` 계열 스타일과 모바일 보정 추가
-  5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260623-workout-card-shape`로 bump
-  6. `docs/ai/reviews/2026-06-23-workout-tab-card-shape-review.md` 작성
+- 방금 완료한 Slice 4:
+  1. `workout/save.js`에서 운동 저장 payload에 `lifeZoneWorkoutActivity` snapshot 추가
+  2. `workout/save.js`에서 식단 자동저장 payload에 `lifeZoneDietActivity` snapshot 추가
+  3. `workout/save.js`에서 운동/식단 저장 모두 공통 `lifeZoneLastActivity`를 갱신
+  4. `workout/render.js`와 `modals/ai-estimate-banner.js`에서 음식/AI 반영 시 변경 끼니를 `_autoSaveDiet({ meal })`로 전달
+  5. `workout-ui.js`에서 식단 사진/AI 사진 업로드가 `saveWorkoutDay()`가 아니라 `_autoSaveDiet({ meal })`로 저장되도록 분리
+  6. `home/life-zone-state.js`에서 실제 기록이 남아 있는 `lifeZoneLastActivity`를 최우선 선택하고, 식단 말풍선은 snapshot의 `meal` 힌트를 우선 사용
+  7. `workout/save-schema.js`와 `tests/save-schema.test.js`에 도메인별 snapshot 및 공통 `lifeZoneLastActivity` 필드 추가
+  8. `tests/home-life-zone-state.test.js`에 운동+저녁+간식 동시 기록에서 마지막 간식 업데이트가 `간식냠냠`으로 표시되는 회귀 테스트 추가
+  9. `tests/diet-add-button-binding.test.js`에 식단 사진 저장 경로 회귀 테스트 추가
+  10. `sw.js` `CACHE_VERSION` bump
+  11. `docs/ai/reviews/2026-06-23-home-life-zone-activity-snapshot-review.md` 작성
 
 - 검증:
-  1. PASS: `node --check render-calendar.js`
-  2. PASS: `node --check sw.js`
-  3. PASS: `git diff --check`
-  4. not verified yet: 현재 로그인 데이터에 최근 6개월 운동 기록이 없어 새 카드 형태의 실제 브라우저 시각 검증은 미확인
+  1. PASS: `node --check home\life-zone-state.js`
+  2. PASS: `node --check workout\save.js`
+  3. PASS: `node --check workout\save-schema.js`
+  4. PASS: `node --check workout\render.js`
+  5. PASS: `node --check workout-ui.js`
+  6. PASS: `node --check modals\ai-estimate-banner.js`
+  7. PASS: `node --check sw.js`
+  8. PASS: `node --test tests\home-life-zone-state.test.js tests\save-schema.test.js tests\diet-add-button-binding.test.js`
+  9. PASS: `git diff --check`
+  10. not verified yet: dev server/browser flow는 이 세션에서 실행하지 않았다. 확인 플로우는 문정토마토 계정에서 오늘 가슴 운동 기록이 있는 상태로 간식 저장 후 홈 라이프존 말풍선이 `간식냠냠`으로 바뀌는지 확인한다.
 
 ## 이전 흐름 요약
 

@@ -1,10 +1,10 @@
 {
   "app": "tomatofarm",
-  "commit": "6fc055edf5874dc246023a19e817e556468d5e1c",
-  "shortCommit": "6fc055edf587",
+  "commit": "fc6c050ba508a90e5ad94e13b8e36d0fc6f57baf",
+  "shortCommit": "fc6c050ba508",
   "branch": "refactor/large-rework",
-  "deployedAt": "2026-06-23T11:58:59.641Z",
-  "cacheVersion": "tomatofarm-v20260623z2-diet-report-off",
+  "deployedAt": "2026-06-23T12:03:02.598Z",
+  "cacheVersion": "tomatofarm-v20260623z5-diet-report-off",
   "runId": null,
   "runAttempt": null
 }

@@ -394,8 +394,10 @@
   1. `render-calendar.js`: 운동 상세 카드에서 기존 썸네일/하단 체크형 마크업을 제거했다.
   2. `render-calendar.js`: 운동 카드 collapsed 상태는 성공 기준, 트랙, 볼륨 요약, 오늘 기록, 접힘 안내, `세트 다시 보기` 중심으로 렌더한다.
   3. `render-calendar.js`: 운동 카드 expanded 상태는 KG/REP/RIR/ROM 세트 행 중심으로 렌더한다.
-  4. `style.css`: `.wt-max-read-card` 계열 스타일을 추가해 참고 이미지 2/3 형태에 맞춘 카드, 요약 박스, 트렌드 박스, 세트 행, 액션 버튼을 적용했다.
-  5. `sw.js`: `CACHE_VERSION`을 `tomatofarm-v20260623-workout-card-shape`로 bump했다.
+  4. `render-calendar.js`: 그래프를 CSS 가짜 곡선에서 실제 세트 볼륨 기반 SVG sparkline으로 교체했다.
+  5. `style.css`: `.wt-max-read-card` 계열 스타일을 추가해 참고 이미지 2/3 형태에 맞춘 카드, 요약 박스, 트렌드 박스, 세트 행, 액션 버튼을 적용했다.
+  6. `style.css`: 펼친 카드의 세트 행을 2줄에서 1줄 구조로 압축하고 폰트/패딩/버튼/그래프 높이를 축소했다.
+  7. `sw.js`: `CACHE_VERSION`을 `tomatofarm-v20260623-workout-card-shape`로 bump했다.
 - 검증:
   1. PASS: `node --check render-calendar.js`
   2. PASS: `node --check sw.js`

@@ -15,6 +15,8 @@
 - 운동 상세 카드에서 기존 참고 이미지 1 형태의 썸네일/하단 체크형 마크업은 제거됐다.
 - collapsed 상태는 참고 이미지 2처럼 요약 카드와 `세트 다시 보기` 중심으로 표시된다.
 - expanded 상태는 참고 이미지 3처럼 KG/REP/RIR/ROM 세트 행 중심으로 표시된다.
+- 그래프는 CSS 가짜 곡선이 아니라 실제 세트 볼륨 값 기반 SVG sparkline으로 표시된다.
+- expanded 상태의 세트 행은 ROM을 같은 줄에 넣는 1줄 구조로 압축했고, 폰트/패딩/버튼/그래프 높이를 축소했다.
 
 ## 확인한 사항
 
@@ -22,10 +24,12 @@
    - `_renderWorkoutExerciseDetailCard()`가 더 이상 `.wt-day-ex-top`, `.wt-day-ex-frames`, `.wt-day-ex-foot` 구조를 출력하지 않는다.
    - 운동 세트의 `kg/reps/rpe/rir/romPct/setType/done`을 read-only 카드 표시용 데이터로 정규화한다.
    - collapsed/expanded 상태는 기존 `_workoutDetailCollapsed` 상태와 `window._wtCalToggleExerciseCard()`를 그대로 사용한다.
+   - sparkline은 `set.kg * set.reps` 값으로 만든 SVG `polyline`을 사용한다.
 
 2. `style.css`
    - `.wt-max-read-card` 계열로 요약 카드, 트렌드 박스, 오늘 기록, 접힘 안내, 세트 행, ROM 바, 액션 버튼을 새로 스타일링했다.
    - 모바일 폭에서 세트 행 컬럼 폭과 버튼 크기를 별도 보정했다.
+   - expanded 세트 행은 ROM까지 한 줄에 표시해 세로 공간을 크게 줄였다.
 
 3. 캐시
    - `render-calendar.js`와 `style.css`는 `STATIC_ASSETS` 대상이므로 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260623-workout-card-shape`로 bump했다.
