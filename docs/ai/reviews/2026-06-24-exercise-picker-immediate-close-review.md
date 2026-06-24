@@ -23,7 +23,10 @@
 - PASS: `node --test tests/ex-picker-selection-flow.test.js tests/workout-test-mode-unified.test.js`
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run deploy:dashboard3`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+- PASS: Dashboard3 Pages가 `tomatofarm-v20260624z27-picker-immediate-close` 캐시 버전을 서빙한다.
 
 ## 남은 리스크
 
-- not verified yet: Dashboard3 Pages 배포 후 인증 계정으로 `운동 탭 -> + -> 가슴 선택 -> 운동 row 클릭` 실제 UI flow를 확인해야 한다.
+- not verified yet: 배포 URL은 로그인 화면에 막혀 인증 계정으로 `운동 탭 -> + -> 가슴 선택 -> 운동 row 클릭` 실제 UI flow를 확인해야 한다.
