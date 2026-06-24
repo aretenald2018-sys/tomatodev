@@ -4542,19 +4542,16 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 #tab-workout .ex-block-header {
   gap: var(--seed-x2);
   margin-bottom: var(--seed-x2);
-  flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
 }
 #tab-workout .ex-block-muscle {
-  order: 1;
   flex: 0 0 auto;
   font-size: var(--seed-t1); font-weight: 700; letter-spacing: 0.3px;
   padding: 2px var(--seed-x2); border-radius: var(--seed-r1);
   background: var(--seed-bg-neutral-weak);
 }
 #tab-workout .ex-block-name {
-  order: 2;
-  min-width: min(11rem, 52vw);
+  min-width: 0;
   flex: 1 1 0;
   font-size: var(--seed-t4);
   font-weight: 700;
@@ -4564,23 +4561,22 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   word-break: keep-all;
 }
 #tab-workout .po-pill {
-  order: 3;
   flex: 0 0 auto;
   align-self: center;
 }
-#tab-workout .ex-block-header .ex-sparkline-wrap {
-  order: 5;
-  flex: 1 1 100%;
+#tab-workout .ex-block-trend {
+  margin: 2px 0 var(--seed-x3);
   min-width: 0;
-  width: 100%;
-  justify-content: flex-start;
-  margin-top: 2px;
 }
-#tab-workout .ex-block-header .ex-sparkline-meta {
+#tab-workout .ex-block-trend .ex-sparkline-wrap {
+  width: 100%;
+  min-width: 0;
+  justify-content: flex-start;
+}
+#tab-workout .ex-block-trend .ex-sparkline-meta {
   min-width: 74px;
 }
 #tab-workout .ex-remove-btn {
-  order: 4;
   flex: 0 0 28px;
   margin-left: 0;
   width: 28px; height: 28px; border-radius: var(--seed-r-full);

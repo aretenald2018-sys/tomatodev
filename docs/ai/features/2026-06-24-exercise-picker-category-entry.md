@@ -310,3 +310,13 @@
   - PASS: Dashboard3 Pages가 `tomatofarm-v20260624z17-workout-card-header` 캐시 버전을 서빙하는 것을 확인했다.
   - PASS: 배포 URL의 `style.css`에 `flex-wrap: wrap`, `flex: 1 1 100%` 카드 헤더 회귀 수정 CSS가 포함된 것을 확인했다.
   - not verified yet: 배포 URL은 로그인 화면에 막혀 `운동 탭 -> + -> 운동 선택 -> 카드 헤더` UI 클릭 흐름을 인증 계정으로 끝까지 확인하지 못했다.
+
+추가 하드닝:
+
+- 2026-06-24: CSS wrap 의존만으로는 회귀 방어가 약해 일반 운동 카드 DOM을 다시 분리했다.
+- 일반 운동 카드의 `ex-block-header`에는 부위, 운동명, `po-pill`, 삭제 버튼만 남기고, 스파크라인은 별도 `ex-block-trend` 행으로 렌더한다.
+- `tests/workout-card-layout-css.test.js`에 DOM source check를 추가해 `${sparkline}`이 헤더 안으로 다시 들어오면 실패하게 했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z18-workout-card-trend-row`로 bump했다.
+- PASS: `node --check workout/exercises.js; node --check sw.js; node --test tests/workout-card-layout-css.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`

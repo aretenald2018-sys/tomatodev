@@ -1006,9 +1006,9 @@ export function _renderExerciseList() {
           <span class="ex-block-muscle" style="color:${mc?.color||'#888'}">${mc?.name||''}</span>
           <span class="ex-block-name">${ex?.name||entry.exerciseId}</span>
           ${poPillHtml}
-          ${sparkline}
           <button class="ex-remove-btn" data-idx="${idx}">✕</button>
         </div>
+        ${sparkline ? `<div class="ex-block-trend">${sparkline}</div>` : ''}
         ${lastHint}
         ${maxPrescriptionHtml}
         <div class="ex-sets" id="wt-sets-${idx}"></div>

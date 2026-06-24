@@ -4,8 +4,8 @@
 
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md` (운동 추가 분류형 진입 UI)
-- 현재 단계: `deploy verified — Slice 5 운동 카드 헤더 UI 회귀 수정`
-- 마지막 완료: `커밋 c682986을 origin/main에 push했고 Dashboard3 Pages 배포 검증과 원격 CSS 확인을 완료했다.`
+- 현재 단계: `ready for deploy — Slice 5 운동 카드 헤더 DOM 분리 하드닝`
+- 마지막 완료: `일반 운동 카드에서 스파크라인을 제목 헤더 밖의 ex-block-trend 행으로 분리하고 회귀 테스트를 강화했다.`
 - 다음 액션: `없음`
 - 차단 사유: `없음`
 
@@ -42,6 +42,16 @@
   5. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ c682986`
   6. PASS: 배포 URL의 `style.css`에 카드 헤더 회귀 수정 CSS가 포함된 것을 확인
   7. not verified yet: 로그인 화면에 막혀 운동 추가 후 카드 UI 클릭 흐름은 인증 계정으로 확인 필요
+
+- Slice 5 추가 하드닝:
+  1. `workout/exercises.js` 일반 운동 카드 DOM에서 `${sparkline}`을 `ex-block-header` 밖으로 이동
+  2. `style.css`에 `ex-block-trend` 행 스타일 추가
+  3. `tests/workout-card-layout-css.test.js`에 DOM source check 추가
+  4. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z18-workout-card-trend-row`로 bump
+  5. PASS: `node --check workout/exercises.js; node --check sw.js; node --test tests/workout-card-layout-css.test.js`
+  6. PASS: `node scripts/verify-runtime-assets.mjs`
+  7. PASS: `git diff --check`
+  8. not verified yet: Dashboard3 Pages 배포 검증 필요
 - 완료한 Slice 3:
   1. `assets/workout/muscles/*.png` 8개를 `384x288` RGBA 투명 PNG로 교체
   2. 기존 파일명/경로 유지

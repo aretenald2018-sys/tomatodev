@@ -30,9 +30,16 @@
 - 삭제 버튼의 `margin-left:auto` 상속을 `#tab-workout` 범위에서 제거.
 - CSS 회귀 테스트 추가.
 
+## 추가 하드닝
+
+- CSS wrap만으로는 같은 헤더 컨테이너 안에 스파크라인이 남아 있어 구조적 재발 여지가 있었다.
+- 일반 운동 카드 DOM에서 `${sparkline}`을 `ex-block-header` 밖으로 이동해 별도 `ex-block-trend` 행으로 렌더한다.
+- 회귀 테스트에 DOM source check를 추가해 스파크라인이 헤더 안으로 다시 들어오면 실패하게 했다.
+
 ## 검증
 
 - PASS: `node --test tests/workout-card-layout-css.test.js`
+- PASS: `node --check workout/exercises.js`
 - PASS: `node --check sw.js`
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`

@@ -14,14 +14,15 @@
 
 - Blocking findings: 없음.
 - 운동 카드 헤더는 더 이상 제목, 스파크라인, 삭제 버튼을 한 줄에 강제 배치하지 않는다.
-- 스파크라인은 카드 헤더의 다음 줄 전체 폭으로 내려가므로 모바일에서 운동명 영역이 보장된다.
+- 스파크라인은 카드 헤더 밖의 `ex-block-trend` 행으로 분리되어 모바일에서 운동명 영역이 구조적으로 보장된다.
 - 삭제 버튼의 기존 `margin-left:auto`가 `#tab-workout` 범위에서 제거되어 flex wrap 시 불필요한 공간 압박을 만들지 않는다.
 - `style.css`가 `STATIC_ASSETS`에 포함되어 있어 `sw.js` `CACHE_VERSION` bump가 반영됐다.
-- 같은 회귀를 막기 위해 `tests/workout-card-layout-css.test.js`를 추가했다.
+- 같은 회귀를 막기 위해 `tests/workout-card-layout-css.test.js`를 추가했고, 스파크라인이 헤더 안으로 다시 들어오면 실패하는 DOM source check도 포함했다.
 
 ## 검증
 
 - PASS: `node --test tests/workout-card-layout-css.test.js`
+- PASS: `node --check workout/exercises.js`
 - PASS: `node --check sw.js`
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
