@@ -2037,14 +2037,7 @@ function _renderPickerListToolbar(container) {
 }
 
 function _renderPickerBenchmarkScope(ctx) {
-  if (!ctx.isMaxBenchmarkPicker) return '';
-  const benchmarkCount = ctx.basePool.filter(ex => !!ex?.__maxBenchmark).length;
-  const extraCount = Math.max(0, ctx.basePool.length - benchmarkCount);
-  return `
-    <div class="ex-picker-filter-active-bar ex-picker-benchmark-scope">
-      <span class="ex-picker-filter-active-text"><b>오늘 벤치마크 ${benchmarkCount}개</b> + 같은 부위 추가 종목 ${extraCount}개</span>
-    </div>
-  `;
+  return '';
 }
 
 function _renderPickerCategory(container, ctx) {

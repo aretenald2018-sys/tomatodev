@@ -1753,28 +1753,31 @@ body.wt-modal-scroll-lock {
 }
 .ex-picker-item {
   width: 100%; background: var(--surface2); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: 12px 14px;
-  color: var(--text); font-family: var(--font-sans); font-size: 13px;
+  border-radius: var(--radius-sm); padding: 9px 10px;
+  color: var(--text); font-family: var(--font-sans); font-size: 12px;
   cursor: pointer; text-align: left; margin-bottom: 4px;
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
   -webkit-tap-highlight-color: transparent; transition: all var(--transition);
 }
 .ex-picker-item:active { background: var(--surface3); }
 .ex-picker-item.already { opacity: 0.5; cursor: default; }
 .ex-picker-main {
+  flex: 1 1 auto;
   min-width: 0;
   display: grid;
-  gap: 5px;
+  gap: 3px;
 }
 .ex-picker-name {
   min-width: 0;
   color: var(--text);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  line-height: 18px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 17px;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
 }
 .ex-picker-source {
   width: fit-content;
@@ -1823,16 +1826,17 @@ body.wt-modal-scroll-lock {
   background: rgba(250, 52, 44, 0.08);
 }
 .ex-picker-benchmark-meta {
-  flex-shrink: 0;
-  margin-left: 10px;
-  padding: 4px 8px;
+  flex-shrink: 1;
+  margin-left: 4px;
+  padding: 3px 6px;
   border-radius: 999px;
   background: rgba(250, 52, 44, 0.1);
   color: #fa342c;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
-  line-height: 14px;
-  white-space: nowrap;
+  line-height: 13px;
+  white-space: normal;
+  text-align: center;
 }
 .ex-picker-benchmark-meta.is-empty {
   background: rgba(107, 114, 128, 0.12);
@@ -1840,13 +1844,15 @@ body.wt-modal-scroll-lock {
 }
 .ex-picker-row-side {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: flex-end;
-  gap: 6px;
+  gap: 5px;
   flex-shrink: 0;
   min-width: 0;
+  max-width: 44%;
+  flex-wrap: wrap;
 }
-.ex-picker-actions { display: flex; align-items: center; gap: 6px; margin-left: 8px; flex-shrink: 0; }
+.ex-picker-actions { display: flex; align-items: center; gap: 5px; margin-left: 0; flex-shrink: 0; }
 .ex-picker-icon-btn {
   display: inline-flex;
   align-items: center;
@@ -1879,8 +1885,8 @@ body.wt-modal-scroll-lock {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: #fff;
@@ -1897,13 +1903,13 @@ body.wt-modal-scroll-lock {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 30px;
-  padding: 5px 9px;
+  min-height: 28px;
+  padding: 4px 8px;
   border-radius: 8px;
   color: #b42318;
   background: #fff1f0;
-  font-size: 11px;
-  line-height: 16px;
+  font-size: 10px;
+  line-height: 15px;
   font-weight: 800;
   cursor: pointer;
   transition: all var(--transition);
@@ -1920,8 +1926,7 @@ body.wt-modal-scroll-lock {
 
 @media (max-width: 430px) {
   .ex-picker-row-side {
-    flex-wrap: wrap;
-    max-width: 58%;
+    max-width: 42%;
   }
   .ex-picker-row-side .ex-picker-benchmark-meta {
     margin-left: 0;
@@ -5173,8 +5178,8 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   overflow: hidden;
 }
 .ex-picker-muscle-figure.has-asset {
-  width: 70px;
-  height: 58px;
+  width: 60px;
+  height: 50px;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
@@ -5281,39 +5286,41 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 #ex-picker-modal .ex-picker-main {
   min-width: 0;
   display: grid;
-  gap: 4px;
+  gap: 2px;
 }
 #ex-picker-modal .ex-picker-name {
-  font-size: 16px;
-  line-height: 22px;
+  font-size: 14px;
+  line-height: 18px;
   font-weight: 700;
 }
 .ex-picker-history-meta {
   min-width: 0;
   color: var(--seed-fg-muted, var(--text-secondary));
-  font-size: 13px;
-  line-height: 18px;
+  font-size: 11px;
+  line-height: 16px;
   font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .ex-picker-thumb {
-  width: 76px;
-  height: 58px;
+  flex: 0 0 58px;
+  width: 58px;
+  height: 46px;
   display: grid;
   place-items: center;
   overflow: hidden;
 }
 .ex-picker-thumb.has-asset img {
-  width: 76px;
-  height: 58px;
+  width: 58px;
+  height: 46px;
   display: block;
   object-fit: contain;
 }
 .ex-picker-thumb .ex-picker-muscle-figure {
-  width: 58px;
-  height: 48px;
+  width: 48px;
+  height: 40px;
 }
 #ex-picker-modal .ex-picker-actions {
   margin-left: 0;
@@ -10193,47 +10200,47 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   color: #111827;
 }
 .wt-day-empty {
-  min-height: calc(100vh - 240px);
+  min-height: calc(100dvh - 252px);
   display: flex;
   flex-direction: column;
 }
 .wt-empty-center {
-  flex: 1;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 50px 0 80px;
+  padding: 28px 0 22px;
   text-align: center;
 }
 .wt-empty-dumbbell {
   position: relative;
-  width: 126px;
-  height: 126px;
-  margin-bottom: 28px;
+  width: 88px;
+  height: 88px;
+  margin-bottom: 16px;
   transform: rotate(45deg);
 }
 .wt-empty-dumbbell::before,
 .wt-empty-dumbbell::after {
   content: '';
   position: absolute;
-  inset: 56px 12px auto;
-  height: 14px;
+  inset: 39px 8px auto;
+  height: 10px;
   border-radius: 8px;
   background: #676970;
 }
 .wt-empty-dumbbell::after {
-  inset: 34px 18px auto;
-  height: 58px;
-  border-left: 26px solid #676970;
-  border-right: 26px solid #676970;
+  inset: 24px 13px auto;
+  height: 40px;
+  border-left: 18px solid #676970;
+  border-right: 18px solid #676970;
   background: transparent;
 }
 .wt-empty-center p {
   margin: 0;
   color: #72757f;
-  font-size: 21px;
-  line-height: 30px;
+  font-size: 17px;
+  line-height: 23px;
 }
 .wt-empty-center strong {
   color: #e03b33;
@@ -10241,14 +10248,14 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 }
 .wt-empty-center span {
   color: #72757f;
-  font-size: 20px;
-  line-height: 30px;
+  font-size: 15px;
+  line-height: 22px;
 }
 .wt-empty-help {
-  margin-top: auto;
+  margin-top: 16px;
   color: #6d717b;
-  font-size: 20px;
-  line-height: 31px;
+  font-size: 14px;
+  line-height: 22px;
 }
 .wt-empty-help p {
   margin: 0;
@@ -10261,8 +10268,8 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   z-index: 42;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 8px 22px;
+  gap: 8px;
+  padding: 7px 18px;
   border-top: 1px solid #d8dbe4;
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(12px);
@@ -10270,8 +10277,10 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 .wt-day-session-tabs {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(76px, 1fr);
-  max-width: 244px;
+  grid-auto-columns: minmax(60px, 1fr);
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 232px;
   border: 1px solid #d8dbe4;
   border-radius: 9px;
   overflow: hidden;
@@ -10302,28 +10311,23 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   border-radius: 999px;
   background: #e43b32;
 }
-.wt-day-edit {
+.wt-day-edit,
+.wt-day-add-inline {
+  flex: 0 0 auto;
   width: 34px;
   height: 34px;
   border: 0;
+  border-radius: 11px;
   background: transparent;
   color: #666a72;
   font-size: 22px;
+  line-height: 1;
 }
-.wt-day-fab {
-  position: fixed;
-  right: 26px;
-  bottom: calc(86px + env(safe-area-inset-bottom, 0px));
-  z-index: 44;
-  width: 74px;
-  height: 74px;
-  border: 0;
-  border-radius: 18px;
+.wt-day-add-inline {
   background: #dce6ff;
   color: #315176;
-  font-size: 38px;
-  line-height: 1;
-  box-shadow: 0 6px 16px rgba(30, 35, 48, 0.22);
+  font-size: 28px;
+  box-shadow: 0 2px 8px rgba(30, 35, 48, 0.12);
 }
 
 @media (max-width: 430px) {
@@ -10525,31 +10529,53 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
     height: 34px;
     font-size: 12px;
   }
-  .wt-empty-center p,
+  .wt-empty-center {
+    padding: 22px 0 16px;
+  }
+  .wt-empty-dumbbell {
+    width: 78px;
+    height: 78px;
+    margin-bottom: 14px;
+  }
+  .wt-empty-dumbbell::before {
+    inset: 34px 7px auto;
+    height: 9px;
+  }
+  .wt-empty-dumbbell::after {
+    inset: 21px 12px auto;
+    height: 36px;
+    border-left-width: 16px;
+    border-right-width: 16px;
+  }
+  .wt-empty-center p {
+    font-size: 15px;
+    line-height: 21px;
+  }
   .wt-empty-center span,
   .wt-empty-help {
-    font-size: 17px;
-    line-height: 27px;
+    font-size: 13px;
+    line-height: 20px;
   }
   .wt-day-sessionbar {
-    gap: 8px;
-    padding: 7px 18px 7px 12px;
+    gap: 6px;
+    padding: 7px 12px;
   }
   .wt-day-session-tabs {
-    grid-auto-columns: minmax(62px, 1fr);
-    max-width: 220px;
+    grid-auto-columns: minmax(56px, 1fr);
+    max-width: none;
   }
   .wt-day-session-tabs button {
     min-height: 32px;
-    font-size: 14px;
+    font-size: 13px;
   }
-  .wt-day-fab {
-    right: 26px;
-    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-    width: 64px;
-    height: 64px;
-    border-radius: 17px;
-    font-size: 34px;
+  .wt-day-edit,
+  .wt-day-add-inline {
+    width: 32px;
+    height: 32px;
+    font-size: 21px;
+  }
+  .wt-day-add-inline {
+    font-size: 26px;
   }
 }
 

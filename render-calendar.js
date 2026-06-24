@@ -1058,8 +1058,8 @@ function _renderWorkoutHomeDetail(root, { cache, plan, checkins, key }) {
       <div class="wt-day-sessionbar">
         <div class="wt-day-session-tabs">${sessionTabs}</div>
         <button type="button" class="wt-day-edit" onclick="window._wtCalEditSession('${key}', ${sessionIndex})" aria-label="선택 회차 편집">✎</button>
+        <button type="button" class="wt-day-add-inline" onclick="window._wtCalAddSession('${key}')" aria-label="운동 추가">＋</button>
       </div>
-      <button type="button" class="wt-day-fab" onclick="window._wtCalAddSession('${key}')" aria-label="운동 추가">＋</button>
     </div>
   `;
 }
@@ -1451,7 +1451,7 @@ function _renderWorkoutDetailEmpty(sessionIndex) {
       <div class="wt-empty-center">
         <div class="wt-empty-dumbbell" aria-hidden="true"></div>
         <p><strong>${_sessionLabel(sessionIndex)} 운동 기록</strong>이 없습니다</p>
-        <span>우측 하단 + 버튼을 눌러 추가해보세요</span>
+        <span>하단 + 버튼으로 추가해보세요</span>
       </div>
       <div class="wt-empty-help">
         <p>하루에 운동을 여러번 하시나요?</p>
