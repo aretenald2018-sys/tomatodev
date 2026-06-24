@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md` (운동 추가 분류형 진입 UI)
-- 현재 단계: `execution complete — Slice 4 목록 필터 레이아웃과 정렬 시스템`
-- 마지막 완료: `상단 부위 탭, 목록 정렬/범위 행, 캐시 기반 기록 메타, 캐시 버전 bump를 구현했다.`
-- 다음 액션: `Slice 4 변경 파일을 리뷰하고 배포 검증한다.`
+- 현재 단계: `deploy verified — Slice 4 목록 필터 레이아웃과 정렬 시스템`
+- 마지막 완료: `커밋 9594418을 origin/main에 push했고 Dashboard3 Pages 배포 검증을 완료했다.`
+- 다음 액션: `없음`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
@@ -18,6 +18,14 @@
   3. 목록 상단에 `최근`/`빈도`/`이름` 정렬과 `전체`/`즐겨찾기`/`커스텀` 범위 컨트롤 추가
   4. 캐시 기반 `총 n번, n일 전` 메타와 정렬 통계 추가
   5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z16-picker-filter-layout`로 bump
+
+- 검증:
+  1. PASS: `node --check modals/ex-picker-modal.js; node --check workout/exercises.js; node --check sw.js`
+  2. PASS: `node scripts/verify-runtime-assets.mjs`
+  3. PASS: `git diff --check`
+  4. PASS: `docs/ai/reviews/2026-06-24-exercise-picker-filter-layout-review.md`
+  5. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 9594418`
+  6. not verified yet: 로그인 화면에 막혀 운동 picker 필터 UI 클릭 흐름은 인증 계정으로 확인 필요
 - 완료한 Slice 3:
   1. `assets/workout/muscles/*.png` 8개를 `384x288` RGBA 투명 PNG로 교체
   2. 기존 파일명/경로 유지
