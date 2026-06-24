@@ -1564,6 +1564,29 @@ function _isExerciseUsableAtCurrentGym(ex) {
   return _exerciseGymIds(ex).includes(currentGymId);
 }
 
+function _isConcretePickerGymFilter(gymId) {
+  return !!gymId && !['all', 'usable', 'global'].includes(String(gymId));
+}
+
+function _normalizePickerGymFilter(gymId) {
+  const value = String(gymId || '').trim();
+  return value || 'all';
+}
+
+function _isExerciseUsableAtGym(ex, gymId) {
+  const scope = _normalizePickerGymFilter(gymId);
+  if (scope === 'global') return _isExerciseGlobalScope(ex);
+  if (scope === 'usable') return _isExerciseUsableAtCurrentGym(ex);
+  if (scope === 'all' || _isExerciseGlobalScope(ex)) return true;
+  return _exerciseGymIds(ex).includes(scope);
+}
+
+function _applyPickerGymScope(pool, gymId = _pickerGymFilter) {
+  const scope = _normalizePickerGymFilter(gymId);
+  if (scope === 'all') return pool;
+  return pool.filter(ex => _isExerciseUsableAtGym(ex, scope));
+}
+
 function _isExerciseEditable(ex) {
   if (!ex?.id) return false;
   return /^custom_/.test(String(ex.id)) || _exerciseGymIds(ex).length > 0 || !ex.movementId;
@@ -1652,25 +1675,25 @@ function _setPickerSearchUi(value = '') {
 }
 
 function _resetPickerGymScope() {
-  _pickerGymFilter = _isExpertSessionActive() ? 'all' : null;
+  _pickerGymFilter = 'all';
   if (S?.workout) S.workout.pickerGymFilter = _pickerGymFilter;
 }
 
-function _openPickerCategory() {
+function _openPickerCategory(options = {}) {
   _pickerView = 'category';
   _pickerListMode = 'all';
   _pickerMuscleFilter = null;
-  _resetPickerGymScope();
+  if (!options.preserveGymScope) _resetPickerGymScope();
   _pickerSearchQuery = '';
   _setPickerSearchUi('');
   _renderPickerList();
 }
 
-function _openPickerList(mode = 'all', muscleId = null) {
+function _openPickerList(mode = 'all', muscleId = null, options = {}) {
   _pickerView = 'list';
   _pickerListMode = mode === 'custom' ? 'custom' : 'all';
   _pickerMuscleFilter = muscleId || null;
-  _resetPickerGymScope();
+  if (!options.preserveGymScope) _resetPickerGymScope();
   _pickerSearchQuery = '';
   _setPickerSearchUi('');
   _renderPickerList();
@@ -1678,7 +1701,7 @@ function _openPickerList(mode = 'all', muscleId = null) {
 
 function _handlePickerBack() {
   if (_pickerView !== 'category' || _pickerSearchQuery) {
-    _openPickerCategory();
+    _openPickerCategory({ preserveGymScope: true });
     return;
   }
   wtCloseExercisePicker();
@@ -1746,11 +1769,11 @@ function _renderPickerTabs(ctx) {
     btn.addEventListener('click', () => {
       const tab = btn.getAttribute('data-picker-tab');
       if (tab === 'category') {
-        _openPickerCategory();
+        _openPickerCategory({ preserveGymScope: true });
         return;
       }
       if (tab === 'muscle') {
-        _openPickerList(_pickerListMode, btn.getAttribute('data-picker-muscle-tab'));
+        _openPickerList(_pickerListMode, btn.getAttribute('data-picker-muscle-tab'), { preserveGymScope: true });
         return;
       }
       _openPickerList(tab === 'custom' ? 'custom' : 'all');
@@ -1777,11 +1800,21 @@ window._wtSetPickerMuscleFilter = (muscleId) => {
 window._wtSetPickerCategoryFilter = window._wtSetPickerMuscleFilter;
 window._wtSetPickerGymFilter = (gymId) => {
   _pickerView = 'list';
-  _pickerGymFilter = gymId || (_isExpertSessionActive() ? 'all' : null);
+  _pickerGymFilter = _normalizePickerGymFilter(gymId);
   if (S?.workout) S.workout.pickerGymFilter = _pickerGymFilter;
   saveWorkoutDay({ silent: true }).catch(e => console.warn('[pickerGymFilter.save]:', e));
   _renderPickerList();
 };
+
+function _wtSetPickerGymCategoryFilter(gymId) {
+  _pickerView = 'category';
+  _pickerListMode = 'all';
+  _pickerMuscleFilter = null;
+  _pickerGymFilter = _normalizePickerGymFilter(gymId);
+  if (S?.workout) S.workout.pickerGymFilter = _pickerGymFilter;
+  saveWorkoutDay({ silent: true }).catch(e => console.warn('[pickerGymFilter.save]:', e));
+  _renderPickerList();
+}
 
 window._wtSetPickerSort = (mode) => {
   _pickerSortMode = ['recent', 'frequency', 'name'].includes(mode) ? mode : 'recent';
@@ -1819,11 +1852,17 @@ window._wtResetAllPickerFilters = () => {
   window._wtClearPickerSearch();
 };
 
-async function _openPickerEquipmentManager() {
+function _selectedPickerManagerGymId(gymId = null) {
+  if (_isConcretePickerGymFilter(gymId)) return gymId;
+  if (_isConcretePickerGymFilter(_pickerGymFilter)) return _pickerGymFilter;
+  return _currentPickerGymId() || (getGyms?.() || [])[0]?.id || null;
+}
+
+async function _openPickerEquipmentManager(gymId = null) {
   try {
     const mod = await import('./expert/max.js');
     if (typeof mod.openMaxEquipmentPoolModal === 'function') {
-      await mod.openMaxEquipmentPoolModal({ gymId: _currentPickerGymId() });
+      await mod.openMaxEquipmentPoolModal({ gymId: _selectedPickerManagerGymId(gymId) });
       return;
     }
   } catch (err) {
@@ -1969,7 +2008,7 @@ function _buildPickerContext() {
   const basePool = todayMajorSet.size
     ? rawPool.filter(e => _exerciseMajorIds(e).some(id => todayMajorSet.has(id)))
     : rawPool;
-  if (isExpert && !_pickerGymFilter) _pickerGymFilter = 'all';
+  if (!_pickerGymFilter) _pickerGymFilter = 'all';
   const availableMuscles = new Set(basePool
     .flatMap(_exerciseMajorIds)
     .filter(id => id && (!todayMajorSet.size || todayMajorSet.has(id))));
@@ -2042,15 +2081,32 @@ function _renderPickerBenchmarkScope(ctx) {
 
 function _renderPickerCategory(container, ctx) {
   const visibleBase = _pickerBaseVisiblePool(ctx);
-  const customCount = visibleBase.filter(_isPickerCustomExercise).length;
+  const activeGymFilter = _normalizePickerGymFilter(_pickerGymFilter);
+  const scopedBase = _applyPickerGymScope(visibleBase, activeGymFilter);
   const countsByMuscle = new Map(ctx.visibleMuscles.map(m => [m.id, 0]));
-  visibleBase.forEach(ex => {
+  scopedBase.forEach(ex => {
     _exerciseMajorIds(ex).forEach(id => {
       if (countsByMuscle.has(id)) countsByMuscle.set(id, countsByMuscle.get(id) + 1);
     });
   });
   const totalCount = visibleBase.length;
-  const tiles = ctx.visibleMuscles
+  const scopedMuscles = activeGymFilter === 'all'
+    ? ctx.visibleMuscles
+    : ctx.visibleMuscles.filter(m => (countsByMuscle.get(m.id) || 0) > 0);
+  const gymRail = (ctx.gyms || []).map(gym => {
+    const gymId = String(gym?.id || '');
+    if (!gymId) return '';
+    const label = gym?.name || '헬스장';
+    const count = _applyPickerGymScope(visibleBase, gymId).length;
+    const active = activeGymFilter === gymId ? ' active' : '';
+    return `
+        <button type="button" class="ex-picker-rail-chip${active}" data-picker-gym="${_escPicker(gymId)}" aria-pressed="${active ? 'true' : 'false'}">
+          <span>${_escPicker(label)}</span><b>${count}</b>
+        </button>
+    `;
+  }).join('');
+  const manageGymId = _selectedPickerManagerGymId(activeGymFilter);
+  const tiles = scopedMuscles
     .map(m => {
       const count = countsByMuscle.get(m.id) || 0;
       const color = _safePickerColor(m.color);
@@ -2067,20 +2123,25 @@ function _renderPickerCategory(container, ctx) {
     ${_renderPickerBenchmarkScope(ctx)}
     <div class="ex-picker-category-layout">
       <aside class="ex-picker-category-rail" aria-label="종목 범위">
-        <button type="button" class="ex-picker-rail-chip" data-picker-summary="all">전체 <b>${totalCount}</b></button>
-        <button type="button" class="ex-picker-rail-chip" data-picker-summary="custom">커스텀 <b>${customCount}</b></button>
-        ${ctx.isExpert ? '<button type="button" class="ex-picker-rail-action" data-picker-action="equipment">기구 관리</button>' : ''}
+        <button type="button" class="ex-picker-rail-chip${activeGymFilter === 'all' ? ' active' : ''}" data-picker-gym="all" aria-pressed="${activeGymFilter === 'all' ? 'true' : 'false'}">
+          <span>전체</span><b>${totalCount}</b>
+        </button>
+        ${gymRail}
+        <button type="button" class="ex-picker-rail-action" data-picker-action="manage-gyms" data-picker-gym-manage="${_escPicker(manageGymId || '')}">헬스장 관리</button>
       </aside>
       <section class="ex-picker-muscle-panel" aria-label="부위 분류">
         ${tiles || '<div class="ex-picker-empty">등록된 종목이 없어요</div>'}
       </section>
     </div>
   `;
-  container.querySelector('[data-picker-summary="all"]')?.addEventListener('click', () => _openPickerList('all'));
-  container.querySelector('[data-picker-summary="custom"]')?.addEventListener('click', () => _openPickerList('custom'));
-  container.querySelector('[data-picker-action="equipment"]')?.addEventListener('click', () => _openPickerEquipmentManager());
+  container.querySelectorAll('[data-picker-gym]').forEach(btn => {
+    btn.addEventListener('click', () => _wtSetPickerGymCategoryFilter(btn.getAttribute('data-picker-gym')));
+  });
+  container.querySelector('[data-picker-action="manage-gyms"]')?.addEventListener('click', event => {
+    _openPickerEquipmentManager(event.currentTarget?.getAttribute('data-picker-gym-manage') || null);
+  });
   container.querySelectorAll('[data-picker-muscle]').forEach(btn => {
-    btn.addEventListener('click', () => _openPickerList('all', btn.getAttribute('data-picker-muscle')));
+    btn.addEventListener('click', () => _openPickerList('all', btn.getAttribute('data-picker-muscle'), { preserveGymScope: true }));
   });
 }
 
@@ -2105,10 +2166,7 @@ export function _renderPickerList() {
     : basePool;
   const modeFiltered = _applyPickerListMode(muscleFiltered);
   const gymFiltered = (() => {
-    if (!_pickerGymFilter || _pickerGymFilter === 'all') return modeFiltered;
-    if (_pickerGymFilter === 'usable') return modeFiltered.filter(_isExerciseUsableAtCurrentGym);
-    if (_pickerGymFilter === 'global') return modeFiltered.filter(_isExerciseGlobalScope);
-    return modeFiltered.filter(e => _exerciseGymIds(e).includes(_pickerGymFilter));
+    return _applyPickerGymScope(modeFiltered, _pickerGymFilter);
   })();
   // C-2: 검색어 적용 (종목명 부분 일치, 대소문자 무시)
   const pool = _pickerSearchQuery

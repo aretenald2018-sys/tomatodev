@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-24-workout-empty-and-picker-density.md` (빈 운동 화면 및 피커 목록 밀도 조정)
-- 현재 단계: `deploy verified — Slice 1 빈 운동 화면 및 피커 목록 밀도 조정`
-- 마지막 완료: `커밋 28a718cc59c2dc3c5985cb6f4aba28321dcb63e0을 origin/main에 배포했고 Dashboard3 Pages에서 build-info, sw cache, 정적 자산 및 배포 소스 마커를 검증했다.`
-- 다음 액션: `없음`
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-06-24-exercise-picker-gym-rail.md` (운동 피커 헬스장 rail 필터)
+- 현재 단계: `local verified — Slice 1 운동 피커 헬스장 rail 필터`
+- 마지막 완료: `왼쪽 rail을 전체/저장 헬스장/헬스장 관리로 바꾸고, gym scope 보존·공통 종목 포함·선택 헬스장 기준 기구 CRUD 진입을 구현했다.`
+- 다음 액션: `변경 파일 리뷰 후 Dashboard3 배포 검증 결과를 기록`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상

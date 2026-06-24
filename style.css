@@ -5116,6 +5116,9 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 }
 .ex-picker-rail-chip,
 .ex-picker-rail-action {
+  display: grid;
+  place-items: center;
+  gap: 2px;
   min-height: 56px;
   padding: 0 12px;
   border: 1px solid var(--seed-stroke-neutral, var(--border));
@@ -5128,9 +5131,19 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
+.ex-picker-rail-chip span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 17px;
+}
 .ex-picker-rail-chip b {
   color: var(--primary);
   font: inherit;
+}
+.ex-picker-rail-chip.active {
+  border-color: rgba(250, 52, 44, 0.62);
+  background: rgba(250, 52, 44, 0.08);
+  color: var(--primary);
 }
 .ex-picker-rail-chip:active,
 .ex-picker-rail-action:active,
