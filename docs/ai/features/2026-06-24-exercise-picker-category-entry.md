@@ -429,3 +429,65 @@
   - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
   - PASS: Dashboard3 Pages가 `tomatofarm-v20260624z25-picker-row-density` 캐시 버전을 서빙하는 것을 확인했다.
   - not verified yet: 배포 URL은 로그인 화면에 막혀 `운동 탭 -> + -> 가슴 선택 -> row 밀도/운동명/최근 수행 chip` UI 클릭 흐름을 인증 계정으로 끝까지 확인하지 못했다.
+
+### Slice 8: picker row 선택 즉시 운동 기록 화면으로 랜딩
+
+요청:
+
+- picker 목록에서 특정 운동을 누르면 현재는 해당 row가 회색조/선택 상태로 바뀌고 picker 안에 남는다.
+- 운동 선택 즉시 picker를 닫고 운동 기록 카드 화면으로 이동해야 한다.
+
+그릴 결과:
+
+- 질문: 여러 종목을 연속 선택하는 staged flow를 유지할지, 단일 선택 후 즉시 기록 화면으로 돌아갈지가 핵심이다.
+- 결정: 이번 요청은 단일 선택 즉시 기록 화면 랜딩을 우선한다.
+- 근거: 첨부 사진 1에서 row 선택 후 회색조로 남는 상태가 문제이며, 사진 2처럼 클릭 직후 운동 기록 카드가 보이는 흐름을 요구했다.
+- 가정: `운동기록하는 두번째 사진`은 picker modal이 닫히고 `workout/exercises.js`의 Max V2 운동 카드가 보이는 상태를 뜻한다.
+
+대상 파일:
+
+- `workout/exercises.js`
+- `sw.js`
+- `tests/ex-picker-selection-flow.test.js`
+- `tests/workout-test-mode-unified.test.js`
+- `docs/ai/features/2026-06-24-exercise-picker-category-entry.md`
+- `docs/ai/reviews/2026-06-24-exercise-picker-immediate-close-review.md`
+
+구현:
+
+- picker row click handler에서 운동을 추가하고 운동 목록을 렌더한 직후 `wtCloseExercisePicker()`를 호출한다.
+- 클릭 직후 picker 안에서 `already`/`✓` 상태를 보여주는 DOM 업데이트는 제거한다.
+- timer bar open/start 및 save 흐름은 유지한다.
+- `workout/exercises.js`가 `STATIC_ASSETS`에 있으므로 `sw.js` `CACHE_VERSION`을 bump한다.
+- 기존 staged selection 테스트를 즉시 닫힘 요구로 갱신한다.
+
+범위 밖:
+
+- picker footer 제거/재디자인.
+- 여러 종목 연속 선택 UX 재도입.
+- 운동 저장 스키마 변경.
+- `www/` 직접 수정.
+
+검증 계획:
+
+- `node --check workout/exercises.js; node --check sw.js`
+- `node --test tests/ex-picker-selection-flow.test.js tests/workout-test-mode-unified.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- Dashboard3 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+- 배포 URL에서 로그인 후 `운동 탭 -> + -> 가슴 선택 -> 운동 row 클릭` 시 picker가 즉시 닫히고 운동 기록 카드 화면이 보이는지 확인한다.
+
+실행 결과:
+
+- 2026-06-24: Slice 8 구현 완료.
+- `workout/exercises.js`에서 picker row click handler가 운동 추가와 `_renderExerciseList()` 후 즉시 `wtCloseExercisePicker()`를 호출하도록 변경했다.
+- picker 내부 row를 회색조/선택 상태로 남기는 `already` class 추가와 이름 `✓` 업데이트를 제거했다.
+- timer bar open/start와 silent save 흐름은 유지했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z27-picker-immediate-close`로 bump했다.
+- `tests/ex-picker-selection-flow.test.js`를 즉시 닫힘 요구로 갱신하고, `tests/workout-test-mode-unified.test.js` 캐시 버전 검증을 갱신했다.
+- PASS: `node --check workout/exercises.js; node --check sw.js`
+- PASS: `node --test tests/ex-picker-selection-flow.test.js tests/workout-test-mode-unified.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- 리뷰: `docs/ai/reviews/2026-06-24-exercise-picker-immediate-close-review.md`
+- not verified yet: Dashboard3 Pages 배포 및 인증 계정 UI 클릭 검증 필요.

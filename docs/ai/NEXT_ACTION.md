@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-24-workout-set-row-rom-density.md` (Slice 1: Max V2 set row ROM 입력칸 확장과 입력 폰트 축소)
-- 현재 단계: `deploy verified — Slice 1 Max V2 set row ROM 입력칸/폰트 조정`
-- 마지막 완료: `Max V2 운동 기록 set row의 ROM 입력칸 확장, 입력 폰트 축소, overflow 예산 테스트, TDS 리뷰, Dashboard3 Pages 배포 검증을 완료했다.`
-- 다음 액션: `없음`
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md` (Slice 8: picker row 선택 즉시 운동 기록 화면으로 랜딩)
+- 현재 단계: `static verified — Slice 8 리뷰 및 배포 검증 대기`
+- 마지막 완료: `picker row 선택 즉시 운동 기록 화면 랜딩, 선택 회색조 DOM 제거, 캐시 버전 bump, source-level 테스트 갱신을 완료했다.`
+- 다음 액션: `Slice 8 리뷰 문서와 변경 파일을 확인한 뒤 origin/main 배포 및 Dashboard3 Pages 검증을 진행한다.`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상

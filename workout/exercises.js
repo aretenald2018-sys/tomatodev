@@ -2277,13 +2277,10 @@ export function _renderPickerList() {
           S.workout.exercises.push(_buildPickerExerciseEntry(ex));
           _renderExerciseList();
           _syncExpertTopArea();
-          btn.classList.add('already');
-          const name = btn.querySelector('.ex-picker-name');
-          if (name && !name.textContent.includes('✓')) name.textContent = `${name.textContent} ✓`;
-          _syncPickerDoneButton();
           const timerBar = document.getElementById('wt-workout-timer-bar');
           if (timerBar && !timerBar.classList.contains('wt-open')) timerBar.classList.add('wt-open');
           if (!S.workout.workoutStartTime && S.workout.workoutDuration === 0) wtStartWorkoutTimer();
+          wtCloseExercisePicker();
           saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
         });
       }
