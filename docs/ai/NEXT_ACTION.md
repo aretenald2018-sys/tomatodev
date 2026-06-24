@@ -2,30 +2,32 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-24-workout-timer-summary-only.md`
-- 현재 단계: `static verified — Slice 1 운동 타이머 요약 카드 단일 표시`
-- 마지막 완료: `운동 타이머 별도 카드/본문 섹션을 제거하고 우측 상단 요약 카드의 운동시간 표시만 유지했다.`
-- 다음 액션: `최종 커밋, Dashboard3 Pages 배포, 배포 검증을 수행한다.`
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-06-24-workout-calendar-bottom-sheet.md`
+- 현재 단계: `static verified — Slice 1 운동 캘린더 날짜 상세 하단 시트`
+- 마지막 완료: `기존 하단 날짜 탭을 sheet 헤더로 재사용하고, 날짜 클릭 시 full로 올라오는 애니메이션과 drag height 조절을 구현했다.`
+- 다음 액션: `계획 파일과 변경 파일을 리뷰하고, 문제가 없으면 Dashboard3 Pages 배포 검증을 진행한다.`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
 
-- 계획 파일: `docs/ai/features/2026-06-24-workout-timer-summary-only.md`
+- 계획 파일: `docs/ai/features/2026-06-24-workout-calendar-bottom-sheet.md`
 - 완료한 Slice 1:
-  1. `render-calendar.js` `_renderWorkoutDetailCards()`의 duration-only `운동 타이머` 카드 fallback 제거
-  2. day detail modal 본문의 `timerOnlyHtml`과 `cal-workout-timer-line` 제거
-  3. 우측 상단 summary card의 `운동시간` 렌더링 유지
-  4. 죽은 `.cal-workout-timer-line` CSS와 삭제 확인용 `timer: '운동 타이머'` 라벨 매핑 정리
-  5. `tests/workout-timer-summary-only.test.js` 추가
-  6. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z34-workout-timer-summary-only`로 bump
+  1. 운동 홈 월간 렌더에서 기존 `.cal-workout-day-bar`를 헤더로 쓰는 `.cal-workout-day-sheet` 렌더
+  2. 날짜 클릭/오늘 상세/닫기 상태 전환을 하단 시트 기준으로 정리
+  3. 날짜 클릭 시 `bar -> full`로 올라오는 애니메이션 적용
+  4. 시트 handle pointer drag로 `bar`/`mid`/`full` 상태 전환 구현
+  5. sheet 내부 상세 본문과 회차/session action bar CSS 조정
+  6. 회귀 테스트와 `sw.js` `CACHE_VERSION` 갱신
 
 - Slice 1 검증:
   1. PASS: `node --check render-calendar.js; node --check sw.js`
-  2. PASS: `node --test tests/workout-timer-summary-only.test.js tests/stats-picker-ui-polish.test.js tests/workout-active-session-recovery.test.js tests/workout-track-graph-delta.test.js tests/workout-test-mode-unified.test.js tests/stats-muscle-fatigue-insight.test.js`
-  3. PASS: `node scripts/verify-runtime-assets.mjs`
-  4. PASS: `git diff --check`
-  5. not verified yet: Dashboard3 Pages 배포 및 인증 후 `운동 탭 -> 날짜 상세` UI 직접 확인 필요
+  2. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
+  3. PASS: `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
+  4. PASS: `node scripts/verify-runtime-assets.mjs`
+  5. PASS: `git diff --check`
+  6. not verified yet: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>` 필요
+  7. not verified yet: 배포 URL에서 인증 계정으로 `운동 탭 -> 날짜 탭 -> 하단 시트 표시 -> handle 위/아래 드래그 -> + 버튼` 흐름 확인 필요
 
 - 이전 계획 파일: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md`
 - 완료한 Slice 4:

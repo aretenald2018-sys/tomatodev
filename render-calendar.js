@@ -43,9 +43,11 @@ let _viewMonth = TODAY.getMonth();
 let _calendarMode = 'summary';
 let _workoutHomeSelectedKey = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
 let _workoutHomeView = 'month';
+let _workoutHomeSheetState = 'bar';
 let _workoutHomeSessionIndex = 0;
 const _workoutDetailCollapsed = new Set();
 let _workoutTrackGraphSeq = 0;
+const WORKOUT_HOME_SHEET_STATES = ['bar', 'mid', 'full'];
 
 const MAX_WEAK_LABEL = {
   chest_upper:'가슴 상부', chest_lower:'가슴 하부',
@@ -769,6 +771,9 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
   const gridHtml = isWorkoutHome
     ? _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, dayMetrics })
     : `<div class="cal-grid cal-workout-grid">${flatCells.join('')}</div>`;
+  const bottomSheetHtml = isWorkoutHome
+    ? _renderWorkoutHomeBottomSheet(_workoutHomeSelectedKey, { cache, plan, checkins, lookup })
+    : '';
 
   root.innerHTML = `
     <div class="cal-workout-surface ${surfaceClass}">
@@ -785,7 +790,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
       ${summaryHtml}
       ${weekdayHtml}
       ${gridHtml}
-      ${isWorkoutHome ? _renderWorkoutHomeDayBar(_workoutHomeSelectedKey, { cache, plan, checkins, lookup }) : ''}
+      ${bottomSheetHtml}
     </div>
   `;
 }
@@ -836,9 +841,11 @@ function _renderWorkoutHomeDayBar(selectedKey, { cache, plan, checkins, lookup }
   const ordinal = _workoutRecordOrdinalForKey(cache, selected, plan, checkins, lookup);
   const recordText = ordinal > 0 ? `${ordinal}번째 기록` : '운동 기록 없음';
   const sessionText = wx.hasWorkout ? '1회차 기록 보기' : '1회차 기록 없음';
+  const sheetState = _currentWorkoutHomeSheetState();
+  const expanded = sheetState !== 'bar';
   return `
-    <div class="cal-workout-day-bar">
-      <button type="button" class="cal-workout-day-expand" onclick="window._wtCalOpenDay('${selected}')" aria-label="선택한 날짜 열기">⌃</button>
+    <div class="cal-workout-day-bar" data-wt-sheet-handle tabindex="0" aria-expanded="${expanded ? 'true' : 'false'}">
+      <button type="button" class="cal-workout-day-expand" data-wt-sheet-toggle onclick="window._wtCalToggleSheet('${selected}')" aria-label="${expanded ? '날짜 상세 접기' : '선택한 날짜 열기'}">${expanded ? '⌄' : '⌃'}</button>
       <button type="button" class="cal-workout-day-main" onclick="window._wtCalOpenDay('${selected}')">
         <span class="cal-workout-day-date">${selected} <em>${_dateDistanceLabel(selected)}</em></span>
         <span class="cal-workout-day-sub">${recordText} · ${sessionText}</span>
@@ -848,6 +855,19 @@ function _renderWorkoutHomeDayBar(selectedKey, { cache, plan, checkins, lookup }
         <button type="button" onclick="window._wtCalOpenRoutine('${selected}')">루틴</button>
       </div>
     </div>
+  `;
+}
+
+function _renderWorkoutHomeBottomSheet(selectedKey, { cache, plan, checkins, lookup }) {
+  const selected = _parseDateKey(selectedKey) ? selectedKey : dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+  const sheetState = _currentWorkoutHomeSheetState();
+  return `
+    <section class="cal-workout-day-sheet is-${sheetState}" data-wt-day-sheet data-wt-sheet-state="${sheetState}" role="dialog" aria-modal="false" aria-expanded="${sheetState !== 'bar' ? 'true' : 'false'}" aria-label="선택 날짜 운동 기록">
+      ${_renderWorkoutHomeDayBar(selected, { cache, plan, checkins, lookup })}
+      <div class="cal-workout-day-sheet-body">
+        ${_renderWorkoutHomeDetailHtml({ cache, plan, checkins, key: selected, includeHead: false })}
+      </div>
+    </section>
   `;
 }
 
@@ -1003,10 +1023,6 @@ export function renderWorkoutCalendarHome() {
   const cache = getCache() || {};
   const plan = getDietPlan() || null;
   const checkins = _sortedCheckins();
-  if (_workoutHomeView === 'detail') {
-    _renderWorkoutHomeDetail(root, { cache, plan, checkins, key: _workoutHomeSelectedKey });
-    return;
-  }
 
   const y = _viewYear, m = _viewMonth;
   const first = new Date(y, m, 1);
@@ -1024,9 +1040,14 @@ export function renderWorkoutCalendarHome() {
     surface: 'workout-home',
     showModeTabs: false,
   });
+  _bindWorkoutHomeSheetDrag(root);
 }
 
-function _renderWorkoutHomeDetail(root, { cache, plan, checkins, key }) {
+function _renderWorkoutHomeDetail(root, args) {
+  root.innerHTML = _renderWorkoutHomeDetailHtml(args);
+}
+
+function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, includeHead = true }) {
   const lookup = _buildWorkoutLookup();
   const day = cache[key] || {};
   const sessions = getWorkoutSessions(day, { minCount: 3 });
@@ -1041,9 +1062,7 @@ function _renderWorkoutHomeDetail(root, { cache, plan, checkins, key }) {
   const content = wx.hasWorkout
     ? _renderWorkoutDetailRecorded(key, sessionIndex, wx)
     : _renderWorkoutDetailEmpty(sessionIndex);
-
-  root.innerHTML = `
-    <div class="wt-day-detail">
+  const headHtml = includeHead ? `
       <div class="wt-day-head">
         <button type="button" class="wt-day-back" onclick="window._wtCalBackToMonth()" aria-label="캘린더로 돌아가기">⌄</button>
         <div class="wt-day-titlebox">
@@ -1052,8 +1071,19 @@ function _renderWorkoutHomeDetail(root, { cache, plan, checkins, key }) {
         </div>
         ${_renderWorkoutDetailSummaryCard(wx)}
       </div>
+  ` : `
+      <div class="wt-day-sheet-summary">
+        ${_renderWorkoutDetailSummaryCard(wx)}
+      </div>
+  `;
 
-      ${content}
+  return `
+    <div class="wt-day-detail">
+      ${headHtml}
+
+      <div class="wt-day-sheet-scroll">
+        ${content}
+      </div>
 
       <div class="wt-day-sessionbar">
         <div class="wt-day-session-tabs">${sessionTabs}</div>
@@ -1680,11 +1710,142 @@ function _closeDay(e) {
   closeModal('calendar-day-modal');
 }
 
+function _normalizeWorkoutHomeSheetState(state) {
+  return WORKOUT_HOME_SHEET_STATES.includes(state) ? state : 'bar';
+}
+
+function _currentWorkoutHomeSheetState() {
+  return _workoutHomeView === 'detail' ? _normalizeWorkoutHomeSheetState(_workoutHomeSheetState) : 'bar';
+}
+
+function _applyWorkoutHomeSheetState() {
+  if (typeof document === 'undefined') return;
+  const sheet = document.querySelector('#workout-calendar-root [data-wt-day-sheet]');
+  if (!sheet) return;
+  const state = _currentWorkoutHomeSheetState();
+  WORKOUT_HOME_SHEET_STATES.forEach(item => sheet.classList.toggle(`is-${item}`, item === state));
+  sheet.dataset.wtSheetState = state;
+  sheet.setAttribute('aria-expanded', state !== 'bar' ? 'true' : 'false');
+  const bar = sheet.querySelector('[data-wt-sheet-handle]');
+  if (bar) bar.setAttribute('aria-expanded', state !== 'bar' ? 'true' : 'false');
+  const toggle = sheet.querySelector('[data-wt-sheet-toggle]');
+  if (toggle) {
+    toggle.textContent = state === 'bar' ? '⌃' : '⌄';
+    toggle.setAttribute('aria-label', state === 'bar' ? '선택한 날짜 열기' : '날짜 상세 접기');
+  }
+}
+
+function _setWorkoutHomeSheetState(state, { render = false } = {}) {
+  const next = _normalizeWorkoutHomeSheetState(state);
+  _workoutHomeSheetState = next;
+  _workoutHomeView = next === 'bar' ? 'month' : 'detail';
+  if (render) {
+    renderWorkoutCalendarHome();
+    return;
+  }
+  _applyWorkoutHomeSheetState();
+}
+
+function _animateWorkoutHomeSheetTo(state) {
+  const apply = () => _setWorkoutHomeSheetState(state);
+  if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+    window.requestAnimationFrame(() => window.requestAnimationFrame(apply));
+    return;
+  }
+  apply();
+}
+
+function _stepWorkoutHomeSheet(direction, strong = false) {
+  const current = _currentWorkoutHomeSheetState();
+  const idx = WORKOUT_HOME_SHEET_STATES.indexOf(current);
+  const offset = strong ? direction * 2 : direction;
+  const nextIdx = Math.max(0, Math.min(WORKOUT_HOME_SHEET_STATES.length - 1, idx + offset));
+  _setWorkoutHomeSheetState(WORKOUT_HOME_SHEET_STATES[nextIdx]);
+}
+
+function _toggleWorkoutHomeSheet(key = _workoutHomeSelectedKey) {
+  _workoutHomeSelectedKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
+  if (_currentWorkoutHomeSheetState() === 'bar') {
+    _workoutHomeView = 'detail';
+    _workoutHomeSheetState = 'bar';
+    renderWorkoutCalendarHome();
+    _animateWorkoutHomeSheetTo('full');
+    return;
+  }
+  _setWorkoutHomeSheetState('bar');
+}
+
+function _bindWorkoutHomeSheetDrag(root) {
+  const handle = root?.querySelector?.('[data-wt-sheet-handle]');
+  if (!handle) return;
+  handle.addEventListener('pointerdown', _startWorkoutHomeSheetDrag);
+  handle.addEventListener('keydown', _handleWorkoutHomeSheetKey);
+}
+
+function _handleWorkoutHomeSheetKey(event) {
+  if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    _stepWorkoutHomeSheet(1, event.shiftKey);
+  } else if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    _stepWorkoutHomeSheet(-1, event.shiftKey);
+  } else if (event.key === 'Escape') {
+    event.preventDefault();
+    _setWorkoutHomeSheetState('bar');
+  }
+}
+
+function _startWorkoutHomeSheetDrag(event) {
+  if (event.button != null && event.button !== 0) return;
+  if (event.target?.closest?.('button')) return;
+  const sheet = event.currentTarget?.closest?.('[data-wt-day-sheet]');
+  if (!sheet) return;
+
+  const startY = event.clientY || 0;
+  let lastY = startY;
+  const startHeight = sheet.getBoundingClientRect?.().height || 0;
+  const barHeight = sheet.querySelector?.('.cal-workout-day-bar')?.getBoundingClientRect?.().height || 132;
+  const minHeight = Math.max(96, barHeight);
+  const maxHeight = Math.max(startHeight, (window.innerHeight || startHeight) - 64);
+  sheet.classList.add('is-dragging');
+  sheet.style.setProperty('--wt-day-sheet-drag-y', '0px');
+  sheet.style.setProperty('--wt-day-sheet-drag-height', `${startHeight}px`);
+  event.currentTarget.setPointerCapture?.(event.pointerId);
+  event.preventDefault();
+
+  const onMove = (moveEvent) => {
+    lastY = moveEvent.clientY || startY;
+    const dy = Math.max(-180, Math.min(180, lastY - startY));
+    const nextHeight = Math.max(minHeight, Math.min(maxHeight, startHeight - dy));
+    sheet.style.setProperty('--wt-day-sheet-drag-height', `${nextHeight}px`);
+  };
+  const onUp = (upEvent) => {
+    lastY = upEvent.clientY || lastY;
+    sheet.classList.remove('is-dragging');
+    sheet.style.removeProperty('--wt-day-sheet-drag-y');
+    sheet.style.removeProperty('--wt-day-sheet-drag-height');
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    window.removeEventListener('pointercancel', onUp);
+
+    const dy = lastY - startY;
+    if (Math.abs(dy) < 36) return;
+    _stepWorkoutHomeSheet(dy < 0 ? 1 : -1, Math.abs(dy) > 112);
+  };
+
+  window.addEventListener('pointermove', onMove, { passive: true });
+  window.addEventListener('pointerup', onUp, { passive: true });
+  window.addEventListener('pointercancel', onUp, { passive: true });
+}
+
 function _openWorkoutHomeDay(key) {
   _workoutHomeSelectedKey = key;
   _workoutHomeView = 'detail';
+  _workoutHomeSheetState = 'bar';
   _workoutHomeSessionIndex = 0;
   renderWorkoutCalendarHome();
+  _animateWorkoutHomeSheetTo('full');
 }
 
 async function _openWorkoutHomeRoutine(key) {
@@ -1726,8 +1887,7 @@ async function _openWorkoutHomeRoutine(key) {
 }
 
 function _backWorkoutHomeMonth() {
-  _workoutHomeView = 'month';
-  renderWorkoutCalendarHome();
+  _setWorkoutHomeSheetState('bar');
 }
 
 function _goTodayWorkoutDetail() {
@@ -1736,9 +1896,11 @@ function _goTodayWorkoutDetail() {
   _viewMonth = TODAY.getMonth();
   _workoutHomeSelectedKey = key;
   _workoutHomeView = 'detail';
+  _workoutHomeSheetState = 'bar';
   _workoutHomeSessionIndex = 0;
   renderCalendar();
   renderWorkoutCalendarHome();
+  _animateWorkoutHomeSheetTo('full');
 }
 
 function _selectWorkoutHomeSession(index) {
@@ -1992,6 +2154,7 @@ window.renderCalendar   = renderCalendar;
 window._wtCalShiftMonth = _shiftMonth;
 window._wtCalGoToday    = _goToday;
 window._wtCalOpenDay    = _openWorkoutHomeDay;
+window._wtCalToggleSheet = _toggleWorkoutHomeSheet;
 window._wtCalOpenRoutine = _openWorkoutHomeRoutine;
 window._wtCalBackToMonth = _backWorkoutHomeMonth;
 window._wtCalGoTodayDetail = _goTodayWorkoutDetail;
