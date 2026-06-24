@@ -5,11 +5,21 @@ import { readFile } from 'node:fs/promises';
 const css = await readFile(new URL('../style.css', import.meta.url), 'utf8');
 const workoutExercises = await readFile(new URL('../workout/exercises.js', import.meta.url), 'utf8');
 
-function ruleBody(selector) {
+function ruleBody(selector, source = css) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = new RegExp(`${escaped}\\s*\\{([\\s\\S]*?)\\}`).exec(css);
+  const match = new RegExp(`${escaped}\\s*\\{([\\s\\S]*?)\\}`).exec(source);
   assert.ok(match, `missing CSS rule: ${selector}`);
   return match[1];
+}
+
+function gridMinBudgetPx(rule) {
+  const grid = /grid-template-columns:\s*([^;]+)/.exec(rule)?.[1] || '';
+  const columns = [...grid.matchAll(/minmax\((\d+)px,[^)]+\)|(\d+)px/g)]
+    .map(match => Number(match[1] || match[2]))
+    .filter(Number.isFinite);
+  const gap = Number(/gap:\s*(\d+)px/.exec(rule)?.[1] || 0);
+  assert.ok(columns.length > 0, 'grid-template-columns should expose px minimums');
+  return columns.reduce((sum, n) => sum + n, 0) + gap * Math.max(0, columns.length - 1);
 }
 
 test('test-mode exercise card keeps title from being squeezed by trend graph', () => {
@@ -58,15 +68,28 @@ test('test-mode previous volume stays in a single compact row', () => {
 test('test-mode set row is one-line compact and does not render ROM slider', () => {
   const row = ruleBody('.ex-max-v2-main-row');
   const set = ruleBody('.ex-max-v2-set');
+  const fieldInput = ruleBody('.ex-max-v2-field input');
   const rom = ruleBody('.ex-max-v2-rom-field');
+  const romInput = ruleBody('.ex-max-v2-rom-field input');
   const start = workoutExercises.indexOf('function _renderSets');
   const end = workoutExercises.indexOf('if (typeof Sortable', start);
   assert.ok(start >= 0 && end > start, 'set render function should exist');
   const fn = workoutExercises.slice(start, end);
 
-  assert.match(row, /grid-template-columns:\s*28px\s+minmax\(42px,\s*\.9fr\)\s+minmax\(42px,\s*\.9fr\)\s+minmax\(38px,\s*\.75fr\)\s+minmax\(42px,\s*\.8fr\)\s+24px\s+16px\s+12px/);
+  assert.match(row, /grid-template-columns:\s*28px\s+minmax\(39px,\s*\.84fr\)\s+minmax\(39px,\s*\.84fr\)\s+minmax\(35px,\s*\.7fr\)\s+minmax\(52px,\s*1fr\)\s+22px\s+15px\s+14px/);
+  assert.ok(gridMinBudgetPx(row) <= 266, 'base set row minimum width should stay within mobile card budget');
   assert.match(set, /min-height:\s*30px/);
-  assert.match(rom, /grid-template-columns:\s*18px\s+minmax\(0,\s*1fr\)\s+14px/);
+  assert.match(fieldInput, /font-size:\s*11px/);
+  assert.match(fieldInput, /line-height:\s*15px/);
+  assert.match(rom, /grid-template-columns:\s*18px\s+minmax\(20px,\s*1fr\)\s+13px/);
+  assert.match(romInput, /font-size:\s*11px/);
+  assert.match(romInput, /line-height:\s*15px/);
+  const narrowCss = css.slice(css.indexOf('@media (max-width: 360px)'), css.indexOf('.ex-max-v2-actions'));
+  const narrowRow = ruleBody('.ex-max-v2-main-row', narrowCss);
+  const narrowRom = ruleBody('.ex-max-v2-rom-field', narrowCss);
+  assert.match(narrowRow, /grid-template-columns:\s*26px\s+minmax\(34px,\s*\.76fr\)\s+minmax\(34px,\s*\.76fr\)\s+minmax\(30px,\s*\.64fr\)\s+minmax\(50px,\s*1fr\)\s+21px\s+13px\s+10px/);
+  assert.ok(gridMinBudgetPx(narrowRow) <= 240, '360px set row minimum width should avoid overflow');
+  assert.match(narrowRom, /grid-template-columns:\s*16px\s+minmax\(20px,\s*1fr\)\s+12px/);
   assert.match(fn, /ex-max-v2-rom-field/);
   assert.match(fn, /set-rom-input/);
   assert.match(fn, /_romPctToScoreInput\(romValue\)/);

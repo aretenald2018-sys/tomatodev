@@ -780,7 +780,7 @@ body.wt-modal-scroll-lock {
 }
 .ex-max-v2-main-row {
   display: grid;
-  grid-template-columns: 28px minmax(42px, .9fr) minmax(42px, .9fr) minmax(38px, .75fr) minmax(42px, .8fr) 24px 16px 12px;
+  grid-template-columns: 28px minmax(39px, .84fr) minmax(39px, .84fr) minmax(35px, .7fr) minmax(52px, 1fr) 22px 15px 14px;
   align-items: center;
   gap: 3px;
   width: 100%;
@@ -826,15 +826,15 @@ body.wt-modal-scroll-lock {
   border-radius: 6px;
   background: #fff;
   color: var(--text, #111114);
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 11px;
+  line-height: 15px;
   font-weight: 650;
   text-align: center;
   outline: none;
 }
 .ex-max-v2-rom-field {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 14px;
+  grid-template-columns: 18px minmax(20px, 1fr) 13px;
   gap: 1px;
   align-items: center;
   min-width: 0;
@@ -854,8 +854,8 @@ body.wt-modal-scroll-lock {
   border-radius: 6px;
   background: #fff;
   color: var(--text, #111114);
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 11px;
+  line-height: 15px;
   font-weight: 650;
   text-align: center;
   outline: none;
@@ -938,7 +938,7 @@ body.wt-modal-scroll-lock {
   outline: none;
 }
 .ex-max-v2-set .set-done-btn {
-  width: 23px;
+  width: 22px;
   height: 23px;
   border-radius: 7px;
   border: 1px solid var(--border-light, #dbdbe0);
@@ -972,7 +972,7 @@ body.wt-modal-scroll-lock {
   opacity: .55;
 }
 .ex-max-v2-set .set-remove-btn {
-  width: 18px;
+  width: 15px;
   height: 24px;
   border: 0;
   background: transparent;
@@ -980,6 +980,32 @@ body.wt-modal-scroll-lock {
   font-size: 14px;
   line-height: 20px;
   padding: 0;
+}
+.ex-max-v2-set .set-drag-handle {
+  width: 14px;
+  height: 23px;
+}
+
+@media (max-width: 360px) {
+  .ex-max-v2-main-row {
+    grid-template-columns: 26px minmax(34px, .76fr) minmax(34px, .76fr) minmax(30px, .64fr) minmax(50px, 1fr) 21px 13px 10px;
+    gap: 2px;
+  }
+  .ex-max-v2-type-btn {
+    width: 26px;
+  }
+  .ex-max-v2-rom-field {
+    grid-template-columns: 16px minmax(20px, 1fr) 12px;
+  }
+  .ex-max-v2-set .set-done-btn {
+    width: 21px;
+  }
+  .ex-max-v2-set .set-remove-btn {
+    width: 13px;
+  }
+  .ex-max-v2-set .set-drag-handle {
+    width: 10px;
+  }
 }
 .ex-max-v2-actions {
   display: grid;
@@ -4761,7 +4787,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   border: 0;
 }
 #tab-workout .ex-block--max-v2 .set-done-btn {
-  width: 23px;
+  width: 22px;
   height: 23px;
   border-radius: 7px;
 }

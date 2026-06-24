@@ -96,5 +96,5 @@ test('Dashboard3 mode controls cannot persist normal or pro workout record UI', 
 });
 
 test('service worker cache version was bumped for workout asset changes', () => {
-  assert.match(swJs, /tomatofarm-v20260624z24-picker-gym-rail/);
+  assert.match(swJs, /tomatofarm-v20260624z26-set-row-rom-density/);
 });
