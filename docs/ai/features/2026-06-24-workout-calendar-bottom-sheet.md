@@ -177,3 +177,46 @@
   - 결과: `[deploy-verify] ok a65721dbb3e6 tomatofarm-v20260624z37-workout-day-sheet-full-open static=210`
 - PASS: 배포 URL `https://aretenald2018-sys.github.io/dashboard3/`는 HTTP 200이고, 배포된 `sw.js`에는 `tomatofarm-v20260624z37-workout-day-sheet-full-open`, `render-calendar.js`에는 `direction > 0 ? 'full' : 'bar'`와 `Math.abs(dy) < 12`가 포함되어 있다.
 - not verified yet: 배포 URL은 로그인 화면(`이름으로 로그인하세요`)에서 막혀 인증 계정 실제 `운동 탭 -> 날짜 sheet drag` UI flow 확인은 남아 있다.
+
+## 후속 Slice 4 — Keep opened sheet from collapsing after drag
+
+### 배경
+
+사용자가 sheet를 열어도 열린 채로 고정되지 않고 다시 아래로 내려간다고 보고했다.
+
+### 진단
+
+1. 드래그 release 직후에는 `_stepWorkoutHomeSheet(1)`로 `full` 전환된다.
+2. 하지만 하단 bar의 화살표/날짜 영역은 `onclick`을 가지고 있고, 모바일 브라우저의 지연 click이 release 뒤 늦게 도착할 수 있다.
+3. 기존 `_workoutHomeSuppressNextSheetClick`은 `250ms`만 유지되고 첫 소비 시 바로 false로 돌아가므로, 늦게 도착한 click이 `_toggleWorkoutHomeSheet()`를 다시 호출해 `bar`로 접을 수 있다.
+
+### 포함
+
+- 드래그 후 click suppression을 boolean 1회성에서 timestamp window 방식으로 변경한다.
+- suppression window 동안 여러 click handler가 들어와도 모두 무시되게 한다.
+- 회귀 테스트를 갱신하고 `sw.js` cache version을 bump한다.
+
+### 검증 계획
+
+- `node --check render-calendar.js; node --check sw.js`
+- `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
+- `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+
+### 실행 결과
+
+- `_workoutHomeSuppressNextSheetClick` 1회성 boolean을 `_workoutHomeSuppressSheetClickUntil` timestamp window로 교체했다.
+- drag release 후 suppression window를 `900ms`로 두어 모바일 지연 click이 늦게 도착해도 `_toggleWorkoutHomeSheet()`가 sheet를 다시 접지 못하게 했다.
+- suppression window 동안은 첫 click에서 방어가 해제되지 않고, 여러 click handler가 들어와도 모두 무시된다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z38-workout-day-sheet-drag-lock`으로 bump했다.
+
+### 실행 검증
+
+- PASS: `node --check render-calendar.js; node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
+- PASS: `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 `운동 탭 -> 날짜 sheet drag` UI flow 확인이 남아 있다.

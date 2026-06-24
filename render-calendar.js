@@ -45,11 +45,12 @@ let _workoutHomeSelectedKey = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TOD
 let _workoutHomeView = 'month';
 let _workoutHomeSheetState = 'bar';
 let _workoutHomeSessionIndex = 0;
-let _workoutHomeSuppressNextSheetClick = false;
+let _workoutHomeSuppressSheetClickUntil = 0;
 const _workoutDetailCollapsed = new Set();
 let _workoutTrackGraphSeq = 0;
 const WORKOUT_HOME_SHEET_STATES = ['bar', 'full'];
 const WORKOUT_HOME_SHEET_CLASS_STATES = ['bar', 'mid', 'full'];
+const WORKOUT_HOME_SHEET_POST_DRAG_CLICK_SUPPRESS_MS = 900;
 
 const MAX_WEAK_LABEL = {
   chest_upper:'가슴 상부', chest_lower:'가슴 하부',
@@ -1775,9 +1776,14 @@ function _toggleWorkoutHomeSheet(key = _workoutHomeSelectedKey) {
 }
 
 function _consumeWorkoutHomeSuppressedClick() {
-  if (!_workoutHomeSuppressNextSheetClick) return false;
-  _workoutHomeSuppressNextSheetClick = false;
-  return true;
+  const now = Date.now();
+  if (now < _workoutHomeSuppressSheetClickUntil) return true;
+  _workoutHomeSuppressSheetClickUntil = 0;
+  return false;
+}
+
+function _suppressWorkoutHomeSheetClick(ms = WORKOUT_HOME_SHEET_POST_DRAG_CLICK_SUPPRESS_MS) {
+  _workoutHomeSuppressSheetClickUntil = Math.max(_workoutHomeSuppressSheetClickUntil, Date.now() + ms);
 }
 
 function _bindWorkoutHomeSheetDrag(root) {
@@ -1837,8 +1843,7 @@ function _startWorkoutHomeSheetDrag(event) {
 
     const dy = lastY - startY;
     if (Math.abs(dy) < 12) return;
-    _workoutHomeSuppressNextSheetClick = true;
-    setTimeout(() => { _workoutHomeSuppressNextSheetClick = false; }, 250);
+    _suppressWorkoutHomeSheetClick();
     _stepWorkoutHomeSheet(dy < 0 ? 1 : -1);
   };
 
