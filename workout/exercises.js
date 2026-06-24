@@ -1629,6 +1629,15 @@ function _openPickerEditorFromHeader() {
   wtOpenExerciseEditor(null, _pickerMuscleFilter || null);
 }
 
+function _syncPickerDoneButton() {
+  const done = document.getElementById('ex-picker-done');
+  if (!done) return;
+  const count = (Array.isArray(S?.workout?.exercises) ? S.workout.exercises : [])
+    .filter(entry => entry?.exerciseId).length;
+  done.disabled = count === 0;
+  done.classList.toggle('active', count > 0);
+}
+
 function _bindPickerChrome() {
   const modal = document.getElementById('ex-picker-modal');
   if (!modal) return;
@@ -1640,6 +1649,9 @@ function _bindPickerChrome() {
   if (input) input.oninput = () => window._wtOnPickerSearch(input.value);
   const clear = modal.querySelector('#ex-picker-search-clear');
   if (clear) clear.onclick = () => window._wtClearPickerSearch();
+  const done = modal.querySelector('#ex-picker-done');
+  if (done) done.onclick = () => wtCloseExercisePicker();
+  _syncPickerDoneButton();
 }
 
 function _renderPickerTabs(ctx) {
@@ -1693,6 +1705,7 @@ function _syncPickerChrome(ctx) {
   modal.dataset.pickerView = _pickerView;
   modal.dataset.pickerMode = _pickerListMode;
   if (ctx) _renderPickerTabs(ctx);
+  _syncPickerDoneButton();
   const back = modal.querySelector('#ex-picker-back');
   if (back) back.setAttribute('aria-label', _pickerView === 'category' && !_pickerSearchQuery ? '닫기' : '분류로 돌아가기');
 }
@@ -2139,11 +2152,15 @@ export function _renderPickerList() {
 
       if (!alreadyAdded) {
         btn.addEventListener('click', () => {
+          if (S.workout.exercises.some(entry => entry.exerciseId === ex.id)) return;
           _ensureExpertManualSession();
           S.workout.exercises.push(_buildPickerExerciseEntry(ex));
           _renderExerciseList();
           _syncExpertTopArea();
-          wtCloseExercisePicker();
+          btn.classList.add('already');
+          const name = btn.querySelector('.ex-picker-name');
+          if (name && !name.textContent.includes('✓')) name.textContent = `${name.textContent} ✓`;
+          _syncPickerDoneButton();
           const timerBar = document.getElementById('wt-workout-timer-bar');
           if (timerBar && !timerBar.classList.contains('wt-open')) timerBar.classList.add('wt-open');
           if (!S.workout.workoutStartTime && S.workout.workoutDuration === 0) wtStartWorkoutTimer();

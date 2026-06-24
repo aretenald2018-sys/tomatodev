@@ -326,3 +326,31 @@
   - PASS: 배포 URL의 `workout/exercises.js`에 `ex-block-trend` DOM 분리가 포함된 것을 확인했다.
   - PASS: 배포 URL의 `style.css`에 `#tab-workout .ex-block-trend` 스타일이 포함된 것을 확인했다.
   - PASS: Dashboard3 Pages가 `tomatofarm-v20260624z18-workout-card-trend-row` 캐시 버전을 서빙하는 것을 확인했다.
+
+### Slice 6: picker row 선택 시 즉시 오늘 운동 카드로 닫히는 흐름 제거
+
+증상:
+
+- `가슴` 목록에서 운동 row를 누르면 picker가 즉시 닫히고 오늘 운동 카드 화면으로 돌아간다.
+- 사용자는 이 동작을 `회귀 UI로 된다`고 지적했다.
+
+진단:
+
+- `_renderPickerList()`의 row click handler가 `S.workout.exercises.push(...)` 직후 `wtCloseExercisePicker()`를 호출한다.
+- 따라서 reference UI처럼 picker 안에서 선택 상태를 유지하고 `완료`로 닫는 흐름이 아니라, 선택 즉시 기존 운동 카드 화면으로 전환된다.
+
+구현:
+
+- `modals/ex-picker-modal.js`에 picker footer와 `#ex-picker-done` 완료 버튼을 추가한다.
+- row 선택 시 운동은 세션에 추가하되 picker를 닫지 않는다.
+- 선택된 row는 `already` 상태와 `✓` 표시로 즉시 갱신한다.
+- 완료 버튼은 운동이 하나 이상 선택되면 활성화되고, 사용자가 누를 때만 picker를 닫는다.
+- `tests/ex-picker-selection-flow.test.js`를 추가해 row 선택 handler 안에 `wtCloseExercisePicker()`가 다시 들어오면 실패하게 한다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z19-picker-staged-done`으로 bump한다.
+
+검증:
+
+- PASS: `node --check modals/ex-picker-modal.js; node --check workout/exercises.js; node --check sw.js`
+- PASS: `node --test tests/ex-picker-selection-flow.test.js tests/workout-card-layout-css.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
