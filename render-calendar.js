@@ -56,6 +56,7 @@ const WORKOUT_HOME_SHEET_DRAG_OPEN_BAR_RATIO = 0.1;
 const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX = 220;
 const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_RATIO = 0.35;
 const WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY = 0.55;
+const WORKOUT_HOME_SHEET_FULL_CLEARANCE_PX = 112;
 
 const MAX_WEAK_LABEL = {
   chest_upper:'가슴 상부', chest_lower:'가슴 하부',
@@ -1096,9 +1097,8 @@ function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, includeHead 
 
       <div class="wt-day-sessionbar">
         <div class="wt-day-session-tabs">${sessionTabs}</div>
-        <button type="button" class="wt-day-edit" onclick="window._wtCalEditSession('${key}', ${sessionIndex})" aria-label="선택 회차 편집">✎</button>
-        <button type="button" class="wt-day-add-inline" onclick="window._wtCalAddSession('${key}')" aria-label="운동 추가">＋</button>
       </div>
+      <button type="button" class="wt-day-fab" onclick="window._wtCalAddSession('${key}')" aria-label="운동 추가">＋</button>
     </div>
   `;
 }
@@ -1843,7 +1843,7 @@ function _startWorkoutHomeSheetDrag(event) {
   const startHeight = sheet.getBoundingClientRect?.().height || 0;
   const barHeight = sheet.querySelector?.('.cal-workout-day-bar')?.getBoundingClientRect?.().height || 132;
   const minHeight = Math.max(64, Math.min(startHeight, barHeight || startHeight));
-  const maxHeight = Math.max(startHeight, (window.innerHeight || startHeight) - 64);
+  const maxHeight = Math.max(startHeight, (window.innerHeight || startHeight) - WORKOUT_HOME_SHEET_FULL_CLEARANCE_PX);
   const startState = _currentWorkoutHomeSheetState();
   let openLatched = false;
   const dragTravel = Math.max(0, maxHeight - minHeight);

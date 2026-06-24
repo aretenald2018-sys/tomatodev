@@ -9836,9 +9836,20 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
     filter: drop-shadow(0 0 8px rgba(47, 109, 246, 0.82));
   }
 }
+@keyframes wt-sheet-arrow-pulse-down {
+  0%, 100% {
+    transform: translateY(0);
+    filter: drop-shadow(0 0 0 rgba(47, 109, 246, 0));
+  }
+  50% {
+    transform: translateY(2px);
+    filter: drop-shadow(0 0 8px rgba(47, 109, 246, 0.82));
+  }
+}
 
 /* 운동탭 날짜 상세 */
 .wt-day-detail {
+  position: relative;
   min-height: calc(100vh - 60px);
   padding: 14px 14px 156px;
   background: #f7f7fb;
@@ -10464,24 +10475,23 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   border-radius: 999px;
   background: #e43b32;
 }
-.wt-day-edit,
-.wt-day-add-inline {
-  flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
+.wt-day-fab {
+  position: absolute;
+  right: 18px;
+  bottom: 76px;
+  z-index: 44;
+  width: 48px;
+  height: 48px;
   border: 0;
-  border-radius: 11px;
-  background: transparent;
-  color: #666a72;
-  font-size: 22px;
-  line-height: 1;
-}
-.wt-day-add-inline {
+  border-radius: 16px;
   background: #dce6ff;
   color: #315176;
-  font-size: 28px;
-  box-shadow: 0 2px 8px rgba(30, 35, 48, 0.12);
+  font-family: var(--font-sans);
+  font-size: 34px;
+  line-height: 1;
+  box-shadow: 0 8px 18px rgba(47, 109, 246, 0.24);
 }
+.wt-day-fab:active { transform: scale(0.96); }
 
 @media (max-width: 430px) {
   .cal-workout-surface-home .cal-weekdays {
@@ -10721,19 +10731,17 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
     min-height: 32px;
     font-size: 13px;
   }
-  .wt-day-edit,
-  .wt-day-add-inline {
-    width: 32px;
-    height: 32px;
-    font-size: 21px;
-  }
-  .wt-day-add-inline {
-    font-size: 26px;
+  .wt-day-fab {
+    right: 12px;
+    width: 46px;
+    height: 46px;
+    font-size: 32px;
   }
 }
 
 .cal-workout-day-sheet {
   --wt-day-sheet-height: clamp(72px, 10dvh, 96px);
+  --wt-day-sheet-full-clearance: 112px;
   --wt-day-sheet-drag-y: 0px;
   position: fixed;
   left: 0;
@@ -10761,7 +10769,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   --wt-day-sheet-height: min(62dvh, 640px);
 }
 .cal-workout-day-sheet.is-full {
-  --wt-day-sheet-height: calc(100dvh - 68px - env(safe-area-inset-top, 0px));
+  --wt-day-sheet-height: calc(100dvh - var(--wt-day-sheet-full-clearance) - env(safe-area-inset-top, 0px));
   box-shadow: 0 -12px 34px rgba(24, 28, 38, 0.22);
 }
 .cal-workout-day-sheet.is-dragging {
@@ -10794,9 +10802,9 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   cursor: grabbing;
 }
 .cal-workout-day-sheet.is-full .cal-workout-day-expand {
-  color: #6b7280;
-  text-shadow: none;
-  animation: none;
+  color: #2f6df6;
+  text-shadow: 0 0 10px rgba(47, 109, 246, 0.72);
+  animation: wt-sheet-arrow-pulse-down 1.45s ease-in-out infinite;
 }
 .cal-workout-day-sheet.is-dragging .cal-workout-day-grip {
   background: rgba(47, 109, 246, 0.62);
@@ -10852,7 +10860,11 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   z-index: 2;
   flex: 0 0 auto;
   margin: 0 -14px;
-  padding: 7px 18px calc(7px + env(safe-area-inset-bottom, 0px));
+  padding: 7px 82px calc(7px + env(safe-area-inset-bottom, 0px)) 18px;
+}
+.cal-workout-day-sheet .wt-day-fab {
+  bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  z-index: 4;
 }
 
 @media (max-width: 430px) {
@@ -10866,7 +10878,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
     --wt-day-sheet-height: 60dvh;
   }
   .cal-workout-day-sheet.is-full {
-    --wt-day-sheet-height: calc(100dvh - 64px - env(safe-area-inset-top, 0px));
+    --wt-day-sheet-height: calc(100dvh - var(--wt-day-sheet-full-clearance) - env(safe-area-inset-top, 0px));
   }
   .cal-workout-day-sheet .wt-day-detail {
     padding: 8px 12px 0;
@@ -10874,7 +10886,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   .cal-workout-day-sheet .wt-day-sessionbar {
     gap: 6px;
     margin: 0 -12px;
-    padding: 7px 12px calc(7px + env(safe-area-inset-bottom, 0px));
+    padding: 7px 76px calc(7px + env(safe-area-inset-bottom, 0px)) 12px;
   }
 }
 

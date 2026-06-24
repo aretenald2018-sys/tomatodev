@@ -13,24 +13,25 @@ function ruleBody(selector) {
   return match[1];
 }
 
-test('empty workout view uses inline add button in the session bar, not a floating fab', () => {
+test('empty workout view uses a floating add button beside the session tabs', () => {
   const start = renderCalendar.indexOf('function _renderWorkoutHomeDetail');
   const end = renderCalendar.indexOf('function _renderWorkoutDetailSummaryCard', start);
   assert.ok(start >= 0 && end > start, 'workout day detail renderer should exist');
   const detail = renderCalendar.slice(start, end);
 
-  assert.match(detail, /class="wt-day-sessionbar"[\s\S]*class="wt-day-add-inline"/);
-  assert.match(detail, /window\._wtCalAddSession/);
-  assert.doesNotMatch(detail, /class="wt-day-fab"/);
-  assert.doesNotMatch(renderCalendar, /우측 하단 \+ 버튼/);
+  assert.match(detail, /class="wt-day-sessionbar"[\s\S]*class="wt-day-session-tabs"/);
+  assert.match(detail, /class="wt-day-fab"[\s\S]*window\._wtCalAddSession/);
+  assert.doesNotMatch(detail, /class="wt-day-add-inline"/);
+  assert.doesNotMatch(detail, /class="wt-day-edit"/);
 
   const bar = ruleBody('.wt-day-sessionbar');
-  const add = ruleBody('.wt-day-add-inline');
+  const fab = ruleBody('.wt-day-fab');
   assert.match(bar, /gap:\s*8px/);
   assert.match(bar, /padding:\s*7px 18px/);
-  assert.match(add, /width:\s*34px/);
-  assert.match(add, /height:\s*34px/);
-  assert.doesNotMatch(add, /position:\s*fixed/);
+  assert.match(fab, /position:\s*absolute/);
+  assert.match(fab, /right:\s*18px/);
+  assert.match(fab, /width:\s*48px/);
+  assert.match(fab, /height:\s*48px/);
 });
 
 test('empty workout guidance is compact enough for one screen', () => {

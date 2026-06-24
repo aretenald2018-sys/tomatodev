@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-- 상태: `complete`
+- 상태: `ready_for_execution`
 - 계획 문서: `docs/ai/features/2026-06-24-workout-calendar-bottom-sheet.md`
-- 현재 단계: `reviewed — Slice 7 latch open intent on tiny upward drag`
-- 마지막 완료: `bar 상태에서 접힌 sheet bar 높이의 10%, 최소 8px만 위로 끌어도 open intent를 latch해 release 시 full로 고정되게 구현하고 리뷰까지 완료했다.`
-- 다음 액션: `인증 계정으로 실제 drag UI flow를 확인한다.`
+- 현재 단계: `reviewed — Slice 8 deploy verification pending`
+- 마지막 완료: `Slice 8에서 full sheet 상단 clearance, 열린 상태 파란 아래 화살표, 하단 연필 제거, 우측 하단 floating + 복구를 구현하고 리뷰까지 완료했다.`
+- 다음 액션: `Slice 8 변경을 origin/main에 push한 뒤 Dashboard3 Pages 배포 검증을 수행한다.`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
@@ -153,6 +153,26 @@
 
 - Slice 7 리뷰:
   - `docs/ai/reviews/2026-06-25-workout-calendar-bottom-sheet-open-latch-review.md`
+
+- 다음 Slice 8:
+  1. full sheet 높이에 상단 clearance를 적용해 날짜/오늘/루틴 헤더가 앱 상단 아래로 드러나게 변경
+  2. 열린 상태 화살표를 파란 아래 방향 affordance로 변경
+  3. 하단 회차 bar의 연필 편집 버튼 제거
+  4. `+` 운동 추가 버튼을 우측 하단 floating button으로 복구
+  5. 회귀 테스트와 `sw.js` `CACHE_VERSION` 갱신
+
+- Slice 8 검증:
+  1. PASS: `node --check render-calendar.js; node --check sw.js`
+  2. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
+  3. PASS: `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
+  4. PASS: `node scripts/verify-runtime-assets.mjs`
+  5. PASS: `git diff --check`
+  6. PASS: `docs/ai/reviews/2026-06-25-workout-calendar-bottom-sheet-fab-reveal-review.md`
+  7. pending: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+  8. not verified yet: 로그인 화면에 막혀 인증 계정 실제 `운동 탭 -> 날짜 sheet full/open-close/add` UI flow 확인 필요
+
+- Slice 8 리뷰:
+  - `docs/ai/reviews/2026-06-25-workout-calendar-bottom-sheet-fab-reveal-review.md`
 
 - 이전 계획 파일: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md`
 - 완료한 Slice 4:

@@ -33,5 +33,5 @@ test('exercise picker left rail chips are compact single-line controls', () => {
 });
 
 test('service worker cache version was bumped for stats picker UI polish', () => {
-  assert.match(swJs, /tomatofarm-v20260625z41-workout-day-sheet-open-latch/);
+  assert.match(swJs, /tomatofarm-v20260625z42-workout-day-sheet-fab-reveal/);
 });

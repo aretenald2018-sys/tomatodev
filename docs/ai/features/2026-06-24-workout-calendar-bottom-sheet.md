@@ -160,30 +160,11 @@
 
 ### 실행 결과
 
-- open threshold를 `dragTravel * 0.1`에서 `minHeight * 0.1` 기준으로 바꿔 접힌 bar 높이의 10%, 최소 8px만 위로 움직여도 open intent가 잡히게 했다.
-- `openLatched`를 추가해 `bar` 상태에서 위 방향 threshold를 한 번 넘으면 release 시 최종 좌표 흔들림과 무관하게 `full`로 고정한다.
-- `openLatched`는 `bar` 시작 drag에서만 켜지며, `full` 시작 drag는 기존 distance resolver를 타게 해서 큰 아래 drag로 닫을 수 있게 유지했다.
-- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260625z41-workout-day-sheet-open-latch`로 bump했다.
-
-### 실행 검증
-
-- PASS: `node --check render-calendar.js; node --check sw.js`
-- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
-- PASS: `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
-- PASS: `node scripts/verify-runtime-assets.mjs`
-- PASS: `git diff --check`
-- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ bda8fd26b49e731fc43807844b737ed155fa7ed6`
-  - 결과: `[deploy-verify] ok bda8fd26b49e tomatofarm-v20260625z41-workout-day-sheet-open-latch static=210`
-- PASS: 배포 URL의 `build-info.json`, `sw.js`, `render-calendar.js`가 `bda8fd26b49e`, z41 cache, bar-height 10% open threshold, `openLatched`, velocity-close 제거를 반환한다.
-- not verified yet: 배포 URL은 로그인 화면에서 막혀 인증 계정 실제 `운동 탭 -> 날짜 sheet drag` UI flow 확인은 남아 있다.
-
-### 실행 결과
-
 - `_stepWorkoutHomeSheet()`를 방향 기반 `full`/`bar` 전환으로 단순화해 짧은 위 드래그와 `ArrowUp`이 즉시 `full`로 열리게 했다.
 - drag release 기준을 `36px`에서 `12px`로 낮춰 살짝 올리는 제스처도 동작하게 했다.
 - drag preview의 `±180px` 제한을 제거하고 `startHeight`/`maxHeight` 기반으로 계산해 손가락으로 크게 끌 때도 full 높이까지 따라가게 했다.
 - 기존 `is-mid` class는 legacy 제거용으로만 정리하고, 사용자 정착 상태는 `bar`/`full`만 사용한다.
-- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z37-workout-day-sheet-full-open`으로 bump했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z37-workout-day-sheet-full-open`로 bump했다.
 
 ### 실행 검증
 
@@ -229,7 +210,7 @@
 - `_workoutHomeSuppressNextSheetClick` 1회성 boolean을 `_workoutHomeSuppressSheetClickUntil` timestamp window로 교체했다.
 - drag release 후 suppression window를 `900ms`로 두어 모바일 지연 click이 늦게 도착해도 `_toggleWorkoutHomeSheet()`가 sheet를 다시 접지 못하게 했다.
 - suppression window 동안은 첫 click에서 방어가 해제되지 않고, 여러 click handler가 들어와도 모두 무시된다.
-- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z38-workout-day-sheet-drag-lock`으로 bump했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z38-workout-day-sheet-drag-lock`로 bump했다.
 
 ### 실행 검증
 
@@ -361,3 +342,76 @@
 - `node scripts/verify-runtime-assets.mjs`
 - `git diff --check`
 - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+
+### 실행 결과
+
+- open threshold를 `dragTravel * 0.1`에서 `minHeight * 0.1` 기준으로 바꿔 접힌 bar 높이의 10%, 최소 8px만 위로 움직여도 open intent가 잡히게 했다.
+- `openLatched`를 추가해 `bar` 상태에서 위 방향 threshold를 한 번 넘으면 release 시 최종 좌표 흔들림과 무관하게 `full`로 고정한다.
+- `openLatched`는 `bar` 시작 drag에서만 켜지며, `full` 시작 drag는 기존 distance resolver를 타게 해서 큰 아래 drag로 닫을 수 있게 유지했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260625z41-workout-day-sheet-open-latch`로 bump했다.
+
+### 실행 검증
+
+- PASS: `node --check render-calendar.js; node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
+- PASS: `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ bda8fd26b49e731fc43807844b737ed155fa7ed6`
+  - 결과: `[deploy-verify] ok bda8fd26b49e tomatofarm-v20260625z41-workout-day-sheet-open-latch static=210`
+- PASS: 배포 URL의 `build-info.json`, `sw.js`, `render-calendar.js`가 `bda8fd26b49e`, z41 cache, bar-height 10% open threshold, `openLatched`, velocity-close 제거를 반환한다.
+- not verified yet: 배포 URL은 로그인 화면에서 막혀 인증 계정 실제 `운동 탭 -> 날짜 sheet drag` UI flow 확인은 남아 있다.
+
+## 후속 Slice 8 — Full sheet top reveal and floating add affordance
+
+### 배경
+
+첨부 화면에서 sheet를 끝까지 올려도 날짜/오늘/루틴 헤더가 앱 상단바 아래로 잘려 보인다. 사용자는 full 상태에서도 두번째 예시처럼 헤더 전체가 드러나고, 열린 상태에서는 다시 내릴 수 있음을 파란 아래 화살표로 보여주길 원한다. 추가로 하단 회차 bar의 연필 편집 버튼은 삭제하고, `+` 추가 버튼은 다시 우측 하단 floating button으로 보이길 원한다.
+
+### 진단
+
+1. `.cal-workout-day-sheet.is-full` 높이가 `100dvh - 64px` 수준이라 모바일 브라우저/앱 헤더 조합에서는 sheet 상단이 상단바 뒤에 붙어 날짜 bar 일부가 가려질 수 있다.
+2. 열린 상태의 `.cal-workout-day-expand`는 회색/animation none으로 바뀌어 "아래로 내릴 수 있음" affordance가 약하다.
+3. `_renderWorkoutHomeDetailHtml()`은 `.wt-day-sessionbar` 안에 `wt-day-edit`과 `wt-day-add-inline`을 함께 렌더해 하단 bar가 액션 버튼까지 차지한다.
+
+### 포함
+
+- full sheet 높이에 상단 여유를 더 둬 날짜 bar 전체가 앱 상단 아래로 드러나게 한다.
+- 열린 상태의 toggle 화살표도 파란색/펄스 affordance를 유지하되 방향은 아래로 표시한다.
+- `.wt-day-sessionbar`에서는 회차 탭만 남기고 연필 편집 버튼을 제거한다.
+- `+` 추가 버튼은 `.wt-day-fab`로 분리해 sheet 우측 하단 floating button으로 배치한다.
+- 회귀 테스트와 `sw.js` cache version을 bump한다.
+
+### 제외
+
+- 운동 편집 진입 경로 자체 변경
+- 회차 생성/저장 데이터 구조 변경
+- 운동 추가 picker 디자인 변경
+
+### 검증 계획
+
+- `node --check render-calendar.js; node --check sw.js`
+- `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
+- `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+
+### 실행 결과
+
+- `WORKOUT_HOME_SHEET_FULL_CLEARANCE_PX = 112`를 추가하고 drag preview `maxHeight`와 full sheet CSS 높이를 같은 상단 여유 기준으로 맞췄다.
+- `.cal-workout-day-sheet.is-full`은 `--wt-day-sheet-full-clearance: 112px`를 빼서 앱 상단 아래에 날짜/오늘/루틴 헤더가 드러나게 했다.
+- full 상태의 `.cal-workout-day-expand`도 파란색과 `wt-sheet-arrow-pulse-down` animation을 사용해 아래로 내릴 수 있음을 표시한다.
+- `.wt-day-sessionbar`에서 `wt-day-edit`과 `wt-day-add-inline`을 제거하고, 운동 추가는 `.wt-day-fab` floating button으로 분리했다.
+- `.wt-day-sessionbar`는 우측 padding을 넓혀 floating `+`와 회차 탭이 겹치지 않게 했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260625z42-workout-day-sheet-fab-reveal`로 bump했다.
+
+### 실행 검증
+
+- PASS: `node --check render-calendar.js; node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
+- PASS: `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- pending: Dashboard3 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>` 실행
+- not verified yet: 배포 URL은 인증 계정 실제 `운동 탭 -> 날짜 sheet full/open-close/add` UI flow 확인이 남아 있다.
