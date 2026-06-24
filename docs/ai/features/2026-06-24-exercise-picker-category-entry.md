@@ -244,3 +244,63 @@
   - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 9594418`
   - PASS: Dashboard3 Pages가 `tomatofarm-v20260624z16-picker-filter-layout` 캐시 버전을 서빙하는 것을 확인했다.
   - not verified yet: 배포 URL은 로그인 화면에 막혀 `운동 탭 -> + -> 가슴 선택 -> 최근/빈도/이름 정렬` UI 클릭 흐름을 인증 계정으로 끝까지 확인하지 못했다.
+
+### Slice 5: 운동 추가 후 오늘 운동 카드 헤더 UI 회귀 수정
+
+증상:
+
+- 운동을 추가한 직후 오늘 운동 카드에서 운동명이 2~3글자 폭으로 세로 줄바꿈된다.
+- 예시: `바벨 벤치프레스`가 `바벨 벤 / 치프레 / 스`처럼 좁은 컬럼에 갇힌다.
+
+진단:
+
+- 일반 운동 카드 헤더는 `muscle chip + name + po-pill + sparkline + remove`를 한 줄 flex로 배치한다.
+- `.ex-sparkline-wrap`은 `min-width:176px`로 고정되어 있고, 삭제 버튼도 우측에 고정된다.
+- 모바일 카드 폭에서 스파크라인과 삭제 버튼이 공간을 먼저 차지하면서 `.ex-block-name`이 과도하게 줄어드는 구조다.
+- 이는 picker 변경 자체가 카드 CSS를 직접 덮은 것은 아니지만, 운동 추가 흐름이 직접 picker로 바뀌면서 카드 진입 직후 회귀가 즉시 노출되는 문제다.
+
+대상 파일:
+
+- `style.css`
+- `sw.js`
+- `docs/ai/features/2026-06-24-exercise-picker-category-entry.md`
+- `docs/ai/reviews/2026-06-24-workout-card-header-regression-review.md`
+
+구현:
+
+- `#tab-workout .ex-block-header`가 줄바꿈 가능한 header layout이 되도록 한다.
+- 운동명은 최소 폭을 보장하고 `overflow-wrap:anywhere`를 금지해 단어가 불필요하게 글자 단위로 쪼개지지 않게 한다.
+- 스파크라인은 운동명과 같은 줄에서 이름을 밀지 않고 다음 줄 전체 폭으로 내려가도록 한다.
+- 삭제 버튼과 프로 모드 `po-pill`은 첫 줄에서 고정 폭 요소로 유지한다.
+- `style.css`가 `STATIC_ASSETS`에 포함되어 있으므로 `sw.js` `CACHE_VERSION`을 bump한다.
+
+범위 밖:
+
+- 운동 카드 기능/저장 로직 변경.
+- picker 필터 레이아웃 추가 수정.
+- 운동별 썸네일 자산 제작.
+
+검증 계획:
+
+- `node --check sw.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- CSS source check: `#tab-workout .ex-block-header`에 `flex-wrap: wrap`, `.ex-sparkline-wrap`에 `flex-basis: 100%`, `.ex-block-name`에 `min-width`가 있는지 확인한다.
+- Dashboard3 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+- 배포 URL에서 로그인 후 `운동 탭 -> + -> 운동 선택 -> 운동 카드`에서 운동명이 정상 폭으로 보이고 스파크라인이 다음 줄로 내려가는지 확인한다.
+
+실행 결과:
+
+- 2026-06-24: Slice 5 구현 완료.
+- `style.css`에서 `#tab-workout .ex-block-header`를 줄바꿈 가능한 헤더로 변경했다.
+- 운동명은 `min-width:min(11rem, 52vw)`와 `word-break:keep-all`을 적용해 스파크라인에 밀려 글자 단위로 쪼개지지 않게 했다.
+- 스파크라인은 `#tab-workout .ex-block-header .ex-sparkline-wrap`에서 다음 줄 전체 폭으로 배치했다.
+- 삭제 버튼은 첫 줄 우측에 남되 `margin-left:auto` 상속을 제거해 이름 영역을 압박하지 않게 했다.
+- `tests/workout-card-layout-css.test.js`를 추가해 같은 CSS 회귀를 source-level로 방어한다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z17-workout-card-header`로 bump했다.
+- 진단: `docs/ai/diagnoses/2026-06-24-workout-card-header-regression.md`
+- 리뷰: `docs/ai/reviews/2026-06-24-workout-card-header-regression-review.md`
+- PASS: `node --test tests/workout-card-layout-css.test.js`
+- PASS: `node --check sw.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
