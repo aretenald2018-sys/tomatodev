@@ -4,10 +4,10 @@
 
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-23-home-life-zone-card.md` (홈 라이프존 카드)
-- 현재 단계: `review complete — Slice 10 모바일 요약 구획 회귀 복원`
-- 마지막 완료: `모바일에서 라이프존 하단 칼로리/체중 요약이 1열로 쌓이던 media query를 제거하고, 캐시 버전을 갱신했다.`
-- 다음 액션: `관련 변경을 커밋하고 dashboard3 개발계에 push한 뒤 배포 URL HTTP 200과 원격 CSS를 확인한다.`
-- 차단 사유: `not verified yet. push와 배포 URL 검증이 남아 있다.`
+- 현재 단계: `review/deploy complete — Slice 10 모바일 요약 구획 회귀 복원`
+- 마지막 완료: `모바일에서 라이프존 하단 칼로리/체중 요약이 1열로 쌓이던 media query를 제거하고, dashboard3 개발계 배포 URL에서 HTTP 200과 원격 CSS를 확인했다.`
+- 다음 액션: `없음. 사용자는 모바일 홈탭에서 칼로리/체중 요약이 한 줄 2칸으로 표시되는지 확인하면 된다.`
+- 차단 사유: `없음. 로그인 세션이 필요한 실제 모바일 UI 시각 확인은 사용자 기기에서 최종 확인한다.`
 
 ## 다음 실행 대상
 
@@ -19,7 +19,16 @@
   4. `sw.js` `CACHE_VERSION` bump
   5. `docs/ai/reviews/2026-06-24-home-life-zone-mobile-summary-regression-review.md` 작성
   6. `index.html` cache-busting query token bump
-  - 없음.
+
+- Slice 10 검증 완료:
+  1. PASS: `node --check sw.js`
+  2. PASS: `node --check home/life-zone.js`
+  3. PASS: `node --check home/life-zone-state.js`
+  4. PASS: `node --test tests/home-life-zone-state.test.js`
+  5. PASS: `node scripts/verify-runtime-assets.mjs`
+  6. PASS: `git diff --check`
+  7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 788329199a1c`
+  8. PASS: 원격 `style.css`에서 기본 2컬럼 규칙 유지, 모바일 `.lz-summary-strip { grid-template-columns: 1fr; }` 제거 확인
 
 - 방금 완료한 Slice 4:
   1. `workout/save.js`에서 운동 저장 payload에 `lifeZoneWorkoutActivity` snapshot 추가

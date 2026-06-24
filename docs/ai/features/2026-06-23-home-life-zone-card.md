@@ -313,7 +313,7 @@
   - 모바일 media query에서 1열 전환과 하단 border override를 제거한다.
   - 좁은 화면에서는 요약 버튼 padding과 숫자 크기만 소폭 줄인다.
   - `style.css`는 `STATIC_ASSETS` 대상이므로 `sw.js` `CACHE_VERSION`을 함께 bump한다.
-- 상태: 2026-06-24 실행 중. 브라우저 UI 플로우는 배포 후 확인한다.
+- 상태: 2026-06-24 실행/리뷰/개발계 배포 완료. 원격 HTTP 200, build-info commit, 캐시 버전, CSS 2컬럼 규칙을 확인했다.
 
 - 리스크: `줍스/문정토마토/이재헌` 이름이 계정 id와 다르거나 사용자의 친구가 아닐 수 있다.
   - 대안: `lifeZoneRoster` 설정을 두고 account id를 명시한다. 없으면 현재 유저/이웃 중 닉네임 매칭으로 fallback.

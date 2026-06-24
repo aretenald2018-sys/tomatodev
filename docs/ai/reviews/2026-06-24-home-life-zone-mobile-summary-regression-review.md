@@ -20,7 +20,11 @@
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
 - PASS: 정적 CSS 확인 — 모바일 media query에서 `.lz-summary-strip` 1열 override 제거, 기본 2컬럼 유지.
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 788329199a1c`
+- PASS: 원격 `https://aretenald2018-sys.github.io/dashboard3/` HTTP 200.
+- PASS: 원격 `style.css`에서 기본 2컬럼 규칙 유지, 모바일 `.lz-summary-strip { grid-template-columns: 1fr; }` 제거 확인.
+- PASS: 원격 `sw.js` `CACHE_VERSION = 'tomatofarm-v20260624z3-life-zone-summary-row'` 확인.
 
 ## 잔여 리스크
 
-- 로그인 세션이 필요한 실제 모바일 홈탭 UI 플로우는 개발계 배포 후 사용자 기기에서 최종 확인한다.
+- 로그인 세션이 필요한 실제 모바일 홈탭 UI 시각 확인은 사용자 기기에서 최종 확인한다.
