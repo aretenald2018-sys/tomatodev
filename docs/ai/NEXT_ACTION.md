@@ -105,7 +105,8 @@
   4. PASS: `node scripts/verify-runtime-assets.mjs`
   5. PASS: `git diff --check`
   6. PASS: `docs/ai/reviews/2026-06-24-workout-calendar-bottom-sheet-snap-ux-review.md`
-  7. not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 drag UI flow 확인 필요
+  7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ b872a13e4f24c3460df45e1ef01e553728602709`
+  8. not verified yet: 로그인 화면에 막혀 인증 계정 실제 drag UI flow 확인 필요
 
 - Slice 5 리뷰:
   - `docs/ai/reviews/2026-06-24-workout-calendar-bottom-sheet-snap-ux-review.md`
