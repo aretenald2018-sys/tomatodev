@@ -53,5 +53,5 @@ test('muscle fatigue styles support direct blue and red muscle tint states', () 
 });
 
 test('service worker cache version was bumped for stats fatigue insight assets', () => {
-  assert.match(swJs, /tomatofarm-v20260624z38-workout-day-sheet-drag-lock/);
+  assert.match(swJs, /tomatofarm-v20260624z39-workout-day-sheet-snap-ux/);
 });

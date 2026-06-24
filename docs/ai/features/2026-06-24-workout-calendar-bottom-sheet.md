@@ -222,3 +222,53 @@
 - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 684c6fc2025dbf20f3be4c52ab14b41cc6528831`
   - 결과: `[deploy-verify] ok 684c6fc2025d tomatofarm-v20260624z38-workout-day-sheet-drag-lock static=210`
 - not verified yet: 배포 URL은 로그인 화면에서 막혀 인증 계정 실제 `운동 탭 -> 날짜 sheet drag` UI flow 확인은 남아 있다.
+
+## 후속 Slice 5 — Bottom sheet snap UX polish
+
+### 배경
+
+사용자가 하단 sheet를 올렸다 내리는 UX가 좋지 않다고 피드백했다. 단순히 열림/닫힘 여부만 맞추는 것보다, 제스처가 예측 가능하고 실수로 접히지 않으며 잡을 수 있는 표식이 분명해야 한다.
+
+### 그릴 결과
+
+- 전문가식 bottom sheet는 작은 위 제스처로는 쉽게 열리고, 아래로 접는 동작은 충분히 길게 끌거나 빠르게 내릴 때만 실행되어야 한다.
+- drag release는 거리와 속도를 함께 보고 snap target을 결정해야 한다.
+- 열린 상태에서 아주 작은 아래 움직임 때문에 바로 접히면 안 된다.
+- grab affordance는 화살표 pulse만으로 부족하므로 상단 grip pill을 추가한다.
+- 날짜 본문을 열린 상태에서 다시 탭해도 `bar -> full` 재렌더 flicker가 없어야 한다.
+
+### 포함
+
+- drag release target을 `dy`와 velocity 기반으로 계산하는 snap resolver를 추가한다.
+- `bar`에서 위 방향은 작은 제스처도 `full`로 열고, `full`에서 아래 방향은 collapse threshold/velocity를 만족할 때만 `bar`로 접는다.
+- 열린 상태의 동일 날짜 탭은 no-op 처리해 재렌더 flicker를 줄인다.
+- 하단 sheet 헤더에 grip pill을 추가하고 열린 상태에서는 화살표 pulse를 줄인다.
+- 회귀 테스트를 갱신하고 `sw.js` cache version을 bump한다.
+
+### 검증 계획
+
+- `node --check render-calendar.js; node --check sw.js`
+- `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
+- `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+
+### 실행 결과
+
+- `_resolveWorkoutHomeSheetDragTarget(dy, velocityY)`를 추가해 release 시 거리와 속도를 함께 보고 `bar`/`full` snap target을 결정한다.
+- 접힌 상태(`bar`)에서는 `10px` 이상 위로 올리거나 위 방향 fling이면 `full`로 쉽게 열린다.
+- 열린 상태(`full`)에서는 아래로 `96px` 이상 끌거나 빠르게 내릴 때만 `bar`로 접고, 작은 아래 움직임은 다시 `full`로 복귀한다.
+- drag 중 `velocityY`를 샘플링해 긴 거리 drag뿐 아니라 빠른 fling도 반영한다.
+- 이미 열린 동일 날짜를 다시 탭하면 no-op 처리해 `bar -> full` 재렌더 flicker를 줄였다.
+- 하단 sheet 헤더에 `cal-workout-day-grip` pill을 추가하고, 열린 상태의 화살표 pulse를 제거했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z39-workout-day-sheet-snap-ux`로 bump했다.
+
+### 실행 검증
+
+- PASS: `node --check render-calendar.js; node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
+- PASS: `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 `운동 탭 -> 날짜 sheet drag` UI flow 확인이 남아 있다.

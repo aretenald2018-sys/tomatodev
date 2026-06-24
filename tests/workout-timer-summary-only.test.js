@@ -44,5 +44,5 @@ test('workout detail modal no longer renders timer-only body sections', () => {
 });
 
 test('service worker cache version was bumped for workout timer summary-only UI', () => {
-  assert.match(swJs, /tomatofarm-v20260624z38-workout-day-sheet-drag-lock/);
+  assert.match(swJs, /tomatofarm-v20260624z39-workout-day-sheet-snap-ux/);
 });

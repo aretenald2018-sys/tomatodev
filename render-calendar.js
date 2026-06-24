@@ -51,6 +51,9 @@ let _workoutTrackGraphSeq = 0;
 const WORKOUT_HOME_SHEET_STATES = ['bar', 'full'];
 const WORKOUT_HOME_SHEET_CLASS_STATES = ['bar', 'mid', 'full'];
 const WORKOUT_HOME_SHEET_POST_DRAG_CLICK_SUPPRESS_MS = 900;
+const WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX = 10;
+const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX = 96;
+const WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY = 0.55;
 
 const MAX_WEAK_LABEL = {
   chest_upper:'가슴 상부', chest_lower:'가슴 하부',
@@ -848,6 +851,7 @@ function _renderWorkoutHomeDayBar(selectedKey, { cache, plan, checkins, lookup }
   const expanded = sheetState !== 'bar';
   return `
     <div class="cal-workout-day-bar" data-wt-sheet-handle tabindex="0" aria-expanded="${expanded ? 'true' : 'false'}">
+      <span class="cal-workout-day-grip" aria-hidden="true"></span>
       <button type="button" class="cal-workout-day-expand" data-wt-sheet-toggle onclick="window._wtCalToggleSheet('${selected}')" aria-label="${expanded ? '날짜 상세 접기' : '선택한 날짜 열기'}">${expanded ? '⌄' : '⌃'}</button>
       <button type="button" class="cal-workout-day-main" onclick="window._wtCalOpenDay('${selected}')">
         <span class="cal-workout-day-date">${selected} <em>${_dateDistanceLabel(selected)}</em></span>
@@ -1762,6 +1766,15 @@ function _stepWorkoutHomeSheet(direction) {
   _setWorkoutHomeSheetState(direction > 0 ? 'full' : 'bar');
 }
 
+function _resolveWorkoutHomeSheetDragTarget(dy, velocityY) {
+  const current = _currentWorkoutHomeSheetState();
+  const isUp = dy < -WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX || velocityY < -WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY;
+  const isIntentionalDown = dy > WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX || velocityY > WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY;
+  if (current === 'bar') return isUp ? 'full' : 'bar';
+  if (isIntentionalDown) return 'bar';
+  return 'full';
+}
+
 function _toggleWorkoutHomeSheet(key = _workoutHomeSelectedKey) {
   if (_consumeWorkoutHomeSuppressedClick()) return;
   _workoutHomeSelectedKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
@@ -1814,6 +1827,9 @@ function _startWorkoutHomeSheetDrag(event) {
 
   const startY = event.clientY || 0;
   let lastY = startY;
+  let lastMoveY = startY;
+  let lastMoveAt = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
+  let velocityY = 0;
   const startHeight = sheet.getBoundingClientRect?.().height || 0;
   const barHeight = sheet.querySelector?.('.cal-workout-day-bar')?.getBoundingClientRect?.().height || 132;
   const minHeight = Math.max(64, Math.min(startHeight, barHeight || startHeight));
@@ -1827,6 +1843,11 @@ function _startWorkoutHomeSheetDrag(event) {
 
   const onMove = (moveEvent) => {
     lastY = moveEvent.clientY || startY;
+    const now = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
+    const elapsed = Math.max(1, now - lastMoveAt);
+    velocityY = (lastY - lastMoveY) / elapsed;
+    lastMoveY = lastY;
+    lastMoveAt = now;
     const dy = Math.max(minDragY, Math.min(maxDragY, lastY - startY));
     const nextHeight = Math.max(minHeight, Math.min(maxHeight, startHeight - dy));
     sheet.style.setProperty('--wt-day-sheet-drag-height', `${nextHeight}px`);
@@ -1842,9 +1863,9 @@ function _startWorkoutHomeSheetDrag(event) {
     window.removeEventListener('pointercancel', onUp);
 
     const dy = lastY - startY;
-    if (Math.abs(dy) < 12) return;
+    if (Math.abs(dy) < WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX && Math.abs(velocityY) < WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY) return;
     _suppressWorkoutHomeSheetClick();
-    _stepWorkoutHomeSheet(dy < 0 ? 1 : -1);
+    _setWorkoutHomeSheetState(_resolveWorkoutHomeSheetDragTarget(dy, velocityY));
   };
 
   window.addEventListener('pointermove', onMove, { passive: true });
@@ -1854,7 +1875,9 @@ function _startWorkoutHomeSheetDrag(event) {
 
 function _openWorkoutHomeDay(key) {
   if (_consumeWorkoutHomeSuppressedClick()) return;
-  _workoutHomeSelectedKey = key;
+  const nextKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
+  if (_workoutHomeSelectedKey === nextKey && _currentWorkoutHomeSheetState() === 'full') return;
+  _workoutHomeSelectedKey = nextKey;
   _workoutHomeView = 'detail';
   _workoutHomeSheetState = 'bar';
   _workoutHomeSessionIndex = 0;
