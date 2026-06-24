@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_execution`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-23-stats-muscle-fatigue-render.md` (통계탭 근육 활성 UI 복구)
-- 현재 단계: `review complete — Slice 2 통계탭 근육 활성 UI 복구 및 붉은색 단일화`
-- 마지막 완료: `사용자 결정에 따라 운동 picker 변경과 통계탭 근육 활성 UI 복구를 함께 Dashboard3 Pages에 반영하기로 했다.`
-- 다음 액션: `통계탭 변경 파일을 커밋해 origin/main에 push하고 Dashboard3 Pages 배포 검증을 실행한다.`
+- 현재 단계: `deploy verified — Slice 2 통계탭 근육 활성 UI 복구 및 붉은색 단일화`
+- 마지막 완료: `커밋 e2f2a99를 origin/main에 push했고 Dashboard3 Pages 배포 검증과 배포 JS 소스 확인을 완료했다.`
+- 다음 액션: `없음`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
@@ -26,7 +26,9 @@
   3. PASS: red-only source check — `render-stats.js`에 이전 다색 hex 및 `일별` 출력 없음
   4. PASS: `node scripts/verify-runtime-assets.mjs`
   5. PASS: `git diff --check`
-  6. not verified yet: Dashboard3 Pages 배포 및 통계탭 UI flow 확인 필요
+  6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ e2f2a99`
+  7. PASS: 배포된 `render-stats.js`에 `getWorkoutSessions`, red tint, 활성 부위 빈 상태 문구가 있고 `label: '일별'`은 없음
+  8. not verified yet: 로그인 화면에 막혀 더보기 → 통계 → 운동 활성 부위 카드 UI 클릭 흐름은 인증 계정으로 확인 필요
 
 - 함께 배포된 이전 Slice:
   1. `docs/ai/features/2026-06-24-exercise-picker-category-entry.md` Slice 2 우하단 `+` 직접 picker 진입

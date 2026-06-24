@@ -122,4 +122,8 @@
 - PASS: `git diff --check`
 - 2026-06-24 후속 보정: 근육 활성 계산이 `day.exercises`만 보던 문제를 수정해 `workoutSessions` 기반 다회차 운동 기록도 반영하도록 했다.
 - 리뷰: `docs/ai/reviews/2026-06-24-stats-muscle-red-review.md`
-- 다음 단계: 사용자 승인에 따라 운동 picker 변경과 함께 Dashboard3 Pages에 배포한다.
+- 배포 검증:
+  - PASS: 커밋 `e2f2a99`를 `origin/main`에 push했다.
+  - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ e2f2a99`
+  - PASS: 배포된 `render-stats.js`에서 `getWorkoutSessions`, red tint, 활성 부위 빈 상태 문구가 확인됐고 `label: '일별'`은 제거됐다.
+  - not verified yet: 배포 URL은 로그인 화면에 막혀 더보기 → 통계 → 운동 활성 부위 카드 UI 클릭 흐름을 인증 계정으로 끝까지 확인하지 못했다.
