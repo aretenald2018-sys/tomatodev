@@ -6,7 +6,7 @@
 - 계획 문서: `docs/ai/features/2026-06-24-workout-history-detail-ui-regression.md` (운동 홈 과거 상세 UI 회귀)
 - 현재 단계: `execution/review complete — Slice 2 과거 상세 상단/그래프 보정`
 - 마지막 완료: `render-calendar.js/style.css/sw.js를 수정해 자유 운동 제목/중복 회차 라벨 제거, 상단 compact action row 위치 보정, 최근 기록 기반 track graph 렌더링, CACHE_VERSION bump를 구현했다.`
-- 다음 액션: `Dashboard3 배포 검증 결과 확인 후 사용자는 배포 URL에서 과거 운동 상세 화면을 확인하면 된다.`
+- 다음 액션: `없음. 사용자는 Dashboard3 배포 URL에서 과거 운동 상세 화면을 확인하면 된다.`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
@@ -24,7 +24,10 @@
   2. PASS: `node --check sw.js`
   3. PASS: `node scripts/verify-runtime-assets.mjs`
   4. PASS: `git diff --check`
-  5. pending: Dashboard3 배포 검증
+  5. PASS: `git push origin HEAD:main` (`16284fc`)
+  6. PASS: GitHub Actions `Verify Pages Runtime Assets` run `28068294368`
+  7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 16284fc`
+  8. 배포 확인: `[deploy-verify] ok 16284fcbc989 tomatofarm-v20260624z6-workout-history-detail-graph static=202`
 
 ## 이전 흐름 요약
 

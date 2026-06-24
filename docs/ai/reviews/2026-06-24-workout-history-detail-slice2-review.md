@@ -33,4 +33,7 @@
 - PASS: `node --check sw.js`
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
-- pending: Dashboard3 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+- PASS: `git push origin HEAD:main` (`16284fc`)
+- PASS: GitHub Actions `Verify Pages Runtime Assets` run `28068294368`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 16284fc`
+- 배포 확인: `[deploy-verify] ok 16284fcbc989 tomatofarm-v20260624z6-workout-history-detail-graph static=202`
