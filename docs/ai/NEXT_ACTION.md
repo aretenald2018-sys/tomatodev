@@ -4,8 +4,8 @@
 
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-24-workout-calendar-bottom-sheet.md`
-- 현재 단계: `reviewed — Slice 2 compact bar and drag hit area fix`
-- 마지막 완료: `접힌 sheet를 1행 compact bar로 줄이고, 화살표 glow와 날짜 영역 drag hit area fix를 구현한 뒤 정적 검증과 리뷰를 완료했다.`
+- 현재 단계: `reviewed — Slice 3 upward gesture opens full sheet`
+- 마지막 완료: `위 방향 drag/key step을 full sheet 직접 열림으로 바꾸고, drag preview 높이 제한과 release threshold 조정을 리뷰까지 완료했다.`
 - 다음 액션: `Dashboard3 Pages 배포 검증과 인증 계정 실제 drag UI flow 확인을 진행한다.`
 - 차단 사유: `없음`
 
@@ -51,6 +51,24 @@
 
 - Slice 2 리뷰:
   - `docs/ai/reviews/2026-06-24-workout-calendar-bottom-sheet-compact-review.md`
+
+- 다음 Slice 3:
+  1. 위 방향 drag/key step을 거리와 무관하게 `full`로 정착
+  2. 아래 방향 drag/key step은 `bar`로 접기
+  3. 회귀 테스트와 `sw.js` `CACHE_VERSION` 갱신
+  4. 정적 검증, 리뷰, Dashboard3 Pages 배포 검증
+
+- Slice 3 검증:
+  1. PASS: `node --check render-calendar.js; node --check sw.js`
+  2. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
+  3. PASS: `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
+  4. PASS: `node scripts/verify-runtime-assets.mjs`
+  5. PASS: `git diff --check`
+  6. PASS: `docs/ai/reviews/2026-06-24-workout-calendar-bottom-sheet-full-open-review.md`
+  7. not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 drag UI flow 확인 필요
+
+- Slice 3 리뷰:
+  - `docs/ai/reviews/2026-06-24-workout-calendar-bottom-sheet-full-open-review.md`
 
 - 이전 계획 파일: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md`
 - 완료한 Slice 4:

@@ -9,13 +9,13 @@
 - 핵심 질문: 날짜를 누른 직후 운동 추가 페이지로 이동해야 하는가, 아니면 날짜 상세를 먼저 띄워야 하는가?
 - 답변/결정: 날짜 탭은 페이지 자체를 운동 추가/편집 화면으로 랜딩시키지 않는다. 선택한 날짜의 상세를 하단 시트로 열고, `+`나 편집 버튼을 누를 때만 기존 운동 추가/편집 흐름으로 들어간다.
 - 추가 확인: 사용자가 명시한 핵심은 "기존에 구현된 하단부 탭"을 올렸다 내리는 것이다. 날짜 클릭 시에는 해당 탭이 애니메이션으로 꽉 차게 올라오는 느낌이어야 한다.
-- 남은 가정: 드래그 상태는 `bar`/`mid`/`full` 3단계면 충분하다. 닫기는 기존 탭 상태(`bar`)로 내려가는 방식이다.
+- 남은 가정: Slice 3 이후 사용자 제스처의 정착 상태는 `bar`/`full` 2단계로 둔다. 닫기는 기존 탭 상태(`bar`)로 내려가는 방식이다.
 
 ## 목표
 
 - 운동 탭 월간 캘린더에서 날짜를 탭해도 캘린더 화면이 사라지지 않게 한다.
 - 기존 하단 날짜 탭을 캘린더 위 fixed bottom sheet의 헤더로 재사용한다.
-- 시트 상단 탭/handle을 드래그해 `bar`/`mid`/`full` 상태로 열고 내릴 수 있게 한다.
+- 시트 상단 탭/handle을 드래그해 `bar`/`full` 상태로 열고 내릴 수 있게 한다.
 - 특정 날짜를 클릭하면 `bar -> full`로 올라오는 애니메이션을 적용한다.
 - 기존 회차 탭, 편집, `+` 운동 추가 동작은 유지한다.
 
@@ -28,9 +28,9 @@
   - 기존 `.cal-workout-day-bar`를 `.cal-workout-day-sheet`의 헤더로 재사용한다.
   - 날짜 클릭, 오늘 상세 진입, 뒤로가기/닫기 상태 전환을 시트 모델에 맞춘다.
   - 날짜 클릭 시 `bar -> full` 애니메이션으로 sheet를 올린다.
-  - 시트 handle pointer drag로 `bar`/`mid`/`full` 상태 전환을 구현한다.
+  - 시트 handle pointer drag로 `bar`/`full` 상태 전환을 구현한다.
 - `style.css`
-  - `.cal-workout-day-sheet` fixed bottom sheet, drag state, 3단계 높이, transition 스타일을 추가한다.
+  - `.cal-workout-day-sheet` fixed bottom sheet, drag state, `bar`/`full` 높이, transition 스타일을 추가한다.
   - 시트 안의 `.wt-day-detail`과 `.wt-day-sessionbar`가 viewport 전체가 아니라 sheet 안에서 안정적으로 배치되게 조정한다.
 - `tests/`
   - 날짜 상세가 월간 캘린더와 함께 bottom sheet로 렌더되는 계약을 추가한다.
@@ -130,3 +130,47 @@
 - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 0f061f103c69150688c80e284ce5b53ae54c601a`
   - 결과: `[deploy-verify] ok 0f061f103c69 tomatofarm-v20260624z36-workout-day-sheet-compact static=210`
 - not verified yet: 인증 계정의 실제 `운동 탭 -> 날짜 sheet drag` UI flow 확인이 남아 있다.
+
+## 후속 Slice 3 — Upward gesture opens full sheet
+
+### 배경
+
+배포 화면에서 sheet를 최대로 올려도 중간 높이에 멈추는 것처럼 보인다는 피드백이 있었다. 사용자는 아주 조금만 위로 올리거나 탭해도 sheet가 위로 끝까지 올라가길 원한다.
+
+### 진단
+
+1. 현재 상태 배열은 `bar`/`mid`/`full` 3단계이고, `_stepWorkoutHomeSheet()`는 짧은 위 드래그에서 한 단계만 이동한다.
+2. 따라서 접힌 `bar` 상태에서 짧게 위로 끌면 `mid`에 정착한다. 사용자가 기대하는 동작은 중간 정착이 아니라 즉시 `full`이다.
+3. 날짜 탭/화살표 탭은 이미 `_toggleWorkoutHomeSheet()`와 `_openWorkoutHomeDay()` 경로에서 `full` 애니메이션을 사용하므로, drag/key step 전이를 같은 정책으로 맞추면 된다.
+
+### 포함
+
+- 위 방향 drag/key step은 거리와 무관하게 `full`로 정착한다.
+- 아래 방향 drag/key step은 `bar`로 접는다.
+- 회귀 테스트를 갱신하고 `sw.js` cache version을 bump한다.
+
+### 검증 계획
+
+- `node --check render-calendar.js; node --check sw.js`
+- `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
+- `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+
+### 실행 결과
+
+- `_stepWorkoutHomeSheet()`를 방향 기반 `full`/`bar` 전환으로 단순화해 짧은 위 드래그와 `ArrowUp`이 즉시 `full`로 열리게 했다.
+- drag release 기준을 `36px`에서 `12px`로 낮춰 살짝 올리는 제스처도 동작하게 했다.
+- drag preview의 `±180px` 제한을 제거하고 `startHeight`/`maxHeight` 기반으로 계산해 손가락으로 크게 끌 때도 full 높이까지 따라가게 했다.
+- 기존 `is-mid` class는 legacy 제거용으로만 정리하고, 사용자 정착 상태는 `bar`/`full`만 사용한다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z37-workout-day-sheet-full-open`으로 bump했다.
+
+### 실행 검증
+
+- PASS: `node --check render-calendar.js; node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
+- PASS: `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 `운동 탭 -> 날짜 sheet drag` UI flow 확인이 남아 있다.

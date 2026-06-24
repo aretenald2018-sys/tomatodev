@@ -21,26 +21,31 @@ test('workout calendar keeps the month surface and renders the existing day bar 
 
 test('date selection opens the bottom sheet to full with animation state', () => {
   assert.match(calendarJs, /let _workoutHomeSheetState = 'bar'/);
-  assert.match(calendarJs, /const WORKOUT_HOME_SHEET_STATES = \['bar', 'mid', 'full'\]/);
+  assert.match(calendarJs, /const WORKOUT_HOME_SHEET_STATES = \['bar', 'full'\]/);
+  assert.match(calendarJs, /const WORKOUT_HOME_SHEET_CLASS_STATES = \['bar', 'mid', 'full'\]/);
   assert.match(calendarJs, /function _animateWorkoutHomeSheetTo/);
   assert.match(calendarJs, /_animateWorkoutHomeSheetTo\('full'\)/);
   assert.match(calendarJs, /window\.requestAnimationFrame\(\(\) => window\.requestAnimationFrame\(apply\)\)/);
 });
 
-test('sheet drag handlers move between bar, mid, and full states', () => {
+test('sheet drag handlers open directly to full and collapse to bar', () => {
   const dragStart = calendarJs.indexOf('function _startWorkoutHomeSheetDrag');
   const dragEnd = calendarJs.indexOf('function _openWorkoutHomeDay', dragStart);
   assert.ok(dragStart >= 0 && dragEnd > dragStart, 'drag handler source should be present');
   const dragFn = calendarJs.slice(dragStart, dragEnd);
 
+  assert.match(calendarJs, /function _stepWorkoutHomeSheet\(direction\)[\s\S]*direction > 0 \? 'full' : 'bar'/);
   assert.match(calendarJs, /function _startWorkoutHomeSheetDrag/);
   assert.match(calendarJs, /window\.addEventListener\('pointermove', onMove/);
   assert.match(dragFn, /data-wt-sheet-action/);
   assert.doesNotMatch(dragFn, /closest\?\('button'\)/);
   assert.match(calendarJs, /function _consumeWorkoutHomeSuppressedClick/);
   assert.match(calendarJs, /--wt-day-sheet-drag-height/);
+  assert.match(calendarJs, /const minDragY = startHeight - maxHeight/);
   assert.match(calendarJs, /startHeight - dy/);
-  assert.match(calendarJs, /_stepWorkoutHomeSheet\(dy < 0 \? 1 : -1, Math\.abs\(dy\) > 112\)/);
+  assert.match(calendarJs, /if \(Math\.abs\(dy\) < 12\) return/);
+  assert.match(calendarJs, /_stepWorkoutHomeSheet\(dy < 0 \? 1 : -1\)/);
+  assert.doesNotMatch(calendarJs, /Math\.abs\(dy\) > 112/);
   assert.match(calendarJs, /window\._wtCalToggleSheet = _toggleWorkoutHomeSheet/);
 });
 
@@ -63,5 +68,5 @@ test('collapsed day sheet bar is a compact one-row affordance', () => {
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260624z36-workout-day-sheet-compact/);
+  assert.match(swJs, /tomatofarm-v20260624z37-workout-day-sheet-full-open/);
 });

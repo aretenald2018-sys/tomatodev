@@ -48,7 +48,8 @@ let _workoutHomeSessionIndex = 0;
 let _workoutHomeSuppressNextSheetClick = false;
 const _workoutDetailCollapsed = new Set();
 let _workoutTrackGraphSeq = 0;
-const WORKOUT_HOME_SHEET_STATES = ['bar', 'mid', 'full'];
+const WORKOUT_HOME_SHEET_STATES = ['bar', 'full'];
+const WORKOUT_HOME_SHEET_CLASS_STATES = ['bar', 'mid', 'full'];
 
 const MAX_WEAK_LABEL = {
   chest_upper:'가슴 상부', chest_lower:'가슴 하부',
@@ -1724,7 +1725,7 @@ function _applyWorkoutHomeSheetState() {
   const sheet = document.querySelector('#workout-calendar-root [data-wt-day-sheet]');
   if (!sheet) return;
   const state = _currentWorkoutHomeSheetState();
-  WORKOUT_HOME_SHEET_STATES.forEach(item => sheet.classList.toggle(`is-${item}`, item === state));
+  WORKOUT_HOME_SHEET_CLASS_STATES.forEach(item => sheet.classList.toggle(`is-${item}`, item === state));
   sheet.dataset.wtSheetState = state;
   sheet.setAttribute('aria-expanded', state !== 'bar' ? 'true' : 'false');
   const bar = sheet.querySelector('[data-wt-sheet-handle]');
@@ -1756,12 +1757,8 @@ function _animateWorkoutHomeSheetTo(state) {
   apply();
 }
 
-function _stepWorkoutHomeSheet(direction, strong = false) {
-  const current = _currentWorkoutHomeSheetState();
-  const idx = WORKOUT_HOME_SHEET_STATES.indexOf(current);
-  const offset = strong ? direction * 2 : direction;
-  const nextIdx = Math.max(0, Math.min(WORKOUT_HOME_SHEET_STATES.length - 1, idx + offset));
-  _setWorkoutHomeSheetState(WORKOUT_HOME_SHEET_STATES[nextIdx]);
+function _stepWorkoutHomeSheet(direction) {
+  _setWorkoutHomeSheetState(direction > 0 ? 'full' : 'bar');
 }
 
 function _toggleWorkoutHomeSheet(key = _workoutHomeSelectedKey) {
@@ -1793,10 +1790,10 @@ function _bindWorkoutHomeSheetDrag(root) {
 function _handleWorkoutHomeSheetKey(event) {
   if (event.key === 'ArrowUp') {
     event.preventDefault();
-    _stepWorkoutHomeSheet(1, event.shiftKey);
+    _stepWorkoutHomeSheet(1);
   } else if (event.key === 'ArrowDown') {
     event.preventDefault();
-    _stepWorkoutHomeSheet(-1, event.shiftKey);
+    _stepWorkoutHomeSheet(-1);
   } else if (event.key === 'Escape') {
     event.preventDefault();
     _setWorkoutHomeSheetState('bar');
@@ -1813,8 +1810,10 @@ function _startWorkoutHomeSheetDrag(event) {
   let lastY = startY;
   const startHeight = sheet.getBoundingClientRect?.().height || 0;
   const barHeight = sheet.querySelector?.('.cal-workout-day-bar')?.getBoundingClientRect?.().height || 132;
-  const minHeight = Math.max(96, barHeight);
+  const minHeight = Math.max(64, Math.min(startHeight, barHeight || startHeight));
   const maxHeight = Math.max(startHeight, (window.innerHeight || startHeight) - 64);
+  const minDragY = startHeight - maxHeight;
+  const maxDragY = startHeight - minHeight;
   sheet.classList.add('is-dragging');
   sheet.style.setProperty('--wt-day-sheet-drag-y', '0px');
   sheet.style.setProperty('--wt-day-sheet-drag-height', `${startHeight}px`);
@@ -1822,7 +1821,7 @@ function _startWorkoutHomeSheetDrag(event) {
 
   const onMove = (moveEvent) => {
     lastY = moveEvent.clientY || startY;
-    const dy = Math.max(-180, Math.min(180, lastY - startY));
+    const dy = Math.max(minDragY, Math.min(maxDragY, lastY - startY));
     const nextHeight = Math.max(minHeight, Math.min(maxHeight, startHeight - dy));
     sheet.style.setProperty('--wt-day-sheet-drag-height', `${nextHeight}px`);
   };
@@ -1837,10 +1836,10 @@ function _startWorkoutHomeSheetDrag(event) {
     window.removeEventListener('pointercancel', onUp);
 
     const dy = lastY - startY;
-    if (Math.abs(dy) < 36) return;
+    if (Math.abs(dy) < 12) return;
     _workoutHomeSuppressNextSheetClick = true;
     setTimeout(() => { _workoutHomeSuppressNextSheetClick = false; }, 250);
-    _stepWorkoutHomeSheet(dy < 0 ? 1 : -1, Math.abs(dy) > 112);
+    _stepWorkoutHomeSheet(dy < 0 ? 1 : -1);
   };
 
   window.addEventListener('pointermove', onMove, { passive: true });
