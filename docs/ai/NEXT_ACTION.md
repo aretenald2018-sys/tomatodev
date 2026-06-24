@@ -2,16 +2,32 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-23-stats-muscle-fatigue-render.md` (통계탭 근육 활성 UI 복구)
-- 현재 단계: `deploy verified — Slice 2 통계탭 근육 활성 UI 복구 및 붉은색 단일화`
-- 마지막 완료: `커밋 e2f2a99를 origin/main에 push했고 Dashboard3 Pages 배포 검증과 배포 JS 소스 확인을 완료했다.`
-- 다음 액션: `없음`
+- 상태: `ready_for_execution`
+- 계획 문서: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md` (운동 추가 분류형 진입 UI)
+- 현재 단계: `review complete — Slice 3 부위 아트 자산 선명도 개선`
+- 마지막 완료: `운동 picker 부위 PNG 8개를 고해상도 투명 자산으로 교체했고 정적 검증과 리뷰를 완료했다.`
+- 다음 액션: `변경 파일을 커밋해 origin/main에 push하고 Dashboard3 Pages 배포 검증을 실행한다.`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
 
-- 계획 파일: `docs/ai/features/2026-06-23-stats-muscle-fatigue-render.md`
+- 계획 파일: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md`
+- 완료한 Slice 3:
+  1. `assets/workout/muscles/*.png` 8개를 `384x288` RGBA 투명 PNG로 교체
+  2. 기존 파일명/경로 유지
+  3. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z15-sharp-muscle-assets`로 bump
+  4. `docs/ai/reviews/2026-06-24-exercise-picker-assets-sharp-review.md` 작성
+
+- 검증:
+  1. PASS: PNG 8개 크기 `384x288`, 모드 `RGBA`, 모서리 alpha 0 확인
+  2. PASS: `node --check sw.js`
+  3. PASS: `node scripts/verify-runtime-assets.mjs`
+  4. PASS: `git diff --check`
+  5. not verified yet: Dashboard3 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>` 필요
+  6. not verified yet: 배포 URL에서 운동 picker 분류 화면의 부위 이미지 선명도 확인 필요
+
+- 이전 완료 흐름:
+  - 계획 파일: `docs/ai/features/2026-06-23-stats-muscle-fatigue-render.md`
 - 완료한 Slice 2:
   1. `render-stats.js` 근육 활성 기간을 `주별`/`월별`로 제한
   2. 활성 부위만 렌더링하고, 다색 그룹 색상 대신 붉은색 단일 intensity 값 적용

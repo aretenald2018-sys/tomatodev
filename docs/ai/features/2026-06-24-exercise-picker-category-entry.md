@@ -125,3 +125,52 @@
   - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ bb8ae05`
   - not verified yet: 배포 URL은 로그인 화면에 막혀 운동 탭 → 우하단 `+` → picker 분류 화면 UI 클릭 흐름을 인증 계정으로 끝까지 확인하지 못했다.
 - 다음 단계: 인증 계정으로 Dashboard3 Pages에 로그인한 뒤 운동 탭 → 오늘 운동 상세 → 우하단 `+` → picker 분류 화면 → `가슴` 선택 → 운동 목록 표시 → 운동 추가를 확인한다.
+
+### Slice 3: 부위 아트 자산 선명도 개선
+
+요청:
+
+- 배포된 picker 부위 아트 자산이 스크린샷 crop 기반이라 화질이 낮아 보인다.
+- 모바일 70px 내외 표시에서도 선명하게 보이도록 고해상도 자산으로 교체한다.
+
+대상 파일:
+
+- `assets/workout/muscles/*.png`
+- `sw.js`
+- `docs/ai/features/2026-06-24-exercise-picker-category-entry.md`
+- `docs/ai/reviews/2026-06-24-exercise-picker-assets-sharp-review.md`
+
+구현:
+
+- 이미지 생성 스킬로 만든 고해상도 해부학 contact sheet를 기준으로 현재 기본 부위 8개(`chest`, `shoulder`, `back`, `lower`, `glute`, `bicep`, `tricep`, `abs`)를 다시 추출한다.
+- 각 자산은 투명 배경 PNG로 저장하고, UI에서 축소될 때 선명하도록 기존보다 큰 원본 해상도를 사용한다.
+- 기존 경로와 파일명은 유지해 `workout/exercises.js` 경로 변경 없이 교체한다.
+- `assets/workout/muscles/*.png`가 `STATIC_ASSETS`에 포함되어 있으므로 `sw.js` `CACHE_VERSION`을 bump한다.
+
+범위 밖:
+
+- 부위 데이터 모델 추가.
+- picker 레이아웃/개수/탭 로직 변경.
+- 운동별 동작 썸네일 제작.
+
+검증 계획:
+
+- PNG 8개가 투명 배경과 충분한 해상도를 가지는지 확인한다.
+- `node --check sw.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- Dashboard3 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+- 배포 URL에서 `assets/workout/muscles/chest.png` 등 자산이 새 고해상도 파일로 내려오는지 확인한다.
+
+실행 결과:
+
+- 2026-06-24: Slice 3 구현 완료.
+- 기존 screenshot crop 기반 저해상도 PNG 8개를 고해상도 생성 contact sheet 기반 `384x288` RGBA PNG로 교체했다.
+- 기존 경로와 파일명은 유지했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z15-sharp-muscle-assets`로 bump했다.
+- PASS: PNG 8개 크기 `384x288`, 모드 `RGBA`, 모서리 alpha 0 확인
+- PASS: `node --check sw.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- 리뷰: `docs/ai/reviews/2026-06-24-exercise-picker-assets-sharp-review.md`
+- not verified yet: Dashboard3 Pages 배포 및 배포 URL 자산 확인 필요.
