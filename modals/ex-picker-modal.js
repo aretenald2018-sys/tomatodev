@@ -14,10 +14,8 @@ export const MODAL_HTML = `
       <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
     </button>
   </div>
-  <div class="ex-picker-tabs" role="tablist" aria-label="종목 보기">
+  <div class="ex-picker-tabs" role="tablist" aria-label="종목 필터">
     <button type="button" class="ex-picker-tab active" data-picker-tab="category" role="tab" aria-selected="true">분류</button>
-    <button type="button" class="ex-picker-tab" data-picker-tab="all" role="tab" aria-selected="false">전체</button>
-    <button type="button" class="ex-picker-tab" data-picker-tab="custom" role="tab" aria-selected="false">커스텀</button>
   </div>
   <div id="ex-picker-list" class="ex-picker-content"></div>
 </div>

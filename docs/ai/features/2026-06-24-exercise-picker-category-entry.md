@@ -178,3 +178,64 @@
   - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 562a572`
   - PASS: 배포 URL의 `assets/workout/muscles/*.png` 8개가 모두 `384x288` RGBA 파일로 내려오는 것을 확인했다.
   - not verified yet: 로그인 화면에 막혀 운동 picker 분류 화면의 시각 상태는 인증 계정으로 확인 필요.
+
+### Slice 4: 목록 필터 레이아웃과 정렬 시스템을 사진 1 구조로 변경
+
+요청:
+
+- `가슴` 등 부위 선택 후 나오는 운동 목록 화면의 필터 UI를 사진 1처럼 처리한다.
+- 현재처럼 목록 내부에 `필터 적용` 배너, 별도 `부위`/`헬스장` 칩 행, 카드형 추가 안내가 쌓이는 구조를 제거한다.
+- 상단 탭은 목록 상태에서 `분류 + 부위 탭`으로 동작하게 하고, 선택된 부위는 탭 underline/active 상태로 표시한다.
+- 목록 바로 위에는 `최근`/`빈도`/`이름` 정렬 컨트롤과 `전체`/`즐겨찾기`/`커스텀` 범위 컨트롤을 한 줄에 배치한다.
+
+대상 파일:
+
+- `modals/ex-picker-modal.js`
+- `workout/exercises.js`
+- `style.css`
+- `sw.js`
+- `docs/ai/features/2026-06-24-exercise-picker-category-entry.md`
+- `docs/ai/reviews/2026-06-24-exercise-picker-filter-layout-review.md`
+
+구현:
+
+- picker 목록 상태에서 상단 탭 DOM을 동적으로 렌더링해 `분류`, 사용 가능한 부위 탭, `전체`, `커스텀`의 활성 상태를 정확히 표시한다.
+- `분류` 탭은 분류 첫 화면으로 돌아가고, 부위 탭은 해당 부위 목록으로 이동한다.
+- 기존 목록 내부의 활성 필터 배너와 부위/헬스장 필터 스택을 제거한다.
+- 목록 상단 컨트롤은 정렬(`최근`, `빈도`, `이름`)과 범위(`전체`, 비활성 `즐겨찾기`, `커스텀`)만 표시한다.
+- 정렬은 캐시의 과거 운동 기록을 기준으로 최근 수행일, 총 수행 횟수, 이름순을 지원한다.
+- 각 운동 row에는 사진 1처럼 왼쪽 미디어 슬롯, 운동명, `총 n번, n일 전` 메타, 우측 편집/삭제 액션을 배치한다. 운동별 썸네일 자산이 없으면 부위 이미지 기반 fallback 슬롯을 사용한다.
+- 검색어가 입력되면 기존처럼 목록으로 전환하되 검색 상태는 필터 배너가 아니라 목록 헤더의 결과 상태로만 표현한다.
+- `style.css`, `workout/exercises.js`, `modals/ex-picker-modal.js`가 `STATIC_ASSETS`에 포함되어 있으므로 `sw.js` `CACHE_VERSION`을 bump한다.
+
+범위 밖:
+
+- 즐겨찾기 저장 모델 신규 추가.
+- 운동별 동작 썸네일 자산 신규 제작.
+- 헬스장 기구 관리 데이터 모델 변경.
+- 오늘 운동 저장 스키마 변경.
+- `www/` 직접 수정.
+
+검증 계획:
+
+- `node --check modals/ex-picker-modal.js; node --check workout/exercises.js; node --check sw.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- Dashboard3 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+- 배포 URL에서 로그인 후 `운동 탭 -> + -> 가슴 선택` 시 사진 1처럼 상단 부위 탭과 정렬/범위 행이 보이고, `최근`/`빈도`/`이름`을 눌렀을 때 목록 순서가 바뀌는지 확인한다.
+
+실행 결과:
+
+- 2026-06-24: Slice 4 구현 완료.
+- `modals/ex-picker-modal.js`의 탭 초기 마크업을 동적 렌더링 전제로 단순화했다.
+- `workout/exercises.js`에서 목록 상태의 상단 탭을 `분류 + 사용 가능한 부위 탭`으로 동적 렌더링한다.
+- 목록 내부의 `필터 적용` 배너, 부위/헬스장 필터 스택, 상단 quick add 안내 박스를 제거했다.
+- 목록 상단에 `최근`/`빈도`/`이름` 정렬과 `전체`/비활성 `즐겨찾기`/`커스텀` 범위 행을 추가했다.
+- `getCache()`와 `getWorkoutSessions()` 기반으로 과거 회차별 운동 수행 횟수와 마지막 수행일을 집계해 `총 n번, n일 전` 메타와 정렬에 반영했다.
+- picker open/list/category 전환 시 숨은 헬스장 필터가 남지 않도록 `pickerGymFilter`를 `전체` 범위로 동기화했다.
+- `style.css`에서 목록 row를 왼쪽 미디어 슬롯, 가운데 이름/기록 메타, 오른쪽 액션 영역의 3열 구조로 변경했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z16-picker-filter-layout`로 bump했다.
+- PASS: `node --check modals/ex-picker-modal.js; node --check workout/exercises.js; node --check sw.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- 리뷰: `docs/ai/reviews/2026-06-24-exercise-picker-filter-layout-review.md`

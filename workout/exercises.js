@@ -21,6 +21,7 @@ import {
   buildMaxPickerExerciseEntry,
   resolveMaxBenchmarkPickerItems,
 } from './expert/max-benchmark-picker.js?v=20260517v3';
+import { getWorkoutSessions } from './sessions.js';
 // resolveCurrentGymId는 expert.js의 단일 진실원 (preset + S.workout.currentGymId 동기화).
 // isExpertViewShown은 세션 뷰 상태 (일반 모드 뷰 ↔ 프로 모드 뷰) 조회용.
 // expert.js는 exercises.js를 static import 하지 않으므로 순환 참조 없음.
@@ -1509,18 +1510,25 @@ function _isExerciseEditable(ex) {
   return /^custom_/.test(String(ex.id)) || _exerciseGymIds(ex).length > 0 || !ex.movementId;
 }
 
-function _renderExercisePickerName(ex, alreadyAdded) {
-  const source = _exerciseSourceMeta(ex);
-  const sourceAttrs = source.filterId
-    ? ` data-gym-filter="${_escPicker(source.filterId)}" role="button" tabindex="0" aria-label="${_escPicker(source.actionLabel)}" title="${_escPicker(source.actionLabel)}"`
-    : '';
+function _renderPickerExerciseThumb(ex) {
+  const majorId = _exerciseMajorIds(ex)[0] || ex?.muscleId || '';
+  const asset = PICKER_MUSCLE_ASSETS[majorId];
+  if (asset) {
+    return `
+      <span class="ex-picker-thumb has-asset" aria-hidden="true">
+        <img src="${_escPicker(asset)}" alt="" loading="lazy" decoding="async" draggable="false">
+      </span>
+    `;
+  }
+  return `<span class="ex-picker-thumb" aria-hidden="true">${_pickerMuscleFigureHtml(majorId)}</span>`;
+}
+
+function _renderExercisePickerName(ex, alreadyAdded, stats) {
   return `
+    ${_renderPickerExerciseThumb(ex)}
     <span class="ex-picker-main">
       <span class="ex-picker-name">${_escPicker(ex.name)}${alreadyAdded ? ' ✓' : ''}</span>
-      <span class="ex-picker-source ${source.cls}"${sourceAttrs}>
-        <b>${_escPicker(source.label)}</b>
-        <small>${_escPicker(source.detail)}</small>
-      </span>
+      <span class="ex-picker-history-meta">${_escPicker(_pickerStatsMeta(stats))}</span>
     </span>
   `;
 }
@@ -1551,6 +1559,7 @@ let _pickerMuscleFilter = null;
 let _pickerGymFilter = null;
 let _pickerView = 'category';
 let _pickerListMode = 'all'; // all | custom
+let _pickerSortMode = 'recent'; // recent | frequency | name
 let _pickerSearchQuery = '';
 const PICKER_MUSCLE_ASSETS = {
   chest: './assets/workout/muscles/chest.png',
@@ -1583,10 +1592,16 @@ function _setPickerSearchUi(value = '') {
   if (clearBtn) clearBtn.style.display = value ? 'grid' : 'none';
 }
 
+function _resetPickerGymScope() {
+  _pickerGymFilter = _isExpertSessionActive() ? 'all' : null;
+  if (S?.workout) S.workout.pickerGymFilter = _pickerGymFilter;
+}
+
 function _openPickerCategory() {
   _pickerView = 'category';
   _pickerListMode = 'all';
   _pickerMuscleFilter = null;
+  _resetPickerGymScope();
   _pickerSearchQuery = '';
   _setPickerSearchUi('');
   _renderPickerList();
@@ -1596,6 +1611,7 @@ function _openPickerList(mode = 'all', muscleId = null) {
   _pickerView = 'list';
   _pickerListMode = mode === 'custom' ? 'custom' : 'all';
   _pickerMuscleFilter = muscleId || null;
+  _resetPickerGymScope();
   _pickerSearchQuery = '';
   _setPickerSearchUi('');
   _renderPickerList();
@@ -1624,35 +1640,66 @@ function _bindPickerChrome() {
   if (input) input.oninput = () => window._wtOnPickerSearch(input.value);
   const clear = modal.querySelector('#ex-picker-search-clear');
   if (clear) clear.onclick = () => window._wtClearPickerSearch();
-  modal.querySelectorAll('[data-picker-tab]').forEach(btn => {
-    btn.onclick = () => {
+}
+
+function _renderPickerTabs(ctx) {
+  const modal = document.getElementById('ex-picker-modal');
+  const tabs = modal?.querySelector?.('.ex-picker-tabs');
+  if (!tabs) return;
+  const listTabs = (_pickerView === 'list' || !!_pickerSearchQuery);
+  const button = ({ key, label, active, muscleId = '' }) => `
+    <button type="button"
+      class="ex-picker-tab${active ? ' active' : ''}"
+      data-picker-tab="${_escPicker(key)}"
+      ${muscleId ? `data-picker-muscle-tab="${_escPicker(muscleId)}"` : ''}
+      role="tab"
+      aria-selected="${active ? 'true' : 'false'}">${_escPicker(label)}</button>
+  `;
+  const html = listTabs
+    ? [
+        button({ key: 'category', label: '분류', active: false }),
+        ...ctx.visibleMuscles.map(m => button({
+          key: 'muscle',
+          label: m.name,
+          muscleId: m.id,
+          active: !_pickerSearchQuery && _pickerMuscleFilter === m.id,
+        })),
+      ].join('')
+    : [
+        button({ key: 'category', label: '분류', active: true }),
+        button({ key: 'all', label: '전체', active: false }),
+        button({ key: 'custom', label: '커스텀', active: false }),
+      ].join('');
+  tabs.innerHTML = html;
+  tabs.querySelectorAll('[data-picker-tab]').forEach(btn => {
+    btn.addEventListener('click', () => {
       const tab = btn.getAttribute('data-picker-tab');
-      if (tab === 'category') _openPickerCategory();
-      else _openPickerList(tab === 'custom' ? 'custom' : 'all');
-    };
+      if (tab === 'category') {
+        _openPickerCategory();
+        return;
+      }
+      if (tab === 'muscle') {
+        _openPickerList(_pickerListMode, btn.getAttribute('data-picker-muscle-tab'));
+        return;
+      }
+      _openPickerList(tab === 'custom' ? 'custom' : 'all');
+    });
   });
 }
 
-function _syncPickerChrome() {
+function _syncPickerChrome(ctx) {
   const modal = document.getElementById('ex-picker-modal');
   if (!modal) return;
   modal.dataset.pickerView = _pickerView;
   modal.dataset.pickerMode = _pickerListMode;
+  if (ctx) _renderPickerTabs(ctx);
   const back = modal.querySelector('#ex-picker-back');
   if (back) back.setAttribute('aria-label', _pickerView === 'category' && !_pickerSearchQuery ? '닫기' : '분류로 돌아가기');
-  modal.querySelectorAll('[data-picker-tab]').forEach(btn => {
-    const tab = btn.getAttribute('data-picker-tab');
-    const active = tab === 'category'
-      ? _pickerView === 'category'
-      : (_pickerView === 'list' && _pickerListMode === tab && !_pickerMuscleFilter && !_pickerSearchQuery);
-    btn.classList.toggle('active', active);
-    btn.setAttribute('aria-selected', active ? 'true' : 'false');
-  });
 }
 
 window._wtSetPickerMuscleFilter = (muscleId) => {
   _pickerView = 'list';
-  _pickerMuscleFilter = (_pickerMuscleFilter === muscleId) ? null : muscleId;
+  _pickerMuscleFilter = muscleId || null;
   _renderPickerList();
 };
 window._wtSetPickerCategoryFilter = window._wtSetPickerMuscleFilter;
@@ -1661,6 +1708,17 @@ window._wtSetPickerGymFilter = (gymId) => {
   _pickerGymFilter = gymId || (_isExpertSessionActive() ? 'all' : null);
   if (S?.workout) S.workout.pickerGymFilter = _pickerGymFilter;
   saveWorkoutDay({ silent: true }).catch(e => console.warn('[pickerGymFilter.save]:', e));
+  _renderPickerList();
+};
+
+window._wtSetPickerSort = (mode) => {
+  _pickerSortMode = ['recent', 'frequency', 'name'].includes(mode) ? mode : 'recent';
+  _renderPickerList();
+};
+
+window._wtSetPickerScope = (mode) => {
+  _pickerView = 'list';
+  _pickerListMode = mode === 'custom' ? 'custom' : 'all';
   _renderPickerList();
 };
 
@@ -1685,7 +1743,7 @@ window._wtResetAllPickerFilters = () => {
   _pickerView = 'list';
   _pickerListMode = 'all';
   _pickerMuscleFilter = null;
-  _pickerGymFilter = _isExpertSessionActive() ? 'all' : null;
+  _resetPickerGymScope();
   window._wtClearPickerSearch();
 };
 
@@ -1731,6 +1789,85 @@ function _exerciseMajorIds(ex) {
     if (normalized) ids.add(normalized);
   }
   return [...ids];
+}
+
+function _pickerEntryHasWork(entry) {
+  if (!entry || typeof entry !== 'object') return false;
+  const sets = Array.isArray(entry.sets) ? entry.sets : [];
+  if (sets.some(set => {
+    if (!set || set.setType === 'warmup') return false;
+    if (set.done === true) return true;
+    if (set.done === false) return false;
+    return (Number(set.kg) || 0) > 0 && (Number(set.reps) || 0) > 0;
+  })) return true;
+  return !!String(entry.note || '').trim();
+}
+
+function _dateKeyToUtcMs(key) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(key || ''));
+  if (!m) return null;
+  return Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+}
+
+function _daysBetweenDateKeys(fromKey, toKey) {
+  const fromMs = _dateKeyToUtcMs(fromKey);
+  const toMs = _dateKeyToUtcMs(toKey);
+  if (fromMs == null || toMs == null) return null;
+  return Math.max(0, Math.round((toMs - fromMs) / 86400000));
+}
+
+function _buildPickerExerciseStats() {
+  const stats = new Map();
+  const cache = getCache?.() || {};
+  const todayKey = _todayDateKey();
+  Object.entries(cache).forEach(([key, day]) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || key === todayKey) return;
+    getWorkoutSessions(day).forEach(session => {
+      const seenInSession = new Set();
+      (Array.isArray(session?.exercises) ? session.exercises : []).forEach(entry => {
+        const exerciseId = entry?.exerciseId;
+        if (!exerciseId || seenInSession.has(exerciseId) || !_pickerEntryHasWork(entry)) return;
+        seenInSession.add(exerciseId);
+        const prev = stats.get(exerciseId) || { count: 0, lastDate: null };
+        prev.count += 1;
+        if (!prev.lastDate || key > prev.lastDate) prev.lastDate = key;
+        stats.set(exerciseId, prev);
+      });
+    });
+  });
+  return stats;
+}
+
+function _pickerStatsMeta(stats) {
+  const count = Number(stats?.count) || 0;
+  if (count <= 0 || !stats?.lastDate) return '-';
+  const days = _daysBetweenDateKeys(stats.lastDate, _todayDateKey());
+  const dayLabel = days == null
+    ? '최근 기록'
+    : (days === 0 ? '오늘' : `${days}일 전`);
+  return `총 ${count}번, ${dayLabel}`;
+}
+
+function _sortPickerExercises(list, statsByExercise) {
+  const collator = new Intl.Collator('ko-KR', { numeric: true, sensitivity: 'base' });
+  const statOf = (ex) => statsByExercise.get(ex?.id) || { count: 0, lastDate: '' };
+  return [...list].sort((a, b) => {
+    const as = statOf(a);
+    const bs = statOf(b);
+    if (_pickerSortMode === 'frequency') {
+      return (bs.count - as.count)
+        || String(bs.lastDate || '').localeCompare(String(as.lastDate || ''))
+        || collator.compare(a?.name || '', b?.name || '');
+    }
+    if (_pickerSortMode === 'name') {
+      return collator.compare(a?.name || '', b?.name || '')
+        || (bs.count - as.count)
+        || String(bs.lastDate || '').localeCompare(String(as.lastDate || ''));
+    }
+    return String(bs.lastDate || '').localeCompare(String(as.lastDate || ''))
+      || (bs.count - as.count)
+      || collator.compare(a?.name || '', b?.name || '');
+  });
 }
 
 function _isPickerCustomExercise(ex) {
@@ -1795,6 +1932,38 @@ function _applyPickerListMode(pool) {
     : pool;
 }
 
+function _renderPickerListToolbar(container) {
+  const sortOptions = [
+    { id: 'recent', label: '↑ 최근' },
+    { id: 'frequency', label: '↑ 빈도' },
+    { id: 'name', label: '↓ 이름' },
+  ];
+  const scope = _pickerListMode === 'custom' ? 'custom' : 'all';
+  const toolbar = document.createElement('div');
+  toolbar.className = 'ex-picker-list-toolbar';
+  toolbar.innerHTML = `
+    <div class="ex-picker-sort-controls" aria-label="정렬">
+      ${sortOptions.map(opt => `
+        <button type="button"
+          class="ex-picker-sort-btn${_pickerSortMode === opt.id ? ' active' : ''}"
+          data-picker-sort="${_escPicker(opt.id)}">${_escPicker(opt.label)}</button>
+      `).join('')}
+    </div>
+    <div class="ex-picker-scope-controls" aria-label="범위">
+      <button type="button" class="ex-picker-scope-btn${scope === 'all' ? ' active' : ''}" data-picker-scope="all">전체</button>
+      <button type="button" class="ex-picker-scope-btn is-disabled" disabled aria-label="즐겨찾기 준비 중">☆</button>
+      <button type="button" class="ex-picker-scope-btn${scope === 'custom' ? ' active' : ''}" data-picker-scope="custom">커스텀</button>
+    </div>
+  `;
+  toolbar.querySelectorAll('[data-picker-sort]').forEach(btn => {
+    btn.addEventListener('click', () => window._wtSetPickerSort?.(btn.getAttribute('data-picker-sort')));
+  });
+  toolbar.querySelectorAll('[data-picker-scope]').forEach(btn => {
+    btn.addEventListener('click', () => window._wtSetPickerScope?.(btn.getAttribute('data-picker-scope')));
+  });
+  container.appendChild(toolbar);
+}
+
 function _renderPickerBenchmarkScope(ctx) {
   if (!ctx.isMaxBenchmarkPicker) return '';
   const benchmarkCount = ctx.basePool.filter(ex => !!ex?.__maxBenchmark).length;
@@ -1856,18 +2025,12 @@ export function _renderPickerList() {
   container.innerHTML = '';
   const ctx = _buildPickerContext();
   const {
-    allMuscles,
-    gyms,
-    currentGymId,
     isExpert,
     isMaxBenchmarkPicker,
-    todayMajorScope,
     basePool,
-    availableMuscles,
-    availableGymIds,
     visibleMuscles,
   } = ctx;
-  _syncPickerChrome();
+  _syncPickerChrome(ctx);
   if (_pickerView === 'category' && !_pickerSearchQuery) {
     _renderPickerCategory(container, ctx);
     return;
@@ -1886,83 +2049,17 @@ export function _renderPickerList() {
   const pool = _pickerSearchQuery
     ? gymFiltered.filter(e => String(e.name || '').toLowerCase().includes(_pickerSearchQuery))
     : gymFiltered;
-
-  // C-4: 현재 활성 필터 배너 — 무엇이 걸려있는지 명시적으로 보여주고 한 번에 해제.
-  const filterBadges = [];
-  if (_pickerMuscleFilter) {
-    const muscle = allMuscles.find(m => m.id === _pickerMuscleFilter);
-    if (muscle) filterBadges.push({ type: 'muscle', label: `부위: ${muscle.name}` });
-  }
-  if (_pickerGymFilter && _pickerGymFilter !== 'all') {
-    const gym = gyms.find(g => g.id === _pickerGymFilter);
-    const label = _pickerGymFilter === 'usable'
-      ? '헬스장: 사용 가능'
-      : (_pickerGymFilter === 'global' ? '헬스장: 공통' : `헬스장: ${gym?.name || '선택 헬스장'}`);
-    filterBadges.push({ type: 'gym', label });
-  }
-  if (_pickerListMode === 'custom') filterBadges.push({ type: 'mode', label: '구분: 커스텀' });
-  if (_pickerSearchQuery) filterBadges.push({ type: 'search', label: `검색: "${_pickerSearchQuery}"` });
-  if (filterBadges.length > 0) {
-    const banner = document.createElement('div');
-    banner.className = 'ex-picker-filter-active-bar';
-    banner.innerHTML =
-      `<span class="ex-picker-filter-active-text">필터 적용: ${filterBadges.map(b => `<b>${b.label}</b>`).join(' · ')}</span>` +
-      `<button type="button" class="tds-btn tonal sm ex-picker-filter-reset" onclick="window._wtResetAllPickerFilters()">필터 해제</button>`;
-    container.appendChild(banner);
-  }
+  const statsByExercise = _buildPickerExerciseStats();
   if (isMaxBenchmarkPicker) {
     container.insertAdjacentHTML('beforeend', _renderPickerBenchmarkScope(ctx));
   }
-
-  if (availableMuscles.size >= 1 || isExpert) {
-    const filters = document.createElement('div');
-    filters.className = 'ex-picker-filter-stack';
-    const muscleAllActive = _pickerMuscleFilter === null;
-    const muscleHtml = `<div class="ex-picker-filter-row">
-      <div class="ex-picker-filter-title">부위</div>
-      <div class="ex-picker-filter-bar">
-        <button type="button" class="ex-picker-filter-chip${muscleAllActive?' active':''}" onclick="window._wtSetPickerMuscleFilter(null)">전체</button>
-        ${visibleMuscles
-          .map(m => `<button type="button" class="ex-picker-filter-chip${_pickerMuscleFilter===m.id?' active':''}" onclick="window._wtSetPickerMuscleFilter('${m.id}')">${m.name}</button>`)
-          .join('')}
-      </div>
-    </div>`;
-    const gymOptions = [
-      { id: 'all', name: '전체', enabled: true },
-      { id: 'usable', name: currentGymId ? '사용 가능' : '공통/현재', enabled: true },
-      { id: 'global', name: '공통', enabled: true },
-      ...gyms.filter(g => availableGymIds.has(g.id)).map(g => ({ id: g.id, name: g.name || '이름 없는 헬스장', enabled: true })),
-    ];
-    const gymHtml = isExpert && !isMaxBenchmarkPicker ? `<div class="ex-picker-filter-row">
-      <div class="ex-picker-filter-title">헬스장</div>
-      <div class="ex-picker-filter-bar">
-        ${gymOptions.map(g => `<button type="button" class="ex-picker-filter-chip${_pickerGymFilter===g.id?' active':''}" onclick="window._wtSetPickerGymFilter('${_escPicker(g.id)}')">${_escPicker(g.name)}</button>`).join('')}
-      </div>
-    </div>` : '';
-    filters.innerHTML = muscleHtml + gymHtml;
-    container.appendChild(filters);
-  }
+  _renderPickerListToolbar(container);
 
   let renderedGroupCount = 0;
-  const quickAdd = document.createElement('div');
-  quickAdd.className = `ex-picker-quick-add${isMaxBenchmarkPicker ? ' max-crud' : ''}`;
-  quickAdd.innerHTML = isMaxBenchmarkPicker
-    ? `
-      <button type="button" class="ex-picker-add primary" data-action="add-picker-exercise">+ 종목 추가</button>
-      <button type="button" class="ex-picker-add" data-action="open-picker-equipment">기구 관리</button>
-      <span>운동종목 · 헬스장 기구</span>
-    `
-    : `
-      <button type="button" class="ex-picker-add primary" data-action="add-picker-exercise">+ 종목 추가(선택)</button>
-      <span>${isExpert ? '현재 필터의 헬스장 범위로 저장됩니다.' : '직접 종목을 추가합니다.'}</span>
-    `;
-  quickAdd.querySelector('[data-action="add-picker-exercise"]')?.addEventListener('click', () => wtOpenExerciseEditor(null, _pickerMuscleFilter || todayMajorScope[0] || null));
-  quickAdd.querySelector('[data-action="open-picker-equipment"]')?.addEventListener('click', () => _openPickerEquipmentManager());
-  container.appendChild(quickAdd);
   visibleMuscles.forEach(muscle => {
-    const list = pool
+    const list = _sortPickerExercises(pool
       .filter(e => _exerciseMajorIds(e).includes(muscle.id))
-      .filter(e => _isPickerVisibleExercise(e, isMaxBenchmarkPicker));
+      .filter(e => _isPickerVisibleExercise(e, isMaxBenchmarkPicker)), statsByExercise);
 
     if (list.length === 0) return;
     renderedGroupCount++;
@@ -1972,11 +2069,12 @@ export function _renderPickerList() {
     group.innerHTML = `<div class="ex-picker-group-label" style="color:${muscle.color}">${muscle.name}</div>`;
     list.forEach(ex => {
       const alreadyAdded = S.workout.exercises.some(e => e.exerciseId === ex.id);
+      const pickerStats = statsByExercise.get(ex.id) || { count: 0, lastDate: null };
       const btn = document.createElement('button');
       btn.className = 'ex-picker-item' + (alreadyAdded ? ' already' : '');
       const editable = _isExerciseEditable(ex);
       if (isMaxBenchmarkPicker) {
-        btn.innerHTML = `${_renderExercisePickerName(ex, alreadyAdded)}
+        btn.innerHTML = `${_renderExercisePickerName(ex, alreadyAdded, pickerStats)}
           <span class="ex-picker-row-side">
             ${_renderMaxBenchmarkPickerMeta(ex)}
             <span class="ex-picker-actions">
@@ -1993,7 +2091,7 @@ export function _renderPickerList() {
           _deletePickerExercise(ex);
         });
       } else if (isExpert) {
-        btn.innerHTML = `${_renderExercisePickerName(ex, alreadyAdded)}
+        btn.innerHTML = `${_renderExercisePickerName(ex, alreadyAdded, pickerStats)}
           <div class="ex-picker-actions">
             <span class="ex-picker-icon-btn ex-picker-edit" data-exid="${ex.id}" role="button" tabindex="0" aria-label="종목 수정" title="종목 수정">${_pickerEditIconSvg()}</span>
             ${editable ? `<span class="ex-picker-delete" data-exid="${ex.id}" title="종목 삭제">삭제</span>` : ''}
@@ -2009,7 +2107,7 @@ export function _renderPickerList() {
       } else {
         // C-3: ✕(삭제 연상) → 눈감김 아이콘 + "이 목록에서 숨기기" tooltip.
         //     실제로는 "이 헬스장에선 안 써요" 의미라 파괴적 삭제가 아님.
-        btn.innerHTML = `${_renderExercisePickerName(ex, alreadyAdded)}
+        btn.innerHTML = `${_renderExercisePickerName(ex, alreadyAdded, pickerStats)}
           <div class="ex-picker-actions">
             <span class="ex-picker-icon-btn ex-picker-edit" data-exid="${ex.id}" role="button" tabindex="0" aria-label="종목 수정" title="종목 수정">${_pickerEditIconSvg()}</span>
             <span class="ex-picker-hide" data-exid="${ex.id}" title="이 헬스장 목록에서 숨기기" aria-label="이 헬스장 목록에서 숨기기">
@@ -2069,14 +2167,15 @@ export function _renderPickerList() {
     const empty = document.createElement('div');
     empty.className = 'ex-picker-empty';
     empty.style.cssText = 'padding:32px 16px; text-align:center; color:var(--text-secondary); font-size:14px; line-height:1.5;';
-    const hasFilter = filterBadges.length > 0;
+    const hasFilter = !!(_pickerMuscleFilter || _pickerSearchQuery || _pickerListMode === 'custom' || (_pickerGymFilter && _pickerGymFilter !== 'all'));
     const emptyMsg = _pickerListMode === 'custom'
       ? '등록된 커스텀 종목이 없어요'
-      : (isExpert ? '이 헬스장에 등록된 종목이 없어요' : '등록된 종목이 없어요');
+      : '등록된 종목이 없어요';
     empty.innerHTML = hasFilter
       ? `<div style="margin-bottom:12px;">조건에 맞는 종목이 없어요</div>
-         <button type="button" class="tds-btn tonal sm" onclick="window._wtResetAllPickerFilters()">필터 초기화</button>`
+         <button type="button" class="tds-btn tonal sm" data-picker-reset-empty>필터 초기화</button>`
       : `<div>${emptyMsg}</div>`;
+    empty.querySelector('[data-picker-reset-empty]')?.addEventListener('click', () => window._wtResetAllPickerFilters?.());
     container.appendChild(empty);
   }
 }
@@ -2094,9 +2193,8 @@ export async function wtOpenExercisePicker() {
   _pickerView = 'category';
   _pickerListMode = 'all';
   _pickerMuscleFilter = null;
-  _pickerGymFilter = _isExpertSessionActive()
-    ? (S?.workout?.pickerGymFilter || 'all')
-    : null;
+  _resetPickerGymScope();
+  _pickerSortMode = 'recent';
   _pickerSearchQuery = '';
   _setPickerSearchUi('');
   _renderPickerList();
