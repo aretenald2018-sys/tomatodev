@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-24-workout-calendar-bottom-sheet.md`
-- 현재 단계: `static verified — Slice 1 운동 캘린더 날짜 상세 하단 시트`
-- 마지막 완료: `기존 하단 날짜 탭을 sheet 헤더로 재사용하고, 날짜 클릭 시 full로 올라오는 애니메이션과 drag height 조절을 구현했다.`
-- 다음 액션: `계획 파일과 변경 파일을 리뷰하고, 문제가 없으면 Dashboard3 Pages 배포 검증을 진행한다.`
+- 현재 단계: `reviewed/deployed — Slice 1 운동 캘린더 날짜 상세 하단 시트`
+- 마지막 완료: `기존 하단 날짜 탭을 sheet 헤더로 재사용하고, 날짜 클릭 시 full로 올라오는 애니메이션과 drag height 조절을 구현한 뒤 정적/배포 검증과 리뷰를 완료했다.`
+- 다음 액션: `인증 계정으로 배포 URL에서 운동 탭 날짜 sheet drag UI flow를 직접 확인한다.`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
@@ -26,8 +26,12 @@
   3. PASS: `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
   4. PASS: `node scripts/verify-runtime-assets.mjs`
   5. PASS: `git diff --check`
-  6. not verified yet: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>` 필요
-  7. not verified yet: 배포 URL에서 인증 계정으로 `운동 탭 -> 날짜 탭 -> 하단 시트 표시 -> handle 위/아래 드래그 -> + 버튼` 흐름 확인 필요
+  6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 3d76b141d0a47b4d60af24e5fc07e147269808f9`
+  7. PASS: 배포 URL 브라우저 접근 시 최신 앱이 열리고 로그인 화면이 표시되는 것을 확인
+  8. not verified yet: 로그인 화면에 막혀 인증 계정의 `운동 탭 -> 날짜 탭 -> 하단 시트 표시 -> handle 위/아래 드래그 -> + 버튼` UI flow 직접 조작은 미완료
+
+- 리뷰:
+  - `docs/ai/reviews/2026-06-24-workout-calendar-bottom-sheet-review.md`
 
 - 이전 계획 파일: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md`
 - 완료한 Slice 4:
