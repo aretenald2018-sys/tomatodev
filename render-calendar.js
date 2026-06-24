@@ -45,6 +45,7 @@ let _workoutHomeSelectedKey = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TOD
 let _workoutHomeView = 'month';
 let _workoutHomeSheetState = 'bar';
 let _workoutHomeSessionIndex = 0;
+let _workoutHomeSuppressNextSheetClick = false;
 const _workoutDetailCollapsed = new Set();
 let _workoutTrackGraphSeq = 0;
 const WORKOUT_HOME_SHEET_STATES = ['bar', 'mid', 'full'];
@@ -840,7 +841,7 @@ function _renderWorkoutHomeDayBar(selectedKey, { cache, plan, checkins, lookup }
   const wx = _workoutMetrics(selected, cache[selected] || {}, bodyWeight, lookup);
   const ordinal = _workoutRecordOrdinalForKey(cache, selected, plan, checkins, lookup);
   const recordText = ordinal > 0 ? `${ordinal}번째 기록` : '운동 기록 없음';
-  const sessionText = wx.hasWorkout ? '1회차 기록 보기' : '1회차 기록 없음';
+  const sessionText = wx.hasWorkout ? '1회차 보기' : '1회차 없음';
   const sheetState = _currentWorkoutHomeSheetState();
   const expanded = sheetState !== 'bar';
   return `
@@ -851,8 +852,8 @@ function _renderWorkoutHomeDayBar(selectedKey, { cache, plan, checkins, lookup }
         <span class="cal-workout-day-sub">${recordText} · ${sessionText}</span>
       </button>
       <div class="cal-workout-day-actions">
-        <button type="button" onclick="window._wtCalGoToday()">오늘</button>
-        <button type="button" onclick="window._wtCalOpenRoutine('${selected}')">루틴</button>
+        <button type="button" data-wt-sheet-action onclick="window._wtCalGoToday()">오늘</button>
+        <button type="button" data-wt-sheet-action onclick="window._wtCalOpenRoutine('${selected}')">루틴</button>
       </div>
     </div>
   `;
@@ -1764,6 +1765,7 @@ function _stepWorkoutHomeSheet(direction, strong = false) {
 }
 
 function _toggleWorkoutHomeSheet(key = _workoutHomeSelectedKey) {
+  if (_consumeWorkoutHomeSuppressedClick()) return;
   _workoutHomeSelectedKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
   if (_currentWorkoutHomeSheetState() === 'bar') {
     _workoutHomeView = 'detail';
@@ -1773,6 +1775,12 @@ function _toggleWorkoutHomeSheet(key = _workoutHomeSelectedKey) {
     return;
   }
   _setWorkoutHomeSheetState('bar');
+}
+
+function _consumeWorkoutHomeSuppressedClick() {
+  if (!_workoutHomeSuppressNextSheetClick) return false;
+  _workoutHomeSuppressNextSheetClick = false;
+  return true;
 }
 
 function _bindWorkoutHomeSheetDrag(root) {
@@ -1797,7 +1805,7 @@ function _handleWorkoutHomeSheetKey(event) {
 
 function _startWorkoutHomeSheetDrag(event) {
   if (event.button != null && event.button !== 0) return;
-  if (event.target?.closest?.('button')) return;
+  if (event.target?.closest?.('[data-wt-sheet-action]')) return;
   const sheet = event.currentTarget?.closest?.('[data-wt-day-sheet]');
   if (!sheet) return;
 
@@ -1811,7 +1819,6 @@ function _startWorkoutHomeSheetDrag(event) {
   sheet.style.setProperty('--wt-day-sheet-drag-y', '0px');
   sheet.style.setProperty('--wt-day-sheet-drag-height', `${startHeight}px`);
   event.currentTarget.setPointerCapture?.(event.pointerId);
-  event.preventDefault();
 
   const onMove = (moveEvent) => {
     lastY = moveEvent.clientY || startY;
@@ -1831,6 +1838,8 @@ function _startWorkoutHomeSheetDrag(event) {
 
     const dy = lastY - startY;
     if (Math.abs(dy) < 36) return;
+    _workoutHomeSuppressNextSheetClick = true;
+    setTimeout(() => { _workoutHomeSuppressNextSheetClick = false; }, 250);
     _stepWorkoutHomeSheet(dy < 0 ? 1 : -1, Math.abs(dy) > 112);
   };
 
@@ -1840,6 +1849,7 @@ function _startWorkoutHomeSheetDrag(event) {
 }
 
 function _openWorkoutHomeDay(key) {
+  if (_consumeWorkoutHomeSuppressedClick()) return;
   _workoutHomeSelectedKey = key;
   _workoutHomeView = 'detail';
   _workoutHomeSheetState = 'bar';

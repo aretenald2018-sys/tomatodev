@@ -82,3 +82,49 @@
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
 - not verified yet: Dashboard3 Pages 배포와 인증 계정의 실제 `운동 탭 -> 날짜 탭 -> drag` UI flow 확인이 남아 있다.
+
+## 후속 Slice 2 — Compact bar and drag hit area fix
+
+### 배경
+
+배포 화면에서 접힌 하단 sheet가 너무 높고, 정보가 2행으로 보여 캘린더를 많이 가린다. 또한 사용자가 sheet를 위로 끌어올릴 수 없다고 피드백했다.
+
+### 진단
+
+1. 접힌 sheet 높이는 `clamp(132px~206px)` 수준이라 모바일 화면에서 하단 공간을 과하게 차지한다.
+2. `.cal-workout-day-bar` 내부 날짜 본문이 `button`이고 `_startWorkoutHomeSheetDrag()`가 `event.target.closest('button')`이면 즉시 return한다. 그래서 사용자가 실제로 잡는 날짜 영역/화살표 영역에서는 drag가 시작되지 않는다.
+3. 화살표는 일반 텍스트 상태라 사용자가 sheet를 올릴 수 있다는 affordance가 약하다.
+
+### 포함
+
+- 접힌 sheet 높이를 절반 수준으로 줄이고 `.cal-workout-day-bar`를 한 행 compact grid로 조정한다.
+- 날짜/기록/회차/오늘/루틴 정보를 한 행에 담되 좁은 폭에서는 텍스트 overflow로 안정화한다.
+- 맨왼쪽 위 화살표에 glow/pulse affordance를 추가한다.
+- drag 시작 로직에서 화살표/날짜 본문은 drag 가능하게 하고, `오늘`/`루틴` action 버튼만 drag 제외한다.
+- 회귀 테스트를 갱신하고 `sw.js` cache version을 bump한다.
+
+### 검증 계획
+
+- `node --check render-calendar.js; node --check sw.js`
+- `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+
+### 실행 결과
+
+- 접힌 sheet 높이를 `clamp(72px, 10dvh, 96px)`로 줄이고, 모바일에서는 `clamp(64px, 9dvh, 84px)`로 더 줄였다.
+- `.cal-workout-day-bar`를 1행 grid로 유지하고 날짜/기록/회차/오늘/루틴 정보를 한 행에 배치했다.
+- 좌측 화살표에 파란 glow/pulse animation을 추가해 올릴 수 있는 affordance를 강화했다.
+- drag hit area에서 `button` 전체 제외를 제거하고 `data-wt-sheet-action`이 붙은 `오늘`/`루틴` 버튼만 제외했다.
+- drag 후 발생하는 click이 sheet 상태를 되돌리지 않도록 `_workoutHomeSuppressNextSheetClick` 방어를 추가했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z36-workout-day-sheet-compact`로 bump했다.
+
+### 실행 검증
+
+- PASS: `node --check render-calendar.js; node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
+- PASS: `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- not verified yet: Dashboard3 Pages 배포와 인증 계정의 실제 drag UI flow 확인이 남아 있다.

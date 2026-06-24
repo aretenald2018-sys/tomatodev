@@ -51,5 +51,5 @@ test('app update reload flushes workout draft and changes copy while workout is 
 });
 
 test('service worker cache version was bumped for recovery assets', () => {
-  assert.match(swJs, /tomatofarm-v20260624z35-workout-day-sheet/);
+  assert.match(swJs, /tomatofarm-v20260624z36-workout-day-sheet-compact/);
 });

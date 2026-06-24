@@ -3328,7 +3328,7 @@ body.wt-modal-scroll-lock {
   opacity: 1;
 }
 .workout-calendar-root {
-  padding: 0 0 220px;
+  padding: 0 0 124px;
   background: #f7f7fb;
   min-height: 100%;
 }
@@ -9739,10 +9739,11 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   bottom: 60px;
   z-index: 30;
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+  gap: 8px;
+  min-height: 64px;
+  padding: 7px 12px calc(7px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid #d7d9e2;
   background: rgba(247, 247, 251, 0.96);
   box-shadow: 0 -2px 8px rgba(30, 35, 48, 0.08);
@@ -9754,20 +9755,22 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   font-family: var(--font-sans);
 }
 .cal-workout-day-expand {
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 32px;
   border: 0;
   background: transparent;
-  color: #4e535d;
-  font-size: 24px;
+  color: #2f6df6;
+  font-size: 23px;
   line-height: 1;
+  text-shadow: 0 0 10px rgba(47, 109, 246, 0.72);
+  animation: wt-sheet-arrow-pulse 1.45s ease-in-out infinite;
 }
 .cal-workout-day-main {
   display: flex;
   min-width: 0;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
+  flex-direction: row;
+  align-items: center;
+  gap: 7px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -9775,24 +9778,29 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   text-align: left;
 }
 .cal-workout-day-date {
+  flex: 0 1 auto;
+  min-width: 0;
   max-width: 100%;
-  font-size: 22px;
-  line-height: 26px;
-  font-weight: 500;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .cal-workout-day-date em {
   color: #2f3138;
-  font-size: 16px;
+  font-size: 12px;
   font-style: normal;
+  font-weight: 700;
 }
 .cal-workout-day-sub {
+  flex: 1 1 auto;
+  min-width: 0;
   max-width: 100%;
   color: #2f3138;
-  font-size: 15px;
-  line-height: 19px;
+  font-size: 12px;
+  line-height: 16px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -9800,20 +9808,30 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 .cal-workout-day-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 .cal-workout-day-actions button {
-  min-width: 72px;
-  height: 44px;
-  padding: 0 18px;
+  min-width: 52px;
+  height: 34px;
+  padding: 0 11px;
   border: 1px solid #e0e2ea;
-  border-radius: 24px;
+  border-radius: 18px;
   background: #ffffff;
   color: #43536d;
-  font-size: 16px;
-  line-height: 20px;
+  font-size: 13px;
+  line-height: 17px;
   font-weight: 700;
   box-shadow: 0 2px 6px rgba(30, 35, 48, 0.12);
+}
+@keyframes wt-sheet-arrow-pulse {
+  0%, 100% {
+    transform: translateY(0);
+    filter: drop-shadow(0 0 0 rgba(47, 109, 246, 0));
+  }
+  50% {
+    transform: translateY(-2px);
+    filter: drop-shadow(0 0 8px rgba(47, 109, 246, 0.82));
+  }
 }
 
 /* 운동탭 날짜 상세 */
@@ -10494,26 +10512,26 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
     line-height: 13px;
   }
   .cal-workout-day-bar {
-    grid-template-columns: 28px minmax(0, 1fr);
-    gap: 7px;
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
-  }
-  .cal-workout-day-actions {
-    grid-column: 2;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    gap: 6px;
+    min-height: 58px;
+    padding: 6px 9px calc(6px + env(safe-area-inset-bottom, 0px));
   }
   .cal-workout-day-date {
-    font-size: 19px;
-    line-height: 23px;
+    font-size: 15px;
+    line-height: 20px;
   }
-  .cal-workout-day-date em,
+  .cal-workout-day-date em {
+    font-size: 11px;
+  }
   .cal-workout-day-sub {
-    font-size: 13px;
+    font-size: 11px;
   }
   .cal-workout-day-actions button {
-    min-width: 64px;
-    height: 38px;
-    padding: 0 14px;
-    font-size: 14px;
+    min-width: 46px;
+    height: 30px;
+    padding: 0 9px;
+    font-size: 12px;
   }
   .wt-day-detail {
     padding: 10px 14px 116px;
@@ -10712,7 +10730,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 }
 
 .cal-workout-day-sheet {
-  --wt-day-sheet-height: clamp(144px, 22dvh, 206px);
+  --wt-day-sheet-height: clamp(72px, 10dvh, 96px);
   --wt-day-sheet-drag-y: 0px;
   position: fixed;
   left: 0;
@@ -10734,7 +10752,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   will-change: height, transform;
 }
 .cal-workout-day-sheet.is-bar {
-  --wt-day-sheet-height: clamp(144px, 22dvh, 206px);
+  --wt-day-sheet-height: clamp(72px, 10dvh, 96px);
 }
 .cal-workout-day-sheet.is-mid {
   --wt-day-sheet-height: min(62dvh, 640px);
@@ -10816,10 +10834,10 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 
 @media (max-width: 430px) {
   .cal-workout-day-sheet {
-    --wt-day-sheet-height: clamp(132px, 21dvh, 184px);
+    --wt-day-sheet-height: clamp(64px, 9dvh, 84px);
   }
   .cal-workout-day-sheet.is-bar {
-    --wt-day-sheet-height: clamp(132px, 21dvh, 184px);
+    --wt-day-sheet-height: clamp(64px, 9dvh, 84px);
   }
   .cal-workout-day-sheet.is-mid {
     --wt-day-sheet-height: 60dvh;

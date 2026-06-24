@@ -4,9 +4,9 @@
 
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-24-workout-calendar-bottom-sheet.md`
-- 현재 단계: `reviewed/deployed — Slice 1 운동 캘린더 날짜 상세 하단 시트`
-- 마지막 완료: `기존 하단 날짜 탭을 sheet 헤더로 재사용하고, 날짜 클릭 시 full로 올라오는 애니메이션과 drag height 조절을 구현한 뒤 정적/배포 검증과 리뷰를 완료했다.`
-- 다음 액션: `인증 계정으로 배포 URL에서 운동 탭 날짜 sheet drag UI flow를 직접 확인한다.`
+- 현재 단계: `reviewed — Slice 2 compact bar and drag hit area fix`
+- 마지막 완료: `접힌 sheet를 1행 compact bar로 줄이고, 화살표 glow와 날짜 영역 drag hit area fix를 구현한 뒤 정적 검증과 리뷰를 완료했다.`
+- 다음 액션: `Dashboard3 Pages 배포 검증과 인증 계정 실제 drag UI flow 확인을 진행한다.`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
@@ -32,6 +32,24 @@
 
 - 리뷰:
   - `docs/ai/reviews/2026-06-24-workout-calendar-bottom-sheet-review.md`
+
+- 완료한 Slice 2:
+  1. 접힌 sheet 높이를 절반 수준으로 줄이고 한 행 compact bar로 조정
+  2. 좌측 위 화살표에 glow/pulse affordance 추가
+  3. 날짜/화살표 영역 drag hit area 허용, `오늘`/`루틴` action만 drag 제외
+  4. drag 후 click이 상태를 되돌리지 않도록 suppress guard 추가
+  5. 회귀 테스트와 `sw.js` `CACHE_VERSION` 갱신
+
+- Slice 2 검증:
+  1. PASS: `node --check render-calendar.js; node --check sw.js`
+  2. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
+  3. PASS: `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
+  4. PASS: `node scripts/verify-runtime-assets.mjs`
+  5. PASS: `git diff --check`
+  6. not verified yet: Dashboard3 Pages 배포와 인증 계정 실제 drag UI flow 확인 필요
+
+- Slice 2 리뷰:
+  - `docs/ai/reviews/2026-06-24-workout-calendar-bottom-sheet-compact-review.md`
 
 - 이전 계획 파일: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md`
 - 완료한 Slice 4:
