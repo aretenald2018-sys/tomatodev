@@ -127,3 +127,68 @@
   - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ e2f2a99`
   - PASS: 배포된 `render-stats.js`에서 `getWorkoutSessions`, red tint, 활성 부위 빈 상태 문구가 확인됐고 `label: '일별'`은 제거됐다.
   - not verified yet: 배포 URL은 로그인 화면에 막혀 더보기 → 통계 → 운동 활성 부위 카드 UI 클릭 흐름을 인증 계정으로 끝까지 확인하지 못했다.
+
+### Slice 3: 저활성 부위 푸른색 표시와 실행 가능한 보강 인사이트
+
+사용자 피드백:
+
+- 상대적으로 미활성되어 있거나 덜 한 부위는 푸르스름한 푸른색 계열로 표출한다.
+- 단순히 색칠하는 것만으로 사용자가 실질적으로 도움을 받는지 의문이 있다.
+- 이 통계가 다음 운동 판단에 도움이 되도록 표현 방식을 고민해 추가 반영한다.
+
+그릴 결과:
+
+- 질문: 색상을 피로도처럼 해석하게 할지, 다음 운동 우선순위처럼 해석하게 할지가 핵심이다.
+- 결정: 빨강은 "이번 기간에 많이 쓴/회복 확인할 부위", 파랑은 "상대적으로 덜 쓴/다음 보강 후보"로 의미를 분리한다.
+- 근거: 모든 부위를 빨간 강도로만 칠하면 사용자는 "어디가 부족한지"를 알기 어렵다. 푸른색은 부족/차가움/비활성 신호로 쓰고, 별도 인사이트 문구로 다음 행동을 제안한다.
+- 가정: 부위별 절대 권장 세트 기준보다 현재 카드의 상대 분포가 더 직관적이다. 따라서 같은 기간 내 최고 활성 부위 대비 낮은 부위를 보강 후보로 본다.
+
+변경 범위:
+
+1. `render-stats.js`
+   - 기간 내 기록이 있으면 모든 주요 그룹을 상대 활성도로 분류한다.
+   - 최고 활성 대비 낮은 그룹은 blue tint와 `보강`/`낮음` 상태로 표시한다.
+   - 많이 쓴 그룹은 red tint와 `집중`/`회복 확인` 상태로 표시한다.
+   - 헤드라인, 요약 카드, 인사이트 박스에 `다음 운동 보강 후보`, `집중 부위`, `쏠림 비율`을 노출한다.
+2. `style.css`
+   - hotspot과 row bar가 red/blue tint를 모두 받을 수 있게 투명 gradient와 상태 badge를 정리한다.
+   - 인사이트 박스와 row badge를 추가하되 카드 높이가 과도하게 커지지 않게 모바일 밀도를 유지한다.
+3. `sw.js`
+   - `render-stats.js`, `style.css`가 `STATIC_ASSETS`에 포함되어 있으므로 `CACHE_VERSION`을 bump한다.
+4. `tests/stats-muscle-fatigue-insight.test.js`
+   - red/blue tint, 보강 인사이트, 처방성 문구가 source-level로 유지되는지 확인한다.
+
+하지 않을 것:
+
+- 새 근육 이미지 자산 제작.
+- 운동 저장 스키마 또는 Firestore 접근 경로 변경.
+- 통계탭 전체 차트 구조 재배치.
+- `www/` 직접 수정.
+
+검증 계획:
+
+1. `node --check render-stats.js`
+2. `node --check sw.js`
+3. `node --test tests/stats-muscle-fatigue-insight.test.js`
+4. `node scripts/verify-runtime-assets.mjs`
+5. `git diff --check`
+6. Dashboard3 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+7. 배포 URL에서 더보기 → 통계 → 운동 활성 부위 카드가 red/blue 상태와 `다음 운동 힌트`를 표시하는지 인증 계정으로 확인한다.
+
+실행 결과:
+
+- 2026-06-24: Slice 3 구현 완료.
+- `render-stats.js`에서 기간 내 최고 활성 대비 상대 점수를 계산하고, 낮은 그룹은 `under`/`low` blue tint, 높은 그룹은 `hot` red tint로 분류한다.
+- 인체 hotspot은 기록이 있는 기간에 모든 주요 그룹을 렌더해, 운동한 곳은 빨강/균형색, 상대적으로 덜 한 곳은 푸른색으로 보이게 했다.
+- 헤드라인과 요약 카드에 `집중 부위`, `보강 후보`, `총 볼륨`을 표시한다.
+- `다음 운동 힌트` 인사이트를 추가해 보강 후보 1-2개를 `2-4세트 먼저` 실행하도록 안내한다.
+- row 목록은 `보강`/`낮음`/`집중`/`균형` badge와 함께 표시한다.
+- `style.css`에서 red/blue hotspot, 보강 인사이트, 상태 badge 스타일을 추가했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z29-stats-blue-balance`로 bump했다.
+- `tests/stats-muscle-fatigue-insight.test.js`를 추가하고 기존 `tests/workout-test-mode-unified.test.js` 캐시 버전 검증을 갱신했다.
+- PASS: `node --check render-stats.js; node --check sw.js`
+- PASS: `node --test tests/stats-muscle-fatigue-insight.test.js tests/workout-test-mode-unified.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- 리뷰: `docs/ai/reviews/2026-06-24-stats-muscle-blue-balance-review.md`
+- not verified yet: Dashboard3 Pages 배포와 인증 계정 UI 클릭 검증은 다음 단계에서 진행한다.

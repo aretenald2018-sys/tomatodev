@@ -203,6 +203,21 @@ function _fatigueRed(level) {
   return `hsl(3, ${saturation}%, ${lightness}%)`;
 }
 
+function _fatigueBlue(level) {
+  const n = _clamp(Number(level) || 0, 0, 1);
+  const saturation = Math.round(46 + n * 38);
+  const lightness = Math.round(72 - n * 24);
+  return `hsl(205, ${saturation}%, ${lightness}%)`;
+}
+
+function _fatigueStatus(group, relative) {
+  if (relative <= 0) return { tone: 'under', label: '보강', hint: '이번 기간 기록 없음' };
+  if (relative < 0.35) return { tone: 'under', label: '보강', hint: '최고 활성 대비 낮음' };
+  if (relative < 0.55) return { tone: 'low', label: '낮음', hint: '다음 운동에서 먼저 채우기' };
+  if (relative >= 0.82) return { tone: 'hot', label: '집중', hint: '회복 상태 확인' };
+  return { tone: 'steady', label: '균형', hint: '현재 흐름 유지' };
+}
+
 function _fatigueExerciseEntries(day) {
   return getWorkoutSessions(day, { minCount: 1 })
     .flatMap(session => Array.isArray(session?.exercises) ? session.exercises : []);
@@ -247,53 +262,105 @@ function _buildMuscleFatigue(periodKey) {
       if (touched) trainingDays++;
     });
 
+  const totalScore = groups.reduce((sum, group) => sum + group.score, 0);
   const maxScore = Math.max(...groups.map(group => group.score), 1);
   groups.forEach(group => {
-    group.level = group.score > 0 ? _clamp(group.score / maxScore, 0.18, 1) : 0;
-    group.tint = group.level > 0 ? _fatigueRed(group.level) : '';
+    const relative = totalScore > 0 ? group.score / maxScore : 0;
+    const status = totalScore > 0 ? _fatigueStatus(group, relative) : { tone: 'empty', label: '기록 없음', hint: '' };
+    const visualLevel = totalScore > 0
+      ? (relative > 0 ? _clamp(relative, 0.18, 1) : 0.30)
+      : 0;
+    group.level = group.score > 0 ? _clamp(relative, 0.18, 1) : 0;
+    group.visualLevel = visualLevel;
+    group.relativePct = Math.round(relative * 100);
+    group.tone = status.tone;
+    group.statusLabel = status.label;
+    group.hint = status.hint;
+    group.tint = totalScore > 0
+      ? (status.tone === 'under' || status.tone === 'low' ? _fatigueBlue(visualLevel) : _fatigueRed(visualLevel))
+      : '';
     group.days = group.days.size;
     group.volume = Math.round(group.volume);
   });
 
   const active = groups.filter(group => group.level > 0).sort((a, b) => b.score - a.score);
+  const underactive = totalScore > 0
+    ? groups.filter(group => group.tone === 'under' || group.tone === 'low').sort((a, b) => a.score - b.score || a.label.localeCompare(b.label, 'ko'))
+    : [];
+  const hot = totalScore > 0
+    ? groups.filter(group => group.tone === 'hot').sort((a, b) => b.score - a.score)
+    : [];
   return {
     period,
     groups,
     active,
+    underactive,
+    hot,
     top: active[0] || null,
     trainingDays,
     totalSets: groups.reduce((sum, group) => sum + group.sets, 0),
     totalVolume: groups.reduce((sum, group) => sum + group.volume, 0),
+    totalScore,
   };
 }
 
 function _fatigueHotspotsHtml(groups) {
-  return groups.filter(group => group.level > 0).flatMap(group => {
-    const opacity = (0.30 + group.level * 0.54).toFixed(2);
-    const saturation = (0.65 + group.level * 0.65).toFixed(2);
+  return groups.filter(group => group.visualLevel > 0).flatMap(group => {
+    const opacity = (0.22 + group.visualLevel * 0.48).toFixed(2);
+    const saturation = (0.74 + group.visualLevel * 0.54).toFixed(2);
     return group.spots.map((spot, idx) => `
-      <i class="stats-fatigue-hotspot" aria-hidden="true"
+      <i class="stats-fatigue-hotspot is-${_esc(group.tone)}" aria-hidden="true"
          style="left:${spot.x}%;top:${spot.y}%;width:${spot.w}%;height:${spot.h}%;--mf:${group.tint};--sat:${saturation};--r:${spot.r || 0}deg;opacity:${opacity}"
          data-muscle="${_esc(group.id)}-${idx}"></i>`);
   }).join('');
 }
 
 function _fatigueRowsHtml(groups) {
-  const active = groups.filter(group => group.level > 0);
-  if (!active.length) {
+  const visible = groups.filter(group => group.visualLevel > 0);
+  if (!visible.length) {
     return '<div class="stats-fatigue-empty">선택 기간에 활성 부위 기록이 없어요.</div>';
   }
-  return active.map(group => {
-    const pct = Math.round(group.level * 100);
-    const volume = group.volume ? `${_fmt(group.volume / 1000, 1)}k` : '0.0k';
-    return `
-      <div class="stats-fatigue-row is-active" style="--mf:${group.tint};--pct:${pct}%">
-        <span class="stats-fatigue-name">${_esc(group.label)}</span>
-        <span class="stats-fatigue-meter"><i></i></span>
-        <b>${_esc(volume)}</b>
-        <small>${group.sets ? `${group.sets}세트` : '0세트'}</small>
-      </div>`;
-  }).join('');
+  return visible
+    .sort((a, b) => {
+      const rank = { under: 0, low: 1, hot: 2, steady: 3, empty: 4 };
+      return (rank[a.tone] ?? 9) - (rank[b.tone] ?? 9) || b.score - a.score;
+    })
+    .map(group => {
+      const pct = group.score > 0 ? Math.max(8, group.relativePct) : 8;
+      const volume = group.volume ? `${_fmt(group.volume / 1000, 1)}k` : '0.0k';
+      return `
+        <div class="stats-fatigue-row is-${_esc(group.tone)}" style="--mf:${group.tint};--pct:${pct}%">
+          <span class="stats-fatigue-name">${_esc(group.label)}<em>${_esc(group.statusLabel)}</em></span>
+          <span class="stats-fatigue-meter"><i></i></span>
+          <b>${_esc(volume)}</b>
+          <small>${group.sets ? `${group.sets}세트` : '0세트'} · ${_esc(group.hint)}</small>
+        </div>`;
+    }).join('');
+}
+
+function _fatigueInsight(state) {
+  if (!state.top) {
+    return {
+      tone: 'empty',
+      title: '운동 기록이 쌓이면 보강 부위를 잡아드릴게요',
+      note: '주별 또는 월별 기록이 생기면 많이 쓴 부위는 빨강, 덜 쓴 부위는 파랑으로 나눠 다음 운동 우선순위를 보여줍니다.',
+    };
+  }
+  const focus = state.underactive.slice(0, 2);
+  const topShare = state.totalScore > 0 ? Math.round(state.top.score / state.totalScore * 100) : 0;
+  if (focus.length) {
+    const focusLabel = focus.map(group => group.label).join(' · ');
+    return {
+      tone: 'under',
+      title: `다음 운동은 ${focusLabel} 2-4세트 먼저`,
+      note: `${state.top.label}은 ${state.period.title} 활성 비중 ${topShare}%로 높습니다. 파란 부위는 보조종목을 먼저 넣고, 빨간 부위는 강도를 올리기보다 회복 상태를 확인하세요.`,
+    };
+  }
+  return {
+    tone: 'steady',
+    title: `${state.period.title} 부위 균형이 크게 무너지지 않았어요`,
+    note: `가장 많이 쓴 부위는 ${state.top.label}이며 활성 비중은 ${topShare}%입니다. 다음 운동은 기존 계획을 유지하되 빨간 부위의 통증/피로만 확인하세요.`,
+  };
 }
 
 function _renderMuscleFatigue() {
@@ -301,13 +368,15 @@ function _renderMuscleFatigue() {
   if (!root) return;
 
   const state = _buildMuscleFatigue(_selectedFatiguePeriod);
+  const insight = _fatigueInsight(state);
+  const focusText = state.underactive.length ? state.underactive.slice(0, 2).map(group => group.label).join(' · ') : '균형 유지';
+  const hotText = state.hot.length ? state.hot.map(group => group.label).join(' · ') : (state.top?.label || '-');
   const headline = state.top
-    ? `${state.period.title} ${state.top.label} 활성`
+    ? `${state.period.title} ${state.top.label} 집중${state.underactive[0] ? ` · ${state.underactive[0].label} 보강` : ''}`
     : `${state.period.title} 기록 없음`;
   const summary = state.top
-    ? `${state.trainingDays}일 운동 · ${state.totalSets}세트 · ${_fmt(state.totalVolume)}vol`
+    ? `${state.trainingDays}일 운동 · ${state.totalSets}세트 · 다음 ${focusText}`
     : '선택 기간의 운동 기록이 아직 없어요.';
-  const lastDate = state.top?.lastDate ? _fmtDateShort(state.top.lastDate) : '-';
 
   root.innerHTML = `
     <div class="stats-fatigue-head">
@@ -328,12 +397,17 @@ function _renderMuscleFatigue() {
         ${_fatigueHotspotsHtml(state.groups)}
       </div>
       <div class="stats-fatigue-summary">
-        <div><span>활성 부위</span><b>${state.active.length ? state.active.map(group => group.label).join(' · ') : '-'}</b></div>
-        <div><span>최근 기록</span><b>${_esc(lastDate)}</b></div>
+        <div><span>집중 부위</span><b>${_esc(hotText)}</b></div>
+        <div><span>보강 후보</span><b>${_esc(focusText)}</b></div>
         <div><span>총 볼륨</span><b>${_fmt(state.totalVolume)}vol</b></div>
       </div>
+      <div class="stats-fatigue-insight is-${_esc(insight.tone)}">
+        <span>다음 운동 힌트</span>
+        <b>${_esc(insight.title)}</b>
+        <p>${_esc(insight.note)}</p>
+      </div>
     </div>
-    <div class="stats-fatigue-rows">${_fatigueRowsHtml(state.active)}</div>
+    <div class="stats-fatigue-rows">${_fatigueRowsHtml(state.groups)}</div>
   `;
 
   root.querySelectorAll('[data-fatigue-period]').forEach(btn => {

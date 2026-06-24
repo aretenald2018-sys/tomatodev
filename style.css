@@ -2114,11 +2114,15 @@ body.wt-modal-scroll-lock {
   position: absolute;
   z-index: 2;
   border-radius: 999px;
-  background: radial-gradient(ellipse at center, var(--mf) 0%, var(--mf) 54%, rgba(250,52,44,0) 76%);
+  background: radial-gradient(ellipse at center, var(--mf) 0%, var(--mf) 54%, rgba(0,0,0,0) 76%);
   filter: blur(7px) saturate(var(--sat));
   mix-blend-mode: color;
   pointer-events: none;
   transform: rotate(var(--r));
+}
+.stats-fatigue-hotspot.is-under,
+.stats-fatigue-hotspot.is-low {
+  mix-blend-mode: screen;
 }
 .stats-fatigue-summary {
   display: grid;
@@ -2150,6 +2154,42 @@ body.wt-modal-scroll-lock {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.stats-fatigue-insight {
+  padding: 11px 12px;
+  border: 1px solid color-mix(in srgb, var(--mf, var(--primary)) 20%, var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--mf, var(--primary)) 9%, var(--surface2));
+}
+.stats-fatigue-insight.is-under {
+  --mf: hsl(205, 76%, 55%);
+}
+.stats-fatigue-insight.is-steady {
+  --mf: hsl(154, 48%, 42%);
+}
+.stats-fatigue-insight.is-empty {
+  --mf: var(--text-tertiary);
+}
+.stats-fatigue-insight span {
+  display: block;
+  color: color-mix(in srgb, var(--mf) 72%, var(--text));
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 14px;
+}
+.stats-fatigue-insight b {
+  display: block;
+  margin-top: 3px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 18px;
+}
+.stats-fatigue-insight p {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 16px;
+}
 .stats-fatigue-rows {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -2164,16 +2204,31 @@ body.wt-modal-scroll-lock {
   min-width: 0;
 }
 .stats-fatigue-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
   color: var(--text);
   font-size: 11px;
   font-weight: 800;
+}
+.stats-fatigue-name em {
+  flex: 0 0 auto;
+  padding: 1px 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mf) 13%, var(--surface2));
+  color: color-mix(in srgb, var(--mf) 76%, var(--text));
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 850;
+  line-height: 13px;
 }
 .stats-fatigue-meter {
   position: relative;
   height: 5px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(250,52,44,0.12);
+  background: color-mix(in srgb, var(--mf) 14%, var(--surface2));
 }
 .stats-fatigue-meter i {
   display: block;

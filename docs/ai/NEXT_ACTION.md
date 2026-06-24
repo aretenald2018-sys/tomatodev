@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md` (Slice 9: picker 추가 운동 기본 세트 1행 빈 입력으로 변경)
-- 현재 단계: `deploy verified — Slice 9 picker 추가 운동 기본 세트 1행 빈 입력`
-- 마지막 완료: `picker 추가 운동의 기본 테스트모드 세트를 1행 빈 kg/reps로 변경했고 source-level 테스트와 Dashboard3 Pages 배포 검증을 완료했다.`
-- 다음 액션: `없음`
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-06-23-stats-muscle-fatigue-render.md` (Slice 3: 저활성 부위 푸른색 표시와 실행 가능한 보강 인사이트)
+- 현재 단계: `execution complete — Slice 3 리뷰 대기`
+- 마지막 완료: `운동 활성 부위 통계에 red/blue 상대 활성 표현, 다음 운동 힌트, 회귀 테스트, 캐시 버전 bump를 반영했다.`
+- 다음 액션: `Slice 3 변경 파일을 계획 대비 리뷰하고 Dashboard3 Pages 배포 검증을 진행한다.`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
