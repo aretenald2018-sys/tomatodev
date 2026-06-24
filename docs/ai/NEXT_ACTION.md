@@ -3,15 +3,36 @@
 ## 현재 상태
 
 - 상태: `ready_for_execution`
-- 계획 문서: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md` (운동 추가 분류형 진입 UI)
-- 현재 단계: `review complete — Slice 1 운동 추가 picker 분류형 진입 UI`
-- 마지막 완료: `docs/ai/reviews/2026-06-24-exercise-picker-category-entry-review.md에서 변경 파일 리뷰를 통과 처리했다.`
-- 다음 액션: `변경 파일을 커밋해 origin/main에 push하고 Dashboard3 Pages 배포 검증을 실행한다.`
+- 계획 문서: `docs/ai/features/2026-06-23-stats-muscle-fatigue-render.md` (통계탭 근육 활성 UI 복구)
+- 현재 단계: `review complete — Slice 2 통계탭 근육 활성 UI 복구 및 붉은색 단일화`
+- 마지막 완료: `사용자 결정에 따라 운동 picker 변경과 통계탭 근육 활성 UI 복구를 함께 Dashboard3 Pages에 반영하기로 했다.`
+- 다음 액션: `통계탭 변경 파일을 커밋해 origin/main에 push하고 Dashboard3 Pages 배포 검증을 실행한다.`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
 
-- 계획 파일: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md`
+- 계획 파일: `docs/ai/features/2026-06-23-stats-muscle-fatigue-render.md`
+- 완료한 Slice 2:
+  1. `render-stats.js` 근육 활성 기간을 `주별`/`월별`로 제한
+  2. 활성 부위만 렌더링하고, 다색 그룹 색상 대신 붉은색 단일 intensity 값 적용
+  3. `style.css` 근육 활성 카드 레이아웃/텍스트 가시성 복구
+  4. `sw.js` `CACHE_VERSION` bump
+  5. `workoutSessions` 기반 다회차 운동 기록도 근육 활성 계산에 반영
+  6. 정적 검증 및 리뷰 완료
+
+- 검증:
+  1. PASS: `node --check render-stats.js`
+  2. PASS: `node --check sw.js`
+  3. PASS: red-only source check — `render-stats.js`에 이전 다색 hex 및 `일별` 출력 없음
+  4. PASS: `node scripts/verify-runtime-assets.mjs`
+  5. PASS: `git diff --check`
+  6. not verified yet: Dashboard3 Pages 배포 및 통계탭 UI flow 확인 필요
+
+- 함께 배포된 이전 Slice:
+  1. `docs/ai/features/2026-06-24-exercise-picker-category-entry.md` Slice 2 우하단 `+` 직접 picker 진입
+  2. 첨부 이미지 기반 `assets/workout/muscles/*.png` 추가
+  3. picker 분류 타일 이미지 자산 적용 및 `sw.js` `CACHE_VERSION` bump
+
 - 완료한 Slice 1:
   1. `modals/ex-picker-modal.js` 상단 구조를 전체 화면형 검색/탭/추가 버튼 레이아웃으로 변경
   2. `workout/exercises.js`에 picker view 상태, 분류 화면, 부위 타일 drilldown, 전체/커스텀 목록 전환 추가

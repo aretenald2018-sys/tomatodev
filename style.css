@@ -1892,35 +1892,35 @@ body.wt-modal-scroll-lock {
 .stats-muscle-fatigue-block {
   padding: 0;
   overflow: hidden;
-  background: #101012;
-  border-color: rgba(255,255,255,0.08);
-  color: #f7f7f8;
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
 }
 .stats-fatigue-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 16px 8px;
+  padding: 16px 16px 12px;
 }
 .stats-fatigue-head span {
   display: block;
-  margin-bottom: 8px;
-  color: rgba(255,255,255,0.78);
+  margin-bottom: 6px;
+  color: var(--primary);
   font-size: 13px;
   font-weight: 800;
   line-height: 18px;
 }
 .stats-fatigue-head h3 {
   margin: 0;
-  color: #fff;
+  color: var(--text);
   font-size: 18px;
   font-weight: 800;
   line-height: 24px;
 }
 .stats-fatigue-head p {
   margin: 4px 0 0;
-  color: rgba(255,255,255,0.58);
+  color: var(--text-secondary);
   font-size: 12px;
   line-height: 17px;
 }
@@ -1929,9 +1929,9 @@ body.wt-modal-scroll-lock {
   display: inline-flex;
   gap: 2px;
   padding: 3px;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgba(255,255,255,0.03);
+  background: var(--surface2);
 }
 .stats-fatigue-tabs button {
   min-width: 40px;
@@ -1939,13 +1939,13 @@ body.wt-modal-scroll-lock {
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: rgba(255,255,255,0.58);
+  color: var(--text-secondary);
   font-size: 11px;
   font-weight: 800;
 }
 .stats-fatigue-tabs button.active {
-  background: rgba(250,52,44,0.14);
-  color: #ff4a40;
+  background: var(--primary-bg);
+  color: var(--primary);
 }
 .stats-fatigue-body {
   display: grid;
@@ -1959,8 +1959,9 @@ body.wt-modal-scroll-lock {
   margin: 0 auto;
   overflow: hidden;
   border-radius: 8px;
-  background: #111;
+  background: #101012;
   isolation: isolate;
+  line-height: 0;
 }
 .stats-fatigue-figure img {
   display: block;
@@ -1971,8 +1972,8 @@ body.wt-modal-scroll-lock {
   position: absolute;
   z-index: 2;
   border-radius: 999px;
-  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--mf) 88%, #fff 12%) 0%, var(--mf) 56%, transparent 74%);
-  filter: blur(7px) saturate(1.2);
+  background: radial-gradient(ellipse at center, var(--mf) 0%, var(--mf) 54%, rgba(250,52,44,0) 76%);
+  filter: blur(7px) saturate(var(--sat));
   mix-blend-mode: color;
   pointer-events: none;
   transform: rotate(var(--r));
@@ -1984,12 +1985,14 @@ body.wt-modal-scroll-lock {
 }
 .stats-fatigue-summary div {
   min-width: 0;
-  padding: 10px 0;
-  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface2);
 }
 .stats-fatigue-summary span {
   display: block;
-  color: rgba(255,255,255,0.46);
+  color: var(--text-tertiary);
   font-size: 10px;
   font-weight: 700;
   line-height: 14px;
@@ -1998,7 +2001,7 @@ body.wt-modal-scroll-lock {
   display: block;
   overflow: hidden;
   margin-top: 2px;
-  color: #fff;
+  color: var(--text);
   font-size: 12px;
   font-weight: 800;
   line-height: 17px;
@@ -2007,19 +2010,19 @@ body.wt-modal-scroll-lock {
 }
 .stats-fatigue-rows {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px 12px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 9px;
   padding: 0 16px 16px;
 }
 .stats-fatigue-row {
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr) 38px;
+  grid-template-columns: 42px minmax(0, 1fr) 52px;
   align-items: center;
   gap: 8px;
   min-width: 0;
 }
 .stats-fatigue-name {
-  color: rgba(255,255,255,0.84);
+  color: var(--text);
   font-size: 11px;
   font-weight: 800;
 }
@@ -2028,7 +2031,7 @@ body.wt-modal-scroll-lock {
   height: 5px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(255,255,255,0.09);
+  background: rgba(250,52,44,0.12);
 }
 .stats-fatigue-meter i {
   display: block;
@@ -2047,9 +2050,17 @@ body.wt-modal-scroll-lock {
 .stats-fatigue-row small {
   grid-column: 2 / -1;
   margin-top: -6px;
-  color: rgba(255,255,255,0.42);
+  color: var(--text-tertiary);
   font-size: 10px;
   line-height: 14px;
+}
+.stats-fatigue-empty {
+  padding: 12px 0 2px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
 }
 .stats-chart-wrap {
   position: relative;

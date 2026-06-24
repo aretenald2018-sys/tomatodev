@@ -56,3 +56,70 @@
 ## 상태
 
 - 2026-06-23: 계획 작성 완료. Slice 1 실행 가능.
+
+## 2026-06-24 회귀 진단
+
+사용자 피드백:
+
+- 통계탭 근육 활성 UI가 깨져 있고 일부 정보가 보이지 않는다.
+- 운동 활성 부위는 `주별`/`월별` 기준으로만 표시한다.
+- 활성 부위는 단일 붉은색 계열로만 칠하고, 활성도가 높을수록 채도/강도를 높이며 낮을수록 낮춘다.
+- 현재처럼 부위별로 초록/파랑/보라/주황 등 다른 색을 쓰지 않는다.
+
+재현/확인 루프:
+
+1. `render-stats.js`의 `FATIGUE_PERIODS`, `FATIGUE_GROUPS`, `_fatigueHotspotsHtml()`, `_fatigueRowsHtml()`를 정적 확인한다.
+2. `style.css`의 `.stats-muscle-fatigue-*` 레이아웃과 색상 변수를 확인한다.
+3. 수정 후 `node --check render-stats.js`, `node --check sw.js`, `git diff --check`를 실행한다.
+4. Dashboard3 배포 URL에서 통계 탭 진입 후 `주별`/`월별` 전환, 활성 부위 붉은색 표시, 비활성 부위 미표시를 확인한다.
+
+가설:
+
+1. `FATIGUE_GROUPS.color`가 부위별 다색으로 하드코딩되어 사용자 요구와 반대로 렌더링된다.
+2. `일별` 버튼까지 렌더링되어 요구한 `주별`/`월별` 범위를 벗어난다.
+3. 모든 부위 row를 항상 렌더링하면서 0값과 색상 막대가 노출되어 UI가 깨져 보인다.
+4. 근육 카드가 어두운 카드/흰 텍스트 전제로 스타일링되어 배포 테마나 캐시 상태에 따라 텍스트가 보이지 않을 수 있다.
+
+### Slice 2: 통계탭 근육 활성 UI 복구 및 붉은색 단일화
+
+변경 범위:
+
+1. `render-stats.js`
+   - 근육 활성 기간을 `주별`, `월별`만 남긴다.
+   - 부위별 색상 필드를 제거하거나 사용하지 않고, 활성도 기반 단일 red intensity 값을 계산한다.
+   - hotspot과 row는 활성 부위만 렌더링한다.
+   - 활성 기록이 없을 때는 깨진 0값 목록 대신 빈 상태 문구를 표시한다.
+   - 최신 운동 저장 구조인 `workoutSessions`를 기준으로 각 회차의 `exercises`를 펼쳐 계산한다.
+2. `style.css`
+   - 근육 활성 카드가 밝은/어두운 배경 모두에서 읽히도록 텍스트, 여백, 요약 영역을 복구한다.
+   - hotspot과 bar 색상을 `#fa342c` 계열 단일 빨간색으로 통일하고 intensity 변수만 반영한다.
+3. `sw.js`
+   - `render-stats.js`, `style.css`가 `STATIC_ASSETS`에 포함되어 있으므로 `CACHE_VERSION`을 bump한다.
+4. `docs/ai/NEXT_ACTION.md`
+   - 실행 완료 후 리뷰 대상으로 갱신한다.
+
+하지 않을 것:
+
+- 새 근육 이미지 자산을 만들거나 기존 `assets/stats/muscle-fatigue-body.png`를 수정하지 않는다.
+- 통계탭의 다른 차트/리포트 계산을 리팩터링하지 않는다.
+- 운동 기록 저장 구조나 Firestore 접근 경로를 변경하지 않는다.
+
+검증 계획:
+
+1. `node --check render-stats.js`
+2. `node --check sw.js`
+3. red-only source check: `render-stats.js`의 근육 활성 그룹에 다색 hex가 남아 있지 않은지 확인
+4. `git diff --check`
+5. Dashboard3 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+6. 배포 URL에서 더보기 → 통계 → 근육 활성 카드 → `주별`/`월별` 버튼 전환 시 활성 부위만 붉은색 강도 차이로 보이는지 확인
+
+실행 결과:
+
+- 2026-06-24: Slice 2 구현 완료.
+- PASS: `node --check render-stats.js`
+- PASS: `node --check sw.js`
+- PASS: `rg -n "#22c55e|#38bdf8|#f97316|#84cc16|#a78bfa|일별" render-stats.js` 출력 없음
+- PASS: `git diff --check`
+- 2026-06-24 후속 보정: 근육 활성 계산이 `day.exercises`만 보던 문제를 수정해 `workoutSessions` 기반 다회차 운동 기록도 반영하도록 했다.
+- 리뷰: `docs/ai/reviews/2026-06-24-stats-muscle-red-review.md`
+- 다음 단계: 사용자 승인에 따라 운동 picker 변경과 함께 Dashboard3 Pages에 배포한다.
