@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md` (Slice 8: picker row 선택 즉시 운동 기록 화면으로 랜딩)
-- 현재 단계: `deploy verified — Slice 8 picker row 즉시 운동 기록 화면 랜딩`
-- 마지막 완료: `picker row 선택 즉시 운동 기록 화면 랜딩, 선택 회색조 DOM 제거, 캐시 버전 bump, source-level 테스트, Dashboard3 Pages 배포 검증을 완료했다.`
-- 다음 액션: `없음`
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md` (Slice 9: picker 추가 운동 기본 세트 1행 빈 입력으로 변경)
+- 현재 단계: `execution complete — Slice 9 리뷰 대기`
+- 마지막 완료: `picker 추가 운동의 기본 테스트모드 세트를 1행 빈 kg/reps로 변경했고 정적 검증을 통과했다.`
+- 다음 액션: `Slice 9 변경 파일을 계획 대비 리뷰하고 배포 검증을 진행한다.`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상

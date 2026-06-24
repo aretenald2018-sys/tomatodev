@@ -1449,19 +1449,11 @@ function _normalizeTestModeSets(sets) {
 
 function _testModeSetsFromPrescription(prescription) {
   if (!prescription) return null;
-  if (Array.isArray(prescription.sets) && prescription.sets.length) return prescription.sets;
-  const targetSets = Math.max(1, Number(prescription.targetSets) || 1);
-  const kg = Number(prescription.startKg) || 0;
-  const reps = Number(prescription.repsHigh) || Number(prescription.repsLow) || 0;
   const rpe = Number(prescription.targetRpe) || null;
-  return Array.from({ length: targetSets }, () => ({
-    kg,
-    reps,
+  return [{
+    ..._defaultTestModeSet(),
     rpe,
-    romPct: 100,
-    setType: 'main',
-    done: false,
-  }));
+  }];
 }
 
 function _ensureTestModePickerEntry(entry, ex, options = {}) {
@@ -1492,7 +1484,7 @@ function _ensureTestModePickerEntry(entry, ex, options = {}) {
     };
   }
   const generatedSets = _testModeSetsFromPrescription(prescription);
-  const keepExistingSets = Array.isArray(base.sets) && base.sets.length && (!generatedSets || !!entry?.maxPrescription);
+  const keepExistingSets = Array.isArray(base.sets) && base.sets.length && !generatedSets;
   base.sets = _normalizeTestModeSets(keepExistingSets ? base.sets : generatedSets);
   return base;
 }

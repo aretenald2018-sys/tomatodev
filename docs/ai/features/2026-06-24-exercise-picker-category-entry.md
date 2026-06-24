@@ -495,3 +495,65 @@
   - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
   - PASS: Dashboard3 Pages가 `tomatofarm-v20260624z27-picker-immediate-close` 캐시 버전을 서빙하는 것을 확인했다.
   - not verified yet: 배포 URL은 로그인 화면에 막혀 `운동 탭 -> + -> 가슴 선택 -> 운동 row 클릭 -> 운동 기록 카드 화면 랜딩` UI 클릭 흐름을 인증 계정으로 끝까지 확인하지 못했다.
+
+### Slice 9: picker 추가 운동 기본 세트 1행 빈 입력으로 변경
+
+요청:
+
+- picker에서 종목을 추가하면 기본으로 4개 세트 행이 생성된다.
+- 새로 추가한 종목은 기본 1개 행만 생성되어야 한다.
+- 무게와 reps 입력값은 처방값으로 채우지 말고 빈칸으로 시작해야 한다.
+
+그릴 결과:
+
+- 질문: 추천 처방의 target set/weight/reps를 새 카드 초기 입력값으로 그대로 반영할지, 사용자가 직접 기록하게 비워둘지가 핵심이다.
+- 결정: picker로 추가되는 운동 카드의 초기 입력 행은 1행만 만들고, kg/reps는 빈 입력으로 보이게 한다.
+- 근거: 첨부 화면의 4행 `110 x 12` 자동 생성은 기록 입력 전 단계에서 과하게 채워진 상태이며, 요청은 “추가 직후 입력칸을 비운 1행”이다.
+- 가정: RIR/ROM 같은 보조값은 기존 테스트모드 기본값을 유지하되, 사용자가 명시한 무게와 reps만 빈칸으로 둔다.
+
+대상 파일:
+
+- `workout/exercises.js`
+- `sw.js`
+- `tests/workout-test-mode-unified.test.js`
+- `docs/ai/features/2026-06-24-exercise-picker-category-entry.md`
+- `docs/ai/reviews/2026-06-24-exercise-picker-one-empty-set-review.md`
+
+구현:
+
+- `_testModeSetsFromPrescription()`가 prescription의 `targetSets`, `sets`, `startKg`, `repsHigh`, `repsLow`로 여러 행을 생성하지 않게 한다.
+- picker 추가용 테스트모드 세트는 `_defaultTestModeSet()` 기반 1행으로 생성한다.
+- kg/reps는 `0` 값으로 두어 기존 renderer의 `value="${set.kg||''}"`, `value="${set.reps||''}"` 정책에 따라 빈칸으로 보이게 한다.
+- `workout/exercises.js`가 `STATIC_ASSETS`에 있으므로 `sw.js` `CACHE_VERSION`을 bump한다.
+- source-level 테스트로 처방 기반 다중 행/무게/reps 자동 채움이 다시 들어오지 않게 막는다.
+
+범위 밖:
+
+- Max 처방 계산 함수 자체 변경.
+- 기존 저장된 운동 카드의 세트 데이터 마이그레이션.
+- 세트 추가 버튼 동작 변경.
+- `www/` 직접 수정.
+
+검증 계획:
+
+- `node --check workout/exercises.js; node --check sw.js`
+- `node --test tests/workout-test-mode-unified.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- Dashboard3 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+- 배포 URL에서 로그인 후 `운동 탭 -> + -> 가슴 선택 -> 운동 row 클릭` 시 운동 기록 카드의 새 종목이 1개 세트 행만 보이고 kg/reps 입력칸이 비어 있는지 확인한다.
+
+실행 결과:
+
+- 2026-06-24: Slice 9 구현 완료.
+- `workout/exercises.js`에서 `_testModeSetsFromPrescription()`가 처방의 `sets`, `targetSets`, `startKg`, `repsHigh`, `repsLow`를 초기 입력 행으로 복사하지 않게 했다.
+- picker 추가 운동은 `_defaultTestModeSet()` 기반 1행으로 시작하고, kg/reps는 `0` 상태라 렌더러에서 빈칸으로 표시된다.
+- benchmark picker entry처럼 `maxPrescription.sets`가 이미 붙어 오는 경로도 `entry?.maxPrescription` 조건으로 기존 세트를 유지하지 않도록 보정했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z28-picker-one-empty-set`으로 bump했다.
+- `tests/workout-test-mode-unified.test.js`에 처방 기반 다중 행/무게/reps 자동 채움 회귀 방지 검증을 추가했다.
+- PASS: `node --check workout/exercises.js; node --check sw.js`
+- PASS: `node --test tests/workout-test-mode-unified.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- 리뷰: `docs/ai/reviews/2026-06-24-exercise-picker-one-empty-set-review.md`
+- not verified yet: Dashboard3 Pages 배포와 인증 계정 UI 클릭 검증은 다음 단계에서 진행한다.
