@@ -4,33 +4,26 @@
 
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-24-workout-history-detail-ui-regression.md` (운동 홈 과거 상세 UI 회귀)
-- 현재 단계: `execution/review complete — Slice 4 과거 상세 정보 카드/그래프 재배치`
-- 마지막 완료: `render-calendar.js/style.css/sw.js를 수정해 상단 toolbar를 제거하고, 요약 정보 카드와 성공 기준 우측 그래프 배치를 적용했다.`
-- 다음 액션: `사용자는 Dashboard3 배포 URL에서 운동 탭 > 과거 운동 날짜 상세 화면을 확인하면 된다.`
+- 현재 단계: `execution/review complete — Slice 5 과거 상세 완료 체크 표시 보정`
+- 마지막 완료: `style.css/sw.js를 수정해 과거 운동 상세의 완료 본세트 체크 아이콘이 활성 상태로 보이도록 했다.`
+- 다음 액션: `Dashboard3 Pages 배포 후 운동 탭 > 과거 운동 날짜 상세 화면에서 기록된 본세트 체크가 활성 상태로 보이는지 확인한다.`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
 
 - 계획 파일: `docs/ai/features/2026-06-24-workout-history-detail-ui-regression.md`
-- 완료한 Slice 4:
-  1. `render-calendar.js` `.wt-day-actions` header toolbar 렌더 제거
-  2. `render-calendar.js` 헤더 우측 단일 `.wt-day-summary-card` 추가
-  3. `render-calendar.js` 별도 `.wt-day-metrics` row 제거
-  4. `render-calendar.js` 운동 카드 그래프를 `.wt-max-plan` 오른쪽 칸으로 이동
-  5. `style.css` 헤더 요약 카드와 2분할 성공 기준/그래프 row 스타일 적용
-  6. `sw.js` `CACHE_VERSION` bump
-  7. `docs/ai/reviews/2026-06-24-workout-history-summary-card-review.md` 작성
+- 완료한 Slice 5:
+  1. `style.css` `.wt-max-set-row.is-done` 완료 배경 추가
+  2. `style.css` `.wt-max-set-row.is-done .wt-max-set-check` 활성 체크 스타일 추가
+  3. `style.css` 완료 row의 X/그립 보조 아이콘 약화
+  4. `sw.js` `CACHE_VERSION` bump
+  5. `docs/ai/reviews/2026-06-24-workout-history-checked-sets-review.md` 작성
 
 - 검증:
-  1. PASS: `node --check render-calendar.js`
-  2. PASS: `node --check sw.js`
-  3. PASS: `node scripts/verify-runtime-assets.mjs`
-  4. PASS: `git diff --check`
-  5. PASS: `git push origin HEAD:main` (`08b13ff`)
-  6. PASS: GitHub Actions `Verify Pages Runtime Assets` run `28069206877`
-  7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 08b13ff`
-  8. PASS: `curl.exe -I https://aretenald2018-sys.github.io/dashboard3/` -> `HTTP/1.1 200 OK`
-  9. not verified yet: 인증된 계정의 과거 운동 데이터가 필요해 배포 URL에서 실제 과거 상세 UI flow는 클릭 검증하지 못했다.
+  1. PASS: `node --check sw.js`
+  2. PASS: `node scripts/verify-runtime-assets.mjs`
+  3. PASS: `git diff --check`
+  4. not verified yet: 아직 Dashboard3 배포 전이며, 인증된 계정의 과거 운동 데이터가 필요해 실제 과거 상세 UI flow는 클릭 검증하지 못했다.
 
 ## 이전 흐름 요약
 

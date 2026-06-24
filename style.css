@@ -9555,6 +9555,9 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   border-radius: 8px;
   background: #f1f3f6;
 }
+.wt-max-set-row.is-done {
+  background: #eaf8f1;
+}
 .wt-max-set-main {
   display: grid;
   grid-template-columns: 30px minmax(48px, .8fr) minmax(48px, .8fr) minmax(44px, .75fr) minmax(78px, 1fr) 22px 14px 8px;
@@ -9619,6 +9622,15 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   border: 1px solid #d9dee8;
   border-radius: 7px;
   background: #f8fafc;
+}
+.wt-max-set-row.is-done .wt-max-set-check {
+  border-color: #111827;
+  background: #111827;
+  color: #fff;
+}
+.wt-max-set-row.is-done .wt-max-set-remove,
+.wt-max-set-row.is-done .wt-max-set-grip {
+  color: #d5d9e1;
 }
 .wt-max-rom-inline {
   display: grid;

@@ -290,3 +290,55 @@ UI 검증:
 - 배포 확인: `[deploy-verify] ok 08b13ff582c3 tomatofarm-v20260624z8-workout-history-summary-card static=202`
 - PASS: `curl.exe -I https://aretenald2018-sys.github.io/dashboard3/` -> `HTTP/1.1 200 OK`
 - not verified yet: 인증된 계정의 과거 운동 데이터가 필요해 배포 URL에서 실제 과거 상세 UI flow는 클릭 검증하지 못했다.
+
+## 후속 Slice 5
+
+사용자 피드백:
+
+- 과거 운동기록 상세를 열었을 때 이미 기록된 본세트는 기본적으로 체크된 상태로 보여야 한다.
+- 스크린샷에서는 `50kg × 30` 본세트들이 기록되어 있는데도 체크 표시가 회색 비활성처럼 보여 미완료처럼 인식된다.
+
+진단:
+
+- `_isActualWorkoutSet(set)`은 `done`이 없더라도 본세트의 `kg > 0 && reps > 0`이면 완료로 판정한다.
+- `_exerciseRows()`는 해당 판정을 `setDetails.done`에 저장한다.
+- `_renderWorkoutSetRows()`는 `set.done`이면 `.wt-max-set-row.is-done` 클래스를 붙인다.
+- `style.css`에는 `.wt-max-set-row.is-done .wt-max-set-check` 활성 스타일이 없어, 완료 row도 체크 아이콘이 회색 기본값으로 보인다.
+
+수정 범위:
+
+1. `style.css`
+   - `.wt-max-set-row.is-done`과 `.wt-max-set-row.is-done .wt-max-set-check` 스타일을 추가해 완료 상태가 명확히 보이게 한다.
+   - 읽기 전용 과거 상세의 X/그립 보조 아이콘은 체크보다 약하게 보이게 한다.
+2. `sw.js`
+   - `style.css`가 `STATIC_ASSETS`에 포함되어 있으므로 `CACHE_VERSION`을 bump한다.
+
+수정하지 않을 것:
+
+- `render-calendar.js`의 완료 판정 로직은 이미 기대 동작과 일치하므로 바꾸지 않는다.
+- 과거 기록 데이터 마이그레이션은 하지 않는다.
+
+검증:
+
+- `node --check sw.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- `git push origin HEAD:main`
+- `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+- Dashboard3 배포 URL에서 운동 탭 > 과거 운동 날짜 상세를 열어 기록된 본세트의 체크 아이콘이 활성 상태로 보이는지 확인한다.
+
+## 후속 Slice 5 실행 결과
+
+- `style.css`:
+  - `.wt-max-set-row.is-done` 배경을 완료 상태로 보정했다.
+  - `.wt-max-set-row.is-done .wt-max-set-check`에 어두운 배경/흰 체크를 적용해 기록된 본세트가 체크된 상태로 보이게 했다.
+  - 완료 row의 X/그립 보조 아이콘은 체크보다 약하게 보이도록 조정했다.
+- `sw.js`:
+  - `CACHE_VERSION`을 `tomatofarm-v20260624z9-workout-history-checked-sets`로 bump했다.
+
+## 후속 Slice 5 실행 검증
+
+- PASS: `node --check sw.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- not verified yet: 아직 Dashboard3 배포 전이며, 인증된 과거 운동 데이터가 필요해 실제 UI flow는 이후 배포 URL에서 확인한다.
