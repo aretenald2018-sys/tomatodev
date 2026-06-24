@@ -85,6 +85,12 @@ PowerShell quoting과 수동 해시 입력을 배포 경로에서 제거하고, 
   - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ HEAD`
   - PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::CACHE_VERSION" "app.js::initBuildInfoSurface"`
   - PASS: `git diff --check`
+- 배포 검증:
+  - 최초 `575e277` 실행에서 `stdio: 'inherit'` 명령 반환값 `null`에 `.trim()`을 호출하는 wrapper 버그를 발견했다.
+  - `e80cc17`에서 `run()`이 inherited stdio의 `null` 출력을 안전하게 처리하도록 수정했다.
+  - PASS: `npm.cmd run deploy:dashboard3`
+  - 배포 결과: `[deploy-dashboard3] ok e80cc17e74ee tomatofarm-v20260624z24-picker-gym-rail`
+  - PASS: 수정 후 `node --test tests/*.test.js` — 480개 통과
 
 ## 사용 명령
 
