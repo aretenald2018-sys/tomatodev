@@ -480,10 +480,10 @@ function _buildMaxLastSessionSummary(last, entry, ex) {
     .join(' / ');
   const dateLabel = String(last.date || '').slice(5).replace('-', '/') || '최근';
   const trackLabel = _activeMaxTrack(entry, ex) === 'H' ? '강도' : '볼륨';
+  const text = `직전 ${trackLabel} ${dateLabel} · ${setSummary}`;
   return `
-    <div class="ex-max-v2-last">
-      <span class="ex-max-v2-last-label">직전 ${trackLabel} ${dateLabel}</span>
-      <span class="ex-max-v2-last-sets">${setSummary}</span>
+    <div class="ex-max-v2-last" title="${_escPicker(text)}">
+      <span class="ex-max-v2-last-text">${_escPicker(text)}</span>
     </div>`;
 }
 
@@ -1190,15 +1190,10 @@ function _renderSets(entryIdx, targetEl = null) {
         <label class="ex-max-v2-field"><span>KG</span><input class="set-input" type="number" inputmode="decimal" placeholder="kg" min="0" step="0.5" value="${set.kg||''}"></label>
         <label class="ex-max-v2-field"><span>REP</span><input class="set-input" type="number" inputmode="numeric" placeholder="회" min="1" step="1" value="${set.reps||''}"></label>
         <label class="ex-max-v2-field"><span>RIR</span><input class="set-rpe-input" type="number" inputmode="decimal" placeholder="-" min="0" max="9" step="0.5" value="${_rpeToRir(set.rpe)}"></label>
+        <label class="ex-max-v2-rom-field"><span>ROM</span><input class="set-rom-input" type="number" inputmode="numeric" min="0" max="100" step="1" value="${romValue}" aria-label="가동범위 퍼센트 직접 입력"><em>%</em></label>
         <button class="set-done-btn ${isDone?'done':''}" title="완료 체크">✓</button>
         <button class="set-remove-btn" title="세트 삭제">×</button>
         <span class="set-drag-handle" title="드래그하여 순서 변경"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg></span>
-      </div>
-      <div class="ex-max-v2-rom" role="group" aria-label="가동범위 퍼센트">
-        <span>ROM</span>
-        <input class="set-rom-range" type="range" min="0" max="100" step="5" value="${romValue}" style="--rom-pct:${romValue}%" aria-label="가동범위 퍼센트">
-        <input class="set-rom-input" type="number" inputmode="numeric" min="0" max="100" step="1" value="${romValue}" aria-label="가동범위 퍼센트 직접 입력">
-        <em>%</em>
       </div>`
       : `
         <span class="set-num">${si+1}</span>
@@ -1235,22 +1230,12 @@ function _renderSets(entryIdx, targetEl = null) {
       maxRpeInput.addEventListener('input', e => _updateSetDraftField(entryIdx, si, 'rpe', _rirToRpe(e.target.value)));
       maxRpeInput.addEventListener('change', e => wtUpdateSetRir(entryIdx, si, e.target.value));
     }
-    const romRange = row.querySelector('.set-rom-range');
     const romInput = row.querySelector('.set-rom-input');
-    if (romRange && romInput) {
-      romRange.addEventListener('input', e => {
-        const next = _setRomPctLocal(entryIdx, si, e.target.value);
-        const display = next == null ? 100 : next;
-        romInput.value = String(display);
-        romRange.style.setProperty('--rom-pct', `${display}%`);
-      });
-      romRange.addEventListener('change', e => wtUpdateSet(entryIdx, si, 'romPct', e.target.value));
+    if (romInput) {
       romInput.addEventListener('input', e => {
         const next = _normalizeRomPct(e.target.value);
         if (next != null) {
           _setRomPctLocal(entryIdx, si, next);
-          romRange.value = String(next);
-          romRange.style.setProperty('--rom-pct', `${next}%`);
         }
       });
       romInput.addEventListener('change', e => wtUpdateSet(entryIdx, si, 'romPct', e.target.value));
