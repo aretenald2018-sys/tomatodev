@@ -23,7 +23,10 @@
 - PASS: `node --test tests/workout-test-mode-unified.test.js`
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
-- not verified yet: Dashboard3 Pages 배포와 인증 계정 UI 클릭 검증은 배포 단계에서 진행한다.
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ db2612e`
+- PASS: Dashboard3 Pages가 `tomatofarm-v20260624z28-picker-one-empty-set` 캐시 버전을 서빙하는 것을 확인했다.
+- PASS: `https://aretenald2018-sys.github.io/dashboard3/` HTTP 200 확인.
+- not verified yet: 배포 URL은 로그인 화면에 막혀 `운동 탭 -> + -> 운동 row 클릭 -> 카드 세트 1행 빈 kg/reps` UI 클릭 흐름을 인증 계정으로 끝까지 확인하지 못했다.
 
 ## 잔여 리스크
 
