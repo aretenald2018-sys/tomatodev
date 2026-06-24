@@ -5,7 +5,8 @@
 import { S }                           from './state.js';
 import { saveWorkoutDay }              from './save.js';
 import { wtStartWorkoutTimer,
-         wtRestTimerStart }            from './timers.js';
+         wtRestTimerStart,
+         wtPersistActiveWorkoutDraft } from './timers.js';
 import { showToast }                   from '../home/utils.js';
 import { getExList, getGlobalExList, getGymExList, getGyms, getLastSession, detectPRs, getCache,
          dateKey, saveExercise,
@@ -151,6 +152,7 @@ export function wtAddSet(entryIdx) {
     done: false,
   });
   if (!_rerenderMaxEntryOwner(entryIdx)) _renderSets(entryIdx);
+  wtPersistActiveWorkoutDraft('set add');
   saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
 }
 
@@ -158,6 +160,7 @@ export function wtRemoveSet(entryIdx, si) {
   // Undo Toast 3초: 세트 객체와 원래 위치를 기억해두고 복원 지원
   const removed = S.workout.exercises[entryIdx].sets.splice(si, 1)[0];
   if (!_rerenderMaxEntryOwner(entryIdx)) _renderSets(entryIdx);
+  wtPersistActiveWorkoutDraft('set remove');
   saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
   if (!removed) return;
   window.showToast?.('세트 삭제됨', 3000, 'info', {
@@ -166,6 +169,7 @@ export function wtRemoveSet(entryIdx, si) {
       if (!S.workout.exercises[entryIdx]) return;
       S.workout.exercises[entryIdx].sets.splice(si, 0, removed);
       if (!_rerenderMaxEntryOwner(entryIdx)) _renderSets(entryIdx);
+      wtPersistActiveWorkoutDraft('set remove undo');
       saveWorkoutDay({ silent: true }).catch(e => console.error('Restore error:', e));
     },
   });
@@ -655,6 +659,7 @@ function _updateSetDraftField(entryIdx, si, field, val) {
     set.done = false;
     if ((set[field] || 0) > 0) _ensureWorkoutTimerStarted();
   }
+  wtPersistActiveWorkoutDraft(`set draft ${field}`);
 }
 
 export function wtUpdateSet(entryIdx, si, field, val) {
@@ -671,6 +676,7 @@ export function wtUpdateSet(entryIdx, si, field, val) {
     // 의미 있는 수치(>0)가 들어왔을 때만 타이머 자동시작. 실수로 0 치고 나가는 건 무시.
     if ((parsed || 0) > 0) _ensureWorkoutTimerStarted();
   }
+  wtPersistActiveWorkoutDraft(`set update ${field}`);
   const isMaxEntry = _isMaxEntryMode(entryIdx);
   if (isMaxEntry && _setFieldAffectsTrackMetric(field)) {
     if (!_rerenderMaxEntryOwner(entryIdx)) _renderExerciseList();
@@ -692,6 +698,7 @@ export function wtUpdateSetRir(entryIdx, si, val) {
 export function wtToggleSetDone(entryIdx, si) {
   const wasDone = S.workout.exercises[entryIdx].sets[si].done;
   S.workout.exercises[entryIdx].sets[si].done = !wasDone;
+  wtPersistActiveWorkoutDraft('set done toggle');
   if (_isMaxEntryMode(entryIdx)) {
     if (!_rerenderMaxEntryOwner(entryIdx)) _renderExerciseList();
   }
@@ -714,6 +721,7 @@ export function wtToggleSetDone(entryIdx, si) {
 export function wtUpdateSetType(entryIdx, si, val) {
   S.workout.exercises[entryIdx].sets[si].setType = val;
   if (!_rerenderMaxEntryOwner(entryIdx)) _renderSets(entryIdx);
+  wtPersistActiveWorkoutDraft('set type update');
   saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
 }
 
@@ -723,6 +731,7 @@ export function wtMoveSet(entryIdx, si, direction) {
   if (targetIdx < 0 || targetIdx >= sets.length) return;
   [sets[si], sets[targetIdx]] = [sets[targetIdx], sets[si]];
   if (!_rerenderMaxEntryOwner(entryIdx)) _renderSets(entryIdx);
+  wtPersistActiveWorkoutDraft('set move');
   saveWorkoutDay({ silent: true }).then(() => showToast('순서가 변경되었습니다', 1500, 'success')).catch(e => console.error('Save error:', e));
 }
 
@@ -731,6 +740,7 @@ export function wtRemoveExerciseEntry(entryIdx) {
   _normalizeExpertSessionAfterExerciseChange();
   _renderExerciseList();
   _syncExpertTopArea();
+  wtPersistActiveWorkoutDraft('exercise remove');
   saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
 }
 
@@ -1060,12 +1070,14 @@ export function _renderExerciseList() {
         // C-1: 종목 세트 복사도 활동 복사와 동일하게 Undo 토스트 제공.
         const prevSets = JSON.parse(JSON.stringify(S.workout.exercises[idx].sets || []));
         S.workout.exercises[idx].sets = JSON.parse(JSON.stringify(last.sets)).map(s => ({ ...s, done: false }));
+        wtPersistActiveWorkoutDraft('set copy previous');
         saveWorkoutDay({ silent: true }).then(() => _renderExerciseList()).catch(e => console.error('Save error:', e));
         showToast('직전 세트를 불러왔어요', 3000, 'success', {
           action: '실행 취소',
           onAction: () => {
             if (!S.workout.exercises[idx]) return;
             S.workout.exercises[idx].sets = prevSets;
+            wtPersistActiveWorkoutDraft('set copy undo');
             saveWorkoutDay({ silent: true }).then(() => _renderExerciseList()).catch(e => console.error('Undo save:', e));
           },
         });
@@ -1279,6 +1291,7 @@ function _renderSets(entryIdx, targetEl = null) {
         const [moved] = S.workout.exercises[entryIdx].sets.splice(oldIndex, 1);
         S.workout.exercises[entryIdx].sets.splice(newIndex, 0, moved);
         if (!_rerenderMaxEntryOwner(entryIdx)) _renderSets(entryIdx, targetEl);
+        wtPersistActiveWorkoutDraft('set drag move');
         saveWorkoutDay({ silent: true }).then(() => showToast('순서가 변경되었습니다', 1500, 'success')).catch(e => console.error('Save error:', e));
       }
     });
@@ -1765,10 +1778,9 @@ function _renderPickerTabs(ctx) {
           active: !_pickerSearchQuery && _pickerMuscleFilter === m.id,
         })),
       ].join('')
-    : [
+      : [
         button({ key: 'category', label: '분류', active: true }),
         button({ key: 'all', label: '전체', active: false }),
-        button({ key: 'custom', label: '커스텀', active: false }),
       ].join('');
   tabs.innerHTML = html;
   tabs.querySelectorAll('[data-picker-tab]').forEach(btn => {
@@ -2276,6 +2288,7 @@ export function _renderPickerList() {
           const timerBar = document.getElementById('wt-workout-timer-bar');
           if (timerBar && !timerBar.classList.contains('wt-open')) timerBar.classList.add('wt-open');
           if (!S.workout.workoutStartTime && S.workout.workoutDuration === 0) wtStartWorkoutTimer();
+          wtPersistActiveWorkoutDraft('exercise add');
           wtCloseExercisePicker();
           saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
         });

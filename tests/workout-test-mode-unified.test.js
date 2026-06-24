@@ -102,5 +102,5 @@ test('Dashboard3 mode controls cannot persist normal or pro workout record UI', 
 });
 
 test('service worker cache version was bumped for workout asset changes', () => {
-  assert.match(swJs, /tomatofarm-v20260624z30-track-delta-pp/);
+  assert.match(swJs, /tomatofarm-v20260624z32-stats-picker-ui-polish/);
 });

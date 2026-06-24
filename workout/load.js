@@ -11,7 +11,8 @@ import { _renderDateLabel,
          renderCalorieTracker }
                                      from './render.js';
 import { _renderWorkoutTimer, _renderTimerControls,
-         _fmtDuration, wtRestTimerSkip, _isViewingTimerDate }
+         _fmtDuration, wtRestTimerSkip, _isViewingTimerDate,
+         wtApplyActiveWorkoutDraft, wtPersistActiveWorkoutDraft }
                                      from './timers.js';
 import { _renderRunningForm, _renderCfForm,
          _renderStretchForm, _renderSwimForm }
@@ -115,7 +116,11 @@ export function loadWorkoutDate(y, m, d) {
   const currentKey = dateKey(y, m, d);
   const day  = getDay(y, m, d);
   const sessions = getWorkoutSessions(day, { minCount: targetSessionIndex + 1 });
-  const workoutSource = sessions[targetSessionIndex] || sessions[0] || {};
+  const draftResult = wtApplyActiveWorkoutDraft(sessions[targetSessionIndex] || sessions[0] || {}, {
+    date: { y, m, d },
+    sessionIndex: targetSessionIndex,
+  });
+  const workoutSource = draftResult.source;
   const loadedMax = _normalizeLoadedMaxMeta(workoutSource, currentKey);
 
   // 운동 도메인 복원
@@ -225,7 +230,13 @@ export function loadWorkoutDate(y, m, d) {
   _renderMealPhotos();
 
   const memoEl = document.getElementById('wt-workout-memo');
-  if (memoEl) memoEl.value = workoutSource.memo || '';
+  if (memoEl) {
+    memoEl.value = workoutSource.memo || '';
+    if (memoEl.dataset.wtDraftBound !== '1') {
+      memoEl.addEventListener('input', () => wtPersistActiveWorkoutDraft('memo input'));
+      memoEl.dataset.wtDraftBound = '1';
+    }
+  }
   const bEl = document.getElementById('wt-meal-breakfast');
   const lEl = document.getElementById('wt-meal-lunch');
   const dEl = document.getElementById('wt-meal-dinner');
@@ -239,6 +250,11 @@ export function loadWorkoutDate(y, m, d) {
   _setInputsDisabled(isFutureDay);
 
   _restoreFlowState(workoutSource);
+  if (draftResult.restored) {
+    setTimeout(() => {
+      window.showToast?.('진행 중이던 운동 기록을 복구했어요', 2200, 'success');
+    }, 0);
+  }
 }
 
 function _restoreFlowState(day) {

@@ -44,13 +44,14 @@ test('muscle fatigue renders next-workout insight instead of color-only feedback
   assert.match(render, /집중 부위/);
 });
 
-test('muscle fatigue styles support blue and red states', () => {
-  assert.match(css, /\.stats-fatigue-hotspot\.is-under/);
+test('muscle fatigue styles support direct blue and red muscle tint states', () => {
+  assert.match(css, /\.stats-fatigue-hotspot\s*\{[\s\S]*mix-blend-mode:\s*color;/);
+  assert.doesNotMatch(css, /\.stats-fatigue-hotspot\.is-under,\s*\.stats-fatigue-hotspot\.is-low\s*\{[\s\S]*mix-blend-mode:\s*screen;/);
   assert.match(css, /\.stats-fatigue-insight\.is-under/);
   assert.match(css, /\.stats-fatigue-name em/);
   assert.match(css, /rgba\(0,0,0,0\) 76%\)/);
 });
 
 test('service worker cache version was bumped for stats fatigue insight assets', () => {
-  assert.match(swJs, /tomatofarm-v20260624z30-track-delta-pp/);
+  assert.match(swJs, /tomatofarm-v20260624z32-stats-picker-ui-polish/);
 });

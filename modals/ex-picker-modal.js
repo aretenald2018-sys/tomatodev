@@ -18,11 +18,6 @@ export const MODAL_HTML = `
     <button type="button" class="ex-picker-tab active" data-picker-tab="category" role="tab" aria-selected="true">분류</button>
   </div>
   <div id="ex-picker-list" class="ex-picker-content"></div>
-  <div class="ex-picker-footer">
-    <button type="button" class="ex-picker-footer-icon" aria-label="종목 선택 정보">i</button>
-    <button type="button" class="ex-picker-footer-mode" disabled>슈퍼세트</button>
-    <button type="button" id="ex-picker-done" class="ex-picker-done" disabled>완료</button>
-  </div>
 </div>
 </div>
 `;

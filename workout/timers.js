@@ -11,6 +11,7 @@ import { getActiveTimer, saveActiveTimer, clearActiveTimer, getCurrentUser } fro
 // running 타이머가 "이 정도 이상 방치되면 freak-out" 가드 (24h). active_timer 의
 // startedAt 이 너무 오래되었다면 OS kill/탭 종료로 정산 못한 유령 세션으로 간주, 복원하지 않음.
 const _MAX_LIVE_TIMER_MS = 24 * 60 * 60 * 1000;
+const _MAX_ACTIVE_WORKOUT_DRAFT_MS = 30 * 60 * 60 * 1000;
 const _GROWTH_BOARD_AUTO_MAX_SEC = 2 * 60 * 60;
 const _GROWTH_BOARD_AUTO_GRACE_MS = 10 * 60 * 1000;
 
@@ -81,6 +82,7 @@ function _persistActiveTimerState(context) {
 //   CLAUDE.md: localStorage 는 기기 단위이므로 유저별 키를 써서 다른 계정으로 로그인 시
 //   유령 타이머가 살아나지 않게 한다.
 const _LS_TIMER_KEY_PREFIX = 'tomatofarm_active_timer_';
+const _LS_ACTIVE_WORKOUT_DRAFT_KEY_PREFIX = 'tomatofarm_active_workout_draft_';
 const _LS_GROWTH_BOARD_TIMER_KEY_PREFIX = 'tomatofarm_growth_board_auto_timer_';
 function _lsKey() {
   try {
@@ -96,6 +98,13 @@ function _lsGrowthBoardTimerKey() {
     return _LS_GROWTH_BOARD_TIMER_KEY_PREFIX + uid;
   } catch { return _LS_GROWTH_BOARD_TIMER_KEY_PREFIX + '_anon'; }
 }
+function _lsActiveWorkoutDraftKey() {
+  try {
+    const u = getCurrentUser();
+    const uid = (u && (u.uid || u.id || u.username)) || '_anon';
+    return _LS_ACTIVE_WORKOUT_DRAFT_KEY_PREFIX + uid;
+  } catch { return _LS_ACTIVE_WORKOUT_DRAFT_KEY_PREFIX + '_anon'; }
+}
 function _lsWriteTimer(state) {
   try { localStorage.setItem(_lsKey(), JSON.stringify(state)); } catch {}
 }
@@ -107,6 +116,18 @@ function _lsReadTimer() {
 }
 function _lsClearTimer() {
   try { localStorage.removeItem(_lsKey()); } catch {}
+}
+function _lsWriteActiveWorkoutDraft(state) {
+  try { localStorage.setItem(_lsActiveWorkoutDraftKey(), JSON.stringify(state)); } catch {}
+}
+function _lsReadActiveWorkoutDraft() {
+  try {
+    const raw = localStorage.getItem(_lsActiveWorkoutDraftKey());
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+function _lsClearActiveWorkoutDraft() {
+  try { localStorage.removeItem(_lsActiveWorkoutDraftKey()); } catch {}
 }
 function _lsWriteGrowthBoardTimer(state) {
   try { localStorage.setItem(_lsGrowthBoardTimerKey(), JSON.stringify(state)); } catch {}
@@ -125,6 +146,198 @@ function _isValidActiveTimer(t) {
   return !!t && Number.isFinite(startedAt) && startedAt > 0 &&
          (Date.now() - startedAt) < _MAX_LIVE_TIMER_MS &&
          !!_normalizeTimerDate(t.date);
+}
+
+let _lastRestoredDraftKey = null;
+
+function _cloneJson(value, fallback = null) {
+  if (value == null) return fallback;
+  try { return JSON.parse(JSON.stringify(value)); }
+  catch { return fallback; }
+}
+
+function _readWorkoutMemoDraft() {
+  if (typeof document === 'undefined') return '';
+  const el = document.getElementById('wt-workout-memo');
+  return el ? String(el.value || '').trim() : '';
+}
+
+function _sessionDateKey(date) {
+  return _timerDateKey(date) || '';
+}
+
+function _sessionHasExerciseDraft(exercises) {
+  return (Array.isArray(exercises) ? exercises : []).some(entry => {
+    if (!entry || typeof entry !== 'object') return false;
+    if (entry.exerciseId || entry.name || entry.note) return true;
+    return Array.isArray(entry.sets) && entry.sets.length > 0;
+  });
+}
+
+function _sessionHasDraftData(session = {}, draft = {}) {
+  if (_sessionHasExerciseDraft(session.exercises)) return true;
+  if (String(session.memo || '').trim()) return true;
+  if (Number(session.workoutDuration) > 0) return true;
+  if (draft.workoutStartTime) return true;
+  if (session.cf || session.stretching || session.swimming || session.running) return true;
+  if (Number(session.runDistance) > 0 || Number(session.runDurationMin) > 0 || Number(session.runDurationSec) > 0) return true;
+  if (Number(session.cfDurationMin) > 0 || Number(session.cfDurationSec) > 0 || String(session.cfWod || '').trim()) return true;
+  if (Number(session.stretchDuration) > 0 || String(session.stretchMemo || '').trim()) return true;
+  if (Number(session.swimDistance) > 0 || Number(session.swimDurationMin) > 0 || Number(session.swimDurationSec) > 0) return true;
+  if (session.workoutPhoto) return true;
+  const weakBlock = session.maxMeta?.weakBlock || {};
+  if ((Number(weakBlock.durationSec) || 0) > 0 || weakBlock.activeStartedAt) return true;
+  return false;
+}
+
+function _activeWorkoutSessionDraftPayload(memo) {
+  const w = S.workout;
+  return {
+    id: w.sessionId || `session-${(Number(w.sessionIndex) || 0) + 1}`,
+    label: `${(Number(w.sessionIndex) || 0) + 1}회차`,
+    exercises: _cloneJson(w.exercises, []),
+    cf: !!w.cf,
+    stretching: !!w.stretching,
+    swimming: !!w.swimming,
+    running: !!w.running,
+    runDistance: Number(w.runData?.distance) || 0,
+    runDurationMin: Number(w.runData?.durationMin) || 0,
+    runDurationSec: Number(w.runData?.durationSec) || 0,
+    runMemo: String(w.runData?.memo || ''),
+    cfWod: String(w.cfData?.wod || ''),
+    cfDurationMin: Number(w.cfData?.durationMin) || 0,
+    cfDurationSec: Number(w.cfData?.durationSec) || 0,
+    cfMemo: String(w.cfData?.memo || ''),
+    stretchDuration: Number(w.stretchData?.duration) || 0,
+    stretchMemo: String(w.stretchData?.memo || ''),
+    swimDistance: Number(w.swimData?.distance) || 0,
+    swimDurationMin: Number(w.swimData?.durationMin) || 0,
+    swimDurationSec: Number(w.swimData?.durationSec) || 0,
+    swimStroke: String(w.swimData?.stroke || ''),
+    swimMemo: String(w.swimData?.memo || ''),
+    workoutDuration: Math.max(0, Math.floor(Number(w.workoutDuration) || 0)),
+    wine_free: !!w.wineFree,
+    memo,
+    workoutPhoto: (typeof window !== 'undefined' ? window._mealPhotos?.workout : null) || null,
+    gymId: w.currentGymId || null,
+    pickerGymFilter: w.pickerGymFilter || null,
+    routineMeta: _cloneJson(w.routineMeta, null),
+    maxMeta: _cloneJson(w.maxMeta, null),
+  };
+}
+
+function _normalizeActiveWorkoutDraft(draft) {
+  if (!draft || typeof draft !== 'object') return null;
+  const date = _normalizeTimerDate(draft.date);
+  const session = draft.session && typeof draft.session === 'object' ? draft.session : null;
+  const sessionIndex = Math.max(0, Math.floor(Number(draft.sessionIndex) || 0));
+  const updatedAt = Number(draft.updatedAt);
+  if (!date || !session || !Number.isFinite(updatedAt) || updatedAt <= 0) return null;
+  if ((Date.now() - updatedAt) > _MAX_ACTIVE_WORKOUT_DRAFT_MS) return null;
+  const normalized = {
+    version: 1,
+    date,
+    dateKey: draft.dateKey || _sessionDateKey(date),
+    sessionIndex,
+    sessionId: String(draft.sessionId || session.id || `session-${sessionIndex + 1}`),
+    workoutStartTime: Number(draft.workoutStartTime) || null,
+    workoutTimerDate: _normalizeTimerDate(draft.workoutTimerDate) || null,
+    updatedAt,
+    context: String(draft.context || ''),
+    session,
+  };
+  if (!_sessionHasDraftData(normalized.session, normalized)) return null;
+  return normalized;
+}
+
+function _readValidActiveWorkoutDraft() {
+  const draft = _normalizeActiveWorkoutDraft(_lsReadActiveWorkoutDraft());
+  if (!draft) {
+    if (_lsReadActiveWorkoutDraft()) _lsClearActiveWorkoutDraft();
+    return null;
+  }
+  return draft;
+}
+
+export function wtPersistActiveWorkoutDraft(context = 'manual') {
+  const currentDate = _normalizeTimerDate(S.shared.date);
+  const timerDate = _normalizeTimerDate(S.workout.workoutTimerDate);
+  const existingDraft = _readValidActiveWorkoutDraft();
+  const passiveContext = ['beforeunload', 'visibility hidden', 'external flush', 'status check'].includes(context);
+
+  if (S.workout.workoutStartTime && timerDate) {
+    _persistActiveTimerState(`draft ${context}`);
+    if (currentDate && !_sameTimerDate(currentDate, timerDate)) {
+      return _readValidActiveWorkoutDraft();
+    }
+  }
+
+  const date = currentDate || timerDate;
+  if (!date) return null;
+  if (passiveContext && !S.workout.workoutStartTime && !existingDraft) return null;
+
+  const sessionIndex = Math.max(0, Math.floor(Number(S.workout.sessionIndex) || 0));
+  const memo = _readWorkoutMemoDraft();
+  const session = _activeWorkoutSessionDraftPayload(memo);
+  const draft = {
+    version: 1,
+    date,
+    dateKey: _sessionDateKey(date),
+    sessionIndex,
+    sessionId: session.id,
+    workoutStartTime: Number(S.workout.workoutStartTime) || null,
+    workoutTimerDate: timerDate,
+    updatedAt: Date.now(),
+    context,
+    session,
+  };
+
+  if (!_sessionHasDraftData(session, draft)) {
+    if (existingDraft && _sameTimerDate(existingDraft.date, date) && existingDraft.sessionIndex === sessionIndex) {
+      _lsClearActiveWorkoutDraft();
+    }
+    return null;
+  }
+
+  _lsWriteActiveWorkoutDraft(draft);
+  return draft;
+}
+
+export function wtClearActiveWorkoutDraft() {
+  _lsClearActiveWorkoutDraft();
+  _lastRestoredDraftKey = null;
+}
+
+export function wtHasActiveWorkoutDraft() {
+  if (S.workout.workoutStartTime) wtPersistActiveWorkoutDraft('status check');
+  return !!_readValidActiveWorkoutDraft();
+}
+
+export function wtApplyActiveWorkoutDraft(workoutSource = {}, options = {}) {
+  const draft = _readValidActiveWorkoutDraft();
+  if (!draft) return { source: workoutSource || {}, restored: false, draft: null };
+  const targetDate = _normalizeTimerDate(options.date);
+  const targetSessionIndex = Math.max(0, Math.floor(Number(options.sessionIndex) || 0));
+  if (!targetDate || !_sameTimerDate(draft.date, targetDate) || draft.sessionIndex !== targetSessionIndex) {
+    return { source: workoutSource || {}, restored: false, draft };
+  }
+
+  const source = workoutSource && typeof workoutSource === 'object' ? workoutSource : {};
+  const sourceUpdatedAt = Number(source.updatedAt) || 0;
+  if (sourceUpdatedAt > 0 && sourceUpdatedAt > draft.updatedAt) {
+    return { source, restored: false, draft };
+  }
+
+  const merged = {
+    ...source,
+    ..._cloneJson(draft.session, {}),
+    id: source.id || draft.sessionId || `session-${targetSessionIndex + 1}`,
+    label: source.label || `${targetSessionIndex + 1}회차`,
+  };
+  const restoreKey = `${draft.dateKey}:${draft.sessionIndex}:${draft.updatedAt}`;
+  const shouldNotify = _lastRestoredDraftKey !== restoreKey;
+  _lastRestoredDraftKey = restoreKey;
+  return { source: merged, restored: shouldNotify, draft };
 }
 
 let _growthBoardAutoTimer = null;
@@ -239,7 +452,8 @@ export function wtStartWorkoutTimer() {
     _ensureWorkoutTimerInterval();
     _renderWorkoutTimer();
     _renderTimerControls();
-    _persistActiveTimerState('timer already-running');
+  _persistActiveTimerState('timer already-running');
+    wtPersistActiveWorkoutDraft('timer already-running');
     return;
   }
   S.workout.workoutStartTime = Date.now();
@@ -255,6 +469,7 @@ export function wtStartWorkoutTimer() {
   //   (2) _settings/active_timer (Firestore) — cross-device, cross-day SoT.
   //       saveWorkoutDay 를 건들지 않으므로 sheet:saved / 저장 완료 토스트 미발생.
   _persistActiveTimerState('timer start');
+  wtPersistActiveWorkoutDraft('timer start');
 }
 
 export function wtPauseWorkoutTimer() {
@@ -269,6 +484,7 @@ export function wtPauseWorkoutTimer() {
   if (S.workout.workoutTimerInterval) { clearInterval(S.workout.workoutTimerInterval); S.workout.workoutTimerInterval = null; }
   _renderWorkoutTimer();
   _renderTimerControls();
+  wtPersistActiveWorkoutDraft('timer pause');
   // 순서: saveWorkoutDay (누적 duration 영속화) → clearActiveTimer (포인터 해제).
   //   역순이면 save 실패 시 포인터만 사라져 누적 시간 유실. 이 순서면 save 실패 시
   //   active_timer 가 살아있어 다음 recovery 가 타이머를 이어감 → 유저가 재시도 가능.
@@ -300,6 +516,7 @@ export async function wtResetWorkoutTimer() {
   if (S.workout.workoutTimerInterval) { clearInterval(S.workout.workoutTimerInterval); S.workout.workoutTimerInterval = null; }
   _renderWorkoutTimer();
   _renderTimerControls();
+  wtPersistActiveWorkoutDraft('timer reset');
   // 순서: saveWorkoutDay → clearActiveTimer (pause 와 동일 이유).
   saveWorkoutDay()
     .then(() => {
@@ -442,6 +659,7 @@ export function wtFinishWorkout() {
   return saveWorkoutDay().then(() => {
     _lsClearTimer();
     _clearGrowthBoardAutoTimer();
+    wtClearActiveWorkoutDraft();
     clearActiveTimer().catch(e => console.error('[timer finish] clearActiveTimer error:', e));
   });
 }
@@ -457,6 +675,12 @@ export function wtRecoverTimers() {
     let restored = null;
     if (_isValidActiveTimer(fromFs)) restored = fromFs;
     else if (_isValidActiveTimer(fromLs)) restored = fromLs;
+    else {
+      const fromDraft = _readValidActiveWorkoutDraft();
+      if (_isValidActiveTimer({ startedAt: fromDraft?.workoutStartTime, date: fromDraft?.workoutTimerDate || fromDraft?.date })) {
+        restored = { startedAt: fromDraft.workoutStartTime, date: fromDraft.workoutTimerDate || fromDraft.date };
+      }
+    }
 
     if (restored) {
       const normalizedRestored = {
@@ -492,6 +716,19 @@ export function wtRecoverTimers() {
       S.workout.restTimer.interval = setInterval(_syncRestTimerFromNow, 1000);
     }
     _syncRestTimerFromNow();
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.__wtPersistActiveDraft = (context = 'external flush') => wtPersistActiveWorkoutDraft(context);
+  window.__wtHasActiveDraft = () => wtHasActiveWorkoutDraft();
+  window.addEventListener('beforeunload', () => {
+    wtPersistActiveWorkoutDraft('beforeunload');
+  });
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) wtPersistActiveWorkoutDraft('visibility hidden');
+    });
   }
 }
 

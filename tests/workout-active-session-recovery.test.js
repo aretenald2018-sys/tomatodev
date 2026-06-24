@@ -1,0 +1,55 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+const timersJs = readFileSync(new URL('../workout/timers.js', import.meta.url), 'utf8');
+const loadJs = readFileSync(new URL('../workout/load.js', import.meta.url), 'utf8');
+const exercisesJs = readFileSync(new URL('../workout/exercises.js', import.meta.url), 'utf8');
+const buildInfoJs = readFileSync(new URL('../utils/build-info.js', import.meta.url), 'utf8');
+const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+
+test('active workout draft persists the full in-progress session locally', () => {
+  assert.match(timersJs, /_LS_ACTIVE_WORKOUT_DRAFT_KEY_PREFIX\s*=\s*'tomatofarm_active_workout_draft_'/);
+  assert.match(timersJs, /export function wtPersistActiveWorkoutDraft/);
+  assert.match(timersJs, /export function wtApplyActiveWorkoutDraft/);
+  assert.match(timersJs, /export function wtHasActiveWorkoutDraft/);
+  assert.match(timersJs, /exercises:\s*_cloneJson\(w\.exercises,\s*\[\]\)/);
+  assert.match(timersJs, /workoutStartTime:\s*Number\(S\.workout\.workoutStartTime\)/);
+  assert.match(timersJs, /workoutTimerDate:\s*timerDate/);
+  assert.match(timersJs, /memo,/);
+  assert.match(timersJs, /gymId:\s*w\.currentGymId/);
+  assert.match(timersJs, /pickerGymFilter:\s*w\.pickerGymFilter/);
+  assert.match(timersJs, /routineMeta:\s*_cloneJson\(w\.routineMeta/);
+  assert.match(timersJs, /maxMeta:\s*_cloneJson\(w\.maxMeta/);
+});
+
+test('reload recovery applies same-date same-session draft during workout load', () => {
+  assert.match(loadJs, /wtApplyActiveWorkoutDraft\(sessions\[targetSessionIndex\]/);
+  assert.match(loadJs, /date:\s*\{\s*y,\s*m,\s*d\s*\}/);
+  assert.match(loadJs, /sessionIndex:\s*targetSessionIndex/);
+  assert.match(loadJs, /진행 중이던 운동 기록을 복구했어요/);
+  assert.match(loadJs, /memoEl\.addEventListener\('input',\s*\(\)\s*=>\s*wtPersistActiveWorkoutDraft\('memo input'\)\)/);
+});
+
+test('set editing paths write local draft before relying on async save', () => {
+  assert.match(exercisesJs, /wtPersistActiveWorkoutDraft\('set add'\)/);
+  assert.match(exercisesJs, /wtPersistActiveWorkoutDraft\('set remove'\)/);
+  assert.match(exercisesJs, /wtPersistActiveWorkoutDraft\(`set draft \$\{field\}`\)/);
+  assert.match(exercisesJs, /wtPersistActiveWorkoutDraft\(`set update \$\{field\}`\)/);
+  assert.match(exercisesJs, /wtPersistActiveWorkoutDraft\('set done toggle'\)/);
+  assert.match(exercisesJs, /wtPersistActiveWorkoutDraft\('exercise add'\)/);
+  assert.match(exercisesJs, /wtPersistActiveWorkoutDraft\('exercise remove'\)/);
+});
+
+test('app update reload flushes workout draft and changes copy while workout is active', () => {
+  assert.match(buildInfoJs, /window\.__wtHasActiveDraft/);
+  assert.match(buildInfoJs, /운동 기록 저장됨/);
+  assert.match(buildInfoJs, /업데이트 후에도 방금 하던 운동을 이어서 끝낼 수 있어요/);
+  assert.match(buildInfoJs, /기록 보존 후 업데이트/);
+  assert.match(buildInfoJs, /window\.__wtPersistActiveDraft/);
+  assert.match(buildInfoJs, /await Promise\.resolve\(window\.__wtPersistActiveDraft\(\)\)/);
+});
+
+test('service worker cache version was bumped for recovery assets', () => {
+  assert.match(swJs, /tomatofarm-v20260624z32-stats-picker-ui-polish/);
+});

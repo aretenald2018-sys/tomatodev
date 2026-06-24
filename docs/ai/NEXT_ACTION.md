@@ -3,10 +3,10 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-24-workout-history-detail-ui-regression.md` (후속 Slice 8: 운동 카드 그래프 등락폭 pp 표기)
-- 현재 단계: `deploy verified — 후속 Slice 8 운동 카드 그래프 등락폭 pp 표기`
-- 마지막 완료: `운동 카드 그래프 등락폭을 최근 최고값 대비 퍼센트포인트 증감량으로 표기하도록 변경했고 테스트와 Dashboard3 Pages 배포 검증을 완료했다.`
-- 다음 액션: `없음`
+- 계획 문서: `docs/ai/features/2026-06-24-stats-picker-ui-polish.md`
+- 현재 단계: `static verified — Slice 1 통계 근육 현출 및 운동 picker UI 보정`
+- 마지막 완료: `통계 파란색 직접 현출, picker 좌측 칩 compact화, 상단 커스텀 탭 제거, 하단 슈퍼세트 바 제거를 구현하고 정적 검증 및 리뷰를 완료했다.`
+- 다음 액션: `최종 커밋, Dashboard3 Pages 배포, 배포 검증을 수행한다.`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
