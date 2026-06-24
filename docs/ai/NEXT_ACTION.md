@@ -4,7 +4,7 @@
 
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md` (운동 추가 분류형 진입 UI)
-- 현재 단계: `ready for deploy — Slice 6 picker row 선택 즉시 닫힘 제거`
+- 현재 단계: `deploy verified — Slice 6 picker row 선택 즉시 닫힘 제거`
 - 마지막 완료: `picker row 선택 시 즉시 wtCloseExercisePicker()를 호출하던 흐름을 제거하고 완료 버튼 기반 staged selection으로 변경했다.`
 - 다음 액션: `없음`
 - 차단 사유: `없음`
@@ -66,7 +66,9 @@
   2. PASS: `node --test tests/ex-picker-selection-flow.test.js tests/workout-card-layout-css.test.js`
   3. PASS: `node scripts/verify-runtime-assets.mjs`
   4. PASS: `git diff --check`
-  5. not verified yet: Dashboard3 Pages 배포 검증 필요
+  5. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 3de3708`
+  6. PASS: 배포 URL의 `modals/ex-picker-modal.js`, `workout/exercises.js`, `sw.js`에 `ex-picker-done`, `_syncPickerDoneButton`, `tomatofarm-v20260624z19-picker-staged-done` 반영 확인
+  7. not verified yet: 배포 브라우저는 로그인 화면에 막혀 `운동 탭 -> + -> 가슴 -> row tap -> picker 유지 -> 완료` UI 클릭 흐름은 인증 계정으로 확인 필요
 - 완료한 Slice 3:
   1. `assets/workout/muscles/*.png` 8개를 `384x288` RGBA 투명 PNG로 교체
   2. 기존 파일명/경로 유지

@@ -354,3 +354,10 @@
 - PASS: `node --test tests/ex-picker-selection-flow.test.js tests/workout-card-layout-css.test.js`
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
+- 배포 검증:
+  - PASS: 커밋 `3de3708`을 `origin/main`에 push했다.
+  - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 3de3708`
+  - PASS: Dashboard3 Pages가 `tomatofarm-v20260624z19-picker-staged-done` 캐시 버전을 서빙하는 것을 확인했다.
+  - PASS: 배포 URL의 `modals/ex-picker-modal.js`에 `ex-picker-done`이 포함된 것을 확인했다.
+  - PASS: 배포 URL의 `workout/exercises.js`에 `_syncPickerDoneButton`이 포함된 것을 확인했다.
+  - not verified yet: 배포 브라우저는 로그인 화면에 막혀 `운동 탭 -> + -> 가슴 -> row tap -> picker 유지 -> 완료` UI 클릭 흐름을 인증 계정으로 끝까지 확인하지 못했다.

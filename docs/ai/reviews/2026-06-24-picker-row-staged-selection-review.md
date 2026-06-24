@@ -20,7 +20,9 @@
 - PASS: `node --test tests/ex-picker-selection-flow.test.js tests/workout-card-layout-css.test.js`
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 3de3708`
+- PASS: 배포 URL 원격 파일 확인: `ex-picker-done`, `_syncPickerDoneButton`, `tomatofarm-v20260624z19-picker-staged-done`
 
 ## 남은 리스크
 
-- Dashboard3 배포 후 인증된 브라우저 세션에서 실제 row tap -> picker 유지 -> `완료` tap 흐름을 한 번 더 확인해야 한다.
+- 배포 브라우저는 로그인 화면에 막혀 인증된 실제 row tap -> picker 유지 -> `완료` tap 흐름을 끝까지 확인하지 못했다.
