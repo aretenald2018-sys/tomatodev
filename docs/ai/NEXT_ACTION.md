@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-24-workout-history-detail-ui-regression.md` (후속 Slice 8: 운동 카드 그래프 등락폭 pp 표기)
-- 현재 단계: `execution complete — 후속 Slice 8 리뷰 대기`
-- 마지막 완료: `운동 카드 그래프 등락폭을 최근 최고값 대비 퍼센트포인트 증감량으로 표기하도록 변경했고 테스트와 캐시 버전 bump를 완료했다.`
-- 다음 액션: `후속 Slice 8 변경 파일을 계획 대비 리뷰하고 Dashboard3 Pages 배포 검증을 진행한다.`
+- 현재 단계: `deploy verified — 후속 Slice 8 운동 카드 그래프 등락폭 pp 표기`
+- 마지막 완료: `운동 카드 그래프 등락폭을 최근 최고값 대비 퍼센트포인트 증감량으로 표기하도록 변경했고 테스트와 Dashboard3 Pages 배포 검증을 완료했다.`
+- 다음 액션: `없음`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
