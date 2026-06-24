@@ -3,27 +3,30 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-24-workout-card-collapse-regression.md` (운동 카드 접기/펼치기 UI 회귀)
-- 현재 단계: `review complete — 접힌 운동 상세 카드 완료 버튼 오클릭 차단`
-- 마지막 완료: `운동 상세 카드가 접힌 상태에서 왼쪽 운동 완료 버튼이 편집 화면으로 이동하던 onclick을 제거하고, render-calendar.js 캐시 반영을 위해 sw.js CACHE_VERSION을 bump했다.`
-- 다음 액션: `없음. 사용자는 로컬에서 운동 탭 월간 홈의 기록 날짜 상세를 열어 접힌 카드의 운동 완료 클릭이 편집 화면으로 이동하지 않는지 확인하면 된다.`
-- 차단 사유: `not verified yet: 프로젝트 규칙상 장시간 dev server를 여기서 실행해 UI 검증 완료로 주장하지 않았다. 로컬 브라우저 플로우 확인이 남아 있다.`
+- 계획 문서: `docs/ai/features/2026-06-24-workout-history-detail-ui-regression.md` (운동 홈 과거 상세 UI 회귀)
+- 현재 단계: `review complete — Slice 1 운동 홈 과거 상세 UI 회귀 복구`
+- 마지막 완료: `render-calendar.js/style.css/sw.js를 수정해 상단 compact action/metric row, 과거 기록 완료 체크 보정, smooth graph, 과거 날짜 루틴 버튼 회귀 방지를 구현하고 정적 검증을 통과했다.`
+- 다음 액션: `없음. 사용자는 Dashboard3 배포 URL에서 과거 운동 상세 화면의 모바일 UI 플로우를 확인하면 된다.`
+- 차단 사유: `not verified yet: 실제 모바일 UI 플로우는 로그인 세션과 과거 운동 데이터가 필요해 이 세션에서 브라우저로 확인하지 않았다.`
 
 ## 다음 실행 대상
 
-- 계획 파일: `docs/ai/features/2026-06-24-workout-card-collapse-regression.md`
+- 계획 파일: `docs/ai/features/2026-06-24-workout-history-detail-ui-regression.md`
 - 방금 완료한 Slice 1:
-  1. `render-calendar.js` 접힌 운동 상세 카드의 `운동 완료` 버튼에서 `_wtCalEditSession()` 호출 제거
-  2. 접힌 카드의 펼치기는 기존 `세트 다시 보기` 버튼으로 유지
-  3. 펼친 카드의 명시적 `편집하기` 경로 유지
-  4. `sw.js` `CACHE_VERSION` bump
-  5. `docs/ai/reviews/2026-06-24-workout-card-collapse-regression-review.md` 작성
+  1. `render-calendar.js` 상세 상단 액션을 `.wt-day-actions` compact row로 통합
+  2. `render-calendar.js` `setDetails.done`을 `_isActualWorkoutSet(set)` 기준으로 보정
+  3. `render-calendar.js` 상세 카드 그래프를 smooth SVG path로 변경
+  4. `render-calendar.js` 과거 날짜 `루틴` 버튼이 편집 화면으로 직접 이동하지 않도록 방지
+  5. `style.css` 모바일 상단 action/metric row와 smooth graph 스타일 조정
+  6. `sw.js` `CACHE_VERSION` bump
+  7. `docs/ai/reviews/2026-06-24-workout-history-detail-ui-regression-review.md` 작성
 
 - 검증:
   1. PASS: `node --check render-calendar.js`
   2. PASS: `node --check sw.js`
-  3. PASS: `git diff --check`
-  4. not verified yet: dev server/browser flow는 이 세션에서 실행하지 않았다. 확인 플로우는 운동 탭 월간 홈에서 기록 날짜 상세를 열고 카드 접기 후 접힌 카드의 `운동 완료` 클릭이 편집 화면으로 이동하지 않는지 확인한다.
+  3. PASS: `node scripts/verify-runtime-assets.mjs`
+  4. PASS: `git diff --check`
+  5. not verified yet: 실제 모바일 UI 플로우는 로그인 세션과 과거 운동 데이터가 필요해 이 세션에서 브라우저로 확인하지 않았다.
 
 ## 이전 흐름 요약
 

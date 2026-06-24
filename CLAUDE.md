@@ -21,14 +21,14 @@
 ## ⚠️ 절대 규칙 (위반 시 버그/장애)
 1. **Firebase 직접 호출 금지** — 모든 CRUD는 `data.js` 배럴이 노출하는 getter/setter만 사용. 뷰/feature-*.js에서 Firestore API 절대 금지.
 2. **setDoc은 전체 덮어쓰기** — 필드 하나라도 빠뜨리면 기존 데이터 삭제됨. 사진(`bPhoto`, `lPhoto`, `dPhoto`, `sPhoto`, `workoutPhoto`) 누락하면 사진 날아감.
-3. **배포는 유저의 명시적 지시가 있을 때만** — 평소에는 push/배포 자동 실행 금지. 단, 유저가 명시적으로 "배포해", "푸시해", "배포까지 해" 등으로 지시한 경우에는 항상 `tomatofarm` 리모트에 push 가능. localhost 확인은 유저가 완료했다고 간주.
+3. **tomatofarm-refactor는 Dashboard3 Pages 우선** — 이 체크아웃에서는 localhost를 최종 검증/핸드오프 대상으로 쓰지 않는다. 작업이 사용자 확인 단계까지 가면 `origin/main`에 push해 `https://aretenald2018-sys.github.io/dashboard3/`로 배포하고 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`로 확인한다. `tomatofarm` 리모트는 사용자가 명시적으로 그 리모트를 지시할 때만 사용한다.
 4. **순수 로직은 calc.js** — BMR, 칼로리, 스트릭, 토마토 사이클 계산 등 사이드이펙트 없는 함수만. DOM 접근·Firebase 호출 금지.
 5. **SW 캐시 버전 범프** — `sw.js`의 `STATIC_ASSETS`에 등록된 파일을 수정했으면 `CACHE_VERSION`을 반드시 범프 + `sw.js` 함께 커밋.
 6. **소스 트루스는 루트** — `www/`는 `scripts/copy-www.js` 의 Capacitor 빌드 산출물이다. **`www/` 직접 수정 금지**. 수정은 항상 루트 파일(`index.html`, `app.js`, `style.css`, `workout/*.js` 등)에만. `node scripts/dev-start.mjs` 는 루트를 서빙함.
 
 ## 🖥️ Dev Server (Agent-run)
 
-코드 변경 후 로컬 UI 검증이 필요하면 에이전트가 프로젝트 루트에서 아래 명령을 직접 실행한다.
+이 `tomatofarm-refactor` 체크아웃에서는 localhost를 최종 확인 경로로 쓰지 않는다. 로컬 전용 디버깅을 사용자가 명시한 경우에만 프로젝트 루트에서 아래 명령을 실행한다.
 
 ```powershell
 cd "C:\Users\USER\Desktop\Tomato Project\tomatofarm(for lite version)"; npm.cmd run dev
@@ -37,8 +37,8 @@ cd "C:\Users\USER\Desktop\Tomato Project\tomatofarm(for lite version)"; npm.cmd 
 - `npm.cmd run dev`는 `node scripts/dev-start.mjs`를 실행한다.
 - 이 스크립트는 **idempotent**함: 이미 헬시한 Python 서버가 떠 있으면 재실행해도 기존 서버를 **재사용**(kill 안 함).
 - 포트 충돌 자동 해결: 다른 프로그램이 점유하면 죽이지 않고 5501, 5502... 순서로 빈 포트 자동 탐색.
-- Codex/Claude 세션은 필요한 경우 `npm.cmd run dev`를 직접 실행하고, 출력된 실제 URL을 기준으로 HTTP 200과 대상 UI flow를 확인한다.
-- dev server 실행이 실패했거나 실제 UI flow를 exercise하지 못했으면 `not verified yet`이라고 말하고, 실패 명령/URL/검증 기준을 제공한다.
+- Codex/Claude 세션은 기본적으로 정적 검증 후 `origin/main`에 push해 Dashboard3 Pages 배포를 확인한다.
+- 배포 검증은 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`를 기준으로 한다. 실제 UI flow를 배포 URL에서 exercise하지 못했으면 `not verified yet`이라고 말하고, 실패 명령/URL/검증 기준을 제공한다.
 - **🚫 절대 금지 (과거 로그인 다운 원인)**:
   - `python -m http.server`를 직접 실행하지 말 것 — 반드시 `npm.cmd run dev` 또는 그 내부 스크립트 사용
   - 수동 `taskkill`/포트 kill 금지 — 스크립트가 처리함
@@ -277,7 +277,7 @@ CSS 클래스:
 ## "go" 워크플로우
 1. `@plan.md`에서 다음 미완료 체크박스 확인
 2. 기존 파일 패턴과 위 규칙에 맞춰 구현
-3. 에이전트가 프로젝트 루트에서 `npm.cmd run dev`를 직접 실행한 뒤 출력된 localhost URL에서 HTTP 200과 대상 UI flow를 확인. 직접 확인하지 못했으면 `not verified yet`으로 보고
+3. 정적 검증 후 `origin/main`에 push해 Dashboard3 Pages를 배포하고 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`로 원격 자산을 확인. 배포 URL에서 대상 UI flow를 직접 확인하지 못했으면 `not verified yet`으로 보고
 4. Conventional Commits (feat/fix/refactor/style/docs) 형식 커밋
 5. `@plan.md` 진행 상태 업데이트
 

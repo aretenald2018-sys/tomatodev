@@ -9079,7 +9079,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 }
 .wt-day-head {
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) auto;
+  grid-template-columns: 36px minmax(0, 1fr);
   align-items: start;
   gap: 10px;
 }
@@ -9114,32 +9114,31 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   font-size: 16px;
   line-height: 22px;
 }
-.wt-day-head-actions,
-.wt-day-utility {
-  display: flex;
+.wt-day-actions {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  margin-top: 18px;
 }
-.wt-day-head-actions button,
-.wt-day-utility button {
-  min-width: 72px;
-  height: 44px;
+.wt-day-actions button {
+  min-width: 0;
+  height: 36px;
+  padding: 0 4px;
   border: 1px solid #e0e2ea;
-  border-radius: 24px;
+  border-radius: 18px;
   background: #ffffff;
   color: #43536d;
-  font-size: 16px;
-  line-height: 20px;
+  font-size: 13px;
+  line-height: 16px;
   font-weight: 700;
   box-shadow: 0 2px 6px rgba(30, 35, 48, 0.12);
+  white-space: nowrap;
 }
-.wt-day-utility {
-  justify-content: flex-end;
-  margin: 28px 2px 34px;
-}
-.wt-day-utility button {
-  background: transparent;
-  border-color: #747882;
+.wt-day-actions button.is-muted {
+  color: #8b93a3;
+  background: #f0f2f6;
   box-shadow: none;
 }
 .wt-day-session-label {
@@ -9152,7 +9151,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 18px;
 }
 .wt-day-title-row h2 {
   margin: 0;
@@ -9172,27 +9171,37 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 }
 .wt-day-metrics {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: center;
-  gap: 16px;
-  margin: 46px 0 28px;
+  gap: 8px;
+  margin: 14px 0 14px;
   color: #202229;
-  font-size: 20px;
-  line-height: 26px;
+}
+.wt-day-metrics span {
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid #e3e7ef;
+  border-radius: 12px;
+  background: rgba(255,255,255,.72);
+}
+.wt-day-metrics i {
+  display: block;
+  color: #6c7482;
+  font-size: 11px;
+  line-height: 14px;
+  font-style: normal;
+  font-weight: 800;
 }
 .wt-day-metrics strong {
-  font-weight: 500;
-}
-.wt-day-metrics button {
-  border: 0;
-  background: transparent;
-  color: #43536d;
-  font-size: 17px;
-  font-weight: 500;
-}
-.wt-day-metrics em {
-  font-style: normal;
+  display: block;
+  margin-top: 2px;
+  color: #202229;
+  font-size: 19px;
+  line-height: 24px;
+  font-weight: 800;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .wt-day-card-list {
   display: flex;
@@ -9450,7 +9459,8 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   height: 100%;
   overflow: visible;
 }
-.wt-max-spark-svg polyline {
+.wt-max-spark-svg polyline,
+.wt-max-spark-svg path {
   fill: none;
   stroke: #2b6cff;
   stroke-width: 2.2;
@@ -9858,9 +9868,15 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   .wt-day-head {
     grid-template-columns: 30px minmax(0, 1fr);
   }
-  .wt-day-head-actions {
-    grid-column: 2;
-    justify-content: flex-start;
+  .wt-day-actions {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 5px;
+    margin-top: 14px;
+  }
+  .wt-day-actions button {
+    height: 34px;
+    padding: 0 2px;
+    font-size: 12px;
   }
   .wt-day-date {
     font-size: 20px;
@@ -9870,20 +9886,23 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   .wt-day-date span {
     font-size: 14px;
   }
-  .wt-day-utility {
-    margin: 22px 2px 30px;
-  }
   .wt-day-title-row h2 {
     font-size: 28px;
   }
   .wt-day-metrics {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 8px 12px;
-    margin: 36px 0 24px;
-    font-size: 17px;
+    gap: 6px;
+    margin: 12px 0 12px;
   }
-  .wt-day-metrics em {
-    justify-self: end;
+  .wt-day-metrics span {
+    padding: 8px 7px;
+    border-radius: 10px;
+  }
+  .wt-day-metrics i {
+    font-size: 10px;
+  }
+  .wt-day-metrics strong {
+    font-size: 15px;
+    line-height: 20px;
   }
   .wt-day-ex-top {
     grid-template-columns: minmax(0, 1fr) 118px;

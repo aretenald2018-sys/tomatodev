@@ -160,6 +160,10 @@ function _dateTitle(key) {
   return `${p.y}-${String(p.m + 1).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`;
 }
 
+function _isTodayKey(key) {
+  return key === dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+}
+
 function _sessionLabel(index) {
   return `${Number(index) + 1}회차`;
 }
@@ -587,7 +591,7 @@ function _exerciseRows(day, lookup = _buildWorkoutLookup()) {
           rir: Number.isFinite(Number(set.rir)) ? Number(set.rir) : null,
           romPct: Number.isFinite(Number(set.romPct)) ? Number(set.romPct) : 100,
           setType: set.setType || 'main',
-          done: set.done === true,
+          done: _isActualWorkoutSet(set),
         })),
         note,
         originalIndex,
@@ -1027,6 +1031,7 @@ function _renderWorkoutHomeDetail(root, { cache, plan, checkins, key }) {
   const content = wx.hasWorkout
     ? _renderWorkoutDetailRecorded(key, sessionIndex, wx)
     : _renderWorkoutDetailEmpty(sessionIndex);
+  const routineClass = _isTodayKey(key) ? '' : ' is-muted';
 
   root.innerHTML = `
     <div class="wt-day-detail">
@@ -1036,18 +1041,18 @@ function _renderWorkoutHomeDetail(root, { cache, plan, checkins, key }) {
           <div class="wt-day-date">${_dateTitle(key)} <span>${_dateDistanceLabel(key)}</span></div>
           <div class="wt-day-record">${recordText}</div>
         </div>
-        <div class="wt-day-head-actions">
+        <div class="wt-day-actions">
           <button type="button" onclick="window._wtCalGoTodayDetail()">오늘</button>
-          <button type="button" onclick="window._wtCalOpenRoutine('${key}')">루틴</button>
+          <button type="button" class="${routineClass}" onclick="window._wtCalOpenRoutine('${key}')">루틴</button>
+          ${wx.hasWorkout ? `
+            <button type="button" onclick="window._wtCalExportSession('${key}', ${sessionIndex})">내보내기</button>
+            <button type="button" onclick="window._wtCalDeleteSession('${key}', ${sessionIndex})">삭제</button>
+            <button type="button" onclick="window._wtCalEditSession('${key}', ${sessionIndex})">수정</button>
+          ` : `
+            <button type="button" onclick="window._wtCalAddSession('${key}')">추가</button>
+          `}
         </div>
       </div>
-
-      ${wx.hasWorkout ? `
-        <div class="wt-day-utility">
-          <button type="button" onclick="window._wtCalExportSession('${key}', ${sessionIndex})">내보내기</button>
-          <button type="button" onclick="window._wtCalDeleteSession('${key}', ${sessionIndex})">삭제</button>
-        </div>
-      ` : ''}
 
       ${content}
 
@@ -1080,13 +1085,11 @@ function _renderWorkoutDetailRecorded(key, sessionIndex, wx) {
       <div class="wt-day-session-label">${_sessionLabel(sessionIndex)}</div>
       <div class="wt-day-title-row">
         <h2>${title}</h2>
-        <button type="button" onclick="window._wtCalOpenRoutine('${key}')" aria-label="운동 메뉴">⋮</button>
       </div>
       <div class="wt-day-metrics">
-        <span>운동시간: <strong>${_formatDurationShort(wx.durationSec)}</strong></span>
-        <button type="button" onclick="window._wtCalEditSession('${key}', ${sessionIndex})">수정</button>
-        <em>${wx.setCount ? `${wx.setCount}세트` : '—'}</em>
-        <em>${wx.volume > 0 ? `${_formatVolume(wx.volume)}톤` : '—'}</em>
+        <span><i>운동시간</i><strong>${_formatDurationShort(wx.durationSec)}</strong></span>
+        <span><i>세트</i><strong>${wx.setCount ? `${wx.setCount}세트` : '—'}</strong></span>
+        <span><i>볼륨</i><strong>${wx.volume > 0 ? `${_formatVolume(wx.volume)}톤` : '—'}</strong></span>
       </div>
       ${_renderWorkoutDetailCards(key, sessionIndex, wx)}
     </div>
@@ -1164,6 +1167,29 @@ function _workoutSetSummary(row) {
     .join(' / ');
 }
 
+function _smoothPath(points) {
+  if (!Array.isArray(points) || !points.length) return '';
+  const fmt = (n) => String(Math.round(n * 10) / 10);
+  if (points.length === 1) return `M ${fmt(points[0].x)} ${fmt(points[0].y)}`;
+  let d = `M ${fmt(points[0].x)} ${fmt(points[0].y)}`;
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const p0 = points[i - 1] || points[i];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2] || p2;
+    const cp1 = {
+      x: p1.x + (p2.x - p0.x) / 6,
+      y: p1.y + (p2.y - p0.y) / 6,
+    };
+    const cp2 = {
+      x: p2.x - (p3.x - p1.x) / 6,
+      y: p2.y - (p3.y - p1.y) / 6,
+    };
+    d += ` C ${fmt(cp1.x)} ${fmt(cp1.y)}, ${fmt(cp2.x)} ${fmt(cp2.y)}, ${fmt(p2.x)} ${fmt(p2.y)}`;
+  }
+  return d;
+}
+
 function _renderWorkoutSparkline(row) {
   const sets = Array.isArray(row?.setDetails) ? row.setDetails : [];
   const raw = sets.map(set => Math.max(0, _num(set.kg) * _num(set.reps))).filter(v => v > 0);
@@ -1175,11 +1201,12 @@ function _renderWorkoutSparkline(row) {
   const points = values.map((value, index) => {
     const x = 4 + (step * index);
     const y = 26 - (((value - min) / spread) * 18);
-    return `${Math.round(x * 10) / 10},${Math.round(y * 10) / 10}`;
-  }).join(' ');
+    return { x, y };
+  });
+  const path = _smoothPath(points);
   return `
     <svg class="wt-max-spark-svg" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true">
-      <polyline points="${points}"></polyline>
+      <path d="${path}"></path>
     </svg>
   `;
 }
@@ -1552,6 +1579,10 @@ function _openWorkoutHomeDay(key) {
 async function _openWorkoutHomeRoutine(key) {
   _workoutHomeSelectedKey = key;
   const sessionIndex = _workoutHomeSessionIndex;
+  if (!_isTodayKey(key)) {
+    window.showToast?.('과거 기록에서는 루틴을 열지 않아요. 오늘 운동에서 시작해 주세요.', 2200, 'info');
+    return;
+  }
   renderWorkoutCalendarHome();
 
   try {
