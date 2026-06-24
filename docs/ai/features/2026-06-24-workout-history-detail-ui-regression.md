@@ -107,3 +107,54 @@ UI 검증:
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
 - not verified yet: 실제 모바일 UI 플로우는 로그인 세션과 과거 운동 데이터가 필요해 이 세션에서 브라우저로 확인하지 않았다.
+
+## 후속 Slice 2
+
+사용자 피드백:
+
+- 첫 화면의 `자유 운동` 제목과 우측 `1회차` 표시를 제거한다.
+- 버튼 row를 날짜 아래 넓은 공백 쪽으로 올리고, 제목 영역 아래로 밀리지 않게 한다.
+- 그래프는 현재 세트 값만 이어 그리지 말고, live 운동 카드처럼 최근 기록 기반 track graph로 렌더한다.
+
+수정 범위:
+
+1. `render-calendar.js`
+   - `_renderWorkoutDetailRecorded()`에서 `.wt-day-session-label`과 `.wt-day-title-row`를 렌더하지 않는다.
+   - `_exerciseRows()`에 원본 `exerciseId`, `recommendationMeta`, `maxPrescription`, `maxTrackPreference` 추론에 필요한 필드를 보존한다.
+   - `calc.js`의 `getTrackMetricHistory`, `normalizeWorkoutTrack`를 사용해 live Max 카드와 같은 최근 기록 기반 그래프를 만든다.
+2. `style.css`
+   - `.wt-day-actions`를 헤더 우측/상단 쪽으로 이동시키고, 모바일에서도 5개 버튼이 한 줄에 들어가게 크기를 더 줄인다.
+   - `.wt-day-session-label`, `.wt-day-title-row` 의존 여백을 제거한다.
+   - 과거 상세 그래프를 live 카드의 `ex-max-track-graph`와 유사한 compact track graph 스타일로 조정한다.
+3. `sw.js`
+   - `render-calendar.js`/`style.css` 변경에 맞춰 `CACHE_VERSION`을 bump한다.
+
+검증:
+
+- `node --check render-calendar.js`
+- `node --check sw.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- `git push origin HEAD:main`
+- `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+
+## 후속 Slice 2 실행 결과
+
+- `render-calendar.js`:
+  - 과거 상세 첫 화면에서 `자유 운동` 제목과 상단 우측 별도 `n회차` 라벨을 렌더하지 않게 했다.
+  - 운동 row에 `exerciseId`, `recommendationMeta`, `maxPrescription`, `maxTrackPreference`를 보존해 과거 상세 카드에서도 track 판단이 가능하게 했다.
+  - `getTrackMetricHistory()`와 `normalizeWorkoutTrack()` 기반으로 최근 기록 track 값을 가져오고, 해당 날짜 이전 기록만 사용해 그래프를 렌더한다.
+  - 그래프 SVG에 live 카드와 같은 곡선 path, 그라데이션 fill, 마지막 점을 추가했다.
+- `style.css`:
+  - `.wt-day-actions`를 날짜 헤더 본문 열 안의 compact row로 이동하고 모바일 버튼 크기를 더 줄였다.
+  - 그래프 area/path/dot 전용 스타일과 증감률 색상 클래스를 추가했다.
+- `sw.js`:
+  - `CACHE_VERSION`을 `tomatofarm-v20260624z6-workout-history-detail-graph`로 bump했다.
+
+## 후속 Slice 2 실행 검증
+
+- PASS: `node --check render-calendar.js`
+- PASS: `node --check sw.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- pending: Dashboard3 배포 검증

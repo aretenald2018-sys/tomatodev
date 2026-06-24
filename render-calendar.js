@@ -17,6 +17,8 @@ import {
   getDayTargetKcal,
   calcBurnedKcal,
   calcDayScore,
+  getTrackMetricHistory,
+  normalizeWorkoutTrack,
   SUBPATTERN_TO_MAJOR,
 } from './calc.js';
 import { calcSetVolume } from './calc/volume.js';
@@ -42,6 +44,7 @@ let _workoutHomeSelectedKey = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TOD
 let _workoutHomeView = 'month';
 let _workoutHomeSessionIndex = 0;
 const _workoutDetailCollapsed = new Set();
+let _workoutTrackGraphSeq = 0;
 
 const MAX_WEAK_LABEL = {
   chest_upper:'가슴 상부', chest_lower:'가슴 하부',
@@ -566,7 +569,7 @@ function _partDisplayLabels(exercises, lookup) {
     }));
 }
 
-function _exerciseRows(day, lookup = _buildWorkoutLookup()) {
+function _exerciseRows(day, lookup = _buildWorkoutLookup(), key = null) {
   return (Array.isArray(day?.exercises) ? day.exercises : [])
     .map((entry, originalIndex) => {
       const sets = (Array.isArray(entry?.sets) ? entry.sets : []).filter(_isActualWorkoutSet);
@@ -575,10 +578,16 @@ function _exerciseRows(day, lookup = _buildWorkoutLookup()) {
       const volume = sets.reduce((sum, set) => sum + calcSetVolume(set), 0);
       const topSet = [...sets].sort((a, b) => calcSetVolume(b) - calcSetVolume(a))[0] || null;
       const majorId = _resolveExerciseMajorId(entry, lookup);
+      const lib = lookup?.exById?.get(entry?.exerciseId);
       return {
+        dateKey: key,
+        exerciseId: entry?.exerciseId || null,
         name: entry?.name || entry?.exerciseName || entry?.exerciseId || '운동',
         majorId,
         majorName: _majorLabel(majorId, lookup),
+        recommendationMeta: entry?.recommendationMeta || null,
+        maxPrescription: entry?.maxPrescription || null,
+        maxTrackPreference: lib?.maxTrackPreference || null,
         setCount: sets.length,
         volume,
         topSetText: topSet ? _formatSetText(topSet) : '세트 기록 없음',
@@ -602,7 +611,7 @@ function _exerciseRows(day, lookup = _buildWorkoutLookup()) {
 
 function _workoutMetrics(key, day, bodyWeight, lookup = _buildWorkoutLookup()) {
   const d = day || {};
-  const exercises = _exerciseRows(d, lookup);
+  const exercises = _exerciseRows(d, lookup, key);
   const activities = _activityRows(d);
   const burned = calcBurnedKcal(d, bodyWeight);
   const workoutDurationSec = Math.max(0, Math.round(_num(d.workoutDuration)));
@@ -1079,13 +1088,8 @@ function _renderWorkoutDetailSessionTabs(sessions, activeIndex) {
 }
 
 function _renderWorkoutDetailRecorded(key, sessionIndex, wx) {
-  const title = wx.primaryLabel ? '자유 운동' : '자유 운동';
   return `
     <div class="wt-day-recorded">
-      <div class="wt-day-session-label">${_sessionLabel(sessionIndex)}</div>
-      <div class="wt-day-title-row">
-        <h2>${title}</h2>
-      </div>
       <div class="wt-day-metrics">
         <span><i>운동시간</i><strong>${_formatDurationShort(wx.durationSec)}</strong></span>
         <span><i>세트</i><strong>${wx.setCount ? `${wx.setCount}세트` : '—'}</strong></span>
@@ -1190,9 +1194,88 @@ function _smoothPath(points) {
   return d;
 }
 
-function _renderWorkoutSparkline(row) {
+function _activeWorkoutTrack(row = {}, bestSet = null) {
+  const explicit = normalizeWorkoutTrack(
+    row?.recommendationMeta?.track ||
+    row?.maxPrescription?.benchmarkTrack ||
+    row?.maxPrescription?.track ||
+    row?.maxTrackPreference
+  );
+  if (explicit) return explicit;
+  const reps = _num(bestSet?.reps);
+  return reps > 0 && reps <= 8 ? 'H' : 'M';
+}
+
+function _workoutTrackLabel(track) {
+  return track === 'H' ? '강도' : '볼륨';
+}
+
+function _formatWorkoutTrackValue(track, value) {
+  const v = _num(value);
+  if (v <= 0) return track === 'H' ? '추정1RM' : '총볼륨';
+  if (track === 'H') return `${Math.round(v)}kg`;
+  if (v >= 1000) return `${_fmtNum(v / 1000, 1)}t`;
+  return `${Math.round(v)}kg`;
+}
+
+function _formatWorkoutTrackDelta(points = []) {
+  if (!Array.isArray(points) || points.length < 2) return '';
+  const last = _num(points[points.length - 1]?.value);
+  const prev = _num(points[points.length - 2]?.value);
+  if (!(last > 0) || !(prev > 0)) return '';
+  const pct = Math.round(((last - prev) / prev) * 100);
+  if (!Number.isFinite(pct) || pct === 0) return '0%';
+  return `${pct > 0 ? '+' : ''}${pct}%`;
+}
+
+function _workoutTrackDeltaClass(delta) {
+  if (!delta) return 'flat';
+  if (delta.startsWith('+')) return 'up';
+  if (delta.startsWith('-')) return 'down';
+  return 'flat';
+}
+
+function _workoutTrackHistoryPoints(row, track) {
+  if (!row?.exerciseId) return [];
+  const history = getTrackMetricHistory(getCache(), getExList(), row.exerciseId);
+  const points = Array.isArray(history?.[track]) ? history[track] : [];
+  const currentKey = String(row?.dateKey || '');
+  const scoped = currentKey
+    ? points.filter(point => !point?.date || String(point.date) <= currentKey)
+    : points;
+  return scoped.slice(-6);
+}
+
+function _workoutFallbackSparkValues(row) {
   const sets = Array.isArray(row?.setDetails) ? row.setDetails : [];
   const raw = sets.map(set => Math.max(0, _num(set.kg) * _num(set.reps))).filter(v => v > 0);
+  return raw.length >= 2 ? raw : raw.length === 1 ? [raw[0], raw[0], raw[0]] : [0, 1, 0];
+}
+
+function _buildWorkoutTrackTrend(row, bestSet) {
+  const track = _activeWorkoutTrack(row, bestSet);
+  const points = _workoutTrackHistoryPoints(row, track);
+  const latest = points.length ? points[points.length - 1] : null;
+  const fallbackValue = track === 'H' ? _num(bestSet?.kg) : _num(row?.volume);
+  const value = _num(latest?.value) || fallbackValue;
+  const delta = _formatWorkoutTrackDelta(points);
+  const bestKg = bestSet ? _formatWorkoutKg(bestSet.kg) : '-';
+  return {
+    track,
+    trackLabel: _workoutTrackLabel(track),
+    points,
+    valueLabel: _formatWorkoutTrackValue(track, value),
+    delta,
+    deltaClass: _workoutTrackDeltaClass(delta),
+    bottomLabel: bestKg === '-' ? `${row?.setCount || 0}세트` : `${bestKg}kg`,
+  };
+}
+
+function _renderWorkoutSparkline(row, trend = null) {
+  const historyValues = (Array.isArray(trend?.points) ? trend.points : [])
+    .map(point => _num(point?.value))
+    .filter(value => value > 0);
+  const raw = historyValues.length >= 2 ? historyValues : _workoutFallbackSparkValues(row);
   const values = raw.length >= 2 ? raw : raw.length === 1 ? [raw[0], raw[0], raw[0]] : [0, 1, 0];
   const min = Math.min(...values);
   const max = Math.max(...values);
@@ -1204,9 +1287,21 @@ function _renderWorkoutSparkline(row) {
     return { x, y };
   });
   const path = _smoothPath(points);
+  const firstPt = points[0];
+  const lastPt = points[points.length - 1];
+  const track = trend?.track === 'H' ? 'H' : 'M';
+  const color = track === 'H' ? '#be123c' : '#2563eb';
+  const fillId = `wt-history-track-${track}-${_workoutTrackGraphSeq++}`;
+  const fillPath = `${path} L ${Math.round(lastPt.x * 10) / 10} 32 L ${Math.round(firstPt.x * 10) / 10} 32 Z`;
   return `
     <svg class="wt-max-spark-svg" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true">
-      <path d="${path}"></path>
+      <defs><linearGradient id="${fillId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${color}" stop-opacity="0.16"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+      </linearGradient></defs>
+      <path class="wt-max-spark-area" d="${fillPath}" fill="url(#${fillId})"></path>
+      <path class="wt-max-spark-line" d="${path}" stroke="${color}"></path>
+      <circle class="wt-max-spark-dot" cx="${Math.round(lastPt.x * 10) / 10}" cy="${Math.round(lastPt.y * 10) / 10}" r="2.3" fill="${color}"></circle>
     </svg>
   `;
 }
@@ -1245,6 +1340,7 @@ function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) {
   const bestKg = bestSet ? _formatWorkoutKg(bestSet.kg) : '-';
   const bestReps = bestSet ? _formatWorkoutReps(bestSet.reps) : '-';
   const setSummary = _workoutSetSummary(row);
+  const trend = _buildWorkoutTrackTrend(row, bestSet);
   return `
     <article class="wt-day-ex-card wt-max-read-card ${collapsed ? 'is-collapsed' : 'is-expanded'}">
       <div class="wt-max-card-kicker">
@@ -1256,14 +1352,14 @@ function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) {
         <div>
           <span>오늘 성공 기준</span>
           <strong>${_esc(bestKg)}kg × ${_esc(bestReps)}회</strong>
-          <em>오늘 볼륨 트랙 · ${row.setCount}세트</em>
+          <em>오늘 ${_esc(trend.trackLabel)} 트랙 · ${row.setCount}세트</em>
         </div>
-        <div class="wt-max-track"><b>볼륨</b><span>현재 트랙</span></div>
+        <div class="wt-max-track"><b>${_esc(trend.trackLabel)}</b><span>현재 트랙</span></div>
       </div>
       <div class="wt-max-trend">
         <div class="wt-max-trend-labels"><b>볼륨</b><em>강도</em><span>1회 기록</span></div>
-        <div class="wt-max-spark">${_renderWorkoutSparkline(row)}</div>
-        <div class="wt-max-trend-stat"><strong>${_esc(_formatWorkoutVolumeTon(row.volume))}</strong><em>${row.setCount}세트</em><span>${_esc(bestKg)}kg</span></div>
+        <div class="wt-max-spark">${_renderWorkoutSparkline(row, trend)}</div>
+        <div class="wt-max-trend-stat"><strong>${_esc(trend.valueLabel)}</strong><em class="${_esc(trend.deltaClass)}">${_esc(trend.delta || `${row.setCount}세트`)}</em><span>${_esc(trend.bottomLabel)}</span></div>
       </div>
       <div class="wt-max-last">
         <span>오늘 기록</span>

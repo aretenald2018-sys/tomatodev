@@ -4,29 +4,27 @@
 
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-24-workout-history-detail-ui-regression.md` (운동 홈 과거 상세 UI 회귀)
-- 현재 단계: `review complete — Slice 1 운동 홈 과거 상세 UI 회귀 복구`
-- 마지막 완료: `render-calendar.js/style.css/sw.js를 수정해 상단 compact action/metric row, 과거 기록 완료 체크 보정, smooth graph, 과거 날짜 루틴 버튼 회귀 방지를 구현하고 정적 검증을 통과했다.`
-- 다음 액션: `없음. 사용자는 Dashboard3 배포 URL에서 과거 운동 상세 화면의 모바일 UI 플로우를 확인하면 된다.`
-- 차단 사유: `not verified yet: 실제 모바일 UI 플로우는 로그인 세션과 과거 운동 데이터가 필요해 이 세션에서 브라우저로 확인하지 않았다.`
+- 현재 단계: `execution/review complete — Slice 2 과거 상세 상단/그래프 보정`
+- 마지막 완료: `render-calendar.js/style.css/sw.js를 수정해 자유 운동 제목/중복 회차 라벨 제거, 상단 compact action row 위치 보정, 최근 기록 기반 track graph 렌더링, CACHE_VERSION bump를 구현했다.`
+- 다음 액션: `Dashboard3 배포 검증 결과 확인 후 사용자는 배포 URL에서 과거 운동 상세 화면을 확인하면 된다.`
+- 차단 사유: `없음`
 
 ## 다음 실행 대상
 
 - 계획 파일: `docs/ai/features/2026-06-24-workout-history-detail-ui-regression.md`
-- 방금 완료한 Slice 1:
-  1. `render-calendar.js` 상세 상단 액션을 `.wt-day-actions` compact row로 통합
-  2. `render-calendar.js` `setDetails.done`을 `_isActualWorkoutSet(set)` 기준으로 보정
-  3. `render-calendar.js` 상세 카드 그래프를 smooth SVG path로 변경
-  4. `render-calendar.js` 과거 날짜 `루틴` 버튼이 편집 화면으로 직접 이동하지 않도록 방지
-  5. `style.css` 모바일 상단 action/metric row와 smooth graph 스타일 조정
-  6. `sw.js` `CACHE_VERSION` bump
-  7. `docs/ai/reviews/2026-06-24-workout-history-detail-ui-regression-review.md` 작성
+- 방금 완료한 Slice 2:
+  1. `render-calendar.js` 과거 상세의 `자유 운동` 제목과 중복 회차 라벨 제거
+  2. `render-calendar.js` 최근 기록 기반 track graph 렌더링 추가
+  3. `style.css` 상단 action row 위치와 그래프 area/path/dot 스타일 조정
+  4. `sw.js` `CACHE_VERSION` bump
+  5. `docs/ai/reviews/2026-06-24-workout-history-detail-slice2-review.md` 작성
 
 - 검증:
   1. PASS: `node --check render-calendar.js`
   2. PASS: `node --check sw.js`
   3. PASS: `node scripts/verify-runtime-assets.mjs`
   4. PASS: `git diff --check`
-  5. not verified yet: 실제 모바일 UI 플로우는 로그인 세션과 과거 운동 데이터가 필요해 이 세션에서 브라우저로 확인하지 않았다.
+  5. pending: Dashboard3 배포 검증
 
 ## 이전 흐름 요약
 

@@ -9115,22 +9115,24 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   line-height: 22px;
 }
 .wt-day-actions {
-  grid-column: 1 / -1;
+  grid-column: 2 / -1;
+  justify-self: end;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
-  gap: 6px;
-  margin-top: 18px;
+  gap: 5px;
+  width: min(100%, 420px);
+  margin-top: 8px;
 }
 .wt-day-actions button {
   min-width: 0;
-  height: 36px;
-  padding: 0 4px;
+  height: 34px;
+  padding: 0 3px;
   border: 1px solid #e0e2ea;
-  border-radius: 18px;
+  border-radius: 17px;
   background: #ffffff;
   color: #43536d;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 16px;
   font-weight: 700;
   box-shadow: 0 2px 6px rgba(30, 35, 48, 0.12);
@@ -9174,7 +9176,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: center;
   gap: 8px;
-  margin: 14px 0 14px;
+  margin: 16px 0 14px;
   color: #202229;
 }
 .wt-day-metrics span {
@@ -9460,12 +9462,25 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   overflow: visible;
 }
 .wt-max-spark-svg polyline,
-.wt-max-spark-svg path {
+.wt-max-spark-svg path:not(.wt-max-spark-area) {
   fill: none;
   stroke: #2b6cff;
   stroke-width: 2.2;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+.wt-max-spark-svg .wt-max-spark-area {
+  stroke: none;
+}
+.wt-max-spark-svg .wt-max-spark-line {
+  fill: none;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.wt-max-spark-svg .wt-max-spark-dot {
+  stroke: #ffffff;
+  stroke-width: 1.2;
 }
 .wt-max-trend-stat {
   text-align: right;
@@ -9485,6 +9500,15 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   font-size: 10px;
   font-style: normal;
   font-weight: 900;
+}
+.wt-max-trend-stat em.up {
+  color: #15803d;
+}
+.wt-max-trend-stat em.down {
+  color: #be123c;
+}
+.wt-max-trend-stat em.flat {
+  color: #a0a8b5;
 }
 .wt-max-trend-stat span {
   color: #a0a8b5;
@@ -9869,14 +9893,18 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
     grid-template-columns: 30px minmax(0, 1fr);
   }
   .wt-day-actions {
+    grid-column: 2 / -1;
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 5px;
-    margin-top: 14px;
+    justify-self: stretch;
+    gap: 4px;
+    width: 100%;
+    margin-top: 6px;
   }
   .wt-day-actions button {
-    height: 34px;
-    padding: 0 2px;
-    font-size: 12px;
+    height: 32px;
+    padding: 0 1px;
+    border-radius: 16px;
+    font-size: 11px;
   }
   .wt-day-date {
     font-size: 20px;
