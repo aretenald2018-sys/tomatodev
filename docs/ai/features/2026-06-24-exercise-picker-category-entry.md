@@ -361,3 +361,67 @@
   - PASS: 배포 URL의 `modals/ex-picker-modal.js`에 `ex-picker-done`이 포함된 것을 확인했다.
   - PASS: 배포 URL의 `workout/exercises.js`에 `_syncPickerDoneButton`이 포함된 것을 확인했다.
   - not verified yet: 배포 브라우저는 로그인 화면에 막혀 `운동 탭 -> + -> 가슴 -> row tap -> picker 유지 -> 완료` UI 클릭 흐름을 인증 계정으로 끝까지 확인하지 못했다.
+
+### Slice 7: picker 목록 row 오른쪽 여백 제거와 텍스트 피팅
+
+요청:
+
+- 부위별 운동 목록 row에서 오른쪽 빈 여백을 줄인다.
+- 운동종목명은 가능한 한 한 줄에 들어가도록 폰트 크기와 줄바꿈 정책을 조정한다.
+- 최근 수행 정보 chip은 폰트와 패딩을 줄여 row 폭을 덜 차지하게 한다.
+
+그릴 결과:
+
+- 질문: 운동명을 전체 노출하기 위해 여러 줄을 허용할지, 한 줄 우선으로 말줄임을 허용할지가 핵심이다.
+- 결정: 이번 요청은 한 줄 수용을 우선한다. 긴 운동명은 길이에 따라 고정 단계 폰트 크기를 낮추고, 그래도 넘치면 한 줄 말줄임 처리한다.
+- 근거: 현재 스크린샷의 문제는 row 오른쪽 액션/최근 수행 chip 때문에 운동명이 여러 줄로 밀리며 목록 밀도가 낮아지는 것이다.
+- 가정: `최근 수행 정보 chip`은 picker row 우측의 `.ex-picker-benchmark-meta`를 뜻한다.
+
+대상 파일:
+
+- `workout/exercises.js`
+- `style.css`
+- `sw.js`
+- `tests/workout-empty-picker-density.test.js`
+- `docs/ai/features/2026-06-24-exercise-picker-category-entry.md`
+- `docs/ai/reviews/2026-06-24-exercise-picker-row-density-review.md`
+
+구현:
+
+- picker row grid의 왼쪽 썸네일 열과 gap을 줄이고 우측 padding을 제거해 실제 row 폭을 더 쓰게 한다.
+- 운동명에 길이 기반 compact class를 붙여 `13px -> 12px -> 11px` 고정 단계로 줄인다.
+- 운동명은 `white-space: nowrap`, `overflow: hidden`, `text-overflow: ellipsis`, `word-break: keep-all`로 한 줄 우선 처리한다.
+- picker modal 안의 최근 수행 chip 폰트와 padding을 줄이고 우측 액션 열을 오른쪽에 붙인다.
+- `style.css`와 `workout/exercises.js`가 `STATIC_ASSETS`에 있으므로 `sw.js` `CACHE_VERSION`을 bump한다.
+
+범위 밖:
+
+- 운동별 썸네일 자산 신규 제작.
+- 즐겨찾기/최근 기록 데이터 모델 변경.
+- picker 선택/저장 플로우 변경.
+- `www/` 직접 수정.
+
+검증 계획:
+
+- `node --check workout/exercises.js; node --check sw.js`
+- `node --test tests/workout-empty-picker-density.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- Dashboard3 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+- 배포 URL에서 로그인 후 `운동 탭 -> + -> 가슴 선택` 시 row 오른쪽 여백이 줄고 긴 운동명이 한 줄 우선으로 보이며 최근 수행 chip이 작아졌는지 확인한다.
+
+실행 결과:
+
+- 2026-06-24: Slice 7 구현 완료.
+- `workout/exercises.js`에 운동명 길이 기반 compact class를 추가했다.
+- `style.css`에서 picker list 오른쪽 padding을 `max(4px, env(safe-area-inset-right))`로 줄이고, row grid를 `58px / minmax(0, 1fr) / 84px` 중심으로 조정했다.
+- 운동명은 한 줄 우선 표시와 길이별 `13px -> 12px -> 11px` 고정 단계 폰트를 적용했다.
+- 최근 수행 chip은 84px 우측 열 안에서 작게 보이도록 `9px`, `2px 5px` padding으로 축소했다.
+- `tests/workout-empty-picker-density.test.js`를 갱신해 row 밀도, 운동명 한 줄 정책, chip 축소를 source-level로 검증한다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z25-picker-row-density`로 bump했다.
+- PASS: `node --check workout/exercises.js; node --check sw.js`
+- PASS: `node --test tests/workout-empty-picker-density.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- 리뷰: `docs/ai/reviews/2026-06-24-exercise-picker-row-density-review.md`
+- not verified yet: Dashboard3 Pages 배포 및 인증 계정 UI 클릭 검증 필요.

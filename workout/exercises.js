@@ -1605,11 +1605,21 @@ function _renderPickerExerciseThumb(ex) {
   return `<span class="ex-picker-thumb" aria-hidden="true">${_pickerMuscleFigureHtml(majorId)}</span>`;
 }
 
+function _pickerNameDensityClass(name) {
+  const visualLength = Array.from(String(name || '')).reduce((sum, ch) => {
+    return sum + (/^[\x00-\x7F]$/.test(ch) ? 0.55 : 1);
+  }, 0);
+  if (visualLength >= 17) return ' is-very-compact';
+  if (visualLength >= 12) return ' is-compact';
+  return '';
+}
+
 function _renderExercisePickerName(ex, alreadyAdded, stats) {
+  const nameClass = `ex-picker-name${_pickerNameDensityClass(ex?.name)}`;
   return `
     ${_renderPickerExerciseThumb(ex)}
     <span class="ex-picker-main">
-      <span class="ex-picker-name">${_escPicker(ex.name)}${alreadyAdded ? ' ✓' : ''}</span>
+      <span class="${nameClass}">${_escPicker(ex.name)}${alreadyAdded ? ' ✓' : ''}</span>
       <span class="ex-picker-history-meta">${_escPicker(_pickerStatsMeta(stats))}</span>
     </span>
   `;

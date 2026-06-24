@@ -49,24 +49,47 @@ test('empty workout guidance is compact enough for one screen', () => {
   assert.match(help, /margin-top:\s*16px/);
 });
 
-test('exercise picker removes benchmark banner and shows full exercise names', () => {
+test('exercise picker removes benchmark banner and fits names into dense rows', () => {
   const benchmarkScope = workoutExercises.slice(
     workoutExercises.indexOf('function _renderPickerBenchmarkScope'),
     workoutExercises.indexOf('function _renderPickerCategory'),
   );
-  const name = ruleBody('.ex-picker-name');
+  const content = ruleBody('#ex-picker-list.ex-picker-content');
+  const modalItem = ruleBody('#ex-picker-modal .ex-picker-item');
   const modalName = ruleBody('#ex-picker-modal .ex-picker-name');
+  const compactName = ruleBody('#ex-picker-modal .ex-picker-name.is-compact');
+  const veryCompactName = ruleBody('#ex-picker-modal .ex-picker-name.is-very-compact');
+  const historyMeta = ruleBody('.ex-picker-history-meta');
+  const modalActions = ruleBody('#ex-picker-modal .ex-picker-actions');
+  const modalRowSide = ruleBody('#ex-picker-modal .ex-picker-row-side');
+  const modalBenchmark = ruleBody('#ex-picker-modal .ex-picker-benchmark-meta');
   const thumb = ruleBody('.ex-picker-thumb');
   const thumbImg = ruleBody('.ex-picker-thumb.has-asset img');
   const figureAsset = ruleBody('.ex-picker-muscle-figure.has-asset');
 
   assert.match(benchmarkScope, /return '';/);
   assert.doesNotMatch(workoutExercises, /오늘 벤치마크|같은 부위 추가 종목/);
-  assert.match(name, /white-space:\s*normal/);
-  assert.match(name, /overflow:\s*visible/);
-  assert.match(name, /text-overflow:\s*clip/);
-  assert.doesNotMatch(name, /ellipsis|nowrap/);
-  assert.match(modalName, /font-size:\s*14px/);
+  assert.match(workoutExercises, /function _pickerNameDensityClass/);
+  assert.match(workoutExercises, /class="\$\{nameClass\}"/);
+  assert.match(content, /padding:\s*16px max\(4px,\s*env\(safe-area-inset-right\)\) max\(28px,\s*env\(safe-area-inset-bottom\)\) 14px/);
+  assert.match(modalItem, /grid-template-columns:\s*58px minmax\(0,\s*1fr\) max-content/);
+  assert.match(modalItem, /gap:\s*8px/);
+  assert.match(modalName, /font-size:\s*13px/);
+  assert.match(modalName, /white-space:\s*nowrap/);
+  assert.match(modalName, /overflow:\s*hidden/);
+  assert.match(modalName, /text-overflow:\s*ellipsis/);
+  assert.match(modalName, /word-break:\s*keep-all/);
+  assert.match(compactName, /font-size:\s*12px/);
+  assert.match(veryCompactName, /font-size:\s*11px/);
+  assert.match(historyMeta, /font-size:\s*10px/);
+  assert.match(historyMeta, /white-space:\s*nowrap/);
+  assert.match(modalActions, /justify-self:\s*end/);
+  assert.match(modalRowSide, /width:\s*84px/);
+  assert.match(modalRowSide, /justify-self:\s*end/);
+  assert.match(modalRowSide, /max-width:\s*84px/);
+  assert.match(modalBenchmark, /width:\s*84px/);
+  assert.match(modalBenchmark, /font-size:\s*9px/);
+  assert.match(modalBenchmark, /padding:\s*2px 5px/);
   assert.match(thumb, /width:\s*58px/);
   assert.match(thumb, /height:\s*46px/);
   assert.match(thumbImg, /width:\s*58px/);

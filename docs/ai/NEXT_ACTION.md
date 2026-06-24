@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-24-dashboard3-deploy-command-hardening.md` (Dashboard3 배포 명령 하드닝)
-- 현재 단계: `deploy verified — Slice 1 배포 명령 하드닝`
-- 마지막 완료: `verify-deploy의 HEAD ref resolve와 stale Pages retry, 배포 마커 검증 스크립트, deploy:dashboard3 wrapper를 구현했고, 최종 문서 커밋까지 origin/main에 배포 검증했다.`
-- 다음 액션: `없음`
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md` (Slice 7: picker 목록 row 오른쪽 여백 제거와 텍스트 피팅)
+- 현재 단계: `static verified — Slice 7 리뷰 및 배포 검증 대기`
+- 마지막 완료: `운동 picker 목록 row 밀도 수정, 운동명 한 줄 피팅, 최근 수행 chip 축소, 캐시 버전 bump, source-level 테스트 갱신을 완료했다.`
+- 다음 액션: `Slice 7 리뷰 문서와 변경 파일을 확인한 뒤 origin/main 배포 및 Dashboard3 Pages 검증을 진행한다.`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
