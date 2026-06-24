@@ -65,4 +65,8 @@
   - PASS: `node scripts/verify-runtime-assets.mjs`
   - PASS: `git diff --check`
 - 리뷰: `docs/ai/reviews/2026-06-24-workout-set-row-rom-density-review.md`
-- not verified yet: Dashboard3 Pages 배포 및 인증 계정 UI 클릭 검증 필요.
+- 배포 검증:
+  - PASS: `npm.cmd run deploy:dashboard3`
+  - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+  - PASS: Dashboard3 Pages가 `tomatofarm-v20260624z26-set-row-rom-density` 캐시 버전을 서빙하는 것을 확인했다.
+  - not verified yet: 배포 URL은 로그인 화면에 막혀 `운동 탭 -> 운동 기록 카드 -> 세트 row` UI 클릭 흐름을 인증 계정으로 끝까지 확인하지 못했다.
