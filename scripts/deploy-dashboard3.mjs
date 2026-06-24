@@ -10,11 +10,12 @@ const remoteRef = process.env.DASHBOARD3_REMOTE_REF || 'main';
 const buildInfoPath = path.join(root, 'build-info.json');
 
 function run(command, args, options = {}) {
-  return execFileSync(command, args, {
+  const output = execFileSync(command, args, {
     cwd: root,
     encoding: 'utf8',
     stdio: options.stdio || ['ignore', 'pipe', 'pipe'],
-  }).trim();
+  });
+  return typeof output === 'string' ? output.trim() : '';
 }
 
 function git(args, options = {}) {

@@ -33,6 +33,7 @@ test('deployed marker verification is a script, not PowerShell node -e quoting',
 });
 
 test('Dashboard3 deploy wrapper pushes, verifies by resolved SHA, checks markers, and restores build-info', () => {
+  assert.match(deployDashboard3, /return typeof output === 'string' \? output\.trim\(\) : ''/);
   assert.match(deployDashboard3, /git\(\['push', remote, `HEAD:\$\{remoteRef\}`\]/);
   assert.match(deployDashboard3, /git\(\['rev-parse', 'HEAD'\]\)/);
   assert.match(deployDashboard3, /verify-deploy\.mjs/);
