@@ -341,4 +341,9 @@ UI 검증:
 - PASS: `node --check sw.js`
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
-- not verified yet: 아직 Dashboard3 배포 전이며, 인증된 과거 운동 데이터가 필요해 실제 UI flow는 이후 배포 URL에서 확인한다.
+- PASS: `git push origin HEAD:main` (`ecf6939`)
+- PASS: GitHub Actions `Verify Pages Runtime Assets` run `28069650934`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ ecf6939`
+- 배포 확인: `[deploy-verify] ok ecf69398506f tomatofarm-v20260624z9-workout-history-checked-sets static=202`
+- PASS: `curl.exe -I https://aretenald2018-sys.github.io/dashboard3/` -> `HTTP/1.1 200 OK`
+- not verified yet: 인증된 계정의 과거 운동 데이터가 필요해 배포 URL에서 실제 과거 상세 UI flow는 직접 클릭 검증하지 못했다.
