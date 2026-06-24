@@ -16,8 +16,9 @@
   1. `render-calendar.js` `_renderWorkoutDetailCards()`의 duration-only `운동 타이머` 카드 fallback 제거
   2. day detail modal 본문의 `timerOnlyHtml`과 `cal-workout-timer-line` 제거
   3. 우측 상단 summary card의 `운동시간` 렌더링 유지
-  4. `tests/workout-timer-summary-only.test.js` 추가
-  5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z33-workout-timer-summary-only`로 bump
+  4. 죽은 `.cal-workout-timer-line` CSS와 삭제 확인용 `timer: '운동 타이머'` 라벨 매핑 정리
+  5. `tests/workout-timer-summary-only.test.js` 추가
+  6. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z34-workout-timer-summary-only`로 bump
 
 - Slice 1 검증:
   1. PASS: `node --check render-calendar.js; node --check sw.js`

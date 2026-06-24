@@ -1960,7 +1960,6 @@ async function _deleteWorkoutActivity(key, sessionIndex, activityKey) {
     swimming: '수영',
     cf: '크로스핏',
     stretching: '스트레칭',
-    timer: '운동 타이머',
   }[activityKey] || '활동';
   const ok = await confirmAction({
     title: '활동을 삭제할까요?',

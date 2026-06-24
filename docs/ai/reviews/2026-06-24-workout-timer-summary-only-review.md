@@ -3,7 +3,7 @@
 ## 검토 범위
 
 - 계획 문서: `docs/ai/features/2026-06-24-workout-timer-summary-only.md`
-- 변경 파일: `render-calendar.js`, `sw.js`, `tests/workout-timer-summary-only.test.js`
+- 변경 파일: `render-calendar.js`, `style.css`, `sw.js`, `tests/workout-timer-summary-only.test.js`
 - 관련 캐시 테스트: `tests/*`의 `CACHE_VERSION` 기대값 갱신
 
 ## 결과
@@ -15,7 +15,8 @@
 1. `_renderWorkoutDetailSummaryCard()`는 `운동시간` 항목을 계속 렌더링한다.
 2. `_renderWorkoutDetailCards()`는 운동/활동 row가 없을 때도 더 이상 `운동 타이머` activity card를 만들지 않는다.
 3. day detail modal body에서 duration-only 섹션과 `운동 타이머 ...` 보조 라인을 제거했다.
-4. `render-calendar.js`가 `STATIC_ASSETS`에 포함되어 있어 `sw.js` `CACHE_VERSION` bump가 함께 반영됐다.
+4. 제거된 라인의 죽은 `.cal-workout-timer-line` CSS와 삭제 확인용 `timer: '운동 타이머'` 라벨 매핑도 정리했다.
+5. `render-calendar.js`와 `style.css`가 `STATIC_ASSETS`에 포함되어 있어 `sw.js` `CACHE_VERSION` bump가 함께 반영됐다.
 
 ## 검증
 

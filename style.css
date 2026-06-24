@@ -10800,15 +10800,6 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   font-weight: 800;
   overflow-wrap: anywhere;
 }
-.cal-workout-timer-line {
-  margin-top: 10px;
-  padding: 9px 11px;
-  border-radius: 10px;
-  background: var(--primary-bg, #fdf0f0);
-  color: var(--primary);
-  font-size: 12px;
-  font-weight: 700;
-}
 .cal-workout-detail-section {
   margin-top: 14px;
 }
