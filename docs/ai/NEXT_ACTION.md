@@ -4,34 +4,31 @@
 
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-24-workout-history-detail-ui-regression.md` (운동 홈 과거 상세 UI 회귀)
-- 현재 단계: `execution/review complete — Slice 6 당일/과거 Max 카드 볼륨·강도 그래프 정렬`
-- 마지막 완료: `workout/exercises.js/render-calendar.js/style.css/sw.js를 수정해 당일 Max 카드와 과거 상세 카드의 성공 기준 row 오른쪽에 볼륨/강도 두 줄 그래프를 렌더하도록 했다.`
-- 다음 액션: `사용자는 Dashboard3 배포 URL에서 운동 탭의 당일 운동 추가 카드와 과거 운동 상세 카드를 확인하면 된다.`
+- 현재 단계: `execution/review complete — Slice 7 운동 홈 상세 세션 탭 축소`
+- 마지막 완료: `style.css/sw.js를 수정해 하단 1회차~3회차 세션 탭의 높이, 폭, 폰트와 기록 dot을 축소했다.`
+- 다음 액션: `사용자는 Dashboard3 배포 URL에서 운동 탭 > 오늘 상세를 열어 하단 1회차~3회차 탭 크기를 확인하면 된다.`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
 
 - 계획 파일: `docs/ai/features/2026-06-24-workout-history-detail-ui-regression.md`
-- 완료한 Slice 6:
-  1. `workout/exercises.js` 당일 Max 카드 그래프를 성공 기준 row 오른쪽 칸으로 이동
-  2. `workout/exercises.js` 기록 없는 카드도 볼륨/강도 두 줄 그래프 유지
-  3. `render-calendar.js` 과거 상세 그래프를 볼륨/강도 두 줄 track graph로 변경
-  4. `render-calendar.js` 과거 강도 fallback을 `estimateSet1RM()` 기반으로 보정
-  5. `style.css` live/past compact track graph 스타일 정렬
-  6. `sw.js` `CACHE_VERSION` bump
-  7. `docs/ai/reviews/2026-06-24-workout-dual-track-graphs-review.md` 작성
+- 완료한 Slice 7:
+  1. `style.css` `.wt-day-sessionbar` gap/padding 축소
+  2. `style.css` `.wt-day-session-tabs` column/max-width/radius 축소
+  3. `style.css` `.wt-day-session-tabs button` min-height/font-size 축소
+  4. `style.css` 기록 dot 및 모바일 하단 padding/FAB offset 보정
+  5. `sw.js` `CACHE_VERSION` bump
+  6. `docs/ai/reviews/2026-06-24-workout-session-tabs-compact-review.md` 작성
 
 - 검증:
-  1. PASS: `node --check workout/exercises.js`
-  2. PASS: `node --check render-calendar.js`
-  3. PASS: `node --check sw.js`
-  4. PASS: `node scripts/verify-runtime-assets.mjs`
-  5. PASS: `git diff --check`
-  6. PASS: `git push origin HEAD:main` (`08d5f32`)
-  7. PASS: GitHub Actions `Verify Pages Runtime Assets` run `28070130104`
-  8. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 08d5f32`
-  9. PASS: `curl.exe -I https://aretenald2018-sys.github.io/dashboard3/` -> `HTTP/1.1 200 OK`
-  10. not verified yet: 인증된 계정의 당일 Max 카드/과거 운동 상세 데이터가 필요해 실제 UI flow는 직접 클릭 검증하지 못했다.
+  1. PASS: `node --check sw.js`
+  2. PASS: `node scripts/verify-runtime-assets.mjs`
+  3. PASS: `git diff --check`
+  4. PASS: `git push origin HEAD:main` (`0c290ff`)
+  5. PASS: GitHub Actions `Verify Pages Runtime Assets` run `28070850429`
+  6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 0c290ff`
+  7. PASS: `curl.exe -I https://aretenald2018-sys.github.io/dashboard3/` -> `HTTP/1.1 200 OK`
+  8. not verified yet: 인증된 계정의 운동 홈 상세 데이터가 필요해 실제 모바일 UI flow는 직접 클릭 검증하지 못했다.
 
 ## 이전 흐름 요약
 

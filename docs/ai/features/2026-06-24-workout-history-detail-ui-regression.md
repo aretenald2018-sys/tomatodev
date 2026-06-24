@@ -425,3 +425,58 @@ UI 검증:
 - 배포 확인: `[deploy-verify] ok 08d5f321f6ff tomatofarm-v20260624z10-workout-dual-track-graphs static=202`
 - PASS: `curl.exe -I https://aretenald2018-sys.github.io/dashboard3/` -> `HTTP/1.1 200 OK`
 - not verified yet: 인증된 계정의 당일 Max 카드/과거 운동 상세 데이터가 필요해 배포 URL에서 실제 UI flow는 직접 클릭 검증하지 못했다.
+
+## 후속 Slice 7
+
+사용자 피드백:
+
+- 운동 홈 상세 하단의 `1회차`~`3회차` 세션 탭 높이와 전체 사이즈가 너무 크다.
+- 해당 탭을 대폭 축소해 하단 공간 점유를 줄인다.
+
+수정 범위:
+
+1. `style.css`
+   - `.wt-day-sessionbar` padding/gap을 줄여 하단 fixed bar 높이를 낮춘다.
+   - `.wt-day-session-tabs`의 column width, max-width, border-radius를 줄인다.
+   - `.wt-day-session-tabs button`의 min-height와 font-size를 줄인다.
+   - 기록 표시 red dot 크기와 위치를 축소한다.
+   - 모바일 override도 같은 축소 방향으로 맞춘다.
+2. `sw.js`
+   - `style.css`가 `STATIC_ASSETS`에 포함되어 있으므로 `CACHE_VERSION`을 bump한다.
+
+수정하지 않을 것:
+
+- 회차 데이터 모델, 회차 개수, 선택/편집/추가 동작은 바꾸지 않는다.
+- 하단 `+` FAB의 의미나 클릭 동작은 바꾸지 않는다.
+
+검증:
+
+- `node --check sw.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- `git push origin HEAD:main`
+- `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+- Dashboard3 배포 URL에서 운동 탭 > 오늘 상세를 열어 `1회차`~`3회차` 탭이 이전보다 낮고 좁게 표시되는지 확인한다.
+
+## 후속 Slice 7 실행 결과
+
+- `style.css`:
+  - `.wt-day-sessionbar`의 gap과 padding을 줄여 하단 fixed bar 높이를 낮췄다.
+  - `.wt-day-session-tabs`의 column width와 max-width를 줄여 `1회차`~`3회차` segment 전체 폭을 축소했다.
+  - `.wt-day-session-tabs button`의 min-height를 `58px -> 36px`, 모바일에서는 `48px -> 32px`로 줄였다.
+  - 탭 폰트 크기를 줄이고 active/record dot 크기도 축소했다.
+  - 줄어든 하단 bar에 맞춰 모바일 상세 화면의 하단 padding과 `+` FAB bottom offset을 조정했다.
+- `sw.js`:
+  - `CACHE_VERSION`을 `tomatofarm-v20260624z11-workout-session-tabs-compact`로 bump했다.
+
+## 후속 Slice 7 실행 검증
+
+- PASS: `node --check sw.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- PASS: `git push origin HEAD:main` (`0c290ff`)
+- PASS: GitHub Actions `Verify Pages Runtime Assets` run `28070850429`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 0c290ff`
+- 배포 확인: `[deploy-verify] ok 0c290ff62faa tomatofarm-v20260624z11-workout-session-tabs-compact static=202`
+- PASS: `curl.exe -I https://aretenald2018-sys.github.io/dashboard3/` -> `HTTP/1.1 200 OK`
+- not verified yet: 인증된 계정의 운동 홈 상세 화면을 열어 실제 모바일 UI flow는 직접 클릭 검증하지 못했다.
