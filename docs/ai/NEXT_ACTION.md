@@ -5,7 +5,7 @@
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-24-dashboard3-deploy-command-hardening.md` (Dashboard3 배포 명령 하드닝)
 - 현재 단계: `deploy verified — Slice 1 배포 명령 하드닝`
-- 마지막 완료: `verify-deploy의 HEAD ref resolve와 stale Pages retry, 배포 마커 검증 스크립트, deploy:dashboard3 wrapper를 구현했고, 커밋 e80cc17e74ee를 origin/main에 배포 검증했다.`
+- 마지막 완료: `verify-deploy의 HEAD ref resolve와 stale Pages retry, 배포 마커 검증 스크립트, deploy:dashboard3 wrapper를 구현했고, 최종 문서 커밋까지 origin/main에 배포 검증했다.`
 - 다음 액션: `없음`
 - 차단 사유: `없음`
 
