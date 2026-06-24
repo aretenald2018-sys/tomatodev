@@ -4739,13 +4739,286 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   background: #2565c2; transform: scale(0.98);
 }
 
-/* ── Exercise Picker Modal (Seed BottomSheet + List) ── */
-#ex-picker-modal .modal-sheet,
+/* ── Exercise Picker Modal (Full-screen category entry) ── */
+#ex-picker-modal {
+  align-items: stretch;
+  background: var(--seed-bg-layer, #f7f7fb);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+#ex-picker-modal .ex-picker-sheet {
+  width: 100%;
+  max-width: 560px;
+  height: 100dvh;
+  max-height: none;
+  margin: 0 auto;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--seed-bg-layer, #f7f7fb);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  animation: none;
+}
+.ex-picker-topbar {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 10px;
+  padding: max(10px, env(safe-area-inset-top)) 14px 8px;
+  background: var(--seed-bg-layer, #f7f7fb);
+}
+.ex-picker-nav-btn {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--seed-fg-neutral, var(--text));
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.ex-picker-nav-btn:active { background: var(--seed-bg-neutral-weak, var(--surface2)); }
+.ex-picker-nav-btn svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#ex-picker-modal .ex-picker-search-wrap {
+  min-width: 0;
+  position: relative;
+}
+.ex-picker-search-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  width: 17px;
+  height: 17px;
+  transform: translateY(-50%);
+  fill: none;
+  stroke: var(--seed-fg-muted, var(--text-secondary));
+  stroke-width: 2;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+#ex-picker-search {
+  width: 100%;
+  height: 48px;
+  min-width: 0;
+  padding: 0 42px 0 42px;
+  border: 0;
+  border-radius: 24px;
+  box-sizing: border-box;
+  background: var(--seed-bg-fill, var(--surface2));
+  color: var(--seed-fg-neutral, var(--text));
+  font-size: 16px;
+  line-height: 24px;
+  outline: none;
+}
+#ex-picker-search::placeholder { color: var(--seed-fg-muted, var(--text-secondary)); }
+.ex-picker-search-clear {
+  display: none;
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--seed-fg-muted, var(--text-secondary));
+  cursor: pointer;
+}
+.ex-picker-search-clear:active { background: var(--seed-bg-neutral-weak, var(--surface3)); }
+.ex-picker-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 18px;
+  min-height: 48px;
+  padding: 0 18px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--seed-stroke-weak, var(--border));
+  background: var(--seed-bg-layer, #f7f7fb);
+  -webkit-overflow-scrolling: touch;
+}
+.ex-picker-tab {
+  position: relative;
+  flex: 0 0 auto;
+  min-width: 48px;
+  min-height: 48px;
+  border: 0;
+  background: transparent;
+  color: var(--seed-fg-muted, var(--text-secondary));
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.ex-picker-tab.active {
+  color: var(--primary);
+}
+.ex-picker-tab.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  border-radius: 999px 999px 0 0;
+  background: var(--primary);
+}
+#ex-picker-list.ex-picker-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 14px max(28px, env(safe-area-inset-bottom));
+  -webkit-overflow-scrolling: touch;
+}
+.ex-picker-category-layout {
+  display: grid;
+  grid-template-columns: minmax(108px, 0.72fr) minmax(0, 1.55fr);
+  align-items: start;
+  gap: 14px;
+}
+.ex-picker-category-rail {
+  display: grid;
+  gap: 12px;
+  padding-top: 2px;
+}
+.ex-picker-rail-chip,
+.ex-picker-rail-action {
+  min-height: 56px;
+  padding: 0 12px;
+  border: 1px solid var(--seed-stroke-neutral, var(--border));
+  border-radius: 999px;
+  background: transparent;
+  color: var(--seed-fg-neutral, var(--text));
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.ex-picker-rail-chip b {
+  color: var(--primary);
+  font: inherit;
+}
+.ex-picker-rail-chip:active,
+.ex-picker-rail-action:active,
+.ex-picker-muscle-tile:active {
+  background: var(--seed-bg-neutral-weak, var(--surface2));
+  transform: translateY(1px);
+}
+.ex-picker-rail-action {
+  min-height: 42px;
+  border-radius: 14px;
+  border-style: dashed;
+  color: var(--seed-fg-muted, var(--text-secondary));
+}
+.ex-picker-muscle-panel {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(58px, 1fr));
+  gap: 16px 10px;
+}
+.ex-picker-muscle-tile {
+  min-width: 0;
+  min-height: 104px;
+  padding: 6px 2px 4px;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--seed-fg-neutral, var(--text));
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.ex-picker-muscle-figure {
+  width: 54px;
+  height: 46px;
+  position: relative;
+  display: block;
+  border-radius: 21px 21px 14px 14px;
+  background:
+    radial-gradient(circle at 50% 16%, #f8fafc 0 12px, transparent 13px),
+    linear-gradient(145deg, #e7eaf0, #f8fafc 52%, #cfd5de);
+  box-shadow: inset 0 -1px 0 rgba(15,23,42,0.1);
+  overflow: hidden;
+}
+.ex-picker-muscle-figure::before,
+.ex-picker-muscle-figure::after {
+  content: '';
+  position: absolute;
+  background: var(--picker-muscle, var(--primary));
+  opacity: 0.84;
+}
+.ex-picker-muscle-figure::before {
+  left: 13px;
+  right: 13px;
+  top: 19px;
+  bottom: 7px;
+  border-radius: 13px 13px 8px 8px;
+}
+.ex-picker-muscle-figure::after {
+  left: 5px;
+  right: 5px;
+  top: 22px;
+  height: 11px;
+  border-radius: 999px;
+  transform: rotate(-8deg);
+}
+.ex-picker-muscle-figure[data-muscle="back"]::before,
+.ex-picker-muscle-figure[data-muscle="lower"]::before,
+.ex-picker-muscle-figure[data-muscle="glute"]::before { top: 16px; bottom: 5px; }
+.ex-picker-muscle-figure[data-muscle="shoulder"]::after,
+.ex-picker-muscle-figure[data-muscle="bicep"]::after,
+.ex-picker-muscle-figure[data-muscle="tricep"]::after {
+  left: 2px;
+  right: 2px;
+  top: 18px;
+}
+.ex-picker-muscle-figure[data-muscle="abs"]::before {
+  left: 19px;
+  right: 19px;
+  top: 17px;
+  bottom: 4px;
+}
+.ex-picker-muscle-name {
+  max-width: 100%;
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 18px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ex-picker-muscle-count {
+  color: var(--seed-fg-muted, var(--text-secondary));
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+/* ── Exercise Editor Modal ── */
 #ex-editor-modal .modal-sheet {
   background: var(--seed-bg-layer); border-radius: var(--seed-r5) var(--seed-r5) 0 0;
   border-top: none; box-shadow: var(--seed-s3);
 }
-#ex-picker-modal .modal-title,
 #ex-editor-modal .modal-title {
   font-size: var(--seed-t6); font-weight: 700; color: var(--seed-fg-neutral);
   margin: var(--seed-x5) 0 var(--seed-x4); text-align: center;
@@ -4772,8 +5045,6 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   transition: all var(--seed-d3) var(--seed-ease);
 }
 #ex-picker-modal .ex-picker-add:active { background: var(--seed-bg-neutral-weak); }
-
-/* ── Exercise Editor Modal ── */
 #ex-editor-modal .ex-editor-label {
   font-size: var(--seed-t3); font-weight: 700; color: var(--seed-fg-muted);
   margin-bottom: var(--seed-x1);

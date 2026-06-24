@@ -2,33 +2,29 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-24-workout-history-detail-ui-regression.md` (운동 홈 과거 상세 UI 회귀)
-- 현재 단계: `execution/review complete — Slice 7 운동 홈 상세 세션 탭 축소`
-- 마지막 완료: `style.css/sw.js를 수정해 하단 1회차~3회차 세션 탭의 높이, 폭, 폰트와 기록 dot을 축소했다.`
-- 다음 액션: `사용자는 Dashboard3 배포 URL에서 운동 탭 > 오늘 상세를 열어 하단 1회차~3회차 탭 크기를 확인하면 된다.`
+- 상태: `ready_for_execution`
+- 계획 문서: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md` (운동 추가 분류형 진입 UI)
+- 현재 단계: `review complete — Slice 1 운동 추가 picker 분류형 진입 UI`
+- 마지막 완료: `docs/ai/reviews/2026-06-24-exercise-picker-category-entry-review.md에서 변경 파일 리뷰를 통과 처리했다.`
+- 다음 액션: `변경 파일을 커밋해 origin/main에 push하고 Dashboard3 Pages 배포 검증을 실행한다.`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
 
-- 계획 파일: `docs/ai/features/2026-06-24-workout-history-detail-ui-regression.md`
-- 완료한 Slice 7:
-  1. `style.css` `.wt-day-sessionbar` gap/padding 축소
-  2. `style.css` `.wt-day-session-tabs` column/max-width/radius 축소
-  3. `style.css` `.wt-day-session-tabs button` min-height/font-size 축소
-  4. `style.css` 기록 dot 및 모바일 하단 padding/FAB offset 보정
-  5. `sw.js` `CACHE_VERSION` bump
-  6. `docs/ai/reviews/2026-06-24-workout-session-tabs-compact-review.md` 작성
+- 계획 파일: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md`
+- 완료한 Slice 1:
+  1. `modals/ex-picker-modal.js` 상단 구조를 전체 화면형 검색/탭/추가 버튼 레이아웃으로 변경
+  2. `workout/exercises.js`에 picker view 상태, 분류 화면, 부위 타일 drilldown, 전체/커스텀 목록 전환 추가
+  3. `style.css`에 전체 화면 picker, 탭, 부위 그리드, 모바일 레이아웃 스타일 추가
+  4. `sw.js` `CACHE_VERSION` bump
 
 - 검증:
-  1. PASS: `node --check sw.js`
+  1. PASS: `node --check modals/ex-picker-modal.js; node --check workout/exercises.js; node --check sw.js`
   2. PASS: `node scripts/verify-runtime-assets.mjs`
   3. PASS: `git diff --check`
-  4. PASS: `git push origin HEAD:main` (`0c290ff`)
-  5. PASS: GitHub Actions `Verify Pages Runtime Assets` run `28070850429`
-  6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 0c290ff`
-  7. PASS: `curl.exe -I https://aretenald2018-sys.github.io/dashboard3/` -> `HTTP/1.1 200 OK`
-  8. not verified yet: 인증된 계정의 운동 홈 상세 데이터가 필요해 실제 모바일 UI flow는 직접 클릭 검증하지 못했다.
+  4. PASS: `docs/ai/reviews/2026-06-24-exercise-picker-category-entry-review.md`
+  5. not verified yet: Dashboard3 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>` 필요
+  6. not verified yet: 운동 탭 → 오늘 운동 화면 → 우측 하단 `+` → 분류 첫 화면 → 부위 타일 선택 → 해당 부위 운동 목록 → 운동 추가 UI flow는 배포 URL에서 확인 필요
 
 ## 이전 흐름 요약
 
