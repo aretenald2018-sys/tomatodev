@@ -1247,7 +1247,7 @@ function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) {
       <div class="wt-max-set-list">${_renderWorkoutSetRows(row)}</div>
       <div class="wt-max-actions">
         ${collapsed
-          ? `<button type="button" class="wt-max-action-primary is-muted" onclick="window._wtCalEditSession('${key}', ${sessionIndex})">운동 완료</button>
+          ? `<button type="button" class="wt-max-action-primary is-muted" aria-disabled="true" tabindex="-1">운동 완료</button>
              <button type="button" class="wt-max-action-secondary" onclick="window._wtCalToggleExerciseCard('${cardId}')">세트 다시 보기</button>`
           : `<button type="button" class="wt-max-action-primary" onclick="window._wtCalToggleExerciseCard('${cardId}')">카드 접기</button>
              <button type="button" class="wt-max-action-secondary" onclick="window._wtCalEditSession('${key}', ${sessionIndex})">편집하기</button>`}

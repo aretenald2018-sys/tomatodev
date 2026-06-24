@@ -3,57 +3,27 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-23-home-life-zone-card.md` (홈 라이프존 카드)
-- 현재 단계: `review/deploy complete — Slice 10 모바일 요약 구획 회귀 복원`
-- 마지막 완료: `모바일에서 라이프존 하단 칼로리/체중 요약이 1열로 쌓이던 media query를 제거하고, dashboard3 개발계 배포 URL에서 HTTP 200과 원격 CSS를 확인했다.`
-- 다음 액션: `없음. 사용자는 모바일 홈탭에서 칼로리/체중 요약이 한 줄 2칸으로 표시되는지 확인하면 된다.`
-- 차단 사유: `없음. 로그인 세션이 필요한 실제 모바일 UI 시각 확인은 사용자 기기에서 최종 확인한다.`
+- 계획 문서: `docs/ai/features/2026-06-24-workout-card-collapse-regression.md` (운동 카드 접기/펼치기 UI 회귀)
+- 현재 단계: `review complete — 접힌 운동 상세 카드 완료 버튼 오클릭 차단`
+- 마지막 완료: `운동 상세 카드가 접힌 상태에서 왼쪽 운동 완료 버튼이 편집 화면으로 이동하던 onclick을 제거하고, render-calendar.js 캐시 반영을 위해 sw.js CACHE_VERSION을 bump했다.`
+- 다음 액션: `없음. 사용자는 로컬에서 운동 탭 월간 홈의 기록 날짜 상세를 열어 접힌 카드의 운동 완료 클릭이 편집 화면으로 이동하지 않는지 확인하면 된다.`
+- 차단 사유: `not verified yet: 프로젝트 규칙상 장시간 dev server를 여기서 실행해 UI 검증 완료로 주장하지 않았다. 로컬 브라우저 플로우 확인이 남아 있다.`
 
 ## 다음 실행 대상
 
-- 계획 파일: `docs/ai/features/2026-06-23-home-life-zone-card.md`
-- 방금 완료한 Slice 10:
-  1. `style.css` 모바일 media query에서 `.lz-summary-strip` 1열 전환 제거
-  2. `style.css` 모바일 요약 버튼 하단 border override 제거
-  3. `style.css` 모바일 요약 버튼 padding/숫자 크기만 소폭 조정
+- 계획 파일: `docs/ai/features/2026-06-24-workout-card-collapse-regression.md`
+- 방금 완료한 Slice 1:
+  1. `render-calendar.js` 접힌 운동 상세 카드의 `운동 완료` 버튼에서 `_wtCalEditSession()` 호출 제거
+  2. 접힌 카드의 펼치기는 기존 `세트 다시 보기` 버튼으로 유지
+  3. 펼친 카드의 명시적 `편집하기` 경로 유지
   4. `sw.js` `CACHE_VERSION` bump
-  5. `docs/ai/reviews/2026-06-24-home-life-zone-mobile-summary-regression-review.md` 작성
-  6. `index.html` cache-busting query token bump
-
-- Slice 10 검증 완료:
-  1. PASS: `node --check sw.js`
-  2. PASS: `node --check home/life-zone.js`
-  3. PASS: `node --check home/life-zone-state.js`
-  4. PASS: `node --test tests/home-life-zone-state.test.js`
-  5. PASS: `node scripts/verify-runtime-assets.mjs`
-  6. PASS: `git diff --check`
-  7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 788329199a1c`
-  8. PASS: 원격 `style.css`에서 기본 2컬럼 규칙 유지, 모바일 `.lz-summary-strip { grid-template-columns: 1fr; }` 제거 확인
-
-- 방금 완료한 Slice 4:
-  1. `workout/save.js`에서 운동 저장 payload에 `lifeZoneWorkoutActivity` snapshot 추가
-  2. `workout/save.js`에서 식단 자동저장 payload에 `lifeZoneDietActivity` snapshot 추가
-  3. `workout/save.js`에서 운동/식단 저장 모두 공통 `lifeZoneLastActivity`를 갱신
-  4. `workout/render.js`와 `modals/ai-estimate-banner.js`에서 음식/AI 반영 시 변경 끼니를 `_autoSaveDiet({ meal })`로 전달
-  5. `workout-ui.js`에서 식단 사진/AI 사진 업로드가 `saveWorkoutDay()`가 아니라 `_autoSaveDiet({ meal })`로 저장되도록 분리
-  6. `home/life-zone-state.js`에서 실제 기록이 남아 있는 `lifeZoneLastActivity`를 최우선 선택하고, 식단 말풍선은 snapshot의 `meal` 힌트를 우선 사용
-  7. `workout/save-schema.js`와 `tests/save-schema.test.js`에 도메인별 snapshot 및 공통 `lifeZoneLastActivity` 필드 추가
-  8. `tests/home-life-zone-state.test.js`에 운동+저녁+간식 동시 기록에서 마지막 간식 업데이트가 `간식냠냠`으로 표시되는 회귀 테스트 추가
-  9. `tests/diet-add-button-binding.test.js`에 식단 사진 저장 경로 회귀 테스트 추가
-  10. `sw.js` `CACHE_VERSION` bump
-  11. `docs/ai/reviews/2026-06-23-home-life-zone-activity-snapshot-review.md` 작성
+  5. `docs/ai/reviews/2026-06-24-workout-card-collapse-regression-review.md` 작성
 
 - 검증:
-  1. PASS: `node --check home\life-zone-state.js`
-  2. PASS: `node --check workout\save.js`
-  3. PASS: `node --check workout\save-schema.js`
-  4. PASS: `node --check workout\render.js`
-  5. PASS: `node --check workout-ui.js`
-  6. PASS: `node --check modals\ai-estimate-banner.js`
-  7. PASS: `node --check sw.js`
-  8. PASS: `node --test tests\home-life-zone-state.test.js tests\save-schema.test.js tests\diet-add-button-binding.test.js`
-  9. PASS: `git diff --check`
-  10. not verified yet: dev server/browser flow는 이 세션에서 실행하지 않았다. 확인 플로우는 문정토마토 계정에서 오늘 가슴 운동 기록이 있는 상태로 간식 저장 후 홈 라이프존 말풍선이 `간식냠냠`으로 바뀌는지 확인한다.
+  1. PASS: `node --check render-calendar.js`
+  2. PASS: `node --check sw.js`
+  3. PASS: `git diff --check`
+  4. not verified yet: dev server/browser flow는 이 세션에서 실행하지 않았다. 확인 플로우는 운동 탭 월간 홈에서 기록 날짜 상세를 열고 카드 접기 후 접힌 카드의 `운동 완료` 클릭이 편집 화면으로 이동하지 않는지 확인한다.
 
 ## 이전 흐름 요약
 
