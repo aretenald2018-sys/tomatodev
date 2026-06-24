@@ -1552,6 +1552,29 @@ let _pickerGymFilter = null;
 let _pickerView = 'category';
 let _pickerListMode = 'all'; // all | custom
 let _pickerSearchQuery = '';
+const PICKER_MUSCLE_ASSETS = {
+  chest: './assets/workout/muscles/chest.png',
+  shoulder: './assets/workout/muscles/shoulder.png',
+  back: './assets/workout/muscles/back.png',
+  lower: './assets/workout/muscles/lower.png',
+  glute: './assets/workout/muscles/glute.png',
+  bicep: './assets/workout/muscles/bicep.png',
+  tricep: './assets/workout/muscles/tricep.png',
+  abs: './assets/workout/muscles/abs.png',
+};
+
+function _pickerMuscleFigureHtml(muscleId) {
+  const safeId = _escPicker(muscleId);
+  const asset = PICKER_MUSCLE_ASSETS[muscleId];
+  if (!asset) {
+    return `<span class="ex-picker-muscle-figure" data-muscle="${safeId}" aria-hidden="true"></span>`;
+  }
+  return `
+    <span class="ex-picker-muscle-figure has-asset" data-muscle="${safeId}" aria-hidden="true">
+      <img src="${_escPicker(asset)}" alt="" loading="eager" decoding="async" draggable="false">
+    </span>
+  `;
+}
 
 function _setPickerSearchUi(value = '') {
   const input = document.getElementById('ex-picker-search');
@@ -1799,7 +1822,7 @@ function _renderPickerCategory(container, ctx) {
       const color = _safePickerColor(m.color);
       return `
         <button type="button" class="ex-picker-muscle-tile" data-picker-muscle="${_escPicker(m.id)}" style="--picker-muscle:${color}">
-          <span class="ex-picker-muscle-figure" data-muscle="${_escPicker(m.id)}" aria-hidden="true"></span>
+          ${_pickerMuscleFigureHtml(m.id)}
           <span class="ex-picker-muscle-name">${_escPicker(m.name)}</span>
           <span class="ex-picker-muscle-count">${count}</span>
         </button>

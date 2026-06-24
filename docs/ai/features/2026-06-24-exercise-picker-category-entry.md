@@ -5,6 +5,8 @@
 - 운동 탭에서 우측 하단 `+` 운동 추가 버튼을 누르면 현재 `종목 선택` 바텀시트 목록형으로 바로 진입한다.
 - 이를 첨부 이미지 3처럼 검색/상단 탭/부위 분류 그리드 중심의 전체 화면형 UI로 바꾼다.
 - 이후 특정 부위를 누르면 그 부위에 등록된 운동들이 뜨고, 기존처럼 선택해서 오늘 운동에 추가할 수 있어야 한다.
+- 2026-06-24 추가 요청: 첨부 이미지 1→2→3의 순서처럼 우하단 `+` 이후 바로 전체 화면 picker로 진입해야 한다. 첨부 이미지 4처럼 현재 앱의 `헬스 종목` 랜딩 화면에 머무르는 흐름은 제거한다.
+- 2026-06-24 추가 요청: 부위별 그림은 첨부 이미지 2에서 추출해 현재 picker 부위 도형을 대체한다.
 
 ## 그릴 결과
 
@@ -46,11 +48,41 @@
 - `www/` 직접 수정.
 - Firebase 직접 호출 추가.
 
+### Slice 2: 우하단 + 직접 picker 진입과 부위 아트 자산 대체
+
+대상 파일:
+
+- `render-calendar.js`
+- `workout/exercises.js`
+- `style.css`
+- `sw.js`
+- `assets/workout/muscles/*.png`
+
+구현:
+
+- 운동 탭 오늘 상세 화면에서 우하단 `+`를 누르면 기존 `_wtCalAddSession()`의 편집 화면 진입 직후 `wtOpenExercisePicker()`가 바로 열려 `헬스 종목` 랜딩을 거치지 않는다.
+- 기존 `헬스 종목` 헤더/본문의 추가 버튼은 유지하되, 빈 상태 첫 진입의 핵심 경로는 사진 1→2 흐름처럼 picker 직접 진입으로 맞춘다.
+- picker 분류 화면의 부위 타일은 CSS 도형 대신 `assets/workout/muscles/` 이미지 자산을 렌더한다.
+- 이미지 자산은 첨부 이미지 2의 부위 그림에서 현재 앱 기본 부위 8개(`chest`, `shoulder`, `back`, `lower`, `glute`, `bicep`, `tricep`, `abs`)를 추출한다.
+- 현재 앱 기본 부위에 없는 `neck`, `trap`, `forearm`, `calf` 등은 새 데이터 모델로 추가하지 않는다. 기존 운동 카탈로그에 실제로 노출되는 부위만 대체한다.
+- 이미지가 없거나 커스텀 부위인 경우 기존 CSS fallback이 보이도록 한다.
+- `render-calendar.js`, `style.css`, `workout/exercises.js`, 새 이미지 자산을 `STATIC_ASSETS`에 반영하고 `sw.js` `CACHE_VERSION`을 bump한다.
+
+범위 밖:
+
+- 즐겨찾기/최근 30일 정렬 모델 추가.
+- 사진 3의 운동별 동작 썸네일 자산 제작.
+- 새 근육 부위 데이터 추가.
+- 오늘 운동 저장 스키마 변경.
+- `www/` 직접 수정.
+
 ## 검증 계획
 
 - `node --check modals/ex-picker-modal.js workout/exercises.js sw.js`
 - `node scripts/verify-runtime-assets.mjs`
 - `git diff --check`
+- Slice 2 추가 검증: `node --check render-calendar.js workout/exercises.js sw.js`
+- Slice 2 추가 검증: `assets/workout/muscles/` 이미지 8개가 존재하고 `sw.js` `STATIC_ASSETS`에 등록됐는지 확인
 - Dashboard3 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
 - UI flow: Dashboard3 Pages에서 운동 탭 → 오늘 운동 화면 → 우측 하단 `+` → 분류 첫 화면 표시 → `가슴` 등 부위 타일 선택 → 해당 부위 운동 목록 표시 → 운동 하나 선택 시 오늘 세션에 추가.
 
@@ -70,4 +102,22 @@
   - not verified yet: Dashboard3 Pages 배포 및 인증 계정 UI 클릭 검증은 리뷰/배포 단계에서 진행한다.
 - 리뷰:
   - PASS: `docs/ai/reviews/2026-06-24-exercise-picker-category-entry-review.md`
-- 다음 단계: Dashboard3 Pages 배포 검증.
+- 추가 계획:
+  - Slice 2 계획 완료.
+- Slice 2 실행 완료.
+- Slice 2 구현 요약:
+  - `render-calendar.js`의 우하단 `+` 흐름을 편집 화면 로드 직후 `wtOpenExercisePicker()`를 여는 방식으로 변경했다.
+  - 첨부 이미지 2에서 현재 기본 부위 8개 이미지를 추출해 `assets/workout/muscles/*.png`로 추가했다.
+  - `workout/exercises.js`에서 기본 부위 타일은 PNG를 렌더하고, 이미지 없는 커스텀 부위는 기존 CSS fallback을 유지하도록 했다.
+  - `style.css`에 이미지 타일 스타일을 추가했다.
+  - `sw.js`에 새 PNG 8개를 `STATIC_ASSETS`로 등록하고 `CACHE_VERSION`을 `tomatofarm-v20260624z13-ex-picker-muscle-assets`로 bump했다.
+- Slice 2 실행 검증:
+  - PASS: `node --check render-calendar.js; node --check workout/exercises.js; node --check sw.js`
+  - PASS: `node scripts/verify-runtime-assets.mjs`
+  - PASS: `assets/workout/muscles/` PNG 8개 존재 및 `sw.js` 등록 확인
+  - PASS: `git diff --check`
+  - PASS: `git diff --cached --check`
+  - not verified yet: Dashboard3 Pages 배포 및 인증 계정 UI 클릭 검증 필요.
+- Slice 2 리뷰:
+  - PASS: `docs/ai/reviews/2026-06-24-exercise-picker-category-entry-slice2-review.md`
+- 다음 단계: 변경 파일을 커밋해 `origin/main`에 push하고 Dashboard3 Pages 배포 검증을 실행한다.

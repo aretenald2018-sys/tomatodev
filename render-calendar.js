@@ -1781,11 +1781,24 @@ function _editWorkoutHomeSession(key, sessionIndex = _workoutHomeSessionIndex) {
   _openWorkoutEditorForSession(key, sessionIndex);
 }
 
-function _addWorkoutHomeSession(key) {
+async function _addWorkoutHomeSession(key) {
   const cache = getCache() || {};
   const sessions = getWorkoutSessions(cache[key] || {}, { minCount: 3 });
   const emptyIndex = sessions.findIndex(session => !hasWorkoutSessionData(session));
-  _openWorkoutEditorForSession(key, emptyIndex >= 0 ? emptyIndex : sessions.length);
+  const targetIndex = emptyIndex >= 0 ? emptyIndex : sessions.length;
+
+  try {
+    const loaded = await _loadWorkoutEditorForSession(key, targetIndex);
+    if (!loaded) throw new Error('workout editor is not available');
+    if (typeof window.wtOpenExercisePicker === 'function') {
+      await window.wtOpenExercisePicker();
+      return;
+    }
+    throw new Error('exercise picker is not registered');
+  } catch (e) {
+    console.warn('[workout-calendar] add session picker open failed:', e);
+    _openWorkoutEditorForSession(key, targetIndex);
+  }
 }
 
 function _formatWorkoutExportText(key, sessionIndex, session, wx) {
