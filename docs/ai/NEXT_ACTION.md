@@ -6,7 +6,7 @@
 - 계획 문서: `docs/ai/features/2026-06-24-workout-history-detail-ui-regression.md` (운동 홈 과거 상세 UI 회귀)
 - 현재 단계: `execution/review complete — Slice 3 과거 상세 action toolbar 보정`
 - 마지막 완료: `style.css/sw.js를 수정해 상단 액션을 날짜 오른쪽 헤더 영역의 flat rectangular toolbar로 옮기고, pill/chip 버튼 형태를 제거했다.`
-- 다음 액션: `Dashboard3 배포 검증 후 사용자는 배포 URL에서 과거 운동 상세 화면을 확인하면 된다.`
+- 다음 액션: `없음. 사용자는 Dashboard3 배포 URL에서 과거 운동 상세 화면을 확인하면 된다.`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
@@ -23,7 +23,10 @@
   1. PASS: `node --check sw.js`
   2. PASS: `node scripts/verify-runtime-assets.mjs`
   3. PASS: `git diff --check`
-  4. pending: Dashboard3 배포 검증
+  4. PASS: `git push origin HEAD:main` (`0f8d2c5`)
+  5. PASS: GitHub Actions `Verify Pages Runtime Assets` run `28068594416`
+  6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 0f8d2c5`
+  7. 배포 확인: `[deploy-verify] ok 0f8d2c5ab3fb tomatofarm-v20260624z7-workout-history-actions-toolbar static=202`
 
 ## 이전 흐름 요약
 
