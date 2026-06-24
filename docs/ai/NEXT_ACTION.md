@@ -46,7 +46,8 @@
   3. PASS: `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
   4. PASS: `node scripts/verify-runtime-assets.mjs`
   5. PASS: `git diff --check`
-  6. not verified yet: Dashboard3 Pages 배포와 인증 계정 실제 drag UI flow 확인 필요
+  6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 0f061f103c69150688c80e284ce5b53ae54c601a`
+  7. not verified yet: 인증 계정 실제 drag UI flow 확인 필요
 
 - Slice 2 리뷰:
   - `docs/ai/reviews/2026-06-24-workout-calendar-bottom-sheet-compact-review.md`
