@@ -173,4 +173,7 @@
 - PASS: `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
-- not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 `운동 탭 -> 날짜 sheet drag` UI flow 확인이 남아 있다.
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ a65721dbb3e6423206d505118ead185c7c6f2926`
+  - 결과: `[deploy-verify] ok a65721dbb3e6 tomatofarm-v20260624z37-workout-day-sheet-full-open static=210`
+- PASS: 배포 URL `https://aretenald2018-sys.github.io/dashboard3/`는 HTTP 200이고, 배포된 `sw.js`에는 `tomatofarm-v20260624z37-workout-day-sheet-full-open`, `render-calendar.js`에는 `direction > 0 ? 'full' : 'bar'`와 `Math.abs(dy) < 12`가 포함되어 있다.
+- not verified yet: 배포 URL은 로그인 화면(`이름으로 로그인하세요`)에서 막혀 인증 계정 실제 `운동 탭 -> 날짜 sheet drag` UI flow 확인은 남아 있다.
