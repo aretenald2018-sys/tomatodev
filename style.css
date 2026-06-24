@@ -515,13 +515,17 @@ body.wt-modal-scroll-lock {
 }
 .ex-max-v2-plan {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr) minmax(132px, .82fr);
+  gap: 8px;
+  align-items: stretch;
   padding: 7px 8px;
   border-radius: 11px;
   background: linear-gradient(180deg, #f9f9fa, #f4f4f6);
   border: 1px solid var(--border, #ededf0);
+}
+.ex-max-v2-plan-goal {
+  min-width: 0;
+  align-self: center;
 }
 .ex-max-v2-kicker {
   color: var(--primary, #fa342c);
@@ -573,7 +577,57 @@ body.wt-modal-scroll-lock {
   display: flex;
   align-items: center;
   justify-content: stretch;
+  min-width: 0;
   min-height: 0;
+}
+.ex-max-v2-plan .ex-max-track-graph,
+.wt-max-trend .ex-max-track-graph {
+  border: 0;
+  border-left: 1px solid #dde5f2;
+  border-radius: 0;
+  background: transparent;
+  padding: 0 0 0 8px;
+}
+.ex-max-v2-plan .ex-max-track-graph-note,
+.wt-max-trend .ex-max-track-graph-note {
+  display: none;
+}
+.ex-max-v2-plan .ex-max-track-graph-row,
+.wt-max-trend .ex-max-track-graph-row {
+  grid-template-columns: 34px minmax(34px, 1fr) 46px;
+  gap: 4px;
+}
+.ex-max-v2-plan .ex-max-track-graph-value,
+.wt-max-trend .ex-max-track-graph-value {
+  font-size: 10px;
+}
+.ex-max-v2-plan .ex-max-track-graph-value small,
+.wt-max-trend .ex-max-track-graph-value small {
+  font-size: 9px;
+}
+.ex-max-track-graph-row .wt-max-spark {
+  display: block;
+  min-width: 0;
+  height: 18px;
+}
+.ex-max-track-graph-row .wt-max-spark-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.ex-max-track-graph-row .wt-max-spark-svg .wt-max-spark-area {
+  stroke: none;
+}
+.ex-max-track-graph-row .wt-max-spark-svg .wt-max-spark-line {
+  fill: none;
+  stroke-width: 1.65;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ex-max-track-graph-row .wt-max-spark-svg .wt-max-spark-dot {
+  stroke: #ffffff;
+  stroke-width: 1.1;
 }
 .ex-max-v2-last {
   margin: 0 10px 8px;
@@ -9383,129 +9437,11 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   font-weight: 700;
 }
 .wt-max-trend {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    "labels stat"
-    "spark spark";
+  display: flex;
   align-items: center;
-  gap: 4px 6px;
+  justify-content: stretch;
   min-width: 0;
   margin-top: 0;
-  padding: 0 0 0 8px;
-  border: 0;
-  border-left: 1px solid #dde5f2;
-  border-radius: 0;
-  background: transparent;
-}
-.wt-max-trend-labels {
-  grid-area: labels;
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 3px 5px;
-  min-width: 0;
-  overflow: hidden;
-}
-.wt-max-trend-labels b,
-.wt-max-trend-labels em {
-  display: inline-flex;
-  align-items: center;
-  height: 17px;
-  padding: 0 7px;
-  border-radius: 999px;
-  font-size: 10px;
-  line-height: 17px;
-  font-style: normal;
-  font-weight: 900;
-}
-.wt-max-trend-labels b {
-  color: #2367ff;
-  background: #eaf1ff;
-}
-.wt-max-trend-labels b.is-heavy {
-  color: #be123c;
-  background: #fff0f4;
-}
-.wt-max-trend-labels b.is-volume {
-  color: #2367ff;
-  background: #eaf1ff;
-}
-.wt-max-trend-labels em {
-  color: #ff5d78;
-  background: #fff0f4;
-}
-.wt-max-trend-labels span {
-  color: #a0a8b5;
-  font-size: 10px;
-  font-weight: 800;
-}
-.wt-max-spark {
-  grid-area: spark;
-  position: relative;
-  min-width: 0;
-  height: 24px;
-}
-.wt-max-spark-svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-.wt-max-spark-svg polyline,
-.wt-max-spark-svg path:not(.wt-max-spark-area) {
-  fill: none;
-  stroke: #2b6cff;
-  stroke-width: 2.2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.wt-max-spark-svg .wt-max-spark-area {
-  stroke: none;
-}
-.wt-max-spark-svg .wt-max-spark-line {
-  fill: none;
-  stroke-width: 2.2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.wt-max-spark-svg .wt-max-spark-dot {
-  stroke: #ffffff;
-  stroke-width: 1.2;
-}
-.wt-max-trend-stat {
-  grid-area: stat;
-  text-align: right;
-}
-.wt-max-trend-stat strong,
-.wt-max-trend-stat em,
-.wt-max-trend-stat span {
-  display: block;
-}
-.wt-max-trend-stat strong {
-  color: #111827;
-  font-size: 12px;
-  font-weight: 900;
-}
-.wt-max-trend-stat em {
-  color: #12a150;
-  font-size: 10px;
-  font-style: normal;
-  font-weight: 900;
-}
-.wt-max-trend-stat em.up {
-  color: #15803d;
-}
-.wt-max-trend-stat em.down {
-  color: #be123c;
-}
-.wt-max-trend-stat em.flat {
-  color: #a0a8b5;
-}
-.wt-max-trend-stat span {
-  color: #a0a8b5;
-  font-size: 10px;
-  font-weight: 800;
 }
 .wt-max-last,
 .wt-max-note {
@@ -9974,42 +9910,27 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
     font-size: 10px;
     line-height: 14px;
   }
-  .wt-max-trend {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "labels"
-      "spark"
-      "stat";
-    gap: 3px;
+  .ex-max-v2-plan .ex-max-track-graph,
+  .wt-max-trend .ex-max-track-graph {
     padding: 0 0 0 6px;
   }
-  .wt-max-trend-labels b {
+  .ex-max-v2-plan .ex-max-track-graph-row,
+  .wt-max-trend .ex-max-track-graph-row {
+    grid-template-columns: 30px minmax(26px, 1fr) 40px;
+    gap: 3px;
+  }
+  .ex-max-v2-plan .ex-max-track-graph-chip,
+  .wt-max-trend .ex-max-track-graph-chip {
     height: 16px;
-    padding: 0 6px;
     font-size: 9px;
   }
-  .wt-max-trend-labels span {
-    display: none;
+  .ex-max-v2-plan .ex-max-track-graph-value,
+  .wt-max-trend .ex-max-track-graph-value {
+    font-size: 9px;
   }
-  .wt-max-spark {
-    height: 22px;
-  }
-  .wt-max-trend-stat {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 4px;
-    min-width: 0;
-    text-align: left;
-  }
-  .wt-max-trend-stat strong,
-  .wt-max-trend-stat em {
-    display: inline;
-    min-width: 0;
-    white-space: nowrap;
-  }
-  .wt-max-trend-stat span {
-    display: none;
+  .ex-max-v2-plan .ex-max-track-graph-value small,
+  .wt-max-trend .ex-max-track-graph-value small {
+    font-size: 8px;
   }
   .wt-max-set-main {
     grid-template-columns: 27px minmax(38px, .8fr) minmax(38px, .8fr) minmax(36px, .7fr) minmax(62px, 1fr) 20px 12px 6px;

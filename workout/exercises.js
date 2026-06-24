@@ -415,9 +415,6 @@ function _activeMaxTrack(entry, ex) {
 function _buildMaxTrackSparkline(entry, ex) {
   if (!entry?.exerciseId) return '';
   const history = getTrackMetricHistory(_cacheWithCurrentWorkoutForTrackMetric(entry), getExList(), entry.exerciseId);
-  const hasTrackData = history.M.length || history.H.length;
-  if (!hasTrackData && !history.unclassified) return '';
-
   const activeTrack = _activeMaxTrack(entry, ex);
   const rows = [
     _buildTrackGraphRow('M', history.M, activeTrack === 'M'),
@@ -477,14 +474,15 @@ function _buildMaxExerciseCardHeader(entry, ex, mc, idx, sparkline) {
         <button class="ex-remove-btn ex-max-v2-menu" data-idx="${idx}" aria-label="종목 삭제">×</button>
       </div>
       <div class="ex-max-v2-plan">
-        <div>
+        <div class="ex-max-v2-plan-goal">
           <div class="ex-max-v2-kicker">오늘 성공 기준</div>
           <div class="ex-max-v2-main">${kgText} × ${repsText}</div>
           <div class="ex-max-v2-sub">${planMeta} · 탭해서 트랙 전환</div>
         </div>
-        <div class="ex-max-v2-pace ${meta.trackCode === 'H' ? 'is-heavy' : 'is-volume'}"><b>${meta.track}</b><span>현재 트랙</span></div>
+        ${sparkline
+          ? `<div class="ex-max-v2-trend">${sparkline}</div>`
+          : `<div class="ex-max-v2-pace ${meta.trackCode === 'H' ? 'is-heavy' : 'is-volume'}"><b>${meta.track}</b><span>현재 트랙</span></div>`}
       </div>
-      ${sparkline ? `<div class="ex-max-v2-trend">${sparkline}</div>` : ''}
     </div>
   `;
 }
