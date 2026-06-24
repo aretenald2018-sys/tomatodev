@@ -1108,16 +1108,6 @@ function _renderWorkoutDetailCards(key, sessionIndex, wx) {
     ...wx.exercises.map((row, index) => _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index)),
     ...wx.activities.map((row, index) => _renderWorkoutActivityDetailCard(key, sessionIndex, row, index)),
   ];
-  if (!cards.length && wx.workoutDurationSec > 0) {
-    cards.push(_renderWorkoutActivityDetailCard(key, sessionIndex, {
-      key: 'timer',
-      tone: 'timer',
-      label: '운동 타이머',
-      main: _formatDuration(wx.workoutDurationSec),
-      detail: '',
-      durationSec: wx.workoutDurationSec,
-    }, 0));
-  }
   return `<div class="wt-day-card-list">${cards.join('')}</div>`;
 }
 
@@ -1527,18 +1517,6 @@ function _openWorkoutDay(key) {
     </div>
   ` : '';
 
-  const timerOnlyHtml = !wx.exercises.length && !wx.activities.length && wx.workoutDurationSec > 0 ? `
-    <div class="cal-workout-detail-section">
-      <div class="cal-workout-activity-row">
-        <div class="cal-workout-activity-head">
-          <strong>운동 시간</strong>
-          <span>${_formatDurationShort(wx.workoutDurationSec)}</span>
-        </div>
-        <div class="cal-workout-activity-main">${_formatDuration(wx.workoutDurationSec)}</div>
-      </div>
-    </div>
-  ` : '';
-
   body.innerHTML = `
     <div class="cal-workout-detail-summary">
       <div><span>시간</span><strong>${_formatDurationShort(wx.durationSec)}</strong></div>
@@ -1548,10 +1526,8 @@ function _openWorkoutDay(key) {
     </div>
 
     ${wx.hasWorkout ? `
-      ${wx.workoutDurationSec > 0 && wx.exercises.length ? `<div class="cal-workout-timer-line">운동 타이머 ${_formatDuration(wx.workoutDurationSec)}</div>` : ''}
       ${exerciseHtml}
       ${activityHtml}
-      ${timerOnlyHtml}
     ` : `
       <div class="cal-workout-empty-detail">운동 기록이 없어요</div>
     `}

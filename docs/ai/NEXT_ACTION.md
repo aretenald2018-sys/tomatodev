@@ -3,15 +3,30 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-24-stats-picker-ui-polish.md`
-- 현재 단계: `static verified — Slice 1 통계 근육 현출 및 운동 picker UI 보정`
-- 마지막 완료: `통계 파란색 직접 현출, picker 좌측 칩 compact화, 상단 커스텀 탭 제거, 하단 슈퍼세트 바 제거를 구현하고 정적 검증 및 리뷰를 완료했다.`
+- 계획 문서: `docs/ai/features/2026-06-24-workout-timer-summary-only.md`
+- 현재 단계: `static verified — Slice 1 운동 타이머 요약 카드 단일 표시`
+- 마지막 완료: `운동 타이머 별도 카드/본문 섹션을 제거하고 우측 상단 요약 카드의 운동시간 표시만 유지했다.`
 - 다음 액션: `최종 커밋, Dashboard3 Pages 배포, 배포 검증을 수행한다.`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
 
-- 계획 파일: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md`
+- 계획 파일: `docs/ai/features/2026-06-24-workout-timer-summary-only.md`
+- 완료한 Slice 1:
+  1. `render-calendar.js` `_renderWorkoutDetailCards()`의 duration-only `운동 타이머` 카드 fallback 제거
+  2. day detail modal 본문의 `timerOnlyHtml`과 `cal-workout-timer-line` 제거
+  3. 우측 상단 summary card의 `운동시간` 렌더링 유지
+  4. `tests/workout-timer-summary-only.test.js` 추가
+  5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z33-workout-timer-summary-only`로 bump
+
+- Slice 1 검증:
+  1. PASS: `node --check render-calendar.js; node --check sw.js`
+  2. PASS: `node --test tests/workout-timer-summary-only.test.js tests/stats-picker-ui-polish.test.js tests/workout-active-session-recovery.test.js tests/workout-track-graph-delta.test.js tests/workout-test-mode-unified.test.js tests/stats-muscle-fatigue-insight.test.js`
+  3. PASS: `node scripts/verify-runtime-assets.mjs`
+  4. PASS: `git diff --check`
+  5. not verified yet: Dashboard3 Pages 배포 및 인증 후 `운동 탭 -> 날짜 상세` UI 직접 확인 필요
+
+- 이전 계획 파일: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md`
 - 완료한 Slice 4:
   1. picker 목록 상태에서 상단 탭을 `분류 + 부위 탭` 구조로 동적 렌더링
   2. 목록 내부 `필터 적용` 배너와 부위/헬스장 필터 스택 제거
