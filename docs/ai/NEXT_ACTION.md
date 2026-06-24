@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_deploy`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-24-compact-test-mode-card.md` (테스트모드 운동 카드 압축)
-- 현재 단계: `execution complete — deploy pending`
-- 마지막 완료: `테스트모드 카드 압축을 구현했고 node --test tests/*.test.js 468개 및 npm.cmd run verify:assets를 통과했다.`
-- 다음 액션: `origin/main에 배포 후 Dashboard3 Pages에서 커밋/build-info/sw cache/정적 자산을 검증`
+- 현재 단계: `deploy verified — Slice 1 테스트모드 운동 카드 압축`
+- 마지막 완료: `커밋 0807859934cc0d8b3ab534c653902a0752d8d073을 origin/main에 배포했고 Dashboard3 Pages에서 build-info, sw cache, 정적 자산 및 배포 소스 마커를 검증했다.`
+- 다음 액션: `없음`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
