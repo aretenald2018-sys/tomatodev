@@ -4,30 +4,34 @@
 
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-24-workout-history-detail-ui-regression.md` (운동 홈 과거 상세 UI 회귀)
-- 현재 단계: `execution/review complete — Slice 5 과거 상세 완료 체크 표시 보정`
-- 마지막 완료: `style.css/sw.js를 수정해 과거 운동 상세의 완료 본세트 체크 아이콘이 활성 상태로 보이도록 했다.`
-- 다음 액션: `사용자는 Dashboard3 배포 URL에서 운동 탭 > 과거 운동 날짜 상세 화면을 확인하면 된다.`
+- 현재 단계: `execution/review complete — Slice 6 당일/과거 Max 카드 볼륨·강도 그래프 정렬`
+- 마지막 완료: `workout/exercises.js/render-calendar.js/style.css/sw.js를 수정해 당일 Max 카드와 과거 상세 카드의 성공 기준 row 오른쪽에 볼륨/강도 두 줄 그래프를 렌더하도록 했다.`
+- 다음 액션: `사용자는 Dashboard3 배포 URL에서 운동 탭의 당일 운동 추가 카드와 과거 운동 상세 카드를 확인하면 된다.`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
 
 - 계획 파일: `docs/ai/features/2026-06-24-workout-history-detail-ui-regression.md`
-- 완료한 Slice 5:
-  1. `style.css` `.wt-max-set-row.is-done` 완료 배경 추가
-  2. `style.css` `.wt-max-set-row.is-done .wt-max-set-check` 활성 체크 스타일 추가
-  3. `style.css` 완료 row의 X/그립 보조 아이콘 약화
-  4. `sw.js` `CACHE_VERSION` bump
-  5. `docs/ai/reviews/2026-06-24-workout-history-checked-sets-review.md` 작성
+- 완료한 Slice 6:
+  1. `workout/exercises.js` 당일 Max 카드 그래프를 성공 기준 row 오른쪽 칸으로 이동
+  2. `workout/exercises.js` 기록 없는 카드도 볼륨/강도 두 줄 그래프 유지
+  3. `render-calendar.js` 과거 상세 그래프를 볼륨/강도 두 줄 track graph로 변경
+  4. `render-calendar.js` 과거 강도 fallback을 `estimateSet1RM()` 기반으로 보정
+  5. `style.css` live/past compact track graph 스타일 정렬
+  6. `sw.js` `CACHE_VERSION` bump
+  7. `docs/ai/reviews/2026-06-24-workout-dual-track-graphs-review.md` 작성
 
 - 검증:
-  1. PASS: `node --check sw.js`
-  2. PASS: `node scripts/verify-runtime-assets.mjs`
-  3. PASS: `git diff --check`
-  4. PASS: `git push origin HEAD:main` (`ecf6939`)
-  5. PASS: GitHub Actions `Verify Pages Runtime Assets` run `28069650934`
-  6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ ecf6939`
-  7. PASS: `curl.exe -I https://aretenald2018-sys.github.io/dashboard3/` -> `HTTP/1.1 200 OK`
-  8. not verified yet: 인증된 계정의 과거 운동 데이터가 필요해 배포 URL에서 실제 과거 상세 UI flow는 직접 클릭 검증하지 못했다.
+  1. PASS: `node --check workout/exercises.js`
+  2. PASS: `node --check render-calendar.js`
+  3. PASS: `node --check sw.js`
+  4. PASS: `node scripts/verify-runtime-assets.mjs`
+  5. PASS: `git diff --check`
+  6. PASS: `git push origin HEAD:main` (`08d5f32`)
+  7. PASS: GitHub Actions `Verify Pages Runtime Assets` run `28070130104`
+  8. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 08d5f32`
+  9. PASS: `curl.exe -I https://aretenald2018-sys.github.io/dashboard3/` -> `HTTP/1.1 200 OK`
+  10. not verified yet: 인증된 계정의 당일 Max 카드/과거 운동 상세 데이터가 필요해 실제 UI flow는 직접 클릭 검증하지 못했다.
 
 ## 이전 흐름 요약
 

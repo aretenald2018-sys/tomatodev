@@ -347,3 +347,81 @@ UI 검증:
 - 배포 확인: `[deploy-verify] ok ecf69398506f tomatofarm-v20260624z9-workout-history-checked-sets static=202`
 - PASS: `curl.exe -I https://aretenald2018-sys.github.io/dashboard3/` -> `HTTP/1.1 200 OK`
 - not verified yet: 인증된 계정의 과거 운동 데이터가 필요해 배포 URL에서 실제 과거 상세 UI flow는 직접 클릭 검증하지 못했다.
+
+## 후속 Slice 6
+
+사용자 피드백:
+
+- 당일 운동 추가 화면의 Max 카드도 과거 상세에서 요청한 것처럼 `오늘 성공 기준` 행을 반반으로 쪼개 오른쪽에 그래프를 표출한다.
+- 볼륨모드/강도모드 그래프를 같이 띄우는 방식이 맞다.
+- 과거 상세 그래프는 현재 단일 트랙만 렌더되어 라이브 카드와 맞지 않는다.
+
+그릴 결과:
+
+- 적용 트리거: `/grill-me`
+- 핵심 질문: 라이브 카드의 별도 그래프 행을 유지할지, 성공 기준 row 오른쪽으로 옮길지 결정해야 한다.
+- 추천 답변: 사용자 요청대로 라이브 카드도 성공 기준 row를 좌우 2분할하고, 오른쪽에 볼륨/강도 두 줄 그래프를 넣는다.
+- 확정된 결정: 라이브와 과거 상세 모두 같은 원칙을 쓴다. 왼쪽은 오늘 성공 기준, 오른쪽은 볼륨/강도 track graph다.
+- 남은 가정: 과거 상세에서는 편집 가능한 `현재 트랙` pace 카드보다 정보성 볼륨/강도 그래프가 우선이다.
+
+수정 범위:
+
+1. `workout/exercises.js`
+   - `_buildMaxExerciseCardHeader()`에서 `sparkline`을 `.ex-max-v2-plan` 오른쪽 칸으로 이동한다.
+   - 기존 별도 `.ex-max-v2-trend` 행 렌더는 제거한다.
+   - 오른쪽 칸에 `현재 트랙` 표시는 유지하지 않고, 그래프의 active row로 현재 트랙을 표시한다.
+2. `render-calendar.js`
+   - 과거 상세 그래프를 단일 `_buildWorkoutTrackTrend()`/`_renderWorkoutSparkline()` 구조에서 볼륨/강도 두 줄 track graph 구조로 바꾼다.
+   - 과거 날짜 기준 이전/해당 날짜 track history만 사용한다.
+3. `style.css`
+   - `.ex-max-v2-plan`을 성공 기준/그래프 2분할로 조정한다.
+   - live 그래프가 오른쪽 반칸 안에서 두 줄로 들어가도록 `.ex-max-track-graph` compact 스타일을 보정한다.
+   - 과거 상세 `.wt-max-trend`도 같은 두 줄 graph 스타일로 맞춘다.
+4. `sw.js`
+   - `workout/exercises.js`, `render-calendar.js`, `style.css`가 `STATIC_ASSETS`에 포함되어 있으므로 `CACHE_VERSION`을 bump한다.
+
+수정하지 않을 것:
+
+- 트랙 전환 로직, maxPrescription 저장 구조, 세트 입력 UI는 바꾸지 않는다.
+- 과거 기록 데이터 마이그레이션은 하지 않는다.
+
+검증:
+
+- `node --check workout/exercises.js`
+- `node --check render-calendar.js`
+- `node --check sw.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- `git push origin HEAD:main`
+- `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+- Dashboard3 배포 URL에서 운동 탭 당일 운동 추가 카드와 과거 운동 상세 카드가 모두 성공 기준/그래프 반반 구조이며, 그래프가 볼륨/강도 두 줄로 보이는지 확인한다.
+
+## 후속 Slice 6 실행 결과
+
+- `workout/exercises.js`:
+  - 당일 Max 카드의 `.ex-max-v2-plan`을 좌측 성공 기준/우측 그래프 구조로 바꿨다.
+  - 기존 별도 그래프 행 렌더를 제거하고, 그래프가 있으면 오른쪽 칸에 바로 렌더한다.
+  - 기록이 없는 Max 카드도 `현재 트랙` 단일 카드로 빠지지 않고 볼륨/강도 두 줄 그래프 skeleton을 유지한다.
+- `render-calendar.js`:
+  - 과거 운동 상세 그래프를 단일 현재 트랙 그래프에서 볼륨/강도 두 줄 track graph로 변경했다.
+  - 과거 상세의 강도 fallback 값과 sparkline은 단순 kg가 아니라 `estimateSet1RM()` 기반으로 계산한다.
+  - 현재 active track은 두 줄 그래프의 active row로 표시한다.
+- `style.css`:
+  - live Max 카드와 과거 상세 카드의 우측 그래프를 같은 compact track graph 스타일로 맞췄다.
+  - 과거 상세의 기존 단일 그래프 label/stat 스타일을 제거했다.
+- `sw.js`:
+  - `CACHE_VERSION`을 `tomatofarm-v20260624z10-workout-dual-track-graphs`로 bump했다.
+
+## 후속 Slice 6 실행 검증
+
+- PASS: `node --check workout/exercises.js`
+- PASS: `node --check render-calendar.js`
+- PASS: `node --check sw.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- PASS: `git push origin HEAD:main` (`08d5f32`)
+- PASS: GitHub Actions `Verify Pages Runtime Assets` run `28070130104`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 08d5f32`
+- 배포 확인: `[deploy-verify] ok 08d5f321f6ff tomatofarm-v20260624z10-workout-dual-track-graphs static=202`
+- PASS: `curl.exe -I https://aretenald2018-sys.github.io/dashboard3/` -> `HTTP/1.1 200 OK`
+- not verified yet: 인증된 계정의 당일 Max 카드/과거 운동 상세 데이터가 필요해 배포 URL에서 실제 UI flow는 직접 클릭 검증하지 못했다.
