@@ -304,3 +304,9 @@
 - PASS: `node --check sw.js`
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
+- 배포 검증:
+  - PASS: 커밋 `c682986`을 `origin/main`에 push했다.
+  - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ c682986`
+  - PASS: Dashboard3 Pages가 `tomatofarm-v20260624z17-workout-card-header` 캐시 버전을 서빙하는 것을 확인했다.
+  - PASS: 배포 URL의 `style.css`에 `flex-wrap: wrap`, `flex: 1 1 100%` 카드 헤더 회귀 수정 CSS가 포함된 것을 확인했다.
+  - not verified yet: 배포 URL은 로그인 화면에 막혀 `운동 탭 -> + -> 운동 선택 -> 카드 헤더` UI 클릭 흐름을 인증 계정으로 끝까지 확인하지 못했다.
