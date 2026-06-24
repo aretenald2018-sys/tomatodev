@@ -205,3 +205,88 @@ UI 검증:
 - PASS: GitHub Actions `Verify Pages Runtime Assets` run `28068594416`
 - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 0f8d2c5`
 - 배포 확인: `[deploy-verify] ok 0f8d2c5ab3fb tomatofarm-v20260624z7-workout-history-actions-toolbar static=202`
+
+## 후속 Slice 4
+
+사용자 피드백:
+
+- 스크린샷에서 파란 X로 표시한 상단 우측 `오늘/루틴/내보내기/삭제/수정` toolbar 표출을 없앤다.
+- 기존에 `운동시간`, `세트`, `볼륨` 3개 카드로 표출되던 정보를 그 자리의 단일 정보 카드로 합쳐 단순 표출한다.
+- 운동 카드의 별도 그래프 행을 없애고, `오늘 성공 기준` 행을 2분할해 오른쪽에 그래프를 넣는다.
+
+그릴 결과:
+
+- 적용 트리거: `/grill-me`
+- 핵심 질문: 상단 우측 toolbar를 제거하면 기존 작업 버튼을 어디에 남길지 결정해야 하는가?
+- 추천 답변: 사용자가 표시 제거를 명확히 지시했고, 하단 회차 bar의 편집 버튼과 카드 내부 흐름이 이미 있으므로 이번 slice에서는 상단 toolbar 표출을 제거한다.
+- 사용자 답변: 스크린샷 주석과 요청 문구 기준으로 상단 toolbar 제거, 요약 정보 카드 대체, 그래프 우측 배치를 확정한다.
+- 확정된 결정: 새 액션 메뉴를 만들지 않고, 표시 밀도를 낮추는 레이아웃 변경만 수행한다.
+- 남은 가정: `오늘/루틴/내보내기/삭제/수정`의 상단 즉시 노출은 이번 화면에서 필수 기능이 아니다.
+
+수정 범위:
+
+1. `render-calendar.js`
+   - `_renderWorkoutHomeDetail()`의 `.wt-day-actions` header toolbar 렌더를 제거한다.
+   - `wx` 요약 값을 받아 헤더 우측에 단일 `.wt-day-summary-card`를 렌더한다.
+   - `_renderWorkoutDetailRecorded()`의 별도 `.wt-day-metrics` 3-card row를 제거해 중복 표출을 막는다.
+   - `_renderWorkoutExerciseDetailCard()`에서 `.wt-max-trend`를 `.wt-max-plan` 오른쪽 칸으로 이동한다.
+   - 기존 `.wt-max-track` 단독 카드는 제거하고, 트랙 정보는 성공 기준의 보조 문구 또는 그래프 라벨 안에 남긴다.
+2. `style.css`
+   - `.wt-day-head`를 뒤로가기/날짜/요약 정보 카드 3열로 재정의한다.
+   - `.wt-day-summary-card`와 내부 `운동시간/세트/볼륨` compact label/value 스타일을 추가한다.
+   - `.wt-day-metrics`, `.wt-day-actions` 의존 모바일 스타일을 정리한다.
+   - `.wt-max-plan`을 좌측 성공 기준, 우측 그래프의 2분할 row로 조정한다.
+   - 우측 그래프가 360px대 모바일에서도 텍스트/선이 겹치지 않도록 column width, padding, font-size를 보정한다.
+3. `sw.js`
+   - `render-calendar.js`와 `style.css`가 `STATIC_ASSETS`에 포함되어 있으므로 `CACHE_VERSION`을 bump한다.
+
+수정하지 않을 것:
+
+- 운동 데이터 모델, 세트 저장 로직, 루틴/내보내기/삭제 함수 구현은 바꾸지 않는다.
+- `www/` 산출물은 직접 수정하지 않는다.
+- Max V4 plan sheet나 live 운동 입력 카드 구조는 건드리지 않는다.
+
+검증:
+
+- `node --check render-calendar.js`
+- `node --check sw.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- `git push origin HEAD:main`
+- `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+- Dashboard3 배포 URL에서 운동 탭의 과거 기록 날짜 상세를 열어, 상단 toolbar가 사라지고 요약 카드가 표시되며 운동 카드 그래프가 `오늘 성공 기준` 오른쪽 칸에 들어간 것을 확인한다.
+
+다음 세션 시작 프롬프트:
+
+`docs/ai/features/2026-06-24-workout-history-detail-ui-regression.md`의 Slice 4를 실행해줘. 과거 운동 상세 상단 toolbar 표출을 제거하고, 운동시간/세트/볼륨을 헤더 우측 단일 정보 카드로 합치며, 운동 카드 그래프를 오늘 성공 기준 row의 오른쪽 칸으로 옮겨. `render-calendar.js`, `style.css`, `sw.js`만 범위로 하고 정적 검증과 Dashboard3 배포 검증까지 진행해줘.
+
+## 후속 Slice 4 실행 결과
+
+- `render-calendar.js`:
+  - 과거 운동 상세 헤더의 `.wt-day-actions` toolbar 렌더를 제거했다.
+  - `운동시간`/`세트`/`볼륨`을 `.wt-day-summary-card` 단일 정보 카드로 합쳐 헤더 우측에 렌더한다.
+  - 별도 `.wt-day-metrics` 3-card row를 제거해 중복 표출을 없앴다.
+  - 운동 카드 그래프를 `.wt-max-plan` 오른쪽 칸으로 이동하고, 기존 `.wt-max-track` 단독 카드는 제거했다.
+- `style.css`:
+  - `.wt-day-summary-card` 스타일과 모바일 폭 overflow 보정을 추가했다.
+  - `.wt-max-plan`을 좌측 성공 기준/우측 그래프 2분할 구조로 조정했다.
+  - `.wt-max-plan-goal` selector로 범위를 좁혀 그래프 stat에 font/line-height가 누수되지 않게 했다.
+  - 우측 그래프는 내부 카드처럼 보이지 않도록 별도 border box 대신 구분선만 사용한다.
+- `sw.js`:
+  - `CACHE_VERSION`을 `tomatofarm-v20260624z8-workout-history-summary-card`로 bump했다.
+
+## 후속 Slice 4 실행 검증
+
+- PASS: `node --check render-calendar.js`
+- PASS: `node --check sw.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- TDS 읽기 전용 리뷰:
+  - selector 누수, 요약 카드 overflow, 카드 안 카드 인상은 수정 반영.
+  - 상단 toolbar 액션 제거는 사용자 요청 범위와 계획 결정에 맞춰 유지.
+- PASS: `git push origin HEAD:main` (`08b13ff`)
+- PASS: GitHub Actions `Verify Pages Runtime Assets` run `28069206877`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 08b13ff`
+- 배포 확인: `[deploy-verify] ok 08b13ff582c3 tomatofarm-v20260624z8-workout-history-summary-card static=202`
+- PASS: `curl.exe -I https://aretenald2018-sys.github.io/dashboard3/` -> `HTTP/1.1 200 OK`
+- not verified yet: 인증된 계정의 과거 운동 데이터가 필요해 배포 URL에서 실제 과거 상세 UI flow는 클릭 검증하지 못했다.

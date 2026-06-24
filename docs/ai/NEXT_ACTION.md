@@ -4,29 +4,33 @@
 
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-24-workout-history-detail-ui-regression.md` (운동 홈 과거 상세 UI 회귀)
-- 현재 단계: `execution/review complete — Slice 3 과거 상세 action toolbar 보정`
-- 마지막 완료: `style.css/sw.js를 수정해 상단 액션을 날짜 오른쪽 헤더 영역의 flat rectangular toolbar로 옮기고, pill/chip 버튼 형태를 제거했다.`
-- 다음 액션: `없음. 사용자는 Dashboard3 배포 URL에서 과거 운동 상세 화면을 확인하면 된다.`
+- 현재 단계: `execution/review complete — Slice 4 과거 상세 정보 카드/그래프 재배치`
+- 마지막 완료: `render-calendar.js/style.css/sw.js를 수정해 상단 toolbar를 제거하고, 요약 정보 카드와 성공 기준 우측 그래프 배치를 적용했다.`
+- 다음 액션: `사용자는 Dashboard3 배포 URL에서 운동 탭 > 과거 운동 날짜 상세 화면을 확인하면 된다.`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
 
 - 계획 파일: `docs/ai/features/2026-06-24-workout-history-detail-ui-regression.md`
-- 방금 완료한 Slice 3:
-  1. `style.css` `.wt-day-head`를 3열 grid로 변경
-  2. `style.css` `.wt-day-actions`를 날짜 오른쪽 우측 헤더 영역으로 이동
-  3. `style.css` action 버튼의 chip/pill 스타일 제거 및 toolbar cell 스타일 적용
-  4. `sw.js` `CACHE_VERSION` bump
-  5. `docs/ai/reviews/2026-06-24-workout-history-actions-toolbar-review.md` 작성
+- 완료한 Slice 4:
+  1. `render-calendar.js` `.wt-day-actions` header toolbar 렌더 제거
+  2. `render-calendar.js` 헤더 우측 단일 `.wt-day-summary-card` 추가
+  3. `render-calendar.js` 별도 `.wt-day-metrics` row 제거
+  4. `render-calendar.js` 운동 카드 그래프를 `.wt-max-plan` 오른쪽 칸으로 이동
+  5. `style.css` 헤더 요약 카드와 2분할 성공 기준/그래프 row 스타일 적용
+  6. `sw.js` `CACHE_VERSION` bump
+  7. `docs/ai/reviews/2026-06-24-workout-history-summary-card-review.md` 작성
 
 - 검증:
-  1. PASS: `node --check sw.js`
-  2. PASS: `node scripts/verify-runtime-assets.mjs`
-  3. PASS: `git diff --check`
-  4. PASS: `git push origin HEAD:main` (`0f8d2c5`)
-  5. PASS: GitHub Actions `Verify Pages Runtime Assets` run `28068594416`
-  6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 0f8d2c5`
-  7. 배포 확인: `[deploy-verify] ok 0f8d2c5ab3fb tomatofarm-v20260624z7-workout-history-actions-toolbar static=202`
+  1. PASS: `node --check render-calendar.js`
+  2. PASS: `node --check sw.js`
+  3. PASS: `node scripts/verify-runtime-assets.mjs`
+  4. PASS: `git diff --check`
+  5. PASS: `git push origin HEAD:main` (`08b13ff`)
+  6. PASS: GitHub Actions `Verify Pages Runtime Assets` run `28069206877`
+  7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 08b13ff`
+  8. PASS: `curl.exe -I https://aretenald2018-sys.github.io/dashboard3/` -> `HTTP/1.1 200 OK`
+  9. not verified yet: 인증된 계정의 과거 운동 데이터가 필요해 배포 URL에서 실제 과거 상세 UI flow는 클릭 검증하지 못했다.
 
 ## 이전 흐름 요약
 
