@@ -173,4 +173,8 @@
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
 - 리뷰: `docs/ai/reviews/2026-06-24-exercise-picker-assets-sharp-review.md`
-- not verified yet: Dashboard3 Pages 배포 및 배포 URL 자산 확인 필요.
+- 배포 검증:
+  - PASS: 커밋 `562a572`를 `origin/main`에 push했다.
+  - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 562a572`
+  - PASS: 배포 URL의 `assets/workout/muscles/*.png` 8개가 모두 `384x288` RGBA 파일로 내려오는 것을 확인했다.
+  - not verified yet: 로그인 화면에 막혀 운동 picker 분류 화면의 시각 상태는 인증 계정으로 확인 필요.
