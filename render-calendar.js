@@ -52,7 +52,9 @@ const WORKOUT_HOME_SHEET_STATES = ['bar', 'full'];
 const WORKOUT_HOME_SHEET_CLASS_STATES = ['bar', 'mid', 'full'];
 const WORKOUT_HOME_SHEET_POST_DRAG_CLICK_SUPPRESS_MS = 900;
 const WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX = 10;
-const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX = 96;
+const WORKOUT_HOME_SHEET_DRAG_OPEN_RATIO = 0.1;
+const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX = 220;
+const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_RATIO = 0.35;
 const WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY = 0.55;
 
 const MAX_WEAK_LABEL = {
@@ -1766,10 +1768,17 @@ function _stepWorkoutHomeSheet(direction) {
   _setWorkoutHomeSheetState(direction > 0 ? 'full' : 'bar');
 }
 
-function _resolveWorkoutHomeSheetDragTarget(dy, velocityY) {
+function _resolveWorkoutHomeSheetDragTarget(
+  dy,
+  velocityY,
+  openThresholdPx = WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX,
+  collapseThresholdPx = WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX
+) {
   const current = _currentWorkoutHomeSheetState();
-  const isUp = dy < -WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX || velocityY < -WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY;
-  const isIntentionalDown = dy > WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX || velocityY > WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY;
+  const openDistance = Math.max(WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX, Number(openThresholdPx) || 0);
+  const collapseDistance = Math.max(WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX, Number(collapseThresholdPx) || 0);
+  const isUp = dy <= -openDistance || velocityY < -WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY;
+  const isIntentionalDown = dy >= collapseDistance;
   if (current === 'bar') return isUp ? 'full' : 'bar';
   if (isIntentionalDown) return 'bar';
   return 'full';
@@ -1830,10 +1839,15 @@ function _startWorkoutHomeSheetDrag(event) {
   let lastMoveY = startY;
   let lastMoveAt = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
   let velocityY = 0;
+  let hasMoved = false;
   const startHeight = sheet.getBoundingClientRect?.().height || 0;
   const barHeight = sheet.querySelector?.('.cal-workout-day-bar')?.getBoundingClientRect?.().height || 132;
   const minHeight = Math.max(64, Math.min(startHeight, barHeight || startHeight));
   const maxHeight = Math.max(startHeight, (window.innerHeight || startHeight) - 64);
+  const startState = _currentWorkoutHomeSheetState();
+  const dragTravel = Math.max(0, maxHeight - minHeight);
+  const openThresholdPx = Math.max(WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX, dragTravel * WORKOUT_HOME_SHEET_DRAG_OPEN_RATIO);
+  const collapseThresholdPx = Math.max(WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX, dragTravel * WORKOUT_HOME_SHEET_DRAG_COLLAPSE_RATIO);
   const minDragY = startHeight - maxHeight;
   const maxDragY = startHeight - minHeight;
   sheet.classList.add('is-dragging');
@@ -1843,13 +1857,15 @@ function _startWorkoutHomeSheetDrag(event) {
 
   const onMove = (moveEvent) => {
     lastY = moveEvent.clientY || startY;
+    hasMoved = true;
     const now = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
     const elapsed = Math.max(1, now - lastMoveAt);
     velocityY = (lastY - lastMoveY) / elapsed;
     lastMoveY = lastY;
     lastMoveAt = now;
     const dy = Math.max(minDragY, Math.min(maxDragY, lastY - startY));
-    const nextHeight = Math.max(minHeight, Math.min(maxHeight, startHeight - dy));
+    const shouldPreviewFull = startState === 'bar' && dy <= -openThresholdPx;
+    const nextHeight = shouldPreviewFull ? maxHeight : Math.max(minHeight, Math.min(maxHeight, startHeight - dy));
     sheet.style.setProperty('--wt-day-sheet-drag-height', `${nextHeight}px`);
   };
   const onUp = (upEvent) => {
@@ -1863,9 +1879,12 @@ function _startWorkoutHomeSheetDrag(event) {
     window.removeEventListener('pointercancel', onUp);
 
     const dy = lastY - startY;
-    if (Math.abs(dy) < WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX && Math.abs(velocityY) < WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY) return;
+    if (Math.abs(dy) < WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX && Math.abs(velocityY) < WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY) {
+      if (hasMoved) _suppressWorkoutHomeSheetClick();
+      return;
+    }
     _suppressWorkoutHomeSheetClick();
-    _setWorkoutHomeSheetState(_resolveWorkoutHomeSheetDragTarget(dy, velocityY));
+    _setWorkoutHomeSheetState(_resolveWorkoutHomeSheetDragTarget(dy, velocityY, openThresholdPx, collapseThresholdPx));
   };
 
   window.addEventListener('pointermove', onMove, { passive: true });

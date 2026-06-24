@@ -274,3 +274,45 @@
 - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ b872a13e4f24c3460df45e1ef01e553728602709`
   - 결과: `[deploy-verify] ok b872a13e4f24 tomatofarm-v20260624z39-workout-day-sheet-snap-ux static=210`
 - not verified yet: 배포 URL은 로그인 화면에서 막혀 인증 계정 실제 `운동 탭 -> 날짜 sheet drag` UI flow 확인은 남아 있다.
+
+## 후속 Slice 6 — Open full after 10 percent upward drag
+
+### 배경
+
+사용자가 sheet를 누른 채 10%만 올려도 끝까지 펼쳐지게 하길 원한다. 이전 Slice 5는 작은 위 방향 제스처를 쉽게 열도록 했지만, 기준이 `10px` deadzone이라 사용자가 말한 10% 기준과 다르다.
+
+### 포함
+
+- `bar` 상태에서 drag 가능한 전체 확장 거리의 10%를 계산한다.
+- 위로 끌다가 10% 지점을 넘으면 drag preview도 즉시 full 높이로 보여준다.
+- release snap도 동일한 10% 기준으로 `full`을 선택한다.
+- 작은 pointer move 뒤 release가 snap 기준 미만이어도 뒤따르는 click이 header toggle로 오인되지 않게 막는다.
+- 회귀 테스트를 갱신하고 `sw.js` cache version을 bump한다.
+
+### 검증 계획
+
+- `node --check render-calendar.js; node --check sw.js`
+- `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
+- `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+
+### 실행 결과
+
+- `WORKOUT_HOME_SHEET_DRAG_OPEN_RATIO = 0.1`을 추가해 `bar`에서 full까지 남은 확장 거리의 10%를 open threshold로 계산한다.
+- `openThresholdPx = max(10px, dragTravel * 0.1)`로 극단적으로 작은 화면에서도 최소 조작 거리를 유지한다.
+- 드래그 중 위로 10% 지점을 넘으면 `shouldPreviewFull`이 `maxHeight`를 적용해 손을 떼기 전에도 full 높이 preview가 보이게 했다.
+- release snap도 같은 `openThresholdPx`를 `_resolveWorkoutHomeSheetDragTarget()`에 넘겨 10% 이상 위로 올리면 `full`로 정착한다.
+- 열린 뒤 자동으로 접히는 문제를 줄이기 위해 닫힘은 아래 방향 속도가 아니라 `collapseThresholdPx = max(220px, dragTravel * 0.35)` 거리 기준으로만 처리한다.
+- `hasMoved`를 추적해 snap 기준 미만의 작은 drag도 후속 click을 suppress하므로, drag가 토글 click으로 오인되어 열린 sheet를 다시 닫는 경로를 막았다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260624z40-workout-day-sheet-open-10pct`로 bump했다.
+
+### 실행 검증
+
+- PASS: `node --check render-calendar.js; node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
+- PASS: `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 `운동 탭 -> 날짜 sheet drag` UI flow 확인이 남아 있다.

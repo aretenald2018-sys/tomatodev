@@ -4,8 +4,8 @@
 
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-24-workout-calendar-bottom-sheet.md`
-- 현재 단계: `reviewed — Slice 5 bottom sheet snap UX polish`
-- 마지막 완료: `하단 sheet 드래그 snap을 거리/속도 기반으로 정리하고 grip affordance와 열린 상태 탭 flicker 개선을 리뷰까지 완료했다.`
+- 현재 단계: `reviewed — Slice 6 open full after 10 percent upward drag`
+- 마지막 완료: `bar 상태에서 전체 확장 거리의 10%만 위로 끌어도 preview와 release snap이 full로 열리고, 작은 drag 뒤 click이 sheet를 다시 닫지 않게 구현하고 리뷰까지 완료했다.`
 - 다음 액션: `Dashboard3 Pages 배포 검증과 인증 계정 실제 drag UI flow 확인을 진행한다.`
 - 차단 사유: `없음`
 
@@ -110,6 +110,26 @@
 
 - Slice 5 리뷰:
   - `docs/ai/reviews/2026-06-24-workout-calendar-bottom-sheet-snap-ux-review.md`
+
+- 다음 Slice 6:
+  1. `bar` 상태에서 drag 가능한 전체 확장 거리의 10% threshold 계산
+  2. 위로 10%를 넘으면 drag preview를 즉시 full 높이로 표시
+  3. release snap도 동일한 10% 기준으로 full 선택
+  4. 아래 방향 속도만으로 닫히지 않도록 collapse는 `max(220px, dragTravel * 0.35)` 거리 기준으로 제한
+  5. 작은 pointer move 뒤 release가 snap 기준 미만이어도 후속 click이 header toggle로 오인되지 않게 suppress
+  6. 회귀 테스트와 `sw.js` `CACHE_VERSION` 갱신
+
+- Slice 6 검증:
+  1. PASS: `node --check render-calendar.js; node --check sw.js`
+  2. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
+  3. PASS: `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
+  4. PASS: `node scripts/verify-runtime-assets.mjs`
+  5. PASS: `git diff --check`
+  6. PASS: `docs/ai/reviews/2026-06-24-workout-calendar-bottom-sheet-open-10pct-review.md`
+  7. not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 drag UI flow 확인 필요
+
+- Slice 6 리뷰:
+  - `docs/ai/reviews/2026-06-24-workout-calendar-bottom-sheet-open-10pct-review.md`
 
 - 이전 계획 파일: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md`
 - 완료한 Slice 4:
