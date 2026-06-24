@@ -6,7 +6,7 @@
 - 계획 문서: `docs/ai/features/2026-06-24-workout-calendar-bottom-sheet.md`
 - 현재 단계: `reviewed — Slice 6 open full after 10 percent upward drag`
 - 마지막 완료: `bar 상태에서 전체 확장 거리의 10%만 위로 끌어도 preview와 release snap이 full로 열리고, 작은 drag 뒤 click이 sheet를 다시 닫지 않게 구현하고 리뷰까지 완료했다.`
-- 다음 액션: `Dashboard3 Pages 배포 검증과 인증 계정 실제 drag UI flow 확인을 진행한다.`
+- 다음 액션: `인증 계정으로 실제 drag UI flow를 확인한다.`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
@@ -126,7 +126,9 @@
   4. PASS: `node scripts/verify-runtime-assets.mjs`
   5. PASS: `git diff --check`
   6. PASS: `docs/ai/reviews/2026-06-24-workout-calendar-bottom-sheet-open-10pct-review.md`
-  7. not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 drag UI flow 확인 필요
+  7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ d6606731f076a0ba8540c6b2b82d6f570e2417f0`
+  8. PASS: 배포 URL의 `build-info.json`, `sw.js`, `render-calendar.js`가 `d6606731f076`, z40 cache, 10% open ratio, `hasMoved` click suppression, velocity-close 제거를 반환
+  9. not verified yet: 로그인 화면에 막혀 인증 계정 실제 drag UI flow 확인 필요
 
 - Slice 6 리뷰:
   - `docs/ai/reviews/2026-06-24-workout-calendar-bottom-sheet-open-10pct-review.md`
