@@ -9079,9 +9079,10 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 }
 .wt-day-head {
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr);
+  grid-template-columns: 36px minmax(0, 1fr) minmax(154px, 184px);
   align-items: start;
-  gap: 10px;
+  column-gap: 8px;
+  row-gap: 8px;
 }
 .wt-day-back {
   width: 32px;
@@ -9093,6 +9094,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   line-height: 1;
 }
 .wt-day-titlebox {
+  grid-column: 2 / 3;
   min-width: 0;
 }
 .wt-day-date {
@@ -9115,32 +9117,51 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   line-height: 22px;
 }
 .wt-day-actions {
-  grid-column: 2 / -1;
+  grid-column: 3 / 4;
+  grid-row: 1 / 2;
   justify-self: end;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: center;
-  gap: 5px;
-  width: min(100%, 420px);
-  margin-top: 8px;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid #d8dce6;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.66);
+  box-shadow: none;
 }
 .wt-day-actions button {
   min-width: 0;
-  height: 34px;
-  padding: 0 3px;
-  border: 1px solid #e0e2ea;
-  border-radius: 17px;
-  background: #ffffff;
-  color: #43536d;
-  font-size: 12px;
-  line-height: 16px;
+  height: 28px;
+  padding: 0 2px;
+  border: 0;
+  border-right: 1px solid #e2e5ed;
+  border-bottom: 1px solid #e2e5ed;
+  border-radius: 0;
+  background: transparent;
+  color: #334155;
+  font-size: 11px;
+  line-height: 14px;
   font-weight: 700;
-  box-shadow: 0 2px 6px rgba(30, 35, 48, 0.12);
+  box-shadow: none;
   white-space: nowrap;
+}
+.wt-day-actions button:nth-child(3n) {
+  border-right: 0;
+}
+.wt-day-actions button:last-child {
+  border-right: 0;
+}
+.wt-day-actions button:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+.wt-day-actions button:nth-child(1):nth-last-child(3),
+.wt-day-actions button:nth-child(1):nth-last-child(3) ~ button {
+  border-bottom: 0;
 }
 .wt-day-actions button.is-muted {
   color: #8b93a3;
-  background: #f0f2f6;
+  background: transparent;
   box-shadow: none;
 }
 .wt-day-session-label {
@@ -9890,29 +9911,31 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
     padding: 10px 14px 148px;
   }
   .wt-day-head {
-    grid-template-columns: 30px minmax(0, 1fr);
+    grid-template-columns: 30px minmax(0, 1fr) minmax(132px, 150px);
+    column-gap: 7px;
+    row-gap: 6px;
   }
   .wt-day-actions {
-    grid-column: 2 / -1;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    justify-self: stretch;
-    gap: 4px;
+    grid-column: 3 / 4;
+    grid-row: 1 / 2;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    justify-self: end;
     width: 100%;
-    margin-top: 6px;
   }
   .wt-day-actions button {
-    height: 32px;
+    height: 27px;
     padding: 0 1px;
-    border-radius: 16px;
-    font-size: 11px;
+    border-radius: 0;
+    font-size: 10px;
+    line-height: 13px;
   }
   .wt-day-date {
-    font-size: 20px;
-    line-height: 26px;
+    font-size: 19px;
+    line-height: 25px;
   }
   .wt-day-record,
   .wt-day-date span {
-    font-size: 14px;
+    font-size: 13px;
   }
   .wt-day-title-row h2 {
     font-size: 28px;

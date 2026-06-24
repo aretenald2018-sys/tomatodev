@@ -161,3 +161,44 @@ UI 검증:
 - PASS: GitHub Actions `Verify Pages Runtime Assets` run `28068294368`
 - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 16284fc`
 - 배포 확인: `[deploy-verify] ok 16284fcbc989 tomatofarm-v20260624z6-workout-history-detail-graph static=202`
+
+## 후속 Slice 3
+
+사용자 피드백:
+
+- 상단 `오늘`, `루틴`, `내보내기`, `삭제`, `수정` 액션이 여전히 둥근 칩처럼 보인다.
+- 이 액션들을 날짜 오른쪽 빈 헤더 영역에 몰아 넣고, 칩 형태가 아닌 직사각형/flat toolbar 형태로 바꾼다.
+
+수정 범위:
+
+1. `style.css`
+   - `.wt-day-head`를 뒤로가기, 날짜 영역, 우측 액션 영역 3열로 조정한다.
+   - `.wt-day-actions`를 우측 액션 열에 배치하고 2-row compact toolbar로 렌더한다.
+   - 개별 버튼은 pill/chip 배경, 그림자, 둥근 border를 제거하고 toolbar cell처럼 보이게 한다.
+2. `sw.js`
+   - `style.css`가 `STATIC_ASSETS`에 포함되어 있으므로 `CACHE_VERSION`을 bump한다.
+
+검증:
+
+- `node --check sw.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- `git push origin HEAD:main`
+- `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+
+## 후속 Slice 3 실행 결과
+
+- `style.css`:
+  - `.wt-day-head`를 뒤로가기/날짜/우측 액션 3열 grid로 바꿨다.
+  - `.wt-day-actions`를 날짜 오른쪽 우측 열에 고정했다.
+  - 액션은 3열 compact toolbar cell로 렌더하고, 개별 버튼의 pill border-radius, chip background, shadow를 제거했다.
+  - 기록 있음 5개 버튼과 기록 없음 3개 버튼 모두 하단 border가 어색하게 남지 않도록 보정했다.
+- `sw.js`:
+  - `CACHE_VERSION`을 `tomatofarm-v20260624z7-workout-history-actions-toolbar`로 bump했다.
+
+## 후속 Slice 3 실행 검증
+
+- PASS: `node --check sw.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- pending: Dashboard3 배포 검증
