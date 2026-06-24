@@ -120,4 +120,8 @@
   - not verified yet: Dashboard3 Pages 배포 및 인증 계정 UI 클릭 검증 필요.
 - Slice 2 리뷰:
   - PASS: `docs/ai/reviews/2026-06-24-exercise-picker-category-entry-slice2-review.md`
-- 다음 단계: 변경 파일을 커밋해 `origin/main`에 push하고 Dashboard3 Pages 배포 검증을 실행한다.
+- 배포 검증:
+  - PASS: 커밋 `bb8ae05`를 `origin/main`에 push했다.
+  - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ bb8ae05`
+  - not verified yet: 배포 URL은 로그인 화면에 막혀 운동 탭 → 우하단 `+` → picker 분류 화면 UI 클릭 흐름을 인증 계정으로 끝까지 확인하지 못했다.
+- 다음 단계: 인증 계정으로 Dashboard3 Pages에 로그인한 뒤 운동 탭 → 오늘 운동 상세 → 우하단 `+` → picker 분류 화면 → `가슴` 선택 → 운동 목록 표시 → 운동 추가를 확인한다.
