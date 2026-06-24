@@ -320,3 +320,9 @@
 - PASS: `node --check workout/exercises.js; node --check sw.js; node --test tests/workout-card-layout-css.test.js`
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
+- 배포 검증:
+  - PASS: 커밋 `f44e832`을 `origin/main`에 push했다.
+  - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ f44e832`
+  - PASS: 배포 URL의 `workout/exercises.js`에 `ex-block-trend` DOM 분리가 포함된 것을 확인했다.
+  - PASS: 배포 URL의 `style.css`에 `#tab-workout .ex-block-trend` 스타일이 포함된 것을 확인했다.
+  - PASS: Dashboard3 Pages가 `tomatofarm-v20260624z18-workout-card-trend-row` 캐시 버전을 서빙하는 것을 확인했다.
