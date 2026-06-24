@@ -4,7 +4,6 @@
 
 import { S }                           from './state.js';
 import { saveWorkoutDay }              from './save.js';
-import { _buildSparkline }            from './render.js';
 import { wtStartWorkoutTimer,
          wtRestTimerStart }            from './timers.js';
 import { showToast }                   from '../home/utils.js';
@@ -27,10 +26,38 @@ import { getWorkoutSessions } from './sessions.js';
 // expert.js는 exercises.js를 static import 하지 않으므로 순환 참조 없음.
 import { resolveCurrentGymId, isExpertViewShown } from './expert.js';
 
+const DASHBOARD3_TEST_MODE_UI = true;
+
+function _isDashboardTestModeSurface() {
+  return DASHBOARD3_TEST_MODE_UI;
+}
+
+function _isMaxEntryData(entry) {
+  return !!entry && (
+    entry.recommendationMeta?.mode === 'max' ||
+    !!entry.maxPrescription ||
+    !!entry.maxWeakPart
+  );
+}
+
+function _hasMaxWorkoutSessionState() {
+  return S?.workout?.maxMeta?.mode === 'max' ||
+    (Array.isArray(S?.workout?.exercises) && S.workout.exercises.some(_isMaxEntryData));
+}
+
+function _isTestModeEntry(entry = null) {
+  return _isDashboardTestModeSurface() || _isMaxWorkoutMode() || _isMaxEntryData(entry) || _hasMaxWorkoutSessionState();
+}
+
+function _isTestModePickerContext() {
+  return _isDashboardTestModeSurface() || _isMaxWorkoutMode() || _hasMaxWorkoutSessionState();
+}
+
 // preset.enabled=true + 프로 모드 뷰 둘 다일 때만 'expert 세션'으로 간주.
 // '일반 모드 뷰' 중에는 picker가 전체 기구 풀을 쓰도록 분기 (현재 헬스장에 기구 0개여도
 // 디폴트 종목이 보이게 함).
 function _isExpertSessionActive() {
+  if (_isDashboardTestModeSurface()) return true;
   try {
     const mode = getExpertMode?.() || getExpertPreset()?.mode || 'normal';
     return !!isExpertModeEnabled() && (mode === 'pro' || mode === 'max' || !!isExpertViewShown());
@@ -52,7 +79,7 @@ function _isEmbeddedMaxEntry(entryIdx) {
 }
 
 function _isMaxEntryMode(entryIdx) {
-  return _isEmbeddedMaxEntry(entryIdx) || _isMaxWorkoutMode();
+  return _isEmbeddedMaxEntry(entryIdx) || _isTestModeEntry(S.workout.exercises?.[entryIdx]);
 }
 
 function _rerenderMaxEntryOwner(entryIdx) {
@@ -77,6 +104,7 @@ function _setWorkoutModalLock(on) {
 // flex 레이아웃이 깨지는 이슈가 있었음 (유저: '운동체크 시 RPE 버튼이 생기면서 디자인 망가짐').
 // 이제는 '프로모드 preset 활성 && 프로모드 뷰 표시' 동시 조건만 true.
 function _isExpertUiEnabled() {
+  if (_isDashboardTestModeSurface()) return false;
   try {
     return !!isExpertModeEnabled() && !!isExpertViewShown();
   } catch {
@@ -85,7 +113,7 @@ function _isExpertUiEnabled() {
 }
 
 function _ensureExpertManualSession() {
-  if (!isExpertModeEnabled()) return;
+  if (!_isExpertSessionActive()) return;
   S.workout.currentGymId = resolveCurrentGymId();
   if (!S.workout.routineMeta) {
     S.workout.routineMeta = {
@@ -97,7 +125,7 @@ function _ensureExpertManualSession() {
 }
 
 function _normalizeExpertSessionAfterExerciseChange() {
-  if (!isExpertModeEnabled()) return;
+  if (!_isExpertSessionActive()) return;
   if (S.workout.exercises.length === 0) {
     S.workout.routineMeta = null;
     return;
@@ -252,8 +280,8 @@ function _localMaxPrescription({ movement, exerciseId, sessionType, weakTarget }
 function _resolveMaxPrescription(entry, ex) {
   if (entry?.maxPrescription) return entry.maxPrescription;
   let preset;
-  try { preset = getExpertPreset(); } catch { return null; }
-  if (preset?.mode !== 'max') return null;
+  try { preset = getExpertPreset(); } catch { preset = null; }
+  if (preset?.mode !== 'max' && !_isTestModeEntry(entry)) return null;
   const movement = MOVEMENTS.find(m => m.id === (entry?.movementId || ex?.movementId));
   if (!movement) return null;
   const meta = S.workout.maxMeta || {};
@@ -945,9 +973,6 @@ export function _renderExerciseList() {
   }
   container.innerHTML = '';
   const allMuscles = getMuscleParts();
-  const isExpert = _isExpertUiEnabled();
-  const isMaxMode = _isMaxWorkoutMode();
-  const isProExpertMode = isExpert && !isMaxMode;
 
   // Finding 2: 오늘 세션 제외 → 자기참조 방지. 최근 기록(today 제외).
   const todayKey = _todayDateKey();
@@ -955,66 +980,24 @@ export function _renderExerciseList() {
   S.workout.exercises.forEach((entry, idx) => {
     const ex   = getExList().find(e => e.id === entry.exerciseId);
     const mc   = allMuscles.find(m => m.id === entry.muscleId);
-    const last = getLastSession(entry.exerciseId, todayKey);
-    const lastHint = last
-      ? `<div class="ex-last-hint">
-           📌 직전(${last.date.slice(5).replace('-','/')})
-           ${last.sets.map(s=>`${s.kg}×${s.reps}`).join(' / ')}
-           <button class="ex-copy-btn" data-idx="${idx}">복사</button>
-         </div>`
-      : '';
-    const sparkline = isMaxMode
-      ? _buildMaxTrackSparkline(entry, ex)
-      : _buildSparkline(entry.exerciseId, mc?.color);
-    const maxTrackLast = isMaxMode
-      ? getLastTrackSession(getCache(), getExList(), entry.exerciseId, _activeMaxTrack(entry, ex), todayKey)
-      : null;
-    const maxLastSummary = isMaxMode
-      ? _buildMaxLastSessionSummary(maxTrackLast, { ...entry, _idx: idx }, ex)
-      : '';
-    const maxPrescriptionHtml = isMaxMode ? '' : _buildMaxPrescriptionBlock(entry, ex);
-    const maxAllDone = isMaxMode && (entry.sets || []).length > 0 && (entry.sets || []).every(s => s.done !== false);
+    const sparkline = _buildMaxTrackSparkline(entry, ex);
+    const maxTrackLast = getLastTrackSession(getCache(), getExList(), entry.exerciseId, _activeMaxTrack(entry, ex), todayKey);
+    const maxLastSummary = _buildMaxLastSessionSummary(maxTrackLast, { ...entry, _idx: idx }, ex);
+    const maxAllDone = (entry.sets || []).length > 0 && (entry.sets || []).every(s => s.done !== false);
     const maxCollapsed = !!entry.uiCollapsed && maxAllDone;
 
-    // Scene 12 — 프로 모드 전용 UI (e1RM 기반 실제 추천 무게 로직)
-    // chips/footer는 prior 우선, 없으면 오늘 entry의 완료 본세트로 폴백.
-    let expertHtml = '';
-    let poPillHtml = '';
-    if (isProExpertMode) {
-      const lastForRec = _resolveLastForRec(idx, entry.exerciseId);
-      const presetRpe = _presetTargetRpe();
-      expertHtml = _buildExpertSceneBlock({ entryIdx: idx, exerciseId: entry.exerciseId, last: lastForRec, targetRpe: presetRpe });
-      poPillHtml = _buildPoPillHtml({ exerciseId: entry.exerciseId, last: lastForRec, targetRpe: presetRpe });
-    }
-
     const block = document.createElement('div');
-    block.className = 'ex-block' + (isExpert ? ' ex-block--expert' : '') + (isMaxMode ? ' ex-block--max-v2' : '') + (maxAllDone ? ' is-complete' : '') + (maxCollapsed ? ' is-collapsed' : '');
-    if (isMaxMode) {
-      block.innerHTML = `
-        ${_buildMaxExerciseCardHeader(entry, ex, mc, idx, sparkline)}
-        ${maxLastSummary}
-        <div class="ex-sets ex-max-v2-sets" id="wt-sets-${idx}"></div>
-        <div class="ex-max-v2-actions">
-          <button class="ex-max-v2-primary${maxAllDone ? ' is-done' : ''}" data-idx="${idx}">${maxAllDone ? '운동 완료' : '다음 세트 완료'}</button>
-          ${maxCollapsed
-            ? `<button class="ex-max-v2-secondary ex-max-v2-expand-card" data-idx="${idx}">세트 다시 보기</button>`
-            : `<button class="ex-add-set-btn ex-max-v2-secondary" data-idx="${idx}">세트 추가</button>`}
-        </div>`;
-    } else {
-      block.innerHTML = `
-        <div class="ex-block-header">
-          <span class="ex-block-muscle" style="color:${mc?.color||'#888'}">${mc?.name||''}</span>
-          <span class="ex-block-name">${ex?.name||entry.exerciseId}</span>
-          ${poPillHtml}
-          <button class="ex-remove-btn" data-idx="${idx}">✕</button>
-        </div>
-        ${sparkline ? `<div class="ex-block-trend">${sparkline}</div>` : ''}
-        ${lastHint}
-        ${maxPrescriptionHtml}
-        <div class="ex-sets" id="wt-sets-${idx}"></div>
-        <button class="ex-add-set-btn" data-idx="${idx}">+ 세트 추가</button>
-        ${expertHtml}`;
-    }
+    block.className = 'ex-block ex-block--max-v2' + (maxAllDone ? ' is-complete' : '') + (maxCollapsed ? ' is-collapsed' : '');
+    block.innerHTML = `
+      ${_buildMaxExerciseCardHeader(entry, ex, mc, idx, sparkline)}
+      ${maxLastSummary}
+      <div class="ex-sets ex-max-v2-sets" id="wt-sets-${idx}"></div>
+      <div class="ex-max-v2-actions">
+        <button class="ex-max-v2-primary${maxAllDone ? ' is-done' : ''}" data-idx="${idx}">${maxAllDone ? '운동 완료' : '다음 세트 완료'}</button>
+        ${maxCollapsed
+          ? `<button class="ex-max-v2-secondary ex-max-v2-expand-card" data-idx="${idx}">세트 다시 보기</button>`
+          : `<button class="ex-add-set-btn ex-max-v2-secondary" data-idx="${idx}">세트 추가</button>`}
+      </div>`;
 
     block.querySelector('.ex-remove-btn').addEventListener('click', () => wtRemoveExerciseEntry(idx));
     block.querySelector('.ex-add-set-btn')?.addEventListener('click', () => wtAddSet(idx));
@@ -1302,7 +1285,7 @@ function _renderSets(entryIdx, targetEl = null) {
 // 일반 모드 뷰(세션 토글) 중이면 preset.enabled=true여도 전체 풀을 써서
 // 현재 헬스장이 비어있어도 디폴트 종목이 보이게 함.
 function _getMaxBenchmarkPickerPool() {
-  if (!_isMaxWorkoutMode() || !_isExpertSessionActive()) return [];
+  if (!_isTestModePickerContext()) return [];
   const preset = getExpertPreset?.();
   const cycle = getMaxCycle?.() || preset?.maxCycle || null;
   if (!cycle?.benchmarks?.length) return [];
@@ -1439,6 +1422,79 @@ async function _deletePickerExercise(ex) {
   }
 }
 
+function _defaultTestModeSet() {
+  return {
+    kg: 0,
+    reps: 0,
+    rpe: null,
+    romPct: 100,
+    setType: 'main',
+    done: false,
+  };
+}
+
+function _normalizeTestModeSets(sets) {
+  const normalized = Array.isArray(sets) && sets.length ? sets : [_defaultTestModeSet()];
+  return normalized.map(set => ({
+    ..._defaultTestModeSet(),
+    ...set,
+    rpe: set?.rpe ?? set?.rpeTarget ?? null,
+    setType: set?.setType || 'main',
+    done: set?.done === true,
+    romPct: _normalizeRomPct(set?.romPct) ?? 100,
+  }));
+}
+
+function _testModeSetsFromPrescription(prescription) {
+  if (!prescription) return null;
+  if (Array.isArray(prescription.sets) && prescription.sets.length) return prescription.sets;
+  const targetSets = Math.max(1, Number(prescription.targetSets) || 1);
+  const kg = Number(prescription.startKg) || 0;
+  const reps = Number(prescription.repsHigh) || Number(prescription.repsLow) || 0;
+  const rpe = Number(prescription.targetRpe) || null;
+  return Array.from({ length: targetSets }, () => ({
+    kg,
+    reps,
+    rpe,
+    romPct: 100,
+    setType: 'main',
+    done: false,
+  }));
+}
+
+function _ensureTestModePickerEntry(entry, ex, options = {}) {
+  const base = {
+    muscleId: entry?.muscleId || ex?.muscleId || null,
+    exerciseId: entry?.exerciseId || ex?.id || null,
+    name: entry?.name || ex?.name || '',
+    movementId: entry?.movementId || ex?.movementId || null,
+    ...entry,
+  };
+  const prescription = base.maxPrescription || _resolveMaxPrescription(base, ex);
+  base.recommendationMeta = {
+    mode: 'max',
+    id: base.recommendationMeta?.id || `dashboard3:test:${base.exerciseId || ex?.id || Date.now()}`,
+    kind: base.recommendationMeta?.kind || (options.benchmark ? 'benchmark' : 'manual'),
+    source: base.recommendationMeta?.source || 'dashboard3-test-mode',
+    reason: base.recommendationMeta?.reason || 'Dashboard3 운동 기록은 테스트모드 카드로 고정됩니다.',
+    userAction: base.recommendationMeta?.userAction || 'accepted',
+    acceptedAt: base.recommendationMeta?.acceptedAt || Date.now(),
+    primaryMajor: base.recommendationMeta?.primaryMajor || base.muscleId || ex?.muscleId || null,
+    ...base.recommendationMeta,
+  };
+  if (prescription) {
+    base.maxPrescription = {
+      ...prescription,
+      exerciseId: base.exerciseId,
+      movementId: base.movementId || prescription.movementId || null,
+    };
+  }
+  const generatedSets = _testModeSetsFromPrescription(prescription);
+  const keepExistingSets = Array.isArray(base.sets) && base.sets.length && (!generatedSets || !!entry?.maxPrescription);
+  base.sets = _normalizeTestModeSets(keepExistingSets ? base.sets : generatedSets);
+  return base;
+}
+
 function _buildPickerExerciseEntry(ex) {
   if (_isMaxBenchmarkPickerExercise(ex)) {
     const entry = buildMaxPickerExerciseEntry({
@@ -1448,15 +1504,16 @@ function _buildPickerExerciseEntry(ex) {
       todayKey: _todayDateKey(),
       currentGymId: _currentPickerGymId(),
     });
-    if (entry) return entry;
+    if (entry) return _ensureTestModePickerEntry(entry, ex, { benchmark: ex.__maxBenchmark, cycle: ex.__maxCycle });
   }
-  return {
+  const entry = {
     muscleId: ex.muscleId,
     exerciseId: ex.id,
     name: ex.name,
     movementId: ex.movementId || null,
     sets: [{ kg: 0, reps: 0, setType: 'main', done: false }],
   };
+  return _isTestModePickerContext() ? _ensureTestModePickerEntry(entry, ex) : entry;
 }
 
 function _currentPickerGymId() {

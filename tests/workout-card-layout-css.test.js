@@ -12,22 +12,29 @@ function ruleBody(selector) {
   return match[1];
 }
 
-test('workout exercise card header keeps title from being squeezed by sparkline', () => {
-  const header = ruleBody('#tab-workout .ex-block-header');
-  const name = ruleBody('#tab-workout .ex-block-name');
-  const trend = ruleBody('#tab-workout .ex-block-trend .ex-sparkline-wrap');
-  const remove = ruleBody('#tab-workout .ex-remove-btn');
+test('test-mode exercise card keeps title from being squeezed by trend graph', () => {
+  const titleRow = ruleBody('.ex-max-v2-title-row');
+  const plan = ruleBody('.ex-max-v2-plan');
+  const goal = ruleBody('.ex-max-v2-plan-goal');
+  const trend = ruleBody('.ex-max-v2-trend');
 
-  assert.doesNotMatch(header, /flex-wrap:\s*nowrap/);
-  assert.match(name, /min-width:\s*0/);
-  assert.match(name, /word-break:\s*keep-all/);
-  assert.match(trend, /width:\s*100%/);
+  assert.match(titleRow, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto/);
+  assert.match(plan, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(132px,\s*\.82fr\)/);
+  assert.match(goal, /min-width:\s*0/);
+  assert.match(trend, /min-width:\s*0/);
   assert.doesNotMatch(css, /#tab-workout\s+\.ex-block-header\s+\.ex-sparkline-wrap/);
-  assert.match(remove, /margin-left:\s*0/);
 });
 
-test('workout exercise card DOM renders sparkline outside title header', () => {
-  const headerMatch = /<div class="ex-block-header">([\s\S]*?)<\/div>\s*\$\{sparkline \? `<div class="ex-block-trend">/.exec(workoutExercises);
-  assert.ok(headerMatch, 'normal exercise card should render sparkline in ex-block-trend after header');
-  assert.doesNotMatch(headerMatch[1], /\$\{sparkline\}/);
+test('workout exercise card DOM renders test-mode trend graph inside plan area only', () => {
+  const start = workoutExercises.indexOf('function _buildMaxExerciseCardHeader');
+  const end = workoutExercises.indexOf('function _maxSetTypeLabel', start);
+  assert.ok(start >= 0 && end > start, 'test-mode card header function should exist');
+  const headerFn = workoutExercises.slice(start, end);
+  const beforePlan = headerFn.slice(0, headerFn.indexOf('<div class="ex-max-v2-plan">'));
+
+  assert.match(headerFn, /<div class="ex-max-v2-title-row">/);
+  assert.match(headerFn, /<div class="ex-max-v2-plan">/);
+  assert.match(headerFn, /\$\{sparkline[\s\S]*<div class="ex-max-v2-trend">\$\{sparkline\}<\/div>/);
+  assert.doesNotMatch(beforePlan, /\$\{sparkline\}/);
+  assert.doesNotMatch(workoutExercises, /<div class="ex-block-header">/);
 });

@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md` (운동 추가 분류형 진입 UI)
-- 현재 단계: `deploy verified — Slice 6 picker row 선택 즉시 닫힘 제거`
-- 마지막 완료: `picker row 선택 시 즉시 wtCloseExercisePicker()를 호출하던 흐름을 제거하고 완료 버튼 기반 staged selection으로 변경했다.`
-- 다음 액션: `없음`
+- 상태: `ready_for_deploy`
+- 계획 문서: `docs/ai/features/2026-06-24-test-mode-card-render-regression.md` (Dashboard3 테스트모드 운동 UI 일원화)
+- 현재 단계: `Slice 1 implemented — Dashboard3 deploy pending`
+- 마지막 완료: `workout/exercises.js와 workout/expert.js에서 운동 기록/피커/모드 전환을 테스트모드 카드 경로로 고정하고, 일반/프로 기록 UI 재진입을 회귀 테스트로 차단했다.`
+- 다음 액션: `origin/main에 push 후 GitHub Pages Dashboard3 배포를 기다리고 npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>로 검증한다.`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상

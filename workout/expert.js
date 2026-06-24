@@ -103,6 +103,11 @@ let _stepperSeeded = false;
 // 구조: 모드 배지(전문가/일반 전환) → 카드(헤더 + 세그먼트 + 3-스텝)
 // 상태 'done' → 3-스텝 표시 / 'skip'·'health' → 안내 메시지
 const _modeEntryBoundHosts = new WeakSet();
+const DASHBOARD3_TEST_MODE_ONLY = true;
+
+function _isDashboardTestModeOnly() {
+  return DASHBOARD3_TEST_MODE_ONLY;
+}
 
 async function _openGrowthBoardEntry() {
   try {
@@ -121,9 +126,8 @@ async function _openGrowthBoardEntry() {
 }
 
 function _runWorkoutModeEntryAction(action) {
-  if (action === 'normal') return window.wtExcSwitchToNormalView?.();
-  if (action === 'pro') return window.wtExcShowProView?.();
-  if (action === 'max') return window.wtExcShowMaxView?.();
+  if (action === 'normal' || action === 'max') return window.wtExcShowMaxView?.();
+  if (action === 'pro' || action === 'equipment') return window.wtExcShowProView?.();
   if (action === 'growth') return _openGrowthBoardEntry();
   return undefined;
 }
@@ -204,10 +208,68 @@ function _renderWorkoutModeEntry(activeMode = 'normal') {
   `;
 }
 
+function _renderDashboardTestModeEntry() {
+  return `
+    <section class="wt-mode-entry wt-mode-entry--test-only" aria-label="테스트모드 도구">
+      <div class="wt-mode-entry-head">
+        <div>
+          <span>운동 방식</span>
+          <b>테스트모드 고정</b>
+        </div>
+      </div>
+      <div class="wt-mode-entry-stack">
+        <article class="wt-mode-entry-card is-active" data-mode-action="max">
+          <button type="button" class="wt-mode-entry-main" aria-label="테스트모드 유지">
+            <span class="wt-mode-entry-icon">▦</span>
+            <span class="wt-mode-entry-copy">
+              <strong>테스트모드</strong>
+              <small>운동 기록 카드는 항상 테스트모드 UI로 표시됩니다.</small>
+            </span>
+            <span class="wt-mode-entry-cta">진행</span>
+          </button>
+          <div class="wt-mode-entry-meta"><b>기록</b><i></i><span>처방 세트</span><i></i><span>성장 트랙</span></div>
+        </article>
+        <article class="wt-mode-entry-card" data-mode-action="equipment">
+          <button type="button" class="wt-mode-entry-main" aria-label="헬스장 기구 관리">
+            <span class="wt-mode-entry-icon">⌂</span>
+            <span class="wt-mode-entry-copy">
+              <strong>헬스장 기구</strong>
+              <small>프로모드 기능은 헬스장별 기구 설정만 유지합니다.</small>
+            </span>
+            <span class="wt-mode-entry-cta">관리</span>
+          </button>
+          <div class="wt-mode-entry-meta"><b>설정</b><i></i><span>헬스장</span><i></i><span>기구 관리</span></div>
+        </article>
+        <article class="wt-mode-entry-card" data-mode-action="growth">
+          <button type="button" class="wt-mode-entry-main" aria-label="성장 보드 열기">
+            <span class="wt-mode-entry-icon">▣</span>
+            <span class="wt-mode-entry-copy">
+              <strong>성장 보드</strong>
+              <small>6주 계획표를 열어 테스트모드 진행 상태를 확인합니다.</small>
+            </span>
+            <span class="wt-mode-entry-cta">열기</span>
+          </button>
+          <div class="wt-mode-entry-meta"><b>계획표</b><i></i><span>중장기 조망</span><i></i><span>칸 색칠</span></div>
+        </article>
+      </div>
+    </section>
+  `;
+}
+
 export function renderExpertTopArea() {
   const host = document.getElementById('expert-top-area');
   if (!host) return;
   _bindWorkoutModeEntry(host);
+
+  if (_isDashboardTestModeOnly()) {
+    _expertViewShown = true;
+    _syncExpertFlowClass(true);
+    _syncWorkoutModeClass('max');
+    _syncStep3ReadyClass(true);
+    _renderInlineExpertPill();
+    host.innerHTML = _renderDashboardTestModeEntry();
+    return;
+  }
 
   // 모드 enum: 'normal' | 'pro' | 'max'
   const mode = getExpertMode();
@@ -2638,53 +2700,47 @@ window.wtExcShowExpertView = () => {
   _expertViewShown = true;
   renderExpertTopArea();
 };
-// 프로 모드 켜기 (preset.mode='pro' + 카드 노출)
+// Dashboard3: 프로모드 진입점은 헬스장별 기구 설정만 연다.
 window.wtExcShowProView = async () => {
   try {
     await _persistWorkoutBeforeModeSwitch();
-    const cur = getExpertPreset();
-    if (cur.mode !== 'pro') {
-      await saveExpertPreset({ mode: 'pro', enabled: true });
-    }
     _expertViewShown = true;
     renderExpertTopArea();
+    if (typeof window.wtOpenGymListSheet === 'function') window.wtOpenGymListSheet();
     await _rerenderWorkoutAfterModeSwitch();
   } catch (e) { console.warn('[wtExcShowProView]:', e); }
 };
-// 맥스 모드 켜기 (preset.mode='max' + 미니 위자드 / 이미 max면 카드 노출)
+// 테스트모드 켜기. Dashboard3에서는 온보딩/일반카드 경유 없이 테스트모드 렌더만 유지한다.
 window.wtExcShowMaxView = async () => {
   console.log('[max] wtExcShowMaxView called');
   try {
     await _persistWorkoutBeforeModeSwitch();
     const cur = getExpertPreset();
     console.log('[max] current preset:', { mode: cur.mode, goal: cur.goal, enabled: cur.enabled });
-    if (cur.mode === 'max') {
-      // 이미 max로 온보딩 완료 → 곧바로 카드 노출
-      _expertViewShown = true;
-      renderExpertTopArea();
-      console.log('[max] already configured — card rendered');
-      return;
+    if (cur.mode !== 'max' || !cur.enabled) {
+      await saveExpertPreset({ mode: 'max', enabled: true, snoozedUntil: null });
     }
-    // max로 첫 진입 또는 goal 미설정 → 미니 위자드
-    console.log('[max] opening mini onboarding');
-    await openMaxMiniOnboarding();
-    console.log('[max] mini onboarding open returned');
+    _expertViewShown = true;
+    renderExpertTopArea();
+    await _rerenderWorkoutAfterModeSwitch();
+    console.log('[max] test mode view rendered');
   } catch (e) {
     console.error('[wtExcShowMaxView] FAIL:', e);
     if (typeof window.showToast === 'function') window.showToast('테스트 모드 진입 실패: ' + e.message, 4000, 'error');
   }
 };
-// 일반 모드로 — preset.mode='normal' 명시 set (gym/preset 데이터는 보존)
+// 레거시 일반모드 전환 호출도 Dashboard3에서는 테스트모드 유지로 처리한다.
 window.wtExcSwitchToNormalView = async () => {
   try {
     await _persistWorkoutBeforeModeSwitch();
     const cur = getExpertPreset();
-    if (cur.mode !== 'normal') {
-      await saveExpertPreset({ mode: 'normal', enabled: false });
+    if (cur.mode !== 'max' || !cur.enabled) {
+      await saveExpertPreset({ mode: 'max', enabled: true, snoozedUntil: null });
     }
-    _expertViewShown = false;
+    _expertViewShown = true;
     renderExpertTopArea();
     await _rerenderWorkoutAfterModeSwitch();
+    if (typeof window.showToast === 'function') window.showToast('Dashboard3는 테스트모드로 기록합니다', 1800, 'info');
   } catch (e) { console.warn('[wtExcSwitchToNormalView]:', e); }
 };
 // 맥스 모드 위자드 / 추천 칩
@@ -2836,18 +2892,12 @@ window.wtExcSelectStatus = () => {
   renderExpertTopArea();
 };
 
-// ── 일반 모드로 전환 ─────────────────────────────────────────────
+// ── 레거시 일반모드 전환 요청: Dashboard3 테스트모드 유지 ─────────
 window.wtExcLeaveExpertMode = async () => {
-  const ok = await confirmAction({
-    title: '일반 모드로 전환할까요?',
-    message: '프로 모드 설정(헬스장·기구·루틴)은 유지돼요.\n헬스 종목 옆 ⚡ 버튼으로 언제든 다시 켤 수 있어요.',
-    confirmLabel: '일반 모드로',
-    cancelLabel: '취소',
-  });
-  if (!ok) return;
   try {
-    await saveExpertPreset({ mode: 'normal', enabled: false });
-    _toast('일반 모드로 전환했어요', 'success');
+    await saveExpertPreset({ mode: 'max', enabled: true, snoozedUntil: null });
+    _expertViewShown = true;
+    _toast('Dashboard3는 테스트모드로 기록합니다', 'info');
     renderExpertTopArea();
     if (typeof window.renderAll === 'function') window.renderAll();
   } catch (e) {
@@ -2856,16 +2906,15 @@ window.wtExcLeaveExpertMode = async () => {
   }
 };
 
-// ── 재활성화 — 이전 설정(gym/기구/preset)을 그대로 살려 즉시 enabled=true ─
-// 프로 모드는 '기본적으로 운동하는 사용자'를 가정 → 진입과 동시에 status='done' 강제.
+// ── 재활성화 — Dashboard3 테스트모드로 고정 ───────────────────────
 window.wtExcReEnableExpertMode = async () => {
   try {
-    await saveExpertPreset({ mode: 'pro', enabled: true, snoozedUntil: null });
-    // 프로 모드는 쉬었어요/건강이슈 UI가 없으므로 자동으로 운동 상태로 세팅
+    await saveExpertPreset({ mode: 'max', enabled: true, snoozedUntil: null });
     if (typeof window.wtExcSelectStatus === 'function') {
       window.wtExcSelectStatus('done');
     }
-    _toast('프로 모드를 켰어요', 'success');
+    _expertViewShown = true;
+    _toast('테스트모드로 기록합니다', 'success');
     if (typeof window.renderAll === 'function') window.renderAll();
   } catch (e) {
     console.warn('[wtExcReEnableExpertMode]:', e);
