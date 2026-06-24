@@ -4,9 +4,9 @@
 
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-24-workout-calendar-bottom-sheet.md`
-- 현재 단계: `reviewed — Slice 6 open full after 10 percent upward drag`
-- 마지막 완료: `bar 상태에서 전체 확장 거리의 10%만 위로 끌어도 preview와 release snap이 full로 열리고, 작은 drag 뒤 click이 sheet를 다시 닫지 않게 구현하고 리뷰까지 완료했다.`
-- 다음 액션: `인증 계정으로 실제 drag UI flow를 확인한다.`
+- 현재 단계: `reviewed — Slice 7 latch open intent on tiny upward drag`
+- 마지막 완료: `bar 상태에서 접힌 sheet bar 높이의 10%, 최소 8px만 위로 끌어도 open intent를 latch해 release 시 full로 고정되게 구현하고 리뷰까지 완료했다.`
+- 다음 액션: `Dashboard3 Pages 배포 검증과 인증 계정 실제 drag UI flow 확인을 진행한다.`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
@@ -132,6 +132,25 @@
 
 - Slice 6 리뷰:
   - `docs/ai/reviews/2026-06-24-workout-calendar-bottom-sheet-open-10pct-review.md`
+
+- 다음 Slice 7:
+  1. open threshold를 full 확장 거리 기준에서 접힌 bar 높이 기준 10%로 변경
+  2. `bar`에서 위 방향 drag가 threshold를 넘으면 `openLatched` 고정
+  3. release snap에서 `openLatched`가 true면 무조건 `full` 선택
+  4. `full` 시작 drag는 latch하지 않아 큰 아래 drag로 닫기 유지
+  5. 회귀 테스트와 `sw.js` `CACHE_VERSION` 갱신
+
+- Slice 7 검증:
+  1. PASS: `node --check render-calendar.js; node --check sw.js`
+  2. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
+  3. PASS: `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
+  4. PASS: `node scripts/verify-runtime-assets.mjs`
+  5. PASS: `git diff --check`
+  6. PASS: `docs/ai/reviews/2026-06-25-workout-calendar-bottom-sheet-open-latch-review.md`
+  7. not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 drag UI flow 확인 필요
+
+- Slice 7 리뷰:
+  - `docs/ai/reviews/2026-06-25-workout-calendar-bottom-sheet-open-latch-review.md`
 
 - 이전 계획 파일: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md`
 - 완료한 Slice 4:

@@ -160,6 +160,22 @@
 
 ### 실행 결과
 
+- open threshold를 `dragTravel * 0.1`에서 `minHeight * 0.1` 기준으로 바꿔 접힌 bar 높이의 10%, 최소 8px만 위로 움직여도 open intent가 잡히게 했다.
+- `openLatched`를 추가해 `bar` 상태에서 위 방향 threshold를 한 번 넘으면 release 시 최종 좌표 흔들림과 무관하게 `full`로 고정한다.
+- `openLatched`는 `bar` 시작 drag에서만 켜지며, `full` 시작 drag는 기존 distance resolver를 타게 해서 큰 아래 drag로 닫을 수 있게 유지했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260625z41-workout-day-sheet-open-latch`로 bump했다.
+
+### 실행 검증
+
+- PASS: `node --check render-calendar.js; node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
+- PASS: `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 `운동 탭 -> 날짜 sheet drag` UI flow 확인이 남아 있다.
+
+### 실행 결과
+
 - `_stepWorkoutHomeSheet()`를 방향 기반 `full`/`bar` 전환으로 단순화해 짧은 위 드래그와 `ArrowUp`이 즉시 `full`로 열리게 했다.
 - drag release 기준을 `36px`에서 `12px`로 낮춰 살짝 올리는 제스처도 동작하게 했다.
 - drag preview의 `±180px` 제한을 제거하고 `startHeight`/`maxHeight` 기반으로 계산해 손가락으로 크게 끌 때도 full 높이까지 따라가게 했다.
@@ -319,3 +335,26 @@
   - 결과: `[deploy-verify] ok d6606731f076 tomatofarm-v20260624z40-workout-day-sheet-open-10pct static=210`
 - PASS: 배포 URL의 `build-info.json`, `sw.js`, `render-calendar.js`가 `d6606731f076`, z40 cache, 10% open ratio, `hasMoved` click suppression, velocity-close 제거를 반환한다.
 - not verified yet: 배포 URL은 로그인 화면에서 막혀 인증 계정 실제 `운동 탭 -> 날짜 sheet drag` UI flow 확인은 남아 있다.
+
+## 후속 Slice 7 — Latch open intent on tiny upward drag
+
+### 배경
+
+사용자가 sheet를 위로 올려도 열린 상태로 고정되지 않고 다시 내려간다고 재차 보고했다. Slice 6은 전체 확장 거리의 10%를 기준으로 했지만, 실제 모바일에서는 이 값이 접힌 bar 기준으로는 과하게 커서 사용자가 "조금 올린" 제스처가 release 시 `bar`로 돌아갈 수 있다.
+
+### 포함
+
+- open threshold를 full 확장 거리 기준이 아니라 접힌 bar 높이 기준 10%로 낮춘다.
+- `bar`에서 위 방향 drag가 threshold를 한 번이라도 넘으면 `openLatched`를 true로 고정한다.
+- `openLatched`가 true이면 손가락이 release 직전에 흔들려도 release snap은 무조건 `full`을 선택한다.
+- 아래 방향 닫힘은 기존처럼 큰 거리 기준으로만 허용한다.
+- 회귀 테스트와 `sw.js` cache version을 bump한다.
+
+### 검증 계획
+
+- `node --check render-calendar.js; node --check sw.js`
+- `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
+- `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`

@@ -52,7 +52,7 @@ const WORKOUT_HOME_SHEET_STATES = ['bar', 'full'];
 const WORKOUT_HOME_SHEET_CLASS_STATES = ['bar', 'mid', 'full'];
 const WORKOUT_HOME_SHEET_POST_DRAG_CLICK_SUPPRESS_MS = 900;
 const WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX = 10;
-const WORKOUT_HOME_SHEET_DRAG_OPEN_RATIO = 0.1;
+const WORKOUT_HOME_SHEET_DRAG_OPEN_BAR_RATIO = 0.1;
 const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX = 220;
 const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_RATIO = 0.35;
 const WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY = 0.55;
@@ -1845,8 +1845,9 @@ function _startWorkoutHomeSheetDrag(event) {
   const minHeight = Math.max(64, Math.min(startHeight, barHeight || startHeight));
   const maxHeight = Math.max(startHeight, (window.innerHeight || startHeight) - 64);
   const startState = _currentWorkoutHomeSheetState();
+  let openLatched = false;
   const dragTravel = Math.max(0, maxHeight - minHeight);
-  const openThresholdPx = Math.max(WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX, dragTravel * WORKOUT_HOME_SHEET_DRAG_OPEN_RATIO);
+  const openThresholdPx = Math.max(8, minHeight * WORKOUT_HOME_SHEET_DRAG_OPEN_BAR_RATIO);
   const collapseThresholdPx = Math.max(WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX, dragTravel * WORKOUT_HOME_SHEET_DRAG_COLLAPSE_RATIO);
   const minDragY = startHeight - maxHeight;
   const maxDragY = startHeight - minHeight;
@@ -1864,8 +1865,8 @@ function _startWorkoutHomeSheetDrag(event) {
     lastMoveY = lastY;
     lastMoveAt = now;
     const dy = Math.max(minDragY, Math.min(maxDragY, lastY - startY));
-    const shouldPreviewFull = startState === 'bar' && dy <= -openThresholdPx;
-    const nextHeight = shouldPreviewFull ? maxHeight : Math.max(minHeight, Math.min(maxHeight, startHeight - dy));
+    if (startState === 'bar' && dy <= -openThresholdPx) openLatched = true;
+    const nextHeight = openLatched ? maxHeight : Math.max(minHeight, Math.min(maxHeight, startHeight - dy));
     sheet.style.setProperty('--wt-day-sheet-drag-height', `${nextHeight}px`);
   };
   const onUp = (upEvent) => {
@@ -1884,7 +1885,7 @@ function _startWorkoutHomeSheetDrag(event) {
       return;
     }
     _suppressWorkoutHomeSheetClick();
-    _setWorkoutHomeSheetState(_resolveWorkoutHomeSheetDragTarget(dy, velocityY, openThresholdPx, collapseThresholdPx));
+    _setWorkoutHomeSheetState(openLatched ? 'full' : _resolveWorkoutHomeSheetDragTarget(dy, velocityY, openThresholdPx, collapseThresholdPx));
   };
 
   window.addEventListener('pointermove', onMove, { passive: true });
