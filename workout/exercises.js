@@ -349,12 +349,16 @@ function _formatTrackGraphValue(track, value) {
 
 function _formatTrackGraphDelta(points = []) {
   if (!points || points.length < 2) return '';
-  const last = Number(points[points.length - 1]?.value) || 0;
-  const prev = Number(points[points.length - 2]?.value) || 0;
-  if (!(last > 0) || !(prev > 0)) return '';
-  const pct = Math.round(((last - prev) / prev) * 100);
-  if (!Number.isFinite(pct) || pct === 0) return '0%';
-  return `${pct > 0 ? '+' : ''}${pct}%`;
+  const recent = points.slice(-6);
+  const last = Number(recent[recent.length - 1]?.value) || 0;
+  const prev = Number(recent[recent.length - 2]?.value) || 0;
+  const peak = Math.max(...recent.map(p => Number(p?.value) || 0));
+  if (!(last > 0) || !(prev > 0) || !(peak > 0)) return '';
+  const lastPoint = (last / peak) * 100;
+  const prevPoint = (prev / peak) * 100;
+  const pp = Math.round(lastPoint - prevPoint);
+  if (!Number.isFinite(pp) || pp === 0) return '0pp';
+  return `${pp > 0 ? '+' : ''}${pp}pp`;
 }
 
 function _trackGraphDeltaClass(delta) {

@@ -480,3 +480,66 @@ UI 검증:
 - 배포 확인: `[deploy-verify] ok 0c290ff62faa tomatofarm-v20260624z11-workout-session-tabs-compact static=202`
 - PASS: `curl.exe -I https://aretenald2018-sys.github.io/dashboard3/` -> `HTTP/1.1 200 OK`
 - not verified yet: 인증된 계정의 운동 홈 상세 화면을 열어 실제 모바일 UI flow는 직접 클릭 검증하지 못했다.
+
+## 후속 Slice 8
+
+사용자 피드백:
+
+- 운동 카드 그래프의 등락폭을 현재처럼 상대 변화율 `%`로 표출하기보다 퍼센트포인트 증감량으로 표출하는 편이 낫다.
+- 예시 화면에서 `볼륨 15t -8%`, `볼륨 2.5t -63%`처럼 보이는 우측 작은 등락폭 라벨이 대상이다.
+
+그릴 결과:
+
+- 질문: raw 값의 상대 변화율을 계속 쓸지, 그래프 내 기준점 대비 위치 변화로 해석 가능한 pp를 쓸지 결정해야 한다.
+- 결정: 최근 그래프 값 중 최고값을 100으로 두고, 직전 점과 현재 점의 위치 차이를 `pp`로 표기한다.
+- 근거: raw 변화율은 낮은 이전값에서 크게 튀거나 높은 이전값에서 급락처럼 보일 수 있다. pp는 최근 범위 안에서 "그래프 위치가 얼마나 움직였는지"를 보여줘 작은 카드에서 덜 과장된다.
+- 가정: `퍼센트포인트`는 절대 kg/vol 단위 변화가 아니라 그래프 normalized position의 증감량이다.
+
+수정 범위:
+
+1. `workout/exercises.js`
+   - `_formatTrackGraphDelta()`를 raw relative percent 계산에서 recent max 대비 position delta 계산으로 변경한다.
+   - 표기는 `+12pp`, `-8pp`, `0pp`처럼 한다.
+   - delta class의 up/down/flat 판정은 기존 부호 기반을 유지한다.
+2. `sw.js`
+   - `workout/exercises.js`가 `STATIC_ASSETS`에 포함되어 있으므로 `CACHE_VERSION`을 bump한다.
+3. `tests/workout-track-graph-delta.test.js`
+   - `%` 표기가 다시 들어오지 않고 `pp` 표기가 유지되는지 source-level로 검증한다.
+4. `tests/workout-test-mode-unified.test.js`
+   - 캐시 버전 검증을 갱신한다.
+
+수정하지 않을 것:
+
+- 볼륨/강도 트랙 값 자체 계산.
+- 그래프 SVG shape/레이아웃.
+- 운동 저장 구조와 maxPrescription.
+
+검증:
+
+- `node --check workout/exercises.js`
+- `node --check sw.js`
+- `node --test tests/workout-track-graph-delta.test.js tests/workout-test-mode-unified.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- Dashboard3 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+- 배포 URL에서 운동 탭 → 운동 카드의 볼륨/강도 그래프 등락폭이 `%`가 아니라 `pp`로 보이는지 확인한다.
+
+## 후속 Slice 8 실행 결과
+
+- 2026-06-24: 후속 Slice 8 구현 완료.
+- `workout/exercises.js`:
+  - `_formatTrackGraphDelta()`가 최근 6개 그래프 점 중 최고값을 기준으로 직전/현재 위치를 계산한다.
+  - raw 상대 변화율 `%` 대신 위치 차이 `pp`를 반환한다.
+  - `0pp`, `+12pp`, `-8pp` 형태로 표시한다.
+  - up/down/flat class 판정은 기존처럼 문자열 부호 기반으로 유지했다.
+- `sw.js`:
+  - `CACHE_VERSION`을 `tomatofarm-v20260624z30-track-delta-pp`로 bump했다.
+- 테스트:
+  - `tests/workout-track-graph-delta.test.js`를 추가했다.
+  - `tests/workout-test-mode-unified.test.js`, `tests/stats-muscle-fatigue-insight.test.js`의 캐시 버전 검증을 갱신했다.
+- PASS: `node --check workout/exercises.js; node --check sw.js`
+- PASS: `node --test tests/workout-track-graph-delta.test.js tests/workout-test-mode-unified.test.js tests/stats-muscle-fatigue-insight.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- 리뷰: `docs/ai/reviews/2026-06-24-workout-track-graph-delta-pp-review.md`
+- not verified yet: Dashboard3 Pages 배포와 인증 계정 UI 클릭 검증은 다음 단계에서 진행한다.

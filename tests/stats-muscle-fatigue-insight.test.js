@@ -52,5 +52,5 @@ test('muscle fatigue styles support blue and red states', () => {
 });
 
 test('service worker cache version was bumped for stats fatigue insight assets', () => {
-  assert.match(swJs, /tomatofarm-v20260624z29-stats-blue-balance/);
+  assert.match(swJs, /tomatofarm-v20260624z30-track-delta-pp/);
 });
