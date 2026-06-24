@@ -302,6 +302,19 @@
   - 줍스가 점심 식단만 입력한 경우 `diet` 상태, 식사존 slot, `점심냠냠` 말풍선이 나오는 회귀 테스트를 추가한다.
   - `home/life-zone.js`, `home/life-zone-state.js`, `sw.js`는 `STATIC_ASSETS` 대상이므로 `CACHE_VERSION`을 bump한다.
 - 상태: 2026-06-23 실행 완료. 브라우저 UI 플로우는 not verified yet.
+
+### Slice 10 — 모바일 요약 구획 회귀 복원
+
+- 목표: 모바일에서도 라이프존 카드 하단의 칼로리/체중 요약을 좌우 2칸 한 줄 구획으로 유지한다.
+- 원인:
+  - 기본 `.lz-summary-strip`은 좌우 2칸 grid로 정의되어 있다.
+  - 그러나 `@media (max-width: 420px)`에서 `.lz-summary-strip { grid-template-columns: 1fr; }`를 적용해 모바일 배포본에서 칼로리/체중 요약이 다시 위아래로 쌓였다.
+- 내용:
+  - 모바일 media query에서 1열 전환과 하단 border override를 제거한다.
+  - 좁은 화면에서는 요약 버튼 padding과 숫자 크기만 소폭 줄인다.
+  - `style.css`는 `STATIC_ASSETS` 대상이므로 `sw.js` `CACHE_VERSION`을 함께 bump한다.
+- 상태: 2026-06-24 실행 중. 브라우저 UI 플로우는 배포 후 확인한다.
+
 - 리스크: `줍스/문정토마토/이재헌` 이름이 계정 id와 다르거나 사용자의 친구가 아닐 수 있다.
   - 대안: `lifeZoneRoster` 설정을 두고 account id를 명시한다. 없으면 현재 유저/이웃 중 닉네임 매칭으로 fallback.
 - 리스크: 실시간 입력 중 상태는 현재 데이터만으로 판정할 수 없다.

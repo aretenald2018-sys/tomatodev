@@ -4,15 +4,21 @@
 
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-23-home-life-zone-card.md` (홈 라이프존 카드)
-- 현재 단계: `review complete — Slice 4 최근성/presence snapshot 보강`
-- 마지막 완료: `문정토마토가 간식을 입력해도 오늘 가슴 완료로 남는 원인을 재진단하고, 마지막 사용자 정보 업데이트를 lifeZoneLastActivity로 반영하며 식단 사진 저장 경로가 운동 저장으로 찍히던 문제를 수정했다.`
-- 다음 액션: `없음. 이 계획의 마지막 슬라이스까지 완료.`
-- 차단 사유: `없음. 단, 로그인된 실제 문정토마토 계정에서 간식 저장 후 홈 라이프존이 간식냠냠으로 바뀌는 브라우저 UI 플로우는 not verified yet이다.`
+- 현재 단계: `review complete — Slice 10 모바일 요약 구획 회귀 복원`
+- 마지막 완료: `모바일에서 라이프존 하단 칼로리/체중 요약이 1열로 쌓이던 media query를 제거하고, 캐시 버전을 갱신했다.`
+- 다음 액션: `관련 변경을 커밋하고 dashboard3 개발계에 push한 뒤 배포 URL HTTP 200과 원격 CSS를 확인한다.`
+- 차단 사유: `not verified yet. push와 배포 URL 검증이 남아 있다.`
 
 ## 다음 실행 대상
 
 - 계획 파일: `docs/ai/features/2026-06-23-home-life-zone-card.md`
-- 다음 실행 대상:
+- 방금 완료한 Slice 10:
+  1. `style.css` 모바일 media query에서 `.lz-summary-strip` 1열 전환 제거
+  2. `style.css` 모바일 요약 버튼 하단 border override 제거
+  3. `style.css` 모바일 요약 버튼 padding/숫자 크기만 소폭 조정
+  4. `sw.js` `CACHE_VERSION` bump
+  5. `docs/ai/reviews/2026-06-24-home-life-zone-mobile-summary-regression-review.md` 작성
+  6. `index.html` cache-busting query token bump
   - 없음.
 
 - 방금 완료한 Slice 4:
