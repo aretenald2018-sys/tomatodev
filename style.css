@@ -834,7 +834,7 @@ body.wt-modal-scroll-lock {
 }
 .ex-max-v2-rom-field {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 7px;
+  grid-template-columns: 18px minmax(0, 1fr) 14px;
   gap: 1px;
   align-items: center;
   min-width: 0;

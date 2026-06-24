@@ -66,8 +66,16 @@ test('test-mode set row is one-line compact and does not render ROM slider', () 
 
   assert.match(row, /grid-template-columns:\s*28px\s+minmax\(42px,\s*\.9fr\)\s+minmax\(42px,\s*\.9fr\)\s+minmax\(38px,\s*\.75fr\)\s+minmax\(42px,\s*\.8fr\)\s+24px\s+16px\s+12px/);
   assert.match(set, /min-height:\s*30px/);
-  assert.match(rom, /grid-template-columns:\s*18px\s+minmax\(0,\s*1fr\)\s+7px/);
+  assert.match(rom, /grid-template-columns:\s*18px\s+minmax\(0,\s*1fr\)\s+14px/);
   assert.match(fn, /ex-max-v2-rom-field/);
   assert.match(fn, /set-rom-input/);
+  assert.match(fn, /_romPctToScoreInput\(romValue\)/);
+  assert.match(fn, /inputmode="decimal"\s+min="0"\s+max="10"\s+step="0\.5"/);
+  assert.match(fn, /aria-label="가동범위 10점 입력"/);
+  assert.match(fn, /<em>\/10<\/em>/);
+  assert.match(fn, /_romScoreInputToPct\(e\.target\.value\)/);
+  assert.match(workoutExercises, /function _romScoreInputToPct\(val\)[\s\S]*n \* 10/);
+  assert.match(workoutExercises, /function _romPctToScoreInput\(val\)[\s\S]*\/ 10/);
   assert.doesNotMatch(fn, /set-rom-range/);
+  assert.doesNotMatch(fn, /가동범위 퍼센트 직접 입력|<em>%<\/em>|max="100"/);
 });

@@ -608,6 +608,19 @@ function _normalizeRomPct(val) {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
 
+function _romPctToScoreInput(val) {
+  const pct = _normalizeRomPct(val);
+  const score = (pct == null ? 100 : pct) / 10;
+  return Number.isInteger(score) ? String(score) : String(score);
+}
+
+function _romScoreInputToPct(val) {
+  if (val === '' || val == null) return null;
+  const n = Number(String(val).replace(',', '.'));
+  if (!Number.isFinite(n)) return null;
+  return _normalizeRomPct(n * 10);
+}
+
 function _setRomPctLocal(entryIdx, si, val) {
   const set = S.workout.exercises?.[entryIdx]?.sets?.[si];
   if (!set) return null;
@@ -1168,6 +1181,7 @@ function _renderSets(entryIdx, targetEl = null) {
     const isDone   = set.done !== false;
     const romPct = _normalizeRomPct(set.romPct);
     const romValue = romPct == null ? 100 : romPct;
+    const romScoreValue = _romPctToScoreInput(romValue);
     const volume = calcSetVolume(set);
     const vol = (set.kg && set.reps && !isWarmup && isDone)
       ? `<span style="color:var(--accent)">${Math.round(volume).toLocaleString()}vol</span>`
@@ -1190,7 +1204,7 @@ function _renderSets(entryIdx, targetEl = null) {
         <label class="ex-max-v2-field"><span>KG</span><input class="set-input" type="number" inputmode="decimal" placeholder="kg" min="0" step="0.5" value="${set.kg||''}"></label>
         <label class="ex-max-v2-field"><span>REP</span><input class="set-input" type="number" inputmode="numeric" placeholder="회" min="1" step="1" value="${set.reps||''}"></label>
         <label class="ex-max-v2-field"><span>RIR</span><input class="set-rpe-input" type="number" inputmode="decimal" placeholder="-" min="0" max="9" step="0.5" value="${_rpeToRir(set.rpe)}"></label>
-        <label class="ex-max-v2-rom-field"><span>ROM</span><input class="set-rom-input" type="number" inputmode="numeric" min="0" max="100" step="1" value="${romValue}" aria-label="가동범위 퍼센트 직접 입력"><em>%</em></label>
+        <label class="ex-max-v2-rom-field"><span>ROM</span><input class="set-rom-input" type="number" inputmode="decimal" min="0" max="10" step="0.5" value="${romScoreValue}" aria-label="가동범위 10점 입력"><em>/10</em></label>
         <button class="set-done-btn ${isDone?'done':''}" title="완료 체크">✓</button>
         <button class="set-remove-btn" title="세트 삭제">×</button>
         <span class="set-drag-handle" title="드래그하여 순서 변경"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg></span>
@@ -1233,12 +1247,15 @@ function _renderSets(entryIdx, targetEl = null) {
     const romInput = row.querySelector('.set-rom-input');
     if (romInput) {
       romInput.addEventListener('input', e => {
-        const next = _normalizeRomPct(e.target.value);
+        const next = _romScoreInputToPct(e.target.value);
         if (next != null) {
           _setRomPctLocal(entryIdx, si, next);
         }
       });
-      romInput.addEventListener('change', e => wtUpdateSet(entryIdx, si, 'romPct', e.target.value));
+      romInput.addEventListener('change', e => {
+        const next = _romScoreInputToPct(e.target.value);
+        wtUpdateSet(entryIdx, si, 'romPct', next == null ? '' : next);
+      });
     }
     el.appendChild(row);
   });
