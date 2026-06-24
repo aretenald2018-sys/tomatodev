@@ -5,10 +5,10 @@
 // 로컬 개발(localhost/127.0.0.1/file://) 은 SW 등록 스킵 + 기존 SW 해제.
 // ================================================================
 // 로컬 개발 환경 감지: localhost / 127.0.0.1 / file:// 에서는 SW 건너뛰기
-// 이유: 배포용 scope '/tomatofarm/' 가 로컬 루트와 불일치 → 등록 실패 + 스테일 캐시가 ERR_EMPTY_RESPONSE 유발
+// 이유: 배포 경로가 저장소별로 달라질 수 있음 → 현재 경로 기준 scope 사용
 const _isLocalDev = ['localhost', '127.0.0.1', ''].includes(location.hostname);
-const APP_SW_SCOPE = '/tomatofarm/';
-const FCM_SW_SCOPE = '/tomatofarm/firebase-cloud-messaging-push/';
+const APP_SW_SCOPE = new URL('./', location.href).pathname;
+const FCM_SW_SCOPE = new URL('firebase-cloud-messaging-push/', new URL('./', location.href)).pathname;
 const _pendingAppSWUpdates = new Map();
 let _appSWUpdateSeq = 0;
 let _latestAppSWUpdateSeq = 0;
