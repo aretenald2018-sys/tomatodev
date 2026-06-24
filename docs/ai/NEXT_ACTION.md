@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_deploy`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-24-test-mode-card-render-regression.md` (Dashboard3 테스트모드 운동 UI 일원화)
-- 현재 단계: `Slice 1 implemented — Dashboard3 deploy pending`
-- 마지막 완료: `workout/exercises.js와 workout/expert.js에서 운동 기록/피커/모드 전환을 테스트모드 카드 경로로 고정하고, 일반/프로 기록 UI 재진입을 회귀 테스트로 차단했다.`
-- 다음 액션: `origin/main에 push 후 GitHub Pages Dashboard3 배포를 기다리고 npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>로 검증한다.`
+- 현재 단계: `deploy verified — Slice 1 Dashboard3 테스트모드 운동 UI 일원화`
+- 마지막 완료: `커밋 bf20b38fc9b33dbe7d06140b25c3f770097d1f67을 origin/main에 배포했고 Dashboard3 Pages에서 build-info, sw cache, 정적 자산 및 배포 JS 회귀 방지 마커를 검증했다.`
+- 다음 액션: `없음`
 - 차단 사유: `없음`
 
 ## 다음 실행 대상
