@@ -31,7 +31,10 @@
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
 - PASS: read-only TDS review completed; medium finding addressed, low finding accepted with rationale.
+- PASS: `npm.cmd run deploy:dashboard3`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+- PASS: Dashboard3 Pages가 `tomatofarm-v20260624z25-picker-row-density` 캐시 버전을 서빙한다.
 
 ## 남은 리스크
 
-- not verified yet: Dashboard3 Pages 배포 후 인증 계정으로 `운동 탭 -> + -> 가슴 선택` 실제 UI flow를 확인해야 한다.
+- not verified yet: 배포 URL은 로그인 화면에 막혀 인증 계정으로 `운동 탭 -> + -> 가슴 선택` 실제 UI flow를 확인해야 한다.
