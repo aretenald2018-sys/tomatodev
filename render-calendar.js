@@ -1040,7 +1040,6 @@ function _renderWorkoutHomeDetail(root, { cache, plan, checkins, key }) {
   const content = wx.hasWorkout
     ? _renderWorkoutDetailRecorded(key, sessionIndex, wx)
     : _renderWorkoutDetailEmpty(sessionIndex);
-  const routineClass = _isTodayKey(key) ? '' : ' is-muted';
 
   root.innerHTML = `
     <div class="wt-day-detail">
@@ -1050,17 +1049,7 @@ function _renderWorkoutHomeDetail(root, { cache, plan, checkins, key }) {
           <div class="wt-day-date">${_dateTitle(key)} <span>${_dateDistanceLabel(key)}</span></div>
           <div class="wt-day-record">${recordText}</div>
         </div>
-        <div class="wt-day-actions">
-          <button type="button" onclick="window._wtCalGoTodayDetail()">오늘</button>
-          <button type="button" class="${routineClass}" onclick="window._wtCalOpenRoutine('${key}')">루틴</button>
-          ${wx.hasWorkout ? `
-            <button type="button" onclick="window._wtCalExportSession('${key}', ${sessionIndex})">내보내기</button>
-            <button type="button" onclick="window._wtCalDeleteSession('${key}', ${sessionIndex})">삭제</button>
-            <button type="button" onclick="window._wtCalEditSession('${key}', ${sessionIndex})">수정</button>
-          ` : `
-            <button type="button" onclick="window._wtCalAddSession('${key}')">추가</button>
-          `}
-        </div>
+        ${_renderWorkoutDetailSummaryCard(wx)}
       </div>
 
       ${content}
@@ -1070,6 +1059,24 @@ function _renderWorkoutHomeDetail(root, { cache, plan, checkins, key }) {
         <button type="button" class="wt-day-edit" onclick="window._wtCalEditSession('${key}', ${sessionIndex})" aria-label="선택 회차 편집">✎</button>
       </div>
       <button type="button" class="wt-day-fab" onclick="window._wtCalAddSession('${key}')" aria-label="운동 추가">＋</button>
+    </div>
+  `;
+}
+
+function _renderWorkoutDetailSummaryCard(wx) {
+  const metrics = [
+    { label: '운동시간', value: wx?.durationSec ? _formatDurationShort(wx.durationSec) : '—' },
+    { label: '세트', value: wx?.setCount ? `${wx.setCount}세트` : '—' },
+    { label: '볼륨', value: wx?.volume > 0 ? `${_formatVolume(wx.volume)}톤` : '—' },
+  ];
+  return `
+    <div class="wt-day-summary-card" aria-label="선택한 회차 요약">
+      ${metrics.map(item => `
+        <span>
+          <i>${item.label}</i>
+          <strong>${item.value}</strong>
+        </span>
+      `).join('')}
     </div>
   `;
 }
@@ -1090,11 +1097,6 @@ function _renderWorkoutDetailSessionTabs(sessions, activeIndex) {
 function _renderWorkoutDetailRecorded(key, sessionIndex, wx) {
   return `
     <div class="wt-day-recorded">
-      <div class="wt-day-metrics">
-        <span><i>운동시간</i><strong>${_formatDurationShort(wx.durationSec)}</strong></span>
-        <span><i>세트</i><strong>${wx.setCount ? `${wx.setCount}세트` : '—'}</strong></span>
-        <span><i>볼륨</i><strong>${wx.volume > 0 ? `${_formatVolume(wx.volume)}톤` : '—'}</strong></span>
-      </div>
       ${_renderWorkoutDetailCards(key, sessionIndex, wx)}
     </div>
   `;
@@ -1349,17 +1351,16 @@ function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) {
       </div>
       <div class="wt-max-card-name">${_esc(row.name)}</div>
       <div class="wt-max-plan">
-        <div>
+        <div class="wt-max-plan-goal">
           <span>오늘 성공 기준</span>
           <strong>${_esc(bestKg)}kg × ${_esc(bestReps)}회</strong>
           <em>오늘 ${_esc(trend.trackLabel)} 트랙 · ${row.setCount}세트</em>
         </div>
-        <div class="wt-max-track"><b>${_esc(trend.trackLabel)}</b><span>현재 트랙</span></div>
-      </div>
-      <div class="wt-max-trend">
-        <div class="wt-max-trend-labels"><b>볼륨</b><em>강도</em><span>1회 기록</span></div>
-        <div class="wt-max-spark">${_renderWorkoutSparkline(row, trend)}</div>
-        <div class="wt-max-trend-stat"><strong>${_esc(trend.valueLabel)}</strong><em class="${_esc(trend.deltaClass)}">${_esc(trend.delta || `${row.setCount}세트`)}</em><span>${_esc(trend.bottomLabel)}</span></div>
+        <div class="wt-max-trend">
+          <div class="wt-max-trend-labels"><b class="${trend.track === 'H' ? 'is-heavy' : 'is-volume'}">${_esc(trend.trackLabel)}</b><span>그래프</span></div>
+          <div class="wt-max-spark">${_renderWorkoutSparkline(row, trend)}</div>
+          <div class="wt-max-trend-stat"><strong>${_esc(trend.valueLabel)}</strong><em class="${_esc(trend.deltaClass)}">${_esc(trend.delta || `${row.setCount}세트`)}</em><span>${_esc(trend.bottomLabel)}</span></div>
+        </div>
       </div>
       <div class="wt-max-last">
         <span>오늘 기록</span>
