@@ -24,6 +24,8 @@
 - PASS: `node --test .\tests\*.test.js` — 513 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ d1ecb44`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "render-calendar.js::const finalDy = clampDragY(finalY - startY)" "render-calendar.js::updateDragLatches(finalDy)" "render-calendar.js::window.addEventListener('pointermove', onMove, { passive: false })" "sw.js::tomatofarm-v20260625z48-workout-sheet-drag-final-dy"`
 
 ## 남은 리스크
 
