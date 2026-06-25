@@ -67,4 +67,6 @@
 - PASS: `node --test .\tests\*.test.js` — 515 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
-- not verified yet: Dashboard3 Pages 배포 및 인증 계정 실제 `운동 탭 -> 날짜 sheet full -> + -> 운동 선택 picker 표시` UI flow 확인은 리뷰/배포 단계에 남아 있다.
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ e119fca1e0398b56406dcaa729cc7c37469cd861`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260625z58-workout-add-fab-click" "render-calendar.js::_bindWorkoutHomeSheetActions" "render-calendar.js::data-wt-day-add-session" "render-calendar.js::Promise.resolve(_addWorkoutHomeSession(key))" "style.css::touch-action: manipulation"`
+- not verified yet: 인증 계정 실제 `운동 탭 -> 날짜 sheet full -> + -> 운동 선택 picker 표시` UI flow 확인은 수동 확인이 필요하다.

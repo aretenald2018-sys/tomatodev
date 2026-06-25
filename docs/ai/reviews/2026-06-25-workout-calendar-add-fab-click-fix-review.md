@@ -20,7 +20,9 @@
 - PASS: `node --test .\tests\*.test.js` — 515 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ e119fca1e0398b56406dcaa729cc7c37469cd861`
+- PASS: 배포 자산 마커에서 z58 cache, `_bindWorkoutHomeSheetActions`, `data-wt-day-add-session`, `_addWorkoutHomeSession(key)`, `touch-action: manipulation` 확인
 
 ## 남은 확인
 
-- not verified yet: Dashboard3 Pages 배포 후 인증 계정에서 `운동 탭 -> 날짜 sheet full -> 우측 하단 + -> 운동 선택 picker 표시` 실제 UI flow 확인이 필요하다.
+- not verified yet: 인증 계정에서 `운동 탭 -> 날짜 sheet full -> 우측 하단 + -> 운동 선택 picker 표시` 실제 UI flow 확인이 필요하다.

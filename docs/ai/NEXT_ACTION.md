@@ -2,14 +2,14 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-25-workout-calendar-add-fab-click-fix.md`
-- 현재 단계: `execution complete — Slice 1 ready for review`
-- 마지막 완료: `FAB를 inline onclick 의존에서 data-action/direct sheet binding 경로로 전환하고 touch target CSS, cache/test 업데이트, 정적 검증을 완료했다.`
-- 다음 액션: `계획과 변경 파일을 리뷰하고, 문제가 없으면 complete로 전환한 뒤 Dashboard3 Pages 배포 검증을 진행한다.`
-- 차단 사유: `없음`
+- 현재 단계: `complete — Slice 1 deployed`
+- 마지막 완료: `FAB 직접 클릭 라우팅 수정, 테스트/리뷰, Dashboard3 Pages 배포 자산 검증을 완료했다.`
+- 다음 액션: `인증 계정으로 Dashboard3 Pages에서 운동 탭 -> 날짜 sheet full -> 우측 하단 + -> 운동 선택 picker 표시를 수동 확인한다.`
+- 차단 사유: `인증 계정 실제 UI flow는 수동 확인 필요`
 
-## 리뷰 대상
+## 완료한 작업
 
 - 계획 파일: `docs/ai/features/2026-06-25-workout-calendar-add-fab-click-fix.md`
 - 변경 파일:
@@ -28,7 +28,9 @@
   3. PASS: `node --test .\tests\*.test.js` — 515 tests passed
   4. PASS: `node scripts/verify-runtime-assets.mjs`
   5. PASS: `git diff --check`
-  6. not verified yet: Dashboard3 Pages 배포 및 인증 계정 실제 UI flow 확인 필요
+  6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ e119fca1e0398b56406dcaa729cc7c37469cd861`
+  7. PASS: 배포 자산 마커에서 z58 cache, `_bindWorkoutHomeSheetActions`, `data-wt-day-add-session`, `_addWorkoutHomeSession(key)`, `touch-action: manipulation` 확인
+  8. not verified yet: 인증 계정 실제 UI flow 확인 필요
 
 ## 이전 실행 기록
 
