@@ -61,6 +61,7 @@ const WORKOUT_HOME_SHEET_DRAG_OPEN_BAR_RATIO = 0.1;
 const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX = 14;
 const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_RATIO = 0.2;
 const WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY = 0.55;
+const WORKOUT_HOME_SHEET_FLING_SAMPLE_MAX_MS = 80;
 const WORKOUT_HOME_SHEET_FULL_CLEARANCE_PX = 112;
 
 const MAX_WEAK_LABEL = {
@@ -1939,6 +1940,17 @@ function _startWorkoutHomeSheetDrag(event) {
   sheet.style.setProperty('--wt-day-sheet-drag-y', '0px');
   sheet.style.setProperty('--wt-day-sheet-drag-height', `${startHeight}px`);
   event.currentTarget.setPointerCapture?.(event.pointerId);
+  const clearDragPreview = ({ defer = false } = {}) => {
+    const clear = () => {
+      sheet.style.removeProperty('--wt-day-sheet-drag-y');
+      sheet.style.removeProperty('--wt-day-sheet-drag-height');
+    };
+    if (defer && typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(clear);
+      return;
+    }
+    clear();
+  };
 
   const onMove = (moveEvent) => {
     if (moveEvent.cancelable) moveEvent.preventDefault();
@@ -1955,14 +1967,11 @@ function _startWorkoutHomeSheetDrag(event) {
     const finalY = Number.isFinite(Number(upEvent.clientY)) ? Number(upEvent.clientY) : lastY;
     const now = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
     const elapsed = Math.max(1, now - lastMoveAt);
-    if (finalY !== lastMoveY) velocityY = (finalY - lastMoveY) / elapsed;
+    if (elapsed <= WORKOUT_HOME_SHEET_FLING_SAMPLE_MAX_MS && finalY !== lastMoveY) velocityY = (finalY - lastMoveY) / elapsed;
     lastY = finalY;
     const finalDy = clampDragY(finalY - startY);
     lastDragY = finalDy;
     updateDragLatches(finalDy);
-    sheet.classList.remove('is-dragging');
-    sheet.style.removeProperty('--wt-day-sheet-drag-y');
-    sheet.style.removeProperty('--wt-day-sheet-drag-height');
     event.currentTarget.releasePointerCapture?.(event.pointerId);
     window.removeEventListener('pointermove', onMove);
     window.removeEventListener('pointerup', onUp);
@@ -1970,11 +1979,16 @@ function _startWorkoutHomeSheetDrag(event) {
 
     const dy = lastDragY;
     if (Math.abs(dy) < WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX && Math.abs(velocityY) < WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY) {
+      sheet.classList.remove('is-dragging');
+      clearDragPreview();
       if (hasMoved) _suppressWorkoutHomeSheetClick();
       return;
     }
+    const targetState = openLatched ? 'full' : closeLatched ? 'bar' : _resolveWorkoutHomeSheetDragTarget(dy, velocityY, openThresholdPx, collapseThresholdPx);
     _suppressWorkoutHomeSheetClick();
-    _setWorkoutHomeSheetState(openLatched ? 'full' : closeLatched ? 'bar' : _resolveWorkoutHomeSheetDragTarget(dy, velocityY, openThresholdPx, collapseThresholdPx));
+    sheet.classList.remove('is-dragging');
+    _setWorkoutHomeSheetState(targetState);
+    clearDragPreview({ defer: true });
   };
 
   window.addEventListener('pointermove', onMove, { passive: false });

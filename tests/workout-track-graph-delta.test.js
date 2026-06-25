@@ -39,5 +39,5 @@ test('track graph delta class remains sign-based for pp labels', () => {
 });
 
 test('service worker cache version was bumped for track pp delta assets', () => {
-  assert.match(swJs, /tomatofarm-v20260625z49-workout-sheet-click-restore/);
+  assert.match(swJs, /tomatofarm-v20260625z52-workout-sheet-snap-settle/);
 });
