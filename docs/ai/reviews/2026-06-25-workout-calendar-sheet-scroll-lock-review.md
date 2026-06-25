@@ -33,7 +33,9 @@
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: 전체 Node 테스트 514개
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ d23ca4cd775936b4acdb53d662d7c71c8d22b8c2`
+- PASS: 배포 asset marker에 `wt-workout-sheet-scroll-lock`, `WORKOUT_HOME_SHEET_DRAG_HARD_CLOSE_PX = 8`, `_bindWorkoutHomeSheetScrollGuard`, `[data-wt-day-sheet]`, z57 cache marker가 반영됐다.
 
 ## 남은 확인
 
-- not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 UI flow 확인 필요.
+- not verified yet: 인증 계정 실제 UI flow 확인 필요.

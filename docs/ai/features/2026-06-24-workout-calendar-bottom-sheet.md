@@ -638,4 +638,6 @@
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 514개 통과
 - PASS: `git diff --check`
-- not verified yet: Dashboard3 Pages 배포 검증 및 인증 계정 실제 `운동 탭 -> 날짜 sheet full/bar scroll` UI flow 확인이 남아 있다.
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ d23ca4cd775936b4acdb53d662d7c71c8d22b8c2`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260625z57-workout-sheet-scroll-lock" "render-calendar.js::wt-workout-sheet-scroll-lock" "render-calendar.js::WORKOUT_HOME_SHEET_DRAG_HARD_CLOSE_PX = 8" "render-calendar.js::_bindWorkoutHomeSheetScrollGuard" "app.js::[data-wt-day-sheet]" "style.css::body.wt-workout-tab-active.wt-workout-sheet-scroll-lock"`
+- not verified yet: 인증 계정 실제 `운동 탭 -> 날짜 sheet full/bar scroll` UI flow 확인이 남아 있다.

@@ -2,12 +2,12 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-24-workout-calendar-bottom-sheet.md`
-- 현재 단계: `execution complete — Slice 12 scroll ownership fix`
-- 마지막 완료: `full sheet scroll lock, sheet body boundary guard, 전역 pull-down 제외, hard close latch, cache/test 업데이트를 완료했다.`
-- 다음 액션: `Slice 12 변경 파일을 리뷰하고 Dashboard3 Pages 배포 검증을 진행한다.`
-- 차단 사유: `없음`
+- 현재 단계: `complete — Slice 12 scroll ownership fix deployed`
+- 마지막 완료: `full sheet scroll lock, sheet body boundary guard, 전역 pull-down 제외, hard close latch, cache/test 업데이트, 리뷰, Dashboard3 Pages 배포 검증을 완료했다.`
+- 다음 액션: `인증 계정으로 Dashboard3 Pages에서 운동 탭 -> 날짜 sheet full 내부 스크롤, 아래로 당겨 bar 닫힘, bar 상태 캘린더 스크롤을 수동 확인한다.`
+- 차단 사유: `인증 계정 실제 UI flow는 수동 확인 필요`
 
 ## 다음 실행 대상
 
@@ -26,7 +26,12 @@
   4. PASS: `node scripts/verify-runtime-assets.mjs`
   5. PASS: 전체 Node 테스트 514개
   6. PASS: `git diff --check`
-  7. not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 UI flow 확인 필요
+  7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ d23ca4cd775936b4acdb53d662d7c71c8d22b8c2`
+  8. PASS: 배포 asset marker에 `wt-workout-sheet-scroll-lock`, `WORKOUT_HOME_SHEET_DRAG_HARD_CLOSE_PX = 8`, `_bindWorkoutHomeSheetScrollGuard`, `[data-wt-day-sheet]`, z57 cache marker 반영
+  9. not verified yet: 인증 계정 실제 UI flow 확인 필요
+
+- Slice 12 리뷰:
+  - `docs/ai/reviews/2026-06-25-workout-calendar-sheet-scroll-lock-review.md`
 
 - 완료한 Slice 11:
   1. 운동탭 활성 상태에만 `body.wt-workout-tab-active` class 적용.
