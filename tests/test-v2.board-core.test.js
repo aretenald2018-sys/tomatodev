@@ -21,6 +21,7 @@ import {
   isSettleDue, buildSettleRows, applySettle,
   archiveBenchmark, addBenchmark,
   findExerciseProgramBenchmark, getExerciseProgramSettings, upsertExerciseProgramBenchmark,
+  buildExerciseProgramWorkoutPrescription,
   buildMinimapData, recentPaintLogs, cloneBoard,
 } from '../workout/test-v2/board-core.js';
 import { wendlerWeekPrescription, WENDLER_SCHEMES, defaultWendlerIncrement } from '../workout/test-v2/wendler.js';
@@ -654,6 +655,38 @@ test('종목 프로그램 계약: 기본 모드는 연결 벤치마크를 보관
   assert.equal(fly.status, 'archived');
   assert.equal(findExerciseProgramBenchmark(b, { movementId: 'chest_fly' }), null);
   assert.equal(getExerciseProgramSettings(b, { movementId: 'chest_fly' }).program, 'none');
+});
+
+test('종목 프로그램 처방: stair 트랙은 오늘 운동 세트와 대체 트랙을 만든다', () => {
+  const b = fixtureBoard();
+  const bench = b.benchmarks.find(x => x.movementId === 'barbell_bench');
+  const result = buildExerciseProgramWorkoutPrescription(b, bench, { track: 'intensity', todayKey: TODAY });
+  assert.equal(result.plan.kind, 'stair');
+  assert.equal(result.recommendationMeta.source, 'test_board_v2');
+  assert.equal(result.recommendationMeta.track, 'H');
+  assert.equal(result.prescription.applySets, true);
+  assert.equal(result.prescription.targetSets, 4);
+  assert.equal(result.prescription.sets.length, 4);
+  assert.equal(result.prescription.sets[0].kg, 90);
+  assert.equal(result.prescription.sets[0].reps, 8);
+  assert.ok(result.prescription.trackAlternatives.M);
+  assert.ok(result.prescription.trackAlternatives.H);
+});
+
+test('종목 프로그램 처방: 웬들러는 준비운동/메인/BBB 세트를 만든다', () => {
+  const b = fixtureBoard();
+  const squat = b.benchmarks.find(x => x.movementId === 'back_squat');
+  const result = buildExerciseProgramWorkoutPrescription(b, squat, { todayKey: TODAY });
+  assert.equal(result.plan.kind, 'wendler');
+  assert.equal(result.recommendationMeta.program, 'wendler');
+  assert.equal(result.recommendationMeta.wendlerManualOverride, false);
+  assert.match(result.recommendationMeta.wendlerSignature, /tm:150/);
+  assert.equal(result.prescription.action, 'wendler');
+  assert.equal(result.prescription.applySets, true);
+  assert.equal(result.prescription.sets.filter(s => s.wendlerRole === 'warmup').length, 3);
+  assert.equal(result.prescription.sets.filter(s => s.wendlerRole === 'main').length, 3);
+  assert.equal(result.prescription.sets.filter(s => s.wendlerRole === 'supplemental').length, 5);
+  assert.equal(result.prescription.sets.some(s => s.amrap), true);
 });
 
 test('과거 셀 실제 운동기록 fallback: 같은 주 스모데드 기록을 exerciseId로 찾는다', () => {

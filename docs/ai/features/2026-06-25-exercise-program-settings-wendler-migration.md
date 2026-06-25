@@ -227,6 +227,23 @@
 - `node --test tests/workout-test-mode-unified.test.js tests/test-v2.board-core.test.js`
 - UI flow: 웬들러 설정된 스쿼트를 picker에서 추가하면 준비운동/메인/BBB 세트가 표시된다.
 
+실행 결과:
+
+- 2026-06-25: Slice 4 구현 완료.
+- `workout/test-v2/board-core.js`에 `buildExerciseProgramWorkoutPrescription()`과 웬들러 signature helper를 추가했다.
+- `stair` 프로그램은 선택 트랙의 현재 주차 처방 세트를 만들고, 복수 트랙이면 `trackAlternatives`를 함께 생성한다.
+- `wendler` 프로그램은 기존 웬들러 엔진의 주차 처방으로 준비운동/메인/BBB 또는 FSL 세트를 만든다.
+- `workout/exercises.js`의 picker entry 생성 경로에서 `test_board_v2` 활성 프로그램이 있는 종목만 프로그램 처방을 적용한다.
+- 기존 일반 종목은 계속 1개 빈 세트로 시작한다.
+- 운동 entry에는 `maxPrescription`, `recommendationMeta.boardV2BenchmarkId`, `boardV2WeekStart`, `program`, `wendlerSignature` 등 출처 metadata를 남긴다.
+- 성장보드 색칠/미달 상태 자동 반영은 구현하지 않았다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260625z63-program-picker-prescription`으로 bump하고 관련 cache-version 테스트를 갱신했다.
+- PASS: `node --check workout/test-v2/board-core.js; node --check workout/exercises.js; node --check sw.js`
+- PASS: `node --test tests/test-v2.board-core.test.js tests/workout-test-mode-unified.test.js tests/exercise-program-editor.test.js`
+- PASS: `node --test tests/test-v2.board-core.test.js tests/workout-test-mode-unified.test.js tests/exercise-program-editor.test.js tests/home-life-zone-npc-quest.test.js tests/workout-active-session-recovery.test.js tests/stats-muscle-fatigue-insight.test.js tests/stats-picker-ui-polish.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js tests/workout-track-graph-delta.test.js tests/workout-timer-summary-only.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+
 ### Slice 5: 운동 완료와 성장보드 반영 정책 연결
 
 상태:
@@ -261,5 +278,6 @@
 - Slice 1 실행, Dashboard3 Pages 배포 검증, 리뷰 완료.
 - Slice 2 실행 완료. 리뷰 결과 이슈 없음.
 - Slice 3 실행 완료. 리뷰 결과 이슈 없음.
-- 다음 실행은 Slice 4부터 순차 진행한다.
+- Slice 4 실행 완료. 리뷰 결과 이슈 없음.
+- Slice 5는 사용자 결정 전까지 보류한다.
 - 성장보드 색칠/미달 자동 반영은 사용자 최종 결정 전까지 보류한다.

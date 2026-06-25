@@ -2,12 +2,12 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_execution`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-25-exercise-program-settings-wendler-migration.md`
-- 현재 단계: `review complete — Slice 3 exercise program editor`
-- 마지막 완료: `종목 수정 시트에 프로그램 섹션을 추가하고 saveExercise 검증 후 test_board_v2 프로그램 설정을 저장하도록 연결했다.`
-- 다음 액션: `docs/ai/features/2026-06-25-exercise-program-settings-wendler-migration.md Slice 4 picker에서 프로그램 처방을 오늘 운동 카드에 적용한다.`
-- 차단 사유: `없음`
+- 현재 단계: `review complete — Slice 4 program picker prescription`
+- 마지막 완료: `picker에서 test_board_v2 활성 프로그램이 있는 종목을 추가할 때 stair/wendler 처방 세트를 오늘 운동 카드에 적용하도록 연결했다.`
+- 다음 액션: `성장보드 색칠/미달 자동 반영 정책은 사용자 결정 후 별도 계획으로 진행한다.`
+- 차단 사유: `Slice 5 성장보드 색칠 통합 방식은 사용자 결정 대기`
 
 ## 직전 실행 검증
 
@@ -23,7 +23,11 @@
 - PASS: `node --test tests/exercise-program-editor.test.js tests/test-v2.board-core.test.js tests/workout-test-mode-unified.test.js tests/home-life-zone-npc-quest.test.js tests/workout-active-session-recovery.test.js tests/stats-muscle-fatigue-insight.test.js tests/stats-picker-ui-polish.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js tests/workout-track-graph-delta.test.js tests/workout-timer-summary-only.test.js`
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
-- not verified yet: Slice 4 완료 후 Dashboard3 Pages 배포 및 인증 계정 UI flow 확인 필요
+- PASS: `node --check workout/test-v2/board-core.js; node --check workout/exercises.js; node --check sw.js`
+- PASS: `node --test tests/test-v2.board-core.test.js tests/workout-test-mode-unified.test.js tests/exercise-program-editor.test.js tests/home-life-zone-npc-quest.test.js tests/workout-active-session-recovery.test.js tests/stats-muscle-fatigue-insight.test.js tests/stats-picker-ui-polish.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js tests/workout-track-graph-delta.test.js tests/workout-timer-summary-only.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- not verified yet: Dashboard3 Pages 배포 및 인증 계정 UI flow 확인 필요
 
 ## 완료한 작업
 

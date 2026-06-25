@@ -38,5 +38,5 @@ test('exercise editor program controls have compact fixed layout styles', () => 
   assert.match(styleCss, /#ex-editor-modal \.ex-program-seg/);
   assert.match(styleCss, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(styleCss, /#ex-editor-modal \.ex-program-grid-four/);
-  assert.match(swJs, /tomatofarm-v20260625z62-exercise-program-editor/);
+  assert.match(swJs, /tomatofarm-v20260625z63-program-picker-prescription/);
 });

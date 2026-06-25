@@ -16,6 +16,7 @@
 import {
   normalizeWendlerConfig,
   wendlerWeekPrescription,
+  WENDLER_SCHEMES,
   defaultWendlerIncrement,
   isWendlerAllowedMajor,
   roundToPlate,
@@ -1279,6 +1280,194 @@ export function upsertExerciseProgramBenchmark(board, exercise = {}, config = {}
   }
   _applyExerciseProgramToBenchmark(b, bm, candidate, config, todayKey);
   return { board: b, benchmark: bm, action };
+}
+
+const _programTrackToCode = (track) => track === 'intensity' ? 'H' : 'M';
+
+function _programTargetRpeOf(bm = {}) {
+  return Math.max(1, Math.min(10, 10 - Number(bm.meta?.rirTarget == null ? 2 : bm.meta.rirTarget)));
+}
+
+function _programPlanForBenchmark(board, bm, { track = 'volume', weekStart = null, todayKey = null } = {}) {
+  if (!bm || bm.status === 'archived') return null;
+  const wkMon = mondayOf(weekStart || todayKey || toKey(new Date()));
+  const cycle = activeCycleOf(board, bm.groupId);
+  if (bm.program === 'wendler') {
+    const week = cycle ? Math.max(1, Math.min(cycle.weeks, weekIndexOf(cycle, wkMon))) : 1;
+    const rx = wendlerWeekPrescription(bm.wendler, week);
+    return { kind: 'wendler', track: 'volume', weekStart: wkMon, week, kg: rx.topSet?.kg || 0, reps: rx.topSet?.reps || 0, amrap: !!rx.topSet?.amrap, rx };
+  }
+  const useTrack = (bm.tracks || []).includes(track) ? track : (bm.tracks || ['volume'])[0];
+  let cell = null;
+  if (cycle) {
+    const cells = expandColumnCells(board, bm.id, useTrack, cycle.id, todayKey || wkMon);
+    cell = cells.find(c => c.kind === 'stair' && weeksBetween(c.weekStart, wkMon) >= 0 && weeksBetween(c.weekStart, wkMon) < c.span);
+  }
+  const fallback = currentKgOf(board, bm, useTrack);
+  return {
+    kind: 'stair',
+    track: useTrack,
+    weekStart: wkMon,
+    week: cycle ? Math.max(1, Math.min(cycle.weeks, weekIndexOf(cycle, wkMon))) : 1,
+    kg: cell?.kg || fallback.kg || 0,
+    reps: cell?.reps || fallback.reps || (useTrack === 'intensity' ? 8 : 12),
+    sets: bm.setsDefault || 4,
+  };
+}
+
+export function exerciseProgramWendlerSignature(plan) {
+  if (plan?.kind !== 'wendler') return '';
+  const rx = plan.rx || {};
+  const setSig = (sets = []) => sets.map(s => [
+    s.pct ?? '',
+    s.kg ?? '',
+    s.reps ?? '',
+    s.amrap ? 'amrap' : '',
+  ].join(':')).join(',');
+  const supp = rx.supplemental
+    ? [rx.supplemental.kind, rx.supplemental.pct, rx.supplemental.kg, rx.supplemental.sets, rx.supplemental.reps].join(':')
+    : 'none';
+  return [
+    `tm:${rx.tmKg ?? ''}`,
+    `week:${rx.week ?? ''}`,
+    `board:${rx.boardWeek ?? ''}`,
+    `round:${rx.roundKg ?? ''}`,
+    `warm:${setSig(rx.warmup?.sets || [])}`,
+    `main:${setSig(rx.sets || [])}`,
+    `supp:${supp}`,
+  ].join('|');
+}
+
+function _programSetsForWorkoutCard(bm, plan) {
+  const rpe = _programTargetRpeOf(bm);
+  if (plan.kind === 'wendler') {
+    const signature = exerciseProgramWendlerSignature(plan);
+    const sets = [];
+    for (const [idx, set] of (plan.rx?.warmup?.sets || []).entries()) {
+      sets.push({
+        kg: set.kg,
+        reps: set.reps,
+        rpe: Math.max(1, rpe - 2),
+        romPct: 100,
+        setType: 'warmup',
+        wendlerRole: 'warmup',
+        wendlerPct: set.pct ?? null,
+        wendlerOrder: idx,
+        wendlerSignature: signature,
+        done: false,
+      });
+    }
+    sets.push(...(plan.rx?.sets || []).map((set, idx) => ({
+      kg: set.kg,
+      reps: set.reps,
+      rpe,
+      romPct: 100,
+      setType: 'main',
+      wendlerRole: 'main',
+      wendlerPct: set.pct ?? null,
+      wendlerOrder: idx,
+      wendlerSignature: signature,
+      amrap: !!set.amrap,
+      done: false,
+    })));
+    const supp = plan.rx?.supplemental;
+    if (supp) {
+      for (let i = 0; i < Math.max(0, Number(supp.sets) || 0); i += 1) {
+        sets.push({
+          kg: supp.kg,
+          reps: supp.reps,
+          rpe,
+          romPct: 100,
+          setType: 'main',
+          wendlerRole: 'supplemental',
+          supplementalKind: supp.kind,
+          wendlerPct: supp.pct ?? null,
+          wendlerOrder: i,
+          wendlerSignature: signature,
+          done: false,
+        });
+      }
+    }
+    return sets;
+  }
+  return Array.from({ length: Math.max(1, Number(plan.sets) || 4) }, () => ({
+    kg: plan.kg,
+    reps: plan.reps,
+    rpe,
+    romPct: 100,
+    setType: 'main',
+    done: false,
+  }));
+}
+
+function _programRxLabel(plan, bm, track) {
+  if (plan.kind === 'wendler') {
+    const top = plan.rx?.topSet;
+    const supp = plan.rx?.supplemental;
+    const scheme = WENDLER_SCHEMES[bm.wendler?.scheme]?.label || '커스텀';
+    const main = `웬들러 ${scheme} · ${top?.kg || '—'}kg x ${top?.reps || ''}${top?.amrap ? '+' : ''}`;
+    const supplemental = supp ? ` · ${supp.label} ${supp.kg}kg ${supp.sets}x${supp.reps}` : '';
+    return `${main}${supplemental}`;
+  }
+  const label = track === 'intensity' ? '강도' : '볼륨';
+  return `${label} 트랙 · ${plan.sets || 4}세트 x ${plan.reps || ''}회`;
+}
+
+export function buildExerciseProgramWorkoutPrescription(board, benchmark, { track = 'volume', weekStart = null, todayKey = null, includeAlternatives = true } = {}) {
+  if (!board || !benchmark || benchmark.status === 'archived') return null;
+  const plan = _programPlanForBenchmark(board, benchmark, { track, weekStart, todayKey });
+  if (!plan) return null;
+  const bm = benchmark;
+  const wkMon = plan.weekStart;
+  const cycle = activeCycleOf(board, bm.groupId);
+  const useTrack = plan.kind === 'wendler' ? 'volume' : plan.track;
+  const code = _programTrackToCode(useTrack);
+  const sets = _programSetsForWorkoutCard(bm, plan);
+  const signature = plan.kind === 'wendler' ? exerciseProgramWendlerSignature(plan) : '';
+  const label = _programRxLabel(plan, bm, useTrack);
+  const prescription = {
+    benchmarkId: bm.id,
+    cycleId: cycle?.id || null,
+    benchmarkTrack: code,
+    track: code,
+    startKg: plan.kg || 0,
+    repsLow: plan.reps || 0,
+    repsHigh: plan.reps || 0,
+    targetSets: sets.length,
+    targetRpe: _programTargetRpeOf(bm),
+    action: plan.kind === 'wendler' ? 'wendler' : 'plan',
+    actionLabel: plan.kind === 'wendler' ? '웬들러' : (useTrack === 'intensity' ? '강도 트랙' : '볼륨 트랙'),
+    label,
+    reason: plan.kind === 'wendler' ? '종목에 설정된 웬들러 처방을 불러왔어요.' : '종목에 설정된 성장보드 트랙 처방을 불러왔어요.',
+    transparency: {
+      detail: plan.kind === 'wendler'
+        ? `${plan.week}주차 · ${label}`
+        : `${plan.week}주차 · ${plan.kg || '—'}kg × ${plan.reps || ''}회`,
+    },
+    applySets: true,
+    sets,
+    program: plan.kind,
+    ...(signature ? { wendlerSignature: signature } : {}),
+  };
+  if (plan.kind !== 'wendler' && includeAlternatives) {
+    prescription.trackAlternatives = {};
+    for (const altTrack of (bm.tracks || [useTrack])) {
+      const alt = buildExerciseProgramWorkoutPrescription(board, bm, { track: altTrack, weekStart: wkMon, todayKey: todayKey || wkMon, includeAlternatives: false });
+      if (alt?.prescription) prescription.trackAlternatives[_programTrackToCode(altTrack)] = alt.prescription;
+    }
+  }
+  const recommendationMeta = {
+    kind: 'benchmark',
+    source: 'test_board_v2',
+    program: plan.kind,
+    track: code,
+    cycleWeek: plan.week,
+    cycleId: cycle?.id || null,
+    boardV2BenchmarkId: bm.id,
+    boardV2WeekStart: wkMon,
+    ...(signature ? { wendlerSignature: signature, wendlerManualOverride: false } : {}),
+  };
+  return { plan, prescription, recommendationMeta };
 }
 
 // ----------------------------------------------------------------

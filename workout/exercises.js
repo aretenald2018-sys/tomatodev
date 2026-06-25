@@ -27,6 +27,8 @@ import {
   resolveMaxBenchmarkPickerItems,
 } from './expert/max-benchmark-picker.js?v=20260517v3';
 import {
+  buildExerciseProgramWorkoutPrescription,
+  findExerciseProgramBenchmark,
   getExerciseProgramSettings,
   upsertExerciseProgramBenchmark,
 } from './test-v2/board-core.js';
@@ -1611,6 +1613,15 @@ function _normalizeTestModeSets(sets) {
 
 function _testModeSetsFromPrescription(prescription) {
   if (!prescription) return null;
+  if (prescription.applySets === true && Array.isArray(prescription.sets) && prescription.sets.length) {
+    return prescription.sets.map(set => ({
+      ..._defaultTestModeSet(),
+      ...set,
+      setType: set?.setType || 'main',
+      done: set?.done === true,
+      romPct: _normalizeRomPct(set?.romPct) ?? 100,
+    }));
+  }
   const rpe = Number(prescription.targetRpe) || null;
   return [{
     ..._defaultTestModeSet(),
@@ -1651,6 +1662,45 @@ function _ensureTestModePickerEntry(entry, ex, options = {}) {
   return base;
 }
 
+function _todayKeyForProgramPicker() {
+  const now = new Date();
+  return _todayDateKey() || dateKey(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+function _pickerProgramTrackForBenchmark(bm = {}) {
+  if (bm.program === 'wendler') return 'volume';
+  const tracks = Array.isArray(bm.tracks) && bm.tracks.length ? bm.tracks : ['volume'];
+  return tracks.includes('volume') ? 'volume' : tracks[0];
+}
+
+function _buildProgramPickerExerciseEntry(ex) {
+  const board = getTestBoardV2();
+  if (!board || !ex?.id) return null;
+  const benchmark = findExerciseProgramBenchmark(board, ex);
+  if (!benchmark || benchmark.status === 'archived') return null;
+  const todayKey = _todayKeyForProgramPicker();
+  const program = buildExerciseProgramWorkoutPrescription(board, benchmark, {
+    track: _pickerProgramTrackForBenchmark(benchmark),
+    todayKey,
+  });
+  if (!program?.prescription) return null;
+  return {
+    muscleId: ex.muscleId || benchmark.muscleId || benchmark.groupId || null,
+    exerciseId: ex.id,
+    name: ex.name || benchmark.label || '',
+    movementId: ex.movementId || benchmark.movementId || null,
+    sets: program.prescription.sets || [{ kg: 0, reps: 0, setType: 'main', done: false }],
+    maxPrescription: program.prescription,
+    recommendationMeta: {
+      ...program.recommendationMeta,
+      id: `dashboard3:program:${benchmark.id}:${program.recommendationMeta.boardV2WeekStart}`,
+      acceptedAt: Date.now(),
+      userAction: 'accepted',
+      primaryMajor: ex.muscleId || benchmark.muscleId || benchmark.groupId || null,
+    },
+  };
+}
+
 function _buildPickerExerciseEntry(ex) {
   if (_isMaxBenchmarkPickerExercise(ex)) {
     const entry = buildMaxPickerExerciseEntry({
@@ -1662,6 +1712,8 @@ function _buildPickerExerciseEntry(ex) {
     });
     if (entry) return _ensureTestModePickerEntry(entry, ex, { benchmark: ex.__maxBenchmark, cycle: ex.__maxCycle });
   }
+  const programEntry = _buildProgramPickerExerciseEntry(ex);
+  if (programEntry) return _ensureTestModePickerEntry(programEntry, ex, { benchmark: programEntry.maxPrescription });
   const entry = {
     muscleId: ex.muscleId,
     exerciseId: ex.id,
