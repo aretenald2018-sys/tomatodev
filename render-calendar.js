@@ -139,9 +139,15 @@ function _formatVolume(value) {
 }
 
 function _parseDateKey(key) {
-  const parts = String(key || '').split('-').map(n => parseInt(n, 10));
-  if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return null;
-  return { y: parts[0], m: parts[1] - 1, d: parts[2] };
+  const match = String(key || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const y = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10) - 1;
+  const d = parseInt(match[3], 10);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return null;
+  const exact = new Date(y, m, d);
+  if (exact.getFullYear() !== y || exact.getMonth() !== m || exact.getDate() !== d) return null;
+  return { y, m, d };
 }
 
 function _dateFromKey(key) {
@@ -200,8 +206,10 @@ function _syncWorkoutHomeNavState({ history = 'replace', notify = false, action 
 
 export function applyWorkoutCalendarNavSnapshot(snapshot = {}, options = {}) {
   const calendar = snapshot?.calendar || {};
-  if (Number.isFinite(Number(calendar.viewYear))) _viewYear = Number(calendar.viewYear);
-  if (Number.isFinite(Number(calendar.viewMonth))) _viewMonth = Number(calendar.viewMonth);
+  if (calendar.viewYear != null && Number.isFinite(Number(calendar.viewYear))) _viewYear = Number(calendar.viewYear);
+  if (calendar.viewMonth != null && Number.isFinite(Number(calendar.viewMonth))) _viewMonth = Number(calendar.viewMonth);
+  if (!Number.isFinite(_viewYear) || _viewYear < 1000 || _viewYear > 9999) _viewYear = TODAY.getFullYear();
+  if (!Number.isFinite(_viewMonth) || _viewMonth < 0 || _viewMonth > 11) _viewMonth = TODAY.getMonth();
   if (_parseDateKey(calendar.selectedKey)) _workoutHomeSelectedKey = calendar.selectedKey;
   _workoutHomeSessionIndex = Math.max(0, Math.floor(Number(calendar.selectedSessionIndex) || 0));
   _workoutHomeSheetState = _normalizeWorkoutHomeSheetState(calendar.sheetState);
@@ -898,9 +906,8 @@ function _renderWorkoutHomeDayBar(selectedKey, { cache, plan, checkins, lookup }
   const sheetState = _currentWorkoutHomeSheetState();
   const expanded = sheetState !== 'bar';
   return `
-    <div class="cal-workout-day-bar" data-wt-sheet-handle tabindex="0" aria-expanded="${expanded ? 'true' : 'false'}">
-      <span class="cal-workout-day-grip" data-wt-sheet-grip aria-hidden="true"></span>
-      <button type="button" class="cal-workout-day-expand" data-wt-sheet-toggle onclick="window._wtCalToggleSheet('${selected}')" aria-label="${expanded ? '날짜 상세 접기' : '선택한 날짜 열기'}">${expanded ? '⌄' : '⌃'}</button>
+    <div class="cal-workout-day-bar" aria-expanded="${expanded ? 'true' : 'false'}">
+      <button type="button" class="cal-workout-day-expand" data-wt-sheet-handle data-wt-sheet-toggle onclick="window._wtCalToggleSheet('${selected}')" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '날짜 상세 접기' : '선택한 날짜 열기'}">${expanded ? '⌄' : '⌃'}</button>
       <button type="button" class="cal-workout-day-main" onclick="window._wtCalOpenDay('${selected}')">
         <span class="cal-workout-day-date">${selected} <em>${_dateDistanceLabel(selected)}</em></span>
         <span class="cal-workout-day-sub">${recordText} · ${sessionText}</span>
@@ -1874,20 +1881,7 @@ function _bindWorkoutHomeSheetDrag(root) {
   const handle = root?.querySelector?.('[data-wt-sheet-handle]');
   if (!handle) return;
   handle.addEventListener('pointerdown', _startWorkoutHomeSheetDrag);
-  handle.addEventListener('click', _handleWorkoutHomeSheetHandleClick);
   handle.addEventListener('keydown', _handleWorkoutHomeSheetKey);
-}
-
-function _handleWorkoutHomeSheetHandleClick(event) {
-  if (_consumeWorkoutHomeSuppressedClick()) {
-    event.preventDefault();
-    event.stopPropagation();
-    return;
-  }
-  if (event.target?.closest?.('[data-wt-sheet-toggle], [data-wt-sheet-action], .cal-workout-day-main')) return;
-  event.preventDefault();
-  event.stopPropagation();
-  _toggleWorkoutHomeSheet(_workoutHomeSelectedKey);
 }
 
 function _handleWorkoutHomeSheetKey(event) {

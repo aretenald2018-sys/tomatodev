@@ -8,6 +8,7 @@ import {
   currentWorkoutRoute,
   getWorkoutNavSnapshot,
   handleWorkoutBack,
+  openWorkoutCalendar,
   openWorkoutDaySheet,
   pushWorkoutDetail,
   pushWorkoutRecord,
@@ -69,6 +70,24 @@ test('inactive tab does not consume back', () => {
   assert.equal(currentWorkoutRoute().name, WORKOUT_ROUTES.RECORD);
 });
 
+test('calendar open can reset the workout home month to today', () => {
+  resetWorkoutNavState();
+  updateWorkoutCalendarState({ viewYear: 0, viewMonth: 0, selectedKey: '2026-01-01' });
+  openWorkoutCalendar({
+    selectedKey: '2026-06-25',
+    selectedSessionIndex: 0,
+    viewYear: 2026,
+    viewMonth: 5,
+    scrollTop: 0,
+    history: 'replace',
+  });
+  const snapshot = getWorkoutNavSnapshot();
+  assert.equal(currentWorkoutRoute().name, WORKOUT_ROUTES.CALENDAR);
+  assert.equal(snapshot.calendar.selectedKey, '2026-06-25');
+  assert.equal(snapshot.calendar.viewYear, 2026);
+  assert.equal(snapshot.calendar.viewMonth, 5);
+});
+
 test('workout navigation is wired to app, calendar, detail root, and PWA cache', async () => {
   const [appJs, calendarJs, indexHtml, workoutExercises, navJs, swJs] = await Promise.all([
     readFile(new URL('../app.js', import.meta.url), 'utf8'),
@@ -83,7 +102,13 @@ test('workout navigation is wired to app, calendar, detail root, and PWA cache',
   assert.match(appJs, /window\.Capacitor\?\.Plugins\?\.App/);
   assert.match(appJs, /_handleWorkoutOverlayBack\(\) \|\| handleWorkoutBack/);
   assert.match(appJs, /handleWorkoutBack\(\{ activeTab: _currentTab, preferHistory: true \}\)/);
+  assert.match(appJs, /action:\s*'calendar:tab-today'/);
+  assert.match(appJs, /selectedKey:\s*_dateKeyFromParts\(TODAY\.getFullYear\(\), TODAY\.getMonth\(\), TODAY\.getDate\(\)\)/);
+  assert.match(appJs, /viewYear:\s*TODAY\.getFullYear\(\)/);
+  assert.match(appJs, /viewMonth:\s*TODAY\.getMonth\(\)/);
   assert.match(calendarJs, /openWorkoutDaySheet\(nextKey/);
+  assert.match(calendarJs, /calendar\.viewYear != null && Number\.isFinite\(Number\(calendar\.viewYear\)\)/);
+  assert.match(calendarJs, /\^\(\\d\{4\}\)-\(\\d\{2\}\)-\(\\d\{2\}\)\$/);
   assert.match(calendarJs, /window\.wtOpenWorkoutRecord/);
   assert.match(indexHtml, /id="wt-exercise-detail-root"/);
   assert.match(workoutExercises, /pushWorkoutDetail\(\{/);
@@ -96,5 +121,5 @@ test('workout navigation is wired to app, calendar, detail root, and PWA cache',
   assert.match(navJs, /typeof options\.handleOverlayBack === 'function' && options\.handleOverlayBack\(\)/);
   assert.match(navJs, /_writeHistory\('push', 'overlay:back'\)/);
   assert.match(swJs, /\.\/workout\/navigation-stack\.js/);
-  assert.match(swJs, /tomatofarm-v20260625z45-workout-nav-regression/);
+  assert.match(swJs, /tomatofarm-v20260625z46-workout-today-arrow/);
 });

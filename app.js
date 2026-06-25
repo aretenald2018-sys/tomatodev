@@ -343,7 +343,17 @@ async function switchTab(tab, options = {}) {
         notify: false,
       });
     } else if (!options?.preserveWorkoutRoute) {
-      openWorkoutCalendar({ action: 'calendar:tab', history: 'replace', notify: false, closeSheet: false });
+      openWorkoutCalendar({
+        action: 'calendar:tab-today',
+        history: 'replace',
+        notify: false,
+        closeSheet: false,
+        selectedKey: _dateKeyFromParts(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate()),
+        selectedSessionIndex: 0,
+        viewYear: TODAY.getFullYear(),
+        viewMonth: TODAY.getMonth(),
+        scrollTop: 0,
+      });
     }
     const routeSnapshot = getWorkoutNavSnapshot();
     const route = currentWorkoutRoute();

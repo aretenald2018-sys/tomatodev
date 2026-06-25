@@ -204,6 +204,11 @@ export function updateWorkoutCalendarState(partial = {}, options = {}) {
 export function openWorkoutCalendar(options = {}) {
   return _commit((draft) => {
     draft.stack = [{ name: WORKOUT_ROUTES.CALENDAR }];
+    if (options.selectedKey != null) draft.calendar.selectedKey = _validDateKey(options.selectedKey) || draft.calendar.selectedKey;
+    if (options.selectedSessionIndex != null) draft.calendar.selectedSessionIndex = _toInt(options.selectedSessionIndex);
+    if (options.viewYear != null) draft.calendar.viewYear = _toInt(options.viewYear);
+    if (options.viewMonth != null) draft.calendar.viewMonth = _toInt(options.viewMonth);
+    if (options.scrollTop != null) draft.calendar.scrollTop = _toInt(options.scrollTop);
     if (options.closeSheet) {
       draft.calendar.sheetOpen = false;
       draft.calendar.sheetState = 'bar';
