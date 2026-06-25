@@ -537,6 +537,10 @@ export function buildBoardFromOnboarding({ selections = [], startDate, source = 
   return board;
 }
 
+export function createEmptyBoardV2({ startDate, source = 'exercise-program' } = {}) {
+  return buildBoardFromOnboarding({ selections: [], startDate: startDate || toKey(new Date()), source });
+}
+
 // ----------------------------------------------------------------
 // 조회 헬퍼
 // ----------------------------------------------------------------
@@ -1051,6 +1055,230 @@ export function addBenchmark(board, candidate, todayKey) {
     }
   }
   return bm;
+}
+
+// ----------------------------------------------------------------
+// 종목 카탈로그 ↔ 성장보드 프로그램 연결
+// ----------------------------------------------------------------
+
+function _ensureBoardV2(board, { todayKey = toKey(new Date()), source = 'exercise-program' } = {}) {
+  const b = board && typeof board === 'object' ? board : createEmptyBoardV2({ startDate: todayKey, source });
+  b.version = b.version || 2;
+  b.defaults = b.defaults || { ...TM2_DEFAULTS };
+  b.groups = Array.isArray(b.groups) && b.groups.length
+    ? b.groups
+    : TM2_GROUPS.map(g => ({ id: g.id, label: g.label, bodyRegion: g.bodyRegion, order: g.order }));
+  b.benchmarks = Array.isArray(b.benchmarks) ? b.benchmarks : [];
+  b.cycles = Array.isArray(b.cycles) ? b.cycles : [];
+  b.steps = Array.isArray(b.steps) ? b.steps : [];
+  b.lineups = b.lineups && typeof b.lineups === 'object' ? b.lineups : {};
+  b.history = Array.isArray(b.history) ? b.history : [];
+  return b;
+}
+
+function _exerciseKeyParts(exercise = {}) {
+  return {
+    exerciseId: exercise.exerciseId || exercise.id || null,
+    movementId: exercise.movementId || null,
+  };
+}
+
+function _benchmarkExerciseRank(bm = {}, exercise = {}) {
+  const { exerciseId, movementId } = _exerciseKeyParts(exercise);
+  if (exerciseId && bm.exerciseId === exerciseId) return 1;
+  if (movementId && bm.movementId === movementId && (!exerciseId || !bm.exerciseId)) return 2;
+  return 0;
+}
+
+export function findExerciseProgramBenchmark(board, exercise = {}, { includeArchived = false } = {}) {
+  const list = Array.isArray(board?.benchmarks) ? board.benchmarks : [];
+  const candidates = list
+    .map((bm, index) => ({ bm, index, rank: _benchmarkExerciseRank(bm, exercise) }))
+    .filter(item => item.rank && (includeArchived || item.bm.status !== 'archived'));
+  candidates.sort((a, b) => {
+    const activeDelta = (a.bm.status === 'archived' ? 1 : 0) - (b.bm.status === 'archived' ? 1 : 0);
+    if (activeDelta) return activeDelta;
+    if (a.rank !== b.rank) return a.rank - b.rank;
+    return a.index - b.index;
+  });
+  return candidates[0]?.bm || null;
+}
+
+function _normalizeProgram(program) {
+  const p = String(program || '').trim();
+  if (p === 'none' || p === 'default' || p === 'off') return 'none';
+  if (p === 'wendler') return 'wendler';
+  if (p === 'custom') return 'custom';
+  return 'stair';
+}
+
+function _normalizeProgramTracks(program, tracks) {
+  if (program === 'wendler') return ['volume'];
+  const raw = Array.isArray(tracks) ? tracks : [];
+  const out = TM2_TRACKS.filter(t => raw.includes(t));
+  return out.length ? out : ['volume'];
+}
+
+function _seedSpecFor(track, config = {}, existing = null) {
+  const seed = config.seed && typeof config.seed === 'object' ? config.seed : {};
+  const rawTracks = config.tracks && !Array.isArray(config.tracks) && typeof config.tracks === 'object' ? config.tracks : {};
+  const raw = seed[track] || rawTracks[track] || config[track] || null;
+  const fallback = existing || {};
+  const kg = Number(raw?.kg ?? raw?.startKg ?? fallback.kg ?? 0);
+  const reps = Number(raw?.reps ?? raw?.startReps ?? fallback.reps ?? (track === 'intensity' ? 8 : 12));
+  return {
+    kg: kg > 0 ? kg : 0,
+    reps: reps > 0 ? Math.round(reps) : (track === 'intensity' ? 8 : 12),
+  };
+}
+
+function _candidateFromExerciseProgram(exercise = {}, config = {}, { movements = [] } = {}) {
+  const program = _normalizeProgram(config.program);
+  const groupId = config.groupId || exercise.groupId || exerciseGroupId(exercise, movements);
+  if (!groupId) return null;
+  const tracks = _normalizeProgramTracks(program, config.tracks);
+  const seed = {};
+  for (const track of tracks) seed[track] = _seedSpecFor(track, config);
+  return {
+    exerciseId: exercise.exerciseId || exercise.id || null,
+    movementId: exercise.movementId || null,
+    muscleId: exercise.muscleId || null,
+    label: config.label || exercise.name || exercise.label || exercise.id || '종목',
+    short: config.short || null,
+    groupId,
+    tracks: seed,
+    incrementKg: config.incrementKg,
+    setsDefault: config.setsDefault,
+    gymNote: config.gymNote || exercise.__gymNote || '',
+    meta: config.meta || {},
+    wendler: program === 'wendler' ? (config.wendler || {}) : null,
+  };
+}
+
+function _activeCycleForProgram(board, groupId, todayKey) {
+  let cycle = activeCycleOf(board, groupId);
+  if (!cycle) {
+    cycle = _makeCycle(groupId, mondayOf(todayKey));
+    board.cycles.push(cycle);
+  }
+  return cycle;
+}
+
+function _stepHasLog(step = {}) {
+  return Object.keys(step.weekLog || {}).length > 0;
+}
+
+function _syncStairSteps(board, bm, cycle, todayKey, { fromCycleStart = false } = {}) {
+  if (!cycle) return;
+  for (const track of (bm.tracks || ['volume'])) {
+    const seed = bm.seed?.[track] || { kg: 0, reps: track === 'intensity' ? 8 : 12 };
+    const existing = _stepsOf(board, bm.id, track, cycle.id);
+    const editable = existing.find(step => !_stepHasLog(step));
+    if (editable) {
+      editable.kg = seed.kg;
+      editable.reps = seed.reps;
+      continue;
+    }
+    const weekStart = fromCycleStart ? cycle.startDate : mondayOf(todayKey);
+    const span = Math.max(1, cycle.weeks - weeksBetween(cycle.startDate, weekStart));
+    board.steps.push(_makeStep(bm, track, cycle, seed.kg, seed.reps, weekStart, span));
+  }
+}
+
+function _removeActiveCycleSteps(board, bm) {
+  const cycle = activeCycleOf(board, bm.groupId);
+  if (!cycle) return;
+  board.steps = (board.steps || []).filter(s => !(s.benchmarkId === bm.id && s.cycleId === cycle.id));
+}
+
+function _applyExerciseProgramToBenchmark(board, bm, candidate, config, todayKey) {
+  const program = _normalizeProgram(config.program);
+  const previousProgram = bm.program === 'wendler' ? 'wendler' : 'stair';
+  const tracks = _normalizeProgramTracks(program, config.tracks);
+  bm.status = 'active';
+  bm.exerciseId = candidate.exerciseId || bm.exerciseId || null;
+  bm.movementId = candidate.movementId || bm.movementId || null;
+  bm.muscleId = candidate.muscleId || bm.muscleId || null;
+  bm.groupId = candidate.groupId;
+  bm.label = candidate.label || bm.label || '종목';
+  bm.short = candidate.short || bm.short || String(bm.label).slice(0, 5);
+  bm.incrementKg = Number(config.incrementKg) > 0 ? Number(config.incrementKg) : (bm.incrementKg || defaultIncrementForGroup(bm.groupId));
+  bm.setsDefault = Math.max(1, Math.round(Number(config.setsDefault) || bm.setsDefault || 4));
+  bm.meta = {
+    ...(bm.meta || {}),
+    ...(config.meta || {}),
+    ...(config.gymNote ? { gymNote: config.gymNote } : {}),
+  };
+  bm.tracks = tracks;
+  bm.seed = bm.seed || {};
+  for (const track of tracks) {
+    const existing = currentKgOf(board, bm, track);
+    bm.seed[track] = _seedSpecFor(track, config, existing);
+  }
+
+  const cycle = _activeCycleForProgram(board, bm.groupId, todayKey);
+  if (program === 'wendler') {
+    const major = TM2_GROUPS.find(g => g.id === bm.groupId)?.majors?.[0] || bm.groupId;
+    bm.program = 'wendler';
+    bm.wendler = normalizeWendlerConfig(config.wendler || bm.wendler || {}, {
+      primaryMajor: major,
+      trackSpec: bm.seed?.volume ? { startKg: bm.seed.volume.kg, startReps: bm.seed.volume.reps } : null,
+    });
+    bm.wendlerLog = bm.wendlerLog || {};
+    _removeActiveCycleSteps(board, bm);
+  } else {
+    bm.program = 'stair';
+    _syncStairSteps(board, bm, cycle, todayKey, { fromCycleStart: previousProgram === 'wendler' });
+  }
+  return bm;
+}
+
+export function getExerciseProgramSettings(board, exercise = {}, options = {}) {
+  const bm = findExerciseProgramBenchmark(board, exercise, options);
+  if (!bm || bm.status === 'archived') return { program: 'none', benchmark: null };
+  return {
+    program: bm.program === 'wendler' ? 'wendler' : 'stair',
+    benchmarkId: bm.id,
+    exerciseId: bm.exerciseId || null,
+    movementId: bm.movementId || null,
+    groupId: bm.groupId || null,
+    tracks: bm.program === 'wendler' ? ['volume'] : [...(bm.tracks || ['volume'])],
+    seed: cloneBoard(bm.seed || {}),
+    setsDefault: bm.setsDefault || 4,
+    incrementKg: bm.program === 'wendler' ? bm.wendler?.incrementKg || bm.incrementKg : bm.incrementKg,
+    wendler: bm.program === 'wendler' ? cloneBoard(bm.wendler || {}) : null,
+    benchmark: bm,
+  };
+}
+
+export function upsertExerciseProgramBenchmark(board, exercise = {}, config = {}, options = {}) {
+  const todayKey = options.todayKey || toKey(new Date());
+  const b = _ensureBoardV2(board, { todayKey, source: options.source });
+  const program = _normalizeProgram(config.program);
+  const existing = findExerciseProgramBenchmark(b, exercise, { includeArchived: true });
+
+  if (program === 'custom') {
+    return { board: b, benchmark: existing, action: 'skipped', reason: 'custom-not-supported' };
+  }
+  if (program === 'none') {
+    if (existing) {
+      existing.status = 'archived';
+      return { board: b, benchmark: existing, action: 'archived' };
+    }
+    return { board: b, benchmark: null, action: 'noop' };
+  }
+
+  const candidate = _candidateFromExerciseProgram(exercise, config, { movements: options.movements || [] });
+  if (!candidate) return { board: b, benchmark: null, action: 'skipped', reason: 'missing-group' };
+
+  let bm = existing || null;
+  const action = bm ? (bm.status === 'archived' ? 'restored' : 'updated') : 'created';
+  if (!bm) {
+    bm = _makeBenchmark({ ...candidate, wendler: program === 'wendler' ? (config.wendler || {}) : null }, b.benchmarks.length);
+    b.benchmarks.push(bm);
+  }
+  _applyExerciseProgramToBenchmark(b, bm, candidate, config, todayKey);
+  return { board: b, benchmark: bm, action };
 }
 
 // ----------------------------------------------------------------

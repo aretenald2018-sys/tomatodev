@@ -125,6 +125,24 @@
 - `node --test tests/test-v2.board-core.test.js`
 - 신규 테스트: exerciseId 기준 upsert, 기존 웬들러 보존, stair 전환 시 wendlerLog 처리 정책.
 
+실행 결과:
+
+- 2026-06-25: Slice 2 구현 완료.
+- `workout/test-v2/board-core.js`에 `test_board_v2`용 종목 프로그램 helper를 추가했다.
+  - `findExerciseProgramBenchmark()`
+  - `getExerciseProgramSettings()`
+  - `upsertExerciseProgramBenchmark()`
+  - `createEmptyBoardV2()`
+- `exerciseId` 우선 매칭, `movementId` 폴백, `none` 선택 시 archive, `custom`은 예약 상태로 skip하는 계약을 확정했다.
+- `wendler` 전환은 기존 성장보드 컬럼 시트와 같은 정책으로 활성 stair step을 제거하고 `wendlerLog`는 보존한다.
+- `stair` 복귀는 활성 cycle step을 재생성하고 dormant `wendlerLog`를 보존한다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260625z61-exercise-program-contract`로 bump하고 관련 cache-version 테스트를 갱신했다.
+- PASS: `node --check workout/test-v2/board-core.js; node --check sw.js`
+- PASS: `node --test tests/test-v2.board-core.test.js`
+- PASS: `node --test tests/test-v2.board-core.test.js tests/workout-test-mode-unified.test.js tests/home-life-zone-npc-quest.test.js tests/workout-active-session-recovery.test.js tests/stats-muscle-fatigue-insight.test.js tests/stats-picker-ui-polish.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js tests/workout-track-graph-delta.test.js tests/workout-timer-summary-only.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+
 ### Slice 3: 종목 수정 시트에 프로그램 섹션 추가
 
 대상 파일:
@@ -227,5 +245,6 @@
 ## 상태
 
 - Slice 1 실행, Dashboard3 Pages 배포 검증, 리뷰 완료.
-- 다음 실행은 Slice 2부터 순차 진행한다.
+- Slice 2 실행 완료. 리뷰 결과 이슈 없음.
+- 다음 실행은 Slice 3부터 순차 진행한다.
 - 성장보드 색칠/미달 자동 반영은 사용자 최종 결정 전까지 보류한다.
