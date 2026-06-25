@@ -51,7 +51,6 @@ let _workoutHomeView = 'month';
 let _workoutHomeSheetState = 'bar';
 let _workoutHomeSessionIndex = 0;
 let _workoutHomeSuppressSheetClickUntil = 0;
-let _workoutHomeSheetSettleTimer = 0;
 const _workoutDetailCollapsed = new Set();
 let _workoutTrackGraphSeq = 0;
 const WORKOUT_HOME_SHEET_STATES = ['bar', 'full'];
@@ -64,7 +63,6 @@ const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_RATIO = 0.2;
 const WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY = 0.55;
 const WORKOUT_HOME_SHEET_FLING_SAMPLE_MAX_MS = 80;
 const WORKOUT_HOME_SHEET_FULL_CLEARANCE_PX = 112;
-const WORKOUT_HOME_SHEET_SETTLE_CLEANUP_MS = 340;
 
 const MAX_WEAK_LABEL = {
   chest_upper:'가슴 상부', chest_lower:'가슴 하부',
@@ -1943,26 +1941,9 @@ function _startWorkoutHomeSheetDrag(event) {
   sheet.style.setProperty('--wt-day-sheet-drag-y', '0px');
   sheet.style.setProperty('--wt-day-sheet-drag-height', `${startHeight}px`);
   event.currentTarget.setPointerCapture?.(event.pointerId);
-  if (_workoutHomeSheetSettleTimer) {
-    clearTimeout(_workoutHomeSheetSettleTimer);
-    _workoutHomeSheetSettleTimer = 0;
-  }
   const clearDragPreview = () => {
     sheet.style.removeProperty('--wt-day-sheet-drag-y');
     sheet.style.removeProperty('--wt-day-sheet-drag-height');
-    _workoutHomeSheetSettleTimer = 0;
-  };
-  const settleDragPreview = (targetState) => {
-    const targetHeight = targetState === 'full' ? maxHeight : minHeight;
-    const applyTarget = () => {
-      sheet.style.setProperty('--wt-day-sheet-drag-height', `${targetHeight}px`);
-      _workoutHomeSheetSettleTimer = setTimeout(clearDragPreview, WORKOUT_HOME_SHEET_SETTLE_CLEANUP_MS);
-    };
-    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-      window.requestAnimationFrame(applyTarget);
-      return;
-    }
-    applyTarget();
   };
 
   const onMove = (moveEvent) => {
@@ -1998,10 +1979,10 @@ function _startWorkoutHomeSheetDrag(event) {
       return;
     }
     const targetState = openLatched ? 'full' : closeLatched ? 'bar' : _resolveWorkoutHomeSheetDragTarget(dy, velocityY, openThresholdPx, collapseThresholdPx);
-    _suppressWorkoutHomeSheetClick();
     sheet.classList.remove('is-dragging');
+    clearDragPreview();
     _setWorkoutHomeSheetState(targetState);
-    settleDragPreview(targetState);
+    _suppressWorkoutHomeSheetClick();
   };
 
   window.addEventListener('pointermove', onMove, { passive: false });

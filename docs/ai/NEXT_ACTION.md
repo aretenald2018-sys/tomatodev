@@ -3,33 +3,28 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-25-life-zone-expanded-art-asset.md`
-- 현재 단계: `complete — life-zone expanded art asset applied`
-- 마지막 완료: `20대 미남 트레이너 v3 라이프존 배경을 Dashboard3에 배포했고, 캐시 불일치 방지를 위해 앱 참조 URL을 base-room-expanded-alpha.png로 분리했다.`
-- 다음 액션: `인증 계정으로 홈 라이프존 카드에서 새 배경, 러닝 트랙, 안내데스크, 20대 트레이너 NPC가 표시되는지 수동 확인한다.`
-- 차단 사유: `인증 계정 홈 카드 실제 UI flow는 수동 확인 필요`
+- 계획 문서: `docs/ai/features/2026-06-24-workout-calendar-bottom-sheet.md`
+- 현재 단계: `complete — workout sheet release uses CSS state transition`
+- 마지막 완료: `Slice 10에서 바텀시트 drag release 후 inline height settle/rAF/timer 경로를 제거하고, 상태 class transition만으로 bar/full 끝점에 안착하게 수정했다.`
+- 다음 액션: `인증 계정으로 Dashboard3 Pages에서 운동 탭 -> 날짜 sheet -> 위/아래 drag release가 각각 full/bar 끝점에 안착하는지 수동 확인한다.`
+- 차단 사유: `인증 계정 실제 UI flow는 수동 확인 필요`
 
 ## 다음 실행 대상
 
-- 계획 파일: `docs/ai/features/2026-06-25-life-zone-expanded-art-asset.md`
-- 완료한 Slice 1:
-  1. `docs/ai/art-drafts/life-zone-expanded-trainer-track-v3-young-face.png`를 기준으로 앱용 최종 배경을 만든다.
-  2. `assets/home/life-zone/base-room.png`, `assets/home/life-zone/base-room-alpha.png`를 새 배경으로 교체한다.
-  3. `assets/home/life-zone/manifest.json`, `home/life-zone.js`, `style.css`, `docs/pixel-life-zone-mockup.html`의 크기/aspect-ratio 기준을 맞춘다.
-  4. 기존 actor slot 좌표가 자연스럽게 보이는지 확인하고 필요한 좌표만 조정한다.
-  5. `sw.js` `CACHE_VERSION`을 bump한다.
+- 계획 파일: `docs/ai/features/2026-06-24-workout-calendar-bottom-sheet.md`
+- 완료한 Slice 10:
+  1. `settleDragPreview()`, `_workoutHomeSheetSettleTimer`, `WORKOUT_HOME_SHEET_SETTLE_CLEANUP_MS` 제거.
+  2. `pointerup`에서 `is-dragging` 제거 후 inline drag CSS 변수를 먼저 제거하고 `_setWorkoutHomeSheetState(targetState)` 적용.
+  3. 회귀 테스트를 rAF/timer settle 금지 기준으로 갱신.
+  4. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260625z55-workout-sheet-release-css`로 bump.
+  5. 진단/리뷰 문서 작성.
 
-- Slice 1 검증:
-  1. PASS: `python scripts/validate-life-zone-assets.py`
-  2. PASS: `node --check home/life-zone.js; node --check sw.js`
-  3. PASS: `node scripts/verify-runtime-assets.mjs`
-  4. PASS: `git diff --check`
-  5. PASS: `assets/home/life-zone/base-room-alpha.png` 시각 확인 및 corner alpha 0 확인
-  6. 리뷰: `docs/ai/reviews/2026-06-25-life-zone-expanded-art-asset-review.md`
-  7. 추가 수정: 캐시 불일치 방지를 위해 `base-room-expanded-alpha.png` 새 URL로 앱 참조 경로 분리
-  8. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 620e772`
-  9. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260625z51-life-zone-expanded-asset-url" "home/life-zone.js::base-room-expanded-alpha.png" "assets/home/life-zone/manifest.json::base-room-expanded-alpha.png"`
-  10. PASS: 배포 URL의 `assets/home/life-zone/base-room-expanded-alpha.png`가 HTTP 200, `1672x1672`, RGBA alpha `(0, 255)`, corner alpha 0으로 내려오며 로컬 파일과 SHA-256이 일치
+- 검증:
+  1. PASS: `node --check render-calendar.js; node --check sw.js`
+  2. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js`
+  3. PASS: `node --test .\tests\*.test.js` — 513 tests passed
+  4. PASS: `node scripts/verify-runtime-assets.mjs`
+  5. PASS: `git diff --check`
 
 ## 직전 완료 흐름
 

@@ -471,3 +471,54 @@
   - 결과: `[deploy-verify] ok da94c74f9437 tomatofarm-v20260625z43-workout-day-sheet-drag-settle static=210`
 - PASS: 배포 URL의 `render-calendar.js`, `sw.js`가 `closeLatched`, `lastDragY`, `const dy = lastDragY`, z43 cache marker를 반환한다.
 - not verified yet: 로그인 화면에 막혀 인증 계정 실제 `운동 탭 -> 날짜 sheet drag up/down settle` UI flow 확인이 남아 있다.
+
+## 후속 Slice 10 — Release through CSS state transition only
+
+### 배경
+
+사용자가 클로드 진단을 전달했다. 핵심은 release 후 `settleDragPreview()`가 `requestAnimationFrame`에서 inline `--wt-day-sheet-drag-height`를 다시 세팅하면서, 이미 적용된 `is-full`/`is-bar` class 기반 높이를 무시하고 드래그한 지점에 시트를 고정시킬 수 있다는 것이다.
+
+### 진단
+
+1. `height: var(--wt-day-sheet-drag-height, var(--wt-day-sheet-height))` 구조에서는 inline drag height가 살아 있는 동안 class 기반 height가 사용되지 않는다.
+2. `_setWorkoutHomeSheetState(targetState)`로 class를 바꾼 뒤 `requestAnimationFrame`에서 inline drag height를 다시 세팅하면 class transition이 무시될 수 있다.
+3. settle timer와 rAF cleanup은 Android Chrome/PWA pointer release 타이밍에서 중복 실행 또는 지연 cleanup 가능성을 만든다.
+
+### 포함
+
+- `settleDragPreview`, settle timer, cleanup timeout을 제거한다.
+- `pointerup` target 확정 후 `is-dragging`을 제거하고 inline drag CSS 변수를 먼저 지운다.
+- 그 다음 `_setWorkoutHomeSheetState(targetState)`를 호출해 CSS class transition만으로 `bar/full` 끝점에 안착시킨다.
+- 회귀 테스트가 rAF/timer settle 구조의 재도입을 막게 한다.
+- `sw.js` cache version을 bump한다.
+
+### 제외
+
+- drag threshold/velocity 정책 변경
+- sheet body scroll 정책 변경
+- 운동 기록/회차 데이터 구조 변경
+
+### 검증 계획
+
+- `node --check render-calendar.js; node --check sw.js`
+- `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js`
+- `node --test .\tests\*.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+
+### 실행 결과
+
+- `settleDragPreview()`, `_workoutHomeSheetSettleTimer`, `WORKOUT_HOME_SHEET_SETTLE_CLEANUP_MS`를 제거했다.
+- `pointerup`에서 target state를 정한 뒤 `is-dragging`을 제거하고, inline `--wt-day-sheet-drag-height`/`--wt-day-sheet-drag-y`를 먼저 지운 다음 `_setWorkoutHomeSheetState(targetState)`를 호출하게 했다.
+- 회귀 테스트는 rAF/timer settle 구조가 다시 들어오지 못하게 `doesNotMatch` 기준으로 바꿨다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260625z55-workout-sheet-release-css`로 bump했다.
+
+### 실행 검증
+
+- PASS: `node --check render-calendar.js; node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js`
+- PASS: `node --test .\tests\*.test.js` — 513 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 `운동 탭 -> 날짜 sheet drag up/down settle` UI flow 확인이 남아 있다.

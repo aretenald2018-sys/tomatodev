@@ -44,5 +44,5 @@ test('workout detail modal no longer renders timer-only body sections', () => {
 });
 
 test('service worker cache version was bumped for workout timer summary-only UI', () => {
-  assert.match(swJs, /tomatofarm-v20260625z54-workout-sheet-end-snap/);
+  assert.match(swJs, /tomatofarm-v20260625z55-workout-sheet-release-css/);
 });
