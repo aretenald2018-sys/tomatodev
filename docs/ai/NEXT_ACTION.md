@@ -3,13 +3,31 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-25-workout-navigation-stack-redesign.md`
-- 현재 단계: `complete — workout navigation stack implemented and reviewed`
-- 마지막 완료: `Slice 1-6 구현/리뷰, 전체 테스트 512개, runtime asset 검증, Dashboard3 Pages 배포 검증, 배포 marker 검증을 완료했다.`
-- 다음 액션: `인증 계정으로 배포 URL에서 운동 탭 실제 UI flow를 수동 확인한다.`
-- 차단 사유: `인증 계정 실제 UI flow는 에이전트가 직접 조작하지 못함`
+- 계획 문서: `docs/ai/features/2026-06-25-life-zone-expanded-art-asset.md`
+- 현재 단계: `complete — life-zone expanded art asset applied`
+- 마지막 완료: `20대 미남 트레이너 v3 시안을 Dashboard3용 라이프존 배경 자산으로 적용했고, 로컬 자산/문법/runtime 검증과 리뷰를 완료했다.`
+- 다음 액션: `Dashboard3 Pages 배포 후 홈 라이프존 카드에서 새 배경, 러닝 트랙, 안내데스크, 20대 트레이너 NPC가 표시되는지 확인한다.`
+- 차단 사유: `인증 계정 홈 카드 실제 UI flow는 수동 확인 필요`
 
 ## 다음 실행 대상
+
+- 계획 파일: `docs/ai/features/2026-06-25-life-zone-expanded-art-asset.md`
+- 완료한 Slice 1:
+  1. `docs/ai/art-drafts/life-zone-expanded-trainer-track-v3-young-face.png`를 기준으로 앱용 최종 배경을 만든다.
+  2. `assets/home/life-zone/base-room.png`, `assets/home/life-zone/base-room-alpha.png`를 새 배경으로 교체한다.
+  3. `assets/home/life-zone/manifest.json`, `home/life-zone.js`, `style.css`, `docs/pixel-life-zone-mockup.html`의 크기/aspect-ratio 기준을 맞춘다.
+  4. 기존 actor slot 좌표가 자연스럽게 보이는지 확인하고 필요한 좌표만 조정한다.
+  5. `sw.js` `CACHE_VERSION`을 bump한다.
+
+- Slice 1 검증:
+  1. PASS: `python scripts/validate-life-zone-assets.py`
+  2. PASS: `node --check home/life-zone.js; node --check sw.js`
+  3. PASS: `node scripts/verify-runtime-assets.mjs`
+  4. PASS: `git diff --check`
+  5. PASS: `assets/home/life-zone/base-room-alpha.png` 시각 확인 및 corner alpha 0 확인
+  6. 리뷰: `docs/ai/reviews/2026-06-25-life-zone-expanded-art-asset-review.md`
+
+## 직전 완료 흐름
 
 - 계획 파일: `docs/ai/features/2026-06-25-workout-navigation-stack-redesign.md`
 - 완료한 Slice 1-6:

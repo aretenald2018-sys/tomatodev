@@ -2,7 +2,7 @@
   "baseRoom": {
     "src": "./assets/home/life-zone/base-room-alpha.png",
     "width": 1672,
-    "height": 941
+    "height": 1672
   },
   "actors": [
     {

@@ -6325,7 +6325,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   position: relative;
   overflow: hidden;
   width: 100%;
-  aspect-ratio: 1672 / 941;
+  aspect-ratio: 1672 / 1672;
   background: var(--surface);
 }
 .lz-base {
@@ -6343,7 +6343,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 .lz-actor {
   position: absolute;
   left: calc(var(--lz-x) / 1672 * 100%);
-  top: calc(var(--lz-y) / 941 * 100%);
+  top: calc(var(--lz-y) / 1672 * 100%);
   z-index: var(--lz-z);
   width: calc(var(--lz-w) / 1672 * 100%);
   height: auto;
@@ -6354,7 +6354,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 .lz-speech {
   position: absolute;
   left: calc(var(--lz-bx) / 1672 * 100%);
-  top: calc(var(--lz-by) / 941 * 100%);
+  top: calc(var(--lz-by) / 1672 * 100%);
   transform: translate(-50%, -100%);
   max-width: min(132px, 24vw);
   padding: 4px 7px;

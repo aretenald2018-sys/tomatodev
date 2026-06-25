@@ -241,7 +241,7 @@ export function renderLifeZoneCard({
         class="lz-base"
         src="${LIFE_ZONE_ASSET_ROOT}/base-room-alpha.png"
         width="1672"
-        height="941"
+        height="1672"
         alt=""
         loading="lazy"
         decoding="async"
