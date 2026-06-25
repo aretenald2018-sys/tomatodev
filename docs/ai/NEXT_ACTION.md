@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `ready_for_execution`
 - 계획 문서: `docs/ai/features/2026-06-25-exercise-program-settings-wendler-migration.md`
-- 현재 단계: `execution complete — Slice 1 picker meta chip hide deployed`
-- 마지막 완료: `운동 picker Max benchmark row 우측 최근/볼륨 chip을 제거하고 Dashboard3 Pages 배포 검증까지 완료했다.`
-- 다음 액션: `docs/ai/features/2026-06-25-exercise-program-settings-wendler-migration.md Slice 1 변경 파일을 리뷰한다.`
+- 현재 단계: `review complete — Slice 1 picker meta chip hide`
+- 마지막 완료: `Slice 1 리뷰에서 이슈 없음으로 통과 처리했고 Dashboard3 Pages 배포 검증까지 완료했다.`
+- 다음 액션: `docs/ai/features/2026-06-25-exercise-program-settings-wendler-migration.md Slice 2 프로그램 설정 데이터 계약 확정을 실행한다.`
 - 차단 사유: `없음`
 
 ## 직전 실행 검증
