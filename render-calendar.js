@@ -34,6 +34,11 @@ import {
   deleteWorkoutSession,
 } from './workout/sessions.js';
 import { deriveDietSuccessFromWorkout } from './workout/cross-domain.js';
+import {
+  closeWorkoutDaySheet,
+  openWorkoutDaySheet,
+  updateWorkoutCalendarState,
+} from './workout/navigation-stack.js';
 
 // ═════════════════════════════════════════════════════════════
 // 뷰 상태
@@ -175,6 +180,39 @@ function _dateTitle(key) {
   return `${p.y}-${String(p.m + 1).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`;
 }
 
+function _workoutHomeScrollTop() {
+  if (typeof document === 'undefined') return 0;
+  return Math.max(0, Number(document.scrollingElement?.scrollTop) || Number(window?.scrollY) || 0);
+}
+
+function _syncWorkoutHomeNavState({ history = 'replace', notify = false, action = 'calendar:sync' } = {}) {
+  updateWorkoutCalendarState({
+    viewYear: _viewYear,
+    viewMonth: _viewMonth,
+    selectedKey: _parseDateKey(_workoutHomeSelectedKey) ? _workoutHomeSelectedKey : null,
+    selectedSessionIndex: Math.max(0, Math.floor(Number(_workoutHomeSessionIndex) || 0)),
+    sheetOpen: _workoutHomeView === 'detail',
+    sheetState: _normalizeWorkoutHomeSheetState(_workoutHomeSheetState),
+    scrollTop: _workoutHomeScrollTop(),
+    activeTab: 'summary',
+  }, { history, notify, action });
+}
+
+export function applyWorkoutCalendarNavSnapshot(snapshot = {}, options = {}) {
+  const calendar = snapshot?.calendar || {};
+  if (Number.isFinite(Number(calendar.viewYear))) _viewYear = Number(calendar.viewYear);
+  if (Number.isFinite(Number(calendar.viewMonth))) _viewMonth = Number(calendar.viewMonth);
+  if (_parseDateKey(calendar.selectedKey)) _workoutHomeSelectedKey = calendar.selectedKey;
+  _workoutHomeSessionIndex = Math.max(0, Math.floor(Number(calendar.selectedSessionIndex) || 0));
+  _workoutHomeSheetState = _normalizeWorkoutHomeSheetState(calendar.sheetState);
+  _workoutHomeView = calendar.sheetOpen ? 'detail' : 'month';
+  renderWorkoutCalendarHome();
+  if (options.preserveScroll !== false && Number.isFinite(Number(calendar.scrollTop)) && typeof window !== 'undefined') {
+    const top = Math.max(0, Number(calendar.scrollTop) || 0);
+    window.requestAnimationFrame?.(() => window.scrollTo({ top, behavior: 'auto' }));
+  }
+}
+
 function _isTodayKey(key) {
   return key === dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
 }
@@ -200,6 +238,10 @@ function _openWorkoutEditorForSession(key, sessionIndex = 0) {
   const p = _parseDateKey(key);
   if (!p) return;
   window.__wtTargetSessionIndex = Math.max(0, Math.floor(Number(sessionIndex) || 0));
+  if (typeof window.wtOpenWorkoutRecord === 'function') {
+    window.wtOpenWorkoutRecord(key, sessionIndex);
+    return;
+  }
   window.openWorkoutTab?.(p.y, p.m, p.d);
 }
 
@@ -207,6 +249,9 @@ async function _loadWorkoutEditorForSession(key, sessionIndex = 0) {
   const p = _parseDateKey(key);
   if (!p) return false;
   window.__wtTargetSessionIndex = Math.max(0, Math.floor(Number(sessionIndex) || 0));
+  if (typeof window.wtOpenWorkoutRecord === 'function') {
+    return await window.wtOpenWorkoutRecord(key, sessionIndex);
+  }
   if (typeof window.switchTab === 'function') {
     await window.switchTab('workout', { workoutDate: { y: p.y, m: p.m, d: p.d } });
     return true;
@@ -888,6 +933,7 @@ function _shiftMonth(delta) {
   const d = new Date(_viewYear, _viewMonth + delta, 1);
   _viewYear  = d.getFullYear();
   _viewMonth = d.getMonth();
+  _syncWorkoutHomeNavState({ action: 'calendar:month' });
   renderCalendar();
   renderWorkoutCalendarHome();
 }
@@ -895,6 +941,7 @@ function _shiftMonth(delta) {
 function _goToday() {
   _viewYear  = TODAY.getFullYear();
   _viewMonth = TODAY.getMonth();
+  _syncWorkoutHomeNavState({ action: 'calendar:today' });
   renderCalendar();
   renderWorkoutCalendarHome();
 }
@@ -1748,6 +1795,11 @@ function _setWorkoutHomeSheetState(state, { render = false } = {}) {
   const next = _normalizeWorkoutHomeSheetState(state);
   _workoutHomeSheetState = next;
   _workoutHomeView = next === 'bar' ? 'month' : 'detail';
+  if (_workoutHomeView === 'month') {
+    closeWorkoutDaySheet({ history: 'replace', notify: false, action: 'sheet:close' });
+  } else {
+    _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:update' });
+  }
   if (render) {
     renderWorkoutCalendarHome();
     return;
@@ -1790,6 +1842,16 @@ function _toggleWorkoutHomeSheet(key = _workoutHomeSelectedKey) {
   if (_currentWorkoutHomeSheetState() === 'bar') {
     _workoutHomeView = 'detail';
     _workoutHomeSheetState = 'bar';
+    openWorkoutDaySheet(_workoutHomeSelectedKey, {
+      sessionIndex: _workoutHomeSessionIndex,
+      sheetState: 'bar',
+      viewYear: _viewYear,
+      viewMonth: _viewMonth,
+      scrollTop: _workoutHomeScrollTop(),
+      history: 'push',
+      notify: false,
+      action: 'sheet:open',
+    });
     renderWorkoutCalendarHome();
     _animateWorkoutHomeSheetTo('full');
     return;
@@ -1905,6 +1967,16 @@ function _openWorkoutHomeDay(key) {
   _workoutHomeView = 'detail';
   _workoutHomeSheetState = 'bar';
   _workoutHomeSessionIndex = 0;
+  openWorkoutDaySheet(nextKey, {
+    sessionIndex: _workoutHomeSessionIndex,
+    sheetState: 'bar',
+    viewYear: _viewYear,
+    viewMonth: _viewMonth,
+    scrollTop: _workoutHomeScrollTop(),
+    history: 'push',
+    notify: false,
+    action: 'sheet:open-day',
+  });
   renderWorkoutCalendarHome();
   _animateWorkoutHomeSheetTo('full');
 }
@@ -1959,6 +2031,16 @@ function _goTodayWorkoutDetail() {
   _workoutHomeView = 'detail';
   _workoutHomeSheetState = 'bar';
   _workoutHomeSessionIndex = 0;
+  openWorkoutDaySheet(key, {
+    sessionIndex: 0,
+    sheetState: 'bar',
+    viewYear: _viewYear,
+    viewMonth: _viewMonth,
+    scrollTop: _workoutHomeScrollTop(),
+    history: 'push',
+    notify: false,
+    action: 'sheet:today',
+  });
   renderCalendar();
   renderWorkoutCalendarHome();
   _animateWorkoutHomeSheetTo('full');
@@ -1966,6 +2048,7 @@ function _goTodayWorkoutDetail() {
 
 function _selectWorkoutHomeSession(index) {
   _workoutHomeSessionIndex = Math.max(0, Math.floor(Number(index) || 0));
+  _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:session' });
   renderWorkoutCalendarHome();
 }
 
@@ -2227,4 +2310,5 @@ window._wtCalExportSession = _exportWorkoutHomeSession;
 window._wtCalDeleteSession = _deleteWorkoutHomeSession;
 window._wtCalDeleteExercise = _deleteWorkoutExercise;
 window._wtCalDeleteActivity = _deleteWorkoutActivity;
+window.__wtApplyCalendarNavSnapshot = applyWorkoutCalendarNavSnapshot;
 window.renderWorkoutCalendarHome = renderWorkoutCalendarHome;

@@ -21,6 +21,16 @@ import { initTabDrag, initSwipeNavigation, applyTabOrder, applyVisibleTabs } fro
 import { initUxPolish } from './utils/ux-polish.js';
 import { initActionRouter } from './utils/action-router.js';
 import { initBuildInfoSurface } from './utils/build-info.js?v=20260528a';
+import {
+  WORKOUT_ROUTES,
+  currentWorkoutRoute,
+  enableWorkoutPwaHistory,
+  getWorkoutNavSnapshot,
+  handleWorkoutBack,
+  openWorkoutCalendar,
+  pushWorkoutRecord,
+  subscribeWorkoutNav,
+} from './workout/navigation-stack.js';
 import './utils/confirm-modal.js'; // window.confirmAction / confirmSimple 등록
 import './utils/form-guard.js';    // window.createFormGuard / registerFormGuard 등록
 import './utils/format.js';        // window.fmtKcal / fmtDate 등 로케일 포맷
@@ -33,7 +43,7 @@ import { showDietPremiumReportIfNeeded } from './feature-diet-premium-report.js'
 import {
   loadWorkoutDate, changeWorkoutDate, goToTodayWorkout, saveWorkoutDay,
   openNutritionPhotoUpload, wtRecoverTimers,
-} from './render-workout.js?v=20260620z27-selected-scope';
+} from './render-workout.js?v=20260625z44-workout-nav-stack';
 
 // ── 레이지 로딩 탭 캐시 ──
 const _lazyModules = {};
@@ -102,6 +112,7 @@ import {
 // ── 모달 및 CSV 초기화 ───────────────────────────────────────────
 async function initializeApp() {
   await loadAndInjectModals();
+  initWorkoutSystemBack();
 
   // 전역 data-action 이벤트 위임 라우터 (R0 인프라)
   // 기존 onclick 과 공존. 새 UI는 registerAction 으로 등록 → window.* 점진 제거.
@@ -183,15 +194,117 @@ function _syncNavigationForCurrentRole() {
   if (moreMenu && adminOnlyMode) moreMenu.style.display = 'none';
 }
 
-let _workoutSurface = 'home';
+function _dateKeyFromParts(y, m, d) {
+  const yy = Number(y);
+  const mm = Number(m);
+  const dd = Number(d);
+  if (!Number.isFinite(yy) || !Number.isFinite(mm) || !Number.isFinite(dd)) return null;
+  return `${yy}-${String(mm + 1).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+}
+
+function _parseWorkoutDateKey(key) {
+  const match = String(key || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  return { y: Number(match[1]), m: Number(match[2]) - 1, d: Number(match[3]) };
+}
+
+function _takeWorkoutTargetSessionIndex(fallback = 0) {
+  const raw = window.__wtTargetSessionIndex;
+  if (raw !== undefined && raw !== null) {
+    try { delete window.__wtTargetSessionIndex; } catch { window.__wtTargetSessionIndex = null; }
+    const n = Number(raw);
+    return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
+  }
+  return fallback;
+}
+
+let _workoutSurface = 'calendar';
 function _setWorkoutSurface(surface) {
-  _workoutSurface = surface === 'edit' ? 'edit' : 'home';
+  _workoutSurface = surface === 'detail' ? 'detail' : (surface === 'edit' || surface === 'record') ? 'record' : 'calendar';
   const panel = document.getElementById('tab-workout');
   if (!panel) return;
-  panel.classList.toggle('wt-calendar-home-mode', _workoutSurface === 'home');
-  panel.classList.toggle('wt-calendar-edit-mode', _workoutSurface === 'edit');
+  panel.classList.toggle('wt-calendar-home-mode', _workoutSurface === 'calendar');
+  panel.classList.toggle('wt-calendar-edit-mode', _workoutSurface === 'record');
+  panel.classList.toggle('wt-workout-record-mode', _workoutSurface === 'record');
+  panel.classList.toggle('wt-workout-detail-mode', _workoutSurface === 'detail');
 }
-const _isWorkoutCalendarHome = () => _workoutSurface === 'home';
+const _isWorkoutCalendarHome = () => _workoutSurface === 'calendar';
+
+async function _renderWorkoutRoute(snapshot = getWorkoutNavSnapshot(), action = '') {
+  const route = snapshot.stack?.[snapshot.stack.length - 1] || { name: WORKOUT_ROUTES.CALENDAR };
+  if (route.name === WORKOUT_ROUTES.CALENDAR) {
+    _setWorkoutSurface('calendar');
+    window.clearWorkoutExerciseDetail?.();
+    const calendarModule = await _lazyRenderWorkoutCalendarHome();
+    calendarModule.applyWorkoutCalendarNavSnapshot?.(snapshot, { preserveScroll: true, action });
+    return;
+  }
+
+  const key = route.dateKey || snapshot.record?.dateKey || snapshot.calendar?.selectedKey || _dateKeyFromParts(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+  const parsed = _parseWorkoutDateKey(key);
+  const sessionIndex = Number.isFinite(Number(route.sessionIndex))
+    ? Math.max(0, Math.floor(Number(route.sessionIndex)))
+    : Math.max(0, Math.floor(Number(snapshot.record?.sessionIndex) || 0));
+  if (parsed) {
+    window.__wtTargetSessionIndex = sessionIndex;
+    loadWorkoutDate(parsed.y, parsed.m, parsed.d);
+  }
+  wtRecoverTimers();
+  if (typeof window.resetExpertView === 'function') window.resetExpertView();
+  if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+
+  if (route.name === WORKOUT_ROUTES.DETAIL) {
+    _setWorkoutSurface('detail');
+    window.renderWorkoutExerciseDetail?.();
+    return;
+  }
+
+  _setWorkoutSurface('record');
+  window.clearWorkoutExerciseDetail?.();
+  const scrollTop = Math.max(0, Number(snapshot.record?.scrollTop) || 0);
+  if (scrollTop > 0 && typeof window !== 'undefined') {
+    window.requestAnimationFrame?.(() => window.scrollTo({ top: scrollTop, behavior: 'auto' }));
+  }
+}
+
+async function openWorkoutRecordFromCalendar(key, sessionIndex = 0, options = {}) {
+  const dateKey = typeof key === 'string'
+    ? key
+    : _dateKeyFromParts(key?.y, key?.m, key?.d);
+  if (!dateKey) return false;
+  pushWorkoutRecord({
+    dateKey,
+    sessionIndex,
+    calendarScrollTop: document.scrollingElement?.scrollTop || window.scrollY || 0,
+  }, { history: options.history || 'push', notify: false, action: options.action || 'record:push' });
+  if (_currentTab !== 'workout') {
+    await switchTab('workout', { preserveWorkoutRoute: true });
+    return true;
+  }
+  await _renderWorkoutRoute(getWorkoutNavSnapshot(), options.action || 'record:push');
+  return true;
+}
+
+subscribeWorkoutNav((snapshot, action) => {
+  if (_currentTab !== 'workout') return;
+  _renderWorkoutRoute(snapshot, action).catch(e => console.warn('[app] workout route render failed:', e));
+});
+enableWorkoutPwaHistory({ getActiveTab: () => _currentTab });
+window.wtOpenWorkoutRecord = openWorkoutRecordFromCalendar;
+window.wtHandleWorkoutBack = () => handleWorkoutBack({ activeTab: _currentTab, preferHistory: true });
+
+let _workoutSystemBackBound = false;
+function initWorkoutSystemBack() {
+  if (_workoutSystemBackBound || typeof window === 'undefined') return;
+  const appPlugin = window.Capacitor?.Plugins?.App;
+  if (!appPlugin || typeof appPlugin.addListener !== 'function') return;
+  _workoutSystemBackBound = true;
+  appPlugin.addListener('backButton', (event = {}) => {
+    if (handleWorkoutBack({ activeTab: _currentTab, preferHistory: true })) return;
+    if (event.canGoBack && window.history?.back) window.history.back();
+  });
+}
+setTimeout(initWorkoutSystemBack, 0);
 
 async function switchTab(tab, options = {}) {
   if (isAdmin() && tab !== 'admin') tab = 'admin';
@@ -213,16 +326,28 @@ async function switchTab(tab, options = {}) {
       && Number.isFinite(Number(targetDate.y))
       && Number.isFinite(Number(targetDate.m))
       && Number.isFinite(Number(targetDate.d));
-    _setWorkoutSurface(hasTargetDate ? 'edit' : 'home');
     if (hasTargetDate) {
-      loadWorkoutDate(Number(targetDate.y), Number(targetDate.m), Number(targetDate.d));
-    } else {
-      loadWorkoutDate(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+      const key = _dateKeyFromParts(Number(targetDate.y), Number(targetDate.m), Number(targetDate.d));
+      const targetSessionIndex = _takeWorkoutTargetSessionIndex(0);
+      pushWorkoutRecord({ dateKey: key, sessionIndex: targetSessionIndex }, {
+        action: 'record:open-tab',
+        history: options?.history || 'push',
+        notify: false,
+      });
+    } else if (!options?.preserveWorkoutRoute) {
+      openWorkoutCalendar({ action: 'calendar:tab', history: 'replace', notify: false, closeSheet: false });
     }
-    wtRecoverTimers();
-    // 탭 진입 시 프로 모드 뷰는 리셋 → 항상 일반 모드 뷰가 디폴트.
-    if (typeof window.resetExpertView === 'function') window.resetExpertView();
-    if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+    const routeSnapshot = getWorkoutNavSnapshot();
+    const route = currentWorkoutRoute();
+    _setWorkoutSurface(route.name === WORKOUT_ROUTES.DETAIL ? 'detail' : route.name === WORKOUT_ROUTES.RECORD ? 'record' : 'calendar');
+    if (hasTargetDate) {
+      await _renderWorkoutRoute(routeSnapshot, 'record:open-tab');
+    } else {
+      if (route.name === WORKOUT_ROUTES.CALENDAR) {
+        loadWorkoutDate(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+      }
+      await _renderWorkoutRoute(routeSnapshot, options?.preserveWorkoutRoute ? 'route:preserve-tab' : 'calendar:tab');
+    }
   }
   if (tab === 'diet')     loadWorkoutDate(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
 
@@ -257,8 +382,12 @@ document.addEventListener('cooking:saved', renderAll);
 
 // ── 운동탭에서 날짜 지정 진입 ────────────────────────────────────
 function openWorkoutTab(y, m, d) {
-  switchTab('workout', { workoutDate: { y, m, d } });
-  wtRecoverTimers();
+  const key = _dateKeyFromParts(y, m, d);
+  if (key) {
+    openWorkoutRecordFromCalendar(key, _takeWorkoutTargetSessionIndex(0));
+    return;
+  }
+  switchTab('workout');
 }
 
 // ── 탭 드래그/스와이프/가시성은 navigation.js로 분리됨 ──────────

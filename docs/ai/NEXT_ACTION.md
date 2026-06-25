@@ -3,13 +3,37 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-24-workout-calendar-bottom-sheet.md`
-- 현재 단계: `complete — Slice 9 drag release settle deployed`
-- 마지막 완료: `Slice 9 구현, 리뷰, Dashboard3 Pages 배포 검증, 배포 asset marker 확인을 완료했다.`
-- 다음 액션: `인증 계정으로 배포 URL에서 운동 탭 -> 날짜 sheet drag up/down settle 실제 UI flow를 수동 확인한다.`
-- 차단 사유: `로그인 화면 때문에 에이전트가 인증 계정 실제 UI flow를 직접 조작하지 못함`
+- 계획 문서: `docs/ai/features/2026-06-25-workout-navigation-stack-redesign.md`
+- 현재 단계: `complete — workout navigation stack implemented and reviewed`
+- 마지막 완료: `Slice 1-6을 구현해 캘린더 BottomSheet -> WorkoutRecordScreen -> WorkoutDetailScreen stack, PWA history back, Android backButton hook, detail set 입력 화면을 추가했고 전체 테스트 512개를 통과했다.`
+- 다음 액션: `Dashboard3 Pages 배포 검증 후 인증 계정으로 운동 탭 실제 UI flow를 수동 확인한다.`
+- 차단 사유: `인증 계정 실제 UI flow는 에이전트가 직접 조작하지 못함`
 
 ## 다음 실행 대상
+
+- 계획 파일: `docs/ai/features/2026-06-25-workout-navigation-stack-redesign.md`
+- 완료한 Slice 1-6:
+  1. `workout/navigation-stack.js` 추가: `CalendarScreen`, `WorkoutRecordScreen`, `WorkoutDetailScreen` route stack, saved state, PWA history snapshot.
+  2. `render-calendar.js` 바텀시트 상태를 navigation state와 동기화하고 record 진입을 `wtOpenWorkoutRecord()`로 교체.
+  3. `app.js` 운동 탭 surface를 `calendar/record/detail`로 확장하고 record/detail 상태 보존 렌더 연결.
+  4. `workout/exercises.js` detail screen 렌더와 운동 카드 detail 진입 추가.
+  5. Capacitor `backButton` hook과 browser `popstate` 기반 PWA back 복원 추가.
+  6. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260625z44-workout-nav-stack`로 bump하고 새 runtime asset을 precache에 추가.
+
+- 검증:
+  1. PASS: `node --check app.js render-calendar.js workout/navigation-stack.js workout/exercises.js workout/index.js`
+  2. PASS: `node --check workout/load.js; node --check render-workout.js; node --check sw.js`
+  3. PASS: `node --test .\tests\*.test.js` — 512 tests passed
+  4. PASS: `node scripts/verify-runtime-assets.mjs`
+  5. PASS: `git diff --check`
+
+- 리뷰:
+  - `docs/ai/reviews/2026-06-25-workout-navigation-stack-redesign-review.md`
+
+- 남은 수동 확인:
+  1. 배포 URL에서 인증 계정으로 `운동 탭 -> 날짜 클릭 -> BottomSheet -> 운동 진입 -> 운동 상세 -> Android/PWA back 순서` 확인.
+
+## 이전 실행 기록
 
 - 계획 파일: `docs/ai/features/2026-06-24-workout-calendar-bottom-sheet.md`
 - 완료한 Slice 1:

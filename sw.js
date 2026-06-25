@@ -3,7 +3,7 @@
 
 // 캐시 버전: 타임스탬프 기반 자동 생성 — 파일 수정 시 SW 자동 업데이트
 // (SW 파일 내용이 1바이트라도 바뀌면 브라우저가 새 SW로 인식)
-const CACHE_VERSION = 'tomatofarm-v20260625z43-workout-day-sheet-drag-settle';
+const CACHE_VERSION = 'tomatofarm-v20260625z44-workout-nav-stack';
 const RUNTIME_CACHE = 'dashboard3-runtime';
 const STATIC_ASSETS = [
   './',
@@ -35,6 +35,7 @@ const STATIC_ASSETS = [
   // 코어 모듈
   './app.js',
   './app.js?v=20260620z27-selected-scope',
+  './app.js?v=20260625z44-workout-nav-stack',
   './data.js',
   './calc.js',
   './config.js',
@@ -71,10 +72,13 @@ const STATIC_ASSETS = [
   './home/cheers-card.js',
   './render-workout.js',
   './render-workout.js?v=20260620z27-selected-scope',
+  './render-workout.js?v=20260625z44-workout-nav-stack',
   './workout/index.js',
   './workout/index.js?v=20260620z27-selected-scope',
+  './workout/index.js?v=20260625z44-workout-nav-stack',
   './workout/state.js',
   './workout/sessions.js',
+  './workout/navigation-stack.js',
   './workout/save.js',
   './workout/save-pure.js',
   './workout/save-schema.js',
@@ -83,6 +87,7 @@ const STATIC_ASSETS = [
   './workout/load.js',
   './workout/status.js',
   './workout/exercises.js',
+  './workout/exercises.js?v=20260625z44-workout-nav-stack',
   './workout/timers.js',
   './workout/activity-forms.js',
   './workout/expert/onboarding.js',

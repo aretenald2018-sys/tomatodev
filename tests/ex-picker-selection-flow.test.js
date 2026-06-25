@@ -5,9 +5,9 @@ import { readFile } from 'node:fs/promises';
 const modalHtml = await readFile(new URL('../modals/ex-picker-modal.js', import.meta.url), 'utf8');
 const exercisesJs = await readFile(new URL('../workout/exercises.js', import.meta.url), 'utf8');
 
-test('exercise picker keeps footer done button as a fallback close control', () => {
-  assert.match(modalHtml, /id="ex-picker-done"/);
-  assert.match(modalHtml, /class="ex-picker-footer"/);
+test('exercise picker no longer renders footer done controls', () => {
+  assert.doesNotMatch(modalHtml, /id="ex-picker-done"/);
+  assert.doesNotMatch(modalHtml, /class="ex-picker-footer"/);
 });
 
 test('exercise picker row selection closes picker immediately after adding exercise', () => {

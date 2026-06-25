@@ -23,10 +23,11 @@ export { wtToggleWineFree, wtToggleMealSkipped }
 export { wtAddSet, wtRemoveSet, wtUpdateSet,
          wtToggleSetDone, wtUpdateSetType, wtMoveSet,
          wtRemoveExerciseEntry,
+         renderWorkoutExerciseDetail, clearWorkoutExerciseDetail,
          wtOpenExercisePicker, wtCloseExercisePicker,
          wtOpenExerciseEditor, wtCloseExerciseEditor,
          wtSaveExerciseFromEditor, wtDeleteExerciseFromEditor }
-  from './exercises.js?v=20260517v3';
+  from './exercises.js?v=20260625z44-workout-nav-stack';
 
 export { wtStartWorkoutTimer, wtPauseWorkoutTimer,
          wtResetWorkoutTimer, wtTogglePauseWorkoutTimer,
@@ -43,7 +44,9 @@ import { wtToggleMealSkipped }                     from './status.js';
 import { wtOpenExercisePicker, wtCloseExercisePicker,
          wtOpenExerciseEditor, wtCloseExerciseEditor,
          wtSaveExerciseFromEditor,
-         wtDeleteExerciseFromEditor }              from './exercises.js?v=20260517v3';
+         wtDeleteExerciseFromEditor,
+         renderWorkoutExerciseDetail,
+         clearWorkoutExerciseDetail }              from './exercises.js?v=20260625z44-workout-nav-stack';
 import { wtStartWorkoutTimer, wtTogglePauseWorkoutTimer,
          wtResetWorkoutTimer, wtFinishWorkout, wtRecoverTimers,
          wtRestTimerStart, wtRestTimerSkip,
@@ -65,6 +68,8 @@ window.wtOpenExerciseEditor = wtOpenExerciseEditor;
 window.wtCloseExerciseEditor = wtCloseExerciseEditor;
 window.wtSaveExerciseFromEditor = wtSaveExerciseFromEditor;
 window.wtDeleteExerciseFromEditor = wtDeleteExerciseFromEditor;
+window.renderWorkoutExerciseDetail = renderWorkoutExerciseDetail;
+window.clearWorkoutExerciseDetail = clearWorkoutExerciseDetail;
 window.wtStartWorkoutTimer = wtStartWorkoutTimer;
 window.wtTogglePauseWorkoutTimer = wtTogglePauseWorkoutTimer;
 window.wtResetWorkoutTimer = wtResetWorkoutTimer;
