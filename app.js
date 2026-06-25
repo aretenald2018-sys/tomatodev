@@ -43,7 +43,7 @@ import { showDietPremiumReportIfNeeded } from './feature-diet-premium-report.js'
 import {
   loadWorkoutDate, changeWorkoutDate, goToTodayWorkout, saveWorkoutDay,
   openNutritionPhotoUpload, wtRecoverTimers,
-} from './render-workout.js?v=20260625z45-workout-nav-regression';
+} from './render-workout.js?v=20260625z47-workout-record-card-standard';
 
 // ── 레이지 로딩 탭 캐시 ──
 const _lazyModules = {};
@@ -254,8 +254,12 @@ async function _renderWorkoutRoute(snapshot = getWorkoutNavSnapshot(), action = 
   if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
 
   if (route.name === WORKOUT_ROUTES.DETAIL) {
-    _setWorkoutSurface('detail');
-    window.renderWorkoutExerciseDetail?.();
+    _setWorkoutSurface('record');
+    window.clearWorkoutExerciseDetail?.();
+    const detailTarget = snapshot.detail?.exerciseKey || snapshot.detail?.entryIdx != null
+      ? snapshot.detail
+      : route;
+    window.wtFocusWorkoutEntryFromDetail?.(detailTarget);
     return;
   }
 
@@ -357,7 +361,7 @@ async function switchTab(tab, options = {}) {
     }
     const routeSnapshot = getWorkoutNavSnapshot();
     const route = currentWorkoutRoute();
-    _setWorkoutSurface(route.name === WORKOUT_ROUTES.DETAIL ? 'detail' : route.name === WORKOUT_ROUTES.RECORD ? 'record' : 'calendar');
+    _setWorkoutSurface(route.name === WORKOUT_ROUTES.RECORD || route.name === WORKOUT_ROUTES.DETAIL ? 'record' : 'calendar');
     if (hasTargetDate) {
       await _renderWorkoutRoute(routeSnapshot, 'record:open-tab');
     } else {

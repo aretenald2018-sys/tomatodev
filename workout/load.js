@@ -18,7 +18,7 @@ import { _renderRunningForm, _renderCfForm,
          _renderStretchForm, _renderSwimForm }
                                      from './activity-forms.js';
 import { _initButtonEventListeners } from './status.js';
-import { _renderExerciseList }       from './exercises.js?v=20260625z45-workout-nav-regression';
+import { _renderExerciseList }       from './exercises.js?v=20260625z47-workout-record-card-standard';
 import { getDay, isFuture, TODAY, isExpertModeEnabled, getExpertPreset, dateKey } from '../data.js';
 import { getWorkoutSessions } from './sessions.js';
 
@@ -317,6 +317,7 @@ function _setInputsDisabled(disabled) {
   panel.querySelectorAll('input, textarea, select, button').forEach(el => {
     if (el.classList.contains('wt-date-nav-btn')) return;
     if (el.classList.contains('wt-today-btn')) return;
+    if (el.classList.contains('wt-record-back-btn')) return;
     el.disabled = disabled;
   });
   panel.classList.toggle('wt-readonly', !!disabled);

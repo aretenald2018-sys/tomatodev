@@ -23,12 +23,13 @@ export { wtToggleWineFree, wtToggleMealSkipped }
 export { wtAddSet, wtRemoveSet, wtUpdateSet,
          wtToggleSetDone, wtUpdateSetType, wtMoveSet,
          wtRemoveExerciseEntry,
+         wtFocusWorkoutEntryCard, wtFocusWorkoutEntryFromDetail,
          renderWorkoutExerciseDetail, clearWorkoutExerciseDetail,
          wtOpenExercisePicker, wtCloseExercisePicker,
          wtHandleExercisePickerBack,
          wtOpenExerciseEditor, wtCloseExerciseEditor,
          wtSaveExerciseFromEditor, wtDeleteExerciseFromEditor }
-  from './exercises.js?v=20260625z45-workout-nav-regression';
+  from './exercises.js?v=20260625z47-workout-record-card-standard';
 
 export { wtStartWorkoutTimer, wtPauseWorkoutTimer,
          wtResetWorkoutTimer, wtTogglePauseWorkoutTimer,
@@ -47,8 +48,10 @@ import { wtOpenExercisePicker, wtCloseExercisePicker,
          wtOpenExerciseEditor, wtCloseExerciseEditor,
          wtSaveExerciseFromEditor,
          wtDeleteExerciseFromEditor,
+         wtFocusWorkoutEntryCard,
+         wtFocusWorkoutEntryFromDetail,
          renderWorkoutExerciseDetail,
-         clearWorkoutExerciseDetail }              from './exercises.js?v=20260625z45-workout-nav-regression';
+         clearWorkoutExerciseDetail }              from './exercises.js?v=20260625z47-workout-record-card-standard';
 import { wtStartWorkoutTimer, wtTogglePauseWorkoutTimer,
          wtResetWorkoutTimer, wtFinishWorkout, wtRecoverTimers,
          wtRestTimerStart, wtRestTimerSkip,
@@ -71,6 +74,8 @@ window.wtOpenExerciseEditor = wtOpenExerciseEditor;
 window.wtCloseExerciseEditor = wtCloseExerciseEditor;
 window.wtSaveExerciseFromEditor = wtSaveExerciseFromEditor;
 window.wtDeleteExerciseFromEditor = wtDeleteExerciseFromEditor;
+window.wtFocusWorkoutEntryCard = wtFocusWorkoutEntryCard;
+window.wtFocusWorkoutEntryFromDetail = wtFocusWorkoutEntryFromDetail;
 window.renderWorkoutExerciseDetail = renderWorkoutExerciseDetail;
 window.clearWorkoutExerciseDetail = clearWorkoutExerciseDetail;
 window.wtStartWorkoutTimer = wtStartWorkoutTimer;

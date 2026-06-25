@@ -3277,6 +3277,32 @@ body.wt-modal-scroll-lock {
   border-bottom: 1px solid var(--border);
   position: sticky; top: 52px; z-index: 10; /* top-nav 아래 */
 }
+.wt-record-back-btn {
+  display: none;
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 36px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+#tab-workout.wt-workout-record-mode .wt-record-back-btn {
+  display: inline-flex;
+}
+.wt-record-back-btn:active {
+  transform: translateY(-50%) scale(0.96);
+  background: var(--surface2);
+}
 .wt-date-nav-btn {
   /* TDS sm button: padding 8/14, grid-aligned h-pad changed 18 → 20 */
   background: var(--surface2); border: 1px solid var(--border);
@@ -3409,6 +3435,10 @@ body.wt-modal-scroll-lock {
 }
 .wt-exercise-detail-card {
   margin-top: 8px;
+}
+.ex-block--record-focus {
+  border-color: #2f6df6 !important;
+  box-shadow: 0 0 0 3px rgba(47,109,246,.16), 0 8px 22px rgba(17,24,39,.08) !important;
 }
 .ex-max-v2-name[role="button"],
 .ex-max-v2-plan-goal[role="button"] {
@@ -4697,6 +4727,9 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   background: var(--seed-bg-layer); border-bottom: 1px solid var(--seed-stroke-neutral);
   padding: var(--seed-x3) var(--seed-x4); gap: var(--seed-x2);
   box-shadow: var(--seed-s1);
+}
+#tab-workout .wt-record-back-btn {
+  color: var(--seed-fg-neutral);
 }
 #tab-workout .wt-date-nav-btn {
   width: 36px; height: 36px; border-radius: var(--seed-r-full);

@@ -392,6 +392,7 @@
   <div id="workout-calendar-root" class="workout-calendar-root"></div>
 
   <div class="workout-date-nav">
+    <button type="button" class="wt-record-back-btn" aria-label="캘린더로 돌아가기" onclick="window.wtHandleWorkoutBack?.()">‹</button>
     <button class="wt-date-nav-btn" onclick="changeWorkoutDate(-1)">◀</button>
     <span id="wt-date-label" class="workout-date-label"></span>
     <button class="wt-date-nav-btn" onclick="changeWorkoutDate(1)">▶</button>
@@ -834,7 +835,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
 <script src="feature-login.js?v=20260624c"></script>
-<script type="module" src="app.js?v=20260625z46-workout-today-arrow"></script>
+<script type="module" src="app.js?v=20260625z47-workout-record-card-standard"></script>
 
 <!-- PWA Service Worker 등록 -->
 <script src="pwa-register.js?v=20260624c"></script>

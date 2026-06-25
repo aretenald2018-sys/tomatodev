@@ -88,7 +88,7 @@ test('calendar open can reset the workout home month to today', () => {
   assert.equal(snapshot.calendar.viewMonth, 5);
 });
 
-test('workout navigation is wired to app, calendar, detail root, and PWA cache', async () => {
+test('workout navigation is wired to app, calendar, record card focus, and PWA cache', async () => {
   const [appJs, calendarJs, indexHtml, workoutExercises, navJs, swJs] = await Promise.all([
     readFile(new URL('../app.js', import.meta.url), 'utf8'),
     readFile(new URL('../render-calendar.js', import.meta.url), 'utf8'),
@@ -106,20 +106,26 @@ test('workout navigation is wired to app, calendar, detail root, and PWA cache',
   assert.match(appJs, /selectedKey:\s*_dateKeyFromParts\(TODAY\.getFullYear\(\), TODAY\.getMonth\(\), TODAY\.getDate\(\)\)/);
   assert.match(appJs, /viewYear:\s*TODAY\.getFullYear\(\)/);
   assert.match(appJs, /viewMonth:\s*TODAY\.getMonth\(\)/);
+  assert.match(appJs, /route\.name === WORKOUT_ROUTES\.DETAIL[\s\S]*_setWorkoutSurface\('record'\)/);
+  assert.match(appJs, /const detailTarget = snapshot\.detail\?\.exerciseKey \|\| snapshot\.detail\?\.entryIdx != null/);
+  assert.match(appJs, /window\.wtFocusWorkoutEntryFromDetail\?\.\(detailTarget\)/);
   assert.match(calendarJs, /openWorkoutDaySheet\(nextKey/);
   assert.match(calendarJs, /calendar\.viewYear != null && Number\.isFinite\(Number\(calendar\.viewYear\)\)/);
   assert.match(calendarJs, /\^\(\\d\{4\}\)-\(\\d\{2\}\)-\(\\d\{2\}\)\$/);
   assert.match(calendarJs, /window\.wtOpenWorkoutRecord/);
+  assert.match(indexHtml, /class="wt-record-back-btn"[\s\S]*window\.wtHandleWorkoutBack\?\.\(\)/);
   assert.match(indexHtml, /id="wt-exercise-detail-root"/);
-  assert.match(workoutExercises, /pushWorkoutDetail\(\{/);
+  assert.doesNotMatch(workoutExercises, /pushWorkoutDetail\(\{/);
   assert.match(workoutExercises, /function _findWorkoutEntryIndexByExerciseId/);
-  assert.match(workoutExercises, /if \(existingIdx >= 0\)[\s\S]*_openWorkoutEntryDetail\(existingIdx\)/);
+  assert.match(workoutExercises, /export function wtFocusWorkoutEntryCard/);
+  assert.match(workoutExercises, /block\.dataset\.wtEntryIdx = String\(idx\)/);
+  assert.match(workoutExercises, /if \(existingIdx >= 0\)[\s\S]*wtFocusWorkoutEntryCard\(existingIdx\)/);
   assert.match(workoutExercises, /const entryIdx = S\.workout\.exercises\.push\(_buildPickerExerciseEntry\(ex\)\) - 1/);
-  assert.match(workoutExercises, /_openWorkoutEntryDetail\(entryIdx\)/);
+  assert.match(workoutExercises, /wtFocusWorkoutEntryCard\(entryIdx\)/);
   assert.match(workoutExercises, /export function wtHandleExercisePickerBack\(\)/);
   assert.match(workoutExercises, /export function renderWorkoutExerciseDetail\(\)/);
   assert.match(navJs, /typeof options\.handleOverlayBack === 'function' && options\.handleOverlayBack\(\)/);
   assert.match(navJs, /_writeHistory\('push', 'overlay:back'\)/);
   assert.match(swJs, /\.\/workout\/navigation-stack\.js/);
-  assert.match(swJs, /tomatofarm-v20260625z46-workout-today-arrow/);
+  assert.match(swJs, /tomatofarm-v20260625z47-workout-record-card-standard/);
 });

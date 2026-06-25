@@ -20,7 +20,6 @@ import { MOVEMENTS } from '../config.js';
 import {
   getWorkoutNavSnapshot,
   handleWorkoutBack,
-  pushWorkoutDetail,
 } from './navigation-stack.js';
 import {
   buildMaxPickerExerciseEntry,
@@ -777,16 +776,35 @@ function _resolveWorkoutEntryIndex(detail = {}) {
   return Number.isFinite(fallback) && entries[fallback] ? Math.max(0, Math.floor(fallback)) : -1;
 }
 
-function _openWorkoutEntryDetail(entryIdx) {
-  const entry = S.workout.exercises?.[entryIdx];
-  if (!entry) return;
-  pushWorkoutDetail({
-    dateKey: _todayDateKey(),
-    sessionIndex: S.workout.sessionIndex || 0,
-    exerciseKey: _workoutEntryKey(entry, entryIdx),
-    entryIdx,
-    recordScrollTop: document.scrollingElement?.scrollTop || window.scrollY || 0,
-  });
+export function wtFocusWorkoutEntryCard(entryIdx, options = {}) {
+  const idx = Math.max(0, Math.floor(Number(entryIdx)));
+  const entry = S.workout.exercises?.[idx];
+  if (!entry) return false;
+  if (options.expand !== false && entry.uiCollapsed) entry.uiCollapsed = false;
+  if (options.render !== false) _renderExerciseList();
+
+  const focus = () => {
+    const block = document.querySelector(`#wt-exercise-list [data-wt-entry-idx="${idx}"]`);
+    if (!block) return false;
+    block.classList.remove('ex-block--record-focus');
+    void block.offsetWidth;
+    block.classList.add('ex-block--record-focus');
+    block.scrollIntoView({
+      block: options.block || 'center',
+      behavior: options.behavior || 'smooth',
+    });
+    const focusTarget = block.querySelector('.ex-max-v2-name') || block;
+    focusTarget?.focus?.({ preventScroll: true });
+    window.setTimeout?.(() => block.classList.remove('ex-block--record-focus'), 1400);
+    return true;
+  };
+
+  if (!focus()) window.requestAnimationFrame?.(focus);
+  return true;
+}
+
+export function wtFocusWorkoutEntryFromDetail(detail = {}, options = {}) {
+  return wtFocusWorkoutEntryCard(_resolveWorkoutEntryIndex(detail), options);
 }
 
 function _findWorkoutEntryIndexByExerciseId(exerciseId) {
@@ -796,16 +814,16 @@ function _findWorkoutEntryIndexByExerciseId(exerciseId) {
     .findIndex(entry => entry?.exerciseId === id);
 }
 
-function _bindWorkoutEntryDetailOpen(block, entryIdx) {
+function _bindWorkoutEntryRecordFocus(block, entryIdx) {
   const open = (event) => {
     event?.preventDefault?.();
     event?.stopPropagation?.();
-    _openWorkoutEntryDetail(entryIdx);
+    wtFocusWorkoutEntryCard(entryIdx, { render: false });
   };
   block.querySelectorAll('.ex-max-v2-name, .ex-max-v2-plan-goal').forEach((target) => {
     target.setAttribute('role', 'button');
     target.setAttribute('tabindex', '0');
-    target.setAttribute('aria-label', '운동 상세 열기');
+    target.setAttribute('aria-label', '운동 카드 보기');
     target.addEventListener('click', open);
     target.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -1073,6 +1091,7 @@ export function _renderExerciseList() {
 
     const block = document.createElement('div');
     block.className = 'ex-block ex-block--max-v2' + (maxAllDone ? ' is-complete' : '') + (maxCollapsed ? ' is-collapsed' : '');
+    block.dataset.wtEntryIdx = String(idx);
     block.innerHTML = `
       ${_buildMaxExerciseCardHeader(entry, ex, mc, idx, sparkline)}
       ${maxLastSummary}
@@ -1086,7 +1105,7 @@ export function _renderExerciseList() {
 
     block.querySelector('.ex-remove-btn').addEventListener('click', () => wtRemoveExerciseEntry(idx));
     block.querySelector('.ex-add-set-btn')?.addEventListener('click', () => wtAddSet(idx));
-    _bindWorkoutEntryDetailOpen(block, idx);
+    _bindWorkoutEntryRecordFocus(block, idx);
     const maxHead = block.querySelector('[data-action="toggle-max-entry-track"]');
     maxHead?.addEventListener('click', (e) => {
       if (e.target.closest('.ex-remove-btn')) return;
@@ -2424,7 +2443,7 @@ export function _renderPickerList() {
         const existingIdx = _findWorkoutEntryIndexByExerciseId(ex.id);
         if (existingIdx >= 0) {
           wtCloseExercisePicker();
-          _openWorkoutEntryDetail(existingIdx);
+          wtFocusWorkoutEntryCard(existingIdx);
           return;
         }
         _ensureExpertManualSession();
@@ -2436,7 +2455,7 @@ export function _renderPickerList() {
         if (!S.workout.workoutStartTime && S.workout.workoutDuration === 0) wtStartWorkoutTimer();
         wtPersistActiveWorkoutDraft('exercise add');
         wtCloseExercisePicker();
-        _openWorkoutEntryDetail(entryIdx);
+        wtFocusWorkoutEntryCard(entryIdx);
         saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
       });
       group.appendChild(btn);

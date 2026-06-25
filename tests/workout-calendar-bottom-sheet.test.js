@@ -121,5 +121,5 @@ test('collapsed day sheet bar is a compact one-row affordance', () => {
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260625z46-workout-today-arrow/);
+  assert.match(swJs, /tomatofarm-v20260625z47-workout-record-card-standard/);
 });
