@@ -25,8 +25,9 @@
 - `node scripts/verify-runtime-assets.mjs` 통과: `[runtime-assets] ok refs=827`.
 - `git diff --check` 통과.
 
-## 배포 전 확인 필요
+## 배포 확인
 
-- `origin/main` push 후 Dashboard3 Pages 배포 검증:
-  - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
-- 가능하면 배포 페이지에서 `종목 수정 -> 웬들러 -> 수행 kg/회수 입력 -> TM 계산` 클릭으로 TM 값 반영을 직접 확인한다.
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ f1e8eef`
+  - `[deploy-verify] ok f1e8eef43521 tomatofarm-v20260625z65-compact-wendler-tm static=218`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260625z65-compact-wendler-tm" "workout/exercises.js::data-ex-program-tm-calc" "workout/exercises.js::실제 1RM보다 낮은 기준 중량" "workout/exercises.js::estimate1RM(kg, reps)" "style.css::.ex-program-compact-list" "style.css::.ex-program-tm-calc"`
+- not verified yet: 인증 계정이 없어 `종목 수정 -> 웬들러 -> 수행 kg/회수 입력 -> TM 계산` 실제 UI 클릭 흐름은 직접 저장 확인 미완료.

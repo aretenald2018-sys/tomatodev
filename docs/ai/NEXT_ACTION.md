@@ -5,7 +5,7 @@
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-25-exercise-program-settings-wendler-migration.md`
 - 현재 단계: `review complete — Slice 7 compact wendler panel and TM calculator`
-- 마지막 완료: `웬들러 설정 영역을 컴팩트하게 줄이고 대표 세트 기반 TM 자동 계산기를 추가했다.`
+- 마지막 완료: `웬들러 설정 영역을 컴팩트하게 줄이고 대표 세트 기반 TM 자동 계산기를 추가해 Dashboard3 배포 검증까지 완료했다.`
 - 다음 액션: `성장보드 색칠/미달 자동 반영 통합 방식은 사용자 결정 후 별도 계획으로 진행한다.`
 - 차단 사유: `Slice 5 성장보드 색칠 통합 방식은 사용자 결정 대기`
 
@@ -16,7 +16,9 @@
 - PASS: `node --test .\tests\*.test.js` — 528 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
-- not verified yet: 이번 Slice 7 커밋 push 후 Dashboard3 Pages 배포 검증 필요
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ f1e8eef`
+  - 결과: `[deploy-verify] ok f1e8eef43521 tomatofarm-v20260625z65-compact-wendler-tm static=218`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260625z65-compact-wendler-tm" "workout/exercises.js::data-ex-program-tm-calc" "workout/exercises.js::실제 1RM보다 낮은 기준 중량" "workout/exercises.js::estimate1RM(kg, reps)" "style.css::.ex-program-compact-list" "style.css::.ex-program-tm-calc"`
 - not verified yet: 인증 계정이 없어 `운동 탭 -> 종목 수정 -> 웬들러 -> 수행 kg/회수 입력 -> TM 계산 -> 저장` 실제 UI flow는 직접 저장 확인 미완료
 
 ## 완료한 작업
