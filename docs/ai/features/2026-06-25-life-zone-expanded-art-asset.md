@@ -34,6 +34,12 @@
 - `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260625z50-life-zone-expanded-art`로 bump했다.
 - 배포 대상은 `origin`(`dashboard3`)만 사용하며 `tomatofarm` 원격은 사용하지 않는다.
 
+## 캐시 불일치 수정
+
+- 배포 후 실제 앱에서 새 CSS/좌표 기준은 반영됐지만 기존 `base-room-alpha.png` 이미지가 브라우저/서비스워커 캐시에 남아, 캐릭터 위치가 틀어지고 신규 하단 이미지가 보이지 않는 증상이 확인됐다.
+- 앱 참조 경로를 `base-room-expanded-alpha.png`로 변경하고 `base-room-expanded.png`/`base-room-expanded-alpha.png`를 `sw.js` `STATIC_ASSETS`에 추가했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260625z51-life-zone-expanded-asset-url`로 bump했다.
+
 ## 제외
 
 - 새 actor state나 운동 애니메이션 추가

@@ -5,7 +5,7 @@
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-25-life-zone-expanded-art-asset.md`
 - 현재 단계: `complete — life-zone expanded art asset applied`
-- 마지막 완료: `20대 미남 트레이너 v3 시안을 Dashboard3용 라이프존 배경 자산으로 적용했고, 로컬 자산/문법/runtime 검증과 리뷰를 완료했다.`
+- 마지막 완료: `20대 미남 트레이너 v3 시안을 Dashboard3용 라이프존 배경 자산으로 적용했고, 캐시 불일치 방지를 위해 앱 참조 URL을 base-room-expanded-alpha.png로 분리했다.`
 - 다음 액션: `Dashboard3 Pages 배포 후 홈 라이프존 카드에서 새 배경, 러닝 트랙, 안내데스크, 20대 트레이너 NPC가 표시되는지 확인한다.`
 - 차단 사유: `인증 계정 홈 카드 실제 UI flow는 수동 확인 필요`
 
@@ -26,6 +26,7 @@
   4. PASS: `git diff --check`
   5. PASS: `assets/home/life-zone/base-room-alpha.png` 시각 확인 및 corner alpha 0 확인
   6. 리뷰: `docs/ai/reviews/2026-06-25-life-zone-expanded-art-asset-review.md`
+  7. 추가 수정: 캐시 불일치 방지를 위해 `base-room-expanded-alpha.png` 새 URL로 앱 참조 경로 분리
 
 ## 직전 완료 흐름
 

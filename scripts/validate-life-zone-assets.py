@@ -53,7 +53,7 @@ def main():
 
     html = (ROOT / "docs" / "pixel-life-zone-mockup.html").read_text(encoding="utf-8")
     required_refs = [
-        "../assets/home/life-zone/base-room-alpha.png",
+        "../assets/home/life-zone/base-room-expanded-alpha.png",
         "../assets/home/life-zone/sprites/"
     ]
     for ref in required_refs:

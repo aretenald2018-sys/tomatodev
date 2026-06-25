@@ -25,3 +25,10 @@
 
 - 배포 URL에서 로그인 후 실제 홈 카드의 actor overlay와 말풍선 위치를 인증 계정으로 확인해야 한다.
 - 이 체크아웃 규칙에 따라 최종 검증은 Dashboard3 Pages 배포 후 수행한다.
+
+## 추가 수정 리뷰
+
+- 사용자 실기기에서 기존 이미지 URL 캐시가 남아 신규 배경이 보이지 않고 actor 위치만 새 기준으로 계산되는 문제가 확인됐다.
+- 수정: 앱 렌더 경로를 `base-room-expanded-alpha.png`로 변경해 기존 `base-room-alpha.png` 캐시와 분리했다.
+- 수정: `sw.js` `STATIC_ASSETS`에 새 expanded 파일 2개를 추가하고 cache version을 `z51`로 bump했다.
+- 확인 필요: Dashboard3 Pages 배포 후 `base-room-expanded-alpha.png`가 HTTP 200, `1672x1672`, RGBA alpha 포함으로 내려오는지 확인한다.

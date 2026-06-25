@@ -239,7 +239,7 @@ export function renderLifeZoneCard({
     <div class="lz-scene">
       <img
         class="lz-base"
-        src="${LIFE_ZONE_ASSET_ROOT}/base-room-alpha.png"
+        src="${LIFE_ZONE_ASSET_ROOT}/base-room-expanded-alpha.png"
         width="1672"
         height="1672"
         alt=""
