@@ -97,6 +97,8 @@
 - PASS: `node --test tests/workout-empty-picker-density.test.js tests/workout-test-mode-unified.test.js tests/home-life-zone-npc-quest.test.js tests/workout-active-session-recovery.test.js tests/stats-muscle-fatigue-insight.test.js tests/stats-picker-ui-polish.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js tests/workout-track-graph-delta.test.js tests/workout-timer-summary-only.test.js`
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ a0b5dc305e69bba23229e803aaf2b2fa9e5d0e3c`
+- not verified yet: 인증 계정으로 `운동 탭 -> + -> 하체 -> 목록`에서 chip 미표출을 수동 확인해야 한다.
 
 ### Slice 2: 프로그램 설정 데이터 계약 확정
 
@@ -224,6 +226,6 @@
 
 ## 상태
 
-- Slice 1 실행 완료.
+- Slice 1 실행 및 Dashboard3 Pages 배포 검증 완료.
 - 다음 세션은 Slice 1 리뷰를 먼저 진행한다.
 - 이후 실행은 Slice 2부터 순차 진행한다.

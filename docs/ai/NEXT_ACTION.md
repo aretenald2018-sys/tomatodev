@@ -4,8 +4,8 @@
 
 - 상태: `ready_for_review`
 - 계획 문서: `docs/ai/features/2026-06-25-exercise-program-settings-wendler-migration.md`
-- 현재 단계: `execution complete — Slice 1 picker meta chip hide`
-- 마지막 완료: `운동 picker Max benchmark row 우측 최근/볼륨 chip을 제거하고 캐시 버전 및 관련 source-level 테스트를 갱신했다.`
+- 현재 단계: `execution complete — Slice 1 picker meta chip hide deployed`
+- 마지막 완료: `운동 picker Max benchmark row 우측 최근/볼륨 chip을 제거하고 Dashboard3 Pages 배포 검증까지 완료했다.`
 - 다음 액션: `docs/ai/features/2026-06-25-exercise-program-settings-wendler-migration.md Slice 1 변경 파일을 리뷰한다.`
 - 차단 사유: `없음`
 
@@ -15,7 +15,8 @@
 - PASS: `node --test tests/workout-empty-picker-density.test.js tests/workout-test-mode-unified.test.js tests/home-life-zone-npc-quest.test.js tests/workout-active-session-recovery.test.js tests/stats-muscle-fatigue-insight.test.js tests/stats-picker-ui-polish.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js tests/workout-track-graph-delta.test.js tests/workout-timer-summary-only.test.js`
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
-- not verified yet: Dashboard3 Pages 배포 및 인증 계정 UI flow 확인 필요
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ a0b5dc305e69bba23229e803aaf2b2fa9e5d0e3c`
+- not verified yet: 인증 계정 UI flow 확인 필요
 
 ## 완료한 작업
 
