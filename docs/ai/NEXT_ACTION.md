@@ -4,9 +4,9 @@
 
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-25-life-zone-npc-quest-bubble.md`
-- 현재 단계: `reviewed — NPC quest bubble ready for deploy`
-- 마지막 완료: `헬스 트레이너 위 NPC 퀘스트 말풍선 스프라이트와 클릭 가능한 custom event hook을 추가하고 로컬 검증/리뷰를 완료했다.`
-- 다음 액션: `Dashboard3 Pages에 배포한 뒤 홈 라이프존 카드에서 NPC 말풍선 sprite가 보이고 클릭 가능한지 확인한다.`
+- 현재 단계: `complete — NPC quest bubble deployed`
+- 마지막 완료: `헬스 트레이너 위 NPC 퀘스트 말풍선 스프라이트와 클릭 가능한 custom event hook을 Dashboard3 Pages에 배포하고 자산 검증을 완료했다.`
+- 다음 액션: `인증 계정으로 홈 라이프존 카드에서 NPC 말풍선 sprite가 보이고 클릭 가능한지 수동 확인한다.`
 - 차단 사유: `인증 계정 실제 UI flow는 수동 확인 필요`
 
 ## 완료한 작업
@@ -30,6 +30,9 @@
   5. PASS: `node --test .\tests\*.test.js` — 518 tests passed
   6. PASS: `git diff --check`
   7. 리뷰: `docs/ai/reviews/2026-06-25-life-zone-npc-quest-bubble-review.md`
+  8. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ bb8bf7e`
+  9. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260625z59-life-zone-npc-quest" "home/life-zone.js::npc-quest-bubble.png" "home/life-zone.js::life-zone:npc-quest" "sw.js::assets/home/life-zone/ui/npc-quest-bubble.png"`
+  10. PASS: 배포 URL의 `assets/home/life-zone/ui/npc-quest-bubble.png`가 HTTP 200, `192x258`, RGBA alpha `(0, 255)`, corner alpha 0으로 내려오며 로컬 파일과 SHA-256이 일치
 
 ## 이전 완료 흐름
 

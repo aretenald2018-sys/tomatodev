@@ -21,8 +21,11 @@
 4. PASS: `node scripts/verify-runtime-assets.mjs`
 5. PASS: `node --test .\tests\*.test.js` — 518 tests passed
 6. PASS: `git diff --check`
+7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ bb8bf7e`
+8. PASS: 배포된 `sw.js`, `home/life-zone.js`에서 `tomatofarm-v20260625z59-life-zone-npc-quest`, `npc-quest-bubble.png`, `life-zone:npc-quest` 마커 확인
+9. PASS: 배포 URL의 `assets/home/life-zone/ui/npc-quest-bubble.png`가 HTTP 200, `192x258`, RGBA alpha 포함으로 내려오며 로컬 파일과 SHA-256이 일치
 
 ## 남은 리스크
 
-- Dashboard3 Pages 배포 후 실제 홈 카드에서 말풍선 위치와 클릭 동작은 인증 계정으로 최종 확인해야 한다.
+- 실제 홈 카드에서 말풍선 위치와 클릭 동작은 인증 계정으로 최종 수동 확인해야 한다.
 - 퀘스트 모달 자체는 이번 범위에서 제외했으므로, 클릭 후 화면 변화는 아직 없다.
