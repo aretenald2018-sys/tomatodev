@@ -38,7 +38,7 @@ test('sheet drag handlers open directly to full and collapse to bar', () => {
   assert.match(calendarJs, /function _stepWorkoutHomeSheet\(direction\)[\s\S]*direction > 0 \? 'full' : 'bar'/);
   assert.match(calendarJs, /const WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX = 10/);
   assert.match(calendarJs, /const WORKOUT_HOME_SHEET_DRAG_OPEN_BAR_RATIO = 0\.1/);
-  assert.match(calendarJs, /const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX = 220/);
+  assert.match(calendarJs, /const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX = 28/);
   assert.match(calendarJs, /const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_RATIO = 0\.35/);
   assert.match(calendarJs, /const WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY = 0\.55/);
   assert.match(calendarJs, /const WORKOUT_HOME_SHEET_FULL_CLEARANCE_PX = 112/);
@@ -67,18 +67,23 @@ test('sheet drag handlers open directly to full and collapse to bar', () => {
   assert.match(calendarJs, /const minDragY = startHeight - maxHeight/);
   assert.match(calendarJs, /const dragTravel = Math\.max\(0, maxHeight - minHeight\)/);
   assert.match(calendarJs, /minHeight \* WORKOUT_HOME_SHEET_DRAG_OPEN_BAR_RATIO/);
-  assert.match(calendarJs, /dragTravel \* WORKOUT_HOME_SHEET_DRAG_COLLAPSE_RATIO/);
+  assert.match(calendarJs, /minHeight \* WORKOUT_HOME_SHEET_DRAG_COLLAPSE_RATIO/);
   assert.match(calendarJs, /let hasMoved = false/);
   assert.match(calendarJs, /hasMoved = true/);
   assert.match(calendarJs, /let openLatched = false/);
+  assert.match(calendarJs, /let closeLatched = false/);
+  assert.match(calendarJs, /let lastDragY = 0/);
+  assert.match(calendarJs, /lastDragY = dy/);
   assert.match(calendarJs, /if \(startState === 'bar' && dy <= -openThresholdPx\) openLatched = true/);
-  assert.match(calendarJs, /const nextHeight = openLatched \? maxHeight : Math\.max/);
+  assert.match(calendarJs, /if \(startState === 'full' && dy >= collapseThresholdPx\) closeLatched = true/);
+  assert.match(calendarJs, /const nextHeight = openLatched \? maxHeight : closeLatched \? minHeight : Math\.max/);
   assert.match(calendarJs, /velocityY = \(lastY - lastMoveY\) \/ elapsed/);
   assert.match(calendarJs, /startHeight - dy/);
+  assert.match(calendarJs, /const dy = lastDragY/);
   assert.match(calendarJs, /Math\.abs\(dy\) < WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX/);
   assert.match(calendarJs, /if \(hasMoved\) _suppressWorkoutHomeSheetClick\(\)/);
   assert.match(calendarJs, /_suppressWorkoutHomeSheetClick\(\)/);
-  assert.match(calendarJs, /_setWorkoutHomeSheetState\(openLatched \? 'full' : _resolveWorkoutHomeSheetDragTarget\(dy, velocityY, openThresholdPx, collapseThresholdPx\)\)/);
+  assert.match(calendarJs, /_setWorkoutHomeSheetState\(openLatched \? 'full' : closeLatched \? 'bar' : _resolveWorkoutHomeSheetDragTarget\(dy, velocityY, openThresholdPx, collapseThresholdPx\)\)/);
   assert.doesNotMatch(calendarJs, /Math\.abs\(dy\) > 112/);
   assert.match(calendarJs, /window\._wtCalToggleSheet = _toggleWorkoutHomeSheet/);
 });
@@ -113,5 +118,5 @@ test('collapsed day sheet bar is a compact one-row affordance', () => {
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260625z42-workout-day-sheet-fab-reveal/);
+  assert.match(swJs, /tomatofarm-v20260625z43-workout-day-sheet-drag-settle/);
 });

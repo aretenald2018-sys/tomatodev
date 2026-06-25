@@ -417,3 +417,55 @@
   - 결과: `[deploy-verify] ok 1fca224816f5 tomatofarm-v20260625z42-workout-day-sheet-fab-reveal static=210`
 - PASS: 배포 URL의 `render-calendar.js`, `style.css`, `sw.js`가 `wt-day-fab`, `WORKOUT_HOME_SHEET_FULL_CLEARANCE_PX`, `--wt-day-sheet-full-clearance: 112px`, `wt-sheet-arrow-pulse-down`, z42 cache marker를 반환한다.
 - not verified yet: 배포 URL은 로그인 화면에 막혀 인증 계정 실제 `운동 탭 -> 날짜 sheet full/open-close/add` UI flow 확인이 남아 있다.
+
+## 후속 Slice 9 — Drag release settles to the intended sheet state
+
+### 배경
+
+사용자가 하단 sheet를 짧게 클릭하면 `bar`/`full` 전환은 잘 안착하지만, 손으로 드래그하면 release 후 의도한 위치에 안착하지 않고 원래 상태로 돌아간다고 보고했다.
+
+### 진단
+
+1. drag preview는 `pointermove`에서 clamp된 `dy`로 계산하지만, release snap은 `pointerup`의 raw `lastY - startY`를 다시 계산해 사용한다.
+2. full 상태에서 아래로 닫는 threshold가 `max(220px, dragTravel * 0.35)`라 모바일 handle drag 기준으로는 너무 커서 사용자가 내렸다고 느껴도 `full`로 복귀하기 쉽다.
+3. open 방향은 `openLatched`가 있지만 close 방향은 latch가 없어, 드래그 중 이미 bar에 가까워 보였던 상태도 release에서 되돌아갈 수 있다.
+
+### 포함
+
+- `pointermove`에서 계산한 clamp된 drag distance를 release snap의 단일 기준으로 사용한다.
+- `bar` 시작 위 드래그와 `full` 시작 아래 드래그를 각각 latch해 release 직전 흔들림과 무관하게 의도한 상태로 안착시킨다.
+- 아래 방향 close threshold를 handle drag에 맞는 작은 거리로 낮춘다.
+- 회귀 테스트와 `sw.js` cache version을 bump한다.
+
+### 제외
+
+- sheet body 내부 scroll 정책 변경
+- 추가/회차 UI 디자인 변경
+- 운동 데이터 저장 구조 변경
+
+### 검증 계획
+
+- `node --check render-calendar.js; node --check sw.js`
+- `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
+- `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+
+### 실행 결과
+
+- `WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX`를 `220`에서 `28`로 낮춰 full 상태에서 handle을 아래로 드래그했을 때 의도한 close snap이 잡히게 했다.
+- drag 중 clamp된 `dy`를 `lastDragY`에 보관하고 release에서도 같은 값을 사용해 preview 위치와 snap 판단 기준을 맞췄다.
+- `closeLatched`를 추가해 `full`에서 아래 방향 threshold를 한 번 넘으면 release 직전 흔들림과 무관하게 `bar`로 안착한다.
+- close threshold 계산을 전체 drag travel이 아니라 `minHeight * WORKOUT_HOME_SHEET_DRAG_COLLAPSE_RATIO` 기준으로 바꿔 handle 조작 거리와 맞췄다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260625z43-workout-day-sheet-drag-settle`로 bump했다.
+
+### 실행 검증
+
+- PASS: `node --check render-calendar.js; node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
+- PASS: `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- pending: Dashboard3 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>` 실행
+- not verified yet: 로그인 화면에 막혀 인증 계정 실제 `운동 탭 -> 날짜 sheet drag up/down settle` UI flow 확인이 남아 있다.

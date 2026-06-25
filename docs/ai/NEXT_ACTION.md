@@ -2,12 +2,12 @@
 
 ## 현재 상태
 
-- 상태: `complete`
+- 상태: `ready_for_execution`
 - 계획 문서: `docs/ai/features/2026-06-24-workout-calendar-bottom-sheet.md`
-- 현재 단계: `complete — Slice 8 full sheet reveal and floating add deployed`
-- 마지막 완료: `Slice 8 구현, 리뷰, Dashboard3 Pages 배포 검증, 배포 asset marker 확인을 완료했다.`
-- 다음 액션: `인증 계정으로 배포 URL에서 운동 탭 -> 날짜 sheet full/open-close/add 실제 UI flow를 수동 확인한다.`
-- 차단 사유: `로그인 화면 때문에 에이전트가 인증 계정 실제 UI flow를 직접 조작하지 못함`
+- 현재 단계: `reviewed — Slice 9 deploy verification pending`
+- 마지막 완료: `Slice 9에서 드래그 release snap이 preview 위치와 같은 clamped dy를 쓰게 하고 closeLatched를 추가한 뒤 리뷰까지 완료했다.`
+- 다음 액션: `Slice 9 변경을 origin/main에 push한 뒤 Dashboard3 Pages 배포 검증을 수행한다.`
+- 차단 사유: `없음`
 
 ## 다음 실행 대상
 
@@ -174,6 +174,25 @@
 
 - Slice 8 리뷰:
   - `docs/ai/reviews/2026-06-25-workout-calendar-bottom-sheet-fab-reveal-review.md`
+
+- 다음 Slice 9:
+  1. drag release snap을 raw pointer 좌표가 아니라 clamp된 preview 이동량 기준으로 변경
+  2. full 시작 아래 방향 drag에 `closeLatched` 추가
+  3. close threshold를 handle drag에 맞는 작은 거리로 조정
+  4. 회귀 테스트와 `sw.js` `CACHE_VERSION` 갱신
+
+- Slice 9 검증:
+  1. PASS: `node --check render-calendar.js; node --check sw.js`
+  2. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-card-layout-css.test.js`
+  3. PASS: `node --test tests/workout-active-session-recovery.test.js tests/workout-test-mode-unified.test.js tests/workout-timer-summary-only.test.js tests/workout-track-graph-delta.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js`
+  4. PASS: `node scripts/verify-runtime-assets.mjs`
+  5. PASS: `git diff --check`
+  6. PASS: `docs/ai/reviews/2026-06-25-workout-calendar-bottom-sheet-drag-settle-review.md`
+  7. pending: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+  8. not verified yet: 로그인 화면에 막혀 인증 계정 실제 `운동 탭 -> 날짜 sheet drag up/down settle` UI flow 확인 필요
+
+- Slice 9 리뷰:
+  - `docs/ai/reviews/2026-06-25-workout-calendar-bottom-sheet-drag-settle-review.md`
 
 - 이전 계획 파일: `docs/ai/features/2026-06-24-exercise-picker-category-entry.md`
 - 완료한 Slice 4:
