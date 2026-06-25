@@ -264,6 +264,56 @@
 - 자동 반영을 선택하면 `paintWeek()`/`recordMiss()` 회귀 테스트를 추가한다.
 - 보수안을 선택하면 운동 기록 저장이 성장보드 상태를 건드리지 않는지 테스트한다.
 
+### Slice 6: 웬들러 시작 주 미니 캘린더와 TM/%TM 설명
+
+요청:
+
+- 종목 수정 시트의 웬들러 `시작 주`는 숫자 입력이 아니라 미니 캘린더로 선택한다.
+- 선택한 날짜가 포함된 주의 월요일을 6주 사이클 시작일로 저장하고, 처방 주차 계산이 그 시작일 기준으로 돌게 한다.
+- TM과 %TM을 모르는 사용자를 위해 각 라벨 아래 작은 설명 문구를 붙인다.
+
+대상 파일:
+
+- `workout/exercises.js`
+- `workout/test-v2/board-core.js`
+- `style.css`
+- `sw.js`
+- `tests/exercise-program-editor.test.js`
+- `tests/test-v2.board-core.test.js`
+- cache-version 참조 테스트들
+
+구현:
+
+- `종목 수정 -> 웬들러` 패널에 `시작일` 표시 버튼과 숨겨진 저장 input을 둔다.
+- 버튼 클릭 시 같은 시트 안에 작은 월간 캘린더 popover를 띄우고 날짜를 선택한다.
+- 저장 시 `programStartDate`를 `upsertExerciseProgramBenchmark()`에 전달한다.
+- `board-core`는 전달받은 날짜를 `mondayOf()`로 정규화하고, 해당 그룹 active cycle의 `startDate`를 그 월요일, `weeks`를 6으로 맞춘다.
+- 기존 웬들러 `startWeek`는 8/6/3 또는 5/3/1 scheme offset 용도로 유지하되, UI에서는 고급 숫자 입력으로 노출하지 않는다.
+- TM 설명: `Training Max, 실제 1RM보다 낮게 잡는 프로그램 기준 중량`.
+- %TM 설명: `TM의 몇 퍼센트로 보조 세트를 할지`.
+
+범위 밖:
+
+- 성장보드 색칠/미달 자동 반영.
+- 과거 cycle/settled history 재작성.
+- 여러 같은 그룹 종목의 cycle 분리 정책 변경.
+
+검증:
+
+- `node --check workout/exercises.js workout/test-v2/board-core.js sw.js`
+- `node --test tests/exercise-program-editor.test.js tests/test-v2.board-core.test.js`
+- source-level 테스트로 캘린더 popover, 설명 문구, `programStartDate`, active cycle startDate 정규화를 확인한다.
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+
+실행 결과:
+
+- `workout/exercises.js` 종목 수정 웬들러 패널에 시작 주 미니 캘린더 버튼과 TM/%TM 설명을 추가했다.
+- 저장 시 `programStartDate`를 넘기고, `workout/test-v2/board-core.js`에서 선택 날짜의 월요일을 active cycle `startDate`로 정규화하며 `weeks=6`을 보장한다.
+- 기존 `wendler.startWeek`는 숨김 input으로 유지해 scheme offset 설정을 보존했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260625z64-wendler-start-calendar`로 bump하고 관련 cache-version 테스트를 갱신했다.
+- 리뷰 문서: `docs/ai/reviews/2026-06-25-exercise-program-settings-wendler-migration-slice6-review.md`
+
 ## 추가 질문 후보
 
 질문 1 답변 뒤 순서대로 확인한다.
@@ -283,5 +333,7 @@
 - Slice 3 실행 완료. 리뷰 결과 이슈 없음.
 - Slice 4 실행 완료. 리뷰 결과 이슈 없음.
 - Dashboard3 Pages 배포 검증 완료.
+- Slice 6 계획 추가. 다음 실행은 웬들러 시작 주 미니 캘린더와 TM/%TM 설명 UX다.
+- Slice 6 실행 완료. 리뷰 결과 이슈 없음.
 - Slice 5는 사용자 결정 전까지 보류한다.
 - 성장보드 색칠/미달 자동 반영은 사용자 최종 결정 전까지 보류한다.

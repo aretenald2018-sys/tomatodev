@@ -1156,11 +1156,22 @@ function _candidateFromExerciseProgram(exercise = {}, config = {}, { movements =
   };
 }
 
-function _activeCycleForProgram(board, groupId, todayKey) {
+function _programStartDateKey(config = {}) {
+  const raw = config.programStartDate || config.startDate || config.cycleStartDate || '';
+  const key = String(raw || '').trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(key) ? key : null;
+}
+
+function _activeCycleForProgram(board, groupId, todayKey, config = {}) {
+  const requestedStart = _programStartDateKey(config);
+  const startDate = mondayOf(requestedStart || todayKey);
   let cycle = activeCycleOf(board, groupId);
   if (!cycle) {
-    cycle = _makeCycle(groupId, mondayOf(todayKey));
+    cycle = _makeCycle(groupId, startDate);
     board.cycles.push(cycle);
+  } else if (requestedStart) {
+    cycle.startDate = startDate;
+    cycle.weeks = 6;
   }
   return cycle;
 }
@@ -1217,7 +1228,7 @@ function _applyExerciseProgramToBenchmark(board, bm, candidate, config, todayKey
     bm.seed[track] = _seedSpecFor(track, config, existing);
   }
 
-  const cycle = _activeCycleForProgram(board, bm.groupId, todayKey);
+  const cycle = _activeCycleForProgram(board, bm.groupId, todayKey, config);
   if (program === 'wendler') {
     const major = TM2_GROUPS.find(g => g.id === bm.groupId)?.majors?.[0] || bm.groupId;
     bm.program = 'wendler';
@@ -1237,12 +1248,14 @@ function _applyExerciseProgramToBenchmark(board, bm, candidate, config, todayKey
 export function getExerciseProgramSettings(board, exercise = {}, options = {}) {
   const bm = findExerciseProgramBenchmark(board, exercise, options);
   if (!bm || bm.status === 'archived') return { program: 'none', benchmark: null };
+  const cycle = activeCycleOf(board, bm.groupId);
   return {
     program: bm.program === 'wendler' ? 'wendler' : 'stair',
     benchmarkId: bm.id,
     exerciseId: bm.exerciseId || null,
     movementId: bm.movementId || null,
     groupId: bm.groupId || null,
+    programStartDate: cycle?.startDate || null,
     tracks: bm.program === 'wendler' ? ['volume'] : [...(bm.tracks || ['volume'])],
     seed: cloneBoard(bm.seed || {}),
     setsDefault: bm.setsDefault || 4,

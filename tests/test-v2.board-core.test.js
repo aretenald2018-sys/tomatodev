@@ -618,6 +618,30 @@ test('종목 프로그램 계약: 웬들러 전환은 설정을 정규화하고 
   assert.equal(b.steps.some(s => s.benchmarkId === bench.id && s.cycleId === cy.id), false);
 });
 
+test('종목 프로그램 계약: programStartDate는 선택한 날짜의 월요일부터 6주 사이클을 맞춘다', () => {
+  const b = fixtureBoard();
+  const res = upsertExerciseProgramBenchmark(b, {
+    movementId: 'barbell_bench',
+    name: '벤치프레스',
+    muscleId: 'chest',
+  }, {
+    program: 'wendler',
+    programStartDate: '2026-06-18',
+    tracks: ['volume'],
+    seed: { volume: { kg: 100, reps: 5 } },
+    wendler: { tmKg: 120, scheme: 'w863', roundKg: 2.5 },
+  }, { todayKey: TODAY });
+
+  const cy = activeCycleOf(b, 'chest');
+  assert.equal(cy.startDate, '2026-06-15');
+  assert.equal(cy.weeks, 6);
+  const week1 = buildExerciseProgramWorkoutPrescription(b, res.benchmark, { todayKey: '2026-06-15' });
+  const week2 = buildExerciseProgramWorkoutPrescription(b, res.benchmark, { todayKey: '2026-06-22' });
+  assert.equal(week1.recommendationMeta.cycleWeek, 1);
+  assert.equal(week2.recommendationMeta.cycleWeek, 2);
+  assert.equal(getExerciseProgramSettings(b, { movementId: 'barbell_bench' }).programStartDate, '2026-06-15');
+});
+
 test('종목 프로그램 계약: 웬들러에서 stair로 복귀해도 wendlerLog는 보존한다', () => {
   const b = fixtureBoard();
   const squat = b.benchmarks.find(x => x.movementId === 'back_squat');

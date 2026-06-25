@@ -30,6 +30,7 @@ import {
   buildExerciseProgramWorkoutPrescription,
   findExerciseProgramBenchmark,
   getExerciseProgramSettings,
+  mondayOf,
   upsertExerciseProgramBenchmark,
 } from './test-v2/board-core.js';
 import { getWorkoutSessions } from './sessions.js';
@@ -1837,11 +1838,115 @@ function _ensureExerciseProgramEditor() {
   return wrap;
 }
 
+function _programDateKey(value, fallback = '') {
+  const key = String(value || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(key)) return key;
+  const fb = String(fallback || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(fb)) return fb;
+  return _todayKeyForProgramPicker();
+}
+
+function _dateKeyFromDate(dt) {
+  return dateKey(dt.getFullYear(), dt.getMonth(), dt.getDate());
+}
+
+function _programMonthKey(key) {
+  return _programDateKey(key).slice(0, 7);
+}
+
+function _programAddMonths(monthKey, delta) {
+  const [year, month] = String(monthKey || '').split('-').map(Number);
+  const dt = new Date(Number.isFinite(year) ? year : new Date().getFullYear(), (Number.isFinite(month) ? month : 1) - 1 + delta, 1);
+  return _dateKeyFromDate(dt).slice(0, 7);
+}
+
+function _programCycleEndKey(startKey) {
+  const dt = new Date(`${_programDateKey(startKey)}T00:00:00`);
+  dt.setDate(dt.getDate() + 41);
+  return _dateKeyFromDate(dt);
+}
+
+function _programStartButtonText(key) {
+  return `${mondayOf(_programDateKey(key))} 시작`;
+}
+
+function _programCycleHint(key) {
+  const start = mondayOf(_programDateKey(key));
+  return `선택한 주부터 6주 사이클 (${start} ~ ${_programCycleEndKey(start)})`;
+}
+
+function _renderProgramStartCalendar(monthKey, selectedKey) {
+  const month = String(monthKey || _programMonthKey(selectedKey));
+  const [year, monthNo] = month.split('-').map(Number);
+  const first = new Date(year, monthNo - 1, 1);
+  const days = new Date(year, monthNo, 0).getDate();
+  const selectedWeek = mondayOf(_programDateKey(selectedKey));
+  const blanks = Array.from({ length: first.getDay() }, () => '<span class="ex-program-cal-blank"></span>').join('');
+  const dayButtons = Array.from({ length: days }, (_, idx) => {
+    const day = idx + 1;
+    const key = dateKey(year, monthNo - 1, day);
+    const isSelected = mondayOf(key) === selectedWeek;
+    return `<button type="button" class="ex-program-cal-day${isSelected ? ' is-selected' : ''}" data-ex-program-date="${key}">${day}</button>`;
+  }).join('');
+  return `
+    <div class="ex-program-cal-head">
+      <button type="button" class="ex-program-cal-nav" data-ex-program-calendar-prev aria-label="이전 달">&lt;</button>
+      <strong>${year}.${String(monthNo).padStart(2, '0')}</strong>
+      <button type="button" class="ex-program-cal-nav" data-ex-program-calendar-next aria-label="다음 달">&gt;</button>
+    </div>
+    <div class="ex-program-cal-grid ex-program-cal-weekdays" aria-hidden="true">
+      ${['일', '월', '화', '수', '목', '금', '토'].map(d => `<span>${d}</span>`).join('')}
+    </div>
+    <div class="ex-program-cal-grid">
+      ${blanks}${dayButtons}
+    </div>
+  `;
+}
+
+function _selectedProgramStartDate() {
+  return _programDateKey(document.getElementById('ex-program-start-date')?.value, _todayKeyForProgramPicker());
+}
+
+function _updateProgramStartDateUi(key) {
+  const weekStart = mondayOf(_programDateKey(key, _todayKeyForProgramPicker()));
+  const input = document.getElementById('ex-program-start-date');
+  const btn = document.getElementById('ex-program-start-date-btn');
+  const hint = document.getElementById('ex-program-start-date-hint');
+  if (input) input.value = weekStart;
+  if (btn) btn.textContent = _programStartButtonText(weekStart);
+  if (hint) hint.textContent = _programCycleHint(weekStart);
+  return weekStart;
+}
+
+function _bindProgramStartCalendar(monthKey = '') {
+  const cal = document.getElementById('ex-program-start-calendar');
+  if (!cal) return;
+  const selected = _selectedProgramStartDate();
+  const month = monthKey || cal.dataset.month || _programMonthKey(selected);
+  cal.dataset.month = month;
+  cal.innerHTML = _renderProgramStartCalendar(month, selected);
+  cal.querySelector('[data-ex-program-calendar-prev]')?.addEventListener('click', () => {
+    _bindProgramStartCalendar(_programAddMonths(cal.dataset.month, -1));
+  });
+  cal.querySelector('[data-ex-program-calendar-next]')?.addEventListener('click', () => {
+    _bindProgramStartCalendar(_programAddMonths(cal.dataset.month, 1));
+  });
+  cal.querySelectorAll('[data-ex-program-date]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const weekStart = _updateProgramStartDateUi(btn.getAttribute('data-ex-program-date'));
+      cal.dataset.month = _programMonthKey(weekStart);
+      cal.hidden = true;
+      _bindProgramStartCalendar(cal.dataset.month);
+    });
+  });
+}
+
 function _exerciseProgramEditorHtml(settings = {}) {
   const mode = _programModeFromSettings(settings);
   const seed = settings.seed || {};
   const w = settings.wendler || {};
   const supp = w.supplemental || {};
+  const programStartDate = mondayOf(_programDateKey(settings.programStartDate || w.programStartDate, _todayKeyForProgramPicker()));
   return `
     <div class="ex-program-head">
       <div class="ex-editor-label">프로그램</div>
@@ -1868,15 +1973,22 @@ function _exerciseProgramEditorHtml(settings = {}) {
       </div>
     </div>
     <div class="ex-program-panel ex-program-wendler" data-ex-program-panel="wendler">
-      <div class="ex-program-grid ex-program-grid-three">
-        <label><span>방식</span><select class="ex-editor-select" id="ex-program-wendler-scheme">
-          <option value="w863"${(w.scheme || 'w863') === 'w863' ? ' selected' : ''}>8/6/3</option>
-          <option value="w531"${w.scheme === 'w531' ? ' selected' : ''}>5/3/1</option>
-          <option value="custom"${w.scheme === 'custom' ? ' selected' : ''}>커스텀</option>
-        </select></label>
-        <label><span>TM</span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-wendler-tm" min="0" step="0.5" value="${_escPicker(_numText(w.tmKg))}"></label>
-        <label><span>시작 주</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-start" min="1" max="6" step="1" value="${_escPicker(_numText(w.startWeek || 1))}"></label>
-      </div>
+        <div class="ex-program-grid ex-program-grid-three">
+          <label><span>방식</span><select class="ex-editor-select" id="ex-program-wendler-scheme">
+            <option value="w863"${(w.scheme || 'w863') === 'w863' ? ' selected' : ''}>8/6/3</option>
+            <option value="w531"${w.scheme === 'w531' ? ' selected' : ''}>5/3/1</option>
+            <option value="custom"${w.scheme === 'custom' ? ' selected' : ''}>커스텀</option>
+          </select></label>
+          <label><span>TM<small>Training Max, 실제 1RM보다 낮게 잡는 프로그램 기준 중량</small></span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-wendler-tm" min="0" step="0.5" value="${_escPicker(_numText(w.tmKg))}"></label>
+          <div class="ex-program-date-field">
+            <span>시작 주</span>
+            <button type="button" class="ex-program-date-btn" id="ex-program-start-date-btn" data-ex-program-calendar-toggle>${_escPicker(_programStartButtonText(programStartDate))}</button>
+            <input type="hidden" id="ex-program-start-date" value="${_escPicker(programStartDate)}">
+            <input type="hidden" id="ex-program-wendler-start" value="${_escPicker(_numText(w.startWeek || 1))}">
+            <small class="ex-program-helper" id="ex-program-start-date-hint">${_escPicker(_programCycleHint(programStartDate))}</small>
+            <div class="ex-program-mini-cal" id="ex-program-start-calendar" data-month="${_escPicker(_programMonthKey(programStartDate))}" hidden></div>
+          </div>
+        </div>
       <div class="ex-program-grid ex-program-grid-three">
         <label><span>사이클</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-cycle" min="1" step="1" value="${_escPicker(_numText(w.cycleNo || 1))}"></label>
         <label><span>증량</span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-wendler-increment" min="0" step="0.5" value="${_escPicker(_numText(w.incrementKg || settings.incrementKg))}"></label>
@@ -1888,7 +2000,7 @@ function _exerciseProgramEditorHtml(settings = {}) {
           <option value="fsl"${supp.kind === 'fsl' ? ' selected' : ''}>FSL</option>
           <option value="none"${supp.kind === 'none' ? ' selected' : ''}>없음</option>
         </select></label>
-        <label><span>%TM</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-supp-pct" min="10" max="100" step="1" value="${_escPicker(_numText(supp.pct || 50))}"></label>
+          <label><span>%TM<small>TM의 몇 퍼센트로 보조 세트를 할지</small></span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-supp-pct" min="10" max="100" step="1" value="${_escPicker(_numText(supp.pct || 50))}"></label>
         <label><span>세트</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-supp-sets" min="1" step="1" value="${_escPicker(_numText(supp.sets || 5))}"></label>
         <label><span>횟수</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-supp-reps" min="1" step="1" value="${_escPicker(_numText(supp.reps || 10))}"></label>
       </div>
@@ -1921,6 +2033,18 @@ function _bindExerciseProgramEditor() {
     if (btn.disabled) return;
     btn.addEventListener('click', () => _setExerciseProgramMode(btn.getAttribute('data-ex-program-mode')));
   });
+  const startBtn = wrap.querySelector('[data-ex-program-calendar-toggle]');
+  if (startBtn) {
+    _updateProgramStartDateUi(_selectedProgramStartDate());
+    _bindProgramStartCalendar();
+    startBtn.addEventListener('click', () => {
+      const cal = document.getElementById('ex-program-start-calendar');
+      if (!cal) return;
+      const opening = cal.hidden;
+      if (opening) _bindProgramStartCalendar(_programMonthKey(_selectedProgramStartDate()));
+      cal.hidden = !opening;
+    });
+  }
 }
 
 function _renderExerciseProgramEditor(ex) {
@@ -1945,6 +2069,7 @@ function _readExerciseProgramConfig() {
   if (mode === 'wendler') {
     return {
       program: 'wendler',
+      programStartDate: document.getElementById('ex-program-start-date')?.value || _todayKeyForProgramPicker(),
       tracks: ['volume'],
       seed: {
         volume: {
