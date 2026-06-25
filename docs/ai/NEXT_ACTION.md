@@ -5,7 +5,7 @@
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-25-exercise-program-settings-wendler-migration.md`
 - 현재 단계: `review complete — Slice 6 wendler start date calendar`
-- 마지막 완료: `종목 수정 웬들러 패널에 시작 주 미니 캘린더와 TM/%TM 설명을 추가하고, 선택 날짜 기준 6주 사이클이 돌도록 Dashboard3 소스/테스트를 갱신했다.`
+- 마지막 완료: `종목 수정 웬들러 패널에 시작 주 미니 캘린더와 TM/%TM 설명을 추가하고, 선택 날짜 기준 6주 사이클이 돌도록 Dashboard3 배포 검증까지 완료했다.`
 - 다음 액션: `성장보드 색칠/미달 자동 반영 통합 방식은 사용자 결정 후 별도 계획으로 진행한다.`
 - 차단 사유: `Slice 5 성장보드 색칠 통합 방식은 사용자 결정 대기`
 
@@ -16,8 +16,11 @@
 - PASS: `node --test .\tests\*.test.js` — 528 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
-- not verified yet: 이번 Slice 6 커밋 push 후 Dashboard3 Pages 배포 검증 필요
-- not verified yet: 인증 계정 UI flow 확인 필요
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 763fa44`
+  - 결과: `[deploy-verify] ok 763fa441465e tomatofarm-v20260625z64-wendler-start-calendar static=218`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260625z64-wendler-start-calendar" "workout/exercises.js::data-ex-program-calendar-toggle" "workout/exercises.js::Training Max, 실제 1RM보다 낮게 잡는 프로그램 기준 중량" "workout/test-v2/board-core.js::programStartDate" "style.css::.ex-program-mini-cal"`
+- PASS: 배포 URL에서 로그인 화면, 운동 탭 루트, `#ex-editor-modal`, `#ex-picker-modal` DOM 로드 확인
+- not verified yet: 인증 계정이 없어 `운동 탭 -> 종목 수정 -> 웬들러 -> 시작 주 캘린더 선택 -> 저장` 실제 UI flow는 직접 저장 확인 미완료
 
 ## 완료한 작업
 

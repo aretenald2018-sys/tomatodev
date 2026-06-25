@@ -335,5 +335,6 @@
 - Dashboard3 Pages 배포 검증 완료.
 - Slice 6 계획 추가. 다음 실행은 웬들러 시작 주 미니 캘린더와 TM/%TM 설명 UX다.
 - Slice 6 실행 완료. 리뷰 결과 이슈 없음.
+- Slice 6 Dashboard3 Pages 배포 및 deployed marker 검증 완료.
 - Slice 5는 사용자 결정 전까지 보류한다.
 - 성장보드 색칠/미달 자동 반영은 사용자 최종 결정 전까지 보류한다.

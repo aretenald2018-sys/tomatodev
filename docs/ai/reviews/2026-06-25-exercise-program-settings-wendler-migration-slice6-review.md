@@ -26,8 +26,10 @@
 - `node scripts/verify-runtime-assets.mjs` 통과: `[runtime-assets] ok refs=827`.
 - `git diff --check` 통과.
 
-## 배포 전 확인 필요
+## 배포 확인
 
-- `origin/main` push 후 Dashboard3 Pages 배포 검증:
-  - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
-- 가능하면 배포 페이지에서 `종목 수정 -> 웬들러 -> 시작 주` 버튼을 눌러 미니 캘린더가 열리고, 날짜 선택 후 저장되는 흐름을 직접 확인한다.
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 763fa44`
+  - `[deploy-verify] ok 763fa441465e tomatofarm-v20260625z64-wendler-start-calendar static=218`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260625z64-wendler-start-calendar" "workout/exercises.js::data-ex-program-calendar-toggle" "workout/exercises.js::Training Max, 실제 1RM보다 낮게 잡는 프로그램 기준 중량" "workout/test-v2/board-core.js::programStartDate" "style.css::.ex-program-mini-cal"`
+- PASS: 배포 URL에서 로그인 화면, 운동 탭 루트, `#ex-editor-modal`, `#ex-picker-modal` DOM 로드 확인.
+- not verified yet: 인증 계정이 없어 `운동 탭 -> 종목 수정 -> 웬들러 -> 시작 주 캘린더 선택 -> 저장` 실제 UI flow는 직접 저장 확인 미완료.
