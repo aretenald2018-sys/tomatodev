@@ -25,8 +25,9 @@
 - `node scripts/verify-runtime-assets.mjs` 통과: `[runtime-assets] ok refs=827`.
 - `git diff --check` 통과.
 
-## 배포 전 확인 필요
+## 배포 확인
 
-- `origin/main` push 후 Dashboard3 Pages 배포 검증:
-  - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
-- 가능하면 배포 페이지에서 `종목 수정 -> 웬들러 -> 시작 주`를 눌러 캘린더 전체 날짜 열이 클릭 가능한지 직접 확인한다.
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 66bf22b`
+  - `[deploy-verify] ok 66bf22bb1564 tomatofarm-v20260625z66-wendler-calendar-density static=218`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260625z66-wendler-calendar-density" "workout/exercises.js::ex-program-calendar-row" "style.css::position: static" "style.css::min-height: 24px"`
+- not verified yet: 인증 계정이 없어 `종목 수정 -> 웬들러 -> 시작 주 캘린더 선택 -> 저장` 실제 UI 클릭 흐름은 직접 저장 확인 미완료.
