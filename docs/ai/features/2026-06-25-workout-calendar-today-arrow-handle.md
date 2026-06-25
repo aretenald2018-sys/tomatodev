@@ -51,8 +51,10 @@
 - PASS: `node --test .\tests\*.test.js` — 513 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 9c9b51786947c28e060c2b8336bce0ec050ac990`
+  - 결과: `[deploy-verify] ok 9c9b51786947 tomatofarm-v20260625z46-workout-today-arrow static=215`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "app.js::calendar:tab-today" "render-calendar.js::calendar.viewYear != null" "render-calendar.js::data-wt-sheet-handle data-wt-sheet-toggle" "style.css::translate: -50% 0" "sw.js::tomatofarm-v20260625z46-workout-today-arrow"`
 
 ## 남은 검증
 
-- Dashboard3 Pages 배포 후 최신 commit/cache/marker 확인.
 - 인증 계정으로 운동 탭 진입 시 현재 월/오늘 선택, 바텀시트 중앙 화살표 click/drag 동작을 실제 UI에서 확인.

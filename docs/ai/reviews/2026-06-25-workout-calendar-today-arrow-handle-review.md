@@ -32,8 +32,9 @@
 - PASS: `node --test .\tests\*.test.js` — 513 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 9c9b51786947c28e060c2b8336bce0ec050ac990`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "app.js::calendar:tab-today" "render-calendar.js::calendar.viewYear != null" "render-calendar.js::data-wt-sheet-handle data-wt-sheet-toggle" "style.css::translate: -50% 0" "sw.js::tomatofarm-v20260625z46-workout-today-arrow"`
 
 ## 남은 리스크
 
 - 인증 계정이 필요한 실제 모바일 UI flow는 자동화하지 못했다.
-- Dashboard3 Pages 배포 후 최신 commit/cache/marker 검증이 필요하다.
