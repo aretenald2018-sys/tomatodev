@@ -243,6 +243,9 @@
 - PASS: `node --test tests/test-v2.board-core.test.js tests/workout-test-mode-unified.test.js tests/exercise-program-editor.test.js tests/home-life-zone-npc-quest.test.js tests/workout-active-session-recovery.test.js tests/stats-muscle-fatigue-insight.test.js tests/stats-picker-ui-polish.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js tests/workout-track-graph-delta.test.js tests/workout-timer-summary-only.test.js`
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
+- PASS: `node --test .\tests\*.test.js` — 527 tests passed
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 7fcac68c3bfcba6a39c108e79b22842ebb7b5f4e`
+- not verified yet: 인증 계정으로 `운동 탭 -> + -> 종목 수정 -> 프로그램 저장 -> picker에서 프로그램 종목 추가` UI flow를 수동 확인해야 한다.
 
 ### Slice 5: 운동 완료와 성장보드 반영 정책 연결
 
@@ -279,5 +282,6 @@
 - Slice 2 실행 완료. 리뷰 결과 이슈 없음.
 - Slice 3 실행 완료. 리뷰 결과 이슈 없음.
 - Slice 4 실행 완료. 리뷰 결과 이슈 없음.
+- Dashboard3 Pages 배포 검증 완료.
 - Slice 5는 사용자 결정 전까지 보류한다.
 - 성장보드 색칠/미달 자동 반영은 사용자 최종 결정 전까지 보류한다.

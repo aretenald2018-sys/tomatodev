@@ -5,7 +5,7 @@
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-25-exercise-program-settings-wendler-migration.md`
 - 현재 단계: `review complete — Slice 4 program picker prescription`
-- 마지막 완료: `picker에서 test_board_v2 활성 프로그램이 있는 종목을 추가할 때 stair/wendler 처방 세트를 오늘 운동 카드에 적용하도록 연결했다.`
+- 마지막 완료: `picker에서 test_board_v2 활성 프로그램이 있는 종목을 추가할 때 stair/wendler 처방 세트를 오늘 운동 카드에 적용하도록 연결하고 Dashboard3 Pages 배포 검증까지 완료했다.`
 - 다음 액션: `성장보드 색칠/미달 자동 반영 정책은 사용자 결정 후 별도 계획으로 진행한다.`
 - 차단 사유: `Slice 5 성장보드 색칠 통합 방식은 사용자 결정 대기`
 
@@ -27,7 +27,9 @@
 - PASS: `node --test tests/test-v2.board-core.test.js tests/workout-test-mode-unified.test.js tests/exercise-program-editor.test.js tests/home-life-zone-npc-quest.test.js tests/workout-active-session-recovery.test.js tests/stats-muscle-fatigue-insight.test.js tests/stats-picker-ui-polish.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js tests/workout-track-graph-delta.test.js tests/workout-timer-summary-only.test.js`
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
-- not verified yet: Dashboard3 Pages 배포 및 인증 계정 UI flow 확인 필요
+- PASS: `node --test .\tests\*.test.js` — 527 tests passed
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 7fcac68c3bfcba6a39c108e79b22842ebb7b5f4e`
+- not verified yet: 인증 계정 UI flow 확인 필요
 
 ## 완료한 작업
 

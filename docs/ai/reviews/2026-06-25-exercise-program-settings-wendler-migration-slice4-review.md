@@ -24,6 +24,8 @@
   - `node --test tests/test-v2.board-core.test.js tests/workout-test-mode-unified.test.js tests/exercise-program-editor.test.js tests/home-life-zone-npc-quest.test.js tests/workout-active-session-recovery.test.js tests/stats-muscle-fatigue-insight.test.js tests/stats-picker-ui-polish.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js tests/workout-track-graph-delta.test.js tests/workout-timer-summary-only.test.js`
   - `node scripts/verify-runtime-assets.mjs`
   - `git diff --check`
+  - `node --test .\tests\*.test.js`
+  - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 7fcac68c3bfcba6a39c108e79b22842ebb7b5f4e`
 - URL 또는 사용자 흐름:
   - 인증 후 `운동 탭 -> + -> 프로그램 설정된 종목 선택`
 - 기대 증거:
@@ -33,6 +35,8 @@
   - 성장보드 색칠/미달 상태는 자동 변경하지 않는다.
 - 실제 결과:
   - 정적 검증과 source-level 테스트 통과.
+  - 전체 Node 테스트 527개 통과.
+  - Dashboard3 Pages 배포 검증 통과: `7fcac68c3bfc`, `tomatofarm-v20260625z63-program-picker-prescription`.
   - 인증 계정 UI flow는 수동 확인 필요.
 
 ## 결정
