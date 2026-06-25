@@ -5700,6 +5700,73 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   padding: 8px 9px;
   font-size: var(--seed-t3);
 }
+#ex-editor-modal .ex-program-compact-list {
+  display: grid;
+  gap: 7px;
+}
+#ex-editor-modal .ex-program-wendler .ex-program-grid {
+  gap: 6px;
+}
+#ex-editor-modal .ex-program-wendler .ex-program-grid label,
+#ex-editor-modal .ex-program-wendler .ex-program-date-field {
+  gap: 3px;
+}
+#ex-editor-modal .ex-program-wendler .ex-program-grid span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  white-space: nowrap;
+}
+#ex-editor-modal .ex-program-wendler .ex-program-grid span small {
+  display: inline;
+  min-width: 0;
+  margin-top: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+}
+#ex-editor-modal .ex-program-wendler .ex-editor-input,
+#ex-editor-modal .ex-program-wendler .ex-editor-select,
+#ex-editor-modal .ex-program-wendler .ex-program-date-btn,
+#ex-editor-modal .ex-program-calc-btn {
+  min-height: 34px;
+  padding: 6px 8px;
+  font-size: 14px;
+}
+#ex-editor-modal .ex-program-wendler .ex-program-helper {
+  margin-top: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#ex-editor-modal .ex-program-tm-calc {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px 86px;
+  gap: 5px 6px;
+  align-items: end;
+}
+#ex-editor-modal .ex-program-tm-calc label {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+#ex-editor-modal .ex-program-tm-calc span {
+  color: var(--seed-fg-muted);
+  font-size: var(--seed-t1);
+  font-weight: 700;
+}
+#ex-editor-modal .ex-program-calc-btn {
+  border: 1px solid var(--primary);
+  border-radius: var(--seed-r2);
+  background: var(--primary-bg);
+  color: var(--primary);
+  font-weight: 800;
+}
+#ex-editor-modal .ex-program-tm-calc .ex-program-helper {
+  grid-column: 1 / -1;
+}
 #ex-editor-modal .ex-program-date-btn {
   width: 100%;
   min-height: 40px;

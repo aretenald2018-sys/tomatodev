@@ -19,8 +19,12 @@ test('exercise editor renders program controls backed by test_board_v2', () => {
   assert.match(exercisesJs, /data-ex-program-calendar-toggle/);
   assert.match(exercisesJs, /function _renderProgramStartCalendar/);
   assert.match(exercisesJs, /programStartDate:\s*document\.getElementById\('ex-program-start-date'\)/);
-  assert.match(exercisesJs, /Training Max, 실제 1RM보다 낮게 잡는 프로그램 기준 중량/);
-  assert.match(exercisesJs, /TM의 몇 퍼센트로 보조 세트를 할지/);
+  assert.match(exercisesJs, /data-ex-program-tm-calc/);
+  assert.match(exercisesJs, /estimate1RM\(kg,\s*reps\)/);
+  assert.match(exercisesJs, /id="ex-program-tm-calc-kg"/);
+  assert.match(exercisesJs, /id="ex-program-tm-calc-reps"/);
+  assert.match(exercisesJs, /실제 1RM보다 낮은 기준 중량/);
+  assert.match(exercisesJs, /보조 세트에 쓰는 TM 비율/);
   assert.match(exercisesJs, /const todayKey = _todayDateKey\(\) \|\| dateKey/);
   assert.match(exercisesJs, /todayKey,\s*\n\s*movements: MOVEMENTS/);
   assert.doesNotMatch(exercisesJs, /todayKey:\s*dateKey,/);
@@ -47,5 +51,8 @@ test('exercise editor program controls have compact fixed layout styles', () => 
   assert.match(styleCss, /#ex-editor-modal \.ex-program-grid-four/);
   assert.match(styleCss, /#ex-editor-modal \.ex-program-date-btn/);
   assert.match(styleCss, /#ex-editor-modal \.ex-program-mini-cal/);
-  assert.match(swJs, /tomatofarm-v20260625z64-wendler-start-calendar/);
+  assert.match(styleCss, /#ex-editor-modal \.ex-program-compact-list/);
+  assert.match(styleCss, /#ex-editor-modal \.ex-program-tm-calc/);
+  assert.match(styleCss, /#ex-editor-modal \.ex-program-calc-btn/);
+  assert.match(swJs, /tomatofarm-v20260625z65-compact-wendler-tm/);
 });

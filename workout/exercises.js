@@ -1941,12 +1941,44 @@ function _bindProgramStartCalendar(monthKey = '') {
   });
 }
 
+function _roundProgramWeight(value, step = 2.5) {
+  const n = Number(value);
+  const s = Number(step);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  if (!Number.isFinite(s) || s <= 0) return Math.round(n * 10) / 10;
+  return Math.round(n / s) * s;
+}
+
+function _formatProgramWeight(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  return Number.isInteger(n) ? String(n) : String(Math.round(n * 10) / 10);
+}
+
+function _calculateWendlerTmFromInputs() {
+  const kg = _numInput('ex-program-tm-calc-kg', 0);
+  const reps = _numInput('ex-program-tm-calc-reps', 0);
+  const roundKg = _numInput('ex-program-wendler-round', 2.5);
+  const result = document.getElementById('ex-program-tm-calc-result');
+  if (!kg || !reps) {
+    if (result) result.textContent = '대표 세트의 kg와 회수를 입력하세요.';
+    return;
+  }
+  const e1rm = estimate1RM(kg, reps);
+  const tm = _roundProgramWeight(e1rm * 0.9, roundKg);
+  const tmInput = document.getElementById('ex-program-wendler-tm');
+  if (tmInput) tmInput.value = _formatProgramWeight(tm);
+  if (result) result.textContent = `추정 1RM ${_formatProgramWeight(e1rm)}kg · TM ${_formatProgramWeight(tm)}kg`;
+}
+
 function _exerciseProgramEditorHtml(settings = {}) {
   const mode = _programModeFromSettings(settings);
   const seed = settings.seed || {};
   const w = settings.wendler || {};
   const supp = w.supplemental || {};
   const programStartDate = mondayOf(_programDateKey(settings.programStartDate || w.programStartDate, _todayKeyForProgramPicker()));
+  const tmCalcKg = seed.volume?.kg || w.tmKg || '';
+  const tmCalcReps = seed.volume?.reps || 5;
   return `
     <div class="ex-program-head">
       <div class="ex-editor-label">프로그램</div>
@@ -1971,40 +2003,48 @@ function _exerciseProgramEditorHtml(settings = {}) {
         <label><span>세트</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-sets" min="1" step="1" value="${_escPicker(_numText(settings.setsDefault || 4))}"></label>
         <label><span>증량</span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-increment" min="0" step="0.5" value="${_escPicker(_numText(settings.incrementKg))}"></label>
       </div>
-    </div>
-    <div class="ex-program-panel ex-program-wendler" data-ex-program-panel="wendler">
-        <div class="ex-program-grid ex-program-grid-three">
-          <label><span>방식</span><select class="ex-editor-select" id="ex-program-wendler-scheme">
-            <option value="w863"${(w.scheme || 'w863') === 'w863' ? ' selected' : ''}>8/6/3</option>
-            <option value="w531"${w.scheme === 'w531' ? ' selected' : ''}>5/3/1</option>
-            <option value="custom"${w.scheme === 'custom' ? ' selected' : ''}>커스텀</option>
-          </select></label>
-          <label><span>TM<small>Training Max, 실제 1RM보다 낮게 잡는 프로그램 기준 중량</small></span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-wendler-tm" min="0" step="0.5" value="${_escPicker(_numText(w.tmKg))}"></label>
-          <div class="ex-program-date-field">
-            <span>시작 주</span>
-            <button type="button" class="ex-program-date-btn" id="ex-program-start-date-btn" data-ex-program-calendar-toggle>${_escPicker(_programStartButtonText(programStartDate))}</button>
+      </div>
+      <div class="ex-program-panel ex-program-wendler" data-ex-program-panel="wendler">
+        <div class="ex-program-compact-list">
+          <div class="ex-program-grid ex-program-grid-three">
+            <label><span>방식</span><select class="ex-editor-select" id="ex-program-wendler-scheme">
+              <option value="w863"${(w.scheme || 'w863') === 'w863' ? ' selected' : ''}>8/6/3</option>
+              <option value="w531"${w.scheme === 'w531' ? ' selected' : ''}>5/3/1</option>
+              <option value="custom"${w.scheme === 'custom' ? ' selected' : ''}>커스텀</option>
+            </select></label>
+            <label><span>TM <small>실제 1RM보다 낮은 기준 중량</small></span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-wendler-tm" min="0" step="0.5" value="${_escPicker(_numText(w.tmKg))}"></label>
+            <div class="ex-program-date-field">
+              <span>시작 주</span>
+              <button type="button" class="ex-program-date-btn" id="ex-program-start-date-btn" data-ex-program-calendar-toggle>${_escPicker(_programStartButtonText(programStartDate))}</button>
             <input type="hidden" id="ex-program-start-date" value="${_escPicker(programStartDate)}">
             <input type="hidden" id="ex-program-wendler-start" value="${_escPicker(_numText(w.startWeek || 1))}">
             <small class="ex-program-helper" id="ex-program-start-date-hint">${_escPicker(_programCycleHint(programStartDate))}</small>
-            <div class="ex-program-mini-cal" id="ex-program-start-calendar" data-month="${_escPicker(_programMonthKey(programStartDate))}" hidden></div>
+              <div class="ex-program-mini-cal" id="ex-program-start-calendar" data-month="${_escPicker(_programMonthKey(programStartDate))}" hidden></div>
+            </div>
           </div>
-        </div>
-      <div class="ex-program-grid ex-program-grid-three">
-        <label><span>사이클</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-cycle" min="1" step="1" value="${_escPicker(_numText(w.cycleNo || 1))}"></label>
-        <label><span>증량</span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-wendler-increment" min="0" step="0.5" value="${_escPicker(_numText(w.incrementKg || settings.incrementKg))}"></label>
-        <label><span>반올림</span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-wendler-round" min="0.5" step="0.5" value="${_escPicker(_numText(w.roundKg || 2.5))}"></label>
+          <div class="ex-program-tm-calc">
+            <label><span>수행 kg</span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-tm-calc-kg" min="0" step="0.5" value="${_escPicker(_numText(tmCalcKg))}"></label>
+            <label><span>회수</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-tm-calc-reps" min="1" step="1" value="${_escPicker(_numText(tmCalcReps))}"></label>
+            <button type="button" class="ex-program-calc-btn" data-ex-program-tm-calc>TM 계산</button>
+            <small class="ex-program-helper" id="ex-program-tm-calc-result">대표 세트 기준으로 TM을 계산합니다.</small>
+          </div>
+        <div class="ex-program-grid ex-program-grid-three">
+          <label><span>사이클</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-cycle" min="1" step="1" value="${_escPicker(_numText(w.cycleNo || 1))}"></label>
+          <label><span>증량</span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-wendler-increment" min="0" step="0.5" value="${_escPicker(_numText(w.incrementKg || settings.incrementKg))}"></label>
+          <label><span>반올림</span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-wendler-round" min="0.5" step="0.5" value="${_escPicker(_numText(w.roundKg || 2.5))}"></label>
       </div>
       <div class="ex-program-grid ex-program-grid-four">
         <label><span>보조</span><select class="ex-editor-select" id="ex-program-wendler-supp">
           <option value="bbb"${(supp.kind || 'bbb') === 'bbb' ? ' selected' : ''}>BBB</option>
-          <option value="fsl"${supp.kind === 'fsl' ? ' selected' : ''}>FSL</option>
-          <option value="none"${supp.kind === 'none' ? ' selected' : ''}>없음</option>
-        </select></label>
-          <label><span>%TM<small>TM의 몇 퍼센트로 보조 세트를 할지</small></span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-supp-pct" min="10" max="100" step="1" value="${_escPicker(_numText(supp.pct || 50))}"></label>
-        <label><span>세트</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-supp-sets" min="1" step="1" value="${_escPicker(_numText(supp.sets || 5))}"></label>
-        <label><span>횟수</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-supp-reps" min="1" step="1" value="${_escPicker(_numText(supp.reps || 10))}"></label>
+            <option value="fsl"${supp.kind === 'fsl' ? ' selected' : ''}>FSL</option>
+            <option value="none"${supp.kind === 'none' ? ' selected' : ''}>없음</option>
+          </select></label>
+            <label><span>%TM <small>보조 세트에 쓰는 TM 비율</small></span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-supp-pct" min="10" max="100" step="1" value="${_escPicker(_numText(supp.pct || 50))}"></label>
+          <label><span>세트</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-supp-sets" min="1" step="1" value="${_escPicker(_numText(supp.sets || 5))}"></label>
+          <label><span>횟수</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-supp-reps" min="1" step="1" value="${_escPicker(_numText(supp.reps || 10))}"></label>
+        </div>
+        </div>
       </div>
-    </div>
   `;
 }
 
@@ -2033,6 +2073,7 @@ function _bindExerciseProgramEditor() {
     if (btn.disabled) return;
     btn.addEventListener('click', () => _setExerciseProgramMode(btn.getAttribute('data-ex-program-mode')));
   });
+  wrap.querySelector('[data-ex-program-tm-calc]')?.addEventListener('click', _calculateWendlerTmFromInputs);
   const startBtn = wrap.querySelector('[data-ex-program-calendar-toggle]');
   if (startBtn) {
     _updateProgramStartDateUi(_selectedProgramStartDate());

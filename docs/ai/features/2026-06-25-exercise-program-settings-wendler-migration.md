@@ -336,5 +336,52 @@
 - Slice 6 계획 추가. 다음 실행은 웬들러 시작 주 미니 캘린더와 TM/%TM 설명 UX다.
 - Slice 6 실행 완료. 리뷰 결과 이슈 없음.
 - Slice 6 Dashboard3 Pages 배포 및 deployed marker 검증 완료.
+- Slice 7 실행 완료. 리뷰 결과 이슈 없음.
 - Slice 5는 사용자 결정 전까지 보류한다.
 - 성장보드 색칠/미달 자동 반영은 사용자 최종 결정 전까지 보류한다.
+
+### Slice 7: 웬들러 패널 컴팩트화와 TM 계산기
+
+요청:
+
+- 종목 수정 시트의 웬들러 설정 영역이 현재 너무 크고 넓으므로, 두 번째 참고 이미지처럼 컴팩트한 행/그룹 구조로 줄인다.
+- TM 설명과 %TM 설명은 가급적 한 줄로 보이게 조정한다.
+- TM은 사용자가 대표 수행 세트의 `kg`와 `반복 수`를 입력하면 자동 계산해 채울 수 있게 한다.
+
+결정:
+
+- TM 계산은 표준적으로 세트 수가 아니라 한 세트의 중량과 반복 수로 추정한다.
+- 계산식은 기존 프로젝트 계산 모듈의 `estimate1RM()`를 사용하고, 웬들러 TM은 `추정 1RM × 0.9`를 `roundKg` 단위로 반올림한다.
+- 사용자가 “몇 세트”라고 표현했지만, 웬들러 TM 산출에는 세트 수보다 대표 세트의 반복 수가 필요하므로 UI 문구는 `수행 kg`, `회수`, `TM 계산`으로 둔다.
+
+대상 파일:
+
+- `workout/exercises.js`
+- `style.css`
+- `sw.js`
+- `tests/exercise-program-editor.test.js`
+- cache-version 참조 테스트들
+
+구현:
+
+- 웬들러 패널 내부에 `ex-program-compact-list` 형태의 조밀한 섹션을 추가하고, 기존 3열/4열 input 높이와 gap을 줄인다.
+- TM 라벨의 설명을 한 줄 helper로 줄이고, `%TM`도 한 줄 helper로 유지한다.
+- TM 입력 아래에 `수행 kg`, `회수`, `TM 계산` 컨트롤을 배치한다.
+- 계산 버튼은 현재 반올림 단위(`ex-program-wendler-round`)를 읽어 `estimate1RM(kg, reps) * 0.9`를 반올림하고 TM input에 반영한다.
+- 계산 결과는 작은 문구로 `추정 1RM`과 적용 TM을 표시한다.
+
+검증:
+
+- `node --check workout/exercises.js sw.js`
+- `node --test tests/exercise-program-editor.test.js`
+- `node --test .\tests\*.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+
+실행 결과:
+
+- `workout/exercises.js` 웬들러 패널을 `ex-program-compact-list` 기반의 조밀한 레이아웃으로 조정했다.
+- TM 설명을 `실제 1RM보다 낮은 기준 중량`, `%TM` 설명을 `보조 세트에 쓰는 TM 비율`로 줄여 한 줄 표시를 우선했다.
+- 대표 세트 `수행 kg`와 `회수`를 입력하고 `TM 계산`을 누르면 `estimate1RM(kg, reps) × 0.9`를 현재 반올림 단위로 반영해 `TM`에 채운다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260625z65-compact-wendler-tm`으로 bump하고 관련 cache-version 테스트를 갱신했다.
+- 리뷰 문서: `docs/ai/reviews/2026-06-25-exercise-program-settings-wendler-migration-slice7-review.md`
