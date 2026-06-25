@@ -183,5 +183,5 @@ test('collapsed day sheet bar is a compact one-row affordance', () => {
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260625z65-compact-wendler-tm/);
+  assert.match(swJs, /tomatofarm-v20260625z66-wendler-calendar-density/);
 });

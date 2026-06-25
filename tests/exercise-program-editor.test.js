@@ -18,6 +18,7 @@ test('exercise editor renders program controls backed by test_board_v2', () => {
   assert.match(exercisesJs, /id="ex-program-start-date"/);
   assert.match(exercisesJs, /data-ex-program-calendar-toggle/);
   assert.match(exercisesJs, /function _renderProgramStartCalendar/);
+  assert.match(exercisesJs, /class="ex-program-calendar-row"/);
   assert.match(exercisesJs, /programStartDate:\s*document\.getElementById\('ex-program-start-date'\)/);
   assert.match(exercisesJs, /data-ex-program-tm-calc/);
   assert.match(exercisesJs, /estimate1RM\(kg,\s*reps\)/);
@@ -51,8 +52,11 @@ test('exercise editor program controls have compact fixed layout styles', () => 
   assert.match(styleCss, /#ex-editor-modal \.ex-program-grid-four/);
   assert.match(styleCss, /#ex-editor-modal \.ex-program-date-btn/);
   assert.match(styleCss, /#ex-editor-modal \.ex-program-mini-cal/);
+  assert.match(styleCss, /#ex-editor-modal \.ex-program-calendar-row/);
+  assert.match(styleCss, /#ex-editor-modal \.ex-program-mini-cal\s*{[\s\S]*?position:\s*static/);
   assert.match(styleCss, /#ex-editor-modal \.ex-program-compact-list/);
   assert.match(styleCss, /#ex-editor-modal \.ex-program-tm-calc/);
   assert.match(styleCss, /#ex-editor-modal \.ex-program-calc-btn/);
-  assert.match(swJs, /tomatofarm-v20260625z65-compact-wendler-tm/);
+  assert.match(styleCss, /#ex-editor-modal \.ex-program-wendler \.ex-editor-input,[\s\S]*?min-height:\s*24px/);
+  assert.match(swJs, /tomatofarm-v20260625z66-wendler-calendar-density/);
 });

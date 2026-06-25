@@ -338,6 +338,7 @@
 - Slice 6 Dashboard3 Pages 배포 및 deployed marker 검증 완료.
 - Slice 7 실행 완료. 리뷰 결과 이슈 없음.
 - Slice 7 Dashboard3 Pages 배포 및 deployed marker 검증 완료.
+- Slice 8 실행 완료. 리뷰 결과 이슈 없음.
 - Slice 5는 사용자 결정 전까지 보류한다.
 - 성장보드 색칠/미달 자동 반영은 사용자 최종 결정 전까지 보류한다.
 
@@ -381,8 +382,45 @@
 
 실행 결과:
 
+- `workout/exercises.js`에서 캘린더 DOM을 `시작 주` 칸 내부가 아닌 `ex-program-calendar-row` 전체 폭 sibling으로 이동했다.
+- `style.css`에서 `.ex-program-mini-cal`을 `position: static` 일반 블록으로 바꿔 좌우 날짜가 잘리지 않도록 했다.
+- 웬들러 패널의 input/select/date button/calc button을 `min-height: 24px`, `font-size: 12px` 기준으로 더 줄였다.
+- 캘린더 day cell과 헤더 높이도 함께 축소했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260625z66-wendler-calendar-density`로 bump하고 관련 cache-version 테스트를 갱신했다.
+- 리뷰 문서: `docs/ai/reviews/2026-06-25-exercise-program-settings-wendler-migration-slice8-review.md`
+
+실행 결과:
+
 - `workout/exercises.js` 웬들러 패널을 `ex-program-compact-list` 기반의 조밀한 레이아웃으로 조정했다.
 - TM 설명을 `실제 1RM보다 낮은 기준 중량`, `%TM` 설명을 `보조 세트에 쓰는 TM 비율`로 줄여 한 줄 표시를 우선했다.
 - 대표 세트 `수행 kg`와 `회수`를 입력하고 `TM 계산`을 누르면 `estimate1RM(kg, reps) × 0.9`를 현재 반올림 단위로 반영해 `TM`에 채운다.
 - `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260625z65-compact-wendler-tm`으로 bump하고 관련 cache-version 테스트를 갱신했다.
 - 리뷰 문서: `docs/ai/reviews/2026-06-25-exercise-program-settings-wendler-migration-slice7-review.md`
+
+### Slice 8: 웬들러 캘린더 배치 수정과 입력 밀도 추가 축소
+
+요청:
+
+- 시작 주 미니 캘린더가 좌측으로 잘려 과거 날짜가 선택되지 않고, 클릭할 수 없는 위치에 렌더링된다.
+- 웬들러 패널의 나머지 숫자 입력 글자 크기와 높이를 더 줄여야 한다.
+
+진단:
+
+- 캘린더가 `시작 주` 칸 내부 absolute popover로 렌더되어 작은 그리드 칸 기준으로 좌우가 잘릴 수 있다.
+- `.ex-program-date-btn` 기본 `min-height: 40px`가 웬들러 compact override보다 뒤에서 적용되어 시작 주 버튼이 여전히 크다.
+
+구현:
+
+- 캘린더 DOM을 `시작 주` 칸 안이 아니라 웬들러 compact list의 전체 폭 sibling 블록으로 이동한다.
+- `.ex-program-mini-cal`을 absolute overlay가 아닌 일반 block으로 표시해 좌우 날짜와 과거 날짜를 클릭 가능하게 한다.
+- 웬들러 패널의 input/select/date button/calc button 높이와 padding, font-size를 추가로 줄인다.
+- 캘린더 day cell과 헤더도 같이 낮춰 모달 안에서 차지하는 높이를 줄인다.
+- `sw.js` cache version과 source-level 테스트를 갱신한다.
+
+검증:
+
+- `node --check workout/exercises.js sw.js`
+- `node --test tests/exercise-program-editor.test.js`
+- `node --test .\tests\*.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`

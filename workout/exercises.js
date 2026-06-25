@@ -2019,8 +2019,10 @@ function _exerciseProgramEditorHtml(settings = {}) {
             <input type="hidden" id="ex-program-start-date" value="${_escPicker(programStartDate)}">
             <input type="hidden" id="ex-program-wendler-start" value="${_escPicker(_numText(w.startWeek || 1))}">
             <small class="ex-program-helper" id="ex-program-start-date-hint">${_escPicker(_programCycleHint(programStartDate))}</small>
-              <div class="ex-program-mini-cal" id="ex-program-start-calendar" data-month="${_escPicker(_programMonthKey(programStartDate))}" hidden></div>
-            </div>
+          </div>
+        </div>
+          <div class="ex-program-calendar-row">
+            <div class="ex-program-mini-cal" id="ex-program-start-calendar" data-month="${_escPicker(_programMonthKey(programStartDate))}" hidden></div>
           </div>
           <div class="ex-program-tm-calc">
             <label><span>수행 kg</span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-tm-calc-kg" min="0" step="0.5" value="${_escPicker(_numText(tmCalcKg))}"></label>
