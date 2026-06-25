@@ -1107,6 +1107,7 @@ export function renderWorkoutCalendarHome() {
     showModeTabs: false,
   });
   _bindWorkoutHomeSheetDrag(root);
+  _bindWorkoutHomeSheetActions(root);
   _bindWorkoutHomeSheetScrollGuard(root);
   _syncWorkoutHomeSheetScrollLock();
 }
@@ -1156,7 +1157,7 @@ function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, includeHead 
       <div class="wt-day-sessionbar">
         <div class="wt-day-session-tabs">${sessionTabs}</div>
       </div>
-      <button type="button" class="wt-day-fab" onclick="window._wtCalAddSession('${key}')" aria-label="운동 추가">＋</button>
+      <button type="button" class="wt-day-fab" data-wt-day-add-session data-date-key="${_esc(key)}" aria-label="운동 추가">＋</button>
     </div>
   `;
 }
@@ -1904,6 +1905,23 @@ function _bindWorkoutHomeSheetDrag(root) {
   if (!bar && !handle) return;
   (bar || handle).addEventListener('pointerdown', _startWorkoutHomeSheetDrag);
   handle?.addEventListener('keydown', _handleWorkoutHomeSheetKey);
+}
+
+function _bindWorkoutHomeSheetActions(root) {
+  const sheet = root?.querySelector?.('[data-wt-day-sheet]');
+  if (!sheet) return;
+  sheet.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    const add = target?.closest?.('[data-wt-day-add-session]');
+    if (!add) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const key = add.getAttribute('data-date-key') || _workoutHomeSelectedKey;
+    Promise.resolve(_addWorkoutHomeSession(key)).catch((e) => {
+      console.warn('[workout-calendar] add session action failed:', e);
+      _openWorkoutEditorForSession(key, _workoutHomeSessionIndex);
+    });
+  }, true);
 }
 
 function _bindWorkoutHomeSheetScrollGuard(root) {

@@ -102,5 +102,5 @@ test('Dashboard3 mode controls cannot persist normal or pro workout record UI', 
 });
 
 test('service worker cache version was bumped for workout asset changes', () => {
-  assert.match(swJs, /tomatofarm-v20260625z57-workout-sheet-scroll-lock/);
+  assert.match(swJs, /tomatofarm-v20260625z58-workout-add-fab-click/);
 });

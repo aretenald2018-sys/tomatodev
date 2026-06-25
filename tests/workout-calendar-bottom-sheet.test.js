@@ -136,6 +136,22 @@ test('open day tap does not re-render an already full selected sheet', () => {
   assert.match(calendarJs, /_workoutHomeSelectedKey === nextKey && _currentWorkoutHomeSheetState\(\) === 'full'[\s\S]*return/);
 });
 
+test('floating add button uses direct sheet action binding', () => {
+  const detailStart = calendarJs.indexOf('function _renderWorkoutHomeDetail');
+  const detailEnd = calendarJs.indexOf('function _renderWorkoutDetailSummaryCard', detailStart);
+  assert.ok(detailStart >= 0 && detailEnd > detailStart, 'workout detail renderer should be present');
+  const detail = calendarJs.slice(detailStart, detailEnd);
+  assert.match(detail, /class="wt-day-fab"[\s\S]*data-wt-day-add-session[\s\S]*data-date-key="\$\{_esc\(key\)\}"/);
+  assert.doesNotMatch(detail, /class="wt-day-fab"[^>]*onclick=/);
+  assert.match(calendarJs, /_bindWorkoutHomeSheetActions\(root\)/);
+  assert.match(calendarJs, /function _bindWorkoutHomeSheetActions\(root\)/);
+  assert.match(calendarJs, /sheet\.addEventListener\('click', \([\s\S]*\}, true\)/);
+  assert.match(calendarJs, /event\.target instanceof Element \? event\.target : event\.target\?\.parentElement/);
+  assert.match(calendarJs, /target\?\.closest\?\.\('\[data-wt-day-add-session\]'\)/);
+  assert.match(calendarJs, /event\.stopPropagation\(\)/);
+  assert.match(calendarJs, /Promise\.resolve\(_addWorkoutHomeSession\(key\)\)/);
+});
+
 test('bottom sheet css is fixed, animated, and contains the session bar inside the sheet', () => {
   assert.match(styleCss, /\.cal-workout-day-sheet\s*\{[\s\S]*position:\s*fixed;[\s\S]*transition:[\s\S]*height 260ms/);
   assert.match(styleCss, /height:\s*var\(--wt-day-sheet-drag-height,\s*var\(--wt-day-sheet-height\)\)/);
@@ -151,6 +167,7 @@ test('bottom sheet css is fixed, animated, and contains the session bar inside t
   assert.match(styleCss, /\.cal-workout-day-sheet \.wt-day-sheet-scroll\s*\{[\s\S]*-webkit-overflow-scrolling:\s*touch;/);
   assert.match(styleCss, /\.cal-workout-day-sheet \.wt-day-sheet-scroll\s*\{[\s\S]*touch-action:\s*pan-y;/);
   assert.match(styleCss, /\.cal-workout-day-sheet \.wt-day-fab\s*\{[\s\S]*bottom:\s*calc\(8px \+ env\(safe-area-inset-bottom,\s*0px\)\)/);
+  assert.match(styleCss, /\.cal-workout-day-sheet \.wt-day-fab\s*\{[\s\S]*pointer-events:\s*auto;[\s\S]*touch-action:\s*manipulation;/);
 });
 
 test('collapsed day sheet bar is a compact one-row affordance', () => {
@@ -166,5 +183,5 @@ test('collapsed day sheet bar is a compact one-row affordance', () => {
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260625z57-workout-sheet-scroll-lock/);
+  assert.match(swJs, /tomatofarm-v20260625z58-workout-add-fab-click/);
 });

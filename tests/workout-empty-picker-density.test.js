@@ -20,7 +20,8 @@ test('empty workout view uses a floating add button beside the session tabs', ()
   const detail = renderCalendar.slice(start, end);
 
   assert.match(detail, /class="wt-day-sessionbar"[\s\S]*class="wt-day-session-tabs"/);
-  assert.match(detail, /class="wt-day-fab"[\s\S]*window\._wtCalAddSession/);
+  assert.match(detail, /class="wt-day-fab"[\s\S]*data-wt-day-add-session[\s\S]*data-date-key="\$\{_esc\(key\)\}"/);
+  assert.doesNotMatch(detail, /class="wt-day-fab"[^>]*onclick=/);
   assert.doesNotMatch(detail, /class="wt-day-add-inline"/);
   assert.doesNotMatch(detail, /class="wt-day-edit"/);
 
@@ -32,6 +33,7 @@ test('empty workout view uses a floating add button beside the session tabs', ()
   assert.match(fab, /right:\s*18px/);
   assert.match(fab, /width:\s*48px/);
   assert.match(fab, /height:\s*48px/);
+  assert.match(ruleBody('.cal-workout-day-sheet .wt-day-fab'), /touch-action:\s*manipulation/);
 });
 
 test('empty workout guidance is compact enough for one screen', () => {

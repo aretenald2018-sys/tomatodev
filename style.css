@@ -10980,6 +10980,8 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 .cal-workout-day-sheet .wt-day-fab {
   bottom: calc(8px + env(safe-area-inset-bottom, 0px));
   z-index: 4;
+  pointer-events: auto;
+  touch-action: manipulation;
 }
 
 @media (max-width: 430px) {

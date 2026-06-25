@@ -2,14 +2,35 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-24-workout-calendar-bottom-sheet.md`
-- 현재 단계: `complete — Slice 12 scroll ownership fix deployed`
-- 마지막 완료: `full sheet scroll lock, sheet body boundary guard, 전역 pull-down 제외, hard close latch, cache/test 업데이트, 리뷰, Dashboard3 Pages 배포 검증을 완료했다.`
-- 다음 액션: `인증 계정으로 Dashboard3 Pages에서 운동 탭 -> 날짜 sheet full 내부 스크롤, 아래로 당겨 bar 닫힘, bar 상태 캘린더 스크롤을 수동 확인한다.`
-- 차단 사유: `인증 계정 실제 UI flow는 수동 확인 필요`
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-06-25-workout-calendar-add-fab-click-fix.md`
+- 현재 단계: `execution complete — Slice 1 ready for review`
+- 마지막 완료: `FAB를 inline onclick 의존에서 data-action/direct sheet binding 경로로 전환하고 touch target CSS, cache/test 업데이트, 정적 검증을 완료했다.`
+- 다음 액션: `계획과 변경 파일을 리뷰하고, 문제가 없으면 complete로 전환한 뒤 Dashboard3 Pages 배포 검증을 진행한다.`
+- 차단 사유: `없음`
 
-## 다음 실행 대상
+## 리뷰 대상
+
+- 계획 파일: `docs/ai/features/2026-06-25-workout-calendar-add-fab-click-fix.md`
+- 변경 파일:
+  1. `render-calendar.js`
+  2. `style.css`
+  3. `sw.js`
+  4. `tests/workout-calendar-bottom-sheet.test.js`
+  5. `tests/workout-empty-picker-density.test.js`
+  6. cache version 참조 테스트들
+  7. `docs/ai/features/2026-06-25-workout-calendar-add-fab-click-fix.md`
+  8. `docs/ai/NEXT_ACTION.md`
+
+- 실행 검증:
+  1. PASS: `node --check render-calendar.js; node --check sw.js`
+  2. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js tests/workout-navigation-stack.test.js`
+  3. PASS: `node --test .\tests\*.test.js` — 515 tests passed
+  4. PASS: `node scripts/verify-runtime-assets.mjs`
+  5. PASS: `git diff --check`
+  6. not verified yet: Dashboard3 Pages 배포 및 인증 계정 실제 UI flow 확인 필요
+
+## 이전 실행 기록
 
 - 계획 파일: `docs/ai/features/2026-06-24-workout-calendar-bottom-sheet.md`
 - 완료한 Slice 12:
