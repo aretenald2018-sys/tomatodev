@@ -26,7 +26,10 @@
 - PASS: `node --test .\tests\*.test.js` — 513 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
-- not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 UI flow 확인은 남아 있다.
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ a8461e8`
+  - 결과: `[deploy-verify] ok a8461e8504b6 tomatofarm-v20260625z56-workout-pull-back static=217`
+- PASS: 배포 URL asset marker에서 `WORKOUT_PULL_BACK_THRESHOLD_PX = 72`, `initWorkoutPullBackGesture`, `action: 'pull:back'`, `body.wt-workout-tab-active`, z56 cache marker를 확인했다.
+- not verified yet: 인증 계정 실제 UI flow 확인은 남아 있다.
 
 ## 결정
 

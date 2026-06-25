@@ -574,4 +574,7 @@
 - PASS: `node --test .\tests\*.test.js` — 513 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
-- not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 `운동 탭 -> pull down -> back/calendar` UI flow 확인이 남아 있다.
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ a8461e8`
+  - 결과: `[deploy-verify] ok a8461e8504b6 tomatofarm-v20260625z56-workout-pull-back static=217`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260625z56-workout-pull-back" "app.js::WORKOUT_PULL_BACK_THRESHOLD_PX = 72" "app.js::initWorkoutPullBackGesture" "app.js::action: 'pull:back'" "style.css::body.wt-workout-tab-active" "style.css::overscroll-behavior-y: none"`
+- not verified yet: 인증 계정 실제 `운동 탭 -> pull down -> back/calendar` UI flow 확인이 남아 있다.

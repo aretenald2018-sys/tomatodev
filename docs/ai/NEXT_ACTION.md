@@ -26,6 +26,8 @@
   3. PASS: `node --test .\tests\*.test.js` — 513 tests passed
   4. PASS: `node scripts/verify-runtime-assets.mjs`
   5. PASS: `git diff --check`
+  6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ a8461e8`
+  7. PASS: 배포 URL asset marker에서 z56 cache, `initWorkoutPullBackGesture`, `action: 'pull:back'`, `body.wt-workout-tab-active` 확인
 
 ## 직전 완료 흐름
 
