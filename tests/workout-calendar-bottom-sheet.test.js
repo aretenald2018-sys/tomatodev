@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const calendarJs = readFileSync(new URL('../render-calendar.js', import.meta.url), 'utf8');
+const appJs = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 const styleCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
 const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 
@@ -39,6 +40,7 @@ test('sheet drag handlers open directly to full and collapse to bar', () => {
 
   assert.match(calendarJs, /function _stepWorkoutHomeSheet\(direction\)[\s\S]*direction > 0 \? 'full' : 'bar'/);
   assert.match(calendarJs, /const WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX = 10/);
+  assert.match(calendarJs, /const WORKOUT_HOME_SHEET_DRAG_HARD_CLOSE_PX = 8/);
   assert.match(calendarJs, /const WORKOUT_HOME_SHEET_DRAG_OPEN_BAR_RATIO = 0\.1/);
   assert.match(calendarJs, /const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX = 14/);
   assert.match(calendarJs, /const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_RATIO = 0\.2/);
@@ -85,6 +87,7 @@ test('sheet drag handlers open directly to full and collapse to bar', () => {
   assert.match(calendarJs, /const previewDragY = \(rawDy\) =>/);
   assert.match(calendarJs, /lastDragY = dy/);
   assert.match(calendarJs, /if \(startState === 'bar' && dy <= -openThresholdPx\) openLatched = true/);
+  assert.match(calendarJs, /if \(startState === 'full' && dy >= WORKOUT_HOME_SHEET_DRAG_HARD_CLOSE_PX\) closeLatched = true/);
   assert.match(calendarJs, /if \(startState === 'full' && dy >= collapseThresholdPx\) closeLatched = true/);
   assert.match(calendarJs, /const nextHeight = openLatched \? maxHeight : closeLatched \? minHeight : Math\.max/);
   assert.doesNotMatch(dragFn, /event\.preventDefault\?\.\(\)/);
@@ -111,6 +114,23 @@ test('sheet drag handlers open directly to full and collapse to bar', () => {
   assert.match(calendarJs, /window\._wtCalToggleSheet = _toggleWorkoutHomeSheet/);
 });
 
+test('full day sheet owns vertical scroll and blocks background scroll chaining', () => {
+  assert.match(calendarJs, /_bindWorkoutHomeSheetScrollGuard\(root\)/);
+  assert.match(calendarJs, /_syncWorkoutHomeSheetScrollLock\(\)/);
+  assert.match(calendarJs, /function _syncWorkoutHomeSheetScrollLock\(\)/);
+  assert.match(calendarJs, /_currentWorkoutHomeSheetState\(\) === 'full'/);
+  assert.match(calendarJs, /body\.classList\.contains\('wt-workout-tab-active'\)/);
+  assert.match(calendarJs, /panel\?\.classList\.contains\('active'\)/);
+  assert.match(calendarJs, /body\.classList\.toggle\('wt-workout-sheet-scroll-lock', shouldLock\)/);
+  assert.match(calendarJs, /function _bindWorkoutHomeSheetScrollGuard\(root\)/);
+  assert.match(calendarJs, /const scroller = root\?\.querySelector\?\.\('\[data-wt-day-sheet\] \.wt-day-sheet-scroll'\)/);
+  assert.match(calendarJs, /scroller\.addEventListener\('touchmove'[\s\S]*\{ passive: false \}\)/);
+  assert.match(calendarJs, /const wouldChainToBackground = maxScrollTop <= 0 \|\| \(dy > 0 && atTop\) \|\| \(dy < 0 && atBottom\)/);
+  assert.match(calendarJs, /if \(wouldChainToBackground && event\.cancelable\) event\.preventDefault\(\)/);
+  assert.match(calendarJs, /event\.stopPropagation\(\)/);
+  assert.match(appJs, /\[data-wt-day-sheet\]/);
+});
+
 test('open day tap does not re-render an already full selected sheet', () => {
   assert.match(calendarJs, /const nextKey = _parseDateKey\(key\) \? key : _workoutHomeSelectedKey/);
   assert.match(calendarJs, /_workoutHomeSelectedKey === nextKey && _currentWorkoutHomeSheetState\(\) === 'full'[\s\S]*return/);
@@ -126,6 +146,10 @@ test('bottom sheet css is fixed, animated, and contains the session bar inside t
   assert.match(styleCss, /\.cal-workout-day-sheet \.cal-workout-day-bar\s*\{[\s\S]*touch-action:\s*none;/);
   assert.match(styleCss, /\.cal-workout-day-sheet \.wt-day-sessionbar\s*\{[\s\S]*position:\s*relative;/);
   assert.match(styleCss, /\.cal-workout-day-sheet \.wt-day-sessionbar\s*\{[\s\S]*padding:\s*7px 82px/);
+  assert.match(styleCss, /body\.wt-workout-tab-active\.wt-workout-sheet-scroll-lock\s*\{[\s\S]*overflow:\s*hidden;/);
+  assert.match(styleCss, /body\.wt-workout-tab-active\.wt-workout-sheet-scroll-lock #tab-workout\.active\s*\{[\s\S]*overflow:\s*hidden;/);
+  assert.match(styleCss, /\.cal-workout-day-sheet \.wt-day-sheet-scroll\s*\{[\s\S]*-webkit-overflow-scrolling:\s*touch;/);
+  assert.match(styleCss, /\.cal-workout-day-sheet \.wt-day-sheet-scroll\s*\{[\s\S]*touch-action:\s*pan-y;/);
   assert.match(styleCss, /\.cal-workout-day-sheet \.wt-day-fab\s*\{[\s\S]*bottom:\s*calc\(8px \+ env\(safe-area-inset-bottom,\s*0px\)\)/);
 });
 
@@ -142,5 +166,5 @@ test('collapsed day sheet bar is a compact one-row affordance', () => {
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260625z56-workout-pull-back/);
+  assert.match(swJs, /tomatofarm-v20260625z57-workout-sheet-scroll-lock/);
 });

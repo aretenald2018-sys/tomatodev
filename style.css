@@ -3364,6 +3364,13 @@ body.wt-workout-tab-active {
 body.wt-workout-tab-active #tab-workout.active {
   overscroll-behavior-y: contain;
 }
+body.wt-workout-tab-active.wt-workout-sheet-scroll-lock {
+  overflow: hidden;
+  overscroll-behavior-y: none;
+}
+body.wt-workout-tab-active.wt-workout-sheet-scroll-lock #tab-workout.active {
+  overflow: hidden;
+}
 #tab-workout.wt-calendar-home-mode {
   background: #f7f7fb;
 }
@@ -10953,6 +10960,8 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   padding: 0 0 14px;
 }
 .cal-workout-day-sheet .wt-day-empty {

@@ -57,6 +57,7 @@ const WORKOUT_HOME_SHEET_STATES = ['bar', 'full'];
 const WORKOUT_HOME_SHEET_CLASS_STATES = ['bar', 'mid', 'full'];
 const WORKOUT_HOME_SHEET_POST_DRAG_CLICK_SUPPRESS_MS = 900;
 const WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX = 10;
+const WORKOUT_HOME_SHEET_DRAG_HARD_CLOSE_PX = 8;
 const WORKOUT_HOME_SHEET_DRAG_OPEN_BAR_RATIO = 0.1;
 const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX = 14;
 const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_RATIO = 0.2;
@@ -1106,6 +1107,8 @@ export function renderWorkoutCalendarHome() {
     showModeTabs: false,
   });
   _bindWorkoutHomeSheetDrag(root);
+  _bindWorkoutHomeSheetScrollGuard(root);
+  _syncWorkoutHomeSheetScrollLock();
 }
 
 function _renderWorkoutHomeDetail(root, args) {
@@ -1782,10 +1785,26 @@ function _currentWorkoutHomeSheetState() {
   return _workoutHomeView === 'detail' ? _normalizeWorkoutHomeSheetState(_workoutHomeSheetState) : 'bar';
 }
 
+function _syncWorkoutHomeSheetScrollLock() {
+  if (typeof document === 'undefined') return;
+  const body = document.body;
+  if (!body) return;
+  const panel = document.getElementById('tab-workout');
+  const sheet = document.querySelector('#workout-calendar-root [data-wt-day-sheet]');
+  const shouldLock = !!sheet
+    && _currentWorkoutHomeSheetState() === 'full'
+    && body.classList.contains('wt-workout-tab-active')
+    && panel?.classList.contains('active');
+  body.classList.toggle('wt-workout-sheet-scroll-lock', shouldLock);
+}
+
 function _applyWorkoutHomeSheetState() {
   if (typeof document === 'undefined') return;
   const sheet = document.querySelector('#workout-calendar-root [data-wt-day-sheet]');
-  if (!sheet) return;
+  if (!sheet) {
+    _syncWorkoutHomeSheetScrollLock();
+    return;
+  }
   const state = _currentWorkoutHomeSheetState();
   WORKOUT_HOME_SHEET_CLASS_STATES.forEach(item => sheet.classList.toggle(`is-${item}`, item === state));
   sheet.dataset.wtSheetState = state;
@@ -1797,6 +1816,7 @@ function _applyWorkoutHomeSheetState() {
     toggle.textContent = state === 'bar' ? '⌃' : '⌄';
     toggle.setAttribute('aria-label', state === 'bar' ? '선택한 날짜 열기' : '날짜 상세 접기');
   }
+  _syncWorkoutHomeSheetScrollLock();
 }
 
 function _setWorkoutHomeSheetState(state, { render = false } = {}) {
@@ -1886,6 +1906,31 @@ function _bindWorkoutHomeSheetDrag(root) {
   handle?.addEventListener('keydown', _handleWorkoutHomeSheetKey);
 }
 
+function _bindWorkoutHomeSheetScrollGuard(root) {
+  const scroller = root?.querySelector?.('[data-wt-day-sheet] .wt-day-sheet-scroll');
+  if (!scroller) return;
+  let lastTouchY = 0;
+
+  scroller.addEventListener('touchstart', (event) => {
+    if (event.touches?.length !== 1) return;
+    lastTouchY = Number(event.touches[0]?.clientY) || 0;
+  }, { passive: true });
+
+  scroller.addEventListener('touchmove', (event) => {
+    if (_currentWorkoutHomeSheetState() !== 'full' || event.touches?.length !== 1) return;
+    const y = Number(event.touches[0]?.clientY) || lastTouchY;
+    const dy = y - lastTouchY;
+    lastTouchY = y;
+    const scrollTop = Math.max(0, Number(scroller.scrollTop) || 0);
+    const maxScrollTop = Math.max(0, (Number(scroller.scrollHeight) || 0) - (Number(scroller.clientHeight) || 0));
+    const atTop = scrollTop <= 0;
+    const atBottom = scrollTop >= maxScrollTop - 1;
+    const wouldChainToBackground = maxScrollTop <= 0 || (dy > 0 && atTop) || (dy < 0 && atBottom);
+    if (wouldChainToBackground && event.cancelable) event.preventDefault();
+    event.stopPropagation();
+  }, { passive: false });
+}
+
 function _handleWorkoutHomeSheetKey(event) {
   if (event.key === 'ArrowUp') {
     event.preventDefault();
@@ -1927,6 +1972,7 @@ function _startWorkoutHomeSheetDrag(event) {
   const clampDragY = (rawDy) => Math.max(minDragY, Math.min(maxDragY, rawDy));
   const updateDragLatches = (dy) => {
     if (startState === 'bar' && dy <= -openThresholdPx) openLatched = true;
+    if (startState === 'full' && dy >= WORKOUT_HOME_SHEET_DRAG_HARD_CLOSE_PX) closeLatched = true;
     if (startState === 'full' && dy >= collapseThresholdPx) closeLatched = true;
   };
   const previewDragY = (rawDy) => {

@@ -578,3 +578,64 @@
   - 결과: `[deploy-verify] ok a8461e8504b6 tomatofarm-v20260625z56-workout-pull-back static=217`
 - PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260625z56-workout-pull-back" "app.js::WORKOUT_PULL_BACK_THRESHOLD_PX = 72" "app.js::initWorkoutPullBackGesture" "app.js::action: 'pull:back'" "style.css::body.wt-workout-tab-active" "style.css::overscroll-behavior-y: none"`
 - not verified yet: 인증 계정 실제 `운동 탭 -> pull down -> back/calendar` UI flow 확인이 남아 있다.
+
+## 후속 Slice 12 — Separate calendar and full sheet scrolling
+
+### 진단
+
+사용자가 바텀시트와 캘린더 스크롤이 분리되지 않아 스크롤을 올렸다 내리면 둘 다 움직인다고 보고했다. 또한 full 상태에서 바텀시트를 아래로 내리는 gesture는 여전히 손가락으로 내린 좌표까지만 내려가고 bar 끝점으로 완전히 닫히지 않는다고 보고했다.
+
+이전 Slice 10/11은 drag release inline CSS와 root pull-to-refresh 충돌을 다뤘지만, full sheet 상태에서 document/window 스크롤 자체를 잠그는 계약은 추가하지 않았다. 따라서 모바일 브라우저의 scroll chaining에서는 `.wt-day-sheet-scroll`과 배경 캘린더가 같은 touch chain에 반응할 수 있다.
+
+진단 문서: `docs/ai/diagnoses/2026-06-25-workout-calendar-sheet-scroll-lock.md`
+
+### 범위
+
+- `render-calendar.js`
+  - sheet state 적용 시 full 상태에서만 body scroll lock을 켜고, bar/close/render 없음 상태에서는 해제한다.
+  - full sheet body touchmove는 내부 scroller가 더 스크롤 가능한 경우만 통과시키고 경계 전파는 막는다.
+  - full 상태의 아래 방향 drag는 닫힘 의도를 빠르게 latch해서 release 시 `bar` 끝점으로 정착한다.
+- `app.js`
+  - 전역 운동탭 pull-down back listener가 `[data-wt-day-sheet]` 내부 gesture를 먼저 가로채지 않게 제외한다.
+- `style.css`
+  - full sheet scroll-lock class에서 document background scroll을 차단한다.
+  - full sheet 내부 scroller는 momentum scroll을 유지한다.
+- `tests/workout-calendar-bottom-sheet.test.js`
+  - full/bar scroll ownership 계약과 hard-close source contract를 직접 검증한다.
+- `sw.js`
+  - `STATIC_ASSETS`에 포함된 파일 변경이므로 `CACHE_VERSION`을 bump한다.
+
+### 제외
+
+- 운동 record/detail navigation stack 변경
+- 캘린더 월간 그리드 레이아웃 변경
+- 바텀시트 헤더/버튼 디자인 변경
+- 전체 테스트 500개 전수 실행을 완료 기준으로 삼는 것
+
+### 검증 계획
+
+- `node --check render-calendar.js; node --check sw.js`
+- `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- 배포 시 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+- 인증 계정 실제 flow: `운동 탭 -> 날짜 sheet full -> sheet 내부 스크롤`, `sheet full -> 아래로 당겨 bar 닫힘`, `sheet bar -> 캘린더 스크롤`
+
+### 실행 결과
+
+- `app.js` 전역 운동탭 pull-down back listener에서 `[data-wt-day-sheet]` 내부 gesture를 제외했다.
+- `render-calendar.js`에서 full sheet 상태에만 `body.wt-workout-sheet-scroll-lock`을 동기화하고, sheet 내부 `.wt-day-sheet-scroll` touch boundary guard를 추가했다.
+- full 상태 아래 방향 drag는 `WORKOUT_HOME_SHEET_DRAG_HARD_CLOSE_PX = 8`을 넘으면 `closeLatched`로 바로 `bar` target에 정착한다.
+- `style.css`에서 full sheet scroll lock은 운동탭 활성 상태에만 적용하고, sheet 내부 scroller는 momentum scroll과 `touch-action: pan-y`를 유지한다.
+- `tests/workout-calendar-bottom-sheet.test.js`에 full/bar scroll ownership, background scroll chaining 차단, hard-close source contract 테스트를 추가했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260625z57-workout-sheet-scroll-lock`로 bump하고 cache marker 테스트를 갱신했다.
+
+### 실행 검증
+
+- PASS: `node --check app.js; node --check render-calendar.js; node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js tests/stats-picker-ui-polish.test.js tests/stats-muscle-fatigue-insight.test.js tests/workout-active-session-recovery.test.js tests/workout-track-graph-delta.test.js tests/workout-timer-summary-only.test.js tests/workout-test-mode-unified.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 514개 통과
+- PASS: `git diff --check`
+- not verified yet: Dashboard3 Pages 배포 검증 및 인증 계정 실제 `운동 탭 -> 날짜 sheet full/bar scroll` UI flow 확인이 남아 있다.

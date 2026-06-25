@@ -2,16 +2,32 @@
 
 ## 현재 상태
 
-- 상태: `complete`
+- 상태: `ready_for_review`
 - 계획 문서: `docs/ai/features/2026-06-24-workout-calendar-bottom-sheet.md`
-- 현재 단계: `complete — workout tab pull-down routes through back stack`
-- 마지막 완료: `Slice 11에서 운동탭 최상단 아래 방향 touch gesture를 pull-to-refresh가 아니라 workout back stack으로 흡수하게 수정했다.`
-- 다음 액션: `인증 계정으로 Dashboard3 Pages에서 운동 탭 -> record/detail 또는 열린 sheet -> 아래로 당기기 동작이 새로고침 대신 뒤로가기/캘린더 복귀로 처리되는지 수동 확인한다.`
-- 차단 사유: `인증 계정 실제 UI flow는 수동 확인 필요`
+- 현재 단계: `execution complete — Slice 12 scroll ownership fix`
+- 마지막 완료: `full sheet scroll lock, sheet body boundary guard, 전역 pull-down 제외, hard close latch, cache/test 업데이트를 완료했다.`
+- 다음 액션: `Slice 12 변경 파일을 리뷰하고 Dashboard3 Pages 배포 검증을 진행한다.`
+- 차단 사유: `없음`
 
 ## 다음 실행 대상
 
 - 계획 파일: `docs/ai/features/2026-06-24-workout-calendar-bottom-sheet.md`
+- 완료한 Slice 12:
+  1. `render-calendar.js`에서 full sheet scroll lock과 sheet body touch boundary guard를 추가한다.
+  2. full 상태의 아래 방향 drag release가 항상 `bar` 끝점으로 정착하도록 닫힘 latch를 강화한다.
+  3. `style.css`에 full sheet scroll-lock과 내부 scroller momentum 정책을 추가한다.
+  4. `tests/workout-calendar-bottom-sheet.test.js`에 scroll ownership/source contract 테스트를 추가한다.
+  5. `sw.js` `CACHE_VERSION`을 bump한다.
+
+- Slice 12 검증:
+  1. PASS: `node --check app.js; node --check render-calendar.js; node --check sw.js`
+  2. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js`
+  3. PASS: 영향권 테스트 38개
+  4. PASS: `node scripts/verify-runtime-assets.mjs`
+  5. PASS: 전체 Node 테스트 514개
+  6. PASS: `git diff --check`
+  7. not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 UI flow 확인 필요
+
 - 완료한 Slice 11:
   1. 운동탭 활성 상태에만 `body.wt-workout-tab-active` class 적용.
   2. 운동탭 활성 상태에서 root overscroll/pull-to-refresh 체인 차단.
