@@ -10876,6 +10876,10 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   transform: translateX(-50%);
   pointer-events: none;
 }
+.cal-workout-day-sheet.is-full .cal-workout-day-grip {
+  background: rgba(47, 109, 246, 0.68);
+  box-shadow: 0 0 10px rgba(47, 109, 246, 0.36);
+}
 .cal-workout-day-sheet.is-dragging .cal-workout-day-bar {
   cursor: grabbing;
 }

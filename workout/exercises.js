@@ -789,6 +789,13 @@ function _openWorkoutEntryDetail(entryIdx) {
   });
 }
 
+function _findWorkoutEntryIndexByExerciseId(exerciseId) {
+  const id = String(exerciseId || '');
+  if (!id) return -1;
+  return (Array.isArray(S.workout.exercises) ? S.workout.exercises : [])
+    .findIndex(entry => entry?.exerciseId === id);
+}
+
 function _bindWorkoutEntryDetailOpen(block, entryIdx) {
   const open = (event) => {
     event?.preventDefault?.();
@@ -1840,6 +1847,18 @@ function _handlePickerBack() {
   wtCloseExercisePicker();
 }
 
+export function wtHandleExercisePickerBack() {
+  const editor = document.getElementById('ex-editor-modal');
+  if (editor?.classList.contains('open')) {
+    wtCloseExerciseEditor();
+    return true;
+  }
+  const picker = document.getElementById('ex-picker-modal');
+  if (!picker?.classList.contains('open')) return false;
+  _handlePickerBack();
+  return true;
+}
+
 function _openPickerEditorFromHeader() {
   wtOpenExerciseEditor(null, _pickerMuscleFilter || null);
 }
@@ -1856,6 +1875,15 @@ function _syncPickerDoneButton() {
 function _bindPickerChrome() {
   const modal = document.getElementById('ex-picker-modal');
   if (!modal) return;
+  if (!modal.dataset.pickerBackCaptureBound) {
+    modal.dataset.pickerBackCaptureBound = '1';
+    modal.addEventListener('click', (event) => {
+      if (!event.target?.closest?.('#ex-picker-back')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      _handlePickerBack();
+    }, true);
+  }
   const back = modal.querySelector('#ex-picker-back');
   if (back) back.onclick = _handlePickerBack;
   const add = modal.querySelector('#ex-picker-add-top');
@@ -2392,21 +2420,25 @@ export function _renderPickerList() {
       }
       _bindPickerSourceFilter(btn);
 
-      if (!alreadyAdded) {
-        btn.addEventListener('click', () => {
-          if (S.workout.exercises.some(entry => entry.exerciseId === ex.id)) return;
-          _ensureExpertManualSession();
-          S.workout.exercises.push(_buildPickerExerciseEntry(ex));
-          _renderExerciseList();
-          _syncExpertTopArea();
-          const timerBar = document.getElementById('wt-workout-timer-bar');
-          if (timerBar && !timerBar.classList.contains('wt-open')) timerBar.classList.add('wt-open');
-          if (!S.workout.workoutStartTime && S.workout.workoutDuration === 0) wtStartWorkoutTimer();
-          wtPersistActiveWorkoutDraft('exercise add');
+      btn.addEventListener('click', () => {
+        const existingIdx = _findWorkoutEntryIndexByExerciseId(ex.id);
+        if (existingIdx >= 0) {
           wtCloseExercisePicker();
-          saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
-        });
-      }
+          _openWorkoutEntryDetail(existingIdx);
+          return;
+        }
+        _ensureExpertManualSession();
+        const entryIdx = S.workout.exercises.push(_buildPickerExerciseEntry(ex)) - 1;
+        _renderExerciseList();
+        _syncExpertTopArea();
+        const timerBar = document.getElementById('wt-workout-timer-bar');
+        if (timerBar && !timerBar.classList.contains('wt-open')) timerBar.classList.add('wt-open');
+        if (!S.workout.workoutStartTime && S.workout.workoutDuration === 0) wtStartWorkoutTimer();
+        wtPersistActiveWorkoutDraft('exercise add');
+        wtCloseExercisePicker();
+        _openWorkoutEntryDetail(entryIdx);
+        saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
+      });
       group.appendChild(btn);
     });
     if (!isExpert) {

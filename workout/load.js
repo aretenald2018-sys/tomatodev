@@ -18,7 +18,7 @@ import { _renderRunningForm, _renderCfForm,
          _renderStretchForm, _renderSwimForm }
                                      from './activity-forms.js';
 import { _initButtonEventListeners } from './status.js';
-import { _renderExerciseList }       from './exercises.js?v=20260625z44-workout-nav-stack';
+import { _renderExerciseList }       from './exercises.js?v=20260625z45-workout-nav-regression';
 import { getDay, isFuture, TODAY, isExpertModeEnabled, getExpertPreset, dateKey } from '../data.js';
 import { getWorkoutSessions } from './sessions.js';
 

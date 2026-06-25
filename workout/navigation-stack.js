@@ -327,8 +327,13 @@ export function enableWorkoutPwaHistory(options = {}) {
 
   window.addEventListener('popstate', (event) => {
     const payload = event.state?.[HISTORY_KEY];
-    if (!payload?.snapshot) return;
     if (typeof options.getActiveTab === 'function' && options.getActiveTab() !== 'workout') return;
+    if (typeof options.handleOverlayBack === 'function' && options.handleOverlayBack()) {
+      _historyDepth = _toInt(payload?.depth ?? Math.max(0, _historyDepth - 1));
+      _writeHistory('push', 'overlay:back');
+      return;
+    }
+    if (!payload?.snapshot) return;
     _historyDepth = _toInt(payload.depth);
     _suppressHistoryWrite = true;
     try {
@@ -351,4 +356,3 @@ export function getWorkoutHistoryState() {
     lastAction: _lastHistoryAction,
   };
 }
-

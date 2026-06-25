@@ -58,8 +58,8 @@ const WORKOUT_HOME_SHEET_CLASS_STATES = ['bar', 'mid', 'full'];
 const WORKOUT_HOME_SHEET_POST_DRAG_CLICK_SUPPRESS_MS = 900;
 const WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX = 10;
 const WORKOUT_HOME_SHEET_DRAG_OPEN_BAR_RATIO = 0.1;
-const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX = 28;
-const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_RATIO = 0.35;
+const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX = 14;
+const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_RATIO = 0.2;
 const WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY = 0.55;
 const WORKOUT_HOME_SHEET_FULL_CLEARANCE_PX = 112;
 
@@ -899,7 +899,7 @@ function _renderWorkoutHomeDayBar(selectedKey, { cache, plan, checkins, lookup }
   const expanded = sheetState !== 'bar';
   return `
     <div class="cal-workout-day-bar" data-wt-sheet-handle tabindex="0" aria-expanded="${expanded ? 'true' : 'false'}">
-      <span class="cal-workout-day-grip" aria-hidden="true"></span>
+      <span class="cal-workout-day-grip" data-wt-sheet-grip aria-hidden="true"></span>
       <button type="button" class="cal-workout-day-expand" data-wt-sheet-toggle onclick="window._wtCalToggleSheet('${selected}')" aria-label="${expanded ? '날짜 상세 접기' : '선택한 날짜 열기'}">${expanded ? '⌄' : '⌃'}</button>
       <button type="button" class="cal-workout-day-main" onclick="window._wtCalOpenDay('${selected}')">
         <span class="cal-workout-day-date">${selected} <em>${_dateDistanceLabel(selected)}</em></span>
@@ -1874,7 +1874,20 @@ function _bindWorkoutHomeSheetDrag(root) {
   const handle = root?.querySelector?.('[data-wt-sheet-handle]');
   if (!handle) return;
   handle.addEventListener('pointerdown', _startWorkoutHomeSheetDrag);
+  handle.addEventListener('click', _handleWorkoutHomeSheetHandleClick);
   handle.addEventListener('keydown', _handleWorkoutHomeSheetKey);
+}
+
+function _handleWorkoutHomeSheetHandleClick(event) {
+  if (_consumeWorkoutHomeSuppressedClick()) {
+    event.preventDefault();
+    event.stopPropagation();
+    return;
+  }
+  if (event.target?.closest?.('[data-wt-sheet-toggle], [data-wt-sheet-action], .cal-workout-day-main')) return;
+  event.preventDefault();
+  event.stopPropagation();
+  _toggleWorkoutHomeSheet(_workoutHomeSelectedKey);
 }
 
 function _handleWorkoutHomeSheetKey(event) {

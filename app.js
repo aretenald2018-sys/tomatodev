@@ -43,7 +43,7 @@ import { showDietPremiumReportIfNeeded } from './feature-diet-premium-report.js'
 import {
   loadWorkoutDate, changeWorkoutDate, goToTodayWorkout, saveWorkoutDay,
   openNutritionPhotoUpload, wtRecoverTimers,
-} from './render-workout.js?v=20260625z44-workout-nav-stack';
+} from './render-workout.js?v=20260625z45-workout-nav-regression';
 
 // ── 레이지 로딩 탭 캐시 ──
 const _lazyModules = {};
@@ -289,9 +289,16 @@ subscribeWorkoutNav((snapshot, action) => {
   if (_currentTab !== 'workout') return;
   _renderWorkoutRoute(snapshot, action).catch(e => console.warn('[app] workout route render failed:', e));
 });
-enableWorkoutPwaHistory({ getActiveTab: () => _currentTab });
+function _handleWorkoutOverlayBack() {
+  return _currentTab === 'workout' && window.wtHandleExercisePickerBack?.() === true;
+}
+
+enableWorkoutPwaHistory({
+  getActiveTab: () => _currentTab,
+  handleOverlayBack: _handleWorkoutOverlayBack,
+});
 window.wtOpenWorkoutRecord = openWorkoutRecordFromCalendar;
-window.wtHandleWorkoutBack = () => handleWorkoutBack({ activeTab: _currentTab, preferHistory: true });
+window.wtHandleWorkoutBack = () => _handleWorkoutOverlayBack() || handleWorkoutBack({ activeTab: _currentTab, preferHistory: true });
 
 let _workoutSystemBackBound = false;
 function initWorkoutSystemBack() {
@@ -300,6 +307,7 @@ function initWorkoutSystemBack() {
   if (!appPlugin || typeof appPlugin.addListener !== 'function') return;
   _workoutSystemBackBound = true;
   appPlugin.addListener('backButton', (event = {}) => {
+    if (_handleWorkoutOverlayBack()) return;
     if (handleWorkoutBack({ activeTab: _currentTab, preferHistory: true })) return;
     if (event.canGoBack && window.history?.back) window.history.back();
   });

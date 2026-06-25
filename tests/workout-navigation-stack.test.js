@@ -70,22 +70,31 @@ test('inactive tab does not consume back', () => {
 });
 
 test('workout navigation is wired to app, calendar, detail root, and PWA cache', async () => {
-  const [appJs, calendarJs, indexHtml, workoutExercises, swJs] = await Promise.all([
+  const [appJs, calendarJs, indexHtml, workoutExercises, navJs, swJs] = await Promise.all([
     readFile(new URL('../app.js', import.meta.url), 'utf8'),
     readFile(new URL('../render-calendar.js', import.meta.url), 'utf8'),
     readFile(new URL('../index.html', import.meta.url), 'utf8'),
     readFile(new URL('../workout/exercises.js', import.meta.url), 'utf8'),
+    readFile(new URL('../workout/navigation-stack.js', import.meta.url), 'utf8'),
     readFile(new URL('../sw.js', import.meta.url), 'utf8'),
   ]);
 
-  assert.match(appJs, /enableWorkoutPwaHistory\(\{ getActiveTab: \(\) => _currentTab \}\)/);
+  assert.match(appJs, /enableWorkoutPwaHistory\(\{[\s\S]*getActiveTab: \(\) => _currentTab,[\s\S]*handleOverlayBack: _handleWorkoutOverlayBack/);
   assert.match(appJs, /window\.Capacitor\?\.Plugins\?\.App/);
+  assert.match(appJs, /_handleWorkoutOverlayBack\(\) \|\| handleWorkoutBack/);
   assert.match(appJs, /handleWorkoutBack\(\{ activeTab: _currentTab, preferHistory: true \}\)/);
   assert.match(calendarJs, /openWorkoutDaySheet\(nextKey/);
   assert.match(calendarJs, /window\.wtOpenWorkoutRecord/);
   assert.match(indexHtml, /id="wt-exercise-detail-root"/);
   assert.match(workoutExercises, /pushWorkoutDetail\(\{/);
+  assert.match(workoutExercises, /function _findWorkoutEntryIndexByExerciseId/);
+  assert.match(workoutExercises, /if \(existingIdx >= 0\)[\s\S]*_openWorkoutEntryDetail\(existingIdx\)/);
+  assert.match(workoutExercises, /const entryIdx = S\.workout\.exercises\.push\(_buildPickerExerciseEntry\(ex\)\) - 1/);
+  assert.match(workoutExercises, /_openWorkoutEntryDetail\(entryIdx\)/);
+  assert.match(workoutExercises, /export function wtHandleExercisePickerBack\(\)/);
   assert.match(workoutExercises, /export function renderWorkoutExerciseDetail\(\)/);
+  assert.match(navJs, /typeof options\.handleOverlayBack === 'function' && options\.handleOverlayBack\(\)/);
+  assert.match(navJs, /_writeHistory\('push', 'overlay:back'\)/);
   assert.match(swJs, /\.\/workout\/navigation-stack\.js/);
-  assert.match(swJs, /tomatofarm-v20260625z44-workout-nav-stack/);
+  assert.match(swJs, /tomatofarm-v20260625z45-workout-nav-regression/);
 });

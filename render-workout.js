@@ -21,4 +21,4 @@ export {
   wtRestTimerShowIdle, wtRestTimerHideIdle,
   wtOpenRestPresetSheet,
   tm2RenderEntry,
-} from './workout/index.js?v=20260625z44-workout-nav-stack';
+} from './workout/index.js?v=20260625z45-workout-nav-regression';

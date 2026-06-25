@@ -17,7 +17,7 @@ test('workout calendar keeps the month surface and renders the existing day bar 
   assert.match(calendarJs, /function _renderWorkoutHomeBottomSheet/);
   assert.match(calendarJs, /class="cal-workout-day-sheet is-\$\{sheetState\}"[\s\S]*data-wt-day-sheet/);
   assert.match(calendarJs, /class="cal-workout-day-bar" data-wt-sheet-handle/);
-  assert.match(calendarJs, /class="cal-workout-day-grip" aria-hidden="true"/);
+  assert.match(calendarJs, /class="cal-workout-day-grip" data-wt-sheet-grip aria-hidden="true"/);
 });
 
 test('date selection opens the bottom sheet to full with animation state', () => {
@@ -38,8 +38,8 @@ test('sheet drag handlers open directly to full and collapse to bar', () => {
   assert.match(calendarJs, /function _stepWorkoutHomeSheet\(direction\)[\s\S]*direction > 0 \? 'full' : 'bar'/);
   assert.match(calendarJs, /const WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX = 10/);
   assert.match(calendarJs, /const WORKOUT_HOME_SHEET_DRAG_OPEN_BAR_RATIO = 0\.1/);
-  assert.match(calendarJs, /const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX = 28/);
-  assert.match(calendarJs, /const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_RATIO = 0\.35/);
+  assert.match(calendarJs, /const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX = 14/);
+  assert.match(calendarJs, /const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_RATIO = 0\.2/);
   assert.match(calendarJs, /const WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY = 0\.55/);
   assert.match(calendarJs, /const WORKOUT_HOME_SHEET_FULL_CLEARANCE_PX = 112/);
   assert.match(calendarJs, /collapseThresholdPx = WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX/);
@@ -53,6 +53,9 @@ test('sheet drag handlers open directly to full and collapse to bar', () => {
   assert.match(calendarJs, /return 'full'/);
   assert.match(calendarJs, /function _startWorkoutHomeSheetDrag/);
   assert.match(calendarJs, /window\.addEventListener\('pointermove', onMove/);
+  assert.match(calendarJs, /handle\.addEventListener\('click', _handleWorkoutHomeSheetHandleClick\)/);
+  assert.match(calendarJs, /function _handleWorkoutHomeSheetHandleClick/);
+  assert.match(calendarJs, /_toggleWorkoutHomeSheet\(_workoutHomeSelectedKey\)/);
   assert.match(dragFn, /data-wt-sheet-action/);
   assert.doesNotMatch(dragFn, /closest\?\('button'\)/);
   assert.match(calendarJs, /function _consumeWorkoutHomeSuppressedClick/);
@@ -112,11 +115,12 @@ test('collapsed day sheet bar is a compact one-row affordance', () => {
   assert.match(styleCss, /\.cal-workout-day-main\s*\{[\s\S]*flex-direction:\s*row/);
   assert.match(styleCss, /\.cal-workout-day-expand\s*\{[\s\S]*animation:\s*wt-sheet-arrow-pulse/);
   assert.match(styleCss, /\.cal-workout-day-sheet \.cal-workout-day-grip\s*\{[\s\S]*width:\s*42px;[\s\S]*height:\s*4px/);
+  assert.match(styleCss, /\.cal-workout-day-sheet\.is-full \.cal-workout-day-grip\s*\{[\s\S]*rgba\(47,\s*109,\s*246,\s*0\.68\)/);
   assert.match(styleCss, /\.cal-workout-day-sheet\.is-full \.cal-workout-day-expand\s*\{[\s\S]*animation:\s*wt-sheet-arrow-pulse-down/);
   assert.match(styleCss, /@keyframes wt-sheet-arrow-pulse/);
   assert.match(styleCss, /@keyframes wt-sheet-arrow-pulse-down/);
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260625z44-workout-nav-stack/);
+  assert.match(swJs, /tomatofarm-v20260625z45-workout-nav-regression/);
 });
