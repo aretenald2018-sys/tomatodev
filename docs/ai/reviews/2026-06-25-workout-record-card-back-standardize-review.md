@@ -20,6 +20,8 @@
 - PASS: `node --test .\tests\*.test.js` — 513 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 5fb5367`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "index.html::wt-record-back-btn" "app.js::wtFocusWorkoutEntryFromDetail?.(detailTarget)" "workout/exercises.js::wtFocusWorkoutEntryCard(existingIdx)" "workout/exercises.js::block.dataset.wtEntryIdx = String(idx)" "sw.js::tomatofarm-v20260625z47-workout-record-card-standard"`
 
 ## 남은 리스크
 
