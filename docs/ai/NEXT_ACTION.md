@@ -2,12 +2,12 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_execution`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-24-workout-calendar-bottom-sheet.md`
-- 현재 단계: `reviewed — Slice 9 deploy verification pending`
-- 마지막 완료: `Slice 9에서 드래그 release snap이 preview 위치와 같은 clamped dy를 쓰게 하고 closeLatched를 추가한 뒤 리뷰까지 완료했다.`
-- 다음 액션: `Slice 9 변경을 origin/main에 push한 뒤 Dashboard3 Pages 배포 검증을 수행한다.`
-- 차단 사유: `없음`
+- 현재 단계: `complete — Slice 9 drag release settle deployed`
+- 마지막 완료: `Slice 9 구현, 리뷰, Dashboard3 Pages 배포 검증, 배포 asset marker 확인을 완료했다.`
+- 다음 액션: `인증 계정으로 배포 URL에서 운동 탭 -> 날짜 sheet drag up/down settle 실제 UI flow를 수동 확인한다.`
+- 차단 사유: `로그인 화면 때문에 에이전트가 인증 계정 실제 UI flow를 직접 조작하지 못함`
 
 ## 다음 실행 대상
 
@@ -188,8 +188,9 @@
   4. PASS: `node scripts/verify-runtime-assets.mjs`
   5. PASS: `git diff --check`
   6. PASS: `docs/ai/reviews/2026-06-25-workout-calendar-bottom-sheet-drag-settle-review.md`
-  7. pending: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
-  8. not verified yet: 로그인 화면에 막혀 인증 계정 실제 `운동 탭 -> 날짜 sheet drag up/down settle` UI flow 확인 필요
+  7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ da94c74f943735f54c04ef74199da060c3939c26`
+  8. PASS: 배포 URL의 `render-calendar.js`, `sw.js`가 `closeLatched`, `lastDragY`, `const dy = lastDragY`, z43 cache marker를 반환
+  9. not verified yet: 로그인 화면에 막혀 인증 계정 실제 `운동 탭 -> 날짜 sheet drag up/down settle` UI flow 확인 필요
 
 - Slice 9 리뷰:
   - `docs/ai/reviews/2026-06-25-workout-calendar-bottom-sheet-drag-settle-review.md`
