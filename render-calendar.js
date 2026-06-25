@@ -907,7 +907,7 @@ function _renderWorkoutHomeDayBar(selectedKey, { cache, plan, checkins, lookup }
   const sheetState = _currentWorkoutHomeSheetState();
   const expanded = sheetState !== 'bar';
   return `
-    <div class="cal-workout-day-bar" aria-expanded="${expanded ? 'true' : 'false'}">
+    <div class="cal-workout-day-bar" data-wt-sheet-bar aria-expanded="${expanded ? 'true' : 'false'}">
       <button type="button" class="cal-workout-day-expand" data-wt-sheet-handle data-wt-sheet-toggle onclick="window._wtCalToggleSheet('${selected}')" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '날짜 상세 접기' : '선택한 날짜 열기'}">${expanded ? '⌄' : '⌃'}</button>
       <button type="button" class="cal-workout-day-main" onclick="window._wtCalOpenDay('${selected}')">
         <span class="cal-workout-day-date">${selected} <em>${_dateDistanceLabel(selected)}</em></span>
@@ -1838,7 +1838,7 @@ function _resolveWorkoutHomeSheetDragTarget(
   const openDistance = Math.max(WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX, Number(openThresholdPx) || 0);
   const collapseDistance = Math.max(WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX, Number(collapseThresholdPx) || 0);
   const isUp = dy <= -openDistance || velocityY < -WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY;
-  const isIntentionalDown = dy >= collapseDistance;
+  const isIntentionalDown = dy >= collapseDistance || velocityY > WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY;
   if (current === 'bar') return isUp ? 'full' : 'bar';
   if (isIntentionalDown) return 'bar';
   return 'full';
@@ -1879,10 +1879,11 @@ function _suppressWorkoutHomeSheetClick(ms = WORKOUT_HOME_SHEET_POST_DRAG_CLICK_
 }
 
 function _bindWorkoutHomeSheetDrag(root) {
+  const bar = root?.querySelector?.('[data-wt-sheet-bar]');
   const handle = root?.querySelector?.('[data-wt-sheet-handle]');
-  if (!handle) return;
-  handle.addEventListener('pointerdown', _startWorkoutHomeSheetDrag);
-  handle.addEventListener('keydown', _handleWorkoutHomeSheetKey);
+  if (!bar && !handle) return;
+  (bar || handle).addEventListener('pointerdown', _startWorkoutHomeSheetDrag);
+  handle?.addEventListener('keydown', _handleWorkoutHomeSheetKey);
 }
 
 function _handleWorkoutHomeSheetKey(event) {

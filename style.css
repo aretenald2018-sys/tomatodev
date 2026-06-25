@@ -10895,6 +10895,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   flex: 0 0 auto;
   border-top: 0;
   box-shadow: none;
+  touch-action: none;
   user-select: none;
 }
 .cal-workout-day-sheet .cal-workout-day-expand {
