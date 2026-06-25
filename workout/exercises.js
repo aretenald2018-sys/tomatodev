@@ -2378,7 +2378,6 @@ export function _renderPickerList() {
       if (isMaxBenchmarkPicker) {
         btn.innerHTML = `${_renderExercisePickerName(ex, alreadyAdded, pickerStats)}
           <span class="ex-picker-row-side">
-            ${_renderMaxBenchmarkPickerMeta(ex)}
             <span class="ex-picker-actions">
               <span class="ex-picker-icon-btn ex-picker-edit" data-exid="${ex.id}" role="button" tabindex="0" aria-label="종목 수정" title="종목 수정">${_pickerEditIconSvg()}</span>
               <span class="ex-picker-delete" data-exid="${ex.id}" role="button" tabindex="0" title="종목 삭제">삭제</span>

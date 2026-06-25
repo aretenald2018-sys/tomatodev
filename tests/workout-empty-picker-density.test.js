@@ -57,6 +57,10 @@ test('exercise picker removes benchmark banner and fits names into dense rows', 
     workoutExercises.indexOf('function _renderPickerBenchmarkScope'),
     workoutExercises.indexOf('function _renderPickerCategory'),
   );
+  const maxPickerRow = workoutExercises.slice(
+    workoutExercises.indexOf('if (isMaxBenchmarkPicker) {'),
+    workoutExercises.indexOf('} else if (isExpert) {', workoutExercises.indexOf('if (isMaxBenchmarkPicker) {')),
+  );
   const content = ruleBody('#ex-picker-list.ex-picker-content');
   const modalItem = ruleBody('#ex-picker-modal .ex-picker-item');
   const modalName = ruleBody('#ex-picker-modal .ex-picker-name');
@@ -65,7 +69,6 @@ test('exercise picker removes benchmark banner and fits names into dense rows', 
   const historyMeta = ruleBody('.ex-picker-history-meta');
   const modalActions = ruleBody('#ex-picker-modal .ex-picker-actions');
   const modalRowSide = ruleBody('#ex-picker-modal .ex-picker-row-side');
-  const modalBenchmark = ruleBody('#ex-picker-modal .ex-picker-benchmark-meta');
   const thumb = ruleBody('.ex-picker-thumb');
   const thumbImg = ruleBody('.ex-picker-thumb.has-asset img');
   const figureAsset = ruleBody('.ex-picker-muscle-figure.has-asset');
@@ -74,6 +77,8 @@ test('exercise picker removes benchmark banner and fits names into dense rows', 
   assert.doesNotMatch(workoutExercises, /오늘 벤치마크|같은 부위 추가 종목/);
   assert.match(workoutExercises, /function _pickerNameDensityClass/);
   assert.match(workoutExercises, /class="\$\{nameClass\}"/);
+  assert.doesNotMatch(maxPickerRow, /_renderMaxBenchmarkPickerMeta\(ex\)/);
+  assert.doesNotMatch(maxPickerRow, /ex-picker-benchmark-meta/);
   assert.match(content, /padding:\s*16px max\(4px,\s*env\(safe-area-inset-right\)\) max\(28px,\s*env\(safe-area-inset-bottom\)\) 14px/);
   assert.match(modalItem, /grid-template-columns:\s*58px minmax\(0,\s*1fr\) max-content/);
   assert.match(modalItem, /gap:\s*8px/);
@@ -87,12 +92,10 @@ test('exercise picker removes benchmark banner and fits names into dense rows', 
   assert.match(historyMeta, /font-size:\s*10px/);
   assert.match(historyMeta, /white-space:\s*nowrap/);
   assert.match(modalActions, /justify-self:\s*end/);
-  assert.match(modalRowSide, /width:\s*84px/);
+  assert.match(modalRowSide, /width:\s*74px/);
   assert.match(modalRowSide, /justify-self:\s*end/);
-  assert.match(modalRowSide, /max-width:\s*84px/);
-  assert.match(modalBenchmark, /width:\s*84px/);
-  assert.match(modalBenchmark, /font-size:\s*9px/);
-  assert.match(modalBenchmark, /padding:\s*2px 5px/);
+  assert.match(modalRowSide, /max-width:\s*74px/);
+  assert.match(modalRowSide, /align-items:\s*center/);
   assert.match(thumb, /width:\s*58px/);
   assert.match(thumb, /height:\s*46px/);
   assert.match(thumbImg, /width:\s*58px/);

@@ -102,5 +102,5 @@ test('Dashboard3 mode controls cannot persist normal or pro workout record UI', 
 });
 
 test('service worker cache version was bumped for workout asset changes', () => {
-  assert.match(swJs, /tomatofarm-v20260625z59-life-zone-npc-quest/);
+  assert.match(swJs, /tomatofarm-v20260625z60-picker-meta-chip-hide/);
 });

@@ -5568,10 +5568,11 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   gap: 6px;
 }
 #ex-picker-modal .ex-picker-row-side {
-  width: 84px;
-  max-width: 84px;
-  flex: 0 0 84px;
+  width: 74px;
+  max-width: 74px;
+  flex: 0 0 74px;
   justify-self: end;
+  align-items: center;
   justify-content: flex-end;
   gap: 4px;
 }

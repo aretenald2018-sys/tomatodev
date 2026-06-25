@@ -2,12 +2,20 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-25-life-zone-npc-quest-bubble.md`
-- 현재 단계: `complete — NPC quest bubble deployed`
-- 마지막 완료: `헬스 트레이너 위 NPC 퀘스트 말풍선 스프라이트와 클릭 가능한 custom event hook을 Dashboard3 Pages에 배포하고 자산 검증을 완료했다.`
-- 다음 액션: `인증 계정으로 홈 라이프존 카드에서 NPC 말풍선 sprite가 보이고 클릭 가능한지 수동 확인한다.`
-- 차단 사유: `인증 계정 실제 UI flow는 수동 확인 필요`
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-06-25-exercise-program-settings-wendler-migration.md`
+- 현재 단계: `execution complete — Slice 1 picker meta chip hide`
+- 마지막 완료: `운동 picker Max benchmark row 우측 최근/볼륨 chip을 제거하고 캐시 버전 및 관련 source-level 테스트를 갱신했다.`
+- 다음 액션: `docs/ai/features/2026-06-25-exercise-program-settings-wendler-migration.md Slice 1 변경 파일을 리뷰한다.`
+- 차단 사유: `없음`
+
+## 직전 실행 검증
+
+- PASS: `node --check workout/exercises.js; node --check sw.js`
+- PASS: `node --test tests/workout-empty-picker-density.test.js tests/workout-test-mode-unified.test.js tests/home-life-zone-npc-quest.test.js tests/workout-active-session-recovery.test.js tests/stats-muscle-fatigue-insight.test.js tests/stats-picker-ui-polish.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js tests/workout-track-graph-delta.test.js tests/workout-timer-summary-only.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- not verified yet: Dashboard3 Pages 배포 및 인증 계정 UI flow 확인 필요
 
 ## 완료한 작업
 
