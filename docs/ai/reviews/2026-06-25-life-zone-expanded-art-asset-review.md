@@ -31,4 +31,7 @@
 - 사용자 실기기에서 기존 이미지 URL 캐시가 남아 신규 배경이 보이지 않고 actor 위치만 새 기준으로 계산되는 문제가 확인됐다.
 - 수정: 앱 렌더 경로를 `base-room-expanded-alpha.png`로 변경해 기존 `base-room-alpha.png` 캐시와 분리했다.
 - 수정: `sw.js` `STATIC_ASSETS`에 새 expanded 파일 2개를 추가하고 cache version을 `z51`로 bump했다.
-- 확인 필요: Dashboard3 Pages 배포 후 `base-room-expanded-alpha.png`가 HTTP 200, `1672x1672`, RGBA alpha 포함으로 내려오는지 확인한다.
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 620e772`
+- PASS: 배포된 `sw.js`, `home/life-zone.js`, `manifest.json`에서 `z51` cache marker와 `base-room-expanded-alpha.png` 참조 확인
+- PASS: Dashboard3 Pages의 `base-room-expanded-alpha.png`가 HTTP 200, `1672x1672`, RGBA alpha 포함으로 내려오며 로컬 파일과 SHA-256이 일치
+- not verified yet: 인증 계정 홈 화면에서 실제 actor overlay/말풍선 UI는 사용자가 수동 확인 필요

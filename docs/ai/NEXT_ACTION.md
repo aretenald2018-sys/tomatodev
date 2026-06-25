@@ -5,8 +5,8 @@
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-25-life-zone-expanded-art-asset.md`
 - 현재 단계: `complete — life-zone expanded art asset applied`
-- 마지막 완료: `20대 미남 트레이너 v3 시안을 Dashboard3용 라이프존 배경 자산으로 적용했고, 캐시 불일치 방지를 위해 앱 참조 URL을 base-room-expanded-alpha.png로 분리했다.`
-- 다음 액션: `Dashboard3 Pages 배포 후 홈 라이프존 카드에서 새 배경, 러닝 트랙, 안내데스크, 20대 트레이너 NPC가 표시되는지 확인한다.`
+- 마지막 완료: `20대 미남 트레이너 v3 라이프존 배경을 Dashboard3에 배포했고, 캐시 불일치 방지를 위해 앱 참조 URL을 base-room-expanded-alpha.png로 분리했다.`
+- 다음 액션: `인증 계정으로 홈 라이프존 카드에서 새 배경, 러닝 트랙, 안내데스크, 20대 트레이너 NPC가 표시되는지 수동 확인한다.`
 - 차단 사유: `인증 계정 홈 카드 실제 UI flow는 수동 확인 필요`
 
 ## 다음 실행 대상
@@ -27,6 +27,9 @@
   5. PASS: `assets/home/life-zone/base-room-alpha.png` 시각 확인 및 corner alpha 0 확인
   6. 리뷰: `docs/ai/reviews/2026-06-25-life-zone-expanded-art-asset-review.md`
   7. 추가 수정: 캐시 불일치 방지를 위해 `base-room-expanded-alpha.png` 새 URL로 앱 참조 경로 분리
+  8. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 620e772`
+  9. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260625z51-life-zone-expanded-asset-url" "home/life-zone.js::base-room-expanded-alpha.png" "assets/home/life-zone/manifest.json::base-room-expanded-alpha.png"`
+  10. PASS: 배포 URL의 `assets/home/life-zone/base-room-expanded-alpha.png`가 HTTP 200, `1672x1672`, RGBA alpha `(0, 255)`, corner alpha 0으로 내려오며 로컬 파일과 SHA-256이 일치
 
 ## 직전 완료 흐름
 
