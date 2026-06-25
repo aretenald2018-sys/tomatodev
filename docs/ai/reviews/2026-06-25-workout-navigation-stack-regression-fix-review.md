@@ -36,8 +36,9 @@
 - PASS: `node --test .\tests\*.test.js` — 512 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 27cad7280f38de08c1e2ffb70f1dc790f273b425`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "workout/exercises.js::wtHandleExercisePickerBack" "workout/exercises.js::_openWorkoutEntryDetail(entryIdx)" "app.js::handleOverlayBack: _handleWorkoutOverlayBack" "workout/navigation-stack.js::overlay:back" "render-calendar.js::_handleWorkoutHomeSheetHandleClick" "sw.js::tomatofarm-v20260625z45-workout-nav-regression"`
 
 ## 남은 리스크
 
 - 인증 계정이 필요한 실제 UI flow는 아직 자동화하지 못했다.
-- 배포 후 최신 Pages commit과 marker 검증이 필요하다.

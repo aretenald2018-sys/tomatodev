@@ -47,8 +47,10 @@
 - PASS: `node --test .\tests\*.test.js` — 512 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 27cad7280f38de08c1e2ffb70f1dc790f273b425`
+  - 결과: `[deploy-verify] ok 27cad7280f38 tomatofarm-v20260625z45-workout-nav-regression static=215`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "workout/exercises.js::wtHandleExercisePickerBack" "workout/exercises.js::_openWorkoutEntryDetail(entryIdx)" "app.js::handleOverlayBack: _handleWorkoutOverlayBack" "workout/navigation-stack.js::overlay:back" "render-calendar.js::_handleWorkoutHomeSheetHandleClick" "sw.js::tomatofarm-v20260625z45-workout-nav-regression"`
 
 ## 남은 검증
 
-- Dashboard3 Pages 배포 후 최신 commit과 marker를 확인한다.
 - 인증 계정으로 `운동 탭 -> + -> picker back/종목 선택/detail -> Android/PWA back`, `캘린더 날짜 sheet -> 중앙 grip click/down drag` 실제 UI flow를 확인한다.
