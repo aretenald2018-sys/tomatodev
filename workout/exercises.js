@@ -13,7 +13,8 @@ import { getExList, getGlobalExList, getGymExList, getGyms, getLastSession, dete
          deleteExercise, getMuscleParts,
          saveCustomMuscle,
          isExpertModeEnabled,
-         getExpertPreset, getExpertMode, getMaxCycle }              from '../data.js';
+         getExpertPreset, getExpertMode, getMaxCycle,
+         getTestBoardV2, saveTestBoardV2 }              from '../data.js';
 import { estimate1RM, estimateSet1RM, rpeRepsToPct, targetWeightKg, weightRange, SUBPATTERN_TO_MAJOR,
          getTrackMetricHistory, getLastTrackSession, normalizeWorkoutTrack, calcSetVolume } from '../calc.js?v=20260514v72';
 import { MOVEMENTS } from '../config.js';
@@ -25,6 +26,10 @@ import {
   buildMaxPickerExerciseEntry,
   resolveMaxBenchmarkPickerItems,
 } from './expert/max-benchmark-picker.js?v=20260517v3';
+import {
+  getExerciseProgramSettings,
+  upsertExerciseProgramBenchmark,
+} from './test-v2/board-core.js';
 import { getWorkoutSessions } from './sessions.js';
 // resolveCurrentGymId는 expert.js의 단일 진실원 (preset + S.workout.currentGymId 동기화).
 // isExpertViewShown은 세션 뷰 상태 (일반 모드 뷰 ↔ 프로 모드 뷰) 조회용.
@@ -1741,6 +1746,218 @@ function _isExerciseEditable(ex) {
   return /^custom_/.test(String(ex.id)) || _exerciseGymIds(ex).length > 0 || !ex.movementId;
 }
 
+const EX_PROGRAM_MODES = [
+  { id: 'none', label: '기본' },
+  { id: 'volume', label: '볼륨' },
+  { id: 'intensity', label: '강도' },
+  { id: 'both', label: '볼륨+강도' },
+  { id: 'wendler', label: '웬들러' },
+];
+
+function _numText(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? String(n) : '';
+}
+
+function _programModeFromSettings(settings = {}) {
+  if (settings.program === 'wendler') return 'wendler';
+  if (settings.program !== 'stair') return 'none';
+  const tracks = Array.isArray(settings.tracks) ? settings.tracks : [];
+  const hasVolume = tracks.includes('volume');
+  const hasIntensity = tracks.includes('intensity');
+  if (hasVolume && hasIntensity) return 'both';
+  if (hasIntensity) return 'intensity';
+  if (hasVolume) return 'volume';
+  return 'none';
+}
+
+function _ensureExerciseProgramEditor() {
+  const form = document.querySelector('#ex-editor-modal .ex-editor-form');
+  if (!form) return null;
+  let wrap = document.getElementById('ex-editor-program-wrap');
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.id = 'ex-editor-program-wrap';
+    wrap.className = 'ex-program-editor';
+    const actions = form.querySelector('.ex-editor-actions');
+    form.insertBefore(wrap, actions || null);
+  }
+  return wrap;
+}
+
+function _exerciseProgramEditorHtml(settings = {}) {
+  const mode = _programModeFromSettings(settings);
+  const seed = settings.seed || {};
+  const w = settings.wendler || {};
+  const supp = w.supplemental || {};
+  return `
+    <div class="ex-program-head">
+      <div class="ex-editor-label">프로그램</div>
+      <span class="ex-program-current">${mode === 'none' ? '기본' : EX_PROGRAM_MODES.find(m => m.id === mode)?.label || '기본'}</span>
+    </div>
+    <div class="ex-program-seg" role="tablist" aria-label="프로그램 선택">
+      ${EX_PROGRAM_MODES.map(item => `
+        <button type="button" class="ex-program-seg-btn${item.id === mode ? ' is-on' : ''}" data-ex-program-mode="${item.id}" aria-pressed="${item.id === mode ? 'true' : 'false'}">${item.label}</button>
+      `).join('')}
+      <button type="button" class="ex-program-seg-btn" data-ex-program-mode="custom" aria-disabled="true" disabled>사용자 지정</button>
+    </div>
+    <div class="ex-program-panel ex-program-stair" data-ex-program-panel="stair">
+      <div class="ex-program-grid" data-ex-program-track="volume">
+        <label><span>볼륨 kg</span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-volume-kg" min="0" step="0.5" value="${_escPicker(_numText(seed.volume?.kg))}"></label>
+        <label><span>볼륨 회</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-volume-reps" min="1" step="1" value="${_escPicker(_numText(seed.volume?.reps || 12))}"></label>
+      </div>
+      <div class="ex-program-grid" data-ex-program-track="intensity">
+        <label><span>강도 kg</span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-intensity-kg" min="0" step="0.5" value="${_escPicker(_numText(seed.intensity?.kg))}"></label>
+        <label><span>강도 회</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-intensity-reps" min="1" step="1" value="${_escPicker(_numText(seed.intensity?.reps || 8))}"></label>
+      </div>
+      <div class="ex-program-grid ex-program-grid-three">
+        <label><span>세트</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-sets" min="1" step="1" value="${_escPicker(_numText(settings.setsDefault || 4))}"></label>
+        <label><span>증량</span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-increment" min="0" step="0.5" value="${_escPicker(_numText(settings.incrementKg))}"></label>
+      </div>
+    </div>
+    <div class="ex-program-panel ex-program-wendler" data-ex-program-panel="wendler">
+      <div class="ex-program-grid ex-program-grid-three">
+        <label><span>방식</span><select class="ex-editor-select" id="ex-program-wendler-scheme">
+          <option value="w863"${(w.scheme || 'w863') === 'w863' ? ' selected' : ''}>8/6/3</option>
+          <option value="w531"${w.scheme === 'w531' ? ' selected' : ''}>5/3/1</option>
+          <option value="custom"${w.scheme === 'custom' ? ' selected' : ''}>커스텀</option>
+        </select></label>
+        <label><span>TM</span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-wendler-tm" min="0" step="0.5" value="${_escPicker(_numText(w.tmKg))}"></label>
+        <label><span>시작 주</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-start" min="1" max="6" step="1" value="${_escPicker(_numText(w.startWeek || 1))}"></label>
+      </div>
+      <div class="ex-program-grid ex-program-grid-three">
+        <label><span>사이클</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-cycle" min="1" step="1" value="${_escPicker(_numText(w.cycleNo || 1))}"></label>
+        <label><span>증량</span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-wendler-increment" min="0" step="0.5" value="${_escPicker(_numText(w.incrementKg || settings.incrementKg))}"></label>
+        <label><span>반올림</span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-wendler-round" min="0.5" step="0.5" value="${_escPicker(_numText(w.roundKg || 2.5))}"></label>
+      </div>
+      <div class="ex-program-grid ex-program-grid-four">
+        <label><span>보조</span><select class="ex-editor-select" id="ex-program-wendler-supp">
+          <option value="bbb"${(supp.kind || 'bbb') === 'bbb' ? ' selected' : ''}>BBB</option>
+          <option value="fsl"${supp.kind === 'fsl' ? ' selected' : ''}>FSL</option>
+          <option value="none"${supp.kind === 'none' ? ' selected' : ''}>없음</option>
+        </select></label>
+        <label><span>%TM</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-supp-pct" min="10" max="100" step="1" value="${_escPicker(_numText(supp.pct || 50))}"></label>
+        <label><span>세트</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-supp-sets" min="1" step="1" value="${_escPicker(_numText(supp.sets || 5))}"></label>
+        <label><span>횟수</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-supp-reps" min="1" step="1" value="${_escPicker(_numText(supp.reps || 10))}"></label>
+      </div>
+    </div>
+  `;
+}
+
+function _setExerciseProgramMode(mode) {
+  const wrap = document.getElementById('ex-editor-program-wrap');
+  if (!wrap) return;
+  const next = EX_PROGRAM_MODES.some(item => item.id === mode) ? mode : 'none';
+  wrap.dataset.programMode = next;
+  wrap.querySelector('.ex-program-current').textContent = next === 'none' ? '기본' : EX_PROGRAM_MODES.find(item => item.id === next)?.label || '기본';
+  wrap.querySelectorAll('[data-ex-program-mode]').forEach(btn => {
+    const on = btn.getAttribute('data-ex-program-mode') === next;
+    btn.classList.toggle('is-on', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+  const isStair = ['volume', 'intensity', 'both'].includes(next);
+  wrap.querySelector('[data-ex-program-panel="stair"]')?.toggleAttribute('hidden', !isStair);
+  wrap.querySelector('[data-ex-program-panel="wendler"]')?.toggleAttribute('hidden', next !== 'wendler');
+  wrap.querySelector('[data-ex-program-track="volume"]')?.toggleAttribute('hidden', !(next === 'volume' || next === 'both' || next === 'wendler'));
+  wrap.querySelector('[data-ex-program-track="intensity"]')?.toggleAttribute('hidden', !(next === 'intensity' || next === 'both'));
+}
+
+function _bindExerciseProgramEditor() {
+  const wrap = document.getElementById('ex-editor-program-wrap');
+  if (!wrap) return;
+  wrap.querySelectorAll('[data-ex-program-mode]').forEach(btn => {
+    if (btn.disabled) return;
+    btn.addEventListener('click', () => _setExerciseProgramMode(btn.getAttribute('data-ex-program-mode')));
+  });
+}
+
+function _renderExerciseProgramEditor(ex) {
+  const wrap = _ensureExerciseProgramEditor();
+  if (!wrap) return;
+  const settings = getExerciseProgramSettings(getTestBoardV2(), ex || {});
+  wrap.innerHTML = _exerciseProgramEditorHtml(settings);
+  _bindExerciseProgramEditor();
+  _setExerciseProgramMode(_programModeFromSettings(settings));
+}
+
+function _numInput(id, fallback = null) {
+  const el = document.getElementById(id);
+  const n = Number(el?.value);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+function _readExerciseProgramConfig() {
+  const wrap = document.getElementById('ex-editor-program-wrap');
+  const mode = wrap?.dataset.programMode || 'none';
+  if (mode === 'none') return { program: 'none' };
+  if (mode === 'wendler') {
+    return {
+      program: 'wendler',
+      tracks: ['volume'],
+      seed: {
+        volume: {
+          kg: _numInput('ex-program-volume-kg', _numInput('ex-program-wendler-tm', 0)),
+          reps: _numInput('ex-program-volume-reps', 5),
+        },
+      },
+      incrementKg: _numInput('ex-program-wendler-increment', undefined),
+      wendler: {
+        scheme: document.getElementById('ex-program-wendler-scheme')?.value || 'w863',
+        tmKg: _numInput('ex-program-wendler-tm', undefined),
+        startWeek: _numInput('ex-program-wendler-start', 1),
+        cycleNo: _numInput('ex-program-wendler-cycle', 1),
+        incrementKg: _numInput('ex-program-wendler-increment', undefined),
+        roundKg: _numInput('ex-program-wendler-round', 2.5),
+        supplemental: {
+          kind: document.getElementById('ex-program-wendler-supp')?.value || 'bbb',
+          pct: _numInput('ex-program-wendler-supp-pct', 50),
+          sets: _numInput('ex-program-wendler-supp-sets', 5),
+          reps: _numInput('ex-program-wendler-supp-reps', 10),
+        },
+      },
+    };
+  }
+  const tracks = mode === 'both' ? ['volume', 'intensity'] : [mode];
+  return {
+    program: 'stair',
+    tracks,
+    setsDefault: _numInput('ex-program-sets', 4),
+    incrementKg: _numInput('ex-program-increment', undefined),
+    seed: {
+      volume: {
+        kg: _numInput('ex-program-volume-kg', 0),
+        reps: _numInput('ex-program-volume-reps', 12),
+      },
+      intensity: {
+        kg: _numInput('ex-program-intensity-kg', 0),
+        reps: _numInput('ex-program-intensity-reps', 8),
+      },
+    },
+  };
+}
+
+async function _saveExerciseProgramFromEditor(record) {
+  const config = _readExerciseProgramConfig();
+  const currentBoard = getTestBoardV2();
+  const now = new Date();
+  const todayKey = _todayDateKey() || dateKey(now.getFullYear(), now.getMonth(), now.getDate());
+  const result = upsertExerciseProgramBenchmark(currentBoard, record, config, {
+    todayKey,
+    movements: MOVEMENTS,
+    source: 'exercise-editor',
+  });
+  if (result.action === 'skipped') return result;
+  if (result.action === 'noop' && !currentBoard) return result;
+  await saveTestBoardV2(result.board);
+  const saved = getExerciseProgramSettings(getTestBoardV2(), record);
+  if (config.program === 'none') {
+    if (saved.program !== 'none') throw new Error('exercise program archive verification failed');
+  } else if (saved.program === 'none') {
+    throw new Error('exercise program save verification failed');
+  }
+  return result;
+}
+
 function _renderPickerExerciseThumb(ex) {
   const majorId = _exerciseMajorIds(ex)[0] || ex?.muscleId || '';
   const asset = PICKER_MUSCLE_ASSETS[majorId];
@@ -2559,6 +2776,7 @@ export function wtOpenExerciseEditor(exId, defaultMuscleId) {
     gymSelect.value          = _exerciseGymKey(ex);
     if (deleteBtn) deleteBtn.style.display = _isExerciseEditable(ex) ? 'block' : 'none';
     editor.dataset.editingId = exId;
+    _renderExerciseProgramEditor(ex || {});
   } else {
     titleEl.textContent      = '종목 추가';
     nameInput.value          = '';
@@ -2568,6 +2786,7 @@ export function wtOpenExerciseEditor(exId, defaultMuscleId) {
       : (currentGymId && _isExpertSessionActive() ? currentGymId : '');
     if (deleteBtn) deleteBtn.style.display = 'none';
     editor.dataset.editingId = '';
+    _renderExerciseProgramEditor({ muscleId: muscleSelect.value || defaultMuscleId || allMuscles[0]?.id || '' });
   }
   const customNameInput = document.getElementById('ex-editor-new-muscle-name');
   if (customNameInput) customNameInput.value = '';
@@ -2624,6 +2843,7 @@ export async function wtSaveExerciseFromEditor() {
     if (!saved || saved.name !== record.name || saved.muscleId !== record.muscleId) {
       throw new Error('saveExercise verification failed');
     }
+    await _saveExerciseProgramFromEditor(record);
   } catch (e) {
     console.warn('[wtSaveExerciseFromEditor]:', e);
     window.showToast?.('종목 저장 실패 — 다시 시도해주세요', 2800, 'error');

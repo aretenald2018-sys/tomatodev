@@ -4,9 +4,9 @@
 
 - 상태: `ready_for_execution`
 - 계획 문서: `docs/ai/features/2026-06-25-exercise-program-settings-wendler-migration.md`
-- 현재 단계: `review complete — Slice 2 exercise program contract`
-- 마지막 완료: `test_board_v2 기준 종목 프로그램 upsert/read helper를 추가하고 Slice 2 리뷰에서 이슈 없음으로 통과 처리했다.`
-- 다음 액션: `docs/ai/features/2026-06-25-exercise-program-settings-wendler-migration.md Slice 3 종목 수정 시트 프로그램 섹션을 실행한다.`
+- 현재 단계: `review complete — Slice 3 exercise program editor`
+- 마지막 완료: `종목 수정 시트에 프로그램 섹션을 추가하고 saveExercise 검증 후 test_board_v2 프로그램 설정을 저장하도록 연결했다.`
+- 다음 액션: `docs/ai/features/2026-06-25-exercise-program-settings-wendler-migration.md Slice 4 picker에서 프로그램 처방을 오늘 운동 카드에 적용한다.`
 - 차단 사유: `없음`
 
 ## 직전 실행 검증
@@ -19,7 +19,11 @@
 - PASS: `node --test tests/test-v2.board-core.test.js tests/workout-test-mode-unified.test.js tests/home-life-zone-npc-quest.test.js tests/workout-active-session-recovery.test.js tests/stats-muscle-fatigue-insight.test.js tests/stats-picker-ui-polish.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js tests/workout-track-graph-delta.test.js tests/workout-timer-summary-only.test.js`
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
-- not verified yet: Slice 3-4 완료 후 Dashboard3 Pages 배포 및 인증 계정 UI flow 확인 필요
+- PASS: `node --check workout/exercises.js; node --check workout/test-v2/board-core.js; node --check sw.js`
+- PASS: `node --test tests/exercise-program-editor.test.js tests/test-v2.board-core.test.js tests/workout-test-mode-unified.test.js tests/home-life-zone-npc-quest.test.js tests/workout-active-session-recovery.test.js tests/stats-muscle-fatigue-insight.test.js tests/stats-picker-ui-polish.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js tests/workout-track-graph-delta.test.js tests/workout-timer-summary-only.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- not verified yet: Slice 4 완료 후 Dashboard3 Pages 배포 및 인증 계정 UI flow 확인 필요
 
 ## 완료한 작업
 

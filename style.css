@@ -5607,6 +5607,89 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   border-color: var(--primary); outline: none;
   box-shadow: 0 0 0 2px var(--primary-bg);
 }
+#ex-editor-modal .ex-program-editor {
+  display: grid;
+  gap: var(--seed-x2);
+  padding: var(--seed-x3);
+  border: 1px solid var(--seed-stroke-neutral);
+  border-radius: var(--seed-r2);
+  background: var(--seed-bg-fill);
+}
+#ex-editor-modal .ex-program-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--seed-x2);
+}
+#ex-editor-modal .ex-program-current {
+  color: var(--primary);
+  font-size: var(--seed-t2);
+  font-weight: 800;
+}
+#ex-editor-modal .ex-program-seg {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+#ex-editor-modal .ex-program-seg-btn {
+  min-height: 34px;
+  border: 1px solid var(--seed-stroke-weak);
+  border-radius: var(--seed-r2);
+  background: var(--seed-bg-layer);
+  color: var(--seed-fg-muted);
+  font-size: var(--seed-t2);
+  font-weight: 800;
+  letter-spacing: 0;
+}
+#ex-editor-modal .ex-program-seg-btn.is-on {
+  border-color: var(--primary);
+  background: var(--primary-bg);
+  color: var(--primary);
+}
+#ex-editor-modal .ex-program-seg-btn:disabled {
+  opacity: 0.38;
+}
+#ex-editor-modal .ex-program-panel {
+  display: grid;
+  gap: 8px;
+}
+#ex-editor-modal .ex-program-panel[hidden],
+#ex-editor-modal [data-ex-program-track][hidden] {
+  display: none;
+}
+#ex-editor-modal .ex-program-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+#ex-editor-modal .ex-program-grid-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+#ex-editor-modal .ex-program-grid-four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+#ex-editor-modal .ex-program-grid label {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+#ex-editor-modal .ex-program-grid span {
+  color: var(--seed-fg-muted);
+  font-size: var(--seed-t1);
+  font-weight: 700;
+}
+#ex-editor-modal .ex-program-grid .ex-editor-input,
+#ex-editor-modal .ex-program-grid .ex-editor-select {
+  min-width: 0;
+  padding: 8px 9px;
+  font-size: var(--seed-t3);
+}
+@media (max-width: 430px) {
+  #ex-editor-modal .ex-program-grid-three,
+  #ex-editor-modal .ex-program-grid-four {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 
 /* ── Sparkline ── */
 #tab-workout .ex-sparkline-diff {

@@ -183,6 +183,20 @@
 - `node --test tests/test-v2.board-core.test.js`
 - 신규 테스트: 종목 저장 시 기존 name/muscle/gym 필드와 프로그램 설정 저장이 서로 필드 손실 없이 동작한다.
 
+실행 결과:
+
+- 2026-06-25: Slice 3 구현 완료.
+- `workout/exercises.js`의 `종목 수정/추가` 시트에 프로그램 섹션을 동적으로 추가했다.
+- 선택지는 `기본`, `볼륨`, `강도`, `볼륨+강도`, `웬들러`이며, `사용자 지정`은 정책 미확정으로 비활성 버튼으로만 렌더한다.
+- 웬들러 설정 입력은 `8/6/3`, `5/3/1`, `custom`, `TM`, `시작 주`, `사이클`, `증량`, `반올림`, `BBB/FSL/없음`, 보조 `%TM/세트/횟수`를 포함한다.
+- 저장은 기존 `saveExercise(record)` 성공 검증 후 `upsertExerciseProgramBenchmark()`와 `saveTestBoardV2()`로 이어진다.
+- `style.css`에 종목 수정 시트 프로그램 섹션의 compact grid 스타일과 모바일 2열 fallback을 추가했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260625z62-exercise-program-editor`로 bump하고 관련 cache-version 테스트를 갱신했다.
+- PASS: `node --check workout/exercises.js; node --check workout/test-v2/board-core.js; node --check sw.js`
+- PASS: `node --test tests/exercise-program-editor.test.js tests/test-v2.board-core.test.js tests/workout-test-mode-unified.test.js tests/home-life-zone-npc-quest.test.js tests/workout-active-session-recovery.test.js tests/stats-muscle-fatigue-insight.test.js tests/stats-picker-ui-polish.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js tests/workout-track-graph-delta.test.js tests/workout-timer-summary-only.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+
 ### Slice 4: picker에서 프로그램 처방을 오늘 운동 카드에 적용
 
 대상 파일:
@@ -246,5 +260,6 @@
 
 - Slice 1 실행, Dashboard3 Pages 배포 검증, 리뷰 완료.
 - Slice 2 실행 완료. 리뷰 결과 이슈 없음.
-- 다음 실행은 Slice 3부터 순차 진행한다.
+- Slice 3 실행 완료. 리뷰 결과 이슈 없음.
+- 다음 실행은 Slice 4부터 순차 진행한다.
 - 성장보드 색칠/미달 자동 반영은 사용자 최종 결정 전까지 보류한다.
