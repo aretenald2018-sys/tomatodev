@@ -4,24 +4,25 @@
 
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-24-workout-calendar-bottom-sheet.md`
-- 현재 단계: `complete — workout sheet release uses CSS state transition`
-- 마지막 완료: `Slice 10에서 바텀시트 drag release 후 inline height settle/rAF/timer 경로를 제거하고, 상태 class transition만으로 bar/full 끝점에 안착하게 수정했다.`
-- 다음 액션: `인증 계정으로 Dashboard3 Pages에서 운동 탭 -> 날짜 sheet -> 위/아래 drag release가 각각 full/bar 끝점에 안착하는지 수동 확인한다.`
+- 현재 단계: `complete — workout tab pull-down routes through back stack`
+- 마지막 완료: `Slice 11에서 운동탭 최상단 아래 방향 touch gesture를 pull-to-refresh가 아니라 workout back stack으로 흡수하게 수정했다.`
+- 다음 액션: `인증 계정으로 Dashboard3 Pages에서 운동 탭 -> record/detail 또는 열린 sheet -> 아래로 당기기 동작이 새로고침 대신 뒤로가기/캘린더 복귀로 처리되는지 수동 확인한다.`
 - 차단 사유: `인증 계정 실제 UI flow는 수동 확인 필요`
 
 ## 다음 실행 대상
 
 - 계획 파일: `docs/ai/features/2026-06-24-workout-calendar-bottom-sheet.md`
-- 완료한 Slice 10:
-  1. `settleDragPreview()`, `_workoutHomeSheetSettleTimer`, `WORKOUT_HOME_SHEET_SETTLE_CLEANUP_MS` 제거.
-  2. `pointerup`에서 `is-dragging` 제거 후 inline drag CSS 변수를 먼저 제거하고 `_setWorkoutHomeSheetState(targetState)` 적용.
-  3. 회귀 테스트를 rAF/timer settle 금지 기준으로 갱신.
-  4. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260625z55-workout-sheet-release-css`로 bump.
-  5. 진단/리뷰 문서 작성.
+- 완료한 Slice 11:
+  1. 운동탭 활성 상태에만 `body.wt-workout-tab-active` class 적용.
+  2. 운동탭 활성 상태에서 root overscroll/pull-to-refresh 체인 차단.
+  3. 최상단 아래 방향 touch gesture를 `handleWorkoutBack({ action: 'pull:back' })` 경로로 흡수.
+  4. nested scroll 영역이 아직 위로 스크롤될 수 있으면 gesture를 가로채지 않도록 조건 추가.
+  5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260625z56-workout-pull-back`로 bump.
+  6. 진단/리뷰 문서 작성.
 
 - 검증:
-  1. PASS: `node --check render-calendar.js; node --check sw.js`
-  2. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js`
+  1. PASS: `node --check app.js; node --check sw.js`
+  2. PASS: `node --test tests/workout-navigation-stack.test.js tests/workout-calendar-bottom-sheet.test.js`
   3. PASS: `node --test .\tests\*.test.js` — 513 tests passed
   4. PASS: `node scripts/verify-runtime-assets.mjs`
   5. PASS: `git diff --check`

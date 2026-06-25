@@ -89,12 +89,13 @@ test('calendar open can reset the workout home month to today', () => {
 });
 
 test('workout navigation is wired to app, calendar, record card focus, and PWA cache', async () => {
-  const [appJs, calendarJs, indexHtml, workoutExercises, navJs, swJs] = await Promise.all([
+  const [appJs, calendarJs, indexHtml, workoutExercises, navJs, styleCss, swJs] = await Promise.all([
     readFile(new URL('../app.js', import.meta.url), 'utf8'),
     readFile(new URL('../render-calendar.js', import.meta.url), 'utf8'),
     readFile(new URL('../index.html', import.meta.url), 'utf8'),
     readFile(new URL('../workout/exercises.js', import.meta.url), 'utf8'),
     readFile(new URL('../workout/navigation-stack.js', import.meta.url), 'utf8'),
+    readFile(new URL('../style.css', import.meta.url), 'utf8'),
     readFile(new URL('../sw.js', import.meta.url), 'utf8'),
   ]);
 
@@ -102,6 +103,11 @@ test('workout navigation is wired to app, calendar, record card focus, and PWA c
   assert.match(appJs, /window\.Capacitor\?\.Plugins\?\.App/);
   assert.match(appJs, /_handleWorkoutOverlayBack\(\) \|\| handleWorkoutBack/);
   assert.match(appJs, /handleWorkoutBack\(\{ activeTab: _currentTab, preferHistory: true \}\)/);
+  assert.match(appJs, /const WORKOUT_PULL_BACK_THRESHOLD_PX = 72/);
+  assert.match(appJs, /function initWorkoutPullBackGesture\(\)/);
+  assert.match(appJs, /document\.body\?\.classList\.toggle\('wt-workout-tab-active', tab === 'workout'\)/);
+  assert.match(appJs, /window\.addEventListener\('touchmove', onMove, \{ passive: false, capture: true \}\)/);
+  assert.match(appJs, /handleWorkoutBack\(\{ activeTab: _currentTab, preferHistory: true, action: 'pull:back' \}\)/);
   assert.match(appJs, /action:\s*'calendar:tab-today'/);
   assert.match(appJs, /selectedKey:\s*_dateKeyFromParts\(TODAY\.getFullYear\(\), TODAY\.getMonth\(\), TODAY\.getDate\(\)\)/);
   assert.match(appJs, /viewYear:\s*TODAY\.getFullYear\(\)/);
@@ -126,6 +132,8 @@ test('workout navigation is wired to app, calendar, record card focus, and PWA c
   assert.match(workoutExercises, /export function renderWorkoutExerciseDetail\(\)/);
   assert.match(navJs, /typeof options\.handleOverlayBack === 'function' && options\.handleOverlayBack\(\)/);
   assert.match(navJs, /_writeHistory\('push', 'overlay:back'\)/);
+  assert.match(styleCss, /body\.wt-workout-tab-active\s*\{[\s\S]*overscroll-behavior-y:\s*none;/);
+  assert.match(styleCss, /body\.wt-workout-tab-active #tab-workout\.active\s*\{[\s\S]*overscroll-behavior-y:\s*contain;/);
   assert.match(swJs, /\.\/workout\/navigation-stack\.js/);
-  assert.match(swJs, /tomatofarm-v20260625z55-workout-sheet-release-css/);
+  assert.match(swJs, /tomatofarm-v20260625z56-workout-pull-back/);
 });

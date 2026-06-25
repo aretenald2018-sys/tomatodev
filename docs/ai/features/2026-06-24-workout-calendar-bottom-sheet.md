@@ -522,3 +522,56 @@
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
 - not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 `운동 탭 -> 날짜 sheet drag up/down settle` UI flow 확인이 남아 있다.
+
+## 후속 Slice 11 — Workout tab pull-down routes through back stack
+
+### 배경
+
+사용자가 운동탭에서 아래로 당기는 동작이 브라우저/PWA 새로고침과 충돌한다고 보고했다. 운동탭 안에서는 새로고침보다 앱 내부 뒤로가기 또는 캘린더 복귀로 동작해야 한다.
+
+### 진단
+
+1. Android Chrome/PWA는 문서 최상단에서 아래로 당기는 touch gesture를 pull-to-refresh로 해석한다.
+2. 운동탭은 바텀시트 닫기, record/detail 뒤로가기, 캘린더 복귀 모두 아래/뒤로가기 계열 제스처와 연결된다.
+3. 기존 `handleWorkoutBack()` stack은 준비되어 있지만, root pull-down을 운동탭 navigation으로 흡수하는 guard가 없다.
+
+### 포함
+
+- 운동탭 활성 상태에만 `body.wt-workout-tab-active` class를 적용한다.
+- 운동탭 활성 상태에서 root overscroll chaining을 차단한다.
+- 운동탭 최상단에서 아래로 당기는 touch gesture를 passive false capture listener로 받아 pull-to-refresh를 막는다.
+- threshold를 넘으면 `_handleWorkoutOverlayBack()` 또는 `handleWorkoutBack({ action: 'pull:back' })`를 호출한다.
+- 회귀 테스트와 `sw.js` cache version을 bump한다.
+
+### 제외
+
+- 다른 탭의 pull-to-refresh 정책 변경
+- workout navigation stack 순서 변경
+- 바텀시트 drag threshold 변경
+
+### 검증 계획
+
+- `node --check app.js; node --check sw.js`
+- `node --test tests/workout-navigation-stack.test.js tests/workout-calendar-bottom-sheet.test.js`
+- `node --test .\tests\*.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+
+### 실행 결과
+
+- `switchTab()`에서 운동탭 활성 상태에만 `body.wt-workout-tab-active`를 붙이게 했다.
+- `body.wt-workout-tab-active`와 `#tab-workout.active`에 overscroll guard를 추가해 운동탭에서 root pull-to-refresh 체인을 막았다.
+- `initWorkoutPullBackGesture()`를 추가해 운동탭 최상단 아래 방향 touch gesture를 passive false capture listener로 흡수한다.
+- gesture가 threshold를 넘으면 `_handleWorkoutOverlayBack()` 또는 `handleWorkoutBack({ activeTab: _currentTab, preferHistory: true, action: 'pull:back' })`를 호출한다.
+- nested scroll 영역이 아직 위로 스크롤될 수 있으면 gesture를 가로채지 않도록 root/scroller top 조건을 둔다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260625z56-workout-pull-back`로 bump했다.
+
+### 실행 검증
+
+- PASS: `node --check app.js; node --check sw.js`
+- PASS: `node --test tests/workout-navigation-stack.test.js tests/workout-calendar-bottom-sheet.test.js`
+- PASS: `node --test .\tests\*.test.js` — 513 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 `운동 탭 -> pull down -> back/calendar` UI flow 확인이 남아 있다.

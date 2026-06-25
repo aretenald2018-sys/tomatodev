@@ -3358,6 +3358,12 @@ body.wt-modal-scroll-lock {
   background: #f7f7fb;
   min-height: 100%;
 }
+body.wt-workout-tab-active {
+  overscroll-behavior-y: none;
+}
+body.wt-workout-tab-active #tab-workout.active {
+  overscroll-behavior-y: contain;
+}
 #tab-workout.wt-calendar-home-mode {
   background: #f7f7fb;
 }

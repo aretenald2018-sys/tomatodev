@@ -219,6 +219,8 @@ function _takeWorkoutTargetSessionIndex(fallback = 0) {
 }
 
 let _workoutSurface = 'calendar';
+const WORKOUT_PULL_BACK_DEADZONE_PX = 8;
+const WORKOUT_PULL_BACK_THRESHOLD_PX = 72;
 function _setWorkoutSurface(surface) {
   _workoutSurface = surface === 'detail' ? 'detail' : (surface === 'edit' || surface === 'record') ? 'record' : 'calendar';
   const panel = document.getElementById('tab-workout');
@@ -297,6 +299,67 @@ function _handleWorkoutOverlayBack() {
   return _currentTab === 'workout' && window.wtHandleExercisePickerBack?.() === true;
 }
 
+function _isWorkoutPullBlockedTarget(target) {
+  return !!target?.closest?.('input, textarea, select, [contenteditable="true"], .modal-backdrop.open, .modal-overlay.open');
+}
+
+function _nearestWorkoutScroller(target) {
+  const panel = document.getElementById('tab-workout');
+  let node = target instanceof Element ? target : null;
+  while (node && node !== panel && node !== document.body && node !== document.documentElement) {
+    const style = typeof window !== 'undefined' && window.getComputedStyle ? window.getComputedStyle(node) : null;
+    const overflowY = style?.overflowY || '';
+    if (node.scrollHeight > node.clientHeight + 1 && /(auto|scroll|overlay)/.test(overflowY)) return node;
+    node = node.parentElement;
+  }
+  return document.scrollingElement || document.documentElement;
+}
+
+function _canStartWorkoutPullBack(target) {
+  if (_currentTab !== 'workout' || _isWorkoutPullBlockedTarget(target)) return false;
+  const rootTop = Math.max(0, document.scrollingElement?.scrollTop || window.scrollY || 0);
+  const scroller = _nearestWorkoutScroller(target);
+  const scrollerTop = Math.max(0, Number(scroller?.scrollTop) || 0);
+  return rootTop <= 1 && scrollerTop <= 1;
+}
+
+let _workoutPullBackGesture = null;
+let _workoutPullBackBound = false;
+function initWorkoutPullBackGesture() {
+  if (_workoutPullBackBound || typeof window === 'undefined') return;
+  _workoutPullBackBound = true;
+
+  const reset = () => { _workoutPullBackGesture = null; };
+  const onStart = (event) => {
+    if (event.touches?.length !== 1) return reset();
+    const touch = event.touches[0];
+    _workoutPullBackGesture = {
+      startX: touch.clientX,
+      startY: touch.clientY,
+      handled: false,
+      canPull: _canStartWorkoutPullBack(event.target),
+    };
+  };
+  const onMove = (event) => {
+    const gesture = _workoutPullBackGesture;
+    if (!gesture || event.touches?.length !== 1 || _currentTab !== 'workout') return;
+    const touch = event.touches[0];
+    const dx = touch.clientX - gesture.startX;
+    const dy = touch.clientY - gesture.startY;
+    if (!gesture.canPull || dy <= WORKOUT_PULL_BACK_DEADZONE_PX || Math.abs(dx) > dy * 0.75) return;
+
+    if (event.cancelable) event.preventDefault();
+    if (gesture.handled || dy < WORKOUT_PULL_BACK_THRESHOLD_PX) return;
+    gesture.handled = true;
+    _handleWorkoutOverlayBack() || handleWorkoutBack({ activeTab: _currentTab, preferHistory: true, action: 'pull:back' });
+  };
+
+  window.addEventListener('touchstart', onStart, { passive: true, capture: true });
+  window.addEventListener('touchmove', onMove, { passive: false, capture: true });
+  window.addEventListener('touchend', reset, { passive: true, capture: true });
+  window.addEventListener('touchcancel', reset, { passive: true, capture: true });
+}
+
 enableWorkoutPwaHistory({
   getActiveTab: () => _currentTab,
   handleOverlayBack: _handleWorkoutOverlayBack,
@@ -317,10 +380,12 @@ function initWorkoutSystemBack() {
   });
 }
 setTimeout(initWorkoutSystemBack, 0);
+setTimeout(initWorkoutPullBackGesture, 0);
 
 async function switchTab(tab, options = {}) {
   if (isAdmin() && tab !== 'admin') tab = 'admin';
   _currentTab = tab;
+  document.body?.classList.toggle('wt-workout-tab-active', tab === 'workout');
   trackEvent('nav', 'tab_visit', { tab });
   _syncNavigationForCurrentRole();
   document.querySelectorAll('#tab-nav .tab-btn[data-tab]').forEach(b =>
