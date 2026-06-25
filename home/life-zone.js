@@ -18,6 +18,7 @@ import {
 
 const LIFE_ZONE_ASSET_ROOT = './assets/home/life-zone';
 const LIFE_ZONE_SPRITE_ROOT = `${LIFE_ZONE_ASSET_ROOT}/sprites`;
+const LIFE_ZONE_UI_ROOT = `${LIFE_ZONE_ASSET_ROOT}/ui`;
 const LIFE_ZONE_CACHE_MS = 0;
 
 let _actorStateCache = null;
@@ -247,6 +248,22 @@ export function renderLifeZoneCard({
         decoding="async"
       >
       <div class="lz-actor-layer" data-lz-actors aria-hidden="true"></div>
+      <button
+        type="button"
+        class="lz-npc-quest"
+        data-lz-action="npc-quest"
+        aria-label="NPC 퀘스트 보기"
+        title="NPC 퀘스트"
+      >
+        <img
+          src="${LIFE_ZONE_UI_ROOT}/npc-quest-bubble.png"
+          width="192"
+          height="258"
+          alt=""
+          loading="lazy"
+          decoding="async"
+        >
+      </button>
     </div>
     <div class="lz-status-row" data-lz-status></div>
     <div class="lz-summary-strip">
@@ -271,6 +288,13 @@ export function renderLifeZoneCard({
   card.querySelector('[data-lz-action="weight"]')?.addEventListener('click', (event) => {
     event.preventDefault();
     onWeightClick?.();
+  });
+  card.querySelector('[data-lz-action="npc-quest"]')?.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.currentTarget.dispatchEvent(new CustomEvent('life-zone:npc-quest', {
+      bubbles: true,
+      detail: { npc: 'trainer' }
+    }));
   });
 
   return card;

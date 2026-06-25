@@ -44,5 +44,5 @@ test('workout detail modal no longer renders timer-only body sections', () => {
 });
 
 test('service worker cache version was bumped for workout timer summary-only UI', () => {
-  assert.match(swJs, /tomatofarm-v20260625z58-workout-add-fab-click/);
+  assert.match(swJs, /tomatofarm-v20260625z59-life-zone-npc-quest/);
 });

@@ -3,13 +3,35 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-25-workout-calendar-add-fab-click-fix.md`
-- 현재 단계: `complete — Slice 1 deployed`
-- 마지막 완료: `FAB 직접 클릭 라우팅 수정, 테스트/리뷰, Dashboard3 Pages 배포 자산 검증을 완료했다.`
-- 다음 액션: `인증 계정으로 Dashboard3 Pages에서 운동 탭 -> 날짜 sheet full -> 우측 하단 + -> 운동 선택 picker 표시를 수동 확인한다.`
+- 계획 문서: `docs/ai/features/2026-06-25-life-zone-npc-quest-bubble.md`
+- 현재 단계: `reviewed — NPC quest bubble ready for deploy`
+- 마지막 완료: `헬스 트레이너 위 NPC 퀘스트 말풍선 스프라이트와 클릭 가능한 custom event hook을 추가하고 로컬 검증/리뷰를 완료했다.`
+- 다음 액션: `Dashboard3 Pages에 배포한 뒤 홈 라이프존 카드에서 NPC 말풍선 sprite가 보이고 클릭 가능한지 확인한다.`
 - 차단 사유: `인증 계정 실제 UI flow는 수동 확인 필요`
 
 ## 완료한 작업
+
+- 계획 파일: `docs/ai/features/2026-06-25-life-zone-npc-quest-bubble.md`
+- 변경 파일:
+  1. `assets/home/life-zone/ui/npc-quest-bubble.png`
+  2. `home/life-zone.js`
+  3. `style.css`
+  4. `sw.js`
+  5. `scripts/validate-life-zone-assets.py`
+  6. `tests/home-life-zone-npc-quest.test.js`
+  7. `docs/ai/features/2026-06-25-life-zone-npc-quest-bubble.md`
+  8. `docs/ai/reviews/2026-06-25-life-zone-npc-quest-bubble-review.md`
+
+- 실행 검증:
+  1. PASS: `python scripts/validate-life-zone-assets.py`
+  2. PASS: `node --check home/life-zone.js; node --check sw.js`
+  3. PASS: `node --test tests/home-life-zone-npc-quest.test.js`
+  4. PASS: `node scripts/verify-runtime-assets.mjs`
+  5. PASS: `node --test .\tests\*.test.js` — 518 tests passed
+  6. PASS: `git diff --check`
+  7. 리뷰: `docs/ai/reviews/2026-06-25-life-zone-npc-quest-bubble-review.md`
+
+## 이전 완료 흐름
 
 - 계획 파일: `docs/ai/features/2026-06-25-workout-calendar-add-fab-click-fix.md`
 - 변경 파일:

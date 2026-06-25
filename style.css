@@ -6364,6 +6364,37 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   image-rendering: crisp-edges;
   filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.28));
 }
+.lz-npc-quest {
+  position: absolute;
+  left: calc(1058 / 1672 * 100%);
+  top: calc(932 / 1672 * 100%);
+  z-index: 120;
+  width: clamp(44px, calc(168 / 1672 * 100%), 76px);
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  transform: translate(-50%, -100%);
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+.lz-npc-quest img {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.28));
+}
+.lz-npc-quest:active {
+  transform: translate(-50%, -100%) scale(0.96);
+}
+.lz-npc-quest:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.82);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
 .lz-speech {
   position: absolute;
   left: calc(var(--lz-bx) / 1672 * 100%);

@@ -183,5 +183,5 @@ test('collapsed day sheet bar is a compact one-row affordance', () => {
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260625z58-workout-add-fab-click/);
+  assert.match(swJs, /tomatofarm-v20260625z59-life-zone-npc-quest/);
 });

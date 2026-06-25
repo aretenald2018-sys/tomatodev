@@ -51,6 +51,15 @@ def main():
                 if alpha_min != 0 or alpha_max == 0:
                     raise AssertionError(f"Sprite alpha looks wrong: {sprite.filename}")
 
+    npc_bubble = assert_png(ASSET_ROOT / "ui" / "npc-quest-bubble.png")
+    if npc_bubble.size != (192, 258):
+        raise AssertionError(f"NPC quest bubble size mismatch: {npc_bubble.size}")
+    if npc_bubble.mode != "RGBA":
+        raise AssertionError(f"NPC quest bubble must be RGBA: {npc_bubble.filename}")
+    bubble_alpha_min, bubble_alpha_max = npc_bubble.getextrema()[3]
+    if bubble_alpha_min != 0 or bubble_alpha_max == 0:
+        raise AssertionError(f"NPC quest bubble alpha looks wrong: {npc_bubble.filename}")
+
     html = (ROOT / "docs" / "pixel-life-zone-mockup.html").read_text(encoding="utf-8")
     required_refs = [
         "../assets/home/life-zone/base-room-expanded-alpha.png",
