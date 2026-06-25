@@ -5,8 +5,8 @@
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-25-workout-navigation-stack-redesign.md`
 - 현재 단계: `complete — workout navigation stack implemented and reviewed`
-- 마지막 완료: `Slice 1-6을 구현해 캘린더 BottomSheet -> WorkoutRecordScreen -> WorkoutDetailScreen stack, PWA history back, Android backButton hook, detail set 입력 화면을 추가했고 전체 테스트 512개를 통과했다.`
-- 다음 액션: `Dashboard3 Pages 배포 검증 후 인증 계정으로 운동 탭 실제 UI flow를 수동 확인한다.`
+- 마지막 완료: `Slice 1-6 구현/리뷰, 전체 테스트 512개, runtime asset 검증, Dashboard3 Pages 배포 검증, 배포 marker 검증을 완료했다.`
+- 다음 액션: `인증 계정으로 배포 URL에서 운동 탭 실제 UI flow를 수동 확인한다.`
 - 차단 사유: `인증 계정 실제 UI flow는 에이전트가 직접 조작하지 못함`
 
 ## 다음 실행 대상
@@ -26,6 +26,9 @@
   3. PASS: `node --test .\tests\*.test.js` — 512 tests passed
   4. PASS: `node scripts/verify-runtime-assets.mjs`
   5. PASS: `git diff --check`
+  6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ ad707121d63019be2f2f5bae181c89ce53fbd460`
+     - 결과: `[deploy-verify] ok ad707121d630 tomatofarm-v20260625z44-workout-nav-stack static=215`
+  7. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "workout/navigation-stack.js::WORKOUT_ROUTES" "app.js::enableWorkoutPwaHistory" "render-calendar.js::wtOpenWorkoutRecord" "index.html::wt-exercise-detail-root" "sw.js::tomatofarm-v20260625z44-workout-nav-stack"`
 
 - 리뷰:
   - `docs/ai/reviews/2026-06-25-workout-navigation-stack-redesign-review.md`
