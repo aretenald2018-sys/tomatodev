@@ -1939,7 +1939,6 @@ function _startWorkoutHomeSheetDrag(event) {
   sheet.style.setProperty('--wt-day-sheet-drag-y', '0px');
   sheet.style.setProperty('--wt-day-sheet-drag-height', `${startHeight}px`);
   event.currentTarget.setPointerCapture?.(event.pointerId);
-  event.preventDefault?.();
 
   const onMove = (moveEvent) => {
     if (moveEvent.cancelable) moveEvent.preventDefault();

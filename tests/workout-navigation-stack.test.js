@@ -127,5 +127,5 @@ test('workout navigation is wired to app, calendar, record card focus, and PWA c
   assert.match(navJs, /typeof options\.handleOverlayBack === 'function' && options\.handleOverlayBack\(\)/);
   assert.match(navJs, /_writeHistory\('push', 'overlay:back'\)/);
   assert.match(swJs, /\.\/workout\/navigation-stack\.js/);
-  assert.match(swJs, /tomatofarm-v20260625z48-workout-sheet-drag-final-dy/);
+  assert.match(swJs, /tomatofarm-v20260625z49-workout-sheet-click-restore/);
 });

@@ -82,7 +82,7 @@ test('sheet drag handlers open directly to full and collapse to bar', () => {
   assert.match(calendarJs, /if \(startState === 'bar' && dy <= -openThresholdPx\) openLatched = true/);
   assert.match(calendarJs, /if \(startState === 'full' && dy >= collapseThresholdPx\) closeLatched = true/);
   assert.match(calendarJs, /const nextHeight = openLatched \? maxHeight : closeLatched \? minHeight : Math\.max/);
-  assert.match(calendarJs, /event\.preventDefault\?\.\(\)/);
+  assert.doesNotMatch(dragFn, /event\.preventDefault\?\.\(\)/);
   assert.match(calendarJs, /if \(moveEvent\.cancelable\) moveEvent\.preventDefault\(\)/);
   assert.match(calendarJs, /velocityY = \(lastY - lastMoveY\) \/ elapsed/);
   assert.match(calendarJs, /startHeight - dy/);
@@ -131,5 +131,5 @@ test('collapsed day sheet bar is a compact one-row affordance', () => {
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260625z48-workout-sheet-drag-final-dy/);
+  assert.match(swJs, /tomatofarm-v20260625z49-workout-sheet-click-restore/);
 });
