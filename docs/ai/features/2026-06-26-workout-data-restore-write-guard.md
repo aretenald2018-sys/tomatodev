@@ -2,7 +2,7 @@
 
 ## 상태
 
-- Status: Execution in progress
+- Status: Completed on 2026-06-26
 - 요청: 운영계에 입력한 운동기록이 개발계 테스트 중 여러 번 덮어써져 일부 유실된 것으로 보여, 복원 가능성을 확인하고 데이터 분기 없이 재발 방지한다.
 - 원칙: 활성 데이터는 기존 `users/{uid}/workouts/{date}` 단일 경로를 유지한다. 별도 개발 DB/운영 DB 분기는 만들지 않는다.
 
@@ -105,7 +105,7 @@
 
 ### Slice 4: 승인된 날짜만 field-level 복원
 
-- Status: Blocked by user data
+- Status: Completed partially on 2026-06-26
 - Required input:
   - 복원 대상 계정 id.
   - 의심 날짜 범위.
@@ -117,6 +117,42 @@
 - Verification:
   - 복원 전/후 날짜별 운동 세션 수, 세트 수, duration, 주요 메타 diff.
   - 배포 URL에서 대상 날짜 UI flow 확인.
+
+#### 실행 결과
+
+- 복원 스크립트: `scripts/restore-workout-from-pitr.mjs`
+- 명령:
+  - dry-run: `node scripts/restore-workout-from-pitr.mjs "김_태우" 2026-06-26 2026-06-26T07:00:00Z`
+  - write: `node scripts/restore-workout-from-pitr.mjs "김_태우" 2026-06-26 2026-06-26T07:00:00Z --write`
+- 복원 대상: `users/김_태우/workouts/2026-06-26`
+- 복원 방식: PITR 원본의 운동 도메인 필드만 Firestore REST `PATCH` + `updateMask`로 merge 복원.
+- 복원 전:
+  - exercises 0
+  - workoutSessions 1개, sessionExercises 0
+  - sets 0
+  - `gymId` null
+  - `maxMeta` 없음
+- PITR 원본:
+  - exercises 5
+  - workoutSessions 1개, sessionExercises 1
+  - sets 31
+  - `gymId = mo3x1h4ox5jjlt3a48`
+  - `maxMeta` 있음
+- 복원 후:
+  - exercises 5
+  - workoutSessions 1개, sessionExercises 1
+  - sets 31
+  - `gymId = mo3x1h4ox5jjlt3a48`
+  - `maxMeta` 있음
+- 이번 주 현재 운동 문서 재조회:
+  - `김_태우`: `2026-06-23`, `2026-06-24`, `2026-06-25`, `2026-06-26` 총 4 운동일.
+  - `최_준수`: `2026-06-23`, `2026-06-24` 총 2 운동일.
+- 복원하지 않은 항목:
+  - `김_태우 / 2026-06-22`: PITR active workout source 없음.
+  - `최_준수 / 2026-06-22`, `2026-06-25`, `2026-06-26`: PITR active workout source 없음.
+  - 서버 `_weekly_ranking/current`의 초과 활동일은 식단까지 active로 세는 함수 결과이므로 운동 상세 기록으로 보정하지 않았다.
+- not verified yet:
+  - 인증 계정 브라우저 세션이 없어 배포 URL에서 `운동 탭 -> 2026-06-26 -> 상세 카드` UI flow는 직접 클릭 확인하지 못했다.
 
 ## 지금 필요한 사용자 확인
 
@@ -160,3 +196,15 @@
 - 해석:
   - 확실히 상세 복원 가능한 손상 문서는 `김_태우 / 2026-06-26` 하나다.
   - 랭킹 캐시의 추가 활동일은 식단까지 active로 세는 서버 함수 때문에 운동일로 보정하면 안 된다.
+
+## 배포 검증
+
+- 커밋: `a0ef75d88948`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ a0ef75d`
+  - 결과: `[deploy-verify] ok a0ef75d88948 tomatofarm-v20260626z13-workout-save-merge-guard static=219`
+- PASS: cache-bust HTTP marker 확인
+  - `sw.js` HTTP 200 + `tomatofarm-v20260626z13-workout-save-merge-guard`
+  - `data/data-save.js` HTTP 200 + `allowReplace:true`
+  - `render-cooking.js` HTTP 200 + `saveDay(dateKey, patch`
+  - `sheet.js` HTTP 200 + `rethrow: true`
+- 참고: `npm.cmd run verify:deployed-markers`는 `sw.js` 캐시 응답으로 marker missing을 냈으나, cache-bust 직접 HTTP 확인은 모두 PASS.

@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_execution`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-26-workout-data-restore-write-guard.md`
-- 현재 단계: `execution — 운영 운동기록 복원 및 overwrite 재발 방지`
-- 마지막 완료: `saveDay merge guard, sheet/cooking merge patch 저장, 회귀 테스트, 캐시 버전 bump를 구현했고 전체 테스트 549개를 통과했다. PITR로 김_태우 2026-06-26 상세 운동 원본을 찾았다.`
-- 다음 액션: `Dashboard3 배포 검증 후 users/김_태우/workouts/2026-06-26의 운동 필드만 PITR 원본에서 merge 복원한다.`
+- 현재 단계: `complete — 운영 운동기록 복원 및 overwrite 재발 방지`
+- 마지막 완료: `Dashboard3 배포 검증 후 users/김_태우/workouts/2026-06-26의 운동 도메인 필드를 PITR 원본에서 merge 복원했고 read-after-write로 exercises 5, sessions 1, sets 31을 확인했다. 리뷰 문서까지 작성했다.`
+- 다음 액션: `없음`
 - 차단 사유: `없음`
 
 ## 이번 계획 요약
@@ -26,7 +26,16 @@
   3. PASS: `node --test .\tests\*.test.js` — 549 tests passed
   4. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
   5. PASS: `git diff --check`
-  6. not verified yet: Dashboard3 배포 검증 및 Firestore 상세 복원 write는 다음 액션으로 남음
+  6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ a0ef75d`
+     - 결과: `[deploy-verify] ok a0ef75d88948 tomatofarm-v20260626z13-workout-save-merge-guard static=219`
+  7. PASS: cache-bust HTTP marker 확인 — `sw.js`, `data/data-save.js`, `render-cooking.js`, `sheet.js`
+  8. PASS: `node scripts/restore-workout-from-pitr.mjs "김_태우" 2026-06-26 2026-06-26T07:00:00Z --write`
+     - before: exercises 0, sessions 1, sets 0
+     - source: exercises 5, sessions 1, sets 31
+     - after: exercises 5, sessions 1, sets 31
+  9. PASS: Firestore 현재 주 재조회 — `김_태우` 운동일 4일, `최_준수` 운동일 2일
+  10. PASS: `docs/ai/reviews/2026-06-26-workout-data-restore-write-guard-review.md`
+  11. not verified yet: 인증 계정 브라우저 세션이 없어 배포 URL에서 `운동 탭 -> 2026-06-26 -> 상세 카드` 실제 UI 클릭 flow는 직접 확인하지 못함
 
 ## 이번 실행 검증
 
