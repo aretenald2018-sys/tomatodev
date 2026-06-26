@@ -38,6 +38,16 @@ test('track graph delta class remains sign-based for pp labels', () => {
   assert.match(fn, /delta\.startsWith\('-'\)/);
 });
 
+test('wendler graph uses a separate W history instead of volume or intensity rows', () => {
+  assert.match(exercisesJs, /getWendlerMetricHistory/);
+  assert.match(exercisesJs, /isWendlerWorkoutEntry/);
+  const fn = sliceByFirstBrace(exercisesJs, 'function _buildMaxTrackSparkline');
+  assert.match(fn, /isWendlerWorkoutEntry\(entry\)/);
+  assert.match(fn, /getWendlerMetricHistory/);
+  assert.match(fn, /_buildTrackGraphRow\('W',\s*history\.W,\s*true\)/);
+  assert.match(fn, /title="웬들러 기록은 볼륨\/강도와 분리/);
+});
+
 test('service worker cache version was bumped for track pp delta assets', () => {
-  assert.match(swJs, /tomatofarm-v20260626z4-wendler-recommendation-priority/);
+  assert.match(swJs, /tomatofarm-v20260626z5-wendler-track-graph/);
 });

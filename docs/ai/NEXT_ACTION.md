@@ -2,12 +2,23 @@
 
 ## 현재 상태
 
-- 상태: `complete`
+- 상태: `ready_for_review`
 - 계획 문서: `docs/ai/features/2026-06-25-exercise-program-settings-wendler-migration.md`
-- 현재 단계: `completed — Slice 11 wendler prescription priority for recommended picker`
-- 마지막 완료: `추천 종목 피커에서도 저장된 웬들러 처방이 Max 추천 fallback보다 먼저 적용되도록 수정하고 Dashboard3 Pages 배포 검증까지 완료했다.`
-- 다음 액션: `없음`
+- 현재 단계: `execution complete — Slice 12 wendler set chips and wendler-only graph`
+- 마지막 완료: `웬들러 자동 세트 칩을 프리/메인/BBB/FSL로 표시하고, 웬들러 카드 그래프를 볼륨/강도와 분리된 W 히스토리로 렌더링하도록 구현했다.`
+- 다음 액션: `Slice 12 변경 파일 리뷰`
 - 차단 사유: `없음`
+
+## 리뷰 대상
+
+- `calc.js`
+- `workout/exercises.js`
+- `style.css`
+- `sw.js`
+- `tests/calc.expert.test.js`
+- `tests/workout-track-graph-delta.test.js`
+- `tests/workout-test-mode-unified.test.js`
+- cache-version 참조 테스트 파일들
 
 ## 직전 실행 검증
 

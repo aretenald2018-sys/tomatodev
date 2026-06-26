@@ -543,7 +543,17 @@ function _trackWorkSets(sets) {
   });
 }
 
+export function isWendlerWorkoutEntry(entry = {}) {
+  if (!entry || typeof entry !== 'object') return false;
+  if (entry.recommendationMeta?.program === 'wendler') return true;
+  if (entry.maxPrescription?.program === 'wendler') return true;
+  if (entry.recommendationMeta?.wendlerSignature || entry.maxPrescription?.wendlerSignature) return true;
+  return (entry.sets || []).some(set => !!set?.wendlerRole);
+}
+
 export function inferWorkoutTrack(entry = {}, ex = null) {
+  if (isWendlerWorkoutEntry(entry)) return { track: 'W', source: 'wendler' };
+
   const explicit = normalizeWorkoutTrack(
     entry?.recommendationMeta?.track ||
     entry?.maxPrescription?.benchmarkTrack ||
@@ -570,10 +580,26 @@ export function inferWorkoutTrack(entry = {}, ex = null) {
   return { track: '', source: 'ambiguous-reps' };
 }
 
-export function calcTrackSessionMetric(entry = {}, track = '') {
-  const t = normalizeWorkoutTrack(track) || inferWorkoutTrack(entry).track;
+export function calcWendlerSessionMetric(entry = {}) {
   const workSets = _trackWorkSets(entry?.sets);
-  if (!t || !workSets.length) return 0;
+  if (!workSets.length) return 0;
+  const mainSets = workSets.filter(set => set?.wendlerRole === 'main');
+  const sourceSets = mainSets.length ? mainSets : workSets;
+  return Math.max(...sourceSets.map(set => (
+    estimateSet1RM(set) || (Number(set.kg) || 0) * calcRomFactor(set)
+  )));
+}
+
+export function calcTrackSessionMetric(entry = {}, track = '') {
+  const requestedTrack = normalizeWorkoutTrack(track);
+  if (isWendlerWorkoutEntry(entry) && requestedTrack) return 0;
+  const inferred = requestedTrack
+    ? { track: requestedTrack, source: 'explicit' }
+    : inferWorkoutTrack(entry);
+  const t = inferred.track;
+  if (t === 'W') return calcWendlerSessionMetric(entry);
+  const workSets = _trackWorkSets(entry?.sets);
+  if (!normalizeWorkoutTrack(t) || !workSets.length) return 0;
   if (t === 'H') {
     return Math.max(...workSets.map(s => estimateSet1RM(s) || (Number(s.kg) || 0) * calcRomFactor(s)));
   }
@@ -591,6 +617,7 @@ export function getTrackMetricHistory(cache, exList, exerciseId) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) continue;
     const entries = (day.exercises || []).filter(e => e?.exerciseId === exerciseId);
     for (const entry of entries) {
+      if (isWendlerWorkoutEntry(entry)) continue;
       if (!_trackWorkSets(entry?.sets).length) continue;
       total += 1;
       const ex = exById.get(entry.exerciseId) || null;
@@ -615,6 +642,35 @@ export function getTrackMetricHistory(cache, exList, exerciseId) {
   };
 }
 
+export function getWendlerMetricHistory(cache, exList, exerciseId) {
+  if (!cache || !exerciseId) return { W: [], total: 0 };
+  const byDate = {};
+  let total = 0;
+
+  for (const [key, day] of Object.entries(cache)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) continue;
+    const entries = (day.exercises || []).filter(e => e?.exerciseId === exerciseId);
+    for (const entry of entries) {
+      if (!isWendlerWorkoutEntry(entry)) continue;
+      const value = calcWendlerSessionMetric(entry);
+      if (value <= 0) continue;
+      total += 1;
+      const point = {
+        date: key,
+        value,
+        week: Number(entry.recommendationMeta?.cycleWeek) || null,
+        weekStart: entry.recommendationMeta?.boardV2WeekStart || null,
+      };
+      if (!byDate[key] || value >= byDate[key].value) byDate[key] = point;
+    }
+  }
+
+  return {
+    W: Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date)),
+    total,
+  };
+}
+
 export function getLastTrackSession(cache, exList, exerciseId, track, excludeDateKey = null) {
   const targetTrack = normalizeWorkoutTrack(track);
   if (!cache || !exerciseId || !targetTrack) return null;
@@ -627,6 +683,7 @@ export function getLastTrackSession(cache, exList, exerciseId, track, excludeDat
   for (const key of dateKeys) {
     const entries = (cache[key]?.exercises || []).filter(e => e?.exerciseId === exerciseId);
     for (const entry of entries) {
+      if (isWendlerWorkoutEntry(entry)) continue;
       if (!_trackWorkSets(entry?.sets).length) continue;
       const ex = exById.get(entry.exerciseId) || null;
       const inferred = inferWorkoutTrack(entry, ex);

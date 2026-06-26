@@ -602,6 +602,10 @@ body.wt-modal-scroll-lock {
   gap: 3px;
   min-height: 15px;
 }
+.ex-max-v2-plan .ex-max-track-graph-row[data-track="W"],
+.wt-max-trend .ex-max-track-graph-row[data-track="W"] {
+  grid-template-columns: 38px minmax(28px, 1fr) 40px;
+}
 .ex-max-v2-plan .ex-max-track-graph-chip,
 .wt-max-trend .ex-max-track-graph-chip {
   height: 15px;
@@ -717,6 +721,13 @@ body.wt-modal-scroll-lock {
   color: #be123c;
   background: #fff1f2;
 }
+.ex-max-track-graph-row[data-track="W"] {
+  grid-template-columns: 44px minmax(42px, 1fr) 58px;
+}
+.ex-max-track-graph-row[data-track="W"] .ex-max-track-graph-chip {
+  color: #0f766e;
+  background: #ecfdf5;
+}
 .ex-max-track-graph-line {
   display: block;
   width: 100%;
@@ -807,6 +818,9 @@ body.wt-modal-scroll-lock {
 .ex-max-v2-type-btn.main { color: var(--primary, #fa342c); background: var(--primary-bg, rgba(250,52,44,.12)); }
 .ex-max-v2-type-btn.warmup { color: #2563eb; background: #eef4ff; }
 .ex-max-v2-type-btn.drop { color: #b7791f; background: #fff7e6; }
+.ex-max-v2-type-btn.wendler-main { color: var(--primary, #fa342c); background: var(--primary-bg, rgba(250,52,44,.12)); }
+.ex-max-v2-type-btn.bbb { color: #0f766e; background: #ecfdf5; }
+.ex-max-v2-type-btn.fsl { color: #7c3aed; background: #f5f3ff; }
 .ex-max-v2-field {
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr);
@@ -11029,6 +11043,10 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   .wt-max-trend .ex-max-track-graph-row {
     grid-template-columns: 30px minmax(26px, 1fr) 40px;
     gap: 3px;
+  }
+  .ex-max-v2-plan .ex-max-track-graph-row[data-track="W"],
+  .wt-max-trend .ex-max-track-graph-row[data-track="W"] {
+    grid-template-columns: 38px minmax(24px, 1fr) 40px;
   }
   .ex-max-v2-plan .ex-max-track-graph-chip,
   .wt-max-trend .ex-max-track-graph-chip {

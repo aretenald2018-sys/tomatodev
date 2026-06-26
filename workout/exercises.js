@@ -16,7 +16,8 @@ import { getExList, getGlobalExList, getGymExList, getGyms, getLastSession, dete
          getExpertPreset, getExpertMode, getMaxCycle,
          getTestBoardV2, saveTestBoardV2 }              from '../data.js';
 import { estimate1RM, estimateSet1RM, rpeRepsToPct, targetWeightKg, weightRange, SUBPATTERN_TO_MAJOR,
-         getTrackMetricHistory, getLastTrackSession, normalizeWorkoutTrack, calcSetVolume } from '../calc.js?v=20260514v72';
+         getTrackMetricHistory, getWendlerMetricHistory, getLastTrackSession, normalizeWorkoutTrack,
+         calcSetVolume, isWendlerWorkoutEntry } from '../calc.js?v=20260514v72';
 import { MOVEMENTS } from '../config.js';
 import {
   getWorkoutNavSnapshot,
@@ -331,17 +332,18 @@ function _buildMaxExerciseCardMeta(entry, ex, mc, idx) {
   const kg = Number(prescription?.startKg) || Number(entry?.sets?.[0]?.kg) || 0;
   const reps = Number(prescription?.repsHigh) || Number(entry?.sets?.[0]?.reps) || 0;
   const sets = Number(prescription?.targetSets) || (entry?.sets?.length || 0);
-  const trackCode = _activeMaxTrack(entry, ex);
-  const track = trackCode === 'H' ? '강도' : '볼륨';
+  const isWendler = isWendlerWorkoutEntry(entry);
+  const trackCode = isWendler ? 'W' : _activeMaxTrack(entry, ex);
+  const track = isWendler ? '웬들러' : (trackCode === 'H' ? '강도' : '볼륨');
   const week = entry?.recommendationMeta?.cycleWeek ? `W${entry.recommendationMeta.cycleWeek}` : '오늘';
   const source = entry?.gymTagAtTime === '*' ? '공통 기구' : '선택 헬스장';
   const isBenchmark = !!prescription?.benchmarkId || !!entry?.recommendationMeta?.cycleId;
-  const title = `${week} ${track} 트랙`;
+  const title = isWendler ? `${week} 웬들러 트랙` : `${week} ${track} 트랙`;
   const subtitle = prescription?.transparency?.detail || prescription?.reason || '최근 수행 기록과 오늘 선택한 부위를 기준으로 세트를 준비했어요.';
   const pace = prescription?.deltaKg == null
     ? '계획'
     : (Number(prescription.deltaKg) >= 0 ? '정상' : '조정');
-  return { prescription, kg, reps, sets, trackCode, track, week, source, isBenchmark, title, subtitle, pace };
+  return { prescription, kg, reps, sets, trackCode, track, week, source, isBenchmark, title, subtitle, pace, isWendler };
 }
 
 let _maxTrackGraphSeq = 0;
@@ -359,6 +361,7 @@ function _smoothMiniPath(coords) {
 
 function _formatTrackGraphValue(track, value) {
   const v = Number(value) || 0;
+  if (track === 'W') return `${Math.round(v)}kg`;
   if (track === 'H') return `${Math.round(v)}kg`;
   if (v >= 1000) return `${(v / 1000).toFixed(1)}t`;
   return `${Math.round(v)}kg`;
@@ -419,10 +422,10 @@ function _buildTrackGraphSvg(points, color, track) {
 }
 
 function _buildTrackGraphRow(track, points, active) {
-  const color = track === 'H' ? '#be123c' : '#2563eb';
+  const color = track === 'W' ? '#0f766e' : (track === 'H' ? '#be123c' : '#2563eb');
   const last = points?.length ? points[points.length - 1].value : 0;
-  const label = track === 'H' ? '강도' : '볼륨';
-  const metric = track === 'H' ? '추정1RM' : '총볼륨';
+  const label = track === 'W' ? '웬들러' : (track === 'H' ? '강도' : '볼륨');
+  const metric = track === 'W' ? 'e1RM' : (track === 'H' ? '추정1RM' : '총볼륨');
   const valueLabel = last > 0 ? _formatTrackGraphValue(track, last) : metric;
   const delta = _formatTrackGraphDelta(points || []);
   return `
@@ -464,6 +467,11 @@ function _activeMaxTrack(entry, ex) {
 
 function _buildMaxTrackSparkline(entry, ex) {
   if (!entry?.exerciseId) return '';
+  if (isWendlerWorkoutEntry(entry)) {
+    const history = getWendlerMetricHistory(_cacheWithCurrentWorkoutForTrackMetric(entry), getExList(), entry.exerciseId);
+    const rows = _buildTrackGraphRow('W', history.W, true);
+    return `<div class="ex-max-track-graph is-wendler" title="웬들러 기록은 볼륨/강도와 분리해 메인 세트 e1RM으로 그립니다.">${rows}</div>`;
+  }
   const history = getTrackMetricHistory(_cacheWithCurrentWorkoutForTrackMetric(entry), getExList(), entry.exerciseId);
   const activeTrack = _activeMaxTrack(entry, ex);
   const rows = [
@@ -514,8 +522,9 @@ function _buildMaxExerciseCardHeader(entry, ex, mc, idx, sparkline) {
   const repsText = meta.reps > 0 ? `${meta.reps}회` : '반복 입력';
   const setText = meta.sets > 0 ? `${meta.sets}세트` : '세트';
   const planMeta = `${meta.title} · ${setText}`;
+  const trackHint = meta.isWendler ? '웬들러 기준' : '탭해서 트랙 전환';
   return `
-    <div class="ex-max-v2-head" data-action="toggle-max-entry-track" data-idx="${idx}" role="button" tabindex="0" aria-label="운동 트랙 전환">
+    <div class="ex-max-v2-head" data-action="toggle-max-entry-track" data-idx="${idx}" role="button" tabindex="0" aria-label="${meta.isWendler ? '웬들러 운동 카드' : '운동 트랙 전환'}">
       <div class="ex-max-v2-title-row">
         <div>
           <div class="ex-max-v2-source"><i style="background:${mc?.color || 'var(--primary)'}"></i>${meta.isBenchmark ? '벤치마크' : '추천 종목'} · ${meta.source}</div>
@@ -527,7 +536,7 @@ function _buildMaxExerciseCardHeader(entry, ex, mc, idx, sparkline) {
         <div class="ex-max-v2-plan-goal">
           <div class="ex-max-v2-kicker">오늘 성공 기준</div>
           <div class="ex-max-v2-main">${kgText} × ${repsText}</div>
-          <div class="ex-max-v2-sub">${planMeta} · 탭해서 트랙 전환</div>
+          <div class="ex-max-v2-sub">${planMeta} · ${trackHint}</div>
         </div>
         ${sparkline
           ? `<div class="ex-max-v2-trend">${sparkline}</div>`
@@ -537,13 +546,34 @@ function _buildMaxExerciseCardHeader(entry, ex, mc, idx, sparkline) {
   `;
 }
 
-function _maxSetTypeLabel(type) {
+function _isWendlerSet(set = {}) {
+  return !!set?.wendlerRole;
+}
+
+function _maxSetTypeLabel(type, set = {}) {
+  if (set?.wendlerRole === 'warmup') return '프리';
+  if (set?.wendlerRole === 'main') return '메인';
+  if (set?.wendlerRole === 'supplemental') {
+    if (set.supplementalKind === 'bbb') return 'BBB';
+    if (set.supplementalKind === 'fsl') return 'FSL';
+    return '보조';
+  }
   if (type === 'warmup') return '프리';
   if (type === 'drop') return '드랍';
   return '본';
 }
 
-function _nextMaxSetType(type) {
+function _maxSetTypeClass(type, set = {}) {
+  if (set?.wendlerRole === 'warmup') return 'warmup';
+  if (set?.wendlerRole === 'main') return 'wendler-main';
+  if (set?.wendlerRole === 'supplemental') return set.supplementalKind === 'fsl' ? 'fsl' : 'bbb';
+  if (type === 'warmup') return 'warmup';
+  if (type === 'drop') return 'drop';
+  return 'main';
+}
+
+function _nextMaxSetType(type, set = {}) {
+  if (_isWendlerSet(set)) return type || 'main';
   if (type === 'warmup') return 'main';
   if (type === 'main' || !type) return 'drop';
   return 'warmup';
@@ -552,6 +582,7 @@ function _nextMaxSetType(type) {
 function _switchMaxEntryTrack(entryIdx) {
   const entry = S.workout.exercises[entryIdx];
   if (!entry) return false;
+  if (isWendlerWorkoutEntry(entry)) return false;
   const current = normalizeWorkoutTrack(entry.recommendationMeta?.track || entry.maxPrescription?.benchmarkTrack || entry.maxPrescription?.track) || 'M';
   const next = current === 'H' ? 'M' : 'H';
   const alternative = entry.maxPrescription?.trackAlternatives?.[next] || null;
@@ -1343,6 +1374,7 @@ function _renderSets(entryIdx, targetEl = null) {
     const isWarmup = set.setType === 'warmup';
     const isDrop = set.setType === 'drop';
     const isDone   = set.done !== false;
+    const typeClass = _maxSetTypeClass(set.setType, set);
     const romPct = _normalizeRomPct(set.romPct);
     const romValue = romPct == null ? 100 : romPct;
     const romScoreValue = _romPctToScoreInput(romValue);
@@ -1364,7 +1396,7 @@ function _renderSets(entryIdx, targetEl = null) {
     row.className = isMaxMode ? `set-row ex-max-v2-set${isDone ? ' done' : ''}` : 'set-row';
     row.innerHTML = isMaxMode ? `
       <div class="ex-max-v2-main-row">
-        <button type="button" class="ex-max-v2-type-btn ${isWarmup ? 'warmup' : (isDrop ? 'drop' : 'main')}" title="세트 타입">${_maxSetTypeLabel(set.setType)}</button>
+        <button type="button" class="ex-max-v2-type-btn ${typeClass}" title="세트 타입">${_maxSetTypeLabel(set.setType, set)}</button>
         <label class="ex-max-v2-field"><span>KG</span><input class="set-input" type="number" inputmode="decimal" placeholder="kg" min="0" step="0.5" value="${set.kg||''}"></label>
         <label class="ex-max-v2-field"><span>REP</span><input class="set-input" type="number" inputmode="numeric" placeholder="회" min="1" step="1" value="${set.reps||''}"></label>
         <label class="ex-max-v2-field"><span>RIR</span><input class="set-rpe-input" type="number" inputmode="decimal" placeholder="-" min="0" max="9" step="0.5" value="${_rpeToRir(set.rpe)}"></label>
@@ -1391,7 +1423,10 @@ function _renderSets(entryIdx, targetEl = null) {
         <span class="set-drag-handle" title="드래그하여 순서 변경"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg></span>`;
 
     row.querySelector('.set-type-select')?.addEventListener('change', e => wtUpdateSetType(entryIdx, si, e.target.value));
-    row.querySelector('.ex-max-v2-type-btn')?.addEventListener('click', () => wtUpdateSetType(entryIdx, si, _nextMaxSetType(set.setType || 'main')));
+    row.querySelector('.ex-max-v2-type-btn')?.addEventListener('click', () => {
+      if (_isWendlerSet(set)) return;
+      wtUpdateSetType(entryIdx, si, _nextMaxSetType(set.setType || 'main', set));
+    });
     row.querySelectorAll('.set-input')[0].addEventListener('input', e => _updateSetDraftField(entryIdx, si, 'kg', e.target.value));
     row.querySelectorAll('.set-input')[0].addEventListener('change', e => wtUpdateSet(entryIdx, si, 'kg',   e.target.value));
     // 2026-04-20: kg/reps 입력 focus 시 rest 타이머 skip 호출 제거.

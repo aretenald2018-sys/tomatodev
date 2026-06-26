@@ -77,6 +77,23 @@ test('exercise picker always creates test-mode entries on Dashboard3', () => {
   );
 });
 
+test('wendler generated sets render program role chips instead of normal set type chips', () => {
+  const labelFn = sliceByFirstBrace(exercisesJs, 'function _maxSetTypeLabel');
+  assert.match(labelFn, /set\?\.wendlerRole === 'warmup'[\s\S]*return '프리'/);
+  assert.match(labelFn, /set\?\.wendlerRole === 'main'[\s\S]*return '메인'/);
+  assert.match(labelFn, /supplementalKind === 'bbb'[\s\S]*return 'BBB'/);
+  assert.match(labelFn, /supplementalKind === 'fsl'[\s\S]*return 'FSL'/);
+  assert.match(labelFn, /return '본'/);
+
+  const nextFn = sliceByFirstBrace(exercisesJs, 'function _nextMaxSetType');
+  assert.match(nextFn, /_isWendlerSet\(set\)[\s\S]*return type \|\| 'main'/);
+
+  const renderSets = sliceByFirstBrace(exercisesJs, 'function _renderSets');
+  assert.match(renderSets, /_maxSetTypeClass\(set\.setType,\s*set\)/);
+  assert.match(renderSets, /_maxSetTypeLabel\(set\.setType,\s*set\)/);
+  assert.match(renderSets, /if \(_isWendlerSet\(set\)\) return/);
+});
+
 test('Dashboard3 mode controls cannot persist normal or pro workout record UI', () => {
   assert.match(expertJs, /const DASHBOARD3_TEST_MODE_ONLY = true;/);
 
@@ -109,5 +126,5 @@ test('Dashboard3 mode controls cannot persist normal or pro workout record UI', 
 });
 
 test('service worker cache version was bumped for workout asset changes', () => {
-  assert.match(swJs, /tomatofarm-v20260626z4-wendler-recommendation-priority/);
+  assert.match(swJs, /tomatofarm-v20260626z5-wendler-track-graph/);
 });

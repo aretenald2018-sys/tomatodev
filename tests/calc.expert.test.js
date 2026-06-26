@@ -23,6 +23,9 @@ import {
   inferWorkoutTrack,
   calcTrackSessionMetric,
   getTrackMetricHistory,
+  isWendlerWorkoutEntry,
+  calcWendlerSessionMetric,
+  getWendlerMetricHistory,
   calcBalanceByPattern,
   detectPRs,
   isExerciseDaySuccess,
@@ -177,6 +180,49 @@ test('getTrackMetricHistory · 볼륨/강도 그래프 데이터를 분리하고
   assert.equal(h.H.length, 1);
   assert.ok(Math.abs(h.H[0].value - 81.67) < 0.1);
   assert.equal(h.unclassified, 1);
+});
+
+test('getWendlerMetricHistory · 웬들러 기록은 볼륨/강도와 분리해 메인 세트 e1RM으로 집계한다', () => {
+  const wendlerEntry = {
+    exerciseId: 'squat',
+    recommendationMeta: {
+      program: 'wendler',
+      track: 'M',
+      cycleWeek: 2,
+      boardV2WeekStart: '2026-04-06',
+      wendlerSignature: 'tm:120|week:2',
+    },
+    sets: [
+      { kg: 50, reps: 5, done: true, setType: 'warmup', wendlerRole: 'warmup' },
+      { kg: 90, reps: 6, done: true, setType: 'main', wendlerRole: 'main' },
+      { kg: 60, reps: 10, done: true, setType: 'main', wendlerRole: 'supplemental', supplementalKind: 'bbb' },
+    ],
+  };
+  const cache = {
+    '2026-04-01': {
+      exercises: [
+        { exerciseId: 'squat', recommendationMeta: { track: 'M' }, sets: [{ kg: 80, reps: 10, done: true, setType: 'main' }] },
+      ],
+    },
+    '2026-04-08': { exercises: [wendlerEntry] },
+  };
+
+  assert.equal(isWendlerWorkoutEntry(wendlerEntry), true);
+  assert.deepEqual(inferWorkoutTrack(wendlerEntry), { track: 'W', source: 'wendler' });
+  assert.equal(calcTrackSessionMetric(wendlerEntry, 'M'), 0);
+  assert.equal(calcTrackSessionMetric(wendlerEntry, 'H'), 0);
+  assert.ok(Math.abs(calcWendlerSessionMetric(wendlerEntry) - 108) < 0.1);
+
+  const trackHistory = getTrackMetricHistory(cache, [{ id: 'squat' }], 'squat');
+  assert.equal(trackHistory.M.length, 1);
+  assert.equal(trackHistory.H.length, 0);
+  assert.equal(trackHistory.total, 1);
+
+  const wendlerHistory = getWendlerMetricHistory(cache, [{ id: 'squat' }], 'squat');
+  assert.equal(wendlerHistory.W.length, 1);
+  assert.equal(wendlerHistory.W[0].date, '2026-04-08');
+  assert.equal(wendlerHistory.W[0].week, 2);
+  assert.ok(Math.abs(wendlerHistory.W[0].value - 108) < 0.1);
 });
 
 // ── calcBalanceByPattern ─────────────────────────────────────

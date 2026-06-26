@@ -345,6 +345,9 @@
 - Slice 10 Dashboard3 Pages 배포 및 deployed marker 검증 완료.
 - Slice 11 실행 완료. 리뷰 결과 이슈 없음.
 - Slice 11 Dashboard3 Pages 배포 및 deployed marker 검증 완료.
+- Slice 12 계획 추가. 다음 실행은 웬들러 세트 칩과 웬들러 전용 카드 그래프 분리다.
+- Slice 12 실행 완료. 리뷰 대기 중.
+- Slice 12 리뷰 결과 이슈 없음.
 - Slice 5는 사용자 결정 전까지 보류한다.
 - 성장보드 색칠/미달 자동 반영은 사용자 최종 결정 전까지 보류한다.
 
@@ -583,3 +586,80 @@
   - 결과: `[deploy-verify] ok 36be47482068 tomatofarm-v20260626z4-wendler-recommendation-priority static=218`
 - PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z4-wendler-recommendation-priority" "workout/exercises.js::const programEntry = _buildProgramPickerExerciseEntry(ex)" "workout/exercises.js::buildMaxPickerExerciseEntry({"`
 - not verified yet: 인증 계정이 없어 실제 배포 UI에서 `추천 종목 · 선택 헬스장 -> 웬들러 설정 종목 추가` 클릭 플로우는 직접 확인하지 못했다.
+
+### Slice 12: 웬들러 세트 칩과 웬들러 전용 그래프 분리
+
+요청:
+
+- 웬들러 운동 세트를 자동 추가할 때 좌측 세트 칩은 기존 `프리`/`본`/`드롭` 체계가 아니라 `프리`/`메인`/`BBB`로 보이게 한다.
+- 웬들러 기본 설정 종목의 카드 그래프는 `볼륨`/`강도` 트랙 그래프가 아니라 웬들러 트랙으로 별도 데이터를 관리해 렌더링한다.
+
+그릴 결과:
+
+- 질문: 웬들러 그래프의 기준 metric을 무엇으로 둘지가 핵심이다.
+- 결정: 이번 Slice에서는 저장 스키마를 새 컬렉션으로 늘리지 않고, 운동 기록 entry에 이미 저장되는 `recommendationMeta.program='wendler'`, `wendlerSignature`, `cycleWeek`, `boardV2WeekStart`, 세트별 `wendlerRole`을 canonical source로 삼는다.
+- 이유: 현재 웬들러 자동 세트는 이미 운동 기록에 프로그램 출처와 주차를 남긴다. 그래프만 볼륨/강도 계산에 섞이는 것이 문제라, 같은 캐시에서 웬들러 entry만 별도 집계하면 기존 저장/동기화 위험 없이 요구를 충족한다.
+- 남은 가정: 그래프 값은 `TM/주차 처방 이행`이 아니라 실제 기록의 웬들러 메인 세트 중 최고 `estimate1RM`을 기본값으로 쓴다. 같은 날짜에 같은 웬들러 entry가 여러 개 있으면 날짜 단위로 가장 높은 값을 표시한다.
+
+진단:
+
+- `workout/test-v2/board-core.js`의 웬들러 처방 세트는 `wendlerRole: 'warmup'|'main'|'supplemental'`과 `supplementalKind: 'bbb'|'fsl'`을 이미 남긴다.
+- `workout/exercises.js`의 세트 타입 칩은 `_maxSetTypeLabel(set.setType)`와 `setType` class만 보기 때문에 웬들러 보조 세트도 `본`으로 표시된다.
+- 카드 그래프는 `_buildMaxTrackSparkline()`에서 `getTrackMetricHistory()`를 호출하고, `calc.js`는 `recommendationMeta.track`을 `M/H`로만 해석해 웬들러가 `볼륨` 트랙으로 집계된다.
+
+대상 파일:
+
+- `calc.js`
+- `workout/exercises.js`
+- `style.css`
+- `sw.js`
+- `tests/calc.expert.test.js`
+- `tests/workout-track-graph-delta.test.js`
+- `tests/workout-test-mode-unified.test.js`
+
+구현:
+
+- `calc.js`에 웬들러 entry 판별과 `getWendlerMetricHistory(cache, exList, exerciseId)`를 추가한다.
+  - `recommendationMeta.program === 'wendler'`, `maxPrescription.program === 'wendler'`, 또는 세트의 `wendlerRole` 존재를 웬들러 entry로 본다.
+  - 웬들러 히스토리는 볼륨/강도 `M/H`와 분리된 `{ W: [...], total }` 형태로 반환한다.
+  - 웬들러 metric은 완료된 `wendlerRole === 'main'` 세트의 최고 `estimateSet1RM`; 메인 기록이 없으면 완료된 작업 세트 최고 e1RM을 fallback으로 쓴다.
+- `workout/exercises.js`에서 웬들러 카드일 때:
+  - `_buildMaxExerciseCardMeta()` title을 `Wn 웬들러 트랙`으로 표시한다.
+  - `_buildMaxTrackSparkline()`이 `getWendlerMetricHistory()`를 사용해 `웬들러` 단일 row만 렌더한다.
+  - 세트 칩 라벨은 `wendlerRole` 우선으로 `warmup -> 프리`, `main -> 메인`, `supplemental + bbb -> BBB`, `supplemental + fsl -> FSL`로 렌더한다.
+  - 칩 클릭 순환은 웬들러 자동 세트에서는 기존 `프리 -> 본 -> 드롭` 순환을 적용하지 않는다.
+- `style.css`에 웬들러 row/chip 색상만 필요한 최소 범위로 추가한다.
+- `sw.js` `CACHE_VERSION`을 bump한다.
+
+범위 밖:
+
+- 성장보드 색칠/미달 자동 반영.
+- Firestore 저장 경로 추가 또는 과거 기록 마이그레이션.
+- 웬들러 수동 세트 편집 UX 확장.
+- `www/` 직접 수정.
+
+검증:
+
+- `node --check calc.js workout/exercises.js sw.js`
+- `node --test tests/calc.expert.test.js tests/workout-track-graph-delta.test.js tests/workout-test-mode-unified.test.js`
+- `node --test .\tests\*.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- Dashboard3 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+- UI flow: `운동 탭 -> + -> 웬들러 설정 종목 추가`에서 세트 칩이 `프리`/`메인`/`BBB`로 보이고, 카드 상단 그래프가 `웬들러` 단일 트랙으로 보인다.
+
+실행 결과:
+
+- `calc.js`에 웬들러 운동 entry 판별, `calcWendlerSessionMetric()`, `getWendlerMetricHistory()`를 추가했다.
+- 웬들러 entry는 `getTrackMetricHistory()`와 `getLastTrackSession()`의 볼륨/강도 트랙 집계에서 제외되며, `calcTrackSessionMetric(entry, 'M'|'H')`도 0으로 처리한다.
+- `workout/exercises.js`의 카드 헤더는 웬들러 entry에서 `Wn 웬들러 트랙`을 표시하고, 그래프는 `getWendlerMetricHistory()` 기반 `웬들러` 단일 row로 렌더한다.
+- 웬들러 자동 세트 칩은 `wendlerRole`을 우선해 `프리`/`메인`/`BBB`/`FSL`로 표시하고, 웬들러 자동 세트에서는 기존 `프리 -> 본 -> 드롭` 순환 클릭을 막았다.
+- `style.css`에 웬들러 그래프 row와 웬들러 세트 칩 스타일을 추가했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260626z5-wendler-track-graph`로 bump하고 관련 cache-version 테스트 기대값을 갱신했다.
+- PASS: `node --check calc.js; node --check workout/exercises.js; node --check sw.js`
+- PASS: `node --test tests/calc.expert.test.js tests/workout-track-graph-delta.test.js tests/workout-test-mode-unified.test.js` — 41 tests passed
+- PASS: `node --test .\tests\*.test.js` — 534 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- 리뷰 문서: `docs/ai/reviews/2026-06-26-exercise-program-wendler-track-graph-review.md`
+- not verified yet: Dashboard3 Pages 배포와 인증 계정 UI flow 확인은 리뷰/배포 단계에 남아 있다.
