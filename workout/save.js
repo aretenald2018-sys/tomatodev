@@ -19,6 +19,7 @@ import { calcSetVolume } from '../calc/volume.js';
 import { shouldKeepMaxDraftExercisesForSavePure } from './save-pure.js';
 import { upsertWorkoutSession } from './sessions.js';
 import { hasLifeZoneDietActivity, hasLifeZoneWorkoutActivity } from '../home/life-zone-state.js';
+import { buildWorkoutSetTimeline, normalizeSetCompletedAt } from './timeline.js';
 
 // 미래 날짜 저장 가드 — 어떤 경로로든 미래 날짜 쓰기 금지 (B-3).
 function _blockIfFutureDate() {
@@ -86,11 +87,9 @@ function _assertSchemaParity(name, payload, expectedKeys) {
 // Firestore 의 식단 필드를 건드릴 수 없다.
 function _buildWorkoutPayload(cleanEx, isDietSuccess) {
   const w = S.workout;
-  // workoutDuration: "이미 닫힌 세그먼트의 누적 시간"(base) 만 저장. running 중의 live elapsed 는
-  //   여기에 포함하지 않음 — 포함하면 리로드 후 render 가 이 값에 또 (now - startedAt) 을 더해
-  //   이중 카운팅(예: 10초째 저장 → 15초째 재진입 시 25초 표시). Codex 리뷰 2026-04-21 지적.
-  //   base 는 wtPause/wtReset/wtFinish 에서만 갱신됨. 외부 소비자(guild/calendar) 는 running
-  //   중 약간 과소표기를 감수 — pause/finish 시 정확히 반영됨.
+  const workoutTimeline = buildWorkoutSetTimeline(cleanEx, w.workoutDuration);
+  w.workoutTimeline = workoutTimeline;
+  w.workoutDuration = workoutTimeline.durationSec;
   return {
     exercises:  cleanEx,
     cf:         w.cf,
@@ -112,7 +111,8 @@ function _buildWorkoutPayload(cleanEx, isDietSuccess) {
     swimDurationSec: w.swimData.durationSec,
     swimStroke:    w.swimData.stroke,
     swimMemo:      w.swimData.memo,
-    workoutDuration: w.workoutDuration,
+    workoutDuration: workoutTimeline.durationSec,
+    workoutTimeline,
     wine_free:  w.wineFree,
     memo:       document.getElementById('wt-workout-memo')?.value.trim() || '',
     workoutPhoto: window._mealPhotos?.workout || null,
@@ -307,7 +307,8 @@ function _refreshTabDots() {
 }
 
 function _hasSaveWorthySet(set) {
-  if (!set || set.setType === 'warmup') return false;
+  if (!set) return false;
+  if (set.setType === 'warmup') return set.done === true && normalizeSetCompletedAt(set.completedAt) != null;
   if (set.done === true) return true;
   if (set.done === false) return false;
   return (Number(set.kg) || 0) > 0 && (Number(set.reps) || 0) > 0;

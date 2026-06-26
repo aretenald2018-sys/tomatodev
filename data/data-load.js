@@ -59,7 +59,7 @@ const _TWIN_WORKOUT_FIELDS = [
   'swimDistance', 'swimDurationMin', 'swimDurationSec', 'swimStroke', 'swimMemo',
   'cfWod', 'cfDurationMin', 'cfDurationSec', 'cfMemo',
   'stretchDuration', 'stretchMemo',
-  'workoutDuration', 'workoutPhoto',
+  'workoutDuration', 'workoutTimeline', 'workoutPhoto',
   'gymId', 'routineMeta',
 ];
 

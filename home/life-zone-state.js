@@ -160,6 +160,8 @@ export function hasLifeZoneWorkoutActivity(dayData = null) {
   if (dayData.cf || dayData.swimming || dayData.running || dayData.stretching) return true;
   if ((dayData.muscles || []).length > 0) return true;
   if ((dayData.workoutDuration || 0) > 0) return true;
+  if ((dayData.workoutTimeline?.durationSec || 0) > 0) return true;
+  if ((dayData.workoutTimeline?.checkedSetCount || 0) > 0) return true;
   if ((dayData.runDistance || 0) > 0 || (dayData.runDurationMin || 0) > 0 || (dayData.runDurationSec || 0) > 0) return true;
   if ((dayData.swimDistance || 0) > 0 || (dayData.swimDurationMin || 0) > 0 || (dayData.swimDurationSec || 0) > 0) return true;
   if (String(dayData.swimStroke || '').trim()) return true;

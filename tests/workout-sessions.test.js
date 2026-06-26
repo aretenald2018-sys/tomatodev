@@ -30,13 +30,17 @@ test('upsertWorkoutSession stores selected session and aggregates top-level fiel
   const out = upsertWorkoutSession(day, {
     exercises: [{ name: '스쿼트', sets: [{ kg: 100, reps: 5, done: true }] }],
     workoutDuration: 900,
+    workoutTimeline: { mode: 'set-completion', source: 'set-completion', checkedSetCount: 3, durationSec: 900, firstSetCompletedAt: 2000, lastSetCompletedAt: 902000 },
     memo: '저녁 운동',
   }, 1, { now: 1 });
 
   assert.equal(out.workoutSessions.length, 2);
   assert.equal(out.workoutSessions[1].label, '2회차');
+  assert.equal(out.workoutSessions[1].workoutTimeline.durationSec, 900);
   assert.equal(out.aggregate.exercises.length, 2);
   assert.equal(out.aggregate.workoutDuration, 2100);
+  assert.equal(out.aggregate.workoutTimeline.durationSec, 2100);
+  assert.equal(out.aggregate.workoutTimeline.checkedSetCount, 3);
   assert.match(out.aggregate.memo, /2회차: 저녁 운동/);
 });
 

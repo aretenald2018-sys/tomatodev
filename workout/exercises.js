@@ -4,8 +4,8 @@
 
 import { S }                           from './state.js';
 import { saveWorkoutDay }              from './save.js';
-import { wtStartWorkoutTimer,
-         wtRestTimerStart,
+import { wtRestTimerStart,
+         wtRefreshWorkoutTimelineDuration,
          wtPersistActiveWorkoutDraft } from './timers.js';
 import { showToast }                   from '../home/utils.js';
 import { getExList, getGlobalExList, getGymExList, getGyms, getLastSession, detectPRs, getCache,
@@ -35,6 +35,7 @@ import {
   upsertExerciseProgramBenchmark,
 } from './test-v2/board-core.js';
 import { getWorkoutSessions } from './sessions.js';
+import { clearSetCompletedAt, stampSetCompletedAt, stripSetCompletedAt } from './timeline.js';
 // resolveCurrentGymId는 expert.js의 단일 진실원 (preset + S.workout.currentGymId 동기화).
 // isExpertViewShown은 세션 뷰 상태 (일반 모드 뷰 ↔ 프로 모드 뷰) 조회용.
 // expert.js는 exercises.js를 static import 하지 않으므로 순환 참조 없음.
@@ -189,13 +190,9 @@ export function wtRemoveSet(entryIdx, si) {
   });
 }
 
-// 2026-04-20: 세트 기록(kg/reps 입력, ✓ 체크)이 생기면 운동 타이머 자동 시작.
-//   타이머가 아직 시작 안 됐고 누적 duration 도 없으면만 자동시작. 유저가 명시적으로 reset 해
-//   둔 세션(duration>0 에서 reset 후 다시 기록)은 수동 play 로 이어가도록 건드리지 않는다.
-function _ensureWorkoutTimerStarted() {
-  if (!S.workout.workoutStartTime && (S.workout.workoutDuration || 0) === 0) {
-    try { wtStartWorkoutTimer(); } catch (e) { console.warn('[autoStartTimer] fail:', e?.message || e); }
-  }
+function _refreshWorkoutTimeline(context) {
+  try { wtRefreshWorkoutTimelineDuration(context); }
+  catch (e) { console.warn('[workoutTimeline] refresh fail:', e?.message || e); }
 }
 
 function _exerciseSubPattern(entry, ex) {
@@ -604,7 +601,7 @@ function _switchMaxEntryTrack(entryIdx) {
     if (nextSets.length) {
       const hasDone = (entry.sets || []).some(s => s.done === true);
       entry.sets = hasDone
-        ? (entry.sets || []).map((set, i) => set.done === true ? set : { ...(nextSets[i] || nextSets[nextSets.length - 1] || set), done: false })
+        ? (entry.sets || []).map((set, i) => set.done === true ? set : { ...stripSetCompletedAt(nextSets[i] || nextSets[nextSets.length - 1] || set), done: false })
         : nextSets;
     }
   } else if (entry.maxPrescription) {
@@ -701,7 +698,8 @@ function _updateSetDraftField(entryIdx, si, field, val) {
   set[field] = Number.isFinite(parsed) ? parsed : 0;
   if (field === 'kg' || field === 'reps') {
     set.done = false;
-    if ((set[field] || 0) > 0) _ensureWorkoutTimerStarted();
+    clearSetCompletedAt(set);
+    if ((set[field] || 0) > 0) _refreshWorkoutTimeline(`set draft ${field}`);
   }
   wtPersistActiveWorkoutDraft(`set draft ${field}`);
 }
@@ -716,9 +714,11 @@ export function wtUpdateSet(entryIdx, si, field, val) {
   if (field === 'romPct' && parsed == null) delete S.workout.exercises[entryIdx].sets[si].romPct;
   else S.workout.exercises[entryIdx].sets[si][field] = parsed;
   if (field === 'kg' || field === 'reps') {
-    S.workout.exercises[entryIdx].sets[si].done = false;
-    // 의미 있는 수치(>0)가 들어왔을 때만 타이머 자동시작. 실수로 0 치고 나가는 건 무시.
-    if ((parsed || 0) > 0) _ensureWorkoutTimerStarted();
+    const set = S.workout.exercises[entryIdx].sets[si];
+    set.done = false;
+    clearSetCompletedAt(set);
+    // 의미 있는 수치(>0)가 들어오면 완료 타임라인 표시만 다시 계산한다.
+    if ((parsed || 0) > 0) _refreshWorkoutTimeline(`set update ${field}`);
   }
   wtPersistActiveWorkoutDraft(`set update ${field}`);
   const isMaxEntry = _isMaxEntryMode(entryIdx);
@@ -740,8 +740,12 @@ export function wtUpdateSetRir(entryIdx, si, val) {
 }
 
 export function wtToggleSetDone(entryIdx, si) {
-  const wasDone = S.workout.exercises[entryIdx].sets[si].done;
-  S.workout.exercises[entryIdx].sets[si].done = !wasDone;
+  const set = S.workout.exercises[entryIdx].sets[si];
+  const wasDone = set.done === true;
+  set.done = !wasDone;
+  if (!wasDone) stampSetCompletedAt(set);
+  else clearSetCompletedAt(set);
+  _refreshWorkoutTimeline('set done toggle');
   wtPersistActiveWorkoutDraft('set done toggle');
   if (_isMaxEntryMode(entryIdx)) {
     if (!_rerenderMaxEntryOwner(entryIdx)) _renderExerciseList();
@@ -752,8 +756,6 @@ export function wtToggleSetDone(entryIdx, si) {
     if (!wasDone) showToast('저장되었습니다', 1500, 'success');
   }).catch(e => console.error('Save error:', e));
   if (!wasDone) {
-    // 완료 체크 = 실제 운동 진행 중. 타이머 자동시작.
-    _ensureWorkoutTimerStarted();
     _maybeShowMaxSetCoach(entryIdx, si);
     const ex = getExList().find(e => e.id === S.workout.exercises[entryIdx].exerciseId);
     const exName = ex?.name || S.workout.exercises[entryIdx].exerciseId;
@@ -1186,7 +1188,7 @@ export function _renderExerciseList() {
       copyBtn.addEventListener('click', () => {
         // C-1: 종목 세트 복사도 활동 복사와 동일하게 Undo 토스트 제공.
         const prevSets = JSON.parse(JSON.stringify(S.workout.exercises[idx].sets || []));
-        S.workout.exercises[idx].sets = JSON.parse(JSON.stringify(last.sets)).map(s => ({ ...s, done: false }));
+        S.workout.exercises[idx].sets = JSON.parse(JSON.stringify(last.sets)).map(s => ({ ...stripSetCompletedAt(s), done: false }));
         wtPersistActiveWorkoutDraft('set copy previous');
         saveWorkoutDay({ silent: true }).then(() => _renderExerciseList()).catch(e => console.error('Save error:', e));
         showToast('직전 세트를 불러왔어요', 3000, 'success', {
@@ -1637,26 +1639,32 @@ function _defaultTestModeSet() {
 
 function _normalizeTestModeSets(sets) {
   const normalized = Array.isArray(sets) && sets.length ? sets : [_defaultTestModeSet()];
-  return normalized.map(set => ({
-    ..._defaultTestModeSet(),
-    ...set,
-    rpe: set?.rpe ?? set?.rpeTarget ?? null,
-    setType: set?.setType || 'main',
-    done: set?.done === true,
-    romPct: _normalizeRomPct(set?.romPct) ?? 100,
-  }));
+  return normalized.map(set => {
+    const next = {
+      ..._defaultTestModeSet(),
+      ...set,
+      rpe: set?.rpe ?? set?.rpeTarget ?? null,
+      setType: set?.setType || 'main',
+      done: set?.done === true,
+      romPct: _normalizeRomPct(set?.romPct) ?? 100,
+    };
+    return next.done === true ? next : stripSetCompletedAt(next);
+  });
 }
 
 function _testModeSetsFromPrescription(prescription) {
   if (!prescription) return null;
   if (prescription.applySets === true && Array.isArray(prescription.sets) && prescription.sets.length) {
-    return prescription.sets.map(set => ({
-      ..._defaultTestModeSet(),
-      ...set,
-      setType: set?.setType || 'main',
-      done: set?.done === true,
-      romPct: _normalizeRomPct(set?.romPct) ?? 100,
-    }));
+    return prescription.sets.map(set => {
+      const next = {
+        ..._defaultTestModeSet(),
+        ...set,
+        setType: set?.setType || 'main',
+        done: set?.done === true,
+        romPct: _normalizeRomPct(set?.romPct) ?? 100,
+      };
+      return next.done === true ? next : stripSetCompletedAt(next);
+    });
   }
   const rpe = Number(prescription.targetRpe) || null;
   return [{
@@ -2923,7 +2931,7 @@ export function _renderPickerList() {
         _syncExpertTopArea();
         const timerBar = document.getElementById('wt-workout-timer-bar');
         if (timerBar && !timerBar.classList.contains('wt-open')) timerBar.classList.add('wt-open');
-        if (!S.workout.workoutStartTime && S.workout.workoutDuration === 0) wtStartWorkoutTimer();
+        _refreshWorkoutTimeline('exercise add');
         wtPersistActiveWorkoutDraft('exercise add');
         wtCloseExercisePicker();
         wtFocusWorkoutEntryCard(entryIdx);

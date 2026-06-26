@@ -28,6 +28,13 @@ test('workout duration remains in the top-right summary card', () => {
   assert.match(summary, /wx\?\.durationSec/);
 });
 
+test('workout calendar duration can fall back to set completion timeline', () => {
+  assert.match(calendarJs, /import \{ buildWorkoutSetTimeline \} from '\.\/workout\/timeline\.js'/);
+  const metrics = sliceByFirstBrace(calendarJs, 'function _workoutMetrics');
+  assert.match(metrics, /const workoutTimeline = buildWorkoutSetTimeline\(d\.exercises,\s*d\.workoutDuration\)/);
+  assert.match(metrics, /workoutTimeline\.durationSec/);
+});
+
 test('duration-only workout no longer creates a separate timer activity card', () => {
   const cards = sliceByFirstBrace(calendarJs, 'function _renderWorkoutDetailCards');
   assert.doesNotMatch(cards, /label:\s*'운동 타이머'/);
@@ -44,5 +51,5 @@ test('workout detail modal no longer renders timer-only body sections', () => {
 });
 
 test('service worker cache version was bumped for workout timer summary-only UI', () => {
-  assert.match(swJs, /tomatofarm-v20260626z7-cycle-rail-target-settings/);
+  assert.match(swJs, /tomatofarm-v20260626z8-set-completion-timeline/);
 });

@@ -54,6 +54,7 @@ test('detects workout and diet activities from workout day documents', () => {
     exercises: [{ sets: [{ kg: 60, reps: 8 }] }]
   }), true);
   assert.equal(hasLifeZoneWorkoutActivity({ workoutDuration: 1800 }), true);
+  assert.equal(hasLifeZoneWorkoutActivity({ workoutTimeline: { durationSec: 0, checkedSetCount: 1 } }), true);
   assert.equal(hasLifeZoneWorkoutActivity({
     exercises: [{ sets: [{ kg: 0, reps: 10, done: false }] }]
   }), false);

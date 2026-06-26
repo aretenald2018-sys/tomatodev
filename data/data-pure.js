@@ -269,6 +269,8 @@ export function isActiveWorkoutDayData(workoutData) {
   if (w.cf || w.swimming || w.running || w.stretching) return true;
   if ((w.muscles || []).length > 0) return true;
   if ((w.workoutDuration || 0) > 0) return true;
+  if ((w.workoutTimeline?.durationSec || 0) > 0) return true;
+  if ((w.workoutTimeline?.checkedSetCount || 0) > 0) return true;
   if ((w.runDistance || 0) > 0) return true;
   if ((w.runDurationMin || 0) > 0) return true;
   if ((w.runDurationSec || 0) > 0) return true;

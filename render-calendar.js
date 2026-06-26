@@ -47,6 +47,7 @@ import {
   mondayOf,
   weekIndexOf,
 } from './workout/test-v2/board-core.js';
+import { buildWorkoutSetTimeline } from './workout/timeline.js';
 
 // ═════════════════════════════════════════════════════════════
 // 뷰 상태
@@ -754,6 +755,7 @@ function _exerciseRows(day, lookup = _buildWorkoutLookup(), key = null) {
           rir: Number.isFinite(Number(set.rir)) ? Number(set.rir) : null,
           romPct: Number.isFinite(Number(set.romPct)) ? Number(set.romPct) : 100,
           setType: set.setType || 'main',
+          completedAt: Number.isFinite(Number(set.completedAt)) ? Number(set.completedAt) : null,
           done: _isActualWorkoutSet(set),
         })),
         note,
@@ -768,9 +770,11 @@ function _workoutMetrics(key, day, bodyWeight, lookup = _buildWorkoutLookup()) {
   const exercises = _exerciseRows(d, lookup, key);
   const activities = _activityRows(d);
   const burned = calcBurnedKcal(d, bodyWeight);
-  const workoutDurationSec = Math.max(0, Math.round(_num(d.workoutDuration)));
+  const workoutTimeline = buildWorkoutSetTimeline(d.exercises, d.workoutDuration);
+  const workoutDurationSec = Math.max(0, Math.round(_num(workoutTimeline.durationSec)));
   const activityDurationSec = activities.reduce((sum, row) => sum + (row.durationSec || 0), 0);
-  const gymDurationSec = exercises.length ? workoutDurationSec : 0;
+  const hasTimelineRecord = (Number(workoutTimeline.checkedSetCount) || 0) > 0;
+  const gymDurationSec = (exercises.length || hasTimelineRecord) ? workoutDurationSec : 0;
   const durationSec = Math.max(gymDurationSec + activityDurationSec, workoutDurationSec, activityDurationSec);
   const setCount = exercises.reduce((sum, row) => sum + row.setCount, 0);
   const volume = exercises.reduce((sum, row) => sum + row.volume, 0);
@@ -782,7 +786,7 @@ function _workoutMetrics(key, day, bodyWeight, lookup = _buildWorkoutLookup()) {
     })),
   ].filter(row => row?.text);
   const labels = displayLabels.map(row => row.text);
-  const hasWorkout = exercises.length > 0 || activities.length > 0 || workoutDurationSec > 0 || burned.total > 0;
+  const hasWorkout = exercises.length > 0 || activities.length > 0 || workoutDurationSec > 0 || hasTimelineRecord || burned.total > 0;
   return {
     key,
     day: d,

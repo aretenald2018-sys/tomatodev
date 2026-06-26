@@ -157,6 +157,7 @@ export function loadWorkoutDate(y, m, d) {
   };
   w.wineFree        = !!workoutSource.wine_free;
   w.workoutDuration = workoutSource.workoutDuration || 0;
+  w.workoutTimeline = workoutSource.workoutTimeline || null;
   // 전문가 모드 메타데이터 복원 (day에 저장된 값 > preset 기본값)
   // 테스트모드도 그날 헬스장/기구 필터를 유지해야 하므로 gymId를 복원한다.
   w.routineMeta  = workoutSource.routineMeta || null;

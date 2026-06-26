@@ -49,7 +49,7 @@ const WORKOUT_ONLY_SAMPLES = [
   'lifeZoneWorkoutActivity',
   'exercises', 'cf', 'swimming', 'running', 'stretching',
   'runDistance', 'cfWod', 'swimStroke', 'stretchDuration',
-  'workoutDuration', 'wine_free', 'memo',
+  'workoutDuration', 'workoutTimeline', 'wine_free', 'memo',
   'workoutPhoto', 'gymId', 'pickerGymFilter', 'routineMeta', 'maxMeta',
 ];
 for (const key of WORKOUT_ONLY_SAMPLES) {

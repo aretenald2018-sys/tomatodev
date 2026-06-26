@@ -8,7 +8,7 @@ export const WORKOUT_SESSION_KEYS = Object.freeze([
   'cfWod', 'cfDurationMin', 'cfDurationSec', 'cfMemo',
   'stretchDuration', 'stretchMemo',
   'swimDistance', 'swimDurationMin', 'swimDurationSec', 'swimStroke', 'swimMemo',
-  'workoutDuration', 'wine_free', 'memo', 'workoutPhoto',
+  'workoutDuration', 'workoutTimeline', 'wine_free', 'memo', 'workoutPhoto',
   'gymId', 'pickerGymFilter', 'routineMeta', 'maxMeta',
 ]);
 
@@ -65,6 +65,7 @@ export function emptyWorkoutSession(index = 0) {
     swimStroke: '',
     swimMemo: '',
     workoutDuration: 0,
+    workoutTimeline: null,
     wine_free: false,
     memo: '',
     workoutPhoto: null,
@@ -107,6 +108,7 @@ export function hasWorkoutSessionData(session = {}) {
   if (_num(s.stretchDuration) > 0 || _str(s.stretchMemo)) return true;
   if (_num(s.swimDistance) > 0 || _num(s.swimDurationMin) > 0 || _num(s.swimDurationSec) > 0) return true;
   if (_num(s.workoutDuration) > 0) return true;
+  if (_num(s.workoutTimeline?.durationSec) > 0 || _num(s.workoutTimeline?.checkedSetCount) > 0) return true;
   if (_str(s.memo) || _str(s.runMemo) || _str(s.cfMemo) || _str(s.swimMemo)) return true;
   if (s.workoutPhoto) return true;
   return false;
@@ -149,6 +151,25 @@ function _joinMemos(sessions, key) {
     .join('\n');
 }
 
+function _aggregateWorkoutTimeline(sessions) {
+  const timelines = sessions
+    .map(session => session?.workoutTimeline)
+    .filter(timeline => timeline && typeof timeline === 'object');
+  const durationSec = sessions.reduce((sum, session) => sum + _num(session.workoutDuration), 0);
+  const checkedSetCount = timelines.reduce((sum, timeline) => sum + _num(timeline.checkedSetCount), 0);
+  const firsts = timelines.map(t => _num(t.firstSetCompletedAt)).filter(n => n > 0);
+  const lasts = timelines.map(t => _num(t.lastSetCompletedAt)).filter(n => n > 0);
+  if (durationSec <= 0 && checkedSetCount <= 0 && !firsts.length && !lasts.length) return null;
+  return {
+    mode: 'set-completion',
+    source: 'session-aggregate',
+    firstSetCompletedAt: firsts.length ? Math.min(...firsts) : null,
+    lastSetCompletedAt: lasts.length ? Math.max(...lasts) : null,
+    checkedSetCount,
+    durationSec,
+  };
+}
+
 export function aggregateWorkoutSessions(sessions = []) {
   const active = (Array.isArray(sessions) ? sessions : [])
     .map((session, index) => normalizeWorkoutSession(session, index))
@@ -179,6 +200,7 @@ export function aggregateWorkoutSessions(sessions = []) {
     swimStroke: active.map(session => _str(session.swimStroke)).filter(Boolean)[0] || '',
     swimMemo: _joinMemos(active, 'swimMemo'),
     workoutDuration: active.reduce((sum, session) => sum + _num(session.workoutDuration), 0),
+    workoutTimeline: _aggregateWorkoutTimeline(active),
     wine_free: active.some(session => !!session.wine_free),
     memo: _joinMemos(active, 'memo'),
     workoutPhoto: firstWith('workoutPhoto'),

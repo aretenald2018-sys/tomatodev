@@ -7,6 +7,11 @@ import { saveWorkoutDay }   from './save.js';
 import { showToast, showCenterToast } from '../home/utils.js';
 import { confirmAction }    from '../utils/confirm-modal.js';
 import { getActiveTimer, saveActiveTimer, clearActiveTimer, getCurrentUser } from '../data.js';
+import {
+  buildWorkoutSetTimeline,
+  clearWorkoutSetCompletedAt,
+  syncWorkoutTimeline,
+} from './timeline.js';
 
 // running 타이머가 "이 정도 이상 방치되면 freak-out" 가드 (24h). active_timer 의
 // startedAt 이 너무 오래되었다면 OS kill/탭 종료로 정산 못한 유령 세션으로 간주, 복원하지 않음.
@@ -216,6 +221,7 @@ function _activeWorkoutSessionDraftPayload(memo) {
     swimStroke: String(w.swimData?.stroke || ''),
     swimMemo: String(w.swimData?.memo || ''),
     workoutDuration: Math.max(0, Math.floor(Number(w.workoutDuration) || 0)),
+    workoutTimeline: _cloneJson(w.workoutTimeline, null),
     wine_free: !!w.wineFree,
     memo,
     workoutPhoto: (typeof window !== 'undefined' ? window._mealPhotos?.workout : null) || null,
@@ -395,25 +401,29 @@ function _growthBoardAutoDurationSec() {
   return Math.min(_GROWTH_BOARD_AUTO_MAX_SEC, sec);
 }
 
-function _measuredWorkoutDurationSec(now = Date.now()) {
-  let total = Math.max(0, Math.floor(Number(S.workout.workoutDuration) || 0));
-  if (S.workout.workoutStartTime && _isViewingTimerDate()) {
-    total += Math.max(0, Math.floor((now - S.workout.workoutStartTime) / 1000));
-  }
-  return total;
+function _syncWorkoutTimelineDuration() {
+  return syncWorkoutTimeline(S.workout) || buildWorkoutSetTimeline([], S.workout.workoutDuration);
 }
 
-function _finalWorkoutDurationSec(now = Date.now()) {
-  const measured = _measuredWorkoutDurationSec(now);
-  const growthBoardAuto = _growthBoardAutoDurationSec();
-  if (growthBoardAuto == null) return measured;
-  return Math.min(_GROWTH_BOARD_AUTO_MAX_SEC, Math.max(measured, growthBoardAuto));
+function _measuredWorkoutDurationSec() {
+  return _syncWorkoutTimelineDuration().durationSec;
+}
+
+function _finalWorkoutDurationSec() {
+  return _syncWorkoutTimelineDuration().durationSec;
+}
+
+export function wtRefreshWorkoutTimelineDuration(context = 'set timeline') {
+  const timeline = _syncWorkoutTimelineDuration();
+  _renderWorkoutTimer();
+  _renderTimerControls();
+  wtPersistActiveWorkoutDraft(context);
+  return timeline;
 }
 
 // ── 운동 시간 측정 ───────────────────────────────────────────────
-// 타이머는 시작 시점의 날짜(workoutTimerDate)에 귀속됨.
-// 사용자가 다른 날짜를 보는 중에도 타이머는 계속 흐르지만, 표시/저장 경로는
-// "현재 보고 있는 날짜 === 타이머의 날짜"일 때만 live elapsed를 합산함.
+// 근력 운동 시간은 앱 실행 시간/화면 켜짐 시간이 아니라 세트 완료 시각 timeline에서 계산한다.
+// workoutTimerDate/workoutStartTime은 레거시 포인터 정리와 기존 외부 API 호환을 위해 남긴다.
 export function _isViewingTimerDate() {
   const td = _normalizeTimerDate(S.workout.workoutTimerDate);
   const cd = _normalizeTimerDate(S.shared.date) || (S.workout.workoutStartTime ? td : null);
@@ -433,7 +443,7 @@ export function wtStartGrowthBoardAutoTimer() {
   });
   const bar = document.getElementById('wt-workout-timer-bar');
   if (bar) bar.classList.add('wt-open');
-  wtStartWorkoutTimer();
+  wtRefreshWorkoutTimelineDuration('growth-board timeline open');
   return state;
 }
 
@@ -447,48 +457,18 @@ export function wtMarkGrowthBoardExerciseAdded() {
 }
 
 export function wtStartWorkoutTimer() {
-  if (S.workout.workoutStartTime) {
-    _ensureWorkoutTimerDate();
-    _ensureWorkoutTimerInterval();
-    _renderWorkoutTimer();
-    _renderTimerControls();
-  _persistActiveTimerState('timer already-running');
-    wtPersistActiveWorkoutDraft('timer already-running');
-    return;
-  }
-  S.workout.workoutStartTime = Date.now();
-  // 타이머가 속한 날짜 고정 (현재 보고 있는 날짜가 기준).
   S.workout.workoutTimerDate = _currentWorkoutTimerDate();
   if (S.workout.workoutTimerInterval) { clearInterval(S.workout.workoutTimerInterval); S.workout.workoutTimerInterval = null; }
-  _ensureWorkoutTimerInterval();
-  _renderWorkoutTimer();
-  _renderTimerControls();
-  // 2-layer persistence:
-  //   (1) localStorage (동기, 네트워크 무관) — saveActiveTimer 가 네트워크 실패하더라도
-  //       즉시 리로드 시 여기서 복원 가능. 유저 범주 키로 타 유저 계정 간 유령 방지.
-  //   (2) _settings/active_timer (Firestore) — cross-device, cross-day SoT.
-  //       saveWorkoutDay 를 건들지 않으므로 sheet:saved / 저장 완료 토스트 미발생.
-  _persistActiveTimerState('timer start');
-  wtPersistActiveWorkoutDraft('timer start');
+  S.workout.workoutStartTime = null;
+  _lsClearTimer();
+  clearActiveTimer().catch(e => console.error('[timer start] clear legacy activeTimer error:', e));
+  wtRefreshWorkoutTimelineDuration('timer timeline open');
 }
 
 export function wtPauseWorkoutTimer() {
-  if (!S.workout.workoutStartTime) return;
-  // 일시정지는 타이머의 날짜에만 누적해야 함. 다른 날짜를 보고 있으면
-  // S.workout.workoutDuration은 그 날짜의 값이므로 건드리면 안 됨.
-  if (_isViewingTimerDate()) {
-    S.workout.workoutDuration += Math.floor((Date.now() - S.workout.workoutStartTime) / 1000);
-  }
   S.workout.workoutStartTime = null;
-  // workoutTimerDate는 유지 (재개 시 같은 날짜 타이머로 이어지도록)
   if (S.workout.workoutTimerInterval) { clearInterval(S.workout.workoutTimerInterval); S.workout.workoutTimerInterval = null; }
-  _renderWorkoutTimer();
-  _renderTimerControls();
-  wtPersistActiveWorkoutDraft('timer pause');
-  // 순서: saveWorkoutDay (누적 duration 영속화) → clearActiveTimer (포인터 해제).
-  //   역순이면 save 실패 시 포인터만 사라져 누적 시간 유실. 이 순서면 save 실패 시
-  //   active_timer 가 살아있어 다음 recovery 가 타이머를 이어감 → 유저가 재시도 가능.
-  //   LS 는 FS 실패에 대한 백업이므로 FS 경로가 완료된 뒤에 정리.
+  wtRefreshWorkoutTimelineDuration('timer pause');
   saveWorkoutDay()
     .then(() => {
       _lsClearTimer();
@@ -499,18 +479,21 @@ export function wtPauseWorkoutTimer() {
 
 export async function wtResetWorkoutTimer() {
   // 운동 시간 초기화는 파괴적 액션. 실수 방지 위해 confirm 필수.
-  const hasTime = S.workout.workoutDuration > 0 || !!S.workout.workoutStartTime;
+  const timeline = _syncWorkoutTimelineDuration();
+  const hasTime = timeline.durationSec > 0 || timeline.checkedSetCount > 0 || !!S.workout.workoutStartTime;
   if (hasTime) {
     const ok = await confirmAction({
       title: '운동 시간을 초기화할까요?',
-      message: '지금까지 측정된 운동 시간이 0으로 돌아가요.',
+      message: '세트 완료 시각이 지워지고 총 운동 시간이 0으로 돌아가요.',
       confirmLabel: '초기화',
       cancelLabel: '취소',
       destructive: true,
     });
     if (!ok) return;
   }
+  clearWorkoutSetCompletedAt(S.workout.exercises);
   S.workout.workoutDuration = 0;
+  S.workout.workoutTimeline = buildWorkoutSetTimeline(S.workout.exercises, 0);
   S.workout.workoutStartTime = null;
   S.workout.workoutTimerDate = null;
   if (S.workout.workoutTimerInterval) { clearInterval(S.workout.workoutTimerInterval); S.workout.workoutTimerInterval = null; }
@@ -530,27 +513,15 @@ export async function wtResetWorkoutTimer() {
 export function _renderWorkoutTimer() {
   const el = document.getElementById('wt-workout-timer');
   if (!el) return;
-  _ensureWorkoutTimerDate();
-  // 현재 보고 있는 날짜가 타이머의 날짜일 때만 live elapsed를 합산.
-  // 다른 날짜를 보고 있으면 그 날짜의 저장된 workoutDuration만 표시.
-  const onTimerDate = _isViewingTimerDate();
-  const elapsed = (S.workout.workoutStartTime && onTimerDate)
-    ? Math.floor((Date.now() - S.workout.workoutStartTime) / 1000) + S.workout.workoutDuration
-    : S.workout.workoutDuration;
+  const elapsed = _measuredWorkoutDurationSec();
   el.textContent = _fmtTimerCompact(elapsed);
   el.style.display = '';
   const bar = document.getElementById('wt-workout-timer-bar');
-  if (bar) bar.classList.toggle('wt-running', !!S.workout.workoutStartTime && onTimerDate);
+  if (bar) bar.classList.toggle('wt-running', false);
 }
 
-// 2026-04-20: "타이머는 항상 떠있어야 함" (유저 요구).
-//   세트 기록 1개 이상이거나 오늘 운동 탭을 보고 있으면, 아래 규칙으로 컨트롤 상시 노출:
-//     - play : 타이머 멈춰 있을 때. 시작 버튼 겸 재개 버튼.
-//     - pause: 타이머 돌고 있을 때.
-//     - reset: hasTime 일 때만 (0초인데 리셋 UI 는 의미 없음).
-//     - finish(끝내기): 기록이 하나라도 있거나 duration 누적됐으면 노출.
-//   다른 날짜(타이머 날짜 ≠ 보는 날짜)에서는 기존처럼 컨트롤 숨김 — 타이머 날짜로 돌아가야
-//   멈추거나 리셋 가능하도록 명확하게 유지.
+// 2026-06-26: play/pause stopwatch는 근력 운동 시간 기준에서 제외.
+//   타이머 바는 세트 완료 timeline을 보여주고, reset/finish만 의미 있을 때 노출한다.
 function _hasWorkoutRecord() {
   const list = Array.isArray(S.workout.exercises) ? S.workout.exercises : [];
   for (const entry of list) {
@@ -565,11 +536,8 @@ function _hasWorkoutRecord() {
 }
 
 export function _renderTimerControls() {
-  _ensureWorkoutTimerDate();
-  const onTimerDate = _isViewingTimerDate();
-  const timerActiveElsewhere = !!S.workout.workoutStartTime && !onTimerDate;
-  const isRunning = !!S.workout.workoutStartTime && onTimerDate;
-  const hasTime   = isRunning || (!timerActiveElsewhere && S.workout.workoutDuration > 0);
+  const timeline = _syncWorkoutTimelineDuration();
+  const hasTime   = timeline.durationSec > 0 || timeline.checkedSetCount > 0;
   const hasRecord = _hasWorkoutRecord();
   const pauseBtn  = document.getElementById('wt-timer-pause-btn');
   const playBtn   = document.getElementById('wt-timer-play-btn');
@@ -577,19 +545,9 @@ export function _renderTimerControls() {
   const finBtn    = document.getElementById('wt-finish-workout-btn');
   const resultEl  = document.getElementById('wt-workout-duration-result');
 
-  // 다른 날짜에서 타이머가 돌고 있으면 여기선 조작 불가 → 전부 숨김(_restoreFlowState가 이 경로 차단).
-  if (timerActiveElsewhere) {
-    [pauseBtn, playBtn, resetBtn, finBtn].forEach(b => { if (b) b.style.display = 'none'; });
-    if (resultEl) resultEl.style.display = 'none';
-    return;
-  }
-
-  // play/pause 는 기록 또는 누적시간 유무와 무관하게 상시 노출(유저 요구: "타이머 항상 떠있음").
-  if (pauseBtn) pauseBtn.style.display = isRunning  ? '' : 'none';
-  if (playBtn)  playBtn.style.display  = !isRunning ? '' : 'none';
-  // reset 은 실제 측정된 시간이 있을 때만(의미 있는 액션 아니면 숨김).
+  if (pauseBtn) pauseBtn.style.display = 'none';
+  if (playBtn)  playBtn.style.display  = 'none';
   if (resetBtn) resetBtn.style.display = hasTime ? '' : 'none';
-  // 끝내기: 기록이 하나라도 있거나 duration 누적 → 노출. 타이머 안 돌렸어도 세트 있으면 뜸.
   if (finBtn)   finBtn.style.display   = (hasTime || hasRecord) ? '' : 'none';
   if (resultEl) resultEl.style.display = 'none';
 }
@@ -629,9 +587,7 @@ export function wtTogglePauseWorkoutTimer() {
 //      기다려야 다른 레이어(getCache 소비자, analytics 등)와의 순서가 명확해진다.
 export function wtFinishWorkout() {
   const finalDuration = _finalWorkoutDurationSec();
-  if (S.workout.workoutStartTime) {
-    S.workout.workoutStartTime = null;
-  }
+  S.workout.workoutStartTime = null;
   S.workout.workoutDuration = finalDuration;
   S.workout.workoutTimerDate = null;
   if (S.workout.workoutTimerInterval) { clearInterval(S.workout.workoutTimerInterval); S.workout.workoutTimerInterval = null; }
@@ -665,45 +621,13 @@ export function wtFinishWorkout() {
 }
 
 export function wtRecoverTimers() {
-  // 2026-04-21 cross-day 복원: 페이지 리로드/앱 재시작 직후 메모리는 초기 상태(null)이다.
-  //   우선 순위: (1) Firestore _settings/active_timer → cross-device 포인터.
-  //             (2) localStorage 백업 → Firestore write 가 네트워크 실패했던 경우 구조.
-  //   둘 다 24h 이내 + date 객체 유효 검증. 하나라도 성공하면 메모리 복원 + 반대편도 동기화.
-  if (!S.workout.workoutStartTime) {
-    const fromFs = getActiveTimer();
-    const fromLs = _lsReadTimer();
-    let restored = null;
-    if (_isValidActiveTimer(fromFs)) restored = fromFs;
-    else if (_isValidActiveTimer(fromLs)) restored = fromLs;
-    else {
-      const fromDraft = _readValidActiveWorkoutDraft();
-      if (_isValidActiveTimer({ startedAt: fromDraft?.workoutStartTime, date: fromDraft?.workoutTimerDate || fromDraft?.date })) {
-        restored = { startedAt: fromDraft.workoutStartTime, date: fromDraft.workoutTimerDate || fromDraft.date };
-      }
-    }
-
-    if (restored) {
-      const normalizedRestored = {
-        startedAt: Number(restored.startedAt),
-        date: _normalizeTimerDate(restored.date),
-      };
-      S.workout.workoutStartTime = normalizedRestored.startedAt;
-      S.workout.workoutTimerDate = normalizedRestored.date;
-      // Firestore 가 비어있고 localStorage 로 복원한 경우 → Firestore 에 재기록.
-      if (!fromFs && fromLs) {
-        saveActiveTimer(normalizedRestored).catch(e => console.error('[timer recover→fs] error:', e));
-      }
-      // localStorage 가 비어있고 Firestore 로 복원한 경우 → localStorage 에 재기록.
-      if (fromFs && !fromLs) _lsWriteTimer(normalizedRestored);
-    } else {
-      // 유령 세션(24h 초과 등) 또는 불완전 포인터 → 양쪽 청소.
-      if (fromLs) _lsClearTimer();
-      if (fromFs) clearActiveTimer().catch(() => {});
-    }
-  }
-
-  if (S.workout.workoutStartTime) _ensureWorkoutTimerDate();
-  _ensureWorkoutTimerInterval();
+  const fromFs = getActiveTimer();
+  const fromLs = _lsReadTimer();
+  if (fromLs) _lsClearTimer();
+  if (fromFs) clearActiveTimer().catch(() => {});
+  S.workout.workoutStartTime = null;
+  if (S.workout.workoutTimerInterval) { clearInterval(S.workout.workoutTimerInterval); S.workout.workoutTimerInterval = null; }
+  _syncWorkoutTimelineDuration();
   _renderWorkoutTimer();
   _renderTimerControls();
 

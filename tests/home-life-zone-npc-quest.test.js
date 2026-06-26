@@ -47,7 +47,7 @@ test('life zone NPC quest bubble is a tracked transparent PNG runtime asset', ()
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260626z7-cycle-rail-target-settings/);
+  assert.match(sw, /tomatofarm-v20260626z8-set-completion-timeline/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,

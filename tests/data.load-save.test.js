@@ -234,6 +234,8 @@ test('isActiveWorkoutDayData: cf/swimming/running/stretching boolean → true', 
 test('isActiveWorkoutDayData: runDistance/workoutDuration 양수 → true', () => {
   assert.equal(isActiveWorkoutDayData({ runDistance: 3 }), true);
   assert.equal(isActiveWorkoutDayData({ workoutDuration: 600 }), true);
+  assert.equal(isActiveWorkoutDayData({ workoutTimeline: { durationSec: 600 } }), true);
+  assert.equal(isActiveWorkoutDayData({ workoutTimeline: { checkedSetCount: 1, durationSec: 0 } }), true);
 });
 
 test('isActiveWorkoutDayData: workoutSessions 내부 운동 기록 → true', () => {

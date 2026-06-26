@@ -15,6 +15,7 @@ test('active workout draft persists the full in-progress session locally', () =>
   assert.match(timersJs, /export function wtHasActiveWorkoutDraft/);
   assert.match(timersJs, /exercises:\s*_cloneJson\(w\.exercises,\s*\[\]\)/);
   assert.match(timersJs, /workoutStartTime:\s*Number\(S\.workout\.workoutStartTime\)/);
+  assert.match(timersJs, /workoutTimeline:\s*_cloneJson\(w\.workoutTimeline,\s*null\)/);
   assert.match(timersJs, /workoutTimerDate:\s*timerDate/);
   assert.match(timersJs, /memo,/);
   assert.match(timersJs, /gymId:\s*w\.currentGymId/);
@@ -37,8 +38,17 @@ test('set editing paths write local draft before relying on async save', () => {
   assert.match(exercisesJs, /wtPersistActiveWorkoutDraft\(`set draft \$\{field\}`\)/);
   assert.match(exercisesJs, /wtPersistActiveWorkoutDraft\(`set update \$\{field\}`\)/);
   assert.match(exercisesJs, /wtPersistActiveWorkoutDraft\('set done toggle'\)/);
+  assert.match(exercisesJs, /stampSetCompletedAt\(set\)/);
+  assert.match(exercisesJs, /clearSetCompletedAt\(set\)/);
   assert.match(exercisesJs, /wtPersistActiveWorkoutDraft\('exercise add'\)/);
   assert.match(exercisesJs, /wtPersistActiveWorkoutDraft\('exercise remove'\)/);
+});
+
+test('workout timer duration uses set completion timeline instead of live elapsed', () => {
+  assert.match(timersJs, /syncWorkoutTimeline\(S\.workout\)/);
+  assert.doesNotMatch(timersJs, /Date\.now\(\) - S\.workout\.workoutStartTime\)\s*\/\s*1000\)\s*\+\s*S\.workout\.workoutDuration/);
+  assert.match(timersJs, /pauseBtn\)\s*pauseBtn\.style\.display = 'none'/);
+  assert.match(timersJs, /playBtn\)\s*playBtn\.style\.display\s+= 'none'/);
 });
 
 test('app update reload flushes workout draft and changes copy while workout is active', () => {
@@ -51,5 +61,5 @@ test('app update reload flushes workout draft and changes copy while workout is 
 });
 
 test('service worker cache version was bumped for recovery assets', () => {
-  assert.match(swJs, /tomatofarm-v20260626z7-cycle-rail-target-settings/);
+  assert.match(swJs, /tomatofarm-v20260626z8-set-completion-timeline/);
 });
