@@ -473,4 +473,6 @@
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
 - 리뷰 문서: `docs/ai/reviews/2026-06-26-exercise-program-wendler-picker-sets-review.md`
-- not verified yet: Dashboard3 Pages 배포와 인증 계정 UI flow 확인은 아직 남아 있다.
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 095a7c12eab92ac6f52dbc03a6388ac980d3a2f6`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z1-wendler-picker-sets" "workout/test-v2/board-core.js::return (exerciseId && bm.exerciseId) ? 3 : 2"`
+- not verified yet: 인증 계정이 없어 `운동 탭 -> + -> 종목 수정 -> 웬들러 저장 -> 같은 종목 추가` 실제 UI flow 확인은 남아 있다.

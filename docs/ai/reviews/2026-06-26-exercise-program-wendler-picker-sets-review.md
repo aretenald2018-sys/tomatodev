@@ -27,7 +27,9 @@
 - PASS: `node --test .\tests\*.test.js` — 529 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 095a7c12eab92ac6f52dbc03a6388ac980d3a2f6`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z1-wendler-picker-sets" "workout/test-v2/board-core.js::return (exerciseId && bm.exerciseId) ? 3 : 2"`
 
 ## 남은 확인
 
-- not verified yet: Dashboard3 Pages 배포와 인증 계정의 `운동 탭 -> + -> 종목 수정 -> 웬들러 저장 -> 같은 종목 추가` 실제 UI flow 확인.
+- not verified yet: 인증 계정의 `운동 탭 -> + -> 종목 수정 -> 웬들러 저장 -> 같은 종목 추가` 실제 UI flow 확인.

@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-25-exercise-program-settings-wendler-migration.md`
-- 현재 단계: `execution complete — Slice 9 picker wendler prescription sets fix`
-- 마지막 완료: `프로그램 벤치마크 movementId fallback을 보정하고 웬들러 세트 적용 회귀 테스트와 캐시 버전 갱신을 완료했다.`
-- 다음 액션: `Slice 9 변경 파일을 리뷰하고, 문제가 없으면 Dashboard3 Pages 배포 검증을 진행한다.`
+- 현재 단계: `review complete — Slice 9 picker wendler prescription sets fix`
+- 마지막 완료: `프로그램 벤치마크 movementId fallback 보정, 회귀 테스트, 리뷰, Dashboard3 Pages 배포 검증을 완료했다.`
+- 다음 액션: `성장보드 색칠/미달 자동 반영 통합 방식은 사용자 결정 후 별도 계획으로 진행한다.`
 - 차단 사유: `없음`
 
 ## 직전 실행 검증
@@ -29,7 +29,10 @@
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
 - PASS: `docs/ai/reviews/2026-06-26-exercise-program-wendler-picker-sets-review.md`
-- not verified yet: Dashboard3 Pages 배포와 인증 계정 UI flow 확인 필요
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 095a7c12eab92ac6f52dbc03a6388ac980d3a2f6`
+  - 결과: `[deploy-verify] ok 095a7c12eab9 tomatofarm-v20260626z1-wendler-picker-sets static=218`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z1-wendler-picker-sets" "workout/test-v2/board-core.js::return (exerciseId && bm.exerciseId) ? 3 : 2"`
+- not verified yet: 인증 계정이 없어 `운동 탭 -> + -> 종목 수정 -> 웬들러 저장 -> 같은 종목 추가` 실제 UI flow는 직접 확인 필요
 
 ## 완료한 작업
 
