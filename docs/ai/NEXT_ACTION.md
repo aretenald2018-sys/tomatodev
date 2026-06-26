@@ -3,9 +3,9 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-25-exercise-program-settings-wendler-migration.md`
-- 현재 단계: `review complete — Slice 10 wendler program state reload preservation`
-- 마지막 완료: `웬들러 프로그램 상태 재로딩 보존 수정, 회귀 테스트, 리뷰, Dashboard3 Pages 배포 검증을 완료했다.`
+- 계획 문서: `docs/ai/features/2026-06-26-workout-calendar-week-rail-width.md`
+- 현재 단계: `review complete — Slice 1 workout calendar week rail width`
+- 마지막 완료: `운동 홈 캘린더 모바일 주차 rail 폭 확보, 회귀 테스트, 리뷰, Dashboard3 Pages 배포 검증을 완료했다.`
 - 다음 액션: `성장보드 색칠/미달 자동 반영 통합 방식은 사용자 결정 후 별도 계획으로 진행한다.`
 - 차단 사유: `없음`
 
@@ -23,16 +23,16 @@
 
 ## 현재 실행 검증
 
-- PASS: `node --check data/data-load.js; node --check workout/exercises.js; node --check sw.js`
-- PASS: `node --test tests/exercise-program-editor.test.js tests/data.load-save.test.js tests/workout-test-mode-unified.test.js` — 37 tests passed
-- PASS: `node --test .\tests\*.test.js` — 530 tests passed
+- PASS: `node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-test-mode-unified.test.js` — 14 tests passed
+- PASS: `node --test .\tests\*.test.js` — 531 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
-- PASS: `docs/ai/reviews/2026-06-26-exercise-program-wendler-state-reload-review.md`
-- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 36f5b53`
-  - 결과: `[deploy-verify] ok 36f5b533d8ff tomatofarm-v20260626z2-wendler-state-reload static=218`
-- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z2-wendler-state-reload" "data/data-load.js::_settings.test_board_v2    = fbMap.test_board_v2" "workout/exercises.js::const programRecord = saved || record"`
-- not verified yet: 인증 계정이 없어 `종목 수정 -> 웬들러 저장 -> 새로고침/재진입 -> 종목 수정` 실제 UI flow는 직접 확인 필요
+- PASS: `docs/ai/reviews/2026-06-26-workout-calendar-week-rail-width-review.md`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 6d6be82`
+  - 결과: `[deploy-verify] ok 6d6be82c2ad8 tomatofarm-v20260626z3-workout-calendar-rail static=218`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z3-workout-calendar-rail" "style.css::grid-template-columns: 64px repeat(7, minmax(0, 1fr))" "style.css::font-size: 9.5px"`
+- not verified yet: 인증 계정이 없어 실제 모바일 브라우저에서 `운동 탭 -> 월간 캘린더` 시각 상태는 직접 확인 필요
 
 ## 완료한 작업
 
