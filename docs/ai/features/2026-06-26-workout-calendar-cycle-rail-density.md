@@ -83,4 +83,7 @@
 - PASS: `node --test .\tests\*.test.js` — 536 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
-- not verified yet: Dashboard3 Pages 배포와 인증 계정 실제 `운동 탭 -> 월간 캘린더` UI 확인은 리뷰 후 진행 필요
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ b31e79e`
+  - 결과: `[deploy-verify] ok b31e79e91699 tomatofarm-v20260626z6-calendar-cycle-rail static=218`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z6-calendar-cycle-rail" "render-calendar.js::_buildWorkoutCycleRailItems" "render-calendar.js::cal-cycle-branch-text" "style.css::--cal-cycle-rail-width: 94px" "style.css::.cal-cycle-branch.is-wendler"`
+- not verified yet: 인증 계정이 없어 실제 `운동 탭 -> 월간 캘린더 -> 문정토마토 계정 사이클 레일 표시` UI 확인은 수동 확인이 필요하다.

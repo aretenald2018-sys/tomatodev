@@ -30,7 +30,10 @@
 - PASS: `node --test .\tests\*.test.js` — 536 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ b31e79e`
+  - 결과: `[deploy-verify] ok b31e79e91699 tomatofarm-v20260626z6-calendar-cycle-rail static=218`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z6-calendar-cycle-rail" "render-calendar.js::_buildWorkoutCycleRailItems" "render-calendar.js::cal-cycle-branch-text" "style.css::--cal-cycle-rail-width: 94px" "style.css::.cal-cycle-branch.is-wendler"`
 
 ## 남은 위험
 
-- not verified yet: 인증 계정이 없어 실제 Dashboard3 운동 탭에서 문정토마토 계정의 웬들러/기본 6주 사이클 레일 표시와 모바일 겹침 여부는 배포 후 수동 확인이 필요하다.
+- not verified yet: 인증 계정이 없어 실제 Dashboard3 운동 탭에서 문정토마토 계정의 웬들러/기본 6주 사이클 레일 표시와 모바일 겹침 여부는 수동 확인이 필요하다.

@@ -2,12 +2,25 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-26-workout-calendar-cycle-rail-density.md`
-- 현재 단계: `reviewed — Slice 1 calendar density and cycle rail`
-- 마지막 완료: `운동 캘린더 압축 및 사이클 레일 구현을 완료하고 자체 리뷰에서 차단 이슈 없음으로 확인했다.`
-- 다음 액션: `커밋, origin/main push, Dashboard3 Pages 배포 검증`
+- 현재 단계: `completed — Slice 1 calendar density and cycle rail`
+- 마지막 완료: `운동 캘린더 압축 및 전체 사이클 레일 구현을 커밋/푸시하고 Dashboard3 Pages 배포 검증까지 완료했다.`
+- 다음 액션: `없음`
 - 차단 사유: `없음`
+
+## 이번 실행 검증
+
+- 커밋: `b31e79e fix(workout): compact calendar and add cycle rail`
+- PASS: `node --check render-calendar.js; node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/test-v2.board-core.test.js` — 51 tests passed
+- PASS: `node --test .\tests\*.test.js` — 536 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ b31e79e`
+  - 결과: `[deploy-verify] ok b31e79e91699 tomatofarm-v20260626z6-calendar-cycle-rail static=218`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z6-calendar-cycle-rail" "render-calendar.js::_buildWorkoutCycleRailItems" "render-calendar.js::cal-cycle-branch-text" "style.css::--cal-cycle-rail-width: 94px" "style.css::.cal-cycle-branch.is-wendler"`
+- not verified yet: 인증 계정이 없어 실제 `운동 탭 -> 월간 캘린더 -> 문정토마토 계정 사이클 레일 표시` UI 확인은 수동 확인 필요
 
 ## 리뷰 대상
 
