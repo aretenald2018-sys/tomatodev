@@ -2,27 +2,27 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-26-workout-cycle-settings-sheet-unification.md`
-- 현재 단계: `execution complete — workout cycle settings sheet unification`
-- 마지막 완료: `캘린더 rail 목표 칩 클릭 경로를 종목 설정 sheet로 통합하고, 리뷰 문서를 작성했다.`
-- 다음 액션: `Dashboard3 Pages 배포 검증 후 complete 처리`
+- 현재 단계: `complete — workout cycle settings sheet unification`
+- 마지막 완료: `캘린더 rail 목표 칩 클릭 경로를 종목 설정 sheet로 통합, 리뷰, Dashboard3 Pages 배포 검증했다.`
+- 다음 액션: `없음`
 - 차단 사유: `없음`
 
 ## 이번 실행 검증
 
-- 계획 완료: `docs/ai/features/2026-06-26-workout-calendar-continuous-cycle-rail.md`
-- 구현 완료: `style.css` cycle rail line을 row 전체 높이로 연결하고 주차별 rail 색 변수를 적용
-- PASS: `node --check render-calendar.js; node --check sw.js`
-- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js` — 13 tests passed
-- PASS: `node --test .\tests\*.test.js` — 545 tests passed
+- 계획 완료: `docs/ai/features/2026-06-26-workout-cycle-settings-sheet-unification.md`
+- 구현 완료: `workout/test-v2/board-render.js` 캘린더 rail 설정 전용 진입, 트랙 구성 웬들러 칩 통합, 종목별 6주 가로 레일 추가
+- 리뷰 완료: `docs/ai/reviews/2026-06-26-workout-cycle-settings-sheet-unification-review.md`
+- PASS: `node --check workout/test-v2/board-render.js; node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/test-v2.board-core.test.js` — 53 tests passed
+- PASS: `node --test .\tests\*.test.js` — 546 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
 - PASS: `git diff --check`
-- PASS: `docs/ai/reviews/2026-06-26-workout-calendar-continuous-cycle-rail-review.md`
-- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ e023967`
-  - 결과: `[deploy-verify] ok e02396785814 tomatofarm-v20260626z9-cycle-rail-continuous static=219`
-- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z9-cycle-rail-continuous" "style.css::--cal-cycle-rail-color: #aeb9c5" "style.css::.cal-workout-week-row:nth-child(6n + 2)" "style.css::border-left: 2px solid var(--cal-cycle-rail-color" "style.css::border-top: 2px solid var(--cal-cycle-rail-color"`
-- not verified yet: 인증 계정 세션이 없어 배포 URL에서 `운동 탭 -> 월간 캘린더 -> 좌측 cycle rail 시각 상태` 실제 UI flow는 직접 조작하지 못함
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 23de6af`
+  - 결과: `[deploy-verify] ok 23de6af6e44c tomatofarm-v20260626z10-cycle-settings-sheet static=219`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z10-cycle-settings-sheet" "workout/test-v2/board-render.js::S.settingsOnly = true" "workout/test-v2/board-render.js::data-tm2-col-cycle" "workout/test-v2/board-render.js::document.dispatchEvent(new CustomEvent('sheet:saved'))" "test-mode-v2.css::.tm2-col-cycle-line" "test-mode-v2.css::.tm2-track-toggle button.tm2-program-wendler.tm2-on"`
+- not verified yet: 인증 계정 세션이 없어 배포 URL에서 `운동 탭 -> 월간 캘린더 -> 좌측 cycle rail 목표 칩 -> 종목 설정 sheet` 실제 UI flow는 직접 조작하지 못함
 
 ## 리뷰 대상
 
