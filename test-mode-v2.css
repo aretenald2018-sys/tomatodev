@@ -488,13 +488,7 @@ body:has(#tm2-sheets.tm2-open) #tm2-sheets .tm2-sheet {
 .tm2-track-toggle button.tm2-on { border-color: var(--tm2-now); background: var(--tm2-now-bg); color: var(--tm2-now-ink); }
 .tm2-track-toggle button.tm2-program-wendler.tm2-on { border-color: #d7c4f0; background: var(--tm2-wendler-bg); color: var(--tm2-wendler); }
 .tm2-track-program-row .tm2-lb { max-width: 36%; }
-.tm2-wbox { border: 1.5px solid #e7defc; background: #faf7ff; border-radius: 14px; padding: 12px 13px; margin-top: 8px; }
-.tm2-wendler-callout {
-  border: 1px solid #e3d9f9; background: #fff; border-radius: 12px;
-  padding: 10px 11px; margin-bottom: 8px; color: var(--tm2-wendler);
-}
-.tm2-wendler-callout b { display: block; color: #5f2c86; font-size: 12px; }
-.tm2-wendler-callout span { display: block; margin-top: 2px; font-size: 10.5px; font-weight: 700; color: #7a3ea8; line-height: 1.45; }
+.tm2-wbox { border: 0; background: transparent; border-radius: 0; padding: 0; margin-top: 4px; }
 .tm2-wk-tabs { display: flex; gap: 5px; margin: 8px 0; }
 .tm2-wk-tabs button { font-size: 11px; font-weight: 700; border-radius: 8px; padding: 5px 10px; background: #fff; border: 1px solid #e3d9f9; color: #9a8bbd; }
 .tm2-wk-tabs button.tm2-on { background: var(--tm2-wendler); color: #fff; border-color: var(--tm2-wendler); }
@@ -530,8 +524,10 @@ body:has(#tm2-sheets.tm2-open) #tm2-sheets .tm2-sheet {
   align-items: center;
   min-width: 0;
   overflow-x: auto;
-  padding: 16px 2px 6px;
+  padding: 18px 2px 8px;
+  min-height: 58px;
   scrollbar-width: none;
+  touch-action: pan-x;
 }
 .tm2-col-cycle-track::-webkit-scrollbar { display: none; }
 .tm2-col-cycle-point {

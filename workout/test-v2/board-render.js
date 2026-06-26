@@ -241,6 +241,10 @@ function _openSheet(html) {
   const sh = document.getElementById('tm2-sheets');
   if (!sh) return;
   sh.innerHTML = `<div class="tm2-sheet">${html}</div>`;
+  sh.querySelector('.tm2-sheet')?.addEventListener('click', (event) => {
+    _onAction(event);
+    event.stopPropagation();
+  });
   sh.classList.add('tm2-open');
 }
 
@@ -1553,24 +1557,36 @@ function _renderCycleTrack(row) {
     </div>`;
 }
 
+function _cycleRailTracksForBenchmark(bm, ctx) {
+  const tracks = new Set([
+    ...(Array.isArray(bm.tracks) ? bm.tracks : []),
+    ...(Array.isArray(ctx.tracks) ? ctx.tracks : []),
+  ]);
+  return ['volume', 'intensity'].filter(track => tracks.has(track) || bm.seed?.[track]);
+}
+
 function _renderColumnCycleRail(bm, ctx, wendlerConfig) {
   const cycle = activeCycleOf(S.board, bm.groupId);
   if (!cycle) return '';
   const todayKey = _todayKey();
-  const isWnd = ctx.program === 'wendler';
-  const rows = isWnd
-    ? [{
+  const rows = [];
+  if (wendlerConfig) {
+    rows.push({
       kind: 'wendler',
       label: '웬들러',
       detail: `${WENDLER_SCHEMES[ctx.scheme]?.label || '커스텀'} · TM ${_formatCycleKg(wendlerConfig?.tmKg)}`,
       items: _wendlerCycleItems(bm, cycle, wendlerConfig, todayKey),
-    }]
-    : (ctx.tracks.length ? ctx.tracks : ['volume']).map(track => ({
+    });
+  }
+  for (const track of _cycleRailTracksForBenchmark(bm, ctx)) {
+    rows.push({
       kind: track === 'intensity' ? 'intensity' : 'volume',
       label: TM2_TRACK_LABELS[track] || '볼륨',
       detail: '기본 계단',
       items: _stairCycleItems(bm, track, cycle, todayKey),
-    }));
+    });
+  }
+  if (!rows.length) return '';
   const range = `${shortDate(cycle.startDate)} - ${shortDate(addWeeks(cycle.startDate, cycle.weeks - 1))}`;
   return `
     <div class="tm2-col-cycle" data-tm2-col-cycle>
@@ -1609,7 +1625,7 @@ function _renderColumnSheet() {
   const programBtn = wendlerAllowed
     ? `<button class="${isWnd ? 'tm2-on ' : ''}tm2-program-wendler" data-action="tm2:col-program" data-program="wendler">웬들러</button>`
     : '';
-  const w = isWnd ? normalizeWendlerConfig({ ...(bm.wendler || {}), scheme: ctx.scheme === 'custom' ? (bm.wendler?.scheme || 'custom') : ctx.scheme, supplemental: { ...(bm.wendler?.supplemental || {}), kind: ctx.suppKind } }, { primaryMajor: wendlerMajor }) : null;
+  const w = wendlerAllowed ? normalizeWendlerConfig({ ...(bm.wendler || {}), scheme: ctx.scheme === 'custom' ? (bm.wendler?.scheme || 'custom') : ctx.scheme, supplemental: { ...(bm.wendler?.supplemental || {}), kind: ctx.suppKind } }, { primaryMajor: wendlerMajor }) : null;
   const wendlerSchemeLabel = WENDLER_SCHEMES[ctx.scheme]?.label || '커스텀';
   const wendlerSuppLabel = ctx.suppKind === 'bbb' ? 'BBB' : ctx.suppKind === 'fsl' ? 'FSL' : '보조 없음';
   const overview = isWnd ? wendlerCycleOverview(w) : [];
@@ -1622,11 +1638,11 @@ function _renderColumnSheet() {
     <div class="tm2-sh-kicker">${_esc(group?.label || '')} · 종목 설정</div>
     <div class="tm2-sh-title">${_esc(bm.label)}</div>
     <div class="tm2-fld tm2-track-program-row"><span class="tm2-lb">트랙 구성<small>볼륨/강도는 기본 계단</small></span><span class="tm2-track-toggle">${trackBtn('volume')}${trackBtn('intensity')}${programBtn}</span></div>
+    ${!isWnd ? `
     <div class="tm2-fld"><span class="tm2-lb">세트 수<small>셀에는 무게×횟수만 보여요</small></span><input type="number" id="tm2-col-sets" value="${bm.setsDefault || 4}" min="1" max="10"></div>
-    <div class="tm2-fld"><span class="tm2-lb">6주 성공 시 증량<small>정산 때 "성장"이면 이만큼 (${group?.bodyRegion === 'lower' ? '하체' : '상체'} 기본 +${defaultIncrementForGroup(bm.groupId)}kg)</small></span><input type="number" id="tm2-col-inc" value="${isWnd ? (bm.wendler?.incrementKg ?? defaultIncrementForGroup(bm.groupId)) : bm.incrementKg}" step="0.5" min="0.5"></div>
+    <div class="tm2-fld"><span class="tm2-lb">6주 성공 시 증량<small>정산 때 "성장"이면 이만큼 (${group?.bodyRegion === 'lower' ? '하체' : '상체'} 기본 +${defaultIncrementForGroup(bm.groupId)}kg)</small></span><input type="number" id="tm2-col-inc" value="${bm.incrementKg}" step="0.5" min="0.5"></div>` : ''}
     ${isWnd ? `
     <div class="tm2-wbox">
-      <div class="tm2-wendler-callout"><b>${_esc(wendlerSchemeLabel)} 메인 + ${_esc(wendlerSuppLabel)}</b><span>보드 칸은 톱세트를 보여주고, 운동 카드는 메인 세트 뒤 보조 세트를 함께 불러와요.</span></div>
       <div class="tm2-fld" style="border:0;padding:2px 0"><span class="tm2-lb">기준 무게 (TM)</span><input type="number" id="tm2-col-tm" value="${bm.wendler?.tmKg || ''}" step="2.5" min="0" placeholder="kg"></div>
       <div class="tm2-fld" style="border:0;padding:2px 0"><span class="tm2-lb">라운딩<small>%환산 후 반올림 단위</small></span><input type="number" id="tm2-col-round" value="${bm.wendler?.roundKg ?? 2.5}" step="0.5" min="0.5"></div>
       <div class="tm2-wk-tabs">
@@ -1653,8 +1669,6 @@ function _renderColumnSheet() {
       </div>` : ''}
     </div>` : ''}
     <div class="tm2-fld"><span class="tm2-lb">여유 횟수 (RIR)<small>세트 끝에 남길 횟수</small></span><input type="number" id="tm2-col-rir" value="${bm.meta?.rirTarget ?? 2}" min="0" max="5"></div>
-    <div class="tm2-fld"><span class="tm2-lb">자세 메모</span><input type="text" id="tm2-col-form" value="${_esc(bm.meta?.formNote || '')}" placeholder="예: 바닥 터치 · 반동 금지"></div>
-    <div class="tm2-fld"><span class="tm2-lb">헬스장별 기구</span><input type="text" id="tm2-col-gym" value="${_esc(bm.meta?.gymNote || '')}" placeholder="예: A점 바벨 · B점 스미스 −2.5kg"></div>
     ${_renderColumnCycleRail(bm, ctx, w)}
     <button class="tm2-btn-primary" data-action="tm2:col-save">저장</button>
     <button class="tm2-btn-ghost" data-action="tm2:sheet-close">취소</button>
@@ -1671,14 +1685,20 @@ async function _saveColumnSheet() {
   bm.tracks = ctx.program === 'wendler'
     ? (ctx.tracks.length ? ['volume', 'intensity'].filter(t => ctx.tracks.includes(t)) : ['volume'])
     : ['volume', 'intensity'].filter(t => ctx.tracks.includes(t));
-  bm.setsDefault = Math.max(1, Math.round(_num('tm2-col-sets', bm.setsDefault || 4)));
-  const inc = _num('tm2-col-inc', bm.incrementKg);
+  const setsEl = document.getElementById('tm2-col-sets');
+  if (setsEl) bm.setsDefault = Math.max(1, Math.round(_num('tm2-col-sets', bm.setsDefault || 4)));
+  const incFallback = ctx.program === 'wendler'
+    ? (bm.wendler?.incrementKg ?? defaultIncrementForGroup(bm.groupId))
+    : bm.incrementKg;
+  const inc = _num('tm2-col-inc', incFallback);
   bm.incrementKg = inc;
   bm.meta = bm.meta || {};
   const rirEl = document.getElementById('tm2-col-rir');
   bm.meta.rirTarget = rirEl && rirEl.value !== '' ? Math.max(0, Math.round(Number(rirEl.value))) : null;
-  bm.meta.formNote = _txt('tm2-col-form');
-  bm.meta.gymNote = _txt('tm2-col-gym');
+  const formEl = document.getElementById('tm2-col-form');
+  const gymEl = document.getElementById('tm2-col-gym');
+  if (formEl) bm.meta.formNote = _txt('tm2-col-form');
+  if (gymEl) bm.meta.gymNote = _txt('tm2-col-gym');
 
   const wasWendler = bm.program === 'wendler';
   bm.program = ctx.program;

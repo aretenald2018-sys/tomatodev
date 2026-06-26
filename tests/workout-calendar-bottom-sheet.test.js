@@ -252,6 +252,10 @@ test('cycle rail target cards open the existing growth-board benchmark settings 
   const settingsEnd = tm2BoardJs.indexOf('function _afterBoardReady', settingsStart);
   assert.ok(settingsStart >= 0 && settingsEnd > settingsStart, 'benchmark settings opener should exist');
   const settingsFn = tm2BoardJs.slice(settingsStart, settingsEnd);
+  const openSheetStart = tm2BoardJs.indexOf('function _openSheet');
+  const openSheetEnd = tm2BoardJs.indexOf('export async function tm2OpenBoard', openSheetStart);
+  assert.ok(openSheetStart >= 0 && openSheetEnd > openSheetStart, 'sheet opener should exist');
+  const openSheetFn = tm2BoardJs.slice(openSheetStart, openSheetEnd);
 
   assert.match(tm2BoardJs, /export async function tm2OpenBenchmarkSettings\(benchmarkId\)/);
   assert.match(tm2BoardJs, /S\.groupId = bm\.groupId \|\| S\.groupId/);
@@ -260,6 +264,9 @@ test('cycle rail target cards open the existing growth-board benchmark settings 
   assert.match(settingsFn, /classList\.remove\('tm2-open'\)/);
   assert.doesNotMatch(settingsFn, /renderBoard\(\)/);
   assert.doesNotMatch(settingsFn, /await tm2OpenBoard\(\)/);
+  assert.match(openSheetFn, /querySelector\('\.tm2-sheet'\)\?\.addEventListener\('click'/);
+  assert.match(openSheetFn, /_onAction\(event\)/);
+  assert.match(openSheetFn, /event\.stopPropagation\(\)/);
   assert.match(tm2EntryJs, /async function _openBenchmarkSettings\(benchmarkId\)/);
   assert.match(tm2EntryJs, /mod\.tm2OpenBenchmarkSettings\(benchmarkId\)/);
   assert.match(tm2EntryJs, /window\.tm2OpenBenchmarkSettings = _openBenchmarkSettings/);
@@ -270,20 +277,33 @@ test('growth-board benchmark settings sheet merges program choice and horizontal
   const sheetEnd = tm2BoardJs.indexOf('async function _saveColumnSheet', sheetStart);
   assert.ok(sheetStart >= 0 && sheetEnd > sheetStart, 'column settings sheet renderer should exist');
   const sheetFn = tm2BoardJs.slice(sheetStart, sheetEnd);
+  const wendlerStart = sheetFn.indexOf('${isWnd ? `');
+  const wendlerEnd = sheetFn.indexOf('<div class="tm2-fld"><span class="tm2-lb">여유 횟수', wendlerStart);
+  assert.ok(wendlerStart >= 0 && wendlerEnd > wendlerStart, 'wendler block should be isolated');
+  const wendlerBlock = sheetFn.slice(wendlerStart, wendlerEnd);
 
   assert.match(sheetFn, /tm2-track-program-row/);
   assert.match(sheetFn, /data-action="tm2:col-program" data-program="wendler">웬들러<\/button>/);
   assert.match(sheetFn, /볼륨\/강도는 기본 계단/);
   assert.doesNotMatch(sheetFn, /운동 방식/);
+  assert.match(sheetFn, /\$\{!isWnd \? `[\s\S]*세트 수/);
+  assert.match(sheetFn, /\$\{!isWnd \? `[\s\S]*6주 성공 시 증량/);
+  assert.doesNotMatch(wendlerBlock, /세트 수|6주 성공 시 증량|자세 메모|헬스장별 기구|보드 칸은 톱세트|메인 \+ \$/);
   assert.match(tm2BoardJs, /function _renderColumnCycleRail/);
+  assert.match(tm2BoardJs, /function _cycleRailTracksForBenchmark/);
+  assert.match(tm2BoardJs, /kind:\s*'wendler'/);
+  assert.match(tm2BoardJs, /for \(const track of _cycleRailTracksForBenchmark\(bm, ctx\)\)/);
   assert.match(tm2BoardJs, /data-tm2-col-cycle/);
   assert.match(tm2BoardJs, /tm2-col-cycle-line/);
   assert.match(tm2BoardJs, /S\.sheet\.ctx\.program = 'stair'/);
   assert.match(tm2BoardJs, /document\.dispatchEvent\(new CustomEvent\('sheet:saved'\)\)/);
   assert.match(tm2Css, /\.tm2-col-cycle-track\s*\{[\s\S]*display:\s*flex;[\s\S]*overflow-x:\s*auto/);
+  assert.match(tm2Css, /\.tm2-col-cycle-track\s*\{[\s\S]*touch-action:\s*pan-x/);
   assert.match(tm2Css, /\.tm2-col-cycle-line\s*\{[\s\S]*border-top:\s*2px solid #d9dee5/);
   assert.match(tm2Css, /\.tm2-col-cycle-line::after/);
   assert.match(tm2Css, /\.tm2-track-toggle button\.tm2-program-wendler\.tm2-on/);
+  assert.match(tm2Css, /\.tm2-wbox\s*\{[\s\S]*border:\s*0;[\s\S]*background:\s*transparent/);
+  assert.doesNotMatch(tm2Css, /tm2-wendler-callout/);
 });
 
 test('workout calendar home header and monthly workout card stay compact', () => {
@@ -294,5 +314,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260626z10-cycle-settings-sheet/);
+  assert.match(swJs, /tomatofarm-v20260626z11-cycle-settings-polish/);
 });
