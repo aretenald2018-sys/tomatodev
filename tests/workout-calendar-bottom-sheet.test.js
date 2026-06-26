@@ -182,6 +182,18 @@ test('collapsed day sheet bar is a compact one-row affordance', () => {
   assert.match(styleCss, /@keyframes wt-sheet-arrow-pulse-down/);
 });
 
+test('workout calendar mobile grid reserves a wider week rail', () => {
+  const start = styleCss.indexOf('@media (max-width: 430px)');
+  const end = styleCss.indexOf('.cal-workout-day-sheet', start);
+  assert.ok(start >= 0 && end > start, 'mobile calendar css block should be present');
+  const mobileCss = styleCss.slice(start, end);
+
+  assert.match(mobileCss, /\.cal-workout-surface-home \.cal-weekdays\s*\{[\s\S]*grid-template-columns:\s*64px repeat\(7,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(mobileCss, /\.cal-workout-week-row\s*\{[\s\S]*grid-template-columns:\s*64px minmax\(0,\s*1fr\)/);
+  assert.match(mobileCss, /\.cal-workout-surface-home \.cal-workout-cell\s*\{[\s\S]*padding:\s*7px 1px 4px/);
+  assert.match(mobileCss, /\.cal-workout-surface-home \.cal-workout-bar\s*\{[\s\S]*padding:\s*1px 2px;[\s\S]*font-size:\s*9\.5px/);
+});
+
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260626z2-wendler-state-reload/);
+  assert.match(swJs, /tomatofarm-v20260626z3-workout-calendar-rail/);
 });

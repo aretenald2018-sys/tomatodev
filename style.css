@@ -10886,10 +10886,10 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 
 @media (max-width: 430px) {
   .cal-workout-surface-home .cal-weekdays {
-    grid-template-columns: 50px repeat(7, minmax(0, 1fr));
+    grid-template-columns: 64px repeat(7, minmax(0, 1fr));
   }
   .cal-workout-week-row {
-    grid-template-columns: 50px minmax(0, 1fr);
+    grid-template-columns: 64px minmax(0, 1fr);
   }
   .cal-workout-week-row,
   .cal-workout-surface-home .cal-workout-cell {
@@ -10904,15 +10904,15 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
     font-size: 15px;
   }
   .cal-workout-surface-home .cal-workout-cell {
-    padding: 7px 2px 4px;
+    padding: 7px 1px 4px;
   }
   .cal-workout-surface-home .cal-workout-cell .cal-cell-date {
     font-size: 12px;
   }
   .cal-workout-surface-home .cal-workout-bar {
     min-height: 15px;
-    padding: 1px 3px;
-    font-size: 10px;
+    padding: 1px 2px;
+    font-size: 9.5px;
     line-height: 13px;
   }
   .cal-workout-day-bar {
