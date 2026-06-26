@@ -343,6 +343,8 @@
 - Slice 9 실행 완료. 리뷰 결과 이슈 없음.
 - Slice 10 실행 완료. 리뷰 결과 이슈 없음.
 - Slice 10 Dashboard3 Pages 배포 및 deployed marker 검증 완료.
+- Slice 11 실행 완료. 리뷰 결과 이슈 없음.
+- Slice 11 Dashboard3 Pages 배포 및 deployed marker 검증 완료.
 - Slice 5는 사용자 결정 전까지 보류한다.
 - 성장보드 색칠/미달 자동 반영은 사용자 최종 결정 전까지 보류한다.
 
@@ -529,3 +531,55 @@
   - 결과: `[deploy-verify] ok 36f5b533d8ff tomatofarm-v20260626z2-wendler-state-reload static=218`
 - PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z2-wendler-state-reload" "data/data-load.js::_settings.test_board_v2    = fbMap.test_board_v2" "workout/exercises.js::const programRecord = saved || record"`
 - not verified yet: 인증 계정이 없어 `종목 수정 -> 웬들러 저장 -> 새로고침/재진입 -> 종목 수정` 실제 UI flow 확인은 남아 있다.
+
+### Slice 11: 추천 종목 피커에서도 웬들러 처방 우선 적용
+
+요청:
+
+- 웬들러 설정값에 따라 오늘 수행해야 하는 세트 정보가 자동 업로드되어야 하는데, `추천 종목 · 선택 헬스장` 카드가 빈 1세트로 출력된다.
+
+진단:
+
+- `workout/exercises.js`의 `_buildPickerExerciseEntry()`는 `__maxBenchmarkPicker` 후보를 먼저 처리하고 반환한다.
+- 선택 헬스장 추천 종목은 이 경로에 들어오므로 `_buildProgramPickerExerciseEntry()`가 실행되기 전에 빈 테스트모드 엔트리 또는 Max 추천 엔트리로 확정될 수 있다.
+- 웬들러/프로그램 설정은 사용자가 종목별 기본값으로 저장한 것이므로, 같은 운동을 추가할 때 추천 후보 여부보다 우선해야 한다.
+
+구현:
+
+- `_buildPickerExerciseEntry()`에서 `_buildProgramPickerExerciseEntry(ex)`를 Max 추천/벤치마크 처리보다 먼저 실행한다.
+- 프로그램 설정이 없을 때만 기존 Max 추천/벤치마크 엔트리 생성으로 fallback한다.
+- source-level 테스트로 프로그램 엔트리 조회가 `buildMaxPickerExerciseEntry()`보다 먼저 실행되는 계약을 고정한다.
+- `workout/exercises.js`가 `STATIC_ASSETS`에 포함되어 있으므로 `sw.js` `CACHE_VERSION`과 cache-version 테스트를 bump한다.
+
+범위 밖:
+
+- UI 레이아웃 변경.
+- 이미 저장된 수동 입력/완료 세트 강제 덮어쓰기.
+- 성장보드 색칠/미달 자동 반영.
+
+검증:
+
+- `node --check workout/exercises.js sw.js`
+- `node --test tests/workout-test-mode-unified.test.js tests/test-v2.board-core.test.js`
+- `node --test .\tests\*.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- Dashboard3 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+- UI flow: `운동 탭 -> + -> 추천/선택 헬스장 목록 -> 웬들러 설정 종목 추가`에서 준비운동/메인/보조 세트가 kg/반복 수 입력된 상태로 보인다.
+
+실행 결과:
+
+- `_buildPickerExerciseEntry()`에서 `_buildProgramPickerExerciseEntry(ex)`를 먼저 확인하도록 순서를 바꿨다.
+- 프로그램 처방이 없을 때만 기존 `__maxBenchmarkPicker`/Max 추천 엔트리 생성으로 fallback한다.
+- `tests/workout-test-mode-unified.test.js`에 프로그램 처방 조회가 `buildMaxPickerExerciseEntry()`보다 먼저 실행되는 source-level 회귀 테스트를 추가했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260626z4-wendler-recommendation-priority`로 bump하고 cache-version 테스트 기대값을 갱신했다.
+- PASS: `node --check workout/exercises.js; node --check sw.js`
+- PASS: `node --test tests/workout-test-mode-unified.test.js tests/test-v2.board-core.test.js` — 43 tests passed
+- PASS: `node --test .\tests\*.test.js` — 531 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- 리뷰 문서: `docs/ai/reviews/2026-06-26-exercise-program-wendler-recommendation-priority-review.md`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 36be474`
+  - 결과: `[deploy-verify] ok 36be47482068 tomatofarm-v20260626z4-wendler-recommendation-priority static=218`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z4-wendler-recommendation-priority" "workout/exercises.js::const programEntry = _buildProgramPickerExerciseEntry(ex)" "workout/exercises.js::buildMaxPickerExerciseEntry({"`
+- not verified yet: 인증 계정이 없어 실제 배포 UI에서 `추천 종목 · 선택 헬스장 -> 웬들러 설정 종목 추가` 클릭 플로우는 직접 확인하지 못했다.

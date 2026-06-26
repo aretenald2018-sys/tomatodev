@@ -3,10 +3,10 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-26-workout-calendar-week-rail-width.md`
-- 현재 단계: `review complete — Slice 1 workout calendar week rail width`
-- 마지막 완료: `운동 홈 캘린더 모바일 주차 rail 폭 확보, 회귀 테스트, 리뷰, Dashboard3 Pages 배포 검증을 완료했다.`
-- 다음 액션: `성장보드 색칠/미달 자동 반영 통합 방식은 사용자 결정 후 별도 계획으로 진행한다.`
+- 계획 문서: `docs/ai/features/2026-06-25-exercise-program-settings-wendler-migration.md`
+- 현재 단계: `completed — Slice 11 wendler prescription priority for recommended picker`
+- 마지막 완료: `추천 종목 피커에서도 저장된 웬들러 처방이 Max 추천 fallback보다 먼저 적용되도록 수정하고 Dashboard3 Pages 배포 검증까지 완료했다.`
+- 다음 액션: `없음`
 - 차단 사유: `없음`
 
 ## 직전 실행 검증
@@ -23,16 +23,16 @@
 
 ## 현재 실행 검증
 
-- PASS: `node --check sw.js`
-- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-test-mode-unified.test.js` — 14 tests passed
+- PASS: `node --check workout/exercises.js; node --check sw.js`
+- PASS: `node --test tests/workout-test-mode-unified.test.js tests/test-v2.board-core.test.js` — 43 tests passed
 - PASS: `node --test .\tests\*.test.js` — 531 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
-- PASS: `docs/ai/reviews/2026-06-26-workout-calendar-week-rail-width-review.md`
-- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 6d6be82`
-  - 결과: `[deploy-verify] ok 6d6be82c2ad8 tomatofarm-v20260626z3-workout-calendar-rail static=218`
-- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z3-workout-calendar-rail" "style.css::grid-template-columns: 64px repeat(7, minmax(0, 1fr))" "style.css::font-size: 9.5px"`
-- not verified yet: 인증 계정이 없어 실제 모바일 브라우저에서 `운동 탭 -> 월간 캘린더` 시각 상태는 직접 확인 필요
+- PASS: `docs/ai/reviews/2026-06-26-exercise-program-wendler-recommendation-priority-review.md`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 36be474`
+  - 결과: `[deploy-verify] ok 36be47482068 tomatofarm-v20260626z4-wendler-recommendation-priority static=218`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z4-wendler-recommendation-priority" "workout/exercises.js::const programEntry = _buildProgramPickerExerciseEntry(ex)" "workout/exercises.js::buildMaxPickerExerciseEntry({"`
+- not verified yet: 인증 계정이 없어 실제 모바일 UI에서 `추천 종목 · 선택 헬스장 -> 웬들러 설정 종목 추가` 클릭 플로우는 직접 확인 필요
 
 ## 완료한 작업
 
