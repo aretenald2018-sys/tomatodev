@@ -248,6 +248,10 @@ test('workout calendar week rail renders cycle prescriptions instead of weekly a
 });
 
 test('cycle rail target cards open the existing growth-board benchmark settings sheet', () => {
+  const rootsStart = tm2BoardJs.indexOf('function _ensureRoots');
+  const rootsEnd = tm2BoardJs.indexOf('export function closeSheet', rootsStart);
+  assert.ok(rootsStart >= 0 && rootsEnd > rootsStart, 'sheet root setup should exist');
+  const rootsFn = tm2BoardJs.slice(rootsStart, rootsEnd);
   const settingsStart = tm2BoardJs.indexOf('export async function tm2OpenBenchmarkSettings');
   const settingsEnd = tm2BoardJs.indexOf('function _afterBoardReady', settingsStart);
   assert.ok(settingsStart >= 0 && settingsEnd > settingsStart, 'benchmark settings opener should exist');
@@ -264,7 +268,11 @@ test('cycle rail target cards open the existing growth-board benchmark settings 
   assert.match(settingsFn, /classList\.remove\('tm2-open'\)/);
   assert.doesNotMatch(settingsFn, /renderBoard\(\)/);
   assert.doesNotMatch(settingsFn, /await tm2OpenBoard\(\)/);
+  assert.match(rootsFn, /if \(e\.target\.closest\('\.tm2-sheet'\)\) return/);
   assert.match(openSheetFn, /querySelector\('\.tm2-sheet'\)\?\.addEventListener\('click'/);
+  assert.match(openSheetFn, /\[data-tm2-col-cycle\]/);
+  assert.match(openSheetFn, /event\.preventDefault\(\)/);
+  assert.match(openSheetFn, /event\.stopImmediatePropagation\(\)/);
   assert.match(openSheetFn, /_onAction\(event\)/);
   assert.match(openSheetFn, /event\.stopPropagation\(\)/);
   assert.match(tm2EntryJs, /async function _openBenchmarkSettings\(benchmarkId\)/);
@@ -299,6 +307,8 @@ test('growth-board benchmark settings sheet merges program choice and horizontal
   assert.match(tm2BoardJs, /document\.dispatchEvent\(new CustomEvent\('sheet:saved'\)\)/);
   assert.match(tm2Css, /\.tm2-col-cycle-track\s*\{[\s\S]*display:\s*flex;[\s\S]*overflow-x:\s*auto/);
   assert.match(tm2Css, /\.tm2-col-cycle-track\s*\{[\s\S]*touch-action:\s*pan-x/);
+  assert.match(tm2Css, /\.tm2-col-cycle-point,\s*\n\.tm2-col-cycle-line,\s*\n\.tm2-col-cycle-point \*,\s*\n\.tm2-col-cycle-line \*\s*\{[\s\S]*pointer-events:\s*none/);
+  assert.match(tm2Css, /\.tm2-col-cycle-point,\s*\n\.tm2-col-cycle-line,\s*\n\.tm2-col-cycle-point \*,\s*\n\.tm2-col-cycle-line \*\s*\{[\s\S]*user-select:\s*none/);
   assert.match(tm2Css, /\.tm2-col-cycle-line\s*\{[\s\S]*border-top:\s*2px solid #d9dee5/);
   assert.match(tm2Css, /\.tm2-col-cycle-line::after/);
   assert.match(tm2Css, /\.tm2-track-toggle button\.tm2-program-wendler\.tm2-on/);
@@ -314,5 +324,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260626z11-cycle-settings-polish/);
+  assert.match(swJs, /tomatofarm-v20260626z12-cycle-rail-inert-click/);
 });

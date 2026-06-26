@@ -225,6 +225,7 @@ function _ensureRoots() {
     document.body.appendChild(sh);
     sh.addEventListener('click', (e) => {
       if (e.target === sh) { closeSheet(); return; }
+      if (e.target.closest('.tm2-sheet')) return;
       _onAction(e);
     });
     sh.addEventListener('change', _onSheetChange);
@@ -242,6 +243,12 @@ function _openSheet(html) {
   if (!sh) return;
   sh.innerHTML = `<div class="tm2-sheet">${html}</div>`;
   sh.querySelector('.tm2-sheet')?.addEventListener('click', (event) => {
+    if (event.target.closest('[data-tm2-col-cycle]')) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      return;
+    }
     _onAction(event);
     event.stopPropagation();
   });

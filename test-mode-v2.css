@@ -530,6 +530,14 @@ body:has(#tm2-sheets.tm2-open) #tm2-sheets .tm2-sheet {
   touch-action: pan-x;
 }
 .tm2-col-cycle-track::-webkit-scrollbar { display: none; }
+.tm2-col-cycle-point,
+.tm2-col-cycle-line,
+.tm2-col-cycle-point *,
+.tm2-col-cycle-line * {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
 .tm2-col-cycle-point {
   flex: 0 0 auto;
   width: 34px;
