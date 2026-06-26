@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-25-exercise-program-settings-wendler-migration.md`
-- 현재 단계: `execution complete — Slice 12 wendler set chips and wendler-only graph`
-- 마지막 완료: `웬들러 자동 세트 칩을 프리/메인/BBB/FSL로 표시하고, 웬들러 카드 그래프를 볼륨/강도와 분리된 W 히스토리로 렌더링하도록 구현했다.`
-- 다음 액션: `Slice 12 변경 파일 리뷰`
+- 현재 단계: `completed — Slice 12 wendler set chips and wendler-only graph`
+- 마지막 완료: `웬들러 자동 세트 칩과 웬들러 전용 W 그래프를 구현하고, 리뷰와 Dashboard3 Pages 배포 검증까지 완료했다.`
+- 다음 액션: `없음`
 - 차단 사유: `없음`
 
 ## 리뷰 대상

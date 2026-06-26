@@ -33,8 +33,10 @@
 - PASS: `node --test .\tests\*.test.js` — 534 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 1b801bf`
+  - 결과: `[deploy-verify] ok 1b801bf5b7a8 tomatofarm-v20260626z5-wendler-track-graph static=218`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z5-wendler-track-graph" "calc.js::getWendlerMetricHistory" "workout/exercises.js::getWendlerMetricHistory" "workout/exercises.js::return 'BBB'"`
 
 ## 남은 검증
 
-- not verified yet: Dashboard3 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>` 필요.
 - not verified yet: 인증 계정이 없어 실제 UI flow `운동 탭 -> + -> 웬들러 설정 종목 추가 -> 프리/메인/BBB 칩과 웬들러 단일 그래프 확인`은 배포 URL에서 수동 확인 필요.

@@ -348,6 +348,7 @@
 - Slice 12 계획 추가. 다음 실행은 웬들러 세트 칩과 웬들러 전용 카드 그래프 분리다.
 - Slice 12 실행 완료. 리뷰 대기 중.
 - Slice 12 리뷰 결과 이슈 없음.
+- Slice 12 Dashboard3 Pages 배포 및 deployed marker 검증 완료.
 - Slice 5는 사용자 결정 전까지 보류한다.
 - 성장보드 색칠/미달 자동 반영은 사용자 최종 결정 전까지 보류한다.
 
@@ -662,4 +663,7 @@
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
 - 리뷰 문서: `docs/ai/reviews/2026-06-26-exercise-program-wendler-track-graph-review.md`
-- not verified yet: Dashboard3 Pages 배포와 인증 계정 UI flow 확인은 리뷰/배포 단계에 남아 있다.
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 1b801bf`
+  - 결과: `[deploy-verify] ok 1b801bf5b7a8 tomatofarm-v20260626z5-wendler-track-graph static=218`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z5-wendler-track-graph" "calc.js::getWendlerMetricHistory" "workout/exercises.js::getWendlerMetricHistory" "workout/exercises.js::return 'BBB'"`
+- not verified yet: 인증 계정이 없어 실제 배포 UI에서 `운동 탭 -> + -> 웬들러 설정 종목 추가 -> 프리/메인/BBB 칩과 웬들러 단일 그래프 확인` 클릭 플로우는 직접 확인하지 못했다.
