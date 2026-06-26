@@ -71,6 +71,10 @@ test('exercise picker always creates test-mode entries on Dashboard3', () => {
   assert.match(pickerEntry, /_buildProgramPickerExerciseEntry/);
   assert.match(pickerEntry, /_ensureTestModePickerEntry/);
   assert.match(pickerEntry, /_isTestModePickerContext\(\)/);
+  assert.ok(
+    pickerEntry.indexOf('_buildProgramPickerExerciseEntry(ex)') < pickerEntry.indexOf('buildMaxPickerExerciseEntry({'),
+    'program prescriptions should be applied before Max recommendation picker fallback',
+  );
 });
 
 test('Dashboard3 mode controls cannot persist normal or pro workout record UI', () => {
@@ -105,5 +109,5 @@ test('Dashboard3 mode controls cannot persist normal or pro workout record UI', 
 });
 
 test('service worker cache version was bumped for workout asset changes', () => {
-  assert.match(swJs, /tomatofarm-v20260626z3-workout-calendar-rail/);
+  assert.match(swJs, /tomatofarm-v20260626z4-wendler-recommendation-priority/);
 });

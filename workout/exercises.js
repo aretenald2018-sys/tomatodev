@@ -1703,6 +1703,8 @@ function _buildProgramPickerExerciseEntry(ex) {
 }
 
 function _buildPickerExerciseEntry(ex) {
+  const programEntry = _buildProgramPickerExerciseEntry(ex);
+  if (programEntry) return _ensureTestModePickerEntry(programEntry, ex, { benchmark: programEntry.maxPrescription });
   if (_isMaxBenchmarkPickerExercise(ex)) {
     const entry = buildMaxPickerExerciseEntry({
       exercise: ex,
@@ -1713,8 +1715,6 @@ function _buildPickerExerciseEntry(ex) {
     });
     if (entry) return _ensureTestModePickerEntry(entry, ex, { benchmark: ex.__maxBenchmark, cycle: ex.__maxCycle });
   }
-  const programEntry = _buildProgramPickerExerciseEntry(ex);
-  if (programEntry) return _ensureTestModePickerEntry(programEntry, ex, { benchmark: programEntry.maxPrescription });
   const entry = {
     muscleId: ex.muscleId,
     exerciseId: ex.id,

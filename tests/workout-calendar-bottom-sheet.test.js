@@ -195,5 +195,5 @@ test('workout calendar mobile grid reserves a wider week rail', () => {
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260626z3-workout-calendar-rail/);
+  assert.match(swJs, /tomatofarm-v20260626z4-wendler-recommendation-priority/);
 });
