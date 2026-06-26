@@ -161,7 +161,7 @@ export async function confirmSheet() {
     bOk:_diet.bOk, lOk:_diet.lOk, dOk:_diet.dOk,
     bKcal:_diet.bKcal, lKcal:_diet.lKcal, dKcal:_diet.dKcal,
     bReason:_diet.bReason, lReason:_diet.lReason, dReason:_diet.dReason,
-  });
+  }, { mode: 'merge', rethrow: true });
 
   document.dispatchEvent(new CustomEvent('sheet:saved'));
 }

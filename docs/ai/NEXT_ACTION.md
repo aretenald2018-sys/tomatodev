@@ -2,12 +2,31 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-26-workout-cycle-rail-inert-click-fix.md`
-- 현재 단계: `complete — workout cycle rail inert click fix`
-- 마지막 완료: `current cycle rail 클릭을 no-op/inert 처리하고 sheet 내부 클릭 전파를 차단했으며 로컬 테스트, 리뷰, Dashboard3 Pages 배포 검증을 완료했다.`
-- 다음 액션: `없음`
+- 상태: `ready_for_execution`
+- 계획 문서: `docs/ai/features/2026-06-26-workout-data-restore-write-guard.md`
+- 현재 단계: `execution — 운영 운동기록 복원 및 overwrite 재발 방지`
+- 마지막 완료: `saveDay merge guard, sheet/cooking merge patch 저장, 회귀 테스트, 캐시 버전 bump를 구현했고 전체 테스트 549개를 통과했다. PITR로 김_태우 2026-06-26 상세 운동 원본을 찾았다.`
+- 다음 액션: `Dashboard3 배포 검증 후 users/김_태우/workouts/2026-06-26의 운동 필드만 PITR 원본에서 merge 복원한다.`
 - 차단 사유: `없음`
+
+## 이번 계획 요약
+
+- 문제 후보:
+  1. `workout/save.js`는 현재 `saveDay(..., { mode: 'merge' })`로 안전 저장한다.
+  2. `sheet.js`와 `render-cooking.js`에는 bare `saveDay(...)` 호출이 남아 `data/data-save.js` 기본값 `replace`로 `workouts/{date}` 전체를 덮을 수 있다.
+  3. 단일 Firebase 프로젝트 `exercise-management`를 사용하므로 개발 체크아웃에서 운영 계정으로 로그인하면 운영 Firestore에 직접 write한다.
+- 계획:
+  1. read-only 복원 감사 도구로 owner/guest/root/export 후보를 비교한다.
+  2. `workouts` 전체 replace를 guard하고 레거시 bare `saveDay` 호출을 merge/patch 저장으로 전환한다.
+  3. 데이터 경로는 분기하지 않고 단일 `users/{uid}/workouts/{date}`를 유지하되, write source metadata와 백업을 추가한다.
+  4. 사용자가 승인한 날짜만 field-level merge로 복원한다.
+- 검증:
+  1. PASS: `node --check data/data-save.js; node --check sheet.js; node --check render-cooking.js; node --check sw.js; node --check tests/workout-save-mode-guard.test.js`
+  2. PASS: `node --test tests/workout-save-mode-guard.test.js tests/workout-save.test.js tests/workout-sessions.test.js` — 11 tests passed
+  3. PASS: `node --test .\tests\*.test.js` — 549 tests passed
+  4. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
+  5. PASS: `git diff --check`
+  6. not verified yet: Dashboard3 배포 검증 및 Firestore 상세 복원 write는 다음 액션으로 남음
 
 ## 이번 실행 검증
 

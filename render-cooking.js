@@ -385,6 +385,7 @@ async function _retroactiveUpdate(recipe) {
 
   for (const [dateKey, { day, updates }] of Object.entries(byDate)) {
     const updatedDay = {...day};
+    const patch = {};
     updates.forEach(u => {
       const foods = [...(updatedDay[u.mealKey] || [])];
       if (foods[u.foodIndex]) {
@@ -398,6 +399,7 @@ async function _retroactiveUpdate(recipe) {
           fat: ps.fat,
         };
         updatedDay[u.mealKey] = foods;
+        patch[u.mealKey] = foods;
       }
     });
 
@@ -407,17 +409,17 @@ async function _retroactiveUpdate(recipe) {
       const foods = updatedDay[mk] || [];
       let tk=0, tp=0, tc=0, tf=0;
       foods.forEach(f => { tk+=f.kcal||0; tp+=f.protein||0; tc+=f.carbs||0; tf+=f.fat||0; });
-      updatedDay[`${prefix}Kcal`] = Math.round(tk);
-      updatedDay[`${prefix}Protein`] = Math.round(tp * 10) / 10;
-      updatedDay[`${prefix}Carbs`] = Math.round(tc * 10) / 10;
-      updatedDay[`${prefix}Fat`] = Math.round(tf * 10) / 10;
+      patch[`${prefix}Kcal`] = Math.round(tk);
+      patch[`${prefix}Protein`] = Math.round(tp * 10) / 10;
+      patch[`${prefix}Carbs`] = Math.round(tc * 10) / 10;
+      patch[`${prefix}Fat`] = Math.round(tf * 10) / 10;
       if (foods.length) {
         // 2026-04-21: Reason 은 UI 표시 문자열 — 매크로 정수.
-        updatedDay[`${prefix}Reason`] = `DB: ${Math.round(tk)}kcal (단${Math.round(tp)}g 탄${Math.round(tc)}g 지${Math.round(tf)}g)`;
+        patch[`${prefix}Reason`] = `DB: ${Math.round(tk)}kcal (단${Math.round(tp)}g 탄${Math.round(tc)}g 지${Math.round(tf)}g)`;
       }
     }
 
-    await saveDay(dateKey, updatedDay);
+    await saveDay(dateKey, patch, { mode: 'merge', rethrow: true });
   }
   console.log(`[cooking] 소급 업데이트: ${entries.length}건 갱신`);
 }
