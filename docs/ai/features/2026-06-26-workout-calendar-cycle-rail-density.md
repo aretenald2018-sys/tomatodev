@@ -143,4 +143,7 @@
 - PASS: `node --test .\tests\*.test.js` — 537 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
-- not verified yet: 인증 계정이 없어 실제 `운동 탭 -> 월간 캘린더 -> 레일 목표 카드 탭 -> 해당 종목 설정 시트 표시` UI 확인은 배포 후 수동 확인이 필요하다.
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 63624ac`
+  - 결과: `[deploy-verify] ok 63624ac3e2e3 tomatofarm-v20260626z7-cycle-rail-target-settings static=218`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z7-cycle-rail-target-settings" "render-calendar.js::data-cal-cycle-target" "render-calendar.js::_openWorkoutCycleTargetSettings" "workout/test-v2/board-render.js::tm2OpenBenchmarkSettings" "workout/test-v2/entry.js::window.tm2OpenBenchmarkSettings" "style.css::.cal-workout-week-row:last-child .cal-workout-week-cells" "style.css::background: #d7e4ed"`
+- not verified yet: 인증 계정이 없어 실제 `운동 탭 -> 월간 캘린더 -> 레일 목표 카드 탭 -> 해당 종목 설정 시트 표시` UI 확인은 수동 확인이 필요하다.

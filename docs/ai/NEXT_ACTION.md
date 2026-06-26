@@ -2,21 +2,25 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-26-workout-calendar-cycle-rail-density.md`
-- 현재 단계: `review — Slice 2 cycle rail continuity and target card settings`
-- 마지막 완료: `첫 열 경계선 제거, 레일 색상 통일, 목표 카드 클릭 시 성장보드 종목 설정 시트 진입을 구현하고 로컬 검증했다.`
-- 다음 액션: `Slice 2 리뷰 문서 작성, Dashboard3 Pages 배포 검증`
+- 현재 단계: `complete — Slice 2 cycle rail continuity and target card settings`
+- 마지막 완료: `첫 열 경계선 제거, 레일 색상 통일, 목표 카드 클릭 시 성장보드 종목 설정 시트 진입을 구현하고 Dashboard3 Pages 배포 검증까지 완료했다.`
+- 다음 액션: `없음`
 - 차단 사유: `없음`
 
 ## 이번 실행 검증
 
-- 커밋: `pending`
+- 기능 커밋: `63624ac fix(workout): open cycle target settings from calendar`
+- 리뷰 문서: `docs/ai/reviews/2026-06-26-workout-calendar-cycle-rail-target-settings-review.md`
 - PASS: `node --check render-calendar.js; node --check workout/test-v2/board-render.js; node --check workout/test-v2/entry.js; node --check sw.js`
 - PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/test-v2.board-core.test.js` — 52 tests passed
 - PASS: `node --test .\tests\*.test.js` — 537 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 63624ac`
+  - 결과: `[deploy-verify] ok 63624ac3e2e3 tomatofarm-v20260626z7-cycle-rail-target-settings static=218`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z7-cycle-rail-target-settings" "render-calendar.js::data-cal-cycle-target" "render-calendar.js::_openWorkoutCycleTargetSettings" "workout/test-v2/board-render.js::tm2OpenBenchmarkSettings" "workout/test-v2/entry.js::window.tm2OpenBenchmarkSettings" "style.css::.cal-workout-week-row:last-child .cal-workout-week-cells" "style.css::background: #d7e4ed"`
 - not verified yet: 인증 계정이 없어 실제 `운동 탭 -> 월간 캘린더 -> 레일 목표 카드 탭 -> 해당 종목 설정 시트 표시` UI 확인은 배포 후 수동 확인 필요
 
 ## 리뷰 대상
