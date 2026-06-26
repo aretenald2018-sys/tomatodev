@@ -10041,7 +10041,13 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   display: grid;
   grid-template-columns: var(--cal-cycle-rail-width) minmax(0, 1fr);
   min-height: 144px;
+  --cal-cycle-rail-color: #aeb9c5;
 }
+.cal-workout-week-row:nth-child(6n + 2) { --cal-cycle-rail-color: #b3bdc8; }
+.cal-workout-week-row:nth-child(6n + 3) { --cal-cycle-rail-color: #aab6c2; }
+.cal-workout-week-row:nth-child(6n + 4) { --cal-cycle-rail-color: #b0bac6; }
+.cal-workout-week-row:nth-child(6n + 5) { --cal-cycle-rail-color: #a7b4c0; }
+.cal-workout-week-row:nth-child(6n + 6) { --cal-cycle-rail-color: #b5bec9; }
 .cal-workout-week-row:last-child .cal-workout-week-cells {
   border-bottom: 0;
 }
@@ -10058,12 +10064,12 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 .cal-cycle-rail-line {
   display: none;
   position: absolute;
-  top: 10px;
-  bottom: 10px;
+  top: 0;
+  bottom: 0;
   left: 9px;
   width: 0;
-  border-left: 2px solid #aeb9c5;
-  border-radius: 99px;
+  border-left: 2px solid var(--cal-cycle-rail-color, #aeb9c5);
+  border-radius: 0;
 }
 .cal-workout-week-rail.has-cycle .cal-cycle-rail-line {
   display: block;
@@ -10112,7 +10118,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   top: 50%;
   left: -10px;
   width: 10px;
-  border-top: 2px solid #aeb9c5;
+  border-top: 2px solid var(--cal-cycle-rail-color, #aeb9c5);
 }
 .cal-cycle-branch.is-wendler {
   border-color: #b7c5d2;
@@ -10121,7 +10127,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   color: #33404a;
 }
 .cal-cycle-branch.is-wendler::before {
-  border-top-color: #aeb9c5;
+  border-top-color: var(--cal-cycle-rail-color, #aeb9c5);
 }
 .cal-cycle-branch.is-intensity {
   border-color: #b7c5d2;
@@ -10130,7 +10136,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   color: #33404a;
 }
 .cal-cycle-branch.is-intensity::before {
-  border-top-color: #aeb9c5;
+  border-top-color: var(--cal-cycle-rail-color, #aeb9c5);
 }
 .cal-workout-week-cells {
   display: grid;

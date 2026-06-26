@@ -2,27 +2,23 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-26-workout-timer-set-completion-timeline.md`
-- 현재 단계: `complete — Slice 1 set completion timeline timer`
-- 마지막 완료: `운동 타이머를 바디캘린더식 세트 완료 타임라인 기준으로 구현, 리뷰, Dashboard3 Pages 배포 검증했다.`
-- 다음 액션: `없음`
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-06-26-workout-calendar-continuous-cycle-rail.md`
+- 현재 단계: `review — workout calendar continuous cycle rail`
+- 마지막 완료: `운동 캘린더 좌측 cycle rail 실선 연결과 주별 색 변주를 구현하고 로컬 검증했다.`
+- 다음 액션: `변경분 리뷰, Dashboard3 Pages 배포 검증`
 - 차단 사유: `없음`
 
 ## 이번 실행 검증
 
-- 계획 완료: `docs/ai/features/2026-06-26-workout-timer-set-completion-timeline.md`
-- 구현 완료: 세트 완료 timestamp 기반 `workoutTimeline` 저장/집계/렌더 경로 적용
-- PASS: `node --check workout/timeline.js; node --check workout/exercises.js; node --check workout/timers.js; node --check workout/save.js; node --check workout/load.js; node --check workout/sessions.js; node --check workout/state.js; node --check render-calendar.js; node --check data/data-load.js; node --check data/data-pure.js; node --check home/life-zone-state.js; node --check sw.js`
+- 계획 완료: `docs/ai/features/2026-06-26-workout-calendar-continuous-cycle-rail.md`
+- 구현 완료: `style.css` cycle rail line을 row 전체 높이로 연결하고 주차별 rail 색 변수를 적용
+- PASS: `node --check render-calendar.js; node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js` — 13 tests passed
 - PASS: `node --test .\tests\*.test.js` — 545 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
 - PASS: `git diff --check`
-- PASS: `git diff --cached --check`
-- PASS: `docs/ai/reviews/2026-06-26-workout-timer-set-completion-timeline-review.md`
-- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 7c59ab3`
-  - 결과: `[deploy-verify] ok 7c59ab3c099f tomatofarm-v20260626z8-set-completion-timeline static=219`
-- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z8-set-completion-timeline" "workout/timeline.js::buildWorkoutSetTimeline" "workout/exercises.js::stampSetCompletedAt(set)" "workout/timers.js::syncWorkoutTimeline(S.workout)" "workout/save.js::workoutTimeline" "render-calendar.js::buildWorkoutSetTimeline"`
-- not verified yet: 인증 계정 세션이 없어 배포 URL에서 `운동 탭 -> 세트 여러 개 체크 -> 저장 -> 월간 캘린더 시간 반영` 실제 UI flow는 직접 조작하지 못함
+- not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 UI flow 확인은 아직 남음
 
 ## 리뷰 대상
 

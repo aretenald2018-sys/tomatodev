@@ -228,7 +228,11 @@ test('workout calendar week rail renders cycle prescriptions instead of weekly a
   assert.doesNotMatch(calendarJs, />\$\{weekNo\}주<\/strong>/);
   assert.match(calendarJs, /cal-cycle-branch-text/);
   assert.match(styleCss, /\.cal-cycle-rail-line/);
+  assert.match(styleCss, /\.cal-cycle-rail-line\s*\{[\s\S]*top:\s*0;[\s\S]*bottom:\s*0;[\s\S]*border-left:\s*2px solid var\(--cal-cycle-rail-color,\s*#aeb9c5\)/);
+  assert.match(styleCss, /\.cal-workout-week-row:nth-child\(6n \+ 2\)\s*\{\s*--cal-cycle-rail-color:\s*#b3bdc8;\s*\}/);
+  assert.match(styleCss, /\.cal-workout-week-row:nth-child\(6n \+ 6\)\s*\{\s*--cal-cycle-rail-color:\s*#b5bec9;\s*\}/);
   assert.match(styleCss, /\.cal-cycle-branch::before/);
+  assert.match(styleCss, /\.cal-cycle-branch::before\s*\{[\s\S]*border-top:\s*2px solid var\(--cal-cycle-rail-color,\s*#aeb9c5\)/);
   assert.match(styleCss, /\.cal-cycle-branch-text/);
   assert.match(styleCss, /\.cal-cycle-branch\.is-wendler/);
   assert.match(styleCss, /\.cal-cycle-branch\.is-intensity/);
@@ -260,5 +264,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260626z8-set-completion-timeline/);
+  assert.match(swJs, /tomatofarm-v20260626z9-cycle-rail-continuous/);
 });
