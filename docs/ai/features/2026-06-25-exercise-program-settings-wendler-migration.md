@@ -341,6 +341,8 @@
 - Slice 8 실행 완료. 리뷰 결과 이슈 없음.
 - Slice 8 Dashboard3 Pages 배포 및 deployed marker 검증 완료.
 - Slice 9 실행 완료. 리뷰 결과 이슈 없음.
+- Slice 10 실행 완료. 리뷰 결과 이슈 없음.
+- Slice 10 Dashboard3 Pages 배포 및 deployed marker 검증 완료.
 - Slice 5는 사용자 결정 전까지 보류한다.
 - 성장보드 색칠/미달 자동 반영은 사용자 최종 결정 전까지 보류한다.
 
@@ -476,3 +478,54 @@
 - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 095a7c12eab92ac6f52dbc03a6388ac980d3a2f6`
 - PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z1-wendler-picker-sets" "workout/test-v2/board-core.js::return (exerciseId && bm.exerciseId) ? 3 : 2"`
 - not verified yet: 인증 계정이 없어 `운동 탭 -> + -> 종목 수정 -> 웬들러 저장 -> 같은 종목 추가` 실제 UI flow 확인은 남아 있다.
+
+### Slice 10: 웬들러 프로그램 상태 재로딩 보존
+
+요청:
+
+- 한 번 웬들러로 설정한 종목은 계속 웬들러로 고정되어 저장되어야 하는데, 상태가 계속 초기화되는 것으로 보인다.
+
+진단:
+
+- 종목별 프로그램 설정은 `test_board_v2.benchmarks`를 canonical 저장소로 쓴다.
+- `saveTestBoardV2()`는 Firestore `settings/test_board_v2`에 저장하지만, `loadAll()`이 `fbMap.test_board_v2`를 `_settings.test_board_v2`로 다시 넣지 않아 새로고침 뒤 `getTestBoardV2()`가 `null`로 돌아갈 수 있다.
+- 종목 저장 직후 프로그램 저장은 `saveExercise(record)`가 반영한 정규화 레코드가 아니라 저장 전 `record`를 넘기고 있어, `movementId` 같은 연결 키가 누락될 위험이 남아 있다.
+
+구현:
+
+- `data/data-load.js`에서 `fbMap.test_board_v2`를 `_settings.test_board_v2`로 재수화한다.
+- `wtSaveExerciseFromEditor()`에서 프로그램 저장 입력을 저장 후 검증된 종목 레코드로 바꾼다.
+- `data/data-load.js`가 `STATIC_ASSETS`에 포함되어 있으므로 `sw.js` `CACHE_VERSION`과 cache-version 테스트를 bump한다.
+
+범위 밖:
+
+- UI 레이아웃 변경.
+- 성장보드 색칠/미달 자동 반영.
+- 기존 저장 데이터의 스키마 변경.
+
+검증:
+
+- `node --check data/data-load.js workout/exercises.js sw.js`
+- `node --test tests/exercise-program-editor.test.js tests/data.load-save.test.js tests/workout-test-mode-unified.test.js`
+- `node --test .\tests\*.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- Dashboard3 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+- UI flow: `종목 수정 -> 웬들러 저장 -> 새로고침/재진입 -> 종목 수정`에서 프로그램이 웬들러로 유지되고, 같은 종목 추가 시 처방 세트가 입력된 상태로 보인다.
+
+실행 결과:
+
+- `data/data-load.js`에서 Firestore `settings/test_board_v2` 값을 `_settings.test_board_v2`로 재수화하도록 추가했다.
+- `workout/exercises.js`에서 종목 저장 후 프로그램 저장 입력을 저장/검증된 `saved` 레코드 기준으로 바꿨다.
+- `tests/exercise-program-editor.test.js`에 프로그램 보드 재수화와 저장 기준 레코드 회귀 테스트를 추가했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260626z2-wendler-state-reload`로 bump하고 cache-version 테스트 기대값을 갱신했다.
+- PASS: `node --check data/data-load.js; node --check workout/exercises.js; node --check sw.js`
+- PASS: `node --test tests/exercise-program-editor.test.js tests/data.load-save.test.js tests/workout-test-mode-unified.test.js` — 37 tests passed
+- PASS: `node --test .\tests\*.test.js` — 530 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- 리뷰 문서: `docs/ai/reviews/2026-06-26-exercise-program-wendler-state-reload-review.md`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 36f5b53`
+  - 결과: `[deploy-verify] ok 36f5b533d8ff tomatofarm-v20260626z2-wendler-state-reload static=218`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z2-wendler-state-reload" "data/data-load.js::_settings.test_board_v2    = fbMap.test_board_v2" "workout/exercises.js::const programRecord = saved || record"`
+- not verified yet: 인증 계정이 없어 `종목 수정 -> 웬들러 저장 -> 새로고침/재진입 -> 종목 수정` 실제 UI flow 확인은 남아 있다.

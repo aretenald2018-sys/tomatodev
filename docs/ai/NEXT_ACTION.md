@@ -4,8 +4,8 @@
 
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-25-exercise-program-settings-wendler-migration.md`
-- 현재 단계: `review complete — Slice 9 picker wendler prescription sets fix`
-- 마지막 완료: `프로그램 벤치마크 movementId fallback 보정, 회귀 테스트, 리뷰, Dashboard3 Pages 배포 검증을 완료했다.`
+- 현재 단계: `review complete — Slice 10 wendler program state reload preservation`
+- 마지막 완료: `웬들러 프로그램 상태 재로딩 보존 수정, 회귀 테스트, 리뷰, Dashboard3 Pages 배포 검증을 완료했다.`
 - 다음 액션: `성장보드 색칠/미달 자동 반영 통합 방식은 사용자 결정 후 별도 계획으로 진행한다.`
 - 차단 사유: `없음`
 
@@ -23,16 +23,16 @@
 
 ## 현재 실행 검증
 
-- PASS: `node --check workout/test-v2/board-core.js; node --check sw.js`
-- PASS: `node --test tests/test-v2.board-core.test.js tests/workout-test-mode-unified.test.js` — 43 tests passed
-- PASS: `node --test .\tests\*.test.js` — 529 tests passed
+- PASS: `node --check data/data-load.js; node --check workout/exercises.js; node --check sw.js`
+- PASS: `node --test tests/exercise-program-editor.test.js tests/data.load-save.test.js tests/workout-test-mode-unified.test.js` — 37 tests passed
+- PASS: `node --test .\tests\*.test.js` — 530 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
-- PASS: `docs/ai/reviews/2026-06-26-exercise-program-wendler-picker-sets-review.md`
-- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 095a7c12eab92ac6f52dbc03a6388ac980d3a2f6`
-  - 결과: `[deploy-verify] ok 095a7c12eab9 tomatofarm-v20260626z1-wendler-picker-sets static=218`
-- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z1-wendler-picker-sets" "workout/test-v2/board-core.js::return (exerciseId && bm.exerciseId) ? 3 : 2"`
-- not verified yet: 인증 계정이 없어 `운동 탭 -> + -> 종목 수정 -> 웬들러 저장 -> 같은 종목 추가` 실제 UI flow는 직접 확인 필요
+- PASS: `docs/ai/reviews/2026-06-26-exercise-program-wendler-state-reload-review.md`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 36f5b53`
+  - 결과: `[deploy-verify] ok 36f5b533d8ff tomatofarm-v20260626z2-wendler-state-reload static=218`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z2-wendler-state-reload" "data/data-load.js::_settings.test_board_v2    = fbMap.test_board_v2" "workout/exercises.js::const programRecord = saved || record"`
+- not verified yet: 인증 계정이 없어 `종목 수정 -> 웬들러 저장 -> 새로고침/재진입 -> 종목 수정` 실제 UI flow는 직접 확인 필요
 
 ## 완료한 작업
 
