@@ -9943,18 +9943,19 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 
 /* 운동탭 홈: 얇은 월간 운동 그리드 */
 .cal-workout-surface-home {
+  --cal-cycle-rail-width: 94px;
   min-height: 100%;
   background: #f7f7fb;
   color: #2f3138;
 }
 .cal-workout-surface-home .cal-header {
   margin: 0;
-  padding: 20px 18px 14px;
+  padding: 10px 16px 8px;
   border-bottom: 1px solid #e2e3eb;
   background: #f7f7fb;
 }
 .cal-workout-surface-home .cal-title {
-  font-size: 24px;
+  font-size: 22px;
   line-height: 1;
   font-weight: 500;
   color: #24262d;
@@ -9970,8 +9971,8 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   box-shadow: none;
 }
 .cal-workout-surface-home .cal-today-btn {
-  min-height: 32px;
-  padding: 0 12px;
+  min-height: 28px;
+  padding: 0 10px;
   border-radius: 16px;
   background: #ffffff;
   color: #43536d;
@@ -9979,22 +9980,42 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   box-shadow: 0 1px 3px rgba(30, 35, 48, 0.12);
 }
 .cal-workout-surface-home .cal-workout-summary {
-  margin: 10px 12px 12px;
-  padding: 11px 14px;
+  margin: 6px 12px 7px;
+  padding: 6px 10px;
   border-radius: 8px;
   border-color: #e2e4ec;
   box-shadow: none;
 }
 .cal-workout-surface-home .cal-month-empty {
-  margin: 10px 12px 12px;
+  margin: 6px 12px 7px;
+  padding: 8px 10px;
   border-radius: 8px;
 }
+.cal-workout-surface-home .cal-month-avg {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 5px;
+}
+.cal-workout-surface-home .cal-month-avg-label {
+  font-size: 10px;
+}
 .cal-workout-surface-home .cal-month-avg-score {
-  font-size: 28px;
+  font-size: 23px;
+}
+.cal-workout-surface-home .cal-month-side {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  column-gap: 9px;
+  row-gap: 1px;
+  font-size: 10px;
+  line-height: 13px;
+}
+.cal-workout-surface-home .cal-month-side > div {
+  gap: 4px;
 }
 .cal-workout-surface-home .cal-weekdays {
   display: grid;
-  grid-template-columns: 58px repeat(7, minmax(0, 1fr));
+  grid-template-columns: var(--cal-cycle-rail-width) repeat(7, minmax(0, 1fr));
   gap: 0;
   margin: 0;
   border-top: 1px solid #e2e3eb;
@@ -10018,7 +10039,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 }
 .cal-workout-week-row {
   display: grid;
-  grid-template-columns: 58px minmax(0, 1fr);
+  grid-template-columns: var(--cal-cycle-rail-width) minmax(0, 1fr);
   min-height: 144px;
   border-bottom: 1px solid #dfe1e8;
 }
@@ -10026,26 +10047,86 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   border-bottom: 0;
 }
 .cal-workout-week-rail {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 22px 4px 8px;
+  align-items: stretch;
+  justify-content: center;
+  padding: 8px 4px 8px 5px;
   border-right: 1px solid #d8dae4;
   color: #60636d;
-  font-size: 16px;
-  line-height: 18px;
-  font-weight: 500;
+  overflow: hidden;
 }
-.cal-workout-week-rail strong {
-  color: #555963;
-  font-size: 17px;
-  line-height: 20px;
-  font-weight: 700;
+.cal-cycle-rail-line {
+  display: none;
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 9px;
+  width: 0;
+  border-left: 2px solid #8ba8bb;
+  border-radius: 99px;
 }
-.cal-workout-week-rail span {
+.cal-workout-week-rail.has-cycle .cal-cycle-rail-line {
   display: block;
+}
+.cal-cycle-branch-list {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+  min-width: 0;
+}
+.cal-cycle-branch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-left: 14px;
+  min-height: 16px;
+  padding: 1px 3px 1px 5px;
+  border: 1px solid rgba(116, 139, 156, 0.38);
+  border-left-color: rgba(116, 139, 156, 0.65);
+  border-radius: 4px;
+  background: rgba(237, 242, 247, 0.92);
+  color: #425064;
+  font-size: 9.5px;
+  line-height: 12px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.cal-cycle-branch-text {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cal-cycle-branch::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: -10px;
+  width: 10px;
+  border-top: 2px solid #8ba8bb;
+}
+.cal-cycle-branch.is-wendler {
+  border-color: rgba(35, 139, 133, 0.46);
+  background: rgba(218, 244, 241, 0.94);
+  color: #14635f;
+}
+.cal-cycle-branch.is-wendler::before {
+  border-top-color: #3aa7a0;
+}
+.cal-cycle-branch.is-intensity {
+  border-color: rgba(186, 87, 104, 0.4);
+  background: rgba(252, 232, 235, 0.94);
+  color: #7f2e3f;
+}
+.cal-cycle-branch.is-intensity::before {
+  border-top-color: #bd6070;
 }
 .cal-workout-week-cells {
   display: grid;
@@ -10899,23 +10980,27 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 .wt-day-fab:active { transform: scale(0.96); }
 
 @media (max-width: 430px) {
+  .cal-workout-surface-home {
+    --cal-cycle-rail-width: 94px;
+  }
   .cal-workout-surface-home .cal-weekdays {
-    grid-template-columns: 64px repeat(7, minmax(0, 1fr));
+    grid-template-columns: var(--cal-cycle-rail-width) repeat(7, minmax(0, 1fr));
   }
   .cal-workout-week-row {
-    grid-template-columns: 64px minmax(0, 1fr);
+    grid-template-columns: var(--cal-cycle-rail-width) minmax(0, 1fr);
   }
   .cal-workout-week-row,
   .cal-workout-surface-home .cal-workout-cell {
     min-height: 128px;
   }
   .cal-workout-week-rail {
-    gap: 8px;
-    padding-top: 20px;
-    font-size: 14px;
+    padding: 7px 3px 7px 5px;
   }
-  .cal-workout-week-rail strong {
-    font-size: 15px;
+  .cal-cycle-branch {
+    min-height: 15px;
+    padding-right: 2px;
+    font-size: 9px;
+    line-height: 11px;
   }
   .cal-workout-surface-home .cal-workout-cell {
     padding: 7px 1px 4px;

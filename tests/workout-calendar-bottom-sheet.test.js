@@ -188,12 +188,46 @@ test('workout calendar mobile grid reserves a wider week rail', () => {
   assert.ok(start >= 0 && end > start, 'mobile calendar css block should be present');
   const mobileCss = styleCss.slice(start, end);
 
-  assert.match(mobileCss, /\.cal-workout-surface-home \.cal-weekdays\s*\{[\s\S]*grid-template-columns:\s*64px repeat\(7,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(mobileCss, /\.cal-workout-week-row\s*\{[\s\S]*grid-template-columns:\s*64px minmax\(0,\s*1fr\)/);
+  assert.match(styleCss, /--cal-cycle-rail-width:\s*94px/);
+  assert.match(mobileCss, /\.cal-workout-surface-home \.cal-weekdays\s*\{[\s\S]*grid-template-columns:\s*var\(--cal-cycle-rail-width\) repeat\(7,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(mobileCss, /\.cal-workout-week-row\s*\{[\s\S]*grid-template-columns:\s*var\(--cal-cycle-rail-width\) minmax\(0,\s*1fr\)/);
   assert.match(mobileCss, /\.cal-workout-surface-home \.cal-workout-cell\s*\{[\s\S]*padding:\s*7px 1px 4px/);
   assert.match(mobileCss, /\.cal-workout-surface-home \.cal-workout-bar\s*\{[\s\S]*padding:\s*1px 2px;[\s\S]*font-size:\s*9\.5px/);
 });
 
+test('workout calendar week rail renders cycle prescriptions instead of weekly aggregates', () => {
+  const gridStart = calendarJs.indexOf('function _renderWorkoutHomeMonthGrid');
+  const gridEnd = calendarJs.indexOf('function _renderWorkoutHomeDayBar', gridStart);
+  assert.ok(gridStart >= 0 && gridEnd > gridStart, 'workout month grid renderer should exist');
+  const grid = calendarJs.slice(gridStart, gridEnd);
+
+  assert.match(calendarJs, /getTestBoardV2/);
+  assert.match(calendarJs, /activeBenchmarks/);
+  assert.match(calendarJs, /buildExerciseProgramWorkoutPrescription/);
+  assert.match(calendarJs, /function _buildWorkoutCycleRailItems/);
+  assert.match(calendarJs, /function _renderWorkoutCycleRail/);
+  assert.match(calendarJs, /function _workoutCalendarRowWeekStart/);
+  assert.match(calendarJs, /const rowMonday = new Date\(y, m, \(row \* 7\) - firstDow \+ 2\)/);
+  assert.match(grid, /const weekStart = _workoutCalendarRowWeekStart\(y, m, row, firstDow\)/);
+  assert.match(grid, /const cycleItems = _buildWorkoutCycleRailItems\(cycleBoard, weekStart\)/);
+  assert.match(grid, /_renderWorkoutCycleRail\(weekStart, cycleItems\)/);
+  assert.doesNotMatch(grid, /weekDurationSec|weekSets|weekNo|_formatWorkoutWeekHours/);
+  assert.doesNotMatch(calendarJs, />\$\{weekNo\}주<\/strong>/);
+  assert.match(calendarJs, /cal-cycle-branch-text/);
+  assert.match(styleCss, /\.cal-cycle-rail-line/);
+  assert.match(styleCss, /\.cal-cycle-branch::before/);
+  assert.match(styleCss, /\.cal-cycle-branch-text/);
+  assert.match(styleCss, /\.cal-cycle-branch\.is-wendler/);
+  assert.match(styleCss, /\.cal-cycle-branch\.is-intensity/);
+});
+
+test('workout calendar home header and monthly workout card stay compact', () => {
+  assert.match(styleCss, /\.cal-workout-surface-home \.cal-header\s*\{[\s\S]*padding:\s*10px 16px 8px/);
+  assert.match(styleCss, /\.cal-workout-surface-home \.cal-workout-summary\s*\{[\s\S]*margin:\s*6px 12px 7px;[\s\S]*padding:\s*6px 10px/);
+  assert.match(styleCss, /\.cal-workout-surface-home \.cal-month-avg\s*\{[\s\S]*flex-direction:\s*row/);
+  assert.match(styleCss, /\.cal-workout-surface-home \.cal-month-side\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*max-content\)/);
+});
+
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260626z5-wendler-track-graph/);
+  assert.match(swJs, /tomatofarm-v20260626z6-calendar-cycle-rail/);
 });

@@ -10,6 +10,7 @@ import {
   getExList,
   getMuscleParts,
   getLatestCheckinWeight,
+  getTestBoardV2,
   saveDay,
 } from './data.js';
 import {
@@ -39,6 +40,13 @@ import {
   openWorkoutDaySheet,
   updateWorkoutCalendarState,
 } from './workout/navigation-stack.js';
+import {
+  activeBenchmarks,
+  activeCycleOf,
+  buildExerciseProgramWorkoutPrescription,
+  mondayOf,
+  weekIndexOf,
+} from './workout/test-v2/board-core.js';
 
 // ═════════════════════════════════════════════════════════════
 // 뷰 상태
@@ -157,19 +165,75 @@ function _dateFromKey(key) {
   return p ? new Date(p.y, p.m, p.d) : null;
 }
 
-function _isoWeekNumber(date) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const day = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - day);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+function _dateKeyFromDate(date) {
+  return dateKey(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
-function _formatWorkoutWeekHours(seconds) {
-  const sec = Math.max(0, Math.round(_num(seconds)));
-  if (sec <= 0) return '—';
-  const hours = Math.round((sec / 3600) * 10) / 10;
-  return `${String(hours).replace(/\.0$/, '')}h`;
+function _workoutCalendarRowWeekStart(y, m, row, firstDow) {
+  const rowMonday = new Date(y, m, (row * 7) - firstDow + 2);
+  return mondayOf(_dateKeyFromDate(rowMonday));
+}
+
+function _cycleRailShortName(benchmark = {}) {
+  return String(benchmark.short || benchmark.label || '종목').trim().slice(0, 5) || '종목';
+}
+
+function _cycleRailTrackLabel(track) {
+  return track === 'intensity' ? '강도' : '볼륨';
+}
+
+function _cycleRailKind(benchmark = {}, track) {
+  if (benchmark.program === 'wendler') return 'wendler';
+  return track === 'intensity' ? 'intensity' : 'volume';
+}
+
+function _buildWorkoutCycleRailItems(board, weekStart) {
+  if (!board || !weekStart) return [];
+  const items = [];
+  for (const bm of activeBenchmarks(board)) {
+    const cycle = activeCycleOf(board, bm.groupId);
+    if (!cycle) continue;
+    const cycleWeek = weekIndexOf(cycle, weekStart);
+    const cycleWeeks = Math.max(1, Number(cycle.weeks) || 6);
+    if (cycleWeek < 1 || cycleWeek > cycleWeeks) continue;
+    const tracks = bm.program === 'wendler' ? ['volume'] : (Array.isArray(bm.tracks) && bm.tracks.length ? bm.tracks : ['volume']);
+    for (const track of tracks) {
+      const rx = buildExerciseProgramWorkoutPrescription(board, bm, {
+        track,
+        weekStart,
+        todayKey: weekStart,
+        includeAlternatives: false,
+      });
+      const kg = Number(rx?.plan?.kg);
+      if (!Number.isFinite(kg) || kg <= 0) continue;
+      const reps = Number(rx?.plan?.reps) > 0 ? `${_fmtNum(rx.plan.reps, 0)}${rx.plan.amrap ? '+' : ''}회` : '';
+      const kgText = `${_fmtNum(kg, 1)}kg`;
+      const trackLabel = rx.plan?.kind === 'wendler' ? '웬들러' : _cycleRailTrackLabel(track);
+      items.push({
+        label: `${_cycleRailShortName(bm)} ${kgText}`,
+        title: `${bm.label || bm.short || '종목'} · ${cycleWeek}주차 · ${trackLabel} · ${kgText}${reps ? ` x ${reps}` : ''}`,
+        kind: _cycleRailKind(bm, track),
+      });
+    }
+  }
+  return items;
+}
+
+function _renderWorkoutCycleRail(weekStart, items = []) {
+  const visibleItems = Array.isArray(items) ? items : [];
+  const label = visibleItems.length
+    ? `${weekStart} 사이클 처방: ${visibleItems.map(item => item.title).join(', ')}`
+    : `${weekStart} 사이클 처방 없음`;
+  return `
+    <div class="cal-workout-week-rail ${visibleItems.length ? 'has-cycle' : 'is-empty'}" aria-label="${_esc(label)}">
+      <span class="cal-cycle-rail-line" aria-hidden="true"></span>
+      <div class="cal-cycle-branch-list">
+        ${visibleItems.map(item => `
+          <span class="cal-cycle-branch is-${_esc(item.kind)}" title="${_esc(item.title)}"><span class="cal-cycle-branch-text">${_esc(item.label)}</span></span>
+        `).join('')}
+      </div>
+    </div>
+  `;
 }
 
 function _dateDistanceLabel(key) {
@@ -718,9 +782,9 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
   let monthSum = { days: 0, durationSec: 0, sets: 0, volume: 0, kcalBurn: 0 };
   const flatCells = [];
   const dayCells = new Map();
-  const dayMetrics = new Map();
   const lookup = _buildWorkoutLookup();
   const isWorkoutHome = surface === 'workout-home';
+  const cycleBoard = isWorkoutHome ? getTestBoardV2() : null;
   const openDayFn = isWorkoutHome ? '_wtCalOpenDay' : '_calOpenDay';
   const shiftMonthFn = isWorkoutHome ? '_wtCalShiftMonth' : '_calShiftMonth';
   const goTodayFn = isWorkoutHome ? '_wtCalGoToday' : '_calGoToday';
@@ -792,7 +856,6 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
 
     if (isWorkoutHome) {
       dayCells.set(d, cellHtml);
-      dayMetrics.set(d, wx);
     } else {
       flatCells.push(cellHtml);
     }
@@ -833,7 +896,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
   `;
 
   const gridHtml = isWorkoutHome
-    ? _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, dayMetrics })
+    ? _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, cycleBoard })
     : `<div class="cal-grid cal-workout-grid">${flatCells.join('')}</div>`;
   const bottomSheetHtml = isWorkoutHome
     ? _renderWorkoutHomeBottomSheet(_workoutHomeSelectedKey, { cache, plan, checkins, lookup })
@@ -859,36 +922,25 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
   `;
 }
 
-function _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, dayMetrics }) {
+function _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, cycleBoard = null }) {
   const weekRows = [];
   const rowCount = Math.ceil((firstDow + daysCount) / 7);
   for (let row = 0; row < rowCount; row++) {
     const cellHtmls = [];
-    let weekDurationSec = 0;
-    let weekSets = 0;
     for (let dow = 0; dow < 7; dow++) {
       const day = (row * 7) + dow - firstDow + 1;
       if (day < 1 || day > daysCount) {
         cellHtmls.push(`<div class="cal-cell cal-cell-empty cal-workout-cell cal-workout-cell-outside"></div>`);
         continue;
       }
-      const wx = dayMetrics.get(day);
-      if (wx?.hasWorkout) {
-        weekDurationSec += wx.durationSec || 0;
-        weekSets += wx.setCount || 0;
-      }
       cellHtmls.push(dayCells.get(day) || `<div class="cal-cell cal-cell-empty cal-workout-cell"></div>`);
     }
 
-    const anchorDay = Math.min(daysCount, Math.max(1, (row * 7) - firstDow + 1));
-    const weekNo = _isoWeekNumber(new Date(y, m, anchorDay));
+    const weekStart = _workoutCalendarRowWeekStart(y, m, row, firstDow);
+    const cycleItems = _buildWorkoutCycleRailItems(cycleBoard, weekStart);
     weekRows.push(`
       <div class="cal-workout-week-row">
-        <div class="cal-workout-week-rail">
-          <strong>${weekNo}주</strong>
-          <span>${_formatWorkoutWeekHours(weekDurationSec)}</span>
-          <span>${weekSets > 0 ? `${weekSets}s` : '—'}</span>
-        </div>
+        ${_renderWorkoutCycleRail(weekStart, cycleItems)}
         <div class="cal-workout-week-cells">
           ${cellHtmls.join('')}
         </div>
