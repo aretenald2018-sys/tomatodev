@@ -245,6 +245,7 @@ export async function loadAll() {
     _settings.unit_goal_start  = fbMap.unit_goal_start  ?? null;
     _settings.active_timer     = fbMap.active_timer     ?? null;
     _settings.max_cycle        = fbMap.max_cycle        ?? null;
+    _settings.test_board_v2    = fbMap.test_board_v2    ?? null;
     _settings.exercise_catalog_seed = fbMap.exercise_catalog_seed ?? null;
     _settings.cheer_last_seen  = fbMap.cheer_last_seen  ?? 0;
     _settings.tomato_state     = fbMap.tomato_state     ?? { quarterlyTomatoes: {}, totalTomatoes: 0, giftedReceived: 0, giftedSent: 0 };

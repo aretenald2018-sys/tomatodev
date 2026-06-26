@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const exercisesJs = await readFile(new URL('../workout/exercises.js', import.meta.url), 'utf8');
+const dataLoadJs = await readFile(new URL('../data/data-load.js', import.meta.url), 'utf8');
 const styleCss = await readFile(new URL('../style.css', import.meta.url), 'utf8');
 const swJs = await readFile(new URL('../sw.js', import.meta.url), 'utf8');
 
@@ -39,10 +40,16 @@ test('exercise editor saves exercise before saving program contract', () => {
   );
   const saveExerciseIdx = saveFlow.indexOf('await saveExercise(record)');
   const verifyIdx = saveFlow.indexOf("throw new Error('saveExercise verification failed')");
-  const saveProgramIdx = saveFlow.indexOf('await _saveExerciseProgramFromEditor(record)');
+  const programRecordIdx = saveFlow.indexOf('const programRecord = saved || record');
+  const saveProgramIdx = saveFlow.indexOf('await _saveExerciseProgramFromEditor(programRecord)');
   assert.ok(saveExerciseIdx > 0, 'missing saveExercise call');
   assert.ok(verifyIdx > saveExerciseIdx, 'missing post-save verification before program save');
-  assert.ok(saveProgramIdx > verifyIdx, 'program save should run after exercise verification');
+  assert.ok(programRecordIdx > verifyIdx, 'program save should use the verified saved exercise record');
+  assert.ok(saveProgramIdx > programRecordIdx, 'program save should run after choosing the verified exercise record');
+});
+
+test('exercise program board is rehydrated from settings on load', () => {
+  assert.match(dataLoadJs, /_settings\.test_board_v2\s*=\s*fbMap\.test_board_v2\s*\?\?\s*null/);
 });
 
 test('exercise editor program controls have compact fixed layout styles', () => {
@@ -58,5 +65,5 @@ test('exercise editor program controls have compact fixed layout styles', () => 
   assert.match(styleCss, /#ex-editor-modal \.ex-program-tm-calc/);
   assert.match(styleCss, /#ex-editor-modal \.ex-program-calc-btn/);
   assert.match(styleCss, /#ex-editor-modal \.ex-program-wendler \.ex-editor-input,[\s\S]*?min-height:\s*24px/);
-  assert.match(swJs, /tomatofarm-v20260626z1-wendler-picker-sets/);
+  assert.match(swJs, /tomatofarm-v20260626z2-wendler-state-reload/);
 });

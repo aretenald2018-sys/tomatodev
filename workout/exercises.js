@@ -3063,7 +3063,8 @@ export async function wtSaveExerciseFromEditor() {
     if (!saved || saved.name !== record.name || saved.muscleId !== record.muscleId) {
       throw new Error('saveExercise verification failed');
     }
-    await _saveExerciseProgramFromEditor(record);
+    const programRecord = saved || record;
+    await _saveExerciseProgramFromEditor(programRecord);
   } catch (e) {
     console.warn('[wtSaveExerciseFromEditor]:', e);
     window.showToast?.('종목 저장 실패 — 다시 시도해주세요', 2800, 'error');
