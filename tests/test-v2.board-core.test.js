@@ -713,6 +713,28 @@ test('종목 프로그램 처방: 웬들러는 준비운동/메인/BBB 세트를
   assert.equal(result.prescription.sets.some(s => s.amrap), true);
 });
 
+test('종목 프로그램 처방: 같은 movementId의 다른 exerciseId도 웬들러 세트를 적용한다', () => {
+  const b = fixtureBoard();
+  const squat = b.benchmarks.find(x => x.movementId === 'back_squat');
+  squat.exerciseId = 'stored_sumo_deadlift';
+
+  const matched = findExerciseProgramBenchmark(b, {
+    id: 'picker_sumo_deadlift',
+    movementId: 'back_squat',
+    muscleId: 'lower',
+  });
+  assert.equal(matched?.id, squat.id);
+
+  const result = buildExerciseProgramWorkoutPrescription(b, matched, { todayKey: TODAY });
+  assert.equal(result.prescription.applySets, true);
+  assert.equal(result.prescription.sets.length, 11);
+  assert.equal(result.prescription.sets.filter(s => s.wendlerRole === 'warmup').length, 3);
+  assert.equal(result.prescription.sets.filter(s => s.wendlerRole === 'main').length, 3);
+  assert.equal(result.prescription.sets.filter(s => s.wendlerRole === 'supplemental').length, 5);
+  assert.equal(result.prescription.sets.every(s => Number(s.reps) > 0), true);
+  assert.equal(result.prescription.sets.every(s => Number(s.kg) > 0), true);
+});
+
 test('과거 셀 실제 운동기록 fallback: 같은 주 스모데드 기록을 exerciseId로 찾는다', () => {
   const bm = {
     id: 'bm_sumo',

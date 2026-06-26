@@ -1087,7 +1087,7 @@ function _exerciseKeyParts(exercise = {}) {
 function _benchmarkExerciseRank(bm = {}, exercise = {}) {
   const { exerciseId, movementId } = _exerciseKeyParts(exercise);
   if (exerciseId && bm.exerciseId === exerciseId) return 1;
-  if (movementId && bm.movementId === movementId && (!exerciseId || !bm.exerciseId)) return 2;
+  if (movementId && bm.movementId === movementId) return (exerciseId && bm.exerciseId) ? 3 : 2;
   return 0;
 }
 

@@ -2,12 +2,12 @@
 
 ## 현재 상태
 
-- 상태: `complete`
+- 상태: `ready_for_review`
 - 계획 문서: `docs/ai/features/2026-06-25-exercise-program-settings-wendler-migration.md`
-- 현재 단계: `review complete — Slice 8 wendler calendar placement and density fix`
-- 마지막 완료: `웬들러 캘린더를 전체 폭 일반 블록으로 옮기고 숫자 입력 높이/폰트 크기를 추가로 줄여 Dashboard3 배포 검증까지 완료했다.`
-- 다음 액션: `성장보드 색칠/미달 자동 반영 통합 방식은 사용자 결정 후 별도 계획으로 진행한다.`
-- 차단 사유: `Slice 5 성장보드 색칠 통합 방식은 사용자 결정 대기`
+- 현재 단계: `execution complete — Slice 9 picker wendler prescription sets fix`
+- 마지막 완료: `프로그램 벤치마크 movementId fallback을 보정하고 웬들러 세트 적용 회귀 테스트와 캐시 버전 갱신을 완료했다.`
+- 다음 액션: `Slice 9 변경 파일을 리뷰하고, 문제가 없으면 Dashboard3 Pages 배포 검증을 진행한다.`
+- 차단 사유: `없음`
 
 ## 직전 실행 검증
 
@@ -20,6 +20,16 @@
   - 결과: `[deploy-verify] ok 66bf22bb1564 tomatofarm-v20260625z66-wendler-calendar-density static=218`
 - PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260625z66-wendler-calendar-density" "workout/exercises.js::ex-program-calendar-row" "style.css::position: static" "style.css::min-height: 24px"`
 - not verified yet: 인증 계정이 없어 `운동 탭 -> 종목 수정 -> 웬들러 -> 시작 주 캘린더 선택 -> 저장` 실제 UI flow는 직접 저장 확인 미완료
+
+## 현재 실행 검증
+
+- PASS: `node --check workout/test-v2/board-core.js; node --check sw.js`
+- PASS: `node --test tests/test-v2.board-core.test.js tests/workout-test-mode-unified.test.js` — 43 tests passed
+- PASS: `node --test .\tests\*.test.js` — 529 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- PASS: `docs/ai/reviews/2026-06-26-exercise-program-wendler-picker-sets-review.md`
+- not verified yet: Dashboard3 Pages 배포와 인증 계정 UI flow 확인 필요
 
 ## 완료한 작업
 

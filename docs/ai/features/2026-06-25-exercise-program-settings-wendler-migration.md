@@ -340,6 +340,7 @@
 - Slice 7 Dashboard3 Pages 배포 및 deployed marker 검증 완료.
 - Slice 8 실행 완료. 리뷰 결과 이슈 없음.
 - Slice 8 Dashboard3 Pages 배포 및 deployed marker 검증 완료.
+- Slice 9 실행 완료. 리뷰 결과 이슈 없음.
 - Slice 5는 사용자 결정 전까지 보류한다.
 - 성장보드 색칠/미달 자동 반영은 사용자 최종 결정 전까지 보류한다.
 
@@ -425,3 +426,51 @@
 - `node --test .\tests\*.test.js`
 - `node scripts/verify-runtime-assets.mjs`
 - `git diff --check`
+
+### Slice 9: picker 웬들러 처방 세트 적용 회귀 수정
+
+요청:
+
+- 종목 수정에서 웬들러를 기본 프로그램으로 저장한 뒤 picker에서 해당 운동을 추가하면, 현재는 1개 빈 세트 카드로 생성된다.
+- UI 구조는 바꾸지 않고, 사진 2처럼 웬들러 준비운동/메인/보조 세트의 kg와 반복 횟수가 입력된 상태로 생성되어야 한다.
+
+진단:
+
+- Slice 4에서 웬들러 처방 세트 생성은 구현되어 있다.
+- 다만 프로그램 벤치마크 조회가 `exerciseId`가 서로 다른 같은 `movementId` 종목을 놓치면 일반 1개 빈 세트 fallback으로 내려간다.
+- 성장보드 후보 생성은 이미 `movementId` fallback을 사용하므로 picker 처방 조회도 같은 계약을 따라야 한다.
+
+구현:
+
+- `findExerciseProgramBenchmark()`의 운동 매칭을 `exerciseId` 정확 일치 우선, 그 다음 같은 `movementId` fallback 순서로 보정한다.
+- 웬들러 프로그램이 설정된 같은 `movementId` 종목을 picker에서 추가할 때 `buildExerciseProgramWorkoutPrescription()`이 준비운동/메인/보조 세트를 반환하는 회귀 테스트를 추가한다.
+- `workout/test-v2/board-core.js`가 `STATIC_ASSETS`에 포함되어 있으므로 `sw.js` `CACHE_VERSION`과 cache-version 테스트를 bump한다.
+
+범위 밖:
+
+- UI 레이아웃 변경.
+- 성장보드 색칠/미달 자동 반영.
+- 같은 `movementId`의 프로그램 공유 정책을 새로 확장하는 별도 UX.
+
+검증:
+
+- `node --check workout/test-v2/board-core.js sw.js`
+- `node --test tests/test-v2.board-core.test.js tests/workout-test-mode-unified.test.js`
+- `node --test .\tests\*.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- Dashboard3 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+- UI flow: `운동 탭 -> + -> 종목 수정 -> 웬들러 저장 -> 같은 종목 추가`에서 준비운동/메인/보조 세트가 kg/반복 수 입력된 상태로 보인다.
+
+실행 결과:
+
+- `workout/test-v2/board-core.js`의 프로그램 벤치마크 매칭을 `exerciseId` 정확 일치 우선, 같은 `movementId` fallback 차순위로 보정했다.
+- `tests/test-v2.board-core.test.js`에 다른 `exerciseId`지만 같은 `movementId`인 웬들러 종목이 준비운동 3세트, 메인 3세트, BBB 5세트를 생성하는 회귀 테스트를 추가했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260626z1-wendler-picker-sets`로 bump하고 cache-version 테스트 기대값을 갱신했다.
+- PASS: `node --check workout/test-v2/board-core.js; node --check sw.js`
+- PASS: `node --test tests/test-v2.board-core.test.js tests/workout-test-mode-unified.test.js` — 43 tests passed
+- PASS: `node --test .\tests\*.test.js` — 529 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- 리뷰 문서: `docs/ai/reviews/2026-06-26-exercise-program-wendler-picker-sets-review.md`
+- not verified yet: Dashboard3 Pages 배포와 인증 계정 UI flow 확인은 아직 남아 있다.
