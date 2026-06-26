@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-26-workout-timer-set-completion-timeline.md`
-- 현재 단계: `review — Slice 1 set completion timeline timer`
-- 마지막 완료: `운동 타이머를 바디캘린더식 세트 완료 타임라인 기준으로 구현하고 로컬 검증했다.`
-- 다음 액션: `변경분 리뷰, Dashboard3 Pages 배포 검증`
+- 현재 단계: `complete — Slice 1 set completion timeline timer`
+- 마지막 완료: `운동 타이머를 바디캘린더식 세트 완료 타임라인 기준으로 구현, 리뷰, Dashboard3 Pages 배포 검증했다.`
+- 다음 액션: `없음`
 - 차단 사유: `없음`
 
 ## 이번 실행 검증
@@ -18,7 +18,11 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
 - PASS: `git diff --check`
 - PASS: `git diff --cached --check`
-- not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 UI flow 확인은 아직 남음
+- PASS: `docs/ai/reviews/2026-06-26-workout-timer-set-completion-timeline-review.md`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 7c59ab3`
+  - 결과: `[deploy-verify] ok 7c59ab3c099f tomatofarm-v20260626z8-set-completion-timeline static=219`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z8-set-completion-timeline" "workout/timeline.js::buildWorkoutSetTimeline" "workout/exercises.js::stampSetCompletedAt(set)" "workout/timers.js::syncWorkoutTimeline(S.workout)" "workout/save.js::workoutTimeline" "render-calendar.js::buildWorkoutSetTimeline"`
+- not verified yet: 인증 계정 세션이 없어 배포 URL에서 `운동 탭 -> 세트 여러 개 체크 -> 저장 -> 월간 캘린더 시간 반영` 실제 UI flow는 직접 조작하지 못함
 
 ## 리뷰 대상
 

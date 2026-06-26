@@ -99,6 +99,15 @@
 - PASS: `git diff --check`
 - PASS: `git diff --cached --check`
 
+## 배포 검증
+
+- 구현 커밋: `7c59ab3`
+- 리뷰 문서: `docs/ai/reviews/2026-06-26-workout-timer-set-completion-timeline-review.md`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 7c59ab3`
+  - 결과: `[deploy-verify] ok 7c59ab3c099f tomatofarm-v20260626z8-set-completion-timeline static=219`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z8-set-completion-timeline" "workout/timeline.js::buildWorkoutSetTimeline" "workout/exercises.js::stampSetCompletedAt(set)" "workout/timers.js::syncWorkoutTimeline(S.workout)" "workout/save.js::workoutTimeline" "render-calendar.js::buildWorkoutSetTimeline"`
+- not verified yet: 인증 계정 세션이 없어 배포 URL에서 `운동 탭 -> 세트 여러 개 체크 -> 저장 -> 월간 캘린더 시간 반영` 실제 UI flow는 직접 조작하지 못했다.
+
 ## 다음 세션 시작 지침
 
-`docs/ai/NEXT_ACTION.md`가 `ready_for_review`이면 이 문서의 `실행 Slice 1 — Set completion timeline timer` 변경분을 리뷰하고, 문제가 없으면 Dashboard3 Pages 배포 검증으로 넘긴다.
+`docs/ai/NEXT_ACTION.md`가 `complete`이면 이 계획은 완료 상태다. 후속 요청이 들어오면 새 계획을 작성한다.
