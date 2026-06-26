@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-26-workout-calendar-continuous-cycle-rail.md`
-- 현재 단계: `review — workout calendar continuous cycle rail`
-- 마지막 완료: `운동 캘린더 좌측 cycle rail 실선 연결과 주별 색 변주를 구현하고 로컬 검증했다.`
-- 다음 액션: `변경분 리뷰, Dashboard3 Pages 배포 검증`
+- 현재 단계: `complete — workout calendar continuous cycle rail`
+- 마지막 완료: `운동 캘린더 좌측 cycle rail 실선 연결과 주별 색 변주를 구현, 리뷰, Dashboard3 Pages 배포 검증했다.`
+- 다음 액션: `없음`
 - 차단 사유: `없음`
 
 ## 이번 실행 검증
@@ -18,7 +18,11 @@
 - PASS: `node --test .\tests\*.test.js` — 545 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
 - PASS: `git diff --check`
-- not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 UI flow 확인은 아직 남음
+- PASS: `docs/ai/reviews/2026-06-26-workout-calendar-continuous-cycle-rail-review.md`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ e023967`
+  - 결과: `[deploy-verify] ok e02396785814 tomatofarm-v20260626z9-cycle-rail-continuous static=219`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z9-cycle-rail-continuous" "style.css::--cal-cycle-rail-color: #aeb9c5" "style.css::.cal-workout-week-row:nth-child(6n + 2)" "style.css::border-left: 2px solid var(--cal-cycle-rail-color" "style.css::border-top: 2px solid var(--cal-cycle-rail-color"`
+- not verified yet: 인증 계정 세션이 없어 배포 URL에서 `운동 탭 -> 월간 캘린더 -> 좌측 cycle rail 시각 상태` 실제 UI flow는 직접 조작하지 못함
 
 ## 리뷰 대상
 

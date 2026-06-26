@@ -55,6 +55,15 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=835`
 - PASS: `git diff --check`
 
+## 배포 검증
+
+- 구현 커밋: `e023967`
+- 리뷰 문서: `docs/ai/reviews/2026-06-26-workout-calendar-continuous-cycle-rail-review.md`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ e023967`
+  - 결과: `[deploy-verify] ok e02396785814 tomatofarm-v20260626z9-cycle-rail-continuous static=219`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z9-cycle-rail-continuous" "style.css::--cal-cycle-rail-color: #aeb9c5" "style.css::.cal-workout-week-row:nth-child(6n + 2)" "style.css::border-left: 2px solid var(--cal-cycle-rail-color" "style.css::border-top: 2px solid var(--cal-cycle-rail-color"`
+- not verified yet: 인증 계정 세션이 없어 배포 URL에서 `운동 탭 -> 월간 캘린더 -> 좌측 cycle rail 시각 상태` 실제 UI flow는 직접 조작하지 못했다.
+
 ## 다음 세션 시작 지침
 
-`docs/ai/NEXT_ACTION.md`가 `ready_for_review`이면 이 문서의 변경분을 리뷰하고, 문제가 없으면 Dashboard3 Pages 배포 검증으로 넘긴다.
+`docs/ai/NEXT_ACTION.md`가 `complete`이면 이 계획은 완료 상태다. 후속 요청이 들어오면 새 계획을 작성한다.
