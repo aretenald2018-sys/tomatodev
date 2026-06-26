@@ -10041,9 +10041,8 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   display: grid;
   grid-template-columns: var(--cal-cycle-rail-width) minmax(0, 1fr);
   min-height: 144px;
-  border-bottom: 1px solid #dfe1e8;
 }
-.cal-workout-week-row:last-child {
+.cal-workout-week-row:last-child .cal-workout-week-cells {
   border-bottom: 0;
 }
 .cal-workout-week-rail {
@@ -10063,7 +10062,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   bottom: 10px;
   left: 9px;
   width: 0;
-  border-left: 2px solid #8ba8bb;
+  border-left: 2px solid #aeb9c5;
   border-radius: 99px;
 }
 .cal-workout-week-rail.has-cycle .cal-cycle-rail-line {
@@ -10086,17 +10085,20 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   margin-left: 14px;
   min-height: 16px;
   padding: 1px 3px 1px 5px;
-  border: 1px solid rgba(116, 139, 156, 0.38);
-  border-left-color: rgba(116, 139, 156, 0.65);
+  border: 1px solid #b7c5d2;
+  border-left-color: #94aabd;
   border-radius: 4px;
-  background: rgba(237, 242, 247, 0.92);
-  color: #425064;
+  background: #d7e4ed;
+  color: #33404a;
   font-size: 9.5px;
   line-height: 12px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  font-family: var(--font-sans);
+  cursor: pointer;
 }
+.cal-cycle-branch:active { transform: scale(0.98); }
 .cal-cycle-branch-text {
   display: block;
   flex: 1 1 auto;
@@ -10110,28 +10112,31 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   top: 50%;
   left: -10px;
   width: 10px;
-  border-top: 2px solid #8ba8bb;
+  border-top: 2px solid #aeb9c5;
 }
 .cal-cycle-branch.is-wendler {
-  border-color: rgba(35, 139, 133, 0.46);
-  background: rgba(218, 244, 241, 0.94);
-  color: #14635f;
+  border-color: #b7c5d2;
+  border-left-color: #94aabd;
+  background: #d7e4ed;
+  color: #33404a;
 }
 .cal-cycle-branch.is-wendler::before {
-  border-top-color: #3aa7a0;
+  border-top-color: #aeb9c5;
 }
 .cal-cycle-branch.is-intensity {
-  border-color: rgba(186, 87, 104, 0.4);
-  background: rgba(252, 232, 235, 0.94);
-  color: #7f2e3f;
+  border-color: #b7c5d2;
+  border-left-color: #94aabd;
+  background: #d7e4ed;
+  color: #33404a;
 }
 .cal-cycle-branch.is-intensity::before {
-  border-top-color: #bd6070;
+  border-top-color: #aeb9c5;
 }
 .cal-workout-week-cells {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   min-width: 0;
+  border-bottom: 1px solid #dfe1e8;
 }
 .cal-workout-surface-home .cal-workout-cell {
   min-height: 144px;

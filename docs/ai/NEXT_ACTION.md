@@ -2,35 +2,31 @@
 
 ## 현재 상태
 
-- 상태: `complete`
+- 상태: `ready_for_review`
 - 계획 문서: `docs/ai/features/2026-06-26-workout-calendar-cycle-rail-density.md`
-- 현재 단계: `completed — Slice 1 calendar density and cycle rail`
-- 마지막 완료: `운동 캘린더 압축 및 전체 사이클 레일 구현을 커밋/푸시하고 Dashboard3 Pages 배포 검증까지 완료했다.`
-- 다음 액션: `없음`
+- 현재 단계: `review — Slice 2 cycle rail continuity and target card settings`
+- 마지막 완료: `첫 열 경계선 제거, 레일 색상 통일, 목표 카드 클릭 시 성장보드 종목 설정 시트 진입을 구현하고 로컬 검증했다.`
+- 다음 액션: `Slice 2 리뷰 문서 작성, Dashboard3 Pages 배포 검증`
 - 차단 사유: `없음`
 
 ## 이번 실행 검증
 
-- 커밋: `b31e79e fix(workout): compact calendar and add cycle rail`
-- PASS: `node --check render-calendar.js; node --check sw.js`
-- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/test-v2.board-core.test.js` — 51 tests passed
-- PASS: `node --test .\tests\*.test.js` — 536 tests passed
+- 커밋: `pending`
+- PASS: `node --check render-calendar.js; node --check workout/test-v2/board-render.js; node --check workout/test-v2/entry.js; node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/test-v2.board-core.test.js` — 52 tests passed
+- PASS: `node --test .\tests\*.test.js` — 537 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
-- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ b31e79e`
-  - 결과: `[deploy-verify] ok b31e79e91699 tomatofarm-v20260626z6-calendar-cycle-rail static=218`
-- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z6-calendar-cycle-rail" "render-calendar.js::_buildWorkoutCycleRailItems" "render-calendar.js::cal-cycle-branch-text" "style.css::--cal-cycle-rail-width: 94px" "style.css::.cal-cycle-branch.is-wendler"`
-- not verified yet: 인증 계정이 없어 실제 `운동 탭 -> 월간 캘린더 -> 문정토마토 계정 사이클 레일 표시` UI 확인은 수동 확인 필요
+- not verified yet: 인증 계정이 없어 실제 `운동 탭 -> 월간 캘린더 -> 레일 목표 카드 탭 -> 해당 종목 설정 시트 표시` UI 확인은 배포 후 수동 확인 필요
 
 ## 리뷰 대상
 
-- `calc.js`
-- `workout/exercises.js`
+- `render-calendar.js`
 - `style.css`
 - `sw.js`
-- `tests/calc.expert.test.js`
-- `tests/workout-track-graph-delta.test.js`
-- `tests/workout-test-mode-unified.test.js`
+- `workout/test-v2/board-render.js`
+- `workout/test-v2/entry.js`
+- `tests/workout-calendar-bottom-sheet.test.js`
 - cache-version 참조 테스트 파일들
 
 ## 직전 실행 검증

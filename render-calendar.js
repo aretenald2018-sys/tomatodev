@@ -210,6 +210,7 @@ function _buildWorkoutCycleRailItems(board, weekStart) {
       const kgText = `${_fmtNum(kg, 1)}kg`;
       const trackLabel = rx.plan?.kind === 'wendler' ? '웬들러' : _cycleRailTrackLabel(track);
       items.push({
+        benchmarkId: bm.id,
         label: `${_cycleRailShortName(bm)} ${kgText}`,
         title: `${bm.label || bm.short || '종목'} · ${cycleWeek}주차 · ${trackLabel} · ${kgText}${reps ? ` x ${reps}` : ''}`,
         kind: _cycleRailKind(bm, track),
@@ -229,11 +230,33 @@ function _renderWorkoutCycleRail(weekStart, items = []) {
       <span class="cal-cycle-rail-line" aria-hidden="true"></span>
       <div class="cal-cycle-branch-list">
         ${visibleItems.map(item => `
-          <span class="cal-cycle-branch is-${_esc(item.kind)}" title="${_esc(item.title)}"><span class="cal-cycle-branch-text">${_esc(item.label)}</span></span>
+          <button type="button" class="cal-cycle-branch is-${_esc(item.kind)}" data-cal-cycle-target="${_esc(item.benchmarkId)}" title="${_esc(item.title)}" aria-label="${_esc(`${item.title} 설정 열기`)}"><span class="cal-cycle-branch-text">${_esc(item.label)}</span></button>
         `).join('')}
       </div>
     </div>
   `;
+}
+
+async function _openWorkoutCycleTargetSettings(benchmarkId) {
+  const bmId = String(benchmarkId || '').trim();
+  if (!bmId) return;
+  try {
+    if (typeof window.tm2OpenBenchmarkSettings !== 'function') {
+      await import('./workout/test-v2/entry.js?v=20260620z27-selected-scope');
+    }
+    if (typeof window.tm2OpenBenchmarkSettings === 'function') {
+      await window.tm2OpenBenchmarkSettings(bmId);
+      return;
+    }
+    if (typeof window.tm2OpenBoard === 'function') {
+      await window.tm2OpenBoard();
+      return;
+    }
+    throw new Error('growth board entry is not registered');
+  } catch (e) {
+    console.warn('[workout-calendar] cycle target settings open failed:', e);
+    window.showToast?.('목표 설정을 여는 데 실패했어요', 2200, 'error');
+  }
 }
 
 function _dateDistanceLabel(key) {
@@ -1158,6 +1181,7 @@ export function renderWorkoutCalendarHome() {
     surface: 'workout-home',
     showModeTabs: false,
   });
+  _bindWorkoutCycleRailActions(root);
   _bindWorkoutHomeSheetDrag(root);
   _bindWorkoutHomeSheetActions(root);
   _bindWorkoutHomeSheetScrollGuard(root);
@@ -1972,6 +1996,21 @@ function _bindWorkoutHomeSheetActions(root) {
     Promise.resolve(_addWorkoutHomeSession(key)).catch((e) => {
       console.warn('[workout-calendar] add session action failed:', e);
       _openWorkoutEditorForSession(key, _workoutHomeSessionIndex);
+    });
+  }, true);
+}
+
+function _bindWorkoutCycleRailActions(root) {
+  const grid = root?.querySelector?.('.cal-workout-month-grid');
+  if (!grid) return;
+  grid.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    const btn = target?.closest?.('[data-cal-cycle-target]');
+    if (!btn) return;
+    event.preventDefault();
+    event.stopPropagation();
+    Promise.resolve(_openWorkoutCycleTargetSettings(btn.getAttribute('data-cal-cycle-target'))).catch((e) => {
+      console.warn('[workout-calendar] cycle target click failed:', e);
     });
   }, true);
 }

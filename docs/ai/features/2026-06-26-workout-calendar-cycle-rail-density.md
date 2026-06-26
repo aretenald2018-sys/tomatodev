@@ -87,3 +87,60 @@
   - 결과: `[deploy-verify] ok b31e79e91699 tomatofarm-v20260626z6-calendar-cycle-rail static=218`
 - PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z6-calendar-cycle-rail" "render-calendar.js::_buildWorkoutCycleRailItems" "render-calendar.js::cal-cycle-branch-text" "style.css::--cal-cycle-rail-width: 94px" "style.css::.cal-cycle-branch.is-wendler"`
 - not verified yet: 인증 계정이 없어 실제 `운동 탭 -> 월간 캘린더 -> 문정토마토 계정 사이클 레일 표시` UI 확인은 수동 확인이 필요하다.
+
+## 실행 Slice 2 — Cycle rail continuity and target card settings
+
+### 배경
+
+배포 후 첨부 화면 기준으로 첫 열 레일이 주 row 경계선 때문에 끊겨 보이고, 레일 목표 카드 색상이 주변 캘린더 톤과 다르게 튄다. 또한 목표 카드를 눌렀을 때 해당 운동종목의 6주 계획/목표를 바로 설정할 수 있어야 한다.
+
+### 목표
+
+1. 첫 열에 한해 주별 가로 경계선을 제거해 세로 레일이 끊기지 않게 한다.
+2. 레일 선과 목표 카드 색상을 캘린더 주변의 회청색/중립 톤과 맞춘다.
+3. 목표 카드를 누르면 해당 벤치마크의 기존 성장보드 종목 설정 시트를 연다.
+
+### 구현 계획
+
+1. `style.css`에서 row 전체 `border-bottom`을 날짜 grid 영역으로 옮겨 첫 열에는 가로 경계가 그려지지 않게 한다.
+2. `style.css`에서 `.cal-cycle-branch` 계열 색상을 날짜 기록 chip과 가까운 낮은 채도의 회청색으로 통일한다.
+3. `render-calendar.js`의 레일 item에 `benchmarkId`를 포함하고 목표 카드를 button으로 렌더한다.
+4. `render-calendar.js`에 capture/direct click handler를 추가해 `data-cal-cycle-target` 클릭 시 이벤트를 소비하고 성장보드 설정 진입 함수를 호출한다.
+5. `workout/test-v2/board-render.js`에 `tm2OpenBenchmarkSettings(bmId)` 공개 함수를 추가해 overlay를 열고 `openColumnSheet(bmId)`를 실행한다.
+6. `workout/test-v2/entry.js`에서 동적 import 후 `window.tm2OpenBenchmarkSettings()`를 노출한다.
+7. 관련 source/CSS 테스트와 cache version 기대값을 갱신한다.
+8. `render-calendar.js`, `style.css`, `workout/test-v2/board-render.js`, `workout/test-v2/entry.js`가 `STATIC_ASSETS`에 포함되어 있으므로 `sw.js` `CACHE_VERSION`을 bump한다.
+
+### 제외
+
+- 새 목표 설정 UI를 별도로 만들지 않는다. 기존 성장보드 종목 설정 시트를 재사용한다.
+- 6주 계획 데이터 구조를 변경하지 않는다.
+- 날짜별 운동 기록 sheet 동작은 변경하지 않는다.
+
+### 검증 계획
+
+- `node --check render-calendar.js; node --check workout/test-v2/board-render.js; node --check workout/test-v2/entry.js; node --check sw.js`
+- `node --test tests/workout-calendar-bottom-sheet.test.js tests/test-v2.board-core.test.js`
+- `node --test .\tests\*.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+- 배포 URL에서 인증 계정으로 `운동 탭 -> 월간 캘린더 -> 레일 목표 카드 탭 -> 해당 종목 설정 시트 표시` 확인
+
+### 구현 결과
+
+- 첫 열에 있던 주 row 경계선을 날짜 grid 영역으로 옮겨 사이클 레일이 주 경계에서 끊기지 않게 했다.
+- 레일 선과 목표 카드 색상을 월간 캘린더 기록 chip과 가까운 회청색/중립 톤으로 통일했다.
+- 레일 목표 카드를 button으로 렌더하고 `benchmarkId`를 `data-cal-cycle-target`에 연결했다.
+- 목표 카드 클릭 시 `workout/test-v2/entry.js`를 lazy-load하고 `window.tm2OpenBenchmarkSettings()`를 통해 기존 성장보드 종목 설정 시트를 열도록 했다.
+- `workout/test-v2/board-render.js`에 `tm2OpenBenchmarkSettings(benchmarkId)`를 추가해 overlay 진입 후 `openColumnSheet(bmId)`를 호출한다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260626z7-cycle-rail-target-settings`로 bump했다.
+
+### 로컬 검증 결과
+
+- PASS: `node --check render-calendar.js; node --check workout/test-v2/board-render.js; node --check workout/test-v2/entry.js; node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/test-v2.board-core.test.js` — 52 tests passed
+- PASS: `node --test .\tests\*.test.js` — 537 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- not verified yet: 인증 계정이 없어 실제 `운동 탭 -> 월간 캘린더 -> 레일 목표 카드 탭 -> 해당 종목 설정 시트 표시` UI 확인은 배포 후 수동 확인이 필요하다.

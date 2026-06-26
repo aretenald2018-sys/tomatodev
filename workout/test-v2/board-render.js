@@ -269,6 +269,29 @@ export async function tm2OpenBoard() {
   _afterBoardReady();
 }
 
+export async function tm2OpenBenchmarkSettings(benchmarkId) {
+  _ensureRoots();
+  await _ensureTodayLoaded();
+  const board = getTestBoardV2();
+  const bmId = String(benchmarkId || '').trim();
+  const bm = board && bmId ? benchmarkById(board, bmId) : null;
+  if (!board || !bm) {
+    _toast('목표 종목을 찾지 못했어요', 'warning');
+    await tm2OpenBoard();
+    return false;
+  }
+  S.board = board;
+  const groupsChanged = _ensureBoardGroups();
+  if (groupsChanged) _persist();
+  S.groupId = bm.groupId || S.groupId;
+  S.view = 'board';
+  document.getElementById('tm2-overlay').classList.add('tm2-open');
+  renderBoard();
+  openColumnSheet(bmId);
+  setTimeout(_scrollToToday, 50);
+  return true;
+}
+
 function _afterBoardReady() {
   const groupsChanged = _ensureBoardGroups();
   if (groupsChanged) _persist();

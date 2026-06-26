@@ -6,6 +6,8 @@ const calendarJs = readFileSync(new URL('../render-calendar.js', import.meta.url
 const appJs = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 const styleCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
 const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+const tm2EntryJs = readFileSync(new URL('../workout/test-v2/entry.js', import.meta.url), 'utf8');
+const tm2BoardJs = readFileSync(new URL('../workout/test-v2/board-render.js', import.meta.url), 'utf8');
 
 test('workout calendar keeps the month surface and renders the existing day bar as a sheet header', () => {
   const start = calendarJs.indexOf('export function renderWorkoutCalendarHome');
@@ -200,12 +202,23 @@ test('workout calendar week rail renders cycle prescriptions instead of weekly a
   const gridEnd = calendarJs.indexOf('function _renderWorkoutHomeDayBar', gridStart);
   assert.ok(gridStart >= 0 && gridEnd > gridStart, 'workout month grid renderer should exist');
   const grid = calendarJs.slice(gridStart, gridEnd);
+  const weekRowStart = styleCss.indexOf('.cal-workout-week-row {');
+  const weekRowEnd = styleCss.indexOf('.cal-workout-week-row:last-child', weekRowStart);
+  assert.ok(weekRowStart >= 0 && weekRowEnd > weekRowStart, 'week row css rule should exist');
+  const weekRowRule = styleCss.slice(weekRowStart, weekRowEnd);
 
   assert.match(calendarJs, /getTestBoardV2/);
   assert.match(calendarJs, /activeBenchmarks/);
   assert.match(calendarJs, /buildExerciseProgramWorkoutPrescription/);
   assert.match(calendarJs, /function _buildWorkoutCycleRailItems/);
   assert.match(calendarJs, /function _renderWorkoutCycleRail/);
+  assert.match(calendarJs, /benchmarkId:\s*bm\.id/);
+  assert.match(calendarJs, /data-cal-cycle-target="\$\{_esc\(item\.benchmarkId\)\}"/);
+  assert.match(calendarJs, /function _bindWorkoutCycleRailActions\(root\)/);
+  assert.match(calendarJs, /target\?\.closest\?\.\('\[data-cal-cycle-target\]'\)/);
+  assert.match(calendarJs, /event\.stopPropagation\(\)/);
+  assert.match(calendarJs, /function _openWorkoutCycleTargetSettings/);
+  assert.match(calendarJs, /window\.tm2OpenBenchmarkSettings/);
   assert.match(calendarJs, /function _workoutCalendarRowWeekStart/);
   assert.match(calendarJs, /const rowMonday = new Date\(y, m, \(row \* 7\) - firstDow \+ 2\)/);
   assert.match(grid, /const weekStart = _workoutCalendarRowWeekStart\(y, m, row, firstDow\)/);
@@ -219,6 +232,24 @@ test('workout calendar week rail renders cycle prescriptions instead of weekly a
   assert.match(styleCss, /\.cal-cycle-branch-text/);
   assert.match(styleCss, /\.cal-cycle-branch\.is-wendler/);
   assert.match(styleCss, /\.cal-cycle-branch\.is-intensity/);
+  assert.match(weekRowRule, /grid-template-columns:\s*var\(--cal-cycle-rail-width\) minmax\(0,\s*1fr\)/);
+  assert.match(weekRowRule, /min-height:\s*144px/);
+  assert.doesNotMatch(weekRowRule, /border-bottom:/);
+  assert.match(styleCss, /\.cal-workout-week-cells\s*\{[\s\S]*border-bottom:\s*1px solid #dfe1e8/);
+  assert.match(styleCss, /\.cal-workout-week-row:last-child \.cal-workout-week-cells\s*\{[\s\S]*border-bottom:\s*0/);
+  assert.match(styleCss, /\.cal-cycle-branch\s*\{[\s\S]*background:\s*#d7e4ed;[\s\S]*color:\s*#33404a/);
+  assert.match(styleCss, /\.cal-cycle-branch\.is-wendler\s*\{[\s\S]*background:\s*#d7e4ed;[\s\S]*color:\s*#33404a/);
+  assert.match(styleCss, /\.cal-cycle-branch\.is-intensity\s*\{[\s\S]*background:\s*#d7e4ed;[\s\S]*color:\s*#33404a/);
+});
+
+test('cycle rail target cards open the existing growth-board benchmark settings sheet', () => {
+  assert.match(tm2BoardJs, /export async function tm2OpenBenchmarkSettings\(benchmarkId\)/);
+  assert.match(tm2BoardJs, /S\.groupId = bm\.groupId \|\| S\.groupId/);
+  assert.match(tm2BoardJs, /openColumnSheet\(bmId\)/);
+  assert.match(tm2BoardJs, /renderBoard\(\)/);
+  assert.match(tm2EntryJs, /async function _openBenchmarkSettings\(benchmarkId\)/);
+  assert.match(tm2EntryJs, /mod\.tm2OpenBenchmarkSettings\(benchmarkId\)/);
+  assert.match(tm2EntryJs, /window\.tm2OpenBenchmarkSettings = _openBenchmarkSettings/);
 });
 
 test('workout calendar home header and monthly workout card stay compact', () => {
@@ -229,5 +260,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260626z6-calendar-cycle-rail/);
+  assert.match(swJs, /tomatofarm-v20260626z7-cycle-rail-target-settings/);
 });
