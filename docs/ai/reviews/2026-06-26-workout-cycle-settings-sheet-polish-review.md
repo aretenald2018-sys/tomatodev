@@ -25,7 +25,11 @@
 - PASS: `node --test .\tests\*.test.js` — 546 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ c708e10`
+  - 결과: `[deploy-verify] ok c708e10b44bd tomatofarm-v20260626z11-cycle-settings-polish static=219`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z11-cycle-settings-polish" "workout/test-v2/board-render.js::event.stopPropagation()" "workout/test-v2/board-render.js::function _cycleRailTracksForBenchmark" "workout/test-v2/board-render.js::for (const track of _cycleRailTracksForBenchmark(bm, ctx))" "test-mode-v2.css::.tm2-wbox { border: 0; background: transparent" "test-mode-v2.css::touch-action: pan-x"`
+- PASS: 배포 URL 브라우저 접근 시 `토마토 키우기`가 로드되고, `운동` 버튼이 1개이며 클릭 가능함을 확인
 
 ## 남은 확인
 
-- Dashboard3 Pages 배포 후 인증 계정으로 `운동 탭 -> 월간 캘린더 -> 좌측 cycle rail 목표 칩 -> 종목 설정 sheet -> 현재 사이클 탭/스크롤` 실제 UI flow 확인이 필요하다.
+- 인증 계정 세션이 없어 `운동 탭 -> 월간 캘린더 -> 좌측 cycle rail 목표 칩 -> 종목 설정 sheet -> 현재 사이클 탭/스크롤` 실제 UI flow는 배포 URL에서 직접 조작하지 못했다.

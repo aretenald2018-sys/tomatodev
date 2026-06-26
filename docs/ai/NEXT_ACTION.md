@@ -2,27 +2,28 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-26-workout-cycle-settings-sheet-polish.md`
-- 현재 단계: `execution complete — workout cycle settings sheet polish`
-- 마지막 완료: `웬들러 설정 sheet 정리와 현재 사이클 클릭 닫힘 방지 구현 및 리뷰를 완료했다.`
-- 다음 액션: `Dashboard3 Pages 배포 검증 후 complete 처리`
+- 현재 단계: `complete — workout cycle settings sheet polish`
+- 마지막 완료: `웬들러 설정 sheet 정리, 현재 사이클 통합 표시, cycle rail 클릭 닫힘 방지, 리뷰 및 Dashboard3 Pages 배포 검증을 완료했다.`
+- 다음 액션: `없음`
 - 차단 사유: `없음`
 
 ## 이번 실행 검증
 
-- 계획 완료: `docs/ai/features/2026-06-26-workout-cycle-settings-sheet-unification.md`
-- 구현 완료: `workout/test-v2/board-render.js` 캘린더 rail 설정 전용 진입, 트랙 구성 웬들러 칩 통합, 종목별 6주 가로 레일 추가
-- 리뷰 완료: `docs/ai/reviews/2026-06-26-workout-cycle-settings-sheet-unification-review.md`
+- 계획 완료: `docs/ai/features/2026-06-26-workout-cycle-settings-sheet-polish.md`
+- 구현 완료: `workout/test-v2/board-render.js` 웬들러 sheet 불필요 입력 제거, 설명/메모/기구 행 제거, 현재 사이클 웬들러/볼륨/강도 통합 표시, sheet 내부 클릭 전파 차단
+- 리뷰 완료: `docs/ai/reviews/2026-06-26-workout-cycle-settings-sheet-polish-review.md`
 - PASS: `node --check workout/test-v2/board-render.js; node --check sw.js`
 - PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/test-v2.board-core.test.js` — 53 tests passed
 - PASS: `node --test .\tests\*.test.js` — 546 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
 - PASS: `git diff --check`
-- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 23de6af`
-  - 결과: `[deploy-verify] ok 23de6af6e44c tomatofarm-v20260626z10-cycle-settings-sheet static=219`
-- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z10-cycle-settings-sheet" "workout/test-v2/board-render.js::S.settingsOnly = true" "workout/test-v2/board-render.js::data-tm2-col-cycle" "workout/test-v2/board-render.js::document.dispatchEvent(new CustomEvent('sheet:saved'))" "test-mode-v2.css::.tm2-col-cycle-line" "test-mode-v2.css::.tm2-track-toggle button.tm2-program-wendler.tm2-on"`
-- not verified yet: 인증 계정 세션이 없어 배포 URL에서 `운동 탭 -> 월간 캘린더 -> 좌측 cycle rail 목표 칩 -> 종목 설정 sheet` 실제 UI flow는 직접 조작하지 못함
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ c708e10`
+  - 결과: `[deploy-verify] ok c708e10b44bd tomatofarm-v20260626z11-cycle-settings-polish static=219`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z11-cycle-settings-polish" "workout/test-v2/board-render.js::event.stopPropagation()" "workout/test-v2/board-render.js::function _cycleRailTracksForBenchmark" "workout/test-v2/board-render.js::for (const track of _cycleRailTracksForBenchmark(bm, ctx))" "test-mode-v2.css::.tm2-wbox { border: 0; background: transparent" "test-mode-v2.css::touch-action: pan-x"`
+- PASS: 배포 URL 브라우저 접근 시 `토마토 키우기`가 로드되고, `운동` 버튼이 1개이며 클릭 가능함을 확인
+- not verified yet: 인증 계정 세션이 없어 배포 URL에서 `운동 탭 -> 월간 캘린더 -> 좌측 cycle rail 목표 칩 -> 종목 설정 sheet -> 현재 사이클 클릭` 실제 UI flow는 직접 조작하지 못함
 
 ## 리뷰 대상
 
