@@ -63,6 +63,7 @@ const S = {
   card: null,           // 운동 카드 { bmId, track, weekStart, plan, sets }
   missChoice: 'extend',
   settleDecisions: {},
+  settingsOnly: false,
 };
 
 const _todayKey = () => toKey(new Date());
@@ -249,6 +250,7 @@ function _openSheet(html) {
 
 export async function tm2OpenBoard() {
   _ensureRoots();
+  S.settingsOnly = false;
   await _ensureTodayLoaded();
   const board = getTestBoardV2();
   if (!board || !Array.isArray(board.benchmarks) || !board.benchmarks.length) {
@@ -277,7 +279,6 @@ export async function tm2OpenBenchmarkSettings(benchmarkId) {
   const bm = board && bmId ? benchmarkById(board, bmId) : null;
   if (!board || !bm) {
     _toast('목표 종목을 찾지 못했어요', 'warning');
-    await tm2OpenBoard();
     return false;
   }
   S.board = board;
@@ -285,14 +286,18 @@ export async function tm2OpenBenchmarkSettings(benchmarkId) {
   if (groupsChanged) _persist();
   S.groupId = bm.groupId || S.groupId;
   S.view = 'board';
-  document.getElementById('tm2-overlay').classList.add('tm2-open');
-  renderBoard();
+  S.settingsOnly = true;
+  const overlay = document.getElementById('tm2-overlay');
+  if (overlay) {
+    overlay.classList.remove('tm2-open');
+    overlay.innerHTML = '';
+  }
   openColumnSheet(bmId);
-  setTimeout(_scrollToToday, 50);
   return true;
 }
 
 function _afterBoardReady() {
+  S.settingsOnly = false;
   const groupsChanged = _ensureBoardGroups();
   if (groupsChanged) _persist();
   _syncActiveGroup();
@@ -303,6 +308,7 @@ function _afterBoardReady() {
 }
 
 export function tm2CloseBoard() {
+  S.settingsOnly = false;
   closeSheet();
   const ov = document.getElementById('tm2-overlay');
   if (ov) { ov.classList.remove('tm2-open'); ov.innerHTML = ''; }
@@ -1476,6 +1482,106 @@ async function _confirmSettle() {
 // 종목 설정 시트 (계약 3·7·8·9)
 // ----------------------------------------------------------------
 
+function _formatCycleKg(kg) {
+  const n = Number(kg);
+  if (!Number.isFinite(n) || n <= 0) return '—';
+  return `${Number.isInteger(n) ? n : n.toFixed(1).replace(/\.0$/, '')}kg`;
+}
+
+function _cycleWeekStateFromDate(weekStart, todayKey = _todayKey()) {
+  const todayMon = mondayOf(todayKey);
+  if (weekStart === todayMon) return 'now';
+  return weeksBetween(weekStart, todayMon) > 0 ? 'past' : 'plan';
+}
+
+function _stairCycleItems(bm, track, cycle, todayKey) {
+  const cells = bm.program === 'wendler' ? [] : expandColumnCells(S.board, bm.id, track, cycle.id, todayKey);
+  const fallback = currentKgOf(S.board, bm, track);
+  return _weekRange(cycle.startDate, cycle.weeks).map((weekStart, idx) => {
+    const cell = _cellAtWeek(cells, weekStart);
+    const hasPlan = cell && cell.kind !== 'rest';
+    const state = hasPlan ? _cellStateAtWeek(cell, weekStart) : _cycleWeekStateFromDate(weekStart, todayKey);
+    const kg = hasPlan && Number(cell.kg) > 0 ? cell.kg : fallback.kg;
+    const reps = hasPlan ? cell.reps : fallback.reps;
+    return {
+      week: idx + 1,
+      weekStart,
+      state,
+      kgLabel: _formatCycleKg(kg),
+      repsLabel: reps ? `x${reps}` : '',
+    };
+  });
+}
+
+function _wendlerCycleItems(bm, cycle, config, todayKey) {
+  const actualCells = bm.program === 'wendler' ? expandColumnCells(S.board, bm.id, 'volume', cycle.id, todayKey) : [];
+  return _weekRange(cycle.startDate, cycle.weeks).map((weekStart, idx) => {
+    const week = idx + 1;
+    const rx = wendlerWeekPrescription(config, week);
+    const top = rx.topSet || {};
+    const actual = _cellAtWeek(actualCells, weekStart);
+    return {
+      week,
+      weekStart,
+      state: actual ? _cellStateAtWeek(actual, weekStart) : _cycleWeekStateFromDate(weekStart, todayKey),
+      kgLabel: _formatCycleKg(top.kg),
+      repsLabel: top.reps ? `x${top.reps}${top.amrap ? '+' : ''}` : '',
+    };
+  });
+}
+
+function _renderCycleTrack(row) {
+  const items = row.items || [];
+  const body = items.map((item, idx) => {
+    const connector = idx < items.length - 1
+      ? `<span class="tm2-col-cycle-line"><b>${_esc(item.kgLabel)}</b></span>`
+      : '';
+    return `
+      <span class="tm2-col-cycle-point is-${_esc(item.state)}">
+        <b>${item.week}주</b>
+        <small>${_esc(item.repsLabel || item.kgLabel)}</small>
+      </span>
+      ${connector}`;
+  }).join('');
+  return `
+    <div class="tm2-col-cycle-row is-${_esc(row.kind)}">
+      <div class="tm2-col-cycle-row-head">
+        <b>${_esc(row.label)}</b>
+        <span>${_esc(row.detail)}</span>
+      </div>
+      <div class="tm2-col-cycle-track" aria-label="${_esc(`${row.label} 6주 사이클`)}">${body}</div>
+    </div>`;
+}
+
+function _renderColumnCycleRail(bm, ctx, wendlerConfig) {
+  const cycle = activeCycleOf(S.board, bm.groupId);
+  if (!cycle) return '';
+  const todayKey = _todayKey();
+  const isWnd = ctx.program === 'wendler';
+  const rows = isWnd
+    ? [{
+      kind: 'wendler',
+      label: '웬들러',
+      detail: `${WENDLER_SCHEMES[ctx.scheme]?.label || '커스텀'} · TM ${_formatCycleKg(wendlerConfig?.tmKg)}`,
+      items: _wendlerCycleItems(bm, cycle, wendlerConfig, todayKey),
+    }]
+    : (ctx.tracks.length ? ctx.tracks : ['volume']).map(track => ({
+      kind: track === 'intensity' ? 'intensity' : 'volume',
+      label: TM2_TRACK_LABELS[track] || '볼륨',
+      detail: '기본 계단',
+      items: _stairCycleItems(bm, track, cycle, todayKey),
+    }));
+  const range = `${shortDate(cycle.startDate)} - ${shortDate(addWeeks(cycle.startDate, cycle.weeks - 1))}`;
+  return `
+    <div class="tm2-col-cycle" data-tm2-col-cycle>
+      <div class="tm2-col-cycle-head">
+        <b>현재 사이클</b>
+        <small>${_esc(range)}</small>
+      </div>
+      ${rows.map(_renderCycleTrack).join('')}
+    </div>`;
+}
+
 function openColumnSheet(bmId) {
   const bm = benchmarkById(S.board, bmId);
   if (!bm) return;
@@ -1498,8 +1604,11 @@ function _renderColumnSheet() {
   const group = _boardGroups().find(g => g.id === bm.groupId);
   const wendlerMajor = bm.groupId === 'lower' ? 'lower' : (bm.groupId === 'glute' ? 'glute' : bm.groupId);
   const wendlerAllowed = isWendlerAllowedMajor(wendlerMajor);
-  const trackBtn = (t) => `<button class="${ctx.tracks.includes(t) ? 'tm2-on' : ''}" data-action="tm2:col-track" data-track="${t}">${TM2_TRACK_LABELS[t]}</button>`;
   const isWnd = ctx.program === 'wendler';
+  const trackBtn = (t) => `<button class="${!isWnd && ctx.tracks.includes(t) ? 'tm2-on' : ''}" data-action="tm2:col-track" data-track="${t}">${TM2_TRACK_LABELS[t]}</button>`;
+  const programBtn = wendlerAllowed
+    ? `<button class="${isWnd ? 'tm2-on ' : ''}tm2-program-wendler" data-action="tm2:col-program" data-program="wendler">웬들러</button>`
+    : '';
   const w = isWnd ? normalizeWendlerConfig({ ...(bm.wendler || {}), scheme: ctx.scheme === 'custom' ? (bm.wendler?.scheme || 'custom') : ctx.scheme, supplemental: { ...(bm.wendler?.supplemental || {}), kind: ctx.suppKind } }, { primaryMajor: wendlerMajor }) : null;
   const wendlerSchemeLabel = WENDLER_SCHEMES[ctx.scheme]?.label || '커스텀';
   const wendlerSuppLabel = ctx.suppKind === 'bbb' ? 'BBB' : ctx.suppKind === 'fsl' ? 'FSL' : '보조 없음';
@@ -1512,16 +1621,9 @@ function _renderColumnSheet() {
     <div class="tm2-grab"></div>
     <div class="tm2-sh-kicker">${_esc(group?.label || '')} · 종목 설정</div>
     <div class="tm2-sh-title">${_esc(bm.label)}</div>
-    <div class="tm2-fld"><span class="tm2-lb">트랙 구성<small>한 종목 열 안에서 분리 표시</small></span><span class="tm2-track-toggle">${trackBtn('volume')}${trackBtn('intensity')}</span></div>
+    <div class="tm2-fld tm2-track-program-row"><span class="tm2-lb">트랙 구성<small>볼륨/강도는 기본 계단</small></span><span class="tm2-track-toggle">${trackBtn('volume')}${trackBtn('intensity')}${programBtn}</span></div>
     <div class="tm2-fld"><span class="tm2-lb">세트 수<small>셀에는 무게×횟수만 보여요</small></span><input type="number" id="tm2-col-sets" value="${bm.setsDefault || 4}" min="1" max="10"></div>
     <div class="tm2-fld"><span class="tm2-lb">6주 성공 시 증량<small>정산 때 "성장"이면 이만큼 (${group?.bodyRegion === 'lower' ? '하체' : '상체'} 기본 +${defaultIncrementForGroup(bm.groupId)}kg)</small></span><input type="number" id="tm2-col-inc" value="${isWnd ? (bm.wendler?.incrementKg ?? defaultIncrementForGroup(bm.groupId)) : bm.incrementKg}" step="0.5" min="0.5"></div>
-    ${wendlerAllowed ? `
-    <div class="tm2-fld"><span class="tm2-lb">운동 방식<small>8/6/3 메인과 BBB 보조를 같은 카드에 넣어요</small></span>
-      <span class="tm2-seg2">
-        <button class="${!isWnd ? 'tm2-on' : ''}" data-action="tm2:col-program" data-program="stair">기본 계단</button>
-        <button class="${isWnd ? 'tm2-on' : ''}" style="${isWnd ? 'color:#7a3ea8' : ''}" data-action="tm2:col-program" data-program="wendler">웬들러 8/6/3</button>
-      </span>
-    </div>` : ''}
     ${isWnd ? `
     <div class="tm2-wbox">
       <div class="tm2-wendler-callout"><b>${_esc(wendlerSchemeLabel)} 메인 + ${_esc(wendlerSuppLabel)}</b><span>보드 칸은 톱세트를 보여주고, 운동 카드는 메인 세트 뒤 보조 세트를 함께 불러와요.</span></div>
@@ -1553,6 +1655,7 @@ function _renderColumnSheet() {
     <div class="tm2-fld"><span class="tm2-lb">여유 횟수 (RIR)<small>세트 끝에 남길 횟수</small></span><input type="number" id="tm2-col-rir" value="${bm.meta?.rirTarget ?? 2}" min="0" max="5"></div>
     <div class="tm2-fld"><span class="tm2-lb">자세 메모</span><input type="text" id="tm2-col-form" value="${_esc(bm.meta?.formNote || '')}" placeholder="예: 바닥 터치 · 반동 금지"></div>
     <div class="tm2-fld"><span class="tm2-lb">헬스장별 기구</span><input type="text" id="tm2-col-gym" value="${_esc(bm.meta?.gymNote || '')}" placeholder="예: A점 바벨 · B점 스미스 −2.5kg"></div>
+    ${_renderColumnCycleRail(bm, ctx, w)}
     <button class="tm2-btn-primary" data-action="tm2:col-save">저장</button>
     <button class="tm2-btn-ghost" data-action="tm2:sheet-close">취소</button>
   `);
@@ -1562,10 +1665,12 @@ async function _saveColumnSheet() {
   const ctx = S.sheet.ctx;
   const bm = benchmarkById(S.board, ctx.bmId);
   if (!bm) return;
-  if (!ctx.tracks.length) { _toast('트랙은 최소 1개 필요해요 (볼륨 또는 강도)', 'warning'); return; }
+  if (ctx.program !== 'wendler' && !ctx.tracks.length) { _toast('트랙은 최소 1개 필요해요 (볼륨 또는 강도)', 'warning'); return; }
 
   const prevTracks = [...bm.tracks];
-  bm.tracks = ['volume', 'intensity'].filter(t => ctx.tracks.includes(t));
+  bm.tracks = ctx.program === 'wendler'
+    ? (ctx.tracks.length ? ['volume', 'intensity'].filter(t => ctx.tracks.includes(t)) : ['volume'])
+    : ['volume', 'intensity'].filter(t => ctx.tracks.includes(t));
   bm.setsDefault = Math.max(1, Math.round(_num('tm2-col-sets', bm.setsDefault || 4)));
   const inc = _num('tm2-col-inc', bm.incrementKg);
   bm.incrementKg = inc;
@@ -1649,6 +1754,12 @@ async function _saveColumnSheet() {
 
   await _persist();
   closeSheet();
+  if (S.settingsOnly) {
+    S.settingsOnly = false;
+    document.dispatchEvent(new CustomEvent('sheet:saved'));
+    _toast('종목 설정을 저장했어요', 'success');
+    return;
+  }
   renderBoard();
   _toast('종목 설정을 저장했어요', 'success');
 }
@@ -1996,6 +2107,7 @@ async function _onAction(e) {
     case 'tm2:col-track': {
       const t = d.track;
       const arr = S.sheet.ctx.tracks;
+      S.sheet.ctx.program = 'stair';
       if (arr.includes(t)) S.sheet.ctx.tracks = arr.filter(x => x !== t);
       else arr.push(t);
       _renderColumnSheet();

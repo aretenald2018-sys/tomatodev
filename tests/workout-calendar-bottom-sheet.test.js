@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 const calendarJs = readFileSync(new URL('../render-calendar.js', import.meta.url), 'utf8');
 const appJs = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 const styleCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+const tm2Css = readFileSync(new URL('../test-mode-v2.css', import.meta.url), 'utf8');
 const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 const tm2EntryJs = readFileSync(new URL('../workout/test-v2/entry.js', import.meta.url), 'utf8');
 const tm2BoardJs = readFileSync(new URL('../workout/test-v2/board-render.js', import.meta.url), 'utf8');
@@ -247,13 +248,42 @@ test('workout calendar week rail renders cycle prescriptions instead of weekly a
 });
 
 test('cycle rail target cards open the existing growth-board benchmark settings sheet', () => {
+  const settingsStart = tm2BoardJs.indexOf('export async function tm2OpenBenchmarkSettings');
+  const settingsEnd = tm2BoardJs.indexOf('function _afterBoardReady', settingsStart);
+  assert.ok(settingsStart >= 0 && settingsEnd > settingsStart, 'benchmark settings opener should exist');
+  const settingsFn = tm2BoardJs.slice(settingsStart, settingsEnd);
+
   assert.match(tm2BoardJs, /export async function tm2OpenBenchmarkSettings\(benchmarkId\)/);
   assert.match(tm2BoardJs, /S\.groupId = bm\.groupId \|\| S\.groupId/);
   assert.match(tm2BoardJs, /openColumnSheet\(bmId\)/);
-  assert.match(tm2BoardJs, /renderBoard\(\)/);
+  assert.match(settingsFn, /S\.settingsOnly = true/);
+  assert.match(settingsFn, /classList\.remove\('tm2-open'\)/);
+  assert.doesNotMatch(settingsFn, /renderBoard\(\)/);
+  assert.doesNotMatch(settingsFn, /await tm2OpenBoard\(\)/);
   assert.match(tm2EntryJs, /async function _openBenchmarkSettings\(benchmarkId\)/);
   assert.match(tm2EntryJs, /mod\.tm2OpenBenchmarkSettings\(benchmarkId\)/);
   assert.match(tm2EntryJs, /window\.tm2OpenBenchmarkSettings = _openBenchmarkSettings/);
+});
+
+test('growth-board benchmark settings sheet merges program choice and horizontal cycle rail', () => {
+  const sheetStart = tm2BoardJs.indexOf('function _renderColumnSheet');
+  const sheetEnd = tm2BoardJs.indexOf('async function _saveColumnSheet', sheetStart);
+  assert.ok(sheetStart >= 0 && sheetEnd > sheetStart, 'column settings sheet renderer should exist');
+  const sheetFn = tm2BoardJs.slice(sheetStart, sheetEnd);
+
+  assert.match(sheetFn, /tm2-track-program-row/);
+  assert.match(sheetFn, /data-action="tm2:col-program" data-program="wendler">웬들러<\/button>/);
+  assert.match(sheetFn, /볼륨\/강도는 기본 계단/);
+  assert.doesNotMatch(sheetFn, /운동 방식/);
+  assert.match(tm2BoardJs, /function _renderColumnCycleRail/);
+  assert.match(tm2BoardJs, /data-tm2-col-cycle/);
+  assert.match(tm2BoardJs, /tm2-col-cycle-line/);
+  assert.match(tm2BoardJs, /S\.sheet\.ctx\.program = 'stair'/);
+  assert.match(tm2BoardJs, /document\.dispatchEvent\(new CustomEvent\('sheet:saved'\)\)/);
+  assert.match(tm2Css, /\.tm2-col-cycle-track\s*\{[\s\S]*display:\s*flex;[\s\S]*overflow-x:\s*auto/);
+  assert.match(tm2Css, /\.tm2-col-cycle-line\s*\{[\s\S]*border-top:\s*2px solid #d9dee5/);
+  assert.match(tm2Css, /\.tm2-col-cycle-line::after/);
+  assert.match(tm2Css, /\.tm2-track-toggle button\.tm2-program-wendler\.tm2-on/);
 });
 
 test('workout calendar home header and monthly workout card stay compact', () => {
@@ -264,5 +294,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260626z9-cycle-rail-continuous/);
+  assert.match(swJs, /tomatofarm-v20260626z10-cycle-settings-sheet/);
 });
