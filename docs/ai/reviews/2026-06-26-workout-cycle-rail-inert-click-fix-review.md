@@ -25,8 +25,10 @@
 - PASS: `node --test .\tests\*.test.js` — 546 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 1b0313b`
+  - 결과: `[deploy-verify] ok 1b0313b546e6 tomatofarm-v20260626z12-cycle-rail-inert-click static=219`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z12-cycle-rail-inert-click" "workout/test-v2/board-render.js::event.stopImmediatePropagation()" "workout/test-v2/board-render.js::if (e.target.closest('.tm2-sheet')) return" "workout/test-v2/board-render.js::event.target.closest('[data-tm2-col-cycle]')" "test-mode-v2.css::.tm2-col-cycle-point," "test-mode-v2.css::pointer-events: none" "test-mode-v2.css::user-select: none"`
 
 ## 남은 확인
 
-- Dashboard3 Pages 배포 후 `verify:deploy`와 배포 asset marker 확인이 필요하다.
-- 인증 계정 세션이 있으면 `운동 탭 -> 월간 캘린더 -> 좌측 cycle rail 목표 칩 -> 종목 설정 sheet -> 현재 사이클 원 탭` 실제 UI flow를 직접 확인한다.
+- 인증 계정 세션이 없어 `운동 탭 -> 월간 캘린더 -> 좌측 cycle rail 목표 칩 -> 종목 설정 sheet -> 현재 사이클 원 탭` 실제 UI flow는 배포 URL에서 직접 조작하지 못했다.

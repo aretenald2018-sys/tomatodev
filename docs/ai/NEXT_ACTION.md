@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-26-workout-cycle-rail-inert-click-fix.md`
-- 현재 단계: `review complete — workout cycle rail inert click fix`
-- 마지막 완료: `current cycle rail 클릭을 no-op/inert 처리하고 sheet 내부 클릭 전파를 차단했으며 로컬 테스트와 리뷰를 완료했다.`
-- 다음 액션: `Dashboard3 Pages 배포 검증 후 complete 처리`
+- 현재 단계: `complete — workout cycle rail inert click fix`
+- 마지막 완료: `current cycle rail 클릭을 no-op/inert 처리하고 sheet 내부 클릭 전파를 차단했으며 로컬 테스트, 리뷰, Dashboard3 Pages 배포 검증을 완료했다.`
+- 다음 액션: `없음`
 - 차단 사유: `없음`
 
 ## 이번 실행 검증
@@ -19,7 +19,10 @@
 - PASS: `node --test .\tests\*.test.js` — 546 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
 - PASS: `git diff --check`
-- not verified yet: Dashboard3 Pages 배포 검증 대기
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 1b0313b`
+  - 결과: `[deploy-verify] ok 1b0313b546e6 tomatofarm-v20260626z12-cycle-rail-inert-click static=219`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z12-cycle-rail-inert-click" "workout/test-v2/board-render.js::event.stopImmediatePropagation()" "workout/test-v2/board-render.js::if (e.target.closest('.tm2-sheet')) return" "workout/test-v2/board-render.js::event.target.closest('[data-tm2-col-cycle]')" "test-mode-v2.css::.tm2-col-cycle-point," "test-mode-v2.css::pointer-events: none" "test-mode-v2.css::user-select: none"`
+- not verified yet: 인증 계정 세션이 없어 배포 URL에서 `운동 탭 -> 월간 캘린더 -> 좌측 cycle rail 목표 칩 -> 종목 설정 sheet -> 현재 사이클 원 탭` 실제 UI flow는 직접 조작하지 못함
 
 ## 리뷰 대상
 
