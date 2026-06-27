@@ -27,3 +27,19 @@
 
 - not verified yet: Dashboard3 Pages 배포 검증은 커밋 후 실행 필요.
 - not verified yet: 인증 계정 홈 탭에서 실제 트레이너 라벨 위치와 운동 pose animation 시각 확인 필요.
+
+## 회귀 수정 리뷰 — Trainer Bulb Restore
+
+- Blocking issue 없음.
+- 이전 구현은 `npc-quest-bubble.png` 전체를 제거해 전구 말풍선도 사라졌으므로, 이번 수정에서 동일 PNG를 다시 렌더했다.
+- 아래 `NPC` 카드 영역은 별도 자산 생성 없이 `.lz-npc-bulb` wrapper의 `aspect-ratio: 192 / 150`과 `overflow: hidden`으로 숨긴다.
+- button 내부 flow가 `전구 말풍선 -> 트레이너 이름표` 순서라, 트레이너 표시가 얼굴을 덮지 않고 하단 라벨로 유지된다.
+- 해당 PNG를 다시 런타임 자산으로 쓰므로 `sw.js` precache에 복구했고 cache marker와 테스트 참조도 갱신했다.
+
+검증:
+
+- PASS: `node --check home/life-zone.js; node --check sw.js`
+- PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/home-life-zone-state.test.js` — 19 tests passed
+- PASS: `node --test tests/*.test.js` — 553 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
+- PASS: `git diff --check`

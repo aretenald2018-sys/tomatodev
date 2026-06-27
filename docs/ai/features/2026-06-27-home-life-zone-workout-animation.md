@@ -131,3 +131,21 @@
 
 - 리뷰 문서: `docs/ai/reviews/2026-06-27-home-life-zone-workout-animation-review.md`
 - 결과: blocking issue 없음.
+
+## 회귀 수정 — Trainer Bulb Restore
+
+- `2026-06-27`: 사용자가 `트레이너` 위 전구 말풍선까지 사라진 회귀를 보고했다.
+- 원인:
+  - `assets/home/life-zone/ui/npc-quest-bubble.png` 한 장 안에 전구 말풍선과 아래 `NPC` 명찰 카드가 같이 들어있다.
+  - 이전 Slice에서 `NPC` 카드 제거를 파일 렌더 제거로 처리해 전구 말풍선까지 함께 사라졌다.
+- 수정:
+  - `home/life-zone.js`에서 `span.lz-npc-bulb > img`로 같은 PNG를 다시 렌더한다.
+  - `style.css`에서 `.lz-npc-bulb`를 `aspect-ratio: 192 / 150`과 `overflow: hidden`으로 crop해 상단 전구 말풍선만 보이게 한다.
+  - `트레이너` 이름표는 crop된 전구 아래, 하단 라벨로 유지한다.
+  - `sw.js` `STATIC_ASSETS`에 `npc-quest-bubble.png`를 다시 포함하고 `CACHE_VERSION`을 `tomatofarm-v20260627z10-home-npc-bulb-restore`로 갱신했다.
+- 검증:
+  - PASS: `node --check home/life-zone.js; node --check sw.js`
+  - PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/home-life-zone-state.test.js` — 19 tests passed
+  - PASS: `node --test tests/*.test.js` — 553 tests passed
+  - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
+  - PASS: `git diff --check`

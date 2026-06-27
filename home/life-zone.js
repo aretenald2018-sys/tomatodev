@@ -18,6 +18,7 @@ import {
 
 const LIFE_ZONE_ASSET_ROOT = './assets/home/life-zone';
 const LIFE_ZONE_SPRITE_ROOT = `${LIFE_ZONE_ASSET_ROOT}/sprites`;
+const LIFE_ZONE_UI_ROOT = `${LIFE_ZONE_ASSET_ROOT}/ui`;
 const LIFE_ZONE_NPC_NAME = '트레이너';
 const LIFE_ZONE_CACHE_MS = 0;
 
@@ -287,6 +288,16 @@ export function renderLifeZoneCard({
         aria-label="트레이너 퀘스트 보기"
         title="트레이너 퀘스트"
       >
+        <span class="lz-npc-bulb" aria-hidden="true">
+          <img
+            src="${LIFE_ZONE_UI_ROOT}/npc-quest-bubble.png"
+            width="192"
+            height="258"
+            alt=""
+            loading="lazy"
+            decoding="async"
+          >
+        </span>
         <span class="lz-nameplate lz-nameplate--npc" aria-hidden="true">${escapeHtml(LIFE_ZONE_NPC_NAME)}</span>
       </button>
     </div>

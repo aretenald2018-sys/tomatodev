@@ -63,5 +63,5 @@ test('runtime saveDay calls use merge mode explicitly', () => {
 
 test('service worker cache version was bumped for save guard assets', () => {
   const sw = read('sw.js');
-  assert.match(sw, /tomatofarm-v20260627z9-workout-sheet-input-isolation/);
+  assert.match(sw, /tomatofarm-v20260627z10-home-npc-bulb-restore/);
 });

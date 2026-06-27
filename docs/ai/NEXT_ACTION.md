@@ -6,8 +6,8 @@
 - 계획 문서: `docs/ai/features/2026-06-27-home-life-zone-workout-animation.md`
 - 현재 단계: `complete — Home Life Zone Trainer Label + CSS Motion Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `2026-06-27 Home Life Zone Trainer Label + CSS Motion Slice 1을 구현하고 로컬 정적 검증/리뷰를 완료했다. cache marker는 tomatofarm-v20260627z8-home-life-zone-motion이다.`
-- 다음 액션: `커밋 후 Dashboard3 Pages에 배포하고 npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>로 원격 자산을 확인한다. 인증 계정이 있으면 홈 탭 라이프존에서 트레이너 이름표가 하단에 있고 workout-lat/bench/squat actor가 작게 움직이는지 확인한다.`
+- 마지막 완료: `2026-06-27 Home Life Zone Trainer Bulb Restore 회귀 수정을 구현하고 로컬 정적 검증/리뷰를 완료했다. cache marker는 tomatofarm-v20260627z10-home-npc-bulb-restore이다.`
+- 다음 액션: `커밋 후 Dashboard3 Pages에 배포하고 npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>로 원격 자산을 확인한다. 인증 계정이 있으면 홈 탭 라이프존에서 트레이너 위 전구 말풍선은 보이고, 아래 NPC 카드 텍스트는 crop되어 보이지 않으며, 트레이너 이름표가 하단에 있는지 확인한다.`
 - 차단 사유: `없음`
 
 ## 직전 완료 요약
@@ -24,6 +24,11 @@
   9. PASS: `node --test tests/*.test.js` — 552 tests passed
   10. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=834`
   11. PASS: `git diff --check`
+  12. 회귀 수정: `npc-quest-bubble.png`를 다시 렌더하되 `.lz-npc-bulb` crop으로 전구 말풍선만 보이게 했다.
+  13. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260627z10-home-npc-bulb-restore`로 갱신하고 `npc-quest-bubble.png`를 `STATIC_ASSETS`에 복구했다.
+  14. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/home-life-zone-state.test.js` — 19 tests passed
+  15. PASS: `node --test tests/*.test.js` — 553 tests passed
+  16. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
 
 ## 이번 실행 검증
 
