@@ -705,3 +705,52 @@
   - 결과: `[deploy-verify] ok b0336a8d3c2e tomatofarm-v20260627z2-workout-sheet-header-toggle static=219`
 - PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260627z2-workout-sheet-header-toggle" "render-calendar.js::data-wt-sheet-main data-wt-sheet-toggle" "render-calendar.js::_toggleWorkoutHomeSheet(toggle.getAttribute('data-date-key') || _workoutHomeSelectedKey)"`
 - not verified yet: 인증 계정 실제 `운동 탭 -> 날짜 sheet full -> 상단 탭 collapse` UI flow 확인은 아직 남아 있다.
+
+## 후속 Slice 14 — Guard stale sheet click suppression
+
+### 진단
+
+사용자가 Claude 진단을 전달했다. full 상태에서 상단을 드래그했다가 같은 full 상태로 release되는 경우에도 `_suppressWorkoutHomeSheetClick()`이 무조건 걸려, suppression window 동안 바로 이어지는 상단 click collapse가 씹힌다.
+
+추가로 `_applyWorkoutHomeSheetState()`가 첫 번째 `[data-wt-sheet-toggle]`만 갱신해 날짜 텍스트 토글의 `aria-label`/`aria-expanded`가 stale 상태로 남을 수 있다. 단, 날짜 텍스트 버튼까지 `textContent`를 화살표로 바꾸면 날짜 표시가 사라지므로, 모든 토글에는 접근성 속성만 갱신하고 화살표 텍스트는 handle 버튼에만 적용한다.
+
+deadzone 이내 1px 수준 pointer move도 `hasMoved=true`로 처리되어 다음 tap이 900ms 억제될 수 있다. 실제 drag로 볼 최소 이동 거리 guard가 필요하다.
+
+### 범위
+
+- `render-calendar.js`
+  - drag release 전 현재 sheet state를 저장하고 target state가 실제로 바뀔 때만 click suppression을 건다.
+  - deadzone branch는 최소 이동 거리 이상 움직였을 때만 suppression을 건다.
+  - 모든 `[data-wt-sheet-toggle]`에 `aria-expanded`/`aria-label`을 동기화하고, handle button의 화살표 텍스트만 갱신한다.
+- `tests/workout-calendar-bottom-sheet.test.js`
+  - suppression guard, 최소 이동 거리, 다중 toggle aria 동기화 source contract를 검증한다.
+- `sw.js`와 cache-version 참조 테스트들
+  - `render-calendar.js`가 `STATIC_ASSETS`에 포함되므로 `CACHE_VERSION`을 bump한다.
+
+### 검증 계획
+
+- `node --check render-calendar.js; node --check sw.js`
+- `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js`
+- `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- 배포 시 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+- 인증 계정 실제 flow: `운동 탭 -> 날짜 sheet full -> 상단을 살짝 drag/release -> 상단 tap -> bar로 접힘`
+
+### 실행 결과
+
+- `render-calendar.js`에서 drag release target 적용 직전 `prevState`를 저장하고, `targetState !== prevState`일 때만 `_suppressWorkoutHomeSheetClick()`을 호출하게 했다.
+- deadzone branch는 `WORKOUT_HOME_SHEET_MIN_SUPPRESS_MOVE_PX = 4` 이상 움직였을 때만 suppression을 걸어 1px 수준의 미세 pointer move 후 다음 tap이 씹히지 않게 했다.
+- `_applyWorkoutHomeSheetState()`는 모든 `[data-wt-sheet-toggle]`의 `aria-expanded`/`aria-label`을 갱신한다. 날짜 텍스트 버튼의 내용을 보존하기 위해 화살표 `textContent`는 `[data-wt-sheet-handle]`에만 적용한다.
+- `.cal-workout-day-main` 초기 렌더에도 `aria-expanded`/`aria-label`을 추가해 apply 전후 상태가 일관되게 보이게 했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260627z5-sheet-suppress-guard`로 bump하고 cache marker 테스트를 갱신했다.
+- 리뷰: `docs/ai/reviews/2026-06-27-workout-calendar-sheet-suppress-guard-review.md`
+
+### 실행 검증
+
+- PASS: `node --check render-calendar.js; node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js` — 19 tests passed
+- PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 552 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
+- PASS: `git diff --check`
+- 배포 검증은 커밋/푸시 후 진행한다.

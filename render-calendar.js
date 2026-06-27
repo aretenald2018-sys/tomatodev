@@ -65,6 +65,7 @@ let _workoutTrackGraphSeq = 0;
 const WORKOUT_HOME_SHEET_STATES = ['bar', 'full'];
 const WORKOUT_HOME_SHEET_CLASS_STATES = ['bar', 'mid', 'full'];
 const WORKOUT_HOME_SHEET_POST_DRAG_CLICK_SUPPRESS_MS = 900;
+const WORKOUT_HOME_SHEET_MIN_SUPPRESS_MOVE_PX = 4;
 const WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX = 10;
 const WORKOUT_HOME_SHEET_DRAG_HARD_CLOSE_PX = 8;
 const WORKOUT_HOME_SHEET_DRAG_OPEN_BAR_RATIO = 0.1;
@@ -994,7 +995,7 @@ function _renderWorkoutHomeDayBar(selectedKey, { cache, plan, checkins, lookup }
   return `
     <div class="cal-workout-day-bar" data-wt-sheet-bar aria-expanded="${expanded ? 'true' : 'false'}">
       <button type="button" class="cal-workout-day-expand" data-wt-sheet-handle data-wt-sheet-toggle data-date-key="${selected}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '날짜 상세 접기' : '선택한 날짜 열기'}">${expanded ? '⌄' : '⌃'}</button>
-      <button type="button" class="cal-workout-day-main" data-wt-sheet-main data-wt-sheet-toggle data-date-key="${selected}">
+      <button type="button" class="cal-workout-day-main" data-wt-sheet-main data-wt-sheet-toggle data-date-key="${selected}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '날짜 상세 접기' : '선택한 날짜 열기'}">
         <span class="cal-workout-day-date">${selected} <em>${_dateDistanceLabel(selected)}</em></span>
         <span class="cal-workout-day-sub">${recordText} · ${sessionText}</span>
       </button>
@@ -1892,15 +1893,21 @@ function _applyWorkoutHomeSheetState() {
     return;
   }
   const state = _currentWorkoutHomeSheetState();
+  const expanded = state !== 'bar';
+  const expandedText = expanded ? 'true' : 'false';
+  const toggleLabel = expanded ? '날짜 상세 접기' : '선택한 날짜 열기';
   WORKOUT_HOME_SHEET_CLASS_STATES.forEach(item => sheet.classList.toggle(`is-${item}`, item === state));
   sheet.dataset.wtSheetState = state;
-  sheet.setAttribute('aria-expanded', state !== 'bar' ? 'true' : 'false');
-  const bar = sheet.querySelector('[data-wt-sheet-handle]');
-  if (bar) bar.setAttribute('aria-expanded', state !== 'bar' ? 'true' : 'false');
-  const toggle = sheet.querySelector('[data-wt-sheet-toggle]');
-  if (toggle) {
-    toggle.textContent = state === 'bar' ? '⌃' : '⌄';
-    toggle.setAttribute('aria-label', state === 'bar' ? '선택한 날짜 열기' : '날짜 상세 접기');
+  sheet.setAttribute('aria-expanded', expandedText);
+  const bar = sheet.querySelector('[data-wt-sheet-bar]');
+  if (bar) bar.setAttribute('aria-expanded', expandedText);
+  sheet.querySelectorAll('[data-wt-sheet-toggle]').forEach((toggle) => {
+    toggle.setAttribute('aria-expanded', expandedText);
+    toggle.setAttribute('aria-label', toggleLabel);
+  });
+  const handle = sheet.querySelector('[data-wt-sheet-handle]');
+  if (handle) {
+    handle.textContent = expanded ? '⌄' : '⌃';
   }
   _syncWorkoutHomeSheetScrollLock();
 }
@@ -2138,6 +2145,7 @@ function _startWorkoutHomeSheetDrag(event) {
     const finalDy = clampDragY(finalY - startY);
     lastDragY = finalDy;
     updateDragLatches(finalDy);
+    const didActuallyMove = hasMoved && Math.abs(lastY - startY) >= WORKOUT_HOME_SHEET_MIN_SUPPRESS_MOVE_PX;
     event.currentTarget.releasePointerCapture?.(event.pointerId);
     window.removeEventListener('pointermove', onMove);
     window.removeEventListener('pointerup', onUp);
@@ -2147,14 +2155,15 @@ function _startWorkoutHomeSheetDrag(event) {
     if (Math.abs(dy) < WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX && Math.abs(velocityY) < WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY) {
       sheet.classList.remove('is-dragging');
       clearDragPreview();
-      if (hasMoved) _suppressWorkoutHomeSheetClick();
+      if (didActuallyMove) _suppressWorkoutHomeSheetClick();
       return;
     }
     const targetState = openLatched ? 'full' : closeLatched ? 'bar' : _resolveWorkoutHomeSheetDragTarget(dy, velocityY, openThresholdPx, collapseThresholdPx);
     sheet.classList.remove('is-dragging');
     clearDragPreview();
+    const prevState = _currentWorkoutHomeSheetState();
     _setWorkoutHomeSheetState(targetState);
-    _suppressWorkoutHomeSheetClick();
+    if (targetState !== prevState) _suppressWorkoutHomeSheetClick();
   };
 
   window.addEventListener('pointermove', onMove, { passive: false });

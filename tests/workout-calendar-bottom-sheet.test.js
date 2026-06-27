@@ -69,6 +69,7 @@ test('sheet drag handlers open directly to full and collapse to bar', () => {
   assert.doesNotMatch(dragFn, /closest\?\('button'\)/);
   assert.match(calendarJs, /function _consumeWorkoutHomeSuppressedClick/);
   assert.match(calendarJs, /const WORKOUT_HOME_SHEET_POST_DRAG_CLICK_SUPPRESS_MS = 900/);
+  assert.match(calendarJs, /const WORKOUT_HOME_SHEET_MIN_SUPPRESS_MOVE_PX = 4/);
   assert.match(calendarJs, /function _suppressWorkoutHomeSheetClick/);
   assert.match(calendarJs, /Date\.now\(\) \+ ms/);
   assert.match(calendarJs, /now < _workoutHomeSuppressSheetClickUntil/);
@@ -109,10 +110,13 @@ test('sheet drag handlers open directly to full and collapse to bar', () => {
   assert.doesNotMatch(calendarJs, /requestAnimationFrame\(applyTarget\)/);
   assert.match(calendarJs, /const dy = lastDragY/);
   assert.match(calendarJs, /Math\.abs\(dy\) < WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX/);
-  assert.match(calendarJs, /if \(hasMoved\) _suppressWorkoutHomeSheetClick\(\)/);
+  assert.match(calendarJs, /const didActuallyMove = hasMoved && Math\.abs\(lastY - startY\) >= WORKOUT_HOME_SHEET_MIN_SUPPRESS_MOVE_PX/);
+  assert.match(calendarJs, /if \(didActuallyMove\) _suppressWorkoutHomeSheetClick\(\)/);
+  assert.doesNotMatch(calendarJs, /if \(hasMoved\) _suppressWorkoutHomeSheetClick\(\)/);
   assert.match(calendarJs, /const targetState = openLatched \? 'full' : closeLatched \? 'bar' : _resolveWorkoutHomeSheetDragTarget\(dy, velocityY, openThresholdPx, collapseThresholdPx\)/);
-  assert.match(calendarJs, /_suppressWorkoutHomeSheetClick\(\)/);
-  assert.match(calendarJs, /sheet\.classList\.remove\('is-dragging'\);\s*clearDragPreview\(\);\s*_setWorkoutHomeSheetState\(targetState\);\s*_suppressWorkoutHomeSheetClick\(\)/);
+  assert.match(calendarJs, /const prevState = _currentWorkoutHomeSheetState\(\)/);
+  assert.match(calendarJs, /if \(targetState !== prevState\) _suppressWorkoutHomeSheetClick\(\)/);
+  assert.match(calendarJs, /sheet\.classList\.remove\('is-dragging'\);\s*clearDragPreview\(\);\s*const prevState = _currentWorkoutHomeSheetState\(\);\s*_setWorkoutHomeSheetState\(targetState\);\s*if \(targetState !== prevState\) _suppressWorkoutHomeSheetClick\(\)/);
   assert.doesNotMatch(calendarJs, /Math\.abs\(dy\) > 112/);
   assert.match(calendarJs, /window\._wtCalToggleSheet = _toggleWorkoutHomeSheet/);
 });
@@ -141,13 +145,24 @@ test('full sheet header tap collapses through the sheet toggle path', () => {
   const bindStart = calendarJs.indexOf('function _bindWorkoutHomeSheetActions');
   const bindEnd = calendarJs.indexOf('function _bindWorkoutCycleRailActions', bindStart);
   const bindFn = calendarJs.slice(bindStart, bindEnd);
+  const applyStart = calendarJs.indexOf('function _applyWorkoutHomeSheetState');
+  const applyEnd = calendarJs.indexOf('function _setWorkoutHomeSheetState', applyStart);
+  const applyFn = calendarJs.slice(applyStart, applyEnd);
 
   assert.match(barFn, /class="cal-workout-day-main" data-wt-sheet-main data-wt-sheet-toggle data-date-key=/);
+  assert.match(barFn, /data-wt-sheet-main data-wt-sheet-toggle data-date-key="\$\{selected\}" aria-expanded="\$\{expanded \? 'true' : 'false'\}" aria-label="\$\{expanded \? '날짜 상세 접기' : '선택한 날짜 열기'\}"/);
   assert.doesNotMatch(barFn, /cal-workout-day-main" onclick="window\._wtCalOpenDay/);
   assert.doesNotMatch(barFn, /data-wt-sheet-toggle onclick="window\._wtCalToggleSheet/);
   assert.match(bindFn, /target\?\.closest\?\.\('\[data-wt-sheet-action\]'\)[\s\S]*return/);
   assert.match(bindFn, /target\?\.closest\?\.\('\[data-wt-sheet-toggle\]'\)/);
   assert.match(bindFn, /_toggleWorkoutHomeSheet\(toggle\.getAttribute\('data-date-key'\) \|\| _workoutHomeSelectedKey\)/);
+  assert.match(applyFn, /querySelectorAll\('\[data-wt-sheet-toggle\]'\)\.forEach/);
+  assert.match(applyFn, /toggle\.setAttribute\('aria-expanded', expandedText\)/);
+  assert.match(applyFn, /toggle\.setAttribute\('aria-label', toggleLabel\)/);
+  assert.match(applyFn, /const handle = sheet\.querySelector\('\[data-wt-sheet-handle\]'\)/);
+  assert.match(applyFn, /handle\.textContent = expanded \? '⌄' : '⌃'/);
+  assert.doesNotMatch(applyFn, /const toggle = sheet\.querySelector\('\[data-wt-sheet-toggle\]'\)/);
+  assert.doesNotMatch(applyFn, /toggle\.textContent =/);
 });
 
 test('floating add button uses direct sheet action binding', () => {
@@ -339,5 +354,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260627z4-life-zone-nameplates/);
+  assert.match(swJs, /tomatofarm-v20260627z5-sheet-suppress-guard/);
 });

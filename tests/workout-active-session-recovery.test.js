@@ -61,5 +61,5 @@ test('app update reload flushes workout draft and changes copy while workout is 
 });
 
 test('service worker cache version was bumped for recovery assets', () => {
-  assert.match(swJs, /tomatofarm-v20260627z4-life-zone-nameplates/);
+  assert.match(swJs, /tomatofarm-v20260627z5-sheet-suppress-guard/);
 });
