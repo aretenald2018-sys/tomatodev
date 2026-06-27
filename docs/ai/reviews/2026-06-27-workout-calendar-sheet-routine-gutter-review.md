@@ -29,7 +29,10 @@
 - PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 553 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 064bb54` — `[deploy-verify] ok 064bb5490e7c tomatofarm-v20260627z12-workout-sheet-calendar-gutter static=219`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260627z12-workout-sheet-calendar-gutter" "style.css::--wt-calendar-scroll-gutter" "style.css::scrollbar-gutter: stable" "render-calendar.js::window._wtCalGoToday()"`
+- PASS: deployed `render-calendar.js` direct fetch confirmed `sheetRoutineButtonAbsent=true`
 
 ## 남은 확인
 
-- not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 `운동 탭 -> 월간 캘린더 우측 날짜 열 확인`, `하단 sheet header 루틴 버튼 미노출` UI flow 확인이 남아 있다.
+- not verified yet: 인증 계정 실제 `운동 탭 -> 월간 캘린더 우측 날짜 열 확인`, `하단 sheet header 루틴 버튼 미노출` UI flow 확인이 남아 있다.
