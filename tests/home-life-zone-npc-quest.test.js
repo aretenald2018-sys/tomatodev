@@ -73,6 +73,6 @@ test('life zone nameplates use small pixel text with outline shadows', () => {
 test('life zone NPC card image is no longer a precached runtime asset', () => {
   const sw = readText('sw.js');
 
-  assert.match(sw, /tomatofarm-v20260627z6-home-nameplate-cleanup/);
+  assert.match(sw, /tomatofarm-v20260627z7-workout-sheet-tap-toggle/);
   assert.doesNotMatch(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
 });

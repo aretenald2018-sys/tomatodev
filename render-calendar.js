@@ -59,21 +59,10 @@ let _workoutHomeSelectedKey = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TOD
 let _workoutHomeView = 'month';
 let _workoutHomeSheetState = 'bar';
 let _workoutHomeSessionIndex = 0;
-let _workoutHomeSuppressSheetClickUntil = 0;
 const _workoutDetailCollapsed = new Set();
 let _workoutTrackGraphSeq = 0;
 const WORKOUT_HOME_SHEET_STATES = ['bar', 'full'];
-const WORKOUT_HOME_SHEET_CLASS_STATES = ['bar', 'mid', 'full'];
-const WORKOUT_HOME_SHEET_POST_DRAG_CLICK_SUPPRESS_MS = 900;
-const WORKOUT_HOME_SHEET_MIN_SUPPRESS_MOVE_PX = 4;
-const WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX = 10;
-const WORKOUT_HOME_SHEET_DRAG_HARD_CLOSE_PX = 8;
-const WORKOUT_HOME_SHEET_DRAG_OPEN_BAR_RATIO = 0.1;
-const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX = 14;
-const WORKOUT_HOME_SHEET_DRAG_COLLAPSE_RATIO = 0.2;
-const WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY = 0.55;
-const WORKOUT_HOME_SHEET_FLING_SAMPLE_MAX_MS = 80;
-const WORKOUT_HOME_SHEET_FULL_CLEARANCE_PX = 112;
+const WORKOUT_HOME_SHEET_CLASS_STATES = ['bar', 'full'];
 
 const MAX_WEAK_LABEL = {
   chest_upper:'가슴 상부', chest_lower:'가슴 하부',
@@ -994,7 +983,7 @@ function _renderWorkoutHomeDayBar(selectedKey, { cache, plan, checkins, lookup }
   const expanded = sheetState !== 'bar';
   return `
     <div class="cal-workout-day-bar" data-wt-sheet-bar aria-expanded="${expanded ? 'true' : 'false'}">
-      <button type="button" class="cal-workout-day-expand" data-wt-sheet-handle data-wt-sheet-toggle data-date-key="${selected}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '날짜 상세 접기' : '선택한 날짜 열기'}">${expanded ? '⌄' : '⌃'}</button>
+      <button type="button" class="cal-workout-day-expand" data-wt-sheet-toggle data-date-key="${selected}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '날짜 상세 접기' : '선택한 날짜 열기'}">${expanded ? '⌄' : '⌃'}</button>
       <button type="button" class="cal-workout-day-main" data-wt-sheet-main data-wt-sheet-toggle data-date-key="${selected}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '날짜 상세 접기' : '선택한 날짜 열기'}">
         <span class="cal-workout-day-date">${selected} <em>${_dateDistanceLabel(selected)}</em></span>
         <span class="cal-workout-day-sub">${recordText} · ${sessionText}</span>
@@ -1192,10 +1181,7 @@ export function renderWorkoutCalendarHome() {
     showModeTabs: false,
   });
   _bindWorkoutCycleRailActions(root);
-  _bindWorkoutHomeSheetDrag(root);
   _bindWorkoutHomeSheetActions(root);
-  _bindWorkoutHomeSheetScrollGuard(root);
-  _syncWorkoutHomeSheetScrollLock();
 }
 
 function _renderWorkoutHomeDetail(root, args) {
@@ -1872,26 +1858,10 @@ function _currentWorkoutHomeSheetState() {
   return _workoutHomeView === 'detail' ? _normalizeWorkoutHomeSheetState(_workoutHomeSheetState) : 'bar';
 }
 
-function _syncWorkoutHomeSheetScrollLock() {
-  if (typeof document === 'undefined') return;
-  const body = document.body;
-  if (!body) return;
-  const panel = document.getElementById('tab-workout');
-  const sheet = document.querySelector('#workout-calendar-root [data-wt-day-sheet]');
-  const shouldLock = !!sheet
-    && _currentWorkoutHomeSheetState() === 'full'
-    && body.classList.contains('wt-workout-tab-active')
-    && panel?.classList.contains('active');
-  body.classList.toggle('wt-workout-sheet-scroll-lock', shouldLock);
-}
-
 function _applyWorkoutHomeSheetState() {
   if (typeof document === 'undefined') return;
   const sheet = document.querySelector('#workout-calendar-root [data-wt-day-sheet]');
-  if (!sheet) {
-    _syncWorkoutHomeSheetScrollLock();
-    return;
-  }
+  if (!sheet) return;
   const state = _currentWorkoutHomeSheetState();
   const expanded = state !== 'bar';
   const expandedText = expanded ? 'true' : 'false';
@@ -1905,11 +1875,8 @@ function _applyWorkoutHomeSheetState() {
     toggle.setAttribute('aria-expanded', expandedText);
     toggle.setAttribute('aria-label', toggleLabel);
   });
-  const handle = sheet.querySelector('[data-wt-sheet-handle]');
-  if (handle) {
-    handle.textContent = expanded ? '⌄' : '⌃';
-  }
-  _syncWorkoutHomeSheetScrollLock();
+  const arrow = sheet.querySelector('.cal-workout-day-expand[data-wt-sheet-toggle]');
+  if (arrow) arrow.textContent = expanded ? '⌄' : '⌃';
 }
 
 function _setWorkoutHomeSheetState(state, { render = false } = {}) {
@@ -1928,44 +1895,14 @@ function _setWorkoutHomeSheetState(state, { render = false } = {}) {
   _applyWorkoutHomeSheetState();
 }
 
-function _animateWorkoutHomeSheetTo(state) {
-  const apply = () => _setWorkoutHomeSheetState(state);
-  if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-    window.requestAnimationFrame(() => window.requestAnimationFrame(apply));
-    return;
-  }
-  apply();
-}
-
-function _stepWorkoutHomeSheet(direction) {
-  _setWorkoutHomeSheetState(direction > 0 ? 'full' : 'bar');
-}
-
-function _resolveWorkoutHomeSheetDragTarget(
-  dy,
-  velocityY,
-  openThresholdPx = WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX,
-  collapseThresholdPx = WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX
-) {
-  const current = _currentWorkoutHomeSheetState();
-  const openDistance = Math.max(WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX, Number(openThresholdPx) || 0);
-  const collapseDistance = Math.max(WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX, Number(collapseThresholdPx) || 0);
-  const isUp = dy <= -openDistance || velocityY < -WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY;
-  const isIntentionalDown = dy >= collapseDistance || velocityY > WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY;
-  if (current === 'bar') return isUp ? 'full' : 'bar';
-  if (isIntentionalDown) return 'bar';
-  return 'full';
-}
-
 function _toggleWorkoutHomeSheet(key = _workoutHomeSelectedKey) {
-  if (_consumeWorkoutHomeSuppressedClick()) return;
   _workoutHomeSelectedKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
   if (_currentWorkoutHomeSheetState() === 'bar') {
     _workoutHomeView = 'detail';
-    _workoutHomeSheetState = 'bar';
+    _workoutHomeSheetState = 'full';
     openWorkoutDaySheet(_workoutHomeSelectedKey, {
       sessionIndex: _workoutHomeSessionIndex,
-      sheetState: 'bar',
+      sheetState: 'full',
       viewYear: _viewYear,
       viewMonth: _viewMonth,
       scrollTop: _workoutHomeScrollTop(),
@@ -1974,29 +1911,9 @@ function _toggleWorkoutHomeSheet(key = _workoutHomeSelectedKey) {
       action: 'sheet:open',
     });
     renderWorkoutCalendarHome();
-    _animateWorkoutHomeSheetTo('full');
     return;
   }
   _setWorkoutHomeSheetState('bar');
-}
-
-function _consumeWorkoutHomeSuppressedClick() {
-  const now = Date.now();
-  if (now < _workoutHomeSuppressSheetClickUntil) return true;
-  _workoutHomeSuppressSheetClickUntil = 0;
-  return false;
-}
-
-function _suppressWorkoutHomeSheetClick(ms = WORKOUT_HOME_SHEET_POST_DRAG_CLICK_SUPPRESS_MS) {
-  _workoutHomeSuppressSheetClickUntil = Math.max(_workoutHomeSuppressSheetClickUntil, Date.now() + ms);
-}
-
-function _bindWorkoutHomeSheetDrag(root) {
-  const bar = root?.querySelector?.('[data-wt-sheet-bar]');
-  const handle = root?.querySelector?.('[data-wt-sheet-handle]');
-  if (!bar && !handle) return;
-  (bar || handle).addEventListener('pointerdown', _startWorkoutHomeSheetDrag);
-  handle?.addEventListener('keydown', _handleWorkoutHomeSheetKey);
 }
 
 function _bindWorkoutHomeSheetActions(root) {
@@ -2039,149 +1956,16 @@ function _bindWorkoutCycleRailActions(root) {
   }, true);
 }
 
-function _bindWorkoutHomeSheetScrollGuard(root) {
-  const scroller = root?.querySelector?.('[data-wt-day-sheet] .wt-day-sheet-scroll');
-  if (!scroller) return;
-  let lastTouchY = 0;
-
-  scroller.addEventListener('touchstart', (event) => {
-    if (event.touches?.length !== 1) return;
-    lastTouchY = Number(event.touches[0]?.clientY) || 0;
-  }, { passive: true });
-
-  scroller.addEventListener('touchmove', (event) => {
-    if (_currentWorkoutHomeSheetState() !== 'full' || event.touches?.length !== 1) return;
-    const y = Number(event.touches[0]?.clientY) || lastTouchY;
-    const dy = y - lastTouchY;
-    lastTouchY = y;
-    const scrollTop = Math.max(0, Number(scroller.scrollTop) || 0);
-    const maxScrollTop = Math.max(0, (Number(scroller.scrollHeight) || 0) - (Number(scroller.clientHeight) || 0));
-    const atTop = scrollTop <= 0;
-    const atBottom = scrollTop >= maxScrollTop - 1;
-    const wouldChainToBackground = maxScrollTop <= 0 || (dy > 0 && atTop) || (dy < 0 && atBottom);
-    if (wouldChainToBackground && event.cancelable) event.preventDefault();
-    event.stopPropagation();
-  }, { passive: false });
-}
-
-function _handleWorkoutHomeSheetKey(event) {
-  if (event.key === 'ArrowUp') {
-    event.preventDefault();
-    _stepWorkoutHomeSheet(1);
-  } else if (event.key === 'ArrowDown') {
-    event.preventDefault();
-    _stepWorkoutHomeSheet(-1);
-  } else if (event.key === 'Escape') {
-    event.preventDefault();
-    _setWorkoutHomeSheetState('bar');
-  }
-}
-
-function _startWorkoutHomeSheetDrag(event) {
-  if (event.button != null && event.button !== 0) return;
-  if (event.target?.closest?.('[data-wt-sheet-action]')) return;
-  const sheet = event.currentTarget?.closest?.('[data-wt-day-sheet]');
-  if (!sheet) return;
-
-  const startY = event.clientY || 0;
-  let lastY = startY;
-  let lastMoveY = startY;
-  let lastMoveAt = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
-  let velocityY = 0;
-  let hasMoved = false;
-  const startHeight = sheet.getBoundingClientRect?.().height || 0;
-  const barHeight = sheet.querySelector?.('.cal-workout-day-bar')?.getBoundingClientRect?.().height || 132;
-  const minHeight = Math.max(64, Math.min(startHeight, barHeight || startHeight));
-  const maxHeight = Math.max(startHeight, (window.innerHeight || startHeight) - WORKOUT_HOME_SHEET_FULL_CLEARANCE_PX);
-  const startState = _currentWorkoutHomeSheetState();
-  let openLatched = false;
-  let closeLatched = false;
-  let lastDragY = 0;
-  const dragTravel = Math.max(0, maxHeight - minHeight);
-  const openThresholdPx = Math.max(8, minHeight * WORKOUT_HOME_SHEET_DRAG_OPEN_BAR_RATIO);
-  const collapseThresholdPx = Math.max(WORKOUT_HOME_SHEET_DRAG_COLLAPSE_DISTANCE_PX, minHeight * WORKOUT_HOME_SHEET_DRAG_COLLAPSE_RATIO);
-  const minDragY = startHeight - maxHeight;
-  const maxDragY = startHeight - minHeight;
-  const clampDragY = (rawDy) => Math.max(minDragY, Math.min(maxDragY, rawDy));
-  const updateDragLatches = (dy) => {
-    if (startState === 'bar' && dy <= -openThresholdPx) openLatched = true;
-    if (startState === 'full' && dy >= WORKOUT_HOME_SHEET_DRAG_HARD_CLOSE_PX) closeLatched = true;
-    if (startState === 'full' && dy >= collapseThresholdPx) closeLatched = true;
-  };
-  const previewDragY = (rawDy) => {
-    const dy = clampDragY(rawDy);
-    lastDragY = dy;
-    updateDragLatches(dy);
-    const nextHeight = openLatched ? maxHeight : closeLatched ? minHeight : Math.max(minHeight, Math.min(maxHeight, startHeight - dy));
-    sheet.style.setProperty('--wt-day-sheet-drag-height', `${nextHeight}px`);
-    return dy;
-  };
-  sheet.classList.add('is-dragging');
-  sheet.style.setProperty('--wt-day-sheet-drag-y', '0px');
-  sheet.style.setProperty('--wt-day-sheet-drag-height', `${startHeight}px`);
-  event.currentTarget.setPointerCapture?.(event.pointerId);
-  const clearDragPreview = () => {
-    sheet.style.removeProperty('--wt-day-sheet-drag-y');
-    sheet.style.removeProperty('--wt-day-sheet-drag-height');
-  };
-
-  const onMove = (moveEvent) => {
-    if (moveEvent.cancelable) moveEvent.preventDefault();
-    lastY = Number.isFinite(Number(moveEvent.clientY)) ? Number(moveEvent.clientY) : lastY;
-    hasMoved = true;
-    const now = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
-    const elapsed = Math.max(1, now - lastMoveAt);
-    velocityY = (lastY - lastMoveY) / elapsed;
-    lastMoveY = lastY;
-    lastMoveAt = now;
-    previewDragY(lastY - startY);
-  };
-  const onUp = (upEvent) => {
-    const finalY = Number.isFinite(Number(upEvent.clientY)) ? Number(upEvent.clientY) : lastY;
-    const now = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
-    const elapsed = Math.max(1, now - lastMoveAt);
-    if (elapsed <= WORKOUT_HOME_SHEET_FLING_SAMPLE_MAX_MS && finalY !== lastMoveY) velocityY = (finalY - lastMoveY) / elapsed;
-    lastY = finalY;
-    const finalDy = clampDragY(finalY - startY);
-    lastDragY = finalDy;
-    updateDragLatches(finalDy);
-    const didActuallyMove = hasMoved && Math.abs(lastY - startY) >= WORKOUT_HOME_SHEET_MIN_SUPPRESS_MOVE_PX;
-    event.currentTarget.releasePointerCapture?.(event.pointerId);
-    window.removeEventListener('pointermove', onMove);
-    window.removeEventListener('pointerup', onUp);
-    window.removeEventListener('pointercancel', onUp);
-
-    const dy = lastDragY;
-    if (Math.abs(dy) < WORKOUT_HOME_SHEET_DRAG_OPEN_DEADZONE_PX && Math.abs(velocityY) < WORKOUT_HOME_SHEET_DRAG_FLING_VELOCITY) {
-      sheet.classList.remove('is-dragging');
-      clearDragPreview();
-      if (didActuallyMove) _suppressWorkoutHomeSheetClick();
-      return;
-    }
-    const targetState = openLatched ? 'full' : closeLatched ? 'bar' : _resolveWorkoutHomeSheetDragTarget(dy, velocityY, openThresholdPx, collapseThresholdPx);
-    sheet.classList.remove('is-dragging');
-    clearDragPreview();
-    const prevState = _currentWorkoutHomeSheetState();
-    _setWorkoutHomeSheetState(targetState);
-    if (targetState !== prevState) _suppressWorkoutHomeSheetClick();
-  };
-
-  window.addEventListener('pointermove', onMove, { passive: false });
-  window.addEventListener('pointerup', onUp, { passive: true });
-  window.addEventListener('pointercancel', onUp, { passive: true });
-}
-
 function _openWorkoutHomeDay(key) {
-  if (_consumeWorkoutHomeSuppressedClick()) return;
   const nextKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
   if (_workoutHomeSelectedKey === nextKey && _currentWorkoutHomeSheetState() === 'full') return;
   _workoutHomeSelectedKey = nextKey;
   _workoutHomeView = 'detail';
-  _workoutHomeSheetState = 'bar';
+  _workoutHomeSheetState = 'full';
   _workoutHomeSessionIndex = 0;
   openWorkoutDaySheet(nextKey, {
     sessionIndex: _workoutHomeSessionIndex,
-    sheetState: 'bar',
+    sheetState: 'full',
     viewYear: _viewYear,
     viewMonth: _viewMonth,
     scrollTop: _workoutHomeScrollTop(),
@@ -2190,7 +1974,6 @@ function _openWorkoutHomeDay(key) {
     action: 'sheet:open-day',
   });
   renderWorkoutCalendarHome();
-  _animateWorkoutHomeSheetTo('full');
 }
 
 async function _openWorkoutHomeRoutine(key) {
@@ -2241,11 +2024,11 @@ function _goTodayWorkoutDetail() {
   _viewMonth = TODAY.getMonth();
   _workoutHomeSelectedKey = key;
   _workoutHomeView = 'detail';
-  _workoutHomeSheetState = 'bar';
+  _workoutHomeSheetState = 'full';
   _workoutHomeSessionIndex = 0;
   openWorkoutDaySheet(key, {
     sessionIndex: 0,
-    sheetState: 'bar',
+    sheetState: 'full',
     viewYear: _viewYear,
     viewMonth: _viewMonth,
     scrollTop: _workoutHomeScrollTop(),
@@ -2255,7 +2038,6 @@ function _goTodayWorkoutDetail() {
   });
   renderCalendar();
   renderWorkoutCalendarHome();
-  _animateWorkoutHomeSheetTo('full');
 }
 
 function _selectWorkoutHomeSession(index) {
