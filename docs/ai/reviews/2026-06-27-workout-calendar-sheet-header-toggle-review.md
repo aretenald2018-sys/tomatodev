@@ -29,8 +29,9 @@
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `node --test .\tests\*.test.js`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ b0336a8`
+- PASS: deployed marker 확인 — `sw.js`, `render-calendar.js`
 
 ## 남은 범위
 
-- Dashboard3 Pages 배포 검증은 아직 미수행.
 - 인증 계정 실제 UI flow 확인은 아직 미수행.

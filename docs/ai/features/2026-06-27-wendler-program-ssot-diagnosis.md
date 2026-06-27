@@ -276,7 +276,10 @@ benchmark.wendler = {
 - PASS: `node --test .\tests\*.test.js`
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
-- not verified yet: Dashboard3 Pages 배포 검증은 아직 수행하지 않았다.
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ b0336a8`
+  - 결과: `[deploy-verify] ok b0336a8d3c2e tomatofarm-v20260627z2-workout-sheet-header-toggle static=219`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260627z2-workout-sheet-header-toggle" "workout/test-v2/board-core.js::tmAnchors" "workout/test-v2/board-core.js::programStartDate"`
+- not verified yet: 인증 계정 실제 UI flow는 아직 직접 확인하지 못했다.
 
 ### Slice 2: 종목 수정 UI/캘린더 레일 연동
 

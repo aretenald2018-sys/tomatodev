@@ -26,7 +26,10 @@
   3. PASS: `node scripts/verify-runtime-assets.mjs`
   4. PASS: `node --test .\tests\*.test.js` — 550 tests passed
   5. PASS: `git diff --check`
-  6. not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 UI flow 확인은 아직 남아 있다.
+  6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ b0336a8`
+     - 결과: `[deploy-verify] ok b0336a8d3c2e tomatofarm-v20260627z2-workout-sheet-header-toggle static=219`
+  7. PASS: deployed marker 확인 — `sw.js`, `render-calendar.js`, `workout/test-v2/board-core.js`
+  8. not verified yet: 인증 계정 실제 UI flow 확인은 아직 남아 있다.
 
 ## 이번 실행 검증
 

@@ -701,4 +701,7 @@
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `node --test .\tests\*.test.js` — 550개 통과
 - PASS: `git diff --check`
-- not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 `운동 탭 -> 날짜 sheet full -> 상단 탭 collapse` UI flow 확인은 아직 남아 있다.
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ b0336a8`
+  - 결과: `[deploy-verify] ok b0336a8d3c2e tomatofarm-v20260627z2-workout-sheet-header-toggle static=219`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260627z2-workout-sheet-header-toggle" "render-calendar.js::data-wt-sheet-main data-wt-sheet-toggle" "render-calendar.js::_toggleWorkoutHomeSheet(toggle.getAttribute('data-date-key') || _workoutHomeSelectedKey)"`
+- not verified yet: 인증 계정 실제 `운동 탭 -> 날짜 sheet full -> 상단 탭 collapse` UI flow 확인은 아직 남아 있다.
