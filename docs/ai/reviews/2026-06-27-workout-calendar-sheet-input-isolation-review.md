@@ -29,7 +29,9 @@
 - PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 553 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=834`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 03ff6f8` — `[deploy-verify] ok 03ff6f8e7d39 tomatofarm-v20260627z9-workout-sheet-input-isolation static=218`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260627z9-workout-sheet-input-isolation" "render-calendar.js::data-wt-sheet-backdrop" "render-calendar.js::_bindWorkoutHomeSheetInputIsolation" "render-calendar.js::_workoutHomeSheetTouchWouldChain" "render-calendar.js::_workoutHomeSheetWheelWouldChain" "style.css::.cal-workout-day-backdrop" "style.css::touch-action: none"`
 
 ## 남은 확인
 
-- not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 `운동 탭 -> 바텀시트 full -> sheet 밖 캘린더 영역 drag`, `sheet 내부 목록 끝에서 추가 drag` UI flow 확인이 남아 있다.
+- not verified yet: 인증 계정 실제 `운동 탭 -> 바텀시트 full -> sheet 밖 캘린더 영역 drag`, `sheet 내부 목록 끝에서 추가 drag` UI flow 확인이 남아 있다.
