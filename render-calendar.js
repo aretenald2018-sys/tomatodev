@@ -988,8 +988,8 @@ function _renderWorkoutHomeDayBar(selectedKey, { cache, plan, checkins, lookup }
   const expanded = sheetState !== 'bar';
   return `
     <div class="cal-workout-day-bar" data-wt-sheet-bar aria-expanded="${expanded ? 'true' : 'false'}">
-      <button type="button" class="cal-workout-day-expand" data-wt-sheet-handle data-wt-sheet-toggle onclick="window._wtCalToggleSheet('${selected}')" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '날짜 상세 접기' : '선택한 날짜 열기'}">${expanded ? '⌄' : '⌃'}</button>
-      <button type="button" class="cal-workout-day-main" onclick="window._wtCalOpenDay('${selected}')">
+      <button type="button" class="cal-workout-day-expand" data-wt-sheet-handle data-wt-sheet-toggle data-date-key="${selected}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '날짜 상세 접기' : '선택한 날짜 열기'}">${expanded ? '⌄' : '⌃'}</button>
+      <button type="button" class="cal-workout-day-main" data-wt-sheet-main data-wt-sheet-toggle data-date-key="${selected}">
         <span class="cal-workout-day-date">${selected} <em>${_dateDistanceLabel(selected)}</em></span>
         <span class="cal-workout-day-sub">${recordText} · ${sessionText}</span>
       </button>
@@ -1992,6 +1992,14 @@ function _bindWorkoutHomeSheetActions(root) {
   if (!sheet) return;
   sheet.addEventListener('click', (event) => {
     const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    if (target?.closest?.('[data-wt-sheet-action]')) return;
+    const toggle = target?.closest?.('[data-wt-sheet-toggle]');
+    if (toggle && sheet.contains(toggle)) {
+      event.preventDefault();
+      event.stopPropagation();
+      _toggleWorkoutHomeSheet(toggle.getAttribute('data-date-key') || _workoutHomeSelectedKey);
+      return;
+    }
     const add = target?.closest?.('[data-wt-day-add-session]');
     if (!add) return;
     event.preventDefault();

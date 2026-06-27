@@ -641,3 +641,64 @@
 - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ d23ca4cd775936b4acdb53d662d7c71c8d22b8c2`
 - PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260625z57-workout-sheet-scroll-lock" "render-calendar.js::wt-workout-sheet-scroll-lock" "render-calendar.js::WORKOUT_HOME_SHEET_DRAG_HARD_CLOSE_PX = 8" "render-calendar.js::_bindWorkoutHomeSheetScrollGuard" "app.js::[data-wt-day-sheet]" "style.css::body.wt-workout-tab-active.wt-workout-sheet-scroll-lock"`
 - not verified yet: 인증 계정 실제 `운동 탭 -> 날짜 sheet full/bar scroll` UI flow 확인이 남아 있다.
+
+## 후속 Slice 13 — Full sheet header tap collapses to bar
+
+### 진단
+
+사용자가 full 상태까지 올라온 운동 캘린더 바텀시트에서 상단 날짜/기록 영역을 클릭해도 내려가지 않는다고 보고했다. 올리는 동작과 drag close는 동작하지만, full 상태 상단 탭 click collapse 계약이 없다.
+
+현재 구조:
+
+- 상단 화살표는 `data-wt-sheet-toggle` + `_wtCalToggleSheet()`로 접기/열기 경로를 탄다.
+- 넓은 날짜/기록 영역 `.cal-workout-day-main`은 `onclick="window._wtCalOpenDay(...)"`로 연결되어 있다.
+- `_openWorkoutHomeDay()`는 같은 날짜가 이미 full이면 재렌더 flicker 방지를 위해 즉시 `return`한다.
+- 따라서 full 상태의 상단 날짜/기록 영역 click은 toggle이 아니라 no-op이다.
+- `오늘`, `루틴` 등 `data-wt-sheet-action` 버튼은 collapse 대상이 아니어야 한다.
+
+### 범위
+
+- `render-calendar.js`
+- `tests/workout-calendar-bottom-sheet.test.js`
+- `sw.js`
+- cache-version 참조 테스트들
+
+### 구현
+
+- `.cal-workout-day-main`을 날짜 열기 함수가 아니라 sheet toggle/collapse 계약으로 바꾼다.
+- 가능하면 sheet header의 click 처리를 직접 binding으로 모아 inline handler 의존을 줄인다.
+- full 상태에서 sheet header main/handle/toggle click은 `_setWorkoutHomeSheetState('bar')` 또는 `_toggleWorkoutHomeSheet()` 경로로 `bar`에 정착해야 한다.
+- bar 상태에서 같은 영역 click은 기존처럼 full로 연다.
+- `[data-wt-sheet-action]` 버튼은 collapse handler에서 제외한다.
+- `_openWorkoutHomeDay()`의 "같은 날짜 full no-op"은 month grid/date cell 재렌더 방어로만 남기고, sheet header click이 이 함수로 들어가지 않게 한다.
+- drag 후 click suppression은 유지한다.
+- `render-calendar.js`가 `STATIC_ASSETS`에 있으므로 `sw.js` `CACHE_VERSION`을 bump한다.
+
+### 검증 계획
+
+- `node --check render-calendar.js sw.js`
+- `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js`
+- `node --test .\tests\*.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `git diff --check`
+- 배포 시 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+- 인증 계정 실제 flow: `운동 탭 -> 날짜 클릭 -> sheet full -> 상단 날짜/기록 영역 탭 -> bar로 접힘 -> 상단/화살표 탭 -> full`
+
+### 실행 결과
+
+- `.cal-workout-day-main`을 `data-wt-sheet-main data-wt-sheet-toggle` 버튼으로 바꿔 full 상태 상단 날짜/기록 영역 click이 `_wtCalOpenDay()` no-op으로 빠지지 않게 했다.
+- sheet 내부 capture click handler에서 `[data-wt-sheet-action]`은 제외하고, `[data-wt-sheet-toggle]`은 `_toggleWorkoutHomeSheet()` 경로로 처리한다.
+- 상단 화살표의 inline `onclick`도 제거하고 동일한 direct binding 경로를 쓰게 했다.
+- `_openWorkoutHomeDay()`의 같은 날짜 full no-op은 month grid/date cell 재렌더 방어로 남겨 두었다.
+- `tests/workout-calendar-bottom-sheet.test.js`에 full header tap collapse 계약 테스트를 추가했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260627z2-workout-sheet-header-toggle`로 bump하고 cache marker 테스트를 갱신했다.
+- 리뷰: `docs/ai/reviews/2026-06-27-workout-calendar-sheet-header-toggle-review.md`
+
+### 실행 검증
+
+- PASS: `node --check workout/test-v2/board-core.js render-calendar.js sw.js`
+- PASS: `node --test tests/test-v2.board-core.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `node --test .\tests\*.test.js` — 550개 통과
+- PASS: `git diff --check`
+- not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 `운동 탭 -> 날짜 sheet full -> 상단 탭 collapse` UI flow 확인은 아직 남아 있다.

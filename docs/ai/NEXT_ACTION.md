@@ -2,40 +2,31 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-26-workout-data-restore-write-guard.md`
-- 현재 단계: `complete — 운영 운동기록 복원 및 overwrite 재발 방지`
-- 마지막 완료: `Dashboard3 배포 검증 후 users/김_태우/workouts/2026-06-26의 운동 도메인 필드를 PITR 원본에서 merge 복원했고 read-after-write로 exercises 5, sessions 1, sets 31을 확인했다. 리뷰 문서까지 작성했다.`
-- 다음 액션: `없음`
+- 상태: `ready_for_execution`
+- 계획 문서: `docs/ai/features/2026-06-27-wendler-program-ssot-diagnosis.md`
+- 현재 단계: `ready_for_execution — Wendler Slice 2 종목 수정 UI/캘린더 레일 연동`
+- 마지막 완료: `2026-06-27 Wendler Slice 1 board-core SSOT 모델과 운동 캘린더 바텀시트 Slice 13 header tap collapse를 완료했다. cache marker는 tomatofarm-v20260627z2-workout-sheet-header-toggle이다.`
+- 다음 액션: `Wendler Slice 2만 실행: workout/exercises.js와 render-calendar.js에서 종목 수정 UI/캘린더 rail이 bm.programStartDate와 wendler.tmAnchors SSOT를 읽고 표시하게 한다. 운영 Firestore 데이터 write와 복수 anchor 관리 UI는 아직 하지 않는다.`
 - 차단 사유: `없음`
 
-## 이번 계획 요약
+## 직전 완료 요약
 
-- 문제 후보:
-  1. `workout/save.js`는 현재 `saveDay(..., { mode: 'merge' })`로 안전 저장한다.
-  2. `sheet.js`와 `render-cooking.js`에는 bare `saveDay(...)` 호출이 남아 `data/data-save.js` 기본값 `replace`로 `workouts/{date}` 전체를 덮을 수 있다.
-  3. 단일 Firebase 프로젝트 `exercise-management`를 사용하므로 개발 체크아웃에서 운영 계정으로 로그인하면 운영 Firestore에 직접 write한다.
-- 계획:
-  1. read-only 복원 감사 도구로 owner/guest/root/export 후보를 비교한다.
-  2. `workouts` 전체 replace를 guard하고 레거시 bare `saveDay` 호출을 merge/patch 저장으로 전환한다.
-  3. 데이터 경로는 분기하지 않고 단일 `users/{uid}/workouts/{date}`를 유지하되, write source metadata와 백업을 추가한다.
-  4. 사용자가 승인한 날짜만 field-level merge로 복원한다.
+- Wendler Slice 1:
+  1. `workout/test-v2/board-core.js`에서 `benchmarks[].programStartDate`와 `wendler.tmAnchors[]`를 처방 계산 SSOT로 연결했다.
+  2. 종목 프로그램 저장은 더 이상 group active cycle 시작일을 변경하지 않는다.
+  3. 과거 TM anchor 수정이 더 늦은 anchor 이후 처방을 바꾸지 않는 회귀 테스트를 추가했다.
+  4. 리뷰: `docs/ai/reviews/2026-06-27-wendler-ssot-slice1-review.md`
+- 운동 캘린더 바텀시트 Slice 13:
+  1. full 상태 상단 날짜/기록 영역 click이 `_wtCalOpenDay()` no-op이 아니라 `_toggleWorkoutHomeSheet()` collapse 경로를 타게 했다.
+  2. `오늘`/`루틴`의 `[data-wt-sheet-action]`은 collapse handler에서 제외했다.
+  3. 리뷰: `docs/ai/reviews/2026-06-27-workout-calendar-sheet-header-toggle-review.md`
 - 검증:
-  1. PASS: `node --check data/data-save.js; node --check sheet.js; node --check render-cooking.js; node --check sw.js; node --check tests/workout-save-mode-guard.test.js`
-  2. PASS: `node --test tests/workout-save-mode-guard.test.js tests/workout-save.test.js tests/workout-sessions.test.js` — 11 tests passed
-  3. PASS: `node --test .\tests\*.test.js` — 549 tests passed
-  4. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
+  1. PASS: `node --check workout/test-v2/board-core.js render-calendar.js sw.js`
+  2. PASS: `node --test tests/test-v2.board-core.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js`
+  3. PASS: `node scripts/verify-runtime-assets.mjs`
+  4. PASS: `node --test .\tests\*.test.js` — 550 tests passed
   5. PASS: `git diff --check`
-  6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ a0ef75d`
-     - 결과: `[deploy-verify] ok a0ef75d88948 tomatofarm-v20260626z13-workout-save-merge-guard static=219`
-  7. PASS: cache-bust HTTP marker 확인 — `sw.js`, `data/data-save.js`, `render-cooking.js`, `sheet.js`
-  8. PASS: `node scripts/restore-workout-from-pitr.mjs "김_태우" 2026-06-26 2026-06-26T07:00:00Z --write`
-     - before: exercises 0, sessions 1, sets 0
-     - source: exercises 5, sessions 1, sets 31
-     - after: exercises 5, sessions 1, sets 31
-  9. PASS: Firestore 현재 주 재조회 — `김_태우` 운동일 4일, `최_준수` 운동일 2일
-  10. PASS: `docs/ai/reviews/2026-06-26-workout-data-restore-write-guard-review.md`
-  11. not verified yet: 인증 계정 브라우저 세션이 없어 배포 URL에서 `운동 탭 -> 2026-06-26 -> 상세 카드` 실제 UI 클릭 flow는 직접 확인하지 못함
+  6. not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 UI flow 확인은 아직 남아 있다.
 
 ## 이번 실행 검증
 

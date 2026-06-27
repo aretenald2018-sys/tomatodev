@@ -532,6 +532,7 @@ export function buildBoardFromOnboarding({ selections = [], startDate, source = 
     const cycle = _makeCycle(gid, start);
     board.cycles.push(cycle);
     for (const bm of board.benchmarks.filter(b => b.groupId === gid)) {
+      if (bm.program === 'wendler') _normalizeWendlerBenchmark(board, bm, { fallbackStartDate: cycle.startDate });
       _planBenchmarkSteps(board, bm, cycle);
     }
   }
@@ -636,10 +637,17 @@ export function expandColumnCells(board, benchmarkId, track, cycleId, todayKey) 
   const todayMon = mondayOf(todayKey);
 
   if (bm.program === 'wendler') {
+    _normalizeWendlerBenchmark(board, bm, { fallbackStartDate: cycle.startDate });
+    const programStartDate = bm.programStartDate;
     const cells = [];
     for (let w = 1; w <= cycle.weeks; w++) {
       const weekStart = addWeeks(cycle.startDate, w - 1);
-      const rx = wendlerWeekPrescription(bm.wendler, w);
+      if (weeksBetween(programStartDate, weekStart) < 0) {
+        cells.push({ kind: 'rest', weekStart, span: 1 });
+        continue;
+      }
+      const plan = _programPlanForBenchmark(board, bm, { weekStart, todayKey: weekStart });
+      const rx = plan.rx;
       const log = bm.wendlerLog?.[weekStart] || null;
       let state = 'plan';
       if (log?.paintedAt) state = 'done';
@@ -651,7 +659,11 @@ export function expandColumnCells(board, benchmarkId, track, cycleId, todayKey) 
         kind: 'wendler',
         weekStart,
         span: 1,
-        week: w,
+        week: plan.cycleWeek,
+        programWeek: plan.programWeek,
+        programStartDate: plan.programStartDate,
+        tmAnchorWeekStart: plan.tmAnchorWeekStart,
+        tmKg: plan.tmKg,
         kg: top?.kg ?? 0,
         repsLabel: top ? `×${top.reps}${top.amrap ? '+' : ''}` : '',
         subLabel: top
@@ -720,18 +732,24 @@ export function projectFutureCells(board, benchmarkId, track, minAheadWeeks = 12
   let projStart = addWeeks(active.startDate, active.weeks);
   let offset = 1;
   const isWnd = bm.program === 'wendler';
-  const baseKg = isWnd ? bm.wendler.tmKg : currentKgOf(board, bm, track).kg;
+  if (isWnd) _normalizeWendlerBenchmark(board, bm, { fallbackStartDate: active.startDate });
+  const baseKg = isWnd ? (_resolveWendlerTmAnchor(bm, active.startDate)?.tmKg || bm.wendler.tmKg) : currentKgOf(board, bm, track).kg;
   const baseReps = isWnd ? 0 : currentKgOf(board, bm, track).reps;
   const inc = isWnd ? bm.wendler.incrementKg : bm.incrementKg;
   const limit = addWeeks(addWeeks(active.startDate, active.weeks), minAheadWeeks);
   while (weeksBetween(projStart, limit) > 0 && offset <= 6) {
     if (isWnd) {
-      const tm = roundToPlate(baseKg + inc * offset, 0.5);
+      const exactAnchor = (bm.wendler?.tmAnchors || []).find(anchor => anchor.weekStart === projStart);
+      const tm = exactAnchor ? exactAnchor.tmKg : roundToPlate(baseKg + inc * offset, 0.5);
       for (let w = 1; w <= active.weeks; w++) {
-        const rx = wendlerWeekPrescription({ ...bm.wendler, tmKg: tm }, w);
+        const weekStart = addWeeks(projStart, w - 1);
+        const programWeek = Math.max(1, weeksBetween(bm.programStartDate, weekStart) + 1);
+        const cycleWeek = ((programWeek - 1) % active.weeks) + 1;
+        const rx = wendlerWeekPrescription({ ...bm.wendler, tmKg: tm }, cycleWeek);
         const top = rx.topSet;
         cells.push({
-          kind: 'wendler', weekStart: addWeeks(projStart, w - 1), span: 1, week: w,
+          kind: 'wendler', weekStart, span: 1, week: cycleWeek, programWeek,
+          programStartDate: bm.programStartDate, tmAnchorWeekStart: exactAnchor?.weekStart || null, tmKg: tm,
           kg: top?.kg ?? 0, repsLabel: top ? `×${top.reps}${top.amrap ? '+' : ''}` : '',
           subLabel: top ? `${top.pct}%` : '', state: 'future', isCurrent: false, projected: true, offset,
         });
@@ -921,6 +939,8 @@ export function buildSettleRows(board, groupId) {
   const rows = [];
   for (const bm of activeBenchmarks(board, groupId)) {
     if (bm.program === 'wendler') {
+      _normalizeWendlerBenchmark(board, bm, { fallbackStartDate: cycle.startDate });
+      const currentTm = _resolveWendlerTmAnchor(bm, cycle.startDate)?.tmKg || bm.wendler.tmKg;
       const missed = _missedCount(board, bm, null, cycle.id);
       rows.push({
         key: bm.id,
@@ -928,9 +948,9 @@ export function buildSettleRows(board, groupId) {
         program: 'wendler',
         label: bm.label,
         trackLabel: '웬들러',
-        currentKg: bm.wendler.tmKg,
+        currentKg: currentTm,
         incrementKg: bm.wendler.incrementKg,
-        nextKg: roundToPlate(bm.wendler.tmKg + bm.wendler.incrementKg, 0.5),
+        nextKg: roundToPlate(currentTm + bm.wendler.incrementKg, 0.5),
         missedCount: missed,
         defaultDecision: missed > 0 ? 'hold' : 'grow',
         isTm: true,
@@ -969,15 +989,19 @@ export function applySettle(board, groupId, decisions = {}, todayKey, now = null
   if (!cycle) return null;
   const rows = buildSettleRows(board, groupId);
   const results = [];
+  const candidate = addWeeks(cycle.startDate, cycle.weeks);
+  const todayMon = mondayOf(todayKey);
+  const nextStart = weeksBetween(candidate, todayMon) > 0 ? todayMon : candidate;
 
   for (const row of rows) {
     const bm = benchmarkById(board, row.benchmarkId);
     const decision = decisions[row.key] || row.defaultDecision;
     const grow = decision === 'grow';
     if (row.program === 'wendler') {
-      const before = bm.wendler.tmKg;
-      if (grow) bm.wendler.tmKg = roundToPlate(before + bm.wendler.incrementKg, 0.5);
-      results.push({ benchmarkId: bm.id, program: 'wendler', before, after: bm.wendler.tmKg, decision });
+      const before = row.currentKg;
+      const after = grow ? roundToPlate(before + bm.wendler.incrementKg, 0.5) : before;
+      _upsertWendlerTmAnchor(bm, nextStart, after, { source: 'settle', updatedAt: now });
+      results.push({ benchmarkId: bm.id, program: 'wendler', before, after, decision, tmAnchorWeekStart: nextStart });
     } else {
       const before = currentKgOf(board, bm, row.track).kg;
       const after = grow ? roundToPlate(before + bm.incrementKg, 0.5) : before;
@@ -990,9 +1014,6 @@ export function applySettle(board, groupId, decisions = {}, todayKey, now = null
   cycle.settle = { decisions: { ...decisions }, settledAt: now };
 
   // 다음 사이클 생성 + 기본 계획(스텝) 재생성
-  const candidate = addWeeks(cycle.startDate, cycle.weeks);
-  const todayMon = mondayOf(todayKey);
-  const nextStart = weeksBetween(candidate, todayMon) > 0 ? todayMon : candidate;
   const nextCycle = _makeCycle(groupId, nextStart, cycle.weeks);
   board.cycles.push(nextCycle);
   for (const bm of activeBenchmarks(board, groupId)) {
@@ -1157,21 +1178,113 @@ function _candidateFromExerciseProgram(exercise = {}, config = {}, { movements =
 }
 
 function _programStartDateKey(config = {}) {
-  const raw = config.programStartDate || config.startDate || config.cycleStartDate || '';
+  const raw = config.programStartDate || config.wendler?.programStartDate || config.startDate || config.cycleStartDate || '';
   const key = String(raw || '').trim();
   return /^\d{4}-\d{2}-\d{2}$/.test(key) ? key : null;
 }
 
-function _activeCycleForProgram(board, groupId, todayKey, config = {}) {
-  const requestedStart = _programStartDateKey(config);
-  const startDate = mondayOf(requestedStart || todayKey);
+function _roundProgramKg(value) {
+  return Math.round((Number(value) || 0) * 10) / 10;
+}
+
+function _programStartDateForBenchmark(board, bm = {}, fallbackKey = null) {
+  const raw = _programStartDateKey(bm) || activeCycleOf(board, bm.groupId)?.startDate || fallbackKey || toKey(new Date());
+  return mondayOf(raw);
+}
+
+function _setProgramStartDateForBenchmark(board, bm, fallbackKey = null) {
+  const start = _programStartDateForBenchmark(board, bm, fallbackKey);
+  bm.programStartDate = start;
+  if (bm.wendler && typeof bm.wendler === 'object') bm.wendler.programStartDate = start;
+  return start;
+}
+
+function _rawTmAnchors(rawAnchors) {
+  if (Array.isArray(rawAnchors)) return rawAnchors;
+  if (rawAnchors && typeof rawAnchors === 'object') {
+    return Object.entries(rawAnchors).map(([weekStart, value]) => (
+      value && typeof value === 'object' ? { weekStart, ...value } : { weekStart, tmKg: value }
+    ));
+  }
+  return [];
+}
+
+function _normalizeTmAnchors(rawAnchors, programStartDate, fallbackTmKg, { source = 'legacy' } = {}) {
+  const byWeek = new Map();
+  const push = (raw) => {
+    const key = _programStartDateKey({ programStartDate: raw?.weekStart || raw?.startDate || raw?.date });
+    const tm = _roundProgramKg(raw?.tmKg ?? raw?.tm ?? raw?.kg);
+    if (!key || tm <= 0) return;
+    const anchor = { weekStart: mondayOf(key), tmKg: tm };
+    if (raw?.source) anchor.source = String(raw.source);
+    if (raw?.updatedAt != null) anchor.updatedAt = raw.updatedAt;
+    byWeek.set(anchor.weekStart, anchor);
+  };
+  for (const raw of _rawTmAnchors(rawAnchors)) push(raw);
+
+  const fallbackTm = _roundProgramKg(fallbackTmKg);
+  if (programStartDate && fallbackTm > 0 && !byWeek.has(programStartDate)) {
+    byWeek.set(programStartDate, { weekStart: programStartDate, tmKg: fallbackTm, source });
+  }
+
+  return Array.from(byWeek.values()).sort((a, b) => (a.weekStart < b.weekStart ? -1 : 1));
+}
+
+function _latestTmAnchor(anchors = []) {
+  return anchors[anchors.length - 1] || null;
+}
+
+function _resolveWendlerTmAnchor(bm = {}, weekStart) {
+  const anchors = _normalizeTmAnchors(bm.wendler?.tmAnchors, bm.programStartDate, bm.wendler?.tmKg);
+  if (!anchors.length) return null;
+  const wk = mondayOf(weekStart);
+  let chosen = null;
+  for (const anchor of anchors) {
+    if (weeksBetween(anchor.weekStart, wk) >= 0) chosen = anchor;
+    else break;
+  }
+  return chosen || anchors[0];
+}
+
+function _upsertWendlerTmAnchor(bm, weekStart, tmKg, { source = 'manual', updatedAt = null } = {}) {
+  if (!bm.wendler || typeof bm.wendler !== 'object') bm.wendler = {};
+  const wk = mondayOf(weekStart);
+  const tm = _roundProgramKg(tmKg);
+  if (tm <= 0) return null;
+  const anchors = _normalizeTmAnchors(bm.wendler.tmAnchors, bm.programStartDate || wk, bm.wendler.tmKg);
+  const next = { weekStart: wk, tmKg: tm, source };
+  if (updatedAt != null) next.updatedAt = updatedAt;
+  bm.wendler.tmAnchors = anchors.filter(anchor => anchor.weekStart !== wk).concat(next)
+    .sort((a, b) => (a.weekStart < b.weekStart ? -1 : 1));
+  bm.wendler.tmKg = _latestTmAnchor(bm.wendler.tmAnchors)?.tmKg || tm;
+  return next;
+}
+
+function _normalizeWendlerBenchmark(board, bm, { fallbackStartDate = null, primaryMajor = null, trackSpec = null } = {}) {
+  if (!bm || bm.program !== 'wendler') return bm;
+  const major = primaryMajor || TM2_GROUPS.find(g => g.id === bm.groupId)?.majors?.[0] || bm.groupId;
+  const programStartDate = _setProgramStartDateForBenchmark(board, bm, fallbackStartDate);
+  const raw = bm.wendler || {};
+  const cfg = normalizeWendlerConfig(raw, {
+    primaryMajor: major,
+    trackSpec: trackSpec || (bm.seed?.volume ? { startKg: bm.seed.volume.kg, startReps: bm.seed.volume.reps } : null),
+  });
+  const tmAnchors = _normalizeTmAnchors(raw.tmAnchors, programStartDate, cfg.tmKg);
+  bm.wendler = {
+    ...cfg,
+    programStartDate,
+    tmAnchors,
+    tmKg: _latestTmAnchor(tmAnchors)?.tmKg || cfg.tmKg,
+  };
+  return bm;
+}
+
+function _activeCycleForProgram(board, groupId, todayKey) {
+  const startDate = mondayOf(todayKey);
   let cycle = activeCycleOf(board, groupId);
   if (!cycle) {
     cycle = _makeCycle(groupId, startDate);
     board.cycles.push(cycle);
-  } else if (requestedStart) {
-    cycle.startDate = startDate;
-    cycle.weeks = 6;
   }
   return cycle;
 }
@@ -1232,10 +1345,18 @@ function _applyExerciseProgramToBenchmark(board, bm, candidate, config, todayKey
   if (program === 'wendler') {
     const major = TM2_GROUPS.find(g => g.id === bm.groupId)?.majors?.[0] || bm.groupId;
     bm.program = 'wendler';
-    bm.wendler = normalizeWendlerConfig(config.wendler || bm.wendler || {}, {
+    const rawWendler = { ...(bm.wendler || {}), ...(config.wendler || {}) };
+    bm.wendler = rawWendler;
+    const requestedStart = _programStartDateKey(config) || _programStartDateKey(rawWendler);
+    if (requestedStart) bm.programStartDate = mondayOf(requestedStart);
+    _normalizeWendlerBenchmark(board, bm, {
+      fallbackStartDate: cycle?.startDate || todayKey,
       primaryMajor: major,
       trackSpec: bm.seed?.volume ? { startKg: bm.seed.volume.kg, startReps: bm.seed.volume.reps } : null,
     });
+    if (Number(config.wendler?.tmKg) > 0) {
+      _upsertWendlerTmAnchor(bm, bm.programStartDate, config.wendler.tmKg, { source: 'manual' });
+    }
     bm.wendlerLog = bm.wendlerLog || {};
     _removeActiveCycleSteps(board, bm);
   } else {
@@ -1249,13 +1370,14 @@ export function getExerciseProgramSettings(board, exercise = {}, options = {}) {
   const bm = findExerciseProgramBenchmark(board, exercise, options);
   if (!bm || bm.status === 'archived') return { program: 'none', benchmark: null };
   const cycle = activeCycleOf(board, bm.groupId);
+  if (bm.program === 'wendler') _normalizeWendlerBenchmark(board, bm, { fallbackStartDate: cycle?.startDate || null });
   return {
     program: bm.program === 'wendler' ? 'wendler' : 'stair',
     benchmarkId: bm.id,
     exerciseId: bm.exerciseId || null,
     movementId: bm.movementId || null,
     groupId: bm.groupId || null,
-    programStartDate: cycle?.startDate || null,
+    programStartDate: bm.program === 'wendler' ? bm.programStartDate || null : cycle?.startDate || null,
     tracks: bm.program === 'wendler' ? ['volume'] : [...(bm.tracks || ['volume'])],
     seed: cloneBoard(bm.seed || {}),
     setsDefault: bm.setsDefault || 4,
@@ -1306,9 +1428,30 @@ function _programPlanForBenchmark(board, bm, { track = 'volume', weekStart = nul
   const wkMon = mondayOf(weekStart || todayKey || toKey(new Date()));
   const cycle = activeCycleOf(board, bm.groupId);
   if (bm.program === 'wendler') {
-    const week = cycle ? Math.max(1, Math.min(cycle.weeks, weekIndexOf(cycle, wkMon))) : 1;
-    const rx = wendlerWeekPrescription(bm.wendler, week);
-    return { kind: 'wendler', track: 'volume', weekStart: wkMon, week, kg: rx.topSet?.kg || 0, reps: rx.topSet?.reps || 0, amrap: !!rx.topSet?.amrap, rx };
+    _normalizeWendlerBenchmark(board, bm, { fallbackStartDate: cycle?.startDate || wkMon });
+    const programStartDate = bm.programStartDate;
+    const programWeek = Math.max(1, weeksBetween(programStartDate, wkMon) + 1);
+    const weeks = bm.wendler?.weekMap?.length || cycle?.weeks || 6;
+    const cycleWeek = ((programWeek - 1) % weeks) + 1;
+    const groupCycleWeek = cycle ? Math.max(1, Math.min(cycle.weeks, weekIndexOf(cycle, wkMon))) : null;
+    const anchor = _resolveWendlerTmAnchor(bm, wkMon);
+    const rx = wendlerWeekPrescription({ ...(bm.wendler || {}), tmKg: anchor?.tmKg || bm.wendler?.tmKg || 0 }, cycleWeek);
+    return {
+      kind: 'wendler',
+      track: 'volume',
+      weekStart: wkMon,
+      week: cycleWeek,
+      cycleWeek,
+      programWeek,
+      programStartDate,
+      groupCycleWeek,
+      tmAnchorWeekStart: anchor?.weekStart || null,
+      tmKg: rx.tmKg,
+      kg: rx.topSet?.kg || 0,
+      reps: rx.topSet?.reps || 0,
+      amrap: !!rx.topSet?.amrap,
+      rx,
+    };
   }
   const useTrack = (bm.tracks || []).includes(track) ? track : (bm.tracks || ['volume'])[0];
   let cell = null;
@@ -1474,7 +1617,14 @@ export function buildExerciseProgramWorkoutPrescription(board, benchmark, { trac
     source: 'test_board_v2',
     program: plan.kind,
     track: code,
-    cycleWeek: plan.week,
+    cycleWeek: plan.cycleWeek || plan.week,
+    ...(plan.kind === 'wendler' ? {
+      programWeek: plan.programWeek,
+      programStartDate: plan.programStartDate,
+      groupCycleWeek: plan.groupCycleWeek,
+      tmAnchorWeekStart: plan.tmAnchorWeekStart,
+      tmKg: plan.tmKg,
+    } : {}),
     cycleId: cycle?.id || null,
     boardV2BenchmarkId: bm.id,
     boardV2WeekStart: wkMon,

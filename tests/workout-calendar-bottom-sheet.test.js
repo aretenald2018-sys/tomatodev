@@ -134,9 +134,20 @@ test('full day sheet owns vertical scroll and blocks background scroll chaining'
   assert.match(appJs, /\[data-wt-day-sheet\]/);
 });
 
-test('open day tap does not re-render an already full selected sheet', () => {
-  assert.match(calendarJs, /const nextKey = _parseDateKey\(key\) \? key : _workoutHomeSelectedKey/);
-  assert.match(calendarJs, /_workoutHomeSelectedKey === nextKey && _currentWorkoutHomeSheetState\(\) === 'full'[\s\S]*return/);
+test('full sheet header tap collapses through the sheet toggle path', () => {
+  const barStart = calendarJs.indexOf('function _renderWorkoutHomeDayBar');
+  const barEnd = calendarJs.indexOf('function _renderWorkoutHomeBottomSheet', barStart);
+  const barFn = calendarJs.slice(barStart, barEnd);
+  const bindStart = calendarJs.indexOf('function _bindWorkoutHomeSheetActions');
+  const bindEnd = calendarJs.indexOf('function _bindWorkoutCycleRailActions', bindStart);
+  const bindFn = calendarJs.slice(bindStart, bindEnd);
+
+  assert.match(barFn, /class="cal-workout-day-main" data-wt-sheet-main data-wt-sheet-toggle data-date-key=/);
+  assert.doesNotMatch(barFn, /cal-workout-day-main" onclick="window\._wtCalOpenDay/);
+  assert.doesNotMatch(barFn, /data-wt-sheet-toggle onclick="window\._wtCalToggleSheet/);
+  assert.match(bindFn, /target\?\.closest\?\.\('\[data-wt-sheet-action\]'\)[\s\S]*return/);
+  assert.match(bindFn, /target\?\.closest\?\.\('\[data-wt-sheet-toggle\]'\)/);
+  assert.match(bindFn, /_toggleWorkoutHomeSheet\(toggle\.getAttribute\('data-date-key'\) \|\| _workoutHomeSelectedKey\)/);
 });
 
 test('floating add button uses direct sheet action binding', () => {
@@ -324,5 +335,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260626z13-workout-save-merge-guard/);
+  assert.match(swJs, /tomatofarm-v20260627z2-workout-sheet-header-toggle/);
 });

@@ -99,7 +99,11 @@ test('보드 생성: 그룹별 사이클 + 사이클당 1스텝(6주 유지) 기
   // 웬들러 종목은 스텝 없음 (파생)
   const squat = b.benchmarks.find(x => x.movementId === 'back_squat');
   assert.equal(squat.program, 'wendler');
+  assert.equal(squat.programStartDate, START);
   assert.equal(squat.wendler.incrementKg, 10); // 하체 기본
+  assert.deepEqual(squat.wendler.tmAnchors.map(a => ({ weekStart: a.weekStart, tmKg: a.tmKg })), [
+    { weekStart: START, tmKg: 150 },
+  ]);
   assert.equal(b.steps.filter(s => s.benchmarkId === squat.id).length, 0);
 });
 
@@ -512,6 +516,10 @@ test('정산(wendler): 성장 시 TM + 증량폭(하체 +10)', () => {
   applySettle(b, 'lower', { [squatRow.key]: 'grow' }, afterCycle, 1);
   const squat = b.benchmarks.find(x => x.movementId === 'back_squat');
   assert.equal(squat.wendler.tmKg, 160);
+  assert.deepEqual(squat.wendler.tmAnchors.map(a => ({ weekStart: a.weekStart, tmKg: a.tmKg, source: a.source })), [
+    { weekStart: START, tmKg: 150, source: 'legacy' },
+    { weekStart: afterCycle, tmKg: 160, source: 'settle' },
+  ]);
   // 다음 사이클 W1 처방도 새 TM 기준
   const next = activeCycleOf(b, 'lower');
   const cells = expandColumnCells(b, squat.id, 'volume', next.id, afterCycle);
@@ -618,7 +626,7 @@ test('종목 프로그램 계약: 웬들러 전환은 설정을 정규화하고 
   assert.equal(b.steps.some(s => s.benchmarkId === bench.id && s.cycleId === cy.id), false);
 });
 
-test('종목 프로그램 계약: programStartDate는 선택한 날짜의 월요일부터 6주 사이클을 맞춘다', () => {
+test('종목 프로그램 계약: programStartDate는 benchmark에 저장하고 group cycle은 유지한다', () => {
   const b = fixtureBoard();
   const res = upsertExerciseProgramBenchmark(b, {
     movementId: 'barbell_bench',
@@ -633,13 +641,68 @@ test('종목 프로그램 계약: programStartDate는 선택한 날짜의 월요
   }, { todayKey: TODAY });
 
   const cy = activeCycleOf(b, 'chest');
-  assert.equal(cy.startDate, '2026-06-15');
+  assert.equal(cy.startDate, START);
   assert.equal(cy.weeks, 6);
+  assert.equal(res.benchmark.programStartDate, '2026-06-15');
+  assert.deepEqual(res.benchmark.wendler.tmAnchors.map(a => ({ weekStart: a.weekStart, tmKg: a.tmKg })), [
+    { weekStart: '2026-06-15', tmKg: 120 },
+  ]);
+  const cells = expandColumnCells(b, res.benchmark.id, 'volume', cy.id, TODAY);
+  assert.equal(cells[0].kind, 'rest');
+  assert.equal(cells[1].week, 1);
   const week1 = buildExerciseProgramWorkoutPrescription(b, res.benchmark, { todayKey: '2026-06-15' });
   const week2 = buildExerciseProgramWorkoutPrescription(b, res.benchmark, { todayKey: '2026-06-22' });
   assert.equal(week1.recommendationMeta.cycleWeek, 1);
+  assert.equal(week1.recommendationMeta.programWeek, 1);
+  assert.equal(week1.recommendationMeta.programStartDate, '2026-06-15');
+  assert.equal(week1.recommendationMeta.groupCycleWeek, 2);
+  assert.equal(week1.recommendationMeta.tmAnchorWeekStart, '2026-06-15');
   assert.equal(week2.recommendationMeta.cycleWeek, 2);
+  assert.equal(week2.recommendationMeta.programWeek, 2);
   assert.equal(getExerciseProgramSettings(b, { movementId: 'barbell_bench' }).programStartDate, '2026-06-15');
+});
+
+test('종목 프로그램 계약: 과거 TM anchor 수정은 더 늦은 anchor 이후 처방을 바꾸지 않는다', () => {
+  const b = fixtureBoard();
+  const squat = b.benchmarks.find(x => x.movementId === 'back_squat');
+  squat.programStartDate = '2026-06-15';
+  squat.wendler = {
+    ...squat.wendler,
+    programStartDate: '2026-06-15',
+    tmKg: 107.5,
+    tmAnchors: [
+      { weekStart: '2026-06-15', tmKg: 102.5, source: 'manual' },
+      { weekStart: '2026-06-22', tmKg: 107.5, source: 'manual' },
+    ],
+  };
+
+  const beforePast = buildExerciseProgramWorkoutPrescription(b, squat, { todayKey: '2026-06-15' });
+  const beforeFuture = buildExerciseProgramWorkoutPrescription(b, squat, { todayKey: '2026-06-22' });
+  assert.match(beforePast.recommendationMeta.wendlerSignature, /tm:102\.5/);
+  assert.match(beforeFuture.recommendationMeta.wendlerSignature, /tm:107\.5/);
+
+  upsertExerciseProgramBenchmark(b, {
+    movementId: 'back_squat',
+    name: '스쿼트',
+    muscleId: 'lower',
+  }, {
+    program: 'wendler',
+    programStartDate: '2026-06-15',
+    tracks: ['volume'],
+    seed: { volume: { kg: 100, reps: 5 } },
+    wendler: { ...squat.wendler, tmKg: 100 },
+  }, { todayKey: '2026-06-27' });
+
+  assert.deepEqual(squat.wendler.tmAnchors.map(a => ({ weekStart: a.weekStart, tmKg: a.tmKg })), [
+    { weekStart: '2026-06-15', tmKg: 100 },
+    { weekStart: '2026-06-22', tmKg: 107.5 },
+  ]);
+  assert.equal(squat.wendler.tmKg, 107.5);
+  const afterPast = buildExerciseProgramWorkoutPrescription(b, squat, { todayKey: '2026-06-15' });
+  const afterFuture = buildExerciseProgramWorkoutPrescription(b, squat, { todayKey: '2026-06-22' });
+  assert.match(afterPast.recommendationMeta.wendlerSignature, /tm:100/);
+  assert.match(afterFuture.recommendationMeta.wendlerSignature, /tm:107\.5/);
+  assert.equal(afterFuture.recommendationMeta.tmAnchorWeekStart, '2026-06-22');
 });
 
 test('종목 프로그램 계약: 웬들러에서 stair로 복귀해도 wendlerLog는 보존한다', () => {
