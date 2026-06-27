@@ -6,8 +6,8 @@
 - 계획 문서: `docs/ai/features/2026-06-27-home-life-zone-workout-animation.md`
 - 현재 단계: `complete — Home Life Zone Overhead Labels`
 - 작업 브랜치: `codex/home-overhead-labels`
-- 마지막 완료: `2026-06-27 Home Life Zone 이름표를 모두 머리 위로 올리고, 트레이너 전구 말풍선 표시 크기를 50%로 줄이는 구현/리뷰/배포 검증을 완료했다. cache marker는 tomatofarm-v20260627z13-home-overhead-labels이다.`
-- 다음 액션: `인증 계정이 있으면 Dashboard3 Pages 홈 탭 라이프존에서 트레이너 전구 말풍선과 트레이너 텍스트가 얼굴을 가리지 않고 머리 위에 함께 떠 있으며, 다른 캐릭터 닉네임도 머리 위에 떠 있는지 실제 UI flow로 확인한다.`
+- 마지막 완료: `2026-06-27 Home Life Zone 트레이너 라벨을 얼굴 위로 더 올리고, 랫풀다운은 전체 머신 흔들림 대신 바/팔 클립 레이어만 움직이도록 로컬 정적 검증까지 완료했다. cache marker는 tomatofarm-v20260627z14-home-trainer-lat-motion이다.`
+- 다음 액션: `커밋/푸시하고 Dashboard3 Pages에서 deployed marker를 확인한다. 인증 계정이 있으면 홈 탭 라이프존에서 트레이너 얼굴이 가려지지 않는지, 랫풀다운 머신 전체가 흔들리지 않는지 실제 UI flow로 확인한다.`
 - 차단 사유: `없음`
 
 ## 직전 완료 요약
@@ -35,6 +35,13 @@
   20. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>` — deployed `tomatofarm-v20260627z13-home-overhead-labels`
   21. PASS: deployed markers — `Math.max(24, Number(slot.y) - 6)`, `top: calc(850 / 1672 * 100%)`, `width: 50%`, `transform: translate(-50%, -100%)`, `.lz-npc-bulb`
   22. not verified yet: 인증 세션이 없어 실제 홈 탭 라이프존 UI flow는 직접 조작 미완료
+  23. 진행 중: 트레이너 overlay를 `top: calc(760 / 1672 * 100%)`로 올리고, 랫풀다운은 actor 래퍼의 `::after` 클립 레이어에만 `lz-workout-lat-pull`을 적용했다.
+  24. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260627z14-home-trainer-lat-motion`으로 갱신했다.
+  25. PASS: `node --check home/life-zone.js; node --check sw.js`
+  26. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/home-life-zone-state.test.js` — 19 tests passed
+  27. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
+  28. PASS: `git diff --check`
+  29. WARN: `node --test tests/*.test.js` — 553 tests 중 552 pass, `tests/workout-picker-gym-rail.test.js` 1건 fail. 이번 홈 라이프존 변경 범위와 무관하다.
 
 ## 이번 실행 검증
 

@@ -6600,14 +6600,36 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   left: calc(var(--lz-x) / 1672 * 100%);
   top: calc(var(--lz-y) / 1672 * 100%);
   z-index: var(--lz-z);
+  display: block;
   width: calc(var(--lz-w) / 1672 * 100%);
+  line-height: 0;
+  pointer-events: none;
+}
+.lz-actor-img {
+  display: block;
+  width: 100%;
   height: auto;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.28));
 }
 .lz-actor--pose-workout-lat {
-  transform-origin: 52% 20%;
+  transform-origin: 53% 62%;
+}
+.lz-actor--pose-workout-lat::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background-image: var(--lz-sprite-url);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  clip-path: inset(25% 4% 38% 14%);
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  opacity: 0.28;
+  pointer-events: none;
+  transform-origin: 58% 64%;
   animation: lz-workout-lat-pull 1.35s ease-in-out infinite;
 }
 .lz-actor--pose-workout-bench {
@@ -6619,9 +6641,9 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   animation: lz-workout-squat-rep 1.5s ease-in-out infinite;
 }
 @keyframes lz-workout-lat-pull {
-  0%, 100% { transform: translateY(0); }
-  42% { transform: translateY(4px) scaleY(0.995); }
-  68% { transform: translateY(-2px); }
+  0%, 100% { opacity: 0.16; transform: translate(0, 0) rotate(0deg); }
+  42% { opacity: 0.72; transform: translate(-1.2%, 2.8%) rotate(-0.8deg); }
+  68% { opacity: 0.34; transform: translate(-0.4%, 0.9%) rotate(0.25deg); }
 }
 @keyframes lz-workout-bench-press {
   0%, 100% { transform: translateY(0) rotate(0deg); }
@@ -6664,7 +6686,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 .lz-npc-quest {
   position: absolute;
   left: calc(1058 / 1672 * 100%);
-  top: calc(850 / 1672 * 100%);
+  top: calc(760 / 1672 * 100%);
   z-index: 120;
   width: clamp(52px, calc(168 / 1672 * 100%), 76px);
   min-height: 0;
@@ -6762,11 +6784,14 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .lz-actor--pose-workout-lat,
+  .lz-actor--pose-workout-lat::after,
   .lz-actor--pose-workout-bench,
   .lz-actor--pose-workout-squat {
     animation: none;
     transform: none;
+  }
+  .lz-actor--pose-workout-lat::after {
+    opacity: 0;
   }
 }
 .lz-status-row {

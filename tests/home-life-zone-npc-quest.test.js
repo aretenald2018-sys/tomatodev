@@ -42,8 +42,11 @@ test('life zone actor nameplates are rendered as text above sprites', () => {
   assert.match(source, /function _applyActorNameplatePosition/);
   assert.match(source, /const x = Number\(slot\.x\) \+ Number\(slot\.width\) \* 0\.5/);
   assert.match(source, /const y = Number\(slot\.labelY\) \|\| Math\.max\(24, Number\(slot\.y\) - 6\)/);
+  assert.match(source, /const actorElement = document\.createElement\('span'\)/);
   assert.match(source, /const poseClass = slot\.pose \? ` lz-actor--pose-\$\{slot\.pose\}` : ''/);
-  assert.match(source, /image\.className = `lz-actor lz-actor--\$\{actor\.state\}\$\{poseClass\}`/);
+  assert.match(source, /actorElement\.className = `lz-actor lz-actor--\$\{actor\.state\}\$\{poseClass\}`/);
+  assert.match(source, /actorElement\.style\.setProperty\('--lz-sprite-url', `url\("\$\{spriteSrc\}"\)`\)/);
+  assert.match(source, /image\.className = 'lz-actor-img'/);
   assert.match(source, /document\.createElement\('span'\)/);
   assert.match(source, /nameplate\.className = `lz-nameplate lz-nameplate--actor lz-nameplate--\$\{actor\.state\}`/);
   assert.match(source, /nameplate\.textContent = actor\.displayName/);
@@ -55,7 +58,7 @@ test('life zone NPC quest bubble has a stable clickable overlay style', () => {
 
   assert.match(css, /\.lz-npc-quest \{/);
   assert.match(css, /left: calc\(1058 \/ 1672 \* 100%\)/);
-  assert.match(css, /top: calc\(850 \/ 1672 \* 100%\)/);
+  assert.match(css, /top: calc\(760 \/ 1672 \* 100%\)/);
   assert.match(css, /width: clamp\(52px, calc\(168 \/ 1672 \* 100%\), 76px\)/);
   assert.match(css, /display: flex/);
   assert.match(css, /min-height: 0/);
@@ -88,22 +91,27 @@ test('life zone workout poses use scoped motion with reduced motion fallback', (
   const css = readText('style.css');
 
   assert.match(css, /\.lz-actor--pose-workout-lat \{/);
+  assert.match(css, /\.lz-actor-img \{/);
+  assert.match(css, /\.lz-actor--pose-workout-lat::after \{/);
+  assert.match(css, /background-image: var\(--lz-sprite-url\)/);
+  assert.match(css, /clip-path: inset\(25% 4% 38% 14%\)/);
   assert.match(css, /animation: lz-workout-lat-pull 1\.35s ease-in-out infinite/);
   assert.match(css, /\.lz-actor--pose-workout-bench \{/);
   assert.match(css, /animation: lz-workout-bench-press 1\.2s ease-in-out infinite/);
   assert.match(css, /\.lz-actor--pose-workout-squat \{/);
   assert.match(css, /animation: lz-workout-squat-rep 1\.5s ease-in-out infinite/);
   assert.match(css, /@keyframes lz-workout-lat-pull/);
+  assert.doesNotMatch(css, /@keyframes lz-workout-lat-pull \{[^@]*translateY/);
   assert.match(css, /@keyframes lz-workout-bench-press/);
   assert.match(css, /@keyframes lz-workout-squat-rep/);
-  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*\.lz-actor--pose-workout-lat,[\s\S]*\.lz-actor--pose-workout-bench,[\s\S]*\.lz-actor--pose-workout-squat[\s\S]*animation: none;[\s\S]*transform: none;/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*\.lz-actor--pose-workout-lat::after,[\s\S]*\.lz-actor--pose-workout-bench,[\s\S]*\.lz-actor--pose-workout-squat[\s\S]*animation: none;[\s\S]*transform: none;/);
 });
 
 test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () => {
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260627z13-home-overhead-labels/);
+  assert.match(sw, /tomatofarm-v20260627z14-home-trainer-lat-motion/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,

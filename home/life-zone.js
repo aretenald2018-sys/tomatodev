@@ -106,16 +106,21 @@ function _renderActors(card, actors) {
   actors.forEach((actor) => {
     const slot = actor.slot;
     if (!slot) return;
+    const actorElement = document.createElement('span');
     const image = document.createElement('img');
     const poseClass = slot.pose ? ` lz-actor--pose-${slot.pose}` : '';
-    image.className = `lz-actor lz-actor--${actor.state}${poseClass}`;
-    image.src = `${LIFE_ZONE_SPRITE_ROOT}/${actor.sprite}`;
+    const spriteSrc = `${LIFE_ZONE_SPRITE_ROOT}/${actor.sprite}`;
+    actorElement.className = `lz-actor lz-actor--${actor.state}${poseClass}`;
+    actorElement.style.setProperty('--lz-sprite-url', `url("${spriteSrc}")`);
+    _applyActorSlotPosition(actorElement, slot);
+    actorElement.title = `${actor.displayName} · ${actor.speech || STATE_LABELS[actor.state] || '업무'}`;
+    image.className = 'lz-actor-img';
+    image.src = spriteSrc;
     image.alt = '';
     image.loading = 'lazy';
     image.decoding = 'async';
-    _applyActorSlotPosition(image, slot);
-    image.title = `${actor.displayName} · ${actor.speech || STATE_LABELS[actor.state] || '업무'}`;
-    layer.append(image);
+    actorElement.append(image);
+    layer.append(actorElement);
 
     const nameplate = document.createElement('span');
     nameplate.className = `lz-nameplate lz-nameplate--actor lz-nameplate--${actor.state}`;

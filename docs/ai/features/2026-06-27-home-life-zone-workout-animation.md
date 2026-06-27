@@ -167,3 +167,19 @@
   - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>` — deployed `tomatofarm-v20260627z13-home-overhead-labels`
   - PASS: deployed markers — `Math.max(24, Number(slot.y) - 6)`, `top: calc(850 / 1672 * 100%)`, `width: 50%`, `transform: translate(-50%, -100%)`, `.lz-npc-bulb`
   - not verified yet: 인증 세션이 없어 실제 홈 탭 라이프존 UI flow는 직접 조작 미완료
+
+## 회귀 수정 — Trainer Face Clearance + Lat Pull Motion
+
+- `2026-06-27`: 사용자가 트레이너 얼굴을 가리지 말 것과, 랫풀다운 모션이 바를 당기는 동작이 아니라 머신 전체 흔들림처럼 보인다고 보고했다.
+- 수정:
+  - 트레이너 overlay를 `top: calc(760 / 1672 * 100%)`로 더 올려 전구/`트레이너` 라벨이 얼굴을 덮지 않게 한다.
+  - actor 렌더링을 `span.lz-actor > img.lz-actor-img` 구조로 바꾸고 스프라이트 URL을 CSS 변수로 제공한다.
+  - 랫풀다운은 원본 머신 이미지를 고정하고, `::after` 클립 레이어로 바/팔 영역만 작게 당기는 애니메이션을 적용한다.
+  - `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260627z14-home-trainer-lat-motion`으로 갱신한다.
+- 검증:
+  - PASS: `node --check home/life-zone.js; node --check sw.js`
+  - PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/home-life-zone-state.test.js` — 19 tests passed
+  - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
+  - PASS: `git diff --check`
+  - WARN: `node --test tests/*.test.js` — 553 tests 중 552 pass, `tests/workout-picker-gym-rail.test.js`의 기존 운동 피커 CSS rule 탐색 1건 fail. 이번 홈 라이프존 변경 범위와 무관하다.
+  - not verified yet: Dashboard3 Pages 배포 검증은 커밋/푸시 후 실행 필요
