@@ -2,13 +2,14 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_execution`
-- 계획 문서: `docs/ai/features/2026-06-27-running-jogging-entry.md`
-- 현재 단계: `review complete — Running/Jogging Entry Slice 2`
+- 상태: `complete`
+- 계획 문서: `docs/ai/features/2026-06-27-running-session-nike-style.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-27-running-session-nike-style-review.md`
+- 현재 단계: `review complete — Running Session Nike-style Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `2026-06-27 Running/Jogging Entry Slice 2 구현과 리뷰를 완료했다. 리뷰 문서는 docs/ai/reviews/2026-06-27-running-gps-tracker-review.md이며 Finding 없음. 정적 검증, 전체 테스트 567개, runtime asset 검증, Dashboard3 Pages 배포 검증이 통과했다.`
-- 다음 액션: `docs/ai/features/2026-06-27-running-jogging-entry.md의 Slice 3 한국 지도/동네/공원명 요약을 실행한다. Kakao Maps/Local provider key를 설정해 route polyline과 동네/공원명 label을 runPlaceSummary에 채운다.`
-- 차단 사유: `없음. 단, 실제 동네/공원명 자동 표출과 한국 지도 tile/polyline 검증에는 Kakao JavaScript key 또는 동등한 국내 지도 provider key가 필요하다. Dashboard3 인증 계정 실제 GPS permission/UI flow는 not verified yet일 수 있다.`
+- 마지막 완료: `Running Session Nike-style Slice 1 구현과 리뷰를 완료했다. 기존 wt-running-section/wt-run-* inline UI와 workout/running-tracker.js를 제거하고, workout/running-session.js 전용 시작 전/진행 중/결과 요약 화면으로 교체했다. targeted 테스트 10개, 전체 테스트 568개, runtime asset 검증, git diff check 통과.`
+- 다음 액션: `커밋 후 origin/main에 push하고 Dashboard3 Pages 배포 marker와 가능한 브라우저 DOM marker를 확인한다.`
+- 차단 사유: `없음. 단, 인증 계정과 실제 위치 권한이 없으면 배포 URL에서 실제 GPS permission/저장 flow는 not verified yet로 남을 수 있다.`
 
 ## 직전 완료 요약
 

@@ -4,7 +4,6 @@
 
 import { S }              from './state.js';
 import { saveWorkoutDay } from './save.js';
-import { initRunningTracker, renderRunningTracker } from './running-tracker.js';
 import { dateKey, getLastActivitySession } from '../data.js';
 import { showToast }      from '../home/utils.js';
 
@@ -55,67 +54,15 @@ function _renderActivityCopyHint(type, applyCopy) {
 }
 
 // ── 런닝 폼 ─────────────────────────────────────────────────────
+// 2026-06-27: inline 러닝 입력 폼은 전용 running-session 화면으로 대체됨.
 export function _renderRunningForm() {
-  const dist = document.getElementById('wt-run-distance');
-  const durM = document.getElementById('wt-run-duration-min');
-  const durS = document.getElementById('wt-run-duration-sec');
-  const memo = document.getElementById('wt-run-memo');
-  if (dist) dist.value = S.workout.runData.distance || '';
-  if (durM) durM.value = S.workout.runData.durationMin || '';
-  if (durS) durS.value = S.workout.runData.durationSec || '';
-  if (memo) memo.value = S.workout.runData.memo || '';
-  _calcRunPace();
-  renderRunningTracker();
-  _renderActivityCopyHint('running', (last) => {
-    const prev = JSON.parse(JSON.stringify(S.workout.runData || {}));
-    S.workout.runData = {
-      distance: last.distance || 0,
-      durationMin: last.durationMin || 0,
-      durationSec: last.durationSec || 0,
-      memo: last.memo || '',
-    };
-    _renderRunningForm();
-    _afterActivityCopy('runData', prev, _renderRunningForm);
-  });
-}
-
-function _calcRunPace() {
-  const el = document.getElementById('wt-run-pace');
-  if (!el) return;
-  const totalSec = (S.workout.runData.durationMin || 0) * 60 + (S.workout.runData.durationSec || 0);
-  const dist = S.workout.runData.distance || 0;
-  if (dist > 0 && totalSec > 0) {
-    const paceTotal = totalSec / dist;
-    const paceMin = Math.floor(paceTotal / 60);
-    const paceSec = Math.round(paceTotal % 60);
-    el.textContent = `${paceMin}'${String(paceSec).padStart(2,'0')}" /km`;
-  } else {
-    el.textContent = "--'--\"";
-  }
+  // Kept as an exported no-op because load.js still calls all activity renderers.
 }
 
 let _runEventsBound = false;
 export function _initRunningEvents() {
   if (_runEventsBound) return;
   _runEventsBound = true;
-  const dist = document.getElementById('wt-run-distance');
-  const durM = document.getElementById('wt-run-duration-min');
-  const durS = document.getElementById('wt-run-duration-sec');
-  const memo = document.getElementById('wt-run-memo');
-
-  function onRunChange() {
-    S.workout.runData.distance    = parseFloat(dist?.value) || 0;
-    S.workout.runData.durationMin = parseInt(durM?.value) || 0;
-    S.workout.runData.durationSec = parseInt(durS?.value) || 0;
-    S.workout.runData.memo        = memo?.value.trim() || '';
-    _calcRunPace();
-    saveWorkoutDay().catch(e => console.error('Save error:', e));
-  }
-  dist?.addEventListener('change', onRunChange);
-  durM?.addEventListener('change', onRunChange);
-  durS?.addEventListener('change', onRunChange);
-  memo?.addEventListener('change', onRunChange);
-  initRunningTracker({ saveWorkoutDay, renderRunningForm: _renderRunningForm });
 }
 
 // ── 크로스핏 폼 ─────────────────────────────────────────────────

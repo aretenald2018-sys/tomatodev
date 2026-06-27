@@ -60,6 +60,7 @@ import { wtStartWorkoutTimer, wtTogglePauseWorkoutTimer,
 import { _initRestTimerPresets }                   from './timers.js';
 import { _initRunningEvents }                      from './activity-forms.js';
 import { _initTypeFormEvents }                     from './activity-forms.js';
+import { initRunningSession, wtOpenRunningSession, wtHandleRunningSessionBack } from './running-session.js';
 import { confirmAction }                           from '../utils/confirm-modal.js';
 import { S }                                       from './state.js';
 import { dateKey }                                 from '../data.js';
@@ -83,6 +84,8 @@ window.wtTogglePauseWorkoutTimer = wtTogglePauseWorkoutTimer;
 window.wtResetWorkoutTimer = wtResetWorkoutTimer;
 window.wtFinishWorkout = wtFinishWorkout;
 window.wtRecoverTimers = wtRecoverTimers;
+window.wtOpenRunningSession = wtOpenRunningSession;
+window.wtHandleRunningSessionBack = wtHandleRunningSessionBack;
 
 // 운동종료 → 확인 모달 → 실제 타이머 정지/저장 + 주간 인사이트(Scene 13) 모달 연결.
 // 실수 방지를 위해 confirm 모달을 먼저 띄우고, 승인 시에만 종료 흐름을 실행.
@@ -132,3 +135,4 @@ window.wtRemoveFoodItem = wtRemoveFoodItem;
 setTimeout(_initRestTimerPresets, 0);
 setTimeout(_initRunningEvents, 0);
 setTimeout(_initTypeFormEvents, 0);
+setTimeout(initRunningSession, 0);

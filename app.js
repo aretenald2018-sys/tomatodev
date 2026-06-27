@@ -296,7 +296,10 @@ subscribeWorkoutNav((snapshot, action) => {
   _renderWorkoutRoute(snapshot, action).catch(e => console.warn('[app] workout route render failed:', e));
 });
 function _handleWorkoutOverlayBack() {
-  return _currentTab === 'workout' && window.wtHandleExercisePickerBack?.() === true;
+  return _currentTab === 'workout' && (
+    window.wtHandleRunningSessionBack?.() === true ||
+    window.wtHandleExercisePickerBack?.() === true
+  );
 }
 
 function _isWorkoutPullBlockedTarget(target) {

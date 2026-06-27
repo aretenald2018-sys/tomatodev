@@ -390,13 +390,6 @@ function _prepareSave({ syncWorkoutDetails }) {
   _syncMeal('snack',     'wt-meal-snack');
 
   if (syncWorkoutDetails) {
-    // 런닝 폼 최신값 동기화 (운동 명시 저장만)
-    const run = S.workout.runData;
-    run.distance    = parseFloat(document.getElementById('wt-run-distance')?.value) || 0;
-    run.durationMin = parseInt(document.getElementById('wt-run-duration-min')?.value) || 0;
-    run.durationSec = parseInt(document.getElementById('wt-run-duration-sec')?.value) || 0;
-    run.memo        = document.getElementById('wt-run-memo')?.value.trim() || '';
-
     // 활동 flag 자동 파생 (세부 입력 → boolean flag).
     // 식단 자동저장은 호출하지 않음 — 식단 CRUD 가 운동 flag 변경에 관여 금지.
     const derived = deriveActivityFlagsFromDetails(S.workout);

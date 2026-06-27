@@ -2833,10 +2833,7 @@ function _renderPickerCategory(container, ctx) {
       if (activity !== 'running') return;
       wtCloseExercisePicker();
       if (typeof window.wtSwitchType === 'function') window.wtSwitchType('running');
-      else window._wtSetActiveType?.('running');
-      window.requestAnimationFrame?.(() => {
-        document.getElementById('wt-running-section')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
-      });
+      else window.wtOpenRunningSession?.();
     });
   });
 }

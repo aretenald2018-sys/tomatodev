@@ -487,51 +487,6 @@
         <button class="ex-add-bottom-btn" onclick="wtOpenExercisePicker()">+ 종목 추가(선택)</button>
       </div>
 
-      <!-- 런닝/조깅 -->
-      <div class="wt-detail-section" id="wt-running-section">
-        <div class="wt-running-form">
-          <div class="wt-running-header">
-            <span class="sheet-section-label" style="margin-bottom:0">런닝/조깅</span>
-            <span class="wt-running-pace" id="wt-run-pace">--'--"</span>
-          </div>
-          <div class="wt-activity-copy-row" id="wt-running-last-copy" style="display:none"></div>
-          <div class="wt-running-gps" id="wt-running-gps">
-            <div class="wt-running-gps-head">
-              <div>
-                <span class="wt-running-gps-kicker">GPS 기록</span>
-                <strong id="wt-run-gps-status">GPS 대기</strong>
-              </div>
-              <span class="wt-running-gps-chip is-pending" id="wt-run-place-label">장소 확인 대기</span>
-            </div>
-            <div class="wt-running-gps-actions">
-              <button type="button" class="wt-running-gps-btn wt-running-gps-btn--primary" id="wt-run-gps-primary">GPS 시작</button>
-              <button type="button" class="wt-running-gps-btn" id="wt-run-gps-pause" disabled>일시정지</button>
-            </div>
-            <div class="wt-running-route-preview" id="wt-run-route-preview" aria-live="polite"></div>
-          </div>
-          <div class="wt-running-row">
-            <span class="wt-running-label">거리</span>
-            <div class="wt-running-input-wrap">
-              <input class="wt-running-input" id="wt-run-distance" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0">
-              <span class="wt-running-unit">km</span>
-            </div>
-          </div>
-          <div class="wt-running-row">
-            <span class="wt-running-label">시간</span>
-            <div class="wt-running-input-wrap">
-              <input class="wt-running-input wt-running-input--sm" id="wt-run-duration-min" type="number" inputmode="numeric" min="0" step="1" placeholder="0">
-              <span class="wt-running-unit">분</span>
-              <input class="wt-running-input wt-running-input--sm" id="wt-run-duration-sec" type="number" inputmode="numeric" min="0" max="59" step="1" placeholder="0">
-              <span class="wt-running-unit">초</span>
-            </div>
-          </div>
-          <div class="wt-running-row wt-running-row--memo">
-            <span class="wt-running-label">메모</span>
-            <input class="wt-running-input wt-running-input--full" id="wt-run-memo" type="text" placeholder="예: 한강 5km 조깅">
-          </div>
-        </div>
-      </div>
-
       <!-- 메모 + 인증사진 -->
       <div class="wt-detail-section" id="wt-memo-section">
         <textarea class="memo-input" id="wt-workout-memo" placeholder="운동 메모 (예: 벤치 컨디션 좋았음..)"></textarea>
@@ -557,6 +512,7 @@
   </div>
 
   <div id="wt-exercise-detail-root" class="wt-exercise-detail-root" aria-live="polite"></div>
+  <div id="wt-running-session-root" class="wt-running-session-root" aria-live="polite"></div>
 
 </div>
 

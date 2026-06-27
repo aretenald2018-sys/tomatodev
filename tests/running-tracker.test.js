@@ -2,11 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  buildRunningRouteSvg,
+  buildRunningSessionRouteSvg,
   downsampleRunningRoute,
+  formatRunningDuration,
+  formatRunningPace,
   runningRouteDistanceMeters,
   summarizeRunningRoute,
-} from '../workout/running-tracker.js';
+} from '../workout/running-session.js';
 
 const route = [
   { lat: 37.5209, lng: 126.9770, accuracy: 8, ts: 1000 },
@@ -19,7 +21,7 @@ test('running route distance uses haversine meters', () => {
   assert.ok(meters > 360 && meters < 420, `unexpected meters=${meters}`);
 });
 
-test('running route summary stores distance, duration, bbox, centroid, and pace', () => {
+test('running session route summary stores distance, duration, bbox, centroid, and pace', () => {
   const summary = summarizeRunningRoute(route, { startedAt: 1000, endedAt: 181000, pausedMs: 60000 });
 
   assert.equal(summary.source, 'gps');
@@ -36,7 +38,7 @@ test('running route summary stores distance, duration, bbox, centroid, and pace'
   assert.equal(summary.gpsAccuracySummary.avgAccuracyM, 10);
 });
 
-test('running route preview downsamples and renders an svg route', () => {
+test('running session route preview downsamples and renders an svg route', () => {
   const many = Array.from({ length: 300 }, (_, i) => ({
     lat: 37.52 + i * 0.00001,
     lng: 126.97 + i * 0.00002,
@@ -45,8 +47,15 @@ test('running route preview downsamples and renders an svg route', () => {
   }));
 
   assert.equal(downsampleRunningRoute(many).length, 240);
-  const svg = buildRunningRouteSvg(route);
-  assert.match(svg, /wt-running-route-svg/);
+  const svg = buildRunningSessionRouteSvg(route);
+  assert.match(svg, /wt-running-session-route-svg/);
   assert.match(svg, /polyline/);
-  assert.match(svg, /circle class="end"/);
+  assert.match(svg, /class="end"/);
+});
+
+test('running session formats elapsed time and pace like running apps', () => {
+  assert.equal(formatRunningDuration(2), '00:02');
+  assert.equal(formatRunningDuration(1048), '17:28');
+  assert.equal(formatRunningPace(403), "6'43''");
+  assert.equal(formatRunningPace(0), "--'--''");
 });

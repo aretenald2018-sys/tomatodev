@@ -220,7 +220,7 @@ export function loadWorkoutDate(y, m, d) {
   _renderDateLabel();
   _renderStretchingToggle();
   document.getElementById('wt-chip-swimming')?.classList.toggle('active', w.swimming);
-  document.getElementById('wt-chip-running')?.classList.toggle('active', w.running);
+  document.getElementById('wt-chip-running')?.classList.toggle('has-record', w.running);
   _renderRunningForm();
   _renderCfForm();
   _renderStretchForm();
@@ -289,6 +289,7 @@ function _restoreFlowState(day) {
     const firstWithRecord = Object.entries(flags).find(([, on]) => on);
     if (firstWithRecord) active = firstWithRecord[0];
   }
+  if (active === 'running') active = 'gym';
   if (window._wtSetActiveType) window._wtSetActiveType(active);
 
   // 2026-04-20: 타이머 바는 운동 탭에 있는 동안 **항상** 노출.
