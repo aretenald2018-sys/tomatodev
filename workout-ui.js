@@ -18,6 +18,7 @@ let _wtActiveType = 'gym';
 
 const _WT_TYPE_SECTIONS = {
   gym: 'wt-gym-section',
+  running: 'wt-running-section',
 };
 
 function _applyActive(type) {

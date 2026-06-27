@@ -415,6 +415,7 @@
       <div class="wt-type-section" id="wt-type-section">
         <div class="wt-type-tabs" id="wt-type-tabs-bar">
           <button class="wt-type-tab active" id="wt-chip-gym" onclick="wtSwitchType('gym')">🏋️ 헬스</button>
+          <button class="wt-type-tab" id="wt-chip-running" onclick="wtSwitchType('running')">🏃 런닝/조깅</button>
         </div>
       </div>
 
@@ -484,6 +485,37 @@
         </div>
         <div id="wt-exercise-list" style="margin-top:8px;"></div>
         <button class="ex-add-bottom-btn" onclick="wtOpenExercisePicker()">+ 종목 추가(선택)</button>
+      </div>
+
+      <!-- 런닝/조깅 -->
+      <div class="wt-detail-section" id="wt-running-section">
+        <div class="wt-running-form">
+          <div class="wt-running-header">
+            <span class="sheet-section-label" style="margin-bottom:0">런닝/조깅</span>
+            <span class="wt-running-pace" id="wt-run-pace">--'--"</span>
+          </div>
+          <div class="wt-activity-copy-row" id="wt-running-last-copy" style="display:none"></div>
+          <div class="wt-running-row">
+            <span class="wt-running-label">거리</span>
+            <div class="wt-running-input-wrap">
+              <input class="wt-running-input" id="wt-run-distance" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0">
+              <span class="wt-running-unit">km</span>
+            </div>
+          </div>
+          <div class="wt-running-row">
+            <span class="wt-running-label">시간</span>
+            <div class="wt-running-input-wrap">
+              <input class="wt-running-input wt-running-input--sm" id="wt-run-duration-min" type="number" inputmode="numeric" min="0" step="1" placeholder="0">
+              <span class="wt-running-unit">분</span>
+              <input class="wt-running-input wt-running-input--sm" id="wt-run-duration-sec" type="number" inputmode="numeric" min="0" max="59" step="1" placeholder="0">
+              <span class="wt-running-unit">초</span>
+            </div>
+          </div>
+          <div class="wt-running-row wt-running-row--memo">
+            <span class="wt-running-label">메모</span>
+            <input class="wt-running-input wt-running-input--full" id="wt-run-memo" type="text" placeholder="예: 한강 5km 조깅">
+          </div>
+        </div>
       </div>
 
       <!-- 메모 + 인증사진 -->

@@ -2293,6 +2293,31 @@ const PICKER_MUSCLE_ASSETS = {
   abs: './assets/workout/muscles/abs.png',
 };
 
+function _pickerRunningFigureHtml() {
+  return `
+    <span class="ex-picker-activity-figure" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false">
+        <circle cx="15.5" cy="4.5" r="2.2"></circle>
+        <path d="M11.7 8.2 8.8 11l3.1 2.8 1.9 5.2"></path>
+        <path d="M12 8.1 16 10l2.5 2.6"></path>
+        <path d="M9.4 12.2 6.5 15.6 3.8 19"></path>
+        <path d="M13.5 18.7 17 20.5"></path>
+      </svg>
+    </span>
+  `;
+}
+
+function _renderPickerActivityTiles() {
+  const hasRunning = !!S?.workout?.running;
+  return `
+    <button type="button" class="ex-picker-muscle-tile ex-picker-activity-tile" data-picker-activity="running" style="--picker-muscle:#217cf9">
+      ${_pickerRunningFigureHtml()}
+      <span class="ex-picker-muscle-name">런닝/조깅</span>
+      <span class="ex-picker-muscle-count">${hasRunning ? '기록' : '러닝'}</span>
+    </button>
+  `;
+}
+
 function _pickerMuscleFigureHtml(muscleId) {
   const safeId = _escPicker(muscleId);
   const asset = PICKER_MUSCLE_ASSETS[muscleId];
@@ -2789,7 +2814,7 @@ function _renderPickerCategory(container, ctx) {
         <button type="button" class="ex-picker-rail-action" data-picker-action="manage-gyms" data-picker-gym-manage="${_escPicker(manageGymId || '')}">헬스장 관리</button>
       </aside>
       <section class="ex-picker-muscle-panel" aria-label="부위 분류">
-        ${tiles || '<div class="ex-picker-empty">등록된 종목이 없어요</div>'}
+        ${tiles}${_renderPickerActivityTiles()}
       </section>
     </div>
   `;
@@ -2801,6 +2826,18 @@ function _renderPickerCategory(container, ctx) {
   });
   container.querySelectorAll('[data-picker-muscle]').forEach(btn => {
     btn.addEventListener('click', () => _openPickerList('all', btn.getAttribute('data-picker-muscle'), { preserveGymScope: true }));
+  });
+  container.querySelectorAll('[data-picker-activity]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const activity = btn.getAttribute('data-picker-activity');
+      if (activity !== 'running') return;
+      wtCloseExercisePicker();
+      if (typeof window.wtSwitchType === 'function') window.wtSwitchType('running');
+      else window._wtSetActiveType?.('running');
+      window.requestAnimationFrame?.(() => {
+        document.getElementById('wt-running-section')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      });
+    });
   });
 }
 

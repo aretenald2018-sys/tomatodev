@@ -2,13 +2,13 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-27-home-life-zone-workout-animation.md`
-- 현재 단계: `complete — Home Life Zone Overhead Labels`
-- 작업 브랜치: `codex/home-overhead-labels`
-- 마지막 완료: `2026-06-27 Home Life Zone 트레이너 라벨을 얼굴 위로 더 올리고, 랫풀다운은 전체 머신 흔들림 대신 바/팔 클립 레이어만 움직이도록 구현했다. Dashboard3 Pages commit 2094a54 배포와 deployed marker 검증까지 완료했다. cache marker는 tomatofarm-v20260627z14-home-trainer-lat-motion이다.`
-- 다음 액션: `인증 계정이 있으면 홈 탭 라이프존에서 트레이너 얼굴이 가려지지 않는지, 랫풀다운 머신 전체가 흔들리지 않는지 실제 UI flow로 확인한다.`
-- 차단 사유: `없음`
+- 상태: `ready_for_execution`
+- 계획 문서: `docs/ai/features/2026-06-27-running-jogging-entry.md`
+- 현재 단계: `review complete — Running/Jogging Entry Slice 1`
+- 작업 브랜치: `codex/home-image-rendering-nameplates`
+- 마지막 완료: `2026-06-27 Running/Jogging Entry Slice 1 구현과 리뷰를 완료했다. 리뷰 문서는 docs/ai/reviews/2026-06-27-running-jogging-entry-review.md이며 Finding 없음. 정적 검증, 전체 테스트 558개, runtime asset 검증이 통과했다.`
+- 다음 액션: `docs/ai/features/2026-06-27-running-jogging-entry.md의 Slice 2 Foreground GPS 러닝 트래커를 실행한다. 앱 화면을 켜 둔 상태에서 시작/일시정지/종료로 거리와 시간을 자동 기록하고, 키 없이도 route preview를 볼 수 있게 한다.`
+- 차단 사유: `없음. 단, Dashboard3 Pages 배포와 인증 계정 실제 UI flow는 아직 not verified yet이며, Slice 3 실제 한국 지도/장소명 검증에는 Kakao JavaScript key 또는 동등한 국내 지도 provider key가 필요하다.`
 
 ## 직전 완료 요약
 

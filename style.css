@@ -5422,6 +5422,34 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   display: block;
   object-fit: contain;
 }
+.ex-picker-activity-figure {
+  width: 60px;
+  height: 50px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: rgba(33, 124, 249, 0.08);
+  color: #217cf9;
+}
+.ex-picker-activity-figure svg {
+  width: 34px;
+  height: 34px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ex-picker-activity-figure circle {
+  fill: currentColor;
+  stroke: none;
+}
+.ex-picker-activity-tile .ex-picker-muscle-name {
+  color: #217cf9;
+}
+.ex-picker-activity-tile .ex-picker-muscle-count {
+  color: var(--seed-fg-muted, var(--text-secondary));
+}
 .ex-picker-muscle-figure::before,
 .ex-picker-muscle-figure::after {
   content: '';
@@ -5972,11 +6000,18 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   box-shadow: var(--seed-s1);
   display: flex; flex-direction: column; gap: var(--seed-x3);
 }
+.wt-running-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--seed-x2);
+}
 .wt-running-row {
   display: flex; align-items: center; gap: var(--seed-x2);
   padding: var(--seed-x1) 0;
   border-bottom: 1px solid var(--seed-stroke-neutral);
 }
+.wt-running-row--memo { align-items: flex-start; }
 .wt-running-row:last-child { border-bottom: none; }
 .wt-running-label {
   font-size: var(--seed-t3); font-weight: 500; color: var(--seed-fg-muted);
@@ -6004,6 +6039,14 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 .wt-running-pace {
   font-size: var(--seed-t5); font-weight: 400; color: var(--seed-fg-neutral);
   font-variant-numeric: tabular-nums;
+}
+@media (max-width: 380px) {
+  .wt-running-row {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr);
+  }
+  .wt-running-label { min-width: 0; }
+  .wt-running-input-wrap { min-width: 0; flex-wrap: wrap; }
 }
 
 /* ── 식단 탭 Seed 적용 ── */
