@@ -41,7 +41,7 @@
 - PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 568 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=842`
 - PASS: `git diff --cached --check; git diff --check`
-- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ af51e0e` — `[deploy-verify] ok af51e0ecfe35 tomatofarm-v20260627z17-running-session static=220`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <pushed commit>` — `tomatofarm-v20260627z17-running-session static=220`
 - PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ ...`
   - `sw.js::tomatofarm-v20260627z17-running-session`
   - `sw.js::workout/running-session.js`
