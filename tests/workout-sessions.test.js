@@ -44,6 +44,30 @@ test('upsertWorkoutSession stores selected session and aggregates top-level fiel
   assert.match(out.aggregate.memo, /2회차: 저녁 운동/);
 });
 
+test('upsertWorkoutSession preserves running GPS route metadata', () => {
+  const route = [
+    { lat: 37.5209, lng: 126.977, ts: 1000, accuracy: 8 },
+    { lat: 37.5215, lng: 126.979, ts: 61000, accuracy: 10 },
+  ];
+  const out = upsertWorkoutSession({}, {
+    running: true,
+    runDistance: 0.2,
+    runDurationMin: 1,
+    runSource: 'gps',
+    runRoute: route,
+    runRouteSummary: { source: 'gps', pointCount: 2, distanceKm: 0.2 },
+    runPlaceSummary: { status: 'pending_provider', label: '장소 확인 대기' },
+    runGpsAccuracySummary: { avgAccuracyM: 9 },
+  }, 0, { now: 1 });
+
+  assert.equal(hasWorkoutSessionData(out.workoutSessions[0]), true);
+  assert.equal(out.aggregate.runSource, 'gps');
+  assert.deepEqual(out.aggregate.runRoute, route);
+  assert.equal(out.aggregate.runRouteSummary.pointCount, 2);
+  assert.equal(out.aggregate.runPlaceSummary.label, '장소 확인 대기');
+  assert.equal(out.aggregate.runGpsAccuracySummary.avgAccuracyM, 9);
+});
+
 test('deleteWorkoutSession removes selected session and rebuilds aggregate', () => {
   const day = {
     workoutSessions: [

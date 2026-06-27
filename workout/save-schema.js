@@ -16,6 +16,8 @@ export const WORKOUT_PAYLOAD_KEYS = Object.freeze([
   'lifeZoneWorkoutActivity', 'lifeZoneLastActivity',
   'exercises', 'cf', 'stretching', 'swimming', 'running',
   'runDistance', 'runDurationMin', 'runDurationSec', 'runMemo',
+  'runSource', 'runStartedAt', 'runEndedAt', 'runRoute', 'runRouteSummary',
+  'runPlaceSummary', 'runAvgPaceSecPerKm', 'runGpsAccuracySummary',
   'cfWod', 'cfDurationMin', 'cfDurationSec', 'cfMemo',
   'stretchDuration', 'stretchMemo',
   'swimDistance', 'swimDurationMin', 'swimDurationSec', 'swimStroke', 'swimMemo',

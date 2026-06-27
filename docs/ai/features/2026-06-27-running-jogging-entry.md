@@ -124,21 +124,39 @@
 
 ### Slice 2. Foreground GPS 러닝 트래커
 
+- 상태: completed
 - 목표: 사용자가 앱 화면을 켜 둔 상태에서 시작/일시정지/종료로 거리와 시간을 자동 기록하고, 키 없이도 route preview를 볼 수 있다.
 - 예상 변경:
   - `workout/running-tracker.js` 신규
   - `workout/activity-forms.js`: 시작/일시정지/종료 UI event binding
   - `workout/save.js`, `workout/save-schema.js`: GPS 확장 필드 추가
-  - `calc.js`: GPS 거리/시간 기반 pace/calorie 보정
-  - `workout/running-map.js` 신규: SDK 없는 fallback route preview, route downsample, bbox/centroid 계산
+  - `calc.js`: route-only GPS 기록도 운동 성공으로 판정
+  - `workout/running-tracker.js`: SDK 없는 fallback route preview, route downsample, bbox/centroid 계산
   - `sw.js`: `CACHE_VERSION` bump
 - 제외:
   - 앱 종료/백그라운드 추적 보장
   - 외부 앱 import
+  - Kakao/Naver 지도 provider 기반 동네/공원명 자동 해석
 - 검증:
   - 위치 권한 거부/허용/중단 상태 테스트
   - mock coordinate 기반 거리 계산 단위 테스트
   - Dashboard3 Pages 또는 Capacitor 실기기에서 시작/종료 저장 flow 확인
+- 구현:
+  - `index.html`: 러닝 폼에 `GPS 시작`/`일시정지`/route preview/place label 영역 추가.
+  - `workout/running-tracker.js`: foreground `navigator.geolocation.watchPosition()` 기반 시작/일시정지/종료, haversine 거리, duration, pace, downsampled route, bbox/centroid, SVG route preview 구현.
+  - `workout/activity-forms.js`: tracker render/init 연결.
+  - `workout/save.js`, `workout/save-schema.js`, `workout/load.js`, `workout/sessions.js`, `workout/timers.js`, `data/data-load.js`: `runRoute`, `runRouteSummary`, `runPlaceSummary`, `runSource`, GPS accuracy/pace 필드 저장·복원·draft 보존.
+  - `calc.js`, `data/data-pure.js`, `workout/cross-domain.js`: route-only 러닝 기록 판정 보완.
+  - `style.css`: GPS 패널, 장소 badge, route SVG preview 스타일.
+  - `sw.js`: `CACHE_VERSION`을 `tomatofarm-v20260627z16-running-gps`로 bump하고 `./workout/running-tracker.js`를 `STATIC_ASSETS`에 추가.
+  - `tests/running-tracker.test.js`, `tests/running-entry.test.js`, `tests/workout-sessions.test.js`, `tests/save-schema.test.js`, `tests/data.load-save.test.js`, `tests/calc.record.test.js`: GPS 계산/저장/판정 회귀 테스트 추가.
+- 실행 검증:
+  - PASS: `node --check workout/running-tracker.js; node --check workout/activity-forms.js; node --check workout/save.js; node --check workout/load.js; node --check workout/sessions.js; node --check calc.js`
+  - PASS: `node --test tests/running-tracker.test.js tests/running-entry.test.js tests/workout-sessions.test.js tests/save-schema.test.js tests/data.load-save.test.js tests/calc.record.test.js` — 137 tests passed.
+  - PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 567 tests passed.
+  - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=839`.
+  - PASS: `git diff --check; git diff --cached --check`.
+  - not verified yet: 인증 계정과 실제 위치 권한이 필요해 Dashboard3 Pages에서 GPS permission/UI flow는 직접 확인하지 못했다.
 
 ### Slice 3. 한국 지도/동네/공원명 요약
 
@@ -147,7 +165,7 @@
   - `workout/running-map.js`: Kakao Maps SDK lazy loader, `Polyline`, bounds fit
   - `workout/running-place.js` 신규: Kakao Local/Maps services 기반 region/place resolver
   - `config.js` 또는 별도 runtime config: public Kakao JavaScript key 설정 지점
-  - `workout/save.js`, `workout/save-schema.js`: `runPlaceLabel`, `runRegionLabel`, `runMapProvider`, `runMapSnapshotMeta`
+  - `workout/save.js`, `workout/save-schema.js`: `runPlaceSummary`를 실제 provider 결과로 채우는 경로
   - `style.css`: 지도 카드, 장소 badge, API 설정 필요 fallback 상태
   - `sw.js`: `CACHE_VERSION` bump
 - 장소명 정책:
@@ -212,4 +230,4 @@
 
 ## 다음 세션 시작 기준
 
-Slice 1 실행이 완료되었으므로 다음 세션은 리뷰 세션으로 시작한다. 리뷰 통과 후 Slice 2 `Foreground GPS 러닝 트래커`를 진행한다. 한국 지도/동네/공원명은 Slice 3에서 구현하며, Kakao key가 없는 현재 환경에서는 Slice 3의 실제 지도/장소명 검증이 제한된다.
+Slice 2 실행이 완료되었으므로 다음 세션은 리뷰 세션으로 시작한다. 리뷰 통과 후 Slice 3 `한국 지도/동네/공원명 요약`을 진행한다. 실제 지도/장소명 검증에는 Kakao JavaScript key 또는 동등한 국내 지도 provider key가 필요하다.

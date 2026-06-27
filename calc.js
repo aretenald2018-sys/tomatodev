@@ -231,6 +231,7 @@ export function isExerciseDaySuccess(dayData) {
   if (hasCompletedSet) return true;
   if (w.cf || w.swimming || w.running || w.stretching) return true;
   if ((w.runDistance || 0) > 0 || (w.runDurationMin || 0) > 0 || (w.runDurationSec || 0) > 0) return true;
+  if ((w.runRoute || []).length > 0 || (w.runRouteSummary?.pointCount || 0) > 0) return true;
   if ((w.swimDistance || 0) > 0 || (w.swimDurationMin || 0) > 0 || (w.swimDurationSec || 0) > 0) return true;
   if ((w.swimStroke || '').toString().trim()) return true;
   if ((w.cfDurationMin || 0) > 0 || (w.cfDurationSec || 0) > 0) return true;

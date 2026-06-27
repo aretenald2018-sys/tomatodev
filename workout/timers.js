@@ -186,6 +186,7 @@ function _sessionHasDraftData(session = {}, draft = {}) {
   if (draft.workoutStartTime) return true;
   if (session.cf || session.stretching || session.swimming || session.running) return true;
   if (Number(session.runDistance) > 0 || Number(session.runDurationMin) > 0 || Number(session.runDurationSec) > 0) return true;
+  if (Array.isArray(session.runRoute) && session.runRoute.length > 0) return true;
   if (Number(session.cfDurationMin) > 0 || Number(session.cfDurationSec) > 0 || String(session.cfWod || '').trim()) return true;
   if (Number(session.stretchDuration) > 0 || String(session.stretchMemo || '').trim()) return true;
   if (Number(session.swimDistance) > 0 || Number(session.swimDurationMin) > 0 || Number(session.swimDurationSec) > 0) return true;
@@ -209,6 +210,14 @@ function _activeWorkoutSessionDraftPayload(memo) {
     runDurationMin: Number(w.runData?.durationMin) || 0,
     runDurationSec: Number(w.runData?.durationSec) || 0,
     runMemo: String(w.runData?.memo || ''),
+    runSource: String(w.runData?.source || 'manual'),
+    runStartedAt: w.runData?.startedAt || null,
+    runEndedAt: w.runData?.endedAt || null,
+    runRoute: _cloneJson(w.runData?.route, []),
+    runRouteSummary: _cloneJson(w.runData?.routeSummary, null),
+    runPlaceSummary: _cloneJson(w.runData?.placeSummary, null),
+    runAvgPaceSecPerKm: Number(w.runData?.avgPaceSecPerKm) || 0,
+    runGpsAccuracySummary: _cloneJson(w.runData?.gpsAccuracySummary, null),
     cfWod: String(w.cfData?.wod || ''),
     cfDurationMin: Number(w.cfData?.durationMin) || 0,
     cfDurationSec: Number(w.cfData?.durationSec) || 0,

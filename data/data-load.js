@@ -56,6 +56,8 @@ const _TWIN_WORKOUT_FIELDS = [
   'workoutSessions',
   'exercises', 'cf', 'swimming', 'running', 'stretching',
   'runDistance', 'runDurationMin', 'runDurationSec', 'runMemo',
+  'runSource', 'runStartedAt', 'runEndedAt', 'runRoute', 'runRouteSummary',
+  'runPlaceSummary', 'runAvgPaceSecPerKm', 'runGpsAccuracySummary',
   'swimDistance', 'swimDurationMin', 'swimDurationSec', 'swimStroke', 'swimMemo',
   'cfWod', 'cfDurationMin', 'cfDurationSec', 'cfMemo',
   'stretchDuration', 'stretchMemo',

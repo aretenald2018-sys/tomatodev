@@ -5,6 +5,8 @@
 export const WORKOUT_SESSION_KEYS = Object.freeze([
   'exercises', 'cf', 'stretching', 'swimming', 'running',
   'runDistance', 'runDurationMin', 'runDurationSec', 'runMemo',
+  'runSource', 'runStartedAt', 'runEndedAt', 'runRoute', 'runRouteSummary',
+  'runPlaceSummary', 'runAvgPaceSecPerKm', 'runGpsAccuracySummary',
   'cfWod', 'cfDurationMin', 'cfDurationSec', 'cfMemo',
   'stretchDuration', 'stretchMemo',
   'swimDistance', 'swimDurationMin', 'swimDurationSec', 'swimStroke', 'swimMemo',
@@ -53,6 +55,14 @@ export function emptyWorkoutSession(index = 0) {
     runDurationMin: 0,
     runDurationSec: 0,
     runMemo: '',
+    runSource: 'manual',
+    runStartedAt: null,
+    runEndedAt: null,
+    runRoute: [],
+    runRouteSummary: null,
+    runPlaceSummary: null,
+    runAvgPaceSecPerKm: 0,
+    runGpsAccuracySummary: null,
     cfWod: '',
     cfDurationMin: 0,
     cfDurationSec: 0,
@@ -104,6 +114,7 @@ export function hasWorkoutSessionData(session = {}) {
   if (s.exercises.some(_hasActualWorkoutEntry)) return true;
   if (s.cf || s.stretching || s.swimming || s.running) return true;
   if (_num(s.runDistance) > 0 || _num(s.runDurationMin) > 0 || _num(s.runDurationSec) > 0) return true;
+  if (Array.isArray(s.runRoute) && s.runRoute.length > 0) return true;
   if (_num(s.cfDurationMin) > 0 || _num(s.cfDurationSec) > 0 || _str(s.cfWod)) return true;
   if (_num(s.stretchDuration) > 0 || _str(s.stretchMemo)) return true;
   if (_num(s.swimDistance) > 0 || _num(s.swimDurationMin) > 0 || _num(s.swimDurationSec) > 0) return true;
@@ -178,6 +189,8 @@ export function aggregateWorkoutSessions(sessions = []) {
   const cfDur = _sumDurationMinSec(active, 'cfDurationMin', 'cfDurationSec');
   const swimDur = _sumDurationMinSec(active, 'swimDurationMin', 'swimDurationSec');
   const firstWith = (key) => active.find(session => session[key])?.[key] ?? null;
+  const firstRunRoute = active.find(session => Array.isArray(session.runRoute) && session.runRoute.length > 0)?.runRoute || [];
+  const firstRunSource = active.find(session => session.runSource && session.runSource !== 'manual')?.runSource || firstWith('runSource') || 'manual';
   return {
     exercises: active.flatMap(session => _clone(session.exercises || [])),
     cf: active.some(session => !!session.cf),
@@ -188,6 +201,14 @@ export function aggregateWorkoutSessions(sessions = []) {
     runDurationMin: runDur.min,
     runDurationSec: runDur.sec,
     runMemo: _joinMemos(active, 'runMemo'),
+    runSource: firstRunSource,
+    runStartedAt: firstWith('runStartedAt'),
+    runEndedAt: firstWith('runEndedAt'),
+    runRoute: firstRunRoute,
+    runRouteSummary: firstWith('runRouteSummary'),
+    runPlaceSummary: firstWith('runPlaceSummary'),
+    runAvgPaceSecPerKm: firstWith('runAvgPaceSecPerKm') || 0,
+    runGpsAccuracySummary: firstWith('runGpsAccuracySummary'),
     cfWod: active.map(session => _str(session.cfWod)).filter(Boolean).join('\n'),
     cfDurationMin: cfDur.min,
     cfDurationSec: cfDur.sec,

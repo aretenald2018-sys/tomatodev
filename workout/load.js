@@ -137,6 +137,14 @@ export function loadWorkoutDate(y, m, d) {
     durationMin: workoutSource.runDurationMin || 0,
     durationSec: workoutSource.runDurationSec || 0,
     memo:        workoutSource.runMemo || '',
+    source:      workoutSource.runSource || 'manual',
+    startedAt:   workoutSource.runStartedAt || null,
+    endedAt:     workoutSource.runEndedAt || null,
+    route:       Array.isArray(workoutSource.runRoute) ? workoutSource.runRoute : [],
+    routeSummary: workoutSource.runRouteSummary || null,
+    placeSummary: workoutSource.runPlaceSummary || null,
+    avgPaceSecPerKm: Number(workoutSource.runAvgPaceSecPerKm) || 0,
+    gpsAccuracySummary: workoutSource.runGpsAccuracySummary || null,
   };
   w.cfData = {
     wod:         workoutSource.cfWod || '',

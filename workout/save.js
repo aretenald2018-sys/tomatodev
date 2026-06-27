@@ -90,16 +90,25 @@ function _buildWorkoutPayload(cleanEx, isDietSuccess) {
   const workoutTimeline = buildWorkoutSetTimeline(cleanEx, w.workoutDuration);
   w.workoutTimeline = workoutTimeline;
   w.workoutDuration = workoutTimeline.durationSec;
+  const run = w.runData || {};
   return {
     exercises:  cleanEx,
     cf:         w.cf,
     stretching: w.stretching,
     swimming:   w.swimming,
     running:    w.running,
-    runDistance:    w.runData.distance,
-    runDurationMin: w.runData.durationMin,
-    runDurationSec: w.runData.durationSec,
-    runMemo:       w.runData.memo,
+    runDistance:    run.distance,
+    runDurationMin: run.durationMin,
+    runDurationSec: run.durationSec,
+    runMemo:        run.memo,
+    runSource:      run.source || (Array.isArray(run.route) && run.route.length ? 'gps' : 'manual'),
+    runStartedAt:   run.startedAt || null,
+    runEndedAt:     run.endedAt || null,
+    runRoute:       Array.isArray(run.route) ? run.route : [],
+    runRouteSummary: run.routeSummary || null,
+    runPlaceSummary: run.placeSummary || null,
+    runAvgPaceSecPerKm: Number(run.avgPaceSecPerKm) || 0,
+    runGpsAccuracySummary: run.gpsAccuracySummary || null,
     cfWod:         w.cfData.wod,
     cfDurationMin: w.cfData.durationMin,
     cfDurationSec: w.cfData.durationSec,

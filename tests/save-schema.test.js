@@ -48,7 +48,8 @@ const WORKOUT_ONLY_SAMPLES = [
   'workoutSessions',
   'lifeZoneWorkoutActivity',
   'exercises', 'cf', 'swimming', 'running', 'stretching',
-  'runDistance', 'cfWod', 'swimStroke', 'stretchDuration',
+  'runDistance', 'runRoute', 'runPlaceSummary', 'runGpsAccuracySummary',
+  'cfWod', 'swimStroke', 'stretchDuration',
   'workoutDuration', 'workoutTimeline', 'wine_free', 'memo',
   'workoutPhoto', 'gymId', 'pickerGymFilter', 'routineMeta', 'maxMeta',
 ];

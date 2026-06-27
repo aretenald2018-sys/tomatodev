@@ -6040,6 +6040,127 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   font-size: var(--seed-t5); font-weight: 400; color: var(--seed-fg-neutral);
   font-variant-numeric: tabular-nums;
 }
+.wt-running-gps {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--seed-stroke-neutral, var(--border));
+  border-radius: var(--seed-r2);
+  background: var(--seed-bg-neutral-weak, var(--surface2));
+}
+.wt-running-gps-head {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.wt-running-gps-kicker {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--seed-fg-muted, var(--text-secondary));
+  font-size: 11px;
+  font-weight: 700;
+}
+#wt-run-gps-status {
+  display: block;
+  color: var(--seed-fg-neutral, var(--text));
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+.wt-running-gps-chip {
+  max-width: 44%;
+  padding: 5px 8px;
+  border-radius: var(--seed-r-full);
+  background: #e9f5ee;
+  color: #176b3a;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+.wt-running-gps-chip.is-pending {
+  background: var(--seed-bg-layer, var(--surface));
+  color: var(--seed-fg-muted, var(--text-secondary));
+  border: 1px solid var(--seed-stroke-weak, var(--border));
+}
+.wt-running-gps-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(88px, 0.44fr);
+  gap: 8px;
+}
+.wt-running-gps-btn {
+  min-width: 0;
+  min-height: 38px;
+  border: 1px solid var(--seed-stroke-neutral, var(--border));
+  border-radius: var(--seed-r2);
+  background: var(--seed-bg-layer, var(--surface));
+  color: var(--seed-fg-neutral, var(--text));
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.wt-running-gps-btn--primary {
+  border-color: transparent;
+  background: var(--primary);
+  color: #fff;
+}
+.wt-running-gps-btn--primary.is-running {
+  background: #202632;
+}
+.wt-running-gps-btn:disabled {
+  opacity: 0.48;
+  cursor: default;
+}
+.wt-running-gps-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.wt-running-route-preview {
+  min-height: 86px;
+  display: grid;
+  gap: 6px;
+}
+.wt-running-route-empty {
+  min-height: 70px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--seed-stroke-neutral, var(--border));
+  border-radius: var(--seed-r2);
+  color: var(--seed-fg-muted, var(--text-secondary));
+  font-size: 12px;
+  font-weight: 700;
+}
+.wt-running-route-svg {
+  width: 100%;
+  height: 86px;
+  display: block;
+}
+.wt-running-route-svg rect {
+  fill: var(--seed-bg-layer, var(--surface));
+  stroke: var(--seed-stroke-neutral, var(--border));
+}
+.wt-running-route-svg polyline {
+  fill: none;
+  stroke: #217cf9;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.wt-running-route-svg circle {
+  fill: #22a06b;
+}
+.wt-running-route-svg circle.end {
+  fill: var(--primary);
+}
+.wt-running-route-meta {
+  color: var(--seed-fg-muted, var(--text-secondary));
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+}
 @media (max-width: 380px) {
   .wt-running-row {
     display: grid;
@@ -6047,6 +6168,16 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   }
   .wt-running-label { min-width: 0; }
   .wt-running-input-wrap { min-width: 0; flex-wrap: wrap; }
+  .wt-running-gps-head {
+    display: grid;
+  }
+  .wt-running-gps-chip {
+    max-width: 100%;
+    text-align: left;
+  }
+  .wt-running-gps-actions {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ── 식단 탭 Seed 적용 ── */

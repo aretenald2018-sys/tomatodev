@@ -4,6 +4,7 @@
 
 import { S }              from './state.js';
 import { saveWorkoutDay } from './save.js';
+import { initRunningTracker, renderRunningTracker } from './running-tracker.js';
 import { dateKey, getLastActivitySession } from '../data.js';
 import { showToast }      from '../home/utils.js';
 
@@ -64,6 +65,7 @@ export function _renderRunningForm() {
   if (durS) durS.value = S.workout.runData.durationSec || '';
   if (memo) memo.value = S.workout.runData.memo || '';
   _calcRunPace();
+  renderRunningTracker();
   _renderActivityCopyHint('running', (last) => {
     const prev = JSON.parse(JSON.stringify(S.workout.runData || {}));
     S.workout.runData = {
@@ -113,6 +115,7 @@ export function _initRunningEvents() {
   durM?.addEventListener('change', onRunChange);
   durS?.addEventListener('change', onRunChange);
   memo?.addEventListener('change', onRunChange);
+  initRunningTracker({ saveWorkoutDay, renderRunningForm: _renderRunningForm });
 }
 
 // ── 크로스핏 폼 ─────────────────────────────────────────────────

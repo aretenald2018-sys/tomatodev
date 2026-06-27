@@ -495,6 +495,20 @@
             <span class="wt-running-pace" id="wt-run-pace">--'--"</span>
           </div>
           <div class="wt-activity-copy-row" id="wt-running-last-copy" style="display:none"></div>
+          <div class="wt-running-gps" id="wt-running-gps">
+            <div class="wt-running-gps-head">
+              <div>
+                <span class="wt-running-gps-kicker">GPS 기록</span>
+                <strong id="wt-run-gps-status">GPS 대기</strong>
+              </div>
+              <span class="wt-running-gps-chip is-pending" id="wt-run-place-label">장소 확인 대기</span>
+            </div>
+            <div class="wt-running-gps-actions">
+              <button type="button" class="wt-running-gps-btn wt-running-gps-btn--primary" id="wt-run-gps-primary">GPS 시작</button>
+              <button type="button" class="wt-running-gps-btn" id="wt-run-gps-pause" disabled>일시정지</button>
+            </div>
+            <div class="wt-running-route-preview" id="wt-run-route-preview" aria-live="polite"></div>
+          </div>
           <div class="wt-running-row">
             <span class="wt-running-label">거리</span>
             <div class="wt-running-input-wrap">

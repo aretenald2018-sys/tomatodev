@@ -4,11 +4,11 @@
 
 - 상태: `ready_for_execution`
 - 계획 문서: `docs/ai/features/2026-06-27-running-jogging-entry.md`
-- 현재 단계: `review complete — Running/Jogging Entry Slice 1`
+- 현재 단계: `review complete — Running/Jogging Entry Slice 2`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `2026-06-27 Running/Jogging Entry Slice 1 구현과 리뷰를 완료했다. 리뷰 문서는 docs/ai/reviews/2026-06-27-running-jogging-entry-review.md이며 Finding 없음. 정적 검증, 전체 테스트 558개, runtime asset 검증이 통과했다.`
-- 다음 액션: `docs/ai/features/2026-06-27-running-jogging-entry.md의 Slice 2 Foreground GPS 러닝 트래커를 실행한다. 앱 화면을 켜 둔 상태에서 시작/일시정지/종료로 거리와 시간을 자동 기록하고, 키 없이도 route preview를 볼 수 있게 한다.`
-- 차단 사유: `없음. 단, Dashboard3 Pages 배포와 인증 계정 실제 UI flow는 아직 not verified yet이며, Slice 3 실제 한국 지도/장소명 검증에는 Kakao JavaScript key 또는 동등한 국내 지도 provider key가 필요하다.`
+- 마지막 완료: `2026-06-27 Running/Jogging Entry Slice 2 구현과 리뷰를 완료했다. 리뷰 문서는 docs/ai/reviews/2026-06-27-running-gps-tracker-review.md이며 Finding 없음. 정적 검증, 전체 테스트 567개, runtime asset 검증이 통과했다.`
+- 다음 액션: `docs/ai/features/2026-06-27-running-jogging-entry.md의 Slice 3 한국 지도/동네/공원명 요약을 실행한다. Kakao Maps/Local provider key를 설정해 route polyline과 동네/공원명 label을 runPlaceSummary에 채운다.`
+- 차단 사유: `없음. 단, 실제 동네/공원명 자동 표출과 한국 지도 tile/polyline 검증에는 Kakao JavaScript key 또는 동등한 국내 지도 provider key가 필요하다. Dashboard3 인증 계정 실제 GPS permission/UI flow는 not verified yet일 수 있다.`
 
 ## 직전 완료 요약
 

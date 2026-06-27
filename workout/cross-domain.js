@@ -27,9 +27,10 @@ export function deriveActivityFlagsFromDetails(workout) {
   const runData     = workout?.runData     || {};
   const swimData    = workout?.swimData    || {};
   const stretchData = workout?.stretchData || {};
+  const hasRunRoute = Array.isArray(runData.route) && runData.route.length > 0;
   return {
     cf:         !!(cfData.wod || cfData.durationMin || cfData.durationSec || _m(cfData.memo)),
-    running:    !!(runData.distance || runData.durationMin || runData.durationSec || _m(runData.memo)),
+    running:    !!(runData.distance || runData.durationMin || runData.durationSec || _m(runData.memo) || hasRunRoute),
     swimming:   !!(swimData.distance || swimData.durationMin || swimData.durationSec || _m(swimData.memo)),
     stretching: !!(stretchData.duration || _m(stretchData.memo)),
   };
