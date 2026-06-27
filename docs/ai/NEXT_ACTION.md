@@ -5,46 +5,46 @@
 - 상태: `needs_user_decision`
 - 계획 문서: `docs/ai/features/2026-06-27-wendler-program-ssot-diagnosis.md`
 - 현재 단계: `needs_user_decision — Wendler Slice 3 운영 데이터 보정 전 read-only 확인`
-- 마지막 완료: `2026-06-27 Home Life Zone Nameplates Slice 1을 구현하고 Dashboard3 Pages 배포 검증까지 통과했다. cache marker는 tomatofarm-v20260627z4-life-zone-nameplates이다.`
+- 마지막 완료: `2026-06-27 Workout Calendar Bottom Sheet Slice 14를 구현하고 Dashboard3 Pages 배포 검증까지 통과했다. cache marker는 tomatofarm-v20260627z5-sheet-suppress-guard이다.`
 - 다음 액션: `Wendler Slice 3 production Firestore write 전 사전 확인: users/김_태우/settings/test_board_v2를 read-only로 다시 읽고 스모데드/스쿼트(와이드) programStartDate/tmAnchors 후보 patch를 출력한다. write는 사용자 확인 전에는 하지 않는다.`
 - 차단 사유: `운영 Firestore 데이터 write 전 최종 read-only 확인과 사용자 확인이 필요함`
 
 ## 직전 완료 요약
 
-- Home Life Zone Nameplates Slice 1:
-  1. `home/life-zone.js`에서 actor image 아래에 `span.lz-nameplate`를 추가해 `actor.displayName`을 발밑 장식 텍스트로 렌더한다.
-  2. NPC quest button에 노란 `브루스` 이름표를 추가했고, 기존 `life-zone:npc-quest` detail `{ npc: 'trainer' }`는 유지했다.
-  3. `style.css`에 작은 흰/노란 outline text 이름표 스타일을 추가했다.
-  4. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260627z4-life-zone-nameplates`로 갱신했다.
-  5. 리뷰: `docs/ai/reviews/2026-06-27-home-life-zone-nameplates-review.md`
-  6. 커밋/배포: `e77a85f feat(home): add life zone nameplates`
+- Workout Calendar Bottom Sheet Slice 14:
+  1. `render-calendar.js` drag release에서 `targetState !== prevState`일 때만 `_suppressWorkoutHomeSheetClick()`을 호출하게 했다.
+  2. deadzone 이내 미세 pointer move는 `WORKOUT_HOME_SHEET_MIN_SUPPRESS_MOVE_PX = 4` 이상 이동한 경우만 suppression을 건다.
+  3. 두 개의 `[data-wt-sheet-toggle]` 모두 `aria-expanded`/`aria-label`을 갱신하되, 날짜 텍스트 버튼 내용은 보존하고 화살표 텍스트는 handle에만 적용한다.
+  4. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260627z5-sheet-suppress-guard`로 갱신했다.
+  5. 리뷰: `docs/ai/reviews/2026-06-27-workout-calendar-sheet-suppress-guard-review.md`
+  6. 커밋/배포: `1a46c47 fix(workout): guard sheet click suppression`
 - 검증:
-  1. PASS: `node --check home/life-zone.js; node --check sw.js`
-  2. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/home-life-zone-state.test.js`
-  3. PASS: `node --test tests/*.test.js` — 552 tests passed
-  4. PASS: `node scripts/verify-runtime-assets.mjs`
+  1. PASS: `node --check render-calendar.js; node --check sw.js`
+  2. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js` — 19 tests passed
+  3. PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 552 tests passed
+  4. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
   5. PASS: `git diff --check`
-  6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ e77a85f`
-     - 결과: `[deploy-verify] ok e77a85f60644 tomatofarm-v20260627z4-life-zone-nameplates static=219`
-  7. PASS: deployed marker 확인 — `sw.js`, `home/life-zone.js`, `style.css`
-  8. not verified yet: 배포 URL 브라우저 확인은 로그인 화면에서 멈춰 인증 계정 홈 UI flow는 직접 확인하지 못했다.
+  6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 1a46c473abc3b3b7a55ae76611dfe682a3494548`
+     - 결과: `[deploy-verify] ok 1a46c473abc3 tomatofarm-v20260627z5-sheet-suppress-guard static=219`
+  7. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260627z5-sheet-suppress-guard" "render-calendar.js::WORKOUT_HOME_SHEET_MIN_SUPPRESS_MOVE_PX = 4" "render-calendar.js::if (targetState !== prevState) _suppressWorkoutHomeSheetClick()" "render-calendar.js::querySelectorAll('[data-wt-sheet-toggle]')" "render-calendar.js::data-wt-sheet-main data-wt-sheet-toggle"`
+  8. not verified yet: 인증 계정 실제 `운동 탭 -> 날짜 sheet full -> 상단 살짝 drag/release -> 상단 tap collapse` UI flow는 직접 확인하지 못했다.
 - 보류:
   1. `docs/ai/features/2026-06-27-wendler-program-ssot-diagnosis.md` Slice 3 운영 Firestore anchor 보정은 production data write이므로 read-only 재확인 후 진행한다.
 
 ## 이번 실행 검증
 
-- 계획 완료: `docs/ai/features/2026-06-27-home-life-zone-nameplates.md`
-- 구현 완료: `home/life-zone.js` actor/NPC 이름표, `style.css` outline text 스타일, `sw.js` cache marker
-- 리뷰 완료: `docs/ai/reviews/2026-06-27-home-life-zone-nameplates-review.md`
-- PASS: `node --check home/life-zone.js; node --check sw.js`
-- PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/home-life-zone-state.test.js` — 18 tests passed
-- PASS: `node --test tests/*.test.js` — 552 tests passed
+- 계획 완료: `docs/ai/features/2026-06-24-workout-calendar-bottom-sheet.md` Slice 14
+- 구현 완료: `render-calendar.js` suppression guard/toggle aria sync, `sw.js` cache marker
+- 리뷰 완료: `docs/ai/reviews/2026-06-27-workout-calendar-sheet-suppress-guard-review.md`
+- PASS: `node --check render-calendar.js; node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js` — 19 tests passed
+- PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 552 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
 - PASS: `git diff --check`
-- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ e77a85f`
-  - 결과: `[deploy-verify] ok e77a85f60644 tomatofarm-v20260627z4-life-zone-nameplates static=219`
-- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ 'sw.js::tomatofarm-v20260627z4-life-zone-nameplates' 'home/life-zone.js::LIFE_ZONE_NPC_NAME' 'home/life-zone.js::lz-nameplate--actor' 'style.css::.lz-nameplate' 'style.css::#ffe15a'`
-- not verified yet: 배포 URL은 로그인 화면이 먼저 표시되어 홈 탭 라이프존 실제 시각 flow는 인증 계정으로 확인 필요
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 1a46c473abc3b3b7a55ae76611dfe682a3494548`
+  - 결과: `[deploy-verify] ok 1a46c473abc3 tomatofarm-v20260627z5-sheet-suppress-guard static=219`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260627z5-sheet-suppress-guard" "render-calendar.js::WORKOUT_HOME_SHEET_MIN_SUPPRESS_MOVE_PX = 4" "render-calendar.js::if (targetState !== prevState) _suppressWorkoutHomeSheetClick()" "render-calendar.js::querySelectorAll('[data-wt-sheet-toggle]')" "render-calendar.js::data-wt-sheet-main data-wt-sheet-toggle"`
+- not verified yet: 인증 계정 실제 바텀시트 터치 UI flow는 직접 확인 필요
 
 ## 리뷰 대상
 
