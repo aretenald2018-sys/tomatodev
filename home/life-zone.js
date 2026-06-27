@@ -122,7 +122,8 @@ function _renderActors(card, actors) {
     const slot = actor.slot;
     if (!slot) return;
     const image = document.createElement('img');
-    image.className = `lz-actor lz-actor--${actor.state}`;
+    const poseClass = slot.pose ? ` lz-actor--pose-${slot.pose}` : '';
+    image.className = `lz-actor lz-actor--${actor.state}${poseClass}`;
     image.src = `${LIFE_ZONE_SPRITE_ROOT}/${actor.sprite}`;
     image.alt = '';
     image.loading = 'lazy';

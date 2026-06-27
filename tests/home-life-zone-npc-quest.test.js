@@ -33,6 +33,8 @@ test('life zone actor nameplates are rendered as text under sprites', () => {
   assert.match(source, /function _getActorSpriteHeight/);
   assert.match(source, /const x = Number\(slot\.x\) \+ Number\(slot\.width\) \* 0\.5/);
   assert.match(source, /const y = Number\(slot\.labelY\) \|\| \(Number\(slot\.y\) \+ _getActorSpriteHeight\(slot\) \+ 12\)/);
+  assert.match(source, /const poseClass = slot\.pose \? ` lz-actor--pose-\$\{slot\.pose\}` : ''/);
+  assert.match(source, /image\.className = `lz-actor lz-actor--\$\{actor\.state\}\$\{poseClass\}`/);
   assert.match(source, /document\.createElement\('span'\)/);
   assert.match(source, /nameplate\.className = `lz-nameplate lz-nameplate--actor lz-nameplate--\$\{actor\.state\}`/);
   assert.match(source, /nameplate\.textContent = actor\.displayName/);
@@ -44,9 +46,10 @@ test('life zone NPC quest bubble has a stable clickable overlay style', () => {
 
   assert.match(css, /\.lz-npc-quest \{/);
   assert.match(css, /left: calc\(1058 \/ 1672 \* 100%\)/);
-  assert.match(css, /top: calc\(932 \/ 1672 \* 100%\)/);
+  assert.match(css, /top: calc\(1116 \/ 1672 \* 100%\)/);
   assert.match(css, /min-width: 44px/);
   assert.match(css, /min-height: 18px/);
+  assert.match(css, /transform: translate\(-50%, 0\)/);
   assert.match(css, /pointer-events: auto/);
   assert.match(css, /touch-action: manipulation/);
   assert.match(css, /\.lz-npc-quest:focus-visible/);
@@ -70,9 +73,24 @@ test('life zone nameplates use small pixel text with outline shadows', () => {
   assert.match(css, /@media \(max-width: 420px\) \{\s*\.lz-nameplate \{[\s\S]*font-size: 8px/);
 });
 
+test('life zone workout poses use scoped motion with reduced motion fallback', () => {
+  const css = readText('style.css');
+
+  assert.match(css, /\.lz-actor--pose-workout-lat \{/);
+  assert.match(css, /animation: lz-workout-lat-pull 1\.35s ease-in-out infinite/);
+  assert.match(css, /\.lz-actor--pose-workout-bench \{/);
+  assert.match(css, /animation: lz-workout-bench-press 1\.2s ease-in-out infinite/);
+  assert.match(css, /\.lz-actor--pose-workout-squat \{/);
+  assert.match(css, /animation: lz-workout-squat-rep 1\.5s ease-in-out infinite/);
+  assert.match(css, /@keyframes lz-workout-lat-pull/);
+  assert.match(css, /@keyframes lz-workout-bench-press/);
+  assert.match(css, /@keyframes lz-workout-squat-rep/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*\.lz-actor--pose-workout-lat,[\s\S]*\.lz-actor--pose-workout-bench,[\s\S]*\.lz-actor--pose-workout-squat[\s\S]*animation: none;[\s\S]*transform: none;/);
+});
+
 test('life zone NPC card image is no longer a precached runtime asset', () => {
   const sw = readText('sw.js');
 
-  assert.match(sw, /tomatofarm-v20260627z7-workout-sheet-tap-toggle/);
+  assert.match(sw, /tomatofarm-v20260627z8-home-life-zone-motion/);
   assert.doesNotMatch(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
 });

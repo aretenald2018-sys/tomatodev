@@ -6605,6 +6605,33 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   image-rendering: crisp-edges;
   filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.28));
 }
+.lz-actor--pose-workout-lat {
+  transform-origin: 52% 20%;
+  animation: lz-workout-lat-pull 1.35s ease-in-out infinite;
+}
+.lz-actor--pose-workout-bench {
+  transform-origin: 50% 68%;
+  animation: lz-workout-bench-press 1.2s ease-in-out infinite;
+}
+.lz-actor--pose-workout-squat {
+  transform-origin: 50% 92%;
+  animation: lz-workout-squat-rep 1.5s ease-in-out infinite;
+}
+@keyframes lz-workout-lat-pull {
+  0%, 100% { transform: translateY(0); }
+  42% { transform: translateY(4px) scaleY(0.995); }
+  68% { transform: translateY(-2px); }
+}
+@keyframes lz-workout-bench-press {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  45% { transform: translateY(-3px) rotate(-0.7deg); }
+  72% { transform: translateY(1px); }
+}
+@keyframes lz-workout-squat-rep {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  48% { transform: translateY(5px) scaleY(0.985); }
+  76% { transform: translateY(-1px) scaleY(1.005); }
+}
 .lz-nameplate {
   position: absolute;
   left: calc(var(--lz-name-x) / 1672 * 100%);
@@ -6636,14 +6663,14 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 .lz-npc-quest {
   position: absolute;
   left: calc(1058 / 1672 * 100%);
-  top: calc(932 / 1672 * 100%);
+  top: calc(1116 / 1672 * 100%);
   z-index: 120;
   min-width: 44px;
   min-height: 18px;
   padding: 2px 4px;
   border: 0;
   background: transparent;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, 0);
   overflow: visible;
   cursor: pointer;
   pointer-events: auto;
@@ -6656,7 +6683,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   transform: none;
 }
 .lz-npc-quest:active {
-  transform: translate(-50%, -50%) scale(0.96);
+  transform: translate(-50%, 0) scale(0.96);
 }
 .lz-npc-quest:focus-visible {
   outline: 2px solid rgba(59, 130, 246, 0.82);
@@ -6709,6 +6736,14 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
     padding: 3px 5px;
     border-radius: 7px;
     font-size: 9px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lz-actor--pose-workout-lat,
+  .lz-actor--pose-workout-bench,
+  .lz-actor--pose-workout-squat {
+    animation: none;
+    transform: none;
   }
 }
 .lz-status-row {

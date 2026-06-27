@@ -3,26 +3,27 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-27-home-image-rendering-nameplates.md`
-- 현재 단계: `complete — Home Life Zone Nameplate Cleanup Slice 1`
+- 계획 문서: `docs/ai/features/2026-06-27-home-life-zone-workout-animation.md`
+- 현재 단계: `complete — Home Life Zone Trainer Label + CSS Motion Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `2026-06-27 Home Image Rendering Nameplate Cleanup Slice 1을 구현하고 로컬 정적 검증/리뷰를 완료했다. cache marker는 tomatofarm-v20260627z6-home-nameplate-cleanup이다.`
-- 다음 액션: `커밋 후 Dashboard3 Pages에 배포하고 npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>로 원격 자산을 확인한다. 인증 계정이 있으면 홈 탭 라이프존에서 캐릭터 닉네임이 몸통을 가리지 않고 트레이너 이름표만 보이는지 확인한다.`
+- 마지막 완료: `2026-06-27 Home Life Zone Trainer Label + CSS Motion Slice 1을 구현하고 로컬 정적 검증/리뷰를 완료했다. cache marker는 tomatofarm-v20260627z8-home-life-zone-motion이다.`
+- 다음 액션: `커밋 후 Dashboard3 Pages에 배포하고 npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>로 원격 자산을 확인한다. 인증 계정이 있으면 홈 탭 라이프존에서 트레이너 이름표가 하단에 있고 workout-lat/bench/squat actor가 작게 움직이는지 확인한다.`
 - 차단 사유: `없음`
 
 ## 직전 완료 요약
 
-- Home Image Rendering Nameplate Cleanup Slice 1:
-  1. `home/life-zone.js`에서 보이는 NPC 이름을 `트레이너`로 바꾸고 `npc-quest-bubble.png` DOM 렌더를 제거했다.
-  2. actor 이름표 좌표를 스프라이트 실제 비율 기반 하단으로 내려 몸통을 가리지 않게 했다.
-  3. `style.css`에서 이름표 기준점을 top 기준으로 바꾸고 NPC 버튼을 투명 텍스트 클릭 영역으로 정리했다.
-  4. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260627z6-home-nameplate-cleanup`으로 갱신하고 사용하지 않는 NPC card asset precache를 제거했다.
-  5. 리뷰: `docs/ai/reviews/2026-06-27-home-image-rendering-nameplates-review.md`
-  6. PASS: `node --check home/life-zone.js; node --check sw.js`
-  7. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/home-life-zone-state.test.js` — 18 tests passed
-  8. PASS: `node --test tests/*.test.js` — 552 tests passed
-  9. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=834`
-  10. PASS: `git diff --check`
+- Home Life Zone Trainer Label + CSS Motion Slice 1:
+  1. `home/life-zone.js`에서 actor image에 `lz-actor--pose-${slot.pose}` class를 추가했다.
+  2. `style.css`에서 `트레이너` 이름표를 하단 y 좌표로 내렸다.
+  3. `workout-lat`, `workout-bench`, `workout-squat` pose class에 작은 CSS transform 애니메이션을 추가했다.
+  4. `prefers-reduced-motion: reduce`에서는 해당 애니메이션을 끈다.
+  5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260627z8-home-life-zone-motion`으로 갱신했다.
+  6. 리뷰: `docs/ai/reviews/2026-06-27-home-life-zone-workout-animation-review.md`
+  7. PASS: `node --check home/life-zone.js; node --check sw.js`
+  8. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/home-life-zone-state.test.js` — 19 tests passed
+  9. PASS: `node --test tests/*.test.js` — 552 tests passed
+  10. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=834`
+  11. PASS: `git diff --check`
 
 ## 이번 실행 검증
 
