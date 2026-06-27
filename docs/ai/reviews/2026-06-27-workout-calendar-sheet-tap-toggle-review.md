@@ -29,7 +29,9 @@
 - PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 551 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=834`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ d95bcff` — `[deploy-verify] ok d95bcff37343 tomatofarm-v20260627z7-workout-sheet-tap-toggle static=218`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260627z7-workout-sheet-tap-toggle" "render-calendar.js::const WORKOUT_HOME_SHEET_CLASS_STATES = ['bar', 'full'];" "render-calendar.js::function _toggleWorkoutHomeSheet" "render-calendar.js::_workoutHomeSheetState = 'full'" "render-calendar.js::sheetState: 'full'" "render-calendar.js::_setWorkoutHomeSheetState('bar')" "style.css::height: var(--wt-day-sheet-height)"`
 
 ## 남은 확인
 
-- not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 `운동 탭 -> 접힌 바텀시트 탭 -> full -> 상단 탭 -> bar` UI flow 확인이 남아 있다.
+- not verified yet: 인증 계정 실제 `운동 탭 -> 접힌 바텀시트 탭 -> full -> 상단 탭 -> bar` UI flow 확인이 남아 있다.
