@@ -990,7 +990,6 @@ function _renderWorkoutHomeDayBar(selectedKey, { cache, plan, checkins, lookup }
       </button>
       <div class="cal-workout-day-actions">
         <button type="button" data-wt-sheet-action onclick="window._wtCalGoToday()">오늘</button>
-        <button type="button" data-wt-sheet-action onclick="window._wtCalOpenRoutine('${selected}')">루틴</button>
       </div>
     </div>
   `;

@@ -3368,9 +3368,10 @@ body.wt-modal-scroll-lock {
   opacity: 1;
 }
 .workout-calendar-root {
-  padding: 0 0 124px;
+  padding: 0 var(--wt-calendar-scroll-gutter, 0px) 124px 0;
   background: #f7f7fb;
   min-height: 100%;
+  scrollbar-gutter: stable;
 }
 body.wt-workout-tab-active {
   overscroll-behavior-y: none;
@@ -6653,7 +6654,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
     -1px 0 0 rgba(17, 24, 39, 0.95),
     0 -1px 0 rgba(17, 24, 39, 0.95),
     1px 1px 1px rgba(0, 0, 0, 0.72);
-  transform: translate(-50%, 0);
+  transform: translate(-50%, -100%);
   white-space: nowrap;
   pointer-events: none;
 }
@@ -6663,7 +6664,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 .lz-npc-quest {
   position: absolute;
   left: calc(1058 / 1672 * 100%);
-  top: calc(980 / 1672 * 100%);
+  top: calc(850 / 1672 * 100%);
   z-index: 120;
   width: clamp(52px, calc(168 / 1672 * 100%), 76px);
   min-height: 0;
@@ -6682,7 +6683,8 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 }
 .lz-npc-bulb {
   display: block;
-  width: 100%;
+  width: 50%;
+  margin: 0 auto;
   aspect-ratio: 192 / 150;
   overflow: hidden;
   pointer-events: none;
@@ -10024,6 +10026,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 /* 운동탭 홈: 얇은 월간 운동 그리드 */
 .cal-workout-surface-home {
   --cal-cycle-rail-width: 94px;
+  --wt-calendar-scroll-gutter: max(14px, env(safe-area-inset-right, 0px));
   min-height: 100%;
   background: #f7f7fb;
   color: #2f3138;
@@ -11073,6 +11076,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 @media (max-width: 430px) {
   .cal-workout-surface-home {
     --cal-cycle-rail-width: 94px;
+    --wt-calendar-scroll-gutter: max(18px, env(safe-area-inset-right, 0px));
   }
   .cal-workout-surface-home .cal-weekdays {
     grid-template-columns: var(--cal-cycle-rail-width) repeat(7, minmax(0, 1fr));

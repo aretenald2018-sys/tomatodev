@@ -94,3 +94,9 @@
 
 - 리뷰 문서: `docs/ai/reviews/2026-06-27-home-image-rendering-nameplates-review.md`
 - 결과: blocking issue 없음.
+
+## 추가 회귀 수정
+
+- `2026-06-27`: 사용자가 이름표를 발밑이 아니라 머리 위에 띄우고, 트레이너 전구 말풍선을 50% 줄여 `트레이너` 텍스트와 함께 머리 위에 배치하도록 요청했다.
+- 이 변경은 홈 이미지 렌더링 범위 안에서만 처리한다.
+- 구현 기록은 `docs/ai/features/2026-06-27-home-life-zone-workout-animation.md`의 `Overhead Labels + Smaller Trainer Bulb` 섹션을 기준으로 이어간다.

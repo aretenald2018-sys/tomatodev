@@ -149,3 +149,14 @@
   - PASS: `node --test tests/*.test.js` — 553 tests passed
   - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
   - PASS: `git diff --check`
+
+## 회귀 수정 — Overhead Labels + Smaller Trainer Bulb
+
+- `2026-06-27`: 사용자가 전구 말풍선은 50% 줄이고, `트레이너` 텍스트와 다른 캐릭터 닉네임을 모두 머리 위에 띄워 달라고 요청했다.
+- 수정:
+  - actor 이름표 위치 계산을 스프라이트 하단 기준에서 머리 위 기준(`slot.y - 6`)으로 변경한다.
+  - `.lz-nameplate`의 transform을 위쪽 anchor 기준으로 바꿔 텍스트가 체형을 가리지 않게 한다.
+  - `.lz-npc-bulb` 표시 폭만 50%로 줄이고, `트레이너` label은 같은 버튼 안에서 유지한다.
+  - 트레이너 overlay 좌표를 머리 위로 올리고, `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260627z11-home-overhead-labels`로 갱신한다.
+- 검증:
+  - 로컬 정적 검증 후 Dashboard3 Pages 배포 검증을 실행한다.

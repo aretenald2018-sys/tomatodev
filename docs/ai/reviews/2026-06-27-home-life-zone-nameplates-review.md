@@ -23,7 +23,7 @@
 
 ## 남은 리스크
 
-- 실제 홈 UI에서 캐릭터별 sprite height가 이미지별로 달라 이름표가 발밑에서 약간 위/아래로 보일 수 있다. 이 경우 다음 조정은 slot별 `labelY` override를 추가하는 방식이 안전하다.
+- 실제 홈 UI에서 캐릭터별 sprite top padding이 이미지별로 다르면 이름표가 머리 위에서 약간 위/아래로 보일 수 있다. 이 경우 다음 조정은 slot별 `labelY` override를 추가하는 방식이 안전하다.
 - 인증 계정이 필요한 Dashboard3 Pages 실제 홈 flow는 배포 후 별도 확인이 필요하다.
 
 ## 검증

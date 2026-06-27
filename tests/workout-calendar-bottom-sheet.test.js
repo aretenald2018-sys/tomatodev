@@ -99,6 +99,9 @@ test('full sheet header tap collapses through the sheet toggle path', () => {
 
   assert.match(barFn, /class="cal-workout-day-main" data-wt-sheet-main data-wt-sheet-toggle data-date-key=/);
   assert.match(barFn, /data-wt-sheet-main data-wt-sheet-toggle data-date-key="\$\{selected\}" aria-expanded="\$\{expanded \? 'true' : 'false'\}" aria-label="\$\{expanded \? '날짜 상세 접기' : '선택한 날짜 열기'\}"/);
+  assert.match(barFn, /onclick="window\._wtCalGoToday\(\)">오늘<\/button>/);
+  assert.doesNotMatch(barFn, />루틴<\/button>/);
+  assert.doesNotMatch(barFn, /window\._wtCalOpenRoutine\('\$\{selected\}'\)/);
   assert.doesNotMatch(barFn, /cal-workout-day-main" onclick="window\._wtCalOpenDay/);
   assert.doesNotMatch(barFn, /data-wt-sheet-toggle onclick="window\._wtCalToggleSheet/);
   assert.match(bindFn, /target\?\.closest\?\.\('\[data-wt-sheet-action\]'\)[\s\S]*return/);
@@ -151,7 +154,8 @@ test('bottom sheet css is fixed, animated, and contains the session bar inside t
 });
 
 test('collapsed day sheet bar is a compact one-row affordance', () => {
-  assert.match(styleCss, /\.workout-calendar-root\s*\{[\s\S]*padding:\s*0 0 124px/);
+  assert.match(styleCss, /\.workout-calendar-root\s*\{[\s\S]*padding:\s*0 var\(--wt-calendar-scroll-gutter,\s*0px\) 124px 0/);
+  assert.match(styleCss, /\.workout-calendar-root\s*\{[\s\S]*scrollbar-gutter:\s*stable;/);
   assert.match(styleCss, /\.cal-workout-day-bar\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(styleCss, /\.cal-workout-day-bar\s*\{[\s\S]*min-height:\s*64px/);
   assert.match(styleCss, /\.cal-workout-day-main\s*\{[\s\S]*flex-direction:\s*row/);
@@ -169,6 +173,8 @@ test('workout calendar mobile grid reserves a wider week rail', () => {
   const mobileCss = styleCss.slice(start, end);
 
   assert.match(styleCss, /--cal-cycle-rail-width:\s*94px/);
+  assert.match(styleCss, /--wt-calendar-scroll-gutter:\s*max\(14px,\s*env\(safe-area-inset-right,\s*0px\)\)/);
+  assert.match(mobileCss, /--wt-calendar-scroll-gutter:\s*max\(18px,\s*env\(safe-area-inset-right,\s*0px\)\)/);
   assert.match(mobileCss, /\.cal-workout-surface-home \.cal-weekdays\s*\{[\s\S]*grid-template-columns:\s*var\(--cal-cycle-rail-width\) repeat\(7,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(mobileCss, /\.cal-workout-week-row\s*\{[\s\S]*grid-template-columns:\s*var\(--cal-cycle-rail-width\) minmax\(0,\s*1fr\)/);
   assert.match(mobileCss, /\.cal-workout-surface-home \.cal-workout-cell\s*\{[\s\S]*padding:\s*7px 1px 4px/);
@@ -305,5 +311,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260627z10-home-npc-bulb-restore/);
+  assert.match(swJs, /tomatofarm-v20260627z12-workout-sheet-calendar-gutter/);
 });

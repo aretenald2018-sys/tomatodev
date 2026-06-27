@@ -43,3 +43,14 @@
 - PASS: `node --test tests/*.test.js` — 553 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
 - PASS: `git diff --check`
+
+## 회귀 수정 리뷰 — Overhead Labels + Smaller Trainer Bulb
+
+- Blocking issue 없음.
+- actor 이름표는 `_applyActorNameplatePosition()`에서 `slot.y - 6`으로 계산되고, CSS `translate(-50%, -100%)`로 위쪽에 떠 있어 체형을 덮지 않는다.
+- 트레이너 overlay는 같은 버튼 구조를 유지해 click target과 `life-zone:npc-quest` 이벤트 계약을 바꾸지 않았다.
+- `.lz-npc-bulb`는 PNG 원본과 crop 계약을 유지하면서 표시 폭만 50%로 줄였고, `트레이너` 텍스트는 같은 overlay 안에서 그대로 렌더된다.
+- `style.css`, `home/life-zone.js`가 `STATIC_ASSETS` 대상이므로 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260627z11-home-overhead-labels`로 bump했다.
+
+검증:
+- 로컬 정적 검증 후 Dashboard3 Pages 배포 검증 필요.

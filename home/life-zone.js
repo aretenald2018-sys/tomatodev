@@ -22,18 +22,6 @@ const LIFE_ZONE_UI_ROOT = `${LIFE_ZONE_ASSET_ROOT}/ui`;
 const LIFE_ZONE_NPC_NAME = '트레이너';
 const LIFE_ZONE_CACHE_MS = 0;
 
-const LIFE_ZONE_SPRITE_HEIGHT_RATIO = Object.freeze({
-  'workout-lat': 400 / 298,
-  'workout-bench': 326 / 330,
-  'workout-squat': 315 / 302,
-  'diet-left': 394 / 234,
-  'diet-center': 363 / 217,
-  'diet-right': 370 / 205,
-  'office-upper': 345 / 269,
-  'office-center': 351 / 261,
-  'office-lower': 353 / 254
-});
-
 let _actorStateCache = null;
 
 const STATE_LABELS = {
@@ -101,13 +89,9 @@ function _applyActorSlotPosition(element, slot) {
   element.style.setProperty('--lz-z', slot.z);
 }
 
-function _getActorSpriteHeight(slot) {
-  return Number(slot.width) * (LIFE_ZONE_SPRITE_HEIGHT_RATIO[slot.pose] || 1);
-}
-
 function _applyActorNameplatePosition(element, slot) {
   const x = Number(slot.x) + Number(slot.width) * 0.5;
-  const y = Number(slot.labelY) || (Number(slot.y) + _getActorSpriteHeight(slot) + 12);
+  const y = Number(slot.labelY) || Math.max(24, Number(slot.y) - 6);
   const z = (Number(slot.z) || 1) + 3;
   element.style.setProperty('--lz-name-x', x);
   element.style.setProperty('--lz-name-y', y);
