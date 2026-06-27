@@ -33,6 +33,21 @@
 - PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 570 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=846`
 - PASS: `git diff --cached --check; git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <pushed commit>` — `tomatofarm-v20260628z1-running-real-map static=221`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ ...`
+  - `sw.js::tomatofarm-v20260628z1-running-real-map`
+  - `sw.js::workout/running-map.js`
+  - `config.js::cfg_google_maps_key`
+  - `config.js::cfg_tmap_app_key`
+  - `workout/running-map.js::buildGoogleMapsScriptUrl`
+  - `workout/running-map.js::buildTmapScriptUrl`
+  - `workout/running-map.js::Tmapv2.Map`
+  - `workout/running-map.js::google.maps`
+  - `workout/running-session.js::data-running-real-map`
+  - `workout/running-session.js::renderRunningMap`
+  - `style.css::.wt-run-real-map`
+  - `style.css::.wt-run-map-status`
+- PASS: `curl.exe -I https://aretenald2018-sys.github.io/dashboard3/` — `HTTP/1.1 200 OK`
 
 ## 남은 범위
 
