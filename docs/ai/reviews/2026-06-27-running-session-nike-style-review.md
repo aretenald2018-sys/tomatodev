@@ -41,8 +41,20 @@
 - PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 568 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=842`
 - PASS: `git diff --cached --check; git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ af51e0e` — `[deploy-verify] ok af51e0ecfe35 tomatofarm-v20260627z17-running-session static=220`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ ...`
+  - `sw.js::tomatofarm-v20260627z17-running-session`
+  - `sw.js::workout/running-session.js`
+  - `index.html::wt-running-session-root`
+  - `workout/running-session.js::wt-running-screen--start`
+  - `workout/running-session.js::wt-running-screen--progress`
+  - `workout/running-session.js::wt-running-screen--summary`
+  - `workout-ui.js::wtOpenRunningSession`
+  - `workout/save.js::runRouteSummary`
+  - `style.css::.wt-running-screen--progress`
+- PASS: `curl.exe -I https://aretenald2018-sys.github.io/dashboard3/` — `HTTP/1.1 200 OK`
+- PASS: 배포 브라우저 DOM 확인 — `#wt-running-session-root` 존재, 페이지 title `토마토 키우기`.
 
 ## 남은 범위
 
-- Dashboard3 Pages 배포 검증은 commit/push 후 수행한다.
-- 인증 계정과 위치 권한이 필요한 실제 UI flow는 배포 페이지에서 가능한 범위까지 확인하고, 막히면 명시적으로 `not verified yet`로 남긴다.
+- not verified yet: 배포 브라우저가 로그인 화면에 머물러 `운동 탭 -> 런닝/조깅 -> 시작 -> 일시정지 -> 종료 -> 결과 요약/저장` 실제 UI flow는 인증 계정과 위치 권한이 있는 환경에서 확인해야 한다.

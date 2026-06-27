@@ -7,9 +7,9 @@
 - 리뷰 문서: `docs/ai/reviews/2026-06-27-running-session-nike-style-review.md`
 - 현재 단계: `review complete — Running Session Nike-style Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `Running Session Nike-style Slice 1 구현과 리뷰를 완료했다. 기존 wt-running-section/wt-run-* inline UI와 workout/running-tracker.js를 제거하고, workout/running-session.js 전용 시작 전/진행 중/결과 요약 화면으로 교체했다. targeted 테스트 10개, 전체 테스트 568개, runtime asset 검증, git diff check 통과.`
-- 다음 액션: `커밋 후 origin/main에 push하고 Dashboard3 Pages 배포 marker와 가능한 브라우저 DOM marker를 확인한다.`
-- 차단 사유: `없음. 단, 인증 계정과 실제 위치 권한이 없으면 배포 URL에서 실제 GPS permission/저장 flow는 not verified yet로 남을 수 있다.`
+- 마지막 완료: `Running Session Nike-style Slice 1 구현, 리뷰, origin/main 배포, Dashboard3 Pages marker 검증을 완료했다. 기존 wt-running-section/wt-run-* inline UI와 workout/running-tracker.js를 제거하고, workout/running-session.js 전용 시작 전/진행 중/결과 요약 화면으로 교체했다. targeted 테스트 10개, 전체 테스트 568개, runtime asset 검증, deploy 검증, git diff check 통과.`
+- 다음 액션: `없음. 실제 인증 계정과 위치 권한이 있는 기기에서 운동 탭 -> 런닝/조깅 -> 시작 -> 일시정지 -> 종료 -> 결과 요약/저장 flow를 수동 확인하면 된다.`
+- 차단 사유: `not verified yet: 배포 브라우저가 로그인 화면에 머물러 실제 GPS permission/저장 flow는 인증 계정과 위치 권한이 있는 환경에서 확인해야 한다.`
 
 ## 직전 완료 요약
 
