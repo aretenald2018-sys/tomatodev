@@ -50,7 +50,12 @@
 - actor 이름표는 `_applyActorNameplatePosition()`에서 `slot.y - 6`으로 계산되고, CSS `translate(-50%, -100%)`로 위쪽에 떠 있어 체형을 덮지 않는다.
 - 트레이너 overlay는 같은 버튼 구조를 유지해 click target과 `life-zone:npc-quest` 이벤트 계약을 바꾸지 않았다.
 - `.lz-npc-bulb`는 PNG 원본과 crop 계약을 유지하면서 표시 폭만 50%로 줄였고, `트레이너` 텍스트는 같은 overlay 안에서 그대로 렌더된다.
-- `style.css`, `home/life-zone.js`가 `STATIC_ASSETS` 대상이므로 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260627z11-home-overhead-labels`로 bump했다.
+- `style.css`, `home/life-zone.js`가 `STATIC_ASSETS` 대상이므로 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260627z13-home-overhead-labels`로 bump했다.
 
 검증:
-- 로컬 정적 검증 후 Dashboard3 Pages 배포 검증 필요.
+- PASS: `node --check home/life-zone.js; node --check sw.js`
+- PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/home-life-zone-state.test.js` — 19 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
+- PASS: `git diff --check`
+- WARN: `node --test tests/*.test.js` — 553 tests 중 552 pass, `tests/workout-picker-gym-rail.test.js`의 기존 운동 피커 CSS rule 탐색 1건 fail. 이번 홈 라이프존 변경 범위와 무관하다.
+- not verified yet: Dashboard3 Pages 배포 검증은 커밋/푸시 후 실행 필요.

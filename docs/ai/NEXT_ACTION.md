@@ -3,11 +3,11 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-24-workout-calendar-bottom-sheet.md`
-- 현재 단계: `complete — Workout Calendar Bottom Sheet Slice 17`
-- 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `2026-06-27 Workout Calendar Bottom Sheet Slice 17을 구현하고 로컬 정적 검증/리뷰를 완료했다. 하단 sheet header의 루틴 버튼을 제거하고, 월간 캘린더 우측 scroll indicator 겹침 방지 gutter를 추가했다. cache marker는 tomatofarm-v20260627z12-workout-sheet-calendar-gutter이다.`
-- 다음 액션: `커밋 후 Dashboard3 Pages에 배포하고 npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>로 원격 자산을 확인한다. 인증 계정이 있으면 운동 탭에서 하단 sheet header에 루틴 버튼이 없는지, 월간 캘린더 오른쪽 날짜 열이 scroll indicator와 겹치지 않는지 확인한다.`
+- 계획 문서: `docs/ai/features/2026-06-27-home-life-zone-workout-animation.md`
+- 현재 단계: `complete — Home Life Zone Overhead Labels`
+- 작업 브랜치: `codex/home-overhead-labels`
+- 마지막 완료: `2026-06-27 Home Life Zone 이름표를 모두 머리 위로 올리고, 트레이너 전구 말풍선 표시 크기를 50%로 줄이는 로컬 정적 구현/리뷰를 완료했다. cache marker는 tomatofarm-v20260627z13-home-overhead-labels이다.`
+- 다음 액션: `커밋 후 Dashboard3 Pages에 배포하고 npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>로 원격 자산을 확인한다. 인증 계정이 있으면 홈 탭 라이프존에서 트레이너 전구 말풍선과 트레이너 텍스트가 얼굴을 가리지 않고 머리 위에 함께 떠 있으며, 다른 캐릭터 닉네임도 머리 위에 떠 있는지 확인한다.`
 - 차단 사유: `없음`
 
 ## 직전 완료 요약
@@ -28,7 +28,10 @@
   13. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260627z10-home-npc-bulb-restore`로 갱신하고 `npc-quest-bubble.png`를 `STATIC_ASSETS`에 복구했다.
   14. 회귀 수정: `.lz-npc-bulb` 표시 폭을 50%로 줄이고 트레이너 overlay를 머리 위 좌표로 올렸다.
   15. actor 이름표 y 계산을 스프라이트 하단 기준에서 `slot.y - 6` 머리 위 기준으로 바꿨다.
-  16. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260627z11-home-overhead-labels`로 갱신했다.
+  16. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260627z13-home-overhead-labels`로 갱신했다.
+  17. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/home-life-zone-state.test.js` — 19 tests passed
+  18. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
+  19. WARN: `node --test tests/*.test.js` — 553 tests 중 552 pass, `tests/workout-picker-gym-rail.test.js` 1건 fail. 이번 홈 라이프존 변경 범위와 무관하다.
 
 ## 이번 실행 검증
 
