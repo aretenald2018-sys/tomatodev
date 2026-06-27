@@ -41,8 +41,12 @@
 - PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 567 tests passed.
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=839`.
 - PASS: `git diff --check; git diff --cached --check`.
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ e269ba7ec26ecb2a7e13f490ec6dcb974cb0104c` — `[deploy-verify] ok e269ba7ec26e tomatofarm-v20260627z16-running-gps static=220`.
+- PASS: deployed markers — `wt-run-gps-primary`, `wt-run-route-preview`, `workout/running-tracker.js::watchPosition`, `workout/save.js::runPlaceSummary`, `workout/sessions.js::firstRunRoute`.
+- PASS: `curl.exe -I https://aretenald2018-sys.github.io/dashboard3/` — `HTTP/1.1 200 OK`.
+- PARTIAL: 브라우저 배포 DOM에서 `#wt-chip-running`, `#wt-run-gps-primary`, `#wt-run-gps-pause`, `#wt-run-route-preview`, `#wt-run-place-label` 존재를 확인했다.
 
 ## 남은 리스크
 
-- not verified yet: 인증 계정과 실제 브라우저/모바일 위치 권한이 필요해 Dashboard3 배포 페이지에서 `GPS 시작 -> 권한 허용 -> 일시정지/종료 -> 저장` 실제 UI flow는 아직 직접 확인하지 못했다.
+- not verified yet: Dashboard3 배포 페이지는 로그인 화면이 전면에 있어 `운동 탭 -> 런닝/조깅 -> GPS 시작 -> 권한 허용 -> 일시정지/종료 -> 저장` 실제 UI flow는 아직 직접 확인하지 못했다.
 - 한국 지도 tile, route polyline, 동네/공원명 자동 표출은 Slice 3 범위다. Kakao JavaScript key 또는 동등한 국내 지도 provider key가 필요하다.
