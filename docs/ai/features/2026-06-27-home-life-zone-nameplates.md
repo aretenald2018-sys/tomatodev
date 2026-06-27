@@ -72,6 +72,22 @@
 - Dashboard3 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
 - UI flow: 홈 탭 라이프존에서 각 캐릭터 발밑에 작은 흰 이름표가 보이고, NPC bubble 아래에 작은 노란 `브루스` 이름표가 보이며, NPC 클릭은 기존처럼 `life-zone:npc-quest`를 발생시킨다.
 
+## 실행 결과
+
+- `2026-06-27`: Slice 1 완료.
+- `home/life-zone.js`에서 actor image 아래에 `span.lz-nameplate`를 추가해 `actor.displayName`을 `textContent`로 렌더한다.
+- 이름표 좌표는 기존 slot 좌표계에서 `slot.x + slot.width * 0.5`, `slot.labelY || slot.y + slot.width * 0.98`로 계산한다.
+- NPC quest button에는 보이는 이름 `브루스`를 노란 `.lz-nameplate--npc`로 추가했다. 이벤트 계약 `detail: { npc: 'trainer' }`는 유지했다.
+- `style.css`에 작은 흰/노란 outline text 이름표 스타일을 추가했다. background pill은 사용하지 않는다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260627z4-life-zone-nameplates`로 bump했다.
+- 리뷰: `docs/ai/reviews/2026-06-27-home-life-zone-nameplates-review.md`
+- PASS: `node --check home/life-zone.js; node --check sw.js`
+- PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/home-life-zone-state.test.js`
+- PASS: `node --test tests/*.test.js` — 552 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- not verified yet: Dashboard3 Pages 배포 검증과 실제 홈 UI flow 확인은 커밋/푸시 후 진행한다.
+
 ## 다음 실행 지시
 
 다음 세션은 Slice 1만 실행한다. 변경 범위는 `home/life-zone.js`, `style.css`, 관련 home life-zone 테스트, `sw.js`, cache-version 참조 테스트로 제한한다. `www/`는 수정하지 않는다.

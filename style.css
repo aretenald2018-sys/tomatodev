@@ -6612,6 +6612,34 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   image-rendering: crisp-edges;
   filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.28));
 }
+.lz-nameplate {
+  position: absolute;
+  left: calc(var(--lz-name-x) / 1672 * 100%);
+  top: calc(var(--lz-name-y) / 1672 * 100%);
+  z-index: var(--lz-name-z, 70);
+  display: block;
+  max-width: 96px;
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: 0;
+  text-align: center;
+  text-overflow: ellipsis;
+  text-shadow:
+    0 1px 0 rgba(17, 24, 39, 0.95),
+    1px 0 0 rgba(17, 24, 39, 0.95),
+    -1px 0 0 rgba(17, 24, 39, 0.95),
+    0 -1px 0 rgba(17, 24, 39, 0.95),
+    1px 1px 1px rgba(0, 0, 0, 0.72);
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.lz-nameplate--npc {
+  color: #ffe15a;
+}
 .lz-npc-quest {
   position: absolute;
   left: calc(1058 / 1672 * 100%);
@@ -6623,9 +6651,17 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   border: 0;
   background: transparent;
   transform: translate(-50%, -100%);
+  overflow: visible;
   cursor: pointer;
   pointer-events: auto;
   touch-action: manipulation;
+}
+.lz-npc-quest .lz-nameplate {
+  left: 50%;
+  top: calc(100% + 1px);
+  z-index: 2;
+  max-width: 82px;
+  transform: translate(-50%, 0);
 }
 .lz-npc-quest img {
   display: block;
@@ -6680,6 +6716,10 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   transform: translateX(-50%) rotate(45deg);
 }
 @media (max-width: 420px) {
+  .lz-nameplate {
+    max-width: 74px;
+    font-size: 8px;
+  }
   .lz-speech {
     max-width: 92px;
     padding: 3px 5px;

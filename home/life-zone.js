@@ -19,6 +19,7 @@ import {
 const LIFE_ZONE_ASSET_ROOT = './assets/home/life-zone';
 const LIFE_ZONE_SPRITE_ROOT = `${LIFE_ZONE_ASSET_ROOT}/sprites`;
 const LIFE_ZONE_UI_ROOT = `${LIFE_ZONE_ASSET_ROOT}/ui`;
+const LIFE_ZONE_NPC_NAME = '브루스';
 const LIFE_ZONE_CACHE_MS = 0;
 
 let _actorStateCache = null;
@@ -88,6 +89,15 @@ function _applyActorSlotPosition(element, slot) {
   element.style.setProperty('--lz-z', slot.z);
 }
 
+function _applyActorNameplatePosition(element, slot) {
+  const x = Number(slot.x) + Number(slot.width) * 0.5;
+  const y = Number(slot.labelY) || (Number(slot.y) + Number(slot.width) * 0.98);
+  const z = (Number(slot.z) || 1) + 3;
+  element.style.setProperty('--lz-name-x', x);
+  element.style.setProperty('--lz-name-y', y);
+  element.style.setProperty('--lz-name-z', z);
+}
+
 function _renderActors(card, actors) {
   const layer = card.querySelector('[data-lz-actors]');
   if (!layer) return;
@@ -105,6 +115,12 @@ function _renderActors(card, actors) {
     _applyActorSlotPosition(image, slot);
     image.title = `${actor.displayName} · ${actor.speech || STATE_LABELS[actor.state] || '업무'}`;
     layer.append(image);
+
+    const nameplate = document.createElement('span');
+    nameplate.className = `lz-nameplate lz-nameplate--actor lz-nameplate--${actor.state}`;
+    nameplate.textContent = actor.displayName;
+    _applyActorNameplatePosition(nameplate, slot);
+    layer.append(nameplate);
 
     if (actor.speech) {
       const bubble = document.createElement('div');
@@ -263,6 +279,7 @@ export function renderLifeZoneCard({
           loading="lazy"
           decoding="async"
         >
+        <span class="lz-nameplate lz-nameplate--npc" aria-hidden="true">${escapeHtml(LIFE_ZONE_NPC_NAME)}</span>
       </button>
     </div>
     <div class="lz-status-row" data-lz-status></div>
