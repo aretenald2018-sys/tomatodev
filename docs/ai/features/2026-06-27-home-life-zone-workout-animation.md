@@ -164,4 +164,6 @@
   - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
   - PASS: `git diff --check`
   - WARN: `node --test tests/*.test.js` — 553 tests 중 552 pass, `tests/workout-picker-gym-rail.test.js`의 기존 운동 피커 CSS rule 탐색 1건 fail. 이번 홈 라이프존 변경 범위와 무관하다.
-  - not verified yet: Dashboard3 Pages 배포 검증은 커밋/푸시 후 실행 필요
+  - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>` — deployed `tomatofarm-v20260627z13-home-overhead-labels`
+  - PASS: deployed markers — `Math.max(24, Number(slot.y) - 6)`, `top: calc(850 / 1672 * 100%)`, `width: 50%`, `transform: translate(-50%, -100%)`, `.lz-npc-bulb`
+  - not verified yet: 인증 세션이 없어 실제 홈 탭 라이프존 UI flow는 직접 조작 미완료
