@@ -13,6 +13,9 @@ const loadJs = await readFile(new URL('../workout/load.js', import.meta.url), 'u
 const sessionsJs = await readFile(new URL('../workout/sessions.js', import.meta.url), 'utf8');
 const styleCss = await readFile(new URL('../style.css', import.meta.url), 'utf8');
 const swJs = await readFile(new URL('../sw.js', import.meta.url), 'utf8');
+const configJs = await readFile(new URL('../config.js', import.meta.url), 'utf8');
+const runningSessionJs = await readFile(new URL('../workout/running-session.js', import.meta.url), 'utf8');
+const runningMapJs = await readFile(new URL('../workout/running-map.js', import.meta.url), 'utf8');
 
 test('running type has a dedicated full-screen session root and no legacy inline form', () => {
   assert.match(indexHtml, /id="wt-chip-running"[^>]*onclick="wtSwitchType\('running'\)"[^>]*>🏃 런닝\/조깅<\/button>/);
@@ -43,8 +46,26 @@ test('running picker tile and session screens have dedicated styles', () => {
   assert.match(styleCss, /\.wt-running-screen--start/);
   assert.match(styleCss, /\.wt-running-screen--progress/);
   assert.match(styleCss, /\.wt-running-screen--summary/);
-  assert.match(styleCss, /\.wt-running-session-route-svg/);
+  assert.match(styleCss, /\.wt-run-real-map/);
+  assert.match(styleCss, /\.wt-run-map-canvas/);
+  assert.match(styleCss, /\.wt-run-map-status/);
+  assert.doesNotMatch(styleCss, /\.wt-running-session-route-svg/);
+  assert.doesNotMatch(styleCss, /run-map-road/);
   assert.doesNotMatch(styleCss, /\.wt-running-gps\b/);
+});
+
+test('running maps use real provider shell instead of fake svg maps', () => {
+  assert.match(configJs, /cfg_running_map_provider/);
+  assert.match(configJs, /cfg_google_maps_key/);
+  assert.match(configJs, /cfg_tmap_app_key/);
+  assert.match(runningMapJs, /buildGoogleMapsScriptUrl/);
+  assert.match(runningMapJs, /buildTmapScriptUrl/);
+  assert.match(runningMapJs, /Tmapv2\.Map/);
+  assert.match(runningMapJs, /google\.maps/);
+  assert.match(runningSessionJs, /data-running-real-map/);
+  assert.match(runningSessionJs, /renderRunningMap/);
+  assert.doesNotMatch(runningSessionJs, /buildRunningSessionRouteSvg/);
+  assert.doesNotMatch(runningSessionJs, /<svg class="wt-running-session-route-svg/);
 });
 
 test('running session is wired into app init, save, load, and sessions', () => {
@@ -62,7 +83,8 @@ test('running session is wired into app init, save, load, and sessions', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260627z17-running-session/);
+  assert.match(swJs, /tomatofarm-v20260628z1-running-real-map/);
+  assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
   assert.doesNotMatch(swJs, /\.\/workout\/running-tracker\.js/);
 });

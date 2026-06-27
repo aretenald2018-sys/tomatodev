@@ -3,13 +3,13 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-27-running-session-nike-style.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-27-running-session-nike-style-review.md`
-- 현재 단계: `review complete — Running Session Nike-style Slice 1`
+- 계획 문서: `docs/ai/features/2026-06-28-running-real-map-provider.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-28-running-real-map-provider-review.md`
+- 현재 단계: `review complete — Running Real Map Provider Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `Running Session Nike-style Slice 1 구현, 리뷰, origin/main 배포, Dashboard3 Pages marker 검증을 완료했다. 기존 wt-running-section/wt-run-* inline UI와 workout/running-tracker.js를 제거하고, workout/running-session.js 전용 시작 전/진행 중/결과 요약 화면으로 교체했다. targeted 테스트 10개, 전체 테스트 568개, runtime asset 검증, deploy 검증, git diff check 통과.`
-- 다음 액션: `없음. 실제 인증 계정과 위치 권한이 있는 기기에서 운동 탭 -> 런닝/조깅 -> 시작 -> 일시정지 -> 종료 -> 결과 요약/저장 flow를 수동 확인하면 된다.`
-- 차단 사유: `not verified yet: 배포 브라우저가 로그인 화면에 머물러 실제 GPS permission/저장 flow는 인증 계정과 위치 권한이 있는 환경에서 확인해야 한다.`
+- 마지막 완료: `Running Real Map Provider Slice 1 구현과 리뷰를 완료했다. fake SVG/CSS map을 제거하고, Google Maps/TMAP provider key가 있으면 실제 지도 타일 위에 GPS marker/polyline을 표시하는 running-map renderer를 추가했다. targeted 테스트 12개, 전체 테스트 570개, runtime asset 검증, git diff check 통과.`
+- 다음 액션: `없음. Google Maps key 또는 TMAP appKey가 설정된 브라우저에서 운동 탭 -> 런닝/조깅 -> 위치 권한 허용 -> 시작/종료 -> 결과 요약 지도 표시를 수동 확인하면 된다.`
+- 차단 사유: `not verified yet: provider key가 없어 실제 지도 타일 로드와 SDK marker/polyline 렌더는 배포 후 key 설정 환경에서 확인해야 한다.`
 
 ## 직전 완료 요약
 

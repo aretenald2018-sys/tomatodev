@@ -4,10 +4,23 @@
 // API 키는 코드에 저장하지 않음 — 앱 설정 화면에서 입력 후 localStorage 저장
 // ================================================================
 
+function _readLocalSetting(key) {
+  try {
+    return typeof localStorage !== 'undefined' ? (localStorage.getItem(key) || '') : '';
+  } catch {
+    return '';
+  }
+}
+
 export const CONFIG = {
   // 비공개 키는 localStorage에서 로드 (앱 설정에서 입력)
-  get ANTHROPIC_KEY()    { return localStorage.getItem('cfg_anthropic')    || ''; },
-  get ALPHAVANTAGE_KEY() { return localStorage.getItem('cfg_alphavantage') || ''; },
+  get ANTHROPIC_KEY()    { return _readLocalSetting('cfg_anthropic'); },
+  get ALPHAVANTAGE_KEY() { return _readLocalSetting('cfg_alphavantage'); },
+  MAPS: {
+    get RUNNING_PROVIDER()  { return _readLocalSetting('cfg_running_map_provider') || 'auto'; },
+    get GOOGLE_MAPS_KEY()   { return _readLocalSetting('cfg_google_maps_key'); },
+    get TMAP_APP_KEY()      { return _readLocalSetting('cfg_tmap_app_key'); },
+  },
   // Groq는 Firebase Functions(geminiProxy) 서버측 secret으로 관리 — 클라 설정 불필요.
   APPCHECK_SITE_KEY: '6LfUKrYsAAAAAOhty9w6l1xUVaiGDmltI0obPVRM',
 

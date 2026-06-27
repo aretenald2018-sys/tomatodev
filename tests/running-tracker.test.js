@@ -2,13 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  buildRunningSessionRouteSvg,
   downsampleRunningRoute,
   formatRunningDuration,
   formatRunningPace,
   runningRouteDistanceMeters,
   summarizeRunningRoute,
 } from '../workout/running-session.js';
+import {
+  buildGoogleMapsScriptUrl,
+  buildTmapScriptUrl,
+  normalizeRunningMapPoints,
+  resolveRunningMapConfig,
+  runningMapCenter,
+} from '../workout/running-map.js';
 
 const route = [
   { lat: 37.5209, lng: 126.9770, accuracy: 8, ts: 1000 },
@@ -38,7 +44,7 @@ test('running session route summary stores distance, duration, bbox, centroid, a
   assert.equal(summary.gpsAccuracySummary.avgAccuracyM, 10);
 });
 
-test('running session route preview downsamples and renders an svg route', () => {
+test('running session route downsamples without rendering a fake map', () => {
   const many = Array.from({ length: 300 }, (_, i) => ({
     lat: 37.52 + i * 0.00001,
     lng: 126.97 + i * 0.00002,
@@ -47,10 +53,28 @@ test('running session route preview downsamples and renders an svg route', () =>
   }));
 
   assert.equal(downsampleRunningRoute(many).length, 240);
-  const svg = buildRunningSessionRouteSvg(route);
-  assert.match(svg, /wt-running-session-route-svg/);
-  assert.match(svg, /polyline/);
-  assert.match(svg, /class="end"/);
+  assert.equal(normalizeRunningMapPoints(route).length, 3);
+  assert.deepEqual(runningMapCenter([{ lat: 37, lng: 126 }, { lat: 38, lng: 128 }]), {
+    lat: 37.5,
+    lng: 127,
+  });
+});
+
+test('running real map provider config resolves Google and TMAP keys', () => {
+  assert.deepEqual(resolveRunningMapConfig({ provider: 'auto' }), {
+    provider: 'none',
+    label: '실제 지도',
+    key: '',
+    configured: false,
+    reason: 'missing-key',
+  });
+  assert.equal(resolveRunningMapConfig({ provider: 'auto', tmapAppKey: 'tmap-key', googleMapsKey: 'google-key' }).provider, 'tmap');
+  assert.equal(resolveRunningMapConfig({ provider: 'google', googleMapsKey: 'google-key' }).configured, true);
+  assert.equal(resolveRunningMapConfig({ provider: 'tmap', tmapAppKey: 'tmap-key' }).configured, true);
+  assert.match(buildGoogleMapsScriptUrl('abc'), /maps\.googleapis\.com\/maps\/api\/js/);
+  assert.match(buildGoogleMapsScriptUrl('abc'), /key=abc/);
+  assert.match(buildTmapScriptUrl('abc'), /apis\.openapi\.sk\.com\/tmap\/jsv2/);
+  assert.match(buildTmapScriptUrl('abc'), /appKey=abc/);
 });
 
 test('running session formats elapsed time and pace like running apps', () => {

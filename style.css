@@ -6081,28 +6081,66 @@ body.wt-running-session-open {
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
-  background:
-    linear-gradient(102deg, transparent 0 27%, rgba(207, 216, 224, 0.74) 27% 29%, transparent 29% 100%),
-    linear-gradient(3deg, transparent 0 44%, rgba(207, 216, 224, 0.72) 44% 46%, transparent 46% 100%),
-    linear-gradient(152deg, transparent 0 55%, rgba(207, 216, 224, 0.65) 55% 57%, transparent 57% 100%),
-    linear-gradient(88deg, transparent 0 70%, rgba(207, 216, 224, 0.62) 70% 72%, transparent 72% 100%),
-    #f7f9fb;
+  background: #e9eef3;
 }
-.wt-run-start-map::before {
-  content: '';
+.wt-run-real-map {
   position: absolute;
-  inset: -10%;
-  background:
-    linear-gradient(0deg, transparent 0 18%, rgba(226, 232, 238, 0.84) 18% 20%, transparent 20% 100%),
-    linear-gradient(90deg, transparent 0 16%, rgba(226, 232, 238, 0.75) 16% 18%, transparent 18% 100%),
-    linear-gradient(0deg, transparent 0 64%, rgba(226, 232, 238, 0.68) 64% 66%, transparent 66% 100%),
-    linear-gradient(90deg, transparent 0 76%, rgba(226, 232, 238, 0.66) 76% 78%, transparent 78% 100%);
-  background-size: 180px 150px, 170px 170px, 210px 190px, 220px 190px;
-  opacity: 0.9;
+  inset: 0;
+  overflow: hidden;
+  background: #e9eef3;
+}
+.wt-run-map-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #e9eef3;
+}
+.wt-run-map-status {
+  position: absolute;
+  z-index: 2;
+  left: 22px;
+  right: 22px;
+  top: 50%;
+  transform: translateY(-50%);
+  min-height: 54px;
+  display: grid;
+  place-items: center;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #30343b;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: center;
+}
+.wt-run-map-status[hidden] {
+  display: none;
+}
+.wt-run-map-label {
+  position: absolute;
+  z-index: 2;
+  left: 16px;
+  top: 14px;
+  max-width: calc(100% - 32px);
+  padding: 8px 11px;
+  border-radius: 2px;
+  background: #fff;
+  color: #222;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.25;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.wt-run-real-map[data-map-state="missing-key"] .wt-run-map-canvas,
+.wt-run-real-map[data-map-state="error"] .wt-run-map-canvas {
+  opacity: 0.35;
 }
 .wt-run-tip-card {
   position: absolute;
-  z-index: 2;
+  z-index: 4;
   top: 38px;
   left: 10%;
   right: 10%;
@@ -6140,35 +6178,9 @@ body.wt-running-session-open {
   font-size: 14px;
   line-height: 1.35;
 }
-.wt-run-dash {
-  position: absolute;
-  z-index: 1;
-  top: 27%;
-  left: 30%;
-  width: 36%;
-  border-top: 4px dashed rgba(0, 0, 0, 0.12);
-}
-.wt-run-dash::before {
-  content: '';
-  display: block;
-  width: 22px;
-  border-top: 4px solid #111;
-  transform: translateY(-4px);
-}
-.wt-run-current-dot {
-  position: absolute;
-  z-index: 2;
-  left: 49%;
-  top: 52%;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: #f40000;
-  box-shadow: 0 0 0 3px rgba(244, 0, 0, 0.12);
-}
 .wt-run-float {
   position: absolute;
-  z-index: 2;
+  z-index: 4;
   width: 76px;
   height: 76px;
   display: grid;
@@ -6426,62 +6438,11 @@ body.wt-running-session-open {
   margin-top: 28px;
   height: 252px;
   overflow: hidden;
-  background: #eef3f5;
+  background: #e9eef3;
 }
-.wt-run-summary-map > span {
+.wt-run-summary-map .wt-run-real-map {
   position: absolute;
-  z-index: 2;
-  left: 16px;
-  top: 14px;
-  max-width: calc(100% - 32px);
-  padding: 8px 11px;
-  background: #fff;
-  color: #222;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.25;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-.wt-running-session-route-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-.wt-running-session-route-svg rect {
-  fill: #eef3f5;
-}
-.wt-running-session-route-svg .run-map-road {
-  fill: none;
-  stroke: #d7e0e6;
-  stroke-width: 14;
-  stroke-linecap: round;
-}
-.wt-running-session-route-svg .run-map-road--thin {
-  stroke-width: 8;
-}
-.wt-running-session-route-svg .run-route-glow {
-  fill: none;
-  stroke: rgba(67, 214, 38, 0.38);
-  stroke-width: 16;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.wt-running-session-route-svg .run-route-line {
-  fill: none;
-  stroke: #77e027;
-  stroke-width: 8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.wt-running-session-route-svg circle.start {
-  fill: #26bf4a;
-  stroke: #fff;
-  stroke-width: 4;
-}
-.wt-running-session-route-svg circle.end {
-  fill: #f40000;
-  stroke: #fff;
-  stroke-width: 4;
+  inset: 0;
 }
 .wt-run-summary-actions {
   width: min(100%, 430px);

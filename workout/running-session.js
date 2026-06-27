@@ -3,6 +3,7 @@
 // ================================================================
 
 import { S } from './state.js';
+import { destroyRunningMaps, renderRunningMap } from './running-map.js';
 
 const MAX_ROUTE_POINTS = 240;
 const MIN_ROUTE_STEP_M = 3;
@@ -22,6 +23,9 @@ const _session = {
   pausedAt: null,
   pausedMs: 0,
   route: [],
+  previewPoint: null,
+  previewRequested: false,
+  mapRenderSeq: 0,
   lastError: '',
   saving: false,
 };
@@ -221,53 +225,6 @@ export function formatRunningPace(secPerKm) {
   return `${m}'${String(s).padStart(2, '0')}''`;
 }
 
-function _projectRoute(route, w, h, pad) {
-  const bbox = _routeBounds(route);
-  if (!bbox) return [];
-  const lngSpan = Math.max(0.000001, bbox.maxLng - bbox.minLng);
-  const latSpan = Math.max(0.000001, bbox.maxLat - bbox.minLat);
-  return route.map(p => {
-    const x = pad + ((p.lng - bbox.minLng) / lngSpan) * (w - pad * 2);
-    const y = pad + ((bbox.maxLat - p.lat) / latSpan) * (h - pad * 2);
-    return `${_round(x, 1)},${_round(y, 1)}`;
-  });
-}
-
-export function buildRunningSessionRouteSvg(points = []) {
-  const route = downsampleRunningRoute(points);
-  const w = 320;
-  const h = 220;
-  const road = `
-    <path d="M-10 64 C72 72 92 126 170 118 S266 88 340 112" class="run-map-road"/>
-    <path d="M36 -10 C78 52 92 128 92 230" class="run-map-road run-map-road--thin"/>
-    <path d="M-12 174 C76 160 140 182 332 160" class="run-map-road run-map-road--thin"/>
-  `;
-  if (route.length < 2) {
-    return `
-      <svg class="wt-running-session-route-svg is-placeholder" viewBox="0 0 ${w} ${h}" role="img" aria-label="러닝 경로 미리보기">
-        <rect width="${w}" height="${h}" rx="0"/>
-        ${road}
-        <path d="M64 156 C104 84 170 92 190 132 S250 172 286 96" class="run-route-line"/>
-        <circle cx="64" cy="156" r="7" class="start"/>
-        <circle cx="286" cy="96" r="7" class="end"/>
-      </svg>
-    `;
-  }
-  const pts = _projectRoute(route, w, h, 28).join(' ');
-  const first = _projectRoute([route[0], ...route], w, h, 28)[0] || '28,192';
-  const last = _projectRoute([route[route.length - 1], ...route], w, h, 28)[0] || '292,48';
-  return `
-    <svg class="wt-running-session-route-svg" viewBox="0 0 ${w} ${h}" role="img" aria-label="러닝 경로 미리보기">
-      <rect width="${w}" height="${h}" rx="0"/>
-      ${road}
-      <polyline points="${pts}" class="run-route-glow"/>
-      <polyline points="${pts}" class="run-route-line"/>
-      <circle cx="${first.split(',')[0]}" cy="${first.split(',')[1]}" r="7" class="start"/>
-      <circle cx="${last.split(',')[0]}" cy="${last.split(',')[1]}" r="7" class="end"/>
-    </svg>
-  `;
-}
-
 function _elapsedSec() {
   if (!_session.startedAt) return 0;
   const end = _session.phase === 'paused' && _session.pausedAt ? _session.pausedAt : (_session.endedAt || _now());
@@ -320,6 +277,9 @@ function _resetLiveSession() {
     pausedAt: null,
     pausedMs: 0,
     route: [],
+    previewPoint: null,
+    previewRequested: false,
+    mapRenderSeq: _session.mapRenderSeq + 1,
     lastError: '',
     saving: false,
   });
@@ -344,9 +304,9 @@ function _startTicker() {
   }, 1000);
 }
 
-function _pushPosition(position) {
+function _positionToPoint(position) {
   const coords = position?.coords || {};
-  const point = _safePoint({
+  return _safePoint({
     lat: coords.latitude,
     lng: coords.longitude,
     ts: position?.timestamp || _now(),
@@ -354,6 +314,29 @@ function _pushPosition(position) {
     altitude: coords.altitude,
     speed: coords.speed,
   });
+}
+
+function _requestPreviewPosition() {
+  if (_session.previewRequested || typeof navigator === 'undefined' || !navigator.geolocation?.getCurrentPosition) return;
+  _session.previewRequested = true;
+  navigator.geolocation.getCurrentPosition(
+    position => {
+      const point = _positionToPoint(position);
+      if (!point) return;
+      _session.previewPoint = point;
+      _session.lastError = '';
+      if (_session.open && _session.phase === 'start') _render();
+    },
+    error => {
+      _session.lastError = error?.message || 'GPS 권한을 확인해주세요';
+      if (_session.open && _session.phase === 'start') _mountRunningMaps();
+    },
+    GEO_OPTIONS
+  );
+}
+
+function _pushPosition(position) {
+  const point = _positionToPoint(position);
   if (!point) return;
   const last = _session.route[_session.route.length - 1];
   if (last && runningDistanceMeters(last, point) < MIN_ROUTE_STEP_M) return;
@@ -454,6 +437,40 @@ async function _shareSummary() {
   }
 }
 
+function _mapPointsFor(kind) {
+  if (kind === 'summary') {
+    if (_session.route.length) return _session.route;
+    return _session.previewPoint ? [_session.previewPoint] : [];
+  }
+  if (kind === 'start') return _session.previewPoint ? [_session.previewPoint] : [];
+  return [];
+}
+
+function _renderRealMapShell(kind, label) {
+  const safeKind = _escapeHtml(kind);
+  const safeLabel = _escapeHtml(label || '실제 지도');
+  return `
+    <div class="wt-run-real-map wt-run-real-map--${safeKind}" data-running-real-map="${safeKind}">
+      <div class="wt-run-map-canvas" data-running-map-canvas aria-label="${safeLabel}"></div>
+      <div class="wt-run-map-status" data-running-map-status>실제 지도 준비 중</div>
+      <span class="wt-run-map-label">${safeLabel}</span>
+    </div>
+  `;
+}
+
+function _mountRunningMaps() {
+  const root = _root();
+  if (!root || !_session.open) return;
+  const seq = ++_session.mapRenderSeq;
+  root.querySelectorAll('[data-running-real-map]').forEach(shell => {
+    const kind = shell.getAttribute('data-running-real-map') || 'start';
+    const points = _mapPointsFor(kind);
+    renderRunningMap(shell, { points, phase: kind }).then(() => {
+      if (seq !== _session.mapRenderSeq) destroyRunningMaps(shell);
+    });
+  });
+}
+
 function _renderStart() {
   return `
     <section class="wt-running-screen wt-running-screen--start" data-running-screen="start">
@@ -467,12 +484,11 @@ function _renderStart() {
         <button type="button" data-running-action="guide">러닝 가이드</button>
       </div>
       <div class="wt-run-start-map">
+        ${_renderRealMapShell('start', _session.previewPoint ? '현재 위치' : '위치 권한 대기')}
         <div class="wt-run-tip-card">
           <span class="wt-run-tip-icon">☾</span>
           <span><b>밤에 러닝하시나요?</b><small>안전을 위해 조명을 지참하세요.</small></span>
         </div>
-        <span class="wt-run-dash"></span>
-        <span class="wt-run-current-dot"></span>
         <button type="button" class="wt-run-float wt-run-float--shoe" data-running-action="noop" aria-label="신발">⌁</button>
         <button type="button" class="wt-run-float wt-run-float--signal" data-running-action="noop" aria-label="GPS">⌾</button>
         <button type="button" class="wt-run-float wt-run-float--setting" data-running-action="settings" aria-label="설정">⚙</button>
@@ -548,8 +564,7 @@ function _renderSummary() {
           <div><b>${summary.cadenceSpm || 0}</b><span>케이던스</span></div>
         </div>
         <div class="wt-run-summary-map">
-          <span>${location}</span>
-          ${buildRunningSessionRouteSvg(_session.route)}
+          ${_renderRealMapShell('summary', location)}
         </div>
       </main>
       <footer class="wt-run-summary-actions">
@@ -566,9 +581,13 @@ function _render() {
   root.classList.add('is-open');
   root.hidden = false;
   document.body?.classList.add('wt-running-session-open');
+  destroyRunningMaps(root);
+  _session.mapRenderSeq += 1;
   if (_session.phase === 'active' || _session.phase === 'paused') root.innerHTML = _renderProgress();
   else if (_session.phase === 'summary') root.innerHTML = _renderSummary();
   else root.innerHTML = _renderStart();
+  if (_session.phase === 'start') _requestPreviewPosition();
+  _mountRunningMaps();
 }
 
 function _handleAction(action) {
@@ -609,6 +628,7 @@ export function wtOpenRunningSession() {
 
 export function wtCloseRunningSession() {
   const root = _root();
+  if (root) destroyRunningMaps(root);
   _resetLiveSession();
   _session.open = false;
   if (root) {
