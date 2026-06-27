@@ -91,6 +91,6 @@ test('life zone workout poses use scoped motion with reduced motion fallback', (
 test('life zone NPC card image is no longer a precached runtime asset', () => {
   const sw = readText('sw.js');
 
-  assert.match(sw, /tomatofarm-v20260627z8-home-life-zone-motion/);
+  assert.match(sw, /tomatofarm-v20260627z9-workout-sheet-input-isolation/);
   assert.doesNotMatch(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
 });

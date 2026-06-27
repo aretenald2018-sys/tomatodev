@@ -18,6 +18,7 @@ test('workout calendar keeps the month surface and renders the existing day bar 
   assert.doesNotMatch(homeRender, /_renderWorkoutHomeDetail\(root/);
   assert.match(homeRender, /_renderWorkoutCalendar\(root/);
   assert.match(calendarJs, /function _renderWorkoutHomeBottomSheet/);
+  assert.match(calendarJs, /class="cal-workout-day-backdrop is-\$\{sheetState\}"[\s\S]*data-wt-sheet-backdrop/);
   assert.match(calendarJs, /class="cal-workout-day-sheet is-\$\{sheetState\}"[\s\S]*data-wt-day-sheet/);
   assert.match(calendarJs, /class="cal-workout-day-bar" data-wt-sheet-bar aria-expanded/);
   assert.match(calendarJs, /class="cal-workout-day-expand" data-wt-sheet-toggle/);
@@ -58,6 +59,31 @@ test('sheet tap toggles directly between bar and full without drag or suppressio
   assert.doesNotMatch(calendarJs, /SuppressSheetClick|suppressNextSheetClick/);
   assert.doesNotMatch(calendarJs, /DEADZONE|FLING|velocityY|hasMoved|openLatched|closeLatched/);
   assert.doesNotMatch(calendarJs, /wt-day-sheet-drag|is-dragging/);
+});
+
+test('full sheet isolates background calendar input without restoring sheet drag', () => {
+  const bindStart = calendarJs.indexOf('function _bindWorkoutHomeSheetInputIsolation');
+  const bindEnd = calendarJs.indexOf('function _workoutHomeSheetTouchWouldChain', bindStart);
+  assert.ok(bindStart >= 0 && bindEnd > bindStart, 'input isolation source should be present');
+  const bindFn = calendarJs.slice(bindStart, bindEnd);
+
+  assert.match(calendarJs, /_bindWorkoutHomeSheetInputIsolation\(root\)/);
+  assert.match(bindFn, /root\?\.querySelector\?\.\('\[data-wt-sheet-backdrop\]'\)/);
+  assert.match(bindFn, /backdrop\?\.addEventListener\('touchmove', blockBackgroundInput, \{ passive: false \}\)/);
+  assert.match(bindFn, /backdrop\?\.addEventListener\('wheel', blockBackgroundInput, \{ passive: false \}\)/);
+  assert.match(bindFn, /event\.target\?\.closest\?\.\('\.wt-day-sheet-scroll'\)/);
+  assert.match(bindFn, /if \(event\.cancelable\) event\.preventDefault\(\)/);
+  assert.match(bindFn, /event\.stopPropagation\(\)/);
+  assert.match(bindFn, /scroller\.addEventListener\('touchmove'[\s\S]*\{ passive: false \}\)/);
+  assert.match(bindFn, /scroller\.addEventListener\('wheel'[\s\S]*\{ passive: false \}\)/);
+  assert.match(calendarJs, /function _workoutHomeSheetTouchWouldChain/);
+  assert.match(calendarJs, /dy > 0 && scrollTop <= 0/);
+  assert.match(calendarJs, /dy < 0 && scrollTop >= maxScrollTop - 1/);
+  assert.match(calendarJs, /function _workoutHomeSheetWheelWouldChain/);
+  assert.match(calendarJs, /deltaY < 0 && scrollTop <= 0/);
+  assert.match(calendarJs, /deltaY > 0 && scrollTop >= maxScrollTop - 1/);
+  assert.doesNotMatch(bindFn, /pointerdown|pointermove|pointerup|pointercancel/);
+  assert.doesNotMatch(bindFn, /_suppressWorkoutHomeSheetClick|_consumeWorkoutHomeSuppressedClick|_resolveWorkoutHomeSheetDragTarget/);
 });
 
 test('full sheet header tap collapses through the sheet toggle path', () => {
@@ -105,13 +131,16 @@ test('floating add button uses direct sheet action binding', () => {
 });
 
 test('bottom sheet css is fixed, animated, and contains the session bar inside the sheet', () => {
+  assert.match(styleCss, /\.cal-workout-day-backdrop\s*\{[\s\S]*position:\s*fixed;[\s\S]*z-index:\s*42;[\s\S]*pointer-events:\s*none;[\s\S]*touch-action:\s*none;[\s\S]*overscroll-behavior:\s*none;/);
+  assert.match(styleCss, /\.cal-workout-day-backdrop\.is-full\s*\{[\s\S]*pointer-events:\s*auto;/);
   assert.match(styleCss, /\.cal-workout-day-sheet\s*\{[\s\S]*position:\s*fixed;[\s\S]*transition:[\s\S]*height 260ms/);
   assert.match(styleCss, /height:\s*var\(--wt-day-sheet-height\)/);
   assert.match(styleCss, /\.cal-workout-day-sheet\s*\{[\s\S]*--wt-day-sheet-height:\s*clamp\(72px,\s*10dvh,\s*96px\)/);
   assert.match(styleCss, /\.cal-workout-day-sheet\s*\{[\s\S]*--wt-day-sheet-full-clearance:\s*112px/);
-  assert.match(styleCss, /\.cal-workout-day-sheet\.is-full\s*\{[\s\S]*100dvh - var\(--wt-day-sheet-full-clearance\)/);
+  assert.match(styleCss, /\.cal-workout-day-sheet\.is-full\s*\{[\s\S]*100dvh - var\(--wt-day-sheet-full-clearance\)[\s\S]*overscroll-behavior:\s*contain;/);
   assert.match(styleCss, /\.cal-workout-day-expand\s*\{[\s\S]*touch-action:\s*manipulation;/);
   assert.match(styleCss, /\.cal-workout-day-sheet \.cal-workout-day-bar\s*\{[\s\S]*touch-action:\s*manipulation;/);
+  assert.match(styleCss, /\.cal-workout-day-sheet\.is-full \.cal-workout-day-bar\s*\{[\s\S]*touch-action:\s*none;/);
   assert.match(styleCss, /\.cal-workout-day-sheet \.wt-day-sessionbar\s*\{[\s\S]*position:\s*relative;/);
   assert.match(styleCss, /\.cal-workout-day-sheet \.wt-day-sessionbar\s*\{[\s\S]*padding:\s*7px 82px/);
   assert.match(styleCss, /\.cal-workout-day-sheet \.wt-day-sheet-scroll\s*\{[\s\S]*-webkit-overflow-scrolling:\s*touch;/);
@@ -276,5 +305,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260627z8-home-life-zone-motion/);
+  assert.match(swJs, /tomatofarm-v20260627z9-workout-sheet-input-isolation/);
 });

@@ -11303,6 +11303,18 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   }
 }
 
+.cal-workout-day-backdrop {
+  position: fixed;
+  inset: 0 0 60px;
+  z-index: 42;
+  background: transparent;
+  pointer-events: none;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+.cal-workout-day-backdrop.is-full {
+  pointer-events: auto;
+}
 .cal-workout-day-sheet {
   --wt-day-sheet-height: clamp(72px, 10dvh, 96px);
   --wt-day-sheet-full-clearance: 112px;
@@ -11329,6 +11341,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 .cal-workout-day-sheet.is-full {
   --wt-day-sheet-height: calc(100dvh - var(--wt-day-sheet-full-clearance) - env(safe-area-inset-top, 0px));
   box-shadow: 0 -12px 34px rgba(24, 28, 38, 0.22);
+  overscroll-behavior: contain;
 }
 .cal-workout-day-sheet .cal-workout-day-bar {
   position: relative;
@@ -11342,6 +11355,9 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 }
 .cal-workout-day-sheet .cal-workout-day-expand {
   cursor: pointer;
+}
+.cal-workout-day-sheet.is-full .cal-workout-day-bar {
+  touch-action: none;
 }
 .cal-workout-day-sheet.is-full .cal-workout-day-expand {
   color: #2f6df6;

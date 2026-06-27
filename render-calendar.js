@@ -1000,6 +1000,7 @@ function _renderWorkoutHomeBottomSheet(selectedKey, { cache, plan, checkins, loo
   const selected = _parseDateKey(selectedKey) ? selectedKey : dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
   const sheetState = _currentWorkoutHomeSheetState();
   return `
+    <div class="cal-workout-day-backdrop is-${sheetState}" data-wt-sheet-backdrop data-wt-sheet-state="${sheetState}" aria-hidden="true"></div>
     <section class="cal-workout-day-sheet is-${sheetState}" data-wt-day-sheet data-wt-sheet-state="${sheetState}" role="dialog" aria-modal="false" aria-expanded="${sheetState !== 'bar' ? 'true' : 'false'}" aria-label="선택 날짜 운동 기록">
       ${_renderWorkoutHomeDayBar(selected, { cache, plan, checkins, lookup })}
       <div class="cal-workout-day-sheet-body">
@@ -1182,6 +1183,7 @@ export function renderWorkoutCalendarHome() {
   });
   _bindWorkoutCycleRailActions(root);
   _bindWorkoutHomeSheetActions(root);
+  _bindWorkoutHomeSheetInputIsolation(root);
 }
 
 function _renderWorkoutHomeDetail(root, args) {
@@ -1861,7 +1863,15 @@ function _currentWorkoutHomeSheetState() {
 function _applyWorkoutHomeSheetState() {
   if (typeof document === 'undefined') return;
   const sheet = document.querySelector('#workout-calendar-root [data-wt-day-sheet]');
-  if (!sheet) return;
+  const backdrop = document.querySelector('#workout-calendar-root [data-wt-sheet-backdrop]');
+  if (!sheet) {
+    if (backdrop) {
+      backdrop.classList.remove('is-full');
+      backdrop.classList.add('is-bar');
+      backdrop.setAttribute('data-wt-sheet-state', 'bar');
+    }
+    return;
+  }
   const state = _currentWorkoutHomeSheetState();
   const expanded = state !== 'bar';
   const expandedText = expanded ? 'true' : 'false';
@@ -1877,6 +1887,11 @@ function _applyWorkoutHomeSheetState() {
   });
   const arrow = sheet.querySelector('.cal-workout-day-expand[data-wt-sheet-toggle]');
   if (arrow) arrow.textContent = expanded ? '⌄' : '⌃';
+  if (backdrop) {
+    backdrop.classList.toggle('is-full', expanded);
+    backdrop.classList.toggle('is-bar', !expanded);
+    backdrop.setAttribute('data-wt-sheet-state', state);
+  }
 }
 
 function _setWorkoutHomeSheetState(state, { render = false } = {}) {
@@ -1939,6 +1954,67 @@ function _bindWorkoutHomeSheetActions(root) {
       _openWorkoutEditorForSession(key, _workoutHomeSessionIndex);
     });
   }, true);
+}
+
+function _bindWorkoutHomeSheetInputIsolation(root) {
+  const backdrop = root?.querySelector?.('[data-wt-sheet-backdrop]');
+  const sheet = root?.querySelector?.('[data-wt-day-sheet]');
+  const scroller = sheet?.querySelector?.('.wt-day-sheet-scroll');
+  const blockBackgroundInput = (event) => {
+    if (_currentWorkoutHomeSheetState() !== 'full') return;
+    if (event.cancelable) event.preventDefault();
+    event.stopPropagation();
+  };
+
+  backdrop?.addEventListener('touchmove', blockBackgroundInput, { passive: false });
+  backdrop?.addEventListener('wheel', blockBackgroundInput, { passive: false });
+
+  sheet?.addEventListener('touchmove', (event) => {
+    if (_currentWorkoutHomeSheetState() !== 'full') return;
+    if (event.target?.closest?.('.wt-day-sheet-scroll')) return;
+    blockBackgroundInput(event);
+  }, { passive: false });
+  sheet?.addEventListener('wheel', (event) => {
+    if (_currentWorkoutHomeSheetState() !== 'full') return;
+    if (event.target?.closest?.('.wt-day-sheet-scroll')) return;
+    blockBackgroundInput(event);
+  }, { passive: false });
+
+  if (!scroller) return;
+  let lastTouchY = 0;
+  scroller.addEventListener('touchstart', (event) => {
+    if (event.touches?.length !== 1) return;
+    lastTouchY = Number(event.touches[0]?.clientY) || 0;
+  }, { passive: true });
+  scroller.addEventListener('touchmove', (event) => {
+    if (_currentWorkoutHomeSheetState() !== 'full' || event.touches?.length !== 1) return;
+    const y = Number(event.touches[0]?.clientY) || lastTouchY;
+    const dy = y - lastTouchY;
+    lastTouchY = y;
+    if (_workoutHomeSheetTouchWouldChain(scroller, dy) && event.cancelable) event.preventDefault();
+    event.stopPropagation();
+  }, { passive: false });
+  scroller.addEventListener('wheel', (event) => {
+    if (_currentWorkoutHomeSheetState() !== 'full') return;
+    if (_workoutHomeSheetWheelWouldChain(scroller, Number(event.deltaY) || 0) && event.cancelable) event.preventDefault();
+    event.stopPropagation();
+  }, { passive: false });
+}
+
+function _workoutHomeSheetTouchWouldChain(scroller, dy) {
+  const scrollTop = Math.max(0, Number(scroller?.scrollTop) || 0);
+  const maxScrollTop = Math.max(0, (Number(scroller?.scrollHeight) || 0) - (Number(scroller?.clientHeight) || 0));
+  if (maxScrollTop <= 0) return true;
+  if (dy > 0 && scrollTop <= 0) return true;
+  return dy < 0 && scrollTop >= maxScrollTop - 1;
+}
+
+function _workoutHomeSheetWheelWouldChain(scroller, deltaY) {
+  const scrollTop = Math.max(0, Number(scroller?.scrollTop) || 0);
+  const maxScrollTop = Math.max(0, (Number(scroller?.scrollHeight) || 0) - (Number(scroller?.clientHeight) || 0));
+  if (maxScrollTop <= 0) return true;
+  if (deltaY < 0 && scrollTop <= 0) return true;
+  return deltaY > 0 && scrollTop >= maxScrollTop - 1;
 }
 
 function _bindWorkoutCycleRailActions(root) {
