@@ -2,34 +2,27 @@
 
 ## 현재 상태
 
-- 상태: `needs_user_decision`
-- 계획 문서: `docs/ai/features/2026-06-27-wendler-program-ssot-diagnosis.md`
-- 현재 단계: `needs_user_decision — Wendler Slice 3 운영 데이터 보정 전 read-only 확인`
-- 마지막 완료: `2026-06-27 Workout Calendar Bottom Sheet Slice 14를 구현하고 Dashboard3 Pages 배포 검증까지 통과했다. cache marker는 tomatofarm-v20260627z5-sheet-suppress-guard이다.`
-- 다음 액션: `Wendler Slice 3 production Firestore write 전 사전 확인: users/김_태우/settings/test_board_v2를 read-only로 다시 읽고 스모데드/스쿼트(와이드) programStartDate/tmAnchors 후보 patch를 출력한다. write는 사용자 확인 전에는 하지 않는다.`
-- 차단 사유: `운영 Firestore 데이터 write 전 최종 read-only 확인과 사용자 확인이 필요함`
+- 상태: `complete`
+- 계획 문서: `docs/ai/features/2026-06-27-home-image-rendering-nameplates.md`
+- 현재 단계: `complete — Home Life Zone Nameplate Cleanup Slice 1`
+- 작업 브랜치: `codex/home-image-rendering-nameplates`
+- 마지막 완료: `2026-06-27 Home Image Rendering Nameplate Cleanup Slice 1을 구현하고 로컬 정적 검증/리뷰를 완료했다. cache marker는 tomatofarm-v20260627z6-home-nameplate-cleanup이다.`
+- 다음 액션: `커밋 후 Dashboard3 Pages에 배포하고 npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>로 원격 자산을 확인한다. 인증 계정이 있으면 홈 탭 라이프존에서 캐릭터 닉네임이 몸통을 가리지 않고 트레이너 이름표만 보이는지 확인한다.`
+- 차단 사유: `없음`
 
 ## 직전 완료 요약
 
-- Workout Calendar Bottom Sheet Slice 14:
-  1. `render-calendar.js` drag release에서 `targetState !== prevState`일 때만 `_suppressWorkoutHomeSheetClick()`을 호출하게 했다.
-  2. deadzone 이내 미세 pointer move는 `WORKOUT_HOME_SHEET_MIN_SUPPRESS_MOVE_PX = 4` 이상 이동한 경우만 suppression을 건다.
-  3. 두 개의 `[data-wt-sheet-toggle]` 모두 `aria-expanded`/`aria-label`을 갱신하되, 날짜 텍스트 버튼 내용은 보존하고 화살표 텍스트는 handle에만 적용한다.
-  4. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260627z5-sheet-suppress-guard`로 갱신했다.
-  5. 리뷰: `docs/ai/reviews/2026-06-27-workout-calendar-sheet-suppress-guard-review.md`
-  6. 커밋/배포: `1a46c47 fix(workout): guard sheet click suppression`
-- 검증:
-  1. PASS: `node --check render-calendar.js; node --check sw.js`
-  2. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js` — 19 tests passed
-  3. PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 552 tests passed
-  4. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
-  5. PASS: `git diff --check`
-  6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 1a46c473abc3b3b7a55ae76611dfe682a3494548`
-     - 결과: `[deploy-verify] ok 1a46c473abc3 tomatofarm-v20260627z5-sheet-suppress-guard static=219`
-  7. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260627z5-sheet-suppress-guard" "render-calendar.js::WORKOUT_HOME_SHEET_MIN_SUPPRESS_MOVE_PX = 4" "render-calendar.js::if (targetState !== prevState) _suppressWorkoutHomeSheetClick()" "render-calendar.js::querySelectorAll('[data-wt-sheet-toggle]')" "render-calendar.js::data-wt-sheet-main data-wt-sheet-toggle"`
-  8. not verified yet: 인증 계정 실제 `운동 탭 -> 날짜 sheet full -> 상단 살짝 drag/release -> 상단 tap collapse` UI flow는 직접 확인하지 못했다.
-- 보류:
-  1. `docs/ai/features/2026-06-27-wendler-program-ssot-diagnosis.md` Slice 3 운영 Firestore anchor 보정은 production data write이므로 read-only 재확인 후 진행한다.
+- Home Image Rendering Nameplate Cleanup Slice 1:
+  1. `home/life-zone.js`에서 보이는 NPC 이름을 `트레이너`로 바꾸고 `npc-quest-bubble.png` DOM 렌더를 제거했다.
+  2. actor 이름표 좌표를 스프라이트 실제 비율 기반 하단으로 내려 몸통을 가리지 않게 했다.
+  3. `style.css`에서 이름표 기준점을 top 기준으로 바꾸고 NPC 버튼을 투명 텍스트 클릭 영역으로 정리했다.
+  4. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260627z6-home-nameplate-cleanup`으로 갱신하고 사용하지 않는 NPC card asset precache를 제거했다.
+  5. 리뷰: `docs/ai/reviews/2026-06-27-home-image-rendering-nameplates-review.md`
+  6. PASS: `node --check home/life-zone.js; node --check sw.js`
+  7. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/home-life-zone-state.test.js` — 18 tests passed
+  8. PASS: `node --test tests/*.test.js` — 552 tests passed
+  9. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=834`
+  10. PASS: `git diff --check`
 
 ## 이번 실행 검증
 
