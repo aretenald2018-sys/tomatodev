@@ -209,11 +209,16 @@ function _buildWorkoutCycleRailItems(board, weekStart) {
       if (!Number.isFinite(kg) || kg <= 0) continue;
       const reps = Number(rx?.plan?.reps) > 0 ? `${_fmtNum(rx.plan.reps, 0)}${rx.plan.amrap ? '+' : ''}회` : '';
       const kgText = `${_fmtNum(kg, 1)}kg`;
-      const trackLabel = rx.plan?.kind === 'wendler' ? '웬들러' : _cycleRailTrackLabel(track);
+      const plan = rx?.plan || {};
+      const isWendler = plan.kind === 'wendler';
+      const displayWeek = Number(isWendler ? (plan.cycleWeek || plan.week || cycleWeek) : cycleWeek) || cycleWeek;
+      const programWeek = Number(plan.programWeek) || 0;
+      const programWeekText = isWendler && programWeek > 0 ? ` · 프로그램 ${_fmtNum(programWeek, 0)}주차` : '';
+      const trackLabel = isWendler ? '웬들러' : _cycleRailTrackLabel(track);
       items.push({
         benchmarkId: bm.id,
-        label: `${_cycleRailShortName(bm)} ${kgText}`,
-        title: `${bm.label || bm.short || '종목'} · ${cycleWeek}주차 · ${trackLabel} · ${kgText}${reps ? ` x ${reps}` : ''}`,
+        label: isWendler ? `${_cycleRailShortName(bm)} W${_fmtNum(displayWeek, 0)} ${kgText}` : `${_cycleRailShortName(bm)} ${kgText}`,
+        title: `${bm.label || bm.short || '종목'} · ${_fmtNum(displayWeek, 0)}주차${programWeekText} · ${trackLabel} · ${kgText}${reps ? ` x ${reps}` : ''}`,
         kind: _cycleRailKind(bm, track),
       });
     }

@@ -222,6 +222,10 @@ test('workout calendar week rail renders cycle prescriptions instead of weekly a
   assert.match(calendarJs, /getTestBoardV2/);
   assert.match(calendarJs, /activeBenchmarks/);
   assert.match(calendarJs, /buildExerciseProgramWorkoutPrescription/);
+  assert.match(calendarJs, /const plan = rx\?\.plan \|\| \{\}/);
+  assert.match(calendarJs, /const displayWeek = Number\(isWendler \? \(plan\.cycleWeek \|\| plan\.week \|\| cycleWeek\) : cycleWeek\) \|\| cycleWeek/);
+  assert.match(calendarJs, /programWeekText/);
+  assert.match(calendarJs, /W\$\{_fmtNum\(displayWeek, 0\)\}/);
   assert.match(calendarJs, /function _buildWorkoutCycleRailItems/);
   assert.match(calendarJs, /function _renderWorkoutCycleRail/);
   assert.match(calendarJs, /benchmarkId:\s*bm\.id/);
@@ -335,5 +339,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260627z2-workout-sheet-header-toggle/);
+  assert.match(swJs, /tomatofarm-v20260627z3-wendler-ui-rail/);
 });

@@ -319,6 +319,21 @@ benchmark.wendler = {
 - Dashboard3 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
 - UI flow: `운동 탭 -> + -> 스모데드/스쿼트(와이드) 종목 수정 -> 웬들러 시작 주/TM 저장 -> 종목 추가`에서 각 종목의 처방 주차가 독립적으로 보인다.
 
+실행 결과:
+
+- `2026-06-27`: 완료.
+- `render-calendar.js`의 cycle rail Wendler 표시가 group cycle week 대신 `buildExerciseProgramWorkoutPrescription()`의 `plan.cycleWeek`/`plan.programWeek`를 사용한다.
+- Wendler rail chip은 `Wn` 주차를 보이는 라벨에 포함하고, title/aria label에는 종목별 program week를 함께 남긴다.
+- 종목 수정 UI의 단일 TM 입력은 기존 흐름을 유지하며, 저장 시 `upsertExerciseProgramBenchmark()`가 선택된 `programStartDate` anchor로 upsert하는 계약을 `tests/test-v2.board-core.test.js`와 `tests/exercise-program-editor.test.js`로 고정했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260627z3-wendler-ui-rail`로 bump했다.
+- 리뷰: `docs/ai/reviews/2026-06-27-wendler-ssot-slice2-review.md`
+- PASS: `node --check render-calendar.js sw.js workout/exercises.js workout/test-v2/board-core.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/exercise-program-editor.test.js tests/test-v2.board-core.test.js`
+- PASS: `node --test tests/*.test.js` — 550 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `git diff --check`
+- not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 UI flow는 커밋/푸시 후 확인한다.
+
 ### Slice 3: 운영 데이터 보정과 배포 검증
 
 목표:
