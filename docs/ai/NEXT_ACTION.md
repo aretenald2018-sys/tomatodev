@@ -3,65 +3,57 @@
 ## 현재 상태
 
 - 상태: `ready_for_execution`
-- 계획 문서: `docs/ai/features/2026-06-27-wendler-program-ssot-diagnosis.md`
-- 현재 단계: `ready_for_execution — Wendler Slice 2 종목 수정 UI/캘린더 레일 연동`
-- 마지막 완료: `2026-06-27 Wendler Slice 1 board-core SSOT 모델과 운동 캘린더 바텀시트 Slice 13 header tap collapse를 완료했다. cache marker는 tomatofarm-v20260627z2-workout-sheet-header-toggle이다.`
-- 다음 액션: `Wendler Slice 2만 실행: workout/exercises.js와 render-calendar.js에서 종목 수정 UI/캘린더 rail이 bm.programStartDate와 wendler.tmAnchors SSOT를 읽고 표시하게 한다. 운영 Firestore 데이터 write와 복수 anchor 관리 UI는 아직 하지 않는다.`
+- 계획 문서: `docs/ai/features/2026-06-27-home-life-zone-nameplates.md`
+- 현재 단계: `ready_for_execution — Home Life Zone Nameplates Slice 1`
+- 마지막 완료: `2026-06-27 Wendler Slice 2 종목 수정 UI/캘린더 rail 연동을 완료하고 Dashboard3 Pages 배포 검증까지 통과했다. cache marker는 tomatofarm-v20260627z3-wendler-ui-rail이다.`
+- 다음 액션: `Home Life Zone Nameplates Slice 1만 실행: home/life-zone.js와 style.css에서 캐릭터/NPC 이름표를 스프라이트 하단에 렌더하고, 관련 home life-zone 테스트와 sw.js CACHE_VERSION을 갱신한다. life-zone 상태 판정, NPC 이벤트 detail, www/는 건드리지 않는다.`
 - 차단 사유: `없음`
 
 ## 직전 완료 요약
 
-- Wendler Slice 1:
-  1. `workout/test-v2/board-core.js`에서 `benchmarks[].programStartDate`와 `wendler.tmAnchors[]`를 처방 계산 SSOT로 연결했다.
-  2. 종목 프로그램 저장은 더 이상 group active cycle 시작일을 변경하지 않는다.
-  3. 과거 TM anchor 수정이 더 늦은 anchor 이후 처방을 바꾸지 않는 회귀 테스트를 추가했다.
-  4. 리뷰: `docs/ai/reviews/2026-06-27-wendler-ssot-slice1-review.md`
-- 운동 캘린더 바텀시트 Slice 13:
-  1. full 상태 상단 날짜/기록 영역 click이 `_wtCalOpenDay()` no-op이 아니라 `_toggleWorkoutHomeSheet()` collapse 경로를 타게 했다.
-  2. `오늘`/`루틴`의 `[data-wt-sheet-action]`은 collapse handler에서 제외했다.
-  3. 리뷰: `docs/ai/reviews/2026-06-27-workout-calendar-sheet-header-toggle-review.md`
+- Wendler Slice 2:
+  1. `render-calendar.js`의 cycle rail Wendler chip이 `buildExerciseProgramWorkoutPrescription()`의 `plan.cycleWeek`/`plan.programWeek`를 읽어 `Wn`과 종목별 program week를 표시한다.
+  2. 기존 종목 수정 UI의 단일 TM 입력은 유지하고, board-core의 `programStartDate` anchor upsert 계약을 테스트로 고정했다.
+  3. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260627z3-wendler-ui-rail`로 갱신했다.
+  4. 리뷰: `docs/ai/reviews/2026-06-27-wendler-ssot-slice2-review.md`
+  5. 커밋/배포: `18f2a05 fix(workout): show wendler rail program weeks`
 - 검증:
-  1. PASS: `node --check workout/test-v2/board-core.js render-calendar.js sw.js`
-  2. PASS: `node --test tests/test-v2.board-core.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js`
-  3. PASS: `node scripts/verify-runtime-assets.mjs`
-  4. PASS: `node --test .\tests\*.test.js` — 550 tests passed
+  1. PASS: `node --check render-calendar.js sw.js workout/exercises.js workout/test-v2/board-core.js`
+  2. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/exercise-program-editor.test.js tests/test-v2.board-core.test.js`
+  3. PASS: `node --test tests/*.test.js` — 550 tests passed
+  4. PASS: `node scripts/verify-runtime-assets.mjs`
   5. PASS: `git diff --check`
-  6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ b0336a8`
-     - 결과: `[deploy-verify] ok b0336a8d3c2e tomatofarm-v20260627z2-workout-sheet-header-toggle static=219`
+  6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 18f2a05`
+     - 결과: `[deploy-verify] ok 18f2a057dda2 tomatofarm-v20260627z3-wendler-ui-rail static=219`
   7. PASS: deployed marker 확인 — `sw.js`, `render-calendar.js`, `workout/test-v2/board-core.js`
   8. not verified yet: 인증 계정 실제 UI flow 확인은 아직 남아 있다.
+- 보류:
+  1. `docs/ai/features/2026-06-27-wendler-program-ssot-diagnosis.md` Slice 3 운영 Firestore anchor 보정은 production data write이므로 별도 실행으로 남긴다.
+  2. 사용자 최신 요청에 따라 다음 실행은 홈 라이프존 이름표 Slice 1이다.
 
 ## 이번 실행 검증
 
-- 계획 완료: `docs/ai/features/2026-06-26-workout-cycle-rail-inert-click-fix.md`
-- 구현 완료: `workout/test-v2/board-render.js` sheet 내부 click/backdrop routing hardening, current cycle rail click no-op 처리
-- 리뷰 완료: `docs/ai/reviews/2026-06-26-workout-cycle-rail-inert-click-fix-review.md`
-- PASS: `node --check workout/test-v2/board-render.js; node --check sw.js`
-- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/test-v2.board-core.test.js` — 53 tests passed
-- PASS: `node --test .\tests\*.test.js` — 546 tests passed
+- 계획 완료: `docs/ai/features/2026-06-27-home-life-zone-nameplates.md`
+- 직전 구현 완료: `docs/ai/features/2026-06-27-wendler-program-ssot-diagnosis.md` Slice 2
+- 리뷰 완료: `docs/ai/reviews/2026-06-27-wendler-ssot-slice2-review.md`
+- PASS: `node --check render-calendar.js sw.js workout/exercises.js workout/test-v2/board-core.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/exercise-program-editor.test.js tests/test-v2.board-core.test.js` — 58 tests passed
+- PASS: `node --test tests/*.test.js` — 550 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
 - PASS: `git diff --check`
-- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 1b0313b`
-  - 결과: `[deploy-verify] ok 1b0313b546e6 tomatofarm-v20260626z12-cycle-rail-inert-click static=219`
-- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260626z12-cycle-rail-inert-click" "workout/test-v2/board-render.js::event.stopImmediatePropagation()" "workout/test-v2/board-render.js::if (e.target.closest('.tm2-sheet')) return" "workout/test-v2/board-render.js::event.target.closest('[data-tm2-col-cycle]')" "test-mode-v2.css::.tm2-col-cycle-point," "test-mode-v2.css::pointer-events: none" "test-mode-v2.css::user-select: none"`
-- not verified yet: 인증 계정 세션이 없어 배포 URL에서 `운동 탭 -> 월간 캘린더 -> 좌측 cycle rail 목표 칩 -> 종목 설정 sheet -> 현재 사이클 원 탭` 실제 UI flow는 직접 조작하지 못함
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 18f2a05`
+  - 결과: `[deploy-verify] ok 18f2a057dda2 tomatofarm-v20260627z3-wendler-ui-rail static=219`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ 'sw.js::tomatofarm-v20260627z3-wendler-ui-rail' 'render-calendar.js::programWeekText' 'render-calendar.js::W${_fmtNum(displayWeek, 0)}' 'workout/test-v2/board-core.js::tmAnchors'`
+- not verified yet: 인증 계정 실제 UI flow 확인 필요
 
 ## 리뷰 대상
 
-- `workout/timeline.js`
-- `workout/exercises.js`
-- `workout/timers.js`
-- `workout/save.js`
-- `workout/load.js`
-- `workout/sessions.js`
-- `workout/state.js`
-- `workout/save-schema.js`
-- `render-calendar.js`
-- `data/data-load.js`
-- `data/data-pure.js`
-- `home/life-zone-state.js`
+- `home/life-zone.js`
+- `style.css`
+- `tests/home-life-zone-npc-quest.test.js`
+- 필요 시 `tests/home-life-zone-nameplate.test.js`
 - `sw.js`
-- 관련 테스트 파일
+- cache-version 참조 테스트 파일
 
 ## 직전 실행 검증
 

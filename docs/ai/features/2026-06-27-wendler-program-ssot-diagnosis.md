@@ -332,7 +332,10 @@ benchmark.wendler = {
 - PASS: `node --test tests/*.test.js` — 550 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
-- not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 UI flow는 커밋/푸시 후 확인한다.
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 18f2a05`
+  - 결과: `[deploy-verify] ok 18f2a057dda2 tomatofarm-v20260627z3-wendler-ui-rail static=219`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ 'sw.js::tomatofarm-v20260627z3-wendler-ui-rail' 'render-calendar.js::programWeekText' 'render-calendar.js::W${_fmtNum(displayWeek, 0)}' 'workout/test-v2/board-core.js::tmAnchors'`
+- not verified yet: 인증 계정 실제 UI flow는 직접 조작하지 못했다.
 
 ### Slice 3: 운영 데이터 보정과 배포 검증
 
