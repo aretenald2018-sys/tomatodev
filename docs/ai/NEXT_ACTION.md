@@ -6,8 +6,8 @@
 - 계획 문서: `docs/ai/features/2026-06-27-home-life-zone-workout-animation.md`
 - 현재 단계: `complete — Home Life Zone Overhead Labels`
 - 작업 브랜치: `codex/home-overhead-labels`
-- 마지막 완료: `2026-06-27 Home Life Zone 트레이너 라벨을 얼굴 위로 더 올리고, 랫풀다운은 전체 머신 흔들림 대신 바/팔 클립 레이어만 움직이도록 로컬 정적 검증까지 완료했다. cache marker는 tomatofarm-v20260627z14-home-trainer-lat-motion이다.`
-- 다음 액션: `커밋/푸시하고 Dashboard3 Pages에서 deployed marker를 확인한다. 인증 계정이 있으면 홈 탭 라이프존에서 트레이너 얼굴이 가려지지 않는지, 랫풀다운 머신 전체가 흔들리지 않는지 실제 UI flow로 확인한다.`
+- 마지막 완료: `2026-06-27 Home Life Zone 트레이너 라벨을 얼굴 위로 더 올리고, 랫풀다운은 전체 머신 흔들림 대신 바/팔 클립 레이어만 움직이도록 구현했다. Dashboard3 Pages commit 2094a54 배포와 deployed marker 검증까지 완료했다. cache marker는 tomatofarm-v20260627z14-home-trainer-lat-motion이다.`
+- 다음 액션: `인증 계정이 있으면 홈 탭 라이프존에서 트레이너 얼굴이 가려지지 않는지, 랫풀다운 머신 전체가 흔들리지 않는지 실제 UI flow로 확인한다.`
 - 차단 사유: `없음`
 
 ## 직전 완료 요약
@@ -42,6 +42,9 @@
   27. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
   28. PASS: `git diff --check`
   29. WARN: `node --test tests/*.test.js` — 553 tests 중 552 pass, `tests/workout-picker-gym-rail.test.js` 1건 fail. 이번 홈 라이프존 변경 범위와 무관하다.
+  30. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 2094a548e1ab4e9d3b3d3f55889a63bdfc7ad9db` — deployed `tomatofarm-v20260627z14-home-trainer-lat-motion`
+  31. PASS: deployed markers — `actorElement.style.setProperty('--lz-sprite-url'`, `top: calc(760 / 1672 * 100%)`, `.lz-actor--pose-workout-lat::after`, `clip-path: inset(25% 4% 38% 14%)`, `background-image: var(--lz-sprite-url)`, `translate(-1.2%, 2.8%)`
+  32. not verified yet: 인증 세션이 없어 실제 홈 탭 라이프존 UI flow는 직접 조작 미완료
 
 ## 이번 실행 검증
 
