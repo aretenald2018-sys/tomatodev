@@ -2,58 +2,55 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_execution`
-- 계획 문서: `docs/ai/features/2026-06-27-home-life-zone-nameplates.md`
-- 현재 단계: `ready_for_execution — Home Life Zone Nameplates Slice 1`
-- 마지막 완료: `2026-06-27 Wendler Slice 2 종목 수정 UI/캘린더 rail 연동을 완료하고 Dashboard3 Pages 배포 검증까지 통과했다. cache marker는 tomatofarm-v20260627z3-wendler-ui-rail이다.`
-- 다음 액션: `Home Life Zone Nameplates Slice 1만 실행: home/life-zone.js와 style.css에서 캐릭터/NPC 이름표를 스프라이트 하단에 렌더하고, 관련 home life-zone 테스트와 sw.js CACHE_VERSION을 갱신한다. life-zone 상태 판정, NPC 이벤트 detail, www/는 건드리지 않는다.`
-- 차단 사유: `없음`
+- 상태: `needs_user_decision`
+- 계획 문서: `docs/ai/features/2026-06-27-wendler-program-ssot-diagnosis.md`
+- 현재 단계: `needs_user_decision — Wendler Slice 3 운영 데이터 보정 전 read-only 확인`
+- 마지막 완료: `2026-06-27 Home Life Zone Nameplates Slice 1을 구현하고 Dashboard3 Pages 배포 검증까지 통과했다. cache marker는 tomatofarm-v20260627z4-life-zone-nameplates이다.`
+- 다음 액션: `Wendler Slice 3 production Firestore write 전 사전 확인: users/김_태우/settings/test_board_v2를 read-only로 다시 읽고 스모데드/스쿼트(와이드) programStartDate/tmAnchors 후보 patch를 출력한다. write는 사용자 확인 전에는 하지 않는다.`
+- 차단 사유: `운영 Firestore 데이터 write 전 최종 read-only 확인과 사용자 확인이 필요함`
 
 ## 직전 완료 요약
 
-- Wendler Slice 2:
-  1. `render-calendar.js`의 cycle rail Wendler chip이 `buildExerciseProgramWorkoutPrescription()`의 `plan.cycleWeek`/`plan.programWeek`를 읽어 `Wn`과 종목별 program week를 표시한다.
-  2. 기존 종목 수정 UI의 단일 TM 입력은 유지하고, board-core의 `programStartDate` anchor upsert 계약을 테스트로 고정했다.
-  3. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260627z3-wendler-ui-rail`로 갱신했다.
-  4. 리뷰: `docs/ai/reviews/2026-06-27-wendler-ssot-slice2-review.md`
-  5. 커밋/배포: `18f2a05 fix(workout): show wendler rail program weeks`
+- Home Life Zone Nameplates Slice 1:
+  1. `home/life-zone.js`에서 actor image 아래에 `span.lz-nameplate`를 추가해 `actor.displayName`을 발밑 장식 텍스트로 렌더한다.
+  2. NPC quest button에 노란 `브루스` 이름표를 추가했고, 기존 `life-zone:npc-quest` detail `{ npc: 'trainer' }`는 유지했다.
+  3. `style.css`에 작은 흰/노란 outline text 이름표 스타일을 추가했다.
+  4. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260627z4-life-zone-nameplates`로 갱신했다.
+  5. 리뷰: `docs/ai/reviews/2026-06-27-home-life-zone-nameplates-review.md`
+  6. 커밋/배포: `e77a85f feat(home): add life zone nameplates`
 - 검증:
-  1. PASS: `node --check render-calendar.js sw.js workout/exercises.js workout/test-v2/board-core.js`
-  2. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/exercise-program-editor.test.js tests/test-v2.board-core.test.js`
-  3. PASS: `node --test tests/*.test.js` — 550 tests passed
+  1. PASS: `node --check home/life-zone.js; node --check sw.js`
+  2. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/home-life-zone-state.test.js`
+  3. PASS: `node --test tests/*.test.js` — 552 tests passed
   4. PASS: `node scripts/verify-runtime-assets.mjs`
   5. PASS: `git diff --check`
-  6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 18f2a05`
-     - 결과: `[deploy-verify] ok 18f2a057dda2 tomatofarm-v20260627z3-wendler-ui-rail static=219`
-  7. PASS: deployed marker 확인 — `sw.js`, `render-calendar.js`, `workout/test-v2/board-core.js`
-  8. not verified yet: 인증 계정 실제 UI flow 확인은 아직 남아 있다.
+  6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ e77a85f`
+     - 결과: `[deploy-verify] ok e77a85f60644 tomatofarm-v20260627z4-life-zone-nameplates static=219`
+  7. PASS: deployed marker 확인 — `sw.js`, `home/life-zone.js`, `style.css`
+  8. not verified yet: 배포 URL 브라우저 확인은 로그인 화면에서 멈춰 인증 계정 홈 UI flow는 직접 확인하지 못했다.
 - 보류:
-  1. `docs/ai/features/2026-06-27-wendler-program-ssot-diagnosis.md` Slice 3 운영 Firestore anchor 보정은 production data write이므로 별도 실행으로 남긴다.
-  2. 사용자 최신 요청에 따라 다음 실행은 홈 라이프존 이름표 Slice 1이다.
+  1. `docs/ai/features/2026-06-27-wendler-program-ssot-diagnosis.md` Slice 3 운영 Firestore anchor 보정은 production data write이므로 read-only 재확인 후 진행한다.
 
 ## 이번 실행 검증
 
 - 계획 완료: `docs/ai/features/2026-06-27-home-life-zone-nameplates.md`
-- 직전 구현 완료: `docs/ai/features/2026-06-27-wendler-program-ssot-diagnosis.md` Slice 2
-- 리뷰 완료: `docs/ai/reviews/2026-06-27-wendler-ssot-slice2-review.md`
-- PASS: `node --check render-calendar.js sw.js workout/exercises.js workout/test-v2/board-core.js`
-- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/exercise-program-editor.test.js tests/test-v2.board-core.test.js` — 58 tests passed
-- PASS: `node --test tests/*.test.js` — 550 tests passed
+- 구현 완료: `home/life-zone.js` actor/NPC 이름표, `style.css` outline text 스타일, `sw.js` cache marker
+- 리뷰 완료: `docs/ai/reviews/2026-06-27-home-life-zone-nameplates-review.md`
+- PASS: `node --check home/life-zone.js; node --check sw.js`
+- PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/home-life-zone-state.test.js` — 18 tests passed
+- PASS: `node --test tests/*.test.js` — 552 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=835`
 - PASS: `git diff --check`
-- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 18f2a05`
-  - 결과: `[deploy-verify] ok 18f2a057dda2 tomatofarm-v20260627z3-wendler-ui-rail static=219`
-- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ 'sw.js::tomatofarm-v20260627z3-wendler-ui-rail' 'render-calendar.js::programWeekText' 'render-calendar.js::W${_fmtNum(displayWeek, 0)}' 'workout/test-v2/board-core.js::tmAnchors'`
-- not verified yet: 인증 계정 실제 UI flow 확인 필요
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ e77a85f`
+  - 결과: `[deploy-verify] ok e77a85f60644 tomatofarm-v20260627z4-life-zone-nameplates static=219`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ 'sw.js::tomatofarm-v20260627z4-life-zone-nameplates' 'home/life-zone.js::LIFE_ZONE_NPC_NAME' 'home/life-zone.js::lz-nameplate--actor' 'style.css::.lz-nameplate' 'style.css::#ffe15a'`
+- not verified yet: 배포 URL은 로그인 화면이 먼저 표시되어 홈 탭 라이프존 실제 시각 flow는 인증 계정으로 확인 필요
 
 ## 리뷰 대상
 
-- `home/life-zone.js`
-- `style.css`
-- `tests/home-life-zone-npc-quest.test.js`
-- 필요 시 `tests/home-life-zone-nameplate.test.js`
-- `sw.js`
-- cache-version 참조 테스트 파일
+- `docs/ai/features/2026-06-27-wendler-program-ssot-diagnosis.md`
+- Firestore `users/김_태우/settings/test_board_v2` read-only 결과
+- read-only 후보 patch 기록
 
 ## 직전 실행 검증
 

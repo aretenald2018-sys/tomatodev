@@ -86,7 +86,10 @@
 - PASS: `node --test tests/*.test.js` — 552 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
-- not verified yet: Dashboard3 Pages 배포 검증과 실제 홈 UI flow 확인은 커밋/푸시 후 진행한다.
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ e77a85f`
+  - 결과: `[deploy-verify] ok e77a85f60644 tomatofarm-v20260627z4-life-zone-nameplates static=219`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ 'sw.js::tomatofarm-v20260627z4-life-zone-nameplates' 'home/life-zone.js::LIFE_ZONE_NPC_NAME' 'home/life-zone.js::lz-nameplate--actor' 'style.css::.lz-nameplate' 'style.css::#ffe15a'`
+- not verified yet: 배포 URL을 브라우저로 열면 로그인 화면이 먼저 표시되어, 인증 계정의 홈 탭 라이프존 실제 시각 flow는 직접 확인하지 못했다.
 
 ## 다음 실행 지시
 
