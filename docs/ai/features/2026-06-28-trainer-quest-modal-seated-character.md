@@ -186,3 +186,29 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=850`
 - PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 583 tests passed
 - PASS: `git diff --check`
+
+## Slice 6 요청
+
+- 사용자 피드백: 반투명/불투명 느낌은 선택지 박스만이 아니라 흰색 모달 자체도 약간 회색조로 뒷면이 살짝 보이게 해야 한다.
+- 사용자 요청: 선택지 폰트는 현재 과장된 게임 느낌이 아니라 원래 TDS 타이포를 참고해 적용한다.
+
+## Slice 6 계획
+
+- `style.css`: `.trainer-quest-sheet` 배경을 순백에서 반투명 회색조로 바꾸고 `backdrop-filter`를 적용한다.
+- `style.css`: `.trainer-quest-choice` 텍스트를 `var(--font-sans)`, TDS size/weight token, `text-shadow: none`으로 조정한다.
+- `tests/trainer-quest-modal.test.js`: 회색 반투명 시트와 TDS 타이포 마커를 회귀 테스트한다.
+- `sw.js`: `style.css`가 `STATIC_ASSETS`에 포함되어 있으므로 cache version을 bump한다.
+
+## Slice 6 구현 기록
+
+- `style.css`: `.trainer-quest-sheet`에 `rgba(242, 244, 247, .86)` 배경, 상단 흰색 border, blur/saturate backdrop filter를 적용해 배경이 약하게 비치는 회색조 시트로 바꿨다.
+- `style.css`: 선택지 버튼과 텍스트에 `var(--font-sans)`, `var(--tds-t5-size, 14px)`, `var(--tds-w-bold, 700)`, `var(--tds-t5-lh, 20px)`를 적용하고 텍스트 그림자를 제거했다.
+- `sw.js`: `CACHE_VERSION`을 `tomatofarm-v20260628z14-trainer-sheet-glass`로 bump했다.
+- 테스트: 시트 배경/blur, TDS 타이포, cache marker 검증을 추가했다.
+
+## Slice 6 로컬 검증
+
+- PASS: `node --check sw.js; node --test tests/trainer-quest-modal.test.js` — 6 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=850`
+- PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 583 tests passed
+- PASS: `git diff --check`

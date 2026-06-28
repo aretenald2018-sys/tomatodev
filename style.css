@@ -417,7 +417,11 @@
   position: relative;
   max-width: 560px;
   padding: clamp(148px, 33vw, 184px) 16px 18px;
-  background: var(--surface);
+  background: rgba(242, 244, 247, .86);
+  border-top: 1px solid rgba(255, 255, 255, .72);
+  box-shadow: 0 -18px 42px rgba(17, 24, 39, .16);
+  backdrop-filter: blur(14px) saturate(.92);
+  -webkit-backdrop-filter: blur(14px) saturate(.92);
   overflow: visible;
 }
 .trainer-quest-sheet > .sheet-handle {
@@ -551,7 +555,7 @@
     inset 0 -1px 0 rgba(0, 0, 0, .42),
     0 8px 16px rgba(4, 10, 20, .22);
   color: rgba(255, 255, 255, .96);
-  font: inherit;
+  font-family: var(--font-sans);
   text-align: left;
   cursor: pointer;
   transition: transform var(--transition), border-color var(--transition), filter var(--transition), background var(--transition);
@@ -578,11 +582,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
-  font-weight: 850;
-  line-height: 20px;
+  font-family: var(--font-sans);
+  font-size: var(--tds-t5-size, 14px);
+  font-weight: var(--tds-w-bold, 700);
+  line-height: var(--tds-t5-lh, 20px);
   letter-spacing: 0;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, .72);
+  text-shadow: none;
 }
 .trainer-quest-stats[hidden],
 .trainer-quest-menu[hidden] {

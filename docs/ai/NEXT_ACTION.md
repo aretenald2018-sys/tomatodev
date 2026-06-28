@@ -4,12 +4,12 @@
 
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-28-trainer-quest-modal-seated-character.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-28-trainer-quest-game-export-review.md`
-- 현재 단계: `review complete — Trainer Quest Modal Game Export Slice 5`
+- 리뷰 문서: `docs/ai/reviews/2026-06-28-trainer-quest-sheet-glass-review.md`
+- 현재 단계: `review complete — Trainer Quest Modal Sheet Glass Slice 6`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `전구 클릭 첫 화면을 게임 대화형 세로 선택지로 바꾸고, 트레이너 통계 화면에 JSON 공유/복사 아이콘을 추가했다. 전구 위치는 트레이너 머리 위로 보정했고 깜빡임은 2.4s로 늦췄다.`
+- 마지막 완료: `트레이너 퀘스트 모달 시트를 순백에서 반투명 회색조로 바꾸고, 게임형 선택지의 텍스트를 TDS 기반 폰트 토큰으로 되돌렸다.`
 - 다음 액션: `없음.`
-- 차단 사유: `없음. 단, 인증된 실제 계정에서 홈 라이프존 트레이너 전구 클릭 및 공유/복사 UI flow는 수동 확인이 필요하다.`
+- 차단 사유: `없음. 단, 인증된 실제 계정에서 홈 라이프존 트레이너 전구 클릭 후 회색조 시트의 시각 농도는 수동 눈검수가 필요하다.`
 
 ## 직전 완료 요약
 

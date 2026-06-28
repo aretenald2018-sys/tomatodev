@@ -43,5 +43,5 @@ test('stats health chart controls are styled and cache version is bumped', () =>
   assert.match(styleCss, /\.stats-health-controls/);
   assert.match(styleCss, /\.stats-health-toggle/);
   assert.match(styleCss, /\.stats-health-period\.active/);
-  assert.match(swJs, /tomatofarm-v20260628z13-trainer-game-export/);
+  assert.match(swJs, /tomatofarm-v20260628z14-trainer-sheet-glass/);
 });
