@@ -17,6 +17,8 @@ test('trainer quest modal renders Maple-like sections with TDS actions', () => {
   assert.match(modalJs, /기타/);
   assert.match(modalJs, /내 운동 통계 살펴보기/);
   assert.match(modalJs, /data-trainer-quest-action="stats"/);
+  assert.match(modalJs, /data-trainer-quest-character/);
+  assert.match(modalJs, /assets\/home\/life-zone\/ui\/trainer-quest-seated-trainer\.png/);
   assert.doesNotMatch(modalJs, /onclick=/);
   assert.match(modalJs, /openTrainerQuestModal/);
   assert.match(modalJs, /closeTrainerQuestModal/);
@@ -46,8 +48,12 @@ test('trainer quest stats render reuses stats tab data in a scoped modal root', 
 
 test('trainer quest modal styles and runtime cache asset are registered', () => {
   assert.match(styleCss, /\.trainer-quest-sheet/);
+  assert.match(styleCss, /\.trainer-quest-seated-character/);
+  assert.match(styleCss, /position:\s*absolute/);
+  assert.match(styleCss, /pointer-events:\s*none/);
   assert.match(styleCss, /\.trainer-quest-row-btn/);
   assert.match(styleCss, /\.trainer-quest-stats-root/);
-  assert.match(swJs, /tomatofarm-v20260628z8-trainer-quest-modal/);
+  assert.match(swJs, /tomatofarm-v20260628z9-trainer-modal-seated-character/);
   assert.match(swJs, /\.\/modals\/trainer-quest-modal\.js/);
+  assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/trainer-quest-seated-trainer\.png/);
 });

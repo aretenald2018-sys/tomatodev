@@ -6,6 +6,9 @@ export const MODAL_HTML = `
 <div class="modal-backdrop trainer-quest-modal" id="trainer-quest-modal" aria-hidden="true">
   <div class="modal-sheet trainer-quest-sheet" role="dialog" aria-modal="true" aria-labelledby="trainer-quest-title">
     <div class="sheet-handle"></div>
+    <div class="trainer-quest-seated-character" data-trainer-quest-character aria-hidden="true">
+      <img src="./assets/home/life-zone/ui/trainer-quest-seated-trainer.png" alt="" loading="eager" decoding="async">
+    </div>
     <div class="trainer-quest-head">
       <div class="trainer-quest-portrait" aria-hidden="true">
         <span>PT</span>

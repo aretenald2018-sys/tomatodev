@@ -414,11 +414,33 @@
   margin: 16px 0; text-align: center;
 }
 .trainer-quest-sheet {
+  position: relative;
   max-width: 560px;
-  padding: 22px 16px 18px;
+  padding: clamp(110px, 23vw, 142px) 16px 18px;
   background: var(--surface);
+  overflow: visible;
+}
+.trainer-quest-sheet > .sheet-handle {
+  display: none;
+}
+.trainer-quest-seated-character {
+  position: absolute;
+  left: 50%;
+  top: clamp(-236px, -54vw, -180px);
+  z-index: 2;
+  width: clamp(190px, 55vw, 270px);
+  pointer-events: none;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 12px 18px rgba(17, 24, 39, .24));
+}
+.trainer-quest-seated-character img {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 .trainer-quest-head {
+  position: relative;
+  z-index: 3;
   display: grid;
   grid-template-columns: 56px minmax(0, 1fr) 36px;
   align-items: center;
