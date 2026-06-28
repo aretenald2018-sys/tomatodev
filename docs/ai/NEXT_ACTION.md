@@ -3,12 +3,12 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-28-stats-overall-compact-summary.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-28-stats-overall-compact-summary-review.md`
-- 현재 단계: `review complete — Stats Overall Compact Summary Slice 1`
+- 계획 문서: `docs/ai/features/2026-06-28-running-vworld-map-provider.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-28-running-vworld-map-provider-review.md`
+- 현재 단계: `review complete — Running VWorld Map Provider Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `Stats Overall Compact Summary Slice 1을 구현/리뷰/배포 검증했다. 전체통계 탭의 중복 부위/식단/월별 집계 카드를 제거하고 전체 요약 compact KPI 카드로 통합했다. Dashboard3 Pages에서 0228c1e 배포, compact summary marker, 제거 대상 absence, HTTP 200을 확인했다.`
-- 다음 액션: `없음.`
+- 마지막 완료: `Running VWorld Map Provider Slice 1을 구현/리뷰했다. VWorld key는 repo에 직접 커밋하지 않고 localStorage 설정으로 읽으며, 러닝 지도 provider에 VWorld WMTS tile renderer와 route overlay를 추가했다.`
+- 다음 액션: `Dashboard3 Pages 배포 검증 후 최종 핸드오프한다.`
 - 차단 사유: `없음. 단, 배포 브라우저가 로그인 화면에 막히면 실제 통계 UI 조작은 인증 계정에서 확인해야 한다.`
 
 ## 직전 완료 요약

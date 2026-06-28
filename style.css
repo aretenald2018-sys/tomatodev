@@ -6288,6 +6288,70 @@ body.wt-running-session-open {
 .wt-run-real-map[data-map-state="error"] .wt-run-map-canvas {
   opacity: 0.35;
 }
+.wt-vworld-map {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #e8edf2;
+  touch-action: none;
+  user-select: none;
+}
+.wt-vworld-tile-layer {
+  position: absolute;
+  inset: 0;
+}
+.wt-vworld-tile-layer--hybrid {
+  z-index: 1;
+}
+.wt-vworld-tile {
+  position: absolute;
+  width: 256px;
+  height: 256px;
+  max-width: none;
+  border: 0;
+  pointer-events: none;
+  user-select: none;
+}
+.wt-vworld-route-layer {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.wt-vworld-route-line {
+  fill: none;
+  stroke: #55d632;
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.28));
+}
+.wt-vworld-route-start,
+.wt-vworld-route-end {
+  stroke: #fff;
+  stroke-width: 4;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.32));
+}
+.wt-vworld-route-start { fill: #20b84d; }
+.wt-vworld-route-end { fill: #f40000; }
+.wt-vworld-attribution {
+  position: absolute;
+  z-index: 3;
+  right: 8px;
+  bottom: 7px;
+  padding: 3px 6px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #20242a;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
 .wt-run-tip-card {
   position: absolute;
   z-index: 4;

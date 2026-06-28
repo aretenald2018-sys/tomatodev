@@ -6,6 +6,13 @@ import { CONFIG } from '../config.js';
 
 const DEFAULT_CENTER = { lat: 37.5665, lng: 126.978 };
 const GOOGLE_CALLBACK = '__tomatoRunningGoogleMapsReady';
+const TILE_SIZE = 256;
+const VWORLD_TILE_BASE = 'https://api.vworld.kr/req/wmts/1.0.0';
+const VWORLD_LAYER_SPECS = {
+  base: { layer: 'Base', ext: 'png' },
+  satellite: { layer: 'Satellite', ext: 'jpeg' },
+  hybrid: { layer: 'Hybrid', ext: 'png' },
+};
 
 let _googleLoader = null;
 let _tmapLoader = null;
@@ -39,6 +46,7 @@ function _setState(shell, state, text = '') {
 }
 
 function _providerLabel(provider) {
+  if (provider === 'vworld') return 'VWorld';
   if (provider === 'google') return 'Google Maps';
   if (provider === 'tmap') return 'TMAP';
   return '실제 지도';
@@ -73,13 +81,30 @@ export function runningMapCenter(points = []) {
   };
 }
 
+function _normalizeVworldLayer(layer) {
+  const normalized = String(layer || '').trim().toLowerCase();
+  return normalized === 'satellite' || normalized === 'hybrid' ? normalized : 'base';
+}
+
 export function resolveRunningMapConfig(raw = {}) {
+  const vworldApiKey = String(raw.vworldApiKey || '').trim();
+  const vworldLayer = _normalizeVworldLayer(raw.vworldLayer);
   const googleMapsKey = String(raw.googleMapsKey || '').trim();
   const tmapAppKey = String(raw.tmapAppKey || '').trim();
   let provider = String(raw.provider || 'auto').trim().toLowerCase();
   if (!provider || provider === 'default') provider = 'auto';
-  if (provider === 'auto') provider = tmapAppKey ? 'tmap' : googleMapsKey ? 'google' : 'none';
+  if (provider === 'auto') provider = vworldApiKey ? 'vworld' : tmapAppKey ? 'tmap' : googleMapsKey ? 'google' : 'none';
 
+  if (provider === 'vworld') {
+    return {
+      provider,
+      label: _providerLabel(provider),
+      key: vworldApiKey,
+      layer: vworldLayer,
+      configured: !!vworldApiKey,
+      reason: vworldApiKey ? '' : 'missing-key',
+    };
+  }
   if (provider === 'google') {
     return {
       provider,
@@ -111,6 +136,8 @@ export function readRunningMapConfig() {
   const mapConfig = CONFIG.MAPS || {};
   return resolveRunningMapConfig({
     provider: mapConfig.RUNNING_PROVIDER,
+    vworldApiKey: mapConfig.VWORLD_API_KEY,
+    vworldLayer: mapConfig.VWORLD_MAP_LAYER,
     googleMapsKey: mapConfig.GOOGLE_MAPS_KEY,
     tmapAppKey: mapConfig.TMAP_APP_KEY,
   });
@@ -134,6 +161,12 @@ export function buildTmapScriptUrl(key) {
     appKey: String(key || '').trim(),
   });
   return `https://apis.openapi.sk.com/tmap/jsv2?${params.toString()}`;
+}
+
+export function buildVworldTileUrl(key, z, x, y, layer = 'base') {
+  const spec = VWORLD_LAYER_SPECS[_normalizeVworldLayer(layer)];
+  const apiKey = encodeURIComponent(String(key || '').trim());
+  return `${VWORLD_TILE_BASE}/${apiKey}/${spec.layer}/${z}/${y}/${x}.${spec.ext}`;
 }
 
 async function _loadGoogleMaps(key) {
@@ -281,6 +314,119 @@ function _renderTmap(canvas, Tmapv2, route) {
   return { map, markers, lines };
 }
 
+function _projectMercator(point, zoom) {
+  const sin = Math.sin(_num(point.lat) * Math.PI / 180);
+  const world = TILE_SIZE * (2 ** zoom);
+  return {
+    x: (_num(point.lng) + 180) / 360 * world,
+    y: (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * world,
+  };
+}
+
+function _routeBoundsCenter(route) {
+  if (route.length < 2) return runningMapCenter(route);
+  let minLat = Infinity, minLng = Infinity, maxLat = -Infinity, maxLng = -Infinity;
+  route.forEach(point => {
+    minLat = Math.min(minLat, point.lat);
+    minLng = Math.min(minLng, point.lng);
+    maxLat = Math.max(maxLat, point.lat);
+    maxLng = Math.max(maxLng, point.lng);
+  });
+  return { lat: (minLat + maxLat) / 2, lng: (minLng + maxLng) / 2 };
+}
+
+function _vworldZoomForRoute(route, width, height) {
+  if (route.length < 2) return 17;
+  const pad = 72;
+  for (let zoom = 18; zoom >= 10; zoom--) {
+    const projected = route.map(point => _projectMercator(point, zoom));
+    const xs = projected.map(point => point.x);
+    const ys = projected.map(point => point.y);
+    const spanX = Math.max(...xs) - Math.min(...xs);
+    const spanY = Math.max(...ys) - Math.min(...ys);
+    if (spanX <= Math.max(120, width - pad) && spanY <= Math.max(120, height - pad)) return zoom;
+  }
+  return 10;
+}
+
+function _vworldRenderLayers(layer) {
+  return layer === 'hybrid' ? ['satellite', 'hybrid'] : [layer];
+}
+
+function _tileModulo(value, max) {
+  return ((value % max) + max) % max;
+}
+
+function _screenPoint(point, zoom, topLeft) {
+  const px = _projectMercator(point, zoom);
+  return { x: px.x - topLeft.x, y: px.y - topLeft.y };
+}
+
+function _vworldRouteSvg(route, zoom, topLeft, width, height) {
+  const points = route.map(point => _screenPoint(point, zoom, topLeft));
+  const line = points.map(point => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ');
+  const start = points[0];
+  const end = points[points.length - 1];
+  const markers = points.length > 1
+    ? `<circle class="wt-vworld-route-start" cx="${start.x.toFixed(1)}" cy="${start.y.toFixed(1)}" r="8"></circle>
+       <circle class="wt-vworld-route-end" cx="${end.x.toFixed(1)}" cy="${end.y.toFixed(1)}" r="9"></circle>`
+    : `<circle class="wt-vworld-route-end" cx="${end.x.toFixed(1)}" cy="${end.y.toFixed(1)}" r="9"></circle>`;
+  return `
+    <svg class="wt-vworld-route-layer" viewBox="0 0 ${width} ${height}" aria-hidden="true">
+      ${points.length > 1 ? `<polyline class="wt-vworld-route-line" points="${line}"></polyline>` : ''}
+      ${markers}
+    </svg>`;
+}
+
+function _renderVworldMap(canvas, route, config) {
+  const rect = canvas.getBoundingClientRect?.() || {};
+  const width = Math.max(280, Math.round(rect.width || canvas.clientWidth || 360));
+  const height = Math.max(220, Math.round(rect.height || canvas.clientHeight || 320));
+  const layer = _normalizeVworldLayer(config.layer);
+  const center = _routeBoundsCenter(route.length ? route : [DEFAULT_CENTER]);
+  const zoom = _vworldZoomForRoute(route, width, height);
+  const centerPx = _projectMercator(center, zoom);
+  const topLeft = { x: centerPx.x - width / 2, y: centerPx.y - height / 2 };
+  const maxTile = 2 ** zoom;
+  const minTileX = Math.floor(topLeft.x / TILE_SIZE);
+  const maxTileX = Math.floor((topLeft.x + width) / TILE_SIZE);
+  const minTileY = Math.floor(topLeft.y / TILE_SIZE);
+  const maxTileY = Math.floor((topLeft.y + height) / TILE_SIZE);
+  const root = document.createElement('div');
+  root.className = `wt-vworld-map wt-vworld-map--${layer}`;
+  root.style.width = `${width}px`;
+  root.style.height = `${height}px`;
+
+  for (const renderLayer of _vworldRenderLayers(layer)) {
+    const layerEl = document.createElement('div');
+    layerEl.className = `wt-vworld-tile-layer wt-vworld-tile-layer--${renderLayer}`;
+    for (let y = minTileY; y <= maxTileY; y++) {
+      if (y < 0 || y >= maxTile) continue;
+      for (let x = minTileX; x <= maxTileX; x++) {
+        const tile = document.createElement('img');
+        const wrappedX = _tileModulo(x, maxTile);
+        tile.className = 'wt-vworld-tile';
+        tile.alt = '';
+        tile.decoding = 'async';
+        tile.loading = 'eager';
+        tile.draggable = false;
+        tile.src = buildVworldTileUrl(config.key, zoom, wrappedX, y, renderLayer);
+        tile.style.left = `${Math.round(x * TILE_SIZE - topLeft.x)}px`;
+        tile.style.top = `${Math.round(y * TILE_SIZE - topLeft.y)}px`;
+        layerEl.appendChild(tile);
+      }
+    }
+    root.appendChild(layerEl);
+  }
+
+  if (route.length) {
+    root.insertAdjacentHTML('beforeend', _vworldRouteSvg(route, zoom, topLeft, width, height));
+  }
+  root.insertAdjacentHTML('beforeend', '<div class="wt-vworld-attribution">VWorld</div>');
+  canvas.appendChild(root);
+  return { map: { destroy: () => _clearNode(canvas) }, markers: [], lines: [] };
+}
+
 export async function renderRunningMap(shell, options = {}) {
   if (!shell) return null;
   const canvas = shell.querySelector('[data-running-map-canvas]');
@@ -301,9 +447,11 @@ export async function renderRunningMap(shell, options = {}) {
 
   _setState(shell, 'loading', `${config.label} 불러오는 중`);
   try {
-    const instance = config.provider === 'tmap'
-      ? _renderTmap(canvas, await _loadTmap(config.key), route)
-      : _renderGoogleMap(canvas, await _loadGoogleMaps(config.key), route);
+    const instance = config.provider === 'vworld'
+      ? _renderVworldMap(canvas, route, config)
+      : config.provider === 'tmap'
+        ? _renderTmap(canvas, await _loadTmap(config.key), route)
+        : _renderGoogleMap(canvas, await _loadGoogleMaps(config.key), route);
     _instances.set(shell, instance);
     _setState(shell, 'ready');
     return instance;

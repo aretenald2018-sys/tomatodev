@@ -18,6 +18,8 @@ export const CONFIG = {
   get ALPHAVANTAGE_KEY() { return _readLocalSetting('cfg_alphavantage'); },
   MAPS: {
     get RUNNING_PROVIDER()  { return _readLocalSetting('cfg_running_map_provider') || 'auto'; },
+    get VWORLD_API_KEY()    { return _readLocalSetting('cfg_vworld_api_key'); },
+    get VWORLD_MAP_LAYER()  { return _readLocalSetting('cfg_vworld_map_layer') || 'base'; },
     get GOOGLE_MAPS_KEY()   { return _readLocalSetting('cfg_google_maps_key'); },
     get TMAP_APP_KEY()      { return _readLocalSetting('cfg_tmap_app_key'); },
   },

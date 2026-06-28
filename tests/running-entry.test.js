@@ -56,8 +56,12 @@ test('running picker tile and session screens have dedicated styles', () => {
 
 test('running maps use real provider shell instead of fake svg maps', () => {
   assert.match(configJs, /cfg_running_map_provider/);
+  assert.match(configJs, /cfg_vworld_api_key/);
+  assert.match(configJs, /cfg_vworld_map_layer/);
   assert.match(configJs, /cfg_google_maps_key/);
   assert.match(configJs, /cfg_tmap_app_key/);
+  assert.match(runningMapJs, /buildVworldTileUrl/);
+  assert.match(runningMapJs, /wt-vworld-map/);
   assert.match(runningMapJs, /buildGoogleMapsScriptUrl/);
   assert.match(runningMapJs, /buildTmapScriptUrl/);
   assert.match(runningMapJs, /Tmapv2\.Map/);
@@ -83,7 +87,7 @@ test('running session is wired into app init, save, load, and sessions', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260628z3-stats-overall-compact-summary/);
+  assert.match(swJs, /tomatofarm-v20260628z4-running-vworld-map/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
   assert.doesNotMatch(swJs, /\.\/workout\/running-tracker\.js/);

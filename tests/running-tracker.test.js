@@ -11,6 +11,7 @@ import {
 import {
   buildGoogleMapsScriptUrl,
   buildTmapScriptUrl,
+  buildVworldTileUrl,
   normalizeRunningMapPoints,
   resolveRunningMapConfig,
   runningMapCenter,
@@ -60,7 +61,7 @@ test('running session route downsamples without rendering a fake map', () => {
   });
 });
 
-test('running real map provider config resolves Google and TMAP keys', () => {
+test('running real map provider config resolves VWorld, Google, and TMAP keys', () => {
   assert.deepEqual(resolveRunningMapConfig({ provider: 'auto' }), {
     provider: 'none',
     label: '실제 지도',
@@ -68,9 +69,18 @@ test('running real map provider config resolves Google and TMAP keys', () => {
     configured: false,
     reason: 'missing-key',
   });
-  assert.equal(resolveRunningMapConfig({ provider: 'auto', tmapAppKey: 'tmap-key', googleMapsKey: 'google-key' }).provider, 'tmap');
+  assert.equal(resolveRunningMapConfig({
+    provider: 'auto',
+    vworldApiKey: 'vworld-key',
+    tmapAppKey: 'tmap-key',
+    googleMapsKey: 'google-key',
+  }).provider, 'vworld');
+  assert.equal(resolveRunningMapConfig({ provider: 'vworld', vworldApiKey: 'vworld-key', vworldLayer: 'hybrid' }).configured, true);
+  assert.equal(resolveRunningMapConfig({ provider: 'vworld', vworldApiKey: 'vworld-key', vworldLayer: 'hybrid' }).layer, 'hybrid');
   assert.equal(resolveRunningMapConfig({ provider: 'google', googleMapsKey: 'google-key' }).configured, true);
   assert.equal(resolveRunningMapConfig({ provider: 'tmap', tmapAppKey: 'tmap-key' }).configured, true);
+  assert.match(buildVworldTileUrl('abc', 15, 27949, 12696, 'base'), /api\.vworld\.kr\/req\/wmts\/1\.0\.0\/abc\/Base\/15\/12696\/27949\.png/);
+  assert.match(buildVworldTileUrl('abc', 15, 27949, 12696, 'satellite'), /Satellite\/15\/12696\/27949\.jpeg/);
   assert.match(buildGoogleMapsScriptUrl('abc'), /maps\.googleapis\.com\/maps\/api\/js/);
   assert.match(buildGoogleMapsScriptUrl('abc'), /key=abc/);
   assert.match(buildTmapScriptUrl('abc'), /apis\.openapi\.sk\.com\/tmap\/jsv2/);
