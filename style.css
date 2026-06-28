@@ -407,6 +407,11 @@
   max-height: 80vh; overflow-y: auto;
   animation: slideUp var(--transition-slow) var(--ease-sheet);
 }
+.trainer-quest-modal {
+  background: rgba(8, 13, 20, .28);
+  backdrop-filter: blur(10px) saturate(1.12);
+  -webkit-backdrop-filter: blur(10px) saturate(1.12);
+}
 .modal-title {
   /* TDS Mobile t4 — 20/29/700 */
   font-size: var(--tds-t4-size); line-height: var(--tds-t4-lh);
@@ -418,13 +423,16 @@
   max-width: 560px;
   padding: clamp(148px, 33vw, 184px) 16px 18px;
   background:
-    linear-gradient(180deg, rgba(203, 208, 216, .84), rgba(213, 217, 224, .86));
-  border-top: 1px solid rgba(248, 250, 252, .72);
+    linear-gradient(180deg, rgba(255, 255, 255, .58), rgba(255, 255, 255, .32)),
+    linear-gradient(135deg, rgba(255, 255, 255, .28), rgba(255, 255, 255, .08));
+  border: 1px solid rgba(255, 255, 255, .38);
+  border-bottom: 0;
   box-shadow:
-    0 -1px 0 rgba(15, 23, 42, .14),
-    0 -18px 42px rgba(17, 24, 39, .18);
-  backdrop-filter: blur(16px) saturate(.86);
-  -webkit-backdrop-filter: blur(16px) saturate(.86);
+    inset 0 1px 0 rgba(255, 255, 255, .62),
+    inset 0 -1px 0 rgba(255, 255, 255, .18),
+    0 -22px 48px rgba(15, 23, 42, .20);
+  backdrop-filter: blur(24px) saturate(1.35);
+  -webkit-backdrop-filter: blur(24px) saturate(1.35);
   overflow: visible;
 }
 .trainer-quest-sheet > .sheet-handle {
@@ -536,58 +544,58 @@
   transform: scale(.98);
 }
 .trainer-quest-game-menu {
-  width: min(292px, calc(100vw - 84px));
-  margin: 6px auto 0 8px;
-  border: 1px solid rgba(150, 165, 184, .52);
-  border-radius: 2px;
-  background:
-    linear-gradient(90deg, rgba(59, 75, 92, .98), rgba(18, 29, 42, .98)),
-    #142033;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .18),
-    inset 0 -1px 0 rgba(0, 0, 0, .48),
-    0 16px 28px rgba(3, 7, 18, .32);
-  overflow: hidden;
+  width: min(236px, calc(50vw - 12px));
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0 clamp(14px, 4vw, 22px);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
 }
 .trainer-quest-game-option {
   width: 100%;
   min-width: 0;
-  min-height: 38px;
+  min-height: 34px;
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr);
+  grid-template-columns: 14px minmax(0, 1fr);
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px 8px 10px;
-  border: 0;
-  border-bottom: 1px solid rgba(226, 232, 240, .18);
+  gap: 6px;
+  padding: 7px 10px 7px 9px;
+  border: 1px solid rgba(255, 255, 255, .42);
+  border-radius: 18px;
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, 0) 64%),
-    transparent;
-  color: rgba(255, 255, 255, .96);
+    linear-gradient(135deg, rgba(255, 255, 255, .62), rgba(255, 255, 255, .28)),
+    rgba(255, 255, 255, .34);
+  color: rgba(17, 24, 39, .88);
   font-family: var(--font-sans);
   text-align: left;
   cursor: pointer;
-  transition: transform var(--transition), background var(--transition), filter var(--transition);
-}
-.trainer-quest-game-option:last-child {
-  border-bottom: 0;
+  box-shadow:
+    0 8px 18px rgba(15, 23, 42, .14),
+    inset 0 1px 0 rgba(255, 255, 255, .72);
+  backdrop-filter: blur(12px) saturate(1.18);
+  -webkit-backdrop-filter: blur(12px) saturate(1.18);
+  transition: transform var(--transition), background var(--transition), border-color var(--transition);
 }
 .trainer-quest-game-option:hover:not(:disabled) {
   background:
-    linear-gradient(90deg, rgba(255, 217, 129, .18), rgba(255, 255, 255, .04) 62%),
-    transparent;
-  filter: brightness(1.08);
+    linear-gradient(135deg, rgba(255, 255, 255, .74), rgba(255, 255, 255, .38)),
+    rgba(255, 255, 255, .44);
+  border-color: rgba(255, 255, 255, .68);
 }
 .trainer-quest-game-option:disabled {
-  opacity: .64;
+  opacity: .68;
   cursor: default;
 }
 .trainer-quest-game-marker {
-  color: #f4ca72;
-  font-size: 22px;
+  color: var(--primary);
+  font-size: 15px;
   font-weight: 900;
   line-height: 1;
-  text-shadow: 0 0 8px rgba(244, 202, 114, .46);
+  text-shadow: none;
 }
 .trainer-quest-game-label {
   display: block;
@@ -597,9 +605,9 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-sans);
-  font-size: var(--tds-t5-size, 14px);
-  font-weight: var(--tds-w-bold, 700);
-  line-height: var(--tds-t5-lh, 20px);
+  font-size: var(--tds-st13-size, 12px);
+  font-weight: var(--tds-w-semi, 600);
+  line-height: var(--tds-st13-lh, 17px);
   letter-spacing: 0;
   text-shadow: none;
 }

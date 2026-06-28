@@ -3,15 +3,30 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-29-home-running-real-map-stationary.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-home-running-real-map-stationary-review.md`
-- 현재 단계: `review complete — Home Running Real Map Stationary Slice 1`
+- 계획 문서: `docs/ai/features/2026-06-29-trainer-quest-glass-squircle.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-trainer-quest-glass-squircle-review.md`
+- 현재 단계: `review complete — Trainer Quest Glass Squircle Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `홈 지도 말풍선을 50% 축소하고 실제 VWorld 타일/route overlay로 교체했으며, 러너를 트랙 하단부 제자리 모션으로 변경하고 리뷰까지 완료했다.`
+- 마지막 완료: `트레이너 퀘스트 모달을 glass sheet, 느린 타자, 50% 이하 폭의 rounded squircle 선택지로 수정하고 리뷰까지 완료했다.`
 - 다음 액션: `없음.`
 - 차단 사유: `없음.`
 
 ## 직전 완료 요약
+
+- Trainer Quest Glass Squircle Slice 1:
+  1. `modals/trainer-quest-modal.js` 말풍선 타자 간격을 `28ms`에서 `56ms`로 늦췄다.
+  2. `style.css`에 `.trainer-quest-modal` 전용 glass overlay를 추가하고 `.trainer-quest-sheet`를 흰색 반투명 glass panel로 변경했다.
+  3. 선택지는 어두운 직사각 패널에서 독립된 rounded squircle glass 버튼 stack으로 변경했고, 폭을 `min(236px, calc(50vw - 12px))`로 제한했다.
+  4. 선택지 label은 TDS 작은 텍스트 토큰(`tds-st13`, `tds-w-semi`)을 사용한다.
+  5. `tests/trainer-quest-modal.test.js`에서 이전 회색 TDS sheet/어두운 메뉴/빠른 타자 계약을 제거하고 새 계약을 검증한다.
+  6. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260629z6-trainer-glass-squircle`로 bump했다.
+  7. 리뷰: `docs/ai/reviews/2026-06-29-trainer-quest-glass-squircle-review.md`
+  8. PASS: `node --check modals/trainer-quest-modal.js; node --check sw.js`
+  9. PASS: `node --test tests/trainer-quest-modal.test.js tests/home-life-zone-npc-quest.test.js` — 13 tests passed
+  10. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=855`
+  11. PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 591 tests passed
+  12. PASS: `git diff --check`
+  13. not verified yet: 인증 계정이 없어 실제 홈탭 트레이너 모달 클릭 flow는 배포 페이지에서 직접 조작하지 못했다.
 
 - Running Save Detail Card Slice 1:
   1. 커밋: `e2e3955f42294edc4c6271ba8d3072710d04faec`

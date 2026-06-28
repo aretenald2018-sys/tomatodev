@@ -3,7 +3,7 @@
 // ================================================================
 
 const TRAINER_QUEST_SPEECH_TEXT = '무엇을 도와드릴까요?';
-const TRAINER_QUEST_TYPE_MS = 28;
+const TRAINER_QUEST_TYPE_MS = 56;
 let _speechTypingTimer = null;
 
 export const MODAL_HTML = `

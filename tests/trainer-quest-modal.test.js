@@ -41,8 +41,8 @@ test('trainer quest modal renders game-like dialogue choice boxes', () => {
   assert.match(modalJs, /closeTrainerQuestModal/);
 });
 
-test('trainer quest speech uses a fast NPC typing effect on open', () => {
-  assert.match(modalJs, /const TRAINER_QUEST_TYPE_MS = 28/);
+test('trainer quest speech uses a slower NPC typing effect on open', () => {
+  assert.match(modalJs, /const TRAINER_QUEST_TYPE_MS = 56/);
   assert.match(modalJs, /let _speechTypingTimer = null/);
   assert.match(modalJs, /function _startSpeechTyping\(modal\)/);
   assert.match(modalJs, /value\.textContent = text\.slice\(0, index\)/);
@@ -90,6 +90,9 @@ test('trainer quest stats can be shared or copied as JSON export data', () => {
 test('trainer quest modal styles and runtime cache asset are registered', () => {
   assert.match(styleCss, /\.trainer-quest-sheet/);
   assert.match(styleCss, /\.trainer-quest-stage/);
+  assert.match(styleCss, /\.trainer-quest-modal/);
+  assert.match(styleCss, /background:\s*rgba\(8, 13, 20, \.28\)/);
+  assert.match(styleCss, /backdrop-filter:\s*blur\(10px\) saturate\(1\.12\)/);
   assert.match(styleCss, /\.trainer-quest-speech::after/);
   assert.match(styleCss, /\.trainer-quest-type-cursor/);
   assert.match(styleCss, /@keyframes trainer-quest-type-cursor-blink/);
@@ -98,22 +101,29 @@ test('trainer quest modal styles and runtime cache asset are registered', () => 
   assert.match(styleCss, /pointer-events:\s*none/);
   assert.match(styleCss, /top:\s*clamp\(-250px,\s*-58vw,\s*-198px\)/);
   assert.match(styleCss, /padding:\s*clamp\(148px,\s*33vw,\s*184px\)/);
-  assert.match(styleCss, /rgba\(203, 208, 216, \.84\)/);
-  assert.match(styleCss, /rgba\(213, 217, 224, \.86\)/);
-  assert.match(styleCss, /backdrop-filter:\s*blur\(16px\) saturate\(\.86\)/);
+  assert.match(styleCss, /rgba\(255, 255, 255, \.58\)/);
+  assert.match(styleCss, /rgba\(255, 255, 255, \.32\)/);
+  assert.match(styleCss, /border:\s*1px solid rgba\(255, 255, 255, \.38\)/);
+  assert.match(styleCss, /backdrop-filter:\s*blur\(24px\) saturate\(1\.35\)/);
+  assert.doesNotMatch(styleCss, /rgba\(203, 208, 216, \.84\)/);
+  assert.doesNotMatch(styleCss, /rgba\(213, 217, 224, \.86\)/);
   assert.match(styleCss, /\.trainer-quest-game-menu/);
-  assert.match(styleCss, /width:\s*min\(292px,\s*calc\(100vw - 84px\)\)/);
-  assert.match(styleCss, /margin:\s*6px auto 0 8px/);
-  assert.match(styleCss, /rgba\(59, 75, 92, \.98\)/);
-  assert.match(styleCss, /rgba\(18, 29, 42, \.98\)/);
-  assert.match(styleCss, /border-radius:\s*2px/);
+  assert.match(styleCss, /width:\s*min\(236px,\s*calc\(50vw - 12px\)\)/);
+  assert.match(styleCss, /margin:\s*8px 0 0 clamp\(14px,\s*4vw,\s*22px\)/);
+  assert.match(styleCss, /background:\s*transparent/);
+  assert.match(styleCss, /box-shadow:\s*none/);
+  assert.doesNotMatch(styleCss, /rgba\(59, 75, 92, \.98\)/);
+  assert.doesNotMatch(styleCss, /rgba\(18, 29, 42, \.98\)/);
   assert.match(styleCss, /\.trainer-quest-game-option/);
-  assert.match(styleCss, /min-height:\s*38px/);
-  assert.match(styleCss, /padding:\s*8px 12px 8px 10px/);
+  assert.match(styleCss, /min-height:\s*34px/);
+  assert.match(styleCss, /padding:\s*7px 10px 7px 9px/);
+  assert.match(styleCss, /border-radius:\s*18px/);
+  assert.match(styleCss, /backdrop-filter:\s*blur\(12px\) saturate\(1\.18\)/);
   assert.match(styleCss, /\.trainer-quest-game-marker/);
   assert.match(styleCss, /\.trainer-quest-game-label/);
   assert.match(styleCss, /font-family:\s*var\(--font-sans\)/);
-  assert.match(styleCss, /font-weight:\s*var\(--tds-w-bold, 700\)/);
+  assert.match(styleCss, /font-size:\s*var\(--tds-st13-size, 12px\)/);
+  assert.match(styleCss, /font-weight:\s*var\(--tds-w-semi, 600\)/);
   assert.match(styleCss, /text-shadow:\s*none/);
   assert.match(styleCss, /\.trainer-quest-export-actions/);
   assert.match(styleCss, /\.trainer-quest-export-btn svg/);
@@ -123,7 +133,7 @@ test('trainer quest modal styles and runtime cache asset are registered', () => 
   assert.doesNotMatch(styleCss, /\.trainer-quest-choice/);
   assert.doesNotMatch(styleCss, /\.trainer-quest-choice-caret/);
   assert.match(styleCss, /\.trainer-quest-stats-root/);
-  assert.match(swJs, /tomatofarm-v20260629z5-home-running-real-map/);
+  assert.match(swJs, /tomatofarm-v20260629z6-trainer-glass-squircle/);
   assert.match(swJs, /\.\/modals\/trainer-quest-modal\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/trainer-quest-seated-trainer\.png/);
 });
