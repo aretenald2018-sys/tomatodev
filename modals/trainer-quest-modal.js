@@ -26,20 +26,20 @@ export const MODAL_HTML = `
       </div>
     </div>
 
-    <div class="trainer-quest-menu" data-trainer-quest-menu>
-      <button type="button" class="trainer-quest-choice is-disabled" disabled>
-        <span class="trainer-quest-choice-caret" aria-hidden="true">›</span>
-        <span>퀘스트를 수락합니다(향후 구현예정)</span>
+    <nav class="trainer-quest-game-menu" data-trainer-quest-game-menu aria-label="트레이너 선택지">
+      <button type="button" class="trainer-quest-game-option trainer-quest-game-option--disabled" disabled>
+        <span class="trainer-quest-game-marker" aria-hidden="true">›</span>
+        <span class="trainer-quest-game-label">퀘스트를 수락합니다(향후 구현예정)</span>
       </button>
-      <button type="button" class="trainer-quest-choice" data-trainer-quest-action="stats">
-        <span class="trainer-quest-choice-caret" aria-hidden="true">›</span>
-        <span>내 운동 통계 살펴보기</span>
+      <button type="button" class="trainer-quest-game-option" data-trainer-quest-action="stats">
+        <span class="trainer-quest-game-marker" aria-hidden="true">›</span>
+        <span class="trainer-quest-game-label">내 운동 통계 살펴보기</span>
       </button>
-      <button type="button" class="trainer-quest-choice" data-trainer-quest-action="close">
-        <span class="trainer-quest-choice-caret" aria-hidden="true">›</span>
-        <span>닫기</span>
+      <button type="button" class="trainer-quest-game-option" data-trainer-quest-action="close">
+        <span class="trainer-quest-game-marker" aria-hidden="true">›</span>
+        <span class="trainer-quest-game-label">닫기</span>
       </button>
-    </div>
+    </nav>
 
     <div class="trainer-quest-stats" data-trainer-quest-stats hidden>
       <div class="trainer-quest-stats-head">
@@ -106,7 +106,7 @@ function _startSpeechTyping(modal) {
 function _showMenu() {
   const modal = _modal();
   if (!modal) return;
-  const menu = modal.querySelector('[data-trainer-quest-menu]');
+  const menu = modal.querySelector('[data-trainer-quest-game-menu]');
   const stats = modal.querySelector('[data-trainer-quest-stats]');
   if (menu) menu.hidden = false;
   if (stats) stats.hidden = true;
@@ -115,7 +115,7 @@ function _showMenu() {
 async function _showStats() {
   const modal = _modal();
   if (!modal) return;
-  const menu = modal.querySelector('[data-trainer-quest-menu]');
+  const menu = modal.querySelector('[data-trainer-quest-game-menu]');
   const stats = modal.querySelector('[data-trainer-quest-stats]');
   const root = modal.querySelector('[data-trainer-quest-stats-root]');
   if (menu) menu.hidden = true;

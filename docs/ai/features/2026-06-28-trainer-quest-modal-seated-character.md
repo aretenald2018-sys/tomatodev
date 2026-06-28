@@ -255,3 +255,29 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=850`
 - PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 583 tests passed
 - PASS: `git diff --check`
+
+## Slice 9 요청
+
+- 사용자 요청: NPC 트레이너 전구 클릭 시 기존 선택지 모달 UI 구현 코드를 모두 삭제하고, 첨부 이미지 좌측 하단부처럼 불투명한 게임 선택지 느낌으로 처음부터 다시 작성한다.
+- 해석: 착석 트레이너, 말풍선, 통계 보기 기능은 유지하되, 첫 화면 선택지 영역의 기존 TDS/행형 메뉴 계약을 제거하고 별도 게임 메뉴 컴포넌트로 재구성한다.
+
+## Slice 9 계획
+
+- `modals/trainer-quest-modal.js`: `trainer-quest-menu/choice/caret` 기반 첫 화면 메뉴를 `trainer-quest-game-menu/option` 구조로 교체한다.
+- `style.css`: 기존 선택지 스타일을 제거하고, 좌측 하단 일부 폭만 차지하는 불투명 게임 메뉴 패널과 선택 option 스타일을 새로 작성한다.
+- `tests/trainer-quest-modal.test.js`: 기존 메뉴 클래스가 사라지고 새 게임 메뉴 클래스, 불투명 배경, 좌측 하단 정렬, 통계/닫기 direct binding이 유지되는지 검증한다.
+- `sw.js`: `modals/trainer-quest-modal.js`와 `style.css`가 `STATIC_ASSETS`에 포함되어 있으므로 cache version을 bump한다.
+
+## Slice 9 구현 기록
+
+- `modals/trainer-quest-modal.js`: 첫 화면 선택지를 `nav.trainer-quest-game-menu`와 `trainer-quest-game-option` 버튼 3개로 다시 작성하고, menu selector도 `data-trainer-quest-game-menu`로 교체했다.
+- `style.css`: 이전 `.trainer-quest-menu`, `.trainer-quest-choice`, `.trainer-quest-choice-caret` 스타일을 제거하고, 좌측 하단 일부 폭만 쓰는 단일 어두운 게임 메뉴 패널과 row option 스타일을 새로 추가했다.
+- `tests/trainer-quest-modal.test.js`: 이전 메뉴 클래스가 DOM/CSS에 남으면 실패하고, 새 게임 메뉴 클래스와 불투명 배경, 좌측 일부 폭, TDS font token 사용을 검증하도록 갱신했다.
+- `sw.js`: `CACHE_VERSION`을 `tomatofarm-v20260628z18-trainer-game-menu`로 bump했다.
+
+## Slice 9 로컬 검증
+
+- PASS: `node --check modals/trainer-quest-modal.js; node --check sw.js; node --test tests/trainer-quest-modal.test.js` — 6 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=850`
+- PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 583 tests passed
+- PASS: `git diff --check`

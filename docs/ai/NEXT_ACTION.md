@@ -4,12 +4,12 @@
 
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-28-trainer-quest-modal-seated-character.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-28-trainer-quest-muted-left-menu-review.md`
-- 현재 단계: `review complete — Trainer Quest Muted Sheet Left Menu Slice 8`
+- 리뷰 문서: `docs/ai/reviews/2026-06-28-trainer-quest-game-menu-rewrite-review.md`
+- 현재 단계: `review complete — Trainer Quest Game Menu Rewrite Slice 9`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `트레이너 퀘스트 모달 시트를 더 어두운 회색조 반투명 배경으로 바꾸고, 선택지 박스 묶음을 전체 행이 아니라 좌측 일부 폭만 쓰도록 줄였다.`
+- 마지막 완료: `트레이너 전구 클릭 첫 화면의 기존 선택지 UI 클래스를 제거하고, 좌측 하단 일부 폭만 쓰는 불투명 게임 메뉴 패널로 다시 작성했다.`
 - 다음 액션: `없음.`
-- 차단 사유: `없음. 단, 인증된 실제 계정에서 회색조 농도와 좌측 선택지 폭은 수동 눈검수가 필요하다.`
+- 차단 사유: `없음. 단, 인증된 실제 계정에서 게임 메뉴의 시각 위치는 수동 눈검수가 필요하다.`
 
 ## 직전 완료 요약
 
