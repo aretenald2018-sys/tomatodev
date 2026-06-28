@@ -29,6 +29,10 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=846`
 - PASS: `git diff --check`
 - PASS: `node --test tests/*.test.js` — 576 tests passed
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 1f2f3771f362ffce9789e43a5de9f8df3cf6e983`
+  - 결과: `[deploy-verify] ok 1f2f3771f362 tomatofarm-v20260628z6-running-start-map-cleanup static=221`
+- PASS: deployed marker 검증 — cache marker, DPR tile 보정, tile rendering CSS, 시작/목표 버튼 marker
+- PASS: 배포된 `workout/running-session.js`, `style.css`에 `밤에 러닝하시나요`, `wt-run-tip-card`, `wt-run-float` 없음
 
 ## 남은 리스크
 
