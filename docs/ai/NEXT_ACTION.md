@@ -8,10 +8,24 @@
 - 현재 단계: `review complete — Running Save Detail Card Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
 - 마지막 완료: `러닝 요약 저장 후 운동 기록 편집 폼 대신 해당 날짜/회차의 캘린더 상세 시트를 열고, 상세 시트 러닝 카드를 헬스 카드 골격의 러닝 전용 metric 카드로 교체했다.`
-- 다음 액션: `커밋 후 Dashboard3 Pages 배포 및 deploy marker 검증.`
+- 다음 액션: `없음.`
 - 차단 사유: `없음. 단, 인증 계정이 없어 실제 러닝 저장 터치 flow는 배포 페이지에서 수동 확인이 필요할 수 있다.`
 
 ## 직전 완료 요약
+
+- Running Save Detail Card Slice 1:
+  1. 커밋: `e2e3955f42294edc4c6271ba8d3072710d04faec`
+  2. 러닝 요약 저장 후 `window.wtOpenWorkoutDaySheet`로 해당 날짜/회차 캘린더 상세 시트를 바로 연다.
+  3. 상세 시트 러닝 항목을 `wt-running-read-card`로 렌더하고 거리/시간/평균 페이스/칼로리/고도/케이던스/GPS 요약만 표출한다.
+  4. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260629z4-running-save-detail-card`로 bump했다.
+  5. PASS: `node --check app.js; node --check workout/running-session.js; node --check render-calendar.js; node --check sw.js`
+  6. PASS: `node --test tests/running-entry.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js`
+  7. PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 590 tests passed
+  8. PASS: `node scripts/verify-runtime-assets.mjs` — `refs=853`
+  9. PASS: `git diff --check`
+  10. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ e2e3955f42294edc4c6271ba8d3072710d04faec`
+  11. PASS: deployed markers — `sw.js::tomatofarm-v20260629z4-running-save-detail-card`, `app.js::window.wtOpenWorkoutDaySheet = openWorkoutDaySheetFromAction`, `workout/running-session.js::action: 'running:save-detail'`, `render-calendar.js::wt-running-read-card`, `render-calendar.js::평균 페이스`, `style.css::.wt-running-metric-grid`
+  12. not verified yet: 인증 계정이 없어 실제 `러닝 시작 -> 완료 -> 저장 -> 상세 시트` 터치 flow는 배포 페이지에서 직접 조작하지 못했다.
 
 - Home Life Zone Trainer Label + CSS Motion Slice 1:
   1. `home/life-zone.js`에서 actor image에 `lz-actor--pose-${slot.pose}` class를 추가했다.
