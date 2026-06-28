@@ -8,7 +8,7 @@ import { MONTHS, MOVEMENTS }                         from './config.js';
 import { TODAY, getMuscles, getCF, getDiet, dietDayOk,
          daysInMonth, isFuture, getExList, getAllMuscles,
          getVolumeHistory, getCache, calcVolume, getExpertPreset,
-         getExercises, dateKey, getBodyCheckins, getDietPlan, getDayTargetKcal,
+         getExercises, dateKey, getBodyCheckins, getDietPlan,
          hasExerciseRecord }    from './data.js';
 import { SUBPATTERN_TO_MAJOR, calcBurnedKcal }       from './calc.js';
 import { getWorkoutSessions }                        from './workout/sessions.js';
@@ -17,6 +17,13 @@ let _period             = 30;
 let _selectedExerciseId = null;
 let _selectedVolumeDate = null;
 let _selectedFatiguePeriod = 'week';
+let _healthChartPeriod = 90;
+const _healthSeriesVisible = {
+  weight: true,
+  bodyFat: true,
+  intake: true,
+  burned: true,
+};
 
 export function setPeriod(days, btn) {
   _period = days;
@@ -25,9 +32,7 @@ export function setPeriod(days, btn) {
   _renderMusclePeriod();
 }
 
-let _checkinChart = null;
-let _kcalWeightChart = null;
-let _calorieMonthChart = null;
+let _healthMetricsChart = null;
 
 export function renderStats() {
   _bindStatsViewTabs();
@@ -37,11 +42,10 @@ export function renderStats() {
   _renderMusclePeriod();
   _renderVolumeSection();
   _renderDietStats();
-  _renderKcalWeightChart();
-  _renderCalorieReport();
+  _bindHealthChartControls();
+  _renderHealthMetricsChart();
   _renderMonthlySummary();
   _renderHeatmap();
-  _renderCheckinChart();
   _renderDeepStats();
 }
 
@@ -195,7 +199,6 @@ function _emptyFatigueGroups() {
     level: 0,
   }));
 }
-
 function _fatigueRed(level) {
   const n = _clamp(Number(level) || 0, 0, 1);
   const saturation = Math.round(34 + n * 62);
@@ -1167,89 +1170,156 @@ function _chartColors() {
   };
 }
 
-function _renderKcalWeightChart() {
-  const canvas = document.getElementById('kcal-weight-chart');
-  const emptyEl = document.getElementById('kcal-weight-chart-empty');
-  const metaEl = document.getElementById('kcal-weight-meta');
+const HEALTH_CHART_SERIES = {
+  weight: { label: '체중', axis: 'weight', unit: 'kg', color: '#ef6a6a', background: 'rgba(239,106,106,0.08)', order: 1 },
+  bodyFat: { label: '체지방률', axis: 'pct', unit: '%', color: '#10b981', background: 'rgba(16,185,129,0.08)', order: 2 },
+  intake: { label: '섭취칼로리', axis: 'kcal', unit: 'kcal', color: '#6366f1', background: 'rgba(99,102,241,0.10)', order: 3 },
+  burned: { label: '운동칼로리', axis: 'kcal', unit: 'kcal', color: '#f59e0b', background: 'rgba(245,158,11,0.10)', order: 4 },
+};
+
+function _bindHealthChartControls() {
+  document.querySelectorAll('[data-health-series]').forEach(input => {
+    const key = input.dataset.healthSeries;
+    if (!HEALTH_CHART_SERIES[key]) return;
+    input.checked = _healthSeriesVisible[key] !== false;
+    if (input.dataset.bound === '1') return;
+    input.dataset.bound = '1';
+    input.addEventListener('change', () => {
+      _healthSeriesVisible[key] = !!input.checked;
+      _renderHealthMetricsChart();
+    });
+  });
+  document.querySelectorAll('[data-health-period]').forEach(btn => {
+    _syncHealthPeriodButton(btn);
+    if (btn.dataset.bound === '1') return;
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', () => {
+      const raw = btn.dataset.healthPeriod;
+      _healthChartPeriod = raw === 'all' ? 0 : Math.max(1, Number(raw) || 90);
+      document.querySelectorAll('[data-health-period]').forEach(_syncHealthPeriodButton);
+      _renderHealthMetricsChart();
+    });
+  });
+}
+
+function _syncHealthPeriodButton(btn) {
+  const raw = btn.dataset.healthPeriod;
+  const active = raw === 'all' ? _healthChartPeriod === 0 : Number(raw) === _healthChartPeriod;
+  btn.classList.toggle('active', active);
+  btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+}
+
+function _allHealthChartKeys(cache, checkins) {
+  const todayKey = _keyOffset(0);
+  const keys = new Set([
+    ...Object.keys(cache || {}),
+    ...checkins.map(c => c?.date).filter(Boolean),
+  ]);
+  const sorted = [...keys]
+    .filter(key => /^\d{4}-\d{2}-\d{2}$/.test(key) && key <= todayKey)
+    .sort();
+  const startKey = sorted[0] || _keyOffset(89);
+  return _dateRange(startKey, todayKey);
+}
+
+function _healthChartKeys(cache, checkins) {
+  return _healthChartPeriod === 0 ? _allHealthChartKeys(cache, checkins) : _recentChartKeys(_healthChartPeriod);
+}
+
+function _buildHealthChartData(keys, cache, checkins) {
+  const plan = getDietPlan();
+  const checkinByDate = new Map(checkins.map(c => [c.date, c]));
+  const labels = keys.map(key => key.slice(5).replace('-', '/'));
+  const data = { weight: [], bodyFat: [], intake: [], burned: [] };
+
+  keys.forEach(key => {
+    const day = cache[key] || {};
+    const checkin = checkinByDate.get(key) || null;
+    const weight = _maybeNum(checkin?.weight);
+    const bodyFat = _maybeNum(checkin?.bodyFatPct);
+    const intake = _dayKcal(day);
+    const weightForBurn = _weightOnOrBefore(checkins, key) ?? _maybeNum(plan?.weight) ?? 70;
+    const burned = calcBurnedKcal(day, weightForBurn).total;
+
+    data.weight.push(weight !== null ? weight : null);
+    data.bodyFat.push(bodyFat !== null ? bodyFat : null);
+    data.intake.push(intake > 0 ? intake : null);
+    data.burned.push(burned > 0 ? burned : null);
+  });
+
+  return { labels, data };
+}
+
+function _healthDataset(key, data) {
+  const cfg = HEALTH_CHART_SERIES[key];
+  return {
+    label: cfg.label,
+    data,
+    borderColor: cfg.color,
+    backgroundColor: cfg.background,
+    borderWidth: 2,
+    pointRadius: 3,
+    pointHoverRadius: 5,
+    tension: key === 'bodyFat' || key === 'weight' ? 0.3 : 0.22,
+    spanGaps: true,
+    yAxisID: cfg.axis,
+    order: cfg.order,
+  };
+}
+
+function _formatHealthTooltip(ctx) {
+  const cfg = Object.values(HEALTH_CHART_SERIES).find(item => item.label === ctx.dataset.label);
+  const value = ctx.parsed.y;
+  if (value == null) return `${ctx.dataset.label}: -`;
+  if (cfg?.unit === 'kcal') return `${ctx.dataset.label}: ${_fmt(value)}kcal`;
+  if (cfg?.unit === '%') return `${ctx.dataset.label}: ${Number(value).toFixed(1)}%`;
+  return `${ctx.dataset.label}: ${Number(value).toFixed(1)}kg`;
+}
+
+function _renderHealthMetricsChart() {
+  const canvas = document.getElementById('health-metrics-chart');
+  const emptyEl = document.getElementById('health-chart-empty');
+  const metaEl = document.getElementById('health-chart-meta');
   if (!canvas) return;
 
-  if (_kcalWeightChart) { _kcalWeightChart.destroy(); _kcalWeightChart = null; }
+  if (_healthMetricsChart) { _healthMetricsChart.destroy(); _healthMetricsChart = null; }
 
   const cache = getCache();
-  const checkinByDate = new Map(getBodyCheckins().map(c => [c.date, c]));
-  const keys = _recentChartKeys(90);
-  const labels = keys.map(key => key.slice(5).replace('-', '/'));
-  const kcalData = keys.map(key => {
-    const kcal = _dayKcal(cache[key]);
-    return kcal > 0 ? kcal : null;
-  });
-  const weightData = keys.map(key => {
-    const n = _maybeNum(checkinByDate.get(key)?.weight);
-    return n !== null ? n : null;
-  });
-  const hasKcal = kcalData.some(v => v !== null);
-  const hasWeight = weightData.some(v => v !== null);
+  const checkins = getBodyCheckins();
+  const keys = _healthChartKeys(cache, checkins);
+  const { labels, data } = _buildHealthChartData(keys, cache, checkins);
+  const visibleKeys = Object.keys(HEALTH_CHART_SERIES).filter(key => _healthSeriesVisible[key] !== false);
+  const datasets = visibleKeys
+    .filter(key => data[key]?.some(v => v !== null))
+    .map(key => _healthDataset(key, data[key]));
+  const hasChartData = datasets.length > 0;
 
-  if (!hasKcal && !hasWeight) {
-    canvas.style.display = 'none';
-    if (emptyEl) emptyEl.style.display = 'block';
-    if (metaEl) metaEl.textContent = '최근 90일 체중 또는 섭취칼로리 기록이 없어요.';
-    return;
+  canvas.style.display = hasChartData ? 'block' : 'none';
+  if (emptyEl) {
+    emptyEl.style.display = hasChartData ? 'none' : 'block';
+    emptyEl.textContent = visibleKeys.length
+      ? '선택한 기간에 표시할 건강 지표 기록이 없어요.'
+      : '비교할 지표를 선택하세요.';
   }
-
-  canvas.style.display = 'block';
-  if (emptyEl) emptyEl.style.display = 'none';
   if (metaEl) {
-    const first = keys[0].replace(/-/g, '.');
-    const last = keys[keys.length - 1].replace(/-/g, '.');
-    metaEl.textContent = `${first} - ${last}`;
+    const first = keys[0]?.replace(/-/g, '.') || '';
+    const last = keys[keys.length - 1]?.replace(/-/g, '.') || '';
+    const picked = visibleKeys.map(key => HEALTH_CHART_SERIES[key].label).join(' · ') || '선택 없음';
+    metaEl.textContent = first && last ? `${first} - ${last} · ${picked}` : picked;
   }
+  if (!hasChartData || typeof Chart === 'undefined') return;
 
   const colors = _chartColors();
-  _kcalWeightChart = new Chart(canvas, {
+  _healthMetricsChart = new Chart(canvas, {
     type: 'line',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: '체중',
-          data: weightData,
-          borderColor: '#ef6a6a',
-          backgroundColor: 'rgba(239,106,106,0.08)',
-          borderWidth: 2,
-          pointRadius: 3,
-          pointHoverRadius: 5,
-          tension: 0.3,
-          spanGaps: true,
-          yAxisID: 'weight',
-        },
-        {
-          label: '섭취칼로리',
-          data: kcalData,
-          borderColor: '#6366f1',
-          backgroundColor: 'rgba(99,102,241,0.10)',
-          borderWidth: 2,
-          pointRadius: 3,
-          pointHoverRadius: 5,
-          tension: 0.25,
-          spanGaps: true,
-          yAxisID: 'kcal',
-        },
-      ],
-    },
+    data: { labels, datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { labels: { color: colors.text, boxWidth: 10, font: { size: 11 } } },
-        tooltip: {
-          callbacks: {
-            label: ctx => ctx.dataset.yAxisID === 'weight'
-              ? `${ctx.dataset.label}: ${ctx.parsed.y ?? '-'}kg`
-              : `${ctx.dataset.label}: ${ctx.parsed.y ? _fmt(ctx.parsed.y) : '-'}kcal`,
-          },
-        },
+        legend: { display: false },
+        tooltip: { callbacks: { label: _formatHealthTooltip } },
       },
       scales: {
         x: {
@@ -1268,145 +1338,11 @@ function _renderKcalWeightChart() {
           ticks: { color: colors.text, font: { size: 10 }, callback: v => _fmt(v) },
           grid: { drawOnChartArea: false },
         },
-      },
-    },
-  });
-}
-
-function _renderCalorieReport() {
-  const canvas = document.getElementById('calorie-month-chart');
-  const summaryEl = document.getElementById('calorie-month-summary');
-  const emptyEl = document.getElementById('calorie-month-empty');
-  if (!canvas || !summaryEl) return;
-
-  if (_calorieMonthChart) { _calorieMonthChart.destroy(); _calorieMonthChart = null; }
-
-  const y = TODAY.getFullYear();
-  const m = TODAY.getMonth();
-  const plan = getDietPlan();
-  const checkins = getBodyCheckins();
-  const dayCount = daysInMonth(y, m);
-  const lastDay = y === TODAY.getFullYear() && m === TODAY.getMonth() ? TODAY.getDate() : dayCount;
-  const labels = [];
-  const intake = [];
-  const burned = [];
-  const target = [];
-  const mealTotals = { b: 0, l: 0, d: 0, s: 0 };
-  let successDays = 0, failDays = 0, totalOver = 0, loggedDays = 0, totalMealKcal = 0, hasTarget = false;
-
-  for (let d = 1; d <= lastDay; d++) {
-    const key = dateKey(y, m, d);
-    const day = getDiet(y, m, d);
-    const dayKcal = _dayKcal(day);
-    const weight = _weightOnOrBefore(checkins, key) ?? _maybeNum(plan?.weight) ?? 70;
-    const exerciseKcal = calcBurnedKcal(day, weight).total;
-    const goal = getDayTargetKcal(plan, y, m, d, day);
-    const ok = dietDayOk(y, m, d);
-
-    labels.push(String(d));
-    intake.push(dayKcal > 0 ? dayKcal : null);
-    burned.push(exerciseKcal > 0 ? exerciseKcal : null);
-    target.push(goal > 0 && Number.isFinite(goal) ? goal : null);
-    if (goal > 0 && Number.isFinite(goal)) hasTarget = true;
-
-    if (ok === true) successDays++;
-    else if (ok === false) failDays++;
-    if (dayKcal > 0) {
-      loggedDays++;
-      mealTotals.b += _num(day.bKcal);
-      mealTotals.l += _num(day.lKcal);
-      mealTotals.d += _num(day.dKcal);
-      mealTotals.s += _num(day.sKcal);
-      totalMealKcal += dayKcal;
-      if (goal > 0 && Number.isFinite(goal)) totalOver += Math.max(0, dayKcal - goal);
-    }
-  }
-
-  const hasChartData = intake.some(v => v !== null) || burned.some(v => v !== null);
-  canvas.style.display = hasChartData ? 'block' : 'none';
-  if (emptyEl) emptyEl.style.display = hasChartData ? 'none' : 'block';
-
-  const mealRows = [
-    ['아침', mealTotals.b],
-    ['점심', mealTotals.l],
-    ['저녁', mealTotals.d],
-    ['간식', mealTotals.s],
-  ].map(([label, total]) => {
-    const avg = loggedDays ? Math.round(total / loggedDays) : 0;
-    const pct = totalMealKcal ? Math.round(total / totalMealKcal * 1000) / 10 : 0;
-    return `<div class="calorie-meal-cell"><span>${label}</span><b>${_fmt(avg)}</b><small>${pct ? `${pct}%` : '-'}</small></div>`;
-  }).join('');
-
-  summaryEl.innerHTML = `
-    <div class="calorie-summary-grid">
-      <div><span>성공</span><b>${successDays}</b><small>일</small></div>
-      <div><span>실패</span><b>${failDays}</b><small>일</small></div>
-      <div><span>초과</span><b>${hasTarget ? _fmt(Math.round(totalOver)) : '-'}</b><small>kcal</small></div>
-    </div>
-    <div class="calorie-meal-grid">${mealRows}</div>
-  `;
-
-  if (!hasChartData || typeof Chart === 'undefined') return;
-  const colors = _chartColors();
-  const datasets = [
-    {
-      type: 'bar',
-      label: '섭취칼로리',
-      data: intake,
-      backgroundColor: 'rgba(250,52,44,0.42)',
-      borderColor: 'rgba(250,52,44,0.75)',
-      borderWidth: 1,
-      borderRadius: 3,
-      yAxisID: 'kcal',
-    },
-    {
-      type: 'bar',
-      label: '운동칼로리',
-      data: burned,
-      backgroundColor: 'rgba(20,184,166,0.42)',
-      borderColor: 'rgba(20,184,166,0.75)',
-      borderWidth: 1,
-      borderRadius: 3,
-      yAxisID: 'kcal',
-    },
-  ];
-  if (hasTarget) {
-    datasets.push({
-      type: 'line',
-      label: '목표',
-      data: target,
-      borderColor: 'rgba(250,52,44,0.45)',
-      borderDash: [6, 5],
-      borderWidth: 1.5,
-      pointRadius: 0,
-      spanGaps: true,
-      yAxisID: 'kcal',
-    });
-  }
-
-  _calorieMonthChart = new Chart(canvas, {
-    data: { labels, datasets },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { labels: { color: colors.text, boxWidth: 10, font: { size: 11 } } },
-        tooltip: {
-          callbacks: {
-            label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y ? _fmt(ctx.parsed.y) : '-'}kcal`,
-          },
-        },
-      },
-      scales: {
-        x: {
-          ticks: { color: colors.text, font: { size: 10 }, maxTicksLimit: 8 },
-          grid: { color: colors.grid },
-        },
-        kcal: {
-          position: 'left',
-          ticks: { color: colors.text, font: { size: 10 }, callback: v => _fmt(v) },
-          grid: { color: colors.grid },
+        pct: {
+          position: 'right',
+          title: { display: true, text: '%', color: colors.text, font: { size: 10 } },
+          ticks: { color: colors.text, font: { size: 10 } },
+          grid: { drawOnChartArea: false },
         },
       },
     },
@@ -1448,98 +1384,4 @@ function _renderHeatmap(){
     }
     el.appendChild(cell);
   }
-}
-
-// ── 체크인 차트 (체중 & 체지방 추이) ────────────────────────────
-function _renderCheckinChart() {
-  const canvas   = document.getElementById('checkin-chart');
-  const emptyEl  = document.getElementById('checkin-chart-empty');
-  if (!canvas) return;
-
-  const checkins = getBodyCheckins(); // sorted by date asc
-
-  if (!checkins.length) {
-    canvas.style.display   = 'none';
-    if (emptyEl) emptyEl.style.display = 'block';
-    return;
-  }
-  canvas.style.display = 'block';
-  if (emptyEl) emptyEl.style.display = 'none';
-
-  // 기존 차트 파기
-  if (_checkinChart) { _checkinChart.destroy(); _checkinChart = null; }
-
-  const labels  = checkins.map(c => c.date.replace(/-/g,'/'));
-  const weights = checkins.map(c => c.weight);
-  const bfPcts  = checkins.map(c => c.bodyFatPct ?? null);
-
-  const dark = document.documentElement.getAttribute('data-theme') === 'dark' ||
-               window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const gridColor = dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
-  const textColor = dark ? '#8899a6' : '#6b7280';
-
-  _checkinChart = new Chart(canvas, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: '체중 (kg)',
-          data:  weights,
-          borderColor: 'var(--gym)',
-          backgroundColor: 'rgba(99,102,241,0.08)',
-          borderWidth: 2,
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          tension: 0.3,
-          fill: true,
-          yAxisID: 'y',
-        },
-        {
-          label: '체지방률 (%)',
-          data:  bfPcts,
-          borderColor: 'var(--cf)',
-          backgroundColor: 'rgba(34,197,94,0.08)',
-          borderWidth: 2,
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          tension: 0.3,
-          fill: true,
-          yAxisID: 'y2',
-          spanGaps: true,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { labels: { color: textColor, font: { size: 11 } } },
-        tooltip: {
-          callbacks: {
-            label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y ?? '—'}${ctx.datasetIndex===0?'kg':'%'}`,
-          },
-        },
-      },
-      scales: {
-        x: {
-          ticks: { color: textColor, font: { size: 10 }, maxRotation: 45 },
-          grid:  { color: gridColor },
-        },
-        y: {
-          position: 'left',
-          title:    { display: true, text: 'kg', color: textColor, font: { size: 10 } },
-          ticks:    { color: textColor, font: { size: 10 } },
-          grid:     { color: gridColor },
-        },
-        y2: {
-          position: 'right',
-          title:    { display: true, text: '%', color: textColor, font: { size: 10 } },
-          ticks:    { color: textColor, font: { size: 10 } },
-          grid:     { drawOnChartArea: false },
-        },
-      },
-    },
-  });
 }

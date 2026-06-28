@@ -2282,6 +2282,58 @@ body.wt-modal-scroll-lock {
   color: var(--text-tertiary);
   text-align: right;
 }
+.stats-health-controls {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+.stats-health-toggles,
+.stats-health-periods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.stats-health-toggle {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.stats-health-toggle input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+.stats-health-toggle.is-weight input { accent-color: #ef6a6a; }
+.stats-health-toggle.is-bodyfat input { accent-color: #10b981; }
+.stats-health-toggle.is-intake input { accent-color: #6366f1; }
+.stats-health-toggle.is-burned input { accent-color: #f59e0b; }
+.stats-health-period {
+  min-height: 30px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  cursor: pointer;
+}
+.stats-health-period.active {
+  border-color: var(--gym);
+  background: var(--gym-dim);
+  color: var(--gym);
+}
 .stats-empty {
   padding: 20px 0;
   font-size: 12px;

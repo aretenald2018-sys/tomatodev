@@ -763,17 +763,25 @@
 <div class="stats-block-title">📋 전체 기록 리포트</div>
 <div id="stats-metadata-summary"></div>
 </div>
-<div class="stats-block">
-<div class="stats-block-title">⚖️ 체중 & 섭취칼로리 추이</div>
-<div class="stats-chart-meta" id="kcal-weight-meta"></div>
-<div class="stats-chart-wrap"><canvas id="kcal-weight-chart"></canvas></div>
-<div id="kcal-weight-chart-empty" class="stats-empty" style="display:none">최근 90일 체중 또는 섭취칼로리 기록이 없어요.</div>
+<div class="stats-block stats-health-block">
+<div class="stats-block-title">📊 건강 지표 비교</div>
+<div class="stats-chart-meta" id="health-chart-meta"></div>
+<div class="stats-health-controls" aria-label="건강 지표 차트 설정">
+  <div class="stats-health-toggles" aria-label="비교 지표">
+    <label class="stats-health-toggle is-weight"><input type="checkbox" data-health-series="weight" checked><span>체중</span></label>
+    <label class="stats-health-toggle is-bodyfat"><input type="checkbox" data-health-series="bodyFat" checked><span>체지방률</span></label>
+    <label class="stats-health-toggle is-intake"><input type="checkbox" data-health-series="intake" checked><span>섭취칼로리</span></label>
+    <label class="stats-health-toggle is-burned"><input type="checkbox" data-health-series="burned" checked><span>운동칼로리</span></label>
+  </div>
+  <div class="stats-health-periods" role="group" aria-label="기간">
+    <button type="button" class="stats-health-period" data-health-period="30">30일</button>
+    <button type="button" class="stats-health-period" data-health-period="60">60일</button>
+    <button type="button" class="stats-health-period active" data-health-period="90">90일</button>
+    <button type="button" class="stats-health-period" data-health-period="all">전체</button>
+  </div>
 </div>
-<div class="stats-block">
-<div class="stats-block-title">🔥 월간 칼로리 리포트</div>
-<div class="stats-chart-wrap"><canvas id="calorie-month-chart"></canvas></div>
-<div id="calorie-month-empty" class="stats-empty" style="display:none">이번 달 칼로리 기록이 없어요.</div>
-<div id="calorie-month-summary"></div>
+<div class="stats-chart-wrap"><canvas id="health-metrics-chart"></canvas></div>
+<div id="health-chart-empty" class="stats-empty" style="display:none">선택한 기간에 표시할 건강 지표 기록이 없어요.</div>
 </div>
 <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
 <button class="export-btn" onclick="openExportModal()">📊 CSV 내보내기</button>
@@ -808,16 +816,6 @@
 <div class="stats-block">
 <div class="stats-block-title">📅 월별 운동 일수</div>
 <div class="monthly-row" id="monthly-summary"></div>
-</div>
-<div class="stats-block">
-<div class="stats-block-title">⚖️ 체중 & 체지방 추이</div>
-<div style="position:relative;height:200px"><canvas id="checkin-chart"></canvas></div>
-<div id="checkin-chart-empty" style="display:none;font-size:12px;color:var(--muted);text-align:center;padding:20px">
-주간 체크인 기록이 없어요.
-
-
-다이어트 목표 카드에서 체크인 해보세요!
-</div>
 </div>
 </div>
 <div id="stats-deep-panel" class="stats-view-panel">

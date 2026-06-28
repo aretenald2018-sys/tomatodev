@@ -3,13 +3,13 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-28-running-real-map-provider.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-28-running-real-map-provider-review.md`
-- 현재 단계: `review complete — Running Real Map Provider Slice 1`
+- 계획 문서: `docs/ai/features/2026-06-28-stats-unified-health-chart.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-28-stats-unified-health-chart-review.md`
+- 현재 단계: `review complete — Stats Unified Health Chart Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `Running Real Map Provider Slice 1 구현과 리뷰를 완료했다. fake SVG/CSS map을 제거하고, Google Maps/TMAP provider key가 있으면 실제 지도 타일 위에 GPS marker/polyline을 표시하는 running-map renderer를 추가했다. targeted 테스트 12개, 전체 테스트 570개, runtime asset 검증, git diff check 통과.`
-- 다음 액션: `없음. Google Maps key 또는 TMAP appKey가 설정된 브라우저에서 운동 탭 -> 런닝/조깅 -> 위치 권한 허용 -> 시작/종료 -> 결과 요약 지도 표시를 수동 확인하면 된다.`
-- 차단 사유: `not verified yet: provider key가 없어 실제 지도 타일 로드와 SDK marker/polyline 렌더는 배포 후 key 설정 환경에서 확인해야 한다.`
+- 마지막 완료: `Stats Unified Health Chart Slice 1을 구현/리뷰했다. 체중/체지방률/섭취칼로리/운동칼로리를 하나의 통합 차트로 합치고, 체크박스 및 30/60/90/전체 기간 필터를 추가했다. 기존 월간 칼로리 그래프와 맨밑 체크인 그래프는 제거했다.`
+- 다음 액션: `Dashboard3 Pages 배포 검증 후 최종 핸드오프한다.`
+- 차단 사유: `없음. 단, 배포 브라우저가 로그인 화면에 막히면 실제 통계 UI 조작은 인증 계정에서 확인해야 한다.`
 
 ## 직전 완료 요약
 
