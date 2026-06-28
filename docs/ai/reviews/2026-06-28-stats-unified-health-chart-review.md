@@ -21,8 +21,10 @@
 - PASS: `node --test @tests` — 573 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=846`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ a3af29d` — deployed `a3af29dd4f05`, `tomatofarm-v20260628z2-stats-unified-health-chart`, `static=221`
+- PASS: deployed markers — `health-metrics-chart`, `data-health-series`, `data-health-period`, `HEALTH_CHART_SERIES`, `_renderHealthMetricsChart`, `checkin?.bodyFatPct`, `.stats-health-toggle`, `.stats-health-period`
+- PASS: `curl.exe -I https://aretenald2018-sys.github.io/dashboard3/` — `HTTP/1.1 200 OK`
 
 ## 남은 확인
 
-- not verified yet: Dashboard3 Pages 배포 검증은 커밋 후 실행 필요.
 - not verified yet: 인증 세션이 없어 실제 통계 탭에서 체크박스/기간 버튼 조작은 인증 계정에서 확인해야 한다.

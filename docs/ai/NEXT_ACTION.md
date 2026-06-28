@@ -7,8 +7,8 @@
 - 리뷰 문서: `docs/ai/reviews/2026-06-28-stats-unified-health-chart-review.md`
 - 현재 단계: `review complete — Stats Unified Health Chart Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `Stats Unified Health Chart Slice 1을 구현/리뷰했다. 체중/체지방률/섭취칼로리/운동칼로리를 하나의 통합 차트로 합치고, 체크박스 및 30/60/90/전체 기간 필터를 추가했다. 기존 월간 칼로리 그래프와 맨밑 체크인 그래프는 제거했다.`
-- 다음 액션: `Dashboard3 Pages 배포 검증 후 최종 핸드오프한다.`
+- 마지막 완료: `Stats Unified Health Chart Slice 1을 구현/리뷰/배포 검증했다. 체중/체지방률/섭취칼로리/운동칼로리를 하나의 통합 차트로 합치고, 체크박스 및 30/60/90/전체 기간 필터를 추가했다. 기존 월간 칼로리 그래프와 맨밑 체크인 그래프는 제거했다. Dashboard3 Pages에서 a3af29d 배포와 통합 차트 marker, HTTP 200을 확인했다.`
+- 다음 액션: `없음.`
 - 차단 사유: `없음. 단, 배포 브라우저가 로그인 화면에 막히면 실제 통계 UI 조작은 인증 계정에서 확인해야 한다.`
 
 ## 직전 완료 요약
