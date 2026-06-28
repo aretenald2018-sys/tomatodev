@@ -29,8 +29,13 @@
 - PASS: `node --test tests/*.test.js` — 576 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=846`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 46d8984f612e0469d62963e7b2394548dcd4aa29`
+  - 결과: `[deploy-verify] ok 46d8984f612e tomatofarm-v20260628z5-running-vworld-default-map static=221`
+- PASS: deployed marker 검증 — VWorld 기본 key fallback, Google/TMAP missing-key fallback, cache marker, generic map load message
+- PASS: 배포된 `workout/running-map.js`, `config.js`에 `키를 설정하면` 문구 없음
+- PASS: VWorld tile sample URL `HTTP 200`, `image/png`
 
 ## 남은 리스크
 
 - VWorld key는 정적 프론트엔드에서 호출되는 browser map key라 배포 JS에서 보인다. 운영 리스크는 VWorld 콘솔의 도메인 제한과 사용량 모니터링으로 관리해야 한다.
-- 인증 세션과 실제 모바일 GPS 권한 flow는 로컬 Node 테스트로 검증할 수 없다. Pages 배포 후 `운동 -> 런닝/조깅`에서 지도 타일과 현재 위치 marker가 뜨는지 사용자 환경에서 최종 확인한다.
+- 인증 세션과 실제 모바일 GPS 권한 flow는 로컬 Node 테스트로 검증할 수 없다. Pages 배포와 지도 타일 응답은 확인했지만, 실제 계정에서 `운동 -> 런닝/조깅` 진입 후 위치 권한 허용 UI flow는 사용자 환경에서 최종 확인한다.
