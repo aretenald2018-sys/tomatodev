@@ -3,13 +3,13 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-29-running-save-detail-card.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-running-save-detail-card-review.md`
-- 현재 단계: `review complete — Running Save Detail Card Slice 1`
+- 계획 문서: `docs/ai/features/2026-06-29-home-running-real-map-stationary.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-home-running-real-map-stationary-review.md`
+- 현재 단계: `review complete — Home Running Real Map Stationary Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `러닝 요약 저장 후 운동 기록 편집 폼 대신 해당 날짜/회차의 캘린더 상세 시트를 열고, 상세 시트 러닝 카드를 헬스 카드 골격의 러닝 전용 metric 카드로 교체했다.`
+- 마지막 완료: `홈 지도 말풍선을 50% 축소하고 실제 VWorld 타일/route overlay로 교체했으며, 러너를 트랙 하단부 제자리 모션으로 변경하고 리뷰까지 완료했다.`
 - 다음 액션: `없음.`
-- 차단 사유: `없음. 단, 인증 계정이 없어 실제 러닝 저장 터치 flow는 배포 페이지에서 수동 확인이 필요할 수 있다.`
+- 차단 사유: `없음.`
 
 ## 직전 완료 요약
 

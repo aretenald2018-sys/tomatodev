@@ -27,61 +27,49 @@ export const LIFE_ZONE_ACTORS = [
 export const LIFE_ZONE_SLOTS = {
   running: [
     {
-      id: 'track-upper',
+      id: 'track-bottom-left',
       pose: 'running-track',
       label: '러닝',
-      x: 545,
-      y: 785,
-      width: 90,
-      z: 84,
-      labelY: 760,
-      bubbleX: 590,
-      bubbleY: 660,
-      mapTipX: 35,
-      runDelay: '0s',
-      runDuration: '2.22s',
-      runX0: '-14px',
-      runY0: '10px',
-      runX1: '18px',
-      runY1: '-10px'
-    },
-    {
-      id: 'track-left',
-      pose: 'running-track',
-      label: '러닝',
-      x: 148,
-      y: 1094,
-      width: 88,
-      z: 90,
-      labelY: 1068,
-      bubbleX: 192,
-      bubbleY: 975,
-      mapTipX: 52,
-      runDelay: '-0.64s',
-      runDuration: '2.48s',
-      runX0: '16px',
-      runY0: '-8px',
-      runX1: '-18px',
-      runY1: '9px'
-    },
-    {
-      id: 'track-right',
-      pose: 'running-track',
-      label: '러닝',
-      x: 700,
-      y: 1042,
-      width: 88,
+      x: 164,
+      y: 1128,
+      width: 86,
       z: 96,
-      labelY: 1016,
-      bubbleX: 744,
-      bubbleY: 925,
-      mapTipX: 48,
-      runDelay: '-1.18s',
-      runDuration: '2.7s',
-      runX0: '-12px',
-      runY0: '8px',
-      runX1: '16px',
-      runY1: '-7px'
+      labelY: 1102,
+      bubbleX: 206,
+      bubbleY: 1046,
+      mapTipX: 50,
+      runDelay: '0s',
+      runDuration: '0.58s'
+    },
+    {
+      id: 'track-bottom-center',
+      pose: 'running-track',
+      label: '러닝',
+      x: 368,
+      y: 1192,
+      width: 86,
+      z: 100,
+      labelY: 1166,
+      bubbleX: 410,
+      bubbleY: 1108,
+      mapTipX: 50,
+      runDelay: '-0.18s',
+      runDuration: '0.6s'
+    },
+    {
+      id: 'track-bottom-right',
+      pose: 'running-track',
+      label: '러닝',
+      x: 648,
+      y: 1114,
+      width: 86,
+      z: 98,
+      labelY: 1088,
+      bubbleX: 690,
+      bubbleY: 1030,
+      mapTipX: 50,
+      runDelay: '-0.34s',
+      runDuration: '0.56s'
     }
   ],
   workout: [
@@ -240,6 +228,74 @@ export function hasLifeZoneRunningActivity(dayData = null) {
   if (Array.isArray(runData.route) && runData.route.length > 0) return true;
   if ((Number(dayData.runRouteSummary?.pointCount) || 0) > 0 || (Number(runData.routeSummary?.pointCount) || 0) > 0) return true;
   return !!(dayData.runStartedAt && !dayData.runEndedAt);
+}
+
+function _runningMapNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function _normalizeLifeZoneRunningPoint(point = null) {
+  const lat = _runningMapNumber(point?.lat ?? point?.latitude);
+  const lng = _runningMapNumber(point?.lng ?? point?.lon ?? point?.longitude);
+  if (lat == null || lng == null) return null;
+  const normalized = { lat, lng };
+  const ts = _runningMapNumber(point?.ts ?? point?.timestamp ?? point?.time);
+  if (ts != null) normalized.ts = ts;
+  const accuracy = _runningMapNumber(point?.accuracy);
+  if (accuracy != null) normalized.accuracy = accuracy;
+  const altitude = _runningMapNumber(point?.altitude);
+  if (altitude != null) normalized.altitude = altitude;
+  const speed = _runningMapNumber(point?.speed);
+  if (speed != null) normalized.speed = speed;
+  return normalized;
+}
+
+function _normalizeLifeZoneRunningRoute(points = []) {
+  return (Array.isArray(points) ? points : [])
+    .map(_normalizeLifeZoneRunningPoint)
+    .filter(Boolean);
+}
+
+function _firstLifeZoneRunningRoute(dayData = {}, runData = {}) {
+  if (dayData.lifeZoneRunningLive || dayData.runLiveActive) {
+    return _normalizeLifeZoneRunningRoute(dayData.lifeZoneRunningRoute);
+  }
+  const candidates = [
+    dayData.lifeZoneRunningRoute,
+    dayData.runRoute,
+    runData.route
+  ];
+  for (const candidate of candidates) {
+    const route = _normalizeLifeZoneRunningRoute(candidate);
+    if (route.length) return route;
+  }
+  return [];
+}
+
+export function getLifeZoneRunningMapData(dayData = null) {
+  if (!hasLifeZoneRunningActivity(dayData)) return null;
+  const runData = dayData?.runData || {};
+  const route = _firstLifeZoneRunningRoute(dayData || {}, runData);
+  const routeSummary = dayData?.lifeZoneRunningRouteSummary
+    || dayData?.runRouteSummary
+    || runData.routeSummary
+    || null;
+  const previewPoint = _normalizeLifeZoneRunningPoint(
+    dayData?.lifeZoneRunningPreviewPoint
+    || dayData?.runPreviewPoint
+    || runData.previewPoint
+    || route[route.length - 1]
+    || routeSummary?.centroid
+  );
+  return {
+    live: !!(dayData?.lifeZoneRunningLive || dayData?.runLiveActive),
+    route,
+    routeSummary,
+    previewPoint,
+    pointCount: route.length || Number(routeSummary?.pointCount) || 0,
+    updatedAt: dayData?.lifeZoneRunningUpdatedAt || dayData?.runUpdatedAt || routeSummary?.endedAt || null
+  };
 }
 
 export function hasLifeZoneDietActivity(dayData = null) {
@@ -439,7 +495,8 @@ export function resolveLifeZoneActors({
     return {
       ...actor,
       state,
-      speech: getLifeZoneSpeech(dayData, state)
+      speech: getLifeZoneSpeech(dayData, state),
+      runningMap: state === 'running' ? getLifeZoneRunningMapData(dayData) : null
     };
   });
   return assignLifeZoneSlots(actorStates);

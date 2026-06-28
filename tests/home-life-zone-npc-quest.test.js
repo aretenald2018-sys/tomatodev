@@ -124,8 +124,18 @@ test('life zone running actors render track sprites and a map capture bubble on 
 
   assert.match(source, /window\.__tomatoRunningLive/);
   assert.match(source, /lifeZoneRunningLive/);
+  assert.match(source, /readRunningMapConfig/);
+  assert.match(source, /resolveRunningMapConfig/);
+  assert.match(source, /CONFIG\.MAPS\?\.VWORLD_API_KEY/);
+  assert.match(source, /buildVworldTileUrl/);
+  assert.match(source, /normalizeRunningMapPoints/);
+  assert.match(source, /function _buildRunningMapBubbleData/);
   assert.match(source, /function _renderRunningMapBubble/);
   assert.match(source, /bubble\.dataset\.lzRunningMapBubble = '1'/);
+  assert.match(source, /bubble\.dataset\.lzRunningMapState = map\.state/);
+  assert.match(source, /lz-running-map-tile/);
+  assert.match(source, /lz-running-map-path/);
+  assert.match(source, /lifeZoneRunningRoute/);
   assert.match(source, /actor\.state === 'running'/);
   assert.match(source, /selfRunning \? actor\.source === 'self' : !runningBubbleRendered/);
   assert.equal(fs.existsSync(path.join(root, 'scripts/make-life-zone-running-sprites.py')), false);
@@ -139,11 +149,20 @@ test('life zone running actors render track sprites and a map capture bubble on 
   assert.match(css, /aspect-ratio: 128 \/ 192/);
   assert.match(css, /background-size: 200% 100%/);
   assert.match(css, /animation: lz-running-track-steps 0\.42s steps\(2, end\) infinite/);
-  assert.match(css, /@keyframes lz-running-track-lap/);
+  assert.match(css, /animation: lz-running-track-in-place var\(--lz-run-duration, 0\.58s\) ease-in-out infinite/);
+  assert.match(css, /@keyframes lz-running-track-in-place/);
   assert.match(css, /@keyframes lz-running-track-steps/);
+  assert.doesNotMatch(css, /@keyframes lz-running-track-lap/);
+  assert.doesNotMatch(css, /--lz-run-x0|--lz-run-x1/);
+  assert.doesNotMatch(css, /translate3d\(var\(--lz-run-x0/);
   assert.match(css, /\.lz-running-map-bubble \{/);
-  assert.match(css, /width: clamp\(104px, calc\(344 \/ 1672 \* 100%\), 152px\)/);
-  assert.match(css, /\.lz-running-map-route/);
+  assert.match(css, /width: clamp\(52px, calc\(172 \/ 1672 \* 100%\), 76px\)/);
+  assert.match(css, /\.lz-running-map-tile \{/);
+  assert.match(css, /\.lz-running-map-path \{/);
+  assert.match(css, /\.lz-running-map-current \{/);
+  assert.doesNotMatch(css, /\.lz-running-map-road/);
+  assert.doesNotMatch(css, /\.lz-running-map-route/);
+  assert.doesNotMatch(css, /\.lz-running-map-pin/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*\.lz-actor--pose-running-track,[\s\S]*\.lz-actor--pose-running-track::before[\s\S]*animation: none;/);
 
   for (const sprite of sprites) {
@@ -160,7 +179,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260629z4-running-save-detail-card/);
+  assert.match(sw, /tomatofarm-v20260629z5-home-running-real-map/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,

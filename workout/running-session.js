@@ -296,12 +296,23 @@ function _resetLiveSession() {
 }
 
 function _publishRunningLiveState(active = false) {
+  const route = downsampleRunningRoute(_session.route, MAX_ROUTE_POINTS);
+  const routeSummary = route.length
+    ? summarizeRunningRoute(_session.route, {
+      startedAt: _session.startedAt || route[0]?.ts || _now(),
+      endedAt: _session.endedAt || _now(),
+      pausedMs: _session.pausedMs,
+    })
+    : null;
   const detail = {
     active: !!active,
     phase: _session.phase,
     startedAt: _session.startedAt || null,
     updatedAt: _now(),
-    pointCount: _session.route.length
+    pointCount: route.length,
+    route,
+    routeSummary,
+    previewPoint: _session.previewPoint || route[route.length - 1] || null
   };
   if (typeof window !== 'undefined') window.__tomatoRunningLive = detail;
   if (typeof document !== 'undefined' && typeof CustomEvent === 'function') {
@@ -368,6 +379,7 @@ function _pushPosition(position) {
   if (_session.route.length > MAX_ROUTE_POINTS * 2) {
     _session.route = downsampleRunningRoute(_session.route, MAX_ROUTE_POINTS);
   }
+  _publishRunningLiveState(true);
 }
 
 function _startWatch() {

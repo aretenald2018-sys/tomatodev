@@ -65,6 +65,10 @@ test('running session publishes home life-zone live state without rendering a du
   assert.match(runningSessionJs, /function _publishRunningLiveState/);
   assert.match(runningSessionJs, /window\.__tomatoRunningLive/);
   assert.match(runningSessionJs, /life-zone:running-live/);
+  assert.match(runningSessionJs, /routeSummary/);
+  assert.match(runningSessionJs, /previewPoint/);
+  assert.match(runningSessionJs, /route,\s*\n\s*routeSummary/);
+  assert.match(runningSessionJs, /_publishRunningLiveState\(true\);[\s\S]*function _startWatch/);
   assert.match(appJs, /document\.addEventListener\('life-zone:running-live'/);
   assert.match(appJs, /if \(_currentTab === 'home'\) renderHome\(\)/);
 
@@ -138,7 +142,7 @@ test('running summary save opens the saved workout day detail sheet', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260629z4-running-save-detail-card/);
+  assert.match(swJs, /tomatofarm-v20260629z5-home-running-real-map/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/sprites\/jups-running-track\.png/);

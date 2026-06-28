@@ -7,7 +7,14 @@ import {
   getFriendWorkout,
   getMyFriends
 } from '../data.js';
+import { CONFIG } from '../config.js';
 import { escapeHtml, resolveNickname } from './utils.js';
+import {
+  buildVworldTileUrl,
+  normalizeRunningMapPoints,
+  readRunningMapConfig,
+  resolveRunningMapConfig
+} from '../workout/running-map.js';
 import {
   LIFE_ZONE_ACTORS,
   assignLifeZoneSlots,
@@ -21,6 +28,11 @@ const LIFE_ZONE_SPRITE_ROOT = `${LIFE_ZONE_ASSET_ROOT}/sprites`;
 const LIFE_ZONE_UI_ROOT = `${LIFE_ZONE_ASSET_ROOT}/ui`;
 const LIFE_ZONE_NPC_NAME = '트레이너';
 const LIFE_ZONE_CACHE_MS = 0;
+const RUNNING_MAP_WIDTH = 172;
+const RUNNING_MAP_HEIGHT = 121;
+const RUNNING_MAP_TILE_SIZE = 256;
+const RUNNING_MAP_MIN_ZOOM = 10;
+const RUNNING_MAP_MAX_ZOOM = 18;
 
 let _actorStateCache = null;
 
@@ -63,11 +75,18 @@ function _readRunningLiveState() {
 
 function _withRunningLiveDay(dayData = {}, live = null) {
   if (!live?.active) return dayData || {};
+  const route = Array.isArray(live.route) ? live.route : [];
   return {
     ...(dayData || {}),
     running: true,
     runLiveActive: true,
     lifeZoneRunningLive: true,
+    lifeZoneRunningRoute: route,
+    lifeZoneRunningRouteSummary: live.routeSummary || null,
+    lifeZoneRunningPreviewPoint: live.previewPoint || null,
+    lifeZoneRunningUpdatedAt: live.updatedAt || Date.now(),
+    runRoute: route.length ? route : (dayData?.runRoute || []),
+    runRouteSummary: live.routeSummary || dayData?.runRouteSummary || null,
     runStartedAt: live.startedAt || dayData?.runStartedAt || Date.now()
   };
 }
@@ -107,10 +126,6 @@ function _applyActorSlotPosition(element, slot) {
   element.style.setProperty('--lz-z', slot.z);
   if (slot.runDelay) element.style.setProperty('--lz-run-delay', slot.runDelay);
   if (slot.runDuration) element.style.setProperty('--lz-run-duration', slot.runDuration);
-  if (slot.runX0) element.style.setProperty('--lz-run-x0', slot.runX0);
-  if (slot.runY0) element.style.setProperty('--lz-run-y0', slot.runY0);
-  if (slot.runX1) element.style.setProperty('--lz-run-x1', slot.runX1);
-  if (slot.runY1) element.style.setProperty('--lz-run-y1', slot.runY1);
 }
 
 function _applyActorNameplatePosition(element, slot) {
@@ -122,24 +137,186 @@ function _applyActorNameplatePosition(element, slot) {
   element.style.setProperty('--lz-name-z', z);
 }
 
+function _mapNumber(value, fallback = NaN) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function _mapPoint(point = null) {
+  const lat = _mapNumber(point?.lat ?? point?.latitude);
+  const lng = _mapNumber(point?.lng ?? point?.lon ?? point?.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return {
+    lat: Math.max(-85.0511, Math.min(85.0511, lat)),
+    lng: ((lng + 540) % 360) - 180
+  };
+}
+
+function _routeBoundsCenter(route = []) {
+  if (!route.length) return null;
+  let minLat = route[0].lat;
+  let maxLat = route[0].lat;
+  let minLng = route[0].lng;
+  let maxLng = route[0].lng;
+  route.forEach((point) => {
+    minLat = Math.min(minLat, point.lat);
+    maxLat = Math.max(maxLat, point.lat);
+    minLng = Math.min(minLng, point.lng);
+    maxLng = Math.max(maxLng, point.lng);
+  });
+  return { lat: (minLat + maxLat) / 2, lng: (minLng + maxLng) / 2 };
+}
+
+function _zoomForRunningMap(route = []) {
+  if (route.length < 2) return 17;
+  let minLat = route[0].lat;
+  let maxLat = route[0].lat;
+  let minLng = route[0].lng;
+  let maxLng = route[0].lng;
+  route.forEach((point) => {
+    minLat = Math.min(minLat, point.lat);
+    maxLat = Math.max(maxLat, point.lat);
+    minLng = Math.min(minLng, point.lng);
+    maxLng = Math.max(maxLng, point.lng);
+  });
+  const span = Math.max(maxLat - minLat, maxLng - minLng);
+  if (span > 0.045) return 12;
+  if (span > 0.022) return 13;
+  if (span > 0.011) return 14;
+  if (span > 0.0055) return 15;
+  if (span > 0.0028) return 16;
+  return 17;
+}
+
+function _projectRunningMapPoint(point, zoom) {
+  const p = _mapPoint(point);
+  const sin = Math.sin(p.lat * Math.PI / 180);
+  const world = RUNNING_MAP_TILE_SIZE * (2 ** zoom);
+  return {
+    x: (p.lng + 180) / 360 * world,
+    y: (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * world
+  };
+}
+
+function _tileModulo(value, max) {
+  return ((value % max) + max) % max;
+}
+
+function _screenPoint(point, zoom, topLeft) {
+  const projected = _projectRunningMapPoint(point, zoom);
+  return {
+    x: projected.x - topLeft.x,
+    y: projected.y - topLeft.y
+  };
+}
+
+function _readLifeZoneVworldMapConfig() {
+  const config = readRunningMapConfig();
+  if (config.provider === 'vworld' && config.configured) return config;
+  const fallback = resolveRunningMapConfig({
+    provider: 'vworld',
+    vworldApiKey: CONFIG.MAPS?.VWORLD_API_KEY,
+    vworldLayer: CONFIG.MAPS?.VWORLD_MAP_LAYER
+  });
+  return fallback.configured ? fallback : config;
+}
+
+function _buildRunningMapBubbleData(mapData = null) {
+  const route = normalizeRunningMapPoints(mapData?.route || []);
+  const previewPoint = _mapPoint(mapData?.previewPoint);
+  const summaryCenter = _mapPoint(mapData?.routeSummary?.centroid);
+  const center = _routeBoundsCenter(route) || previewPoint || summaryCenter;
+  if (!center) {
+    return { state: 'waiting', route, tiles: [], path: '', dot: null };
+  }
+
+  const config = _readLifeZoneVworldMapConfig();
+  if (!config.configured || config.provider !== 'vworld') {
+    const dot = { x: RUNNING_MAP_WIDTH / 2, y: RUNNING_MAP_HEIGHT / 2 };
+    return { state: 'missing-map', route, tiles: [], path: '', dot };
+  }
+
+  const zoom = Math.max(RUNNING_MAP_MIN_ZOOM, Math.min(RUNNING_MAP_MAX_ZOOM, _zoomForRunningMap(route)));
+  const centerPx = _projectRunningMapPoint(center, zoom);
+  const topLeft = {
+    x: centerPx.x - RUNNING_MAP_WIDTH / 2,
+    y: centerPx.y - RUNNING_MAP_HEIGHT / 2
+  };
+  const maxTile = 2 ** zoom;
+  const minTileX = Math.floor(topLeft.x / RUNNING_MAP_TILE_SIZE);
+  const maxTileX = Math.floor((topLeft.x + RUNNING_MAP_WIDTH) / RUNNING_MAP_TILE_SIZE);
+  const minTileY = Math.floor(topLeft.y / RUNNING_MAP_TILE_SIZE);
+  const maxTileY = Math.floor((topLeft.y + RUNNING_MAP_HEIGHT) / RUNNING_MAP_TILE_SIZE);
+  const tiles = [];
+
+  for (let y = minTileY; y <= maxTileY; y += 1) {
+    if (y < 0 || y >= maxTile) continue;
+    for (let x = minTileX; x <= maxTileX; x += 1) {
+      const wrappedX = _tileModulo(x, maxTile);
+      tiles.push({
+        src: buildVworldTileUrl(config.key, zoom, wrappedX, y, config.layer),
+        left: x * RUNNING_MAP_TILE_SIZE - topLeft.x,
+        top: y * RUNNING_MAP_TILE_SIZE - topLeft.y
+      });
+    }
+  }
+
+  const projectedRoute = route.map(point => _screenPoint(point, zoom, topLeft));
+  const path = projectedRoute.length > 1
+    ? projectedRoute.map(point => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ')
+    : '';
+  const rawDot = _screenPoint(route[route.length - 1] || previewPoint || summaryCenter || center, zoom, topLeft);
+  const dot = {
+    x: Math.max(4, Math.min(RUNNING_MAP_WIDTH - 4, rawDot.x)),
+    y: Math.max(4, Math.min(RUNNING_MAP_HEIGHT - 4, rawDot.y))
+  };
+
+  return { state: 'ready', route, tiles, path, dot };
+}
+
 function _renderRunningMapBubble(layer, actor, slot) {
   const bubble = document.createElement('div');
   const x = Number(slot.bubbleX) || Number(slot.x) + Number(slot.width) * 0.5;
   const y = Number(slot.bubbleY) || Math.max(36, Number(slot.y) - 88);
   const tipX = Number(slot.mapTipX) || 50;
-  bubble.className = 'lz-running-map-bubble';
+  const map = _buildRunningMapBubbleData(actor.runningMap);
+  const tileHtml = map.tiles.map((tile) => `
+    <img
+      class="lz-running-map-tile"
+      src="${escapeHtml(tile.src)}"
+      alt=""
+      decoding="async"
+      loading="eager"
+      draggable="false"
+      style="left:${tile.left.toFixed(1)}px;top:${tile.top.toFixed(1)}px"
+    >
+  `).join('');
+  const pathHtml = map.path
+    ? `<polyline class="lz-running-map-path" points="${escapeHtml(map.path)}"></polyline>`
+    : '';
+  const dotHtml = map.dot
+    ? `<span class="lz-running-map-current" style="--lz-run-dot-x:${map.dot.x.toFixed(1)}px;--lz-run-dot-y:${map.dot.y.toFixed(1)}px"></span>`
+    : '';
+  const emptyText = map.state === 'ready' ? '' : (map.state === 'waiting' ? 'GPS' : 'MAP');
+  bubble.className = `lz-running-map-bubble lz-running-map-bubble--${map.state}`;
   bubble.setAttribute('aria-label', `${actor.displayName} 러닝 지도`);
   bubble.dataset.lzRunningMapBubble = '1';
+  bubble.dataset.lzRunningMapState = map.state;
   bubble.style.setProperty('--lz-map-x', x);
   bubble.style.setProperty('--lz-map-y', y);
   bubble.style.setProperty('--lz-map-tip-x', `${tipX}%`);
   bubble.style.setProperty('--lz-actor-color', actor.color || '#94a3b8');
   bubble.style.zIndex = String((Number(slot.z) || 1) + 30);
   bubble.innerHTML = `
-    <span class="lz-running-map-road lz-running-map-road--main"></span>
-    <span class="lz-running-map-road lz-running-map-road--cross"></span>
-    <span class="lz-running-map-route"></span>
-    <span class="lz-running-map-pin"></span>
+    <span class="lz-running-map-surface">
+      <span class="lz-running-map-tile-layer">${tileHtml}</span>
+      <svg class="lz-running-map-overlay" viewBox="0 0 ${RUNNING_MAP_WIDTH} ${RUNNING_MAP_HEIGHT}" aria-hidden="true">
+        ${pathHtml}
+      </svg>
+      ${dotHtml}
+      ${emptyText ? `<span class="lz-running-map-empty">${emptyText}</span>` : ''}
+      ${map.state === 'ready' ? '<span class="lz-running-map-attribution">VWorld</span>' : ''}
+    </span>
   `;
   layer.append(bubble);
 }

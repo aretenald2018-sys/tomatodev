@@ -5,6 +5,7 @@ import {
   assignLifeZoneSlots,
   getLifeZoneDietSpeech,
   getLifeZoneOwnerIdCandidates,
+  getLifeZoneRunningMapData,
   getLifeZoneRunningSpeech,
   getLifeZoneSpeech,
   getLifeZoneWorkoutSpeech,
@@ -123,18 +124,49 @@ test('assigns running actors to existing home track slots and running sprite she
     { id: 'c', spritePrefix: 'lee-jaeheon', state: 'running' }
   ]);
 
-  assert.deepEqual(assigned.map((actor) => actor.slot.id), ['track-upper', 'track-left', 'track-right']);
+  assert.deepEqual(assigned.map((actor) => actor.slot.id), ['track-bottom-left', 'track-bottom-center', 'track-bottom-right']);
   assert.deepEqual(assigned.map((actor) => [actor.slot.x, actor.slot.y, actor.slot.width]), [
-    [545, 785, 90],
-    [148, 1094, 88],
-    [700, 1042, 88]
+    [164, 1128, 86],
+    [368, 1192, 86],
+    [648, 1114, 86]
   ]);
+  assert.ok(assigned.every((actor) => actor.slot.y >= 1114));
+  assert.ok(assigned.every((actor) => !('runX0' in actor.slot) && !('runX1' in actor.slot)));
   assert.deepEqual(assigned.map((actor) => actor.sprite), [
     'jups-running-track.png',
     'moonjung-tomato-running-track.png',
     'lee-jaeheon-running-track.png'
   ]);
   assert.ok(assigned.every((actor) => actor.slot.pose === 'running-track'));
+});
+
+test('builds life zone running map data from live and saved routes', () => {
+  const live = getLifeZoneRunningMapData({
+    runLiveActive: true,
+    lifeZoneRunningRoute: [
+      { lat: 37.5209, lng: 126.977, ts: 1000 },
+      { lat: 37.5215, lng: 126.979, ts: 2000 }
+    ],
+    lifeZoneRunningRouteSummary: { pointCount: 2, centroid: { lat: 37.5212, lng: 126.978 } },
+    lifeZoneRunningPreviewPoint: { lat: 37.5215, lng: 126.979 }
+  });
+
+  assert.equal(live.live, true);
+  assert.equal(live.route.length, 2);
+  assert.deepEqual(live.previewPoint, { lat: 37.5215, lng: 126.979 });
+  assert.equal(live.pointCount, 2);
+
+  const saved = getLifeZoneRunningMapData({
+    running: true,
+    runData: {
+      route: [{ latitude: 37.1, longitude: 127.1 }],
+      routeSummary: { pointCount: 1 }
+    }
+  });
+
+  assert.equal(saved.live, false);
+  assert.deepEqual(saved.route, [{ lat: 37.1, lng: 127.1 }]);
+  assert.equal(saved.pointCount, 1);
 });
 
 test('resolves activity priority and slot distribution from account days', () => {
@@ -183,9 +215,10 @@ test('treats live running as the home track running state', () => {
 
   assert.equal(actors[0].displayName, '줍스');
   assert.equal(actors[0].state, 'running');
-  assert.equal(actors[0].slot.id, 'track-upper');
+  assert.equal(actors[0].slot.id, 'track-bottom-left');
   assert.equal(actors[0].sprite, 'jups-running-track.png');
   assert.equal(actors[0].speech, '러닝중');
+  assert.equal(actors[0].runningMap.live, true);
 });
 
 test('treats diet-only Jups record as diet state in life zone', () => {
