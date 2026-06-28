@@ -23,7 +23,7 @@ test('overall stats uses one compact summary instead of duplicated aggregation c
 
 test('overall summary renderer replaces legacy aggregate renderers', () => {
   assert.match(statsJs, /function _renderOverallSummary/);
-  assert.match(statsJs, /_renderOverallSummary\(\)/);
+  assert.match(statsJs, /_renderOverallSummary\(root\)/);
   assert.match(statsJs, /hasDietRecord\(ny,m,d\)/);
   assert.match(statsJs, /stats-summary-kpi/);
   assert.match(statsJs, /stats-summary-fact/);
@@ -42,5 +42,5 @@ test('compact summary styles are present and cache version is bumped', () => {
   assert.match(styleCss, /\.stats-summary-kpis/);
   assert.match(styleCss, /\.stats-summary-fact/);
   assert.match(styleCss, /\.stats-summary-kpi\.is-good/);
-  assert.match(swJs, /tomatofarm-v20260628z7-running-interactive-map/);
+  assert.match(swJs, /tomatofarm-v20260628z8-trainer-quest-modal/);
 });

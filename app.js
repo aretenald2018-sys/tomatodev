@@ -137,6 +137,7 @@ function _openModal(id) {
   const el = document.getElementById(id);
   if (!el) return;
   el.classList.add('open');
+  el.setAttribute('aria-hidden', 'false');
   _openModalStack.push(id);
   document.body.style.overflow = 'hidden';
 }
@@ -145,6 +146,7 @@ function _closeModal(id, e) {
   const el = document.getElementById(id);
   if (!el) return;
   el.classList.remove('open');
+  el.setAttribute('aria-hidden', 'true');
   _openModalStack = _openModalStack.filter(x => x !== id);
   if (_openModalStack.length === 0) document.body.style.overflow = '';
 }
@@ -159,6 +161,27 @@ document.addEventListener('keydown', (e) => {
 // feature 모듈에서 사용할 수 있도록 window에 노출
 window._openModal = _openModal;
 window._closeModal = _closeModal;
+
+let _trainerQuestEventBound = false;
+function _bindTrainerQuestEvent() {
+  if (_trainerQuestEventBound) return;
+  _trainerQuestEventBound = true;
+  document.addEventListener('life-zone:npc-quest', async (event) => {
+    if (event?.detail?.npc !== 'trainer') return;
+    event.preventDefault?.();
+    try {
+      await loadAndInjectModals();
+      if (typeof window.openTrainerQuestModal === 'function') {
+        window.openTrainerQuestModal();
+        return;
+      }
+      throw new Error('openTrainerQuestModal is not registered');
+    } catch (error) {
+      console.warn('[app] trainer quest modal open failed:', error);
+      showToast?.('트레이너 대화창을 열지 못했어요. 새로고침 후 다시 시도해주세요.', 2500, 'error');
+    }
+  });
+}
 
 // ── 탭 전환 ──────────────────────────────────────────────────────
 let _currentTab = 'home';
@@ -656,6 +679,7 @@ function _initDietInputButtons() {
 }
 
 
+_bindTrainerQuestEvent();
 init();
 _initDietInputButtons();
 

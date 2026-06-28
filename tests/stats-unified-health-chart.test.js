@@ -24,14 +24,15 @@ test('stats renders one unified health chart with checkbox filters and period co
 test('stats health chart combines body, intake, and exercise series in one Chart.js instance', () => {
   assert.match(statsJs, /let _healthMetricsChart = null/);
   assert.match(statsJs, /function _renderHealthMetricsChart/);
+  assert.match(statsJs, /const _healthMetricsCharts = new WeakMap\(\)/);
   assert.match(statsJs, /HEALTH_CHART_SERIES/);
   assert.match(statsJs, /bodyFat:\s*\{\s*label:\s*'체지방률'/);
   assert.match(statsJs, /burned:\s*\{\s*label:\s*'운동칼로리'/);
   assert.match(statsJs, /calcBurnedKcal\(day, weightForBurn\)\.total/);
   assert.match(statsJs, /checkin\?\.bodyFatPct/);
   assert.match(statsJs, /_healthChartPeriod === 0/);
-  assert.match(statsJs, /document\.querySelectorAll\('\[data-health-series\]'\)/);
-  assert.match(statsJs, /document\.querySelectorAll\('\[data-health-period\]'\)/);
+  assert.match(statsJs, /_statsNodes\(scope, '\[data-health-series\]'\)/);
+  assert.match(statsJs, /_statsNodes\(scope, '\[data-health-period\]'\)/);
   assert.doesNotMatch(statsJs, /function _renderCalorieReport/);
   assert.doesNotMatch(statsJs, /function _renderCheckinChart/);
   assert.doesNotMatch(statsJs, /_renderCalorieReport\(\)/);
@@ -42,5 +43,5 @@ test('stats health chart controls are styled and cache version is bumped', () =>
   assert.match(styleCss, /\.stats-health-controls/);
   assert.match(styleCss, /\.stats-health-toggle/);
   assert.match(styleCss, /\.stats-health-period\.active/);
-  assert.match(swJs, /tomatofarm-v20260628z7-running-interactive-map/);
+  assert.match(swJs, /tomatofarm-v20260628z8-trainer-quest-modal/);
 });

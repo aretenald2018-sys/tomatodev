@@ -3,13 +3,13 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-28-running-interactive-map-cleanup.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-28-running-interactive-map-cleanup-review.md`
-- 현재 단계: `review complete — Running Interactive Map Cleanup Slice 1`
+- 계획 문서: `docs/ai/features/2026-06-28-home-trainer-npc-quest-modal.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-28-home-trainer-npc-quest-modal-review.md`
+- 현재 단계: `review complete — Home Trainer NPC Quest Modal Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `Running Interactive Map Cleanup Slice 1을 구현/리뷰/배포 검증했다. VWorld 지도에 drag/wheel/double click/pinch 조작을 추가하고, 시작 버튼을 축소했으며, 현재 위치 chip과 러닝 가이드 탭을 제거했다. Dashboard3 Pages 배포 커밋 ff6ed86 검증과 배포 파일 absence 확인까지 완료했다.`
+- 마지막 완료: `홈 라이프존 트레이너 전구 버튼 클릭 시 TDS/Tomato 퀘스트 모달을 열고, 기타의 내 운동 통계 살펴보기에서 통계 탭 주요 정보를 모달 내부에 root-scoped로 렌더하도록 구현/리뷰했다.`
 - 다음 액션: `없음.`
-- 차단 사유: `없음. 단, 인증 세션과 모바일 GPS 권한 flow 및 실제 터치/핀치 감각은 사용자 기기에서 확인해야 한다.`
+- 차단 사유: `없음. 단, 배포 URL의 실제 홈/통계 UI flow는 인증 세션이 없으면 not verified yet으로 남긴다.`
 
 ## 직전 완료 요약
 

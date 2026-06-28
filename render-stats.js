@@ -29,32 +29,92 @@ export function setPeriod() {
 }
 
 let _healthMetricsChart = null;
+const _healthMetricsCharts = new WeakMap();
 
-export function renderStats() {
-  _bindStatsViewTabs();
-  _renderMuscleFatigue();
-  _renderOverallSummary();
-  _renderVolumeSection();
-  _bindHealthChartControls();
-  _renderHealthMetricsChart();
+export function renderStats(root = document) {
+  _bindStatsViewTabs(root);
+  _renderMuscleFatigue(root);
+  _renderOverallSummary(root);
+  _renderVolumeSection(root);
+  _bindHealthChartControls(root);
+  _renderHealthMetricsChart(root);
   _renderHeatmap();
-  _renderDeepStats();
+  _renderDeepStats(root);
 }
 
-function _bindStatsViewTabs() {
-  document.querySelectorAll('.stats-view-btn').forEach(btn => {
+function _statsNode(root, id) {
+  if (!root || root === document) return document.getElementById(id);
+  return root.querySelector(`[data-stats-id="${id}"], #${id}`);
+}
+
+function _statsNodes(root, selector) {
+  return (root || document).querySelectorAll(selector);
+}
+
+function _trainerQuestStatsMarkup() {
+  return `
+    <section class="stats-block stats-summary-block trainer-quest-stats-block">
+      <div class="stats-block-title">전체 요약</div>
+      <div data-stats-id="stats-overall-summary"></div>
+    </section>
+    <section class="stats-block stats-health-block trainer-quest-stats-block">
+      <div class="stats-block-title">건강 지표 비교</div>
+      <div class="stats-chart-meta" data-stats-id="health-chart-meta"></div>
+      <div class="stats-health-controls" aria-label="건강 지표 차트 설정">
+        <div class="stats-health-toggles" aria-label="비교 지표">
+          <label class="stats-health-toggle is-weight"><input type="checkbox" data-health-series="weight" checked><span>체중</span></label>
+          <label class="stats-health-toggle is-bodyfat"><input type="checkbox" data-health-series="bodyFat" checked><span>체지방률</span></label>
+          <label class="stats-health-toggle is-intake"><input type="checkbox" data-health-series="intake" checked><span>섭취칼로리</span></label>
+          <label class="stats-health-toggle is-burned"><input type="checkbox" data-health-series="burned" checked><span>운동칼로리</span></label>
+        </div>
+        <div class="stats-health-periods" role="group" aria-label="기간">
+          <button type="button" class="stats-health-period" data-health-period="30">30일</button>
+          <button type="button" class="stats-health-period" data-health-period="60">60일</button>
+          <button type="button" class="stats-health-period active" data-health-period="90">90일</button>
+          <button type="button" class="stats-health-period" data-health-period="all">전체</button>
+        </div>
+      </div>
+      <div class="stats-chart-wrap"><canvas data-stats-id="health-metrics-chart"></canvas></div>
+      <div data-stats-id="health-chart-empty" class="stats-empty" style="display:none">선택한 기간에 표시할 건강 지표 기록이 없어요.</div>
+    </section>
+    <section class="stats-block stats-muscle-fatigue-block trainer-quest-stats-block">
+      <div data-stats-id="stats-muscle-fatigue"></div>
+    </section>
+    <section class="stats-block trainer-quest-stats-block">
+      <div class="stats-block-title">종목별 볼륨 추이</div>
+      <div data-stats-id="volume-section"></div>
+    </section>
+    <section class="trainer-quest-deep-stats" data-stats-id="deep-stats-report"></section>
+  `;
+}
+
+export function renderTrainerQuestStats(root) {
+  if (!root) return;
+  root.setAttribute('data-stats-root', 'trainer-quest');
+  root.innerHTML = _trainerQuestStatsMarkup();
+  _renderOverallSummary(root);
+  _bindHealthChartControls(root);
+  _renderHealthMetricsChart(root);
+  _renderMuscleFatigue(root);
+  _renderVolumeSection(root);
+  _renderDeepStats(root);
+}
+
+function _bindStatsViewTabs(root = document) {
+  _statsNodes(root, '.stats-view-btn').forEach(btn => {
     if (btn.dataset.bound === '1') return;
     btn.dataset.bound = '1';
     btn.addEventListener('click', () => switchStatsView(btn.dataset.statsView || 'overall', btn));
   });
 }
 
-export function switchStatsView(view = 'overall', btn = null) {
+export function switchStatsView(view = 'overall', btn = null, root = document) {
   const next = view === 'deep' ? 'deep' : 'overall';
-  document.querySelectorAll('.stats-view-btn').forEach(b => b.classList.toggle('active', b === btn || b.dataset.statsView === next));
-  document.getElementById('stats-overall-panel')?.classList.toggle('active', next === 'overall');
-  document.getElementById('stats-deep-panel')?.classList.toggle('active', next === 'deep');
-  if (next === 'deep') _renderDeepStats();
+  const scope = btn?.closest?.('[data-stats-root]') || root || document;
+  _statsNodes(scope, '.stats-view-btn').forEach(b => b.classList.toggle('active', b === btn || b.dataset.statsView === next));
+  _statsNode(scope, 'stats-overall-panel')?.classList.toggle('active', next === 'overall');
+  _statsNode(scope, 'stats-deep-panel')?.classList.toggle('active', next === 'deep');
+  if (next === 'deep') _renderDeepStats(scope);
 }
 
 if (typeof window !== 'undefined') window.switchStatsView = switchStatsView;
@@ -357,8 +417,8 @@ function _fatigueInsight(state) {
   };
 }
 
-function _renderMuscleFatigue() {
-  const root = document.getElementById('stats-muscle-fatigue');
+function _renderMuscleFatigue(scope = document) {
+  const root = _statsNode(scope, 'stats-muscle-fatigue');
   if (!root) return;
 
   const state = _buildMuscleFatigue(_selectedFatiguePeriod);
@@ -409,7 +469,7 @@ function _renderMuscleFatigue() {
       const next = btn.dataset.fatiguePeriod;
       if (!FATIGUE_PERIODS[next] || next === _selectedFatiguePeriod) return;
       _selectedFatiguePeriod = next;
-      _renderMuscleFatigue();
+      _renderMuscleFatigue(scope);
     });
   });
 }
@@ -557,8 +617,8 @@ function _summaryFact(label, value) {
       <b>${_esc(hasValue ? value : '데이터 없음')}</b>
     </div>`;
 }
-function _renderOverallSummary() {
-  const root = document.getElementById('stats-overall-summary');
+function _renderOverallSummary(scope = document) {
+  const root = _statsNode(scope, 'stats-overall-summary');
   if (!root) return;
 
   const cache = getCache();
@@ -771,8 +831,8 @@ function _analyzeTrainerWindow(fromKey, toKey) {
   };
 }
 
-function _renderDeepStats() {
-  const root = document.getElementById('deep-stats-report');
+function _renderDeepStats(scope = document) {
+  const root = _statsNode(scope, 'deep-stats-report');
   if (!root) return;
   const four = _analyzeTrainerWindow(_keyOffset(27), _keyOffset(0));
   const recent2 = _analyzeTrainerWindow(_keyOffset(13), _keyOffset(0));
@@ -1019,8 +1079,10 @@ function _syncVolumeRows(container) {
   });
 }
 
-function _renderVolumeSection() {
-  const container=document.getElementById('volume-section');container.innerHTML='';
+function _renderVolumeSection(scope = document) {
+  const container = _statsNode(scope, 'volume-section');
+  if (!container) return;
+  container.innerHTML='';
   const usedExIds=new Set();
   Object.values(getCache()).forEach(day=>(day.exercises||[]).forEach(e=>usedExIds.add(e.exerciseId)));
 
@@ -1066,12 +1128,14 @@ function _renderVolumeSection() {
   basis.querySelector('.vol-select')?.addEventListener('change', (event) => {
     _selectedExerciseId = event.target.value;
     _selectedVolumeDate = null;
-    _renderVolumeSection();
+    _renderVolumeSection(scope);
   });
 
   const chartWrap=document.createElement('div');
   chartWrap.className='vol-chart-wrap';
-  const canvas=document.createElement('canvas');canvas.id='vol-chart';
+  const canvas=document.createElement('canvas');
+  if (scope === document) canvas.id='vol-chart';
+  else canvas.dataset.statsId='vol-chart';
   chartWrap.appendChild(canvas);container.appendChild(chartWrap);
 
   const detailEl=document.createElement('div');
@@ -1160,8 +1224,8 @@ const HEALTH_CHART_SERIES = {
   burned: { label: '운동칼로리', axis: 'kcal', unit: 'kcal', color: '#f59e0b', background: 'rgba(245,158,11,0.10)', order: 4 },
 };
 
-function _bindHealthChartControls() {
-  document.querySelectorAll('[data-health-series]').forEach(input => {
+function _bindHealthChartControls(scope = document) {
+  _statsNodes(scope, '[data-health-series]').forEach(input => {
     const key = input.dataset.healthSeries;
     if (!HEALTH_CHART_SERIES[key]) return;
     input.checked = _healthSeriesVisible[key] !== false;
@@ -1169,18 +1233,18 @@ function _bindHealthChartControls() {
     input.dataset.bound = '1';
     input.addEventListener('change', () => {
       _healthSeriesVisible[key] = !!input.checked;
-      _renderHealthMetricsChart();
+      _renderHealthMetricsChart(scope);
     });
   });
-  document.querySelectorAll('[data-health-period]').forEach(btn => {
+  _statsNodes(scope, '[data-health-period]').forEach(btn => {
     _syncHealthPeriodButton(btn);
     if (btn.dataset.bound === '1') return;
     btn.dataset.bound = '1';
     btn.addEventListener('click', () => {
       const raw = btn.dataset.healthPeriod;
       _healthChartPeriod = raw === 'all' ? 0 : Math.max(1, Number(raw) || 90);
-      document.querySelectorAll('[data-health-period]').forEach(_syncHealthPeriodButton);
-      _renderHealthMetricsChart();
+      _statsNodes(scope, '[data-health-period]').forEach(_syncHealthPeriodButton);
+      _renderHealthMetricsChart(scope);
     });
   });
 }
@@ -1259,13 +1323,18 @@ function _formatHealthTooltip(ctx) {
   return `${ctx.dataset.label}: ${Number(value).toFixed(1)}kg`;
 }
 
-function _renderHealthMetricsChart() {
-  const canvas = document.getElementById('health-metrics-chart');
-  const emptyEl = document.getElementById('health-chart-empty');
-  const metaEl = document.getElementById('health-chart-meta');
+function _renderHealthMetricsChart(scope = document) {
+  const canvas = _statsNode(scope, 'health-metrics-chart');
+  const emptyEl = _statsNode(scope, 'health-chart-empty');
+  const metaEl = _statsNode(scope, 'health-chart-meta');
   if (!canvas) return;
 
-  if (_healthMetricsChart) { _healthMetricsChart.destroy(); _healthMetricsChart = null; }
+  const existing = _healthMetricsCharts.get(canvas);
+  if (existing) {
+    existing.destroy();
+    _healthMetricsCharts.delete(canvas);
+  }
+  if (canvas.id === 'health-metrics-chart') _healthMetricsChart = null;
 
   const cache = getCache();
   const checkins = getBodyCheckins();
@@ -1293,7 +1362,7 @@ function _renderHealthMetricsChart() {
   if (!hasChartData || typeof Chart === 'undefined') return;
 
   const colors = _chartColors();
-  _healthMetricsChart = new Chart(canvas, {
+  const chart = new Chart(canvas, {
     type: 'line',
     data: { labels, datasets },
     options: {
@@ -1330,6 +1399,8 @@ function _renderHealthMetricsChart() {
       },
     },
   });
+  _healthMetricsCharts.set(canvas, chart);
+  if (canvas.id === 'health-metrics-chart') _healthMetricsChart = chart;
 }
 
 // ── 연간 히트맵 ──────────────────────────────────────────────────
