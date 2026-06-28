@@ -759,9 +759,9 @@
 <div class="stats-block stats-muscle-fatigue-block">
 <div id="stats-muscle-fatigue"></div>
 </div>
-<div class="stats-block">
-<div class="stats-block-title">📋 전체 기록 리포트</div>
-<div id="stats-metadata-summary"></div>
+<div class="stats-block stats-summary-block">
+<div class="stats-block-title">📋 전체 요약</div>
+<div id="stats-overall-summary"></div>
 </div>
 <div class="stats-block stats-health-block">
 <div class="stats-block-title">📊 건강 지표 비교</div>
@@ -787,35 +787,8 @@
 <button class="export-btn" onclick="openExportModal()">📊 CSV 내보내기</button>
 </div>
 <div class="stats-block">
-<div class="stats-block-title">💪 부위별 운동 비중 (최근 14일)</div>
-<div id="muscle-14d"></div>
-<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:10px;color:var(--muted);">
-<span style="color:var(--streak)">완료</span> 2회 ↑&nbsp;&nbsp;
-<span style="color:var(--accent)">진행</span> 1회&nbsp;&nbsp;
-<span style="color:#ef4444">미달</span> 0회
-</div>
-</div>
-<div class="stats-block">
-<div class="stats-block-title">📈 기간별 운동 횟수</div>
-<div class="period-tabs">
-<button class="period-btn active" onclick="setPeriod(30,this)">30일</button>
-<button class="period-btn"         onclick="setPeriod(60,this)">60일</button>
-<button class="period-btn"         onclick="setPeriod(90,this)">90일</button>
-<button class="period-btn"         onclick="setPeriod(0,this)">전체</button>
-</div>
-<div id="muscle-period"></div>
-</div>
-<div class="stats-block">
 <div class="stats-block-title">🏋️ 종목별 볼륨 추이 (kg × 횟수 × 세트)</div>
 <div id="volume-section"></div>
-</div>
-<div class="stats-block">
-<div class="stats-block-title">🥗 식단 달성 단계 (올해)</div>
-<div id="diet-stats"></div>
-</div>
-<div class="stats-block">
-<div class="stats-block-title">📅 월별 운동 일수</div>
-<div class="monthly-row" id="monthly-summary"></div>
 </div>
 </div>
 <div id="stats-deep-panel" class="stats-view-panel">
