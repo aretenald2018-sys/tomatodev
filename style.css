@@ -12027,6 +12027,129 @@ body.wt-running-session-open {
   font-size: 13px;
   font-weight: 900;
 }
+.wt-running-read-card {
+  border-color: #d9e4f5;
+}
+.wt-running-card-kicker i {
+  background: #2563eb;
+}
+.wt-running-plan {
+  grid-template-columns: minmax(0, 1fr) minmax(112px, .72fr);
+}
+.wt-running-route-wrap {
+  min-width: 0;
+}
+.wt-running-route-mini {
+  position: relative;
+  width: 100%;
+  min-height: 82px;
+  display: grid;
+  align-content: end;
+  gap: 2px;
+  padding: 10px;
+  overflow: hidden;
+  border: 1px solid #d7deea;
+  border-radius: 9px;
+  background:
+    linear-gradient(90deg, rgba(148, 163, 184, 0.16) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(148, 163, 184, 0.16) 1px, transparent 1px),
+    linear-gradient(135deg, #f7f8fb, #eef4ff);
+  background-size: 18px 18px, 18px 18px, auto;
+}
+.wt-running-route-mini span {
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  top: 45%;
+  height: 4px;
+  border-radius: 999px;
+  background: #c3cad8;
+  transform: rotate(-18deg);
+}
+.wt-running-route-mini.has-route span {
+  background: #ff3d5f;
+  box-shadow:
+    22px 14px 0 -1px #ff3d5f,
+    44px -5px 0 -1px #ff3d5f;
+}
+.wt-running-route-mini strong,
+.wt-running-route-mini em {
+  position: relative;
+  z-index: 1;
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wt-running-route-mini strong {
+  color: #111827;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 900;
+}
+.wt-running-route-mini em {
+  color: #5f6b7a;
+  font-size: 10px;
+  line-height: 14px;
+  font-style: normal;
+  font-weight: 800;
+}
+.wt-running-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+.wt-running-metric-grid span {
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid #e1e7f0;
+  border-radius: 9px;
+  background: #f8fafc;
+}
+.wt-running-metric-grid i,
+.wt-running-metric-grid strong {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wt-running-metric-grid i {
+  color: #647084;
+  font-size: 10px;
+  line-height: 14px;
+  font-style: normal;
+  font-weight: 900;
+}
+.wt-running-metric-grid strong {
+  margin-top: 2px;
+  color: #111827;
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 900;
+}
+.wt-running-route-detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+.wt-running-route-detail span {
+  max-width: 100%;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #254166;
+  font-size: 11px;
+  line-height: 15px;
+  font-weight: 800;
+}
+.wt-running-read-card.is-collapsed .wt-running-metric-grid,
+.wt-running-read-card.is-collapsed .wt-running-route-detail {
+  display: none;
+}
 .wt-max-action-primary {
   border: 1px solid #111827;
   background: #111827;
@@ -12305,6 +12428,24 @@ body.wt-running-session-open {
     grid-template-columns: minmax(0, 1fr) minmax(98px, .8fr);
     gap: 6px;
     padding: 7px 8px;
+  }
+  .wt-running-plan {
+    grid-template-columns: minmax(0, 1fr) minmax(88px, .72fr);
+  }
+  .wt-running-route-mini {
+    min-height: 72px;
+    padding: 8px;
+  }
+  .wt-running-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
+  }
+  .wt-running-metric-grid span {
+    padding: 7px 8px;
+  }
+  .wt-running-metric-grid strong {
+    font-size: 13px;
+    line-height: 17px;
   }
   .wt-max-plan-goal strong {
     font-size: 18px;

@@ -3,13 +3,13 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-29-running-track-live-art.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-running-imagegen-sprites-review.md`
-- 현재 단계: `review complete — Running Home Track Live Art Slice 2`
+- 계획 문서: `docs/ai/features/2026-06-29-running-save-detail-card.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-running-save-detail-card-review.md`
+- 현재 단계: `review complete — Running Save Detail Card Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `Slice 2 구현/리뷰를 완료했다. imagegen 기반 running sprite sheet를 반영했고, 빨강/파랑/초록 캐릭터가 홈탭 기존 런닝트랙 lane 위에 놓이도록 좌표를 조정했다.`
-- 다음 액션: `없음.`
-- 차단 사유: `없음. 단, 인증 계정으로 러닝 시작 후 실제 홈탭 live UI flow는 배포 페이지에서 수동 확인이 필요할 수 있다.`
+- 마지막 완료: `러닝 요약 저장 후 운동 기록 편집 폼 대신 해당 날짜/회차의 캘린더 상세 시트를 열고, 상세 시트 러닝 카드를 헬스 카드 골격의 러닝 전용 metric 카드로 교체했다.`
+- 다음 액션: `커밋 후 Dashboard3 Pages 배포 및 deploy marker 검증.`
+- 차단 사유: `없음. 단, 인증 계정이 없어 실제 러닝 저장 터치 flow는 배포 페이지에서 수동 확인이 필요할 수 있다.`
 
 ## 직전 완료 요약
 

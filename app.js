@@ -28,6 +28,7 @@ import {
   getWorkoutNavSnapshot,
   handleWorkoutBack,
   openWorkoutCalendar,
+  openWorkoutDaySheet,
   pushWorkoutRecord,
   subscribeWorkoutNav,
 } from './workout/navigation-stack.js';
@@ -323,6 +324,32 @@ async function openWorkoutRecordFromCalendar(key, sessionIndex = 0, options = {}
   return true;
 }
 
+async function openWorkoutDaySheetFromAction(key, sessionIndex = 0, options = {}) {
+  const dateKey = typeof key === 'string'
+    ? key
+    : _dateKeyFromParts(key?.y, key?.m, key?.d);
+  const parsed = _parseWorkoutDateKey(dateKey);
+  if (!parsed) return false;
+  const targetSessionIndex = Math.max(0, Math.floor(Number(sessionIndex) || 0));
+  const action = options.action || 'sheet:open-external';
+  openWorkoutDaySheet(dateKey, {
+    sessionIndex: targetSessionIndex,
+    sheetState: 'full',
+    viewYear: parsed.y,
+    viewMonth: parsed.m,
+    scrollTop: 0,
+    history: options.history || 'replace',
+    notify: false,
+    action,
+  });
+  if (_currentTab !== 'workout') {
+    await switchTab('workout', { preserveWorkoutRoute: true });
+    return true;
+  }
+  await _renderWorkoutRoute(getWorkoutNavSnapshot(), action);
+  return true;
+}
+
 subscribeWorkoutNav((snapshot, action) => {
   if (_currentTab !== 'workout') return;
   _renderWorkoutRoute(snapshot, action).catch(e => console.warn('[app] workout route render failed:', e));
@@ -400,6 +427,7 @@ enableWorkoutPwaHistory({
   handleOverlayBack: _handleWorkoutOverlayBack,
 });
 window.wtOpenWorkoutRecord = openWorkoutRecordFromCalendar;
+window.wtOpenWorkoutDaySheet = openWorkoutDaySheetFromAction;
 window.wtHandleWorkoutBack = () => _handleWorkoutOverlayBack() || handleWorkoutBack({ activeTab: _currentTab, preferHistory: true });
 
 let _workoutSystemBackBound = false;

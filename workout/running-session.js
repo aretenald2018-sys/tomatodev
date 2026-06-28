@@ -240,6 +240,16 @@ function _currentSummary() {
   });
 }
 
+function _workoutDateKeyFromState() {
+  const d = S.shared?.date;
+  if (!d || !Number.isFinite(Number(d.y)) || !Number.isFinite(Number(d.m)) || !Number.isFinite(Number(d.d))) return null;
+  return `${Number(d.y)}-${String(Number(d.m) + 1).padStart(2, '0')}-${String(Number(d.d)).padStart(2, '0')}`;
+}
+
+function _workoutSessionIndexFromState() {
+  return Math.max(0, Math.floor(Number(S.workout?.sessionIndex) || 0));
+}
+
 function _syncWorkoutRunData(summary) {
   const durationMin = Math.floor(summary.durationSec / 60);
   const durationSec = summary.durationSec % 60;
@@ -427,17 +437,31 @@ function _finishRun() {
 async function _saveSummary() {
   if (_session.saving) return;
   _session.saving = true;
-  _syncWorkoutRunData(_currentSummary());
+  const summary = _currentSummary();
+  const targetDateKey = _workoutDateKeyFromState();
+  const targetSessionIndex = _workoutSessionIndexFromState();
+  _syncWorkoutRunData(summary);
   _render();
   try {
     const { saveWorkoutDay } = await import('./save.js');
     await saveWorkoutDay({ silent: true });
     await _showToast('러닝 기록 저장 완료', 2200, 'success');
-    wtCloseRunningSession();
   } catch (e) {
     console.error('[running-session] save failed:', e);
     _session.saving = false;
     _render();
+    return;
+  }
+  wtCloseRunningSession();
+  if (targetDateKey && typeof window.wtOpenWorkoutDaySheet === 'function') {
+    try {
+      await window.wtOpenWorkoutDaySheet(targetDateKey, targetSessionIndex, {
+        history: 'replace',
+        action: 'running:save-detail',
+      });
+    } catch (e) {
+      console.warn('[running-session] saved but detail sheet open failed:', e);
+    }
   }
 }
 

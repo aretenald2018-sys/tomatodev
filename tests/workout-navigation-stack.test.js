@@ -112,6 +112,9 @@ test('workout navigation is wired to app, calendar, record card focus, and PWA c
   assert.match(appJs, /selectedKey:\s*_dateKeyFromParts\(TODAY\.getFullYear\(\), TODAY\.getMonth\(\), TODAY\.getDate\(\)\)/);
   assert.match(appJs, /viewYear:\s*TODAY\.getFullYear\(\)/);
   assert.match(appJs, /viewMonth:\s*TODAY\.getMonth\(\)/);
+  assert.match(appJs, /async function openWorkoutDaySheetFromAction/);
+  assert.match(appJs, /openWorkoutDaySheet\(dateKey,[\s\S]*sheetState:\s*'full'/);
+  assert.match(appJs, /window\.wtOpenWorkoutDaySheet = openWorkoutDaySheetFromAction/);
   assert.match(appJs, /route\.name === WORKOUT_ROUTES\.DETAIL[\s\S]*_setWorkoutSurface\('record'\)/);
   assert.match(appJs, /const detailTarget = snapshot\.detail\?\.exerciseKey \|\| snapshot\.detail\?\.entryIdx != null/);
   assert.match(appJs, /window\.wtFocusWorkoutEntryFromDetail\?\.\(detailTarget\)/);
@@ -135,5 +138,5 @@ test('workout navigation is wired to app, calendar, record card focus, and PWA c
   assert.match(styleCss, /body\.wt-workout-tab-active\s*\{[\s\S]*overscroll-behavior-y:\s*none;/);
   assert.match(styleCss, /body\.wt-workout-tab-active #tab-workout\.active\s*\{[\s\S]*overscroll-behavior-y:\s*contain;/);
   assert.match(swJs, /\.\/workout\/navigation-stack\.js/);
-  assert.match(swJs, /tomatofarm-v20260629z3-home-running-imagegen-sprites/);
+  assert.match(swJs, /tomatofarm-v20260629z4-running-save-detail-card/);
 });

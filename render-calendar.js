@@ -577,15 +577,29 @@ function _activityRows(day) {
   const d = day || {};
   const rows = [];
 
-  const runDuration = _durationFromMinSec(d.runDurationMin, d.runDurationSec);
-  const runDistance = _num(d.runDistance);
+  const runSummary = d.runRouteSummary && typeof d.runRouteSummary === 'object' ? d.runRouteSummary : {};
+  const runAccuracy = d.runGpsAccuracySummary || runSummary.gpsAccuracySummary || null;
+  const runDuration = _durationFromMinSec(d.runDurationMin, d.runDurationSec) || _num(runSummary.durationSec);
+  const runDistance = _num(d.runDistance) || _num(runSummary.distanceKm);
   const runMemo = (d.runMemo || '').toString().trim();
   if (d.running || runDistance > 0 || runDuration > 0 || runMemo) {
     rows.push({
       key: 'running',
-      label: '런닝',
+      label: '러닝',
       tone: 'run',
       durationSec: runDuration,
+      distanceKm: runDistance,
+      avgPaceSecPerKm: _num(d.runAvgPaceSecPerKm) || _num(runSummary.avgPaceSecPerKm),
+      calories: _num(runSummary.calories),
+      elevationGainM: _num(runSummary.elevationGainM),
+      cadenceSpm: _num(runSummary.cadenceSpm),
+      avgHeartRateBpm: _num(runSummary.avgHeartRateBpm),
+      pointCount: _num(runSummary.pointCount) || (Array.isArray(d.runRoute) ? d.runRoute.length : 0),
+      source: d.runSource || runSummary.source || 'manual',
+      route: Array.isArray(d.runRoute) ? d.runRoute : [],
+      routeSummary: runSummary,
+      placeSummary: d.runPlaceSummary || null,
+      gpsAccuracySummary: runAccuracy,
       main: [
         runDistance > 0 ? `${_fmtNum(runDistance, 2)}km` : '',
         _formatDuration(runDuration),
@@ -1579,7 +1593,138 @@ function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) {
   `;
 }
 
+function _formatRunningDistance(value) {
+  const km = _num(value);
+  if (km <= 0) return '';
+  return `${_fmtNum(km, km < 10 ? 2 : 1)}km`;
+}
+
+function _formatRunningPaceCard(secPerKm) {
+  const sec = Math.round(_num(secPerKm));
+  if (sec <= 0) return '';
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}'${String(s).padStart(2, '0')}''/km`;
+}
+
+function _formatRunningClock(ts) {
+  const n = Number(ts);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  const d = new Date(n);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function _runningSourceLabel(source) {
+  if (source === 'gps') return 'GPS 기록';
+  if (source === 'manual') return '수동 기록';
+  return '러닝 기록';
+}
+
+function _runningMetricItems(row) {
+  const durationText = row.durationSec ? _formatDurationShort(row.durationSec) : '';
+  const paceText = _formatRunningPaceCard(row.avgPaceSecPerKm);
+  const items = [
+    { label: '거리', value: _formatRunningDistance(row.distanceKm) },
+    { label: '시간', value: durationText },
+    { label: '평균 페이스', value: paceText },
+    row.calories > 0 ? { label: '칼로리', value: `${Math.round(row.calories)} kcal` } : null,
+    row.elevationGainM > 0 ? { label: '고도 상승', value: `${Math.round(row.elevationGainM)} m` } : null,
+    row.cadenceSpm > 0 ? { label: '케이던스', value: `${Math.round(row.cadenceSpm)} spm` } : null,
+    row.avgHeartRateBpm > 0 ? { label: '평균 심박', value: `${Math.round(row.avgHeartRateBpm)} bpm` } : null,
+  ];
+  return items.filter(item => item?.value);
+}
+
+function _renderRunningRouteMini(row) {
+  const pointCount = Math.max(0, Math.round(_num(row.pointCount)));
+  const accuracy = Math.round(_num(row.gpsAccuracySummary?.avgAccuracyM));
+  const hasRoute = pointCount > 0 || (Array.isArray(row.route) && row.route.length > 0);
+  return `
+    <div class="wt-running-route-mini ${hasRoute ? 'has-route' : ''}" aria-label="러닝 경로 요약">
+      <span aria-hidden="true"></span>
+      <strong>${hasRoute ? `경로 ${pointCount || row.route.length}점` : '경로 없음'}</strong>
+      <em>${accuracy > 0 ? `평균 정확도 ${accuracy}m` : _runningSourceLabel(row.source)}</em>
+    </div>
+  `;
+}
+
+function _renderRunningRouteDetail(row) {
+  const start = _formatRunningClock(row.routeSummary?.startedAt);
+  const end = _formatRunningClock(row.routeSummary?.endedAt);
+  const pointCount = Math.max(0, Math.round(_num(row.pointCount)));
+  const accuracy = Math.round(_num(row.gpsAccuracySummary?.avgAccuracyM));
+  const details = [
+    start && end ? `시간대 ${start}-${end}` : '',
+    pointCount > 0 ? `경로 포인트 ${pointCount}개` : '',
+    accuracy > 0 ? `GPS 평균 정확도 ${accuracy}m` : '',
+    row.placeSummary?.label ? String(row.placeSummary.label).trim() : '',
+  ].filter(Boolean);
+  if (!details.length) return '';
+  return `
+    <div class="wt-running-route-detail">
+      ${details.map(item => `<span>${_esc(item)}</span>`).join('')}
+    </div>
+  `;
+}
+
+function _renderWorkoutRunningDetailCard(key, sessionIndex, row, index) {
+  const cardId = `act:${key}:${sessionIndex}:${index}`;
+  const collapsed = _workoutDetailCollapsed.has(cardId);
+  const activityKey = String(row.key || '').replace(/[^a-z0-9_-]/gi, '');
+  const metrics = _runningMetricItems(row);
+  const distanceText = _formatRunningDistance(row.distanceKm);
+  const durationText = row.durationSec ? _formatDurationShort(row.durationSec) : '';
+  const paceText = _formatRunningPaceCard(row.avgPaceSecPerKm);
+  const headline = distanceText || durationText || '러닝 기록';
+  const summary = [distanceText, durationText, paceText].filter(Boolean).join(' · ') || row.main || '기록 있음';
+  return `
+    <article class="wt-day-ex-card wt-max-read-card wt-running-read-card ${collapsed ? 'is-collapsed' : 'is-expanded'}">
+      <div class="wt-max-card-kicker wt-running-card-kicker">
+        <span><i></i>${_esc(row.label || '러닝')} 세션 · ${_esc(_runningSourceLabel(row.source))}</span>
+        <button type="button" onclick="window._wtCalDeleteActivity('${key}', ${sessionIndex}, '${activityKey}')" aria-label="러닝 삭제">×</button>
+      </div>
+      <div class="wt-max-card-name">${_esc(row.label || '러닝')}</div>
+      <div class="wt-max-plan wt-running-plan">
+        <div class="wt-max-plan-goal">
+          <span>러닝 기록</span>
+          <strong>${_esc(headline)}</strong>
+          <em>${_esc([durationText, paceText].filter(Boolean).join(' · ') || _runningSourceLabel(row.source))}</em>
+        </div>
+        <div class="wt-max-trend wt-running-route-wrap">
+          ${_renderRunningRouteMini(row)}
+        </div>
+      </div>
+      ${metrics.length ? `
+        <div class="wt-running-metric-grid">
+          ${metrics.map(item => `
+            <span>
+              <i>${_esc(item.label)}</i>
+              <strong>${_esc(item.value)}</strong>
+            </span>
+          `).join('')}
+        </div>
+      ` : ''}
+      <div class="wt-max-last">
+        <span>오늘 러닝</span>
+        <strong>${_esc(summary)}</strong>
+      </div>
+      ${_renderRunningRouteDetail(row)}
+      ${row.detail ? `<div class="wt-max-note">${_esc(row.detail)}</div>` : ''}
+      <div class="wt-max-collapsed-note">러닝 완료 · 카드가 접혔어요</div>
+      <div class="wt-max-actions">
+        ${collapsed
+          ? `<button type="button" class="wt-max-action-primary is-muted" aria-disabled="true" tabindex="-1">러닝 완료</button>
+             <button type="button" class="wt-max-action-secondary" onclick="window._wtCalToggleExerciseCard('${cardId}')">기록 다시 보기</button>`
+          : `<button type="button" class="wt-max-action-primary" onclick="window._wtCalToggleExerciseCard('${cardId}')">카드 접기</button>
+             <button type="button" class="wt-max-action-secondary" onclick="window._wtCalEditSession('${key}', ${sessionIndex})">편집하기</button>`}
+      </div>
+    </article>
+  `;
+}
+
 function _renderWorkoutActivityDetailCard(key, sessionIndex, row, index) {
+  if (row?.key === 'running') return _renderWorkoutRunningDetailCard(key, sessionIndex, row, index);
   const cardId = `act:${key}:${sessionIndex}:${index}`;
   const collapsed = _workoutDetailCollapsed.has(cardId);
   const activityKey = String(row.key || '').replace(/[^a-z0-9_-]/gi, '');
@@ -1776,7 +1921,7 @@ function _openDay(key) {
   const b = mx.burnedBreakdown;
   const workoutParts = [];
   if (b.gym > 0)      workoutParts.push(`헬스 ${b.gym}`);
-  if (b.running > 0)  workoutParts.push(`런닝 ${b.running}`);
+  if (b.running > 0)  workoutParts.push(`러닝 ${b.running}`);
   if (b.swimming > 0) workoutParts.push(`수영 ${b.swimming}`);
   if (b.cf > 0)       workoutParts.push(`CF ${b.cf}`);
   const workoutDesc = workoutParts.length
@@ -2331,7 +2476,7 @@ async function _deleteWorkoutActivity(key, sessionIndex, activityKey) {
   }
   const { day, session, index } = _workoutHomeSessionAt(key, sessionIndex, 1);
   const label = {
-    running: '런닝',
+    running: '러닝',
     swimming: '수영',
     cf: '크로스핏',
     stretching: '스트레칭',

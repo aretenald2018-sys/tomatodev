@@ -126,8 +126,19 @@ test('running session is wired into app init, save, load, and sessions', () => {
   assert.match(sessionsJs, /firstRunRoute/);
 });
 
+test('running summary save opens the saved workout day detail sheet', () => {
+  assert.match(appJs, /openWorkoutDaySheet,/);
+  assert.match(appJs, /async function openWorkoutDaySheetFromAction/);
+  assert.match(appJs, /openWorkoutDaySheet\(dateKey,[\s\S]*sheetState:\s*'full'/);
+  assert.match(appJs, /window\.wtOpenWorkoutDaySheet = openWorkoutDaySheetFromAction/);
+  assert.match(runningSessionJs, /const targetDateKey = _workoutDateKeyFromState\(\)/);
+  assert.match(runningSessionJs, /const targetSessionIndex = _workoutSessionIndexFromState\(\)/);
+  assert.match(runningSessionJs, /await window\.wtOpenWorkoutDaySheet\(targetDateKey, targetSessionIndex,[\s\S]*action:\s*'running:save-detail'/);
+  assert.match(runningSessionJs, /wtCloseRunningSession\(\);[\s\S]*typeof window\.wtOpenWorkoutDaySheet === 'function'/);
+});
+
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260629z3-home-running-imagegen-sprites/);
+  assert.match(swJs, /tomatofarm-v20260629z4-running-save-detail-card/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/sprites\/jups-running-track\.png/);

@@ -133,6 +133,35 @@ test('floating add button uses direct sheet action binding', () => {
   assert.match(calendarJs, /Promise\.resolve\(_addWorkoutHomeSession\(key\)\)/);
 });
 
+test('running detail card uses the workout read-card shell with running metrics only', () => {
+  const metricStart = calendarJs.indexOf('function _runningMetricItems');
+  const cardStart = calendarJs.indexOf('function _renderWorkoutRunningDetailCard');
+  const cardEnd = calendarJs.indexOf('function _renderWorkoutActivityDetailCard', cardStart);
+  assert.ok(metricStart >= 0 && metricStart < cardStart, 'running metric builder should exist before the card');
+  assert.ok(cardStart >= 0 && cardEnd > cardStart, 'running detail card renderer should exist');
+  const metricBuilder = calendarJs.slice(metricStart, cardStart);
+  const card = calendarJs.slice(cardStart, cardEnd);
+
+  assert.match(calendarJs, /runRouteSummary && typeof d\.runRouteSummary === 'object'/);
+  assert.match(calendarJs, /distanceKm:\s*runDistance/);
+  assert.match(calendarJs, /avgPaceSecPerKm:\s*_num\(d\.runAvgPaceSecPerKm\)/);
+  assert.match(calendarJs, /gpsAccuracySummary:\s*runAccuracy/);
+  assert.match(calendarJs, /if \(row\?\.key === 'running'\) return _renderWorkoutRunningDetailCard/);
+  assert.match(card, /wt-day-ex-card wt-max-read-card wt-running-read-card/);
+  assert.match(card, /wt-max-plan wt-running-plan/);
+  assert.match(card, /wt-running-metric-grid/);
+  assert.match(metricBuilder, /거리/);
+  assert.match(metricBuilder, /시간/);
+  assert.match(metricBuilder, /평균 페이스/);
+  assert.match(metricBuilder, /칼로리/);
+  assert.match(metricBuilder, /고도 상승/);
+  assert.match(metricBuilder, /케이던스/);
+  assert.doesNotMatch(card, /REP|RIR|KG|_renderWorkoutSetRows|wt-max-set-row/);
+  assert.match(styleCss, /\.wt-running-read-card/);
+  assert.match(styleCss, /\.wt-running-metric-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(styleCss, /\.wt-running-read-card\.is-collapsed \.wt-running-metric-grid/);
+});
+
 test('bottom sheet css is fixed, animated, and contains the session bar inside the sheet', () => {
   assert.match(styleCss, /\.cal-workout-day-backdrop\s*\{[\s\S]*position:\s*fixed;[\s\S]*z-index:\s*42;[\s\S]*pointer-events:\s*none;[\s\S]*touch-action:\s*none;[\s\S]*overscroll-behavior:\s*none;/);
   assert.match(styleCss, /\.cal-workout-day-backdrop\.is-full\s*\{[\s\S]*pointer-events:\s*auto;/);
@@ -311,5 +340,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260629z3-home-running-imagegen-sprites/);
+  assert.match(swJs, /tomatofarm-v20260629z4-running-save-detail-card/);
 });
