@@ -30,6 +30,11 @@ test('stats health chart combines body, intake, and exercise series in one Chart
   assert.match(statsJs, /burned:\s*\{\s*label:\s*'운동칼로리'/);
   assert.match(statsJs, /calcBurnedKcal\(day, weightForBurn\)\.total/);
   assert.match(statsJs, /checkin\?\.bodyFatPct/);
+  assert.match(statsJs, /cubicInterpolationMode:\s*'monotone'/);
+  assert.match(statsJs, /borderCapStyle:\s*'round'/);
+  assert.match(statsJs, /borderJoinStyle:\s*'round'/);
+  assert.match(statsJs, /tension:\s*0\.45/);
+  assert.match(statsJs, /pointRadius:\s*2/);
   assert.match(statsJs, /_healthChartPeriod === 0/);
   assert.match(statsJs, /_statsNodes\(scope, '\[data-health-series\]'\)/);
   assert.match(statsJs, /_statsNodes\(scope, '\[data-health-period\]'\)/);
@@ -43,5 +48,5 @@ test('stats health chart controls are styled and cache version is bumped', () =>
   assert.match(styleCss, /\.stats-health-controls/);
   assert.match(styleCss, /\.stats-health-toggle/);
   assert.match(styleCss, /\.stats-health-period\.active/);
-  assert.match(swJs, /tomatofarm-v20260628z14-trainer-sheet-glass/);
+  assert.match(swJs, /tomatofarm-v20260628z15-smooth-health-chart/);
 });

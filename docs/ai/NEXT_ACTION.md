@@ -3,13 +3,13 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-28-trainer-quest-modal-seated-character.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-28-trainer-quest-sheet-glass-review.md`
-- 현재 단계: `review complete — Trainer Quest Modal Sheet Glass Slice 6`
+- 계획 문서: `docs/ai/features/2026-06-28-stats-unified-health-chart.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-28-stats-health-chart-smoothing-review.md`
+- 현재 단계: `review complete — Stats Health Chart Smoothing Slice 2`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `트레이너 퀘스트 모달 시트를 순백에서 반투명 회색조로 바꾸고, 게임형 선택지의 텍스트를 TDS 기반 폰트 토큰으로 되돌렸다.`
+- 마지막 완료: `운동 통계 건강 지표 비교 차트의 선 렌더링을 monotone cubic interpolation, tension 0.45, 둥근 cap/join으로 바꿔 더 부드럽게 보이도록 조정했다.`
 - 다음 액션: `없음.`
-- 차단 사유: `없음. 단, 인증된 실제 계정에서 홈 라이프존 트레이너 전구 클릭 후 회색조 시트의 시각 농도는 수동 눈검수가 필요하다.`
+- 차단 사유: `없음. 단, 인증된 실제 계정에서 트레이너 모달 내 운동 통계 그래프의 선 부드러움은 수동 눈검수가 필요하다.`
 
 ## 직전 완료 요약
 

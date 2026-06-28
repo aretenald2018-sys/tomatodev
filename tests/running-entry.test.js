@@ -108,7 +108,7 @@ test('running session is wired into app init, save, load, and sessions', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260628z14-trainer-sheet-glass/);
+  assert.match(swJs, /tomatofarm-v20260628z15-smooth-health-chart/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
   assert.doesNotMatch(swJs, /\.\/workout\/running-tracker\.js/);
