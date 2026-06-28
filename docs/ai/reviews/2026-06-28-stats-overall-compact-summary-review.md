@@ -21,8 +21,11 @@
 - PASS: `node --test @tests` — 576 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=846`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 0228c1e` — deployed `0228c1e4250d`, `tomatofarm-v20260628z3-stats-overall-compact-summary`, `static=221`
+- PASS: deployed markers — `stats-overall-summary`, `stats-summary-block`, `_renderOverallSummary`, `stats-summary-kpi`, `hasDietRecord(ny,m,d)`, `.stats-summary-kpis`, `.stats-summary-fact`
+- PASS: deployed absence check — 제거 대상 중복 카드 id/문구 없음
+- PASS: `curl.exe -I https://aretenald2018-sys.github.io/dashboard3/` — `HTTP/1.1 200 OK`
 
 ## 남은 확인
 
-- not verified yet: Dashboard3 Pages 배포 검증은 커밋 후 실행 필요.
 - not verified yet: 인증 세션이 없어 실제 통계 탭에서 compact summary 시각 상태는 인증 계정에서 확인해야 한다.
