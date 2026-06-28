@@ -51,11 +51,14 @@ test('running picker tile and session screens have dedicated styles', () => {
   assert.match(styleCss, /\.wt-run-map-status/);
   assert.match(styleCss, /image-rendering:\s*auto/);
   assert.match(styleCss, /-webkit-font-smoothing:\s*antialiased/);
+  assert.match(styleCss, /width:\s*min\(24vw,\s*110px\)/);
+  assert.match(styleCss, /cursor:\s*grab/);
   assert.doesNotMatch(styleCss, /\.wt-running-session-route-svg/);
   assert.doesNotMatch(styleCss, /run-map-road/);
   assert.doesNotMatch(styleCss, /\.wt-running-gps\b/);
   assert.doesNotMatch(styleCss, /\.wt-run-tip-card/);
   assert.doesNotMatch(styleCss, /\.wt-run-float/);
+  assert.doesNotMatch(styleCss, /\.wt-run-map-label/);
 });
 
 test('running maps use real provider shell instead of fake svg maps', () => {
@@ -73,10 +76,17 @@ test('running maps use real provider shell instead of fake svg maps', () => {
   assert.match(runningMapJs, /google\.maps/);
   assert.match(runningMapJs, /devicePixelRatio/);
   assert.match(runningMapJs, /tileCssSize/);
+  assert.match(runningMapJs, /pointerdown/);
+  assert.match(runningMapJs, /wheel/);
+  assert.match(runningMapJs, /dblclick/);
+  assert.match(runningMapJs, /pointerDistance/);
   assert.match(runningSessionJs, /data-running-real-map/);
   assert.match(runningSessionJs, /renderRunningMap/);
   assert.doesNotMatch(runningMapJs, /키를 설정하면/);
   assert.doesNotMatch(runningSessionJs, /밤에 러닝하시나요/);
+  assert.doesNotMatch(runningSessionJs, /러닝 가이드/);
+  assert.doesNotMatch(runningSessionJs, /현재 위치/);
+  assert.doesNotMatch(runningSessionJs, /wt-run-map-label/);
   assert.doesNotMatch(runningSessionJs, /wt-run-tip-card/);
   assert.doesNotMatch(runningSessionJs, /wt-run-float/);
   assert.doesNotMatch(runningSessionJs, /buildRunningSessionRouteSvg/);
@@ -98,7 +108,7 @@ test('running session is wired into app init, save, load, and sessions', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260628z6-running-start-map-cleanup/);
+  assert.match(swJs, /tomatofarm-v20260628z7-running-interactive-map/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
   assert.doesNotMatch(swJs, /\.\/workout\/running-tracker\.js/);

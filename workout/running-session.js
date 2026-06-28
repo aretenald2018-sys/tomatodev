@@ -453,7 +453,6 @@ function _renderRealMapShell(kind, label) {
     <div class="wt-run-real-map wt-run-real-map--${safeKind}" data-running-real-map="${safeKind}">
       <div class="wt-run-map-canvas" data-running-map-canvas aria-label="${safeLabel}"></div>
       <div class="wt-run-map-status" data-running-map-status>실제 지도 준비 중</div>
-      <span class="wt-run-map-label">${safeLabel}</span>
     </div>
   `;
 }
@@ -481,10 +480,9 @@ function _renderStart() {
       </header>
       <div class="wt-run-start-tabs" role="tablist" aria-label="러닝 모드">
         <button type="button" class="active" data-running-action="noop">바로 시작</button>
-        <button type="button" data-running-action="guide">러닝 가이드</button>
       </div>
       <div class="wt-run-start-map">
-        ${_renderRealMapShell('start', _session.previewPoint ? '현재 위치' : '위치 권한 대기')}
+        ${_renderRealMapShell('start', '러닝 지도')}
         <button type="button" class="wt-run-start-btn" data-running-action="start">시작</button>
         <button type="button" class="wt-run-goal-btn" data-running-action="goal">목표 설정</button>
       </div>
@@ -591,7 +589,6 @@ function _handleAction(action) {
   if (action === 'finish') return _finishRun();
   if (action === 'save') return _saveSummary();
   if (action === 'share') return _shareSummary();
-  if (action === 'guide') return _showToast('러닝 가이드는 다음 단계에서 연결할게요', 1800, 'info');
   if (action === 'settings') return _showToast('러닝 설정은 준비 중이에요', 1800, 'info');
   if (action === 'music') return _showToast('음악 연동은 준비 중이에요', 1800, 'info');
   if (action === 'goal') return _showToast('목표 설정은 준비 중이에요', 1800, 'info');

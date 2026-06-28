@@ -7,6 +7,8 @@ import { CONFIG } from '../config.js';
 const DEFAULT_CENTER = { lat: 37.5665, lng: 126.978 };
 const GOOGLE_CALLBACK = '__tomatoRunningGoogleMapsReady';
 const TILE_SIZE = 256;
+const VWORLD_MIN_ZOOM = 10;
+const VWORLD_MAX_ZOOM = 18;
 const VWORLD_TILE_BASE = 'https://api.vworld.kr/req/wmts/1.0.0';
 const VWORLD_LAYER_SPECS = {
   base: { layer: 'Base', ext: 'png' },
@@ -325,6 +327,21 @@ function _projectMercator(point, zoom) {
   };
 }
 
+function _unprojectMercator(pixel, zoom) {
+  const world = TILE_SIZE * (2 ** zoom);
+  const lng = pixel.x / world * 360 - 180;
+  const n = Math.PI - 2 * Math.PI * pixel.y / world;
+  const lat = 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+  return {
+    lat: Math.max(-85.0511, Math.min(85.0511, lat)),
+    lng: ((lng + 540) % 360) - 180,
+  };
+}
+
+function _clampVworldZoom(zoom) {
+  return Math.max(VWORLD_MIN_ZOOM, Math.min(VWORLD_MAX_ZOOM, Math.round(_num(zoom, 16))));
+}
+
 function _routeBoundsCenter(route) {
   if (route.length < 2) return runningMapCenter(route);
   let minLat = Infinity, minLng = Infinity, maxLat = -Infinity, maxLng = -Infinity;
@@ -340,7 +357,7 @@ function _routeBoundsCenter(route) {
 function _vworldZoomForRoute(route, width, height) {
   if (route.length < 2) return 17;
   const pad = 72;
-  for (let zoom = 18; zoom >= 10; zoom--) {
+  for (let zoom = VWORLD_MAX_ZOOM; zoom >= VWORLD_MIN_ZOOM; zoom--) {
     const projected = route.map(point => _projectMercator(point, zoom));
     const xs = projected.map(point => point.x);
     const ys = projected.map(point => point.y);
@@ -348,7 +365,7 @@ function _vworldZoomForRoute(route, width, height) {
     const spanY = Math.max(...ys) - Math.min(...ys);
     if (spanX <= Math.max(120, width - pad) && spanY <= Math.max(120, height - pad)) return zoom;
   }
-  return 10;
+  return VWORLD_MIN_ZOOM;
 }
 
 function _vworldRenderLayers(layer) {
@@ -391,57 +408,245 @@ function _vworldRouteSvg(route, zoom, scale, topLeft, width, height) {
 }
 
 function _renderVworldMap(canvas, route, config) {
-  const rect = canvas.getBoundingClientRect?.() || {};
-  const width = Math.max(280, Math.round(rect.width || canvas.clientWidth || 360));
-  const height = Math.max(220, Math.round(rect.height || canvas.clientHeight || 320));
   const layer = _normalizeVworldLayer(config.layer);
-  const center = _routeBoundsCenter(route.length ? route : [DEFAULT_CENTER]);
-  const zoom = _vworldZoomForRoute(route, width, height);
-  const renderSpec = _vworldTileRenderSpec(zoom);
-  const centerPxRaw = _projectMercator(center, renderSpec.tileZoom);
-  const centerPx = { x: centerPxRaw.x * renderSpec.scale, y: centerPxRaw.y * renderSpec.scale };
-  const topLeft = { x: centerPx.x - width / 2, y: centerPx.y - height / 2 };
-  const topLeftRaw = { x: topLeft.x / renderSpec.scale, y: topLeft.y / renderSpec.scale };
-  const maxTile = 2 ** renderSpec.tileZoom;
-  const minTileX = Math.floor(topLeftRaw.x / TILE_SIZE);
-  const maxTileX = Math.floor((topLeftRaw.x + width / renderSpec.scale) / TILE_SIZE);
-  const minTileY = Math.floor(topLeftRaw.y / TILE_SIZE);
-  const maxTileY = Math.floor((topLeftRaw.y + height / renderSpec.scale) / TILE_SIZE);
   const root = document.createElement('div');
   root.className = `wt-vworld-map wt-vworld-map--${layer}`;
-  root.style.width = `${width}px`;
-  root.style.height = `${height}px`;
-
-  for (const renderLayer of _vworldRenderLayers(layer)) {
-    const layerEl = document.createElement('div');
-    layerEl.className = `wt-vworld-tile-layer wt-vworld-tile-layer--${renderLayer}`;
-    for (let y = minTileY; y <= maxTileY; y++) {
-      if (y < 0 || y >= maxTile) continue;
-      for (let x = minTileX; x <= maxTileX; x++) {
-        const tile = document.createElement('img');
-        const wrappedX = _tileModulo(x, maxTile);
-        tile.className = 'wt-vworld-tile';
-        tile.alt = '';
-        tile.decoding = 'async';
-        tile.loading = 'eager';
-        tile.draggable = false;
-        tile.src = buildVworldTileUrl(config.key, renderSpec.tileZoom, wrappedX, y, renderLayer);
-        tile.style.left = `${Math.round(x * TILE_SIZE * renderSpec.scale - topLeft.x)}px`;
-        tile.style.top = `${Math.round(y * TILE_SIZE * renderSpec.scale - topLeft.y)}px`;
-        tile.style.width = `${renderSpec.tileCssSize}px`;
-        tile.style.height = `${renderSpec.tileCssSize}px`;
-        layerEl.appendChild(tile);
-      }
-    }
-    root.appendChild(layerEl);
-  }
-
-  if (route.length) {
-    root.insertAdjacentHTML('beforeend', _vworldRouteSvg(route, renderSpec.tileZoom, renderSpec.scale, topLeft, width, height));
-  }
-  root.insertAdjacentHTML('beforeend', '<div class="wt-vworld-attribution">VWorld</div>');
+  root.dataset.interactiveMap = 'vworld';
+  root.tabIndex = 0;
   canvas.appendChild(root);
-  return { map: { destroy: () => _clearNode(canvas) }, markers: [], lines: [] };
+
+  const state = {
+    center: _routeBoundsCenter(route.length ? route : [DEFAULT_CENTER]),
+    zoom: 17,
+    width: 360,
+    height: 320,
+  };
+  const cleanup = [];
+  const pointers = new Map();
+  let drag = null;
+  let pinch = null;
+  let raf = 0;
+  let resizeObserver = null;
+
+  function measure() {
+    const rect = canvas.getBoundingClientRect?.() || {};
+    state.width = Math.max(280, Math.round(rect.width || canvas.clientWidth || 360));
+    state.height = Math.max(220, Math.round(rect.height || canvas.clientHeight || 320));
+    root.style.width = `${state.width}px`;
+    root.style.height = `${state.height}px`;
+  }
+
+  measure();
+  state.zoom = _vworldZoomForRoute(route, state.width, state.height);
+
+  function topLeftForCurrentView() {
+    const centerPx = _projectMercator(state.center, state.zoom);
+    return {
+      x: centerPx.x - state.width / 2,
+      y: centerPx.y - state.height / 2,
+    };
+  }
+
+  function renderNow() {
+    raf = 0;
+    measure();
+    _clearNode(root);
+    const renderSpec = _vworldTileRenderSpec(state.zoom);
+    const topLeft = topLeftForCurrentView();
+    const topLeftRaw = { x: topLeft.x / renderSpec.scale, y: topLeft.y / renderSpec.scale };
+    const maxTile = 2 ** renderSpec.tileZoom;
+    const minTileX = Math.floor(topLeftRaw.x / TILE_SIZE);
+    const maxTileX = Math.floor((topLeftRaw.x + state.width / renderSpec.scale) / TILE_SIZE);
+    const minTileY = Math.floor(topLeftRaw.y / TILE_SIZE);
+    const maxTileY = Math.floor((topLeftRaw.y + state.height / renderSpec.scale) / TILE_SIZE);
+
+    for (const renderLayer of _vworldRenderLayers(layer)) {
+      const layerEl = document.createElement('div');
+      layerEl.className = `wt-vworld-tile-layer wt-vworld-tile-layer--${renderLayer}`;
+      for (let y = minTileY; y <= maxTileY; y++) {
+        if (y < 0 || y >= maxTile) continue;
+        for (let x = minTileX; x <= maxTileX; x++) {
+          const tile = document.createElement('img');
+          const wrappedX = _tileModulo(x, maxTile);
+          tile.className = 'wt-vworld-tile';
+          tile.alt = '';
+          tile.decoding = 'async';
+          tile.loading = 'eager';
+          tile.draggable = false;
+          tile.src = buildVworldTileUrl(config.key, renderSpec.tileZoom, wrappedX, y, renderLayer);
+          tile.style.left = `${Math.round(x * TILE_SIZE * renderSpec.scale - topLeft.x)}px`;
+          tile.style.top = `${Math.round(y * TILE_SIZE * renderSpec.scale - topLeft.y)}px`;
+          tile.style.width = `${renderSpec.tileCssSize}px`;
+          tile.style.height = `${renderSpec.tileCssSize}px`;
+          layerEl.appendChild(tile);
+        }
+      }
+      root.appendChild(layerEl);
+    }
+
+    if (route.length) {
+      root.insertAdjacentHTML('beforeend', _vworldRouteSvg(route, renderSpec.tileZoom, renderSpec.scale, topLeft, state.width, state.height));
+    }
+    root.insertAdjacentHTML('beforeend', '<div class="wt-vworld-attribution">VWorld</div>');
+  }
+
+  function scheduleRender() {
+    if (raf) return;
+    raf = typeof requestAnimationFrame === 'function'
+      ? requestAnimationFrame(renderNow)
+      : setTimeout(renderNow, 16);
+  }
+
+  function pointInRoot(event) {
+    const rect = root.getBoundingClientRect();
+    return {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    };
+  }
+
+  function zoomAt(clientX, clientY, nextZoom) {
+    const zoom = _clampVworldZoom(nextZoom);
+    if (zoom === state.zoom) return;
+    const point = pointInRoot({ clientX, clientY });
+    const oldTopLeft = topLeftForCurrentView();
+    const anchor = _unprojectMercator({
+      x: oldTopLeft.x + point.x,
+      y: oldTopLeft.y + point.y,
+    }, state.zoom);
+    const anchorPx = _projectMercator(anchor, zoom);
+    const nextCenterPx = {
+      x: anchorPx.x - point.x + state.width / 2,
+      y: anchorPx.y - point.y + state.height / 2,
+    };
+    state.zoom = zoom;
+    state.center = _unprojectMercator(nextCenterPx, zoom);
+    scheduleRender();
+  }
+
+  function pointerDistance(points) {
+    const [a, b] = points;
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  }
+
+  function pointerMidpoint(points) {
+    const [a, b] = points;
+    return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  }
+
+  function resetDragFromRemainingPointer() {
+    const remaining = Array.from(pointers.values())[0];
+    if (!remaining) {
+      drag = null;
+      return;
+    }
+    drag = {
+      pointerId: remaining.pointerId,
+      startX: remaining.x,
+      startY: remaining.y,
+      startCenterPx: _projectMercator(state.center, state.zoom),
+    };
+  }
+
+  function handlePointerDown(event) {
+    pointers.set(event.pointerId, { pointerId: event.pointerId, x: event.clientX, y: event.clientY });
+    try { root.setPointerCapture?.(event.pointerId); } catch {}
+    root.classList.add('wt-vworld-map--dragging');
+    if (pointers.size === 1) {
+      drag = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        startCenterPx: _projectMercator(state.center, state.zoom),
+      };
+    } else if (pointers.size === 2) {
+      const points = Array.from(pointers.values());
+      pinch = { distance: pointerDistance(points) };
+      drag = null;
+    }
+    event.preventDefault();
+  }
+
+  function handlePointerMove(event) {
+    if (!pointers.has(event.pointerId)) return;
+    pointers.set(event.pointerId, { pointerId: event.pointerId, x: event.clientX, y: event.clientY });
+    if (pointers.size >= 2) {
+      const points = Array.from(pointers.values()).slice(0, 2);
+      const distance = pointerDistance(points);
+      if (pinch?.distance) {
+        const ratio = distance / pinch.distance;
+        if (ratio > 1.18 || ratio < 0.85) {
+          const midpoint = pointerMidpoint(points);
+          const rect = root.getBoundingClientRect();
+          zoomAt(rect.left + midpoint.x, rect.top + midpoint.y, state.zoom + (ratio > 1 ? 1 : -1));
+          pinch = { distance };
+        }
+      } else {
+        pinch = { distance };
+      }
+      event.preventDefault();
+      return;
+    }
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const dx = event.clientX - drag.startX;
+    const dy = event.clientY - drag.startY;
+    state.center = _unprojectMercator({
+      x: drag.startCenterPx.x - dx,
+      y: drag.startCenterPx.y - dy,
+    }, state.zoom);
+    scheduleRender();
+    event.preventDefault();
+  }
+
+  function handlePointerEnd(event) {
+    pointers.delete(event.pointerId);
+    try { root.releasePointerCapture?.(event.pointerId); } catch {}
+    pinch = null;
+    if (pointers.size) resetDragFromRemainingPointer();
+    else {
+      drag = null;
+      root.classList.remove('wt-vworld-map--dragging');
+    }
+  }
+
+  function on(target, type, handler, options) {
+    target.addEventListener(type, handler, options);
+    cleanup.push(() => target.removeEventListener(type, handler, options));
+  }
+
+  const activeOptions = { passive: false };
+  on(root, 'pointerdown', handlePointerDown, activeOptions);
+  on(root, 'pointermove', handlePointerMove, activeOptions);
+  on(root, 'pointerup', handlePointerEnd, activeOptions);
+  on(root, 'pointercancel', handlePointerEnd, activeOptions);
+  on(root, 'wheel', event => {
+    event.preventDefault();
+    zoomAt(event.clientX, event.clientY, state.zoom + (event.deltaY < 0 ? 1 : -1));
+  }, activeOptions);
+  on(root, 'dblclick', event => {
+    event.preventDefault();
+    zoomAt(event.clientX, event.clientY, state.zoom + 1);
+  }, activeOptions);
+
+  if (typeof ResizeObserver !== 'undefined') {
+    resizeObserver = new ResizeObserver(scheduleRender);
+    resizeObserver.observe(canvas);
+  }
+
+  renderNow();
+  return {
+    map: {
+      destroy: () => {
+        if (raf && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(raf);
+        else if (raf) clearTimeout(raf);
+        cleanup.forEach(fn => fn());
+        resizeObserver?.disconnect?.();
+        _clearNode(canvas);
+      },
+    },
+    markers: [],
+    lines: [],
+  };
 }
 
 export async function renderRunningMap(shell, options = {}) {

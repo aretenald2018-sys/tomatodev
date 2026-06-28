@@ -6206,10 +6206,10 @@ body.wt-running-session-open {
   font-weight: 700;
 }
 .wt-run-start-tabs {
-  height: 62px;
+  height: 54px;
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   border-bottom: 1px solid #d8d8d8;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.16);
 }
@@ -6269,21 +6269,6 @@ body.wt-running-session-open {
 .wt-run-map-status[hidden] {
   display: none;
 }
-.wt-run-map-label {
-  position: absolute;
-  z-index: 2;
-  left: 16px;
-  top: 14px;
-  max-width: calc(100% - 32px);
-  padding: 8px 11px;
-  border-radius: 2px;
-  background: #fff;
-  color: #222;
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1.25;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
 .wt-run-real-map[data-map-state="missing-key"] .wt-run-map-canvas,
 .wt-run-real-map[data-map-state="error"] .wt-run-map-canvas {
   opacity: 0.35;
@@ -6295,9 +6280,14 @@ body.wt-running-session-open {
   background: #e8edf2;
   touch-action: none;
   user-select: none;
+  cursor: grab;
+  overscroll-behavior: contain;
   font-family: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   text-rendering: geometricPrecision;
   -webkit-font-smoothing: antialiased;
+}
+.wt-vworld-map--dragging {
+  cursor: grabbing;
 }
 .wt-vworld-tile-layer {
   position: absolute;
@@ -6364,17 +6354,17 @@ body.wt-running-session-open {
   z-index: 3;
   left: 50%;
   bottom: 15%;
-  width: min(34vw, 154px);
-  height: min(34vw, 154px);
-  min-width: 116px;
-  min-height: 116px;
+  width: min(24vw, 110px);
+  height: min(24vw, 110px);
+  min-width: 82px;
+  min-height: 82px;
   transform: translateX(-50%);
   border: 0;
   border-radius: 50%;
   background: #ffde2e;
   color: #111;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -6635,7 +6625,7 @@ body.wt-running-session-open {
     height: 58px;
   }
   .wt-run-start-tabs {
-    height: 56px;
+    height: 50px;
   }
   .wt-run-start-tabs button {
     font-size: 18px;
