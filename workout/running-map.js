@@ -359,13 +359,23 @@ function _tileModulo(value, max) {
   return ((value % max) + max) % max;
 }
 
-function _screenPoint(point, zoom, topLeft) {
-  const px = _projectMercator(point, zoom);
-  return { x: px.x - topLeft.x, y: px.y - topLeft.y };
+function _vworldTileRenderSpec(zoom) {
+  const dpr = typeof window !== 'undefined' ? Number(window.devicePixelRatio || 1) : 1;
+  const ratio = dpr >= 1.5 && zoom < 18 ? 2 : 1;
+  return {
+    tileZoom: zoom + (ratio === 2 ? 1 : 0),
+    scale: 1 / ratio,
+    tileCssSize: TILE_SIZE / ratio,
+  };
 }
 
-function _vworldRouteSvg(route, zoom, topLeft, width, height) {
-  const points = route.map(point => _screenPoint(point, zoom, topLeft));
+function _screenPointScaled(point, zoom, scale, topLeft) {
+  const px = _projectMercator(point, zoom);
+  return { x: px.x * scale - topLeft.x, y: px.y * scale - topLeft.y };
+}
+
+function _vworldRouteSvg(route, zoom, scale, topLeft, width, height) {
+  const points = route.map(point => _screenPointScaled(point, zoom, scale, topLeft));
   const line = points.map(point => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ');
   const start = points[0];
   const end = points[points.length - 1];
@@ -387,13 +397,16 @@ function _renderVworldMap(canvas, route, config) {
   const layer = _normalizeVworldLayer(config.layer);
   const center = _routeBoundsCenter(route.length ? route : [DEFAULT_CENTER]);
   const zoom = _vworldZoomForRoute(route, width, height);
-  const centerPx = _projectMercator(center, zoom);
+  const renderSpec = _vworldTileRenderSpec(zoom);
+  const centerPxRaw = _projectMercator(center, renderSpec.tileZoom);
+  const centerPx = { x: centerPxRaw.x * renderSpec.scale, y: centerPxRaw.y * renderSpec.scale };
   const topLeft = { x: centerPx.x - width / 2, y: centerPx.y - height / 2 };
-  const maxTile = 2 ** zoom;
-  const minTileX = Math.floor(topLeft.x / TILE_SIZE);
-  const maxTileX = Math.floor((topLeft.x + width) / TILE_SIZE);
-  const minTileY = Math.floor(topLeft.y / TILE_SIZE);
-  const maxTileY = Math.floor((topLeft.y + height) / TILE_SIZE);
+  const topLeftRaw = { x: topLeft.x / renderSpec.scale, y: topLeft.y / renderSpec.scale };
+  const maxTile = 2 ** renderSpec.tileZoom;
+  const minTileX = Math.floor(topLeftRaw.x / TILE_SIZE);
+  const maxTileX = Math.floor((topLeftRaw.x + width / renderSpec.scale) / TILE_SIZE);
+  const minTileY = Math.floor(topLeftRaw.y / TILE_SIZE);
+  const maxTileY = Math.floor((topLeftRaw.y + height / renderSpec.scale) / TILE_SIZE);
   const root = document.createElement('div');
   root.className = `wt-vworld-map wt-vworld-map--${layer}`;
   root.style.width = `${width}px`;
@@ -412,9 +425,11 @@ function _renderVworldMap(canvas, route, config) {
         tile.decoding = 'async';
         tile.loading = 'eager';
         tile.draggable = false;
-        tile.src = buildVworldTileUrl(config.key, zoom, wrappedX, y, renderLayer);
-        tile.style.left = `${Math.round(x * TILE_SIZE - topLeft.x)}px`;
-        tile.style.top = `${Math.round(y * TILE_SIZE - topLeft.y)}px`;
+        tile.src = buildVworldTileUrl(config.key, renderSpec.tileZoom, wrappedX, y, renderLayer);
+        tile.style.left = `${Math.round(x * TILE_SIZE * renderSpec.scale - topLeft.x)}px`;
+        tile.style.top = `${Math.round(y * TILE_SIZE * renderSpec.scale - topLeft.y)}px`;
+        tile.style.width = `${renderSpec.tileCssSize}px`;
+        tile.style.height = `${renderSpec.tileCssSize}px`;
         layerEl.appendChild(tile);
       }
     }
@@ -422,7 +437,7 @@ function _renderVworldMap(canvas, route, config) {
   }
 
   if (route.length) {
-    root.insertAdjacentHTML('beforeend', _vworldRouteSvg(route, zoom, topLeft, width, height));
+    root.insertAdjacentHTML('beforeend', _vworldRouteSvg(route, renderSpec.tileZoom, renderSpec.scale, topLeft, width, height));
   }
   root.insertAdjacentHTML('beforeend', '<div class="wt-vworld-attribution">VWorld</div>');
   canvas.appendChild(root);

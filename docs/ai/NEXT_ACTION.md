@@ -3,13 +3,13 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-28-running-vworld-default-map.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-28-running-vworld-default-map-review.md`
-- 현재 단계: `review complete — Running VWorld Default Map Slice 1`
+- 계획 문서: `docs/ai/features/2026-06-28-running-start-map-cleanup.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-28-running-start-map-cleanup-review.md`
+- 현재 단계: `review complete — Running Start Map Cleanup Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `Running VWorld Default Map Slice 1을 구현/리뷰/배포 검증했다. VWorld 공개 지도 key를 기본 fallback으로 적용하고, 키 설정 안내 문구 없이 러닝 지도 위 GPS/경로가 렌더되도록 했다. Dashboard3 Pages 배포 커밋 46d8984 검증과 VWorld tile 200 응답 확인까지 완료했다.`
+- 마지막 완료: `Running Start Map Cleanup Slice 1을 구현/리뷰했다. 러닝 시작 화면의 밤 러닝 카드와 시작 버튼 주변 원형 보조 버튼을 제거하고, VWorld tile DPR 보정과 렌더링 CSS를 추가했다.`
 - 다음 액션: `없음.`
-- 차단 사유: `없음. 단, 인증 세션과 모바일 GPS 권한 flow는 실제 사용자 환경에서 확인해야 한다.`
+- 차단 사유: `없음. 단, 인증 세션과 모바일 GPS 권한 flow는 실제 사용자 환경에서 확인해야 한다. 배포 검증 결과는 커밋 후 기록한다.`
 
 ## 직전 완료 요약
 

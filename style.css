@@ -6295,6 +6295,9 @@ body.wt-running-session-open {
   background: #e8edf2;
   touch-action: none;
   user-select: none;
+  font-family: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
 }
 .wt-vworld-tile-layer {
   position: absolute;
@@ -6307,10 +6310,14 @@ body.wt-running-session-open {
   position: absolute;
   width: 256px;
   height: 256px;
+  display: block;
   max-width: none;
   border: 0;
   pointer-events: none;
   user-select: none;
+  image-rendering: auto;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 .wt-vworld-route-layer {
   position: absolute;
@@ -6352,65 +6359,6 @@ body.wt-running-session-open {
   line-height: 1;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
 }
-.wt-run-tip-card {
-  position: absolute;
-  z-index: 4;
-  top: 38px;
-  left: 10%;
-  right: 10%;
-  min-height: 92px;
-  display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
-  gap: 16px;
-  align-items: center;
-  padding: 14px;
-  border-radius: 8px;
-  background: #fff;
-  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.18);
-}
-.wt-run-tip-icon {
-  width: 78px;
-  height: 78px;
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  background: #f6f6f6;
-  font-size: 42px;
-}
-.wt-run-tip-card b,
-.wt-run-tip-card small {
-  display: block;
-  min-width: 0;
-}
-.wt-run-tip-card b {
-  font-size: 16px;
-  line-height: 1.35;
-}
-.wt-run-tip-card small {
-  margin-top: 4px;
-  color: #777;
-  font-size: 14px;
-  line-height: 1.35;
-}
-.wt-run-float {
-  position: absolute;
-  z-index: 4;
-  width: 76px;
-  height: 76px;
-  display: grid;
-  place-items: center;
-  border: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
-  color: #111;
-  box-shadow: 0 3px 13px rgba(0, 0, 0, 0.18);
-  font-size: 30px;
-  font-weight: 800;
-}
-.wt-run-float--shoe { left: 32%; top: 43%; }
-.wt-run-float--signal { right: 34%; top: 43%; }
-.wt-run-float--setting { left: 15%; bottom: 19%; }
-.wt-run-float--music { right: 15%; bottom: 19%; }
 .wt-run-start-btn {
   position: absolute;
   z-index: 3;
@@ -6691,21 +6639,6 @@ body.wt-running-session-open {
   }
   .wt-run-start-tabs button {
     font-size: 18px;
-  }
-  .wt-run-tip-card {
-    left: 8%;
-    right: 8%;
-    grid-template-columns: 74px minmax(0, 1fr);
-    gap: 12px;
-  }
-  .wt-run-tip-icon {
-    width: 68px;
-    height: 68px;
-    font-size: 36px;
-  }
-  .wt-run-float {
-    width: 64px;
-    height: 64px;
   }
   .wt-run-live-stats {
     padding-left: 16px;

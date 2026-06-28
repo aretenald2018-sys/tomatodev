@@ -49,9 +49,13 @@ test('running picker tile and session screens have dedicated styles', () => {
   assert.match(styleCss, /\.wt-run-real-map/);
   assert.match(styleCss, /\.wt-run-map-canvas/);
   assert.match(styleCss, /\.wt-run-map-status/);
+  assert.match(styleCss, /image-rendering:\s*auto/);
+  assert.match(styleCss, /-webkit-font-smoothing:\s*antialiased/);
   assert.doesNotMatch(styleCss, /\.wt-running-session-route-svg/);
   assert.doesNotMatch(styleCss, /run-map-road/);
   assert.doesNotMatch(styleCss, /\.wt-running-gps\b/);
+  assert.doesNotMatch(styleCss, /\.wt-run-tip-card/);
+  assert.doesNotMatch(styleCss, /\.wt-run-float/);
 });
 
 test('running maps use real provider shell instead of fake svg maps', () => {
@@ -67,9 +71,14 @@ test('running maps use real provider shell instead of fake svg maps', () => {
   assert.match(runningMapJs, /buildTmapScriptUrl/);
   assert.match(runningMapJs, /Tmapv2\.Map/);
   assert.match(runningMapJs, /google\.maps/);
+  assert.match(runningMapJs, /devicePixelRatio/);
+  assert.match(runningMapJs, /tileCssSize/);
   assert.match(runningSessionJs, /data-running-real-map/);
   assert.match(runningSessionJs, /renderRunningMap/);
   assert.doesNotMatch(runningMapJs, /키를 설정하면/);
+  assert.doesNotMatch(runningSessionJs, /밤에 러닝하시나요/);
+  assert.doesNotMatch(runningSessionJs, /wt-run-tip-card/);
+  assert.doesNotMatch(runningSessionJs, /wt-run-float/);
   assert.doesNotMatch(runningSessionJs, /buildRunningSessionRouteSvg/);
   assert.doesNotMatch(runningSessionJs, /<svg class="wt-running-session-route-svg/);
 });
@@ -89,7 +98,7 @@ test('running session is wired into app init, save, load, and sessions', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260628z5-running-vworld-default-map/);
+  assert.match(swJs, /tomatofarm-v20260628z6-running-start-map-cleanup/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
   assert.doesNotMatch(swJs, /\.\/workout\/running-tracker\.js/);

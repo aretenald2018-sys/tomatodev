@@ -485,14 +485,6 @@ function _renderStart() {
       </div>
       <div class="wt-run-start-map">
         ${_renderRealMapShell('start', _session.previewPoint ? '현재 위치' : '위치 권한 대기')}
-        <div class="wt-run-tip-card">
-          <span class="wt-run-tip-icon">☾</span>
-          <span><b>밤에 러닝하시나요?</b><small>안전을 위해 조명을 지참하세요.</small></span>
-        </div>
-        <button type="button" class="wt-run-float wt-run-float--shoe" data-running-action="noop" aria-label="신발">⌁</button>
-        <button type="button" class="wt-run-float wt-run-float--signal" data-running-action="noop" aria-label="GPS">⌾</button>
-        <button type="button" class="wt-run-float wt-run-float--setting" data-running-action="settings" aria-label="설정">⚙</button>
-        <button type="button" class="wt-run-float wt-run-float--music" data-running-action="music" aria-label="음악">♪</button>
         <button type="button" class="wt-run-start-btn" data-running-action="start">시작</button>
         <button type="button" class="wt-run-goal-btn" data-running-action="goal">목표 설정</button>
       </div>
