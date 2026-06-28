@@ -51,5 +51,5 @@ test('workout detail modal no longer renders timer-only body sections', () => {
 });
 
 test('service worker cache version was bumped for workout timer summary-only UI', () => {
-  assert.match(swJs, /tomatofarm-v20260628z18-trainer-game-menu/);
+  assert.match(swJs, /tomatofarm-v20260629z1-running-home-track-live/);
 });

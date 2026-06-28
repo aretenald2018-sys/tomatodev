@@ -61,6 +61,26 @@ test('running picker tile and session screens have dedicated styles', () => {
   assert.doesNotMatch(styleCss, /\.wt-run-map-label/);
 });
 
+test('running progress reuses the home life-zone track with live runners and map bubble', () => {
+  assert.match(runningSessionJs, /function _renderLiveTrackStage/);
+  assert.match(runningSessionJs, /class="wt-run-home-track-stage"/);
+  assert.match(runningSessionJs, /_renderRealMapShell\('progress-bubble', '달리는 중인 지도'\)/);
+  assert.match(runningSessionJs, /kind === 'progress-bubble'/);
+  assert.match(runningSessionJs, /wt-run-home-runner--lead/);
+  assert.match(runningSessionJs, /wt-run-home-runner--second/);
+  assert.match(runningSessionJs, /wt-run-home-runner--third/);
+  assert.doesNotMatch(runningSessionJs, /running-track-live\.png/);
+
+  assert.match(styleCss, /\.wt-run-home-track-stage/);
+  assert.match(styleCss, /base-room-expanded-alpha\.png/);
+  assert.match(styleCss, /\.wt-run-home-track-map-bubble/);
+  assert.match(styleCss, /\.wt-run-home-track-map-bubble \.wt-run-real-map/);
+  assert.match(styleCss, /width: clamp\(128px, 42%, 188px\)/);
+  assert.match(styleCss, /@keyframes wt-run-home-runner-lap/);
+  assert.match(styleCss, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*\.wt-run-home-runner,[\s\S]*animation: none;/);
+  assert.doesNotMatch(styleCss, /assets\/workout\/running-track-live\.png/);
+});
+
 test('running maps use real provider shell instead of fake svg maps', () => {
   assert.match(configJs, /PUBLIC_VWORLD_MAP_KEY/);
   assert.match(configJs, /cfg_running_map_provider/);
@@ -108,8 +128,10 @@ test('running session is wired into app init, save, load, and sessions', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260628z18-trainer-game-menu/);
+  assert.match(swJs, /tomatofarm-v20260629z1-running-home-track-live/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
+  assert.match(swJs, /\.\/assets\/home\/life-zone\/base-room-expanded-alpha\.png/);
+  assert.doesNotMatch(swJs, /\.\/assets\/workout\/running-track-live\.png/);
   assert.doesNotMatch(swJs, /\.\/workout\/running-tracker\.js/);
 });

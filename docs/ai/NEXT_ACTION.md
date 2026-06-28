@@ -3,13 +3,13 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-28-trainer-quest-modal-seated-character.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-28-trainer-quest-game-menu-rewrite-review.md`
-- 현재 단계: `review complete — Trainer Quest Game Menu Rewrite Slice 9`
+- 계획 문서: `docs/ai/features/2026-06-29-running-track-live-art.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-running-home-track-live-art-review.md`
+- 현재 단계: `review complete — Running Home Track Live Art Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `트레이너 전구 클릭 첫 화면의 기존 선택지 UI 클래스를 제거하고, 좌측 하단 일부 폭만 쓰는 불투명 게임 메뉴 패널로 다시 작성했다.`
+- 마지막 완료: `러닝 진행 화면에 홈 라이프존 기존 트랙을 재사용한 runner stage, 지도 말풍선, CSS 모션을 추가하고 로컬 검증/리뷰를 완료했다.`
 - 다음 액션: `없음.`
-- 차단 사유: `없음. 단, 인증된 실제 계정에서 게임 메뉴의 시각 위치는 수동 눈검수가 필요하다.`
+- 차단 사유: `없음. 단, 배포 페이지에서 인증/위치 권한이 필요한 실제 UI flow는 사용자 계정 상태에 따라 수동 확인이 필요할 수 있다.`
 
 ## 직전 완료 요약
 

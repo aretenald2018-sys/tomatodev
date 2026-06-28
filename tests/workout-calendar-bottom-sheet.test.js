@@ -311,5 +311,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260628z18-trainer-game-menu/);
+  assert.match(swJs, /tomatofarm-v20260629z1-running-home-track-live/);
 });
