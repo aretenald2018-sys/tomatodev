@@ -93,7 +93,10 @@ Slice 1 구현과 리뷰는 완료했다. 배포 URL에서 인증 세션 없이 
 - PASS: `node --test @tests` — 580 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=848`
 - PASS: `git diff --check`
-- not verified yet: Dashboard3 Pages 배포 및 인증 계정 실제 UI 클릭 flow 확인은 커밋/푸시 후 수행한다.
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 76c7085` — deployed `76c70852f6b5`, `tomatofarm-v20260628z8-trainer-quest-modal`, `static=222`
+- PASS: deployed markers — `trainer-quest-modal`, `무엇을 도와드릴까요?`, `내 운동 통계 살펴보기`, `renderTrainerQuestStats`, `data-stats-id`, `_healthMetricsCharts`, `.trainer-quest-sheet`, `./modals/trainer-quest-modal.js`
+- PASS: `curl.exe -I https://aretenald2018-sys.github.io/dashboard3/` — `HTTP/1.1 200 OK`
+- not verified yet: 인증 세션이 없어 배포 URL에서 홈 탭 -> 트레이너 전구 -> `내 운동 통계 살펴보기` 실제 클릭 flow는 직접 확인하지 못했다.
 
 ## 리뷰 결과
 

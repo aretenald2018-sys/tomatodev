@@ -24,7 +24,10 @@
 - PASS: `node --test @tests` — 580 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=848`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 76c7085` — deployed `76c70852f6b5`, `tomatofarm-v20260628z8-trainer-quest-modal`, `static=222`
+- PASS: deployed marker checks for trainer quest modal, scoped stats render, app event hook, CSS, and SW asset registration.
+- PASS: `curl.exe -I https://aretenald2018-sys.github.io/dashboard3/` — `HTTP/1.1 200 OK`
 
 ## 남은 확인
 
-- 배포 후 인증 세션에서 홈 탭 -> 트레이너 전구 -> `내 운동 통계 살펴보기` -> 모달 내부 통계 표시 flow를 직접 확인해야 한다.
+- 인증 세션이 없어 배포 URL에서 홈 탭 -> 트레이너 전구 -> `내 운동 통계 살펴보기` -> 모달 내부 통계 표시 flow는 직접 확인하지 못했다.
