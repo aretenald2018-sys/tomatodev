@@ -115,7 +115,7 @@ test('life zone running actors render track sprites and a map capture bubble on 
   const source = readText('home/life-zone.js');
   const css = readText('style.css');
   const sw = readText('sw.js');
-  const generator = readText('scripts/make-life-zone-running-sprites.py');
+  const plan = readText('docs/ai/features/2026-06-29-running-track-live-art.md');
   const sprites = [
     'jups-running-track.png',
     'moonjung-tomato-running-track.png',
@@ -128,9 +128,11 @@ test('life zone running actors render track sprites and a map capture bubble on 
   assert.match(source, /bubble\.dataset\.lzRunningMapBubble = '1'/);
   assert.match(source, /actor\.state === 'running'/);
   assert.match(source, /selfRunning \? actor\.source === 'self' : !runningBubbleRendered/);
-  assert.match(generator, /"source": "jups-office-center\.png"/);
-  assert.match(generator, /"source": "moonjung-tomato-office-center\.png"/);
-  assert.match(generator, /"source": "lee-jaeheon-office-center\.png"/);
+  assert.equal(fs.existsSync(path.join(root, 'scripts/make-life-zone-running-sprites.py')), false);
+  assert.match(plan, /imagegen/);
+  assert.match(plan, /jups-running-track\.png/);
+  assert.match(plan, /moonjung-tomato-running-track\.png/);
+  assert.match(plan, /lee-jaeheon-running-track\.png/);
 
   assert.match(css, /\.lz-actor--pose-running-track \{/);
   assert.match(css, /\.lz-actor--pose-running-track::before \{/);
@@ -158,7 +160,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260629z2-home-running-track-actors/);
+  assert.match(sw, /tomatofarm-v20260629z3-home-running-imagegen-sprites/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,

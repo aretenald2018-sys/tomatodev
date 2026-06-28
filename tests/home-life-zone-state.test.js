@@ -124,6 +124,11 @@ test('assigns running actors to existing home track slots and running sprite she
   ]);
 
   assert.deepEqual(assigned.map((actor) => actor.slot.id), ['track-upper', 'track-left', 'track-right']);
+  assert.deepEqual(assigned.map((actor) => [actor.slot.x, actor.slot.y, actor.slot.width]), [
+    [545, 785, 90],
+    [148, 1094, 88],
+    [700, 1042, 88]
+  ]);
   assert.deepEqual(assigned.map((actor) => actor.sprite), [
     'jups-running-track.png',
     'moonjung-tomato-running-track.png',

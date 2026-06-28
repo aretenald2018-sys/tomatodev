@@ -4,12 +4,12 @@
 
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-29-running-track-live-art.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-running-home-track-live-art-review.md`
-- 현재 단계: `review complete — Running Home Track Live Art Slice 1`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-running-imagegen-sprites-review.md`
+- 현재 단계: `review complete — Running Home Track Live Art Slice 2`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `러닝 진행 화면에 홈 라이프존 기존 트랙을 재사용한 runner stage, 지도 말풍선, CSS 모션을 추가하고 로컬 검증/리뷰를 완료했다.`
+- 마지막 완료: `Slice 2 구현/리뷰를 완료했다. imagegen 기반 running sprite sheet를 반영했고, 빨강/파랑/초록 캐릭터가 홈탭 기존 런닝트랙 lane 위에 놓이도록 좌표를 조정했다.`
 - 다음 액션: `없음.`
-- 차단 사유: `없음. 단, 배포 페이지에서 인증/위치 권한이 필요한 실제 UI flow는 사용자 계정 상태에 따라 수동 확인이 필요할 수 있다.`
+- 차단 사유: `없음. 단, 인증 계정으로 러닝 시작 후 실제 홈탭 live UI flow는 배포 페이지에서 수동 확인이 필요할 수 있다.`
 
 ## 직전 완료 요약
 

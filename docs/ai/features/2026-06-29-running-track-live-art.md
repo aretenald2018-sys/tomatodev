@@ -6,6 +6,7 @@
 - 작성일: `2026-06-29`
 - 자동 트리거: `/grill-me`
 - 정정 사유: 최초 구현이 러닝 세션 화면에 별도 트랙 stage를 붙이는 방향으로 잘못 진행되었다. 사용자가 명확히 정정한 범위는 홈탭 life-zone의 기존 런닝트랙과 기존 이용자 캐릭터다.
+- 추가 정정: Slice 1의 `scripts/make-life-zone-running-sprites.py` 기반 러닝 캐릭터 PNG가 기존 홈탭 스프라이트 화풍을 충분히 살리지 못했다. 사용자는 러닝 관련 캐릭터 아트에셋을 전부 삭제하고, `imagegen`으로 기존 홈탭 스프라이트와 기존 홈 트랙 화풍을 참고해 처음부터 다시 만들 것을 요청했다.
 
 ## 요청 요약
 
@@ -99,3 +100,76 @@
 ## 리뷰 결과
 
 - 리뷰 문서: `docs/ai/reviews/2026-06-29-running-home-track-live-art-review.md`
+
+## 실행 Slice 2
+
+### 목표
+
+Slice 1의 러닝 캐릭터 PNG 산출물과 생성 스크립트를 제거하고, 기존 홈탭 life-zone 캐릭터/트랙 화풍을 기준으로 `imagegen` 기반 러닝 스프라이트를 새로 제작한다. 홈탭 기존 트랙 위에서 달리는 상태, 지도 말풍선, live state 동작은 유지한다.
+
+### 포함 범위
+
+1. 기존 러닝 캐릭터 아트 삭제
+   - `assets/home/life-zone/sprites/jups-running-track.png`
+   - `assets/home/life-zone/sprites/moonjung-tomato-running-track.png`
+   - `assets/home/life-zone/sprites/lee-jaeheon-running-track.png`
+   - `scripts/make-life-zone-running-sprites.py`
+2. `imagegen` 기반 새 러닝 스프라이트 제작
+   - 레퍼런스: `assets/home/life-zone/base-room-expanded-alpha.png`, 각 캐릭터의 기존 홈탭 `*-office-center.png` 또는 가장 식별성이 높은 기존 pose PNG.
+   - 산출물: 동일한 파일명 `*-running-track.png` 3개를 새로 저장한다.
+   - 형식: 현재 CSS와 호환되는 2프레임 가로 sprite sheet, PNG alpha, 기존 actor slot 크기에 맞는 안정적 여백.
+   - 화풍: 홈탭 픽셀아트와 같은 미니 캐릭터 비율, 색, 픽셀 계단감, 부드러운 그림자. 새 캐릭터를 만들지 않고 기존 `줍스`, `문정토마토`, `이재헌` 캐릭터 식별 요소를 유지한다.
+3. 코드/테스트 계약 갱신
+   - 생성 스크립트 존재를 요구하는 테스트를 제거하고, 새 PNG 파일 header/size/alpha와 `imagegen` 산출물 계약을 검증한다.
+   - 필요 시 `docs/ai/art-drafts/` 또는 계획 문서에 최종 prompt 요약을 남긴다.
+4. 캐시/manifest 갱신
+   - `sw.js` `CACHE_VERSION`을 bump한다.
+   - `assets/home/life-zone/manifest.json`에서 running pose entry는 유지하되 새 산출물 기준으로 확인한다.
+
+### 제외 범위
+
+- 홈탭에 별도 러닝트랙을 새로 만들지 않는다.
+- 러닝 세션 화면에 캐릭터/트랙 stage를 다시 추가하지 않는다.
+- `running` 상태 우선순위, 지도 말풍선 DOM/CSS 구조, live event 흐름을 재설계하지 않는다.
+- 기존 홈탭 일반 캐릭터 스프라이트를 교체하지 않는다.
+
+### 검증 계획
+
+- `python scripts/validate-life-zone-assets.py`
+- `node --check home/life-zone.js; node --check home/life-zone-state.js; node --check workout/running-session.js; node --check app.js; node --check sw.js`
+- `node --test tests/home-life-zone-state.test.js tests/home-life-zone-npc-quest.test.js tests/running-entry.test.js tests/running-tracker.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- 전체 테스트: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests`
+- `git diff --check`
+- Dashboard3 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+
+### 다음 실행 시작 프롬프트
+
+`docs/ai/features/2026-06-29-running-track-live-art.md`의 Slice 2를 구현한다. 기존 러닝 캐릭터 PNG와 생성 스크립트를 제거하고, 기존 홈탭 캐릭터/트랙을 레퍼런스로 `imagegen` 기반 2프레임 러닝 스프라이트를 새로 만들어 같은 파일명으로 반영한다.
+
+## Slice 2 실행 결과
+
+- 기존 `scripts/make-life-zone-running-sprites.py` 생성 스크립트를 삭제했다.
+- `imagegen`으로 `줍스`(빨강), `문정토마토`(파랑), `이재헌`(초록) 3개 캐릭터의 2프레임 러닝 sprite sheet를 새로 생성하고, chroma-key 제거 후 동일 파일명으로 반영했다.
+- 교체 파일:
+  - `assets/home/life-zone/sprites/jups-running-track.png`
+  - `assets/home/life-zone/sprites/moonjung-tomato-running-track.png`
+  - `assets/home/life-zone/sprites/lee-jaeheon-running-track.png`
+- `home/life-zone-state.js`와 `assets/home/life-zone/manifest.json`의 running slot 좌표를 조정해 빨강/파랑/초록 캐릭터가 모두 홈탭 기존 런닝트랙 lane 위에 놓이도록 했다.
+- `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260629z3-home-running-imagegen-sprites`로 bump했다.
+- 테스트는 삭제된 생성 스크립트 대신 `imagegen` 산출물 계약, PNG size/alpha, 새 track-lane 좌표를 검증하도록 갱신했다.
+
+## Slice 2 검증
+
+- PASS: `python scripts/validate-life-zone-assets.py` — `validated base=1672x1672, sprites=30`
+- PASS: `node --check home/life-zone.js; node --check home/life-zone-state.js; node --check workout/running-session.js; node --check app.js; node --check sw.js`
+- PASS: `node --test tests/home-life-zone-state.test.js tests/home-life-zone-npc-quest.test.js tests/running-entry.test.js tests/running-tracker.test.js` — 36 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=853`
+- PASS: `git diff --check` — whitespace error 없음
+- PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 588 tests passed
+- 시각 확인: `base-room-expanded-alpha.png`에 새 running sprite와 조정 좌표를 합성해 빨강/파랑/초록 캐릭터가 기존 런닝트랙 lane 위에 놓이는 것을 확인했다.
+
+## Slice 2 리뷰 결과
+
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-running-imagegen-sprites-review.md`
+- 발견된 차단 이슈: 없음.

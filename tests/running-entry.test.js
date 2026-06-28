@@ -127,7 +127,7 @@ test('running session is wired into app init, save, load, and sessions', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260629z2-home-running-track-actors/);
+  assert.match(swJs, /tomatofarm-v20260629z3-home-running-imagegen-sprites/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/sprites\/jups-running-track\.png/);
