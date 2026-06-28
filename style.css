@@ -416,7 +416,7 @@
 .trainer-quest-sheet {
   position: relative;
   max-width: 560px;
-  padding: clamp(218px, 46vw, 260px) 16px 18px;
+  padding: clamp(148px, 33vw, 184px) 16px 18px;
   background: var(--surface);
   overflow: visible;
 }
@@ -525,79 +525,73 @@
   cursor: pointer;
 }
 .trainer-quest-icon-btn:active,
-.trainer-quest-row-btn:active {
+.trainer-quest-choice:not(:disabled):active {
   transform: scale(.98);
 }
 .trainer-quest-menu {
   display: grid;
-  gap: 18px;
-  padding-top: 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
-.trainer-quest-section h3 {
-  margin: 0 0 8px;
-  color: var(--primary);
-  font-size: 13px;
-  font-weight: 850;
-  line-height: 18px;
-}
-.trainer-quest-row {
-  width: 100%;
-  min-height: 58px;
+.trainer-quest-choice {
+  min-width: 0;
+  min-height: 78px;
   display: grid;
-  grid-template-columns: 12px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 12px;
+  grid-template-rows: 10px max-content max-content;
+  justify-items: center;
+  align-content: center;
+  gap: 4px;
+  padding: 10px 6px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface2);
   color: var(--text);
-  text-align: left;
-}
-.trainer-quest-row.is-disabled {
-  opacity: .58;
-}
-.trainer-quest-row-btn {
+  font: inherit;
+  text-align: center;
   cursor: pointer;
-  transition: transform var(--transition);
+  transition: transform var(--transition), border-color var(--transition), background var(--transition);
 }
-.trainer-quest-row-btn:hover {
+.trainer-quest-choice:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--primary) 38%, var(--border));
   background: color-mix(in srgb, var(--primary-bg) 68%, var(--surface));
 }
-.trainer-quest-row-mark {
+.trainer-quest-choice:disabled {
+  opacity: .58;
+  cursor: default;
+}
+.trainer-quest-choice-dot {
   width: 8px;
   height: 8px;
   border-radius: 999px;
   background: var(--text-tertiary);
 }
-.trainer-quest-row-mark.is-complete {
+.trainer-quest-choice-dot.is-quest {
   background: var(--primary);
 }
-.trainer-quest-row-mark.is-etc {
+.trainer-quest-choice-dot.is-stats {
   background: #f59e0b;
 }
-.trainer-quest-row b,
-.trainer-quest-row small {
+.trainer-quest-choice-dot.is-close {
+  background: var(--text-tertiary);
+}
+.trainer-quest-choice b,
+.trainer-quest-choice small {
   display: block;
   min-width: 0;
-  overflow-wrap: anywhere;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.trainer-quest-row b {
+.trainer-quest-choice b {
   font-size: 14px;
-  font-weight: 800;
-  line-height: 20px;
+  font-weight: 850;
+  line-height: 18px;
 }
-.trainer-quest-row small {
-  margin-top: 2px;
+.trainer-quest-choice small {
   color: var(--text-secondary);
   font-size: 11px;
-  line-height: 16px;
-}
-.trainer-quest-row-arrow {
-  color: var(--text-tertiary);
-  font-size: 24px;
-  line-height: 1;
+  line-height: 14px;
 }
 .trainer-quest-stats[hidden],
 .trainer-quest-menu[hidden] {

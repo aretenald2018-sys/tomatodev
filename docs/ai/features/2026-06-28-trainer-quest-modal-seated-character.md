@@ -122,3 +122,35 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=849`
 - PASS: `node --test @tests` — 581 tests passed
 - PASS: `git diff --check`
+
+## Slice 3 Dashboard3 Pages 검증
+
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ e2beb4d` — `[deploy-verify] ok e2beb4d26429 tomatofarm-v20260628z11-trainer-npc-cue static=223`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ ...` — `sw.js`, `modals/trainer-quest-modal.js`, `style.css`에서 새 cache, 전구 blink, NPC typing marker 확인
+- not verified yet: 배포 페이지 브라우저 세션이 로그인 전 상태라 홈 라이프존/트레이너 전구 클릭 UI flow는 확인하지 못했다.
+
+## Slice 4 요청
+
+- 사용자 피드백: 모달 첫 화면이 첨부 이미지처럼 선택지 네모 3개로 보여야 하며, 트레이너 다리 밑 공백이 너무 크다.
+
+## Slice 4 계획
+
+- `modals/trainer-quest-modal.js`: 첫 화면의 섹션형 목록을 3개 선택 타일(`퀘스트`, `통계`, `닫기`)로 교체하고, 닫기 선택지를 직접 바인딩한다.
+- `style.css`: 선택 타일을 3열 grid로 만들고, `.trainer-quest-sheet` 상단 padding을 줄여 신발 아래 선택지까지의 빈 공간을 압축한다.
+- `tests/trainer-quest-modal.test.js`: 섹션형 목록이 사라지고 선택 타일 UI와 축소된 padding이 유지되는지 회귀 테스트한다.
+- `sw.js`: cache version bump.
+
+## Slice 4 구현 기록
+
+- `modals/trainer-quest-modal.js`: 기존 섹션형 `완료가능한 퀘스트`/`기타` 목록을 제거하고, 첫 화면을 `퀘스트`, `통계`, `닫기` 3개 선택 타일로 교체했다. 헤더 X가 없는 상태에서도 `닫기` 타일로 모달을 닫을 수 있게 직접 handler를 바인딩했다.
+- `style.css`: `.trainer-quest-menu`를 3열 grid로 바꾸고 `.trainer-quest-choice` 타일 스타일을 추가했다. `.trainer-quest-sheet` 상단 padding을 `clamp(218px, 46vw, 260px)`에서 `clamp(148px, 33vw, 184px)`로 줄여 트레이너 신발 아래 공백을 압축했다.
+- `sw.js`: `CACHE_VERSION`을 `tomatofarm-v20260628z12-trainer-choice-grid`로 bump했다.
+- `tests/trainer-quest-modal.test.js` 및 cache marker 테스트들: 새 선택 타일 구조, 축소된 padding, z12 cache marker를 검증하도록 갱신했다.
+
+## Slice 4 로컬 검증
+
+- PASS: `node --check modals/trainer-quest-modal.js; node --check sw.js`
+- PASS: `node --test tests/trainer-quest-modal.test.js tests/home-life-zone-npc-quest.test.js` — 11 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=849`
+- PASS: `node --test @tests` — 581 tests passed
+- PASS: `git diff --check`

@@ -9,14 +9,19 @@ const statsJs = readFileSync('render-stats.js', 'utf8');
 const styleCss = readFileSync('style.css', 'utf8');
 const swJs = readFileSync('sw.js', 'utf8');
 
-test('trainer quest modal renders Maple-like sections with TDS actions', () => {
+test('trainer quest modal renders three square choice tiles with TDS actions', () => {
   assert.match(modalJs, /id="trainer-quest-modal"/);
   assert.match(modalJs, /무엇을 도와드릴까요\?/);
-  assert.match(modalJs, /완료가능한 퀘스트/);
-  assert.match(modalJs, /업데이트 예정/);
-  assert.match(modalJs, /기타/);
-  assert.match(modalJs, /내 운동 통계 살펴보기/);
+  assert.match(modalJs, /trainer-quest-menu/);
+  assert.match(modalJs, /trainer-quest-choice/);
+  assert.match(modalJs, /<b>퀘스트<\/b>/);
+  assert.match(modalJs, /<small>준비중<\/small>/);
+  assert.match(modalJs, /<b>통계<\/b>/);
+  assert.match(modalJs, /<small>운동 분석<\/small>/);
+  assert.match(modalJs, /<b>닫기<\/b>/);
+  assert.match(modalJs, /<small>나중에<\/small>/);
   assert.match(modalJs, /data-trainer-quest-action="stats"/);
+  assert.match(modalJs, /data-trainer-quest-action="close"/);
   assert.match(modalJs, /data-trainer-quest-character/);
   assert.match(modalJs, /data-trainer-quest-speech-text="\$\{TRAINER_QUEST_SPEECH_TEXT\}"/);
   assert.match(modalJs, /data-trainer-quest-speech-value/);
@@ -24,6 +29,11 @@ test('trainer quest modal renders Maple-like sections with TDS actions', () => {
   assert.doesNotMatch(modalJs, /trainer-quest-head/);
   assert.doesNotMatch(modalJs, /trainer-quest-portrait/);
   assert.doesNotMatch(modalJs, /data-trainer-quest-close/);
+  assert.doesNotMatch(modalJs, /trainer-quest-section/);
+  assert.doesNotMatch(modalJs, /trainer-quest-row/);
+  assert.doesNotMatch(modalJs, /완료가능한 퀘스트/);
+  assert.doesNotMatch(modalJs, /업데이트 예정/);
+  assert.doesNotMatch(modalJs, /내 운동 통계 살펴보기/);
   assert.match(modalJs, /assets\/home\/life-zone\/ui\/trainer-quest-seated-trainer\.png/);
   assert.doesNotMatch(modalJs, /onclick=/);
   assert.match(modalJs, /openTrainerQuestModal/);
@@ -73,10 +83,15 @@ test('trainer quest modal styles and runtime cache asset are registered', () => 
   assert.match(styleCss, /position:\s*absolute/);
   assert.match(styleCss, /pointer-events:\s*none/);
   assert.match(styleCss, /top:\s*clamp\(-250px,\s*-58vw,\s*-198px\)/);
-  assert.match(styleCss, /padding:\s*clamp\(218px,\s*46vw,\s*260px\)/);
-  assert.match(styleCss, /\.trainer-quest-row-btn/);
+  assert.match(styleCss, /padding:\s*clamp\(148px,\s*33vw,\s*184px\)/);
+  assert.match(styleCss, /\.trainer-quest-menu/);
+  assert.match(styleCss, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(styleCss, /\.trainer-quest-choice/);
+  assert.match(styleCss, /\.trainer-quest-choice-dot/);
+  assert.doesNotMatch(styleCss, /\.trainer-quest-section/);
+  assert.doesNotMatch(styleCss, /\.trainer-quest-row-btn/);
   assert.match(styleCss, /\.trainer-quest-stats-root/);
-  assert.match(swJs, /tomatofarm-v20260628z11-trainer-npc-cue/);
+  assert.match(swJs, /tomatofarm-v20260628z12-trainer-choice-grid/);
   assert.match(swJs, /\.\/modals\/trainer-quest-modal\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/trainer-quest-seated-trainer\.png/);
 });

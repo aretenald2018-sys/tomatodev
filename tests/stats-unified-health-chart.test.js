@@ -43,5 +43,5 @@ test('stats health chart controls are styled and cache version is bumped', () =>
   assert.match(styleCss, /\.stats-health-controls/);
   assert.match(styleCss, /\.stats-health-toggle/);
   assert.match(styleCss, /\.stats-health-period\.active/);
-  assert.match(swJs, /tomatofarm-v20260628z11-trainer-npc-cue/);
+  assert.match(swJs, /tomatofarm-v20260628z12-trainer-choice-grid/);
 });

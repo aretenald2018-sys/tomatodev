@@ -27,28 +27,21 @@ export const MODAL_HTML = `
     </div>
 
     <div class="trainer-quest-menu" data-trainer-quest-menu>
-      <section class="trainer-quest-section" aria-labelledby="trainer-quest-complete-title">
-        <h3 id="trainer-quest-complete-title">완료가능한 퀘스트</h3>
-        <div class="trainer-quest-row is-disabled" aria-disabled="true">
-          <span class="trainer-quest-row-mark is-complete" aria-hidden="true"></span>
-          <div>
-            <b>업데이트 예정</b>
-            <small>완료 가능한 퀘스트는 곧 열릴 예정입니다.</small>
-          </div>
-        </div>
-      </section>
-
-      <section class="trainer-quest-section" aria-labelledby="trainer-quest-etc-title">
-        <h3 id="trainer-quest-etc-title">기타</h3>
-        <button type="button" class="trainer-quest-row trainer-quest-row-btn" data-trainer-quest-action="stats">
-          <span class="trainer-quest-row-mark is-etc" aria-hidden="true"></span>
-          <div>
-            <b>내 운동 통계 살펴보기</b>
-            <small>전체 요약, 건강 지표, 운동 활성, 트레이너 분석을 봅니다.</small>
-          </div>
-          <span class="trainer-quest-row-arrow" aria-hidden="true">›</span>
-        </button>
-      </section>
+      <button type="button" class="trainer-quest-choice is-disabled" disabled>
+        <span class="trainer-quest-choice-dot is-quest" aria-hidden="true"></span>
+        <b>퀘스트</b>
+        <small>준비중</small>
+      </button>
+      <button type="button" class="trainer-quest-choice" data-trainer-quest-action="stats">
+        <span class="trainer-quest-choice-dot is-stats" aria-hidden="true"></span>
+        <b>통계</b>
+        <small>운동 분석</small>
+      </button>
+      <button type="button" class="trainer-quest-choice" data-trainer-quest-action="close">
+        <span class="trainer-quest-choice-dot is-close" aria-hidden="true"></span>
+        <b>닫기</b>
+        <small>나중에</small>
+      </button>
     </div>
 
     <div class="trainer-quest-stats" data-trainer-quest-stats hidden>
@@ -138,6 +131,7 @@ function _bindTrainerQuestModal() {
   modal.querySelector('.trainer-quest-sheet')?.addEventListener('click', event => event.stopPropagation());
   modal.querySelector('[data-trainer-quest-back]')?.addEventListener('click', _showMenu);
   modal.querySelector('[data-trainer-quest-action="stats"]')?.addEventListener('click', _showStats);
+  modal.querySelector('[data-trainer-quest-action="close"]')?.addEventListener('click', closeTrainerQuestModal);
 }
 
 export function openTrainerQuestModal() {
