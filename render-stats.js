@@ -100,6 +100,186 @@ export function renderTrainerQuestStats(root) {
   _renderDeepStats(root);
 }
 
+export function buildTrainerQuestStatsExport() {
+  const cache = getCache();
+  const entries = _dateEntries();
+  const checkins = getBodyCheckins().filter(c => (c?.date || '') <= _keyOffset(0));
+  const plan = getDietPlan();
+  const ny = TODAY.getFullYear();
+  const todayKey = _keyOffset(0);
+  const foodsByName = new Map();
+  const macro = { carbs: 0, protein: 0, fat: 0, days: 0 };
+  const sugar = { total: 0, days: 0 };
+  const sodium = { total: 0, days: 0 };
+  let topFoodDay = null;
+  let topExerciseDay = null;
+  let recordDays = 0;
+  let exerciseDays = 0;
+  let okDays = 0;
+  let ngDays = 0;
+  let yearFoodKcalTotal = 0;
+  let yearFoodKcalDays = 0;
+  let yearExerciseKcalTotal = 0;
+  let yearExerciseKcalDays = 0;
+
+  entries.forEach(([key, day]) => {
+    const kcal = _dayKcal(day);
+    if (kcal > 0 && (!topFoodDay || kcal > topFoodDay.kcal)) topFoodDay = { date: key, kcal };
+    _foodItems(day).forEach(food => {
+      const name = _foodName(food);
+      if (!name) return;
+      const next = foodsByName.get(name) || { name, count: 0, kcalTotal: 0 };
+      next.count += 1;
+      next.kcalTotal += _foodKcal(food);
+      foodsByName.set(name, next);
+    });
+    const weight = _weightOnOrBefore(checkins, key) ?? _maybeNum(plan?.weight) ?? 70;
+    const burned = calcBurnedKcal(day, weight).total;
+    if (burned > 0 && (!topExerciseDay || burned > topExerciseDay.kcal)) topExerciseDay = { date: key, kcal: burned };
+    const carbs = _dayCarbs(day), protein = _dayProtein(day), fat = _dayFat(day);
+    if (carbs + protein + fat > 0) {
+      macro.carbs += carbs;
+      macro.protein += protein;
+      macro.fat += fat;
+      macro.days += 1;
+    }
+    const daySugar = _daySugar(day);
+    if (daySugar !== null) { sugar.total += daySugar; sugar.days += 1; }
+    const daySodium = _daySodium(day);
+    if (daySodium !== null) { sodium.total += daySodium; sodium.days += 1; }
+  });
+
+  for (let m = 0; m < 12; m++) for (let d = 1; d <= daysInMonth(ny, m); d++) {
+    if (isFuture(ny, m, d)) continue;
+    const key = dateKey(ny, m, d);
+    const day = cache[key] || {};
+    const diet = getDiet(ny, m, d);
+    const hasDiet = hasDietRecord(ny, m, d);
+    const hasEx = hasExerciseRecord(ny, m, d);
+    const dok = dietDayOk(ny, m, d);
+    if (hasDiet || hasEx) recordDays += 1;
+    if (hasEx) exerciseDays += 1;
+    if (dok === true) okDays += 1;
+    else if (dok === false) ngDays += 1;
+    const kcal = _dayKcal(diet);
+    if (kcal > 0) {
+      yearFoodKcalTotal += kcal;
+      yearFoodKcalDays += 1;
+    }
+    const weight = _weightOnOrBefore(checkins, key) ?? _maybeNum(plan?.weight) ?? 70;
+    const burned = calcBurnedKcal(day, weight).total;
+    if (burned > 0) {
+      yearExerciseKcalTotal += burned;
+      yearExerciseKcalDays += 1;
+    }
+  }
+
+  const monthPrefix = dateKey(TODAY.getFullYear(), TODAY.getMonth(), 1).slice(0, 7);
+  const monthCheckins = checkins.filter(c => (c?.date || '').startsWith(monthPrefix));
+  const monthFirst = monthCheckins.length >= 2 ? monthCheckins[0] : null;
+  const monthLast = monthCheckins.length >= 2 ? monthCheckins[monthCheckins.length - 1] : null;
+  const monthWeightFirst = monthFirst ? _maybeNum(monthFirst.weight) : null;
+  const monthWeightLast = monthLast ? _maybeNum(monthLast.weight) : null;
+  const healthKeys = _healthChartKeys(cache, checkins);
+  const health = _buildHealthChartData(healthKeys, cache, checkins);
+  const fatigue = _buildMuscleFatigue(_selectedFatiguePeriod);
+  const usedExIds = new Set();
+  Object.values(cache).forEach(day => (day.exercises || []).forEach(entry => {
+    if (entry?.exerciseId) usedExIds.add(entry.exerciseId);
+  }));
+  const volumeExercises = _volumeExerciseOptions(usedExIds).slice(0, 12).map(opt => ({
+    id: opt.id,
+    name: opt.name,
+    muscleName: opt.muscleName,
+    latestDate: opt.latestDate,
+    recentHistory: opt.history.slice(-20).map(point => ({
+      date: point.date,
+      volume: Math.round(point.volume || 0),
+    })),
+  }));
+  const topFood = [...foodsByName.values()]
+    .sort((a, b) => (b.count - a.count) || (b.kcalTotal - a.kcalTotal) || a.name.localeCompare(b.name))[0] || null;
+  const dietTotal = okDays + ngDays;
+  const trainerFourWeeks = _analyzeTrainerWindow(_keyOffset(27), todayKey);
+
+  return {
+    schema: 'tomatofarm.trainerStats.v1',
+    exportedAt: new Date().toISOString(),
+    today: todayKey,
+    overall: {
+      year: ny,
+      totalRecordEntries: entries.length,
+      recordDays,
+      exerciseDays,
+      dietSuccess: {
+        okDays,
+        ngDays,
+        ratePct: dietTotal ? Math.round(okDays / dietTotal * 100) : null,
+      },
+      averageIntakeKcal: yearFoodKcalDays ? Math.round(yearFoodKcalTotal / yearFoodKcalDays) : null,
+      averageExerciseKcal: yearExerciseKcalDays ? Math.round(yearExerciseKcalTotal / yearExerciseKcalDays) : null,
+      topFood: topFood ? {
+        name: topFood.name,
+        count: topFood.count,
+        avgKcal: Math.round(topFood.kcalTotal / Math.max(topFood.count, 1)),
+      } : null,
+      topFoodDay,
+      topExerciseDay,
+    },
+    body: {
+      averageWeightKg: _avgFrom(checkins, c => _maybeNum(c.weight)),
+      averageBodyFatPct: _avgFrom(checkins, c => _maybeNum(c.bodyFatPct)),
+      averageSkeletalMuscleKg: _avgFrom(checkins, c => _firstNumber(c, SKELETAL_KEYS)),
+      averageFatMassKg: _avgFrom(checkins, _bodyFatMass),
+      monthlyWeightDeltaKg: monthWeightFirst !== null && monthWeightLast !== null ? monthWeightLast - monthWeightFirst : null,
+      monthCheckinCount: monthCheckins.length,
+    },
+    nutrition: {
+      sampledDays: macro.days,
+      averageCarbsG: macro.days ? macro.carbs / macro.days : null,
+      averageProteinG: macro.days ? macro.protein / macro.days : null,
+      averageFatG: macro.days ? macro.fat / macro.days : null,
+      averageSugarG: sugar.days ? sugar.total / sugar.days : null,
+      averageSodiumMg: sodium.days ? sodium.total / sodium.days : null,
+    },
+    healthChart: {
+      periodDays: _healthChartPeriod || 'all',
+      labels: health.labels,
+      visibleSeries: Object.keys(HEALTH_CHART_SERIES).filter(key => _healthSeriesVisible[key] !== false),
+      series: health.data,
+    },
+    muscleFatigue: {
+      period: fatigue.period.label,
+      trainingDays: fatigue.trainingDays,
+      totalSets: fatigue.totalSets,
+      totalVolume: fatigue.totalVolume,
+      top: fatigue.top ? { id: fatigue.top.id, label: fatigue.top.label, relativePct: fatigue.top.relativePct } : null,
+      underactive: fatigue.underactive.map(group => ({ id: group.id, label: group.label, hint: group.hint })),
+      groups: fatigue.groups.map(group => ({
+        id: group.id,
+        label: group.label,
+        tone: group.tone,
+        sets: group.sets,
+        volume: group.volume,
+        relativePct: group.relativePct,
+        days: group.days,
+        lastDate: group.lastDate,
+      })),
+    },
+    volume: {
+      selectedExerciseId: _selectedExerciseId,
+      exercises: volumeExercises,
+    },
+    trainerAnalysis: {
+      fourWeeks: trainerFourWeeks,
+    },
+  };
+}
+
+export function buildTrainerQuestStatsExportText() {
+  return JSON.stringify(buildTrainerQuestStatsExport(), null, 2);
+}
+
 function _bindStatsViewTabs(root = document) {
   _statsNodes(root, '.stats-view-btn').forEach(btn => {
     if (btn.dataset.bound === '1') return;

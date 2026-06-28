@@ -38,9 +38,19 @@ test('overall summary renderer replaces legacy aggregate renderers', () => {
   assert.doesNotMatch(statsJs, /_renderMonthlySummary\(\)/);
 });
 
+test('trainer quest stats export exposes JSON data for AI sharing', () => {
+  assert.match(statsJs, /export function buildTrainerQuestStatsExport\(\)/);
+  assert.match(statsJs, /schema: 'tomatofarm\.trainerStats\.v1'/);
+  assert.match(statsJs, /buildTrainerQuestStatsExportText/);
+  assert.match(statsJs, /JSON\.stringify\(buildTrainerQuestStatsExport\(\), null, 2\)/);
+  assert.match(statsJs, /healthChart/);
+  assert.match(statsJs, /muscleFatigue/);
+  assert.match(statsJs, /trainerAnalysis/);
+});
+
 test('compact summary styles are present and cache version is bumped', () => {
   assert.match(styleCss, /\.stats-summary-kpis/);
   assert.match(styleCss, /\.stats-summary-fact/);
   assert.match(styleCss, /\.stats-summary-kpi\.is-good/);
-  assert.match(swJs, /tomatofarm-v20260628z12-trainer-choice-grid/);
+  assert.match(swJs, /tomatofarm-v20260628z13-trainer-game-export/);
 });

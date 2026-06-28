@@ -4,12 +4,12 @@
 
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-28-trainer-quest-modal-seated-character.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-28-trainer-quest-modal-speech-bubble-review.md`
-- 현재 단계: `review complete — Trainer Quest Modal Speech Bubble Slice 2`
+- 리뷰 문서: `docs/ai/reviews/2026-06-28-trainer-quest-game-export-review.md`
+- 현재 단계: `review complete — Trainer Quest Modal Game Export Slice 5`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `트레이너 퀘스트 모달의 질문 문구를 트레이너 말풍선으로 옮기고, 캐릭터 stage 좌표를 낮춰 하얀 모달 상단에 더 명확히 걸터앉게 조정했다. Dashboard3 Pages는 커밋 cc38a2cb91ac와 cache tomatofarm-v20260628z10-trainer-speech-bubble을 반환한다.`
+- 마지막 완료: `전구 클릭 첫 화면을 게임 대화형 세로 선택지로 바꾸고, 트레이너 통계 화면에 JSON 공유/복사 아이콘을 추가했다. 전구 위치는 트레이너 머리 위로 보정했고 깜빡임은 2.4s로 늦췄다.`
 - 다음 액션: `없음.`
-- 차단 사유: `없음. 단, 배포 URL의 실제 트레이너 전구 클릭 UI flow는 현재 브라우저 세션이 로그인 전 상태라 홈 라이프존이 렌더되지 않아 not verified yet으로 남긴다.`
+- 차단 사유: `없음. 단, 인증된 실제 계정에서 홈 라이프존 트레이너 전구 클릭 및 공유/복사 UI flow는 수동 확인이 필요하다.`
 
 ## 직전 완료 요약
 

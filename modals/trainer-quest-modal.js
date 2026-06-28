@@ -28,28 +28,40 @@ export const MODAL_HTML = `
 
     <div class="trainer-quest-menu" data-trainer-quest-menu>
       <button type="button" class="trainer-quest-choice is-disabled" disabled>
-        <span class="trainer-quest-choice-dot is-quest" aria-hidden="true"></span>
-        <b>퀘스트</b>
-        <small>준비중</small>
+        <span class="trainer-quest-choice-caret" aria-hidden="true">›</span>
+        <span>퀘스트를 수락합니다(향후 구현예정)</span>
       </button>
       <button type="button" class="trainer-quest-choice" data-trainer-quest-action="stats">
-        <span class="trainer-quest-choice-dot is-stats" aria-hidden="true"></span>
-        <b>통계</b>
-        <small>운동 분석</small>
+        <span class="trainer-quest-choice-caret" aria-hidden="true">›</span>
+        <span>내 운동 통계 살펴보기</span>
       </button>
       <button type="button" class="trainer-quest-choice" data-trainer-quest-action="close">
-        <span class="trainer-quest-choice-dot is-close" aria-hidden="true"></span>
-        <b>닫기</b>
-        <small>나중에</small>
+        <span class="trainer-quest-choice-caret" aria-hidden="true">›</span>
+        <span>닫기</span>
       </button>
     </div>
 
     <div class="trainer-quest-stats" data-trainer-quest-stats hidden>
       <div class="trainer-quest-stats-head">
         <button type="button" class="trainer-quest-icon-btn" data-trainer-quest-back aria-label="목록으로 돌아가기">‹</button>
-        <div>
+        <div class="trainer-quest-stats-title">
           <span>기타</span>
           <h3>내 운동 통계</h3>
+        </div>
+        <div class="trainer-quest-export-actions" aria-label="통계 내보내기">
+          <button type="button" class="trainer-quest-icon-btn trainer-quest-export-btn" data-trainer-quest-export="share" aria-label="통계 JSON 공유하기" title="공유하기">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"></path>
+              <path d="M12 16V4"></path>
+              <path d="M7 9l5-5 5 5"></path>
+            </svg>
+          </button>
+          <button type="button" class="trainer-quest-icon-btn trainer-quest-export-btn" data-trainer-quest-export="copy" aria-label="통계 JSON 복사하기" title="복사하기">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <rect x="8" y="8" width="11" height="11" rx="2"></rect>
+              <path d="M5 15H4a1 1 0 0 1-1-1V5a2 2 0 0 1 2-2h9a1 1 0 0 1 1 1v1"></path>
+            </svg>
+          </button>
         </div>
       </div>
       <div class="trainer-quest-stats-root" data-trainer-quest-stats-root data-stats-root="trainer-quest"></div>
@@ -120,6 +132,59 @@ async function _showStats() {
   }
 }
 
+async function _trainerStatsExportText() {
+  const { buildTrainerQuestStatsExportText } = await import('../render-stats.js');
+  return buildTrainerQuestStatsExportText();
+}
+
+async function _writeStatsClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.select();
+  const ok = document.execCommand?.('copy');
+  textarea.remove();
+  if (!ok) throw new Error('clipboard unavailable');
+}
+
+async function _copyStatsExport() {
+  try {
+    const text = await _trainerStatsExportText();
+    await _writeStatsClipboard(text);
+    window.showToast?.('통계 JSON을 클립보드에 복사했어요', 2500, 'success');
+  } catch (error) {
+    console.warn('[trainer-quest] stats copy failed:', error);
+    window.showToast?.('통계 JSON 복사에 실패했어요', 2500, 'error');
+  }
+}
+
+async function _shareStatsExport() {
+  try {
+    const text = await _trainerStatsExportText();
+    const title = '토마토 키우기 운동 통계 JSON';
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text });
+        return;
+      } catch (error) {
+        if (error?.name === 'AbortError') return;
+      }
+    }
+    await _writeStatsClipboard(text);
+    window.showToast?.('공유를 지원하지 않아 JSON을 복사했어요', 3000, 'info');
+  } catch (error) {
+    console.warn('[trainer-quest] stats share failed:', error);
+    window.showToast?.('통계 JSON 공유에 실패했어요', 2500, 'error');
+  }
+}
+
 function _bindTrainerQuestModal() {
   const modal = _modal();
   if (!modal || modal.dataset.bound === '1') return;
@@ -132,6 +197,8 @@ function _bindTrainerQuestModal() {
   modal.querySelector('[data-trainer-quest-back]')?.addEventListener('click', _showMenu);
   modal.querySelector('[data-trainer-quest-action="stats"]')?.addEventListener('click', _showStats);
   modal.querySelector('[data-trainer-quest-action="close"]')?.addEventListener('click', closeTrainerQuestModal);
+  modal.querySelector('[data-trainer-quest-export="share"]')?.addEventListener('click', _shareStatsExport);
+  modal.querySelector('[data-trainer-quest-export="copy"]')?.addEventListener('click', _copyStatsExport);
 }
 
 export function openTrainerQuestModal() {

@@ -57,8 +57,8 @@ test('life zone NPC quest bubble has a stable clickable overlay style', () => {
   const css = readText('style.css');
 
   assert.match(css, /\.lz-npc-quest \{/);
-  assert.match(css, /left: calc\(1058 \/ 1672 \* 100%\)/);
-  assert.match(css, /top: calc\(760 \/ 1672 \* 100%\)/);
+  assert.match(css, /left: calc\(1118 \/ 1672 \* 100%\)/);
+  assert.match(css, /top: calc\(716 \/ 1672 \* 100%\)/);
   assert.match(css, /width: clamp\(52px, calc\(168 \/ 1672 \* 100%\), 76px\)/);
   assert.match(css, /display: flex/);
   assert.match(css, /min-height: 0/);
@@ -67,7 +67,7 @@ test('life zone NPC quest bubble has a stable clickable overlay style', () => {
   assert.match(css, /touch-action: manipulation/);
   assert.match(css, /\.lz-npc-quest:focus-visible/);
   assert.match(css, /\.lz-npc-bulb \{[\s\S]*width: 50%;[\s\S]*aspect-ratio: 192 \/ 150;[\s\S]*overflow: hidden;/);
-  assert.match(css, /\.lz-npc-bulb \{[\s\S]*animation: lz-npc-bulb-blink 1\.05s ease-in-out infinite;/);
+  assert.match(css, /\.lz-npc-bulb \{[\s\S]*animation: lz-npc-bulb-blink 2\.4s ease-in-out infinite;/);
   assert.match(css, /@keyframes lz-npc-bulb-blink/);
   assert.match(css, /drop-shadow\(0 0 8px rgba\(255, 226, 88, 0\.92\)\)/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*\.lz-npc-bulb,[\s\S]*animation: none;/);
@@ -115,7 +115,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260628z12-trainer-choice-grid/);
+  assert.match(sw, /tomatofarm-v20260628z13-trainer-game-export/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,

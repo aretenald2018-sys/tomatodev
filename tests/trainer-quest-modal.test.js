@@ -9,17 +9,15 @@ const statsJs = readFileSync('render-stats.js', 'utf8');
 const styleCss = readFileSync('style.css', 'utf8');
 const swJs = readFileSync('sw.js', 'utf8');
 
-test('trainer quest modal renders three square choice tiles with TDS actions', () => {
+test('trainer quest modal renders game-like dialogue choice boxes', () => {
   assert.match(modalJs, /id="trainer-quest-modal"/);
   assert.match(modalJs, /무엇을 도와드릴까요\?/);
   assert.match(modalJs, /trainer-quest-menu/);
   assert.match(modalJs, /trainer-quest-choice/);
-  assert.match(modalJs, /<b>퀘스트<\/b>/);
-  assert.match(modalJs, /<small>준비중<\/small>/);
-  assert.match(modalJs, /<b>통계<\/b>/);
-  assert.match(modalJs, /<small>운동 분석<\/small>/);
-  assert.match(modalJs, /<b>닫기<\/b>/);
-  assert.match(modalJs, /<small>나중에<\/small>/);
+  assert.match(modalJs, /퀘스트를 수락합니다\(향후 구현예정\)/);
+  assert.match(modalJs, /내 운동 통계 살펴보기/);
+  assert.match(modalJs, /<span>닫기<\/span>/);
+  assert.match(modalJs, /trainer-quest-choice-caret/);
   assert.match(modalJs, /data-trainer-quest-action="stats"/);
   assert.match(modalJs, /data-trainer-quest-action="close"/);
   assert.match(modalJs, /data-trainer-quest-character/);
@@ -33,7 +31,6 @@ test('trainer quest modal renders three square choice tiles with TDS actions', (
   assert.doesNotMatch(modalJs, /trainer-quest-row/);
   assert.doesNotMatch(modalJs, /완료가능한 퀘스트/);
   assert.doesNotMatch(modalJs, /업데이트 예정/);
-  assert.doesNotMatch(modalJs, /내 운동 통계 살펴보기/);
   assert.match(modalJs, /assets\/home\/life-zone\/ui\/trainer-quest-seated-trainer\.png/);
   assert.doesNotMatch(modalJs, /onclick=/);
   assert.match(modalJs, /openTrainerQuestModal/);
@@ -73,6 +70,19 @@ test('trainer quest stats render reuses stats tab data in a scoped modal root', 
   assert.match(statsJs, /const _healthMetricsCharts = new WeakMap\(\)/);
 });
 
+test('trainer quest stats can be shared or copied as JSON export data', () => {
+  assert.match(modalJs, /data-trainer-quest-export="share"/);
+  assert.match(modalJs, /data-trainer-quest-export="copy"/);
+  assert.match(modalJs, /navigator\.share/);
+  assert.match(modalJs, /navigator\.clipboard\?\.writeText/);
+  assert.match(modalJs, /buildTrainerQuestStatsExportText/);
+  assert.match(statsJs, /export function buildTrainerQuestStatsExport\(\)/);
+  assert.match(statsJs, /schema: 'tomatofarm\.trainerStats\.v1'/);
+  assert.match(statsJs, /healthChart/);
+  assert.match(statsJs, /muscleFatigue/);
+  assert.match(statsJs, /trainerAnalysis/);
+});
+
 test('trainer quest modal styles and runtime cache asset are registered', () => {
   assert.match(styleCss, /\.trainer-quest-sheet/);
   assert.match(styleCss, /\.trainer-quest-stage/);
@@ -85,13 +95,16 @@ test('trainer quest modal styles and runtime cache asset are registered', () => 
   assert.match(styleCss, /top:\s*clamp\(-250px,\s*-58vw,\s*-198px\)/);
   assert.match(styleCss, /padding:\s*clamp\(148px,\s*33vw,\s*184px\)/);
   assert.match(styleCss, /\.trainer-quest-menu/);
-  assert.match(styleCss, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(styleCss, /\.trainer-quest-choice/);
-  assert.match(styleCss, /\.trainer-quest-choice-dot/);
+  assert.match(styleCss, /rgba\(44, 58, 72, \.92\)/);
+  assert.match(styleCss, /border-radius:\s*4px/);
+  assert.match(styleCss, /\.trainer-quest-choice-caret/);
+  assert.match(styleCss, /\.trainer-quest-export-actions/);
+  assert.match(styleCss, /\.trainer-quest-export-btn svg/);
   assert.doesNotMatch(styleCss, /\.trainer-quest-section/);
   assert.doesNotMatch(styleCss, /\.trainer-quest-row-btn/);
   assert.match(styleCss, /\.trainer-quest-stats-root/);
-  assert.match(swJs, /tomatofarm-v20260628z12-trainer-choice-grid/);
+  assert.match(swJs, /tomatofarm-v20260628z13-trainer-game-export/);
   assert.match(swJs, /\.\/modals\/trainer-quest-modal\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/trainer-quest-seated-trainer\.png/);
 });

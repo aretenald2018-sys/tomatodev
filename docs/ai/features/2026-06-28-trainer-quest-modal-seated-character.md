@@ -154,3 +154,35 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=849`
 - PASS: `node --test @tests` — 581 tests passed
 - PASS: `git diff --check`
+
+## Slice 5 요청
+
+- 사용자 피드백: 홈 라이프존 트레이너 전구가 너무 빨리 깜빡이며, 트레이너 머리 위가 아니라 왼쪽 위에 떠 있는 느낌이다.
+- 사용자 요청: `기타 / 내 운동 통계` 행 오른쪽에 공유하기/복사하기 아이콘을 추가하고, 통계 데이터를 JSON으로 공유 앱 또는 클립보드에 내보낼 수 있게 한다.
+- 사용자 요청: 전구 클릭 첫 화면 선택지는 TDS 카드가 아니라 게임 대화 선택지처럼 보여야 하며, `퀘스트를 수락합니다(향후 구현예정)`, `내 운동 통계 살펴보기`, `닫기` 세 직사각형 선택 상자로 구성한다.
+
+## Slice 5 계획
+
+- `style.css`: `.lz-npc-quest` 좌표를 트레이너 머리 위로 보정하고 `.lz-npc-bulb` blink duration을 늦춘다.
+- `modals/trainer-quest-modal.js`: 첫 화면 선택지를 게임 대화형 문구로 교체하고, 통계 헤더 오른쪽에 공유/복사 아이콘 버튼을 추가하며, 버튼 클릭을 직접 바인딩한다.
+- `style.css`: 첫 화면 선택지를 어두운 반투명/불투명 직사각형 상자로 바꿔 첨부 이미지의 게임 선택지 느낌을 낸다.
+- `render-stats.js`: 트레이너 통계 화면에서 쓰는 집계값을 JSON export payload로 재사용 가능하게 만든다.
+- `tests/trainer-quest-modal.test.js`, `tests/home-life-zone-npc-quest.test.js`, `tests/stats-overall-compact-summary.test.js`: 버튼, export 함수, 전구 좌표/속도, cache version을 회귀 테스트한다.
+- `sw.js`: cache version bump.
+
+## Slice 5 구현 기록
+
+- `modals/trainer-quest-modal.js`: 전구 클릭 첫 화면 선택지를 `퀘스트를 수락합니다(향후 구현예정)`, `내 운동 통계 살펴보기`, `닫기` 세 개의 게임 대화형 선택 상자로 교체했다.
+- `modals/trainer-quest-modal.js`: 통계 화면 헤더 오른쪽에 공유/복사 아이콘 버튼을 추가했다. 공유는 Web Share API로 JSON 텍스트를 전달하고, 미지원 환경에서는 클립보드 복사로 fallback한다.
+- `render-stats.js`: 트레이너 통계 화면의 전체 요약, 체성분, 영양, 통합 건강 그래프, 근육 피로도, 볼륨 기록, 4주 트레이너 분석을 `tomatofarm.trainerStats.v1` JSON payload로 내보내는 export 함수를 추가했다.
+- `style.css`: 선택지를 어두운 반투명 직사각형 메뉴로 바꾸고, 전구 좌표를 트레이너 머리 위로 보정했으며 blink duration을 `2.4s`로 늦췄다.
+- `sw.js`: `CACHE_VERSION`을 `tomatofarm-v20260628z13-trainer-game-export`로 bump했다.
+- 테스트: 선택지 문구/스타일, 공유/복사 버튼, JSON export 함수, 전구 좌표/속도, cache marker 회귀 테스트를 갱신했다.
+
+## Slice 5 로컬 검증
+
+- PASS: `node --check modals/trainer-quest-modal.js; node --check render-stats.js; node --check sw.js`
+- PASS: `node --test tests/trainer-quest-modal.test.js tests/home-life-zone-npc-quest.test.js tests/stats-overall-compact-summary.test.js` — 16 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=850`
+- PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 583 tests passed
+- PASS: `git diff --check`
