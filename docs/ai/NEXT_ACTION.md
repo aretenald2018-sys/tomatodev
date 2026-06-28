@@ -26,7 +26,9 @@
   10. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=855`
   11. PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 591 tests passed
   12. PASS: `git diff --check`
-  13. not verified yet: 인증 계정이 없어 실제 홈탭 트레이너 모달 클릭 flow는 배포 페이지에서 직접 조작하지 못했다.
+  13. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 4113ac7` — `[deploy-verify] ok 4113ac78c443 tomatofarm-v20260629z6-trainer-glass-squircle static=226`
+  14. PASS: deployed marker fetch — `index.html`, `sw.js`, `modals/trainer-quest-modal.js`, `style.css` all returned HTTP 200 and contained the expected glass/squircle/typing markers.
+  15. not verified yet: 자동 브라우저가 배포 페이지 로딩 제한시간을 넘겨 실제 홈탭 트레이너 모달 클릭 flow는 직접 확인하지 못했다.
 
 - Running Save Detail Card Slice 1:
   1. 커밋: `e2e3955f42294edc4c6271ba8d3072710d04faec`
