@@ -30,7 +30,10 @@
 - PASS: `node --test @tests` — 580 tests passed
 - PASS: `git diff --check`
 - PASS: PNG alpha validation — `size=(1080, 1456)`, `mode=RGBA`, `alpha=(0, 255)`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ baf98b3` — `[deploy-verify] ok baf98b3b27d5 tomatofarm-v20260628z9-trainer-modal-seated-character static=223`
+- PASS: deployed markers — 새 cache version, `data-trainer-quest-character`, `trainer-quest-seated-trainer.png`, `.trainer-quest-seated-character`, SW PNG asset
+- PASS: PNG deployed asset — `HTTP 200`, `image/png`, `803246 bytes`
 
 ## 잔여 리스크
 
-- Dashboard3 Pages 배포 전에는 실제 배포 URL에서 모달 위치를 아직 확인하지 않았다. 커밋/푸시 후 deployed marker와 UI flow 확인이 필요하다.
+- not verified yet: Dashboard3 Pages 브라우저 세션이 로그인 전 상태라 홈 라이프존/트레이너 전구가 렌더되지 않았다. 인증 세션에서 `홈 -> 트레이너 전구` 클릭 시 실제 시각 위치 확인이 남아 있다.

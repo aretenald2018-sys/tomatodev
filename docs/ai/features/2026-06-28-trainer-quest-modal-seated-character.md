@@ -59,3 +59,10 @@
 - PASS: `node --test @tests` — 580 tests passed
 - PASS: `git diff --check`
 - PASS: PNG alpha validation — `size=(1080, 1456)`, `mode=RGBA`, `alpha=(0, 255)`
+
+## Dashboard3 Pages 검증
+
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ baf98b3` — `[deploy-verify] ok baf98b3b27d5 tomatofarm-v20260628z9-trainer-modal-seated-character static=223`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ ...` — `sw.js`, `modals/trainer-quest-modal.js`, `style.css`에서 새 cache, 새 이미지 경로, `.trainer-quest-seated-character` marker 확인
+- PASS: `curl.exe ... trainer-quest-seated-trainer.png?codex-bust=baf98b3` — `HTTP 200`, `image/png`, `803246 bytes`
+- not verified yet: 배포 페이지 브라우저 세션이 로그인 전 상태라 홈 라이프존/트레이너 전구가 렌더되지 않아 실제 클릭 UI flow는 확인하지 못했다.
