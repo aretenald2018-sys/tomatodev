@@ -4,10 +4,10 @@
 
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-28-trainer-quest-modal-seated-character.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-28-trainer-quest-modal-seated-character-review.md`
-- 현재 단계: `review complete — Trainer Quest Modal Seated Character Slice 1`
+- 리뷰 문서: `docs/ai/reviews/2026-06-28-trainer-quest-modal-speech-bubble-review.md`
+- 현재 단계: `review complete — Trainer Quest Modal Speech Bubble Slice 2`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `트레이너 퀘스트 모달 상단 경계에 걸터앉은 픽셀아트 트레이너 PNG를 추가하고, 시트 상단에 absolute 배치했다. Dashboard3 Pages는 커밋 baf98b3b27d5와 cache tomatofarm-v20260628z9-trainer-modal-seated-character를 반환한다.`
+- 마지막 완료: `트레이너 퀘스트 모달의 질문 문구를 트레이너 말풍선으로 옮기고, 캐릭터 stage 좌표를 낮춰 하얀 모달 상단에 더 명확히 걸터앉게 조정했다. Dashboard3 Pages는 커밋 cc38a2cb91ac와 cache tomatofarm-v20260628z10-trainer-speech-bubble을 반환한다.`
 - 다음 액션: `없음.`
 - 차단 사유: `없음. 단, 배포 URL의 실제 트레이너 전구 클릭 UI flow는 현재 브라우저 세션이 로그인 전 상태라 홈 라이프존이 렌더되지 않아 not verified yet으로 남긴다.`
 

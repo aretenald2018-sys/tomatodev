@@ -28,6 +28,9 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=849`
 - PASS: `node --test @tests` — 580 tests passed
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ cc38a2c` — `[deploy-verify] ok cc38a2cb91ac tomatofarm-v20260628z10-trainer-speech-bubble static=223`
+- PASS: deployed markers — 새 cache version, `trainer-quest-speech`, `trainer-quest-stage`, `무엇을 도와드릴까요?`, `.trainer-quest-speech::after`, 착석 좌표 CSS
+- PASS: PNG deployed asset — `HTTP 200`, `image/png`, `803246 bytes`
 
 ## 잔여 리스크
 
