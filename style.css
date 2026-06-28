@@ -6683,181 +6683,6 @@ body.wt-running-session-open {
   gap: 14px;
   padding: 16px 20px 14px;
 }
-.wt-run-home-track-stage {
-  position: relative;
-  isolation: isolate;
-  flex: 0 0 auto;
-  width: min(92vw, 440px);
-  height: clamp(148px, 32vh, 232px);
-  overflow: hidden;
-  border-radius: 24px;
-  background-image: url("./assets/home/life-zone/base-room-expanded-alpha.png");
-  background-size: 214% 214%;
-  background-position: 6% 63%;
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.48),
-    0 14px 28px rgba(83, 48, 13, 0.22);
-}
-.wt-run-home-track-stage::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background:
-    radial-gradient(circle at 50% 64%, rgba(255, 255, 255, 0.26), transparent 46%),
-    linear-gradient(180deg, rgba(255, 222, 46, 0.08), rgba(17, 17, 17, 0.10));
-  pointer-events: none;
-}
-.wt-run-home-track-map-bubble {
-  position: absolute;
-  left: 52%;
-  top: 10%;
-  z-index: 20;
-  width: clamp(128px, 42%, 188px);
-  aspect-ratio: 1.45;
-  overflow: visible;
-  border: 2px solid rgba(255, 255, 255, 0.88);
-  border-radius: 22px 22px 22px 8px;
-  background: #f8fbff;
-  box-shadow:
-    0 10px 20px rgba(15, 23, 42, 0.24),
-    inset 0 0 0 1px rgba(15, 23, 42, 0.06);
-  transform: translate(-50%, 0);
-}
-.wt-run-home-track-map-bubble::after {
-  content: "";
-  position: absolute;
-  left: 26%;
-  bottom: -9px;
-  width: 18px;
-  height: 18px;
-  border-right: 2px solid rgba(255, 255, 255, 0.88);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.88);
-  border-radius: 0 0 5px 0;
-  background: #f8fbff;
-  transform: rotate(45deg);
-}
-.wt-run-home-track-map-bubble .wt-run-real-map {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  border-radius: 20px 20px 20px 7px;
-  background: #e9eef3;
-}
-.wt-run-home-track-map-bubble .wt-run-map-canvas {
-  border-radius: inherit;
-}
-.wt-run-home-track-map-bubble .wt-run-map-status {
-  left: 8px;
-  right: 8px;
-  min-height: 30px;
-  padding: 5px 7px;
-  border-radius: 10px;
-  font-size: 9px;
-  line-height: 1.2;
-}
-.wt-run-home-track-map-bubble .wt-vworld-map {
-  cursor: default;
-}
-.wt-run-home-runner {
-  --runner-color: #ff525c;
-  --runner-trim: #ffe15a;
-  --runner-scale: 1;
-  position: absolute;
-  z-index: 12;
-  display: block;
-  width: 28px;
-  height: 44px;
-  filter: drop-shadow(0 4px 3px rgba(0, 0, 0, 0.34));
-  transform-origin: 50% 100%;
-  animation: wt-run-home-runner-lap 2.4s ease-in-out infinite;
-  pointer-events: none;
-}
-.wt-run-home-runner span {
-  position: absolute;
-  display: block;
-  pointer-events: none;
-}
-.wt-run-home-runner--lead {
-  left: 51%;
-  top: 57%;
-  z-index: 18;
-  --runner-color: #ff525c;
-  --runner-trim: #ffe15a;
-  --runner-scale: 1.08;
-}
-.wt-run-home-runner--second {
-  left: 34%;
-  top: 65%;
-  z-index: 15;
-  --runner-color: #52a6ff;
-  --runner-trim: #ffffff;
-  --runner-scale: 0.88;
-  animation-delay: -0.78s;
-  animation-duration: 2.72s;
-}
-.wt-run-home-runner--third {
-  left: 67%;
-  top: 70%;
-  z-index: 14;
-  --runner-color: #5ada7e;
-  --runner-trim: #1f2937;
-  --runner-scale: 0.82;
-  animation-delay: -1.34s;
-  animation-duration: 2.96s;
-}
-.wt-run-home-runner-head {
-  left: 50%;
-  top: 0;
-  width: 13px;
-  height: 13px;
-  border: 2px solid rgba(17, 24, 39, 0.62);
-  border-radius: 50%;
-  background: #f5c99a;
-  transform: translateX(-50%);
-}
-.wt-run-home-runner-body {
-  left: 50%;
-  top: 13px;
-  width: 15px;
-  height: 18px;
-  border: 2px solid rgba(17, 24, 39, 0.58);
-  border-radius: 8px 8px 6px 6px;
-  background: linear-gradient(160deg, var(--runner-trim), var(--runner-color) 42%, var(--runner-color));
-  transform: translateX(-50%) rotate(-2deg);
-}
-.wt-run-home-runner-arm,
-.wt-run-home-runner-leg {
-  left: 50%;
-  width: 4px;
-  border-radius: 999px;
-  background: #2b2f36;
-  transform-origin: 50% 0;
-}
-.wt-run-home-runner-arm {
-  top: 16px;
-  height: 17px;
-  animation: wt-run-home-runner-arm 0.42s ease-in-out infinite;
-}
-.wt-run-home-runner-arm--front {
-  transform: translateX(-8px) rotate(42deg);
-}
-.wt-run-home-runner-arm--back {
-  transform: translateX(6px) rotate(-38deg);
-  animation-delay: -0.21s;
-}
-.wt-run-home-runner-leg {
-  top: 30px;
-  height: 18px;
-  animation: wt-run-home-runner-leg 0.42s ease-in-out infinite;
-}
-.wt-run-home-runner-leg--front {
-  transform: translateX(-6px) rotate(-36deg);
-}
-.wt-run-home-runner-leg--back {
-  transform: translateX(5px) rotate(38deg);
-  animation-delay: -0.21s;
-}
 .wt-run-live-heart {
   display: grid;
   place-items: center;
@@ -6885,25 +6710,6 @@ body.wt-running-session-open {
   font-weight: 800;
   line-height: 1.35;
   text-align: center;
-}
-@keyframes wt-run-home-runner-lap {
-  0%, 100% {
-    transform: translate3d(-12px, 8px, 0) rotate(-7deg) scale(var(--runner-scale));
-  }
-  45% {
-    transform: translate3d(16px, -8px, 0) rotate(6deg) scale(var(--runner-scale));
-  }
-  72% {
-    transform: translate3d(5px, 3px, 0) rotate(2deg) scale(var(--runner-scale));
-  }
-}
-@keyframes wt-run-home-runner-arm {
-  0%, 100% { rotate: -18deg; }
-  50% { rotate: 34deg; }
-}
-@keyframes wt-run-home-runner-leg {
-  0%, 100% { rotate: 34deg; }
-  50% { rotate: -34deg; }
 }
 .wt-run-live-actions {
   flex: 0 0 auto;
@@ -7102,14 +6908,6 @@ body.wt-running-session-open {
   .wt-run-live-stats span {
     font-size: 16px;
   }
-  .wt-run-home-track-stage {
-    width: calc(100vw - 28px);
-    height: 142px;
-    border-radius: 18px;
-  }
-  .wt-run-home-track-map-bubble {
-    width: 122px;
-  }
   .wt-run-live-heart {
     min-height: 76px;
   }
@@ -7132,14 +6930,6 @@ body.wt-running-session-open {
     font-size: 19px;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .wt-run-home-runner,
-  .wt-run-home-runner-arm,
-  .wt-run-home-runner-leg {
-    animation: none;
-  }
-}
-
 /* ── 식단 탭 Seed 적용 ── */
 #tab-diet, #tab-diet * { font-family: var(--font-sans) !important; }
 #tab-diet .workout-date-nav { background: var(--seed-bg-layer); border-bottom: 1px solid var(--seed-stroke-neutral); padding: var(--seed-x3) var(--seed-x4); gap: var(--seed-x2); box-shadow: var(--seed-s1); }
@@ -7774,6 +7564,28 @@ body.wt-running-session-open {
   transform-origin: 50% 92%;
   animation: lz-workout-squat-rep 1.5s ease-in-out infinite;
 }
+.lz-actor--pose-running-track {
+  transform-origin: 50% 94%;
+  animation: lz-running-track-lap var(--lz-run-duration, 2.45s) ease-in-out infinite;
+  animation-delay: var(--lz-run-delay, 0s);
+}
+.lz-actor--pose-running-track .lz-actor-img {
+  display: none;
+}
+.lz-actor--pose-running-track::before {
+  content: "";
+  display: block;
+  width: 100%;
+  aspect-ratio: 128 / 192;
+  background-image: var(--lz-sprite-url);
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: 200% 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.32));
+  animation: lz-running-track-steps 0.42s steps(2, end) infinite;
+}
 @keyframes lz-workout-lat-pull {
   0%, 100% { opacity: 0.16; transform: translate(0, 0) rotate(0deg); }
   42% { opacity: 0.72; transform: translate(-1.2%, 2.8%) rotate(-0.8deg); }
@@ -7788,6 +7600,20 @@ body.wt-running-session-open {
   0%, 100% { transform: translateY(0) scaleY(1); }
   48% { transform: translateY(5px) scaleY(0.985); }
   76% { transform: translateY(-1px) scaleY(1.005); }
+}
+@keyframes lz-running-track-lap {
+  0%, 100% {
+    transform: translate3d(var(--lz-run-x0, -12px), var(--lz-run-y0, 8px), 0) rotate(-5deg);
+  }
+  48% {
+    transform: translate3d(var(--lz-run-x1, 16px), var(--lz-run-y1, -8px), 0) rotate(5deg);
+  }
+  74% {
+    transform: translate3d(2px, 2px, 0) rotate(1deg);
+  }
+}
+@keyframes lz-running-track-steps {
+  to { background-position: 100% 0; }
 }
 .lz-nameplate {
   position: absolute;
@@ -7870,6 +7696,84 @@ body.wt-running-session-open {
   outline: 2px solid rgba(59, 130, 246, 0.82);
   outline-offset: 3px;
   border-radius: 8px;
+}
+.lz-running-map-bubble {
+  position: absolute;
+  left: calc(var(--lz-map-x) / 1672 * 100%);
+  top: calc(var(--lz-map-y) / 1672 * 100%);
+  z-index: 130;
+  width: clamp(104px, calc(344 / 1672 * 100%), 152px);
+  aspect-ratio: 1.42;
+  overflow: visible;
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  border-radius: 17px 17px 17px 7px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.62) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(0deg, rgba(255, 255, 255, 0.68) 1px, transparent 1px) 0 0 / 24px 24px,
+    #edf4f1;
+  box-shadow:
+    0 7px 14px rgba(15, 23, 42, 0.22),
+    inset 0 0 0 1px rgba(15, 23, 42, 0.06);
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+}
+.lz-running-map-bubble::after {
+  content: "";
+  position: absolute;
+  left: var(--lz-map-tip-x, 50%);
+  bottom: -8px;
+  width: 16px;
+  height: 16px;
+  border-right: 2px solid rgba(255, 255, 255, 0.92);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.92);
+  border-radius: 0 0 4px 0;
+  background: #edf4f1;
+  transform: translateX(-50%) rotate(45deg);
+}
+.lz-running-map-bubble span {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+}
+.lz-running-map-road {
+  border-radius: 999px;
+  background: rgba(202, 193, 174, 0.64);
+  box-shadow: inset 0 0 0 1px rgba(148, 135, 111, 0.16);
+}
+.lz-running-map-road--main {
+  left: -10%;
+  top: 44%;
+  width: 122%;
+  height: 17%;
+  transform: rotate(-23deg);
+}
+.lz-running-map-road--cross {
+  left: 46%;
+  top: -12%;
+  width: 18%;
+  height: 124%;
+  transform: rotate(13deg);
+}
+.lz-running-map-route {
+  left: 21%;
+  top: 29%;
+  width: 58%;
+  height: 34%;
+  border: 3px solid color-mix(in srgb, var(--lz-actor-color, #52a6ff) 72%, #1e40af);
+  border-left-color: transparent;
+  border-bottom-color: transparent;
+  border-radius: 999px;
+  transform: rotate(9deg);
+}
+.lz-running-map-pin {
+  left: 53%;
+  top: 45%;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: var(--lz-actor-color, #52a6ff);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.22);
 }
 @keyframes lz-npc-bulb-blink {
   0%,
@@ -7954,7 +7858,9 @@ body.wt-running-session-open {
 @media (prefers-reduced-motion: reduce) {
   .lz-actor--pose-workout-lat::after,
   .lz-actor--pose-workout-bench,
-  .lz-actor--pose-workout-squat {
+  .lz-actor--pose-workout-squat,
+  .lz-actor--pose-running-track,
+  .lz-actor--pose-running-track::before {
     animation: none;
     transform: none;
   }

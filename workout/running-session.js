@@ -285,6 +285,20 @@ function _resetLiveSession() {
   });
 }
 
+function _publishRunningLiveState(active = false) {
+  const detail = {
+    active: !!active,
+    phase: _session.phase,
+    startedAt: _session.startedAt || null,
+    updatedAt: _now(),
+    pointCount: _session.route.length
+  };
+  if (typeof window !== 'undefined') window.__tomatoRunningLive = detail;
+  if (typeof document !== 'undefined' && typeof CustomEvent === 'function') {
+    document.dispatchEvent(new CustomEvent('life-zone:running-live', { detail }));
+  }
+}
+
 function _stopWatch() {
   if (_session.watchId != null && typeof navigator !== 'undefined' && navigator.geolocation?.clearWatch) {
     navigator.geolocation.clearWatch(_session.watchId);
@@ -372,6 +386,7 @@ function _startRun() {
   _session.pausedMs = 0;
   _startWatch();
   _startTicker();
+  _publishRunningLiveState(true);
   _render();
 }
 
@@ -380,6 +395,7 @@ function _pauseRun() {
   _session.phase = 'paused';
   _session.pausedAt = _now();
   _stopWatch();
+  _publishRunningLiveState(true);
   _render();
 }
 
@@ -389,6 +405,7 @@ function _resumeRun() {
   _session.phase = 'active';
   _session.pausedAt = null;
   _startWatch();
+  _publishRunningLiveState(true);
   _render();
 }
 
@@ -403,6 +420,7 @@ function _finishRun() {
   _stopWatch();
   _stopTicker();
   _syncWorkoutRunData(_currentSummary());
+  _publishRunningLiveState(false);
   _render();
 }
 
@@ -438,10 +456,6 @@ async function _shareSummary() {
 }
 
 function _mapPointsFor(kind) {
-  if (kind === 'progress-bubble') {
-    if (_session.route.length) return _session.route;
-    return _session.previewPoint ? [_session.previewPoint] : [];
-  }
   if (kind === 'summary') {
     if (_session.route.length) return _session.route;
     return _session.previewPoint ? [_session.previewPoint] : [];
@@ -494,40 +508,6 @@ function _renderStart() {
   `;
 }
 
-function _renderLiveTrackStage() {
-  return `
-    <section class="wt-run-home-track-stage" aria-label="홈 트랙 러닝">
-      <div class="wt-run-home-track-map-bubble" aria-label="러닝 지도 캡쳐">
-        ${_renderRealMapShell('progress-bubble', '달리는 중인 지도')}
-      </div>
-      <span class="wt-run-home-runner wt-run-home-runner--lead" aria-hidden="true">
-        <span class="wt-run-home-runner-head"></span>
-        <span class="wt-run-home-runner-body"></span>
-        <span class="wt-run-home-runner-arm wt-run-home-runner-arm--front"></span>
-        <span class="wt-run-home-runner-arm wt-run-home-runner-arm--back"></span>
-        <span class="wt-run-home-runner-leg wt-run-home-runner-leg--front"></span>
-        <span class="wt-run-home-runner-leg wt-run-home-runner-leg--back"></span>
-      </span>
-      <span class="wt-run-home-runner wt-run-home-runner--second" aria-hidden="true">
-        <span class="wt-run-home-runner-head"></span>
-        <span class="wt-run-home-runner-body"></span>
-        <span class="wt-run-home-runner-arm wt-run-home-runner-arm--front"></span>
-        <span class="wt-run-home-runner-arm wt-run-home-runner-arm--back"></span>
-        <span class="wt-run-home-runner-leg wt-run-home-runner-leg--front"></span>
-        <span class="wt-run-home-runner-leg wt-run-home-runner-leg--back"></span>
-      </span>
-      <span class="wt-run-home-runner wt-run-home-runner--third" aria-hidden="true">
-        <span class="wt-run-home-runner-head"></span>
-        <span class="wt-run-home-runner-body"></span>
-        <span class="wt-run-home-runner-arm wt-run-home-runner-arm--front"></span>
-        <span class="wt-run-home-runner-arm wt-run-home-runner-arm--back"></span>
-        <span class="wt-run-home-runner-leg wt-run-home-runner-leg--front"></span>
-        <span class="wt-run-home-runner-leg wt-run-home-runner-leg--back"></span>
-      </span>
-    </section>
-  `;
-}
-
 function _renderProgress() {
   const summary = _currentSummary();
   const elapsed = _elapsedSec();
@@ -542,7 +522,6 @@ function _renderProgress() {
         <div><b>${formatRunningDuration(elapsed)}</b><span>시간</span></div>
       </div>
       <main class="wt-run-live-main">
-        ${_renderLiveTrackStage()}
         <div class="wt-run-live-heart">
           <strong>--</strong>
           <span>분당 심박수</span>
@@ -661,6 +640,7 @@ export function wtCloseRunningSession() {
   if (root) destroyRunningMaps(root);
   _resetLiveSession();
   _session.open = false;
+  _publishRunningLiveState(false);
   if (root) {
     root.classList.remove('is-open');
     root.hidden = true;

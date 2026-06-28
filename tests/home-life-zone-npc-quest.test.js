@@ -111,11 +111,54 @@ test('life zone workout poses use scoped motion with reduced motion fallback', (
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*\.lz-actor--pose-workout-lat::after,[\s\S]*\.lz-actor--pose-workout-bench,[\s\S]*\.lz-actor--pose-workout-squat[\s\S]*animation: none;[\s\S]*transform: none;/);
 });
 
+test('life zone running actors render track sprites and a map capture bubble on home', () => {
+  const source = readText('home/life-zone.js');
+  const css = readText('style.css');
+  const sw = readText('sw.js');
+  const generator = readText('scripts/make-life-zone-running-sprites.py');
+  const sprites = [
+    'jups-running-track.png',
+    'moonjung-tomato-running-track.png',
+    'lee-jaeheon-running-track.png'
+  ];
+
+  assert.match(source, /window\.__tomatoRunningLive/);
+  assert.match(source, /lifeZoneRunningLive/);
+  assert.match(source, /function _renderRunningMapBubble/);
+  assert.match(source, /bubble\.dataset\.lzRunningMapBubble = '1'/);
+  assert.match(source, /actor\.state === 'running'/);
+  assert.match(source, /selfRunning \? actor\.source === 'self' : !runningBubbleRendered/);
+  assert.match(generator, /"source": "jups-office-center\.png"/);
+  assert.match(generator, /"source": "moonjung-tomato-office-center\.png"/);
+  assert.match(generator, /"source": "lee-jaeheon-office-center\.png"/);
+
+  assert.match(css, /\.lz-actor--pose-running-track \{/);
+  assert.match(css, /\.lz-actor--pose-running-track::before \{/);
+  assert.match(css, /aspect-ratio: 128 \/ 192/);
+  assert.match(css, /background-size: 200% 100%/);
+  assert.match(css, /animation: lz-running-track-steps 0\.42s steps\(2, end\) infinite/);
+  assert.match(css, /@keyframes lz-running-track-lap/);
+  assert.match(css, /@keyframes lz-running-track-steps/);
+  assert.match(css, /\.lz-running-map-bubble \{/);
+  assert.match(css, /width: clamp\(104px, calc\(344 \/ 1672 \* 100%\), 152px\)/);
+  assert.match(css, /\.lz-running-map-route/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*\.lz-actor--pose-running-track,[\s\S]*\.lz-actor--pose-running-track::before[\s\S]*animation: none;/);
+
+  for (const sprite of sprites) {
+    assert.match(sw, new RegExp(`\\.\\/assets\\/home\\/life-zone\\/sprites\\/${sprite.replace('.', '\\.')}`));
+    assert.deepEqual(readPngHeader(`assets/home/life-zone/sprites/${sprite}`), {
+      width: 256,
+      height: 192,
+      colorType: 6
+    });
+  }
+});
+
 test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () => {
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260629z1-running-home-track-live/);
+  assert.match(sw, /tomatofarm-v20260629z2-home-running-track-actors/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,

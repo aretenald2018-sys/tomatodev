@@ -25,6 +25,65 @@ export const LIFE_ZONE_ACTORS = [
 ];
 
 export const LIFE_ZONE_SLOTS = {
+  running: [
+    {
+      id: 'track-upper',
+      pose: 'running-track',
+      label: '러닝',
+      x: 510,
+      y: 894,
+      width: 94,
+      z: 84,
+      labelY: 866,
+      bubbleX: 562,
+      bubbleY: 770,
+      mapTipX: 35,
+      runDelay: '0s',
+      runDuration: '2.22s',
+      runX0: '-14px',
+      runY0: '10px',
+      runX1: '18px',
+      runY1: '-10px'
+    },
+    {
+      id: 'track-left',
+      pose: 'running-track',
+      label: '러닝',
+      x: 346,
+      y: 1012,
+      width: 90,
+      z: 90,
+      labelY: 984,
+      bubbleX: 392,
+      bubbleY: 890,
+      mapTipX: 52,
+      runDelay: '-0.64s',
+      runDuration: '2.48s',
+      runX0: '16px',
+      runY0: '-8px',
+      runX1: '-18px',
+      runY1: '9px'
+    },
+    {
+      id: 'track-right',
+      pose: 'running-track',
+      label: '러닝',
+      x: 720,
+      y: 1030,
+      width: 88,
+      z: 96,
+      labelY: 1002,
+      bubbleX: 760,
+      bubbleY: 908,
+      mapTipX: 48,
+      runDelay: '-1.18s',
+      runDuration: '2.7s',
+      runX0: '-12px',
+      runY0: '8px',
+      runX1: '16px',
+      runY1: '-7px'
+    }
+  ],
   workout: [
     { id: 'lat', pose: 'workout-lat', label: '랫풀다운', x: 246, y: 260, width: 238, z: 30 },
     { id: 'bench', pose: 'workout-bench', label: '벤치프레스', x: 70, y: 540, width: 260, z: 42 },
@@ -170,6 +229,19 @@ export function hasLifeZoneWorkoutActivity(dayData = null) {
   return (dayData.stretchDuration || 0) > 0;
 }
 
+export function hasLifeZoneRunningActivity(dayData = null) {
+  if (!dayData) return false;
+  const runData = dayData.runData || {};
+  if (dayData.lifeZoneRunningLive || dayData.runLiveActive) return true;
+  if (dayData.running === true || runData.running === true) return true;
+  if ((Number(dayData.runDistance) || 0) > 0 || (Number(dayData.runDurationMin) || 0) > 0 || (Number(dayData.runDurationSec) || 0) > 0) return true;
+  if ((Number(runData.distance) || 0) > 0 || (Number(runData.durationMin) || 0) > 0 || (Number(runData.durationSec) || 0) > 0) return true;
+  if (Array.isArray(dayData.runRoute) && dayData.runRoute.length > 0) return true;
+  if (Array.isArray(runData.route) && runData.route.length > 0) return true;
+  if ((Number(dayData.runRouteSummary?.pointCount) || 0) > 0 || (Number(runData.routeSummary?.pointCount) || 0) > 0) return true;
+  return !!(dayData.runStartedAt && !dayData.runEndedAt);
+}
+
 export function hasLifeZoneDietActivity(dayData = null) {
   if (!dayData) return false;
   if (dayData.breakfast || dayData.lunch || dayData.dinner || dayData.snack) return true;
@@ -180,6 +252,7 @@ export function hasLifeZoneDietActivity(dayData = null) {
 }
 
 export function resolveLifeZoneActivity(dayData = null) {
+  if (hasLifeZoneRunningActivity(dayData)) return 'running';
   const snapshotState = resolveLifeZoneActivitySnapshot(dayData);
   if (snapshotState) return snapshotState;
   if (hasLifeZoneWorkoutActivity(dayData)) return 'workout';
@@ -196,13 +269,16 @@ function lifeZoneSnapshotTime(snapshot = null) {
 }
 
 function isValidLifeZoneSnapshotState(dayData, state) {
+  if (state === 'running') return hasLifeZoneRunningActivity(dayData);
   if (state === 'workout') return hasLifeZoneWorkoutActivity(dayData);
   if (state === 'diet') return hasLifeZoneDietActivity(dayData);
   return false;
 }
 
 function normalizeLifeZoneSnapshot(snapshot = null) {
-  const state = snapshot?.state === 'diet' || snapshot?.type === 'diet'
+  const state = snapshot?.state === 'running' || snapshot?.type === 'running'
+    ? 'running'
+    : snapshot?.state === 'diet' || snapshot?.type === 'diet'
     ? 'diet'
     : snapshot?.state === 'workout' || snapshot?.type === 'workout'
       ? 'workout'
@@ -321,14 +397,19 @@ export function getLifeZoneDietSpeech(dayData = null) {
   return '식단냠냠';
 }
 
+export function getLifeZoneRunningSpeech(dayData = null) {
+  return hasLifeZoneRunningActivity(dayData) ? '러닝중' : '';
+}
+
 export function getLifeZoneSpeech(dayData = null, state = resolveLifeZoneActivity(dayData)) {
+  if (state === 'running') return getLifeZoneRunningSpeech(dayData);
   if (state === 'workout') return getLifeZoneWorkoutSpeech(dayData);
   if (state === 'diet') return getLifeZoneDietSpeech(dayData);
   return '다른 일 하는중';
 }
 
 export function assignLifeZoneSlots(actorStates = [], slots = LIFE_ZONE_SLOTS) {
-  const counters = { workout: 0, diet: 0, office: 0 };
+  const counters = { running: 0, workout: 0, diet: 0, office: 0 };
   return actorStates.map((actor) => {
     const state = slots[actor.state] ? actor.state : 'office';
     const zoneSlots = slots[state] || slots.office;

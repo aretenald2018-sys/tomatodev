@@ -183,6 +183,15 @@ function _bindTrainerQuestEvent() {
   });
 }
 
+let _runningLiveEventBound = false;
+function _bindRunningLiveEvent() {
+  if (_runningLiveEventBound) return;
+  _runningLiveEventBound = true;
+  document.addEventListener('life-zone:running-live', () => {
+    if (_currentTab === 'home') renderHome();
+  });
+}
+
 // ── 탭 전환 ──────────────────────────────────────────────────────
 let _currentTab = 'home';
 window._getCurrentTab = () => _currentTab;
@@ -680,6 +689,7 @@ function _initDietInputButtons() {
 
 
 _bindTrainerQuestEvent();
+_bindRunningLiveEvent();
 init();
 _initDietInputButtons();
 

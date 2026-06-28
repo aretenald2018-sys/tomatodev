@@ -5,11 +5,14 @@ import {
   assignLifeZoneSlots,
   getLifeZoneDietSpeech,
   getLifeZoneOwnerIdCandidates,
+  getLifeZoneRunningSpeech,
   getLifeZoneSpeech,
   getLifeZoneWorkoutSpeech,
   hasLifeZoneDietActivity,
+  hasLifeZoneRunningActivity,
   hasLifeZoneWorkoutActivity,
   normalizeLifeZoneName,
+  resolveLifeZoneActivity,
   resolveLifeZoneActors,
   resolveLifeZoneRoster
 } from '../home/life-zone-state.js';
@@ -62,6 +65,18 @@ test('detects workout and diet activities from workout day documents', () => {
   assert.equal(hasLifeZoneDietActivity({ sKcal: 120 }), true);
 });
 
+test('detects running activity and gives it home track priority', () => {
+  assert.equal(hasLifeZoneRunningActivity({ running: true }), true);
+  assert.equal(hasLifeZoneRunningActivity({ runData: { route: [{ lat: 37.1, lng: 127.1 }] } }), true);
+  assert.equal(hasLifeZoneRunningActivity({ runLiveActive: true }), true);
+  assert.equal(resolveLifeZoneActivity({
+    running: true,
+    exercises: [{ sets: [{ done: true }] }],
+    lKcal: 620
+  }), 'running');
+  assert.equal(getLifeZoneRunningSpeech({ running: true }), '러닝중');
+});
+
 test('builds life zone workout speech with large muscles only', () => {
   assert.equal(getLifeZoneWorkoutSpeech({
     exercises: [
@@ -101,6 +116,22 @@ test('assigns separate slots for three actors in the same state', () => {
   ]);
 });
 
+test('assigns running actors to existing home track slots and running sprite sheets', () => {
+  const assigned = assignLifeZoneSlots([
+    { id: 'a', spritePrefix: 'jups', state: 'running' },
+    { id: 'b', spritePrefix: 'moonjung-tomato', state: 'running' },
+    { id: 'c', spritePrefix: 'lee-jaeheon', state: 'running' }
+  ]);
+
+  assert.deepEqual(assigned.map((actor) => actor.slot.id), ['track-upper', 'track-left', 'track-right']);
+  assert.deepEqual(assigned.map((actor) => actor.sprite), [
+    'jups-running-track.png',
+    'moonjung-tomato-running-track.png',
+    'lee-jaeheon-running-track.png'
+  ]);
+  assert.ok(assigned.every((actor) => actor.slot.pose === 'running-track'));
+});
+
 test('resolves activity priority and slot distribution from account days', () => {
   const actors = resolveLifeZoneActors({
     accounts: [
@@ -134,6 +165,22 @@ test('treats duration-only workout as workout state in life zone', () => {
   assert.equal(actors[0].displayName, '줍스');
   assert.equal(actors[0].state, 'workout');
   assert.equal(actors[0].speech, '오늘 운동 완료');
+});
+
+test('treats live running as the home track running state', () => {
+  const actors = resolveLifeZoneActors({
+    accounts: [{ id: 'u1', resolvedNickname: '줍스' }],
+    currentUser: { id: 'u1' },
+    dayByAccountId: {
+      u1: { runLiveActive: true, exercises: [{ sets: [{ done: true }] }] }
+    }
+  });
+
+  assert.equal(actors[0].displayName, '줍스');
+  assert.equal(actors[0].state, 'running');
+  assert.equal(actors[0].slot.id, 'track-upper');
+  assert.equal(actors[0].sprite, 'jups-running-track.png');
+  assert.equal(actors[0].speech, '러닝중');
 });
 
 test('treats diet-only Jups record as diet state in life zone', () => {

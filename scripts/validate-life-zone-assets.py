@@ -38,8 +38,14 @@ def main():
         raise AssertionError(f"Base refined outline looks too weak: {outline_pixels} pixels")
 
     sprites = sorted(SPRITE_ROOT.glob("*.png"))
-    if len(sprites) != 27:
-        raise AssertionError(f"Expected 27 actor sprites, found {len(sprites)}")
+    expected_poses = {
+        slot["pose"]
+        for state_slots in manifest["stateSlots"].values()
+        for slot in state_slots
+    }
+    expected_sprite_count = len(manifest["actors"]) * len(expected_poses)
+    if len(sprites) != expected_sprite_count:
+        raise AssertionError(f"Expected {expected_sprite_count} actor sprites, found {len(sprites)}")
 
     for actor in manifest["actors"]:
         for state_slots in manifest["stateSlots"].values():

@@ -28,6 +28,47 @@
     }
   ],
   "stateSlots": {
+    "running": [
+      {
+        "id": "track-upper",
+        "pose": "running-track",
+        "label": "러닝",
+        "x": 510,
+        "y": 894,
+        "width": 94,
+        "z": 84,
+        "labelY": 866,
+        "bubbleX": 562,
+        "bubbleY": 770,
+        "mapTipX": 35
+      },
+      {
+        "id": "track-left",
+        "pose": "running-track",
+        "label": "러닝",
+        "x": 346,
+        "y": 1012,
+        "width": 90,
+        "z": 90,
+        "labelY": 984,
+        "bubbleX": 392,
+        "bubbleY": 890,
+        "mapTipX": 52
+      },
+      {
+        "id": "track-right",
+        "pose": "running-track",
+        "label": "러닝",
+        "x": 720,
+        "y": 1030,
+        "width": 88,
+        "z": 96,
+        "labelY": 1002,
+        "bubbleX": 760,
+        "bubbleY": 908,
+        "mapTipX": 48
+      }
+    ],
     "workout": [
       {
         "id": "lat",

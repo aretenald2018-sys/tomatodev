@@ -25,6 +25,7 @@ const LIFE_ZONE_CACHE_MS = 0;
 let _actorStateCache = null;
 
 const STATE_LABELS = {
+  running: '러닝',
   workout: '운동',
   diet: '식사',
   office: '업무'
@@ -52,6 +53,23 @@ function _enrichAccounts(accounts = []) {
 function _mergeCurrentUser(accounts = [], currentUser = null) {
   if (!currentUser?.id || accounts.some((account) => account.id === currentUser.id)) return accounts;
   return [...accounts, { ...currentUser, resolvedNickname: _safeResolveNickname(currentUser, accounts) }];
+}
+
+function _readRunningLiveState() {
+  if (typeof window === 'undefined') return null;
+  const live = window.__tomatoRunningLive;
+  return live?.active ? live : null;
+}
+
+function _withRunningLiveDay(dayData = {}, live = null) {
+  if (!live?.active) return dayData || {};
+  return {
+    ...(dayData || {}),
+    running: true,
+    runLiveActive: true,
+    lifeZoneRunningLive: true,
+    runStartedAt: live.startedAt || dayData?.runStartedAt || Date.now()
+  };
 }
 
 async function _readFriendLifeZoneDay(actor, todayKey) {
@@ -87,6 +105,12 @@ function _applyActorSlotPosition(element, slot) {
   element.style.setProperty('--lz-y', slot.y);
   element.style.setProperty('--lz-w', slot.width);
   element.style.setProperty('--lz-z', slot.z);
+  if (slot.runDelay) element.style.setProperty('--lz-run-delay', slot.runDelay);
+  if (slot.runDuration) element.style.setProperty('--lz-run-duration', slot.runDuration);
+  if (slot.runX0) element.style.setProperty('--lz-run-x0', slot.runX0);
+  if (slot.runY0) element.style.setProperty('--lz-run-y0', slot.runY0);
+  if (slot.runX1) element.style.setProperty('--lz-run-x1', slot.runX1);
+  if (slot.runY1) element.style.setProperty('--lz-run-y1', slot.runY1);
 }
 
 function _applyActorNameplatePosition(element, slot) {
@@ -98,10 +122,34 @@ function _applyActorNameplatePosition(element, slot) {
   element.style.setProperty('--lz-name-z', z);
 }
 
+function _renderRunningMapBubble(layer, actor, slot) {
+  const bubble = document.createElement('div');
+  const x = Number(slot.bubbleX) || Number(slot.x) + Number(slot.width) * 0.5;
+  const y = Number(slot.bubbleY) || Math.max(36, Number(slot.y) - 88);
+  const tipX = Number(slot.mapTipX) || 50;
+  bubble.className = 'lz-running-map-bubble';
+  bubble.setAttribute('aria-label', `${actor.displayName} 러닝 지도`);
+  bubble.dataset.lzRunningMapBubble = '1';
+  bubble.style.setProperty('--lz-map-x', x);
+  bubble.style.setProperty('--lz-map-y', y);
+  bubble.style.setProperty('--lz-map-tip-x', `${tipX}%`);
+  bubble.style.setProperty('--lz-actor-color', actor.color || '#94a3b8');
+  bubble.style.zIndex = String((Number(slot.z) || 1) + 30);
+  bubble.innerHTML = `
+    <span class="lz-running-map-road lz-running-map-road--main"></span>
+    <span class="lz-running-map-road lz-running-map-road--cross"></span>
+    <span class="lz-running-map-route"></span>
+    <span class="lz-running-map-pin"></span>
+  `;
+  layer.append(bubble);
+}
+
 function _renderActors(card, actors) {
   const layer = card.querySelector('[data-lz-actors]');
   if (!layer) return;
   layer.textContent = '';
+  const selfRunning = actors.some((actor) => actor.state === 'running' && actor.source === 'self');
+  let runningBubbleRendered = false;
 
   actors.forEach((actor) => {
     const slot = actor.slot;
@@ -127,6 +175,15 @@ function _renderActors(card, actors) {
     nameplate.textContent = actor.displayName;
     _applyActorNameplatePosition(nameplate, slot);
     layer.append(nameplate);
+
+    if (actor.state === 'running') {
+      const shouldShowMap = selfRunning ? actor.source === 'self' : !runningBubbleRendered;
+      if (shouldShowMap) {
+        _renderRunningMapBubble(layer, actor, slot);
+        runningBubbleRendered = true;
+      }
+      return;
+    }
 
     if (actor.speech) {
       const bubble = document.createElement('div');
@@ -164,7 +221,9 @@ function _renderStatus(card, actors, isLoaded = false) {
 async function _loadLifeZoneActorStates() {
   const todayKey = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
   const currentUser = getCurrentUser();
-  const cacheKey = `${todayKey}:${currentUser?.id || 'none'}`;
+  const liveRunning = _readRunningLiveState();
+  const liveKey = liveRunning ? `running:${liveRunning.startedAt || 'active'}` : 'idle';
+  const cacheKey = `${todayKey}:${currentUser?.id || 'none'}:${liveKey}`;
 
   if (LIFE_ZONE_CACHE_MS > 0 && _actorStateCache && _actorStateCache.key === cacheKey && Date.now() - _actorStateCache.at < LIFE_ZONE_CACHE_MS) {
     return _actorStateCache.actors;
@@ -182,7 +241,7 @@ async function _loadLifeZoneActorStates() {
   const dayByAccountId = {};
   const selfActorIds = new Set(roster.filter((actor) => actor.source === 'self' && actor.accountId).map((actor) => actor.accountId));
   selfActorIds.forEach((accountId) => {
-    dayByAccountId[accountId] = getDay(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate()) || {};
+    dayByAccountId[accountId] = _withRunningLiveDay(getDay(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate()) || {}, liveRunning);
   });
 
   const friendActors = roster.filter((actor) => actor.source === 'friend' && actor.accountId);
