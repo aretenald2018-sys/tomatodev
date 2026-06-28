@@ -416,18 +416,58 @@
 .trainer-quest-sheet {
   position: relative;
   max-width: 560px;
-  padding: clamp(110px, 23vw, 142px) 16px 18px;
+  padding: clamp(150px, 32vw, 196px) 16px 18px;
   background: var(--surface);
   overflow: visible;
 }
 .trainer-quest-sheet > .sheet-handle {
   display: none;
 }
+.trainer-quest-stage {
+  position: absolute;
+  left: 50%;
+  top: clamp(-250px, -58vw, -198px);
+  z-index: 4;
+  width: min(100%, 430px);
+  height: clamp(272px, 70vw, 390px);
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+.trainer-quest-speech {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  max-width: min(78vw, 312px);
+  margin: 0;
+  padding: 10px 16px;
+  border: 1px solid color-mix(in srgb, var(--primary) 16%, var(--border));
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 10px 24px rgba(17, 24, 39, .18);
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 24px;
+  text-align: center;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.trainer-quest-speech::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 14px;
+  height: 14px;
+  border-right: 1px solid color-mix(in srgb, var(--primary) 16%, var(--border));
+  border-bottom: 1px solid color-mix(in srgb, var(--primary) 16%, var(--border));
+  background: var(--surface);
+  transform: translateX(-50%) rotate(45deg);
+}
 .trainer-quest-seated-character {
   position: absolute;
   left: 50%;
-  top: clamp(-236px, -54vw, -180px);
-  z-index: 2;
+  top: clamp(52px, 11vw, 66px);
   width: clamp(190px, 55vw, 270px);
   pointer-events: none;
   transform: translateX(-50%);
@@ -472,7 +512,6 @@
   font-size: 12px;
   font-weight: 800;
 }
-.trainer-quest-head-copy h2,
 .trainer-quest-stats-head h3 {
   margin: 0;
   color: var(--text);

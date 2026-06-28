@@ -6,8 +6,11 @@ export const MODAL_HTML = `
 <div class="modal-backdrop trainer-quest-modal" id="trainer-quest-modal" aria-hidden="true">
   <div class="modal-sheet trainer-quest-sheet" role="dialog" aria-modal="true" aria-labelledby="trainer-quest-title">
     <div class="sheet-handle"></div>
-    <div class="trainer-quest-seated-character" data-trainer-quest-character aria-hidden="true">
-      <img src="./assets/home/life-zone/ui/trainer-quest-seated-trainer.png" alt="" loading="eager" decoding="async">
+    <div class="trainer-quest-stage" data-trainer-quest-character>
+      <h2 class="trainer-quest-speech" id="trainer-quest-title">무엇을 도와드릴까요?</h2>
+      <div class="trainer-quest-seated-character" aria-hidden="true">
+        <img src="./assets/home/life-zone/ui/trainer-quest-seated-trainer.png" alt="" loading="eager" decoding="async">
+      </div>
     </div>
     <div class="trainer-quest-head">
       <div class="trainer-quest-portrait" aria-hidden="true">
@@ -15,7 +18,6 @@ export const MODAL_HTML = `
       </div>
       <div class="trainer-quest-head-copy">
         <span>트레이너</span>
-        <h2 id="trainer-quest-title">무엇을 도와드릴까요?</h2>
       </div>
       <button type="button" class="trainer-quest-icon-btn" data-trainer-quest-close aria-label="닫기">×</button>
     </div>

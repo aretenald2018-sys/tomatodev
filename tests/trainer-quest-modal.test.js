@@ -18,6 +18,8 @@ test('trainer quest modal renders Maple-like sections with TDS actions', () => {
   assert.match(modalJs, /내 운동 통계 살펴보기/);
   assert.match(modalJs, /data-trainer-quest-action="stats"/);
   assert.match(modalJs, /data-trainer-quest-character/);
+  assert.match(modalJs, /class="trainer-quest-speech" id="trainer-quest-title">무엇을 도와드릴까요\?<\/h2>/);
+  assert.doesNotMatch(modalJs, /trainer-quest-head-copy[\s\S]{0,180}무엇을 도와드릴까요/);
   assert.match(modalJs, /assets\/home\/life-zone\/ui\/trainer-quest-seated-trainer\.png/);
   assert.doesNotMatch(modalJs, /onclick=/);
   assert.match(modalJs, /openTrainerQuestModal/);
@@ -48,12 +50,15 @@ test('trainer quest stats render reuses stats tab data in a scoped modal root', 
 
 test('trainer quest modal styles and runtime cache asset are registered', () => {
   assert.match(styleCss, /\.trainer-quest-sheet/);
+  assert.match(styleCss, /\.trainer-quest-stage/);
+  assert.match(styleCss, /\.trainer-quest-speech::after/);
   assert.match(styleCss, /\.trainer-quest-seated-character/);
   assert.match(styleCss, /position:\s*absolute/);
   assert.match(styleCss, /pointer-events:\s*none/);
+  assert.match(styleCss, /top:\s*clamp\(-250px,\s*-58vw,\s*-198px\)/);
   assert.match(styleCss, /\.trainer-quest-row-btn/);
   assert.match(styleCss, /\.trainer-quest-stats-root/);
-  assert.match(swJs, /tomatofarm-v20260628z9-trainer-modal-seated-character/);
+  assert.match(swJs, /tomatofarm-v20260628z10-trainer-speech-bubble/);
   assert.match(swJs, /\.\/modals\/trainer-quest-modal\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/trainer-quest-seated-trainer\.png/);
 });

@@ -126,5 +126,5 @@ test('Dashboard3 mode controls cannot persist normal or pro workout record UI', 
 });
 
 test('service worker cache version was bumped for workout asset changes', () => {
-  assert.match(swJs, /tomatofarm-v20260628z9-trainer-modal-seated-character/);
+  assert.match(swJs, /tomatofarm-v20260628z10-trainer-speech-bubble/);
 });
