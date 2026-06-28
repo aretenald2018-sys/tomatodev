@@ -93,3 +93,32 @@
 - PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ ...` — `sw.js`, `modals/trainer-quest-modal.js`, `style.css`에서 새 cache, `trainer-quest-speech`, `trainer-quest-stage`, 말풍선 문구, 착석 좌표 marker 확인
 - PASS: `curl.exe ... trainer-quest-seated-trainer.png?codex-bust=cc38a2c` — `HTTP 200`, `image/png`, `803246 bytes`
 - not verified yet: 배포 페이지 브라우저 세션이 로그인 전 상태라 홈 라이프존/트레이너 전구가 렌더되지 않아 실제 클릭 UI flow는 확인하지 못했다.
+
+## Slice 3 요청
+
+- 트레이너 전구가 깜빡거리게 해서 클릭을 유도한다.
+- 퀘스트 모달 안의 `PT / 트레이너 / X` 헤더 행은 기능성이 없으므로 삭제한다.
+- `무엇을 도와드릴까요?` 말풍선 문구는 포켓몬스터 NPC 대화처럼 빠른 타이핑 효과로 표시한다.
+
+## Slice 3 계획
+
+- `style.css`: `.lz-npc-bulb`에 깜빡임/광원 animation을 추가하고 `prefers-reduced-motion`에서는 끈다.
+- `modals/trainer-quest-modal.js`: 헤더 행을 제거하고, 말풍선 텍스트를 `data-trainer-quest-speech-text` 원문과 별도 span으로 분리해 열릴 때 타이핑한다.
+- `tests/trainer-quest-modal.test.js`, `tests/home-life-zone-npc-quest.test.js`: 헤더 제거, 타이핑 로직, 전구 animation을 회귀 테스트한다.
+- `sw.js`: cache version bump.
+
+## Slice 3 구현 기록
+
+- `style.css`: `.lz-npc-bulb`에 `lz-npc-bulb-blink` animation을 추가해 전구가 어두워졌다 밝아지며 노란 glow가 생기도록 했다. `prefers-reduced-motion: reduce`에서는 전구와 커서 animation을 끈다.
+- `modals/trainer-quest-modal.js`: `PT / 트레이너 / X` 헤더 행과 죽은 close button binding을 제거했다. 모달은 기존처럼 backdrop/ESC로 닫힌다.
+- `modals/trainer-quest-modal.js`: 말풍선 텍스트를 `data-trainer-quest-speech-value` span으로 분리하고, 모달 open 시 `28ms` 간격으로 한 글자씩 채우는 NPC 대화 타이핑 효과를 추가했다.
+- `style.css`: 말풍선 폭을 고정해 타이핑 중 말풍선 크기가 흔들리지 않게 했다.
+- `sw.js`: `CACHE_VERSION`을 `tomatofarm-v20260628z11-trainer-npc-cue`로 bump했다.
+
+## Slice 3 로컬 검증
+
+- PASS: `node --check modals/trainer-quest-modal.js; node --check sw.js`
+- PASS: `node --test tests/trainer-quest-modal.test.js tests/home-life-zone-npc-quest.test.js` — 11 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=849`
+- PASS: `node --test @tests` — 581 tests passed
+- PASS: `git diff --check`

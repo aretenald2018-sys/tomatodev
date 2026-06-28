@@ -2,24 +2,28 @@
 // modals/trainer-quest-modal.js
 // ================================================================
 
+const TRAINER_QUEST_SPEECH_TEXT = '무엇을 도와드릴까요?';
+const TRAINER_QUEST_TYPE_MS = 28;
+let _speechTypingTimer = null;
+
 export const MODAL_HTML = `
 <div class="modal-backdrop trainer-quest-modal" id="trainer-quest-modal" aria-hidden="true">
   <div class="modal-sheet trainer-quest-sheet" role="dialog" aria-modal="true" aria-labelledby="trainer-quest-title">
     <div class="sheet-handle"></div>
     <div class="trainer-quest-stage" data-trainer-quest-character>
-      <h2 class="trainer-quest-speech" id="trainer-quest-title">무엇을 도와드릴까요?</h2>
+      <h2
+        class="trainer-quest-speech"
+        id="trainer-quest-title"
+        aria-label="${TRAINER_QUEST_SPEECH_TEXT}"
+        data-trainer-quest-speech
+        data-trainer-quest-speech-text="${TRAINER_QUEST_SPEECH_TEXT}"
+      >
+        <span class="trainer-quest-speech-text" data-trainer-quest-speech-value></span>
+        <span class="trainer-quest-type-cursor" aria-hidden="true"></span>
+      </h2>
       <div class="trainer-quest-seated-character" aria-hidden="true">
         <img src="./assets/home/life-zone/ui/trainer-quest-seated-trainer.png" alt="" loading="eager" decoding="async">
       </div>
-    </div>
-    <div class="trainer-quest-head">
-      <div class="trainer-quest-portrait" aria-hidden="true">
-        <span>PT</span>
-      </div>
-      <div class="trainer-quest-head-copy">
-        <span>트레이너</span>
-      </div>
-      <button type="button" class="trainer-quest-icon-btn" data-trainer-quest-close aria-label="닫기">×</button>
     </div>
 
     <div class="trainer-quest-menu" data-trainer-quest-menu>
@@ -65,6 +69,35 @@ function _modal() {
   return document.getElementById('trainer-quest-modal');
 }
 
+function _stopSpeechTyping() {
+  if (_speechTypingTimer) {
+    clearInterval(_speechTypingTimer);
+    _speechTypingTimer = null;
+  }
+}
+
+function _startSpeechTyping(modal) {
+  const speech = modal?.querySelector('[data-trainer-quest-speech]');
+  const value = modal?.querySelector('[data-trainer-quest-speech-value]');
+  if (!speech || !value) return;
+
+  const text = speech.dataset.trainerQuestSpeechText || TRAINER_QUEST_SPEECH_TEXT;
+  _stopSpeechTyping();
+  speech.classList.add('is-typing');
+  speech.setAttribute('aria-label', text);
+  value.textContent = '';
+
+  let index = 0;
+  _speechTypingTimer = setInterval(() => {
+    index += 1;
+    value.textContent = text.slice(0, index);
+    if (index >= text.length) {
+      _stopSpeechTyping();
+      speech.classList.remove('is-typing');
+    }
+  }, TRAINER_QUEST_TYPE_MS);
+}
+
 function _showMenu() {
   const modal = _modal();
   if (!modal) return;
@@ -103,9 +136,6 @@ function _bindTrainerQuestModal() {
     if (event.target === modal) closeTrainerQuestModal();
   });
   modal.querySelector('.trainer-quest-sheet')?.addEventListener('click', event => event.stopPropagation());
-  modal.querySelectorAll('[data-trainer-quest-close]').forEach(btn => {
-    btn.addEventListener('click', () => closeTrainerQuestModal());
-  });
   modal.querySelector('[data-trainer-quest-back]')?.addEventListener('click', _showMenu);
   modal.querySelector('[data-trainer-quest-action="stats"]')?.addEventListener('click', _showStats);
 }
@@ -115,10 +145,12 @@ export function openTrainerQuestModal() {
   _showMenu();
   const modal = _modal();
   if (modal) modal.setAttribute('aria-hidden', 'false');
+  _startSpeechTyping(modal);
   window._openModal?.('trainer-quest-modal');
 }
 
 export function closeTrainerQuestModal() {
+  _stopSpeechTyping();
   const modal = _modal();
   if (modal) modal.setAttribute('aria-hidden', 'true');
   window._closeModal?.('trainer-quest-modal');

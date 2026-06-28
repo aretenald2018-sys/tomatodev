@@ -18,12 +18,27 @@ test('trainer quest modal renders Maple-like sections with TDS actions', () => {
   assert.match(modalJs, /내 운동 통계 살펴보기/);
   assert.match(modalJs, /data-trainer-quest-action="stats"/);
   assert.match(modalJs, /data-trainer-quest-character/);
-  assert.match(modalJs, /class="trainer-quest-speech" id="trainer-quest-title">무엇을 도와드릴까요\?<\/h2>/);
-  assert.doesNotMatch(modalJs, /trainer-quest-head-copy[\s\S]{0,180}무엇을 도와드릴까요/);
+  assert.match(modalJs, /data-trainer-quest-speech-text="\$\{TRAINER_QUEST_SPEECH_TEXT\}"/);
+  assert.match(modalJs, /data-trainer-quest-speech-value/);
+  assert.match(modalJs, /trainer-quest-type-cursor/);
+  assert.doesNotMatch(modalJs, /trainer-quest-head/);
+  assert.doesNotMatch(modalJs, /trainer-quest-portrait/);
+  assert.doesNotMatch(modalJs, /data-trainer-quest-close/);
   assert.match(modalJs, /assets\/home\/life-zone\/ui\/trainer-quest-seated-trainer\.png/);
   assert.doesNotMatch(modalJs, /onclick=/);
   assert.match(modalJs, /openTrainerQuestModal/);
   assert.match(modalJs, /closeTrainerQuestModal/);
+});
+
+test('trainer quest speech uses a fast NPC typing effect on open', () => {
+  assert.match(modalJs, /const TRAINER_QUEST_TYPE_MS = 28/);
+  assert.match(modalJs, /let _speechTypingTimer = null/);
+  assert.match(modalJs, /function _startSpeechTyping\(modal\)/);
+  assert.match(modalJs, /value\.textContent = text\.slice\(0, index\)/);
+  assert.match(modalJs, /speech\.classList\.add\('is-typing'\)/);
+  assert.match(modalJs, /speech\.classList\.remove\('is-typing'\)/);
+  assert.match(modalJs, /_startSpeechTyping\(modal\)/);
+  assert.match(modalJs, /_stopSpeechTyping\(\)/);
 });
 
 test('life zone trainer quest event opens the injected modal', () => {
@@ -52,13 +67,16 @@ test('trainer quest modal styles and runtime cache asset are registered', () => 
   assert.match(styleCss, /\.trainer-quest-sheet/);
   assert.match(styleCss, /\.trainer-quest-stage/);
   assert.match(styleCss, /\.trainer-quest-speech::after/);
+  assert.match(styleCss, /\.trainer-quest-type-cursor/);
+  assert.match(styleCss, /@keyframes trainer-quest-type-cursor-blink/);
   assert.match(styleCss, /\.trainer-quest-seated-character/);
   assert.match(styleCss, /position:\s*absolute/);
   assert.match(styleCss, /pointer-events:\s*none/);
   assert.match(styleCss, /top:\s*clamp\(-250px,\s*-58vw,\s*-198px\)/);
+  assert.match(styleCss, /padding:\s*clamp\(218px,\s*46vw,\s*260px\)/);
   assert.match(styleCss, /\.trainer-quest-row-btn/);
   assert.match(styleCss, /\.trainer-quest-stats-root/);
-  assert.match(swJs, /tomatofarm-v20260628z10-trainer-speech-bubble/);
+  assert.match(swJs, /tomatofarm-v20260628z11-trainer-npc-cue/);
   assert.match(swJs, /\.\/modals\/trainer-quest-modal\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/trainer-quest-seated-trainer\.png/);
 });
