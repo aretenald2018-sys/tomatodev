@@ -94,10 +94,15 @@ test('trainer quest modal styles and runtime cache asset are registered', () => 
   assert.match(styleCss, /pointer-events:\s*none/);
   assert.match(styleCss, /top:\s*clamp\(-250px,\s*-58vw,\s*-198px\)/);
   assert.match(styleCss, /padding:\s*clamp\(148px,\s*33vw,\s*184px\)/);
-  assert.match(styleCss, /background:\s*rgba\(242, 244, 247, \.86\)/);
-  assert.match(styleCss, /backdrop-filter:\s*blur\(14px\) saturate\(\.92\)/);
+  assert.match(styleCss, /rgba\(203, 208, 216, \.84\)/);
+  assert.match(styleCss, /rgba\(213, 217, 224, \.86\)/);
+  assert.match(styleCss, /backdrop-filter:\s*blur\(16px\) saturate\(\.86\)/);
   assert.match(styleCss, /\.trainer-quest-menu/);
+  assert.match(styleCss, /width:\s*min\(360px,\s*72vw\)/);
+  assert.match(styleCss, /margin:\s*0 auto 0 8px/);
   assert.match(styleCss, /\.trainer-quest-choice/);
+  assert.match(styleCss, /min-height:\s*40px/);
+  assert.match(styleCss, /padding:\s*8px 12px/);
   assert.match(styleCss, /rgba\(44, 58, 72, \.92\)/);
   assert.match(styleCss, /border-radius:\s*4px/);
   assert.match(styleCss, /\.trainer-quest-choice-caret/);
@@ -109,7 +114,7 @@ test('trainer quest modal styles and runtime cache asset are registered', () => 
   assert.doesNotMatch(styleCss, /\.trainer-quest-section/);
   assert.doesNotMatch(styleCss, /\.trainer-quest-row-btn/);
   assert.match(styleCss, /\.trainer-quest-stats-root/);
-  assert.match(swJs, /tomatofarm-v20260628z15-smooth-health-chart/);
+  assert.match(swJs, /tomatofarm-v20260628z17-trainer-menu-left/);
   assert.match(swJs, /\.\/modals\/trainer-quest-modal\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/trainer-quest-seated-trainer\.png/);
 });

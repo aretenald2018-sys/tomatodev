@@ -3,13 +3,13 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-28-stats-unified-health-chart.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-28-stats-health-chart-smoothing-review.md`
-- 현재 단계: `review complete — Stats Health Chart Smoothing Slice 2`
+- 계획 문서: `docs/ai/features/2026-06-28-trainer-quest-modal-seated-character.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-28-trainer-quest-muted-left-menu-review.md`
+- 현재 단계: `review complete — Trainer Quest Muted Sheet Left Menu Slice 8`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `운동 통계 건강 지표 비교 차트의 선 렌더링을 monotone cubic interpolation, tension 0.45, 둥근 cap/join으로 바꿔 더 부드럽게 보이도록 조정했다.`
+- 마지막 완료: `트레이너 퀘스트 모달 시트를 더 어두운 회색조 반투명 배경으로 바꾸고, 선택지 박스 묶음을 전체 행이 아니라 좌측 일부 폭만 쓰도록 줄였다.`
 - 다음 액션: `없음.`
-- 차단 사유: `없음. 단, 인증된 실제 계정에서 트레이너 모달 내 운동 통계 그래프의 선 부드러움은 수동 눈검수가 필요하다.`
+- 차단 사유: `없음. 단, 인증된 실제 계정에서 회색조 농도와 좌측 선택지 폭은 수동 눈검수가 필요하다.`
 
 ## 직전 완료 요약
 

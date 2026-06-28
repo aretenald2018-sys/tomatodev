@@ -212,3 +212,46 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=850`
 - PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 583 tests passed
 - PASS: `git diff --check`
+
+## Slice 7 요청
+
+- 사용자 피드백: 트레이너 무릎 밑 시트 영역이 여전히 흰색처럼 보인다.
+- 사용자 요청: 상반신 배경처럼 흐린 회색조로 처리하되 모달 경계만 구분되게 한다.
+
+## Slice 7 계획
+
+- `style.css`: `.trainer-quest-sheet` 배경을 더 어두운 회색 반투명 그라데이션으로 낮추고 blur를 조금 강화한다.
+- `style.css`: 상단 경계는 은은한 border와 shadow만 남겨 시트와 배경의 구분을 유지한다.
+- `tests/trainer-quest-modal.test.js`: 새 회색조 배경, blur, cache marker를 회귀 테스트한다.
+- `sw.js`: `style.css`가 `STATIC_ASSETS`에 포함되어 있으므로 cache version을 bump한다.
+
+## Slice 7 구현 기록
+
+- `style.css`: `.trainer-quest-sheet` 배경을 `rgba(203, 208, 216, .84)`에서 `rgba(213, 217, 224, .86)`로 이어지는 회색조 그라데이션으로 바꿨다.
+- `style.css`: `backdrop-filter`를 `blur(16px) saturate(.86)`으로 조정하고, 상단 경계는 `border-top`과 얇은 shadow로만 구분되게 했다.
+- `sw.js`: `CACHE_VERSION`을 `tomatofarm-v20260628z16-trainer-sheet-muted`로 bump했다.
+
+## Slice 8 요청
+
+- 사용자 요청: 선택지는 첨부 이미지의 좌측 하단처럼 하단 좌측 일부 영역까지만 네모상자로 처리한다.
+- 사용자 요청: 전체 행을 네모 상자로 쓰지 않는다.
+
+## Slice 8 계획
+
+- `style.css`: `.trainer-quest-menu` 자체 폭을 제한하고 왼쪽 정렬한다.
+- `style.css`: `.trainer-quest-choice` 높이와 padding을 줄여 좌측 하단 게임 메뉴 같은 슬림한 선택지로 만든다.
+- `tests/trainer-quest-modal.test.js`: 메뉴 폭 제한, 왼쪽 margin, 축소된 선택지 높이/padding, cache marker를 회귀 테스트한다.
+- `sw.js`: `style.css`가 `STATIC_ASSETS`에 포함되어 있으므로 cache version을 bump한다.
+
+## Slice 8 구현 기록
+
+- `style.css`: `.trainer-quest-menu`에 `width: min(360px, 72vw)`와 `margin: 0 auto 0 8px`를 적용해 전체 폭이 아니라 좌측 일부 폭만 사용하게 했다.
+- `style.css`: `.trainer-quest-choice`를 `min-height: 40px`, `padding: 8px 12px`로 줄여 선택지 박스가 슬림하게 보이도록 했다.
+- `sw.js`: `CACHE_VERSION`을 `tomatofarm-v20260628z17-trainer-menu-left`로 bump했다.
+
+## Slice 7-8 로컬 검증
+
+- PASS: `node --check sw.js; node --test tests/trainer-quest-modal.test.js` — 6 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=850`
+- PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test @tests` — 583 tests passed
+- PASS: `git diff --check`
