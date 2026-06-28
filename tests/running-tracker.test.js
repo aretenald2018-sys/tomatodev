@@ -13,6 +13,7 @@ import {
   buildTmapScriptUrl,
   buildVworldTileUrl,
   normalizeRunningMapPoints,
+  readRunningMapConfig,
   resolveRunningMapConfig,
   runningMapCenter,
 } from '../workout/running-map.js';
@@ -75,10 +76,15 @@ test('running real map provider config resolves VWorld, Google, and TMAP keys', 
     tmapAppKey: 'tmap-key',
     googleMapsKey: 'google-key',
   }).provider, 'vworld');
+  assert.equal(resolveRunningMapConfig({ provider: 'none', vworldApiKey: 'vworld-key' }).provider, 'vworld');
+  assert.equal(resolveRunningMapConfig({ provider: 'google', vworldApiKey: 'vworld-key' }).provider, 'vworld');
+  assert.equal(resolveRunningMapConfig({ provider: 'tmap', vworldApiKey: 'vworld-key' }).provider, 'vworld');
   assert.equal(resolveRunningMapConfig({ provider: 'vworld', vworldApiKey: 'vworld-key', vworldLayer: 'hybrid' }).configured, true);
   assert.equal(resolveRunningMapConfig({ provider: 'vworld', vworldApiKey: 'vworld-key', vworldLayer: 'hybrid' }).layer, 'hybrid');
   assert.equal(resolveRunningMapConfig({ provider: 'google', googleMapsKey: 'google-key' }).configured, true);
   assert.equal(resolveRunningMapConfig({ provider: 'tmap', tmapAppKey: 'tmap-key' }).configured, true);
+  assert.equal(readRunningMapConfig().provider, 'vworld');
+  assert.equal(readRunningMapConfig().configured, true);
   assert.match(buildVworldTileUrl('abc', 15, 27949, 12696, 'base'), /api\.vworld\.kr\/req\/wmts\/1\.0\.0\/abc\/Base\/15\/12696\/27949\.png/);
   assert.match(buildVworldTileUrl('abc', 15, 27949, 12696, 'satellite'), /Satellite\/15\/12696\/27949\.jpeg/);
   assert.match(buildGoogleMapsScriptUrl('abc'), /maps\.googleapis\.com\/maps\/api\/js/);

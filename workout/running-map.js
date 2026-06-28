@@ -93,7 +93,9 @@ export function resolveRunningMapConfig(raw = {}) {
   const tmapAppKey = String(raw.tmapAppKey || '').trim();
   let provider = String(raw.provider || 'auto').trim().toLowerCase();
   if (!provider || provider === 'default') provider = 'auto';
-  if (provider === 'auto') provider = vworldApiKey ? 'vworld' : tmapAppKey ? 'tmap' : googleMapsKey ? 'google' : 'none';
+  if (provider === 'auto' || provider === 'none') provider = vworldApiKey ? 'vworld' : tmapAppKey ? 'tmap' : googleMapsKey ? 'google' : 'none';
+  if (provider === 'google' && !googleMapsKey && vworldApiKey) provider = 'vworld';
+  if (provider === 'tmap' && !tmapAppKey && vworldApiKey) provider = 'vworld';
 
   if (provider === 'vworld') {
     return {
@@ -441,7 +443,7 @@ export async function renderRunningMap(shell, options = {}) {
   shell.dataset.mapPointCount = String(route.length);
 
   if (!config.configured) {
-    _setState(shell, 'missing-key', `${config.label} 키를 설정하면 실제 지도에 GPS가 표시됩니다.`);
+    _setState(shell, 'missing-key', '지도를 불러오지 못했어요. 잠시 후 다시 시도해주세요.');
     return null;
   }
 

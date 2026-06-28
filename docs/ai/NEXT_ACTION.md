@@ -3,13 +3,13 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-28-running-vworld-map-provider.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-28-running-vworld-map-provider-review.md`
-- 현재 단계: `review complete — Running VWorld Map Provider Slice 1`
+- 계획 문서: `docs/ai/features/2026-06-28-running-vworld-default-map.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-28-running-vworld-default-map-review.md`
+- 현재 단계: `review complete — Running VWorld Default Map Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `Running VWorld Map Provider Slice 1을 구현/리뷰/배포 검증했다. VWorld key는 repo에 직접 커밋하지 않고 localStorage 설정으로 읽으며, 러닝 지도 provider에 VWorld WMTS tile renderer와 route overlay를 추가했다. Dashboard3 Pages에서 74040ed 배포, VWorld marker, key absence, HTTP 200을 확인했다.`
-- 다음 액션: `없음.`
-- 차단 사유: `없음. 단, 배포 브라우저가 로그인 화면에 막히면 실제 통계 UI 조작은 인증 계정에서 확인해야 한다.`
+- 마지막 완료: `Running VWorld Default Map Slice 1을 구현/리뷰했다. VWorld 공개 지도 key를 기본 fallback으로 적용하고, 키 설정 안내 문구 없이 러닝 지도 위 GPS/경로가 렌더되도록 했다.`
+- 다음 액션: `없음. 배포 검증 결과만 본 파일에 추후 기록한다.`
+- 차단 사유: `없음. 단, 인증 세션과 모바일 GPS 권한 flow는 실제 사용자 환경에서 확인해야 한다.`
 
 ## 직전 완료 요약
 

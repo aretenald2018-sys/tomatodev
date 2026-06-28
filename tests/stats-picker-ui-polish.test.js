@@ -33,5 +33,5 @@ test('exercise picker left rail chips are compact single-line controls', () => {
 });
 
 test('service worker cache version was bumped for stats picker UI polish', () => {
-  assert.match(swJs, /tomatofarm-v20260628z4-running-vworld-map/);
+  assert.match(swJs, /tomatofarm-v20260628z5-running-vworld-default-map/);
 });

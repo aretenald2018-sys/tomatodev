@@ -55,6 +55,7 @@ test('running picker tile and session screens have dedicated styles', () => {
 });
 
 test('running maps use real provider shell instead of fake svg maps', () => {
+  assert.match(configJs, /PUBLIC_VWORLD_MAP_KEY/);
   assert.match(configJs, /cfg_running_map_provider/);
   assert.match(configJs, /cfg_vworld_api_key/);
   assert.match(configJs, /cfg_vworld_map_layer/);
@@ -68,6 +69,7 @@ test('running maps use real provider shell instead of fake svg maps', () => {
   assert.match(runningMapJs, /google\.maps/);
   assert.match(runningSessionJs, /data-running-real-map/);
   assert.match(runningSessionJs, /renderRunningMap/);
+  assert.doesNotMatch(runningMapJs, /키를 설정하면/);
   assert.doesNotMatch(runningSessionJs, /buildRunningSessionRouteSvg/);
   assert.doesNotMatch(runningSessionJs, /<svg class="wt-running-session-route-svg/);
 });
@@ -87,7 +89,7 @@ test('running session is wired into app init, save, load, and sessions', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260628z4-running-vworld-map/);
+  assert.match(swJs, /tomatofarm-v20260628z5-running-vworld-default-map/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
   assert.doesNotMatch(swJs, /\.\/workout\/running-tracker\.js/);
