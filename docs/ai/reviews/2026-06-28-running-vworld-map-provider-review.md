@@ -23,8 +23,11 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=846`
 - PASS: `git diff --check`
 - PASS: VWorld Base tile HEAD with provided key and Dashboard3 referer — `HTTP/1.1 200`, `Content-Type: image/png`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 74040ed` — deployed `74040ed54c4d`, `tomatofarm-v20260628z4-running-vworld-map`, `static=221`
+- PASS: deployed markers — `cfg_vworld_api_key`, `cfg_vworld_map_layer`, `buildVworldTileUrl`, `api.vworld.kr/req/wmts/1.0.0`, `wt-vworld-map`, `wt-vworld-route-layer`, `.wt-vworld-tile`, `.wt-vworld-route-line`
+- PASS: deployed key check — provided key 원문이 `config.js`, `workout/running-map.js`에 없음
+- PASS: `curl.exe -I https://aretenald2018-sys.github.io/dashboard3/` — `HTTP/1.1 200 OK`
 
 ## 남은 확인
 
-- not verified yet: Dashboard3 Pages 배포 검증은 커밋 후 실행 필요.
 - not verified yet: 배포 UI에서 localStorage key 설정 후 러닝 시작/결과 화면의 실제 tile/route 시각 확인은 인증 계정 또는 모바일 GPS 환경에서 확인해야 한다.
