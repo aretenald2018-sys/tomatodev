@@ -2,7 +2,7 @@
 
 ## 상태
 
-- 상태: Slice 2 구현 및 정적 검증 완료
+- 상태: Slice 2 구현, 리뷰, 배포 검증 완료
 - 요청: 홈 라이프존에서 퀘스트 아이콘이 트레이너 얼굴을 가리지 않게 수정
 - 자동 트리거: `/diagnose` 우선 적용
 
@@ -138,7 +138,9 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
 - PASS: `node --test tests/*.test.js` — 608 tests passed
 - PASS: `git diff --check`
-- pending: Dashboard3 Pages 배포 검증
+- PASS: Dashboard3 Pages 배포 검증 — `tomatofarm-v20260629z28-trainer-quest-vertical-stack` 확인
+- PASS: Dashboard3 Pages marker 검증 — `order: 1`, `order: 0`, `--lz-bulb-x: 0px`, `--lz-bulb-y: 0px` 확인
+- not verified yet: 인증 세션이 없어 실제 홈 화면에서 픽셀 단위 시각 확인은 직접 수행하지 못했다.
 
 ## 다음 세션 시작 프롬프트
 

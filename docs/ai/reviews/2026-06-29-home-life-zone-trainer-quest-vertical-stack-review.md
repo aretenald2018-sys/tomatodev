@@ -29,8 +29,9 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
 - PASS: `node --test tests/*.test.js` — 608 tests passed
 - PASS: `git diff --check`
-- pending: Dashboard3 Pages 배포 검증
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>` — `tomatofarm-v20260629z28-trainer-quest-vertical-stack` 확인
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260629z28-trainer-quest-vertical-stack" "style.css::.lz-npc-quest--trainer .lz-nameplate" "style.css::order: 1" "style.css::.lz-npc-quest--trainer .lz-npc-bulb" "style.css::order: 0" "style.css::--lz-bulb-x: 0px" "style.css::--lz-bulb-y: 0px"`
 
 ## 남은 리스크
 
-인증 세션이 없어 로그인 후 실제 홈 화면에서 픽셀 단위 시각 확인은 직접 수행하지 못했다. 배포 marker 검증 후 사용자는 홈 탭 라이프존에서 `전구 -> 트레이너 이름표 -> 머리` 순서인지 확인하면 된다.
+인증 세션이 없어 로그인 후 실제 홈 화면에서 픽셀 단위 시각 확인은 직접 수행하지 못했다. 사용자는 홈 탭 라이프존에서 `전구 -> 트레이너 이름표 -> 머리` 순서인지 확인하면 된다.

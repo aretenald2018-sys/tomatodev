@@ -2,13 +2,13 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-29-home-life-zone-trainer-quest-bubble-offset.md`
 - 리뷰 문서: `docs/ai/reviews/2026-06-29-home-life-zone-trainer-quest-vertical-stack-review.md`
-- 현재 단계: `홈 라이프존 트레이너 전구 세로 정렬 회귀 수정 정적 검증 완료`
+- 현재 단계: `홈 라이프존 트레이너 전구 세로 정렬 회귀 수정 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `트레이너 전구를 이름표 위로 되돌리고 오른쪽 offset을 제거했다.`
-- 다음 액션: `Slice 2 리뷰와 Dashboard3 Pages 배포 검증을 완료한다.`
+- 마지막 완료: `트레이너 전구를 이름표 위로 되돌리고 오른쪽 offset 제거를 Dashboard3 Pages에 배포했다.`
+- 다음 액션: `없음.`
 - 차단 사유: `없음.`
 
 ## 방금 계획한 항목
@@ -49,7 +49,9 @@
   8. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
   9. PASS: `node --test tests/*.test.js` — 608 tests passed
   10. PASS: `git diff --check`
-  11. pending: Dashboard3 Pages 배포 검증
+  11. PASS: Dashboard3 Pages 배포 검증 — `tomatofarm-v20260629z28-trainer-quest-vertical-stack` 캐시 버전 확인
+  12. PASS: Dashboard3 Pages marker 검증 — `order: 1`, `order: 0`, `--lz-bulb-x: 0px`, `--lz-bulb-y: 0px` 확인
+  13. not verified yet: 인증 세션이 없어 실제 홈 화면에서 픽셀 단위 시각 확인은 직접 수행하지 못했다.
 
 ## 직전 완료 요약
 
