@@ -758,6 +758,7 @@
     <b>기간별 운동 분석</b>
   </div>
   <div class="stats-analysis-periods" role="group" aria-label="운동 분석 기간">
+    <button type="button" class="stats-analysis-period" data-stats-analysis-period="week">이번주</button>
     <button type="button" class="stats-analysis-period" data-stats-analysis-period="30">30일</button>
     <button type="button" class="stats-analysis-period active" data-stats-analysis-period="90">90일</button>
     <button type="button" class="stats-analysis-period" data-stats-analysis-period="180">180일</button>
@@ -778,19 +779,16 @@
 <div class="stats-block stats-health-block">
 <div class="stats-block-title">건강 지표</div>
 <div class="stats-chart-meta" id="health-chart-meta"></div>
-<div class="stats-health-controls" aria-label="건강 지표 차트 설정">
-  <div class="stats-health-periods" role="group" aria-label="기간">
-    <button type="button" class="stats-health-period" data-health-period="30">30일</button>
-    <button type="button" class="stats-health-period" data-health-period="60">60일</button>
-    <button type="button" class="stats-health-period active" data-health-period="90">90일</button>
-    <button type="button" class="stats-health-period" data-health-period="all">전체</button>
-  </div>
-</div>
-<div class="stats-health-curves" id="health-metrics-charts"></div>
+<div class="stats-health-legend" id="health-metrics-legend"></div>
+<div class="stats-health-chart-wrap"><canvas id="health-metrics-chart"></canvas></div>
 <div id="health-chart-empty" class="stats-empty" style="display:none">선택한 기간에 표시할 건강 지표 기록이 없어요.</div>
 </div>
 <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
 <button class="export-btn" onclick="openExportModal()">📊 CSV 내보내기</button>
+</div>
+<div class="stats-block stats-performance-block">
+<div class="stats-block-title">운동별 퍼포먼스 추이</div>
+<div id="exercise-performance-section"></div>
 </div>
 <div class="stats-block">
 <div class="stats-block-title">종목별 볼륨 추이 (kg × 횟수 × 세트)</div>

@@ -15,10 +15,9 @@ import { getWorkoutSessions }                        from './workout/sessions.js
 
 let _selectedExerciseId = null;
 let _selectedVolumeDate = null;
-let _selectedFatiguePeriod = 'week';
 let _statsAnalysisPeriod = '90';
-let _healthChartPeriod = 90;
 const STATS_ANALYSIS_PERIODS = {
+  week: { label: '이번주', days: 0, kind: 'week' },
   '30': { label: '30일', days: 30 },
   '90': { label: '90일', days: 90 },
   '180': { label: '180일', days: 180 },
@@ -33,11 +32,7 @@ const _healthMetricsCharts = new WeakMap();
 
 export function renderStats(root = document) {
   _bindStatsAnalysisPeriodControls(root);
-  _renderOverallSummary(root);
-  _renderWorkoutAnalysis(root);
-  _renderMuscleFatigue(root);
-  _bindHealthChartControls(root);
-  _renderHealthMetricsChart(root);
+  _renderPeriodScopedStats(root);
   _renderVolumeSection(root);
   _renderHeatmap();
 }
@@ -56,7 +51,7 @@ function _statsAnalysisPeriodControlsMarkup() {
     <div class="stats-analysis-controls" aria-label="통계 기간 설정">
       <div>
         <span>전체통계</span>
-        <b>기간별 운동 분석</b>
+        <b>기간별 통계 보기</b>
       </div>
       <div class="stats-analysis-periods" role="group" aria-label="운동 분석 기간">
         ${Object.entries(STATS_ANALYSIS_PERIODS).map(([key, period]) => `
@@ -83,16 +78,13 @@ function _trainerQuestStatsMarkup() {
     <section class="stats-block stats-health-block trainer-quest-stats-block">
       <div class="stats-block-title">건강 지표</div>
       <div class="stats-chart-meta" data-stats-id="health-chart-meta"></div>
-      <div class="stats-health-controls" aria-label="건강 지표 차트 설정">
-        <div class="stats-health-periods" role="group" aria-label="기간">
-          <button type="button" class="stats-health-period" data-health-period="30">30일</button>
-          <button type="button" class="stats-health-period" data-health-period="60">60일</button>
-          <button type="button" class="stats-health-period active" data-health-period="90">90일</button>
-          <button type="button" class="stats-health-period" data-health-period="all">전체</button>
-        </div>
-      </div>
-      <div class="stats-health-curves" data-stats-id="health-metrics-charts"></div>
+      <div class="stats-health-legend" data-stats-id="health-metrics-legend"></div>
+      <div class="stats-health-chart-wrap"><canvas data-stats-id="health-metrics-chart"></canvas></div>
       <div data-stats-id="health-chart-empty" class="stats-empty" style="display:none">선택한 기간에 표시할 건강 지표 기록이 없어요.</div>
+    </section>
+    <section class="stats-block stats-performance-block trainer-quest-stats-block">
+      <div class="stats-block-title">운동별 퍼포먼스 추이</div>
+      <div data-stats-id="exercise-performance-section"></div>
     </section>
     <section class="stats-block trainer-quest-stats-block">
       <div class="stats-block-title">종목별 볼륨 추이</div>
@@ -106,18 +98,18 @@ export function renderTrainerQuestStats(root) {
   root.setAttribute('data-stats-root', 'trainer-quest');
   root.innerHTML = _trainerQuestStatsMarkup();
   _bindStatsAnalysisPeriodControls(root);
-  _renderOverallSummary(root);
-  _renderWorkoutAnalysis(root);
-  _bindHealthChartControls(root);
-  _renderHealthMetricsChart(root);
-  _renderMuscleFatigue(root);
+  _renderPeriodScopedStats(root);
   _renderVolumeSection(root);
 }
 
 export function buildTrainerQuestStatsExport() {
   const cache = getCache();
-  const entries = _dateEntries();
-  const checkins = getBodyCheckins().filter(c => (c?.date || '') <= _keyOffset(0));
+  const analysisRange = _statsAnalysisRange();
+  const entries = _dateEntries().filter(([key]) => key >= analysisRange.fromKey && key <= analysisRange.toKey);
+  const checkins = getBodyCheckins()
+    .filter(c => (c?.date || '') <= analysisRange.toKey)
+    .sort((a, b) => (a?.date || '').localeCompare(b?.date || ''));
+  const periodCheckins = checkins.filter(c => (c?.date || '') >= analysisRange.fromKey && (c?.date || '') <= analysisRange.toKey);
   const plan = getDietPlan();
   const ny = TODAY.getFullYear();
   const todayKey = _keyOffset(0);
@@ -163,14 +155,17 @@ export function buildTrainerQuestStatsExport() {
     if (daySodium !== null) { sodium.total += daySodium; sodium.days += 1; }
   });
 
-  for (let m = 0; m < 12; m++) for (let d = 1; d <= daysInMonth(ny, m); d++) {
-    if (isFuture(ny, m, d)) continue;
-    const key = dateKey(ny, m, d);
+  _dateRange(analysisRange.fromKey, analysisRange.toKey).forEach(key => {
+    const date = _dateFromKey(key);
+    if (!date || date > TODAY) return;
+    const y = date.getFullYear();
+    const m = date.getMonth();
+    const d = date.getDate();
     const day = cache[key] || {};
-    const diet = getDiet(ny, m, d);
-    const hasDiet = hasDietRecord(ny, m, d);
-    const hasEx = hasExerciseRecord(ny, m, d);
-    const dok = dietDayOk(ny, m, d);
+    const diet = getDiet(y, m, d);
+    const hasDiet = hasDietRecord(y, m, d);
+    const hasEx = hasExerciseRecord(y, m, d);
+    const dok = dietDayOk(y, m, d);
     if (hasDiet || hasEx) recordDays += 1;
     if (hasEx) exerciseDays += 1;
     if (dok === true) okDays += 1;
@@ -186,17 +181,16 @@ export function buildTrainerQuestStatsExport() {
       yearExerciseKcalTotal += burned;
       yearExerciseKcalDays += 1;
     }
-  }
+  });
 
-  const monthPrefix = dateKey(TODAY.getFullYear(), TODAY.getMonth(), 1).slice(0, 7);
-  const monthCheckins = checkins.filter(c => (c?.date || '').startsWith(monthPrefix));
+  const monthCheckins = periodCheckins;
   const monthFirst = monthCheckins.length >= 2 ? monthCheckins[0] : null;
   const monthLast = monthCheckins.length >= 2 ? monthCheckins[monthCheckins.length - 1] : null;
   const monthWeightFirst = monthFirst ? _maybeNum(monthFirst.weight) : null;
   const monthWeightLast = monthLast ? _maybeNum(monthLast.weight) : null;
-  const healthKeys = _healthChartKeys(cache, checkins);
+  const healthKeys = _healthChartKeys(analysisRange);
   const health = _buildHealthChartData(healthKeys, cache, checkins);
-  const fatigue = _buildMuscleFatigue(_selectedFatiguePeriod);
+  const fatigue = _buildMuscleFatigue(analysisRange);
   const usedExIds = new Set();
   Object.values(cache).forEach(day => (day.exercises || []).forEach(entry => {
     if (entry?.exerciseId) usedExIds.add(entry.exerciseId);
@@ -214,9 +208,9 @@ export function buildTrainerQuestStatsExport() {
   const topFood = [...foodsByName.values()]
     .sort((a, b) => (b.count - a.count) || (b.kcalTotal - a.kcalTotal) || a.name.localeCompare(b.name))[0] || null;
   const dietTotal = okDays + ngDays;
-  const analysisRange = _statsAnalysisRange();
   const workoutAnalysis = _analyzeTrainerWindow(analysisRange.fromKey, analysisRange.toKey);
   const analysisPlan = workoutAnalysis.planStats || {};
+  const performanceRows = _buildExercisePerformanceRows(analysisRange);
 
   return {
     schema: 'tomatofarm.trainerStats.v1',
@@ -224,6 +218,11 @@ export function buildTrainerQuestStatsExport() {
     today: todayKey,
     overall: {
       year: ny,
+      period: {
+        label: analysisRange.label,
+        fromKey: analysisRange.fromKey,
+        toKey: analysisRange.toKey,
+      },
       totalRecordEntries: entries.length,
       recordDays,
       exerciseDays,
@@ -243,12 +242,12 @@ export function buildTrainerQuestStatsExport() {
       topExerciseDay,
     },
     body: {
-      averageWeightKg: _avgFrom(checkins, c => _maybeNum(c.weight)),
-      averageBodyFatPct: _avgFrom(checkins, c => _maybeNum(c.bodyFatPct)),
-      averageSkeletalMuscleKg: _avgFrom(checkins, c => _firstNumber(c, SKELETAL_KEYS)),
-      averageFatMassKg: _avgFrom(checkins, _bodyFatMass),
+      averageWeightKg: _avgFrom(periodCheckins, c => _maybeNum(c.weight)),
+      averageBodyFatPct: _avgFrom(periodCheckins, c => _maybeNum(c.bodyFatPct)),
+      averageSkeletalMuscleKg: _avgFrom(periodCheckins, c => _firstNumber(c, SKELETAL_KEYS)),
+      averageFatMassKg: _avgFrom(periodCheckins, _bodyFatMass),
       monthlyWeightDeltaKg: monthWeightFirst !== null && monthWeightLast !== null ? monthWeightLast - monthWeightFirst : null,
-      monthCheckinCount: monthCheckins.length,
+      monthCheckinCount: periodCheckins.length,
     },
     nutrition: {
       sampledDays: macro.days,
@@ -259,7 +258,9 @@ export function buildTrainerQuestStatsExport() {
       averageSodiumMg: sodium.days ? sodium.total / sodium.days : null,
     },
     healthChart: {
-      periodDays: _healthChartPeriod || 'all',
+      periodDays: analysisRange.key === 'all' ? 'all' : analysisRange.actualDays,
+      fromKey: analysisRange.fromKey,
+      toKey: analysisRange.toKey,
       labels: health.labels,
       visibleSeries: _healthChartSeriesWithData(health.data),
       series: health.data,
@@ -286,6 +287,16 @@ export function buildTrainerQuestStatsExport() {
       selectedExerciseId: _selectedExerciseId,
       exercises: volumeExercises,
     },
+    exercisePerformance: performanceRows.map(row => ({
+      id: row.id,
+      major: row.major,
+      name: row.name,
+      sessionDays: row.sessionDays,
+      totalVolume: row.totalVolume,
+      latestVolume: _lastHealthValue(row.volumeSeries.map(point => point.value)),
+      latestEstimated1rmKg: _lastHealthValue(row.e1rmSeries.map(point => point.value)),
+      status: row.status.label,
+    })),
     workoutAnalysis: {
       period: analysisRange.label,
       fromKey: analysisRange.fromKey,
@@ -317,9 +328,16 @@ function _bindStatsAnalysisPeriodControls(root = document) {
       _statsAnalysisPeriod = next;
       const scope = btn.closest?.('[data-stats-root]') || root || document;
       _statsNodes(scope, '[data-stats-analysis-period]').forEach(_syncStatsAnalysisPeriodButton);
-      _renderWorkoutAnalysis(scope);
+      _renderPeriodScopedStats(scope);
     });
   });
+}
+function _renderPeriodScopedStats(scope = document) {
+  _renderMuscleFatigue(scope);
+  _renderOverallSummary(scope);
+  _renderWorkoutAnalysis(scope);
+  _renderHealthMetricsChart(scope);
+  _renderExercisePerformanceSection(scope);
 }
 function _syncStatsAnalysisPeriodButton(btn) {
   const active = btn.dataset.statsAnalysisPeriod === _statsAnalysisPeriod;
@@ -351,10 +369,6 @@ const LANDMARKS = {
   bicep: { label:'이두', low:6, good:12, high:20 },
   tricep: { label:'삼두', low:6, good:14, high:18 },
   abs: { label:'복근', low:0, good:12, high:25 },
-};
-const FATIGUE_PERIODS = {
-  week: { label: '주별', title: '이번 주', days: 7 },
-  month: { label: '월별', title: '이번 달', days: 30 },
 };
 const FATIGUE_GROUPS = [
   {
@@ -484,14 +498,19 @@ function _fatigueExerciseEntries(day) {
     .flatMap(session => Array.isArray(session?.exercises) ? session.exercises : []);
 }
 
-function _buildMuscleFatigue(periodKey) {
-  const period = FATIGUE_PERIODS[periodKey] || FATIGUE_PERIODS.week;
+function _buildMuscleFatigue(range = _statsAnalysisRange()) {
+  const period = {
+    key: range.key,
+    label: range.label,
+    title: range.key === 'week' ? '이번 주' : range.label,
+    days: range.actualDays,
+  };
   const groups = _emptyFatigueGroups();
   const byId = new Map(groups.map(group => [group.id, group]));
   const exById = new Map(getExList().map(ex => [ex.id, ex]));
   const movById = new Map(MOVEMENTS.map(mov => [mov.id, mov]));
-  const todayKey = _keyOffset(0);
-  const sinceKey = _keyOffset(period.days - 1);
+  const todayKey = range.toKey;
+  const sinceKey = range.fromKey;
   let trainingDays = 0;
 
   Object.entries(getCache())
@@ -604,7 +623,7 @@ function _fatigueInsight(state) {
     return {
       tone: 'empty',
       title: '운동 기록이 쌓이면 보강 부위를 잡아드릴게요',
-      note: '주별 또는 월별 기록이 생기면 많이 쓴 부위는 빨강, 덜 쓴 부위는 파랑으로 나눠 다음 운동 우선순위를 보여줍니다.',
+      note: '선택 기간 기록이 생기면 많이 쓴 부위는 빨강, 덜 쓴 부위는 파랑으로 나눠 다음 운동 우선순위를 보여줍니다.',
     };
   }
   const focus = state.underactive.slice(0, 2);
@@ -628,7 +647,8 @@ function _renderMuscleFatigue(scope = document) {
   const root = _statsNode(scope, 'stats-muscle-fatigue');
   if (!root) return;
 
-  const state = _buildMuscleFatigue(_selectedFatiguePeriod);
+  const range = _statsAnalysisRange();
+  const state = _buildMuscleFatigue(range);
   const insight = _fatigueInsight(state);
   const focusText = state.underactive.length ? state.underactive.slice(0, 2).map(group => group.label).join(' · ') : '균형 유지';
   const hotText = state.hot.length ? state.hot.map(group => group.label).join(' · ') : (state.top?.label || '-');
@@ -646,11 +666,7 @@ function _renderMuscleFatigue(scope = document) {
         <h3>${_esc(headline)}</h3>
         <p>${_esc(summary)}</p>
       </div>
-      <div class="stats-fatigue-tabs" role="tablist" aria-label="근육 피로도 기간">
-        ${Object.entries(FATIGUE_PERIODS).map(([key, period]) => `
-          <button type="button" class="${key === _selectedFatiguePeriod ? 'active' : ''}" data-fatigue-period="${_esc(key)}" role="tab" aria-selected="${key === _selectedFatiguePeriod ? 'true' : 'false'}">${_esc(period.label)}</button>
-        `).join('')}
-      </div>
+      <small class="stats-fatigue-range">${_esc(_fmtDateShort(range.fromKey))} - ${_esc(_fmtDateShort(range.toKey))}</small>
     </div>
     <div class="stats-fatigue-body">
       <div class="stats-fatigue-figure" aria-label="활성 근육 렌더링">
@@ -670,15 +686,6 @@ function _renderMuscleFatigue(scope = document) {
     </div>
     <div class="stats-fatigue-rows">${_fatigueRowsHtml(state.groups)}</div>
   `;
-
-  root.querySelectorAll('[data-fatigue-period]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const next = btn.dataset.fatiguePeriod;
-      if (!FATIGUE_PERIODS[next] || next === _selectedFatiguePeriod) return;
-      _selectedFatiguePeriod = next;
-      _renderMuscleFatigue(scope);
-    });
-  });
 }
 
 function _num(v) {
@@ -829,22 +836,49 @@ function _renderOverallSummary(scope = document) {
   if (!root) return;
 
   const cache = getCache();
-  const entries = _dateEntries();
-  const checkins = getBodyCheckins().filter(c => (c?.date || '') <= _keyOffset(0));
+  const range = _statsAnalysisRange();
+  const rangeKeys = _dateRange(range.fromKey, range.toKey);
+  const entries = rangeKeys.map(key => [key, cache[key] || {}]);
+  const checkins = getBodyCheckins()
+    .filter(c => (c?.date || '') >= range.fromKey && (c?.date || '') <= range.toKey)
+    .sort((a, b) => (a?.date || '').localeCompare(b?.date || ''));
+  const checkinsToDate = getBodyCheckins()
+    .filter(c => (c?.date || '') <= range.toKey)
+    .sort((a, b) => (a?.date || '').localeCompare(b?.date || ''));
   const avgWeight = _avgFrom(checkins, c => _maybeNum(c.weight));
   const avgSkeletal = _avgFrom(checkins, c => _firstNumber(c, SKELETAL_KEYS));
   const avgFatMass = _avgFrom(checkins, _bodyFatMass);
+  const fallbackWeight = _avgFrom(checkinsToDate, c => _maybeNum(c.weight));
   const foodsByName = new Map();
   let topFoodDay = null;
   let topExerciseDay = null;
   const macro = { carbs: 0, protein: 0, fat: 0, days: 0 };
   const sugar = { total: 0, days: 0 };
   const sodium = { total: 0, days: 0 };
-  const ny = TODAY.getFullYear();
   let recordDays = 0, exerciseDays = 0, okDays = 0, ngDays = 0;
-  let yearFoodKcalTotal = 0, yearFoodKcalDays = 0, yearExerciseKcalTotal = 0, yearExerciseKcalDays = 0;
+  let periodFoodKcalTotal = 0, periodFoodKcalDays = 0, periodExerciseKcalTotal = 0, periodExerciseKcalDays = 0;
 
   entries.forEach(([key, day]) => {
+    const date = _dateFromKey(key);
+    if (date) {
+      const y = date.getFullYear();
+      const m = date.getMonth();
+      const d = date.getDate();
+      const diet = getDiet(y, m, d);
+      const hasDiet = hasDietRecord(y, m, d);
+      const hasEx = hasExerciseRecord(y, m, d);
+      const dok = dietDayOk(y, m, d);
+      if (hasDiet || hasEx) recordDays++;
+      if (hasEx) exerciseDays++;
+      if (dok === true) okDays++;
+      else if (dok === false) ngDays++;
+      const dietKcal = _dayKcal(diet);
+      if (dietKcal > 0) {
+        periodFoodKcalTotal += dietKcal;
+        periodFoodKcalDays++;
+      }
+    }
+
     const kcal = _dayKcal(day);
     if (kcal > 0) {
       if (!topFoodDay || kcal > topFoodDay.kcal) topFoodDay = { key, kcal };
@@ -859,10 +893,12 @@ function _renderOverallSummary(scope = document) {
       foodsByName.set(name, next);
     });
 
-    const weight = _weightOnOrBefore(checkins, key) ?? avgWeight ?? 70;
+    const weight = _weightOnOrBefore(checkinsToDate, key) ?? avgWeight ?? fallbackWeight ?? 70;
     const burned = calcBurnedKcal(day, weight).total;
     if (burned > 0) {
       if (!topExerciseDay || burned > topExerciseDay.kcal) topExerciseDay = { key, kcal: burned };
+      periodExerciseKcalTotal += burned;
+      periodExerciseKcalDays++;
     }
 
     const carbs = _dayCarbs(day);
@@ -880,48 +916,14 @@ function _renderOverallSummary(scope = document) {
     if (daySodium !== null) { sodium.total += daySodium; sodium.days++; }
   });
 
-  for (let m = 0; m < 12; m++) for (let d = 1; d <= daysInMonth(ny, m); d++) {
-    if (isFuture(ny, m, d)) continue;
-    const key = dateKey(ny, m, d);
-    const day = cache[key] || {};
-    const diet = getDiet(ny, m, d);
-    const hasDiet = hasDietRecord(ny,m,d);
-    const hasEx = hasExerciseRecord(ny, m, d);
-    const dok = dietDayOk(ny, m, d);
-    if (hasDiet || hasEx) recordDays++;
-    if (hasEx) exerciseDays++;
-    if (dok === true) okDays++;
-    else if (dok === false) ngDays++;
-
-    const kcal = _dayKcal(diet);
-    if (kcal > 0) {
-      yearFoodKcalTotal += kcal;
-      yearFoodKcalDays++;
-    }
-    const weight = _weightOnOrBefore(checkins, key) ?? avgWeight ?? 70;
-    const burned = calcBurnedKcal(day, weight).total;
-    if (burned > 0) {
-      yearExerciseKcalTotal += burned;
-      yearExerciseKcalDays++;
-    }
-  }
-
   const topFood = [...foodsByName.values()]
     .sort((a, b) => (b.count - a.count) || (b.kcalTotal - a.kcalTotal) || a.name.localeCompare(b.name))[0];
 
-  const monthPrefix = dateKey(TODAY.getFullYear(), TODAY.getMonth(), 1).slice(0, 7);
-  const monthCheckins = checkins.filter(c => (c?.date || '').startsWith(monthPrefix));
-  const monthFirst = monthCheckins.length >= 2 ? monthCheckins[0] : null;
-  const monthLast = monthCheckins.length >= 2 ? monthCheckins[monthCheckins.length - 1] : null;
-  const monthWeightFirst = monthFirst ? _maybeNum(monthFirst.weight) : null;
-  const monthWeightLast = monthLast ? _maybeNum(monthLast.weight) : null;
-  const monthWeightDelta = monthWeightFirst !== null && monthWeightLast !== null ? monthWeightLast - monthWeightFirst : null;
-  const monthSkeletalFirst = monthFirst ? _firstNumber(monthFirst, SKELETAL_KEYS) : null;
-  const monthSkeletalLast = monthLast ? _firstNumber(monthLast, SKELETAL_KEYS) : null;
-  const monthSkeletalDelta = monthSkeletalFirst !== null && monthSkeletalLast !== null ? monthSkeletalLast - monthSkeletalFirst : null;
-  const monthFatFirst = monthFirst ? _bodyFatMass(monthFirst) : null;
-  const monthFatLast = monthLast ? _bodyFatMass(monthLast) : null;
-  const monthFatDelta = monthFatFirst !== null && monthFatLast !== null ? monthFatLast - monthFatFirst : null;
+  const firstCheckin = checkins.length >= 2 ? checkins[0] : null;
+  const lastCheckin = checkins.length >= 2 ? checkins[checkins.length - 1] : null;
+  const weightFirst = firstCheckin ? _maybeNum(firstCheckin.weight) : null;
+  const weightLast = lastCheckin ? _maybeNum(lastCheckin.weight) : null;
+  const weightDelta = weightFirst !== null && weightLast !== null ? weightLast - weightFirst : null;
   const avgSteps = _avgDayMetric(entries, [{ keys: ['steps', 'stepCount', 'dailySteps', 'walkSteps', 'walkingSteps'] }]);
   const avgStepKcal = _avgDayMetric(entries, [{ keys: ['stepsKcal', 'stepKcal', 'walkKcal', 'walkingKcal'] }]);
   const avgWaterMl = _avgDayMetric(entries, [
@@ -943,8 +945,8 @@ function _renderOverallSummary(scope = document) {
   const dietTotal = okDays + ngDays;
   const dietRate = dietTotal ? Math.round(okDays / dietTotal * 100) : null;
   const dietTone = dietRate === null ? '' : (dietRate >= 80 ? 'good' : dietRate >= 50 ? 'warn' : 'bad');
-  const avgFoodKcal = yearFoodKcalDays ? Math.round(yearFoodKcalTotal / yearFoodKcalDays) : null;
-  const avgExerciseKcal = yearExerciseKcalDays ? Math.round(yearExerciseKcalTotal / yearExerciseKcalDays) : null;
+  const avgFoodKcal = periodFoodKcalDays ? Math.round(periodFoodKcalTotal / periodFoodKcalDays) : null;
+  const avgExerciseKcal = periodExerciseKcalDays ? Math.round(periodExerciseKcalTotal / periodExerciseKcalDays) : null;
   const bodyValue = _joinedMetrics([
     avgWeight !== null ? `체중 ${_fmt(avgWeight, 1)}kg` : null,
     avgSkeletal !== null ? `골격근 ${_fmt(avgSkeletal, 1)}kg` : null,
@@ -958,11 +960,11 @@ function _renderOverallSummary(scope = document) {
 
   const kpis = [
     _summaryKpi('기록일', `${_fmt(recordDays)}일`, '식단 또는 운동'),
-    _summaryKpi('운동일', `${_fmt(exerciseDays)}일`, '올해 운동 기록'),
+    _summaryKpi('운동일', `${_fmt(exerciseDays)}일`, '선택 기간 운동 기록'),
     _summaryKpi('식단 성공률', dietRate !== null ? `${dietRate}%` : null, dietTotal ? `${okDays}성공 · ${ngDays}실패` : '판정 없음', dietTone),
-    _summaryKpi('평균 섭취', avgFoodKcal !== null ? `${_fmt(avgFoodKcal)}kcal` : null, yearFoodKcalDays ? `${_fmt(yearFoodKcalDays)}일 평균` : '기록 없음'),
-    _summaryKpi('평균 운동', avgExerciseKcal !== null ? `${_fmt(avgExerciseKcal)}kcal` : null, yearExerciseKcalDays ? `${_fmt(yearExerciseKcalDays)}일 평균` : '기록 없음'),
-    _summaryKpi('이달 체중', monthWeightDelta !== null && Number.isFinite(monthWeightDelta) ? _fmtSigned(monthWeightDelta) : null, monthCheckins.length ? `${monthCheckins.length}회 체크인` : '체크인 부족'),
+    _summaryKpi('평균 섭취', avgFoodKcal !== null ? `${_fmt(avgFoodKcal)}kcal` : null, periodFoodKcalDays ? `${_fmt(periodFoodKcalDays)}일 평균` : '기록 없음'),
+    _summaryKpi('평균 운동', avgExerciseKcal !== null ? `${_fmt(avgExerciseKcal)}kcal` : null, periodExerciseKcalDays ? `${_fmt(periodExerciseKcalDays)}일 평균` : '기록 없음'),
+    _summaryKpi('체중 변화', weightDelta !== null && Number.isFinite(weightDelta) ? _fmtSigned(weightDelta) : null, checkins.length ? `${checkins.length}회 체크인` : '체크인 부족'),
   ].join('');
 
   const facts = [
@@ -976,8 +978,8 @@ function _renderOverallSummary(scope = document) {
 
   root.innerHTML = `
     <div class="stats-summary-head">
-      <span>${ny}년 핵심 지표</span>
-      <b>전체 기록 ${_fmt(entries.length)}일</b>
+      <span>${_esc(range.label)} 핵심 지표</span>
+      <b>${_esc(_fmtDateShort(range.fromKey))} - ${_esc(_fmtDateShort(range.toKey))} · 기록 ${_fmt(recordDays)}일</b>
     </div>
     <div class="stats-summary-kpis">${kpis}</div>
     <div class="stats-summary-details">${facts}</div>`;
@@ -1000,16 +1002,23 @@ function _daysBetween(fromKey, toKey) {
 function _analysisPeriodConfig(key = _statsAnalysisPeriod) {
   return STATS_ANALYSIS_PERIODS[key] || STATS_ANALYSIS_PERIODS['90'];
 }
+function _weekStartKey() {
+  const d = new Date(TODAY);
+  const day = d.getDay();
+  const diff = day === 0 ? 6 : day - 1;
+  d.setDate(d.getDate() - diff);
+  return _keyFromDate(d);
+}
 function _statsAnalysisRange(key = _statsAnalysisPeriod) {
   const cfg = _analysisPeriodConfig(key);
   const todayKey = _keyOffset(0);
   const firstKey = _dateEntries()[0]?.[0] || todayKey;
-  const fromKey = cfg.days > 0 ? _keyOffset(cfg.days - 1) : firstKey;
+  const fromKey = cfg.kind === 'week' ? _weekStartKey() : (cfg.days > 0 ? _keyOffset(cfg.days - 1) : firstKey);
   const actualDays = Math.max(1, _daysBetween(fromKey, todayKey) + 1);
   return { ...cfg, key, fromKey, toKey: todayKey, actualDays };
 }
 function _statsAnalysisCompareRange(range) {
-  const spanDays = range.days > 0 ? range.days : Math.min(180, Math.max(30, range.actualDays || 90));
+  const spanDays = range.key === 'week' ? 7 : (range.days > 0 ? range.days : Math.min(180, Math.max(30, range.actualDays || 90)));
   const halfDays = Math.max(7, Math.round(spanDays / 2));
   return {
     halfDays,
@@ -1199,6 +1208,150 @@ function _renderWorkoutAnalysis(scope = document) {
       <p>${_esc(brief)}</p>
     </div>
   `;
+}
+
+const PERFORMANCE_MAJORS = ['chest', 'back', 'shoulder', 'lower', 'bicep', 'tricep', 'abs'];
+
+function _performanceMajor(major) {
+  if (major === 'core') return 'abs';
+  if (major === 'glute') return 'lower';
+  return PERFORMANCE_MAJORS.includes(major) ? major : null;
+}
+
+function _seriesDelta(series) {
+  const values = series.map(p => Number(p.value)).filter(v => Number.isFinite(v) && v > 0);
+  if (values.length < 2) return { count: values.length, first: values[0] || 0, last: values.at(-1) || 0, pct: 0 };
+  const first = values[0];
+  const last = values.at(-1);
+  return { count: values.length, first, last, pct: first > 0 ? (last - first) / first * 100 : 0 };
+}
+
+function _performanceStatus(row) {
+  const vol = _seriesDelta(row.volumeSeries);
+  const e1rm = _seriesDelta(row.e1rmSeries);
+  if (row.sessionDays < 2 || (vol.count < 2 && e1rm.count < 2)) {
+    return { tone: 'check', label: '점검필요', note: '표본 부족' };
+  }
+  if ((e1rm.count >= 2 && e1rm.pct >= 2) || (vol.count >= 2 && vol.pct >= 10)) {
+    return { tone: 'growth', label: '성장중', note: e1rm.count >= 2 ? `1RM ${e1rm.pct >= 0 ? '+' : ''}${_fmt(e1rm.pct, 0)}%` : `볼륨 ${vol.pct >= 0 ? '+' : ''}${_fmt(vol.pct, 0)}%` };
+  }
+  if ((e1rm.count >= 2 && e1rm.pct <= -5) || (vol.count >= 2 && vol.pct <= -25)) {
+    return { tone: 'check', label: '점검필요', note: e1rm.count >= 2 ? `1RM ${_fmt(e1rm.pct, 0)}%` : `볼륨 ${_fmt(vol.pct, 0)}%` };
+  }
+  return { tone: 'steady', label: '유지중', note: vol.count >= 2 ? `볼륨 ${vol.pct >= 0 ? '+' : ''}${_fmt(vol.pct, 0)}%` : '변화 작음' };
+}
+
+function _trendSparkline(series, color) {
+  const values = series.map(p => Number(p.value)).filter(v => Number.isFinite(v) && v > 0);
+  if (values.length < 2) return '<span class="stats-perf-empty">--</span>';
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = Math.max(max - min, 1);
+  const points = values.map((value, idx) => {
+    const x = values.length === 1 ? 50 : idx / (values.length - 1) * 100;
+    const y = 34 - ((value - min) / span * 28);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  return `<svg class="stats-perf-spark" viewBox="0 0 100 40" aria-hidden="true">
+    <polyline points="${_esc(points)}" style="stroke:${_esc(color)}"></polyline>
+  </svg>`;
+}
+
+function _buildExercisePerformanceRows(range = _statsAnalysisRange()) {
+  const cache = getCache();
+  const exById = new Map(getExList().map(ex => [ex.id, ex]));
+  const movById = new Map(MOVEMENTS.map(mov => [mov.id, mov]));
+  const buckets = new Map(PERFORMANCE_MAJORS.map(major => [major, new Map()]));
+  Object.entries(cache).forEach(([key, day]) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || key < range.fromKey || key > range.toKey) return;
+    for (const entry of day.exercises || []) {
+      const ex = exById.get(entry.exerciseId);
+      const major = _performanceMajor(_entryMajor(entry, exById, movById));
+      if (!major) continue;
+      const id = entry.exerciseId || entry.movementId || entry.name || `${major}-${key}`;
+      const byExercise = buckets.get(major);
+      const bucket = byExercise.get(id) || {
+        id,
+        major,
+        name: ex?.name || entry.name || entry.exerciseId || '운동',
+        dates: new Set(),
+        totalVolume: 0,
+        byDate: new Map(),
+      };
+      const volume = calcVolume(entry.sets || []);
+      const e1rm = _topSetE1rm(entry);
+      const point = bucket.byDate.get(key) || { date: key, volume: 0, e1rm: 0 };
+      point.volume += volume;
+      point.e1rm = Math.max(point.e1rm, e1rm);
+      bucket.byDate.set(key, point);
+      bucket.dates.add(key);
+      bucket.totalVolume += volume;
+      byExercise.set(id, bucket);
+    }
+  });
+
+  return PERFORMANCE_MAJORS.flatMap(major => {
+    return [...(buckets.get(major)?.values() || [])]
+      .sort((a, b) => (b.dates.size - a.dates.size) || (b.totalVolume - a.totalVolume) || a.name.localeCompare(b.name, 'ko'))
+      .slice(0, 2)
+      .map(bucket => {
+        const points = [...bucket.byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+        const row = {
+          id: bucket.id,
+          major,
+          majorLabel: MAJOR_LABELS[major] || major,
+          name: bucket.name,
+          sessionDays: bucket.dates.size,
+          totalVolume: Math.round(bucket.totalVolume),
+          volumeSeries: points.map(point => ({ date: point.date, value: Math.round(point.volume || 0) })),
+          e1rmSeries: points.map(point => ({ date: point.date, value: point.e1rm ? Math.round(point.e1rm * 10) / 10 : 0 })),
+        };
+        return { ...row, status: _performanceStatus(row) };
+      });
+  });
+}
+
+function _performanceRowHtml(row) {
+  const latestVolume = _lastHealthValue(row.volumeSeries.map(p => p.value));
+  const latestE1rm = _lastHealthValue(row.e1rmSeries.map(p => p.value));
+  return `
+    <div class="stats-perf-row is-${_esc(row.status.tone)}">
+      <div class="stats-perf-exercise">
+        <span>${_esc(row.majorLabel)}</span>
+        <b>${_esc(row.name)}</b>
+        <small>${_fmt(row.sessionDays)}일 · ${_fmt(row.totalVolume)}vol</small>
+      </div>
+      <div class="stats-perf-trend">
+        ${_trendSparkline(row.volumeSeries, '#f97316')}
+        <small>${latestVolume ? `${_fmt(latestVolume)}vol` : '--'}</small>
+      </div>
+      <div class="stats-perf-trend">
+        ${_trendSparkline(row.e1rmSeries, '#2563eb')}
+        <small>${latestE1rm ? `${_fmt(latestE1rm, latestE1rm % 1 ? 1 : 0)}kg` : '--'}</small>
+      </div>
+      <div class="stats-perf-status">
+        <b>${_esc(row.status.label)}</b>
+        <small>${_esc(row.status.note)}</small>
+      </div>
+    </div>`;
+}
+
+function _renderExercisePerformanceSection(scope = document) {
+  const root = _statsNode(scope, 'exercise-performance-section');
+  if (!root) return;
+  const range = _statsAnalysisRange();
+  const rows = _buildExercisePerformanceRows(range);
+  root.innerHTML = `
+    <div class="stats-perf-head">
+      <div><span>${_esc(range.label)} 집계</span><b>${_esc(_fmtDateShort(range.fromKey))} - ${_esc(_fmtDateShort(range.toKey))}</b></div>
+      <small>부위별 자주 한 종목 최대 2개</small>
+    </div>
+    <div class="stats-perf-table" role="table" aria-label="운동별 퍼포먼스 추이">
+      <div class="stats-perf-row stats-perf-row--head" role="row">
+        <span>운동</span><span>볼륨추이</span><span>추정1RM</span><span>판정</span>
+      </div>
+      ${rows.length ? rows.map(_performanceRowHtml).join('') : '<div class="stats-perf-empty-card">선택 기간에 분석할 운동 기록이 없어요.</div>'}
+    </div>`;
 }
 
 // ── 13번: CSV 내보내기 ───────────────────────────────────────────
@@ -1509,42 +1662,18 @@ const HEALTH_CHART_SERIES = {
   burned: { label: '운동칼로리', unit: 'kcal', color: '#f59e0b', background: 'rgba(245,158,11,0.10)', order: 4 },
 };
 
-function _bindHealthChartControls(scope = document) {
-  _statsNodes(scope, '[data-health-period]').forEach(btn => {
-    _syncHealthPeriodButton(btn);
-    if (btn.dataset.bound === '1') return;
-    btn.dataset.bound = '1';
-    btn.addEventListener('click', () => {
-      const raw = btn.dataset.healthPeriod;
-      _healthChartPeriod = raw === 'all' ? 0 : Math.max(1, Number(raw) || 90);
-      _statsNodes(scope, '[data-health-period]').forEach(_syncHealthPeriodButton);
-      _renderHealthMetricsChart(scope);
-    });
-  });
+function _sampleHealthKeys(keys, maxPoints = 72) {
+  if (!Array.isArray(keys) || keys.length <= maxPoints) return keys || [];
+  const out = [];
+  const step = (keys.length - 1) / (maxPoints - 1);
+  for (let i = 0; i < maxPoints; i++) {
+    out.push(keys[Math.round(i * step)]);
+  }
+  return [...new Set(out)];
 }
 
-function _syncHealthPeriodButton(btn) {
-  const raw = btn.dataset.healthPeriod;
-  const active = raw === 'all' ? _healthChartPeriod === 0 : Number(raw) === _healthChartPeriod;
-  btn.classList.toggle('active', active);
-  btn.setAttribute('aria-pressed', active ? 'true' : 'false');
-}
-
-function _allHealthChartKeys(cache, checkins) {
-  const todayKey = _keyOffset(0);
-  const keys = new Set([
-    ...Object.keys(cache || {}),
-    ...checkins.map(c => c?.date).filter(Boolean),
-  ]);
-  const sorted = [...keys]
-    .filter(key => /^\d{4}-\d{2}-\d{2}$/.test(key) && key <= todayKey)
-    .sort();
-  const startKey = sorted[0] || _keyOffset(89);
-  return _dateRange(startKey, todayKey);
-}
-
-function _healthChartKeys(cache, checkins) {
-  return _healthChartPeriod === 0 ? _allHealthChartKeys(cache, checkins) : _recentChartKeys(_healthChartPeriod);
+function _healthChartKeys(range = _statsAnalysisRange()) {
+  return _sampleHealthKeys(_dateRange(range.fromKey, range.toKey));
 }
 
 function _buildHealthChartData(keys, cache, checkins) {
@@ -1571,21 +1700,35 @@ function _buildHealthChartData(keys, cache, checkins) {
   return { labels, data };
 }
 
-function _healthDataset(key, data) {
+function _normalizeHealthValues(values) {
+  const finite = values.filter(value => value !== null && value !== undefined && Number.isFinite(Number(value))).map(Number);
+  if (!finite.length) return values.map(() => null);
+  const min = Math.min(...finite);
+  const max = Math.max(...finite);
+  const span = max - min;
+  return values.map(value => {
+    if (value === null || value === undefined || !Number.isFinite(Number(value))) return null;
+    return span <= 0 ? 50 : (Number(value) - min) / span * 100;
+  });
+}
+
+function _healthDataset(key, rawValues) {
   const cfg = HEALTH_CHART_SERIES[key];
   return {
     label: cfg.label,
-    data,
+    data: _normalizeHealthValues(rawValues),
+    rawValues,
+    healthKey: key,
     borderColor: cfg.color,
-    backgroundColor: cfg.background,
-    borderWidth: 2.5,
+    backgroundColor: 'transparent',
+    borderWidth: 1.35,
     borderCapStyle: 'round',
     borderJoinStyle: 'round',
     cubicInterpolationMode: 'monotone',
-    pointRadius: 2,
-    pointHoverRadius: 5,
+    pointRadius: 0,
+    pointHoverRadius: 3,
     pointHitRadius: 12,
-    tension: 0.45,
+    tension: 0.32,
     fill: false,
     spanGaps: true,
     yAxisID: 'y',
@@ -1594,8 +1737,9 @@ function _healthDataset(key, data) {
 }
 
 function _formatHealthTooltip(ctx) {
-  const cfg = Object.values(HEALTH_CHART_SERIES).find(item => item.label === ctx.dataset.label);
-  const value = ctx.parsed.y;
+  const key = ctx.dataset.healthKey;
+  const value = ctx.dataset.rawValues?.[ctx.dataIndex];
+  const cfg = HEALTH_CHART_SERIES[key] || Object.values(HEALTH_CHART_SERIES).find(item => item.label === ctx.dataset.label);
   if (value == null) return `${ctx.dataset.label}: -`;
   if (cfg?.unit === 'kcal') return `${ctx.dataset.label}: ${_fmt(value)}kcal`;
   if (cfg?.unit === '%') return `${ctx.dataset.label}: ${Number(value).toFixed(1)}%`;
@@ -1623,87 +1767,52 @@ function _formatHealthValue(key, value) {
   return `${Number(value).toFixed(1)}kg`;
 }
 
-function _healthCurveCardHtml(key, values) {
+function _healthLegendHtml(key, values) {
   const cfg = HEALTH_CHART_SERIES[key];
   const latest = _lastHealthValue(values);
   return `
-    <article class="stats-health-curve-card is-${_esc(key)}" style="--health-color:${_esc(cfg.color)};--health-bg:${_esc(cfg.background)};">
-      <div class="stats-health-curve-head">
-        <span>${_esc(cfg.label)}</span>
-        <b>${_esc(_formatHealthValue(key, latest))}</b>
-      </div>
-      <div class="stats-health-curve-chart">
-        <canvas data-health-chart="${_esc(key)}" aria-label="${_esc(cfg.label)} 변화"></canvas>
-      </div>
-    </article>`;
+    <span class="stats-health-legend-chip" style="--health-color:${_esc(cfg.color)}">
+      <i></i>${_esc(cfg.label)} <b>${_esc(_formatHealthValue(key, latest))}</b>
+    </span>`;
 }
 
-function _destroyHealthCurveCharts(container) {
-  container.querySelectorAll('canvas').forEach(canvas => {
-    const tracked = _healthMetricsCharts.get(canvas);
-    if (tracked) {
-      tracked.destroy();
-      _healthMetricsCharts.delete(canvas);
-    }
-    const existing = typeof Chart !== 'undefined' && typeof Chart.getChart === 'function'
-      ? Chart.getChart(canvas)
-      : null;
-    if (existing && existing !== tracked) existing.destroy();
-  });
-}
-
-function _drawHealthCurveChart(canvas, key, labels, values, colors) {
-  if (!canvas || typeof Chart === 'undefined') return;
-  const cfg = HEALTH_CHART_SERIES[key];
-  const chart = new Chart(canvas, {
-    type: 'line',
-    data: { labels, datasets: [_healthDataset(key, values)] },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'nearest', intersect: false },
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: _formatHealthTooltip } },
-      },
-      scales: {
-        x: {
-          ticks: { color: colors.text, font: { size: 10 }, maxTicksLimit: 4, maxRotation: 0 },
-          grid: { display: false },
-        },
-        y: {
-          title: { display: false },
-          ticks: {
-            color: colors.text,
-            font: { size: 10 },
-            callback: value => cfg.unit === 'kcal' ? _fmt(value) : value,
-          },
-          grid: { color: colors.grid },
-        },
-      },
-    },
-  });
-  _healthMetricsCharts.set(canvas, chart);
+function _destroyHealthChart(canvas) {
+  if (!canvas) return;
+  const tracked = _healthMetricsCharts.get(canvas);
+  if (tracked) {
+    tracked.destroy();
+    _healthMetricsCharts.delete(canvas);
+  }
+  const existing = typeof Chart !== 'undefined' && typeof Chart.getChart === 'function'
+    ? Chart.getChart(canvas)
+    : null;
+  if (existing && existing !== tracked) existing.destroy();
 }
 
 function _renderHealthMetricsChart(scope = document) {
-  const container = _statsNode(scope, 'health-metrics-charts');
+  const canvas = _statsNode(scope, 'health-metrics-chart');
+  const legendEl = _statsNode(scope, 'health-metrics-legend');
   const emptyEl = _statsNode(scope, 'health-chart-empty');
   const metaEl = _statsNode(scope, 'health-chart-meta');
-  if (!container) return;
-  _destroyHealthCurveCharts(container);
+  if (!canvas) return;
+  _destroyHealthChart(canvas);
 
+  const range = _statsAnalysisRange();
   const cache = getCache();
-  const checkins = getBodyCheckins();
-  const keys = _healthChartKeys(cache, checkins);
+  const checkins = getBodyCheckins()
+    .filter(c => (c?.date || '') <= range.toKey)
+    .sort((a, b) => (a?.date || '').localeCompare(b?.date || ''));
+  const keys = _healthChartKeys(range);
   const { labels, data } = _buildHealthChartData(keys, cache, checkins);
   const visibleKeys = _healthChartSeriesWithData(data);
   const hasChartData = visibleKeys.length > 0;
 
-  container.style.display = hasChartData ? 'grid' : 'none';
-  container.innerHTML = hasChartData
-    ? visibleKeys.map(key => _healthCurveCardHtml(key, data[key])).join('')
-    : '';
+  canvas.style.display = hasChartData ? 'block' : 'none';
+  if (canvas.parentElement) canvas.parentElement.style.display = hasChartData ? 'block' : 'none';
+  if (legendEl) {
+    legendEl.style.display = hasChartData ? 'flex' : 'none';
+    legendEl.innerHTML = hasChartData ? visibleKeys.map(key => _healthLegendHtml(key, data[key])).join('') : '';
+  }
   if (emptyEl) {
     emptyEl.style.display = hasChartData ? 'none' : 'block';
     emptyEl.textContent = '선택한 기간에 표시할 건강 지표 기록이 없어요.';
@@ -1712,15 +1821,43 @@ function _renderHealthMetricsChart(scope = document) {
     const first = keys[0]?.replace(/-/g, '.') || '';
     const last = keys[keys.length - 1]?.replace(/-/g, '.') || '';
     const picked = visibleKeys.map(key => HEALTH_CHART_SERIES[key].label).join(' · ') || '기록 없음';
-    metaEl.textContent = first && last ? `${first} - ${last} · 지표별 단일 곡선` : picked;
+    metaEl.textContent = first && last ? `${first} - ${last} · 통합 그래프` : picked;
   }
   if (!hasChartData || typeof Chart === 'undefined') return;
 
   const colors = _chartColors();
-  visibleKeys.forEach(key => {
-    const canvas = container.querySelector(`[data-health-chart="${key}"]`);
-    _drawHealthCurveChart(canvas, key, labels, data[key], colors);
+  const chart = new Chart(canvas, {
+    type: 'line',
+    data: { labels, datasets: visibleKeys.map(key => _healthDataset(key, data[key])) },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'nearest', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: items => labels[items[0]?.dataIndex] || '',
+            label: _formatHealthTooltip,
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: colors.text, font: { size: 10 }, maxTicksLimit: 5, maxRotation: 0 },
+          grid: { display: false },
+        },
+        y: {
+          min: 0,
+          max: 100,
+          ticks: { display: false, maxTicksLimit: 3 },
+          grid: { color: colors.grid, drawTicks: false },
+          border: { display: false },
+        },
+      },
+    },
   });
+  _healthMetricsCharts.set(canvas, chart);
 }
 
 // ── 연간 히트맵 ──────────────────────────────────────────────────

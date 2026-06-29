@@ -2,7 +2,7 @@
 
 ## 상태
 
-- 상태: `complete`
+- 상태: `ready_for_execution`
 - 생성일: 2026-06-29
 - 사용자 요청: 운동통계 최상단은 `운동 활성 부위` 카드여야 하며, `전체 요약` 카드는 그 다음에 와야 한다. 건강지표카드는 여러 그래프가 겹쳐 정신사나우므로 하나의 지표를 하나의 곡선처럼 보이게 정리한다. 전체요약카드는 TDS 폰트/디자인 시스템과 맞게 통일한다.
 
@@ -74,3 +74,63 @@
 5. PASS: `node --test tests/*.test.js` — 603 tests passed
 6. PASS: `git diff --check`
 7. not verified yet: Dashboard3 Pages 배포 검증과 실제 배포 URL 마커 확인은 커밋/푸시 후 수행한다.
+
+## Slice 2 범위
+
+### 사용자 추가 요청
+
+1. 전체통계 상단 기간 토글에 `이번주`를 추가한다.
+2. 화면에 기간 토글이 중복으로 보이지 않게 하고, 상단 기간 토글 기준으로 아래 데이터가 함께 집계되게 한다.
+3. 건강지표 그래프는 지표별 카드가 아니라 하나의 그래프에서 표출하되, 선을 얇게 하고 점/축 밀도를 줄인다.
+4. `종목별 볼륨 추이` 카드 위에 `운동별 퍼포먼스 추이` 카드를 추가한다. 상단 기간 토글 기준으로 자주 하는 가슴/등/어깨/하체/이두/삼두/복근 운동을 각 2개까지 보여주고, 각 행은 운동명, 볼륨 추이, 추정 1RM 추이, 성장 판정을 제공한다.
+
+### 구현
+
+1. `STATS_ANALYSIS_PERIODS`에 `이번주`를 추가하고, 월요일부터 오늘까지의 기간을 계산한다.
+2. 상단 기간 토글 변경 시 `운동 활성 부위`, `전체 요약`, `운동 분석`, `건강 지표`를 모두 다시 렌더링한다.
+3. `운동 활성 부위` 내부 `주별/월별` 토글을 제거하고 상단 기간 범위를 그대로 사용한다.
+4. 건강지표 내부 `30일/60일/90일/전체` 토글을 제거하고 상단 기간 범위를 그대로 사용한다.
+5. 건강지표는 단일 canvas에 체중/체지방률/섭취칼로리/운동칼로리를 얇은 선으로 렌더링한다.
+6. `전체 요약`도 선택 기간 기준으로 집계되도록 변경한다.
+7. `운동별 퍼포먼스 추이`는 기존 운동 기록의 `calcVolume()`과 추정 1RM(`_topSetE1rm`)을 재사용하며, 표본이 부족하면 `유지중` 또는 `점검필요`로 보수적으로 판정한다.
+8. 정적 자산 변경에 맞춰 `sw.js` 캐시 버전을 올리고 테스트를 갱신한다.
+
+### 비범위
+
+- 통계 산식 자체의 의미 변경.
+- 사용자 지정 날짜 범위 picker.
+- 기존 `종목별 볼륨 추이` 상세 차트의 선택/드릴다운 UX 변경.
+
+## Slice 2 검증
+
+1. `node --check render-stats.js`
+2. `node --check sw.js`
+3. `node --test tests/stats-overall-compact-summary.test.js tests/stats-unified-health-chart.test.js tests/stats-muscle-fatigue-insight.test.js tests/trainer-quest-modal.test.js`
+4. `node scripts/verify-runtime-assets.mjs`
+5. `node --test tests/*.test.js`
+6. `git diff --check`
+7. Dashboard3 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+
+## Slice 2 실행 결과
+
+- 상태: `implemented`
+- 변경:
+  1. 상단 전체통계 기간 토글에 `이번주`를 추가하고, `이번주`는 월요일부터 오늘까지로 계산한다.
+  2. 운동 활성 부위의 내부 `주별/월별` 토글과 건강지표의 내부 기간 토글을 제거했다.
+  3. `운동 활성 부위`, `전체 요약`, `운동 분석`, `건강 지표`, `운동별 퍼포먼스 추이`가 모두 `_statsAnalysisRange()`의 동일 기간을 사용한다.
+  4. 건강지표는 하나의 `health-metrics-chart` 캔버스에 체중/체지방률/섭취칼로리/운동칼로리를 얇은 정규화 선으로 렌더링하고, 범례와 툴팁에 실제 값을 보여준다.
+  5. `종목별 볼륨 추이` 위에 `운동별 퍼포먼스 추이` 카드를 추가했다. 부위별 자주 한 운동을 최대 2개씩 보여주고, 볼륨 추이/추정 1RM 추이/성장중·유지중·점검필요 판정을 표시한다.
+  6. 트레이너 통계 모달도 같은 구조와 기간 기준을 사용한다.
+  7. `sw.js` 캐시 버전을 `tomatofarm-v20260629z17-stats-week-performance-health`로 올렸다.
+  8. 통계/트레이너/캐시 마커 테스트와 신규 `tests/stats-exercise-performance.test.js`를 갱신했다.
+
+## Slice 2 검증 결과
+
+1. PASS: `node --check render-stats.js`
+2. PASS: `node --check sw.js`
+3. PASS: `node --test tests/stats-overall-compact-summary.test.js tests/stats-unified-health-chart.test.js tests/stats-muscle-fatigue-insight.test.js tests/trainer-quest-modal.test.js tests/stats-exercise-performance.test.js` — 21 tests passed
+4. PASS: `node scripts/verify-runtime-assets.mjs` — refs=860
+5. PASS: `node --test tests/*.test.js` — 606 tests passed
+6. PASS: `git diff --check`
+7. not verified yet: Dashboard3 Pages 배포 검증은 커밋/푸시 후 수행한다.
+8. 배포 자산 마커에서 새 cache version, `data-stats-analysis-period="week"`, `health-metrics-chart`, `_renderPeriodScopedStats`를 확인한다.

@@ -19,8 +19,12 @@ test('overall stats uses one compact summary instead of duplicated aggregation c
   assert.match(indexHtml, /class="stats-block stats-summary-block"/);
   assert.match(indexHtml, /id="stats-overall-summary"/);
   assert.match(indexHtml, /id="stats-workout-analysis"/);
+  assert.match(indexHtml, /id="exercise-performance-section"/);
   assert.match(indexHtml, /class="stats-block stats-muscle-fatigue-block"[\s\S]*class="stats-block stats-summary-block"[\s\S]*class="stats-block stats-workout-analysis-block"/);
+  assert.match(indexHtml, /data-stats-analysis-period="week"/);
   assert.match(indexHtml, /data-stats-analysis-period="90"/);
+  assert.doesNotMatch(indexHtml, /data-health-period=/);
+  assert.doesNotMatch(indexHtml, /data-fatigue-period=/);
   assert.doesNotMatch(indexHtml, /id="stats-metadata-summary"/);
   assert.doesNotMatch(indexHtml, /id="muscle-14d"/);
   assert.doesNotMatch(indexHtml, /id="muscle-period"/);
@@ -37,8 +41,10 @@ test('overall stats uses one compact summary instead of duplicated aggregation c
 
 test('overall summary renderer replaces legacy aggregate renderers', () => {
   assert.match(statsJs, /function _renderOverallSummary/);
-  assert.match(statsJs, /_renderOverallSummary\(root\)/);
-  assert.match(statsJs, /hasDietRecord\(ny,m,d\)/);
+  assert.match(statsJs, /function _renderPeriodScopedStats/);
+  assert.match(statsJs, /_renderOverallSummary\(scope\)/);
+  assert.match(statsJs, /const range = _statsAnalysisRange\(\)/);
+  assert.match(statsJs, /hasDietRecord\(y, m, d\)/);
   assert.match(statsJs, /stats-summary-kpi/);
   assert.match(statsJs, /stats-summary-fact/);
   assert.doesNotMatch(statsJs, /function _renderOverallMetadata/);
@@ -55,10 +61,13 @@ test('overall summary renderer replaces legacy aggregate renderers', () => {
 test('deep stats tab is merged into the overall workout analysis block', () => {
   assert.match(statsJs, /function _renderWorkoutAnalysis/);
   assert.match(statsJs, /STATS_ANALYSIS_PERIODS/);
+  assert.match(statsJs, /week:\s*\{\s*label:\s*'이번주'/);
+  assert.match(statsJs, /function _weekStartKey/);
+  assert.match(statsJs, /cfg\.kind === 'week'/);
   assert.match(statsJs, /계획 이행률/);
   assert.match(statsJs, /계획 대비 볼륨/);
   assert.match(statsJs, /완료 세트/);
-  assert.match(statsJs, /_renderWorkoutAnalysis\(root\)/);
+  assert.match(statsJs, /_renderWorkoutAnalysis\(scope\)/);
   assert.doesNotMatch(statsJs, /function _renderDeepStats/);
   assert.doesNotMatch(statsJs, /switchStatsView/);
   assert.doesNotMatch(statsJs, /deep-stats-report/);
@@ -73,6 +82,7 @@ test('trainer quest stats export exposes JSON data for AI sharing', () => {
   assert.match(statsJs, /healthChart/);
   assert.match(statsJs, /muscleFatigue/);
   assert.match(statsJs, /workoutAnalysis/);
+  assert.match(statsJs, /exercisePerformance/);
   assert.match(statsJs, /planAdherencePct/);
 });
 
@@ -84,7 +94,8 @@ test('compact summary styles are present and cache version is bumped', () => {
   assert.doesNotMatch(summaryValueRule, /font-family:\s*var\(--font-mono\)/);
   assert.match(styleCss, /\.stats-analysis-controls/);
   assert.match(styleCss, /\.stats-analysis-card/);
+  assert.match(styleCss, /\.stats-performance-block/);
   assert.match(styleCss, /\.stats-summary-fact/);
   assert.match(styleCss, /\.stats-summary-kpi\.is-good/);
-  assert.match(swJs, /tomatofarm-v20260629z16-stats-priority-health-curves/);
+  assert.match(swJs, /tomatofarm-v20260629z17-stats-week-performance-health/);
 });

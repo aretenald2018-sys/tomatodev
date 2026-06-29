@@ -2419,28 +2419,14 @@ body.wt-modal-scroll-lock {
   font-size: 12px;
   line-height: 17px;
 }
-.stats-fatigue-tabs {
+.stats-fatigue-range {
   flex: 0 0 auto;
-  display: inline-flex;
-  gap: 2px;
-  padding: 3px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface2);
-}
-.stats-fatigue-tabs button {
-  min-width: 40px;
-  height: 28px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 800;
-}
-.stats-fatigue-tabs button.active {
-  background: var(--primary-bg);
-  color: var(--primary);
+  line-height: 16px;
+  text-align: right;
 }
 .stats-fatigue-body {
   display: grid;
@@ -2923,76 +2909,173 @@ body.wt-modal-scroll-lock {
   border-color: rgba(245, 158, 11, .32);
   background: rgba(245, 158, 11, .08);
 }
-.stats-health-controls {
-  display: grid;
-  gap: 8px;
-  margin: 0 0 10px;
+.stats-performance-block {
+  padding: 0;
+  overflow: hidden;
 }
-.stats-health-periods {
+.stats-performance-block .stats-block-title {
+  padding: 16px 16px 0;
+}
+.stats-perf-head {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.stats-health-period {
-  min-height: 30px;
-  padding: 5px 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface2);
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1.2;
-  cursor: pointer;
-}
-.stats-health-period.active {
-  border-color: var(--gym);
-  background: var(--gym-dim);
-  color: var(--gym);
-}
-.stats-health-curves {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-.stats-health-curve-card {
-  min-width: 0;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: linear-gradient(180deg, var(--health-bg), transparent 62%), var(--surface2);
-}
-.stats-health-curve-head {
-  display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 10px;
+  padding: 10px 16px 12px;
 }
-.stats-health-curve-head span,
-.stats-health-curve-head b {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.stats-health-curve-head span {
+.stats-perf-head span,
+.stats-perf-head small {
   color: var(--text-tertiary);
   font-size: 11px;
   font-weight: 800;
   line-height: 16px;
 }
-.stats-health-curve-head b {
+.stats-perf-head b {
+  display: block;
   color: var(--text);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 850;
-  line-height: 18px;
+  line-height: 20px;
+}
+.stats-perf-head small {
+  flex-shrink: 0;
+  color: var(--text-secondary);
   text-align: right;
 }
-.stats-health-curve-chart {
-  position: relative;
-  height: 118px;
+.stats-perf-table {
+  display: grid;
+  margin: 0 16px 16px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface2);
 }
-.stats-health-curve-card canvas {
+.stats-perf-row {
+  display: grid;
+  grid-template-columns: minmax(112px, 1.35fr) minmax(58px, .78fr) minmax(58px, .78fr) minmax(66px, .78fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+.stats-perf-row:first-child {
+  border-top: 0;
+}
+.stats-perf-row--head {
+  min-height: 34px;
+  padding: 8px 10px;
+  background: var(--surface2);
+}
+.stats-perf-row--head span {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: 850;
+  line-height: 14px;
+}
+.stats-perf-exercise,
+.stats-perf-trend,
+.stats-perf-status {
+  min-width: 0;
+}
+.stats-perf-exercise span,
+.stats-perf-exercise b,
+.stats-perf-exercise small,
+.stats-perf-trend small,
+.stats-perf-status b,
+.stats-perf-status small {
   display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stats-perf-exercise span {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 14px;
+}
+.stats-perf-exercise b {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 17px;
+}
+.stats-perf-exercise small,
+.stats-perf-trend small,
+.stats-perf-status small {
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 14px;
+}
+.stats-perf-spark {
+  display: block;
+  width: 100%;
+  height: 30px;
+}
+.stats-perf-spark polyline {
+  fill: none;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.stats-perf-status b {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 17px;
+}
+.stats-perf-row.is-growth .stats-perf-status b { color: var(--diet-ok); }
+.stats-perf-row.is-steady .stats-perf-status b { color: var(--gym); }
+.stats-perf-row.is-check .stats-perf-status b { color: #f59e0b; }
+.stats-perf-empty,
+.stats-perf-empty-card {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 750;
+}
+.stats-perf-empty-card {
+  padding: 14px 12px;
+  background: var(--surface);
+}
+.stats-health-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+.stats-health-legend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 14px;
+}
+.stats-health-legend-chip i {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--health-color);
+}
+.stats-health-legend-chip b {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+}
+.stats-health-chart-wrap {
+  position: relative;
+  width: 100%;
+  height: 220px;
 }
 .stats-empty {
   padding: 20px 0;
@@ -3613,8 +3696,14 @@ body.wt-modal-scroll-lock {
   .stats-meta-label { font-size: 11px; }
   .stats-meta-val { font-size: 12px; }
   .stats-chart-wrap { height: 210px; }
-  .stats-health-curves { grid-template-columns: 1fr; }
-  .stats-health-curve-chart { height: 108px; }
+  .stats-health-chart-wrap { height: 190px; }
+  .stats-perf-head { align-items: flex-start; flex-direction: column; gap: 2px; }
+  .stats-perf-row {
+    grid-template-columns: minmax(96px, 1.2fr) minmax(48px, .7fr) minmax(48px, .7fr) minmax(58px, .7fr);
+    gap: 6px;
+    padding: 9px 8px;
+  }
+  .stats-perf-spark { height: 24px; }
   .calorie-summary-grid b { font-size: 16px; }
   .calorie-meal-cell b { font-size: 14px; }
 }

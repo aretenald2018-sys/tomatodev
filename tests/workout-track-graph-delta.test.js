@@ -49,5 +49,5 @@ test('wendler graph uses a separate W history instead of volume or intensity row
 });
 
 test('service worker cache version was bumped for track pp delta assets', () => {
-  assert.match(swJs, /tomatofarm-v20260629z16-stats-priority-health-curves/);
+  assert.match(swJs, /tomatofarm-v20260629z17-stats-week-performance-health/);
 });

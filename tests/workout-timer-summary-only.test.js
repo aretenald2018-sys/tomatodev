@@ -60,5 +60,5 @@ test('workout finish saves without opening the old completion insight modal', ()
 });
 
 test('service worker cache version was bumped for workout timer summary-only UI', () => {
-  assert.match(swJs, /tomatofarm-v20260629z16-stats-priority-health-curves/);
+  assert.match(swJs, /tomatofarm-v20260629z17-stats-week-performance-health/);
 });
