@@ -132,5 +132,6 @@
 4. PASS: `node scripts/verify-runtime-assets.mjs` — refs=860
 5. PASS: `node --test tests/*.test.js` — 606 tests passed
 6. PASS: `git diff --check`
-7. not verified yet: Dashboard3 Pages 배포 검증은 커밋/푸시 후 수행한다.
+7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ d0b07edfabd5a5a31454f7e20bb33fa7763960c7` — `[deploy-verify] ok d0b07edfabd5 tomatofarm-v20260629z17-stats-week-performance-health static=231`
+8. not verified yet: 인앱 브라우저에서 배포 URL 통계 UI 직접 확인을 시도했지만 로딩이 제한 시간 안에 완료되지 않아 `통계 -> 전체통계 -> 기간 토글/건강지표/운동별 퍼포먼스 카드` 실제 클릭 검증은 완료하지 못했다.
 8. 배포 자산 마커에서 새 cache version, `data-stats-analysis-period="week"`, `health-metrics-chart`, `_renderPeriodScopedStats`를 확인한다.

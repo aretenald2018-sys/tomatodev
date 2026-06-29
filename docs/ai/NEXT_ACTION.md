@@ -2,13 +2,13 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-29-stats-priority-health-curves.md`
 - 리뷰 문서: `docs/ai/reviews/2026-06-29-stats-week-performance-health-review.md`
-- 현재 단계: `Slice 2 구현 및 리뷰 완료`
+- 현재 단계: `Slice 2 배포 검증 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `전체통계 기간 토글 단일화, 건강지표 단일 그래프, 운동별 퍼포먼스 추이 카드 Slice 2를 구현하고 정적 리뷰를 완료했다.`
-- 다음 액션: `커밋/푸시 후 Dashboard3 Pages 배포 검증을 수행한다.`
+- 마지막 완료: `전체통계 기간 토글 단일화, 건강지표 단일 그래프, 운동별 퍼포먼스 추이 카드 Slice 2를 구현하고 Dashboard3 Pages 배포 검증을 통과했다.`
+- 다음 액션: `인증 가능한 실제 브라우저에서 통계 탭 UI 흐름을 시각 확인한다.`
 - 차단 사유: `없음.`
 
 ## 직전 완료 요약

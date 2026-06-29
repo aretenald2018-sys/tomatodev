@@ -22,8 +22,9 @@
 4. PASS: `node scripts/verify-runtime-assets.mjs`
 5. PASS: `node --test tests/*.test.js`
 6. PASS: `git diff --check`
+7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ d0b07edfabd5a5a31454f7e20bb33fa7763960c7`
 
 ## 잔여 리스크
 
-- 실제 인증 데이터가 있는 배포 화면에서 차트 밀도와 퍼포먼스 행 수의 체감 스크롤 길이는 추가 시각 확인이 필요하다.
+- 인앱 브라우저 배포 URL 로딩이 제한 시간 안에 완료되지 않아 실제 통계 탭 클릭 흐름은 not verified yet이다. 인증 데이터가 있는 배포 화면에서 차트 밀도와 퍼포먼스 행 수의 체감 스크롤 길이는 추가 시각 확인이 필요하다.
 - `운동별 퍼포먼스 추이`는 추정 1RM 표본이 부족한 보조종목을 보수적으로 `점검필요`로 표시한다. 실제 사용자 데이터에서 너무 엄격하면 판정 임계값 조정이 필요할 수 있다.
