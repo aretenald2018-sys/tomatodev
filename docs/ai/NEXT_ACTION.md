@@ -3,11 +3,11 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-29-stats-overall-deep-unification.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-stats-overall-deep-unification-review.md`
-- 현재 단계: `review/deploy complete — Stats Overall Deep Unification Slice 1`
+- 계획 문서: `docs/ai/features/2026-06-29-home-miranda-npc.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-home-miranda-npc-review.md`
+- 현재 단계: `review complete — Home Miranda NPC Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `운동 통계 전체/심층 통합 Slice 1을 구현, 리뷰, Dashboard3 Pages 배포 검증까지 완료했다.`
+- 마지막 완료: `홈 라이프존 좌측 하단에 검은 선글라스와 더 나이 든 은발 편집장 인상의 미란다 NPC를 추가하고, 전구 클릭 시 미란다 모달이 열리도록 구현/검증했다.`
 - 다음 액션: `없음.`
 - 차단 사유: `없음.`
 

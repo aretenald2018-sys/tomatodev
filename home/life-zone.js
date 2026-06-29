@@ -27,6 +27,7 @@ const LIFE_ZONE_ASSET_ROOT = './assets/home/life-zone';
 const LIFE_ZONE_SPRITE_ROOT = `${LIFE_ZONE_ASSET_ROOT}/sprites`;
 const LIFE_ZONE_UI_ROOT = `${LIFE_ZONE_ASSET_ROOT}/ui`;
 const LIFE_ZONE_NPC_NAME = '트레이너';
+const LIFE_ZONE_MIRANDA_NAME = '미란다';
 const LIFE_ZONE_CACHE_MS = 0;
 const RUNNING_MAP_WIDTH = 172;
 const RUNNING_MAP_HEIGHT = 121;
@@ -500,35 +501,65 @@ export function renderLifeZoneCard({
       <span class="lz-sync" data-lz-sync>불러오는 중</span>
     </div>
     <div class="lz-scene">
-      <img
-        class="lz-base"
-        src="${LIFE_ZONE_ASSET_ROOT}/base-room-expanded-alpha.png"
-        width="1672"
-        height="1672"
-        alt=""
-        loading="lazy"
-        decoding="async"
-      >
-      <div class="lz-actor-layer" data-lz-actors aria-hidden="true"></div>
-      <button
-        type="button"
-        class="lz-npc-quest"
-        data-lz-action="npc-quest"
-        aria-label="트레이너 퀘스트 보기"
-        title="트레이너 퀘스트"
-      >
-        <span class="lz-npc-bulb" aria-hidden="true">
+      <div class="lz-world">
+        <img
+          class="lz-base"
+          src="${LIFE_ZONE_ASSET_ROOT}/base-room-expanded-alpha.png"
+          width="1672"
+          height="1672"
+          alt=""
+          loading="lazy"
+          decoding="async"
+        >
+        <div class="lz-actor-layer" data-lz-actors aria-hidden="true"></div>
+        <button
+          type="button"
+          class="lz-npc-quest lz-npc-quest--trainer"
+          data-lz-action="npc-quest"
+          aria-label="트레이너 퀘스트 보기"
+          title="트레이너 퀘스트"
+        >
+          <span class="lz-npc-bulb" aria-hidden="true">
+            <img
+              src="${LIFE_ZONE_UI_ROOT}/npc-quest-bubble.png"
+              width="192"
+              height="258"
+              alt=""
+              loading="lazy"
+              decoding="async"
+            >
+          </span>
+          <span class="lz-nameplate lz-nameplate--npc" aria-hidden="true">${escapeHtml(LIFE_ZONE_NPC_NAME)}</span>
+        </button>
+        <button
+          type="button"
+          class="lz-miranda-npc"
+          data-lz-action="miranda-quest"
+          aria-label="미란다 대화 보기"
+          title="미란다"
+        >
           <img
-            src="${LIFE_ZONE_UI_ROOT}/npc-quest-bubble.png"
-            width="192"
-            height="258"
+            class="lz-miranda-npc-img"
+            src="${LIFE_ZONE_UI_ROOT}/miranda-npc-seated.png"
+            width="637"
+            height="1293"
             alt=""
             loading="lazy"
             decoding="async"
           >
-        </span>
-        <span class="lz-nameplate lz-nameplate--npc" aria-hidden="true">${escapeHtml(LIFE_ZONE_NPC_NAME)}</span>
-      </button>
+          <span class="lz-npc-bulb lz-npc-bulb--miranda" aria-hidden="true">
+            <img
+              src="${LIFE_ZONE_UI_ROOT}/npc-quest-bubble.png"
+              width="192"
+              height="258"
+              alt=""
+              loading="lazy"
+              decoding="async"
+            >
+          </span>
+          <span class="lz-nameplate lz-nameplate--npc" aria-hidden="true">${escapeHtml(LIFE_ZONE_MIRANDA_NAME)}</span>
+        </button>
+      </div>
     </div>
     <div class="lz-status-row" data-lz-status></div>
     <div class="lz-summary-strip">
@@ -559,6 +590,13 @@ export function renderLifeZoneCard({
     event.currentTarget.dispatchEvent(new CustomEvent('life-zone:npc-quest', {
       bubbles: true,
       detail: { npc: 'trainer' }
+    }));
+  });
+  card.querySelector('[data-lz-action="miranda-quest"]')?.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.currentTarget.dispatchEvent(new CustomEvent('life-zone:npc-quest', {
+      bubbles: true,
+      detail: { npc: 'miranda' }
     }));
   });
 

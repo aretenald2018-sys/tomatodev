@@ -163,23 +163,36 @@ document.addEventListener('keydown', (e) => {
 window._openModal = _openModal;
 window._closeModal = _closeModal;
 
-let _trainerQuestEventBound = false;
-function _bindTrainerQuestEvent() {
-  if (_trainerQuestEventBound) return;
-  _trainerQuestEventBound = true;
+let _lifeZoneNpcQuestEventBound = false;
+function _bindLifeZoneNpcQuestEvent() {
+  if (_lifeZoneNpcQuestEventBound) return;
+  _lifeZoneNpcQuestEventBound = true;
   document.addEventListener('life-zone:npc-quest', async (event) => {
-    if (event?.detail?.npc !== 'trainer') return;
+    const npc = event?.detail?.npc;
+    const modalByNpc = {
+      trainer: {
+        opener: 'openTrainerQuestModal',
+        label: '트레이너'
+      },
+      miranda: {
+        opener: 'openMirandaQuestModal',
+        label: '미란다'
+      }
+    };
+    const modalConfig = modalByNpc[npc];
+    if (!modalConfig) return;
     event.preventDefault?.();
     try {
       await loadAndInjectModals();
-      if (typeof window.openTrainerQuestModal === 'function') {
-        window.openTrainerQuestModal();
+      const opener = window[modalConfig.opener];
+      if (typeof opener === 'function') {
+        opener();
         return;
       }
-      throw new Error('openTrainerQuestModal is not registered');
+      throw new Error(`${modalConfig.opener} is not registered`);
     } catch (error) {
-      console.warn('[app] trainer quest modal open failed:', error);
-      showToast?.('트레이너 대화창을 열지 못했어요. 새로고침 후 다시 시도해주세요.', 2500, 'error');
+      console.warn('[app] life zone NPC modal open failed:', error);
+      showToast?.(`${modalConfig.label} 대화창을 열지 못했어요. 새로고침 후 다시 시도해주세요.`, 2500, 'error');
     }
   });
 }
@@ -716,7 +729,7 @@ function _initDietInputButtons() {
 }
 
 
-_bindTrainerQuestEvent();
+_bindLifeZoneNpcQuestEvent();
 _bindRunningLiveEvent();
 init();
 _initDietInputButtons();

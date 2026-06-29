@@ -138,5 +138,5 @@ test('workout navigation is wired to app, calendar, record card focus, and PWA c
   assert.match(styleCss, /body\.wt-workout-tab-active\s*\{[\s\S]*overscroll-behavior-y:\s*none;/);
   assert.match(styleCss, /body\.wt-workout-tab-active #tab-workout\.active\s*\{[\s\S]*overscroll-behavior-y:\s*contain;/);
   assert.match(swJs, /\.\/workout\/navigation-stack\.js/);
-  assert.match(swJs, /tomatofarm-v20260629z9-stats-unified-overall/);
+  assert.match(swJs, /tomatofarm-v20260629z10-home-miranda-npc/);
 });

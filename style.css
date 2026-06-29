@@ -510,6 +510,10 @@
   width: 100%;
   height: auto;
 }
+.trainer-quest-seated-character--miranda {
+  top: clamp(48px, 10vw, 62px);
+  width: clamp(130px, 36vw, 178px);
+}
 .trainer-quest-stats-head span {
   display: block;
   margin-bottom: 3px;
@@ -7590,8 +7594,14 @@ body.wt-running-session-open {
   position: relative;
   overflow: hidden;
   width: 100%;
-  aspect-ratio: 1672 / 1672;
+  aspect-ratio: 1672 / 1788;
   background: var(--surface);
+}
+.lz-world {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1672 / 1672;
+  overflow: visible;
 }
 .lz-base {
   display: block;
@@ -7775,6 +7785,54 @@ body.wt-running-session-open {
   transform: translate(-50%, 0) scale(0.96);
 }
 .lz-npc-quest:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.82);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+.lz-miranda-npc {
+  position: absolute;
+  left: calc(220 / 1672 * 100%);
+  top: calc(1438 / 1672 * 100%);
+  z-index: 150;
+  width: clamp(58px, calc(190 / 1672 * 100%), 86px);
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  transform: translate(-50%, 0);
+  overflow: visible;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+.lz-miranda-npc-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: auto;
+  filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.28));
+}
+.lz-miranda-npc .lz-npc-bulb {
+  position: absolute;
+  left: 50%;
+  top: 5%;
+  width: 34%;
+  margin: 0;
+  transform: translate(-50%, -92%);
+}
+.lz-miranda-npc .lz-nameplate {
+  position: absolute;
+  left: 50%;
+  top: calc(100% - 7px);
+  z-index: 2;
+  width: max-content;
+  max-width: 74px;
+  transform: translateX(-50%);
+}
+.lz-miranda-npc:active {
+  transform: translate(-50%, 0) scale(0.97);
+}
+.lz-miranda-npc:focus-visible {
   outline: 2px solid rgba(59, 130, 246, 0.82);
   outline-offset: 3px;
   border-radius: 8px;

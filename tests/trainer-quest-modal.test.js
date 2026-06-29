@@ -55,10 +55,17 @@ test('trainer quest speech uses a slower NPC typing effect on open', () => {
 test('life zone trainer quest event opens the injected modal', () => {
   assert.match(modalManagerJs, /trainer-quest-modal/);
   assert.match(modalManagerJs, /\.\/modals\/trainer-quest-modal\.js/);
+  assert.match(modalManagerJs, /miranda-quest-modal/);
+  assert.match(modalManagerJs, /\.\/modals\/miranda-quest-modal\.js/);
   assert.match(appJs, /document\.addEventListener\('life-zone:npc-quest'/);
-  assert.match(appJs, /event\?\.detail\?\.npc !== 'trainer'/);
+  assert.match(appJs, /const modalByNpc = \{/);
+  assert.match(appJs, /trainer: \{/);
+  assert.match(appJs, /opener: 'openTrainerQuestModal'/);
+  assert.match(appJs, /miranda: \{/);
+  assert.match(appJs, /opener: 'openMirandaQuestModal'/);
   assert.match(appJs, /await loadAndInjectModals\(\)/);
-  assert.match(appJs, /window\.openTrainerQuestModal\(\)/);
+  assert.match(appJs, /const opener = window\[modalConfig\.opener\]/);
+  assert.match(appJs, /opener\(\)/);
 });
 
 test('trainer quest stats render reuses stats tab data in a scoped modal root', () => {
@@ -135,7 +142,7 @@ test('trainer quest modal styles and runtime cache asset are registered', () => 
   assert.doesNotMatch(styleCss, /\.trainer-quest-choice/);
   assert.doesNotMatch(styleCss, /\.trainer-quest-choice-caret/);
   assert.match(styleCss, /\.trainer-quest-stats-root/);
-  assert.match(swJs, /tomatofarm-v20260629z9-stats-unified-overall/);
+  assert.match(swJs, /tomatofarm-v20260629z10-home-miranda-npc/);
   assert.match(swJs, /\.\/modals\/trainer-quest-modal\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/trainer-quest-seated-trainer\.png/);
 });
