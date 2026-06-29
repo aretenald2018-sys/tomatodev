@@ -112,6 +112,9 @@
 3. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=863`
 4. PASS: `node --test tests/*.test.js` — 613 tests passed
 5. PASS: `git diff --check`
+6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ f6bc1679999f8c0d5bc9f2ddae802dc04c21bf1a` — `[deploy-verify] ok f6bc1679999f tomatofarm-v20260629z29-consulting-chief-npc static=234`
+7. PASS: 배포 URL 직접 fetch — `index.html`, `sw.js`, `home/life-zone.js`, `modals/consulting-chief-quest-modal.js`, `consulting-chief-npc-home.png`, `consulting-chief-npc-modal.png`가 HTTP 200을 반환했고 JS marker가 확인됐다.
+8. not verified yet: in-app browser가 Dashboard3 페이지 로딩 확인에서 두 차례 timeout되어, 배포된 홈 화면에서 `상담실장` 전구를 실제 클릭해 모달이 열리는 UI flow는 직접 확인하지 못했다.
 
 ## 리뷰 세션 프롬프트
 

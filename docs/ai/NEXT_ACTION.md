@@ -2,14 +2,14 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-29-home-consulting-chief-npc.md`
-- 리뷰 문서: `없음`
-- 현재 단계: `홈 라이프존 상담실장 NPC 추가 실행 완료`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-home-consulting-chief-npc-review.md`
+- 현재 단계: `홈 라이프존 상담실장 NPC 추가 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `상담실장 홈/모달 PNG, 홈 우측 하단 NPC, 전용 모달, 캐시 등록, 회귀 테스트를 구현했다.`
-- 다음 액션: `docs/ai/features/2026-06-29-home-consulting-chief-npc.md와 변경 파일을 리뷰한다.`
-- 차단 사유: `없음.`
+- 마지막 완료: `상담실장 홈/모달 PNG, 홈 우측 하단 NPC, 전용 모달, 캐시 등록, 회귀 테스트를 구현하고 Dashboard3 Pages 배포 검증을 통과했다.`
+- 다음 액션: `없음.`
+- 차단 사유: `not verified yet: in-app browser가 Dashboard3 페이지 로딩 확인에서 두 차례 timeout되어 실제 홈 화면 전구 클릭 flow는 직접 확인하지 못했다.`
 
 ## 방금 계획한 항목
 
@@ -32,6 +32,10 @@
   8. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=863`
   9. PASS: `node --test tests/*.test.js` — 613 tests passed
   10. PASS: `git diff --check`
+  11. PASS: Dashboard3 Pages 배포 검증 — `f6bc1679999f8c0d5bc9f2ddae802dc04c21bf1a`, `tomatofarm-v20260629z29-consulting-chief-npc`
+  12. PASS: 배포 URL 직접 fetch — `index.html`, `sw.js`, `home/life-zone.js`, `modals/consulting-chief-quest-modal.js`, 홈/모달 PNG HTTP 200과 marker 확인
+  13. 리뷰: `docs/ai/reviews/2026-06-29-home-consulting-chief-npc-review.md`
+  14. not verified yet: in-app browser가 Dashboard3 페이지 로딩 확인에서 두 차례 timeout되어 실제 홈 화면 전구 클릭 flow는 직접 확인하지 못했다.
 
 - Home Life Zone Trainer Quest Bubble Offset 계획:
   1. `.lz-npc-quest`의 현재 `left:1084`, `top:824`, `width:168 기준` 배치가 모바일 축소 시 트레이너 얼굴과 겹치는 원인임을 확인했다.
