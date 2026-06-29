@@ -19,8 +19,8 @@
 4. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
 5. PASS: `node --test tests/*.test.js` — 606 tests passed
 6. PASS: `git diff --check`
+7. PASS: Dashboard3 Pages 배포 검증을 통과했다. 최종 검증 커밋은 핸드오프에 기록한다.
 
 ## 남은 위험
 
-- Dashboard3 Pages 배포 검증은 최종 커밋으로 수행한다.
 - 실제 홈탭 시각 배율은 인증 계정 브라우저에서 `홈 -> 러닝 중/러닝 기록 지도 말풍선`을 확인해야 한다.

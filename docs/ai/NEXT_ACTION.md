@@ -8,7 +8,7 @@
 - 현재 단계: `홈 러닝 GPS 지도 말풍선 배율 조정 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
 - 마지막 완료: `홈탭 러닝 지도 말풍선에 홈 전용 최대 zoom 14 배율을 적용하고 운동 탭 러닝 결과 지도와 분리된 계약을 검증했다.`
-- 다음 액션: `Dashboard3 Pages 배포 검증 후 사용자 요청에 따른 다음 작업을 진행한다.`
+- 다음 액션: `사용자 요청에 따른 다음 작업을 진행한다.`
 - 차단 사유: `없음.`
 
 ## 직전 완료 요약
@@ -24,7 +24,8 @@
   8. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
   9. PASS: `node --test tests/*.test.js` — 606 tests passed
   10. PASS: `git diff --check`
-  11. not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 홈탭 지도 말풍선 시각 확인이 남아 있다.
+  11. PASS: Dashboard3 Pages 배포 검증을 통과했다. 최종 검증 커밋은 핸드오프에 기록한다.
+  12. not verified yet: 인증 계정 실제 홈탭 지도 말풍선 시각 확인이 남아 있다.
 
 - Trainer Health Miranda Visuals Slice 1-3:
   1. 계획: `docs/ai/features/2026-06-29-trainer-health-miranda-visuals.md`
