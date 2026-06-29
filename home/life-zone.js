@@ -540,9 +540,9 @@ export function renderLifeZoneCard({
         >
           <img
             class="lz-miranda-npc-img"
-            src="${LIFE_ZONE_UI_ROOT}/miranda-npc-seated.png"
-            width="637"
-            height="1293"
+            src="${LIFE_ZONE_UI_ROOT}/miranda-npc-home.png"
+            width="142"
+            height="256"
             alt=""
             loading="lazy"
             decoding="async"

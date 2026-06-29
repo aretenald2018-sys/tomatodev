@@ -27,7 +27,7 @@ test('life zone trainer hook keeps the bulb bubble while hiding the old NPC card
   assert.match(source, /const LIFE_ZONE_MIRANDA_NAME = '미란다'/);
   assert.match(source, /LIFE_ZONE_UI_ROOT/);
   assert.match(source, /npc-quest-bubble\.png/);
-  assert.match(source, /miranda-npc-seated\.png/);
+  assert.match(source, /miranda-npc-home\.png/);
   assert.match(source, /class="lz-world"/);
   assert.match(source, /data-lz-action="npc-quest"/);
   assert.match(source, /data-lz-action="miranda-quest"/);
@@ -64,7 +64,7 @@ test('life zone actor nameplates are rendered as text above sprites', () => {
 test('life zone NPC quest bubble has a stable clickable overlay style', () => {
   const css = readText('style.css');
 
-  assert.match(css, /\.lz-scene \{[\s\S]*aspect-ratio: 1672 \/ 1788;/);
+  assert.match(css, /\.lz-scene \{[\s\S]*aspect-ratio: 1672 \/ 1672;/);
   assert.match(css, /\.lz-world \{[\s\S]*aspect-ratio: 1672 \/ 1672;[\s\S]*overflow: visible;/);
   assert.match(css, /\.lz-npc-quest \{/);
   assert.match(css, /left: calc\(1118 \/ 1672 \* 100%\)/);
@@ -86,9 +86,9 @@ test('life zone NPC quest bubble has a stable clickable overlay style', () => {
   assert.match(css, /position: static/);
   assert.match(css, /overflow: visible/);
   assert.match(css, /\.lz-miranda-npc \{/);
-  assert.match(css, /left: calc\(220 \/ 1672 \* 100%\)/);
-  assert.match(css, /top: calc\(1438 \/ 1672 \* 100%\)/);
-  assert.match(css, /width: clamp\(58px, calc\(190 \/ 1672 \* 100%\), 86px\)/);
+  assert.match(css, /left: calc\(258 \/ 1672 \* 100%\)/);
+  assert.match(css, /top: calc\(1328 \/ 1672 \* 100%\)/);
+  assert.match(css, /width: clamp\(42px, calc\(146 \/ 1672 \* 100%\), 64px\)/);
   assert.match(css, /\.lz-miranda-npc-img \{/);
   assert.match(css, /\.lz-miranda-npc \.lz-npc-bulb \{/);
   assert.match(css, /\.lz-miranda-npc \.lz-nameplate \{/);
@@ -169,10 +169,14 @@ test('life zone running actors render track sprites and a map capture bubble on 
   assert.match(css, /--lz-run-scale:\s*\.9/);
   assert.match(css, /aspect-ratio: 128 \/ 192/);
   assert.match(css, /background-size: 200% 100%/);
-  assert.match(css, /animation: lz-running-track-steps 0\.54s steps\(2, end\) infinite/);
+  assert.match(css, /animation: lz-running-track-steps 0\.54s step-end infinite/);
   assert.match(css, /animation: lz-running-track-in-place var\(--lz-run-duration, 0\.58s\) ease-in-out infinite/);
   assert.match(css, /@keyframes lz-running-track-in-place/);
   assert.match(css, /@keyframes lz-running-track-steps/);
+  assert.match(css, /49\.999% \{[\s\S]*background-position: 0 0;/);
+  assert.match(css, /50%[\s\S]*background-position: 100% 0;/);
+  assert.doesNotMatch(css, /steps\(2, end\)/);
+  assert.doesNotMatch(css, /background-position: 50%/);
   assert.doesNotMatch(css, /@keyframes lz-running-track-lap/);
   assert.doesNotMatch(css, /--lz-run-x0|--lz-run-x1/);
   assert.doesNotMatch(css, /translate3d\(var\(--lz-run-x0/);
@@ -202,7 +206,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260629z10-home-miranda-npc/);
+  assert.match(sw, /tomatofarm-v20260629z11-home-sprite-running-frame/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,
@@ -211,14 +215,14 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   });
 });
 
-test('life zone Miranda NPC is a transparent generated runtime asset', () => {
+test('life zone Miranda home NPC is a separate transparent generated runtime asset', () => {
   const sw = readText('sw.js');
-  const header = readPngHeader('assets/home/life-zone/ui/miranda-npc-seated.png');
+  const header = readPngHeader('assets/home/life-zone/ui/miranda-npc-home.png');
 
-  assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/miranda-npc-seated\.png/);
+  assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/miranda-npc-home\.png/);
   assert.deepEqual(header, {
-    width: 637,
-    height: 1293,
+    width: 142,
+    height: 256,
     colorType: 6
   });
 });

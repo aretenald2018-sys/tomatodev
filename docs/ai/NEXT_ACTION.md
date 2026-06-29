@@ -3,11 +3,11 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-29-home-miranda-npc.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-home-miranda-npc-review.md`
-- 현재 단계: `review complete — Home Miranda NPC Slice 1`
+- 계획 문서: `docs/ai/features/2026-06-29-home-miranda-space-sprite-running-frame-fix.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-home-miranda-space-sprite-running-frame-fix-review.md`
+- 현재 단계: `review complete — Home Miranda Space Sprite + Running Frame Fix Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `홈 라이프존 좌측 하단에 검은 선글라스와 더 나이 든 은발 편집장 인상의 미란다 NPC를 추가하고, 전구 클릭 시 미란다 모달이 열리도록 구현/검증했다.`
+- 마지막 완료: `홈용 미란다 소형 스프라이트를 별도 생성해 공간 안에 배치하고, 러닝 2프레임 CSS 전환이 중간 배경 위치를 만들지 않도록 수정했다.`
 - 다음 액션: `없음.`
 - 차단 사유: `없음.`
 

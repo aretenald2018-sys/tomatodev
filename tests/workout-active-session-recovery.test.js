@@ -61,5 +61,5 @@ test('app update reload flushes workout draft and changes copy while workout is 
 });
 
 test('service worker cache version was bumped for recovery assets', () => {
-  assert.match(swJs, /tomatofarm-v20260629z10-home-miranda-npc/);
+  assert.match(swJs, /tomatofarm-v20260629z11-home-sprite-running-frame/);
 });
