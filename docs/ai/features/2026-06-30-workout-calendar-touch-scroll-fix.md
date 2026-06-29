@@ -94,4 +94,6 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=863`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
-- not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 `운동 탭 -> 월간 캘린더 영역에서 아래 방향 스크롤` UI flow 확인이 남아 있다.
+- PASS: Dashboard3 Pages 배포 검증 — `320803395160`, `tomatofarm-v20260630z02-workout-calendar-scroll`
+- PASS: Dashboard3 Pages marker 검증 — `app.js`의 `[data-wt-calendar-scroll-surface]`, `render-calendar.js`의 `data-wt-calendar-scroll-surface`, `style.css`의 `touch-action: pan-y`, `sw.js`의 cache version 확인
+- not verified yet: 인증 계정 실제 `운동 탭 -> 월간 캘린더 영역에서 아래 방향 스크롤` UI flow 확인이 남아 있다.

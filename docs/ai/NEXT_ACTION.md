@@ -2,14 +2,14 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_execution`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-30-workout-calendar-touch-scroll-fix.md`
 - 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-calendar-touch-scroll-fix-review.md`
-- 현재 단계: `운동 캘린더 터치 스크롤 개선 리뷰 완료, Dashboard3 배포 대기`
+- 현재 단계: `운동 캘린더 터치 스크롤 개선 Dashboard3 배포 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
 - 마지막 완료: `운동 숫자 입력 키보드 UX 개선을 구현, 리뷰, origin/main 배포하고 Dashboard3 Pages asset 검증을 통과했다.`
-- 다음 액션: `변경사항 커밋 후 origin/main에 push하고 Dashboard3 Pages 배포 검증`
-- 차단 사유: `없음.`
+- 다음 액션: `없음.`
+- 차단 사유: `not verified yet: 인증 계정 실제 캘린더 터치 스크롤 UI flow 확인이 남아 있다.`
 
 ## 방금 계획/실행한 항목
 
@@ -30,7 +30,9 @@
   14. PASS: `node --test --test-reporter=dot tests/*.test.js`
   15. PASS: `git diff --check`
   16. 완료: 리뷰 문서 `docs/ai/reviews/2026-06-30-workout-calendar-touch-scroll-fix-review.md`를 작성했고 추가 수정 이슈는 없다.
-  17. not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 캘린더 터치 스크롤 UI flow 확인이 남아 있다.
+  17. PASS: Dashboard3 Pages 배포 검증 — `320803395160`, `tomatofarm-v20260630z02-workout-calendar-scroll`
+  18. PASS: Dashboard3 Pages marker 검증 — `app.js`의 `[data-wt-calendar-scroll-surface]`, `render-calendar.js`의 `data-wt-calendar-scroll-surface`, `style.css`의 `touch-action: pan-y`, `sw.js`의 cache version 확인
+  19. not verified yet: 인증 계정 실제 캘린더 터치 스크롤 UI flow 확인이 남아 있다.
 
 - Workout Number Input Keyboard UX 계획:
   1. 모바일 숫자 입력 포커스 시 브라우저 자동 scroll 보정으로 운동 카드가 살짝 이동하는 증상을 진단했다.
