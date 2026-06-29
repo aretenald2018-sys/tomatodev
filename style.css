@@ -2646,6 +2646,18 @@ body.wt-modal-scroll-lock {
   color: var(--text-tertiary);
   text-align: right;
 }
+.stats-health-report {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.stats-subblock-title {
+  margin-bottom: 10px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 18px;
+}
 .stats-summary-block {
   padding: 0;
   overflow: hidden;

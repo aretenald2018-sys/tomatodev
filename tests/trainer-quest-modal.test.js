@@ -97,7 +97,8 @@ test('trainer quest stats render reuses stats tab data in a scoped modal root', 
   assert.match(statsJs, /data-stats-id="exercise-performance-section"/);
   assert.match(statsJs, /data-stats-id="stats-muscle-fatigue"/);
   assert.match(statsJs, /data-stats-id="volume-section"/);
-  assert.match(statsJs, /stats-muscle-fatigue-block[\s\S]*stats-summary-block[\s\S]*stats-workout-analysis-block[\s\S]*stats-health-block[\s\S]*stats-calorie-report-block[\s\S]*stats-performance-block/);
+  assert.match(statsJs, /stats-muscle-fatigue-block[\s\S]*stats-summary-block[\s\S]*stats-workout-analysis-block[\s\S]*stats-health-block[\s\S]*stats-health-report[\s\S]*calorie-month-chart[\s\S]*stats-performance-block/);
+  assert.doesNotMatch(statsJs, /stats-calorie-report-block/);
   assert.doesNotMatch(statsJs, /data-stats-id="deep-stats-report"/);
   assert.doesNotMatch(statsJs, /trainer-quest-deep-stats/);
   assert.match(statsJs, /function _statsNode\(root, id\)/);
@@ -169,7 +170,7 @@ test('trainer quest modal styles and runtime cache asset are registered', () => 
   assert.doesNotMatch(styleCss, /\.trainer-quest-choice/);
   assert.doesNotMatch(styleCss, /\.trainer-quest-choice-caret/);
   assert.match(styleCss, /\.trainer-quest-stats-root/);
-  assert.match(swJs, /tomatofarm-v20260629z20-trainer-top-map-zoom/);
+  assert.match(swJs, /tomatofarm-v20260629z21-stats-health-calorie-merge/);
   assert.match(swJs, /\.\/modals\/trainer-quest-modal\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/trainer-quest-seated-trainer\.png/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/trainer-quest-stats-guide-trainer\.png/);

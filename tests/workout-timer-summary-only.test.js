@@ -60,5 +60,5 @@ test('workout finish saves without opening the old completion insight modal', ()
 });
 
 test('service worker cache version was bumped for workout timer summary-only UI', () => {
-  assert.match(swJs, /tomatofarm-v20260629z20-trainer-top-map-zoom/);
+  assert.match(swJs, /tomatofarm-v20260629z21-stats-health-calorie-merge/);
 });

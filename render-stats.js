@@ -82,12 +82,12 @@ function _trainerQuestStatsMarkup() {
       <div class="stats-chart-meta" data-stats-id="kcal-weight-meta"></div>
       <div class="stats-chart-wrap"><canvas data-stats-id="kcal-weight-chart"></canvas></div>
       <div data-stats-id="kcal-weight-chart-empty" class="stats-empty" style="display:none">선택 기간에 체중 또는 섭취칼로리 기록이 없어요.</div>
-    </section>
-    <section class="stats-block stats-calorie-report-block trainer-quest-stats-block">
-      <div class="stats-block-title">월간 칼로리 리포트</div>
-      <div class="stats-chart-wrap"><canvas data-stats-id="calorie-month-chart"></canvas></div>
-      <div data-stats-id="calorie-month-empty" class="stats-empty" style="display:none">이번 달 칼로리 기록이 없어요.</div>
-      <div data-stats-id="calorie-month-summary"></div>
+      <div class="stats-health-report">
+        <div class="stats-subblock-title">월간 칼로리 리포트</div>
+        <div class="stats-chart-wrap"><canvas data-stats-id="calorie-month-chart"></canvas></div>
+        <div data-stats-id="calorie-month-empty" class="stats-empty" style="display:none">이번 달 칼로리 기록이 없어요.</div>
+        <div data-stats-id="calorie-month-summary"></div>
+      </div>
     </section>
     <section class="stats-block stats-performance-block trainer-quest-stats-block">
       <div class="stats-block-title">운동별 퍼포먼스 추이</div>

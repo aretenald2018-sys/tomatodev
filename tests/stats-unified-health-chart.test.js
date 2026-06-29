@@ -7,11 +7,13 @@ const statsJs = readFileSync('render-stats.js', 'utf8');
 const styleCss = readFileSync('style.css', 'utf8');
 const swJs = readFileSync('sw.js', 'utf8');
 
-test('stats renders health metrics as rolled-back kcal and monthly report cards driven by top period controls', () => {
+test('stats renders health metrics and monthly calorie report inside one health card', () => {
   assert.match(indexHtml, /id="kcal-weight-chart"/);
   assert.match(indexHtml, /id="kcal-weight-meta"/);
   assert.match(indexHtml, /id="calorie-month-chart"/);
   assert.match(indexHtml, /id="calorie-month-summary"/);
+  assert.match(indexHtml, /class="stats-block stats-health-block"[\s\S]*id="kcal-weight-chart"[\s\S]*class="stats-health-report"[\s\S]*id="calorie-month-chart"/);
+  assert.doesNotMatch(indexHtml, /stats-calorie-report-block/);
   assert.match(indexHtml, /data-stats-analysis-period="week"/);
   assert.doesNotMatch(indexHtml, /id="health-metrics-chart"/);
   assert.doesNotMatch(indexHtml, /id="health-metrics-legend"/);
@@ -43,10 +45,12 @@ test('stats health rollback charts render the old combined weight and calorie re
 
 test('stats health rollback chart cards are styled and cache version is bumped', () => {
   assert.match(styleCss, /\.stats-chart-wrap/);
+  assert.match(styleCss, /\.stats-health-report/);
+  assert.match(styleCss, /\.stats-subblock-title/);
   assert.match(styleCss, /\.calorie-summary-grid/);
   assert.match(styleCss, /\.calorie-meal-grid/);
   assert.doesNotMatch(styleCss, /\.stats-health-toggle/);
   assert.doesNotMatch(styleCss, /\.stats-health-curves/);
   assert.doesNotMatch(styleCss, /\.stats-health-period/);
-  assert.match(swJs, /tomatofarm-v20260629z20-trainer-top-map-zoom/);
+  assert.match(swJs, /tomatofarm-v20260629z21-stats-health-calorie-merge/);
 });
