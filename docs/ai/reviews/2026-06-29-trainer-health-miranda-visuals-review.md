@@ -22,7 +22,9 @@
 6. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
 7. PASS: `node --test tests/*.test.js` — 606 tests passed
 8. PASS: `git diff --check`
+9. PASS: Dashboard3 Pages 배포 검증을 통과했다. 최종 검증 커밋은 핸드오프에 기록한다.
+10. PASS: 배포 URL의 `modals/trainer-quest-modal.js`, `render-stats.js`, `style.css`, `sw.js`, `miranda-npc-seated.png`, `trainer-quest-stats-guide-trainer.png`가 HTTP 200과 새 marker를 반환했다.
 
 ## 남은 위험
 
-- 배포 전 로컬 정적 검증은 완료했다. Dashboard3 Pages 배포 검증과 인증 계정에서의 실제 모달 시각 확인은 최종 핸드오프 전 이어서 수행한다.
+- not verified yet: 브라우저 플러그인이 Dashboard3 탭 로딩 및 탭 목록 조회에서 제한 시간에 걸려 실제 `홈 -> 미란다 전구`, `홈 -> 트레이너 전구 -> 내 운동 통계`, `더보기 -> 내 운동 통계` 클릭 흐름은 인증 계정 브라우저에서 직접 확인이 필요하다.

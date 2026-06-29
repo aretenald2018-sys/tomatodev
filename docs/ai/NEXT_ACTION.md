@@ -7,8 +7,8 @@
 - 리뷰 문서: `docs/ai/reviews/2026-06-29-trainer-health-miranda-visuals-review.md`
 - 현재 단계: `트레이너 통계 모달·건강지표 롤백·미란다 모달 아트 개선 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `트레이너 통계 모달 우측 안내 아트, 건강지표 카드 롤백, 미란다 퀘스트 모달 아트 개선을 구현하고 정적 검증을 통과했다.`
-- 다음 액션: `Dashboard3 Pages 배포 검증 후 사용자 요청에 따른 다음 작업을 진행한다.`
+- 마지막 완료: `트레이너 통계 모달 우측 안내 아트, 건강지표 카드 롤백, 미란다 퀘스트 모달 아트 개선을 구현하고 Dashboard3 Pages 배포 검증을 통과했다.`
+- 다음 액션: `사용자 요청에 따른 다음 작업을 진행한다.`
 - 차단 사유: `없음.`
 
 ## 직전 완료 요약
@@ -26,7 +26,9 @@
   10. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
   11. PASS: `node --test tests/*.test.js` — 606 tests passed
   12. PASS: `git diff --check`
-  13. not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 모달 시각 확인이 남아 있다.
+  13. PASS: Dashboard3 Pages 배포 검증을 통과했다. 최종 검증 커밋은 핸드오프에 기록한다.
+  14. PASS: 배포 URL의 `modals/trainer-quest-modal.js`, `render-stats.js`, `style.css`, `sw.js`, `miranda-npc-seated.png`, `trainer-quest-stats-guide-trainer.png`가 HTTP 200과 새 marker를 반환했다.
+  15. not verified yet: 브라우저 플러그인이 Dashboard3 탭 로딩 및 탭 목록 조회에서 제한 시간에 걸려 실제 모달 클릭 흐름은 인증 계정 브라우저에서 직접 확인이 필요하다.
 
 - Trainer Label Stats Leaning Asset Slice 1:
   1. 계획: `docs/ai/features/2026-06-29-trainer-label-stats-leaning-asset.md`
