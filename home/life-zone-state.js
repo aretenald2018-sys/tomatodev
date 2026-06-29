@@ -316,7 +316,7 @@ export function getLifeZoneRunningMapData(dayData = null) {
     route,
     routeSummary,
     placeSummary,
-    placeLabel: placeLabel || (route.length || routeSummary?.centroid ? '위치 확인 중' : ''),
+    placeLabel,
     previewPoint,
     pointCount: route.length || Number(routeSummary?.pointCount) || 0,
     updatedAt: dayData?.lifeZoneRunningUpdatedAt || dayData?.runUpdatedAt || routeSummary?.endedAt || null

@@ -86,10 +86,11 @@ test('life zone NPC quest bubble has a stable clickable overlay style', () => {
   assert.match(css, /position: static/);
   assert.match(css, /overflow: visible/);
   assert.match(css, /\.lz-miranda-npc \{/);
-  assert.match(css, /left: calc\(258 \/ 1672 \* 100%\)/);
-  assert.match(css, /top: calc\(1328 \/ 1672 \* 100%\)/);
-  assert.match(css, /width: clamp\(42px, calc\(146 \/ 1672 \* 100%\), 64px\)/);
+  assert.match(css, /left: calc\(292 \/ 1672 \* 100%\)/);
+  assert.match(css, /top: calc\(1238 \/ 1672 \* 100%\)/);
+  assert.match(css, /width: clamp\(26px, calc\(78 \/ 1672 \* 100%\), 36px\)/);
   assert.match(css, /\.lz-miranda-npc-img \{/);
+  assert.match(css, /transform: scaleX\(-1\)/);
   assert.match(css, /\.lz-miranda-npc \.lz-npc-bulb \{/);
   assert.match(css, /\.lz-miranda-npc \.lz-nameplate \{/);
   assert.match(css, /\.lz-miranda-npc:focus-visible/);
@@ -154,6 +155,8 @@ test('life zone running actors render track sprites and a map capture bubble on 
   assert.match(source, /lz-running-map-tile/);
   assert.match(source, /lz-running-map-path/);
   assert.match(source, /lz-running-map-place/);
+  assert.match(source, /const place = String\(actor\.runningMap\?\.placeLabel \|\| ''\)\.trim\(\)/);
+  assert.doesNotMatch(source, /map\.state === 'ready' \? '위치 확인 중'/);
   assert.match(source, /lifeZoneRunningRoute/);
   assert.match(source, /actor\.state === 'running'/);
   assert.match(source, /selfRunning \? actor\.source === 'self' : !runningBubbleRendered/);
@@ -206,7 +209,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260629z11-home-sprite-running-frame/);
+  assert.match(sw, /tomatofarm-v20260629z12-home-map-label-miranda/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,

@@ -283,7 +283,7 @@ function _renderRunningMapBubble(layer, actor, slot) {
   const y = Number(slot.bubbleY) || Math.max(36, Number(slot.y) - 88);
   const tipX = Number(slot.mapTipX) || 50;
   const map = _buildRunningMapBubbleData(actor.runningMap);
-  const place = actor.runningMap?.placeLabel || (map.state === 'ready' ? '위치 확인 중' : '');
+  const place = String(actor.runningMap?.placeLabel || '').trim();
   const tileHtml = map.tiles.map((tile) => `
     <img
       class="lz-running-map-tile"
