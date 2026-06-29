@@ -5,7 +5,7 @@
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-29-home-consulting-chief-npc.md`
 - 리뷰 문서: `docs/ai/reviews/2026-06-29-home-consulting-chief-npc-review.md`
-- 현재 단계: `홈 라이프존 상담실장 크기/좌표 보정 완료`
+- 현재 단계: `홈 라이프존 상담실장 추가 축소 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
 - 마지막 완료: `상담실장 홈/모달 PNG, 홈 우측 하단 NPC, 전용 모달, 캐시 등록, 회귀 테스트를 구현하고 Dashboard3 Pages 배포 검증을 통과했다.`
 - 다음 액션: `없음.`
@@ -49,6 +49,20 @@
   9. PASS: `node --test --test-reporter=dot tests/*.test.js`
   10. PASS: `git diff --check`
   11. PASS: 로컬 합성 미리보기에서 상담실장 스프라이트가 우측 하단 소파/테이블 공간 안쪽에 들어오는 것을 확인했다.
+  12. not verified yet: 인증 세션이 없어 실제 배포 홈 화면에서 클릭 flow는 직접 시각 검증하지 못했다.
+
+- Home Consulting Chief NPC Slice 3 계획:
+  1. 사용자 피드백: Dashboard3 배포 화면에서 `상담실장` NPC가 여전히 크다.
+  2. 원인: 모바일에서는 Slice 2의 `min-width: 28px`가 계속 적용되어 세로형 `96x256` 자산 높이가 약 `75px`로 남는다.
+  3. 보정: 홈 전용 폭을 `clamp(18px, calc(56 / 1672 * 100%), 28px)`로 더 줄이고, 좌표/모달/다른 NPC는 건드리지 않는다.
+  4. 완료: `style.css`에서 `.lz-consulting-chief-npc` 폭을 `clamp(18px, calc(56 / 1672 * 100%), 28px)`로 축소했다.
+  5. 완료: `sw.js` 캐시 버전을 `tomatofarm-v20260629z31-consulting-chief-smaller`로 bump했다.
+  6. PASS: `node --check sw.js`
+  7. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/consulting-chief-quest-modal.test.js` — 14 tests passed
+  8. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=863`
+  9. PASS: `node --test --test-reporter=dot tests/*.test.js`
+  10. PASS: `git diff --check`
+  11. PASS: 로컬 합성 미리보기에서 상담실장 스프라이트가 우측 하단 소파/테이블 공간 안쪽에 작게 배치되는 것을 확인했다.
   12. not verified yet: 인증 세션이 없어 실제 배포 홈 화면에서 클릭 flow는 직접 시각 검증하지 못했다.
 
 - Home Life Zone Trainer Quest Bubble Offset 계획:

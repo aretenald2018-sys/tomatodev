@@ -60,5 +60,5 @@ test('workout finish saves without opening the old completion insight modal', ()
 });
 
 test('service worker cache version was bumped for workout timer summary-only UI', () => {
-  assert.match(swJs, /tomatofarm-v20260629z30-consulting-chief-fit/);
+  assert.match(swJs, /tomatofarm-v20260629z31-consulting-chief-smaller/);
 });

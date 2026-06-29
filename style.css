@@ -8124,7 +8124,7 @@ body.wt-running-session-open {
   left: calc(1338 / 1672 * 100%);
   top: calc(1260 / 1672 * 100%);
   z-index: 155;
-  width: clamp(28px, calc(86 / 1672 * 100%), 40px);
+  width: clamp(18px, calc(56 / 1672 * 100%), 28px);
   min-height: 0;
   display: block;
   padding: 0;

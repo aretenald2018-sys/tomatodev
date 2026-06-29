@@ -46,3 +46,20 @@
 5. PASS: `git diff --check`
 6. PASS: 로컬 합성 미리보기에서 상담실장 스프라이트가 우측 하단 소파/테이블 공간 안쪽에 들어오는 것을 확인했다.
 7. not verified yet: 인증 세션이 없어 실제 배포 홈 화면에서 상담실장 NPC 클릭 flow는 직접 시각 검증하지 못했다.
+
+## Slice 3 리뷰 결과
+
+- 발견 사항 없음.
+- 추가 보정은 `.lz-consulting-chief-npc` 홈 전용 폭과 `sw.js` 캐시 버전, 테스트 계약만 바꾼다.
+- `min-width`가 `28px`에서 `18px`로 내려가 모바일에서 실제 표시 높이가 줄어드는 방향이며, 좌표/모달/다른 NPC 배치에는 영향이 없다.
+- `style.css`가 `STATIC_ASSETS`에 포함되어 있으므로 `CACHE_VERSION`을 `tomatofarm-v20260629z31-consulting-chief-smaller`로 bump한 것은 필요하다.
+
+## Slice 3 검증
+
+1. PASS: `node --check sw.js`
+2. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/consulting-chief-quest-modal.test.js` — 14 tests passed
+3. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=863`
+4. PASS: `node --test --test-reporter=dot tests/*.test.js`
+5. PASS: `git diff --check`
+6. PASS: 로컬 합성 미리보기에서 상담실장 스프라이트가 우측 하단 소파/테이블 공간 안쪽에 작게 배치되는 것을 확인했다.
+7. not verified yet: 인증 세션이 없어 실제 배포 홈 화면에서 상담실장 NPC 클릭 flow는 직접 시각 검증하지 못했다.

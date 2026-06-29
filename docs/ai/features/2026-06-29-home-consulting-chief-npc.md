@@ -164,13 +164,53 @@
 6. PASS: 로컬 합성 미리보기 `C:\Users\USER\AppData\Local\Temp\tomato-consulting-chief-fit-preview.png`에서 상담실장 스프라이트가 우측 하단 방 경계 안쪽에 들어오는 것을 확인했다.
 7. not verified yet: 인증 세션이 없어 실제 배포 홈 화면에서 상담실장 NPC 클릭 flow는 직접 시각 검증하지 못했다.
 
+## Slice 3: 홈 스프라이트 추가 축소
+
+## 진단
+
+사용자가 Dashboard3 배포 화면 기준으로 여전히 `상담실장` NPC가 크다고 피드백했다. Slice 2에서 기준 폭은 `86`으로 낮췄지만 모바일 카드에서는 `min-width: 28px`가 적용되어 원본 비율 `96x256` 때문에 표시 높이가 약 `75px`까지 남는다. 세로형 전신 자산이라 같은 폭이어도 미란다처럼 앉은 자산보다 훨씬 커 보인다.
+
+## 보정 범위
+
+1. `.lz-consulting-chief-npc` 홈 전용 폭을 `clamp(18px, calc(56 / 1672 * 100%), 28px)`로 낮춘다.
+2. 좌표는 Slice 2의 우측 하단 소파/테이블 공간 기준을 유지하고, 다른 NPC와 모달 아트는 변경하지 않는다.
+3. `sw.js` `CACHE_VERSION`을 bump하고 캐시 버전 테스트를 갱신한다.
+4. `tests/home-life-zone-npc-quest.test.js`의 상담실장 폭 계약을 새 값으로 고정한다.
+
+## Slice 3 검증
+
+1. `node --check sw.js`
+2. `node --test tests/home-life-zone-npc-quest.test.js tests/consulting-chief-quest-modal.test.js`
+3. `node scripts/verify-runtime-assets.mjs`
+4. `node --test --test-reporter=dot tests/*.test.js`
+5. `git diff --check`
+6. Dashboard3 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+
+## Slice 3 실행 결과
+
+1. `.lz-consulting-chief-npc` 홈 전용 폭을 `clamp(28px, calc(86 / 1672 * 100%), 40px)`에서 `clamp(18px, calc(56 / 1672 * 100%), 28px)`로 추가 축소했다.
+2. 모바일에서 강제 적용되던 최소 폭을 `28px`에서 `18px`로 낮춰, 세로형 `96x256` 홈 스프라이트의 표시 높이를 약 `75px`에서 약 `48px` 수준으로 줄였다.
+3. 좌표는 Slice 2의 `left: 1338`, `top: 1260`을 유지했고, 모달용 상담실장 아트와 다른 NPC 배치는 변경하지 않았다.
+4. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260629z31-consulting-chief-smaller`로 bump했다.
+5. `tests/home-life-zone-npc-quest.test.js`와 캐시 버전 테스트들을 새 값으로 갱신했다.
+
+## Slice 3 실행 검증
+
+1. PASS: `node --check sw.js`
+2. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/consulting-chief-quest-modal.test.js` — 14 tests passed
+3. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=863`
+4. PASS: `node --test --test-reporter=dot tests/*.test.js`
+5. PASS: `git diff --check`
+6. PASS: 로컬 합성 미리보기 `C:\Users\USER\AppData\Local\Temp\tomato-consulting-chief-z31_56-preview.png`에서 상담실장 스프라이트가 우측 하단 소파/테이블 공간 안쪽에 작게 배치되는 것을 확인했다.
+7. not verified yet: 인증 세션이 없어 실제 배포 홈 화면에서 상담실장 NPC 클릭 flow는 직접 시각 검증하지 못했다.
+
 ## 리뷰 세션 프롬프트
 
 이 계획 문서와 직전 실행 세션의 변경 파일을 읽고 버그, 회귀, 누락된 테스트, 오래된 캐시/서비스워커 이슈, UX 깨짐을 우선 리뷰한다. 리뷰 중에는 새 기능을 구현하지 않는다.
 
 ## NEXT_ACTION.md 업데이트
 
-- 계획 세션 종료 상태: `ready_for_execution`
-- 다음 자동 상태: `ready_for_execution`
-- 다음 액션: `docs/ai/features/2026-06-29-home-consulting-chief-npc.md` Slice 1 실행
+- 현재 상태: `complete`
+- 다음 자동 상태: `complete`
+- 다음 액션: `없음`
 - 차단 질문: 없음
