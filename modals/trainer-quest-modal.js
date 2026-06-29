@@ -2,7 +2,7 @@
 // modals/trainer-quest-modal.js
 // ================================================================
 
-const TRAINER_QUEST_SPEECH_TEXT = '무엇을 도와드릴까요?';
+const TRAINER_QUEST_SPEECH_TEXT = '회원님의 운동 성과를 함께 살펴보시죠!';
 const TRAINER_QUEST_TYPE_MS = 56;
 let _speechTypingTimer = null;
 
@@ -42,29 +42,32 @@ export const MODAL_HTML = `
     </nav>
 
     <div class="trainer-quest-stats" data-trainer-quest-stats hidden>
-      <div class="trainer-quest-stats-leaning-character" aria-hidden="true">
-        <img src="./assets/home/life-zone/ui/trainer-quest-leaning-trainer.png" alt="" loading="eager" decoding="async">
+      <div class="trainer-quest-stats-guide-character" aria-hidden="true">
+        <img src="./assets/home/life-zone/ui/trainer-quest-stats-guide-trainer.png" alt="" loading="eager" decoding="async">
       </div>
+      <div class="trainer-quest-stats-guide-speech" aria-hidden="true">${TRAINER_QUEST_SPEECH_TEXT}</div>
       <div class="trainer-quest-stats-head">
         <button type="button" class="trainer-quest-icon-btn" data-trainer-quest-back aria-label="목록으로 돌아가기">‹</button>
-        <div class="trainer-quest-stats-title">
-          <span>기타</span>
-          <h3>내 운동 통계</h3>
-        </div>
-        <div class="trainer-quest-export-actions" aria-label="통계 내보내기">
-          <button type="button" class="trainer-quest-icon-btn trainer-quest-export-btn" data-trainer-quest-export="share" aria-label="통계 JSON 공유하기" title="공유하기">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"></path>
-              <path d="M12 16V4"></path>
-              <path d="M7 9l5-5 5 5"></path>
-            </svg>
-          </button>
-          <button type="button" class="trainer-quest-icon-btn trainer-quest-export-btn" data-trainer-quest-export="copy" aria-label="통계 JSON 복사하기" title="복사하기">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <rect x="8" y="8" width="11" height="11" rx="2"></rect>
-              <path d="M5 15H4a1 1 0 0 1-1-1V5a2 2 0 0 1 2-2h9a1 1 0 0 1 1 1v1"></path>
-            </svg>
-          </button>
+        <div class="trainer-quest-stats-title-row">
+          <div class="trainer-quest-stats-title">
+            <span>기타</span>
+            <h3>내 운동 통계</h3>
+          </div>
+          <div class="trainer-quest-export-actions" aria-label="통계 내보내기">
+            <button type="button" class="trainer-quest-icon-btn trainer-quest-export-btn" data-trainer-quest-export="share" aria-label="통계 JSON 공유하기" title="공유하기">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"></path>
+                <path d="M12 16V4"></path>
+                <path d="M7 9l5-5 5 5"></path>
+              </svg>
+            </button>
+            <button type="button" class="trainer-quest-icon-btn trainer-quest-export-btn" data-trainer-quest-export="copy" aria-label="통계 JSON 복사하기" title="복사하기">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <rect x="8" y="8" width="11" height="11" rx="2"></rect>
+                <path d="M5 15H4a1 1 0 0 1-1-1V5a2 2 0 0 1 2-2h9a1 1 0 0 1 1 1v1"></path>
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
       <div class="trainer-quest-stats-root" data-trainer-quest-stats-root data-stats-root="trainer-quest"></div>

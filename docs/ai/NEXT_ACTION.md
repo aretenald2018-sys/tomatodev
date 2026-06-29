@@ -3,15 +3,30 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-29-stats-priority-health-curves.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-stats-week-performance-health-review.md`
-- 현재 단계: `Slice 2 배포 검증 완료`
+- 계획 문서: `docs/ai/features/2026-06-29-trainer-health-miranda-visuals.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-trainer-health-miranda-visuals-review.md`
+- 현재 단계: `트레이너 통계 모달·건강지표 롤백·미란다 모달 아트 개선 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `전체통계 기간 토글 단일화, 건강지표 단일 그래프, 운동별 퍼포먼스 추이 카드 Slice 2를 구현하고 Dashboard3 Pages 배포 검증을 통과했다.`
-- 다음 액션: `인증 가능한 실제 브라우저에서 통계 탭 UI 흐름을 시각 확인한다.`
+- 마지막 완료: `트레이너 통계 모달 우측 안내 아트, 건강지표 카드 롤백, 미란다 퀘스트 모달 아트 개선을 구현하고 정적 검증을 통과했다.`
+- 다음 액션: `Dashboard3 Pages 배포 검증 후 사용자 요청에 따른 다음 작업을 진행한다.`
 - 차단 사유: `없음.`
 
 ## 직전 완료 요약
+
+- Trainer Health Miranda Visuals Slice 1-3:
+  1. 계획: `docs/ai/features/2026-06-29-trainer-health-miranda-visuals.md`
+  2. 리뷰: `docs/ai/reviews/2026-06-29-trainer-health-miranda-visuals-review.md`
+  3. `assets/home/life-zone/ui/trainer-quest-stats-guide-trainer.png`를 추가해 통계 모달 우측에서 팔을 뻗어 안내하는 트레이너를 표시했다.
+  4. 트레이너 말풍선 문구를 `회원님의 운동 성과를 함께 살펴보시죠!`로 변경하고 공유/복사 버튼을 제목 줄 옆으로 이동했다.
+  5. 전체통계와 트레이너 통계 모달의 건강지표 영역을 `체중 & 섭취칼로리 추이`, `월간 칼로리 리포트` 카드로 롤백했다.
+  6. `assets/home/life-zone/ui/miranda-npc-seated.png`를 새 imagegen 결과로 교체해 낮은 농도 선글라스, 보이는 눈매, 차가운 표정을 반영했다.
+  7. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260629z18-trainer-health-miranda`로 갱신했다.
+  8. PASS: `node --check modals/trainer-quest-modal.js; node --check modals/miranda-quest-modal.js; node --check render-stats.js; node --check sw.js`
+  9. PASS: `node --test tests/trainer-quest-modal.test.js tests/miranda-quest-modal.test.js tests/stats-unified-health-chart.test.js tests/stats-overall-compact-summary.test.js tests/stats-exercise-performance.test.js` — 21 tests passed
+  10. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
+  11. PASS: `node --test tests/*.test.js` — 606 tests passed
+  12. PASS: `git diff --check`
+  13. not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 모달 시각 확인이 남아 있다.
 
 - Trainer Label Stats Leaning Asset Slice 1:
   1. 계획: `docs/ai/features/2026-06-29-trainer-label-stats-leaning-asset.md`

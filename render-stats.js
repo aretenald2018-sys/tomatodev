@@ -8,7 +8,7 @@ import { MOVEMENTS }                                 from './config.js';
 import { TODAY, getMuscles, getCF, getDiet, dietDayOk,
          daysInMonth, isFuture, getExList, getAllMuscles,
          getVolumeHistory, getCache, calcVolume,
-         getExercises, dateKey, getBodyCheckins, getDietPlan,
+         getExercises, dateKey, getBodyCheckins, getDietPlan, getDayTargetKcal,
          hasExerciseRecord, hasDietRecord }    from './data.js';
 import { SUBPATTERN_TO_MAJOR, calcBurnedKcal }       from './calc.js';
 import { getWorkoutSessions }                        from './workout/sessions.js';
@@ -29,6 +29,8 @@ export function setPeriod() {
 }
 
 const _healthMetricsCharts = new WeakMap();
+const _kcalWeightCharts = new WeakMap();
+const _calorieMonthCharts = new WeakMap();
 
 export function renderStats(root = document) {
   _bindStatsAnalysisPeriodControls(root);
@@ -76,11 +78,16 @@ function _trainerQuestStatsMarkup() {
       <div data-stats-id="stats-workout-analysis"></div>
     </section>
     <section class="stats-block stats-health-block trainer-quest-stats-block">
-      <div class="stats-block-title">건강 지표</div>
-      <div class="stats-chart-meta" data-stats-id="health-chart-meta"></div>
-      <div class="stats-health-legend" data-stats-id="health-metrics-legend"></div>
-      <div class="stats-health-chart-wrap"><canvas data-stats-id="health-metrics-chart"></canvas></div>
-      <div data-stats-id="health-chart-empty" class="stats-empty" style="display:none">선택한 기간에 표시할 건강 지표 기록이 없어요.</div>
+      <div class="stats-block-title">체중 & 섭취칼로리 추이</div>
+      <div class="stats-chart-meta" data-stats-id="kcal-weight-meta"></div>
+      <div class="stats-chart-wrap"><canvas data-stats-id="kcal-weight-chart"></canvas></div>
+      <div data-stats-id="kcal-weight-chart-empty" class="stats-empty" style="display:none">선택 기간에 체중 또는 섭취칼로리 기록이 없어요.</div>
+    </section>
+    <section class="stats-block stats-calorie-report-block trainer-quest-stats-block">
+      <div class="stats-block-title">월간 칼로리 리포트</div>
+      <div class="stats-chart-wrap"><canvas data-stats-id="calorie-month-chart"></canvas></div>
+      <div data-stats-id="calorie-month-empty" class="stats-empty" style="display:none">이번 달 칼로리 기록이 없어요.</div>
+      <div data-stats-id="calorie-month-summary"></div>
     </section>
     <section class="stats-block stats-performance-block trainer-quest-stats-block">
       <div class="stats-block-title">운동별 퍼포먼스 추이</div>
@@ -336,7 +343,8 @@ function _renderPeriodScopedStats(scope = document) {
   _renderMuscleFatigue(scope);
   _renderOverallSummary(scope);
   _renderWorkoutAnalysis(scope);
-  _renderHealthMetricsChart(scope);
+  _renderKcalWeightChart(scope);
+  _renderCalorieReport(scope);
   _renderExercisePerformanceSection(scope);
 }
 function _syncStatsAnalysisPeriodButton(btn) {
@@ -1653,6 +1661,271 @@ function _chartColors() {
     grid: dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)',
     text: dark ? '#8899a6' : '#6b7280',
   };
+}
+
+function _destroyTrackedChart(tracker, canvas) {
+  if (!canvas) return;
+  const tracked = tracker.get(canvas);
+  if (tracked) {
+    tracked.destroy();
+    tracker.delete(canvas);
+  }
+  const existing = typeof Chart !== 'undefined' && typeof Chart.getChart === 'function'
+    ? Chart.getChart(canvas)
+    : null;
+  if (existing && existing !== tracked) existing.destroy();
+}
+
+function _renderKcalWeightChart(scope = document) {
+  const canvas = _statsNode(scope, 'kcal-weight-chart');
+  const emptyEl = _statsNode(scope, 'kcal-weight-chart-empty');
+  const metaEl = _statsNode(scope, 'kcal-weight-meta');
+  if (!canvas) return;
+  _destroyTrackedChart(_kcalWeightCharts, canvas);
+
+  const range = _statsAnalysisRange();
+  const cache = getCache();
+  const checkins = getBodyCheckins()
+    .filter(c => (c?.date || '') <= range.toKey)
+    .sort((a, b) => (a?.date || '').localeCompare(b?.date || ''));
+  const checkinByDate = new Map(checkins.map(c => [c.date, c]));
+  const keys = _sampleHealthKeys(_dateRange(range.fromKey, range.toKey), 92);
+  const labels = keys.map(key => key.slice(5).replace('-', '/'));
+  const kcalData = keys.map(key => {
+    const date = _dateFromKey(key);
+    const day = date ? getDiet(date.getFullYear(), date.getMonth(), date.getDate()) : (cache[key] || {});
+    const kcal = _dayKcal(day);
+    return kcal > 0 ? kcal : null;
+  });
+  const weightData = keys.map(key => {
+    const n = _maybeNum(checkinByDate.get(key)?.weight);
+    return n !== null ? n : null;
+  });
+  const hasKcal = kcalData.some(v => v !== null);
+  const hasWeight = weightData.some(v => v !== null);
+  const hasChartData = hasKcal || hasWeight;
+
+  canvas.style.display = hasChartData ? 'block' : 'none';
+  if (canvas.parentElement) canvas.parentElement.style.display = hasChartData ? 'block' : 'none';
+  if (emptyEl) {
+    emptyEl.style.display = hasChartData ? 'none' : 'block';
+    emptyEl.textContent = '선택 기간에 체중 또는 섭취칼로리 기록이 없어요.';
+  }
+  if (metaEl) {
+    const first = keys[0]?.replace(/-/g, '.') || '';
+    const last = keys[keys.length - 1]?.replace(/-/g, '.') || '';
+    metaEl.textContent = first && last ? `${first} - ${last}` : '선택 기간 기록 없음';
+  }
+  if (!hasChartData || typeof Chart === 'undefined') return;
+
+  const colors = _chartColors();
+  const chart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: '체중',
+          data: weightData,
+          borderColor: '#ef6a6a',
+          backgroundColor: 'rgba(239,106,106,0.08)',
+          borderWidth: 2,
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          tension: 0.3,
+          spanGaps: true,
+          yAxisID: 'weight',
+        },
+        {
+          label: '섭취칼로리',
+          data: kcalData,
+          borderColor: '#6366f1',
+          backgroundColor: 'rgba(99,102,241,0.10)',
+          borderWidth: 2,
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          tension: 0.25,
+          spanGaps: true,
+          yAxisID: 'kcal',
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: colors.text, boxWidth: 10, font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.dataset.yAxisID === 'weight'
+              ? `${ctx.dataset.label}: ${ctx.parsed.y ?? '-'}kg`
+              : `${ctx.dataset.label}: ${ctx.parsed.y ? _fmt(ctx.parsed.y) : '-'}kcal`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: colors.text, font: { size: 10 }, maxTicksLimit: 7, maxRotation: 0 },
+          grid: { color: colors.grid },
+        },
+        weight: {
+          position: 'left',
+          title: { display: true, text: 'kg', color: colors.text, font: { size: 10 } },
+          ticks: { color: colors.text, font: { size: 10 } },
+          grid: { color: colors.grid },
+        },
+        kcal: {
+          position: 'right',
+          title: { display: true, text: 'kcal', color: colors.text, font: { size: 10 } },
+          ticks: { color: colors.text, font: { size: 10 }, callback: v => _fmt(v) },
+          grid: { drawOnChartArea: false },
+        },
+      },
+    },
+  });
+  _kcalWeightCharts.set(canvas, chart);
+}
+
+function _renderCalorieReport(scope = document) {
+  const canvas = _statsNode(scope, 'calorie-month-chart');
+  const summaryEl = _statsNode(scope, 'calorie-month-summary');
+  const emptyEl = _statsNode(scope, 'calorie-month-empty');
+  if (!canvas || !summaryEl) return;
+  _destroyTrackedChart(_calorieMonthCharts, canvas);
+
+  const y = TODAY.getFullYear();
+  const m = TODAY.getMonth();
+  const plan = getDietPlan();
+  const checkins = getBodyCheckins();
+  const dayCount = daysInMonth(y, m);
+  const lastDay = TODAY.getDate();
+  const labels = [];
+  const intake = [];
+  const burned = [];
+  const target = [];
+  const mealTotals = { b: 0, l: 0, d: 0, s: 0 };
+  let successDays = 0, failDays = 0, totalOver = 0, loggedDays = 0, totalMealKcal = 0, hasTarget = false;
+
+  for (let d = 1; d <= Math.min(lastDay, dayCount); d++) {
+    const key = dateKey(y, m, d);
+    const day = getDiet(y, m, d);
+    const dayKcal = _dayKcal(day);
+    const weight = _weightOnOrBefore(checkins, key) ?? _maybeNum(plan?.weight) ?? 70;
+    const exerciseKcal = calcBurnedKcal(day, weight).total;
+    const goal = getDayTargetKcal(plan, y, m, d, day);
+    const ok = dietDayOk(y, m, d);
+
+    labels.push(String(d));
+    intake.push(dayKcal > 0 ? dayKcal : null);
+    burned.push(exerciseKcal > 0 ? exerciseKcal : null);
+    target.push(goal > 0 && Number.isFinite(goal) ? goal : null);
+    if (goal > 0 && Number.isFinite(goal)) hasTarget = true;
+
+    if (ok === true) successDays++;
+    else if (ok === false) failDays++;
+    if (dayKcal > 0) {
+      loggedDays++;
+      mealTotals.b += _num(day.bKcal);
+      mealTotals.l += _num(day.lKcal);
+      mealTotals.d += _num(day.dKcal);
+      mealTotals.s += _num(day.sKcal);
+      totalMealKcal += dayKcal;
+      if (goal > 0 && Number.isFinite(goal)) totalOver += Math.max(0, dayKcal - goal);
+    }
+  }
+
+  const hasChartData = intake.some(v => v !== null) || burned.some(v => v !== null);
+  canvas.style.display = hasChartData ? 'block' : 'none';
+  if (canvas.parentElement) canvas.parentElement.style.display = hasChartData ? 'block' : 'none';
+  if (emptyEl) emptyEl.style.display = hasChartData ? 'none' : 'block';
+
+  const mealRows = [
+    ['아침', mealTotals.b],
+    ['점심', mealTotals.l],
+    ['저녁', mealTotals.d],
+    ['간식', mealTotals.s],
+  ].map(([label, total]) => {
+    const avg = loggedDays ? Math.round(total / loggedDays) : 0;
+    const pct = totalMealKcal ? Math.round(total / totalMealKcal * 1000) / 10 : 0;
+    return `<div class="calorie-meal-cell"><span>${label}</span><b>${_fmt(avg)}</b><small>${pct ? `${pct}%` : '-'}</small></div>`;
+  }).join('');
+
+  summaryEl.innerHTML = `
+    <div class="calorie-summary-grid">
+      <div><span>성공</span><b>${successDays}</b><small>일</small></div>
+      <div><span>실패</span><b>${failDays}</b><small>일</small></div>
+      <div><span>초과</span><b>${hasTarget ? _fmt(Math.round(totalOver)) : '-'}</b><small>kcal</small></div>
+    </div>
+    <div class="calorie-meal-grid">${mealRows}</div>
+  `;
+
+  if (!hasChartData || typeof Chart === 'undefined') return;
+  const colors = _chartColors();
+  const datasets = [
+    {
+      type: 'bar',
+      label: '섭취칼로리',
+      data: intake,
+      backgroundColor: 'rgba(250,52,44,0.42)',
+      borderColor: 'rgba(250,52,44,0.75)',
+      borderWidth: 1,
+      borderRadius: 3,
+      yAxisID: 'kcal',
+    },
+    {
+      type: 'bar',
+      label: '운동칼로리',
+      data: burned,
+      backgroundColor: 'rgba(20,184,166,0.42)',
+      borderColor: 'rgba(20,184,166,0.75)',
+      borderWidth: 1,
+      borderRadius: 3,
+      yAxisID: 'kcal',
+    },
+  ];
+  if (hasTarget) {
+    datasets.push({
+      type: 'line',
+      label: '목표',
+      data: target,
+      borderColor: 'rgba(250,52,44,0.45)',
+      borderDash: [6, 5],
+      borderWidth: 1.5,
+      pointRadius: 0,
+      spanGaps: true,
+      yAxisID: 'kcal',
+    });
+  }
+
+  const chart = new Chart(canvas, {
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: colors.text, boxWidth: 10, font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y ? _fmt(ctx.parsed.y) : '-'}kcal`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: colors.text, font: { size: 10 }, maxTicksLimit: 8 },
+          grid: { color: colors.grid },
+        },
+        kcal: {
+          position: 'left',
+          ticks: { color: colors.text, font: { size: 10 }, callback: v => _fmt(v) },
+          grid: { color: colors.grid },
+        },
+      },
+    },
+  });
+  _calorieMonthCharts.set(canvas, chart);
 }
 
 const HEALTH_CHART_SERIES = {

@@ -777,11 +777,16 @@
 <div id="stats-workout-analysis"></div>
 </div>
 <div class="stats-block stats-health-block">
-<div class="stats-block-title">건강 지표</div>
-<div class="stats-chart-meta" id="health-chart-meta"></div>
-<div class="stats-health-legend" id="health-metrics-legend"></div>
-<div class="stats-health-chart-wrap"><canvas id="health-metrics-chart"></canvas></div>
-<div id="health-chart-empty" class="stats-empty" style="display:none">선택한 기간에 표시할 건강 지표 기록이 없어요.</div>
+<div class="stats-block-title">체중 & 섭취칼로리 추이</div>
+<div class="stats-chart-meta" id="kcal-weight-meta"></div>
+<div class="stats-chart-wrap"><canvas id="kcal-weight-chart"></canvas></div>
+<div id="kcal-weight-chart-empty" class="stats-empty" style="display:none">선택 기간에 체중 또는 섭취칼로리 기록이 없어요.</div>
+</div>
+<div class="stats-block stats-calorie-report-block">
+<div class="stats-block-title">월간 칼로리 리포트</div>
+<div class="stats-chart-wrap"><canvas id="calorie-month-chart"></canvas></div>
+<div id="calorie-month-empty" class="stats-empty" style="display:none">이번 달 칼로리 기록이 없어요.</div>
+<div id="calorie-month-summary"></div>
 </div>
 <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
 <button class="export-btn" onclick="openExportModal()">📊 CSV 내보내기</button>

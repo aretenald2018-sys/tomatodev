@@ -97,5 +97,5 @@ test('compact summary styles are present and cache version is bumped', () => {
   assert.match(styleCss, /\.stats-performance-block/);
   assert.match(styleCss, /\.stats-summary-fact/);
   assert.match(styleCss, /\.stats-summary-kpi\.is-good/);
-  assert.match(swJs, /tomatofarm-v20260629z17-stats-week-performance-health/);
+  assert.match(swJs, /tomatofarm-v20260629z18-trainer-health-miranda/);
 });

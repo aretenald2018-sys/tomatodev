@@ -475,7 +475,7 @@
   position: absolute;
   left: 50%;
   top: 0;
-  width: min(78vw, 312px);
+  width: min(84vw, 360px);
   margin: 0;
   padding: 10px 16px;
   border: 1px solid color-mix(in srgb, var(--primary) 16%, var(--border));
@@ -483,12 +483,13 @@
   background: var(--surface);
   color: var(--text);
   box-shadow: 0 10px 24px rgba(17, 24, 39, .18);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 900;
-  line-height: 24px;
+  line-height: 22px;
   text-align: center;
   transform: translateX(-50%);
-  white-space: nowrap;
+  white-space: normal;
+  word-break: keep-all;
 }
 .trainer-quest-speech::after {
   content: "";
@@ -650,34 +651,70 @@
 .trainer-quest-sheet--stats .trainer-quest-stats {
   padding-top: 0;
 }
-.trainer-quest-stats-leaning-character {
+.trainer-quest-stats-guide-character {
   position: absolute;
-  left: 50%;
-  top: clamp(-126px, -24vw, -92px);
-  z-index: 1;
-  width: clamp(150px, 36vw, 218px);
+  right: clamp(-10px, 1vw, 8px);
+  top: clamp(-156px, -31vw, -118px);
+  z-index: 3;
+  width: clamp(168px, 40vw, 232px);
   pointer-events: none;
-  transform: translateX(-50%);
-  filter: drop-shadow(0 10px 16px rgba(17, 24, 39, .20));
+  filter: drop-shadow(0 12px 18px rgba(17, 24, 39, .22));
 }
-.trainer-quest-stats-leaning-character img {
+.trainer-quest-stats-guide-character img {
   display: block;
   width: 100%;
   height: auto;
+}
+.trainer-quest-stats-guide-speech {
+  position: absolute;
+  right: clamp(118px, 31vw, 200px);
+  top: clamp(-98px, -19vw, -66px);
+  z-index: 4;
+  width: min(252px, calc(100% - 132px));
+  padding: 9px 12px;
+  border: 1px solid color-mix(in srgb, var(--primary) 16%, var(--border));
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .92);
+  color: var(--text);
+  box-shadow: 0 10px 24px rgba(17, 24, 39, .16);
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 18px;
+  word-break: keep-all;
+}
+.trainer-quest-stats-guide-speech::after {
+  content: "";
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border-right: 1px solid color-mix(in srgb, var(--primary) 16%, var(--border));
+  border-bottom: 1px solid color-mix(in srgb, var(--primary) 16%, var(--border));
+  background: rgba(255, 255, 255, .92);
+  transform: translateY(-50%) rotate(-45deg);
 }
 .trainer-quest-stats-head {
   position: relative;
   z-index: 5;
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) auto;
+  grid-template-columns: 36px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
+  padding-right: clamp(76px, 22vw, 126px);
   margin-bottom: 12px;
+}
+.trainer-quest-stats-title-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .trainer-quest-stats-title {
   min-width: 0;
 }
 .trainer-quest-export-actions {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 6px;

@@ -21,7 +21,7 @@ function readPngHeader(relativePath) {
 
 test('trainer quest modal renders game-like dialogue choice boxes', () => {
   assert.match(modalJs, /id="trainer-quest-modal"/);
-  assert.match(modalJs, /무엇을 도와드릴까요\?/);
+  assert.match(modalJs, /회원님의 운동 성과를 함께 살펴보시죠!/);
   assert.match(modalJs, /trainer-quest-game-menu/);
   assert.match(modalJs, /data-trainer-quest-game-menu/);
   assert.match(modalJs, /trainer-quest-game-option/);
@@ -46,8 +46,10 @@ test('trainer quest modal renders game-like dialogue choice boxes', () => {
   assert.doesNotMatch(modalJs, /완료가능한 퀘스트/);
   assert.doesNotMatch(modalJs, /업데이트 예정/);
   assert.match(modalJs, /assets\/home\/life-zone\/ui\/trainer-quest-seated-trainer\.png/);
-  assert.match(modalJs, /trainer-quest-stats-leaning-character/);
-  assert.match(modalJs, /assets\/home\/life-zone\/ui\/trainer-quest-leaning-trainer\.png/);
+  assert.match(modalJs, /trainer-quest-stats-guide-character/);
+  assert.match(modalJs, /trainer-quest-stats-guide-speech/);
+  assert.match(modalJs, /trainer-quest-stats-title-row/);
+  assert.match(modalJs, /assets\/home\/life-zone\/ui\/trainer-quest-stats-guide-trainer\.png/);
   assert.match(modalJs, /classList\.add\('trainer-quest-sheet--stats'\)/);
   assert.match(modalJs, /classList\.remove\('trainer-quest-sheet--stats'\)/);
   assert.doesNotMatch(modalJs, /onclick=/);
@@ -88,12 +90,14 @@ test('trainer quest stats render reuses stats tab data in a scoped modal root', 
   assert.match(statsJs, /export function renderTrainerQuestStats\(root\)/);
   assert.match(statsJs, /data-stats-id="stats-overall-summary"/);
   assert.match(statsJs, /data-stats-id="stats-workout-analysis"/);
-  assert.match(statsJs, /data-stats-id="health-metrics-chart"/);
-  assert.match(statsJs, /data-stats-id="health-metrics-legend"/);
+  assert.match(statsJs, /data-stats-id="kcal-weight-chart"/);
+  assert.match(statsJs, /data-stats-id="kcal-weight-meta"/);
+  assert.match(statsJs, /data-stats-id="calorie-month-chart"/);
+  assert.match(statsJs, /data-stats-id="calorie-month-summary"/);
   assert.match(statsJs, /data-stats-id="exercise-performance-section"/);
   assert.match(statsJs, /data-stats-id="stats-muscle-fatigue"/);
   assert.match(statsJs, /data-stats-id="volume-section"/);
-  assert.match(statsJs, /stats-muscle-fatigue-block[\s\S]*stats-summary-block[\s\S]*stats-workout-analysis-block[\s\S]*stats-health-block[\s\S]*stats-performance-block/);
+  assert.match(statsJs, /stats-muscle-fatigue-block[\s\S]*stats-summary-block[\s\S]*stats-workout-analysis-block[\s\S]*stats-health-block[\s\S]*stats-calorie-report-block[\s\S]*stats-performance-block/);
   assert.doesNotMatch(statsJs, /data-stats-id="deep-stats-report"/);
   assert.doesNotMatch(statsJs, /trainer-quest-deep-stats/);
   assert.match(statsJs, /function _statsNode\(root, id\)/);
@@ -129,7 +133,9 @@ test('trainer quest modal styles and runtime cache asset are registered', () => 
   assert.match(styleCss, /padding:\s*clamp\(148px,\s*33vw,\s*184px\)/);
   assert.match(styleCss, /\.trainer-quest-sheet\.trainer-quest-sheet--stats \{[\s\S]*padding:\s*14px 16px 18px;/);
   assert.match(styleCss, /\.trainer-quest-sheet\.trainer-quest-sheet--stats \.trainer-quest-stage \{[\s\S]*display:\s*none;/);
-  assert.match(styleCss, /\.trainer-quest-stats-leaning-character \{[\s\S]*top:\s*clamp\(-126px,\s*-24vw,\s*-92px\);[\s\S]*width:\s*clamp\(150px,\s*36vw,\s*218px\);/);
+  assert.match(styleCss, /\.trainer-quest-stats-guide-character \{[\s\S]*right:\s*clamp\(-10px,\s*1vw,\s*8px\);[\s\S]*top:\s*clamp\(-156px,\s*-31vw,\s*-118px\);[\s\S]*width:\s*clamp\(168px,\s*40vw,\s*232px\);/);
+  assert.match(styleCss, /\.trainer-quest-stats-guide-speech::after/);
+  assert.match(styleCss, /\.trainer-quest-stats-title-row/);
   assert.match(styleCss, /\.trainer-quest-sheet--stats \.trainer-quest-stats \{[\s\S]*padding-top:\s*0;/);
   assert.match(styleCss, /rgba\(255, 255, 255, \.58\)/);
   assert.match(styleCss, /rgba\(255, 255, 255, \.32\)/);
@@ -163,13 +169,13 @@ test('trainer quest modal styles and runtime cache asset are registered', () => 
   assert.doesNotMatch(styleCss, /\.trainer-quest-choice/);
   assert.doesNotMatch(styleCss, /\.trainer-quest-choice-caret/);
   assert.match(styleCss, /\.trainer-quest-stats-root/);
-  assert.match(swJs, /tomatofarm-v20260629z17-stats-week-performance-health/);
+  assert.match(swJs, /tomatofarm-v20260629z18-trainer-health-miranda/);
   assert.match(swJs, /\.\/modals\/trainer-quest-modal\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/trainer-quest-seated-trainer\.png/);
-  assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/trainer-quest-leaning-trainer\.png/);
-  assert.deepEqual(readPngHeader('assets/home/life-zone/ui/trainer-quest-leaning-trainer.png'), {
-    width: 1028,
-    height: 1086,
+  assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/trainer-quest-stats-guide-trainer\.png/);
+  assert.deepEqual(readPngHeader('assets/home/life-zone/ui/trainer-quest-stats-guide-trainer.png'), {
+    width: 1024,
+    height: 1536,
     colorType: 6
   });
 });
