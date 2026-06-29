@@ -63,7 +63,8 @@
 3. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
 4. PASS: `node --test tests/*.test.js` — 603 tests passed
 5. PASS: `git diff --check`
-6. PASS 예정: Dashboard3 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+6. PASS: Dashboard3 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+7. PASS: 배포된 `sw.js`, `modals/trainer-quest-modal.js`, `style.css`에서 새 asset/style marker 확인
 
 ## 다음 실행 프롬프트
 

@@ -26,6 +26,9 @@
   10. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
   11. PASS: `node --test tests/*.test.js` — 603 tests passed
   12. PASS: `git diff --check`
+  13. PASS: Dashboard3 배포 검증
+  14. PASS: 배포된 `sw.js`, `modals/trainer-quest-modal.js`, `style.css` marker 검증
+  15. not verified yet: 인증 세션이 없는 브라우저에서는 실제 홈탭과 트레이너 통계 모달 시각 상태를 직접 클릭 검증하지 못했다.
 
 - Home Life Zone Overlay Alignment Fix Slice 1:
   1. 계획: `docs/ai/features/2026-06-29-home-life-zone-overlay-alignment-fix.md`
