@@ -230,6 +230,16 @@ export function hasLifeZoneRunningActivity(dayData = null) {
   return !!(dayData.runStartedAt && !dayData.runEndedAt);
 }
 
+export function hasLifeZoneActiveRunning(dayData = null) {
+  if (!dayData) return false;
+  const runData = dayData.runData || {};
+  if (dayData.lifeZoneRunningLive || dayData.runLiveActive) return true;
+  if (runData.lifeZoneRunningLive || runData.runLiveActive) return true;
+  const startedAt = dayData.runStartedAt || runData.startedAt;
+  const endedAt = dayData.runEndedAt || runData.endedAt;
+  return !!(startedAt && !endedAt);
+}
+
 function _runningMapNumber(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
@@ -333,9 +343,10 @@ export function hasLifeZoneDietActivity(dayData = null) {
 }
 
 export function resolveLifeZoneActivity(dayData = null) {
-  if (hasLifeZoneRunningActivity(dayData)) return 'running';
+  if (hasLifeZoneActiveRunning(dayData)) return 'running';
   const snapshotState = resolveLifeZoneActivitySnapshot(dayData);
   if (snapshotState) return snapshotState;
+  if (hasLifeZoneRunningActivity(dayData)) return 'running';
   if (hasLifeZoneWorkoutActivity(dayData)) return 'workout';
   if (hasLifeZoneDietActivity(dayData)) return 'diet';
   return 'office';

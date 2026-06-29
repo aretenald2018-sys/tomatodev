@@ -174,8 +174,14 @@ test('running records save into a dedicated running session with place and devic
   assert.match(runningSessionJs, /summary\.cadenceSpm == null \? '--'/);
 });
 
+test('running workout save writes a running life-zone snapshot', () => {
+  assert.match(saveJs, /hasLifeZoneDietActivity,\s*hasLifeZoneRunningActivity,\s*hasLifeZoneWorkoutActivity/);
+  assert.match(saveJs, /const state = hasLifeZoneRunningActivity\(payload\) \? 'running' : 'workout';/);
+  assert.match(saveJs, /const snapshot = active \? \{ state, updatedAt: Date\.now\(\) \} : null;/);
+});
+
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260629z25-stats-growth-blue/);
+  assert.match(swJs, /tomatofarm-v20260629z26-life-zone-running-priority/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/sprites\/jups-running-track\.png/);

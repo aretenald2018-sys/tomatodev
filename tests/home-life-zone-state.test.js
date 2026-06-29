@@ -10,6 +10,7 @@ import {
   getLifeZoneSpeech,
   getLifeZoneWorkoutSpeech,
   hasLifeZoneDietActivity,
+  hasLifeZoneActiveRunning,
   hasLifeZoneRunningActivity,
   hasLifeZoneWorkoutActivity,
   normalizeLifeZoneName,
@@ -66,10 +67,14 @@ test('detects workout and diet activities from workout day documents', () => {
   assert.equal(hasLifeZoneDietActivity({ sKcal: 120 }), true);
 });
 
-test('detects running activity and gives it home track priority', () => {
+test('detects running activity and keeps active running as home track priority', () => {
   assert.equal(hasLifeZoneRunningActivity({ running: true }), true);
   assert.equal(hasLifeZoneRunningActivity({ runData: { route: [{ lat: 37.1, lng: 127.1 }] } }), true);
   assert.equal(hasLifeZoneRunningActivity({ runLiveActive: true }), true);
+  assert.equal(hasLifeZoneActiveRunning({ running: true }), false);
+  assert.equal(hasLifeZoneActiveRunning({ runLiveActive: true }), true);
+  assert.equal(hasLifeZoneActiveRunning({ runStartedAt: 1000, runEndedAt: 2000 }), false);
+  assert.equal(hasLifeZoneActiveRunning({ runStartedAt: 1000 }), true);
   assert.equal(resolveLifeZoneActivity({
     running: true,
     exercises: [{ sets: [{ done: true }] }],
@@ -241,6 +246,32 @@ test('treats live running as the home track running state', () => {
   assert.equal(actors[0].sprite, 'jups-running-track.png');
   assert.equal(actors[0].speech, '러닝중');
   assert.equal(actors[0].runningMap.live, true);
+});
+
+test('latest lunch snapshot overrides a saved running record in life zone', () => {
+  const day = {
+    running: true,
+    runRoute: [{ lat: 37.5209, lng: 126.977, ts: 1000 }],
+    runRouteSummary: { pointCount: 1 },
+    lunch: '샐러드',
+    lKcal: 620,
+    lifeZoneDietActivity: { state: 'diet', meal: 'lunch', updatedAt: 3000 },
+    lifeZoneLastActivity: { state: 'diet', meal: 'lunch', updatedAt: 3000 }
+  };
+  const actors = resolveLifeZoneActors({
+    accounts: [{ id: 'u2', resolvedNickname: '문정토마토' }],
+    currentUser: { id: 'u2' },
+    dayByAccountId: { u2: day }
+  });
+
+  assert.equal(resolveLifeZoneActivity(day), 'diet');
+  assert.equal(getLifeZoneSpeech(day), '점심냠냠');
+  assert.equal(actors[1].displayName, '문정토마토');
+  assert.equal(actors[1].state, 'diet');
+  assert.equal(actors[1].slot.id, 'island-left');
+  assert.equal(actors[1].speech, '점심냠냠');
+
+  assert.equal(resolveLifeZoneActivity({ ...day, runLiveActive: true }), 'running');
 });
 
 test('treats diet-only Jups record as diet state in life zone', () => {

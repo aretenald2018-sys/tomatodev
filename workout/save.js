@@ -18,7 +18,7 @@ import { MOVEMENTS } from '../config.js';
 import { calcSetVolume } from '../calc/volume.js';
 import { shouldKeepMaxDraftExercisesForSavePure } from './save-pure.js';
 import { upsertWorkoutSession } from './sessions.js';
-import { hasLifeZoneDietActivity, hasLifeZoneWorkoutActivity } from '../home/life-zone-state.js';
+import { hasLifeZoneDietActivity, hasLifeZoneRunningActivity, hasLifeZoneWorkoutActivity } from '../home/life-zone-state.js';
 import { buildWorkoutSetTimeline, normalizeSetCompletedAt } from './timeline.js';
 
 // 미래 날짜 저장 가드 — 어떤 경로로든 미래 날짜 쓰기 금지 (B-3).
@@ -147,7 +147,8 @@ function _buildWorkoutPayloadWithSessions(ctxKey, payload) {
 
 function _attachLifeZoneWorkoutSnapshot(payload) {
   const active = hasLifeZoneWorkoutActivity(payload);
-  const snapshot = active ? { state: 'workout', updatedAt: Date.now() } : null;
+  const state = hasLifeZoneRunningActivity(payload) ? 'running' : 'workout';
+  const snapshot = active ? { state, updatedAt: Date.now() } : null;
   return {
     ...payload,
     lifeZoneWorkoutActivity: snapshot,

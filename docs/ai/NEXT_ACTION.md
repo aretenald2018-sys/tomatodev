@@ -3,15 +3,34 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-29-stats-performance-growth-blue.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-stats-performance-growth-blue-review.md`
-- 현재 단계: `운동별 퍼포먼스 성장중 색상 수정 완료`
+- 계획 문서: `docs/ai/features/2026-06-29-home-life-zone-running-stale-priority.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-home-life-zone-running-stale-priority-review.md`
+- 현재 단계: `홈 라이프존 저장 러닝 상태 우선순위 수정 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `운동별 퍼포먼스 추이 표에서 성장 판정 텍스트를 파란색으로 바꾸고, 캐시 버전과 회귀 테스트를 갱신했다.`
-- 다음 액션: `없음.`
+- 마지막 완료: `라이브 러닝만 최우선으로 두고, 저장된 러닝은 최신 점심 스냅샷보다 뒤에 판정되도록 수정했다.`
+- 다음 액션: `Dashboard3 Pages 배포 검증을 진행한다.`
 - 차단 사유: `없음.`
 
 ## 직전 완료 요약
+
+- Home Life Zone Running Stale Priority 계획:
+  1. `resolveLifeZoneActivity()`가 `hasLifeZoneRunningActivity()`를 스냅샷보다 먼저 검사해 저장된 러닝 기록이 최신 점심 기록을 덮는 원인을 확인했다.
+  2. 라이브 러닝만 최우선으로 두고, 저장된 러닝은 최신 활동 스냅샷 이후에 판정하도록 범위를 고정했다.
+  3. 러닝 지도/스프라이트/좌표와 식단 저장 payload는 제외 범위로 고정했다.
+
+- Home Life Zone Running Stale Priority Slice 1:
+  1. 계획: `docs/ai/features/2026-06-29-home-life-zone-running-stale-priority.md`
+  2. 리뷰: `docs/ai/reviews/2026-06-29-home-life-zone-running-stale-priority-review.md`
+  3. `home/life-zone-state.js`에서 라이브 러닝 판정 `hasLifeZoneActiveRunning()`을 추가했다.
+  4. 홈 라이프존 상태 우선순위를 `라이브 러닝 -> 최신 활동 스냅샷 -> 저장 러닝 -> 운동 -> 식단 -> 업무`로 변경했다.
+  5. `workout/save.js`에서 러닝 저장 시 `state: 'running'` 스냅샷을 남기도록 변경했다.
+  6. 문정토마토 점심 스냅샷이 저장 러닝을 덮는 회귀 테스트를 추가했다.
+  7. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260629z26-life-zone-running-priority`로 갱신했다.
+  8. PASS: `node --check home/life-zone-state.js; node --check workout/save.js; node --check sw.js`
+  9. PASS: `node --test tests/home-life-zone-state.test.js tests/home-life-zone-npc-quest.test.js tests/running-entry.test.js tests/save-schema.test.js` — 95 tests passed
+  10. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
+  11. PASS: `node --test tests/*.test.js` — 608 tests passed
+  12. PASS: `git diff --check`
 
 - Stats Performance Growth Blue 계획:
   1. `성장중` 판정 텍스트가 `var(--diet-ok)` 때문에 토마토 레드로 보이는 현상을 확인했다.
