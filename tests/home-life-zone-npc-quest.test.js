@@ -71,7 +71,7 @@ test('life zone NPC quest bubble has a stable clickable overlay style', () => {
   assert.match(css, /\.lz-npc-quest \{/);
   assert.match(css, /left: calc\(1084 \/ 1672 \* 100%\)/);
   assert.match(css, /top: calc\(792 \/ 1672 \* 100%\)/);
-  assert.match(css, /width: clamp\(58px, calc\(188 \/ 1672 \* 100%\), 82px\)/);
+  assert.match(css, /width: clamp\(52px, calc\(168 \/ 1672 \* 100%\), 76px\)/);
   assert.match(css, /display: flex/);
   assert.match(css, /min-height: 0/);
   assert.match(css, /transform: translate\(-50%, 0\)/);
@@ -88,8 +88,10 @@ test('life zone NPC quest bubble has a stable clickable overlay style', () => {
   assert.match(css, /\.lz-npc-bulb img \{/);
   assert.match(css, /\.lz-npc-quest \.lz-nameplate/);
   assert.match(css, /position: static/);
-  assert.match(css, /\.lz-npc-quest--trainer \.lz-nameplate \{[\s\S]*order: -1;[\s\S]*margin-bottom: 1px;/);
-  assert.match(css, /\.lz-npc-quest--trainer \.lz-npc-bulb \{[\s\S]*--lz-bulb-x: 62%;[\s\S]*--lz-bulb-y: -72%;/);
+  assert.match(css, /\.lz-npc-quest--trainer \.lz-nameplate \{[\s\S]*order: 1;[\s\S]*margin-top: 1px;[\s\S]*margin-bottom: 0;/);
+  assert.match(css, /\.lz-npc-quest--trainer \.lz-npc-bulb \{[\s\S]*order: 0;[\s\S]*--lz-bulb-x: 0px;[\s\S]*--lz-bulb-y: 0px;/);
+  assert.doesNotMatch(css, /\.lz-npc-quest--trainer \.lz-nameplate \{[\s\S]*order: -1;/);
+  assert.doesNotMatch(css, /\.lz-npc-quest--trainer \.lz-npc-bulb \{[\s\S]*--lz-bulb-x: 62%;/);
   assert.match(css, /overflow: visible/);
   assert.match(css, /\.lz-miranda-corner \{/);
   assert.match(css, /left: calc\(48 \/ 1672 \* 100%\)/);
@@ -224,7 +226,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260629z27-trainer-quest-bubble-offset/);
+  assert.match(sw, /tomatofarm-v20260629z28-trainer-quest-vertical-stack/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,

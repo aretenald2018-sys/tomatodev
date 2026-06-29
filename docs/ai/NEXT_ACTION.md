@@ -2,13 +2,13 @@
 
 ## 현재 상태
 
-- 상태: `complete`
+- 상태: `ready_for_review`
 - 계획 문서: `docs/ai/features/2026-06-29-home-life-zone-trainer-quest-bubble-offset.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-home-life-zone-trainer-quest-bubble-offset-review.md`
-- 현재 단계: `홈 라이프존 트레이너 퀘스트 전구 위치 수정 및 리뷰 완료`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-home-life-zone-trainer-quest-vertical-stack-review.md`
+- 현재 단계: `홈 라이프존 트레이너 전구 세로 정렬 회귀 수정 정적 검증 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `트레이너 전구 버튼의 세로 기준점을 올리고 trainer 전용 전구 offset을 추가해 얼굴 중앙을 덮지 않게 수정했다.`
-- 다음 액션: `없음.`
+- 마지막 완료: `트레이너 전구를 이름표 위로 되돌리고 오른쪽 offset을 제거했다.`
+- 다음 액션: `Slice 2 리뷰와 Dashboard3 Pages 배포 검증을 완료한다.`
 - 차단 사유: `없음.`
 
 ## 방금 계획한 항목
@@ -32,6 +32,24 @@
   11. PASS: Dashboard3 Pages 배포 검증 — `tomatofarm-v20260629z27-trainer-quest-bubble-offset` 캐시 버전 확인
   12. PASS: Dashboard3 Pages marker 검증 — `style.css`의 trainer 전구 offset과 `sw.js` 캐시 버전 확인
   13. not verified yet: 인증 세션이 없어 실제 배포 홈 화면에서 트레이너 얼굴 겹침 UI flow는 직접 시각 확인하지 못했다.
+
+- Home Life Zone Trainer Quest Bubble Offset Slice 2 계획:
+  1. `--lz-bulb-x: 62%`가 전구를 오른쪽으로 밀어 요구사항과 다르게 보이는 원인임을 확인했다.
+  2. `.lz-npc-quest--trainer .lz-nameplate { order: -1; }` 때문에 이름표가 전구보다 위에 나오는 문제를 확인했다.
+  3. 목표 구조는 아래에서 위로 `트레이너 머리 -> 트레이너 이름표 -> 전구`다.
+
+- Home Life Zone Trainer Quest Bubble Offset Slice 2:
+  1. `.lz-npc-quest--trainer .lz-npc-bulb`를 `order: 0`, `--lz-bulb-x: 0px`, `--lz-bulb-y: 0px`으로 고정했다.
+  2. `.lz-npc-quest--trainer .lz-nameplate`를 `order: 1`로 변경해 전구가 이름표 위에 오게 했다.
+  3. `.lz-npc-quest` 폭을 `168 기준`으로 되돌려 트레이너 머리 중심선에서 벗어나지 않게 했다.
+  4. 테스트에 `order: -1`과 `--lz-bulb-x: 62%` 재도입 금지를 추가했다.
+  5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260629z28-trainer-quest-vertical-stack`으로 갱신했다.
+  6. PASS: `node --check home/life-zone.js; node --check sw.js`
+  7. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/trainer-quest-modal.test.js` — 15 tests passed
+  8. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
+  9. PASS: `node --test tests/*.test.js` — 608 tests passed
+  10. PASS: `git diff --check`
+  11. pending: Dashboard3 Pages 배포 검증
 
 ## 직전 완료 요약
 

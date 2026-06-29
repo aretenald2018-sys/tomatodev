@@ -2,7 +2,7 @@
 
 ## 상태
 
-- 상태: Slice 1 구현 및 리뷰 완료
+- 상태: Slice 2 구현 및 정적 검증 완료
 - 요청: 홈 라이프존에서 퀘스트 아이콘이 트레이너 얼굴을 가리지 않게 수정
 - 자동 트리거: `/diagnose` 우선 적용
 
@@ -97,6 +97,49 @@
 - PASS: Dashboard3 Pages marker 검증 — `style.css`의 trainer 전구 offset과 `sw.js` 캐시 버전 확인
 - not verified yet: 인증 세션이 없어 실제 배포 홈 화면의 트레이너 얼굴 겹침은 직접 시각 확인하지 못했다.
 
+## Slice 2
+
+목표: Slice 1에서 전구를 오른쪽 위로 빼버린 회귀를 수정하고, 사용자가 요구한 세로 배치를 고정한다.
+
+진단:
+
+1. `.lz-npc-quest--trainer .lz-npc-bulb`의 `--lz-bulb-x: 62%`가 전구를 오른쪽으로 밀었다.
+2. `.lz-npc-quest--trainer .lz-nameplate`의 `order: -1` 때문에 이름표가 전구보다 위에 렌더됐다.
+3. 원하는 구조는 아래에서 위로 `트레이너 머리 -> 트레이너 이름표 -> 전구`다.
+
+구현:
+
+1. 트레이너 전구 offset을 `0px, 0px`으로 되돌려 이름표와 같은 중심선에 둔다.
+2. 트레이너 이름표 order를 전구 뒤로 두어 전구가 이름표 위에 오게 한다.
+3. 전구를 오른쪽으로 빼는 marker가 다시 들어오지 않도록 테스트를 갱신한다.
+4. `style.css`가 `STATIC_ASSETS`에 포함되므로 `sw.js` `CACHE_VERSION`을 다시 bump한다.
+
+검증:
+
+- `node --check home/life-zone.js; node --check sw.js`
+- `node --test tests/home-life-zone-npc-quest.test.js tests/trainer-quest-modal.test.js`
+- `node scripts/verify-runtime-assets.mjs`
+- `node --test tests/*.test.js`
+- `git diff --check`
+- Dashboard3 Pages 배포 검증
+
+실행 결과:
+
+1. `.lz-npc-quest--trainer .lz-npc-bulb`의 오른쪽 offset을 `0px`으로 되돌렸다.
+2. `.lz-npc-quest--trainer .lz-nameplate`를 `order: 1`로 바꿔 전구가 이름표 위에 오게 했다.
+3. 트레이너 버튼 폭을 `168 기준`으로 되돌려 전구/이름표가 머리 중심선에서 벗어나지 않게 했다.
+4. 테스트에 `order: -1`과 `--lz-bulb-x: 62%` 재도입 금지를 추가했다.
+5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260629z28-trainer-quest-vertical-stack`으로 bump했다.
+
+검증 결과:
+
+- PASS: `node --check home/life-zone.js; node --check sw.js`
+- PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/trainer-quest-modal.test.js` — 15 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
+- PASS: `node --test tests/*.test.js` — 608 tests passed
+- PASS: `git diff --check`
+- pending: Dashboard3 Pages 배포 검증
+
 ## 다음 세션 시작 프롬프트
 
-Dashboard3 Pages 배포 검증을 완료하고 사용자에게 URL과 확인 기준을 전달한다.
+Slice 2를 실행하고 Dashboard3 Pages 배포 검증까지 완료한다.
