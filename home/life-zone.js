@@ -83,10 +83,12 @@ function _withRunningLiveDay(dayData = {}, live = null) {
     lifeZoneRunningLive: true,
     lifeZoneRunningRoute: route,
     lifeZoneRunningRouteSummary: live.routeSummary || null,
+    lifeZoneRunningPlaceSummary: live.placeSummary || dayData?.runPlaceSummary || dayData?.runData?.placeSummary || null,
     lifeZoneRunningPreviewPoint: live.previewPoint || null,
     lifeZoneRunningUpdatedAt: live.updatedAt || Date.now(),
     runRoute: route.length ? route : (dayData?.runRoute || []),
     runRouteSummary: live.routeSummary || dayData?.runRouteSummary || null,
+    runPlaceSummary: live.placeSummary || dayData?.runPlaceSummary || null,
     runStartedAt: live.startedAt || dayData?.runStartedAt || Date.now()
   };
 }
@@ -280,6 +282,7 @@ function _renderRunningMapBubble(layer, actor, slot) {
   const y = Number(slot.bubbleY) || Math.max(36, Number(slot.y) - 88);
   const tipX = Number(slot.mapTipX) || 50;
   const map = _buildRunningMapBubbleData(actor.runningMap);
+  const place = actor.runningMap?.placeLabel || (map.state === 'ready' ? '위치 확인 중' : '');
   const tileHtml = map.tiles.map((tile) => `
     <img
       class="lz-running-map-tile"
@@ -315,6 +318,7 @@ function _renderRunningMapBubble(layer, actor, slot) {
       </svg>
       ${dotHtml}
       ${emptyText ? `<span class="lz-running-map-empty">${emptyText}</span>` : ''}
+      ${place ? `<span class="lz-running-map-place">${escapeHtml(place)}</span>` : ''}
       ${map.state === 'ready' ? '<span class="lz-running-map-attribution">VWorld</span>' : ''}
     </span>
   `;

@@ -30,11 +30,11 @@ export const LIFE_ZONE_SLOTS = {
       id: 'track-bottom-left',
       pose: 'running-track',
       label: '러닝',
-      x: 164,
-      y: 1128,
-      width: 86,
+      x: 172,
+      y: 1152,
+      width: 92,
       z: 96,
-      labelY: 1102,
+      labelY: 1128,
       bubbleX: 206,
       bubbleY: 1046,
       mapTipX: 50,
@@ -45,11 +45,11 @@ export const LIFE_ZONE_SLOTS = {
       id: 'track-bottom-center',
       pose: 'running-track',
       label: '러닝',
-      x: 368,
-      y: 1192,
-      width: 86,
+      x: 378,
+      y: 1206,
+      width: 92,
       z: 100,
-      labelY: 1166,
+      labelY: 1182,
       bubbleX: 410,
       bubbleY: 1108,
       mapTipX: 50,
@@ -60,11 +60,11 @@ export const LIFE_ZONE_SLOTS = {
       id: 'track-bottom-right',
       pose: 'running-track',
       label: '러닝',
-      x: 648,
-      y: 1114,
-      width: 86,
+      x: 666,
+      y: 1140,
+      width: 92,
       z: 98,
-      labelY: 1088,
+      labelY: 1116,
       bubbleX: 690,
       bubbleY: 1030,
       mapTipX: 50,
@@ -273,6 +273,24 @@ function _firstLifeZoneRunningRoute(dayData = {}, runData = {}) {
   return [];
 }
 
+function _formatLifeZoneRunningPlace(placeSummary = null) {
+  const label = String(placeSummary?.label || '').trim();
+  const area = placeSummary?.adminArea || {};
+  const dong = String(area.dong || area.adminDong || area.legalDong || '').trim();
+  const district = String(area.district || '').trim();
+  if (dong && district) return `${dong} · ${district}`;
+  if (dong) return dong;
+  if (label && !/위치 확인 중|위치 정보 없음|위치 기록/.test(label)) {
+    const parts = label.split(/[,\s]+/).map(part => part.trim()).filter(Boolean);
+    const labelDong = [...parts].reverse().find(part => /(동|읍|면|리)$/.test(part));
+    const labelDistrict = [...parts].reverse().find(part => part !== labelDong && /(구|군|시)$/.test(part));
+    if (labelDong && labelDistrict) return `${labelDong} · ${labelDistrict}`;
+    if (labelDong) return labelDong;
+    return label.split(',').map(part => part.trim()).filter(Boolean).slice(0, 2).join(' · ') || label;
+  }
+  return '';
+}
+
 export function getLifeZoneRunningMapData(dayData = null) {
   if (!hasLifeZoneRunningActivity(dayData)) return null;
   const runData = dayData?.runData || {};
@@ -281,6 +299,11 @@ export function getLifeZoneRunningMapData(dayData = null) {
     || dayData?.runRouteSummary
     || runData.routeSummary
     || null;
+  const placeSummary = dayData?.lifeZoneRunningPlaceSummary
+    || dayData?.runPlaceSummary
+    || runData.placeSummary
+    || null;
+  const placeLabel = _formatLifeZoneRunningPlace(placeSummary);
   const previewPoint = _normalizeLifeZoneRunningPoint(
     dayData?.lifeZoneRunningPreviewPoint
     || dayData?.runPreviewPoint
@@ -292,6 +315,8 @@ export function getLifeZoneRunningMapData(dayData = null) {
     live: !!(dayData?.lifeZoneRunningLive || dayData?.runLiveActive),
     route,
     routeSummary,
+    placeSummary,
+    placeLabel: placeLabel || (route.length || routeSummary?.centroid ? '위치 확인 중' : ''),
     previewPoint,
     pointCount: route.length || Number(routeSummary?.pointCount) || 0,
     updatedAt: dayData?.lifeZoneRunningUpdatedAt || dayData?.runUpdatedAt || routeSummary?.endedAt || null

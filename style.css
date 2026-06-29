@@ -7588,7 +7588,7 @@ body.wt-running-session-open {
   animation: lz-workout-squat-rep 1.5s ease-in-out infinite;
 }
 .lz-actor--pose-running-track {
-  --lz-run-scale: .74;
+  --lz-run-scale: .9;
   transform-origin: 50% 100%;
   animation: lz-running-track-in-place var(--lz-run-duration, 0.58s) ease-in-out infinite;
   animation-delay: var(--lz-run-delay, 0s);
@@ -7627,9 +7627,9 @@ body.wt-running-session-open {
   76% { transform: translateY(-1px) scaleY(1.005); }
 }
 @keyframes lz-running-track-in-place {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(var(--lz-run-scale)) rotate(-1deg); }
-  45% { transform: translate3d(0, -1px, 0) scale(var(--lz-run-scale)) rotate(1deg); }
-  72% { transform: translate3d(0, .5px, 0) scale(var(--lz-run-scale)) rotate(0deg); }
+  0%, 100% { transform: translate3d(0, 0, 0) scale(var(--lz-run-scale)); }
+  45% { transform: translate3d(0, -0.8px, 0) scale(var(--lz-run-scale)); }
+  72% { transform: translate3d(0, 0.35px, 0) scale(var(--lz-run-scale)); }
 }
 @keyframes lz-running-track-steps {
   to { background-position: 100% 0; }
@@ -7808,6 +7808,25 @@ body.wt-running-session-open {
   letter-spacing: 0;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.18));
+}
+.lz-running-map-place {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  z-index: 5;
+  max-width: calc(100% - 8px);
+  padding: 2px 5px 2px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #111827;
+  font-size: 6px;
+  font-weight: 900;
+  line-height: 1.25;
+  letter-spacing: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
 }
 .lz-running-map-attribution {
   position: absolute;

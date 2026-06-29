@@ -52,5 +52,5 @@ test('compact summary styles are present and cache version is bumped', () => {
   assert.match(styleCss, /\.stats-summary-kpis/);
   assert.match(styleCss, /\.stats-summary-fact/);
   assert.match(styleCss, /\.stats-summary-kpi\.is-good/);
-  assert.match(swJs, /tomatofarm-v20260629z7-running-map-tab-motion/);
+  assert.match(swJs, /tomatofarm-v20260629z8-home-running-motion-map-clarity/);
 });

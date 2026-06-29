@@ -399,11 +399,24 @@ function _publishRunningLiveState(active = false) {
     pointCount: route.length,
     route,
     routeSummary,
+    placeSummary: _session.placeSummary || (routeSummary ? _runningPlaceFallback(routeSummary) : null),
     previewPoint: _session.previewPoint || route[route.length - 1] || null
   };
   if (typeof window !== 'undefined') window.__tomatoRunningLive = detail;
   if (typeof document !== 'undefined' && typeof CustomEvent === 'function') {
     document.dispatchEvent(new CustomEvent('life-zone:running-live', { detail }));
+  }
+  const shouldResolvePlace = active
+    && routeSummary?.centroid
+    && !_session.placePromise
+    && _session.placeSummary?.status !== 'resolved'
+    && _session.placeSummary?.status !== 'unavailable';
+  if (shouldResolvePlace) {
+    _ensureRunningPlaceSummary(routeSummary).then(() => {
+      if (_session.open && (_session.phase === 'active' || _session.phase === 'paused')) {
+        _publishRunningLiveState(true);
+      }
+    });
   }
 }
 

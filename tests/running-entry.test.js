@@ -66,7 +66,9 @@ test('running session publishes home life-zone live state without rendering a du
   assert.match(runningSessionJs, /window\.__tomatoRunningLive/);
   assert.match(runningSessionJs, /life-zone:running-live/);
   assert.match(runningSessionJs, /routeSummary/);
+  assert.match(runningSessionJs, /placeSummary:\s*_session\.placeSummary \|\| \(routeSummary \? _runningPlaceFallback\(routeSummary\) : null\)/);
   assert.match(runningSessionJs, /previewPoint/);
+  assert.match(runningSessionJs, /const shouldResolvePlace = active[\s\S]*routeSummary\?\.centroid[\s\S]*_ensureRunningPlaceSummary\(routeSummary\)\.then/);
   assert.match(runningSessionJs, /route,\s*\n\s*routeSummary/);
   assert.match(runningSessionJs, /_publishRunningLiveState\(true\);[\s\S]*function _startWatch/);
   assert.match(appJs, /document\.addEventListener\('life-zone:running-live'/);
@@ -170,7 +172,7 @@ test('running records save into a dedicated running session with place and devic
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260629z7-running-map-tab-motion/);
+  assert.match(swJs, /tomatofarm-v20260629z8-home-running-motion-map-clarity/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/sprites\/jups-running-track\.png/);

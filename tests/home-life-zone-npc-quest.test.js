@@ -135,10 +135,12 @@ test('life zone running actors render track sprites and a map capture bubble on 
   assert.match(source, /bubble\.dataset\.lzRunningMapState = map\.state/);
   assert.match(source, /lz-running-map-tile/);
   assert.match(source, /lz-running-map-path/);
+  assert.match(source, /lz-running-map-place/);
   assert.match(source, /lifeZoneRunningRoute/);
   assert.match(source, /actor\.state === 'running'/);
   assert.match(source, /selfRunning \? actor\.source === 'self' : !runningBubbleRendered/);
   assert.equal(fs.existsSync(path.join(root, 'scripts/make-life-zone-running-sprites.py')), false);
+  assert.equal(fs.existsSync(path.join(root, 'scripts/process-life-zone-running-sprites.py')), true);
   assert.match(plan, /imagegen/);
   assert.match(plan, /jups-running-track\.png/);
   assert.match(plan, /moonjung-tomato-running-track\.png/);
@@ -146,7 +148,7 @@ test('life zone running actors render track sprites and a map capture bubble on 
 
   assert.match(css, /\.lz-actor--pose-running-track \{/);
   assert.match(css, /\.lz-actor--pose-running-track::before \{/);
-  assert.match(css, /--lz-run-scale:\s*\.74/);
+  assert.match(css, /--lz-run-scale:\s*\.9/);
   assert.match(css, /aspect-ratio: 128 \/ 192/);
   assert.match(css, /background-size: 200% 100%/);
   assert.match(css, /animation: lz-running-track-steps 0\.54s steps\(2, end\) infinite/);
@@ -156,11 +158,13 @@ test('life zone running actors render track sprites and a map capture bubble on 
   assert.doesNotMatch(css, /@keyframes lz-running-track-lap/);
   assert.doesNotMatch(css, /--lz-run-x0|--lz-run-x1/);
   assert.doesNotMatch(css, /translate3d\(var\(--lz-run-x0/);
+  assert.doesNotMatch(css.match(/@keyframes lz-running-track-in-place \{[\s\S]*?\n\}/)?.[0] || '', /rotate|translateX|--lz-run-x/);
   assert.match(css, /\.lz-running-map-bubble \{/);
   assert.match(css, /width: clamp\(52px, calc\(172 \/ 1672 \* 100%\), 76px\)/);
   assert.match(css, /\.lz-running-map-tile \{/);
   assert.match(css, /\.lz-running-map-path \{/);
   assert.match(css, /\.lz-running-map-current \{/);
+  assert.match(css, /\.lz-running-map-place \{/);
   assert.doesNotMatch(css, /\.lz-running-map-road/);
   assert.doesNotMatch(css, /\.lz-running-map-route/);
   assert.doesNotMatch(css, /\.lz-running-map-pin/);
@@ -180,7 +184,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260629z7-running-map-tab-motion/);
+  assert.match(sw, /tomatofarm-v20260629z8-home-running-motion-map-clarity/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,

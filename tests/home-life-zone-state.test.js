@@ -126,11 +126,11 @@ test('assigns running actors to existing home track slots and running sprite she
 
   assert.deepEqual(assigned.map((actor) => actor.slot.id), ['track-bottom-left', 'track-bottom-center', 'track-bottom-right']);
   assert.deepEqual(assigned.map((actor) => [actor.slot.x, actor.slot.y, actor.slot.width]), [
-    [164, 1128, 86],
-    [368, 1192, 86],
-    [648, 1114, 86]
+    [172, 1152, 92],
+    [378, 1206, 92],
+    [666, 1140, 92]
   ]);
-  assert.ok(assigned.every((actor) => actor.slot.y >= 1114));
+  assert.ok(assigned.every((actor) => actor.slot.y >= 1140));
   assert.ok(assigned.every((actor) => !('runX0' in actor.slot) && !('runX1' in actor.slot)));
   assert.deepEqual(assigned.map((actor) => actor.sprite), [
     'jups-running-track.png',
@@ -148,16 +148,22 @@ test('builds life zone running map data from live and saved routes', () => {
       { lat: 37.5215, lng: 126.979, ts: 2000 }
     ],
     lifeZoneRunningRouteSummary: { pointCount: 2, centroid: { lat: 37.5212, lng: 126.978 } },
-    lifeZoneRunningPreviewPoint: { lat: 37.5215, lng: 126.979 }
+    lifeZoneRunningPreviewPoint: { lat: 37.5215, lng: 126.979 },
+    lifeZoneRunningPlaceSummary: {
+      label: '서울특별시 송파구 방이동',
+      adminArea: { city: '서울특별시', district: '송파구', dong: '방이동' }
+    }
   });
 
   assert.equal(live.live, true);
   assert.equal(live.route.length, 2);
   assert.deepEqual(live.previewPoint, { lat: 37.5215, lng: 126.979 });
   assert.equal(live.pointCount, 2);
+  assert.equal(live.placeLabel, '방이동 · 송파구');
 
   const saved = getLifeZoneRunningMapData({
     running: true,
+    runPlaceSummary: { label: '서울특별시 송파구 오금동' },
     runData: {
       route: [{ latitude: 37.1, longitude: 127.1 }],
       routeSummary: { pointCount: 1 }
@@ -167,6 +173,7 @@ test('builds life zone running map data from live and saved routes', () => {
   assert.equal(saved.live, false);
   assert.deepEqual(saved.route, [{ lat: 37.1, lng: 127.1 }]);
   assert.equal(saved.pointCount, 1);
+  assert.equal(saved.placeLabel, '오금동 · 송파구');
 });
 
 test('resolves activity priority and slot distribution from account days', () => {

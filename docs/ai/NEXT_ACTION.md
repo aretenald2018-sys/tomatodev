@@ -3,15 +3,29 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-29-running-result-map-tab-motion.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-running-result-map-tab-motion-review.md`
-- 현재 단계: `execution/review complete — Running Result Map Tab Motion Slice 1`
+- 계획 문서: `docs/ai/features/2026-06-29-home-running-motion-map-clarity.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-home-running-motion-map-clarity-review.md`
+- 현재 단계: `execution/review complete — Home Running Motion Map Clarity Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `러닝 결과 지도/러닝 탭/홈 모션 Slice 1 구현, 리뷰, Dashboard3 Pages 배포 검증을 완료했다.`
-- 다음 액션: `없음. 인증 계정이 있는 실제 브라우저에서 러닝 탭 저장 flow 확인만 남았다.`
+- 마지막 완료: `홈 러닝 모션/지도 위치 인지 개선 Slice 1을 구현하고 로컬 검증했다.`
+- 다음 액션: `없음. 배포 확인 결과는 최종 핸드오프를 따른다.`
 - 차단 사유: `없음.`
 
 ## 직전 완료 요약
+
+- Home Running Motion Map Clarity Slice 1:
+  1. 계획: `docs/ai/features/2026-06-29-home-running-motion-map-clarity.md`
+  2. 리뷰: `docs/ai/reviews/2026-06-29-home-running-motion-map-clarity-review.md`
+  3. 기존 옆방향 러닝 스프라이트를 3/4 정면 제자리 조깅 2프레임 스프라이트로 교체했다.
+  4. 러닝 actor CSS에서 좌우 이동/회전 없이 발 접지점 기준 vertical bob과 frame swap만 남겼다.
+  5. 러닝 슬롯을 기존 홈트랙 하단부로 내리고, 홈 지도 말풍선에 `방이동 · 송파구` 형식의 위치 라벨을 추가했다.
+  6. 러닝 라이브 경로 중심점이 생기면 VWorld reverse geocode를 백그라운드로 수행해 홈 라벨을 갱신한다.
+  7. PASS: `node --check home/life-zone.js; node --check home/life-zone-state.js; node --check workout/running-session.js`
+  8. PASS: `python -m py_compile scripts/process-life-zone-running-sprites.py`
+  9. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/home-life-zone-state.test.js tests/running-entry.test.js` — 34 tests passed
+  10. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=857`
+  11. PASS: `node --test` — 594 tests passed
+  12. PASS: `git diff --check`
 
 - Running Result Map Tab Motion Slice 1:
   1. `render-calendar.js`에서 운동 상세 탭을 `1회차`, `2회차`, `러닝`으로 변경하고 러닝 탭을 헬스 세션과 분리했다.
