@@ -7,8 +7,8 @@
 - 리뷰 문서: `docs/ai/reviews/2026-06-29-running-result-map-tab-motion-review.md`
 - 현재 단계: `execution/review complete — Running Result Map Tab Motion Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `러닝 결과 지도/러닝 탭/홈 모션 Slice 1 구현과 리뷰를 완료했다.`
-- 다음 액션: `커밋/푸시 후 Dashboard3 Pages 배포 검증을 수행한다.`
+- 마지막 완료: `러닝 결과 지도/러닝 탭/홈 모션 Slice 1 구현, 리뷰, Dashboard3 Pages 배포 검증을 완료했다.`
+- 다음 액션: `없음. 인증 계정이 있는 실제 브라우저에서 러닝 탭 저장 flow 확인만 남았다.`
 - 차단 사유: `없음.`
 
 ## 직전 완료 요약
@@ -25,8 +25,9 @@
   9. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=857`
   10. PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test $tests` — 594 tests passed
   11. PASS: `git diff --check`
-  12. not verified yet: Dashboard3 Pages 배포 검증 전.
-  13. not verified yet: 인증 계정이 없어 실제 `운동 탭 -> 러닝 탭 -> 러닝 시작/완료/저장 -> 상세 카드 지도` UI flow는 직접 확인 필요.
+  12. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ cb7cf08ad4812bec572efdd304591db1d91caf8f` — `[deploy-verify] ok cb7cf08ad481 tomatofarm-v20260629z7-running-map-tab-motion static=226`
+  13. PASS: deployed marker fetch — `sw.js`, `render-calendar.js`, `workout/running-session.js`, `style.css` 모두 새 러닝 탭/지도/센서/홈 모션 marker 포함.
+  14. not verified yet: 브라우저 탭 로딩이 60초 제한을 초과해 실제 `운동 탭 -> 러닝 탭 -> 러닝 시작/완료/저장 -> 상세 카드 지도` UI flow는 직접 확인하지 못했다.
 
 - Trainer Quest Glass Squircle Slice 1:
   1. `modals/trainer-quest-modal.js` 말풍선 타자 간격을 `28ms`에서 `56ms`로 늦췄다.
