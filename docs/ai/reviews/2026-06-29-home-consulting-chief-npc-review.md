@@ -29,3 +29,20 @@
 ## 남은 리스크
 
 - not verified yet: in-app browser가 Dashboard3 페이지 로딩 확인에서 두 차례 timeout되어, 배포된 홈 화면에서 `상담실장` 전구를 실제 클릭해 모달이 열리는 UI flow는 직접 확인하지 못했다.
+
+## Slice 2 리뷰 결과
+
+- 발견 사항 없음.
+- `.lz-consulting-chief-npc` 보정은 홈 전용 CSS 좌표/폭 변경으로 제한되어 모달 아트, 다른 NPC, 이벤트 라우팅을 건드리지 않는다.
+- `style.css`가 `STATIC_ASSETS`에 포함되므로 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260629z30-consulting-chief-fit`으로 bump한 것은 필요하고 적절하다.
+- 회귀 테스트가 새 좌표 `left: 1338`, `top: 1260`, `width: 86 기준`과 새 캐시 버전을 고정한다.
+
+## Slice 2 검증
+
+1. PASS: `node --check sw.js`
+2. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/consulting-chief-quest-modal.test.js` — 14 tests passed
+3. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=863`
+4. PASS: `node --test --test-reporter=dot tests/*.test.js`
+5. PASS: `git diff --check`
+6. PASS: 로컬 합성 미리보기에서 상담실장 스프라이트가 우측 하단 소파/테이블 공간 안쪽에 들어오는 것을 확인했다.
+7. not verified yet: 인증 세션이 없어 실제 배포 홈 화면에서 상담실장 NPC 클릭 flow는 직접 시각 검증하지 못했다.

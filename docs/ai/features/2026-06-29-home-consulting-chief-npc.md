@@ -116,6 +116,54 @@
 7. PASS: 배포 URL 직접 fetch — `index.html`, `sw.js`, `home/life-zone.js`, `modals/consulting-chief-quest-modal.js`, `consulting-chief-npc-home.png`, `consulting-chief-npc-modal.png`가 HTTP 200을 반환했고 JS marker가 확인됐다.
 8. not verified yet: in-app browser가 Dashboard3 페이지 로딩 확인에서 두 차례 timeout되어, 배포된 홈 화면에서 `상담실장` 전구를 실제 클릭해 모달이 열리는 UI flow는 직접 확인하지 못했다.
 
+## Slice 2: 홈 배치 크기/좌표 보정
+
+## 진단
+
+사용자 제공 배포 화면에서 `상담실장` 홈 스프라이트가 우측 하단 방 경계 밖으로 내려가 보인다. 원인은 홈 스프라이트 원본이 `96x256`의 세로형 비율인데 `.lz-consulting-chief-npc`가 `width: 108 기준`, `top: 1284`로 배치되어 모바일 카드 축소 시 하체가 우측 하단 소파/러그 공간보다 아래로 길게 내려가기 때문이다.
+
+## 보정 범위
+
+1. `style.css`에서 `.lz-consulting-chief-npc`의 좌표를 우측 하단 소파 안쪽으로 옮긴다.
+2. 홈 스프라이트 폭 기준을 `108`에서 `86`으로 줄이고, CSS clamp도 함께 줄인다.
+3. `tests/home-life-zone-npc-quest.test.js`의 좌표/크기 회귀 계약을 갱신한다.
+4. `sw.js` `CACHE_VERSION`을 bump한다.
+5. `docs/ai/NEXT_ACTION.md`와 리뷰 문서를 갱신한다.
+
+## 제외
+
+- 새 imagegen 자산 생성
+- 모달용 상담실장 아트 크기 변경
+- 트레이너/미란다/러닝트랙 배치 변경
+- 운영계 `tomatofarm` remote 배포
+
+## Slice 2 검증
+
+1. `node --check sw.js`
+2. `node --test tests/home-life-zone-npc-quest.test.js tests/consulting-chief-quest-modal.test.js`
+3. `node scripts/verify-runtime-assets.mjs`
+4. `git diff --check`
+5. 로컬 합성 미리보기로 우측 하단 방 경계 안쪽 배치 확인
+6. Dashboard3 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+
+## Slice 2 실행 결과
+
+1. `.lz-consulting-chief-npc` 기준 좌표를 `left: 1368`, `top: 1284`에서 `left: 1338`, `top: 1260`으로 옮겨 우측 하단 소파/테이블 공간 안쪽에 맞췄다.
+2. 홈 스프라이트 폭 기준을 `108`에서 `86`으로 줄이고 clamp를 `34px-52px`에서 `28px-40px`로 줄였다.
+3. 홈 전용 위치만 보정했고, 상담실장 모달 아트와 다른 NPC 배치는 변경하지 않았다.
+4. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260629z30-consulting-chief-fit`으로 bump했다.
+5. `tests/home-life-zone-npc-quest.test.js`의 좌표/크기/캐시 계약을 새 보정값으로 갱신했다.
+
+## Slice 2 실행 검증
+
+1. PASS: `node --check sw.js`
+2. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/consulting-chief-quest-modal.test.js` — 14 tests passed
+3. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=863`
+4. PASS: `node --test --test-reporter=dot tests/*.test.js`
+5. PASS: `git diff --check`
+6. PASS: 로컬 합성 미리보기 `C:\Users\USER\AppData\Local\Temp\tomato-consulting-chief-fit-preview.png`에서 상담실장 스프라이트가 우측 하단 방 경계 안쪽에 들어오는 것을 확인했다.
+7. not verified yet: 인증 세션이 없어 실제 배포 홈 화면에서 상담실장 NPC 클릭 flow는 직접 시각 검증하지 못했다.
+
 ## 리뷰 세션 프롬프트
 
 이 계획 문서와 직전 실행 세션의 변경 파일을 읽고 버그, 회귀, 누락된 테스트, 오래된 캐시/서비스워커 이슈, UX 깨짐을 우선 리뷰한다. 리뷰 중에는 새 기능을 구현하지 않는다.

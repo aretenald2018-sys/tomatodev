@@ -116,9 +116,9 @@ test('life zone NPC quest bubble has a stable clickable overlay style', () => {
   assert.match(css, /\.lz-miranda-npc \.lz-nameplate \{[\s\S]*top: -3px;[\s\S]*transform: translate\(-50%, -100%\);/);
   assert.match(css, /\.lz-miranda-npc:focus-visible/);
   assert.match(css, /\.lz-consulting-chief-npc \{/);
-  assert.match(css, /left: calc\(1368 \/ 1672 \* 100%\)/);
-  assert.match(css, /top: calc\(1284 \/ 1672 \* 100%\)/);
-  assert.match(css, /width: clamp\(34px, calc\(108 \/ 1672 \* 100%\), 52px\)/);
+  assert.match(css, /left: calc\(1338 \/ 1672 \* 100%\)/);
+  assert.match(css, /top: calc\(1260 \/ 1672 \* 100%\)/);
+  assert.match(css, /width: clamp\(28px, calc\(86 \/ 1672 \* 100%\), 40px\)/);
   assert.match(css, /\.lz-consulting-chief-npc-img \{/);
   assert.match(css, /\.lz-consulting-chief-npc \.lz-npc-bulb \{[\s\S]*top: 0;[\s\S]*width: 96%;[\s\S]*--lz-bulb-y: -118%;/);
   assert.match(css, /\.lz-consulting-chief-npc \.lz-nameplate \{[\s\S]*top: -3px;[\s\S]*transform: translate\(-50%, -100%\);/);
@@ -241,7 +241,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260629z29-consulting-chief-npc/);
+  assert.match(sw, /tomatofarm-v20260629z30-consulting-chief-fit/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,

@@ -8121,10 +8121,10 @@ body.wt-running-session-open {
 }
 .lz-consulting-chief-npc {
   position: absolute;
-  left: calc(1368 / 1672 * 100%);
-  top: calc(1284 / 1672 * 100%);
+  left: calc(1338 / 1672 * 100%);
+  top: calc(1260 / 1672 * 100%);
   z-index: 155;
-  width: clamp(34px, calc(108 / 1672 * 100%), 52px);
+  width: clamp(28px, calc(86 / 1672 * 100%), 40px);
   min-height: 0;
   display: block;
   padding: 0;

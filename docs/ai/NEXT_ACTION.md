@@ -5,11 +5,11 @@
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-29-home-consulting-chief-npc.md`
 - 리뷰 문서: `docs/ai/reviews/2026-06-29-home-consulting-chief-npc-review.md`
-- 현재 단계: `홈 라이프존 상담실장 NPC 추가 완료`
+- 현재 단계: `홈 라이프존 상담실장 크기/좌표 보정 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
 - 마지막 완료: `상담실장 홈/모달 PNG, 홈 우측 하단 NPC, 전용 모달, 캐시 등록, 회귀 테스트를 구현하고 Dashboard3 Pages 배포 검증을 통과했다.`
 - 다음 액션: `없음.`
-- 차단 사유: `not verified yet: in-app browser가 Dashboard3 페이지 로딩 확인에서 두 차례 timeout되어 실제 홈 화면 전구 클릭 flow는 직접 확인하지 못했다.`
+- 차단 사유: `not verified yet: 인증 세션이 없어 실제 배포 홈 화면에서 상담실장 NPC 클릭 flow는 직접 시각 검증하지 못했다.`
 
 ## 방금 계획한 항목
 
@@ -36,6 +36,20 @@
   12. PASS: 배포 URL 직접 fetch — `index.html`, `sw.js`, `home/life-zone.js`, `modals/consulting-chief-quest-modal.js`, 홈/모달 PNG HTTP 200과 marker 확인
   13. 리뷰: `docs/ai/reviews/2026-06-29-home-consulting-chief-npc-review.md`
   14. not verified yet: in-app browser가 Dashboard3 페이지 로딩 확인에서 두 차례 timeout되어 실제 홈 화면 전구 클릭 flow는 직접 확인하지 못했다.
+
+- Home Consulting Chief NPC Slice 2 계획:
+  1. 사용자 제공 배포 화면에서 `상담실장` 홈 스프라이트가 우측 하단 방 경계 밖으로 내려가 보이는 회귀를 확인했다.
+  2. 원인은 홈 자산이 `96x256` 세로형인데 CSS가 `width: 108 기준`, `top: 1284`로 커서 모바일 카드에서 하체가 공간 밖으로 내려가는 것이다.
+  3. 새 자산 생성 없이 `style.css`의 좌표/폭만 줄이고, 캐시/테스트/문서를 갱신한다.
+  4. 완료: `.lz-consulting-chief-npc`를 `left: 1338`, `top: 1260`, `width: 86 기준`으로 보정하고 clamp를 `28px-40px`로 줄였다.
+  5. 완료: `sw.js` 캐시 버전을 `tomatofarm-v20260629z30-consulting-chief-fit`으로 bump했다.
+  6. PASS: `node --check sw.js`
+  7. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/consulting-chief-quest-modal.test.js` — 14 tests passed
+  8. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=863`
+  9. PASS: `node --test --test-reporter=dot tests/*.test.js`
+  10. PASS: `git diff --check`
+  11. PASS: 로컬 합성 미리보기에서 상담실장 스프라이트가 우측 하단 소파/테이블 공간 안쪽에 들어오는 것을 확인했다.
+  12. not verified yet: 인증 세션이 없어 실제 배포 홈 화면에서 클릭 flow는 직접 시각 검증하지 못했다.
 
 - Home Life Zone Trainer Quest Bubble Offset 계획:
   1. `.lz-npc-quest`의 현재 `left:1084`, `top:824`, `width:168 기준` 배치가 모바일 축소 시 트레이너 얼굴과 겹치는 원인임을 확인했다.
