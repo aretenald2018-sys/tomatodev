@@ -26,7 +26,9 @@
   10. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
   11. PASS: `node --test tests/*.test.js` — 606 tests passed
   12. PASS: `git diff --check`
-  13. not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 UI 시각 확인이 남아 있다.
+  13. PASS: Dashboard3 Pages 배포 검증 — `tomatofarm-v20260629z23-stats-weekly-calories` 캐시 버전 확인
+  14. PASS: 원격 `index.html`, `render-stats.js`, `sw.js` marker fetch — HTTP 200, 새 주간 누적 문자열과 캐시 버전 확인
+  15. not verified yet: 인증 계정 실제 UI에서 Chart.js 렌더링 시각 확인이 남아 있다.
 
 - Stats Health Calorie Report Flatten Slice 1:
   1. 계획: `docs/ai/features/2026-06-29-stats-health-calorie-report-flatten.md`

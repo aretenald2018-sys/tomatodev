@@ -28,8 +28,9 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
 - PASS: `node --test tests/*.test.js` — 606 tests passed
 - PASS: `git diff --check`
+- PASS: Dashboard3 Pages 배포 검증 — `tomatofarm-v20260629z23-stats-weekly-calories` 캐시 버전 확인
+- PASS: 원격 `index.html`, `render-stats.js`, `sw.js` marker fetch — HTTP 200, 새 주간 누적 문자열과 캐시 버전 확인
 
 ## 남은 위험
 
 - 인증 세션이 없는 자동 검증에서는 실제 통계 화면의 Chart.js 렌더링을 눈으로 확인하지 못한다.
-- Dashboard3 Pages 배포 후 원격 자산 marker 검증이 필요하다.
