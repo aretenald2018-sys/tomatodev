@@ -61,5 +61,5 @@ test('app update reload flushes workout draft and changes copy while workout is 
 });
 
 test('service worker cache version was bumped for recovery assets', () => {
-  assert.match(swJs, /tomatofarm-v20260629z22-stats-health-calorie-flat/);
+  assert.match(swJs, /tomatofarm-v20260629z23-stats-weekly-calories/);
 });

@@ -3,15 +3,30 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-29-stats-health-calorie-report-flatten.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-stats-health-calorie-report-flatten-review.md`
-- 현재 단계: `건강지표 월간 칼로리 리포트 평탄화 완료`
+- 계획 문서: `docs/ai/features/2026-06-29-stats-weekly-calorie-aggregation.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-stats-weekly-calorie-aggregation-review.md`
+- 현재 단계: `건강지표 주간 누적 칼로리 집계 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `월간 칼로리 리포트 제목과 두 번째 그래프를 제거하고, 요약 KPI만 체중 & 섭취칼로리 추이 카드 안에 평탄화했다.`
+- 마지막 완료: `건강지표 카드의 메인 그래프를 체중, 주간 누적 섭취칼로리, 주간 누적 운동칼로리로 변경했다.`
 - 다음 액션: `Dashboard3 Pages 배포 검증을 진행한다.`
 - 차단 사유: `없음.`
 
 ## 직전 완료 요약
+
+- Stats Weekly Calorie Aggregation Slice 1:
+  1. 계획: `docs/ai/features/2026-06-29-stats-weekly-calorie-aggregation.md`
+  2. 리뷰: `docs/ai/reviews/2026-06-29-stats-weekly-calorie-aggregation-review.md`
+  3. 전체통계와 트레이너 통계 모달의 건강지표 카드 제목을 `체중 & 주간 누적 칼로리 추이`로 변경했다.
+  4. `_renderKcalWeightChart()`가 일별 섭취칼로리 대신 주 단위 누적 섭취칼로리와 주 단위 누적 운동칼로리를 표출하도록 바꿨다.
+  5. 운동칼로리 집계는 `calcBurnedKcal(day, weightForBurn).total`을 사용한다.
+  6. 별도 `월간 칼로리 리포트` 카드나 두 번째 그래프는 되살리지 않았다.
+  7. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260629z23-stats-weekly-calories`로 갱신했다.
+  8. PASS: `node --check render-stats.js; node --check sw.js`
+  9. PASS: `node --test tests/stats-unified-health-chart.test.js tests/trainer-quest-modal.test.js tests/stats-overall-compact-summary.test.js` — 14 tests passed
+  10. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
+  11. PASS: `node --test tests/*.test.js` — 606 tests passed
+  12. PASS: `git diff --check`
+  13. not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 UI 시각 확인이 남아 있다.
 
 - Stats Health Calorie Report Flatten Slice 1:
   1. 계획: `docs/ai/features/2026-06-29-stats-health-calorie-report-flatten.md`

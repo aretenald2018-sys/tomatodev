@@ -10,6 +10,7 @@ const swJs = readFileSync('sw.js', 'utf8');
 test('stats renders health metrics with calorie report flattened into the same card', () => {
   assert.match(indexHtml, /id="kcal-weight-chart"/);
   assert.match(indexHtml, /id="kcal-weight-meta"/);
+  assert.match(indexHtml, /체중 & 주간 누적 칼로리 추이/);
   assert.match(indexHtml, /id="calorie-month-summary"/);
   assert.match(indexHtml, /class="stats-block stats-health-block"[\s\S]*id="kcal-weight-chart"[\s\S]*class="stats-health-report"[\s\S]*id="calorie-month-summary"/);
   assert.doesNotMatch(indexHtml, /id="calorie-month-chart"/);
@@ -31,8 +32,11 @@ test('stats health report uses one chart and compact monthly calorie summary', (
   assert.match(statsJs, /const _kcalWeightCharts = new WeakMap\(\)/);
   assert.match(statsJs, /_renderKcalWeightChart\(scope\);[\s\S]*_renderCalorieReport\(scope\);/);
   assert.match(statsJs, /getDayTargetKcal/);
+  assert.match(statsJs, /function _buildWeeklyKcalWeightSeries/);
+  assert.match(statsJs, /_weeklyDateBuckets\(_dateRange\(range\.fromKey, range\.toKey\)\)/);
   assert.match(statsJs, /label:\s*'체중'/);
-  assert.match(statsJs, /label:\s*'섭취칼로리'/);
+  assert.match(statsJs, /label:\s*'주간 누적 섭취칼로리'/);
+  assert.match(statsJs, /label:\s*'주간 누적 운동칼로리'/);
   assert.match(statsJs, /calcBurnedKcal\(day, weightForBurn\)\.total/);
   assert.doesNotMatch(statsJs, /data-stats-id="calorie-month-chart"/);
   assert.doesNotMatch(statsJs, /_calorieMonthCharts/);
@@ -52,5 +56,5 @@ test('stats health rollback chart cards are styled and cache version is bumped',
   assert.doesNotMatch(styleCss, /\.stats-health-toggle/);
   assert.doesNotMatch(styleCss, /\.stats-health-curves/);
   assert.doesNotMatch(styleCss, /\.stats-health-period/);
-  assert.match(swJs, /tomatofarm-v20260629z22-stats-health-calorie-flat/);
+  assert.match(swJs, /tomatofarm-v20260629z23-stats-weekly-calories/);
 });

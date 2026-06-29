@@ -77,10 +77,10 @@ function _trainerQuestStatsMarkup() {
       <div data-stats-id="stats-workout-analysis"></div>
     </section>
     <section class="stats-block stats-health-block trainer-quest-stats-block">
-      <div class="stats-block-title">체중 & 섭취칼로리 추이</div>
+      <div class="stats-block-title">체중 & 주간 누적 칼로리 추이</div>
       <div class="stats-chart-meta" data-stats-id="kcal-weight-meta"></div>
       <div class="stats-chart-wrap"><canvas data-stats-id="kcal-weight-chart"></canvas></div>
-      <div data-stats-id="kcal-weight-chart-empty" class="stats-empty" style="display:none">선택 기간에 체중 또는 섭취칼로리 기록이 없어요.</div>
+      <div data-stats-id="kcal-weight-chart-empty" class="stats-empty" style="display:none">선택 기간에 체중 또는 주간 칼로리 기록이 없어요.</div>
       <div class="stats-health-report">
         <div data-stats-id="calorie-month-summary"></div>
       </div>
@@ -1672,6 +1672,86 @@ function _destroyTrackedChart(tracker, canvas) {
   if (existing && existing !== tracked) existing.destroy();
 }
 
+function _statsDayFromKey(cache, key) {
+  const date = _dateFromKey(key);
+  return date ? getDiet(date.getFullYear(), date.getMonth(), date.getDate()) : (cache[key] || {});
+}
+
+function _weekStartDateForStats(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const diff = d.getDay() === 0 ? 6 : d.getDay() - 1;
+  d.setDate(d.getDate() - diff);
+  return d;
+}
+
+function _weekBucketLabel(startKey, endKey) {
+  const start = startKey.slice(5).replace('-', '/');
+  const end = endKey.slice(5).replace('-', '/');
+  return start === end ? start : `${start}~${end}`;
+}
+
+function _weeklyDateBuckets(keys) {
+  const buckets = [];
+  let bucket = null;
+  keys.forEach(key => {
+    const date = _dateFromKey(key);
+    if (!date) return;
+    const weekKey = _keyFromDate(_weekStartDateForStats(date));
+    if (!bucket || bucket.weekKey !== weekKey) {
+      bucket = { weekKey, keys: [] };
+      buckets.push(bucket);
+    }
+    bucket.keys.push(key);
+  });
+  return buckets.map(item => {
+    const startKey = item.keys[0];
+    const endKey = item.keys[item.keys.length - 1];
+    return { ...item, startKey, endKey, label: _weekBucketLabel(startKey, endKey) };
+  });
+}
+
+function _buildWeeklyKcalWeightSeries(range, cache, checkins) {
+  const plan = getDietPlan();
+  const checkinByDate = new Map(checkins.map(c => [c.date, c]));
+  const buckets = _weeklyDateBuckets(_dateRange(range.fromKey, range.toKey));
+  const labels = buckets.map(bucket => bucket.label);
+  const intakeData = [];
+  const burnedData = [];
+  const weightData = [];
+
+  buckets.forEach(bucket => {
+    let intakeTotal = 0;
+    let burnedTotal = 0;
+    let hasIntake = false;
+    let hasBurned = false;
+    let weekWeight = null;
+
+    bucket.keys.forEach(key => {
+      const day = _statsDayFromKey(cache, key);
+      const recordedWeight = _maybeNum(checkinByDate.get(key)?.weight);
+      if (recordedWeight !== null) weekWeight = recordedWeight;
+      const intake = _dayKcal(day);
+      if (intake > 0) {
+        intakeTotal += intake;
+        hasIntake = true;
+      }
+      const weightForBurn = _weightOnOrBefore(checkins, key) ?? _maybeNum(plan?.weight) ?? 70;
+      const burned = calcBurnedKcal(day, weightForBurn).total;
+      if (burned > 0) {
+        burnedTotal += burned;
+        hasBurned = true;
+      }
+    });
+
+    weightData.push(weekWeight !== null ? weekWeight : null);
+    intakeData.push(hasIntake ? Math.round(intakeTotal) : null);
+    burnedData.push(hasBurned ? Math.round(burnedTotal) : null);
+  });
+
+  return { labels, buckets, intakeData, burnedData, weightData };
+}
+
 function _renderKcalWeightChart(scope = document) {
   const canvas = _statsNode(scope, 'kcal-weight-chart');
   const emptyEl = _statsNode(scope, 'kcal-weight-chart-empty');
@@ -1684,20 +1764,8 @@ function _renderKcalWeightChart(scope = document) {
   const checkins = getBodyCheckins()
     .filter(c => (c?.date || '') <= range.toKey)
     .sort((a, b) => (a?.date || '').localeCompare(b?.date || ''));
-  const checkinByDate = new Map(checkins.map(c => [c.date, c]));
-  const keys = _sampleHealthKeys(_dateRange(range.fromKey, range.toKey), 92);
-  const labels = keys.map(key => key.slice(5).replace('-', '/'));
-  const kcalData = keys.map(key => {
-    const date = _dateFromKey(key);
-    const day = date ? getDiet(date.getFullYear(), date.getMonth(), date.getDate()) : (cache[key] || {});
-    const kcal = _dayKcal(day);
-    return kcal > 0 ? kcal : null;
-  });
-  const weightData = keys.map(key => {
-    const n = _maybeNum(checkinByDate.get(key)?.weight);
-    return n !== null ? n : null;
-  });
-  const hasKcal = kcalData.some(v => v !== null);
+  const { labels, buckets, intakeData, burnedData, weightData } = _buildWeeklyKcalWeightSeries(range, cache, checkins);
+  const hasKcal = intakeData.some(v => v !== null) || burnedData.some(v => v !== null);
   const hasWeight = weightData.some(v => v !== null);
   const hasChartData = hasKcal || hasWeight;
 
@@ -1705,12 +1773,12 @@ function _renderKcalWeightChart(scope = document) {
   if (canvas.parentElement) canvas.parentElement.style.display = hasChartData ? 'block' : 'none';
   if (emptyEl) {
     emptyEl.style.display = hasChartData ? 'none' : 'block';
-    emptyEl.textContent = '선택 기간에 체중 또는 섭취칼로리 기록이 없어요.';
+    emptyEl.textContent = '선택 기간에 체중 또는 주간 칼로리 기록이 없어요.';
   }
   if (metaEl) {
-    const first = keys[0]?.replace(/-/g, '.') || '';
-    const last = keys[keys.length - 1]?.replace(/-/g, '.') || '';
-    metaEl.textContent = first && last ? `${first} - ${last}` : '선택 기간 기록 없음';
+    const first = buckets[0]?.startKey?.replace(/-/g, '.') || '';
+    const last = buckets[buckets.length - 1]?.endKey?.replace(/-/g, '.') || '';
+    metaEl.textContent = first && last ? `${first} - ${last} · 주간 누적` : '선택 기간 기록 없음';
   }
   if (!hasChartData || typeof Chart === 'undefined') return;
 
@@ -1733,13 +1801,25 @@ function _renderKcalWeightChart(scope = document) {
           yAxisID: 'weight',
         },
         {
-          label: '섭취칼로리',
-          data: kcalData,
+          label: '주간 누적 섭취칼로리',
+          data: intakeData,
           borderColor: '#6366f1',
           backgroundColor: 'rgba(99,102,241,0.10)',
-          borderWidth: 2,
-          pointRadius: 3,
-          pointHoverRadius: 5,
+          borderWidth: 1.8,
+          pointRadius: 2.5,
+          pointHoverRadius: 4,
+          tension: 0.25,
+          spanGaps: true,
+          yAxisID: 'kcal',
+        },
+        {
+          label: '주간 누적 운동칼로리',
+          data: burnedData,
+          borderColor: '#10b981',
+          backgroundColor: 'rgba(16,185,129,0.10)',
+          borderWidth: 1.8,
+          pointRadius: 2.5,
+          pointHoverRadius: 4,
           tension: 0.25,
           spanGaps: true,
           yAxisID: 'kcal',
@@ -1751,7 +1831,7 @@ function _renderKcalWeightChart(scope = document) {
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { labels: { color: colors.text, boxWidth: 10, font: { size: 11 } } },
+        legend: { labels: { color: colors.text, boxWidth: 9, font: { size: 10 } } },
         tooltip: {
           callbacks: {
             label: ctx => ctx.dataset.yAxisID === 'weight'
