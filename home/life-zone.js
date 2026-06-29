@@ -28,6 +28,7 @@ const LIFE_ZONE_SPRITE_ROOT = `${LIFE_ZONE_ASSET_ROOT}/sprites`;
 const LIFE_ZONE_UI_ROOT = `${LIFE_ZONE_ASSET_ROOT}/ui`;
 const LIFE_ZONE_NPC_NAME = '트레이너';
 const LIFE_ZONE_MIRANDA_NAME = '미란다';
+const LIFE_ZONE_CONSULTING_CHIEF_NAME = '상담실장';
 const LIFE_ZONE_CACHE_MS = 0;
 const RUNNING_MAP_WIDTH = 172;
 const RUNNING_MAP_HEIGHT = 121;
@@ -573,6 +574,34 @@ export function renderLifeZoneCard({
           </span>
           <span class="lz-nameplate lz-nameplate--npc" aria-hidden="true">${escapeHtml(LIFE_ZONE_MIRANDA_NAME)}</span>
         </button>
+        <button
+          type="button"
+          class="lz-consulting-chief-npc"
+          data-lz-action="consulting-chief-quest"
+          aria-label="상담실장 대화 보기"
+          title="상담실장"
+        >
+          <img
+            class="lz-consulting-chief-npc-img"
+            src="${LIFE_ZONE_UI_ROOT}/consulting-chief-npc-home.png"
+            width="96"
+            height="256"
+            alt=""
+            loading="lazy"
+            decoding="async"
+          >
+          <span class="lz-npc-bulb lz-npc-bulb--consulting-chief" aria-hidden="true">
+            <img
+              src="${LIFE_ZONE_UI_ROOT}/npc-quest-bubble.png"
+              width="192"
+              height="258"
+              alt=""
+              loading="lazy"
+              decoding="async"
+            >
+          </span>
+          <span class="lz-nameplate lz-nameplate--npc" aria-hidden="true">${escapeHtml(LIFE_ZONE_CONSULTING_CHIEF_NAME)}</span>
+        </button>
       </div>
     </div>
     <div class="lz-status-row" data-lz-status></div>
@@ -611,6 +640,13 @@ export function renderLifeZoneCard({
     event.currentTarget.dispatchEvent(new CustomEvent('life-zone:npc-quest', {
       bubbles: true,
       detail: { npc: 'miranda' }
+    }));
+  });
+  card.querySelector('[data-lz-action="consulting-chief-quest"]')?.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.currentTarget.dispatchEvent(new CustomEvent('life-zone:npc-quest', {
+      bubbles: true,
+      detail: { npc: 'consultingChief' }
     }));
   });
 

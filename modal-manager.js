@@ -26,6 +26,7 @@ const MODALS = [
   { id: 'patchnote-modal',        path: './modals/patchnote-modal.js',        export: 'MODAL_HTML' },
   { id: 'trainer-quest-modal',    path: './modals/trainer-quest-modal.js',    export: 'MODAL_HTML' },
   { id: 'miranda-quest-modal',    path: './modals/miranda-quest-modal.js',    export: 'MODAL_HTML' },
+  { id: 'consulting-chief-quest-modal', path: './modals/consulting-chief-quest-modal.js', export: 'MODAL_HTML' },
   // 전문가 모드 (Scene 02~13)
   { id: 'expert-onboarding-modal',path: './modals/expert-onboarding-modal.js',export: 'MODAL_HTML' },
   { id: 'gym-equipment-modal',    path: './modals/gym-equipment-modal.js',    export: 'MODAL_HTML' },

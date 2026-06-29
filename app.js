@@ -177,6 +177,10 @@ function _bindLifeZoneNpcQuestEvent() {
       miranda: {
         opener: 'openMirandaQuestModal',
         label: '미란다'
+      },
+      consultingChief: {
+        opener: 'openConsultingChiefQuestModal',
+        label: '상담실장'
       }
     };
     const modalConfig = modalByNpc[npc];

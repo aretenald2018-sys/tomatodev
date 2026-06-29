@@ -25,25 +25,32 @@ test('life zone trainer hook keeps the bulb bubble while hiding the old NPC card
 
   assert.match(source, /const LIFE_ZONE_NPC_NAME = '트레이너'/);
   assert.match(source, /const LIFE_ZONE_MIRANDA_NAME = '미란다'/);
+  assert.match(source, /const LIFE_ZONE_CONSULTING_CHIEF_NAME = '상담실장'/);
   assert.match(source, /LIFE_ZONE_UI_ROOT/);
   assert.match(source, /npc-quest-bubble\.png/);
   assert.match(source, /miranda-npc-home\.png/);
   assert.match(source, /miranda-fashion-corner\.png/);
+  assert.match(source, /consulting-chief-npc-home\.png/);
   assert.match(source, /class="lz-world"/);
   assert.match(source, /class="lz-miranda-corner"/);
   assert.match(source, /data-lz-action="npc-quest"/);
   assert.match(source, /data-lz-action="miranda-quest"/);
+  assert.match(source, /data-lz-action="consulting-chief-quest"/);
   assert.match(source, /class="lz-npc-bulb"/);
   assert.match(source, /class="lz-npc-bulb lz-npc-bulb--miranda"/);
+  assert.match(source, /class="lz-npc-bulb lz-npc-bulb--consulting-chief"/);
   assert.match(source, /class="lz-nameplate lz-nameplate--npc"/);
   assert.match(source, /aria-label="트레이너 퀘스트 보기"/);
   assert.match(source, /aria-label="미란다 대화 보기"/);
+  assert.match(source, /aria-label="상담실장 대화 보기"/);
   assert.match(source, /title="트레이너 퀘스트"/);
   assert.match(source, /title="미란다"/);
+  assert.match(source, /title="상담실장"/);
   assert.match(source, /addEventListener\('click'/);
   assert.match(source, /life-zone:npc-quest/);
   assert.match(source, /detail: \{ npc: 'trainer' \}/);
   assert.match(source, /detail: \{ npc: 'miranda' \}/);
+  assert.match(source, /detail: \{ npc: 'consultingChief' \}/);
 });
 
 test('life zone actor nameplates are rendered as text above sprites', () => {
@@ -108,6 +115,14 @@ test('life zone NPC quest bubble has a stable clickable overlay style', () => {
   assert.match(css, /\.lz-miranda-npc \.lz-npc-bulb \{[\s\S]*top: 0;[\s\S]*width: 108%;[\s\S]*--lz-bulb-y: -118%;/);
   assert.match(css, /\.lz-miranda-npc \.lz-nameplate \{[\s\S]*top: -3px;[\s\S]*transform: translate\(-50%, -100%\);/);
   assert.match(css, /\.lz-miranda-npc:focus-visible/);
+  assert.match(css, /\.lz-consulting-chief-npc \{/);
+  assert.match(css, /left: calc\(1368 \/ 1672 \* 100%\)/);
+  assert.match(css, /top: calc\(1284 \/ 1672 \* 100%\)/);
+  assert.match(css, /width: clamp\(34px, calc\(108 \/ 1672 \* 100%\), 52px\)/);
+  assert.match(css, /\.lz-consulting-chief-npc-img \{/);
+  assert.match(css, /\.lz-consulting-chief-npc \.lz-npc-bulb \{[\s\S]*top: 0;[\s\S]*width: 96%;[\s\S]*--lz-bulb-y: -118%;/);
+  assert.match(css, /\.lz-consulting-chief-npc \.lz-nameplate \{[\s\S]*top: -3px;[\s\S]*transform: translate\(-50%, -100%\);/);
+  assert.match(css, /\.lz-consulting-chief-npc:focus-visible/);
 });
 
 test('life zone nameplates use small pixel text with outline shadows', () => {
@@ -226,7 +241,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260629z28-trainer-quest-vertical-stack/);
+  assert.match(sw, /tomatofarm-v20260629z29-consulting-chief-npc/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,
@@ -255,6 +270,18 @@ test('life zone Miranda fashion corner is a separate transparent runtime prop as
   assert.deepEqual(header, {
     width: 430,
     height: 250,
+    colorType: 6
+  });
+});
+
+test('life zone consulting chief home NPC is a separate transparent generated runtime asset', () => {
+  const sw = readText('sw.js');
+  const header = readPngHeader('assets/home/life-zone/ui/consulting-chief-npc-home.png');
+
+  assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/consulting-chief-npc-home\.png/);
+  assert.deepEqual(header, {
+    width: 96,
+    height: 256,
     colorType: 6
   });
 });

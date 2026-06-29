@@ -2,16 +2,36 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-29-home-life-zone-trainer-quest-bubble-offset.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-home-life-zone-trainer-quest-vertical-stack-review.md`
-- 현재 단계: `홈 라이프존 트레이너 전구 세로 정렬 회귀 수정 완료`
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-06-29-home-consulting-chief-npc.md`
+- 리뷰 문서: `없음`
+- 현재 단계: `홈 라이프존 상담실장 NPC 추가 실행 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `트레이너 전구를 이름표 위로 되돌리고 오른쪽 offset 제거를 Dashboard3 Pages에 배포했다.`
-- 다음 액션: `없음.`
+- 마지막 완료: `상담실장 홈/모달 PNG, 홈 우측 하단 NPC, 전용 모달, 캐시 등록, 회귀 테스트를 구현했다.`
+- 다음 액션: `docs/ai/features/2026-06-29-home-consulting-chief-npc.md와 변경 파일을 리뷰한다.`
 - 차단 사유: `없음.`
 
 ## 방금 계획한 항목
+
+- Home Consulting Chief NPC 계획:
+  1. 홈 라이프존 우측 하단 소파/상담 라운지 영역에 `상담실장` NPC를 추가한다.
+  2. 참고 이미지는 정확한 실존 인물 복제가 아니라 병원 상담실장 분위기, 강한 눈매/눈썹, 묶은 어두운 머리, 흰 가운 또는 검은 재킷 같은 식별 단서로 반영한다.
+  3. 홈용 작은 투명 PNG와 모달용 큰 투명 PNG를 분리해 `assets/home/life-zone/ui/`에 저장한다.
+  4. 기존 `life-zone:npc-quest` 이벤트, DOM 이름표, `npc-quest-bubble.png` 전구 패턴을 재사용한다.
+  5. 수정 범위는 `home/life-zone.js`, `app.js`, `modal-manager.js`, `modals/consulting-chief-quest-modal.js`, `style.css`, `sw.js`, 관련 테스트와 새 PNG 자산으로 제한한다.
+  6. 배포는 `origin/main` Dashboard3 Pages만 허용하고 운영계 `tomatofarm` remote는 사용하지 않는다.
+
+- Home Consulting Chief NPC Slice 1:
+  1. `assets/home/life-zone/ui/consulting-chief-npc-home.png`와 `consulting-chief-npc-modal.png`를 추가했다.
+  2. `home/life-zone.js`에 우측 하단 `상담실장` NPC 버튼, 이름표, 전구, `consultingChief` 이벤트 detail을 추가했다.
+  3. `modals/consulting-chief-quest-modal.js`와 `app.js`/`modal-manager.js` 분기를 추가했다.
+  4. `style.css`에 홈 배치와 모달 캐릭터 크기 스타일을 추가했다.
+  5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260629z29-consulting-chief-npc`로 갱신하고 새 모달/PNG를 `STATIC_ASSETS`에 등록했다.
+  6. PASS: `node --check home/life-zone.js; node --check app.js; node --check modal-manager.js; node --check modals/consulting-chief-quest-modal.js; node --check sw.js`
+  7. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/consulting-chief-quest-modal.test.js tests/miranda-quest-modal.test.js tests/trainer-quest-modal.test.js` — 24 tests passed
+  8. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=863`
+  9. PASS: `node --test tests/*.test.js` — 613 tests passed
+  10. PASS: `git diff --check`
 
 - Home Life Zone Trainer Quest Bubble Offset 계획:
   1. `.lz-npc-quest`의 현재 `left:1084`, `top:824`, `width:168 기준` 배치가 모바일 축소 시 트레이너 얼굴과 겹치는 원인임을 확인했다.
