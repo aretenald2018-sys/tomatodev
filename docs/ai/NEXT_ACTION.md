@@ -3,15 +3,30 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-29-npc-asset-workflow-rules.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-npc-asset-workflow-rules-review.md`
-- 현재 단계: `review complete — NPC Asset Workflow Rules Slice 1`
+- 계획 문서: `docs/ai/features/2026-06-29-home-life-zone-overlay-alignment-fix.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-home-life-zone-overlay-alignment-fix-review.md`
+- 현재 단계: `review complete — Home Life Zone Overlay Alignment Fix Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `NPC/라이프존 캐릭터 제작 전 필수 문서를 추가하고 AGENTS.md 진입 규칙을 연결했다.`
+- 마지막 완료: `트레이너/미란다 전구와 이름표, 러닝 actor 원근 크기, 홈 지도 말풍선 표기를 같은 1672x1672 홈 좌표계 기준으로 보정했다.`
 - 다음 액션: `없음.`
 - 차단 사유: `없음.`
 
 ## 직전 완료 요약
+
+- Home Life Zone Overlay Alignment Fix Slice 1:
+  1. 계획: `docs/ai/features/2026-06-29-home-life-zone-overlay-alignment-fix.md`
+  2. 리뷰: `docs/ai/reviews/2026-06-29-home-life-zone-overlay-alignment-fix-review.md`
+  3. 트레이너 전구 버튼을 실제 트레이너 정수리 위 좌표로 이동했다.
+  4. 미란다 전구는 트레이너 전구와 같은 원본 비율을 쓰고, 애니메이션이 절대 위치 `transform`을 덮어쓰지 않도록 CSS 변수를 적용했다.
+  5. 미란다 이름표를 캐릭터 위로 올렸다.
+  6. 러닝 actor 슬롯을 하단 트랙 원근에 맞춰 중앙/좌측/우측 차등 크기로 조정했다.
+  7. 홈 지도 말풍선은 실제 지도 타일/경로/현재점/동 단위 라벨을 유지하고, 작은 말풍선에서 지도 내용을 가리던 `VWorld` attribution은 숨겼다.
+  8. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260629z14-life-zone-alignment`로 갱신했다.
+  9. PASS: `node --check home/life-zone.js; node --check home/life-zone-state.js; node --check sw.js`
+  10. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/home-life-zone-state.test.js tests/miranda-quest-modal.test.js tests/running-entry.test.js` — 41 tests passed
+  11. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=859`
+  12. PASS: `node --test tests/*.test.js` — 603 tests passed
+  13. PASS: `git diff --check`
 
 - NPC Asset Workflow Rules 계획:
   1. 계획: `docs/ai/features/2026-06-29-npc-asset-workflow-rules.md`

@@ -69,8 +69,8 @@ test('life zone NPC quest bubble has a stable clickable overlay style', () => {
   assert.match(css, /\.lz-scene \{[\s\S]*aspect-ratio: 1672 \/ 1672;/);
   assert.match(css, /\.lz-world \{[\s\S]*aspect-ratio: 1672 \/ 1672;[\s\S]*overflow: visible;/);
   assert.match(css, /\.lz-npc-quest \{/);
-  assert.match(css, /left: calc\(1118 \/ 1672 \* 100%\)/);
-  assert.match(css, /top: calc\(716 \/ 1672 \* 100%\)/);
+  assert.match(css, /left: calc\(1084 \/ 1672 \* 100%\)/);
+  assert.match(css, /top: calc\(824 \/ 1672 \* 100%\)/);
   assert.match(css, /width: clamp\(52px, calc\(168 \/ 1672 \* 100%\), 76px\)/);
   assert.match(css, /display: flex/);
   assert.match(css, /min-height: 0/);
@@ -78,9 +78,11 @@ test('life zone NPC quest bubble has a stable clickable overlay style', () => {
   assert.match(css, /pointer-events: auto/);
   assert.match(css, /touch-action: manipulation/);
   assert.match(css, /\.lz-npc-quest:focus-visible/);
-  assert.match(css, /\.lz-npc-bulb \{[\s\S]*width: 50%;[\s\S]*aspect-ratio: 192 \/ 150;[\s\S]*overflow: hidden;/);
+  assert.match(css, /\.lz-npc-bulb \{[\s\S]*--lz-bulb-x: 0px;[\s\S]*--lz-bulb-y: 0px;[\s\S]*width: 50%;[\s\S]*aspect-ratio: 192 \/ 150;[\s\S]*overflow: hidden;/);
   assert.match(css, /\.lz-npc-bulb \{[\s\S]*animation: lz-npc-bulb-blink 2\.4s ease-in-out infinite;/);
   assert.match(css, /@keyframes lz-npc-bulb-blink/);
+  assert.match(css, /transform: translate\(var\(--lz-bulb-x\), var\(--lz-bulb-y\)\) scale\(1\)/);
+  assert.match(css, /transform: translate\(var\(--lz-bulb-x\), calc\(var\(--lz-bulb-y\) - 1px\)\) scale\(0\.94\)/);
   assert.match(css, /drop-shadow\(0 0 8px rgba\(255, 226, 88, 0\.92\)\)/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*\.lz-npc-bulb,[\s\S]*animation: none;/);
   assert.match(css, /\.lz-npc-bulb img \{/);
@@ -99,8 +101,8 @@ test('life zone NPC quest bubble has a stable clickable overlay style', () => {
   assert.match(css, /width: clamp\(26px, calc\(78 \/ 1672 \* 100%\), 36px\)/);
   assert.match(css, /\.lz-miranda-npc-img \{/);
   assert.match(css, /transform: scaleX\(-1\)/);
-  assert.match(css, /\.lz-miranda-npc \.lz-npc-bulb \{/);
-  assert.match(css, /\.lz-miranda-npc \.lz-nameplate \{/);
+  assert.match(css, /\.lz-miranda-npc \.lz-npc-bulb \{[\s\S]*top: 0;[\s\S]*width: 108%;[\s\S]*--lz-bulb-y: -118%;/);
+  assert.match(css, /\.lz-miranda-npc \.lz-nameplate \{[\s\S]*top: -3px;[\s\S]*transform: translate\(-50%, -100%\);/);
   assert.match(css, /\.lz-miranda-npc:focus-visible/);
 });
 
@@ -177,7 +179,7 @@ test('life zone running actors render track sprites and a map capture bubble on 
 
   assert.match(css, /\.lz-actor--pose-running-track \{/);
   assert.match(css, /\.lz-actor--pose-running-track::before \{/);
-  assert.match(css, /--lz-run-scale:\s*\.9/);
+  assert.match(css, /--lz-run-scale:\s*1/);
   assert.match(css, /aspect-ratio: 128 \/ 192/);
   assert.match(css, /background-size: 200% 100%/);
   assert.match(css, /animation: lz-running-track-steps 0\.54s step-end infinite/);
@@ -198,6 +200,7 @@ test('life zone running actors render track sprites and a map capture bubble on 
   assert.match(css, /\.lz-running-map-path \{/);
   assert.match(css, /\.lz-running-map-current \{/);
   assert.match(css, /\.lz-running-map-place \{/);
+  assert.match(css, /\.lz-running-map-attribution \{[\s\S]*display: none;/);
   assert.doesNotMatch(css, /\.lz-running-map-road/);
   assert.doesNotMatch(css, /\.lz-running-map-route/);
   assert.doesNotMatch(css, /\.lz-running-map-pin/);
@@ -217,7 +220,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260629z13-home-miranda-fashion-corner/);
+  assert.match(sw, /tomatofarm-v20260629z14-life-zone-alignment/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,

@@ -126,11 +126,14 @@ test('assigns running actors to existing home track slots and running sprite she
 
   assert.deepEqual(assigned.map((actor) => actor.slot.id), ['track-bottom-left', 'track-bottom-center', 'track-bottom-right']);
   assert.deepEqual(assigned.map((actor) => [actor.slot.x, actor.slot.y, actor.slot.width]), [
-    [172, 1152, 92],
-    [378, 1206, 92],
-    [666, 1140, 92]
+    [156, 1098, 118],
+    [352, 1138, 126],
+    [650, 1100, 108]
   ]);
-  assert.ok(assigned.every((actor) => actor.slot.y >= 1140));
+  assert.deepEqual(assigned.map((actor) => actor.slot.labelY), [1076, 1114, 1078]);
+  assert.deepEqual(assigned.map((actor) => actor.slot.bubbleY), [990, 1018, 982]);
+  assert.ok(assigned[1].slot.width > assigned[0].slot.width);
+  assert.ok(assigned[0].slot.width > assigned[2].slot.width);
   assert.ok(assigned.every((actor) => !('runX0' in actor.slot) && !('runX1' in actor.slot)));
   assert.deepEqual(assigned.map((actor) => actor.sprite), [
     'jups-running-track.png',
