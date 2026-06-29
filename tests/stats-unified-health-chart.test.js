@@ -48,5 +48,5 @@ test('stats health chart controls are styled and cache version is bumped', () =>
   assert.match(styleCss, /\.stats-health-controls/);
   assert.match(styleCss, /\.stats-health-toggle/);
   assert.match(styleCss, /\.stats-health-period\.active/);
-  assert.match(swJs, /tomatofarm-v20260629z8-home-running-motion-map-clarity/);
+  assert.match(swJs, /tomatofarm-v20260629z9-stats-unified-overall/);
 });

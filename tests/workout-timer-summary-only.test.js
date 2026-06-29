@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const calendarJs = readFileSync(new URL('../render-calendar.js', import.meta.url), 'utf8');
+const workoutIndexJs = readFileSync(new URL('../workout/index.js', import.meta.url), 'utf8');
 const styleCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
 const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 
@@ -50,6 +51,14 @@ test('workout detail modal no longer renders timer-only body sections', () => {
   assert.doesNotMatch(styleCss, /\.cal-workout-timer-line\b/);
 });
 
+test('workout finish saves without opening the old completion insight modal', () => {
+  const finish = sliceByFirstBrace(workoutIndexJs, 'window.wtEndAndShowInsights = async');
+  assert.match(finish, /wtFinishWorkout\(\)/);
+  assert.match(finish, /통계 탭에서 기간별로 확인/);
+  assert.doesNotMatch(finish, /insightsOpen/);
+  assert.doesNotMatch(finish, /sessionKey/);
+});
+
 test('service worker cache version was bumped for workout timer summary-only UI', () => {
-  assert.match(swJs, /tomatofarm-v20260629z8-home-running-motion-map-clarity/);
+  assert.match(swJs, /tomatofarm-v20260629z9-stats-unified-overall/);
 });

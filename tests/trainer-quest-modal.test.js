@@ -66,10 +66,12 @@ test('trainer quest stats render reuses stats tab data in a scoped modal root', 
   assert.match(modalJs, /renderTrainerQuestStats\(root\)/);
   assert.match(statsJs, /export function renderTrainerQuestStats\(root\)/);
   assert.match(statsJs, /data-stats-id="stats-overall-summary"/);
+  assert.match(statsJs, /data-stats-id="stats-workout-analysis"/);
   assert.match(statsJs, /data-stats-id="health-metrics-chart"/);
   assert.match(statsJs, /data-stats-id="stats-muscle-fatigue"/);
   assert.match(statsJs, /data-stats-id="volume-section"/);
-  assert.match(statsJs, /data-stats-id="deep-stats-report"/);
+  assert.doesNotMatch(statsJs, /data-stats-id="deep-stats-report"/);
+  assert.doesNotMatch(statsJs, /trainer-quest-deep-stats/);
   assert.match(statsJs, /function _statsNode\(root, id\)/);
   assert.match(statsJs, /const _healthMetricsCharts = new WeakMap\(\)/);
 });
@@ -84,7 +86,7 @@ test('trainer quest stats can be shared or copied as JSON export data', () => {
   assert.match(statsJs, /schema: 'tomatofarm\.trainerStats\.v1'/);
   assert.match(statsJs, /healthChart/);
   assert.match(statsJs, /muscleFatigue/);
-  assert.match(statsJs, /trainerAnalysis/);
+  assert.match(statsJs, /workoutAnalysis/);
 });
 
 test('trainer quest modal styles and runtime cache asset are registered', () => {
@@ -133,7 +135,7 @@ test('trainer quest modal styles and runtime cache asset are registered', () => 
   assert.doesNotMatch(styleCss, /\.trainer-quest-choice/);
   assert.doesNotMatch(styleCss, /\.trainer-quest-choice-caret/);
   assert.match(styleCss, /\.trainer-quest-stats-root/);
-  assert.match(swJs, /tomatofarm-v20260629z8-home-running-motion-map-clarity/);
+  assert.match(swJs, /tomatofarm-v20260629z9-stats-unified-overall/);
   assert.match(swJs, /\.\/modals\/trainer-quest-modal\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/trainer-quest-seated-trainer\.png/);
 });

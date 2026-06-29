@@ -751,17 +751,29 @@
 
 <div id="tab-stats" class="tab-panel">
 <div class="stats-section">
-<div class="stats-view-tabs">
-<button class="stats-view-btn active" data-stats-view="overall" type="button">전체통계</button>
-<button class="stats-view-btn" data-stats-view="deep" type="button">심층통계</button>
-</div>
-<div id="stats-overall-panel" class="stats-view-panel active">
-<div class="stats-block stats-muscle-fatigue-block">
-<div id="stats-muscle-fatigue"></div>
+<div id="stats-overall-panel">
+<div class="stats-analysis-controls" aria-label="통계 기간 설정">
+  <div>
+    <span>전체통계</span>
+    <b>기간별 운동 분석</b>
+  </div>
+  <div class="stats-analysis-periods" role="group" aria-label="운동 분석 기간">
+    <button type="button" class="stats-analysis-period" data-stats-analysis-period="30">30일</button>
+    <button type="button" class="stats-analysis-period active" data-stats-analysis-period="90">90일</button>
+    <button type="button" class="stats-analysis-period" data-stats-analysis-period="180">180일</button>
+    <button type="button" class="stats-analysis-period" data-stats-analysis-period="all">전체</button>
+  </div>
 </div>
 <div class="stats-block stats-summary-block">
 <div class="stats-block-title">📋 전체 요약</div>
 <div id="stats-overall-summary"></div>
+</div>
+<div class="stats-block stats-workout-analysis-block">
+<div class="stats-block-title">🏋️ 운동 분석</div>
+<div id="stats-workout-analysis"></div>
+</div>
+<div class="stats-block stats-muscle-fatigue-block">
+<div id="stats-muscle-fatigue"></div>
 </div>
 <div class="stats-block stats-health-block">
 <div class="stats-block-title">📊 건강 지표 비교</div>
@@ -790,9 +802,6 @@
 <div class="stats-block-title">🏋️ 종목별 볼륨 추이 (kg × 횟수 × 세트)</div>
 <div id="volume-section"></div>
 </div>
-</div>
-<div id="stats-deep-panel" class="stats-view-panel">
-<div id="deep-stats-report"></div>
 </div>
 </div>
 </div>

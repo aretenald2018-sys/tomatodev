@@ -7,7 +7,7 @@
 import { MOVEMENTS }                                 from './config.js';
 import { TODAY, getMuscles, getCF, getDiet, dietDayOk,
          daysInMonth, isFuture, getExList, getAllMuscles,
-         getVolumeHistory, getCache, calcVolume, getExpertPreset,
+         getVolumeHistory, getCache, calcVolume,
          getExercises, dateKey, getBodyCheckins, getDietPlan,
          hasExerciseRecord, hasDietRecord }    from './data.js';
 import { SUBPATTERN_TO_MAJOR, calcBurnedKcal }       from './calc.js';
@@ -16,12 +16,19 @@ import { getWorkoutSessions }                        from './workout/sessions.js
 let _selectedExerciseId = null;
 let _selectedVolumeDate = null;
 let _selectedFatiguePeriod = 'week';
+let _statsAnalysisPeriod = '90';
 let _healthChartPeriod = 90;
 const _healthSeriesVisible = {
   weight: true,
   bodyFat: true,
   intake: true,
   burned: true,
+};
+const STATS_ANALYSIS_PERIODS = {
+  '30': { label: '30일', days: 30 },
+  '90': { label: '90일', days: 90 },
+  '180': { label: '180일', days: 180 },
+  all: { label: '전체', days: 0 },
 };
 
 export function setPeriod() {
@@ -32,14 +39,14 @@ let _healthMetricsChart = null;
 const _healthMetricsCharts = new WeakMap();
 
 export function renderStats(root = document) {
-  _bindStatsViewTabs(root);
-  _renderMuscleFatigue(root);
+  _bindStatsAnalysisPeriodControls(root);
   _renderOverallSummary(root);
-  _renderVolumeSection(root);
+  _renderWorkoutAnalysis(root);
+  _renderMuscleFatigue(root);
   _bindHealthChartControls(root);
   _renderHealthMetricsChart(root);
+  _renderVolumeSection(root);
   _renderHeatmap();
-  _renderDeepStats(root);
 }
 
 function _statsNode(root, id) {
@@ -51,11 +58,31 @@ function _statsNodes(root, selector) {
   return (root || document).querySelectorAll(selector);
 }
 
+function _statsAnalysisPeriodControlsMarkup() {
+  return `
+    <div class="stats-analysis-controls" aria-label="통계 기간 설정">
+      <div>
+        <span>전체통계</span>
+        <b>기간별 운동 분석</b>
+      </div>
+      <div class="stats-analysis-periods" role="group" aria-label="운동 분석 기간">
+        ${Object.entries(STATS_ANALYSIS_PERIODS).map(([key, period]) => `
+          <button type="button" class="stats-analysis-period ${key === _statsAnalysisPeriod ? 'active' : ''}" data-stats-analysis-period="${_esc(key)}">${_esc(period.label)}</button>
+        `).join('')}
+      </div>
+    </div>`;
+}
+
 function _trainerQuestStatsMarkup() {
   return `
+    ${_statsAnalysisPeriodControlsMarkup()}
     <section class="stats-block stats-summary-block trainer-quest-stats-block">
       <div class="stats-block-title">전체 요약</div>
       <div data-stats-id="stats-overall-summary"></div>
+    </section>
+    <section class="stats-block stats-workout-analysis-block trainer-quest-stats-block">
+      <div class="stats-block-title">운동 분석</div>
+      <div data-stats-id="stats-workout-analysis"></div>
     </section>
     <section class="stats-block stats-health-block trainer-quest-stats-block">
       <div class="stats-block-title">건강 지표 비교</div>
@@ -84,7 +111,6 @@ function _trainerQuestStatsMarkup() {
       <div class="stats-block-title">종목별 볼륨 추이</div>
       <div data-stats-id="volume-section"></div>
     </section>
-    <section class="trainer-quest-deep-stats" data-stats-id="deep-stats-report"></section>
   `;
 }
 
@@ -92,12 +118,13 @@ export function renderTrainerQuestStats(root) {
   if (!root) return;
   root.setAttribute('data-stats-root', 'trainer-quest');
   root.innerHTML = _trainerQuestStatsMarkup();
+  _bindStatsAnalysisPeriodControls(root);
   _renderOverallSummary(root);
+  _renderWorkoutAnalysis(root);
   _bindHealthChartControls(root);
   _renderHealthMetricsChart(root);
   _renderMuscleFatigue(root);
   _renderVolumeSection(root);
-  _renderDeepStats(root);
 }
 
 export function buildTrainerQuestStatsExport() {
@@ -200,7 +227,9 @@ export function buildTrainerQuestStatsExport() {
   const topFood = [...foodsByName.values()]
     .sort((a, b) => (b.count - a.count) || (b.kcalTotal - a.kcalTotal) || a.name.localeCompare(b.name))[0] || null;
   const dietTotal = okDays + ngDays;
-  const trainerFourWeeks = _analyzeTrainerWindow(_keyOffset(27), todayKey);
+  const analysisRange = _statsAnalysisRange();
+  const workoutAnalysis = _analyzeTrainerWindow(analysisRange.fromKey, analysisRange.toKey);
+  const analysisPlan = workoutAnalysis.planStats || {};
 
   return {
     schema: 'tomatofarm.trainerStats.v1',
@@ -270,8 +299,18 @@ export function buildTrainerQuestStatsExport() {
       selectedExerciseId: _selectedExerciseId,
       exercises: volumeExercises,
     },
-    trainerAnalysis: {
-      fourWeeks: trainerFourWeeks,
+    workoutAnalysis: {
+      period: analysisRange.label,
+      fromKey: analysisRange.fromKey,
+      toKey: analysisRange.toKey,
+      trainingDays: workoutAnalysis.trainingDays,
+      hardSets: workoutAnalysis.hardSets,
+      averageRpe: workoutAnalysis.avgRpe || null,
+      averageIntakeKcal: workoutAnalysis.avgKcal || null,
+      averageProteinG: workoutAnalysis.avgProtein || null,
+      planAdherencePct: analysisPlan.plannedSets ? Math.round(analysisPlan.doneSets / analysisPlan.plannedSets * 100) : null,
+      planVolumeDelta: analysisPlan.plannedSets ? Math.round((analysisPlan.actualVolume || 0) - (analysisPlan.plannedVolume || 0)) : null,
+      completedSets: analysisPlan.plannedSets ? { done: analysisPlan.doneSets, planned: analysisPlan.plannedSets } : null,
     },
   };
 }
@@ -280,24 +319,26 @@ export function buildTrainerQuestStatsExportText() {
   return JSON.stringify(buildTrainerQuestStatsExport(), null, 2);
 }
 
-function _bindStatsViewTabs(root = document) {
-  _statsNodes(root, '.stats-view-btn').forEach(btn => {
+function _bindStatsAnalysisPeriodControls(root = document) {
+  _statsNodes(root, '[data-stats-analysis-period]').forEach(btn => {
+    _syncStatsAnalysisPeriodButton(btn);
     if (btn.dataset.bound === '1') return;
     btn.dataset.bound = '1';
-    btn.addEventListener('click', () => switchStatsView(btn.dataset.statsView || 'overall', btn));
+    btn.addEventListener('click', () => {
+      const next = btn.dataset.statsAnalysisPeriod || '90';
+      if (!STATS_ANALYSIS_PERIODS[next] || next === _statsAnalysisPeriod) return;
+      _statsAnalysisPeriod = next;
+      const scope = btn.closest?.('[data-stats-root]') || root || document;
+      _statsNodes(scope, '[data-stats-analysis-period]').forEach(_syncStatsAnalysisPeriodButton);
+      _renderWorkoutAnalysis(scope);
+    });
   });
 }
-
-export function switchStatsView(view = 'overall', btn = null, root = document) {
-  const next = view === 'deep' ? 'deep' : 'overall';
-  const scope = btn?.closest?.('[data-stats-root]') || root || document;
-  _statsNodes(scope, '.stats-view-btn').forEach(b => b.classList.toggle('active', b === btn || b.dataset.statsView === next));
-  _statsNode(scope, 'stats-overall-panel')?.classList.toggle('active', next === 'overall');
-  _statsNode(scope, 'stats-deep-panel')?.classList.toggle('active', next === 'deep');
-  if (next === 'deep') _renderDeepStats(scope);
+function _syncStatsAnalysisPeriodButton(btn) {
+  const active = btn.dataset.statsAnalysisPeriod === _statsAnalysisPeriod;
+  btn.classList.toggle('active', active);
+  btn.setAttribute('aria-pressed', active ? 'true' : 'false');
 }
-
-if (typeof window !== 'undefined') window.switchStatsView = switchStatsView;
 
 function _esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function _clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
@@ -358,7 +399,6 @@ const FATIGUE_GROUP_BY_MAJOR = FATIGUE_GROUPS.reduce((acc, group) => {
   group.majors.forEach(major => { acc[major] = group.id; });
   return acc;
 }, {});
-const PHASE_LABELS = { ACCUMULATION:'쌓는 구간', DELOAD:'회복 구간', RESET:'재정렬 구간' };
 function _setsBand(sets, lm) {
   if (sets < lm.low) return { tone:'under', label:'부족', msg:`주 ${lm.low - sets}세트만 더` };
   if (sets > lm.high) return { tone:'over', label:'많음', msg:'회복 확인' };
@@ -964,6 +1004,45 @@ function _linearSlope(points) {
   const den = n*sxx - sx*sx;
   return den ? (n*sxy - sx*sy) / den : 0;
 }
+function _daysBetween(fromKey, toKey) {
+  const from = _dateFromKey(fromKey);
+  const to = _dateFromKey(toKey);
+  if (!from || !to || from > to) return 0;
+  return Math.round((to.getTime() - from.getTime()) / 86400000);
+}
+function _analysisPeriodConfig(key = _statsAnalysisPeriod) {
+  return STATS_ANALYSIS_PERIODS[key] || STATS_ANALYSIS_PERIODS['90'];
+}
+function _statsAnalysisRange(key = _statsAnalysisPeriod) {
+  const cfg = _analysisPeriodConfig(key);
+  const todayKey = _keyOffset(0);
+  const firstKey = _dateEntries()[0]?.[0] || todayKey;
+  const fromKey = cfg.days > 0 ? _keyOffset(cfg.days - 1) : firstKey;
+  const actualDays = Math.max(1, _daysBetween(fromKey, todayKey) + 1);
+  return { ...cfg, key, fromKey, toKey: todayKey, actualDays };
+}
+function _statsAnalysisCompareRange(range) {
+  const spanDays = range.days > 0 ? range.days : Math.min(180, Math.max(30, range.actualDays || 90));
+  const halfDays = Math.max(7, Math.round(spanDays / 2));
+  return {
+    halfDays,
+    recent: _analyzeTrainerWindow(_keyOffset(halfDays - 1), _keyOffset(0)),
+    prior: _analyzeTrainerWindow(_keyOffset(spanDays - 1), _keyOffset(halfDays)),
+  };
+}
+function _entryPlanStats(entry) {
+  const prescription = entry?.maxPrescription || null;
+  const isTestMode = prescription || entry?.recommendationMeta?.mode === 'max';
+  if (!isTestMode) return null;
+  const sets = Array.isArray(entry?.sets) ? entry.sets : [];
+  const targetKg = Number(prescription?.startKg) || Number(prescription?.targetKg) || Number(prescription?.kg) || Number(sets[0]?.kg) || 0;
+  const targetReps = Number(prescription?.repsHigh) || Number(prescription?.targetReps) || Number(prescription?.reps) || Number(sets[0]?.reps) || 0;
+  const targetSets = Number(prescription?.targetSets) || Number(prescription?.sets) || sets.length || 0;
+  const done = sets.filter(s => s?.done === true && s?.setType !== 'warmup');
+  const plannedVolume = targetKg * targetReps * targetSets;
+  const actualVolume = done.reduce((sum, s) => sum + (Number(s.kg) || 0) * (Number(s.reps) || 0), 0);
+  return { rows: 1, plannedSets: targetSets, doneSets: done.length, plannedVolume, actualVolume };
+}
 function _analyzeTrainerWindow(fromKey, toKey) {
   const cache = getCache();
   const exList = getExList();
@@ -972,6 +1051,7 @@ function _analyzeTrainerWindow(fromKey, toKey) {
   const byMajor = {};
   const byExercise = {};
   const rpeByMajor = {};
+  const planStats = { rows: 0, plannedSets: 0, doneSets: 0, plannedVolume: 0, actualVolume: 0 };
   let trainingDays = 0, hardSets = 0, rpeSum = 0, rpeCount = 0, kcalTotal = 0, kcalDays = 0, proteinTotal = 0, proteinDays = 0;
   for (const [key, day] of Object.entries(cache)) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || key < fromKey || key > toKey) continue;
@@ -985,6 +1065,14 @@ function _analyzeTrainerWindow(fromKey, toKey) {
       const id = entry.movementId || ex?.movementId || entry.exerciseId;
       byExercise[id] = byExercise[id] || { name: ex?.name || entry.name || id, major, points:[], volume:0, rpes:[] };
       byExercise[id].volume += calcVolume(entry.sets);
+      const entryPlan = _entryPlanStats(entry);
+      if (entryPlan) {
+        planStats.rows += entryPlan.rows;
+        planStats.plannedSets += entryPlan.plannedSets;
+        planStats.doneSets += entryPlan.doneSets;
+        planStats.plannedVolume += entryPlan.plannedVolume;
+        planStats.actualVolume += entryPlan.actualVolume;
+      }
       const best = _topSetE1rm(entry);
       if (best > 0) byExercise[id].points.push({ date:key, y:best });
       for (const set of entry.sets || []) {
@@ -1007,92 +1095,122 @@ function _analyzeTrainerWindow(fromKey, toKey) {
     avgKcal: kcalDays ? Math.round(kcalTotal / kcalDays) : 0,
     avgProtein: proteinDays ? Math.round(proteinTotal / proteinDays) : 0,
     avgRpe: rpeCount ? rpeSum / rpeCount : 0,
-    byMajor, byExercise, rpeByMajor,
+    planStats, byMajor, byExercise, rpeByMajor,
   };
 }
 
-function _renderDeepStats(scope = document) {
-  const root = _statsNode(scope, 'deep-stats-report');
-  if (!root) return;
-  const four = _analyzeTrainerWindow(_keyOffset(27), _keyOffset(0));
-  const recent2 = _analyzeTrainerWindow(_keyOffset(13), _keyOffset(0));
-  const prior2 = _analyzeTrainerWindow(_keyOffset(27), _keyOffset(14));
-  const preset = getExpertPreset?.() || {};
-  const week = _clamp(Number(preset.maxCycle?.weekIndex || preset.maxCycle?.currentWeek || 3) || 3, 1, 6);
-  const phase = week === 5 ? 'DELOAD' : (week === 6 ? 'RESET' : 'ACCUMULATION');
-  const phaseTone = phase === 'DELOAD' ? 'warn' : 'good';
-  const weeklySets = Math.round(four.hardSets / 4);
-  const setDelta = recent2.hardSets - prior2.hardSets;
-  const dayDelta = recent2.trainingDays - prior2.trainingDays;
-  const volumeRows = Object.entries(LANDMARKS).map(([major, lm]) => {
-    const sets = Math.round((four.byMajor[major]?.hardSets || 0) / 4);
-    const pct = _clamp(Math.round(sets / lm.high * 100), 0, 100);
-    const band = _setsBand(sets, lm);
-    return `<div class="trainer-vol-row ${band.tone}"><span>${lm.label}</span><div class="trainer-vol-track" style="--fill:${pct}%"><i style="left:${pct}%"></i><b style="left:${Math.round(lm.low/lm.high*100)}%"></b><b style="left:${Math.round(lm.good/lm.high*100)}%"></b></div><strong>${sets}세트</strong><small>${band.label} · ${band.msg}</small></div>`;
-  }).join('');
-  const liftAnalyses = Object.values(four.byExercise).map(e => {
+function _workoutAnalysisLiftAnalyses(analysis) {
+  return Object.values(analysis.byExercise).map(e => {
     const rawPts = e.points.sort((a,b)=>a.date.localeCompare(b.date)).slice(-8);
     const baseTime = rawPts[0] ? new Date(rawPts[0].date).getTime() : 0;
     const pts = rawPts.map((p,i)=>({
       x: baseTime ? Math.max((new Date(p.date).getTime() - baseTime) / 604800000, i * 0.25) : i,
-      y:p.y,
-      date:p.date
+      y: p.y,
+      date: p.date,
     }));
     const rpes = e.rpes.sort((a,b)=>a.date.localeCompare(b.date));
     const slope = _linearSlope(pts);
     const first = pts[0]?.y || 0, last = pts.at(-1)?.y || 0;
-    const delta = first ? Math.round((last-first)/first*100) : 0;
     const plateau = pts.length >= 3 && Math.abs(slope) < .15 && (rpes.at(-1)?.rpe || 0) - (rpes[0]?.rpe || 0) >= .5;
-    const next = { ...e, slope, first, last, delta, plateau, pointsCount: pts.length };
+    const next = { ...e, slope, first, last, plateau, pointsCount: pts.length };
     return { ...next, view: _progressView(next) };
   }).filter(e => e.last > 0);
-  const liftRows = liftAnalyses
-    .sort((a,b)=>(b.plateau-a.plateau) || (b.view.suspicious-a.view.suspicious) || Math.abs(b.slope)-Math.abs(a.slope)).slice(0,5)
-    .map(e => `<div class="trainer-lift-row ${e.plateau?'plateau':''} ${e.view.suspicious?'suspicious':''}"><div><span>${_esc(MAJOR_LABELS[e.major]||e.major)}</span><b>${_esc(e.name)}</b></div><strong>${_esc(e.view.main)}</strong><small>${Math.round(e.first)} → ${Math.round(e.last)}kg · ${_esc(e.view.sub)}${e.plateau?' · 피로 누적 의심':''}</small></div>`).join('');
-  const dataWarnings = liftAnalyses.filter(e => e.view.suspicious).slice(0,3)
-    .map(e => `<li><b>${_esc(e.name)}</b><span>${Math.round(e.first)} → ${Math.round(e.last)}kg, 표본 ${e.pointsCount}회. 기록 단위/기구/운동명 혼합 여부를 확인하세요.</span></li>`).join('');
-  const checkins = getBodyCheckins();
-  const firstC = checkins.find(c => c.date >= _keyOffset(27));
-  const lastC = [...checkins].reverse().find(c => c.date <= _keyOffset(0));
-  const weightDelta = firstC && lastC ? (Number(lastC.weight)-Number(firstC.weight)) : 0;
-  const bfDelta = firstC && lastC && firstC.bodyFatPct != null && lastC.bodyFatPct != null ? Number(lastC.bodyFatPct)-Number(firstC.bodyFatPct) : null;
-  const phaseBody = Math.abs(weightDelta) < .2 && (bfDelta ?? 0) < 0 ? 'Recomp' : (weightDelta > .3 ? ((bfDelta ?? 0) > .4 ? 'Dirty Bulk 경계' : 'Lean Bulk') : (weightDelta < -.3 ? 'Cutting' : 'Maintenance'));
-  const bodyDirection = {
-    Recomp: '체중 유지 + 체지방 감량',
-    'Dirty Bulk 경계': '증량 속도 빠름',
-    'Lean Bulk': '천천히 증량',
-    Cutting: '감량 중',
-    Maintenance: '유지 중',
-  }[phaseBody] || phaseBody;
-  const proteinPerKg = lastC?.weight ? (four.avgProtein / Number(lastC.weight)) : 0;
-  const rpeRows = Object.entries(four.rpeByMajor).map(([major, r]) => {
-    const avg = r.count ? r.sum / r.count : 0;
-    return `<div class="trainer-rpe-cell ${avg>=8.5?'high':avg<7?'low':''}"><span>${_esc(MAJOR_LABELS[major]||major)}</span><b>${avg.toFixed(1)}</b></div>`;
-  }).join('');
-  const under = Object.entries(LANDMARKS).map(([major,lm])=>({ major, lm, sets:Math.round((four.byMajor[major]?.hardSets||0)/4) })).filter(x=>x.sets < x.lm.low).sort((a,b)=>(a.sets-a.lm.low)-(b.sets-b.lm.low))[0];
+}
+
+function _renderWorkoutAnalysis(scope = document) {
+  const root = _statsNode(scope, 'stats-workout-analysis');
+  if (!root) return;
+
+  const range = _statsAnalysisRange();
+  const current = _analyzeTrainerWindow(range.fromKey, range.toKey);
+  const compare = _statsAnalysisCompareRange(range);
+  const weeklySets = Math.round(current.hardSets / Math.max(1, range.actualDays / 7));
+  const setDelta = compare.recent.hardSets - compare.prior.hardSets;
+  const dayDelta = compare.recent.trainingDays - compare.prior.trainingDays;
+  const plan = current.planStats || {};
+  const adherence = plan.plannedSets ? Math.round(plan.doneSets / plan.plannedSets * 100) : null;
+  const volumeDelta = plan.plannedSets ? Math.round((plan.actualVolume || 0) - (plan.plannedVolume || 0)) : null;
+  const planTone = adherence === null ? 'empty' : (adherence >= 90 ? 'good' : adherence >= 60 ? 'warn' : 'bad');
+  const liftAnalyses = _workoutAnalysisLiftAnalyses(current);
   const plateauCount = liftAnalyses.filter(e => e.plateau).length;
-  const briefTitle = dataWarnings ? '먼저 기록 신뢰도를 확인하세요' : (under ? `${under.lm.label} 운동량 보강이 1순위` : (plateauCount ? '정체 종목 회복 관리가 1순위' : '현재 루프 유지, 미세 증량'));
-  const brief = under
-    ? `${under.lm.label}이 주당 ${under.sets}세트로 최소 성장 신호보다 낮습니다. 다음 2주는 해당 부위 보조종목 2-3세트를 먼저 추가하세요.`
-    : (plateauCount ? '같은 무게에서 RPE가 올라가는 종목이 있습니다. 다음 주 볼륨 -30~50% 또는 종목 rotate를 검토하세요.' : '자극·적응·회복 루프가 크게 무너지지 않았습니다. 벤치마크 1-2개만 소폭 증량하세요.');
-  const asIs = under
-    ? `${under.lm.label} 자극량이 기준선보다 낮아 성장 신호가 약합니다.`
-    : (plateauCount ? '일부 종목은 수행능력 증가보다 피로 누적 신호가 더 큽니다.' : '핵심 부위의 자극-회복 균형은 유지되고 있습니다.');
-  const toBe = under
-    ? `${under.lm.label} 보조종목을 먼저 채우고, 벤치마크 증량은 유지 가능한 RPE 안에서 진행하세요.`
-    : (plateauCount ? '다음 마이크로사이클은 디로드, 종목 교체, RIR 여유 확보 중 하나를 선택하세요.' : '현재 루프를 유지하되, e1RM 상승폭이 작은 종목만 미세 조정하세요.');
+  const dataWarnings = liftAnalyses.filter(e => e.view.suspicious).slice(0, 3);
+  const under = Object.entries(LANDMARKS)
+    .map(([major, lm]) => ({ major, lm, sets: Math.round((current.byMajor[major]?.hardSets || 0) / Math.max(1, range.actualDays / 7)) }))
+    .filter(x => x.sets < x.lm.low)
+    .sort((a, b) => (a.sets - a.lm.low) - (b.sets - b.lm.low))[0];
+  const topExercise = Object.values(current.byExercise).sort((a, b) => b.volume - a.volume)[0];
+
+  const checkins = getBodyCheckins().filter(c => (c?.date || '') >= range.fromKey && (c?.date || '') <= range.toKey);
+  const firstC = checkins[0] || null;
+  const lastC = checkins[checkins.length - 1] || null;
+  const weightDelta = firstC && lastC && _maybeNum(firstC.weight) !== null && _maybeNum(lastC.weight) !== null
+    ? _maybeNum(lastC.weight) - _maybeNum(firstC.weight)
+    : null;
+  const bfDelta = firstC && lastC && _maybeNum(firstC.bodyFatPct) !== null && _maybeNum(lastC.bodyFatPct) !== null
+    ? _maybeNum(lastC.bodyFatPct) - _maybeNum(firstC.bodyFatPct)
+    : null;
+  const proteinPerKg = lastC?.weight ? current.avgProtein / Number(lastC.weight) : 0;
+  const bodyDirection = weightDelta === null
+    ? '체성분 기록 부족'
+    : (Math.abs(weightDelta) < .2 && (bfDelta ?? 0) < 0 ? '체중 유지 + 체지방 감량'
+      : (weightDelta > .3 ? ((bfDelta ?? 0) > .4 ? '증량 속도 빠름' : '천천히 증량')
+        : (weightDelta < -.3 ? '감량 중' : '유지 중')));
+
+  const liftRows = liftAnalyses
+    .sort((a,b)=>(b.plateau-a.plateau) || (b.view.suspicious-a.view.suspicious) || Math.abs(b.slope)-Math.abs(a.slope)).slice(0, 4)
+    .map(e => `<div class="stats-analysis-lift-row ${e.plateau ? 'is-plateau' : ''} ${e.view.suspicious ? 'is-suspicious' : ''}"><div><span>${_esc(MAJOR_LABELS[e.major] || e.major)}</span><b>${_esc(e.name)}</b></div><strong>${_esc(e.view.main)}</strong><small>${_fmt(Math.round(e.first))} → ${_fmt(Math.round(e.last))}kg · ${_esc(e.view.sub)}${e.plateau ? ' · 피로 누적 의심' : ''}</small></div>`).join('');
+  const warningList = dataWarnings.map(e => `<li><b>${_esc(e.name)}</b><span>${_fmt(Math.round(e.first))} → ${_fmt(Math.round(e.last))}kg, 표본 ${e.pointsCount}회. 같은 기구/단위/종목명 기록인지 확인하세요.</span></li>`).join('');
+  const rpeRows = Object.entries(current.rpeByMajor).map(([major, r]) => {
+    const avg = r.count ? r.sum / r.count : 0;
+    return `<div class="stats-analysis-mini ${avg >= 8.5 ? 'is-high' : avg < 7 ? 'is-low' : ''}"><span>${_esc(MAJOR_LABELS[major] || major)}</span><b>${avg.toFixed(1)}</b></div>`;
+  }).join('');
+  const briefTitle = dataWarnings.length
+    ? '기록 신뢰도 확인이 먼저입니다'
+    : (under ? `${under.lm.label} 보강이 1순위` : (plateauCount ? '정체 종목 회복 관리가 필요합니다' : '현재 루프는 유지 가능합니다'));
+  const brief = dataWarnings.length
+    ? '변화폭이 비정상적으로 큰 종목은 성장 판단에 쓰기 전에 기록 단위와 종목명을 먼저 확인하세요.'
+    : (under
+      ? `${under.lm.label}이 주당 ${under.sets}세트로 기준선보다 낮습니다. 다음 2주는 해당 부위 보조종목을 2-3세트 먼저 채우세요.`
+      : (plateauCount ? '같은 무게에서 RPE가 올라가는 종목이 있습니다. 다음 주는 볼륨을 줄이거나 종목 교체를 검토하세요.' : '자극, 적응, 회복 흐름이 크게 무너지지 않았습니다. 벤치마크 1-2개만 소폭 증량하세요.'));
+  const hasWorkout = current.trainingDays > 0 || current.hardSets > 0 || (plan.plannedSets || 0) > 0;
+
   root.innerHTML = `
-    <section class="trainer-pulse ${phaseTone}">
-      <div><span>이번 4주 요약</span><h3>${PHASE_LABELS[phase]} · ${week}/6주차</h3><p>체감강도 평균 ${four.avgRpe ? four.avgRpe.toFixed(1) : '-'} · 주당 유효세트 ${weeklySets} · 최근 2주 ${setDelta>=0?'+':''}${setDelta}세트 / ${dayDelta>=0?'+':''}${dayDelta}일</p></div>
-      <div class="trainer-weeks">${[1,2,3,4,5,6].map(w=>`<i class="${w<week?'done':w===week?'now':''}">W${w}</i>`).join('')}</div>
-    </section>
-    <section class="trainer-panel"><div class="trainer-panel-head"><b>부위별 운동량</b><span>최근 4주 기준 · 주당 유효세트</span></div>${volumeRows}</section>
-    <section class="trainer-panel"><div class="trainer-panel-head"><b>성장 추세</b><span>과장된 퍼센트 대신 kg 변화와 신뢰도 표시</span></div>${liftRows || '<p class="trainer-empty">성장 추세를 계산할 운동 기록이 부족합니다.</p>'}</section>
-    ${dataWarnings ? `<section class="trainer-panel trainer-data-panel"><div class="trainer-panel-head"><b>기록 점검</b><span>갑자기 크게 뛴 종목</span></div><ul class="trainer-data-list">${dataWarnings}</ul></section>` : ''}
-    <section class="trainer-panel"><div class="trainer-panel-head"><b>몸 변화와 식단</b><span>운동 성과가 몸에 반영되는지 확인</span></div><div class="trainer-body-grid"><div><span>현재 방향</span><b>${bodyDirection}</b></div><div><span>체중 4주</span><b>${weightDelta>=0?'+':''}${weightDelta.toFixed(1)}kg</b></div><div><span>체지방</span><b>${bfDelta==null?'-':`${bfDelta>=0?'+':''}${bfDelta.toFixed(1)}%p`}</b></div><div><span>단백질</span><b>${proteinPerKg ? proteinPerKg.toFixed(2) : '-'} g/kg</b></div></div><p>${four.avgKcal ? `평균 ${four.avgKcal}kcal, 단백질 ${four.avgProtein}g. 이 수치가 낮으면 운동량이 좋아도 성장 체감이 약할 수 있습니다.` : '식단 칼로리 기록이 부족해서 운동 성과와 몸 변화의 연결을 판단하기 어렵습니다.'}</p></section>
-    <section class="trainer-panel"><div class="trainer-panel-head"><b>피로도</b><span>부위별 체감강도</span></div><div class="trainer-rpe-grid">${rpeRows || '<p class="trainer-empty">RPE 기록이 부족합니다.</p>'}</div><p>${four.avgRpe >= 8.6 ? '평균 체감강도가 높습니다. 이번 주는 세트 수를 줄이거나 실패지점 전 1-2회 여유를 남기세요.' : '피로도는 아직 관리 가능한 범위입니다.'}</p></section>
-    <section class="trainer-brief"><span>코치 제안</span><h3>${_esc(briefTitle)}</h3><p>${_esc(dataWarnings ? '성장률이 비정상적으로 크게 잡힌 종목이 있습니다. 증량 판단보다 먼저 같은 기구/같은 단위/같은 종목명으로 기록됐는지 확인하세요.' : brief)}</p></section>
-    <section class="trainer-transition"><div><span>현재 상태</span><p>${_esc(asIs)}</p></div><div><span>다음 2주</span><p>${_esc(toBe)}</p></div></section>
+    <div class="stats-analysis-head">
+      <div><span>${_esc(range.label)} 집계</span><b>${_esc(_fmtDateShort(range.fromKey))} - ${_esc(_fmtDateShort(range.toKey))}</b></div>
+      <small>최근 절반 ${setDelta >= 0 ? '+' : ''}${_fmt(setDelta)}세트 · ${dayDelta >= 0 ? '+' : ''}${_fmt(dayDelta)}일</small>
+    </div>
+    <div class="stats-analysis-kpis">
+      ${_summaryKpi('운동일', hasWorkout ? `${_fmt(current.trainingDays)}일` : null, `${_fmt(range.actualDays)}일 중 기록`)}
+      ${_summaryKpi('주당 유효세트', hasWorkout ? `${_fmt(weeklySets)}세트` : null, 'RPE 7 이상 또는 반복 기록 기준')}
+      ${_summaryKpi('평균 RPE', current.avgRpe ? current.avgRpe.toFixed(1) : null, current.avgRpe >= 8.6 ? '피로 높음' : '기록 기준')}
+      ${_summaryKpi('계획 이행률', adherence !== null ? `${adherence}%` : null, adherence !== null ? `완료 세트 ${_fmt(plan.doneSets)}/${_fmt(plan.plannedSets)}` : '테스트모드 기록 없음', planTone)}
+      ${_summaryKpi('계획 대비 볼륨', volumeDelta !== null ? `${volumeDelta >= 0 ? '+' : ''}${_fmt(volumeDelta)}` : null, 'kg x reps 합계', planTone)}
+      ${_summaryKpi('완료 세트', plan.plannedSets ? `${_fmt(plan.doneSets)}/${_fmt(plan.plannedSets)}` : null, '테스트모드 처방 기준', planTone)}
+    </div>
+    <div class="stats-analysis-card">
+      <div class="stats-analysis-card-head"><b>성장 추세</b><span>${topExercise ? `볼륨 상위: ${_esc(topExercise.name)}` : '기록 누적 필요'}</span></div>
+      <div class="stats-analysis-lifts">${liftRows || '<p class="stats-analysis-empty">성장 추세를 계산할 운동 기록이 부족합니다.</p>'}</div>
+    </div>
+    ${warningList ? `<div class="stats-analysis-card is-warning"><div class="stats-analysis-card-head"><b>기록 점검</b><span>갑자기 크게 뛴 종목</span></div><ul class="stats-analysis-warning-list">${warningList}</ul></div>` : ''}
+    <div class="stats-analysis-card">
+      <div class="stats-analysis-card-head"><b>몸 변화와 식단</b><span>운동 성과와 체성분 연결</span></div>
+      <div class="stats-analysis-mini-grid">
+        <div class="stats-analysis-mini"><span>현재 방향</span><b>${_esc(bodyDirection)}</b></div>
+        <div class="stats-analysis-mini"><span>체중 변화</span><b>${weightDelta === null ? '--' : `${weightDelta >= 0 ? '+' : ''}${weightDelta.toFixed(1)}kg`}</b></div>
+        <div class="stats-analysis-mini"><span>체지방률</span><b>${bfDelta === null ? '--' : `${bfDelta >= 0 ? '+' : ''}${bfDelta.toFixed(1)}%p`}</b></div>
+        <div class="stats-analysis-mini"><span>단백질</span><b>${proteinPerKg ? `${proteinPerKg.toFixed(2)}g/kg` : '--'}</b></div>
+      </div>
+      <p>${current.avgKcal ? `평균 섭취 ${_fmt(current.avgKcal)}kcal, 단백질 ${_fmt(current.avgProtein)}g입니다.` : '선택 기간 식단 기록이 부족해서 운동 성과와 식단의 연결은 판단하지 않습니다.'}</p>
+    </div>
+    <div class="stats-analysis-card">
+      <div class="stats-analysis-card-head"><b>피로도</b><span>부위별 체감강도</span></div>
+      <div class="stats-analysis-mini-grid">${rpeRows || '<p class="stats-analysis-empty">RPE 기록이 부족합니다.</p>'}</div>
+    </div>
+    <div class="stats-analysis-note ${dataWarnings.length ? 'is-warning' : under ? 'is-under' : plateauCount ? 'is-warn' : 'is-good'}">
+      <span>코치 제안</span>
+      <b>${_esc(briefTitle)}</b>
+      <p>${_esc(brief)}</p>
+    </div>
   `;
 }
 
