@@ -160,7 +160,7 @@ test('life zone running actors render track sprites and a map capture bubble on 
   assert.match(source, /buildVworldTileUrl/);
   assert.match(source, /normalizeRunningMapPoints/);
   assert.match(source, /function _buildRunningMapBubbleData/);
-  assert.match(source, /const RUNNING_MAP_HOME_MAX_ZOOM = 14/);
+  assert.match(source, /const RUNNING_MAP_HOME_MAX_ZOOM = 12/);
   assert.match(source, /Math\.min\(RUNNING_MAP_HOME_MAX_ZOOM, RUNNING_MAP_MAX_ZOOM, _zoomForRunningMap\(route\)\)/);
   assert.match(source, /function _renderRunningMapBubble/);
   assert.match(source, /bubble\.dataset\.lzRunningMapBubble = '1'/);
@@ -223,7 +223,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260629z19-home-running-map-zoom/);
+  assert.match(sw, /tomatofarm-v20260629z20-trainer-top-map-zoom/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,

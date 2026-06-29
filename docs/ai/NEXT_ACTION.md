@@ -3,15 +3,29 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-29-home-running-map-zoom-scale.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-home-running-map-zoom-scale-review.md`
-- 현재 단계: `홈 러닝 GPS 지도 말풍선 배율 조정 완료`
+- 계획 문서: `docs/ai/features/2026-06-29-trainer-stats-top-art-home-map-scale-fix.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-trainer-stats-top-art-home-map-scale-fix-review.md`
+- 현재 단계: `트레이너 통계 상단 아트 및 홈 러닝 지도 배율 수정 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `홈탭 러닝 지도 말풍선에 홈 전용 최대 zoom 14 배율을 적용하고 운동 탭 러닝 결과 지도와 분리된 계약을 검증했다.`
-- 다음 액션: `사용자 요청에 따른 다음 작업을 진행한다.`
+- 마지막 완료: `트레이너 통계 모달 아트를 상단 크롭 레이어로 올리고 홈 러닝 지도 말풍선 zoom 상한을 12로 낮췄다.`
+- 다음 액션: `Dashboard3 Pages 배포 검증을 진행한다.`
 - 차단 사유: `없음.`
 
 ## 직전 완료 요약
+
+- Trainer Stats Top Art + Home Map Scale Fix Slice 1:
+  1. 계획: `docs/ai/features/2026-06-29-trainer-stats-top-art-home-map-scale-fix.md`
+  2. 리뷰: `docs/ai/reviews/2026-06-29-trainer-stats-top-art-home-map-scale-fix-review.md`
+  3. 통계 모달 전용 트레이너 이미지를 본문 내부가 아니라 모달 상단 바깥 크롭 레이어로 재배치했다.
+  4. 홈 러닝 지도 말풍선 전용 최대 zoom을 `12`로 낮춰 작은 말풍선에서도 더 넓은 동네 맥락을 보이게 했다.
+  5. 운동 탭 러닝 결과 지도 파일은 수정하지 않고 홈 전용 계약만 변경했다.
+  6. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260629z20-trainer-top-map-zoom`으로 갱신했다.
+  7. PASS: `node --check home/life-zone.js; node --check modals/trainer-quest-modal.js; node --check sw.js`
+  8. PASS: `node --test tests/trainer-quest-modal.test.js tests/home-life-zone-npc-quest.test.js tests/running-entry.test.js tests/workout-calendar-bottom-sheet.test.js` — 41 tests passed
+  9. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
+  10. PASS: `node --test tests/*.test.js` — 606 tests passed
+  11. PASS: `git diff --check`
+  12. not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 UI 시각 확인이 남아 있다.
 
 - Home Running Map Zoom Scale Slice 1:
   1. 계획: `docs/ai/features/2026-06-29-home-running-map-zoom-scale.md`

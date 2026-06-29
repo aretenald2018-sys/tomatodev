@@ -48,5 +48,5 @@ test('stats health rollback chart cards are styled and cache version is bumped',
   assert.doesNotMatch(styleCss, /\.stats-health-toggle/);
   assert.doesNotMatch(styleCss, /\.stats-health-curves/);
   assert.doesNotMatch(styleCss, /\.stats-health-period/);
-  assert.match(swJs, /tomatofarm-v20260629z19-home-running-map-zoom/);
+  assert.match(swJs, /tomatofarm-v20260629z20-trainer-top-map-zoom/);
 });

@@ -653,10 +653,12 @@
 }
 .trainer-quest-stats-guide-character {
   position: absolute;
-  right: clamp(-10px, 1vw, 8px);
-  top: clamp(-156px, -31vw, -118px);
-  z-index: 3;
-  width: clamp(168px, 40vw, 232px);
+  right: clamp(-18px, -1vw, 4px);
+  top: clamp(-252px, -58vw, -214px);
+  z-index: 6;
+  width: clamp(170px, 41vw, 222px);
+  height: clamp(216px, 54vw, 286px);
+  overflow: hidden;
   pointer-events: none;
   filter: drop-shadow(0 12px 18px rgba(17, 24, 39, .22));
 }
@@ -667,9 +669,9 @@
 }
 .trainer-quest-stats-guide-speech {
   position: absolute;
-  right: clamp(118px, 31vw, 200px);
-  top: clamp(-98px, -19vw, -66px);
-  z-index: 4;
+  right: clamp(116px, 30vw, 188px);
+  top: clamp(-138px, -32vw, -104px);
+  z-index: 7;
   width: min(252px, calc(100% - 132px));
   padding: 9px 12px;
   border: 1px solid color-mix(in srgb, var(--primary) 16%, var(--border));
@@ -701,7 +703,7 @@
   grid-template-columns: 36px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
-  padding-right: clamp(76px, 22vw, 126px);
+  padding-right: clamp(12px, 5vw, 32px);
   margin-bottom: 12px;
 }
 .trainer-quest-stats-title-row {

@@ -34,7 +34,7 @@ const RUNNING_MAP_HEIGHT = 121;
 const RUNNING_MAP_TILE_SIZE = 256;
 const RUNNING_MAP_MIN_ZOOM = 10;
 const RUNNING_MAP_MAX_ZOOM = 18;
-const RUNNING_MAP_HOME_MAX_ZOOM = 14;
+const RUNNING_MAP_HOME_MAX_ZOOM = 12;
 
 let _actorStateCache = null;
 

@@ -31,5 +31,5 @@ test('exercise performance card uses TDS-like compact table styling', () => {
   assert.match(styleCss, /\.stats-perf-row/);
   assert.match(styleCss, /\.stats-perf-spark/);
   assert.match(styleCss, /\.stats-perf-status/);
-  assert.match(swJs, /tomatofarm-v20260629z19-home-running-map-zoom/);
+  assert.match(swJs, /tomatofarm-v20260629z20-trainer-top-map-zoom/);
 });

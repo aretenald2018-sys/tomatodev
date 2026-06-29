@@ -133,7 +133,7 @@ test('trainer quest modal styles and runtime cache asset are registered', () => 
   assert.match(styleCss, /padding:\s*clamp\(148px,\s*33vw,\s*184px\)/);
   assert.match(styleCss, /\.trainer-quest-sheet\.trainer-quest-sheet--stats \{[\s\S]*padding:\s*14px 16px 18px;/);
   assert.match(styleCss, /\.trainer-quest-sheet\.trainer-quest-sheet--stats \.trainer-quest-stage \{[\s\S]*display:\s*none;/);
-  assert.match(styleCss, /\.trainer-quest-stats-guide-character \{[\s\S]*right:\s*clamp\(-10px,\s*1vw,\s*8px\);[\s\S]*top:\s*clamp\(-156px,\s*-31vw,\s*-118px\);[\s\S]*width:\s*clamp\(168px,\s*40vw,\s*232px\);/);
+  assert.match(styleCss, /\.trainer-quest-stats-guide-character \{[\s\S]*right:\s*clamp\(-18px,\s*-1vw,\s*4px\);[\s\S]*top:\s*clamp\(-252px,\s*-58vw,\s*-214px\);[\s\S]*width:\s*clamp\(170px,\s*41vw,\s*222px\);[\s\S]*height:\s*clamp\(216px,\s*54vw,\s*286px\);[\s\S]*overflow:\s*hidden;/);
   assert.match(styleCss, /\.trainer-quest-stats-guide-speech::after/);
   assert.match(styleCss, /\.trainer-quest-stats-title-row/);
   assert.match(styleCss, /\.trainer-quest-sheet--stats \.trainer-quest-stats \{[\s\S]*padding-top:\s*0;/);
@@ -169,7 +169,7 @@ test('trainer quest modal styles and runtime cache asset are registered', () => 
   assert.doesNotMatch(styleCss, /\.trainer-quest-choice/);
   assert.doesNotMatch(styleCss, /\.trainer-quest-choice-caret/);
   assert.match(styleCss, /\.trainer-quest-stats-root/);
-  assert.match(swJs, /tomatofarm-v20260629z19-home-running-map-zoom/);
+  assert.match(swJs, /tomatofarm-v20260629z20-trainer-top-map-zoom/);
   assert.match(swJs, /\.\/modals\/trainer-quest-modal\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/trainer-quest-seated-trainer\.png/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/trainer-quest-stats-guide-trainer\.png/);
