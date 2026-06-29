@@ -3,11 +3,11 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-29-trainer-label-stats-leaning-asset.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-trainer-label-stats-leaning-asset-review.md`
-- 현재 단계: `review complete — Trainer Label Stats Leaning Asset Slice 1`
+- 계획 문서: `docs/ai/features/2026-06-29-stats-priority-health-curves.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-stats-priority-health-curves-review.md`
+- 현재 단계: `review complete — Stats Priority Health Curves Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `트레이너 이름표를 얼굴 위에서 분리하고, 통계 모달 전용 기대기 자산을 추가해 통계 본문을 모달 상단부터 시작하게 했다.`
+- 마지막 완료: `운동통계 상단을 운동 활성 부위로 재정렬하고, 건강지표를 지표별 단일 곡선 카드로 바꿨다.`
 - 다음 액션: `없음.`
 - 차단 사유: `없음.`
 

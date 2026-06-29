@@ -18,12 +18,6 @@ let _selectedVolumeDate = null;
 let _selectedFatiguePeriod = 'week';
 let _statsAnalysisPeriod = '90';
 let _healthChartPeriod = 90;
-const _healthSeriesVisible = {
-  weight: true,
-  bodyFat: true,
-  intake: true,
-  burned: true,
-};
 const STATS_ANALYSIS_PERIODS = {
   '30': { label: '30일', days: 30 },
   '90': { label: '90일', days: 90 },
@@ -35,7 +29,6 @@ export function setPeriod() {
   _renderMuscleFatigue();
 }
 
-let _healthMetricsChart = null;
 const _healthMetricsCharts = new WeakMap();
 
 export function renderStats(root = document) {
@@ -76,6 +69,9 @@ function _statsAnalysisPeriodControlsMarkup() {
 function _trainerQuestStatsMarkup() {
   return `
     ${_statsAnalysisPeriodControlsMarkup()}
+    <section class="stats-block stats-muscle-fatigue-block trainer-quest-stats-block">
+      <div data-stats-id="stats-muscle-fatigue"></div>
+    </section>
     <section class="stats-block stats-summary-block trainer-quest-stats-block">
       <div class="stats-block-title">전체 요약</div>
       <div data-stats-id="stats-overall-summary"></div>
@@ -85,15 +81,9 @@ function _trainerQuestStatsMarkup() {
       <div data-stats-id="stats-workout-analysis"></div>
     </section>
     <section class="stats-block stats-health-block trainer-quest-stats-block">
-      <div class="stats-block-title">건강 지표 비교</div>
+      <div class="stats-block-title">건강 지표</div>
       <div class="stats-chart-meta" data-stats-id="health-chart-meta"></div>
       <div class="stats-health-controls" aria-label="건강 지표 차트 설정">
-        <div class="stats-health-toggles" aria-label="비교 지표">
-          <label class="stats-health-toggle is-weight"><input type="checkbox" data-health-series="weight" checked><span>체중</span></label>
-          <label class="stats-health-toggle is-bodyfat"><input type="checkbox" data-health-series="bodyFat" checked><span>체지방률</span></label>
-          <label class="stats-health-toggle is-intake"><input type="checkbox" data-health-series="intake" checked><span>섭취칼로리</span></label>
-          <label class="stats-health-toggle is-burned"><input type="checkbox" data-health-series="burned" checked><span>운동칼로리</span></label>
-        </div>
         <div class="stats-health-periods" role="group" aria-label="기간">
           <button type="button" class="stats-health-period" data-health-period="30">30일</button>
           <button type="button" class="stats-health-period" data-health-period="60">60일</button>
@@ -101,11 +91,8 @@ function _trainerQuestStatsMarkup() {
           <button type="button" class="stats-health-period" data-health-period="all">전체</button>
         </div>
       </div>
-      <div class="stats-chart-wrap"><canvas data-stats-id="health-metrics-chart"></canvas></div>
+      <div class="stats-health-curves" data-stats-id="health-metrics-charts"></div>
       <div data-stats-id="health-chart-empty" class="stats-empty" style="display:none">선택한 기간에 표시할 건강 지표 기록이 없어요.</div>
-    </section>
-    <section class="stats-block stats-muscle-fatigue-block trainer-quest-stats-block">
-      <div data-stats-id="stats-muscle-fatigue"></div>
     </section>
     <section class="stats-block trainer-quest-stats-block">
       <div class="stats-block-title">종목별 볼륨 추이</div>
@@ -274,7 +261,7 @@ export function buildTrainerQuestStatsExport() {
     healthChart: {
       periodDays: _healthChartPeriod || 'all',
       labels: health.labels,
-      visibleSeries: Object.keys(HEALTH_CHART_SERIES).filter(key => _healthSeriesVisible[key] !== false),
+      visibleSeries: _healthChartSeriesWithData(health.data),
       series: health.data,
     },
     muscleFatigue: {
@@ -1516,24 +1503,13 @@ function _chartColors() {
 }
 
 const HEALTH_CHART_SERIES = {
-  weight: { label: '체중', axis: 'weight', unit: 'kg', color: '#ef6a6a', background: 'rgba(239,106,106,0.08)', order: 1 },
-  bodyFat: { label: '체지방률', axis: 'pct', unit: '%', color: '#10b981', background: 'rgba(16,185,129,0.08)', order: 2 },
-  intake: { label: '섭취칼로리', axis: 'kcal', unit: 'kcal', color: '#6366f1', background: 'rgba(99,102,241,0.10)', order: 3 },
-  burned: { label: '운동칼로리', axis: 'kcal', unit: 'kcal', color: '#f59e0b', background: 'rgba(245,158,11,0.10)', order: 4 },
+  weight: { label: '체중', unit: 'kg', color: '#ef6a6a', background: 'rgba(239,106,106,0.08)', order: 1 },
+  bodyFat: { label: '체지방률', unit: '%', color: '#10b981', background: 'rgba(16,185,129,0.08)', order: 2 },
+  intake: { label: '섭취칼로리', unit: 'kcal', color: '#6366f1', background: 'rgba(99,102,241,0.10)', order: 3 },
+  burned: { label: '운동칼로리', unit: 'kcal', color: '#f59e0b', background: 'rgba(245,158,11,0.10)', order: 4 },
 };
 
 function _bindHealthChartControls(scope = document) {
-  _statsNodes(scope, '[data-health-series]').forEach(input => {
-    const key = input.dataset.healthSeries;
-    if (!HEALTH_CHART_SERIES[key]) return;
-    input.checked = _healthSeriesVisible[key] !== false;
-    if (input.dataset.bound === '1') return;
-    input.dataset.bound = '1';
-    input.addEventListener('change', () => {
-      _healthSeriesVisible[key] = !!input.checked;
-      _renderHealthMetricsChart(scope);
-    });
-  });
   _statsNodes(scope, '[data-health-period]').forEach(btn => {
     _syncHealthPeriodButton(btn);
     if (btn.dataset.bound === '1') return;
@@ -1610,8 +1586,9 @@ function _healthDataset(key, data) {
     pointHoverRadius: 5,
     pointHitRadius: 12,
     tension: 0.45,
+    fill: false,
     spanGaps: true,
-    yAxisID: cfg.axis,
+    yAxisID: 'y',
     order: cfg.order,
   };
 }
@@ -1625,84 +1602,125 @@ function _formatHealthTooltip(ctx) {
   return `${ctx.dataset.label}: ${Number(value).toFixed(1)}kg`;
 }
 
-function _renderHealthMetricsChart(scope = document) {
-  const canvas = _statsNode(scope, 'health-metrics-chart');
-  const emptyEl = _statsNode(scope, 'health-chart-empty');
-  const metaEl = _statsNode(scope, 'health-chart-meta');
-  if (!canvas) return;
+function _healthChartSeriesWithData(data) {
+  return Object.keys(HEALTH_CHART_SERIES)
+    .filter(key => data[key]?.some(value => value !== null && value !== undefined));
+}
 
-  const existing = _healthMetricsCharts.get(canvas);
-  if (existing) {
-    existing.destroy();
-    _healthMetricsCharts.delete(canvas);
+function _lastHealthValue(values) {
+  for (let i = values.length - 1; i >= 0; i--) {
+    const value = values[i];
+    if (value !== null && value !== undefined) return value;
   }
-  if (canvas.id === 'health-metrics-chart') _healthMetricsChart = null;
+  return null;
+}
 
-  const cache = getCache();
-  const checkins = getBodyCheckins();
-  const keys = _healthChartKeys(cache, checkins);
-  const { labels, data } = _buildHealthChartData(keys, cache, checkins);
-  const visibleKeys = Object.keys(HEALTH_CHART_SERIES).filter(key => _healthSeriesVisible[key] !== false);
-  const datasets = visibleKeys
-    .filter(key => data[key]?.some(v => v !== null))
-    .map(key => _healthDataset(key, data[key]));
-  const hasChartData = datasets.length > 0;
+function _formatHealthValue(key, value) {
+  if (value === null || value === undefined) return '--';
+  const cfg = HEALTH_CHART_SERIES[key];
+  if (cfg?.unit === 'kcal') return `${_fmt(Math.round(value))}kcal`;
+  if (cfg?.unit === '%') return `${Number(value).toFixed(1)}%`;
+  return `${Number(value).toFixed(1)}kg`;
+}
 
-  canvas.style.display = hasChartData ? 'block' : 'none';
-  if (emptyEl) {
-    emptyEl.style.display = hasChartData ? 'none' : 'block';
-    emptyEl.textContent = visibleKeys.length
-      ? '선택한 기간에 표시할 건강 지표 기록이 없어요.'
-      : '비교할 지표를 선택하세요.';
-  }
-  if (metaEl) {
-    const first = keys[0]?.replace(/-/g, '.') || '';
-    const last = keys[keys.length - 1]?.replace(/-/g, '.') || '';
-    const picked = visibleKeys.map(key => HEALTH_CHART_SERIES[key].label).join(' · ') || '선택 없음';
-    metaEl.textContent = first && last ? `${first} - ${last} · ${picked}` : picked;
-  }
-  if (!hasChartData || typeof Chart === 'undefined') return;
+function _healthCurveCardHtml(key, values) {
+  const cfg = HEALTH_CHART_SERIES[key];
+  const latest = _lastHealthValue(values);
+  return `
+    <article class="stats-health-curve-card is-${_esc(key)}" style="--health-color:${_esc(cfg.color)};--health-bg:${_esc(cfg.background)};">
+      <div class="stats-health-curve-head">
+        <span>${_esc(cfg.label)}</span>
+        <b>${_esc(_formatHealthValue(key, latest))}</b>
+      </div>
+      <div class="stats-health-curve-chart">
+        <canvas data-health-chart="${_esc(key)}" aria-label="${_esc(cfg.label)} 변화"></canvas>
+      </div>
+    </article>`;
+}
 
-  const colors = _chartColors();
+function _destroyHealthCurveCharts(container) {
+  container.querySelectorAll('canvas').forEach(canvas => {
+    const tracked = _healthMetricsCharts.get(canvas);
+    if (tracked) {
+      tracked.destroy();
+      _healthMetricsCharts.delete(canvas);
+    }
+    const existing = typeof Chart !== 'undefined' && typeof Chart.getChart === 'function'
+      ? Chart.getChart(canvas)
+      : null;
+    if (existing && existing !== tracked) existing.destroy();
+  });
+}
+
+function _drawHealthCurveChart(canvas, key, labels, values, colors) {
+  if (!canvas || typeof Chart === 'undefined') return;
+  const cfg = HEALTH_CHART_SERIES[key];
   const chart = new Chart(canvas, {
     type: 'line',
-    data: { labels, datasets },
+    data: { labels, datasets: [_healthDataset(key, values)] },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
+      interaction: { mode: 'nearest', intersect: false },
       plugins: {
         legend: { display: false },
         tooltip: { callbacks: { label: _formatHealthTooltip } },
       },
       scales: {
         x: {
-          ticks: { color: colors.text, font: { size: 10 }, maxTicksLimit: 7, maxRotation: 0 },
+          ticks: { color: colors.text, font: { size: 10 }, maxTicksLimit: 4, maxRotation: 0 },
+          grid: { display: false },
+        },
+        y: {
+          title: { display: false },
+          ticks: {
+            color: colors.text,
+            font: { size: 10 },
+            callback: value => cfg.unit === 'kcal' ? _fmt(value) : value,
+          },
           grid: { color: colors.grid },
-        },
-        weight: {
-          position: 'left',
-          title: { display: true, text: 'kg', color: colors.text, font: { size: 10 } },
-          ticks: { color: colors.text, font: { size: 10 } },
-          grid: { color: colors.grid },
-        },
-        kcal: {
-          position: 'right',
-          title: { display: true, text: 'kcal', color: colors.text, font: { size: 10 } },
-          ticks: { color: colors.text, font: { size: 10 }, callback: v => _fmt(v) },
-          grid: { drawOnChartArea: false },
-        },
-        pct: {
-          position: 'right',
-          title: { display: true, text: '%', color: colors.text, font: { size: 10 } },
-          ticks: { color: colors.text, font: { size: 10 } },
-          grid: { drawOnChartArea: false },
         },
       },
     },
   });
   _healthMetricsCharts.set(canvas, chart);
-  if (canvas.id === 'health-metrics-chart') _healthMetricsChart = chart;
+}
+
+function _renderHealthMetricsChart(scope = document) {
+  const container = _statsNode(scope, 'health-metrics-charts');
+  const emptyEl = _statsNode(scope, 'health-chart-empty');
+  const metaEl = _statsNode(scope, 'health-chart-meta');
+  if (!container) return;
+  _destroyHealthCurveCharts(container);
+
+  const cache = getCache();
+  const checkins = getBodyCheckins();
+  const keys = _healthChartKeys(cache, checkins);
+  const { labels, data } = _buildHealthChartData(keys, cache, checkins);
+  const visibleKeys = _healthChartSeriesWithData(data);
+  const hasChartData = visibleKeys.length > 0;
+
+  container.style.display = hasChartData ? 'grid' : 'none';
+  container.innerHTML = hasChartData
+    ? visibleKeys.map(key => _healthCurveCardHtml(key, data[key])).join('')
+    : '';
+  if (emptyEl) {
+    emptyEl.style.display = hasChartData ? 'none' : 'block';
+    emptyEl.textContent = '선택한 기간에 표시할 건강 지표 기록이 없어요.';
+  }
+  if (metaEl) {
+    const first = keys[0]?.replace(/-/g, '.') || '';
+    const last = keys[keys.length - 1]?.replace(/-/g, '.') || '';
+    const picked = visibleKeys.map(key => HEALTH_CHART_SERIES[key].label).join(' · ') || '기록 없음';
+    metaEl.textContent = first && last ? `${first} - ${last} · 지표별 단일 곡선` : picked;
+  }
+  if (!hasChartData || typeof Chart === 'undefined') return;
+
+  const colors = _chartColors();
+  visibleKeys.forEach(key => {
+    const canvas = container.querySelector(`[data-health-chart="${key}"]`);
+    _drawHealthCurveChart(canvas, key, labels, data[key], colors);
+  });
 }
 
 // ── 연간 히트맵 ──────────────────────────────────────────────────

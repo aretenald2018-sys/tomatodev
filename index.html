@@ -764,27 +764,21 @@
     <button type="button" class="stats-analysis-period" data-stats-analysis-period="all">전체</button>
   </div>
 </div>
-<div class="stats-block stats-summary-block">
-<div class="stats-block-title">📋 전체 요약</div>
-<div id="stats-overall-summary"></div>
-</div>
-<div class="stats-block stats-workout-analysis-block">
-<div class="stats-block-title">🏋️ 운동 분석</div>
-<div id="stats-workout-analysis"></div>
-</div>
 <div class="stats-block stats-muscle-fatigue-block">
 <div id="stats-muscle-fatigue"></div>
 </div>
+<div class="stats-block stats-summary-block">
+<div class="stats-block-title">전체 요약</div>
+<div id="stats-overall-summary"></div>
+</div>
+<div class="stats-block stats-workout-analysis-block">
+<div class="stats-block-title">운동 분석</div>
+<div id="stats-workout-analysis"></div>
+</div>
 <div class="stats-block stats-health-block">
-<div class="stats-block-title">📊 건강 지표 비교</div>
+<div class="stats-block-title">건강 지표</div>
 <div class="stats-chart-meta" id="health-chart-meta"></div>
 <div class="stats-health-controls" aria-label="건강 지표 차트 설정">
-  <div class="stats-health-toggles" aria-label="비교 지표">
-    <label class="stats-health-toggle is-weight"><input type="checkbox" data-health-series="weight" checked><span>체중</span></label>
-    <label class="stats-health-toggle is-bodyfat"><input type="checkbox" data-health-series="bodyFat" checked><span>체지방률</span></label>
-    <label class="stats-health-toggle is-intake"><input type="checkbox" data-health-series="intake" checked><span>섭취칼로리</span></label>
-    <label class="stats-health-toggle is-burned"><input type="checkbox" data-health-series="burned" checked><span>운동칼로리</span></label>
-  </div>
   <div class="stats-health-periods" role="group" aria-label="기간">
     <button type="button" class="stats-health-period" data-health-period="30">30일</button>
     <button type="button" class="stats-health-period" data-health-period="60">60일</button>
@@ -792,14 +786,14 @@
     <button type="button" class="stats-health-period" data-health-period="all">전체</button>
   </div>
 </div>
-<div class="stats-chart-wrap"><canvas id="health-metrics-chart"></canvas></div>
+<div class="stats-health-curves" id="health-metrics-charts"></div>
 <div id="health-chart-empty" class="stats-empty" style="display:none">선택한 기간에 표시할 건강 지표 기록이 없어요.</div>
 </div>
 <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
 <button class="export-btn" onclick="openExportModal()">📊 CSV 내보내기</button>
 </div>
 <div class="stats-block">
-<div class="stats-block-title">🏋️ 종목별 볼륨 추이 (kg × 횟수 × 세트)</div>
+<div class="stats-block-title">종목별 볼륨 추이 (kg × 횟수 × 세트)</div>
 <div id="volume-section"></div>
 </div>
 </div>

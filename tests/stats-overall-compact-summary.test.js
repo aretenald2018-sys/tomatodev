@@ -7,10 +7,19 @@ const statsJs = readFileSync('render-stats.js', 'utf8');
 const styleCss = readFileSync('style.css', 'utf8');
 const swJs = readFileSync('sw.js', 'utf8');
 
+function cssRule(selector) {
+  const start = styleCss.indexOf(selector);
+  assert.notEqual(start, -1, `${selector} should exist`);
+  const end = styleCss.indexOf('}', start);
+  assert.notEqual(end, -1, `${selector} should close`);
+  return styleCss.slice(start, end + 1);
+}
+
 test('overall stats uses one compact summary instead of duplicated aggregation cards', () => {
   assert.match(indexHtml, /class="stats-block stats-summary-block"/);
   assert.match(indexHtml, /id="stats-overall-summary"/);
   assert.match(indexHtml, /id="stats-workout-analysis"/);
+  assert.match(indexHtml, /class="stats-block stats-muscle-fatigue-block"[\s\S]*class="stats-block stats-summary-block"[\s\S]*class="stats-block stats-workout-analysis-block"/);
   assert.match(indexHtml, /data-stats-analysis-period="90"/);
   assert.doesNotMatch(indexHtml, /id="stats-metadata-summary"/);
   assert.doesNotMatch(indexHtml, /id="muscle-14d"/);
@@ -68,10 +77,14 @@ test('trainer quest stats export exposes JSON data for AI sharing', () => {
 });
 
 test('compact summary styles are present and cache version is bumped', () => {
+  const summaryValueRule = cssRule('.stats-summary-block .stats-summary-kpi b');
   assert.match(styleCss, /\.stats-summary-kpis/);
+  assert.match(styleCss, /\.stats-summary-block \.stats-summary-kpis\s*\{[\s\S]*?gap:\s*8px/);
+  assert.match(summaryValueRule, /font-weight:\s*850/);
+  assert.doesNotMatch(summaryValueRule, /font-family:\s*var\(--font-mono\)/);
   assert.match(styleCss, /\.stats-analysis-controls/);
   assert.match(styleCss, /\.stats-analysis-card/);
   assert.match(styleCss, /\.stats-summary-fact/);
   assert.match(styleCss, /\.stats-summary-kpi\.is-good/);
-  assert.match(swJs, /tomatofarm-v20260629z15-trainer-leaning-modal/);
+  assert.match(swJs, /tomatofarm-v20260629z16-stats-priority-health-curves/);
 });
