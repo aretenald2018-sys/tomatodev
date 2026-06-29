@@ -19,7 +19,9 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
 - PASS: `node --test tests/*.test.js` — 606 tests passed
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>` — `tomatofarm-v20260629z25-stats-growth-blue` 확인
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260629z25-stats-growth-blue" "style.css::.stats-perf-row.is-growth .stats-perf-status b { color: #2563eb; }"`
 
 ## 남은 확인
 
-- Dashboard3 Pages 배포 후 `style.css` 원격 자산에서 `#2563eb` 규칙이 내려오는지 확인한다.
+- 없음.

@@ -8,7 +8,7 @@
 - 현재 단계: `운동별 퍼포먼스 성장중 색상 수정 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
 - 마지막 완료: `운동별 퍼포먼스 추이 표에서 성장 판정 텍스트를 파란색으로 바꾸고, 캐시 버전과 회귀 테스트를 갱신했다.`
-- 다음 액션: `Dashboard3 Pages 배포 검증을 진행한다.`
+- 다음 액션: `없음.`
 - 차단 사유: `없음.`
 
 ## 직전 완료 요약
@@ -29,6 +29,8 @@
   8. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
   9. PASS: `node --test tests/*.test.js` — 606 tests passed
   10. PASS: `git diff --check`
+  11. PASS: Dashboard3 Pages 배포 검증 — `tomatofarm-v20260629z25-stats-growth-blue` 캐시 버전 확인
+  12. PASS: Dashboard3 Pages 마커 검증 — `style.css::.stats-perf-row.is-growth .stats-perf-status b { color: #2563eb; }`
 
 - Stats Weekly Burned Calorie Render Fix Slice 1:
   1. 계획: `docs/ai/features/2026-06-29-stats-weekly-burned-calorie-render-fix.md`
