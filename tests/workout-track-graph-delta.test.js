@@ -49,5 +49,5 @@ test('wendler graph uses a separate W history instead of volume or intensity row
 });
 
 test('service worker cache version was bumped for track pp delta assets', () => {
-  assert.match(swJs, /tomatofarm-v20260629z12-home-map-label-miranda/);
+  assert.match(swJs, /tomatofarm-v20260629z13-home-miranda-fashion-corner/);
 });

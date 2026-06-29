@@ -7610,6 +7610,23 @@ body.wt-running-session-open {
   object-fit: cover;
   image-rendering: auto;
 }
+.lz-miranda-corner {
+  position: absolute;
+  left: calc(48 / 1672 * 100%);
+  top: calc(1290 / 1672 * 100%);
+  z-index: 74;
+  display: block;
+  width: calc(430 / 1672 * 100%);
+  line-height: 0;
+  pointer-events: none;
+}
+.lz-miranda-corner img {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: auto;
+  filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.24));
+}
 .lz-actor-layer {
   position: absolute;
   inset: 0;
@@ -7798,8 +7815,8 @@ body.wt-running-session-open {
 }
 .lz-miranda-npc {
   position: absolute;
-  left: calc(292 / 1672 * 100%);
-  top: calc(1238 / 1672 * 100%);
+  left: calc(302 / 1672 * 100%);
+  top: calc(1392 / 1672 * 100%);
   z-index: 150;
   width: clamp(26px, calc(78 / 1672 * 100%), 36px);
   min-height: 0;

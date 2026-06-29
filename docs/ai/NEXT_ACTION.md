@@ -3,15 +3,24 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-29-home-running-map-location-placeholder-fix.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-home-running-map-location-placeholder-fix-review.md`
-- 현재 단계: `review complete — Home Running Map Location + Miranda Placement Fix Slice 1`
+- 계획 문서: `docs/ai/features/2026-06-29-home-miranda-fashion-corner.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-home-miranda-fashion-corner-review.md`
+- 현재 단계: `review complete — Home Miranda Fashion Corner Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `홈 러닝 지도 말풍선의 위치 확인 중 fallback을 제거하고, 미란다 홈 NPC의 크기/위치/시선을 보정했다.`
+- 마지막 완료: `좌측 하단 패션 코너 overlay를 추가하고 미란다를 러닝트랙 아래로 재배치했다.`
 - 다음 액션: `없음.`
 - 차단 사유: `없음.`
 
 ## 직전 완료 요약
+
+- Home Miranda Fashion Corner Slice 1:
+  1. 계획: `docs/ai/features/2026-06-29-home-miranda-fashion-corner.md`
+  2. 리뷰: `docs/ai/reviews/2026-06-29-home-miranda-fashion-corner-review.md`
+  3. `assets/home/life-zone/ui/miranda-fashion-corner.png`를 추가해 좌측 하단 기존 집기 영역 위에 옷 행거, 의상, 선반, 거울 스프라이트를 배치했다.
+  4. `home/life-zone.js`에 `lz-miranda-corner` overlay를 추가하고, 미란다 NPC는 기존 이벤트/이름표 구조를 유지했다.
+  5. `style.css`에서 패션 코너 좌표와 미란다 좌표를 조정해 미란다가 러닝트랙보다 아래쪽에 표시되도록 했다.
+  6. `sw.js` `STATIC_ASSETS`에 새 PNG를 등록하고 `CACHE_VERSION`을 `tomatofarm-v20260629z13-home-miranda-fashion-corner`로 갱신했다.
+  7. 검증: `node --check home/life-zone.js; node --check sw.js`, `node --test tests/home-life-zone-npc-quest.test.js tests/miranda-quest-modal.test.js`, `node --test tests/*.test.js`, `node scripts/verify-runtime-assets.mjs`, `git diff --check`.
 
 - Stats Overall Deep Unification Slice 1:
   1. 계획: `docs/ai/features/2026-06-29-stats-overall-deep-unification.md`

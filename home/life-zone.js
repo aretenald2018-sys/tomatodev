@@ -511,6 +511,16 @@ export function renderLifeZoneCard({
           loading="lazy"
           decoding="async"
         >
+        <span class="lz-miranda-corner" aria-hidden="true">
+          <img
+            src="${LIFE_ZONE_UI_ROOT}/miranda-fashion-corner.png"
+            width="430"
+            height="250"
+            alt=""
+            loading="lazy"
+            decoding="async"
+          >
+        </span>
         <div class="lz-actor-layer" data-lz-actors aria-hidden="true"></div>
         <button
           type="button"

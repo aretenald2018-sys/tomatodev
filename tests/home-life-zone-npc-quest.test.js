@@ -28,7 +28,9 @@ test('life zone trainer hook keeps the bulb bubble while hiding the old NPC card
   assert.match(source, /LIFE_ZONE_UI_ROOT/);
   assert.match(source, /npc-quest-bubble\.png/);
   assert.match(source, /miranda-npc-home\.png/);
+  assert.match(source, /miranda-fashion-corner\.png/);
   assert.match(source, /class="lz-world"/);
+  assert.match(source, /class="lz-miranda-corner"/);
   assert.match(source, /data-lz-action="npc-quest"/);
   assert.match(source, /data-lz-action="miranda-quest"/);
   assert.match(source, /class="lz-npc-bulb"/);
@@ -85,9 +87,15 @@ test('life zone NPC quest bubble has a stable clickable overlay style', () => {
   assert.match(css, /\.lz-npc-quest \.lz-nameplate/);
   assert.match(css, /position: static/);
   assert.match(css, /overflow: visible/);
+  assert.match(css, /\.lz-miranda-corner \{/);
+  assert.match(css, /left: calc\(48 \/ 1672 \* 100%\)/);
+  assert.match(css, /top: calc\(1290 \/ 1672 \* 100%\)/);
+  assert.match(css, /width: calc\(430 \/ 1672 \* 100%\)/);
+  assert.match(css, /z-index: 74/);
+  assert.match(css, /\.lz-miranda-corner img \{/);
   assert.match(css, /\.lz-miranda-npc \{/);
-  assert.match(css, /left: calc\(292 \/ 1672 \* 100%\)/);
-  assert.match(css, /top: calc\(1238 \/ 1672 \* 100%\)/);
+  assert.match(css, /left: calc\(302 \/ 1672 \* 100%\)/);
+  assert.match(css, /top: calc\(1392 \/ 1672 \* 100%\)/);
   assert.match(css, /width: clamp\(26px, calc\(78 \/ 1672 \* 100%\), 36px\)/);
   assert.match(css, /\.lz-miranda-npc-img \{/);
   assert.match(css, /transform: scaleX\(-1\)/);
@@ -209,7 +217,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260629z12-home-map-label-miranda/);
+  assert.match(sw, /tomatofarm-v20260629z13-home-miranda-fashion-corner/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,
@@ -226,6 +234,18 @@ test('life zone Miranda home NPC is a separate transparent generated runtime ass
   assert.deepEqual(header, {
     width: 142,
     height: 256,
+    colorType: 6
+  });
+});
+
+test('life zone Miranda fashion corner is a separate transparent runtime prop asset', () => {
+  const sw = readText('sw.js');
+  const header = readPngHeader('assets/home/life-zone/ui/miranda-fashion-corner.png');
+
+  assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/miranda-fashion-corner\.png/);
+  assert.deepEqual(header, {
+    width: 430,
+    height: 250,
     colorType: 6
   });
 });
