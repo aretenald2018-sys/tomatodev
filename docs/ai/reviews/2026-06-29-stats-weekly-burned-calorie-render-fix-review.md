@@ -30,6 +30,7 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
 - PASS: `node --test tests/*.test.js` — 606 tests passed
 - PASS: `git diff --check`
+- PASS: Dashboard3 Pages 배포 검증 — `tomatofarm-v20260629z24-stats-weekly-burned-fix` 캐시 버전 확인
 
 ## 남은 위험
 

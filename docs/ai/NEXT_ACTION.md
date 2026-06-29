@@ -25,7 +25,8 @@
   9. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
   10. PASS: `node --test tests/*.test.js` — 606 tests passed
   11. PASS: `git diff --check`
-  12. not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 UI 시각 확인이 남아 있다.
+  12. PASS: Dashboard3 Pages 배포 검증 — `tomatofarm-v20260629z24-stats-weekly-burned-fix` 캐시 버전 확인
+  13. not verified yet: 인증 계정 실제 UI에서 초록색 운동칼로리 선이 그려지는지 시각 확인이 남아 있다.
 
 - Stats Weekly Calorie Aggregation Slice 1:
   1. 계획: `docs/ai/features/2026-06-29-stats-weekly-calorie-aggregation.md`
