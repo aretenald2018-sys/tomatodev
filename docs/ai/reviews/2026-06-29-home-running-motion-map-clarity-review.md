@@ -40,3 +40,7 @@
 6. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=857`
 7. PASS: `node --test` — 594 tests passed
 8. PASS: `git diff --check`
+
+## 남은 검증
+
+- not verified yet: in-app browser에서 배포 페이지 `https://aretenald2018-sys.github.io/dashboard3/` 네비게이션이 70초 제한을 초과해 실제 홈탭 라이프존 시각 flow는 직접 확인하지 못했다.

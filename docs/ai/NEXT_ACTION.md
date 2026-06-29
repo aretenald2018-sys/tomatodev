@@ -26,6 +26,7 @@
   10. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=857`
   11. PASS: `node --test` — 594 tests passed
   12. PASS: `git diff --check`
+  13. not verified yet: in-app browser에서 Dashboard3 배포 페이지 네비게이션이 70초 제한을 초과해 실제 홈탭 라이프존 시각 flow는 직접 확인하지 못했다.
 
 - Running Result Map Tab Motion Slice 1:
   1. `render-calendar.js`에서 운동 상세 탭을 `1회차`, `2회차`, `러닝`으로 변경하고 러닝 탭을 헬스 세션과 분리했다.
