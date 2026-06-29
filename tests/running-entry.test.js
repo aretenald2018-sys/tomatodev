@@ -175,7 +175,7 @@ test('running records save into a dedicated running session with place and devic
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260629z24-stats-weekly-burned-fix/);
+  assert.match(swJs, /tomatofarm-v20260629z25-stats-growth-blue/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/sprites\/jups-running-track\.png/);

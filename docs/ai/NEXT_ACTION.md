@@ -3,15 +3,32 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-29-stats-weekly-burned-calorie-render-fix.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-stats-weekly-burned-calorie-render-fix-review.md`
-- 현재 단계: `건강지표 주간 운동칼로리 렌더 누락 수정 완료`
+- 계획 문서: `docs/ai/features/2026-06-29-stats-performance-growth-blue.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-stats-performance-growth-blue-review.md`
+- 현재 단계: `운동별 퍼포먼스 성장중 색상 수정 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `주간 누적 운동칼로리 그래프와 하단 운동 kcal KPI가 원본 workout day 기준으로 계산되도록 수정했다.`
+- 마지막 완료: `운동별 퍼포먼스 추이 표에서 성장 판정 텍스트를 파란색으로 바꾸고, 캐시 버전과 회귀 테스트를 갱신했다.`
 - 다음 액션: `Dashboard3 Pages 배포 검증을 진행한다.`
 - 차단 사유: `없음.`
 
 ## 직전 완료 요약
+
+- Stats Performance Growth Blue 계획:
+  1. `성장중` 판정 텍스트가 `var(--diet-ok)` 때문에 토마토 레드로 보이는 현상을 확인했다.
+  2. 변경 범위를 `.stats-perf-row.is-growth .stats-perf-status b` 색상, `sw.js` 캐시 버전, 관련 회귀 테스트로 제한했다.
+  3. 판정 로직, 표 구조, 데이터 집계는 제외 범위로 고정했다.
+
+- Stats Performance Growth Blue Slice 1:
+  1. 계획: `docs/ai/features/2026-06-29-stats-performance-growth-blue.md`
+  2. 리뷰: `docs/ai/reviews/2026-06-29-stats-performance-growth-blue-review.md`
+  3. `style.css`에서 `.stats-perf-row.is-growth .stats-perf-status b` 색상을 `#2563eb`으로 변경했다.
+  4. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260629z25-stats-growth-blue`로 갱신했다.
+  5. `tests/stats-exercise-performance.test.js`에 성장 판정 색상 회귀 검증을 추가했다.
+  6. PASS: `node --check sw.js`
+  7. PASS: `node --test tests/stats-exercise-performance.test.js tests/stats-overall-compact-summary.test.js` — 8 tests passed
+  8. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
+  9. PASS: `node --test tests/*.test.js` — 606 tests passed
+  10. PASS: `git diff --check`
 
 - Stats Weekly Burned Calorie Render Fix Slice 1:
   1. 계획: `docs/ai/features/2026-06-29-stats-weekly-burned-calorie-render-fix.md`

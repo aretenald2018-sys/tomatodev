@@ -3069,7 +3069,7 @@ body.wt-modal-scroll-lock {
   font-weight: 850;
   line-height: 17px;
 }
-.stats-perf-row.is-growth .stats-perf-status b { color: var(--diet-ok); }
+.stats-perf-row.is-growth .stats-perf-status b { color: #2563eb; }
 .stats-perf-row.is-steady .stats-perf-status b { color: var(--gym); }
 .stats-perf-row.is-check .stats-perf-status b { color: #f59e0b; }
 .stats-perf-empty,
