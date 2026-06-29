@@ -52,3 +52,8 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
 - PASS: `node --test tests/*.test.js` — 608 tests passed
 - PASS: `git diff --check`
+
+## 배포 검증
+
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>` — `tomatofarm-v20260629z26-life-zone-running-priority` 확인
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260629z26-life-zone-running-priority" "home/life-zone-state.js::export function hasLifeZoneActiveRunning" "home/life-zone-state.js::if (hasLifeZoneActiveRunning(dayData)) return 'running';" "home/life-zone-state.js::if (snapshotState) return snapshotState;" "workout/save.js::const state = hasLifeZoneRunningActivity(payload) ? 'running' : 'workout';"`

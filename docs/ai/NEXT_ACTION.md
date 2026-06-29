@@ -8,7 +8,7 @@
 - 현재 단계: `홈 라이프존 저장 러닝 상태 우선순위 수정 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
 - 마지막 완료: `라이브 러닝만 최우선으로 두고, 저장된 러닝은 최신 점심 스냅샷보다 뒤에 판정되도록 수정했다.`
-- 다음 액션: `Dashboard3 Pages 배포 검증을 진행한다.`
+- 다음 액션: `없음.`
 - 차단 사유: `없음.`
 
 ## 직전 완료 요약
@@ -31,6 +31,8 @@
   10. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
   11. PASS: `node --test tests/*.test.js` — 608 tests passed
   12. PASS: `git diff --check`
+  13. PASS: Dashboard3 Pages 배포 검증 — `tomatofarm-v20260629z26-life-zone-running-priority` 캐시 버전 확인
+  14. PASS: Dashboard3 Pages 마커 검증 — 라이브 러닝 우선순위, 스냅샷 우선순위, 러닝 저장 스냅샷 marker 확인
 
 - Stats Performance Growth Blue 계획:
   1. `성장중` 판정 텍스트가 `var(--diet-ok)` 때문에 토마토 레드로 보이는 현상을 확인했다.
