@@ -92,6 +92,8 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=863`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
+- PASS: Dashboard3 Pages 배포 검증 — `7456942e8edda43a052e05c918a77b2914561524`, `tomatofarm-v20260630z01-workout-number-input-ux`
+- PASS: Dashboard3 Pages marker 검증 — `WORKOUT_NUMBER_INPUT_SELECTOR`, `input.focus({ preventScroll: true })`, `#tab-workout .set-input`, `scroll-margin-bottom`, Max V2 input CSS marker 확인
 - not verified yet: Dashboard3 Pages 배포와 인증 계정 실제 `운동 탭 -> 운동 상세 -> 숫자 입력 -> 모바일 키보드` UI flow 확인이 남아 있다.
 
 ## 다음 실행 프롬프트
