@@ -3,15 +3,33 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-29-home-running-motion-map-clarity.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-home-running-motion-map-clarity-review.md`
-- 현재 단계: `execution/review complete — Home Running Motion Map Clarity Slice 1`
+- 계획 문서: `docs/ai/features/2026-06-29-stats-overall-deep-unification.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-stats-overall-deep-unification-review.md`
+- 현재 단계: `review/deploy complete — Stats Overall Deep Unification Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `홈 러닝 모션/지도 위치 인지 개선 Slice 1을 구현하고 로컬 검증했다.`
-- 다음 액션: `없음. 배포 확인 결과는 최종 핸드오프를 따른다.`
+- 마지막 완료: `운동 통계 전체/심층 통합 Slice 1을 구현, 리뷰, Dashboard3 Pages 배포 검증까지 완료했다.`
+- 다음 액션: `없음.`
 - 차단 사유: `없음.`
 
 ## 직전 완료 요약
+
+- Stats Overall Deep Unification Slice 1:
+  1. 계획: `docs/ai/features/2026-06-29-stats-overall-deep-unification.md`
+  2. 리뷰: `docs/ai/reviews/2026-06-29-stats-overall-deep-unification-review.md`
+  3. `index.html`에서 `전체통계`/`심층통계` 탭과 `#stats-deep-panel`을 제거하고, 전체통계에 기간 프리셋과 `stats-workout-analysis`를 추가했다.
+  4. `render-stats.js`에서 `_renderDeepStats()`, `switchStatsView`, `trainer-quest-deep-stats` 경로를 제거하고 `_renderWorkoutAnalysis()`로 통합했다.
+  5. 운동 완료 인사이트의 `계획 이행률`, `계획 대비 볼륨`, `완료 세트`를 선택 기간 기준 통계로 흡수했다.
+  6. `workout/index.js`에서 운동 저장 후 `window.insightsOpen(sessionKey)` 자동 호출을 제거했다.
+  7. 중복 방지를 위해 부위별 운동량/보강 후보는 기존 `근육 피로도` 카드에만 남기고 `운동 분석`에는 별도 부위별 운동량 카드를 두지 않았다.
+  8. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260629z9-stats-unified-overall`로 갱신했다.
+  9. PASS: `node --check render-stats.js; node --check workout/index.js; node --check sw.js`
+  10. PASS: `node --test tests/stats-overall-compact-summary.test.js tests/stats-unified-health-chart.test.js tests/stats-muscle-fatigue-insight.test.js tests/trainer-quest-modal.test.js tests/workout-timer-summary-only.test.js` — 24 tests passed
+  11. PASS: `node --test tests/*.test.js` — 596 tests passed
+  12. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=855`
+  13. PASS: `git diff --check`
+  14. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 794fc9343096a7f26a4f08814fbcded2250e49b5` — `[deploy-verify] ok 794fc9343096 tomatofarm-v20260629z9-stats-unified-overall static=226`
+  15. PASS: deployed marker fetch — `index.html`, `render-stats.js`, `workout/index.js`, `sw.js` 모두 HTTP 200 및 새 통계 통합 marker 확인.
+  16. not verified yet: 인증 세션이 없어 실제 `더보기/통계 탭 -> 기간 버튼 -> 운동 분석` UI 클릭 흐름은 인증 계정에서 확인 필요.
 
 - Home Running Motion Map Clarity Slice 1:
   1. 계획: `docs/ai/features/2026-06-29-home-running-motion-map-clarity.md`

@@ -2,7 +2,7 @@
 
 ## 상태
 
-- 상태: `review_passed_pending_deploy`
+- 상태: `complete`
 - 작성일: `2026-06-29`
 - 자동 트리거: `/diagnose`
 - 사용자 요청: 전체통계와 심층통계를 중복 없이 전체통계 하나로 통합하고, 심층통계 탭과 운동 완료 후 통계성 알림모달을 폐지한다. 운동 완료 모달의 통계성 정보는 기간 설정 가능한 통계 화면 안으로 흡수한다.
@@ -120,8 +120,9 @@
   6. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=855`
   7. PASS: `git diff --check`
 - 남은 검증:
-  1. not verified yet: Dashboard3 Pages 배포 검증.
-  2. not verified yet: 인증 계정에서 실제 통계 탭 기간 버튼/운동 분석 UI flow 확인.
+  1. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 794fc9343096a7f26a4f08814fbcded2250e49b5` — `[deploy-verify] ok 794fc9343096 tomatofarm-v20260629z9-stats-unified-overall static=226`
+  2. PASS: deployed marker fetch — `index.html`, `render-stats.js`, `workout/index.js`, `sw.js` 모두 HTTP 200 및 새 통계 통합 marker 확인.
+  3. not verified yet: 인증 계정에서 실제 통계 탭 기간 버튼/운동 분석 UI flow 확인.
 
 ## 다음 실행 시작 프롬프트
 

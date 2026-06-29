@@ -44,8 +44,9 @@
 5. PASS: `node --test tests/*.test.js` — 596 tests passed
 6. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=855`
 7. PASS: `git diff --check`
+8. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 794fc9343096a7f26a4f08814fbcded2250e49b5` — `[deploy-verify] ok 794fc9343096 tomatofarm-v20260629z9-stats-unified-overall static=226`
+9. PASS: deployed marker fetch — `index.html::stats-workout-analysis`, `render-stats.js::function _renderWorkoutAnalysis`, `render-stats.js::계획 이행률`, `workout/index.js::통계 탭에서 기간별로 확인`, `sw.js::tomatofarm-v20260629z9-stats-unified-overall`
 
 ## 남은 검증
 
-- not verified yet: Dashboard3 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>` 필요.
 - not verified yet: 인증 세션이 없어 실제 `더보기/통계 탭 -> 기간 버튼 -> 운동 분석` UI 클릭 흐름은 인증 계정에서 확인해야 한다.
