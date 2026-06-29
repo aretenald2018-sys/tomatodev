@@ -3,15 +3,31 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-29-stats-health-calorie-card-merge.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-stats-health-calorie-card-merge-review.md`
-- 현재 단계: `건강지표 월간 칼로리 리포트 카드 병합 완료`
+- 계획 문서: `docs/ai/features/2026-06-29-stats-health-calorie-report-flatten.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-stats-health-calorie-report-flatten-review.md`
+- 현재 단계: `건강지표 월간 칼로리 리포트 평탄화 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `월간 칼로리 리포트를 별도 카드에서 제거하고 체중 & 섭취칼로리 추이 카드 내부 하위 섹션으로 병합했다.`
+- 마지막 완료: `월간 칼로리 리포트 제목과 두 번째 그래프를 제거하고, 요약 KPI만 체중 & 섭취칼로리 추이 카드 안에 평탄화했다.`
 - 다음 액션: `Dashboard3 Pages 배포 검증을 진행한다.`
 - 차단 사유: `없음.`
 
 ## 직전 완료 요약
+
+- Stats Health Calorie Report Flatten Slice 1:
+  1. 계획: `docs/ai/features/2026-06-29-stats-health-calorie-report-flatten.md`
+  2. 리뷰: `docs/ai/reviews/2026-06-29-stats-health-calorie-report-flatten-review.md`
+  3. `월간 칼로리 리포트` 하위 제목과 `calorie-month-chart` 두 번째 그래프를 제거했다.
+  4. `calorie-month-summary`만 `체중 & 섭취칼로리 추이` 카드 내부에 남겼다.
+  5. 트레이너 통계 모달도 같은 구조로 맞췄다.
+  6. 별도 월간 차트 tracker `_calorieMonthCharts`와 Chart 생성 경로를 제거했다.
+  7. 기존 월간 그래프의 운동칼로리 정보는 요약 KPI `운동`으로 보존했다.
+  8. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260629z22-stats-health-calorie-flat`으로 갱신했다.
+  9. PASS: `node --check render-stats.js; node --check sw.js`
+  10. PASS: `node --test tests/stats-unified-health-chart.test.js tests/trainer-quest-modal.test.js tests/stats-overall-compact-summary.test.js` — 14 tests passed
+  11. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
+  12. PASS: `node --test tests/*.test.js` — 606 tests passed
+  13. PASS: `git diff --check`
+  14. not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 UI 시각 확인이 남아 있다.
 
 - Stats Health Calorie Card Merge Slice 1:
   1. 계획: `docs/ai/features/2026-06-29-stats-health-calorie-card-merge.md`

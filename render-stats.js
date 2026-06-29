@@ -30,7 +30,6 @@ export function setPeriod() {
 
 const _healthMetricsCharts = new WeakMap();
 const _kcalWeightCharts = new WeakMap();
-const _calorieMonthCharts = new WeakMap();
 
 export function renderStats(root = document) {
   _bindStatsAnalysisPeriodControls(root);
@@ -83,9 +82,6 @@ function _trainerQuestStatsMarkup() {
       <div class="stats-chart-wrap"><canvas data-stats-id="kcal-weight-chart"></canvas></div>
       <div data-stats-id="kcal-weight-chart-empty" class="stats-empty" style="display:none">선택 기간에 체중 또는 섭취칼로리 기록이 없어요.</div>
       <div class="stats-health-report">
-        <div class="stats-subblock-title">월간 칼로리 리포트</div>
-        <div class="stats-chart-wrap"><canvas data-stats-id="calorie-month-chart"></canvas></div>
-        <div data-stats-id="calorie-month-empty" class="stats-empty" style="display:none">이번 달 칼로리 기록이 없어요.</div>
         <div data-stats-id="calorie-month-summary"></div>
       </div>
     </section>
@@ -1788,11 +1784,8 @@ function _renderKcalWeightChart(scope = document) {
 }
 
 function _renderCalorieReport(scope = document) {
-  const canvas = _statsNode(scope, 'calorie-month-chart');
   const summaryEl = _statsNode(scope, 'calorie-month-summary');
-  const emptyEl = _statsNode(scope, 'calorie-month-empty');
-  if (!canvas || !summaryEl) return;
-  _destroyTrackedChart(_calorieMonthCharts, canvas);
+  if (!summaryEl) return;
 
   const y = TODAY.getFullYear();
   const m = TODAY.getMonth();
@@ -1800,12 +1793,9 @@ function _renderCalorieReport(scope = document) {
   const checkins = getBodyCheckins();
   const dayCount = daysInMonth(y, m);
   const lastDay = TODAY.getDate();
-  const labels = [];
-  const intake = [];
-  const burned = [];
-  const target = [];
   const mealTotals = { b: 0, l: 0, d: 0, s: 0 };
   let successDays = 0, failDays = 0, totalOver = 0, loggedDays = 0, totalMealKcal = 0, hasTarget = false;
+  let exerciseKcalTotal = 0, exerciseKcalDays = 0;
 
   for (let d = 1; d <= Math.min(lastDay, dayCount); d++) {
     const key = dateKey(y, m, d);
@@ -1816,11 +1806,11 @@ function _renderCalorieReport(scope = document) {
     const goal = getDayTargetKcal(plan, y, m, d, day);
     const ok = dietDayOk(y, m, d);
 
-    labels.push(String(d));
-    intake.push(dayKcal > 0 ? dayKcal : null);
-    burned.push(exerciseKcal > 0 ? exerciseKcal : null);
-    target.push(goal > 0 && Number.isFinite(goal) ? goal : null);
     if (goal > 0 && Number.isFinite(goal)) hasTarget = true;
+    if (exerciseKcal > 0) {
+      exerciseKcalTotal += exerciseKcal;
+      exerciseKcalDays += 1;
+    }
 
     if (ok === true) successDays++;
     else if (ok === false) failDays++;
@@ -1834,11 +1824,6 @@ function _renderCalorieReport(scope = document) {
       if (goal > 0 && Number.isFinite(goal)) totalOver += Math.max(0, dayKcal - goal);
     }
   }
-
-  const hasChartData = intake.some(v => v !== null) || burned.some(v => v !== null);
-  canvas.style.display = hasChartData ? 'block' : 'none';
-  if (canvas.parentElement) canvas.parentElement.style.display = hasChartData ? 'block' : 'none';
-  if (emptyEl) emptyEl.style.display = hasChartData ? 'none' : 'block';
 
   const mealRows = [
     ['아침', mealTotals.b],
@@ -1856,76 +1841,10 @@ function _renderCalorieReport(scope = document) {
       <div><span>성공</span><b>${successDays}</b><small>일</small></div>
       <div><span>실패</span><b>${failDays}</b><small>일</small></div>
       <div><span>초과</span><b>${hasTarget ? _fmt(Math.round(totalOver)) : '-'}</b><small>kcal</small></div>
+      <div><span>운동</span><b>${exerciseKcalDays ? _fmt(Math.round(exerciseKcalTotal)) : '-'}</b><small>kcal</small></div>
     </div>
     <div class="calorie-meal-grid">${mealRows}</div>
   `;
-
-  if (!hasChartData || typeof Chart === 'undefined') return;
-  const colors = _chartColors();
-  const datasets = [
-    {
-      type: 'bar',
-      label: '섭취칼로리',
-      data: intake,
-      backgroundColor: 'rgba(250,52,44,0.42)',
-      borderColor: 'rgba(250,52,44,0.75)',
-      borderWidth: 1,
-      borderRadius: 3,
-      yAxisID: 'kcal',
-    },
-    {
-      type: 'bar',
-      label: '운동칼로리',
-      data: burned,
-      backgroundColor: 'rgba(20,184,166,0.42)',
-      borderColor: 'rgba(20,184,166,0.75)',
-      borderWidth: 1,
-      borderRadius: 3,
-      yAxisID: 'kcal',
-    },
-  ];
-  if (hasTarget) {
-    datasets.push({
-      type: 'line',
-      label: '목표',
-      data: target,
-      borderColor: 'rgba(250,52,44,0.45)',
-      borderDash: [6, 5],
-      borderWidth: 1.5,
-      pointRadius: 0,
-      spanGaps: true,
-      yAxisID: 'kcal',
-    });
-  }
-
-  const chart = new Chart(canvas, {
-    data: { labels, datasets },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { labels: { color: colors.text, boxWidth: 10, font: { size: 11 } } },
-        tooltip: {
-          callbacks: {
-            label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y ? _fmt(ctx.parsed.y) : '-'}kcal`,
-          },
-        },
-      },
-      scales: {
-        x: {
-          ticks: { color: colors.text, font: { size: 10 }, maxTicksLimit: 8 },
-          grid: { color: colors.grid },
-        },
-        kcal: {
-          position: 'left',
-          ticks: { color: colors.text, font: { size: 10 }, callback: v => _fmt(v) },
-          grid: { color: colors.grid },
-        },
-      },
-    },
-  });
-  _calorieMonthCharts.set(canvas, chart);
 }
 
 const HEALTH_CHART_SERIES = {
