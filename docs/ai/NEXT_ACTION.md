@@ -29,7 +29,9 @@
   8. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
   9. PASS: `node --test tests/*.test.js` — 608 tests passed
   10. PASS: `git diff --check`
-  11. not verified yet: 인증 세션이 없어 실제 배포 홈 화면에서 트레이너 얼굴 겹침 UI flow는 직접 시각 확인하지 못했다.
+  11. PASS: Dashboard3 Pages 배포 검증 — `tomatofarm-v20260629z27-trainer-quest-bubble-offset` 캐시 버전 확인
+  12. PASS: Dashboard3 Pages marker 검증 — `style.css`의 trainer 전구 offset과 `sw.js` 캐시 버전 확인
+  13. not verified yet: 인증 세션이 없어 실제 배포 홈 화면에서 트레이너 얼굴 겹침 UI flow는 직접 시각 확인하지 못했다.
 
 ## 직전 완료 요약
 

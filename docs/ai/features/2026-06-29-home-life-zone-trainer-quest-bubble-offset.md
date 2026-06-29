@@ -93,6 +93,8 @@
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `node --test tests/*.test.js`
 - PASS: `git diff --check`
+- PASS: Dashboard3 Pages 배포 검증 — `tomatofarm-v20260629z27-trainer-quest-bubble-offset` 확인
+- PASS: Dashboard3 Pages marker 검증 — `style.css`의 trainer 전구 offset과 `sw.js` 캐시 버전 확인
 - not verified yet: 인증 세션이 없어 실제 배포 홈 화면의 트레이너 얼굴 겹침은 직접 시각 확인하지 못했다.
 
 ## 다음 세션 시작 프롬프트

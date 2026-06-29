@@ -31,9 +31,10 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
 - PASS: `node --test tests/*.test.js` — 608 tests passed
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>` — `tomatofarm-v20260629z27-trainer-quest-bubble-offset` 확인
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260629z27-trainer-quest-bubble-offset" "style.css::.lz-npc-quest--trainer .lz-npc-bulb" "style.css::--lz-bulb-x: 62%" "style.css::--lz-bulb-y: -72%" "style.css::top: calc(792 / 1672 * 100%)"`
 - not verified yet: 인증 세션이 없어 배포 홈 화면에서 실제 트레이너 얼굴 겹침 UI flow는 직접 클릭/시각 확인하지 못했다.
-- pending: 커밋 후 Dashboard3 Pages 배포 검증 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
 
 ## 다음 상태
 
-리뷰 기준으로 추가 수정 이슈는 없다. 배포 검증 후 사용자에게 Dashboard3 Pages URL과 확인 기준을 전달한다.
+리뷰 기준으로 추가 수정 이슈는 없다. 인증 계정에서 홈 탭 라이프존의 트레이너 전구가 얼굴 우상단에 분리되어 보이는지만 최종 시각 확인하면 된다.
