@@ -34,6 +34,7 @@ const RUNNING_MAP_HEIGHT = 121;
 const RUNNING_MAP_TILE_SIZE = 256;
 const RUNNING_MAP_MIN_ZOOM = 10;
 const RUNNING_MAP_MAX_ZOOM = 18;
+const RUNNING_MAP_HOME_MAX_ZOOM = 14;
 
 let _actorStateCache = null;
 
@@ -239,7 +240,10 @@ function _buildRunningMapBubbleData(mapData = null) {
     return { state: 'missing-map', route, tiles: [], path: '', dot };
   }
 
-  const zoom = Math.max(RUNNING_MAP_MIN_ZOOM, Math.min(RUNNING_MAP_MAX_ZOOM, _zoomForRunningMap(route)));
+  const zoom = Math.max(
+    RUNNING_MAP_MIN_ZOOM,
+    Math.min(RUNNING_MAP_HOME_MAX_ZOOM, RUNNING_MAP_MAX_ZOOM, _zoomForRunningMap(route))
+  );
   const centerPx = _projectRunningMapPoint(center, zoom);
   const topLeft = {
     x: centerPx.x - RUNNING_MAP_WIDTH / 2,

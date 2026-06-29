@@ -105,6 +105,9 @@ test('running maps use real provider shell instead of fake svg maps', () => {
   assert.match(runningMapJs, /wheel/);
   assert.match(runningMapJs, /dblclick/);
   assert.match(runningMapJs, /pointerDistance/);
+  assert.match(runningMapJs, /function _vworldZoomForRoute/);
+  assert.match(runningMapJs, /const pad = 72/);
+  assert.doesNotMatch(runningMapJs, /RUNNING_MAP_HOME_MAX_ZOOM/);
   assert.match(runningSessionJs, /data-running-real-map/);
   assert.match(runningSessionJs, /renderRunningMap/);
   assert.doesNotMatch(runningMapJs, /키를 설정하면/);
@@ -172,7 +175,7 @@ test('running records save into a dedicated running session with place and devic
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260629z18-trainer-health-miranda/);
+  assert.match(swJs, /tomatofarm-v20260629z19-home-running-map-zoom/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/sprites\/jups-running-track\.png/);
