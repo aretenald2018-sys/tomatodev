@@ -3,15 +3,23 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-29-home-miranda-fashion-corner.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-home-miranda-fashion-corner-review.md`
-- 현재 단계: `review complete — Home Miranda Fashion Corner Slice 1`
+- 계획 문서: `docs/ai/features/2026-06-29-npc-asset-workflow-rules.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-npc-asset-workflow-rules-review.md`
+- 현재 단계: `review complete — NPC Asset Workflow Rules Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `좌측 하단 패션 코너 overlay를 추가하고 미란다를 러닝트랙 아래로 재배치했다.`
+- 마지막 완료: `NPC/라이프존 캐릭터 제작 전 필수 문서를 추가하고 AGENTS.md 진입 규칙을 연결했다.`
 - 다음 액션: `없음.`
 - 차단 사유: `없음.`
 
 ## 직전 완료 요약
+
+- NPC Asset Workflow Rules 계획:
+  1. 계획: `docs/ai/features/2026-06-29-npc-asset-workflow-rules.md`
+  2. 리뷰: `docs/ai/reviews/2026-06-29-npc-asset-workflow-rules-review.md`
+  3. `docs/ai/NPC_ASSET_WORKFLOW.md`를 추가해 홈 배치용 스프라이트, 모달용 아트에셋, 필요 시 NPC 전용 공간/소품 overlay를 기본 산출물 계약으로 고정했다.
+  4. 홈탭 기존 좌표계/공간/각도/사이즈 기준, 도형/스티커형 결과 폐기, imagegen 프롬프트, PNG 후처리, DOM 이름표/전구/모달 바인딩 규칙을 정리했다.
+  5. `AGENTS.md`에 NPC/라이프존 캐릭터/전구/모달 아트 요청 시 `docs/ai/NPC_ASSET_WORKFLOW.md`를 먼저 읽도록 필수 진입 규칙을 추가했다.
+  6. 검증: `git diff --check`, `rg -n "NPC_ASSET_WORKFLOW|NPC|라이프존 캐릭터" AGENTS.md docs/ai/NPC_ASSET_WORKFLOW.md docs/ai/NEXT_ACTION.md`.
 
 - Home Miranda Fashion Corner Slice 1:
   1. 계획: `docs/ai/features/2026-06-29-home-miranda-fashion-corner.md`

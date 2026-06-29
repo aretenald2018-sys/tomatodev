@@ -1,6 +1,7 @@
 # Tomato Project Codex Rules
 
 - Default AI Workflow: For any request that may change code, docs, data, config, tests, deployment, or UX, follow `docs/ai/WORKFLOW.md` by default.
+- NPC/life-zone character art workflow: For any NPC, home life-zone character, quest bubble, or NPC modal art request, read and follow `docs/ai/NPC_ASSET_WORKFLOW.md` before planning or editing assets/code.
 - Required order: planning session -> execution session -> review session.
 - AI가 생성하는 계획, 리뷰, ADR, 로드맵, 핸드오프 문서는 기본적으로 한국어로 작성한다. 코드 식별자, 파일 경로, 명령어, API 이름, 라이브러리 이름, 인용 원문은 원래 언어를 유지한다.
 - 기본 트리거: 기능, 디자인, UX, 아키텍처, 모호한 변경 요청에는 `/grill-me`를 자동 적용한다. 버그, 오류, 실패, 회귀, UI 깨짐, 성능 문제에는 `/diagnose`를 자동 적용한다. 둘 다 해당될 수 있으면 `/diagnose`를 먼저 적용한다.
