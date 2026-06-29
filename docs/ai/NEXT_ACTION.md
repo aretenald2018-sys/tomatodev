@@ -27,6 +27,9 @@
   11. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=859`
   12. PASS: `node --test tests/*.test.js` — 603 tests passed
   13. PASS: `git diff --check`
+  14. PASS: Dashboard3 배포 검증
+  15. PASS: 배포된 `sw.js`, `style.css`, `home/life-zone-state.js` marker 검증
+  16. not verified yet: 인증 세션이 없는 브라우저에서는 실제 홈탭 라이프존 시각 상태를 직접 클릭 검증하지 못했다.
 
 - NPC Asset Workflow Rules 계획:
   1. 계획: `docs/ai/features/2026-06-29-npc-asset-workflow-rules.md`

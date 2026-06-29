@@ -26,7 +26,9 @@
 3. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=859`
 4. PASS: `node --test tests/*.test.js` — 603 tests passed
 5. PASS: `git diff --check`
+6. PASS: Dashboard3 배포 검증
+7. PASS: 배포된 `sw.js`, `style.css`, `home/life-zone-state.js` marker 검증
 
 ## 남은 리스크
 
-- 배포 후 인증 세션이 없는 브라우저에서는 실제 홈탭 라이프존 시각 상태를 직접 클릭 검증하지 못할 수 있다. 이 경우 배포 asset marker와 인증 계정 수동 확인 흐름을 분리해 보고한다.
+- 인증 세션이 없는 브라우저에서는 실제 홈탭 라이프존 시각 상태를 직접 클릭 검증하지 못했다. 배포 asset marker는 확인했으므로, 인증 계정에서는 홈탭 라이프존 화면에서 시각 상태를 수동 확인한다.

@@ -68,7 +68,8 @@
 3. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=859`
 4. PASS: `node --test tests/*.test.js` — 603 tests passed
 5. PASS: `git diff --check`
-6. PASS 예정: Dashboard3 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+6. PASS: Dashboard3 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+7. PASS: 배포된 `sw.js`, `style.css`, `home/life-zone-state.js`에서 좌표/지도/캐시 marker 확인
 
 ## 다음 실행 프롬프트
 
