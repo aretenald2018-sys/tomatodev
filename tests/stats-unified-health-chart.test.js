@@ -37,7 +37,8 @@ test('stats health report uses one chart and compact monthly calorie summary', (
   assert.match(statsJs, /label:\s*'체중'/);
   assert.match(statsJs, /label:\s*'주간 누적 섭취칼로리'/);
   assert.match(statsJs, /label:\s*'주간 누적 운동칼로리'/);
-  assert.match(statsJs, /calcBurnedKcal\(day, weightForBurn\)\.total/);
+  assert.match(statsJs, /const dietDay = _statsDietDayFromKey\(cache, key\);[\s\S]*const workoutDay = _statsWorkoutDayFromKey\(cache, key\);[\s\S]*const intake = _dayKcal\(dietDay\);[\s\S]*calcBurnedKcal\(workoutDay, weightForBurn\)\.total/);
+  assert.match(statsJs, /const workoutDay = cache\[key\] \|\| \{\};[\s\S]*const exerciseKcal = calcBurnedKcal\(workoutDay, weight\)\.total/);
   assert.doesNotMatch(statsJs, /data-stats-id="calorie-month-chart"/);
   assert.doesNotMatch(statsJs, /_calorieMonthCharts/);
   assert.doesNotMatch(statsJs, /_healthChartPeriod/);
@@ -56,5 +57,5 @@ test('stats health rollback chart cards are styled and cache version is bumped',
   assert.doesNotMatch(styleCss, /\.stats-health-toggle/);
   assert.doesNotMatch(styleCss, /\.stats-health-curves/);
   assert.doesNotMatch(styleCss, /\.stats-health-period/);
-  assert.match(swJs, /tomatofarm-v20260629z23-stats-weekly-calories/);
+  assert.match(swJs, /tomatofarm-v20260629z24-stats-weekly-burned-fix/);
 });

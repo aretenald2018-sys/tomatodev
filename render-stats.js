@@ -1672,9 +1672,13 @@ function _destroyTrackedChart(tracker, canvas) {
   if (existing && existing !== tracked) existing.destroy();
 }
 
-function _statsDayFromKey(cache, key) {
+function _statsDietDayFromKey(cache, key) {
   const date = _dateFromKey(key);
   return date ? getDiet(date.getFullYear(), date.getMonth(), date.getDate()) : (cache[key] || {});
+}
+
+function _statsWorkoutDayFromKey(cache, key) {
+  return cache[key] || {};
 }
 
 function _weekStartDateForStats(date) {
@@ -1728,16 +1732,17 @@ function _buildWeeklyKcalWeightSeries(range, cache, checkins) {
     let weekWeight = null;
 
     bucket.keys.forEach(key => {
-      const day = _statsDayFromKey(cache, key);
+      const dietDay = _statsDietDayFromKey(cache, key);
+      const workoutDay = _statsWorkoutDayFromKey(cache, key);
       const recordedWeight = _maybeNum(checkinByDate.get(key)?.weight);
       if (recordedWeight !== null) weekWeight = recordedWeight;
-      const intake = _dayKcal(day);
+      const intake = _dayKcal(dietDay);
       if (intake > 0) {
         intakeTotal += intake;
         hasIntake = true;
       }
       const weightForBurn = _weightOnOrBefore(checkins, key) ?? _maybeNum(plan?.weight) ?? 70;
-      const burned = calcBurnedKcal(day, weightForBurn).total;
+      const burned = calcBurnedKcal(workoutDay, weightForBurn).total;
       if (burned > 0) {
         burnedTotal += burned;
         hasBurned = true;
@@ -1869,6 +1874,7 @@ function _renderCalorieReport(scope = document) {
 
   const y = TODAY.getFullYear();
   const m = TODAY.getMonth();
+  const cache = getCache();
   const plan = getDietPlan();
   const checkins = getBodyCheckins();
   const dayCount = daysInMonth(y, m);
@@ -1880,9 +1886,10 @@ function _renderCalorieReport(scope = document) {
   for (let d = 1; d <= Math.min(lastDay, dayCount); d++) {
     const key = dateKey(y, m, d);
     const day = getDiet(y, m, d);
+    const workoutDay = cache[key] || {};
     const dayKcal = _dayKcal(day);
     const weight = _weightOnOrBefore(checkins, key) ?? _maybeNum(plan?.weight) ?? 70;
-    const exerciseKcal = calcBurnedKcal(day, weight).total;
+    const exerciseKcal = calcBurnedKcal(workoutDay, weight).total;
     const goal = getDayTargetKcal(plan, y, m, d, day);
     const ok = dietDayOk(y, m, d);
 

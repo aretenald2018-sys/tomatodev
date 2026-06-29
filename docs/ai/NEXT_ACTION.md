@@ -3,15 +3,29 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-29-stats-weekly-calorie-aggregation.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-stats-weekly-calorie-aggregation-review.md`
-- 현재 단계: `건강지표 주간 누적 칼로리 집계 완료`
+- 계획 문서: `docs/ai/features/2026-06-29-stats-weekly-burned-calorie-render-fix.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-stats-weekly-burned-calorie-render-fix-review.md`
+- 현재 단계: `건강지표 주간 운동칼로리 렌더 누락 수정 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `건강지표 카드의 메인 그래프를 체중, 주간 누적 섭취칼로리, 주간 누적 운동칼로리로 변경했다.`
+- 마지막 완료: `주간 누적 운동칼로리 그래프와 하단 운동 kcal KPI가 원본 workout day 기준으로 계산되도록 수정했다.`
 - 다음 액션: `Dashboard3 Pages 배포 검증을 진행한다.`
 - 차단 사유: `없음.`
 
 ## 직전 완료 요약
+
+- Stats Weekly Burned Calorie Render Fix Slice 1:
+  1. 계획: `docs/ai/features/2026-06-29-stats-weekly-burned-calorie-render-fix.md`
+  2. 리뷰: `docs/ai/reviews/2026-06-29-stats-weekly-burned-calorie-render-fix-review.md`
+  3. 주간 그래프 집계에서 식단 day와 workout day를 분리했다.
+  4. 섭취칼로리는 식단 day, 운동칼로리는 원본 cache workout day로 계산한다.
+  5. 하단 `운동 kcal` KPI도 원본 cache workout day 기준으로 계산한다.
+  6. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260629z24-stats-weekly-burned-fix`로 갱신했다.
+  7. PASS: `node --check render-stats.js; node --check sw.js`
+  8. PASS: `node --test tests/stats-unified-health-chart.test.js tests/trainer-quest-modal.test.js tests/stats-overall-compact-summary.test.js` — 14 tests passed
+  9. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
+  10. PASS: `node --test tests/*.test.js` — 606 tests passed
+  11. PASS: `git diff --check`
+  12. not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 UI 시각 확인이 남아 있다.
 
 - Stats Weekly Calorie Aggregation Slice 1:
   1. 계획: `docs/ai/features/2026-06-29-stats-weekly-calorie-aggregation.md`
