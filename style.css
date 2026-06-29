@@ -1140,15 +1140,15 @@ body.wt-modal-scroll-lock {
   grid-template-columns: 1fr;
   align-items: center;
   gap: 0;
-  min-height: 30px;
-  padding: 2px 3px;
+  min-height: 36px;
+  padding: 3px;
   border: 1px solid transparent;
   border-radius: 8px;
   background: var(--surface2, #f3f3f5);
 }
 .ex-max-v2-main-row {
   display: grid;
-  grid-template-columns: 28px minmax(39px, .84fr) minmax(39px, .84fr) minmax(35px, .7fr) minmax(52px, 1fr) 22px 15px 14px;
+  grid-template-columns: 30px minmax(44px, .9fr) minmax(44px, .9fr) minmax(40px, .76fr) minmax(58px, 1fr) 28px 17px 14px;
   align-items: center;
   gap: 3px;
   width: 100%;
@@ -1158,8 +1158,8 @@ body.wt-modal-scroll-lock {
   border-color: #cdeedd;
 }
 .ex-max-v2-type-btn {
-  width: 28px;
-  height: 22px;
+  width: 30px;
+  height: 30px;
   border: 0;
   border-radius: 999px;
   background: #fff;
@@ -1192,13 +1192,14 @@ body.wt-modal-scroll-lock {
 }
 .ex-max-v2-field input {
   width: 100%;
-  height: 23px;
+  height: 30px;
+  min-height: 30px;
   border: 0;
   border-radius: 6px;
   background: #fff;
   color: var(--text, #111114);
-  font-size: 11px;
-  line-height: 15px;
+  font-size: 14px;
+  line-height: 18px;
   font-weight: 650;
   text-align: center;
   outline: none;
@@ -1220,13 +1221,14 @@ body.wt-modal-scroll-lock {
 }
 .ex-max-v2-rom-field input {
   width: 100%;
-  height: 23px;
+  height: 30px;
+  min-height: 30px;
   border: 0;
   border-radius: 6px;
   background: #fff;
   color: var(--text, #111114);
-  font-size: 11px;
-  line-height: 15px;
+  font-size: 14px;
+  line-height: 18px;
   font-weight: 650;
   text-align: center;
   outline: none;
@@ -1309,8 +1311,8 @@ body.wt-modal-scroll-lock {
   outline: none;
 }
 .ex-max-v2-set .set-done-btn {
-  width: 22px;
-  height: 23px;
+  width: 28px;
+  height: 30px;
   border-radius: 7px;
   border: 1px solid var(--border-light, #dbdbe0);
   background: #fff;
@@ -1327,8 +1329,8 @@ body.wt-modal-scroll-lock {
   border-bottom: 2px solid #c7c7cc;
   transform: rotate(-45deg) translate(1px, -1px);
   position: absolute;
-  left: 6px;
-  top: 7px;
+  left: 8px;
+  top: 10px;
 }
 .ex-max-v2-set .set-done-btn.done {
   border-color: #111114;
@@ -1343,8 +1345,8 @@ body.wt-modal-scroll-lock {
   opacity: .55;
 }
 .ex-max-v2-set .set-remove-btn {
-  width: 15px;
-  height: 24px;
+  width: 17px;
+  height: 30px;
   border: 0;
   background: transparent;
   color: var(--text-tertiary, #a5a5ad);
@@ -1354,25 +1356,25 @@ body.wt-modal-scroll-lock {
 }
 .ex-max-v2-set .set-drag-handle {
   width: 14px;
-  height: 23px;
+  height: 30px;
 }
 
 @media (max-width: 360px) {
   .ex-max-v2-main-row {
-    grid-template-columns: 26px minmax(34px, .76fr) minmax(34px, .76fr) minmax(30px, .64fr) minmax(50px, 1fr) 21px 13px 10px;
+    grid-template-columns: 28px minmax(38px, .78fr) minmax(38px, .78fr) minmax(34px, .66fr) minmax(54px, 1fr) 24px 14px 10px;
     gap: 2px;
   }
   .ex-max-v2-type-btn {
-    width: 26px;
+    width: 28px;
   }
   .ex-max-v2-rom-field {
     grid-template-columns: 16px minmax(20px, 1fr) 12px;
   }
   .ex-max-v2-set .set-done-btn {
-    width: 21px;
+    width: 24px;
   }
   .ex-max-v2-set .set-remove-btn {
-    width: 13px;
+    width: 14px;
   }
   .ex-max-v2-set .set-drag-handle {
     width: 10px;
@@ -1727,9 +1729,9 @@ body.wt-modal-scroll-lock {
 .set-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
 .set-num { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); width: 14px; flex-shrink: 0; text-align: center; }
 .set-input {
-  width: 56px; background: var(--surface3); border: 1px solid var(--border);
+  width: 64px; min-height: 36px; background: var(--surface3); border: 1px solid var(--border);
   border-radius: 6px; color: var(--text); font-family: var(--font-mono);
-  font-size: 13px; padding: 6px 8px; outline: none; text-align: center;
+  font-size: 16px; line-height: 20px; padding: 7px 8px; outline: none; text-align: center;
   -webkit-tap-highlight-color: transparent; transition: border-color var(--transition);
 }
 .set-input:focus { border-color: var(--gym); box-shadow: 0 0 0 2px rgba(249,115,22,0.15); }
@@ -4138,6 +4140,10 @@ body.wt-workout-tab-active #tab-workout.active {
   min-height: 100%;
   padding: calc(12px + env(safe-area-inset-top, 0px)) 14px calc(92px + env(safe-area-inset-bottom, 0px));
   background: #f7f7fb;
+  scroll-padding-bottom: calc(180px + env(safe-area-inset-bottom, 0px));
+}
+.wt-exercise-detail-root:focus-within {
+  padding-bottom: calc(180px + env(safe-area-inset-bottom, 0px));
 }
 .wt-exercise-detail-screen {
   max-width: 720px;
@@ -5600,9 +5606,12 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   width: 16px; font-weight: 700;
 }
 #tab-workout .set-input {
-  width: 52px; background: var(--seed-bg-fill); border: 1px solid var(--seed-stroke-weak);
+  width: 64px; min-height: 36px; background: var(--seed-bg-fill); border: 1px solid var(--seed-stroke-weak);
   border-radius: var(--seed-r2); color: var(--seed-fg-neutral);
-  font-size: var(--seed-t3); padding: var(--seed-x2); text-align: center;
+  font-size: 16px; line-height: 20px; padding: 7px 8px; text-align: center;
+  scroll-margin-top: 84px;
+  scroll-margin-bottom: calc(172px + env(safe-area-inset-bottom, 0px));
+  touch-action: manipulation;
   transition: border-color var(--seed-d3) var(--seed-ease), box-shadow var(--seed-d3) var(--seed-ease);
 }
 #tab-workout .set-input:focus {
@@ -5657,9 +5666,9 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   grid-template-columns: 1fr;
   align-items: center;
   gap: 0;
-  min-height: 30px;
+  min-height: 36px;
   margin-bottom: 0;
-  padding: 2px 3px;
+  padding: 3px;
   border: 1px solid transparent;
   border-radius: 8px;
 }
@@ -5688,18 +5697,36 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 }
 #tab-workout .ex-block--max-v2 .ex-max-v2-field input {
   width: 100%;
+  height: 30px;
+  min-height: 30px;
+  font-size: 14px;
+  line-height: 18px;
   padding: 0;
   border: 0;
 }
 #tab-workout .ex-block--max-v2 .ex-max-v2-rom-field input {
   width: 100%;
+  height: 30px;
+  min-height: 30px;
+  font-size: 14px;
+  line-height: 18px;
   padding: 0;
   border: 0;
 }
 #tab-workout .ex-block--max-v2 .set-done-btn {
-  width: 22px;
-  height: 23px;
+  width: 28px;
+  height: 30px;
   border-radius: 7px;
+}
+#tab-workout .set-rpe-input,
+#tab-workout .set-rom-input {
+  scroll-margin-top: 84px;
+  scroll-margin-bottom: calc(172px + env(safe-area-inset-bottom, 0px));
+  touch-action: manipulation;
+}
+#tab-workout.wt-workout-record-mode .workout-tab-content:focus-within,
+#tab-workout.wt-workout-detail-mode .wt-exercise-detail-root:focus-within {
+  scroll-padding-bottom: calc(180px + env(safe-area-inset-bottom, 0px));
 }
 #tab-workout .ex-block--max-v2 .ex-max-v2-secondary {
   border: 1px solid var(--border, #ededf0);

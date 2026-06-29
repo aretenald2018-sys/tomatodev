@@ -2,14 +2,34 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-29-home-consulting-chief-npc.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-home-consulting-chief-npc-review.md`
-- 현재 단계: `홈 라이프존 상담실장 추가 축소 완료`
+- 상태: `ready_for_execution`
+- 계획 문서: `docs/ai/features/2026-06-30-workout-number-input-keyboard-ux.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-number-input-keyboard-ux-review.md`
+- 현재 단계: `운동 숫자 입력 키보드 UX 개선 Dashboard3 배포 대기`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `상담실장 홈/모달 PNG, 홈 우측 하단 NPC, 전용 모달, 캐시 등록, 회귀 테스트를 구현하고 Dashboard3 Pages 배포 검증을 통과했다.`
-- 다음 액션: `없음.`
-- 차단 사유: `not verified yet: 인증 세션이 없어 실제 배포 홈 화면에서 상담실장 NPC 클릭 flow는 직접 시각 검증하지 못했다.`
+- 마지막 완료: `운동 숫자 입력 키보드 UX 개선 Slice 1 리뷰에서 추가 수정 이슈가 없음을 확인했다.`
+- 다음 액션: `변경 사항을 커밋하고 origin/main에 push한 뒤 Dashboard3 Pages 배포를 검증한다.`
+- 차단 사유: `not verified yet: Dashboard3 Pages 배포와 인증 계정 실제 숫자 입력 키보드 UI flow 확인이 남아 있다.`
+
+## 방금 계획/실행한 항목
+
+- Workout Number Input Keyboard UX 계획:
+  1. 모바일 숫자 입력 포커스 시 브라우저 자동 scroll 보정으로 운동 카드가 살짝 이동하는 증상을 진단했다.
+  2. 작은 입력 높이, 16px 미만 input font-size, focus scroll guard 부재, 일반/Max V2 inputmode 불일치를 주요 가설로 잡았다.
+  3. Slice 1 범위는 `workout/exercises.js` focus scroll guard, 숫자 inputmode 정리, `style.css` input hit area 확대, 회귀 테스트, `sw.js` cache bump로 제한한다.
+  4. 제외 범위는 운동 카드 전체 재설계, 저장 schema 변경, 캘린더 sheet drag/snap 변경, `www/` 수정, `tomatofarm` remote 배포다.
+  5. 완료: `workout/exercises.js`에 `WORKOUT_NUMBER_INPUT_SELECTOR` focus scroll guard를 추가했다.
+  6. 완료: 일반 세트 `kg`/`회` input에 `inputmode`를 추가했다.
+  7. 완료: `style.css`에서 일반 세트 input과 Max V2 input hit area를 확대하고 keyboard focus 여유 공간을 추가했다.
+  8. 완료: `sw.js` cache version을 `tomatofarm-v20260630z01-workout-number-input-ux`로 bump하고 cache marker 테스트 기대값을 갱신했다.
+  9. PASS: `node --check workout/exercises.js`
+  10. PASS: `node --check sw.js`
+  11. PASS: `node --test tests/workout-card-layout-css.test.js tests/workout-navigation-stack.test.js` — 10 tests passed
+  12. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=863`
+  13. PASS: `node --test --test-reporter=dot tests/*.test.js`
+  14. PASS: `git diff --check`
+  15. 완료: 리뷰 문서 `docs/ai/reviews/2026-06-30-workout-number-input-keyboard-ux-review.md`를 작성했고 추가 수정 이슈는 없다.
+  16. not verified yet: Dashboard3 Pages 배포와 인증 계정 실제 숫자 입력 키보드 UI flow 확인이 남아 있다.
 
 ## 방금 계획한 항목
 

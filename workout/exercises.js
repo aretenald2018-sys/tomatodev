@@ -88,6 +88,10 @@ function _isMaxWorkoutMode() {
 const NEW_MUSCLE_OPTION = '__new_custom_muscle__';
 const _embeddedMaxCards = new Map();
 let _detailEmbeddedEntryIdx = null;
+const WORKOUT_NUMBER_INPUT_SELECTOR = '.set-input, .set-rpe-input, .set-rom-input';
+const WORKOUT_INPUT_SCROLL_GUARD_BOTTOM_PX = 156;
+const WORKOUT_INPUT_SCROLL_GUARD_MAX_DELTA = 96;
+const _workoutInputFocusState = new WeakMap();
 
 function _isEmbeddedMaxEntry(entryIdx) {
   const slot = _embeddedMaxCards.get(entryIdx);
@@ -113,6 +117,76 @@ function _syncExpertTopArea() {
 
 function _setWorkoutModalLock(on) {
   document.body?.classList.toggle('wt-modal-scroll-lock', !!on);
+}
+
+function _workoutScrollTop() {
+  if (typeof window === 'undefined') return 0;
+  const root = document.scrollingElement || document.documentElement;
+  return Number(window.scrollY ?? root?.scrollTop ?? 0) || 0;
+}
+
+function _restoreWorkoutScrollTop(top) {
+  if (typeof window === 'undefined') return;
+  const next = Math.max(0, Number(top) || 0);
+  try {
+    window.scrollTo({ top: next, behavior: 'auto' });
+  } catch {
+    window.scrollTo(0, next);
+  }
+}
+
+function _captureWorkoutNumberInputScroll(input) {
+  if (!input?.matches?.(WORKOUT_NUMBER_INPUT_SELECTOR) || !input.closest?.('#tab-workout')) return;
+  const rect = input.getBoundingClientRect?.();
+  const viewportHeight = Number(window.visualViewport?.height || window.innerHeight || document.documentElement?.clientHeight || 0);
+  if (!rect || !viewportHeight) return;
+  const comfortableBottom = Math.max(120, viewportHeight - WORKOUT_INPUT_SCROLL_GUARD_BOTTOM_PX);
+  _workoutInputFocusState.set(input, {
+    at: Date.now(),
+    restore: rect.top >= 48 && rect.bottom <= comfortableBottom,
+    top: _workoutScrollTop(),
+  });
+}
+
+function _restoreWorkoutNumberInputScroll(input) {
+  const state = _workoutInputFocusState.get(input);
+  if (!state?.restore) return;
+  const restore = () => {
+    if (document.activeElement !== input) return;
+    const delta = _workoutScrollTop() - state.top;
+    if (Math.abs(delta) > 0 && Math.abs(delta) <= WORKOUT_INPUT_SCROLL_GUARD_MAX_DELTA) {
+      _restoreWorkoutScrollTop(state.top);
+    }
+  };
+  window.requestAnimationFrame?.(restore) || restore();
+  window.setTimeout?.(restore, 80);
+  window.setTimeout?.(restore, 220);
+}
+
+function _focusWorkoutNumberInputWithoutScroll(input) {
+  if (document.activeElement === input) return;
+  try {
+    input.focus({ preventScroll: true });
+  } catch {
+    input.focus();
+  }
+}
+
+function _bindWorkoutNumberInputFocusGuard(scope) {
+  scope?.querySelectorAll?.(WORKOUT_NUMBER_INPUT_SELECTOR).forEach((input) => {
+    if (input.dataset.wtNumberInputGuard === '1') return;
+    input.dataset.wtNumberInputGuard = '1';
+    input.addEventListener('pointerdown', (event) => {
+      if (event.pointerType && event.pointerType !== 'touch') return;
+      _captureWorkoutNumberInputScroll(input);
+      _focusWorkoutNumberInputWithoutScroll(input);
+    }, { passive: true });
+    input.addEventListener('touchstart', () => _captureWorkoutNumberInputScroll(input), { passive: true });
+    input.addEventListener('focus', () => {
+      if (!_workoutInputFocusState.has(input)) _captureWorkoutNumberInputScroll(input);
+      _restoreWorkoutNumberInputScroll(input);
+    });
+  });
 }
 
 // _isExpertUiEnabled — RPE 등 프로모드 전용 UI 표시 여부 판정.
@@ -1414,9 +1488,9 @@ function _renderSets(entryIdx, targetEl = null) {
           <option value="warmup" ${isWarmup ?'selected':''}>웜업</option>
           <option value="drop"   ${isDrop ?'selected':''}>드랍</option>
         </select>
-        <input class="set-input" type="number" placeholder="kg"  min="0" step="0.5" value="${set.kg||''}">
+        <input class="set-input" type="number" inputmode="decimal" placeholder="kg"  min="0" step="0.5" value="${set.kg||''}">
         <span class="set-sep">kg</span>
-        <input class="set-input" type="number" placeholder="회"  min="1" step="1"   value="${set.reps||''}">
+        <input class="set-input" type="number" inputmode="numeric" placeholder="회"  min="1" step="1"   value="${set.reps||''}">
         <span class="set-sep">회</span>
         ${rpeSelHtml}
         <span class="set-vol">${vol}</span>
@@ -1458,6 +1532,7 @@ function _renderSets(entryIdx, targetEl = null) {
         wtUpdateSet(entryIdx, si, 'romPct', next == null ? '' : next);
       });
     }
+    _bindWorkoutNumberInputFocusGuard(row);
     el.appendChild(row);
   });
 

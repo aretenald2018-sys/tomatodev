@@ -76,19 +76,21 @@ test('test-mode set row is one-line compact and does not render ROM slider', () 
   assert.ok(start >= 0 && end > start, 'set render function should exist');
   const fn = workoutExercises.slice(start, end);
 
-  assert.match(row, /grid-template-columns:\s*28px\s+minmax\(39px,\s*\.84fr\)\s+minmax\(39px,\s*\.84fr\)\s+minmax\(35px,\s*\.7fr\)\s+minmax\(52px,\s*1fr\)\s+22px\s+15px\s+14px/);
-  assert.ok(gridMinBudgetPx(row) <= 266, 'base set row minimum width should stay within mobile card budget');
-  assert.match(set, /min-height:\s*30px/);
-  assert.match(fieldInput, /font-size:\s*11px/);
-  assert.match(fieldInput, /line-height:\s*15px/);
+  assert.match(row, /grid-template-columns:\s*30px\s+minmax\(44px,\s*\.9fr\)\s+minmax\(44px,\s*\.9fr\)\s+minmax\(40px,\s*\.76fr\)\s+minmax\(58px,\s*1fr\)\s+28px\s+17px\s+14px/);
+  assert.ok(gridMinBudgetPx(row) <= 296, 'base set row minimum width should stay within mobile card budget');
+  assert.match(set, /min-height:\s*36px/);
+  assert.match(fieldInput, /height:\s*30px/);
+  assert.match(fieldInput, /font-size:\s*14px/);
+  assert.match(fieldInput, /line-height:\s*18px/);
   assert.match(rom, /grid-template-columns:\s*18px\s+minmax\(20px,\s*1fr\)\s+13px/);
-  assert.match(romInput, /font-size:\s*11px/);
-  assert.match(romInput, /line-height:\s*15px/);
+  assert.match(romInput, /height:\s*30px/);
+  assert.match(romInput, /font-size:\s*14px/);
+  assert.match(romInput, /line-height:\s*18px/);
   const narrowCss = css.slice(css.indexOf('@media (max-width: 360px)'), css.indexOf('.ex-max-v2-actions'));
   const narrowRow = ruleBody('.ex-max-v2-main-row', narrowCss);
   const narrowRom = ruleBody('.ex-max-v2-rom-field', narrowCss);
-  assert.match(narrowRow, /grid-template-columns:\s*26px\s+minmax\(34px,\s*\.76fr\)\s+minmax\(34px,\s*\.76fr\)\s+minmax\(30px,\s*\.64fr\)\s+minmax\(50px,\s*1fr\)\s+21px\s+13px\s+10px/);
-  assert.ok(gridMinBudgetPx(narrowRow) <= 240, '360px set row minimum width should avoid overflow');
+  assert.match(narrowRow, /grid-template-columns:\s*28px\s+minmax\(38px,\s*\.78fr\)\s+minmax\(38px,\s*\.78fr\)\s+minmax\(34px,\s*\.66fr\)\s+minmax\(54px,\s*1fr\)\s+24px\s+14px\s+10px/);
+  assert.ok(gridMinBudgetPx(narrowRow) <= 254, '360px set row minimum width should avoid overflow');
   assert.match(narrowRom, /grid-template-columns:\s*16px\s+minmax\(20px,\s*1fr\)\s+12px/);
   assert.match(fn, /ex-max-v2-rom-field/);
   assert.match(fn, /set-rom-input/);
@@ -101,4 +103,30 @@ test('test-mode set row is one-line compact and does not render ROM slider', () 
   assert.match(workoutExercises, /function _romPctToScoreInput\(val\)[\s\S]*\/ 10/);
   assert.doesNotMatch(fn, /set-rom-range/);
   assert.doesNotMatch(fn, /가동범위 퍼센트 직접 입력|<em>%<\/em>|max="100"/);
+});
+
+test('workout number inputs are larger and guarded against keyboard focus scroll', () => {
+  const tabInput = ruleBody('#tab-workout .set-input');
+  const maxTabInput = ruleBody('#tab-workout .ex-block--max-v2 .ex-max-v2-field input');
+  const maxTabRomInput = ruleBody('#tab-workout .ex-block--max-v2 .ex-max-v2-rom-field input');
+  const recordFocus = ruleBody('#tab-workout.wt-workout-record-mode .workout-tab-content:focus-within,\n#tab-workout.wt-workout-detail-mode .wt-exercise-detail-root:focus-within');
+  const start = workoutExercises.indexOf('function _renderSets');
+  const end = workoutExercises.indexOf('if (typeof Sortable', start);
+  assert.ok(start >= 0 && end > start, 'set render function should exist');
+  const fn = workoutExercises.slice(start, end);
+
+  assert.match(tabInput, /width:\s*64px/);
+  assert.match(tabInput, /min-height:\s*36px/);
+  assert.match(tabInput, /font-size:\s*16px/);
+  assert.match(tabInput, /scroll-margin-bottom:\s*calc\(172px \+ env\(safe-area-inset-bottom,\s*0px\)\)/);
+  assert.match(maxTabInput, /height:\s*30px/);
+  assert.match(maxTabInput, /font-size:\s*14px/);
+  assert.match(maxTabRomInput, /height:\s*30px/);
+  assert.match(recordFocus, /scroll-padding-bottom:\s*calc\(180px \+ env\(safe-area-inset-bottom,\s*0px\)\)/);
+  assert.match(fn, /inputmode="decimal" placeholder="kg"/);
+  assert.match(fn, /inputmode="numeric" placeholder="회"/);
+  assert.match(fn, /_bindWorkoutNumberInputFocusGuard\(row\)/);
+  assert.match(workoutExercises, /const WORKOUT_NUMBER_INPUT_SELECTOR = '\.set-input, \.set-rpe-input, \.set-rom-input'/);
+  assert.match(workoutExercises, /input\.focus\(\{ preventScroll: true \}\)/);
+  assert.match(workoutExercises, /dataset\.wtNumberInputGuard/);
 });
