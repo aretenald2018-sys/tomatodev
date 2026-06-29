@@ -126,5 +126,5 @@ test('Dashboard3 mode controls cannot persist normal or pro workout record UI', 
 });
 
 test('service worker cache version was bumped for workout asset changes', () => {
-  assert.match(swJs, /tomatofarm-v20260629z6-trainer-glass-squircle/);
+  assert.match(swJs, /tomatofarm-v20260629z7-running-map-tab-motion/);
 });

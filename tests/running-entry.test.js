@@ -141,8 +141,36 @@ test('running summary save opens the saved workout day detail sheet', () => {
   assert.match(runningSessionJs, /wtCloseRunningSession\(\);[\s\S]*typeof window\.wtOpenWorkoutDaySheet === 'function'/);
 });
 
+test('running records save into a dedicated running session with place and device metrics', () => {
+  assert.match(runningSessionJs, /const RUNNING_WORKOUT_SESSION_INDEX = 2/);
+  assert.match(runningSessionJs, /function _workoutSessionIndexFromState\(\) \{\s*return RUNNING_WORKOUT_SESSION_INDEX;\s*\}/);
+  assert.match(runningSessionJs, /S\.workout\.sessionIndex = RUNNING_WORKOUT_SESSION_INDEX/);
+  assert.match(runningSessionJs, /S\.workout\.sessionId = 'running-track'/);
+  assert.match(runningSessionJs, /memo:\s*''/);
+  assert.doesNotMatch(runningSessionJs, /러닝 세션/);
+  assert.doesNotMatch(runningSessionJs, /대한민국 위치 기록/);
+
+  assert.match(runningSessionJs, /export async function resolveRunningPlaceSummary/);
+  assert.match(runningSessionJs, /api\.vworld\.kr\/req\/address/);
+  assert.match(runningSessionJs, /type=BOTH/);
+  assert.match(runningSessionJs, /level4A/);
+  assert.match(runningSessionJs, /level4L/);
+  assert.match(runningSessionJs, /adminArea/);
+
+  assert.match(runningSessionJs, /function _readRunningSensorSnapshot/);
+  assert.match(runningSessionJs, /window\.__tomatoRunningSensorSnapshot/);
+  assert.match(runningSessionJs, /window\.__tomatoRunningSensors\?\.getSnapshot/);
+  assert.match(runningSessionJs, /window\.TomatoRunningSensors\?\.getSnapshot/);
+  assert.match(runningSessionJs, /altitude:\s*_optionalFiniteNumber/);
+  assert.match(runningSessionJs, /heartRateBpm:\s*_optionalNumber/);
+  assert.match(runningSessionJs, /cadenceSpm:\s*_optionalNumber/);
+  assert.match(runningSessionJs, /summary\.elevationGainM == null \? '--'/);
+  assert.match(runningSessionJs, /summary\.avgHeartRateBpm == null \? '--'/);
+  assert.match(runningSessionJs, /summary\.cadenceSpm == null \? '--'/);
+});
+
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260629z6-trainer-glass-squircle/);
+  assert.match(swJs, /tomatofarm-v20260629z7-running-map-tab-motion/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/sprites\/jups-running-track\.png/);

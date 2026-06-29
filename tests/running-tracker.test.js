@@ -44,6 +44,23 @@ test('running session route summary stores distance, duration, bbox, centroid, a
     maxLng: 126.981,
   });
   assert.equal(summary.gpsAccuracySummary.avgAccuracyM, 10);
+  assert.equal(summary.elevationGainM, null);
+  assert.equal(summary.avgHeartRateBpm, null);
+  assert.equal(summary.cadenceSpm, null);
+});
+
+test('running route summary aggregates optional device elevation, heart rate, and cadence', () => {
+  const sensorRoute = [
+    { lat: 37.52, lng: 126.97, altitude: 12, heartRateBpm: 140, cadenceSpm: 160, ts: 1000 },
+    { lat: 37.5205, lng: 126.9705, altitude: 19, heartRateBpm: 148, cadenceSpm: 164, ts: 61000 },
+    { lat: 37.521, lng: 126.971, altitude: 16, heartRateBpm: 152, cadenceSpm: 166, ts: 121000 },
+    { lat: 37.5215, lng: 126.9715, altitude: 23, heartRateBpm: 0, cadenceSpm: null, ts: 181000 },
+  ];
+  const summary = summarizeRunningRoute(sensorRoute, { startedAt: 1000, endedAt: 181000 });
+
+  assert.equal(summary.elevationGainM, 14);
+  assert.equal(summary.avgHeartRateBpm, 147);
+  assert.equal(summary.cadenceSpm, 163);
 });
 
 test('running session route downsamples without rendering a fake map', () => {

@@ -6872,6 +6872,21 @@ body.wt-running-session-open {
   position: absolute;
   inset: 0;
 }
+.wt-run-summary-map-label {
+  position: absolute;
+  z-index: 4;
+  left: 18px;
+  top: 18px;
+  max-width: calc(100% - 36px);
+  padding: 10px 13px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .94);
+  color: #111827;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 850;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, .14);
+}
 .wt-run-summary-actions {
   width: min(100%, 430px);
   margin: 0 auto;
@@ -7573,7 +7588,8 @@ body.wt-running-session-open {
   animation: lz-workout-squat-rep 1.5s ease-in-out infinite;
 }
 .lz-actor--pose-running-track {
-  transform-origin: 50% 94%;
+  --lz-run-scale: .74;
+  transform-origin: 50% 100%;
   animation: lz-running-track-in-place var(--lz-run-duration, 0.58s) ease-in-out infinite;
   animation-delay: var(--lz-run-delay, 0s);
   will-change: transform;
@@ -7592,8 +7608,8 @@ body.wt-running-session-open {
   background-size: 200% 100%;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.32));
-  animation: lz-running-track-steps 0.42s steps(2, end) infinite;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.28));
+  animation: lz-running-track-steps 0.54s steps(2, end) infinite;
 }
 @keyframes lz-workout-lat-pull {
   0%, 100% { opacity: 0.16; transform: translate(0, 0) rotate(0deg); }
@@ -7611,9 +7627,9 @@ body.wt-running-session-open {
   76% { transform: translateY(-1px) scaleY(1.005); }
 }
 @keyframes lz-running-track-in-place {
-  0%, 100% { transform: translate3d(0, 0, 0) scaleY(1); }
-  45% { transform: translate3d(0, -3px, 0) scaleY(1.018); }
-  72% { transform: translate3d(0, 1px, 0) scaleY(0.992); }
+  0%, 100% { transform: translate3d(0, 0, 0) scale(var(--lz-run-scale)) rotate(-1deg); }
+  45% { transform: translate3d(0, -1px, 0) scale(var(--lz-run-scale)) rotate(1deg); }
+  72% { transform: translate3d(0, .5px, 0) scale(var(--lz-run-scale)) rotate(0deg); }
 }
 @keyframes lz-running-track-steps {
   to { background-position: 100% 0; }
@@ -12065,73 +12081,62 @@ body.wt-running-session-open {
 .wt-running-card-kicker i {
   background: #2563eb;
 }
-.wt-running-plan {
-  grid-template-columns: minmax(0, 1fr) minmax(112px, .72fr);
+.wt-running-headline {
+  display: grid;
+  gap: 2px;
+  margin-top: 8px;
+}
+.wt-running-headline strong {
+  color: #111827;
+  font-size: 34px;
+  line-height: 38px;
+  font-weight: 950;
+  letter-spacing: 0;
+}
+.wt-running-headline span {
+  color: #667085;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 800;
 }
 .wt-running-route-wrap {
   min-width: 0;
+  margin-top: 12px;
 }
-.wt-running-route-mini {
+.wt-running-route-map {
   position: relative;
   width: 100%;
-  min-height: 82px;
-  display: grid;
-  align-content: end;
-  gap: 2px;
-  padding: 10px;
+  height: min(280px, 48dvh);
+  min-height: 214px;
   overflow: hidden;
   border: 1px solid #d7deea;
-  border-radius: 9px;
-  background:
-    linear-gradient(90deg, rgba(148, 163, 184, 0.16) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(148, 163, 184, 0.16) 1px, transparent 1px),
-    linear-gradient(135deg, #f7f8fb, #eef4ff);
-  background-size: 18px 18px, 18px 18px, auto;
+  border-radius: 10px;
+  background: #e9eef3;
 }
-.wt-running-route-mini span {
-  position: absolute;
-  left: 14%;
-  right: 14%;
-  top: 45%;
-  height: 4px;
-  border-radius: 999px;
-  background: #c3cad8;
-  transform: rotate(-18deg);
-}
-.wt-running-route-mini.has-route span {
-  background: #ff3d5f;
-  box-shadow:
-    22px 14px 0 -1px #ff3d5f,
-    44px -5px 0 -1px #ff3d5f;
-}
-.wt-running-route-mini strong,
-.wt-running-route-mini em {
+.wt-running-route-map.wt-run-real-map {
   position: relative;
-  z-index: 1;
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  inset: auto;
 }
-.wt-running-route-mini strong {
+.wt-running-route-place {
+  position: absolute;
+  z-index: 4;
+  left: 14px;
+  top: 14px;
+  max-width: calc(100% - 28px);
+  padding: 9px 12px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .94);
   color: #111827;
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 900;
-}
-.wt-running-route-mini em {
-  color: #5f6b7a;
-  font-size: 10px;
-  line-height: 14px;
-  font-style: normal;
-  font-weight: 800;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 850;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, .12);
 }
 .wt-running-metric-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
-  margin-top: 8px;
+  margin-top: 12px;
 }
 .wt-running-metric-grid span {
   min-width: 0;
@@ -12162,24 +12167,8 @@ body.wt-running-session-open {
   line-height: 18px;
   font-weight: 900;
 }
-.wt-running-route-detail {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 6px;
-}
-.wt-running-route-detail span {
-  max-width: 100%;
-  padding: 5px 8px;
-  border-radius: 999px;
-  background: #eef4ff;
-  color: #254166;
-  font-size: 11px;
-  line-height: 15px;
-  font-weight: 800;
-}
 .wt-running-read-card.is-collapsed .wt-running-metric-grid,
-.wt-running-read-card.is-collapsed .wt-running-route-detail {
+.wt-running-read-card.is-collapsed .wt-running-route-wrap {
   display: none;
 }
 .wt-max-action-primary {
@@ -12326,6 +12315,35 @@ body.wt-running-session-open {
   box-shadow: 0 8px 18px rgba(47, 109, 246, 0.24);
 }
 .wt-day-fab:active { transform: scale(0.96); }
+.wt-day-fab--running {
+  background: #2563eb;
+  color: #fff;
+  font-size: 24px;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.3);
+}
+.wt-running-empty .wt-empty-center {
+  gap: 8px;
+}
+.wt-empty-run {
+  width: 58px;
+  height: 58px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 50% 50%, #fff 0 28%, transparent 29%),
+    conic-gradient(from 210deg, #2563eb, #20b84d, #2563eb);
+  box-shadow: inset 0 0 0 8px #eef4ff;
+}
+.wt-running-start-inline {
+  margin-top: 4px;
+  height: 38px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: #111827;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+}
 
 @media (max-width: 430px) {
   .cal-workout-surface-home {
@@ -12461,12 +12479,9 @@ body.wt-running-session-open {
     gap: 6px;
     padding: 7px 8px;
   }
-  .wt-running-plan {
-    grid-template-columns: minmax(0, 1fr) minmax(88px, .72fr);
-  }
-  .wt-running-route-mini {
-    min-height: 72px;
-    padding: 8px;
+  .wt-running-route-map {
+    min-height: 194px;
+    height: min(252px, 44dvh);
   }
   .wt-running-metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

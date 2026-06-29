@@ -146,9 +146,10 @@ test('life zone running actors render track sprites and a map capture bubble on 
 
   assert.match(css, /\.lz-actor--pose-running-track \{/);
   assert.match(css, /\.lz-actor--pose-running-track::before \{/);
+  assert.match(css, /--lz-run-scale:\s*\.74/);
   assert.match(css, /aspect-ratio: 128 \/ 192/);
   assert.match(css, /background-size: 200% 100%/);
-  assert.match(css, /animation: lz-running-track-steps 0\.42s steps\(2, end\) infinite/);
+  assert.match(css, /animation: lz-running-track-steps 0\.54s steps\(2, end\) infinite/);
   assert.match(css, /animation: lz-running-track-in-place var\(--lz-run-duration, 0\.58s\) ease-in-out infinite/);
   assert.match(css, /@keyframes lz-running-track-in-place/);
   assert.match(css, /@keyframes lz-running-track-steps/);
@@ -179,7 +180,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260629z6-trainer-glass-squircle/);
+  assert.match(sw, /tomatofarm-v20260629z7-running-map-tab-motion/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,

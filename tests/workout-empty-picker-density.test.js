@@ -20,7 +20,9 @@ test('empty workout view uses a floating add button beside the session tabs', ()
   const detail = renderCalendar.slice(start, end);
 
   assert.match(detail, /class="wt-day-sessionbar"[\s\S]*class="wt-day-session-tabs"/);
-  assert.match(detail, /class="wt-day-fab"[\s\S]*data-wt-day-add-session[\s\S]*data-date-key="\$\{_esc\(key\)\}"/);
+  assert.match(detail, /const fabAttrs = runningActive[\s\S]*data-wt-day-add-running[\s\S]*data-date-key="\$\{_esc\(key\)\}"/);
+  assert.match(detail, /:\s*`data-wt-day-add-session data-date-key="\$\{_esc\(key\)\}"/);
+  assert.match(detail, /class="wt-day-fab \$\{runningActive \? 'wt-day-fab--running' : ''\}"/);
   assert.doesNotMatch(detail, /class="wt-day-fab"[^>]*onclick=/);
   assert.doesNotMatch(detail, /class="wt-day-add-inline"/);
   assert.doesNotMatch(detail, /class="wt-day-edit"/);

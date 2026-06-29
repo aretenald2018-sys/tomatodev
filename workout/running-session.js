@@ -3,10 +3,11 @@
 // ================================================================
 
 import { S } from './state.js';
-import { destroyRunningMaps, renderRunningMap } from './running-map.js';
+import { destroyRunningMaps, renderRunningMap, readRunningMapConfig } from './running-map.js';
 
 const MAX_ROUTE_POINTS = 240;
 const MIN_ROUTE_STEP_M = 3;
+const RUNNING_WORKOUT_SESSION_INDEX = 2;
 const GEO_OPTIONS = {
   enableHighAccuracy: true,
   maximumAge: 1000,
@@ -28,6 +29,8 @@ const _session = {
   mapRenderSeq: 0,
   lastError: '',
   saving: false,
+  placeSummary: null,
+  placePromise: null,
 };
 
 function _root() {
@@ -70,7 +73,7 @@ function _safePoint(point) {
   const lat = _num(point?.lat, NaN);
   const lng = _num(point?.lng, NaN);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  return {
+  const normalized = {
     lat,
     lng,
     ts: _num(point?.ts, _now()),
@@ -78,6 +81,21 @@ function _safePoint(point) {
     altitude: Number.isFinite(Number(point?.altitude)) ? Number(point.altitude) : null,
     speed: Number.isFinite(Number(point?.speed)) ? Number(point.speed) : null,
   };
+  const heartRateBpm = _optionalNumber(point?.heartRateBpm ?? point?.heartRate ?? point?.bpm);
+  const cadenceSpm = _optionalNumber(point?.cadenceSpm ?? point?.cadence ?? point?.stepsPerMinute);
+  if (heartRateBpm != null) normalized.heartRateBpm = heartRateBpm;
+  if (cadenceSpm != null) normalized.cadenceSpm = cadenceSpm;
+  return normalized;
+}
+
+function _optionalNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function _optionalFiniteNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
 }
 
 export function runningDistanceMeters(a, b) {
@@ -161,14 +179,23 @@ function _accuracySummary(route) {
 
 function _elevationGain(route) {
   let gain = 0;
+  let pairs = 0;
   for (let i = 1; i < route.length; i += 1) {
     const prev = route[i - 1].altitude;
     const next = route[i].altitude;
     if (!Number.isFinite(prev) || !Number.isFinite(next)) continue;
+    pairs += 1;
     const diff = next - prev;
     if (diff > 0) gain += diff;
   }
+  if (!pairs) return null;
   return Math.round(gain);
+}
+
+function _avgRouteMetric(route, key) {
+  const values = route.map(point => Number(point?.[key])).filter(value => Number.isFinite(value) && value > 0);
+  if (!values.length) return null;
+  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
 }
 
 export function estimateRunningCalories(distanceKm, weightKg = 70) {
@@ -202,8 +229,8 @@ export function summarizeRunningRoute(points = [], options = {}) {
     centroid,
     elevationGainM,
     calories: estimateRunningCalories(distanceKm),
-    avgHeartRateBpm: 0,
-    cadenceSpm: 0,
+    avgHeartRateBpm: _avgRouteMetric(route, 'heartRateBpm'),
+    cadenceSpm: _avgRouteMetric(route, 'cadenceSpm'),
     gpsAccuracySummary: _accuracySummary(route),
   };
 }
@@ -247,29 +274,87 @@ function _workoutDateKeyFromState() {
 }
 
 function _workoutSessionIndexFromState() {
-  return Math.max(0, Math.floor(Number(S.workout?.sessionIndex) || 0));
+  return RUNNING_WORKOUT_SESSION_INDEX;
 }
 
-function _syncWorkoutRunData(summary) {
+function _runningPlaceFallback(summary, status = 'resolving') {
+  if (!summary?.centroid) return { status: 'unavailable', label: '위치 정보 없음', provider: null };
+  return { status, label: status === 'resolved' ? '위치 기록' : '위치 확인 중', provider: 'vworld' };
+}
+
+function _formatVworldPlace(result = null) {
+  const structure = result?.structure || {};
+  const city = structure.level1 || '';
+  const district = structure.level2 || '';
+  const legalDong = structure.level4L || structure.level3 || '';
+  const adminDong = structure.level4A || '';
+  const dong = adminDong || legalDong;
+  const label = [dong, district, city].filter(Boolean).join(', ');
+  if (!label) return null;
+  return {
+    label,
+    adminArea: { city, district, dong, legalDong, adminDong },
+  };
+}
+
+export async function resolveRunningPlaceSummary(summary) {
+  const center = summary?.centroid;
+  if (!Number.isFinite(Number(center?.lat)) || !Number.isFinite(Number(center?.lng))) return _runningPlaceFallback(summary, 'unavailable');
+  const config = readRunningMapConfig();
+  const key = config?.key;
+  if (!key) return _runningPlaceFallback(summary, 'unavailable');
+  const point = `${encodeURIComponent(center.lng)},${encodeURIComponent(center.lat)}`;
+  const url = `https://api.vworld.kr/req/address?service=address&request=getAddress&version=2.0&crs=epsg:4326&point=${point}&format=json&type=BOTH&zipcode=false&simple=false&key=${encodeURIComponent(key)}`;
+  try {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`vworld status ${res.status}`);
+    const json = await res.json();
+    const results = Array.isArray(json?.response?.result) ? json.response.result : [];
+    const parsed = _formatVworldPlace(results.find(item => item?.type === 'parcel') || results[0]);
+    if (!parsed) return _runningPlaceFallback(summary, 'unavailable');
+    return {
+      status: 'resolved',
+      label: parsed.label,
+      provider: 'vworld',
+      point: center,
+      adminArea: parsed.adminArea,
+    };
+  } catch (e) {
+    console.warn('[running-session] place lookup failed:', e);
+    return _runningPlaceFallback(summary, 'unavailable');
+  }
+}
+
+async function _ensureRunningPlaceSummary(summary) {
+  if (_session.placeSummary?.status === 'resolved') return _session.placeSummary;
+  if (!_session.placePromise) {
+    _session.placePromise = resolveRunningPlaceSummary(summary).then((place) => {
+      _session.placeSummary = place;
+      _session.placePromise = null;
+      return place;
+    });
+  }
+  return _session.placePromise;
+}
+
+function _syncWorkoutRunData(summary, placeSummary = _session.placeSummary) {
   const durationMin = Math.floor(summary.durationSec / 60);
   const durationSec = summary.durationSec % 60;
   S.workout.running = !!(summary.distanceKm > 0 || summary.durationSec > 0 || summary.pointCount > 0);
+  S.workout.sessionIndex = RUNNING_WORKOUT_SESSION_INDEX;
+  S.workout.sessionId = 'running-track';
   S.workout.runData = {
     ...(S.workout.runData || {}),
     distance: summary.distanceKm,
     durationMin,
     durationSec,
-    memo: S.workout.runData?.memo || '러닝 세션',
+    memo: '',
     source: 'gps',
     startedAt: summary.startedAt || null,
     endedAt: summary.endedAt || null,
     route: downsampleRunningRoute(_session.route),
     routeSummary: summary,
-    placeSummary: {
-      status: summary.centroid ? 'gps_only' : 'unavailable',
-      label: summary.centroid ? '대한민국 위치 기록' : '위치 기록',
-      provider: null,
-    },
+    placeSummary: placeSummary || _runningPlaceFallback(summary),
     avgPaceSecPerKm: summary.avgPaceSecPerKm || 0,
     gpsAccuracySummary: summary.gpsAccuracySummary || null,
   };
@@ -292,6 +377,8 @@ function _resetLiveSession() {
     mapRenderSeq: _session.mapRenderSeq + 1,
     lastError: '',
     saving: false,
+    placeSummary: null,
+    placePromise: null,
   });
 }
 
@@ -341,14 +428,43 @@ function _startTicker() {
 
 function _positionToPoint(position) {
   const coords = position?.coords || {};
+  const sensor = _readRunningSensorSnapshot(position);
   return _safePoint({
     lat: coords.latitude,
     lng: coords.longitude,
     ts: position?.timestamp || _now(),
     accuracy: coords.accuracy,
-    altitude: coords.altitude,
+    altitude: coords.altitude ?? sensor.altitude,
     speed: coords.speed,
+    heartRateBpm: sensor.heartRateBpm,
+    cadenceSpm: sensor.cadenceSpm,
   });
+}
+
+function _readRunningSensorSnapshot(position = null) {
+  if (typeof window === 'undefined') return {};
+  const providers = [
+    window.__tomatoRunningSensorSnapshot,
+    window.__tomatoRunningSensors?.snapshot,
+    window.__tomatoRunningSensors?.getSnapshot,
+    window.TomatoRunningSensors?.getSnapshot,
+  ].filter(Boolean);
+  for (const provider of providers) {
+    try {
+      const raw = typeof provider === 'function'
+        ? provider({ position, phase: _session.phase, startedAt: _session.startedAt })
+        : provider;
+      if (!raw || typeof raw !== 'object') continue;
+      return {
+        altitude: _optionalFiniteNumber(raw.altitudeM ?? raw.altitude),
+        heartRateBpm: _optionalNumber(raw.heartRateBpm ?? raw.heartRate ?? raw.bpm),
+        cadenceSpm: _optionalNumber(raw.cadenceSpm ?? raw.cadence ?? raw.stepsPerMinute),
+      };
+    } catch (e) {
+      console.warn('[running-session] sensor snapshot skipped:', e);
+    }
+  }
+  return {};
 }
 
 function _requestPreviewPosition() {
@@ -441,9 +557,15 @@ function _finishRun() {
   _session.pausedAt = null;
   _stopWatch();
   _stopTicker();
-  _syncWorkoutRunData(_currentSummary());
+  const summary = _currentSummary();
+  _session.placeSummary = _runningPlaceFallback(summary);
+  _syncWorkoutRunData(summary);
   _publishRunningLiveState(false);
   _render();
+  _ensureRunningPlaceSummary(summary).then((place) => {
+    _syncWorkoutRunData(_currentSummary(), place);
+    if (_session.open && _session.phase === 'summary') _render();
+  });
 }
 
 async function _saveSummary() {
@@ -452,7 +574,8 @@ async function _saveSummary() {
   const summary = _currentSummary();
   const targetDateKey = _workoutDateKeyFromState();
   const targetSessionIndex = _workoutSessionIndexFromState();
-  _syncWorkoutRunData(summary);
+  const placeSummary = await _ensureRunningPlaceSummary(summary);
+  _syncWorkoutRunData(summary, placeSummary);
   _render();
   try {
     const { saveWorkoutDay } = await import('./save.js');
@@ -549,17 +672,18 @@ function _renderProgress() {
   const elapsed = _elapsedSec();
   const isPaused = _session.phase === 'paused';
   const pace = summary.distanceKm > 0 ? formatRunningPace(elapsed / summary.distanceKm) : "--'--''";
+  const bpm = _latestRouteMetric('heartRateBpm');
   const error = _session.lastError ? `<div class="wt-run-gps-note">${_escapeHtml(_session.lastError)}</div>` : '';
   return `
     <section class="wt-running-screen wt-running-screen--progress" data-running-screen="progress">
       <div class="wt-run-live-stats">
         <div><b>${pace}</b><span>페이스</span></div>
-        <div><b>--</b><span>BPM</span></div>
+        <div><b>${bpm ?? '--'}</b><span>BPM</span></div>
         <div><b>${formatRunningDuration(elapsed)}</b><span>시간</span></div>
       </div>
       <main class="wt-run-live-main">
         <div class="wt-run-live-heart">
-          <strong>--</strong>
+          <strong>${bpm ?? '--'}</strong>
           <span>분당 심박수</span>
           ${error}
         </div>
@@ -578,6 +702,14 @@ function _renderProgress() {
   `;
 }
 
+function _latestRouteMetric(key) {
+  for (let i = _session.route.length - 1; i >= 0; i -= 1) {
+    const value = _optionalNumber(_session.route[i]?.[key]);
+    if (value != null) return Math.round(value);
+  }
+  return null;
+}
+
 function _summaryTitle(summary) {
   const d = new Date(summary.endedAt || _now());
   const weekday = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'][d.getDay()];
@@ -589,7 +721,10 @@ function _renderSummary() {
   const distance = summary.distanceKm.toFixed(2);
   const pace = formatRunningPace(summary.avgPaceSecPerKm);
   const time = formatRunningDuration(summary.durationSec);
-  const location = summary.centroid ? '대한민국 위치 기록' : '위치 기록';
+  const location = _session.placeSummary?.label || _runningPlaceFallback(summary).label;
+  const elevation = summary.elevationGainM == null ? '--' : `${Math.round(summary.elevationGainM)} m`;
+  const heartRate = summary.avgHeartRateBpm == null ? '--' : `${Math.round(summary.avgHeartRateBpm)}`;
+  const cadence = summary.cadenceSpm == null ? '--' : `${Math.round(summary.cadenceSpm)}`;
   return `
     <section class="wt-running-screen wt-running-screen--summary" data-running-screen="summary">
       <header class="wt-run-summary-topbar">
@@ -605,12 +740,13 @@ function _renderSummary() {
           <div><b>${pace}</b><span>평균 페이스</span></div>
           <div><b>${time}</b><span>시간</span></div>
           <div><b>${summary.calories}</b><span>칼로리</span></div>
-          <div><b>${summary.elevationGainM} m</b><span>고도 상승</span></div>
-          <div><b>${summary.avgHeartRateBpm || 0}♡</b><span>평균 심박수</span></div>
-          <div><b>${summary.cadenceSpm || 0}</b><span>케이던스</span></div>
+          <div><b>${elevation}</b><span>고도 상승</span></div>
+          <div><b>${heartRate}</b><span>평균 심박수</span></div>
+          <div><b>${cadence}</b><span>케이던스</span></div>
         </div>
         <div class="wt-run-summary-map">
           ${_renderRealMapShell('summary', location)}
+          <div class="wt-run-summary-map-label">${_escapeHtml(location)}</div>
         </div>
       </main>
       <footer class="wt-run-summary-actions">
@@ -666,6 +802,8 @@ export function initRunningSession() {
 export function wtOpenRunningSession() {
   initRunningSession();
   _resetLiveSession();
+  S.workout.sessionIndex = RUNNING_WORKOUT_SESSION_INDEX;
+  S.workout.sessionId = 'running-track';
   _session.open = true;
   _session.phase = 'start';
   _render();

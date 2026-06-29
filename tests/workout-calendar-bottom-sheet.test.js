@@ -122,42 +122,93 @@ test('floating add button uses direct sheet action binding', () => {
   const detailEnd = calendarJs.indexOf('function _renderWorkoutDetailSummaryCard', detailStart);
   assert.ok(detailStart >= 0 && detailEnd > detailStart, 'workout detail renderer should be present');
   const detail = calendarJs.slice(detailStart, detailEnd);
-  assert.match(detail, /class="wt-day-fab"[\s\S]*data-wt-day-add-session[\s\S]*data-date-key="\$\{_esc\(key\)\}"/);
+  assert.match(detail, /const fabAttrs = runningActive[\s\S]*data-wt-day-add-running[\s\S]*data-date-key="\$\{_esc\(key\)\}"/);
+  assert.match(detail, /:\s*`data-wt-day-add-session data-date-key="\$\{_esc\(key\)\}"/);
+  assert.match(detail, /class="wt-day-fab \$\{runningActive \? 'wt-day-fab--running' : ''\}"/);
   assert.doesNotMatch(detail, /class="wt-day-fab"[^>]*onclick=/);
   assert.match(calendarJs, /_bindWorkoutHomeSheetActions\(root\)/);
   assert.match(calendarJs, /function _bindWorkoutHomeSheetActions\(root\)/);
   assert.match(calendarJs, /sheet\.addEventListener\('click', \([\s\S]*\}, true\)/);
   assert.match(calendarJs, /event\.target instanceof Element \? event\.target : event\.target\?\.parentElement/);
+  assert.match(calendarJs, /const addRunning = target\?\.closest\?\.\('\[data-wt-day-add-running\]'\)/);
+  assert.match(calendarJs, /Promise\.resolve\(_openWorkoutHomeRunning\(key\)\)/);
   assert.match(calendarJs, /target\?\.closest\?\.\('\[data-wt-day-add-session\]'\)/);
   assert.match(calendarJs, /event\.stopPropagation\(\)/);
   assert.match(calendarJs, /Promise\.resolve\(_addWorkoutHomeSession\(key\)\)/);
 });
 
+test('workout bottom sheet replaces the third gym session with a dedicated running tab', () => {
+  const tabStart = calendarJs.indexOf('function _renderWorkoutDetailSessionTabs');
+  const tabEnd = calendarJs.indexOf('function _renderWorkoutDetailRecorded', tabStart);
+  const openStart = calendarJs.indexOf('async function _openWorkoutHomeRunning');
+  const openEnd = calendarJs.indexOf('function _formatWorkoutExportText', openStart);
+  assert.ok(tabStart >= 0 && tabEnd > tabStart, 'session tab renderer should be present');
+  assert.ok(openStart >= 0 && openEnd > openStart, 'running opener should be present');
+  const tabs = calendarJs.slice(tabStart, tabEnd);
+  const opener = calendarJs.slice(openStart, openEnd);
+
+  assert.match(calendarJs, /const WORKOUT_GYM_SESSION_COUNT = 2/);
+  assert.match(calendarJs, /const WORKOUT_RUNNING_SESSION_INDEX = 2/);
+  assert.match(tabs, /\.slice\(0, WORKOUT_GYM_SESSION_COUNT\)/);
+  assert.match(tabs, /window\._wtCalSelectRunning\(\)/);
+  assert.match(tabs, />\s*러닝\$\{hasRunning \? '<b><\/b>' : ''\}\s*<\/button>/);
+  assert.doesNotMatch(tabs, /3회차/);
+  assert.match(calendarJs, /function _selectWorkoutHomeRunning\(\)[\s\S]*_workoutHomeSessionIndex = WORKOUT_RUNNING_SESSION_INDEX/);
+  assert.match(calendarJs, /window\._wtCalSelectRunning = _selectWorkoutHomeRunning/);
+  assert.match(calendarJs, /window\._wtCalAddRunning = _openWorkoutHomeRunning/);
+  assert.match(opener, /_loadWorkoutEditorForSession\(targetKey, WORKOUT_RUNNING_SESSION_INDEX\)/);
+  assert.match(opener, /await import\('\.\/workout\/running-session\.js'\)/);
+  assert.match(opener, /window\.wtOpenRunningSession\(\)/);
+  assert.match(styleCss, /\.wt-day-fab--running/);
+  assert.match(styleCss, /\.wt-running-empty \.wt-empty-center/);
+});
+
 test('running detail card uses the workout read-card shell with running metrics only', () => {
   const metricStart = calendarJs.indexOf('function _runningMetricItems');
+  const mapStart = calendarJs.indexOf('function _renderRunningRouteMap');
   const cardStart = calendarJs.indexOf('function _renderWorkoutRunningDetailCard');
   const cardEnd = calendarJs.indexOf('function _renderWorkoutActivityDetailCard', cardStart);
   assert.ok(metricStart >= 0 && metricStart < cardStart, 'running metric builder should exist before the card');
+  assert.ok(mapStart >= 0 && mapStart < cardStart, 'running map renderer should exist before the card');
   assert.ok(cardStart >= 0 && cardEnd > cardStart, 'running detail card renderer should exist');
   const metricBuilder = calendarJs.slice(metricStart, cardStart);
+  const mapRenderer = calendarJs.slice(mapStart, cardStart);
   const card = calendarJs.slice(cardStart, cardEnd);
 
+  assert.match(calendarJs, /import \{ destroyRunningMaps, renderRunningMap \} from '\.\/workout\/running-map\.js'/);
+  assert.match(calendarJs, /function _mountWorkoutRunningMaps/);
+  assert.match(calendarJs, /renderRunningMap\(shell, \{ points: payload\.points, phase: 'detail' \}\)/);
   assert.match(calendarJs, /runRouteSummary && typeof d\.runRouteSummary === 'object'/);
   assert.match(calendarJs, /distanceKm:\s*runDistance/);
   assert.match(calendarJs, /avgPaceSecPerKm:\s*_num\(d\.runAvgPaceSecPerKm\)/);
-  assert.match(calendarJs, /gpsAccuracySummary:\s*runAccuracy/);
+  assert.match(calendarJs, /placeSummary:\s*d\.runPlaceSummary \|\| null/);
+  assert.match(calendarJs, /avgHeartRateBpm:\s*Number\(runSummary\.avgHeartRateBpm\) > 0/);
   assert.match(calendarJs, /if \(row\?\.key === 'running'\) return _renderWorkoutRunningDetailCard/);
   assert.match(card, /wt-day-ex-card wt-max-read-card wt-running-read-card/);
-  assert.match(card, /wt-max-plan wt-running-plan/);
+  assert.match(card, /wt-running-headline/);
+  assert.match(card, /_renderRunningRouteMap\(row\)/);
+  assert.match(mapRenderer, /wt-running-route-map wt-run-real-map/);
+  assert.match(mapRenderer, /data-wt-running-route-map/);
+  assert.match(mapRenderer, /wt-running-route-place/);
+  assert.match(mapRenderer, /실제 지도 준비 중/);
   assert.match(card, /wt-running-metric-grid/);
   assert.match(metricBuilder, /거리/);
   assert.match(metricBuilder, /시간/);
   assert.match(metricBuilder, /평균 페이스/);
   assert.match(metricBuilder, /칼로리/);
   assert.match(metricBuilder, /고도 상승/);
+  assert.match(metricBuilder, /평균 심박수/);
   assert.match(metricBuilder, /케이던스/);
+  assert.match(metricBuilder, /row\.elevationGainM == null \? '--'/);
+  assert.match(metricBuilder, /row\.avgHeartRateBpm == null \? '--'/);
+  assert.match(metricBuilder, /row\.cadenceSpm == null \? '--'/);
   assert.doesNotMatch(card, /REP|RIR|KG|_renderWorkoutSetRows|wt-max-set-row/);
+  assert.doesNotMatch(card, /wt-max-plan wt-running-plan|wt-running-route-mini|경로 포인트|GPS 평균 정확도|대한민국 위치 기록|오늘 러닝|row\.detail/);
+  assert.match(calendarJs, /function _renderRunningRouteDetail\(row\) \{\s*return '';\s*\}/);
   assert.match(styleCss, /\.wt-running-read-card/);
+  assert.match(styleCss, /\.wt-running-route-map/);
+  assert.match(styleCss, /\.wt-running-route-place/);
+  assert.doesNotMatch(styleCss, /wt-running-route-mini/);
   assert.match(styleCss, /\.wt-running-metric-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(styleCss, /\.wt-running-read-card\.is-collapsed \.wt-running-metric-grid/);
 });
@@ -340,5 +391,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260629z6-trainer-glass-squircle/);
+  assert.match(swJs, /tomatofarm-v20260629z7-running-map-tab-motion/);
 });

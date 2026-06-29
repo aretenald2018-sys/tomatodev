@@ -3,15 +3,30 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-29-trainer-quest-glass-squircle.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-trainer-quest-glass-squircle-review.md`
-- 현재 단계: `review complete — Trainer Quest Glass Squircle Slice 1`
+- 계획 문서: `docs/ai/features/2026-06-29-running-result-map-tab-motion.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-running-result-map-tab-motion-review.md`
+- 현재 단계: `execution/review complete — Running Result Map Tab Motion Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `트레이너 퀘스트 모달을 glass sheet, 느린 타자, 50% 이하 폭의 rounded squircle 선택지로 수정하고 리뷰까지 완료했다.`
-- 다음 액션: `없음.`
+- 마지막 완료: `러닝 결과 지도/러닝 탭/홈 모션 Slice 1 구현과 리뷰를 완료했다.`
+- 다음 액션: `커밋/푸시 후 Dashboard3 Pages 배포 검증을 수행한다.`
 - 차단 사유: `없음.`
 
 ## 직전 완료 요약
+
+- Running Result Map Tab Motion Slice 1:
+  1. `render-calendar.js`에서 운동 상세 탭을 `1회차`, `2회차`, `러닝`으로 변경하고 러닝 탭을 헬스 세션과 분리했다.
+  2. 러닝 상세 카드는 가짜 격자 지도와 중복 chip을 제거하고 `renderRunningMap` 실제 지도 셸에 GPS route를 표시한다.
+  3. `workout/running-session.js`에서 러닝 저장 session index를 `2`로 고정하고 VWorld reverse geocode 동 단위 위치 라벨을 저장한다.
+  4. phone/watch bridge sensor hook으로 고도, 심박, 케이던스를 수집할 수 있게 하고 미수집 값은 `--`로 표시한다.
+  5. 홈 라이프존 러닝 actor를 기존 스프라이트 기반 작은 제자리 러닝 모션으로 조정했다.
+  6. 리뷰: `docs/ai/reviews/2026-06-29-running-result-map-tab-motion-review.md`
+  7. PASS: `node --check workout/running-session.js; node --check render-calendar.js; node --check home/life-zone.js; node --check home/life-zone-state.js; node --check sw.js`
+  8. PASS: `node --test tests/running-entry.test.js tests/running-tracker.test.js tests/home-life-zone-npc-quest.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-empty-picker-density.test.js` — 42 tests passed
+  9. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=857`
+  10. PASS: `$tests = rg --files tests | Where-Object { $_ -match '\.test\.js$' }; node --test $tests` — 594 tests passed
+  11. PASS: `git diff --check`
+  12. not verified yet: Dashboard3 Pages 배포 검증 전.
+  13. not verified yet: 인증 계정이 없어 실제 `운동 탭 -> 러닝 탭 -> 러닝 시작/완료/저장 -> 상세 카드 지도` UI flow는 직접 확인 필요.
 
 - Trainer Quest Glass Squircle Slice 1:
   1. `modals/trainer-quest-modal.js` 말풍선 타자 간격을 `28ms`에서 `56ms`로 늦췄다.
