@@ -7999,9 +7999,9 @@ body.wt-running-session-open {
 .lz-npc-quest {
   position: absolute;
   left: calc(1084 / 1672 * 100%);
-  top: calc(824 / 1672 * 100%);
+  top: calc(792 / 1672 * 100%);
   z-index: 120;
-  width: clamp(52px, calc(168 / 1672 * 100%), 76px);
+  width: clamp(58px, calc(188 / 1672 * 100%), 82px);
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -8026,6 +8026,7 @@ body.wt-running-session-open {
   overflow: hidden;
   pointer-events: none;
   transform-origin: 50% 70%;
+  transform: translate(var(--lz-bulb-x), var(--lz-bulb-y));
   filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.28));
   animation: lz-npc-bulb-blink 2.4s ease-in-out infinite;
 }
@@ -8047,6 +8048,10 @@ body.wt-running-session-open {
 .lz-npc-quest--trainer .lz-nameplate {
   order: -1;
   margin-bottom: 1px;
+}
+.lz-npc-quest--trainer .lz-npc-bulb {
+  --lz-bulb-x: 62%;
+  --lz-bulb-y: -72%;
 }
 .lz-npc-quest:active {
   transform: translate(-50%, 0) scale(0.96);

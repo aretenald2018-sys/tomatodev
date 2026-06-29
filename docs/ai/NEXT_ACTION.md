@@ -3,13 +3,33 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-29-home-life-zone-running-stale-priority.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-home-life-zone-running-stale-priority-review.md`
-- 현재 단계: `홈 라이프존 저장 러닝 상태 우선순위 수정 완료`
+- 계획 문서: `docs/ai/features/2026-06-29-home-life-zone-trainer-quest-bubble-offset.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-home-life-zone-trainer-quest-bubble-offset-review.md`
+- 현재 단계: `홈 라이프존 트레이너 퀘스트 전구 위치 수정 및 리뷰 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `라이브 러닝만 최우선으로 두고, 저장된 러닝은 최신 점심 스냅샷보다 뒤에 판정되도록 수정했다.`
+- 마지막 완료: `트레이너 전구 버튼의 세로 기준점을 올리고 trainer 전용 전구 offset을 추가해 얼굴 중앙을 덮지 않게 수정했다.`
 - 다음 액션: `없음.`
 - 차단 사유: `없음.`
+
+## 방금 계획한 항목
+
+- Home Life Zone Trainer Quest Bubble Offset 계획:
+  1. `.lz-npc-quest`의 현재 `left:1084`, `top:824`, `width:168 기준` 배치가 모바일 축소 시 트레이너 얼굴과 겹치는 원인임을 확인했다.
+  2. 전구를 새 자산 없이 기존 `npc-quest-bubble.png` DOM의 trainer 전용 offset으로 얼굴 우상단에 분리한다.
+  3. 수정 범위는 `style.css`, `tests/home-life-zone-npc-quest.test.js`, `sw.js`, 리뷰/NEXT_ACTION 문서로 제한했다.
+
+- Home Life Zone Trainer Quest Bubble Offset Slice 1:
+  1. `style.css`에서 `.lz-npc-quest` `top`을 `792`로 올리고 폭을 `188 기준`으로 넓혔다.
+  2. `.lz-npc-quest--trainer .lz-npc-bulb`에 `--lz-bulb-x: 62%`, `--lz-bulb-y: -72%`를 추가했다.
+  3. reduced motion에서도 offset이 유지되도록 `.lz-npc-bulb` 기본 `transform`을 CSS 변수 기반으로 지정했다.
+  4. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260629z27-trainer-quest-bubble-offset`으로 갱신했다.
+  5. 캐시 marker 회귀 테스트를 새 버전으로 갱신했다.
+  6. PASS: `node --check home/life-zone.js; node --check sw.js`
+  7. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/trainer-quest-modal.test.js` — 15 tests passed
+  8. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
+  9. PASS: `node --test tests/*.test.js` — 608 tests passed
+  10. PASS: `git diff --check`
+  11. not verified yet: 인증 세션이 없어 실제 배포 홈 화면에서 트레이너 얼굴 겹침 UI flow는 직접 시각 확인하지 못했다.
 
 ## 직전 완료 요약
 
