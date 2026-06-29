@@ -11,14 +11,16 @@ import { _renderDateLabel,
          renderCalorieTracker }
                                      from './render.js';
 import { _renderWorkoutTimer, _renderTimerControls,
-         _fmtDuration, wtRestTimerSkip, _isViewingTimerDate }
+         _fmtDuration, wtRestTimerSkip, _isViewingTimerDate,
+         wtApplyActiveWorkoutDraft, wtPersistActiveWorkoutDraft }
                                      from './timers.js';
 import { _renderRunningForm, _renderCfForm,
          _renderStretchForm, _renderSwimForm }
                                      from './activity-forms.js';
 import { _initButtonEventListeners } from './status.js';
-import { _renderExerciseList }       from './exercises.js?v=20260517v3';
+import { _renderExerciseList }       from './exercises.js?v=20260625z47-workout-record-card-standard';
 import { getDay, isFuture, TODAY, isExpertModeEnabled, getExpertPreset, dateKey } from '../data.js';
+import { getWorkoutSessions } from './sessions.js';
 
 function _isActualWorkoutSet(set) {
   if (!set || set.setType === 'warmup') return false;
@@ -77,12 +79,22 @@ function _restoreWorkoutExercises(day, rejectedLegacyMaxMeta) {
   return exercises.filter(entry => _isActualWorkoutEntry(entry) || !_isMaxDraftEntry(entry));
 }
 
+function _takeTargetSessionIndex() {
+  const raw = window.__wtTargetSessionIndex;
+  if (raw === undefined || raw === null) return null;
+  try { delete window.__wtTargetSessionIndex; } catch { window.__wtTargetSessionIndex = null; }
+  const n = Number(raw);
+  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null;
+}
+
 // ── 날짜 로드 ────────────────────────────────────────────────────
 export function loadWorkoutDate(y, m, d) {
   const cur = S.shared.date;
   const isSameDate = cur && cur.y === y && cur.m === m && cur.d === d;
+  const requestedSessionIndex = _takeTargetSessionIndex();
+  const targetSessionIndex = requestedSessionIndex ?? (isSameDate ? Math.max(0, Number(S.workout.sessionIndex) || 0) : 0);
 
-  if (isSameDate) {
+  if (isSameDate && targetSessionIndex === (Number(S.workout.sessionIndex) || 0)) {
     _renderDateLabel();
     _renderExerciseList();
     _renderWorkoutTimer();
@@ -103,47 +115,64 @@ export function loadWorkoutDate(y, m, d) {
   S.shared.date = { y, m, d };
   const currentKey = dateKey(y, m, d);
   const day  = getDay(y, m, d);
-  const loadedMax = _normalizeLoadedMaxMeta(day, currentKey);
+  const sessions = getWorkoutSessions(day, { minCount: targetSessionIndex + 1 });
+  const draftResult = wtApplyActiveWorkoutDraft(sessions[targetSessionIndex] || sessions[0] || {}, {
+    date: { y, m, d },
+    sessionIndex: targetSessionIndex,
+  });
+  const workoutSource = draftResult.source;
+  const loadedMax = _normalizeLoadedMaxMeta(workoutSource, currentKey);
 
   // 운동 도메인 복원
   const w = S.workout;
-  w.exercises   = _restoreWorkoutExercises(day, loadedMax.rejectedLegacy);
-  w.cf          = !!day.cf;
-  w.stretching  = !!day.stretching;
-  w.swimming    = !!day.swimming;
-  w.running     = !!day.running;
+  w.sessionIndex = targetSessionIndex;
+  w.sessionId    = workoutSource.id || `session-${targetSessionIndex + 1}`;
+  w.exercises   = _restoreWorkoutExercises(workoutSource, loadedMax.rejectedLegacy);
+  w.cf          = !!workoutSource.cf;
+  w.stretching  = !!workoutSource.stretching;
+  w.swimming    = !!workoutSource.swimming;
+  w.running     = !!workoutSource.running;
   w.runData     = {
-    distance:    day.runDistance || 0,
-    durationMin: day.runDurationMin || 0,
-    durationSec: day.runDurationSec || 0,
-    memo:        day.runMemo || '',
+    distance:    workoutSource.runDistance || 0,
+    durationMin: workoutSource.runDurationMin || 0,
+    durationSec: workoutSource.runDurationSec || 0,
+    memo:        workoutSource.runMemo || '',
+    source:      workoutSource.runSource || 'manual',
+    startedAt:   workoutSource.runStartedAt || null,
+    endedAt:     workoutSource.runEndedAt || null,
+    route:       Array.isArray(workoutSource.runRoute) ? workoutSource.runRoute : [],
+    routeSummary: workoutSource.runRouteSummary || null,
+    placeSummary: workoutSource.runPlaceSummary || null,
+    avgPaceSecPerKm: Number(workoutSource.runAvgPaceSecPerKm) || 0,
+    gpsAccuracySummary: workoutSource.runGpsAccuracySummary || null,
   };
   w.cfData = {
-    wod:         day.cfWod || '',
-    durationMin: day.cfDurationMin || 0,
-    durationSec: day.cfDurationSec || 0,
-    memo:        day.cfMemo || '',
+    wod:         workoutSource.cfWod || '',
+    durationMin: workoutSource.cfDurationMin || 0,
+    durationSec: workoutSource.cfDurationSec || 0,
+    memo:        workoutSource.cfMemo || '',
   };
   w.stretchData = {
-    duration:    day.stretchDuration || 0,
-    memo:        day.stretchMemo || '',
+    duration:    workoutSource.stretchDuration || 0,
+    memo:        workoutSource.stretchMemo || '',
   };
   w.swimData = {
-    distance:    day.swimDistance || 0,
-    durationMin: day.swimDurationMin || 0,
-    durationSec: day.swimDurationSec || 0,
-    stroke:      day.swimStroke || '',
-    memo:        day.swimMemo || '',
+    distance:    workoutSource.swimDistance || 0,
+    durationMin: workoutSource.swimDurationMin || 0,
+    durationSec: workoutSource.swimDurationSec || 0,
+    stroke:      workoutSource.swimStroke || '',
+    memo:        workoutSource.swimMemo || '',
   };
-  w.wineFree        = !!day.wine_free;
-  w.workoutDuration = day.workoutDuration || 0;
+  w.wineFree        = !!workoutSource.wine_free;
+  w.workoutDuration = workoutSource.workoutDuration || 0;
+  w.workoutTimeline = workoutSource.workoutTimeline || null;
   // 전문가 모드 메타데이터 복원 (day에 저장된 값 > preset 기본값)
   // 테스트모드도 그날 헬스장/기구 필터를 유지해야 하므로 gymId를 복원한다.
-  w.routineMeta  = day.routineMeta || null;
-  w.pickerGymFilter = day.pickerGymFilter || null;
+  w.routineMeta  = workoutSource.routineMeta || null;
+  w.pickerGymFilter = workoutSource.pickerGymFilter || null;
   w.maxMeta = loadedMax.meta;
   const _preset = getExpertPreset();
-  w.currentGymId = day.gymId || (isExpertModeEnabled() ? (_preset.currentGymId || null) : null);
+  w.currentGymId = workoutSource.gymId || (isExpertModeEnabled() ? (_preset.currentGymId || null) : null);
 
   // ⚠️ 스톱워치(S.workout.workoutStartTime/workoutTimerInterval/workoutTimerDate)는
   // 끝내기/리셋 전에는 절대 멈추면 안 됨. 여기서는 건드리지 않는다.
@@ -186,12 +215,12 @@ export function loadWorkoutDate(y, m, d) {
   if (day.lPhoto) window._mealPhotos.lunch = day.lPhoto;
   if (day.dPhoto) window._mealPhotos.dinner = day.dPhoto;
   if (day.sPhoto) window._mealPhotos.snack = day.sPhoto;
-  if (day.workoutPhoto) window._mealPhotos.workout = day.workoutPhoto;
+  if (workoutSource.workoutPhoto) window._mealPhotos.workout = workoutSource.workoutPhoto;
 
   _renderDateLabel();
   _renderStretchingToggle();
   document.getElementById('wt-chip-swimming')?.classList.toggle('active', w.swimming);
-  document.getElementById('wt-chip-running')?.classList.toggle('active', w.running);
+  document.getElementById('wt-chip-running')?.classList.toggle('has-record', w.running);
   _renderRunningForm();
   _renderCfForm();
   _renderStretchForm();
@@ -210,7 +239,13 @@ export function loadWorkoutDate(y, m, d) {
   _renderMealPhotos();
 
   const memoEl = document.getElementById('wt-workout-memo');
-  if (memoEl) memoEl.value = day.memo || '';
+  if (memoEl) {
+    memoEl.value = workoutSource.memo || '';
+    if (memoEl.dataset.wtDraftBound !== '1') {
+      memoEl.addEventListener('input', () => wtPersistActiveWorkoutDraft('memo input'));
+      memoEl.dataset.wtDraftBound = '1';
+    }
+  }
   const bEl = document.getElementById('wt-meal-breakfast');
   const lEl = document.getElementById('wt-meal-lunch');
   const dEl = document.getElementById('wt-meal-dinner');
@@ -223,7 +258,12 @@ export function loadWorkoutDate(y, m, d) {
   const isFutureDay = isFuture(y, m, d);
   _setInputsDisabled(isFutureDay);
 
-  _restoreFlowState(day);
+  _restoreFlowState(workoutSource);
+  if (draftResult.restored) {
+    setTimeout(() => {
+      window.showToast?.('진행 중이던 운동 기록을 복구했어요', 2200, 'success');
+    }, 0);
+  }
 }
 
 function _restoreFlowState(day) {
@@ -249,6 +289,7 @@ function _restoreFlowState(day) {
     const firstWithRecord = Object.entries(flags).find(([, on]) => on);
     if (firstWithRecord) active = firstWithRecord[0];
   }
+  if (active === 'running') active = 'gym';
   if (window._wtSetActiveType) window._wtSetActiveType(active);
 
   // 2026-04-20: 타이머 바는 운동 탭에 있는 동안 **항상** 노출.
@@ -286,6 +327,7 @@ function _setInputsDisabled(disabled) {
   panel.querySelectorAll('input, textarea, select, button').forEach(el => {
     if (el.classList.contains('wt-date-nav-btn')) return;
     if (el.classList.contains('wt-today-btn')) return;
+    if (el.classList.contains('wt-record-back-btn')) return;
     el.disabled = disabled;
   });
   panel.classList.toggle('wt-readonly', !!disabled);

@@ -14,6 +14,7 @@ firebase.initializeApp({
 });
 
 const messaging = firebase.messaging();
+const APP_SCOPE_URL = new URL("../", self.registration.scope).href;
 
 messaging.onBackgroundMessage((payload) => {
   const { title, body } = payload.notification || {};
@@ -40,13 +41,13 @@ self.addEventListener("notificationclick", (event) => {
     const windowClients = await clients.matchAll({ type: "window", includeUncontrolled: true });
     let focused = null;
     for (const client of windowClients) {
-      if (client.url.includes("/tomatofarm/") && "focus" in client) {
+      if (client.url.startsWith(APP_SCOPE_URL) && "focus" in client) {
         focused = await client.focus();
         break;
       }
     }
     if (!focused && clients.openWindow) {
-      focused = await clients.openWindow("/tomatofarm/");
+      focused = await clients.openWindow(APP_SCOPE_URL);
     }
     if (focused && notifId) {
       try {

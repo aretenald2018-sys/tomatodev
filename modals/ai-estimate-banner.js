@@ -338,7 +338,7 @@ export async function confirmEstimate(meal) {
 
   _renderMealFoodItems(meal);
   _renderDietResults();
-  await _autoSaveDiet();
+  await _autoSaveDiet({ meal });
 
   dismiss(meal, { keepPhoto: true, silent: true });
   showToast(`AI 추정 ${Math.round(st.estimate.totalKcal)}kcal 반영 완료`, 2500, 'success');

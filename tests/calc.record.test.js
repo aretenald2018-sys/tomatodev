@@ -18,6 +18,10 @@ test('isExerciseDaySuccess · stretching=true → 성공', () => {
 test('isExerciseDaySuccess · running=true → 성공', () => {
   assert.strictEqual(isExerciseDaySuccess({ running: true }), true);
 });
+test('isExerciseDaySuccess · GPS route-only running → 성공', () => {
+  assert.strictEqual(isExerciseDaySuccess({ runRoute: [{ lat: 37.5, lng: 127 }] }), true);
+  assert.strictEqual(isExerciseDaySuccess({ runRouteSummary: { pointCount: 2 } }), true);
+});
 test('isExerciseDaySuccess · swimming=true → 성공', () => {
   assert.strictEqual(isExerciseDaySuccess({ swimming: true }), true);
 });

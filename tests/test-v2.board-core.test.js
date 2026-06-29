@@ -20,6 +20,8 @@ import {
   getLineup, toggleLineup,
   isSettleDue, buildSettleRows, applySettle,
   archiveBenchmark, addBenchmark,
+  findExerciseProgramBenchmark, getExerciseProgramSettings, upsertExerciseProgramBenchmark,
+  buildExerciseProgramWorkoutPrescription,
   buildMinimapData, recentPaintLogs, cloneBoard,
 } from '../workout/test-v2/board-core.js';
 import { wendlerWeekPrescription, WENDLER_SCHEMES, defaultWendlerIncrement } from '../workout/test-v2/wendler.js';
@@ -97,7 +99,11 @@ test('보드 생성: 그룹별 사이클 + 사이클당 1스텝(6주 유지) 기
   // 웬들러 종목은 스텝 없음 (파생)
   const squat = b.benchmarks.find(x => x.movementId === 'back_squat');
   assert.equal(squat.program, 'wendler');
+  assert.equal(squat.programStartDate, START);
   assert.equal(squat.wendler.incrementKg, 10); // 하체 기본
+  assert.deepEqual(squat.wendler.tmAnchors.map(a => ({ weekStart: a.weekStart, tmKg: a.tmKg })), [
+    { weekStart: START, tmKg: 150 },
+  ]);
   assert.equal(b.steps.filter(s => s.benchmarkId === squat.id).length, 0);
 });
 
@@ -510,6 +516,10 @@ test('정산(wendler): 성장 시 TM + 증량폭(하체 +10)', () => {
   applySettle(b, 'lower', { [squatRow.key]: 'grow' }, afterCycle, 1);
   const squat = b.benchmarks.find(x => x.movementId === 'back_squat');
   assert.equal(squat.wendler.tmKg, 160);
+  assert.deepEqual(squat.wendler.tmAnchors.map(a => ({ weekStart: a.weekStart, tmKg: a.tmKg, source: a.source })), [
+    { weekStart: START, tmKg: 150, source: 'legacy' },
+    { weekStart: afterCycle, tmKg: 160, source: 'settle' },
+  ]);
   // 다음 사이클 W1 처방도 새 TM 기준
   const next = activeCycleOf(b, 'lower');
   const cells = expandColumnCells(b, squat.id, 'volume', next.id, afterCycle);
@@ -548,6 +558,244 @@ test('새 종목 추가: 다음 주 월요일부터 남은 주만큼 스텝 생�
   assert.equal(cells[1].weekStart, addWeeks(START, 1));
   assert.equal(cells[1].span, 5);
   assert.equal(added.incrementKg, 2.5); // 상체 기본 시드
+});
+
+test('종목 프로그램 계약: exerciseId 기준으로 기존 stair 벤치마크를 갱신한다', () => {
+  const b = buildBoardFromOnboarding({
+    selections: [{
+      exerciseId: 'ex_bench',
+      movementId: 'barbell_bench',
+      label: '벤치프레스',
+      groupId: 'chest',
+      tracks: { volume: { kg: 80, reps: 12 } },
+    }],
+    startDate: START,
+    source: 'test',
+  });
+  const before = b.benchmarks[0];
+  const res = upsertExerciseProgramBenchmark(b, {
+    id: 'ex_bench',
+    name: '벤치프레스',
+    muscleId: 'chest',
+    movementId: 'barbell_bench',
+  }, {
+    program: 'stair',
+    tracks: ['volume', 'intensity'],
+    seed: {
+      volume: { kg: 82.5, reps: 10 },
+      intensity: { kg: 92.5, reps: 5 },
+    },
+    setsDefault: 5,
+  }, { todayKey: TODAY });
+  assert.equal(res.action, 'updated');
+  assert.equal(res.benchmark.id, before.id);
+  assert.equal(b.benchmarks.length, 1);
+  assert.deepEqual(res.benchmark.tracks, ['volume', 'intensity']);
+  assert.equal(res.benchmark.seed.volume.kg, 82.5);
+  assert.equal(res.benchmark.seed.intensity.reps, 5);
+  assert.equal(res.benchmark.setsDefault, 5);
+  const cy = activeCycleOf(b, 'chest');
+  assert.equal(b.steps.filter(s => s.benchmarkId === before.id && s.cycleId === cy.id).length, 2);
+});
+
+test('종목 프로그램 계약: 웬들러 전환은 설정을 정규화하고 활성 stair 스텝을 제거한다', () => {
+  const b = fixtureBoard();
+  const bench = b.benchmarks.find(x => x.movementId === 'barbell_bench');
+  const res = upsertExerciseProgramBenchmark(b, {
+    movementId: 'barbell_bench',
+    name: '벤치프레스',
+    muscleId: 'chest',
+  }, {
+    program: 'wendler',
+    tracks: ['volume'],
+    seed: { volume: { kg: 100, reps: 5 } },
+    wendler: {
+      tmKg: 120,
+      scheme: 'w531',
+      startWeek: 2,
+      supplemental: { kind: 'fsl', sets: 3, reps: 5 },
+    },
+  }, { todayKey: TODAY });
+  assert.equal(res.action, 'updated');
+  assert.equal(res.benchmark.id, bench.id);
+  assert.equal(res.benchmark.program, 'wendler');
+  assert.equal(res.benchmark.wendler.scheme, 'w531');
+  assert.equal(res.benchmark.wendler.startWeek, 2);
+  assert.equal(res.benchmark.wendler.supplemental.kind, 'fsl');
+  const cy = activeCycleOf(b, 'chest');
+  assert.equal(b.steps.some(s => s.benchmarkId === bench.id && s.cycleId === cy.id), false);
+});
+
+test('종목 프로그램 계약: programStartDate는 benchmark에 저장하고 group cycle은 유지한다', () => {
+  const b = fixtureBoard();
+  const res = upsertExerciseProgramBenchmark(b, {
+    movementId: 'barbell_bench',
+    name: '벤치프레스',
+    muscleId: 'chest',
+  }, {
+    program: 'wendler',
+    programStartDate: '2026-06-18',
+    tracks: ['volume'],
+    seed: { volume: { kg: 100, reps: 5 } },
+    wendler: { tmKg: 120, scheme: 'w863', roundKg: 2.5 },
+  }, { todayKey: TODAY });
+
+  const cy = activeCycleOf(b, 'chest');
+  assert.equal(cy.startDate, START);
+  assert.equal(cy.weeks, 6);
+  assert.equal(res.benchmark.programStartDate, '2026-06-15');
+  assert.deepEqual(res.benchmark.wendler.tmAnchors.map(a => ({ weekStart: a.weekStart, tmKg: a.tmKg })), [
+    { weekStart: '2026-06-15', tmKg: 120 },
+  ]);
+  const cells = expandColumnCells(b, res.benchmark.id, 'volume', cy.id, TODAY);
+  assert.equal(cells[0].kind, 'rest');
+  assert.equal(cells[1].week, 1);
+  const week1 = buildExerciseProgramWorkoutPrescription(b, res.benchmark, { todayKey: '2026-06-15' });
+  const week2 = buildExerciseProgramWorkoutPrescription(b, res.benchmark, { todayKey: '2026-06-22' });
+  assert.equal(week1.recommendationMeta.cycleWeek, 1);
+  assert.equal(week1.recommendationMeta.programWeek, 1);
+  assert.equal(week1.recommendationMeta.programStartDate, '2026-06-15');
+  assert.equal(week1.recommendationMeta.groupCycleWeek, 2);
+  assert.equal(week1.recommendationMeta.tmAnchorWeekStart, '2026-06-15');
+  assert.equal(week2.recommendationMeta.cycleWeek, 2);
+  assert.equal(week2.recommendationMeta.programWeek, 2);
+  assert.equal(getExerciseProgramSettings(b, { movementId: 'barbell_bench' }).programStartDate, '2026-06-15');
+});
+
+test('종목 프로그램 계약: 과거 TM anchor 수정은 더 늦은 anchor 이후 처방을 바꾸지 않는다', () => {
+  const b = fixtureBoard();
+  const squat = b.benchmarks.find(x => x.movementId === 'back_squat');
+  squat.programStartDate = '2026-06-15';
+  squat.wendler = {
+    ...squat.wendler,
+    programStartDate: '2026-06-15',
+    tmKg: 107.5,
+    tmAnchors: [
+      { weekStart: '2026-06-15', tmKg: 102.5, source: 'manual' },
+      { weekStart: '2026-06-22', tmKg: 107.5, source: 'manual' },
+    ],
+  };
+
+  const beforePast = buildExerciseProgramWorkoutPrescription(b, squat, { todayKey: '2026-06-15' });
+  const beforeFuture = buildExerciseProgramWorkoutPrescription(b, squat, { todayKey: '2026-06-22' });
+  assert.match(beforePast.recommendationMeta.wendlerSignature, /tm:102\.5/);
+  assert.match(beforeFuture.recommendationMeta.wendlerSignature, /tm:107\.5/);
+
+  upsertExerciseProgramBenchmark(b, {
+    movementId: 'back_squat',
+    name: '스쿼트',
+    muscleId: 'lower',
+  }, {
+    program: 'wendler',
+    programStartDate: '2026-06-15',
+    tracks: ['volume'],
+    seed: { volume: { kg: 100, reps: 5 } },
+    wendler: { ...squat.wendler, tmKg: 100 },
+  }, { todayKey: '2026-06-27' });
+
+  assert.deepEqual(squat.wendler.tmAnchors.map(a => ({ weekStart: a.weekStart, tmKg: a.tmKg })), [
+    { weekStart: '2026-06-15', tmKg: 100 },
+    { weekStart: '2026-06-22', tmKg: 107.5 },
+  ]);
+  assert.equal(squat.wendler.tmKg, 107.5);
+  const afterPast = buildExerciseProgramWorkoutPrescription(b, squat, { todayKey: '2026-06-15' });
+  const afterFuture = buildExerciseProgramWorkoutPrescription(b, squat, { todayKey: '2026-06-22' });
+  assert.match(afterPast.recommendationMeta.wendlerSignature, /tm:100/);
+  assert.match(afterFuture.recommendationMeta.wendlerSignature, /tm:107\.5/);
+  assert.equal(afterFuture.recommendationMeta.tmAnchorWeekStart, '2026-06-22');
+});
+
+test('종목 프로그램 계약: 웬들러에서 stair로 복귀해도 wendlerLog는 보존한다', () => {
+  const b = fixtureBoard();
+  const squat = b.benchmarks.find(x => x.movementId === 'back_squat');
+  paintWeek(b, { benchmarkId: squat.id, weekStart: START, log: { at: 1, amrapReps: 11, suppDone: true } });
+  const res = upsertExerciseProgramBenchmark(b, {
+    movementId: 'back_squat',
+    name: '스쿼트',
+    muscleId: 'lower',
+  }, {
+    program: 'stair',
+    tracks: ['volume', 'intensity'],
+    seed: {
+      volume: { kg: 110, reps: 8 },
+      intensity: { kg: 130, reps: 3 },
+    },
+  }, { todayKey: TODAY });
+  assert.equal(res.benchmark.id, squat.id);
+  assert.equal(res.benchmark.program, 'stair');
+  assert.equal(res.benchmark.wendlerLog[START].amrapReps, 11);
+  const cy = activeCycleOf(b, 'lower');
+  assert.equal(b.steps.filter(s => s.benchmarkId === squat.id && s.cycleId === cy.id).length, 2);
+  const settings = getExerciseProgramSettings(b, { movementId: 'back_squat' });
+  assert.equal(settings.program, 'stair');
+  assert.deepEqual(settings.tracks, ['volume', 'intensity']);
+  assert.equal(settings.wendler, null);
+});
+
+test('종목 프로그램 계약: 기본 모드는 연결 벤치마크를 보관 상태로 전환한다', () => {
+  const b = fixtureBoard();
+  const fly = b.benchmarks.find(x => x.movementId === 'chest_fly');
+  const res = upsertExerciseProgramBenchmark(b, { movementId: 'chest_fly', name: '플라이', muscleId: 'chest' }, {
+    program: 'none',
+  }, { todayKey: TODAY });
+  assert.equal(res.action, 'archived');
+  assert.equal(fly.status, 'archived');
+  assert.equal(findExerciseProgramBenchmark(b, { movementId: 'chest_fly' }), null);
+  assert.equal(getExerciseProgramSettings(b, { movementId: 'chest_fly' }).program, 'none');
+});
+
+test('종목 프로그램 처방: stair 트랙은 오늘 운동 세트와 대체 트랙을 만든다', () => {
+  const b = fixtureBoard();
+  const bench = b.benchmarks.find(x => x.movementId === 'barbell_bench');
+  const result = buildExerciseProgramWorkoutPrescription(b, bench, { track: 'intensity', todayKey: TODAY });
+  assert.equal(result.plan.kind, 'stair');
+  assert.equal(result.recommendationMeta.source, 'test_board_v2');
+  assert.equal(result.recommendationMeta.track, 'H');
+  assert.equal(result.prescription.applySets, true);
+  assert.equal(result.prescription.targetSets, 4);
+  assert.equal(result.prescription.sets.length, 4);
+  assert.equal(result.prescription.sets[0].kg, 90);
+  assert.equal(result.prescription.sets[0].reps, 8);
+  assert.ok(result.prescription.trackAlternatives.M);
+  assert.ok(result.prescription.trackAlternatives.H);
+});
+
+test('종목 프로그램 처방: 웬들러는 준비운동/메인/BBB 세트를 만든다', () => {
+  const b = fixtureBoard();
+  const squat = b.benchmarks.find(x => x.movementId === 'back_squat');
+  const result = buildExerciseProgramWorkoutPrescription(b, squat, { todayKey: TODAY });
+  assert.equal(result.plan.kind, 'wendler');
+  assert.equal(result.recommendationMeta.program, 'wendler');
+  assert.equal(result.recommendationMeta.wendlerManualOverride, false);
+  assert.match(result.recommendationMeta.wendlerSignature, /tm:150/);
+  assert.equal(result.prescription.action, 'wendler');
+  assert.equal(result.prescription.applySets, true);
+  assert.equal(result.prescription.sets.filter(s => s.wendlerRole === 'warmup').length, 3);
+  assert.equal(result.prescription.sets.filter(s => s.wendlerRole === 'main').length, 3);
+  assert.equal(result.prescription.sets.filter(s => s.wendlerRole === 'supplemental').length, 5);
+  assert.equal(result.prescription.sets.some(s => s.amrap), true);
+});
+
+test('종목 프로그램 처방: 같은 movementId의 다른 exerciseId도 웬들러 세트를 적용한다', () => {
+  const b = fixtureBoard();
+  const squat = b.benchmarks.find(x => x.movementId === 'back_squat');
+  squat.exerciseId = 'stored_sumo_deadlift';
+
+  const matched = findExerciseProgramBenchmark(b, {
+    id: 'picker_sumo_deadlift',
+    movementId: 'back_squat',
+    muscleId: 'lower',
+  });
+  assert.equal(matched?.id, squat.id);
+
+  const result = buildExerciseProgramWorkoutPrescription(b, matched, { todayKey: TODAY });
+  assert.equal(result.prescription.applySets, true);
+  assert.equal(result.prescription.sets.length, 11);
+  assert.equal(result.prescription.sets.filter(s => s.wendlerRole === 'warmup').length, 3);
+  assert.equal(result.prescription.sets.filter(s => s.wendlerRole === 'main').length, 3);
+  assert.equal(result.prescription.sets.filter(s => s.wendlerRole === 'supplemental').length, 5);
+  assert.equal(result.prescription.sets.every(s => Number(s.reps) > 0), true);
+  assert.equal(result.prescription.sets.every(s => Number(s.kg) > 0), true);
 });
 
 test('과거 셀 실제 운동기록 fallback: 같은 주 스모데드 기록을 exerciseId로 찾는다', () => {

@@ -20,13 +20,20 @@ const _WT_TYPE_SECTIONS = {
   gym: 'wt-gym-section',
 };
 
+function _isKnownType(type) {
+  return type === 'running' || !!_WT_TYPE_SECTIONS[type];
+}
+
 function _applyActive(type) {
-  Object.keys(_WT_TYPE_SECTIONS).forEach(t => {
+  ['gym', 'running'].forEach(t => {
     const tab = document.getElementById('wt-chip-' + t);
     if (tab) tab.classList.toggle('active', t === type);
+  });
+  Object.keys(_WT_TYPE_SECTIONS).forEach(t => {
     const sec = document.getElementById(_WT_TYPE_SECTIONS[t]);
     if (sec) sec.classList.toggle('wt-open', t === type);
   });
+  if (type === 'running') return;
   // B-2: 탭(유형 칩) 클릭은 "지금부터 이 종류 기록하겠다"는 의사 표시.
   // → 이때만 타이머 바/메모/저장 섹션 오픈.
   //   (로드 시점 자동 오픈은 load.js _restoreFlowState가 기록 유무로만 판단)
@@ -37,10 +44,21 @@ function _applyActive(type) {
 }
 
 window.wtSwitchType = function(type) {
-  if (!_WT_TYPE_SECTIONS[type]) return;
+  if (!_isKnownType(type)) return;
   const isReclick = _wtActiveType === type;
   _wtActiveType = type;
   _applyActive(type);
+
+  if (type === 'running') {
+    if (typeof window.wtOpenRunningSession === 'function') {
+      window.wtOpenRunningSession();
+    } else {
+      import('./workout/running-session.js')
+        .then(m => m.wtOpenRunningSession?.())
+        .catch(e => console.warn('[workout-ui] running session open failed:', e));
+    }
+    return;
+  }
 
   // 헬스 탭 최초 진입 시 타이머 시작 (사용자 명시 액션으로 간주)
   if (type === 'gym' && !isReclick) {
@@ -53,7 +71,7 @@ window.wtSwitchType = function(type) {
 window.wtToggleType = window.wtSwitchType;
 
 window._wtSetActiveType = function(type) {
-  if (!_WT_TYPE_SECTIONS[type]) type = 'gym';
+  if (!_isKnownType(type)) type = 'gym';
   _wtActiveType = type;
   _applyActive(type);
 };
@@ -70,7 +88,7 @@ window._wtResetFlowUI = function() {
 // 레거시 호환: load.js 이전 버전이 호출하던 함수
 window._wtRestoreTypes = function(types) {
   if (!Array.isArray(types) || types.length === 0) return;
-  const first = types.find(t => _WT_TYPE_SECTIONS[t]) || 'gym';
+  const first = types.find(t => _isKnownType(t)) || 'gym';
   _wtActiveType = first;
   _applyActive(first);
 };
@@ -91,8 +109,13 @@ window.uploadMealPhoto = async function(meal, input) {
     window._mealPhotos[meal] = 'data:image/jpeg;base64,' + b64;
     const { _renderMealPhotos } = await import('./render-workout.js?v=20260515v6');
     _renderMealPhotos();
-    const { saveWorkoutDay } = await import('./render-workout.js?v=20260515v6');
-    saveWorkoutDay().catch(e => console.error('Auto-save after photo:', e));
+    if (meal === 'workout') {
+      const { saveWorkoutDay } = await import('./render-workout.js?v=20260515v6');
+      saveWorkoutDay().catch(e => console.error('Auto-save after workout photo:', e));
+    } else {
+      const { _autoSaveDiet } = await import('./workout/save.js');
+      _autoSaveDiet({ meal }).catch(e => console.error('Auto-save after meal photo:', e));
+    }
   } catch(e) { console.error('Photo upload error:', e); }
   input.value = '';
 };
@@ -100,8 +123,13 @@ window.removeMealPhoto = async function(meal) {
   delete window._mealPhotos[meal];
   const { _renderMealPhotos } = await import('./render-workout.js?v=20260515v6');
   _renderMealPhotos();
-  const { saveWorkoutDay } = await import('./render-workout.js?v=20260515v6');
-  saveWorkoutDay().catch(e => console.error('Auto-save after photo remove:', e));
+  if (meal === 'workout') {
+    const { saveWorkoutDay } = await import('./render-workout.js?v=20260515v6');
+    saveWorkoutDay().catch(e => console.error('Auto-save after workout photo remove:', e));
+  } else {
+    const { _autoSaveDiet } = await import('./workout/save.js');
+    _autoSaveDiet({ meal }).catch(e => console.error('Auto-save after meal photo remove:', e));
+  }
 };
 
 // ── AI 추정 전용 업로드 ─────────────────────────────────────────
@@ -129,8 +157,8 @@ window.uploadMealPhotoAI = async function(meal, input) {
     startAIEstimate(meal, dataUrl);
 
     // 3) 사진 자체는 서버에 저장 (AI 확정 전에도 사진은 보존)
-    const { saveWorkoutDay } = await import('./render-workout.js?v=20260515v6');
-    saveWorkoutDay().catch(e => console.error('Auto-save after AI photo upload:', e));
+    const { _autoSaveDiet } = await import('./workout/save.js');
+    _autoSaveDiet({ meal }).catch(e => console.error('Auto-save after AI photo upload:', e));
   } catch (e) {
     console.error('[uploadMealPhotoAI] error:', e);
     try {

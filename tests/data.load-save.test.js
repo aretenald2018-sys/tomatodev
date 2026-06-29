@@ -233,7 +233,20 @@ test('isActiveWorkoutDayData: cf/swimming/running/stretching boolean → true', 
 
 test('isActiveWorkoutDayData: runDistance/workoutDuration 양수 → true', () => {
   assert.equal(isActiveWorkoutDayData({ runDistance: 3 }), true);
+  assert.equal(isActiveWorkoutDayData({ runRoute: [{ lat: 37.5, lng: 127 }] }), true);
+  assert.equal(isActiveWorkoutDayData({ runRouteSummary: { pointCount: 2 } }), true);
   assert.equal(isActiveWorkoutDayData({ workoutDuration: 600 }), true);
+  assert.equal(isActiveWorkoutDayData({ workoutTimeline: { durationSec: 600 } }), true);
+  assert.equal(isActiveWorkoutDayData({ workoutTimeline: { checkedSetCount: 1, durationSec: 0 } }), true);
+});
+
+test('isActiveWorkoutDayData: workoutSessions 내부 운동 기록 → true', () => {
+  assert.equal(isActiveWorkoutDayData({
+    workoutSessions: [
+      { exercises: [] },
+      { exercises: [{ name: '벤치 프레스', sets: [{ kg: 80, reps: 5, done: true }] }] },
+    ],
+  }), true);
 });
 
 test('isActiveWorkoutDayData: 식단 기록 (bKcal/bFoods/breakfast) → true', () => {

@@ -11,12 +11,15 @@
 
 import { S }                        from './state.js';
 import { showCenterToast }          from '../home/utils.js';
-import { saveDay, dateKey, isFuture, trackEvent, getExList } from '../data.js';
+import { saveDay, dateKey, isFuture, trackEvent, getExList, getDay } from '../data.js';
 import { WORKOUT_PAYLOAD_KEYS, DIET_PAYLOAD_KEYS } from './save-schema.js';
 import { deriveActivityFlagsFromDetails, deriveDietSuccessFromWorkout } from './cross-domain.js';
 import { MOVEMENTS } from '../config.js';
 import { calcSetVolume } from '../calc/volume.js';
 import { shouldKeepMaxDraftExercisesForSavePure } from './save-pure.js';
+import { upsertWorkoutSession } from './sessions.js';
+import { hasLifeZoneDietActivity, hasLifeZoneRunningActivity, hasLifeZoneWorkoutActivity } from '../home/life-zone-state.js';
+import { buildWorkoutSetTimeline, normalizeSetCompletedAt } from './timeline.js';
 
 // 미래 날짜 저장 가드 — 어떤 경로로든 미래 날짜 쓰기 금지 (B-3).
 function _blockIfFutureDate() {
@@ -84,21 +87,28 @@ function _assertSchemaParity(name, payload, expectedKeys) {
 // Firestore 의 식단 필드를 건드릴 수 없다.
 function _buildWorkoutPayload(cleanEx, isDietSuccess) {
   const w = S.workout;
-  // workoutDuration: "이미 닫힌 세그먼트의 누적 시간"(base) 만 저장. running 중의 live elapsed 는
-  //   여기에 포함하지 않음 — 포함하면 리로드 후 render 가 이 값에 또 (now - startedAt) 을 더해
-  //   이중 카운팅(예: 10초째 저장 → 15초째 재진입 시 25초 표시). Codex 리뷰 2026-04-21 지적.
-  //   base 는 wtPause/wtReset/wtFinish 에서만 갱신됨. 외부 소비자(guild/calendar) 는 running
-  //   중 약간 과소표기를 감수 — pause/finish 시 정확히 반영됨.
+  const workoutTimeline = buildWorkoutSetTimeline(cleanEx, w.workoutDuration);
+  w.workoutTimeline = workoutTimeline;
+  w.workoutDuration = workoutTimeline.durationSec;
+  const run = w.runData || {};
   return {
     exercises:  cleanEx,
     cf:         w.cf,
     stretching: w.stretching,
     swimming:   w.swimming,
     running:    w.running,
-    runDistance:    w.runData.distance,
-    runDurationMin: w.runData.durationMin,
-    runDurationSec: w.runData.durationSec,
-    runMemo:       w.runData.memo,
+    runDistance:    run.distance,
+    runDurationMin: run.durationMin,
+    runDurationSec: run.durationSec,
+    runMemo:        run.memo,
+    runSource:      run.source || (Array.isArray(run.route) && run.route.length ? 'gps' : 'manual'),
+    runStartedAt:   run.startedAt || null,
+    runEndedAt:     run.endedAt || null,
+    runRoute:       Array.isArray(run.route) ? run.route : [],
+    runRouteSummary: run.routeSummary || null,
+    runPlaceSummary: run.placeSummary || null,
+    runAvgPaceSecPerKm: Number(run.avgPaceSecPerKm) || 0,
+    runGpsAccuracySummary: run.gpsAccuracySummary || null,
     cfWod:         w.cfData.wod,
     cfDurationMin: w.cfData.durationMin,
     cfDurationSec: w.cfData.durationSec,
@@ -110,7 +120,8 @@ function _buildWorkoutPayload(cleanEx, isDietSuccess) {
     swimDurationSec: w.swimData.durationSec,
     swimStroke:    w.swimData.stroke,
     swimMemo:      w.swimData.memo,
-    workoutDuration: w.workoutDuration,
+    workoutDuration: workoutTimeline.durationSec,
+    workoutTimeline,
     wine_free:  w.wineFree,
     memo:       document.getElementById('wt-workout-memo')?.value.trim() || '',
     workoutPhoto: window._mealPhotos?.workout || null,
@@ -119,6 +130,64 @@ function _buildWorkoutPayload(cleanEx, isDietSuccess) {
     routineMeta: w.routineMeta || null,
     maxMeta: _buildMaxMeta(cleanEx),
     ..._computeMealOk(isDietSuccess),
+  };
+}
+
+function _buildWorkoutPayloadWithSessions(ctxKey, payload) {
+  const sessionIndex = Math.max(0, Math.floor(Number(S.workout.sessionIndex) || 0));
+  const [yy, mm, dd] = ctxKey.split('-').map(part => parseInt(part, 10));
+  const existingDay = getDay(yy, mm - 1, dd);
+  const sessionResult = upsertWorkoutSession(existingDay, payload, sessionIndex, { now: Date.now() });
+  return {
+    ...payload,
+    ...sessionResult.aggregate,
+    workoutSessions: sessionResult.workoutSessions,
+  };
+}
+
+function _attachLifeZoneWorkoutSnapshot(payload) {
+  const active = hasLifeZoneWorkoutActivity(payload);
+  const state = hasLifeZoneRunningActivity(payload) ? 'running' : 'workout';
+  const snapshot = active ? { state, updatedAt: Date.now() } : null;
+  return {
+    ...payload,
+    lifeZoneWorkoutActivity: snapshot,
+    lifeZoneLastActivity: snapshot,
+  };
+}
+
+const LIFE_ZONE_MEAL_KEYS = ['breakfast', 'lunch', 'dinner', 'snack'];
+
+function _resolveLifeZoneDietMeal(payload, requestedMeal = null) {
+  if (requestedMeal && LIFE_ZONE_MEAL_KEYS.includes(requestedMeal)) return requestedMeal;
+  const mealMap = {
+    breakfast: ['breakfast', 'bFoods', 'bKcal', 'bPhoto', 'breakfast_skipped'],
+    lunch: ['lunch', 'lFoods', 'lKcal', 'lPhoto', 'lunch_skipped'],
+    dinner: ['dinner', 'dFoods', 'dKcal', 'dPhoto', 'dinner_skipped'],
+    snack: ['snack', 'sFoods', 'sKcal', 'sPhoto'],
+  };
+  for (const meal of [...LIFE_ZONE_MEAL_KEYS].reverse()) {
+    const keys = mealMap[meal];
+    const hasRecord = keys.some((key) => {
+      const value = payload?.[key];
+      if (Array.isArray(value)) return value.length > 0;
+      if (typeof value === 'number') return value > 0;
+      return !!value;
+    });
+    if (hasRecord) return meal;
+  }
+  return null;
+}
+
+function _attachLifeZoneDietSnapshot(payload, options = {}) {
+  const active = hasLifeZoneDietActivity(payload);
+  const snapshot = active
+    ? { state: 'diet', meal: _resolveLifeZoneDietMeal(payload, options.meal), updatedAt: Date.now() }
+    : null;
+  return {
+    ...payload,
+    lifeZoneDietActivity: snapshot,
+    lifeZoneLastActivity: snapshot,
   };
 }
 
@@ -248,7 +317,8 @@ function _refreshTabDots() {
 }
 
 function _hasSaveWorthySet(set) {
-  if (!set || set.setType === 'warmup') return false;
+  if (!set) return false;
+  if (set.setType === 'warmup') return set.done === true && normalizeSetCompletedAt(set.completedAt) != null;
   if (set.done === true) return true;
   if (set.done === false) return false;
   return (Number(set.kg) || 0) > 0 && (Number(set.reps) || 0) > 0;
@@ -321,13 +391,6 @@ function _prepareSave({ syncWorkoutDetails }) {
   _syncMeal('snack',     'wt-meal-snack');
 
   if (syncWorkoutDetails) {
-    // 런닝 폼 최신값 동기화 (운동 명시 저장만)
-    const run = S.workout.runData;
-    run.distance    = parseFloat(document.getElementById('wt-run-distance')?.value) || 0;
-    run.durationMin = parseInt(document.getElementById('wt-run-duration-min')?.value) || 0;
-    run.durationSec = parseInt(document.getElementById('wt-run-duration-sec')?.value) || 0;
-    run.memo        = document.getElementById('wt-run-memo')?.value.trim() || '';
-
     // 활동 flag 자동 파생 (세부 입력 → boolean flag).
     // 식단 자동저장은 호출하지 않음 — 식단 CRUD 가 운동 flag 변경에 관여 금지.
     const derived = deriveActivityFlagsFromDetails(S.workout);
@@ -355,7 +418,9 @@ export async function saveWorkoutDay(options = {}) {
   const btn = silent ? null : document.getElementById('wt-save-btn');
   if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
 
-  const payload = _buildWorkoutPayload(cleanEx, isDietSuccess);
+  const payload = _attachLifeZoneWorkoutSnapshot(
+    _buildWorkoutPayloadWithSessions(ctxKey, _buildWorkoutPayload(cleanEx, isDietSuccess))
+  );
   _assertSchemaParity('workout', payload, WORKOUT_PAYLOAD_KEYS);
   try {
     if (!_isWorkoutDateStill(startedKey, 'before-write')) return;
@@ -382,7 +447,7 @@ export async function saveWorkoutDay(options = {}) {
 
 // ── 식단 자동 저장 (식단 도메인) ────────────────────────────────
 // 식단 페이로드만 merge 저장 — 운동 필드 전부 제외 → 자동저장이 운동을 건드리지 못함.
-export async function _autoSaveDiet() {
+export async function _autoSaveDiet(options = {}) {
   const startedKey = _workoutDateKeyFromState();
   const ctx = _prepareSave({ syncWorkoutDetails: false });
   if (!ctx) {
@@ -400,7 +465,7 @@ export async function _autoSaveDiet() {
   });
 
   try {
-    const payload = _buildDietPayload(isDietSuccess);
+    const payload = _attachLifeZoneDietSnapshot(_buildDietPayload(isDietSuccess), options);
     _assertSchemaParity('diet', payload, DIET_PAYLOAD_KEYS);
     if (!_isWorkoutDateStill(startedKey, 'diet-before-write')) return;
     await saveDay(ctxKey, payload, { rethrow: true, mode: 'merge' });
@@ -416,6 +481,7 @@ export async function _autoSaveDiet() {
 
     console.log('[render-workout] 식단 자동 저장 완료');
     _refreshTabDots();
+    document.dispatchEvent(new CustomEvent('sheet:saved'));
     showCenterToast('저장되었습니다');
   } catch(e) {
     console.error('[render-workout] 자동 저장 실패:', e);

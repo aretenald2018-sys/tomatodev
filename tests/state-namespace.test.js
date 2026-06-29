@@ -29,7 +29,7 @@ test('운동 필드는 S.workout 아래 존재', () => {
     'cf', 'stretching', 'swimming', 'running',
     'runData', 'cfData', 'stretchData', 'swimData',
     'wineFree',
-    'workoutStartTime', 'workoutDuration', 'workoutTimerInterval', 'workoutTimerDate',
+    'workoutStartTime', 'workoutDuration', 'workoutTimeline', 'workoutTimerInterval', 'workoutTimerDate',
     'restTimer',
     'currentGymId', 'routineMeta', 'maxMeta',
   ];
@@ -62,7 +62,7 @@ test('S 루트에 flat shim 존재 금지 (S.exercises, S.cf 등 — 네임스�
   const forbidden = [
     'exercises', 'hiddenExercises', 'cf', 'stretching', 'swimming', 'running',
     'runData', 'cfData', 'stretchData', 'swimData', 'wineFree',
-    'workoutStartTime', 'workoutDuration', 'workoutTimerInterval', 'workoutTimerDate',
+    'workoutStartTime', 'workoutDuration', 'workoutTimeline', 'workoutTimerInterval', 'workoutTimerDate',
     'restTimer', 'currentGymId', 'routineMeta', 'maxMeta',
     'breakfastSkipped', 'lunchSkipped', 'dinnerSkipped', 'date',
   ];

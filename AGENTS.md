@@ -1,6 +1,7 @@
 # Tomato Project Codex Rules
 
 - Default AI Workflow: For any request that may change code, docs, data, config, tests, deployment, or UX, follow `docs/ai/WORKFLOW.md` by default.
+- NPC/life-zone character art workflow: For any NPC, home life-zone character, quest bubble, or NPC modal art request, read and follow `docs/ai/NPC_ASSET_WORKFLOW.md` before planning or editing assets/code.
 - Required order: planning session -> execution session -> review session.
 - AI가 생성하는 계획, 리뷰, ADR, 로드맵, 핸드오프 문서는 기본적으로 한국어로 작성한다. 코드 식별자, 파일 경로, 명령어, API 이름, 라이브러리 이름, 인용 원문은 원래 언어를 유지한다.
 - 기본 트리거: 기능, 디자인, UX, 아키텍처, 모호한 변경 요청에는 `/grill-me`를 자동 적용한다. 버그, 오류, 실패, 회귀, UI 깨짐, 성능 문제에는 `/diagnose`를 자동 적용한다. 둘 다 해당될 수 있으면 `/diagnose`를 먼저 적용한다.
@@ -14,14 +15,15 @@
 - Apply all rules in `CLAUDE.md` for this project before making changes.
 - Project Root: `C:\Users\USER\Desktop\Tomato Project\tomatofarm(for lite version)`
 - Always run `python`, `node`, and `git` commands from the project root.
-- Dev Server: When local UI verification is needed, Codex must directly run `npm.cmd run dev` from the project root. It runs `node scripts/dev-start.mjs`; the launcher serves the project root through `scripts/static-dev-server.mjs`, reuses a healthy existing server, and falls back to 5501, 5502, ... if another program holds the port.
-- Direct-run verification: After starting or reusing the dev server, Codex must report the actual URL/flow and verify HTTP 200 plus the target UI behavior before claiming the implementation is verified. If the server command fails or the UI flow was not exercised, say `not verified yet` with the exact blocker.
+- Dashboard3 Deploy Rule for this refactor checkout: do not use localhost as the final handoff or verification target. When work is ready for user-facing verification, commit and push to `origin/main` so GitHub Pages deploys `https://aretenald2018-sys.github.io/dashboard3/`, then verify with `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`.
+- Dev Server: Avoid starting localhost for this `tomatofarm-refactor` checkout unless the user explicitly asks for local-only debugging. Prefer static checks plus Dashboard3 Pages deployment verification.
+- Direct-run verification: For this checkout, final verification means the Dashboard3 Pages URL returns the expected deployed commit/assets and the target UI flow is checked there. If the UI flow was not exercised on the deployed page, say `not verified yet` with the exact blocker.
 - Do NOT run `python -m http.server` directly. Do NOT use `taskkill //F //IM python.exe` or any blanket Python kill — it terminates unrelated Python processes from other projects (e.g. the biz project). The `dev-start.mjs` launcher handles port selection without killing unrelated processes.
 - CRITICAL: If you modify any file included in `sw.js` `STATIC_ASSETS`, you must bump `CACHE_VERSION` in `sw.js` in the same change.
 - The root directory is the single source of truth. `www/` is the Capacitor build artifact produced by `scripts/copy-www.js`. **Never edit files under `www/` directly.** All source changes go to root files (`index.html`, `app.js`, `style.css`, `workout/*.js`, etc.). The dev server (`node scripts/dev-start.mjs`) serves the root.
 - Firebase access must go through `data.js`. Do not call Firestore directly from views or feature modules.
 - Treat `setDoc` as a full overwrite. Preserve all existing fields, especially photo fields such as `bPhoto`, `lPhoto`, `dPhoto`, `sPhoto`, and `workoutPhoto`.
-- Deployment is allowed only when the user explicitly instructs it (e.g. "배포해", "푸시해", "deploy", "push it", "배포까지 해"). Without an explicit instruction, do not push or deploy automatically. When explicitly instructed, push to the `tomatofarm` remote — local verification is assumed to be completed by the user.
+- Deployment is allowed for this `tomatofarm-refactor` checkout whenever the user asks to finish or verify work, because the user has instructed that work here should always go through Dashboard3 Pages rather than localhost. Push to `origin/main` for Dashboard3; do not push to `tomatofarm` unless the user explicitly names that remote.
 - Keep the project in vanilla JavaScript. Do not introduce frameworks, bundlers, or build tooling.
 - Modal/Button Event Rule: If a modal sheet or inner container uses `event.stopPropagation()`, do not rely on delegated click handlers from the overlay/backdrop for buttons, tabs, or actions inside it. Bind handlers inside the sheet/body or use explicit direct handlers, then verify every new button/tab in the browser.
 - Max V4 Plan Sheet Rule: `#max-v4-sheet .wt-v4-sheet` uses `event.stopPropagation()`. Any new `data-action`, week selector, benchmark editor, equipment, cleanse, or adjust button inside the plan sheet must be bound on `.wt-v4-sheet` itself or in capture phase before the stop; never bind only on `#max-v4-sheet`.

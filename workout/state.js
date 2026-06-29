@@ -44,17 +44,25 @@ function emptyWorkout() {
     stretching: false,
     swimming: false,
     running: false,
-    runData:    { distance: 0, durationMin: 0, durationSec: 0, memo: '' },
+    runData:    {
+      distance: 0, durationMin: 0, durationSec: 0, memo: '',
+      source: 'manual', startedAt: null, endedAt: null,
+      route: [], routeSummary: null, placeSummary: null,
+      avgPaceSecPerKm: 0, gpsAccuracySummary: null,
+    },
     cfData:     { wod: '', durationMin: 0, durationSec: 0, memo: '' },
     stretchData:{ duration: 0, memo: '' },
     swimData:   { distance: 0, durationMin: 0, durationSec: 0, stroke: '', memo: '' },
     wineFree:   false,
     workoutStartTime: null,
     workoutDuration:  0,
+    workoutTimeline:  null,
     workoutTimerInterval: null,
     // 타이머가 소속된 날짜 — 시작 시점에 캡처. 날짜 네비게이션 시에도 유지, 끝내기/리셋 시만 null.
     workoutTimerDate: null,              // { y, m, d } | null
     restTimer:  { interval: null, remaining: 0, total: 90, running: false, startedAt: null },
+    sessionIndex: 0,
+    sessionId: 'session-1',
     // 전문가 모드
     currentGymId: null,                  // 오늘 세션의 헬스장
     pickerGymFilter: null,               // 오늘 종목 추가 모달의 헬스장 필터 유지

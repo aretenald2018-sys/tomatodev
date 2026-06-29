@@ -53,12 +53,15 @@ function _getWorkoutTwinOwnerId(ownerId) {
 // 과거: 전체 day 객체 단위로 판정 → owner 에 식단만 있고 운동 없는 날엔 twin 의 운동이
 //       병합 안 돼 스트릭이 계정 로그인 시마다 1↔5 로 흔들렸다 (문정토마토 이슈).
 const _TWIN_WORKOUT_FIELDS = [
+  'workoutSessions',
   'exercises', 'cf', 'swimming', 'running', 'stretching',
   'runDistance', 'runDurationMin', 'runDurationSec', 'runMemo',
+  'runSource', 'runStartedAt', 'runEndedAt', 'runRoute', 'runRouteSummary',
+  'runPlaceSummary', 'runAvgPaceSecPerKm', 'runGpsAccuracySummary',
   'swimDistance', 'swimDurationMin', 'swimDurationSec', 'swimStroke', 'swimMemo',
   'cfWod', 'cfDurationMin', 'cfDurationSec', 'cfMemo',
   'stretchDuration', 'stretchMemo',
-  'workoutDuration', 'workoutPhoto',
+  'workoutDuration', 'workoutTimeline', 'workoutPhoto',
   'gymId', 'routineMeta',
 ];
 
@@ -244,6 +247,7 @@ export async function loadAll() {
     _settings.unit_goal_start  = fbMap.unit_goal_start  ?? null;
     _settings.active_timer     = fbMap.active_timer     ?? null;
     _settings.max_cycle        = fbMap.max_cycle        ?? null;
+    _settings.test_board_v2    = fbMap.test_board_v2    ?? null;
     _settings.exercise_catalog_seed = fbMap.exercise_catalog_seed ?? null;
     _settings.cheer_last_seen  = fbMap.cheer_last_seen  ?? 0;
     _settings.tomato_state     = fbMap.tomato_state     ?? { quarterlyTomatoes: {}, totalTomatoes: 0, giftedReceived: 0, giftedSent: 0 };

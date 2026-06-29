@@ -18,8 +18,8 @@
 <link rel="stylesheet" href="styles/components.css">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="admin/admin-hig.css">
-<link rel="stylesheet" href="expert-mode.css?v=20260623ag12">
-<link rel="stylesheet" href="test-mode-v2.css?v=20260623ag1-helper-chip-scope">
+<link rel="stylesheet" href="expert-mode.css?v=20260624c12">
+<link rel="stylesheet" href="test-mode-v2.css?v=20260624c27-selected-scope">
 </head>
 <body>
 
@@ -212,19 +212,19 @@
 <!-- 하단 탭 네비게이션 -->
 <nav class="bottom-tabs" id="tab-nav">
   <button class="tab-btn active" data-tab="home" onclick="switchTab('home')">
-    <span class="tab-icon">🏠</span><span>홈</span>
+    <span class="tab-icon nav-icon nav-icon-home" aria-hidden="true"></span><span class="tab-label">홈</span>
   </button>
   <button class="tab-btn" data-tab="diet" onclick="switchTab('diet')">
-    <span class="tab-icon">🥗</span><span>식단</span>
+    <span class="tab-icon nav-icon nav-icon-diet" aria-hidden="true"></span><span class="tab-label">식단</span>
   </button>
   <button class="tab-btn" data-tab="workout" onclick="switchTab('workout')">
-    <span class="tab-icon">💪</span><span>운동</span>
+    <span class="tab-icon nav-icon nav-icon-workout" aria-hidden="true"></span><span class="tab-label">운동</span>
   </button>
   <button class="tab-btn" data-tab="calendar" onclick="switchTab('calendar')">
-    <span class="tab-icon">📅</span><span>캘린더</span>
+    <span class="tab-icon nav-icon nav-icon-calendar" aria-hidden="true"></span><span class="tab-label">캘린더</span>
   </button>
   <button class="tab-btn tab-more-btn" data-tab="more" onclick="toggleMoreMenu()">
-    <span class="tab-icon">⋯</span><span>더보기</span>
+    <span class="tab-icon nav-icon nav-icon-more" aria-hidden="true"></span><span class="tab-label">더보기</span>
   </button>
 </nav>
 
@@ -233,15 +233,23 @@
   <div class="more-menu-backdrop" onclick="toggleMoreMenu()"></div>
   <div class="more-menu-sheet">
     <div id="more-menu-dynamic-tabs"></div>
-    <button class="more-menu-item tab-btn" data-tab="stats" onclick="switchTab('stats');toggleMoreMenu()">📊 통계</button>
-    <button class="more-menu-item tab-btn" data-tab="cooking" onclick="switchTab('cooking');toggleMoreMenu()">🍳 요리</button>
+    <button class="more-menu-item tab-btn" data-tab="stats" onclick="switchTab('stats');toggleMoreMenu()">
+      <span class="tab-icon nav-icon nav-icon-stats" aria-hidden="true"></span><span>통계</span>
+    </button>
+    <button class="more-menu-item tab-btn" data-tab="cooking" onclick="switchTab('cooking');toggleMoreMenu()">
+      <span class="tab-icon nav-icon nav-icon-cooking" aria-hidden="true"></span><span>요리</span>
+    </button>
     <div id="admin-menu-items" style="display:none;">
       <div style="border-top:1px solid var(--border);margin-top:4px;padding-top:4px">
-        <button class="more-menu-item tab-btn" data-tab="admin" onclick="switchTab('admin');toggleMoreMenu()">🍅 토마토어드민</button>
+        <button class="more-menu-item tab-btn" data-tab="admin" onclick="switchTab('admin');toggleMoreMenu()">
+          <span class="tab-icon nav-icon nav-icon-admin" aria-hidden="true"></span><span>토마토어드민</span>
+        </button>
       </div>
     </div>
     <div style="border-top:1px solid var(--border);margin-top:4px;padding-top:4px">
-      <button class="more-menu-item" onclick="openTabSettingsModal();toggleMoreMenu()">⚙️ 탭 설정</button>
+      <button class="more-menu-item" onclick="openTabSettingsModal();toggleMoreMenu()">
+        <span class="tab-icon nav-icon nav-icon-settings" aria-hidden="true"></span><span>탭 설정</span>
+      </button>
     </div>
   </div>
 </div>
@@ -380,8 +388,11 @@
 </div>
 
 <!-- ═══ 운동·식단 탭 ═══ -->
-<div id="tab-workout" class="tab-panel">
+<div id="tab-workout" class="tab-panel wt-calendar-home-mode">
+  <div id="workout-calendar-root" class="workout-calendar-root"></div>
+
   <div class="workout-date-nav">
+    <button type="button" class="wt-record-back-btn" aria-label="캘린더로 돌아가기" onclick="window.wtHandleWorkoutBack?.()">‹</button>
     <button class="wt-date-nav-btn" onclick="changeWorkoutDate(-1)">◀</button>
     <span id="wt-date-label" class="workout-date-label"></span>
     <button class="wt-date-nav-btn" onclick="changeWorkoutDate(1)">▶</button>
@@ -404,6 +415,7 @@
       <div class="wt-type-section" id="wt-type-section">
         <div class="wt-type-tabs" id="wt-type-tabs-bar">
           <button class="wt-type-tab active" id="wt-chip-gym" onclick="wtSwitchType('gym')">🏋️ 헬스</button>
+          <button class="wt-type-tab" id="wt-chip-running" onclick="wtSwitchType('running')">🏃 런닝/조깅</button>
         </div>
       </div>
 
@@ -498,6 +510,9 @@
       <div id="wt-stretching-toggle"></div>
     </div>
   </div>
+
+  <div id="wt-exercise-detail-root" class="wt-exercise-detail-root" aria-live="polite"></div>
+  <div id="wt-running-session-root" class="wt-running-session-root" aria-live="polite"></div>
 
 </div>
 
@@ -736,77 +751,51 @@
 
 <div id="tab-stats" class="tab-panel">
 <div class="stats-section">
-<div class="stats-view-tabs">
-<button class="stats-view-btn active" data-stats-view="overall" type="button">전체통계</button>
-<button class="stats-view-btn" data-stats-view="deep" type="button">심층통계</button>
+<div id="stats-overall-panel">
+<div class="stats-analysis-controls" aria-label="통계 기간 설정">
+  <div>
+    <span>전체통계</span>
+    <b>기간별 운동 분석</b>
+  </div>
+  <div class="stats-analysis-periods" role="group" aria-label="운동 분석 기간">
+    <button type="button" class="stats-analysis-period" data-stats-analysis-period="week">이번주</button>
+    <button type="button" class="stats-analysis-period" data-stats-analysis-period="30">30일</button>
+    <button type="button" class="stats-analysis-period active" data-stats-analysis-period="90">90일</button>
+    <button type="button" class="stats-analysis-period" data-stats-analysis-period="180">180일</button>
+    <button type="button" class="stats-analysis-period" data-stats-analysis-period="all">전체</button>
+  </div>
 </div>
-<div id="stats-overall-panel" class="stats-view-panel active">
 <div class="stats-block stats-muscle-fatigue-block">
 <div id="stats-muscle-fatigue"></div>
 </div>
-<div class="stats-block">
-<div class="stats-block-title">📋 전체 기록 리포트</div>
-<div id="stats-metadata-summary"></div>
+<div class="stats-block stats-summary-block">
+<div class="stats-block-title">전체 요약</div>
+<div id="stats-overall-summary"></div>
 </div>
-<div class="stats-block">
-<div class="stats-block-title">⚖️ 체중 & 섭취칼로리 추이</div>
+<div class="stats-block stats-workout-analysis-block">
+<div class="stats-block-title">운동 분석</div>
+<div id="stats-workout-analysis"></div>
+</div>
+<div class="stats-block stats-health-block">
+<div class="stats-block-title">체중 & 주간 누적 칼로리 추이</div>
 <div class="stats-chart-meta" id="kcal-weight-meta"></div>
 <div class="stats-chart-wrap"><canvas id="kcal-weight-chart"></canvas></div>
-<div id="kcal-weight-chart-empty" class="stats-empty" style="display:none">최근 90일 체중 또는 섭취칼로리 기록이 없어요.</div>
-</div>
-<div class="stats-block">
-<div class="stats-block-title">🔥 월간 칼로리 리포트</div>
-<div class="stats-chart-wrap"><canvas id="calorie-month-chart"></canvas></div>
-<div id="calorie-month-empty" class="stats-empty" style="display:none">이번 달 칼로리 기록이 없어요.</div>
+<div id="kcal-weight-chart-empty" class="stats-empty" style="display:none">선택 기간에 체중 또는 주간 칼로리 기록이 없어요.</div>
+<div class="stats-health-report">
 <div id="calorie-month-summary"></div>
+</div>
 </div>
 <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
 <button class="export-btn" onclick="openExportModal()">📊 CSV 내보내기</button>
 </div>
-<div class="stats-block">
-<div class="stats-block-title">💪 부위별 운동 비중 (최근 14일)</div>
-<div id="muscle-14d"></div>
-<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:10px;color:var(--muted);">
-<span style="color:var(--streak)">완료</span> 2회 ↑&nbsp;&nbsp;
-<span style="color:var(--accent)">진행</span> 1회&nbsp;&nbsp;
-<span style="color:#ef4444">미달</span> 0회
-</div>
+<div class="stats-block stats-performance-block">
+<div class="stats-block-title">운동별 퍼포먼스 추이</div>
+<div id="exercise-performance-section"></div>
 </div>
 <div class="stats-block">
-<div class="stats-block-title">📈 기간별 운동 횟수</div>
-<div class="period-tabs">
-<button class="period-btn active" onclick="setPeriod(30,this)">30일</button>
-<button class="period-btn"         onclick="setPeriod(60,this)">60일</button>
-<button class="period-btn"         onclick="setPeriod(90,this)">90일</button>
-<button class="period-btn"         onclick="setPeriod(0,this)">전체</button>
-</div>
-<div id="muscle-period"></div>
-</div>
-<div class="stats-block">
-<div class="stats-block-title">🏋️ 종목별 볼륨 추이 (kg × 횟수 × 세트)</div>
+<div class="stats-block-title">종목별 볼륨 추이 (kg × 횟수 × 세트)</div>
 <div id="volume-section"></div>
 </div>
-<div class="stats-block">
-<div class="stats-block-title">🥗 식단 달성 단계 (올해)</div>
-<div id="diet-stats"></div>
-</div>
-<div class="stats-block">
-<div class="stats-block-title">📅 월별 운동 일수</div>
-<div class="monthly-row" id="monthly-summary"></div>
-</div>
-<div class="stats-block">
-<div class="stats-block-title">⚖️ 체중 & 체지방 추이</div>
-<div style="position:relative;height:200px"><canvas id="checkin-chart"></canvas></div>
-<div id="checkin-chart-empty" style="display:none;font-size:12px;color:var(--muted);text-align:center;padding:20px">
-주간 체크인 기록이 없어요.
-
-
-다이어트 목표 카드에서 체크인 해보세요!
-</div>
-</div>
-</div>
-<div id="stats-deep-panel" class="stats-view-panel">
-<div id="deep-stats-report"></div>
 </div>
 </div>
 </div>
@@ -821,10 +810,10 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
-<script src="feature-login.js?v=20260623ag"></script>
-<script type="module" src="app.js?v=20260623ag1-current-week-add"></script>
+<script src="feature-login.js?v=20260624c"></script>
+<script type="module" src="app.js?v=20260625z47-workout-record-card-standard"></script>
 
 <!-- PWA Service Worker 등록 -->
-<script src="pwa-register.js?v=20260623ag"></script>
+<script src="pwa-register.js?v=20260624c"></script>
 </body>
 </html>

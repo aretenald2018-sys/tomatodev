@@ -202,13 +202,18 @@
 
 - 목표: "오늘 기록 있음"을 넘어 "최근에 식단 올림/운동 입력함"을 표현한다.
 - 내용:
-  - 저장 성공 후 `data.js` 경유 activity snapshot 업데이트.
-  - 최근 N분/N시간 우선순위 적용.
-  - 친구/내 계정 activity read 함수 추가.
+  - 운동 저장 payload에 `lifeZoneWorkoutActivity`, 식단 자동저장 payload에 `lifeZoneDietActivity`를 도메인별 snapshot으로 저장한다.
+  - 양쪽 저장 payload가 공통 `lifeZoneLastActivity`를 갱신해 마지막 사용자의 정보 업데이트를 직접 반영한다.
+  - 식단 사진/AI 사진 저장은 `saveWorkoutDay()`가 아니라 `_autoSaveDiet({ meal })`을 호출해 운동 활동으로 오인되지 않게 한다.
+  - 라이프존 판정은 `lifeZoneLastActivity`를 최우선으로 보고, 실제 해당 도메인 기록이 남아 있는지 확인한다.
+  - snapshot이 없는 기존 데이터는 기존처럼 운동 > 식단 > 업무 우선순위로 fallback한다.
 - 검증:
   - 운동 저장 직후 workout 상태 반영.
   - 식단 사진/음식 저장 직후 diet 상태 반영.
   - 사진 필드 보존 확인.
+- 상태: 2026-06-23 실행 완료. 브라우저 UI 플로우는 not verified yet.
+- 원인: 운동+간식이 같은 오늘 문서에 함께 있으면 기존 `resolveLifeZoneActivity()`가 항상 운동을 먼저 선택해서, 나중에 간식을 저장해도 `오늘 가슴 완료`가 남았다.
+- 추가 원인: 식단 사진/AI 사진 업로드 경로가 `saveWorkoutDay()`를 호출해, 간식 사진 입력이 운동 업데이트로 기록될 수 있었다.
 
 ### Slice 5 — 라이프존 base 외곽선 품질 보정
 
@@ -298,17 +303,18 @@
   - `home/life-zone.js`, `home/life-zone-state.js`, `sw.js`는 `STATIC_ASSETS` 대상이므로 `CACHE_VERSION`을 bump한다.
 - 상태: 2026-06-23 실행 완료. 브라우저 UI 플로우는 not verified yet.
 
-### Slice 10 — 모바일 요약 구획 표준화
+### Slice 10 — 모바일 요약 구획 회귀 복원
 
-- 목표: 모바일에서도 PC 렌더링과 같은 좌우 2칸 요약 구획을 표준으로 사용한다.
+- 목표: 모바일에서도 라이프존 카드 하단의 칼로리/체중 요약을 좌우 2칸 한 줄 구획으로 유지한다.
 - 원인:
-  - 기본 `.lz-summary-strip`은 `grid-template-columns: minmax(0, 1fr) minmax(0, 0.82fr)`라 PC에서는 좌우 2칸으로 구획된다.
-  - 그러나 `@media (max-width: 420px)`에서 `.lz-summary-strip { grid-template-columns: 1fr; }`와 버튼 border override를 적용해 모바일만 세로 1열로 바뀌었다.
+  - 기본 `.lz-summary-strip`은 좌우 2칸 grid로 정의되어 있다.
+  - 그러나 `@media (max-width: 420px)`에서 `.lz-summary-strip { grid-template-columns: 1fr; }`를 적용해 모바일 배포본에서 칼로리/체중 요약이 다시 위아래로 쌓였다.
 - 내용:
   - 모바일 media query에서 1열 전환과 하단 border override를 제거한다.
-  - 좁은 화면에서 텍스트가 무리 없이 들어가도록 요약 버튼 padding과 숫자 크기만 소폭 줄인다.
-  - `style.css`와 `sw.js`는 `STATIC_ASSETS` 대상이므로 `CACHE_VERSION`을 bump한다.
-- 상태: 2026-06-23 실행 완료. 브라우저 UI 플로우는 not verified yet.
+  - 좁은 화면에서는 요약 버튼 padding과 숫자 크기만 소폭 줄인다.
+  - `style.css`는 `STATIC_ASSETS` 대상이므로 `sw.js` `CACHE_VERSION`을 함께 bump한다.
+- 상태: 2026-06-24 실행/리뷰/개발계 배포 완료. 원격 HTTP 200, build-info commit, 캐시 버전, CSS 2컬럼 규칙을 확인했다.
+
 - 리스크: `줍스/문정토마토/이재헌` 이름이 계정 id와 다르거나 사용자의 친구가 아닐 수 있다.
   - 대안: `lifeZoneRoster` 설정을 두고 account id를 명시한다. 없으면 현재 유저/이웃 중 닉네임 매칭으로 fallback.
 - 리스크: 실시간 입력 중 상태는 현재 데이터만으로 판정할 수 없다.

@@ -4,32 +4,75 @@
 
 import { S }                           from './state.js';
 import { saveWorkoutDay }              from './save.js';
-import { _buildSparkline }            from './render.js';
-import { wtStartWorkoutTimer,
-         wtRestTimerStart }            from './timers.js';
+import { wtRestTimerStart,
+         wtRefreshWorkoutTimelineDuration,
+         wtPersistActiveWorkoutDraft } from './timers.js';
 import { showToast }                   from '../home/utils.js';
 import { getExList, getGlobalExList, getGymExList, getGyms, getLastSession, detectPRs, getCache,
          dateKey, saveExercise,
          deleteExercise, getMuscleParts,
          saveCustomMuscle,
          isExpertModeEnabled,
-         getExpertPreset, getExpertMode, getMaxCycle }              from '../data.js';
+         getExpertPreset, getExpertMode, getMaxCycle,
+         getTestBoardV2, saveTestBoardV2 }              from '../data.js';
 import { estimate1RM, estimateSet1RM, rpeRepsToPct, targetWeightKg, weightRange, SUBPATTERN_TO_MAJOR,
-         getTrackMetricHistory, getLastTrackSession, normalizeWorkoutTrack, calcSetVolume } from '../calc.js?v=20260514v72';
+         getTrackMetricHistory, getWendlerMetricHistory, getLastTrackSession, normalizeWorkoutTrack,
+         calcSetVolume, isWendlerWorkoutEntry } from '../calc.js?v=20260514v72';
 import { MOVEMENTS } from '../config.js';
+import {
+  getWorkoutNavSnapshot,
+  handleWorkoutBack,
+} from './navigation-stack.js';
 import {
   buildMaxPickerExerciseEntry,
   resolveMaxBenchmarkPickerItems,
 } from './expert/max-benchmark-picker.js?v=20260517v3';
+import {
+  buildExerciseProgramWorkoutPrescription,
+  findExerciseProgramBenchmark,
+  getExerciseProgramSettings,
+  mondayOf,
+  upsertExerciseProgramBenchmark,
+} from './test-v2/board-core.js';
+import { getWorkoutSessions } from './sessions.js';
+import { clearSetCompletedAt, stampSetCompletedAt, stripSetCompletedAt } from './timeline.js';
 // resolveCurrentGymId는 expert.js의 단일 진실원 (preset + S.workout.currentGymId 동기화).
 // isExpertViewShown은 세션 뷰 상태 (일반 모드 뷰 ↔ 프로 모드 뷰) 조회용.
 // expert.js는 exercises.js를 static import 하지 않으므로 순환 참조 없음.
 import { resolveCurrentGymId, isExpertViewShown } from './expert.js';
 
+const DASHBOARD3_TEST_MODE_UI = true;
+
+function _isDashboardTestModeSurface() {
+  return DASHBOARD3_TEST_MODE_UI;
+}
+
+function _isMaxEntryData(entry) {
+  return !!entry && (
+    entry.recommendationMeta?.mode === 'max' ||
+    !!entry.maxPrescription ||
+    !!entry.maxWeakPart
+  );
+}
+
+function _hasMaxWorkoutSessionState() {
+  return S?.workout?.maxMeta?.mode === 'max' ||
+    (Array.isArray(S?.workout?.exercises) && S.workout.exercises.some(_isMaxEntryData));
+}
+
+function _isTestModeEntry(entry = null) {
+  return _isDashboardTestModeSurface() || _isMaxWorkoutMode() || _isMaxEntryData(entry) || _hasMaxWorkoutSessionState();
+}
+
+function _isTestModePickerContext() {
+  return _isDashboardTestModeSurface() || _isMaxWorkoutMode() || _hasMaxWorkoutSessionState();
+}
+
 // preset.enabled=true + 프로 모드 뷰 둘 다일 때만 'expert 세션'으로 간주.
 // '일반 모드 뷰' 중에는 picker가 전체 기구 풀을 쓰도록 분기 (현재 헬스장에 기구 0개여도
 // 디폴트 종목이 보이게 함).
 function _isExpertSessionActive() {
+  if (_isDashboardTestModeSurface()) return true;
   try {
     const mode = getExpertMode?.() || getExpertPreset()?.mode || 'normal';
     return !!isExpertModeEnabled() && (mode === 'pro' || mode === 'max' || !!isExpertViewShown());
@@ -44,6 +87,7 @@ function _isMaxWorkoutMode() {
 
 const NEW_MUSCLE_OPTION = '__new_custom_muscle__';
 const _embeddedMaxCards = new Map();
+let _detailEmbeddedEntryIdx = null;
 
 function _isEmbeddedMaxEntry(entryIdx) {
   const slot = _embeddedMaxCards.get(entryIdx);
@@ -51,7 +95,7 @@ function _isEmbeddedMaxEntry(entryIdx) {
 }
 
 function _isMaxEntryMode(entryIdx) {
-  return _isEmbeddedMaxEntry(entryIdx) || _isMaxWorkoutMode();
+  return _isEmbeddedMaxEntry(entryIdx) || _isTestModeEntry(S.workout.exercises?.[entryIdx]);
 }
 
 function _rerenderMaxEntryOwner(entryIdx) {
@@ -76,6 +120,7 @@ function _setWorkoutModalLock(on) {
 // flex 레이아웃이 깨지는 이슈가 있었음 (유저: '운동체크 시 RPE 버튼이 생기면서 디자인 망가짐').
 // 이제는 '프로모드 preset 활성 && 프로모드 뷰 표시' 동시 조건만 true.
 function _isExpertUiEnabled() {
+  if (_isDashboardTestModeSurface()) return false;
   try {
     return !!isExpertModeEnabled() && !!isExpertViewShown();
   } catch {
@@ -84,7 +129,7 @@ function _isExpertUiEnabled() {
 }
 
 function _ensureExpertManualSession() {
-  if (!isExpertModeEnabled()) return;
+  if (!_isExpertSessionActive()) return;
   S.workout.currentGymId = resolveCurrentGymId();
   if (!S.workout.routineMeta) {
     S.workout.routineMeta = {
@@ -96,7 +141,7 @@ function _ensureExpertManualSession() {
 }
 
 function _normalizeExpertSessionAfterExerciseChange() {
-  if (!isExpertModeEnabled()) return;
+  if (!_isExpertSessionActive()) return;
   if (S.workout.exercises.length === 0) {
     S.workout.routineMeta = null;
     return;
@@ -122,6 +167,7 @@ export function wtAddSet(entryIdx) {
     done: false,
   });
   if (!_rerenderMaxEntryOwner(entryIdx)) _renderSets(entryIdx);
+  wtPersistActiveWorkoutDraft('set add');
   saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
 }
 
@@ -129,6 +175,7 @@ export function wtRemoveSet(entryIdx, si) {
   // Undo Toast 3초: 세트 객체와 원래 위치를 기억해두고 복원 지원
   const removed = S.workout.exercises[entryIdx].sets.splice(si, 1)[0];
   if (!_rerenderMaxEntryOwner(entryIdx)) _renderSets(entryIdx);
+  wtPersistActiveWorkoutDraft('set remove');
   saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
   if (!removed) return;
   window.showToast?.('세트 삭제됨', 3000, 'info', {
@@ -137,18 +184,15 @@ export function wtRemoveSet(entryIdx, si) {
       if (!S.workout.exercises[entryIdx]) return;
       S.workout.exercises[entryIdx].sets.splice(si, 0, removed);
       if (!_rerenderMaxEntryOwner(entryIdx)) _renderSets(entryIdx);
+      wtPersistActiveWorkoutDraft('set remove undo');
       saveWorkoutDay({ silent: true }).catch(e => console.error('Restore error:', e));
     },
   });
 }
 
-// 2026-04-20: 세트 기록(kg/reps 입력, ✓ 체크)이 생기면 운동 타이머 자동 시작.
-//   타이머가 아직 시작 안 됐고 누적 duration 도 없으면만 자동시작. 유저가 명시적으로 reset 해
-//   둔 세션(duration>0 에서 reset 후 다시 기록)은 수동 play 로 이어가도록 건드리지 않는다.
-function _ensureWorkoutTimerStarted() {
-  if (!S.workout.workoutStartTime && (S.workout.workoutDuration || 0) === 0) {
-    try { wtStartWorkoutTimer(); } catch (e) { console.warn('[autoStartTimer] fail:', e?.message || e); }
-  }
+function _refreshWorkoutTimeline(context) {
+  try { wtRefreshWorkoutTimelineDuration(context); }
+  catch (e) { console.warn('[workoutTimeline] refresh fail:', e?.message || e); }
 }
 
 function _exerciseSubPattern(entry, ex) {
@@ -251,8 +295,8 @@ function _localMaxPrescription({ movement, exerciseId, sessionType, weakTarget }
 function _resolveMaxPrescription(entry, ex) {
   if (entry?.maxPrescription) return entry.maxPrescription;
   let preset;
-  try { preset = getExpertPreset(); } catch { return null; }
-  if (preset?.mode !== 'max') return null;
+  try { preset = getExpertPreset(); } catch { preset = null; }
+  if (preset?.mode !== 'max' && !_isTestModeEntry(entry)) return null;
   const movement = MOVEMENTS.find(m => m.id === (entry?.movementId || ex?.movementId));
   if (!movement) return null;
   const meta = S.workout.maxMeta || {};
@@ -285,17 +329,18 @@ function _buildMaxExerciseCardMeta(entry, ex, mc, idx) {
   const kg = Number(prescription?.startKg) || Number(entry?.sets?.[0]?.kg) || 0;
   const reps = Number(prescription?.repsHigh) || Number(entry?.sets?.[0]?.reps) || 0;
   const sets = Number(prescription?.targetSets) || (entry?.sets?.length || 0);
-  const trackCode = _activeMaxTrack(entry, ex);
-  const track = trackCode === 'H' ? '강도' : '볼륨';
+  const isWendler = isWendlerWorkoutEntry(entry);
+  const trackCode = isWendler ? 'W' : _activeMaxTrack(entry, ex);
+  const track = isWendler ? '웬들러' : (trackCode === 'H' ? '강도' : '볼륨');
   const week = entry?.recommendationMeta?.cycleWeek ? `W${entry.recommendationMeta.cycleWeek}` : '오늘';
   const source = entry?.gymTagAtTime === '*' ? '공통 기구' : '선택 헬스장';
   const isBenchmark = !!prescription?.benchmarkId || !!entry?.recommendationMeta?.cycleId;
-  const title = `${week} ${track} 트랙`;
+  const title = isWendler ? `${week} 웬들러 트랙` : `${week} ${track} 트랙`;
   const subtitle = prescription?.transparency?.detail || prescription?.reason || '최근 수행 기록과 오늘 선택한 부위를 기준으로 세트를 준비했어요.';
   const pace = prescription?.deltaKg == null
     ? '계획'
     : (Number(prescription.deltaKg) >= 0 ? '정상' : '조정');
-  return { prescription, kg, reps, sets, trackCode, track, week, source, isBenchmark, title, subtitle, pace };
+  return { prescription, kg, reps, sets, trackCode, track, week, source, isBenchmark, title, subtitle, pace, isWendler };
 }
 
 let _maxTrackGraphSeq = 0;
@@ -313,6 +358,7 @@ function _smoothMiniPath(coords) {
 
 function _formatTrackGraphValue(track, value) {
   const v = Number(value) || 0;
+  if (track === 'W') return `${Math.round(v)}kg`;
   if (track === 'H') return `${Math.round(v)}kg`;
   if (v >= 1000) return `${(v / 1000).toFixed(1)}t`;
   return `${Math.round(v)}kg`;
@@ -320,12 +366,16 @@ function _formatTrackGraphValue(track, value) {
 
 function _formatTrackGraphDelta(points = []) {
   if (!points || points.length < 2) return '';
-  const last = Number(points[points.length - 1]?.value) || 0;
-  const prev = Number(points[points.length - 2]?.value) || 0;
-  if (!(last > 0) || !(prev > 0)) return '';
-  const pct = Math.round(((last - prev) / prev) * 100);
-  if (!Number.isFinite(pct) || pct === 0) return '0%';
-  return `${pct > 0 ? '+' : ''}${pct}%`;
+  const recent = points.slice(-6);
+  const last = Number(recent[recent.length - 1]?.value) || 0;
+  const prev = Number(recent[recent.length - 2]?.value) || 0;
+  const peak = Math.max(...recent.map(p => Number(p?.value) || 0));
+  if (!(last > 0) || !(prev > 0) || !(peak > 0)) return '';
+  const lastPoint = (last / peak) * 100;
+  const prevPoint = (prev / peak) * 100;
+  const pp = Math.round(lastPoint - prevPoint);
+  if (!Number.isFinite(pp) || pp === 0) return '0pp';
+  return `${pp > 0 ? '+' : ''}${pp}pp`;
 }
 
 function _trackGraphDeltaClass(delta) {
@@ -369,10 +419,10 @@ function _buildTrackGraphSvg(points, color, track) {
 }
 
 function _buildTrackGraphRow(track, points, active) {
-  const color = track === 'H' ? '#be123c' : '#2563eb';
+  const color = track === 'W' ? '#0f766e' : (track === 'H' ? '#be123c' : '#2563eb');
   const last = points?.length ? points[points.length - 1].value : 0;
-  const label = track === 'H' ? '강도' : '볼륨';
-  const metric = track === 'H' ? '추정1RM' : '총볼륨';
+  const label = track === 'W' ? '웬들러' : (track === 'H' ? '강도' : '볼륨');
+  const metric = track === 'W' ? 'e1RM' : (track === 'H' ? '추정1RM' : '총볼륨');
   const valueLabel = last > 0 ? _formatTrackGraphValue(track, last) : metric;
   const delta = _formatTrackGraphDelta(points || []);
   return `
@@ -414,10 +464,12 @@ function _activeMaxTrack(entry, ex) {
 
 function _buildMaxTrackSparkline(entry, ex) {
   if (!entry?.exerciseId) return '';
+  if (isWendlerWorkoutEntry(entry)) {
+    const history = getWendlerMetricHistory(_cacheWithCurrentWorkoutForTrackMetric(entry), getExList(), entry.exerciseId);
+    const rows = _buildTrackGraphRow('W', history.W, true);
+    return `<div class="ex-max-track-graph is-wendler" title="웬들러 기록은 볼륨/강도와 분리해 메인 세트 e1RM으로 그립니다.">${rows}</div>`;
+  }
   const history = getTrackMetricHistory(_cacheWithCurrentWorkoutForTrackMetric(entry), getExList(), entry.exerciseId);
-  const hasTrackData = history.M.length || history.H.length;
-  if (!hasTrackData && !history.unclassified) return '';
-
   const activeTrack = _activeMaxTrack(entry, ex);
   const rows = [
     _buildTrackGraphRow('M', history.M, activeTrack === 'M'),
@@ -454,10 +506,10 @@ function _buildMaxLastSessionSummary(last, entry, ex) {
     .join(' / ');
   const dateLabel = String(last.date || '').slice(5).replace('-', '/') || '최근';
   const trackLabel = _activeMaxTrack(entry, ex) === 'H' ? '강도' : '볼륨';
+  const text = `직전 ${trackLabel} ${dateLabel} · ${setSummary}`;
   return `
-    <div class="ex-max-v2-last">
-      <span class="ex-max-v2-last-label">직전 ${trackLabel} ${dateLabel}</span>
-      <span class="ex-max-v2-last-sets">${setSummary}</span>
+    <div class="ex-max-v2-last" title="${_escPicker(text)}">
+      <span class="ex-max-v2-last-text">${_escPicker(text)}</span>
     </div>`;
 }
 
@@ -467,8 +519,9 @@ function _buildMaxExerciseCardHeader(entry, ex, mc, idx, sparkline) {
   const repsText = meta.reps > 0 ? `${meta.reps}회` : '반복 입력';
   const setText = meta.sets > 0 ? `${meta.sets}세트` : '세트';
   const planMeta = `${meta.title} · ${setText}`;
+  const trackHint = meta.isWendler ? '웬들러 기준' : '탭해서 트랙 전환';
   return `
-    <div class="ex-max-v2-head" data-action="toggle-max-entry-track" data-idx="${idx}" role="button" tabindex="0" aria-label="운동 트랙 전환">
+    <div class="ex-max-v2-head" data-action="toggle-max-entry-track" data-idx="${idx}" role="button" tabindex="0" aria-label="${meta.isWendler ? '웬들러 운동 카드' : '운동 트랙 전환'}">
       <div class="ex-max-v2-title-row">
         <div>
           <div class="ex-max-v2-source"><i style="background:${mc?.color || 'var(--primary)'}"></i>${meta.isBenchmark ? '벤치마크' : '추천 종목'} · ${meta.source}</div>
@@ -477,25 +530,47 @@ function _buildMaxExerciseCardHeader(entry, ex, mc, idx, sparkline) {
         <button class="ex-remove-btn ex-max-v2-menu" data-idx="${idx}" aria-label="종목 삭제">×</button>
       </div>
       <div class="ex-max-v2-plan">
-        <div>
+        <div class="ex-max-v2-plan-goal">
           <div class="ex-max-v2-kicker">오늘 성공 기준</div>
           <div class="ex-max-v2-main">${kgText} × ${repsText}</div>
-          <div class="ex-max-v2-sub">${planMeta} · 탭해서 트랙 전환</div>
+          <div class="ex-max-v2-sub">${planMeta} · ${trackHint}</div>
         </div>
-        <div class="ex-max-v2-pace ${meta.trackCode === 'H' ? 'is-heavy' : 'is-volume'}"><b>${meta.track}</b><span>현재 트랙</span></div>
+        ${sparkline
+          ? `<div class="ex-max-v2-trend">${sparkline}</div>`
+          : `<div class="ex-max-v2-pace ${meta.trackCode === 'H' ? 'is-heavy' : 'is-volume'}"><b>${meta.track}</b><span>현재 트랙</span></div>`}
       </div>
-      ${sparkline ? `<div class="ex-max-v2-trend">${sparkline}</div>` : ''}
     </div>
   `;
 }
 
-function _maxSetTypeLabel(type) {
+function _isWendlerSet(set = {}) {
+  return !!set?.wendlerRole;
+}
+
+function _maxSetTypeLabel(type, set = {}) {
+  if (set?.wendlerRole === 'warmup') return '프리';
+  if (set?.wendlerRole === 'main') return '메인';
+  if (set?.wendlerRole === 'supplemental') {
+    if (set.supplementalKind === 'bbb') return 'BBB';
+    if (set.supplementalKind === 'fsl') return 'FSL';
+    return '보조';
+  }
   if (type === 'warmup') return '프리';
   if (type === 'drop') return '드랍';
   return '본';
 }
 
-function _nextMaxSetType(type) {
+function _maxSetTypeClass(type, set = {}) {
+  if (set?.wendlerRole === 'warmup') return 'warmup';
+  if (set?.wendlerRole === 'main') return 'wendler-main';
+  if (set?.wendlerRole === 'supplemental') return set.supplementalKind === 'fsl' ? 'fsl' : 'bbb';
+  if (type === 'warmup') return 'warmup';
+  if (type === 'drop') return 'drop';
+  return 'main';
+}
+
+function _nextMaxSetType(type, set = {}) {
+  if (_isWendlerSet(set)) return type || 'main';
   if (type === 'warmup') return 'main';
   if (type === 'main' || !type) return 'drop';
   return 'warmup';
@@ -504,6 +579,7 @@ function _nextMaxSetType(type) {
 function _switchMaxEntryTrack(entryIdx) {
   const entry = S.workout.exercises[entryIdx];
   if (!entry) return false;
+  if (isWendlerWorkoutEntry(entry)) return false;
   const current = normalizeWorkoutTrack(entry.recommendationMeta?.track || entry.maxPrescription?.benchmarkTrack || entry.maxPrescription?.track) || 'M';
   const next = current === 'H' ? 'M' : 'H';
   const alternative = entry.maxPrescription?.trackAlternatives?.[next] || null;
@@ -525,7 +601,7 @@ function _switchMaxEntryTrack(entryIdx) {
     if (nextSets.length) {
       const hasDone = (entry.sets || []).some(s => s.done === true);
       entry.sets = hasDone
-        ? (entry.sets || []).map((set, i) => set.done === true ? set : { ...(nextSets[i] || nextSets[nextSets.length - 1] || set), done: false })
+        ? (entry.sets || []).map((set, i) => set.done === true ? set : { ...stripSetCompletedAt(nextSets[i] || nextSets[nextSets.length - 1] || set), done: false })
         : nextSets;
     }
   } else if (entry.maxPrescription) {
@@ -581,6 +657,19 @@ function _normalizeRomPct(val) {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
 
+function _romPctToScoreInput(val) {
+  const pct = _normalizeRomPct(val);
+  const score = (pct == null ? 100 : pct) / 10;
+  return Number.isInteger(score) ? String(score) : String(score);
+}
+
+function _romScoreInputToPct(val) {
+  if (val === '' || val == null) return null;
+  const n = Number(String(val).replace(',', '.'));
+  if (!Number.isFinite(n)) return null;
+  return _normalizeRomPct(n * 10);
+}
+
 function _setRomPctLocal(entryIdx, si, val) {
   const set = S.workout.exercises?.[entryIdx]?.sets?.[si];
   if (!set) return null;
@@ -609,8 +698,10 @@ function _updateSetDraftField(entryIdx, si, field, val) {
   set[field] = Number.isFinite(parsed) ? parsed : 0;
   if (field === 'kg' || field === 'reps') {
     set.done = false;
-    if ((set[field] || 0) > 0) _ensureWorkoutTimerStarted();
+    clearSetCompletedAt(set);
+    if ((set[field] || 0) > 0) _refreshWorkoutTimeline(`set draft ${field}`);
   }
+  wtPersistActiveWorkoutDraft(`set draft ${field}`);
 }
 
 export function wtUpdateSet(entryIdx, si, field, val) {
@@ -623,10 +714,13 @@ export function wtUpdateSet(entryIdx, si, field, val) {
   if (field === 'romPct' && parsed == null) delete S.workout.exercises[entryIdx].sets[si].romPct;
   else S.workout.exercises[entryIdx].sets[si][field] = parsed;
   if (field === 'kg' || field === 'reps') {
-    S.workout.exercises[entryIdx].sets[si].done = false;
-    // 의미 있는 수치(>0)가 들어왔을 때만 타이머 자동시작. 실수로 0 치고 나가는 건 무시.
-    if ((parsed || 0) > 0) _ensureWorkoutTimerStarted();
+    const set = S.workout.exercises[entryIdx].sets[si];
+    set.done = false;
+    clearSetCompletedAt(set);
+    // 의미 있는 수치(>0)가 들어오면 완료 타임라인 표시만 다시 계산한다.
+    if ((parsed || 0) > 0) _refreshWorkoutTimeline(`set update ${field}`);
   }
+  wtPersistActiveWorkoutDraft(`set update ${field}`);
   const isMaxEntry = _isMaxEntryMode(entryIdx);
   if (isMaxEntry && _setFieldAffectsTrackMetric(field)) {
     if (!_rerenderMaxEntryOwner(entryIdx)) _renderExerciseList();
@@ -646,8 +740,13 @@ export function wtUpdateSetRir(entryIdx, si, val) {
 }
 
 export function wtToggleSetDone(entryIdx, si) {
-  const wasDone = S.workout.exercises[entryIdx].sets[si].done;
-  S.workout.exercises[entryIdx].sets[si].done = !wasDone;
+  const set = S.workout.exercises[entryIdx].sets[si];
+  const wasDone = set.done === true;
+  set.done = !wasDone;
+  if (!wasDone) stampSetCompletedAt(set);
+  else clearSetCompletedAt(set);
+  _refreshWorkoutTimeline('set done toggle');
+  wtPersistActiveWorkoutDraft('set done toggle');
   if (_isMaxEntryMode(entryIdx)) {
     if (!_rerenderMaxEntryOwner(entryIdx)) _renderExerciseList();
   }
@@ -657,8 +756,6 @@ export function wtToggleSetDone(entryIdx, si) {
     if (!wasDone) showToast('저장되었습니다', 1500, 'success');
   }).catch(e => console.error('Save error:', e));
   if (!wasDone) {
-    // 완료 체크 = 실제 운동 진행 중. 타이머 자동시작.
-    _ensureWorkoutTimerStarted();
     _maybeShowMaxSetCoach(entryIdx, si);
     const ex = getExList().find(e => e.id === S.workout.exercises[entryIdx].exerciseId);
     const exName = ex?.name || S.workout.exercises[entryIdx].exerciseId;
@@ -670,6 +767,7 @@ export function wtToggleSetDone(entryIdx, si) {
 export function wtUpdateSetType(entryIdx, si, val) {
   S.workout.exercises[entryIdx].sets[si].setType = val;
   if (!_rerenderMaxEntryOwner(entryIdx)) _renderSets(entryIdx);
+  wtPersistActiveWorkoutDraft('set type update');
   saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
 }
 
@@ -679,6 +777,7 @@ export function wtMoveSet(entryIdx, si, direction) {
   if (targetIdx < 0 || targetIdx >= sets.length) return;
   [sets[si], sets[targetIdx]] = [sets[targetIdx], sets[si]];
   if (!_rerenderMaxEntryOwner(entryIdx)) _renderSets(entryIdx);
+  wtPersistActiveWorkoutDraft('set move');
   saveWorkoutDay({ silent: true }).then(() => showToast('순서가 변경되었습니다', 1500, 'success')).catch(e => console.error('Save error:', e));
 }
 
@@ -687,6 +786,7 @@ export function wtRemoveExerciseEntry(entryIdx) {
   _normalizeExpertSessionAfterExerciseChange();
   _renderExerciseList();
   _syncExpertTopArea();
+  wtPersistActiveWorkoutDraft('exercise remove');
   saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
 }
 
@@ -700,6 +800,77 @@ export function wtRemoveExerciseEntry(entryIdx) {
 
 function _todayDateKey() {
   return (S.shared.date) ? dateKey(S.shared.date.y, S.shared.date.m, S.shared.date.d) : null;
+}
+
+function _workoutEntryKey(entry, entryIdx) {
+  return String(entry?.uid || entry?.instanceId || entry?.id || `${entry?.exerciseId || entry?.name || 'entry'}:${entryIdx}`);
+}
+
+function _resolveWorkoutEntryIndex(detail = {}) {
+  const entries = Array.isArray(S.workout.exercises) ? S.workout.exercises : [];
+  if (detail.exerciseKey) {
+    const key = String(detail.exerciseKey);
+    const found = entries.findIndex((entry, idx) => _workoutEntryKey(entry, idx) === key);
+    if (found >= 0) return found;
+  }
+  const fallback = Number(detail.entryIdx);
+  return Number.isFinite(fallback) && entries[fallback] ? Math.max(0, Math.floor(fallback)) : -1;
+}
+
+export function wtFocusWorkoutEntryCard(entryIdx, options = {}) {
+  const idx = Math.max(0, Math.floor(Number(entryIdx)));
+  const entry = S.workout.exercises?.[idx];
+  if (!entry) return false;
+  if (options.expand !== false && entry.uiCollapsed) entry.uiCollapsed = false;
+  if (options.render !== false) _renderExerciseList();
+
+  const focus = () => {
+    const block = document.querySelector(`#wt-exercise-list [data-wt-entry-idx="${idx}"]`);
+    if (!block) return false;
+    block.classList.remove('ex-block--record-focus');
+    void block.offsetWidth;
+    block.classList.add('ex-block--record-focus');
+    block.scrollIntoView({
+      block: options.block || 'center',
+      behavior: options.behavior || 'smooth',
+    });
+    const focusTarget = block.querySelector('.ex-max-v2-name') || block;
+    focusTarget?.focus?.({ preventScroll: true });
+    window.setTimeout?.(() => block.classList.remove('ex-block--record-focus'), 1400);
+    return true;
+  };
+
+  if (!focus()) window.requestAnimationFrame?.(focus);
+  return true;
+}
+
+export function wtFocusWorkoutEntryFromDetail(detail = {}, options = {}) {
+  return wtFocusWorkoutEntryCard(_resolveWorkoutEntryIndex(detail), options);
+}
+
+function _findWorkoutEntryIndexByExerciseId(exerciseId) {
+  const id = String(exerciseId || '');
+  if (!id) return -1;
+  return (Array.isArray(S.workout.exercises) ? S.workout.exercises : [])
+    .findIndex(entry => entry?.exerciseId === id);
+}
+
+function _bindWorkoutEntryRecordFocus(block, entryIdx) {
+  const open = (event) => {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    wtFocusWorkoutEntryCard(entryIdx, { render: false });
+  };
+  block.querySelectorAll('.ex-max-v2-name, .ex-max-v2-plan-goal').forEach((target) => {
+    target.setAttribute('role', 'button');
+    target.setAttribute('tabindex', '0');
+    target.setAttribute('aria-label', '운동 카드 보기');
+    target.addEventListener('click', open);
+    target.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      open(event);
+    });
+  });
 }
 
 function _fmtNum(v) {
@@ -946,9 +1117,6 @@ export function _renderExerciseList() {
   }
   container.innerHTML = '';
   const allMuscles = getMuscleParts();
-  const isExpert = _isExpertUiEnabled();
-  const isMaxMode = _isMaxWorkoutMode();
-  const isProExpertMode = isExpert && !isMaxMode;
 
   // Finding 2: 오늘 세션 제외 → 자기참조 방지. 최근 기록(today 제외).
   const todayKey = _todayDateKey();
@@ -956,69 +1124,29 @@ export function _renderExerciseList() {
   S.workout.exercises.forEach((entry, idx) => {
     const ex   = getExList().find(e => e.id === entry.exerciseId);
     const mc   = allMuscles.find(m => m.id === entry.muscleId);
-    const last = getLastSession(entry.exerciseId, todayKey);
-    const lastHint = last
-      ? `<div class="ex-last-hint">
-           📌 직전(${last.date.slice(5).replace('-','/')})
-           ${last.sets.map(s=>`${s.kg}×${s.reps}`).join(' / ')}
-           <button class="ex-copy-btn" data-idx="${idx}">복사</button>
-         </div>`
-      : '';
-    const sparkline = isMaxMode
-      ? _buildMaxTrackSparkline(entry, ex)
-      : _buildSparkline(entry.exerciseId, mc?.color);
-    const maxTrackLast = isMaxMode
-      ? getLastTrackSession(getCache(), getExList(), entry.exerciseId, _activeMaxTrack(entry, ex), todayKey)
-      : null;
-    const maxLastSummary = isMaxMode
-      ? _buildMaxLastSessionSummary(maxTrackLast, { ...entry, _idx: idx }, ex)
-      : '';
-    const maxPrescriptionHtml = isMaxMode ? '' : _buildMaxPrescriptionBlock(entry, ex);
-    const maxAllDone = isMaxMode && (entry.sets || []).length > 0 && (entry.sets || []).every(s => s.done !== false);
+    const sparkline = _buildMaxTrackSparkline(entry, ex);
+    const maxTrackLast = getLastTrackSession(getCache(), getExList(), entry.exerciseId, _activeMaxTrack(entry, ex), todayKey);
+    const maxLastSummary = _buildMaxLastSessionSummary(maxTrackLast, { ...entry, _idx: idx }, ex);
+    const maxAllDone = (entry.sets || []).length > 0 && (entry.sets || []).every(s => s.done !== false);
     const maxCollapsed = !!entry.uiCollapsed && maxAllDone;
 
-    // Scene 12 — 프로 모드 전용 UI (e1RM 기반 실제 추천 무게 로직)
-    // chips/footer는 prior 우선, 없으면 오늘 entry의 완료 본세트로 폴백.
-    let expertHtml = '';
-    let poPillHtml = '';
-    if (isProExpertMode) {
-      const lastForRec = _resolveLastForRec(idx, entry.exerciseId);
-      const presetRpe = _presetTargetRpe();
-      expertHtml = _buildExpertSceneBlock({ entryIdx: idx, exerciseId: entry.exerciseId, last: lastForRec, targetRpe: presetRpe });
-      poPillHtml = _buildPoPillHtml({ exerciseId: entry.exerciseId, last: lastForRec, targetRpe: presetRpe });
-    }
-
     const block = document.createElement('div');
-    block.className = 'ex-block' + (isExpert ? ' ex-block--expert' : '') + (isMaxMode ? ' ex-block--max-v2' : '') + (maxAllDone ? ' is-complete' : '') + (maxCollapsed ? ' is-collapsed' : '');
-    if (isMaxMode) {
-      block.innerHTML = `
-        ${_buildMaxExerciseCardHeader(entry, ex, mc, idx, sparkline)}
-        ${maxLastSummary}
-        <div class="ex-sets ex-max-v2-sets" id="wt-sets-${idx}"></div>
-        <div class="ex-max-v2-actions">
-          <button class="ex-max-v2-primary${maxAllDone ? ' is-done' : ''}" data-idx="${idx}">${maxAllDone ? '운동 완료' : '다음 세트 완료'}</button>
-          ${maxCollapsed
-            ? `<button class="ex-max-v2-secondary ex-max-v2-expand-card" data-idx="${idx}">세트 다시 보기</button>`
-            : `<button class="ex-add-set-btn ex-max-v2-secondary" data-idx="${idx}">세트 추가</button>`}
-        </div>`;
-    } else {
-      block.innerHTML = `
-        <div class="ex-block-header">
-          <span class="ex-block-muscle" style="color:${mc?.color||'#888'}">${mc?.name||''}</span>
-          <span class="ex-block-name">${ex?.name||entry.exerciseId}</span>
-          ${poPillHtml}
-          ${sparkline}
-          <button class="ex-remove-btn" data-idx="${idx}">✕</button>
-        </div>
-        ${lastHint}
-        ${maxPrescriptionHtml}
-        <div class="ex-sets" id="wt-sets-${idx}"></div>
-        <button class="ex-add-set-btn" data-idx="${idx}">+ 세트 추가</button>
-        ${expertHtml}`;
-    }
+    block.className = 'ex-block ex-block--max-v2' + (maxAllDone ? ' is-complete' : '') + (maxCollapsed ? ' is-collapsed' : '');
+    block.dataset.wtEntryIdx = String(idx);
+    block.innerHTML = `
+      ${_buildMaxExerciseCardHeader(entry, ex, mc, idx, sparkline)}
+      ${maxLastSummary}
+      <div class="ex-sets ex-max-v2-sets" id="wt-sets-${idx}"></div>
+      <div class="ex-max-v2-actions">
+        <button class="ex-max-v2-primary${maxAllDone ? ' is-done' : ''}" data-idx="${idx}">${maxAllDone ? '운동 완료' : '다음 세트 완료'}</button>
+        ${maxCollapsed
+          ? `<button class="ex-max-v2-secondary ex-max-v2-expand-card" data-idx="${idx}">세트 다시 보기</button>`
+          : `<button class="ex-add-set-btn ex-max-v2-secondary" data-idx="${idx}">세트 추가</button>`}
+      </div>`;
 
     block.querySelector('.ex-remove-btn').addEventListener('click', () => wtRemoveExerciseEntry(idx));
     block.querySelector('.ex-add-set-btn')?.addEventListener('click', () => wtAddSet(idx));
+    _bindWorkoutEntryRecordFocus(block, idx);
     const maxHead = block.querySelector('[data-action="toggle-max-entry-track"]');
     maxHead?.addEventListener('click', (e) => {
       if (e.target.closest('.ex-remove-btn')) return;
@@ -1060,13 +1188,15 @@ export function _renderExerciseList() {
       copyBtn.addEventListener('click', () => {
         // C-1: 종목 세트 복사도 활동 복사와 동일하게 Undo 토스트 제공.
         const prevSets = JSON.parse(JSON.stringify(S.workout.exercises[idx].sets || []));
-        S.workout.exercises[idx].sets = JSON.parse(JSON.stringify(last.sets)).map(s => ({ ...s, done: false }));
+        S.workout.exercises[idx].sets = JSON.parse(JSON.stringify(last.sets)).map(s => ({ ...stripSetCompletedAt(s), done: false }));
+        wtPersistActiveWorkoutDraft('set copy previous');
         saveWorkoutDay({ silent: true }).then(() => _renderExerciseList()).catch(e => console.error('Save error:', e));
         showToast('직전 세트를 불러왔어요', 3000, 'success', {
           action: '실행 취소',
           onAction: () => {
             if (!S.workout.exercises[idx]) return;
             S.workout.exercises[idx].sets = prevSets;
+            wtPersistActiveWorkoutDraft('set copy undo');
             saveWorkoutDay({ silent: true }).then(() => _renderExerciseList()).catch(e => console.error('Undo save:', e));
           },
         });
@@ -1167,6 +1297,68 @@ export function renderEmbeddedMaxExerciseCard(container, entryIdx, options = {})
   return block;
 }
 
+export function clearWorkoutExerciseDetail() {
+  const root = document.getElementById('wt-exercise-detail-root');
+  if (_detailEmbeddedEntryIdx != null) {
+    _embeddedMaxCards.delete(_detailEmbeddedEntryIdx);
+    _detailEmbeddedEntryIdx = null;
+  }
+  if (root) root.innerHTML = '';
+}
+
+export function renderWorkoutExerciseDetail() {
+  const root = document.getElementById('wt-exercise-detail-root');
+  if (!root) return;
+  const snapshot = getWorkoutNavSnapshot();
+  const entryIdx = _resolveWorkoutEntryIndex(snapshot.detail || {});
+  if (_detailEmbeddedEntryIdx != null && _detailEmbeddedEntryIdx !== entryIdx) {
+    _embeddedMaxCards.delete(_detailEmbeddedEntryIdx);
+  }
+  _detailEmbeddedEntryIdx = entryIdx >= 0 ? entryIdx : null;
+
+  if (entryIdx < 0 || !S.workout.exercises?.[entryIdx]) {
+    root.innerHTML = `
+      <div class="wt-exercise-detail-screen">
+        <div class="wt-exercise-detail-head">
+          <button type="button" class="wt-exercise-detail-back" aria-label="운동 기록으로 돌아가기">‹</button>
+          <div class="wt-exercise-detail-title">
+            <strong>운동 상세</strong>
+            <span>선택한 운동을 찾을 수 없습니다</span>
+          </div>
+        </div>
+        <div class="wt-exercise-detail-empty">운동 기록 화면으로 돌아가 다시 선택해 주세요</div>
+      </div>`;
+    root.querySelector('.wt-exercise-detail-back')?.addEventListener('click', () => handleWorkoutBack({ preferHistory: true }));
+    return;
+  }
+
+  const entry = S.workout.exercises[entryIdx];
+  const ex = getExList().find(item => item.id === entry.exerciseId);
+  const title = ex?.name || entry.name || entry.exerciseId || '운동 상세';
+  const sessionLabel = `${S.workout.sessionIndex + 1}회차`;
+  root.innerHTML = `
+    <div class="wt-exercise-detail-screen">
+      <div class="wt-exercise-detail-head">
+        <button type="button" class="wt-exercise-detail-back" aria-label="운동 기록으로 돌아가기">‹</button>
+        <div class="wt-exercise-detail-title">
+          <strong>${_escPicker(title)}</strong>
+          <span>${sessionLabel} · 세트 입력</span>
+        </div>
+      </div>
+      <div data-wt-exercise-detail-card></div>
+    </div>`;
+  root.querySelector('.wt-exercise-detail-back')?.addEventListener('click', () => handleWorkoutBack({ preferHistory: true }));
+  const slot = root.querySelector('[data-wt-exercise-detail-card]');
+  renderEmbeddedMaxExerciseCard(slot, entryIdx, {
+    className: 'wt-exercise-detail-card',
+    hideRemove: false,
+    onRemove: () => {
+      wtRemoveExerciseEntry(entryIdx);
+      handleWorkoutBack({ preferHistory: true });
+    },
+  });
+}
+
 // ── 세트 행 렌더 ────────────────────────────────────────────────
 function _renderSets(entryIdx, targetEl = null) {
   const el = targetEl || document.getElementById(`wt-sets-${entryIdx}`);
@@ -1184,8 +1376,10 @@ function _renderSets(entryIdx, targetEl = null) {
     const isWarmup = set.setType === 'warmup';
     const isDrop = set.setType === 'drop';
     const isDone   = set.done !== false;
+    const typeClass = _maxSetTypeClass(set.setType, set);
     const romPct = _normalizeRomPct(set.romPct);
     const romValue = romPct == null ? 100 : romPct;
+    const romScoreValue = _romPctToScoreInput(romValue);
     const volume = calcSetVolume(set);
     const vol = (set.kg && set.reps && !isWarmup && isDone)
       ? `<span style="color:var(--accent)">${Math.round(volume).toLocaleString()}vol</span>`
@@ -1204,19 +1398,14 @@ function _renderSets(entryIdx, targetEl = null) {
     row.className = isMaxMode ? `set-row ex-max-v2-set${isDone ? ' done' : ''}` : 'set-row';
     row.innerHTML = isMaxMode ? `
       <div class="ex-max-v2-main-row">
-        <button type="button" class="ex-max-v2-type-btn ${isWarmup ? 'warmup' : (isDrop ? 'drop' : 'main')}" title="세트 타입">${_maxSetTypeLabel(set.setType)}</button>
+        <button type="button" class="ex-max-v2-type-btn ${typeClass}" title="세트 타입">${_maxSetTypeLabel(set.setType, set)}</button>
         <label class="ex-max-v2-field"><span>KG</span><input class="set-input" type="number" inputmode="decimal" placeholder="kg" min="0" step="0.5" value="${set.kg||''}"></label>
         <label class="ex-max-v2-field"><span>REP</span><input class="set-input" type="number" inputmode="numeric" placeholder="회" min="1" step="1" value="${set.reps||''}"></label>
         <label class="ex-max-v2-field"><span>RIR</span><input class="set-rpe-input" type="number" inputmode="decimal" placeholder="-" min="0" max="9" step="0.5" value="${_rpeToRir(set.rpe)}"></label>
+        <label class="ex-max-v2-rom-field"><span>ROM</span><input class="set-rom-input" type="number" inputmode="decimal" min="0" max="10" step="0.5" value="${romScoreValue}" aria-label="가동범위 10점 입력"><em>/10</em></label>
         <button class="set-done-btn ${isDone?'done':''}" title="완료 체크">✓</button>
         <button class="set-remove-btn" title="세트 삭제">×</button>
         <span class="set-drag-handle" title="드래그하여 순서 변경"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg></span>
-      </div>
-      <div class="ex-max-v2-rom" role="group" aria-label="가동범위 퍼센트">
-        <span>ROM</span>
-        <input class="set-rom-range" type="range" min="0" max="100" step="5" value="${romValue}" style="--rom-pct:${romValue}%" aria-label="가동범위 퍼센트">
-        <input class="set-rom-input" type="number" inputmode="numeric" min="0" max="100" step="1" value="${romValue}" aria-label="가동범위 퍼센트 직접 입력">
-        <em>%</em>
       </div>`
       : `
         <span class="set-num">${si+1}</span>
@@ -1236,7 +1425,10 @@ function _renderSets(entryIdx, targetEl = null) {
         <span class="set-drag-handle" title="드래그하여 순서 변경"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg></span>`;
 
     row.querySelector('.set-type-select')?.addEventListener('change', e => wtUpdateSetType(entryIdx, si, e.target.value));
-    row.querySelector('.ex-max-v2-type-btn')?.addEventListener('click', () => wtUpdateSetType(entryIdx, si, _nextMaxSetType(set.setType || 'main')));
+    row.querySelector('.ex-max-v2-type-btn')?.addEventListener('click', () => {
+      if (_isWendlerSet(set)) return;
+      wtUpdateSetType(entryIdx, si, _nextMaxSetType(set.setType || 'main', set));
+    });
     row.querySelectorAll('.set-input')[0].addEventListener('input', e => _updateSetDraftField(entryIdx, si, 'kg', e.target.value));
     row.querySelectorAll('.set-input')[0].addEventListener('change', e => wtUpdateSet(entryIdx, si, 'kg',   e.target.value));
     // 2026-04-20: kg/reps 입력 focus 시 rest 타이머 skip 호출 제거.
@@ -1253,25 +1445,18 @@ function _renderSets(entryIdx, targetEl = null) {
       maxRpeInput.addEventListener('input', e => _updateSetDraftField(entryIdx, si, 'rpe', _rirToRpe(e.target.value)));
       maxRpeInput.addEventListener('change', e => wtUpdateSetRir(entryIdx, si, e.target.value));
     }
-    const romRange = row.querySelector('.set-rom-range');
     const romInput = row.querySelector('.set-rom-input');
-    if (romRange && romInput) {
-      romRange.addEventListener('input', e => {
-        const next = _setRomPctLocal(entryIdx, si, e.target.value);
-        const display = next == null ? 100 : next;
-        romInput.value = String(display);
-        romRange.style.setProperty('--rom-pct', `${display}%`);
-      });
-      romRange.addEventListener('change', e => wtUpdateSet(entryIdx, si, 'romPct', e.target.value));
+    if (romInput) {
       romInput.addEventListener('input', e => {
-        const next = _normalizeRomPct(e.target.value);
+        const next = _romScoreInputToPct(e.target.value);
         if (next != null) {
           _setRomPctLocal(entryIdx, si, next);
-          romRange.value = String(next);
-          romRange.style.setProperty('--rom-pct', `${next}%`);
         }
       });
-      romInput.addEventListener('change', e => wtUpdateSet(entryIdx, si, 'romPct', e.target.value));
+      romInput.addEventListener('change', e => {
+        const next = _romScoreInputToPct(e.target.value);
+        wtUpdateSet(entryIdx, si, 'romPct', next == null ? '' : next);
+      });
     }
     el.appendChild(row);
   });
@@ -1291,6 +1476,7 @@ function _renderSets(entryIdx, targetEl = null) {
         const [moved] = S.workout.exercises[entryIdx].sets.splice(oldIndex, 1);
         S.workout.exercises[entryIdx].sets.splice(newIndex, 0, moved);
         if (!_rerenderMaxEntryOwner(entryIdx)) _renderSets(entryIdx, targetEl);
+        wtPersistActiveWorkoutDraft('set drag move');
         saveWorkoutDay({ silent: true }).then(() => showToast('순서가 변경되었습니다', 1500, 'success')).catch(e => console.error('Save error:', e));
       }
     });
@@ -1303,7 +1489,7 @@ function _renderSets(entryIdx, targetEl = null) {
 // 일반 모드 뷰(세션 토글) 중이면 preset.enabled=true여도 전체 풀을 써서
 // 현재 헬스장이 비어있어도 디폴트 종목이 보이게 함.
 function _getMaxBenchmarkPickerPool() {
-  if (!_isMaxWorkoutMode() || !_isExpertSessionActive()) return [];
+  if (!_isTestModePickerContext()) return [];
   const preset = getExpertPreset?.();
   const cycle = getMaxCycle?.() || preset?.maxCycle || null;
   if (!cycle?.benchmarks?.length) return [];
@@ -1440,7 +1626,128 @@ async function _deletePickerExercise(ex) {
   }
 }
 
+function _defaultTestModeSet() {
+  return {
+    kg: 0,
+    reps: 0,
+    rpe: null,
+    romPct: 100,
+    setType: 'main',
+    done: false,
+  };
+}
+
+function _normalizeTestModeSets(sets) {
+  const normalized = Array.isArray(sets) && sets.length ? sets : [_defaultTestModeSet()];
+  return normalized.map(set => {
+    const next = {
+      ..._defaultTestModeSet(),
+      ...set,
+      rpe: set?.rpe ?? set?.rpeTarget ?? null,
+      setType: set?.setType || 'main',
+      done: set?.done === true,
+      romPct: _normalizeRomPct(set?.romPct) ?? 100,
+    };
+    return next.done === true ? next : stripSetCompletedAt(next);
+  });
+}
+
+function _testModeSetsFromPrescription(prescription) {
+  if (!prescription) return null;
+  if (prescription.applySets === true && Array.isArray(prescription.sets) && prescription.sets.length) {
+    return prescription.sets.map(set => {
+      const next = {
+        ..._defaultTestModeSet(),
+        ...set,
+        setType: set?.setType || 'main',
+        done: set?.done === true,
+        romPct: _normalizeRomPct(set?.romPct) ?? 100,
+      };
+      return next.done === true ? next : stripSetCompletedAt(next);
+    });
+  }
+  const rpe = Number(prescription.targetRpe) || null;
+  return [{
+    ..._defaultTestModeSet(),
+    rpe,
+  }];
+}
+
+function _ensureTestModePickerEntry(entry, ex, options = {}) {
+  const base = {
+    muscleId: entry?.muscleId || ex?.muscleId || null,
+    exerciseId: entry?.exerciseId || ex?.id || null,
+    name: entry?.name || ex?.name || '',
+    movementId: entry?.movementId || ex?.movementId || null,
+    ...entry,
+  };
+  const prescription = base.maxPrescription || _resolveMaxPrescription(base, ex);
+  base.recommendationMeta = {
+    mode: 'max',
+    id: base.recommendationMeta?.id || `dashboard3:test:${base.exerciseId || ex?.id || Date.now()}`,
+    kind: base.recommendationMeta?.kind || (options.benchmark ? 'benchmark' : 'manual'),
+    source: base.recommendationMeta?.source || 'dashboard3-test-mode',
+    reason: base.recommendationMeta?.reason || 'Dashboard3 운동 기록은 테스트모드 카드로 고정됩니다.',
+    userAction: base.recommendationMeta?.userAction || 'accepted',
+    acceptedAt: base.recommendationMeta?.acceptedAt || Date.now(),
+    primaryMajor: base.recommendationMeta?.primaryMajor || base.muscleId || ex?.muscleId || null,
+    ...base.recommendationMeta,
+  };
+  if (prescription) {
+    base.maxPrescription = {
+      ...prescription,
+      exerciseId: base.exerciseId,
+      movementId: base.movementId || prescription.movementId || null,
+    };
+  }
+  const generatedSets = _testModeSetsFromPrescription(prescription);
+  const keepExistingSets = Array.isArray(base.sets) && base.sets.length && !generatedSets;
+  base.sets = _normalizeTestModeSets(keepExistingSets ? base.sets : generatedSets);
+  return base;
+}
+
+function _todayKeyForProgramPicker() {
+  const now = new Date();
+  return _todayDateKey() || dateKey(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+function _pickerProgramTrackForBenchmark(bm = {}) {
+  if (bm.program === 'wendler') return 'volume';
+  const tracks = Array.isArray(bm.tracks) && bm.tracks.length ? bm.tracks : ['volume'];
+  return tracks.includes('volume') ? 'volume' : tracks[0];
+}
+
+function _buildProgramPickerExerciseEntry(ex) {
+  const board = getTestBoardV2();
+  if (!board || !ex?.id) return null;
+  const benchmark = findExerciseProgramBenchmark(board, ex);
+  if (!benchmark || benchmark.status === 'archived') return null;
+  const todayKey = _todayKeyForProgramPicker();
+  const program = buildExerciseProgramWorkoutPrescription(board, benchmark, {
+    track: _pickerProgramTrackForBenchmark(benchmark),
+    todayKey,
+  });
+  if (!program?.prescription) return null;
+  return {
+    muscleId: ex.muscleId || benchmark.muscleId || benchmark.groupId || null,
+    exerciseId: ex.id,
+    name: ex.name || benchmark.label || '',
+    movementId: ex.movementId || benchmark.movementId || null,
+    sets: program.prescription.sets || [{ kg: 0, reps: 0, setType: 'main', done: false }],
+    maxPrescription: program.prescription,
+    recommendationMeta: {
+      ...program.recommendationMeta,
+      id: `dashboard3:program:${benchmark.id}:${program.recommendationMeta.boardV2WeekStart}`,
+      acceptedAt: Date.now(),
+      userAction: 'accepted',
+      primaryMajor: ex.muscleId || benchmark.muscleId || benchmark.groupId || null,
+    },
+  };
+}
+
 function _buildPickerExerciseEntry(ex) {
+  const programEntry = _buildProgramPickerExerciseEntry(ex);
+  if (programEntry) return _ensureTestModePickerEntry(programEntry, ex, { benchmark: programEntry.maxPrescription });
   if (_isMaxBenchmarkPickerExercise(ex)) {
     const entry = buildMaxPickerExerciseEntry({
       exercise: ex,
@@ -1449,15 +1756,16 @@ function _buildPickerExerciseEntry(ex) {
       todayKey: _todayDateKey(),
       currentGymId: _currentPickerGymId(),
     });
-    if (entry) return entry;
+    if (entry) return _ensureTestModePickerEntry(entry, ex, { benchmark: ex.__maxBenchmark, cycle: ex.__maxCycle });
   }
-  return {
+  const entry = {
     muscleId: ex.muscleId,
     exerciseId: ex.id,
     name: ex.name,
     movementId: ex.movementId || null,
     sets: [{ kg: 0, reps: 0, setType: 'main', done: false }],
   };
+  return _isTestModePickerContext() ? _ensureTestModePickerEntry(entry, ex) : entry;
 }
 
 function _currentPickerGymId() {
@@ -1506,23 +1814,442 @@ function _isExerciseUsableAtCurrentGym(ex) {
   return _exerciseGymIds(ex).includes(currentGymId);
 }
 
+function _isConcretePickerGymFilter(gymId) {
+  return !!gymId && !['all', 'usable', 'global'].includes(String(gymId));
+}
+
+function _normalizePickerGymFilter(gymId) {
+  const value = String(gymId || '').trim();
+  return value || 'all';
+}
+
+function _isExerciseUsableAtGym(ex, gymId) {
+  const scope = _normalizePickerGymFilter(gymId);
+  if (scope === 'global') return _isExerciseGlobalScope(ex);
+  if (scope === 'usable') return _isExerciseUsableAtCurrentGym(ex);
+  if (scope === 'all' || _isExerciseGlobalScope(ex)) return true;
+  return _exerciseGymIds(ex).includes(scope);
+}
+
+function _applyPickerGymScope(pool, gymId = _pickerGymFilter) {
+  const scope = _normalizePickerGymFilter(gymId);
+  if (scope === 'all') return pool;
+  return pool.filter(ex => _isExerciseUsableAtGym(ex, scope));
+}
+
 function _isExerciseEditable(ex) {
   if (!ex?.id) return false;
   return /^custom_/.test(String(ex.id)) || _exerciseGymIds(ex).length > 0 || !ex.movementId;
 }
 
-function _renderExercisePickerName(ex, alreadyAdded) {
-  const source = _exerciseSourceMeta(ex);
-  const sourceAttrs = source.filterId
-    ? ` data-gym-filter="${_escPicker(source.filterId)}" role="button" tabindex="0" aria-label="${_escPicker(source.actionLabel)}" title="${_escPicker(source.actionLabel)}"`
-    : '';
+const EX_PROGRAM_MODES = [
+  { id: 'none', label: '기본' },
+  { id: 'volume', label: '볼륨' },
+  { id: 'intensity', label: '강도' },
+  { id: 'both', label: '볼륨+강도' },
+  { id: 'wendler', label: '웬들러' },
+];
+
+function _numText(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? String(n) : '';
+}
+
+function _programModeFromSettings(settings = {}) {
+  if (settings.program === 'wendler') return 'wendler';
+  if (settings.program !== 'stair') return 'none';
+  const tracks = Array.isArray(settings.tracks) ? settings.tracks : [];
+  const hasVolume = tracks.includes('volume');
+  const hasIntensity = tracks.includes('intensity');
+  if (hasVolume && hasIntensity) return 'both';
+  if (hasIntensity) return 'intensity';
+  if (hasVolume) return 'volume';
+  return 'none';
+}
+
+function _ensureExerciseProgramEditor() {
+  const form = document.querySelector('#ex-editor-modal .ex-editor-form');
+  if (!form) return null;
+  let wrap = document.getElementById('ex-editor-program-wrap');
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.id = 'ex-editor-program-wrap';
+    wrap.className = 'ex-program-editor';
+    const actions = form.querySelector('.ex-editor-actions');
+    form.insertBefore(wrap, actions || null);
+  }
+  return wrap;
+}
+
+function _programDateKey(value, fallback = '') {
+  const key = String(value || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(key)) return key;
+  const fb = String(fallback || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(fb)) return fb;
+  return _todayKeyForProgramPicker();
+}
+
+function _dateKeyFromDate(dt) {
+  return dateKey(dt.getFullYear(), dt.getMonth(), dt.getDate());
+}
+
+function _programMonthKey(key) {
+  return _programDateKey(key).slice(0, 7);
+}
+
+function _programAddMonths(monthKey, delta) {
+  const [year, month] = String(monthKey || '').split('-').map(Number);
+  const dt = new Date(Number.isFinite(year) ? year : new Date().getFullYear(), (Number.isFinite(month) ? month : 1) - 1 + delta, 1);
+  return _dateKeyFromDate(dt).slice(0, 7);
+}
+
+function _programCycleEndKey(startKey) {
+  const dt = new Date(`${_programDateKey(startKey)}T00:00:00`);
+  dt.setDate(dt.getDate() + 41);
+  return _dateKeyFromDate(dt);
+}
+
+function _programStartButtonText(key) {
+  return `${mondayOf(_programDateKey(key))} 시작`;
+}
+
+function _programCycleHint(key) {
+  const start = mondayOf(_programDateKey(key));
+  return `선택한 주부터 6주 사이클 (${start} ~ ${_programCycleEndKey(start)})`;
+}
+
+function _renderProgramStartCalendar(monthKey, selectedKey) {
+  const month = String(monthKey || _programMonthKey(selectedKey));
+  const [year, monthNo] = month.split('-').map(Number);
+  const first = new Date(year, monthNo - 1, 1);
+  const days = new Date(year, monthNo, 0).getDate();
+  const selectedWeek = mondayOf(_programDateKey(selectedKey));
+  const blanks = Array.from({ length: first.getDay() }, () => '<span class="ex-program-cal-blank"></span>').join('');
+  const dayButtons = Array.from({ length: days }, (_, idx) => {
+    const day = idx + 1;
+    const key = dateKey(year, monthNo - 1, day);
+    const isSelected = mondayOf(key) === selectedWeek;
+    return `<button type="button" class="ex-program-cal-day${isSelected ? ' is-selected' : ''}" data-ex-program-date="${key}">${day}</button>`;
+  }).join('');
   return `
-    <span class="ex-picker-main">
-      <span class="ex-picker-name">${_escPicker(ex.name)}${alreadyAdded ? ' ✓' : ''}</span>
-      <span class="ex-picker-source ${source.cls}"${sourceAttrs}>
-        <b>${_escPicker(source.label)}</b>
-        <small>${_escPicker(source.detail)}</small>
+    <div class="ex-program-cal-head">
+      <button type="button" class="ex-program-cal-nav" data-ex-program-calendar-prev aria-label="이전 달">&lt;</button>
+      <strong>${year}.${String(monthNo).padStart(2, '0')}</strong>
+      <button type="button" class="ex-program-cal-nav" data-ex-program-calendar-next aria-label="다음 달">&gt;</button>
+    </div>
+    <div class="ex-program-cal-grid ex-program-cal-weekdays" aria-hidden="true">
+      ${['일', '월', '화', '수', '목', '금', '토'].map(d => `<span>${d}</span>`).join('')}
+    </div>
+    <div class="ex-program-cal-grid">
+      ${blanks}${dayButtons}
+    </div>
+  `;
+}
+
+function _selectedProgramStartDate() {
+  return _programDateKey(document.getElementById('ex-program-start-date')?.value, _todayKeyForProgramPicker());
+}
+
+function _updateProgramStartDateUi(key) {
+  const weekStart = mondayOf(_programDateKey(key, _todayKeyForProgramPicker()));
+  const input = document.getElementById('ex-program-start-date');
+  const btn = document.getElementById('ex-program-start-date-btn');
+  const hint = document.getElementById('ex-program-start-date-hint');
+  if (input) input.value = weekStart;
+  if (btn) btn.textContent = _programStartButtonText(weekStart);
+  if (hint) hint.textContent = _programCycleHint(weekStart);
+  return weekStart;
+}
+
+function _bindProgramStartCalendar(monthKey = '') {
+  const cal = document.getElementById('ex-program-start-calendar');
+  if (!cal) return;
+  const selected = _selectedProgramStartDate();
+  const month = monthKey || cal.dataset.month || _programMonthKey(selected);
+  cal.dataset.month = month;
+  cal.innerHTML = _renderProgramStartCalendar(month, selected);
+  cal.querySelector('[data-ex-program-calendar-prev]')?.addEventListener('click', () => {
+    _bindProgramStartCalendar(_programAddMonths(cal.dataset.month, -1));
+  });
+  cal.querySelector('[data-ex-program-calendar-next]')?.addEventListener('click', () => {
+    _bindProgramStartCalendar(_programAddMonths(cal.dataset.month, 1));
+  });
+  cal.querySelectorAll('[data-ex-program-date]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const weekStart = _updateProgramStartDateUi(btn.getAttribute('data-ex-program-date'));
+      cal.dataset.month = _programMonthKey(weekStart);
+      cal.hidden = true;
+      _bindProgramStartCalendar(cal.dataset.month);
+    });
+  });
+}
+
+function _roundProgramWeight(value, step = 2.5) {
+  const n = Number(value);
+  const s = Number(step);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  if (!Number.isFinite(s) || s <= 0) return Math.round(n * 10) / 10;
+  return Math.round(n / s) * s;
+}
+
+function _formatProgramWeight(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  return Number.isInteger(n) ? String(n) : String(Math.round(n * 10) / 10);
+}
+
+function _calculateWendlerTmFromInputs() {
+  const kg = _numInput('ex-program-tm-calc-kg', 0);
+  const reps = _numInput('ex-program-tm-calc-reps', 0);
+  const roundKg = _numInput('ex-program-wendler-round', 2.5);
+  const result = document.getElementById('ex-program-tm-calc-result');
+  if (!kg || !reps) {
+    if (result) result.textContent = '대표 세트의 kg와 회수를 입력하세요.';
+    return;
+  }
+  const e1rm = estimate1RM(kg, reps);
+  const tm = _roundProgramWeight(e1rm * 0.9, roundKg);
+  const tmInput = document.getElementById('ex-program-wendler-tm');
+  if (tmInput) tmInput.value = _formatProgramWeight(tm);
+  if (result) result.textContent = `추정 1RM ${_formatProgramWeight(e1rm)}kg · TM ${_formatProgramWeight(tm)}kg`;
+}
+
+function _exerciseProgramEditorHtml(settings = {}) {
+  const mode = _programModeFromSettings(settings);
+  const seed = settings.seed || {};
+  const w = settings.wendler || {};
+  const supp = w.supplemental || {};
+  const programStartDate = mondayOf(_programDateKey(settings.programStartDate || w.programStartDate, _todayKeyForProgramPicker()));
+  const tmCalcKg = seed.volume?.kg || w.tmKg || '';
+  const tmCalcReps = seed.volume?.reps || 5;
+  return `
+    <div class="ex-program-head">
+      <div class="ex-editor-label">프로그램</div>
+      <span class="ex-program-current">${mode === 'none' ? '기본' : EX_PROGRAM_MODES.find(m => m.id === mode)?.label || '기본'}</span>
+    </div>
+    <div class="ex-program-seg" role="tablist" aria-label="프로그램 선택">
+      ${EX_PROGRAM_MODES.map(item => `
+        <button type="button" class="ex-program-seg-btn${item.id === mode ? ' is-on' : ''}" data-ex-program-mode="${item.id}" aria-pressed="${item.id === mode ? 'true' : 'false'}">${item.label}</button>
+      `).join('')}
+      <button type="button" class="ex-program-seg-btn" data-ex-program-mode="custom" aria-disabled="true" disabled>사용자 지정</button>
+    </div>
+    <div class="ex-program-panel ex-program-stair" data-ex-program-panel="stair">
+      <div class="ex-program-grid" data-ex-program-track="volume">
+        <label><span>볼륨 kg</span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-volume-kg" min="0" step="0.5" value="${_escPicker(_numText(seed.volume?.kg))}"></label>
+        <label><span>볼륨 회</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-volume-reps" min="1" step="1" value="${_escPicker(_numText(seed.volume?.reps || 12))}"></label>
+      </div>
+      <div class="ex-program-grid" data-ex-program-track="intensity">
+        <label><span>강도 kg</span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-intensity-kg" min="0" step="0.5" value="${_escPicker(_numText(seed.intensity?.kg))}"></label>
+        <label><span>강도 회</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-intensity-reps" min="1" step="1" value="${_escPicker(_numText(seed.intensity?.reps || 8))}"></label>
+      </div>
+      <div class="ex-program-grid ex-program-grid-three">
+        <label><span>세트</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-sets" min="1" step="1" value="${_escPicker(_numText(settings.setsDefault || 4))}"></label>
+        <label><span>증량</span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-increment" min="0" step="0.5" value="${_escPicker(_numText(settings.incrementKg))}"></label>
+      </div>
+      </div>
+      <div class="ex-program-panel ex-program-wendler" data-ex-program-panel="wendler">
+        <div class="ex-program-compact-list">
+          <div class="ex-program-grid ex-program-grid-three">
+            <label><span>방식</span><select class="ex-editor-select" id="ex-program-wendler-scheme">
+              <option value="w863"${(w.scheme || 'w863') === 'w863' ? ' selected' : ''}>8/6/3</option>
+              <option value="w531"${w.scheme === 'w531' ? ' selected' : ''}>5/3/1</option>
+              <option value="custom"${w.scheme === 'custom' ? ' selected' : ''}>커스텀</option>
+            </select></label>
+            <label><span>TM <small>실제 1RM보다 낮은 기준 중량</small></span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-wendler-tm" min="0" step="0.5" value="${_escPicker(_numText(w.tmKg))}"></label>
+            <div class="ex-program-date-field">
+              <span>시작 주</span>
+              <button type="button" class="ex-program-date-btn" id="ex-program-start-date-btn" data-ex-program-calendar-toggle>${_escPicker(_programStartButtonText(programStartDate))}</button>
+            <input type="hidden" id="ex-program-start-date" value="${_escPicker(programStartDate)}">
+            <input type="hidden" id="ex-program-wendler-start" value="${_escPicker(_numText(w.startWeek || 1))}">
+            <small class="ex-program-helper" id="ex-program-start-date-hint">${_escPicker(_programCycleHint(programStartDate))}</small>
+          </div>
+        </div>
+          <div class="ex-program-calendar-row">
+            <div class="ex-program-mini-cal" id="ex-program-start-calendar" data-month="${_escPicker(_programMonthKey(programStartDate))}" hidden></div>
+          </div>
+          <div class="ex-program-tm-calc">
+            <label><span>수행 kg</span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-tm-calc-kg" min="0" step="0.5" value="${_escPicker(_numText(tmCalcKg))}"></label>
+            <label><span>회수</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-tm-calc-reps" min="1" step="1" value="${_escPicker(_numText(tmCalcReps))}"></label>
+            <button type="button" class="ex-program-calc-btn" data-ex-program-tm-calc>TM 계산</button>
+            <small class="ex-program-helper" id="ex-program-tm-calc-result">대표 세트 기준으로 TM을 계산합니다.</small>
+          </div>
+        <div class="ex-program-grid ex-program-grid-three">
+          <label><span>사이클</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-cycle" min="1" step="1" value="${_escPicker(_numText(w.cycleNo || 1))}"></label>
+          <label><span>증량</span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-wendler-increment" min="0" step="0.5" value="${_escPicker(_numText(w.incrementKg || settings.incrementKg))}"></label>
+          <label><span>반올림</span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-wendler-round" min="0.5" step="0.5" value="${_escPicker(_numText(w.roundKg || 2.5))}"></label>
+      </div>
+      <div class="ex-program-grid ex-program-grid-four">
+        <label><span>보조</span><select class="ex-editor-select" id="ex-program-wendler-supp">
+          <option value="bbb"${(supp.kind || 'bbb') === 'bbb' ? ' selected' : ''}>BBB</option>
+            <option value="fsl"${supp.kind === 'fsl' ? ' selected' : ''}>FSL</option>
+            <option value="none"${supp.kind === 'none' ? ' selected' : ''}>없음</option>
+          </select></label>
+            <label><span>%TM <small>보조 세트에 쓰는 TM 비율</small></span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-supp-pct" min="10" max="100" step="1" value="${_escPicker(_numText(supp.pct || 50))}"></label>
+          <label><span>세트</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-supp-sets" min="1" step="1" value="${_escPicker(_numText(supp.sets || 5))}"></label>
+          <label><span>횟수</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-supp-reps" min="1" step="1" value="${_escPicker(_numText(supp.reps || 10))}"></label>
+        </div>
+        </div>
+      </div>
+  `;
+}
+
+function _setExerciseProgramMode(mode) {
+  const wrap = document.getElementById('ex-editor-program-wrap');
+  if (!wrap) return;
+  const next = EX_PROGRAM_MODES.some(item => item.id === mode) ? mode : 'none';
+  wrap.dataset.programMode = next;
+  wrap.querySelector('.ex-program-current').textContent = next === 'none' ? '기본' : EX_PROGRAM_MODES.find(item => item.id === next)?.label || '기본';
+  wrap.querySelectorAll('[data-ex-program-mode]').forEach(btn => {
+    const on = btn.getAttribute('data-ex-program-mode') === next;
+    btn.classList.toggle('is-on', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+  const isStair = ['volume', 'intensity', 'both'].includes(next);
+  wrap.querySelector('[data-ex-program-panel="stair"]')?.toggleAttribute('hidden', !isStair);
+  wrap.querySelector('[data-ex-program-panel="wendler"]')?.toggleAttribute('hidden', next !== 'wendler');
+  wrap.querySelector('[data-ex-program-track="volume"]')?.toggleAttribute('hidden', !(next === 'volume' || next === 'both' || next === 'wendler'));
+  wrap.querySelector('[data-ex-program-track="intensity"]')?.toggleAttribute('hidden', !(next === 'intensity' || next === 'both'));
+}
+
+function _bindExerciseProgramEditor() {
+  const wrap = document.getElementById('ex-editor-program-wrap');
+  if (!wrap) return;
+  wrap.querySelectorAll('[data-ex-program-mode]').forEach(btn => {
+    if (btn.disabled) return;
+    btn.addEventListener('click', () => _setExerciseProgramMode(btn.getAttribute('data-ex-program-mode')));
+  });
+  wrap.querySelector('[data-ex-program-tm-calc]')?.addEventListener('click', _calculateWendlerTmFromInputs);
+  const startBtn = wrap.querySelector('[data-ex-program-calendar-toggle]');
+  if (startBtn) {
+    _updateProgramStartDateUi(_selectedProgramStartDate());
+    _bindProgramStartCalendar();
+    startBtn.addEventListener('click', () => {
+      const cal = document.getElementById('ex-program-start-calendar');
+      if (!cal) return;
+      const opening = cal.hidden;
+      if (opening) _bindProgramStartCalendar(_programMonthKey(_selectedProgramStartDate()));
+      cal.hidden = !opening;
+    });
+  }
+}
+
+function _renderExerciseProgramEditor(ex) {
+  const wrap = _ensureExerciseProgramEditor();
+  if (!wrap) return;
+  const settings = getExerciseProgramSettings(getTestBoardV2(), ex || {});
+  wrap.innerHTML = _exerciseProgramEditorHtml(settings);
+  _bindExerciseProgramEditor();
+  _setExerciseProgramMode(_programModeFromSettings(settings));
+}
+
+function _numInput(id, fallback = null) {
+  const el = document.getElementById(id);
+  const n = Number(el?.value);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+function _readExerciseProgramConfig() {
+  const wrap = document.getElementById('ex-editor-program-wrap');
+  const mode = wrap?.dataset.programMode || 'none';
+  if (mode === 'none') return { program: 'none' };
+  if (mode === 'wendler') {
+    return {
+      program: 'wendler',
+      programStartDate: document.getElementById('ex-program-start-date')?.value || _todayKeyForProgramPicker(),
+      tracks: ['volume'],
+      seed: {
+        volume: {
+          kg: _numInput('ex-program-volume-kg', _numInput('ex-program-wendler-tm', 0)),
+          reps: _numInput('ex-program-volume-reps', 5),
+        },
+      },
+      incrementKg: _numInput('ex-program-wendler-increment', undefined),
+      wendler: {
+        scheme: document.getElementById('ex-program-wendler-scheme')?.value || 'w863',
+        tmKg: _numInput('ex-program-wendler-tm', undefined),
+        startWeek: _numInput('ex-program-wendler-start', 1),
+        cycleNo: _numInput('ex-program-wendler-cycle', 1),
+        incrementKg: _numInput('ex-program-wendler-increment', undefined),
+        roundKg: _numInput('ex-program-wendler-round', 2.5),
+        supplemental: {
+          kind: document.getElementById('ex-program-wendler-supp')?.value || 'bbb',
+          pct: _numInput('ex-program-wendler-supp-pct', 50),
+          sets: _numInput('ex-program-wendler-supp-sets', 5),
+          reps: _numInput('ex-program-wendler-supp-reps', 10),
+        },
+      },
+    };
+  }
+  const tracks = mode === 'both' ? ['volume', 'intensity'] : [mode];
+  return {
+    program: 'stair',
+    tracks,
+    setsDefault: _numInput('ex-program-sets', 4),
+    incrementKg: _numInput('ex-program-increment', undefined),
+    seed: {
+      volume: {
+        kg: _numInput('ex-program-volume-kg', 0),
+        reps: _numInput('ex-program-volume-reps', 12),
+      },
+      intensity: {
+        kg: _numInput('ex-program-intensity-kg', 0),
+        reps: _numInput('ex-program-intensity-reps', 8),
+      },
+    },
+  };
+}
+
+async function _saveExerciseProgramFromEditor(record) {
+  const config = _readExerciseProgramConfig();
+  const currentBoard = getTestBoardV2();
+  const now = new Date();
+  const todayKey = _todayDateKey() || dateKey(now.getFullYear(), now.getMonth(), now.getDate());
+  const result = upsertExerciseProgramBenchmark(currentBoard, record, config, {
+    todayKey,
+    movements: MOVEMENTS,
+    source: 'exercise-editor',
+  });
+  if (result.action === 'skipped') return result;
+  if (result.action === 'noop' && !currentBoard) return result;
+  await saveTestBoardV2(result.board);
+  const saved = getExerciseProgramSettings(getTestBoardV2(), record);
+  if (config.program === 'none') {
+    if (saved.program !== 'none') throw new Error('exercise program archive verification failed');
+  } else if (saved.program === 'none') {
+    throw new Error('exercise program save verification failed');
+  }
+  return result;
+}
+
+function _renderPickerExerciseThumb(ex) {
+  const majorId = _exerciseMajorIds(ex)[0] || ex?.muscleId || '';
+  const asset = PICKER_MUSCLE_ASSETS[majorId];
+  if (asset) {
+    return `
+      <span class="ex-picker-thumb has-asset" aria-hidden="true">
+        <img src="${_escPicker(asset)}" alt="" loading="lazy" decoding="async" draggable="false">
       </span>
+    `;
+  }
+  return `<span class="ex-picker-thumb" aria-hidden="true">${_pickerMuscleFigureHtml(majorId)}</span>`;
+}
+
+function _pickerNameDensityClass(name) {
+  const visualLength = Array.from(String(name || '')).reduce((sum, ch) => {
+    return sum + (/^[\x00-\x7F]$/.test(ch) ? 0.55 : 1);
+  }, 0);
+  if (visualLength >= 17) return ' is-very-compact';
+  if (visualLength >= 12) return ' is-compact';
+  return '';
+}
+
+function _renderExercisePickerName(ex, alreadyAdded, stats) {
+  const nameClass = `ex-picker-name${_pickerNameDensityClass(ex?.name)}`;
+  return `
+    ${_renderPickerExerciseThumb(ex)}
+    <span class="ex-picker-main">
+      <span class="${nameClass}">${_escPicker(ex.name)}${alreadyAdded ? ' ✓' : ''}</span>
+      <span class="ex-picker-history-meta">${_escPicker(_pickerStatsMeta(stats))}</span>
     </span>
   `;
 }
@@ -1551,46 +2278,275 @@ function _escPicker(s) {
 // 부위 필터 상태 (null = 전체)
 let _pickerMuscleFilter = null;
 let _pickerGymFilter = null;
+let _pickerView = 'category';
+let _pickerListMode = 'all'; // all | custom
+let _pickerSortMode = 'recent'; // recent | frequency | name
+let _pickerSearchQuery = '';
+const PICKER_MUSCLE_ASSETS = {
+  chest: './assets/workout/muscles/chest.png',
+  shoulder: './assets/workout/muscles/shoulder.png',
+  back: './assets/workout/muscles/back.png',
+  lower: './assets/workout/muscles/lower.png',
+  glute: './assets/workout/muscles/glute.png',
+  bicep: './assets/workout/muscles/bicep.png',
+  tricep: './assets/workout/muscles/tricep.png',
+  abs: './assets/workout/muscles/abs.png',
+};
+
+function _pickerRunningFigureHtml() {
+  return `
+    <span class="ex-picker-activity-figure" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false">
+        <circle cx="15.5" cy="4.5" r="2.2"></circle>
+        <path d="M11.7 8.2 8.8 11l3.1 2.8 1.9 5.2"></path>
+        <path d="M12 8.1 16 10l2.5 2.6"></path>
+        <path d="M9.4 12.2 6.5 15.6 3.8 19"></path>
+        <path d="M13.5 18.7 17 20.5"></path>
+      </svg>
+    </span>
+  `;
+}
+
+function _renderPickerActivityTiles() {
+  const hasRunning = !!S?.workout?.running;
+  return `
+    <button type="button" class="ex-picker-muscle-tile ex-picker-activity-tile" data-picker-activity="running" style="--picker-muscle:#217cf9">
+      ${_pickerRunningFigureHtml()}
+      <span class="ex-picker-muscle-name">런닝/조깅</span>
+      <span class="ex-picker-muscle-count">${hasRunning ? '기록' : '러닝'}</span>
+    </button>
+  `;
+}
+
+function _pickerMuscleFigureHtml(muscleId) {
+  const safeId = _escPicker(muscleId);
+  const asset = PICKER_MUSCLE_ASSETS[muscleId];
+  if (!asset) {
+    return `<span class="ex-picker-muscle-figure" data-muscle="${safeId}" aria-hidden="true"></span>`;
+  }
+  return `
+    <span class="ex-picker-muscle-figure has-asset" data-muscle="${safeId}" aria-hidden="true">
+      <img src="${_escPicker(asset)}" alt="" loading="eager" decoding="async" draggable="false">
+    </span>
+  `;
+}
+
+function _setPickerSearchUi(value = '') {
+  const input = document.getElementById('ex-picker-search');
+  if (input && input.value !== value) input.value = value;
+  const clearBtn = document.getElementById('ex-picker-search-clear');
+  if (clearBtn) clearBtn.style.display = value ? 'grid' : 'none';
+}
+
+function _resetPickerGymScope() {
+  _pickerGymFilter = 'all';
+  if (S?.workout) S.workout.pickerGymFilter = _pickerGymFilter;
+}
+
+function _openPickerCategory(options = {}) {
+  _pickerView = 'category';
+  _pickerListMode = 'all';
+  _pickerMuscleFilter = null;
+  if (!options.preserveGymScope) _resetPickerGymScope();
+  _pickerSearchQuery = '';
+  _setPickerSearchUi('');
+  _renderPickerList();
+}
+
+function _openPickerList(mode = 'all', muscleId = null, options = {}) {
+  _pickerView = 'list';
+  _pickerListMode = mode === 'custom' ? 'custom' : 'all';
+  _pickerMuscleFilter = muscleId || null;
+  if (!options.preserveGymScope) _resetPickerGymScope();
+  _pickerSearchQuery = '';
+  _setPickerSearchUi('');
+  _renderPickerList();
+}
+
+function _handlePickerBack() {
+  if (_pickerView !== 'category' || _pickerSearchQuery) {
+    _openPickerCategory({ preserveGymScope: true });
+    return;
+  }
+  wtCloseExercisePicker();
+}
+
+export function wtHandleExercisePickerBack() {
+  const editor = document.getElementById('ex-editor-modal');
+  if (editor?.classList.contains('open')) {
+    wtCloseExerciseEditor();
+    return true;
+  }
+  const picker = document.getElementById('ex-picker-modal');
+  if (!picker?.classList.contains('open')) return false;
+  _handlePickerBack();
+  return true;
+}
+
+function _openPickerEditorFromHeader() {
+  wtOpenExerciseEditor(null, _pickerMuscleFilter || null);
+}
+
+function _syncPickerDoneButton() {
+  const done = document.getElementById('ex-picker-done');
+  if (!done) return;
+  const count = (Array.isArray(S?.workout?.exercises) ? S.workout.exercises : [])
+    .filter(entry => entry?.exerciseId).length;
+  done.disabled = count === 0;
+  done.classList.toggle('active', count > 0);
+}
+
+function _bindPickerChrome() {
+  const modal = document.getElementById('ex-picker-modal');
+  if (!modal) return;
+  if (!modal.dataset.pickerBackCaptureBound) {
+    modal.dataset.pickerBackCaptureBound = '1';
+    modal.addEventListener('click', (event) => {
+      if (!event.target?.closest?.('#ex-picker-back')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      _handlePickerBack();
+    }, true);
+  }
+  const back = modal.querySelector('#ex-picker-back');
+  if (back) back.onclick = _handlePickerBack;
+  const add = modal.querySelector('#ex-picker-add-top');
+  if (add) add.onclick = _openPickerEditorFromHeader;
+  const input = modal.querySelector('#ex-picker-search');
+  if (input) input.oninput = () => window._wtOnPickerSearch(input.value);
+  const clear = modal.querySelector('#ex-picker-search-clear');
+  if (clear) clear.onclick = () => window._wtClearPickerSearch();
+  const done = modal.querySelector('#ex-picker-done');
+  if (done) done.onclick = () => wtCloseExercisePicker();
+  _syncPickerDoneButton();
+}
+
+function _renderPickerTabs(ctx) {
+  const modal = document.getElementById('ex-picker-modal');
+  const tabs = modal?.querySelector?.('.ex-picker-tabs');
+  if (!tabs) return;
+  const listTabs = (_pickerView === 'list' || !!_pickerSearchQuery);
+  const button = ({ key, label, active, muscleId = '' }) => `
+    <button type="button"
+      class="ex-picker-tab${active ? ' active' : ''}"
+      data-picker-tab="${_escPicker(key)}"
+      ${muscleId ? `data-picker-muscle-tab="${_escPicker(muscleId)}"` : ''}
+      role="tab"
+      aria-selected="${active ? 'true' : 'false'}">${_escPicker(label)}</button>
+  `;
+  const html = listTabs
+    ? [
+        button({ key: 'category', label: '분류', active: false }),
+        ...ctx.visibleMuscles.map(m => button({
+          key: 'muscle',
+          label: m.name,
+          muscleId: m.id,
+          active: !_pickerSearchQuery && _pickerMuscleFilter === m.id,
+        })),
+      ].join('')
+      : [
+        button({ key: 'category', label: '분류', active: true }),
+        button({ key: 'all', label: '전체', active: false }),
+      ].join('');
+  tabs.innerHTML = html;
+  tabs.querySelectorAll('[data-picker-tab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.getAttribute('data-picker-tab');
+      if (tab === 'category') {
+        _openPickerCategory({ preserveGymScope: true });
+        return;
+      }
+      if (tab === 'muscle') {
+        _openPickerList(_pickerListMode, btn.getAttribute('data-picker-muscle-tab'), { preserveGymScope: true });
+        return;
+      }
+      _openPickerList(tab === 'custom' ? 'custom' : 'all');
+    });
+  });
+}
+
+function _syncPickerChrome(ctx) {
+  const modal = document.getElementById('ex-picker-modal');
+  if (!modal) return;
+  modal.dataset.pickerView = _pickerView;
+  modal.dataset.pickerMode = _pickerListMode;
+  if (ctx) _renderPickerTabs(ctx);
+  _syncPickerDoneButton();
+  const back = modal.querySelector('#ex-picker-back');
+  if (back) back.setAttribute('aria-label', _pickerView === 'category' && !_pickerSearchQuery ? '닫기' : '분류로 돌아가기');
+}
+
 window._wtSetPickerMuscleFilter = (muscleId) => {
-  _pickerMuscleFilter = (_pickerMuscleFilter === muscleId) ? null : muscleId;
+  _pickerView = 'list';
+  _pickerMuscleFilter = muscleId || null;
   _renderPickerList();
 };
 window._wtSetPickerCategoryFilter = window._wtSetPickerMuscleFilter;
 window._wtSetPickerGymFilter = (gymId) => {
-  _pickerGymFilter = gymId || (_isExpertSessionActive() ? 'all' : null);
+  _pickerView = 'list';
+  _pickerGymFilter = _normalizePickerGymFilter(gymId);
   if (S?.workout) S.workout.pickerGymFilter = _pickerGymFilter;
   saveWorkoutDay({ silent: true }).catch(e => console.warn('[pickerGymFilter.save]:', e));
   _renderPickerList();
 };
 
+function _wtSetPickerGymCategoryFilter(gymId) {
+  _pickerView = 'category';
+  _pickerListMode = 'all';
+  _pickerMuscleFilter = null;
+  _pickerGymFilter = _normalizePickerGymFilter(gymId);
+  if (S?.workout) S.workout.pickerGymFilter = _pickerGymFilter;
+  saveWorkoutDay({ silent: true }).catch(e => console.warn('[pickerGymFilter.save]:', e));
+  _renderPickerList();
+}
+
+window._wtSetPickerSort = (mode) => {
+  _pickerSortMode = ['recent', 'frequency', 'name'].includes(mode) ? mode : 'recent';
+  _renderPickerList();
+};
+
+window._wtSetPickerScope = (mode) => {
+  _pickerView = 'list';
+  _pickerListMode = mode === 'custom' ? 'custom' : 'all';
+  _renderPickerList();
+};
+
 // C-2: 종목명 검색 상태 (trim + lowercase)
-let _pickerSearchQuery = '';
 window._wtOnPickerSearch = (q) => {
   _pickerSearchQuery = String(q || '').trim().toLowerCase();
-  const clearBtn = document.getElementById('ex-picker-search-clear');
-  if (clearBtn) clearBtn.style.display = _pickerSearchQuery ? '' : 'none';
+  if (_pickerSearchQuery) {
+    _pickerView = 'list';
+    _pickerListMode = 'all';
+    _pickerMuscleFilter = null;
+  }
+  _setPickerSearchUi(_pickerSearchQuery ? String(q || '') : '');
   _renderPickerList();
 };
 window._wtClearPickerSearch = () => {
   _pickerSearchQuery = '';
-  const input = document.getElementById('ex-picker-search');
-  if (input) input.value = '';
-  const clearBtn = document.getElementById('ex-picker-search-clear');
-  if (clearBtn) clearBtn.style.display = 'none';
+  _setPickerSearchUi('');
   _renderPickerList();
 };
 // C-4: 모든 필터 일괄 해제 ("필터 초기화" 버튼용)
 window._wtResetAllPickerFilters = () => {
+  _pickerView = 'list';
+  _pickerListMode = 'all';
   _pickerMuscleFilter = null;
-  _pickerGymFilter = _isExpertSessionActive() ? 'all' : null;
+  _resetPickerGymScope();
   window._wtClearPickerSearch();
 };
 
-async function _openPickerEquipmentManager() {
+function _selectedPickerManagerGymId(gymId = null) {
+  if (_isConcretePickerGymFilter(gymId)) return gymId;
+  if (_isConcretePickerGymFilter(_pickerGymFilter)) return _pickerGymFilter;
+  return _currentPickerGymId() || (getGyms?.() || [])[0]?.id || null;
+}
+
+async function _openPickerEquipmentManager(gymId = null) {
   try {
     const mod = await import('./expert/max.js');
     if (typeof mod.openMaxEquipmentPoolModal === 'function') {
-      await mod.openMaxEquipmentPoolModal({ gymId: _currentPickerGymId() });
+      await mod.openMaxEquipmentPoolModal({ gymId: _selectedPickerManagerGymId(gymId) });
       return;
     }
   } catch (err) {
@@ -1630,10 +2586,101 @@ function _exerciseMajorIds(ex) {
   return [...ids];
 }
 
-export function _renderPickerList() {
-  const container = document.getElementById('ex-picker-list');
-  if (!container) return;
-  container.innerHTML = '';
+function _pickerEntryHasWork(entry) {
+  if (!entry || typeof entry !== 'object') return false;
+  const sets = Array.isArray(entry.sets) ? entry.sets : [];
+  if (sets.some(set => {
+    if (!set || set.setType === 'warmup') return false;
+    if (set.done === true) return true;
+    if (set.done === false) return false;
+    return (Number(set.kg) || 0) > 0 && (Number(set.reps) || 0) > 0;
+  })) return true;
+  return !!String(entry.note || '').trim();
+}
+
+function _dateKeyToUtcMs(key) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(key || ''));
+  if (!m) return null;
+  return Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+}
+
+function _daysBetweenDateKeys(fromKey, toKey) {
+  const fromMs = _dateKeyToUtcMs(fromKey);
+  const toMs = _dateKeyToUtcMs(toKey);
+  if (fromMs == null || toMs == null) return null;
+  return Math.max(0, Math.round((toMs - fromMs) / 86400000));
+}
+
+function _buildPickerExerciseStats() {
+  const stats = new Map();
+  const cache = getCache?.() || {};
+  const todayKey = _todayDateKey();
+  Object.entries(cache).forEach(([key, day]) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || key === todayKey) return;
+    getWorkoutSessions(day).forEach(session => {
+      const seenInSession = new Set();
+      (Array.isArray(session?.exercises) ? session.exercises : []).forEach(entry => {
+        const exerciseId = entry?.exerciseId;
+        if (!exerciseId || seenInSession.has(exerciseId) || !_pickerEntryHasWork(entry)) return;
+        seenInSession.add(exerciseId);
+        const prev = stats.get(exerciseId) || { count: 0, lastDate: null };
+        prev.count += 1;
+        if (!prev.lastDate || key > prev.lastDate) prev.lastDate = key;
+        stats.set(exerciseId, prev);
+      });
+    });
+  });
+  return stats;
+}
+
+function _pickerStatsMeta(stats) {
+  const count = Number(stats?.count) || 0;
+  if (count <= 0 || !stats?.lastDate) return '-';
+  const days = _daysBetweenDateKeys(stats.lastDate, _todayDateKey());
+  const dayLabel = days == null
+    ? '최근 기록'
+    : (days === 0 ? '오늘' : `${days}일 전`);
+  return `총 ${count}번, ${dayLabel}`;
+}
+
+function _sortPickerExercises(list, statsByExercise) {
+  const collator = new Intl.Collator('ko-KR', { numeric: true, sensitivity: 'base' });
+  const statOf = (ex) => statsByExercise.get(ex?.id) || { count: 0, lastDate: '' };
+  return [...list].sort((a, b) => {
+    const as = statOf(a);
+    const bs = statOf(b);
+    if (_pickerSortMode === 'frequency') {
+      return (bs.count - as.count)
+        || String(bs.lastDate || '').localeCompare(String(as.lastDate || ''))
+        || collator.compare(a?.name || '', b?.name || '');
+    }
+    if (_pickerSortMode === 'name') {
+      return collator.compare(a?.name || '', b?.name || '')
+        || (bs.count - as.count)
+        || String(bs.lastDate || '').localeCompare(String(as.lastDate || ''));
+    }
+    return String(bs.lastDate || '').localeCompare(String(as.lastDate || ''))
+      || (bs.count - as.count)
+      || collator.compare(a?.name || '', b?.name || '');
+  });
+}
+
+function _isPickerCustomExercise(ex) {
+  return /^custom_/.test(String(ex?.id || '')) || !ex?.movementId;
+}
+
+function _isPickerVisibleExercise(ex, isMaxBenchmarkPicker) {
+  if (isMaxBenchmarkPicker) return true;
+  const hidden = Array.isArray(S?.workout?.hiddenExercises) ? S.workout.hiddenExercises : [];
+  return !hidden.includes(ex?.id);
+}
+
+function _safePickerColor(color) {
+  const raw = String(color || '').trim();
+  return /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(raw) ? raw : '#64748b';
+}
+
+function _buildPickerContext() {
   const allMuscles = getMuscleParts();
   const rawPool = _getPickerExercisePool();
   const gyms = getGyms?.() || [];
@@ -1645,111 +2692,190 @@ export function _renderPickerList() {
   const basePool = todayMajorSet.size
     ? rawPool.filter(e => _exerciseMajorIds(e).some(id => todayMajorSet.has(id)))
     : rawPool;
-  if (isExpert && !_pickerGymFilter) _pickerGymFilter = 'all';
+  if (!_pickerGymFilter) _pickerGymFilter = 'all';
   const availableMuscles = new Set(basePool
     .flatMap(_exerciseMajorIds)
     .filter(id => id && (!todayMajorSet.size || todayMajorSet.has(id))));
   const availableGymIds = new Set(basePool.flatMap(_exerciseGymIds).filter(Boolean));
   const visibleMuscles = allMuscles.filter(m => availableMuscles.has(m.id));
-
-  // 필터 유효성 체크: 현재 풀에 해당 부위가 없으면 자동 해제
   if (_pickerMuscleFilter && !availableMuscles.has(_pickerMuscleFilter)) {
     _pickerMuscleFilter = null;
+  }
+  return {
+    allMuscles,
+    rawPool,
+    gyms,
+    currentGymId,
+    isExpert,
+    isMaxBenchmarkPicker,
+    todayMajorScope,
+    todayMajorSet,
+    basePool,
+    availableMuscles,
+    availableGymIds,
+    visibleMuscles,
+  };
+}
+
+function _pickerBaseVisiblePool(ctx) {
+  return ctx.basePool.filter(ex => _isPickerVisibleExercise(ex, ctx.isMaxBenchmarkPicker));
+}
+
+function _applyPickerListMode(pool) {
+  return _pickerListMode === 'custom'
+    ? pool.filter(_isPickerCustomExercise)
+    : pool;
+}
+
+function _renderPickerListToolbar(container) {
+  const sortOptions = [
+    { id: 'recent', label: '↑ 최근' },
+    { id: 'frequency', label: '↑ 빈도' },
+    { id: 'name', label: '↓ 이름' },
+  ];
+  const scope = _pickerListMode === 'custom' ? 'custom' : 'all';
+  const toolbar = document.createElement('div');
+  toolbar.className = 'ex-picker-list-toolbar';
+  toolbar.innerHTML = `
+    <div class="ex-picker-sort-controls" aria-label="정렬">
+      ${sortOptions.map(opt => `
+        <button type="button"
+          class="ex-picker-sort-btn${_pickerSortMode === opt.id ? ' active' : ''}"
+          data-picker-sort="${_escPicker(opt.id)}">${_escPicker(opt.label)}</button>
+      `).join('')}
+    </div>
+    <div class="ex-picker-scope-controls" aria-label="범위">
+      <button type="button" class="ex-picker-scope-btn${scope === 'all' ? ' active' : ''}" data-picker-scope="all">전체</button>
+      <button type="button" class="ex-picker-scope-btn is-disabled" disabled aria-label="즐겨찾기 준비 중">☆</button>
+      <button type="button" class="ex-picker-scope-btn${scope === 'custom' ? ' active' : ''}" data-picker-scope="custom">커스텀</button>
+    </div>
+  `;
+  toolbar.querySelectorAll('[data-picker-sort]').forEach(btn => {
+    btn.addEventListener('click', () => window._wtSetPickerSort?.(btn.getAttribute('data-picker-sort')));
+  });
+  toolbar.querySelectorAll('[data-picker-scope]').forEach(btn => {
+    btn.addEventListener('click', () => window._wtSetPickerScope?.(btn.getAttribute('data-picker-scope')));
+  });
+  container.appendChild(toolbar);
+}
+
+function _renderPickerBenchmarkScope(ctx) {
+  return '';
+}
+
+function _renderPickerCategory(container, ctx) {
+  const visibleBase = _pickerBaseVisiblePool(ctx);
+  const activeGymFilter = _normalizePickerGymFilter(_pickerGymFilter);
+  const scopedBase = _applyPickerGymScope(visibleBase, activeGymFilter);
+  const countsByMuscle = new Map(ctx.visibleMuscles.map(m => [m.id, 0]));
+  scopedBase.forEach(ex => {
+    _exerciseMajorIds(ex).forEach(id => {
+      if (countsByMuscle.has(id)) countsByMuscle.set(id, countsByMuscle.get(id) + 1);
+    });
+  });
+  const totalCount = visibleBase.length;
+  const scopedMuscles = activeGymFilter === 'all'
+    ? ctx.visibleMuscles
+    : ctx.visibleMuscles.filter(m => (countsByMuscle.get(m.id) || 0) > 0);
+  const gymRail = (ctx.gyms || []).map(gym => {
+    const gymId = String(gym?.id || '');
+    if (!gymId) return '';
+    const label = gym?.name || '헬스장';
+    const count = _applyPickerGymScope(visibleBase, gymId).length;
+    const active = activeGymFilter === gymId ? ' active' : '';
+    return `
+        <button type="button" class="ex-picker-rail-chip${active}" data-picker-gym="${_escPicker(gymId)}" aria-pressed="${active ? 'true' : 'false'}">
+          <span>${_escPicker(label)}</span><b>${count}</b>
+        </button>
+    `;
+  }).join('');
+  const manageGymId = _selectedPickerManagerGymId(activeGymFilter);
+  const tiles = scopedMuscles
+    .map(m => {
+      const count = countsByMuscle.get(m.id) || 0;
+      const color = _safePickerColor(m.color);
+      return `
+        <button type="button" class="ex-picker-muscle-tile" data-picker-muscle="${_escPicker(m.id)}" style="--picker-muscle:${color}">
+          ${_pickerMuscleFigureHtml(m.id)}
+          <span class="ex-picker-muscle-name">${_escPicker(m.name)}</span>
+          <span class="ex-picker-muscle-count">${count}</span>
+        </button>
+      `;
+    })
+    .join('');
+  container.innerHTML = `
+    ${_renderPickerBenchmarkScope(ctx)}
+    <div class="ex-picker-category-layout">
+      <aside class="ex-picker-category-rail" aria-label="종목 범위">
+        <button type="button" class="ex-picker-rail-chip${activeGymFilter === 'all' ? ' active' : ''}" data-picker-gym="all" aria-pressed="${activeGymFilter === 'all' ? 'true' : 'false'}">
+          <span>전체</span><b>${totalCount}</b>
+        </button>
+        ${gymRail}
+        <button type="button" class="ex-picker-rail-action" data-picker-action="manage-gyms" data-picker-gym-manage="${_escPicker(manageGymId || '')}">헬스장 관리</button>
+      </aside>
+      <section class="ex-picker-muscle-panel" aria-label="부위 분류">
+        ${tiles}${_renderPickerActivityTiles()}
+      </section>
+    </div>
+  `;
+  container.querySelectorAll('[data-picker-gym]').forEach(btn => {
+    btn.addEventListener('click', () => _wtSetPickerGymCategoryFilter(btn.getAttribute('data-picker-gym')));
+  });
+  container.querySelector('[data-picker-action="manage-gyms"]')?.addEventListener('click', event => {
+    _openPickerEquipmentManager(event.currentTarget?.getAttribute('data-picker-gym-manage') || null);
+  });
+  container.querySelectorAll('[data-picker-muscle]').forEach(btn => {
+    btn.addEventListener('click', () => _openPickerList('all', btn.getAttribute('data-picker-muscle'), { preserveGymScope: true }));
+  });
+  container.querySelectorAll('[data-picker-activity]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const activity = btn.getAttribute('data-picker-activity');
+      if (activity !== 'running') return;
+      wtCloseExercisePicker();
+      if (typeof window.wtSwitchType === 'function') window.wtSwitchType('running');
+      else window.wtOpenRunningSession?.();
+    });
+  });
+}
+
+export function _renderPickerList() {
+  const container = document.getElementById('ex-picker-list');
+  if (!container) return;
+  container.innerHTML = '';
+  const ctx = _buildPickerContext();
+  const {
+    isExpert,
+    isMaxBenchmarkPicker,
+    basePool,
+    visibleMuscles,
+  } = ctx;
+  _syncPickerChrome(ctx);
+  if (_pickerView === 'category' && !_pickerSearchQuery) {
+    _renderPickerCategory(container, ctx);
+    return;
   }
   const muscleFiltered = _pickerMuscleFilter
     ? basePool.filter(e => _exerciseMajorIds(e).includes(_pickerMuscleFilter))
     : basePool;
+  const modeFiltered = _applyPickerListMode(muscleFiltered);
   const gymFiltered = (() => {
-    if (!_pickerGymFilter || _pickerGymFilter === 'all') return muscleFiltered;
-    if (_pickerGymFilter === 'usable') return muscleFiltered.filter(_isExerciseUsableAtCurrentGym);
-    if (_pickerGymFilter === 'global') return muscleFiltered.filter(_isExerciseGlobalScope);
-    return muscleFiltered.filter(e => _exerciseGymIds(e).includes(_pickerGymFilter));
+    return _applyPickerGymScope(modeFiltered, _pickerGymFilter);
   })();
   // C-2: 검색어 적용 (종목명 부분 일치, 대소문자 무시)
   const pool = _pickerSearchQuery
     ? gymFiltered.filter(e => String(e.name || '').toLowerCase().includes(_pickerSearchQuery))
     : gymFiltered;
-
-  // C-4: 현재 활성 필터 배너 — 무엇이 걸려있는지 명시적으로 보여주고 한 번에 해제.
-  const filterBadges = [];
-  if (_pickerMuscleFilter) {
-    const muscle = allMuscles.find(m => m.id === _pickerMuscleFilter);
-    if (muscle) filterBadges.push({ type: 'muscle', label: `부위: ${muscle.name}` });
-  }
-  if (_pickerGymFilter && _pickerGymFilter !== 'all') {
-    const gym = gyms.find(g => g.id === _pickerGymFilter);
-    const label = _pickerGymFilter === 'usable'
-      ? '헬스장: 사용 가능'
-      : (_pickerGymFilter === 'global' ? '헬스장: 공통' : `헬스장: ${gym?.name || '선택 헬스장'}`);
-    filterBadges.push({ type: 'gym', label });
-  }
-  if (_pickerSearchQuery) filterBadges.push({ type: 'search', label: `검색: "${_pickerSearchQuery}"` });
-  if (filterBadges.length > 0) {
-    const banner = document.createElement('div');
-    banner.className = 'ex-picker-filter-active-bar';
-    banner.innerHTML =
-      `<span class="ex-picker-filter-active-text">필터 적용: ${filterBadges.map(b => `<b>${b.label}</b>`).join(' · ')}</span>` +
-      `<button type="button" class="tds-btn tonal sm ex-picker-filter-reset" onclick="window._wtResetAllPickerFilters()">필터 해제</button>`;
-    container.appendChild(banner);
-  }
+  const statsByExercise = _buildPickerExerciseStats();
   if (isMaxBenchmarkPicker) {
-    const scope = document.createElement('div');
-    scope.className = 'ex-picker-filter-active-bar ex-picker-benchmark-scope';
-    const benchmarkCount = basePool.filter(ex => !!ex?.__maxBenchmark).length;
-    const extraCount = Math.max(0, basePool.length - benchmarkCount);
-    scope.innerHTML = `<span class="ex-picker-filter-active-text"><b>오늘 벤치마크 ${benchmarkCount}개</b> + 같은 부위 추가 종목 ${extraCount}개</span>`;
-    container.appendChild(scope);
+    container.insertAdjacentHTML('beforeend', _renderPickerBenchmarkScope(ctx));
   }
-
-  if (availableMuscles.size >= 1 || isExpert) {
-    const filters = document.createElement('div');
-    filters.className = 'ex-picker-filter-stack';
-    const muscleAllActive = _pickerMuscleFilter === null;
-    const muscleHtml = `<div class="ex-picker-filter-row">
-      <div class="ex-picker-filter-title">부위</div>
-      <div class="ex-picker-filter-bar">
-        <button type="button" class="ex-picker-filter-chip${muscleAllActive?' active':''}" onclick="window._wtSetPickerMuscleFilter(null)">전체</button>
-        ${visibleMuscles
-          .map(m => `<button type="button" class="ex-picker-filter-chip${_pickerMuscleFilter===m.id?' active':''}" onclick="window._wtSetPickerMuscleFilter('${m.id}')">${m.name}</button>`)
-          .join('')}
-      </div>
-    </div>`;
-    const gymOptions = [
-      { id: 'all', name: '전체', enabled: true },
-      { id: 'usable', name: currentGymId ? '사용 가능' : '공통/현재', enabled: true },
-      { id: 'global', name: '공통', enabled: true },
-      ...gyms.filter(g => availableGymIds.has(g.id)).map(g => ({ id: g.id, name: g.name || '이름 없는 헬스장', enabled: true })),
-    ];
-    const gymHtml = isExpert && !isMaxBenchmarkPicker ? `<div class="ex-picker-filter-row">
-      <div class="ex-picker-filter-title">헬스장</div>
-      <div class="ex-picker-filter-bar">
-        ${gymOptions.map(g => `<button type="button" class="ex-picker-filter-chip${_pickerGymFilter===g.id?' active':''}" onclick="window._wtSetPickerGymFilter('${_escPicker(g.id)}')">${_escPicker(g.name)}</button>`).join('')}
-      </div>
-    </div>` : '';
-    filters.innerHTML = muscleHtml + gymHtml;
-    container.appendChild(filters);
-  }
+  _renderPickerListToolbar(container);
 
   let renderedGroupCount = 0;
-  const quickAdd = document.createElement('div');
-  quickAdd.className = `ex-picker-quick-add${isMaxBenchmarkPicker ? ' max-crud' : ''}`;
-  quickAdd.innerHTML = isMaxBenchmarkPicker
-    ? `
-      <button type="button" class="ex-picker-add primary" data-action="add-picker-exercise">+ 종목 추가</button>
-      <button type="button" class="ex-picker-add" data-action="open-picker-equipment">기구 관리</button>
-      <span>운동종목 · 헬스장 기구</span>
-    `
-    : `
-      <button type="button" class="ex-picker-add primary" data-action="add-picker-exercise">+ 종목 추가(선택)</button>
-      <span>${isExpert ? '현재 필터의 헬스장 범위로 저장됩니다.' : '직접 종목을 추가합니다.'}</span>
-    `;
-  quickAdd.querySelector('[data-action="add-picker-exercise"]')?.addEventListener('click', () => wtOpenExerciseEditor(null, _pickerMuscleFilter || todayMajorScope[0] || null));
-  quickAdd.querySelector('[data-action="open-picker-equipment"]')?.addEventListener('click', () => _openPickerEquipmentManager());
-  container.appendChild(quickAdd);
   visibleMuscles.forEach(muscle => {
-    const list = pool
+    const list = _sortPickerExercises(pool
       .filter(e => _exerciseMajorIds(e).includes(muscle.id))
-      .filter(e => isMaxBenchmarkPicker || !S.workout.hiddenExercises.includes(e.id));
+      .filter(e => _isPickerVisibleExercise(e, isMaxBenchmarkPicker)), statsByExercise);
 
     if (list.length === 0) return;
     renderedGroupCount++;
@@ -1759,13 +2885,13 @@ export function _renderPickerList() {
     group.innerHTML = `<div class="ex-picker-group-label" style="color:${muscle.color}">${muscle.name}</div>`;
     list.forEach(ex => {
       const alreadyAdded = S.workout.exercises.some(e => e.exerciseId === ex.id);
+      const pickerStats = statsByExercise.get(ex.id) || { count: 0, lastDate: null };
       const btn = document.createElement('button');
       btn.className = 'ex-picker-item' + (alreadyAdded ? ' already' : '');
       const editable = _isExerciseEditable(ex);
       if (isMaxBenchmarkPicker) {
-        btn.innerHTML = `${_renderExercisePickerName(ex, alreadyAdded)}
+        btn.innerHTML = `${_renderExercisePickerName(ex, alreadyAdded, pickerStats)}
           <span class="ex-picker-row-side">
-            ${_renderMaxBenchmarkPickerMeta(ex)}
             <span class="ex-picker-actions">
               <span class="ex-picker-icon-btn ex-picker-edit" data-exid="${ex.id}" role="button" tabindex="0" aria-label="종목 수정" title="종목 수정">${_pickerEditIconSvg()}</span>
               <span class="ex-picker-delete" data-exid="${ex.id}" role="button" tabindex="0" title="종목 삭제">삭제</span>
@@ -1780,7 +2906,7 @@ export function _renderPickerList() {
           _deletePickerExercise(ex);
         });
       } else if (isExpert) {
-        btn.innerHTML = `${_renderExercisePickerName(ex, alreadyAdded)}
+        btn.innerHTML = `${_renderExercisePickerName(ex, alreadyAdded, pickerStats)}
           <div class="ex-picker-actions">
             <span class="ex-picker-icon-btn ex-picker-edit" data-exid="${ex.id}" role="button" tabindex="0" aria-label="종목 수정" title="종목 수정">${_pickerEditIconSvg()}</span>
             ${editable ? `<span class="ex-picker-delete" data-exid="${ex.id}" title="종목 삭제">삭제</span>` : ''}
@@ -1796,7 +2922,7 @@ export function _renderPickerList() {
       } else {
         // C-3: ✕(삭제 연상) → 눈감김 아이콘 + "이 목록에서 숨기기" tooltip.
         //     실제로는 "이 헬스장에선 안 써요" 의미라 파괴적 삭제가 아님.
-        btn.innerHTML = `${_renderExercisePickerName(ex, alreadyAdded)}
+        btn.innerHTML = `${_renderExercisePickerName(ex, alreadyAdded, pickerStats)}
           <div class="ex-picker-actions">
             <span class="ex-picker-icon-btn ex-picker-edit" data-exid="${ex.id}" role="button" tabindex="0" aria-label="종목 수정" title="종목 수정">${_pickerEditIconSvg()}</span>
             <span class="ex-picker-hide" data-exid="${ex.id}" title="이 헬스장 목록에서 숨기기" aria-label="이 헬스장 목록에서 숨기기">
@@ -1826,19 +2952,25 @@ export function _renderPickerList() {
       }
       _bindPickerSourceFilter(btn);
 
-      if (!alreadyAdded) {
-        btn.addEventListener('click', () => {
-          _ensureExpertManualSession();
-          S.workout.exercises.push(_buildPickerExerciseEntry(ex));
-          _renderExerciseList();
-          _syncExpertTopArea();
+      btn.addEventListener('click', () => {
+        const existingIdx = _findWorkoutEntryIndexByExerciseId(ex.id);
+        if (existingIdx >= 0) {
           wtCloseExercisePicker();
-          const timerBar = document.getElementById('wt-workout-timer-bar');
-          if (timerBar && !timerBar.classList.contains('wt-open')) timerBar.classList.add('wt-open');
-          if (!S.workout.workoutStartTime && S.workout.workoutDuration === 0) wtStartWorkoutTimer();
-          saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
-        });
-      }
+          wtFocusWorkoutEntryCard(existingIdx);
+          return;
+        }
+        _ensureExpertManualSession();
+        const entryIdx = S.workout.exercises.push(_buildPickerExerciseEntry(ex)) - 1;
+        _renderExerciseList();
+        _syncExpertTopArea();
+        const timerBar = document.getElementById('wt-workout-timer-bar');
+        if (timerBar && !timerBar.classList.contains('wt-open')) timerBar.classList.add('wt-open');
+        _refreshWorkoutTimeline('exercise add');
+        wtPersistActiveWorkoutDraft('exercise add');
+        wtCloseExercisePicker();
+        wtFocusWorkoutEntryCard(entryIdx);
+        saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
+      });
       group.appendChild(btn);
     });
     if (!isExpert) {
@@ -1856,12 +2988,15 @@ export function _renderPickerList() {
     const empty = document.createElement('div');
     empty.className = 'ex-picker-empty';
     empty.style.cssText = 'padding:32px 16px; text-align:center; color:var(--text-secondary); font-size:14px; line-height:1.5;';
-    const hasFilter = filterBadges.length > 0;
-    const emptyMsg = isExpert ? '이 헬스장에 등록된 종목이 없어요' : '등록된 종목이 없어요';
+    const hasFilter = !!(_pickerMuscleFilter || _pickerSearchQuery || _pickerListMode === 'custom' || (_pickerGymFilter && _pickerGymFilter !== 'all'));
+    const emptyMsg = _pickerListMode === 'custom'
+      ? '등록된 커스텀 종목이 없어요'
+      : '등록된 종목이 없어요';
     empty.innerHTML = hasFilter
       ? `<div style="margin-bottom:12px;">조건에 맞는 종목이 없어요</div>
-         <button type="button" class="tds-btn tonal sm" onclick="window._wtResetAllPickerFilters()">필터 초기화</button>`
+         <button type="button" class="tds-btn tonal sm" data-picker-reset-empty>필터 초기화</button>`
       : `<div>${emptyMsg}</div>`;
+    empty.querySelector('[data-picker-reset-empty]')?.addEventListener('click', () => window._wtResetAllPickerFilters?.());
     container.appendChild(empty);
   }
 }
@@ -1875,15 +3010,14 @@ export async function wtOpenExercisePicker() {
   }
   if (!modal) { console.error('[workout] ex-picker-modal not found'); return; }
   // 피커 열 때마다 부위/검색은 초기화하되, 헬스장 필터는 그날 세션 동안 유지한다.
+  _bindPickerChrome();
+  _pickerView = 'category';
+  _pickerListMode = 'all';
   _pickerMuscleFilter = null;
-  _pickerGymFilter = _isExpertSessionActive()
-    ? (S?.workout?.pickerGymFilter || 'all')
-    : null;
+  _resetPickerGymScope();
+  _pickerSortMode = 'recent';
   _pickerSearchQuery = '';
-  const searchInput = document.getElementById('ex-picker-search');
-  if (searchInput) searchInput.value = '';
-  const clearBtn = document.getElementById('ex-picker-search-clear');
-  if (clearBtn) clearBtn.style.display = 'none';
+  _setPickerSearchUi('');
   _renderPickerList();
   modal.classList.add('open');
   _setWorkoutModalLock(true);
@@ -1939,6 +3073,7 @@ export function wtOpenExerciseEditor(exId, defaultMuscleId) {
     gymSelect.value          = _exerciseGymKey(ex);
     if (deleteBtn) deleteBtn.style.display = _isExerciseEditable(ex) ? 'block' : 'none';
     editor.dataset.editingId = exId;
+    _renderExerciseProgramEditor(ex || {});
   } else {
     titleEl.textContent      = '종목 추가';
     nameInput.value          = '';
@@ -1948,6 +3083,7 @@ export function wtOpenExerciseEditor(exId, defaultMuscleId) {
       : (currentGymId && _isExpertSessionActive() ? currentGymId : '');
     if (deleteBtn) deleteBtn.style.display = 'none';
     editor.dataset.editingId = '';
+    _renderExerciseProgramEditor({ muscleId: muscleSelect.value || defaultMuscleId || allMuscles[0]?.id || '' });
   }
   const customNameInput = document.getElementById('ex-editor-new-muscle-name');
   if (customNameInput) customNameInput.value = '';
@@ -2004,6 +3140,8 @@ export async function wtSaveExerciseFromEditor() {
     if (!saved || saved.name !== record.name || saved.muscleId !== record.muscleId) {
       throw new Error('saveExercise verification failed');
     }
+    const programRecord = saved || record;
+    await _saveExerciseProgramFromEditor(programRecord);
   } catch (e) {
     console.warn('[wtSaveExerciseFromEditor]:', e);
     window.showToast?.('종목 저장 실패 — 다시 시도해주세요', 2800, 'error');

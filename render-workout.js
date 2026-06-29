@@ -10,6 +10,7 @@ export {
   wtAddSet, wtRemoveSet, wtUpdateSet,
   wtToggleSetDone, wtUpdateSetType, wtMoveSet,
   wtRemoveExerciseEntry,
+  renderWorkoutExerciseDetail, clearWorkoutExerciseDetail,
   wtOpenExercisePicker, wtCloseExercisePicker,
   wtOpenExerciseEditor, wtCloseExerciseEditor,
   wtSaveExerciseFromEditor, wtDeleteExerciseFromEditor,
@@ -20,4 +21,4 @@ export {
   wtRestTimerShowIdle, wtRestTimerHideIdle,
   wtOpenRestPresetSheet,
   tm2RenderEntry,
-} from './workout/index.js?v=20260620z27-selected-scope';
+} from './workout/index.js?v=20260625z47-workout-record-card-standard';

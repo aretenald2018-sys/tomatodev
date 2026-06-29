@@ -139,6 +139,41 @@ function _setAppUpdatePanelOpen(open) {
   if (panel) panel.hidden = !state.panelOpen;
 }
 
+function _hasActiveWorkoutDraftForUpdate() {
+  try {
+    return typeof window.__wtHasActiveDraft === 'function' && window.__wtHasActiveDraft();
+  } catch {
+    return false;
+  }
+}
+
+function _activeUpdateCopy() {
+  const activeWorkout = _hasActiveWorkoutDraftForUpdate();
+  return activeWorkout
+    ? {
+        title: '운동 기록 저장됨',
+        body: '업데이트 후에도 방금 하던 운동을 이어서 끝낼 수 있어요.',
+        button: '기록 보존 후 업데이트',
+      }
+    : {
+        title: '새 버전이 준비됐어요',
+        body: '최신 버전으로 다시 시작할 수 있어요.',
+        button: '새로고침',
+      };
+}
+
+function _syncAppUpdateCopy(root, { loading = false } = {}) {
+  if (!root) return;
+  const copy = _activeUpdateCopy();
+  const title = root.querySelector('[data-app-update-title]');
+  const body = root.querySelector('[data-app-update-body]');
+  const reload = root.querySelector('#app-update-reload');
+  if (title) title.textContent = copy.title;
+  if (body) body.textContent = copy.body;
+  if (reload) reload.textContent = loading ? '새로고침 중...' : copy.button;
+  root.classList.toggle('has-active-workout-draft', copy.button !== '새로고침');
+}
+
 function _ensureAppUpdateIndicator() {
   if (typeof document === 'undefined' || !document.body) return null;
   document.getElementById('app-update-banner')?.remove();
@@ -156,8 +191,8 @@ function _ensureAppUpdateIndicator() {
       </button>
       <div class="app-update-panel" id="app-update-panel" role="dialog" aria-label="앱 업데이트" hidden>
         <div class="app-update-panel-copy">
-          <strong>새 버전이 준비됐어요</strong>
-          <span>최신 버전으로 다시 시작할 수 있어요.</span>
+          <strong data-app-update-title>새 버전이 준비됐어요</strong>
+          <span data-app-update-body>최신 버전으로 다시 시작할 수 있어요.</span>
         </div>
         <button type="button" class="app-update-reload" id="app-update-reload">새로고침</button>
       </div>
@@ -169,6 +204,7 @@ function _ensureAppUpdateIndicator() {
       if (toggle) {
         event.preventDefault();
         event.stopPropagation();
+        _syncAppUpdateCopy(root);
         _setAppUpdatePanelOpen(!_updateBannerState().panelOpen);
         return;
       }
@@ -194,8 +230,8 @@ function _ensureAppUpdateIndicator() {
   const reload = root.querySelector('#app-update-reload');
   if (reload) {
     reload.disabled = !!state.reloadRequested;
-    reload.textContent = state.reloadRequested ? '새로고침 중...' : '새로고침';
   }
+  _syncAppUpdateCopy(root, { loading: !!state.reloadRequested });
   _setAppUpdatePanelOpen(state.panelOpen);
   return root;
 }
@@ -253,6 +289,13 @@ async function _resolveLatestAppSWRegistration(registration = null) {
 async function _reloadForAppUpdate(registration = null, button = null) {
   const state = _updateBannerState();
   if (_updateReloadRequested || state.reloadRequested) return;
+  try {
+    if (typeof window.__wtPersistActiveDraft === 'function') {
+      await Promise.resolve(window.__wtPersistActiveDraft());
+    }
+  } catch (error) {
+    console.warn('[PWA] 운동 초안 저장 후 업데이트 실패:', error?.message || error);
+  }
   _updateReloadRequested = true;
   state.reloadRequested = true;
   if (button) {

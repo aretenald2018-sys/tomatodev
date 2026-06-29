@@ -1,8 +1,8 @@
 {
   "baseRoom": {
-    "src": "./assets/home/life-zone/base-room-alpha.png",
+    "src": "./assets/home/life-zone/base-room-expanded-alpha.png",
     "width": 1672,
-    "height": 941
+    "height": 1672
   },
   "actors": [
     {
@@ -28,6 +28,47 @@
     }
   ],
   "stateSlots": {
+    "running": [
+      {
+        "id": "track-upper",
+        "pose": "running-track",
+        "label": "러닝",
+        "x": 545,
+        "y": 785,
+        "width": 90,
+        "z": 84,
+        "labelY": 760,
+        "bubbleX": 590,
+        "bubbleY": 660,
+        "mapTipX": 35
+      },
+      {
+        "id": "track-left",
+        "pose": "running-track",
+        "label": "러닝",
+        "x": 148,
+        "y": 1094,
+        "width": 88,
+        "z": 90,
+        "labelY": 1068,
+        "bubbleX": 192,
+        "bubbleY": 975,
+        "mapTipX": 52
+      },
+      {
+        "id": "track-right",
+        "pose": "running-track",
+        "label": "러닝",
+        "x": 700,
+        "y": 1042,
+        "width": 88,
+        "z": 96,
+        "labelY": 1016,
+        "bubbleX": 744,
+        "bubbleY": 925,
+        "mapTipX": 48
+      }
+    ],
     "workout": [
       {
         "id": "lat",

@@ -264,13 +264,18 @@ function _hasActualWorkoutExercise(ex) {
 export function isActiveWorkoutDayData(workoutData) {
   if (!workoutData) return false;
   const w = workoutData;
+  if ((w.workoutSessions || []).some(session => isActiveWorkoutDayData(session))) return true;
   if ((w.exercises || []).some(_hasActualWorkoutExercise)) return true;
   if (w.cf || w.swimming || w.running || w.stretching) return true;
   if ((w.muscles || []).length > 0) return true;
   if ((w.workoutDuration || 0) > 0) return true;
+  if ((w.workoutTimeline?.durationSec || 0) > 0) return true;
+  if ((w.workoutTimeline?.checkedSetCount || 0) > 0) return true;
   if ((w.runDistance || 0) > 0) return true;
   if ((w.runDurationMin || 0) > 0) return true;
   if ((w.runDurationSec || 0) > 0) return true;
+  if ((w.runRoute || []).length > 0) return true;
+  if ((w.runRouteSummary?.pointCount || 0) > 0) return true;
   if ((w.cfDurationMin || 0) > 0) return true;
   if ((w.cfDurationSec || 0) > 0) return true;
   if ((w.cfWod || '').toString().trim()) return true;

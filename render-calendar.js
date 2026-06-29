@@ -10,18 +10,45 @@ import {
   getExList,
   getMuscleParts,
   getLatestCheckinWeight,
+  getTestBoardV2,
+  saveDay,
 } from './data.js';
 import {
   calcDietMetrics,
   getDayTargetKcal,
   calcBurnedKcal,
   calcDayScore,
+  getTrackMetricHistory,
+  normalizeWorkoutTrack,
+  estimateSet1RM,
   SUBPATTERN_TO_MAJOR,
 } from './calc.js';
 import { calcSetVolume } from './calc/volume.js';
 import { MOVEMENTS } from './config.js';
 import { dateKey, TODAY, isFuture, isBeforeStart } from './data/data-date.js';
 import { openModal, closeModal } from './utils/dom.js';
+import { confirmAction } from './utils/confirm-modal.js';
+import {
+  getWorkoutSessions,
+  hasWorkoutSessionData,
+  upsertWorkoutSession,
+  deleteWorkoutSession,
+} from './workout/sessions.js';
+import { destroyRunningMaps, renderRunningMap } from './workout/running-map.js';
+import { deriveDietSuccessFromWorkout } from './workout/cross-domain.js';
+import {
+  closeWorkoutDaySheet,
+  openWorkoutDaySheet,
+  updateWorkoutCalendarState,
+} from './workout/navigation-stack.js';
+import {
+  activeBenchmarks,
+  activeCycleOf,
+  buildExerciseProgramWorkoutPrescription,
+  mondayOf,
+  weekIndexOf,
+} from './workout/test-v2/board-core.js';
+import { buildWorkoutSetTimeline } from './workout/timeline.js';
 
 // ═════════════════════════════════════════════════════════════
 // 뷰 상태
@@ -29,6 +56,18 @@ import { openModal, closeModal } from './utils/dom.js';
 let _viewYear  = TODAY.getFullYear();
 let _viewMonth = TODAY.getMonth();
 let _calendarMode = 'summary';
+let _workoutHomeSelectedKey = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+let _workoutHomeView = 'month';
+let _workoutHomeSheetState = 'bar';
+let _workoutHomeSessionIndex = 0;
+const _workoutDetailCollapsed = new Set();
+let _workoutTrackGraphSeq = 0;
+const WORKOUT_GYM_SESSION_COUNT = 2;
+const WORKOUT_RUNNING_SESSION_INDEX = 2;
+let _workoutRunningMapSeq = 0;
+const _workoutRunningMapPayloads = new Map();
+const WORKOUT_HOME_SHEET_STATES = ['bar', 'full'];
+const WORKOUT_HOME_SHEET_CLASS_STATES = ['bar', 'full'];
 
 const MAX_WEAK_LABEL = {
   chest_upper:'가슴 상부', chest_lower:'가슴 하부',
@@ -103,6 +142,373 @@ function _formatVolume(value) {
   if (volume <= 0) return '—';
   if (volume >= 10000) return `${Math.round(volume / 1000).toLocaleString()}k`;
   return volume.toLocaleString();
+}
+
+function _parseDateKey(key) {
+  const match = String(key || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const y = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10) - 1;
+  const d = parseInt(match[3], 10);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return null;
+  const exact = new Date(y, m, d);
+  if (exact.getFullYear() !== y || exact.getMonth() !== m || exact.getDate() !== d) return null;
+  return { y, m, d };
+}
+
+function _dateFromKey(key) {
+  const p = _parseDateKey(key);
+  return p ? new Date(p.y, p.m, p.d) : null;
+}
+
+function _dateKeyFromDate(date) {
+  return dateKey(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function _workoutCalendarRowWeekStart(y, m, row, firstDow) {
+  const rowMonday = new Date(y, m, (row * 7) - firstDow + 2);
+  return mondayOf(_dateKeyFromDate(rowMonday));
+}
+
+function _cycleRailShortName(benchmark = {}) {
+  return String(benchmark.short || benchmark.label || '종목').trim().slice(0, 5) || '종목';
+}
+
+function _cycleRailTrackLabel(track) {
+  return track === 'intensity' ? '강도' : '볼륨';
+}
+
+function _cycleRailKind(benchmark = {}, track) {
+  if (benchmark.program === 'wendler') return 'wendler';
+  return track === 'intensity' ? 'intensity' : 'volume';
+}
+
+function _buildWorkoutCycleRailItems(board, weekStart) {
+  if (!board || !weekStart) return [];
+  const items = [];
+  for (const bm of activeBenchmarks(board)) {
+    const cycle = activeCycleOf(board, bm.groupId);
+    if (!cycle) continue;
+    const cycleWeek = weekIndexOf(cycle, weekStart);
+    const cycleWeeks = Math.max(1, Number(cycle.weeks) || 6);
+    if (cycleWeek < 1 || cycleWeek > cycleWeeks) continue;
+    const tracks = bm.program === 'wendler' ? ['volume'] : (Array.isArray(bm.tracks) && bm.tracks.length ? bm.tracks : ['volume']);
+    for (const track of tracks) {
+      const rx = buildExerciseProgramWorkoutPrescription(board, bm, {
+        track,
+        weekStart,
+        todayKey: weekStart,
+        includeAlternatives: false,
+      });
+      const kg = Number(rx?.plan?.kg);
+      if (!Number.isFinite(kg) || kg <= 0) continue;
+      const reps = Number(rx?.plan?.reps) > 0 ? `${_fmtNum(rx.plan.reps, 0)}${rx.plan.amrap ? '+' : ''}회` : '';
+      const kgText = `${_fmtNum(kg, 1)}kg`;
+      const plan = rx?.plan || {};
+      const isWendler = plan.kind === 'wendler';
+      const displayWeek = Number(isWendler ? (plan.cycleWeek || plan.week || cycleWeek) : cycleWeek) || cycleWeek;
+      const programWeek = Number(plan.programWeek) || 0;
+      const programWeekText = isWendler && programWeek > 0 ? ` · 프로그램 ${_fmtNum(programWeek, 0)}주차` : '';
+      const trackLabel = isWendler ? '웬들러' : _cycleRailTrackLabel(track);
+      items.push({
+        benchmarkId: bm.id,
+        label: isWendler ? `${_cycleRailShortName(bm)} W${_fmtNum(displayWeek, 0)} ${kgText}` : `${_cycleRailShortName(bm)} ${kgText}`,
+        title: `${bm.label || bm.short || '종목'} · ${_fmtNum(displayWeek, 0)}주차${programWeekText} · ${trackLabel} · ${kgText}${reps ? ` x ${reps}` : ''}`,
+        kind: _cycleRailKind(bm, track),
+      });
+    }
+  }
+  return items;
+}
+
+function _renderWorkoutCycleRail(weekStart, items = []) {
+  const visibleItems = Array.isArray(items) ? items : [];
+  const label = visibleItems.length
+    ? `${weekStart} 사이클 처방: ${visibleItems.map(item => item.title).join(', ')}`
+    : `${weekStart} 사이클 처방 없음`;
+  return `
+    <div class="cal-workout-week-rail ${visibleItems.length ? 'has-cycle' : 'is-empty'}" aria-label="${_esc(label)}">
+      <span class="cal-cycle-rail-line" aria-hidden="true"></span>
+      <div class="cal-cycle-branch-list">
+        ${visibleItems.map(item => `
+          <button type="button" class="cal-cycle-branch is-${_esc(item.kind)}" data-cal-cycle-target="${_esc(item.benchmarkId)}" title="${_esc(item.title)}" aria-label="${_esc(`${item.title} 설정 열기`)}"><span class="cal-cycle-branch-text">${_esc(item.label)}</span></button>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+async function _openWorkoutCycleTargetSettings(benchmarkId) {
+  const bmId = String(benchmarkId || '').trim();
+  if (!bmId) return;
+  try {
+    if (typeof window.tm2OpenBenchmarkSettings !== 'function') {
+      await import('./workout/test-v2/entry.js?v=20260620z27-selected-scope');
+    }
+    if (typeof window.tm2OpenBenchmarkSettings === 'function') {
+      await window.tm2OpenBenchmarkSettings(bmId);
+      return;
+    }
+    if (typeof window.tm2OpenBoard === 'function') {
+      await window.tm2OpenBoard();
+      return;
+    }
+    throw new Error('growth board entry is not registered');
+  } catch (e) {
+    console.warn('[workout-calendar] cycle target settings open failed:', e);
+    window.showToast?.('목표 설정을 여는 데 실패했어요', 2200, 'error');
+  }
+}
+
+function _dateDistanceLabel(key) {
+  const target = _dateFromKey(key);
+  if (!target) return '';
+  const today = new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+  const diff = Math.round((today - target) / 86400000);
+  if (diff === 0) return '오늘';
+  if (diff > 0) return `${diff}일 전`;
+  return `${Math.abs(diff)}일 후`;
+}
+
+function _dateTitle(key) {
+  const p = _parseDateKey(key);
+  if (!p) return key || '';
+  return `${p.y}-${String(p.m + 1).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`;
+}
+
+function _workoutHomeScrollTop() {
+  if (typeof document === 'undefined') return 0;
+  return Math.max(0, Number(document.scrollingElement?.scrollTop) || Number(window?.scrollY) || 0);
+}
+
+function _syncWorkoutHomeNavState({ history = 'replace', notify = false, action = 'calendar:sync' } = {}) {
+  updateWorkoutCalendarState({
+    viewYear: _viewYear,
+    viewMonth: _viewMonth,
+    selectedKey: _parseDateKey(_workoutHomeSelectedKey) ? _workoutHomeSelectedKey : null,
+    selectedSessionIndex: Math.max(0, Math.floor(Number(_workoutHomeSessionIndex) || 0)),
+    sheetOpen: _workoutHomeView === 'detail',
+    sheetState: _normalizeWorkoutHomeSheetState(_workoutHomeSheetState),
+    scrollTop: _workoutHomeScrollTop(),
+    activeTab: 'summary',
+  }, { history, notify, action });
+}
+
+export function applyWorkoutCalendarNavSnapshot(snapshot = {}, options = {}) {
+  const calendar = snapshot?.calendar || {};
+  if (calendar.viewYear != null && Number.isFinite(Number(calendar.viewYear))) _viewYear = Number(calendar.viewYear);
+  if (calendar.viewMonth != null && Number.isFinite(Number(calendar.viewMonth))) _viewMonth = Number(calendar.viewMonth);
+  if (!Number.isFinite(_viewYear) || _viewYear < 1000 || _viewYear > 9999) _viewYear = TODAY.getFullYear();
+  if (!Number.isFinite(_viewMonth) || _viewMonth < 0 || _viewMonth > 11) _viewMonth = TODAY.getMonth();
+  if (_parseDateKey(calendar.selectedKey)) _workoutHomeSelectedKey = calendar.selectedKey;
+  _workoutHomeSessionIndex = Math.max(0, Math.floor(Number(calendar.selectedSessionIndex) || 0));
+  _workoutHomeSheetState = _normalizeWorkoutHomeSheetState(calendar.sheetState);
+  _workoutHomeView = calendar.sheetOpen ? 'detail' : 'month';
+  renderWorkoutCalendarHome();
+  if (options.preserveScroll !== false && Number.isFinite(Number(calendar.scrollTop)) && typeof window !== 'undefined') {
+    const top = Math.max(0, Number(calendar.scrollTop) || 0);
+    window.requestAnimationFrame?.(() => window.scrollTo({ top, behavior: 'auto' }));
+  }
+}
+
+function _isTodayKey(key) {
+  return key === dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+}
+
+function _sessionLabel(index) {
+  return `${Number(index) + 1}회차`;
+}
+
+function _isRunningTabIndex(index) {
+  return Math.max(0, Math.floor(Number(index) || 0)) === WORKOUT_RUNNING_SESSION_INDEX;
+}
+
+function _hasRunningRecord(session = {}) {
+  const s = session || {};
+  const summary = s.runRouteSummary && typeof s.runRouteSummary === 'object' ? s.runRouteSummary : {};
+  return !!(
+    s.running
+    || _num(s.runDistance) > 0
+    || _num(s.runDurationMin) > 0
+    || _num(s.runDurationSec) > 0
+    || (Array.isArray(s.runRoute) && s.runRoute.length > 0)
+    || _num(summary.pointCount) > 0
+  );
+}
+
+function _runningTrackSessionInfo(sessions = []) {
+  const list = Array.isArray(sessions) ? sessions : [];
+  const preferred = list[WORKOUT_RUNNING_SESSION_INDEX];
+  if (_hasRunningRecord(preferred)) return { index: WORKOUT_RUNNING_SESSION_INDEX, session: preferred, hasRecord: true };
+  const legacyIndex = list.findIndex(_hasRunningRecord);
+  if (legacyIndex >= 0) return { index: legacyIndex, session: list[legacyIndex], hasRecord: true };
+  return { index: WORKOUT_RUNNING_SESSION_INDEX, session: preferred || {}, hasRecord: false };
+}
+
+function _clearRunningFields(session = {}) {
+  return {
+    ...session,
+    running: false,
+    runDistance: 0,
+    runDurationMin: 0,
+    runDurationSec: 0,
+    runMemo: '',
+    runSource: 'manual',
+    runStartedAt: null,
+    runEndedAt: null,
+    runRoute: [],
+    runRouteSummary: null,
+    runPlaceSummary: null,
+    runAvgPaceSecPerKm: 0,
+    runGpsAccuracySummary: null,
+  };
+}
+
+function _onlyRunningFields(session = {}) {
+  const s = session || {};
+  return {
+    exercises: [],
+    cf: false,
+    stretching: false,
+    swimming: false,
+    running: !!s.running,
+    runDistance: s.runDistance || 0,
+    runDurationMin: s.runDurationMin || 0,
+    runDurationSec: s.runDurationSec || 0,
+    runMemo: '',
+    runSource: s.runSource || 'gps',
+    runStartedAt: s.runStartedAt || null,
+    runEndedAt: s.runEndedAt || null,
+    runRoute: Array.isArray(s.runRoute) ? s.runRoute : [],
+    runRouteSummary: s.runRouteSummary || null,
+    runPlaceSummary: s.runPlaceSummary || null,
+    runAvgPaceSecPerKm: Number(s.runAvgPaceSecPerKm) || 0,
+    runGpsAccuracySummary: s.runGpsAccuracySummary || null,
+    workoutDuration: 0,
+    workoutTimeline: null,
+    memo: '',
+  };
+}
+
+function _workoutRecordOrdinalForKey(cache, selectedKey, plan, checkins, lookup) {
+  const keys = Object.keys(cache || {})
+    .filter(key => /^\d{4}-\d{2}-\d{2}$/.test(key))
+    .filter(key => key <= selectedKey)
+    .sort();
+  let count = 0;
+  keys.forEach((key) => {
+    const bodyWeight = _weightAt(checkins, key) ?? getLatestCheckinWeight() ?? plan?.weight ?? 70;
+    if (_workoutMetrics(key, cache[key] || {}, bodyWeight, lookup).hasWorkout) count += 1;
+  });
+  return count;
+}
+
+function _openWorkoutEditorForSession(key, sessionIndex = 0) {
+  const p = _parseDateKey(key);
+  if (!p) return;
+  window.__wtTargetSessionIndex = Math.max(0, Math.floor(Number(sessionIndex) || 0));
+  if (typeof window.wtOpenWorkoutRecord === 'function') {
+    window.wtOpenWorkoutRecord(key, sessionIndex);
+    return;
+  }
+  window.openWorkoutTab?.(p.y, p.m, p.d);
+}
+
+async function _loadWorkoutEditorForSession(key, sessionIndex = 0) {
+  const p = _parseDateKey(key);
+  if (!p) return false;
+  window.__wtTargetSessionIndex = Math.max(0, Math.floor(Number(sessionIndex) || 0));
+  if (typeof window.wtOpenWorkoutRecord === 'function') {
+    return await window.wtOpenWorkoutRecord(key, sessionIndex);
+  }
+  if (typeof window.switchTab === 'function') {
+    await window.switchTab('workout', { workoutDate: { y: p.y, m: p.m, d: p.d } });
+    return true;
+  }
+  if (typeof window.openWorkoutTab === 'function') {
+    window.openWorkoutTab(p.y, p.m, p.d);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    return true;
+  }
+  return false;
+}
+
+function _clonePlain(value) {
+  if (value == null) return value;
+  try { return JSON.parse(JSON.stringify(value)); }
+  catch { return value; }
+}
+
+function _workoutHomeDay(key) {
+  return (getCache() || {})[key] || {};
+}
+
+function _workoutHomeSessionAt(key, sessionIndex, minCount = 1) {
+  const day = _workoutHomeDay(key);
+  const index = Math.max(0, Math.floor(Number(sessionIndex) || 0));
+  const sessions = getWorkoutSessions(day, { minCount: Math.max(minCount, index + 1) });
+  return {
+    day,
+    sessions,
+    index,
+    session: sessions[index] || sessions[0] || {},
+  };
+}
+
+function _workoutSessionSavePayload(result) {
+  return {
+    ...result.aggregate,
+    workoutSessions: result.workoutSessions,
+  };
+}
+
+function _hasWorkoutHomeMealRecord(day, mealKey) {
+  const textKey = mealKey;
+  const foodsKey = `${mealKey[0]}Foods`;
+  const kcalKey = `${mealKey[0]}Kcal`;
+  const skipKey = `${mealKey}_skipped`;
+  if (day?.[skipKey]) return true;
+  if (String(day?.[textKey] || '').trim()) return true;
+  if (Array.isArray(day?.[foodsKey]) && day[foodsKey].length > 0) return true;
+  return _num(day?.[kcalKey]) > 0;
+}
+
+function _mealOkPatchForWorkoutHomeDay(key, existingDay, aggregate) {
+  const p = _parseDateKey(key);
+  if (!p) return {};
+  try {
+    const diet = {
+      bKcal: existingDay.bKcal || 0,
+      lKcal: existingDay.lKcal || 0,
+      dKcal: existingDay.dKcal || 0,
+      sKcal: existingDay.sKcal || 0,
+    };
+    const isDietSuccess = deriveDietSuccessFromWorkout(aggregate, diet, { y: p.y, m: p.m, d: p.d }, aggregate.exercises || []);
+    return {
+      bOk: _hasWorkoutHomeMealRecord(existingDay, 'breakfast')
+        ? (existingDay.breakfast_skipped ? true : isDietSuccess) : null,
+      lOk: _hasWorkoutHomeMealRecord(existingDay, 'lunch')
+        ? (existingDay.lunch_skipped ? true : isDietSuccess) : null,
+      dOk: _hasWorkoutHomeMealRecord(existingDay, 'dinner')
+        ? (existingDay.dinner_skipped ? true : isDietSuccess) : null,
+      sOk: _hasWorkoutHomeMealRecord(existingDay, 'snack') ? isDietSuccess : null,
+    };
+  } catch (e) {
+    console.warn('[workout-calendar] meal ok recompute skipped:', e);
+    return {};
+  }
+}
+
+async function _saveWorkoutHomeSessionResult(key, result) {
+  const existingDay = _workoutHomeDay(key);
+  const payload = {
+    ..._workoutSessionSavePayload(result),
+    ..._mealOkPatchForWorkoutHomeDay(key, existingDay, result.aggregate || {}),
+  };
+  await saveDay(key, payload, { mode: 'merge', rethrow: true });
+  _workoutDetailCollapsed.clear();
+  renderWorkoutCalendarHome();
+  document.dispatchEvent(new CustomEvent('sheet:saved'));
 }
 
 function _durationFromMinSec(min, sec) {
@@ -247,15 +653,29 @@ function _activityRows(day) {
   const d = day || {};
   const rows = [];
 
-  const runDuration = _durationFromMinSec(d.runDurationMin, d.runDurationSec);
-  const runDistance = _num(d.runDistance);
+  const runSummary = d.runRouteSummary && typeof d.runRouteSummary === 'object' ? d.runRouteSummary : {};
+  const runAccuracy = d.runGpsAccuracySummary || runSummary.gpsAccuracySummary || null;
+  const runDuration = _durationFromMinSec(d.runDurationMin, d.runDurationSec) || _num(runSummary.durationSec);
+  const runDistance = _num(d.runDistance) || _num(runSummary.distanceKm);
   const runMemo = (d.runMemo || '').toString().trim();
   if (d.running || runDistance > 0 || runDuration > 0 || runMemo) {
     rows.push({
       key: 'running',
-      label: '런닝',
+      label: '러닝',
       tone: 'run',
       durationSec: runDuration,
+      distanceKm: runDistance,
+      avgPaceSecPerKm: _num(d.runAvgPaceSecPerKm) || _num(runSummary.avgPaceSecPerKm),
+      calories: _num(runSummary.calories),
+      elevationGainM: Number.isFinite(Number(runSummary.elevationGainM)) ? Number(runSummary.elevationGainM) : null,
+      cadenceSpm: Number(runSummary.cadenceSpm) > 0 ? Number(runSummary.cadenceSpm) : null,
+      avgHeartRateBpm: Number(runSummary.avgHeartRateBpm) > 0 ? Number(runSummary.avgHeartRateBpm) : null,
+      pointCount: _num(runSummary.pointCount) || (Array.isArray(d.runRoute) ? d.runRoute.length : 0),
+      source: d.runSource || runSummary.source || 'manual',
+      route: Array.isArray(d.runRoute) ? d.runRoute : [],
+      routeSummary: runSummary,
+      placeSummary: d.runPlaceSummary || null,
+      gpsAccuracySummary: runAccuracy,
       main: [
         runDistance > 0 ? `${_fmtNum(runDistance, 2)}km` : '',
         _formatDuration(runDuration),
@@ -389,24 +809,42 @@ function _partDisplayLabels(exercises, lookup) {
     }));
 }
 
-function _exerciseRows(day, lookup = _buildWorkoutLookup()) {
+function _exerciseRows(day, lookup = _buildWorkoutLookup(), key = null) {
   return (Array.isArray(day?.exercises) ? day.exercises : [])
-    .map((entry) => {
+    .map((entry, originalIndex) => {
       const sets = (Array.isArray(entry?.sets) ? entry.sets : []).filter(_isActualWorkoutSet);
       const note = (entry?.note || '').toString().trim();
       if (!sets.length && !note) return null;
       const volume = sets.reduce((sum, set) => sum + calcSetVolume(set), 0);
       const topSet = [...sets].sort((a, b) => calcSetVolume(b) - calcSetVolume(a))[0] || null;
       const majorId = _resolveExerciseMajorId(entry, lookup);
+      const lib = lookup?.exById?.get(entry?.exerciseId);
       return {
+        dateKey: key,
+        exerciseId: entry?.exerciseId || null,
         name: entry?.name || entry?.exerciseName || entry?.exerciseId || '운동',
         majorId,
         majorName: _majorLabel(majorId, lookup),
+        recommendationMeta: entry?.recommendationMeta || null,
+        maxPrescription: entry?.maxPrescription || null,
+        maxTrackPreference: lib?.maxTrackPreference || null,
         setCount: sets.length,
         volume,
         topSetText: topSet ? _formatSetText(topSet) : '세트 기록 없음',
         setTexts: sets.map(_formatSetText),
+        setDetails: sets.map((set, setIndex) => ({
+          setIndex,
+          kg: _num(set.kg),
+          reps: _num(set.reps),
+          rpe: _num(set.rpe),
+          rir: Number.isFinite(Number(set.rir)) ? Number(set.rir) : null,
+          romPct: Number.isFinite(Number(set.romPct)) ? Number(set.romPct) : 100,
+          setType: set.setType || 'main',
+          completedAt: Number.isFinite(Number(set.completedAt)) ? Number(set.completedAt) : null,
+          done: _isActualWorkoutSet(set),
+        })),
         note,
+        originalIndex,
       };
     })
     .filter(Boolean);
@@ -414,12 +852,14 @@ function _exerciseRows(day, lookup = _buildWorkoutLookup()) {
 
 function _workoutMetrics(key, day, bodyWeight, lookup = _buildWorkoutLookup()) {
   const d = day || {};
-  const exercises = _exerciseRows(d, lookup);
+  const exercises = _exerciseRows(d, lookup, key);
   const activities = _activityRows(d);
   const burned = calcBurnedKcal(d, bodyWeight);
-  const workoutDurationSec = Math.max(0, Math.round(_num(d.workoutDuration)));
+  const workoutTimeline = buildWorkoutSetTimeline(d.exercises, d.workoutDuration);
+  const workoutDurationSec = Math.max(0, Math.round(_num(workoutTimeline.durationSec)));
   const activityDurationSec = activities.reduce((sum, row) => sum + (row.durationSec || 0), 0);
-  const gymDurationSec = exercises.length ? workoutDurationSec : 0;
+  const hasTimelineRecord = (Number(workoutTimeline.checkedSetCount) || 0) > 0;
+  const gymDurationSec = (exercises.length || hasTimelineRecord) ? workoutDurationSec : 0;
   const durationSec = Math.max(gymDurationSec + activityDurationSec, workoutDurationSec, activityDurationSec);
   const setCount = exercises.reduce((sum, row) => sum + row.setCount, 0);
   const volume = exercises.reduce((sum, row) => sum + row.volume, 0);
@@ -431,7 +871,7 @@ function _workoutMetrics(key, day, bodyWeight, lookup = _buildWorkoutLookup()) {
     })),
   ].filter(row => row?.text);
   const labels = displayLabels.map(row => row.text);
-  const hasWorkout = exercises.length > 0 || activities.length > 0 || workoutDurationSec > 0 || burned.total > 0;
+  const hasWorkout = exercises.length > 0 || activities.length > 0 || workoutDurationSec > 0 || hasTimelineRecord || burned.total > 0;
   return {
     key,
     day: d,
@@ -450,18 +890,36 @@ function _workoutMetrics(key, day, bodyWeight, lookup = _buildWorkoutLookup()) {
   };
 }
 
-function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, daysCount }) {
+function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, daysCount, surface = 'calendar', showModeTabs = true } = {}) {
   let monthSum = { days: 0, durationSec: 0, sets: 0, volume: 0, kcalBurn: 0 };
-  const cells = [];
+  const flatCells = [];
+  const dayCells = new Map();
   const lookup = _buildWorkoutLookup();
-  for (let i = 0; i < firstDow; i++) cells.push(`<div class="cal-cell cal-cell-empty"></div>`);
+  const isWorkoutHome = surface === 'workout-home';
+  const cycleBoard = isWorkoutHome ? getTestBoardV2() : null;
+  const openDayFn = isWorkoutHome ? '_wtCalOpenDay' : '_calOpenDay';
+  const shiftMonthFn = isWorkoutHome ? '_wtCalShiftMonth' : '_calShiftMonth';
+  const goTodayFn = isWorkoutHome ? '_wtCalGoToday' : '_calGoToday';
+  const surfaceClass = isWorkoutHome ? 'cal-workout-surface-home' : 'cal-workout-surface-calendar';
+  const selectedParsed = _parseDateKey(_workoutHomeSelectedKey);
+  const todayKey = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+
+  if (isWorkoutHome && (!selectedParsed || selectedParsed.y !== y || selectedParsed.m !== m || selectedParsed.d < 1 || selectedParsed.d > daysCount)) {
+    const todayInView = TODAY.getFullYear() === y && TODAY.getMonth() === m;
+    _workoutHomeSelectedKey = todayInView ? todayKey : dateKey(y, m, 1);
+  }
+
+  if (!isWorkoutHome) {
+    for (let i = 0; i < firstDow; i++) flatCells.push(`<div class="cal-cell cal-cell-empty"></div>`);
+  }
 
   for (let d = 1; d <= daysCount; d++) {
     const k = dateKey(y, m, d);
     const day = cache[k] || {};
     const future = isFuture(y, m, d);
     const before = isBeforeStart(y, m, d);
-    const today = k === dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+    const today = k === todayKey;
+    const selected = isWorkoutHome && k === _workoutHomeSelectedKey;
     const disabled = future || before;
     const bodyWeight = _weightAt(checkins, k) ?? getLatestCheckinWeight() ?? plan?.weight ?? 70;
     const wx = _workoutMetrics(k, day, bodyWeight, lookup);
@@ -478,11 +936,12 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
       'cal-cell',
       'cal-workout-cell',
       today ? 'cal-cell-today' : '',
+      selected ? 'cal-workout-cell-selected' : '',
       disabled ? 'cal-cell-disabled' : '',
       wx.hasWorkout ? 'cal-workout-cell-active' : 'cal-workout-cell-rest',
     ].filter(Boolean).join(' ');
-    const onclick = disabled ? '' : `onclick="window._calOpenDay('${k}')"`;
-    const maxLabelLines = wx.durationSec > 0 && wx.setCount > 0 ? 3 : 4;
+    const onclick = disabled ? '' : `onclick="window.${openDayFn}('${k}')"`;
+    const maxLabelLines = isWorkoutHome ? 4 : (wx.durationSec > 0 && wx.setCount > 0 ? 3 : 4);
     const labelLines = wx.displayLabels.slice(0, maxLabelLines);
     const moreCount = Math.max(0, wx.displayLabels.length - labelLines.length);
     const detailHtml = wx.hasWorkout ? `
@@ -497,7 +956,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
       <div class="cal-workout-rest-mark">—</div>
     `;
 
-    cells.push(`
+    const cellHtml = `
       <div class="${classes}" ${onclick}>
         <div class="cal-cell-head">
           <span class="cal-cell-date">${d}</span>
@@ -505,10 +964,18 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
         </div>
         ${detailHtml}
       </div>
-    `);
+    `;
+
+    if (isWorkoutHome) {
+      dayCells.set(d, cellHtml);
+    } else {
+      flatCells.push(cellHtml);
+    }
   }
 
-  const monthLabel = `${y}년 ${m + 1}월`;
+  const monthLabel = isWorkoutHome
+    ? `${y}.${String(m + 1).padStart(2, '0')}`
+    : `${y}년 ${m + 1}월`;
   const weekdays = ['일','월','화','수','목','금','토'];
   const summaryHtml = monthSum.days > 0 ? `
     <div class="cal-month-summary cal-workout-summary">
@@ -529,23 +996,106 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
     </div>
   `;
 
-  root.innerHTML = `
-    <div class="cal-header">
-      <button class="cal-nav-btn" onclick="window._calShiftMonth(-1)" aria-label="이전 달">‹</button>
-      <div class="cal-title">
-        <span>${monthLabel}</span>
-        <button class="cal-today-btn" onclick="window._calGoToday()">오늘</button>
-      </div>
-      <button class="cal-nav-btn" onclick="window._calShiftMonth(1)" aria-label="다음 달">›</button>
+  const weekdayHtml = isWorkoutHome ? `
+    <div class="cal-weekdays cal-workout-weekdays">
+      <div class="cal-week-rail-spacer" aria-hidden="true"></div>
+      ${weekdays.map((w, i) => `<div class="cal-wd ${i === 0 ? 'cal-wd-sun' : ''} ${i === 6 ? 'cal-wd-sat' : ''}">${w}</div>`).join('')}
     </div>
-
-    ${_renderCalendarModeTabs()}
-    ${summaryHtml}
-
+  ` : `
     <div class="cal-weekdays">
       ${weekdays.map((w, i) => `<div class="cal-wd ${i === 0 ? 'cal-wd-sun' : ''} ${i === 6 ? 'cal-wd-sat' : ''}">${w}</div>`).join('')}
     </div>
-    <div class="cal-grid cal-workout-grid">${cells.join('')}</div>
+  `;
+
+  const gridHtml = isWorkoutHome
+    ? _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, cycleBoard })
+    : `<div class="cal-grid cal-workout-grid">${flatCells.join('')}</div>`;
+  const bottomSheetHtml = isWorkoutHome
+    ? _renderWorkoutHomeBottomSheet(_workoutHomeSelectedKey, { cache, plan, checkins, lookup })
+    : '';
+
+  root.innerHTML = `
+    <div class="cal-workout-surface ${surfaceClass}">
+      <div class="cal-header">
+        <button class="cal-nav-btn" onclick="window.${shiftMonthFn}(-1)" aria-label="이전 달">‹</button>
+        <div class="cal-title">
+          <span>${monthLabel}</span>
+          <button class="cal-today-btn" onclick="window.${goTodayFn}()">오늘</button>
+        </div>
+        <button class="cal-nav-btn" onclick="window.${shiftMonthFn}(1)" aria-label="다음 달">›</button>
+      </div>
+
+      ${showModeTabs ? _renderCalendarModeTabs() : ''}
+      ${summaryHtml}
+      ${weekdayHtml}
+      ${gridHtml}
+      ${bottomSheetHtml}
+    </div>
+  `;
+}
+
+function _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, cycleBoard = null }) {
+  const weekRows = [];
+  const rowCount = Math.ceil((firstDow + daysCount) / 7);
+  for (let row = 0; row < rowCount; row++) {
+    const cellHtmls = [];
+    for (let dow = 0; dow < 7; dow++) {
+      const day = (row * 7) + dow - firstDow + 1;
+      if (day < 1 || day > daysCount) {
+        cellHtmls.push(`<div class="cal-cell cal-cell-empty cal-workout-cell cal-workout-cell-outside"></div>`);
+        continue;
+      }
+      cellHtmls.push(dayCells.get(day) || `<div class="cal-cell cal-cell-empty cal-workout-cell"></div>`);
+    }
+
+    const weekStart = _workoutCalendarRowWeekStart(y, m, row, firstDow);
+    const cycleItems = _buildWorkoutCycleRailItems(cycleBoard, weekStart);
+    weekRows.push(`
+      <div class="cal-workout-week-row">
+        ${_renderWorkoutCycleRail(weekStart, cycleItems)}
+        <div class="cal-workout-week-cells">
+          ${cellHtmls.join('')}
+        </div>
+      </div>
+    `);
+  }
+  return `<div class="cal-workout-month-grid">${weekRows.join('')}</div>`;
+}
+
+function _renderWorkoutHomeDayBar(selectedKey, { cache, plan, checkins, lookup }) {
+  const selected = _parseDateKey(selectedKey) ? selectedKey : dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+  const bodyWeight = _weightAt(checkins, selected) ?? getLatestCheckinWeight() ?? plan?.weight ?? 70;
+  const wx = _workoutMetrics(selected, cache[selected] || {}, bodyWeight, lookup);
+  const ordinal = _workoutRecordOrdinalForKey(cache, selected, plan, checkins, lookup);
+  const recordText = ordinal > 0 ? `${ordinal}번째 기록` : '운동 기록 없음';
+  const sessionText = wx.hasWorkout ? '1회차 보기' : '1회차 없음';
+  const sheetState = _currentWorkoutHomeSheetState();
+  const expanded = sheetState !== 'bar';
+  return `
+    <div class="cal-workout-day-bar" data-wt-sheet-bar aria-expanded="${expanded ? 'true' : 'false'}">
+      <button type="button" class="cal-workout-day-expand" data-wt-sheet-toggle data-date-key="${selected}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '날짜 상세 접기' : '선택한 날짜 열기'}">${expanded ? '⌄' : '⌃'}</button>
+      <button type="button" class="cal-workout-day-main" data-wt-sheet-main data-wt-sheet-toggle data-date-key="${selected}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '날짜 상세 접기' : '선택한 날짜 열기'}">
+        <span class="cal-workout-day-date">${selected} <em>${_dateDistanceLabel(selected)}</em></span>
+        <span class="cal-workout-day-sub">${recordText} · ${sessionText}</span>
+      </button>
+      <div class="cal-workout-day-actions">
+        <button type="button" data-wt-sheet-action onclick="window._wtCalGoToday()">오늘</button>
+      </div>
+    </div>
+  `;
+}
+
+function _renderWorkoutHomeBottomSheet(selectedKey, { cache, plan, checkins, lookup }) {
+  const selected = _parseDateKey(selectedKey) ? selectedKey : dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+  const sheetState = _currentWorkoutHomeSheetState();
+  return `
+    <div class="cal-workout-day-backdrop is-${sheetState}" data-wt-sheet-backdrop data-wt-sheet-state="${sheetState}" aria-hidden="true"></div>
+    <section class="cal-workout-day-sheet is-${sheetState}" data-wt-day-sheet data-wt-sheet-state="${sheetState}" role="dialog" aria-modal="false" aria-expanded="${sheetState !== 'bar' ? 'true' : 'false'}" aria-label="선택 날짜 운동 기록">
+      ${_renderWorkoutHomeDayBar(selected, { cache, plan, checkins, lookup })}
+      <div class="cal-workout-day-sheet-body">
+        ${_renderWorkoutHomeDetailHtml({ cache, plan, checkins, key: selected, includeHead: false })}
+      </div>
+    </section>
   `;
 }
 
@@ -556,13 +1106,17 @@ function _shiftMonth(delta) {
   const d = new Date(_viewYear, _viewMonth + delta, 1);
   _viewYear  = d.getFullYear();
   _viewMonth = d.getMonth();
+  _syncWorkoutHomeNavState({ action: 'calendar:month' });
   renderCalendar();
+  renderWorkoutCalendarHome();
 }
 
 function _goToday() {
   _viewYear  = TODAY.getFullYear();
   _viewMonth = TODAY.getMonth();
+  _syncWorkoutHomeNavState({ action: 'calendar:today' });
   renderCalendar();
+  renderWorkoutCalendarHome();
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -692,6 +1246,643 @@ export function renderCalendar() {
   `;
 }
 
+export function renderWorkoutCalendarHome() {
+  const root = document.getElementById('workout-calendar-root');
+  if (!root) return;
+  destroyRunningMaps(root);
+  _workoutRunningMapPayloads.clear();
+
+  const cache = getCache() || {};
+  const plan = getDietPlan() || null;
+  const checkins = _sortedCheckins();
+
+  const y = _viewYear, m = _viewMonth;
+  const first = new Date(y, m, 1);
+  const firstDow = first.getDay();
+  const daysCount = new Date(y, m + 1, 0).getDate();
+
+  _renderWorkoutCalendar(root, {
+    cache,
+    plan,
+    checkins,
+    y,
+    m,
+    firstDow,
+    daysCount,
+    surface: 'workout-home',
+    showModeTabs: false,
+  });
+  _bindWorkoutCycleRailActions(root);
+  _bindWorkoutHomeSheetActions(root);
+  _bindWorkoutHomeSheetInputIsolation(root);
+  _mountWorkoutRunningMaps(root);
+}
+
+function _renderWorkoutHomeDetail(root, args) {
+  destroyRunningMaps(root);
+  _workoutRunningMapPayloads.clear();
+  root.innerHTML = _renderWorkoutHomeDetailHtml(args);
+  _mountWorkoutRunningMaps(root);
+}
+
+function _registerWorkoutRunningMapPayload(row = {}) {
+  const id = `running-detail-map-${++_workoutRunningMapSeq}`;
+  _workoutRunningMapPayloads.set(id, {
+    points: Array.isArray(row.route) ? row.route : [],
+  });
+  return id;
+}
+
+function _mountWorkoutRunningMaps(root) {
+  root?.querySelectorAll?.('[data-wt-running-route-map]').forEach((shell) => {
+    const id = shell.getAttribute('data-wt-running-route-map');
+    const payload = _workoutRunningMapPayloads.get(id) || { points: [] };
+    renderRunningMap(shell, { points: payload.points, phase: 'detail' }).catch((e) => {
+      console.warn('[workout-calendar] running map render failed:', e);
+    });
+  });
+}
+
+function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, includeHead = true }) {
+  const lookup = _buildWorkoutLookup();
+  const day = cache[key] || {};
+  const sessions = getWorkoutSessions(day, { minCount: WORKOUT_RUNNING_SESSION_INDEX + 1 });
+  if (_workoutHomeSessionIndex > WORKOUT_RUNNING_SESSION_INDEX) _workoutHomeSessionIndex = WORKOUT_RUNNING_SESSION_INDEX;
+  const runningInfo = _runningTrackSessionInfo(sessions);
+  const runningActive = _isRunningTabIndex(_workoutHomeSessionIndex);
+  const sessionIndex = runningActive
+    ? runningInfo.index
+    : Math.max(0, Math.min(WORKOUT_GYM_SESSION_COUNT - 1, Math.floor(Number(_workoutHomeSessionIndex) || 0)));
+  const rawSession = sessions[sessionIndex] || sessions[0] || {};
+  const session = runningActive ? _onlyRunningFields(runningInfo.session) : _clearRunningFields(rawSession);
+  const bodyWeight = _weightAt(checkins, key) ?? getLatestCheckinWeight() ?? plan?.weight ?? 70;
+  const wx = _workoutMetrics(key, session, bodyWeight, lookup);
+  const ordinal = _workoutRecordOrdinalForKey(cache, key, plan, checkins, lookup);
+  const recordText = ordinal > 0 ? `${ordinal}번째 기록` : '운동 기록 없음';
+  const sessionTabs = _renderWorkoutDetailSessionTabs(sessions, runningActive ? WORKOUT_RUNNING_SESSION_INDEX : sessionIndex, runningInfo);
+  const content = wx.hasWorkout
+    ? _renderWorkoutDetailRecorded(key, sessionIndex, wx)
+    : (runningActive ? _renderWorkoutRunningEmpty(key) : _renderWorkoutDetailEmpty(sessionIndex));
+  const fabAttrs = runningActive
+    ? `data-wt-day-add-running data-date-key="${_esc(key)}" aria-label="러닝 시작"`
+    : `data-wt-day-add-session data-date-key="${_esc(key)}" aria-label="운동 추가"`;
+  const fabText = runningActive ? '▶' : '＋';
+  const headHtml = includeHead ? `
+      <div class="wt-day-head">
+        <button type="button" class="wt-day-back" onclick="window._wtCalBackToMonth()" aria-label="캘린더로 돌아가기">⌄</button>
+        <div class="wt-day-titlebox">
+          <div class="wt-day-date">${_dateTitle(key)} <span>${_dateDistanceLabel(key)}</span></div>
+          <div class="wt-day-record">${recordText}</div>
+        </div>
+        ${_renderWorkoutDetailSummaryCard(wx)}
+      </div>
+  ` : `
+      <div class="wt-day-sheet-summary">
+        ${_renderWorkoutDetailSummaryCard(wx)}
+      </div>
+  `;
+
+  return `
+    <div class="wt-day-detail">
+      ${headHtml}
+
+      <div class="wt-day-sheet-scroll">
+        ${content}
+      </div>
+
+      <div class="wt-day-sessionbar">
+        <div class="wt-day-session-tabs">${sessionTabs}</div>
+      </div>
+      <button type="button" class="wt-day-fab ${runningActive ? 'wt-day-fab--running' : ''}" ${fabAttrs}>${fabText}</button>
+    </div>
+  `;
+}
+
+function _renderWorkoutDetailSummaryCard(wx) {
+  const metrics = [
+    { label: '운동시간', value: wx?.durationSec ? _formatDurationShort(wx.durationSec) : '—' },
+    { label: '세트', value: wx?.setCount ? `${wx.setCount}세트` : '—' },
+    { label: '볼륨', value: wx?.volume > 0 ? `${_formatVolume(wx.volume)}톤` : '—' },
+  ];
+  return `
+    <div class="wt-day-summary-card" aria-label="선택한 회차 요약">
+      ${metrics.map(item => `
+        <span>
+          <i>${item.label}</i>
+          <strong>${item.value}</strong>
+        </span>
+      `).join('')}
+    </div>
+  `;
+}
+
+function _renderWorkoutDetailSessionTabs(sessions, activeIndex, runningInfo = null) {
+  const gymTabs = (Array.isArray(sessions) ? sessions : []).slice(0, WORKOUT_GYM_SESSION_COUNT);
+  const tabs = gymTabs.map((session, index) => {
+    const hasRecord = hasWorkoutSessionData(session);
+    return `
+      <button type="button"
+        class="${index === activeIndex ? 'active' : ''} ${hasRecord ? 'has-record' : ''}"
+        onclick="window._wtCalSelectSession(${index})">
+        ${_sessionLabel(index)}${hasRecord ? '<b></b>' : ''}
+      </button>
+    `;
+  });
+  const hasRunning = !!runningInfo?.hasRecord;
+  tabs.push(`
+      <button type="button"
+        class="wt-day-session-running ${activeIndex === WORKOUT_RUNNING_SESSION_INDEX ? 'active' : ''} ${hasRunning ? 'has-record' : ''}"
+        onclick="window._wtCalSelectRunning()">
+        러닝${hasRunning ? '<b></b>' : ''}
+      </button>
+  `);
+  return tabs.join('');
+}
+
+function _renderWorkoutDetailRecorded(key, sessionIndex, wx) {
+  return `
+    <div class="wt-day-recorded">
+      ${_renderWorkoutDetailCards(key, sessionIndex, wx)}
+    </div>
+  `;
+}
+
+function _renderWorkoutDetailCards(key, sessionIndex, wx) {
+  const cards = [
+    ...wx.exercises.map((row, index) => _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index)),
+    ...wx.activities.map((row, index) => _renderWorkoutActivityDetailCard(key, sessionIndex, row, index)),
+  ];
+  return `<div class="wt-day-card-list">${cards.join('')}</div>`;
+}
+
+function _formatWorkoutKg(value) {
+  const n = _num(value);
+  if (n <= 0) return '-';
+  return _fmtNum(n, 1);
+}
+
+function _formatWorkoutReps(value) {
+  const n = _num(value);
+  if (n <= 0) return '-';
+  return _fmtNum(n, 0);
+}
+
+function _formatWorkoutRir(set) {
+  if (set?.rir != null && Number.isFinite(Number(set.rir))) return _fmtNum(set.rir, 1);
+  const rpe = _num(set?.rpe);
+  if (rpe > 0) return _fmtNum(Math.max(0, 10 - rpe), 1);
+  return '-';
+}
+
+function _formatWorkoutVolumeTon(value) {
+  const tons = _num(value) / 1000;
+  if (tons <= 0) return '0t';
+  return `${_fmtNum(tons, 1)}t`;
+}
+
+function _workoutSetTypeLabel(type) {
+  if (type === 'warmup') return '웜';
+  if (type === 'drop') return '드롭';
+  return '본';
+}
+
+function _bestWorkoutSet(row) {
+  const sets = Array.isArray(row?.setDetails) ? row.setDetails : [];
+  return [...sets].sort((a, b) => (_num(b.kg) * _num(b.reps)) - (_num(a.kg) * _num(a.reps)))[0] || null;
+}
+
+function _workoutSetSummary(row) {
+  const sets = Array.isArray(row?.setDetails) ? row.setDetails : [];
+  if (!sets.length) return row?.topSetText || '세트 기록 없음';
+  const grouped = new Map();
+  sets.forEach((set) => {
+    const kg = _formatWorkoutKg(set.kg);
+    const reps = _formatWorkoutReps(set.reps);
+    const key = `${kg}kg×${reps}`;
+    const cur = grouped.get(key) || { kg, reps, count: 0 };
+    cur.count += 1;
+    grouped.set(key, cur);
+  });
+  return [...grouped.values()]
+    .map(item => `${item.kg}kg×${item.reps} ${item.count}세트`)
+    .join(' / ');
+}
+
+function _smoothPath(points) {
+  if (!Array.isArray(points) || !points.length) return '';
+  const fmt = (n) => String(Math.round(n * 10) / 10);
+  if (points.length === 1) return `M ${fmt(points[0].x)} ${fmt(points[0].y)}`;
+  let d = `M ${fmt(points[0].x)} ${fmt(points[0].y)}`;
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const p0 = points[i - 1] || points[i];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2] || p2;
+    const cp1 = {
+      x: p1.x + (p2.x - p0.x) / 6,
+      y: p1.y + (p2.y - p0.y) / 6,
+    };
+    const cp2 = {
+      x: p2.x - (p3.x - p1.x) / 6,
+      y: p2.y - (p3.y - p1.y) / 6,
+    };
+    d += ` C ${fmt(cp1.x)} ${fmt(cp1.y)}, ${fmt(cp2.x)} ${fmt(cp2.y)}, ${fmt(p2.x)} ${fmt(p2.y)}`;
+  }
+  return d;
+}
+
+function _activeWorkoutTrack(row = {}, bestSet = null) {
+  const explicit = normalizeWorkoutTrack(
+    row?.recommendationMeta?.track ||
+    row?.maxPrescription?.benchmarkTrack ||
+    row?.maxPrescription?.track ||
+    row?.maxTrackPreference
+  );
+  if (explicit) return explicit;
+  const reps = _num(bestSet?.reps);
+  return reps > 0 && reps <= 8 ? 'H' : 'M';
+}
+
+function _workoutTrackLabel(track) {
+  return track === 'H' ? '강도' : '볼륨';
+}
+
+function _formatWorkoutTrackValue(track, value) {
+  const v = _num(value);
+  if (v <= 0) return track === 'H' ? '추정1RM' : '총볼륨';
+  if (track === 'H') return `${Math.round(v)}kg`;
+  if (v >= 1000) return `${_fmtNum(v / 1000, 1)}t`;
+  return `${Math.round(v)}kg`;
+}
+
+function _formatWorkoutTrackDelta(points = []) {
+  if (!Array.isArray(points) || points.length < 2) return '';
+  const last = _num(points[points.length - 1]?.value);
+  const prev = _num(points[points.length - 2]?.value);
+  if (!(last > 0) || !(prev > 0)) return '';
+  const pct = Math.round(((last - prev) / prev) * 100);
+  if (!Number.isFinite(pct) || pct === 0) return '0%';
+  return `${pct > 0 ? '+' : ''}${pct}%`;
+}
+
+function _workoutTrackDeltaClass(delta) {
+  if (!delta) return 'flat';
+  if (delta.startsWith('+')) return 'up';
+  if (delta.startsWith('-')) return 'down';
+  return 'flat';
+}
+
+function _workoutTrackHistoryPoints(row, track) {
+  if (!row?.exerciseId) return [];
+  const history = getTrackMetricHistory(getCache(), getExList(), row.exerciseId);
+  const points = Array.isArray(history?.[track]) ? history[track] : [];
+  const currentKey = String(row?.dateKey || '');
+  const scoped = currentKey
+    ? points.filter(point => !point?.date || String(point.date) <= currentKey)
+    : points;
+  return scoped.slice(-6);
+}
+
+function _workoutFallbackSparkValues(row, track = 'M') {
+  const sets = Array.isArray(row?.setDetails) ? row.setDetails : [];
+  const raw = sets.map((set) => {
+    const kg = _num(set.kg);
+    if (track === 'H') return estimateSet1RM(set) || kg;
+    return Math.max(0, kg * _num(set.reps));
+  }).filter(v => v > 0);
+  return raw.length >= 2 ? raw : raw.length === 1 ? [raw[0], raw[0], raw[0]] : [0, 1, 0];
+}
+
+function _workoutFallbackTrackValue(row, bestSet, track = 'M') {
+  if (track !== 'H') return _num(row?.volume);
+  const sets = Array.isArray(row?.setDetails) ? row.setDetails : [];
+  const values = sets
+    .map(set => estimateSet1RM(set) || _num(set.kg))
+    .filter(value => value > 0);
+  if (values.length) return Math.max(...values);
+  return bestSet ? estimateSet1RM(bestSet) || _num(bestSet.kg) : 0;
+}
+
+function _buildWorkoutTrackTrend(row, bestSet, requestedTrack = null) {
+  const activeTrack = _activeWorkoutTrack(row, bestSet);
+  const track = requestedTrack === 'H' || requestedTrack === 'M' ? requestedTrack : activeTrack;
+  const points = _workoutTrackHistoryPoints(row, track);
+  const latest = points.length ? points[points.length - 1] : null;
+  const fallbackValue = _workoutFallbackTrackValue(row, bestSet, track);
+  const value = _num(latest?.value) || fallbackValue;
+  const delta = _formatWorkoutTrackDelta(points);
+  const bestKg = bestSet ? _formatWorkoutKg(bestSet.kg) : '-';
+  return {
+    track,
+    trackLabel: _workoutTrackLabel(track),
+    activeTrack,
+    points,
+    valueLabel: _formatWorkoutTrackValue(track, value),
+    delta,
+    deltaClass: _workoutTrackDeltaClass(delta),
+    bottomLabel: bestKg === '-' ? `${row?.setCount || 0}세트` : `${bestKg}kg`,
+  };
+}
+
+function _renderWorkoutSparkline(row, trend = null) {
+  const historyValues = (Array.isArray(trend?.points) ? trend.points : [])
+    .map(point => _num(point?.value))
+    .filter(value => value > 0);
+  const raw = historyValues.length >= 2 ? historyValues : _workoutFallbackSparkValues(row, trend?.track === 'H' ? 'H' : 'M');
+  const values = raw.length >= 2 ? raw : raw.length === 1 ? [raw[0], raw[0], raw[0]] : [0, 1, 0];
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const spread = Math.max(1, max - min);
+  const step = values.length > 1 ? 112 / (values.length - 1) : 112;
+  const points = values.map((value, index) => {
+    const x = 4 + (step * index);
+    const y = 26 - (((value - min) / spread) * 18);
+    return { x, y };
+  });
+  const path = _smoothPath(points);
+  const firstPt = points[0];
+  const lastPt = points[points.length - 1];
+  const track = trend?.track === 'H' ? 'H' : 'M';
+  const color = track === 'H' ? '#be123c' : '#2563eb';
+  const fillId = `wt-history-track-${track}-${_workoutTrackGraphSeq++}`;
+  const fillPath = `${path} L ${Math.round(lastPt.x * 10) / 10} 32 L ${Math.round(firstPt.x * 10) / 10} 32 Z`;
+  return `
+    <svg class="wt-max-spark-svg" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true">
+      <defs><linearGradient id="${fillId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${color}" stop-opacity="0.16"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+      </linearGradient></defs>
+      <path class="wt-max-spark-area" d="${fillPath}" fill="url(#${fillId})"></path>
+      <path class="wt-max-spark-line" d="${path}" stroke="${color}"></path>
+      <circle class="wt-max-spark-dot" cx="${Math.round(lastPt.x * 10) / 10}" cy="${Math.round(lastPt.y * 10) / 10}" r="2.3" fill="${color}"></circle>
+    </svg>
+  `;
+}
+
+function _renderWorkoutTrackGraphRow(row, bestSet, track, activeTrack) {
+  const trend = _buildWorkoutTrackTrend(row, bestSet, track);
+  const delta = trend.delta || '';
+  return `
+    <div class="ex-max-track-graph-row ${track === activeTrack ? 'is-active' : ''}" data-track="${track}">
+      <span class="ex-max-track-graph-chip">${_esc(trend.trackLabel)}</span>
+      <span class="wt-max-spark">${_renderWorkoutSparkline(row, trend)}</span>
+      <span class="ex-max-track-graph-value">${_esc(trend.valueLabel)}${delta ? `<small class="${_esc(trend.deltaClass)}">${_esc(delta)}</small>` : ''}</span>
+    </div>
+  `;
+}
+
+function _renderWorkoutTrackGraph(row, bestSet) {
+  const activeTrack = _activeWorkoutTrack(row, bestSet);
+  return `
+    <div class="ex-max-track-graph wt-max-track-graph" title="볼륨 트랙은 총볼륨, 강도 트랙은 추정 1RM으로 따로 그립니다.">
+      ${_renderWorkoutTrackGraphRow(row, bestSet, 'M', activeTrack)}
+      ${_renderWorkoutTrackGraphRow(row, bestSet, 'H', activeTrack)}
+    </div>
+  `;
+}
+
+function _renderWorkoutSetRows(row) {
+  const sets = Array.isArray(row?.setDetails) ? row.setDetails : [];
+  if (!sets.length) return `<div class="wt-max-empty-sets">세트 상세 기록이 없습니다</div>`;
+  return sets.map((set) => {
+    const rom = Math.max(0, Math.min(100, Math.round(_num(set.romPct) || 100)));
+    return `
+      <div class="wt-max-set-row ${set.done ? 'is-done' : ''}">
+        <div class="wt-max-set-main">
+          <span class="wt-max-set-type ${set.setType === 'warmup' ? 'is-warmup' : set.setType === 'drop' ? 'is-drop' : ''}">${_workoutSetTypeLabel(set.setType)}</span>
+          <label><span>KG</span><b>${_esc(_formatWorkoutKg(set.kg))}</b></label>
+          <label><span>REP</span><b>${_esc(_formatWorkoutReps(set.reps))}</b></label>
+          <label><span>RIR</span><b>${_esc(_formatWorkoutRir(set))}</b></label>
+          <div class="wt-max-rom-inline">
+            <span>ROM</span>
+            <i><b style="width:${rom}%"></b></i>
+            <strong>${rom}</strong>
+          </div>
+          <i class="wt-max-set-check" aria-hidden="true">✓</i>
+          <i class="wt-max-set-remove" aria-hidden="true">×</i>
+          <i class="wt-max-set-grip" aria-hidden="true">⋮</i>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) {
+  const cardId = `ex:${key}:${sessionIndex}:${index}`;
+  const collapsed = _workoutDetailCollapsed.has(cardId);
+  const originalIndex = Number.isFinite(Number(row.originalIndex)) ? Number(row.originalIndex) : index;
+  const bestSet = _bestWorkoutSet(row);
+  const bestKg = bestSet ? _formatWorkoutKg(bestSet.kg) : '-';
+  const bestReps = bestSet ? _formatWorkoutReps(bestSet.reps) : '-';
+  const setSummary = _workoutSetSummary(row);
+  const activeTrack = _activeWorkoutTrack(row, bestSet);
+  const activeTrackLabel = _workoutTrackLabel(activeTrack);
+  return `
+    <article class="wt-day-ex-card wt-max-read-card ${collapsed ? 'is-collapsed' : 'is-expanded'}">
+      <div class="wt-max-card-kicker">
+        <span><i></i>추천 종목 · 선택 헬스장</span>
+        <button type="button" onclick="window._wtCalDeleteExercise('${key}', ${sessionIndex}, ${originalIndex})" aria-label="운동 삭제">×</button>
+      </div>
+      <div class="wt-max-card-name">${_esc(row.name)}</div>
+      <div class="wt-max-plan">
+        <div class="wt-max-plan-goal">
+          <span>오늘 성공 기준</span>
+          <strong>${_esc(bestKg)}kg × ${_esc(bestReps)}회</strong>
+          <em>오늘 ${_esc(activeTrackLabel)} 트랙 · ${row.setCount}세트</em>
+        </div>
+        <div class="wt-max-trend">
+          ${_renderWorkoutTrackGraph(row, bestSet)}
+        </div>
+      </div>
+      <div class="wt-max-last">
+        <span>오늘 기록</span>
+        <strong>${_esc(setSummary)}</strong>
+      </div>
+      ${row.note ? `<div class="wt-max-note">${_esc(row.note)}</div>` : ''}
+      <div class="wt-max-collapsed-note">모든 세트 완료 · 카드가 접혔어요</div>
+      <div class="wt-max-set-list">${_renderWorkoutSetRows(row)}</div>
+      <div class="wt-max-actions">
+        ${collapsed
+          ? `<button type="button" class="wt-max-action-primary is-muted" aria-disabled="true" tabindex="-1">운동 완료</button>
+             <button type="button" class="wt-max-action-secondary" onclick="window._wtCalToggleExerciseCard('${cardId}')">세트 다시 보기</button>`
+          : `<button type="button" class="wt-max-action-primary" onclick="window._wtCalToggleExerciseCard('${cardId}')">카드 접기</button>
+             <button type="button" class="wt-max-action-secondary" onclick="window._wtCalEditSession('${key}', ${sessionIndex})">편집하기</button>`}
+      </div>
+    </article>
+  `;
+}
+
+function _formatRunningDistance(value) {
+  const km = _num(value);
+  if (km <= 0) return '';
+  return `${_fmtNum(km, km < 10 ? 2 : 1)}km`;
+}
+
+function _formatRunningPaceCard(secPerKm) {
+  const sec = Math.round(_num(secPerKm));
+  if (sec <= 0) return '';
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}'${String(s).padStart(2, '0')}''/km`;
+}
+
+function _formatRunningClock(ts) {
+  const n = Number(ts);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  const d = new Date(n);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function _runningSourceLabel(source) {
+  if (source === 'gps') return 'GPS 기록';
+  if (source === 'manual') return '수동 기록';
+  return '러닝 기록';
+}
+
+function _runningMetricItems(row) {
+  const durationText = row.durationSec ? _formatDurationShort(row.durationSec) : '--';
+  const paceText = _formatRunningPaceCard(row.avgPaceSecPerKm) || "--'--''";
+  const items = [
+    { label: '거리', value: _formatRunningDistance(row.distanceKm) || '--' },
+    { label: '시간', value: durationText },
+    { label: '평균 페이스', value: paceText },
+    { label: '칼로리', value: row.calories > 0 ? `${Math.round(row.calories)} kcal` : '--' },
+    { label: '고도 상승', value: row.elevationGainM == null ? '--' : `${Math.round(row.elevationGainM)} m` },
+    { label: '평균 심박수', value: row.avgHeartRateBpm == null ? '--' : `${Math.round(row.avgHeartRateBpm)} bpm` },
+    { label: '케이던스', value: row.cadenceSpm == null ? '--' : `${Math.round(row.cadenceSpm)}` },
+  ];
+  return items.filter(item => item?.value);
+}
+
+function _runningPlaceLabel(row) {
+  const label = String(row?.placeSummary?.label || '').trim();
+  if (label && !/대한민국 위치 기록|위치 기록/.test(label)) return label;
+  return row?.routeSummary?.centroid ? '위치 확인 중' : '위치 정보 없음';
+}
+
+function _renderRunningRouteMap(row) {
+  const mapId = _registerWorkoutRunningMapPayload(row);
+  const place = _runningPlaceLabel(row);
+  return `
+    <div class="wt-running-route-map wt-run-real-map" data-wt-running-route-map="${_esc(mapId)}" aria-label="러닝 경로 지도">
+      <div class="wt-run-map-canvas" data-running-map-canvas aria-label="${_esc(place)}"></div>
+      <div class="wt-run-map-status" data-running-map-status>실제 지도 준비 중</div>
+      <div class="wt-running-route-place">${_esc(place)}</div>
+    </div>
+  `;
+}
+
+function _renderRunningRouteDetail(row) {
+  return '';
+}
+
+function _renderWorkoutRunningDetailCard(key, sessionIndex, row, index) {
+  const cardId = `act:${key}:${sessionIndex}:${index}`;
+  const collapsed = _workoutDetailCollapsed.has(cardId);
+  const activityKey = String(row.key || '').replace(/[^a-z0-9_-]/gi, '');
+  const metrics = _runningMetricItems(row);
+  const distanceText = _formatRunningDistance(row.distanceKm);
+  const durationText = row.durationSec ? _formatDurationShort(row.durationSec) : '';
+  const paceText = _formatRunningPaceCard(row.avgPaceSecPerKm);
+  const headline = distanceText || '0.00km';
+  const summary = [paceText, durationText].filter(Boolean).join(' · ') || _runningSourceLabel(row.source);
+  return `
+    <article class="wt-day-ex-card wt-max-read-card wt-running-read-card ${collapsed ? 'is-collapsed' : 'is-expanded'}">
+      <div class="wt-max-card-kicker wt-running-card-kicker">
+        <span><i></i>${_esc(row.label || '러닝')} · ${_esc(_runningSourceLabel(row.source))}</span>
+        <button type="button" onclick="window._wtCalDeleteActivity('${key}', ${sessionIndex}, '${activityKey}')" aria-label="러닝 삭제">×</button>
+      </div>
+      <div class="wt-max-card-name">${_esc(row.label || '러닝')}</div>
+      <div class="wt-running-headline">
+        <strong>${_esc(headline)}</strong>
+        <span>${_esc(summary)}</span>
+      </div>
+      <div class="wt-running-route-wrap">
+        ${_renderRunningRouteMap(row)}
+      </div>
+      ${metrics.length ? `
+        <div class="wt-running-metric-grid">
+          ${metrics.map(item => `
+            <span>
+              <i>${_esc(item.label)}</i>
+              <strong>${_esc(item.value)}</strong>
+            </span>
+          `).join('')}
+        </div>
+      ` : ''}
+      ${_renderRunningRouteDetail(row)}
+      <div class="wt-max-collapsed-note">러닝 완료 · 카드가 접혔어요</div>
+      <div class="wt-max-actions">
+        ${collapsed
+          ? `<button type="button" class="wt-max-action-primary is-muted" aria-disabled="true" tabindex="-1">러닝 완료</button>
+             <button type="button" class="wt-max-action-secondary" onclick="window._wtCalToggleExerciseCard('${cardId}')">기록 다시 보기</button>`
+          : `<button type="button" class="wt-max-action-primary" onclick="window._wtCalToggleExerciseCard('${cardId}')">카드 접기</button>
+             <button type="button" class="wt-max-action-secondary" onclick="window._wtCalAddRunning('${key}')">다시 측정</button>`}
+      </div>
+    </article>
+  `;
+}
+
+function _renderWorkoutActivityDetailCard(key, sessionIndex, row, index) {
+  if (row?.key === 'running') return _renderWorkoutRunningDetailCard(key, sessionIndex, row, index);
+  const cardId = `act:${key}:${sessionIndex}:${index}`;
+  const collapsed = _workoutDetailCollapsed.has(cardId);
+  const activityKey = String(row.key || '').replace(/[^a-z0-9_-]/gi, '');
+  return `
+    <article class="wt-day-ex-card wt-day-activity-card ${collapsed ? 'is-collapsed' : ''}">
+      <div class="wt-day-ex-top">
+        <div>
+          <strong>${_esc(row.label || '활동')}</strong>
+          <span>${_esc(row.main || '')}</span>
+        </div>
+        <div class="wt-day-ex-frames" aria-hidden="true"><i></i><i></i></div>
+      </div>
+      <div class="wt-day-ex-body">
+        <p>${_esc(row.detail || row.main || '기록 있음')}</p>
+      </div>
+      <div class="wt-day-ex-foot">
+        <span class="wt-day-check">✓</span>
+        <span>${row.durationSec ? _formatDurationShort(row.durationSec) : '기록'}</span>
+        <button type="button" onclick="window._wtCalToggleExerciseCard('${cardId}')">${collapsed ? '펼치기' : '접기'}</button>
+        <button type="button" onclick="window._wtCalDeleteActivity('${key}', ${sessionIndex}, '${activityKey}')">삭제</button>
+      </div>
+    </article>
+  `;
+}
+
+function _renderWorkoutDetailEmpty(sessionIndex) {
+  return `
+    <div class="wt-day-empty">
+      <div class="wt-day-session-label">${_sessionLabel(sessionIndex)}</div>
+      <div class="wt-empty-center">
+        <div class="wt-empty-dumbbell" aria-hidden="true"></div>
+        <p><strong>${_sessionLabel(sessionIndex)} 운동 기록</strong>이 없습니다</p>
+        <span>하단 + 버튼으로 추가해보세요</span>
+      </div>
+      <div class="wt-empty-help">
+        <p>하루에 운동을 여러번 하시나요?</p>
+        <p>회차를 선택해서 구분해보세요</p>
+        <p>운동 시간 등이 별도로 기록됩니다</p>
+      </div>
+    </div>
+  `;
+}
+
+function _renderWorkoutRunningEmpty(key) {
+  return `
+    <div class="wt-day-empty wt-running-empty">
+      <div class="wt-day-session-label">러닝</div>
+      <div class="wt-empty-center">
+        <div class="wt-empty-run" aria-hidden="true"></div>
+        <p><strong>러닝 기록</strong>이 없습니다</p>
+        <span>러닝 탭은 헬스 회차 타이머와 별도로 측정됩니다</span>
+        <button type="button" class="wt-running-start-inline" data-wt-day-add-running data-date-key="${_esc(key)}">러닝 시작</button>
+      </div>
+    </div>
+  `;
+}
+
 // ═════════════════════════════════════════════════════════════
 // 일자 상세 요약 모달
 // ═════════════════════════════════════════════════════════════
@@ -757,18 +1948,6 @@ function _openWorkoutDay(key) {
     </div>
   ` : '';
 
-  const timerOnlyHtml = !wx.exercises.length && !wx.activities.length && wx.workoutDurationSec > 0 ? `
-    <div class="cal-workout-detail-section">
-      <div class="cal-workout-activity-row">
-        <div class="cal-workout-activity-head">
-          <strong>운동 시간</strong>
-          <span>${_formatDurationShort(wx.workoutDurationSec)}</span>
-        </div>
-        <div class="cal-workout-activity-main">${_formatDuration(wx.workoutDurationSec)}</div>
-      </div>
-    </div>
-  ` : '';
-
   body.innerHTML = `
     <div class="cal-workout-detail-summary">
       <div><span>시간</span><strong>${_formatDurationShort(wx.durationSec)}</strong></div>
@@ -778,10 +1957,8 @@ function _openWorkoutDay(key) {
     </div>
 
     ${wx.hasWorkout ? `
-      ${wx.workoutDurationSec > 0 && wx.exercises.length ? `<div class="cal-workout-timer-line">운동 타이머 ${_formatDuration(wx.workoutDurationSec)}</div>` : ''}
       ${exerciseHtml}
       ${activityHtml}
-      ${timerOnlyHtml}
     ` : `
       <div class="cal-workout-empty-detail">운동 기록이 없어요</div>
     `}
@@ -859,7 +2036,7 @@ function _openDay(key) {
   const b = mx.burnedBreakdown;
   const workoutParts = [];
   if (b.gym > 0)      workoutParts.push(`헬스 ${b.gym}`);
-  if (b.running > 0)  workoutParts.push(`런닝 ${b.running}`);
+  if (b.running > 0)  workoutParts.push(`러닝 ${b.running}`);
   if (b.swimming > 0) workoutParts.push(`수영 ${b.swimming}`);
   if (b.cf > 0)       workoutParts.push(`CF ${b.cf}`);
   const workoutDesc = workoutParts.length
@@ -934,6 +2111,561 @@ function _closeDay(e) {
   closeModal('calendar-day-modal');
 }
 
+function _normalizeWorkoutHomeSheetState(state) {
+  return WORKOUT_HOME_SHEET_STATES.includes(state) ? state : 'bar';
+}
+
+function _currentWorkoutHomeSheetState() {
+  return _workoutHomeView === 'detail' ? _normalizeWorkoutHomeSheetState(_workoutHomeSheetState) : 'bar';
+}
+
+function _applyWorkoutHomeSheetState() {
+  if (typeof document === 'undefined') return;
+  const sheet = document.querySelector('#workout-calendar-root [data-wt-day-sheet]');
+  const backdrop = document.querySelector('#workout-calendar-root [data-wt-sheet-backdrop]');
+  if (!sheet) {
+    if (backdrop) {
+      backdrop.classList.remove('is-full');
+      backdrop.classList.add('is-bar');
+      backdrop.setAttribute('data-wt-sheet-state', 'bar');
+    }
+    return;
+  }
+  const state = _currentWorkoutHomeSheetState();
+  const expanded = state !== 'bar';
+  const expandedText = expanded ? 'true' : 'false';
+  const toggleLabel = expanded ? '날짜 상세 접기' : '선택한 날짜 열기';
+  WORKOUT_HOME_SHEET_CLASS_STATES.forEach(item => sheet.classList.toggle(`is-${item}`, item === state));
+  sheet.dataset.wtSheetState = state;
+  sheet.setAttribute('aria-expanded', expandedText);
+  const bar = sheet.querySelector('[data-wt-sheet-bar]');
+  if (bar) bar.setAttribute('aria-expanded', expandedText);
+  sheet.querySelectorAll('[data-wt-sheet-toggle]').forEach((toggle) => {
+    toggle.setAttribute('aria-expanded', expandedText);
+    toggle.setAttribute('aria-label', toggleLabel);
+  });
+  const arrow = sheet.querySelector('.cal-workout-day-expand[data-wt-sheet-toggle]');
+  if (arrow) arrow.textContent = expanded ? '⌄' : '⌃';
+  if (backdrop) {
+    backdrop.classList.toggle('is-full', expanded);
+    backdrop.classList.toggle('is-bar', !expanded);
+    backdrop.setAttribute('data-wt-sheet-state', state);
+  }
+}
+
+function _setWorkoutHomeSheetState(state, { render = false } = {}) {
+  const next = _normalizeWorkoutHomeSheetState(state);
+  _workoutHomeSheetState = next;
+  _workoutHomeView = next === 'bar' ? 'month' : 'detail';
+  if (_workoutHomeView === 'month') {
+    closeWorkoutDaySheet({ history: 'replace', notify: false, action: 'sheet:close' });
+  } else {
+    _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:update' });
+  }
+  if (render) {
+    renderWorkoutCalendarHome();
+    return;
+  }
+  _applyWorkoutHomeSheetState();
+}
+
+function _toggleWorkoutHomeSheet(key = _workoutHomeSelectedKey) {
+  _workoutHomeSelectedKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
+  if (_currentWorkoutHomeSheetState() === 'bar') {
+    _workoutHomeView = 'detail';
+    _workoutHomeSheetState = 'full';
+    openWorkoutDaySheet(_workoutHomeSelectedKey, {
+      sessionIndex: _workoutHomeSessionIndex,
+      sheetState: 'full',
+      viewYear: _viewYear,
+      viewMonth: _viewMonth,
+      scrollTop: _workoutHomeScrollTop(),
+      history: 'push',
+      notify: false,
+      action: 'sheet:open',
+    });
+    renderWorkoutCalendarHome();
+    return;
+  }
+  _setWorkoutHomeSheetState('bar');
+}
+
+function _bindWorkoutHomeSheetActions(root) {
+  const sheet = root?.querySelector?.('[data-wt-day-sheet]');
+  if (!sheet) return;
+  sheet.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    if (target?.closest?.('[data-wt-sheet-action]')) return;
+    const toggle = target?.closest?.('[data-wt-sheet-toggle]');
+    if (toggle && sheet.contains(toggle)) {
+      event.preventDefault();
+      event.stopPropagation();
+      _toggleWorkoutHomeSheet(toggle.getAttribute('data-date-key') || _workoutHomeSelectedKey);
+      return;
+    }
+    const addRunning = target?.closest?.('[data-wt-day-add-running]');
+    if (addRunning) {
+      event.preventDefault();
+      event.stopPropagation();
+      const key = addRunning.getAttribute('data-date-key') || _workoutHomeSelectedKey;
+      Promise.resolve(_openWorkoutHomeRunning(key)).catch((e) => {
+        console.warn('[workout-calendar] running action failed:', e);
+      });
+      return;
+    }
+    const add = target?.closest?.('[data-wt-day-add-session]');
+    if (!add) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const key = add.getAttribute('data-date-key') || _workoutHomeSelectedKey;
+    Promise.resolve(_addWorkoutHomeSession(key)).catch((e) => {
+      console.warn('[workout-calendar] add session action failed:', e);
+      _openWorkoutEditorForSession(key, _workoutHomeSessionIndex);
+    });
+  }, true);
+}
+
+function _bindWorkoutHomeSheetInputIsolation(root) {
+  const backdrop = root?.querySelector?.('[data-wt-sheet-backdrop]');
+  const sheet = root?.querySelector?.('[data-wt-day-sheet]');
+  const scroller = sheet?.querySelector?.('.wt-day-sheet-scroll');
+  const blockBackgroundInput = (event) => {
+    if (_currentWorkoutHomeSheetState() !== 'full') return;
+    if (event.cancelable) event.preventDefault();
+    event.stopPropagation();
+  };
+
+  backdrop?.addEventListener('touchmove', blockBackgroundInput, { passive: false });
+  backdrop?.addEventListener('wheel', blockBackgroundInput, { passive: false });
+
+  sheet?.addEventListener('touchmove', (event) => {
+    if (_currentWorkoutHomeSheetState() !== 'full') return;
+    if (event.target?.closest?.('.wt-day-sheet-scroll')) return;
+    blockBackgroundInput(event);
+  }, { passive: false });
+  sheet?.addEventListener('wheel', (event) => {
+    if (_currentWorkoutHomeSheetState() !== 'full') return;
+    if (event.target?.closest?.('.wt-day-sheet-scroll')) return;
+    blockBackgroundInput(event);
+  }, { passive: false });
+
+  if (!scroller) return;
+  let lastTouchY = 0;
+  scroller.addEventListener('touchstart', (event) => {
+    if (event.touches?.length !== 1) return;
+    lastTouchY = Number(event.touches[0]?.clientY) || 0;
+  }, { passive: true });
+  scroller.addEventListener('touchmove', (event) => {
+    if (_currentWorkoutHomeSheetState() !== 'full' || event.touches?.length !== 1) return;
+    const y = Number(event.touches[0]?.clientY) || lastTouchY;
+    const dy = y - lastTouchY;
+    lastTouchY = y;
+    if (_workoutHomeSheetTouchWouldChain(scroller, dy) && event.cancelable) event.preventDefault();
+    event.stopPropagation();
+  }, { passive: false });
+  scroller.addEventListener('wheel', (event) => {
+    if (_currentWorkoutHomeSheetState() !== 'full') return;
+    if (_workoutHomeSheetWheelWouldChain(scroller, Number(event.deltaY) || 0) && event.cancelable) event.preventDefault();
+    event.stopPropagation();
+  }, { passive: false });
+}
+
+function _workoutHomeSheetTouchWouldChain(scroller, dy) {
+  const scrollTop = Math.max(0, Number(scroller?.scrollTop) || 0);
+  const maxScrollTop = Math.max(0, (Number(scroller?.scrollHeight) || 0) - (Number(scroller?.clientHeight) || 0));
+  if (maxScrollTop <= 0) return true;
+  if (dy > 0 && scrollTop <= 0) return true;
+  return dy < 0 && scrollTop >= maxScrollTop - 1;
+}
+
+function _workoutHomeSheetWheelWouldChain(scroller, deltaY) {
+  const scrollTop = Math.max(0, Number(scroller?.scrollTop) || 0);
+  const maxScrollTop = Math.max(0, (Number(scroller?.scrollHeight) || 0) - (Number(scroller?.clientHeight) || 0));
+  if (maxScrollTop <= 0) return true;
+  if (deltaY < 0 && scrollTop <= 0) return true;
+  return deltaY > 0 && scrollTop >= maxScrollTop - 1;
+}
+
+function _bindWorkoutCycleRailActions(root) {
+  const grid = root?.querySelector?.('.cal-workout-month-grid');
+  if (!grid) return;
+  grid.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    const btn = target?.closest?.('[data-cal-cycle-target]');
+    if (!btn) return;
+    event.preventDefault();
+    event.stopPropagation();
+    Promise.resolve(_openWorkoutCycleTargetSettings(btn.getAttribute('data-cal-cycle-target'))).catch((e) => {
+      console.warn('[workout-calendar] cycle target click failed:', e);
+    });
+  }, true);
+}
+
+function _openWorkoutHomeDay(key) {
+  const nextKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
+  if (_workoutHomeSelectedKey === nextKey && _currentWorkoutHomeSheetState() === 'full') return;
+  _workoutHomeSelectedKey = nextKey;
+  _workoutHomeView = 'detail';
+  _workoutHomeSheetState = 'full';
+  _workoutHomeSessionIndex = 0;
+  openWorkoutDaySheet(nextKey, {
+    sessionIndex: _workoutHomeSessionIndex,
+    sheetState: 'full',
+    viewYear: _viewYear,
+    viewMonth: _viewMonth,
+    scrollTop: _workoutHomeScrollTop(),
+    history: 'push',
+    notify: false,
+    action: 'sheet:open-day',
+  });
+  renderWorkoutCalendarHome();
+}
+
+async function _openWorkoutHomeRoutine(key) {
+  _workoutHomeSelectedKey = key;
+  const sessionIndex = _workoutHomeSessionIndex;
+  if (!_isTodayKey(key)) {
+    window.showToast?.('과거 기록에서는 루틴을 열지 않아요. 오늘 운동에서 시작해 주세요.', 2200, 'info');
+    return;
+  }
+  renderWorkoutCalendarHome();
+
+  try {
+    const loaded = await _loadWorkoutEditorForSession(key, sessionIndex);
+    if (!loaded) throw new Error('workout editor is not available');
+
+    if (typeof window.openRoutineSuggestWithRecent !== 'function' && typeof window.openRoutineSuggest !== 'function') {
+      await import('./workout/expert.js');
+    }
+    if (typeof window.openRoutineSuggestWithRecent === 'function') {
+      await window.openRoutineSuggestWithRecent();
+      return;
+    }
+    if (typeof window.openRoutineSuggest === 'function') {
+      await window.openRoutineSuggest();
+      return;
+    }
+    if (typeof window.tm2OpenBoard !== 'function') {
+      await import('./workout/test-v2/entry.js?v=20260620z27-selected-scope');
+    }
+    if (typeof window.tm2OpenBoard === 'function') {
+      await window.tm2OpenBoard();
+      return;
+    }
+    throw new Error('routine entry is not registered');
+  } catch (e) {
+    console.warn('[workout-calendar] routine open failed:', e);
+    window.showToast?.('루틴을 여는 데 실패했어요', 2200, 'error');
+  }
+}
+
+function _backWorkoutHomeMonth() {
+  _setWorkoutHomeSheetState('bar');
+}
+
+function _goTodayWorkoutDetail() {
+  const key = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+  _viewYear = TODAY.getFullYear();
+  _viewMonth = TODAY.getMonth();
+  _workoutHomeSelectedKey = key;
+  _workoutHomeView = 'detail';
+  _workoutHomeSheetState = 'full';
+  _workoutHomeSessionIndex = 0;
+  openWorkoutDaySheet(key, {
+    sessionIndex: 0,
+    sheetState: 'full',
+    viewYear: _viewYear,
+    viewMonth: _viewMonth,
+    scrollTop: _workoutHomeScrollTop(),
+    history: 'push',
+    notify: false,
+    action: 'sheet:today',
+  });
+  renderCalendar();
+  renderWorkoutCalendarHome();
+}
+
+function _selectWorkoutHomeSession(index) {
+  _workoutHomeSessionIndex = Math.max(0, Math.min(WORKOUT_GYM_SESSION_COUNT - 1, Math.floor(Number(index) || 0)));
+  _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:session' });
+  renderWorkoutCalendarHome();
+}
+
+function _selectWorkoutHomeRunning() {
+  _workoutHomeSessionIndex = WORKOUT_RUNNING_SESSION_INDEX;
+  _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:running' });
+  renderWorkoutCalendarHome();
+}
+
+function _toggleWorkoutDetailCard(cardId) {
+  if (!cardId) return;
+  if (_workoutDetailCollapsed.has(cardId)) _workoutDetailCollapsed.delete(cardId);
+  else _workoutDetailCollapsed.add(cardId);
+  renderWorkoutCalendarHome();
+}
+
+function _editWorkoutHomeSession(key, sessionIndex = _workoutHomeSessionIndex) {
+  _openWorkoutEditorForSession(key, sessionIndex);
+}
+
+async function _addWorkoutHomeSession(key) {
+  const cache = getCache() || {};
+  const sessions = getWorkoutSessions(cache[key] || {}, { minCount: WORKOUT_GYM_SESSION_COUNT }).slice(0, WORKOUT_GYM_SESSION_COUNT);
+  const emptyIndex = sessions.findIndex(session => !hasWorkoutSessionData(session));
+  const targetIndex = emptyIndex >= 0 ? emptyIndex : Math.max(0, Math.min(_workoutHomeSessionIndex, WORKOUT_GYM_SESSION_COUNT - 1));
+
+  try {
+    const loaded = await _loadWorkoutEditorForSession(key, targetIndex);
+    if (!loaded) throw new Error('workout editor is not available');
+    if (typeof window.wtOpenExercisePicker === 'function') {
+      await window.wtOpenExercisePicker();
+      return;
+    }
+    throw new Error('exercise picker is not registered');
+  } catch (e) {
+    console.warn('[workout-calendar] add session picker open failed:', e);
+    _openWorkoutEditorForSession(key, targetIndex);
+  }
+}
+
+async function _openWorkoutHomeRunning(key) {
+  const targetKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
+  _workoutHomeSelectedKey = targetKey;
+  _workoutHomeSessionIndex = WORKOUT_RUNNING_SESSION_INDEX;
+  _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:running-start' });
+  if (!_isTodayKey(targetKey)) {
+    window.showToast?.('러닝 측정은 오늘 날짜에서 시작해 주세요', 2200, 'info');
+    renderWorkoutCalendarHome();
+    return;
+  }
+  try {
+    const loaded = await _loadWorkoutEditorForSession(targetKey, WORKOUT_RUNNING_SESSION_INDEX);
+    if (!loaded) throw new Error('workout editor is not available');
+    if (typeof window.wtOpenRunningSession !== 'function') {
+      await import('./workout/running-session.js');
+    }
+    if (typeof window.wtOpenRunningSession === 'function') {
+      window.wtOpenRunningSession();
+      return;
+    }
+    throw new Error('running session is not registered');
+  } catch (e) {
+    console.warn('[workout-calendar] running open failed:', e);
+    window.showToast?.('러닝 화면을 열지 못했어요', 2200, 'error');
+  }
+}
+
+function _formatWorkoutExportText(key, sessionIndex, session, wx) {
+  const lines = [
+    `${_dateTitle(key)} ${_sessionLabel(sessionIndex)}`,
+    `운동시간: ${_formatDuration(wx.durationSec)}`,
+  ];
+  if (wx.setCount > 0) lines.push(`총 세트: ${wx.setCount}세트`);
+  if (wx.volume > 0) lines.push(`총 볼륨: ${_formatVolume(wx.volume)}톤`);
+  if (wx.burned?.total > 0) lines.push(`소모: ${wx.burned.total} kcal`);
+
+  wx.exercises.forEach((row) => {
+    lines.push('', `${row.name}${row.majorName ? ` (${row.majorName})` : ''}`);
+    row.setTexts.forEach((text, i) => lines.push(`- ${i + 1}세트: ${text}`));
+    if (row.note) lines.push(`- 메모: ${row.note}`);
+  });
+
+  wx.activities.forEach((row) => {
+    lines.push('', `${row.label}${row.main ? `: ${row.main}` : ''}`);
+    if (row.detail) lines.push(`- 메모: ${row.detail}`);
+  });
+
+  const memo = String(session?.memo || '').trim();
+  if (memo) lines.push('', `운동 메모: ${memo}`);
+  return lines.join('\n');
+}
+
+async function _shareOrCopyText(text, title) {
+  const nav = window.navigator;
+  if (nav?.share) {
+    try {
+      await nav.share({ title, text });
+      return 'share';
+    } catch (e) {
+      if (e?.name === 'AbortError') return 'cancel';
+    }
+  }
+  if (nav?.clipboard?.writeText) {
+    await nav.clipboard.writeText(text);
+    return 'clipboard';
+  }
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.select();
+  const ok = document.execCommand('copy');
+  textarea.remove();
+  if (!ok) throw new Error('clipboard fallback failed');
+  return 'clipboard';
+}
+
+async function _exportWorkoutHomeSession(key, sessionIndex = _workoutHomeSessionIndex) {
+  const { session, index } = _workoutHomeSessionAt(key, sessionIndex, 1);
+  if (!hasWorkoutSessionData(session)) {
+    window.showToast?.('내보낼 운동 기록이 없어요', 1800, 'info');
+    return;
+  }
+  const plan = getDietPlan() || null;
+  const checkins = _sortedCheckins();
+  const bodyWeight = _weightAt(checkins, key) ?? getLatestCheckinWeight() ?? plan?.weight ?? 70;
+  const wx = _workoutMetrics(key, session, bodyWeight, _buildWorkoutLookup());
+  const title = `${_dateTitle(key)} ${_sessionLabel(index)} 운동 기록`;
+  const text = _formatWorkoutExportText(key, index, session, wx);
+  try {
+    const mode = await _shareOrCopyText(text, title);
+    if (mode === 'cancel') return;
+    window.showToast?.(mode === 'share' ? '운동 기록을 공유했어요' : '운동 기록을 복사했어요', 1800, 'success');
+  } catch (e) {
+    console.warn('[workout-calendar] export failed:', e);
+    window.showToast?.('내보내기에 실패했어요', 2200, 'error');
+  }
+}
+
+async function _deleteWorkoutHomeSession(key, sessionIndex = _workoutHomeSessionIndex) {
+  const { day, index, session } = _workoutHomeSessionAt(key, sessionIndex, 1);
+  if (!hasWorkoutSessionData(session)) {
+    window.showToast?.('삭제할 운동 기록이 없어요', 1800, 'info');
+    return;
+  }
+  const ok = await confirmAction({
+    title: '회차를 삭제할까요?',
+    message: `${_dateTitle(key)} ${_sessionLabel(index)} 기록만 삭제합니다.\n식단 기록은 유지됩니다.`,
+    confirmLabel: '삭제',
+    cancelLabel: '취소',
+    destructive: true,
+  });
+  if (!ok) return;
+  try {
+    const result = deleteWorkoutSession(day, index);
+    _workoutHomeSessionIndex = Math.max(0, Math.min(index, result.workoutSessions.length - 1));
+    await _saveWorkoutHomeSessionResult(key, result);
+    window.showToast?.('회차 운동 기록을 삭제했어요', 1800, 'success');
+  } catch (e) {
+    console.warn('[workout-calendar] session delete failed:', e);
+    window.showToast?.('회차 삭제에 실패했어요', 2200, 'error');
+  }
+}
+
+async function _deleteWorkoutExercise(key, sessionIndex, exerciseIndex) {
+  const { day, session, index } = _workoutHomeSessionAt(key, sessionIndex, 1);
+  const exIndex = Math.max(0, Math.floor(Number(exerciseIndex) || 0));
+  const exercises = Array.isArray(session.exercises) ? session.exercises : [];
+  const target = exercises[exIndex];
+  if (!target) {
+    window.showToast?.('삭제할 운동을 찾지 못했어요', 1800, 'warning');
+    return;
+  }
+  const label = target.name || target.exerciseName || '운동';
+  const ok = await confirmAction({
+    title: '운동을 삭제할까요?',
+    message: `${_sessionLabel(index)}의 ${label} 기록을 삭제합니다.`,
+    confirmLabel: '삭제',
+    cancelLabel: '취소',
+    destructive: true,
+  });
+  if (!ok) return;
+  try {
+    const nextSession = _clonePlain(session) || {};
+    nextSession.exercises = exercises.filter((_, i) => i !== exIndex);
+    const result = upsertWorkoutSession(day, nextSession, index, { now: Date.now() });
+    await _saveWorkoutHomeSessionResult(key, result);
+    window.showToast?.('운동을 삭제했어요', 1800, 'success');
+  } catch (e) {
+    console.warn('[workout-calendar] exercise delete failed:', e);
+    window.showToast?.('운동 삭제에 실패했어요', 2200, 'error');
+  }
+}
+
+function _clearWorkoutActivityFields(activityKey) {
+  if (activityKey === 'running') {
+    return {
+      running: false,
+      runDistance: 0,
+      runDurationMin: 0,
+      runDurationSec: 0,
+      runMemo: '',
+      runSource: 'manual',
+      runStartedAt: null,
+      runEndedAt: null,
+      runRoute: [],
+      runRouteSummary: null,
+      runPlaceSummary: null,
+      runAvgPaceSecPerKm: 0,
+      runGpsAccuracySummary: null,
+    };
+  }
+  if (activityKey === 'swimming') {
+    return {
+      swimming: false,
+      swimDistance: 0,
+      swimDurationMin: 0,
+      swimDurationSec: 0,
+      swimStroke: '',
+      swimMemo: '',
+    };
+  }
+  if (activityKey === 'cf') {
+    return {
+      cf: false,
+      cfWod: '',
+      cfDurationMin: 0,
+      cfDurationSec: 0,
+      cfMemo: '',
+    };
+  }
+  if (activityKey === 'stretching') {
+    return {
+      stretching: false,
+      stretchDuration: 0,
+      stretchMemo: '',
+    };
+  }
+  if (activityKey === 'timer') {
+    return { workoutDuration: 0 };
+  }
+  return null;
+}
+
+async function _deleteWorkoutActivity(key, sessionIndex, activityKey) {
+  const patch = _clearWorkoutActivityFields(activityKey);
+  if (!patch) {
+    window.showToast?.('삭제할 활동을 찾지 못했어요', 1800, 'warning');
+    return;
+  }
+  const { day, session, index } = _workoutHomeSessionAt(key, sessionIndex, 1);
+  const label = {
+    running: '러닝',
+    swimming: '수영',
+    cf: '크로스핏',
+    stretching: '스트레칭',
+  }[activityKey] || '활동';
+  const ok = await confirmAction({
+    title: '활동을 삭제할까요?',
+    message: `${_sessionLabel(index)}의 ${label} 기록을 삭제합니다.`,
+    confirmLabel: '삭제',
+    cancelLabel: '취소',
+    destructive: true,
+  });
+  if (!ok) return;
+  try {
+    const nextSession = { ...(_clonePlain(session) || {}), ...patch };
+    const result = upsertWorkoutSession(day, nextSession, index, { now: Date.now() });
+    await _saveWorkoutHomeSessionResult(key, result);
+    window.showToast?.('활동을 삭제했어요', 1800, 'success');
+  } catch (e) {
+    console.warn('[workout-calendar] activity delete failed:', e);
+    window.showToast?.('활동 삭제에 실패했어요', 2200, 'error');
+  }
+}
+
 // ═════════════════════════════════════════════════════════════
 // window.* 노출
 // ═════════════════════════════════════════════════════════════
@@ -943,3 +2675,22 @@ window._calSetMode      = _setCalendarMode;
 window._calOpenDay      = _openDay;
 window._calCloseDay     = _closeDay;
 window.renderCalendar   = renderCalendar;
+window._wtCalShiftMonth = _shiftMonth;
+window._wtCalGoToday    = _goToday;
+window._wtCalOpenDay    = _openWorkoutHomeDay;
+window._wtCalToggleSheet = _toggleWorkoutHomeSheet;
+window._wtCalOpenRoutine = _openWorkoutHomeRoutine;
+window._wtCalBackToMonth = _backWorkoutHomeMonth;
+window._wtCalGoTodayDetail = _goTodayWorkoutDetail;
+window._wtCalSelectSession = _selectWorkoutHomeSession;
+window._wtCalSelectRunning = _selectWorkoutHomeRunning;
+window._wtCalToggleExerciseCard = _toggleWorkoutDetailCard;
+window._wtCalEditSession = _editWorkoutHomeSession;
+window._wtCalAddSession = _addWorkoutHomeSession;
+window._wtCalAddRunning = _openWorkoutHomeRunning;
+window._wtCalExportSession = _exportWorkoutHomeSession;
+window._wtCalDeleteSession = _deleteWorkoutHomeSession;
+window._wtCalDeleteExercise = _deleteWorkoutExercise;
+window._wtCalDeleteActivity = _deleteWorkoutActivity;
+window.__wtApplyCalendarNavSnapshot = applyWorkoutCalendarNavSnapshot;
+window.renderWorkoutCalendarHome = renderWorkoutCalendarHome;
