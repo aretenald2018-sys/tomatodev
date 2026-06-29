@@ -181,7 +181,7 @@ test('running workout save writes a running life-zone snapshot', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260630z01-workout-number-input-ux/);
+  assert.match(swJs, /tomatofarm-v20260630z02-workout-calendar-scroll/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/sprites\/jups-running-track\.png/);

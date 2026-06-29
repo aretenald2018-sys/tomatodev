@@ -379,7 +379,7 @@ function _handleWorkoutOverlayBack() {
 }
 
 function _isWorkoutPullBlockedTarget(target) {
-  return !!target?.closest?.('input, textarea, select, [contenteditable="true"], [data-wt-day-sheet], .modal-backdrop.open, .modal-overlay.open');
+  return !!target?.closest?.('input, textarea, select, [contenteditable="true"], [data-wt-day-sheet], [data-wt-calendar-scroll-surface], .modal-backdrop.open, .modal-overlay.open');
 }
 
 function _nearestWorkoutScroller(target) {

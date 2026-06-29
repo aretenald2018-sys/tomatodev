@@ -57,7 +57,7 @@ test('Miranda modal styles and runtime assets are registered', () => {
   assert.match(styleCss, /width: clamp\(130px, 36vw, 178px\)/);
   assert.match(styleCss, /\.lz-miranda-npc \{/);
   assert.match(styleCss, /\.lz-miranda-npc \.lz-npc-bulb \{/);
-  assert.match(swJs, /tomatofarm-v20260630z01-workout-number-input-ux/);
+  assert.match(swJs, /tomatofarm-v20260630z02-workout-calendar-scroll/);
   assert.match(swJs, /\.\/modals\/miranda-quest-modal\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/miranda-npc-seated\.png/);
   assert.deepEqual(readPngHeader('assets/home/life-zone/ui/miranda-npc-seated.png'), {

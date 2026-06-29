@@ -2,16 +2,35 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-30-workout-number-input-keyboard-ux.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-number-input-keyboard-ux-review.md`
-- 현재 단계: `운동 숫자 입력 키보드 UX 개선 Dashboard3 배포 완료`
+- 상태: `ready_for_execution`
+- 계획 문서: `docs/ai/features/2026-06-30-workout-calendar-touch-scroll-fix.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-calendar-touch-scroll-fix-review.md`
+- 현재 단계: `운동 캘린더 터치 스크롤 개선 리뷰 완료, Dashboard3 배포 대기`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
 - 마지막 완료: `운동 숫자 입력 키보드 UX 개선을 구현, 리뷰, origin/main 배포하고 Dashboard3 Pages asset 검증을 통과했다.`
-- 다음 액션: `없음.`
-- 차단 사유: `not verified yet: Dashboard3 Pages 배포와 인증 계정 실제 숫자 입력 키보드 UI flow 확인이 남아 있다.`
+- 다음 액션: `변경사항 커밋 후 origin/main에 push하고 Dashboard3 Pages 배포 검증`
+- 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
+
+- Workout Calendar Touch Scroll Fix 계획:
+  1. 모바일 운동 캘린더 화면에서 월간 캘린더 영역을 시작점으로 아래 방향 스크롤하면 화면이 내려가지 않는 증상을 진단했다.
+  2. 1순위 원인은 `app.js`의 전역 workout pull-back gesture가 캘린더 그리드 touchmove를 capture 단계에서 잡고 `preventDefault()`를 호출하는 흐름으로 판단했다.
+  3. Slice 1 범위는 월간 캘린더 그리드 표식 추가, pull-back gesture 예외 처리, `touch-action: pan-y`, 회귀 테스트, `sw.js` cache bump로 제한한다.
+  4. 제외 범위는 하단 day sheet drag/snap 재설계, 날짜 선택 정책 변경, 운동 상세 pull-back 제거, 저장 schema 변경, `www/` 수정, `tomatofarm` remote 배포다.
+  5. 완료: `render-calendar.js` 월간 운동 캘린더 그리드에 `data-wt-calendar-scroll-surface` 표식을 추가했다.
+  6. 완료: `app.js` 전역 workout pull-back gesture 차단 대상에 `[data-wt-calendar-scroll-surface]`를 추가했다.
+  7. 완료: `style.css` `.cal-workout-month-grid`에 `touch-action: pan-y`를 추가했다.
+  8. 완료: `sw.js` cache version을 `tomatofarm-v20260630z02-workout-calendar-scroll`로 bump하고 cache marker 테스트 기대값을 갱신했다.
+  9. PASS: `node --check app.js`
+  10. PASS: `node --check render-calendar.js`
+  11. PASS: `node --check sw.js`
+  12. PASS: `node --test tests/workout-navigation-stack.test.js tests/workout-calendar-bottom-sheet.test.js` — 21 tests passed
+  13. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=863`
+  14. PASS: `node --test --test-reporter=dot tests/*.test.js`
+  15. PASS: `git diff --check`
+  16. 완료: 리뷰 문서 `docs/ai/reviews/2026-06-30-workout-calendar-touch-scroll-fix-review.md`를 작성했고 추가 수정 이슈는 없다.
+  17. not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 캘린더 터치 스크롤 UI flow 확인이 남아 있다.
 
 - Workout Number Input Keyboard UX 계획:
   1. 모바일 숫자 입력 포커스 시 브라우저 자동 scroll 보정으로 운동 카드가 살짝 이동하는 증상을 진단했다.

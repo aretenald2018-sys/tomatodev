@@ -11755,6 +11755,7 @@ body.wt-running-session-open {
 .cal-workout-surface-home .cal-wd-sat { color: #5a91bb; }
 .cal-workout-month-grid {
   border-bottom: 1px solid #dfe1e8;
+  touch-action: pan-y;
 }
 .cal-workout-week-row {
   display: grid;

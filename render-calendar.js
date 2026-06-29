@@ -1059,7 +1059,7 @@ function _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, cycl
       </div>
     `);
   }
-  return `<div class="cal-workout-month-grid">${weekRows.join('')}</div>`;
+  return `<div class="cal-workout-month-grid" data-wt-calendar-scroll-surface>${weekRows.join('')}</div>`;
 }
 
 function _renderWorkoutHomeDayBar(selectedKey, { cache, plan, checkins, lookup }) {

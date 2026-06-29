@@ -135,8 +135,11 @@ test('workout navigation is wired to app, calendar, record card focus, and PWA c
   assert.match(workoutExercises, /export function renderWorkoutExerciseDetail\(\)/);
   assert.match(navJs, /typeof options\.handleOverlayBack === 'function' && options\.handleOverlayBack\(\)/);
   assert.match(navJs, /_writeHistory\('push', 'overlay:back'\)/);
+  assert.match(appJs, /\[data-wt-calendar-scroll-surface\]/);
+  assert.match(calendarJs, /class="cal-workout-month-grid" data-wt-calendar-scroll-surface/);
+  assert.match(styleCss, /\.cal-workout-month-grid\s*\{[\s\S]*touch-action:\s*pan-y/);
   assert.match(styleCss, /body\.wt-workout-tab-active\s*\{[\s\S]*overscroll-behavior-y:\s*none;/);
   assert.match(styleCss, /body\.wt-workout-tab-active #tab-workout\.active\s*\{[\s\S]*overscroll-behavior-y:\s*contain;/);
   assert.match(swJs, /\.\/workout\/navigation-stack\.js/);
-  assert.match(swJs, /tomatofarm-v20260630z01-workout-number-input-ux/);
+  assert.match(swJs, /tomatofarm-v20260630z02-workout-calendar-scroll/);
 });

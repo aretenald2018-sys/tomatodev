@@ -272,6 +272,8 @@ test('workout calendar week rail renders cycle prescriptions instead of weekly a
   const weekRowRule = styleCss.slice(weekRowStart, weekRowEnd);
 
   assert.match(calendarJs, /getTestBoardV2/);
+  assert.match(grid, /class="cal-workout-month-grid" data-wt-calendar-scroll-surface/);
+  assert.match(styleCss, /\.cal-workout-month-grid\s*\{[\s\S]*touch-action:\s*pan-y/);
   assert.match(calendarJs, /activeBenchmarks/);
   assert.match(calendarJs, /buildExerciseProgramWorkoutPrescription/);
   assert.match(calendarJs, /const plan = rx\?\.plan \|\| \{\}/);
@@ -391,5 +393,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260630z01-workout-number-input-ux/);
+  assert.match(swJs, /tomatofarm-v20260630z02-workout-calendar-scroll/);
 });

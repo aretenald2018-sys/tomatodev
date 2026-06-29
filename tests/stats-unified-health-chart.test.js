@@ -57,5 +57,5 @@ test('stats health rollback chart cards are styled and cache version is bumped',
   assert.doesNotMatch(styleCss, /\.stats-health-toggle/);
   assert.doesNotMatch(styleCss, /\.stats-health-curves/);
   assert.doesNotMatch(styleCss, /\.stats-health-period/);
-  assert.match(swJs, /tomatofarm-v20260630z01-workout-number-input-ux/);
+  assert.match(swJs, /tomatofarm-v20260630z02-workout-calendar-scroll/);
 });
