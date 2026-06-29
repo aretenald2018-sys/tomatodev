@@ -42,6 +42,9 @@ export const MODAL_HTML = `
     </nav>
 
     <div class="trainer-quest-stats" data-trainer-quest-stats hidden>
+      <div class="trainer-quest-stats-leaning-character" aria-hidden="true">
+        <img src="./assets/home/life-zone/ui/trainer-quest-leaning-trainer.png" alt="" loading="eager" decoding="async">
+      </div>
       <div class="trainer-quest-stats-head">
         <button type="button" class="trainer-quest-icon-btn" data-trainer-quest-back aria-label="목록으로 돌아가기">‹</button>
         <div class="trainer-quest-stats-title">
@@ -108,6 +111,7 @@ function _showMenu() {
   if (!modal) return;
   const menu = modal.querySelector('[data-trainer-quest-game-menu]');
   const stats = modal.querySelector('[data-trainer-quest-stats]');
+  modal.querySelector('.trainer-quest-sheet')?.classList.remove('trainer-quest-sheet--stats');
   if (menu) menu.hidden = false;
   if (stats) stats.hidden = true;
 }
@@ -118,6 +122,7 @@ async function _showStats() {
   const menu = modal.querySelector('[data-trainer-quest-game-menu]');
   const stats = modal.querySelector('[data-trainer-quest-stats]');
   const root = modal.querySelector('[data-trainer-quest-stats-root]');
+  modal.querySelector('.trainer-quest-sheet')?.classList.add('trainer-quest-sheet--stats');
   if (menu) menu.hidden = true;
   if (stats) stats.hidden = false;
   if (root) {

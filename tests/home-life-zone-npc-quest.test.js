@@ -88,6 +88,7 @@ test('life zone NPC quest bubble has a stable clickable overlay style', () => {
   assert.match(css, /\.lz-npc-bulb img \{/);
   assert.match(css, /\.lz-npc-quest \.lz-nameplate/);
   assert.match(css, /position: static/);
+  assert.match(css, /\.lz-npc-quest--trainer \.lz-nameplate \{[\s\S]*order: -1;[\s\S]*margin-bottom: 1px;/);
   assert.match(css, /overflow: visible/);
   assert.match(css, /\.lz-miranda-corner \{/);
   assert.match(css, /left: calc\(48 \/ 1672 \* 100%\)/);
@@ -220,7 +221,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260629z14-life-zone-alignment/);
+  assert.match(sw, /tomatofarm-v20260629z15-trainer-leaning-modal/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,

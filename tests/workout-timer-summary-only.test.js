@@ -60,5 +60,5 @@ test('workout finish saves without opening the old completion insight modal', ()
 });
 
 test('service worker cache version was bumped for workout timer summary-only UI', () => {
-  assert.match(swJs, /tomatofarm-v20260629z14-life-zone-alignment/);
+  assert.match(swJs, /tomatofarm-v20260629z15-trainer-leaning-modal/);
 });

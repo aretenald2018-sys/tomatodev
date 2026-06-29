@@ -3,15 +3,29 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-29-home-life-zone-overlay-alignment-fix.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-29-home-life-zone-overlay-alignment-fix-review.md`
-- 현재 단계: `review complete — Home Life Zone Overlay Alignment Fix Slice 1`
+- 계획 문서: `docs/ai/features/2026-06-29-trainer-label-stats-leaning-asset.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-29-trainer-label-stats-leaning-asset-review.md`
+- 현재 단계: `review complete — Trainer Label Stats Leaning Asset Slice 1`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `트레이너/미란다 전구와 이름표, 러닝 actor 원근 크기, 홈 지도 말풍선 표기를 같은 1672x1672 홈 좌표계 기준으로 보정했다.`
+- 마지막 완료: `트레이너 이름표를 얼굴 위에서 분리하고, 통계 모달 전용 기대기 자산을 추가해 통계 본문을 모달 상단부터 시작하게 했다.`
 - 다음 액션: `없음.`
 - 차단 사유: `없음.`
 
 ## 직전 완료 요약
+
+- Trainer Label Stats Leaning Asset Slice 1:
+  1. 계획: `docs/ai/features/2026-06-29-trainer-label-stats-leaning-asset.md`
+  2. 리뷰: `docs/ai/reviews/2026-06-29-trainer-label-stats-leaning-asset-review.md`
+  3. 홈 트레이너 이름표를 전구 위로 올려 얼굴을 덮지 않게 했다.
+  4. imagegen built-in 경로로 통계 모달 전용 `assets/home/life-zone/ui/trainer-quest-leaning-trainer.png`를 추가했다.
+  5. 새 PNG는 `1028x1086` RGBA이며, `sw.js` `STATIC_ASSETS`에 등록했다.
+  6. 트레이너 통계 화면에서는 `trainer-quest-sheet--stats`로 기존 전신 stage를 숨기고 compact padding을 적용해 통계 정보가 상단부터 시작한다.
+  7. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260629z15-trainer-leaning-modal`로 갱신했다.
+  8. PASS: `node --check modals/trainer-quest-modal.js; node --check home/life-zone.js; node --check sw.js`
+  9. PASS: `node --test tests/trainer-quest-modal.test.js tests/home-life-zone-npc-quest.test.js tests/miranda-quest-modal.test.js` — 19 tests passed
+  10. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=860`
+  11. PASS: `node --test tests/*.test.js` — 603 tests passed
+  12. PASS: `git diff --check`
 
 - Home Life Zone Overlay Alignment Fix Slice 1:
   1. 계획: `docs/ai/features/2026-06-29-home-life-zone-overlay-alignment-fix.md`

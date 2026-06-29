@@ -48,5 +48,5 @@ test('stats health chart controls are styled and cache version is bumped', () =>
   assert.match(styleCss, /\.stats-health-controls/);
   assert.match(styleCss, /\.stats-health-toggle/);
   assert.match(styleCss, /\.stats-health-period\.active/);
-  assert.match(swJs, /tomatofarm-v20260629z14-life-zone-alignment/);
+  assert.match(swJs, /tomatofarm-v20260629z15-trainer-leaning-modal/);
 });

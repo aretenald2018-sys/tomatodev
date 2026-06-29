@@ -126,5 +126,5 @@ test('Dashboard3 mode controls cannot persist normal or pro workout record UI', 
 });
 
 test('service worker cache version was bumped for workout asset changes', () => {
-  assert.match(swJs, /tomatofarm-v20260629z14-life-zone-alignment/);
+  assert.match(swJs, /tomatofarm-v20260629z15-trainer-leaning-modal/);
 });

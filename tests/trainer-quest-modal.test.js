@@ -9,6 +9,16 @@ const statsJs = readFileSync('render-stats.js', 'utf8');
 const styleCss = readFileSync('style.css', 'utf8');
 const swJs = readFileSync('sw.js', 'utf8');
 
+function readPngHeader(relativePath) {
+  const buffer = readFileSync(relativePath);
+  assert.equal(buffer.toString('ascii', 1, 4), 'PNG');
+  return {
+    width: buffer.readUInt32BE(16),
+    height: buffer.readUInt32BE(20),
+    colorType: buffer.readUInt8(25)
+  };
+}
+
 test('trainer quest modal renders game-like dialogue choice boxes', () => {
   assert.match(modalJs, /id="trainer-quest-modal"/);
   assert.match(modalJs, /무엇을 도와드릴까요\?/);
@@ -36,6 +46,10 @@ test('trainer quest modal renders game-like dialogue choice boxes', () => {
   assert.doesNotMatch(modalJs, /완료가능한 퀘스트/);
   assert.doesNotMatch(modalJs, /업데이트 예정/);
   assert.match(modalJs, /assets\/home\/life-zone\/ui\/trainer-quest-seated-trainer\.png/);
+  assert.match(modalJs, /trainer-quest-stats-leaning-character/);
+  assert.match(modalJs, /assets\/home\/life-zone\/ui\/trainer-quest-leaning-trainer\.png/);
+  assert.match(modalJs, /classList\.add\('trainer-quest-sheet--stats'\)/);
+  assert.match(modalJs, /classList\.remove\('trainer-quest-sheet--stats'\)/);
   assert.doesNotMatch(modalJs, /onclick=/);
   assert.match(modalJs, /openTrainerQuestModal/);
   assert.match(modalJs, /closeTrainerQuestModal/);
@@ -110,6 +124,10 @@ test('trainer quest modal styles and runtime cache asset are registered', () => 
   assert.match(styleCss, /pointer-events:\s*none/);
   assert.match(styleCss, /top:\s*clamp\(-250px,\s*-58vw,\s*-198px\)/);
   assert.match(styleCss, /padding:\s*clamp\(148px,\s*33vw,\s*184px\)/);
+  assert.match(styleCss, /\.trainer-quest-sheet\.trainer-quest-sheet--stats \{[\s\S]*padding:\s*14px 16px 18px;/);
+  assert.match(styleCss, /\.trainer-quest-sheet\.trainer-quest-sheet--stats \.trainer-quest-stage \{[\s\S]*display:\s*none;/);
+  assert.match(styleCss, /\.trainer-quest-stats-leaning-character \{[\s\S]*top:\s*clamp\(-126px,\s*-24vw,\s*-92px\);[\s\S]*width:\s*clamp\(150px,\s*36vw,\s*218px\);/);
+  assert.match(styleCss, /\.trainer-quest-sheet--stats \.trainer-quest-stats \{[\s\S]*padding-top:\s*0;/);
   assert.match(styleCss, /rgba\(255, 255, 255, \.58\)/);
   assert.match(styleCss, /rgba\(255, 255, 255, \.32\)/);
   assert.match(styleCss, /border:\s*1px solid rgba\(255, 255, 255, \.38\)/);
@@ -142,7 +160,13 @@ test('trainer quest modal styles and runtime cache asset are registered', () => 
   assert.doesNotMatch(styleCss, /\.trainer-quest-choice/);
   assert.doesNotMatch(styleCss, /\.trainer-quest-choice-caret/);
   assert.match(styleCss, /\.trainer-quest-stats-root/);
-  assert.match(swJs, /tomatofarm-v20260629z14-life-zone-alignment/);
+  assert.match(swJs, /tomatofarm-v20260629z15-trainer-leaning-modal/);
   assert.match(swJs, /\.\/modals\/trainer-quest-modal\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/trainer-quest-seated-trainer\.png/);
+  assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/trainer-quest-leaning-trainer\.png/);
+  assert.deepEqual(readPngHeader('assets/home/life-zone/ui/trainer-quest-leaning-trainer.png'), {
+    width: 1028,
+    height: 1086,
+    colorType: 6
+  });
 });
