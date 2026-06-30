@@ -32,7 +32,8 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=858`
 - PASS: `node --test --test-reporter=dot @tests`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ c98ec70` — `[deploy-verify] ok c98ec70a4a1a tomatofarm-v20260630z12-stale-ui-prune static=233`
 
 ## 남은 리스크
 
-not verified yet: 이번 변경은 아직 Dashboard3 Pages에 push/deploy하지 않았고, 인증 세션이 필요한 실제 모바일 UI 클릭 흐름은 배포 URL에서 확인하지 않았다.
+not verified yet: 인증 세션이 필요한 실제 모바일 UI 클릭 흐름은 배포 URL에서 직접 조작하지 않았다.

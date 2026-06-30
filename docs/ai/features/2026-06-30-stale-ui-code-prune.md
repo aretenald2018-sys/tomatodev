@@ -168,4 +168,5 @@
 3. Slice 3 완료: `renderMaxGrowthPreview()`의 화면 미렌더 `recommendationHtml` 파라미터와 테스트 fixture를 제거했다.
 4. 보존: `_renderWorkoutExerciseDetailCard()`는 현재 하단 시트에서 운동 카드 UI를 렌더하는 활성 함수라 유지했다.
 5. 검증: `node --check ...`, `node --test tests/calc.max.test.js`, targeted tests, `node scripts/verify-runtime-assets.mjs`, 전체 `node --test --test-reporter=dot @tests`, `git diff --check` PASS.
-6. not verified yet: 이번 변경은 아직 Dashboard3 Pages에 push/deploy하지 않았고, 배포 URL에서 실제 UI 클릭 흐름은 확인하지 않았다.
+6. PASS: Dashboard3 Pages 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ c98ec70` → `[deploy-verify] ok c98ec70a4a1a tomatofarm-v20260630z12-stale-ui-prune static=233`
+7. not verified yet: 인증 세션이 필요한 실제 UI 클릭 흐름은 배포 URL에서 직접 조작하지 않았다.

@@ -8,7 +8,7 @@
 - 현재 단계: `화면 미구현 stale 코드 제거 실행/리뷰 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
 - 마지막 완료: `화면에 구현되지 않는 stale UI/API/route/style 잔재를 제거하고 리뷰 문서를 작성했다.`
-- 다음 액션: `없음. 배포 검증이 필요하면 commit/push 후 Dashboard3 Pages에서 verify:deploy를 실행한다.`
+- 다음 액션: `없음.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
@@ -28,7 +28,9 @@
   12. PASS: `node --test --test-reporter=dot @tests`
   13. PASS: `git diff --check`
   14. 리뷰 문서: `docs/ai/reviews/2026-06-30-stale-ui-code-prune-review.md`
-  15. not verified yet: Dashboard3 Pages 배포와 인증 세션 UI 클릭 검증은 아직 수행하지 않았다.
+  15. 완료: 코드/문서 커밋 `c98ec70 fix: prune stale ui code`를 `origin/main`에 push했다.
+  16. PASS: Dashboard3 Pages 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ c98ec70` → `[deploy-verify] ok c98ec70a4a1a tomatofarm-v20260630z12-stale-ui-prune static=233`
+  17. not verified yet: 인증 세션이 필요한 실제 UI 클릭 흐름은 배포 URL에서 직접 조작하지 않았다.
 
 - Workout Record Route Remove 계획:
   1. 원인: `app.js`가 `pushWorkoutRecord()`와 `_setWorkoutSurface('record')`로 legacy record 화면을 아직 표시할 수 있다.
