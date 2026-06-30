@@ -33,6 +33,8 @@
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 88b2e7e`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260630z11-record-route-removed" "app.js::async function _redirectWorkoutRecordRouteToDaySheet" "app.js::record:tab-redirect-sheet" "render-calendar.js::_loadWorkoutStateForSheetSession(targetKey, WORKOUT_RUNNING_SESSION_INDEX)"`
 
 ## 남은 리스크
 

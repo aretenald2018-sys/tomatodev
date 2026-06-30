@@ -7,8 +7,8 @@
 - 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-record-route-remove-review.md`
 - 현재 단계: `운동 legacy record UI 렌더 경로 제거 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `legacy workout record route/surface 렌더 경로를 제거하고 정적 검증/전체 테스트를 통과했다.`
-- 다음 액션: `Dashboard3 Pages 배포 검증 후 인증된 모바일 UI에서 하단 시트 흐름 확인`
+- 마지막 완료: `legacy workout record route/surface 제거 커밋 88b2e7e를 Dashboard3 Pages에 배포하고 asset marker 검증까지 통과했다.`
+- 다음 액션: `없음. 인증된 모바일 UI에서 하단 시트 흐름 최종 확인만 남음`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
@@ -32,6 +32,10 @@
   16. PASS: `node --test --test-reporter=dot tests/*.test.js`
   17. PASS: `git diff --check`
   18. 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-record-route-remove-review.md`
+  19. 완료: 코드/문서 커밋 `88b2e7e fix: remove workout record route UI`를 `origin/main`에 push했다.
+  20. PASS: Dashboard3 Pages 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 88b2e7e` → `[deploy-verify] ok 88b2e7eb9c5a tomatofarm-v20260630z11-record-route-removed static=234`
+  21. PASS: Dashboard3 Pages marker 검증 — `sw.js` cache version, `app.js`의 `_redirectWorkoutRecordRouteToDaySheet`/`record:tab-redirect-sheet`, `render-calendar.js`의 sheet state loader marker 확인.
+  22. not verified yet: 인증 세션이 없어 실제 모바일 UI에서 `운동 탭 -> 오늘 하단 시트 -> 편집하기` 흐름은 직접 클릭 확인하지 못했다.
 
 - Workout Day Sheet Inline Edit Regression 계획:
   1. 원인: `render-calendar.js`의 하단 시트 헬스 카드 `편집하기`가 `_wtCalEditSession()`을 호출한다.
