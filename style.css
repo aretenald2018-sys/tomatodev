@@ -11353,6 +11353,7 @@ body.wt-running-session-open {
   min-height: 100%;
   background: #f7f7fb;
   color: #2f3138;
+  touch-action: pan-y;
 }
 .cal-workout-surface-home .cal-header {
   margin: 0;

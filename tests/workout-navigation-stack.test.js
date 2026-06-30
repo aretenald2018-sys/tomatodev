@@ -141,7 +141,9 @@ test('workout navigation keeps only rendered calendar and day sheet surfaces', a
   assert.match(navJs, /typeof options\.handleOverlayBack === 'function' && options\.handleOverlayBack\(\)/);
   assert.match(navJs, /_writeHistory\('push', 'overlay:back'\)/);
   assert.match(appJs, /\[data-wt-calendar-scroll-surface\]/);
+  assert.match(calendarJs, /<div class="cal-workout-surface \$\{surfaceClass\}"\$\{scrollSurfaceAttr\}>/);
   assert.match(calendarJs, /class="cal-workout-month-grid" data-wt-calendar-scroll-surface/);
+  assert.match(styleCss, /\.cal-workout-surface-home\s*\{[\s\S]*touch-action:\s*pan-y/);
   assert.match(calendarJs, /async function _loadWorkoutStateForSheetSession/);
   assert.match(calendarJs, /window\.wtOpenExercisePicker\(\{[\s\S]*source:\s*'workout-day-sheet'[\s\S]*afterSelect:/);
   assert.match(styleCss, /\.cal-workout-month-grid\s*\{[\s\S]*touch-action:\s*pan-y/);
@@ -161,5 +163,5 @@ test('workout navigation keeps only rendered calendar and day sheet surfaces', a
   assert.match(styleCss, /body\.wt-workout-tab-active\s*\{[\s\S]*overscroll-behavior-y:\s*none;/);
   assert.match(styleCss, /body\.wt-workout-tab-active #tab-workout\.active\s*\{[\s\S]*overscroll-behavior-y:\s*contain;/);
   assert.match(swJs, /\.\/workout\/navigation-stack\.js/);
-  assert.match(swJs, /tomatofarm-v20260630z12-stale-ui-prune/);
+  assert.match(swJs, /tomatofarm-v20260630z13-workout-calendar-drag-surface/);
 });

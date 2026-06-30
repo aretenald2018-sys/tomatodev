@@ -935,6 +935,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
   const shiftMonthFn = isWorkoutHome ? '_wtCalShiftMonth' : '_calShiftMonth';
   const goTodayFn = isWorkoutHome ? '_wtCalGoToday' : '_calGoToday';
   const surfaceClass = isWorkoutHome ? 'cal-workout-surface-home' : 'cal-workout-surface-calendar';
+  const scrollSurfaceAttr = isWorkoutHome ? ' data-wt-calendar-scroll-surface' : '';
   const selectedParsed = _parseDateKey(_workoutHomeSelectedKey);
   const todayKey = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
 
@@ -1049,7 +1050,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
     : '';
 
   root.innerHTML = `
-    <div class="cal-workout-surface ${surfaceClass}">
+    <div class="cal-workout-surface ${surfaceClass}"${scrollSurfaceAttr}>
       <div class="cal-header">
         <button class="cal-nav-btn" onclick="window.${shiftMonthFn}(-1)" aria-label="이전 달">‹</button>
         <div class="cal-title">

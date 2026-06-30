@@ -351,6 +351,8 @@ test('workout calendar mobile grid reserves a wider week rail', () => {
 });
 
 test('workout calendar week rail renders cycle prescriptions instead of weekly aggregates', () => {
+  assert.match(calendarJs, /const scrollSurfaceAttr = isWorkoutHome \? ' data-wt-calendar-scroll-surface' : ''/);
+  assert.match(calendarJs, /<div class="cal-workout-surface \$\{surfaceClass\}"\$\{scrollSurfaceAttr\}>/);
   const gridStart = calendarJs.indexOf('function _renderWorkoutHomeMonthGrid');
   const gridEnd = calendarJs.indexOf('function _renderWorkoutHomeDayBar', gridStart);
   assert.ok(gridStart >= 0 && gridEnd > gridStart, 'workout month grid renderer should exist');
@@ -362,6 +364,7 @@ test('workout calendar week rail renders cycle prescriptions instead of weekly a
 
   assert.match(calendarJs, /getTestBoardV2/);
   assert.match(grid, /class="cal-workout-month-grid" data-wt-calendar-scroll-surface/);
+  assert.match(styleCss, /\.cal-workout-surface-home\s*\{[\s\S]*touch-action:\s*pan-y/);
   assert.match(styleCss, /\.cal-workout-month-grid\s*\{[\s\S]*touch-action:\s*pan-y/);
   assert.match(calendarJs, /activeBenchmarks/);
   assert.match(calendarJs, /buildExerciseProgramWorkoutPrescription/);
@@ -496,5 +499,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260630z12-stale-ui-prune/);
+  assert.match(swJs, /tomatofarm-v20260630z13-workout-calendar-drag-surface/);
 });
