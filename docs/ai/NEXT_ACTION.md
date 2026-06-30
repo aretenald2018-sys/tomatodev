@@ -7,8 +7,8 @@
 - 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-day-sheet-inline-edit-regression-review.md`
 - 현재 단계: `운동 하단 시트 편집 버튼 2화면 회귀 수정 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `하단 시트 헬스 카드 편집 버튼을 시트 내 inline edit mode로 전환하고 정적 검증/전체 테스트를 통과했다.`
-- 다음 액션: `Dashboard3 Pages 배포 검증 후 사용자가 인증된 모바일 UI에서 편집 흐름을 확인`
+- 마지막 완료: `하단 시트 헬스 카드 편집 버튼 inline edit 수정 커밋 84de7cc를 Dashboard3 Pages에 배포하고 asset marker 검증까지 통과했다.`
+- 다음 액션: `없음. 인증된 모바일 UI에서 편집 흐름 최종 확인만 남음`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
@@ -31,6 +31,10 @@
   15. PASS: `node --test --test-reporter=dot tests/*.test.js`
   16. PASS: `git diff --check`
   17. 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-day-sheet-inline-edit-regression-review.md`
+  18. 완료: 코드/문서 커밋 `84de7cc fix: keep sheet card editing inline`을 `origin/main`에 push했다.
+  19. PASS: Dashboard3 Pages 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 84de7cc` → `[deploy-verify] ok 84de7cc152e2 tomatofarm-v20260630z10-day-sheet-inline-edit static=234`
+  20. PASS: Dashboard3 Pages marker 검증 — `sw.js` cache version, `render-calendar.js`의 `_wtCalEditExerciseCard`/`sheet:edit-inline`, `style.css`의 inline edit input marker 확인.
+  21. not verified yet: 인증 세션이 없어 실제 모바일 UI에서 `운동 탭 -> 오늘 하단 시트 full -> 종목 카드 편집하기 -> 세트 수정/추가/삭제` 클릭 흐름은 직접 확인하지 못했다.
 
 - Workout Day Sheet Inline Add Timer 계획:
   1. 원인: `render-calendar.js`의 `+` 액션이 첫 빈 회차를 우선 target으로 잡고 `_loadWorkoutEditorForSession()`을 통해 `wtOpenWorkoutRecord()` route push를 수행한다.

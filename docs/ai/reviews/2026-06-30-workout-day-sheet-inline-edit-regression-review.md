@@ -31,6 +31,8 @@
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 84de7cc`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260630z10-day-sheet-inline-edit" "render-calendar.js::window._wtCalEditExerciseCard = _editWorkoutExerciseCard" "render-calendar.js::action: 'sheet:edit-inline'" "style.css::.wt-max-rom-inline.is-editing input"`
 
 ## 남은 리스크
 
