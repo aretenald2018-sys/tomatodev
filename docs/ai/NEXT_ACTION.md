@@ -4,14 +4,21 @@
 
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-30-home-npc-bulb-hide.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-30-home-npc-bulb-hide-review.md`
-- 현재 단계: `미란다/상담실장 전구 표시 숨김 Dashboard3 배포 완료`
+- 리뷰 문서: `docs/ai/reviews/2026-06-30-tomatofarm-production-deploy-review.md`
+- 현재 단계: `Dashboard3 반영분 Tomato Farm 운영계 추가 배포 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `운동 숫자 입력 키보드 UX 개선을 구현, 리뷰, origin/main 배포하고 Dashboard3 Pages asset 검증을 통과했다.`
+- 마지막 완료: `운동 숫자 입력 UX, 운동 캘린더 터치 스크롤, 미란다/상담실장 전구 숨김까지 운영계 tomatofarm/main에 배포하고 Pages asset 검증을 통과했다.`
 - 다음 액션: `없음.`
 - 차단 사유: `not verified yet: 인증 계정 실제 홈 라이프존 화면에서 미란다/상담실장 전구가 사라진 상태 확인이 남아 있다.`
 
 ## 방금 계획/실행한 항목
+
+- Tomato Farm 운영계 추가 배포:
+  1. `tomatofarm/main`이 현재 HEAD의 조상인지 확인했다.
+  2. `git push tomatofarm HEAD:main`으로 `4b8c004..c34da15` 범위를 운영계에 반영했다.
+  3. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ c34da15` — `c34da15cf5d2`, `tomatofarm-v20260630z03-home-npc-bulb-hide`
+  4. PASS: 운영계 marker 검증 — NPC 전구 숨김, 캘린더 터치 스크롤, 숫자 입력 keyboard UX marker 확인
+  5. not verified yet: 인증 계정 실제 UI flow 확인은 남아 있다.
 
 - Home NPC Bulb Hide 계획:
   1. 홈 라이프존에서 미란다와 상담실장의 전구 표시를 일단 숨긴다.
