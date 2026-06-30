@@ -7,7 +7,7 @@
 - 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-calendar-drag-surface-fix-review.md`
 - 현재 단계: `운동 캘린더 드래그 surface 회귀 수정 실행/리뷰/배포 검증 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `운동 홈 캘린더 surface 전체를 터치 스크롤 예외로 확장하고 Dashboard3 Pages 배포 검증을 완료했다.`
+- 마지막 완료: `운동 홈 캘린더 surface 전체를 터치 스크롤 예외로 확장하고 Dashboard3 Pages와 Tomato Farm 운영계 배포 검증을 완료했다.`
 - 다음 액션: `없음.`
 - 차단 사유: `없음.`
 
@@ -28,7 +28,10 @@
   12. 완료: 코드/문서 커밋 `041f878 fix: widen workout calendar drag surface`를 `origin/main`에 push했다.
   13. PASS: Dashboard3 Pages 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 041f878` → `[deploy-verify] ok 041f878367c6 tomatofarm-v20260630z13-workout-calendar-drag-surface static=233`
   14. PASS: Dashboard3 Pages marker 검증 — `sw.js` cache version, `render-calendar.js` `scrollSurfaceAttr`/`data-wt-calendar-scroll-surface`, `style.css` `.cal-workout-surface-home`/`touch-action: pan-y`
-  15. not verified yet: 인증 세션이 없어 실제 `운동 탭 -> 캘린더 본문/요일/요약/좌측 레일에서 세로 드래그` UI flow는 직접 조작하지 못했다.
+  15. 완료: 운영계 `tomatofarm/main`에 커밋 `3120d0f`를 fast-forward push했다.
+  16. PASS: Tomato Farm 운영계 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 3120d0f` → `[deploy-verify] ok 3120d0f20fae tomatofarm-v20260630z13-workout-calendar-drag-surface static=233`
+  17. PASS: 운영계 marker 검증 — `sw.js` cache version, `render-calendar.js` `scrollSurfaceAttr`/`data-wt-calendar-scroll-surface`, `style.css` `.cal-workout-surface-home`/`touch-action: pan-y`
+  18. not verified yet: 인증 세션이 없어 실제 `운동 탭 -> 캘린더 본문/요일/요약/좌측 레일에서 세로 드래그` UI flow는 직접 조작하지 못했다.
 
 - Stale UI Code Prune 완료:
   1. 요청: 화면에 구현되어 실질적인 UI/동작 변화를 일으키는 코드만 남기고, 화면에 구현되지 않는 stale 관련 코드를 제거한다.

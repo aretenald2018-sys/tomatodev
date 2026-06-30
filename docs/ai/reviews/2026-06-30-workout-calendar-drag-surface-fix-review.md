@@ -32,8 +32,11 @@
 - PASS: 커밋 `041f878 fix: widen workout calendar drag surface`를 `origin/main`에 push했다.
 - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 041f878` — `[deploy-verify] ok 041f878367c6 tomatofarm-v20260630z13-workout-calendar-drag-surface static=233`
 - PASS: deployed markers — `sw.js` cache version, `render-calendar.js` `scrollSurfaceAttr`/`data-wt-calendar-scroll-surface`, `style.css` `.cal-workout-surface-home`/`touch-action: pan-y`
+- PASS: 운영계 `tomatofarm/main`에 커밋 `3120d0f`를 fast-forward push했다.
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 3120d0f` — `[deploy-verify] ok 3120d0f20fae tomatofarm-v20260630z13-workout-calendar-drag-surface static=233`
+- PASS: 운영계 deployed markers — `sw.js` cache version, `render-calendar.js` `scrollSurfaceAttr`/`data-wt-calendar-scroll-surface`, `style.css` `.cal-workout-surface-home`/`touch-action: pan-y`
 - not verified yet: 인증 세션이 없어 실제 캘린더 손가락 드래그 UI는 직접 조작하지 못했다.
 
 ## 결정
 
-- 추가 수정 이슈 없음. 배포 검증은 완료했고, 실제 인증 UI 드래그 확인만 사용자 기기에서 남아 있다.
+- 추가 수정 이슈 없음. Dashboard3와 Tomato Farm 운영계 배포 검증은 완료했고, 실제 인증 UI 드래그 확인만 사용자 기기에서 남아 있다.
