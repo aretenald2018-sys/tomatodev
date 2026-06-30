@@ -83,4 +83,10 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=858`
 - PASS: `git diff --check`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
-- not verified yet: Dashboard3/운영계 배포와 실제 운영 기기 stale SW 자동 갱신 확인이 남아 있다.
+- 완료: 커밋 `4c5ab9f fix: auto apply app service worker updates`를 `origin/main`에 push했다.
+- not verified yet: Dashboard3 Pages workflow는 runtime asset/build-info/upload까지 성공했으나 `deploy-pages` 단계에서 실패해 `https://aretenald2018-sys.github.io/dashboard3/`는 아직 이전 커밋 `acf69a2`를 반환한다.
+- 완료: 운영계 `tomatofarm/main`에 커밋 `4c5ab9f`를 push했다.
+- PASS: Tomato Farm 운영계 workflow success — run `28438825034`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 4c5ab9f` — `[deploy-verify] ok 4c5ab9f099af tomatofarm-v20260630z14-sw-auto-update static=233`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ "sw.js::tomatofarm-v20260630z14-sw-auto-update" "index.html::pwa-register.js?v=20260630z14-sw-auto-update" "pwa-register.js::APP_SW_AUTO_RELOAD_TIMEOUT_MS" "pwa-register.js::SKIP_WAITING" "pwa-register.js::controllerchange" "render-calendar.js::scrollSurfaceAttr" "style.css::touch-action: pan-y"`
+- not verified yet: 실제 운영 기기에서 stale SW 자동 갱신 후 캘린더 드래그 UI flow 확인이 남아 있다.

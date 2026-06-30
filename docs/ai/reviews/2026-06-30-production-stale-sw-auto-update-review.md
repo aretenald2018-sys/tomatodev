@@ -28,8 +28,14 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=858`
 - PASS: `git diff --check`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
-- not verified yet: 배포 URL 및 실제 운영 기기 stale SW 자동 갱신 확인이 남아 있다.
+- 완료: 커밋 `4c5ab9f fix: auto apply app service worker updates`를 `origin/main`에 push했다.
+- not verified yet: Dashboard3 Pages workflow는 `deploy-pages` 단계에서 실패해 Dashboard3 URL은 이전 커밋을 반환한다.
+- 완료: 운영계 `tomatofarm/main`에 커밋 `4c5ab9f`를 push했다.
+- PASS: Tomato Farm 운영계 workflow success — run `28438825034`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 4c5ab9f` — `[deploy-verify] ok 4c5ab9f099af tomatofarm-v20260630z14-sw-auto-update static=233`
+- PASS: 운영 marker 검증 — `sw.js` cache version, `index.html` pwa registrar query, `pwa-register.js` auto update markers, 기존 drag fix markers
+- not verified yet: 실제 운영 기기 stale SW 자동 갱신 확인이 남아 있다.
 
 ## 결정
 
-- 추가 수정 이슈 없음. Dashboard3와 Tomato Farm 운영계에 배포해 stale SW 교체를 검증한다.
+- 추가 수정 이슈 없음. Tomato Farm 운영계 배포는 완료했고, Dashboard3 Pages는 GitHub `deploy-pages` 단계 실패가 남아 있다.

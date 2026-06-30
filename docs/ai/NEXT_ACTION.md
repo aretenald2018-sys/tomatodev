@@ -3,15 +3,36 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-30-workout-calendar-drag-surface-fix.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-calendar-drag-surface-fix-review.md`
-- 현재 단계: `운동 캘린더 드래그 surface 회귀 수정 실행/리뷰/배포 검증 완료`
+- 계획 문서: `docs/ai/features/2026-06-30-production-stale-sw-auto-update.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-30-production-stale-sw-auto-update-review.md`
+- 현재 단계: `운영계 stale service worker 자동 갱신 실행/리뷰/운영 배포 검증 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `운동 홈 캘린더 surface 전체를 터치 스크롤 예외로 확장하고 Dashboard3 Pages와 Tomato Farm 운영계 배포 검증을 완료했다.`
+- 마지막 완료: `운영계에 Service Worker 자동 적용/리로드 보강을 배포하고 Tomato Farm 운영 URL 검증을 완료했다.`
 - 다음 액션: `없음.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
+
+- Production Stale SW Auto Update 완료:
+  1. 요청: 개발계에서는 캘린더 드래그가 되는데 운영계에서는 동일 증상이 반복된다.
+  2. 진단: 운영 direct asset marker에는 drag fix가 있으므로, 사용자 기기의 stale Service Worker/controller/cache가 구 asset을 유지하는 케이스를 우선 원인으로 봤다.
+  3. 완료: `pwa-register.js`에 `APP_SW_AUTO_RELOAD_TIMEOUT_MS`, `_hasActiveWorkoutDraftForAppSWUpdate()`, `_autoApplyAppSWUpdate()`를 추가했다.
+  4. 완료: 새 앱 SW가 설치/대기 상태가 되면 `tomato-app-ready` 이후 active workout draft가 없을 때 `SKIP_WAITING` + `controllerchange` 1회 reload를 실행한다.
+  5. 완료: active workout draft가 있으면 자동 reload하지 않고 기존 업데이트 안내 버튼을 유지한다.
+  6. 완료: `index.html`의 `pwa-register.js` query를 `20260630z14-sw-auto-update`로 갱신했다.
+  7. 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260630z14-sw-auto-update`로 bump하고 cache marker 테스트 기대값을 갱신했다.
+  8. PASS: `node --check pwa-register.js; node --check sw.js`
+  9. PASS: `node --test tests/pwa-update-auto-reload.test.js tests/workout-active-session-recovery.test.js` — 8 tests passed
+  10. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=858`
+  11. PASS: `git diff --check`
+  12. PASS: `node --test --test-reporter=dot tests/*.test.js`
+  13. 완료: 커밋 `4c5ab9f fix: auto apply app service worker updates`를 `origin/main`에 push했다.
+  14. not verified yet: Dashboard3 Pages workflow는 `deploy-pages` 단계 실패로 Dashboard3 URL이 이전 커밋 `acf69a2`를 반환한다.
+  15. 완료: 운영계 `tomatofarm/main`에 커밋 `4c5ab9f`를 push했다.
+  16. PASS: Tomato Farm 운영계 workflow success — run `28438825034`
+  17. PASS: Tomato Farm 운영계 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 4c5ab9f` → `[deploy-verify] ok 4c5ab9f099af tomatofarm-v20260630z14-sw-auto-update static=233`
+  18. PASS: 운영 marker 검증 — `sw.js` cache version, `index.html` `pwa-register.js?v=20260630z14-sw-auto-update`, `pwa-register.js` auto update markers, 기존 drag fix markers
+  19. not verified yet: 실제 운영 기기 stale SW 자동 갱신 후 캘린더 드래그 UI flow 확인이 남아 있다.
 
 - Workout Calendar Drag Surface Fix 완료:
   1. 요청: 운동 탭 캘린더가 바텀시트 영역에서 손가락을 움직일 때만 드래그되는 상황을 수정한다.
