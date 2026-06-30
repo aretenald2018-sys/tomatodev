@@ -28,8 +28,10 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=863`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
-- not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 홈 라이프존 화면에서 미란다/상담실장 전구가 사라진 상태 확인이 남아 있다.
+- PASS: Dashboard3 Pages 배포 검증 — `6eca291ca93f`, `tomatofarm-v20260630z03-home-npc-bulb-hide`
+- PASS: Dashboard3 Pages marker 검증 — `style.css`의 `.lz-miranda-npc .lz-npc-bulb`, `.lz-consulting-chief-npc .lz-npc-bulb`, `display: none`, `sw.js`의 cache version 확인
+- not verified yet: 인증 계정 실제 홈 라이프존 화면에서 미란다/상담실장 전구가 사라진 상태 확인이 남아 있다.
 
 ## 결정
 
-- 추가 코드 수정 없이 Dashboard3 Pages 배포 검증으로 진행한다.
+- 코드 추가 수정 없이 Dashboard3 Pages 배포를 완료했다.
