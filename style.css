@@ -8180,6 +8180,10 @@ body.wt-running-session-open {
   --lz-bulb-y: -118%;
   transform: translate(var(--lz-bulb-x), var(--lz-bulb-y));
 }
+.lz-miranda-npc .lz-npc-bulb,
+.lz-consulting-chief-npc .lz-npc-bulb {
+  display: none;
+}
 .lz-consulting-chief-npc .lz-nameplate {
   position: absolute;
   left: 50%;

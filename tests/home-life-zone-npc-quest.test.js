@@ -121,6 +121,7 @@ test('life zone NPC quest bubble has a stable clickable overlay style', () => {
   assert.match(css, /width: clamp\(18px, calc\(56 \/ 1672 \* 100%\), 28px\)/);
   assert.match(css, /\.lz-consulting-chief-npc-img \{/);
   assert.match(css, /\.lz-consulting-chief-npc \.lz-npc-bulb \{[\s\S]*top: 0;[\s\S]*width: 96%;[\s\S]*--lz-bulb-y: -118%;/);
+  assert.match(css, /\.lz-miranda-npc \.lz-npc-bulb,\s*\.lz-consulting-chief-npc \.lz-npc-bulb\s*\{[\s\S]*display: none;/);
   assert.match(css, /\.lz-consulting-chief-npc \.lz-nameplate \{[\s\S]*top: -3px;[\s\S]*transform: translate\(-50%, -100%\);/);
   assert.match(css, /\.lz-consulting-chief-npc:focus-visible/);
 });
@@ -241,7 +242,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260630z02-workout-calendar-scroll/);
+  assert.match(sw, /tomatofarm-v20260630z03-home-npc-bulb-hide/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,

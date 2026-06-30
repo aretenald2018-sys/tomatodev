@@ -2,16 +2,31 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-30-workout-calendar-touch-scroll-fix.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-calendar-touch-scroll-fix-review.md`
-- 현재 단계: `운동 캘린더 터치 스크롤 개선 Dashboard3 배포 완료`
+- 상태: `ready_for_execution`
+- 계획 문서: `docs/ai/features/2026-06-30-home-npc-bulb-hide.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-30-home-npc-bulb-hide-review.md`
+- 현재 단계: `미란다/상담실장 전구 표시 숨김 리뷰 완료, Dashboard3 배포 대기`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
 - 마지막 완료: `운동 숫자 입력 키보드 UX 개선을 구현, 리뷰, origin/main 배포하고 Dashboard3 Pages asset 검증을 통과했다.`
-- 다음 액션: `없음.`
-- 차단 사유: `not verified yet: 인증 계정 실제 캘린더 터치 스크롤 UI flow 확인이 남아 있다.`
+- 다음 액션: `변경사항 커밋 후 origin/main에 push하고 Dashboard3 Pages 배포 검증`
+- 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
+
+- Home NPC Bulb Hide 계획:
+  1. 홈 라이프존에서 미란다와 상담실장의 전구 표시를 일단 숨긴다.
+  2. 새 NPC 자산, 좌표, 이름표, 모달, 이벤트는 변경하지 않는다.
+  3. 트레이너 전구는 그대로 유지한다.
+  4. `style.css`에 미란다/상담실장 전구만 `display: none` 처리하고, `sw.js` cache version과 관련 테스트를 갱신한다.
+  5. 완료: `style.css`에 미란다/상담실장 전구 전용 `display: none` 규칙을 추가했다.
+  6. 완료: `sw.js` cache version을 `tomatofarm-v20260630z03-home-npc-bulb-hide`로 bump하고 cache marker 테스트 기대값을 갱신했다.
+  7. PASS: `node --check sw.js`
+  8. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/miranda-quest-modal.test.js tests/consulting-chief-quest-modal.test.js tests/trainer-quest-modal.test.js` — 24 tests passed
+  9. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=863`
+  10. PASS: `node --test --test-reporter=dot tests/*.test.js`
+  11. PASS: `git diff --check`
+  12. 완료: 리뷰 문서 `docs/ai/reviews/2026-06-30-home-npc-bulb-hide-review.md`를 작성했고 추가 수정 이슈는 없다.
+  13. not verified yet: Dashboard3 Pages 배포 검증과 인증 계정 실제 홈 라이프존 화면에서 미란다/상담실장 전구가 사라진 상태 확인이 남아 있다.
 
 - Workout Calendar Touch Scroll Fix 계획:
   1. 모바일 운동 캘린더 화면에서 월간 캘린더 영역을 시작점으로 아래 방향 스크롤하면 화면이 내려가지 않는 증상을 진단했다.
