@@ -170,10 +170,6 @@ function _workoutCalendarRowWeekStart(y, m, row, firstDow) {
   return mondayOf(_dateKeyFromDate(rowMonday));
 }
 
-function _cycleRailShortName(benchmark = {}) {
-  return String(benchmark.short || benchmark.label || '종목').trim().slice(0, 5) || '종목';
-}
-
 function _cycleRailTrackLabel(track) {
   return track === 'intensity' ? '강도' : '볼륨';
 }
@@ -212,7 +208,8 @@ function _buildWorkoutCycleRailItems(board, weekStart) {
       const trackLabel = isWendler ? '웬들러' : _cycleRailTrackLabel(track);
       items.push({
         benchmarkId: bm.id,
-        label: isWendler ? `${_cycleRailShortName(bm)} W${_fmtNum(displayWeek, 0)} ${kgText}` : `${_cycleRailShortName(bm)} ${kgText}`,
+        weekLabel: `W${_fmtNum(displayWeek, 0)}`,
+        targetLabel: `목표 ${kgText}`,
         title: `${bm.label || bm.short || '종목'} · ${_fmtNum(displayWeek, 0)}주차${programWeekText} · ${trackLabel} · ${kgText}${reps ? ` x ${reps}` : ''}`,
         kind: _cycleRailKind(bm, track),
       });
@@ -231,7 +228,7 @@ function _renderWorkoutCycleRail(weekStart, items = []) {
       <span class="cal-cycle-rail-line" aria-hidden="true"></span>
       <div class="cal-cycle-branch-list">
         ${visibleItems.map(item => `
-          <button type="button" class="cal-cycle-branch is-${_esc(item.kind)}" data-cal-cycle-target="${_esc(item.benchmarkId)}" title="${_esc(item.title)}" aria-label="${_esc(`${item.title} 설정 열기`)}"><span class="cal-cycle-branch-text">${_esc(item.label)}</span></button>
+          <button type="button" class="cal-cycle-branch is-${_esc(item.kind)}" data-cal-cycle-target="${_esc(item.benchmarkId)}" title="${_esc(item.title)}" aria-label="${_esc(`${item.title} 설정 열기`)}"><span class="cal-cycle-branch-text"><span class="cal-cycle-branch-week">${_esc(item.weekLabel)}</span><span class="cal-cycle-branch-target">${_esc(item.targetLabel)}</span></span></button>
         `).join('')}
       </div>
     </div>

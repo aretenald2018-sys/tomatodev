@@ -138,8 +138,10 @@ test('workout navigation is wired to app, calendar, record card focus, and PWA c
   assert.match(appJs, /\[data-wt-calendar-scroll-surface\]/);
   assert.match(calendarJs, /class="cal-workout-month-grid" data-wt-calendar-scroll-surface/);
   assert.match(styleCss, /\.cal-workout-month-grid\s*\{[\s\S]*touch-action:\s*pan-y/);
+  assert.match(styleCss, /#tab-workout\.wt-workout-record-mode > \.workout-date-nav\s*\{[\s\S]*display:\s*none/);
+  assert.match(styleCss, /#tab-workout\.wt-workout-record-mode > \.workout-tab-content\s*\{[\s\S]*padding-top:\s*20px/);
   assert.match(styleCss, /body\.wt-workout-tab-active\s*\{[\s\S]*overscroll-behavior-y:\s*none;/);
   assert.match(styleCss, /body\.wt-workout-tab-active #tab-workout\.active\s*\{[\s\S]*overscroll-behavior-y:\s*contain;/);
   assert.match(swJs, /\.\/workout\/navigation-stack\.js/);
-  assert.match(swJs, /tomatofarm-v20260630z03-home-npc-bulb-hide/);
+  assert.match(swJs, /tomatofarm-v20260630z05-workout-record-date-row/);
 });
