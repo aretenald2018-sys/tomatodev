@@ -12915,13 +12915,17 @@ body.wt-running-session-open {
   position: fixed;
   inset: 0 0 60px;
   z-index: 42;
+  display: none;
   background: transparent;
   pointer-events: none;
-  touch-action: none;
-  overscroll-behavior: none;
+  touch-action: auto;
+  overscroll-behavior: auto;
 }
 .cal-workout-day-backdrop.is-full {
+  display: block;
   pointer-events: auto;
+  touch-action: none;
+  overscroll-behavior: none;
 }
 .cal-workout-day-sheet {
   --wt-day-sheet-height: clamp(72px, 10dvh, 96px);

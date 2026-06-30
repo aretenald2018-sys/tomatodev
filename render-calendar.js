@@ -1123,8 +1123,10 @@ function _renderWorkoutHomeDayBar(selectedKey, { cache, plan, checkins, lookup }
 function _renderWorkoutHomeBottomSheet(selectedKey, { cache, plan, checkins, lookup }) {
   const selected = _parseDateKey(selectedKey) ? selectedKey : dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
   const sheetState = _currentWorkoutHomeSheetState();
+  const backdropHiddenAttr = sheetState === 'full' ? '' : ' hidden';
+  const backdropAriaHidden = sheetState === 'full' ? 'false' : 'true';
   return `
-    <div class="cal-workout-day-backdrop is-${sheetState}" data-wt-sheet-backdrop data-wt-sheet-state="${sheetState}" aria-hidden="true"></div>
+    <div class="cal-workout-day-backdrop is-${sheetState}" data-wt-sheet-backdrop data-wt-sheet-state="${sheetState}" aria-hidden="${backdropAriaHidden}"${backdropHiddenAttr}></div>
     <section class="cal-workout-day-sheet is-${sheetState}" data-wt-day-sheet data-wt-sheet-state="${sheetState}" role="dialog" aria-modal="false" aria-expanded="${sheetState !== 'bar' ? 'true' : 'false'}" aria-label="선택 날짜 운동 기록">
       ${_renderWorkoutHomeDayBar(selected, { cache, plan, checkins, lookup })}
       <div class="cal-workout-day-sheet-body">
@@ -2196,6 +2198,8 @@ function _applyWorkoutHomeSheetState() {
       backdrop.classList.remove('is-full');
       backdrop.classList.add('is-bar');
       backdrop.setAttribute('data-wt-sheet-state', 'bar');
+      backdrop.setAttribute('aria-hidden', 'true');
+      backdrop.toggleAttribute('hidden', true);
     }
     return;
   }
@@ -2218,6 +2222,8 @@ function _applyWorkoutHomeSheetState() {
     backdrop.classList.toggle('is-full', expanded);
     backdrop.classList.toggle('is-bar', !expanded);
     backdrop.setAttribute('data-wt-sheet-state', state);
+    backdrop.setAttribute('aria-hidden', expanded ? 'false' : 'true');
+    backdrop.toggleAttribute('hidden', !expanded);
   }
 }
 

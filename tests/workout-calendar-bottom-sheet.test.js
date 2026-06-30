@@ -18,7 +18,9 @@ test('workout calendar keeps the month surface and renders the existing day bar 
   assert.doesNotMatch(homeRender, /_renderWorkoutHomeDetail\(root/);
   assert.match(homeRender, /_renderWorkoutCalendar\(root/);
   assert.match(calendarJs, /function _renderWorkoutHomeBottomSheet/);
-  assert.match(calendarJs, /class="cal-workout-day-backdrop is-\$\{sheetState\}"[\s\S]*data-wt-sheet-backdrop/);
+  assert.match(calendarJs, /const backdropHiddenAttr = sheetState === 'full' \? '' : ' hidden'/);
+  assert.match(calendarJs, /const backdropAriaHidden = sheetState === 'full' \? 'false' : 'true'/);
+  assert.match(calendarJs, /class="cal-workout-day-backdrop is-\$\{sheetState\}"[\s\S]*data-wt-sheet-backdrop[\s\S]*aria-hidden="\$\{backdropAriaHidden\}"\$\{backdropHiddenAttr\}/);
   assert.match(calendarJs, /class="cal-workout-day-sheet is-\$\{sheetState\}"[\s\S]*data-wt-day-sheet/);
   assert.match(calendarJs, /class="cal-workout-day-bar" data-wt-sheet-bar aria-expanded/);
   assert.match(calendarJs, /class="cal-workout-day-expand" data-wt-sheet-toggle/);
@@ -112,6 +114,8 @@ test('full sheet header tap collapses through the sheet toggle path', () => {
   assert.match(applyFn, /toggle\.setAttribute\('aria-label', toggleLabel\)/);
   assert.match(applyFn, /const arrow = sheet\.querySelector\('\.cal-workout-day-expand\[data-wt-sheet-toggle\]'\)/);
   assert.match(applyFn, /arrow\.textContent = expanded \? '⌄' : '⌃'/);
+  assert.match(applyFn, /backdrop\.setAttribute\('aria-hidden', expanded \? 'false' : 'true'\)/);
+  assert.match(applyFn, /backdrop\.toggleAttribute\('hidden', !expanded\)/);
   assert.doesNotMatch(applyFn, /const toggle = sheet\.querySelector\('\[data-wt-sheet-toggle\]'\)/);
   assert.doesNotMatch(applyFn, /toggle\.textContent =/);
   assert.doesNotMatch(applyFn, /data-wt-sheet-handle/);
@@ -302,8 +306,8 @@ test('running detail card uses the workout read-card shell with running metrics 
 });
 
 test('bottom sheet css is fixed, animated, and contains the session bar inside the sheet', () => {
-  assert.match(styleCss, /\.cal-workout-day-backdrop\s*\{[\s\S]*position:\s*fixed;[\s\S]*z-index:\s*42;[\s\S]*pointer-events:\s*none;[\s\S]*touch-action:\s*none;[\s\S]*overscroll-behavior:\s*none;/);
-  assert.match(styleCss, /\.cal-workout-day-backdrop\.is-full\s*\{[\s\S]*pointer-events:\s*auto;/);
+  assert.match(styleCss, /\.cal-workout-day-backdrop\s*\{[\s\S]*position:\s*fixed;[\s\S]*z-index:\s*42;[\s\S]*display:\s*none;[\s\S]*pointer-events:\s*none;[\s\S]*touch-action:\s*auto;[\s\S]*overscroll-behavior:\s*auto;/);
+  assert.match(styleCss, /\.cal-workout-day-backdrop\.is-full\s*\{[\s\S]*display:\s*block;[\s\S]*pointer-events:\s*auto;[\s\S]*touch-action:\s*none;[\s\S]*overscroll-behavior:\s*none;/);
   assert.match(styleCss, /\.cal-workout-day-sheet\s*\{[\s\S]*position:\s*fixed;[\s\S]*transition:[\s\S]*height 260ms/);
   assert.match(styleCss, /height:\s*var\(--wt-day-sheet-height\)/);
   assert.match(styleCss, /\.cal-workout-day-sheet\s*\{[\s\S]*--wt-day-sheet-height:\s*clamp\(72px,\s*10dvh,\s*96px\)/);
@@ -499,5 +503,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260630z14-sw-auto-update/);
+  assert.match(swJs, /tomatofarm-v20260630z15-pwa-backdrop-touch/);
 });

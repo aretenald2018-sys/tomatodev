@@ -2,16 +2,33 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-30-production-stale-sw-auto-update.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-30-production-stale-sw-auto-update-review.md`
-- 현재 단계: `운영계 stale service worker 자동 갱신 실행/리뷰/운영 배포 검증 완료`
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-06-30-pwa-calendar-backdrop-touch-fix.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-30-pwa-calendar-backdrop-touch-fix-review.md`
+- 현재 단계: `운영 PWA 캘린더 backdrop 터치 캡처 수정 실행 완료, 리뷰 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `운영계에 Service Worker 자동 적용/리로드 보강을 배포하고 Tomato Farm 운영 URL 검증을 완료했다.`
-- 다음 액션: `없음.`
+- 마지막 완료: `bar 상태 bottom sheet backdrop을 hidden/display:none 처리하고 full 상태에서만 touch-action:none을 적용하도록 수정했다.`
+- 다음 액션: `커밋 후 운영계 배포 및 https://aretenald2018-sys.github.io/tomatofarm/ asset marker 검증.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
+
+- PWA Calendar Backdrop Touch Fix 계획:
+  1. 요청: 운영 PWA에서 캘린더 드래그가 여전히 되지 않고 바텀시트 영역에서만 움직인다.
+  2. 진단: 운영 URL에는 최신 drag fix와 SW auto update marker가 반영되어 있어, stale SW 단독 원인 가능성은 낮아졌다.
+  3. 진단: PWA 전용 JS가 캘린더 터치를 직접 막는 흐름은 보이지 않고, bar 상태의 투명 fixed backdrop이 `touch-action: none`으로 남는 점이 PWA/WebView 차이를 만들 가능성이 높다.
+  4. Slice 1 범위는 bottom sheet backdrop을 full 상태에서만 활성화하고, bar 상태에서는 `hidden`/`display:none`으로 터치 협상에서 제외하는 것이다.
+  5. `render-calendar.js`, `style.css`가 `STATIC_ASSETS`에 포함되므로 `sw.js` cache version을 함께 bump한다.
+  6. 완료: `render-calendar.js`에서 backdrop 렌더에 `backdropHiddenAttr`, `backdropAriaHidden`을 추가해 bar 상태를 `hidden`으로 렌더한다.
+  7. 완료: `_applyWorkoutHomeSheetState()`가 sheet state 변경 시 backdrop `hidden`과 `aria-hidden`을 함께 동기화한다.
+  8. 완료: `style.css`에서 backdrop 기본 상태를 `display:none`, `touch-action:auto`, full 상태를 `display:block`, `touch-action:none`으로 분리했다.
+  9. 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260630z15-pwa-backdrop-touch`로 bump하고 cache marker 테스트 기대값을 갱신했다.
+  10. PASS: `node --check render-calendar.js; node --check sw.js`
+  11. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/pwa-update-auto-reload.test.js` — 21 tests passed
+  12. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=858`
+  13. PASS: `git diff --check`
+  14. PASS: `node --test --test-reporter=dot tests/*.test.js`
+  15. 리뷰 문서: `docs/ai/reviews/2026-06-30-pwa-calendar-backdrop-touch-fix-review.md`
 
 - Production Stale SW Auto Update 완료:
   1. 요청: 개발계에서는 캘린더 드래그가 되는데 운영계에서는 동일 증상이 반복된다.
