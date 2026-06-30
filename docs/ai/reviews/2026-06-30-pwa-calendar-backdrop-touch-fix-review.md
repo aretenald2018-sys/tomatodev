@@ -26,8 +26,11 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=858`
 - PASS: `git diff --check`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
+- PASS: Tomato Farm 운영계 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 6415021` → `[deploy-verify] ok 64150211994b tomatofarm-v20260630z15-pwa-backdrop-touch static=233`
+- PASS: Tomato Farm 운영계 marker 검증 — `sw.js::tomatofarm-v20260630z15-pwa-backdrop-touch`, `render-calendar.js::backdropHiddenAttr`, `render-calendar.js::toggleAttribute('hidden', !expanded)`, `style.css::.cal-workout-day-backdrop.is-full`, `style.css::touch-action: auto`
+- PASS: Dashboard3 Pages 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 6415021` → `[deploy-verify] ok 64150211994b tomatofarm-v20260630z15-pwa-backdrop-touch static=233`
+- PASS: Dashboard3 Pages marker 검증 — 동일 marker 확인
 
 ## 남은 리스크
 
-- 인증 세션이 없어 실제 운영 PWA에서 `운동 탭 -> 캘린더 본문 세로 드래그`를 직접 손으로 조작하지는 못했다. 운영 배포 후 asset marker와 사용자가 보는 PWA flow로 최종 확인한다.
-
+- 인증 세션이 없어 실제 운영 PWA에서 `운동 탭 -> 캘린더 본문 세로 드래그`를 직접 손으로 조작하지는 못했다. 운영 배포와 asset marker는 확인됐고, 최종 체감 동작은 사용자 기기 PWA에서 확인해야 한다.

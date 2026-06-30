@@ -2,13 +2,13 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-30-pwa-calendar-backdrop-touch-fix.md`
 - 리뷰 문서: `docs/ai/reviews/2026-06-30-pwa-calendar-backdrop-touch-fix-review.md`
-- 현재 단계: `운영 PWA 캘린더 backdrop 터치 캡처 수정 실행 완료, 리뷰 완료`
+- 현재 단계: `운영 PWA 캘린더 backdrop 터치 캡처 수정 실행/리뷰/배포 검증 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `bar 상태 bottom sheet backdrop을 hidden/display:none 처리하고 full 상태에서만 touch-action:none을 적용하도록 수정했다.`
-- 다음 액션: `커밋 후 운영계 배포 및 https://aretenald2018-sys.github.io/tomatofarm/ asset marker 검증.`
+- 마지막 완료: `bar 상태 bottom sheet backdrop touch capture 제거를 양쪽 Pages에 배포하고 운영 URL marker 검증까지 완료했다.`
+- 다음 액션: `없음.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
@@ -29,6 +29,12 @@
   13. PASS: `git diff --check`
   14. PASS: `node --test --test-reporter=dot tests/*.test.js`
   15. 리뷰 문서: `docs/ai/reviews/2026-06-30-pwa-calendar-backdrop-touch-fix-review.md`
+  16. 완료: 커밋 `6415021 fix: disable calendar backdrop touch capture`를 `origin/main`과 `tomatofarm/main`에 push했다.
+  17. PASS: Tomato Farm 운영계 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 6415021` → `[deploy-verify] ok 64150211994b tomatofarm-v20260630z15-pwa-backdrop-touch static=233`
+  18. PASS: Tomato Farm 운영계 marker 검증 — `sw.js` cache version, `render-calendar.js` `backdropHiddenAttr`/`toggleAttribute('hidden', !expanded)`, `style.css` `.cal-workout-day-backdrop.is-full`/`touch-action: auto`
+  19. PASS: Dashboard3 Pages 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 6415021` → `[deploy-verify] ok 64150211994b tomatofarm-v20260630z15-pwa-backdrop-touch static=233`
+  20. PASS: Dashboard3 Pages marker 검증 — `sw.js` cache version, `render-calendar.js` backdrop hidden marker, `style.css` backdrop marker
+  21. not verified yet: 인증 세션이 없어 실제 모바일 PWA에서 `운동 탭 -> 캘린더 본문 세로 드래그` 손 조작은 사용자가 확인해야 한다.
 
 - Production Stale SW Auto Update 완료:
   1. 요청: 개발계에서는 캘린더 드래그가 되는데 운영계에서는 동일 증상이 반복된다.
