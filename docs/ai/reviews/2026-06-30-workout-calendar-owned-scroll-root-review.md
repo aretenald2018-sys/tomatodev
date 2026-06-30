@@ -34,6 +34,9 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=858`
 - PASS: `git diff --check`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
-- not verified yet: 운영 Pages 배포와 실제 운영 asset marker 확인은 커밋/push 후 진행한다.
+- PASS: 커밋 `7445eef fix: give workout calendar an owned scroll root`를 `origin/main`과 `tomatofarm/main`에 push했다.
+- PASS: Tomato Farm 운영계 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 7445eef` → `[deploy-verify] ok 7445eef535e6 tomatofarm-v20260630z16-workout-owned-scroll-root static=233`
+- PASS: Tomato Farm 운영계 marker 검증 — `sw.js::tomatofarm-v20260630z16-workout-owned-scroll-root`, `style.css::#tab-workout.wt-calendar-home-mode > #workout-calendar-root`, `style.css::overflow-y: auto`, `style.css::overscroll-behavior-y: contain`, `render-calendar.js::function _workoutHomeScrollRoot`, `render-calendar.js::root.scrollTo`, `render-calendar.js::root.scrollTop = top`
+- PASS: Dashboard3 Pages 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 7445eef` → `[deploy-verify] ok 7445eef535e6 tomatofarm-v20260630z16-workout-owned-scroll-root static=233`
+- PASS: Dashboard3 Pages marker 검증 — `sw.js` cache version, owned scroll root CSS, root scroll 저장/복원 marker 확인
 - not verified yet: 인증 세션이 없어 실제 모바일 PWA 손 조작 flow는 사용자가 확인해야 한다.
-

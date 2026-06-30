@@ -2,13 +2,13 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-30-workout-calendar-owned-scroll-root.md`
 - 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-calendar-owned-scroll-root-review.md`
-- 현재 단계: `운영 PWA 캘린더 owned scroll root 구현 및 정적 검증 완료, 배포 검증 대기`
+- 현재 단계: `운영 PWA 캘린더 owned scroll root 구현, 리뷰, 운영 배포 검증 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `#workout-calendar-root를 owned scroll root로 승격하고 render-calendar.js scroll 저장/복원을 root 기준으로 바꿨다.`
-- 다음 액션: `커밋 후 origin/main 및 tomatofarm/main 배포, 운영 asset marker 검증.`
+- 마지막 완료: `커밋 7445eef를 origin/main 및 tomatofarm/main에 push했고 운영 Pages에서 z16 asset marker를 확인했다.`
+- 다음 액션: `사용자 기기 PWA에서 앱 업데이트 후 운동 탭 캘린더 본문 세로 드래그를 직접 확인한다.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
@@ -32,7 +32,12 @@
   16. PASS: `git diff --check`
   17. PASS: `node --test --test-reporter=dot tests/*.test.js`
   18. 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-calendar-owned-scroll-root-review.md`
-  19. not verified yet: 운영 Pages 배포 및 asset marker 확인 대기.
+  19. 완료: 커밋 `7445eef fix: give workout calendar an owned scroll root`를 `origin/main`과 `tomatofarm/main`에 push했다.
+  20. PASS: Tomato Farm 운영계 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 7445eef` → `[deploy-verify] ok 7445eef535e6 tomatofarm-v20260630z16-workout-owned-scroll-root static=233`
+  21. PASS: Tomato Farm 운영계 marker 검증 — `sw.js` cache version, owned scroll root CSS, root scroll 저장/복원 marker 확인
+  22. PASS: Dashboard3 Pages 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 7445eef` → `[deploy-verify] ok 7445eef535e6 tomatofarm-v20260630z16-workout-owned-scroll-root static=233`
+  23. PASS: Dashboard3 Pages marker 검증 — `sw.js` cache version, owned scroll root CSS, root scroll 저장/복원 marker 확인
+  24. not verified yet: 인증 세션이 없어 실제 모바일 PWA 손 조작 flow는 사용자가 확인해야 한다.
 
 - PWA Calendar Backdrop Touch Fix 계획:
   1. 요청: 운영 PWA에서 캘린더 드래그가 여전히 되지 않고 바텀시트 영역에서만 움직인다.
