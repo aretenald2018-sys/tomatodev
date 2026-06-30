@@ -163,6 +163,7 @@ test('day sheet add picker stays on the current sheet session', () => {
   assert.doesNotMatch(addFn, /_loadWorkoutEditorForSession\(key, targetIndex\)/);
   assert.match(addFn, /_loadWorkoutStateForSheetSession\(targetKey, targetIndex\)/);
   assert.match(addFn, /window\.wtOpenExercisePicker\(\{[\s\S]*source:\s*'workout-day-sheet'[\s\S]*afterSelect: detail => _refreshWorkoutHomeAfterPickerSelect\(targetKey, targetIndex, detail\)/);
+  assert.doesNotMatch(calendarJs, /function _openWorkoutEditorForSession|function _loadWorkoutEditorForSession|window\.wtOpenWorkoutRecord/);
 });
 
 test('day sheet detail renders picker-added draft exercise rows', () => {
@@ -242,7 +243,8 @@ test('workout bottom sheet replaces the third gym session with a dedicated runni
   assert.match(calendarJs, /function _selectWorkoutHomeRunning\(\)[\s\S]*_workoutHomeSessionIndex = WORKOUT_RUNNING_SESSION_INDEX/);
   assert.match(calendarJs, /window\._wtCalSelectRunning = _selectWorkoutHomeRunning/);
   assert.match(calendarJs, /window\._wtCalAddRunning = _openWorkoutHomeRunning/);
-  assert.match(opener, /_loadWorkoutEditorForSession\(targetKey, WORKOUT_RUNNING_SESSION_INDEX\)/);
+  assert.match(opener, /_loadWorkoutStateForSheetSession\(targetKey, WORKOUT_RUNNING_SESSION_INDEX\)/);
+  assert.doesNotMatch(opener, /_loadWorkoutEditorForSession|wtOpenWorkoutRecord/);
   assert.match(opener, /await import\('\.\/workout\/running-session\.js'\)/);
   assert.match(opener, /window\.wtOpenRunningSession\(\)/);
   assert.match(styleCss, /\.wt-day-fab--running/);
@@ -494,5 +496,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260630z10-day-sheet-inline-edit/);
+  assert.match(swJs, /tomatofarm-v20260630z11-record-route-removed/);
 });

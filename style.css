@@ -4020,32 +4020,6 @@ body.wt-modal-scroll-lock {
   border-bottom: 1px solid var(--border);
   position: sticky; top: 52px; z-index: 10; /* top-nav 아래 */
 }
-.wt-record-back-btn {
-  display: none;
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 44px;
-  height: 44px;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--text);
-  font-size: 36px;
-  line-height: 1;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-#tab-workout.wt-workout-record-mode .wt-record-back-btn {
-  display: inline-flex;
-}
-.wt-record-back-btn:active {
-  transform: translateY(-50%) scale(0.96);
-  background: var(--surface2);
-}
 .wt-date-nav-btn {
   /* TDS sm button: padding 8/14, grid-aligned h-pad changed 18 → 20 */
   background: var(--surface2); border: 1px solid var(--border);
@@ -4127,29 +4101,6 @@ body.wt-workout-tab-active #tab-workout.active {
 }
 #tab-workout.wt-calendar-home-mode > .workout-tab-content > #wt-workout-timer-bar {
   pointer-events: auto;
-}
-#tab-workout.wt-calendar-edit-mode > .workout-calendar-root {
-  display: none;
-}
-#tab-workout.wt-workout-record-mode > .workout-date-nav {
-  display: none;
-}
-#tab-workout.wt-workout-record-mode > .workout-tab-content {
-  padding-top: 20px;
-  touch-action: pan-y;
-  overscroll-behavior-y: contain;
-  -webkit-overflow-scrolling: touch;
-  scroll-padding-bottom: calc(180px + env(safe-area-inset-bottom, 0px));
-}
-#tab-workout.wt-workout-record-mode > .workout-tab-content:has(#wt-workout-timer-bar.wt-open) {
-  padding-bottom: calc(220px + env(safe-area-inset-bottom, 0px));
-}
-#tab-workout.wt-calendar-edit-mode > .workout-tab-content > #expert-top-area,
-#tab-workout.wt-calendar-edit-mode > .workout-tab-content > #tm2-entry {
-  display: none !important;
-}
-#tab-workout.wt-workout-record-mode > .wt-exercise-detail-root {
-  display: none;
 }
 #tab-workout.wt-workout-detail-mode > .workout-calendar-root,
 #tab-workout.wt-workout-detail-mode > .workout-date-nav,
@@ -5500,34 +5451,6 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
    Applied on top of existing styles using #tab-workout, #tab-diet scoping
    ══════════════════════════════════════════════════════════════════ */
 
-/* ── Date Navigation (Seed AppBar style) ── */
-#tab-workout .workout-date-nav {
-  background: var(--seed-bg-layer); border-bottom: 1px solid var(--seed-stroke-neutral);
-  padding: var(--seed-x3) var(--seed-x4); gap: var(--seed-x2);
-  box-shadow: var(--seed-s1);
-}
-#tab-workout .wt-record-back-btn {
-  color: var(--seed-fg-neutral);
-}
-#tab-workout .wt-date-nav-btn {
-  width: 36px; height: 36px; border-radius: var(--seed-r-full);
-  background: var(--seed-bg-neutral-weak); border: none;
-  color: var(--seed-fg-neutral); font-size: var(--seed-t5);
-  transition: background var(--seed-d3) var(--seed-ease);
-}
-#tab-workout .wt-date-nav-btn:active { background: var(--seed-gray-300); transform: scale(0.95); }
-#tab-workout .workout-date-label {
-  font-family: var(--font-sans); font-size: var(--seed-t5); font-weight: 700;
-  color: var(--seed-fg-neutral); letter-spacing: -0.02em;
-}
-#tab-workout .wt-today-btn {
-  background: var(--seed-bg-brand-weak); color: var(--seed-fg-brand);
-  border: 1px solid var(--primary); border-radius: var(--seed-r-full);
-  font-size: var(--seed-t2); font-weight: 700; padding: var(--seed-x1) var(--seed-x3);
-  transition: all var(--seed-d3) var(--seed-ease);
-}
-#tab-workout .wt-today-btn:active { background: var(--primary); color: #fff; }
-
 /* ── Section Category Titles ── */
 #tab-workout .section-category-title {
   font-size: var(--seed-t6); font-weight: 700; color: var(--seed-fg-neutral);
@@ -5748,7 +5671,6 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   scroll-margin-bottom: calc(172px + env(safe-area-inset-bottom, 0px));
   touch-action: manipulation;
 }
-#tab-workout.wt-workout-record-mode .workout-tab-content:focus-within,
 #tab-workout.wt-workout-detail-mode .wt-exercise-detail-root:focus-within {
   scroll-padding-bottom: calc(180px + env(safe-area-inset-bottom, 0px));
 }

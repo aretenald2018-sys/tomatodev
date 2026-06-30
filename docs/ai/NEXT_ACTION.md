@@ -3,15 +3,35 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-30-workout-day-sheet-inline-edit-regression.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-day-sheet-inline-edit-regression-review.md`
-- 현재 단계: `운동 하단 시트 편집 버튼 2화면 회귀 수정 완료`
+- 계획 문서: `docs/ai/features/2026-06-30-workout-record-route-remove.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-record-route-remove-review.md`
+- 현재 단계: `운동 legacy record UI 렌더 경로 제거 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `하단 시트 헬스 카드 편집 버튼 inline edit 수정 커밋 84de7cc를 Dashboard3 Pages에 배포하고 asset marker 검증까지 통과했다.`
-- 다음 액션: `없음. 인증된 모바일 UI에서 편집 흐름 최종 확인만 남음`
+- 마지막 완료: `legacy workout record route/surface 렌더 경로를 제거하고 정적 검증/전체 테스트를 통과했다.`
+- 다음 액션: `Dashboard3 Pages 배포 검증 후 인증된 모바일 UI에서 하단 시트 흐름 확인`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
+
+- Workout Record Route Remove 계획:
+  1. 원인: `app.js`가 `pushWorkoutRecord()`와 `_setWorkoutSurface('record')`로 legacy record 화면을 아직 표시할 수 있다.
+  2. 원인: `render-calendar.js`의 `_openWorkoutEditorForSession()` / `_loadWorkoutEditorForSession()`가 record route opener로 남아 있다.
+  3. 원인: `index.html` 운동 탭의 legacy 날짜 row가 정적 DOM으로 남아 있다.
+  4. Slice 1 범위는 record route push/render 제거, `wtOpenWorkoutRecord`의 day sheet redirect, calendar fallback 정리, legacy 날짜 row 제거, 테스트/cache bump다.
+  5. 계획 문서: `docs/ai/features/2026-06-30-workout-record-route-remove.md`
+  6. 완료: `app.js`에서 `pushWorkoutRecord` 기반 record route 렌더를 제거했다.
+  7. 완료: `wtOpenWorkoutRecord` 호환 호출은 하단 시트 open으로 리다이렉트한다.
+  8. 완료: `render-calendar.js`의 `_openWorkoutEditorForSession()` / `_loadWorkoutEditorForSession()`를 제거했다.
+  9. 완료: 운동 탭의 legacy 날짜 row와 record back button DOM/CSS를 제거했다.
+  10. 완료: `sw.js` cache version을 `tomatofarm-v20260630z11-record-route-removed`로 bump하고 cache marker 테스트 기대값을 갱신했다.
+  11. PASS: `node --check app.js`
+  12. PASS: `node --check render-calendar.js`
+  13. PASS: `node --check sw.js`
+  14. PASS: `node --test tests/workout-navigation-stack.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-timer-summary-only.test.js tests/workout-card-layout-css.test.js`
+  15. PASS: `node scripts/verify-runtime-assets.mjs`
+  16. PASS: `node --test --test-reporter=dot tests/*.test.js`
+  17. PASS: `git diff --check`
+  18. 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-record-route-remove-review.md`
 
 - Workout Day Sheet Inline Edit Regression 계획:
   1. 원인: `render-calendar.js`의 하단 시트 헬스 카드 `편집하기`가 `_wtCalEditSession()`을 호출한다.

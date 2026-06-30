@@ -88,7 +88,7 @@ test('calendar open can reset the workout home month to today', () => {
   assert.equal(snapshot.calendar.viewMonth, 5);
 });
 
-test('workout navigation is wired to app, calendar, record card focus, and PWA cache', async () => {
+test('workout navigation redirects legacy record routes to the day sheet', async () => {
   const [appJs, calendarJs, indexHtml, workoutExercises, navJs, styleCss, swJs] = await Promise.all([
     readFile(new URL('../app.js', import.meta.url), 'utf8'),
     readFile(new URL('../render-calendar.js', import.meta.url), 'utf8'),
@@ -98,6 +98,7 @@ test('workout navigation is wired to app, calendar, record card focus, and PWA c
     readFile(new URL('../style.css', import.meta.url), 'utf8'),
     readFile(new URL('../sw.js', import.meta.url), 'utf8'),
   ]);
+  const workoutTabHtml = indexHtml.slice(indexHtml.indexOf('<div id="tab-workout"'), indexHtml.indexOf('<div id="tab-diet"'));
 
   assert.match(appJs, /enableWorkoutPwaHistory\(\{[\s\S]*getActiveTab: \(\) => _currentTab,[\s\S]*handleOverlayBack: _handleWorkoutOverlayBack/);
   assert.match(appJs, /window\.Capacitor\?\.Plugins\?\.App/);
@@ -109,7 +110,8 @@ test('workout navigation is wired to app, calendar, record card focus, and PWA c
   assert.match(appJs, /window\.addEventListener\('touchmove', onMove, \{ passive: false, capture: true \}\)/);
   assert.match(appJs, /handleWorkoutBack\(\{ activeTab: _currentTab, preferHistory: true, action: 'pull:back' \}\)/);
   assert.match(appJs, /function _isWorkoutRecordScrollTarget\(target\)/);
-  assert.match(appJs, /#tab-workout\.wt-workout-record-mode \.workout-tab-content, #tab-workout\.wt-workout-detail-mode \.wt-exercise-detail-root/);
+  assert.match(appJs, /#tab-workout\.wt-workout-detail-mode \.wt-exercise-detail-root/);
+  assert.doesNotMatch(appJs, /#tab-workout\.wt-workout-record-mode \.workout-tab-content/);
   assert.match(appJs, /return _isWorkoutRecordScrollTarget\(target\) \|\| !!target\?\.closest\?/);
   assert.match(appJs, /function _workoutPageScrollTop\(\)/);
   assert.match(appJs, /Number\(document\.body\?\.scrollTop\) \|\| 0/);
@@ -120,14 +122,21 @@ test('workout navigation is wired to app, calendar, record card focus, and PWA c
   assert.match(appJs, /async function openWorkoutDaySheetFromAction/);
   assert.match(appJs, /openWorkoutDaySheet\(dateKey,[\s\S]*sheetState:\s*'full'/);
   assert.match(appJs, /window\.wtOpenWorkoutDaySheet = openWorkoutDaySheetFromAction/);
-  assert.match(appJs, /route\.name === WORKOUT_ROUTES\.DETAIL[\s\S]*_setWorkoutSurface\('record'\)/);
-  assert.match(appJs, /const detailTarget = snapshot\.detail\?\.exerciseKey \|\| snapshot\.detail\?\.entryIdx != null/);
-  assert.match(appJs, /window\.wtFocusWorkoutEntryFromDetail\?\.\(detailTarget\)/);
+  assert.match(appJs, /async function _redirectWorkoutRecordRouteToDaySheet/);
+  assert.match(appJs, /route\.name !== WORKOUT_ROUTES\.CALENDAR[\s\S]*_redirectWorkoutRecordRouteToDaySheet/);
+  assert.match(appJs, /window\.wtOpenWorkoutRecord = openWorkoutRecordFromCalendar/);
+  assert.match(appJs, /openWorkoutRecordFromCalendar\(key, sessionIndex = 0, options = \{\}\)[\s\S]*openWorkoutDaySheetFromAction\(dateKey, sessionIndex/);
+  assert.match(appJs, /record:tab-redirect-sheet/);
+  assert.doesNotMatch(appJs, /_setWorkoutSurface\('record'\)/);
+  assert.doesNotMatch(appJs, /wt-workout-record-mode|wt-calendar-edit-mode/);
+  assert.doesNotMatch(appJs, /pushWorkoutRecord\(/);
+  assert.doesNotMatch(appJs, /wtFocusWorkoutEntryFromDetail\?\./);
   assert.match(calendarJs, /openWorkoutDaySheet\(nextKey/);
   assert.match(calendarJs, /calendar\.viewYear != null && Number\.isFinite\(Number\(calendar\.viewYear\)\)/);
   assert.match(calendarJs, /\^\(\\d\{4\}\)-\(\\d\{2\}\)-\(\\d\{2\}\)\$/);
-  assert.match(calendarJs, /window\.wtOpenWorkoutRecord/);
-  assert.match(indexHtml, /class="wt-record-back-btn"[\s\S]*window\.wtHandleWorkoutBack\?\.\(\)/);
+  assert.doesNotMatch(calendarJs, /window\.wtOpenWorkoutRecord|_openWorkoutEditorForSession|_loadWorkoutEditorForSession/);
+  assert.doesNotMatch(workoutTabHtml, /class="wt-record-back-btn"[\s\S]*window\.wtHandleWorkoutBack\?\.\(\)/);
+  assert.doesNotMatch(workoutTabHtml, /class="workout-date-nav"|id="wt-date-label"/);
   assert.match(indexHtml, /id="wt-exercise-detail-root"/);
   assert.doesNotMatch(workoutExercises, /pushWorkoutDetail\(\{/);
   assert.match(workoutExercises, /function _findWorkoutEntryIndexByExerciseId/);
@@ -151,12 +160,11 @@ test('workout navigation is wired to app, calendar, record card focus, and PWA c
   assert.match(styleCss, /#tab-workout\.wt-calendar-home-mode > \.workout-tab-content\s*\{[\s\S]*display:\s*block;[\s\S]*pointer-events:\s*none;/);
   assert.match(styleCss, /#tab-workout\.wt-calendar-home-mode > \.workout-tab-content > :not\(#wt-workout-timer-bar\)\s*\{[\s\S]*display:\s*none !important;/);
   assert.match(styleCss, /#tab-workout\.wt-calendar-home-mode \.wt-workout-timer-bar\s*\{[\s\S]*bottom:\s*calc\(112px \+ env\(safe-area-inset-bottom,\s*0px\)\)/);
-  assert.match(styleCss, /#tab-workout\.wt-workout-record-mode > \.workout-date-nav\s*\{[\s\S]*display:\s*none/);
-  assert.match(styleCss, /#tab-workout\.wt-workout-record-mode > \.workout-tab-content\s*\{[\s\S]*padding-top:\s*20px/);
-  assert.match(styleCss, /#tab-workout\.wt-workout-record-mode > \.workout-tab-content\s*\{[\s\S]*touch-action:\s*pan-y;[\s\S]*overscroll-behavior-y:\s*contain;[\s\S]*-webkit-overflow-scrolling:\s*touch;/);
-  assert.match(styleCss, /#tab-workout\.wt-workout-record-mode > \.workout-tab-content:has\(#wt-workout-timer-bar\.wt-open\)\s*\{[\s\S]*padding-bottom:\s*calc\(220px \+ env\(safe-area-inset-bottom,\s*0px\)\)/);
+  assert.doesNotMatch(styleCss, /#tab-workout\.wt-workout-record-mode/);
+  assert.doesNotMatch(styleCss, /#tab-workout\.wt-calendar-edit-mode/);
+  assert.doesNotMatch(styleCss, /\.wt-record-back-btn/);
   assert.match(styleCss, /body\.wt-workout-tab-active\s*\{[\s\S]*overscroll-behavior-y:\s*none;/);
   assert.match(styleCss, /body\.wt-workout-tab-active #tab-workout\.active\s*\{[\s\S]*overscroll-behavior-y:\s*contain;/);
   assert.match(swJs, /\.\/workout\/navigation-stack\.js/);
-  assert.match(swJs, /tomatofarm-v20260630z10-day-sheet-inline-edit/);
+  assert.match(swJs, /tomatofarm-v20260630z11-record-route-removed/);
 });

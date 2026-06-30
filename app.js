@@ -29,7 +29,6 @@ import {
   handleWorkoutBack,
   openWorkoutCalendar,
   openWorkoutDaySheet,
-  pushWorkoutRecord,
   subscribeWorkoutNav,
 } from './workout/navigation-stack.js';
 import './utils/confirm-modal.js'; // window.confirmAction / confirmSimple 등록
@@ -272,55 +271,54 @@ let _workoutSurface = 'calendar';
 const WORKOUT_PULL_BACK_DEADZONE_PX = 8;
 const WORKOUT_PULL_BACK_THRESHOLD_PX = 72;
 function _setWorkoutSurface(surface) {
-  _workoutSurface = surface === 'detail' ? 'detail' : (surface === 'edit' || surface === 'record') ? 'record' : 'calendar';
+  _workoutSurface = surface === 'detail' ? 'detail' : 'calendar';
   const panel = document.getElementById('tab-workout');
   if (!panel) return;
   panel.classList.toggle('wt-calendar-home-mode', _workoutSurface === 'calendar');
-  panel.classList.toggle('wt-calendar-edit-mode', _workoutSurface === 'record');
-  panel.classList.toggle('wt-workout-record-mode', _workoutSurface === 'record');
   panel.classList.toggle('wt-workout-detail-mode', _workoutSurface === 'detail');
 }
 const _isWorkoutCalendarHome = () => _workoutSurface === 'calendar';
 
-async function _renderWorkoutRoute(snapshot = getWorkoutNavSnapshot(), action = '') {
-  const route = snapshot.stack?.[snapshot.stack.length - 1] || { name: WORKOUT_ROUTES.CALENDAR };
-  if (route.name === WORKOUT_ROUTES.CALENDAR) {
-    _setWorkoutSurface('calendar');
-    window.clearWorkoutExerciseDetail?.();
-    const calendarModule = await _lazyRenderWorkoutCalendarHome();
-    calendarModule.applyWorkoutCalendarNavSnapshot?.(snapshot, { preserveScroll: true, action });
+async function _renderWorkoutCalendarRoute(snapshot = getWorkoutNavSnapshot(), action = '') {
+  _setWorkoutSurface('calendar');
+  window.clearWorkoutExerciseDetail?.();
+  const calendarModule = await _lazyRenderWorkoutCalendarHome();
+  calendarModule.applyWorkoutCalendarNavSnapshot?.(snapshot, { preserveScroll: true, action });
+}
+
+async function _redirectWorkoutRecordRouteToDaySheet(snapshot = getWorkoutNavSnapshot(), route = {}, action = '') {
+  const key = route.dateKey
+    || snapshot.record?.dateKey
+    || snapshot.calendar?.selectedKey
+    || _dateKeyFromParts(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+  const parsed = _parseWorkoutDateKey(key);
+  if (!parsed) {
+    await _renderWorkoutCalendarRoute(snapshot, action || 'record:redirect-invalid');
     return;
   }
-
-  const key = route.dateKey || snapshot.record?.dateKey || snapshot.calendar?.selectedKey || _dateKeyFromParts(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
-  const parsed = _parseWorkoutDateKey(key);
   const sessionIndex = Number.isFinite(Number(route.sessionIndex))
     ? Math.max(0, Math.floor(Number(route.sessionIndex)))
     : Math.max(0, Math.floor(Number(snapshot.record?.sessionIndex) || 0));
-  if (parsed) {
-    window.__wtTargetSessionIndex = sessionIndex;
-    loadWorkoutDate(parsed.y, parsed.m, parsed.d);
-  }
-  wtRecoverTimers();
-  if (typeof window.resetExpertView === 'function') window.resetExpertView();
-  if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+  openWorkoutDaySheet(key, {
+    sessionIndex,
+    sheetState: 'full',
+    viewYear: parsed.y,
+    viewMonth: parsed.m,
+    scrollTop: Math.max(0, Number(snapshot.calendar?.scrollTop) || 0),
+    history: 'replace',
+    notify: false,
+    action: action || 'record:redirect-sheet',
+  });
+  await _renderWorkoutCalendarRoute(getWorkoutNavSnapshot(), action || 'record:redirect-sheet');
+}
 
-  if (route.name === WORKOUT_ROUTES.DETAIL) {
-    _setWorkoutSurface('record');
-    window.clearWorkoutExerciseDetail?.();
-    const detailTarget = snapshot.detail?.exerciseKey || snapshot.detail?.entryIdx != null
-      ? snapshot.detail
-      : route;
-    window.wtFocusWorkoutEntryFromDetail?.(detailTarget);
+async function _renderWorkoutRoute(snapshot = getWorkoutNavSnapshot(), action = '') {
+  const route = snapshot.stack?.[snapshot.stack.length - 1] || { name: WORKOUT_ROUTES.CALENDAR };
+  if (route.name !== WORKOUT_ROUTES.CALENDAR) {
+    await _redirectWorkoutRecordRouteToDaySheet(snapshot, route, action);
     return;
   }
-
-  _setWorkoutSurface('record');
-  window.clearWorkoutExerciseDetail?.();
-  const scrollTop = Math.max(0, Number(snapshot.record?.scrollTop) || 0);
-  if (scrollTop > 0 && typeof window !== 'undefined') {
-    window.requestAnimationFrame?.(() => window.scrollTo({ top: scrollTop, behavior: 'auto' }));
-  }
+  await _renderWorkoutCalendarRoute(snapshot, action);
 }
 
 async function openWorkoutRecordFromCalendar(key, sessionIndex = 0, options = {}) {
@@ -328,17 +326,11 @@ async function openWorkoutRecordFromCalendar(key, sessionIndex = 0, options = {}
     ? key
     : _dateKeyFromParts(key?.y, key?.m, key?.d);
   if (!dateKey) return false;
-  pushWorkoutRecord({
-    dateKey,
-    sessionIndex,
-    calendarScrollTop: document.scrollingElement?.scrollTop || window.scrollY || 0,
-  }, { history: options.history || 'push', notify: false, action: options.action || 'record:push' });
-  if (_currentTab !== 'workout') {
-    await switchTab('workout', { preserveWorkoutRoute: true });
-    return true;
-  }
-  await _renderWorkoutRoute(getWorkoutNavSnapshot(), options.action || 'record:push');
-  return true;
+  return openWorkoutDaySheetFromAction(dateKey, sessionIndex, {
+    ...options,
+    history: options.history || 'replace',
+    action: options.action || 'record:redirect-sheet',
+  });
 }
 
 async function openWorkoutDaySheetFromAction(key, sessionIndex = 0, options = {}) {
@@ -380,7 +372,7 @@ function _handleWorkoutOverlayBack() {
 
 function _isWorkoutRecordScrollTarget(target) {
   return !!target?.closest?.(
-    '#tab-workout.wt-workout-record-mode .workout-tab-content, #tab-workout.wt-workout-detail-mode .wt-exercise-detail-root'
+    '#tab-workout.wt-workout-detail-mode .wt-exercise-detail-root'
   );
 }
 
@@ -502,9 +494,15 @@ async function switchTab(tab, options = {}) {
     if (hasTargetDate) {
       const key = _dateKeyFromParts(Number(targetDate.y), Number(targetDate.m), Number(targetDate.d));
       const targetSessionIndex = _takeWorkoutTargetSessionIndex(0);
-      pushWorkoutRecord({ dateKey: key, sessionIndex: targetSessionIndex }, {
-        action: 'record:open-tab',
-        history: options?.history || 'push',
+      const parsed = _parseWorkoutDateKey(key);
+      openWorkoutDaySheet(key, {
+        sessionIndex: targetSessionIndex,
+        sheetState: 'full',
+        viewYear: parsed?.y ?? TODAY.getFullYear(),
+        viewMonth: parsed?.m ?? TODAY.getMonth(),
+        scrollTop: 0,
+        action: 'record:tab-redirect-sheet',
+        history: options?.history || 'replace',
         notify: false,
       });
     } else if (!options?.preserveWorkoutRoute) {
@@ -522,9 +520,9 @@ async function switchTab(tab, options = {}) {
     }
     const routeSnapshot = getWorkoutNavSnapshot();
     const route = currentWorkoutRoute();
-    _setWorkoutSurface(route.name === WORKOUT_ROUTES.RECORD || route.name === WORKOUT_ROUTES.DETAIL ? 'record' : 'calendar');
+    _setWorkoutSurface('calendar');
     if (hasTargetDate) {
-      await _renderWorkoutRoute(routeSnapshot, 'record:open-tab');
+      await _renderWorkoutRoute(routeSnapshot, 'record:tab-redirect-sheet');
     } else {
       if (route.name === WORKOUT_ROUTES.CALENDAR) {
         loadWorkoutDate(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());

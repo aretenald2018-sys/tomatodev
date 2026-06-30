@@ -416,36 +416,6 @@ function _workoutRecordOrdinalForKey(cache, selectedKey, plan, checkins, lookup)
   return count;
 }
 
-function _openWorkoutEditorForSession(key, sessionIndex = 0) {
-  const p = _parseDateKey(key);
-  if (!p) return;
-  window.__wtTargetSessionIndex = Math.max(0, Math.floor(Number(sessionIndex) || 0));
-  if (typeof window.wtOpenWorkoutRecord === 'function') {
-    window.wtOpenWorkoutRecord(key, sessionIndex);
-    return;
-  }
-  window.openWorkoutTab?.(p.y, p.m, p.d);
-}
-
-async function _loadWorkoutEditorForSession(key, sessionIndex = 0) {
-  const p = _parseDateKey(key);
-  if (!p) return false;
-  window.__wtTargetSessionIndex = Math.max(0, Math.floor(Number(sessionIndex) || 0));
-  if (typeof window.wtOpenWorkoutRecord === 'function') {
-    return await window.wtOpenWorkoutRecord(key, sessionIndex);
-  }
-  if (typeof window.switchTab === 'function') {
-    await window.switchTab('workout', { workoutDate: { y: p.y, m: p.m, d: p.d } });
-    return true;
-  }
-  if (typeof window.openWorkoutTab === 'function') {
-    window.openWorkoutTab(p.y, p.m, p.d);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    return true;
-  }
-  return false;
-}
-
 async function _loadWorkoutStateForSheetSession(key, sessionIndex = 0) {
   const p = _parseDateKey(key);
   if (!p || typeof window === 'undefined') return false;
@@ -2189,7 +2159,9 @@ function _openDay(key) {
   if (workoutRow) {
     const openWorkout = () => {
       closeModal('calendar-day-modal');
-      window.openWorkoutTab?.(yy, mm - 1, dd);
+      const key = `${yy}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+      if (typeof window.wtOpenWorkoutDaySheet === 'function') window.wtOpenWorkoutDaySheet(key, 0, { action: 'calendar-modal:workout-sheet' });
+      else window.openWorkoutTab?.(yy, mm - 1, dd);
     };
     workoutRow.addEventListener('click', openWorkout);
     workoutRow.addEventListener('keydown', (e) => {
@@ -2315,7 +2287,7 @@ function _bindWorkoutHomeSheetActions(root) {
     const key = add.getAttribute('data-date-key') || _workoutHomeSelectedKey;
     Promise.resolve(_addWorkoutHomeSession(key)).catch((e) => {
       console.warn('[workout-calendar] add session action failed:', e);
-      _openWorkoutEditorForSession(key, _workoutHomeSessionIndex);
+      window.showToast?.('종목 추가 화면을 열지 못했어요', 2200, 'error');
     });
   }, true);
 }
@@ -2426,8 +2398,8 @@ async function _openWorkoutHomeRoutine(key) {
   renderWorkoutCalendarHome();
 
   try {
-    const loaded = await _loadWorkoutEditorForSession(key, sessionIndex);
-    if (!loaded) throw new Error('workout editor is not available');
+    const loaded = await _loadWorkoutStateForSheetSession(key, sessionIndex);
+    if (!loaded) throw new Error('workout state loader is not available');
 
     if (typeof window.openRoutineSuggestWithRecent !== 'function' && typeof window.openRoutineSuggest !== 'function') {
       await import('./workout/expert.js');
@@ -2667,7 +2639,8 @@ async function _addWorkoutHomeSession(key) {
     throw new Error('exercise picker is not registered');
   } catch (e) {
     console.warn('[workout-calendar] add session picker open failed:', e);
-    _openWorkoutEditorForSession(targetKey, targetIndex);
+    window.showToast?.('종목 추가 화면을 열지 못했어요', 2200, 'error');
+    renderWorkoutCalendarHome();
   }
 }
 
@@ -2682,8 +2655,8 @@ async function _openWorkoutHomeRunning(key) {
     return;
   }
   try {
-    const loaded = await _loadWorkoutEditorForSession(targetKey, WORKOUT_RUNNING_SESSION_INDEX);
-    if (!loaded) throw new Error('workout editor is not available');
+    const loaded = await _loadWorkoutStateForSheetSession(targetKey, WORKOUT_RUNNING_SESSION_INDEX);
+    if (!loaded) throw new Error('workout state loader is not available');
     if (typeof window.wtOpenRunningSession !== 'function') {
       await import('./workout/running-session.js');
     }
