@@ -30,7 +30,12 @@
   14. 리뷰 문서: `docs/ai/reviews/2026-06-30-stale-ui-code-prune-review.md`
   15. 완료: 코드/문서 커밋 `c98ec70 fix: prune stale ui code`를 `origin/main`에 push했다.
   16. PASS: Dashboard3 Pages 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ c98ec70` → `[deploy-verify] ok c98ec70a4a1a tomatofarm-v20260630z12-stale-ui-prune static=233`
-  17. not verified yet: 인증 세션이 필요한 실제 UI 클릭 흐름은 배포 URL에서 직접 조작하지 않았다.
+  17. 완료: 배포 기록 커밋 `c5fd880 docs: record stale ui prune deploy`를 `origin/main`에 push했다.
+  18. PASS: Dashboard3 Pages 최종 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ c5fd880` → `[deploy-verify] ok c5fd880d243b tomatofarm-v20260630z12-stale-ui-prune static=233`
+  19. 완료: 운영계 `tomatofarm/main`에도 `c5fd880`을 fast-forward push했다.
+  20. PASS: Tomato Farm 운영계 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ c5fd880` → `[deploy-verify] ok c5fd880d243b tomatofarm-v20260630z12-stale-ui-prune static=233`
+  21. PASS: 운영계 marker 검증 — `sw.js` cache version, `app.js::sheet:tab-open`, `workout/navigation-stack.js::CALENDAR: 'CalendarScreen'`, `index.html::wt-running-session-root`
+  22. not verified yet: 인증 세션이 필요한 실제 UI 클릭 흐름은 배포 URL에서 직접 조작하지 않았다.
 
 - Workout Record Route Remove 계획:
   1. 원인: `app.js`가 `pushWorkoutRecord()`와 `_setWorkoutSurface('record')`로 legacy record 화면을 아직 표시할 수 있다.
