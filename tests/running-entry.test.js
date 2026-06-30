@@ -67,6 +67,9 @@ test('running picker tile and session screens have dedicated styles', () => {
   assert.match(styleCss, /\.wt-run-real-map/);
   assert.match(styleCss, /\.wt-run-map-canvas/);
   assert.match(styleCss, /\.wt-run-map-status/);
+  assert.match(styleCss, /\.wt-run-start-options/);
+  assert.match(styleCss, /\.wt-run-goal-sheet/);
+  assert.match(styleCss, /\.wt-run-goal-progress/);
   assert.match(styleCss, /image-rendering:\s*auto/);
   assert.match(styleCss, /-webkit-font-smoothing:\s*antialiased/);
   assert.match(styleCss, /width:\s*min\(24vw,\s*110px\)/);
@@ -77,6 +80,26 @@ test('running picker tile and session screens have dedicated styles', () => {
   assert.doesNotMatch(styleCss, /\.wt-run-tip-card/);
   assert.doesNotMatch(styleCss, /\.wt-run-float/);
   assert.doesNotMatch(styleCss, /\.wt-run-map-label/);
+});
+
+test('running session has goal setup and Korean voice guidance cues', () => {
+  assert.match(runningSessionJs, /DEFAULT_RUNNING_GOAL/);
+  assert.match(runningSessionJs, /RUNNING_GOAL_DEFAULTS/);
+  assert.match(runningSessionJs, /data-running-action="audio-toggle"/);
+  assert.match(runningSessionJs, /data-running-action="goal-save"/);
+  assert.match(runningSessionJs, /name="running-goal-type"/);
+  assert.match(runningSessionJs, /id="wt-run-goal-distance"/);
+  assert.match(runningSessionJs, /id="wt-run-goal-time"/);
+  assert.match(runningSessionJs, /function _runningGoalProgress/);
+  assert.match(runningSessionJs, /function _checkRunningAudioCues/);
+  assert.match(runningSessionJs, /announcedSplits/);
+  assert.match(runningSessionJs, /announcedGoalHalf/);
+  assert.match(runningSessionJs, /announcedGoalDone/);
+  assert.match(runningSessionJs, /SpeechSynthesisUtterance/);
+  assert.match(runningSessionJs, /utterance\.lang = 'ko-KR'/);
+  assert.match(runningSessionJs, /킬로미터 통과/);
+  assert.match(runningSessionJs, /목표를 완료했습니다/);
+  assert.doesNotMatch(runningSessionJs, /목표 설정은 준비 중이에요/);
 });
 
 test('running session publishes home life-zone live state without rendering a duplicate home track', () => {
@@ -199,7 +222,7 @@ test('running workout save writes a running life-zone snapshot', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260630z17-manual-cardio-picker/);
+  assert.match(swJs, /tomatofarm-v20260630z18-running-voice-goals/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/sprites\/jups-running-track\.png/);

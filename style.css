@@ -6883,6 +6883,53 @@ body.wt-running-session-open {
   color: #111;
   box-shadow: inset 0 -3px 0 #111;
 }
+.wt-run-start-options {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px 16px;
+  background: #fff;
+  border-bottom: 1px solid #eceff3;
+}
+.wt-run-start-options button {
+  min-width: 0;
+  min-height: 58px;
+  border: 1px solid #e3e7ec;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #111827;
+  text-align: left;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.wt-run-start-options button.active {
+  border-color: #111;
+  background: #111;
+  color: #fff;
+}
+.wt-run-start-options span,
+.wt-run-start-options strong {
+  display: block;
+  min-width: 0;
+}
+.wt-run-start-options span {
+  color: #7b818b;
+  font-size: 12px;
+  font-weight: 800;
+}
+.wt-run-start-options button.active span {
+  color: rgba(255, 255, 255, 0.68);
+}
+.wt-run-start-options strong {
+  margin-top: 5px;
+  font-size: 16px;
+  line-height: 1.15;
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .wt-run-start-map {
   position: relative;
   flex: 1 1 auto;
@@ -7042,6 +7089,174 @@ body.wt-running-session-open {
   font-weight: 700;
   cursor: pointer;
 }
+.wt-run-goal-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: rgba(15, 23, 42, 0.42);
+}
+.wt-run-goal-sheet {
+  position: absolute;
+  z-index: 21;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: min(82vh, 560px);
+  overflow-y: auto;
+  padding: 18px 18px max(18px, env(safe-area-inset-bottom));
+  border-radius: 18px 18px 0 0;
+  background: #fff;
+  color: #111827;
+  box-shadow: 0 -18px 46px rgba(15, 23, 42, 0.2);
+}
+.wt-run-goal-sheet header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  gap: 8px;
+  align-items: center;
+}
+.wt-run-goal-sheet header span,
+.wt-run-goal-sheet header strong {
+  display: block;
+  min-width: 0;
+}
+.wt-run-goal-sheet header span {
+  color: #8a92a0;
+  font-size: 12px;
+  font-weight: 800;
+}
+.wt-run-goal-sheet header strong {
+  margin-top: 3px;
+  font-size: 20px;
+  line-height: 1.25;
+  font-weight: 900;
+}
+.wt-run-goal-modes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 18px;
+}
+.wt-run-goal-modes label {
+  min-width: 0;
+}
+.wt-run-goal-modes input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.wt-run-goal-modes span {
+  display: grid;
+  min-height: 46px;
+  place-items: center;
+  border: 1px solid #e3e7ec;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #4b5563;
+  font-size: 15px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.wt-run-goal-modes input:checked + span {
+  border-color: #111;
+  background: #111;
+  color: #fff;
+}
+.wt-run-goal-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.wt-run-goal-fields label {
+  position: relative;
+  min-width: 0;
+  display: block;
+  padding: 10px 12px;
+  border: 1px solid #e3e7ec;
+  border-radius: 8px;
+  background: #fff;
+}
+.wt-run-goal-fields span {
+  display: block;
+  color: #8a92a0;
+  font-size: 12px;
+  font-weight: 800;
+}
+.wt-run-goal-fields input {
+  width: 100%;
+  margin-top: 6px;
+  padding: 0 34px 0 0;
+  border: 0;
+  outline: 0;
+  color: #111827;
+  font-size: 24px;
+  line-height: 1.2;
+  font-weight: 900;
+}
+.wt-run-goal-fields i {
+  position: absolute;
+  right: 12px;
+  bottom: 13px;
+  color: #7b818b;
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 850;
+}
+.wt-run-audio-row {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid #e3e7ec;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+.wt-run-audio-row input {
+  width: 20px;
+  height: 20px;
+  accent-color: #111;
+}
+.wt-run-audio-row strong,
+.wt-run-audio-row em {
+  display: block;
+  min-width: 0;
+}
+.wt-run-audio-row strong {
+  font-size: 15px;
+  font-weight: 900;
+}
+.wt-run-audio-row em {
+  margin-top: 3px;
+  color: #7b818b;
+  font-style: normal;
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 700;
+}
+.wt-run-goal-sheet footer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+.wt-run-goal-sheet footer button {
+  min-width: 0;
+  min-height: 50px;
+  border: 0;
+  border-radius: 999px;
+  background: #edf2f7;
+  color: #1f2937;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.wt-run-goal-sheet footer button:last-child {
+  background: #111;
+  color: #fff;
+}
 .wt-running-screen--progress {
   background: #ffde2e;
   color: #111;
@@ -7069,6 +7284,53 @@ body.wt-running-session-open {
   color: rgba(17, 17, 17, 0.45);
   font-size: 18px;
   font-weight: 700;
+}
+.wt-run-goal-progress {
+  flex: 0 0 auto;
+  margin: 18px 26px 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.54);
+  box-shadow: inset 0 0 0 1px rgba(17, 17, 17, 0.08);
+}
+.wt-run-goal-progress-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+.wt-run-goal-progress-head span,
+.wt-run-goal-progress-head strong {
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: 900;
+}
+.wt-run-goal-progress-head span {
+  color: rgba(17, 17, 17, 0.64);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wt-run-goal-progress-bar {
+  height: 7px;
+  margin-top: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(17, 17, 17, 0.16);
+}
+.wt-run-goal-progress-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #111;
+}
+.wt-run-goal-progress p {
+  margin: 8px 0 0;
+  color: rgba(17, 17, 17, 0.58);
+  font-size: 12px;
+  line-height: 1.25;
+  font-weight: 800;
 }
 .wt-run-live-main {
   flex: 1 1 auto;
@@ -7308,6 +7570,20 @@ body.wt-running-session-open {
   }
   .wt-run-start-tabs button {
     font-size: 18px;
+  }
+  .wt-run-start-options {
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  .wt-run-start-options strong {
+    font-size: 14px;
+  }
+  .wt-run-goal-fields {
+    grid-template-columns: 1fr;
+  }
+  .wt-run-goal-progress {
+    margin-left: 16px;
+    margin-right: 16px;
   }
   .wt-run-live-stats {
     padding-left: 16px;

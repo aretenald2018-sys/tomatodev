@@ -13,6 +13,9 @@ const GEO_OPTIONS = {
   maximumAge: 1000,
   timeout: 15000,
 };
+const DEFAULT_RUNNING_GOAL = Object.freeze({ type: 'free', value: 0 });
+const RUNNING_GOAL_DEFAULTS = Object.freeze({ distance: 5, time: 30 });
+const RUNNING_AUDIO_MIN_MS = 3500;
 
 const _session = {
   open: false,
@@ -31,6 +34,13 @@ const _session = {
   saving: false,
   placeSummary: null,
   placePromise: null,
+  goal: { ...DEFAULT_RUNNING_GOAL },
+  goalSheetOpen: false,
+  audioGuide: true,
+  announcedSplits: 0,
+  announcedGoalHalf: false,
+  announcedGoalDone: false,
+  lastSpeechAt: 0,
 };
 
 function _root() {
@@ -67,6 +77,129 @@ function _escapeHtml(value) {
     '"': '&quot;',
     "'": '&#39;',
   })[ch]);
+}
+
+function _cloneRunningGoal(goal = DEFAULT_RUNNING_GOAL) {
+  const type = goal?.type === 'distance' || goal?.type === 'time' ? goal.type : 'free';
+  return { type, value: type === 'free' ? 0 : _num(goal?.value, RUNNING_GOAL_DEFAULTS[type]) };
+}
+
+function _sanitizeRunningGoal(type, rawValue) {
+  const safeType = type === 'distance' || type === 'time' ? type : 'free';
+  if (safeType === 'free') return { ...DEFAULT_RUNNING_GOAL };
+  const fallback = RUNNING_GOAL_DEFAULTS[safeType];
+  const min = safeType === 'distance' ? 0.1 : 1;
+  const max = safeType === 'distance' ? 99.99 : 999;
+  const value = Math.min(max, Math.max(min, _num(rawValue, fallback)));
+  return {
+    type: safeType,
+    value: safeType === 'distance' ? _round(value, 2) : Math.round(value),
+  };
+}
+
+function _runningGoalLabel(goal = _session.goal) {
+  const safe = _cloneRunningGoal(goal);
+  if (safe.type === 'distance') return `${_round(safe.value, 2)} km`;
+  if (safe.type === 'time') return `${Math.round(safe.value)}분`;
+  return '자유 러닝';
+}
+
+function _runningGoalShortType(goal = _session.goal) {
+  const safe = _cloneRunningGoal(goal);
+  if (safe.type === 'distance') return '거리 목표';
+  if (safe.type === 'time') return '시간 목표';
+  return '목표 없음';
+}
+
+function _runningGoalProgress(summary = _currentSummary()) {
+  const goal = _cloneRunningGoal(_session.goal);
+  if (goal.type === 'distance') {
+    const target = Math.max(0.1, _num(goal.value, RUNNING_GOAL_DEFAULTS.distance));
+    const current = Math.max(0, _num(summary?.distanceKm, 0));
+    return {
+      active: true,
+      type: 'distance',
+      current,
+      target,
+      ratio: target > 0 ? Math.min(1, current / target) : 0,
+    };
+  }
+  if (goal.type === 'time') {
+    const target = Math.max(60, _num(goal.value, RUNNING_GOAL_DEFAULTS.time) * 60);
+    const current = Math.max(0, _num(summary?.durationSec, 0));
+    return {
+      active: true,
+      type: 'time',
+      current,
+      target,
+      ratio: target > 0 ? Math.min(1, current / target) : 0,
+    };
+  }
+  return { active: false, type: 'free', current: 0, target: 0, ratio: 0 };
+}
+
+function _runningGoalRemainingLabel(progress) {
+  if (!progress?.active) return '';
+  if (progress.ratio >= 1) return '목표 완료';
+  const remaining = Math.max(0, progress.target - progress.current);
+  if (progress.type === 'distance') return `${_round(remaining, 2)} km 남음`;
+  return `${Math.ceil(remaining / 60)}분 남음`;
+}
+
+function _runningSpeechDuration(sec) {
+  const total = Math.max(0, Math.floor(_num(sec, 0)));
+  const minutes = Math.floor(total / 60);
+  const seconds = total % 60;
+  if (minutes > 0 && seconds > 0) return `${minutes}분 ${seconds}초`;
+  if (minutes > 0) return `${minutes}분`;
+  return `${seconds}초`;
+}
+
+function _runningSpeechPace(summary) {
+  if (summary?.avgPaceSecPerKm > 0) return `평균 페이스 ${formatRunningPace(summary.avgPaceSecPerKm)}입니다`;
+  return `시간 ${_runningSpeechDuration(summary?.durationSec || 0)}입니다`;
+}
+
+function _speakRunning(message, options = {}) {
+  if (!_session.audioGuide || !message || typeof window === 'undefined') return false;
+  const synth = window.speechSynthesis;
+  const Utterance = window.SpeechSynthesisUtterance || globalThis.SpeechSynthesisUtterance;
+  if (!synth || typeof synth.speak !== 'function' || typeof Utterance !== 'function') return false;
+  const now = _now();
+  if (!options.force && now - _session.lastSpeechAt < RUNNING_AUDIO_MIN_MS) return false;
+  _session.lastSpeechAt = now;
+  try {
+    const utterance = new Utterance(message);
+    utterance.lang = 'ko-KR';
+    utterance.rate = 1.02;
+    utterance.pitch = 1;
+    if (options.force && typeof synth.cancel === 'function') synth.cancel();
+    synth.speak(utterance);
+    return true;
+  } catch (e) {
+    console.warn('[running-session] speech skipped:', e);
+    return false;
+  }
+}
+
+function _checkRunningAudioCues() {
+  if (_session.phase !== 'active' || !_session.audioGuide) return;
+  const summary = _currentSummary();
+  const splitKm = Math.floor(_num(summary.distanceKm, 0));
+  if (splitKm > 0 && splitKm > _session.announcedSplits) {
+    _session.announcedSplits = splitKm;
+    _speakRunning(`${splitKm}킬로미터 통과. ${_runningSpeechPace(summary)}`);
+  }
+  const progress = _runningGoalProgress(summary);
+  if (!progress.active) return;
+  if (!_session.announcedGoalHalf && progress.ratio >= 0.5 && progress.ratio < 1) {
+    _session.announcedGoalHalf = true;
+    _speakRunning(`목표의 절반을 지났습니다. ${_runningGoalRemainingLabel(progress)}`);
+  }
+  if (!_session.announcedGoalDone && progress.ratio >= 1) {
+    _session.announcedGoalDone = true;
+    _speakRunning(`${_runningGoalLabel()} 목표를 완료했습니다. 계속 달려도 기록은 이어집니다.`, { force: true });
+  }
 }
 
 function _safePoint(point) {
@@ -379,6 +512,13 @@ function _resetLiveSession() {
     saving: false,
     placeSummary: null,
     placePromise: null,
+    goal: { ...DEFAULT_RUNNING_GOAL },
+    goalSheetOpen: false,
+    audioGuide: true,
+    announcedSplits: 0,
+    announcedGoalHalf: false,
+    announcedGoalDone: false,
+    lastSpeechAt: 0,
   });
 }
 
@@ -435,7 +575,10 @@ function _stopTicker() {
 function _startTicker() {
   _stopTicker();
   _session.tickId = setInterval(() => {
-    if (_session.open && (_session.phase === 'active' || _session.phase === 'paused')) _render();
+    if (_session.open && (_session.phase === 'active' || _session.phase === 'paused')) {
+      _checkRunningAudioCues();
+      _render();
+    }
   }, 1000);
 }
 
@@ -530,7 +673,11 @@ function _startWatch() {
 }
 
 function _startRun() {
+  const goal = _cloneRunningGoal(_session.goal);
+  const audioGuide = !!_session.audioGuide;
   _resetLiveSession();
+  _session.goal = goal;
+  _session.audioGuide = audioGuide;
   _session.open = true;
   _session.phase = 'active';
   _session.startedAt = _now();
@@ -539,6 +686,8 @@ function _startRun() {
   _startTicker();
   _publishRunningLiveState(true);
   _render();
+  const goalText = _session.goal.type === 'free' ? '' : `${_runningGoalLabel(_session.goal)} 목표 `;
+  _speakRunning(`${goalText}러닝을 시작합니다.`, { force: true });
 }
 
 function _pauseRun() {
@@ -548,6 +697,7 @@ function _pauseRun() {
   _stopWatch();
   _publishRunningLiveState(true);
   _render();
+  _speakRunning('러닝을 일시정지했습니다.', { force: true });
 }
 
 function _resumeRun() {
@@ -558,6 +708,7 @@ function _resumeRun() {
   _startWatch();
   _publishRunningLiveState(true);
   _render();
+  _speakRunning('러닝을 다시 시작합니다.', { force: true });
 }
 
 function _finishRun() {
@@ -575,6 +726,7 @@ function _finishRun() {
   _syncWorkoutRunData(summary);
   _publishRunningLiveState(false);
   _render();
+  _speakRunning(`러닝 완료. ${summary.distanceKm.toFixed(2)}킬로미터, 시간 ${_runningSpeechDuration(summary.durationSec)}, ${_runningSpeechPace(summary)}`, { force: true });
   _ensureRunningPlaceSummary(summary).then((place) => {
     _syncWorkoutRunData(_currentSummary(), place);
     if (_session.open && _session.phase === 'summary') _render();
@@ -660,6 +812,110 @@ function _mountRunningMaps() {
   });
 }
 
+function _renderStartOptions() {
+  const audioLabel = _session.audioGuide ? '켜짐' : '꺼짐';
+  return `
+    <div class="wt-run-start-options">
+      <button type="button" data-running-action="goal">
+        <span>${_runningGoalShortType()}</span>
+        <strong>${_escapeHtml(_runningGoalLabel())}</strong>
+      </button>
+      <button type="button" class="${_session.audioGuide ? 'active' : ''}" data-running-action="audio-toggle" aria-pressed="${_session.audioGuide ? 'true' : 'false'}">
+        <span>음성 안내</span>
+        <strong>${audioLabel}</strong>
+      </button>
+    </div>
+  `;
+}
+
+function _renderGoalProgress(summary) {
+  const progress = _runningGoalProgress(summary);
+  if (!progress.active) return '';
+  const pct = Math.round(progress.ratio * 100);
+  const goalLabel = _runningGoalLabel();
+  const remaining = _runningGoalRemainingLabel(progress);
+  return `
+    <div class="wt-run-goal-progress" aria-label="${_escapeHtml(`${goalLabel} ${pct}%`)}">
+      <div class="wt-run-goal-progress-head">
+        <span>${_escapeHtml(goalLabel)}</span>
+        <strong>${pct}%</strong>
+      </div>
+      <div class="wt-run-goal-progress-bar"><i style="width:${pct}%"></i></div>
+      <p>${_escapeHtml(remaining)}</p>
+    </div>
+  `;
+}
+
+function _renderGoalSheet() {
+  const goal = _cloneRunningGoal(_session.goal);
+  const distanceValue = goal.type === 'distance' ? goal.value : RUNNING_GOAL_DEFAULTS.distance;
+  const timeValue = goal.type === 'time' ? goal.value : RUNNING_GOAL_DEFAULTS.time;
+  const checked = type => goal.type === type ? 'checked' : '';
+  return `
+    <div class="wt-run-goal-sheet-backdrop" data-running-action="goal-close" aria-hidden="true"></div>
+    <form class="wt-run-goal-sheet" data-running-goal-sheet>
+      <header>
+        <div>
+          <span>러닝 목표</span>
+          <strong>목표와 음성 안내</strong>
+        </div>
+        <button type="button" class="wt-run-icon-btn" data-running-action="goal-close" aria-label="닫기">×</button>
+      </header>
+      <div class="wt-run-goal-modes" role="radiogroup" aria-label="러닝 목표 종류">
+        <label><input type="radio" name="running-goal-type" value="free" ${checked('free')}><span>자유</span></label>
+        <label><input type="radio" name="running-goal-type" value="distance" ${checked('distance')}><span>거리</span></label>
+        <label><input type="radio" name="running-goal-type" value="time" ${checked('time')}><span>시간</span></label>
+      </div>
+      <div class="wt-run-goal-fields">
+        <label>
+          <span>거리 목표</span>
+          <input id="wt-run-goal-distance" type="number" inputmode="decimal" min="0.1" max="99.99" step="0.1" value="${_escapeHtml(distanceValue)}">
+          <i>km</i>
+        </label>
+        <label>
+          <span>시간 목표</span>
+          <input id="wt-run-goal-time" type="number" inputmode="numeric" min="1" max="999" step="1" value="${_escapeHtml(timeValue)}">
+          <i>분</i>
+        </label>
+      </div>
+      <label class="wt-run-audio-row">
+        <input type="checkbox" name="running-audio-guide" ${_session.audioGuide ? 'checked' : ''}>
+        <span>
+          <strong>음성 안내</strong>
+          <em>시작, 1km split, 목표 절반/완료, 종료를 안내</em>
+        </span>
+      </label>
+      <footer>
+        <button type="button" data-running-action="goal-close">취소</button>
+        <button type="button" data-running-action="goal-save">저장</button>
+      </footer>
+    </form>
+  `;
+}
+
+function _readRunningGoalForm() {
+  const root = _root();
+  const sheet = root?.querySelector?.('[data-running-goal-sheet]');
+  const type = sheet?.querySelector?.('input[name="running-goal-type"]:checked')?.value || 'free';
+  const valueSource = type === 'distance'
+    ? sheet?.querySelector?.('#wt-run-goal-distance')?.value
+    : sheet?.querySelector?.('#wt-run-goal-time')?.value;
+  return {
+    goal: _sanitizeRunningGoal(type, valueSource),
+    audioGuide: !!sheet?.querySelector?.('input[name="running-audio-guide"]')?.checked,
+  };
+}
+
+function _saveRunningGoalForm() {
+  const next = _readRunningGoalForm();
+  _session.goal = next.goal;
+  _session.audioGuide = next.audioGuide;
+  _session.goalSheetOpen = false;
+  _render();
+  const label = _session.goal.type === 'free' ? '자유 러닝' : `${_runningGoalLabel(_session.goal)} 목표`;
+  _showToast(`${label}로 설정했어요`, 1800, 'success');
+}
+
 function _renderStart() {
   return `
     <section class="wt-running-screen wt-running-screen--start" data-running-screen="start">
@@ -671,6 +927,7 @@ function _renderStart() {
       <div class="wt-run-start-tabs" role="tablist" aria-label="러닝 모드">
         <button type="button" class="active" data-running-action="noop">바로 시작</button>
       </div>
+      ${_renderStartOptions()}
       <div class="wt-run-start-map">
         ${_renderRealMapShell('start', '러닝 지도')}
         <button type="button" class="wt-run-start-btn" data-running-action="start">시작</button>
@@ -694,6 +951,7 @@ function _renderProgress() {
         <div><b>${bpm ?? '--'}</b><span>BPM</span></div>
         <div><b>${formatRunningDuration(elapsed)}</b><span>시간</span></div>
       </div>
+      ${_renderGoalProgress(summary)}
       <main class="wt-run-live-main">
         <div class="wt-run-live-heart">
           <strong>${bpm ?? '--'}</strong>
@@ -778,9 +1036,11 @@ function _render() {
   document.body?.classList.add('wt-running-session-open');
   destroyRunningMaps(root);
   _session.mapRenderSeq += 1;
-  if (_session.phase === 'active' || _session.phase === 'paused') root.innerHTML = _renderProgress();
-  else if (_session.phase === 'summary') root.innerHTML = _renderSummary();
-  else root.innerHTML = _renderStart();
+  let screen = '';
+  if (_session.phase === 'active' || _session.phase === 'paused') screen = _renderProgress();
+  else if (_session.phase === 'summary') screen = _renderSummary();
+  else screen = _renderStart();
+  root.innerHTML = `${screen}${_session.goalSheetOpen ? _renderGoalSheet() : ''}`;
   if (_session.phase === 'start') _requestPreviewPosition();
   _mountRunningMaps();
 }
@@ -794,9 +1054,23 @@ function _handleAction(action) {
   if (action === 'finish') return _finishRun();
   if (action === 'save') return _saveSummary();
   if (action === 'share') return _shareSummary();
+  if (action === 'goal') {
+    if (_session.phase !== 'start') return _showToast('러닝 중에는 시작 전 목표를 유지해요', 1800, 'info');
+    _session.goalSheetOpen = true;
+    return _render();
+  }
+  if (action === 'goal-close') {
+    _session.goalSheetOpen = false;
+    return _render();
+  }
+  if (action === 'goal-save') return _saveRunningGoalForm();
+  if (action === 'audio-toggle') {
+    _session.audioGuide = !_session.audioGuide;
+    _render();
+    return _showToast(`음성 안내 ${_session.audioGuide ? '켜짐' : '꺼짐'}`, 1500, 'info');
+  }
   if (action === 'settings') return _showToast('러닝 설정은 준비 중이에요', 1800, 'info');
   if (action === 'music') return _showToast('음악 연동은 준비 중이에요', 1800, 'info');
-  if (action === 'goal') return _showToast('목표 설정은 준비 중이에요', 1800, 'info');
 }
 
 export function initRunningSession() {

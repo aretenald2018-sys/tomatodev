@@ -3,15 +3,35 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-30-manual-cardio-picker.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-30-manual-cardio-picker-review.md`
-- 현재 단계: `운동 picker 유산소 수기 입력 구현 및 리뷰 완료`
+- 계획 문서: `docs/ai/features/2026-06-30-running-nrc-core-gap.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-30-running-nrc-core-gap-review.md`
+- 현재 단계: `NRC 핵심 기능 갭 기반 러닝 목표/음성 안내 Slice 1 구현 및 리뷰 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `커밋 0574140을 origin/main에 push했고 Dashboard3 Pages에서 z17 manual-cardio marker를 확인했다.`
-- 다음 액션: `인증 세션에서 운동 탭 -> + -> 유산소 -> 저장 -> 러닝 상세 카드 flow를 직접 확인한다.`
+- 마지막 완료: `러닝 목표 설정, 목표 진행률, Web Speech 기반 한국어 음성 안내를 구현했고 정적/전체 테스트와 리뷰를 완료했다.`
+- 다음 액션: `origin/main push 후 Dashboard3 Pages 배포 검증과 asset marker 확인을 수행한다.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
+
+- Running NRC Core Gap 계획:
+  1. 요청: 기존 `런닝/조깅`을 Nike Run Club 핵심 기능 기준으로 조사하고 미구현 기능을 구현한다.
+  2. 조사: NRC 핵심은 GPS/pace/distance 추적, Audio-Guided Runs, 목표/훈련 계획, 챌린지/성취, 친구 응원, shoe tagging이다.
+  3. 확인: 현재 앱은 GPS route, pace/time/BPM, 지도, summary, save/share는 갖췄다.
+  4. 갭: `목표 설정` 버튼은 toast placeholder이고, 음성 안내/목표 진행 cue가 없다.
+  5. 결정: Slice 1은 러닝 세션 내부 `목표 설정`과 Web Speech 기반 한국어 음성 안내만 구현한다.
+  6. 제외: Training Plans, Challenges, friend cheers, shoe tagging, 음악 연동, Firebase schema 추가.
+  7. 계획 문서: `docs/ai/features/2026-06-30-running-nrc-core-gap.md`
+  8. 완료: start 화면에 목표/음성 안내 상태 버튼을 추가했다.
+  9. 완료: `목표 설정` sheet에서 자유/거리/시간 목표와 음성 안내 on/off를 저장한다.
+  10. 완료: 진행 화면에 목표 진행률과 남은 목표를 표시한다.
+  11. 완료: Web Speech API 기반 한국어 cue를 시작, pause/resume, 1km split, 목표 halfway, 목표 완료, 종료 summary에 연결했다.
+  12. 완료: `sw.js` cache version을 `tomatofarm-v20260630z18-running-voice-goals`로 bump했다.
+  13. PASS: `node --check workout/running-session.js; node --check sw.js`
+  14. PASS: `node --test tests/running-entry.test.js tests/running-tracker.test.js tests/pwa-update-auto-reload.test.js`
+  15. PASS: 전체 테스트 — `node --test --test-reporter=dot $files`
+  16. PASS: `node scripts/verify-runtime-assets.mjs`
+  17. PASS: `git diff --check`
+  18. 리뷰 문서: `docs/ai/reviews/2026-06-30-running-nrc-core-gap-review.md`
 
 - Workout Picker Manual Cardio 계획:
   1. 요청: picker 분류 화면에 `유산소` 버튼을 추가한다.
