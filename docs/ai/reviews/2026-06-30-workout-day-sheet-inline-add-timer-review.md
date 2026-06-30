@@ -37,8 +37,14 @@
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 6fde447`
+  - 결과: `[deploy-verify] ok 6fde447039f3 tomatofarm-v20260630z08-day-sheet-inline-add-timer static=234`
+- PASS: Dashboard3 Pages 직접 asset marker 확인
+  - `sw.js` HTTP 200, cache version marker 확인
+  - `render-calendar.js` HTTP 200, `_loadWorkoutStateForSheetSession`/`workout-day-sheet`/`sheet:add-exercise` marker 확인
+  - `workout/exercises.js` HTTP 200, `_pickerAfterSelect`/`wtOpenExercisePicker(options = {})`/`_runPickerAfterSelect` marker 확인
+  - `style.css` HTTP 200, 캘린더 surface timer bar marker 확인
 
 ## 남은 리스크
 
 - 인증 세션이 없어 실제 모바일 UI에서 `운동 탭 -> 오늘 하단 시트 full -> + -> 종목 선택 -> 1화면에 카드 추가 및 타이머 하단 표시` 흐름은 배포 후 사용자 계정에서 확인이 필요하다.
-

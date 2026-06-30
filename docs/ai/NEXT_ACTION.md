@@ -2,13 +2,13 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_execution`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-30-workout-day-sheet-inline-add-timer.md`
 - 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-day-sheet-inline-add-timer-review.md`
-- 현재 단계: `운동 하단 시트 종목 추가/타이머 통합 회귀 수정 구현/리뷰 완료, 배포 검증 대기`
+- 현재 단계: `운동 하단 시트 종목 추가/타이머 통합 회귀 수정 구현/리뷰/배포 검증 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
 - 마지막 완료: `운동 숫자 입력 UX, 운동 캘린더 터치 스크롤, 미란다/상담실장 전구 숨김까지 운영계 tomatofarm/main에 배포하고 Pages asset 검증을 통과했다.`
-- 다음 액션: `변경 파일 리뷰 후 Dashboard3 Pages 배포 검증`
+- 다음 액션: `없음`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
@@ -32,6 +32,10 @@
   16. PASS: `node --test --test-reporter=dot tests/*.test.js`
   17. PASS: `git diff --check`
   18. 완료: 리뷰 문서 `docs/ai/reviews/2026-06-30-workout-day-sheet-inline-add-timer-review.md`를 작성했고 추가 수정 이슈는 없다.
+  19. 완료: 코드/문서 커밋 `6fde447 fix: keep day sheet add inline`을 `origin/main`에 push했다.
+  20. PASS: Dashboard3 Pages 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 6fde447` → `[deploy-verify] ok 6fde447039f3 tomatofarm-v20260630z08-day-sheet-inline-add-timer static=234`
+  21. PASS: Dashboard3 Pages marker 직접 fetch — `sw.js`, `render-calendar.js`, `workout/exercises.js`, `style.css` HTTP 200 및 `_loadWorkoutStateForSheetSession`, `workout-day-sheet`, `_pickerAfterSelect`, 캘린더 surface timer CSS marker 확인.
+  22. not verified yet: 인증 세션이 없어 실제 모바일 UI에서 `운동 탭 -> 오늘 하단 시트 full -> + -> 종목 선택 -> 1화면에 카드 추가 및 타이머 하단 표시` 흐름은 직접 클릭 확인하지 못했다.
 
 - Workout Record Scroll Regression 계획:
   1. `app.js`의 전역 workout pull-back gesture가 기록/상세 본문 스크롤을 가로채는지 우선 진단한다.
