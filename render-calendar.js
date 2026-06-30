@@ -289,9 +289,23 @@ function _dateTitle(key) {
   return `${p.y}-${String(p.m + 1).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`;
 }
 
+function _workoutHomeScrollRoot() {
+  if (typeof document === 'undefined') return null;
+  return document.getElementById('workout-calendar-root');
+}
+
 function _workoutHomeScrollTop() {
   if (typeof document === 'undefined') return 0;
-  return Math.max(0, Number(document.scrollingElement?.scrollTop) || Number(window?.scrollY) || 0);
+  const root = _workoutHomeScrollRoot();
+  const windowTop = typeof window !== 'undefined' ? Number(window.scrollY) || 0 : 0;
+  return Math.max(
+    0,
+    Number(root?.scrollTop) || 0,
+    Number(document.scrollingElement?.scrollTop) || 0,
+    Number(document.documentElement?.scrollTop) || 0,
+    Number(document.body?.scrollTop) || 0,
+    windowTop
+  );
 }
 
 function _syncWorkoutHomeNavState({ history = 'replace', notify = false, action = 'calendar:sync' } = {}) {
@@ -320,7 +334,17 @@ export function applyWorkoutCalendarNavSnapshot(snapshot = {}, options = {}) {
   renderWorkoutCalendarHome();
   if (options.preserveScroll !== false && Number.isFinite(Number(calendar.scrollTop)) && typeof window !== 'undefined') {
     const top = Math.max(0, Number(calendar.scrollTop) || 0);
-    window.requestAnimationFrame?.(() => window.scrollTo({ top, behavior: 'auto' }));
+    const restoreScroll = () => {
+      const root = _workoutHomeScrollRoot();
+      if (root) {
+        if (typeof root.scrollTo === 'function') root.scrollTo({ top, behavior: 'auto' });
+        else root.scrollTop = top;
+        return;
+      }
+      window.scrollTo({ top, behavior: 'auto' });
+    };
+    if (typeof window.requestAnimationFrame === 'function') window.requestAnimationFrame(restoreScroll);
+    else restoreScroll();
   }
 }
 

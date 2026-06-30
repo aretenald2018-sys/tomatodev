@@ -121,6 +121,10 @@ test('workout navigation keeps only rendered calendar and day sheet surfaces', a
   assert.match(calendarJs, /openWorkoutDaySheet\(nextKey/);
   assert.match(calendarJs, /calendar\.viewYear != null && Number\.isFinite\(Number\(calendar\.viewYear\)\)/);
   assert.match(calendarJs, /\^\(\\d\{4\}\)-\(\\d\{2\}\)-\(\\d\{2\}\)\$/);
+  assert.match(calendarJs, /function _workoutHomeScrollRoot\(\)[\s\S]*document\.getElementById\('workout-calendar-root'\)/);
+  assert.match(calendarJs, /function _workoutHomeScrollTop\(\)[\s\S]*const root = _workoutHomeScrollRoot\(\);[\s\S]*Number\(root\?\.scrollTop\) \|\| 0/);
+  assert.match(calendarJs, /const restoreScroll = \(\) => \{[\s\S]*const root = _workoutHomeScrollRoot\(\);[\s\S]*root\.scrollTo\(\{ top, behavior: 'auto' \}\)/);
+  assert.match(calendarJs, /else root\.scrollTop = top;/);
   assert.doesNotMatch(calendarJs, /window\.wtOpenWorkoutRecord|_openWorkoutEditorForSession|_loadWorkoutEditorForSession/);
   assert.doesNotMatch(workoutTabHtml, /class="wt-record-back-btn"[\s\S]*window\.wtHandleWorkoutBack\?\.\(\)/);
   assert.doesNotMatch(workoutTabHtml, /class="workout-date-nav"|id="wt-date-label"/);
@@ -147,6 +151,8 @@ test('workout navigation keeps only rendered calendar and day sheet surfaces', a
   assert.match(calendarJs, /async function _loadWorkoutStateForSheetSession/);
   assert.match(calendarJs, /window\.wtOpenExercisePicker\(\{[\s\S]*source:\s*'workout-day-sheet'[\s\S]*afterSelect:/);
   assert.match(styleCss, /\.cal-workout-month-grid\s*\{[\s\S]*touch-action:\s*pan-y/);
+  assert.match(styleCss, /#tab-workout\.wt-calendar-home-mode\s*\{[\s\S]*height:\s*100dvh;[\s\S]*overflow:\s*hidden;/);
+  assert.match(styleCss, /#tab-workout\.wt-calendar-home-mode > #workout-calendar-root\s*\{[\s\S]*overflow-y:\s*auto;[\s\S]*overscroll-behavior-y:\s*contain;[\s\S]*touch-action:\s*pan-y;/);
   assert.match(styleCss, /#tab-workout\.wt-calendar-home-mode > \.workout-tab-content\s*\{[\s\S]*display:\s*block;[\s\S]*pointer-events:\s*none;/);
   assert.match(styleCss, /#tab-workout\.wt-calendar-home-mode > \.workout-tab-content > :not\(#wt-workout-timer-bar\)\s*\{[\s\S]*display:\s*none !important;/);
   assert.match(styleCss, /#tab-workout\.wt-calendar-home-mode \.wt-workout-timer-bar\s*\{[\s\S]*bottom:\s*calc\(112px \+ env\(safe-area-inset-bottom,\s*0px\)\)/);
@@ -163,5 +169,5 @@ test('workout navigation keeps only rendered calendar and day sheet surfaces', a
   assert.match(styleCss, /body\.wt-workout-tab-active\s*\{[\s\S]*overscroll-behavior-y:\s*none;/);
   assert.match(styleCss, /body\.wt-workout-tab-active #tab-workout\.active\s*\{[\s\S]*overscroll-behavior-y:\s*contain;/);
   assert.match(swJs, /\.\/workout\/navigation-stack\.js/);
-  assert.match(swJs, /tomatofarm-v20260630z15-pwa-backdrop-touch/);
+  assert.match(swJs, /tomatofarm-v20260630z16-workout-owned-scroll-root/);
 });

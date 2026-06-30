@@ -329,6 +329,9 @@ test('bottom sheet css is fixed, animated, and contains the session bar inside t
 test('collapsed day sheet bar is a compact one-row affordance', () => {
   assert.match(styleCss, /\.workout-calendar-root\s*\{[\s\S]*padding:\s*0 var\(--wt-calendar-scroll-gutter,\s*0px\) 124px 0/);
   assert.match(styleCss, /\.workout-calendar-root\s*\{[\s\S]*scrollbar-gutter:\s*stable;/);
+  assert.match(styleCss, /#tab-workout\.wt-calendar-home-mode\s*\{[\s\S]*height:\s*100dvh;[\s\S]*min-height:\s*100dvh;[\s\S]*overflow:\s*hidden;/);
+  assert.match(styleCss, /#tab-workout\.wt-calendar-home-mode > #workout-calendar-root\s*\{[\s\S]*height:\s*100%;[\s\S]*min-height:\s*0;[\s\S]*overflow-y:\s*auto;/);
+  assert.match(styleCss, /#tab-workout\.wt-calendar-home-mode > #workout-calendar-root\s*\{[\s\S]*overscroll-behavior-y:\s*contain;[\s\S]*-webkit-overflow-scrolling:\s*touch;[\s\S]*touch-action:\s*pan-y;/);
   assert.match(styleCss, /\.cal-workout-day-bar\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(styleCss, /\.cal-workout-day-bar\s*\{[\s\S]*min-height:\s*64px/);
   assert.match(styleCss, /\.cal-workout-day-main\s*\{[\s\S]*flex-direction:\s*row/);
@@ -503,5 +506,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260630z15-pwa-backdrop-touch/);
+  assert.match(swJs, /tomatofarm-v20260630z16-workout-owned-scroll-root/);
 });

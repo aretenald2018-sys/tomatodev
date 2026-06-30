@@ -2,16 +2,37 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-30-pwa-calendar-backdrop-touch-fix.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-30-pwa-calendar-backdrop-touch-fix-review.md`
-- 현재 단계: `운영 PWA 캘린더 backdrop 터치 캡처 수정 실행/리뷰/배포 검증 완료`
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-06-30-workout-calendar-owned-scroll-root.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-calendar-owned-scroll-root-review.md`
+- 현재 단계: `운영 PWA 캘린더 owned scroll root 구현 및 정적 검증 완료, 배포 검증 대기`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `bar 상태 bottom sheet backdrop touch capture 제거를 양쪽 Pages에 배포하고 운영 URL marker 검증까지 완료했다.`
-- 다음 액션: `없음.`
+- 마지막 완료: `#workout-calendar-root를 owned scroll root로 승격하고 render-calendar.js scroll 저장/복원을 root 기준으로 바꿨다.`
+- 다음 액션: `커밋 후 origin/main 및 tomatofarm/main 배포, 운영 asset marker 검증.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
+
+- Workout Calendar Owned Scroll Root 계획:
+  1. 요청: 운영 PWA에서 캘린더 드래그가 여전히 되지 않고 바텀시트 영역에서만 움직인다.
+  2. 확인: PWA 설치/서비스워커 코드는 캘린더 터치를 직접 막지 않는다.
+  3. 확인: navigation swipe는 세로 이동에서 tracking을 중단하고 `preventDefault()`를 호출하지 않는다.
+  4. 확인: workout pull-back은 `data-wt-calendar-scroll-surface` 아래 터치를 예외 처리하므로 최신 marker가 반영된 상태에서는 캘린더 표면 touchmove를 직접 막지 않는다.
+  5. 원인: 운동 캘린더 본문은 `overflow-y:auto`를 가진 독립 scroller가 아니고 body scroll에 의존한다. PWA WebView에서 fixed bottom sheet/tab bar/overscroll gesture와 섞여 body pan ownership이 실패한다.
+  6. Slice 1 범위는 `#workout-calendar-root`를 owned scroll root로 승격하고 `render-calendar.js` scroll 저장/복원을 root scroller 기준으로 바꾸는 것이다.
+  7. `render-calendar.js`, `style.css`가 `STATIC_ASSETS`에 포함되므로 `sw.js` cache version을 함께 bump한다.
+  8. 완료: `style.css`에서 `#tab-workout.wt-calendar-home-mode`를 viewport 화면으로 고정하고 `overflow:hidden`을 적용했다.
+  9. 완료: `#workout-calendar-root`를 `overflow-y:auto`, `overscroll-behavior-y:contain`, `-webkit-overflow-scrolling:touch`, `touch-action:pan-y`를 가진 owned scroll root로 만들었다.
+  10. 완료: `render-calendar.js`에서 `_workoutHomeScrollRoot()`를 추가하고 scroll 저장/복원을 root scroller 우선으로 변경했다.
+  11. 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260630z16-workout-owned-scroll-root`로 bump하고 cache marker 테스트 기대값을 갱신했다.
+  12. PASS: `node --check render-calendar.js`
+  13. PASS: `node --check sw.js`
+  14. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js` — 24 tests passed
+  15. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=858`
+  16. PASS: `git diff --check`
+  17. PASS: `node --test --test-reporter=dot tests/*.test.js`
+  18. 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-calendar-owned-scroll-root-review.md`
+  19. not verified yet: 운영 Pages 배포 및 asset marker 확인 대기.
 
 - PWA Calendar Backdrop Touch Fix 계획:
   1. 요청: 운영 PWA에서 캘린더 드래그가 여전히 되지 않고 바텀시트 영역에서만 움직인다.
