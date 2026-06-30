@@ -84,3 +84,5 @@
 - 완료: Web Speech API 기반 한국어 cue를 시작, pause/resume, 1km split, 목표 halfway, 목표 완료, 종료 summary에 연결했다.
 - 완료: `sw.js` cache version을 `tomatofarm-v20260630z18-running-voice-goals`로 bump했다.
 - 리뷰: `docs/ai/reviews/2026-06-30-running-nrc-core-gap-review.md`
+- 배포: 커밋 `82bd3d3`을 `origin/main`에 push했고 Dashboard3 Pages에서 z18 cache version과 goal/voice marker를 확인했다.
+- not verified yet: 인증 세션이 없어 실제 UI 클릭 및 기기 음성 출력은 직접 확인하지 못했다.

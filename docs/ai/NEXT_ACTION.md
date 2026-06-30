@@ -7,8 +7,8 @@
 - 리뷰 문서: `docs/ai/reviews/2026-06-30-running-nrc-core-gap-review.md`
 - 현재 단계: `NRC 핵심 기능 갭 기반 러닝 목표/음성 안내 Slice 1 구현 및 리뷰 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `러닝 목표 설정, 목표 진행률, Web Speech 기반 한국어 음성 안내를 구현했고 정적/전체 테스트와 리뷰를 완료했다.`
-- 다음 액션: `origin/main push 후 Dashboard3 Pages 배포 검증과 asset marker 확인을 수행한다.`
+- 마지막 완료: `커밋 82bd3d3을 origin/main에 push했고 Dashboard3 Pages에서 z18 running voice/goals marker를 확인했다.`
+- 다음 액션: `인증 세션에서 운동 탭 -> 런닝/조깅 -> 목표 설정 -> 시작 -> 음성 cue flow를 직접 확인한다.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
@@ -32,6 +32,10 @@
   16. PASS: `node scripts/verify-runtime-assets.mjs`
   17. PASS: `git diff --check`
   18. 리뷰 문서: `docs/ai/reviews/2026-06-30-running-nrc-core-gap-review.md`
+  19. 완료: 커밋 `82bd3d3 feat: add running voice guidance and goals`를 `origin/main`에 push했다.
+  20. PASS: Dashboard3 Pages 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 82bd3d3` → `[deploy-verify] ok 82bd3d3f4de5 tomatofarm-v20260630z18-running-voice-goals static=233`
+  21. PASS: Dashboard3 Pages marker 검증 — `sw.js` cache version, `workout/running-session.js` `audio-toggle`/`goal-save`/`SpeechSynthesisUtterance`, `style.css` `wt-run-goal-sheet`/`wt-run-goal-progress` 확인
+  22. not verified yet: 인증 세션이 없어 실제 `운동 탭 -> 런닝/조깅 -> 목표 설정 -> 시작 -> 음성 cue` UI flow는 직접 조작하지 못했다.
 
 - Workout Picker Manual Cardio 계획:
   1. 요청: picker 분류 화면에 `유산소` 버튼을 추가한다.

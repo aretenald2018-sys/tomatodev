@@ -30,6 +30,8 @@
 3. PASS: 전체 테스트 — `node --test --test-reporter=dot $files`
 4. PASS: `node scripts/verify-runtime-assets.mjs`
 5. PASS: `git diff --check`
+6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 82bd3d3` → `[deploy-verify] ok 82bd3d3f4de5 tomatofarm-v20260630z18-running-voice-goals static=233`
+7. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ sw.js::tomatofarm-v20260630z18-running-voice-goals workout/running-session.js::audio-toggle workout/running-session.js::goal-save workout/running-session.js::SpeechSynthesisUtterance style.css::wt-run-goal-sheet style.css::wt-run-goal-progress`
 
 ## 남은 리스크
 
