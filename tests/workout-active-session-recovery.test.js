@@ -61,5 +61,5 @@ test('app update reload flushes workout draft and changes copy while workout is 
 });
 
 test('service worker cache version was bumped for recovery assets', () => {
-  assert.match(swJs, /tomatofarm-v20260630z13-workout-calendar-drag-surface/);
+  assert.match(swJs, /tomatofarm-v20260630z14-sw-auto-update/);
 });

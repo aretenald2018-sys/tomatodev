@@ -100,5 +100,5 @@ test('compact summary styles are present and cache version is bumped', () => {
   assert.match(styleCss, /\.stats-performance-block/);
   assert.match(styleCss, /\.stats-summary-fact/);
   assert.match(styleCss, /\.stats-summary-kpi\.is-good/);
-  assert.match(swJs, /tomatofarm-v20260630z13-workout-calendar-drag-surface/);
+  assert.match(swJs, /tomatofarm-v20260630z14-sw-auto-update/);
 });

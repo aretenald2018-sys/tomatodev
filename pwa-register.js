@@ -10,8 +10,10 @@ const _isLocalDev = ['localhost', '127.0.0.1', ''].includes(location.hostname);
 const APP_SW_SCOPE = new URL('./', location.href).pathname;
 const FCM_SW_SCOPE = new URL('firebase-cloud-messaging-push/', new URL('./', location.href)).pathname;
 const _pendingAppSWUpdates = new Map();
+const APP_SW_AUTO_RELOAD_TIMEOUT_MS = 1500;
 let _appSWUpdateSeq = 0;
 let _latestAppSWUpdateSeq = 0;
+let _appSWAutoReloading = false;
 
 async function _refreshAppSWRegistration(registration = null) {
   if (!('serviceWorker' in navigator)) return registration;
@@ -33,6 +35,32 @@ function _appSWUpdateKey(registration, worker = null) {
   return `${registration?.scope || APP_SW_SCOPE}|${scriptURL}`;
 }
 
+function _hasActiveWorkoutDraftForAppSWUpdate() {
+  try {
+    return typeof window.__wtHasActiveDraft === 'function' && window.__wtHasActiveDraft();
+  } catch {
+    return false;
+  }
+}
+
+function _autoApplyAppSWUpdate(registration, worker = null) {
+  if (_appSWAutoReloading || !registration || !navigator.serviceWorker.controller) return false;
+  if (_hasActiveWorkoutDraftForAppSWUpdate()) return false;
+  const targetWorker = worker || registration.waiting;
+  if (!targetWorker || typeof targetWorker.postMessage !== 'function') return false;
+  _appSWAutoReloading = true;
+  let reloaded = false;
+  const reloadOnce = () => {
+    if (reloaded) return;
+    reloaded = true;
+    window.location.reload();
+  };
+  navigator.serviceWorker.addEventListener('controllerchange', reloadOnce, { once: true });
+  targetWorker.postMessage({ type: 'SKIP_WAITING' });
+  setTimeout(reloadOnce, APP_SW_AUTO_RELOAD_TIMEOUT_MS);
+  return true;
+}
+
 function _requestAppUpdateBanner(registration, worker = null) {
   if (!registration || !navigator.serviceWorker.controller) return;
   const key = _appSWUpdateKey(registration, worker);
@@ -41,20 +69,24 @@ function _requestAppUpdateBanner(registration, worker = null) {
   const wasPending = _pendingAppSWUpdates.has(key);
   _pendingAppSWUpdates.set(key, { registration, worker, seq });
 
-  const show = () => {
-    if (typeof window.__showAppUpdateBanner !== 'function') return false;
+  const show = ({ allowAutoReload = true } = {}) => {
     const pending = _pendingAppSWUpdates.get(key);
     if (!pending) return false;
     _pendingAppSWUpdates.delete(key);
     if (pending.seq < _latestAppSWUpdateSeq) return true;
+    if (allowAutoReload && _autoApplyAppSWUpdate(pending.registration, pending.worker)) return true;
+    if (typeof window.__showAppUpdateBanner !== 'function') {
+      _pendingAppSWUpdates.set(key, pending);
+      return false;
+    }
     window.__showAppUpdateBanner(pending.registration, { key });
     return true;
   };
 
-  if (show()) return;
+  if (window.__tomatoAppReady && show()) return;
   if (!wasPending) {
     window.addEventListener('tomato-app-ready', show, { once: true });
-    setTimeout(show, 1000);
+    setTimeout(show, 2000);
   }
 }
 

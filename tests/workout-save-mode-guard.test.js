@@ -70,5 +70,5 @@ test('workout save can explicitly preserve picker-added draft exercises', () => 
 
 test('service worker cache version was bumped for save guard assets', () => {
   const sw = read('sw.js');
-  assert.match(sw, /tomatofarm-v20260630z13-workout-calendar-drag-surface/);
+  assert.match(sw, /tomatofarm-v20260630z14-sw-auto-update/);
 });
