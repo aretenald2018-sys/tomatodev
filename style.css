@@ -11844,7 +11844,17 @@ body.wt-running-session-open {
   overflow: hidden;
   line-height: 10px;
 }
+.cal-cycle-branch-head {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
 .cal-cycle-branch-week,
+.cal-cycle-branch-name,
 .cal-cycle-branch-target {
   display: block;
   max-width: 100%;
@@ -11853,8 +11863,16 @@ body.wt-running-session-open {
   white-space: nowrap;
 }
 .cal-cycle-branch-week {
+  flex: 0 0 auto;
   color: #26323d;
   font-size: 8.5px;
+  font-weight: 800;
+}
+.cal-cycle-branch-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #26323d;
+  font-size: 8px;
   font-weight: 800;
 }
 .cal-cycle-branch-target {
@@ -12894,6 +12912,9 @@ body.wt-running-session-open {
   }
   .cal-cycle-branch-week {
     font-size: 8px;
+  }
+  .cal-cycle-branch-name {
+    font-size: 7.5px;
   }
   .cal-cycle-branch-target {
     font-size: 7.5px;
