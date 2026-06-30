@@ -2,16 +2,36 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-30-workout-record-scroll-regression.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-record-scroll-regression-review.md`
-- 현재 단계: `운동 기록 화면 스크롤 회귀 수정 구현/리뷰/배포 검증 완료`
+- 상태: `ready_for_execution`
+- 계획 문서: `docs/ai/features/2026-06-30-workout-day-sheet-inline-add-timer.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-day-sheet-inline-add-timer-review.md`
+- 현재 단계: `운동 하단 시트 종목 추가/타이머 통합 회귀 수정 구현/리뷰 완료, 배포 검증 대기`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
 - 마지막 완료: `운동 숫자 입력 UX, 운동 캘린더 터치 스크롤, 미란다/상담실장 전구 숨김까지 운영계 tomatofarm/main에 배포하고 Pages asset 검증을 통과했다.`
-- 다음 액션: `없음`
+- 다음 액션: `변경 파일 리뷰 후 Dashboard3 Pages 배포 검증`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
+
+- Workout Day Sheet Inline Add Timer 계획:
+  1. 원인: `render-calendar.js`의 `+` 액션이 첫 빈 회차를 우선 target으로 잡고 `_loadWorkoutEditorForSession()`을 통해 `wtOpenWorkoutRecord()` route push를 수행한다.
+  2. 원인: `workout/exercises.js` picker 선택 핸들러가 항상 기록 편집 화면 카드 포커스(`wtFocusWorkoutEntryCard`)로 후처리한다.
+  3. 원인: 타이머 DOM은 `.workout-tab-content` 내부에 있고 캘린더 surface에서 해당 컨테이너가 숨김 처리되어 1화면에서 보이지 않는다.
+  4. Slice 1 범위는 현재 회차 고정, route push 없는 날짜/회차 로드, picker afterSelect 후처리, 캘린더 surface timer bar 노출, 회귀 테스트, `sw.js` cache bump다.
+  5. 계획 문서: `docs/ai/features/2026-06-30-workout-day-sheet-inline-add-timer.md`
+  6. 완료: `render-calendar.js`에서 하단 시트 `+` target을 현재 gym 회차로 고정했다.
+  7. 완료: `render-calendar.js`에 route push 없는 `_loadWorkoutStateForSheetSession()`과 시트 복귀 `_refreshWorkoutHomeAfterPickerSelect()`를 추가했다.
+  8. 완료: `workout/exercises.js` picker가 `afterSelect` 콜백을 받을 수 있게 하고, 기본 기록 화면 포커스 동작은 유지했다.
+  9. 완료: `style.css`에서 캘린더 surface의 `.workout-tab-content`는 타이머 바만 노출 가능하게 하고, 타이머를 회차 bar 위로 올렸다.
+  10. 완료: `sw.js` cache version을 `tomatofarm-v20260630z08-day-sheet-inline-add-timer`로 bump하고 cache marker 테스트 기대값을 갱신했다.
+  11. PASS: `node --check render-calendar.js`
+  12. PASS: `node --check workout/exercises.js`
+  13. PASS: `node --check sw.js`
+  14. PASS: `node --test tests/ex-picker-selection-flow.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js tests/workout-timer-summary-only.test.js` — 31 tests passed
+  15. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=863`
+  16. PASS: `node --test --test-reporter=dot tests/*.test.js`
+  17. PASS: `git diff --check`
+  18. 완료: 리뷰 문서 `docs/ai/reviews/2026-06-30-workout-day-sheet-inline-add-timer-review.md`를 작성했고 추가 수정 이슈는 없다.
 
 - Workout Record Scroll Regression 계획:
   1. `app.js`의 전역 workout pull-back gesture가 기록/상세 본문 스크롤을 가로채는지 우선 진단한다.

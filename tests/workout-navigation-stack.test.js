@@ -133,6 +133,9 @@ test('workout navigation is wired to app, calendar, record card focus, and PWA c
   assert.match(workoutExercises, /function _findWorkoutEntryIndexByExerciseId/);
   assert.match(workoutExercises, /export function wtFocusWorkoutEntryCard/);
   assert.match(workoutExercises, /block\.dataset\.wtEntryIdx = String\(idx\)/);
+  assert.match(workoutExercises, /let _pickerAfterSelect = null/);
+  assert.match(workoutExercises, /export async function wtOpenExercisePicker\(options = \{\}\)/);
+  assert.match(workoutExercises, /if \(afterSelect\) \{[\s\S]*_runPickerAfterSelect\(afterSelect/);
   assert.match(workoutExercises, /if \(existingIdx >= 0\)[\s\S]*wtFocusWorkoutEntryCard\(existingIdx\)/);
   assert.match(workoutExercises, /const entryIdx = S\.workout\.exercises\.push\(_buildPickerExerciseEntry\(ex\)\) - 1/);
   assert.match(workoutExercises, /wtFocusWorkoutEntryCard\(entryIdx\)/);
@@ -142,7 +145,12 @@ test('workout navigation is wired to app, calendar, record card focus, and PWA c
   assert.match(navJs, /_writeHistory\('push', 'overlay:back'\)/);
   assert.match(appJs, /\[data-wt-calendar-scroll-surface\]/);
   assert.match(calendarJs, /class="cal-workout-month-grid" data-wt-calendar-scroll-surface/);
+  assert.match(calendarJs, /async function _loadWorkoutStateForSheetSession/);
+  assert.match(calendarJs, /window\.wtOpenExercisePicker\(\{[\s\S]*source:\s*'workout-day-sheet'[\s\S]*afterSelect:/);
   assert.match(styleCss, /\.cal-workout-month-grid\s*\{[\s\S]*touch-action:\s*pan-y/);
+  assert.match(styleCss, /#tab-workout\.wt-calendar-home-mode > \.workout-tab-content\s*\{[\s\S]*display:\s*block;[\s\S]*pointer-events:\s*none;/);
+  assert.match(styleCss, /#tab-workout\.wt-calendar-home-mode > \.workout-tab-content > :not\(#wt-workout-timer-bar\)\s*\{[\s\S]*display:\s*none !important;/);
+  assert.match(styleCss, /#tab-workout\.wt-calendar-home-mode \.wt-workout-timer-bar\s*\{[\s\S]*bottom:\s*calc\(112px \+ env\(safe-area-inset-bottom,\s*0px\)\)/);
   assert.match(styleCss, /#tab-workout\.wt-workout-record-mode > \.workout-date-nav\s*\{[\s\S]*display:\s*none/);
   assert.match(styleCss, /#tab-workout\.wt-workout-record-mode > \.workout-tab-content\s*\{[\s\S]*padding-top:\s*20px/);
   assert.match(styleCss, /#tab-workout\.wt-workout-record-mode > \.workout-tab-content\s*\{[\s\S]*touch-action:\s*pan-y;[\s\S]*overscroll-behavior-y:\s*contain;[\s\S]*-webkit-overflow-scrolling:\s*touch;/);
@@ -150,5 +158,5 @@ test('workout navigation is wired to app, calendar, record card focus, and PWA c
   assert.match(styleCss, /body\.wt-workout-tab-active\s*\{[\s\S]*overscroll-behavior-y:\s*none;/);
   assert.match(styleCss, /body\.wt-workout-tab-active #tab-workout\.active\s*\{[\s\S]*overscroll-behavior-y:\s*contain;/);
   assert.match(swJs, /\.\/workout\/navigation-stack\.js/);
-  assert.match(swJs, /tomatofarm-v20260630z07-workout-record-scroll/);
+  assert.match(swJs, /tomatofarm-v20260630z08-day-sheet-inline-add-timer/);
 });

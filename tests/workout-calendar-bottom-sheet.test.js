@@ -137,6 +137,34 @@ test('floating add button uses direct sheet action binding', () => {
   assert.match(calendarJs, /Promise\.resolve\(_addWorkoutHomeSession\(key\)\)/);
 });
 
+test('day sheet add picker stays on the current sheet session', () => {
+  const loadStart = calendarJs.indexOf('async function _loadWorkoutStateForSheetSession');
+  const loadEnd = calendarJs.indexOf('async function _refreshWorkoutHomeAfterPickerSelect', loadStart);
+  const refreshStart = loadEnd;
+  const refreshEnd = calendarJs.indexOf('function _sortedCheckins', refreshStart);
+  const addStart = calendarJs.indexOf('async function _addWorkoutHomeSession');
+  const addEnd = calendarJs.indexOf('async function _openWorkoutHomeRunning', addStart);
+  assert.ok(loadStart >= 0 && loadEnd > loadStart, 'sheet state loader should exist');
+  assert.ok(refreshStart >= 0 && refreshEnd > refreshStart, 'sheet refresh callback should exist');
+  assert.ok(addStart >= 0 && addEnd > addStart, 'sheet add action should exist');
+  const loader = calendarJs.slice(loadStart, loadEnd);
+  const refresh = calendarJs.slice(refreshStart, refreshEnd);
+  const addFn = calendarJs.slice(addStart, addEnd);
+
+  assert.match(loader, /window\.__wtTargetSessionIndex = Math\.max\(0, Math\.floor\(Number\(sessionIndex\) \|\| 0\)\)/);
+  assert.match(loader, /const loader = window\._wtExports\?\.loadWorkoutDate \|\| window\.loadWorkoutDate/);
+  assert.doesNotMatch(loader, /wtOpenWorkoutRecord|pushWorkoutRecord|switchTab\('workout'/);
+  assert.match(refresh, /openWorkoutDaySheet\(key,[\s\S]*sheetState:\s*'full'[\s\S]*action:\s*'sheet:add-exercise'/);
+  assert.match(refresh, /timerBar\.classList\.add\('wt-open'\)/);
+  assert.match(refresh, /renderWorkoutCalendarHome\(\)/);
+  assert.match(addFn, /const targetKey = _parseDateKey\(key\) \? key : _workoutHomeSelectedKey/);
+  assert.match(addFn, /const targetIndex = Math\.max\(0, Math\.min\(_workoutHomeSessionIndex, WORKOUT_GYM_SESSION_COUNT - 1\)\)/);
+  assert.doesNotMatch(addFn, /findIndex\(session => !hasWorkoutSessionData\(session\)\)/);
+  assert.doesNotMatch(addFn, /_loadWorkoutEditorForSession\(key, targetIndex\)/);
+  assert.match(addFn, /_loadWorkoutStateForSheetSession\(targetKey, targetIndex\)/);
+  assert.match(addFn, /window\.wtOpenExercisePicker\(\{[\s\S]*source:\s*'workout-day-sheet'[\s\S]*afterSelect: detail => _refreshWorkoutHomeAfterPickerSelect\(targetKey, targetIndex, detail\)/);
+});
+
 test('workout bottom sheet replaces the third gym session with a dedicated running tab', () => {
   const tabStart = calendarJs.indexOf('function _renderWorkoutDetailSessionTabs');
   const tabEnd = calendarJs.indexOf('function _renderWorkoutDetailRecorded', tabStart);
@@ -228,6 +256,7 @@ test('bottom sheet css is fixed, animated, and contains the session bar inside t
   assert.match(styleCss, /\.cal-workout-day-sheet \.wt-day-sessionbar\s*\{[\s\S]*padding:\s*7px 82px/);
   assert.match(styleCss, /\.cal-workout-day-sheet \.wt-day-sheet-scroll\s*\{[\s\S]*-webkit-overflow-scrolling:\s*touch;/);
   assert.match(styleCss, /\.cal-workout-day-sheet \.wt-day-sheet-scroll\s*\{[\s\S]*touch-action:\s*pan-y;/);
+  assert.match(styleCss, /#tab-workout\.wt-calendar-home-mode:has\(#wt-workout-timer-bar\.wt-open\) \.cal-workout-day-sheet \.wt-day-sheet-scroll\s*\{[\s\S]*padding-bottom:\s*calc\(86px \+ env\(safe-area-inset-bottom,\s*0px\)\)/);
   assert.match(styleCss, /\.cal-workout-day-sheet \.wt-day-fab\s*\{[\s\S]*bottom:\s*calc\(8px \+ env\(safe-area-inset-bottom,\s*0px\)\)/);
   assert.match(styleCss, /\.cal-workout-day-sheet \.wt-day-fab\s*\{[\s\S]*pointer-events:\s*auto;[\s\S]*touch-action:\s*manipulation;/);
   assert.doesNotMatch(styleCss, /wt-workout-sheet-scroll-lock|wt-day-sheet-drag|is-dragging|is-mid/);
@@ -407,5 +436,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260630z07-workout-record-scroll/);
+  assert.match(swJs, /tomatofarm-v20260630z08-day-sheet-inline-add-timer/);
 });

@@ -63,5 +63,5 @@ test('runtime saveDay calls use merge mode explicitly', () => {
 
 test('service worker cache version was bumped for save guard assets', () => {
   const sw = read('sw.js');
-  assert.match(sw, /tomatofarm-v20260630z07-workout-record-scroll/);
+  assert.match(sw, /tomatofarm-v20260630z08-day-sheet-inline-add-timer/);
 });

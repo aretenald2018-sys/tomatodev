@@ -2357,6 +2357,7 @@ let _pickerView = 'category';
 let _pickerListMode = 'all'; // all | custom
 let _pickerSortMode = 'recent'; // recent | frequency | name
 let _pickerSearchQuery = '';
+let _pickerAfterSelect = null;
 const PICKER_MUSCLE_ASSETS = {
   chest: './assets/workout/muscles/chest.png',
   shoulder: './assets/workout/muscles/shoulder.png',
@@ -2411,6 +2412,28 @@ function _setPickerSearchUi(value = '') {
   if (input && input.value !== value) input.value = value;
   const clearBtn = document.getElementById('ex-picker-search-clear');
   if (clearBtn) clearBtn.style.display = value ? 'grid' : 'none';
+}
+
+function _setPickerAfterSelect(handler) {
+  _pickerAfterSelect = typeof handler === 'function' ? handler : null;
+}
+
+function _consumePickerAfterSelect() {
+  const handler = _pickerAfterSelect;
+  _pickerAfterSelect = null;
+  return handler;
+}
+
+async function _runPickerAfterSelect(handler, detail = {}) {
+  if (typeof handler !== 'function') return false;
+  try {
+    await handler(detail);
+    return true;
+  } catch (e) {
+    console.warn('[exercise-picker] afterSelect failed:', e);
+    window.showToast?.('운동 추가 후 화면 갱신에 실패했어요', 2200, 'warning');
+    return false;
+  }
 }
 
 function _resetPickerGymScope() {
@@ -3027,10 +3050,20 @@ export function _renderPickerList() {
       }
       _bindPickerSourceFilter(btn);
 
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
+        const afterSelect = _consumePickerAfterSelect();
         const existingIdx = _findWorkoutEntryIndexByExerciseId(ex.id);
         if (existingIdx >= 0) {
           wtCloseExercisePicker();
+          if (afterSelect) {
+            await _runPickerAfterSelect(afterSelect, {
+              entryIdx: existingIdx,
+              exerciseId: ex.id,
+              exercise: ex,
+              existing: true,
+            });
+            return;
+          }
           wtFocusWorkoutEntryCard(existingIdx);
           return;
         }
@@ -3043,8 +3076,23 @@ export function _renderPickerList() {
         _refreshWorkoutTimeline('exercise add');
         wtPersistActiveWorkoutDraft('exercise add');
         wtCloseExercisePicker();
+        const savePromise = saveWorkoutDay({ silent: true });
+        if (afterSelect) {
+          try {
+            await savePromise;
+            await _runPickerAfterSelect(afterSelect, {
+              entryIdx,
+              exerciseId: ex.id,
+              exercise: ex,
+              existing: false,
+            });
+          } catch (e) {
+            console.error('Save error:', e);
+          }
+          return;
+        }
         wtFocusWorkoutEntryCard(entryIdx);
-        saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
+        savePromise.catch(e => console.error('Save error:', e));
       });
       group.appendChild(btn);
     });
@@ -3076,7 +3124,10 @@ export function _renderPickerList() {
   }
 }
 
-export async function wtOpenExercisePicker() {
+export async function wtOpenExercisePicker(options = {}) {
+  if (Object.prototype.hasOwnProperty.call(options || {}, 'afterSelect')) {
+    _setPickerAfterSelect(options.afterSelect);
+  }
   let modal = document.getElementById('ex-picker-modal');
   if (!modal) {
     const { loadAndInjectModals } = await import('../modal-manager.js');
@@ -3169,10 +3220,11 @@ export function wtOpenExerciseEditor(exId, defaultMuscleId) {
   _setWorkoutModalLock(true);
 }
 
-export function wtCloseExercisePicker(e) {
+export function wtCloseExercisePicker(e, options = {}) {
   if (e && e.target !== document.getElementById('ex-picker-modal')) return;
   document.getElementById('ex-picker-modal').classList.remove('open');
   _setWorkoutModalLock(false);
+  if (!options?.preserveAfterSelect) _setPickerAfterSelect(null);
 }
 
 export function wtCloseExerciseEditor(e) {

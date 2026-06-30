@@ -4113,9 +4113,20 @@ body.wt-workout-tab-active #tab-workout.active {
 }
 #tab-workout.wt-calendar-home-mode > .workout-date-nav,
 #tab-workout.wt-calendar-home-mode > .wt-future-notice,
-#tab-workout.wt-calendar-home-mode > .workout-tab-content,
 #tab-workout.wt-calendar-home-mode > .wt-exercise-detail-root {
   display: none;
+}
+#tab-workout.wt-calendar-home-mode > .workout-tab-content {
+  display: block;
+  min-height: 0;
+  padding: 0;
+  pointer-events: none;
+}
+#tab-workout.wt-calendar-home-mode > .workout-tab-content > :not(#wt-workout-timer-bar) {
+  display: none !important;
+}
+#tab-workout.wt-calendar-home-mode > .workout-tab-content > #wt-workout-timer-bar {
+  pointer-events: auto;
 }
 #tab-workout.wt-calendar-edit-mode > .workout-calendar-root {
   display: none;
@@ -6706,6 +6717,9 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   position: fixed; bottom: 60px; left: 0; right: 0; z-index: 199;
 }
 .wt-workout-timer-bar.wt-open { display: flex; }
+#tab-workout.wt-calendar-home-mode .wt-workout-timer-bar {
+  bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+}
 .wt-timer-top { display: flex; align-items: center; justify-content: space-between; }
 .wt-timer-left { display: flex; align-items: center; gap: 10px; }
 .wt-timer-icon {
@@ -13271,6 +13285,9 @@ body.wt-running-session-open {
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
   padding: 0 0 14px;
+}
+#tab-workout.wt-calendar-home-mode:has(#wt-workout-timer-bar.wt-open) .cal-workout-day-sheet .wt-day-sheet-scroll {
+  padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px));
 }
 .cal-workout-day-sheet .wt-day-empty {
   min-height: min(420px, 50dvh);

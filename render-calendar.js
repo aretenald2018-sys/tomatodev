@@ -435,6 +435,43 @@ async function _loadWorkoutEditorForSession(key, sessionIndex = 0) {
   return false;
 }
 
+async function _loadWorkoutStateForSheetSession(key, sessionIndex = 0) {
+  const p = _parseDateKey(key);
+  if (!p || typeof window === 'undefined') return false;
+  window.__wtTargetSessionIndex = Math.max(0, Math.floor(Number(sessionIndex) || 0));
+  const loader = window._wtExports?.loadWorkoutDate || window.loadWorkoutDate;
+  if (typeof loader !== 'function') return false;
+  await Promise.resolve(loader(p.y, p.m, p.d));
+  return true;
+}
+
+async function _refreshWorkoutHomeAfterPickerSelect(key, sessionIndex = _workoutHomeSessionIndex, detail = {}) {
+  const p = _parseDateKey(key);
+  if (!p) return false;
+  const targetIndex = Math.max(0, Math.min(WORKOUT_GYM_SESSION_COUNT - 1, Math.floor(Number(sessionIndex) || 0)));
+  _viewYear = p.y;
+  _viewMonth = p.m;
+  _workoutHomeSelectedKey = key;
+  _workoutHomeSessionIndex = targetIndex;
+  _workoutHomeView = 'detail';
+  _workoutHomeSheetState = 'full';
+  openWorkoutDaySheet(key, {
+    sessionIndex: targetIndex,
+    sheetState: 'full',
+    viewYear: _viewYear,
+    viewMonth: _viewMonth,
+    scrollTop: _workoutHomeScrollTop(),
+    history: 'replace',
+    notify: false,
+    action: 'sheet:add-exercise',
+  });
+  const timerBar = typeof document !== 'undefined' ? document.getElementById('wt-workout-timer-bar') : null;
+  if (timerBar && !timerBar.classList.contains('wt-open')) timerBar.classList.add('wt-open');
+  renderWorkoutCalendarHome();
+  if (!detail?.existing) window.showToast?.('종목을 추가했어요', 1500, 'success');
+  return true;
+}
+
 function _clonePlain(value) {
   if (value == null) return value;
   try { return JSON.parse(JSON.stringify(value)); }
@@ -2411,22 +2448,28 @@ function _editWorkoutHomeSession(key, sessionIndex = _workoutHomeSessionIndex) {
 }
 
 async function _addWorkoutHomeSession(key) {
-  const cache = getCache() || {};
-  const sessions = getWorkoutSessions(cache[key] || {}, { minCount: WORKOUT_GYM_SESSION_COUNT }).slice(0, WORKOUT_GYM_SESSION_COUNT);
-  const emptyIndex = sessions.findIndex(session => !hasWorkoutSessionData(session));
-  const targetIndex = emptyIndex >= 0 ? emptyIndex : Math.max(0, Math.min(_workoutHomeSessionIndex, WORKOUT_GYM_SESSION_COUNT - 1));
+  const targetKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
+  const targetIndex = Math.max(0, Math.min(_workoutHomeSessionIndex, WORKOUT_GYM_SESSION_COUNT - 1));
 
   try {
-    const loaded = await _loadWorkoutEditorForSession(key, targetIndex);
-    if (!loaded) throw new Error('workout editor is not available');
+    _workoutHomeSelectedKey = targetKey;
+    _workoutHomeSessionIndex = targetIndex;
+    _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:add-picker' });
+    const loaded = await _loadWorkoutStateForSheetSession(targetKey, targetIndex);
+    if (!loaded) throw new Error('workout state loader is not available');
     if (typeof window.wtOpenExercisePicker === 'function') {
-      await window.wtOpenExercisePicker();
+      await window.wtOpenExercisePicker({
+        source: 'workout-day-sheet',
+        dateKey: targetKey,
+        sessionIndex: targetIndex,
+        afterSelect: detail => _refreshWorkoutHomeAfterPickerSelect(targetKey, targetIndex, detail),
+      });
       return;
     }
     throw new Error('exercise picker is not registered');
   } catch (e) {
     console.warn('[workout-calendar] add session picker open failed:', e);
-    _openWorkoutEditorForSession(key, targetIndex);
+    _openWorkoutEditorForSession(targetKey, targetIndex);
   }
 }
 
