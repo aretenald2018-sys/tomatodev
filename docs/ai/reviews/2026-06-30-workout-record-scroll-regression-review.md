@@ -30,6 +30,8 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=863`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
+- PASS: Dashboard3 Pages 배포 검증 — `ce243d72f73d`, `tomatofarm-v20260630z07-workout-record-scroll`
+- PASS: Dashboard3 Pages marker 직접 fetch — `sw.js` cache version, `app.js`의 `_isWorkoutRecordScrollTarget`/`_workoutPageScrollTop`, `style.css`의 `touch-action: pan-y`/timer-open padding marker 확인
 
 ## 남은 위험
 
