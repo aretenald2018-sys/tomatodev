@@ -63,5 +63,5 @@ test('workout finish saves without opening the old completion insight modal', ()
 });
 
 test('service worker cache version was bumped for workout timer summary-only UI', () => {
-  assert.match(swJs, /tomatofarm-v20260630z09-day-sheet-draft-add/);
+  assert.match(swJs, /tomatofarm-v20260630z10-day-sheet-inline-edit/);
 });

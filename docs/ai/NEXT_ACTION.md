@@ -2,16 +2,35 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_execution`
-- 계획 문서: `docs/ai/features/2026-06-30-workout-day-sheet-add-draft-card.md`
-- 리뷰 문서: `없음`
-- 현재 단계: `운동 하단 시트 종목 추가 초안 카드 회귀 수정 계획 완료`
+- 상태: `complete`
+- 계획 문서: `docs/ai/features/2026-06-30-workout-day-sheet-inline-edit-regression.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-day-sheet-inline-edit-regression-review.md`
+- 현재 단계: `운동 하단 시트 편집 버튼 2화면 회귀 수정 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `운동 숫자 입력 UX, 운동 캘린더 터치 스크롤, 미란다/상담실장 전구 숨김까지 운영계 tomatofarm/main에 배포하고 Pages asset 검증을 통과했다.`
-- 다음 액션: `Slice 1 실행: 하단 시트 피커 추가 초안 종목을 저장/표시 대상으로 보존`
+- 마지막 완료: `하단 시트 헬스 카드 편집 버튼을 시트 내 inline edit mode로 전환하고 정적 검증/전체 테스트를 통과했다.`
+- 다음 액션: `Dashboard3 Pages 배포 검증 후 사용자가 인증된 모바일 UI에서 편집 흐름을 확인`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
+
+- Workout Day Sheet Inline Edit Regression 계획:
+  1. 원인: `render-calendar.js`의 하단 시트 헬스 카드 `편집하기`가 `_wtCalEditSession()`을 호출한다.
+  2. 원인: `_editWorkoutHomeSession()`이 `_openWorkoutEditorForSession()`으로 기존 기록 편집 화면을 직접 연다.
+  3. 결과: 사용자가 1화면 하단 시트에서 편집하려 할 때 2화면으로 빠져 타이머와 오늘 운동 기록 흐름이 분기된 것처럼 보인다.
+  4. Slice 1 범위는 헬스 카드 inline edit mode, KG/REP/RIR/ROM 저장, 완료 토글, 세트 추가/삭제, 회귀 테스트, `sw.js` cache bump다.
+  5. 계획 문서: `docs/ai/features/2026-06-30-workout-day-sheet-inline-edit-regression.md`
+  6. 완료: `render-calendar.js`에서 하단 시트 헬스 카드 `편집하기`를 `_wtCalEditExerciseCard()` inline edit mode로 전환했다.
+  7. 완료: stale `_wtCalEditSession()` 경로에서도 `_openWorkoutEditorForSession()`을 호출하지 않게 했다.
+  8. 완료: inline edit mode에서 KG/REP/RIR/ROM 입력, 완료 토글, 세트 추가/삭제를 저장한다.
+  9. 완료: `style.css`에 하단 시트 세트 입력/토글 스타일을 추가했다.
+  10. 완료: `sw.js` cache version을 `tomatofarm-v20260630z10-day-sheet-inline-edit`로 bump하고 cache marker 테스트 기대값을 갱신했다.
+  11. PASS: `node --check render-calendar.js`
+  12. PASS: `node --check sw.js`
+  13. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js tests/workout-save-mode-guard.test.js`
+  14. PASS: `node scripts/verify-runtime-assets.mjs`
+  15. PASS: `node --test --test-reporter=dot tests/*.test.js`
+  16. PASS: `git diff --check`
+  17. 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-day-sheet-inline-edit-regression-review.md`
 
 - Workout Day Sheet Inline Add Timer 계획:
   1. 원인: `render-calendar.js`의 `+` 액션이 첫 빈 회차를 우선 target으로 잡고 `_loadWorkoutEditorForSession()`을 통해 `wtOpenWorkoutRecord()` route push를 수행한다.

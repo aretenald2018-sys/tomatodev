@@ -12552,6 +12552,27 @@ body.wt-running-session-open {
   line-height: 26px;
   font-weight: 900;
 }
+.wt-max-set-main label input {
+  min-width: 0;
+  width: 100%;
+  height: 26px;
+  padding: 0 5px;
+  border: 1px solid #dfe6ef;
+  border-radius: 7px;
+  background: #fff;
+  color: #111827;
+  text-align: center;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 26px;
+  font-weight: 900;
+  outline: none;
+}
+.wt-max-set-main label input:focus,
+.wt-max-rom-inline.is-editing input:focus {
+  border-color: #217cf9;
+  box-shadow: 0 0 0 2px rgba(33, 124, 249, 0.12);
+}
 .wt-max-set-check,
 .wt-max-set-remove,
 .wt-max-set-grip {
@@ -12573,6 +12594,20 @@ body.wt-running-session-open {
   border-color: #111827;
   background: #111827;
   color: #fff;
+}
+.wt-max-set-toggle,
+.wt-max-set-remove-btn {
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1;
+}
+.wt-max-set-toggle {
+  border: 1px solid #d9dee8;
+}
+.wt-max-set-remove-btn {
+  background: transparent;
 }
 .wt-max-set-row.is-done .wt-max-set-remove,
 .wt-max-set-row.is-done .wt-max-set-grip {
@@ -12612,6 +12647,25 @@ body.wt-running-session-open {
   font-size: 13px;
   line-height: 24px;
   font-weight: 900;
+}
+.wt-max-rom-inline.is-editing {
+  grid-template-columns: auto minmax(0, 1fr) 36px;
+}
+.wt-max-rom-inline.is-editing input {
+  min-width: 0;
+  width: 100%;
+  height: 24px;
+  padding: 0 4px;
+  border: 1px solid #dfe6ef;
+  border-radius: 7px;
+  background: #fff;
+  color: #111827;
+  text-align: center;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 24px;
+  font-weight: 900;
+  outline: none;
 }
 .wt-max-empty-sets {
   padding: 9px;
@@ -13119,6 +13173,12 @@ body.wt-running-session-open {
     font-size: 13px;
     line-height: 24px;
   }
+  .wt-max-set-main label input {
+    height: 24px;
+    padding: 0 4px;
+    font-size: 13px;
+    line-height: 24px;
+  }
   .wt-max-set-check {
     width: 20px;
     height: 20px;
@@ -13131,6 +13191,14 @@ body.wt-running-session-open {
     font-size: 7px;
   }
   .wt-max-rom-inline strong {
+    height: 22px;
+    font-size: 12px;
+    line-height: 22px;
+  }
+  .wt-max-rom-inline.is-editing {
+    grid-template-columns: auto minmax(0, 1fr) 32px;
+  }
+  .wt-max-rom-inline.is-editing input {
     height: 22px;
     font-size: 12px;
     line-height: 22px;

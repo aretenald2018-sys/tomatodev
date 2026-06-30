@@ -183,11 +183,44 @@ test('day sheet detail renders picker-added draft exercise rows', () => {
 
   assert.match(calendarJs, /function _hasDraftWorkoutEntry/);
   assert.match(rows, /includeDraftExercises/);
+  assert.match(rows, /rawSetDetails/);
   assert.match(rows, /const hasDraftExercise = includeDraftExercises && _hasDraftWorkoutEntry\(entry\)/);
   assert.match(rows, /if \(!sets\.length && !note && !hasDraftExercise\) return null/);
   assert.match(metrics, /_exerciseRows\(d, lookup, key, options\)/);
   assert.match(detail, /_workoutMetrics\(key, session, bodyWeight, lookup, \{ includeDraftExercises: true \}\)/);
   assert.match(tabs, /_hasWorkoutHomeSessionRecord\(session\)/);
+});
+
+test('day sheet exercise card edit stays inline instead of opening the record route', () => {
+  const cardStart = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard');
+  const cardEnd = calendarJs.indexOf('function _renderWorkoutRunningDetailCard', cardStart);
+  const rowsStart = calendarJs.indexOf('function _renderWorkoutSetInput');
+  const rowsEnd = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard', rowsStart);
+  const oldEditStart = calendarJs.indexOf('function _editWorkoutHomeSession');
+  const oldEditEnd = calendarJs.indexOf('async function _addWorkoutHomeSession', oldEditStart);
+  assert.ok(cardStart >= 0 && cardEnd > cardStart, 'exercise detail card renderer should exist');
+  assert.ok(rowsStart >= 0 && rowsEnd > rowsStart, 'set row renderer should exist');
+  assert.ok(oldEditStart >= 0 && oldEditEnd > oldEditStart, 'legacy edit session function should exist');
+  const card = calendarJs.slice(cardStart, cardEnd);
+  const setRows = calendarJs.slice(rowsStart, rowsEnd);
+  const oldEditFn = calendarJs.slice(oldEditStart, oldEditEnd);
+
+  assert.match(card, /const editing = _workoutEditingCardId === cardId && !collapsed/);
+  assert.match(card, /window\._wtCalEditExerciseCard\('\$\{cardId\}'\)/);
+  assert.match(card, /window\._wtCalFinishExerciseEdit\('\$\{cardId\}'\)/);
+  assert.match(card, /window\._wtCalAddExerciseSet\('\$\{key\}', \$\{sessionIndex\}, \$\{originalIndex\}\)/);
+  assert.doesNotMatch(card, /window\._wtCalEditSession\('\$\{key\}', \$\{sessionIndex\}\)/);
+  assert.match(setRows, /window\._wtCalUpdateExerciseSet/);
+  assert.match(setRows, /window\._wtCalToggleExerciseSetDone/);
+  assert.match(setRows, /window\._wtCalRemoveExerciseSet/);
+  assert.doesNotMatch(oldEditFn, /_openWorkoutEditorForSession/);
+  assert.match(oldEditFn, /action:\s*'sheet:edit-inline'/);
+  assert.match(calendarJs, /window\._wtCalEditExerciseCard = _editWorkoutExerciseCard/);
+  assert.match(calendarJs, /window\._wtCalUpdateExerciseSet = _updateWorkoutExerciseSetFromSheet/);
+  assert.match(calendarJs, /upsertWorkoutSession\(day, nextSession, index, \{ now: Date\.now\(\) \}\)/);
+  assert.match(styleCss, /\.wt-max-set-main label input\s*\{/);
+  assert.match(styleCss, /\.wt-max-rom-inline\.is-editing input\s*\{/);
+  assert.match(styleCss, /\.wt-max-set-toggle,\s*\n\.wt-max-set-remove-btn\s*\{/);
 });
 
 test('workout bottom sheet replaces the third gym session with a dedicated running tab', () => {
@@ -461,5 +494,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260630z09-day-sheet-draft-add/);
+  assert.match(swJs, /tomatofarm-v20260630z10-day-sheet-inline-edit/);
 });

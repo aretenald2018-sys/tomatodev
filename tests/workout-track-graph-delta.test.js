@@ -49,5 +49,5 @@ test('wendler graph uses a separate W history instead of volume or intensity row
 });
 
 test('service worker cache version was bumped for track pp delta assets', () => {
-  assert.match(swJs, /tomatofarm-v20260630z09-day-sheet-draft-add/);
+  assert.match(swJs, /tomatofarm-v20260630z10-day-sheet-inline-edit/);
 });
