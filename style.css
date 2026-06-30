@@ -4125,6 +4125,13 @@ body.wt-workout-tab-active #tab-workout.active {
 }
 #tab-workout.wt-workout-record-mode > .workout-tab-content {
   padding-top: 20px;
+  touch-action: pan-y;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-padding-bottom: calc(180px + env(safe-area-inset-bottom, 0px));
+}
+#tab-workout.wt-workout-record-mode > .workout-tab-content:has(#wt-workout-timer-bar.wt-open) {
+  padding-bottom: calc(220px + env(safe-area-inset-bottom, 0px));
 }
 #tab-workout.wt-calendar-edit-mode > .workout-tab-content > #expert-top-area,
 #tab-workout.wt-calendar-edit-mode > .workout-tab-content > #tm2-entry {

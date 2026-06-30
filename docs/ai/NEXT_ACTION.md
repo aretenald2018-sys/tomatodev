@@ -2,16 +2,35 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-30-workout-cycle-rail-exercise-name.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-cycle-rail-exercise-name-review.md`
-- 현재 단계: `운동 캘린더 사이클 레일 종목명 복원 구현/리뷰/배포 검증 완료`
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-06-30-workout-record-scroll-regression.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-record-scroll-regression-review.md`
+- 현재 단계: `운동 기록 화면 스크롤 회귀 수정 로컬 검증/리뷰 완료, Dashboard3 배포 검증 대기`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
 - 마지막 완료: `운동 숫자 입력 UX, 운동 캘린더 터치 스크롤, 미란다/상담실장 전구 숨김까지 운영계 tomatofarm/main에 배포하고 Pages asset 검증을 통과했다.`
-- 다음 액션: `없음`
+- 다음 액션: `커밋 후 origin/main push, Dashboard3 Pages 배포 검증`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
+
+- Workout Record Scroll Regression 계획:
+  1. `app.js`의 전역 workout pull-back gesture가 기록/상세 본문 스크롤을 가로채는지 우선 진단한다.
+  2. 기록/상세 본문에서 시작한 touch gesture는 pull-back 대상에서 제외한다.
+  3. 기록 화면 `.workout-tab-content`에는 `touch-action: pan-y`와 하단 고정 타이머 여유를 추가한다.
+  4. 변경 범위는 `app.js`, `style.css`, `sw.js`, 관련 테스트, 문서로 제한한다.
+  5. `app.js`, `style.css`가 `STATIC_ASSETS`에 있으므로 `sw.js` cache version을 함께 bump한다.
+  6. 완료: `app.js`에 `_isWorkoutRecordScrollTarget()`과 `_workoutPageScrollTop()`을 추가했다.
+  7. 완료: 기록/상세 본문에서 시작한 touch gesture를 pull-back 대상에서 제외했다.
+  8. 완료: `style.css`에서 기록 화면 본문 `touch-action: pan-y`, `overscroll-behavior-y: contain`, timer-open 하단 padding을 추가했다.
+  9. 완료: `sw.js` cache version을 `tomatofarm-v20260630z07-workout-record-scroll`로 bump하고 cache marker 테스트 기대값을 갱신했다.
+  10. PASS: `node --check app.js`
+  11. PASS: `node --check sw.js`
+  12. PASS: `node --test tests/workout-navigation-stack.test.js tests/workout-card-layout-css.test.js` — 10 tests passed
+  13. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=863`
+  14. PASS: `node --test --test-reporter=dot tests/*.test.js`
+  15. PASS: `git diff --check`
+  16. 완료: 리뷰 문서 `docs/ai/reviews/2026-06-30-workout-record-scroll-regression-review.md`를 작성했고 추가 수정 이슈는 없다.
+  17. not verified yet: Dashboard3 Pages 배포와 인증 계정 실제 UI flow 확인이 남아 있다.
 
 - Workout Cycle Rail Exercise Name 계획:
   1. 좌측 사이클 목표 칩 첫 줄을 `W1 스모데드`처럼 주차 + 종목명으로 표시한다.

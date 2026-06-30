@@ -378,8 +378,14 @@ function _handleWorkoutOverlayBack() {
   );
 }
 
+function _isWorkoutRecordScrollTarget(target) {
+  return !!target?.closest?.(
+    '#tab-workout.wt-workout-record-mode .workout-tab-content, #tab-workout.wt-workout-detail-mode .wt-exercise-detail-root'
+  );
+}
+
 function _isWorkoutPullBlockedTarget(target) {
-  return !!target?.closest?.('input, textarea, select, [contenteditable="true"], [data-wt-day-sheet], [data-wt-calendar-scroll-surface], .modal-backdrop.open, .modal-overlay.open');
+  return _isWorkoutRecordScrollTarget(target) || !!target?.closest?.('input, textarea, select, [contenteditable="true"], [data-wt-day-sheet], [data-wt-calendar-scroll-surface], .modal-backdrop.open, .modal-overlay.open');
 }
 
 function _nearestWorkoutScroller(target) {
@@ -394,9 +400,19 @@ function _nearestWorkoutScroller(target) {
   return document.scrollingElement || document.documentElement;
 }
 
+function _workoutPageScrollTop() {
+  return Math.max(
+    0,
+    Number(document.scrollingElement?.scrollTop) || 0,
+    Number(document.documentElement?.scrollTop) || 0,
+    Number(document.body?.scrollTop) || 0,
+    Number(window.scrollY) || 0
+  );
+}
+
 function _canStartWorkoutPullBack(target) {
   if (_currentTab !== 'workout' || _isWorkoutPullBlockedTarget(target)) return false;
-  const rootTop = Math.max(0, document.scrollingElement?.scrollTop || window.scrollY || 0);
+  const rootTop = _workoutPageScrollTop();
   const scroller = _nearestWorkoutScroller(target);
   const scrollerTop = Math.max(0, Number(scroller?.scrollTop) || 0);
   return rootTop <= 1 && scrollerTop <= 1;

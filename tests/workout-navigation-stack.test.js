@@ -108,6 +108,11 @@ test('workout navigation is wired to app, calendar, record card focus, and PWA c
   assert.match(appJs, /document\.body\?\.classList\.toggle\('wt-workout-tab-active', tab === 'workout'\)/);
   assert.match(appJs, /window\.addEventListener\('touchmove', onMove, \{ passive: false, capture: true \}\)/);
   assert.match(appJs, /handleWorkoutBack\(\{ activeTab: _currentTab, preferHistory: true, action: 'pull:back' \}\)/);
+  assert.match(appJs, /function _isWorkoutRecordScrollTarget\(target\)/);
+  assert.match(appJs, /#tab-workout\.wt-workout-record-mode \.workout-tab-content, #tab-workout\.wt-workout-detail-mode \.wt-exercise-detail-root/);
+  assert.match(appJs, /return _isWorkoutRecordScrollTarget\(target\) \|\| !!target\?\.closest\?/);
+  assert.match(appJs, /function _workoutPageScrollTop\(\)/);
+  assert.match(appJs, /Number\(document\.body\?\.scrollTop\) \|\| 0/);
   assert.match(appJs, /action:\s*'calendar:tab-today'/);
   assert.match(appJs, /selectedKey:\s*_dateKeyFromParts\(TODAY\.getFullYear\(\), TODAY\.getMonth\(\), TODAY\.getDate\(\)\)/);
   assert.match(appJs, /viewYear:\s*TODAY\.getFullYear\(\)/);
@@ -140,8 +145,10 @@ test('workout navigation is wired to app, calendar, record card focus, and PWA c
   assert.match(styleCss, /\.cal-workout-month-grid\s*\{[\s\S]*touch-action:\s*pan-y/);
   assert.match(styleCss, /#tab-workout\.wt-workout-record-mode > \.workout-date-nav\s*\{[\s\S]*display:\s*none/);
   assert.match(styleCss, /#tab-workout\.wt-workout-record-mode > \.workout-tab-content\s*\{[\s\S]*padding-top:\s*20px/);
+  assert.match(styleCss, /#tab-workout\.wt-workout-record-mode > \.workout-tab-content\s*\{[\s\S]*touch-action:\s*pan-y;[\s\S]*overscroll-behavior-y:\s*contain;[\s\S]*-webkit-overflow-scrolling:\s*touch;/);
+  assert.match(styleCss, /#tab-workout\.wt-workout-record-mode > \.workout-tab-content:has\(#wt-workout-timer-bar\.wt-open\)\s*\{[\s\S]*padding-bottom:\s*calc\(220px \+ env\(safe-area-inset-bottom,\s*0px\)\)/);
   assert.match(styleCss, /body\.wt-workout-tab-active\s*\{[\s\S]*overscroll-behavior-y:\s*none;/);
   assert.match(styleCss, /body\.wt-workout-tab-active #tab-workout\.active\s*\{[\s\S]*overscroll-behavior-y:\s*contain;/);
   assert.match(swJs, /\.\/workout\/navigation-stack\.js/);
-  assert.match(swJs, /tomatofarm-v20260630z06-cycle-rail-exercise-name/);
+  assert.match(swJs, /tomatofarm-v20260630z07-workout-record-scroll/);
 });

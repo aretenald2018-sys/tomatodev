@@ -170,7 +170,7 @@ test('trainer quest modal styles and runtime cache asset are registered', () => 
   assert.doesNotMatch(styleCss, /\.trainer-quest-choice/);
   assert.doesNotMatch(styleCss, /\.trainer-quest-choice-caret/);
   assert.match(styleCss, /\.trainer-quest-stats-root/);
-  assert.match(swJs, /tomatofarm-v20260630z06-cycle-rail-exercise-name/);
+  assert.match(swJs, /tomatofarm-v20260630z07-workout-record-scroll/);
   assert.match(swJs, /\.\/modals\/trainer-quest-modal\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/trainer-quest-seated-trainer\.png/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/trainer-quest-stats-guide-trainer\.png/);
