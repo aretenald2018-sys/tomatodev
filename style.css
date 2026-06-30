@@ -5760,6 +5760,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   max-height: none;
   margin: 0 auto;
   padding: 0;
+  position: relative;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -6083,6 +6084,175 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 }
 .ex-picker-activity-tile .ex-picker-muscle-count {
   color: var(--seed-fg-muted, var(--text-secondary));
+}
+.ex-picker-activity-tile--manual-cardio .ex-picker-muscle-name {
+  color: #0f8f6f;
+}
+.ex-picker-cardio-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(17, 24, 39, .34);
+}
+.ex-picker-cardio-sheet {
+  width: 100%;
+  padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+  border: 0;
+  border-radius: 20px 20px 0 0;
+  background: #fff;
+  color: #111827;
+  box-shadow: 0 -16px 38px rgba(15, 23, 42, .18);
+}
+.ex-picker-cardio-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.ex-picker-cardio-head span,
+.ex-picker-cardio-head strong {
+  display: block;
+}
+.ex-picker-cardio-head span {
+  color: #0f8f6f;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 850;
+}
+.ex-picker-cardio-head strong {
+  color: #111827;
+  font-size: 19px;
+  line-height: 25px;
+  font-weight: 900;
+}
+.ex-picker-cardio-close {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 22px;
+  line-height: 1;
+}
+.ex-picker-cardio-mode {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.ex-picker-cardio-mode button {
+  min-height: 42px;
+  border: 1px solid #dbe3ec;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #475569;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 850;
+}
+.ex-picker-cardio-mode button.active {
+  border-color: #0f8f6f;
+  background: #e8f7f2;
+  color: #0f766e;
+}
+.ex-picker-cardio-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.ex-picker-cardio-fields label {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid #dbe3ec;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+.ex-picker-cardio-fields span {
+  grid-column: 1 / -1;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 15px;
+  font-weight: 850;
+}
+.ex-picker-cardio-fields input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: #111827;
+  font: inherit;
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 900;
+  outline: none;
+}
+.ex-picker-cardio-fields em {
+  color: #64748b;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 850;
+}
+.ex-picker-cardio-preview {
+  min-height: 56px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #eef6ff;
+}
+.ex-picker-cardio-preview span,
+.ex-picker-cardio-preview strong {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ex-picker-cardio-preview span {
+  color: #2563eb;
+  font-size: 11px;
+  line-height: 15px;
+  font-weight: 850;
+}
+.ex-picker-cardio-preview strong {
+  margin-top: 3px;
+  color: #111827;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 900;
+}
+.ex-picker-cardio-actions {
+  display: grid;
+  grid-template-columns: minmax(96px, .72fr) minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+.ex-picker-cardio-actions button {
+  min-height: 48px;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 900;
+}
+.ex-picker-cardio-secondary {
+  border: 0;
+  background: #f1f5f9;
+  color: #475569;
+}
+.ex-picker-cardio-primary {
+  border: 0;
+  background: #111827;
+  color: #fff;
+}
+.ex-picker-cardio-primary:disabled {
+  opacity: .55;
 }
 .ex-picker-muscle-figure::before,
 .ex-picker-muscle-figure::after {

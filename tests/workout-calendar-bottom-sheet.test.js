@@ -272,6 +272,8 @@ test('running detail card uses the workout read-card shell with running metrics 
   assert.match(calendarJs, /renderRunningMap\(shell, \{ points: payload\.points, phase: 'detail' \}\)/);
   assert.match(calendarJs, /runRouteSummary && typeof d\.runRouteSummary === 'object'/);
   assert.match(calendarJs, /distanceKm:\s*runDistance/);
+  assert.match(calendarJs, /speedKmh:\s*runSpeedKmh/);
+  assert.match(calendarJs, /manual-cardio/);
   assert.match(calendarJs, /avgPaceSecPerKm:\s*_num\(d\.runAvgPaceSecPerKm\)/);
   assert.match(calendarJs, /placeSummary:\s*d\.runPlaceSummary \|\| null/);
   assert.match(calendarJs, /avgHeartRateBpm:\s*Number\(runSummary\.avgHeartRateBpm\) > 0/);
@@ -286,6 +288,8 @@ test('running detail card uses the workout read-card shell with running metrics 
   assert.match(card, /wt-running-metric-grid/);
   assert.match(metricBuilder, /거리/);
   assert.match(metricBuilder, /시간/);
+  assert.match(metricBuilder, /속도/);
+  assert.match(metricBuilder, /row\.speedKmh > 0/);
   assert.match(metricBuilder, /평균 페이스/);
   assert.match(metricBuilder, /칼로리/);
   assert.match(metricBuilder, /고도 상승/);
@@ -506,5 +510,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260630z16-workout-owned-scroll-root/);
+  assert.match(swJs, /tomatofarm-v20260630z17-manual-cardio-picker/);
 });

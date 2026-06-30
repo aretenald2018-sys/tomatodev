@@ -702,20 +702,26 @@ function _activityRows(day) {
   const runDuration = _durationFromMinSec(d.runDurationMin, d.runDurationSec) || _num(runSummary.durationSec);
   const runDistance = _num(d.runDistance) || _num(runSummary.distanceKm);
   const runMemo = (d.runMemo || '').toString().trim();
+  const runSource = d.runSource || runSummary.source || 'manual';
+  const runMode = String(d.runMode || runSummary.activityMode || '').trim();
+  const runSpeedKmh = _num(runSummary.speedKmh) || (runDuration > 0 && runDistance > 0 ? runDistance / (runDuration / 3600) : 0);
+  const isManualCardio = runSource === 'manual-cardio' || runSummary.source === 'manual-cardio';
   if (d.running || runDistance > 0 || runDuration > 0 || runMemo) {
     rows.push({
       key: 'running',
-      label: '러닝',
+      label: isManualCardio ? (runMode === 'walk' ? '걷기' : '유산소') : '러닝',
       tone: 'run',
       durationSec: runDuration,
       distanceKm: runDistance,
+      speedKmh: runSpeedKmh,
       avgPaceSecPerKm: _num(d.runAvgPaceSecPerKm) || _num(runSummary.avgPaceSecPerKm),
       calories: _num(runSummary.calories),
       elevationGainM: Number.isFinite(Number(runSummary.elevationGainM)) ? Number(runSummary.elevationGainM) : null,
       cadenceSpm: Number(runSummary.cadenceSpm) > 0 ? Number(runSummary.cadenceSpm) : null,
       avgHeartRateBpm: Number(runSummary.avgHeartRateBpm) > 0 ? Number(runSummary.avgHeartRateBpm) : null,
       pointCount: _num(runSummary.pointCount) || (Array.isArray(d.runRoute) ? d.runRoute.length : 0),
-      source: d.runSource || runSummary.source || 'manual',
+      source: runSource,
+      activityMode: runMode,
       route: Array.isArray(d.runRoute) ? d.runRoute : [],
       routeSummary: runSummary,
       placeSummary: d.runPlaceSummary || null,
@@ -1828,6 +1834,7 @@ function _formatRunningClock(ts) {
 
 function _runningSourceLabel(source) {
   if (source === 'gps') return 'GPS 기록';
+  if (source === 'manual-cardio') return '수기 입력';
   if (source === 'manual') return '수동 기록';
   return '러닝 기록';
 }
@@ -1835,9 +1842,11 @@ function _runningSourceLabel(source) {
 function _runningMetricItems(row) {
   const durationText = row.durationSec ? _formatDurationShort(row.durationSec) : '--';
   const paceText = _formatRunningPaceCard(row.avgPaceSecPerKm) || "--'--''";
+  const speedText = row.speedKmh > 0 ? `${_fmtNum(row.speedKmh, 1)} km/h` : '--';
   const items = [
     { label: '거리', value: _formatRunningDistance(row.distanceKm) || '--' },
     { label: '시간', value: durationText },
+    { label: '속도', value: speedText },
     { label: '평균 페이스', value: paceText },
     { label: '칼로리', value: row.calories > 0 ? `${Math.round(row.calories)} kcal` : '--' },
     { label: '고도 상승', value: row.elevationGainM == null ? '--' : `${Math.round(row.elevationGainM)} m` },

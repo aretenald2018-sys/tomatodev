@@ -3,15 +3,32 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-30-workout-calendar-owned-scroll-root.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-calendar-owned-scroll-root-review.md`
-- 현재 단계: `운영 PWA 캘린더 owned scroll root 구현, 리뷰, 운영 배포 검증 완료`
+- 계획 문서: `docs/ai/features/2026-06-30-manual-cardio-picker.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-30-manual-cardio-picker-review.md`
+- 현재 단계: `운동 picker 유산소 수기 입력 구현 및 리뷰 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `커밋 7445eef를 origin/main 및 tomatofarm/main에 push했고 운영 Pages에서 z16 asset marker를 확인했다.`
-- 다음 액션: `사용자 기기 PWA에서 앱 업데이트 후 운동 탭 캘린더 본문 세로 드래그를 직접 확인한다.`
+- 마지막 완료: `유산소 수기 입력 tile/sheet, 저장 payload 격리, 상세 속도 metric, 테스트/cache bump 완료`
+- 다음 액션: `Dashboard3 Pages 배포 후 인증 세션에서 운동 탭 -> + -> 유산소 -> 저장 -> 러닝 상세 카드 flow를 직접 확인한다.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
+
+- Workout Picker Manual Cardio 계획:
+  1. 요청: picker 분류 화면에 `유산소` 버튼을 추가한다.
+  2. 결정: 기존 `런닝/조깅` GPS 진입은 유지하고, `유산소`는 속도 `km/h`와 시간 `분`을 수기 입력하는 별도 sheet로 연다.
+  3. 결정: 새 top-level schema 대신 기존 `S.workout.runData`/러닝 저장 필드를 재사용한다.
+  4. 범위: `workout/exercises.js`, `render-calendar.js`, `style.css`, 관련 테스트, `sw.js` cache version bump.
+  5. 계획 문서: `docs/ai/features/2026-06-30-manual-cardio-picker.md`
+  6. 완료: `workout/exercises.js`에 `유산소` tile, 수기 입력 sheet, `manual-cardio` 저장 payload를 추가했다.
+  7. 완료: 저장 직전 헬스 회차 상태를 격리하고 저장 후 복원해 러닝 회차에 헬스 종목이 섞이지 않게 했다.
+  8. 완료: `render-calendar.js` 상세 카드에 `manual-cardio` label/source와 `속도` metric을 추가했다.
+  9. 완료: `style.css` 유산소 sheet 스타일과 `sw.js` `tomatofarm-v20260630z17-manual-cardio-picker` cache version을 반영했다.
+  10. PASS: `node --check workout/exercises.js; node --check render-calendar.js; node --check sw.js`
+  11. PASS: `node --test tests/running-entry.test.js tests/workout-calendar-bottom-sheet.test.js tests/pwa-update-auto-reload.test.js`
+  12. PASS: 전체 테스트 파일 묶음 — `node --test --test-reporter=dot @files`
+  13. PASS: `node scripts/verify-runtime-assets.mjs`
+  14. PASS: `git diff --check`
+  15. 리뷰 문서: `docs/ai/reviews/2026-06-30-manual-cardio-picker-review.md`
 
 - Workout Calendar Owned Scroll Root 계획:
   1. 요청: 운영 PWA에서 캘린더 드래그가 여전히 되지 않고 바텀시트 영역에서만 움직인다.

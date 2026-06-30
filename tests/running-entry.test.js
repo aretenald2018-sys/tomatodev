@@ -36,11 +36,29 @@ test('exercise picker category renders a running activity tile that opens runnin
   assert.match(exercisesJs, /data-picker-activity="running"/);
   assert.match(exercisesJs, /런닝\/조깅/);
   assert.match(exercisesJs, /wtSwitchType\('running'\)/);
+  assert.match(exercisesJs, /data-picker-activity="manual-cardio"/);
+  assert.match(exercisesJs, /유산소/);
+  assert.match(exercisesJs, /function _openManualCardioInput/);
+  assert.match(exercisesJs, /id="ex-cardio-speed"/);
+  assert.match(exercisesJs, /id="ex-cardio-minutes"/);
+  assert.match(exercisesJs, /source: 'manual-cardio'/);
+  assert.match(exercisesJs, /speedKmh/);
+  assert.match(exercisesJs, /S\.workout\.exercises = \[\]/);
+  assert.match(exercisesJs, /S\.workout\.cf = false/);
+  assert.match(exercisesJs, /function _snapshotManualCardioPreviousWorkout/);
+  assert.match(exercisesJs, /function _restoreManualCardioPreviousWorkout/);
+  assert.match(exercisesJs, /saveWorkoutDay\(\{ silent: true \}\)/);
+  assert.match(exercisesJs, /PICKER_MANUAL_CARDIO_SESSION_INDEX = 2/);
+  assert.match(exercisesJs, /window\.wtOpenWorkoutDaySheet\(targetDateKey, PICKER_MANUAL_CARDIO_SESSION_INDEX/);
   assert.doesNotMatch(exercisesJs, /wt-running-section/);
 });
 
 test('running picker tile and session screens have dedicated styles', () => {
   assert.match(styleCss, /\.ex-picker-activity-tile \.ex-picker-muscle-name/);
+  assert.match(styleCss, /\.ex-picker-activity-tile--manual-cardio \.ex-picker-muscle-name/);
+  assert.match(styleCss, /\.ex-picker-cardio-backdrop/);
+  assert.match(styleCss, /\.ex-picker-cardio-mode/);
+  assert.match(styleCss, /\.ex-picker-cardio-preview/);
   assert.match(styleCss, /\.ex-picker-activity-figure/);
   assert.match(styleCss, /\.wt-running-session-root/);
   assert.match(styleCss, /\.wt-running-screen--start/);
@@ -181,7 +199,7 @@ test('running workout save writes a running life-zone snapshot', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260630z16-workout-owned-scroll-root/);
+  assert.match(swJs, /tomatofarm-v20260630z17-manual-cardio-picker/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/sprites\/jups-running-track\.png/);
