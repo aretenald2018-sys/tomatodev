@@ -73,4 +73,6 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=863`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
-- not verified yet: Dashboard3 Pages 배포와 인증 계정 실제 `운동 탭 -> 월간 캘린더 좌측 사이클 레일` UI flow 확인이 남아 있다.
+- PASS: Dashboard3 Pages 배포 검증 — `b01a336c8f56`, `tomatofarm-v20260630z05-workout-record-date-row`
+- PASS: Dashboard3 Pages marker 직접 fetch — `sw.js`의 cache version, `render-calendar.js`의 `weekLabel`/`cal-cycle-branch-target`, `style.css`의 2줄 라벨 CSS 확인
+- not verified yet: 인증 계정 실제 `운동 탭 -> 월간 캘린더 좌측 사이클 레일` UI flow 확인이 남아 있다.

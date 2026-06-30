@@ -29,6 +29,8 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=863`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ b01a336` — `b01a336c8f56`, `tomatofarm-v20260630z05-workout-record-date-row`
+- PASS: Dashboard3 Pages marker 직접 fetch — `sw.js`, `render-calendar.js`, `style.css` marker 확인
 
 ## 남은 위험
 

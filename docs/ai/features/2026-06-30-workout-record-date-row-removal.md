@@ -68,4 +68,6 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=863`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
-- not verified yet: Dashboard3 Pages 배포와 인증 계정 실제 `운동 탭 -> 날짜 선택 -> 운동 기록 화면 -> 헬스 종목이 상단부터 표시` UI flow 확인이 남아 있다.
+- PASS: Dashboard3 Pages 배포 검증 — `b01a336c8f56`, `tomatofarm-v20260630z05-workout-record-date-row`
+- PASS: Dashboard3 Pages marker 직접 fetch — `style.css`의 `#tab-workout.wt-workout-record-mode > .workout-date-nav`, `padding-top: 20px`, `sw.js`의 cache version 확인
+- not verified yet: 인증 계정 실제 `운동 탭 -> 날짜 선택 -> 운동 기록 화면 -> 헬스 종목이 상단부터 표시` UI flow 확인이 남아 있다.
