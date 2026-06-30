@@ -59,7 +59,9 @@
 - PASS: 전체 테스트 파일 묶음 — `rg --files tests | *.test.js` 목록을 `node --test --test-reporter=dot`로 실행
 - PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=858`
 - PASS: `git diff --check`
-- not verified yet: Dashboard3 Pages 배포 검증은 커밋/push 후 수행한다.
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 0574140` — `[deploy-verify] ok 0574140da32f tomatofarm-v20260630z17-manual-cardio-picker static=233`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ ...` — `sw.js`, `workout/exercises.js`, `render-calendar.js`, `style.css` marker 확인
+- not verified yet: 인증 세션이 없어 실제 `운동 탭 -> + -> 유산소 -> 저장 -> 러닝 상세 카드` UI flow는 직접 조작하지 못했다.
 
 ## 다음 실행 프롬프트
 

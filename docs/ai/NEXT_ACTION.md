@@ -7,8 +7,8 @@
 - 리뷰 문서: `docs/ai/reviews/2026-06-30-manual-cardio-picker-review.md`
 - 현재 단계: `운동 picker 유산소 수기 입력 구현 및 리뷰 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `유산소 수기 입력 tile/sheet, 저장 payload 격리, 상세 속도 metric, 테스트/cache bump 완료`
-- 다음 액션: `Dashboard3 Pages 배포 후 인증 세션에서 운동 탭 -> + -> 유산소 -> 저장 -> 러닝 상세 카드 flow를 직접 확인한다.`
+- 마지막 완료: `커밋 0574140을 origin/main에 push했고 Dashboard3 Pages에서 z17 manual-cardio marker를 확인했다.`
+- 다음 액션: `인증 세션에서 운동 탭 -> + -> 유산소 -> 저장 -> 러닝 상세 카드 flow를 직접 확인한다.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
@@ -29,6 +29,10 @@
   13. PASS: `node scripts/verify-runtime-assets.mjs`
   14. PASS: `git diff --check`
   15. 리뷰 문서: `docs/ai/reviews/2026-06-30-manual-cardio-picker-review.md`
+  16. 완료: 커밋 `0574140 feat: add manual cardio picker entry`를 `origin/main`에 push했다.
+  17. PASS: Dashboard3 Pages 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 0574140` → `[deploy-verify] ok 0574140da32f tomatofarm-v20260630z17-manual-cardio-picker static=233`
+  18. PASS: Dashboard3 Pages marker 검증 — `sw.js` cache version, `workout/exercises.js` manual-cardio, `render-calendar.js` speedKmh, `style.css` cardio sheet marker 확인
+  19. not verified yet: 인증 세션이 없어 실제 `운동 탭 -> + -> 유산소 -> 저장 -> 러닝 상세 카드` UI flow는 직접 조작하지 못했다.
 
 - Workout Calendar Owned Scroll Root 계획:
   1. 요청: 운영 PWA에서 캘린더 드래그가 여전히 되지 않고 바텀시트 영역에서만 움직인다.

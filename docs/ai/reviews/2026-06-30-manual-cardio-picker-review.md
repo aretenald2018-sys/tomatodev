@@ -31,7 +31,9 @@
 - PASS: 전체 테스트 파일 묶음 — `node --test --test-reporter=dot @files`
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `git diff --check`
+- PASS: Dashboard3 Pages 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 0574140`
+- PASS: Dashboard3 Pages marker 검증 — `sw.js::tomatofarm-v20260630z17-manual-cardio-picker`, `workout/exercises.js::manual-cardio`, `render-calendar.js::speedKmh`, `style.css::.ex-picker-cardio-backdrop`
 
 ## 남은 리스크
 
-- 실제 모바일 인증 세션에서 `운동 탭 -> + -> 유산소 -> 저장 -> 러닝 상세 카드` UI flow는 배포 URL에서 직접 조작해야 최종 확인된다.
+- 인증 세션이 없어 실제 모바일 `운동 탭 -> + -> 유산소 -> 저장 -> 러닝 상세 카드` UI flow는 배포 URL에서 직접 조작하지 못했다.
