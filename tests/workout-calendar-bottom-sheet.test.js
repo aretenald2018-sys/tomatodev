@@ -165,6 +165,31 @@ test('day sheet add picker stays on the current sheet session', () => {
   assert.match(addFn, /window\.wtOpenExercisePicker\(\{[\s\S]*source:\s*'workout-day-sheet'[\s\S]*afterSelect: detail => _refreshWorkoutHomeAfterPickerSelect\(targetKey, targetIndex, detail\)/);
 });
 
+test('day sheet detail renders picker-added draft exercise rows', () => {
+  const rowStart = calendarJs.indexOf('function _exerciseRows');
+  const rowEnd = calendarJs.indexOf('function _workoutMetrics', rowStart);
+  const metricsEnd = calendarJs.indexOf('function _renderWorkoutHomeDayBar');
+  const detailStart = calendarJs.indexOf('function _renderWorkoutHomeDetailHtml');
+  const detailEnd = calendarJs.indexOf('function _renderWorkoutDetailSummaryCard', detailStart);
+  const tabStart = calendarJs.indexOf('function _renderWorkoutDetailSessionTabs');
+  const tabEnd = calendarJs.indexOf('function _renderWorkoutDetailRecorded', tabStart);
+  assert.ok(rowStart >= 0 && rowEnd > rowStart, 'exercise row mapper should exist');
+  assert.ok(detailStart >= 0 && detailEnd > detailStart, 'day sheet detail renderer should exist');
+  assert.ok(tabStart >= 0 && tabEnd > tabStart, 'session tab renderer should exist');
+  const rows = calendarJs.slice(rowStart, rowEnd);
+  const metrics = calendarJs.slice(rowEnd, metricsEnd);
+  const detail = calendarJs.slice(detailStart, detailEnd);
+  const tabs = calendarJs.slice(tabStart, tabEnd);
+
+  assert.match(calendarJs, /function _hasDraftWorkoutEntry/);
+  assert.match(rows, /includeDraftExercises/);
+  assert.match(rows, /const hasDraftExercise = includeDraftExercises && _hasDraftWorkoutEntry\(entry\)/);
+  assert.match(rows, /if \(!sets\.length && !note && !hasDraftExercise\) return null/);
+  assert.match(metrics, /_exerciseRows\(d, lookup, key, options\)/);
+  assert.match(detail, /_workoutMetrics\(key, session, bodyWeight, lookup, \{ includeDraftExercises: true \}\)/);
+  assert.match(tabs, /_hasWorkoutHomeSessionRecord\(session\)/);
+});
+
 test('workout bottom sheet replaces the third gym session with a dedicated running tab', () => {
   const tabStart = calendarJs.indexOf('function _renderWorkoutDetailSessionTabs');
   const tabEnd = calendarJs.indexOf('function _renderWorkoutDetailRecorded', tabStart);
@@ -436,5 +461,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260630z08-day-sheet-inline-add-timer/);
+  assert.match(swJs, /tomatofarm-v20260630z09-day-sheet-draft-add/);
 });

@@ -370,7 +370,7 @@ function _cleanExercises(includeNotes, includeDrafts = false) {
 //      → workout 경로만 수행. 식단 자동저장은 운동 flag 를 건드리지 않는 정책 유지.
 //   4) cleanEx 계산 + isDietSuccess 도메인 파생
 // 반환: { y, m, d, cleanEx, isDietSuccess } 또는 null (가드 차단 시).
-function _prepareSave({ syncWorkoutDetails }) {
+function _prepareSave({ syncWorkoutDetails, keepDraftExercises = false }) {
   if (!S.shared.date) return null;
   if (_blockIfFutureDate()) return null;
   const { y, m, d } = S.shared.date;
@@ -400,16 +400,19 @@ function _prepareSave({ syncWorkoutDetails }) {
     S.workout.stretching = derived.stretching;
   }
 
-  const cleanEx = _cleanExercises(!syncWorkoutDetails, syncWorkoutDetails && _shouldKeepDraftExercises());  // 식단 경로는 메모만 있는 종목도 보존
+  const cleanEx = _cleanExercises(
+    !syncWorkoutDetails,
+    syncWorkoutDetails && (keepDraftExercises || _shouldKeepDraftExercises())
+  );  // 식단 경로는 메모만 있는 종목도 보존
   const isDietSuccess = deriveDietSuccessFromWorkout(S.workout, S.diet, S.shared.date, cleanEx);
   return { y, m, d, cleanEx, isDietSuccess };
 }
 
 // ── 명시적 저장 (운동 도메인) ───────────────────────────────────
 export async function saveWorkoutDay(options = {}) {
-  const { silent = false } = options || {};
+  const { silent = false, keepDraftExercises = false } = options || {};
   const startedKey = _workoutDateKeyFromState();
-  const ctx = _prepareSave({ syncWorkoutDetails: true });
+  const ctx = _prepareSave({ syncWorkoutDetails: true, keepDraftExercises });
   if (!ctx) return;
   const { y, m, d, cleanEx, isDietSuccess } = ctx;
   const ctxKey = dateKey(y, m, d);

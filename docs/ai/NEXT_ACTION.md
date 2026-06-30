@@ -2,13 +2,13 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-30-workout-day-sheet-inline-add-timer.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-day-sheet-inline-add-timer-review.md`
-- 현재 단계: `운동 하단 시트 종목 추가/타이머 통합 회귀 수정 구현/리뷰/배포 검증 완료`
+- 상태: `ready_for_execution`
+- 계획 문서: `docs/ai/features/2026-06-30-workout-day-sheet-add-draft-card.md`
+- 리뷰 문서: `없음`
+- 현재 단계: `운동 하단 시트 종목 추가 초안 카드 회귀 수정 계획 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
 - 마지막 완료: `운동 숫자 입력 UX, 운동 캘린더 터치 스크롤, 미란다/상담실장 전구 숨김까지 운영계 tomatofarm/main에 배포하고 Pages asset 검증을 통과했다.`
-- 다음 액션: `없음`
+- 다음 액션: `Slice 1 실행: 하단 시트 피커 추가 초안 종목을 저장/표시 대상으로 보존`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목

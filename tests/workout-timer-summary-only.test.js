@@ -31,7 +31,10 @@ test('workout duration remains in the top-right summary card', () => {
 
 test('workout calendar duration can fall back to set completion timeline', () => {
   assert.match(calendarJs, /import \{ buildWorkoutSetTimeline \} from '\.\/workout\/timeline\.js'/);
-  const metrics = sliceByFirstBrace(calendarJs, 'function _workoutMetrics');
+  const metricsStart = calendarJs.indexOf('function _workoutMetrics');
+  const metricsEnd = calendarJs.indexOf('function _renderWorkoutHomeDayBar', metricsStart);
+  assert.ok(metricsStart >= 0 && metricsEnd > metricsStart, 'workout metrics function should exist');
+  const metrics = calendarJs.slice(metricsStart, metricsEnd);
   assert.match(metrics, /const workoutTimeline = buildWorkoutSetTimeline\(d\.exercises,\s*d\.workoutDuration\)/);
   assert.match(metrics, /workoutTimeline\.durationSec/);
 });
@@ -60,5 +63,5 @@ test('workout finish saves without opening the old completion insight modal', ()
 });
 
 test('service worker cache version was bumped for workout timer summary-only UI', () => {
-  assert.match(swJs, /tomatofarm-v20260630z08-day-sheet-inline-add-timer/);
+  assert.match(swJs, /tomatofarm-v20260630z09-day-sheet-draft-add/);
 });

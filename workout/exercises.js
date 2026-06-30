@@ -3076,7 +3076,7 @@ export function _renderPickerList() {
         _refreshWorkoutTimeline('exercise add');
         wtPersistActiveWorkoutDraft('exercise add');
         wtCloseExercisePicker();
-        const savePromise = saveWorkoutDay({ silent: true });
+        const savePromise = saveWorkoutDay({ silent: true, keepDraftExercises: !!afterSelect });
         if (afterSelect) {
           try {
             await savePromise;

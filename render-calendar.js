@@ -107,6 +107,16 @@ function _isActualWorkoutSet(set) {
   return _num(set.kg) > 0 && _num(set.reps) > 0;
 }
 
+function _hasDraftWorkoutEntry(entry) {
+  if (!entry || typeof entry !== 'object') return false;
+  return !!(
+    entry.exerciseId ||
+    entry.name ||
+    entry.exerciseName ||
+    String(entry.note || '').trim()
+  );
+}
+
 function _formatSetText(set) {
   const kg = _num(set?.kg);
   const reps = _num(set?.reps);
@@ -848,12 +858,14 @@ function _partDisplayLabels(exercises, lookup) {
     }));
 }
 
-function _exerciseRows(day, lookup = _buildWorkoutLookup(), key = null) {
+function _exerciseRows(day, lookup = _buildWorkoutLookup(), key = null, options = {}) {
+  const includeDraftExercises = options?.includeDraftExercises === true;
   return (Array.isArray(day?.exercises) ? day.exercises : [])
     .map((entry, originalIndex) => {
       const sets = (Array.isArray(entry?.sets) ? entry.sets : []).filter(_isActualWorkoutSet);
       const note = (entry?.note || '').toString().trim();
-      if (!sets.length && !note) return null;
+      const hasDraftExercise = includeDraftExercises && _hasDraftWorkoutEntry(entry);
+      if (!sets.length && !note && !hasDraftExercise) return null;
       const volume = sets.reduce((sum, set) => sum + calcSetVolume(set), 0);
       const topSet = [...sets].sort((a, b) => calcSetVolume(b) - calcSetVolume(a))[0] || null;
       const majorId = _resolveExerciseMajorId(entry, lookup);
@@ -889,9 +901,9 @@ function _exerciseRows(day, lookup = _buildWorkoutLookup(), key = null) {
     .filter(Boolean);
 }
 
-function _workoutMetrics(key, day, bodyWeight, lookup = _buildWorkoutLookup()) {
+function _workoutMetrics(key, day, bodyWeight, lookup = _buildWorkoutLookup(), options = {}) {
   const d = day || {};
-  const exercises = _exerciseRows(d, lookup, key);
+  const exercises = _exerciseRows(d, lookup, key, options);
   const activities = _activityRows(d);
   const burned = calcBurnedKcal(d, bodyWeight);
   const workoutTimeline = buildWorkoutSetTimeline(d.exercises, d.workoutDuration);
@@ -1355,7 +1367,7 @@ function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, includeHead 
   const rawSession = sessions[sessionIndex] || sessions[0] || {};
   const session = runningActive ? _onlyRunningFields(runningInfo.session) : _clearRunningFields(rawSession);
   const bodyWeight = _weightAt(checkins, key) ?? getLatestCheckinWeight() ?? plan?.weight ?? 70;
-  const wx = _workoutMetrics(key, session, bodyWeight, lookup);
+  const wx = _workoutMetrics(key, session, bodyWeight, lookup, { includeDraftExercises: true });
   const ordinal = _workoutRecordOrdinalForKey(cache, key, plan, checkins, lookup);
   const recordText = ordinal > 0 ? `${ordinal}번째 기록` : '운동 기록 없음';
   const sessionTabs = _renderWorkoutDetailSessionTabs(sessions, runningActive ? WORKOUT_RUNNING_SESSION_INDEX : sessionIndex, runningInfo);
@@ -1418,7 +1430,7 @@ function _renderWorkoutDetailSummaryCard(wx) {
 function _renderWorkoutDetailSessionTabs(sessions, activeIndex, runningInfo = null) {
   const gymTabs = (Array.isArray(sessions) ? sessions : []).slice(0, WORKOUT_GYM_SESSION_COUNT);
   const tabs = gymTabs.map((session, index) => {
-    const hasRecord = hasWorkoutSessionData(session);
+    const hasRecord = _hasWorkoutHomeSessionRecord(session);
     return `
       <button type="button"
         class="${index === activeIndex ? 'active' : ''} ${hasRecord ? 'has-record' : ''}"
@@ -1436,6 +1448,11 @@ function _renderWorkoutDetailSessionTabs(sessions, activeIndex, runningInfo = nu
       </button>
   `);
   return tabs.join('');
+}
+
+function _hasWorkoutHomeSessionRecord(session) {
+  return hasWorkoutSessionData(session)
+    || (Array.isArray(session?.exercises) && session.exercises.some(_hasDraftWorkoutEntry));
 }
 
 function _renderWorkoutDetailRecorded(key, sessionIndex, wx) {
@@ -1714,8 +1731,11 @@ function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) {
   const bestKg = bestSet ? _formatWorkoutKg(bestSet.kg) : '-';
   const bestReps = bestSet ? _formatWorkoutReps(bestSet.reps) : '-';
   const setSummary = _workoutSetSummary(row);
+  const hasSetDetails = Array.isArray(row?.setDetails) && row.setDetails.length > 0;
   const activeTrack = _activeWorkoutTrack(row, bestSet);
   const activeTrackLabel = _workoutTrackLabel(activeTrack);
+  const goalText = hasSetDetails ? `${bestKg}kg × ${bestReps}회` : '세트 입력 대기';
+  const trackText = hasSetDetails ? `오늘 ${activeTrackLabel} 트랙 · ${row.setCount}세트` : '편집하기에서 세트를 입력하세요';
   return `
     <article class="wt-day-ex-card wt-max-read-card ${collapsed ? 'is-collapsed' : 'is-expanded'}">
       <div class="wt-max-card-kicker">
@@ -1726,8 +1746,8 @@ function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) {
       <div class="wt-max-plan">
         <div class="wt-max-plan-goal">
           <span>오늘 성공 기준</span>
-          <strong>${_esc(bestKg)}kg × ${_esc(bestReps)}회</strong>
-          <em>오늘 ${_esc(activeTrackLabel)} 트랙 · ${row.setCount}세트</em>
+          <strong>${_esc(goalText)}</strong>
+          <em>${_esc(trackText)}</em>
         </div>
         <div class="wt-max-trend">
           ${_renderWorkoutTrackGraph(row, bestSet)}

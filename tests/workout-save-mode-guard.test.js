@@ -61,7 +61,14 @@ test('runtime saveDay calls use merge mode explicitly', () => {
   }
 });
 
+test('workout save can explicitly preserve picker-added draft exercises', () => {
+  const save = read('workout/save.js');
+  assert.match(save, /keepDraftExercises = false/);
+  assert.match(save, /syncWorkoutDetails && \(keepDraftExercises \|\| _shouldKeepDraftExercises\(\)\)/);
+  assert.match(save, /_prepareSave\(\{ syncWorkoutDetails: true, keepDraftExercises \}\)/);
+});
+
 test('service worker cache version was bumped for save guard assets', () => {
   const sw = read('sw.js');
-  assert.match(sw, /tomatofarm-v20260630z08-day-sheet-inline-add-timer/);
+  assert.match(sw, /tomatofarm-v20260630z09-day-sheet-draft-add/);
 });
