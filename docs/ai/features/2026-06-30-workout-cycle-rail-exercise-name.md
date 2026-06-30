@@ -75,4 +75,6 @@
 - PASS: `node --test tests/workout-navigation-stack.test.js` — 5 tests passed
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
-- not verified yet: Dashboard3 Pages 배포와 인증 계정 실제 `운동 탭 -> 월간 캘린더 좌측 사이클 레일` UI flow 확인이 남아 있다.
+- PASS: Dashboard3 Pages 배포 검증 — `a41a02546fcc`, `tomatofarm-v20260630z06-cycle-rail-exercise-name`
+- PASS: Dashboard3 Pages marker 직접 fetch — `sw.js` cache version, `render-calendar.js`의 `exerciseLabel`/`cal-cycle-branch-name`, `style.css`의 `.cal-cycle-branch-name`/`text-overflow: ellipsis` 확인
+- not verified yet: 인증 계정 실제 `운동 탭 -> 월간 캘린더 좌측 사이클 레일` UI flow 확인이 남아 있다.

@@ -2,13 +2,13 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-30-workout-cycle-rail-exercise-name.md`
 - 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-cycle-rail-exercise-name-review.md`
-- 현재 단계: `운동 캘린더 사이클 레일 종목명 복원 로컬 검증/리뷰 완료, Dashboard3 배포 검증 대기`
+- 현재 단계: `운동 캘린더 사이클 레일 종목명 복원 구현/리뷰/배포 검증 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
 - 마지막 완료: `운동 숫자 입력 UX, 운동 캘린더 터치 스크롤, 미란다/상담실장 전구 숨김까지 운영계 tomatofarm/main에 배포하고 Pages asset 검증을 통과했다.`
-- 다음 액션: `커밋 후 origin/main push, Dashboard3 Pages 배포 검증`
+- 다음 액션: `없음`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
@@ -31,7 +31,9 @@
   15. PASS: `node --test --test-reporter=dot tests/*.test.js`
   16. PASS: `git diff --check`
   17. 완료: 리뷰 문서 `docs/ai/reviews/2026-06-30-workout-cycle-rail-exercise-name-review.md`를 작성했고 추가 수정 이슈는 없다.
-  18. not verified yet: Dashboard3 Pages 배포와 인증 계정 실제 UI flow 확인이 남아 있다.
+  18. PASS: Dashboard3 Pages 배포 검증 — `a41a02546fcc`, `tomatofarm-v20260630z06-cycle-rail-exercise-name`
+  19. PASS: Dashboard3 Pages marker 직접 fetch — `sw.js` cache version, `render-calendar.js`의 `exerciseLabel`/`cal-cycle-branch-name`, `style.css`의 `.cal-cycle-branch-name`/`text-overflow: ellipsis` 확인
+  20. not verified yet: 인증 계정 실제 `운동 탭 -> 월간 캘린더 좌측 사이클 레일` UI flow 확인이 남아 있다.
 
 - Workout Record Date Row Removal 계획:
   1. 운동 기록 화면에서만 `헬스 종목` 위 날짜 UI 행을 숨긴다.
