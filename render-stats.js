@@ -24,10 +24,6 @@ const STATS_ANALYSIS_PERIODS = {
   all: { label: '전체', days: 0 },
 };
 
-export function setPeriod() {
-  _renderMuscleFatigue();
-}
-
 const _healthMetricsCharts = new WeakMap();
 const _kcalWeightCharts = new WeakMap();
 

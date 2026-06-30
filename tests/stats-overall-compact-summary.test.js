@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const indexHtml = readFileSync('index.html', 'utf8');
+const appJs = readFileSync('app.js', 'utf8');
 const statsJs = readFileSync('render-stats.js', 'utf8');
 const styleCss = readFileSync('style.css', 'utf8');
 const swJs = readFileSync('sw.js', 'utf8');
@@ -72,6 +73,8 @@ test('deep stats tab is merged into the overall workout analysis block', () => {
   assert.doesNotMatch(statsJs, /switchStatsView/);
   assert.doesNotMatch(statsJs, /deep-stats-report/);
   assert.doesNotMatch(statsJs, /trainer-quest-deep-stats/);
+  assert.doesNotMatch(statsJs, /export function setPeriod/);
+  assert.doesNotMatch(appJs, /window\.setPeriod/);
 });
 
 test('trainer quest stats export exposes JSON data for AI sharing', () => {
@@ -97,5 +100,5 @@ test('compact summary styles are present and cache version is bumped', () => {
   assert.match(styleCss, /\.stats-performance-block/);
   assert.match(styleCss, /\.stats-summary-fact/);
   assert.match(styleCss, /\.stats-summary-kpi\.is-good/);
-  assert.match(swJs, /tomatofarm-v20260630z11-record-route-removed/);
+  assert.match(swJs, /tomatofarm-v20260630z12-stale-ui-prune/);
 });

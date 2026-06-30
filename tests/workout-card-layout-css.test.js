@@ -109,7 +109,6 @@ test('workout number inputs are larger and guarded against keyboard focus scroll
   const tabInput = ruleBody('#tab-workout .set-input');
   const maxTabInput = ruleBody('#tab-workout .ex-block--max-v2 .ex-max-v2-field input');
   const maxTabRomInput = ruleBody('#tab-workout .ex-block--max-v2 .ex-max-v2-rom-field input');
-  const detailFocus = ruleBody('#tab-workout.wt-workout-detail-mode .wt-exercise-detail-root:focus-within');
   const start = workoutExercises.indexOf('function _renderSets');
   const end = workoutExercises.indexOf('if (typeof Sortable', start);
   assert.ok(start >= 0 && end > start, 'set render function should exist');
@@ -122,7 +121,7 @@ test('workout number inputs are larger and guarded against keyboard focus scroll
   assert.match(maxTabInput, /height:\s*30px/);
   assert.match(maxTabInput, /font-size:\s*14px/);
   assert.match(maxTabRomInput, /height:\s*30px/);
-  assert.match(detailFocus, /scroll-padding-bottom:\s*calc\(180px \+ env\(safe-area-inset-bottom,\s*0px\)\)/);
+  assert.doesNotMatch(css, /wt-workout-detail-mode|wt-exercise-detail-root/);
   assert.match(fn, /inputmode="decimal" placeholder="kg"/);
   assert.match(fn, /inputmode="numeric" placeholder="회"/);
   assert.match(fn, /_bindWorkoutNumberInputFocusGuard\(row\)/);

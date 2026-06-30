@@ -10,49 +10,36 @@ import {
   handleWorkoutBack,
   openWorkoutCalendar,
   openWorkoutDaySheet,
-  pushWorkoutDetail,
-  pushWorkoutRecord,
   resetWorkoutNavState,
   updateWorkoutCalendarState,
 } from '../workout/navigation-stack.js';
 
-test('workout stack back order keeps calendar sheet state', () => {
+test('workout back closes the calendar day sheet without legacy routes', () => {
   resetWorkoutNavState();
   updateWorkoutCalendarState({ viewYear: 2026, viewMonth: 5, scrollTop: 320 });
   openWorkoutDaySheet('2026-06-25', { sessionIndex: 1, sheetState: 'full', history: 'replace' });
-  pushWorkoutRecord({ dateKey: '2026-06-25', sessionIndex: 1 }, { history: 'replace' });
-  pushWorkoutDetail({
-    dateKey: '2026-06-25',
-    sessionIndex: 1,
-    exerciseKey: 'bench:0',
-    entryIdx: 0,
-    recordScrollTop: 180,
-  }, { history: 'replace' });
 
-  assert.equal(currentWorkoutRoute().name, WORKOUT_ROUTES.DETAIL);
-
-  assert.equal(handleWorkoutBack({ preferHistory: false }), true);
-  assert.equal(currentWorkoutRoute().name, WORKOUT_ROUTES.RECORD);
-  assert.equal(getWorkoutNavSnapshot().record.scrollTop, 180);
-
-  assert.equal(handleWorkoutBack({ preferHistory: false }), true);
   let snapshot = getWorkoutNavSnapshot();
   assert.equal(currentWorkoutRoute().name, WORKOUT_ROUTES.CALENDAR);
+  assert.deepEqual(snapshot.stack, [{ name: WORKOUT_ROUTES.CALENDAR }]);
   assert.equal(snapshot.calendar.sheetOpen, true);
   assert.equal(snapshot.calendar.selectedKey, '2026-06-25');
   assert.equal(snapshot.calendar.selectedSessionIndex, 1);
-  assert.equal(snapshot.calendar.scrollTop, 320);
 
   assert.equal(handleWorkoutBack({ preferHistory: false }), true);
   snapshot = getWorkoutNavSnapshot();
   assert.equal(currentWorkoutRoute().name, WORKOUT_ROUTES.CALENDAR);
+  assert.deepEqual(snapshot.stack, [{ name: WORKOUT_ROUTES.CALENDAR }]);
   assert.equal(snapshot.calendar.sheetOpen, false);
   assert.equal(snapshot.calendar.sheetState, 'bar');
+  assert.equal(snapshot.calendar.selectedKey, '2026-06-25');
+  assert.equal(snapshot.calendar.selectedSessionIndex, 1);
+  assert.equal(snapshot.calendar.scrollTop, 320);
 
   assert.equal(handleWorkoutBack({ preferHistory: false }), false);
 });
 
-test('sheet close is not treated as record/detail route pop', () => {
+test('sheet close leaves only the calendar route', () => {
   resetWorkoutNavState();
   openWorkoutDaySheet('2026-06-25', { sheetState: 'full', history: 'replace' });
   closeWorkoutDaySheet({ history: 'replace' });
@@ -64,10 +51,11 @@ test('sheet close is not treated as record/detail route pop', () => {
 
 test('inactive tab does not consume back', () => {
   resetWorkoutNavState();
-  pushWorkoutRecord({ dateKey: '2026-06-25', sessionIndex: 0 }, { history: 'replace' });
+  openWorkoutDaySheet('2026-06-25', { sessionIndex: 0, sheetState: 'full', history: 'replace' });
 
   assert.equal(handleWorkoutBack({ activeTab: 'home', preferHistory: false }), false);
-  assert.equal(currentWorkoutRoute().name, WORKOUT_ROUTES.RECORD);
+  assert.equal(currentWorkoutRoute().name, WORKOUT_ROUTES.CALENDAR);
+  assert.equal(getWorkoutNavSnapshot().calendar.sheetOpen, true);
 });
 
 test('calendar open can reset the workout home month to today', () => {
@@ -88,7 +76,7 @@ test('calendar open can reset the workout home month to today', () => {
   assert.equal(snapshot.calendar.viewMonth, 5);
 });
 
-test('workout navigation redirects legacy record routes to the day sheet', async () => {
+test('workout navigation keeps only rendered calendar and day sheet surfaces', async () => {
   const [appJs, calendarJs, indexHtml, workoutExercises, navJs, styleCss, swJs] = await Promise.all([
     readFile(new URL('../app.js', import.meta.url), 'utf8'),
     readFile(new URL('../render-calendar.js', import.meta.url), 'utf8'),
@@ -109,10 +97,10 @@ test('workout navigation redirects legacy record routes to the day sheet', async
   assert.match(appJs, /document\.body\?\.classList\.toggle\('wt-workout-tab-active', tab === 'workout'\)/);
   assert.match(appJs, /window\.addEventListener\('touchmove', onMove, \{ passive: false, capture: true \}\)/);
   assert.match(appJs, /handleWorkoutBack\(\{ activeTab: _currentTab, preferHistory: true, action: 'pull:back' \}\)/);
-  assert.match(appJs, /function _isWorkoutRecordScrollTarget\(target\)/);
-  assert.match(appJs, /#tab-workout\.wt-workout-detail-mode \.wt-exercise-detail-root/);
+  assert.doesNotMatch(appJs, /function _isWorkoutRecordScrollTarget\(target\)/);
+  assert.doesNotMatch(appJs, /wt-workout-detail-mode|wt-exercise-detail-root/);
   assert.doesNotMatch(appJs, /#tab-workout\.wt-workout-record-mode \.workout-tab-content/);
-  assert.match(appJs, /return _isWorkoutRecordScrollTarget\(target\) \|\| !!target\?\.closest\?/);
+  assert.match(appJs, /return !!target\?\.closest\?\.\('input, textarea, select/);
   assert.match(appJs, /function _workoutPageScrollTop\(\)/);
   assert.match(appJs, /Number\(document\.body\?\.scrollTop\) \|\| 0/);
   assert.match(appJs, /action:\s*'calendar:tab-today'/);
@@ -122,23 +110,23 @@ test('workout navigation redirects legacy record routes to the day sheet', async
   assert.match(appJs, /async function openWorkoutDaySheetFromAction/);
   assert.match(appJs, /openWorkoutDaySheet\(dateKey,[\s\S]*sheetState:\s*'full'/);
   assert.match(appJs, /window\.wtOpenWorkoutDaySheet = openWorkoutDaySheetFromAction/);
-  assert.match(appJs, /async function _redirectWorkoutRecordRouteToDaySheet/);
-  assert.match(appJs, /route\.name !== WORKOUT_ROUTES\.CALENDAR[\s\S]*_redirectWorkoutRecordRouteToDaySheet/);
-  assert.match(appJs, /window\.wtOpenWorkoutRecord = openWorkoutRecordFromCalendar/);
-  assert.match(appJs, /openWorkoutRecordFromCalendar\(key, sessionIndex = 0, options = \{\}\)[\s\S]*openWorkoutDaySheetFromAction\(dateKey, sessionIndex/);
-  assert.match(appJs, /record:tab-redirect-sheet/);
+  assert.doesNotMatch(appJs, /_redirectWorkoutRecordRouteToDaySheet|WORKOUT_ROUTES|currentWorkoutRoute/);
+  assert.doesNotMatch(appJs, /wtOpenWorkoutRecord|openWorkoutRecordFromCalendar/);
+  assert.match(appJs, /function openWorkoutTab\(y, m, d\)[\s\S]*openWorkoutDaySheetFromAction\(key, _takeWorkoutTargetSessionIndex\(0\)/);
+  assert.match(appJs, /sheet:tab-open/);
   assert.doesNotMatch(appJs, /_setWorkoutSurface\('record'\)/);
   assert.doesNotMatch(appJs, /wt-workout-record-mode|wt-calendar-edit-mode/);
   assert.doesNotMatch(appJs, /pushWorkoutRecord\(/);
-  assert.doesNotMatch(appJs, /wtFocusWorkoutEntryFromDetail\?\./);
+  assert.doesNotMatch(appJs, /wtFocusWorkoutEntryFromDetail|renderWorkoutExerciseDetail|clearWorkoutExerciseDetail/);
   assert.match(calendarJs, /openWorkoutDaySheet\(nextKey/);
   assert.match(calendarJs, /calendar\.viewYear != null && Number\.isFinite\(Number\(calendar\.viewYear\)\)/);
   assert.match(calendarJs, /\^\(\\d\{4\}\)-\(\\d\{2\}\)-\(\\d\{2\}\)\$/);
   assert.doesNotMatch(calendarJs, /window\.wtOpenWorkoutRecord|_openWorkoutEditorForSession|_loadWorkoutEditorForSession/);
   assert.doesNotMatch(workoutTabHtml, /class="wt-record-back-btn"[\s\S]*window\.wtHandleWorkoutBack\?\.\(\)/);
   assert.doesNotMatch(workoutTabHtml, /class="workout-date-nav"|id="wt-date-label"/);
-  assert.match(indexHtml, /id="wt-exercise-detail-root"/);
+  assert.doesNotMatch(indexHtml, /id="wt-exercise-detail-root"/);
   assert.doesNotMatch(workoutExercises, /pushWorkoutDetail\(\{/);
+  assert.doesNotMatch(workoutExercises, /wtFocusWorkoutEntryFromDetail|renderWorkoutExerciseDetail|clearWorkoutExerciseDetail|wt-exercise-detail-root/);
   assert.match(workoutExercises, /function _findWorkoutEntryIndexByExerciseId/);
   assert.match(workoutExercises, /export function wtFocusWorkoutEntryCard/);
   assert.match(workoutExercises, /block\.dataset\.wtEntryIdx = String\(idx\)/);
@@ -149,7 +137,7 @@ test('workout navigation redirects legacy record routes to the day sheet', async
   assert.match(workoutExercises, /const entryIdx = S\.workout\.exercises\.push\(_buildPickerExerciseEntry\(ex\)\) - 1/);
   assert.match(workoutExercises, /wtFocusWorkoutEntryCard\(entryIdx\)/);
   assert.match(workoutExercises, /export function wtHandleExercisePickerBack\(\)/);
-  assert.match(workoutExercises, /export function renderWorkoutExerciseDetail\(\)/);
+  assert.doesNotMatch(navJs, /WorkoutRecordScreen|WorkoutDetailScreen|pushWorkoutRecord|pushWorkoutDetail|\brecord:\s*\{|\bdetail:\s*\{/);
   assert.match(navJs, /typeof options\.handleOverlayBack === 'function' && options\.handleOverlayBack\(\)/);
   assert.match(navJs, /_writeHistory\('push', 'overlay:back'\)/);
   assert.match(appJs, /\[data-wt-calendar-scroll-surface\]/);
@@ -162,9 +150,16 @@ test('workout navigation redirects legacy record routes to the day sheet', async
   assert.match(styleCss, /#tab-workout\.wt-calendar-home-mode \.wt-workout-timer-bar\s*\{[\s\S]*bottom:\s*calc\(112px \+ env\(safe-area-inset-bottom,\s*0px\)\)/);
   assert.doesNotMatch(styleCss, /#tab-workout\.wt-workout-record-mode/);
   assert.doesNotMatch(styleCss, /#tab-workout\.wt-calendar-edit-mode/);
+  assert.doesNotMatch(styleCss, /#tab-workout\.wt-readonly \.workout-date-nav/);
+  assert.doesNotMatch(styleCss, /#tab-workout\.wt-calendar-home-mode > \.workout-date-nav/);
+  assert.doesNotMatch(styleCss, /wt-workout-detail-mode|wt-exercise-detail-root|wt-exercise-detail-/);
   assert.doesNotMatch(styleCss, /\.wt-record-back-btn/);
+  assert.doesNotMatch(indexHtml, /card-farm-duolingo|farm-duolingo-content/);
+  assert.doesNotMatch(styleCss, /\.farm-scene\b|\.farm-inv-|\.farm-shop-|farm-idle|farm-px-|farm-toolbar|farm-status-bar/);
+  assert.doesNotMatch(swJs, /\.\/home\/farm\.js/);
+  assert.match(styleCss, /#tab-diet \.workout-date-nav/);
   assert.match(styleCss, /body\.wt-workout-tab-active\s*\{[\s\S]*overscroll-behavior-y:\s*none;/);
   assert.match(styleCss, /body\.wt-workout-tab-active #tab-workout\.active\s*\{[\s\S]*overscroll-behavior-y:\s*contain;/);
   assert.match(swJs, /\.\/workout\/navigation-stack\.js/);
-  assert.match(swJs, /tomatofarm-v20260630z11-record-route-removed/);
+  assert.match(swJs, /tomatofarm-v20260630z12-stale-ui-prune/);
 });

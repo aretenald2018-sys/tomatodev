@@ -3,15 +3,32 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-30-workout-record-route-remove.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-record-route-remove-review.md`
-- 현재 단계: `운동 legacy record UI 렌더 경로 제거 완료`
+- 계획 문서: `docs/ai/features/2026-06-30-stale-ui-code-prune.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-30-stale-ui-code-prune-review.md`
+- 현재 단계: `화면 미구현 stale 코드 제거 실행/리뷰 완료`
 - 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `legacy workout record route/surface 제거 커밋 88b2e7e를 Dashboard3 Pages에 배포하고 asset marker 검증까지 통과했다.`
-- 다음 액션: `없음. 인증된 모바일 UI에서 하단 시트 흐름 최종 확인만 남음`
+- 마지막 완료: `화면에 구현되지 않는 stale UI/API/route/style 잔재를 제거하고 리뷰 문서를 작성했다.`
+- 다음 액션: `없음. 배포 검증이 필요하면 commit/push 후 Dashboard3 Pages에서 verify:deploy를 실행한다.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
+
+- Stale UI Code Prune 완료:
+  1. 요청: 화면에 구현되어 실질적인 UI/동작 변화를 일으키는 코드만 남기고, 화면에 구현되지 않는 stale 관련 코드를 제거한다.
+  2. 결정: 모든 `stale`/`legacy` 문자열 삭제가 아니라, 현재 DOM/route/event에서 미구현인 stale 잔재만 제거한다.
+  3. 보존: 체중 미입력 stale UI, AI stale token, 저장 stale guard, legacy 데이터 migration/fallback은 실제 동작/데이터 보존이므로 유지한다.
+  4. 완료: `wtOpenWorkoutRecord`, `setPeriod`, `.wt-record-back-btn` 예외, 운동 탭 날짜 row stale selector, 홈 농장 DOM/CSS/API/모듈을 제거했다.
+  5. 완료: `WorkoutRecordScreen`/`WorkoutDetailScreen`, `pushWorkoutRecord()`, `pushWorkoutDetail()`, standalone `wt-exercise-detail-root`, `renderWorkoutExerciseDetail`, 관련 export/window 등록을 제거했다.
+  6. 완료: `renderMaxGrowthPreview()`의 화면 미렌더 `recommendationHtml` 파라미터를 제거했다.
+  7. 유지: `_renderWorkoutExerciseDetailCard()`는 현재 하단 시트 운동 카드 렌더러라 삭제하지 않았다.
+  8. PASS: `node --check app.js; node --check data.js; node --check data/data-load.js; node --check render-stats.js; node --check render-workout.js; node --check sw.js; node --check workout/load.js; node --check workout/navigation-stack.js; node --check workout/exercises.js; node --check workout/index.js; node --check workout/expert/max-same-day-advice.js`
+  9. PASS: `node --test tests/workout-navigation-stack.test.js tests/workout-card-layout-css.test.js tests/workout-calendar-bottom-sheet.test.js tests/stats-overall-compact-summary.test.js tests/data.load-save.test.js tests/exercise-program-editor.test.js`
+  10. PASS: `node --test tests/calc.max.test.js`
+  11. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=858`
+  12. PASS: `node --test --test-reporter=dot @tests`
+  13. PASS: `git diff --check`
+  14. 리뷰 문서: `docs/ai/reviews/2026-06-30-stale-ui-code-prune-review.md`
+  15. not verified yet: Dashboard3 Pages 배포와 인증 세션 UI 클릭 검증은 아직 수행하지 않았다.
 
 - Workout Record Route Remove 계획:
   1. 원인: `app.js`가 `pushWorkoutRecord()`와 `_setWorkoutSurface('record')`로 legacy record 화면을 아직 표시할 수 있다.

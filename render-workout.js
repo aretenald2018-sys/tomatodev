@@ -10,7 +10,6 @@ export {
   wtAddSet, wtRemoveSet, wtUpdateSet,
   wtToggleSetDone, wtUpdateSetType, wtMoveSet,
   wtRemoveExerciseEntry,
-  renderWorkoutExerciseDetail, clearWorkoutExerciseDetail,
   wtOpenExercisePicker, wtCloseExercisePicker,
   wtOpenExerciseEditor, wtCloseExerciseEditor,
   wtSaveExerciseFromEditor, wtDeleteExerciseFromEditor,

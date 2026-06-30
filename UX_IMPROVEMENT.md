@@ -116,8 +116,8 @@
   - 모두 TDS TextButton(`.tds-text-btn`, font-weight 500, r8)로 통일.
   - 이모지 prefix 규칙: `↻` (복사/재사용), `+` (추가), `✎` (편집).
 
-### 2.4 [P3] 히어로 카드/농장 카드/위클리 스트릭 카드 간 카드 스펙 불일치
-- **위치**: `home/hero.js`, `home/farm.js`, `home/weekly-streak.js`, `home/cheers-card.js`
+### 2.4 [P3] 히어로 카드/위클리 스트릭 카드/응원 카드 간 카드 스펙 불일치
+- **위치**: `home/hero.js`, `home/weekly-streak.js`, `home/cheers-card.js`
 - **증상**: 일부 카드는 border+shadow, 일부는 shadow only, 일부는 border only. padding 도 16/20/24 혼재.
 - **개선안**:
   - TDS Card 표준(r12, padding 16px, border 1px + shadow 없음)을 `.tds-card`로 이미 정의되어 있음 → 홈 카드를 모두 마이그레이션.

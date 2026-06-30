@@ -30,7 +30,7 @@
   - 기존 6주 붉은/검정 곡선 카드와 `오늘 열릴 벤치마크` 카드 제거.
   - 새 `growthPreviewHtml`에는 부위별 계단식 그래프를 렌더링.
   - `growthPreviewHtml` 슬롯을 받아 히어로 바로 아래에 렌더링.
-  - `recommendationHtml`, `nextAdviceHtml`는 제거하거나 legacy fallback으로만 남김.
+  - `nextAdviceHtml`는 제거하거나 legacy fallback으로만 남김.
 
 - `workout/expert/max.js`
   - 시작 전 부위 선택 화면과 진행 중 대시보드 모두에서 새 성장판 미리보기 모델을 생성.
@@ -105,8 +105,7 @@
       recentEvidence: [
         { label: '직직전', dateKey: '2026-05-06', trackLabel: '볼륨', text: '인클라인 벤치프레스 · 4set x 60kg x 10reps' },
         { label: '직전', dateKey: '2026-05-11', trackLabel: '강도', text: '바벨 벤치프레스 · 3set x 82.5kg x 6reps' }
-      ],
-      recommendationHtml: '<div class="wt-max-rec-grid">...</div>'
+      ]
     }
   ]
 }

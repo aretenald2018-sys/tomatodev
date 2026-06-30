@@ -251,7 +251,6 @@ export async function loadAll() {
     _settings.exercise_catalog_seed = fbMap.exercise_catalog_seed ?? null;
     _settings.cheer_last_seen  = fbMap.cheer_last_seen  ?? 0;
     _settings.tomato_state     = fbMap.tomato_state     ?? { quarterlyTomatoes: {}, totalTomatoes: 0, giftedReceived: 0, giftedSent: 0 };
-    _settings.farm_state       = fbMap.farm_state       ?? null;
     _settings.milestone_shown  = fbMap.milestone_shown  ?? {};
     _settings.streak_freezes   = fbMap.streak_freezes   ?? [];
     _settings.diet_premium_report_inbox = fbMap.diet_premium_report_inbox ?? null;

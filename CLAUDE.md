@@ -58,7 +58,7 @@ cd "C:\Users\USER\Desktop\Tomato Project\tomatofarm(for lite version)"; npm.cmd 
 - 사진 필드(`bPhoto`, `lPhoto`, `dPhoto`, `sPhoto`, `workoutPhoto`)를 저장 객체에 빠뜨리면 setDoc 전체 덮어쓰기로 사진 삭제됨.
 - **레이지 로드 모듈의 함수를 동기 코드에서 직접 호출하면 `ReferenceError`** — `render-cooking.js` 등 `_lazy()`로 로드되는 모듈의 export 함수는 **호출부를 async로 바꿔 `await _lazy()`로 가져올 것**.
 - **이벤트 위임(`document.addEventListener`)과 HTML `onclick`이 같은 버튼에 동시 등록되면 핸들러가 2번 실행됨** — 토글 함수가 2번 불리면 원복되어 "안 눌리는" 증상. 하나의 버튼에는 **이벤트 위임 또는 onclick 중 하나만** 사용.
-- **SW 캐시 버전 안 올리면 코드 변경이 배포에 반영 안 됨** — 현재 `CACHE_VERSION = 'tomatofarm-v20260606-fatsecret-legacy-cleanup'`. `STATIC_ASSETS` 파일을 하나라도 수정했으면 범프 필수.
+- **SW 캐시 버전 안 올리면 코드 변경이 배포에 반영 안 됨** — 현재 `CACHE_VERSION = 'tomatofarm-v20260630z12-stale-ui-prune'`. `STATIC_ASSETS` 파일을 하나라도 수정했으면 범프 필수.
 - **커밋 시 의존 파일 누락 → 배포 사이트 런타임 에러** — 예: `home/tomato.js`가 `calc.js`의 `isExerciseDaySuccess`를 import하는데 `calc.js`를 커밋 안 하면 `SyntaxError: does not provide an export named`. **파일 A를 커밋할 때, A가 import하는 다른 파일의 미커밋 변경을 반드시 확인.** 특히 `calc.js ↔ home/tomato.js`, `data/* ↔ home/*.js`, `workout/* ↔ render-workout.js` 간 export/import 의존성.
 - **`localStorage`는 기기 단위, 유저별 아님** — 멀티 유저에서 마이그레이션 플래그 등을 `localStorage`에 저장하면 다른 유저에게도 적용됨. 유저별 상태는 **Firestore `_settings`(tomato_state 등)에 저장**. `localStorage`는 UI 상태/캐시/단말별 API 키 전용.
 - **`unit_goal_start` 같은 설정은 모든 사용자 경로에서 자동설정 필요** — `renderUnitGoal()`이 admin 전용이라 비관리자는 `unit_goal_start`가 영원히 null이었음. 특정 사용자 유형에서만 호출되는 함수에 초기화 로직 넣지 말 것. `settleTomatoCycleIfNeeded()` 같은 공통 경로에서 처리.
@@ -81,7 +81,7 @@ cd "C:\Users\USER\Desktop\Tomato Project\tomatofarm(for lite version)"; npm.cmd 
                     raw-ingredients.js(식약처 원재료 DB)
   workout/   11개 — index.js(orchestrator+window.*), state.js, load.js, save.js, status.js,
                     render.js, exercises.js, timers.js, activity-forms.js, ai-estimate.js, expert.js
-  home/      19개 — index.js, tomato.js, farm.js, unit-goal.js, hero.js, today-summary.js,
+  home/      18개 — index.js, tomato.js, unit-goal.js, hero.js, today-summary.js,
                     goals-quests.js, friend-feed.js, friend-profile.js, guild-card.js,
                     notifications.js, cheers-card.js, cheer-card.js, personalize.js,
                     streak-warning.js, weekly-streak.js, welcome-back.js,
@@ -216,7 +216,6 @@ CSS 클래스:
 
 - [ ] `calc.js` — `calcTomatoCycle()`, `evaluateCycleResult()`, `isExerciseDaySuccess()` (사이클 일수, 평가 로직)
 - [ ] `home/tomato.js` — `settleTomatoCycleIfNeeded()` (정산 루프, 마이그레이션, 수확 모달)
-- [ ] `home/farm.js` — `renderFarmDuolingo()`, `renderFarmCyworld()` (사이클 단계 표시, stages 배열)
 - [ ] `home/unit-goal.js` — `renderUnitGoal()` (사이클 일수, 날짜 범위 표시)
 - [ ] `home/index.js` — `renderHome()` (정산 호출 위치 — admin/non-admin 공통 실행 필수)
 
@@ -236,7 +235,7 @@ CSS 클래스:
   - `render-workout.js` (shim) → `workout/index.js` (export 목록 동기화)
   - `home/tomato.js` → `calc.js`, `data.js` (export 추가/변경 시 같이 커밋)
   - `home/index.js` → `home/tomato.js` (함수 시그니처 변경 시)
-  - `calc.js` 사이클 로직 변경 → `home/farm.js`, `home/unit-goal.js` 동기화
+  - `calc.js` 사이클 로직 변경 → `home/unit-goal.js` 동기화
   - `data/*.js` 변경 → `data.js` 배럴의 re-export 동기화 확인
 - [ ] **`sw.js` 자체도 커밋에 포함** — 버전만 올리고 커밋에서 빠뜨리면 의미 없음.
 - [ ] **`git diff --stat`으로 미커밋 파일 확인** — 관련 변경이 남아있지 않은지 체크.

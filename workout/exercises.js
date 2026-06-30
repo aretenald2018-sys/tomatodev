@@ -20,10 +20,6 @@ import { estimate1RM, estimateSet1RM, rpeRepsToPct, targetWeightKg, weightRange,
          calcSetVolume, isWendlerWorkoutEntry } from '../calc.js?v=20260514v72';
 import { MOVEMENTS } from '../config.js';
 import {
-  getWorkoutNavSnapshot,
-  handleWorkoutBack,
-} from './navigation-stack.js';
-import {
   buildMaxPickerExerciseEntry,
   resolveMaxBenchmarkPickerItems,
 } from './expert/max-benchmark-picker.js?v=20260517v3';
@@ -87,7 +83,6 @@ function _isMaxWorkoutMode() {
 
 const NEW_MUSCLE_OPTION = '__new_custom_muscle__';
 const _embeddedMaxCards = new Map();
-let _detailEmbeddedEntryIdx = null;
 const WORKOUT_NUMBER_INPUT_SELECTOR = '.set-input, .set-rpe-input, .set-rom-input';
 const WORKOUT_INPUT_SCROLL_GUARD_BOTTOM_PX = 156;
 const WORKOUT_INPUT_SCROLL_GUARD_MAX_DELTA = 96;
@@ -876,21 +871,6 @@ function _todayDateKey() {
   return (S.shared.date) ? dateKey(S.shared.date.y, S.shared.date.m, S.shared.date.d) : null;
 }
 
-function _workoutEntryKey(entry, entryIdx) {
-  return String(entry?.uid || entry?.instanceId || entry?.id || `${entry?.exerciseId || entry?.name || 'entry'}:${entryIdx}`);
-}
-
-function _resolveWorkoutEntryIndex(detail = {}) {
-  const entries = Array.isArray(S.workout.exercises) ? S.workout.exercises : [];
-  if (detail.exerciseKey) {
-    const key = String(detail.exerciseKey);
-    const found = entries.findIndex((entry, idx) => _workoutEntryKey(entry, idx) === key);
-    if (found >= 0) return found;
-  }
-  const fallback = Number(detail.entryIdx);
-  return Number.isFinite(fallback) && entries[fallback] ? Math.max(0, Math.floor(fallback)) : -1;
-}
-
 export function wtFocusWorkoutEntryCard(entryIdx, options = {}) {
   const idx = Math.max(0, Math.floor(Number(entryIdx)));
   const entry = S.workout.exercises?.[idx];
@@ -916,10 +896,6 @@ export function wtFocusWorkoutEntryCard(entryIdx, options = {}) {
 
   if (!focus()) window.requestAnimationFrame?.(focus);
   return true;
-}
-
-export function wtFocusWorkoutEntryFromDetail(detail = {}, options = {}) {
-  return wtFocusWorkoutEntryCard(_resolveWorkoutEntryIndex(detail), options);
 }
 
 function _findWorkoutEntryIndexByExerciseId(exerciseId) {
@@ -1369,68 +1345,6 @@ export function renderEmbeddedMaxExerciseCard(container, entryIdx, options = {})
   container.appendChild(block);
   _renderSets(entryIdx, block.querySelector('[data-wt-embedded-sets]'));
   return block;
-}
-
-export function clearWorkoutExerciseDetail() {
-  const root = document.getElementById('wt-exercise-detail-root');
-  if (_detailEmbeddedEntryIdx != null) {
-    _embeddedMaxCards.delete(_detailEmbeddedEntryIdx);
-    _detailEmbeddedEntryIdx = null;
-  }
-  if (root) root.innerHTML = '';
-}
-
-export function renderWorkoutExerciseDetail() {
-  const root = document.getElementById('wt-exercise-detail-root');
-  if (!root) return;
-  const snapshot = getWorkoutNavSnapshot();
-  const entryIdx = _resolveWorkoutEntryIndex(snapshot.detail || {});
-  if (_detailEmbeddedEntryIdx != null && _detailEmbeddedEntryIdx !== entryIdx) {
-    _embeddedMaxCards.delete(_detailEmbeddedEntryIdx);
-  }
-  _detailEmbeddedEntryIdx = entryIdx >= 0 ? entryIdx : null;
-
-  if (entryIdx < 0 || !S.workout.exercises?.[entryIdx]) {
-    root.innerHTML = `
-      <div class="wt-exercise-detail-screen">
-        <div class="wt-exercise-detail-head">
-          <button type="button" class="wt-exercise-detail-back" aria-label="운동 기록으로 돌아가기">‹</button>
-          <div class="wt-exercise-detail-title">
-            <strong>운동 상세</strong>
-            <span>선택한 운동을 찾을 수 없습니다</span>
-          </div>
-        </div>
-        <div class="wt-exercise-detail-empty">운동 기록 화면으로 돌아가 다시 선택해 주세요</div>
-      </div>`;
-    root.querySelector('.wt-exercise-detail-back')?.addEventListener('click', () => handleWorkoutBack({ preferHistory: true }));
-    return;
-  }
-
-  const entry = S.workout.exercises[entryIdx];
-  const ex = getExList().find(item => item.id === entry.exerciseId);
-  const title = ex?.name || entry.name || entry.exerciseId || '운동 상세';
-  const sessionLabel = `${S.workout.sessionIndex + 1}회차`;
-  root.innerHTML = `
-    <div class="wt-exercise-detail-screen">
-      <div class="wt-exercise-detail-head">
-        <button type="button" class="wt-exercise-detail-back" aria-label="운동 기록으로 돌아가기">‹</button>
-        <div class="wt-exercise-detail-title">
-          <strong>${_escPicker(title)}</strong>
-          <span>${sessionLabel} · 세트 입력</span>
-        </div>
-      </div>
-      <div data-wt-exercise-detail-card></div>
-    </div>`;
-  root.querySelector('.wt-exercise-detail-back')?.addEventListener('click', () => handleWorkoutBack({ preferHistory: true }));
-  const slot = root.querySelector('[data-wt-exercise-detail-card]');
-  renderEmbeddedMaxExerciseCard(slot, entryIdx, {
-    className: 'wt-exercise-detail-card',
-    hideRemove: false,
-    onRemove: () => {
-      wtRemoveExerciseEntry(entryIdx);
-      handleWorkoutBack({ preferHistory: true });
-    },
-  });
 }
 
 // ── 세트 행 렌더 ────────────────────────────────────────────────

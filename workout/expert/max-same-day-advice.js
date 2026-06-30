@@ -638,7 +638,7 @@ function _renderGrowthWeakCoachPanel({ comparison, cache, exList, majors, moveme
   `;
 }
 
-export function renderMaxGrowthPreview({ comparison, cache, exList, majors, movements = MOVEMENTS, snapshot = null, recommendationHtml = '' } = {}) {
+export function renderMaxGrowthPreview({ comparison, cache, exList, majors, movements = MOVEMENTS, snapshot = null } = {}) {
   const majorList = _sameDayMajorList(majors, comparison);
   if (!majorList.length) return '';
   const coachHtml = _renderGrowthWeakCoachPanel({ comparison, cache, exList, majors: majorList, movements });

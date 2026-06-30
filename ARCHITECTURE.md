@@ -35,7 +35,6 @@ index.html (단일 SPA)
   ├── calc.js             — 순수 비즈니스 로직 (사이드이펙트 없음)
   ├── feature-*.js        — checkin, diet-plan, misc, nutrition, tutorial
   ├── workout-ui.js       — 운동탭 상태 머신 (wtSelectStatus, wtToggleType)
-  ├── home/farm.js        — 토마토 농장 DOM 렌더링
   ├── modal-manager.js    — 29개 모달 동적 주입
   ├── navigation.js       — 탭 드래그 정렬, 스와이프
   ├── sheet.js            — 과거 날짜 편집 시트
@@ -169,7 +168,6 @@ index.html (단일 SPA)
 |------|------|
 | `index.js` | `renderHome()` 오케스트레이터 |
 | `tomato.js` | 토마토 사이클 정산, 수확 모달 (`settleTomatoCycleIfNeeded`) |
-| `farm.js` | 토마토 농장 단계별 시각화 (Duolingo/Cyworld 스타일) |
 | `unit-goal.js` | 사이클 일수/날짜 범위 카드 |
 | `hero.js` | 히어로 카드, 스트릭 대시보드, 리더보드, 마일스톤 |
 | `today-summary.js` | 오늘 식단/운동 요약, 식단 목표 카드 |
@@ -242,7 +240,7 @@ index.html (단일 SPA)
 - `sw.js` `CACHE_VERSION` 변수 범프 → 신규 자산 페치
 - `STATIC_ASSETS` 목록의 파일 수정 시 필수 범프
 - `firebase-messaging-sw.js`는 FCM 푸시 전용 (별도 SW)
-- 현재: `CACHE_VERSION = 'tomatofarm-v20260606-fatsecret-legacy-cleanup'`
+- 현재: `CACHE_VERSION = 'tomatofarm-v20260630z12-stale-ui-prune'`
 
 ## 16. 에이전트 (`.claude/agents/`)
 

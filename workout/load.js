@@ -327,7 +327,6 @@ function _setInputsDisabled(disabled) {
   panel.querySelectorAll('input, textarea, select, button').forEach(el => {
     if (el.classList.contains('wt-date-nav-btn')) return;
     if (el.classList.contains('wt-today-btn')) return;
-    if (el.classList.contains('wt-record-back-btn')) return;
     el.disabled = disabled;
   });
   panel.classList.toggle('wt-readonly', !!disabled);
