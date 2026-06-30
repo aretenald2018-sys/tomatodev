@@ -3,15 +3,32 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-30-stale-ui-code-prune.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-30-stale-ui-code-prune-review.md`
-- 현재 단계: `화면 미구현 stale 코드 제거 실행/리뷰 완료`
-- 작업 브랜치: `codex/home-image-rendering-nameplates`
-- 마지막 완료: `화면에 구현되지 않는 stale UI/API/route/style 잔재를 제거하고 리뷰 문서를 작성했다.`
+- 계획 문서: `docs/ai/features/2026-06-30-workout-calendar-drag-surface-fix.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-30-workout-calendar-drag-surface-fix-review.md`
+- 현재 단계: `운동 캘린더 드래그 surface 회귀 수정 실행/리뷰/배포 검증 완료`
+- 작업 브랜치: `deploy/tomatofarm-20260629`
+- 마지막 완료: `운동 홈 캘린더 surface 전체를 터치 스크롤 예외로 확장하고 Dashboard3 Pages 배포 검증을 완료했다.`
 - 다음 액션: `없음.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
+
+- Workout Calendar Drag Surface Fix 완료:
+  1. 요청: 운동 탭 캘린더가 바텀시트 영역에서 손가락을 움직일 때만 드래그되는 상황을 수정한다.
+  2. 진단: 기존 `data-wt-calendar-scroll-surface`가 월간 grid에만 있어 헤더/요약/요일/좌측 레일/여백에서 시작한 touch가 전역 workout pull-back 제스처에 잡힐 수 있었다.
+  3. 완료: `render-calendar.js`에서 운동 홈 surface wrapper에 `data-wt-calendar-scroll-surface`를 조건부로 추가했다.
+  4. 완료: `style.css`에서 `.cal-workout-surface-home`에 `touch-action: pan-y`를 추가했다.
+  5. 완료: 기존 bottom sheet pointer drag 제거 계약은 유지했고, grid-level 표식도 보존했다.
+  6. 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260630z13-workout-calendar-drag-surface`로 bump하고 cache marker 테스트 기대값을 갱신했다.
+  7. PASS: `node --check render-calendar.js; node --check sw.js`
+  8. PASS: `node --test tests/workout-navigation-stack.test.js tests/workout-calendar-bottom-sheet.test.js` — 24 tests passed
+  9. PASS: `node scripts/verify-runtime-assets.mjs` — `[runtime-assets] ok refs=858`
+  10. PASS: `git diff --check`
+  11. PASS: `node --test --test-reporter=dot tests/*.test.js`
+  12. 완료: 코드/문서 커밋 `041f878 fix: widen workout calendar drag surface`를 `origin/main`에 push했다.
+  13. PASS: Dashboard3 Pages 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 041f878` → `[deploy-verify] ok 041f878367c6 tomatofarm-v20260630z13-workout-calendar-drag-surface static=233`
+  14. PASS: Dashboard3 Pages marker 검증 — `sw.js` cache version, `render-calendar.js` `scrollSurfaceAttr`/`data-wt-calendar-scroll-surface`, `style.css` `.cal-workout-surface-home`/`touch-action: pan-y`
+  15. not verified yet: 인증 세션이 없어 실제 `운동 탭 -> 캘린더 본문/요일/요약/좌측 레일에서 세로 드래그` UI flow는 직접 조작하지 못했다.
 
 - Stale UI Code Prune 완료:
   1. 요청: 화면에 구현되어 실질적인 UI/동작 변화를 일으키는 코드만 남기고, 화면에 구현되지 않는 stale 관련 코드를 제거한다.
