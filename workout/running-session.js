@@ -8,6 +8,10 @@ import { destroyRunningMaps, renderRunningMap, readRunningMapConfig } from './ru
 const MAX_ROUTE_POINTS = 240;
 const MIN_ROUTE_STEP_M = 3;
 const RUNNING_WORKOUT_SESSION_INDEX = 2;
+const RUNNING_SESSION_DRAFT_VERSION = 1;
+const RUNNING_SESSION_DRAFT_MAX_MS = 24 * 60 * 60 * 1000;
+const RUNNING_SESSION_DRAFT_KEY_PREFIX = 'tomatofarm_running_session_draft_';
+const RESTORABLE_RUNNING_PHASES = new Set(['active', 'paused', 'summary']);
 const GEO_OPTIONS = {
   enableHighAccuracy: true,
   maximumAge: 1000,
@@ -42,6 +46,7 @@ const _session = {
   announcedGoalDone: false,
   lastSpeechAt: 0,
 };
+let _runningDraftEventsBound = false;
 
 function _root() {
   return document.getElementById('wt-running-session-root');
@@ -82,6 +87,12 @@ function _escapeHtml(value) {
 function _cloneRunningGoal(goal = DEFAULT_RUNNING_GOAL) {
   const type = goal?.type === 'distance' || goal?.type === 'time' ? goal.type : 'free';
   return { type, value: type === 'free' ? 0 : _num(goal?.value, RUNNING_GOAL_DEFAULTS[type]) };
+}
+
+function _cloneJson(value, fallback = null) {
+  if (value == null) return fallback;
+  try { return JSON.parse(JSON.stringify(value)); }
+  catch { return fallback; }
 }
 
 function _sanitizeRunningGoal(type, rawValue) {
@@ -185,21 +196,29 @@ function _speakRunning(message, options = {}) {
 function _checkRunningAudioCues() {
   if (_session.phase !== 'active' || !_session.audioGuide) return;
   const summary = _currentSummary();
+  let changed = false;
   const splitKm = Math.floor(_num(summary.distanceKm, 0));
   if (splitKm > 0 && splitKm > _session.announcedSplits) {
     _session.announcedSplits = splitKm;
+    changed = true;
     _speakRunning(`${splitKm}킬로미터 통과. ${_runningSpeechPace(summary)}`);
   }
   const progress = _runningGoalProgress(summary);
-  if (!progress.active) return;
+  if (!progress.active) {
+    if (changed) _persistRunningDraft('audio cues');
+    return;
+  }
   if (!_session.announcedGoalHalf && progress.ratio >= 0.5 && progress.ratio < 1) {
     _session.announcedGoalHalf = true;
+    changed = true;
     _speakRunning(`목표의 절반을 지났습니다. ${_runningGoalRemainingLabel(progress)}`);
   }
   if (!_session.announcedGoalDone && progress.ratio >= 1) {
     _session.announcedGoalDone = true;
+    changed = true;
     _speakRunning(`${_runningGoalLabel()} 목표를 완료했습니다. 계속 달려도 기록은 이어집니다.`, { force: true });
   }
+  if (changed) _persistRunningDraft('audio cues');
 }
 
 function _safePoint(point) {
@@ -264,6 +283,53 @@ export function downsampleRunningRoute(points = [], max = MAX_ROUTE_POINTS) {
     out.push(route[Math.round(i * step)]);
   }
   return out;
+}
+
+function _safeRunningPhase(phase) {
+  const raw = String(phase || '');
+  return RESTORABLE_RUNNING_PHASES.has(raw) ? raw : null;
+}
+
+export function normalizeRunningSessionDraft(raw, options = {}) {
+  if (!raw || typeof raw !== 'object') return null;
+  const now = _num(options.now, _now());
+  const phase = _safeRunningPhase(raw.phase);
+  if (!phase) return null;
+
+  const route = downsampleRunningRoute(raw.route || [], MAX_ROUTE_POINTS);
+  const startedAt = _num(raw.startedAt, route[0]?.ts || 0);
+  if (!Number.isFinite(startedAt) || startedAt <= 0) return null;
+  if ((now - startedAt) > RUNNING_SESSION_DRAFT_MAX_MS) return null;
+
+  const updatedAt = _num(raw.updatedAt, raw.endedAt || raw.pausedAt || startedAt);
+  if (!Number.isFinite(updatedAt) || updatedAt <= 0) return null;
+  if ((now - updatedAt) > RUNNING_SESSION_DRAFT_MAX_MS) return null;
+
+  const endedAt = phase === 'summary'
+    ? _num(raw.endedAt, updatedAt)
+    : null;
+  const pausedAt = phase === 'paused'
+    ? _num(raw.pausedAt, updatedAt)
+    : null;
+
+  return {
+    version: RUNNING_SESSION_DRAFT_VERSION,
+    phase,
+    dateKey: String(raw.dateKey || ''),
+    startedAt,
+    endedAt: endedAt && Number.isFinite(endedAt) ? endedAt : null,
+    pausedAt: pausedAt && Number.isFinite(pausedAt) ? pausedAt : null,
+    pausedMs: Math.max(0, _num(raw.pausedMs, 0)),
+    route,
+    placeSummary: raw.placeSummary && typeof raw.placeSummary === 'object' ? _cloneJson(raw.placeSummary, null) : null,
+    goal: _cloneRunningGoal(raw.goal),
+    audioGuide: raw.audioGuide !== false,
+    announcedSplits: Math.max(0, Math.floor(_num(raw.announcedSplits, 0))),
+    announcedGoalHalf: !!raw.announcedGoalHalf,
+    announcedGoalDone: !!raw.announcedGoalDone,
+    lastSpeechAt: Math.max(0, _num(raw.lastSpeechAt, 0)),
+    updatedAt,
+  };
 }
 
 function _routeBounds(route) {
@@ -410,6 +476,124 @@ function _workoutSessionIndexFromState() {
   return RUNNING_WORKOUT_SESSION_INDEX;
 }
 
+function _runningDraftKey() {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('currentUser') : '';
+    const u = raw ? JSON.parse(raw) : null;
+    const uid = (u && (u.uid || u.id || u.username || u.name)) || '_anon';
+    return RUNNING_SESSION_DRAFT_KEY_PREFIX + encodeURIComponent(String(uid));
+  } catch {
+    return RUNNING_SESSION_DRAFT_KEY_PREFIX + '_anon';
+  }
+}
+
+function _buildRunningDraft(context = 'manual') {
+  const phase = _safeRunningPhase(_session.phase);
+  if (!phase || !_session.startedAt) return null;
+  return {
+    version: RUNNING_SESSION_DRAFT_VERSION,
+    context,
+    dateKey: _workoutDateKeyFromState() || '',
+    phase,
+    startedAt: _session.startedAt,
+    endedAt: _session.endedAt || null,
+    pausedAt: _session.pausedAt || null,
+    pausedMs: Math.max(0, _num(_session.pausedMs, 0)),
+    route: downsampleRunningRoute(_session.route, MAX_ROUTE_POINTS),
+    placeSummary: _cloneJson(_session.placeSummary, null),
+    goal: _cloneRunningGoal(_session.goal),
+    audioGuide: !!_session.audioGuide,
+    announcedSplits: Math.max(0, Math.floor(_num(_session.announcedSplits, 0))),
+    announcedGoalHalf: !!_session.announcedGoalHalf,
+    announcedGoalDone: !!_session.announcedGoalDone,
+    lastSpeechAt: Math.max(0, _num(_session.lastSpeechAt, 0)),
+    updatedAt: _now(),
+  };
+}
+
+function _persistRunningDraft(context = 'manual') {
+  if (typeof localStorage === 'undefined') return null;
+  const draft = _buildRunningDraft(context);
+  if (!draft) return null;
+  try {
+    localStorage.setItem(_runningDraftKey(), JSON.stringify(draft));
+    return draft;
+  } catch {
+    return null;
+  }
+}
+
+function _readRunningDraft() {
+  if (typeof localStorage === 'undefined') return null;
+  let raw = null;
+  try {
+    raw = localStorage.getItem(_runningDraftKey());
+    if (!raw) return null;
+    const draft = normalizeRunningSessionDraft(JSON.parse(raw));
+    if (!draft) localStorage.removeItem(_runningDraftKey());
+    return draft;
+  } catch {
+    try { localStorage.removeItem(_runningDraftKey()); } catch {}
+    return null;
+  }
+}
+
+function _clearRunningDraft() {
+  if (typeof localStorage === 'undefined') return;
+  try { localStorage.removeItem(_runningDraftKey()); } catch {}
+}
+
+function _applyRunningDraft(draft) {
+  const normalized = normalizeRunningSessionDraft(draft);
+  if (!normalized) return false;
+  _resetLiveSession();
+  Object.assign(_session, {
+    open: true,
+    phase: normalized.phase,
+    startedAt: normalized.startedAt,
+    endedAt: normalized.endedAt,
+    pausedAt: normalized.pausedAt,
+    pausedMs: normalized.pausedMs,
+    route: normalized.route,
+    previewPoint: normalized.route[normalized.route.length - 1] || null,
+    placeSummary: normalized.placeSummary,
+    goal: normalized.goal,
+    audioGuide: normalized.audioGuide,
+    announcedSplits: normalized.announcedSplits,
+    announcedGoalHalf: normalized.announcedGoalHalf,
+    announcedGoalDone: normalized.announcedGoalDone,
+    lastSpeechAt: normalized.lastSpeechAt,
+  });
+  const summary = _currentSummary();
+  _syncWorkoutRunData(summary, _session.placeSummary || _runningPlaceFallback(summary));
+  return true;
+}
+
+function _restoreRunningDraftIfAvailable() {
+  const draft = _readRunningDraft();
+  if (!draft || !_applyRunningDraft(draft)) return false;
+  S.workout.sessionIndex = RUNNING_WORKOUT_SESSION_INDEX;
+  S.workout.sessionId = 'running-track';
+  if (_session.phase === 'active') _startWatch();
+  if (_session.phase === 'active' || _session.phase === 'paused') _startTicker();
+  _publishRunningLiveState(_session.phase === 'active' || _session.phase === 'paused');
+  _render();
+  _showToast('이전 러닝 기록을 복구했어요', 1800, 'success');
+  return true;
+}
+
+function _bindRunningDraftEvents() {
+  if (_runningDraftEventsBound || typeof window === 'undefined') return;
+  _runningDraftEventsBound = true;
+  window.addEventListener('pagehide', () => _persistRunningDraft('pagehide'));
+  window.addEventListener('beforeunload', () => _persistRunningDraft('beforeunload'));
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) _persistRunningDraft('visibility hidden');
+    });
+  }
+}
+
 function _runningPlaceFallback(summary, status = 'resolving') {
   if (!summary?.centroid) return { status: 'unavailable', label: '위치 정보 없음', provider: null };
   return { status, label: status === 'resolved' ? '위치 기록' : '위치 확인 중', provider: 'vworld' };
@@ -464,6 +648,7 @@ async function _ensureRunningPlaceSummary(summary) {
     _session.placePromise = resolveRunningPlaceSummary(summary).then((place) => {
       _session.placeSummary = place;
       _session.placePromise = null;
+      _persistRunningDraft('place resolved');
       return place;
     });
   }
@@ -652,6 +837,7 @@ function _pushPosition(position) {
     _session.route = downsampleRunningRoute(_session.route, MAX_ROUTE_POINTS);
   }
   _publishRunningLiveState(true);
+  _persistRunningDraft('route point');
 }
 
 function _startWatch() {
@@ -688,6 +874,7 @@ function _startRun() {
   _render();
   const goalText = _session.goal.type === 'free' ? '' : `${_runningGoalLabel(_session.goal)} 목표 `;
   _speakRunning(`${goalText}러닝을 시작합니다.`, { force: true });
+  _persistRunningDraft('start');
 }
 
 function _pauseRun() {
@@ -698,6 +885,7 @@ function _pauseRun() {
   _publishRunningLiveState(true);
   _render();
   _speakRunning('러닝을 일시정지했습니다.', { force: true });
+  _persistRunningDraft('pause');
 }
 
 function _resumeRun() {
@@ -709,6 +897,7 @@ function _resumeRun() {
   _publishRunningLiveState(true);
   _render();
   _speakRunning('러닝을 다시 시작합니다.', { force: true });
+  _persistRunningDraft('resume');
 }
 
 function _finishRun() {
@@ -727,8 +916,10 @@ function _finishRun() {
   _publishRunningLiveState(false);
   _render();
   _speakRunning(`러닝 완료. ${summary.distanceKm.toFixed(2)}킬로미터, 시간 ${_runningSpeechDuration(summary.durationSec)}, ${_runningSpeechPace(summary)}`, { force: true });
+  _persistRunningDraft('finish');
   _ensureRunningPlaceSummary(summary).then((place) => {
     _syncWorkoutRunData(_currentSummary(), place);
+    _persistRunningDraft('finish place resolved');
     if (_session.open && _session.phase === 'summary') _render();
   });
 }
@@ -912,6 +1103,7 @@ function _saveRunningGoalForm() {
   _session.audioGuide = next.audioGuide;
   _session.goalSheetOpen = false;
   _render();
+  _persistRunningDraft('goal save');
   const label = _session.goal.type === 'free' ? '자유 러닝' : `${_runningGoalLabel(_session.goal)} 목표`;
   _showToast(`${label}로 설정했어요`, 1800, 'success');
 }
@@ -1075,6 +1267,7 @@ function _handleAction(action) {
 
 export function initRunningSession() {
   const root = _root();
+  _bindRunningDraftEvents();
   if (!root || root.dataset.runningSessionBound === '1') return;
   root.dataset.runningSessionBound = '1';
   root.hidden = true;
@@ -1088,6 +1281,7 @@ export function initRunningSession() {
 
 export function wtOpenRunningSession() {
   initRunningSession();
+  if (_restoreRunningDraftIfAvailable()) return;
   _resetLiveSession();
   S.workout.sessionIndex = RUNNING_WORKOUT_SESSION_INDEX;
   S.workout.sessionId = 'running-track';
@@ -1099,6 +1293,7 @@ export function wtOpenRunningSession() {
 export function wtCloseRunningSession() {
   const root = _root();
   if (root) destroyRunningMaps(root);
+  _clearRunningDraft();
   _resetLiveSession();
   _session.open = false;
   _publishRunningLiveState(false);

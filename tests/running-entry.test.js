@@ -187,6 +187,19 @@ test('running summary save opens the saved workout day detail sheet', () => {
   assert.match(runningSessionJs, /wtCloseRunningSession\(\);[\s\S]*typeof window\.wtOpenWorkoutDaySheet === 'function'/);
 });
 
+test('running session persists unsaved live records across app reloads', () => {
+  assert.match(runningSessionJs, /RUNNING_SESSION_DRAFT_KEY_PREFIX = 'tomatofarm_running_session_draft_'/);
+  assert.match(runningSessionJs, /export function normalizeRunningSessionDraft/);
+  assert.match(runningSessionJs, /localStorage\.setItem\(_runningDraftKey\(\), JSON\.stringify\(draft\)\)/);
+  assert.match(runningSessionJs, /window\.addEventListener\('pagehide', \(\) => _persistRunningDraft\('pagehide'\)\)/);
+  assert.match(runningSessionJs, /window\.addEventListener\('beforeunload', \(\) => _persistRunningDraft\('beforeunload'\)\)/);
+  assert.match(runningSessionJs, /document\.addEventListener\('visibilitychange', \(\) => \{[\s\S]*document\.hidden[\s\S]*_persistRunningDraft\('visibility hidden'\)/);
+  assert.match(runningSessionJs, /function _restoreRunningDraftIfAvailable\(\)[\s\S]*_applyRunningDraft\(draft\)[\s\S]*_startWatch\(\)/);
+  assert.match(runningSessionJs, /export function wtOpenRunningSession\(\) \{[\s\S]*if \(_restoreRunningDraftIfAvailable\(\)\) return;/);
+  assert.match(runningSessionJs, /function _finishRun\(\)[\s\S]*_persistRunningDraft\('finish'\)/);
+  assert.match(runningSessionJs, /export function wtCloseRunningSession\(\) \{[\s\S]*_clearRunningDraft\(\);[\s\S]*_resetLiveSession\(\);/);
+});
+
 test('running records save into a dedicated running session with place and device metrics', () => {
   assert.match(runningSessionJs, /const RUNNING_WORKOUT_SESSION_INDEX = 2/);
   assert.match(runningSessionJs, /function _workoutSessionIndexFromState\(\) \{\s*return RUNNING_WORKOUT_SESSION_INDEX;\s*\}/);
@@ -222,7 +235,7 @@ test('running workout save writes a running life-zone snapshot', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260701z3-consulting-room-visitor/);
+  assert.match(swJs, /tomatofarm-v20260702z1-running-session-reload-recovery/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/sprites\/jups-running-track\.png/);

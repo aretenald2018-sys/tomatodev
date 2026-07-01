@@ -2,16 +2,31 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-01-home-consulting-room-visitor-sofa.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-home-consulting-room-visitor-sofa-review.md`
-- 현재 단계: `홈 라이프존 상담실 방문자 소파 연출 Slice 1 개발계 배포 완료`
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-07-02-running-session-reload-recovery.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-running-session-reload-recovery-review.md`
+- 현재 단계: `러닝 세션 리로드 복구 Slice 1 정적 검증 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `커밋 fa2ea34 fix: add consulting room visitor sofa를 origin/main에 push했고 Dashboard3 Pages 배포/marker 검증을 완료했다.`
-- 다음 액션: `없음. 인증 세션이 필요한 실제 홈 탭 UI flow 확인만 남아 있다.`
+- 마지막 완료: `live 러닝 세션 draft 저장/복구를 구현했고 관련/전체 테스트와 runtime asset 검증을 통과했다.`
+- 다음 액션: `제 변경분만 커밋해 origin/main에 push한 뒤 Dashboard3 Pages 배포 검증을 진행한다.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
+
+- Running Session Reload Recovery:
+  1. 요청: 러닝 기록 중 앱이 백그라운드에서 리로드되면 저장 전 기록이 전부 사라지는 문제를 수정한다.
+  2. 진단: live 러닝 상태는 `workout/running-session.js` 전역 `_session`에만 있고 저장 전 reload-safe draft가 없었다.
+  3. 완료: user-scoped `tomatofarm_running_session_draft_<user>` localStorage draft 저장/복구를 추가했다.
+  4. 완료: `pagehide`, `beforeunload`, `visibilitychange(hidden)`, route point, pause/resume/finish/goal save 시 draft를 갱신한다.
+  5. 완료: `wtOpenRunningSession()`에서 유효한 draft를 progress/summary 화면으로 복원하고 저장 성공/명시 닫기 시 draft를 삭제한다.
+  6. 완료: `normalizeRunningSessionDraft()` 테스트를 추가하고 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z1-running-session-reload-recovery`로 bump했다.
+  7. PASS: `node --check workout/running-session.js; node --check sw.js`
+  8. PASS: `node --test tests/running-entry.test.js tests/running-tracker.test.js tests/workout-sessions.test.js`
+  9. PASS: `node --test --test-reporter=dot tests/*.test.js`
+  10. PASS: `node scripts/verify-runtime-assets.mjs`
+  11. PASS: `git diff --check`
+  12. 리뷰 문서: `docs/ai/reviews/2026-07-02-running-session-reload-recovery-review.md`
+  13. 남음: Dashboard3 Pages 배포 검증.
 
 - Home Consulting Room Visitor Sofa 실행:
   1. 요청: 현재 소파 앞에 서 있는 상담실장을 1인용 소파에 앉아 있는 구도로 바꾼다.

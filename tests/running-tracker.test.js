@@ -5,6 +5,7 @@ import {
   downsampleRunningRoute,
   formatRunningDuration,
   formatRunningPace,
+  normalizeRunningSessionDraft,
   runningRouteDistanceMeters,
   summarizeRunningRoute,
 } from '../workout/running-session.js';
@@ -115,4 +116,34 @@ test('running session formats elapsed time and pace like running apps', () => {
   assert.equal(formatRunningDuration(1048), '17:28');
   assert.equal(formatRunningPace(403), "6'43''");
   assert.equal(formatRunningPace(0), "--'--''");
+});
+
+test('running session draft normalizer preserves reload-safe live state', () => {
+  const draft = normalizeRunningSessionDraft({
+    phase: 'paused',
+    startedAt: 1_000,
+    pausedAt: 181_000,
+    pausedMs: 60_000,
+    updatedAt: 181_000,
+    route,
+    placeSummary: { status: 'resolved', label: '잠실동, 송파구, 서울특별시' },
+    goal: { type: 'distance', value: 5 },
+    audioGuide: false,
+    announcedSplits: 1,
+    announcedGoalHalf: true,
+  }, { now: 200_000 });
+
+  assert.equal(draft.phase, 'paused');
+  assert.equal(draft.startedAt, 1_000);
+  assert.equal(draft.pausedAt, 181_000);
+  assert.equal(draft.pausedMs, 60_000);
+  assert.equal(draft.route.length, 3);
+  assert.equal(draft.placeSummary.label, '잠실동, 송파구, 서울특별시');
+  assert.deepEqual(draft.goal, { type: 'distance', value: 5 });
+  assert.equal(draft.audioGuide, false);
+  assert.equal(draft.announcedSplits, 1);
+  assert.equal(draft.announcedGoalHalf, true);
+
+  assert.equal(normalizeRunningSessionDraft({ phase: 'start', startedAt: 1_000, updatedAt: 1_000 }, { now: 2_000 }), null);
+  assert.equal(normalizeRunningSessionDraft({ phase: 'active', startedAt: 1_000, updatedAt: 1_000 }, { now: 90_000_000 }), null);
 });
