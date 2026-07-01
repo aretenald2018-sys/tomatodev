@@ -8,7 +8,7 @@
 - 현재 단계: `홈 히어로/라이프존 높이 재배치 Slice 1 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
 - 마지막 완료: `히어로 카드 높이를 compact로 줄이고 라이프존 장면을 더 크게 보이도록 확대했다.`
-- 다음 액션: `없음. Dashboard3 배포 검증과 실제 인증 홈 UI 확인은 아직 남아 있다.`
+- 다음 액션: `없음. Dashboard3 배포/marker 검증은 완료했고, 실제 인증 홈 UI 확인만 남아 있다.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
@@ -31,7 +31,10 @@
   15. PASS: `git diff --check`
   16. PASS: `node --test --test-reporter=dot tests/*.test.js`
   17. 리뷰 문서: `docs/ai/reviews/2026-07-01-home-hero-life-zone-balance-review.md`
-  18. not verified yet: Dashboard3 Pages 배포 검증과 실제 인증 홈 UI flow 확인은 아직 남아 있다.
+  18. 완료: 커밋 `da7b5c0 fix: rebalance home hero and life zone`를 `origin/main`에 push했다.
+  19. PASS: Dashboard3 Pages 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ da7b5c0` → `[deploy-verify] ok da7b5c0fe3c9 tomatofarm-v20260701z2-home-hero-life-zone-balance static=233`
+  20. PASS: Dashboard3 Pages marker 검증 — `sw.js` cache version, `home/tomato.js` compact hero markers, `style.css` life-zone expand markers 확인
+  21. not verified yet: 배포 URL 브라우저 확인 결과 로그인 화면이 먼저 표시되어 실제 인증 홈 탭 UI flow 확인은 아직 남아 있다.
 
 - Home Life Zone Foot Nameplates 계획:
   1. 요청: 첨부 이미지에서 X 표시된 라이프존 카드 하단 캐릭터 상태칩을 삭제한다.

@@ -35,8 +35,10 @@
 3. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=858`
 4. PASS: `git diff --check`
 5. PASS: `node --test --test-reporter=dot tests/*.test.js`
+6. PASS: Dashboard3 Pages 배포 검증 - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ da7b5c0` -> `[deploy-verify] ok da7b5c0fe3c9 tomatofarm-v20260701z2-home-hero-life-zone-balance static=233`
+7. PASS: Dashboard3 Pages marker 검증 - `sw.js::tomatofarm-v20260701z2-home-hero-life-zone-balance`, `home/tomato.js::renderCharacterSVG(characterMood, { size: 44 })`, `style.css::aspect-ratio: 1672 / 1872`
+8. PASS: 배포 URL 브라우저 접근 - `https://aretenald2018-sys.github.io/dashboard3/`는 열렸고 로그인 화면이 먼저 표시됨을 확인했다.
 
 ## 남은 확인
 
-1. not verified yet: Dashboard3 Pages 배포 검증은 커밋/푸시 후 실행한다.
-2. not verified yet: 인증 세션이 없어 실제 홈 탭에서 히어로/라이프존 시각 비율은 직접 확인하지 못했다.
+1. not verified yet: 인증 세션이 없어 실제 홈 탭에서 히어로/라이프존 시각 비율은 직접 확인하지 못했다.
