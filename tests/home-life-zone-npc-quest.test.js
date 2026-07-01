@@ -30,9 +30,15 @@ test('life zone trainer hook keeps the bulb bubble while hiding the old NPC card
   assert.match(source, /npc-quest-bubble\.png/);
   assert.match(source, /miranda-npc-home\.png/);
   assert.match(source, /miranda-fashion-corner\.png/);
-  assert.match(source, /consulting-chief-npc-home\.png/);
+  assert.match(source, /setLifeZoneVisitContext/);
+  assert.match(source, /resolveLifeZoneConsultingVisitor/);
+  assert.match(source, /consulting-room-sofas\.png/);
+  assert.match(source, /consulting-chief-npc-seated-home\.png/);
+  assert.match(source, /consulting-visitor-gray-shirt-home\.png/);
   assert.match(source, /class="lz-world"/);
   assert.match(source, /class="lz-miranda-corner"/);
+  assert.match(source, /class="lz-consulting-room-sofas"/);
+  assert.match(source, /data-lz-consulting-visitor/);
   assert.match(source, /data-lz-action="npc-quest"/);
   assert.match(source, /data-lz-action="miranda-quest"/);
   assert.match(source, /data-lz-action="consulting-chief-quest"/);
@@ -109,6 +115,11 @@ test('life zone NPC quest bubble has a stable clickable overlay style', () => {
   assert.match(css, /width: calc\(430 \/ 1672 \* 100%\)/);
   assert.match(css, /z-index: 74/);
   assert.match(css, /\.lz-miranda-corner img \{/);
+  assert.match(css, /\.lz-consulting-room-sofas \{/);
+  assert.match(css, /left: calc\(1180 \/ 1672 \* 100%\)/);
+  assert.match(css, /top: calc\(1292 \/ 1672 \* 100%\)/);
+  assert.match(css, /width: calc\(360 \/ 1672 \* 100%\)/);
+  assert.match(css, /\.lz-consulting-room-sofas img \{/);
   assert.match(css, /\.lz-miranda-npc \{/);
   assert.match(css, /left: calc\(302 \/ 1672 \* 100%\)/);
   assert.match(css, /top: calc\(1392 \/ 1672 \* 100%\)/);
@@ -119,13 +130,19 @@ test('life zone NPC quest bubble has a stable clickable overlay style', () => {
   assert.match(css, /\.lz-miranda-npc \.lz-nameplate \{[\s\S]*top: -3px;[\s\S]*transform: translate\(-50%, -100%\);/);
   assert.match(css, /\.lz-miranda-npc:focus-visible/);
   assert.match(css, /\.lz-consulting-chief-npc \{/);
-  assert.match(css, /left: calc\(1338 \/ 1672 \* 100%\)/);
-  assert.match(css, /top: calc\(1260 \/ 1672 \* 100%\)/);
-  assert.match(css, /width: clamp\(18px, calc\(56 \/ 1672 \* 100%\), 28px\)/);
+  assert.match(css, /left: calc\(1440 \/ 1672 \* 100%\)/);
+  assert.match(css, /top: calc\(1336 \/ 1672 \* 100%\)/);
+  assert.match(css, /width: clamp\(28px, calc\(94 \/ 1672 \* 100%\), 44px\)/);
   assert.match(css, /\.lz-consulting-chief-npc-img \{/);
   assert.match(css, /\.lz-consulting-chief-npc \.lz-npc-bulb \{[\s\S]*top: 0;[\s\S]*width: 96%;[\s\S]*--lz-bulb-y: -118%;/);
   assert.match(css, /\.lz-miranda-npc \.lz-npc-bulb,\s*\.lz-consulting-chief-npc \.lz-npc-bulb\s*\{[\s\S]*display: none;/);
-  assert.match(css, /\.lz-consulting-chief-npc \.lz-nameplate \{[\s\S]*top: -3px;[\s\S]*transform: translate\(-50%, -100%\);/);
+  assert.match(css, /\.lz-consulting-chief-npc \.lz-nameplate \{[\s\S]*top: -5px;[\s\S]*transform: translate\(-50%, -100%\);/);
+  assert.match(css, /\.lz-consulting-visitor \{/);
+  assert.match(css, /left: calc\(1268 \/ 1672 \* 100%\)/);
+  assert.match(css, /top: calc\(1350 \/ 1672 \* 100%\)/);
+  assert.match(css, /width: clamp\(30px, calc\(110 \/ 1672 \* 100%\), 50px\)/);
+  assert.match(css, /\.lz-consulting-visitor\[hidden\] \{[\s\S]*display: none;/);
+  assert.match(css, /\.lz-consulting-visitor-img \{/);
   assert.match(css, /\.lz-consulting-chief-npc:focus-visible/);
 });
 
@@ -249,7 +266,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260701z2-home-hero-life-zone-balance/);
+  assert.match(sw, /tomatofarm-v20260701z3-consulting-room-visitor/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,
@@ -282,14 +299,18 @@ test('life zone Miranda fashion corner is a separate transparent runtime prop as
   });
 });
 
-test('life zone consulting chief home NPC is a separate transparent generated runtime asset', () => {
+test('life zone consulting room sofa assets are separate transparent runtime PNGs', () => {
   const sw = readText('sw.js');
-  const header = readPngHeader('assets/home/life-zone/ui/consulting-chief-npc-home.png');
 
-  assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/consulting-chief-npc-home\.png/);
-  assert.deepEqual(header, {
-    width: 96,
-    height: 256,
-    colorType: 6
-  });
+  const assets = [
+    ['consulting-room-sofas.png', { width: 430, height: 309, colorType: 6 }],
+    ['consulting-chief-npc-seated-home.png', { width: 200, height: 286, colorType: 6 }],
+    ['consulting-visitor-gray-shirt-home.png', { width: 230, height: 298, colorType: 6 }]
+  ];
+
+  assert.match(sw, /tomatofarm-v20260701z3-consulting-room-visitor/);
+  for (const [asset, expected] of assets) {
+    assert.match(sw, new RegExp(`\\.\\/assets\\/home\\/life-zone\\/ui\\/${asset.replace('.', '\\.')}`));
+    assert.deepEqual(readPngHeader(`assets/home/life-zone/ui/${asset}`), expected);
+  }
 });

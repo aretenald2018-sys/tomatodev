@@ -18,6 +18,7 @@ import {
 import {
   LIFE_ZONE_ACTORS,
   assignLifeZoneSlots,
+  resolveLifeZoneConsultingVisitor,
   resolveLifeZoneActivity,
   resolveLifeZoneActors,
   resolveLifeZoneRoster
@@ -38,6 +39,7 @@ const RUNNING_MAP_MAX_ZOOM = 18;
 const RUNNING_MAP_HOME_MAX_ZOOM = 12;
 
 let _actorStateCache = null;
+let _lifeZoneVisitContext = null;
 
 const STATE_LABELS = {
   running: '러닝',
@@ -68,6 +70,39 @@ function _enrichAccounts(accounts = []) {
 function _mergeCurrentUser(accounts = [], currentUser = null) {
   if (!currentUser?.id || accounts.some((account) => account.id === currentUser.id)) return accounts;
   return [...accounts, { ...currentUser, resolvedNickname: _safeResolveNickname(currentUser, accounts) }];
+}
+
+export function setLifeZoneVisitContext(context = null) {
+  _lifeZoneVisitContext = context && typeof context === 'object' ? { ...context } : null;
+}
+
+function _resolveConsultingVisitor() {
+  const currentUser = getCurrentUser();
+  if (_lifeZoneVisitContext?.userId && currentUser?.id && _lifeZoneVisitContext.userId !== currentUser.id) {
+    return null;
+  }
+  return resolveLifeZoneConsultingVisitor({
+    currentUser,
+    previousLastLoginAt: _lifeZoneVisitContext?.previousLastLoginAt || 0,
+    createdAt: _lifeZoneVisitContext?.createdAt ?? currentUser?.createdAt
+  });
+}
+
+function _renderConsultingVisitor(card) {
+  const visitorEl = card?.querySelector('[data-lz-consulting-visitor]');
+  if (!visitorEl) return;
+  const visitor = _resolveConsultingVisitor();
+  if (!visitor) {
+    visitorEl.hidden = true;
+    delete visitorEl.dataset.lzVisitorState;
+    visitorEl.removeAttribute('title');
+    return;
+  }
+  visitorEl.hidden = false;
+  visitorEl.dataset.lzVisitorState = visitor.state;
+  visitorEl.title = visitor.state === 'returning'
+    ? '10일 이상 미접속 복귀 상담'
+    : '신규 유저 상담';
 }
 
 function _readRunningLiveState() {
@@ -505,6 +540,16 @@ export function renderLifeZoneCard({
             decoding="async"
           >
         </span>
+        <span class="lz-consulting-room-sofas" aria-hidden="true">
+          <img
+            src="${LIFE_ZONE_UI_ROOT}/consulting-room-sofas.png"
+            width="430"
+            height="309"
+            alt=""
+            loading="lazy"
+            decoding="async"
+          >
+        </span>
         <div class="lz-actor-layer" data-lz-actors aria-hidden="true"></div>
         <button
           type="button"
@@ -562,9 +607,9 @@ export function renderLifeZoneCard({
         >
           <img
             class="lz-consulting-chief-npc-img"
-            src="${LIFE_ZONE_UI_ROOT}/consulting-chief-npc-home.png"
-            width="96"
-            height="256"
+            src="${LIFE_ZONE_UI_ROOT}/consulting-chief-npc-seated-home.png"
+            width="200"
+            height="286"
             alt=""
             loading="lazy"
             decoding="async"
@@ -581,6 +626,17 @@ export function renderLifeZoneCard({
           </span>
           <span class="lz-nameplate lz-nameplate--npc" aria-hidden="true">${escapeHtml(LIFE_ZONE_CONSULTING_CHIEF_NAME)}</span>
         </button>
+        <span class="lz-consulting-visitor" data-lz-consulting-visitor hidden aria-hidden="true">
+          <img
+            class="lz-consulting-visitor-img"
+            src="${LIFE_ZONE_UI_ROOT}/consulting-visitor-gray-shirt-home.png"
+            width="230"
+            height="298"
+            alt=""
+            loading="lazy"
+            decoding="async"
+          >
+        </span>
       </div>
     </div>
     <div class="lz-summary-strip">
@@ -596,6 +652,7 @@ export function renderLifeZoneCard({
   `;
 
   _renderActors(card, fallbackActors);
+  _renderConsultingVisitor(card);
   _renderStatus(card, false);
 
   card.querySelector('[data-lz-action="diet"]')?.addEventListener('click', (event) => {

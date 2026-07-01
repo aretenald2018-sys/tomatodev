@@ -36,6 +36,7 @@ import './utils/haptics.js';       // window.haptic.light/medium/heavy (Capacito
 try { initBuildInfoSurface(); } catch (e) { console.warn('[app] build info init 실패:', e); }
 // ── 코어 탭 (즉시 로드) ──
 import { renderHome, refreshNotifCenter, showToast } from './render-home.js';
+import { setLifeZoneVisitContext } from './home/life-zone.js';
 import { showWelcomeBackPopup } from './home/welcome-back.js';
 import { showDietPremiumReportIfNeeded } from './feature-diet-premium-report.js';
 import {
@@ -538,6 +539,12 @@ async function init() {
     // localStorage 캐시를 Firebase 최신으로 동기화
     const { refreshCurrentUserFromDB } = await import('./data.js');
     await _withTimeout(refreshCurrentUserFromDB(), 6000, 'user refresh');
+    const refreshedUser = getCurrentUser() || user;
+    setLifeZoneVisitContext({
+      userId: refreshedUser?.id || user?.id || null,
+      previousLastLoginAt,
+      createdAt: refreshedUser?.createdAt ?? user?.createdAt ?? 0
+    });
 
     // AI 음식 프로파일 빌드 (P1: 메모리 전용, _cache 기반 — 네트워크 없음, 비동기 비차단)
     // P2에서 runAIEstimate 파이프라인에 연결될 예정. 지금은 관측/축적 단계.

@@ -2,16 +2,40 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-01-home-hero-life-zone-balance.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-01-home-hero-life-zone-balance-review.md`
-- 현재 단계: `홈 히어로/라이프존 높이 재배치 Slice 1 완료`
+- 상태: `ready_for_deploy`
+- 계획 문서: `docs/ai/features/2026-07-01-home-consulting-room-visitor-sofa.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-home-consulting-room-visitor-sofa-review.md`
+- 현재 단계: `홈 라이프존 상담실 방문자 소파 연출 Slice 1 리뷰 완료, 개발계 배포 대기`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `히어로 카드 높이를 compact로 줄이고 라이프존 장면을 더 크게 보이도록 확대했다.`
-- 다음 액션: `없음. Dashboard3 배포/marker 검증은 완료했고, 실제 인증 홈 UI 확인만 남아 있다.`
+- 마지막 완료: `리뷰에서 배포를 막을 이슈가 없음을 확인했다.`
+- 다음 액션: `상담실 방문자 소파 변경 관련 파일만 커밋하고 origin/main에 push한 뒤 Dashboard3 Pages 개발계 배포를 검증한다.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
+
+- Home Consulting Room Visitor Sofa 실행:
+  1. 요청: 현재 소파 앞에 서 있는 상담실장을 1인용 소파에 앉아 있는 구도로 바꾼다.
+  2. 요청: 맞은편에는 현재 소파를 상담실장을 마주보는 형태로 배치한다.
+  3. 요청: 10일 이상 미접속 유저 또는 신규유저가 방문하면 그 소파에 앉아 있는 회색 상의 방문자 스프라이트를 표시한다.
+  4. 결정: 방문자는 전체 계정 중 임의 선정하지 않고 현재 로그인한 사용자의 `previousLastLoginAt`/`createdAt` 기준으로 판정한다.
+  5. 결정: 베이스룸 원본은 직접 수정하지 않고 우측 하단 상담 코너 transparent overlay와 seated sprites로 덮는다.
+  6. 범위: `app.js`, `home/life-zone.js`, `home/life-zone-state.js`, `style.css`, `sw.js`, 새 PNG 3개, 관련 테스트와 cache-version 테스트.
+  7. 제외: 상담실장 모달 내용 변경, 베이스룸 원본 교체, 기존 actor 상태 우선순위 변경, Firestore schema 변경, `www/` 직접 수정.
+  8. 완료: 새 RGBA PNG 3개를 생성했다: `consulting-room-sofas.png`, `consulting-chief-npc-seated-home.png`, `consulting-visitor-gray-shirt-home.png`.
+  9. 완료: `app.js`에서 저장된 이전 `lastLoginAt` snapshot과 현재 사용자 정보를 라이프존 방문자 context로 전달했다.
+  10. 완료: `home/life-zone-state.js`에 `resolveLifeZoneConsultingVisitor()`를 추가해 신규/10일 복귀/일반/guest 판정을 분리했다.
+  11. 완료: `home/life-zone.js`와 `style.css`에 상담 소파 overlay, 앉은 상담실장, 조건부 방문자 layer를 추가했다.
+  12. 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260701z3-consulting-room-visitor`로 bump하고 새 PNG 3개를 `STATIC_ASSETS`에 등록했다.
+  13. PASS: `node --check app.js; node --check home/life-zone.js; node --check home/life-zone-state.js; node --check sw.js`
+  14. PASS: `node --test tests/home-life-zone-state.test.js tests/home-life-zone-npc-quest.test.js tests/consulting-chief-quest-modal.test.js`
+  15. PASS: `node --test tests/*.test.js` - 624 tests passed
+  16. PASS: `node scripts/verify-runtime-assets.mjs`
+  17. PASS: `git diff --check`
+  18. PASS: 로컬 합성 미리보기 `C:\Users\USER\AppData\Local\Temp\tomato-consulting-room-preview-v2.png`에서 상담 코너 겹침을 확인했다.
+  19. 리뷰 문서: `docs/ai/reviews/2026-07-02-home-consulting-room-visitor-sofa-review.md`
+  20. 리뷰 결과: 문제 없음.
+  21. 다음: 관련 파일만 커밋 후 `origin/main`에 push하고 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`로 개발계 배포를 검증한다.
+  22. not verified yet: 아직 커밋/푸시/배포 검증 전이다.
 
 - Home Hero Life Zone Balance 계획:
   1. 요청: 홈 상단 히어로 카드는 지금보다 높이를 약 50% 줄인다.

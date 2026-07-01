@@ -125,6 +125,9 @@ const MEALS = [
   { label: '간식', text: 'snack', foods: 'sFoods', kcal: 'sKcal', photo: 'sPhoto', skipped: null }
 ];
 const MEAL_BY_TEXT = new Map(MEALS.map((meal) => [meal.text, meal]));
+const DAY_MS = 24 * 60 * 60 * 1000;
+const CONSULTING_VISITOR_NEW_DAYS = 7;
+const CONSULTING_VISITOR_RETURNING_DAYS = 10;
 
 export function normalizeLifeZoneName(value) {
   return String(value || '')
@@ -132,6 +135,48 @@ export function normalizeLifeZoneName(value) {
     .replace(/\(.*?\)/g, '')
     .replace(/[\s_\-·.]/g, '')
     .trim();
+}
+
+function normalizeLifeZoneTimestamp(value) {
+  if (value == null || value === '') return 0;
+  const numeric = Number(value);
+  if (Number.isFinite(numeric)) return numeric > 0 ? numeric : 0;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function resolveLifeZoneConsultingVisitor({
+  currentUser = null,
+  previousLastLoginAt = 0,
+  createdAt = null,
+  now = Date.now()
+} = {}) {
+  const userId = String(currentUser?.id || '').trim();
+  if (!userId || userId.includes('(guest)')) return null;
+
+  const nowTs = normalizeLifeZoneTimestamp(now) || Date.now();
+  const previousLoginTs = normalizeLifeZoneTimestamp(previousLastLoginAt);
+  const createdTs = normalizeLifeZoneTimestamp(createdAt ?? currentUser?.createdAt);
+  const daysAway = previousLoginTs > 0 ? Math.max(0, (nowTs - previousLoginTs) / DAY_MS) : null;
+  const accountAgeDays = createdTs > 0 ? Math.max(0, (nowTs - createdTs) / DAY_MS) : null;
+
+  if (daysAway != null && daysAway >= CONSULTING_VISITOR_RETURNING_DAYS) {
+    return {
+      state: 'returning',
+      userId,
+      daysAway: Math.floor(daysAway)
+    };
+  }
+
+  if (previousLoginTs <= 0 || (accountAgeDays != null && accountAgeDays <= CONSULTING_VISITOR_NEW_DAYS)) {
+    return {
+      state: 'new',
+      userId,
+      accountAgeDays: accountAgeDays == null ? null : Math.floor(accountAgeDays)
+    };
+  }
+
+  return null;
 }
 
 export function getLifeZoneOwnerIdCandidates(accountId) {

@@ -16,12 +16,45 @@ import {
   normalizeLifeZoneName,
   resolveLifeZoneActivity,
   resolveLifeZoneActors,
+  resolveLifeZoneConsultingVisitor,
   resolveLifeZoneRoster
 } from '../home/life-zone-state.js';
 
 test('normalizes Korean and latin display names for matching', () => {
   assert.equal(normalizeLifeZoneName('문정_토마토 (Guest)'), '문정토마토');
   assert.equal(normalizeLifeZoneName('Lee-Jaeheon'), 'leejaeheon');
+});
+
+test('resolves consulting visitor state for new and returning current users', () => {
+  const now = Date.UTC(2026, 6, 1, 0, 0, 0);
+
+  const returning = resolveLifeZoneConsultingVisitor({
+    currentUser: { id: 'u1', createdAt: now - 90 * 86400000 },
+    previousLastLoginAt: now - 11 * 86400000,
+    now
+  });
+  assert.equal(returning.state, 'returning');
+  assert.equal(returning.daysAway, 11);
+
+  const firstVisit = resolveLifeZoneConsultingVisitor({
+    currentUser: { id: 'u2', createdAt: now - 2 * 86400000 },
+    previousLastLoginAt: 0,
+    now
+  });
+  assert.equal(firstVisit.state, 'new');
+  assert.equal(firstVisit.accountAgeDays, 2);
+
+  assert.equal(resolveLifeZoneConsultingVisitor({
+    currentUser: { id: 'u3', createdAt: now - 30 * 86400000 },
+    previousLastLoginAt: now - 2 * 86400000,
+    now
+  }), null);
+
+  assert.equal(resolveLifeZoneConsultingVisitor({
+    currentUser: { id: 'u4(guest)', createdAt: now },
+    previousLastLoginAt: 0,
+    now
+  }), null);
 });
 
 test('matches roster by resolved nickname and only reads self or friends', () => {

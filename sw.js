@@ -3,7 +3,7 @@
 
 // 캐시 버전: 타임스탬프 기반 자동 생성 — 파일 수정 시 SW 자동 업데이트
 // (SW 파일 내용이 1바이트라도 바뀌면 브라우저가 새 SW로 인식)
-const CACHE_VERSION = 'tomatofarm-v20260701z2-home-hero-life-zone-balance';
+const CACHE_VERSION = 'tomatofarm-v20260701z3-consulting-room-visitor';
 const RUNTIME_CACHE = 'dashboard3-runtime';
 const STATIC_ASSETS = [
   './',
@@ -220,6 +220,9 @@ const STATIC_ASSETS = [
   './assets/home/life-zone/ui/miranda-npc-home.png',
   './assets/home/life-zone/ui/miranda-fashion-corner.png',
   './assets/home/life-zone/ui/consulting-chief-npc-home.png',
+  './assets/home/life-zone/ui/consulting-room-sofas.png',
+  './assets/home/life-zone/ui/consulting-chief-npc-seated-home.png',
+  './assets/home/life-zone/ui/consulting-visitor-gray-shirt-home.png',
   './assets/home/life-zone/ui/consulting-chief-npc-modal.png',
   './assets/home/life-zone/manifest.json',
   './assets/home/life-zone/sprites/jups-workout-lat.png',
