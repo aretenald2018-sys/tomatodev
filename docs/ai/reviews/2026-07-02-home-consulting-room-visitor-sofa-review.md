@@ -43,8 +43,9 @@
 4. PASS: `node scripts/verify-runtime-assets.mjs`
 5. PASS: `git diff --check`
 6. PASS: 로컬 합성 미리보기 `C:\Users\USER\AppData\Local\Temp\tomato-consulting-room-preview-v2.png`에서 상담 코너 겹침을 확인했다.
+7. PASS: Dashboard3 Pages 배포 검증 - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ fa2ea34` -> `[deploy-verify] ok fa2ea340195d tomatofarm-v20260701z3-consulting-room-visitor static=236`
+8. PASS: Dashboard3 Pages marker 검증 - `sw.js::tomatofarm-v20260701z3-consulting-room-visitor`, `home/life-zone.js::consulting-visitor-gray-shirt-home.png`, `home/life-zone.js::setLifeZoneVisitContext`, `style.css::.lz-consulting-visitor`
 
 ## 남은 확인
 
-1. 배포 전 상태: 개발계 배포 커밋/푸시와 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>` 검증이 필요하다.
-2. not verified yet: 인증 세션이 없어 실제 홈 탭에서 신규/10일 복귀 사용자 조건의 라이프존 UI flow는 직접 확인하지 못했다.
+1. not verified yet: 인증 세션이 없어 실제 홈 탭에서 신규/10일 복귀 사용자 조건의 라이프존 UI flow는 직접 확인하지 못했다.

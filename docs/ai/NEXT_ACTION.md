@@ -2,13 +2,13 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_deploy`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-07-01-home-consulting-room-visitor-sofa.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-02-home-consulting-room-visitor-sofa-review.md`
-- 현재 단계: `홈 라이프존 상담실 방문자 소파 연출 Slice 1 리뷰 완료, 개발계 배포 대기`
+- 현재 단계: `홈 라이프존 상담실 방문자 소파 연출 Slice 1 개발계 배포 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `리뷰에서 배포를 막을 이슈가 없음을 확인했다.`
-- 다음 액션: `상담실 방문자 소파 변경 관련 파일만 커밋하고 origin/main에 push한 뒤 Dashboard3 Pages 개발계 배포를 검증한다.`
+- 마지막 완료: `커밋 fa2ea34 fix: add consulting room visitor sofa를 origin/main에 push했고 Dashboard3 Pages 배포/marker 검증을 완료했다.`
+- 다음 액션: `없음. 인증 세션이 필요한 실제 홈 탭 UI flow 확인만 남아 있다.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
@@ -34,8 +34,10 @@
   18. PASS: 로컬 합성 미리보기 `C:\Users\USER\AppData\Local\Temp\tomato-consulting-room-preview-v2.png`에서 상담 코너 겹침을 확인했다.
   19. 리뷰 문서: `docs/ai/reviews/2026-07-02-home-consulting-room-visitor-sofa-review.md`
   20. 리뷰 결과: 문제 없음.
-  21. 다음: 관련 파일만 커밋 후 `origin/main`에 push하고 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`로 개발계 배포를 검증한다.
-  22. not verified yet: 아직 커밋/푸시/배포 검증 전이다.
+  21. 완료: 커밋 `fa2ea34 fix: add consulting room visitor sofa`를 `origin/main`에 push했다.
+  22. PASS: Dashboard3 Pages 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ fa2ea34` → `[deploy-verify] ok fa2ea340195d tomatofarm-v20260701z3-consulting-room-visitor static=236`
+  23. PASS: Dashboard3 Pages marker 검증 — `sw.js::tomatofarm-v20260701z3-consulting-room-visitor`, `home/life-zone.js::consulting-visitor-gray-shirt-home.png`, `home/life-zone.js::setLifeZoneVisitContext`, `style.css::.lz-consulting-visitor`
+  24. not verified yet: 인증 세션이 없어 실제 홈 탭에서 신규/10일 복귀 사용자 조건의 라이프존 UI flow는 직접 확인하지 못했다.
 
 - Home Hero Life Zone Balance 계획:
   1. 요청: 홈 상단 히어로 카드는 지금보다 높이를 약 50% 줄인다.

@@ -2,9 +2,9 @@
 
 ## 상태
 
-- 상태: `reviewed`
+- 상태: `complete`
 - 요청일: 2026-07-01
-- 실행 슬라이스: Slice 1 구현/리뷰 완료, 개발계 배포 대기
+- 실행 슬라이스: Slice 1 구현/리뷰/개발계 배포 완료
 
 ## 사용자 요청
 
@@ -140,11 +140,17 @@
   - 방문자 판정은 현재 로그인 사용자 기준으로 제한되어 있고 guest는 제외된다.
   - 새 PNG 3개는 `sw.js` `STATIC_ASSETS`에 등록되어 있으며 `CACHE_VERSION`이 bump됐다.
   - `www/`와 베이스룸 원본은 수정하지 않았다.
-- 남은 확인: 개발계 배포 커밋/푸시 후 `verify:deploy` 검증.
+- 배포 확인: 커밋 `fa2ea34 fix: add consulting room visitor sofa`를 `origin/main`에 push했고 Dashboard3 Pages 검증이 통과했다.
+
+## 개발계 배포 결과
+
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ fa2ea34` -> `[deploy-verify] ok fa2ea340195d tomatofarm-v20260701z3-consulting-room-visitor static=236`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/dashboard3/ "sw.js::tomatofarm-v20260701z3-consulting-room-visitor" "home/life-zone.js::consulting-visitor-gray-shirt-home.png" "home/life-zone.js::setLifeZoneVisitContext" "style.css::.lz-consulting-visitor"`
+- not verified yet: 인증 세션이 없어 실제 홈 탭에서 신규/10일 복귀 사용자 조건의 라이프존 UI flow는 직접 확인하지 못했다.
 
 ## NEXT_ACTION.md 업데이트
 
-- 현재 상태: `ready_for_deploy`
-- 다음 자동 상태: `ready_for_deploy`
-- 다음 액션: 관련 파일만 커밋 후 `origin/main`에 push하고 Dashboard3 Pages 개발계 배포를 검증한다.
+- 현재 상태: `complete`
+- 다음 자동 상태: `complete`
+- 다음 액션: 없음. 인증 세션이 필요한 실제 홈 탭 UI flow 확인만 남아 있다.
 - 차단 질문: 없음
