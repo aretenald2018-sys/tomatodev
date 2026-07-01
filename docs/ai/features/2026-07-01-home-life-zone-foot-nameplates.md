@@ -81,8 +81,9 @@
 3. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=858`
 4. PASS: `git diff --check`
 5. PASS: `node --test --test-reporter=dot tests/*.test.js`
-6. not verified yet: Dashboard3 Pages 배포 검증은 아직 실행하지 않았다.
-7. not verified yet: 인증 세션이 없어 실제 홈 탭 라이프존 UI flow는 브라우저에서 직접 확인하지 못했다.
+6. PASS: Dashboard3 Pages 배포 검증 - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ b37bce6` -> `[deploy-verify] ok b37bce6b88a5 tomatofarm-v20260701z1-life-zone-foot-nameplates static=233`
+7. PASS: Dashboard3 Pages marker 검증 - `sw.js` cache version, `home/life-zone.js` actor child nameplate marker, `style.css` foot-nameplate marker 확인
+8. not verified yet: 인증 세션이 없어 실제 홈 탭 라이프존 UI flow는 브라우저에서 직접 확인하지 못했다.
 
 ## 다음 실행 지시
 
