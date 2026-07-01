@@ -53,12 +53,11 @@ test('life zone trainer hook keeps the bulb bubble while hiding the old NPC card
   assert.match(source, /detail: \{ npc: 'consultingChief' \}/);
 });
 
-test('life zone actor nameplates are rendered as text above sprites', () => {
+test('life zone actor nameplates are rendered as text under actor feet', () => {
   const source = readText('home/life-zone.js');
 
   assert.match(source, /function _applyActorNameplatePosition/);
-  assert.match(source, /const x = Number\(slot\.x\) \+ Number\(slot\.width\) \* 0\.5/);
-  assert.match(source, /const y = Number\(slot\.labelY\) \|\| Math\.max\(24, Number\(slot\.y\) - 6\)/);
+  assert.match(source, /element\.style\.setProperty\('--lz-name-gap', `\$\{Number\.isFinite\(gap\) \? gap : 2\}px`\)/);
   assert.match(source, /const actorElement = document\.createElement\('span'\)/);
   assert.match(source, /const poseClass = slot\.pose \? ` lz-actor--pose-\$\{slot\.pose\}` : ''/);
   assert.match(source, /actorElement\.className = `lz-actor lz-actor--\$\{actor\.state\}\$\{poseClass\}`/);
@@ -68,6 +67,10 @@ test('life zone actor nameplates are rendered as text above sprites', () => {
   assert.match(source, /nameplate\.className = `lz-nameplate lz-nameplate--actor lz-nameplate--\$\{actor\.state\}`/);
   assert.match(source, /nameplate\.textContent = actor\.displayName/);
   assert.match(source, /_applyActorNameplatePosition\(nameplate, slot\)/);
+  assert.match(source, /actorElement\.append\(image, nameplate\)/);
+  assert.doesNotMatch(source, /layer\.append\(nameplate\)/);
+  assert.doesNotMatch(source, /data-lz-status/);
+  assert.doesNotMatch(source, /lz-status-chip/);
 });
 
 test('life zone NPC quest bubble has a stable clickable overlay style', () => {
@@ -134,10 +137,14 @@ test('life zone nameplates use small pixel text with outline shadows', () => {
   assert.match(css, /letter-spacing: 0/);
   assert.match(css, /white-space: nowrap/);
   assert.match(css, /pointer-events: none/);
-  assert.match(css, /transform: translate\(-50%, -100%\)/);
+  assert.match(css, /\.lz-nameplate--actor \{[\s\S]*top: 100%;[\s\S]*transform: translate\(-50%, var\(--lz-name-gap, 2px\)\);/);
+  assert.match(css, /\.lz-actor \{[\s\S]*overflow: visible;/);
   assert.match(css, /text-shadow:/);
   assert.match(css, /\.lz-nameplate--npc \{\s*color: #ffe15a;/);
   assert.match(css, /@media \(max-width: 420px\) \{\s*\.lz-nameplate \{[\s\S]*font-size: 8px/);
+  assert.doesNotMatch(css, /\.lz-status-row \{/);
+  assert.doesNotMatch(css, /\.lz-status-chip \{/);
+  assert.doesNotMatch(css, /\.lz-status-dot \{/);
 });
 
 test('life zone workout poses use scoped motion with reduced motion fallback', () => {
@@ -242,7 +249,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260630z18-running-voice-goals/);
+  assert.match(sw, /tomatofarm-v20260701z1-life-zone-foot-nameplates/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,

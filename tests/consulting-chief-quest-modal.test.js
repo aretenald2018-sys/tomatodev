@@ -57,7 +57,7 @@ test('consulting chief modal styles and runtime assets are registered', () => {
   assert.match(styleCss, /\.lz-consulting-chief-npc \{/);
   assert.match(styleCss, /\.lz-consulting-chief-npc \.lz-npc-bulb \{/);
   assert.match(styleCss, /\.lz-miranda-npc \.lz-npc-bulb,\s*\.lz-consulting-chief-npc \.lz-npc-bulb\s*\{[\s\S]*display: none;/);
-  assert.match(swJs, /tomatofarm-v20260630z18-running-voice-goals/);
+  assert.match(swJs, /tomatofarm-v20260701z1-life-zone-foot-nameplates/);
   assert.match(swJs, /\.\/modals\/consulting-chief-quest-modal\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/consulting-chief-npc-modal\.png/);
   assert.deepEqual(readPngHeader('assets/home/life-zone/ui/consulting-chief-npc-modal.png'), {

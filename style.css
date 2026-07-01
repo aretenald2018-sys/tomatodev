@@ -8237,6 +8237,7 @@ body.wt-running-session-open {
   display: block;
   width: calc(var(--lz-w) / 1672 * 100%);
   line-height: 0;
+  overflow: visible;
   pointer-events: none;
 }
 .lz-actor-img {
@@ -8329,10 +8330,6 @@ body.wt-running-session-open {
   }
 }
 .lz-nameplate {
-  position: absolute;
-  left: calc(var(--lz-name-x) / 1672 * 100%);
-  top: calc(var(--lz-name-y) / 1672 * 100%);
-  z-index: var(--lz-name-z, 70);
   display: block;
   max-width: 96px;
   overflow: hidden;
@@ -8349,9 +8346,15 @@ body.wt-running-session-open {
     -1px 0 0 rgba(17, 24, 39, 0.95),
     0 -1px 0 rgba(17, 24, 39, 0.95),
     1px 1px 1px rgba(0, 0, 0, 0.72);
-  transform: translate(-50%, -100%);
   white-space: nowrap;
   pointer-events: none;
+}
+.lz-nameplate--actor {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  z-index: 4;
+  transform: translate(-50%, var(--lz-name-gap, 2px));
 }
 .lz-nameplate--npc {
   color: #ffe15a;
@@ -8737,41 +8740,6 @@ body.wt-running-session-open {
   .lz-actor--pose-workout-lat::after {
     opacity: 0;
   }
-}
-.lz-status-row {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  padding: 10px 12px 8px;
-  border-bottom: 1px solid var(--border);
-  -webkit-overflow-scrolling: touch;
-}
-.lz-status-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  flex-shrink: 0;
-  padding: 5px 8px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--text-secondary);
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1;
-}
-.lz-status-chip b {
-  color: var(--text);
-  font-weight: 800;
-}
-.lz-status-chip.is-muted {
-  opacity: 0.68;
-}
-.lz-status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--lz-actor-color, var(--text-tertiary));
 }
 .lz-summary-strip {
   display: grid;

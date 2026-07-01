@@ -21,5 +21,5 @@ test('production app service worker updates auto apply when no workout draft is 
 
 test('production app cache busts the service worker registrar script', () => {
   assert.match(indexHtml, /pwa-register\.js\?v=20260630z14-sw-auto-update/);
-  assert.match(swJs, /tomatofarm-v20260630z18-running-voice-goals/);
+  assert.match(swJs, /tomatofarm-v20260701z1-life-zone-foot-nameplates/);
 });

@@ -134,12 +134,8 @@ function _applyActorSlotPosition(element, slot) {
 }
 
 function _applyActorNameplatePosition(element, slot) {
-  const x = Number(slot.x) + Number(slot.width) * 0.5;
-  const y = Number(slot.labelY) || Math.max(24, Number(slot.y) - 6);
-  const z = (Number(slot.z) || 1) + 3;
-  element.style.setProperty('--lz-name-x', x);
-  element.style.setProperty('--lz-name-y', y);
-  element.style.setProperty('--lz-name-z', z);
+  const gap = Number(slot.nameGap);
+  element.style.setProperty('--lz-name-gap', `${Number.isFinite(gap) ? gap : 2}px`);
 }
 
 function _mapNumber(value, fallback = NaN) {
@@ -354,14 +350,12 @@ function _renderActors(card, actors) {
     image.alt = '';
     image.loading = 'lazy';
     image.decoding = 'async';
-    actorElement.append(image);
-    layer.append(actorElement);
-
     const nameplate = document.createElement('span');
     nameplate.className = `lz-nameplate lz-nameplate--actor lz-nameplate--${actor.state}`;
     nameplate.textContent = actor.displayName;
     _applyActorNameplatePosition(nameplate, slot);
-    layer.append(nameplate);
+    actorElement.append(image, nameplate);
+    layer.append(actorElement);
 
     if (actor.state === 'running') {
       const shouldShowMap = selfRunning ? actor.source === 'self' : !runningBubbleRendered;
@@ -385,22 +379,7 @@ function _renderActors(card, actors) {
   });
 }
 
-function _renderStatus(card, actors, isLoaded = false) {
-  const status = card.querySelector('[data-lz-status]');
-  if (!status) return;
-  status.innerHTML = actors.map((actor) => {
-    const state = actor.state || 'office';
-    const stateLabel = STATE_LABELS[state] || '업무';
-    const sourceClass = actor.source === 'unmatched' || actor.source === 'unreadable' ? ' is-muted' : '';
-    return `
-      <span class="lz-status-chip lz-status-chip--${state}${sourceClass}" style="--lz-actor-color:${actor.color || '#94a3b8'}">
-        <span class="lz-status-dot"></span>
-        <b>${escapeHtml(actor.displayName)}</b>
-        <span>${stateLabel}</span>
-      </span>
-    `;
-  }).join('');
-
+function _renderStatus(card, isLoaded = false) {
   const sync = card.querySelector('[data-lz-sync]');
   if (sync) sync.textContent = isLoaded ? '오늘 기록 반영' : '불러오는 중';
 }
@@ -449,12 +428,12 @@ export async function hydrateLifeZoneCard(card) {
   try {
     const actors = await _loadLifeZoneActorStates();
     _renderActors(card, actors);
-    _renderStatus(card, actors, true);
+    _renderStatus(card, true);
   } catch (error) {
     console.warn('[life-zone] hydrate failed:', error);
     const fallback = _defaultActorStates();
     _renderActors(card, fallback);
-    _renderStatus(card, fallback, false);
+    _renderStatus(card, false);
   }
 }
 
@@ -604,7 +583,6 @@ export function renderLifeZoneCard({
         </button>
       </div>
     </div>
-    <div class="lz-status-row" data-lz-status></div>
     <div class="lz-summary-strip">
       <button type="button" class="lz-summary-btn lz-summary-btn--diet" data-lz-action="diet">
         <span class="lz-summary-label">오늘 칼로리</span>
@@ -618,7 +596,7 @@ export function renderLifeZoneCard({
   `;
 
   _renderActors(card, fallbackActors);
-  _renderStatus(card, fallbackActors, false);
+  _renderStatus(card, false);
 
   card.querySelector('[data-lz-action="diet"]')?.addEventListener('click', (event) => {
     event.preventDefault();
