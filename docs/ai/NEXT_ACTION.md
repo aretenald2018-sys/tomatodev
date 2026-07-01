@@ -3,15 +3,67 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-30-running-nrc-core-gap.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-30-running-nrc-core-gap-review.md`
-- 현재 단계: `NRC 핵심 기능 갭 기반 러닝 목표/음성 안내 Slice 1 구현 및 리뷰 완료`
+- 계획 문서: `docs/ai/features/2026-07-01-home-hero-life-zone-balance.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-01-home-hero-life-zone-balance-review.md`
+- 현재 단계: `홈 히어로/라이프존 높이 재배치 Slice 1 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `커밋 82bd3d3을 origin/main에 push했고 Dashboard3 Pages에서 z18 running voice/goals marker를 확인했다.`
-- 다음 액션: `인증 세션에서 운동 탭 -> 런닝/조깅 -> 목표 설정 -> 시작 -> 음성 cue flow를 직접 확인한다.`
+- 마지막 완료: `히어로 카드 높이를 compact로 줄이고 라이프존 장면을 더 크게 보이도록 확대했다.`
+- 다음 액션: `없음. Dashboard3 배포 검증과 실제 인증 홈 UI 확인은 아직 남아 있다.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
+
+- Home Hero Life Zone Balance 계획:
+  1. 요청: 홈 상단 히어로 카드는 지금보다 높이를 약 50% 줄인다.
+  2. 요청: 라이프존 카드는 더 크게 보이게 한다.
+  3. 확인: 히어로 카드는 `home/tomato.js` `renderTomatoCard()`의 `.tf-card > .tf-hero.tf-hero--gradient`다.
+  4. 결정: 히어로 sub 줄을 제거하고, 토마토 규칙 버튼은 `.tf-hero-info-btn`으로 우측 상단에 유지한다.
+  5. 결정: 토마토 SVG는 `72`에서 `44`로 줄이고, `.tf-hero` padding/count/unit 크기를 compact 값으로 낮춘다.
+  6. 결정: 라이프존은 기존 좌표계를 유지하기 위해 `.lz-scene`을 `1672 / 1872`로 키우고 `.lz-world`를 `112%`로 확대한다.
+  7. 제외: 라이프존 스프라이트/배경 자산 재생성, 홈 카드 순서 변경, 칼로리/체중 summary strip 제거, 운동 deck 미완료 작업.
+  8. 계획 문서: `docs/ai/features/2026-07-01-home-hero-life-zone-balance.md`
+  9. 완료: `home/tomato.js`에서 히어로 sub 줄을 제거하고 info button을 우측 상단으로 이동했다.
+  10. 완료: `style.css`에서 히어로 compact 스타일과 라이프존 확대 스타일을 반영했다.
+  11. 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260701z2-home-hero-life-zone-balance`로 bump했다.
+  12. PASS: `node --check home/tomato.js; node --check sw.js`
+  13. PASS: `node --test tests/home-hero-layout.test.js tests/home-life-zone-npc-quest.test.js` - 11 tests passed
+  14. PASS: `node scripts/verify-runtime-assets.mjs`
+  15. PASS: `git diff --check`
+  16. PASS: `node --test --test-reporter=dot tests/*.test.js`
+  17. 리뷰 문서: `docs/ai/reviews/2026-07-01-home-hero-life-zone-balance-review.md`
+  18. not verified yet: Dashboard3 Pages 배포 검증과 실제 인증 홈 UI flow 확인은 아직 남아 있다.
+
+- Home Life Zone Foot Nameplates 계획:
+  1. 요청: 첨부 이미지에서 X 표시된 라이프존 카드 하단 캐릭터 상태칩을 삭제한다.
+  2. 요청: 줍스/문정토마토/이재헌 닉네임은 씬 안에서 각 캐릭터 발밑에 배치하되 캐릭터를 가리지 않는다.
+  3. 진단: X 표시 영역은 `home/life-zone.js`의 `lz-status-row`와 `_renderStatus()`가 만드는 `.lz-status-chip`이다.
+  4. 진단: actor 이름표는 이미 DOM 텍스트지만 `_applyActorNameplatePosition()`이 위쪽 기준 좌표를 써서 발밑 배치와 어긋난다.
+  5. 결정: 하단 status row를 제거하고, actor 이름표를 각 `.lz-actor` 내부 child로 이동해 CSS `top: 100%` 기준 발밑 배치로 바꾼다.
+  6. 제외: 스프라이트/아트 자산 재생성, NPC 전구/모달 동작 변경, 라이프존 상태 판정 변경, 칼로리/체중 summary strip 제거.
+  7. 계획 문서: `docs/ai/features/2026-07-01-home-life-zone-foot-nameplates.md`
+  8. 완료: `home/life-zone.js`에서 `lz-status-row`와 `.lz-status-chip` 렌더링을 제거했다.
+  9. 완료: `.lz-nameplate--actor`를 `.lz-actor` 내부에서 `top: 100%`로 발밑 배치했다.
+  10. 완료: `style.css`의 상태칩 스타일을 삭제하고 `sw.js`를 `tomatofarm-v20260701z1-life-zone-foot-nameplates`로 bump했다.
+  11. PASS: `node --check home/life-zone.js; node --check sw.js`
+  12. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/home-life-zone-state.test.js` - 29 tests passed
+  13. PASS: `node scripts/verify-runtime-assets.mjs`
+  14. PASS: `git diff --check`
+  15. PASS: `node --test --test-reporter=dot tests/*.test.js`
+  16. 리뷰 문서: `docs/ai/reviews/2026-07-01-home-life-zone-foot-nameplates-review.md`
+  17. 완료: 커밋 `b37bce6 fix: place life zone names under actors`를 `origin/main`에 push했다.
+  18. PASS: Dashboard3 Pages 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ b37bce6` → `[deploy-verify] ok b37bce6b88a5 tomatofarm-v20260701z1-life-zone-foot-nameplates static=233`
+  19. PASS: Dashboard3 Pages marker 검증 — `sw.js` cache version, `home/life-zone.js` actor child nameplate marker, `style.css` foot-nameplate marker 확인
+  20. not verified yet: 인증 세션이 없어 실제 홈 탭 라이프존 UI flow 확인은 아직 남아 있다.
+
+- Workout Entry Bookmark Deck 계획:
+  1. 요청: 운동 기록 카드가 아래로 계속 쌓이지 않고, 상단 번호 책갈피로 종목 간 이동하게 한다.
+  2. 확인: 현재 `_renderExerciseList()`가 `S.workout.exercises.forEach`로 모든 종목 카드를 세로 렌더한다.
+  3. 확인: 완료 후 접힘은 `entry.uiCollapsed`와 `세트 다시 보기` 버튼으로 동작한다.
+  4. 결정: 오늘 운동 입력 리스트 `#wt-exercise-list`에만 단일 active 카드 deck을 적용한다.
+  5. 결정: active index는 저장 schema가 아닌 모듈 UI 상태로 둔다.
+  6. 결정: 마지막 미완료 세트의 primary button은 `운동 완료`로 표시하고, 누르면 해당 세트 완료 후 다음 카드로 이동한다.
+  7. 제외: 캘린더 read card, 성장보드 내장 card, 데이터 schema 변경.
+  8. 계획 문서: `docs/ai/features/2026-06-30-workout-entry-bookmark-deck.md`
 
 - Running NRC Core Gap 계획:
   1. 요청: 기존 `런닝/조깅`을 Nike Run Club 핵심 기능 기준으로 조사하고 미구현 기능을 구현한다.

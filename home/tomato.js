@@ -686,11 +686,6 @@ export function renderTomatoCard() {
   const _chk = getBodyCheckins();
   const _latestW = _chk.length ? _chk[_chk.length - 1].weight : null;
   const metrics = calcDietMetrics(_latestW ? { ...plan, weight: _latestW } : plan);
-  const tomatoState = getTomatoState();
-  const qKey = getQuarterKey(TODAY);
-  const qCount = tomatoState.quarterlyTomatoes[qKey] || 0;
-  const totalCount = Math.max(0, tomatoState.totalTomatoes + (tomatoState.giftedReceived || 0) - (tomatoState.giftedSent || 0));
-
   let startStr = getUnitGoalStart();
   if (!startStr) {
     startStr = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
@@ -735,7 +730,7 @@ export function renderTomatoCard() {
   const dayTarget = isRefeed ? metrics.refeed : metrics.deficit;
   const todayTarget = dayTarget.kcal || 0;
 
-  let heroLabel, heroCount, heroSub;
+  let heroLabel, heroCount;
 
   if (bestStreak >= 14 && hasRecordedToday) {
     heroLabel = pickMsg([
@@ -746,7 +741,6 @@ export function renderTomatoCard() {
       '꾸준함의 끝판왕!',
     ]);
     heroCount = `${bestStreak}<span class="tf-hero-unit">일</span>`;
-    heroSub = `🍅 ${totalCount}개 · 이번 분기 <b>${qCount}개</b>`;
   } else if (bestStreak >= 7 && hasRecordedToday) {
     heroLabel = pickMsg([
       '대단해요, 일주일 넘었어요!',
@@ -755,7 +749,6 @@ export function renderTomatoCard() {
       `${bestStreak}일째, 습관이 되어가고 있어요!`,
     ]);
     heroCount = `${bestStreak}<span class="tf-hero-unit">일</span>`;
-    heroSub = `🍅 ${totalCount}개 · 이번 분기 <b>${qCount}개</b>`;
   } else if (bestStreak >= 3 && hasRecordedToday) {
     heroLabel = pickMsg([
       '좋은 흐름이에요!',
@@ -764,7 +757,6 @@ export function renderTomatoCard() {
       '이대로만 가면 돼요!',
     ]);
     heroCount = `${bestStreak}<span class="tf-hero-unit">일</span>`;
-    heroSub = `🍅 ${totalCount}개 · 이번 분기 <b>${qCount}개</b>`;
   } else if (bestStreak >= 2 && !hasRecordedToday && (isEvening || isLateNight)) {
     heroLabel = pickMsg([
       '연속 기록이 위험해요!',
@@ -773,7 +765,6 @@ export function renderTomatoCard() {
       isLateNight ? '자기 전에 기록 한 번!' : '지금 기록하면 연속 유지!',
     ]);
     heroCount = `${bestStreak}<span class="tf-hero-unit">일</span>`;
-    heroSub = `<span style="color:#fdf0f0;font-weight:600;">오늘 기록하면 ${bestStreak + 1}일째 · ${hoursLeft}시간 남음</span>`;
   } else if (bestStreak >= 2 && !hasRecordedToday) {
     heroLabel = pickMsg([
       '오늘도 이어가볼까요?',
@@ -781,7 +772,6 @@ export function renderTomatoCard() {
       isWeekend ? '쉬는 날에도 가볍게 한 번!' : '기록 한 번이면 충분해요',
     ]);
     heroCount = `${bestStreak}<span class="tf-hero-unit">일</span>`;
-    heroSub = `<span style="color:#fdf0f0;font-weight:600;">기록하면 ${bestStreak + 1}일 연속!</span>`;
   } else if (hasRecordedToday) {
     heroLabel = pickMsg([
       '오늘도 기록 완료!',
@@ -789,7 +779,6 @@ export function renderTomatoCard() {
       '오늘도 한 발짝 나아갔어요!',
     ]);
     heroCount = `${bestStreak}<span class="tf-hero-unit">일</span>`;
-    heroSub = `🍅 ${totalCount}개 · 이번 분기 <b>${qCount}개</b>`;
   } else if (bestStreak === 0) {
     heroLabel = pickMsg([
       '다시 시작하는 것도 멋져요',
@@ -798,7 +787,6 @@ export function renderTomatoCard() {
       isMonday ? '새로운 한 주, 새로운 시작!' : '오늘이 바로 그날이에요',
     ]);
     heroCount = `0<span class="tf-hero-unit">일</span>`;
-    heroSub = `🍅 ${totalCount}개 · 이번 분기 <b>${qCount}개</b>`;
   } else {
     heroLabel = pickMsg([
       '오늘 첫 기록을 남겨보세요',
@@ -806,12 +794,11 @@ export function renderTomatoCard() {
       '시작이 반이에요!',
     ]);
     heroCount = `${bestStreak}<span class="tf-hero-unit">일</span>`;
-    heroSub = `🍅 ${totalCount}개 · 이번 분기 <b>${qCount}개</b>`;
   }
 
   // 히어로 캐릭터: 스트릭(combined) 값에 따라 5단계 표정 동적 변화 (듀오링고 스타일)
   const characterMood = streakToCharacterMood(bestStreak);
-  const characterSvg = renderCharacterSVG(characterMood, { size: 72 });
+  const characterSvg = renderCharacterSVG(characterMood, { size: 44 });
 
   heroEl.innerHTML = `
     <div class="tf-card">
@@ -819,8 +806,8 @@ export function renderTomatoCard() {
         <div class="tf-hero-left">
           <div class="tf-hero-label">${heroLabel}</div>
           <div class="tf-hero-count">${heroCount}</div>
-          <div class="tf-hero-sub">${heroSub} <button class="tf-info-btn tf-info-btn--light" id="tomato-rule-info-card" aria-label="토마토 획득 규칙">ⓘ</button></div>
         </div>
+        <button class="tf-info-btn tf-info-btn--light tf-hero-info-btn" id="tomato-rule-info-card" aria-label="토마토 획득 규칙">ⓘ</button>
         <div class="tf-hero-right">
           <div class="tf-hero-tomato tf-hero-tomato--svg" data-mood="${characterMood}">${characterSvg}</div>
         </div>

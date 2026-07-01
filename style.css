@@ -35,7 +35,7 @@
   padding: 32px 20px 24px;
   text-align: center;
 }
-.home-hero:has(.tf-card) { padding: 0 0 10px; text-align: left; }
+.home-hero:has(.tf-card) { padding: 0 0 8px; text-align: left; }
 .hero-date {
   font-size: 13px; font-weight: 500;
   color: var(--text-secondary);
@@ -7739,20 +7739,32 @@ body.wt-running-session-open {
 /* Hero section — 큰 숫자 중심 */
 .tf-hero {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 24px 20px 16px; background: linear-gradient(135deg, var(--primary-bg) 0%, transparent 100%);
+  gap: 10px;
+  min-height: 58px;
+  padding: 8px 38px 8px 14px; background: linear-gradient(135deg, var(--primary-bg) 0%, transparent 100%);
 }
-.tf-hero-left { flex: 1; }
-.tf-hero-label { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+.tf-hero-left { flex: 1; min-width: 0; }
+.tf-hero-label {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .tf-hero-count {
-  font-size: 40px; font-weight: 800; color: var(--text);
-  letter-spacing: -0.03em; line-height: 1.1; margin: 4px 0;
+  color: var(--text);
+  font-size: 28px;
+  font-weight: 850;
+  letter-spacing: 0;
+  line-height: 1;
+  margin: 1px 0 0;
 }
-.tf-hero-unit { font-size: 18px; font-weight: 500; color: var(--text-secondary); margin-left: 2px; }
-.tf-hero-sub { font-size: 12px; color: var(--text-tertiary); }
-.tf-hero-sub b { color: var(--primary); font-weight: 700; }
+.tf-hero-unit { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-left: 2px; }
 .tf-hero-right { flex-shrink: 0; }
 .tf-hero-tomato {
-  font-size: 56px; line-height: 1;
+  font-size: 38px; line-height: 1;
   animation: tf-float 2s ease-in-out infinite;
   filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
 }
@@ -7763,7 +7775,7 @@ body.wt-running-session-open {
 }
 .tf-hero-character {
   display: block;
-  width: 72px; height: 72px;
+  width: 44px; height: 44px;
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   will-change: transform;
 }
@@ -7825,8 +7837,8 @@ body.wt-running-session-open {
 .tf-hero--gradient::after {
   content: '';
   position: absolute;
-  top: -30px; right: -30px;
-  width: 100px; height: 100px;
+  top: -36px; right: -28px;
+  width: 84px; height: 84px;
   background: rgba(255,255,255,0.06);
   border-radius: 50%;
   pointer-events: none;
@@ -7842,15 +7854,22 @@ body.wt-running-session-open {
 .tf-hero--gradient .tf-hero-unit {
   color: rgba(255,255,255,0.7);
 }
-.tf-hero--gradient .tf-hero-sub {
-  color: rgba(255,255,255,0.6);
-}
-.tf-hero--gradient .tf-hero-sub b {
-  color: #ffffff;
-  font-weight: 700;
-}
 .tf-hero--gradient .tf-hero-tomato {
   filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));
+}
+.tf-hero-info-btn {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 2;
+  margin: 0;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
 }
 
 /* Progress steps D1→D4 */
@@ -8191,14 +8210,16 @@ body.wt-running-session-open {
   position: relative;
   overflow: hidden;
   width: 100%;
-  aspect-ratio: 1672 / 1672;
+  aspect-ratio: 1672 / 1872;
   background: var(--surface);
 }
 .lz-world {
   position: relative;
-  width: 100%;
+  left: 50%;
+  width: 112%;
   aspect-ratio: 1672 / 1672;
   overflow: visible;
+  transform: translateX(-50%);
 }
 .lz-base {
   display: block;

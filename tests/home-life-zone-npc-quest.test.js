@@ -76,8 +76,8 @@ test('life zone actor nameplates are rendered as text under actor feet', () => {
 test('life zone NPC quest bubble has a stable clickable overlay style', () => {
   const css = readText('style.css');
 
-  assert.match(css, /\.lz-scene \{[\s\S]*aspect-ratio: 1672 \/ 1672;/);
-  assert.match(css, /\.lz-world \{[\s\S]*aspect-ratio: 1672 \/ 1672;[\s\S]*overflow: visible;/);
+  assert.match(css, /\.lz-scene \{[\s\S]*aspect-ratio: 1672 \/ 1872;/);
+  assert.match(css, /\.lz-world \{[\s\S]*width: 112%;[\s\S]*aspect-ratio: 1672 \/ 1672;[\s\S]*overflow: visible;[\s\S]*transform: translateX\(-50%\);/);
   assert.match(css, /\.lz-npc-quest \{/);
   assert.match(css, /left: calc\(1084 \/ 1672 \* 100%\)/);
   assert.match(css, /top: calc\(792 \/ 1672 \* 100%\)/);
@@ -249,7 +249,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260701z1-life-zone-foot-nameplates/);
+  assert.match(sw, /tomatofarm-v20260701z2-home-hero-life-zone-balance/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,
