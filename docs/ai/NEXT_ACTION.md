@@ -2,13 +2,13 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-07-02-running-session-reload-recovery.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-02-running-session-reload-recovery-review.md`
-- 현재 단계: `러닝 세션 리로드 복구 Slice 1 정적 검증 완료`
+- 현재 단계: `러닝 세션 리로드 복구 Slice 1 Dashboard3 Pages 배포 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `live 러닝 세션 draft 저장/복구를 구현했고 관련/전체 테스트와 runtime asset 검증을 통과했다.`
-- 다음 액션: `제 변경분만 커밋해 origin/main에 push한 뒤 Dashboard3 Pages 배포 검증을 진행한다.`
+- 마지막 완료: `커밋 384920f fix: preserve running session draft across reload를 origin/main에 push했고 Dashboard3 Pages 배포 검증을 완료했다.`
+- 다음 액션: `인증 세션이 필요한 실제 운동 탭 러닝 시작/리로드 UI flow 확인만 남아 있다.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
@@ -26,7 +26,9 @@
   10. PASS: `node scripts/verify-runtime-assets.mjs`
   11. PASS: `git diff --check`
   12. 리뷰 문서: `docs/ai/reviews/2026-07-02-running-session-reload-recovery-review.md`
-  13. 남음: Dashboard3 Pages 배포 검증.
+  13. 완료: 커밋 `384920f fix: preserve running session draft across reload`를 `origin/main`에 push했다.
+  14. PASS: Dashboard3 Pages 배포 검증 — `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 384920f` → `[deploy-verify] ok 384920f340c3 tomatofarm-v20260702z1-running-session-reload-recovery static=236`
+  15. not verified yet: 배포 URL 브라우저 확인 결과 로그인 화면이 먼저 표시되고, 인증 없이 운동 탭 클릭 후 러닝 칩까지 도달하지 못했다.
 
 - Home Consulting Room Visitor Sofa 실행:
   1. 요청: 현재 소파 앞에 서 있는 상담실장을 1인용 소파에 앉아 있는 구도로 바꾼다.

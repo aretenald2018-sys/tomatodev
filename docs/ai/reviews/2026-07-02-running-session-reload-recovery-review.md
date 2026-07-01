@@ -26,8 +26,9 @@
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
 - PASS: `git diff --check`
+- PASS: Dashboard3 Pages 배포 검증 - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 384920f` -> `[deploy-verify] ok 384920f340c3 tomatofarm-v20260702z1-running-session-reload-recovery static=236`
 
 ## 남은 확인
 
-- Dashboard3 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>` 실행이 남아 있다.
+- not verified yet: 배포 URL 브라우저 확인 결과 로그인 화면이 먼저 표시되고, 인증 없이 운동 탭 클릭 후 러닝 칩까지 도달하지 못했다.
 - 실제 모바일 OS가 백그라운드에서 GPS sampling을 계속 제공하는지는 네이티브 권한/플랫폼 정책 영역이다. 이번 변경의 보장 범위는 앱 리로드 후 저장 전 draft를 잃지 않는 것이다.
