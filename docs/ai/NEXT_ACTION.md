@@ -2,14 +2,14 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-02-home-running-map-route-clarity.md`
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-07-02-workout-sheet-set-check-toggle.md`
 - 진단 문서: `없음 - 계획 문서에 /diagnose 기록`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-home-running-map-record-modal-review.md`
-- 현재 단계: `홈 러닝 지도 말풍선 위치 보정 및 기록 모달 Slice 3 Dashboard3 Pages 배포/marker 검증 완료`
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-sheet-set-check-toggle-review.md`
+- 현재 단계: `운동 하단 시트 세트 체크 버튼 긴급 수정 Slice 1 정적 검증 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `커밋 d61f133 fix: add home running record modal을 origin/main에 push했고 Dashboard3 Pages 배포/marker 검증을 완료했다.`
-- 다음 액션: `인증 계정으로 홈탭 실제 러닝 말풍선을 탭해 오늘 러닝 기록 모달이 열리는지 UI flow를 확인한다.`
+- 마지막 완료: `render-calendar.js, style.css, sw.js, cache marker 테스트를 수정했고 정적 검증과 전체 node:test를 통과했다.`
+- 다음 액션: `수정 내용을 리뷰 완료 처리한 뒤 origin/main과 tomatofarm/main에 push하고 Dashboard3 Pages 및 Tomato Farm 운영계 배포 marker를 검증한다.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목

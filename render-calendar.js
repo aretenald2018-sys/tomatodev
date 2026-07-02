@@ -1058,7 +1058,7 @@ function _exerciseRows(day, lookup = _buildWorkoutLookup(), key = null, options 
           romPct: Number.isFinite(Number(set.romPct)) ? Number(set.romPct) : 100,
           setType: set.setType || 'main',
           completedAt: Number.isFinite(Number(set.completedAt)) ? Number(set.completedAt) : null,
-          done: _isActualWorkoutSet(set),
+          done: set.done === true,
         })),
         note,
         originalIndex,
@@ -1901,8 +1901,8 @@ function _renderWorkoutSetRows(row, options = {}) {
               : `<strong>${rom}</strong>`}
           </div>
           ${editable
-            ? `<button type="button" class="wt-max-set-check wt-max-set-toggle" onclick="window._wtCalToggleExerciseSetDone('${key}', ${sessionIndex}, ${exerciseIndex}, ${setIndex})" aria-label="세트 완료 토글">✓</button>
-               <button type="button" class="wt-max-set-remove wt-max-set-remove-btn" onclick="window._wtCalRemoveExerciseSet('${key}', ${sessionIndex}, ${exerciseIndex}, ${setIndex})" aria-label="세트 삭제">×</button>`
+            ? `<button type="button" class="wt-max-set-check wt-max-set-toggle" data-wt-set-done-toggle data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" aria-pressed="${set.done ? 'true' : 'false'}" aria-label="세트 완료 토글">✓</button>
+               <button type="button" class="wt-max-set-remove wt-max-set-remove-btn" data-wt-set-remove data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" aria-label="세트 삭제">×</button>`
             : `<i class="wt-max-set-check" aria-hidden="true">✓</i>
                <i class="wt-max-set-remove" aria-hidden="true">×</i>`}
           <i class="wt-max-set-grip" aria-hidden="true">⋮</i>
@@ -2456,6 +2456,34 @@ function _bindWorkoutHomeSheetActions(root) {
   if (!sheet) return;
   sheet.addEventListener('click', (event) => {
     const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    const doneToggle = target?.closest?.('[data-wt-set-done-toggle]');
+    if (doneToggle && sheet.contains(doneToggle)) {
+      event.preventDefault();
+      event.stopPropagation();
+      Promise.resolve(_toggleWorkoutExerciseSetDoneFromSheet(
+        doneToggle.getAttribute('data-date-key') || _workoutHomeSelectedKey,
+        doneToggle.getAttribute('data-session-index'),
+        doneToggle.getAttribute('data-exercise-index'),
+        doneToggle.getAttribute('data-set-index')
+      )).catch((e) => {
+        console.warn('[workout-calendar] set done toggle action failed:', e);
+      });
+      return;
+    }
+    const setRemove = target?.closest?.('[data-wt-set-remove]');
+    if (setRemove && sheet.contains(setRemove)) {
+      event.preventDefault();
+      event.stopPropagation();
+      Promise.resolve(_removeWorkoutExerciseSetFromSheet(
+        setRemove.getAttribute('data-date-key') || _workoutHomeSelectedKey,
+        setRemove.getAttribute('data-session-index'),
+        setRemove.getAttribute('data-exercise-index'),
+        setRemove.getAttribute('data-set-index')
+      )).catch((e) => {
+        console.warn('[workout-calendar] set remove action failed:', e);
+      });
+      return;
+    }
     if (target?.closest?.('[data-wt-sheet-action]')) return;
     const toggle = target?.closest?.('[data-wt-sheet-toggle]');
     if (toggle && sheet.contains(toggle)) {
@@ -2794,7 +2822,8 @@ async function _toggleWorkoutExerciseSetDoneFromSheet(key, sessionIndex, exercis
       const targetIndex = Math.max(0, Math.floor(Number(setIndex) || 0));
       while (sets.length <= targetIndex) sets.push(_defaultWorkoutSheetSet(sets[sets.length - 1]));
       const nextSet = { ...(sets[targetIndex] || _defaultWorkoutSheetSet(sets[sets.length - 1])) };
-      const nextDone = !(_isActualWorkoutSet(nextSet) || nextSet.done === true);
+      const wasDone = nextSet.done === true;
+      const nextDone = !wasDone;
       nextSet.done = nextDone;
       if (nextDone) {
         nextSet.completedAt = Date.now();
@@ -2806,7 +2835,7 @@ async function _toggleWorkoutExerciseSetDoneFromSheet(key, sessionIndex, exercis
       sets[targetIndex] = nextSet;
       entry.sets = sets;
       return true;
-    });
+    }, { preserveSheetScroll: true });
   } catch (e) {
     console.warn('[workout-calendar] sheet set done toggle failed:', e);
     window.showToast?.('세트 완료 변경에 실패했어요', 2200, 'error');

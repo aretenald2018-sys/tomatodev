@@ -216,16 +216,40 @@ test('day sheet exercise card edit stays inline instead of opening the record ro
   assert.match(card, /window\._wtCalAddExerciseSet\('\$\{key\}', \$\{sessionIndex\}, \$\{originalIndex\}\)/);
   assert.doesNotMatch(card, /window\._wtCalEditSession\('\$\{key\}', \$\{sessionIndex\}\)/);
   assert.match(setRows, /window\._wtCalUpdateExerciseSet/);
-  assert.match(setRows, /window\._wtCalToggleExerciseSetDone/);
-  assert.match(setRows, /window\._wtCalRemoveExerciseSet/);
+  assert.match(setRows, /data-wt-set-done-toggle/);
+  assert.match(setRows, /data-wt-set-remove/);
+  assert.doesNotMatch(setRows, /onclick="window\._wtCalToggleExerciseSetDone/);
+  assert.doesNotMatch(setRows, /onclick="window\._wtCalRemoveExerciseSet/);
   assert.doesNotMatch(oldEditFn, /_openWorkoutEditorForSession/);
   assert.match(oldEditFn, /action:\s*'sheet:edit-inline'/);
   assert.match(calendarJs, /window\._wtCalEditExerciseCard = _editWorkoutExerciseCard/);
   assert.match(calendarJs, /window\._wtCalUpdateExerciseSet = _updateWorkoutExerciseSetFromSheet/);
+  assert.match(calendarJs, /data-wt-set-done-toggle[\s\S]*_toggleWorkoutExerciseSetDoneFromSheet/);
+  assert.match(calendarJs, /data-wt-set-remove[\s\S]*_removeWorkoutExerciseSetFromSheet/);
   assert.match(calendarJs, /upsertWorkoutSession\(day, nextSession, index, \{ now: Date\.now\(\) \}\)/);
   assert.match(styleCss, /\.wt-max-set-main label input\s*\{/);
   assert.match(styleCss, /\.wt-max-rom-inline\.is-editing input\s*\{/);
   assert.match(styleCss, /\.wt-max-set-toggle,\s*\n\.wt-max-set-remove-btn\s*\{/);
+});
+
+test('day sheet set done toggle uses explicit done state and larger touch targets', () => {
+  const rowsStart = calendarJs.indexOf('function _exerciseRows');
+  const rowsEnd = calendarJs.indexOf('function _workoutMetrics', rowsStart);
+  const toggleStart = calendarJs.indexOf('async function _toggleWorkoutExerciseSetDoneFromSheet');
+  const toggleEnd = calendarJs.indexOf('async function _addWorkoutHomeSession', toggleStart);
+  assert.ok(rowsStart >= 0 && rowsEnd > rowsStart, 'exercise row mapper should exist');
+  assert.ok(toggleStart >= 0 && toggleEnd > toggleStart, 'set done toggle function should exist');
+  const rows = calendarJs.slice(rowsStart, rowsEnd);
+  const toggleFn = calendarJs.slice(toggleStart, toggleEnd);
+
+  assert.match(rows, /rawSetDetails:[\s\S]*done: set\.done === true/);
+  assert.match(toggleFn, /const wasDone = nextSet\.done === true/);
+  assert.match(toggleFn, /const nextDone = !wasDone/);
+  assert.doesNotMatch(toggleFn, /_isActualWorkoutSet\(nextSet\) \|\| nextSet\.done === true/);
+  assert.match(toggleFn, /\{ preserveSheetScroll: true \}/);
+  assert.match(styleCss, /\.wt-max-set-main\s*\{[\s\S]*grid-template-columns:\s*30px minmax\(44px,\s*\.78fr\)[\s\S]*32px 24px 12px/);
+  assert.match(styleCss, /\.wt-max-set-check\s*\{[\s\S]*width:\s*30px;[\s\S]*height:\s*30px;/);
+  assert.match(styleCss, /\.wt-max-set-toggle,\s*\n\.wt-max-set-remove-btn\s*\{[\s\S]*touch-action:\s*manipulation;/);
 });
 
 test('day sheet set inputs restore iOS PWA scroll and focus after save rerenders', () => {
@@ -577,5 +601,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260702z7-home-running-map-record-modal/);
+  assert.match(swJs, /tomatofarm-v20260702z8-workout-sheet-check-toggle/);
 });

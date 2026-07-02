@@ -12876,9 +12876,9 @@ body.lz-running-record-modal-open {
 }
 .wt-max-set-main {
   display: grid;
-  grid-template-columns: 30px minmax(48px, .8fr) minmax(48px, .8fr) minmax(44px, .75fr) minmax(78px, 1fr) 22px 14px 8px;
+  grid-template-columns: 30px minmax(44px, .78fr) minmax(44px, .78fr) minmax(40px, .7fr) minmax(68px, 1fr) 32px 24px 12px;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
 }
 .wt-max-set-type {
   display: inline-flex;
@@ -12954,10 +12954,10 @@ body.lz-running-record-modal-open {
   font-weight: 900;
 }
 .wt-max-set-check {
-  width: 22px;
-  height: 22px;
+  width: 30px;
+  height: 30px;
   border: 1px solid #d9dee8;
-  border-radius: 7px;
+  border-radius: 8px;
   background: #f8fafc;
 }
 .wt-max-set-row.is-done .wt-max-set-check {
@@ -12972,12 +12972,22 @@ body.lz-running-record-modal-open {
   cursor: pointer;
   font-family: inherit;
   line-height: 1;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 .wt-max-set-toggle {
   border: 1px solid #d9dee8;
 }
 .wt-max-set-remove-btn {
   background: transparent;
+}
+.wt-max-set-remove {
+  width: 24px;
+  height: 30px;
+}
+.wt-max-set-grip {
+  width: 12px;
+  pointer-events: none;
 }
 .wt-max-set-row.is-done .wt-max-set-remove,
 .wt-max-set-row.is-done .wt-max-set-grip {
@@ -13524,8 +13534,8 @@ body.lz-running-record-modal-open {
     font-size: 8px;
   }
   .wt-max-set-main {
-    grid-template-columns: 27px minmax(38px, .8fr) minmax(38px, .8fr) minmax(36px, .7fr) minmax(62px, 1fr) 20px 12px 6px;
-    gap: 4px;
+    grid-template-columns: 27px minmax(36px, .78fr) minmax(36px, .78fr) minmax(34px, .68fr) minmax(56px, 1fr) 28px 22px 10px;
+    gap: 3px;
   }
   .wt-max-set-type {
     height: 22px;
@@ -13550,8 +13560,15 @@ body.lz-running-record-modal-open {
     line-height: 24px;
   }
   .wt-max-set-check {
-    width: 20px;
-    height: 20px;
+    width: 28px;
+    height: 28px;
+  }
+  .wt-max-set-remove {
+    width: 22px;
+    height: 28px;
+  }
+  .wt-max-set-grip {
+    width: 10px;
   }
   .wt-max-rom-inline {
     grid-template-columns: auto minmax(0, 1fr) 23px;
