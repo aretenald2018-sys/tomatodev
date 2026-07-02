@@ -2,35 +2,39 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_execution`
-- 계획 문서: `docs/ai/features/2026-07-02-workout-sheet-keyboard-next-focus.md`
+- 상태: `complete`
+- 계획 문서: `docs/ai/features/2026-07-02-workout-sheet-previous-record-card.md`
 - 진단 문서: `없음 - 계획 문서에 /diagnose 기록`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-sheet-keyboard-next-focus-review.md`
-- 현재 단계: `운동 하단 시트 키보드 다음 포커스 긴급 수정 Slice 1 구현/정적 검증/리뷰 완료, 배포 대기`
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-sheet-previous-record-card-review.md`
+- 현재 단계: `운동 하단 시트 카드 지난 기록/세트 역할 복구 Slice 1 정적 검증 완료, 배포 검증 대기`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `운동 하단 시트 세트 체크 버튼 긴급 수정은 개발계/운영계 배포 및 marker 검증을 완료했다.`
-- 다음 액션: `관련 변경만 커밋하고 origin/main 및 tomatofarm/main에 push한 뒤 Dashboard3 Pages와 Tomato Farm 운영계 배포 검증을 진행한다.`
+- 마지막 완료: `하단 시트 운동 카드의 참고 기록 영역을 지난 기록으로 바꾸고, 세트 역할 메타를 보존해 프리/메인/BBB/FSL/디로드 칩을 복구했다.`
+- 다음 액션: `커밋 후 Dashboard3/운영계 Pages 배포 검증을 수행하고, 인증 계정에서 운동 탭 하단 시트 실제 UI flow를 확인한다.`
 - 차단 사유: `없음.`
 
 ## 이번 계획
 
-- 요청: 세트 추가 후 `KG` 입력 상태에서 모바일 키보드 `다음`을 누르면 커서가 `REP`로 이동했다가 다시 `KG`로 돌아가는 문제를 수정한다.
-- 진단: `_captureWorkoutSheetInputState()`가 현재 포커스보다 저장 호출의 `sourceInput`을 우선해, iOS 키보드 `다음`으로 이미 이동한 `REP` 포커스를 `KG`로 되돌릴 수 있다.
+- 요청: 하단 시트 운동 카드에서 현재 선택 날짜의 오늘 기록 대신 직전 과거 기록을 렌더하고, 사라진 `프리`/웬들러 보조 세트 역할 칩을 복구한다.
+- 진단: 카드의 `.wt-max-last` 영역이 `row.setDetails`를 그대로 `오늘 기록`으로 표시하고, `_exerciseRows()` 변환 과정에서 `wendlerRole`/`supplementalKind` 메타가 사라진다.
 - 범위: `render-calendar.js`, `tests/workout-calendar-bottom-sheet.test.js`, `sw.js`, `docs/ai/NEXT_ACTION.md`.
-- 제외: 운동 데이터 schema 변경, 일반 운동 카드 입력 흐름, 세트 입력 UI 재설계.
+- 제외: `workout/exercises.js` 일반 운동 카드, 처방 생성 로직, 통계 산식 변경.
 - 검증: `node --check`, 관련/전체 테스트, runtime asset 검증, `git diff --check`, Dashboard3/운영계 Pages 배포 검증.
 
 ## 이번 실행 결과
 
-- 완료: `render-calendar.js`에서 현재 active 세트 input을 `sourceInput`보다 먼저 캡처하도록 수정했다.
-- 완료: `tests/workout-calendar-bottom-sheet.test.js`에 activeElement 우선 및 sourceInput fallback 회귀 테스트를 추가했다.
-- 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z9-workout-sheet-next-focus`로 bump하고 cache marker 테스트를 갱신했다.
+- 완료: `render-calendar.js`에서 이전 날짜의 같은 운동 entry를 찾아 `previousRecord`로 붙이고 운동 카드에 `지난 기록`으로 렌더하도록 수정했다.
+- 완료: `setDetails`/`rawSetDetails`가 `wendlerRole`/`supplementalKind` 등 세트 역할 메타를 유지하게 했다.
+- 완료: 하단 시트 세트 칩 라벨을 `프리`/`메인`/`BBB`/`FSL`/`보조`/`디로드`로 복구했다.
+- 완료: `tests/workout-calendar-bottom-sheet.test.js`에 오늘 기록 미표시, 이전 기록 표시, 웬들러 역할 칩 보존 회귀 테스트를 추가했다.
+- 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z10-workout-sheet-previous-record`로 bump하고 cache marker 테스트를 갱신했다.
 - PASS: `node --check render-calendar.js`
 - PASS: `node --check sw.js`
 - PASS: `node --test tests/workout-calendar-bottom-sheet.test.js`
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-sheet-previous-record-card-review.md`
+- not verified yet: Dashboard3/운영계 Pages 배포 검증과 인증 계정 실제 UI flow 확인 필요.
 
 ## 방금 계획/실행한 항목
 

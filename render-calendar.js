@@ -119,7 +119,7 @@ function _workoutSheetRawNumber(value) {
 }
 
 function _isActualWorkoutSet(set) {
-  if (!set || set.setType === 'warmup') return false;
+  if (!set || set.setType === 'warmup' || set.wendlerRole === 'warmup') return false;
   if (set.done === true) return true;
   if (set.done === false) return false;
   return _num(set.kg) > 0 && _num(set.reps) > 0;
@@ -1015,8 +1015,69 @@ function _partDisplayLabels(exercises, lookup) {
     }));
 }
 
+function _workoutEntryName(entry = {}) {
+  return String(entry?.name || entry?.exerciseName || entry?.exerciseId || '').trim();
+}
+
+function _workoutEntryMatchesRow(entry = {}, row = {}) {
+  if (row.exerciseId && entry?.exerciseId && String(row.exerciseId) === String(entry.exerciseId)) return true;
+  if (row.movementId && entry?.movementId && String(row.movementId) === String(entry.movementId)) return true;
+  const rowName = String(row.name || '').trim();
+  return !!rowName && rowName === _workoutEntryName(entry);
+}
+
+function _workoutRecordFromEntry(key, entry = {}) {
+  const rawSets = Array.isArray(entry?.sets) ? entry.sets.filter(Boolean) : [];
+  const sets = rawSets.filter(_isActualWorkoutSet);
+  if (!sets.length) return null;
+  const topSet = [...sets].sort((a, b) => calcSetVolume(b) - calcSetVolume(a))[0] || null;
+  return {
+    dateKey: key,
+    dateLabel: _dateDistanceLabel(key),
+    setCount: sets.length,
+    volume: sets.reduce((sum, set) => sum + calcSetVolume(set), 0),
+    topSetText: topSet ? _formatSetText(topSet) : '세트 기록 없음',
+    setTexts: sets.map(_formatSetText),
+    setDetails: sets.map((set, setIndex) => ({
+      setIndex,
+      kg: _num(set.kg),
+      reps: _num(set.reps),
+      rpe: _num(set.rpe),
+      rir: Number.isFinite(Number(set.rir)) ? Number(set.rir) : null,
+      romPct: Number.isFinite(Number(set.romPct)) ? Number(set.romPct) : 100,
+      setType: set.setType || 'main',
+      wendlerRole: set.wendlerRole || '',
+      supplementalKind: set.supplementalKind || '',
+      wendlerPct: Number.isFinite(Number(set.wendlerPct)) ? Number(set.wendlerPct) : null,
+      amrap: set.amrap === true,
+      completedAt: Number.isFinite(Number(set.completedAt)) ? Number(set.completedAt) : null,
+      done: _isActualWorkoutSet(set),
+    })),
+  };
+}
+
+function _previousWorkoutRecordForRow(cache = null, row = {}) {
+  const selectedKey = String(row?.dateKey || '').trim();
+  const source = cache && typeof cache === 'object' ? cache : getCache();
+  const keys = Object.keys(source || {})
+    .filter(key => /^\d{4}-\d{2}-\d{2}$/.test(key) && (!selectedKey || key < selectedKey))
+    .sort((a, b) => b.localeCompare(a));
+  for (const key of keys) {
+    const sessions = getWorkoutSessions(source[key] || {});
+    for (const session of sessions) {
+      const entry = (Array.isArray(session?.exercises) ? session.exercises : [])
+        .find(item => _workoutEntryMatchesRow(item, row));
+      const record = entry ? _workoutRecordFromEntry(key, entry) : null;
+      if (record) return record;
+    }
+  }
+  return null;
+}
+
 function _exerciseRows(day, lookup = _buildWorkoutLookup(), key = null, options = {}) {
   const includeDraftExercises = options?.includeDraftExercises === true;
+  const includePreviousRecord = options?.includePreviousRecord === true;
+  const previousRecordCache = options?.cache || null;
   return (Array.isArray(day?.exercises) ? day.exercises : [])
     .map((entry, originalIndex) => {
       const rawSets = Array.isArray(entry?.sets) ? entry.sets.filter(Boolean) : [];
@@ -1028,9 +1089,10 @@ function _exerciseRows(day, lookup = _buildWorkoutLookup(), key = null, options 
       const topSet = [...sets].sort((a, b) => calcSetVolume(b) - calcSetVolume(a))[0] || null;
       const majorId = _resolveExerciseMajorId(entry, lookup);
       const lib = lookup?.exById?.get(entry?.exerciseId);
-      return {
+      const row = {
         dateKey: key,
         exerciseId: entry?.exerciseId || null,
+        movementId: entry?.movementId || lib?.movementId || null,
         name: entry?.name || entry?.exerciseName || entry?.exerciseId || '운동',
         majorId,
         majorName: _majorLabel(majorId, lookup),
@@ -1049,6 +1111,10 @@ function _exerciseRows(day, lookup = _buildWorkoutLookup(), key = null, options 
           rir: Number.isFinite(Number(set.rir)) ? Number(set.rir) : null,
           romPct: Number.isFinite(Number(set.romPct)) ? Number(set.romPct) : 100,
           setType: set.setType || 'main',
+          wendlerRole: set.wendlerRole || '',
+          supplementalKind: set.supplementalKind || '',
+          wendlerPct: Number.isFinite(Number(set.wendlerPct)) ? Number(set.wendlerPct) : null,
+          amrap: set.amrap === true,
           completedAt: Number.isFinite(Number(set.completedAt)) ? Number(set.completedAt) : null,
           done: _isActualWorkoutSet(set),
         })),
@@ -1060,12 +1126,20 @@ function _exerciseRows(day, lookup = _buildWorkoutLookup(), key = null, options 
           rir: Number.isFinite(Number(set.rir)) ? Number(set.rir) : null,
           romPct: Number.isFinite(Number(set.romPct)) ? Number(set.romPct) : 100,
           setType: set.setType || 'main',
+          wendlerRole: set.wendlerRole || '',
+          supplementalKind: set.supplementalKind || '',
+          wendlerPct: Number.isFinite(Number(set.wendlerPct)) ? Number(set.wendlerPct) : null,
+          amrap: set.amrap === true,
           completedAt: Number.isFinite(Number(set.completedAt)) ? Number(set.completedAt) : null,
           done: set.done === true,
         })),
         note,
         originalIndex,
       };
+      if (includePreviousRecord) {
+        row.previousRecord = _previousWorkoutRecordForRow(previousRecordCache, row);
+      }
+      return row;
     })
     .filter(Boolean);
 }
@@ -1539,7 +1613,11 @@ function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, includeHead 
   const rawSession = sessions[sessionIndex] || sessions[0] || {};
   const session = runningActive ? _onlyRunningFields(runningInfo.session) : _clearRunningFields(rawSession);
   const bodyWeight = _weightAt(checkins, key) ?? getLatestCheckinWeight() ?? plan?.weight ?? 70;
-  const wx = _workoutMetrics(key, session, bodyWeight, lookup, { includeDraftExercises: true });
+  const wx = _workoutMetrics(key, session, bodyWeight, lookup, {
+    includeDraftExercises: true,
+    includePreviousRecord: true,
+    cache,
+  });
   const ordinal = _workoutRecordOrdinalForKey(cache, key, plan, checkins, lookup);
   const recordText = ordinal > 0 ? `${ordinal}번째 기록` : '운동 기록 없음';
   const sessionTabs = _renderWorkoutDetailSessionTabs(sessions, runningActive ? WORKOUT_RUNNING_SESSION_INDEX : sessionIndex, runningInfo);
@@ -1668,10 +1746,28 @@ function _formatWorkoutVolumeTon(value) {
   return `${_fmtNum(tons, 1)}t`;
 }
 
-function _workoutSetTypeLabel(type) {
-  if (type === 'warmup') return '웜';
-  if (type === 'drop') return '드롭';
+function _workoutSetTypeLabel(setOrType = {}) {
+  const set = setOrType && typeof setOrType === 'object' ? setOrType : {};
+  const type = typeof setOrType === 'string' ? setOrType : set.setType;
+  if (set.wendlerRole === 'warmup') return '프리';
+  if (set.wendlerRole === 'main') return '메인';
+  if (set.wendlerRole === 'supplemental') {
+    if (set.supplementalKind === 'bbb') return 'BBB';
+    if (set.supplementalKind === 'fsl') return 'FSL';
+    return '보조';
+  }
+  if (type === 'warmup') return '프리';
+  if (type === 'drop') return '드랍';
+  if (type === 'deload') return '디로드';
   return '본';
+}
+
+function _workoutSetTypeClass(setOrType = {}) {
+  const set = setOrType && typeof setOrType === 'object' ? setOrType : {};
+  const type = typeof setOrType === 'string' ? setOrType : set.setType;
+  if (set.wendlerRole === 'warmup' || type === 'warmup') return 'is-warmup';
+  if (set.wendlerRole === 'supplemental' || type === 'drop' || type === 'deload') return 'is-drop';
+  return '';
 }
 
 function _bestWorkoutSet(row) {
@@ -1694,6 +1790,16 @@ function _workoutSetSummary(row) {
   return [...grouped.values()]
     .map(item => `${item.kg}kg×${item.reps} ${item.count}세트`)
     .join(' / ');
+}
+
+function _workoutPreviousSetSummary(row) {
+  const previous = row?.previousRecord || null;
+  if (!previous) return { label: '지난 기록', summary: '이전 세트 기록 없음' };
+  const dateLabel = previous.dateLabel || _dateDistanceLabel(previous.dateKey) || '이전';
+  return {
+    label: `지난 기록 · ${dateLabel}`,
+    summary: _workoutSetSummary(previous),
+  };
 }
 
 function _smoothPath(points) {
@@ -1892,7 +1998,7 @@ function _renderWorkoutSetRows(row, options = {}) {
     return `
       <div class="wt-max-set-row ${set.done ? 'is-done' : ''} ${editable ? 'is-editing' : ''}">
         <div class="wt-max-set-main">
-          <span class="wt-max-set-type ${set.setType === 'warmup' ? 'is-warmup' : set.setType === 'drop' ? 'is-drop' : ''}">${_workoutSetTypeLabel(set.setType)}</span>
+          <span class="wt-max-set-type ${_esc(_workoutSetTypeClass(set))}">${_esc(_workoutSetTypeLabel(set))}</span>
           <label><span>KG</span>${editable ? _renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setIndex, 'kg', _workoutSheetInputValue(set.kg, 1), '무게', '0.5') : `<b>${_esc(kgText)}</b>`}</label>
           <label><span>REP</span>${editable ? _renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setIndex, 'reps', _workoutSheetInputValue(set.reps, 0), '반복', '1') : `<b>${_esc(repsText)}</b>`}</label>
           <label><span>RIR</span>${editable ? _renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setIndex, 'rir', set.rir == null ? '2' : _fmtNum(set.rir, 1), 'RIR', '0.5') : `<b>${_esc(rirText)}</b>`}</label>
@@ -1923,7 +2029,7 @@ function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) {
   const bestSet = _bestWorkoutSet(row);
   const bestKg = bestSet ? _formatWorkoutKg(bestSet.kg) : '-';
   const bestReps = bestSet ? _formatWorkoutReps(bestSet.reps) : '-';
-  const setSummary = _workoutSetSummary(row);
+  const previousSummary = _workoutPreviousSetSummary(row);
   const hasSetDetails = Array.isArray(row?.setDetails) && row.setDetails.length > 0;
   const activeTrack = _activeWorkoutTrack(row, bestSet);
   const activeTrackLabel = _workoutTrackLabel(activeTrack);
@@ -1947,8 +2053,8 @@ function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) {
         </div>
       </div>
       <div class="wt-max-last">
-        <span>오늘 기록</span>
-        <strong>${_esc(setSummary)}</strong>
+        <span>${_esc(previousSummary.label)}</span>
+        <strong>${_esc(previousSummary.summary)}</strong>
       </div>
       ${row.note ? `<div class="wt-max-note">${_esc(row.note)}</div>` : ''}
       <div class="wt-max-collapsed-note">모든 세트 완료 · 카드가 접혔어요</div>

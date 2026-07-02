@@ -192,8 +192,37 @@ test('day sheet detail renders picker-added draft exercise rows', () => {
   assert.match(rows, /const hasDraftExercise = includeDraftExercises && _hasDraftWorkoutEntry\(entry\)/);
   assert.match(rows, /if \(!sets\.length && !note && !hasDraftExercise\) return null/);
   assert.match(metrics, /_exerciseRows\(d, lookup, key, options\)/);
-  assert.match(detail, /_workoutMetrics\(key, session, bodyWeight, lookup, \{ includeDraftExercises: true \}\)/);
+  assert.match(detail, /includeDraftExercises:\s*true/);
+  assert.match(detail, /includePreviousRecord:\s*true/);
+  assert.match(detail, /cache,\s*\n\s*\}\)/);
   assert.match(tabs, /_hasWorkoutHomeSessionRecord\(session\)/);
+});
+
+test('day sheet exercise card renders prior workout record instead of today set summary', () => {
+  const rowStart = calendarJs.indexOf('function _exerciseRows');
+  const rowEnd = calendarJs.indexOf('function _workoutMetrics', rowStart);
+  const prevStart = calendarJs.indexOf('function _previousWorkoutRecordForRow');
+  const prevEnd = calendarJs.indexOf('function _exerciseRows', prevStart);
+  const cardStart = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard');
+  const cardEnd = calendarJs.indexOf('function _renderWorkoutRunningDetailCard', cardStart);
+  assert.ok(rowStart >= 0 && rowEnd > rowStart, 'exercise row mapper should exist');
+  assert.ok(prevStart >= 0 && prevEnd > prevStart, 'previous record helper should exist');
+  assert.ok(cardStart >= 0 && cardEnd > cardStart, 'exercise detail card renderer should exist');
+  const rows = calendarJs.slice(rowStart, rowEnd);
+  const previous = calendarJs.slice(prevStart, prevEnd);
+  const card = calendarJs.slice(cardStart, cardEnd);
+
+  assert.match(previous, /getWorkoutSessions\(source\[key\] \|\| \{\}\)/);
+  assert.match(previous, /key < selectedKey/);
+  assert.match(previous, /_workoutEntryMatchesRow\(item, row\)/);
+  assert.match(rows, /includePreviousRecord/);
+  assert.match(rows, /row\.previousRecord = _previousWorkoutRecordForRow\(previousRecordCache, row\)/);
+  assert.match(card, /const previousSummary = _workoutPreviousSetSummary\(row\)/);
+  assert.match(card, /previousSummary\.label/);
+  assert.match(card, /previousSummary\.summary/);
+  assert.match(calendarJs, /지난 기록/);
+  assert.doesNotMatch(card, /<span>오늘 기록<\/span>/);
+  assert.doesNotMatch(card, /const setSummary = _workoutSetSummary\(row\)/);
 });
 
 test('day sheet exercise card edit stays inline instead of opening the record route', () => {
@@ -250,6 +279,32 @@ test('day sheet set done toggle uses explicit done state and larger touch target
   assert.match(styleCss, /\.wt-max-set-main\s*\{[\s\S]*grid-template-columns:\s*30px minmax\(44px,\s*\.78fr\)[\s\S]*32px 24px 12px/);
   assert.match(styleCss, /\.wt-max-set-check\s*\{[\s\S]*width:\s*30px;[\s\S]*height:\s*30px;/);
   assert.match(styleCss, /\.wt-max-set-toggle,\s*\n\.wt-max-set-remove-btn\s*\{[\s\S]*touch-action:\s*manipulation;/);
+});
+
+test('day sheet set rows preserve wendler set role chips', () => {
+  const rowsStart = calendarJs.indexOf('function _exerciseRows');
+  const rowsEnd = calendarJs.indexOf('function _workoutMetrics', rowsStart);
+  const labelStart = calendarJs.indexOf('function _workoutSetTypeLabel');
+  const labelEnd = calendarJs.indexOf('function _bestWorkoutSet', labelStart);
+  const renderStart = calendarJs.indexOf('function _renderWorkoutSetRows');
+  const renderEnd = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard', renderStart);
+  assert.ok(rowsStart >= 0 && rowsEnd > rowsStart, 'exercise row mapper should exist');
+  assert.ok(labelStart >= 0 && labelEnd > labelStart, 'set type label helper should exist');
+  assert.ok(renderStart >= 0 && renderEnd > renderStart, 'set row renderer should exist');
+  const rows = calendarJs.slice(rowsStart, rowsEnd);
+  const labelFn = calendarJs.slice(labelStart, labelEnd);
+  const renderFn = calendarJs.slice(renderStart, renderEnd);
+
+  assert.match(rows, /wendlerRole:\s*set\.wendlerRole \|\| ''/);
+  assert.match(rows, /supplementalKind:\s*set\.supplementalKind \|\| ''/);
+  assert.match(rows, /wendlerPct/);
+  assert.match(labelFn, /set\.wendlerRole === 'warmup'[\s\S]*return '프리'/);
+  assert.match(labelFn, /set\.wendlerRole === 'main'[\s\S]*return '메인'/);
+  assert.match(labelFn, /set\.wendlerRole === 'supplemental'[\s\S]*supplementalKind === 'bbb'[\s\S]*return 'BBB'/);
+  assert.match(labelFn, /supplementalKind === 'fsl'[\s\S]*return 'FSL'/);
+  assert.match(labelFn, /type === 'deload'[\s\S]*return '디로드'/);
+  assert.match(renderFn, /_workoutSetTypeClass\(set\)/);
+  assert.match(renderFn, /_workoutSetTypeLabel\(set\)/);
 });
 
 test('day sheet set inputs restore iOS PWA scroll and focus after save rerenders', () => {
@@ -606,5 +661,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260702z9-workout-sheet-next-focus/);
+  assert.match(swJs, /tomatofarm-v20260702z10-workout-sheet-previous-record/);
 });
