@@ -32,8 +32,10 @@
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
-- not verified yet: Dashboard3 Pages 배포 검증과 인증 iPhone PWA 실제 `운동 탭 -> 종목 추가 -> KG/REP 입력/수정 -> 세트 추가` UI flow 확인이 남아 있다.
+- PASS: Dashboard3 Pages 배포 검증 - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 30e018d75677c57f6d4632adfe1ef85d006b57ab` -> `[deploy-verify] ok 30e018d75677 tomatofarm-v20260702z4-workout-ios-sheet-input-scroll static=236`
+- PASS: Dashboard3 Pages marker 검증 - `sw.js`, `render-calendar.js`, `workout/exercises.js`에 이번 수정 marker가 반영됐다.
+- not verified yet: 인증 iPhone PWA 실제 `운동 탭 -> 종목 추가 -> KG/REP 입력/수정 -> 세트 추가` UI flow 확인이 남아 있다.
 
 ## 결정
 
-- 추가 수정 없이 배포 단계로 진행한다.
+- 배포/marker 검증까지 완료했으며, 추가 코드 수정 이슈는 없다.

@@ -2,17 +2,38 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-07-02-workout-ios-sheet-input-scroll.md`
 - 진단 문서: `docs/ai/diagnoses/2026-07-02-workout-ios-sheet-input-scroll.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-ios-sheet-input-scroll-review.md`
-- 현재 단계: `운동 시트 iOS 숫자 입력 스크롤 안정화 Slice 1 로컬 검증 완료`
+- 현재 단계: `운동 시트 iOS 숫자 입력 스크롤 안정화 Slice 1 Dashboard3 Pages 배포 검증 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `render-calendar.js와 workout/exercises.js의 숫자 입력 저장 재렌더 스크롤 복원, blank KG/REP 기본값, 테스트와 sw.js cache version 갱신을 완료했다.`
-- 다음 액션: `리뷰 확인 후 커밋/push하고 Dashboard3 Pages 배포 검증 및 marker 검증을 진행한다.`
+- 마지막 완료: `커밋 30e018d fix: stabilize workout set inputs on ios를 origin/main에 push했고 Dashboard3 Pages 배포/marker 검증을 완료했다.`
+- 다음 액션: `인증 iPhone PWA 실제 운동 탭 KG/REP 입력/세트 추가 UI flow 확인이 남아 있다.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
+
+- Workout iOS Sheet Input Scroll 실행:
+  1. 요청: iPhone PWA에서 운동종목 추가 후 KG/REP 입력·수정 시 화면이 위로 자동 스크롤되는 문제를 해결한다.
+  2. 요청: 운동 세트 추가 시 숫자 기본값을 지우고 빈 값으로 시작한다.
+  3. 진단: 숫자 input 저장이 `saveDay()` 뒤 전체 재렌더를 호출하면서 iOS 키보드/visual viewport가 포커스 요소 교체를 자동 스크롤로 보정하는 흐름으로 판단했다.
+  4. 완료: `render-calendar.js`에 시트 input 상태 캡처/복원, `data-wt-set-input`, `preventScroll`, `.wt-day-sheet-scroll` 복원을 추가했다.
+  5. 완료: `render-calendar.js` 시트 새 세트 KG/REP 기본값과 빈 입력 저장값을 `''`로 보존했다.
+  6. 완료: `workout/exercises.js` 실제 운동 입력 카드의 `wtAddSet()` KG/REP를 빈 값으로 만들고, KG/REP 빈 입력 parser와 저장 재렌더 scrollTop 복원을 추가했다.
+  7. 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z4-workout-ios-sheet-input-scroll`로 bump하고 cache marker 테스트 기대값을 갱신했다.
+  8. 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-ios-sheet-input-scroll-review.md`
+  9. PASS: `node --check render-calendar.js`
+  10. PASS: `node --check workout/exercises.js`
+  11. PASS: `node --check sw.js`
+  12. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-card-layout-css.test.js`
+  13. PASS: `node scripts/verify-runtime-assets.mjs`
+  14. PASS: `node --test --test-reporter=dot tests/*.test.js`
+  15. PASS: `git diff --check`
+  16. 완료: 커밋 `30e018d fix: stabilize workout set inputs on ios`를 `origin/main`에 push했다.
+  17. PASS: Dashboard3 Pages 배포 검증 - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 30e018d75677c57f6d4632adfe1ef85d006b57ab` -> `[deploy-verify] ok 30e018d75677 tomatofarm-v20260702z4-workout-ios-sheet-input-scroll static=236`
+  18. PASS: Dashboard3 Pages marker 검증 - `sw.js` cache version, `render-calendar.js` input restore markers, `workout/exercises.js` render-scroll/blank parser markers 확인
+  19. not verified yet: 인증 iPhone PWA 실제 `운동 탭 -> 종목 추가 -> KG/REP 입력/수정 -> 세트 추가` UI flow 확인 필요.
 
 - Home Running Map Bubble Reliability 계획:
   1. 요청: 홈 화면 라이프존 러닝 지도 말풍선이 타일/경로 없이 작은 점 하나만 보이는 문제를 코드로 개선한다.
