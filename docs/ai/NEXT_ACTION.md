@@ -3,36 +3,36 @@
 ## 현재 상태
 
 - 상태: `ready_for_review`
-- 계획 문서: `docs/ai/features/2026-07-02-home-life-zone-global-activity.md`
+- 계획 문서: `docs/ai/features/2026-07-02-workout-card-inline-set-complete.md`
 - 진단 문서: `없음 - 계획 문서에 진단 기록`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-home-life-zone-global-activity-review.md`
-- 현재 단계: `홈 라이프존 전역 actor 활동/상담 visitor Slice 1 로컬 검증 완료`
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-card-inline-set-complete-review.md`
+- 현재 단계: `운동 카드 인라인 + 행/종목완료 Slice 1 로컬 검증 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `고정 라이프존 actor를 전역 readable로 열고, self가 아닌 readable actor의 오늘 기록을 읽도록 바꿨다. 현재 로그인 계정이 고정 actor가 아니면 상담실장 옆 visitor로 표시되도록 했다.`
-- 다음 액션: `커밋 후 Dashboard3/운영계 Pages에 배포하고 deployed marker를 확인한다.`
+- 마지막 완료: `운동 카드 세트 리스트 마지막에 + 행을 추가하고, footer 버튼을 종목완료 하나로 줄였으며, 완료 저장 시 붉은 완료 도장 이펙트를 추가했다.`
+- 다음 액션: `커밋 후 운영계 Pages에 배포하고 marker를 확인한다. Dashboard3는 GitHub Pages stale deployment lock 해소 여부를 다시 확인한다.`
 - 차단 사유: `없음.`
 
 ## 이번 계획
 
-- 요청: 다른 계정으로 들어왔을 때 상담실장 옆 방문자 좌석에 현재 계정이 보이고, 줍스/문정토마토/이재헌 같은 활성 캐릭터는 친구 여부와 무관하게 최근 식사/운동/러닝 상태를 전역 반영한다.
-- 결정: 고정 라이프존 actor와 매칭되는 계정은 `global` source/readable로 분류하고, 홈 로더에서 self를 제외한 모든 readable actor의 오늘 workout 문서를 읽는다.
-- 범위: `home/life-zone-state.js`, `home/life-zone.js`, `tests/home-life-zone-state.test.js`, `tests/home-life-zone-npc-quest.test.js`, cache marker 테스트들, `sw.js`, `docs/ai/*`.
-- 제외: 좌표/스프라이트 자산 변경, Firestore schema 변경, 식단/운동 저장 payload 변경.
-- 검증: `node --check`, 라이프존 테스트, 전체 테스트, runtime asset 검증, `git diff --check`, Dashboard3/운영계 Pages 배포 검증.
+- 요청: 운동 세트 행 아래에 항상 비어 있는 `+` 행을 두고, 카드 footer는 `종목완료` 하나만 남긴다. `종목완료` 시 해당 종목 기록을 확정 저장하고 붉은 `완료` 도장 이펙트를 보여준다.
+- 결정: 펼쳐진 운동 카드는 바로 입력 가능한 세트 행을 렌더하고, `+` 행은 기존 세트 추가 저장 경로를 재사용한다. `종목완료`는 값이 있는 세트를 완료 처리해 저장한 뒤 45도 붉은 도장 이펙트를 표시한다.
+- 범위: `render-calendar.js`, `style.css`, `tests/workout-calendar-bottom-sheet.test.js`, cache marker 테스트들, `sw.js`, `docs/ai/*`.
+- 제외: 운동 picker 플로우, 러닝 카드 UX, Firestore schema, 일반 운동 탭 카드, 세트 타입/웬들러 산식 변경.
+- 검증: `node --check`, 하단 시트 테스트, 전체 테스트, runtime asset 검증, `git diff --check`, Pages 배포 검증.
 
 ## 이번 실행 결과
 
-- 완료: `resolveLifeZoneRoster()`가 계정 매칭 actor를 `global` source/readable로 분류한다.
-- 완료: `_loadLifeZoneActorStates()`가 self local day와 remote/global actor day를 분리해 읽는다.
-- 완료: 현재 로그인 계정이 고정 actor가 아니면 `resolveLifeZoneConsultingVisitor()`가 `current` visitor를 반환한다.
-- 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z16-life-zone-global-activity`로 bump하고 cache marker 테스트를 갱신했다.
-- PASS: `node --check home/life-zone.js; node --check home/life-zone-state.js; node --check sw.js`
-- PASS: `node --test tests/home-life-zone-state.test.js tests/home-life-zone-npc-quest.test.js` - 31 tests passed
+- 완료: `_renderWorkoutSetRows()`가 세트 행 마지막에 `wt-max-set-add-row` `+` 버튼을 항상 렌더한다.
+- 완료: `_renderWorkoutExerciseDetailCard()` footer를 `종목완료` 하나로 줄이고 펼쳐진 카드 세트 행을 바로 편집 가능하게 했다.
+- 완료: `_completeWorkoutExerciseFromSheet()`가 입력된 세트를 완료 처리해 저장하고 `완료` 도장 이펙트를 표시한다.
+- 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z17-workout-card-inline-complete`로 bump하고 cache marker 테스트를 갱신했다.
+- PASS: `node --check render-calendar.js; node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js` - 25 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
 - PASS: `node --test --test-reporter=dot @testFiles`
 - PASS: `git diff --check`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-home-life-zone-global-activity-review.md`
-- not verified yet: Dashboard3/운영계 Pages 배포 및 인증 계정 실제 홈 라이프존 UI flow 확인 필요.
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-card-inline-set-complete-review.md`
+- not verified yet: 운영계/Dashboard3 Pages 배포 및 인증 계정 실제 운동 카드 UI flow 확인 필요.
 
 ## 방금 계획/실행한 항목
 

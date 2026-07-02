@@ -250,25 +250,33 @@ test('day sheet exercise card renders prior workout record instead of today set 
   assert.doesNotMatch(card, /const setSummary = _workoutSetSummary\(row\)/);
 });
 
-test('day sheet exercise card edit stays inline instead of opening the record route', () => {
+test('day sheet exercise card uses inline plus row and one complete button', () => {
   const cardStart = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard');
   const cardEnd = calendarJs.indexOf('function _renderWorkoutRunningDetailCard', cardStart);
   const rowsStart = calendarJs.indexOf('function _renderWorkoutSetInput');
   const rowsEnd = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard', rowsStart);
   const oldEditStart = calendarJs.indexOf('function _editWorkoutHomeSession');
   const oldEditEnd = calendarJs.indexOf('async function _addWorkoutHomeSession', oldEditStart);
+  const completeStart = calendarJs.indexOf('async function _completeWorkoutExerciseFromSheet');
+  const completeEnd = calendarJs.indexOf('async function _addWorkoutHomeSession', completeStart);
   assert.ok(cardStart >= 0 && cardEnd > cardStart, 'exercise detail card renderer should exist');
   assert.ok(rowsStart >= 0 && rowsEnd > rowsStart, 'set row renderer should exist');
   assert.ok(oldEditStart >= 0 && oldEditEnd > oldEditStart, 'legacy edit session function should exist');
+  assert.ok(completeStart >= 0 && completeEnd > completeStart, 'exercise complete function should exist');
   const card = calendarJs.slice(cardStart, cardEnd);
   const setRows = calendarJs.slice(rowsStart, rowsEnd);
   const oldEditFn = calendarJs.slice(oldEditStart, oldEditEnd);
+  const completeFn = calendarJs.slice(completeStart, completeEnd);
 
-  assert.match(card, /const editing = _workoutEditingCardId === cardId && !collapsed/);
-  assert.match(card, /window\._wtCalEditExerciseCard\('\$\{cardId\}'\)/);
-  assert.match(card, /window\._wtCalFinishExerciseEdit\('\$\{cardId\}'\)/);
-  assert.match(card, /window\._wtCalAddExerciseSet\('\$\{key\}', \$\{sessionIndex\}, \$\{originalIndex\}\)/);
+  assert.match(card, /const editing = !collapsed/);
+  assert.match(card, /wt-max-actions wt-max-actions--single/);
+  assert.match(card, /window\._wtCalCompleteExercise\('\$\{cardId\}', '\$\{key\}', \$\{sessionIndex\}, \$\{originalIndex\}\)/);
+  assert.match(card, />종목완료<\/button>/);
+  assert.doesNotMatch(card, />편집 완료<\/button>|>세트 추가<\/button>|>카드 접기<\/button>|>편집하기<\/button>/);
   assert.doesNotMatch(card, /window\._wtCalEditSession\('\$\{key\}', \$\{sessionIndex\}\)/);
+  assert.match(setRows, /function _renderWorkoutSetAddRow/);
+  assert.match(setRows, /wt-max-set-add-row/);
+  assert.match(setRows, /window\._wtCalAddExerciseSet\('\$\{key\}', \$\{sessionIndex\}, \$\{exerciseIndex\}, '\$\{_esc\(cardId\)\}'\)/);
   assert.match(setRows, /window\._wtCalUpdateExerciseSet/);
   assert.match(setRows, /data-wt-set-done-toggle/);
   assert.match(setRows, /data-wt-set-remove/);
@@ -278,11 +286,19 @@ test('day sheet exercise card edit stays inline instead of opening the record ro
   assert.match(oldEditFn, /action:\s*'sheet:edit-inline'/);
   assert.match(calendarJs, /window\._wtCalEditExerciseCard = _editWorkoutExerciseCard/);
   assert.match(calendarJs, /window\._wtCalUpdateExerciseSet = _updateWorkoutExerciseSetFromSheet/);
+  assert.match(calendarJs, /window\._wtCalCompleteExercise = _completeWorkoutExerciseFromSheet/);
+  assert.match(completeFn, /_hasCompletableWorkoutSheetSet\(nextSet\)/);
+  assert.match(completeFn, /nextSet\.done = true/);
+  assert.match(completeFn, /_markWorkoutExerciseCompletionStamp\(cardId\)/);
   assert.match(calendarJs, /data-wt-set-done-toggle[\s\S]*_toggleWorkoutExerciseSetDoneFromSheet/);
   assert.match(calendarJs, /data-wt-set-remove[\s\S]*_removeWorkoutExerciseSetFromSheet/);
   assert.match(calendarJs, /upsertWorkoutSession\(day, nextSession, index, \{ now: Date\.now\(\) \}\)/);
   assert.match(styleCss, /\.wt-max-set-main label input\s*\{/);
   assert.match(styleCss, /\.wt-max-rom-inline\.is-editing input\s*\{/);
+  assert.match(styleCss, /\.wt-max-set-add-row\s*\{/);
+  assert.match(styleCss, /\.wt-max-actions--single\s*\{/);
+  assert.match(styleCss, /\.wt-max-complete-stamp\s*\{/);
+  assert.match(styleCss, /@keyframes wt-complete-stamp-pop/);
   assert.match(styleCss, /\.wt-max-set-toggle,\s*\n\.wt-max-set-remove-btn\s*\{/);
 });
 
@@ -701,5 +717,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260702z16-life-zone-global-activity/);
+  assert.match(swJs, /tomatofarm-v20260702z17-workout-card-inline-complete/);
 });

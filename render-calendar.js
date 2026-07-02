@@ -63,6 +63,7 @@ let _workoutHomeSheetState = 'bar';
 let _workoutHomeSessionIndex = 0;
 const _workoutDetailCollapsed = new Set();
 let _workoutEditingCardId = null;
+const _workoutExerciseCompletionStamps = new Map();
 let _workoutTrackGraphSeq = 0;
 const WORKOUT_GYM_SESSION_COUNT = 2;
 const WORKOUT_RUNNING_SESSION_INDEX = 2;
@@ -71,6 +72,7 @@ const _workoutRunningMapPayloads = new Map();
 const WORKOUT_HOME_SHEET_STATES = ['bar', 'full'];
 const WORKOUT_HOME_SHEET_CLASS_STATES = ['bar', 'full'];
 const WORKOUT_SHEET_SET_INPUT_SELECTOR = '[data-wt-set-input]';
+const WORKOUT_EXERCISE_STAMP_MS = 1600;
 
 const MAX_WEAK_LABEL = {
   chest_upper:'가슴 상부', chest_lower:'가슴 하부',
@@ -2020,16 +2022,26 @@ function _renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setIndex, fiel
   return `<input type="number" inputmode="${inputMode}" min="0" step="${_esc(step)}" value="${_esc(value)}" aria-label="${_esc(label)}" data-wt-set-input data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" data-field="${_esc(field)}" onchange="window._wtCalUpdateExerciseSet('${key}', ${sessionIndex}, ${exerciseIndex}, ${setIndex}, '${field}', this.value, this)">`;
 }
 
+function _renderWorkoutSetAddRow(key, sessionIndex, exerciseIndex, cardId = '') {
+  return `
+    <button type="button" class="wt-max-set-add-row" onclick="window._wtCalAddExerciseSet('${key}', ${sessionIndex}, ${exerciseIndex}, '${_esc(cardId)}')" aria-label="세트 추가">
+      <span aria-hidden="true">+</span>
+    </button>
+  `;
+}
+
 function _renderWorkoutSetRows(row, options = {}) {
   const editable = options?.editable === true;
   const key = options?.key || row?.dateKey || '';
   const sessionIndex = Math.max(0, Math.floor(Number(options?.sessionIndex) || 0));
   const exerciseIndex = Math.max(0, Math.floor(Number(options?.exerciseIndex) || 0));
+  const cardId = options?.cardId || '';
   const sets = editable
     ? (Array.isArray(row?.rawSetDetails) ? row.rawSetDetails : [])
     : (Array.isArray(row?.setDetails) ? row.setDetails : []);
-  if (!sets.length) return `<div class="wt-max-empty-sets">세트 상세 기록이 없습니다</div>`;
-  return sets.map((set) => {
+  const addRow = _renderWorkoutSetAddRow(key, sessionIndex, exerciseIndex, cardId);
+  if (!sets.length) return `<div class="wt-max-empty-sets">세트 상세 기록이 없습니다</div>${addRow}`;
+  const rows = sets.map((set) => {
     const setIndex = Math.max(0, Math.floor(Number(set.setIndex) || 0));
     const rom = Math.max(0, Math.min(100, Math.round(_num(set.romPct) || 100)));
     const kgText = _formatWorkoutKg(set.kg);
@@ -2059,12 +2071,24 @@ function _renderWorkoutSetRows(row, options = {}) {
       </div>
     `;
   }).join('');
+  return `${rows}${addRow}`;
+}
+
+function _isWorkoutExerciseCompletionStamped(cardId) {
+  const stampedAt = Number(_workoutExerciseCompletionStamps.get(cardId));
+  if (!Number.isFinite(stampedAt)) return false;
+  if (Date.now() - stampedAt > WORKOUT_EXERCISE_STAMP_MS) {
+    _workoutExerciseCompletionStamps.delete(cardId);
+    return false;
+  }
+  return true;
 }
 
 function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) {
   const cardId = `ex:${key}:${sessionIndex}:${index}`;
-  const collapsed = _workoutDetailCollapsed.has(cardId);
-  const editing = _workoutEditingCardId === cardId && !collapsed;
+  const collapsed = false;
+  const editing = !collapsed;
+  const stamped = _isWorkoutExerciseCompletionStamped(cardId);
   const originalIndex = Number.isFinite(Number(row.originalIndex)) ? Number(row.originalIndex) : index;
   const bestSet = _bestWorkoutSet(row);
   const bestKg = bestSet ? _formatWorkoutKg(bestSet.kg) : '-';
@@ -2074,9 +2098,10 @@ function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) {
   const activeTrack = _activeWorkoutTrack(row, bestSet);
   const activeTrackLabel = _workoutTrackLabel(activeTrack);
   const goalText = hasSetDetails ? `${bestKg}kg × ${bestReps}회` : '세트 입력 대기';
-  const trackText = hasSetDetails ? `오늘 ${activeTrackLabel} 트랙 · ${row.setCount}세트` : '편집하기에서 세트를 입력하세요';
+  const trackText = hasSetDetails ? `오늘 ${activeTrackLabel} 트랙 · ${row.setCount}세트` : '+ 행으로 세트를 입력하세요';
   return `
-    <article class="wt-day-ex-card wt-max-read-card ${collapsed ? 'is-collapsed' : 'is-expanded'} ${editing ? 'is-editing' : ''}">
+    <article class="wt-day-ex-card wt-max-read-card ${collapsed ? 'is-collapsed' : 'is-expanded'} ${editing ? 'is-editing' : ''} ${stamped ? 'is-complete-stamped' : ''}">
+      ${stamped ? '<div class="wt-max-complete-stamp" aria-hidden="true">완료</div>' : ''}
       <div class="wt-max-card-kicker">
         <span><i></i>추천 종목 · 선택 헬스장</span>
         <button type="button" onclick="window._wtCalDeleteExercise('${key}', ${sessionIndex}, ${originalIndex})" aria-label="운동 삭제">×</button>
@@ -2098,16 +2123,9 @@ function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) {
       </div>
       ${row.note ? `<div class="wt-max-note">${_esc(row.note)}</div>` : ''}
       <div class="wt-max-collapsed-note">모든 세트 완료 · 카드가 접혔어요</div>
-      <div class="wt-max-set-list">${_renderWorkoutSetRows(row, { editable: editing, key, sessionIndex, exerciseIndex: originalIndex })}</div>
-      <div class="wt-max-actions">
-        ${collapsed
-          ? `<button type="button" class="wt-max-action-primary is-muted" aria-disabled="true" tabindex="-1">운동 완료</button>
-             <button type="button" class="wt-max-action-secondary" onclick="window._wtCalToggleExerciseCard('${cardId}')">세트 다시 보기</button>`
-          : editing
-            ? `<button type="button" class="wt-max-action-primary" onclick="window._wtCalFinishExerciseEdit('${cardId}')">편집 완료</button>
-               <button type="button" class="wt-max-action-secondary" onclick="window._wtCalAddExerciseSet('${key}', ${sessionIndex}, ${originalIndex})">세트 추가</button>`
-            : `<button type="button" class="wt-max-action-primary" onclick="window._wtCalToggleExerciseCard('${cardId}')">카드 접기</button>
-               <button type="button" class="wt-max-action-secondary" onclick="window._wtCalEditExerciseCard('${cardId}')">편집하기</button>`}
+      <div class="wt-max-set-list">${_renderWorkoutSetRows(row, { editable: editing, key, sessionIndex, exerciseIndex: originalIndex, cardId })}</div>
+      <div class="wt-max-actions wt-max-actions--single">
+        <button type="button" class="wt-max-action-primary" onclick="window._wtCalCompleteExercise('${cardId}', '${key}', ${sessionIndex}, ${originalIndex})">종목완료</button>
       </div>
     </article>
   `;
@@ -2893,6 +2911,19 @@ function _finishWorkoutExerciseEdit(cardId) {
   renderWorkoutCalendarHome();
 }
 
+function _markWorkoutExerciseCompletionStamp(cardId) {
+  if (!cardId) return;
+  _workoutExerciseCompletionStamps.set(cardId, Date.now());
+  if (typeof window !== 'undefined' && typeof window.setTimeout === 'function') {
+    window.setTimeout(() => {
+      const stampedAt = Number(_workoutExerciseCompletionStamps.get(cardId));
+      if (!Number.isFinite(stampedAt) || Date.now() - stampedAt < WORKOUT_EXERCISE_STAMP_MS - 50) return;
+      _workoutExerciseCompletionStamps.delete(cardId);
+      renderWorkoutCalendarHome();
+    }, WORKOUT_EXERCISE_STAMP_MS);
+  }
+}
+
 function _editWorkoutHomeSession(key, sessionIndex = _workoutHomeSessionIndex) {
   const targetKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
   _workoutHomeSelectedKey = targetKey;
@@ -2924,6 +2955,11 @@ function _defaultWorkoutSheetSet(prev = null) {
     romPct: Number.isFinite(Number(prev?.romPct)) ? Number(prev.romPct) : 100,
     done: false,
   };
+}
+
+function _hasCompletableWorkoutSheetSet(set) {
+  if (!set || typeof set !== 'object') return false;
+  return set.done === true || _num(set.kg) > 0 || _num(set.reps) > 0;
 }
 
 async function _mutateWorkoutExerciseFromSheet(key, sessionIndex, exerciseIndex, mutator, options = {}) {
@@ -3024,6 +3060,40 @@ async function _toggleWorkoutExerciseSetDoneFromSheet(key, sessionIndex, exercis
   } catch (e) {
     console.warn('[workout-calendar] sheet set done toggle failed:', e);
     window.showToast?.('세트 완료 변경에 실패했어요', 2200, 'error');
+  }
+}
+
+async function _completeWorkoutExerciseFromSheet(cardId, key, sessionIndex, exerciseIndex) {
+  try {
+    let completedCount = 0;
+    const ok = await _mutateWorkoutExerciseFromSheet(key, sessionIndex, exerciseIndex, (entry) => {
+      const now = Date.now();
+      const sets = Array.isArray(entry.sets) ? entry.sets : [];
+      const nextSets = sets.map((set) => {
+        const nextSet = { ...(set || {}) };
+        if (!_hasCompletableWorkoutSheetSet(nextSet)) return nextSet;
+        completedCount += 1;
+        nextSet.done = true;
+        if (!Number.isFinite(Number(nextSet.completedAt))) nextSet.completedAt = now;
+        if (!Number.isFinite(Number(nextSet.romPct))) nextSet.romPct = 100;
+        if (!Number.isFinite(Number(nextSet.rir))) nextSet.rir = 2;
+        return nextSet;
+      });
+      if (!completedCount) {
+        window.showToast?.('완료할 세트를 먼저 입력해 주세요', 1800, 'warning');
+        return false;
+      }
+      entry.sets = nextSets;
+      return true;
+    }, { preserveSheetScroll: true });
+    if (!ok) return;
+    if (_workoutEditingCardId === cardId) _workoutEditingCardId = null;
+    _markWorkoutExerciseCompletionStamp(cardId);
+    renderWorkoutCalendarHome();
+    window.showToast?.('종목 기록을 저장했어요', 1200, 'success');
+  } catch (e) {
+    console.warn('[workout-calendar] exercise complete failed:', e);
+    window.showToast?.('종목 완료 저장에 실패했어요', 2200, 'error');
   }
 }
 
@@ -3319,6 +3389,7 @@ window._wtCalUpdateExerciseSet = _updateWorkoutExerciseSetFromSheet;
 window._wtCalAddExerciseSet = _addWorkoutExerciseSetFromSheet;
 window._wtCalRemoveExerciseSet = _removeWorkoutExerciseSetFromSheet;
 window._wtCalToggleExerciseSetDone = _toggleWorkoutExerciseSetDoneFromSheet;
+window._wtCalCompleteExercise = _completeWorkoutExerciseFromSheet;
 window._wtCalAddSession = _addWorkoutHomeSession;
 window._wtCalAddRunning = _openWorkoutHomeRunning;
 window._wtCalExportSession = _exportWorkoutHomeSession;
