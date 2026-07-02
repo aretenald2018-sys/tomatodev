@@ -8300,6 +8300,15 @@ body.wt-running-session-open {
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
+.lz-names {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
 .lz-sync {
   flex-shrink: 0;
   padding: 5px 8px;

@@ -28,7 +28,7 @@ import {
   mergeSessionExercises, sessionRecentMap, resolveSessionEntryGroupId,
   sortCandidatesByRecent, workoutRecordsForBenchmarkWeek,
   buildMinimapData, defaultIncrementForGroup, getLineup, toggleLineup,
-} from './board-core.js?v=20260620z27-selected-scope';
+} from './board-core.js?v=20260702z20-stamp-persist-lifezone-date';
 import {
   WENDLER_SCHEMES, WENDLER_SCHEME_IDS, normalizeWendlerConfig,
   wendlerWeekPrescription, wendlerCycleOverview, isWendlerAllowedMajor,
@@ -64,10 +64,11 @@ const S = {
   missChoice: 'extend',
   settleDecisions: {},
   settingsOnly: false,
+  cardCommitting: false,
 };
 
 const _todayKey = () => toKey(new Date());
-const TM2_MODULE_VERSION = '20260620z27-selected-scope';
+const TM2_MODULE_VERSION = '20260702z20-stamp-persist-lifezone-date';
 const _esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const _toast = (msg, type = 'info') => { if (typeof window.showToast === 'function') window.showToast(msg, 2200, type); };
 const _num = (id, fallback = 0) => {
@@ -202,8 +203,27 @@ function _firstSelectedMajorGroupId() {
 }
 
 async function _persist() {
-  try { await saveTestBoardV2(S.board); }
-  catch (e) { console.error('[tm2] save failed', e); _toast('저장에 실패했어요 — 네트워크를 확인해 주세요', 'error'); }
+  try {
+    const savedBoard = await saveTestBoardV2(S.board);
+    if (savedBoard) S.board = savedBoard;
+    return true;
+  } catch (e) {
+    console.error('[tm2] save failed', e);
+    _toast('저장에 실패했어요 — 네트워크를 확인해 주세요', 'error');
+    return false;
+  }
+}
+
+async function _persistRequired(message = '저장 실패 — 네트워크를 확인해 주세요') {
+  try {
+    const savedBoard = await saveTestBoardV2(S.board);
+    if (savedBoard) S.board = savedBoard;
+    return true;
+  } catch (e) {
+    console.error('[tm2] required save failed', e);
+    _toast(message, 'error');
+    return false;
+  }
 }
 
 // ----------------------------------------------------------------
@@ -1190,90 +1210,133 @@ async function _ensureTodayLoaded() {
   catch (e) { console.error('[tm2] loadWorkoutDate failed', e); }
 }
 
+function _isCompletionStamped(bm, track, weekStart) {
+  const wk = mondayOf(weekStart);
+  if (bm?.program === 'wendler') return !!bm.wendlerLog?.[wk]?.paintedAt;
+  return (S.board?.steps || []).some(step =>
+    step.benchmarkId === bm?.id &&
+    step.track === track &&
+    weeksBetween(step.weekStart, wk) >= 0 &&
+    weeksBetween(step.weekStart, wk) < step.span &&
+    !!step.weekLog?.[wk]?.paintedAt
+  );
+}
+
+function _setCardCommitBusy(busy) {
+  S.cardCommitting = !!busy;
+  const btn = document.querySelector('[data-action="tm2:card-commit"]');
+  if (!btn) return;
+  btn.disabled = !!busy;
+  btn.setAttribute('aria-busy', busy ? 'true' : 'false');
+}
+
 // 운동 완료 — 실제 workouts에 저장 + 목표 달성 시 칸 색칠 (계약: 실제 운동기록 통합)
 async function _commitWorkoutCard() {
+  if (S.cardCommitting) return;
   const { bmId, weekStart, entryIdx } = S.card;
   const bm = benchmarkById(S.board, bmId);
   if (!bm) return;
   const entry = WS.workout.exercises?.[entryIdx];
   if (!entry) { _toast('운동 카드를 찾지 못했어요', 'error'); return; }
+  _setCardCommitBusy(true);
   const track = bm.program === 'wendler' ? 'volume' : _entryBoardTrack(entry);
   const plan = _cellPlan(bm, track, weekStart);
   const sets = Array.isArray(entry.sets) ? entry.sets : [];
 
-  // 1) 실제 운동기록(workouts)에 반영
-  await _ensureTodayLoaded();
-  // 채워진 세트(kg·reps>0)는 수행한 것으로 간주 — ✓ 체크를 강제하지 않음
-  const filled = (s) => Number(s.kg) > 0 && Number(s.reps) > 0;
-  const doneSets = sets.filter(filled).map(s => ({
-    ...s,
-    kg: Number(s.kg) || 0,
-    reps: Math.round(Number(s.reps) || 0),
-    rpe: s.rpe == null ? null : Math.max(1, Math.min(10, Number(s.rpe))),
-    romPct: s.romPct == null ? 100 : Math.max(0, Math.min(100, Math.round(Number(s.romPct)))),
-    setType: s.setType || 'main',
-    done: true,
-  }));
-  if (!doneSets.length) { _toast('세트의 무게·횟수를 입력해 주세요', 'warning'); return; }
-  WS.workout.exercises[entryIdx] = {
-    ...entry,
-    recommendationMeta: { ...(entry.recommendationMeta || {}), track: _trackToCode(track) },
-    sets: doneSets,
-  };
-  try { await saveWorkoutDay({ silent: true }); }
-  catch (e) { console.error('[tm2] saveWorkoutDay failed', e); _toast('운동기록 저장 실패 — 네트워크를 확인해 주세요', 'error'); }
+  try {
+    // 1) 실제 운동기록(workouts)에 반영
+    await _ensureTodayLoaded();
+    // 채워진 세트(kg·reps>0)는 수행한 것으로 간주 — ✓ 체크를 강제하지 않음
+    const filled = (s) => Number(s.kg) > 0 && Number(s.reps) > 0;
+    const doneSets = sets.filter(filled).map(s => ({
+      ...s,
+      kg: Number(s.kg) || 0,
+      reps: Math.round(Number(s.reps) || 0),
+      rpe: s.rpe == null ? null : Math.max(1, Math.min(10, Number(s.rpe))),
+      romPct: s.romPct == null ? 100 : Math.max(0, Math.min(100, Math.round(Number(s.romPct)))),
+      setType: s.setType || 'main',
+      done: true,
+    }));
+    if (!doneSets.length) { _toast('세트의 무게·횟수를 입력해 주세요', 'warning'); return; }
+    WS.workout.exercises[entryIdx] = {
+      ...entry,
+      recommendationMeta: { ...(entry.recommendationMeta || {}), track: _trackToCode(track) },
+      sets: doneSets,
+    };
+    try { await saveWorkoutDay({ silent: true }); }
+    catch (e) {
+      console.error('[tm2] saveWorkoutDay failed', e);
+      _toast('운동기록 저장 실패 — 네트워크를 확인해 주세요', 'error');
+      return;
+    }
 
-  // 2) 목표 달성 판정 → 색칠 or 조정 (채워진 본세트 기준)
-  const working = doneSets.filter(s => s.setType !== 'warmup' && filled(s));
-  const best = working.reduce((m, s) => (!m || Number(s.kg) > Number(m.kg) || (Number(s.kg) === Number(m.kg) && Number(s.reps) > Number(m.reps))) ? s : m, null);
-  const hit = !!best && Number(best.kg) >= plan.kg && Number(best.reps) >= plan.reps;
+    // 2) 목표 달성 판정 → 색칠 or 조정 (채워진 본세트 기준)
+    const working = doneSets.filter(s => s.setType !== 'warmup' && filled(s));
+    const best = working.reduce((m, s) => (!m || Number(s.kg) > Number(m.kg) || (Number(s.kg) === Number(m.kg) && Number(s.reps) > Number(m.reps))) ? s : m, null);
+    const hit = !!best && Number(best.kg) >= plan.kg && Number(best.reps) >= plan.reps;
 
-  if (hit) {
-    paintWeek(S.board, {
-      benchmarkId: bmId, track, weekStart,
-      log: { at: Date.now(), actualReps: working.map(s => s.reps).join(' · '), rir: best.rir === '' ? null : best.rir, amrapReps: best.reps, note: '' },
-    });
-    await _persist();
-    closeSheet();
-    renderBoard();
-    _toast('성공! 칸을 색칠했어요 🟩 · 운동기록에 저장됨', 'success');
-    return;
-  }
-  // 미달 — 운동기록은 저장됨. 웬들러는 기록만, stair는 조정 시트.
-  if (bm.program === 'wendler') {
-    recordMiss(S.board, {
-      benchmarkId: bmId,
-      track,
-      weekStart,
-      choice: 'none',
-      log: {
-        at: Date.now(),
+    if (hit) {
+      if (!_isCompletionStamped(bm, track, weekStart)) {
+        const beforeBoard = JSON.parse(JSON.stringify(S.board));
+        const ok = paintWeek(S.board, {
+          benchmarkId: bmId, track, weekStart,
+          log: { at: Date.now(), actualReps: working.map(s => s.reps).join(' · '), rir: best.rir === '' ? null : best.rir, amrapReps: best.reps, note: '' },
+        });
+        if (!ok) { _toast('색칠할 칸을 찾지 못했어요', 'error'); return; }
+        const saved = await _persistRequired('완료 도장 저장 실패 — 네트워크를 확인해 주세요');
+        if (!saved) {
+          S.board = beforeBoard;
+          return;
+        }
+      }
+      closeSheet();
+      renderBoard();
+      _toast('성공! 칸을 색칠했어요 🟩 · 운동기록에 저장됨', 'success');
+      return;
+    }
+    // 미달 — 운동기록은 저장됨. 웬들러는 기록만, stair는 조정 시트.
+    if (bm.program === 'wendler') {
+      const beforeBoard = JSON.parse(JSON.stringify(S.board));
+      recordMiss(S.board, {
+        benchmarkId: bmId,
+        track,
+        weekStart,
+        choice: 'none',
+        log: {
+          at: Date.now(),
+          attempted: working.length > 0,
+          actualKg: best?.kg ?? null,
+          actualReps: best ? String(best.reps) : '',
+          amrapReps: best?.reps ?? null,
+        },
+      });
+      const saved = await _persistRequired('웬들러 기록 저장 실패 — 네트워크를 확인해 주세요');
+      if (!saved) {
+        S.board = beforeBoard;
+        return;
+      }
+      closeSheet(); renderBoard();
+      _toast('운동기록 저장됨 — 목표 미달, 테두리로 표시돼요', 'info');
+      return;
+    }
+    _toast('운동기록 저장됨 — 목표 미달, 계획을 조정할 수 있어요', 'info');
+    S.sheet = {
+      kind: 'cell',
+      ctx: {
+        bmId,
+        track,
+        weekStart,
         attempted: working.length > 0,
         actualKg: best?.kg ?? null,
         actualReps: best ? String(best.reps) : '',
-        amrapReps: best?.reps ?? null,
+        rir: best?.rir === '' ? '' : best?.rir ?? '',
+        note: '',
       },
-    });
-    await _persist();
-    closeSheet(); renderBoard();
-    _toast('운동기록 저장됨 — 목표 미달, 테두리로 표시돼요', 'info');
-    return;
+    };
+    openMissSheet();
+  } finally {
+    _setCardCommitBusy(false);
   }
-  _toast('운동기록 저장됨 — 목표 미달, 계획을 조정할 수 있어요', 'info');
-  S.sheet = {
-    kind: 'cell',
-    ctx: {
-      bmId,
-      track,
-      weekStart,
-      attempted: working.length > 0,
-      actualKg: best?.kg ?? null,
-      actualReps: best ? String(best.reps) : '',
-      rir: best?.rir === '' ? '' : best?.rir ?? '',
-      note: '',
-    },
-  };
-  openMissSheet();
 }
 
 // 미래 칸 — 계획 미리보기 (탭 불가 처방만)
@@ -2079,9 +2142,14 @@ async function _paintCurrent() {
     note: _txt('tm2-in-note'),
     amrapReps: _txt('tm2-in-amrap') === '' ? null : Number(_txt('tm2-in-amrap')),
   };
+  const beforeBoard = JSON.parse(JSON.stringify(S.board));
   const ok = paintWeek(S.board, { benchmarkId: bmId, track, weekStart, log });
   if (!ok) { _toast('색칠할 칸을 찾지 못했어요', 'error'); return; }
-  await _persist();
+  const saved = await _persistRequired('완료 도장 저장 실패 — 네트워크를 확인해 주세요');
+  if (!saved) {
+    S.board = beforeBoard;
+    return;
+  }
   closeSheet();
   renderBoard();
   _toast('성공! 칸을 색칠했어요 🟩', 'success');

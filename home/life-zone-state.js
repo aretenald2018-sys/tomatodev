@@ -141,6 +141,12 @@ export function normalizeLifeZoneName(value) {
     .trim();
 }
 
+export function formatLifeZoneDateLabel(date = new Date()) {
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
+
 function cleanLifeZoneDisplayName(value) {
   return String(value || '').replace(/\(.*?\)/g, '').trim();
 }

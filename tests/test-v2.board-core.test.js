@@ -22,7 +22,7 @@ import {
   archiveBenchmark, addBenchmark,
   findExerciseProgramBenchmark, getExerciseProgramSettings, upsertExerciseProgramBenchmark,
   buildExerciseProgramWorkoutPrescription,
-  buildMinimapData, recentPaintLogs, cloneBoard,
+  buildMinimapData, recentPaintLogs, cloneBoard, mergeBoardCompletionLogs,
 } from '../workout/test-v2/board-core.js';
 import { wendlerWeekPrescription, WENDLER_SCHEMES, defaultWendlerIncrement } from '../workout/test-v2/wendler.js';
 
@@ -369,6 +369,34 @@ test('색칠(wendler): wendlerLog에 한계 세트 횟수 기록', () => {
   const cy = activeCycleOf(b, 'lower');
   const cells = expandColumnCells(b, squat.id, 'volume', cy.id, TODAY);
   assert.equal(cells[0].state, 'done');
+});
+
+test('저장 병합: 오래된 보드 저장이 이미 찍힌 완료 도장을 지우지 않는다', () => {
+  const latest = fixtureBoard();
+  const stale = cloneBoard(latest);
+  const fly = latest.benchmarks.find(x => x.movementId === 'chest_fly');
+  const cy = activeCycleOf(latest, 'chest');
+  paintWeek(latest, { benchmarkId: fly.id, track: 'volume', weekStart: START, log: { at: 123, actualReps: '15' } });
+
+  const merged = mergeBoardCompletionLogs(latest, stale);
+  const cells = expandColumnCells(merged, fly.id, 'volume', cy.id, TODAY);
+  assert.equal(cells[0].dots[0].on, true);
+  const step = merged.steps.find(s => s.benchmarkId === fly.id && s.track === 'volume');
+  assert.equal(step.weekLog[START].paintedAt, 123);
+});
+
+test('저장 병합(wendler): 오래된 보드 저장이 웬들러 완료 도장을 지우지 않는다', () => {
+  const latest = fixtureBoard();
+  const stale = cloneBoard(latest);
+  const squat = latest.benchmarks.find(x => x.movementId === 'back_squat');
+  const cy = activeCycleOf(latest, 'lower');
+  paintWeek(latest, { benchmarkId: squat.id, weekStart: START, log: { at: 456, amrapReps: 11, suppDone: true } });
+
+  const merged = mergeBoardCompletionLogs(latest, stale);
+  const mergedSquat = merged.benchmarks.find(x => x.movementId === 'back_squat');
+  const cells = expandColumnCells(merged, mergedSquat.id, 'volume', cy.id, TODAY);
+  assert.equal(cells[0].state, 'done');
+  assert.equal(mergedSquat.wendlerLog[START].paintedAt, 456);
 });
 
 test('못 채움 + 한 주 더 도전(계약 5): 다중 스텝에서 뒤 칸이 밀리고 사이클 끝에서 클립', () => {

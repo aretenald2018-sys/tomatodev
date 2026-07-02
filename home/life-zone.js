@@ -18,6 +18,7 @@ import {
 import {
   LIFE_ZONE_ACTORS,
   assignLifeZoneSlots,
+  formatLifeZoneDateLabel,
   getLifeZoneAccountDisplayName,
   getLifeZoneTitleNames,
   resolveLifeZoneConsultingVisitor,
@@ -90,9 +91,12 @@ function _lifeZoneTitleNames(visitor = null, actors = LIFE_ZONE_ACTORS) {
 }
 
 function _renderLifeZoneTitle(card, visitor = _resolveConsultingVisitor(), actors = LIFE_ZONE_ACTORS) {
+  const date = card?.querySelector('[data-lz-date]');
   const title = card?.querySelector('[data-lz-title]');
-  if (!title) return;
-  title.textContent = _lifeZoneTitleNames(visitor, actors).join(' · ');
+  const names = card?.querySelector('[data-lz-names]');
+  if (date) date.textContent = formatLifeZoneDateLabel(TODAY);
+  if (title) title.textContent = '오늘의 라이프존';
+  if (names) names.textContent = _lifeZoneTitleNames(visitor, actors).join(' · ');
 }
 
 export function setLifeZoneVisitContext(context = null) {
@@ -818,8 +822,9 @@ export function renderLifeZoneCard({
   card.innerHTML = `
     <div class="lz-head">
       <div>
-        <span class="lz-eyebrow">오늘의 라이프존</span>
-        <h3 class="lz-title" data-lz-title></h3>
+        <span class="lz-eyebrow" data-lz-date>${escapeHtml(formatLifeZoneDateLabel(TODAY))}</span>
+        <h3 class="lz-title" data-lz-title>오늘의 라이프존</h3>
+        <span class="lz-names" data-lz-names></span>
       </div>
       <span class="lz-sync" data-lz-sync>불러오는 중</span>
     </div>

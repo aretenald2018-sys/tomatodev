@@ -1003,11 +1003,14 @@ export function wtUpdateSetRir(entryIdx, si, val, sourceInput = null) {
   wtUpdateSet(entryIdx, si, 'rpe', _rirToRpe(val), sourceInput);
 }
 
-export function wtToggleSetDone(entryIdx, si) {
-  const set = S.workout.exercises[entryIdx].sets[si];
+function _setSetDoneState(entryIdx, si, nextDone) {
+  const set = S.workout.exercises?.[entryIdx]?.sets?.[si];
+  if (!set) return;
   const wasDone = set.done === true;
-  set.done = !wasDone;
-  if (!wasDone) stampSetCompletedAt(set);
+  const shouldDone = nextDone === true;
+  if (wasDone === shouldDone) return;
+  set.done = shouldDone;
+  if (shouldDone) stampSetCompletedAt(set);
   else clearSetCompletedAt(set);
   _refreshWorkoutTimeline('set done toggle');
   wtPersistActiveWorkoutDraft('set done toggle');
@@ -1017,15 +1020,21 @@ export function wtToggleSetDone(entryIdx, si) {
   else _renderSets(entryIdx);
   saveWorkoutDay({ silent: true }).then(() => {
     if (!_rerenderMaxEntryOwner(entryIdx)) _renderExerciseList();
-    if (!wasDone) showToast('저장되었습니다', 1500, 'success');
+    if (shouldDone) showToast('저장되었습니다', 1500, 'success');
   }).catch(e => console.error('Save error:', e));
-  if (!wasDone) {
+  if (shouldDone) {
     _maybeShowMaxSetCoach(entryIdx, si);
     const ex = getExList().find(e => e.id === S.workout.exercises[entryIdx].exerciseId);
     const exName = ex?.name || S.workout.exercises[entryIdx].exerciseId;
     const setNum = si + 1;
     wtRestTimerStart(null, `${exName} ${setNum}세트 후 휴식`);
   }
+}
+
+export function wtToggleSetDone(entryIdx, si) {
+  const set = S.workout.exercises?.[entryIdx]?.sets?.[si];
+  if (!set) return;
+  _setSetDoneState(entryIdx, si, set.done !== true);
 }
 
 export function wtUpdateSetType(entryIdx, si, val) {
@@ -1431,7 +1440,7 @@ export function _renderExerciseList() {
       const target = (S.workout.exercises[idx]?.sets || []).findIndex(s => s.done === false);
       if (target >= 0 && S.workout.exercises[idx]?.sets?.[target]) {
         const openSets = (S.workout.exercises[idx]?.sets || []).filter(s => s.done === false).length;
-        wtToggleSetDone(idx, target);
+        _setSetDoneState(idx, target, true);
         if (openSets === 1) {
           _advanceWorkoutEntry(idx);
         }
@@ -1542,7 +1551,7 @@ export function renderEmbeddedMaxExerciseCard(container, entryIdx, options = {})
     }
     const target = (cur.sets || []).findIndex(s => s.done === false);
     if (target >= 0 && cur.sets?.[target]) {
-      wtToggleSetDone(entryIdx, target);
+      _setSetDoneState(entryIdx, target, true);
       return;
     }
     const exName = ex?.name || cur?.name || cur.exerciseId;

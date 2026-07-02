@@ -54,6 +54,7 @@ import {
 import {
   loadEquipmentPool,
 } from './data/data-equipment-pool.js';
+import { mergeBoardCompletionLogs } from './workout/test-v2/board-core.js';
 
 // ═══════════════════════════════════════════════════════════════
 // re-exports (기존 import 호환)
@@ -747,8 +748,22 @@ export async function appendMaxCycleHistory(entry) {
 export const getTestBoardV2 = () => _settings.test_board_v2 || null;
 export async function saveTestBoardV2(board) {
   if (!board || typeof board !== 'object') return null;
-  await _saveSetting('test_board_v2', board);
-  return board;
+  let latestBoard = _settings.test_board_v2 || null;
+  try {
+    const snap = await getDoc(_doc('settings', 'test_board_v2'));
+    const remoteBoard = snap.exists() ? (snap.data()?.value || null) : null;
+    if (remoteBoard) latestBoard = mergeBoardCompletionLogs(latestBoard, remoteBoard);
+  } catch (e) {
+    console.warn('[data] test_board_v2 latest read failed:', e);
+  }
+  const merged = mergeBoardCompletionLogs(latestBoard, board);
+  await _fbOp(
+    'saveSetting(test_board_v2)',
+    () => setDoc(_doc('settings', 'test_board_v2'), { value: merged }),
+    { rethrow: true }
+  );
+  _settings.test_board_v2 = merged;
+  return merged;
 }
 
 export function calcStreaks() {

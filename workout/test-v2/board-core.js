@@ -141,6 +141,51 @@ export function cloneBoard(board) {
   return JSON.parse(JSON.stringify(board));
 }
 
+function _mergePaintedLog(targetLog = null, sourceLog = null) {
+  if (!sourceLog?.paintedAt) return targetLog || {};
+  const next = { ...(targetLog || {}) };
+  if (next.paintedAt) return next;
+  return { ...next, ...sourceLog };
+}
+
+function _targetStepForPaintedWeek(board, sourceStep, weekStart) {
+  if (!board || !sourceStep) return null;
+  const byId = sourceStep.id
+    ? (board.steps || []).find(step => step.id === sourceStep.id)
+    : null;
+  if (byId) return byId;
+  return _stepCoveringWeek(board, sourceStep.benchmarkId, sourceStep.track || 'volume', weekStart);
+}
+
+export function mergeBoardCompletionLogs(latestBoard = null, incomingBoard = null) {
+  const merged = cloneBoard(incomingBoard || latestBoard || {});
+  if (!latestBoard || typeof latestBoard !== 'object') return merged;
+
+  for (const sourceStep of latestBoard.steps || []) {
+    for (const [weekStart, sourceLog] of Object.entries(sourceStep?.weekLog || {})) {
+      if (!sourceLog?.paintedAt) continue;
+      const targetStep = _targetStepForPaintedWeek(merged, sourceStep, weekStart);
+      if (!targetStep) continue;
+      targetStep.weekLog = targetStep.weekLog || {};
+      targetStep.weekLog[weekStart] = _mergePaintedLog(targetStep.weekLog[weekStart], sourceLog);
+      if (sourceStep.state === 'done') targetStep.state = 'done';
+    }
+  }
+
+  const targetBenchmarks = new Map((merged.benchmarks || []).map(benchmark => [benchmark.id, benchmark]));
+  for (const sourceBenchmark of latestBoard.benchmarks || []) {
+    const targetBenchmark = targetBenchmarks.get(sourceBenchmark?.id);
+    if (!targetBenchmark) continue;
+    for (const [weekStart, sourceLog] of Object.entries(sourceBenchmark.wendlerLog || {})) {
+      if (!sourceLog?.paintedAt) continue;
+      targetBenchmark.wendlerLog = targetBenchmark.wendlerLog || {};
+      targetBenchmark.wendlerLog[weekStart] = _mergePaintedLog(targetBenchmark.wendlerLog[weekStart], sourceLog);
+    }
+  }
+
+  return merged;
+}
+
 // ----------------------------------------------------------------
 // 온보딩 후보 / 보드 생성 (계약 11)
 // ----------------------------------------------------------------

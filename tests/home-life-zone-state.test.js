@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   assignLifeZoneSlots,
+  formatLifeZoneDateLabel,
   getLifeZoneAccountDisplayName,
   getLifeZoneDietSpeech,
   getLifeZoneOwnerIdCandidates,
@@ -25,6 +26,10 @@ import {
 test('normalizes Korean and latin display names for matching', () => {
   assert.equal(normalizeLifeZoneName('문정_토마토 (Guest)'), '문정토마토');
   assert.equal(normalizeLifeZoneName('Lee-Jaeheon'), 'leejaeheon');
+});
+
+test('formats life zone title date with the year', () => {
+  assert.equal(formatLifeZoneDateLabel(new Date('2026-07-02T12:00:00')), '2026년 7월 2일');
 });
 
 test('resolves consulting visitor state for new and returning current users', () => {

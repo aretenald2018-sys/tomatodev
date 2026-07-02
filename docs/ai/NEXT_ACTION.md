@@ -1,5 +1,23 @@
 # 다음 자동 액션
 
+## 2026-07-02 완료 도장 유지 및 라이프존 날짜 복구 핫픽스
+
+- 상태: `ready_for_deploy_verification`
+- 기준 작업트리: `C:\Users\USER\Desktop\Tomato Project\tomatofarm-deploy-life-zone-nickname`
+- 기준 원격: `tomatofarm/main`
+- 계획: `docs/ai/features/2026-07-02-stamp-persist-lifezone-date-hotfix.md`
+- 리뷰: `docs/ai/reviews/2026-07-02-stamp-persist-lifezone-date-hotfix-review.md`
+- 구현 요약:
+  1. `saveTestBoardV2`가 Firestore 최신 보드와 완료 로그를 병합하고 저장 실패를 호출부에 전파한다.
+  2. 성장 보드 운동 카드/수동 색칠은 보드 저장 성공 전에는 완료 도장을 확정하지 않는다.
+  3. 종목 완료 primary 버튼은 토글 대신 완료 상태 설정만 수행한다.
+  4. 오늘의 라이프존 헤더는 연도 포함 날짜, 제목, 이름 목록을 분리한다.
+- 검증:
+  1. PASS: `node --check data.js workout/test-v2/board-core.js workout/test-v2/board-render.js workout/exercises.js home/life-zone-state.js home/life-zone.js sw.js`
+  2. PASS: `node --test tests/test-v2.board-core.test.js tests/home-life-zone-state.test.js tests/workout-complete-button-binding.test.js tests/workout-save.test.js tests/workout-test-mode-unified.test.js tests/workout-save-mode-guard.test.js`
+  3. PASS: `node --test "tests/**/*.test.js"` -> 643개 pass
+- 다음 액션: `git diff --check`, 커밋, `tomatofarm/main` push, `https://aretenald2018-sys.github.io/tomatofarm/` 배포 검증.
+
 ## 현재 상태
 
 - 상태: `complete`

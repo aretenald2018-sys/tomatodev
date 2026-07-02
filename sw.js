@@ -3,7 +3,7 @@
 
 // 캐시 버전: 타임스탬프 기반 자동 생성 — 파일 수정 시 SW 자동 업데이트
 // (SW 파일 내용이 1바이트라도 바뀌면 브라우저가 새 SW로 인식)
-const CACHE_VERSION = 'tomatofarm-v20260702z19-current-user-set-button';
+const CACHE_VERSION = 'tomatofarm-v20260702z20-stamp-persist-lifezone-date';
 const RUNTIME_CACHE = 'dashboard3-runtime';
 const STATIC_ASSETS = [
   './',
@@ -103,11 +103,11 @@ const STATIC_ASSETS = [
   './test-mode-v2.css',
   './test-mode-v2.css?v=20260620z27-selected-scope',
   './workout/test-v2/entry.js',
-  './workout/test-v2/entry.js?v=20260702z19-current-user-set-button',
+  './workout/test-v2/entry.js?v=20260702z20-stamp-persist-lifezone-date',
   './workout/test-v2/board-core.js',
-  './workout/test-v2/board-core.js?v=20260620z27-selected-scope',
+  './workout/test-v2/board-core.js?v=20260702z20-stamp-persist-lifezone-date',
   './workout/test-v2/board-render.js',
-  './workout/test-v2/board-render.js?v=20260702z19-current-user-set-button',
+  './workout/test-v2/board-render.js?v=20260702z20-stamp-persist-lifezone-date',
   './workout/test-v2/onboarding.js',
   './workout/test-v2/onboarding.js?v=20260620z27-selected-scope',
   './workout/test-v2/wendler.js',
