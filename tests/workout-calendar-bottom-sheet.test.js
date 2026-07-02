@@ -78,6 +78,14 @@ test('full sheet isolates background calendar input without restoring sheet drag
   assert.match(bindFn, /event\.stopPropagation\(\)/);
   assert.match(bindFn, /scroller\.addEventListener\('touchmove'[\s\S]*\{ passive: false \}\)/);
   assert.match(bindFn, /scroller\.addEventListener\('wheel'[\s\S]*\{ passive: false \}\)/);
+  assert.match(bindFn, /let lastTouchX = 0/);
+  assert.match(bindFn, /const dx = x - lastTouchX/);
+  assert.match(bindFn, /_workoutHomeSheetCarouselShouldOwnTouch\(event, dx, dy\)[\s\S]*event\.stopPropagation\(\)[\s\S]*return/);
+  assert.match(bindFn, /_workoutHomeSheetCarouselShouldOwnWheel\(event\)[\s\S]*event\.stopPropagation\(\)[\s\S]*return/);
+  assert.match(calendarJs, /function _workoutHomeSheetCarouselShouldOwnTouch\(event, dx, dy\)/);
+  assert.match(calendarJs, /function _workoutHomeSheetCarouselShouldOwnWheel\(event\)/);
+  assert.match(calendarJs, /closest\?\.\('\[data-wt-day-exercise-carousel-track\]'\)/);
+  assert.match(calendarJs, /return ax >= 4 && ax > ay/);
   assert.match(calendarJs, /function _workoutHomeSheetTouchWouldChain/);
   assert.match(calendarJs, /dy > 0 && scrollTop <= 0/);
   assert.match(calendarJs, /dy < 0 && scrollTop >= maxScrollTop - 1/);
@@ -684,5 +692,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260702z13-workout-day-sheet-carousel/);
+  assert.match(swJs, /tomatofarm-v20260702z14-workout-day-sheet-drag/);
 });

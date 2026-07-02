@@ -26,3 +26,27 @@
 ## 남은 리스크
 
 - not verified yet: 인증 계정 실제 모바일 UI에서 하단 시트의 여러 운동종목 카드를 좌우로 swipe하는 flow는 아직 직접 확인하지 못했다.
+
+## Slice 2 리뷰
+
+Findings:
+
+- 발견된 차단 이슈 없음.
+
+확인한 점:
+
+- 좌우 드래그가 잘 안 잡히는 원인은 carousel 구조가 아니라 하단 시트 scroller의 touch isolation이 가로 gesture까지 세로 scroll chain 방지 대상으로 처리할 수 있는 점이었다.
+- carousel 내부의 명확한 가로 touch/wheel gesture는 `preventDefault()` 없이 빠져나가게 했고, 세로 gesture는 기존 chain 방지 로직을 유지했다.
+- `render-calendar.js`가 `STATIC_ASSETS` 대상이므로 `sw.js` cache version bump가 포함됐다.
+
+검증:
+
+- PASS: `node --check render-calendar.js; node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js` - 25 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
+- PASS: `node --test --test-reporter=dot tests/*.test.js`
+- PASS: `git diff --check`
+
+남은 리스크:
+
+- not verified yet: 인증 계정 실제 모바일 UI에서 하단 시트 carousel 좌우 drag 감도는 아직 직접 확인하지 못했다.

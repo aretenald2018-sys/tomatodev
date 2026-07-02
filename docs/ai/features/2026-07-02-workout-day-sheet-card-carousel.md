@@ -66,3 +66,52 @@
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
 - not verified yet: 인증 계정 실제 모바일 UI에서 `운동 탭 -> 하단 시트 -> 여러 운동종목 카드 좌우 swipe` flow는 아직 직접 확인하지 못했다.
+
+## Slice 2 진단
+
+사용자 피드백: 좌우 드래그가 잘 안 된다.
+
+원인 가설:
+
+1. 하단 시트의 `_bindWorkoutHomeSheetInputIsolation()`이 `.wt-day-sheet-scroll`의 모든 `touchmove`를 세로 스크롤 체인 방지 로직으로 처리해, carousel 내부 가로 swipe 중에도 `preventDefault()`가 걸린다. 코드상 확인됨.
+2. `touch-action`만 `pan-x pan-y`로 열어도 JavaScript `preventDefault()`가 bubble 단계에서 실행되면 native horizontal scroll이 취소된다. 가능성이 높다.
+3. carousel track의 slide 폭/scroll-snap 설정 자체는 배포 marker와 CSS상 존재하므로, 구조 부재보다는 gesture ownership 문제다.
+
+## Slice 2 계획
+
+목표:
+
+- 하단 시트 scroller가 carousel 내부의 명확한 가로 touch/wheel gesture를 가로 scroller에게 넘기도록 한다.
+- 세로 경계에서 배경 캘린더로 스크롤이 새는 기존 방지는 유지한다.
+- 새 버튼/드래그 컨트롤 없이 native horizontal scroll-snap만 살린다.
+
+변경 범위:
+
+- `render-calendar.js`
+- `tests/workout-calendar-bottom-sheet.test.js`
+- cache marker 테스트들
+- `sw.js`
+- `docs/ai/NEXT_ACTION.md`
+
+검증:
+
+1. `node --check render-calendar.js`
+2. `node --check sw.js`
+3. `node --test tests/workout-calendar-bottom-sheet.test.js`
+4. `node scripts/verify-runtime-assets.mjs`
+5. `node --test --test-reporter=dot tests/*.test.js`
+6. `git diff --check`
+7. Dashboard3/운영계 Pages 배포 후 marker 확인
+
+## Slice 2 실행 결과
+
+- 완료: 하단 시트 scroller touch handler가 `lastTouchX`/`lastTouchY`를 함께 추적하도록 변경했다.
+- 완료: carousel track 내부에서 `abs(deltaX) >= 4 && abs(deltaX) > abs(deltaY)`인 touch/wheel gesture는 `preventDefault()` 없이 carousel이 소유하게 했다.
+- 완료: 세로 gesture는 기존 `_workoutHomeSheetTouchWouldChain()`/`_workoutHomeSheetWheelWouldChain()` 경로를 유지해 배경 scroll chain 방지를 보존했다.
+- 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z14-workout-day-sheet-drag`로 bump하고 cache marker 테스트를 갱신했다.
+- PASS: `node --check render-calendar.js; node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js` - 25 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
+- PASS: `node --test --test-reporter=dot tests/*.test.js`
+- PASS: `git diff --check`
+- not verified yet: 인증 계정 실제 모바일 UI에서 carousel 좌우 drag 감도는 아직 직접 확인하지 못했다.

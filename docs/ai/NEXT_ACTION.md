@@ -6,10 +6,10 @@
 - 계획 문서: `docs/ai/features/2026-07-02-workout-day-sheet-card-carousel.md`
 - 진단 문서: `없음 - 계획 문서에 진단 기록`
 - 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-day-sheet-card-carousel-review.md`
-- 현재 단계: `운동 하단 시트 카드 캐러셀 Slice 1 정적 검증 완료, 배포 대기`
+- 현재 단계: `운동 하단 시트 카드 캐러셀 Slice 2 정적 검증 완료, 배포 대기`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
 - 마지막 완료: `일반 운동 기록 입력 화면의 운동종목 카드 캐러셀은 배포되었으나, 캘린더/운동 홈 하단 시트는 별도 렌더러라 여전히 세로 스택임을 확인했다.`
-- 다음 액션: `변경사항을 커밋하고 Dashboard3/운영계 Pages에 배포한 뒤 marker를 확인한다.`
+- 다음 액션: `Slice 2 변경사항을 커밋하고 Dashboard3/운영계 Pages에 배포한 뒤 marker를 확인한다.`
 - 차단 사유: `없음.`
 
 ## 이번 계획
@@ -26,6 +26,13 @@
 - 완료: 활동/러닝 카드는 기존 detail card 흐름을 유지했다.
 - 완료: `style.css`에 horizontal `scroll-snap`, 다중 카드 partial peek, 하단 시트 `pan-x pan-y` touch 동작을 추가했다.
 - 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z13-workout-day-sheet-carousel`로 bump하고 cache marker 테스트를 갱신했다.
+- 완료: Slice 2에서 carousel 내부 가로 touch/wheel gesture가 하단 시트 세로 체인 방지 `preventDefault()`에 막히지 않도록 gesture ownership을 분리했다.
+- 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z14-workout-day-sheet-drag`로 bump하고 cache marker 테스트를 갱신했다.
+- PASS: `node --check render-calendar.js; node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js` - 25 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
+- PASS: `node --test --test-reporter=dot tests/*.test.js`
+- PASS: `git diff --check`
 - PASS: `node --check render-calendar.js; node --check sw.js`
 - PASS: `node --test tests/workout-calendar-bottom-sheet.test.js` - 25 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`

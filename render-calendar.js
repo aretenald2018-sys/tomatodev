@@ -2666,24 +2666,60 @@ function _bindWorkoutHomeSheetInputIsolation(root) {
   }, { passive: false });
 
   if (!scroller) return;
+  let lastTouchX = 0;
   let lastTouchY = 0;
   scroller.addEventListener('touchstart', (event) => {
     if (event.touches?.length !== 1) return;
+    lastTouchX = Number(event.touches[0]?.clientX) || 0;
     lastTouchY = Number(event.touches[0]?.clientY) || 0;
   }, { passive: true });
   scroller.addEventListener('touchmove', (event) => {
     if (_currentWorkoutHomeSheetState() !== 'full' || event.touches?.length !== 1) return;
+    const x = Number(event.touches[0]?.clientX) || lastTouchX;
     const y = Number(event.touches[0]?.clientY) || lastTouchY;
+    const dx = x - lastTouchX;
     const dy = y - lastTouchY;
+    lastTouchX = x;
     lastTouchY = y;
+    if (_workoutHomeSheetCarouselShouldOwnTouch(event, dx, dy)) {
+      event.stopPropagation();
+      return;
+    }
     if (_workoutHomeSheetTouchWouldChain(scroller, dy) && event.cancelable) event.preventDefault();
     event.stopPropagation();
   }, { passive: false });
   scroller.addEventListener('wheel', (event) => {
     if (_currentWorkoutHomeSheetState() !== 'full') return;
+    if (_workoutHomeSheetCarouselShouldOwnWheel(event)) {
+      event.stopPropagation();
+      return;
+    }
     if (_workoutHomeSheetWheelWouldChain(scroller, Number(event.deltaY) || 0) && event.cancelable) event.preventDefault();
     event.stopPropagation();
   }, { passive: false });
+}
+
+function _workoutHomeSheetEventTarget(event) {
+  return event?.target instanceof Element ? event.target : event?.target?.parentElement;
+}
+
+function _workoutHomeSheetEventHitsCarousel(event) {
+  return !!_workoutHomeSheetEventTarget(event)?.closest?.('[data-wt-day-exercise-carousel-track]');
+}
+
+function _workoutHomeSheetHasHorizontalIntent(deltaX, deltaY) {
+  const ax = Math.abs(Number(deltaX) || 0);
+  const ay = Math.abs(Number(deltaY) || 0);
+  return ax >= 4 && ax > ay;
+}
+
+function _workoutHomeSheetCarouselShouldOwnTouch(event, dx, dy) {
+  return _workoutHomeSheetEventHitsCarousel(event) && _workoutHomeSheetHasHorizontalIntent(dx, dy);
+}
+
+function _workoutHomeSheetCarouselShouldOwnWheel(event) {
+  return _workoutHomeSheetEventHitsCarousel(event)
+    && _workoutHomeSheetHasHorizontalIntent(Number(event?.deltaX) || 0, Number(event?.deltaY) || 0);
 }
 
 function _workoutHomeSheetTouchWouldChain(scroller, dy) {
