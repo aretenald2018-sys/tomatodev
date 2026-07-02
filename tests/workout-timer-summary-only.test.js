@@ -63,5 +63,5 @@ test('workout finish saves without opening the old completion insight modal', ()
 });
 
 test('service worker cache version was bumped for workout timer summary-only UI', () => {
-  assert.match(swJs, /tomatofarm-v20260702z15-workout-sheet-next-focus-source/);
+  assert.match(swJs, /tomatofarm-v20260702z16-life-zone-global-activity/);
 });

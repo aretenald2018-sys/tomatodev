@@ -2,41 +2,37 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-02-workout-sheet-keyboard-next-focus.md`
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-07-02-home-life-zone-global-activity.md`
 - 진단 문서: `없음 - 계획 문서에 진단 기록`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-sheet-keyboard-next-focus-review.md`
-- 현재 단계: `운동 하단 시트 KG -> REP 키보드 다음 포커스 Slice 2 배포 검증 완료`
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-home-life-zone-global-activity-review.md`
+- 현재 단계: `홈 라이프존 전역 actor 활동/상담 visitor Slice 1 로컬 검증 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `세트 input 저장 경로에서 change를 발생시킨 source input을 포커스 복원 후보에서 제외하고, 개발계/운영계 Pages 배포 marker를 확인했다.`
-- 다음 액션: `인증 계정 실제 모바일 UI에서 운동 탭 하단 시트 KG -> REP 키보드 다음 포커스 유지 흐름을 확인한다.`
+- 마지막 완료: `고정 라이프존 actor를 전역 readable로 열고, self가 아닌 readable actor의 오늘 기록을 읽도록 바꿨다. 현재 로그인 계정이 고정 actor가 아니면 상담실장 옆 visitor로 표시되도록 했다.`
+- 다음 액션: `커밋 후 Dashboard3/운영계 Pages에 배포하고 deployed marker를 확인한다.`
 - 차단 사유: `없음.`
 
 ## 이번 계획
 
-- 요청: 운동 기록 입력 시 `KG` 칸에서 키보드 `다음`으로 `REP` 칸에 갔다가 다시 `KG` 칸으로 커서가 강제 회귀하는 현상을 해결한다.
-- 결정: 하단 시트 세트 값 저장에서는 `change`를 발생시킨 원래 `sourceInput` 자체를 복원하지 않고, 실제 이동한 active 세트 input만 재렌더 후 복원한다.
-- 범위: `render-calendar.js`, `tests/workout-calendar-bottom-sheet.test.js`, cache marker 테스트들, `sw.js`, `docs/ai/NEXT_ACTION.md`, 관련 계획/리뷰 문서.
-- 제외: 세트 입력 저장 schema 변경, 하단 시트 전체 렌더 구조 재작성, 일반 운동 카드 입력 흐름 변경.
-- 검증: `node --check`, 하단 시트 테스트, 전체 테스트, runtime asset 검증, `git diff --check`, Dashboard3/운영계 Pages 배포 검증.
+- 요청: 다른 계정으로 들어왔을 때 상담실장 옆 방문자 좌석에 현재 계정이 보이고, 줍스/문정토마토/이재헌 같은 활성 캐릭터는 친구 여부와 무관하게 최근 식사/운동/러닝 상태를 전역 반영한다.
+- 결정: 고정 라이프존 actor와 매칭되는 계정은 `global` source/readable로 분류하고, 홈 로더에서 self를 제외한 모든 readable actor의 오늘 workout 문서를 읽는다.
+- 범위: `home/life-zone-state.js`, `home/life-zone.js`, `tests/home-life-zone-state.test.js`, `tests/home-life-zone-npc-quest.test.js`, cache marker 테스트들, `sw.js`, `docs/ai/*`.
+- 제외: 좌표/스프라이트 자산 변경, Firestore schema 변경, 식단/운동 저장 payload 변경.
+- 검증: `node --check`, 라이프존 테스트, 전체 테스트, runtime asset 검증, `git diff --check`, Dashboard3/운영계 Pages 배포 검증.
 
 ## 이번 실행 결과
 
-- 완료: `render-calendar.js`의 `_captureWorkoutSheetInputState()`에 `ignoreSourceInput`/`allowSourceFallback` 옵션을 추가했다.
-- 완료: 세트 값 변경 저장을 `{ preserveInput: true, sourceInput, ignoreSourceInput: true }`로 호출해 `KG` change가 자기 자신을 다시 복원하지 못하게 했다.
-- 완료: 저장 완료 후 재렌더 직전에 `_waitWorkoutSheetFocusTransition()`으로 한 틱 기다린 뒤 실제 active 세트 input을 다시 캡처한다.
-- 완료: 복원할 input이 없으면 포커스 복원 대신 시트 스크롤만 복원한다.
-- 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z15-workout-sheet-next-focus-source`로 bump하고 cache marker 테스트를 갱신했다.
-- PASS: `node --check render-calendar.js; node --check sw.js`
-- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js` - 25 tests passed
+- 완료: `resolveLifeZoneRoster()`가 계정 매칭 actor를 `global` source/readable로 분류한다.
+- 완료: `_loadLifeZoneActorStates()`가 self local day와 remote/global actor day를 분리해 읽는다.
+- 완료: 현재 로그인 계정이 고정 actor가 아니면 `resolveLifeZoneConsultingVisitor()`가 `current` visitor를 반환한다.
+- 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z16-life-zone-global-activity`로 bump하고 cache marker 테스트를 갱신했다.
+- PASS: `node --check home/life-zone.js; node --check home/life-zone-state.js; node --check sw.js`
+- PASS: `node --test tests/home-life-zone-state.test.js tests/home-life-zone-npc-quest.test.js` - 31 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
-- PASS: `node --test --test-reporter=dot tests/*.test.js`
+- PASS: `node --test --test-reporter=dot @testFiles`
 - PASS: `git diff --check`
-- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 1c3d0e28da4f2b1236e0b5bf0667849eae96f776`
-- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 1c3d0e28da4f2b1236e0b5bf0667849eae96f776`
-- PASS: Dashboard3/운영계 marker 검증 - `tomatofarm-v20260702z15-workout-sheet-next-focus-source`, `ignoreSourceInput`, `_waitWorkoutSheetFocusTransition`, `{ preserveInput: true, sourceInput, ignoreSourceInput: true }`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-sheet-keyboard-next-focus-review.md`
-- not verified yet: 인증 계정 실제 `운동 탭 -> 하단 시트 -> 세트 추가 -> KG 입력 -> 키보드 다음 -> REP 포커스 유지` UI flow 확인 필요.
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-home-life-zone-global-activity-review.md`
+- not verified yet: Dashboard3/운영계 Pages 배포 및 인증 계정 실제 홈 라이프존 UI flow 확인 필요.
 
 ## 방금 계획/실행한 항목
 

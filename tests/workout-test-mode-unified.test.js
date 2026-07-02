@@ -143,5 +143,5 @@ test('Dashboard3 mode controls cannot persist normal or pro workout record UI', 
 });
 
 test('service worker cache version was bumped for workout asset changes', () => {
-  assert.match(swJs, /tomatofarm-v20260702z15-workout-sheet-next-focus-source/);
+  assert.match(swJs, /tomatofarm-v20260702z16-life-zone-global-activity/);
 });

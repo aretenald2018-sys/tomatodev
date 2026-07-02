@@ -74,6 +74,12 @@ function _mergeCurrentUser(accounts = [], currentUser = null) {
   return [...accounts, { ...currentUser, resolvedNickname: _safeResolveNickname(currentUser, accounts) }];
 }
 
+function _isCurrentLifeZoneRosterActor(currentUser = null) {
+  if (!currentUser?.id) return false;
+  const accounts = _enrichAccounts([currentUser]);
+  return resolveLifeZoneRoster({ accounts, currentUser }).some((actor) => actor.source === 'self');
+}
+
 export function setLifeZoneVisitContext(context = null) {
   _lifeZoneVisitContext = context && typeof context === 'object' ? { ...context } : null;
 }
@@ -83,10 +89,12 @@ function _resolveConsultingVisitor() {
   if (_lifeZoneVisitContext?.userId && currentUser?.id && _lifeZoneVisitContext.userId !== currentUser.id) {
     return null;
   }
+  const isRosterActor = _isCurrentLifeZoneRosterActor(currentUser);
   return resolveLifeZoneConsultingVisitor({
     currentUser,
     previousLastLoginAt: _lifeZoneVisitContext?.previousLastLoginAt || 0,
-    createdAt: _lifeZoneVisitContext?.createdAt ?? currentUser?.createdAt
+    createdAt: _lifeZoneVisitContext?.createdAt ?? currentUser?.createdAt,
+    showCurrentUser: !isRosterActor
   });
 }
 
@@ -104,7 +112,9 @@ function _renderConsultingVisitor(card) {
   visitorEl.dataset.lzVisitorState = visitor.state;
   visitorEl.title = visitor.state === 'returning'
     ? '10일 이상 미접속 복귀 상담'
-    : '신규 유저 상담';
+    : visitor.state === 'current'
+      ? '현재 계정 상담'
+      : '신규 유저 상담';
 }
 
 function _readRunningLiveState() {
@@ -133,7 +143,7 @@ function _withRunningLiveDay(dayData = {}, live = null) {
   };
 }
 
-async function _readFriendLifeZoneDay(actor, todayKey) {
+async function _readLifeZoneActorDay(actor, todayKey) {
   const candidates = [
     actor.readAccountId,
     ...(actor.ownerIdCandidates || []),
@@ -720,11 +730,11 @@ async function _loadLifeZoneActorStates() {
     dayByAccountId[accountId] = _withRunningLiveDay(getDay(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate()) || {}, liveRunning);
   });
 
-  const friendActors = roster.filter((actor) => actor.source === 'friend' && actor.accountId);
-  const friendResults = await Promise.allSettled(friendActors.map((actor) => _readFriendLifeZoneDay(actor, todayKey)));
-  friendActors.forEach((actor, index) => {
-    dayByAccountId[actor.accountId] = friendResults[index].status === 'fulfilled'
-      ? (friendResults[index].value || {})
+  const remoteActors = roster.filter((actor) => actor.source !== 'self' && actor.canRead && actor.accountId);
+  const remoteResults = await Promise.allSettled(remoteActors.map((actor) => _readLifeZoneActorDay(actor, todayKey)));
+  remoteActors.forEach((actor, index) => {
+    dayByAccountId[actor.accountId] = remoteResults[index].status === 'fulfilled'
+      ? (remoteResults[index].value || {})
       : {};
   });
 

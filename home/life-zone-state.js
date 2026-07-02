@@ -149,6 +149,7 @@ export function resolveLifeZoneConsultingVisitor({
   currentUser = null,
   previousLastLoginAt = 0,
   createdAt = null,
+  showCurrentUser = false,
   now = Date.now()
 } = {}) {
   const userId = String(currentUser?.id || '').trim();
@@ -173,6 +174,13 @@ export function resolveLifeZoneConsultingVisitor({
       state: 'new',
       userId,
       accountAgeDays: accountAgeDays == null ? null : Math.floor(accountAgeDays)
+    };
+  }
+
+  if (showCurrentUser) {
+    return {
+      state: 'current',
+      userId
     };
   }
 
@@ -225,14 +233,15 @@ export function resolveLifeZoneRoster({
     const matchedFriendId = ownerIdCandidates.find((ownerId) => friendIds.has(ownerId)) || null;
     const isSelf = ownerIdCandidates.some((ownerId) => currentIds.has(ownerId));
     const isFriend = !!matchedFriendId;
+    const isGlobal = !!accountId;
 
     return {
       ...actor,
       accountId,
       ownerIdCandidates,
       readAccountId: isSelf ? currentId : (matchedFriendId || accountId),
-      source: isSelf ? 'self' : isFriend ? 'friend' : accountId ? 'unreadable' : 'unmatched',
-      canRead: isSelf || isFriend
+      source: isSelf ? 'self' : isFriend ? 'friend' : isGlobal ? 'global' : 'unmatched',
+      canRead: isSelf || isFriend || isGlobal
     };
   });
 }

@@ -50,6 +50,15 @@ test('resolves consulting visitor state for new and returning current users', ()
     now
   }), null);
 
+  const currentVisitor = resolveLifeZoneConsultingVisitor({
+    currentUser: { id: 'u3', createdAt: now - 30 * 86400000 },
+    previousLastLoginAt: now - 2 * 86400000,
+    showCurrentUser: true,
+    now
+  });
+  assert.equal(currentVisitor.state, 'current');
+  assert.equal(currentVisitor.userId, 'u3');
+
   assert.equal(resolveLifeZoneConsultingVisitor({
     currentUser: { id: 'u4(guest)', createdAt: now },
     previousLastLoginAt: 0,
@@ -57,7 +66,7 @@ test('resolves consulting visitor state for new and returning current users', ()
   }), null);
 });
 
-test('matches roster by resolved nickname and only reads self or friends', () => {
+test('matches roster by resolved nickname and reads fixed actors globally', () => {
   const roster = resolveLifeZoneRoster({
     accounts: [
       { id: 'u1', resolvedNickname: '줍스' },
@@ -68,8 +77,8 @@ test('matches roster by resolved nickname and only reads self or friends', () =>
     currentUser: { id: 'u1' }
   });
 
-  assert.deepEqual(roster.map((actor) => actor.source), ['self', 'friend', 'unreadable']);
-  assert.deepEqual(roster.map((actor) => actor.canRead), [true, true, false]);
+  assert.deepEqual(roster.map((actor) => actor.source), ['self', 'friend', 'global']);
+  assert.deepEqual(roster.map((actor) => actor.canRead), [true, true, true]);
 });
 
 test('matches readable roster through guest owner id candidates', () => {
@@ -248,6 +257,27 @@ test('resolves activity priority and slot distribution from account days', () =>
   assert.deepEqual(actors.map((actor) => actor.state), ['workout', 'diet', 'office']);
   assert.deepEqual(actors.map((actor) => actor.slot.id), ['lat', 'island-left', 'desk-upper']);
   assert.deepEqual(actors.map((actor) => actor.speech), ['오늘 운동 완료', '점심냠냠', '다른 일 하는중']);
+});
+
+test('global life zone roster actors use recent activity without friendship', () => {
+  const actors = resolveLifeZoneActors({
+    accounts: [
+      { id: 'u1', resolvedNickname: '줍스' },
+      { id: 'u2', resolvedNickname: '문정토마토' },
+      { id: 'u3', resolvedNickname: '이재헌' }
+    ],
+    friends: [],
+    currentUser: { id: 'u4', nickname: '방문자' },
+    dayByAccountId: {
+      u1: { lFoods: [{ name: 'salad' }], lKcal: 420 },
+      u2: { exercises: [{ muscleId: 'chest', sets: [{ done: true }] }] },
+      u3: {}
+    }
+  });
+
+  assert.deepEqual(actors.map((actor) => actor.source), ['global', 'global', 'global']);
+  assert.deepEqual(actors.map((actor) => actor.state), ['diet', 'workout', 'office']);
+  assert.deepEqual(actors.map((actor) => actor.speech), ['점심냠냠', '오늘 가슴 완료', '다른 일 하는중']);
 });
 
 test('treats duration-only workout as workout state in life zone', () => {

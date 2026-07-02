@@ -32,6 +32,10 @@ test('life zone trainer hook keeps the bulb bubble while hiding the old NPC card
   assert.match(source, /miranda-fashion-corner\.png/);
   assert.match(source, /setLifeZoneVisitContext/);
   assert.match(source, /resolveLifeZoneConsultingVisitor/);
+  assert.match(source, /function _isCurrentLifeZoneRosterActor/);
+  assert.match(source, /showCurrentUser: !isRosterActor/);
+  assert.match(source, /const remoteActors = roster\.filter\(\(actor\) => actor\.source !== 'self' && actor\.canRead && actor\.accountId\)/);
+  assert.match(source, /remoteActors\.map\(\(actor\) => _readLifeZoneActorDay\(actor, todayKey\)\)/);
   assert.match(source, /consulting-room-sofas\.png/);
   assert.match(source, /consulting-chief-npc-seated-home\.png/);
   assert.match(source, /consulting-visitor-gray-shirt-home\.png/);
@@ -312,7 +316,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260702z15-workout-sheet-next-focus-source/);
+  assert.match(sw, /tomatofarm-v20260702z16-life-zone-global-activity/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,
@@ -354,7 +358,7 @@ test('life zone consulting room sofa assets are separate transparent runtime PNG
     ['consulting-visitor-gray-shirt-home.png', { width: 230, height: 298, colorType: 6 }]
   ];
 
-  assert.match(sw, /tomatofarm-v20260702z15-workout-sheet-next-focus-source/);
+  assert.match(sw, /tomatofarm-v20260702z16-life-zone-global-activity/);
   for (const [asset, expected] of assets) {
     assert.match(sw, new RegExp(`\\.\\/assets\\/home\\/life-zone\\/ui\\/${asset.replace('.', '\\.')}`));
     assert.deepEqual(readPngHeader(`assets/home/life-zone/ui/${asset}`), expected);
