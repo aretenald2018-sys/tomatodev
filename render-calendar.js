@@ -70,6 +70,7 @@ let _workoutRunningMapSeq = 0;
 const _workoutRunningMapPayloads = new Map();
 const WORKOUT_HOME_SHEET_STATES = ['bar', 'full'];
 const WORKOUT_HOME_SHEET_CLASS_STATES = ['bar', 'full'];
+const WORKOUT_SHEET_SET_INPUT_SELECTOR = '[data-wt-set-input]';
 
 const MAX_WEAK_LABEL = {
   chest_upper:'가슴 상부', chest_lower:'가슴 하부',
@@ -100,6 +101,21 @@ function _fmtNum(value, digits = 1) {
   const n = _num(value);
   if (Number.isInteger(n)) return String(n);
   return String(Math.round(n * (10 ** digits)) / (10 ** digits));
+}
+
+function _isBlankWorkoutSheetNumber(value) {
+  return value == null || String(value).trim() === '';
+}
+
+function _workoutSheetInputValue(value, digits = 1) {
+  if (_isBlankWorkoutSheetNumber(value)) return '';
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  return _fmtNum(n, digits);
+}
+
+function _workoutSheetRawNumber(value) {
+  return _isBlankWorkoutSheetNumber(value) ? '' : _num(value);
 }
 
 function _isActualWorkoutSet(set) {
@@ -314,6 +330,115 @@ function _dateTitle(key) {
 function _workoutHomeScrollRoot() {
   if (typeof document === 'undefined') return null;
   return document.getElementById('workout-calendar-root');
+}
+
+function _workoutSheetSelectorValue(value) {
+  const text = String(value ?? '');
+  if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') return CSS.escape(text);
+  return text.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+function _workoutSheetScrollState(input = null) {
+  if (typeof document === 'undefined') return null;
+  const root = _workoutHomeScrollRoot();
+  const sheet = input?.closest?.('[data-wt-day-sheet]')
+    || root?.querySelector?.('[data-wt-day-sheet]')
+    || document.querySelector?.('#workout-calendar-root [data-wt-day-sheet]');
+  const scroller = input?.closest?.('.wt-day-sheet-scroll') || sheet?.querySelector?.('.wt-day-sheet-scroll') || null;
+  return {
+    scrollerTop: Math.max(0, Number(scroller?.scrollTop) || 0),
+    rootTop: Math.max(0, Number(root?.scrollTop) || 0),
+    windowTop: typeof window !== 'undefined' ? Math.max(0, Number(window.scrollY) || 0) : 0,
+  };
+}
+
+function _workoutSheetInputSelection(input) {
+  try {
+    return {
+      selectionStart: Number.isFinite(Number(input?.selectionStart)) ? Number(input.selectionStart) : null,
+      selectionEnd: Number.isFinite(Number(input?.selectionEnd)) ? Number(input.selectionEnd) : null,
+    };
+  } catch {
+    return { selectionStart: null, selectionEnd: null };
+  }
+}
+
+function _captureWorkoutSheetInputState(sourceInput = null) {
+  if (typeof document === 'undefined') return null;
+  const active = sourceInput?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)
+    ? sourceInput
+    : document.activeElement;
+  if (!active?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)) return null;
+  const selection = _workoutSheetInputSelection(active);
+  return {
+    ..._workoutSheetScrollState(active),
+    hasInput: true,
+    sessionIndex: active.getAttribute('data-session-index') || '',
+    exerciseIndex: active.getAttribute('data-exercise-index') || '',
+    setIndex: active.getAttribute('data-set-index') || '',
+    field: active.getAttribute('data-field') || '',
+    selectionStart: selection.selectionStart,
+    selectionEnd: selection.selectionEnd,
+  };
+}
+
+function _captureWorkoutSheetScrollState() {
+  const state = _workoutSheetScrollState();
+  return state ? { ...state, hasInput: false } : null;
+}
+
+function _restoreWorkoutSheetScrollState(state) {
+  if (!state || typeof document === 'undefined') return;
+  const root = _workoutHomeScrollRoot();
+  const sheet = root?.querySelector?.('[data-wt-day-sheet]')
+    || document.querySelector?.('#workout-calendar-root [data-wt-day-sheet]');
+  const scroller = sheet?.querySelector?.('.wt-day-sheet-scroll');
+  if (scroller) scroller.scrollTop = Math.max(0, Number(state.scrollerTop) || 0);
+  if (root) {
+    const top = Math.max(0, Number(state.rootTop) || 0);
+    if (typeof root.scrollTo === 'function') root.scrollTo({ top, behavior: 'auto' });
+    else root.scrollTop = top;
+  }
+  if (typeof window !== 'undefined') {
+    const top = Math.max(0, Number(state.windowTop) || 0);
+    try { window.scrollTo({ top, behavior: 'auto' }); }
+    catch { window.scrollTo(0, top); }
+  }
+}
+
+function _restoreWorkoutSheetInputState(state) {
+  if (!state || typeof document === 'undefined') return;
+  const restore = () => {
+    _restoreWorkoutSheetScrollState(state);
+    if (!state.hasInput) return;
+    const root = _workoutHomeScrollRoot();
+    const sheet = root?.querySelector?.('[data-wt-day-sheet]')
+      || document.querySelector?.('#workout-calendar-root [data-wt-day-sheet]');
+    const selector = [
+      WORKOUT_SHEET_SET_INPUT_SELECTOR,
+      `[data-session-index="${_workoutSheetSelectorValue(state.sessionIndex)}"]`,
+      `[data-exercise-index="${_workoutSheetSelectorValue(state.exerciseIndex)}"]`,
+      `[data-set-index="${_workoutSheetSelectorValue(state.setIndex)}"]`,
+      `[data-field="${_workoutSheetSelectorValue(state.field)}"]`,
+    ].join('');
+    const input = sheet?.querySelector?.(selector);
+    if (!input) return;
+    try { input.focus({ preventScroll: true }); }
+    catch { input.focus?.(); }
+    try {
+      if (state.selectionStart != null && state.selectionEnd != null && typeof input.setSelectionRange === 'function') {
+        input.setSelectionRange(state.selectionStart, state.selectionEnd);
+      }
+    } catch {}
+    _restoreWorkoutSheetScrollState(state);
+  };
+  if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+    window.requestAnimationFrame(restore);
+    window.setTimeout?.(restore, 80);
+    window.setTimeout?.(restore, 220);
+  } else {
+    restore();
+  }
 }
 
 function _workoutHomeScrollTop() {
@@ -565,7 +690,12 @@ function _mealOkPatchForWorkoutHomeDay(key, existingDay, aggregate) {
   }
 }
 
-async function _saveWorkoutHomeSessionResult(key, result) {
+async function _saveWorkoutHomeSessionResult(key, result, options = {}) {
+  const restoreState = options?.preserveInput
+    ? _captureWorkoutSheetInputState(options.sourceInput)
+    : options?.preserveSheetScroll
+      ? _captureWorkoutSheetScrollState()
+      : null;
   const existingDay = _workoutHomeDay(key);
   const payload = {
     ..._workoutSessionSavePayload(result),
@@ -574,6 +704,7 @@ async function _saveWorkoutHomeSessionResult(key, result) {
   await saveDay(key, payload, { mode: 'merge', rethrow: true });
   _workoutDetailCollapsed.clear();
   renderWorkoutCalendarHome();
+  if (restoreState) _restoreWorkoutSheetInputState(restoreState);
   document.dispatchEvent(new CustomEvent('sheet:saved'));
 }
 
@@ -920,8 +1051,8 @@ function _exerciseRows(day, lookup = _buildWorkoutLookup(), key = null, options 
         })),
         rawSetDetails: rawSets.map((set, setIndex) => ({
           setIndex,
-          kg: _num(set.kg),
-          reps: _num(set.reps),
+          kg: _workoutSheetRawNumber(set.kg),
+          reps: _workoutSheetRawNumber(set.reps),
           rpe: _num(set.rpe),
           rir: Number.isFinite(Number(set.rir)) ? Number(set.rir) : null,
           romPct: Number.isFinite(Number(set.romPct)) ? Number(set.romPct) : 100,
@@ -1736,7 +1867,8 @@ function _renderWorkoutTrackGraph(row, bestSet) {
 }
 
 function _renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setIndex, field, value, label, step = '1') {
-  return `<input type="number" inputmode="decimal" min="0" step="${_esc(step)}" value="${_esc(value)}" aria-label="${_esc(label)}" onchange="window._wtCalUpdateExerciseSet('${key}', ${sessionIndex}, ${exerciseIndex}, ${setIndex}, '${field}', this.value)">`;
+  const inputMode = field === 'reps' || field === 'romPct' ? 'numeric' : 'decimal';
+  return `<input type="number" inputmode="${inputMode}" min="0" step="${_esc(step)}" value="${_esc(value)}" aria-label="${_esc(label)}" data-wt-set-input data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" data-field="${_esc(field)}" onchange="window._wtCalUpdateExerciseSet('${key}', ${sessionIndex}, ${exerciseIndex}, ${setIndex}, '${field}', this.value, this)">`;
 }
 
 function _renderWorkoutSetRows(row, options = {}) {
@@ -1758,8 +1890,8 @@ function _renderWorkoutSetRows(row, options = {}) {
       <div class="wt-max-set-row ${set.done ? 'is-done' : ''} ${editable ? 'is-editing' : ''}">
         <div class="wt-max-set-main">
           <span class="wt-max-set-type ${set.setType === 'warmup' ? 'is-warmup' : set.setType === 'drop' ? 'is-drop' : ''}">${_workoutSetTypeLabel(set.setType)}</span>
-          <label><span>KG</span>${editable ? _renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setIndex, 'kg', _fmtNum(set.kg, 1), '무게', '0.5') : `<b>${_esc(kgText)}</b>`}</label>
-          <label><span>REP</span>${editable ? _renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setIndex, 'reps', _fmtNum(set.reps, 0), '반복', '1') : `<b>${_esc(repsText)}</b>`}</label>
+          <label><span>KG</span>${editable ? _renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setIndex, 'kg', _workoutSheetInputValue(set.kg, 1), '무게', '0.5') : `<b>${_esc(kgText)}</b>`}</label>
+          <label><span>REP</span>${editable ? _renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setIndex, 'reps', _workoutSheetInputValue(set.reps, 0), '반복', '1') : `<b>${_esc(repsText)}</b>`}</label>
           <label><span>RIR</span>${editable ? _renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setIndex, 'rir', set.rir == null ? '2' : _fmtNum(set.rir, 1), 'RIR', '0.5') : `<b>${_esc(rirText)}</b>`}</label>
           <div class="wt-max-rom-inline ${editable ? 'is-editing' : ''}">
             <span>ROM</span>
@@ -2559,7 +2691,9 @@ function _editWorkoutHomeSession(key, sessionIndex = _workoutHomeSessionIndex) {
 }
 
 function _setWorkoutSheetNumber(value, fallback = 0, options = {}) {
-  const n = Number(value);
+  const text = String(value ?? '').trim();
+  if (options.allowEmpty && text === '') return '';
+  const n = Number(text);
   const min = Number.isFinite(Number(options.min)) ? Number(options.min) : 0;
   const max = Number.isFinite(Number(options.max)) ? Number(options.max) : Infinity;
   const raw = Number.isFinite(n) ? n : fallback;
@@ -2570,8 +2704,8 @@ function _setWorkoutSheetNumber(value, fallback = 0, options = {}) {
 function _defaultWorkoutSheetSet(prev = null) {
   return {
     setType: prev?.setType || 'main',
-    kg: _num(prev?.kg) > 0 ? _num(prev.kg) : 0,
-    reps: _num(prev?.reps) > 0 ? _num(prev.reps) : 10,
+    kg: '',
+    reps: '',
     rpe: 0,
     rir: Number.isFinite(Number(prev?.rir)) ? Number(prev.rir) : 2,
     romPct: Number.isFinite(Number(prev?.romPct)) ? Number(prev.romPct) : 100,
@@ -2579,7 +2713,7 @@ function _defaultWorkoutSheetSet(prev = null) {
   };
 }
 
-async function _mutateWorkoutExerciseFromSheet(key, sessionIndex, exerciseIndex, mutator) {
+async function _mutateWorkoutExerciseFromSheet(key, sessionIndex, exerciseIndex, mutator, options = {}) {
   const targetKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
   const { day, session, index } = _workoutHomeSessionAt(targetKey, sessionIndex, 1);
   const exIndex = Math.max(0, Math.floor(Number(exerciseIndex) || 0));
@@ -2594,11 +2728,11 @@ async function _mutateWorkoutExerciseFromSheet(key, sessionIndex, exerciseIndex,
   const changed = await Promise.resolve(mutator(target, nextSession, exIndex));
   if (changed === false) return false;
   const result = upsertWorkoutSession(day, nextSession, index, { now: Date.now() });
-  await _saveWorkoutHomeSessionResult(targetKey, result);
+  await _saveWorkoutHomeSessionResult(targetKey, result, options);
   return true;
 }
 
-async function _updateWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseIndex, setIndex, field, value) {
+async function _updateWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseIndex, setIndex, field, value, sourceInput = null) {
   const safeField = String(field || '');
   if (!['kg', 'reps', 'rir', 'romPct'].includes(safeField)) return;
   try {
@@ -2607,14 +2741,14 @@ async function _updateWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseInd
       const targetIndex = Math.max(0, Math.floor(Number(setIndex) || 0));
       while (sets.length <= targetIndex) sets.push(_defaultWorkoutSheetSet(sets[sets.length - 1]));
       const nextSet = { ...(sets[targetIndex] || _defaultWorkoutSheetSet(sets[sets.length - 1])) };
-      if (safeField === 'kg') nextSet.kg = _setWorkoutSheetNumber(value, _num(nextSet.kg), { min: 0 });
-      if (safeField === 'reps') nextSet.reps = _setWorkoutSheetNumber(value, _num(nextSet.reps), { min: 0, integer: true });
+      if (safeField === 'kg') nextSet.kg = _setWorkoutSheetNumber(value, _num(nextSet.kg), { min: 0, allowEmpty: true });
+      if (safeField === 'reps') nextSet.reps = _setWorkoutSheetNumber(value, _num(nextSet.reps), { min: 0, integer: true, allowEmpty: true });
       if (safeField === 'rir') nextSet.rir = _setWorkoutSheetNumber(value, Number.isFinite(Number(nextSet.rir)) ? Number(nextSet.rir) : 2, { min: 0, max: 10 });
       if (safeField === 'romPct') nextSet.romPct = _setWorkoutSheetNumber(value, Number.isFinite(Number(nextSet.romPct)) ? Number(nextSet.romPct) : 100, { min: 0, max: 100, integer: true });
       sets[targetIndex] = nextSet;
       entry.sets = sets;
       return true;
-    });
+    }, { preserveInput: true, sourceInput });
   } catch (e) {
     console.warn('[workout-calendar] sheet set update failed:', e);
     window.showToast?.('세트 수정에 실패했어요', 2200, 'error');
@@ -2628,7 +2762,7 @@ async function _addWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseIndex)
       sets.push(_defaultWorkoutSheetSet(sets[sets.length - 1]));
       entry.sets = sets;
       return true;
-    });
+    }, { preserveSheetScroll: true });
     if (ok) window.showToast?.('세트를 추가했어요', 1200, 'success');
   } catch (e) {
     console.warn('[workout-calendar] sheet set add failed:', e);

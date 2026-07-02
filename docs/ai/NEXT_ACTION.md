@@ -2,13 +2,14 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-02-home-running-map-bubble-reliability.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-home-running-map-bubble-reliability-review.md`
-- 현재 단계: `홈 러닝 지도 말풍선 신뢰성 개선 Slice 1 Dashboard3 Pages 배포 검증 완료`
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-07-02-workout-ios-sheet-input-scroll.md`
+- 진단 문서: `docs/ai/diagnoses/2026-07-02-workout-ios-sheet-input-scroll.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-ios-sheet-input-scroll-review.md`
+- 현재 단계: `운동 시트 iOS 숫자 입력 스크롤 안정화 Slice 1 로컬 검증 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `커밋 ea65cb4 fix: harden home running map bubble fallback를 origin/main에 push했고 Dashboard3 Pages 배포/marker 검증을 완료했다.`
-- 다음 액션: `인증 계정 실제 홈탭 러닝 지도 말풍선 UI flow 확인이 남아 있다.`
+- 마지막 완료: `render-calendar.js와 workout/exercises.js의 숫자 입력 저장 재렌더 스크롤 복원, blank KG/REP 기본값, 테스트와 sw.js cache version 갱신을 완료했다.`
+- 다음 액션: `리뷰 확인 후 커밋/push하고 Dashboard3 Pages 배포 검증 및 marker 검증을 진행한다.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목

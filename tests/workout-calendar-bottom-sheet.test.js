@@ -228,6 +228,65 @@ test('day sheet exercise card edit stays inline instead of opening the record ro
   assert.match(styleCss, /\.wt-max-set-toggle,\s*\n\.wt-max-set-remove-btn\s*\{/);
 });
 
+test('day sheet set inputs restore iOS PWA scroll and focus after save rerenders', () => {
+  const saveStart = calendarJs.indexOf('async function _saveWorkoutHomeSessionResult');
+  const saveEnd = calendarJs.indexOf('function _durationFromMinSec', saveStart);
+  const inputStart = calendarJs.indexOf('function _captureWorkoutSheetInputState');
+  const inputEnd = calendarJs.indexOf('function _workoutHomeScrollTop', inputStart);
+  const updateStart = calendarJs.indexOf('async function _updateWorkoutExerciseSetFromSheet');
+  const updateEnd = calendarJs.indexOf('async function _addWorkoutExerciseSetFromSheet', updateStart);
+  const rowsStart = calendarJs.indexOf('function _renderWorkoutSetInput');
+  const rowsEnd = calendarJs.indexOf('function _renderWorkoutSetRows', rowsStart);
+  assert.ok(saveStart >= 0 && saveEnd > saveStart, 'sheet save function should exist');
+  assert.ok(inputStart >= 0 && inputEnd > inputStart, 'input state helpers should exist');
+  assert.ok(updateStart >= 0 && updateEnd > updateStart, 'set update function should exist');
+  const saveFn = calendarJs.slice(saveStart, saveEnd);
+  const inputHelpers = calendarJs.slice(inputStart, inputEnd);
+  const updateFn = calendarJs.slice(updateStart, updateEnd);
+  const inputFn = calendarJs.slice(rowsStart, rowsEnd);
+
+  assert.match(calendarJs, /const WORKOUT_SHEET_SET_INPUT_SELECTOR = '\[data-wt-set-input\]'/);
+  assert.match(inputFn, /data-wt-set-input data-session-index="\$\{sessionIndex\}"/);
+  assert.match(inputFn, /data-exercise-index="\$\{exerciseIndex\}"/);
+  assert.match(inputFn, /data-set-index="\$\{setIndex\}"/);
+  assert.match(inputFn, /data-field="\$\{_esc\(field\)\}"/);
+  assert.match(inputFn, /this\.value, this/);
+  assert.match(inputHelpers, /\.wt-day-sheet-scroll/);
+  assert.match(inputHelpers, /input\.focus\(\{ preventScroll: true \}\)/);
+  assert.match(inputHelpers, /requestAnimationFrame\(restore\)/);
+  assert.match(inputHelpers, /setSelectionRange\(state\.selectionStart, state\.selectionEnd\)/);
+  assert.match(saveFn, /options\?\.preserveInput/);
+  assert.match(saveFn, /_captureWorkoutSheetInputState\(options\.sourceInput\)/);
+  assert.match(saveFn, /_restoreWorkoutSheetInputState\(restoreState\)/);
+  assert.match(updateFn, /sourceInput = null/);
+  assert.match(updateFn, /\{ preserveInput: true, sourceInput \}/);
+});
+
+test('day sheet added workout sets start with blank kg and reps inputs', () => {
+  const defaultsStart = calendarJs.indexOf('function _defaultWorkoutSheetSet');
+  const defaultsEnd = calendarJs.indexOf('async function _mutateWorkoutExerciseFromSheet', defaultsStart);
+  const updateStart = calendarJs.indexOf('async function _updateWorkoutExerciseSetFromSheet');
+  const updateEnd = calendarJs.indexOf('async function _addWorkoutExerciseSetFromSheet', updateStart);
+  const rowsStart = calendarJs.indexOf('function _renderWorkoutSetRows');
+  const rowsEnd = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard', rowsStart);
+  assert.ok(defaultsStart >= 0 && defaultsEnd > defaultsStart, 'default set function should exist');
+  const defaults = calendarJs.slice(defaultsStart, defaultsEnd);
+  const updateFn = calendarJs.slice(updateStart, updateEnd);
+  const rowsFn = calendarJs.slice(rowsStart, rowsEnd);
+
+  assert.match(calendarJs, /function _isBlankWorkoutSheetNumber/);
+  assert.match(calendarJs, /function _workoutSheetInputValue/);
+  assert.match(calendarJs, /function _workoutSheetRawNumber/);
+  assert.match(defaults, /kg:\s*''/);
+  assert.match(defaults, /reps:\s*''/);
+  assert.doesNotMatch(defaults, /kg:\s*_num|kg:\s*0/);
+  assert.doesNotMatch(defaults, /reps:\s*_num|reps:\s*10/);
+  assert.match(updateFn, /safeField === 'kg'[\s\S]*allowEmpty: true/);
+  assert.match(updateFn, /safeField === 'reps'[\s\S]*allowEmpty: true/);
+  assert.match(rowsFn, /_workoutSheetInputValue\(set\.kg, 1\)/);
+  assert.match(rowsFn, /_workoutSheetInputValue\(set\.reps, 0\)/);
+});
+
 test('workout bottom sheet replaces the third gym session with a dedicated running tab', () => {
   const tabStart = calendarJs.indexOf('function _renderWorkoutDetailSessionTabs');
   const tabEnd = calendarJs.indexOf('function _renderWorkoutDetailRecorded', tabStart);
@@ -518,5 +577,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260702z3-home-running-map-bubble/);
+  assert.match(swJs, /tomatofarm-v20260702z4-workout-ios-sheet-input-scroll/);
 });

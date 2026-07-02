@@ -111,8 +111,16 @@ test('workout number inputs are larger and guarded against keyboard focus scroll
   const maxTabRomInput = ruleBody('#tab-workout .ex-block--max-v2 .ex-max-v2-rom-field input');
   const start = workoutExercises.indexOf('function _renderSets');
   const end = workoutExercises.indexOf('if (typeof Sortable', start);
+  const addStart = workoutExercises.indexOf('export function wtAddSet');
+  const addEnd = workoutExercises.indexOf('export function wtRemoveSet', addStart);
+  const updateStart = workoutExercises.indexOf('export function wtUpdateSet');
+  const updateEnd = workoutExercises.indexOf('export function wtUpdateSetRir', updateStart);
   assert.ok(start >= 0 && end > start, 'set render function should exist');
+  assert.ok(addStart >= 0 && addEnd > addStart, 'set add function should exist');
+  assert.ok(updateStart >= 0 && updateEnd > updateStart, 'set update function should exist');
   const fn = workoutExercises.slice(start, end);
+  const addFn = workoutExercises.slice(addStart, addEnd);
+  const updateFn = workoutExercises.slice(updateStart, updateEnd);
 
   assert.match(tabInput, /width:\s*64px/);
   assert.match(tabInput, /min-height:\s*36px/);
@@ -128,4 +136,16 @@ test('workout number inputs are larger and guarded against keyboard focus scroll
   assert.match(workoutExercises, /const WORKOUT_NUMBER_INPUT_SELECTOR = '\.set-input, \.set-rpe-input, \.set-rom-input'/);
   assert.match(workoutExercises, /input\.focus\(\{ preventScroll: true \}\)/);
   assert.match(workoutExercises, /dataset\.wtNumberInputGuard/);
+  assert.match(workoutExercises, /function _captureWorkoutNumberInputRenderScroll/);
+  assert.match(workoutExercises, /function _restoreWorkoutRenderScroll/);
+  assert.match(workoutExercises, /function _parseWorkoutSetNumberInput/);
+  assert.match(addFn, /kg:\s*''/);
+  assert.match(addFn, /reps:\s*''/);
+  assert.match(addFn, /_restoreWorkoutRenderScroll\(restoreScroll\)/);
+  assert.match(updateFn, /sourceInput = null/);
+  assert.match(updateFn, /_captureWorkoutNumberInputRenderScroll\(sourceInput\)/);
+  assert.match(updateFn, /_parseWorkoutSetNumberInput\(val, \{ integer: field === 'reps' \}\)/);
+  assert.match(updateFn, /_restoreWorkoutRenderScroll\(restoreScroll\)/);
+  assert.match(fn, /wtUpdateSet\(entryIdx, si, 'kg',\s+e\.target\.value, e\.target\)/);
+  assert.match(fn, /wtUpdateSet\(entryIdx, si, 'reps', e\.target\.value, e\.target\)/);
 });

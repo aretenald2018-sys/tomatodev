@@ -130,6 +130,23 @@ function _restoreWorkoutScrollTop(top) {
   }
 }
 
+function _captureWorkoutRenderScroll() {
+  return typeof window === 'undefined' ? null : { top: _workoutScrollTop() };
+}
+
+function _restoreWorkoutRenderScroll(state) {
+  if (!state) return;
+  const restore = () => _restoreWorkoutScrollTop(state.top);
+  window.requestAnimationFrame?.(restore) || restore();
+  window.setTimeout?.(restore, 80);
+  window.setTimeout?.(restore, 220);
+}
+
+function _captureWorkoutNumberInputRenderScroll(input) {
+  if (!input?.matches?.(WORKOUT_NUMBER_INPUT_SELECTOR) || !input.closest?.('#tab-workout')) return null;
+  return _captureWorkoutRenderScroll();
+}
+
 function _captureWorkoutNumberInputScroll(input) {
   if (!input?.matches?.(WORKOUT_NUMBER_INPUT_SELECTOR) || !input.closest?.('#tab-workout')) return;
   const rect = input.getBoundingClientRect?.();
@@ -227,15 +244,17 @@ export function wtAddSet(entryIdx) {
   if (!Array.isArray(entry.sets)) entry.sets = [];
   const prev = entry.sets.slice(-1)[0];
   entry.uiCollapsed = false;
+  const restoreScroll = _captureWorkoutRenderScroll();
   entry.sets.push({
-    kg: prev?.kg || 0,
-    reps: prev?.reps || 0,
+    kg: '',
+    reps: '',
     rpe: prev?.rpe ?? null,
     romPct: prev?.romPct ?? 100,
     setType: 'main',
     done: false,
   });
   if (!_rerenderMaxEntryOwner(entryIdx)) _renderSets(entryIdx);
+  _restoreWorkoutRenderScroll(restoreScroll);
   wtPersistActiveWorkoutDraft('set add');
   saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
 }
@@ -752,6 +771,15 @@ function _setFieldAffectsTrackMetric(field) {
   return field === 'kg' || field === 'reps' || field === 'rpe' || field === 'romPct' || field === 'setType';
 }
 
+function _parseWorkoutSetNumberInput(val, options = {}) {
+  const text = String(val ?? '').trim();
+  if (text === '') return '';
+  const parsed = parseFloat(text.replace(',', '.'));
+  if (!Number.isFinite(parsed)) return '';
+  const next = options.integer ? Math.round(parsed) : Math.round(parsed * 10) / 10;
+  return Math.max(0, next);
+}
+
 function _updateSetDraftField(entryIdx, si, field, val) {
   const set = S.workout.exercises?.[entryIdx]?.sets?.[si];
   if (!set) return;
@@ -763,23 +791,24 @@ function _updateSetDraftField(entryIdx, si, field, val) {
     _setRomPctLocal(entryIdx, si, val);
     return;
   }
-  const parsed = parseFloat(val);
-  set[field] = Number.isFinite(parsed) ? parsed : 0;
+  const parsed = _parseWorkoutSetNumberInput(val, { integer: field === 'reps' });
+  set[field] = parsed;
   if (field === 'kg' || field === 'reps') {
     set.done = false;
     clearSetCompletedAt(set);
-    if ((set[field] || 0) > 0) _refreshWorkoutTimeline(`set draft ${field}`);
+    if ((Number(set[field]) || 0) > 0) _refreshWorkoutTimeline(`set draft ${field}`);
   }
   wtPersistActiveWorkoutDraft(`set draft ${field}`);
 }
 
-export function wtUpdateSet(entryIdx, si, field, val) {
+export function wtUpdateSet(entryIdx, si, field, val, sourceInput = null) {
   // RPE 빈 값은 null로 저장 — 0과 구분해 _computeExpertRec의 prevRpeKnown 판정을 명확히.
+  const restoreScroll = _captureWorkoutNumberInputRenderScroll(sourceInput);
   let parsed;
   if (field === 'setType') parsed = val;
   else if (field === 'rpe') parsed = _normalizeRpe(val);
   else if (field === 'romPct') parsed = _normalizeRomPct(val);
-  else parsed = (parseFloat(val) || 0);
+  else parsed = _parseWorkoutSetNumberInput(val, { integer: field === 'reps' });
   if (field === 'romPct' && parsed == null) delete S.workout.exercises[entryIdx].sets[si].romPct;
   else S.workout.exercises[entryIdx].sets[si][field] = parsed;
   if (field === 'kg' || field === 'reps') {
@@ -795,17 +824,19 @@ export function wtUpdateSet(entryIdx, si, field, val) {
     if (!_rerenderMaxEntryOwner(entryIdx)) _renderExerciseList();
   }
   else _renderSets(entryIdx);
+  _restoreWorkoutRenderScroll(restoreScroll);
   saveWorkoutDay({ silent: true })
     .then(() => {
       if (isMaxEntry && _setFieldAffectsTrackMetric(field)) {
         if (!_rerenderMaxEntryOwner(entryIdx)) _renderExerciseList();
+        _restoreWorkoutRenderScroll(restoreScroll);
       }
     })
     .catch(e => console.error('Save error:', e));
 }
 
-export function wtUpdateSetRir(entryIdx, si, val) {
-  wtUpdateSet(entryIdx, si, 'rpe', _rirToRpe(val));
+export function wtUpdateSetRir(entryIdx, si, val, sourceInput = null) {
+  wtUpdateSet(entryIdx, si, 'rpe', _rirToRpe(val), sourceInput);
 }
 
 export function wtToggleSetDone(entryIdx, si) {
@@ -1418,20 +1449,20 @@ function _renderSets(entryIdx, targetEl = null) {
       wtUpdateSetType(entryIdx, si, _nextMaxSetType(set.setType || 'main', set));
     });
     row.querySelectorAll('.set-input')[0].addEventListener('input', e => _updateSetDraftField(entryIdx, si, 'kg', e.target.value));
-    row.querySelectorAll('.set-input')[0].addEventListener('change', e => wtUpdateSet(entryIdx, si, 'kg',   e.target.value));
+    row.querySelectorAll('.set-input')[0].addEventListener('change', e => wtUpdateSet(entryIdx, si, 'kg',   e.target.value, e.target));
     // 2026-04-20: kg/reps 입력 focus 시 rest 타이머 skip 호출 제거.
     //   기존: 입력칸 탭 = 휴식 증발 → 숫자 수정하려고 포커스만 줘도 꺼짐.
     //   유저 요구 "타이머는 항상 떠있어야 함" 에 따라 휴식 자동 종료 트리거 제거.
     row.querySelectorAll('.set-input')[1].addEventListener('input', e => _updateSetDraftField(entryIdx, si, 'reps', e.target.value));
-    row.querySelectorAll('.set-input')[1].addEventListener('change', e => wtUpdateSet(entryIdx, si, 'reps', e.target.value));
+    row.querySelectorAll('.set-input')[1].addEventListener('change', e => wtUpdateSet(entryIdx, si, 'reps', e.target.value, e.target));
     row.querySelector('.set-done-btn').addEventListener('click', () => wtToggleSetDone(entryIdx, si));
     row.querySelector('.set-remove-btn').addEventListener('click', () => wtRemoveSet(entryIdx, si));
     const rpeSel = row.querySelector('.set-rpe-select');
-    if (rpeSel) rpeSel.addEventListener('change', e => wtUpdateSetRir(entryIdx, si, e.target.value));
+    if (rpeSel) rpeSel.addEventListener('change', e => wtUpdateSetRir(entryIdx, si, e.target.value, e.target));
     const maxRpeInput = row.querySelector('.set-rpe-input');
     if (maxRpeInput) {
       maxRpeInput.addEventListener('input', e => _updateSetDraftField(entryIdx, si, 'rpe', _rirToRpe(e.target.value)));
-      maxRpeInput.addEventListener('change', e => wtUpdateSetRir(entryIdx, si, e.target.value));
+      maxRpeInput.addEventListener('change', e => wtUpdateSetRir(entryIdx, si, e.target.value, e.target));
     }
     const romInput = row.querySelector('.set-rom-input');
     if (romInput) {
@@ -1443,7 +1474,7 @@ function _renderSets(entryIdx, targetEl = null) {
       });
       romInput.addEventListener('change', e => {
         const next = _romScoreInputToPct(e.target.value);
-        wtUpdateSet(entryIdx, si, 'romPct', next == null ? '' : next);
+        wtUpdateSet(entryIdx, si, 'romPct', next == null ? '' : next, e.target);
       });
     }
     _bindWorkoutNumberInputFocusGuard(row);
