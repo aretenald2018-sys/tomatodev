@@ -54,8 +54,8 @@
 
 ## 상태
 
-- 상태: `static_verified_deploy_pending`
-- 현재 세션: Slice 1 구현 및 정적 검증 완료, 배포 검증 대기
+- 상태: `deployed_verified`
+- 현재 세션: Slice 1 구현, 정적 검증, Dashboard3/운영계 배포 검증 완료
 - 구현 완료:
   1. 번호 책갈피 WIP를 제거하고 운동종목 입력 카드를 `scroll-snap` 기반 좌우 캐러셀로 렌더한다.
   2. 이전/다음 버튼과 dot indicator를 추가해 현재 카드 위치와 완료 상태를 보여준다.
@@ -69,4 +69,8 @@
   4. PASS: `node scripts/verify-runtime-assets.mjs`
   5. PASS: `node --test --test-reporter=dot tests/*.test.js`
   6. PASS: `git diff --check`
-- not verified yet: Dashboard3/운영계 Pages 배포 검증 및 인증 계정 실제 UI swipe flow 확인 필요.
+- 배포 검증 완료:
+  1. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ ae474809ca0287a8cd27e93bc5ba63895032c082`
+  2. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ ae474809ca0287a8cd27e93bc5ba63895032c082`
+  3. PASS: Dashboard3/운영계 marker 검증 - `tomatofarm-v20260702z12-workout-entry-carousel`, `ex-entry-carousel-track`, `data-wt-entry-slide-idx`, `wtSelectWorkoutEntryCard`, `scroll-snap-type: x mandatory`
+- not verified yet: 인증 계정 실제 UI swipe flow 확인 필요.

@@ -32,5 +32,5 @@
 
 ## 남은 리스크
 
+- PASS: Dashboard3/운영계 Pages 배포 검증과 marker 검증을 완료했다.
 - not verified yet: 인증 계정으로 `운동 탭 -> 종목 여러 개 추가 -> 좌우 swipe/이전/다음/완료 이동` 실제 UI flow는 아직 직접 클릭 확인하지 못했다.
-- not verified yet: Dashboard3/운영계 Pages 배포 검증은 커밋/푸시 후 수행해야 한다.

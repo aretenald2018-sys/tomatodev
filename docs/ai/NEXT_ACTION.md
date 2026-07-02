@@ -6,10 +6,10 @@
 - 계획 문서: `docs/ai/features/2026-07-02-workout-entry-card-carousel.md`
 - 진단 문서: `없음 - 계획 문서에 /grill-me 기록`
 - 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-entry-card-carousel-review.md`
-- 현재 단계: `운동종목 카드 캐러셀 Slice 1 정적 검증 완료, 배포 검증 대기`
+- 현재 단계: `운동종목 카드 캐러셀 Slice 1 배포 검증 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `기존 책갈피 WIP를 운동종목 카드 좌우 캐러셀로 전환하고 정적 검증을 완료했다.`
-- 다음 액션: `커밋 후 Dashboard3/운영계 Pages 배포 검증을 수행하고, 인증 계정에서 운동 탭 캐러셀 실제 UI flow를 확인한다.`
+- 마지막 완료: `기존 책갈피 WIP를 운동종목 카드 좌우 캐러셀로 전환하고 개발계/운영계 배포 검증을 완료했다.`
+- 다음 액션: `인증 계정에서 운동 탭 캐러셀 실제 UI flow를 확인한다.`
 - 차단 사유: `없음.`
 
 ## 이번 계획
@@ -34,7 +34,10 @@
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
 - 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-entry-card-carousel-review.md`
-- not verified yet: Dashboard3/운영계 Pages 배포 검증과 인증 계정 실제 캐러셀 swipe UI flow 확인 필요.
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ ae474809ca0287a8cd27e93bc5ba63895032c082`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ ae474809ca0287a8cd27e93bc5ba63895032c082`
+- PASS: Dashboard3/운영계 marker 검증 - `tomatofarm-v20260702z12-workout-entry-carousel`, `ex-entry-carousel-track`, `data-wt-entry-slide-idx`, `wtSelectWorkoutEntryCard`, `scroll-snap-type: x mandatory`
+- not verified yet: 인증 계정 실제 캐러셀 swipe UI flow 확인 필요.
 
 ## 방금 계획/실행한 항목
 
