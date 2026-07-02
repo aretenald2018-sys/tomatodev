@@ -72,7 +72,6 @@ const _workoutRunningMapPayloads = new Map();
 const WORKOUT_HOME_SHEET_STATES = ['bar', 'full'];
 const WORKOUT_HOME_SHEET_CLASS_STATES = ['bar', 'full'];
 const WORKOUT_SHEET_SET_INPUT_SELECTOR = '[data-wt-set-input]';
-const WORKOUT_EXERCISE_STAMP_MS = 1600;
 
 const MAX_WEAK_LABEL = {
   chest_upper:'가슴 상부', chest_lower:'가슴 하부',
@@ -2074,21 +2073,23 @@ function _renderWorkoutSetRows(row, options = {}) {
   return `${rows}${addRow}`;
 }
 
-function _isWorkoutExerciseCompletionStamped(cardId) {
-  const stampedAt = Number(_workoutExerciseCompletionStamps.get(cardId));
-  if (!Number.isFinite(stampedAt)) return false;
-  if (Date.now() - stampedAt > WORKOUT_EXERCISE_STAMP_MS) {
-    _workoutExerciseCompletionStamps.delete(cardId);
-    return false;
-  }
-  return true;
+function _isWorkoutExerciseComplete(row) {
+  const sets = Array.isArray(row?.rawSetDetails) ? row.rawSetDetails : [];
+  const completableSets = sets.filter(_hasCompletableWorkoutSheetSet);
+  return completableSets.length > 0 && completableSets.every(set => set.done === true);
+}
+
+function _isWorkoutExerciseCompletionStamped(cardId, row = null) {
+  if (_isWorkoutExerciseComplete(row)) return true;
+  _workoutExerciseCompletionStamps.delete(cardId);
+  return false;
 }
 
 function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) {
   const cardId = `ex:${key}:${sessionIndex}:${index}`;
   const collapsed = false;
   const editing = !collapsed;
-  const stamped = _isWorkoutExerciseCompletionStamped(cardId);
+  const stamped = _isWorkoutExerciseCompletionStamped(cardId, row);
   const originalIndex = Number.isFinite(Number(row.originalIndex)) ? Number(row.originalIndex) : index;
   const bestSet = _bestWorkoutSet(row);
   const bestKg = bestSet ? _formatWorkoutKg(bestSet.kg) : '-';
@@ -2914,14 +2915,6 @@ function _finishWorkoutExerciseEdit(cardId) {
 function _markWorkoutExerciseCompletionStamp(cardId) {
   if (!cardId) return;
   _workoutExerciseCompletionStamps.set(cardId, Date.now());
-  if (typeof window !== 'undefined' && typeof window.setTimeout === 'function') {
-    window.setTimeout(() => {
-      const stampedAt = Number(_workoutExerciseCompletionStamps.get(cardId));
-      if (!Number.isFinite(stampedAt) || Date.now() - stampedAt < WORKOUT_EXERCISE_STAMP_MS - 50) return;
-      _workoutExerciseCompletionStamps.delete(cardId);
-      renderWorkoutCalendarHome();
-    }, WORKOUT_EXERCISE_STAMP_MS);
-  }
 }
 
 function _editWorkoutHomeSession(key, sessionIndex = _workoutHomeSessionIndex) {

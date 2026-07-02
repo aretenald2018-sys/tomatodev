@@ -269,6 +269,11 @@ test('day sheet exercise card uses inline plus row and one complete button', () 
   const completeFn = calendarJs.slice(completeStart, completeEnd);
 
   assert.match(card, /const editing = !collapsed/);
+  assert.match(calendarJs, /function _isWorkoutExerciseComplete\(row\)/);
+  assert.match(calendarJs, /completableSets\.length > 0 && completableSets\.every\(set => set\.done === true\)/);
+  assert.match(card, /const stamped = _isWorkoutExerciseCompletionStamped\(cardId, row\)/);
+  assert.doesNotMatch(calendarJs, /WORKOUT_EXERCISE_STAMP_MS/);
+  assert.doesNotMatch(calendarJs, /_workoutExerciseCompletionStamps\.delete\(cardId\);\s*\n\s*renderWorkoutCalendarHome\(\)/);
   assert.match(card, /wt-max-actions wt-max-actions--single/);
   assert.match(card, /window\._wtCalCompleteExercise\('\$\{cardId\}', '\$\{key\}', \$\{sessionIndex\}, \$\{originalIndex\}\)/);
   assert.match(card, />종목완료<\/button>/);
@@ -717,5 +722,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260702z20-stamp-persist-lifezone-date/);
+  assert.match(swJs, /tomatofarm-v20260703z1-workout-card-stamp-persist/);
 });

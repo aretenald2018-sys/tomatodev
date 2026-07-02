@@ -28,3 +28,10 @@
 7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ b144556`
 8. PASS: Dashboard3/운영계 marker 검증 - `tomatofarm-v20260702z17-workout-card-inline-complete`, `wt-max-set-add-row`, `window._wtCalCompleteExercise`, `wt-max-complete-stamp`
 9. not verified yet: 인증 계정 실제 `운동 탭 -> 카드 + 행 -> 세트 입력 -> 종목완료 -> 완료 도장` UI flow 확인 필요
+
+## 2026-07-03 회귀 리뷰
+
+- 문제 없음.
+- `render-calendar.js`에서 완료 도장 표시 기준을 1600ms 메모리 타이머가 아니라 저장된 row의 완료 세트 상태로 변경했다.
+- `_markWorkoutExerciseCompletionStamp()`가 더 이상 timeout으로 Map entry를 지우고 `renderWorkoutCalendarHome()`을 호출하지 않으므로, 도장이 2초 후 사라지는 경로가 제거됐다.
+- `tests/workout-calendar-bottom-sheet.test.js`가 `WORKOUT_EXERCISE_STAMP_MS` 재도입을 금지한다.

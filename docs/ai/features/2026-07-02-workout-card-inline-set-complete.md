@@ -67,3 +67,10 @@
 5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z17-workout-card-inline-complete`로 bump했다.
 6. 구현 커밋 `b14455671f14a4d077bfa0b53238aa7e38cdf693`를 `origin/main`과 `tomatofarm/main`에 push했다.
 7. Dashboard3/운영계 Pages에서 z17 cache marker와 `wt-max-set-add-row`, `window._wtCalCompleteExercise`, `wt-max-complete-stamp` marker를 확인했다.
+
+## 2026-07-03 회귀 수정
+
+- 원인: `완료` 도장 렌더 조건이 저장된 세트 완료 상태가 아니라 `_workoutExerciseCompletionStamps` 메모리 Map과 `WORKOUT_EXERCISE_STAMP_MS = 1600` 타이머에 묶여 있었다. 그래서 `종목완료` 후 저장은 되어도 도장 UI는 약 2초 뒤 삭제됐다.
+- 수정: `_isWorkoutExerciseComplete(row)`를 추가해 입력 가능한 세트가 모두 `done === true`인 저장 상태에서 도장을 계속 렌더한다. `_markWorkoutExerciseCompletionStamp()`의 타이머 삭제와 강제 재렌더를 제거했다.
+- 캐시: `render-calendar.js`가 `STATIC_ASSETS`에 있으므로 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z1-workout-card-stamp-persist`로 bump한다.
+- 회귀 테스트: `tests/workout-calendar-bottom-sheet.test.js`가 `WORKOUT_EXERCISE_STAMP_MS` 재도입과 timeout 삭제 렌더를 금지하고, 완료 row 기반 도장 렌더를 확인한다.
