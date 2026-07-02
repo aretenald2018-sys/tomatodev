@@ -5409,6 +5409,106 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 }
 #tab-workout .ex-add-btn:active { background: #2565c2; transform: scale(0.97); }
 
+/* ── Exercise Entry Carousel ── */
+#tab-workout .ex-entry-carousel {
+  display: grid;
+  gap: var(--seed-x2);
+  margin-bottom: var(--seed-x3);
+  min-width: 0;
+}
+#tab-workout .ex-entry-carousel-controls {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 52px;
+  align-items: center;
+  gap: var(--seed-x2);
+}
+#tab-workout .ex-entry-carousel-nav {
+  min-width: 52px;
+  min-height: 32px;
+  border: 1px solid var(--seed-stroke-weak);
+  border-radius: var(--seed-r-full);
+  background: var(--seed-bg-layer);
+  color: var(--seed-fg-muted);
+  font-size: var(--seed-t2);
+  font-weight: 700;
+  -webkit-tap-highlight-color: transparent;
+}
+#tab-workout .ex-entry-carousel-nav:disabled {
+  opacity: .38;
+}
+#tab-workout .ex-entry-carousel-status {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+#tab-workout .ex-entry-carousel-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+}
+#tab-workout .ex-entry-carousel-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: var(--seed-r-full);
+  background: transparent;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+#tab-workout .ex-entry-carousel-dot span {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--seed-r-full);
+  background: var(--seed-stroke-weak);
+  transition: width var(--seed-d3) var(--seed-ease), background var(--seed-d3) var(--seed-ease);
+}
+#tab-workout .ex-entry-carousel-dot.is-complete span {
+  background: var(--seed-green-600);
+}
+#tab-workout .ex-entry-carousel-dot.is-active span {
+  width: 18px;
+  background: var(--primary);
+}
+#tab-workout .ex-entry-carousel-count {
+  color: var(--seed-fg-subtle);
+  font-size: var(--seed-t1);
+  font-weight: 700;
+  line-height: 14px;
+}
+#tab-workout .ex-entry-carousel-track {
+  display: flex;
+  gap: var(--seed-x3);
+  overflow-x: auto;
+  overflow-y: visible;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  margin: 0 calc(var(--seed-x2) * -1);
+  padding: 2px var(--seed-x2) var(--seed-x2);
+}
+#tab-workout .ex-entry-carousel-track::-webkit-scrollbar {
+  display: none;
+}
+#tab-workout .ex-entry-carousel-slide {
+  flex: 0 0 min(100%, 440px);
+  min-width: 0;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}
+#tab-workout .ex-entry-carousel-slide > .ex-block {
+  height: 100%;
+  margin-bottom: 0;
+  box-sizing: border-box;
+}
+
 /* ── Exercise Block (Seed Card) ── */
 #tab-workout .ex-block {
   background: var(--seed-bg-layer); border: 1px solid var(--seed-stroke-neutral);

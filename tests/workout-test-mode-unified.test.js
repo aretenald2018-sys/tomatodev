@@ -49,6 +49,23 @@ test('Dashboard3 workout list renderer is locked to the test-mode card template'
   assert.match(entryMode, /_isTestModeEntry/);
 });
 
+test('workout entry cards render as a horizontal carousel instead of bookmark tabs', () => {
+  const renderList = sliceByFirstBrace(exercisesJs, 'export function _renderExerciseList');
+  const controls = sliceByFirstBrace(exercisesJs, 'function _renderWorkoutEntryCarouselControls');
+  const scrollTo = sliceByFirstBrace(exercisesJs, 'function _scrollWorkoutEntryCarouselTo');
+  const complete = sliceByFirstBrace(exercisesJs, 'function _advanceWorkoutEntry');
+
+  assert.match(renderList, /ex-entry-carousel-track/);
+  assert.match(renderList, /data-wt-entry-slide-idx/);
+  assert.match(renderList, /_bindWorkoutEntryCarousel\(shell\)/);
+  assert.match(renderList, /_scrollWorkoutEntryCarouselTo\(activeIdx, \{ behavior: 'auto' \}\)/);
+  assert.match(controls, /ex-entry-carousel-controls/);
+  assert.match(controls, /data-wt-entry-dot-idx/);
+  assert.match(scrollTo, /track\.scrollTo/);
+  assert.match(complete, /_nextWorkoutEntryIdx/);
+  assert.doesNotMatch(exercisesJs, /ex-entry-bookmark|data-wt-entry-tab-idx|_renderWorkoutEntryBookmarks/);
+});
+
 test('exercise picker always creates test-mode entries on Dashboard3', () => {
   const maxPool = sliceByFirstBrace(exercisesJs, 'function _getMaxBenchmarkPickerPool');
   assert.match(maxPool, /_isTestModePickerContext\(\)/);
@@ -126,5 +143,5 @@ test('Dashboard3 mode controls cannot persist normal or pro workout record UI', 
 });
 
 test('service worker cache version was bumped for workout asset changes', () => {
-  assert.match(swJs, /tomatofarm-v20260702z11-workout-sheet-previous-record/);
+  assert.match(swJs, /tomatofarm-v20260702z12-workout-entry-carousel/);
 });

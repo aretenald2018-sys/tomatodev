@@ -26,5 +26,5 @@ test('home tomato hero is compact and keeps the rule button outside the removed 
   assert.match(css, /\.tf-hero-character \{[\s\S]*width: 44px; height: 44px;/);
   assert.match(css, /\.tf-hero-info-btn \{[\s\S]*position: absolute;[\s\S]*top: 8px;[\s\S]*right: 10px;/);
   assert.doesNotMatch(css, /\.tf-hero-sub/);
-  assert.match(sw, /tomatofarm-v20260702z11-workout-sheet-previous-record/);
+  assert.match(sw, /tomatofarm-v20260702z12-workout-entry-carousel/);
 });

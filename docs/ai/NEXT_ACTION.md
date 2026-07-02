@@ -3,38 +3,38 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-02-workout-sheet-previous-record-card.md`
-- 진단 문서: `없음 - 계획 문서에 /diagnose 기록`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-sheet-previous-record-card-review.md`
-- 현재 단계: `운동 하단 시트 카드 지난 기록/세트 역할 복구 Slice 1 정적 검증 완료, 배포 검증 대기`
+- 계획 문서: `docs/ai/features/2026-07-02-workout-entry-card-carousel.md`
+- 진단 문서: `없음 - 계획 문서에 /grill-me 기록`
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-entry-card-carousel-review.md`
+- 현재 단계: `운동종목 카드 캐러셀 Slice 1 정적 검증 완료, 배포 검증 대기`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `하단 시트 운동 카드의 참고 기록 영역을 지난 기록으로 바꾸고, 세트 역할 메타를 보존해 프리/메인/BBB/FSL/디로드 칩을 복구했으며 프리/디로드 볼륨 제외를 보존했다.`
-- 다음 액션: `커밋 후 Dashboard3/운영계 Pages 배포 검증을 수행하고, 인증 계정에서 운동 탭 하단 시트 실제 UI flow를 확인한다.`
+- 마지막 완료: `기존 책갈피 WIP를 운동종목 카드 좌우 캐러셀로 전환하고 정적 검증을 완료했다.`
+- 다음 액션: `커밋 후 Dashboard3/운영계 Pages 배포 검증을 수행하고, 인증 계정에서 운동 탭 캐러셀 실제 UI flow를 확인한다.`
 - 차단 사유: `없음.`
 
 ## 이번 계획
 
-- 요청: 하단 시트 운동 카드에서 현재 선택 날짜의 오늘 기록 대신 직전 과거 기록을 렌더하고, 사라진 `프리`/웬들러 보조 세트 역할 칩을 복구한다.
-- 진단: 카드의 `.wt-max-last` 영역이 `row.setDetails`를 그대로 `오늘 기록`으로 표시하고, `_exerciseRows()` 변환 과정에서 `wendlerRole`/`supplementalKind` 메타가 사라진다.
-- 범위: `render-calendar.js`, `tests/workout-calendar-bottom-sheet.test.js`, `sw.js`, `docs/ai/NEXT_ACTION.md`.
-- 제외: `workout/exercises.js` 일반 운동 카드, 처방 생성 로직, 통계 산식 변경.
+- 요청: 기존 번호 책갈피 WIP를 폐기하고, 운동종목 카드를 여러 개 추가했을 때 좌우 캐러셀처럼 넘겨 볼 수 있게 한다.
+- 결정: 책갈피 탭 대신 카드 자체를 `scroll-snap` slide로 렌더하고, 이전/다음 버튼과 dot indicator만 제공한다.
+- 범위: `workout/exercises.js`, `style.css`, `tests/workout-test-mode-unified.test.js`, `tests/workout-card-layout-css.test.js`, `sw.js`, `docs/ai/NEXT_ACTION.md`.
+- 제외: 캘린더 과거 기록 card, 성장보드 내장 card, 운동 데이터 schema, 세트 row 재설계.
 - 검증: `node --check`, 관련/전체 테스트, runtime asset 검증, `git diff --check`, Dashboard3/운영계 Pages 배포 검증.
 
 ## 이번 실행 결과
 
-- 완료: `render-calendar.js`에서 이전 날짜의 같은 운동 entry를 찾아 `previousRecord`로 붙이고 운동 카드에 `지난 기록`으로 렌더하도록 수정했다.
-- 완료: `setDetails`/`rawSetDetails`가 `wendlerRole`/`supplementalKind` 등 세트 역할 메타를 유지하게 했다.
-- 완료: 하단 시트 세트 칩 라벨을 `프리`/`메인`/`BBB`/`FSL`/`보조`/`디로드`로 복구하고, `프리`/`디로드`는 볼륨/세트 집계에서 제외했다.
-- 완료: `tests/workout-calendar-bottom-sheet.test.js`에 오늘 기록 미표시, 이전 기록 표시, 웬들러 역할 칩 보존 회귀 테스트를 추가했다.
-- 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z11-workout-sheet-previous-record`로 bump하고 cache marker 테스트를 갱신했다.
-- PASS: `node --check render-calendar.js`
+- 완료: `workout/exercises.js`의 책갈피 WIP를 `ex-entry-carousel`/`ex-entry-carousel-track`/`data-wt-entry-slide-idx` 구조로 전환했다.
+- 완료: 캐러셀 이전/다음 버튼, dot indicator, active slide 동기화, picker 선택 후 해당 slide 이동을 추가했다.
+- 완료: 운동 완료 버튼이 카드를 접지 않고 다음 종목 카드로 이동하게 했다.
+- 완료: `style.css`에 horizontal `scroll-snap` 캐러셀 레이아웃을 추가했다.
+- 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z12-workout-entry-carousel`로 bump하고 cache marker 테스트를 갱신했다.
+- PASS: `node --check workout/exercises.js`
 - PASS: `node --check sw.js`
-- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js`
+- PASS: `node --test tests/workout-test-mode-unified.test.js tests/workout-card-layout-css.test.js`
 - PASS: `node scripts/verify-runtime-assets.mjs`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-sheet-previous-record-card-review.md`
-- not verified yet: Dashboard3/운영계 Pages 배포 검증과 인증 계정 실제 UI flow 확인 필요.
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-entry-card-carousel-review.md`
+- not verified yet: Dashboard3/운영계 Pages 배포 검증과 인증 계정 실제 캐러셀 swipe UI flow 확인 필요.
 
 ## 방금 계획/실행한 항목
 

@@ -65,6 +65,25 @@ test('test-mode previous volume stays in a single compact row', () => {
   assert.doesNotMatch(fn, /ex-max-v2-last-label|ex-max-v2-last-sets/);
 });
 
+test('workout entry carousel uses horizontal snap slides', () => {
+  const shell = ruleBody('#tab-workout .ex-entry-carousel');
+  const controls = ruleBody('#tab-workout .ex-entry-carousel-controls');
+  const track = ruleBody('#tab-workout .ex-entry-carousel-track');
+  const slide = ruleBody('#tab-workout .ex-entry-carousel-slide');
+  const slideCard = ruleBody('#tab-workout .ex-entry-carousel-slide > .ex-block');
+
+  assert.match(shell, /display:\s*grid/);
+  assert.match(controls, /grid-template-columns:\s*52px minmax\(0,\s*1fr\) 52px/);
+  assert.match(track, /display:\s*flex/);
+  assert.match(track, /overflow-x:\s*auto/);
+  assert.match(track, /scroll-snap-type:\s*x mandatory/);
+  assert.match(track, /-webkit-overflow-scrolling:\s*touch/);
+  assert.match(slide, /flex:\s*0 0 min\(100%,\s*440px\)/);
+  assert.match(slide, /scroll-snap-align:\s*center/);
+  assert.match(slide, /scroll-snap-stop:\s*always/);
+  assert.match(slideCard, /margin-bottom:\s*0/);
+});
+
 test('test-mode set row is one-line compact and does not render ROM slider', () => {
   const row = ruleBody('.ex-max-v2-main-row');
   const set = ruleBody('.ex-max-v2-set');

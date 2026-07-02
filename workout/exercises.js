@@ -87,6 +87,7 @@ const WORKOUT_NUMBER_INPUT_SELECTOR = '.set-input, .set-rpe-input, .set-rom-inpu
 const WORKOUT_INPUT_SCROLL_GUARD_BOTTOM_PX = 156;
 const WORKOUT_INPUT_SCROLL_GUARD_MAX_DELTA = 96;
 const _workoutInputFocusState = new WeakMap();
+let _activeWorkoutEntryIdx = 0;
 
 function _isEmbeddedMaxEntry(entryIdx) {
   const slot = _embeddedMaxCards.get(entryIdx);
@@ -102,6 +103,169 @@ function _rerenderMaxEntryOwner(entryIdx) {
   if (!slot?.container?.isConnected) return false;
   renderEmbeddedMaxExerciseCard(slot.container, entryIdx, slot.options);
   return true;
+}
+
+function _workoutEntries() {
+  return Array.isArray(S?.workout?.exercises) ? S.workout.exercises : [];
+}
+
+function _isWorkoutEntryComplete(entry) {
+  const sets = Array.isArray(entry?.sets) ? entry.sets : [];
+  return sets.length > 0 && sets.every(set => set.done !== false);
+}
+
+function _openWorkoutSetCount(entry) {
+  const sets = Array.isArray(entry?.sets) ? entry.sets : [];
+  return sets.filter(set => set.done === false).length;
+}
+
+function _normalizeActiveWorkoutEntryIdx(preferred = _activeWorkoutEntryIdx) {
+  const entries = _workoutEntries();
+  if (!entries.length) {
+    _activeWorkoutEntryIdx = 0;
+    return -1;
+  }
+  const raw = Math.floor(Number(preferred));
+  const next = Number.isFinite(raw) ? raw : 0;
+  _activeWorkoutEntryIdx = Math.max(0, Math.min(entries.length - 1, next));
+  if (entries[_activeWorkoutEntryIdx]?.uiCollapsed) entries[_activeWorkoutEntryIdx].uiCollapsed = false;
+  return _activeWorkoutEntryIdx;
+}
+
+function _workoutEntryName(entry) {
+  const ex = getExList().find(item => item.id === entry?.exerciseId);
+  return ex?.name || entry?.name || entry?.exerciseId || '운동';
+}
+
+function _renderWorkoutEntryCarouselControls(activeIdx) {
+  const entries = _workoutEntries();
+  if (entries.length <= 1) return '';
+  const dots = entries.map((entry, idx) => {
+    const active = idx === activeIdx;
+    const complete = _isWorkoutEntryComplete(entry);
+    const cls = `ex-entry-carousel-dot${active ? ' is-active' : ''}${complete ? ' is-complete' : ' is-pending'}`;
+    const label = `${idx + 1}번 ${_workoutEntryName(entry)}${complete ? ' 완료' : ' 진행 중'}`;
+    return `
+      <button type="button" class="${cls}" data-wt-entry-dot-idx="${idx}" aria-current="${active ? 'true' : 'false'}" aria-label="${_escPicker(label)}">
+        <span></span>
+      </button>
+    `;
+  }).join('');
+  return `
+    <div class="ex-entry-carousel-controls" aria-label="운동 종목 카드 이동">
+      <button type="button" class="ex-entry-carousel-nav" data-wt-entry-carousel-prev ${activeIdx <= 0 ? 'disabled' : ''}>이전</button>
+      <div class="ex-entry-carousel-status">
+        <div class="ex-entry-carousel-dots">${dots}</div>
+        <span class="ex-entry-carousel-count">${activeIdx + 1} / ${entries.length}</span>
+      </div>
+      <button type="button" class="ex-entry-carousel-nav" data-wt-entry-carousel-next ${activeIdx >= entries.length - 1 ? 'disabled' : ''}>다음</button>
+    </div>
+  `;
+}
+
+function _nextWorkoutEntryIdx(entryIdx) {
+  const entries = _workoutEntries();
+  if (!entries.length) return -1;
+  return entryIdx < entries.length - 1 ? entryIdx + 1 : entryIdx;
+}
+
+function _workoutEntryCarouselTrack() {
+  return document.querySelector('#wt-exercise-list .ex-entry-carousel-track');
+}
+
+function _setWorkoutEntryCarouselActive(track, entryIdx) {
+  const entries = _workoutEntries();
+  if (!track || !entries.length) return;
+  const idx = _normalizeActiveWorkoutEntryIdx(entryIdx);
+  track.querySelectorAll('[data-wt-entry-slide-idx]').forEach((slide) => {
+    slide.classList.toggle('is-active', Number(slide.dataset.wtEntrySlideIdx) === idx);
+  });
+  const shell = track.closest('.ex-entry-carousel');
+  shell?.querySelectorAll('[data-wt-entry-dot-idx]').forEach((dot) => {
+    const active = Number(dot.dataset.wtEntryDotIdx) === idx;
+    dot.classList.toggle('is-active', active);
+    dot.setAttribute('aria-current', active ? 'true' : 'false');
+  });
+  const count = shell?.querySelector('.ex-entry-carousel-count');
+  if (count) count.textContent = `${idx + 1} / ${entries.length}`;
+  shell?.querySelector('[data-wt-entry-carousel-prev]')?.toggleAttribute('disabled', idx <= 0);
+  shell?.querySelector('[data-wt-entry-carousel-next]')?.toggleAttribute('disabled', idx >= entries.length - 1);
+}
+
+function _scrollWorkoutEntryCarouselTo(entryIdx, options = {}) {
+  const idx = _normalizeActiveWorkoutEntryIdx(entryIdx);
+  const track = _workoutEntryCarouselTrack();
+  const slide = track?.querySelector(`[data-wt-entry-slide-idx="${idx}"]`);
+  if (!track || !slide) return false;
+  const left = Math.max(0, slide.offsetLeft - track.offsetLeft);
+  track.scrollTo?.({ left, behavior: options.behavior || 'smooth' });
+  if (!track.scrollTo) track.scrollLeft = left;
+  _setWorkoutEntryCarouselActive(track, idx);
+  return true;
+}
+
+function _syncWorkoutEntryCarouselFromScroll(track) {
+  const slides = [...(track?.querySelectorAll?.('[data-wt-entry-slide-idx]') || [])];
+  if (!track || !slides.length) return;
+  const center = track.scrollLeft + track.clientWidth / 2;
+  let closest = slides[0];
+  let closestDistance = Infinity;
+  for (const slide of slides) {
+    const slideCenter = slide.offsetLeft - track.offsetLeft + slide.offsetWidth / 2;
+    const distance = Math.abs(center - slideCenter);
+    if (distance < closestDistance) {
+      closest = slide;
+      closestDistance = distance;
+    }
+  }
+  _setWorkoutEntryCarouselActive(track, Number(closest.dataset.wtEntrySlideIdx));
+}
+
+function _bindWorkoutEntryCarousel(shell) {
+  const track = shell?.querySelector('.ex-entry-carousel-track');
+  if (!shell || !track) return;
+  let scrollTimer = null;
+  track.addEventListener('scroll', () => {
+    window.clearTimeout?.(scrollTimer);
+    scrollTimer = window.setTimeout?.(() => _syncWorkoutEntryCarouselFromScroll(track), 80);
+  }, { passive: true });
+  shell.querySelector('[data-wt-entry-carousel-prev]')?.addEventListener('click', () => {
+    wtSelectWorkoutEntryCard(_activeWorkoutEntryIdx - 1, { render: false, focus: true });
+  });
+  shell.querySelector('[data-wt-entry-carousel-next]')?.addEventListener('click', () => {
+    wtSelectWorkoutEntryCard(_activeWorkoutEntryIdx + 1, { render: false, focus: true });
+  });
+  shell.querySelectorAll('[data-wt-entry-dot-idx]').forEach((dot) => {
+    dot.addEventListener('click', () => {
+      wtSelectWorkoutEntryCard(Number(dot.dataset.wtEntryDotIdx), { render: false, focus: true });
+    });
+  });
+}
+
+export function wtSelectWorkoutEntryCard(entryIdx, options = {}) {
+  const idx = _normalizeActiveWorkoutEntryIdx(entryIdx);
+  if (idx < 0) return false;
+  if (options.render !== false) _renderExerciseList();
+  if (options.focus) {
+    window.requestAnimationFrame?.(() => {
+      _scrollWorkoutEntryCarouselTo(idx, { behavior: options.behavior || 'smooth' });
+      const block = document.querySelector(`#wt-exercise-list [data-wt-entry-idx="${idx}"]`);
+      block?.scrollIntoView?.({ block: options.block || 'nearest', behavior: options.behavior || 'smooth' });
+    });
+  }
+  return true;
+}
+
+function _advanceWorkoutEntry(entryIdx) {
+  const entries = _workoutEntries();
+  if (!entries.length) return;
+  const nextIdx = _nextWorkoutEntryIdx(entryIdx);
+  _normalizeActiveWorkoutEntryIdx(nextIdx);
+  _renderExerciseList();
+  const cur = entries[entryIdx];
+  const name = _workoutEntryName(cur);
+  if (nextIdx !== entryIdx) showToast(`${name} 완료. 다음 종목으로 넘어갑니다`, 1800, 'success');
+  else showToast(`${name} 완료. 오늘 운동 종목을 모두 확인했어요`, 1800, 'success');
 }
 
 function _syncExpertTopArea() {
@@ -883,6 +1047,7 @@ export function wtMoveSet(entryIdx, si, direction) {
 
 export function wtRemoveExerciseEntry(entryIdx) {
   S.workout.exercises.splice(entryIdx, 1);
+  _normalizeActiveWorkoutEntryIdx(Math.min(_activeWorkoutEntryIdx, S.workout.exercises.length - 1));
   _normalizeExpertSessionAfterExerciseChange();
   _renderExerciseList();
   _syncExpertTopArea();
@@ -907,9 +1072,11 @@ export function wtFocusWorkoutEntryCard(entryIdx, options = {}) {
   const entry = S.workout.exercises?.[idx];
   if (!entry) return false;
   if (options.expand !== false && entry.uiCollapsed) entry.uiCollapsed = false;
+  _normalizeActiveWorkoutEntryIdx(idx);
   if (options.render !== false) _renderExerciseList();
 
   const focus = () => {
+    _scrollWorkoutEntryCarouselTo(idx, { behavior: options.behavior || 'smooth' });
     const block = document.querySelector(`#wt-exercise-list [data-wt-entry-idx="${idx}"]`);
     if (!block) return false;
     block.classList.remove('ex-block--record-focus');
@@ -1201,16 +1368,29 @@ export function _renderExerciseList() {
 
   // Finding 2: 오늘 세션 제외 → 자기참조 방지. 최근 기록(today 제외).
   const todayKey = _todayDateKey();
+  const entries = _workoutEntries();
+  const activeIdx = _normalizeActiveWorkoutEntryIdx(_activeWorkoutEntryIdx);
+  if (activeIdx < 0) return;
+  const shell = document.createElement('div');
+  shell.className = 'ex-entry-carousel';
+  shell.innerHTML = `
+    ${_renderWorkoutEntryCarouselControls(activeIdx)}
+    <div class="ex-entry-carousel-track" data-wt-entry-carousel-track aria-label="운동 종목 카드"></div>
+  `;
+  const track = shell.querySelector('.ex-entry-carousel-track');
 
-  S.workout.exercises.forEach((entry, idx) => {
+  entries.forEach((entry, idx) => {
     const ex   = getExList().find(e => e.id === entry.exerciseId);
     const mc   = allMuscles.find(m => m.id === entry.muscleId);
     const sparkline = _buildMaxTrackSparkline(entry, ex);
     const maxTrackLast = getLastTrackSession(getCache(), getExList(), entry.exerciseId, _activeMaxTrack(entry, ex), todayKey);
     const maxLastSummary = _buildMaxLastSessionSummary(maxTrackLast, { ...entry, _idx: idx }, ex);
     const maxAllDone = (entry.sets || []).length > 0 && (entry.sets || []).every(s => s.done !== false);
-    const maxCollapsed = !!entry.uiCollapsed && maxAllDone;
+    const maxCollapsed = false;
 
+    const slide = document.createElement('div');
+    slide.className = 'ex-entry-carousel-slide' + (idx === activeIdx ? ' is-active' : '');
+    slide.setAttribute('data-wt-entry-slide-idx', String(idx));
     const block = document.createElement('div');
     block.className = 'ex-block ex-block--max-v2' + (maxAllDone ? ' is-complete' : '') + (maxCollapsed ? ' is-collapsed' : '');
     block.dataset.wtEntryIdx = String(idx);
@@ -1219,7 +1399,7 @@ export function _renderExerciseList() {
       ${maxLastSummary}
       <div class="ex-sets ex-max-v2-sets" id="wt-sets-${idx}"></div>
       <div class="ex-max-v2-actions">
-        <button class="ex-max-v2-primary${maxAllDone ? ' is-done' : ''}" data-idx="${idx}">${maxAllDone ? '운동 완료' : '다음 세트 완료'}</button>
+        <button class="ex-max-v2-primary${maxAllDone ? ' is-done' : ''}" data-idx="${idx}">${maxAllDone || _openWorkoutSetCount(entry) <= 1 ? '운동 완료' : '다음 세트 완료'}</button>
         ${maxCollapsed
           ? `<button class="ex-max-v2-secondary ex-max-v2-expand-card" data-idx="${idx}">세트 다시 보기</button>`
           : `<button class="ex-add-set-btn ex-max-v2-secondary" data-idx="${idx}">세트 추가</button>`}
@@ -1245,8 +1425,7 @@ export function _renderExerciseList() {
     const completeBtn = block.querySelector('.ex-max-v2-primary');
     if (completeBtn) completeBtn.addEventListener('click', () => {
       if ((S.workout.exercises[idx]?.sets || []).length && (S.workout.exercises[idx]?.sets || []).every(s => s.done !== false)) {
-        S.workout.exercises[idx].uiCollapsed = true;
-        _renderExerciseList();
+        _advanceWorkoutEntry(idx);
         return;
       }
       const target = (S.workout.exercises[idx]?.sets || []).findIndex(s => s.done === false);
@@ -1254,15 +1433,11 @@ export function _renderExerciseList() {
         const openSets = (S.workout.exercises[idx]?.sets || []).filter(s => s.done === false).length;
         wtToggleSetDone(idx, target);
         if (openSets === 1) {
-          S.workout.exercises[idx].uiCollapsed = true;
-          _renderExerciseList();
+          _advanceWorkoutEntry(idx);
         }
         return;
       }
-      const exName = ex?.name || entry?.name || entry.exerciseId;
-      S.workout.exercises[idx].uiCollapsed = true;
-      _renderExerciseList();
-      showToast(`${exName} 종료. 다음 종목으로 넘어가도 좋아요`, 2200, 'success');
+      _advanceWorkoutEntry(idx);
     });
     const copyBtn = block.querySelector('.ex-copy-btn');
     if (copyBtn && last) {
@@ -1283,9 +1458,13 @@ export function _renderExerciseList() {
         });
       });
     }
-    container.appendChild(block);
-    _renderSets(idx);
+    slide.appendChild(block);
+    track?.appendChild(slide);
   });
+  container.appendChild(shell);
+  _bindWorkoutEntryCarousel(shell);
+  entries.forEach((_, idx) => _renderSets(idx));
+  window.requestAnimationFrame?.(() => _scrollWorkoutEntryCarouselTo(activeIdx, { behavior: 'auto' }));
 }
 
 export function renderEmbeddedMaxExerciseCard(container, entryIdx, options = {}) {
