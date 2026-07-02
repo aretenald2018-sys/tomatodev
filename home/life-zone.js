@@ -19,6 +19,7 @@ import {
   LIFE_ZONE_ACTORS,
   assignLifeZoneSlots,
   getLifeZoneAccountDisplayName,
+  getLifeZoneTitleNames,
   resolveLifeZoneConsultingVisitor,
   resolveLifeZoneActivity,
   resolveLifeZoneActors,
@@ -81,17 +82,17 @@ function _isCurrentLifeZoneRosterActor(currentUser = null) {
   return resolveLifeZoneRoster({ accounts, currentUser }).some((actor) => actor.source === 'self');
 }
 
-function _lifeZoneTitleNames(visitor = null) {
-  const names = LIFE_ZONE_ACTORS.map((actor) => actor.displayName);
+function _lifeZoneTitleNames(visitor = null, actors = LIFE_ZONE_ACTORS) {
+  const names = getLifeZoneTitleNames(actors);
   const visitorName = visitor?.displayName || '';
   if (visitorName && !names.includes(visitorName)) names.push(visitorName);
   return names;
 }
 
-function _renderLifeZoneTitle(card, visitor = _resolveConsultingVisitor()) {
+function _renderLifeZoneTitle(card, visitor = _resolveConsultingVisitor(), actors = LIFE_ZONE_ACTORS) {
   const title = card?.querySelector('[data-lz-title]');
   if (!title) return;
-  title.textContent = _lifeZoneTitleNames(visitor).join(' · ');
+  title.textContent = _lifeZoneTitleNames(visitor, actors).join(' · ');
 }
 
 export function setLifeZoneVisitContext(context = null) {
@@ -112,11 +113,11 @@ function _resolveConsultingVisitor() {
   });
 }
 
-function _renderConsultingVisitor(card) {
+function _renderConsultingVisitor(card, actors = LIFE_ZONE_ACTORS) {
   const visitorEl = card?.querySelector('[data-lz-consulting-visitor]');
   if (!visitorEl) return;
   const visitor = _resolveConsultingVisitor();
-  _renderLifeZoneTitle(card, visitor);
+  _renderLifeZoneTitle(card, visitor, actors);
   if (!visitor) {
     visitorEl.hidden = true;
     delete visitorEl.dataset.lzVisitorState;
@@ -177,15 +178,14 @@ async function _readLifeZoneActorDay(actor, todayKey) {
 }
 
 function _defaultActorStates() {
-  return assignLifeZoneSlots(
-    LIFE_ZONE_ACTORS.map((actor) => ({
-      ...actor,
-      state: 'office',
-      speech: '다른 일 하는중',
-      source: 'pending',
-      canRead: false
-    }))
-  );
+  const currentUser = getCurrentUser();
+  const accounts = currentUser ? _enrichAccounts([currentUser]) : [];
+  const actors = resolveLifeZoneActors({ accounts, currentUser, dayByAccountId: {} });
+  return actors.map((actor) => ({
+    ...actor,
+    source: actor.source || 'pending',
+    canRead: actor.canRead || false
+  }));
 }
 
 function _applyActorSlotPosition(element, slot) {
@@ -765,11 +765,13 @@ export async function hydrateLifeZoneCard(card) {
   try {
     const actors = await _loadLifeZoneActorStates();
     _renderActors(card, actors);
+    _renderConsultingVisitor(card, actors);
     _renderStatus(card, true);
   } catch (error) {
     console.warn('[life-zone] hydrate failed:', error);
     const fallback = _defaultActorStates();
     _renderActors(card, fallback);
+    _renderConsultingVisitor(card, fallback);
     _renderStatus(card, false);
   }
 }
@@ -955,7 +957,7 @@ export function renderLifeZoneCard({
   `;
 
   _renderActors(card, fallbackActors);
-  _renderConsultingVisitor(card);
+  _renderConsultingVisitor(card, fallbackActors);
   _renderStatus(card, false);
 
   card.querySelector('[data-lz-action="diet"]')?.addEventListener('click', (event) => {

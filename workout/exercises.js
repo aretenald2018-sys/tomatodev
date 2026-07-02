@@ -1402,7 +1402,7 @@ export function _renderExerciseList() {
         <button class="ex-max-v2-primary${maxAllDone ? ' is-done' : ''}" data-idx="${idx}">${maxAllDone || _openWorkoutSetCount(entry) <= 1 ? '운동 완료' : '다음 세트 완료'}</button>
         ${maxCollapsed
           ? `<button class="ex-max-v2-secondary ex-max-v2-expand-card" data-idx="${idx}">세트 다시 보기</button>`
-          : `<button class="ex-add-set-btn ex-max-v2-secondary" data-idx="${idx}">세트 추가</button>`}
+          : `<button class="ex-add-set-btn ex-max-v2-secondary" data-idx="${idx}">+ 세트 추가</button>`}
       </div>`;
 
     block.querySelector('.ex-remove-btn').addEventListener('click', () => wtRemoveExerciseEntry(idx));
@@ -1492,7 +1492,7 @@ export function renderEmbeddedMaxExerciseCard(container, entryIdx, options = {})
       <button class="ex-max-v2-primary${maxAllDone ? ' is-done' : ''}" data-idx="${entryIdx}">${maxAllDone ? '운동 완료' : '다음 세트 완료'}</button>
       ${maxCollapsed
         ? `<button class="ex-max-v2-secondary ex-max-v2-expand-card" data-idx="${entryIdx}">세트 다시 보기</button>`
-        : `<button class="ex-add-set-btn ex-max-v2-secondary" data-idx="${entryIdx}">세트 추가</button>`}
+        : `<button class="ex-add-set-btn ex-max-v2-secondary" data-idx="${entryIdx}">+ 세트 추가</button>`}
     </div>`;
 
   const removeBtn = block.querySelector('.ex-remove-btn');

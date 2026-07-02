@@ -6,7 +6,7 @@
 // ================================================================
 
 let _opening = false;
-const TM2_MODULE_VERSION = '20260620z27-selected-scope';
+const TM2_MODULE_VERSION = '20260702z19-current-user-set-button';
 
 async function _open() {
   if (_opening) return;

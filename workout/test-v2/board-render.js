@@ -1014,7 +1014,7 @@ function _wendlerSectionHtml(role, sets, plan, bm) {
     <section class="tm2-wsec" data-role="${role}">
       <div class="tm2-wsec-head">
         <div><b>${_esc(title)}</b><span>${_esc(meta.sub)}</span></div>
-        <button type="button" data-action="tm2:wset-add" data-role="${role}">세트 추가</button>
+        <button type="button" data-action="tm2:wset-add" data-role="${role}">+ 세트 추가</button>
       </div>
       <div class="tm2-wset-head"><span></span><span>세트#</span><span>반복 횟수</span><span>kg</span><span>ROM</span><span></span></div>
       <div class="tm2-wset-list">${rows}</div>

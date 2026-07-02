@@ -3,7 +3,7 @@
 // ================================================================
 
 // ── 테스트모드 v2 성장 보드 진입 카드 (side-effect: #tm2-entry 렌더) ──
-export { tm2RenderEntry } from './test-v2/entry.js?v=20260620z27-selected-scope';
+export { tm2RenderEntry } from './test-v2/entry.js?v=20260702z19-current-user-set-button';
 
 // ── 서브모듈 import ─────────────────────────────────────────────
 export { loadWorkoutDate, changeWorkoutDate, goToTodayWorkout }

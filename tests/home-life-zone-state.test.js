@@ -9,6 +9,7 @@ import {
   getLifeZoneRunningMapData,
   getLifeZoneRunningSpeech,
   getLifeZoneSpeech,
+  getLifeZoneTitleNames,
   getLifeZoneWorkoutSpeech,
   hasLifeZoneDietActivity,
   hasLifeZoneActiveRunning,
@@ -105,6 +106,32 @@ test('matches readable roster through guest owner id candidates', () => {
   assert.equal(roster[0].source, 'friend');
   assert.equal(roster[0].canRead, true);
   assert.equal(roster[0].readAccountId, '줍스(guest)');
+});
+
+test('adds current user outside the fixed life zone roster', () => {
+  const actors = resolveLifeZoneActors({
+    accounts: [
+      { id: 'new-user-1', nickname: '새싹토마토', resolvedNickname: '새싹토마토', firstName: '회원', lastName: '신규' }
+    ],
+    currentUser: { id: 'new-user-1' },
+    dayByAccountId: {
+      'new-user-1': { lFoods: [{ name: '샐러드' }], lKcal: 420 }
+    }
+  });
+
+  const selfActor = actors.find((actor) => actor.accountId === 'new-user-1');
+  assert.ok(selfActor);
+  assert.equal(selfActor.displayName, '새싹토마토');
+  assert.equal(selfActor.source, 'self');
+  assert.equal(selfActor.state, 'diet');
+  assert.equal(selfActor.speech, '점심냠냠');
+  assert.deepEqual(getLifeZoneTitleNames(actors), ['줍스', '문정토마토', '이재헌', '새싹토마토']);
+
+  const idleActors = resolveLifeZoneActors({
+    currentUser: { id: 'new-user-1', nickname: '새싹토마토' }
+  });
+  const idleSelfActor = idleActors.find((actor) => actor.accountId === 'new-user-1');
+  assert.equal(idleSelfActor?.slot.id, 'lounge-lower-right');
 });
 
 test('detects workout and diet activities from workout day documents', () => {
@@ -286,9 +313,9 @@ test('global life zone roster actors use recent activity without friendship', ()
     }
   });
 
-  assert.deepEqual(actors.map((actor) => actor.source), ['global', 'global', 'global']);
-  assert.deepEqual(actors.map((actor) => actor.state), ['diet', 'workout', 'office']);
-  assert.deepEqual(actors.map((actor) => actor.speech), ['점심냠냠', '오늘 가슴 완료', '다른 일 하는중']);
+  assert.deepEqual(actors.map((actor) => actor.source), ['global', 'global', 'global', 'self']);
+  assert.deepEqual(actors.map((actor) => actor.state), ['diet', 'workout', 'office', 'office']);
+  assert.deepEqual(actors.map((actor) => actor.speech), ['점심냠냠', '오늘 가슴 완료', '다른 일 하는중', '다른 일 하는중']);
 });
 
 test('treats duration-only workout as workout state in life zone', () => {

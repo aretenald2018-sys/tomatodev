@@ -20,4 +20,4 @@ export {
   wtRestTimerShowIdle, wtRestTimerHideIdle,
   wtOpenRestPresetSheet,
   tm2RenderEntry,
-} from './workout/index.js?v=20260625z47-workout-record-card-standard';
+} from './workout/index.js?v=20260702z19-current-user-set-button';

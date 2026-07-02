@@ -24,6 +24,9 @@ export const LIFE_ZONE_ACTORS = [
   }
 ];
 
+const CURRENT_USER_ACTOR_SPRITE_PREFIX = 'jups';
+const CURRENT_USER_ACTOR_COLOR = '#fa342c';
+
 export const LIFE_ZONE_SLOTS = {
   running: [
     {
@@ -85,7 +88,8 @@ export const LIFE_ZONE_SLOTS = {
   office: [
     { id: 'desk-upper', pose: 'office-upper', label: '업무', x: 1190, y: 382, width: 154, z: 46 },
     { id: 'desk-center', pose: 'office-center', label: '업무', x: 1394, y: 486, width: 148, z: 52 },
-    { id: 'desk-lower', pose: 'office-lower', label: '업무', x: 1316, y: 610, width: 152, z: 66 }
+    { id: 'desk-lower', pose: 'office-lower', label: '업무', x: 1316, y: 610, width: 152, z: 66 },
+    { id: 'lounge-lower-right', pose: 'office-lower', label: '업무', x: 1450, y: 708, width: 142, z: 82 }
   ]
 };
 
@@ -241,19 +245,94 @@ function accountCandidateNames(account = {}) {
   ].filter(Boolean).map(normalizeLifeZoneName);
 }
 
+function mergeCurrentLifeZoneAccount(accounts = [], currentUser = null) {
+  if (!currentUser?.id) return accounts || [];
+  const currentIds = new Set(getLifeZoneOwnerIdCandidates(currentUser.id));
+  const hasCurrent = (accounts || []).some((account) =>
+    getLifeZoneOwnerIdCandidates(account.id).some((ownerId) => currentIds.has(ownerId))
+  );
+  return hasCurrent ? accounts : [...(accounts || []), currentUser];
+}
+
+function findCurrentLifeZoneAccount(accounts = [], currentUser = null) {
+  if (!currentUser?.id) return currentUser || null;
+  const currentIds = new Set(getLifeZoneOwnerIdCandidates(currentUser.id));
+  return (accounts || []).find((account) =>
+    getLifeZoneOwnerIdCandidates(account.id).some((ownerId) => currentIds.has(ownerId))
+  ) || currentUser;
+}
+
+function actorMatchesAccount(actor = {}, account = {}) {
+  const actorKeys = [actor.displayName, ...(actor.matchNames || [])]
+    .map(normalizeLifeZoneName)
+    .filter(Boolean);
+  const accountKeys = accountCandidateNames(account);
+  return actorKeys.some((key) => accountKeys.includes(key));
+}
+
+export function includeCurrentLifeZoneActor({
+  actors = LIFE_ZONE_ACTORS,
+  accounts = [],
+  currentUser = null
+} = {}) {
+  const actorList = [...(actors || [])];
+  if (!currentUser?.id) return actorList;
+
+  const currentAccount = findCurrentLifeZoneAccount(accounts, currentUser);
+  if (actorList.some((actor) => actorMatchesAccount(actor, currentAccount))) {
+    return actorList;
+  }
+
+  const displayName = getLifeZoneAccountDisplayName(currentAccount);
+  const selfKey = normalizeLifeZoneName(currentUser.id || displayName) || 'me';
+  const matchNames = [
+    displayName,
+    currentUser.id,
+    currentAccount?.id,
+    currentAccount?.nickname,
+    currentAccount?.resolvedNickname
+  ].filter(Boolean);
+
+  return [
+    ...actorList,
+    {
+      id: `current-user-${selfKey}`,
+      displayName,
+      spritePrefix: CURRENT_USER_ACTOR_SPRITE_PREFIX,
+      color: CURRENT_USER_ACTOR_COLOR,
+      matchNames
+    }
+  ];
+}
+
+export function getLifeZoneTitleNames(actors = []) {
+  const seen = new Set();
+  const names = [];
+  for (const actor of actors || []) {
+    const displayName = getLifeZoneAccountDisplayName(actor);
+    const key = normalizeLifeZoneName(displayName);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    names.push(displayName);
+  }
+  return names;
+}
+
 export function resolveLifeZoneRoster({
   actors = LIFE_ZONE_ACTORS,
   accounts = [],
   friends = [],
   currentUser = null
 } = {}) {
+  const accountPool = mergeCurrentLifeZoneAccount(accounts, currentUser);
+  const actorList = includeCurrentLifeZoneActor({ actors, accounts: accountPool, currentUser });
   const friendIds = new Set((friends || []).map((friend) => friend.friendId).filter(Boolean));
   const currentId = currentUser?.id || null;
   const currentIds = new Set(getLifeZoneOwnerIdCandidates(currentId));
 
-  return actors.map((actor) => {
+  return actorList.map((actor) => {
     const matchKeys = [actor.displayName, ...(actor.matchNames || [])].map(normalizeLifeZoneName);
-    const account = (accounts || []).find((candidate) => {
+    const account = (accountPool || []).find((candidate) => {
       const names = accountCandidateNames(candidate);
       return matchKeys.some((key) => names.includes(key));
     }) || null;
