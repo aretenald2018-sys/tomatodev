@@ -24,7 +24,9 @@
 3. PASS: `node scripts/verify-runtime-assets.mjs`
 4. PASS: `node --test --test-reporter=dot tests/*.test.js`
 5. PASS: `git diff --check`
+6. PASS: Dashboard3 Pages 배포 검증 - `ef2b8327e044ff8b50550ae47fd3342d046d015c`
+7. PASS: Dashboard3 Pages marker 검증 - 배포된 `sw.js`, `home/life-zone.js`, `style.css`에 홈 러닝 지도 route marker 반영 확인
 
 ## 남은 확인
 
-- not verified yet: Dashboard3 Pages 배포 후 인증 계정에서 `홈 -> 오늘의 라이프존 -> 러닝 actor 말풍선`의 실제 타일/경로 가시성을 확인해야 한다.
+- not verified yet: 인증 계정에서 `홈 -> 오늘의 라이프존 -> 러닝 actor 말풍선`의 실제 타일/경로 가시성을 확인해야 한다.

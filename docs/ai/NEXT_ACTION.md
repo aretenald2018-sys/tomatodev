@@ -3,16 +3,36 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-02-workout-ios-sheet-input-scroll.md`
-- 진단 문서: `docs/ai/diagnoses/2026-07-02-workout-ios-sheet-input-scroll.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-ios-sheet-input-scroll-review.md`
-- 현재 단계: `운동 시트 iOS 숫자 입력 스크롤 안정화 Slice 1 Dashboard3 Pages 배포 검증 완료`
+- 계획 문서: `docs/ai/features/2026-07-02-home-running-map-route-clarity.md`
+- 진단 문서: `없음 - 계획 문서에 /diagnose 기록`
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-home-running-map-route-clarity-review.md`
+- 현재 단계: `홈 러닝 지도 말풍선 경로 가시성 Slice 1 Dashboard3 Pages 배포/marker 검증 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `커밋 30e018d fix: stabilize workout set inputs on ios를 origin/main에 push했고 Dashboard3 Pages 배포/marker 검증을 완료했다.`
-- 다음 액션: `인증 iPhone PWA 실제 운동 탭 KG/REP 입력/세트 추가 UI flow 확인이 남아 있다.`
+- 마지막 완료: `커밋 ef2b832 fix: clarify home running map route bubble을 origin/main에 push했고 Dashboard3 Pages 배포/marker 검증을 완료했다.`
+- 다음 액션: `인증 계정으로 홈탭 실제 러닝 말풍선에서 VWorld 타일/경로선/현재 위치 dot 가시성을 확인한다.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
+
+- Home Running Map Route Clarity 계획/실행/리뷰:
+  1. 요청: 홈 라이프존 말풍선 안에 사진 2처럼 주변 지형이 읽히는 지도 배율과 사진 3처럼 명확한 주행 경로선을 표시한다.
+  2. 진단: 이전 fallback 보강은 타일 실패/설정 문제를 막았지만, 현재 문제는 말풍선 자체가 `172x121` 내부 캔버스와 최대 `76px` 표시 폭, `RUNNING_MAP_HOME_MAX_ZOOM = 12` 제한 때문에 경로가 읽히지 않는 UX 문제다.
+  3. 결정: Slice 1은 홈 말풍선 지도 크기, route bounds 기반 zoom fit, 흰색 casing + 빨간 main route overlay, 시작점/현재 위치 marker만 개선한다.
+  4. 범위: `home/life-zone.js`, `style.css`, `sw.js`, 홈 지도 테스트와 cache marker 테스트.
+  5. 제외: VWorld provider 교체, GPS 수집/저장 schema, 운동 상세 지도, 홈 부분 업데이트 리팩터.
+  6. 완료: `home/life-zone.js` 내부 지도 viewBox를 `300x210`으로 키우고 `_zoomForRunningMap()`을 픽셀 span fit 방식으로 바꿨다.
+  7. 완료: `style.css`에서 `.lz-running-map-bubble` 표시 폭을 `clamp(92px, calc(300 / 1672 * 100%), 136px)`로 확대하고 route casing/main/start/current 스타일을 추가했다.
+  8. 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z5-home-running-map-route`로 bump하고 관련 테스트 marker를 갱신했다.
+  9. PASS: `node --check home/life-zone.js; node --check sw.js`
+  10. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/running-entry.test.js` - 23 tests passed
+  11. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
+  12. PASS: `node --test --test-reporter=dot tests/*.test.js`
+  13. PASS: `git diff --check`
+  14. 완료: 커밋 `ef2b832 fix: clarify home running map route bubble`를 `origin/main`에 push했다.
+  15. PASS: Dashboard3 Pages 배포 검증 - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ ef2b8327e044ff8b50550ae47fd3342d046d015c` -> `[deploy-verify] ok ef2b8327e044 tomatofarm-v20260702z5-home-running-map-route static=236`
+  16. PASS: Dashboard3 Pages marker 검증 - 배포된 `sw.js`, `home/life-zone.js`, `style.css`에서 새 cache version과 지도 route overlay marker 확인
+  17. 리뷰 문서: `docs/ai/reviews/2026-07-02-home-running-map-route-clarity-review.md`
+  18. not verified yet: 인증 계정 홈탭 실제 러닝 말풍선 UI flow 확인 필요.
 
 - Workout iOS Sheet Input Scroll 실행:
   1. 요청: iPhone PWA에서 운동종목 추가 후 KG/REP 입력·수정 시 화면이 위로 자동 스크롤되는 문제를 해결한다.
