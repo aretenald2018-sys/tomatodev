@@ -2,7 +2,7 @@
 
 ## 2026-07-03 종목완료 도장 유지 핫픽스
 
-- 상태: `ready_for_deploy`
+- 상태: `complete`
 - 기준 작업트리: `C:\Users\USER\Desktop\Tomato Project\tomatofarm-deploy-life-zone-nickname`
 - 기준 원격: `tomatofarm/main`
 - 계획: `docs/ai/features/2026-07-02-workout-card-inline-set-complete.md`
@@ -18,7 +18,12 @@
   3. PASS: `node scripts/verify-runtime-assets.mjs` (`refs=866`)
   4. PASS: `node --test tests/*.test.js` (643 pass)
   5. PASS: `git diff --check`
-- 다음 액션: 커밋, `tomatofarm/main` push, `https://aretenald2018-sys.github.io/tomatofarm/` 배포 검증.
+  6. PASS: `git push tomatofarm HEAD:main` (`ef85c9e`)
+  7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ ef85c9e`
+  8. PASS: 운영 `sw.js` HTTP 200 + `tomatofarm-v20260703z1-workout-card-stamp-persist`
+  9. PASS: 운영 `render-calendar.js` HTTP 200 + `function _isWorkoutExerciseComplete` 포함, `WORKOUT_EXERCISE_STAMP_MS` 없음
+  10. not verified yet: in-app Browser가 webview attach timeout으로 멈춰 인증 계정 실제 `운동 탭 -> 세트 입력 -> 종목완료 -> 2초 후 도장 유지` 클릭 플로우는 자동 검증하지 못했다.
+- 다음 액션: 인증 계정 실제 UI에서 `종목완료` 후 2초 뒤에도 `완료` 도장이 남는지 확인한다.
 
 ## 현재 상태
 

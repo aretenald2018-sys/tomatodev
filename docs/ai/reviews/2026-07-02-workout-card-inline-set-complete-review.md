@@ -35,3 +35,6 @@
 - `render-calendar.js`에서 완료 도장 표시 기준을 1600ms 메모리 타이머가 아니라 저장된 row의 완료 세트 상태로 변경했다.
 - `_markWorkoutExerciseCompletionStamp()`가 더 이상 timeout으로 Map entry를 지우고 `renderWorkoutCalendarHome()`을 호출하지 않으므로, 도장이 2초 후 사라지는 경로가 제거됐다.
 - `tests/workout-calendar-bottom-sheet.test.js`가 `WORKOUT_EXERCISE_STAMP_MS` 재도입을 금지한다.
+- 배포 검증: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ ef85c9e` PASS.
+- 운영 정적 검증: `sw.js`는 `tomatofarm-v20260703z1-workout-card-stamp-persist`를 반환하고, `render-calendar.js`는 `_isWorkoutExerciseComplete`를 포함하며 `WORKOUT_EXERCISE_STAMP_MS`를 포함하지 않는다.
+- not verified yet: in-app Browser가 webview attach timeout으로 멈춰 인증 계정 실제 클릭 플로우는 자동 검증하지 못했다.
