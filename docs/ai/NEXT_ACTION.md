@@ -5,10 +5,10 @@
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-07-02-home-running-map-bubble-reliability.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-02-home-running-map-bubble-reliability-review.md`
-- 현재 단계: `홈 러닝 지도 말풍선 신뢰성 개선 Slice 1 정적 검증 및 리뷰 완료`
+- 현재 단계: `홈 러닝 지도 말풍선 신뢰성 개선 Slice 1 Dashboard3 Pages 배포 검증 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `홈 러닝 지도 말풍선에 진단 data 속성, tile load/error 상태, tile-failed fallback UI를 추가했고 정적/전체 테스트 및 리뷰를 통과했다.`
-- 다음 액션: `Dashboard3 Pages 배포/인증 계정 실제 홈탭 러닝 지도 말풍선 UI flow 확인이 남아 있다.`
+- 마지막 완료: `커밋 ea65cb4 fix: harden home running map bubble fallback를 origin/main에 push했고 Dashboard3 Pages 배포/marker 검증을 완료했다.`
+- 다음 액션: `인증 계정 실제 홈탭 러닝 지도 말풍선 UI flow 확인이 남아 있다.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
@@ -33,13 +33,17 @@
   9. PASS: `node scripts/verify-runtime-assets.mjs`
   10. PASS: `node --test --test-reporter=dot tests/*.test.js`
   11. PASS: `git diff --check`
-  12. not verified yet: Dashboard3 Pages 배포/인증 계정 실제 홈탭 러닝 지도 말풍선 UI flow 확인은 아직 수행하지 않았다.
+  12. PASS: 구현 커밋 `ea65cb4 fix: harden home running map bubble fallback`를 `origin/main`에 push했다.
+  13. PASS: Dashboard3 Pages 배포 검증 - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ ea65cb4` -> `[deploy-verify] ok ea65cb462d1f tomatofarm-v20260702z3-home-running-map-bubble static=236`
+  14. PASS: Dashboard3 Pages marker 검증 - `sw.js` cache version, `home/life-zone.js` `lzRunningMapProvider`/`_bindRunningMapTileDiagnostics`/`is-tile-failed`, `style.css` `.lz-running-map-empty--tile-failed`/`.lz-running-map-bubble.is-tile-failed`
+  15. not verified yet: 인증 계정 실제 홈탭 러닝 지도 말풍선 UI flow 확인은 아직 수행하지 않았다.
 
 - Home Running Map Bubble Reliability 리뷰:
   1. 리뷰 문서: `docs/ai/reviews/2026-07-02-home-running-map-bubble-reliability-review.md`
   2. 결과: 문제 없음.
   3. 확인: 정상 `ready` 상태의 VWorld tile/path/current-dot 렌더 계약은 유지되고, fallback은 `waiting`/`missing-map`/전체 tile 실패 상태에만 표시된다.
-  4. 남은 확인: Dashboard3 Pages 배포/인증 계정 실제 flow 확인은 아직 수행하지 않았다.
+  4. PASS: Dashboard3 Pages 배포/marker 검증 완료.
+  5. 남은 확인: 인증 계정 실제 flow 확인은 아직 수행하지 않았다.
 
 - Workout Cycle Rail Achieved Color 계획:
   1. 요청: 운동 탭 좌측 목표를 해당 주에 달성했을 때 더 채도 높은 파란색으로 칠한다.

@@ -96,4 +96,7 @@
 3. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
 4. PASS: `node --test --test-reporter=dot tests/*.test.js`
 5. PASS: `git diff --check`
-6. not verified yet: Dashboard3 Pages 배포/인증 계정 실제 홈탭 러닝 지도 말풍선 UI flow 확인은 아직 수행하지 않았다.
+6. PASS: 구현 커밋 `ea65cb4 fix: harden home running map bubble fallback`를 `origin/main`에 push했다.
+7. PASS: Dashboard3 Pages 배포 검증 - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ ea65cb4` -> `[deploy-verify] ok ea65cb462d1f tomatofarm-v20260702z3-home-running-map-bubble static=236`
+8. PASS: Dashboard3 Pages marker 검증 - `sw.js` cache version, `home/life-zone.js` `lzRunningMapProvider`/`_bindRunningMapTileDiagnostics`/`is-tile-failed`, `style.css` `.lz-running-map-empty--tile-failed`/`.lz-running-map-bubble.is-tile-failed`
+9. not verified yet: 인증 계정 실제 홈탭 러닝 지도 말풍선 UI flow 확인은 아직 수행하지 않았다.
