@@ -2,15 +2,35 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-02-workout-sheet-set-check-toggle.md`
+- 상태: `ready_for_execution`
+- 계획 문서: `docs/ai/features/2026-07-02-workout-sheet-keyboard-next-focus.md`
 - 진단 문서: `없음 - 계획 문서에 /diagnose 기록`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-sheet-set-check-toggle-review.md`
-- 현재 단계: `운동 하단 시트 세트 체크 버튼 긴급 수정 Slice 1 개발계/운영계 배포 완료`
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-sheet-keyboard-next-focus-review.md`
+- 현재 단계: `운동 하단 시트 키보드 다음 포커스 긴급 수정 Slice 1 구현/정적 검증/리뷰 완료, 배포 대기`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `커밋 b98a3bf fix: restore workout sheet set check toggle을 origin/main과 tomatofarm/main에 push했고 Dashboard3 Pages 및 Tomato Farm 운영계 배포/marker 검증을 완료했다.`
-- 다음 액션: `인증된 모바일 PWA에서 운동 탭 -> 오늘 하단 시트 -> 편집하기 -> 세트 ✓ 탭 실제 터치 UI flow를 확인한다.`
+- 마지막 완료: `운동 하단 시트 세트 체크 버튼 긴급 수정은 개발계/운영계 배포 및 marker 검증을 완료했다.`
+- 다음 액션: `관련 변경만 커밋하고 origin/main 및 tomatofarm/main에 push한 뒤 Dashboard3 Pages와 Tomato Farm 운영계 배포 검증을 진행한다.`
 - 차단 사유: `없음.`
+
+## 이번 계획
+
+- 요청: 세트 추가 후 `KG` 입력 상태에서 모바일 키보드 `다음`을 누르면 커서가 `REP`로 이동했다가 다시 `KG`로 돌아가는 문제를 수정한다.
+- 진단: `_captureWorkoutSheetInputState()`가 현재 포커스보다 저장 호출의 `sourceInput`을 우선해, iOS 키보드 `다음`으로 이미 이동한 `REP` 포커스를 `KG`로 되돌릴 수 있다.
+- 범위: `render-calendar.js`, `tests/workout-calendar-bottom-sheet.test.js`, `sw.js`, `docs/ai/NEXT_ACTION.md`.
+- 제외: 운동 데이터 schema 변경, 일반 운동 카드 입력 흐름, 세트 입력 UI 재설계.
+- 검증: `node --check`, 관련/전체 테스트, runtime asset 검증, `git diff --check`, Dashboard3/운영계 Pages 배포 검증.
+
+## 이번 실행 결과
+
+- 완료: `render-calendar.js`에서 현재 active 세트 input을 `sourceInput`보다 먼저 캡처하도록 수정했다.
+- 완료: `tests/workout-calendar-bottom-sheet.test.js`에 activeElement 우선 및 sourceInput fallback 회귀 테스트를 추가했다.
+- 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z9-workout-sheet-next-focus`로 bump하고 cache marker 테스트를 갱신했다.
+- PASS: `node --check render-calendar.js`
+- PASS: `node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js`
+- PASS: `node scripts/verify-runtime-assets.mjs`
+- PASS: `node --test --test-reporter=dot tests/*.test.js`
+- PASS: `git diff --check`
 
 ## 방금 계획/실행한 항목
 

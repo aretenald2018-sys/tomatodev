@@ -365,9 +365,12 @@ function _workoutSheetInputSelection(input) {
 
 function _captureWorkoutSheetInputState(sourceInput = null) {
   if (typeof document === 'undefined') return null;
-  const active = sourceInput?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)
-    ? sourceInput
-    : document.activeElement;
+  const focused = document.activeElement;
+  const active = focused?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)
+    ? focused
+    : sourceInput?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)
+      ? sourceInput
+      : null;
   if (!active?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)) return null;
   const selection = _workoutSheetInputSelection(active);
   return {

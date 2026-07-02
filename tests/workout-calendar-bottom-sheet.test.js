@@ -276,6 +276,11 @@ test('day sheet set inputs restore iOS PWA scroll and focus after save rerenders
   assert.match(inputFn, /data-field="\$\{_esc\(field\)\}"/);
   assert.match(inputFn, /this\.value, this/);
   assert.match(inputHelpers, /\.wt-day-sheet-scroll/);
+  assert.match(inputHelpers, /const focused = document\.activeElement/);
+  assert.match(inputHelpers, /const active = focused\?\.matches\?\.\(WORKOUT_SHEET_SET_INPUT_SELECTOR\)/);
+  assert.match(inputHelpers, /\? focused\s*:\s*sourceInput\?\.matches\?\.\(WORKOUT_SHEET_SET_INPUT_SELECTOR\)/);
+  assert.match(inputHelpers, /\? sourceInput\s*:\s*null/);
+  assert.doesNotMatch(inputHelpers, /const active = sourceInput\?\.matches/);
   assert.match(inputHelpers, /input\.focus\(\{ preventScroll: true \}\)/);
   assert.match(inputHelpers, /requestAnimationFrame\(restore\)/);
   assert.match(inputHelpers, /setSelectionRange\(state\.selectionStart, state\.selectionEnd\)/);
@@ -601,5 +606,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260702z8-workout-sheet-check-toggle/);
+  assert.match(swJs, /tomatofarm-v20260702z9-workout-sheet-next-focus/);
 });
