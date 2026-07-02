@@ -55,8 +55,8 @@
 
 ## 상태
 
-- 상태: `ready_for_review`
-- 현재 세션: Slice 1 구현 및 로컬 정적 검증 완료, 배포 검증 대기
+- 상태: `complete`
+- 현재 세션: Slice 1 구현, 리뷰, 운영계/Dashboard3 Pages 배포 검증 완료
 
 ## 실행 결과
 
@@ -65,3 +65,5 @@
 3. 카드 footer를 `종목완료` 단일 버튼으로 변경하고 `편집 완료`/`세트 추가`/`카드 접기`/`편집하기` 버튼 렌더를 제거했다.
 4. `종목완료`는 값이 있는 세트를 완료 처리해 저장하고 `완료` 도장 이펙트를 표시한다.
 5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z17-workout-card-inline-complete`로 bump했다.
+6. 구현 커밋 `b14455671f14a4d077bfa0b53238aa7e38cdf693`를 `origin/main`과 `tomatofarm/main`에 push했다.
+7. Dashboard3/운영계 Pages에서 z17 cache marker와 `wt-max-set-add-row`, `window._wtCalCompleteExercise`, `wt-max-complete-stamp` marker를 확인했다.

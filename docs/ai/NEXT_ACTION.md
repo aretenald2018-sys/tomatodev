@@ -2,14 +2,14 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-07-02-workout-card-inline-set-complete.md`
 - 진단 문서: `없음 - 계획 문서에 진단 기록`
 - 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-card-inline-set-complete-review.md`
-- 현재 단계: `운동 카드 인라인 + 행/종목완료 Slice 1 로컬 검증 완료`
+- 현재 단계: `운동 카드 인라인 + 행/종목완료 Slice 1 배포 검증 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `운동 카드 세트 리스트 마지막에 + 행을 추가하고, footer 버튼을 종목완료 하나로 줄였으며, 완료 저장 시 붉은 완료 도장 이펙트를 추가했다.`
-- 다음 액션: `커밋 후 운영계 Pages에 배포하고 marker를 확인한다. Dashboard3는 GitHub Pages stale deployment lock 해소 여부를 다시 확인한다.`
+- 마지막 완료: `운동 카드 세트 리스트 마지막에 + 행을 추가하고, footer 버튼을 종목완료 하나로 줄였으며, 완료 저장 시 붉은 완료 도장 이펙트를 추가했다. 운영계/Dashboard3 Pages marker 검증까지 완료했다.`
+- 다음 액션: `인증 계정 실제 모바일 UI에서 운동 카드 + 행 추가와 종목완료 도장 이펙트를 확인한다.`
 - 차단 사유: `없음.`
 
 ## 이번 계획
@@ -31,8 +31,11 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
 - PASS: `node --test --test-reporter=dot @testFiles`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ b144556`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ b144556`
+- PASS: Dashboard3/운영계 marker 검증 - `tomatofarm-v20260702z17-workout-card-inline-complete`, `wt-max-set-add-row`, `window._wtCalCompleteExercise`, `wt-max-complete-stamp`
 - 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-card-inline-set-complete-review.md`
-- not verified yet: 운영계/Dashboard3 Pages 배포 및 인증 계정 실제 운동 카드 UI flow 확인 필요.
+- not verified yet: 인증 계정 실제 `운동 탭 -> 카드 + 행 -> 세트 입력 -> 종목완료 -> 완료 도장` UI flow 확인 필요.
 
 ## 방금 계획/실행한 항목
 

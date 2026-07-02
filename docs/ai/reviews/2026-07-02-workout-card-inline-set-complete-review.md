@@ -24,4 +24,7 @@
 3. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
 4. PASS: `node --test --test-reporter=dot @testFiles`
 5. PASS: `git diff --check`
-6. not verified yet: Pages 배포와 인증 계정 실제 `운동 탭 -> 카드 + 행 -> 세트 입력 -> 종목완료 -> 완료 도장` UI flow 확인 필요
+6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ b144556`
+7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ b144556`
+8. PASS: Dashboard3/운영계 marker 검증 - `tomatofarm-v20260702z17-workout-card-inline-complete`, `wt-max-set-add-row`, `window._wtCalCompleteExercise`, `wt-max-complete-stamp`
+9. not verified yet: 인증 계정 실제 `운동 탭 -> 카드 + 행 -> 세트 입력 -> 종목완료 -> 완료 도장` UI flow 확인 필요
