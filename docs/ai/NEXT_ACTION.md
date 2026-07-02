@@ -5,10 +5,10 @@
 - 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-07-02-workout-cycle-rail-achieved-color.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-cycle-rail-achieved-color-review.md`
-- 현재 단계: `운동 캘린더 좌측 목표 달성 색상 강조 Slice 1 구현/리뷰 완료, 배포 검증 대기`
+- 현재 단계: `운동 캘린더 좌측 목표 달성 색상 강조 Slice 1 Dashboard3 Pages 배포 검증 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `Slice 1 리뷰 결과 문제 없음. 로컬 정적/전체 테스트를 통과했다.`
-- 다음 액션: `이번 변경만 커밋해 origin/main에 push하고 Dashboard3 Pages 배포 검증을 수행한다.`
+- 마지막 완료: `커밋 242cf4b fix: highlight achieved workout rail goals를 origin/main에 push했고 Dashboard3 Pages 배포/marker 검증을 완료했다.`
+- 다음 액션: `인증 세션이 필요한 실제 운동 탭 월간 캘린더 좌측 목표 달성 색상 UI flow 확인만 남아 있다.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
@@ -32,7 +32,10 @@
   9. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
   10. PASS: `node --test --test-reporter=dot tests/*.test.js`
   11. PASS: `git diff --check`
-  12. not verified yet: Dashboard3 Pages 배포 및 인증 계정 실제 운동 탭 UI flow 확인 필요.
+  12. PASS: 구현 커밋 `242cf4b fix: highlight achieved workout rail goals`를 `origin/main`에 push했다.
+  13. PASS: Dashboard3 Pages 배포 검증 - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 242cf4b` -> `[deploy-verify] ok 242cf4b8a0e8 tomatofarm-v20260702z2-workout-rail-achieved-blue static=236`
+  14. PASS: Dashboard3 Pages marker 검증 - `sw.js` cache version, `render-calendar.js` `_cycleRailGoalStatus`/`workoutRecordsForBenchmarkWeek`/`is-achieved`, `style.css` `.cal-cycle-branch.is-achieved`/`background: #2f7df4`
+  15. not verified yet: 인증 계정 실제 운동 탭 UI flow 확인 필요.
 
 - Workout Cycle Rail Achieved Color 리뷰:
   1. 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-cycle-rail-achieved-color-review.md`

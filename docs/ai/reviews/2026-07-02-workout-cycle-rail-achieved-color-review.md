@@ -31,4 +31,7 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
-- not verified yet: Dashboard3 Pages 배포 및 인증 계정 실제 `운동 탭 -> 월간 캘린더 좌측 목표 달성 색상` UI flow 확인이 남아 있다.
+- PASS: 구현 커밋 `242cf4b fix: highlight achieved workout rail goals`를 `origin/main`에 push했다.
+- PASS: Dashboard3 Pages 배포 검증 - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 242cf4b` -> `[deploy-verify] ok 242cf4b8a0e8 tomatofarm-v20260702z2-workout-rail-achieved-blue static=236`
+- PASS: Dashboard3 Pages marker 검증 - `sw.js` cache version, `render-calendar.js` `_cycleRailGoalStatus`/`workoutRecordsForBenchmarkWeek`/`is-achieved`, `style.css` `.cal-cycle-branch.is-achieved`/`background: #2f7df4`
+- not verified yet: 인증 계정 실제 `운동 탭 -> 월간 캘린더 좌측 목표 달성 색상` UI flow 확인이 남아 있다.
