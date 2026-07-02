@@ -208,6 +208,14 @@ test('life zone running actors render track sprites and a map capture bubble on 
   assert.match(source, /function _renderRunningMapBubble/);
   assert.match(source, /bubble\.dataset\.lzRunningMapBubble = '1'/);
   assert.match(source, /bubble\.dataset\.lzRunningMapState = map\.state/);
+  assert.match(source, /bubble\.dataset\.lzRunningMapProvider = map\.provider/);
+  assert.match(source, /bubble\.dataset\.lzRunningMapTileCount = String\(map\.tileCount \|\| 0\)/);
+  assert.match(source, /bubble\.dataset\.lzRunningMapPointCount = String\(map\.pointCount \|\| 0\)/);
+  assert.match(source, /bubble\.dataset\.lzRunningMapHasPath = map\.hasPath \? 'true' : 'false'/);
+  assert.match(source, /function _bindRunningMapTileDiagnostics/);
+  assert.match(source, /tile\.addEventListener\('load'/);
+  assert.match(source, /tile\.addEventListener\('error'/);
+  assert.match(source, /bubble\.classList\.add\('is-tile-failed'\)/);
   assert.match(source, /lz-running-map-tile/);
   assert.match(source, /lz-running-map-path/);
   assert.match(source, /lz-running-map-place/);
@@ -245,6 +253,9 @@ test('life zone running actors render track sprites and a map capture bubble on 
   assert.match(css, /\.lz-running-map-tile \{/);
   assert.match(css, /\.lz-running-map-path \{/);
   assert.match(css, /\.lz-running-map-current \{/);
+  assert.match(css, /\.lz-running-map-bubble--missing-map \.lz-running-map-surface/);
+  assert.match(css, /\.lz-running-map-empty--tile-failed \{/);
+  assert.match(css, /\.lz-running-map-bubble\.is-tile-failed \.lz-running-map-empty--tile-failed/);
   assert.match(css, /\.lz-running-map-place \{/);
   assert.match(css, /\.lz-running-map-attribution \{[\s\S]*display: none;/);
   assert.doesNotMatch(css, /\.lz-running-map-road/);
@@ -266,7 +277,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260702z2-workout-rail-achieved-blue/);
+  assert.match(sw, /tomatofarm-v20260702z3-home-running-map-bubble/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,
@@ -308,7 +319,7 @@ test('life zone consulting room sofa assets are separate transparent runtime PNG
     ['consulting-visitor-gray-shirt-home.png', { width: 230, height: 298, colorType: 6 }]
   ];
 
-  assert.match(sw, /tomatofarm-v20260702z2-workout-rail-achieved-blue/);
+  assert.match(sw, /tomatofarm-v20260702z3-home-running-map-bubble/);
   for (const [asset, expected] of assets) {
     assert.match(sw, new RegExp(`\\.\\/assets\\/home\\/life-zone\\/ui\\/${asset.replace('.', '\\.')}`));
     assert.deepEqual(readPngHeader(`assets/home/life-zone/ui/${asset}`), expected);

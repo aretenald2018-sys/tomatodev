@@ -3,15 +3,43 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-02-workout-cycle-rail-achieved-color.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-cycle-rail-achieved-color-review.md`
-- 현재 단계: `운동 캘린더 좌측 목표 달성 색상 강조 Slice 1 Dashboard3 Pages 배포 검증 완료`
+- 계획 문서: `docs/ai/features/2026-07-02-home-running-map-bubble-reliability.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-home-running-map-bubble-reliability-review.md`
+- 현재 단계: `홈 러닝 지도 말풍선 신뢰성 개선 Slice 1 정적 검증 및 리뷰 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `커밋 242cf4b fix: highlight achieved workout rail goals를 origin/main에 push했고 Dashboard3 Pages 배포/marker 검증을 완료했다.`
-- 다음 액션: `인증 세션이 필요한 실제 운동 탭 월간 캘린더 좌측 목표 달성 색상 UI flow 확인만 남아 있다.`
+- 마지막 완료: `홈 러닝 지도 말풍선에 진단 data 속성, tile load/error 상태, tile-failed fallback UI를 추가했고 정적/전체 테스트 및 리뷰를 통과했다.`
+- 다음 액션: `Dashboard3 Pages 배포/인증 계정 실제 홈탭 러닝 지도 말풍선 UI flow 확인이 남아 있다.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
+
+- Home Running Map Bubble Reliability 계획:
+  1. 요청: 홈 화면 라이프존 러닝 지도 말풍선이 타일/경로 없이 작은 점 하나만 보이는 문제를 코드로 개선한다.
+  2. 진단: 실제 `_buildRunningMapBubbleData()`에는 `tiles/path/dot` 계산이 있으므로 `missing-map`뿐 아니라 `ready` 상태의 타일 로드 실패/1점 route도 원인으로 본다.
+  3. 결정: Slice 1은 홈 말풍선에 진단 `data-*` 메타, tile load/error 상태, 명확한 fallback UI를 추가한다.
+  4. 범위: `home/life-zone.js`, `style.css`, 관련 홈 러닝 지도 테스트, `sw.js` cache bump.
+  5. 제외: GPS 수집/저장 schema/운동 상세 지도/provider 교체/홈 부분 업데이트 리팩터.
+  6. 계획 문서: `docs/ai/features/2026-07-02-home-running-map-bubble-reliability.md`
+
+- Home Running Map Bubble Reliability 실행:
+  1. `home/life-zone.js`에서 `_buildRunningMapBubbleData()` 반환값에 provider/config/reason/tileCount/pointCount/hasPath 메타를 추가했다.
+  2. `home/life-zone.js`에서 지도 말풍선 DOM에 `data-lz-running-map-*` 진단 속성을 추가했다.
+  3. `home/life-zone.js`에서 VWorld tile 이미지 `load`/`error` 이벤트를 추적하고, 전체 실패 시 `is-tile-failed`와 `data-lz-running-map-tile-state="failed"`를 남긴다.
+  4. `style.css`에 `waiting`/`missing-map`/`is-tile-failed` placeholder 배경과 tile-failed fallback 텍스트 표시를 추가했다.
+  5. `tests/home-life-zone-npc-quest.test.js`와 cache marker 테스트를 갱신했다.
+  6. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z3-home-running-map-bubble`로 bump했다.
+  7. PASS: `node --check home/life-zone.js; node --check sw.js`
+  8. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/home-life-zone-state.test.js tests/running-entry.test.js` - 43 tests passed
+  9. PASS: `node scripts/verify-runtime-assets.mjs`
+  10. PASS: `node --test --test-reporter=dot tests/*.test.js`
+  11. PASS: `git diff --check`
+  12. not verified yet: Dashboard3 Pages 배포/인증 계정 실제 홈탭 러닝 지도 말풍선 UI flow 확인은 아직 수행하지 않았다.
+
+- Home Running Map Bubble Reliability 리뷰:
+  1. 리뷰 문서: `docs/ai/reviews/2026-07-02-home-running-map-bubble-reliability-review.md`
+  2. 결과: 문제 없음.
+  3. 확인: 정상 `ready` 상태의 VWorld tile/path/current-dot 렌더 계약은 유지되고, fallback은 `waiting`/`missing-map`/전체 tile 실패 상태에만 표시된다.
+  4. 남은 확인: Dashboard3 Pages 배포/인증 계정 실제 flow 확인은 아직 수행하지 않았다.
 
 - Workout Cycle Rail Achieved Color 계획:
   1. 요청: 운동 탭 좌측 목표를 해당 주에 달성했을 때 더 채도 높은 파란색으로 칠한다.

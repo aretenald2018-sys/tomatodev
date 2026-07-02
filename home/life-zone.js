@@ -257,19 +257,33 @@ function _readLifeZoneVworldMapConfig() {
   return fallback.configured ? fallback : config;
 }
 
+function _withRunningMapMeta(payload, config = null) {
+  const tiles = Array.isArray(payload?.tiles) ? payload.tiles : [];
+  const route = Array.isArray(payload?.route) ? payload.route : [];
+  return {
+    ...payload,
+    provider: config?.provider || 'none',
+    configured: !!config?.configured,
+    reason: config?.reason || '',
+    tileCount: tiles.length,
+    pointCount: route.length,
+    hasPath: !!payload?.path
+  };
+}
+
 function _buildRunningMapBubbleData(mapData = null) {
   const route = normalizeRunningMapPoints(mapData?.route || []);
   const previewPoint = _mapPoint(mapData?.previewPoint);
   const summaryCenter = _mapPoint(mapData?.routeSummary?.centroid);
   const center = _routeBoundsCenter(route) || previewPoint || summaryCenter;
   if (!center) {
-    return { state: 'waiting', route, tiles: [], path: '', dot: null };
+    return _withRunningMapMeta({ state: 'waiting', route, tiles: [], path: '', dot: null });
   }
 
   const config = _readLifeZoneVworldMapConfig();
   if (!config.configured || config.provider !== 'vworld') {
     const dot = { x: RUNNING_MAP_WIDTH / 2, y: RUNNING_MAP_HEIGHT / 2 };
-    return { state: 'missing-map', route, tiles: [], path: '', dot };
+    return _withRunningMapMeta({ state: 'missing-map', route, tiles: [], path: '', dot }, config);
   }
 
   const zoom = Math.max(
@@ -310,7 +324,66 @@ function _buildRunningMapBubbleData(mapData = null) {
     y: Math.max(4, Math.min(RUNNING_MAP_HEIGHT - 4, rawDot.y))
   };
 
-  return { state: 'ready', route, tiles, path, dot };
+  return _withRunningMapMeta({ state: 'ready', route, tiles, path, dot }, config);
+}
+
+function _setRunningMapBubbleDiagnostics(bubble, map) {
+  bubble.dataset.lzRunningMapBubble = '1';
+  bubble.dataset.lzRunningMapState = map.state;
+  bubble.dataset.lzRunningMapProvider = map.provider || 'none';
+  bubble.dataset.lzRunningMapConfigured = map.configured ? 'true' : 'false';
+  bubble.dataset.lzRunningMapReason = map.reason || '';
+  bubble.dataset.lzRunningMapTileCount = String(map.tileCount || 0);
+  bubble.dataset.lzRunningMapPointCount = String(map.pointCount || 0);
+  bubble.dataset.lzRunningMapHasPath = map.hasPath ? 'true' : 'false';
+  bubble.dataset.lzRunningMapTileState = map.state === 'ready' ? 'pending' : map.state;
+}
+
+function _bindRunningMapTileDiagnostics(bubble, map) {
+  if (!bubble || map.state !== 'ready') return;
+  const tiles = Array.from(bubble.querySelectorAll('.lz-running-map-tile'));
+  if (!tiles.length) {
+    bubble.classList.add('is-tile-failed');
+    bubble.dataset.lzRunningMapTileState = 'empty';
+    return;
+  }
+
+  let loaded = 0;
+  let failed = 0;
+  const counted = new WeakSet();
+  const update = () => {
+    bubble.dataset.lzRunningMapTilesLoaded = String(loaded);
+    bubble.dataset.lzRunningMapTilesFailed = String(failed);
+    if (loaded > 0 && failed > 0) {
+      bubble.dataset.lzRunningMapTileState = 'partial';
+      return;
+    }
+    if (loaded > 0) {
+      bubble.dataset.lzRunningMapTileState = 'loaded';
+      return;
+    }
+    if (failed >= tiles.length) {
+      bubble.classList.add('is-tile-failed');
+      bubble.dataset.lzRunningMapTileState = 'failed';
+    }
+  };
+  const mark = (tile, ok) => {
+    if (counted.has(tile)) return;
+    counted.add(tile);
+    if (ok) loaded += 1;
+    else failed += 1;
+    update();
+  };
+
+  tiles.forEach((tile) => {
+    if (tile.complete) {
+      mark(tile, tile.naturalWidth > 0);
+      return;
+    }
+    tile.addEventListener('load', () => mark(tile, true), { once: true });
+    tile.addEventListener('error', () => mark(tile, false), { once: true });
+  });
+  update();
 }
 
 function _renderRunningMapBubble(layer, actor, slot) {
@@ -338,10 +411,12 @@ function _renderRunningMapBubble(layer, actor, slot) {
     ? `<span class="lz-running-map-current" style="--lz-run-dot-x:${map.dot.x.toFixed(1)}px;--lz-run-dot-y:${map.dot.y.toFixed(1)}px"></span>`
     : '';
   const emptyText = map.state === 'ready' ? '' : (map.state === 'waiting' ? 'GPS' : 'MAP');
+  const fallbackHtml = map.state === 'ready'
+    ? '<span class="lz-running-map-empty lz-running-map-empty--tile-failed">MAP</span>'
+    : (emptyText ? `<span class="lz-running-map-empty">${emptyText}</span>` : '');
   bubble.className = `lz-running-map-bubble lz-running-map-bubble--${map.state}`;
   bubble.setAttribute('aria-label', `${actor.displayName} 러닝 지도`);
-  bubble.dataset.lzRunningMapBubble = '1';
-  bubble.dataset.lzRunningMapState = map.state;
+  _setRunningMapBubbleDiagnostics(bubble, map);
   bubble.style.setProperty('--lz-map-x', x);
   bubble.style.setProperty('--lz-map-y', y);
   bubble.style.setProperty('--lz-map-tip-x', `${tipX}%`);
@@ -354,11 +429,12 @@ function _renderRunningMapBubble(layer, actor, slot) {
         ${pathHtml}
       </svg>
       ${dotHtml}
-      ${emptyText ? `<span class="lz-running-map-empty">${emptyText}</span>` : ''}
+      ${fallbackHtml}
       ${place ? `<span class="lz-running-map-place">${escapeHtml(place)}</span>` : ''}
       ${map.state === 'ready' ? '<span class="lz-running-map-attribution">VWorld</span>' : ''}
     </span>
   `;
+  _bindRunningMapTileDiagnostics(bubble, map);
   layer.append(bubble);
 }
 

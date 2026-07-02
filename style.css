@@ -8633,6 +8633,15 @@ body.wt-running-session-open {
   border-radius: 8px 8px 8px 3px;
   background: #dfe7e5;
 }
+.lz-running-map-bubble--waiting .lz-running-map-surface,
+.lz-running-map-bubble--missing-map .lz-running-map-surface,
+.lz-running-map-bubble.is-tile-failed .lz-running-map-surface {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.08)),
+    repeating-linear-gradient(32deg, rgba(20, 94, 72, 0.14) 0 1px, transparent 1px 12px),
+    repeating-linear-gradient(122deg, rgba(37, 99, 235, 0.12) 0 1px, transparent 1px 14px),
+    #dfe7e5;
+}
 .lz-running-map-tile-layer {
   z-index: 1;
 }
@@ -8683,6 +8692,19 @@ body.wt-running-session-open {
   letter-spacing: 0;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.18));
+}
+.lz-running-map-empty--tile-failed {
+  display: none;
+}
+.lz-running-map-bubble.is-tile-failed .lz-running-map-empty--tile-failed {
+  display: grid;
+}
+.lz-running-map-bubble--waiting .lz-running-map-current,
+.lz-running-map-bubble--missing-map .lz-running-map-current,
+.lz-running-map-bubble.is-tile-failed .lz-running-map-current {
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.76),
+    0 1px 3px rgba(15, 23, 42, 0.32);
 }
 .lz-running-map-place {
   position: absolute;

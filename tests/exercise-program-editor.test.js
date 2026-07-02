@@ -65,5 +65,5 @@ test('exercise editor program controls have compact fixed layout styles', () => 
   assert.match(styleCss, /#ex-editor-modal \.ex-program-tm-calc/);
   assert.match(styleCss, /#ex-editor-modal \.ex-program-calc-btn/);
   assert.match(styleCss, /#ex-editor-modal \.ex-program-wendler \.ex-editor-input,[\s\S]*?min-height:\s*24px/);
-  assert.match(swJs, /tomatofarm-v20260702z2-workout-rail-achieved-blue/);
+  assert.match(swJs, /tomatofarm-v20260702z3-home-running-map-bubble/);
 });
