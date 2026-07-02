@@ -124,4 +124,6 @@
 3. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
 4. PASS: `node --test --test-reporter=dot tests/*.test.js`
 5. PASS: `git diff --check`
-6. not verified yet: Dashboard3 Pages 배포와 인증 계정 홈탭 실제 러닝 말풍선 UI flow 확인은 아직 남아 있다.
+6. PASS: Dashboard3 Pages 배포 검증 - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 0e9c5a93661ae24515486d38d2e1217e8d784b41` -> `[deploy-verify] ok 0e9c5a93661a tomatofarm-v20260702z6-home-running-map-park-scale static=236`
+7. PASS: Dashboard3 Pages marker 검증 - `sw.js` cache version, `home/life-zone.js` zoom/SVG tile/current marker, `style.css` 절반 폭/current marker style 확인
+8. not verified yet: 인증 계정 홈탭 실제 러닝 말풍선 UI flow 확인은 아직 남아 있다.

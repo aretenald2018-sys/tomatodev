@@ -6,9 +6,9 @@
 - 계획 문서: `docs/ai/features/2026-07-02-home-running-map-route-clarity.md`
 - 진단 문서: `없음 - 계획 문서에 /diagnose 기록`
 - 리뷰 문서: `docs/ai/reviews/2026-07-02-home-running-map-route-clarity-review.md`
-- 현재 단계: `홈 러닝 지도 말풍선 경로 가시성 Slice 1 Dashboard3 Pages 배포/marker 검증 완료`
+- 현재 단계: `홈 러닝 지도 말풍선 축소 및 공원 단위 배율 Slice 2 Dashboard3 Pages 배포/marker 검증 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `커밋 ef2b832 fix: clarify home running map route bubble을 origin/main에 push했고 Dashboard3 Pages 배포/marker 검증을 완료했다.`
+- 마지막 완료: `커밋 0e9c5a9 fix: shrink home running map bubble scale을 origin/main에 push했고 Dashboard3 Pages 배포/marker 검증을 완료했다.`
 - 다음 액션: `인증 계정으로 홈탭 실제 러닝 말풍선에서 VWorld 타일/경로선/현재 위치 dot 가시성을 확인한다.`
 - 차단 사유: `없음.`
 
@@ -33,6 +33,22 @@
   16. PASS: Dashboard3 Pages marker 검증 - 배포된 `sw.js`, `home/life-zone.js`, `style.css`에서 새 cache version과 지도 route overlay marker 확인
   17. 리뷰 문서: `docs/ai/reviews/2026-07-02-home-running-map-route-clarity-review.md`
   18. not verified yet: 인증 계정 홈탭 실제 러닝 말풍선 UI flow 확인 필요.
+
+- Home Running Map Route Clarity Slice 2:
+  1. 요청: 말풍선 크기는 현재 대비 50% 줄이되, 내부 지도 배율은 올림픽공원 맥락이 드러나게 한다.
+  2. 완료: `home/life-zone.js`에서 `RUNNING_MAP_HOME_MAX_ZOOM`과 `RUNNING_MAP_SINGLE_POINT_ZOOM`을 `14`로 낮췄다.
+  3. 완료: VWorld tile을 SVG `<image>`로 렌더하고 현재 위치 dot도 SVG circle로 바꿔, tile/path/start/current marker가 같은 viewBox에서 함께 축소되게 했다.
+  4. 완료: `style.css`에서 `.lz-running-map-bubble` 표시 폭을 `clamp(46px, calc(150 / 1672 * 100%), 68px)`로 줄였다.
+  5. 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z6-home-running-map-park-scale`로 bump하고 관련 테스트 marker를 갱신했다.
+  6. PASS: `node --check home/life-zone.js; node --check sw.js`
+  7. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/running-entry.test.js` - 23 tests passed
+  8. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
+  9. PASS: `node --test --test-reporter=dot tests/*.test.js`
+  10. PASS: `git diff --check`
+  11. 완료: 커밋 `0e9c5a9 fix: shrink home running map bubble scale`를 `origin/main`에 push했다.
+  12. PASS: Dashboard3 Pages 배포 검증 - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 0e9c5a93661ae24515486d38d2e1217e8d784b41` -> `[deploy-verify] ok 0e9c5a93661a tomatofarm-v20260702z6-home-running-map-park-scale static=236`
+  13. PASS: Dashboard3 Pages marker 검증 - 배포된 `sw.js`, `home/life-zone.js`, `style.css`에서 새 cache version, zoom 14, SVG tile/current marker, 절반 폭 marker 확인
+  14. not verified yet: 인증 계정 홈탭 실제 러닝 말풍선 UI flow 확인 필요.
 
 - Workout iOS Sheet Input Scroll 실행:
   1. 요청: iPhone PWA에서 운동종목 추가 후 KG/REP 입력·수정 시 화면이 위로 자동 스크롤되는 문제를 해결한다.

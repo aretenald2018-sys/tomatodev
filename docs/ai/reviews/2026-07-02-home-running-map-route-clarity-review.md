@@ -56,7 +56,9 @@
 3. PASS: `node scripts/verify-runtime-assets.mjs`
 4. PASS: `node --test --test-reporter=dot tests/*.test.js`
 5. PASS: `git diff --check`
+6. PASS: Dashboard3 Pages 배포 검증 - `0e9c5a93661ae24515486d38d2e1217e8d784b41`
+7. PASS: Dashboard3 Pages marker 검증 - 배포된 `sw.js`, `home/life-zone.js`, `style.css`에 Slice 2 marker 반영 확인
 
 ### 남은 확인
 
-- not verified yet: Dashboard3 Pages 배포 후 인증 계정에서 홈탭 실제 러닝 말풍선의 올림픽공원 맥락 가시성을 확인해야 한다.
+- not verified yet: 인증 계정에서 홈탭 실제 러닝 말풍선의 올림픽공원 맥락 가시성을 확인해야 한다.
