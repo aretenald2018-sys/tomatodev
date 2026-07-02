@@ -126,5 +126,5 @@ test('Dashboard3 mode controls cannot persist normal or pro workout record UI', 
 });
 
 test('service worker cache version was bumped for workout asset changes', () => {
-  assert.match(swJs, /tomatofarm-v20260702z1-running-session-reload-recovery/);
+  assert.match(swJs, /tomatofarm-v20260702z2-workout-rail-achieved-blue/);
 });

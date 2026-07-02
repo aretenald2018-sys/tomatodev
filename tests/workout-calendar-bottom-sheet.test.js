@@ -379,6 +379,9 @@ test('workout calendar week rail renders cycle prescriptions instead of weekly a
   assert.match(styleCss, /\.cal-workout-month-grid\s*\{[\s\S]*touch-action:\s*pan-y/);
   assert.match(calendarJs, /activeBenchmarks/);
   assert.match(calendarJs, /buildExerciseProgramWorkoutPrescription/);
+  assert.match(calendarJs, /workoutRecordsForBenchmarkWeek/);
+  assert.match(calendarJs, /function _cycleRailGoalStatus\(cache = \{\}, benchmark = \{\}, weekStart, targetKg = 0, targetReps = 0\)/);
+  assert.match(calendarJs, /Number\(set\.kg\) >= kgGoal && Number\(set\.reps\) >= repsGoal/);
   assert.match(calendarJs, /const plan = rx\?\.plan \|\| \{\}/);
   assert.match(calendarJs, /const displayWeek = Number\(isWendler \? \(plan\.cycleWeek \|\| plan\.week \|\| cycleWeek\) : cycleWeek\) \|\| cycleWeek/);
   assert.match(calendarJs, /programWeekText/);
@@ -387,10 +390,12 @@ test('workout calendar week rail renders cycle prescriptions instead of weekly a
   assert.match(calendarJs, /weekLabel:\s*`W\$\{_fmtNum\(displayWeek, 0\)\}`/);
   assert.match(calendarJs, /exerciseLabel:\s*_cycleRailExerciseLabel\(bm\)/);
   assert.match(calendarJs, /targetLabel:\s*`목표 \$\{kgText\}`/);
+  assert.match(calendarJs, /isAchieved:\s*goalStatus\.isAchieved/);
   assert.match(calendarJs, /function _buildWorkoutCycleRailItems/);
   assert.match(calendarJs, /function _renderWorkoutCycleRail/);
   assert.match(calendarJs, /benchmarkId:\s*bm\.id/);
   assert.match(calendarJs, /data-cal-cycle-target="\$\{_esc\(item\.benchmarkId\)\}"/);
+  assert.match(calendarJs, /const achievedClass = item\.isAchieved \? ' is-achieved' : ''/);
   assert.match(calendarJs, /cal-cycle-branch-head/);
   assert.match(calendarJs, /cal-cycle-branch-week/);
   assert.match(calendarJs, /cal-cycle-branch-name/);
@@ -403,7 +408,7 @@ test('workout calendar week rail renders cycle prescriptions instead of weekly a
   assert.match(calendarJs, /function _workoutCalendarRowWeekStart/);
   assert.match(calendarJs, /const rowMonday = new Date\(y, m, \(row \* 7\) - firstDow \+ 2\)/);
   assert.match(grid, /const weekStart = _workoutCalendarRowWeekStart\(y, m, row, firstDow\)/);
-  assert.match(grid, /const cycleItems = _buildWorkoutCycleRailItems\(cycleBoard, weekStart\)/);
+  assert.match(grid, /const cycleItems = _buildWorkoutCycleRailItems\(cycleBoard, weekStart, cache\)/);
   assert.match(grid, /_renderWorkoutCycleRail\(weekStart, cycleItems\)/);
   assert.doesNotMatch(grid, /weekDurationSec|weekSets|weekNo|_formatWorkoutWeekHours/);
   assert.doesNotMatch(calendarJs, />\$\{weekNo\}주<\/strong>/);
@@ -431,6 +436,9 @@ test('workout calendar week rail renders cycle prescriptions instead of weekly a
   assert.match(styleCss, /\.cal-cycle-branch\s*\{[\s\S]*background:\s*#d7e4ed;[\s\S]*color:\s*#33404a/);
   assert.match(styleCss, /\.cal-cycle-branch\.is-wendler\s*\{[\s\S]*background:\s*#d7e4ed;[\s\S]*color:\s*#33404a/);
   assert.match(styleCss, /\.cal-cycle-branch\.is-intensity\s*\{[\s\S]*background:\s*#d7e4ed;[\s\S]*color:\s*#33404a/);
+  assert.match(styleCss, /\.cal-cycle-branch\.is-achieved\s*\{[\s\S]*background:\s*#2f7df4;[\s\S]*color:\s*#ffffff/);
+  assert.match(styleCss, /\.cal-cycle-branch\.is-achieved::before\s*\{[\s\S]*border-top-color:\s*#2f7df4/);
+  assert.match(styleCss, /\.cal-cycle-branch\.is-achieved \.cal-cycle-branch-week,[\s\S]*\.cal-cycle-branch\.is-achieved \.cal-cycle-branch-target\s*\{[\s\S]*color:\s*#ffffff/);
 });
 
 test('cycle rail target cards open the existing growth-board benchmark settings sheet', () => {
@@ -510,5 +518,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260702z1-running-session-reload-recovery/);
+  assert.match(swJs, /tomatofarm-v20260702z2-workout-rail-achieved-blue/);
 });

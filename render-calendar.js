@@ -47,6 +47,7 @@ import {
   buildExerciseProgramWorkoutPrescription,
   mondayOf,
   weekIndexOf,
+  workoutRecordsForBenchmarkWeek,
 } from './workout/test-v2/board-core.js';
 import { buildWorkoutSetTimeline } from './workout/timeline.js';
 
@@ -194,7 +195,21 @@ function _cycleRailKind(benchmark = {}, track) {
   return track === 'intensity' ? 'intensity' : 'volume';
 }
 
-function _buildWorkoutCycleRailItems(board, weekStart) {
+function _cycleRailGoalStatus(cache = {}, benchmark = {}, weekStart, targetKg = 0, targetReps = 0) {
+  const kgGoal = Number(targetKg) || 0;
+  const repsGoal = Number(targetReps) || 0;
+  if (kgGoal <= 0 || repsGoal <= 0) return { isAchieved: false, label: '' };
+  const records = workoutRecordsForBenchmarkWeek(cache || {}, benchmark || {}, weekStart);
+  const best = records
+    .map(record => record?.best || null)
+    .filter(set => set && Number(set.kg) >= kgGoal && Number(set.reps) >= repsGoal)
+    .sort((a, b) => (Number(b.kg) || 0) - (Number(a.kg) || 0) || (Number(b.reps) || 0) - (Number(a.reps) || 0))[0] || null;
+  return best
+    ? { isAchieved: true, label: `달성 ${_fmtNum(best.kg, 1)}kg x ${_fmtNum(best.reps, 0)}회` }
+    : { isAchieved: false, label: '' };
+}
+
+function _buildWorkoutCycleRailItems(board, weekStart, cache = {}) {
   if (!board || !weekStart) return [];
   const items = [];
   for (const bm of activeBenchmarks(board)) {
@@ -213,7 +228,8 @@ function _buildWorkoutCycleRailItems(board, weekStart) {
       });
       const kg = Number(rx?.plan?.kg);
       if (!Number.isFinite(kg) || kg <= 0) continue;
-      const reps = Number(rx?.plan?.reps) > 0 ? `${_fmtNum(rx.plan.reps, 0)}${rx.plan.amrap ? '+' : ''}회` : '';
+      const targetReps = Number(rx?.plan?.reps) || 0;
+      const reps = targetReps > 0 ? `${_fmtNum(targetReps, 0)}${rx.plan.amrap ? '+' : ''}회` : '';
       const kgText = `${_fmtNum(kg, 1)}kg`;
       const plan = rx?.plan || {};
       const isWendler = plan.kind === 'wendler';
@@ -221,13 +237,16 @@ function _buildWorkoutCycleRailItems(board, weekStart) {
       const programWeek = Number(plan.programWeek) || 0;
       const programWeekText = isWendler && programWeek > 0 ? ` · 프로그램 ${_fmtNum(programWeek, 0)}주차` : '';
       const trackLabel = isWendler ? '웬들러' : _cycleRailTrackLabel(track);
+      const goalStatus = _cycleRailGoalStatus(cache, bm, weekStart, kg, targetReps);
+      const achievedText = goalStatus.isAchieved && goalStatus.label ? ` · ${goalStatus.label}` : '';
       items.push({
         benchmarkId: bm.id,
         weekLabel: `W${_fmtNum(displayWeek, 0)}`,
         exerciseLabel: _cycleRailExerciseLabel(bm),
         targetLabel: `목표 ${kgText}`,
-        title: `${bm.label || bm.short || '종목'} · ${_fmtNum(displayWeek, 0)}주차${programWeekText} · ${trackLabel} · ${kgText}${reps ? ` x ${reps}` : ''}`,
+        title: `${bm.label || bm.short || '종목'} · ${_fmtNum(displayWeek, 0)}주차${programWeekText} · ${trackLabel} · ${kgText}${reps ? ` x ${reps}` : ''}${achievedText}`,
         kind: _cycleRailKind(bm, track),
+        isAchieved: goalStatus.isAchieved,
       });
     }
   }
@@ -243,9 +262,12 @@ function _renderWorkoutCycleRail(weekStart, items = []) {
     <div class="cal-workout-week-rail ${visibleItems.length ? 'has-cycle' : 'is-empty'}" aria-label="${_esc(label)}">
       <span class="cal-cycle-rail-line" aria-hidden="true"></span>
       <div class="cal-cycle-branch-list">
-        ${visibleItems.map(item => `
-          <button type="button" class="cal-cycle-branch is-${_esc(item.kind)}" data-cal-cycle-target="${_esc(item.benchmarkId)}" title="${_esc(item.title)}" aria-label="${_esc(`${item.title} 설정 열기`)}"><span class="cal-cycle-branch-text"><span class="cal-cycle-branch-head"><span class="cal-cycle-branch-week">${_esc(item.weekLabel)}</span><span class="cal-cycle-branch-name">${_esc(item.exerciseLabel)}</span></span><span class="cal-cycle-branch-target">${_esc(item.targetLabel)}</span></span></button>
-        `).join('')}
+        ${visibleItems.map(item => {
+          const achievedClass = item.isAchieved ? ' is-achieved' : '';
+          return `
+          <button type="button" class="cal-cycle-branch is-${_esc(item.kind)}${achievedClass}" data-cal-cycle-target="${_esc(item.benchmarkId)}" title="${_esc(item.title)}" aria-label="${_esc(`${item.title} 설정 열기`)}"><span class="cal-cycle-branch-text"><span class="cal-cycle-branch-head"><span class="cal-cycle-branch-week">${_esc(item.weekLabel)}</span><span class="cal-cycle-branch-name">${_esc(item.exerciseLabel)}</span></span><span class="cal-cycle-branch-target">${_esc(item.targetLabel)}</span></span></button>
+        `;
+        }).join('')}
       </div>
     </div>
   `;
@@ -1073,7 +1095,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
   `;
 
   const gridHtml = isWorkoutHome
-    ? _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, cycleBoard })
+    ? _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, cycleBoard, cache })
     : `<div class="cal-grid cal-workout-grid">${flatCells.join('')}</div>`;
   const bottomSheetHtml = isWorkoutHome
     ? _renderWorkoutHomeBottomSheet(_workoutHomeSelectedKey, { cache, plan, checkins, lookup })
@@ -1099,7 +1121,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
   `;
 }
 
-function _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, cycleBoard = null }) {
+function _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, cycleBoard = null, cache = {} }) {
   const weekRows = [];
   const rowCount = Math.ceil((firstDow + daysCount) / 7);
   for (let row = 0; row < rowCount; row++) {
@@ -1114,7 +1136,7 @@ function _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, cycl
     }
 
     const weekStart = _workoutCalendarRowWeekStart(y, m, row, firstDow);
-    const cycleItems = _buildWorkoutCycleRailItems(cycleBoard, weekStart);
+    const cycleItems = _buildWorkoutCycleRailItems(cycleBoard, weekStart, cache);
     weekRows.push(`
       <div class="cal-workout-week-row">
         ${_renderWorkoutCycleRail(weekStart, cycleItems)}

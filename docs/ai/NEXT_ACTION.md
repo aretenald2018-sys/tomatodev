@@ -3,15 +3,42 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-02-running-session-reload-recovery.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-running-session-reload-recovery-review.md`
-- 현재 단계: `러닝 세션 리로드 복구 Slice 1 Dashboard3 Pages 배포 완료`
+- 계획 문서: `docs/ai/features/2026-07-02-workout-cycle-rail-achieved-color.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-cycle-rail-achieved-color-review.md`
+- 현재 단계: `운동 캘린더 좌측 목표 달성 색상 강조 Slice 1 구현/리뷰 완료, 배포 검증 대기`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `커밋 384920f fix: preserve running session draft across reload를 origin/main에 push했고 Dashboard3 Pages 배포 검증을 완료했다.`
-- 다음 액션: `인증 세션이 필요한 실제 운동 탭 러닝 시작/리로드 UI flow 확인만 남아 있다.`
+- 마지막 완료: `Slice 1 리뷰 결과 문제 없음. 로컬 정적/전체 테스트를 통과했다.`
+- 다음 액션: `이번 변경만 커밋해 origin/main에 push하고 Dashboard3 Pages 배포 검증을 수행한다.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
+
+- Workout Cycle Rail Achieved Color 계획:
+  1. 요청: 운동 탭 좌측 목표를 해당 주에 달성했을 때 더 채도 높은 파란색으로 칠한다.
+  2. 결정: 기존 `workoutRecordsForBenchmarkWeek()` 기준으로 같은 벤치마크의 해당 주 best set이 목표 `kg/reps` 이상이면 달성으로 본다.
+  3. 범위: `render-calendar.js` 달성 class, `style.css` 달성 색상, 회귀 테스트, `sw.js` cache bump.
+  4. 제외: 성장보드 산식/데이터 모델, 하단 sheet 동작, 레일 레이아웃 변경.
+  5. 계획 문서: `docs/ai/features/2026-07-02-workout-cycle-rail-achieved-color.md`
+
+- Workout Cycle Rail Achieved Color 실행:
+  1. `render-calendar.js`에 `_cycleRailGoalStatus()`를 추가해 주간 best set이 목표 `kg/reps` 이상이면 달성으로 판정한다.
+  2. 달성한 좌측 목표 button에 `is-achieved` class와 title/aria 달성 문구를 추가했다.
+  3. `style.css`에 `.cal-cycle-branch.is-achieved` 선명한 파란색 상태를 추가했다.
+  4. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z2-workout-rail-achieved-blue`로 bump했다.
+  5. 관련 cache-version marker 테스트와 `tests/workout-calendar-bottom-sheet.test.js`를 갱신했다.
+  6. PASS: `node --check render-calendar.js`
+  7. PASS: `node --check sw.js`
+  8. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js` - 19 tests passed
+  9. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
+  10. PASS: `node --test --test-reporter=dot tests/*.test.js`
+  11. PASS: `git diff --check`
+  12. not verified yet: Dashboard3 Pages 배포 및 인증 계정 실제 운동 탭 UI flow 확인 필요.
+
+- Workout Cycle Rail Achieved Color 리뷰:
+  1. 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-cycle-rail-achieved-color-review.md`
+  2. 결과: 문제 없음.
+  3. 확인: 달성 상태는 `is-achieved` class/title/aria에만 추가되어 기존 레일 클릭/설정 진입/레이아웃을 바꾸지 않는다.
+  4. 확인: `tests/`와 `sw.js`에 이전 cache version marker가 남아 있지 않다.
 
 - Running Session Reload Recovery:
   1. 요청: 러닝 기록 중 앱이 백그라운드에서 리로드되면 저장 전 기록이 전부 사라지는 문제를 수정한다.
