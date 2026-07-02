@@ -2,14 +2,14 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-07-02-home-running-map-route-clarity.md`
 - 진단 문서: `없음 - 계획 문서에 /diagnose 기록`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-home-running-map-route-clarity-review.md`
-- 현재 단계: `홈 러닝 지도 말풍선 위치 보정 및 기록 모달 Slice 3 구현/로컬 검증 완료`
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-home-running-map-record-modal-review.md`
+- 현재 단계: `홈 러닝 지도 말풍선 위치 보정 및 기록 모달 Slice 3 Dashboard3 Pages 배포/marker 검증 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `Slice 3 로컬 검증 완료: node --check, 홈 라이프존/러닝 테스트, runtime assets, 전체 node:test, git diff --check 통과.`
-- 다음 액션: `Slice 3 변경 파일을 리뷰하고 Dashboard3 Pages 배포/marker 검증을 완료한다.`
+- 마지막 완료: `커밋 d61f133 fix: add home running record modal을 origin/main에 push했고 Dashboard3 Pages 배포/marker 검증을 완료했다.`
+- 다음 액션: `인증 계정으로 홈탭 실제 러닝 말풍선을 탭해 오늘 러닝 기록 모달이 열리는지 UI flow를 확인한다.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
@@ -62,6 +62,11 @@
   9. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
   10. PASS: `node --test --test-reporter=dot tests/*.test.js`
   11. PASS: `git diff --check`
+  12. 완료: 커밋 `d61f133 fix: add home running record modal`를 `origin/main`에 push했다.
+  13. PASS: Dashboard3 Pages 배포 검증 - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ d61f1335eede8933e192388e9eaa2e8a13f4f252` -> `[deploy-verify] ok d61f1335eede tomatofarm-v20260702z7-home-running-map-record-modal static=236`
+  14. PASS: Dashboard3 Pages marker 검증 - 배포된 `sw.js`, `home/life-zone.js`, `home/life-zone-state.js`, `style.css`에서 cache version, 기록 모달, `bubbleY`, clickable marker 확인
+  15. 리뷰 문서: `docs/ai/reviews/2026-07-02-home-running-map-record-modal-review.md`
+  16. not verified yet: 인증 계정 홈탭 실제 러닝 말풍선 클릭 UI flow 확인 필요.
 
 - Workout iOS Sheet Input Scroll 실행:
   1. 요청: iPhone PWA에서 운동종목 추가 후 KG/REP 입력·수정 시 화면이 위로 자동 스크롤되는 문제를 해결한다.
