@@ -8596,14 +8596,14 @@ body.wt-running-session-open {
   left: calc(var(--lz-map-x) / 1672 * 100%);
   top: calc(var(--lz-map-y) / 1672 * 100%);
   z-index: 130;
-  width: clamp(92px, calc(300 / 1672 * 100%), 136px);
+  width: clamp(46px, calc(150 / 1672 * 100%), 68px);
   aspect-ratio: 10 / 7;
   overflow: visible;
   border: 1px solid rgba(255, 255, 255, 0.94);
-  border-radius: 10px 10px 10px 4px;
+  border-radius: 8px 8px 8px 3px;
   background: #e7eeec;
   box-shadow:
-    0 6px 14px rgba(15, 23, 42, 0.24),
+    0 4px 9px rgba(15, 23, 42, 0.22),
     inset 0 0 0 1px rgba(15, 23, 42, 0.06);
   transform: translate(-50%, -100%);
   pointer-events: none;
@@ -8622,7 +8622,6 @@ body.wt-running-session-open {
   transform: translateX(-50%) rotate(45deg);
 }
 .lz-running-map-surface,
-.lz-running-map-tile-layer,
 .lz-running-map-overlay {
   position: absolute;
   inset: 0;
@@ -8630,7 +8629,7 @@ body.wt-running-session-open {
 }
 .lz-running-map-surface {
   overflow: hidden;
-  border-radius: 9px 9px 9px 3px;
+  border-radius: 7px 7px 7px 2px;
   background: #dfe7e5;
 }
 .lz-running-map-bubble--waiting .lz-running-map-surface,
@@ -8642,15 +8641,7 @@ body.wt-running-session-open {
     repeating-linear-gradient(122deg, rgba(37, 99, 235, 0.12) 0 1px, transparent 1px 14px),
     #dfe7e5;
 }
-.lz-running-map-tile-layer {
-  z-index: 1;
-}
 .lz-running-map-tile {
-  position: absolute;
-  display: block;
-  width: 256px;
-  height: 256px;
-  max-width: none;
   image-rendering: auto;
   pointer-events: none;
 }
@@ -8679,19 +8670,10 @@ body.wt-running-session-open {
   filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.32));
 }
 .lz-running-map-current {
-  position: absolute;
-  z-index: 3;
-  left: var(--lz-run-dot-x, 50%);
-  top: var(--lz-run-dot-y, 50%);
-  width: 11px;
-  height: 11px;
-  border: 2px solid #ffffff;
-  border-radius: 50%;
-  background: #38d844;
-  box-shadow:
-    0 0 0 2px rgba(255, 255, 255, 0.62),
-    0 1px 4px rgba(15, 23, 42, 0.38);
-  transform: translate(-50%, -50%);
+  fill: #38d844;
+  stroke: #ffffff;
+  stroke-width: 4;
+  filter: drop-shadow(0 2px 3px rgba(15, 23, 42, 0.38));
   pointer-events: none;
 }
 .lz-running-map-empty {
@@ -8716,21 +8698,19 @@ body.wt-running-session-open {
 .lz-running-map-bubble--waiting .lz-running-map-current,
 .lz-running-map-bubble--missing-map .lz-running-map-current,
 .lz-running-map-bubble.is-tile-failed .lz-running-map-current {
-  box-shadow:
-    0 0 0 3px rgba(255, 255, 255, 0.76),
-    0 1px 3px rgba(15, 23, 42, 0.32);
+  filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.32));
 }
 .lz-running-map-place {
   position: absolute;
-  left: 5px;
-  top: 5px;
+  left: 3px;
+  top: 3px;
   z-index: 5;
-  max-width: calc(100% - 10px);
-  padding: 3px 7px 3px;
+  max-width: calc(100% - 6px);
+  padding: 2px 4px 2px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.88);
   color: #111827;
-  font-size: 7px;
+  font-size: 5px;
   font-weight: 900;
   line-height: 1.25;
   letter-spacing: 0;

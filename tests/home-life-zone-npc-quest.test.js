@@ -205,8 +205,8 @@ test('life zone running actors render track sprites and a map capture bubble on 
   assert.match(source, /function _buildRunningMapBubbleData/);
   assert.match(source, /const RUNNING_MAP_WIDTH = 300/);
   assert.match(source, /const RUNNING_MAP_HEIGHT = 210/);
-  assert.match(source, /const RUNNING_MAP_HOME_MAX_ZOOM = 17/);
-  assert.match(source, /const RUNNING_MAP_SINGLE_POINT_ZOOM = 15/);
+  assert.match(source, /const RUNNING_MAP_HOME_MAX_ZOOM = 14/);
+  assert.match(source, /const RUNNING_MAP_SINGLE_POINT_ZOOM = 14/);
   assert.match(source, /function _zoomForRunningMap\(route = \[\], width = RUNNING_MAP_WIDTH, height = RUNNING_MAP_HEIGHT\)/);
   assert.match(source, /Math\.min\(RUNNING_MAP_HOME_MAX_ZOOM, RUNNING_MAP_MAX_ZOOM, _zoomForRunningMap\(route, RUNNING_MAP_WIDTH, RUNNING_MAP_HEIGHT\)\)/);
   assert.match(source, /function _renderRunningMapBubble/);
@@ -221,10 +221,12 @@ test('life zone running actors render track sprites and a map capture bubble on 
   assert.match(source, /tile\.addEventListener\('error'/);
   assert.match(source, /bubble\.classList\.add\('is-tile-failed'\)/);
   assert.match(source, /lz-running-map-tile/);
+  assert.match(source, /<image[\s\S]*class="lz-running-map-tile"[\s\S]*preserveAspectRatio="none"/);
   assert.match(source, /lz-running-map-path/);
   assert.match(source, /lz-running-map-path--casing/);
   assert.match(source, /lz-running-map-path--main/);
   assert.match(source, /lz-running-map-start/);
+  assert.match(source, /circle class="lz-running-map-current"/);
   assert.match(source, /lz-running-map-place/);
   assert.match(source, /const place = String\(actor\.runningMap\?\.placeLabel \|\| ''\)\.trim\(\)/);
   assert.doesNotMatch(source, /map\.state === 'ready' \? '위치 확인 중'/);
@@ -256,14 +258,15 @@ test('life zone running actors render track sprites and a map capture bubble on 
   assert.doesNotMatch(css, /translate3d\(var\(--lz-run-x0/);
   assert.doesNotMatch(css.match(/@keyframes lz-running-track-in-place \{[\s\S]*?\n\}/)?.[0] || '', /rotate|translateX|--lz-run-x/);
   assert.match(css, /\.lz-running-map-bubble \{/);
-  assert.match(css, /width: clamp\(92px, calc\(300 \/ 1672 \* 100%\), 136px\)/);
+  assert.match(css, /width: clamp\(46px, calc\(150 \/ 1672 \* 100%\), 68px\)/);
   assert.match(css, /aspect-ratio: 10 \/ 7/);
   assert.match(css, /\.lz-running-map-tile \{/);
+  assert.doesNotMatch(css, /\.lz-running-map-tile \{[^}]*position: absolute;/);
   assert.match(css, /\.lz-running-map-path \{/);
   assert.match(css, /\.lz-running-map-path--casing \{[\s\S]*stroke: rgba\(255, 255, 255, 0\.96\);[\s\S]*stroke-width: 15;/);
   assert.match(css, /\.lz-running-map-path--main \{[\s\S]*stroke: #ff3b1f;[\s\S]*stroke-width: 9;/);
   assert.match(css, /\.lz-running-map-start \{/);
-  assert.match(css, /\.lz-running-map-current \{/);
+  assert.match(css, /\.lz-running-map-current \{[\s\S]*fill: #38d844;[\s\S]*stroke: #ffffff;[\s\S]*stroke-width: 4;/);
   assert.match(css, /\.lz-running-map-bubble--missing-map \.lz-running-map-surface/);
   assert.match(css, /\.lz-running-map-empty--tile-failed \{/);
   assert.match(css, /\.lz-running-map-bubble\.is-tile-failed \.lz-running-map-empty--tile-failed/);
@@ -288,7 +291,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260702z5-home-running-map-route/);
+  assert.match(sw, /tomatofarm-v20260702z6-home-running-map-park-scale/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,
@@ -330,7 +333,7 @@ test('life zone consulting room sofa assets are separate transparent runtime PNG
     ['consulting-visitor-gray-shirt-home.png', { width: 230, height: 298, colorType: 6 }]
   ];
 
-  assert.match(sw, /tomatofarm-v20260702z5-home-running-map-route/);
+  assert.match(sw, /tomatofarm-v20260702z6-home-running-map-park-scale/);
   for (const [asset, expected] of assets) {
     assert.match(sw, new RegExp(`\\.\\/assets\\/home\\/life-zone\\/ui\\/${asset.replace('.', '\\.')}`));
     assert.deepEqual(readPngHeader(`assets/home/life-zone/ui/${asset}`), expected);

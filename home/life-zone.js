@@ -36,8 +36,8 @@ const RUNNING_MAP_HEIGHT = 210;
 const RUNNING_MAP_TILE_SIZE = 256;
 const RUNNING_MAP_MIN_ZOOM = 10;
 const RUNNING_MAP_MAX_ZOOM = 18;
-const RUNNING_MAP_HOME_MAX_ZOOM = 17;
-const RUNNING_MAP_SINGLE_POINT_ZOOM = 15;
+const RUNNING_MAP_HOME_MAX_ZOOM = 14;
+const RUNNING_MAP_SINGLE_POINT_ZOOM = 14;
 
 let _actorStateCache = null;
 let _lifeZoneVisitContext = null;
@@ -399,15 +399,15 @@ function _renderRunningMapBubble(layer, actor, slot) {
   const map = _buildRunningMapBubbleData(actor.runningMap);
   const place = String(actor.runningMap?.placeLabel || '').trim();
   const tileHtml = map.tiles.map((tile) => `
-    <img
+    <image
       class="lz-running-map-tile"
-      src="${escapeHtml(tile.src)}"
-      alt=""
-      decoding="async"
-      loading="eager"
-      draggable="false"
-      style="left:${tile.left.toFixed(1)}px;top:${tile.top.toFixed(1)}px"
-    >
+      href="${escapeHtml(tile.src)}"
+      x="${tile.left.toFixed(1)}"
+      y="${tile.top.toFixed(1)}"
+      width="${RUNNING_MAP_TILE_SIZE}"
+      height="${RUNNING_MAP_TILE_SIZE}"
+      preserveAspectRatio="none"
+    ></image>
   `).join('');
   const pathHtml = map.path
     ? `<polyline class="lz-running-map-path lz-running-map-path--casing" points="${escapeHtml(map.path)}"></polyline>
@@ -417,7 +417,7 @@ function _renderRunningMapBubble(layer, actor, slot) {
     ? `<circle class="lz-running-map-start" cx="${map.start.x.toFixed(1)}" cy="${map.start.y.toFixed(1)}" r="6.2"></circle>`
     : '';
   const dotHtml = map.dot
-    ? `<span class="lz-running-map-current" style="--lz-run-dot-x:${map.dot.x.toFixed(1)}px;--lz-run-dot-y:${map.dot.y.toFixed(1)}px"></span>`
+    ? `<circle class="lz-running-map-current" cx="${map.dot.x.toFixed(1)}" cy="${map.dot.y.toFixed(1)}" r="7.2"></circle>`
     : '';
   const emptyText = map.state === 'ready' ? '' : (map.state === 'waiting' ? 'GPS' : 'MAP');
   const fallbackHtml = map.state === 'ready'
@@ -433,12 +433,12 @@ function _renderRunningMapBubble(layer, actor, slot) {
   bubble.style.zIndex = String((Number(slot.z) || 1) + 30);
   bubble.innerHTML = `
     <span class="lz-running-map-surface">
-      <span class="lz-running-map-tile-layer">${tileHtml}</span>
       <svg class="lz-running-map-overlay" viewBox="0 0 ${RUNNING_MAP_WIDTH} ${RUNNING_MAP_HEIGHT}" aria-hidden="true">
+        ${tileHtml}
         ${pathHtml}
         ${startHtml}
+        ${dotHtml}
       </svg>
-      ${dotHtml}
       ${fallbackHtml}
       ${place ? `<span class="lz-running-map-place">${escapeHtml(place)}</span>` : ''}
       ${map.state === 'ready' ? '<span class="lz-running-map-attribution">VWorld</span>' : ''}
