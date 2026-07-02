@@ -31,12 +31,13 @@ const LIFE_ZONE_NPC_NAME = '트레이너';
 const LIFE_ZONE_MIRANDA_NAME = '미란다';
 const LIFE_ZONE_CONSULTING_CHIEF_NAME = '상담실장';
 const LIFE_ZONE_CACHE_MS = 0;
-const RUNNING_MAP_WIDTH = 172;
-const RUNNING_MAP_HEIGHT = 121;
+const RUNNING_MAP_WIDTH = 300;
+const RUNNING_MAP_HEIGHT = 210;
 const RUNNING_MAP_TILE_SIZE = 256;
 const RUNNING_MAP_MIN_ZOOM = 10;
 const RUNNING_MAP_MAX_ZOOM = 18;
-const RUNNING_MAP_HOME_MAX_ZOOM = 12;
+const RUNNING_MAP_HOME_MAX_ZOOM = 17;
+const RUNNING_MAP_SINGLE_POINT_ZOOM = 15;
 
 let _actorStateCache = null;
 let _lifeZoneVisitContext = null;
@@ -203,25 +204,31 @@ function _routeBoundsCenter(route = []) {
   return { lat: (minLat + maxLat) / 2, lng: (minLng + maxLng) / 2 };
 }
 
-function _zoomForRunningMap(route = []) {
-  if (route.length < 2) return 17;
-  let minLat = route[0].lat;
-  let maxLat = route[0].lat;
-  let minLng = route[0].lng;
-  let maxLng = route[0].lng;
-  route.forEach((point) => {
-    minLat = Math.min(minLat, point.lat);
-    maxLat = Math.max(maxLat, point.lat);
-    minLng = Math.min(minLng, point.lng);
-    maxLng = Math.max(maxLng, point.lng);
-  });
-  const span = Math.max(maxLat - minLat, maxLng - minLng);
-  if (span > 0.045) return 12;
-  if (span > 0.022) return 13;
-  if (span > 0.011) return 14;
-  if (span > 0.0055) return 15;
-  if (span > 0.0028) return 16;
-  return 17;
+function _clampRunningMapDot(point) {
+  if (!point) return null;
+  return {
+    x: Math.max(6, Math.min(RUNNING_MAP_WIDTH - 6, point.x)),
+    y: Math.max(6, Math.min(RUNNING_MAP_HEIGHT - 6, point.y))
+  };
+}
+
+function _zoomForRunningMap(route = [], width = RUNNING_MAP_WIDTH, height = RUNNING_MAP_HEIGHT) {
+  if (route.length < 2) return RUNNING_MAP_SINGLE_POINT_ZOOM;
+  const padX = Math.min(58, Math.max(34, width * 0.18));
+  const padY = Math.min(50, Math.max(30, height * 0.18));
+  const maxSpanX = Math.max(96, width - padX * 2);
+  const maxSpanY = Math.max(84, height - padY * 2);
+
+  for (let zoom = RUNNING_MAP_HOME_MAX_ZOOM; zoom >= RUNNING_MAP_MIN_ZOOM; zoom -= 1) {
+    const projected = route.map(point => _projectRunningMapPoint(point, zoom));
+    const xs = projected.map(point => point.x);
+    const ys = projected.map(point => point.y);
+    const spanX = Math.max(...xs) - Math.min(...xs);
+    const spanY = Math.max(...ys) - Math.min(...ys);
+    if (spanX <= maxSpanX && spanY <= maxSpanY) return zoom;
+  }
+
+  return RUNNING_MAP_MIN_ZOOM;
 }
 
 function _projectRunningMapPoint(point, zoom) {
@@ -288,7 +295,7 @@ function _buildRunningMapBubbleData(mapData = null) {
 
   const zoom = Math.max(
     RUNNING_MAP_MIN_ZOOM,
-    Math.min(RUNNING_MAP_HOME_MAX_ZOOM, RUNNING_MAP_MAX_ZOOM, _zoomForRunningMap(route))
+    Math.min(RUNNING_MAP_HOME_MAX_ZOOM, RUNNING_MAP_MAX_ZOOM, _zoomForRunningMap(route, RUNNING_MAP_WIDTH, RUNNING_MAP_HEIGHT))
   );
   const centerPx = _projectRunningMapPoint(center, zoom);
   const topLeft = {
@@ -319,12 +326,10 @@ function _buildRunningMapBubbleData(mapData = null) {
     ? projectedRoute.map(point => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ')
     : '';
   const rawDot = _screenPoint(route[route.length - 1] || previewPoint || summaryCenter || center, zoom, topLeft);
-  const dot = {
-    x: Math.max(4, Math.min(RUNNING_MAP_WIDTH - 4, rawDot.x)),
-    y: Math.max(4, Math.min(RUNNING_MAP_HEIGHT - 4, rawDot.y))
-  };
+  const dot = _clampRunningMapDot(rawDot);
+  const start = path ? _clampRunningMapDot(projectedRoute[0]) : null;
 
-  return _withRunningMapMeta({ state: 'ready', route, tiles, path, dot }, config);
+  return _withRunningMapMeta({ state: 'ready', route, tiles, path, dot, start, zoom }, config);
 }
 
 function _setRunningMapBubbleDiagnostics(bubble, map) {
@@ -405,7 +410,11 @@ function _renderRunningMapBubble(layer, actor, slot) {
     >
   `).join('');
   const pathHtml = map.path
-    ? `<polyline class="lz-running-map-path" points="${escapeHtml(map.path)}"></polyline>`
+    ? `<polyline class="lz-running-map-path lz-running-map-path--casing" points="${escapeHtml(map.path)}"></polyline>
+        <polyline class="lz-running-map-path lz-running-map-path--main" points="${escapeHtml(map.path)}"></polyline>`
+    : '';
+  const startHtml = map.start
+    ? `<circle class="lz-running-map-start" cx="${map.start.x.toFixed(1)}" cy="${map.start.y.toFixed(1)}" r="6.2"></circle>`
     : '';
   const dotHtml = map.dot
     ? `<span class="lz-running-map-current" style="--lz-run-dot-x:${map.dot.x.toFixed(1)}px;--lz-run-dot-y:${map.dot.y.toFixed(1)}px"></span>`
@@ -427,6 +436,7 @@ function _renderRunningMapBubble(layer, actor, slot) {
       <span class="lz-running-map-tile-layer">${tileHtml}</span>
       <svg class="lz-running-map-overlay" viewBox="0 0 ${RUNNING_MAP_WIDTH} ${RUNNING_MAP_HEIGHT}" aria-hidden="true">
         ${pathHtml}
+        ${startHtml}
       </svg>
       ${dotHtml}
       ${fallbackHtml}
