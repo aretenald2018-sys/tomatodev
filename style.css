@@ -8281,6 +8281,9 @@ body.wt-running-session-open {
   gap: 12px;
   padding: 14px 16px 10px;
 }
+.lz-head > div {
+  min-width: 0;
+}
 .lz-eyebrow {
   display: block;
   margin-bottom: 3px;
@@ -8295,6 +8298,7 @@ body.wt-running-session-open {
   font-size: 15px;
   font-weight: 800;
   line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 .lz-sync {
   flex-shrink: 0;
@@ -8497,6 +8501,12 @@ body.wt-running-session-open {
 .lz-nameplate--npc {
   color: #ffe15a;
 }
+.lz-nameplate--visitor {
+  align-self: center;
+  width: max-content;
+  max-width: 82px;
+  margin-top: 2px;
+}
 .lz-npc-quest {
   position: absolute;
   left: calc(1084 / 1672 * 100%);
@@ -8668,9 +8678,11 @@ body.wt-running-session-open {
   left: calc(1268 / 1672 * 100%);
   top: calc(1350 / 1672 * 100%);
   z-index: 158;
-  display: block;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   width: clamp(30px, calc(110 / 1672 * 100%), 50px);
-  line-height: 0;
+  line-height: 1;
   pointer-events: none;
 }
 .lz-consulting-visitor[hidden] {

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   assignLifeZoneSlots,
+  getLifeZoneAccountDisplayName,
   getLifeZoneDietSpeech,
   getLifeZoneOwnerIdCandidates,
   getLifeZoneRunningMapData,
@@ -29,20 +30,22 @@ test('resolves consulting visitor state for new and returning current users', ()
   const now = Date.UTC(2026, 6, 1, 0, 0, 0);
 
   const returning = resolveLifeZoneConsultingVisitor({
-    currentUser: { id: 'u1', createdAt: now - 90 * 86400000 },
+    currentUser: { id: 'u1', nickname: '복귀토마토', createdAt: now - 90 * 86400000 },
     previousLastLoginAt: now - 11 * 86400000,
     now
   });
   assert.equal(returning.state, 'returning');
   assert.equal(returning.daysAway, 11);
+  assert.equal(returning.displayName, '복귀토마토');
 
   const firstVisit = resolveLifeZoneConsultingVisitor({
-    currentUser: { id: 'u2', createdAt: now - 2 * 86400000 },
+    currentUser: { id: 'u2', nickname: '새싹토마토', createdAt: now - 2 * 86400000 },
     previousLastLoginAt: 0,
     now
   });
   assert.equal(firstVisit.state, 'new');
   assert.equal(firstVisit.accountAgeDays, 2);
+  assert.equal(firstVisit.displayName, '새싹토마토');
 
   assert.equal(resolveLifeZoneConsultingVisitor({
     currentUser: { id: 'u3', createdAt: now - 30 * 86400000 },
@@ -51,19 +54,27 @@ test('resolves consulting visitor state for new and returning current users', ()
   }), null);
 
   const currentVisitor = resolveLifeZoneConsultingVisitor({
-    currentUser: { id: 'u3', createdAt: now - 30 * 86400000 },
+    currentUser: { id: 'u3', nickname: '오늘방문', createdAt: now - 30 * 86400000 },
     previousLastLoginAt: now - 2 * 86400000,
     showCurrentUser: true,
     now
   });
   assert.equal(currentVisitor.state, 'current');
   assert.equal(currentVisitor.userId, 'u3');
+  assert.equal(currentVisitor.displayName, '오늘방문');
 
   assert.equal(resolveLifeZoneConsultingVisitor({
     currentUser: { id: 'u4(guest)', createdAt: now },
     previousLastLoginAt: 0,
     now
   }), null);
+});
+
+test('resolves life zone account display names for visitor nameplates', () => {
+  assert.equal(getLifeZoneAccountDisplayName({ id: 'u1', resolvedNickname: '해결닉' }), '해결닉');
+  assert.equal(getLifeZoneAccountDisplayName({ id: 'u2', nickname: '닉네임' }), '닉네임');
+  assert.equal(getLifeZoneAccountDisplayName({ id: 'u3', lastName: '김', firstName: '토마토(Guest)' }), '김토마토');
+  assert.equal(getLifeZoneAccountDisplayName({ id: 'u4' }), 'u4');
 });
 
 test('matches roster by resolved nickname and reads fixed actors globally', () => {

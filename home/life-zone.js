@@ -18,6 +18,7 @@ import {
 import {
   LIFE_ZONE_ACTORS,
   assignLifeZoneSlots,
+  getLifeZoneAccountDisplayName,
   resolveLifeZoneConsultingVisitor,
   resolveLifeZoneActivity,
   resolveLifeZoneActors,
@@ -80,6 +81,19 @@ function _isCurrentLifeZoneRosterActor(currentUser = null) {
   return resolveLifeZoneRoster({ accounts, currentUser }).some((actor) => actor.source === 'self');
 }
 
+function _lifeZoneTitleNames(visitor = null) {
+  const names = LIFE_ZONE_ACTORS.map((actor) => actor.displayName);
+  const visitorName = visitor?.displayName || '';
+  if (visitorName && !names.includes(visitorName)) names.push(visitorName);
+  return names;
+}
+
+function _renderLifeZoneTitle(card, visitor = _resolveConsultingVisitor()) {
+  const title = card?.querySelector('[data-lz-title]');
+  if (!title) return;
+  title.textContent = _lifeZoneTitleNames(visitor).join(' · ');
+}
+
 export function setLifeZoneVisitContext(context = null) {
   _lifeZoneVisitContext = context && typeof context === 'object' ? { ...context } : null;
 }
@@ -102,12 +116,15 @@ function _renderConsultingVisitor(card) {
   const visitorEl = card?.querySelector('[data-lz-consulting-visitor]');
   if (!visitorEl) return;
   const visitor = _resolveConsultingVisitor();
+  _renderLifeZoneTitle(card, visitor);
   if (!visitor) {
     visitorEl.hidden = true;
     delete visitorEl.dataset.lzVisitorState;
     visitorEl.removeAttribute('title');
     return;
   }
+  const nameEl = visitorEl.querySelector('[data-lz-consulting-visitor-name]');
+  if (nameEl) nameEl.textContent = visitor.displayName || getLifeZoneAccountDisplayName(getCurrentUser());
   visitorEl.hidden = false;
   visitorEl.dataset.lzVisitorState = visitor.state;
   visitorEl.title = visitor.state === 'returning'
@@ -800,7 +817,7 @@ export function renderLifeZoneCard({
     <div class="lz-head">
       <div>
         <span class="lz-eyebrow">오늘의 라이프존</span>
-        <h3 class="lz-title">줍스 · 문정토마토 · 이재헌</h3>
+        <h3 class="lz-title" data-lz-title></h3>
       </div>
       <span class="lz-sync" data-lz-sync>불러오는 중</span>
     </div>
@@ -921,6 +938,7 @@ export function renderLifeZoneCard({
             loading="lazy"
             decoding="async"
           >
+          <span class="lz-nameplate lz-nameplate--visitor" data-lz-consulting-visitor-name></span>
         </span>
       </div>
     </div>

@@ -137,6 +137,30 @@ export function normalizeLifeZoneName(value) {
     .trim();
 }
 
+function cleanLifeZoneDisplayName(value) {
+  return String(value || '').replace(/\(.*?\)/g, '').trim();
+}
+
+export function getLifeZoneAccountDisplayName(account = {}) {
+  const first = cleanLifeZoneDisplayName(account.firstName);
+  const last = cleanLifeZoneDisplayName(account.lastName);
+  const fullName = `${last}${first}`.trim();
+  const candidates = [
+    account.resolvedNickname,
+    account.nickname,
+    fullName,
+    account.displayName,
+    account.name,
+    account.id
+  ];
+
+  for (const candidate of candidates) {
+    const displayName = cleanLifeZoneDisplayName(candidate);
+    if (displayName) return displayName;
+  }
+  return '나';
+}
+
 function normalizeLifeZoneTimestamp(value) {
   if (value == null || value === '') return 0;
   const numeric = Number(value);
@@ -165,6 +189,7 @@ export function resolveLifeZoneConsultingVisitor({
     return {
       state: 'returning',
       userId,
+      displayName: getLifeZoneAccountDisplayName(currentUser),
       daysAway: Math.floor(daysAway)
     };
   }
@@ -173,6 +198,7 @@ export function resolveLifeZoneConsultingVisitor({
     return {
       state: 'new',
       userId,
+      displayName: getLifeZoneAccountDisplayName(currentUser),
       accountAgeDays: accountAgeDays == null ? null : Math.floor(accountAgeDays)
     };
   }
@@ -180,7 +206,8 @@ export function resolveLifeZoneConsultingVisitor({
   if (showCurrentUser) {
     return {
       state: 'current',
-      userId
+      userId,
+      displayName: getLifeZoneAccountDisplayName(currentUser)
     };
   }
 
@@ -206,6 +233,8 @@ function accountCandidateNames(account = {}) {
     account.id,
     account.nickname,
     account.resolvedNickname,
+    account.displayName,
+    account.name,
     `${last}${first}`,
     `${first}${last}`,
     first
