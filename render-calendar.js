@@ -365,12 +365,16 @@ function _workoutSheetInputSelection(input) {
   }
 }
 
-function _captureWorkoutSheetInputState(sourceInput = null) {
+function _captureWorkoutSheetInputState(sourceInput = null, options = {}) {
   if (typeof document === 'undefined') return null;
+  const ignoreSourceInput = options?.ignoreSourceInput === true;
+  const allowSourceFallback = options?.allowSourceFallback !== false && !ignoreSourceInput;
   const focused = document.activeElement;
+  const sourceMatches = sourceInput?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR);
   const active = focused?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)
+    && (!ignoreSourceInput || focused !== sourceInput)
     ? focused
-    : sourceInput?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)
+    : allowSourceFallback && sourceMatches
       ? sourceInput
       : null;
   if (!active?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)) return null;
@@ -390,6 +394,15 @@ function _captureWorkoutSheetInputState(sourceInput = null) {
 function _captureWorkoutSheetScrollState() {
   const state = _workoutSheetScrollState();
   return state ? { ...state, hasInput: false } : null;
+}
+
+function _waitWorkoutSheetFocusTransition() {
+  if (typeof window === 'undefined') return Promise.resolve();
+  return new Promise((resolve) => {
+    const done = () => setTimeout(resolve, 0);
+    if (typeof window.requestAnimationFrame === 'function') window.requestAnimationFrame(done);
+    else done();
+  });
 }
 
 function _restoreWorkoutSheetScrollState(state) {
@@ -696,8 +709,12 @@ function _mealOkPatchForWorkoutHomeDay(key, existingDay, aggregate) {
 }
 
 async function _saveWorkoutHomeSessionResult(key, result, options = {}) {
+  const inputCaptureOptions = options?.preserveInput ? {
+    ignoreSourceInput: options.ignoreSourceInput === true,
+    allowSourceFallback: options.preserveSourceInput !== false,
+  } : null;
   const restoreState = options?.preserveInput
-    ? _captureWorkoutSheetInputState(options.sourceInput)
+    ? (_captureWorkoutSheetInputState(options.sourceInput, inputCaptureOptions) || _captureWorkoutSheetScrollState())
     : options?.preserveSheetScroll
       ? _captureWorkoutSheetScrollState()
       : null;
@@ -707,9 +724,14 @@ async function _saveWorkoutHomeSessionResult(key, result, options = {}) {
     ..._mealOkPatchForWorkoutHomeDay(key, existingDay, result.aggregate || {}),
   };
   await saveDay(key, payload, { mode: 'merge', rethrow: true });
+  if (options?.preserveInput) await _waitWorkoutSheetFocusTransition();
+  const latestInputState = options?.preserveInput
+    ? _captureWorkoutSheetInputState(options.sourceInput, inputCaptureOptions)
+    : null;
+  const nextRestoreState = latestInputState || restoreState;
   _workoutDetailCollapsed.clear();
   renderWorkoutCalendarHome();
-  if (restoreState) _restoreWorkoutSheetInputState(restoreState);
+  if (nextRestoreState) _restoreWorkoutSheetInputState(nextRestoreState);
   document.dispatchEvent(new CustomEvent('sheet:saved'));
 }
 
@@ -2939,7 +2961,7 @@ async function _updateWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseInd
       sets[targetIndex] = nextSet;
       entry.sets = sets;
       return true;
-    }, { preserveInput: true, sourceInput });
+    }, { preserveInput: true, sourceInput, ignoreSourceInput: true });
   } catch (e) {
     console.warn('[workout-calendar] sheet set update failed:', e);
     window.showToast?.('세트 수정에 실패했어요', 2200, 'error');

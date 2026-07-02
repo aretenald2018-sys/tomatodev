@@ -2,47 +2,38 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-02-workout-day-sheet-card-carousel.md`
+- 상태: `reviewed_static_verified_deploy_pending`
+- 계획 문서: `docs/ai/features/2026-07-02-workout-sheet-keyboard-next-focus.md`
 - 진단 문서: `없음 - 계획 문서에 진단 기록`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-day-sheet-card-carousel-review.md`
-- 현재 단계: `운동 하단 시트 카드 캐러셀 Slice 2 배포 검증 완료`
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-sheet-keyboard-next-focus-review.md`
+- 현재 단계: `운동 하단 시트 KG -> REP 키보드 다음 포커스 Slice 2 정적 검증/리뷰 완료, 배포 대기`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `하단 시트 carousel 내부 가로 touch/wheel gesture가 세로 scroll chain 방지 로직에 막히지 않도록 수정하고 개발계/운영계 배포 marker를 확인했다.`
-- 다음 액션: `인증 계정 실제 모바일 UI에서 운동 탭 하단 시트 carousel 좌우 drag 감도를 확인한다.`
+- 마지막 완료: `세트 input 저장 경로에서 change를 발생시킨 source input을 포커스 복원 후보에서 제외하고, 저장 후 포커스 이동 한 틱 뒤 재캡처하도록 수정했다.`
+- 다음 액션: `커밋 후 origin/main 및 tomatofarm/main에 push하고 Dashboard3/운영계 Pages 배포 marker를 검증한다.`
 - 차단 사유: `없음.`
 
 ## 이번 계획
 
-- 요청: 캘린더/운동 홈 하단 시트에서 운동종목 카드가 아직 세로 스택으로 보이므로 좌우 carousel로 바꾼다.
-- 결정: `_renderWorkoutDetailCards()`의 운동종목 카드 묶음만 `scroll-snap` carousel track으로 감싸고, 러닝/활동 카드는 기존 흐름을 유지한다.
-- 범위: `render-calendar.js`, `style.css`, `tests/workout-calendar-bottom-sheet.test.js`, cache marker 테스트들, `sw.js`, `docs/ai/NEXT_ACTION.md`.
-- 제외: 일반 운동 기록 입력 화면 재작업, 데이터 schema 변경, 새 JS 제스처 컨트롤 추가.
+- 요청: 운동 기록 입력 시 `KG` 칸에서 키보드 `다음`으로 `REP` 칸에 갔다가 다시 `KG` 칸으로 커서가 강제 회귀하는 현상을 해결한다.
+- 결정: 하단 시트 세트 값 저장에서는 `change`를 발생시킨 원래 `sourceInput` 자체를 복원하지 않고, 실제 이동한 active 세트 input만 재렌더 후 복원한다.
+- 범위: `render-calendar.js`, `tests/workout-calendar-bottom-sheet.test.js`, cache marker 테스트들, `sw.js`, `docs/ai/NEXT_ACTION.md`, 관련 계획/리뷰 문서.
+- 제외: 세트 입력 저장 schema 변경, 하단 시트 전체 렌더 구조 재작성, 일반 운동 카드 입력 흐름 변경.
 - 검증: `node --check`, 하단 시트 테스트, 전체 테스트, runtime asset 검증, `git diff --check`, Dashboard3/운영계 Pages 배포 검증.
 
 ## 이번 실행 결과
 
-- 완료: `render-calendar.js`의 하단 시트 운동종목 카드 렌더러를 `wt-day-exercise-carousel`/`wt-day-exercise-carousel-track`/`data-wt-day-exercise-slide` 구조로 전환했다.
-- 완료: 활동/러닝 카드는 기존 detail card 흐름을 유지했다.
-- 완료: `style.css`에 horizontal `scroll-snap`, 다중 카드 partial peek, 하단 시트 `pan-x pan-y` touch 동작을 추가했다.
-- 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z13-workout-day-sheet-carousel`로 bump하고 cache marker 테스트를 갱신했다.
-- 완료: Slice 2에서 carousel 내부 가로 touch/wheel gesture가 하단 시트 세로 체인 방지 `preventDefault()`에 막히지 않도록 gesture ownership을 분리했다.
-- 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z14-workout-day-sheet-drag`로 bump하고 cache marker 테스트를 갱신했다.
+- 완료: `render-calendar.js`의 `_captureWorkoutSheetInputState()`에 `ignoreSourceInput`/`allowSourceFallback` 옵션을 추가했다.
+- 완료: 세트 값 변경 저장을 `{ preserveInput: true, sourceInput, ignoreSourceInput: true }`로 호출해 `KG` change가 자기 자신을 다시 복원하지 못하게 했다.
+- 완료: 저장 완료 후 재렌더 직전에 `_waitWorkoutSheetFocusTransition()`으로 한 틱 기다린 뒤 실제 active 세트 input을 다시 캡처한다.
+- 완료: 복원할 input이 없으면 포커스 복원 대신 시트 스크롤만 복원한다.
+- 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z15-workout-sheet-next-focus-source`로 bump하고 cache marker 테스트를 갱신했다.
 - PASS: `node --check render-calendar.js; node --check sw.js`
 - PASS: `node --test tests/workout-calendar-bottom-sheet.test.js` - 25 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
-- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ db5d217a9a59d3e328d4f16b57cc37b68a665473`
-- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ db5d217a9a59d3e328d4f16b57cc37b68a665473`
-- PASS: Dashboard3/운영계 marker 검증 - `tomatofarm-v20260702z14-workout-day-sheet-drag`, `_workoutHomeSheetCarouselShouldOwnTouch`, `_workoutHomeSheetCarouselShouldOwnWheel`, `data-wt-day-exercise-carousel-track`, `scroll-snap-type: x mandatory`
-- PASS: `node --check render-calendar.js; node --check sw.js`
-- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js` - 25 tests passed
-- PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
-- PASS: `node --test --test-reporter=dot tests/*.test.js`
-- PASS: `git diff --check`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-day-sheet-card-carousel-review.md`
-- not verified yet: Dashboard3/운영계 Pages 배포 및 인증 계정 실제 swipe UI flow 확인 필요.
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-sheet-keyboard-next-focus-review.md`
+- not verified yet: Dashboard3/운영계 Pages 배포 및 인증 계정 실제 `운동 탭 -> 하단 시트 -> 세트 추가 -> KG 입력 -> 키보드 다음 -> REP 포커스 유지` UI flow 확인 필요.
 
 ## 방금 계획/실행한 항목
 

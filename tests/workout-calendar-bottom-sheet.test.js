@@ -338,7 +338,7 @@ test('day sheet set rows preserve wendler set role chips', () => {
   assert.match(renderFn, /_workoutSetTypeLabel\(set\)/);
 });
 
-test('day sheet set inputs restore iOS PWA scroll and focus after save rerenders', () => {
+test('day sheet set inputs preserve keyboard next focus without restoring the changed source input', () => {
   const saveStart = calendarJs.indexOf('async function _saveWorkoutHomeSessionResult');
   const saveEnd = calendarJs.indexOf('function _durationFromMinSec', saveStart);
   const inputStart = calendarJs.indexOf('function _captureWorkoutSheetInputState');
@@ -362,19 +362,28 @@ test('day sheet set inputs restore iOS PWA scroll and focus after save rerenders
   assert.match(inputFn, /data-field="\$\{_esc\(field\)\}"/);
   assert.match(inputFn, /this\.value, this/);
   assert.match(inputHelpers, /\.wt-day-sheet-scroll/);
+  assert.match(inputHelpers, /function _captureWorkoutSheetInputState\(sourceInput = null, options = \{\}\)/);
   assert.match(inputHelpers, /const focused = document\.activeElement/);
+  assert.match(inputHelpers, /const ignoreSourceInput = options\?\.ignoreSourceInput === true/);
+  assert.match(inputHelpers, /const allowSourceFallback = options\?\.allowSourceFallback !== false && !ignoreSourceInput/);
   assert.match(inputHelpers, /const active = focused\?\.matches\?\.\(WORKOUT_SHEET_SET_INPUT_SELECTOR\)/);
-  assert.match(inputHelpers, /\? focused\s*:\s*sourceInput\?\.matches\?\.\(WORKOUT_SHEET_SET_INPUT_SELECTOR\)/);
-  assert.match(inputHelpers, /\? sourceInput\s*:\s*null/);
+  assert.match(inputHelpers, /&& \(!ignoreSourceInput \|\| focused !== sourceInput\)/);
+  assert.match(inputHelpers, /\? focused\s*:\s*allowSourceFallback && sourceMatches/);
   assert.doesNotMatch(inputHelpers, /const active = sourceInput\?\.matches/);
+  assert.match(inputHelpers, /function _waitWorkoutSheetFocusTransition\(\)/);
   assert.match(inputHelpers, /input\.focus\(\{ preventScroll: true \}\)/);
   assert.match(inputHelpers, /requestAnimationFrame\(restore\)/);
   assert.match(inputHelpers, /setSelectionRange\(state\.selectionStart, state\.selectionEnd\)/);
   assert.match(saveFn, /options\?\.preserveInput/);
-  assert.match(saveFn, /_captureWorkoutSheetInputState\(options\.sourceInput\)/);
-  assert.match(saveFn, /_restoreWorkoutSheetInputState\(restoreState\)/);
+  assert.match(saveFn, /ignoreSourceInput: options\.ignoreSourceInput === true/);
+  assert.match(saveFn, /allowSourceFallback: options\.preserveSourceInput !== false/);
+  assert.match(saveFn, /_captureWorkoutSheetInputState\(options\.sourceInput, inputCaptureOptions\) \|\| _captureWorkoutSheetScrollState\(\)/);
+  assert.match(saveFn, /await _waitWorkoutSheetFocusTransition\(\)/);
+  assert.match(saveFn, /const latestInputState = options\?\.preserveInput/);
+  assert.match(saveFn, /const nextRestoreState = latestInputState \|\| restoreState/);
+  assert.match(saveFn, /_restoreWorkoutSheetInputState\(nextRestoreState\)/);
   assert.match(updateFn, /sourceInput = null/);
-  assert.match(updateFn, /\{ preserveInput: true, sourceInput \}/);
+  assert.match(updateFn, /\{ preserveInput: true, sourceInput, ignoreSourceInput: true \}/);
 });
 
 test('day sheet added workout sets start with blank kg and reps inputs', () => {
@@ -692,5 +701,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260702z14-workout-day-sheet-drag/);
+  assert.match(swJs, /tomatofarm-v20260702z15-workout-sheet-next-focus-source/);
 });
