@@ -33,7 +33,10 @@
 - Slice 2 PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
 - Slice 2 PASS: `node --test --test-reporter=dot tests/*.test.js`
 - Slice 2 PASS: `git diff --check`
+- Slice 2 PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 1c3d0e28da4f2b1236e0b5bf0667849eae96f776`
+- Slice 2 PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 1c3d0e28da4f2b1236e0b5bf0667849eae96f776`
+- Slice 2 PASS: Dashboard3/운영계 marker 검증 - `tomatofarm-v20260702z15-workout-sheet-next-focus-source`, `ignoreSourceInput`, `_waitWorkoutSheetFocusTransition`, `{ preserveInput: true, sourceInput, ignoreSourceInput: true }`
 
 ## 남은 확인
 
-- not verified yet: 인증된 모바일 PWA 실제 UI에서 `운동 탭 -> 오늘 하단 시트 -> 세트 추가 -> KG 입력 -> 키보드 다음 -> REP 포커스 유지` 흐름은 배포 후 확인해야 한다.
+- not verified yet: 인증된 모바일 PWA 실제 UI에서 `운동 탭 -> 오늘 하단 시트 -> 세트 추가 -> KG 입력 -> 키보드 다음 -> REP 포커스 유지` 흐름은 사용자가 확인해야 한다.

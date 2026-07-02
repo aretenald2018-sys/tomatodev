@@ -2,14 +2,14 @@
 
 ## 현재 상태
 
-- 상태: `reviewed_static_verified_deploy_pending`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-07-02-workout-sheet-keyboard-next-focus.md`
 - 진단 문서: `없음 - 계획 문서에 진단 기록`
 - 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-sheet-keyboard-next-focus-review.md`
-- 현재 단계: `운동 하단 시트 KG -> REP 키보드 다음 포커스 Slice 2 정적 검증/리뷰 완료, 배포 대기`
+- 현재 단계: `운동 하단 시트 KG -> REP 키보드 다음 포커스 Slice 2 배포 검증 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `세트 input 저장 경로에서 change를 발생시킨 source input을 포커스 복원 후보에서 제외하고, 저장 후 포커스 이동 한 틱 뒤 재캡처하도록 수정했다.`
-- 다음 액션: `커밋 후 origin/main 및 tomatofarm/main에 push하고 Dashboard3/운영계 Pages 배포 marker를 검증한다.`
+- 마지막 완료: `세트 input 저장 경로에서 change를 발생시킨 source input을 포커스 복원 후보에서 제외하고, 개발계/운영계 Pages 배포 marker를 확인했다.`
+- 다음 액션: `인증 계정 실제 모바일 UI에서 운동 탭 하단 시트 KG -> REP 키보드 다음 포커스 유지 흐름을 확인한다.`
 - 차단 사유: `없음.`
 
 ## 이번 계획
@@ -32,8 +32,11 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 1c3d0e28da4f2b1236e0b5bf0667849eae96f776`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 1c3d0e28da4f2b1236e0b5bf0667849eae96f776`
+- PASS: Dashboard3/운영계 marker 검증 - `tomatofarm-v20260702z15-workout-sheet-next-focus-source`, `ignoreSourceInput`, `_waitWorkoutSheetFocusTransition`, `{ preserveInput: true, sourceInput, ignoreSourceInput: true }`
 - 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-sheet-keyboard-next-focus-review.md`
-- not verified yet: Dashboard3/운영계 Pages 배포 및 인증 계정 실제 `운동 탭 -> 하단 시트 -> 세트 추가 -> KG 입력 -> 키보드 다음 -> REP 포커스 유지` UI flow 확인 필요.
+- not verified yet: 인증 계정 실제 `운동 탭 -> 하단 시트 -> 세트 추가 -> KG 입력 -> 키보드 다음 -> REP 포커스 유지` UI flow 확인 필요.
 
 ## 방금 계획/실행한 항목
 

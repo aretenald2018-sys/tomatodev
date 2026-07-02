@@ -92,8 +92,8 @@
 
 ## 상태
 
-- 상태: `reviewed_static_verified_deploy_pending`
-- 현재 세션: Slice 2 구현/정적 검증/리뷰 완료, 개발계/운영계 배포 대기
+- 상태: `complete`
+- 현재 세션: Slice 2 구현/정적 검증/리뷰/개발계/운영계 배포 검증 완료
 
 ## 실행 결과
 
@@ -122,3 +122,7 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 1c3d0e28da4f2b1236e0b5bf0667849eae96f776`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 1c3d0e28da4f2b1236e0b5bf0667849eae96f776`
+- PASS: Dashboard3/운영계 marker 검증 - `tomatofarm-v20260702z15-workout-sheet-next-focus-source`, `ignoreSourceInput`, `_waitWorkoutSheetFocusTransition`, `{ preserveInput: true, sourceInput, ignoreSourceInput: true }`
+- not verified yet: 인증 계정 실제 모바일 UI에서 `운동 탭 -> 하단 시트 -> 세트 추가 -> KG 입력 -> 키보드 다음 -> REP 포커스 유지` 흐름은 사용자가 확인해야 한다.
