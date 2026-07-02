@@ -31,6 +31,11 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
+- PASS: 커밋 `b98a3bf fix: restore workout sheet set check toggle`를 `origin/main`과 `tomatofarm/main`에 push했다.
+- PASS: Dashboard3 Pages 배포 검증 - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ b98a3bf` -> `[deploy-verify] ok b98a3bfd5818 tomatofarm-v20260702z8-workout-sheet-check-toggle static=236`
+- PASS: Tomato Farm 운영계 배포 검증 - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ b98a3bf` -> `[deploy-verify] ok b98a3bfd5818 tomatofarm-v20260702z8-workout-sheet-check-toggle static=236`
+- PASS: Dashboard3 Pages marker 검증 - `sw.js::tomatofarm-v20260702z8-workout-sheet-check-toggle`, `render-calendar.js::data-wt-set-done-toggle`, `render-calendar.js::const wasDone = nextSet.done === true`, `style.css::.wt-max-set-check`, `style.css::touch-action: manipulation`
+- PASS: Tomato Farm 운영계 marker 검증 - 같은 marker 5개 확인
 
 ## 남은 확인
 

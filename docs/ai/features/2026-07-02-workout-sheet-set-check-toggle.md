@@ -56,8 +56,8 @@
 
 ## 상태
 
-- 상태: `implemented`
-- 현재 세션: Slice 1 정적 검증 및 리뷰 완료, 배포 예정
+- 상태: `deployed`
+- 현재 세션: Slice 1 개발계/운영계 배포 및 marker 검증 완료
 
 ## 실행 결과
 
@@ -66,3 +66,5 @@
 - `style.css`에서 시트 세트 행 우측 체크/삭제/그립 열을 재배치하고 체크 버튼 터치 타깃을 키웠다.
 - `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z8-workout-sheet-check-toggle`로 bump했다.
 - 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-sheet-set-check-toggle-review.md`
+- 커밋 `b98a3bf fix: restore workout sheet set check toggle`를 `origin/main`과 `tomatofarm/main`에 push했다.
+- Dashboard3 Pages와 Tomato Farm 운영계 모두 `verify:deploy` 및 marker 검증을 통과했다.
