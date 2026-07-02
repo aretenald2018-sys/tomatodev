@@ -114,4 +114,7 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ db5d217a9a59d3e328d4f16b57cc37b68a665473`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ db5d217a9a59d3e328d4f16b57cc37b68a665473`
+- PASS: Dashboard3/운영계 marker 검증 - `tomatofarm-v20260702z14-workout-day-sheet-drag`, `_workoutHomeSheetCarouselShouldOwnTouch`, `_workoutHomeSheetCarouselShouldOwnWheel`, `data-wt-day-exercise-carousel-track`, `scroll-snap-type: x mandatory`
 - not verified yet: 인증 계정 실제 모바일 UI에서 carousel 좌우 drag 감도는 아직 직접 확인하지 못했다.

@@ -2,14 +2,14 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_deploy`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-07-02-workout-day-sheet-card-carousel.md`
 - 진단 문서: `없음 - 계획 문서에 진단 기록`
 - 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-day-sheet-card-carousel-review.md`
-- 현재 단계: `운동 하단 시트 카드 캐러셀 Slice 2 정적 검증 완료, 배포 대기`
+- 현재 단계: `운동 하단 시트 카드 캐러셀 Slice 2 배포 검증 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `일반 운동 기록 입력 화면의 운동종목 카드 캐러셀은 배포되었으나, 캘린더/운동 홈 하단 시트는 별도 렌더러라 여전히 세로 스택임을 확인했다.`
-- 다음 액션: `Slice 2 변경사항을 커밋하고 Dashboard3/운영계 Pages에 배포한 뒤 marker를 확인한다.`
+- 마지막 완료: `하단 시트 carousel 내부 가로 touch/wheel gesture가 세로 scroll chain 방지 로직에 막히지 않도록 수정하고 개발계/운영계 배포 marker를 확인했다.`
+- 다음 액션: `인증 계정 실제 모바일 UI에서 운동 탭 하단 시트 carousel 좌우 drag 감도를 확인한다.`
 - 차단 사유: `없음.`
 
 ## 이번 계획
@@ -33,6 +33,9 @@
 - PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ db5d217a9a59d3e328d4f16b57cc37b68a665473`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ db5d217a9a59d3e328d4f16b57cc37b68a665473`
+- PASS: Dashboard3/운영계 marker 검증 - `tomatofarm-v20260702z14-workout-day-sheet-drag`, `_workoutHomeSheetCarouselShouldOwnTouch`, `_workoutHomeSheetCarouselShouldOwnWheel`, `data-wt-day-exercise-carousel-track`, `scroll-snap-type: x mandatory`
 - PASS: `node --check render-calendar.js; node --check sw.js`
 - PASS: `node --test tests/workout-calendar-bottom-sheet.test.js` - 25 tests passed
 - PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`

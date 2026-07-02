@@ -46,6 +46,9 @@ Findings:
 - PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
+- PASS: Dashboard3 Pages deploy verify - `db5d217a9a59d3e328d4f16b57cc37b68a665473`, `tomatofarm-v20260702z14-workout-day-sheet-drag`
+- PASS: 운영계 Pages deploy verify - `db5d217a9a59d3e328d4f16b57cc37b68a665473`, `tomatofarm-v20260702z14-workout-day-sheet-drag`
+- PASS: Dashboard3/운영계 deployed marker - `_workoutHomeSheetCarouselShouldOwnTouch`, `_workoutHomeSheetCarouselShouldOwnWheel`, `data-wt-day-exercise-carousel-track`, `scroll-snap-type: x mandatory`
 
 남은 리스크:
 
