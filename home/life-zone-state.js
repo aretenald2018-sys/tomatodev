@@ -36,7 +36,7 @@ export const LIFE_ZONE_SLOTS = {
       z: 96,
       labelY: 1076,
       bubbleX: 206,
-      bubbleY: 990,
+      bubbleY: 1076,
       mapTipX: 50,
       runDelay: '0s',
       runDuration: '0.58s'
@@ -51,7 +51,7 @@ export const LIFE_ZONE_SLOTS = {
       z: 100,
       labelY: 1114,
       bubbleX: 414,
-      bubbleY: 1018,
+      bubbleY: 1116,
       mapTipX: 50,
       runDelay: '-0.18s',
       runDuration: '0.6s'
@@ -66,7 +66,7 @@ export const LIFE_ZONE_SLOTS = {
       z: 98,
       labelY: 1078,
       bubbleX: 690,
-      bubbleY: 982,
+      bubbleY: 1078,
       mapTipX: 50,
       runDelay: '-0.34s',
       runDuration: '0.56s'

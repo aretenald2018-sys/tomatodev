@@ -209,7 +209,16 @@ test('life zone running actors render track sprites and a map capture bubble on 
   assert.match(source, /const RUNNING_MAP_SINGLE_POINT_ZOOM = 14/);
   assert.match(source, /function _zoomForRunningMap\(route = \[\], width = RUNNING_MAP_WIDTH, height = RUNNING_MAP_HEIGHT\)/);
   assert.match(source, /Math\.min\(RUNNING_MAP_HOME_MAX_ZOOM, RUNNING_MAP_MAX_ZOOM, _zoomForRunningMap\(route, RUNNING_MAP_WIDTH, RUNNING_MAP_HEIGHT\)\)/);
+  assert.match(source, /function _renderRunningMapSvg/);
+  assert.match(source, /function _runningMapFallbackHtml/);
+  assert.match(source, /function _openRunningRecordModal/);
+  assert.match(source, /function _renderRunningRecordStats/);
   assert.match(source, /function _renderRunningMapBubble/);
+  assert.match(source, /const bubble = document\.createElement\('button'\)/);
+  assert.match(source, /bubble\.type = 'button'/);
+  assert.match(source, /bubble\.dataset\.lzRunningRecordAction = 'open'/);
+  assert.match(source, /bubble\.addEventListener\('click'/);
+  assert.match(source, /_openRunningRecordModal\(actor, map\)/);
   assert.match(source, /bubble\.dataset\.lzRunningMapBubble = '1'/);
   assert.match(source, /bubble\.dataset\.lzRunningMapState = map\.state/);
   assert.match(source, /bubble\.dataset\.lzRunningMapProvider = map\.provider/);
@@ -228,6 +237,10 @@ test('life zone running actors render track sprites and a map capture bubble on 
   assert.match(source, /lz-running-map-start/);
   assert.match(source, /circle class="lz-running-map-current"/);
   assert.match(source, /lz-running-map-place/);
+  assert.match(source, /life-zone-running-record-modal/);
+  assert.match(source, /data-lz-running-record-close/);
+  assert.match(source, /data-lz-running-record-map/);
+  assert.match(source, /aria-modal="true"/);
   assert.match(source, /const place = String\(actor\.runningMap\?\.placeLabel \|\| ''\)\.trim\(\)/);
   assert.doesNotMatch(source, /map\.state === 'ready' \? '위치 확인 중'/);
   assert.match(source, /lifeZoneRunningRoute/);
@@ -260,6 +273,9 @@ test('life zone running actors render track sprites and a map capture bubble on 
   assert.match(css, /\.lz-running-map-bubble \{/);
   assert.match(css, /width: clamp\(46px, calc\(150 \/ 1672 \* 100%\), 68px\)/);
   assert.match(css, /aspect-ratio: 10 \/ 7/);
+  assert.match(css, /pointer-events: auto;/);
+  assert.match(css, /cursor: pointer;/);
+  assert.match(css, /\.lz-running-map-bubble:focus-visible/);
   assert.match(css, /\.lz-running-map-tile \{/);
   assert.doesNotMatch(css, /\.lz-running-map-tile \{[^}]*position: absolute;/);
   assert.match(css, /\.lz-running-map-path \{/);
@@ -272,6 +288,11 @@ test('life zone running actors render track sprites and a map capture bubble on 
   assert.match(css, /\.lz-running-map-bubble\.is-tile-failed \.lz-running-map-empty--tile-failed/);
   assert.match(css, /\.lz-running-map-place \{/);
   assert.match(css, /\.lz-running-map-attribution \{[\s\S]*display: none;/);
+  assert.match(css, /\.lz-running-record-backdrop \{/);
+  assert.match(css, /\.lz-running-record-sheet \{/);
+  assert.match(css, /\.lz-running-record-map \{/);
+  assert.match(css, /\.lz-running-record-stats \{/);
+  assert.match(css, /\.lz-running-record-close:focus-visible/);
   assert.doesNotMatch(css, /\.lz-running-map-road/);
   assert.doesNotMatch(css, /\.lz-running-map-route/);
   assert.doesNotMatch(css, /\.lz-running-map-pin/);
@@ -291,7 +312,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260702z6-home-running-map-park-scale/);
+  assert.match(sw, /tomatofarm-v20260702z7-home-running-map-record-modal/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,
@@ -333,7 +354,7 @@ test('life zone consulting room sofa assets are separate transparent runtime PNG
     ['consulting-visitor-gray-shirt-home.png', { width: 230, height: 298, colorType: 6 }]
   ];
 
-  assert.match(sw, /tomatofarm-v20260702z6-home-running-map-park-scale/);
+  assert.match(sw, /tomatofarm-v20260702z7-home-running-map-record-modal/);
   for (const [asset, expected] of assets) {
     assert.match(sw, new RegExp(`\\.\\/assets\\/home\\/life-zone\\/ui\\/${asset.replace('.', '\\.')}`));
     assert.deepEqual(readPngHeader(`assets/home/life-zone/ui/${asset}`), expected);

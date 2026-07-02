@@ -169,7 +169,7 @@ test('assigns running actors to existing home track slots and running sprite she
     [650, 1100, 108]
   ]);
   assert.deepEqual(assigned.map((actor) => actor.slot.labelY), [1076, 1114, 1078]);
-  assert.deepEqual(assigned.map((actor) => actor.slot.bubbleY), [990, 1018, 982]);
+  assert.deepEqual(assigned.map((actor) => actor.slot.bubbleY), [1076, 1116, 1078]);
   assert.ok(assigned[1].slot.width > assigned[0].slot.width);
   assert.ok(assigned[0].slot.width > assigned[2].slot.width);
   assert.ok(assigned.every((actor) => !('runX0' in actor.slot) && !('runX1' in actor.slot)));

@@ -2,14 +2,14 @@
 
 ## 현재 상태
 
-- 상태: `complete`
+- 상태: `ready_for_review`
 - 계획 문서: `docs/ai/features/2026-07-02-home-running-map-route-clarity.md`
 - 진단 문서: `없음 - 계획 문서에 /diagnose 기록`
 - 리뷰 문서: `docs/ai/reviews/2026-07-02-home-running-map-route-clarity-review.md`
-- 현재 단계: `홈 러닝 지도 말풍선 축소 및 공원 단위 배율 Slice 2 Dashboard3 Pages 배포/marker 검증 완료`
+- 현재 단계: `홈 러닝 지도 말풍선 위치 보정 및 기록 모달 Slice 3 구현/로컬 검증 완료`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `커밋 0e9c5a9 fix: shrink home running map bubble scale을 origin/main에 push했고 Dashboard3 Pages 배포/marker 검증을 완료했다.`
-- 다음 액션: `인증 계정으로 홈탭 실제 러닝 말풍선에서 VWorld 타일/경로선/현재 위치 dot 가시성을 확인한다.`
+- 마지막 완료: `Slice 3 로컬 검증 완료: node --check, 홈 라이프존/러닝 테스트, runtime assets, 전체 node:test, git diff --check 통과.`
+- 다음 액션: `Slice 3 변경 파일을 리뷰하고 Dashboard3 Pages 배포/marker 검증을 완료한다.`
 - 차단 사유: `없음.`
 
 ## 방금 계획/실행한 항목
@@ -49,6 +49,19 @@
   12. PASS: Dashboard3 Pages 배포 검증 - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ 0e9c5a93661ae24515486d38d2e1217e8d784b41` -> `[deploy-verify] ok 0e9c5a93661a tomatofarm-v20260702z6-home-running-map-park-scale static=236`
   13. PASS: Dashboard3 Pages marker 검증 - 배포된 `sw.js`, `home/life-zone.js`, `style.css`에서 새 cache version, zoom 14, SVG tile/current marker, 절반 폭 marker 확인
   14. not verified yet: 인증 계정 홈탭 실제 러닝 말풍선 UI flow 확인 필요.
+
+- Home Running Map Route Clarity Slice 3:
+  1. 요청: 러닝 지도 말풍선을 러닝 캐릭터 가까이에 붙이고, 말풍선 클릭 시 그 사람의 오늘 러닝 기록 모달을 띄운다.
+  2. 완료: `home/life-zone-state.js` 러닝 슬롯 `bubbleY`를 `[1076, 1116, 1078]`로 조정했다.
+  3. 완료: `home/life-zone.js` 말풍선을 클릭 가능한 `button`으로 바꾸고 `_openRunningRecordModal()` 동적 모달을 추가했다.
+  4. 완료: 말풍선/모달 지도 렌더를 `_renderRunningMapSvg()`로 공유하게 했다.
+  5. 완료: `style.css`에 말풍선 focus/active 상태와 `.lz-running-record-*` 하단 시트 스타일을 추가했다.
+  6. 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z7-home-running-map-record-modal`로 bump하고 관련 테스트 marker를 갱신했다.
+  7. PASS: `node --check home/life-zone.js; node --check home/life-zone-state.js; node --check sw.js`
+  8. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/home-life-zone-state.test.js tests/running-entry.test.js` - 43 tests passed
+  9. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
+  10. PASS: `node --test --test-reporter=dot tests/*.test.js`
+  11. PASS: `git diff --check`
 
 - Workout iOS Sheet Input Scroll 실행:
   1. 요청: iPhone PWA에서 운동종목 추가 후 KG/REP 입력·수정 시 화면이 위로 자동 스크롤되는 문제를 해결한다.

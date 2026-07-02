@@ -41,6 +41,7 @@ const RUNNING_MAP_SINGLE_POINT_ZOOM = 14;
 
 let _actorStateCache = null;
 let _lifeZoneVisitContext = null;
+let _runningRecordEscHandler = null;
 
 const STATE_LABELS = {
   running: '러닝',
@@ -391,13 +392,7 @@ function _bindRunningMapTileDiagnostics(bubble, map) {
   update();
 }
 
-function _renderRunningMapBubble(layer, actor, slot) {
-  const bubble = document.createElement('div');
-  const x = Number(slot.bubbleX) || Number(slot.x) + Number(slot.width) * 0.5;
-  const y = Number(slot.bubbleY) || Math.max(36, Number(slot.y) - 88);
-  const tipX = Number(slot.mapTipX) || 50;
-  const map = _buildRunningMapBubbleData(actor.runningMap);
-  const place = String(actor.runningMap?.placeLabel || '').trim();
+function _renderRunningMapSvg(map, className = 'lz-running-map-overlay') {
   const tileHtml = map.tiles.map((tile) => `
     <image
       class="lz-running-map-tile"
@@ -419,26 +414,220 @@ function _renderRunningMapBubble(layer, actor, slot) {
   const dotHtml = map.dot
     ? `<circle class="lz-running-map-current" cx="${map.dot.x.toFixed(1)}" cy="${map.dot.y.toFixed(1)}" r="7.2"></circle>`
     : '';
+
+  return `
+    <svg class="${escapeHtml(className)}" viewBox="0 0 ${RUNNING_MAP_WIDTH} ${RUNNING_MAP_HEIGHT}" aria-hidden="true">
+      ${tileHtml}
+      ${pathHtml}
+      ${startHtml}
+      ${dotHtml}
+    </svg>
+  `;
+}
+
+function _runningMapFallbackHtml(map) {
   const emptyText = map.state === 'ready' ? '' : (map.state === 'waiting' ? 'GPS' : 'MAP');
-  const fallbackHtml = map.state === 'ready'
-    ? '<span class="lz-running-map-empty lz-running-map-empty--tile-failed">MAP</span>'
-    : (emptyText ? `<span class="lz-running-map-empty">${emptyText}</span>` : '');
+  if (map.state === 'ready') return '<span class="lz-running-map-empty lz-running-map-empty--tile-failed">MAP</span>';
+  return emptyText ? `<span class="lz-running-map-empty">${emptyText}</span>` : '';
+}
+
+function _runningRecordNumber(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function _formatRunningRecordDuration(sec) {
+  const total = Math.max(0, Math.floor(_runningRecordNumber(sec, 0)));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function _formatRunningRecordPace(secPerKm) {
+  const sec = Math.round(_runningRecordNumber(secPerKm, 0));
+  if (sec <= 0) return "--'--''";
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}'${String(s).padStart(2, '0')}''`;
+}
+
+function _formatRunningRecordPlace(mapData = null) {
+  const place = mapData?.placeSummary || {};
+  const area = place.adminArea || {};
+  const dong = String(area.dong || area.adminDong || area.legalDong || '').trim();
+  const district = String(area.district || '').trim();
+  const label = String(mapData?.placeLabel || place.label || '').trim();
+  if (dong && district) return `${dong} · ${district}`;
+  if (dong) return dong;
+  return label || '위치 확인 중';
+}
+
+function _todayRunningRecordLabel() {
+  return dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+}
+
+function _runningRecordSummary(mapData = null, map = null) {
+  const routeSummary = mapData?.routeSummary || {};
+  const distanceKm = Math.max(0, _runningRecordNumber(routeSummary.distanceKm, 0));
+  const durationSec = Math.max(0, _runningRecordNumber(routeSummary.durationSec, 0));
+  const paceSec = Math.max(
+    0,
+    _runningRecordNumber(routeSummary.avgPaceSecPerKm, 0) || (distanceKm > 0 && durationSec > 0 ? durationSec / distanceKm : 0)
+  );
+  const pointCount = Math.max(
+    0,
+    Math.floor(_runningRecordNumber(mapData?.pointCount, 0)),
+    Math.floor(_runningRecordNumber(routeSummary.pointCount, 0)),
+    Math.floor(_runningRecordNumber(map?.pointCount, 0))
+  );
+
+  return {
+    distanceKm,
+    durationSec,
+    paceSec,
+    calories: Math.max(0, Math.round(_runningRecordNumber(routeSummary.calories, 0))),
+    pointCount,
+    elevationGainM: Math.max(0, Math.round(_runningRecordNumber(routeSummary.elevationGainM, 0))),
+    avgHeartRateBpm: Math.max(0, Math.round(_runningRecordNumber(routeSummary.avgHeartRateBpm, 0))),
+    cadenceSpm: Math.max(0, Math.round(_runningRecordNumber(routeSummary.cadenceSpm, 0)))
+  };
+}
+
+function _renderRunningRecordStats(summary) {
+  const stats = [
+    { label: '페이스', value: `${_formatRunningRecordPace(summary.paceSec)}/km` },
+    { label: '시간', value: summary.durationSec > 0 ? _formatRunningRecordDuration(summary.durationSec) : '--:--' },
+    { label: '칼로리', value: summary.calories > 0 ? `${summary.calories}kcal` : '--' },
+    { label: 'GPS', value: summary.pointCount > 0 ? `${summary.pointCount}점` : '--' },
+    { label: '고도', value: summary.elevationGainM > 0 ? `${summary.elevationGainM}m` : '--' },
+    { label: '케이던스', value: summary.cadenceSpm > 0 ? `${summary.cadenceSpm}` : '--' }
+  ];
+
+  return stats.map((item) => `
+    <div class="lz-running-record-stat">
+      <span>${item.label}</span>
+      <strong>${item.value}</strong>
+    </div>
+  `).join('');
+}
+
+function _ensureRunningRecordModal() {
+  let modal = document.getElementById('life-zone-running-record-modal');
+  if (modal) return modal;
+  modal = document.createElement('div');
+  modal.id = 'life-zone-running-record-modal';
+  modal.className = 'lz-running-record-backdrop';
+  modal.hidden = true;
+  modal.setAttribute('aria-hidden', 'true');
+  modal.dataset.lzRunningRecordModal = '1';
+  modal.addEventListener('click', (event) => {
+    const target = event.target;
+    if (target === modal || target?.closest?.('[data-lz-running-record-close]')) {
+      _closeRunningRecordModal();
+    }
+  });
+  document.body.append(modal);
+  return modal;
+}
+
+function _closeRunningRecordModal() {
+  if (typeof document === 'undefined') return;
+  const modal = document.getElementById('life-zone-running-record-modal');
+  if (!modal) return;
+  modal.hidden = true;
+  modal.classList.remove('is-open');
+  modal.setAttribute('aria-hidden', 'true');
+  document.body?.classList?.remove('lz-running-record-modal-open');
+  if (_runningRecordEscHandler) {
+    document.removeEventListener('keydown', _runningRecordEscHandler);
+    _runningRecordEscHandler = null;
+  }
+}
+
+function _openRunningRecordModal(actor = {}, preparedMap = null) {
+  if (typeof document === 'undefined') return;
+  const runningMap = actor.runningMap || {};
+  const map = preparedMap || _buildRunningMapBubbleData(runningMap);
+  const summary = _runningRecordSummary(runningMap, map);
+  const modal = _ensureRunningRecordModal();
+  const actorName = actor.displayName || '러너';
+  const location = _formatRunningRecordPlace(runningMap);
+  const status = runningMap.live ? '라이브 GPS 기록' : '오늘 러닝 기록';
+  const distanceText = summary.distanceKm > 0 ? `${summary.distanceKm.toFixed(2)}km` : '--';
+  const titleId = 'life-zone-running-record-title';
+  const mapClass = `lz-running-record-map lz-running-map-bubble--${map.state}`;
+
+  modal.innerHTML = `
+    <section class="lz-running-record-sheet" role="dialog" aria-modal="true" aria-labelledby="${titleId}">
+      <button class="lz-running-record-close" type="button" data-lz-running-record-close aria-label="닫기">×</button>
+      <div class="lz-running-record-head">
+        <span class="lz-running-record-eyebrow">${escapeHtml(status)}</span>
+        <h2 id="${titleId}">${escapeHtml(actorName)} 러닝</h2>
+        <p>${escapeHtml(_todayRunningRecordLabel())} · ${escapeHtml(location)}</p>
+      </div>
+      <div class="lz-running-record-main">
+        <strong>${escapeHtml(distanceText)}</strong>
+        <span>${escapeHtml(_formatRunningRecordPace(summary.paceSec))}/km · ${summary.durationSec > 0 ? escapeHtml(_formatRunningRecordDuration(summary.durationSec)) : '--:--'}</span>
+      </div>
+      <div class="${escapeHtml(mapClass)}" data-lz-running-record-map>
+        <span class="lz-running-map-surface">
+          ${_renderRunningMapSvg(map, 'lz-running-map-overlay lz-running-record-map-overlay')}
+          ${_runningMapFallbackHtml(map)}
+          <span class="lz-running-map-place">${escapeHtml(location)}</span>
+          ${map.state === 'ready' ? '<span class="lz-running-map-attribution">VWorld</span>' : ''}
+        </span>
+      </div>
+      <div class="lz-running-record-stats">
+        ${_renderRunningRecordStats(summary)}
+      </div>
+    </section>
+  `;
+  modal.hidden = false;
+  modal.classList.add('is-open');
+  modal.setAttribute('aria-hidden', 'false');
+  document.body?.classList?.add('lz-running-record-modal-open');
+  const mapElement = modal.querySelector('[data-lz-running-record-map]');
+  if (mapElement) {
+    _setRunningMapBubbleDiagnostics(mapElement, map);
+    _bindRunningMapTileDiagnostics(mapElement, map);
+  }
+  if (_runningRecordEscHandler) document.removeEventListener('keydown', _runningRecordEscHandler);
+  _runningRecordEscHandler = (event) => {
+    if (event.key === 'Escape') _closeRunningRecordModal();
+  };
+  document.addEventListener('keydown', _runningRecordEscHandler);
+  modal.querySelector('[data-lz-running-record-close]')?.focus({ preventScroll: true });
+}
+
+function _renderRunningMapBubble(layer, actor, slot) {
+  const bubble = document.createElement('button');
+  const x = Number(slot.bubbleX) || Number(slot.x) + Number(slot.width) * 0.5;
+  const y = Number(slot.bubbleY) || Math.max(36, Number(slot.y) - 88);
+  const tipX = Number(slot.mapTipX) || 50;
+  const map = _buildRunningMapBubbleData(actor.runningMap);
+  const place = String(actor.runningMap?.placeLabel || '').trim();
+  const fallbackHtml = _runningMapFallbackHtml(map);
+  bubble.type = 'button';
   bubble.className = `lz-running-map-bubble lz-running-map-bubble--${map.state}`;
-  bubble.setAttribute('aria-label', `${actor.displayName} 러닝 지도`);
+  bubble.dataset.lzRunningRecordAction = 'open';
+  bubble.setAttribute('aria-label', `${actor.displayName} 오늘 러닝 기록 보기`);
+  bubble.title = `${actor.displayName} 오늘 러닝 기록`;
   _setRunningMapBubbleDiagnostics(bubble, map);
   bubble.style.setProperty('--lz-map-x', x);
   bubble.style.setProperty('--lz-map-y', y);
   bubble.style.setProperty('--lz-map-tip-x', `${tipX}%`);
   bubble.style.setProperty('--lz-actor-color', actor.color || '#94a3b8');
   bubble.style.zIndex = String((Number(slot.z) || 1) + 30);
+  bubble.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    _openRunningRecordModal(actor, map);
+  });
   bubble.innerHTML = `
     <span class="lz-running-map-surface">
-      <svg class="lz-running-map-overlay" viewBox="0 0 ${RUNNING_MAP_WIDTH} ${RUNNING_MAP_HEIGHT}" aria-hidden="true">
-        ${tileHtml}
-        ${pathHtml}
-        ${startHtml}
-        ${dotHtml}
-      </svg>
+      ${_renderRunningMapSvg(map)}
       ${fallbackHtml}
       ${place ? `<span class="lz-running-map-place">${escapeHtml(place)}</span>` : ''}
       ${map.state === 'ready' ? '<span class="lz-running-map-attribution">VWorld</span>' : ''}
