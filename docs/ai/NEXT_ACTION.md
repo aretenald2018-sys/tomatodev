@@ -2,42 +2,37 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-02-workout-entry-card-carousel.md`
-- 진단 문서: `없음 - 계획 문서에 /grill-me 기록`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-entry-card-carousel-review.md`
-- 현재 단계: `운동종목 카드 캐러셀 Slice 1 배포 검증 완료`
+- 상태: `ready_for_deploy`
+- 계획 문서: `docs/ai/features/2026-07-02-workout-day-sheet-card-carousel.md`
+- 진단 문서: `없음 - 계획 문서에 진단 기록`
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-day-sheet-card-carousel-review.md`
+- 현재 단계: `운동 하단 시트 카드 캐러셀 Slice 1 정적 검증 완료, 배포 대기`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `기존 책갈피 WIP를 운동종목 카드 좌우 캐러셀로 전환하고 개발계/운영계 배포 검증을 완료했다.`
-- 다음 액션: `인증 계정에서 운동 탭 캐러셀 실제 UI flow를 확인한다.`
+- 마지막 완료: `일반 운동 기록 입력 화면의 운동종목 카드 캐러셀은 배포되었으나, 캘린더/운동 홈 하단 시트는 별도 렌더러라 여전히 세로 스택임을 확인했다.`
+- 다음 액션: `변경사항을 커밋하고 Dashboard3/운영계 Pages에 배포한 뒤 marker를 확인한다.`
 - 차단 사유: `없음.`
 
 ## 이번 계획
 
-- 요청: 기존 번호 책갈피 WIP를 폐기하고, 운동종목 카드를 여러 개 추가했을 때 좌우 캐러셀처럼 넘겨 볼 수 있게 한다.
-- 결정: 책갈피 탭 대신 카드 자체를 `scroll-snap` slide로 렌더하고, 이전/다음 버튼과 dot indicator만 제공한다.
-- 범위: `workout/exercises.js`, `style.css`, `tests/workout-test-mode-unified.test.js`, `tests/workout-card-layout-css.test.js`, `sw.js`, `docs/ai/NEXT_ACTION.md`.
-- 제외: 캘린더 과거 기록 card, 성장보드 내장 card, 운동 데이터 schema, 세트 row 재설계.
-- 검증: `node --check`, 관련/전체 테스트, runtime asset 검증, `git diff --check`, Dashboard3/운영계 Pages 배포 검증.
+- 요청: 캘린더/운동 홈 하단 시트에서 운동종목 카드가 아직 세로 스택으로 보이므로 좌우 carousel로 바꾼다.
+- 결정: `_renderWorkoutDetailCards()`의 운동종목 카드 묶음만 `scroll-snap` carousel track으로 감싸고, 러닝/활동 카드는 기존 흐름을 유지한다.
+- 범위: `render-calendar.js`, `style.css`, `tests/workout-calendar-bottom-sheet.test.js`, cache marker 테스트들, `sw.js`, `docs/ai/NEXT_ACTION.md`.
+- 제외: 일반 운동 기록 입력 화면 재작업, 데이터 schema 변경, 새 JS 제스처 컨트롤 추가.
+- 검증: `node --check`, 하단 시트 테스트, 전체 테스트, runtime asset 검증, `git diff --check`, Dashboard3/운영계 Pages 배포 검증.
 
 ## 이번 실행 결과
 
-- 완료: `workout/exercises.js`의 책갈피 WIP를 `ex-entry-carousel`/`ex-entry-carousel-track`/`data-wt-entry-slide-idx` 구조로 전환했다.
-- 완료: 캐러셀 이전/다음 버튼, dot indicator, active slide 동기화, picker 선택 후 해당 slide 이동을 추가했다.
-- 완료: 운동 완료 버튼이 카드를 접지 않고 다음 종목 카드로 이동하게 했다.
-- 완료: `style.css`에 horizontal `scroll-snap` 캐러셀 레이아웃을 추가했다.
-- 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z12-workout-entry-carousel`로 bump하고 cache marker 테스트를 갱신했다.
-- PASS: `node --check workout/exercises.js`
-- PASS: `node --check sw.js`
-- PASS: `node --test tests/workout-test-mode-unified.test.js tests/workout-card-layout-css.test.js`
-- PASS: `node scripts/verify-runtime-assets.mjs`
+- 완료: `render-calendar.js`의 하단 시트 운동종목 카드 렌더러를 `wt-day-exercise-carousel`/`wt-day-exercise-carousel-track`/`data-wt-day-exercise-slide` 구조로 전환했다.
+- 완료: 활동/러닝 카드는 기존 detail card 흐름을 유지했다.
+- 완료: `style.css`에 horizontal `scroll-snap`, 다중 카드 partial peek, 하단 시트 `pan-x pan-y` touch 동작을 추가했다.
+- 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z13-workout-day-sheet-carousel`로 bump하고 cache marker 테스트를 갱신했다.
+- PASS: `node --check render-calendar.js; node --check sw.js`
+- PASS: `node --test tests/workout-calendar-bottom-sheet.test.js` - 25 tests passed
+- PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=862`
 - PASS: `node --test --test-reporter=dot tests/*.test.js`
 - PASS: `git diff --check`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-entry-card-carousel-review.md`
-- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ ae474809ca0287a8cd27e93bc5ba63895032c082`
-- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ ae474809ca0287a8cd27e93bc5ba63895032c082`
-- PASS: Dashboard3/운영계 marker 검증 - `tomatofarm-v20260702z12-workout-entry-carousel`, `ex-entry-carousel-track`, `data-wt-entry-slide-idx`, `wtSelectWorkoutEntryCard`, `scroll-snap-type: x mandatory`
-- not verified yet: 인증 계정 실제 캐러셀 swipe UI flow 확인 필요.
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-day-sheet-card-carousel-review.md`
+- not verified yet: Dashboard3/운영계 Pages 배포 및 인증 계정 실제 swipe UI flow 확인 필요.
 
 ## 방금 계획/실행한 항목
 

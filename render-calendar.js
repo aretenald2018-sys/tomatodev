@@ -1716,11 +1716,27 @@ function _renderWorkoutDetailRecorded(key, sessionIndex, wx) {
 }
 
 function _renderWorkoutDetailCards(key, sessionIndex, wx) {
-  const cards = [
-    ...wx.exercises.map((row, index) => _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index)),
-    ...wx.activities.map((row, index) => _renderWorkoutActivityDetailCard(key, sessionIndex, row, index)),
-  ];
-  return `<div class="wt-day-card-list">${cards.join('')}</div>`;
+  const exerciseCards = _renderWorkoutExerciseDetailCarousel(key, sessionIndex, wx.exercises);
+  const activityCards = wx.activities.map((row, index) => _renderWorkoutActivityDetailCard(key, sessionIndex, row, index));
+  return `<div class="wt-day-card-list">${exerciseCards}${activityCards.join('')}</div>`;
+}
+
+function _renderWorkoutExerciseDetailCarousel(key, sessionIndex, exercises = []) {
+  const rows = Array.isArray(exercises) ? exercises : [];
+  if (!rows.length) return '';
+  const count = rows.length;
+  const slides = rows.map((row, index) => `
+    <div class="wt-day-exercise-slide" data-wt-day-exercise-slide="${index}" aria-label="${index + 1}/${count} ${_esc(row?.name || '운동종목')}">
+      ${_renderWorkoutExerciseDetailCard(key, sessionIndex, row, index)}
+    </div>
+  `).join('');
+  return `
+    <section class="wt-day-exercise-carousel ${count > 1 ? 'has-multiple' : 'is-single'}" aria-label="운동종목 카드">
+      <div class="wt-day-exercise-carousel-track" data-wt-day-exercise-carousel-track>
+        ${slides}
+      </div>
+    </section>
+  `;
 }
 
 function _formatWorkoutKg(value) {

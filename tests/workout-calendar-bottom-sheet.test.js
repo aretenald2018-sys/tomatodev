@@ -198,6 +198,23 @@ test('day sheet detail renders picker-added draft exercise rows', () => {
   assert.match(tabs, /_hasWorkoutHomeSessionRecord\(session\)/);
 });
 
+test('day sheet exercise cards render as a horizontal carousel instead of a vertical stack', () => {
+  const cardsStart = calendarJs.indexOf('function _renderWorkoutDetailCards');
+  const cardsEnd = calendarJs.indexOf('function _formatWorkoutKg', cardsStart);
+  assert.ok(cardsStart >= 0 && cardsEnd > cardsStart, 'detail card renderer should exist');
+  const cards = calendarJs.slice(cardsStart, cardsEnd);
+
+  assert.match(cards, /_renderWorkoutExerciseDetailCarousel\(key, sessionIndex, wx\.exercises\)/);
+  assert.match(cards, /function _renderWorkoutExerciseDetailCarousel\(key, sessionIndex, exercises = \[\]\)/);
+  assert.match(cards, /class="wt-day-exercise-carousel \$\{count > 1 \? 'has-multiple' : 'is-single'\}"/);
+  assert.match(cards, /class="wt-day-exercise-carousel-track" data-wt-day-exercise-carousel-track/);
+  assert.match(cards, /data-wt-day-exercise-slide="\$\{index\}"/);
+  assert.doesNotMatch(cards, /\.\.\.wx\.exercises\.map/);
+  assert.match(styleCss, /\.wt-day-exercise-carousel-track\s*\{[\s\S]*display:\s*flex;[\s\S]*overflow-x:\s*auto;[\s\S]*scroll-snap-type:\s*x mandatory;[\s\S]*touch-action:\s*pan-x pan-y;/);
+  assert.match(styleCss, /\.wt-day-exercise-slide\s*\{[\s\S]*scroll-snap-align:\s*start;[\s\S]*scroll-snap-stop:\s*always;/);
+  assert.match(styleCss, /\.wt-day-exercise-carousel\.has-multiple \.wt-day-exercise-slide\s*\{[\s\S]*flex-basis:\s*min\(92%,\s*540px\);/);
+});
+
 test('day sheet exercise card renders prior workout record instead of today set summary', () => {
   const rowStart = calendarJs.indexOf('function _exerciseRows');
   const rowEnd = calendarJs.indexOf('function _workoutMetrics', rowStart);
@@ -472,7 +489,7 @@ test('bottom sheet css is fixed, animated, and contains the session bar inside t
   assert.match(styleCss, /\.cal-workout-day-sheet \.wt-day-sessionbar\s*\{[\s\S]*position:\s*relative;/);
   assert.match(styleCss, /\.cal-workout-day-sheet \.wt-day-sessionbar\s*\{[\s\S]*padding:\s*7px 82px/);
   assert.match(styleCss, /\.cal-workout-day-sheet \.wt-day-sheet-scroll\s*\{[\s\S]*-webkit-overflow-scrolling:\s*touch;/);
-  assert.match(styleCss, /\.cal-workout-day-sheet \.wt-day-sheet-scroll\s*\{[\s\S]*touch-action:\s*pan-y;/);
+  assert.match(styleCss, /\.cal-workout-day-sheet \.wt-day-sheet-scroll\s*\{[\s\S]*touch-action:\s*pan-x pan-y;/);
   assert.match(styleCss, /#tab-workout\.wt-calendar-home-mode:has\(#wt-workout-timer-bar\.wt-open\) \.cal-workout-day-sheet \.wt-day-sheet-scroll\s*\{[\s\S]*padding-bottom:\s*calc\(86px \+ env\(safe-area-inset-bottom,\s*0px\)\)/);
   assert.match(styleCss, /\.cal-workout-day-sheet \.wt-day-fab\s*\{[\s\S]*bottom:\s*calc\(8px \+ env\(safe-area-inset-bottom,\s*0px\)\)/);
   assert.match(styleCss, /\.cal-workout-day-sheet \.wt-day-fab\s*\{[\s\S]*pointer-events:\s*auto;[\s\S]*touch-action:\s*manipulation;/);
@@ -667,5 +684,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260702z12-workout-entry-carousel/);
+  assert.match(swJs, /tomatofarm-v20260702z13-workout-day-sheet-carousel/);
 });

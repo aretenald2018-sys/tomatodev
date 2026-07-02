@@ -12728,6 +12728,37 @@ body.lz-running-record-modal-open {
   flex-direction: column;
   gap: 14px;
 }
+.wt-day-exercise-carousel {
+  min-width: 0;
+}
+.wt-day-exercise-carousel-track {
+  display: flex;
+  min-width: 0;
+  gap: 12px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 0 2px;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  padding: 0 2px 6px;
+  scrollbar-width: none;
+}
+.wt-day-exercise-carousel-track::-webkit-scrollbar {
+  display: none;
+}
+.wt-day-exercise-slide {
+  flex: 0 0 100%;
+  min-width: 0;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+.wt-day-exercise-carousel.has-multiple .wt-day-exercise-slide {
+  flex-basis: min(92%, 540px);
+}
+.wt-day-exercise-slide > .wt-day-ex-card {
+  height: 100%;
+}
 .wt-day-ex-card {
   overflow: hidden;
   border: 1px solid #d8dbe4;
@@ -13842,7 +13873,7 @@ body.lz-running-record-modal-open {
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
+  touch-action: pan-x pan-y;
   padding: 0 0 14px;
 }
 #tab-workout.wt-calendar-home-mode:has(#wt-workout-timer-bar.wt-open) .cal-workout-day-sheet .wt-day-sheet-scroll {
