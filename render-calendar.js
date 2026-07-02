@@ -119,7 +119,9 @@ function _workoutSheetRawNumber(value) {
 }
 
 function _isActualWorkoutSet(set) {
-  if (!set || set.setType === 'warmup' || set.wendlerRole === 'warmup') return false;
+  const type = set?.setType;
+  const role = set?.wendlerRole;
+  if (!set || type === 'warmup' || role === 'warmup' || type === 'deload' || role === 'deload') return false;
   if (set.done === true) return true;
   if (set.done === false) return false;
   return _num(set.kg) > 0 && _num(set.reps) > 0;

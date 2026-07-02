@@ -8,7 +8,7 @@
 - 리뷰 문서: `docs/ai/reviews/2026-07-02-workout-sheet-previous-record-card-review.md`
 - 현재 단계: `운동 하단 시트 카드 지난 기록/세트 역할 복구 Slice 1 정적 검증 완료, 배포 검증 대기`
 - 작업 브랜치: `deploy/tomatofarm-20260629`
-- 마지막 완료: `하단 시트 운동 카드의 참고 기록 영역을 지난 기록으로 바꾸고, 세트 역할 메타를 보존해 프리/메인/BBB/FSL/디로드 칩을 복구했다.`
+- 마지막 완료: `하단 시트 운동 카드의 참고 기록 영역을 지난 기록으로 바꾸고, 세트 역할 메타를 보존해 프리/메인/BBB/FSL/디로드 칩을 복구했으며 프리/디로드 볼륨 제외를 보존했다.`
 - 다음 액션: `커밋 후 Dashboard3/운영계 Pages 배포 검증을 수행하고, 인증 계정에서 운동 탭 하단 시트 실제 UI flow를 확인한다.`
 - 차단 사유: `없음.`
 
@@ -24,9 +24,9 @@
 
 - 완료: `render-calendar.js`에서 이전 날짜의 같은 운동 entry를 찾아 `previousRecord`로 붙이고 운동 카드에 `지난 기록`으로 렌더하도록 수정했다.
 - 완료: `setDetails`/`rawSetDetails`가 `wendlerRole`/`supplementalKind` 등 세트 역할 메타를 유지하게 했다.
-- 완료: 하단 시트 세트 칩 라벨을 `프리`/`메인`/`BBB`/`FSL`/`보조`/`디로드`로 복구했다.
+- 완료: 하단 시트 세트 칩 라벨을 `프리`/`메인`/`BBB`/`FSL`/`보조`/`디로드`로 복구하고, `프리`/`디로드`는 볼륨/세트 집계에서 제외했다.
 - 완료: `tests/workout-calendar-bottom-sheet.test.js`에 오늘 기록 미표시, 이전 기록 표시, 웬들러 역할 칩 보존 회귀 테스트를 추가했다.
-- 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z10-workout-sheet-previous-record`로 bump하고 cache marker 테스트를 갱신했다.
+- 완료: `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z11-workout-sheet-previous-record`로 bump하고 cache marker 테스트를 갱신했다.
 - PASS: `node --check render-calendar.js`
 - PASS: `node --check sw.js`
 - PASS: `node --test tests/workout-calendar-bottom-sheet.test.js`

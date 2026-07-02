@@ -282,19 +282,25 @@ test('day sheet set done toggle uses explicit done state and larger touch target
 });
 
 test('day sheet set rows preserve wendler set role chips', () => {
+  const actualStart = calendarJs.indexOf('function _isActualWorkoutSet');
+  const actualEnd = calendarJs.indexOf('function _hasDraftWorkoutEntry', actualStart);
   const rowsStart = calendarJs.indexOf('function _exerciseRows');
   const rowsEnd = calendarJs.indexOf('function _workoutMetrics', rowsStart);
   const labelStart = calendarJs.indexOf('function _workoutSetTypeLabel');
   const labelEnd = calendarJs.indexOf('function _bestWorkoutSet', labelStart);
   const renderStart = calendarJs.indexOf('function _renderWorkoutSetRows');
   const renderEnd = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard', renderStart);
+  assert.ok(actualStart >= 0 && actualEnd > actualStart, 'actual set filter should exist');
   assert.ok(rowsStart >= 0 && rowsEnd > rowsStart, 'exercise row mapper should exist');
   assert.ok(labelStart >= 0 && labelEnd > labelStart, 'set type label helper should exist');
   assert.ok(renderStart >= 0 && renderEnd > renderStart, 'set row renderer should exist');
+  const actualFn = calendarJs.slice(actualStart, actualEnd);
   const rows = calendarJs.slice(rowsStart, rowsEnd);
   const labelFn = calendarJs.slice(labelStart, labelEnd);
   const renderFn = calendarJs.slice(renderStart, renderEnd);
 
+  assert.match(actualFn, /type === 'deload'/);
+  assert.match(actualFn, /role === 'deload'/);
   assert.match(rows, /wendlerRole:\s*set\.wendlerRole \|\| ''/);
   assert.match(rows, /supplementalKind:\s*set\.supplementalKind \|\| ''/);
   assert.match(rows, /wendlerPct/);
@@ -661,5 +667,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260702z10-workout-sheet-previous-record/);
+  assert.match(swJs, /tomatofarm-v20260702z11-workout-sheet-previous-record/);
 });

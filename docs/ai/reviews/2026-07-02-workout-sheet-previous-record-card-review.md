@@ -17,6 +17,7 @@
 - `_renderWorkoutExerciseDetailCard()`의 `.wt-max-last` 영역이 `row.setDetails`의 오늘 세트 요약을 직접 렌더하지 않고 `row.previousRecord` 기반 `지난 기록` 요약을 렌더한다.
 - `_exerciseRows()`가 `includePreviousRecord` 옵션으로 이전 날짜의 같은 운동 entry를 찾고, 회차 모델인 `workoutSessions`를 기준으로 기록을 정규화한다.
 - 세트 detail 변환에서 `wendlerRole`, `supplementalKind`, `wendlerPct`, `amrap`이 유지되어 `프리`, `메인`, `BBB`, `FSL`, `디로드` 라벨 복구가 가능하다.
+- 하단 시트 집계 필터가 `warmup`과 `deload` 세트를 제외해 `프리`/`디로드` 무게가 볼륨에 반영되지 않는다.
 - `render-calendar.js`가 `STATIC_ASSETS` 대상이므로 `sw.js` cache version이 함께 갱신되었다.
 
 ## 검증

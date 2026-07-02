@@ -66,7 +66,8 @@
   2. 이전 기록 조회는 `workoutSessions`의 회차별 entry를 기준으로 `exerciseId`, `movementId`, 운동명 순서로 매칭한다.
   3. `setDetails`/`rawSetDetails`에 `wendlerRole`, `supplementalKind`, `wendlerPct`, `amrap` 메타를 보존한다.
   4. 세트 칩 라벨은 웬들러 역할을 우선해 `프리`, `메인`, `BBB`, `FSL`, `보조`, `디로드`를 복구한다.
-  5. `render-calendar.js`가 `STATIC_ASSETS`에 포함되어 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z10-workout-sheet-previous-record`로 갱신했다.
+  5. 하단 시트 볼륨/세트 집계에서 `프리`와 `디로드` 세트를 제외한다.
+  6. `render-calendar.js`가 `STATIC_ASSETS`에 포함되어 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260702z11-workout-sheet-previous-record`로 갱신했다.
 - 검증 완료:
   1. PASS: `node --check render-calendar.js`
   2. PASS: `node --check sw.js`
