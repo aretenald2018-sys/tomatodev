@@ -33,4 +33,8 @@
 3. PASS: `node --test tests/*.test.js` - 688 pass
 4. PASS: `git diff --check`
 5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
-6. not verified yet: 운영 Pages 배포와 운영 URL browser flow 검증이 남아 있다.
+6. PASS: `npm.cmd run deploy:production` - `d15af94f6324`, `tomatofarm-v20260703z18-social-feed-actions`
+7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ d15af94f6324`
+8. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ sw.js::tomatofarm-v20260703z18-social-feed-actions home/friend-feed.js::_bindFriendFeedActions home/friend-feed.js::data-feed-action home/friend-feed.js::friendFeedActionsBound tests/social-friend-feed-actions.test.js::friendFeedActionsBound`
+9. PASS: 운영 URL browser 확인 - `https://aretenald2018-sys.github.io/tomatofarm/` title `토마토 키우기`, login screen/app shell 표시, console error 0.
+10. not verified yet: 인증 세션이 없어 실제 friend feed 내부 `data-feed-action` 클릭 flow는 자동 검증하지 못했다.
