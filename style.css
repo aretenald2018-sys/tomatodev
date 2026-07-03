@@ -2099,13 +2099,18 @@ body.wt-modal-scroll-lock {
 .ex-picker-filter-reset { white-space: nowrap; }
 
 .ex-picker-list-toolbar {
+  display: grid;
+  gap: 8px;
+  min-height: 36px;
+  margin: -2px 0 12px;
+  padding: 0 2px;
+}
+.ex-picker-toolbar-row {
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  min-height: 36px;
-  margin: -2px 0 12px;
-  padding: 0 2px;
 }
 .ex-picker-sort-controls,
 .ex-picker-scope-controls {
@@ -2117,8 +2122,36 @@ body.wt-modal-scroll-lock {
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
+.ex-picker-toolbar-row .ex-picker-sort-controls {
+  flex: 1 1 auto;
+}
 .ex-picker-sort-controls::-webkit-scrollbar,
 .ex-picker-scope-controls::-webkit-scrollbar { display: none; }
+.ex-picker-create-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(250, 52, 44, 0.28);
+  border-radius: 999px;
+  background: rgba(250, 52, 44, 0.08);
+  color: var(--primary);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition), border-color var(--transition), transform var(--transition);
+}
+.ex-picker-create-btn:active {
+  background: rgba(250, 52, 44, 0.14);
+  border-color: rgba(250, 52, 44, 0.44);
+  transform: scale(0.97);
+}
 .ex-picker-sort-btn,
 .ex-picker-scope-btn {
   flex: 0 0 auto;
@@ -2322,6 +2355,17 @@ body.wt-modal-scroll-lock {
   -webkit-tap-highlight-color: transparent; transition: all var(--transition);
 }
 .ex-picker-add:active { background: var(--surface2); }
+.ex-picker-empty-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.ex-picker-empty .ex-picker-create-btn {
+  min-width: 104px;
+}
 
 @media (max-width: 430px) {
   .ex-picker-row-side {

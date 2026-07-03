@@ -75,5 +75,5 @@ test('app update reload flushes workout draft and changes copy while workout is 
 });
 
 test('service worker cache version was bumped for recovery assets', () => {
-  assert.match(swJs, /tomatofarm-v20260703z6-workout-carousel-reopen-state/);
+  assert.match(swJs, /tomatofarm-v20260703z7-exercise-picker-crud-add/);
 });

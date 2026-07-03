@@ -32,6 +32,25 @@ test('exercise picker left rail chips are compact single-line controls', () => {
   assert.match(styleCss, /\.ex-picker-rail-chip span\s*\{[\s\S]*text-overflow:\s*ellipsis;/);
 });
 
+test('exercise picker exposes visible create actions for CRUD', () => {
+  const toolbar = exercisesJs.slice(
+    exercisesJs.indexOf('function _renderPickerListToolbar'),
+    exercisesJs.indexOf('function _renderPickerBenchmarkScope'),
+  );
+
+  assert.match(pickerModal, /id="ex-picker-add-top"[\s\S]*aria-label="종목 추가"/);
+  assert.match(toolbar, /data-picker-create-exercise/);
+  assert.match(toolbar, /\+ 종목 추가/);
+  assert.match(toolbar, /addEventListener\('click', _openPickerEditorFromHeader\)/);
+  assert.match(exercisesJs, /data-picker-empty-create/);
+  assert.match(exercisesJs, /wtOpenExerciseEditor\(null, _pickerMuscleFilter \|\| null\)/);
+  assert.match(exercisesJs, /export async function wtSaveExerciseFromEditor/);
+  assert.match(exercisesJs, /export async function wtDeleteExerciseFromEditor/);
+  assert.match(styleCss, /\.ex-picker-toolbar-row\s*\{[\s\S]*justify-content:\s*space-between/);
+  assert.match(styleCss, /\.ex-picker-create-btn\s*\{[\s\S]*white-space:\s*nowrap/);
+  assert.match(styleCss, /\.ex-picker-empty-actions\s*\{[\s\S]*flex-wrap:\s*wrap/);
+});
+
 test('service worker cache version was bumped for stats picker UI polish', () => {
-  assert.match(swJs, /tomatofarm-v20260703z6-workout-carousel-reopen-state/);
+  assert.match(swJs, /tomatofarm-v20260703z7-exercise-picker-crud-add/);
 });

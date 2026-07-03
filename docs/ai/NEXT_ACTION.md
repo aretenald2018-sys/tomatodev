@@ -1,5 +1,33 @@
 # 다음 자동 액션
 
+## 2026-07-03 운동 종목 피커 CRUD 신규 추가 버튼 노출
+
+- 상태: `ready_for_execution`
+- 계획: `docs/ai/features/2026-07-03-exercise-picker-visible-crud-add.md`
+- 리뷰: `docs/ai/reviews/2026-07-03-exercise-picker-visible-crud-add-review.md`
+- 요청: 운동 종목 목록 화면에서 신규 종목을 추가할 수 있는 버튼이 보이지 않는다. 종목은 CRUD가 되어야 한다.
+- 진단 요약:
+  1. 생성/수정/삭제 로직은 `workout/exercises.js`의 종목 에디터에 이미 있다.
+  2. 신규 추가 진입점은 상단 아이콘 또는 목록 하단 부위별 버튼에 숨어 있어 현재 목록 화면에서 명시적으로 보이지 않는다.
+  3. 검색/필터 결과가 비어도 신규 생성 CTA가 없어 CRUD 완성도가 낮아 보인다.
+- 실행 범위:
+  1. 종목 피커 목록 툴바에 항상 보이는 `+ 종목 추가` 버튼을 추가한다.
+  2. 빈 결과 상태에서도 신규 추가 버튼을 제공한다.
+  3. 모바일에서 정렬/범위/추가 버튼이 겹치지 않게 `style.css`를 조정한다.
+  4. `workout/exercises.js`, `style.css` 변경에 맞춰 `sw.js` `CACHE_VERSION`과 관련 테스트를 갱신한다.
+- 구현 요약:
+  1. 목록 툴바에 `data-picker-create-exercise` 기반 `+ 종목 추가` 버튼을 추가했다.
+  2. 빈 결과 상태에 `data-picker-empty-create` 버튼을 추가했다.
+  3. 기존 생성/수정/삭제 에디터 경로는 유지하고, 신규 버튼은 `_openPickerEditorFromHeader()`를 재사용한다.
+  4. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z7-exercise-picker-crud-add`로 bump하고 cache marker 테스트를 갱신했다.
+- 검증:
+  1. PASS: `node --check workout/exercises.js; node --check sw.js`
+  2. PASS: `node --test tests/stats-picker-ui-polish.test.js tests/workout-empty-picker-density.test.js tests/workout-picker-gym-rail.test.js` (14 pass)
+  3. PASS: `node --test tests/*.test.js` (650 pass)
+  4. PASS: `node scripts/verify-runtime-assets.mjs` (`refs=868`)
+  5. PASS: `git diff --check`
+- 다음 액션: 운영 Pages 배포 후 deployed marker와 인증 계정 실제 UI 플로우를 확인한다.
+
 ## 2026-07-03 운동 바텀시트 재열기 캐러셀 상태 보존
 
 - 상태: `complete`

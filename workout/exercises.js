@@ -3266,12 +3266,15 @@ function _renderPickerListToolbar(container) {
   const toolbar = document.createElement('div');
   toolbar.className = 'ex-picker-list-toolbar';
   toolbar.innerHTML = `
-    <div class="ex-picker-sort-controls" aria-label="정렬">
-      ${sortOptions.map(opt => `
-        <button type="button"
-          class="ex-picker-sort-btn${_pickerSortMode === opt.id ? ' active' : ''}"
-          data-picker-sort="${_escPicker(opt.id)}">${_escPicker(opt.label)}</button>
-      `).join('')}
+    <div class="ex-picker-toolbar-row">
+      <div class="ex-picker-sort-controls" aria-label="정렬">
+        ${sortOptions.map(opt => `
+          <button type="button"
+            class="ex-picker-sort-btn${_pickerSortMode === opt.id ? ' active' : ''}"
+            data-picker-sort="${_escPicker(opt.id)}">${_escPicker(opt.label)}</button>
+        `).join('')}
+      </div>
+      <button type="button" class="ex-picker-create-btn" data-picker-create-exercise aria-label="운동 종목 새로 추가">+ 종목 추가</button>
     </div>
     <div class="ex-picker-scope-controls" aria-label="범위">
       <button type="button" class="ex-picker-scope-btn${scope === 'all' ? ' active' : ''}" data-picker-scope="all">전체</button>
@@ -3285,6 +3288,7 @@ function _renderPickerListToolbar(container) {
   toolbar.querySelectorAll('[data-picker-scope]').forEach(btn => {
     btn.addEventListener('click', () => window._wtSetPickerScope?.(btn.getAttribute('data-picker-scope')));
   });
+  toolbar.querySelector('[data-picker-create-exercise]')?.addEventListener('click', _openPickerEditorFromHeader);
   container.appendChild(toolbar);
 }
 
@@ -3550,11 +3554,17 @@ export function _renderPickerList() {
     const emptyMsg = _pickerListMode === 'custom'
       ? '등록된 커스텀 종목이 없어요'
       : '등록된 종목이 없어요';
+    const createButton = '<button type="button" class="ex-picker-create-btn" data-picker-empty-create aria-label="운동 종목 새로 추가">+ 종목 추가</button>';
     empty.innerHTML = hasFilter
       ? `<div style="margin-bottom:12px;">조건에 맞는 종목이 없어요</div>
-         <button type="button" class="tds-btn tonal sm" data-picker-reset-empty>필터 초기화</button>`
-      : `<div>${emptyMsg}</div>`;
+         <div class="ex-picker-empty-actions">
+           <button type="button" class="tds-btn tonal sm" data-picker-reset-empty>필터 초기화</button>
+           ${createButton}
+         </div>`
+      : `<div>${emptyMsg}</div>
+         <div class="ex-picker-empty-actions">${createButton}</div>`;
     empty.querySelector('[data-picker-reset-empty]')?.addEventListener('click', () => window._wtResetAllPickerFilters?.());
+    empty.querySelector('[data-picker-empty-create]')?.addEventListener('click', _openPickerEditorFromHeader);
     container.appendChild(empty);
   }
 }

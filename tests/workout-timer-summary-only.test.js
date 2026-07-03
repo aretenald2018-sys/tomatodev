@@ -63,5 +63,5 @@ test('workout finish saves without opening the old completion insight modal', ()
 });
 
 test('service worker cache version was bumped for workout timer summary-only UI', () => {
-  assert.match(swJs, /tomatofarm-v20260703z6-workout-carousel-reopen-state/);
+  assert.match(swJs, /tomatofarm-v20260703z7-exercise-picker-crud-add/);
 });
