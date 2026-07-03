@@ -91,6 +91,20 @@
   2. 신규/기존 social profile action 테스트 확장
   3. full test, runtime assets, deployed marker
   4. 운영 URL browser 확인
+- 실행 요약:
+  1. `_bindFriendProfileActions(root)`에 `open-meal-photo`, reaction picker/detail, comment submit/reply/edit/delete/save/cancel action을 추가했다.
+  2. meal/workout reaction badge와 picker button은 `data-social-action`과 `data-target-id`/`data-date-key`/`data-field` payload로 전환했다.
+  3. 댓글 입력 Enter, 등록, 답글, 수정, 삭제, 수정 저장은 inline `onkeydown`/`onclick`에서 delegate로 옮겼다.
+  4. comment reply cancel은 `.onclick` property 대신 `cancel-comment-reply` action으로 처리한다.
+  5. `tests/social-friend-profile-actions.test.js`가 reaction/comment delegate 계약과 inline 재유입 방지를 확인한다.
+  6. `home/friend-profile.js`가 `STATIC_ASSETS`에 포함되어 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z19-social-profile-actions`로 bump했다.
+- 현재 검증:
+  1. PASS: `node --check home/friend-profile.js; node --check sw.js; node --check tests/social-friend-profile-actions.test.js`
+  2. PASS: `node --test tests/social-friend-profile-actions.test.js tests/social-friend-feed-actions.test.js tests/login-action-bridge.test.js tests/app-shell-action-bridge.test.js tests/pwa-update-auto-reload.test.js` - 19 pass
+  3. PASS: `node --test tests/*.test.js` - 688 pass
+  4. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
+  5. PASS: `git diff --check`
+  6. not verified yet: 운영 Pages 배포와 운영 URL browser flow 검증이 남아 있다.
 
 ### Slice 3: social render scheduler
 
@@ -123,5 +137,6 @@
 
 - 계획 세션 종료 상태: `ready_for_execution`
 - Slice 1 실행 후 상태: `deployed_with_auth_flow_gap`
-- 다음 액션: Slice 2 `profile reaction/comment action bridge`를 실행한다.
+- Slice 2 실행 후 상태: `static_verified_pending_deploy`
+- 다음 액션: Slice 2 `profile reaction/comment action bridge` 리뷰와 운영 배포 검증을 완료한다.
 - 차단 질문: 없음

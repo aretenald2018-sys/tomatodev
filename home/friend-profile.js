@@ -49,10 +49,13 @@ function _bindFriendProfileActions(root) {
     if (!control || !root.contains(control)) return;
     event.preventDefault();
     event.stopPropagation();
-    const { socialAction: action, friendId, friendName, targetId, dateKey: dk, section, entryId, fromName } = control.dataset;
+    const { socialAction: action, friendId, friendName, targetId, dateKey: dk, section, entryId, commentId, fromName, field, emoji, photo } = control.dataset;
     switch (action) {
       case 'close-dynamic-modal':
         _closeDynamicModal();
+        break;
+      case 'open-meal-photo':
+        if (photo) window.openMealPhotoLightbox?.(photo);
         break;
       case 'quick-guild-join':
         window.openQuickGuildJoin?.();
@@ -75,6 +78,33 @@ function _bindFriendProfileActions(root) {
       case 'toggle-comment':
         if (targetId && dk && section) window.toggleCommentSection?.(targetId, dk, section);
         break;
+      case 'show-reaction-picker':
+        if (targetId && dk && field) window.showReactionPicker?.(control, targetId, dk, field);
+        break;
+      case 'show-reaction-detail':
+        if (targetId && dk && field) window.showReactionDetail?.(control, targetId, dk, field);
+        break;
+      case 'send-reaction':
+        if (targetId && dk && field && emoji) window.sendReaction?.(targetId, dk, field, emoji);
+        break;
+      case 'submit-comment':
+        if (targetId && dk && section) window.submitComment?.(targetId, dk, section);
+        break;
+      case 'start-comment-reply':
+        if (commentId && section) window.startCommentReply?.(commentId, fromName || '', section);
+        break;
+      case 'edit-comment':
+        if (commentId && targetId && dk && section) window.editCommentUI?.(commentId, targetId, dk, section);
+        break;
+      case 'confirm-edit-comment':
+        if (commentId && targetId && dk && section) window.confirmEditComment?.(commentId, targetId, dk, section);
+        break;
+      case 'delete-comment':
+        if (commentId && targetId && dk && section) window.deleteCommentUI?.(commentId, targetId, dk, section);
+        break;
+      case 'cancel-comment-reply':
+        if (section) _cancelCommentReply(section);
+        break;
       case 'start-gb-reply':
         if (entryId) window.startGbReply?.(entryId, fromName || '');
         break;
@@ -94,11 +124,30 @@ function _bindFriendProfileActions(root) {
     const target = event.target instanceof Element ? event.target : null;
     const control = target?.closest?.('[data-social-enter-action]');
     if (!control || !root.contains(control)) return;
-    const { socialEnterAction: action, targetId } = control.dataset;
-    if (action !== 'submit-guestbook' || !targetId) return;
-    event.preventDefault();
-    window.submitGuestbook?.(targetId);
+    const { socialEnterAction: action, targetId, dateKey: dk, section, commentId } = control.dataset;
+    if (action === 'submit-guestbook' && targetId) {
+      event.preventDefault();
+      window.submitGuestbook?.(targetId);
+      return;
+    }
+    if (action === 'submit-comment' && targetId && dk && section) {
+      event.preventDefault();
+      window.submitComment?.(targetId, dk, section);
+      return;
+    }
+    if (action === 'confirm-edit-comment' && commentId && targetId && dk && section) {
+      event.preventDefault();
+      window.confirmEditComment?.(commentId, targetId, dk, section);
+      return;
+    }
   }, true);
+}
+
+function _cancelCommentReply(section) {
+  _commentReplyParentId = null;
+  document.getElementById(`comment-reply-cancel-${section}`)?.remove();
+  const input = document.getElementById(`comment-input-${section}`);
+  if (input) input.placeholder = '댓글 남기기';
 }
 
 // ── 친구 프로필 상세 ─────────────────────────────────────────────
@@ -173,13 +222,14 @@ window.openFriendProfile = async function(friendId, friendName, scrollToSection,
       if (foods.length || memoText || photo) {
         const foodNames = mealDisplayText(foods, memoText, photo ? '사진 기록' : '메뉴 미기록');
         const kcal = foods.reduce((s, f) => s + (f.kcal || 0), 0);
-        const photoThumb = photo ? `<div style="width:40px;height:40px;border-radius:8px;overflow:hidden;flex-shrink:0;cursor:pointer;margin-right:8px;" onclick="event.stopPropagation();openMealPhotoLightbox('${photo.replace(/'/g,"\\'")}')"><img src="${photo}" style="width:100%;height:100%;object-fit:cover;display:block;"></div>` : '';
+        const photoAttr = _socialAttr(photo);
+        const photoThumb = photo ? `<div data-social-action="open-meal-photo" data-photo="${photoAttr}" style="width:40px;height:40px;border-radius:8px;overflow:hidden;flex-shrink:0;cursor:pointer;margin-right:8px;"><img src="${photoAttr}" style="width:100%;height:100%;object-fit:cover;display:block;"></div>` : '';
         const mealField = 'meal_' + m.memo;
         const mealReactCount = getReactionCount(mealField);
         const mealEmojis = getReactionEmojis(mealField);
         const emojiDisplay = mealEmojis.length > 0 ? mealEmojis.join('') : '';
-        const reactBadge = mealReactCount > 0 ? `<span class="react-badge-detail" onclick="event.stopPropagation();showReactionDetail(this,'${friendId}','${tk}','${mealField}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:2px;padding:2px 6px;border-radius:999px;background:var(--surface2);"><span style="font-size:12px;">${emojiDisplay}</span><span style="font-size:10px;font-weight:600;color:var(--primary);">${mealReactCount}</span></span>` : '';
-        const reactionBtn = (!isMyProfile) ? `${reactBadge}<button class="friend-like-btn" onclick="showReactionPicker(this,'${friendId}','${tk}','${mealField}')" style="flex-shrink:0;font-size:16px;background:none;border:none;cursor:pointer;padding:2px;">🤍</button>` : (mealReactCount > 0 ? `<span class="react-badge-detail" onclick="event.stopPropagation();showReactionDetail(this,'${friendId}','${tk}','${mealField}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:2px;padding:2px 6px;border-radius:999px;background:var(--surface2);"><span style="font-size:12px;">${emojiDisplay}</span><span style="font-size:10px;font-weight:600;color:var(--primary);">${mealReactCount}</span></span>` : `<span style="font-size:14px;opacity:0.3;">🤍</span>`);
+        const reactBadge = mealReactCount > 0 ? `<span class="react-badge-detail" data-social-action="show-reaction-detail" data-target-id="${_socialAttr(friendId)}" data-date-key="${_socialAttr(tk)}" data-field="${_socialAttr(mealField)}" style="cursor:pointer;display:inline-flex;align-items:center;gap:2px;padding:2px 6px;border-radius:999px;background:var(--surface2);"><span style="font-size:12px;">${emojiDisplay}</span><span style="font-size:10px;font-weight:600;color:var(--primary);">${mealReactCount}</span></span>` : '';
+        const reactionBtn = (!isMyProfile) ? `${reactBadge}<button class="friend-like-btn" data-social-action="show-reaction-picker" data-target-id="${_socialAttr(friendId)}" data-date-key="${_socialAttr(tk)}" data-field="${_socialAttr(mealField)}" style="flex-shrink:0;font-size:16px;background:none;border:none;cursor:pointer;padding:2px;">🤍</button>` : (mealReactCount > 0 ? reactBadge : `<span style="font-size:14px;opacity:0.3;">🤍</span>`);
         const mealCommentBtn = `<button class="comment-toggle-btn" data-social-action="toggle-comment" data-target-id="${_socialAttr(normalizedFriendId)}" data-date-key="${_socialAttr(tk)}" data-section="${_socialAttr(m.memo)}" style="flex-shrink:0;font-size:13px;background:none;border:none;cursor:pointer;padding:2px 4px;color:var(--text-tertiary);">💬</button>`;
         todayDietHtml += `<div style="padding:6px 0;font-size:12px;border-bottom:1px solid var(--border);">
           <div style="display:flex;align-items:center;justify-content:space-between;">
@@ -401,9 +451,9 @@ window.openFriendProfile = async function(friendId, friendName, scrollToSection,
             const wReactCount = getReactionCount('workout');
             const wEmojis = getReactionEmojis('workout');
             const wEmojiDisplay = wEmojis.length > 0 ? wEmojis.join('') : '';
-            const wBadge = wReactCount > 0 ? `<span class="react-badge-detail" onclick="event.stopPropagation();showReactionDetail(this,'${friendId}','${tk}','workout')" style="cursor:pointer;display:inline-flex;align-items:center;gap:2px;padding:2px 6px;border-radius:999px;background:var(--surface2);margin-right:2px;"><span style="font-size:12px;">${wEmojiDisplay}</span><span style="font-size:10px;font-weight:600;color:var(--primary);">${wReactCount}</span></span>` : '';
-            if (!isMyProfile && hasWorkoutRecord) return `${wBadge}<button class="friend-like-btn" onclick="showReactionPicker(this,'${friendId}','${tk}','workout')" style="font-size:16px;background:none;border:none;cursor:pointer;padding:2px;">🤍</button>`;
-            if (wReactCount > 0) return `<span class="react-badge-detail" onclick="event.stopPropagation();showReactionDetail(this,'${friendId}','${tk}','workout')" style="cursor:pointer;display:inline-flex;align-items:center;gap:2px;padding:2px 6px;border-radius:999px;background:var(--surface2);"><span style="font-size:12px;">${wEmojiDisplay}</span><span style="font-size:10px;font-weight:600;color:var(--primary);">${wReactCount}</span></span>`;
+            const wBadge = wReactCount > 0 ? `<span class="react-badge-detail" data-social-action="show-reaction-detail" data-target-id="${_socialAttr(friendId)}" data-date-key="${_socialAttr(tk)}" data-field="workout" style="cursor:pointer;display:inline-flex;align-items:center;gap:2px;padding:2px 6px;border-radius:999px;background:var(--surface2);margin-right:2px;"><span style="font-size:12px;">${wEmojiDisplay}</span><span style="font-size:10px;font-weight:600;color:var(--primary);">${wReactCount}</span></span>` : '';
+            if (!isMyProfile && hasWorkoutRecord) return `${wBadge}<button class="friend-like-btn" data-social-action="show-reaction-picker" data-target-id="${_socialAttr(friendId)}" data-date-key="${_socialAttr(tk)}" data-field="workout" style="font-size:16px;background:none;border:none;cursor:pointer;padding:2px;">🤍</button>`;
+            if (wReactCount > 0) return wBadge;
             return '';
           })()}
         </div>
@@ -868,8 +918,8 @@ async function loadComments(targetId, dk, section, canWrite = true) {
 
   if (canWrite) {
     html += `<div style="display:flex;gap:6px;margin-top:8px;">
-      <input id="comment-input-${section}" style="flex:1;padding:7px 12px;border:1px solid var(--border);border-radius:999px;font-size:12px;color:var(--text);background:var(--surface2);outline:none;font-family:var(--font-sans);transition:border-color 0.15s;" placeholder="댓글 남기기" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'" onkeydown="if(event.key==='Enter')submitComment('${targetId}','${dk}','${section}')">
-      <button onclick="submitComment('${targetId}','${dk}','${section}')" style="padding:6px 12px;border:none;border-radius:999px;background:var(--primary-bg);color:var(--primary);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;">등록</button>
+      <input id="comment-input-${section}" data-social-enter-action="submit-comment" data-target-id="${_socialAttr(targetId)}" data-date-key="${_socialAttr(dk)}" data-section="${_socialAttr(section)}" style="flex:1;padding:7px 12px;border:1px solid var(--border);border-radius:999px;font-size:12px;color:var(--text);background:var(--surface2);outline:none;font-family:var(--font-sans);transition:border-color 0.15s;" placeholder="댓글 남기기" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
+      <button data-social-action="submit-comment" data-target-id="${_socialAttr(targetId)}" data-date-key="${_socialAttr(dk)}" data-section="${_socialAttr(section)}" style="padding:6px 12px;border:none;border-radius:999px;background:var(--primary-bg);color:var(--primary);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;">등록</button>
     </div>`;
   }
 
@@ -881,9 +931,9 @@ function renderComment(c, isReply, myId, myDataOwnerId, targetId, dk, section) {
   const isOwner = targetId === myId || targetId === myDataOwnerId;
   const timeAgo = formatTimeAgo(c.createdAt);
   const edited = c.updatedAt ? ' <span style="font-size:9px;color:var(--text-tertiary);">(수정됨)</span>' : '';
-  const delBtn = (isMe || isOwner) ? `<button onclick="deleteCommentUI('${c.id}','${targetId}','${dk}','${section}')" style="background:none;border:none;color:var(--text-tertiary);font-size:10px;cursor:pointer;padding:2px 4px;">삭제</button>` : '';
-  const editBtn = isMe ? `<button onclick="editCommentUI('${c.id}','${targetId}','${dk}','${section}')" style="background:none;border:none;color:var(--text-tertiary);font-size:10px;cursor:pointer;padding:2px 4px;">수정</button>` : '';
-  const replyBtn = !isReply ? `<button onclick="startCommentReply('${c.id}','${(c.fromName||'').replace(/'/g,"\\'")}','${section}')" style="background:none;border:none;color:var(--text-tertiary);font-size:10px;cursor:pointer;padding:2px 4px;">답글</button>` : '';
+  const delBtn = (isMe || isOwner) ? `<button data-social-action="delete-comment" data-comment-id="${_socialAttr(c.id)}" data-target-id="${_socialAttr(targetId)}" data-date-key="${_socialAttr(dk)}" data-section="${_socialAttr(section)}" style="background:none;border:none;color:var(--text-tertiary);font-size:10px;cursor:pointer;padding:2px 4px;">삭제</button>` : '';
+  const editBtn = isMe ? `<button data-social-action="edit-comment" data-comment-id="${_socialAttr(c.id)}" data-target-id="${_socialAttr(targetId)}" data-date-key="${_socialAttr(dk)}" data-section="${_socialAttr(section)}" style="background:none;border:none;color:var(--text-tertiary);font-size:10px;cursor:pointer;padding:2px 4px;">수정</button>` : '';
+  const replyBtn = !isReply ? `<button data-social-action="start-comment-reply" data-comment-id="${_socialAttr(c.id)}" data-from-name="${_socialAttr(c.fromName || '')}" data-section="${_socialAttr(section)}" style="background:none;border:none;color:var(--text-tertiary);font-size:10px;cursor:pointer;padding:2px 4px;">답글</button>` : '';
 
   return `<div id="comment-${c.id}" style="padding:${isReply?'5':'7'}px 0;${isReply?'margin-left:32px;':''}border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:7px;">
     <div style="width:${isReply?'20':'26'}px;height:${isReply?'20':'26'}px;border-radius:50%;background:${isMe?'#fdf0f0':'var(--surface3)'};color:${isMe?'var(--primary)':'var(--text-secondary)'};display:flex;align-items:center;justify-content:center;font-size:${isReply?'8':'10'}px;font-weight:700;flex-shrink:0;">${(c.fromName||'?').charAt(0)}</div>
@@ -924,7 +974,8 @@ window.startCommentReply = function(parentId, fromName, section) {
     cancelBtn.id = `comment-reply-cancel-${section}`;
     cancelBtn.textContent = '답글 취소 ✕';
     cancelBtn.style.cssText = 'background:none;border:none;color:var(--primary);font-size:11px;cursor:pointer;padding:4px 0;margin-top:4px;display:block;';
-    cancelBtn.onclick = () => { _commentReplyParentId = null; cancelBtn.remove(); if (input) input.placeholder = '댓글 남기기'; };
+    cancelBtn.dataset.socialAction = 'cancel-comment-reply';
+    cancelBtn.dataset.section = section;
     input.parentElement.after(cancelBtn);
   }
 };
@@ -934,8 +985,8 @@ window.editCommentUI = function(commentId, targetId, dk, section) {
   if (!msgEl) return;
   const oldText = msgEl.textContent;
   msgEl.innerHTML = `<div style="display:flex;gap:4px;align-items:center;margin-top:2px;">
-    <input id="edit-${commentId}" value="${oldText.replace(/"/g,'&quot;')}" style="flex:1;padding:4px 8px;border:1px solid var(--primary);border-radius:6px;font-size:12px;color:var(--text);background:var(--surface2);outline:none;" onkeydown="if(event.key==='Enter')confirmEditComment('${commentId}','${targetId}','${dk}','${section}')">
-    <button onclick="confirmEditComment('${commentId}','${targetId}','${dk}','${section}')" style="font-size:10px;padding:3px 8px;border:none;border-radius:4px;background:var(--primary);color:#fff;cursor:pointer;flex-shrink:0;">저장</button>
+    <input id="edit-${commentId}" data-social-enter-action="confirm-edit-comment" data-comment-id="${_socialAttr(commentId)}" data-target-id="${_socialAttr(targetId)}" data-date-key="${_socialAttr(dk)}" data-section="${_socialAttr(section)}" value="${oldText.replace(/"/g,'&quot;')}" style="flex:1;padding:4px 8px;border:1px solid var(--primary);border-radius:6px;font-size:12px;color:var(--text);background:var(--surface2);outline:none;">
+    <button data-social-action="confirm-edit-comment" data-comment-id="${_socialAttr(commentId)}" data-target-id="${_socialAttr(targetId)}" data-date-key="${_socialAttr(dk)}" data-section="${_socialAttr(section)}" style="font-size:10px;padding:3px 8px;border:none;border-radius:4px;background:var(--primary);color:#fff;cursor:pointer;flex-shrink:0;">저장</button>
   </div>`;
   document.getElementById(`edit-${commentId}`)?.focus();
 };

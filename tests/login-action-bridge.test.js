@@ -56,5 +56,5 @@ test('feature-login binds login actions with a scoped idempotent bridge', () => 
 });
 
 test('service worker cache version was bumped for login action bridge assets', () => {
-  assert.match(swJs, /tomatofarm-v20260703z18-social-feed-actions/);
+  assert.match(swJs, /tomatofarm-v20260703z19-social-profile-actions/);
 });
