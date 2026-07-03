@@ -66,6 +66,7 @@ let _workoutHomeSessionIndex = 0;
 const _workoutDetailCollapsed = new Set();
 let _workoutEditingCardId = null;
 const _workoutExerciseCompletionStamps = new Map();
+const _workoutSheetCarouselSnapshots = new Map();
 let _workoutTrackGraphSeq = 0;
 const WORKOUT_GYM_SESSION_COUNT = 2;
 const WORKOUT_RUNNING_SESSION_INDEX = 2;
@@ -405,13 +406,64 @@ function _restoreWorkoutSheetCarouselState(sheet = null, state = null) {
   }
 }
 
-function _restoreWorkoutSheetCarouselToSlide(slideIndex = null) {
+function _restoreWorkoutSheetCarouselToSlide(slideIndex = null, options = {}) {
   if (!Number.isFinite(Number(slideIndex)) || typeof document === 'undefined') return;
   const index = Math.max(0, Math.floor(Number(slideIndex)));
   const state = {
     carouselSlideIndex: index,
     carouselScrollLeft: null,
   };
+  if (options?.remember !== false) {
+    _rememberWorkoutSheetCarouselSlide(options?.key ?? _workoutHomeSelectedKey, options?.sessionIndex ?? _workoutHomeSessionIndex, index);
+  }
+  const restore = () => {
+    const root = _workoutHomeScrollRoot();
+    const sheet = root?.querySelector?.('[data-wt-day-sheet]')
+      || document.querySelector?.('#workout-calendar-root [data-wt-day-sheet]');
+    _restoreWorkoutSheetCarouselState(sheet, state);
+  };
+  restore();
+  if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+    window.requestAnimationFrame(restore);
+  }
+  if (typeof window !== 'undefined' && typeof window.setTimeout === 'function') {
+    window.setTimeout(restore, 80);
+    window.setTimeout(restore, 220);
+  }
+}
+
+function _workoutSheetCarouselSnapshotKey(key = _workoutHomeSelectedKey, sessionIndex = _workoutHomeSessionIndex) {
+  const targetKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
+  const targetSessionIndex = Math.max(0, Math.floor(Number(sessionIndex) || 0));
+  return `${targetKey}::${targetSessionIndex}`;
+}
+
+function _rememberWorkoutSheetCarouselSlide(key = _workoutHomeSelectedKey, sessionIndex = _workoutHomeSessionIndex, slideIndex = null) {
+  if (!Number.isFinite(Number(slideIndex))) return null;
+  const index = Math.max(0, Math.floor(Number(slideIndex)));
+  const state = {
+    carouselSlideIndex: index,
+    carouselScrollLeft: null,
+  };
+  _workoutSheetCarouselSnapshots.set(_workoutSheetCarouselSnapshotKey(key, sessionIndex), state);
+  return state;
+}
+
+function _rememberWorkoutSheetCarouselState(key = _workoutHomeSelectedKey, sessionIndex = _workoutHomeSessionIndex, sheet = null) {
+  if (typeof document === 'undefined') return null;
+  const root = _workoutHomeScrollRoot();
+  const targetSheet = sheet
+    || root?.querySelector?.('[data-wt-day-sheet]')
+    || document.querySelector?.('#workout-calendar-root [data-wt-day-sheet]');
+  const state = _captureWorkoutSheetCarouselState(targetSheet);
+  if (!state || !Number.isFinite(Number(state.slideIndex))) return null;
+  return _rememberWorkoutSheetCarouselSlide(key, sessionIndex, state.slideIndex);
+}
+
+function _restoreRememberedWorkoutSheetCarousel(key = _workoutHomeSelectedKey, sessionIndex = _workoutHomeSessionIndex) {
+  if (typeof document === 'undefined') return;
+  const state = _workoutSheetCarouselSnapshots.get(_workoutSheetCarouselSnapshotKey(key, sessionIndex));
+  if (!state) return;
   const restore = () => {
     const root = _workoutHomeScrollRoot();
     const sheet = root?.querySelector?.('[data-wt-day-sheet]')
@@ -563,6 +615,10 @@ function _syncWorkoutHomeNavState({ history = 'replace', notify = false, action 
 
 export function applyWorkoutCalendarNavSnapshot(snapshot = {}, options = {}) {
   const calendar = snapshot?.calendar || {};
+  const nextSheetOpen = !!calendar.sheetOpen;
+  if (_currentWorkoutHomeSheetState() !== 'bar' && !nextSheetOpen) {
+    _rememberWorkoutSheetCarouselState(_workoutHomeSelectedKey, _workoutHomeSessionIndex);
+  }
   if (calendar.viewYear != null && Number.isFinite(Number(calendar.viewYear))) _viewYear = Number(calendar.viewYear);
   if (calendar.viewMonth != null && Number.isFinite(Number(calendar.viewMonth))) _viewMonth = Number(calendar.viewMonth);
   if (!Number.isFinite(_viewYear) || _viewYear < 1000 || _viewYear > 9999) _viewYear = TODAY.getFullYear();
@@ -570,8 +626,9 @@ export function applyWorkoutCalendarNavSnapshot(snapshot = {}, options = {}) {
   if (_parseDateKey(calendar.selectedKey)) _workoutHomeSelectedKey = calendar.selectedKey;
   _workoutHomeSessionIndex = Math.max(0, Math.floor(Number(calendar.selectedSessionIndex) || 0));
   _workoutHomeSheetState = _normalizeWorkoutHomeSheetState(calendar.sheetState);
-  _workoutHomeView = calendar.sheetOpen ? 'detail' : 'month';
+  _workoutHomeView = nextSheetOpen ? 'detail' : 'month';
   renderWorkoutCalendarHome();
+  if (nextSheetOpen) _restoreRememberedWorkoutSheetCarousel(_workoutHomeSelectedKey, _workoutHomeSessionIndex);
   if (options.preserveScroll !== false && Number.isFinite(Number(calendar.scrollTop)) && typeof window !== 'undefined') {
     const top = Math.max(0, Number(calendar.scrollTop) || 0);
     const restoreScroll = () => {
@@ -716,7 +773,7 @@ async function _refreshWorkoutHomeAfterPickerSelect(key, sessionIndex = _workout
   const timerBar = typeof document !== 'undefined' ? document.getElementById('wt-workout-timer-bar') : null;
   if (timerBar && !timerBar.classList.contains('wt-open')) timerBar.classList.add('wt-open');
   renderWorkoutCalendarHome();
-  if (entryIndex != null) _restoreWorkoutSheetCarouselToSlide(entryIndex);
+  if (entryIndex != null) _restoreWorkoutSheetCarouselToSlide(entryIndex, { key, sessionIndex: targetIndex });
   if (!detail?.existing) window.showToast?.('종목을 추가했어요', 1500, 'success');
   return true;
 }
@@ -2747,6 +2804,9 @@ function _applyWorkoutHomeSheetState() {
 
 function _setWorkoutHomeSheetState(state, { render = false } = {}) {
   const next = _normalizeWorkoutHomeSheetState(state);
+  if (_currentWorkoutHomeSheetState() !== 'bar' && next === 'bar') {
+    _rememberWorkoutSheetCarouselState(_workoutHomeSelectedKey, _workoutHomeSessionIndex);
+  }
   _workoutHomeSheetState = next;
   _workoutHomeView = next === 'bar' ? 'month' : 'detail';
   if (_workoutHomeView === 'month') {
@@ -2777,6 +2837,7 @@ function _toggleWorkoutHomeSheet(key = _workoutHomeSelectedKey) {
       action: 'sheet:open',
     });
     renderWorkoutCalendarHome();
+    _restoreRememberedWorkoutSheetCarousel(_workoutHomeSelectedKey, _workoutHomeSessionIndex);
     return;
   }
   _setWorkoutHomeSheetState('bar');
@@ -2975,6 +3036,7 @@ function _openWorkoutHomeDay(key) {
     action: 'sheet:open-day',
   });
   renderWorkoutCalendarHome();
+  _restoreRememberedWorkoutSheetCarousel(nextKey, _workoutHomeSessionIndex);
 }
 
 async function _openWorkoutHomeRoutine(key) {
@@ -3039,15 +3101,19 @@ function _goTodayWorkoutDetail() {
   });
   renderCalendar();
   renderWorkoutCalendarHome();
+  _restoreRememberedWorkoutSheetCarousel(key, 0);
 }
 
 function _selectWorkoutHomeSession(index) {
+  _rememberWorkoutSheetCarouselState(_workoutHomeSelectedKey, _workoutHomeSessionIndex);
   _workoutHomeSessionIndex = Math.max(0, Math.min(WORKOUT_GYM_SESSION_COUNT - 1, Math.floor(Number(index) || 0)));
   _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:session' });
   renderWorkoutCalendarHome();
+  _restoreRememberedWorkoutSheetCarousel(_workoutHomeSelectedKey, _workoutHomeSessionIndex);
 }
 
 function _selectWorkoutHomeRunning() {
+  _rememberWorkoutSheetCarouselState(_workoutHomeSelectedKey, _workoutHomeSessionIndex);
   _workoutHomeSessionIndex = WORKOUT_RUNNING_SESSION_INDEX;
   _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:running' });
   renderWorkoutCalendarHome();

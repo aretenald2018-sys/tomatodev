@@ -1,5 +1,33 @@
 # 다음 자동 액션
 
+## 2026-07-03 운동 바텀시트 재열기 캐러셀 상태 보존
+
+- 상태: `complete`
+- 계획: `docs/ai/features/2026-07-03-workout-carousel-reopen-state.md`
+- 리뷰: `docs/ai/reviews/2026-07-03-workout-carousel-reopen-state-review.md`
+- 요청: 운동 하단시트를 닫았다 다시 열면 첫 종목이 아니라 닫기 직전에 보고 있던 종목 카드가 보여야 한다.
+- 진단 요약:
+  1. 기존 캐러셀 캡처/복원 함수는 세트 저장/재렌더 같은 같은 렌더 흐름 안에서는 동작한다.
+  2. 새 종목 추가 직후 helper는 선택된 slide로 일회성 이동만 수행한다.
+  3. 하단시트를 닫기 전에 현재 slide를 날짜+회차 단위 상태로 저장하지 않고, 다시 열 때 복원하지 않는다.
+- 실행 범위:
+  1. 날짜+회차 단위 마지막 캐러셀 slide 메모리를 추가한다.
+  2. 닫기 전 저장, 열기 후 복원, 회차 전환 전후 저장/복원을 연결한다.
+  3. `render-calendar.js` 변경에 맞춰 `sw.js` `CACHE_VERSION`과 관련 테스트를 갱신한다.
+- 구현 요약:
+  1. `_workoutSheetCarouselSnapshots`로 날짜+회차별 마지막 캐러셀 slide index를 기억한다.
+  2. 시트 닫힘, nav snapshot 닫힘, 회차 전환 전 현재 slide를 저장하고, 열기/재열기/회차 전환 후 저장된 slide를 복원한다.
+  3. 새 종목 추가 직후 선택된 slide도 마지막 상태로 기록한다.
+  4. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z6-workout-carousel-reopen-state`로 bump하고 cache marker 테스트를 갱신했다.
+- 검증:
+  1. PASS: `node --check render-calendar.js; node --check sw.js`
+  2. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-active-session-recovery.test.js tests/workout-save-mode-guard.test.js` - 41 pass
+  3. PASS: `node --test tests/*.test.js` - 649 pass
+  4. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=868`
+  5. PASS: `git diff --check`
+  6. not verified yet: 인증 계정 실제 UI에서 `새 종목 카드 표시 -> 하단시트 닫기 -> 다시 열기 -> 같은 종목 카드 표시` 클릭 플로우는 자동 검증하지 못했다.
+- 다음 액션: 운영계 배포 후 인증 계정 실제 UI에서 위 클릭 플로우를 확인한다.
+
 ## 2026-07-03 운동 새 종목 추가 후 캐러셀 포커스
 
 - 상태: `complete`

@@ -170,7 +170,7 @@ test('day sheet add picker stays on the current sheet session', () => {
   assert.match(refresh, /openWorkoutDaySheet\(key,[\s\S]*sheetState:\s*'full'[\s\S]*action:\s*'sheet:add-exercise'/);
   assert.match(refresh, /timerBar\.classList\.add\('wt-open'\)/);
   assert.match(refresh, /renderWorkoutCalendarHome\(\)/);
-  assert.match(refresh, /if \(entryIndex != null\) _restoreWorkoutSheetCarouselToSlide\(entryIndex\)/);
+  assert.match(refresh, /if \(entryIndex != null\) _restoreWorkoutSheetCarouselToSlide\(entryIndex, \{ key, sessionIndex: targetIndex \}\)/);
   assert.match(addFn, /const targetKey = _parseDateKey\(key\) \? key : _workoutHomeSelectedKey/);
   assert.match(addFn, /const targetIndex = Math\.max\(0, Math\.min\(_workoutHomeSessionIndex, WORKOUT_GYM_SESSION_COUNT - 1\)\)/);
   assert.doesNotMatch(addFn, /findIndex\(session => !hasWorkoutSessionData\(session\)\)/);
@@ -191,8 +191,9 @@ test('day sheet add picker focuses the selected exercise carousel slide', () => 
   const refresh = calendarJs.slice(refreshStart, refreshEnd);
 
   assert.match(refresh, /const entryIndex = Number\.isFinite\(Number\(detail\?\.entryIdx\)\)/);
-  assert.match(refresh, /renderWorkoutCalendarHome\(\);[\s\S]*_restoreWorkoutSheetCarouselToSlide\(entryIndex\)/);
+  assert.match(refresh, /renderWorkoutCalendarHome\(\);[\s\S]*_restoreWorkoutSheetCarouselToSlide\(entryIndex, \{ key, sessionIndex: targetIndex \}\)/);
   assert.match(helper, /const index = Math\.max\(0, Math\.floor\(Number\(slideIndex\)\)\)/);
+  assert.match(helper, /_rememberWorkoutSheetCarouselSlide\(options\?\.key \?\? _workoutHomeSelectedKey, options\?\.sessionIndex \?\? _workoutHomeSessionIndex, index\)/);
   assert.match(helper, /carouselSlideIndex: index/);
   assert.match(helper, /carouselScrollLeft: null/);
   assert.match(helper, /root\?\.querySelector\?\.\('\[data-wt-day-sheet\]'\)/);
@@ -200,6 +201,47 @@ test('day sheet add picker focuses the selected exercise carousel slide', () => 
   assert.match(helper, /window\.requestAnimationFrame\(restore\)/);
   assert.match(helper, /window\.setTimeout\(restore, 80\)/);
   assert.match(helper, /window\.setTimeout\(restore, 220\)/);
+});
+
+test('day sheet remembers exercise carousel slide across close and reopen', () => {
+  const stateStart = calendarJs.indexOf('const _workoutSheetCarouselSnapshots = new Map()');
+  const helperStart = calendarJs.indexOf('function _workoutSheetCarouselSnapshotKey');
+  const helperEnd = calendarJs.indexOf('function _workoutSheetInputSelection', helperStart);
+  const snapshotStart = calendarJs.indexOf('export function applyWorkoutCalendarNavSnapshot');
+  const snapshotEnd = calendarJs.indexOf('function _isTodayKey', snapshotStart);
+  const setStateStart = calendarJs.indexOf('function _setWorkoutHomeSheetState');
+  const setStateEnd = calendarJs.indexOf('function _toggleWorkoutHomeSheet', setStateStart);
+  const toggleStart = setStateEnd;
+  const toggleEnd = calendarJs.indexOf('function _bindWorkoutHomeSheetActions', toggleStart);
+  const openStart = calendarJs.indexOf('function _openWorkoutHomeDay');
+  const openEnd = calendarJs.indexOf('async function _openWorkoutHomeRoutine', openStart);
+  const sessionStart = calendarJs.indexOf('function _selectWorkoutHomeSession');
+  const sessionEnd = calendarJs.indexOf('function _selectWorkoutHomeRunning', sessionStart);
+  assert.ok(stateStart >= 0, 'carousel memory map should exist');
+  assert.ok(helperStart >= 0 && helperEnd > helperStart, 'carousel memory helpers should exist');
+  assert.ok(snapshotStart >= 0 && snapshotEnd > snapshotStart, 'nav snapshot apply should exist');
+  assert.ok(setStateStart >= 0 && setStateEnd > setStateStart, 'sheet state setter should exist');
+  assert.ok(toggleStart >= 0 && toggleEnd > toggleStart, 'sheet toggle should exist');
+  assert.ok(openStart >= 0 && openEnd > openStart, 'day open function should exist');
+  assert.ok(sessionStart >= 0 && sessionEnd > sessionStart, 'session switch function should exist');
+  const helpers = calendarJs.slice(helperStart, helperEnd);
+  const snapshotFn = calendarJs.slice(snapshotStart, snapshotEnd);
+  const setStateFn = calendarJs.slice(setStateStart, setStateEnd);
+  const toggleFn = calendarJs.slice(toggleStart, toggleEnd);
+  const openFn = calendarJs.slice(openStart, openEnd);
+  const sessionFn = calendarJs.slice(sessionStart, sessionEnd);
+
+  assert.match(helpers, /return `\$\{targetKey\}::\$\{targetSessionIndex\}`/);
+  assert.match(helpers, /_workoutSheetCarouselSnapshots\.set\(_workoutSheetCarouselSnapshotKey\(key, sessionIndex\), state\)/);
+  assert.match(helpers, /const state = _captureWorkoutSheetCarouselState\(targetSheet\)/);
+  assert.match(helpers, /return _rememberWorkoutSheetCarouselSlide\(key, sessionIndex, state\.slideIndex\)/);
+  assert.match(helpers, /_workoutSheetCarouselSnapshots\.get\(_workoutSheetCarouselSnapshotKey\(key, sessionIndex\)\)/);
+  assert.match(setStateFn, /_currentWorkoutHomeSheetState\(\) !== 'bar' && next === 'bar'[\s\S]*_rememberWorkoutSheetCarouselState\(_workoutHomeSelectedKey, _workoutHomeSessionIndex\)/);
+  assert.match(toggleFn, /renderWorkoutCalendarHome\(\);[\s\S]*_restoreRememberedWorkoutSheetCarousel\(_workoutHomeSelectedKey, _workoutHomeSessionIndex\)/);
+  assert.match(openFn, /renderWorkoutCalendarHome\(\);[\s\S]*_restoreRememberedWorkoutSheetCarousel\(nextKey, _workoutHomeSessionIndex\)/);
+  assert.match(sessionFn, /_rememberWorkoutSheetCarouselState\(_workoutHomeSelectedKey, _workoutHomeSessionIndex\);[\s\S]*renderWorkoutCalendarHome\(\);[\s\S]*_restoreRememberedWorkoutSheetCarousel\(_workoutHomeSelectedKey, _workoutHomeSessionIndex\)/);
+  assert.match(snapshotFn, /_currentWorkoutHomeSheetState\(\) !== 'bar' && !nextSheetOpen[\s\S]*_rememberWorkoutSheetCarouselState\(_workoutHomeSelectedKey, _workoutHomeSessionIndex\)/);
+  assert.match(snapshotFn, /if \(nextSheetOpen\) _restoreRememberedWorkoutSheetCarousel\(_workoutHomeSelectedKey, _workoutHomeSessionIndex\)/);
 });
 
 test('day sheet detail renders picker-added draft exercise rows', () => {
@@ -849,5 +891,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260703z5-workout-carousel-new-focus/);
+  assert.match(swJs, /tomatofarm-v20260703z6-workout-carousel-reopen-state/);
 });
