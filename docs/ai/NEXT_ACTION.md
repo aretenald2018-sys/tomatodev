@@ -2,7 +2,7 @@
 
 ## 2026-07-03 전역 상호작용 결합 완화 리팩토링
 
-- 상태: `ready_for_execution`
+- 상태: `complete`
 - 계획: `docs/ai/features/2026-07-03-global-interaction-decoupling-refactor.md`
 - 리뷰:
   - `docs/ai/reviews/2026-07-03-global-interaction-slice1-review.md`
@@ -106,8 +106,12 @@
   5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
   6. INFO: `f4442872c4435761ef848ddd6b2d5b41a4c78548` push 후 Pages deploy action이 GitHub 내부 오류 `Deployment failed, try again later.`로 실패했다.
   7. INFO: 수동 workflow run `28655912543`, `28656159691`도 같은 Pages 내부 오류로 실패했고, 운영 URL은 아직 이전 `07bc8743222e`/z16을 서빙한다.
-  8. not verified yet: 새 docs commit으로 Pages deploy를 재트리거한 뒤 운영 URL browser flow 검증이 필요하다.
-- 다음 액션: Slice 5 docs commit으로 Pages deploy를 재트리거하고 운영 배포 검증을 완료한다.
+  8. PASS: 새 docs commit `34b0bc01b23a`로 Pages deploy를 재트리거했고 `npm.cmd run deploy:production`이 통과했다.
+  9. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 34b0bc01b23a`
+  10. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ sw.js::tomatofarm-v20260703z17-max-render-scheduler workout/expert/max.js::_scheduleExpertTopAreaRender workout/expert/max.js::_expertTopAreaRenderScheduled workout/expert/max.js::requestAnimationFrame tests/max-render-scheduler.test.js::_scheduleExpertTopAreaRender`
+  11. PASS: 운영 URL in-app browser 로드 - title `토마토 키우기`, `html[data-app-shell-actions-bound="1"]`, `data-app-action` controls 18개, console error 0건
+  12. not verified yet: 실제 Max UI click flow는 로그인 화면이 운동 탭 hit target을 덮어 인증 없이 열 수 없었다. `#tab-nav [data-tab="workout"]` center hit target이 `#login-screen`이었다.
+- 다음 액션: 후속 전역 리팩토링은 새 planning session으로 social feed/profile reaction 중복 렌더와 남은 inline handler 후보를 재인벤토리한다.
 
 ## 2026-07-03 운동 추가/카드 추가 결합 완화 리팩토링
 
