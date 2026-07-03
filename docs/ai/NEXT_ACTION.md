@@ -2,7 +2,7 @@
 
 ## 2026-07-03 전역 상호작용 결합 완화 리팩토링
 
-- 상태: `ready_for_review`
+- 상태: `ready_for_execution`
 - 계획: `docs/ai/features/2026-07-03-global-interaction-decoupling-refactor.md`
 - 리뷰:
   - `docs/ai/reviews/2026-07-03-global-interaction-slice1-review.md`
@@ -85,8 +85,14 @@
   3. PASS: `node --test tests/*.test.js` - 681 pass
   4. PASS: `git diff --check`
   5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
-  6. not verified yet: 운영 Pages 배포와 Max UI click flow 확인 필요
-- 다음 액션: Slice 4 리뷰 확인 후 운영 Pages에 배포하고 `data-max-modal-action` marker 및 인증/UI 차단 여부를 확인한다.
+  6. INFO: `npm.cmd run deploy:production`은 `e6ed405b5000a3ff01f4ec481b1d34d555eecaf5` push 후 Pages가 이전 커밋을 보고 실패했다. push 자체는 성공했다.
+  7. INFO: 수동 workflow run `28654996300`도 GitHub Pages 내부 오류 `Deployment failed, try again later.`로 실패했다.
+  8. PASS: 수동 workflow run `28655128179` 성공.
+  9. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ e6ed405b5000a3ff01f4ec481b1d34d555eecaf5`
+  10. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ sw.js::tomatofarm-v20260703z16-max-aux-modal-actions workout/expert/max.js::_bindMaxModalActions workout/expert/max.js::data-max-modal-action workout/expert/max.js::switch-normal-view "tests/max-auxiliary-modal-actions.test.js::remaining Max inline handlers"`
+  11. PASS: 운영 URL in-app browser 로드 - title `토마토 키우기`, `appShellBound=1`, console error 0건
+  12. not verified yet: 실제 Max UI click flow는 로그인 화면이 운동 탭 hit target을 덮어 인증 없이 열 수 없었다. `#tab-nav [data-tab="workout"]` center hit target이 `#login-screen`이었다.
+- 다음 액션: Slice 5 `click performance pass`를 실행한다.
 
 ## 2026-07-03 운동 추가/카드 추가 결합 완화 리팩토링
 

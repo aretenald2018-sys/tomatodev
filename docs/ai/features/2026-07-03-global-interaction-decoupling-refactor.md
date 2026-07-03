@@ -6,7 +6,7 @@
 
 ## 계획 상태
 
-- 단계: `slice4_static_verified_pending_deploy`
+- 단계: `slice4_deployed_with_auth_ui_blocker`
 - 선행 계획:
   - `docs/ai/features/2026-07-03-workout-add-decoupling-refactor.md`
 - 목적: 운동 추가/카드 추가 경계 안정화 뒤에도 남은 전역 `onclick`/`window.*`/중복 렌더 hotspot을 작은 실행 slice로 줄여, 새 버튼이나 UI를 추가할 때 다른 기능이 연쇄로 깨지는 위험을 낮춘다.
@@ -179,7 +179,7 @@
 
 #### 슬라이스 4 실행 결과
 
-- 상태: `static_verified_pending_deploy`
+- 상태: `deployed_with_auth_ui_blocker`
 - 변경 요약:
   1. `workout/expert/max.js`에 `_bindMaxModalActions(modal, handlers)`를 추가해 보조 modal click action을 modal-local delegate로 라우팅한다.
   2. 추천 조정, 기구풀, 데이터 클렌징, 과거 수행값, 청사진 modal의 close/save/history/delete action을 `data-max-modal-action`으로 전환했다.
@@ -192,7 +192,13 @@
   3. PASS: `node --test tests/*.test.js` - 681 pass
   4. PASS: `git diff --check`
   5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
-  6. not verified yet: 운영 Pages 배포와 Max UI click flow 확인이 남았다.
+  6. INFO: `npm.cmd run deploy:production`은 `e6ed405b5000a3ff01f4ec481b1d34d555eecaf5` push 후 Pages가 이전 커밋을 보고 실패했다. push 자체는 성공했다.
+  7. INFO: 수동 workflow run `28654996300`도 GitHub Pages 내부 오류 `Deployment failed, try again later.`로 실패했다.
+  8. PASS: 수동 workflow run `28655128179` 성공.
+  9. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ e6ed405b5000a3ff01f4ec481b1d34d555eecaf5`
+  10. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ sw.js::tomatofarm-v20260703z16-max-aux-modal-actions workout/expert/max.js::_bindMaxModalActions workout/expert/max.js::data-max-modal-action workout/expert/max.js::switch-normal-view "tests/max-auxiliary-modal-actions.test.js::remaining Max inline handlers"`
+  11. PASS: 운영 URL in-app browser 로드 - title `토마토 키우기`, URL `https://aretenald2018-sys.github.io/tomatofarm/`, console error 0건
+  12. not verified yet: 실제 Max UI click flow는 로그인 화면이 운동 탭 hit target을 덮어 인증 없이 열 수 없었다. `#tab-nav [data-tab="workout"]` center hit target이 `#login-screen`이었다.
 
 ### 슬라이스 5: click performance pass
 
@@ -216,7 +222,7 @@
 - Slice 1 실행 후 상태: `deployed_with_auth_ui_blocker`
 - Slice 2 실행 후 상태: `deployed_login_screen_verified`
 - Slice 3 실행 후 상태: `deployed_with_auth_ui_blocker`
-- Slice 4 실행 후 상태: `static_verified_pending_deploy`
-- 다음 자동 상태: `ready_for_review`
-- 다음 액션: Slice 4 운영 Pages 배포와 marker/UI 검증을 끝낸다.
+- Slice 4 실행 후 상태: `deployed_with_auth_ui_blocker`
+- 다음 자동 상태: `ready_for_execution`
+- 다음 액션: Slice 5 `click performance pass`를 실행한다.
 - 차단 질문: 없음
