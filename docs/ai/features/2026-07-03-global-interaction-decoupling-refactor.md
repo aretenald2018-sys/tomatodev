@@ -6,7 +6,7 @@
 
 ## 계획 상태
 
-- 단계: `slice2_deployed_ready_for_slice3`
+- 단계: `slice3_static_verified_pending_deploy`
 - 선행 계획:
   - `docs/ai/features/2026-07-03-workout-add-decoupling-refactor.md`
 - 목적: 운동 추가/카드 추가 경계 안정화 뒤에도 남은 전역 `onclick`/`window.*`/중복 렌더 hotspot을 작은 실행 slice로 줄여, 새 버튼이나 UI를 추가할 때 다른 기능이 연쇄로 깨지는 위험을 낮춘다.
@@ -141,6 +141,27 @@
   - source 구조 테스트
   - 운영 브라우저에서 로그인 화면 overlay가 있어도 header hit target이 예상대로 막히는지/보이는지 확인
 
+#### 슬라이스 3 실행 결과
+
+- 상태: `static_verified_pending_deploy`
+- 변경 요약:
+  1. `index.html`의 top nav, 알림센터, 하단 탭, 더보기 메뉴, 탭 설정 modal action을 `data-app-action` 계약으로 전환했다.
+  2. `app.js`에 `_bindAppShellActions(root)`와 `_runAppShellAction(action, control, event)`를 추가해 app shell action을 한 번만 바인딩한다.
+  3. 역할 전환 시 `moreBtn.onclick`을 다시 만들지 않고 `data-app-action`/`data-tab`만 갱신하도록 바꿨다.
+  4. `navigation.js`의 동적 더보기 메뉴 항목도 `data-app-action="switch-tab-close-more"`를 사용하게 했다.
+  5. `index.html`, `app.js`, `navigation.js`가 `STATIC_ASSETS`에 포함되어 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z15-app-shell-action-bridge`로 bump했다.
+- 의도적으로 남긴 범위:
+  1. `pwa-fcm.js` 설치 배너, `modals/settings-modal.js` 설정 내부 설치 버튼은 app shell이 아니라 별도 PWA/settings slice 후보로 남긴다.
+  2. home/diet/workout 본문 inline handler는 각 feature-local delegate slice에서 처리한다.
+- 현재 검증:
+  1. PASS: `node --check app.js; node --check navigation.js; node --check sw.js; node --check tests/app-shell-action-bridge.test.js`
+  2. PASS: shell 범위 legacy inline handler 검색 - 대상 handler 없음
+  3. PASS: `node --test tests/app-shell-action-bridge.test.js tests/login-action-bridge.test.js tests/pwa-update-auto-reload.test.js tests/workout-navigation-stack.test.js` - 14 pass
+  4. PASS: `node --test tests/*.test.js` - 674 pass
+  5. PASS: `git diff --check`
+  6. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
+  7. not verified yet: 운영 Pages 배포와 deployed marker/UI click flow 확인이 남았다.
+
 ### 슬라이스 4: Max auxiliary modal delegate
 
 - 목표: Max V4 plan sheet 본체가 아닌 equipment/cleanse/history/blueprint modal의 inline `onclick`을 `data-action` delegate로 전환한다.
@@ -173,6 +194,7 @@
 - 계획 세션 종료 상태: `ready_for_execution`
 - Slice 1 실행 후 상태: `deployed_with_auth_ui_blocker`
 - Slice 2 실행 후 상태: `deployed_login_screen_verified`
-- 다음 자동 상태: `ready_for_execution`
-- 다음 액션: Slice 2 검증과 배포를 끝낸 뒤 Slice 3 `app header/nav action bridge`를 실행한다.
+- Slice 3 실행 후 상태: `static_verified_pending_deploy`
+- 다음 자동 상태: `ready_for_review`
+- 다음 액션: Slice 3 리뷰를 확정한 뒤 운영 Pages 배포와 marker/UI 검증을 끝낸다.
 - 차단 질문: 없음

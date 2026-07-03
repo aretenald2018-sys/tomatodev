@@ -2,11 +2,12 @@
 
 ## 2026-07-03 전역 상호작용 결합 완화 리팩토링
 
-- 상태: `ready_for_execution`
+- 상태: `ready_for_review`
 - 계획: `docs/ai/features/2026-07-03-global-interaction-decoupling-refactor.md`
 - 리뷰:
   - `docs/ai/reviews/2026-07-03-global-interaction-slice1-review.md`
   - `docs/ai/reviews/2026-07-03-global-interaction-slice2-review.md`
+  - `docs/ai/reviews/2026-07-03-global-interaction-slice3-review.md`
 - 요청: 운동 코드 리팩토링에서 멈추지 않고 코드 전체의 UI/backend 상호의존성, inline handler, 전역 함수, 무거운 클릭 경로를 줄인다.
 - 진단 요약:
   1. 선행 운동 계획의 Slice 5 인벤토리에서 `home/friend-profile.js`, `feature-login.js`, `index.html`, `workout/expert.js`, `workout/expert/max.js`가 다음 hotspot으로 남았다.
@@ -53,7 +54,21 @@
   8. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ ebbf71b0eb31dfaf556e9f02e3c7c54f5e5665a6`
   9. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ sw.js::tomatofarm-v20260703z14-login-action-bridge index.html::data-login-action index.html::data-login-enter-action feature-login.js::_bindLoginActions feature-login.js::loginActionsBound`
   10. PASS: 운영 URL in-app browser 로그인 화면 click flow - 로그인 화면 표시, 가입 화면 전환, 길드 토글 표시, 로그인 화면 복귀, console error 0건.
-- 다음 액션: Slice 3 `app header/nav action bridge`를 실행한다.
+- 슬라이스 3 실행 요약:
+  1. `index.html` top nav, 알림센터, 하단 탭, 더보기 메뉴, 탭 설정 modal action을 `data-app-action` 계약으로 전환했다.
+  2. `app.js`에 `_bindAppShellActions(root)`와 `_runAppShellAction(action, control, event)`를 추가해 app shell action을 idempotent하게 라우팅한다.
+  3. 역할 전환 시 `moreBtn.onclick`을 다시 만들지 않고 `data-app-action`/`data-tab`만 갱신한다.
+  4. `navigation.js`의 동적 더보기 항목도 `data-app-action="switch-tab-close-more"`를 사용한다.
+  5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z15-app-shell-action-bridge`로 bump하고 cache marker 테스트를 갱신했다.
+- 슬라이스 3 검증:
+  1. PASS: `node --check app.js; node --check navigation.js; node --check sw.js; node --check tests/app-shell-action-bridge.test.js`
+  2. PASS: shell 범위 legacy inline handler 검색 - 대상 handler 없음
+  3. PASS: `node --test tests/app-shell-action-bridge.test.js tests/login-action-bridge.test.js tests/pwa-update-auto-reload.test.js tests/workout-navigation-stack.test.js` - 14 pass
+  4. PASS: `node --test tests/*.test.js` - 674 pass
+  5. PASS: `git diff --check`
+  6. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
+  7. not verified yet: 운영 Pages 배포와 deployed marker/UI click flow 확인 필요
+- 다음 액션: Slice 3 리뷰 확인 후 운영 Pages에 배포하고 `data-app-action` marker 및 비파괴 nav/more-menu click flow를 확인한다.
 
 ## 2026-07-03 운동 추가/카드 추가 결합 완화 리팩토링
 

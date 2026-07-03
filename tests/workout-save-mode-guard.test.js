@@ -70,5 +70,5 @@ test('workout save can explicitly preserve picker-added draft exercises', () => 
 
 test('service worker cache version was bumped for save guard assets', () => {
   const sw = read('sw.js');
-  assert.match(sw, /tomatofarm-v20260703z14-login-action-bridge/);
+  assert.match(sw, /tomatofarm-v20260703z15-app-shell-action-bridge/);
 });

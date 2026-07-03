@@ -249,11 +249,12 @@ export function applyVisibleTabs(visibleTabs) {
     if (!isVisible && dynamicContainer) {
       const item = document.createElement('button');
       item.className = 'more-menu-item tab-btn';
+      item.type = 'button';
       item.dataset.tab = t.id;
+      item.dataset.appAction = 'switch-tab-close-more';
       const label = document.createElement('span');
       label.textContent = t.label;
       item.append(createTabIcon(t.icon), label);
-      item.onclick = () => { window.switchTab(t.id); toggleMoreMenu(); };
       dynamicContainer.appendChild(item);
     }
   });

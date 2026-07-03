@@ -16,8 +16,16 @@ import './feature-misc.js';
 import './workout-ui.js';
 import './workout/expert.js?v=20260516v6';  // 전문가 모드 (window.* 노출 + 렌더)
 import { showTutorialIfNeeded } from './feature-tutorial.js';
-import { initFCM, showPWAInstallBanner, updateInstallBtn } from './pwa-fcm.js';
-import { initTabDrag, initSwipeNavigation, applyTabOrder, applyVisibleTabs } from './navigation.js';
+import { initFCM, installPWA, showPWAInstallBanner, updateInstallBtn } from './pwa-fcm.js';
+import {
+  initTabDrag,
+  initSwipeNavigation,
+  applyTabOrder,
+  applyVisibleTabs,
+  openTabSettingsModal,
+  closeTabSettingsModal,
+  saveTabSettingsFromModal
+} from './navigation.js';
 import { initUxPolish } from './utils/ux-polish.js';
 import { initActionRouter } from './utils/action-router.js';
 import { initBuildInfoSurface } from './utils/build-info.js?v=20260528a';
@@ -228,10 +236,12 @@ function _syncNavigationForCurrentRole() {
   if (moreBtn) {
     moreBtn.style.display = '';
     moreBtn.dataset.mode = adminOnlyMode ? 'admin-only' : 'default';
+    moreBtn.dataset.appAction = adminOnlyMode ? 'switch-tab' : 'toggle-more-menu';
+    moreBtn.dataset.tab = adminOnlyMode ? 'admin' : 'more';
     moreBtn.innerHTML = adminOnlyMode
       ? '<span class="tab-icon nav-icon nav-icon-admin" aria-hidden="true"></span><span class="tab-label">토마토어드민</span>'
       : '<span class="tab-icon nav-icon nav-icon-more" aria-hidden="true"></span><span class="tab-label">더보기</span>';
-    moreBtn.onclick = adminOnlyMode ? (() => switchTab('admin')) : (() => toggleMoreMenu());
+    moreBtn.onclick = null;
     moreBtn.classList.toggle('active', _currentTab === 'admin' && adminOnlyMode);
   }
 
@@ -240,6 +250,83 @@ function _syncNavigationForCurrentRole() {
   if (tabNav) tabNav.style.display = '';
   if (topNav) topNav.style.display = adminOnlyMode && _currentTab === 'admin' ? 'none' : '';
   if (moreMenu && adminOnlyMode) moreMenu.style.display = 'none';
+}
+
+const APP_SHELL_ACTION_SCOPE = '.top-nav, #notif-center, #notif-center-backdrop, #tab-nav, #more-menu, #tab-settings-modal';
+
+function _closeMoreMenu() {
+  const menu = document.getElementById('more-menu');
+  if (menu) menu.style.display = 'none';
+}
+
+function _runWindowAction(actionName, ...args) {
+  const fn = window[actionName];
+  if (typeof fn === 'function') return fn(...args);
+  console.warn(`[app-shell] missing action: ${actionName}`);
+  return undefined;
+}
+
+function _runAppShellAction(action, control, event) {
+  const tab = control?.dataset?.tab;
+  switch (action) {
+    case 'install-pwa':
+      installPWA();
+      break;
+    case 'open-letter-modal':
+      _runWindowAction('openLetterModal');
+      break;
+    case 'toggle-notif-center':
+      _runWindowAction('toggleNotifCenter');
+      break;
+    case 'logout-account':
+      _runWindowAction('logoutAccount');
+      break;
+    case 'mark-all-notifs-read':
+      _runWindowAction('markAllNotifsRead');
+      break;
+    case 'close-notif-center':
+      _runWindowAction('closeNotifCenter');
+      break;
+    case 'switch-tab':
+      if (tab) void switchTab(tab);
+      break;
+    case 'toggle-more-menu':
+      _runWindowAction('toggleMoreMenu');
+      break;
+    case 'switch-tab-close-more':
+      if (tab) void switchTab(tab);
+      _closeMoreMenu();
+      break;
+    case 'open-tab-settings-close-more':
+      openTabSettingsModal();
+      _closeMoreMenu();
+      break;
+    case 'close-tab-settings':
+      closeTabSettingsModal(event);
+      break;
+    case 'save-tab-settings':
+      void saveTabSettingsFromModal();
+      break;
+    default:
+      console.warn(`[app-shell] unknown action: ${action}`);
+  }
+}
+
+function _bindAppShellActions(root = document) {
+  const marker = root.documentElement || root;
+  if (!marker || marker.dataset.appShellActionsBound === '1') return;
+  marker.dataset.appShellActionsBound = '1';
+
+  root.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    const control = target?.closest?.('[data-app-action]');
+    if (!control || !root.contains(control)) return;
+    if (!control.matches(APP_SHELL_ACTION_SCOPE) && !control.closest(APP_SHELL_ACTION_SCOPE)) return;
+    if (control.id === 'tab-settings-modal' && event.target !== control) return;
+
+    event.preventDefault();
+    _runAppShellAction(control.dataset.appAction, control, event);
+  });
 }
 
 function _dateKeyFromParts(y, m, d) {
@@ -696,6 +783,7 @@ function _initDietInputButtons() {
 
 _bindLifeZoneNpcQuestEvent();
 _bindRunningLiveEvent();
+_bindAppShellActions();
 init();
 _initDietInputButtons();
 
