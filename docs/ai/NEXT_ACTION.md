@@ -24,7 +24,10 @@
   3. PASS: `node --test tests/*.test.js` - 648 pass
   4. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=868`
   5. PASS: `git diff --check`
-  6. not verified yet: 인증 계정 실제 UI에서 `운동 하단시트 + 버튼 -> 새 종목 선택 -> 추가된 종목 카드 표시` 클릭 플로우는 자동 검증하지 못했다.
+  6. PASS: `npm.cmd run deploy:production` - 운영계 deploy verify 및 기본 marker 검증 완료
+  7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <deployed-commit>`
+  8. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ "sw.js::tomatofarm-v20260703z5-workout-carousel-new-focus" "render-calendar.js::_restoreWorkoutSheetCarouselToSlide" "render-calendar.js::carouselSlideIndex: index"`
+  9. not verified yet: 인증 계정 실제 UI에서 `운동 하단시트 + 버튼 -> 새 종목 선택 -> 추가된 종목 카드 표시` 클릭 플로우는 자동 검증하지 못했다.
 - 다음 액션: 운영계 배포 후 인증 계정 실제 UI에서 위 클릭 플로우를 확인한다.
 
 ## 2026-07-03 운동 카드 캐러셀 위치 보존
