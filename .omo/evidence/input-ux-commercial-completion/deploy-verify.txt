@@ -1,13 +1,13 @@
 Production deploy verification, 2026-07-03
 
 Commit:
-e7df960b11b0 fix: guard timer start on activity tabs
+8fada73af74c test: strengthen input UX gate evidence
 
 Deploy command:
-npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ e7df960
+npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 8fada73
 
 Deploy result:
-exit 0; [deploy-verify] ok e7df960b11b0 tomatofarm-v20260703z22-input-ux-timer-guard static=242.
+exit 0; [deploy-verify] ok 8fada73af74c tomatofarm-v20260703z22-input-ux-timer-guard static=242.
 
 Marker command:
 node scripts/verify-deployed-markers.mjs https://aretenald2018-sys.github.io/tomatofarm/ sw.js::tomatofarm-v20260703z22-input-ux-timer-guard index.html::wt-chip-cardio index.html::wt-cf-section app.js::openMealQuickAdd workout/exercises.js::wtOpenManualCardioInput style.css::meal-quick-add-sheet "workout-ui.js::type === 'gym'"
@@ -20,6 +20,7 @@ URL: https://aretenald2018-sys.github.io/tomatofarm/
 HTTP status: 200.
 Viewport: 390x844 mobile.
 Artifact bundle: .omo/evidence/input-ux-commercial-completion/browser-qa/
+Note: the browser UI screenshots/report were captured on the same deployed static app asset set as commit e7df960; commit 8fada73 changes only test/evidence files and production marker verification above proves the deployed app assets still contain the same input UX and timer-guard markers.
 
 Observed states:
 - cfState: active=true, open=true, wod=true, duration=true, timerStarted=false.
