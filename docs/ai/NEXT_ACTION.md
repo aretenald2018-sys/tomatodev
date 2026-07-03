@@ -1,8 +1,41 @@
 # 다음 자동 액션
 
+## 2026-07-03 전역 상호작용 결합 완화 리팩토링
+
+- 상태: `static_verified_pending_deploy`
+- 계획: `docs/ai/features/2026-07-03-global-interaction-decoupling-refactor.md`
+- 리뷰: `docs/ai/reviews/2026-07-03-global-interaction-slice1-review.md`
+- 요청: 운동 코드 리팩토링에서 멈추지 않고 코드 전체의 UI/backend 상호의존성, inline handler, 전역 함수, 무거운 클릭 경로를 줄인다.
+- 진단 요약:
+  1. 선행 운동 계획의 Slice 5 인벤토리에서 `home/friend-profile.js`, `feature-login.js`, `index.html`, `workout/expert.js`, `workout/expert/max.js`가 다음 hotspot으로 남았다.
+  2. `home/friend-profile.js`는 동적 HTML 내부 inline `onclick`이 많아 버튼 추가/수정 시 escaping과 전역 함수 결합 위험이 크다.
+  3. 로그인과 Max는 blast radius가 커서 social profile delegate부터 작은 slice로 처리한다.
+- 실행 슬라이스:
+  1. Slice 1: `home/friend-profile.js` profile modal action을 scoped `data-social-action` delegate로 전환한다.
+  2. Slice 2: `index.html`/`feature-login.js` login inline handler를 `data-login-action` bridge로 축소한다.
+  3. Slice 3: app header/nav inline handler를 app-level action bridge로 옮긴다.
+  4. Slice 4: Max auxiliary modal inline handler를 modal-local delegate로 전환한다.
+  5. Slice 5: social/Max 중복 렌더 클릭 경로 하나를 경량화한다.
+- 계획 검증:
+  1. PASS: 기존 운동 후속 계획과 충돌하지 않는 별도 계획 문서 생성
+  2. PASS: 다음 실행 slice가 하나의 화면/action namespace로 제한됨
+- 슬라이스 1 실행 요약:
+  1. `home/friend-profile.js` profile modal에 `_bindFriendProfileActions(root)`를 추가해 주요 click/Enter action을 scoped `data-social-action`/`data-social-enter-action`으로 전환했다.
+  2. close, quick guild join, neighbor add, introduce, guild invite, tomato gift, guestbook submit, workout/meal comment toggle, guestbook reply/delete, author profile navigation을 delegate 계약으로 묶었다.
+  3. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z13-social-profile-actions`로 bump하고 cache marker 테스트를 갱신했다.
+  4. 남은 inline 범위는 reaction picker/detail, introduce/guild invite 2차 모달, my guestbook modal, comment edit/reply/delete이며 다음 social slice 후보로 남긴다.
+- 슬라이스 1 검증:
+  1. PASS: `node --check home/friend-profile.js; node --check sw.js; node --check tests/social-friend-profile-actions.test.js`
+  2. PASS: `node --test tests/social-friend-profile-actions.test.js tests/home-hero-layout.test.js tests/home-life-zone-npc-quest.test.js` - 16 pass
+  3. PASS: `node --test tests/*.test.js` - 667 pass
+  4. PASS: `git diff --check`
+  5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
+  6. not verified yet: 운영 배포 marker 검증, 인증 UI flow 검증
+- 다음 액션: Slice 1 전체 검증과 운영 배포를 완료한 뒤 Slice 2 `login inline bridge 축소`를 실행한다.
+
 ## 2026-07-03 운동 추가/카드 추가 결합 완화 리팩토링
 
-- 상태: `ready_for_execution`
+- 상태: `ready_for_review`
 - 계획: `docs/ai/features/2026-07-03-workout-add-decoupling-refactor.md`
 - 리뷰:
   - `docs/ai/reviews/2026-07-03-workout-add-decoupling-slice1-review.md`

@@ -27,6 +27,80 @@ export function setFriendProfileDeps({ renderHome, renderFriendFeed, refreshNoti
   _refreshNotifCenterFn = refreshNotifCenter;
 }
 
+function _socialAttr(value) {
+  return escapeHtml(value ?? '');
+}
+
+function _closeDynamicModal() {
+  document.getElementById('dynamic-modal')?.remove();
+}
+
+function _bindFriendProfileActions(root) {
+  if (!root || root.dataset.socialActionsBound === '1') return;
+  root.dataset.socialActionsBound = '1';
+  root.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    if (!target) return;
+    if (target.matches('[data-social-backdrop]')) {
+      _closeDynamicModal();
+      return;
+    }
+    const control = target.closest?.('[data-social-action]');
+    if (!control || !root.contains(control)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const { socialAction: action, friendId, friendName, targetId, dateKey: dk, section, entryId, fromName } = control.dataset;
+    switch (action) {
+      case 'close-dynamic-modal':
+        _closeDynamicModal();
+        break;
+      case 'quick-guild-join':
+        window.openQuickGuildJoin?.();
+        break;
+      case 'quick-add-neighbor':
+        if (friendId) window.quickAddNeighbor?.(friendId);
+        break;
+      case 'open-introduce-friend':
+        if (friendId) window.openIntroduceFriend?.(friendId, friendName || '');
+        break;
+      case 'open-guild-invite':
+        if (friendId) window.openGuildInvite?.(friendId, friendName || '');
+        break;
+      case 'open-tomato-gift':
+        if (friendId) window.openTomatoGiftModal?.(friendId, friendName || '');
+        break;
+      case 'submit-guestbook':
+        if (targetId) window.submitGuestbook?.(targetId);
+        break;
+      case 'toggle-comment':
+        if (targetId && dk && section) window.toggleCommentSection?.(targetId, dk, section);
+        break;
+      case 'start-gb-reply':
+        if (entryId) window.startGbReply?.(entryId, fromName || '');
+        break;
+      case 'delete-gb':
+        if (entryId && targetId) window.deleteGb?.(entryId, targetId);
+        break;
+      case 'open-friend-profile':
+        _closeDynamicModal();
+        if (friendId) window.openFriendProfile?.(friendId, friendName || '익명');
+        break;
+      default:
+        break;
+    }
+  }, true);
+  root.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    const target = event.target instanceof Element ? event.target : null;
+    const control = target?.closest?.('[data-social-enter-action]');
+    if (!control || !root.contains(control)) return;
+    const { socialEnterAction: action, targetId } = control.dataset;
+    if (action !== 'submit-guestbook' || !targetId) return;
+    event.preventDefault();
+    window.submitGuestbook?.(targetId);
+  }, true);
+}
+
 // ── 친구 프로필 상세 ─────────────────────────────────────────────
 window.openFriendProfile = async function(friendId, friendName, scrollToSection, overrideDateKey) {
   const user = getCurrentUser();
@@ -106,7 +180,7 @@ window.openFriendProfile = async function(friendId, friendName, scrollToSection,
         const emojiDisplay = mealEmojis.length > 0 ? mealEmojis.join('') : '';
         const reactBadge = mealReactCount > 0 ? `<span class="react-badge-detail" onclick="event.stopPropagation();showReactionDetail(this,'${friendId}','${tk}','${mealField}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:2px;padding:2px 6px;border-radius:999px;background:var(--surface2);"><span style="font-size:12px;">${emojiDisplay}</span><span style="font-size:10px;font-weight:600;color:var(--primary);">${mealReactCount}</span></span>` : '';
         const reactionBtn = (!isMyProfile) ? `${reactBadge}<button class="friend-like-btn" onclick="showReactionPicker(this,'${friendId}','${tk}','${mealField}')" style="flex-shrink:0;font-size:16px;background:none;border:none;cursor:pointer;padding:2px;">🤍</button>` : (mealReactCount > 0 ? `<span class="react-badge-detail" onclick="event.stopPropagation();showReactionDetail(this,'${friendId}','${tk}','${mealField}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:2px;padding:2px 6px;border-radius:999px;background:var(--surface2);"><span style="font-size:12px;">${emojiDisplay}</span><span style="font-size:10px;font-weight:600;color:var(--primary);">${mealReactCount}</span></span>` : `<span style="font-size:14px;opacity:0.3;">🤍</span>`);
-        const mealCommentBtn = `<button class="comment-toggle-btn" onclick="toggleCommentSection('${normalizedFriendId}','${tk}','${m.memo}')" style="flex-shrink:0;font-size:13px;background:none;border:none;cursor:pointer;padding:2px 4px;color:var(--text-tertiary);">💬</button>`;
+        const mealCommentBtn = `<button class="comment-toggle-btn" data-social-action="toggle-comment" data-target-id="${_socialAttr(normalizedFriendId)}" data-date-key="${_socialAttr(tk)}" data-section="${_socialAttr(m.memo)}" style="flex-shrink:0;font-size:13px;background:none;border:none;cursor:pointer;padding:2px 4px;color:var(--text-tertiary);">💬</button>`;
         todayDietHtml += `<div style="padding:6px 0;font-size:12px;border-bottom:1px solid var(--border);">
           <div style="display:flex;align-items:center;justify-content:space-between;">
             ${photoThumb}
@@ -260,8 +334,8 @@ window.openFriendProfile = async function(friendId, friendName, scrollToSection,
 
   document.getElementById('dynamic-modal')?.remove();
   const modal = document.createElement('div'); modal.id = 'dynamic-modal'; modal.dataset.isFriend = isFriend ? '1' : '0'; document.body.appendChild(modal);
-  modal.innerHTML = `<div class="modal-backdrop" style="display:flex;z-index:1000;" onclick="if(event.target===this){document.getElementById('dynamic-modal')?.remove();}">
-    <div class="modal-sheet" style="max-width:400px;max-height:85vh;overflow-y:auto;" onclick="event.stopPropagation()">
+  modal.innerHTML = `<div class="modal-backdrop" style="display:flex;z-index:1000;" data-social-backdrop>
+    <div class="modal-sheet" style="max-width:400px;max-height:85vh;overflow-y:auto;">
       <div class="sheet-handle"></div>
       <div style="text-align:center;padding:16px 0 8px;">
         <div style="width:56px;height:56px;border-radius:50%;background:#fff3e0;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 6px;">🍅</div>
@@ -278,28 +352,28 @@ window.openFriendProfile = async function(friendId, friendName, scrollToSection,
           const hasPending = pendingGuilds.filter(g => !userGuilds.includes(g)).length > 0;
           if (primaryG && userGuilds.includes(primaryG)) {
             // 대표길드 1개만 표시
-            const setBtn = isMyProfile ? `<button onclick="openQuickGuildJoin()" style="background:none;border:none;color:var(--text-tertiary);font-size:11px;font-weight:500;cursor:pointer;padding:0;margin-left:4px;">변경</button>` : '';
+            const setBtn = isMyProfile ? `<button data-social-action="quick-guild-join" style="background:none;border:none;color:var(--text-tertiary);font-size:11px;font-weight:500;cursor:pointer;padding:0;margin-left:4px;">변경</button>` : '';
             const pendingInfo = hasPending ? `<div style="font-size:11px;color:var(--text-tertiary);margin-top:4px;">⏳ ${pendingGuilds.filter(g => !userGuilds.includes(g)).join(', ')} 가입 대기중</div>` : '';
             return `<div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-top:6px;"><span class="guild-chip primary" style="font-size:11px;padding:3px 8px;">★ ${primaryG}</span>${setBtn}</div>${pendingInfo}<div id="quick-guild-join-list" style="display:none;margin-top:6px;"></div>`;
           } else if (userGuilds.length > 0) {
             // 길드는 있지만 대표길드 미설정
-            const setBtn = isMyProfile ? ` <button onclick="openQuickGuildJoin()" style="background:none;border:none;color:var(--primary);font-size:11px;font-weight:600;cursor:pointer;padding:0;">대표길드 설정하기</button>` : '';
+            const setBtn = isMyProfile ? ` <button data-social-action="quick-guild-join" style="background:none;border:none;color:var(--primary);font-size:11px;font-weight:600;cursor:pointer;padding:0;">대표길드 설정하기</button>` : '';
             const firstChip = `<span class="guild-chip" style="font-size:11px;padding:3px 8px;">${userGuilds[0]}</span>`;
             return `<div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-top:6px;">${firstChip}${setBtn}</div><div id="quick-guild-join-list" style="display:none;margin-top:6px;"></div>`;
           } else if (hasPending) {
             // 가입 대기중만 있음
             const pendingInfo = `<div style="margin-top:6px;font-size:11px;color:var(--text-tertiary);">⏳ ${pendingGuilds.filter(g => !userGuilds.includes(g)).join(', ')} 가입 대기중</div>`;
-            const setBtn = isMyProfile ? ` <button onclick="openQuickGuildJoin()" style="background:none;border:none;color:var(--primary);font-size:11px;font-weight:600;cursor:pointer;padding:0;margin-top:2px;">대표길드 설정하기</button>` : '';
+            const setBtn = isMyProfile ? ` <button data-social-action="quick-guild-join" style="background:none;border:none;color:var(--primary);font-size:11px;font-weight:600;cursor:pointer;padding:0;margin-top:2px;">대표길드 설정하기</button>` : '';
             return `${pendingInfo}${setBtn}<div id="quick-guild-join-list" style="display:none;margin-top:6px;"></div>`;
           } else if (isMyProfile) {
-            return `<div style="margin-top:6px;font-size:12px;color:var(--text-tertiary);">소속 길드가 없습니다. <button onclick="openQuickGuildJoin()" style="background:none;border:none;color:var(--primary);font-size:12px;font-weight:600;cursor:pointer;padding:0;">대표길드 설정하기</button></div><div id="quick-guild-join-list" style="display:none;margin-top:6px;"></div>`;
+            return `<div style="margin-top:6px;font-size:12px;color:var(--text-tertiary);">소속 길드가 없습니다. <button data-social-action="quick-guild-join" style="background:none;border:none;color:var(--primary);font-size:12px;font-weight:600;cursor:pointer;padding:0;">대표길드 설정하기</button></div><div id="quick-guild-join-list" style="display:none;margin-top:6px;"></div>`;
           }
           return '';
         })()}
         ${!isMyProfile ? `<div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:8px;">
-          ${!isFriend ? `<button onclick="quickAddNeighbor('${friendId}')" style="padding:6px 12px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text-secondary);font-size:11px;font-weight:500;cursor:pointer;transition:background 0.1s ease-in-out;">🤝 이웃 추가</button>` : ''}
-          <button onclick="openIntroduceFriend('${friendId}','${friendName}')" style="padding:6px 12px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text-secondary);font-size:11px;font-weight:500;cursor:pointer;transition:background 0.1s ease-in-out;">👋 다른 이웃 소개</button>
-          <button onclick="openGuildInvite('${friendId}','${friendName}')" style="padding:6px 12px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text-secondary);font-size:11px;font-weight:500;cursor:pointer;transition:background 0.1s ease-in-out;">🏠 길드 초대</button>
+          ${!isFriend ? `<button data-social-action="quick-add-neighbor" data-friend-id="${_socialAttr(friendId)}" style="padding:6px 12px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text-secondary);font-size:11px;font-weight:500;cursor:pointer;transition:background 0.1s ease-in-out;">🤝 이웃 추가</button>` : ''}
+          <button data-social-action="open-introduce-friend" data-friend-id="${_socialAttr(friendId)}" data-friend-name="${_socialAttr(friendName)}" style="padding:6px 12px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text-secondary);font-size:11px;font-weight:500;cursor:pointer;transition:background 0.1s ease-in-out;">👋 다른 이웃 소개</button>
+          <button data-social-action="open-guild-invite" data-friend-id="${_socialAttr(friendId)}" data-friend-name="${_socialAttr(friendName)}" style="padding:6px 12px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text-secondary);font-size:11px;font-weight:500;cursor:pointer;transition:background 0.1s ease-in-out;">🏠 길드 초대</button>
         </div>` : ''}
       </div>
 
@@ -341,7 +415,7 @@ window.openFriendProfile = async function(friendId, friendName, scrollToSection,
           ${nonGymBadgesHtml}
           ${todayW?.workoutPhoto ? `<img src="${todayW.workoutPhoto}" style="width:100%;max-height:240px;object-fit:contain;border-radius:8px;margin-top:8px;">` : ''}
         ` : '<div style="font-size:12px;color:var(--text-tertiary);">아직 기록이 없어요</div>'}
-        <button class="comment-toggle-btn" onclick="toggleCommentSection('${normalizedFriendId}','${tk}','workout')" style="font-size:12px;background:none;border:1px solid var(--border);border-radius:999px;padding:4px 10px;cursor:pointer;color:var(--text-tertiary);margin-top:6px;">💬 댓글</button>
+        <button class="comment-toggle-btn" data-social-action="toggle-comment" data-target-id="${_socialAttr(normalizedFriendId)}" data-date-key="${_socialAttr(tk)}" data-section="workout" style="font-size:12px;background:none;border:1px solid var(--border);border-radius:999px;padding:4px 10px;cursor:pointer;color:var(--text-tertiary);margin-top:6px;">💬 댓글</button>
         <div id="comments-workout" class="comment-section-panel" style="display:none;"></div>
       </div>
 
@@ -370,24 +444,25 @@ window.openFriendProfile = async function(friendId, friendName, scrollToSection,
           <div style="text-align:center;padding:12px;font-size:12px;color:var(--text-tertiary);">불러오는 중...</div>
         </div>
         ${isFriend || isMyProfile ? `<div style="display:flex;gap:6px;">
-          <input id="guestbook-input" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:999px;font-size:13px;color:var(--text);background:var(--surface2);outline:none;font-family:var(--font-sans);transition:border-color 0.15s;" placeholder="응원 한마디 남기기" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'" onkeydown="if(event.key==='Enter')submitGuestbook('${normalizedFriendId}')">
-          <button onclick="submitGuestbook('${normalizedFriendId}')" style="padding:8px 14px;border:none;border-radius:999px;background:var(--primary-bg);color:var(--primary);font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0;">남기기</button>
+          <input id="guestbook-input" data-social-enter-action="submit-guestbook" data-target-id="${_socialAttr(normalizedFriendId)}" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:999px;font-size:13px;color:var(--text);background:var(--surface2);outline:none;font-family:var(--font-sans);transition:border-color 0.15s;" placeholder="응원 한마디 남기기" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
+          <button data-social-action="submit-guestbook" data-target-id="${_socialAttr(normalizedFriendId)}" style="padding:8px 14px;border:none;border-radius:999px;background:var(--primary-bg);color:var(--primary);font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0;">남기기</button>
         </div>` : ''}
       </div>
 
       ${isFriend || isMyProfile ? `
         <div style="display:flex;gap:6px;padding:14px 0 8px;">
-          <button onclick="openTomatoGiftModal('${friendId}','${friendName}')" style="flex:1;padding:9px;border:none;border-radius:999px;background:var(--primary);color:#fff;font-size:12px;font-weight:600;cursor:pointer;">🍅 선물</button>
-          <button onclick="document.getElementById('dynamic-modal')?.remove()" style="flex:1;padding:9px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text-secondary);font-size:12px;font-weight:600;cursor:pointer;">닫기</button>
+          <button data-social-action="open-tomato-gift" data-friend-id="${_socialAttr(friendId)}" data-friend-name="${_socialAttr(friendName)}" style="flex:1;padding:9px;border:none;border-radius:999px;background:var(--primary);color:#fff;font-size:12px;font-weight:600;cursor:pointer;">🍅 선물</button>
+          <button data-social-action="close-dynamic-modal" style="flex:1;padding:9px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text-secondary);font-size:12px;font-weight:600;cursor:pointer;">닫기</button>
         </div>
       ` : `
         <div style="display:flex;gap:6px;padding:14px 0 8px;">
-          <button onclick="quickAddNeighbor('${friendId}')" style="flex:1;padding:9px;border:none;border-radius:999px;background:var(--primary);color:#fff;font-size:12px;font-weight:600;cursor:pointer;">이웃 추가하기</button>
-          <button onclick="document.getElementById('dynamic-modal')?.remove()" style="flex:1;padding:9px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text-secondary);font-size:12px;font-weight:600;cursor:pointer;">닫기</button>
+          <button data-social-action="quick-add-neighbor" data-friend-id="${_socialAttr(friendId)}" style="flex:1;padding:9px;border:none;border-radius:999px;background:var(--primary);color:#fff;font-size:12px;font-weight:600;cursor:pointer;">이웃 추가하기</button>
+          <button data-social-action="close-dynamic-modal" style="flex:1;padding:9px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text-secondary);font-size:12px;font-weight:600;cursor:pointer;">닫기</button>
         </div>
       `}
     </div>
   </div>`;
+  _bindFriendProfileActions(modal);
 
   loadGuestbook(normalizedFriendId);
 
@@ -454,13 +529,13 @@ async function loadGuestbook(targetId) {
       const isMe = e.from === myId || isSameInstance(e.from, myId);
       const isOwner = targetId === myId || targetId === myDataOwnerId;
       const timeAgo = formatTimeAgo(e.createdAt);
-      const delBtn = (isMe || isOwner) ? `<button onclick="deleteGb('${e.id}','${targetId}')" style="background:none;border:none;color:var(--text-tertiary);font-size:10px;cursor:pointer;padding:2px 4px;">삭제</button>` : '';
-      const replyBtn = !isReply ? `<button onclick="startGbReply('${e.id}','${(e.fromName||'').replace(/'/g,"\\'")}')" style="background:none;border:none;color:var(--text-tertiary);font-size:10px;cursor:pointer;padding:2px 4px;">답글</button>` : '';
+      const delBtn = (isMe || isOwner) ? `<button data-social-action="delete-gb" data-entry-id="${_socialAttr(e.id)}" data-target-id="${_socialAttr(targetId)}" style="background:none;border:none;color:var(--text-tertiary);font-size:10px;cursor:pointer;padding:2px 4px;">삭제</button>` : '';
+      const replyBtn = !isReply ? `<button data-social-action="start-gb-reply" data-entry-id="${_socialAttr(e.id)}" data-from-name="${_socialAttr(e.fromName || '')}" style="background:none;border:none;color:var(--text-tertiary);font-size:10px;cursor:pointer;padding:2px 4px;">답글</button>` : '';
       return `<div style="padding:${isReply?'6':'8'}px 0;${isReply?'margin-left:36px;':''}border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:8px;">
         <div style="width:${isReply?'22':'28'}px;height:${isReply?'22':'28'}px;border-radius:50%;background:${isMe?'#fdf0f0':'var(--surface3)'};color:${isMe?'var(--primary)':'var(--text-secondary)'};display:flex;align-items:center;justify-content:center;font-size:${isReply?'9':'11'}px;font-weight:700;flex-shrink:0;">${(e.fromName||'?').charAt(0)}</div>
         <div style="flex:1;min-width:0;">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-            <span style="font-size:${isReply?'11':'12'}px;font-weight:600;color:var(--text);cursor:pointer;text-decoration:underline;" onclick="event.stopPropagation();document.getElementById('dynamic-modal')?.remove();openFriendProfile('${e.from}','${e.fromName || '익명'}')">${e.fromName || '익명'}</span>
+            <span data-social-action="open-friend-profile" data-friend-id="${_socialAttr(e.from)}" data-friend-name="${_socialAttr(e.fromName || '익명')}" style="font-size:${isReply?'11':'12'}px;font-weight:600;color:var(--text);cursor:pointer;text-decoration:underline;">${e.fromName || '익명'}</span>
             <span style="font-size:10px;color:var(--text-tertiary);">${timeAgo}</span>
             ${replyBtn}${delBtn}
           </div>
@@ -814,7 +889,7 @@ function renderComment(c, isReply, myId, myDataOwnerId, targetId, dk, section) {
     <div style="width:${isReply?'20':'26'}px;height:${isReply?'20':'26'}px;border-radius:50%;background:${isMe?'#fdf0f0':'var(--surface3)'};color:${isMe?'var(--primary)':'var(--text-secondary)'};display:flex;align-items:center;justify-content:center;font-size:${isReply?'8':'10'}px;font-weight:700;flex-shrink:0;">${(c.fromName||'?').charAt(0)}</div>
     <div style="flex:1;min-width:0;">
       <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
-        <span style="font-size:${isReply?'11':'12'}px;font-weight:600;color:var(--text);cursor:pointer;text-decoration:underline;" onclick="event.stopPropagation();document.getElementById('dynamic-modal')?.remove();openFriendProfile('${c.from}','${c.fromName || '익명'}')">${c.fromName || '익명'}</span>
+        <span data-social-action="open-friend-profile" data-friend-id="${_socialAttr(c.from)}" data-friend-name="${_socialAttr(c.fromName || '익명')}" style="font-size:${isReply?'11':'12'}px;font-weight:600;color:var(--text);cursor:pointer;text-decoration:underline;">${c.fromName || '익명'}</span>
         <span style="font-size:10px;color:var(--text-tertiary);">${timeAgo}${edited}</span>
         ${replyBtn}${editBtn}${delBtn}
       </div>
