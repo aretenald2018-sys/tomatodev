@@ -38,8 +38,10 @@
 3. PASS: `node --test tests/*.test.js` (650 pass)
 4. PASS: `node scripts/verify-runtime-assets.mjs` (`refs=868`)
 5. PASS: `git diff --check`
+6. PASS: `npm.cmd run deploy:production` (`c32813a765f5`, `tomatofarm-v20260703z7-exercise-picker-crud-add`)
+7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ c32813a765f5`
+8. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ "sw.js::tomatofarm-v20260703z7-exercise-picker-crud-add" "workout/exercises.js::data-picker-create-exercise" "workout/exercises.js::data-picker-empty-create" "style.css::.ex-picker-create-btn"`
 
 ## 남은 리스크
 
-- not verified yet: 인증 계정의 실제 모바일 UI에서 `운동 -> 종목 추가 피커 -> 가슴 탭 -> + 종목 추가 -> 저장/삭제` 클릭 플로우는 배포 후 확인해야 한다.
-
+- not verified yet: 운영 브라우저가 로그인 전 상태라 실제 인증 계정의 `운동 -> + 종목 추가(선택) -> 부위 목록 -> + 종목 추가 -> 저장/삭제` 클릭 플로우는 자동 검증하지 못했다.

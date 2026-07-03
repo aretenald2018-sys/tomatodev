@@ -2,7 +2,7 @@
 
 ## 2026-07-03 운동 종목 피커 CRUD 신규 추가 버튼 노출
 
-- 상태: `ready_for_execution`
+- 상태: `complete`
 - 계획: `docs/ai/features/2026-07-03-exercise-picker-visible-crud-add.md`
 - 리뷰: `docs/ai/reviews/2026-07-03-exercise-picker-visible-crud-add-review.md`
 - 요청: 운동 종목 목록 화면에서 신규 종목을 추가할 수 있는 버튼이 보이지 않는다. 종목은 CRUD가 되어야 한다.
@@ -26,7 +26,11 @@
   3. PASS: `node --test tests/*.test.js` (650 pass)
   4. PASS: `node scripts/verify-runtime-assets.mjs` (`refs=868`)
   5. PASS: `git diff --check`
-- 다음 액션: 운영 Pages 배포 후 deployed marker와 인증 계정 실제 UI 플로우를 확인한다.
+  6. PASS: `npm.cmd run deploy:production` (`c32813a765f5`, `tomatofarm-v20260703z7-exercise-picker-crud-add`)
+  7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ c32813a765f5`
+  8. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ "sw.js::tomatofarm-v20260703z7-exercise-picker-crud-add" "workout/exercises.js::data-picker-create-exercise" "workout/exercises.js::data-picker-empty-create" "style.css::.ex-picker-create-btn"`
+  9. not verified yet: 운영 브라우저가 로그인 전 상태라 실제 인증 계정의 `운동 -> + 종목 추가(선택) -> 부위 목록 -> + 종목 추가 -> 저장/삭제` 클릭 플로우는 자동 검증하지 못했다.
+- 다음 액션: 인증 계정 실제 모바일 UI에서 종목 피커 목록 상단의 `+ 종목 추가` 버튼과 빈 결과 상태의 추가 버튼이 보이는지 확인한다.
 
 ## 2026-07-03 운동 바텀시트 재열기 캐러셀 상태 보존
 
