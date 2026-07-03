@@ -8,6 +8,7 @@
   - `docs/ai/reviews/2026-07-03-workout-add-decoupling-slice1-review.md`
   - `docs/ai/reviews/2026-07-03-workout-add-decoupling-slice2-review.md`
   - `docs/ai/reviews/2026-07-03-workout-add-decoupling-slice3-review.md`
+  - `docs/ai/reviews/2026-07-03-workout-add-decoupling-slice4-review.md`
   - `docs/ai/reviews/2026-07-03-workout-add-decoupling-slice6-review.md`
 - 요청: 운동종목추가/운동카드추가 주변 오류가 연쇄되지 않도록 UI와 저장/상태 상호의존성을 낮추고, 운동 코드에서 멈추지 말고 코드 전체의 클릭/전역 함수/무거운 버튼 경로까지 조망해 리팩토링한 뒤 화면 검증 후 배포한다.
 - 진단 요약:
@@ -18,9 +19,9 @@
   1. 완료: 슬라이스 1 `workout/exercise-entry-actions.js`로 운동 선택 상태 전이를 분리하고 테스트했다.
   2. 완료: 슬라이스 2 피커 이벤트 바인딩을 단일 위임 구조로 집중화했다.
   3. 완료: 슬라이스 3 종목 editor 저장 record 생성/검증을 분리했다.
-  4. 슬라이스 4: 하단시트 `afterSelect` detail contract를 명문화한다.
+  4. 완료: 슬라이스 4 하단시트 `afterSelect` detail contract를 명문화했다.
   5. 완료: 슬라이스 5 운동 외 전체 클릭 경로/전역 함수 의존/무거운 핸들러를 인벤토리화했다.
-  6. 슬라이스 6: `render-calendar.js` 운동 day sheet card action을 inline `onclick/window._wtCal*`에서 scoped data attribute + sheet capture delegate로 전환한다.
+  6. 완료: 슬라이스 6 `render-calendar.js` 운동 day sheet card action을 inline `onclick/window._wtCal*`에서 scoped data attribute + sheet capture delegate로 전환했다.
   7. 슬라이스 7: 클릭 지연을 만드는 중복 렌더/저장 경로 하나를 경량화한다.
 - 슬라이스 1 실행 요약:
   1. `workout/exercise-entry-actions.js`를 추가해 운동 선택 상태 전이를 DOM/Firebase와 분리했다.
@@ -67,7 +68,22 @@
   3. PASS: `node --test tests/*.test.js` - 660 pass
   4. PASS: `git diff --check`
   5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=874`
-- 다음 액션: Slice 4 `afterSelect detail contract` 또는 전역 hotspot 후속 slice로 진행한다.
+  6. PASS: `npm.cmd run deploy:production` - `6577cc3fe7cb`, `tomatofarm-v20260703z10-exercise-editor-actions`, `static=241`
+  7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 6577cc3fe7cb`
+  8. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ "sw.js::tomatofarm-v20260703z10-exercise-editor-actions" "workout/exercise-editor-actions.js::buildExerciseEditorRecord" "workout/exercise-editor-actions.js::verifyExerciseEditorSavedRecord" "workout/exercises.js::verifyExerciseEditorSavedRecord"`
+  9. not verified yet: 운영 브라우저는 로그인 화면이 전체 viewport를 덮고 `button[data-tab="workout"]`의 hit target이 `#login-screen`으로 잡혀 인증 운동 UI 클릭 플로우까지 도달하지 못했다.
+- 슬라이스 4 실행 요약:
+  1. `WORKOUT_EXERCISE_SELECTION_DETAIL_FIELDS`로 `entryIdx`, `exerciseId`, `exercise`, `existing` 필드 계약을 상수화했다.
+  2. `normalizeWorkoutExerciseSelectionDetail()`를 추가해 하단시트가 raw picker detail을 직접 파싱하지 않게 했다.
+  3. `_refreshWorkoutHomeAfterPickerSelect()`는 정규화된 detail의 `entryIdx`/`existing`만 읽어 캐러셀 복원과 toast를 처리한다.
+  4. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z11-selection-detail-contract`로 bump하고 cache marker 테스트를 갱신했다.
+- 슬라이스 4 검증:
+  1. PASS: `node --check render-calendar.js; node --check workout/exercises.js; node --check workout/exercise-entry-actions.js; node --check sw.js`
+  2. PASS: `node --test tests/workout-exercise-entry-actions.test.js tests/ex-picker-selection-flow.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js tests/workout-save-mode-guard.test.js tests/workout-test-mode-unified.test.js` - 55 pass
+  3. PASS: `node --test tests/*.test.js` - 662 pass
+  4. PASS: `git diff --check`
+  5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
+- 다음 액션: Slice 7 `클릭 지연을 만드는 중복 렌더/저장 경로 하나를 경량화`를 진행한다.
 
 ## 2026-07-03 운동 종목 피커 CRUD 신규 추가 버튼 노출
 

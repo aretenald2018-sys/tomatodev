@@ -26,10 +26,13 @@
 - PASS: `node --test tests/*.test.js` - 660 pass
 - PASS: `git diff --check`
 - PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=874`
+- PASS: `npm.cmd run deploy:production` - `6577cc3fe7cb`, `tomatofarm-v20260703z10-exercise-editor-actions`, `static=241`
+- PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 6577cc3fe7cb`
+- PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ "sw.js::tomatofarm-v20260703z10-exercise-editor-actions" "workout/exercise-editor-actions.js::buildExerciseEditorRecord" "workout/exercise-editor-actions.js::verifyExerciseEditorSavedRecord" "workout/exercises.js::verifyExerciseEditorSavedRecord"`
 
 ## 잔여 리스크
 
-- 브라우저 UI 클릭 검증은 인증 세션이 필요해 아직 not verified yet.
+- 브라우저 UI 클릭 검증은 인증 세션이 필요해 아직 not verified yet. 운영 브라우저에서 로그인 화면이 전체 viewport를 덮고 `button[data-tab="workout"]`의 hit target이 `#login-screen`으로 잡혀 운동 UI 클릭 플로우까지 도달하지 못했다.
 - editor DOM 생성/표시(`wtOpenExerciseEditor`)와 program editor DOM binding은 아직 같은 파일에 남아 있다. 이번 slice는 record 생성/검증 경계만 분리했다.
 
 ## 다음 액션

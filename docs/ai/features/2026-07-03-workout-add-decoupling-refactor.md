@@ -186,6 +186,10 @@
   3. PASS: `node --test tests/*.test.js` - 660 pass
   4. PASS: `git diff --check`
   5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=874`
+  6. PASS: `npm.cmd run deploy:production` - `6577cc3fe7cb`, `tomatofarm-v20260703z10-exercise-editor-actions`, `static=241`
+  7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 6577cc3fe7cb`
+  8. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ "sw.js::tomatofarm-v20260703z10-exercise-editor-actions" "workout/exercise-editor-actions.js::buildExerciseEditorRecord" "workout/exercise-editor-actions.js::verifyExerciseEditorSavedRecord" "workout/exercises.js::verifyExerciseEditorSavedRecord"`
+  9. not verified yet: 운영 브라우저는 로그인 화면이 전체 viewport를 덮고 `button[data-tab="workout"]`의 hit target이 `#login-screen`으로 잡혀 인증 운동 UI 클릭 플로우까지 도달하지 못했다.
 - 다음: 배포 전에는 Slice 4 또는 전역 hotspot 후속 slice를 선택한다.
 
 ### 슬라이스 4: 하단시트 afterSelect 계약 명문화
@@ -203,6 +207,23 @@
   - `sw.js`
 - 수정하지 말 것:
   - 캐러셀 디자인/제스처 변경
+
+#### 슬라이스 4 실행 결과
+
+- 실행일: 2026-07-03
+- 변경:
+  1. `WORKOUT_EXERCISE_SELECTION_DETAIL_FIELDS`로 `entryIdx`, `exerciseId`, `exercise`, `existing` 필드 계약을 상수화했다.
+  2. `normalizeWorkoutExerciseSelectionDetail()`를 추가해 하단시트가 raw picker detail을 직접 파싱하지 않게 했다.
+  3. `_refreshWorkoutHomeAfterPickerSelect()`는 정규화된 detail의 `entryIdx`/`existing`만 읽어 캐러셀 복원과 toast를 처리한다.
+  4. `tests/workout-exercise-entry-actions.test.js`와 `tests/workout-calendar-bottom-sheet.test.js`가 detail contract와 하단시트 사용 방식을 검증하도록 갱신했다.
+  5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z11-selection-detail-contract`로 bump하고 cache marker 테스트를 갱신했다.
+- 검증:
+  1. PASS: `node --check render-calendar.js; node --check workout/exercises.js; node --check workout/exercise-entry-actions.js; node --check sw.js`
+  2. PASS: `node --test tests/workout-exercise-entry-actions.test.js tests/ex-picker-selection-flow.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-navigation-stack.test.js tests/workout-save-mode-guard.test.js tests/workout-test-mode-unified.test.js` - 55 pass
+  3. PASS: `node --test tests/*.test.js` - 662 pass
+  4. PASS: `git diff --check`
+  5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
+- 다음: Slice 7 `클릭 지연을 만드는 중복 렌더/저장 경로 하나를 경량화`를 진행한다.
 
 ### 슬라이스 5: 전체 클릭 경로/전역 함수 의존 인벤토리
 
@@ -300,5 +321,5 @@
 
 - 계획 세션 종료 상태: `ready_for_execution`
 - 다음 자동 상태: `ready_for_execution`
-- 다음 액션: 슬라이스 5 `전체 클릭 경로/전역 함수 의존 인벤토리`를 실행한다.
+- 다음 액션: 슬라이스 7 `클릭 지연을 만드는 중복 렌더/저장 경로 하나를 경량화`를 실행한다.
 - 차단 질문: 없음

@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 
 import {
   findWorkoutEntryIndexByExerciseId,
+  normalizeWorkoutExerciseSelectionDetail,
   selectWorkoutExerciseEntry,
+  WORKOUT_EXERCISE_SELECTION_DETAIL_FIELDS,
   workoutExerciseSelectionDetail,
 } from '../workout/exercise-entry-actions.js';
 
@@ -82,4 +84,54 @@ test('selectWorkoutExerciseEntry rejects invalid dependencies before mutating', 
     /buildEntry function/
   );
   assert.equal(entries.length, 0);
+});
+
+test('workout exercise selection detail exposes a stable sheet contract', () => {
+  assert.deepEqual(WORKOUT_EXERCISE_SELECTION_DETAIL_FIELDS, {
+    ENTRY_INDEX: 'entryIdx',
+    EXERCISE_ID: 'exerciseId',
+    EXERCISE: 'exercise',
+    EXISTING: 'existing',
+  });
+
+  const exercise = { id: 'row', name: 'Row' };
+  const detail = workoutExerciseSelectionDetail({
+    entryIdx: 2,
+    exerciseId: 'row',
+    exercise,
+    existing: false,
+  });
+
+  assert.deepEqual(Object.keys(detail), ['entryIdx', 'exerciseId', 'exercise', 'existing']);
+  assert.deepEqual(detail, {
+    entryIdx: 2,
+    exerciseId: 'row',
+    exercise,
+    existing: false,
+  });
+});
+
+test('normalizeWorkoutExerciseSelectionDetail keeps sheet refresh independent from picker internals', () => {
+  assert.deepEqual(normalizeWorkoutExerciseSelectionDetail({
+    entryIdx: '2.8',
+    exerciseId: 42,
+    exercise: { id: 42 },
+    existing: 1,
+  }), {
+    entryIdx: 2,
+    exerciseId: '42',
+    exercise: { id: 42 },
+    existing: true,
+  });
+
+  assert.deepEqual(normalizeWorkoutExerciseSelectionDetail({
+    entryIdx: 'not-a-number',
+    exerciseId: '',
+    existing: 0,
+  }), {
+    entryIdx: null,
+    exerciseId: null,
+    exercise: null,
+    existing: false,
+  });
 });

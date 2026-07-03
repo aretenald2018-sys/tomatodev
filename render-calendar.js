@@ -43,6 +43,7 @@ import {
   openWorkoutDaySheet,
   updateWorkoutCalendarState,
 } from './workout/navigation-stack.js';
+import { normalizeWorkoutExerciseSelectionDetail } from './workout/exercise-entry-actions.js';
 import {
   activeBenchmarks,
   activeCycleOf,
@@ -751,9 +752,8 @@ async function _refreshWorkoutHomeAfterPickerSelect(key, sessionIndex = _workout
   const p = _parseDateKey(key);
   if (!p) return false;
   const targetIndex = Math.max(0, Math.min(WORKOUT_GYM_SESSION_COUNT - 1, Math.floor(Number(sessionIndex) || 0)));
-  const entryIndex = Number.isFinite(Number(detail?.entryIdx))
-    ? Math.max(0, Math.floor(Number(detail.entryIdx)))
-    : null;
+  const selectionDetail = normalizeWorkoutExerciseSelectionDetail(detail);
+  const entryIndex = selectionDetail.entryIdx;
   _viewYear = p.y;
   _viewMonth = p.m;
   _workoutHomeSelectedKey = key;
@@ -774,7 +774,7 @@ async function _refreshWorkoutHomeAfterPickerSelect(key, sessionIndex = _workout
   if (timerBar && !timerBar.classList.contains('wt-open')) timerBar.classList.add('wt-open');
   renderWorkoutCalendarHome();
   if (entryIndex != null) _restoreWorkoutSheetCarouselToSlide(entryIndex, { key, sessionIndex: targetIndex });
-  if (!detail?.existing) window.showToast?.('종목을 추가했어요', 1500, 'success');
+  if (!selectionDetail.existing) window.showToast?.('종목을 추가했어요', 1500, 'success');
   return true;
 }
 
