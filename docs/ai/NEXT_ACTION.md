@@ -13,7 +13,7 @@
 - 검증:
   1. PASS: `node --check scripts/deploy-production.mjs scripts/deploy-dashboard3.mjs`
   2. PASS: `npm.cmd run deploy:dashboard3` 기본 실행 차단 확인
-  3. PASS 예정: 운영계 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`
+  3. PASS: `npm.cmd run deploy:production` - `125c5384ce89`, 운영계 deploy verify 및 기본 marker 검증 완료
 - 다음 액션: 배포가 필요하면 `origin/main`에 push하고 Tomato Farm 운영계 Pages에서 배포 commit 및 실제 UI flow를 확인한다. Dashboard3는 명시 요청이 있을 때만 사용한다.
 
 ## 2026-07-03 운동 종목 삭제 우선순위 핫픽스
