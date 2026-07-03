@@ -6,7 +6,7 @@
 
 ## 계획 상태
 
-- 단계: `slice3_static_verified_pending_deploy`
+- 단계: `slice3_deployed_with_auth_ui_blocker`
 - 선행 계획:
   - `docs/ai/features/2026-07-03-workout-add-decoupling-refactor.md`
 - 목적: 운동 추가/카드 추가 경계 안정화 뒤에도 남은 전역 `onclick`/`window.*`/중복 렌더 hotspot을 작은 실행 slice로 줄여, 새 버튼이나 UI를 추가할 때 다른 기능이 연쇄로 깨지는 위험을 낮춘다.
@@ -143,7 +143,7 @@
 
 #### 슬라이스 3 실행 결과
 
-- 상태: `static_verified_pending_deploy`
+- 상태: `deployed_with_auth_ui_blocker`
 - 변경 요약:
   1. `index.html`의 top nav, 알림센터, 하단 탭, 더보기 메뉴, 탭 설정 modal action을 `data-app-action` 계약으로 전환했다.
   2. `app.js`에 `_bindAppShellActions(root)`와 `_runAppShellAction(action, control, event)`를 추가해 app shell action을 한 번만 바인딩한다.
@@ -160,7 +160,11 @@
   4. PASS: `node --test tests/*.test.js` - 674 pass
   5. PASS: `git diff --check`
   6. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
-  7. not verified yet: 운영 Pages 배포와 deployed marker/UI click flow 확인이 남았다.
+  7. PASS: `npm.cmd run deploy:production` - `328961273a03`, `tomatofarm-v20260703z15-app-shell-action-bridge`
+  8. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 328961273a03`
+  9. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ sw.js::tomatofarm-v20260703z15-app-shell-action-bridge index.html::data-app-action app.js::_bindAppShellActions app.js::appShellActionsBound navigation.js::switch-tab-close-more`
+  10. PASS: 운영 URL in-app browser 로드 - title `토마토 키우기`, URL `https://aretenald2018-sys.github.io/tomatofarm/`, `appShellActionsBound=1`, `data-app-action` controls 18개, console error 0건
+  11. not verified yet: 실제 nav/more-menu 클릭 flow는 로그인 화면이 hit target을 덮어 인증 없이 누를 수 없었다. `#tab-nav [data-app-action="toggle-more-menu"]`와 diet tab 모두 center hit target이 `#login-screen`이었다.
 
 ### 슬라이스 4: Max auxiliary modal delegate
 
@@ -194,7 +198,7 @@
 - 계획 세션 종료 상태: `ready_for_execution`
 - Slice 1 실행 후 상태: `deployed_with_auth_ui_blocker`
 - Slice 2 실행 후 상태: `deployed_login_screen_verified`
-- Slice 3 실행 후 상태: `static_verified_pending_deploy`
-- 다음 자동 상태: `ready_for_review`
-- 다음 액션: Slice 3 리뷰를 확정한 뒤 운영 Pages 배포와 marker/UI 검증을 끝낸다.
+- Slice 3 실행 후 상태: `deployed_with_auth_ui_blocker`
+- 다음 자동 상태: `ready_for_execution`
+- 다음 액션: Slice 4 `Max auxiliary modal delegate`를 실행한다.
 - 차단 질문: 없음

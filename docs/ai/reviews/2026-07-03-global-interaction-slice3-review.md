@@ -38,7 +38,7 @@
    - 판정: app shell 범위 밖. PWA/settings slice에서 별도 처리한다.
 
 2. 실제 인증 후 편지/알림/계정 전환 flow는 자동으로 누르지 않는다.
-   - 판정: 운영 배포 후 로그인 화면에서도 보이는 nav/more-menu 비파괴 flow를 확인하고, 인증 후 전역 action은 사용자 세션에서 후속 확인한다.
+   - 판정: 운영 배포 후 bridge binding과 marker는 확인했다. 실제 nav/more-menu 클릭 flow는 로그인 화면이 hit target을 덮어 인증 세션에서 후속 확인해야 한다.
 
 ## 검증
 
@@ -48,4 +48,8 @@
 4. PASS: `node --test tests/*.test.js` - 674 pass
 5. PASS: `git diff --check`
 6. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
-7. not verified yet: 운영 Pages 배포와 deployed marker/UI click flow 확인 필요
+7. PASS: `npm.cmd run deploy:production` - `328961273a03`, `tomatofarm-v20260703z15-app-shell-action-bridge`
+8. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 328961273a03`
+9. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ sw.js::tomatofarm-v20260703z15-app-shell-action-bridge index.html::data-app-action app.js::_bindAppShellActions app.js::appShellActionsBound navigation.js::switch-tab-close-more`
+10. PASS: 운영 URL in-app browser 로드 - title `토마토 키우기`, URL `https://aretenald2018-sys.github.io/tomatofarm/`, `appShellActionsBound=1`, `data-app-action` controls 18개, console error 0건
+11. not verified yet: 실제 nav/more-menu 클릭 flow는 로그인 화면이 hit target을 덮어 인증 없이 누를 수 없었다. `#tab-nav [data-app-action="toggle-more-menu"]`와 diet tab 모두 center hit target이 `#login-screen`이었다.

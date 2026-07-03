@@ -2,7 +2,7 @@
 
 ## 2026-07-03 전역 상호작용 결합 완화 리팩토링
 
-- 상태: `ready_for_review`
+- 상태: `ready_for_execution`
 - 계획: `docs/ai/features/2026-07-03-global-interaction-decoupling-refactor.md`
 - 리뷰:
   - `docs/ai/reviews/2026-07-03-global-interaction-slice1-review.md`
@@ -67,8 +67,12 @@
   4. PASS: `node --test tests/*.test.js` - 674 pass
   5. PASS: `git diff --check`
   6. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
-  7. not verified yet: 운영 Pages 배포와 deployed marker/UI click flow 확인 필요
-- 다음 액션: Slice 3 리뷰 확인 후 운영 Pages에 배포하고 `data-app-action` marker 및 비파괴 nav/more-menu click flow를 확인한다.
+  7. PASS: `npm.cmd run deploy:production` - `328961273a03`, `tomatofarm-v20260703z15-app-shell-action-bridge`
+  8. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 328961273a03`
+  9. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ sw.js::tomatofarm-v20260703z15-app-shell-action-bridge index.html::data-app-action app.js::_bindAppShellActions app.js::appShellActionsBound navigation.js::switch-tab-close-more`
+  10. PASS: 운영 URL in-app browser 로드 - title `토마토 키우기`, `appShellActionsBound=1`, `data-app-action` controls 18개, console error 0건
+  11. not verified yet: 실제 nav/more-menu 클릭 flow는 로그인 화면이 hit target을 덮어 인증 없이 누를 수 없었다. `#tab-nav [data-app-action="toggle-more-menu"]`와 diet tab 모두 center hit target이 `#login-screen`이었다.
+- 다음 액션: Slice 4 `Max auxiliary modal delegate`를 실행한다.
 
 ## 2026-07-03 운동 추가/카드 추가 결합 완화 리팩토링
 
