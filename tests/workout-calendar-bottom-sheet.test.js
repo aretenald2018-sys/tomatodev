@@ -375,13 +375,21 @@ test('day sheet exercise card uses inline plus row and one complete button', () 
   assert.doesNotMatch(calendarJs, /WORKOUT_EXERCISE_STAMP_MS/);
   assert.doesNotMatch(calendarJs, /_workoutExerciseCompletionStamps\.delete\(cardId\);\s*\n\s*renderWorkoutCalendarHome\(\)/);
   assert.match(card, /wt-max-actions wt-max-actions--single/);
-  assert.match(card, /window\._wtCalCompleteExercise\('\$\{cardId\}', '\$\{key\}', \$\{sessionIndex\}, \$\{originalIndex\}\)/);
+  assert.match(card, /data-wt-sheet-card-action="complete-exercise"/);
+  assert.match(card, /data-card-id="\$\{_esc\(cardId\)\}"/);
+  assert.match(card, /data-date-key="\$\{_esc\(key\)\}"/);
+  assert.match(card, /data-exercise-index="\$\{originalIndex\}"/);
+  assert.doesNotMatch(card, /window\._wtCalCompleteExercise|window\._wtCalDeleteExercise/);
   assert.match(card, />종목완료<\/button>/);
   assert.doesNotMatch(card, />편집 완료<\/button>|>세트 추가<\/button>|>카드 접기<\/button>|>편집하기<\/button>/);
   assert.doesNotMatch(card, /window\._wtCalEditSession\('\$\{key\}', \$\{sessionIndex\}\)/);
   assert.match(setRows, /function _renderWorkoutSetAddRow/);
   assert.match(setRows, /wt-max-set-add-row/);
-  assert.match(setRows, /window\._wtCalAddExerciseSet\('\$\{key\}', \$\{sessionIndex\}, \$\{exerciseIndex\}, '\$\{_esc\(cardId\)\}'\)/);
+  assert.match(setRows, /data-wt-sheet-card-action="add-exercise-set"/);
+  assert.match(setRows, /data-date-key="\$\{_esc\(key\)\}"/);
+  assert.match(setRows, /data-session-index="\$\{sessionIndex\}"/);
+  assert.match(setRows, /data-exercise-index="\$\{exerciseIndex\}"/);
+  assert.doesNotMatch(setRows, /window\._wtCalAddExerciseSet/);
   assert.match(setRows, /window\._wtCalUpdateExerciseSet/);
   assert.match(setRows, /data-wt-set-done-toggle/);
   assert.match(setRows, /data-wt-set-remove/);
@@ -391,7 +399,12 @@ test('day sheet exercise card uses inline plus row and one complete button', () 
   assert.match(oldEditFn, /action:\s*'sheet:edit-inline'/);
   assert.match(calendarJs, /window\._wtCalEditExerciseCard = _editWorkoutExerciseCard/);
   assert.match(calendarJs, /window\._wtCalUpdateExerciseSet = _updateWorkoutExerciseSetFromSheet/);
-  assert.match(calendarJs, /window\._wtCalCompleteExercise = _completeWorkoutExerciseFromSheet/);
+  assert.doesNotMatch(calendarJs, /window\._wtCalCompleteExercise = _completeWorkoutExerciseFromSheet/);
+  assert.doesNotMatch(calendarJs, /window\._wtCalAddExerciseSet = _addWorkoutExerciseSetFromSheet/);
+  assert.match(calendarJs, /function _runWorkoutHomeSheetCardAction\(action, control\)/);
+  assert.match(calendarJs, /data-wt-sheet-card-action[\s\S]*_runWorkoutHomeSheetCardAction/);
+  assert.match(calendarJs, /case 'complete-exercise':[\s\S]*_completeWorkoutExerciseFromSheet\(cardId, key, sessionIndex, exerciseIndex\)/);
+  assert.match(calendarJs, /case 'add-exercise-set':[\s\S]*_addWorkoutExerciseSetFromSheet\(key, sessionIndex, exerciseIndex\)/);
   assert.match(completeFn, /_hasCompletableWorkoutSheetSet\(nextSet\)/);
   assert.match(completeFn, /nextSet\.done = true/);
   assert.match(completeFn, /_markWorkoutExerciseEntryComplete\(entry, now\)/);
@@ -619,7 +632,8 @@ test('workout bottom sheet replaces the third gym session with a dedicated runni
   assert.doesNotMatch(tabs, /3회차/);
   assert.match(calendarJs, /function _selectWorkoutHomeRunning\(\)[\s\S]*_workoutHomeSessionIndex = WORKOUT_RUNNING_SESSION_INDEX/);
   assert.match(calendarJs, /window\._wtCalSelectRunning = _selectWorkoutHomeRunning/);
-  assert.match(calendarJs, /window\._wtCalAddRunning = _openWorkoutHomeRunning/);
+  assert.doesNotMatch(calendarJs, /window\._wtCalAddRunning = _openWorkoutHomeRunning/);
+  assert.match(calendarJs, /case 'add-running':[\s\S]*_openWorkoutHomeRunning\(key\)/);
   assert.match(opener, /_loadWorkoutStateForSheetSession\(targetKey, WORKOUT_RUNNING_SESSION_INDEX\)/);
   assert.doesNotMatch(opener, /_loadWorkoutEditorForSession|wtOpenWorkoutRecord/);
   assert.match(opener, /await import\('\.\/workout\/running-session\.js'\)/);
@@ -652,6 +666,10 @@ test('running detail card uses the workout read-card shell with running metrics 
   assert.match(calendarJs, /avgHeartRateBpm:\s*Number\(runSummary\.avgHeartRateBpm\) > 0/);
   assert.match(calendarJs, /if \(row\?\.key === 'running'\) return _renderWorkoutRunningDetailCard/);
   assert.match(card, /wt-day-ex-card wt-max-read-card wt-running-read-card/);
+  assert.match(card, /data-wt-sheet-card-action="delete-activity"/);
+  assert.match(card, /data-wt-sheet-card-action="toggle-card"/);
+  assert.match(card, /data-wt-sheet-card-action="add-running"/);
+  assert.doesNotMatch(card, /window\._wtCalToggleExerciseCard|window\._wtCalDeleteActivity|window\._wtCalAddRunning/);
   assert.match(card, /wt-running-headline/);
   assert.match(card, /_renderRunningRouteMap\(row\)/);
   assert.match(mapRenderer, /wt-running-route-map wt-run-real-map/);
@@ -680,6 +698,24 @@ test('running detail card uses the workout read-card shell with running metrics 
   assert.doesNotMatch(styleCss, /wt-running-route-mini/);
   assert.match(styleCss, /\.wt-running-metric-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(styleCss, /\.wt-running-read-card\.is-collapsed \.wt-running-metric-grid/);
+});
+
+test('generic activity detail card uses delegated sheet card actions', () => {
+  const cardStart = calendarJs.indexOf('function _renderWorkoutActivityDetailCard');
+  const cardEnd = calendarJs.indexOf('function _renderWorkoutDetailEmpty', cardStart);
+  assert.ok(cardStart >= 0 && cardEnd > cardStart, 'activity detail card renderer should exist');
+  const card = calendarJs.slice(cardStart, cardEnd);
+
+  assert.match(card, /wt-day-activity-card/);
+  assert.match(card, /data-wt-sheet-card-action="toggle-card"/);
+  assert.match(card, /data-card-id="\$\{_esc\(cardId\)\}"/);
+  assert.match(card, /data-wt-sheet-card-action="delete-activity"/);
+  assert.match(card, /data-date-key="\$\{_esc\(key\)\}"/);
+  assert.match(card, /data-session-index="\$\{sessionIndex\}"/);
+  assert.match(card, /data-activity-key="\$\{_esc\(activityKey\)\}"/);
+  assert.doesNotMatch(card, /onclick=|window\._wtCalToggleExerciseCard|window\._wtCalDeleteActivity/);
+  assert.match(calendarJs, /case 'delete-activity':[\s\S]*_deleteWorkoutActivity\(key, sessionIndex, activityKey\)/);
+  assert.match(calendarJs, /case 'toggle-card':[\s\S]*_toggleWorkoutDetailCard\(cardId\)/);
 });
 
 test('bottom sheet css is fixed, animated, and contains the session bar inside the sheet', () => {
@@ -891,5 +927,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260703z7-exercise-picker-crud-add/);
+  assert.match(swJs, /tomatofarm-v20260703z9-calendar-sheet-actions/);
 });

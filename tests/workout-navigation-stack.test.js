@@ -137,8 +137,10 @@ test('workout navigation keeps only rendered calendar and day sheet surfaces', a
   assert.match(workoutExercises, /let _pickerAfterSelect = null/);
   assert.match(workoutExercises, /export async function wtOpenExercisePicker\(options = \{\}\)/);
   assert.match(workoutExercises, /if \(afterSelect\) \{[\s\S]*_runPickerAfterSelect\(afterSelect/);
-  assert.match(workoutExercises, /if \(existingIdx >= 0\)[\s\S]*wtFocusWorkoutEntryCard\(existingIdx\)/);
-  assert.match(workoutExercises, /const entryIdx = S\.workout\.exercises\.push\(_buildPickerExerciseEntry\(ex\)\) - 1/);
+  assert.match(workoutExercises, /selectWorkoutExerciseEntry\(S\.workout\.exercises, ex/);
+  assert.match(workoutExercises, /if \(selection\.existing\)[\s\S]*wtFocusWorkoutEntryCard\(selection\.entryIdx\)/);
+  assert.match(workoutExercises, /const entryIdx = selection\.entryIdx/);
+  assert.doesNotMatch(workoutExercises, /S\.workout\.exercises\.push\(_buildPickerExerciseEntry\(ex\)\)/);
   assert.match(workoutExercises, /wtFocusWorkoutEntryCard\(entryIdx\)/);
   assert.match(workoutExercises, /export function wtHandleExercisePickerBack\(\)/);
   assert.doesNotMatch(navJs, /WorkoutRecordScreen|WorkoutDetailScreen|pushWorkoutRecord|pushWorkoutDetail|\brecord:\s*\{|\bdetail:\s*\{/);
@@ -169,5 +171,5 @@ test('workout navigation keeps only rendered calendar and day sheet surfaces', a
   assert.match(styleCss, /body\.wt-workout-tab-active\s*\{[\s\S]*overscroll-behavior-y:\s*none;/);
   assert.match(styleCss, /body\.wt-workout-tab-active #tab-workout\.active\s*\{[\s\S]*overscroll-behavior-y:\s*contain;/);
   assert.match(swJs, /\.\/workout\/navigation-stack\.js/);
-  assert.match(swJs, /tomatofarm-v20260703z7-exercise-picker-crud-add/);
+  assert.match(swJs, /tomatofarm-v20260703z9-calendar-sheet-actions/);
 });

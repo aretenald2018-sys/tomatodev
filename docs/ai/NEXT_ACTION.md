@@ -1,5 +1,62 @@
 # 다음 자동 액션
 
+## 2026-07-03 운동 추가/카드 추가 결합 완화 리팩토링
+
+- 상태: `ready_for_execution`
+- 계획: `docs/ai/features/2026-07-03-workout-add-decoupling-refactor.md`
+- 리뷰:
+  - `docs/ai/reviews/2026-07-03-workout-add-decoupling-slice1-review.md`
+  - `docs/ai/reviews/2026-07-03-workout-add-decoupling-slice2-review.md`
+  - `docs/ai/reviews/2026-07-03-workout-add-decoupling-slice6-review.md`
+- 요청: 운동종목추가/운동카드추가 주변 오류가 연쇄되지 않도록 UI와 저장/상태 상호의존성을 낮추고, 운동 코드에서 멈추지 말고 코드 전체의 클릭/전역 함수/무거운 버튼 경로까지 조망해 리팩토링한 뒤 화면 검증 후 배포한다.
+- 진단 요약:
+  1. `workout/exercises.js`의 피커 row click handler가 종목 선택, `S.workout.exercises` mutation, 카드 재렌더, 타이머/타임라인 후속효과, 저장, 피커 닫기, 카드 포커스, 하단시트 `afterSelect`까지 한 번에 처리한다.
+  2. 최근 회귀가 피커/카드/하단시트 경계에서 반복되었고, 선택 상태 전이를 독립 테스트로 고정하는 계약이 부족하다.
+  3. Firestore schema보다 UI 상태 전이 경계를 먼저 분리하는 편이 데이터 위험을 낮춘다.
+- 실행 슬라이스:
+  1. 완료: 슬라이스 1 `workout/exercise-entry-actions.js`로 운동 선택 상태 전이를 분리하고 테스트했다.
+  2. 완료: 슬라이스 2 피커 이벤트 바인딩을 단일 위임 구조로 집중화했다.
+  3. 슬라이스 3: 종목 editor 저장 record 생성/검증을 분리한다.
+  4. 슬라이스 4: 하단시트 `afterSelect` detail contract를 명문화한다.
+  5. 완료: 슬라이스 5 운동 외 전체 클릭 경로/전역 함수 의존/무거운 핸들러를 인벤토리화했다.
+  6. 슬라이스 6: `render-calendar.js` 운동 day sheet card action을 inline `onclick/window._wtCal*`에서 scoped data attribute + sheet capture delegate로 전환한다.
+  7. 슬라이스 7: 클릭 지연을 만드는 중복 렌더/저장 경로 하나를 경량화한다.
+- 슬라이스 1 실행 요약:
+  1. `workout/exercise-entry-actions.js`를 추가해 운동 선택 상태 전이를 DOM/Firebase와 분리했다.
+  2. 피커 row handler에서 직접 `S.workout.exercises.push(_buildPickerExerciseEntry(ex))`를 제거했다.
+  3. `afterSelect` detail을 `workoutExerciseSelectionDetail(selection)`으로 통일했다.
+  4. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z8-workout-entry-actions`로 bump하고 새 runtime module을 `STATIC_ASSETS`에 등록했다.
+- 슬라이스 1 검증:
+  1. PASS: `node --check workout/exercises.js; node --check workout/exercise-entry-actions.js; node --check sw.js`
+  2. PASS: `node --test tests/workout-exercise-entry-actions.test.js tests/ex-picker-selection-flow.test.js tests/workout-card-layout-css.test.js tests/workout-empty-picker-density.test.js tests/workout-picker-gym-rail.test.js` - 21 pass
+  3. PASS: `node --test tests/*.test.js` - 654 pass
+  4. PASS: `git diff --check`
+  5. not verified yet: `node scripts/verify-runtime-assets.mjs`는 새 runtime 파일이 아직 stage 전이라 untracked 경고로 실패. stage 후 재실행 필요.
+- 슬라이스 5 인벤토리 요약:
+  1. source 기준 상위 hotspot은 `workout/expert/max.js`, `workout/expert.js`, `index.html`, `feature-login.js`, `home/friend-profile.js`, `render-calendar.js`, `workout/exercises.js` 순서다.
+  2. `render-calendar.js`는 total 74, inline 23, window 48이고 운동 day sheet card action이 기존 `_bindWorkoutHomeSheetActions()` capture delegate 근처에 있어 가장 안전한 다음 slice다.
+  3. Max V4와 social/login/index 전환은 표면이 넓으므로 별도 slice로 나눈다.
+- 슬라이스 6 실행 요약:
+  1. `render-calendar.js` 운동 day sheet의 세트 추가/종목완료/삭제/카드 접기/러닝 다시 측정 버튼을 `data-wt-sheet-card-action`으로 전환했다.
+  2. `_bindWorkoutHomeSheetActions()` capture listener에 `_runWorkoutHomeSheetCardAction(action, control)` dispatcher를 추가했다.
+  3. 해당 button group의 `window._wtCalAddExerciseSet`, `window._wtCalCompleteExercise`, `window._wtCalToggleExerciseCard`, `window._wtCalAddRunning`, `window._wtCalDeleteExercise`, `window._wtCalDeleteActivity` exports를 제거했다.
+  4. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z9-calendar-sheet-actions`로 bump하고 cache marker 테스트를 갱신했다.
+- 슬라이스 6 검증:
+  1. PASS: `node --check render-calendar.js; node --check workout/exercises.js; node --check workout/exercise-entry-actions.js; node --check sw.js`
+  2. PASS: `node --test tests/workout-exercise-entry-actions.test.js tests/ex-picker-selection-flow.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-card-layout-css.test.js tests/workout-empty-picker-density.test.js tests/workout-picker-gym-rail.test.js` - 52 pass
+  3. PASS: `node --test tests/*.test.js` - 655 pass
+  4. PASS: `git diff --check`
+- 슬라이스 2 실행 요약:
+  1. `workout/exercises.js`의 피커 row 선택 후속효과를 `_selectPickerExercise(ex)`로 분리했다.
+  2. picker list row selection/edit/delete/hide/source-filter를 `_bindPickerListActions(container)`의 click/keydown delegate로 처리한다.
+  3. `_renderPickerList()` row loop는 `data-picker-exercise-id`, `data-picker-row-action`만 렌더하고 per-row selection/edit/delete/hide listener를 붙이지 않는다.
+- 슬라이스 2 검증:
+  1. PASS: `node --check workout/exercises.js; node --check render-calendar.js; node --check workout/exercise-entry-actions.js; node --check sw.js`
+  2. PASS: `node --test tests/workout-exercise-entry-actions.test.js tests/ex-picker-selection-flow.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-card-layout-css.test.js tests/workout-empty-picker-density.test.js tests/workout-picker-gym-rail.test.js tests/stats-picker-ui-polish.test.js tests/workout-navigation-stack.test.js` - 63 pass
+  3. PASS: `node --test tests/*.test.js` - 655 pass
+  4. PASS: `git diff --check`
+- 다음 액션: 관련 파일만 stage한 뒤 `node scripts/verify-runtime-assets.mjs`를 실행하고, commit/push/deploy/운영 URL 검증으로 진행한다.
+
 ## 2026-07-03 운동 종목 피커 CRUD 신규 추가 버튼 노출
 
 - 상태: `complete`

@@ -24,6 +24,11 @@ import {
   resolveMaxBenchmarkPickerItems,
 } from './expert/max-benchmark-picker.js?v=20260517v3';
 import {
+  findWorkoutEntryIndexByExerciseId,
+  selectWorkoutExerciseEntry,
+  workoutExerciseSelectionDetail,
+} from './exercise-entry-actions.js';
+import {
   buildExerciseProgramWorkoutPrescription,
   findExerciseProgramBenchmark,
   getExerciseProgramSettings,
@@ -1106,10 +1111,7 @@ export function wtFocusWorkoutEntryCard(entryIdx, options = {}) {
 }
 
 function _findWorkoutEntryIndexByExerciseId(exerciseId) {
-  const id = String(exerciseId || '');
-  if (!id) return -1;
-  return (Array.isArray(S.workout.exercises) ? S.workout.exercises : [])
-    .findIndex(entry => entry?.exerciseId === id);
+  return findWorkoutEntryIndexByExerciseId(S.workout.exercises, exerciseId);
 }
 
 function _bindWorkoutEntryRecordFocus(block, entryIdx) {
@@ -2462,21 +2464,130 @@ function _renderExercisePickerName(ex, alreadyAdded, stats) {
   `;
 }
 
-function _bindPickerSourceFilter(btn) {
-  const source = btn?.querySelector?.('.ex-picker-source[data-gym-filter]');
-  if (!source) return;
-  const apply = (event) => {
+function _pickerExerciseById(exId) {
+  const id = String(exId || '');
+  if (!id) return null;
+  return _getPickerExercisePool().find(ex => String(ex?.id || '') === id) || null;
+}
+
+function _hidePickerExercise(ex) {
+  if (!ex?.id) return;
+  if (!Array.isArray(S.workout.hiddenExercises)) S.workout.hiddenExercises = [];
+  if (!S.workout.hiddenExercises.includes(ex.id)) S.workout.hiddenExercises.push(ex.id);
+  _renderPickerList();
+  showToast(`'${ex.name}'을(를) 목록에서 숨겼어요`, 3000, 'success', {
+    action: '실행 취소',
+    onAction: () => {
+      const i = S.workout.hiddenExercises.indexOf(ex.id);
+      if (i >= 0) S.workout.hiddenExercises.splice(i, 1);
+      _renderPickerList();
+    },
+  });
+}
+
+async function _selectPickerExercise(ex) {
+  if (!ex?.id) return;
+  const afterSelect = _consumePickerAfterSelect();
+  const selection = selectWorkoutExerciseEntry(S.workout.exercises, ex, (exercise) => {
+    _ensureExpertManualSession();
+    return _buildPickerExerciseEntry(exercise);
+  });
+  if (selection.existing) {
+    wtCloseExercisePicker();
+    if (afterSelect) {
+      await _runPickerAfterSelect(afterSelect, workoutExerciseSelectionDetail(selection));
+      return;
+    }
+    wtFocusWorkoutEntryCard(selection.entryIdx);
+    return;
+  }
+  const entryIdx = selection.entryIdx;
+  _renderExerciseList();
+  _syncExpertTopArea();
+  const timerBar = document.getElementById('wt-workout-timer-bar');
+  if (timerBar && !timerBar.classList.contains('wt-open')) timerBar.classList.add('wt-open');
+  _refreshWorkoutTimeline('exercise add');
+  wtPersistActiveWorkoutDraft('exercise add');
+  wtCloseExercisePicker();
+  const savePromise = saveWorkoutDay({ silent: true, keepDraftExercises: !!afterSelect });
+  if (afterSelect) {
+    try {
+      await savePromise;
+      await _runPickerAfterSelect(afterSelect, workoutExerciseSelectionDetail(selection));
+    } catch (e) {
+      console.error('Save error:', e);
+    }
+    return;
+  }
+  wtFocusWorkoutEntryCard(entryIdx);
+  savePromise.catch(e => console.error('Save error:', e));
+}
+
+function _runPickerRowAction(action, ex) {
+  if (!ex?.id) {
+    window.showToast?.('종목을 찾지 못했어요', 1800, 'warning');
+    return false;
+  }
+  switch (action) {
+    case 'edit':
+    case 'delete-via-editor':
+      wtOpenExerciseEditor(ex.id, null);
+      return true;
+    case 'delete':
+      return _deletePickerExercise(ex);
+    case 'hide':
+      _hidePickerExercise(ex);
+      return true;
+    default:
+      return false;
+  }
+}
+
+function _handlePickerListClick(event) {
+  const container = event.currentTarget;
+  const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+  if (!target || !container?.contains?.(target)) return;
+  const source = target.closest?.('.ex-picker-source[data-gym-filter]');
+  if (source && container.contains(source)) {
     event.preventDefault();
     event.stopPropagation();
     const filterId = source.getAttribute('data-gym-filter');
-    if (!filterId) return;
-    window._wtSetPickerGymFilter?.(filterId);
-  };
-  source.addEventListener('click', apply);
-  source.addEventListener('keydown', event => {
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    apply(event);
-  });
+    if (filterId) window._wtSetPickerGymFilter?.(filterId);
+    return;
+  }
+  const rowAction = target.closest?.('[data-picker-row-action]');
+  if (rowAction && container.contains(rowAction)) {
+    event.preventDefault();
+    event.stopPropagation();
+    const ex = _pickerExerciseById(rowAction.getAttribute('data-exid'));
+    const action = rowAction.getAttribute('data-picker-row-action') || '';
+    const result = _runPickerRowAction(action, ex);
+    if (result === false) console.warn('[picker] unknown row action:', action);
+    Promise.resolve(result).catch(err => console.error('[picker] row action failed:', err));
+    return;
+  }
+  const item = target.closest?.('[data-picker-exercise-id]');
+  if (!item || !container.contains(item)) return;
+  event.preventDefault();
+  const ex = _pickerExerciseById(item.getAttribute('data-picker-exercise-id'));
+  _selectPickerExercise(ex).catch(err => console.error('Save error:', err));
+}
+
+function _handlePickerListKeydown(event) {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  const target = event.target instanceof Element ? event.target : null;
+  const actionTarget = target?.closest?.('[data-picker-row-action], .ex-picker-source[data-gym-filter]');
+  if (!actionTarget) return;
+  event.preventDefault();
+  event.stopPropagation();
+  actionTarget.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+}
+
+function _bindPickerListActions(container) {
+  if (!container || container.dataset.pickerListDelegated === '1') return;
+  container.dataset.pickerListDelegated = '1';
+  container.addEventListener('click', _handlePickerListClick);
+  container.addEventListener('keydown', _handlePickerListKeydown);
 }
 
 function _escPicker(s) {
@@ -3378,6 +3489,7 @@ function _renderPickerCategory(container, ctx) {
 export function _renderPickerList() {
   const container = document.getElementById('ex-picker-list');
   if (!container) return;
+  _bindPickerListActions(container);
   container.innerHTML = '';
   const ctx = _buildPickerContext();
   const {
@@ -3425,114 +3537,33 @@ export function _renderPickerList() {
       const pickerStats = statsByExercise.get(ex.id) || { count: 0, lastDate: null };
       const btn = document.createElement('button');
       btn.className = 'ex-picker-item' + (alreadyAdded ? ' already' : '');
+      btn.dataset.pickerExerciseId = ex.id;
       const editable = _isExerciseEditable(ex);
       if (isMaxBenchmarkPicker) {
         btn.innerHTML = `${_renderExercisePickerName(ex, alreadyAdded, pickerStats)}
           <span class="ex-picker-row-side">
             <span class="ex-picker-actions">
-              <span class="ex-picker-icon-btn ex-picker-edit" data-exid="${ex.id}" role="button" tabindex="0" aria-label="종목 수정" title="종목 수정">${_pickerEditIconSvg()}</span>
-              <span class="ex-picker-delete" data-exid="${ex.id}" role="button" tabindex="0" title="종목 삭제">삭제</span>
+              <span class="ex-picker-icon-btn ex-picker-edit" data-picker-row-action="edit" data-exid="${_escPicker(ex.id)}" role="button" tabindex="0" aria-label="종목 수정" title="종목 수정">${_pickerEditIconSvg()}</span>
+              <span class="ex-picker-delete" data-picker-row-action="delete" data-exid="${_escPicker(ex.id)}" role="button" tabindex="0" title="종목 삭제">삭제</span>
             </span>
           </span>`;
-        btn.querySelector('.ex-picker-edit')?.addEventListener('click', e => {
-          e.stopPropagation();
-          wtOpenExerciseEditor(ex.id, null);
-        });
-        btn.querySelector('.ex-picker-delete')?.addEventListener('click', e => {
-          e.stopPropagation();
-          _deletePickerExercise(ex);
-        });
       } else if (isExpert) {
         btn.innerHTML = `${_renderExercisePickerName(ex, alreadyAdded, pickerStats)}
           <div class="ex-picker-actions">
-            <span class="ex-picker-icon-btn ex-picker-edit" data-exid="${ex.id}" role="button" tabindex="0" aria-label="종목 수정" title="종목 수정">${_pickerEditIconSvg()}</span>
-            ${editable ? `<span class="ex-picker-delete" data-exid="${ex.id}" title="종목 삭제">삭제</span>` : ''}
+            <span class="ex-picker-icon-btn ex-picker-edit" data-picker-row-action="edit" data-exid="${_escPicker(ex.id)}" role="button" tabindex="0" aria-label="종목 수정" title="종목 수정">${_pickerEditIconSvg()}</span>
+            ${editable ? `<span class="ex-picker-delete" data-picker-row-action="delete-via-editor" data-exid="${_escPicker(ex.id)}" role="button" tabindex="0" title="종목 삭제">삭제</span>` : ''}
           </div>`;
-        btn.querySelector('.ex-picker-edit')?.addEventListener('click', e => {
-          e.stopPropagation();
-          wtOpenExerciseEditor(ex.id, null);
-        });
-        btn.querySelector('.ex-picker-delete')?.addEventListener('click', e => {
-          e.stopPropagation();
-          wtOpenExerciseEditor(ex.id, null);
-        });
       } else {
         // C-3: ✕(삭제 연상) → 눈감김 아이콘 + "이 목록에서 숨기기" tooltip.
         //     실제로는 "이 헬스장에선 안 써요" 의미라 파괴적 삭제가 아님.
         btn.innerHTML = `${_renderExercisePickerName(ex, alreadyAdded, pickerStats)}
           <div class="ex-picker-actions">
-            <span class="ex-picker-icon-btn ex-picker-edit" data-exid="${ex.id}" role="button" tabindex="0" aria-label="종목 수정" title="종목 수정">${_pickerEditIconSvg()}</span>
-            <span class="ex-picker-hide" data-exid="${ex.id}" title="이 헬스장 목록에서 숨기기" aria-label="이 헬스장 목록에서 숨기기">
+            <span class="ex-picker-icon-btn ex-picker-edit" data-picker-row-action="edit" data-exid="${_escPicker(ex.id)}" role="button" tabindex="0" aria-label="종목 수정" title="종목 수정">${_pickerEditIconSvg()}</span>
+            <span class="ex-picker-hide" data-picker-row-action="hide" data-exid="${_escPicker(ex.id)}" role="button" tabindex="0" title="이 헬스장 목록에서 숨기기" aria-label="이 헬스장 목록에서 숨기기">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
             </span>
           </div>`;
-
-        btn.querySelector('.ex-picker-edit').addEventListener('click', e => {
-          e.stopPropagation();
-          wtOpenExerciseEditor(ex.id, null);
-        });
-
-        btn.querySelector('.ex-picker-hide').addEventListener('click', e => {
-          e.stopPropagation();
-          S.workout.hiddenExercises.push(ex.id);
-          _renderPickerList();
-          // Undo 토스트 — 오조작 되돌릴 수 있게 (C-3)
-          showToast(`'${ex.name}'을(를) 목록에서 숨겼어요`, 3000, 'success', {
-            action: '실행 취소',
-            onAction: () => {
-              const i = S.workout.hiddenExercises.indexOf(ex.id);
-              if (i >= 0) S.workout.hiddenExercises.splice(i, 1);
-              _renderPickerList();
-            },
-          });
-        });
       }
-      _bindPickerSourceFilter(btn);
-
-      btn.addEventListener('click', async () => {
-        const afterSelect = _consumePickerAfterSelect();
-        const existingIdx = _findWorkoutEntryIndexByExerciseId(ex.id);
-        if (existingIdx >= 0) {
-          wtCloseExercisePicker();
-          if (afterSelect) {
-            await _runPickerAfterSelect(afterSelect, {
-              entryIdx: existingIdx,
-              exerciseId: ex.id,
-              exercise: ex,
-              existing: true,
-            });
-            return;
-          }
-          wtFocusWorkoutEntryCard(existingIdx);
-          return;
-        }
-        _ensureExpertManualSession();
-        const entryIdx = S.workout.exercises.push(_buildPickerExerciseEntry(ex)) - 1;
-        _renderExerciseList();
-        _syncExpertTopArea();
-        const timerBar = document.getElementById('wt-workout-timer-bar');
-        if (timerBar && !timerBar.classList.contains('wt-open')) timerBar.classList.add('wt-open');
-        _refreshWorkoutTimeline('exercise add');
-        wtPersistActiveWorkoutDraft('exercise add');
-        wtCloseExercisePicker();
-        const savePromise = saveWorkoutDay({ silent: true, keepDraftExercises: !!afterSelect });
-        if (afterSelect) {
-          try {
-            await savePromise;
-            await _runPickerAfterSelect(afterSelect, {
-              entryIdx,
-              exerciseId: ex.id,
-              exercise: ex,
-              existing: false,
-            });
-          } catch (e) {
-            console.error('Save error:', e);
-          }
-          return;
-        }
-        wtFocusWorkoutEntryCard(entryIdx);
-        savePromise.catch(e => console.error('Save error:', e));
-      });
       group.appendChild(btn);
     });
     if (!isExpert) {

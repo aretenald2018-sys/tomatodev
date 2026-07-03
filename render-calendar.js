@@ -2237,7 +2237,7 @@ function _renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setIndex, fiel
 
 function _renderWorkoutSetAddRow(key, sessionIndex, exerciseIndex, cardId = '') {
   return `
-    <button type="button" class="wt-max-set-add-row" onclick="window._wtCalAddExerciseSet('${key}', ${sessionIndex}, ${exerciseIndex}, '${_esc(cardId)}')" aria-label="세트 추가">
+    <button type="button" class="wt-max-set-add-row" data-wt-sheet-card-action="add-exercise-set" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" aria-label="세트 추가">
       <span aria-hidden="true">+</span>
     </button>
   `;
@@ -2325,7 +2325,7 @@ function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) {
       ${stamped ? '<div class="wt-max-complete-stamp" aria-hidden="true">완료</div>' : ''}
       <div class="wt-max-card-kicker">
         <span><i></i>추천 종목 · 선택 헬스장</span>
-        <button type="button" onclick="window._wtCalDeleteExercise('${key}', ${sessionIndex}, ${originalIndex})" aria-label="운동 삭제">×</button>
+        <button type="button" data-wt-sheet-card-action="delete-exercise" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${originalIndex}" aria-label="운동 삭제">×</button>
       </div>
       <div class="wt-max-card-name">${_esc(row.name)}</div>
       <div class="wt-max-plan">
@@ -2346,7 +2346,7 @@ function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) {
       <div class="wt-max-collapsed-note">모든 세트 완료 · 카드가 접혔어요</div>
       <div class="wt-max-set-list">${_renderWorkoutSetRows(row, { editable: editing, key, sessionIndex, exerciseIndex: originalIndex, cardId })}</div>
       <div class="wt-max-actions wt-max-actions--single">
-        <button type="button" class="wt-max-action-primary" onclick="window._wtCalCompleteExercise('${cardId}', '${key}', ${sessionIndex}, ${originalIndex})">종목완료</button>
+        <button type="button" class="wt-max-action-primary" data-wt-sheet-card-action="complete-exercise" data-card-id="${_esc(cardId)}" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${originalIndex}">종목완료</button>
       </div>
     </article>
   `;
@@ -2434,7 +2434,7 @@ function _renderWorkoutRunningDetailCard(key, sessionIndex, row, index) {
     <article class="wt-day-ex-card wt-max-read-card wt-running-read-card ${collapsed ? 'is-collapsed' : 'is-expanded'}">
       <div class="wt-max-card-kicker wt-running-card-kicker">
         <span><i></i>${_esc(row.label || '러닝')} · ${_esc(_runningSourceLabel(row.source))}</span>
-        <button type="button" onclick="window._wtCalDeleteActivity('${key}', ${sessionIndex}, '${activityKey}')" aria-label="러닝 삭제">×</button>
+        <button type="button" data-wt-sheet-card-action="delete-activity" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-activity-key="${_esc(activityKey)}" aria-label="러닝 삭제">×</button>
       </div>
       <div class="wt-max-card-name">${_esc(row.label || '러닝')}</div>
       <div class="wt-running-headline">
@@ -2459,9 +2459,9 @@ function _renderWorkoutRunningDetailCard(key, sessionIndex, row, index) {
       <div class="wt-max-actions">
         ${collapsed
           ? `<button type="button" class="wt-max-action-primary is-muted" aria-disabled="true" tabindex="-1">러닝 완료</button>
-             <button type="button" class="wt-max-action-secondary" onclick="window._wtCalToggleExerciseCard('${cardId}')">기록 다시 보기</button>`
-          : `<button type="button" class="wt-max-action-primary" onclick="window._wtCalToggleExerciseCard('${cardId}')">카드 접기</button>
-             <button type="button" class="wt-max-action-secondary" onclick="window._wtCalAddRunning('${key}')">다시 측정</button>`}
+             <button type="button" class="wt-max-action-secondary" data-wt-sheet-card-action="toggle-card" data-card-id="${_esc(cardId)}">기록 다시 보기</button>`
+          : `<button type="button" class="wt-max-action-primary" data-wt-sheet-card-action="toggle-card" data-card-id="${_esc(cardId)}">카드 접기</button>
+             <button type="button" class="wt-max-action-secondary" data-wt-sheet-card-action="add-running" data-date-key="${_esc(key)}">다시 측정</button>`}
       </div>
     </article>
   `;
@@ -2487,8 +2487,8 @@ function _renderWorkoutActivityDetailCard(key, sessionIndex, row, index) {
       <div class="wt-day-ex-foot">
         <span class="wt-day-check">✓</span>
         <span>${row.durationSec ? _formatDurationShort(row.durationSec) : '기록'}</span>
-        <button type="button" onclick="window._wtCalToggleExerciseCard('${cardId}')">${collapsed ? '펼치기' : '접기'}</button>
-        <button type="button" onclick="window._wtCalDeleteActivity('${key}', ${sessionIndex}, '${activityKey}')">삭제</button>
+        <button type="button" data-wt-sheet-card-action="toggle-card" data-card-id="${_esc(cardId)}">${collapsed ? '펼치기' : '접기'}</button>
+        <button type="button" data-wt-sheet-card-action="delete-activity" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-activity-key="${_esc(activityKey)}">삭제</button>
       </div>
     </article>
   `;
@@ -2843,6 +2843,31 @@ function _toggleWorkoutHomeSheet(key = _workoutHomeSelectedKey) {
   _setWorkoutHomeSheetState('bar');
 }
 
+function _runWorkoutHomeSheetCardAction(action, control) {
+  const key = control?.getAttribute?.('data-date-key') || _workoutHomeSelectedKey;
+  const sessionIndex = control?.getAttribute?.('data-session-index');
+  const exerciseIndex = control?.getAttribute?.('data-exercise-index');
+  const cardId = control?.getAttribute?.('data-card-id') || '';
+  const activityKey = control?.getAttribute?.('data-activity-key') || '';
+  switch (action) {
+    case 'add-exercise-set':
+      return _addWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseIndex);
+    case 'complete-exercise':
+      return _completeWorkoutExerciseFromSheet(cardId, key, sessionIndex, exerciseIndex);
+    case 'toggle-card':
+      _toggleWorkoutDetailCard(cardId);
+      return true;
+    case 'add-running':
+      return _openWorkoutHomeRunning(key);
+    case 'delete-exercise':
+      return _deleteWorkoutExercise(key, sessionIndex, exerciseIndex);
+    case 'delete-activity':
+      return _deleteWorkoutActivity(key, sessionIndex, activityKey);
+    default:
+      return false;
+  }
+}
+
 function _bindWorkoutHomeSheetActions(root) {
   const sheet = root?.querySelector?.('[data-wt-day-sheet]');
   if (!sheet) return;
@@ -2873,6 +2898,21 @@ function _bindWorkoutHomeSheetActions(root) {
         setRemove.getAttribute('data-set-index')
       )).catch((e) => {
         console.warn('[workout-calendar] set remove action failed:', e);
+      });
+      return;
+    }
+    const cardAction = target?.closest?.('[data-wt-sheet-card-action]');
+    if (cardAction && sheet.contains(cardAction)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const action = cardAction.getAttribute('data-wt-sheet-card-action') || '';
+      const result = _runWorkoutHomeSheetCardAction(action, cardAction);
+      if (result === false) {
+        console.warn('[workout-calendar] unknown sheet card action:', action);
+        return;
+      }
+      Promise.resolve(result).catch((e) => {
+        console.warn('[workout-calendar] sheet card action failed:', e);
       });
       return;
     }
@@ -3618,20 +3658,14 @@ window._wtCalBackToMonth = _backWorkoutHomeMonth;
 window._wtCalGoTodayDetail = _goTodayWorkoutDetail;
 window._wtCalSelectSession = _selectWorkoutHomeSession;
 window._wtCalSelectRunning = _selectWorkoutHomeRunning;
-window._wtCalToggleExerciseCard = _toggleWorkoutDetailCard;
 window._wtCalEditSession = _editWorkoutHomeSession;
 window._wtCalEditExerciseCard = _editWorkoutExerciseCard;
 window._wtCalFinishExerciseEdit = _finishWorkoutExerciseEdit;
 window._wtCalUpdateExerciseSet = _updateWorkoutExerciseSetFromSheet;
-window._wtCalAddExerciseSet = _addWorkoutExerciseSetFromSheet;
 window._wtCalRemoveExerciseSet = _removeWorkoutExerciseSetFromSheet;
 window._wtCalToggleExerciseSetDone = _toggleWorkoutExerciseSetDoneFromSheet;
-window._wtCalCompleteExercise = _completeWorkoutExerciseFromSheet;
 window._wtCalAddSession = _addWorkoutHomeSession;
-window._wtCalAddRunning = _openWorkoutHomeRunning;
 window._wtCalExportSession = _exportWorkoutHomeSession;
 window._wtCalDeleteSession = _deleteWorkoutHomeSession;
-window._wtCalDeleteExercise = _deleteWorkoutExercise;
-window._wtCalDeleteActivity = _deleteWorkoutActivity;
 window.__wtApplyCalendarNavSnapshot = applyWorkoutCalendarNavSnapshot;
 window.renderWorkoutCalendarHome = renderWorkoutCalendarHome;
