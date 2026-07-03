@@ -38,6 +38,108 @@ function _openTomatoGiftModal(fid, fname) {
   else if (window.openTomatoGiftModal) window.openTomatoGiftModal(fid, fname);
 }
 
+function _feedAttr(value) {
+  return escapeHtml(value);
+}
+
+function _bindFriendFeedActions(root = document) {
+  const marker = root.documentElement || root;
+  if (!marker || marker.dataset.friendFeedActionsBound === '1') return;
+  marker.dataset.friendFeedActionsBound = '1';
+  root.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    const control = target?.closest?.('[data-feed-action]');
+    if (!control || !root.contains(control)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    Promise.resolve(_runFriendFeedAction(control.dataset.feedAction, control, event))
+      .catch(err => {
+        console.warn('[friend-feed action]:', err);
+        showToast('이웃 작업 중 문제가 생겼어요', 2200, 'error');
+      });
+  }, true);
+}
+
+async function _runFriendFeedAction(action, control, event) {
+  switch (action) {
+    case 'quick-add-neighbor':
+      return window.quickAddNeighbor?.(control.dataset.targetId || '');
+    case 'accept-friend-request':
+      return window.acceptFriendReq?.(control.dataset.requestId || '');
+    case 'reject-friend-request':
+      return window.rejectFriendReq?.(control.dataset.requestId || '');
+    case 'open-meal-photo':
+      return window.openMealPhotoLightbox?.(control.dataset.photo || '');
+    case 'toggle-inactive-friends': {
+      const body = control.nextElementSibling;
+      if (!body) return;
+      const nextVisible = body.style.display === 'none';
+      body.style.display = nextVisible ? '' : 'none';
+      control.textContent = nextVisible ? '접기 ▴' : `비활성 이웃 ${control.dataset.count || 0}명 보기 ▾`;
+      return;
+    }
+    case 'select-feed-page': {
+      const page = Number(control.dataset.fp);
+      const feedRoot = control.closest('#friend-feed');
+      feedRoot?._friendFeedGoPage?.(page);
+      return;
+    }
+    case 'open-profile':
+      _openFriendProfile(control.dataset.fid || '', control.dataset.fname || '');
+      return;
+    case 'send-cheer': {
+      const feedRoot = control.closest('#friend-feed');
+      return feedRoot?._friendFeedSendCheer?.(control);
+    }
+    case 'open-gift':
+      _openTomatoGiftModal(control.dataset.giftFid || '', control.dataset.giftName || '');
+      return;
+    case 'send-friend-request':
+      return window.sendFriendReq?.();
+    case 'close-dynamic-modal':
+      document.getElementById('dynamic-modal')?.remove();
+      return;
+    case 'introduce-friend':
+      return window.openIntroduceFriend?.(control.dataset.friendId || '', control.dataset.friendName || '');
+    case 'edit-friend-nickname':
+      return window.editFriendNickname?.(control.dataset.friendId || '');
+    case 'delete-friend':
+      return window.deleteFriend?.(control.dataset.requestId || '');
+    case 'show-reaction-picker':
+      return window.showReactionPicker?.(control, control.dataset.targetId || '', control.dataset.dateKey || '', control.dataset.field || '');
+    case 'show-reaction-detail':
+      return window.showReactionDetail?.(control, control.dataset.targetId || '', control.dataset.dateKey || '', control.dataset.field || '');
+    case 'send-reaction':
+      return window.sendReaction?.(control.dataset.targetId || '', control.dataset.dateKey || '', control.dataset.field || '', control.dataset.emoji || '');
+    default:
+      console.warn(`[friend-feed] unknown action: ${action}`);
+  }
+}
+
+function _bindFriendManagerActions(modal) {
+  if (!modal || modal.dataset.friendManagerActionsBound === '1') return;
+  modal.dataset.friendManagerActionsBound = '1';
+  modal.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    const backdrop = modal.querySelector('.modal-backdrop');
+    if (target === backdrop) {
+      document.getElementById('dynamic-modal')?.remove();
+      return;
+    }
+    const row = target?.closest?.('.friend-manager-row');
+    if (row && !target.closest('button')) {
+      document.getElementById('dynamic-modal')?.remove();
+      _openFriendProfile(row.dataset.fid, row.dataset.fname);
+      return;
+    }
+    const nrow = target?.closest?.('.neighbor-row');
+    if (nrow && !target.closest('button')) {
+      document.getElementById('dynamic-modal')?.remove();
+      _openFriendProfile(nrow.dataset.nid, nrow.dataset.nnick);
+    }
+  });
+}
+
 // ── 새로운 이웃 섹션 (Seed Design 스타일 페이징) ─────────────────
 function buildNeighborSection(suggestList, accounts, friends) {
   const total = suggestList.length;
@@ -54,7 +156,7 @@ function buildNeighborSection(suggestList, accounts, friends) {
       <div style="flex:1;min-width:0;cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;">
         <div style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nick}</div>
       </div>
-      <button onclick="event.stopPropagation();quickAddNeighbor('${a.id}')" style="padding:7px 16px;border:none;border-radius:999px;background:#fa342c;color:#fff;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;transition:background 0.15s;">이웃 추가</button>
+      <button type="button" data-feed-action="quick-add-neighbor" data-target-id="${_feedAttr(a.id)}" style="padding:7px 16px;border:none;border-radius:999px;background:#fa342c;color:#fff;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;transition:background 0.15s;">이웃 추가</button>
     </div>`;
   }).join('');
 
@@ -100,6 +202,7 @@ function bindNeighborPaging(container, suggestList, accounts, friends) {
 
 // ── 친구 피드 ────────────────────────────────────────────────────
 export async function renderFriendFeed() {
+  _bindFriendFeedActions();
   const feedEl = document.getElementById('friend-feed');
   if (!feedEl) return;
   const user = getCurrentUser();
@@ -115,7 +218,7 @@ export async function renderFriendFeed() {
       for (const req of pending) {
         const a = accounts.find(x => x.id === req.from);
         const nm = a ? resolveNickname(a, accounts) : req.from.replace(/_/g, '');
-        nh += '<div class="friend-notif-row"><span>' + nm + '님이 이웃 요청을 보냈어요</span><div style="display:flex;gap:6px;"><button onclick="acceptFriendReq(\'' + req.id + '\')" style="background:var(--primary);color:#fff;border:none;border-radius:var(--radius-sm);padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;">수락</button><button onclick="rejectFriendReq(\'' + req.id + '\')" style="background:var(--surface3);color:var(--text-secondary);border:none;border-radius:var(--radius-sm);padding:6px 12px;font-size:12px;cursor:pointer;">거절</button></div></div>';
+        nh += '<div class="friend-notif-row"><span>' + nm + '님이 이웃 요청을 보냈어요</span><div style="display:flex;gap:6px;"><button type="button" data-feed-action="accept-friend-request" data-request-id="' + _feedAttr(req.id) + '" style="background:var(--primary);color:#fff;border:none;border-radius:var(--radius-sm);padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;">수락</button><button type="button" data-feed-action="reject-friend-request" data-request-id="' + _feedAttr(req.id) + '" style="background:var(--surface3);color:var(--text-secondary);border:none;border-radius:var(--radius-sm);padding:6px 12px;font-size:12px;cursor:pointer;">거절</button></div></div>';
       }
       notifEl.innerHTML = nh;
     } else if (notifEl) { notifEl.style.display = 'none'; }
@@ -218,7 +321,7 @@ export async function renderFriendFeed() {
             const foodText = mealDisplayText(foods, memo, photo ? '사진 기록' : '메뉴 미기록').slice(0, 30);
             const kcal = foods.reduce((s, x) => s + (x.kcal || 0), 0);
             const lb = {breakfast:'🌅',lunch:'☀️',dinner:'🌙',snack:'🥤'}[meal];
-            const photoThumb = photo ? `<button type="button" aria-label="${lb} 식단 사진 보기" onclick="event.stopPropagation();openMealPhotoLightbox('${String(photo).replace(/'/g,"\\'")}')" style="width:34px;height:34px;border:0;border-radius:8px;overflow:hidden;padding:0;flex-shrink:0;background:var(--surface2);cursor:pointer;"><img src="${escapeHtml(photo)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;"></button>` : '';
+            const photoThumb = photo ? `<button type="button" aria-label="${lb} 식단 사진 보기" data-feed-action="open-meal-photo" data-photo="${_feedAttr(photo)}" style="width:34px;height:34px;border:0;border-radius:8px;overflow:hidden;padding:0;flex-shrink:0;background:var(--surface2);cursor:pointer;"><img src="${escapeHtml(photo)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;"></button>` : '';
             items += '<div class="friend-feed-item"><span style="display:flex;align-items:center;gap:8px;min-width:0;">' + photoThumb + '<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + lb + ' ' + escapeHtml(foodText) + (kcal ? ' (' + kcal + 'kcal)' : '') + '</span></span></div>';
           }
         });
@@ -229,14 +332,14 @@ export async function renderFriendFeed() {
       let cheerBtn = '';
       if (hasToday) {
         if (isMutual) {
-          cheerBtn = `<button class="friend-cheer-btn" data-cheer-fid="${f.friendId}" data-cheer-name="${name.replace(/"/g,'&quot;')}" data-is-mutual="1" title="서로 응원!" style="padding:4px 10px;border:none;border-radius:999px;background:var(--primary);color:#fff;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.15s;">🤝 함께응원!</button>`;
+          cheerBtn = `<button class="friend-cheer-btn" data-feed-action="send-cheer" data-cheer-fid="${_feedAttr(f.friendId)}" data-cheer-name="${_feedAttr(name)}" data-is-mutual="1" title="서로 응원!" style="padding:4px 10px;border:none;border-radius:999px;background:var(--primary);color:#fff;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.15s;">🤝 함께응원!</button>`;
         } else if (cs.iSent) {
-          cheerBtn = `<button class="friend-cheer-btn" data-cheer-fid="${f.friendId}" data-cheer-name="${name.replace(/"/g,'&quot;')}" data-is-mutual="0" title="응원 보내기" style="padding:4px 10px;border:none;border-radius:999px;background:var(--primary-bg);color:var(--primary);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.15s;opacity:0.7;">✓ 응원 완료</button>`;
+          cheerBtn = `<button class="friend-cheer-btn" data-feed-action="send-cheer" data-cheer-fid="${_feedAttr(f.friendId)}" data-cheer-name="${_feedAttr(name)}" data-is-mutual="0" title="응원 보내기" style="padding:4px 10px;border:none;border-radius:999px;background:var(--primary-bg);color:var(--primary);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.15s;opacity:0.7;">✓ 응원 완료</button>`;
         } else {
-          cheerBtn = `<button class="friend-cheer-btn" data-cheer-fid="${f.friendId}" data-cheer-name="${name.replace(/"/g,'&quot;')}" data-is-mutual="0" title="응원 보내기" style="padding:4px 10px;border:none;border-radius:999px;background:var(--primary-bg);color:var(--primary);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.15s;">👏 응원</button>`;
+          cheerBtn = `<button class="friend-cheer-btn" data-feed-action="send-cheer" data-cheer-fid="${_feedAttr(f.friendId)}" data-cheer-name="${_feedAttr(name)}" data-is-mutual="0" title="응원 보내기" style="padding:4px 10px;border:none;border-radius:999px;background:var(--primary-bg);color:var(--primary);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.15s;">👏 응원</button>`;
         }
       }
-      friendCards.push({ statusClass, html: `<div class="friend-card"><div class="friend-card-header"><span class="friend-avatar" style="font-size:18px;">🍅<span class="status-dot ${statusClass}"></span></span><span class="friend-name" data-fid="${f.friendId}" data-fname="${fullName.replace(/"/g,'&quot;')}" style="cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;">${name}</span><div style="display:flex;gap:6px;align-items:center;">${cheerBtn}<button class="friend-gift-btn" data-gift-fid="${f.friendId}" data-gift-name="${fullName.replace(/"/g,'&quot;')}" title="토마토 선물">🍅</button></div></div>${items}</div>` });
+      friendCards.push({ statusClass, html: `<div class="friend-card"><div class="friend-card-header"><span class="friend-avatar" style="font-size:18px;">🍅<span class="status-dot ${statusClass}"></span></span><span class="friend-name" data-feed-action="open-profile" data-fid="${_feedAttr(f.friendId)}" data-fname="${_feedAttr(fullName)}" style="cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;">${name}</span><div style="display:flex;gap:6px;align-items:center;">${cheerBtn}<button class="friend-gift-btn" data-feed-action="open-gift" data-gift-fid="${_feedAttr(f.friendId)}" data-gift-name="${_feedAttr(fullName)}" title="토마토 선물">🍅</button></div></div>${items}</div>` });
     }
 
     const statusOrder = { active: 0, recent: 1, inactive: 2 };
@@ -258,7 +361,7 @@ export async function renderFriendFeed() {
     if (avatarEntries.length > 0) {
       const avatars = avatarEntries.map(e => {
         const initial = e.name.charAt(0);
-        return `<div class="activity-avatar-item" data-fid="${e.fid}" data-fname="${e.fullName.replace(/"/g,'&quot;')}">
+        return `<div class="activity-avatar-item" data-feed-action="open-profile" data-fid="${_feedAttr(e.fid)}" data-fname="${_feedAttr(e.fullName)}">
           <div class="activity-avatar ${e.statusClass}">${initial}</div>
           <div class="activity-avatar-name">${e.name}</div>
         </div>`;
@@ -274,13 +377,13 @@ export async function renderFriendFeed() {
       pagedHtml += `<div class="friend-page" data-page="${p}" style="${p > 0 ? 'display:none' : ''}">${pageCards.join('')}</div>`;
     }
     const dotsHtml = totalPages > 1
-      ? `<div class="friend-paging-controls">${Array.from({length:totalPages}, (_,i) => `<button class="friend-paging-dot${i===0?' active':''}" data-fp="${i}"></button>`).join('')}</div>`
+      ? `<div class="friend-paging-controls">${Array.from({length:totalPages}, (_,i) => `<button type="button" class="friend-paging-dot${i===0?' active':''}" data-feed-action="select-feed-page" data-fp="${i}"></button>`).join('')}</div>`
       : '';
 
     let hiddenSection = '';
     if (hiddenCards.length > 0) {
       hiddenSection = `<div class="inactive-friends-section">
-        <button class="inactive-friends-toggle" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'':'none';this.textContent=this.nextElementSibling.style.display==='none'?'비활성 이웃 ${hiddenCards.length}명 보기 ▾':'접기 ▴'">비활성 이웃 ${hiddenCards.length}명 보기 ▾</button>
+        <button type="button" class="inactive-friends-toggle" data-feed-action="toggle-inactive-friends" data-count="${hiddenCards.length}">비활성 이웃 ${hiddenCards.length}명 보기 ▾</button>
         <div style="display:none">${hiddenCards.map(c => c.html).join('')}</div>
       </div>`;
     }
@@ -288,10 +391,6 @@ export async function renderFriendFeed() {
     feedEl.innerHTML = banner + activityBarHtml + pagedHtml + dotsHtml + hiddenSection;
 
     updateHeroSocialProof(activeNames);
-
-    feedEl.querySelectorAll('.activity-avatar-item').forEach(el => {
-      el.addEventListener('click', () => _openFriendProfile(el.dataset.fid, el.dataset.fname));
-    });
 
     let _friendPageCur = 0;
     const _friendPageTotal = totalPages;
@@ -303,12 +402,7 @@ export async function renderFriendFeed() {
       feedEl.querySelectorAll('.friend-paging-dot').forEach(d => d.classList.toggle('active', parseInt(d.dataset.fp) === page));
     }
 
-    feedEl.querySelectorAll('.friend-paging-dot').forEach(dot => {
-      dot.onclick = (e) => {
-        e.stopPropagation();
-        _goFriendPage(parseInt(dot.dataset.fp));
-      };
-    });
+    feedEl._friendFeedGoPage = _goFriendPage;
 
     if (_friendPageTotal > 1) {
       let _fsx = 0, _fsy = 0, _fswiping = false;
@@ -376,20 +470,13 @@ export async function renderFriendFeed() {
       btnEl.disabled = false;
     }
 
-    feedEl.onclick = (e) => {
-      if (e.target.closest('.friend-paging-dot')) return;
-      const nameEl = e.target.closest('.friend-name[data-fid]');
-      if (nameEl) { e.preventDefault(); _openFriendProfile(nameEl.dataset.fid, nameEl.dataset.fname); return; }
-      const cheerEl = e.target.closest('.friend-cheer-btn[data-cheer-fid]');
-      if (cheerEl) { _sendCheer(cheerEl); return; }
-      const giftEl = e.target.closest('.friend-gift-btn[data-gift-fid]');
-      if (giftEl) { _openTomatoGiftModal(giftEl.dataset.giftFid, giftEl.dataset.giftName); return; }
-    };
+    feedEl._friendFeedSendCheer = _sendCheer;
   } catch(e) { console.warn('[friends] feed:', e); feedEl.innerHTML = ''; }
 }
 
 // ── 친구 관리 모달 ───────────────────────────────────────────────
 window.openFriendManager = async function() {
+  _bindFriendFeedActions();
   const friends = await getMyFriends();
   const accounts = await getAccountList();
   let fl = '';
@@ -404,9 +491,9 @@ window.openFriendManager = async function() {
         <div style="font-size:14px;font-weight:500;">${nick}</div>
         ${nick !== realName ? `<div style="font-size:11px;color:var(--text-tertiary);">${realName}</div>` : ''}
       </div>
-      <button onclick="event.stopPropagation();openIntroduceFriend('${f.friendId}','${nick.replace(/'/g,"&#39;")}')" style="background:none;border:none;color:var(--seed-red-600,#fc6a66);font-size:12px;cursor:pointer;padding:4px 8px;">소개</button>
-      <button onclick="event.stopPropagation();editFriendNickname('${f.friendId}')" style="background:none;border:none;color:var(--primary);font-size:12px;cursor:pointer;padding:4px 8px;${!isAdmin() ? 'display:none;' : ''}">별명</button>
-      <button onclick="event.stopPropagation();deleteFriend('${f.reqId}')" style="background:none;border:none;color:var(--text-tertiary);font-size:12px;cursor:pointer;">삭제</button>
+      <button type="button" data-feed-action="introduce-friend" data-friend-id="${_feedAttr(f.friendId)}" data-friend-name="${_feedAttr(nick)}" style="background:none;border:none;color:var(--seed-red-600,#fc6a66);font-size:12px;cursor:pointer;padding:4px 8px;">소개</button>
+      <button type="button" data-feed-action="edit-friend-nickname" data-friend-id="${_feedAttr(f.friendId)}" style="background:none;border:none;color:var(--primary);font-size:12px;cursor:pointer;padding:4px 8px;${!isAdmin() ? 'display:none;' : ''}">별명</button>
+      <button type="button" data-feed-action="delete-friend" data-request-id="${_feedAttr(f.reqId)}" style="background:none;border:none;color:var(--text-tertiary);font-size:12px;cursor:pointer;">삭제</button>
     </div>`;
   }).join('');
 
@@ -426,7 +513,7 @@ window.openFriendManager = async function() {
           <div style="flex:1;min-width:0;cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;">
             <div style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nick}</div>
           </div>
-          <button onclick="event.stopPropagation();quickAddNeighbor('${a.id}')" style="padding:7px 16px;border:none;border-radius:999px;background:#fa342c;color:#fff;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;transition:background 0.15s;">이웃 추가</button>
+          <button type="button" data-feed-action="quick-add-neighbor" data-target-id="${_feedAttr(a.id)}" style="padding:7px 16px;border:none;border-radius:999px;background:#fa342c;color:#fff;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;transition:background 0.15s;">이웃 추가</button>
         </div>`;
       }).join('');
       neighborHtml = `
@@ -437,8 +524,8 @@ window.openFriendManager = async function() {
 
   document.getElementById('dynamic-modal')?.remove();
   const modal = document.createElement('div'); modal.id = 'dynamic-modal'; document.body.appendChild(modal);
-  modal.innerHTML = `<div class="modal-backdrop" style="display:flex;z-index:1000;" onclick="if(event.target===this){document.getElementById('dynamic-modal')?.remove();}">
-    <div class="modal-sheet" style="max-width:400px;" onclick="event.stopPropagation()">
+  modal.innerHTML = `<div class="modal-backdrop" style="display:flex;z-index:1000;">
+    <div class="modal-sheet" style="max-width:400px;">
       <div class="sheet-handle"></div>
       <div class="modal-title" style="font-size:17px;font-weight:700;">이웃 관리</div>
       <div style="margin-bottom:16px;">
@@ -446,30 +533,17 @@ window.openFriendManager = async function() {
         <div style="display:flex;gap:6px;">
           <input class="login-input" id="friend-add-last" placeholder="성" style="flex:1;height:40px;font-size:13px;">
           <input class="login-input" id="friend-add-first" placeholder="이름" style="flex:2;height:40px;font-size:13px;">
-          <button onclick="sendFriendReq()" style="background:var(--primary);color:#fff;border:none;border-radius:999px;padding:0 16px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">요청</button>
+          <button type="button" data-feed-action="send-friend-request" style="background:var(--primary);color:#fff;border:none;border-radius:999px;padding:0 16px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">요청</button>
         </div>
         <div id="friend-add-status" style="font-size:12px;margin-top:6px;min-height:16px;"></div>
       </div>
       <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;">내 이웃</div>
       <div id="friend-manager-list">${fl}</div>
       ${neighborHtml}
-      <button onclick="document.getElementById('dynamic-modal')?.remove()" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text-secondary);font-size:13px;font-weight:600;cursor:pointer;margin-top:12px;">닫기</button>
+      <button type="button" data-feed-action="close-dynamic-modal" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text-secondary);font-size:13px;font-weight:600;cursor:pointer;margin-top:12px;">닫기</button>
     </div>
   </div>`;
-  modal.addEventListener('click', e => {
-    const row = e.target.closest('.friend-manager-row');
-    if (!row || e.target.closest('button')) return;
-    const fid = row.dataset.fid;
-    const fname = row.dataset.fname;
-    document.getElementById('dynamic-modal')?.remove();
-    _openFriendProfile(fid, fname);
-  });
-  modal.addEventListener('click', e => {
-    const nrow = e.target.closest('.neighbor-row');
-    if (!nrow || e.target.closest('button')) return;
-    document.getElementById('dynamic-modal')?.remove();
-    _openFriendProfile(nrow.dataset.nid, nrow.dataset.nnick);
-  });
+  _bindFriendManagerActions(modal);
 };
 
 window.sendFriendReq = async function() {
@@ -550,11 +624,12 @@ export const REACTIONS = [
 window.friendLike = async function(tid, dk, field) { await toggleLike(tid, dk, field); renderFriendFeed(); };
 
 window.showReactionPicker = function(btn, tid, dk, field) {
+  _bindFriendFeedActions();
   document.querySelectorAll('.reaction-picker').forEach(p => p.remove());
   const picker = document.createElement('div');
   picker.className = 'reaction-picker';
   picker.innerHTML = REACTIONS.map(r =>
-    `<button class="reaction-opt" onclick="sendReaction('${tid}','${dk}','${field}','${r.emoji}');event.stopPropagation();">${r.emoji}</button>`
+    `<button type="button" class="reaction-opt" data-feed-action="send-reaction" data-target-id="${_feedAttr(tid)}" data-date-key="${_feedAttr(dk)}" data-field="${_feedAttr(field)}" data-emoji="${_feedAttr(r.emoji)}">${r.emoji}</button>`
   ).join('');
   btn.parentElement.style.position = 'relative';
   btn.parentElement.appendChild(picker);

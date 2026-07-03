@@ -1,5 +1,39 @@
 # 다음 자동 액션
 
+## 2026-07-03 Social Interaction Render Decoupling
+
+- 상태: `ready_for_review`
+- 계획: `docs/ai/features/2026-07-03-social-interaction-render-decoupling.md`
+- 리뷰:
+  - `docs/ai/reviews/2026-07-03-social-interaction-slice1-review.md`
+- 요청: 운동 코드에서 멈추지 않고 앱 전체의 UI/backend 상호의존성, inline handler, 전역 함수, 무거운 클릭 경로를 줄인다.
+- 진단 요약:
+  1. 직전 전역 계획은 `complete`이고 후속 후보로 social feed/profile reaction 중복 렌더와 남은 inline handler 재인벤토리를 지정했다.
+  2. `home/friend-profile.js`에는 `onclick=` 29개, `home/friend-feed.js`에는 `onclick=` 13개가 남아 있다.
+  3. social reaction/comment 경로는 `showReactionPicker`, `sendReaction`, `submitComment`, `editCommentUI`, `deleteCommentUI` 같은 전역 함수와 inline payload escaping에 의존한다.
+  4. reaction/comment action은 data 저장 직후 profile/feed 전체 렌더를 직접 호출해 클릭 경로가 무거워질 수 있다.
+- 실행 슬라이스:
+  1. Slice 1: `home/friend-feed.js` feed/manager/reaction picker 주요 inline action을 `data-feed-action` delegate로 전환한다.
+  2. Slice 2: `home/friend-profile.js` reaction/comment inline action을 기존 `_bindFriendProfileActions(root)` 계약으로 흡수한다.
+  3. Slice 3: social render scheduler로 feed/profile 전체 렌더 요청을 병합한다.
+- 계획 검증:
+  1. PASS: 새 계획 문서 생성
+  2. PASS: 다음 실행 slice가 `home/friend-feed.js` feed action namespace로 제한됨
+- Slice 1 실행 요약:
+  1. `home/friend-feed.js`에 `_bindFriendFeedActions(root)`와 `_runFriendFeedAction(action, control, event)`를 추가했다.
+  2. `#friend-feed`, `#friend-notifications`, friend manager modal, reaction picker option의 주요 버튼을 `data-feed-action`으로 전환했다.
+  3. friend manager modal은 `_bindFriendManagerActions(modal)`로 row open/backdrop close를 처리한다.
+  4. feed render 후 붙이던 `.onclick`/per-element listener는 `_friendFeedGoPage`, `_friendFeedSendCheer` root callback + delegate 호출로 옮겼다.
+  5. `tests/social-friend-feed-actions.test.js`를 추가했고 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z18-social-feed-actions`로 bump했다.
+- Slice 1 검증:
+  1. PASS: `node --check home/friend-feed.js; node --check sw.js; node --check tests/social-friend-feed-actions.test.js`
+  2. PASS: `node --test tests/social-friend-feed-actions.test.js tests/social-friend-profile-actions.test.js tests/login-action-bridge.test.js tests/app-shell-action-bridge.test.js tests/pwa-update-auto-reload.test.js` - 19 pass
+  3. PASS: `node --test tests/*.test.js` - 688 pass
+  4. PASS: `git diff --check`
+  5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
+  6. not verified yet: 운영 Pages 배포와 운영 URL browser flow 검증이 남아 있다.
+- 다음 액션: Slice 1 `friend feed action bridge` 리뷰와 운영 배포 검증을 완료한다.
+
 ## 2026-07-03 전역 상호작용 결합 완화 리팩토링
 
 - 상태: `complete`
