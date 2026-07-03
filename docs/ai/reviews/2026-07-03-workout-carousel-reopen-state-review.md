@@ -30,6 +30,9 @@
 3. PASS: `node --test tests/*.test.js` - 649 pass
 4. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=868`
 5. PASS: `git diff --check`
+6. PASS: `npm.cmd run deploy:production` - 운영계 deploy verify 및 기본 marker 검증 완료
+7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <deployed-commit>`
+8. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ "sw.js::tomatofarm-v20260703z6-workout-carousel-reopen-state" "render-calendar.js::_workoutSheetCarouselSnapshots" "render-calendar.js::_restoreRememberedWorkoutSheetCarousel" "render-calendar.js::_rememberWorkoutSheetCarouselState"`
 
 ## 잔여 리스크
 
