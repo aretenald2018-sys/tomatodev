@@ -29,3 +29,9 @@ node --check workout-ui.js && node --check sw.js && node --test tests/running-en
 
 Post timer-guard/cache-marker result:
 exit 0; targeted input UX 24/24 pass; runtime assets ok refs=879; full suite 698/698 pass; cache marker tomatofarm-v20260703z22-input-ux-timer-guard.
+
+Post gate-blocker verification:
+node --check tests/input-ux-commercial-completion.test.js && node --check tests/diet-add-button-binding.test.js && node --test tests/running-entry.test.js tests/diet-add-button-binding.test.js tests/input-ux-commercial-completion.test.js && node scripts/verify-runtime-assets.mjs && node --test tests/*.test.js && git diff --check
+
+Post gate-blocker result:
+exit 0; behavioralized targeted input UX 19/19 pass; runtime assets ok refs=879; full suite 693/693 pass; git diff --check exit 0.

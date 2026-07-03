@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": "2026-07-03T13:13:15.299Z",
-  "updatedAt": "2026-07-03T13:35:57.123Z",
+  "updatedAt": "2026-07-03T14:54:00.619Z",
   "briefPath": ".omo/ulw-loop/brief.md",
   "goalsPath": ".omo/ulw-loop/goals.json",
   "ledgerPath": ".omo/ulw-loop/ledger.jsonl",
@@ -11,7 +11,7 @@
       "id": "G001-write-the-final-plan-for-tomato-farm",
       "title": "Write the final plan for Tomato Farm input UX, then implement the app...",
       "objective": "Write the final plan for Tomato Farm input UX, then implement the approved end-to-end improvements for gym exercise entry, meal entry, and running/cardio entry. Preserve vanilla JavaScript, TDS Mobile/Seed style, Firestore save safety, service-worker cache rules, and production Pages verification. Scope excludes barcode scanner, music integration, shoe tagging, social challenges, and long-form running plans.",
-      "status": "pending",
+      "status": "in_progress",
       "successCriteria": [
         {
           "id": "C001",
@@ -19,9 +19,9 @@
           "userModel": "happy",
           "expectedEvidence": ".omo/evidence/input-ux-commercial-completion/red-green-tests.txt plus passing targeted input UX tests.",
           "essential": true,
-          "capturedEvidence": "node --test tests/running-entry.test.js tests/diet-add-button-binding.test.js tests/input-ux-commercial-completion.test.js => exit 0; 24 tests; 24 pass; 0 fail. Evidence: .omo/evidence/input-ux-commercial-completion/red-green-tests.txt",
+          "capturedEvidence": "Post gate-blocker targeted verification: node --check tests/input-ux-commercial-completion.test.js && node --check tests/diet-add-button-binding.test.js && node --test tests/running-entry.test.js tests/diet-add-button-binding.test.js tests/input-ux-commercial-completion.test.js => exit 0; behavioralized targeted input UX 19 tests; 19 pass; 0 fail. Evidence: .omo/evidence/input-ux-commercial-completion/red-green-tests.txt",
           "status": "pass",
-          "capturedAt": "2026-07-03T13:35:56.275Z"
+          "capturedAt": "2026-07-03T14:54:00.447Z"
         },
         {
           "id": "C002",
@@ -29,9 +29,9 @@
           "userModel": "edge",
           "expectedEvidence": ".omo/evidence/input-ux-commercial-completion/regression-tests.txt plus passing full Node test suite.",
           "essential": true,
-          "capturedEvidence": "node --check changed JS files => exit 0; node scripts/verify-runtime-assets.mjs => exit 0; node --test tests/*.test.js => exit 0; 698 tests; 698 pass; 0 fail. Evidence: .omo/evidence/input-ux-commercial-completion/regression-tests.txt",
+          "capturedEvidence": "Post gate-blocker regression verification: node scripts/verify-runtime-assets.mjs => exit 0 refs=879; node --test tests/*.test.js => exit 0; 693 tests; 693 pass; 0 fail; git diff --check => exit 0. Evidence: .omo/evidence/input-ux-commercial-completion/regression-tests.txt",
           "status": "pass",
-          "capturedAt": "2026-07-03T13:35:56.930Z"
+          "capturedAt": "2026-07-03T14:54:00.545Z"
         },
         {
           "id": "C003",
@@ -39,14 +39,17 @@
           "userModel": "regression",
           "expectedEvidence": ".omo/evidence/input-ux-commercial-completion/deploy-verify.txt and browser QA evidence under .omo/evidence/input-ux-commercial-completion/browser-qa/.",
           "essential": false,
-          "capturedEvidence": null,
-          "status": "pending"
+          "capturedEvidence": "Production browser QA rerun after gate blocker: .omo/evidence/input-ux-commercial-completion/browser-qa/browser-qa-report.json => HTTP 200; verdict passed; unclassifiedConsoleIssues=[]; pageErrors=[]; AppCheck 403 URL redacted and classified as known Firebase AppCheck pre-auth noise; cfState active/open/wod/duration/timerStarted=false; cardioState active/standalone/speed/minutes/hasSave; mealState breakfast actions search/direct/photo-ai/photo-attach/skip. cleanup: removed QA-only sheets and closed Playwright page/context/browser; no localhost dev server started.",
+          "status": "pass",
+          "capturedAt": "2026-07-03T14:54:00.619Z"
         }
       ],
-      "attempt": 0,
+      "attempt": 1,
       "createdAt": "2026-07-03T13:13:15.299Z",
-      "updatedAt": "2026-07-03T13:35:57.123Z"
+      "updatedAt": "2026-07-03T14:54:00.619Z",
+      "startedAt": "2026-07-03T14:37:36.318Z"
     }
   ],
-  "codexObjective": "Complete the durable ulw-loop plan in .omo/ulw-loop/goals.json, including later accepted/appended stories, under the original brief constraints; use .omo/ulw-loop/ledger.jsonl as the audit trail."
+  "codexObjective": "Complete the durable ulw-loop plan in .omo/ulw-loop/goals.json, including later accepted/appended stories, under the original brief constraints; use .omo/ulw-loop/ledger.jsonl as the audit trail.",
+  "activeGoalId": "G001-write-the-final-plan-for-tomato-farm"
 }

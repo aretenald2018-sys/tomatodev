@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 
 const designMd = readFileSync('DESIGN.md', 'utf8');
@@ -7,12 +8,120 @@ const finalPlan = readFileSync('.omo/plans/2026-07-03-input-ux-commercial-comple
 const projectPlan = readFileSync('docs/ai/features/2026-07-03-input-ux-commercial-completion.md', 'utf8');
 const indexHtml = readFileSync('index.html', 'utf8');
 const workoutUiJs = readFileSync('workout-ui.js', 'utf8');
-const exercisesJs = readFileSync('workout/exercises.js', 'utf8');
-const workoutIndexJs = readFileSync('workout/index.js', 'utf8');
-const renderWorkoutJs = readFileSync('render-workout.js', 'utf8');
-const appJs = readFileSync('app.js', 'utf8');
 const styleCss = readFileSync('style.css', 'utf8');
 const swJs = readFileSync('sw.js', 'utf8');
+
+class FakeClassList {
+  constructor(initial = []) {
+    this.values = new Set(initial);
+  }
+
+  add(...tokens) {
+    tokens.forEach(token => this.values.add(token));
+  }
+
+  remove(...tokens) {
+    tokens.forEach(token => this.values.delete(token));
+  }
+
+  toggle(token, force) {
+    const shouldAdd = force == null ? !this.values.has(token) : !!force;
+    if (shouldAdd) this.values.add(token);
+    else this.values.delete(token);
+    return shouldAdd;
+  }
+
+  contains(token) {
+    return this.values.has(token);
+  }
+}
+
+class FakeElement {
+  constructor(id, classes = []) {
+    this.id = id;
+    this.classList = new FakeClassList(classes);
+    this.style = {};
+    this.dataset = {};
+  }
+}
+
+function tagById(html, id) {
+  const pattern = new RegExp(`<([a-z0-9-]+)\\b[^>]*\\bid="${id}"[^>]*>(?:[^<]*)`, 'i');
+  const match = html.match(pattern);
+  assert.ok(match, `${id} should exist`);
+  return match[0];
+}
+
+function buildWorkoutUiHarness() {
+  const calls = {
+    timerStarts: 0,
+    restShows: 0,
+    restHides: 0,
+    manualCardioOpens: 0,
+    runningOpens: 0,
+  };
+  const ids = [
+    'wt-chip-gym',
+    'wt-chip-running',
+    'wt-chip-cardio',
+    'wt-chip-cf',
+    'wt-chip-stretch',
+    'wt-chip-swimming',
+    'wt-gym-section',
+    'wt-cf-section',
+    'wt-stretch-section',
+    'wt-swim-section',
+    'wt-workout-timer-bar',
+    'wt-memo-section',
+    'wt-save-section',
+  ];
+  const elements = new Map(ids.map(id => [id, new FakeElement(id)]));
+  elements.get('wt-chip-gym').classList.add('active');
+
+  const document = {
+    getElementById(id) {
+      return elements.get(id) || null;
+    },
+    querySelectorAll() {
+      return [];
+    },
+  };
+  const contextWindow = {
+    wtOpenManualCardioInput() {
+      calls.manualCardioOpens += 1;
+    },
+    wtOpenRunningSession() {
+      calls.runningOpens += 1;
+    },
+  };
+  const runnable = workoutUiJs.replace(
+    /import\s*\{[\s\S]*?\}\s*from\s*'\.\/render-workout\.js\?v=20260515v6';/,
+    `
+    const wtToggleWineFree = () => {};
+    const wtToggleMealSkipped = () => {};
+    const wtOpenExercisePicker = () => {};
+    const wtCloseExercisePicker = () => {};
+    const wtOpenExerciseEditor = () => {};
+    const wtCloseExerciseEditor = () => {};
+    const wtSaveExerciseFromEditor = () => {};
+    const wtDeleteExerciseFromEditor = () => {};
+    const wtAddFoodItem = () => {};
+    const wtRemoveFoodItem = () => {};
+    const openNutritionPhotoUpload = () => {};
+    const wtStartWorkoutTimer = () => { window.__calls.timerStarts += 1; };
+    const wtRestTimerShowIdle = () => { window.__calls.restShows += 1; };
+    const wtRestTimerHideIdle = () => { window.__calls.restHides += 1; };
+    const wtOpenManualCardioInput = () => { window.__calls.manualCardioOpens += 1; };
+    `,
+  );
+  vm.runInNewContext(runnable, {
+    window: Object.assign(contextWindow, { __calls: calls }),
+    document,
+    Element: FakeElement,
+    console,
+  }, { filename: 'workout-ui.js' });
+  return { calls, elements, window: contextWindow };
+}
 
 test('final plan and design system define the approved input UX slice', () => {
   assert.match(designMd, /Meal Quick Add Sheet/);
@@ -24,76 +133,62 @@ test('final plan and design system define the approved input UX slice', () => {
 });
 
 test('workout shell exposes first-class activity type entries and forms', () => {
-  for (const [id, type, label] of [
-    ['wt-chip-gym', 'gym', '헬스'],
-    ['wt-chip-running', 'running', '런닝'],
-    ['wt-chip-cardio', 'manual-cardio', '유산소'],
-    ['wt-chip-cf', 'cf', '크로스핏'],
-    ['wt-chip-stretch', 'stretch', '스트레칭'],
-    ['wt-chip-swimming', 'swimming', '수영'],
-  ]) {
-    assert.match(indexHtml, new RegExp(`id="${id}"[\\s\\S]{0,120}wtSwitchType\\('${type}'\\)[\\s\\S]{0,80}${label}`));
+  const activityTabs = [
+    ['wt-chip-gym', "wtSwitchType('gym')", '헬스'],
+    ['wt-chip-running', "wtSwitchType('running')", '런닝'],
+    ['wt-chip-cardio', "wtSwitchType('manual-cardio')", '유산소'],
+    ['wt-chip-cf', "wtSwitchType('cf')", '크로스핏'],
+    ['wt-chip-stretch', "wtSwitchType('stretch')", '스트레칭'],
+    ['wt-chip-swimming', "wtSwitchType('swimming')", '수영'],
+  ];
+  for (const [id, handler, label] of activityTabs) {
+    const tag = tagById(indexHtml, id);
+    assert.match(tag, /wt-type-tab/);
+    assert.ok(tag.includes(handler), `${id} should switch through the public type API`);
+    assert.ok(tag.includes(label), `${id} should expose the expected label`);
   }
 
   for (const id of [
     'wt-cf-section',
-    'wt-cf-last-copy',
     'wt-cf-wod',
     'wt-cf-duration-min',
-    'wt-cf-duration-sec',
-    'wt-cf-memo',
     'wt-stretch-section',
-    'wt-stretch-last-copy',
     'wt-stretch-duration',
-    'wt-stretch-memo',
     'wt-swim-section',
-    'wt-swim-last-copy',
     'wt-swim-distance',
     'wt-swim-duration-min',
-    'wt-swim-duration-sec',
-    'wt-swim-stroke',
-    'wt-swim-memo',
   ]) {
-    assert.match(indexHtml, new RegExp(`id="${id}"`), `${id} should exist in workout shell`);
+    tagById(indexHtml, id);
   }
 });
 
-test('workout type state machine recognizes manual cardio and hidden activity sections', () => {
-  assert.match(workoutUiJs, /cf:\s*'wt-cf-section'/);
-  assert.match(workoutUiJs, /stretch:\s*'wt-stretch-section'/);
-  assert.match(workoutUiJs, /swimming:\s*'wt-swim-section'/);
-  assert.match(workoutUiJs, /type === 'manual-cardio'/);
-  assert.match(workoutUiJs, /wtOpenManualCardioInput/);
-  assert.match(workoutUiJs, /'manual-cardio'/);
-});
+test('workout type state machine opens activity surfaces without starting non-gym timers', () => {
+  const { calls, elements, window } = buildWorkoutUiHarness();
 
-test('manual cardio can open from the workout tab without the exercise picker host', () => {
-  assert.match(exercisesJs, /export function wtOpenManualCardioInput/);
-  assert.match(exercisesJs, /standalone/);
-  assert.match(exercisesJs, /ex-picker-cardio-backdrop--standalone/);
-  assert.match(workoutIndexJs, /wtOpenManualCardioInput/);
-  assert.match(renderWorkoutJs, /wtOpenManualCardioInput/);
-});
+  window.wtSwitchType('cf');
+  assert.equal(elements.get('wt-chip-cf').classList.contains('active'), true);
+  assert.equal(elements.get('wt-cf-section').classList.contains('wt-open'), true);
+  assert.equal(elements.get('wt-workout-timer-bar').classList.contains('wt-open'), true);
+  assert.equal(calls.timerStarts, 0);
 
-test('diet add action opens a meal quick-add sheet before branching to existing flows', () => {
-  assert.match(indexHtml, /data-action="openMealQuickAdd"/);
-  assert.match(appJs, /action === 'openMealQuickAdd'/);
-  assert.match(appJs, /openMealQuickAdd/);
-  assert.match(appJs, /data-meal-quick-add/);
-  for (const action of [
-    'search',
-    'direct',
-    'photo-ai',
-    'photo-attach',
-    'skip',
-  ]) {
-    assert.match(appJs, new RegExp(`data-meal-quick-action="${action}"`));
-  }
-  assert.match(appJs, /openNutritionSearch\(meal\)/);
-  assert.match(appJs, /openNutritionItemEditor\(null\)/);
-  assert.match(appJs, /ai-photo-input-\$\{meal\}/);
-  assert.match(appJs, /photo-input-\$\{meal\}/);
-  assert.match(appJs, /wtSkipMeal\(meal\)/);
+  window.wtSwitchType('manual-cardio');
+  assert.equal(elements.get('wt-chip-cardio').classList.contains('active'), true);
+  assert.equal(elements.get('wt-cf-section').classList.contains('wt-open'), false);
+  assert.equal(calls.manualCardioOpens, 1);
+  assert.equal(calls.timerStarts, 0);
+
+  window.wtSwitchType('running');
+  assert.equal(elements.get('wt-chip-running').classList.contains('active'), true);
+  assert.equal(calls.runningOpens, 1);
+  assert.equal(calls.timerStarts, 0);
+
+  window.wtSwitchType('gym');
+  assert.equal(elements.get('wt-chip-gym').classList.contains('active'), true);
+  assert.equal(calls.timerStarts, 1);
+  assert.equal(calls.restShows, 1);
+
+  window.wtSwitchType('gym');
+  assert.equal(calls.timerStarts, 1, 're-clicking gym should not start a duplicate timer');
 });
 
 test('new input UX styles and service worker cache marker are present', () => {

@@ -22,3 +22,17 @@ node --test tests/running-entry.test.js tests/diet-add-button-binding.test.js te
 
 Result:
 exit 0; 24 tests; 24 pass; 0 fail.
+
+Gate blocker resolution, 2026-07-03
+
+Change:
+Replaced implementation-mirroring input UX tests with VM/fake-DOM behavioral checks:
+- workout-ui type state machine is executed and proves CF/manual-cardio/running do not start the gym timer.
+- diet grid delegated click opens the quick-add sheet for each meal.
+- quick-add actions route to search, direct add, AI photo, photo attach, and skip flows.
+
+Command:
+node --check tests/input-ux-commercial-completion.test.js && node --check tests/diet-add-button-binding.test.js && node --test tests/running-entry.test.js tests/diet-add-button-binding.test.js tests/input-ux-commercial-completion.test.js
+
+Result:
+exit 0; 19 tests; 19 pass; 0 fail.
