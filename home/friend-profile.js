@@ -15,11 +15,16 @@ import { TODAY, getCurrentUser, getMyFriends, getAccountList,
 import { CONFIG } from '../config.js';
 import { mealDisplayText } from '../ai/meal-artifact-filter.js';
 import { resolveNickname, showToast, haptic, formatTimeAgo, escapeHtml } from './utils.js';
+import { createSocialRenderScheduler } from './social-render-scheduler.js';
 
 // 순환 참조 방지: renderHome, renderFriendFeed, refreshNotifCenter 주입
 let _renderHomeFn = null;
 let _renderFriendFeedFn = null;
 let _refreshNotifCenterFn = null;
+const _scheduleFriendProfileFeedRender = createSocialRenderScheduler(
+  () => _renderFriendFeedFn?.(),
+  'friend-profile feed render',
+);
 
 export function setFriendProfileDeps({ renderHome, renderFriendFeed, refreshNotifCenter }) {
   _renderHomeFn = renderHome;
@@ -1021,12 +1026,12 @@ window.sendReaction = async function(tid, dk, field, emoji) {
     document.getElementById('dynamic-modal').remove();
     window.openFriendProfile(tid, name);
   }
-  if (_renderFriendFeedFn) _renderFriendFeedFn();
+  _scheduleFriendProfileFeedRender('profile-reaction');
 };
 
 window.markNotifRead = async function(id) {
   await markNotificationRead(id);
-  if (_renderFriendFeedFn) _renderFriendFeedFn();
+  _scheduleFriendProfileFeedRender('notification-read');
   if (_refreshNotifCenterFn) _refreshNotifCenterFn();
 };
 

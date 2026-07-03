@@ -127,6 +127,19 @@
   2. social feed/profile tests
   3. full test, runtime assets, deployed marker
   4. 운영 URL browser 확인
+- 실행 요약:
+  1. `home/social-render-scheduler.js`를 추가해 social surface render 요청을 다음 프레임 1회로 병합한다.
+  2. `home/friend-feed.js`의 `quickAddNeighbor`와 `friendLike`는 `renderFriendFeed()` 직접 호출 대신 `_scheduleFriendFeedRender(...)`를 사용한다.
+  3. `home/friend-profile.js`의 reaction/notification read 후 feed refresh는 `_renderFriendFeedFn()` 직접 호출 대신 `_scheduleFriendProfileFeedRender(...)`를 사용한다.
+  4. `tests/social-render-scheduler.test.js`를 추가해 scheduler coalescing, 직접 렌더 호출 금지, `sw.js` 정적 asset 등록을 검증한다.
+  5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z20-social-render-scheduler`로 bump했고 `./home/social-render-scheduler.js`를 `STATIC_ASSETS`에 추가했다.
+- 현재 검증:
+  1. PASS: `node --check home/social-render-scheduler.js; node --check home/friend-feed.js; node --check home/friend-profile.js; node --check sw.js; node --check tests/social-render-scheduler.test.js`
+  2. PASS: `node --test tests/social-render-scheduler.test.js tests/social-friend-feed-actions.test.js tests/social-friend-profile-actions.test.js tests/login-action-bridge.test.js tests/app-shell-action-bridge.test.js tests/pwa-update-auto-reload.test.js` - 23 pass
+  3. PASS: `node --test tests/*.test.js` - 692 pass
+  4. PASS: `git diff --check`
+  5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=879`
+  6. not verified yet: 운영 Pages 배포와 운영 URL browser flow 검증이 남아 있다.
 
 ## 위험과 완화
 
@@ -144,5 +157,6 @@
 - 계획 세션 종료 상태: `ready_for_execution`
 - Slice 1 실행 후 상태: `deployed_with_auth_flow_gap`
 - Slice 2 실행 후 상태: `deployed_with_auth_flow_gap`
-- 다음 액션: Slice 3 `social render scheduler`를 실행한다.
+- Slice 3 실행 후 상태: `static_verified_pending_deploy`
+- 다음 액션: Slice 3 `social render scheduler` 리뷰와 운영 배포 검증을 완료한다.
 - 차단 질문: 없음

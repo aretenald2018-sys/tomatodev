@@ -931,5 +931,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260703z19-social-profile-actions/);
+  assert.match(swJs, /tomatofarm-v20260703z20-social-render-scheduler/);
 });

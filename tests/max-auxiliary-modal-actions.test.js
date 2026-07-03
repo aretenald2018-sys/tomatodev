@@ -95,5 +95,5 @@ test('remaining Max inline handlers are limited to the existing V4 sheet shell',
 });
 
 test('service worker cache version was bumped for Max auxiliary modal actions', () => {
-  assert.match(swJs, /tomatofarm-v20260703z19-social-profile-actions/);
+  assert.match(swJs, /tomatofarm-v20260703z20-social-render-scheduler/);
 });

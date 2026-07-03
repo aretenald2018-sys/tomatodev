@@ -12,6 +12,7 @@ import { isExerciseDaySuccess } from '../calc.js';
 import { mealDisplayText } from '../ai/meal-artifact-filter.js';
 import { resolveNickname, showToast, haptic, formatTimeAgo, escapeHtml } from './utils.js';
 import { updateHeroSocialProof } from './hero.js';
+import { createSocialRenderScheduler } from './social-render-scheduler.js';
 import { confirmAction } from '../utils/confirm-modal.js';
 
 const _NEIGHBOR_PAGE_SIZE = 3;
@@ -474,6 +475,11 @@ export async function renderFriendFeed() {
   } catch(e) { console.warn('[friends] feed:', e); feedEl.innerHTML = ''; }
 }
 
+const _scheduleFriendFeedRender = createSocialRenderScheduler(
+  () => renderFriendFeed(),
+  'friend-feed render',
+);
+
 // ── 친구 관리 모달 ───────────────────────────────────────────────
 window.openFriendManager = async function() {
   _bindFriendFeedActions();
@@ -593,7 +599,7 @@ window.quickAddNeighbor = async function(targetId) {
   const r = await sendFriendRequest(myId, targetId);
   if (r.error) { showToast(r.error, 2500, 'error'); }
   else { showToast('이웃 요청을 보냈어요!', 2500, 'success'); }
-  renderFriendFeed();
+  _scheduleFriendFeedRender('quick-add-neighbor');
 };
 
 window.editFriendNickname = async function(friendId) {
@@ -621,7 +627,10 @@ export const REACTIONS = [
   { emoji: '🍅', label: '토마토' },
 ];
 
-window.friendLike = async function(tid, dk, field) { await toggleLike(tid, dk, field); renderFriendFeed(); };
+window.friendLike = async function(tid, dk, field) {
+  await toggleLike(tid, dk, field);
+  _scheduleFriendFeedRender('friend-like');
+};
 
 window.showReactionPicker = function(btn, tid, dk, field) {
   _bindFriendFeedActions();

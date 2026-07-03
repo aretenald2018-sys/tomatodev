@@ -52,5 +52,5 @@ test('exercise picker exposes visible create actions for CRUD', () => {
 });
 
 test('service worker cache version was bumped for stats picker UI polish', () => {
-  assert.match(swJs, /tomatofarm-v20260703z19-social-profile-actions/);
+  assert.match(swJs, /tomatofarm-v20260703z20-social-render-scheduler/);
 });

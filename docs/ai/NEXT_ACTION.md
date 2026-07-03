@@ -7,6 +7,7 @@
 - 리뷰:
   - `docs/ai/reviews/2026-07-03-social-interaction-slice1-review.md`
   - `docs/ai/reviews/2026-07-03-social-interaction-slice2-review.md`
+  - `docs/ai/reviews/2026-07-03-social-interaction-slice3-review.md`
 - 요청: 운동 코드에서 멈추지 않고 앱 전체의 UI/backend 상호의존성, inline handler, 전역 함수, 무거운 클릭 경로를 줄인다.
 - 진단 요약:
   1. 직전 전역 계획은 `complete`이고 후속 후보로 social feed/profile reaction 중복 렌더와 남은 inline handler 재인벤토리를 지정했다.
@@ -56,7 +57,20 @@
   10. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ sw.js::tomatofarm-v20260703z19-social-profile-actions home/friend-profile.js::_bindFriendProfileActions home/friend-profile.js::data-social-action home/friend-profile.js::confirm-edit-comment tests/social-friend-profile-actions.test.js::tomatofarm-v20260703z19-social-profile-actions`
   11. PASS: 운영 URL browser 확인 - `https://aretenald2018-sys.github.io/tomatofarm/` title `토마토 키우기`, login screen/app shell 표시, console error 0.
   12. not verified yet: 인증 세션이 없어 실제 friend profile 내부 reaction/comment `data-social-action` 클릭 flow는 자동 검증하지 못했다.
-- 다음 액션: Slice 3 `social render scheduler`를 실행한다.
+- Slice 3 실행 요약:
+  1. `home/social-render-scheduler.js`를 추가해 social surface render 요청을 다음 프레임 1회로 병합한다.
+  2. `home/friend-feed.js`의 `quickAddNeighbor`와 `friendLike`는 `renderFriendFeed()` 직접 호출 대신 `_scheduleFriendFeedRender(...)`를 사용한다.
+  3. `home/friend-profile.js`의 reaction/notification read 후 feed refresh는 `_renderFriendFeedFn()` 직접 호출 대신 `_scheduleFriendProfileFeedRender(...)`를 사용한다.
+  4. `tests/social-render-scheduler.test.js`를 추가해 scheduler coalescing, 직접 렌더 호출 금지, `sw.js` 정적 asset 등록을 검증한다.
+  5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z20-social-render-scheduler`로 bump했고 `./home/social-render-scheduler.js`를 `STATIC_ASSETS`에 추가했다.
+- Slice 3 검증:
+  1. PASS: `node --check home/social-render-scheduler.js; node --check home/friend-feed.js; node --check home/friend-profile.js; node --check sw.js; node --check tests/social-render-scheduler.test.js`
+  2. PASS: `node --test tests/social-render-scheduler.test.js tests/social-friend-feed-actions.test.js tests/social-friend-profile-actions.test.js tests/login-action-bridge.test.js tests/app-shell-action-bridge.test.js tests/pwa-update-auto-reload.test.js` - 23 pass
+  3. PASS: `node --test tests/*.test.js` - 692 pass
+  4. PASS: `git diff --check`
+  5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=879`
+  6. not verified yet: 운영 Pages 배포와 운영 URL browser flow 검증이 남아 있다.
+- 다음 액션: Slice 3 `social render scheduler` 리뷰와 운영 배포 검증을 완료한다.
 
 ## 2026-07-03 전역 상호작용 결합 완화 리팩토링
 
