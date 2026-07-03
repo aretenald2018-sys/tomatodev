@@ -33,4 +33,6 @@
 3. PASS: `node --test tests/*.test.js` - 688 pass
 4. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
 5. PASS: `git diff --check`
-6. not verified yet: 운영 Pages 배포와 운영 URL browser flow 검증이 남아 있다.
+6. INFO: `d8f9b8df241bff241856571259163905baf4678c` push 완료.
+7. INFO: Pages deploy action이 GitHub 내부 오류 `Deployment failed, try again later.`로 실패했다. 실패 run: push `28658327024`, workflow_dispatch `28658491911`, workflow_dispatch `28658583875`.
+8. not verified yet: 운영 Pages는 아직 `ff8a4e7dc962`/`tomatofarm-v20260703z18-social-feed-actions`에 머물러 있어 Slice 2 운영 URL browser flow 검증을 못 했다.
