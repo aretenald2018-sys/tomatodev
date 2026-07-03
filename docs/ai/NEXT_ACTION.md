@@ -9,6 +9,7 @@
   - `docs/ai/reviews/2026-07-03-global-interaction-slice2-review.md`
   - `docs/ai/reviews/2026-07-03-global-interaction-slice3-review.md`
   - `docs/ai/reviews/2026-07-03-global-interaction-slice4-review.md`
+  - `docs/ai/reviews/2026-07-03-global-interaction-slice5-review.md`
 - 요청: 운동 코드 리팩토링에서 멈추지 않고 코드 전체의 UI/backend 상호의존성, inline handler, 전역 함수, 무거운 클릭 경로를 줄인다.
 - 진단 요약:
   1. 선행 운동 계획의 Slice 5 인벤토리에서 `home/friend-profile.js`, `feature-login.js`, `index.html`, `workout/expert.js`, `workout/expert/max.js`가 다음 hotspot으로 남았다.
@@ -92,7 +93,19 @@
   10. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ sw.js::tomatofarm-v20260703z16-max-aux-modal-actions workout/expert/max.js::_bindMaxModalActions workout/expert/max.js::data-max-modal-action workout/expert/max.js::switch-normal-view "tests/max-auxiliary-modal-actions.test.js::remaining Max inline handlers"`
   11. PASS: 운영 URL in-app browser 로드 - title `토마토 키우기`, `appShellBound=1`, console error 0건
   12. not verified yet: 실제 Max UI click flow는 로그인 화면이 운동 탭 hit target을 덮어 인증 없이 열 수 없었다. `#tab-nav [data-tab="workout"]` center hit target이 `#login-screen`이었다.
-- 다음 액션: Slice 5 `click performance pass`를 실행한다.
+- 슬라이스 5 실행 요약:
+  1. `workout/expert/max.js`의 `window.renderExpertTopArea()` 직접 호출 23곳을 `_scheduleExpertTopAreaRender()` 요청으로 전환했다.
+  2. `_scheduleExpertTopAreaRender()`는 `requestAnimationFrame` 기준으로 같은 프레임의 Max 상단 렌더 요청을 1회로 병합한다.
+  3. 직접 `window.renderExpertTopArea()` 참조는 scheduler 내부에만 남기고, Max click/save/modal action은 scheduler 계약만 호출하도록 했다.
+  4. `tests/max-render-scheduler.test.js`를 추가하고 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z17-max-render-scheduler`로 bump했다.
+- 슬라이스 5 검증:
+  1. PASS: `node --check workout/expert/max.js; node --check sw.js; node --check tests/max-render-scheduler.test.js`
+  2. PASS: `node --test tests/max-render-scheduler.test.js tests/max-auxiliary-modal-actions.test.js tests/max-wendler.test.js tests/max-settle.test.js tests/workout-test-mode-unified.test.js tests/workout-save-mode-guard.test.js tests/pwa-update-auto-reload.test.js` - 46 pass
+  3. PASS: `node --test tests/*.test.js` - 683 pass
+  4. PASS: `git diff --check`
+  5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
+  6. not verified yet: 운영 Pages 배포와 운영 URL browser flow 검증이 남아 있다.
+- 다음 액션: Slice 5 `click performance pass` 리뷰와 운영 배포 검증을 완료한다.
 
 ## 2026-07-03 운동 추가/카드 추가 결합 완화 리팩토링
 

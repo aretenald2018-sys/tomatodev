@@ -88,6 +88,27 @@ async function _saveMaxCycleSafe(cycle) {
 }
 
 let _weakTimerInterval = null;
+let _expertTopAreaRenderScheduled = false;
+
+function _scheduleExpertTopAreaRender() {
+  if (_expertTopAreaRenderScheduled) return;
+  _expertTopAreaRenderScheduled = true;
+  const run = () => {
+    _expertTopAreaRenderScheduled = false;
+    try {
+      if (typeof window !== 'undefined' && typeof window.renderExpertTopArea === 'function') {
+        window.renderExpertTopArea();
+      }
+    } catch (err) {
+      console.warn('[max.renderExpertTopArea]:', err);
+    }
+  };
+  if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+    window.requestAnimationFrame(run);
+    return;
+  }
+  setTimeout(run, 0);
+}
 
 function _targetRirLabel(targetRpe) {
   const rir = Math.max(0, Math.min(9, 10 - (Number(targetRpe) || 8)));
@@ -1855,7 +1876,7 @@ export async function startMaxCycle() {
   const majors = selectedMajors.length ? selectedMajors : [...detectedMajors];
   if (!majors.length) {
     _toast('오늘 할 큰 부위를 먼저 선택하세요', 'warning');
-    if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+    _scheduleExpertTopAreaRender();
     return;
   }
   const cycle = createDefaultMaxCycle({
@@ -1868,7 +1889,7 @@ export async function startMaxCycle() {
   cycle.status = 'active';
   await _saveMaxCycleSafe(cycle);
   _toast('6주 성장판을 시작했어요', 'success');
-  if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+  _scheduleExpertTopAreaRender();
 }
 
 function _cycleOrDraft() {
@@ -2154,7 +2175,7 @@ export async function setMaxCycleTrack(track) {
   const nextTrack = requestedTrack === 'H' && !hasAnyIntensity ? 'M' : requestedTrack;
   const cycle = { ...current, status: 'active', todayTrack: nextTrack };
   await _saveMaxCycleSafe(cycle);
-  if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+  _scheduleExpertTopAreaRender();
 }
 
 export async function setMaxBenchmarkTrack(benchmarkId, track) {
@@ -2175,7 +2196,7 @@ export async function setMaxBenchmarkTrack(benchmarkId, track) {
     },
   };
   await _saveMaxCycleSafe(next);
-  if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+  _scheduleExpertTopAreaRender();
 }
 
 export async function adjustMaxBenchmarkWeight(benchmarkId, deltaKg) {
@@ -2214,7 +2235,7 @@ export async function adjustMaxBenchmarkWeight(benchmarkId, deltaKg) {
     },
   };
   await _saveMaxCycleSafe(next);
-  if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+  _scheduleExpertTopAreaRender();
 }
 
 export async function setMaxBenchmarkWeight(benchmarkId, kg) {
@@ -2255,7 +2276,7 @@ export async function setMaxBenchmarkWeight(benchmarkId, kg) {
   };
   await _saveMaxCycleSafe(next);
   _toast(`${Math.round(nextKg * 10) / 10}kg으로 조정했어요`, 'success');
-  if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+  _scheduleExpertTopAreaRender();
 }
 
 function _maxV4SheetActionRoot(el = document.getElementById('max-v4-sheet')) {
@@ -2983,7 +3004,7 @@ export async function saveMaxPlanEditorSheet() {
   await saveExpertPreset({ currentGymId: gymId, mode: 'max', enabled: true });
   await _saveMaxCycleSafe(next);
   closeMaxV4Sheet();
-  if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+  _scheduleExpertTopAreaRender();
   _toast('계획 조정이 저장됐어요', 'success');
 }
 
@@ -3136,7 +3157,7 @@ export async function settleMaxCycle({ decisions = {}, skipConfirm = false } = {
   await appendMaxCycleHistory(historyEntry);
   await _saveMaxCycleSafe(nextCycle);
   _toast(`정산 완료 — 성장 ${settle.grown}개 · 유지 ${settle.held}개. 다음 사이클이 시작됐어요.`, 'success');
-  if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+  _scheduleExpertTopAreaRender();
 }
 
 function _ensureMaxEquipmentPoolModal() {
@@ -3559,7 +3580,7 @@ export async function saveMaxDataCleanseModal() {
   }
   closeMaxDataCleanseModal();
   _toast('데이터 클렌징 저장 완료', 'success');
-  if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+  _scheduleExpertTopAreaRender();
 }
 
 export async function deleteMaxCleanseExercise(exerciseId) {
@@ -3590,7 +3611,7 @@ export async function deleteMaxCleanseExercise(exerciseId) {
     renderMaxDataCleanseBody();
     closeMaxExerciseHistoryModal();
     _toast(`종목과 기록 ${affected.length}건을 삭제했어요`, 'success');
-    if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+    _scheduleExpertTopAreaRender();
   } catch (err) {
     console.warn('[deleteMaxCleanseExercise]:', err);
     _toast('삭제 실패', 'error');
@@ -3696,7 +3717,7 @@ export async function saveMaxExerciseHistoryModal() {
   }
   closeMaxExerciseHistoryModal();
   _toast('과거 수행값 저장 완료', 'success');
-  if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+  _scheduleExpertTopAreaRender();
 }
 
 // ── 추천 칩 클릭 → 오늘 세션에 종목 추가 ────────────────────────
@@ -3828,7 +3849,7 @@ export async function applyMaxSuggestion(movementId, weakPart = null, recMeta = 
     _renderExerciseList();
   } catch (e) { console.warn('[applyMaxSuggestion.renderList]:', e); }
 
-  if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+  _scheduleExpertTopAreaRender();
   _toast(`${mov.nameKo} 추가 — ${weakPart ? '약점 블록' : '보강'} 시작!`, 'success');
 }
 
@@ -3840,7 +3861,7 @@ export function rejectMaxSuggestion(recId, movementId = '') {
   meta.rejectedRecommendations = meta.rejectedRecommendations.slice(-30);
   _saveMaxMetaSoon();
   _toast('이번 세션 추천에서 제외했어요', 'info');
-  if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+  _scheduleExpertTopAreaRender();
 }
 
 function _ensureMaxBlueprintModal() {
@@ -3967,7 +3988,7 @@ export async function saveMaxBlueprintModal() {
   try {
     await saveExpertPreset({ maxPlan: plan, mode: 'max', enabled: true });
     closeMaxBlueprintModal();
-    if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+    _scheduleExpertTopAreaRender();
     _toast('테스트모드 청사진 저장 완료', 'success');
   } catch (err) {
     console.warn('[saveMaxBlueprintModal]:', err);
@@ -3983,14 +4004,14 @@ export function toggleMaxWeakPart(partId) {
   else set.add(partId);
   meta.selectedWeakParts = [...set];
   _saveMaxMetaSoon();
-  if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+  _scheduleExpertTopAreaRender();
 }
 
 export function setMaxSessionType(type) {
   const meta = _ensureMaxMeta();
   meta.sessionType = type === 'heavy_volume' ? 'heavy_volume' : 'high_volume';
   _saveMaxMetaSoon();
-  if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+  _scheduleExpertTopAreaRender();
 }
 
 export function setMaxMajorPart(partId) {
@@ -4000,7 +4021,7 @@ export function setMaxMajorPart(partId) {
   meta.majorGateOpen = false;
   meta.selectedWeakParts = _filterWeakPartsByMajors(meta.selectedWeakParts, meta.selectedMajors);
   _saveMaxMetaSoon();
-  if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+  _scheduleExpertTopAreaRender();
 }
 
 export function toggleMaxMajorPart(partId) {
@@ -4015,7 +4036,7 @@ export function toggleMaxMajorPart(partId) {
   meta.majorGateOpen = true;
   meta.selectedWeakParts = _filterWeakPartsByMajors(meta.selectedWeakParts, meta.selectedMajors);
   _saveMaxMetaSoon();
-  if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+  _scheduleExpertTopAreaRender();
 }
 
 export function confirmMaxMajorParts() {
@@ -4026,7 +4047,7 @@ export function confirmMaxMajorParts() {
   }
   meta.majorGateOpen = false;
   _saveMaxMetaSoon();
-  if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+  _scheduleExpertTopAreaRender();
 }
 
 export function clearMaxMajorPart() {
@@ -4034,7 +4055,7 @@ export function clearMaxMajorPart() {
   meta.selectedMajors = [];
   meta.majorGateOpen = true;
   _saveMaxMetaSoon();
-  if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+  _scheduleExpertTopAreaRender();
 }
 
 export function toggleMaxWeakBlockTimer() {
@@ -4053,7 +4074,7 @@ export function toggleMaxWeakBlockTimer() {
     _toast('약점 블록 타이머 시작', 'success');
   }
   _saveMaxMetaSoon();
-  if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+  _scheduleExpertTopAreaRender();
 }
 
 function _saveMaxMetaSoon() {
@@ -4111,7 +4132,7 @@ export async function openMaxMiniOnboarding() {
         const { setExpertViewShown } = await import('../expert.js');
         setExpertViewShown(true);
       } catch {}
-      if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+      _scheduleExpertTopAreaRender();
       _toast('테스트 모드 켜짐', 'success');
     } catch (err) {
       console.warn('[max-onboarding fallback save]:', err);
@@ -4189,7 +4210,7 @@ export function _initMaxOnboardingEvents() {
           const { setExpertViewShown } = await import('../expert.js');
           setExpertViewShown(true);
         } catch {}
-        if (typeof window.renderExpertTopArea === 'function') window.renderExpertTopArea();
+        _scheduleExpertTopAreaRender();
         if (typeof window.renderAll === 'function') window.renderAll();
         _toast('테스트 모드 켜짐 — 직전 같은 부위 운동 분석 시작!', 'success');
       } catch (err) {

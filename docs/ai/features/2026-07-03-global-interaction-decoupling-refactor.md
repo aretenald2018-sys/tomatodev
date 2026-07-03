@@ -211,6 +211,19 @@
   - 기존 기능 테스트 통과
   - 구조 테스트로 중복 렌더 호출 감소 확인
   - 운영 URL marker 검증
+- 실행 요약:
+  1. `workout/expert/max.js`의 `window.renderExpertTopArea()` 직접 호출 23곳을 `_scheduleExpertTopAreaRender()` 요청으로 전환했다.
+  2. `_scheduleExpertTopAreaRender()`는 `requestAnimationFrame` 기준으로 같은 프레임의 Max 상단 렌더 요청을 1회로 병합한다.
+  3. 직접 `window.renderExpertTopArea()` 참조는 scheduler 내부에만 남기고, click/save/modal action은 scheduler 계약만 호출하도록 했다.
+  4. `tests/max-render-scheduler.test.js`를 추가해 scheduler 존재, coalescing flag, 직접 호출 격리를 고정했다.
+  5. `workout/expert/max.js`가 `STATIC_ASSETS`에 포함되어 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z17-max-render-scheduler`로 bump했다.
+- 현재 검증:
+  1. PASS: `node --check workout/expert/max.js; node --check sw.js; node --check tests/max-render-scheduler.test.js`
+  2. PASS: `node --test tests/max-render-scheduler.test.js tests/max-auxiliary-modal-actions.test.js tests/max-wendler.test.js tests/max-settle.test.js tests/workout-test-mode-unified.test.js tests/workout-save-mode-guard.test.js tests/pwa-update-auto-reload.test.js` - 46 pass
+  3. PASS: `node --test tests/*.test.js` - 683 pass
+  4. PASS: `git diff --check`
+  5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
+  6. not verified yet: 운영 Pages 배포와 운영 URL browser flow 검증이 남아 있다.
 
 ## 리뷰 세션 프롬프트
 
@@ -223,6 +236,7 @@
 - Slice 2 실행 후 상태: `deployed_login_screen_verified`
 - Slice 3 실행 후 상태: `deployed_with_auth_ui_blocker`
 - Slice 4 실행 후 상태: `deployed_with_auth_ui_blocker`
-- 다음 자동 상태: `ready_for_execution`
-- 다음 액션: Slice 5 `click performance pass`를 실행한다.
+- Slice 5 실행 후 상태: `static_verified_pending_deploy`
+- 다음 자동 상태: `ready_for_review`
+- 다음 액션: Slice 5 `click performance pass` 리뷰와 운영 배포 검증을 완료한다.
 - 차단 질문: 없음
