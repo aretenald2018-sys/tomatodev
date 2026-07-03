@@ -7,6 +7,7 @@
 - 리뷰:
   - `docs/ai/reviews/2026-07-03-workout-add-decoupling-slice1-review.md`
   - `docs/ai/reviews/2026-07-03-workout-add-decoupling-slice2-review.md`
+  - `docs/ai/reviews/2026-07-03-workout-add-decoupling-slice3-review.md`
   - `docs/ai/reviews/2026-07-03-workout-add-decoupling-slice6-review.md`
 - 요청: 운동종목추가/운동카드추가 주변 오류가 연쇄되지 않도록 UI와 저장/상태 상호의존성을 낮추고, 운동 코드에서 멈추지 말고 코드 전체의 클릭/전역 함수/무거운 버튼 경로까지 조망해 리팩토링한 뒤 화면 검증 후 배포한다.
 - 진단 요약:
@@ -16,7 +17,7 @@
 - 실행 슬라이스:
   1. 완료: 슬라이스 1 `workout/exercise-entry-actions.js`로 운동 선택 상태 전이를 분리하고 테스트했다.
   2. 완료: 슬라이스 2 피커 이벤트 바인딩을 단일 위임 구조로 집중화했다.
-  3. 슬라이스 3: 종목 editor 저장 record 생성/검증을 분리한다.
+  3. 완료: 슬라이스 3 종목 editor 저장 record 생성/검증을 분리했다.
   4. 슬라이스 4: 하단시트 `afterSelect` detail contract를 명문화한다.
   5. 완료: 슬라이스 5 운동 외 전체 클릭 경로/전역 함수 의존/무거운 핸들러를 인벤토리화했다.
   6. 슬라이스 6: `render-calendar.js` 운동 day sheet card action을 inline `onclick/window._wtCal*`에서 scoped data attribute + sheet capture delegate로 전환한다.
@@ -55,7 +56,18 @@
   2. PASS: `node --test tests/workout-exercise-entry-actions.test.js tests/ex-picker-selection-flow.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-card-layout-css.test.js tests/workout-empty-picker-density.test.js tests/workout-picker-gym-rail.test.js tests/stats-picker-ui-polish.test.js tests/workout-navigation-stack.test.js` - 63 pass
   3. PASS: `node --test tests/*.test.js` - 655 pass
   4. PASS: `git diff --check`
-- 다음 액션: 관련 파일만 stage한 뒤 `node scripts/verify-runtime-assets.mjs`를 실행하고, commit/push/deploy/운영 URL 검증으로 진행한다.
+- 슬라이스 3 실행 요약:
+  1. `workout/exercise-editor-actions.js`를 추가해 editor record 생성/검증 helper를 분리했다.
+  2. `wtSaveExerciseFromEditor()`는 DOM 읽기, 신규 부위 저장, record build, `saveExercise()`, 저장 검증, program save 순서만 orchestrate한다.
+  3. program save는 검증된 saved record만 사용하고 `saved || record` fallback을 제거했다.
+  4. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z10-exercise-editor-actions`로 bump하고 새 runtime module을 `STATIC_ASSETS`에 등록했다.
+- 슬라이스 3 검증:
+  1. PASS: `node --check workout/exercises.js; node --check workout/exercise-editor-actions.js; node --check workout/exercise-entry-actions.js; node --check sw.js`
+  2. PASS: `node --test tests/exercise-editor-actions.test.js tests/exercise-program-editor.test.js tests/ex-picker-selection-flow.test.js tests/workout-exercise-entry-actions.test.js tests/stats-picker-ui-polish.test.js tests/workout-picker-gym-rail.test.js` - 27 pass
+  3. PASS: `node --test tests/*.test.js` - 660 pass
+  4. PASS: `git diff --check`
+  5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=874`
+- 다음 액션: Slice 4 `afterSelect detail contract` 또는 전역 hotspot 후속 slice로 진행한다.
 
 ## 2026-07-03 운동 종목 피커 CRUD 신규 추가 버튼 노출
 

@@ -24,6 +24,12 @@ import {
   resolveMaxBenchmarkPickerItems,
 } from './expert/max-benchmark-picker.js?v=20260517v3';
 import {
+  buildExerciseEditorRecord,
+  customExerciseMuscleId,
+  exerciseEditorRecordId,
+  verifyExerciseEditorSavedRecord,
+} from './exercise-editor-actions.js';
+import {
   findWorkoutEntryIndexByExerciseId,
   selectWorkoutExerciseEntry,
   workoutExerciseSelectionDetail,
@@ -3721,29 +3727,33 @@ export async function wtSaveExerciseFromEditor() {
   if (muscleId === NEW_MUSCLE_OPTION) {
     const newMuscleName = document.getElementById('ex-editor-new-muscle-name')?.value?.trim() || '';
     if (!newMuscleName) { window.showToast?.('새 부위 이름을 입력해주세요', 2500, 'warning'); return; }
-    muscleId = `muscle_${Date.now()}`;
+    muscleId = customExerciseMuscleId();
     await saveCustomMuscle({ id: muscleId, name: newMuscleName, color: '#8b5cf6' });
   }
   const editingId = editor.dataset.editingId;
   const existing = editingId ? getExList().find(e => e.id === editingId) : null;
-  const record = {
-    ...(existing || {}),
-    id: editingId || `custom_${Date.now()}`,
-    muscleId,
+  const built = buildExerciseEditorRecord({
+    existing,
+    editingId,
     name,
-    order: existing?.order ?? 50,
-    gymId: gymId || null,
-    primaryGymId: gymId || null,
-    gymTags: gymId ? [gymId] : ['*'],
-  };
+    muscleId,
+    gymId,
+    id: editingId || exerciseEditorRecordId(),
+  });
+  if (!built.ok) {
+    window.showToast?.('종목 저장 정보가 부족해요', 2500, 'warning');
+    return;
+  }
+  const record = built.record;
   try {
     if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '저장 중...'; }
     await saveExercise(record);
     const saved = getExList().find(e => e.id === record.id);
-    if (!saved || saved.name !== record.name || saved.muscleId !== record.muscleId) {
+    const verified = verifyExerciseEditorSavedRecord(record, saved);
+    if (!verified.ok) {
       throw new Error('saveExercise verification failed');
     }
-    const programRecord = saved || record;
+    const programRecord = verified.record;
     await _saveExerciseProgramFromEditor(programRecord);
   } catch (e) {
     console.warn('[wtSaveExerciseFromEditor]:', e);

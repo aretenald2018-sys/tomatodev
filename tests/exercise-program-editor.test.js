@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const exercisesJs = await readFile(new URL('../workout/exercises.js', import.meta.url), 'utf8');
+const editorActionsJs = await readFile(new URL('../workout/exercise-editor-actions.js', import.meta.url), 'utf8');
 const dataLoadJs = await readFile(new URL('../data/data-load.js', import.meta.url), 'utf8');
 const styleCss = await readFile(new URL('../style.css', import.meta.url), 'utf8');
 const swJs = await readFile(new URL('../sw.js', import.meta.url), 'utf8');
@@ -39,13 +40,23 @@ test('exercise editor saves exercise before saving program contract', () => {
     exercisesJs.indexOf('export async function wtDeleteExerciseFromEditor'),
   );
   const saveExerciseIdx = saveFlow.indexOf('await saveExercise(record)');
+  const buildRecordIdx = saveFlow.indexOf('const built = buildExerciseEditorRecord');
+  const verifyHelperIdx = saveFlow.indexOf('verifyExerciseEditorSavedRecord(record, saved)');
   const verifyIdx = saveFlow.indexOf("throw new Error('saveExercise verification failed')");
-  const programRecordIdx = saveFlow.indexOf('const programRecord = saved || record');
+  const fallbackProgramRecordIdx = saveFlow.indexOf('const programRecord = saved || record');
+  const verifiedProgramRecordIdx = saveFlow.indexOf('const programRecord = verified.record');
   const saveProgramIdx = saveFlow.indexOf('await _saveExerciseProgramFromEditor(programRecord)');
+  assert.match(exercisesJs, /buildExerciseEditorRecord,\s*\n\s*customExerciseMuscleId,\s*\n\s*exerciseEditorRecordId,\s*\n\s*verifyExerciseEditorSavedRecord,/);
+  assert.match(editorActionsJs, /export function buildExerciseEditorRecord/);
+  assert.match(editorActionsJs, /export function verifyExerciseEditorSavedRecord/);
+  assert.ok(buildRecordIdx > 0, 'missing editor record builder');
   assert.ok(saveExerciseIdx > 0, 'missing saveExercise call');
-  assert.ok(verifyIdx > saveExerciseIdx, 'missing post-save verification before program save');
-  assert.ok(programRecordIdx > verifyIdx, 'program save should use the verified saved exercise record');
-  assert.ok(saveProgramIdx > programRecordIdx, 'program save should run after choosing the verified exercise record');
+  assert.ok(saveExerciseIdx > buildRecordIdx, 'saveExercise should use the built editor record');
+  assert.ok(verifyHelperIdx > saveExerciseIdx, 'missing post-save verification helper before program save');
+  assert.ok(verifyIdx > verifyHelperIdx, 'verification failure should still stop program save');
+  assert.ok(fallbackProgramRecordIdx < 0, 'program save should no longer fall back to unverified record');
+  assert.ok(verifiedProgramRecordIdx > verifyIdx, 'program save should use the verified exercise record');
+  assert.ok(saveProgramIdx > verifiedProgramRecordIdx, 'program save should run after choosing the verified exercise record');
 });
 
 test('exercise program board is rehydrated from settings on load', () => {
@@ -65,5 +76,5 @@ test('exercise editor program controls have compact fixed layout styles', () => 
   assert.match(styleCss, /#ex-editor-modal \.ex-program-tm-calc/);
   assert.match(styleCss, /#ex-editor-modal \.ex-program-calc-btn/);
   assert.match(styleCss, /#ex-editor-modal \.ex-program-wendler \.ex-editor-input,[\s\S]*?min-height:\s*24px/);
-  assert.match(swJs, /tomatofarm-v20260703z9-calendar-sheet-actions/);
+  assert.match(swJs, /tomatofarm-v20260703z10-exercise-editor-actions/);
 });

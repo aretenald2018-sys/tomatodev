@@ -171,6 +171,23 @@
   - editor record 생성 단위 테스트
   - 기존 CRUD 버튼 노출/피커 테스트
 
+#### 슬라이스 3 실행 결과
+
+- 실행일: 2026-07-03
+- 변경:
+  1. `workout/exercise-editor-actions.js`를 추가해 `buildExerciseEditorRecord()`, `verifyExerciseEditorSavedRecord()`, `exerciseEditorRecordId()`, `customExerciseMuscleId()`를 분리했다.
+  2. `wtSaveExerciseFromEditor()`는 DOM 읽기, 신규 부위 저장, record build, `saveExercise()`, 저장 검증, program save 순서만 orchestrate한다.
+  3. program save는 더 이상 `saved || record` fallback을 쓰지 않고 `verifyExerciseEditorSavedRecord()`가 통과한 saved record만 사용한다.
+  4. `tests/exercise-editor-actions.test.js`를 추가하고 `tests/exercise-program-editor.test.js`가 새 helper contract와 저장 순서를 검증하도록 갱신했다.
+  5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z10-exercise-editor-actions`로 bump하고 `STATIC_ASSETS`에 새 모듈을 등록했다.
+- 검증:
+  1. PASS: `node --check workout/exercises.js; node --check workout/exercise-editor-actions.js; node --check workout/exercise-entry-actions.js; node --check sw.js`
+  2. PASS: `node --test tests/exercise-editor-actions.test.js tests/exercise-program-editor.test.js tests/ex-picker-selection-flow.test.js tests/workout-exercise-entry-actions.test.js tests/stats-picker-ui-polish.test.js tests/workout-picker-gym-rail.test.js` - 27 pass
+  3. PASS: `node --test tests/*.test.js` - 660 pass
+  4. PASS: `git diff --check`
+  5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=874`
+- 다음: 배포 전에는 Slice 4 또는 전역 hotspot 후속 slice를 선택한다.
+
 ### 슬라이스 4: 하단시트 afterSelect 계약 명문화
 
 - 목표: 피커 선택 결과와 하단시트 카드 복원 로직 사이의 detail contract를 명시하고 테스트로 고정한다.
