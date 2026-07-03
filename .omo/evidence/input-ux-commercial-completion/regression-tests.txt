@@ -23,3 +23,9 @@ node --test tests/*.test.js
 
 Full suite result:
 exit 0; 698 tests; 698 pass; 0 fail.
+
+Post timer-guard/cache-marker verification:
+node --check workout-ui.js && node --check sw.js && node --test tests/running-entry.test.js tests/diet-add-button-binding.test.js tests/input-ux-commercial-completion.test.js && node scripts/verify-runtime-assets.mjs && node --test tests/*.test.js
+
+Post timer-guard/cache-marker result:
+exit 0; targeted input UX 24/24 pass; runtime assets ok refs=879; full suite 698/698 pass; cache marker tomatofarm-v20260703z22-input-ux-timer-guard.

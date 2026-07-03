@@ -86,7 +86,7 @@ window.wtSwitchType = function(type) {
     return;
   }
 
-  if (!isReclick) {
+  if (type === 'gym' && !isReclick) {
     wtStartWorkoutTimer();
     wtRestTimerShowIdle();
   }

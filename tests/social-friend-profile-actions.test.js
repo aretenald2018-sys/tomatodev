@@ -119,5 +119,5 @@ test('comment reaction and edit actions inherit the profile delegate contract', 
 });
 
 test('service worker cache version was bumped for social profile action assets', () => {
-  assert.match(swJs, /tomatofarm-v20260703z21-input-ux-completion/);
+  assert.match(swJs, /tomatofarm-v20260703z22-input-ux-timer-guard/);
 });
