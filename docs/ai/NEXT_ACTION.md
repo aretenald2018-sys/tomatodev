@@ -1,8 +1,27 @@
 # 다음 자동 액션
 
+## 2026-07-03 Home Social Notification Decoupling
+
+- 상태: `ready_for_execution`
+- 계획: `docs/ai/features/2026-07-03-home-social-notification-decoupling.md`
+- 요청: 운동 코드에서 멈추지 않고 앱 전체의 UI/backend 상호의존성, inline handler, 전역 함수, 무거운 클릭 경로를 줄인다.
+- 진단 요약:
+  1. 직전 social feed/profile 계획은 `complete`이고 운영 Pages 배포 검증까지 완료했다.
+  2. 추가 인벤토리에서 `home/notifications.js`에 `_renderFriendFeedFn()` 직접 호출이 5개 남아 있어 알림 처리와 feed 전체 렌더가 직접 결합되어 있다.
+  3. `home/friend-profile.js`에는 소개/길드 초대/토마토 선물 보조 모달의 `onclick=`이 남아 있어 profile action bridge 밖에서 별도 전역 함수와 payload escaping에 의존한다.
+  4. `home/cheers-card.js`에는 cheers list/self modal 관련 inline handler가 남아 있어 social click surface가 아직 여러 namespace로 흩어져 있다.
+- 실행 슬라이스:
+  1. Slice 1: `home/notifications.js`의 friend feed refresh를 social render scheduler로 병합한다.
+  2. Slice 2: `home/friend-profile.js`의 소개/길드/선물 보조 모달 action을 scoped delegate로 전환한다.
+  3. Slice 3: `home/cheers-card.js`의 cheers inline action을 data-action bridge로 전환한다.
+- 계획 검증:
+  1. PASS: 남은 inline/render coupling 인벤토리 완료
+  2. PASS: 다음 실행 slice가 `home/notifications.js` render scheduler로 제한됨
+- 다음 액션: Slice 1 `notifications render scheduler`를 실행한다.
+
 ## 2026-07-03 Social Interaction Render Decoupling
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획: `docs/ai/features/2026-07-03-social-interaction-render-decoupling.md`
 - 리뷰:
   - `docs/ai/reviews/2026-07-03-social-interaction-slice1-review.md`
