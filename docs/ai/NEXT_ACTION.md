@@ -51,8 +51,12 @@
   5. PASS: `git diff --check`
   6. INFO: `d8f9b8df241bff241856571259163905baf4678c` push 완료.
   7. INFO: Pages deploy action이 GitHub 내부 오류 `Deployment failed, try again later.`로 실패했다. 실패 run: push `28658327024`, workflow_dispatch `28658491911`, workflow_dispatch `28658583875`.
-  8. not verified yet: 운영 Pages는 아직 `ff8a4e7dc962`/`tomatofarm-v20260703z18-social-feed-actions`에 머물러 있어 Slice 2 운영 URL browser flow 검증을 못 했다.
-- 다음 액션: GitHub Pages 내부 오류가 해소되면 Slice 2 배포를 재시도하고 `d8f9b8df241bff241856571259163905baf4678c` 이상 커밋 기준으로 운영 marker/browser 검증을 완료한다.
+  8. PASS: workflow_dispatch `28658751644` 재시도로 Pages deploy 성공.
+  9. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ d46c535267feacd3cf120770476c431ef59d59db`
+  10. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ sw.js::tomatofarm-v20260703z19-social-profile-actions home/friend-profile.js::_bindFriendProfileActions home/friend-profile.js::data-social-action home/friend-profile.js::confirm-edit-comment tests/social-friend-profile-actions.test.js::tomatofarm-v20260703z19-social-profile-actions`
+  11. PASS: 운영 URL browser 확인 - `https://aretenald2018-sys.github.io/tomatofarm/` title `토마토 키우기`, login screen/app shell 표시, console error 0.
+  12. not verified yet: 인증 세션이 없어 실제 friend profile 내부 reaction/comment `data-social-action` 클릭 flow는 자동 검증하지 못했다.
+- 다음 액션: Slice 3 `social render scheduler`를 실행한다.
 
 ## 2026-07-03 전역 상호작용 결합 완화 리팩토링
 
