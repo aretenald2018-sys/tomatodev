@@ -6,7 +6,7 @@
 
 ## 계획 상태
 
-- 단계: `slice3_deployed_with_auth_ui_blocker`
+- 단계: `slice4_static_verified_pending_deploy`
 - 선행 계획:
   - `docs/ai/features/2026-07-03-workout-add-decoupling-refactor.md`
 - 목적: 운동 추가/카드 추가 경계 안정화 뒤에도 남은 전역 `onclick`/`window.*`/중복 렌더 hotspot을 작은 실행 slice로 줄여, 새 버튼이나 UI를 추가할 때 다른 기능이 연쇄로 깨지는 위험을 낮춘다.
@@ -177,6 +177,23 @@
   - Max inline handler ban 테스트 추가/갱신
   - Max V4 관련 focused tests
 
+#### 슬라이스 4 실행 결과
+
+- 상태: `static_verified_pending_deploy`
+- 변경 요약:
+  1. `workout/expert/max.js`에 `_bindMaxModalActions(modal, handlers)`를 추가해 보조 modal click action을 modal-local delegate로 라우팅한다.
+  2. 추천 조정, 기구풀, 데이터 클렌징, 과거 수행값, 청사진 modal의 close/save/history/delete action을 `data-max-modal-action`으로 전환했다.
+  3. 테스트모드 시작 카드의 일반모드 복귀 버튼과 미니 온보딩 닫기 버튼도 기존 host/root delegate 계약으로 옮겼다.
+  4. `#max-v4-sheet` 본체 overlay/sheet inline handler 2개는 기존 capture/stopPropagation 규칙을 유지하기 위해 이번 slice에서 의도적으로 보류했다.
+  5. `workout/expert/max.js`가 `STATIC_ASSETS`에 포함되어 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z16-max-aux-modal-actions`로 bump했다.
+- 현재 검증:
+  1. PASS: `node --check workout/expert/max.js; node --check sw.js; node --check tests/max-auxiliary-modal-actions.test.js`
+  2. PASS: `node --test tests/max-auxiliary-modal-actions.test.js tests/max-wendler.test.js tests/max-settle.test.js tests/workout-test-mode-unified.test.js tests/workout-save-mode-guard.test.js tests/pwa-update-auto-reload.test.js` - 44 pass
+  3. PASS: `node --test tests/*.test.js` - 681 pass
+  4. PASS: `git diff --check`
+  5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
+  6. not verified yet: 운영 Pages 배포와 Max UI click flow 확인이 남았다.
+
 ### 슬라이스 5: click performance pass
 
 - 목표: 클릭 직후 전체 렌더가 반복되는 경로 하나를 측정 가능한 구조 테스트로 줄인다.
@@ -199,6 +216,7 @@
 - Slice 1 실행 후 상태: `deployed_with_auth_ui_blocker`
 - Slice 2 실행 후 상태: `deployed_login_screen_verified`
 - Slice 3 실행 후 상태: `deployed_with_auth_ui_blocker`
-- 다음 자동 상태: `ready_for_execution`
-- 다음 액션: Slice 4 `Max auxiliary modal delegate`를 실행한다.
+- Slice 4 실행 후 상태: `static_verified_pending_deploy`
+- 다음 자동 상태: `ready_for_review`
+- 다음 액션: Slice 4 운영 Pages 배포와 marker/UI 검증을 끝낸다.
 - 차단 질문: 없음

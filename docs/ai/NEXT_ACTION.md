@@ -2,12 +2,13 @@
 
 ## 2026-07-03 전역 상호작용 결합 완화 리팩토링
 
-- 상태: `ready_for_execution`
+- 상태: `ready_for_review`
 - 계획: `docs/ai/features/2026-07-03-global-interaction-decoupling-refactor.md`
 - 리뷰:
   - `docs/ai/reviews/2026-07-03-global-interaction-slice1-review.md`
   - `docs/ai/reviews/2026-07-03-global-interaction-slice2-review.md`
   - `docs/ai/reviews/2026-07-03-global-interaction-slice3-review.md`
+  - `docs/ai/reviews/2026-07-03-global-interaction-slice4-review.md`
 - 요청: 운동 코드 리팩토링에서 멈추지 않고 코드 전체의 UI/backend 상호의존성, inline handler, 전역 함수, 무거운 클릭 경로를 줄인다.
 - 진단 요약:
   1. 선행 운동 계획의 Slice 5 인벤토리에서 `home/friend-profile.js`, `feature-login.js`, `index.html`, `workout/expert.js`, `workout/expert/max.js`가 다음 hotspot으로 남았다.
@@ -72,7 +73,20 @@
   9. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ sw.js::tomatofarm-v20260703z15-app-shell-action-bridge index.html::data-app-action app.js::_bindAppShellActions app.js::appShellActionsBound navigation.js::switch-tab-close-more`
   10. PASS: 운영 URL in-app browser 로드 - title `토마토 키우기`, `appShellActionsBound=1`, `data-app-action` controls 18개, console error 0건
   11. not verified yet: 실제 nav/more-menu 클릭 flow는 로그인 화면이 hit target을 덮어 인증 없이 누를 수 없었다. `#tab-nav [data-app-action="toggle-more-menu"]`와 diet tab 모두 center hit target이 `#login-screen`이었다.
-- 다음 액션: Slice 4 `Max auxiliary modal delegate`를 실행한다.
+- 슬라이스 4 실행 요약:
+  1. `workout/expert/max.js`에 `_bindMaxModalActions(modal, handlers)`를 추가했다.
+  2. 추천 조정, 기구풀, 데이터 클렌징, 과거 수행값, 청사진 modal의 close/save/history/delete action을 `data-max-modal-action`으로 전환했다.
+  3. 테스트모드 시작 카드의 일반모드 복귀 버튼과 미니 온보딩 닫기 버튼도 기존 delegate 계약으로 옮겼다.
+  4. `#max-v4-sheet` 본체 overlay/sheet inline handler 2개는 기존 capture/stopPropagation 규칙 유지를 위해 보류했다.
+  5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z16-max-aux-modal-actions`로 bump하고 cache marker 테스트를 갱신했다.
+- 슬라이스 4 검증:
+  1. PASS: `node --check workout/expert/max.js; node --check sw.js; node --check tests/max-auxiliary-modal-actions.test.js`
+  2. PASS: `node --test tests/max-auxiliary-modal-actions.test.js tests/max-wendler.test.js tests/max-settle.test.js tests/workout-test-mode-unified.test.js tests/workout-save-mode-guard.test.js tests/pwa-update-auto-reload.test.js` - 44 pass
+  3. PASS: `node --test tests/*.test.js` - 681 pass
+  4. PASS: `git diff --check`
+  5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
+  6. not verified yet: 운영 Pages 배포와 Max UI click flow 확인 필요
+- 다음 액션: Slice 4 리뷰 확인 후 운영 Pages에 배포하고 `data-max-modal-action` marker 및 인증/UI 차단 여부를 확인한다.
 
 ## 2026-07-03 운동 추가/카드 추가 결합 완화 리팩토링
 

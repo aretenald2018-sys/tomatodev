@@ -895,20 +895,43 @@ function _buildPrescriptionForMovement(movement, weakPart = null) {
   }), movement, { weakTarget: !!weakPart });
 }
 
+function _bindMaxModalActions(modal, handlers = {}) {
+  if (!modal || modal.dataset.maxModalActionsBound === '1') return;
+  modal.dataset.maxModalActionsBound = '1';
+  modal.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    if (target === modal && typeof handlers.backdrop === 'function') {
+      event.preventDefault();
+      handlers.backdrop(modal, event);
+      return;
+    }
+
+    const control = target?.closest?.('[data-max-modal-action]');
+    if (!control || !modal.contains(control)) return;
+    const action = control.getAttribute('data-max-modal-action');
+    const handler = handlers[action];
+    if (typeof handler !== 'function') return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    Promise.resolve(handler(control, event)).catch(err => console.warn(`[max-modal:${action}]:`, err));
+  });
+}
+
 function _ensureMaxAdjustModal() {
   let el = document.getElementById('max-rec-adjust-modal');
   if (el) return el;
   const container = document.getElementById('modals-container') || document.body;
   const wrapper = document.createElement('div');
   wrapper.innerHTML = `
-    <div class="modal-overlay" id="max-rec-adjust-modal" onclick="closeMaxRecAdjustModal(event)">
-      <div class="wt-max-adjust-sheet" onclick="event.stopPropagation()">
+    <div class="modal-overlay" id="max-rec-adjust-modal">
+      <div class="wt-max-adjust-sheet">
         <div class="wt-max-adjust-head">
           <div>
             <div class="wt-max-adjust-title">추천 조정</div>
             <div class="wt-max-adjust-sub" id="max-rec-adjust-sub"></div>
           </div>
-          <button type="button" class="wt-max-adjust-close" onclick="closeMaxRecAdjustModal()">×</button>
+          <button type="button" class="wt-max-adjust-close" data-max-modal-action="close-rec-adjust">×</button>
         </div>
         <div class="wt-max-adjust-grid">
           <label><span>무게</span><input id="max-rec-adjust-kg" type="number" min="0" max="500" step="0.5"></label>
@@ -918,14 +941,20 @@ function _ensureMaxAdjustModal() {
         </div>
         <div class="wt-max-adjust-note" id="max-rec-adjust-note"></div>
         <div class="wt-max-adjust-actions">
-          <button type="button" class="wt-max-rec-secondary" onclick="closeMaxRecAdjustModal()">취소</button>
-          <button type="button" class="wt-max-rec-accept" onclick="applyMaxAdjustedRecommendation()">조정해서 추가</button>
+          <button type="button" class="wt-max-rec-secondary" data-max-modal-action="close-rec-adjust">취소</button>
+          <button type="button" class="wt-max-rec-accept" data-max-modal-action="apply-rec-adjust">조정해서 추가</button>
         </div>
       </div>
     </div>
   `;
   container.appendChild(wrapper.firstElementChild);
-  return document.getElementById('max-rec-adjust-modal');
+  el = document.getElementById('max-rec-adjust-modal');
+  _bindMaxModalActions(el, {
+    backdrop: () => closeMaxRecAdjustModal(),
+    'close-rec-adjust': () => closeMaxRecAdjustModal(),
+    'apply-rec-adjust': () => applyMaxAdjustedRecommendation(),
+  });
+  return el;
 }
 
 export function openMaxRecAdjustModal(movementId, weakPart = null, recMeta = {}) {
@@ -1336,7 +1365,7 @@ function _renderMaxTodayMajorGate({ selectedMajors = [], cycle = null, cache = {
   return `
     <section class="wt-v4-board wt-v4-major-gate wt-v4-entry" id="wt-max-cycle-card">
       <div class="topbar">
-        <button type="button" class="icon" onclick="wtExcSwitchToNormalView()" aria-label="일반 모드로">‹</button>
+        <button type="button" class="icon" data-action="switch-normal-view" aria-label="일반 모드로">‹</button>
         <button type="button" class="title" data-action="open-max-plan-editor">
           <strong>테스트모드 시작</strong>
           <span>6주 성장판</span>
@@ -1512,6 +1541,10 @@ function _bindMaxHost(host) {
       }
       if (e.target.closest('[data-action="start-max-cycle"]')) {
         startMaxCycle().catch(err => console.warn('[startMaxCycle]:', err));
+        return;
+      }
+      if (e.target.closest('[data-action="switch-normal-view"]')) {
+        Promise.resolve(window.wtExcSwitchToNormalView?.()).catch(err => console.warn('[switchNormalView]:', err));
         return;
       }
       if (e.target.closest('[data-action="clear-max-major"]')) {
@@ -3112,14 +3145,14 @@ function _ensureMaxEquipmentPoolModal() {
   const container = document.getElementById('modals-container') || document.body;
   const wrapper = document.createElement('div');
   wrapper.innerHTML = `
-    <div class="modal-overlay wt-max-equipment-modal" id="max-equipment-pool-modal" onclick="closeMaxEquipmentPoolModal(event)">
-      <div class="wt-max-blueprint-sheet" onclick="event.stopPropagation()">
+    <div class="modal-overlay wt-max-equipment-modal" id="max-equipment-pool-modal">
+      <div class="wt-max-blueprint-sheet">
         <div class="wt-max-blueprint-head">
           <div>
             <div class="wt-max-blueprint-title">공통/헬스장별 기구</div>
             <div class="wt-max-blueprint-sub">테스트모드는 선택 헬스장의 활성 기구와 공통 모듈만 추천 후보로 씁니다.</div>
           </div>
-          <button type="button" class="wt-max-blueprint-close" onclick="closeMaxEquipmentPoolModal()">×</button>
+          <button type="button" class="wt-max-blueprint-close" data-max-modal-action="close-equipment-pool">×</button>
         </div>
         <div id="max-equipment-pool-body"></div>
       </div>
@@ -3151,6 +3184,10 @@ function _ensureMaxEquipmentPoolModal() {
       deleteMaxEquipmentFromPool(del.getAttribute('data-pool-id'))
         .catch(err => console.warn('[deleteMaxEquipmentFromPool]:', err));
     }
+  });
+  _bindMaxModalActions(el, {
+    backdrop: () => closeMaxEquipmentPoolModal(),
+    'close-equipment-pool': () => closeMaxEquipmentPoolModal(),
   });
   return el;
 }
@@ -3392,8 +3429,8 @@ function _renderCleanseExerciseRows(gyms) {
             <option value="H" ${track === 'H' ? 'selected' : ''}>강도</option>
           </select></label>
           <div class="wt-max-cleanse-row-actions">
-            <button type="button" class="wt-max-cleanse-history-btn" onclick="event.stopPropagation(); openMaxExerciseHistoryModal(this.closest('[data-ex-id]')?.getAttribute('data-ex-id'))">기록 수정</button>
-            <button type="button" class="wt-max-cleanse-delete-btn" onclick="event.stopPropagation(); deleteMaxCleanseExercise(this.closest('[data-ex-id]')?.getAttribute('data-ex-id'))">삭제</button>
+            <button type="button" class="wt-max-cleanse-history-btn" data-max-modal-action="open-ex-history" data-ex-id="${_esc(ex.id)}">기록 수정</button>
+            <button type="button" class="wt-max-cleanse-delete-btn" data-max-modal-action="delete-cleanse-exercise" data-ex-id="${_esc(ex.id)}">삭제</button>
           </div>
         </div>
       `;
@@ -3450,26 +3487,27 @@ function _ensureMaxDataCleanseModal() {
   el.id = 'max-data-cleanse-modal';
   el.className = 'modal-overlay wt-max-cleanse-modal';
   el.innerHTML = `
-    <div class="wt-max-cleanse-sheet" onclick="event.stopPropagation()">
+    <div class="wt-max-cleanse-sheet">
       <div class="wt-max-cleanse-head">
         <div>
           <div class="wt-max-cleanse-title">종목 메타 정리</div>
           <div class="wt-max-cleanse-sub">헬스장, 세부부위, 기본 트랙을 정리하고 종목별 과거 수행값을 수정합니다.</div>
         </div>
-        <button type="button" class="wt-max-adjust-close" onclick="closeMaxDataCleanseModal()">×</button>
+        <button type="button" class="wt-max-adjust-close" data-max-modal-action="close-data-cleanse">×</button>
       </div>
       <div id="max-data-cleanse-body"></div>
       <div class="wt-max-cleanse-actions">
-        <button type="button" class="wt-max-rec-secondary" onclick="closeMaxDataCleanseModal()">닫기</button>
-        <button type="button" class="wt-max-rec-accept" data-action="save-max-data-cleanse" onclick="event.stopPropagation(); saveMaxDataCleanseModal()">저장</button>
+        <button type="button" class="wt-max-rec-secondary" data-max-modal-action="close-data-cleanse">닫기</button>
+        <button type="button" class="wt-max-rec-accept" data-max-modal-action="save-data-cleanse">저장</button>
       </div>
     </div>
   `;
-  el.addEventListener('click', (e) => {
-    if (e.target === el) closeMaxDataCleanseModal();
-    if (e.target.closest('[data-action="save-max-data-cleanse"]')) {
-      saveMaxDataCleanseModal().catch(err => console.warn('[saveMaxDataCleanseModal.modal]:', err));
-    }
+  _bindMaxModalActions(el, {
+    backdrop: () => closeMaxDataCleanseModal(),
+    'close-data-cleanse': () => closeMaxDataCleanseModal(),
+    'save-data-cleanse': () => saveMaxDataCleanseModal(),
+    'open-ex-history': (control) => openMaxExerciseHistoryModal(control.getAttribute('data-ex-id')),
+    'delete-cleanse-exercise': (control) => deleteMaxCleanseExercise(control.getAttribute('data-ex-id')),
   });
   document.body.appendChild(el);
   return el;
@@ -3566,23 +3604,25 @@ function _ensureMaxExerciseHistoryModal() {
   el.id = 'max-exercise-history-modal';
   el.className = 'modal-overlay wt-max-history-modal';
   el.innerHTML = `
-    <div class="wt-max-cleanse-sheet wt-max-history-sheet" onclick="event.stopPropagation()">
+    <div class="wt-max-cleanse-sheet wt-max-history-sheet">
       <div class="wt-max-cleanse-head">
         <div>
           <div class="wt-max-cleanse-title" id="max-ex-history-title">과거 수행값 수정</div>
           <div class="wt-max-cleanse-sub">이 종목으로 기록된 과거 세트의 무게와 횟수를 고칩니다.</div>
         </div>
-        <button type="button" class="wt-max-adjust-close" onclick="closeMaxExerciseHistoryModal()">×</button>
+        <button type="button" class="wt-max-adjust-close" data-max-modal-action="close-ex-history">×</button>
       </div>
       <div id="max-ex-history-body"></div>
       <div class="wt-max-cleanse-actions">
-        <button type="button" class="wt-max-rec-secondary" onclick="closeMaxExerciseHistoryModal()">닫기</button>
-        <button type="button" class="wt-max-rec-accept" onclick="event.stopPropagation(); saveMaxExerciseHistoryModal()">저장</button>
+        <button type="button" class="wt-max-rec-secondary" data-max-modal-action="close-ex-history">닫기</button>
+        <button type="button" class="wt-max-rec-accept" data-max-modal-action="save-ex-history">저장</button>
       </div>
     </div>
   `;
-  el.addEventListener('click', (e) => {
-    if (e.target === el) closeMaxExerciseHistoryModal();
+  _bindMaxModalActions(el, {
+    backdrop: () => closeMaxExerciseHistoryModal(),
+    'close-ex-history': () => closeMaxExerciseHistoryModal(),
+    'save-ex-history': () => saveMaxExerciseHistoryModal(),
   });
   document.body.appendChild(el);
   return el;
@@ -3809,21 +3849,27 @@ function _ensureMaxBlueprintModal() {
   const container = document.getElementById('modals-container') || document.body;
   const wrapper = document.createElement('div');
   wrapper.innerHTML = `
-    <div class="modal-overlay" id="max-blueprint-modal" onclick="closeMaxBlueprintModal(event)">
-      <div class="wt-max-blueprint-sheet" onclick="event.stopPropagation()">
+    <div class="modal-overlay" id="max-blueprint-modal">
+      <div class="wt-max-blueprint-sheet">
         <div class="wt-max-blueprint-head">
           <div>
             <div class="wt-max-blueprint-title">테스트모드 청사진</div>
             <div class="wt-max-blueprint-sub">6주 성장판, 프레임워크, 부위별 주간 세트 목표를 저장합니다.</div>
           </div>
-          <button type="button" class="wt-max-blueprint-close" onclick="closeMaxBlueprintModal()">×</button>
+          <button type="button" class="wt-max-blueprint-close" data-max-modal-action="close-blueprint">×</button>
         </div>
         <div id="max-blueprint-body"></div>
       </div>
     </div>
   `;
   container.appendChild(wrapper.firstElementChild);
-  return document.getElementById('max-blueprint-modal');
+  el = document.getElementById('max-blueprint-modal');
+  _bindMaxModalActions(el, {
+    backdrop: () => closeMaxBlueprintModal(),
+    'close-blueprint': () => closeMaxBlueprintModal(),
+    'save-blueprint': () => saveMaxBlueprintModal(),
+  });
+  return el;
 }
 
 export function openMaxBlueprintModal() {
@@ -3883,8 +3929,8 @@ export function openMaxBlueprintModal() {
       </div>
     </div>
     <div class="wt-max-blueprint-actions">
-      <button type="button" class="wt-max-rec-secondary" onclick="closeMaxBlueprintModal()">취소</button>
-      <button type="button" class="wt-max-rec-accept" onclick="saveMaxBlueprintModal()">저장</button>
+      <button type="button" class="wt-max-rec-secondary" data-max-modal-action="close-blueprint">취소</button>
+      <button type="button" class="wt-max-rec-accept" data-max-modal-action="save-blueprint">저장</button>
     </div>
   `;
   el.classList.add('open');
@@ -4105,7 +4151,7 @@ function _renderMaxObStep1() {
         </div>
       </div>
       <div class="wt-max-ob-foot">
-        <button type="button" class="wt-max-ob-skip" onclick="closeMaxMiniOnboarding()">닫기</button>
+        <button type="button" class="wt-max-ob-skip" data-close-max-ob>닫기</button>
         <button type="button" class="wt-max-ob-next" data-finish>테스트 모드 켜기 ✓</button>
       </div>
     </div>
