@@ -104,8 +104,10 @@
   3. PASS: `node --test tests/*.test.js` - 683 pass
   4. PASS: `git diff --check`
   5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
-  6. not verified yet: 운영 Pages 배포와 운영 URL browser flow 검증이 남아 있다.
-- 다음 액션: Slice 5 `click performance pass` 리뷰와 운영 배포 검증을 완료한다.
+  6. INFO: `f4442872c4435761ef848ddd6b2d5b41a4c78548` push 후 Pages deploy action이 GitHub 내부 오류 `Deployment failed, try again later.`로 실패했다.
+  7. INFO: 수동 workflow run `28655912543`, `28656159691`도 같은 Pages 내부 오류로 실패했고, 운영 URL은 아직 이전 `07bc8743222e`/z16을 서빙한다.
+  8. not verified yet: 새 docs commit으로 Pages deploy를 재트리거한 뒤 운영 URL browser flow 검증이 필요하다.
+- 다음 액션: Slice 5 docs commit으로 Pages deploy를 재트리거하고 운영 배포 검증을 완료한다.
 
 ## 2026-07-03 운동 추가/카드 추가 결합 완화 리팩토링
 

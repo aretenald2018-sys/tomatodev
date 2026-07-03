@@ -223,7 +223,9 @@
   3. PASS: `node --test tests/*.test.js` - 683 pass
   4. PASS: `git diff --check`
   5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
-  6. not verified yet: 운영 Pages 배포와 운영 URL browser flow 검증이 남아 있다.
+  6. INFO: `f4442872c4435761ef848ddd6b2d5b41a4c78548` push 후 Pages deploy action이 GitHub 내부 오류 `Deployment failed, try again later.`로 실패했다.
+  7. INFO: 수동 workflow run `28655912543`, `28656159691`도 같은 Pages 내부 오류로 실패했고, 운영 URL은 아직 이전 `07bc8743222e`/z16을 서빙한다.
+  8. not verified yet: 새 docs commit으로 Pages deploy를 재트리거한 뒤 운영 URL browser flow 검증이 필요하다.
 
 ## 리뷰 세션 프롬프트
 
@@ -236,7 +238,7 @@
 - Slice 2 실행 후 상태: `deployed_login_screen_verified`
 - Slice 3 실행 후 상태: `deployed_with_auth_ui_blocker`
 - Slice 4 실행 후 상태: `deployed_with_auth_ui_blocker`
-- Slice 5 실행 후 상태: `static_verified_pending_deploy`
+- Slice 5 실행 후 상태: `pages_internal_failure_pending_redeploy`
 - 다음 자동 상태: `ready_for_review`
-- 다음 액션: Slice 5 `click performance pass` 리뷰와 운영 배포 검증을 완료한다.
+- 다음 액션: Slice 5 docs commit으로 Pages deploy를 재트리거하고 운영 배포 검증을 완료한다.
 - 차단 질문: 없음
