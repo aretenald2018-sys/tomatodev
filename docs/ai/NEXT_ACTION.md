@@ -10,6 +10,7 @@
   - `docs/ai/reviews/2026-07-03-workout-add-decoupling-slice3-review.md`
   - `docs/ai/reviews/2026-07-03-workout-add-decoupling-slice4-review.md`
   - `docs/ai/reviews/2026-07-03-workout-add-decoupling-slice6-review.md`
+  - `docs/ai/reviews/2026-07-03-workout-add-decoupling-slice7-review.md`
 - 요청: 운동종목추가/운동카드추가 주변 오류가 연쇄되지 않도록 UI와 저장/상태 상호의존성을 낮추고, 운동 코드에서 멈추지 말고 코드 전체의 클릭/전역 함수/무거운 버튼 경로까지 조망해 리팩토링한 뒤 화면 검증 후 배포한다.
 - 진단 요약:
   1. `workout/exercises.js`의 피커 row click handler가 종목 선택, `S.workout.exercises` mutation, 카드 재렌더, 타이머/타임라인 후속효과, 저장, 피커 닫기, 카드 포커스, 하단시트 `afterSelect`까지 한 번에 처리한다.
@@ -22,7 +23,7 @@
   4. 완료: 슬라이스 4 하단시트 `afterSelect` detail contract를 명문화했다.
   5. 완료: 슬라이스 5 운동 외 전체 클릭 경로/전역 함수 의존/무거운 핸들러를 인벤토리화했다.
   6. 완료: 슬라이스 6 `render-calendar.js` 운동 day sheet card action을 inline `onclick/window._wtCal*`에서 scoped data attribute + sheet capture delegate로 전환했다.
-  7. 슬라이스 7: 클릭 지연을 만드는 중복 렌더/저장 경로 하나를 경량화한다.
+  7. 완료: 슬라이스 7 하단시트 피커 선택의 중복 운동 탭 렌더 경로를 경량화했다.
 - 슬라이스 1 실행 요약:
   1. `workout/exercise-entry-actions.js`를 추가해 운동 선택 상태 전이를 DOM/Firebase와 분리했다.
   2. 피커 row handler에서 직접 `S.workout.exercises.push(_buildPickerExerciseEntry(ex))`를 제거했다.
@@ -83,7 +84,18 @@
   3. PASS: `node --test tests/*.test.js` - 662 pass
   4. PASS: `git diff --check`
   5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
-- 다음 액션: Slice 7 `클릭 지연을 만드는 중복 렌더/저장 경로 하나를 경량화`를 진행한다.
+- 슬라이스 7 실행 요약:
+  1. `_selectPickerExercise()`에서 `afterSelect`가 있는 하단시트 선택 경로는 숨겨진 운동 탭 리스트/상단/타임라인 재렌더를 생략한다.
+  2. 일반 운동 탭 선택은 기존처럼 `_renderExerciseList()`, `_syncExpertTopArea()`, timer bar, timeline refresh를 수행한다.
+  3. draft 보존, picker close, `saveWorkoutDay({ keepDraftExercises: true })`, sheet refresh는 유지했다.
+  4. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z12-picker-sheet-fast-path`로 bump하고 cache marker 테스트를 갱신했다.
+- 슬라이스 7 검증:
+  1. PASS: `node --check workout/exercises.js; node --check render-calendar.js; node --check workout/exercise-entry-actions.js; node --check sw.js`
+  2. PASS: `node --test tests/ex-picker-selection-flow.test.js tests/workout-exercise-entry-actions.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-save-mode-guard.test.js tests/workout-navigation-stack.test.js tests/stats-picker-ui-polish.test.js tests/workout-picker-gym-rail.test.js` - 60 pass
+  3. PASS: `node --test tests/*.test.js` - 662 pass
+  4. PASS: `git diff --check`
+  5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
+- 다음 액션: 인증 계정으로 운영 URL에서 `운동 탭 -> 하단시트 + -> 종목 선택 -> 카드 표시` UI flow를 직접 확인한다. 인증이 계속 불가하면 social/login/Max hotspot 후속 계획을 별도 문서로 만든다.
 
 ## 2026-07-03 운동 종목 피커 CRUD 신규 추가 버튼 노출
 

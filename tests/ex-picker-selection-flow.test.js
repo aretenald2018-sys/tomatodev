@@ -30,12 +30,13 @@ test('exercise picker row selection closes picker and focuses the selected recor
   assert.match(renderFn, /data-picker-row-action="delete"/);
   assert.doesNotMatch(renderFn, /btn\.addEventListener\('click'/);
   assert.match(selectionHandler, /const afterSelect = _consumePickerAfterSelect\(\)/);
+  assert.match(selectionHandler, /const shouldRefreshWorkoutTab = !afterSelect/);
   assert.match(selectionHandler, /selectWorkoutExerciseEntry\(S\.workout\.exercises, ex,/);
   assert.match(selectionHandler, /_ensureExpertManualSession\(\)/);
   assert.match(selectionHandler, /return _buildPickerExerciseEntry\(exercise\)/);
   assert.match(selectionHandler, /if \(selection\.existing\)/);
   assert.match(selectionHandler, /wtFocusWorkoutEntryCard\(selection\.entryIdx\)/);
-  assert.match(selectionHandler, /_renderExerciseList\(\)/);
+  assert.match(selectionHandler, /if \(shouldRefreshWorkoutTab\) \{[\s\S]*_renderExerciseList\(\)[\s\S]*_syncExpertTopArea\(\)[\s\S]*_refreshWorkoutTimeline\('exercise add'\)[\s\S]*\}/);
   assert.match(selectionHandler, /wtCloseExercisePicker\(\)/);
   assert.match(selectionHandler, /const savePromise = saveWorkoutDay\(\{ silent: true, keepDraftExercises: !!afterSelect \}\)/);
   assert.match(selectionHandler, /wtFocusWorkoutEntryCard\(entryIdx\)/);
@@ -54,6 +55,8 @@ test('exercise picker supports sheet afterSelect without record-card focus', () 
   const selectionIndex = exercisesJs.indexOf('const selection = selectWorkoutExerciseEntry(S.workout.exercises, ex');
   const selectionHandler = exercisesJs.slice(Math.max(0, selectionIndex - 760), selectionIndex + 1900);
   assert.match(selectionHandler, /if \(afterSelect\) \{[\s\S]*_runPickerAfterSelect\(afterSelect, workoutExerciseSelectionDetail\(selection\)\)/);
+  assert.match(selectionHandler, /const shouldRefreshWorkoutTab = !afterSelect/);
+  assert.match(selectionHandler, /if \(shouldRefreshWorkoutTab\) \{[\s\S]*_renderExerciseList\(\)[\s\S]*_refreshWorkoutTimeline\('exercise add'\)[\s\S]*\}[\s\S]*wtPersistActiveWorkoutDraft\('exercise add'\)/);
   assert.match(selectionHandler, /saveWorkoutDay\(\{ silent: true, keepDraftExercises: !!afterSelect \}\)/);
   assert.match(selectionHandler, /if \(afterSelect\) \{[\s\S]*await savePromise;[\s\S]*_runPickerAfterSelect\(afterSelect, workoutExerciseSelectionDetail\(selection\)\)/);
   assert.match(selectionHandler, /if \(afterSelect\) \{[\s\S]*return;[\s\S]*\}[\s\S]*wtFocusWorkoutEntryCard\(entryIdx\)/);

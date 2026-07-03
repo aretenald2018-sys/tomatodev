@@ -2494,6 +2494,7 @@ function _hidePickerExercise(ex) {
 async function _selectPickerExercise(ex) {
   if (!ex?.id) return;
   const afterSelect = _consumePickerAfterSelect();
+  const shouldRefreshWorkoutTab = !afterSelect;
   const selection = selectWorkoutExerciseEntry(S.workout.exercises, ex, (exercise) => {
     _ensureExpertManualSession();
     return _buildPickerExerciseEntry(exercise);
@@ -2508,11 +2509,13 @@ async function _selectPickerExercise(ex) {
     return;
   }
   const entryIdx = selection.entryIdx;
-  _renderExerciseList();
-  _syncExpertTopArea();
-  const timerBar = document.getElementById('wt-workout-timer-bar');
-  if (timerBar && !timerBar.classList.contains('wt-open')) timerBar.classList.add('wt-open');
-  _refreshWorkoutTimeline('exercise add');
+  if (shouldRefreshWorkoutTab) {
+    _renderExerciseList();
+    _syncExpertTopArea();
+    const timerBar = document.getElementById('wt-workout-timer-bar');
+    if (timerBar && !timerBar.classList.contains('wt-open')) timerBar.classList.add('wt-open');
+    _refreshWorkoutTimeline('exercise add');
+  }
   wtPersistActiveWorkoutDraft('exercise add');
   wtCloseExercisePicker();
   const savePromise = saveWorkoutDay({ silent: true, keepDraftExercises: !!afterSelect });

@@ -313,6 +313,23 @@
   - 클릭 후 즉시 UI 피드백이 유지됨
   - 불필요한 중복 저장/렌더 호출이 구조 테스트 또는 코드 리뷰로 제거됨
 
+#### 슬라이스 7 실행 결과
+
+- 실행일: 2026-07-03
+- 변경:
+  1. `_selectPickerExercise()`에서 `afterSelect`가 있는 하단시트 선택 경로는 숨겨진 운동 탭 리스트/상단/타임라인 재렌더를 생략한다.
+  2. 일반 운동 탭 선택은 기존처럼 `_renderExerciseList()`, `_syncExpertTopArea()`, timer bar, timeline refresh를 수행한다.
+  3. draft 보존, picker close, `saveWorkoutDay({ keepDraftExercises: true })`, sheet refresh는 유지했다.
+  4. `tests/ex-picker-selection-flow.test.js`가 `shouldRefreshWorkoutTab = !afterSelect` fast path contract를 검증하도록 갱신했다.
+  5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z12-picker-sheet-fast-path`로 bump하고 cache marker 테스트를 갱신했다.
+- 검증:
+  1. PASS: `node --check workout/exercises.js; node --check render-calendar.js; node --check workout/exercise-entry-actions.js; node --check sw.js`
+  2. PASS: `node --test tests/ex-picker-selection-flow.test.js tests/workout-exercise-entry-actions.test.js tests/workout-calendar-bottom-sheet.test.js tests/workout-save-mode-guard.test.js tests/workout-navigation-stack.test.js tests/stats-picker-ui-polish.test.js tests/workout-picker-gym-rail.test.js` - 60 pass
+  3. PASS: `node --test tests/*.test.js` - 662 pass
+  4. PASS: `git diff --check`
+  5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
+- 남은 확인: 인증 계정 운영 UI에서 `운동 탭 -> 하단시트 + -> 종목 선택 -> 카드 표시` flow는 로그인 장벽 때문에 직접 확인이 필요하다.
+
 ## 리뷰 세션 프롬프트
 
 이 계획 문서와 직전 실행 세션의 변경 파일을 읽고 버그, 회귀, 누락된 테스트, 오래된 캐시/서비스워커 이슈, UX 깨짐을 우선 리뷰한다. 특히 피커에서 기존 종목 재선택, 신규 종목 추가, 하단시트 `afterSelect`, 일반 운동 카드 focus가 모두 같은 detail contract를 만족하는지 확인한다. 리뷰 중에는 새 기능을 구현하지 않는다.
@@ -320,6 +337,6 @@
 ## NEXT_ACTION.md 업데이트
 
 - 계획 세션 종료 상태: `ready_for_execution`
-- 다음 자동 상태: `ready_for_execution`
-- 다음 액션: 슬라이스 7 `클릭 지연을 만드는 중복 렌더/저장 경로 하나를 경량화`를 실행한다.
+- 다음 자동 상태: `ready_for_review`
+- 다음 액션: 변경 파일 기준 최종 리뷰와 운영 배포 검증 결과를 확인한다.
 - 차단 질문: 없음
