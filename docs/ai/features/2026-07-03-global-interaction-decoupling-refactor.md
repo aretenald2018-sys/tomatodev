@@ -6,7 +6,7 @@
 
 ## 계획 상태
 
-- 단계: `slice2_static_verified_pending_deploy`
+- 단계: `slice2_deployed_ready_for_slice3`
 - 선행 계획:
   - `docs/ai/features/2026-07-03-workout-add-decoupling-refactor.md`
 - 목적: 운동 추가/카드 추가 경계 안정화 뒤에도 남은 전역 `onclick`/`window.*`/중복 렌더 hotspot을 작은 실행 slice로 줄여, 새 버튼이나 UI를 추가할 때 다른 기능이 연쇄로 깨지는 위험을 낮춘다.
@@ -109,7 +109,7 @@
 
 #### 슬라이스 2 실행 결과
 
-- 상태: `static_verified_pending_deploy`
+- 상태: `deployed_login_screen_verified`
 - 변경 요약:
   1. `index.html`의 login/sign-up/password modal 주요 action을 `data-login-action`, `data-login-enter-action`, `data-login-input-action`, `data-login-focus-action`으로 전환했다.
   2. `feature-login.js`에 `_bindLoginActions(root)`와 `_runLoginAction(action, control)`를 추가해 `#login-screen`, `#login-pw-modal` 내부 action만 capture 단계에서 라우팅한다.
@@ -124,7 +124,11 @@
   3. PASS: `node --test tests/*.test.js` - 670 pass
   4. PASS: `git diff --check`
   5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
-  6. not verified yet: 운영 배포 marker 검증과 실제 로그인 화면 click flow 검증은 아직 남아 있다.
+  6. INFO: `npm.cmd run deploy:production`은 `ebbf71b0eb31dfaf556e9f02e3c7c54f5e5665a6` push 후 Pages가 이전 커밋을 보고 실패했다. push 자체는 성공했다.
+  7. PASS: `gh workflow run "Verify Pages Runtime Assets" --repo aretenald2018-sys/tomatofarm --ref main` 후 run `28653036608` 성공.
+  8. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ ebbf71b0eb31dfaf556e9f02e3c7c54f5e5665a6`
+  9. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ sw.js::tomatofarm-v20260703z14-login-action-bridge index.html::data-login-action index.html::data-login-enter-action feature-login.js::_bindLoginActions feature-login.js::loginActionsBound`
+  10. PASS: 운영 URL in-app browser 로그인 화면 click flow - 로그인 화면 표시, 가입 화면 전환, 길드 토글 표시, 로그인 화면 복귀, console error 0건.
 
 ### 슬라이스 3: app header/nav action bridge
 
@@ -168,7 +172,7 @@
 
 - 계획 세션 종료 상태: `ready_for_execution`
 - Slice 1 실행 후 상태: `deployed_with_auth_ui_blocker`
-- Slice 2 실행 후 상태: `static_verified_pending_deploy`
-- 다음 자동 상태: 배포 후 `ready_for_execution`
+- Slice 2 실행 후 상태: `deployed_login_screen_verified`
+- 다음 자동 상태: `ready_for_execution`
 - 다음 액션: Slice 2 검증과 배포를 끝낸 뒤 Slice 3 `app header/nav action bridge`를 실행한다.
 - 차단 질문: 없음

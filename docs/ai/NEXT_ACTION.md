@@ -2,7 +2,7 @@
 
 ## 2026-07-03 전역 상호작용 결합 완화 리팩토링
 
-- 상태: `static_verified_pending_deploy`
+- 상태: `ready_for_execution`
 - 계획: `docs/ai/features/2026-07-03-global-interaction-decoupling-refactor.md`
 - 리뷰:
   - `docs/ai/reviews/2026-07-03-global-interaction-slice1-review.md`
@@ -48,8 +48,12 @@
   3. PASS: `node --test tests/*.test.js` - 670 pass
   4. PASS: `git diff --check`
   5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
-  6. not verified yet: 운영 배포 marker 검증과 실제 로그인 화면 click flow 검증
-- 다음 액션: Slice 2 운영 배포와 로그인 화면 click flow 검증을 완료한 뒤 Slice 3 `app header/nav action bridge`를 실행한다.
+  6. INFO: `npm.cmd run deploy:production`은 `ebbf71b0eb31dfaf556e9f02e3c7c54f5e5665a6` push 후 Pages가 이전 커밋을 보고 실패했다. push 자체는 성공했다.
+  7. PASS: `gh workflow run "Verify Pages Runtime Assets" --repo aretenald2018-sys/tomatofarm --ref main` 후 run `28653036608` 성공.
+  8. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ ebbf71b0eb31dfaf556e9f02e3c7c54f5e5665a6`
+  9. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ sw.js::tomatofarm-v20260703z14-login-action-bridge index.html::data-login-action index.html::data-login-enter-action feature-login.js::_bindLoginActions feature-login.js::loginActionsBound`
+  10. PASS: 운영 URL in-app browser 로그인 화면 click flow - 로그인 화면 표시, 가입 화면 전환, 길드 토글 표시, 로그인 화면 복귀, console error 0건.
+- 다음 액션: Slice 3 `app header/nav action bridge`를 실행한다.
 
 ## 2026-07-03 운동 추가/카드 추가 결합 완화 리팩토링
 
