@@ -69,8 +69,12 @@
   3. PASS: `node --test tests/*.test.js` - 692 pass
   4. PASS: `git diff --check`
   5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=879`
-  6. not verified yet: 운영 Pages 배포와 운영 URL browser flow 검증이 남아 있다.
-- 다음 액션: Slice 3 `social render scheduler` 리뷰와 운영 배포 검증을 완료한다.
+  6. PASS: `npm.cmd run deploy:production` - `f6b39fcdb635`, `tomatofarm-v20260703z20-social-render-scheduler`
+  7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ f6b39fcdb635`
+  8. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ sw.js::tomatofarm-v20260703z20-social-render-scheduler home/social-render-scheduler.js::createSocialRenderScheduler home/friend-feed.js::_scheduleFriendFeedRender home/friend-profile.js::_scheduleFriendProfileFeedRender tests/social-render-scheduler.test.js::coalesces`
+  9. PASS: 운영 URL browser 확인 - `https://aretenald2018-sys.github.io/tomatofarm/` title `토마토 키우기`, login screen/app shell 표시, console error 0.
+  10. not verified yet: 인증 세션이 없어 실제 social reaction/comment/feed 내부 클릭 flow는 자동 검증하지 못했다.
+- 다음 액션: 이 social plan은 완료 처리하고, 남은 앱 전체 inline handler/render coupling을 재인벤토리해 다음 follow-up plan을 만든다.
 
 ## 2026-07-03 전역 상호작용 결합 완화 리팩토링
 
