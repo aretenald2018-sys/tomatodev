@@ -341,6 +341,94 @@ function closePasswordModal() {
   _pendingAccount = null;
 }
 
+function _loginActionTarget(eventTarget, selector) {
+  const target = eventTarget instanceof Element ? eventTarget : eventTarget?.parentElement;
+  return target?.closest?.(selector) || null;
+}
+
+function _isLoginBridgeScope(control) {
+  return !!control?.closest?.('#login-screen, #login-pw-modal');
+}
+
+function _loginGuildPrefix(control) {
+  return control?.dataset?.loginGuildPrefix || 'signup';
+}
+
+function _runLoginAction(action, control) {
+  let result;
+  switch (action) {
+    case 'create-account-login':
+      result = createAccountAndLogin();
+      break;
+    case 'show-signup-view':
+      result = showSignupView();
+      break;
+    case 'show-login-view':
+      result = showLoginView();
+      break;
+    case 'toggle-signup-guild':
+      result = toggleSignupGuild();
+      break;
+    case 'toggle-signup-pw':
+      result = toggleSignupPw();
+      break;
+    case 'create-account-signup':
+      result = createAccountFromSignup();
+      break;
+    case 'close-password-modal':
+      result = closePasswordModal();
+      break;
+    case 'verify-and-login':
+      result = verifyAndLogin();
+      break;
+    case 'search-guilds':
+      result = searchGuildsFor(_loginGuildPrefix(control));
+      break;
+    case 'add-guild-chip':
+      result = addGuildChipFor(_loginGuildPrefix(control));
+      break;
+    default:
+      return;
+  }
+  if (result && typeof result.catch === 'function') {
+    result.catch((err) => console.error('[login-action]', err));
+  }
+}
+
+function _bindLoginActions(root = document) {
+  const doc = root.ownerDocument || root;
+  if (doc.documentElement.dataset.loginActionsBound === '1') return;
+  doc.documentElement.dataset.loginActionsBound = '1';
+
+  doc.addEventListener('click', (event) => {
+    const control = _loginActionTarget(event.target, '[data-login-action]');
+    if (!control || !_isLoginBridgeScope(control)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    _runLoginAction(control.dataset.loginAction, control);
+  }, true);
+
+  doc.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    const control = _loginActionTarget(event.target, '[data-login-enter-action]');
+    if (!control || !_isLoginBridgeScope(control)) return;
+    event.preventDefault();
+    _runLoginAction(control.dataset.loginEnterAction, control);
+  }, true);
+
+  doc.addEventListener('input', (event) => {
+    const control = _loginActionTarget(event.target, '[data-login-input-action]');
+    if (!control || !_isLoginBridgeScope(control)) return;
+    _runLoginAction(control.dataset.loginInputAction, control);
+  }, true);
+
+  doc.addEventListener('focusin', (event) => {
+    const control = _loginActionTarget(event.target, '[data-login-focus-action]');
+    if (!control || !_isLoginBridgeScope(control)) return;
+    _runLoginAction(control.dataset.loginFocusAction, control);
+  }, true);
+}
+
 // 모드 선택 라디오 하이라이트
 document.addEventListener('change', (e) => {
   if (e.target.name !== 'login-mode') return;
@@ -1508,7 +1596,10 @@ async function sendLetter() {
 window.sendLetter = sendLetter;
 
 // 페이지 로드 시 로그인 초기화
-document.addEventListener('DOMContentLoaded', initLoginScreen);
+document.addEventListener('DOMContentLoaded', () => {
+  _bindLoginActions();
+  initLoginScreen();
+});
 
 function toggleTheme() {
   const root = document.documentElement;

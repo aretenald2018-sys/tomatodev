@@ -75,15 +75,15 @@
 
         <!-- 비밀번호 (기존 계정 전용) -->
         <div id="login-pw-section" class="u-mt-3" style="display:none;">
-          <input class="login-input" id="login-password" type="password" placeholder="비밀번호" onkeydown="if(event.key==='Enter')createAccountAndLogin()">
+          <input class="login-input" id="login-password" type="password" placeholder="비밀번호" data-login-enter-action="create-account-login">
         </div>
 
         <div id="login-status" class="u-text-xs u-text-tertiary u-mt-2 login-status"></div>
 
-        <button class="login-btn" id="login-create-btn" onclick="createAccountAndLogin()">로그인</button>
+        <button class="login-btn" id="login-create-btn" type="button" data-login-action="create-account-login">로그인</button>
 
         <div class="u-text-center" style="margin-top:14px;">
-          <button class="login-signup-link" onclick="showSignupView()">처음이신가요? 3초만에 가입하기</button>
+          <button class="login-signup-link" type="button" data-login-action="show-signup-view">처음이신가요? 3초만에 가입하기</button>
         </div>
       </div>
     </div>
@@ -110,7 +110,7 @@
 
           <!-- 소속 길드 설정(선택) -->
           <div id="signup-guild-section" class="signup-section">
-            <div class="signup-toggle-row" onclick="toggleSignupGuild()">
+            <div class="signup-toggle-row" data-login-action="toggle-signup-guild">
               <div class="u-flex-1">
                 <div class="u-text-sm u-font-semi">소속 길드 설정(선택)</div>
                 <div class="u-text-xs u-text-tertiary u-mt-1">길드에 가입하면 길드 랭킹에 참여할 수 있어요.</div>
@@ -122,8 +122,7 @@
             <div id="signup-guild-field" class="signup-field-reveal" style="display:none;">
               <div class="u-relative">
                 <input class="login-input signup-guild-input" id="signup-guild-input" placeholder="길드 이름을 검색하거나 입력하세요" maxlength="20" autocomplete="off"
-                       oninput="searchGuildsFor('signup')" onfocus="searchGuildsFor('signup')"
-                       onkeydown="if(event.key==='Enter'){event.preventDefault();addGuildChipFor('signup');}">
+                       data-login-guild-prefix="signup" data-login-input-action="search-guilds" data-login-focus-action="search-guilds" data-login-enter-action="add-guild-chip">
                 <div id="signup-guild-suggestions" class="guild-suggest-list" style="display:none;"></div>
               </div>
               <div id="signup-guild-chips" class="signup-guild-chips"></div>
@@ -132,7 +131,7 @@
 
           <!-- 비밀번호 설정(선택) -->
           <div class="signup-section">
-            <div class="signup-toggle-row" onclick="toggleSignupPw()">
+            <div class="signup-toggle-row" data-login-action="toggle-signup-pw">
               <div class="u-flex-1">
                 <div class="u-text-sm u-font-semi">비밀번호 설정(선택)</div>
                 <div class="u-text-xs u-text-tertiary u-mt-1">설정하면 내 기록을 보호할 수 있어요.</div>
@@ -149,10 +148,10 @@
 
         <div id="signup-status" class="u-text-xs u-text-tertiary u-mt-2 login-status"></div>
 
-        <button class="login-btn signup-submit-btn" onclick="createAccountFromSignup()">시작하기</button>
+        <button class="login-btn signup-submit-btn" type="button" data-login-action="create-account-signup">시작하기</button>
 
         <div class="u-text-center signup-login-link-wrap">
-          <button class="signup-login-link" onclick="showLoginView()">이미 계정이 있어요</button>
+          <button class="signup-login-link" type="button" data-login-action="show-login-view">이미 계정이 있어요</button>
         </div>
       </div>
     </div>
@@ -164,11 +163,11 @@
 <div class="login-pw-modal" id="login-pw-modal" style="display:none;">
   <div class="login-card login-pw-card">
     <div class="login-subtitle" id="login-pw-modal-name"></div>
-    <input class="login-input login-pw-input" id="login-pw-modal-input" type="password" placeholder="비밀번호를 입력하세요" onkeydown="if(event.key==='Enter')verifyAndLogin()">
+    <input class="login-input login-pw-input" id="login-pw-modal-input" type="password" placeholder="비밀번호를 입력하세요" data-login-enter-action="verify-and-login">
     <div id="login-pw-modal-error" class="login-pw-error" style="display:none;">비밀번호가 맞지 않습니다</div>
     <div class="login-pw-actions">
-      <button class="login-btn login-pw-cancel u-flex-1" onclick="closePasswordModal()">취소</button>
-      <button class="login-btn u-flex-2" onclick="verifyAndLogin()">확인</button>
+      <button class="login-btn login-pw-cancel u-flex-1" type="button" data-login-action="close-password-modal">취소</button>
+      <button class="login-btn u-flex-2" type="button" data-login-action="verify-and-login">확인</button>
     </div>
   </div>
 </div>

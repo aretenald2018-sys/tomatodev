@@ -79,5 +79,5 @@ test('comment author navigation is delegated while comment edit actions remain i
 });
 
 test('service worker cache version was bumped for social profile action assets', () => {
-  assert.match(swJs, /tomatofarm-v20260703z13-social-profile-actions/);
+  assert.match(swJs, /tomatofarm-v20260703z14-login-action-bridge/);
 });

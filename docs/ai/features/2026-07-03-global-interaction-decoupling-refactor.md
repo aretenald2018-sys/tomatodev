@@ -6,7 +6,7 @@
 
 ## 계획 상태
 
-- 단계: `slice1_static_verified_pending_deploy`
+- 단계: `slice2_static_verified_pending_deploy`
 - 선행 계획:
   - `docs/ai/features/2026-07-03-workout-add-decoupling-refactor.md`
 - 목적: 운동 추가/카드 추가 경계 안정화 뒤에도 남은 전역 `onclick`/`window.*`/중복 렌더 hotspot을 작은 실행 slice로 줄여, 새 버튼이나 UI를 추가할 때 다른 기능이 연쇄로 깨지는 위험을 낮춘다.
@@ -70,7 +70,7 @@
 
 #### 슬라이스 1 실행 결과
 
-- 상태: `static_verified_pending_deploy`
+- 상태: `deployed_with_auth_ui_blocker`
 - 변경 요약:
   1. `home/friend-profile.js`에 `_bindFriendProfileActions(root)`와 `_socialAttr()`를 추가해 profile modal의 주요 click/Enter action을 `data-social-action`/`data-social-enter-action`으로 라우팅한다.
   2. profile modal의 close, quick guild join, neighbor add, introduce, guild invite, tomato gift, guestbook submit, workout/meal comment toggle을 inline handler 대신 modal-scoped delegate로 전환했다.
@@ -86,7 +86,11 @@
   3. PASS: `node --test tests/*.test.js` - 667 pass
   4. PASS: `git diff --check`
   5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
-  6. not verified yet: 운영 배포 marker 검증, 인증 UI flow 검증은 아직 남아 있다.
+  6. PASS: `npm.cmd run deploy:production` - `135dc5128908`, `tomatofarm-v20260703z13-social-profile-actions`
+  7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 135dc5128908`
+  8. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ sw.js::tomatofarm-v20260703z13-social-profile-actions home/friend-profile.js::_bindFriendProfileActions home/friend-profile.js::quick-add-neighbor home/friend-profile.js::submit-guestbook home/friend-profile.js::data-social-enter-action`
+  9. PASS: 운영 URL in-app browser 로드 - title `토마토 키우기`, URL `https://aretenald2018-sys.github.io/tomatofarm/`, console error 0건
+  10. not verified yet: 인증 세션이 없어 실제 친구 프로필 모달 버튼 클릭 flow는 로그인 화면(`loginVisible: true`)에서 막혔다.
 
 ### 슬라이스 2: login inline bridge 축소
 
@@ -102,6 +106,25 @@
   - login source 구조 테스트
   - `node --check feature-login.js`
   - 운영 브라우저에서 로그인 화면 버튼 visibility/hit target 확인
+
+#### 슬라이스 2 실행 결과
+
+- 상태: `static_verified_pending_deploy`
+- 변경 요약:
+  1. `index.html`의 login/sign-up/password modal 주요 action을 `data-login-action`, `data-login-enter-action`, `data-login-input-action`, `data-login-focus-action`으로 전환했다.
+  2. `feature-login.js`에 `_bindLoginActions(root)`와 `_runLoginAction(action, control)`를 추가해 `#login-screen`, `#login-pw-modal` 내부 action만 capture 단계에서 라우팅한다.
+  3. 로그인/가입/비밀번호 확인/길드 검색 입력/Enter 추가 동작은 기존 전역 함수 구현을 그대로 재사용한다.
+  4. `index.html`과 `feature-login.js`가 `STATIC_ASSETS`에 포함되어 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z14-login-action-bridge`로 bump했다.
+- 의도적으로 남긴 범위:
+  1. 김태우 lock screen, onboarding guild overlay, guild management modal은 동적 HTML 생성 범위라 별도 slice에서 처리한다.
+  2. app header/nav, bottom tab, more menu inline handler는 Slice 3 범위로 남긴다.
+- 현재 검증:
+  1. PASS: `node --check feature-login.js; node --check sw.js; node --check tests/login-action-bridge.test.js`
+  2. PASS: `node --test tests/login-action-bridge.test.js tests/social-friend-profile-actions.test.js tests/pwa-update-auto-reload.test.js` - 10 pass
+  3. PASS: `node --test tests/*.test.js` - 670 pass
+  4. PASS: `git diff --check`
+  5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=875`
+  6. not verified yet: 운영 배포 marker 검증과 실제 로그인 화면 click flow 검증은 아직 남아 있다.
 
 ### 슬라이스 3: app header/nav action bridge
 
@@ -144,7 +167,8 @@
 ## NEXT_ACTION.md 업데이트
 
 - 계획 세션 종료 상태: `ready_for_execution`
-- Slice 1 실행 후 임시 상태: `static_verified_pending_deploy`
-- 다음 자동 상태: 전체 검증/배포 후 `ready_for_execution`
-- 다음 액션: Slice 1 검증과 배포를 끝낸 뒤 Slice 2 `login inline bridge 축소`를 실행한다.
+- Slice 1 실행 후 상태: `deployed_with_auth_ui_blocker`
+- Slice 2 실행 후 상태: `static_verified_pending_deploy`
+- 다음 자동 상태: 배포 후 `ready_for_execution`
+- 다음 액션: Slice 2 검증과 배포를 끝낸 뒤 Slice 3 `app header/nav action bridge`를 실행한다.
 - 차단 질문: 없음
