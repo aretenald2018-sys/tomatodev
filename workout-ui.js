@@ -10,6 +10,7 @@ import {
   wtAddFoodItem, wtRemoveFoodItem,
   openNutritionPhotoUpload,
   wtStartWorkoutTimer, wtRestTimerShowIdle, wtRestTimerHideIdle,
+  wtOpenManualCardioInput,
 } from './render-workout.js?v=20260515v6';
 
 // ── 운동 유형 단일 탭 ────────────────────────────────────────────
@@ -18,22 +19,34 @@ let _wtActiveType = 'gym';
 
 const _WT_TYPE_SECTIONS = {
   gym: 'wt-gym-section',
+  cf: 'wt-cf-section',
+  stretch: 'wt-stretch-section',
+  swimming: 'wt-swim-section',
+};
+
+const _WT_TYPE_TABS = {
+  gym: 'wt-chip-gym',
+  running: 'wt-chip-running',
+  'manual-cardio': 'wt-chip-cardio',
+  cf: 'wt-chip-cf',
+  stretch: 'wt-chip-stretch',
+  swimming: 'wt-chip-swimming',
 };
 
 function _isKnownType(type) {
-  return type === 'running' || !!_WT_TYPE_SECTIONS[type];
+  return type === 'running' || type === 'manual-cardio' || !!_WT_TYPE_SECTIONS[type];
 }
 
 function _applyActive(type) {
-  ['gym', 'running'].forEach(t => {
-    const tab = document.getElementById('wt-chip-' + t);
+  Object.entries(_WT_TYPE_TABS).forEach(([t, id]) => {
+    const tab = document.getElementById(id);
     if (tab) tab.classList.toggle('active', t === type);
   });
   Object.keys(_WT_TYPE_SECTIONS).forEach(t => {
     const sec = document.getElementById(_WT_TYPE_SECTIONS[t]);
     if (sec) sec.classList.toggle('wt-open', t === type);
   });
-  if (type === 'running') return;
+  if (type === 'running' || type === 'manual-cardio') return;
   // B-2: 탭(유형 칩) 클릭은 "지금부터 이 종류 기록하겠다"는 의사 표시.
   // → 이때만 타이머 바/메모/저장 섹션 오픈.
   //   (로드 시점 자동 오픈은 load.js _restoreFlowState가 기록 유무로만 판단)
@@ -60,8 +73,20 @@ window.wtSwitchType = function(type) {
     return;
   }
 
-  // 헬스 탭 최초 진입 시 타이머 시작 (사용자 명시 액션으로 간주)
-  if (type === 'gym' && !isReclick) {
+  if (type === 'manual-cardio') {
+    try {
+      if (typeof window.wtOpenManualCardioInput === 'function') {
+        window.wtOpenManualCardioInput();
+      } else {
+        wtOpenManualCardioInput();
+      }
+    } catch (e) {
+      console.warn('[workout-ui] manual cardio open failed:', e);
+    }
+    return;
+  }
+
+  if (!isReclick) {
     wtStartWorkoutTimer();
     wtRestTimerShowIdle();
   }
@@ -80,8 +105,8 @@ window._wtResetFlowUI = function() {
   _wtActiveType = 'gym';
   _applyActive('gym');
   wtRestTimerHideIdle();
-  Object.keys(_WT_TYPE_SECTIONS).forEach(t => {
-    document.getElementById('wt-chip-' + t)?.classList.remove('has-record');
+  Object.values(_WT_TYPE_TABS).forEach(id => {
+    document.getElementById(id)?.classList.remove('has-record');
   });
 };
 

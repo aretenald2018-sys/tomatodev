@@ -171,5 +171,5 @@ test('workout navigation keeps only rendered calendar and day sheet surfaces', a
   assert.match(styleCss, /body\.wt-workout-tab-active\s*\{[\s\S]*overscroll-behavior-y:\s*none;/);
   assert.match(styleCss, /body\.wt-workout-tab-active #tab-workout\.active\s*\{[\s\S]*overscroll-behavior-y:\s*contain;/);
   assert.match(swJs, /\.\/workout\/navigation-stack\.js/);
-  assert.match(swJs, /tomatofarm-v20260703z20-social-render-scheduler/);
+  assert.match(swJs, /tomatofarm-v20260703z21-input-ux-completion/);
 });

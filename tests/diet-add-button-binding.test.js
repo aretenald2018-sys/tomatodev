@@ -8,12 +8,12 @@ const featureNutritionJs = readFileSync('feature-nutrition.js', 'utf8');
 const modalManagerJs = readFileSync('modal-manager.js', 'utf8');
 const workoutUiJs = readFileSync('workout-ui.js', 'utf8');
 
-test('diet add buttons use delegated addFood actions for every meal', () => {
+test('diet add buttons use delegated quick-add actions for every meal', () => {
   const meals = ['breakfast', 'lunch', 'dinner', 'snack'];
 
   for (const meal of meals) {
     const buttonPattern = new RegExp(
-      `<button[^>]+class="diet-add-btn"[^>]+data-action="addFood"[^>]+data-meal="${meal}"[^>]*>\\+ 음식 추가</button>`
+      `<button[^>]+class="diet-add-btn"[^>]+data-action="openMealQuickAdd"[^>]+data-meal="${meal}"[^>]*>\\+ 음식 추가</button>`
     );
     assert.match(indexHtml, buttonPattern, `${meal} add button should be delegated`);
   }
@@ -25,13 +25,16 @@ test('diet add buttons use delegated addFood actions for every meal', () => {
   );
 });
 
-test('addFood delegated handler opens the nutrition search modal for the selected meal', () => {
-  assert.match(appJs, /action === 'addFood'/);
+test('quick-add delegated handler opens a meal action sheet before search', () => {
+  assert.match(appJs, /action === 'openMealQuickAdd'/);
+  assert.match(appJs, /openMealQuickAdd\(meal\)/);
+  assert.match(appJs, /data-meal-quick-add/);
+  assert.match(appJs, /data-meal-quick-action="search"/);
   assert.match(appJs, /await window\.openNutritionSearch\(meal\)/);
   assert.doesNotMatch(
     appJs,
-    /action === 'addFood'[\s\S]{0,240}openNutritionItemEditor/,
-    'addFood action should not bypass search with the direct item editor'
+    /action === 'openMealQuickAdd'[\s\S]{0,240}openNutritionItemEditor/,
+    'openMealQuickAdd should render choices instead of bypassing search immediately'
   );
 });
 

@@ -6240,6 +6240,14 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   align-items: flex-end;
   background: rgba(17, 24, 39, .34);
 }
+.ex-picker-cardio-backdrop--standalone {
+  position: fixed;
+  z-index: 2147482600;
+}
+.ex-picker-cardio-backdrop--standalone .ex-picker-cardio-sheet {
+  max-width: 520px;
+  margin: 0 auto;
+}
 .ex-picker-cardio-sheet {
   width: 100%;
   padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0px));
@@ -6949,6 +6957,148 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   border-radius: var(--seed-r3); padding: var(--seed-x4);
   box-shadow: var(--seed-s1);
   display: flex; flex-direction: column; gap: var(--seed-x3);
+}
+.wt-activity-section {
+  margin-bottom: var(--seed-x3);
+}
+.wt-activity-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--seed-x2);
+  margin-bottom: var(--seed-x2);
+}
+.wt-activity-copy {
+  display: flex;
+  align-items: center;
+  gap: var(--seed-x2);
+  min-height: 28px;
+  color: var(--seed-fg-muted, var(--text-secondary));
+  font-size: 12px;
+  font-weight: 600;
+}
+.wt-activity-copy-btn {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--seed-stroke-neutral, var(--border));
+  border-radius: var(--seed-r-full, 999px);
+  background: var(--seed-bg-neutral-weak, var(--surface2));
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+.wt-activity-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--seed-x2);
+}
+.wt-activity-fields--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+.wt-activity-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.wt-activity-field span {
+  color: var(--seed-fg-muted, var(--text-secondary));
+  font-size: 12px;
+  font-weight: 700;
+}
+.wt-activity-field input,
+.wt-activity-field select,
+.wt-activity-field textarea {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--seed-stroke-neutral, var(--border));
+  border-radius: var(--seed-r2);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  padding: 10px 12px;
+}
+.wt-activity-field textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+.wt-activity-field input:focus,
+.wt-activity-field select:focus,
+.wt-activity-field textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-bg);
+}
+.meal-quick-add-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2147482550;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(17, 24, 39, .34);
+}
+.meal-quick-add-sheet {
+  width: 100%;
+  max-width: 520px;
+  padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+  border-radius: 20px 20px 0 0;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 -16px 38px rgba(15, 23, 42, .18);
+}
+.meal-quick-add-head {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 14px;
+}
+.meal-quick-add-head span {
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 850;
+}
+.meal-quick-add-head strong {
+  color: var(--text);
+  font-size: 19px;
+  line-height: 25px;
+  font-weight: 900;
+}
+.meal-quick-add-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--text-secondary);
+  font-size: 22px;
+  line-height: 1;
+}
+.meal-quick-add-actions {
+  display: grid;
+  gap: 8px;
+}
+.meal-quick-add-actions button {
+  min-height: 46px;
+  border: 1px solid var(--seed-stroke-neutral, var(--border));
+  border-radius: 12px;
+  background: var(--surface2);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: left;
+  padding: 0 14px;
+}
+.meal-quick-add-actions button:first-child {
+  border-color: var(--primary);
+  background: var(--primary-bg);
+  color: var(--primary);
 }
 body.wt-running-session-open {
   overflow: hidden;

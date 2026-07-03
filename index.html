@@ -402,6 +402,10 @@
         <div class="wt-type-tabs" id="wt-type-tabs-bar">
           <button class="wt-type-tab active" id="wt-chip-gym" onclick="wtSwitchType('gym')">🏋️ 헬스</button>
           <button class="wt-type-tab" id="wt-chip-running" onclick="wtSwitchType('running')">🏃 런닝/조깅</button>
+          <button class="wt-type-tab" id="wt-chip-cardio" onclick="wtSwitchType('manual-cardio')">🚴 유산소</button>
+          <button class="wt-type-tab" id="wt-chip-cf" onclick="wtSwitchType('cf')">🔥 크로스핏</button>
+          <button class="wt-type-tab" id="wt-chip-stretch" onclick="wtSwitchType('stretch')">🧘 스트레칭</button>
+          <button class="wt-type-tab" id="wt-chip-swimming" onclick="wtSwitchType('swimming')">🏊 수영</button>
         </div>
       </div>
 
@@ -471,6 +475,92 @@
         </div>
         <div id="wt-exercise-list" style="margin-top:8px;"></div>
         <button class="ex-add-bottom-btn" onclick="wtOpenExercisePicker()">+ 종목 추가(선택)</button>
+      </div>
+
+      <div class="wt-detail-section wt-activity-section" id="wt-cf-section">
+        <div class="wt-activity-head">
+          <span class="sheet-section-label">크로스핏</span>
+          <div class="wt-activity-copy" id="wt-cf-last-copy" style="display:none"></div>
+        </div>
+        <div class="wt-cf-form wt-activity-card">
+          <label class="wt-activity-field wt-activity-field--wide">
+            <span>WOD / 메트콘</span>
+            <input id="wt-cf-wod" type="text" placeholder="예: Cindy 20분 AMRAP">
+          </label>
+          <div class="wt-activity-fields">
+            <label class="wt-activity-field">
+              <span>시간</span>
+              <input id="wt-cf-duration-min" type="number" inputmode="numeric" min="0" max="600" placeholder="분">
+            </label>
+            <label class="wt-activity-field">
+              <span>초</span>
+              <input id="wt-cf-duration-sec" type="number" inputmode="numeric" min="0" max="59" placeholder="초">
+            </label>
+          </div>
+          <label class="wt-activity-field wt-activity-field--wide">
+            <span>메모</span>
+            <textarea id="wt-cf-memo" rows="3" placeholder="라운드, 스케일, 컨디션"></textarea>
+          </label>
+        </div>
+      </div>
+
+      <div class="wt-detail-section wt-activity-section" id="wt-stretch-section">
+        <div class="wt-activity-head">
+          <span class="sheet-section-label">스트레칭</span>
+          <div class="wt-activity-copy" id="wt-stretch-last-copy" style="display:none"></div>
+        </div>
+        <div class="wt-stretch-form wt-activity-card">
+          <div class="wt-activity-fields wt-activity-fields--single">
+            <label class="wt-activity-field">
+              <span>시간</span>
+              <input id="wt-stretch-duration" type="number" inputmode="numeric" min="0" max="600" placeholder="분">
+            </label>
+          </div>
+          <label class="wt-activity-field wt-activity-field--wide">
+            <span>메모</span>
+            <textarea id="wt-stretch-memo" rows="3" placeholder="부위, 가동성, 통증 여부"></textarea>
+          </label>
+        </div>
+      </div>
+
+      <div class="wt-detail-section wt-activity-section" id="wt-swim-section">
+        <div class="wt-activity-head">
+          <span class="sheet-section-label">수영</span>
+          <div class="wt-activity-copy" id="wt-swim-last-copy" style="display:none"></div>
+        </div>
+        <div class="wt-swimming-form wt-activity-card">
+          <div class="wt-activity-fields">
+            <label class="wt-activity-field">
+              <span>거리</span>
+              <input id="wt-swim-distance" type="number" inputmode="decimal" min="0" step="0.1" placeholder="km">
+            </label>
+            <label class="wt-activity-field">
+              <span>영법</span>
+              <select id="wt-swim-stroke">
+                <option value="">혼합</option>
+                <option value="freestyle">자유형</option>
+                <option value="breaststroke">평영</option>
+                <option value="backstroke">배영</option>
+                <option value="butterfly">접영</option>
+                <option value="kickboard">킥보드</option>
+              </select>
+            </label>
+          </div>
+          <div class="wt-activity-fields">
+            <label class="wt-activity-field">
+              <span>시간</span>
+              <input id="wt-swim-duration-min" type="number" inputmode="numeric" min="0" max="600" placeholder="분">
+            </label>
+            <label class="wt-activity-field">
+              <span>초</span>
+              <input id="wt-swim-duration-sec" type="number" inputmode="numeric" min="0" max="59" placeholder="초">
+            </label>
+          </div>
+          <label class="wt-activity-field wt-activity-field--wide">
+            <span>메모</span>
+            <textarea id="wt-swim-memo" rows="3" placeholder="페이스, 세트, 수영장 상태"></textarea>
+          </label>
+        </div>
       </div>
 
       <!-- 메모 + 인증사진 -->
@@ -617,7 +707,7 @@
           </div>
           <div class="diet-toss-body">
             <div class="diet-meal-actions">
-              <button class="diet-add-btn" type="button" data-action="addFood" data-meal="breakfast">+ 음식 추가</button>
+              <button class="diet-add-btn" type="button" data-action="openMealQuickAdd" data-meal="breakfast">+ 음식 추가</button>
               <button class="diet-skip-btn" id="wt-breakfast-skipped" onclick="wtSkipMeal('breakfast')">안 먹었어요</button>
             </div>
             <div class="meal-content-row" id="wt-meal-content-breakfast">
@@ -640,7 +730,7 @@
           </div>
           <div class="diet-toss-body">
             <div class="diet-meal-actions">
-              <button class="diet-add-btn" type="button" data-action="addFood" data-meal="lunch">+ 음식 추가</button>
+              <button class="diet-add-btn" type="button" data-action="openMealQuickAdd" data-meal="lunch">+ 음식 추가</button>
               <button class="diet-skip-btn" id="wt-lunch-skipped" onclick="wtSkipMeal('lunch')">안 먹었어요</button>
             </div>
             <div class="meal-content-row" id="wt-meal-content-lunch">
@@ -663,7 +753,7 @@
           </div>
           <div class="diet-toss-body">
             <div class="diet-meal-actions">
-              <button class="diet-add-btn" type="button" data-action="addFood" data-meal="dinner">+ 음식 추가</button>
+              <button class="diet-add-btn" type="button" data-action="openMealQuickAdd" data-meal="dinner">+ 음식 추가</button>
               <button class="diet-skip-btn" id="wt-dinner-skipped" onclick="wtSkipMeal('dinner')">안 먹었어요</button>
             </div>
             <div class="meal-content-row" id="wt-meal-content-dinner">
@@ -686,7 +776,7 @@
           </div>
           <div class="diet-toss-body">
             <div class="diet-meal-actions">
-              <button class="diet-add-btn" type="button" data-action="addFood" data-meal="snack">+ 음식 추가</button>
+              <button class="diet-add-btn" type="button" data-action="openMealQuickAdd" data-meal="snack">+ 음식 추가</button>
             </div>
             <div class="meal-content-row" id="wt-meal-content-snack">
               <div class="meal-food-list" id="wt-foods-snack"></div>

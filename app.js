@@ -739,9 +739,102 @@ async function init() {
   }
 }
 
+const _MEAL_QUICK_LABELS = {
+  breakfast: '아침',
+  lunch: '점심',
+  dinner: '저녁',
+  snack: '간식',
+};
+
+function closeMealQuickAdd() {
+  document.querySelector('[data-meal-quick-add]')?.remove();
+}
+
+async function _runMealQuickAction(action, meal) {
+  if (!meal) return;
+  window._nutritionSearchMeal = meal;
+  if (action === 'search') {
+    closeMealQuickAdd();
+    await window.openNutritionSearch(meal);
+    return;
+  }
+  if (action === 'direct') {
+    closeMealQuickAdd();
+    await window.openNutritionSearch(meal);
+    window.closeNutritionSearch?.();
+    if (typeof window.openNutritionDirectAdd === 'function') {
+      window.openNutritionDirectAdd();
+      return;
+    }
+    window.openNutritionItemEditor(null);
+    return;
+  }
+  if (action === 'photo-ai') {
+    closeMealQuickAdd();
+    document.getElementById(`ai-photo-input-${meal}`)?.click();
+    return;
+  }
+  if (action === 'photo-attach') {
+    closeMealQuickAdd();
+    document.getElementById(`photo-input-${meal}`)?.click();
+    return;
+  }
+  if (action === 'skip') {
+    closeMealQuickAdd();
+    window.wtSkipMeal(meal);
+  }
+}
+
+function openMealQuickAdd(meal) {
+  if (!meal) {
+    console.warn('[diet-input] meal quick-add meal 누락');
+    showToast?.('끼니 정보를 찾지 못했어요. 새로고침 후 다시 시도해주세요.', 2500, 'error');
+    return;
+  }
+  const mealLabel = _MEAL_QUICK_LABELS[meal] || '식사';
+  closeMealQuickAdd();
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="meal-quick-add-backdrop" data-meal-quick-add data-meal="${meal}">
+      <div class="meal-quick-add-sheet" role="dialog" aria-modal="true" aria-label="${mealLabel} 음식 추가">
+        <div class="meal-quick-add-head">
+          <span>${mealLabel}</span>
+          <strong>어떻게 기록할까요?</strong>
+          <button type="button" class="meal-quick-add-close" data-meal-quick-close aria-label="닫기">×</button>
+        </div>
+        <div class="meal-quick-add-actions">
+          <button type="button" data-meal-quick-action="search">검색해서 추가</button>
+          <button type="button" data-meal-quick-action="direct">직접 입력</button>
+          <button type="button" data-meal-quick-action="photo-ai">AI 사진 분석</button>
+          <button type="button" data-meal-quick-action="photo-attach">사진만 첨부</button>
+          ${meal === 'snack' ? '' : '<button type="button" data-meal-quick-action="skip">안 먹었어요</button>'}
+        </div>
+      </div>
+    </div>
+  `);
+  const sheet = document.querySelector('[data-meal-quick-add]');
+  sheet?.addEventListener('click', async (event) => {
+    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    if (target === sheet || target?.closest?.('[data-meal-quick-close]')) {
+      event.preventDefault();
+      closeMealQuickAdd();
+      return;
+    }
+    const actionBtn = target?.closest?.('[data-meal-quick-action]');
+    if (!actionBtn) return;
+    event.preventDefault();
+    try {
+      await _runMealQuickAction(actionBtn.getAttribute('data-meal-quick-action'), meal);
+    } catch (err) {
+      console.error('[diet-input] meal quick-add action failed:', err);
+      showToast?.('식단 입력 창을 열지 못했어요. 잠시 후 다시 시도해주세요.', 2500, 'error');
+    }
+  });
+}
+
+window.openMealQuickAdd = openMealQuickAdd;
+
 // ── 식단 입력 버튼 이벤트 위임 (끼니별 버튼 지원) ──────────────────
 function _initDietInputButtons() {
-  // 식단 영역 전체에 이벤트 위임 (각 끼니별 addFood/photoUpload 버튼)
   const dietGrid = document.querySelector('.diet-grid');
   if (!dietGrid) return;
 
@@ -757,19 +850,21 @@ function _initDietInputButtons() {
     // meal이 있으면 해당 끼니를 미리 선택
     if (meal) window._nutritionSearchMeal = meal;
 
-    if (action === 'addFood') {
+    if (action === 'openMealQuickAdd') {
       if (!meal) {
-        console.warn('[diet-input] addFood meal 누락');
+        console.warn('[diet-input] openMealQuickAdd meal 누락');
         showToast?.('끼니 정보를 찾지 못했어요. 새로고침 후 다시 시도해주세요.', 2500, 'error');
         return;
       }
+      openMealQuickAdd(meal);
+    } else if (action === 'addFood') {
       if (typeof window.openNutritionSearch !== 'function') {
         console.error('[diet-input] openNutritionSearch 미등록');
         showToast?.('음식 추가를 준비하지 못했어요. 새로고침 후 다시 시도해주세요.', 2500, 'error');
         return;
       }
       try {
-        await window.openNutritionSearch(meal);
+        openMealQuickAdd(meal);
       } catch (err) {
         console.error('[diet-input] 음식 검색 모달 열기 실패:', err);
         showToast?.('음식 추가 창을 열지 못했어요. 잠시 후 다시 시도해주세요.', 2500, 'error');

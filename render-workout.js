@@ -13,6 +13,7 @@ export {
   wtOpenExercisePicker, wtCloseExercisePicker,
   wtOpenExerciseEditor, wtCloseExerciseEditor,
   wtSaveExerciseFromEditor, wtDeleteExerciseFromEditor,
+  wtOpenManualCardioInput,
   wtStartWorkoutTimer, wtPauseWorkoutTimer,
   wtResetWorkoutTimer, wtTogglePauseWorkoutTimer,
   wtFinishWorkout, wtRecoverTimers,

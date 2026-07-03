@@ -1,0 +1,25 @@
+Regression verification, 2026-07-03
+
+Syntax command:
+node --check app.js && node --check workout-ui.js && node --check workout/exercises.js && node --check workout/index.js && node --check render-workout.js && node --check sw.js && node --check tests/running-entry.test.js && node --check tests/diet-add-button-binding.test.js && node --check tests/input-ux-commercial-completion.test.js
+
+Syntax result:
+exit 0.
+
+Regression command:
+node --test tests/workout-save.test.js tests/workout-save-mode-guard.test.js tests/running-tracker.test.js tests/calc.record.test.js tests/save-schema.test.js
+
+Regression result:
+exit 0; 109 tests; 109 pass; 0 fail.
+
+Runtime assets command:
+node scripts/verify-runtime-assets.mjs
+
+Runtime assets result:
+exit 0; [runtime-assets] ok refs=879.
+
+Full suite command:
+node --test tests/*.test.js
+
+Full suite result:
+exit 0; 698 tests; 698 pass; 0 fail.

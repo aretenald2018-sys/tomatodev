@@ -2709,10 +2709,13 @@ function _manualCardioSummary({ mode, speedKmh, minutes }) {
   };
 }
 
-function _renderManualCardioSheet() {
+function _renderManualCardioSheet({ standalone = false } = {}) {
   const initial = _manualCardioInitialValues();
+  const backdropClass = standalone
+    ? 'ex-picker-cardio-backdrop ex-picker-cardio-backdrop--standalone'
+    : 'ex-picker-cardio-backdrop';
   return `
-    <div class="ex-picker-cardio-backdrop" data-picker-cardio-sheet>
+    <div class="${backdropClass}" data-picker-cardio-sheet>
       <form class="ex-picker-cardio-sheet" data-picker-cardio-form data-cardio-selected-mode="${_escPicker(initial.mode)}">
         <div class="ex-picker-cardio-head">
           <div>
@@ -2748,7 +2751,7 @@ function _renderManualCardioSheet() {
 }
 
 function _closeManualCardioInput() {
-  document.querySelector('[data-picker-cardio-sheet]')?.remove();
+  document.querySelectorAll('[data-picker-cardio-sheet]').forEach(sheet => sheet.remove());
 }
 
 function _readManualCardioSheet(sheet) {
@@ -2933,12 +2936,17 @@ function _bindManualCardioSheet(sheet) {
   });
 }
 
-function _openManualCardioInput() {
+export function wtOpenManualCardioInput(options = {}) {
+  return _openManualCardioInput({ standalone: true, ...options });
+}
+
+function _openManualCardioInput(options = {}) {
+  const standalone = options.standalone === true;
   const modal = document.getElementById('ex-picker-modal');
-  const host = modal?.querySelector?.('.ex-picker-sheet');
+  const host = standalone ? document.body : modal?.querySelector?.('.ex-picker-sheet');
   if (!host) return;
   _closeManualCardioInput();
-  host.insertAdjacentHTML('beforeend', _renderManualCardioSheet());
+  host.insertAdjacentHTML('beforeend', _renderManualCardioSheet({ standalone }));
   const sheet = host.querySelector('[data-picker-cardio-sheet]');
   _bindManualCardioSheet(sheet);
   _syncManualCardioPreview(sheet);
@@ -3484,7 +3492,7 @@ function _renderPickerCategory(container, ctx) {
     btn.addEventListener('click', () => {
       const activity = btn.getAttribute('data-picker-activity');
       if (activity === 'manual-cardio') {
-        _openManualCardioInput();
+        _openManualCardioInput({ standalone: false });
         return;
       }
       if (activity !== 'running') return;

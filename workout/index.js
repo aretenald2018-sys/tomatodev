@@ -27,7 +27,8 @@ export { wtAddSet, wtRemoveSet, wtUpdateSet,
          wtOpenExercisePicker, wtCloseExercisePicker,
          wtHandleExercisePickerBack,
          wtOpenExerciseEditor, wtCloseExerciseEditor,
-         wtSaveExerciseFromEditor, wtDeleteExerciseFromEditor }
+         wtSaveExerciseFromEditor, wtDeleteExerciseFromEditor,
+         wtOpenManualCardioInput }
   from './exercises.js?v=20260625z47-workout-record-card-standard';
 
 export { wtStartWorkoutTimer, wtPauseWorkoutTimer,
@@ -47,7 +48,8 @@ import { wtOpenExercisePicker, wtCloseExercisePicker,
          wtOpenExerciseEditor, wtCloseExerciseEditor,
          wtSaveExerciseFromEditor,
          wtDeleteExerciseFromEditor,
-         wtFocusWorkoutEntryCard }                 from './exercises.js?v=20260625z47-workout-record-card-standard';
+         wtFocusWorkoutEntryCard,
+         wtOpenManualCardioInput }                 from './exercises.js?v=20260625z47-workout-record-card-standard';
 import { wtStartWorkoutTimer, wtTogglePauseWorkoutTimer,
          wtResetWorkoutTimer, wtFinishWorkout, wtRecoverTimers,
          wtRestTimerStart, wtRestTimerSkip,
@@ -70,6 +72,7 @@ window.wtCloseExerciseEditor = wtCloseExerciseEditor;
 window.wtSaveExerciseFromEditor = wtSaveExerciseFromEditor;
 window.wtDeleteExerciseFromEditor = wtDeleteExerciseFromEditor;
 window.wtFocusWorkoutEntryCard = wtFocusWorkoutEntryCard;
+window.wtOpenManualCardioInput = wtOpenManualCardioInput;
 window.wtStartWorkoutTimer = wtStartWorkoutTimer;
 window.wtTogglePauseWorkoutTimer = wtTogglePauseWorkoutTimer;
 window.wtResetWorkoutTimer = wtResetWorkoutTimer;
