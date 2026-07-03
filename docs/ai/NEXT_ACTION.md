@@ -1,5 +1,21 @@
 # 다음 자동 액션
 
+## 2026-07-03 운영계 전용 배포 규칙 정리
+
+- 상태: `complete`
+- 계획: `docs/ai/features/2026-07-03-production-only-deploy.md`
+- 리뷰: `docs/ai/reviews/2026-07-03-production-only-deploy-review.md`
+- 요청: Dashboard3 쪽 배포/검증을 기본 경로에서 빼고 운영계만 배포하게 설정한다.
+- 구현 요약:
+  1. `AGENTS.md`와 `CLAUDE.md`의 최종 배포/검증 규칙을 `https://aretenald2018-sys.github.io/tomatofarm/` 기준으로 교체했다.
+  2. `package.json`에 `deploy:production`을 추가하고 `scripts/deploy-production.mjs`를 만들었다.
+  3. `scripts/deploy-dashboard3.mjs`는 `ALLOW_DASHBOARD3_DEPLOY=1` 없이는 실행되지 않게 막았다.
+- 검증:
+  1. PASS: `node --check scripts/deploy-production.mjs scripts/deploy-dashboard3.mjs`
+  2. PASS: `npm.cmd run deploy:dashboard3` 기본 실행 차단 확인
+  3. PASS 예정: 운영계 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`
+- 다음 액션: 배포가 필요하면 `origin/main`에 push하고 Tomato Farm 운영계 Pages에서 배포 commit 및 실제 UI flow를 확인한다. Dashboard3는 명시 요청이 있을 때만 사용한다.
+
 ## 2026-07-03 운동 종목 삭제 우선순위 핫픽스
 
 - 상태: `complete`
@@ -21,7 +37,7 @@
   4. PASS: `node --test tests/*.test.js` - 645 pass
   5. PASS: `git diff --check`
   6. not verified yet: 인증 계정 실제 UI에서 `운동 홈 하단시트 -> 종목완료 -> x 삭제 -> 새로고침/재진입 후 삭제 유지` 클릭 플로우는 자동 검증하지 못했다.
-- 다음 액션: 배포가 필요하면 `origin/main`에 push하고 Dashboard3 Pages에서 배포 commit 및 실제 UI flow를 확인한다.
+- 다음 액션: 배포가 필요하면 `origin/main`에 push하고 Tomato Farm 운영계 Pages에서 배포 commit 및 실제 UI flow를 확인한다.
 
 ## 2026-07-03 종목완료 도장 유지 핫픽스
 

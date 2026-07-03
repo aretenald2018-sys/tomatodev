@@ -16,6 +16,7 @@
     "verify:assets": "node scripts/generate-build-info.mjs && node scripts/verify-runtime-assets.mjs",
     "verify:deploy": "node scripts/verify-deploy.mjs",
     "verify:deployed-markers": "node scripts/verify-deployed-markers.mjs",
+    "deploy:production": "node scripts/deploy-production.mjs",
     "deploy:dashboard3": "node scripts/deploy-dashboard3.mjs",
     "verify:rom-graph": "node scripts/verify-rom-live-graph.mjs",
     "verify:workout": "node scripts/verify-workout-fixture.mjs"

@@ -4,13 +4,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-if (process.env.ALLOW_DASHBOARD3_DEPLOY !== '1') {
-  console.error('[deploy-dashboard3] disabled by default. Use npm.cmd run deploy:production, or set ALLOW_DASHBOARD3_DEPLOY=1 to deploy Dashboard3 explicitly.');
-  process.exit(2);
-}
-const baseUrl = process.argv[2] || process.env.DASHBOARD3_URL || 'https://aretenald2018-sys.github.io/dashboard3/';
-const remote = process.env.DASHBOARD3_REMOTE || 'origin';
-const remoteRef = process.env.DASHBOARD3_REMOTE_REF || 'main';
+const baseUrl = process.argv[2] || process.env.PRODUCTION_URL || 'https://aretenald2018-sys.github.io/tomatofarm/';
+const remote = process.env.PRODUCTION_REMOTE || 'origin';
+const remoteRef = process.env.PRODUCTION_REMOTE_REF || 'main';
 const buildInfoPath = path.join(root, 'build-info.json');
 
 function run(command, args, options = {}) {
@@ -46,7 +42,7 @@ function restoreTrackedBuildInfo() {
 
 function assertCleanTrackedTree() {
   const restored = restoreTrackedBuildInfo();
-  if (restored) console.log('[deploy-dashboard3] restored generated build-info.json');
+  if (restored) console.log('[deploy-production] restored generated build-info.json');
   const dirty = trackedDirtyFiles().filter(file => file !== 'build-info.json');
   if (dirty.length) {
     throw new Error(`tracked working tree has uncommitted changes: ${dirty.join(', ')}`);
@@ -62,10 +58,10 @@ assertCleanTrackedTree();
 
 const head = git(['rev-parse', 'HEAD']);
 const shortHead = git(['rev-parse', '--short=12', 'HEAD']);
-console.log(`[deploy-dashboard3] push ${shortHead} -> ${remote}/${remoteRef}`);
+console.log(`[deploy-production] push ${shortHead} -> ${remote}/${remoteRef}`);
 git(['push', remote, `HEAD:${remoteRef}`], { stdio: 'inherit' });
 
-console.log(`[deploy-dashboard3] verify deploy ${shortHead}`);
+console.log(`[deploy-production] verify deploy ${shortHead}`);
 run(process.execPath, [scriptPath('verify-deploy.mjs'), baseUrl, head], { stdio: 'inherit' });
 
 const cacheVersion = readCacheVersion();
@@ -75,8 +71,9 @@ const markerArgs = [
   'app.js::initBuildInfoSurface',
   `sw.js::${cacheVersion}`,
 ];
-console.log('[deploy-dashboard3] verify deployed markers');
+
+console.log('[deploy-production] verify deployed markers');
 run(process.execPath, [scriptPath('verify-deployed-markers.mjs'), ...markerArgs], { stdio: 'inherit' });
 
 restoreTrackedBuildInfo();
-console.log(`[deploy-dashboard3] ok ${shortHead} ${cacheVersion}`);
+console.log(`[deploy-production] ok ${shortHead} ${cacheVersion}`);
