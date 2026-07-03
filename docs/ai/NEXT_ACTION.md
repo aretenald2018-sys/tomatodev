@@ -1,5 +1,32 @@
 # 다음 자동 액션
 
+## 2026-07-03 운동 새 종목 추가 후 캐러셀 포커스
+
+- 상태: `complete`
+- 계획: `docs/ai/features/2026-07-03-workout-carousel-new-exercise-focus.md`
+- 리뷰: `docs/ai/reviews/2026-07-03-workout-carousel-new-exercise-focus-review.md`
+- 요청: 운동 하단시트에서 새 종목을 추가하면 캐러셀이 첫 종목이 아니라 방금 추가한 종목 카드를 보여줘야 한다.
+- 진단 요약:
+  1. 운동 선택기 `afterSelect`는 선택된 종목의 `entryIdx`를 `_refreshWorkoutHomeAfterPickerSelect()`로 넘긴다.
+  2. 현재 새 종목 추가 후 재렌더 경로는 날짜/회차/시트 상태만 복원하고 `entryIdx`를 캐러셀 위치 복원에 쓰지 않는다.
+  3. 따라서 새 DOM의 캐러셀 track이 기본 위치인 첫 번째 카드에 머물 수 있다.
+- 실행 범위:
+  1. `_refreshWorkoutHomeAfterPickerSelect()`가 `detail.entryIdx`를 정규화한다.
+  2. 재렌더 후 하단시트 캐러셀을 선택된 slide로 복원하는 helper를 추가한다.
+  3. `render-calendar.js` 변경에 맞춰 `sw.js` `CACHE_VERSION`과 관련 테스트를 갱신한다.
+- 구현 요약:
+  1. `_restoreWorkoutSheetCarouselToSlide()`를 추가해 선택된 slide index로 캐러셀 track을 복원한다.
+  2. 선택기 `afterSelect` 완료 후 `detail.entryIdx`가 있으면 렌더 직후 해당 slide로 이동한다.
+  3. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z5-workout-carousel-new-focus`로 bump하고 cache marker 테스트를 갱신했다.
+- 검증:
+  1. PASS: `node --check render-calendar.js; node --check sw.js`
+  2. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-active-session-recovery.test.js tests/workout-save-mode-guard.test.js` - 40 pass
+  3. PASS: `node --test tests/*.test.js` - 648 pass
+  4. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=868`
+  5. PASS: `git diff --check`
+  6. not verified yet: 인증 계정 실제 UI에서 `운동 하단시트 + 버튼 -> 새 종목 선택 -> 추가된 종목 카드 표시` 클릭 플로우는 자동 검증하지 못했다.
+- 다음 액션: 운영계 배포 후 인증 계정 실제 UI에서 위 클릭 플로우를 확인한다.
+
 ## 2026-07-03 운동 카드 캐러셀 위치 보존
 
 - 상태: `complete`

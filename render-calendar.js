@@ -405,6 +405,29 @@ function _restoreWorkoutSheetCarouselState(sheet = null, state = null) {
   }
 }
 
+function _restoreWorkoutSheetCarouselToSlide(slideIndex = null) {
+  if (!Number.isFinite(Number(slideIndex)) || typeof document === 'undefined') return;
+  const index = Math.max(0, Math.floor(Number(slideIndex)));
+  const state = {
+    carouselSlideIndex: index,
+    carouselScrollLeft: null,
+  };
+  const restore = () => {
+    const root = _workoutHomeScrollRoot();
+    const sheet = root?.querySelector?.('[data-wt-day-sheet]')
+      || document.querySelector?.('#workout-calendar-root [data-wt-day-sheet]');
+    _restoreWorkoutSheetCarouselState(sheet, state);
+  };
+  restore();
+  if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+    window.requestAnimationFrame(restore);
+  }
+  if (typeof window !== 'undefined' && typeof window.setTimeout === 'function') {
+    window.setTimeout(restore, 80);
+    window.setTimeout(restore, 220);
+  }
+}
+
 function _workoutSheetInputSelection(input) {
   try {
     return {
@@ -671,6 +694,9 @@ async function _refreshWorkoutHomeAfterPickerSelect(key, sessionIndex = _workout
   const p = _parseDateKey(key);
   if (!p) return false;
   const targetIndex = Math.max(0, Math.min(WORKOUT_GYM_SESSION_COUNT - 1, Math.floor(Number(sessionIndex) || 0)));
+  const entryIndex = Number.isFinite(Number(detail?.entryIdx))
+    ? Math.max(0, Math.floor(Number(detail.entryIdx)))
+    : null;
   _viewYear = p.y;
   _viewMonth = p.m;
   _workoutHomeSelectedKey = key;
@@ -690,6 +716,7 @@ async function _refreshWorkoutHomeAfterPickerSelect(key, sessionIndex = _workout
   const timerBar = typeof document !== 'undefined' ? document.getElementById('wt-workout-timer-bar') : null;
   if (timerBar && !timerBar.classList.contains('wt-open')) timerBar.classList.add('wt-open');
   renderWorkoutCalendarHome();
+  if (entryIndex != null) _restoreWorkoutSheetCarouselToSlide(entryIndex);
   if (!detail?.existing) window.showToast?.('종목을 추가했어요', 1500, 'success');
   return true;
 }

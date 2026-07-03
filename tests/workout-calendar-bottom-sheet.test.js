@@ -166,9 +166,11 @@ test('day sheet add picker stays on the current sheet session', () => {
   assert.match(loader, /window\.__wtTargetSessionIndex = Math\.max\(0, Math\.floor\(Number\(sessionIndex\) \|\| 0\)\)/);
   assert.match(loader, /const loader = window\._wtExports\?\.loadWorkoutDate \|\| window\.loadWorkoutDate/);
   assert.doesNotMatch(loader, /wtOpenWorkoutRecord|pushWorkoutRecord|switchTab\('workout'/);
+  assert.match(refresh, /const entryIndex = Number\.isFinite\(Number\(detail\?\.entryIdx\)\)[\s\S]*Math\.floor\(Number\(detail\.entryIdx\)\)/);
   assert.match(refresh, /openWorkoutDaySheet\(key,[\s\S]*sheetState:\s*'full'[\s\S]*action:\s*'sheet:add-exercise'/);
   assert.match(refresh, /timerBar\.classList\.add\('wt-open'\)/);
   assert.match(refresh, /renderWorkoutCalendarHome\(\)/);
+  assert.match(refresh, /if \(entryIndex != null\) _restoreWorkoutSheetCarouselToSlide\(entryIndex\)/);
   assert.match(addFn, /const targetKey = _parseDateKey\(key\) \? key : _workoutHomeSelectedKey/);
   assert.match(addFn, /const targetIndex = Math\.max\(0, Math\.min\(_workoutHomeSessionIndex, WORKOUT_GYM_SESSION_COUNT - 1\)\)/);
   assert.doesNotMatch(addFn, /findIndex\(session => !hasWorkoutSessionData\(session\)\)/);
@@ -176,6 +178,28 @@ test('day sheet add picker stays on the current sheet session', () => {
   assert.match(addFn, /_loadWorkoutStateForSheetSession\(targetKey, targetIndex\)/);
   assert.match(addFn, /window\.wtOpenExercisePicker\(\{[\s\S]*source:\s*'workout-day-sheet'[\s\S]*afterSelect: detail => _refreshWorkoutHomeAfterPickerSelect\(targetKey, targetIndex, detail\)/);
   assert.doesNotMatch(calendarJs, /function _openWorkoutEditorForSession|function _loadWorkoutEditorForSession|window\.wtOpenWorkoutRecord/);
+});
+
+test('day sheet add picker focuses the selected exercise carousel slide', () => {
+  const helperStart = calendarJs.indexOf('function _restoreWorkoutSheetCarouselToSlide');
+  const helperEnd = calendarJs.indexOf('function _workoutSheetInputSelection', helperStart);
+  const refreshStart = calendarJs.indexOf('async function _refreshWorkoutHomeAfterPickerSelect');
+  const refreshEnd = calendarJs.indexOf('function _sortedCheckins', refreshStart);
+  assert.ok(helperStart >= 0 && helperEnd > helperStart, 'selected slide restore helper should exist');
+  assert.ok(refreshStart >= 0 && refreshEnd > refreshStart, 'sheet refresh callback should exist');
+  const helper = calendarJs.slice(helperStart, helperEnd);
+  const refresh = calendarJs.slice(refreshStart, refreshEnd);
+
+  assert.match(refresh, /const entryIndex = Number\.isFinite\(Number\(detail\?\.entryIdx\)\)/);
+  assert.match(refresh, /renderWorkoutCalendarHome\(\);[\s\S]*_restoreWorkoutSheetCarouselToSlide\(entryIndex\)/);
+  assert.match(helper, /const index = Math\.max\(0, Math\.floor\(Number\(slideIndex\)\)\)/);
+  assert.match(helper, /carouselSlideIndex: index/);
+  assert.match(helper, /carouselScrollLeft: null/);
+  assert.match(helper, /root\?\.querySelector\?\.\('\[data-wt-day-sheet\]'\)/);
+  assert.match(helper, /_restoreWorkoutSheetCarouselState\(sheet, state\)/);
+  assert.match(helper, /window\.requestAnimationFrame\(restore\)/);
+  assert.match(helper, /window\.setTimeout\(restore, 80\)/);
+  assert.match(helper, /window\.setTimeout\(restore, 220\)/);
 });
 
 test('day sheet detail renders picker-added draft exercise rows', () => {
@@ -825,5 +849,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260703z4-workout-carousel-position/);
+  assert.match(swJs, /tomatofarm-v20260703z5-workout-carousel-new-focus/);
 });
