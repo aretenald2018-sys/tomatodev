@@ -323,6 +323,39 @@ export function wtClearActiveWorkoutDraft() {
   _lastRestoredDraftKey = null;
 }
 
+export function wtReplaceActiveWorkoutDraftSession(dateLike, sessionIndex = 0, session = {}, context = 'session sync') {
+  const date = _normalizeTimerDate(dateLike);
+  const targetSessionIndex = Math.max(0, Math.floor(Number(sessionIndex) || 0));
+  const existingDraft = _readValidActiveWorkoutDraft();
+  if (!date || !existingDraft) return null;
+  if (!_sameTimerDate(existingDraft.date, date) || existingDraft.sessionIndex !== targetSessionIndex) return existingDraft;
+
+  const nextSession = _cloneJson(session, {}) || {};
+  const nextSessionId = String(nextSession.id || existingDraft.sessionId || `session-${targetSessionIndex + 1}`);
+  const nextDraft = {
+    ...existingDraft,
+    date,
+    dateKey: _sessionDateKey(date),
+    sessionIndex: targetSessionIndex,
+    sessionId: nextSessionId,
+    updatedAt: Date.now(),
+    context,
+    session: {
+      ...nextSession,
+      id: nextSessionId,
+      label: nextSession.label || `${targetSessionIndex + 1}회차`,
+    },
+  };
+
+  if (!_sessionHasDraftData(nextDraft.session, nextDraft)) {
+    _lsClearActiveWorkoutDraft();
+    return null;
+  }
+
+  _lsWriteActiveWorkoutDraft(nextDraft);
+  return nextDraft;
+}
+
 export function wtHasActiveWorkoutDraft() {
   if (S.workout.workoutStartTime) wtPersistActiveWorkoutDraft('status check');
   return !!_readValidActiveWorkoutDraft();

@@ -1,5 +1,28 @@
 # 다음 자동 액션
 
+## 2026-07-03 운동 종목 삭제 우선순위 핫픽스
+
+- 상태: `complete`
+- 계획: `docs/ai/features/2026-07-03-workout-exercise-delete-priority.md`
+- 리뷰: `docs/ai/reviews/2026-07-03-workout-exercise-delete-priority-review.md`
+- 요청: 당일 `x`로 삭제한 운동종목이 `종목완료` 완료 상태나 active draft 때문에 다시 살아나지 않도록 삭제 상태를 우선한다.
+- 진단 요약:
+  1. `render-calendar.js`의 `x` 삭제 저장 payload는 `workoutSessions`와 aggregate `exercises`를 다시 계산하므로 삭제 payload 자체가 주원인은 아니다.
+  2. 하단시트 저장 후 `S.workout`과 localStorage active draft가 같은 날짜/회차의 저장 결과로 갱신되지 않아, 오래된 운동 탭 상태가 이후 저장/복구에서 삭제 전 종목을 되살릴 수 있다.
+  3. `종목완료` 도장 렌더는 세트 `done` 상태 기반이고, 실제 우선순위 문제는 완료 상태와 삭제 상태가 서로 다른 저장 경로/초안에 남는 점이다.
+- 구현 요약:
+  1. `workout/timers.js`에 같은 날짜/회차 active draft만 저장된 세션으로 교체하는 `wtReplaceActiveWorkoutDraftSession()`을 추가했다.
+  2. `render-calendar.js`의 하단시트 저장 성공 경로가 저장한 `sessionIndex` 하나만 active draft와 같은 날짜/회차 `S.workout`에 반영한다.
+  3. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z2-workout-delete-priority`로 bump하고 cache marker 테스트를 갱신했다.
+- 검증:
+  1. PASS: `node --check render-calendar.js; node --check workout/timers.js; node --check sw.js`
+  2. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-active-session-recovery.test.js tests/workout-save-mode-guard.test.js` - 37 pass
+  3. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=868`
+  4. PASS: `node --test tests/*.test.js` - 645 pass
+  5. PASS: `git diff --check`
+  6. not verified yet: 인증 계정 실제 UI에서 `운동 홈 하단시트 -> 종목완료 -> x 삭제 -> 새로고침/재진입 후 삭제 유지` 클릭 플로우는 자동 검증하지 못했다.
+- 다음 액션: 배포가 필요하면 `origin/main`에 push하고 Dashboard3 Pages에서 배포 commit 및 실제 UI flow를 확인한다.
+
 ## 2026-07-03 종목완료 도장 유지 핫픽스
 
 - 상태: `complete`

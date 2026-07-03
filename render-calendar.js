@@ -34,6 +34,8 @@ import {
   upsertWorkoutSession,
   deleteWorkoutSession,
 } from './workout/sessions.js';
+import { S } from './workout/state.js';
+import { wtReplaceActiveWorkoutDraftSession } from './workout/timers.js';
 import { destroyRunningMaps, renderRunningMap } from './workout/running-map.js';
 import { deriveDietSuccessFromWorkout } from './workout/cross-domain.js';
 import {
@@ -672,6 +674,83 @@ function _workoutSessionSavePayload(result) {
   };
 }
 
+function _isSameWorkoutStateDate(key) {
+  const p = _parseDateKey(key);
+  const current = S.shared?.date;
+  return !!p && !!current && current.y === p.y && current.m === p.m && current.d === p.d;
+}
+
+function _applyWorkoutHomeSessionToActiveState(session = {}, sessionIndex = 0) {
+  const w = S.workout;
+  const index = Math.max(0, Math.floor(Number(sessionIndex) || 0));
+  w.sessionIndex = index;
+  w.sessionId = session.id || `session-${index + 1}`;
+  w.exercises = _clonePlain(session.exercises || []);
+  w.cf = !!session.cf;
+  w.stretching = !!session.stretching;
+  w.swimming = !!session.swimming;
+  w.running = !!session.running;
+  w.runData = {
+    distance: session.runDistance || 0,
+    durationMin: session.runDurationMin || 0,
+    durationSec: session.runDurationSec || 0,
+    memo: session.runMemo || '',
+    source: session.runSource || 'manual',
+    startedAt: session.runStartedAt || null,
+    endedAt: session.runEndedAt || null,
+    route: Array.isArray(session.runRoute) ? _clonePlain(session.runRoute) : [],
+    routeSummary: _clonePlain(session.runRouteSummary || null),
+    placeSummary: _clonePlain(session.runPlaceSummary || null),
+    avgPaceSecPerKm: Number(session.runAvgPaceSecPerKm) || 0,
+    gpsAccuracySummary: _clonePlain(session.runGpsAccuracySummary || null),
+  };
+  w.cfData = {
+    wod: session.cfWod || '',
+    durationMin: session.cfDurationMin || 0,
+    durationSec: session.cfDurationSec || 0,
+    memo: session.cfMemo || '',
+  };
+  w.stretchData = {
+    duration: session.stretchDuration || 0,
+    memo: session.stretchMemo || '',
+  };
+  w.swimData = {
+    distance: session.swimDistance || 0,
+    durationMin: session.swimDurationMin || 0,
+    durationSec: session.swimDurationSec || 0,
+    stroke: session.swimStroke || '',
+    memo: session.swimMemo || '',
+  };
+  w.wineFree = !!session.wine_free;
+  w.workoutDuration = Math.max(0, Math.floor(Number(session.workoutDuration) || 0));
+  w.workoutTimeline = _clonePlain(session.workoutTimeline || null);
+  w.currentGymId = session.gymId || null;
+  w.pickerGymFilter = session.pickerGymFilter || null;
+  w.routineMeta = _clonePlain(session.routineMeta || null);
+  w.maxMeta = _clonePlain(session.maxMeta || null);
+}
+
+function _syncWorkoutHomeSavedSessionState(key, result, sessionIndex = null) {
+  const p = _parseDateKey(key);
+  const sessions = Array.isArray(result?.workoutSessions) ? result.workoutSessions : [];
+  if (!p || !sessions.length) return;
+  const targetIndexRaw = Number(sessionIndex);
+  if (!Number.isFinite(targetIndexRaw)) return;
+  const targetIndex = Math.max(0, Math.floor(targetIndexRaw));
+  const targetSession = sessions[targetIndex];
+  if (!targetSession) return;
+  const date = { y: p.y, m: p.m, d: p.d };
+  try {
+    wtReplaceActiveWorkoutDraftSession(date, targetIndex, targetSession, 'sheet session save');
+  } catch (e) {
+    console.warn('[workout-calendar] active draft sync skipped:', e);
+  }
+  if (!_isSameWorkoutStateDate(key)) return;
+  const activeIndex = Math.max(0, Math.floor(Number(S.workout?.sessionIndex) || 0));
+  if (activeIndex !== targetIndex) return;
+  _applyWorkoutHomeSessionToActiveState(targetSession, targetIndex);
+}
+
 function _hasWorkoutHomeMealRecord(day, mealKey) {
   const textKey = mealKey;
   const foodsKey = `${mealKey[0]}Foods`;
@@ -725,6 +804,7 @@ async function _saveWorkoutHomeSessionResult(key, result, options = {}) {
     ..._mealOkPatchForWorkoutHomeDay(key, existingDay, result.aggregate || {}),
   };
   await saveDay(key, payload, { mode: 'merge', rethrow: true });
+  _syncWorkoutHomeSavedSessionState(key, result, options.sessionIndex);
   if (options?.preserveInput) await _waitWorkoutSheetFocusTransition();
   const latestInputState = options?.preserveInput
     ? _captureWorkoutSheetInputState(options.sourceInput, inputCaptureOptions)
@@ -2970,7 +3050,7 @@ async function _mutateWorkoutExerciseFromSheet(key, sessionIndex, exerciseIndex,
   const changed = await Promise.resolve(mutator(target, nextSession, exIndex));
   if (changed === false) return false;
   const result = upsertWorkoutSession(day, nextSession, index, { now: Date.now() });
-  await _saveWorkoutHomeSessionResult(targetKey, result, options);
+  await _saveWorkoutHomeSessionResult(targetKey, result, { ...options, sessionIndex: index });
   return true;
 }
 
@@ -3235,7 +3315,7 @@ async function _deleteWorkoutHomeSession(key, sessionIndex = _workoutHomeSession
   try {
     const result = deleteWorkoutSession(day, index);
     _workoutHomeSessionIndex = Math.max(0, Math.min(index, result.workoutSessions.length - 1));
-    await _saveWorkoutHomeSessionResult(key, result);
+    await _saveWorkoutHomeSessionResult(key, result, { sessionIndex: _workoutHomeSessionIndex });
     window.showToast?.('회차 운동 기록을 삭제했어요', 1800, 'success');
   } catch (e) {
     console.warn('[workout-calendar] session delete failed:', e);
@@ -3266,7 +3346,7 @@ async function _deleteWorkoutExercise(key, sessionIndex, exerciseIndex) {
     nextSession.exercises = exercises.filter((_, i) => i !== exIndex);
     const result = upsertWorkoutSession(day, nextSession, index, { now: Date.now() });
     _workoutEditingCardId = null;
-    await _saveWorkoutHomeSessionResult(key, result);
+    await _saveWorkoutHomeSessionResult(key, result, { sessionIndex: index });
     window.showToast?.('운동을 삭제했어요', 1800, 'success');
   } catch (e) {
     console.warn('[workout-calendar] exercise delete failed:', e);
@@ -3348,7 +3428,7 @@ async function _deleteWorkoutActivity(key, sessionIndex, activityKey) {
   try {
     const nextSession = { ...(_clonePlain(session) || {}), ...patch };
     const result = upsertWorkoutSession(day, nextSession, index, { now: Date.now() });
-    await _saveWorkoutHomeSessionResult(key, result);
+    await _saveWorkoutHomeSessionResult(key, result, { sessionIndex: index });
     window.showToast?.('활동을 삭제했어요', 1800, 'success');
   } catch (e) {
     console.warn('[workout-calendar] activity delete failed:', e);

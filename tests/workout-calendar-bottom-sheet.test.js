@@ -307,6 +307,29 @@ test('day sheet exercise card uses inline plus row and one complete button', () 
   assert.match(styleCss, /\.wt-max-set-toggle,\s*\n\.wt-max-set-remove-btn\s*\{/);
 });
 
+test('day sheet save syncs saved session over stale active workout draft', () => {
+  const saveStart = calendarJs.indexOf('async function _saveWorkoutHomeSessionResult');
+  const saveEnd = calendarJs.indexOf('function _durationFromMinSec', saveStart);
+  const syncStart = calendarJs.indexOf('function _syncWorkoutHomeSavedSessionState');
+  const syncEnd = calendarJs.indexOf('function _hasWorkoutHomeMealRecord', syncStart);
+  assert.ok(saveStart >= 0 && saveEnd > saveStart, 'sheet save function should exist');
+  assert.ok(syncStart >= 0 && syncEnd > syncStart, 'sheet sync function should exist');
+  const saveFn = calendarJs.slice(saveStart, saveEnd);
+  const syncFn = calendarJs.slice(syncStart, syncEnd);
+
+  assert.match(calendarJs, /import \{ S \} from '\.\/workout\/state\.js'/);
+  assert.match(calendarJs, /import \{ wtReplaceActiveWorkoutDraftSession \} from '\.\/workout\/timers\.js'/);
+  assert.match(saveFn, /await saveDay\(key, payload, \{ mode: 'merge', rethrow: true \}\)/);
+  assert.match(saveFn, /_syncWorkoutHomeSavedSessionState\(key, result, options\.sessionIndex\)/);
+  assert.match(syncFn, /const targetIndex = Math\.max\(0, Math\.floor\(targetIndexRaw\)\)/);
+  assert.match(syncFn, /wtReplaceActiveWorkoutDraftSession\(date, targetIndex, targetSession, 'sheet session save'\)/);
+  assert.match(syncFn, /if \(!_isSameWorkoutStateDate\(key\)\) return/);
+  assert.match(syncFn, /if \(activeIndex !== targetIndex\) return/);
+  assert.match(syncFn, /_applyWorkoutHomeSessionToActiveState\(targetSession, targetIndex\)/);
+  assert.match(calendarJs, /_saveWorkoutHomeSessionResult\(targetKey, result, \{ \.\.\.options, sessionIndex: index \}\)/);
+  assert.match(calendarJs, /_saveWorkoutHomeSessionResult\(key, result, \{ sessionIndex: index \}\)/);
+});
+
 test('day sheet set done toggle uses explicit done state and larger touch targets', () => {
   const rowsStart = calendarJs.indexOf('function _exerciseRows');
   const rowsEnd = calendarJs.indexOf('function _workoutMetrics', rowsStart);
@@ -722,5 +745,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260703z1-workout-card-stamp-persist/);
+  assert.match(swJs, /tomatofarm-v20260703z2-workout-delete-priority/);
 });

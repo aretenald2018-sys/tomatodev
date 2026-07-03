@@ -32,6 +32,20 @@ test('reload recovery applies same-date same-session draft during workout load',
   assert.match(loadJs, /memoEl\.addEventListener\('input',\s*\(\)\s*=>\s*wtPersistActiveWorkoutDraft\('memo input'\)\)/);
 });
 
+test('saved workout sheet session can replace stale active draft for the same date and session', () => {
+  const start = timersJs.indexOf('export function wtReplaceActiveWorkoutDraftSession');
+  const end = timersJs.indexOf('export function wtHasActiveWorkoutDraft', start);
+  assert.ok(start >= 0 && end > start, 'draft replacement helper should exist');
+  const helper = timersJs.slice(start, end);
+
+  assert.match(helper, /const existingDraft = _readValidActiveWorkoutDraft\(\)/);
+  assert.match(helper, /!_sameTimerDate\(existingDraft\.date, date\) \|\| existingDraft\.sessionIndex !== targetSessionIndex/);
+  assert.match(helper, /session:\s*\{\s*[\s\S]*\.\.\.nextSession/);
+  assert.match(helper, /_sessionHasDraftData\(nextDraft\.session, nextDraft\)/);
+  assert.match(helper, /_lsWriteActiveWorkoutDraft\(nextDraft\)/);
+  assert.match(helper, /_lsClearActiveWorkoutDraft\(\)/);
+});
+
 test('set editing paths write local draft before relying on async save', () => {
   assert.match(exercisesJs, /wtPersistActiveWorkoutDraft\('set add'\)/);
   assert.match(exercisesJs, /wtPersistActiveWorkoutDraft\('set remove'\)/);
@@ -61,5 +75,5 @@ test('app update reload flushes workout draft and changes copy while workout is 
 });
 
 test('service worker cache version was bumped for recovery assets', () => {
-  assert.match(swJs, /tomatofarm-v20260703z1-workout-card-stamp-persist/);
+  assert.match(swJs, /tomatofarm-v20260703z2-workout-delete-priority/);
 });
