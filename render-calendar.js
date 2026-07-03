@@ -350,11 +350,59 @@ function _workoutSheetScrollState(input = null) {
     || root?.querySelector?.('[data-wt-day-sheet]')
     || document.querySelector?.('#workout-calendar-root [data-wt-day-sheet]');
   const scroller = input?.closest?.('.wt-day-sheet-scroll') || sheet?.querySelector?.('.wt-day-sheet-scroll') || null;
+  const carousel = _captureWorkoutSheetCarouselState(sheet);
   return {
     scrollerTop: Math.max(0, Number(scroller?.scrollTop) || 0),
     rootTop: Math.max(0, Number(root?.scrollTop) || 0),
     windowTop: typeof window !== 'undefined' ? Math.max(0, Number(window.scrollY) || 0) : 0,
+    carouselScrollLeft: carousel?.scrollLeft ?? null,
+    carouselSlideIndex: carousel?.slideIndex ?? null,
   };
+}
+
+function _captureWorkoutSheetCarouselState(sheet = null) {
+  if (!sheet || typeof Element === 'undefined') return null;
+  const track = sheet.querySelector?.('[data-wt-day-exercise-carousel-track]');
+  if (!track) return null;
+  const scrollLeft = Math.max(0, Number(track.scrollLeft) || 0);
+  const slides = Array.from(track.querySelectorAll?.('[data-wt-day-exercise-slide]') || []);
+  let slideIndex = null;
+  if (slides.length) {
+    const trackRect = typeof track.getBoundingClientRect === 'function' ? track.getBoundingClientRect() : null;
+    let bestDistance = Infinity;
+    slides.forEach((slide, index) => {
+      const attrIndex = Math.max(0, Math.floor(Number(slide.getAttribute('data-wt-day-exercise-slide')) || index));
+      const distance = trackRect && typeof slide.getBoundingClientRect === 'function'
+        ? Math.abs((slide.getBoundingClientRect().left || 0) - (trackRect.left || 0))
+        : Math.abs((Number(slide.offsetLeft) || 0) - scrollLeft);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        slideIndex = attrIndex;
+      }
+    });
+  }
+  return { scrollLeft, slideIndex };
+}
+
+function _restoreWorkoutSheetCarouselState(sheet = null, state = null) {
+  if (!sheet || !state) return;
+  const track = sheet.querySelector?.('[data-wt-day-exercise-carousel-track]');
+  if (!track) return;
+  const slideIndex = Number.isFinite(Number(state.carouselSlideIndex))
+    ? Math.max(0, Math.floor(Number(state.carouselSlideIndex)))
+    : null;
+  const slide = slideIndex == null
+    ? null
+    : track.querySelector?.(`[data-wt-day-exercise-slide="${slideIndex}"]`);
+  const fallbackLeft = slide ? Math.max(0, Number(slide.offsetLeft) || 0) : 0;
+  const left = Number.isFinite(Number(state.carouselScrollLeft))
+    ? Math.max(0, Number(state.carouselScrollLeft) || 0)
+    : fallbackLeft;
+  if (typeof track.scrollTo === 'function') track.scrollTo({ left, behavior: 'auto' });
+  else track.scrollLeft = left;
+  if (slide && Math.abs((Number(track.scrollLeft) || 0) - left) > 2) {
+    track.scrollLeft = fallbackLeft;
+  }
 }
 
 function _workoutSheetInputSelection(input) {
@@ -414,6 +462,7 @@ function _restoreWorkoutSheetScrollState(state) {
   const sheet = root?.querySelector?.('[data-wt-day-sheet]')
     || document.querySelector?.('#workout-calendar-root [data-wt-day-sheet]');
   const scroller = sheet?.querySelector?.('.wt-day-sheet-scroll');
+  _restoreWorkoutSheetCarouselState(sheet, state);
   if (scroller) scroller.scrollTop = Math.max(0, Number(state.scrollerTop) || 0);
   if (root) {
     const top = Math.max(0, Number(state.rootTop) || 0);

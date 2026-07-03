@@ -223,6 +223,38 @@ test('day sheet exercise cards render as a horizontal carousel instead of a vert
   assert.match(styleCss, /\.wt-day-exercise-carousel\.has-multiple \.wt-day-exercise-slide\s*\{[\s\S]*flex-basis:\s*min\(92%,\s*540px\);/);
 });
 
+test('day sheet preserves exercise carousel position across set saves', () => {
+  const inputStart = calendarJs.indexOf('function _workoutSheetScrollState');
+  const inputEnd = calendarJs.indexOf('function _workoutSheetInputSelection', inputStart);
+  const restoreStart = calendarJs.indexOf('function _restoreWorkoutSheetScrollState');
+  const restoreEnd = calendarJs.indexOf('function _restoreWorkoutSheetInputState', restoreStart);
+  const saveStart = calendarJs.indexOf('async function _saveWorkoutHomeSessionResult');
+  const saveEnd = calendarJs.indexOf('function _durationFromMinSec', saveStart);
+  const toggleStart = calendarJs.indexOf('async function _toggleWorkoutExerciseSetDoneFromSheet');
+  const toggleEnd = calendarJs.indexOf('async function _completeWorkoutExerciseFromSheet', toggleStart);
+  assert.ok(inputStart >= 0 && inputEnd > inputStart, 'scroll state helpers should exist');
+  assert.ok(restoreStart >= 0 && restoreEnd > restoreStart, 'scroll restore helper should exist');
+  assert.ok(saveStart >= 0 && saveEnd > saveStart, 'sheet save function should exist');
+  assert.ok(toggleStart >= 0 && toggleEnd > toggleStart, 'set toggle function should exist');
+  const inputHelpers = calendarJs.slice(inputStart, inputEnd);
+  const restoreFn = calendarJs.slice(restoreStart, restoreEnd);
+  const saveFn = calendarJs.slice(saveStart, saveEnd);
+  const toggleFn = calendarJs.slice(toggleStart, toggleEnd);
+
+  assert.match(inputHelpers, /function _captureWorkoutSheetCarouselState\(sheet = null\)/);
+  assert.match(inputHelpers, /\[data-wt-day-exercise-carousel-track\]/);
+  assert.match(inputHelpers, /\[data-wt-day-exercise-slide\]/);
+  assert.match(inputHelpers, /carouselScrollLeft: carousel\?\.scrollLeft \?\? null/);
+  assert.match(inputHelpers, /carouselSlideIndex: carousel\?\.slideIndex \?\? null/);
+  assert.match(inputHelpers, /function _restoreWorkoutSheetCarouselState\(sheet = null, state = null\)/);
+  assert.match(restoreFn, /_restoreWorkoutSheetCarouselState\(sheet, state\)/);
+  assert.match(inputHelpers, /track\.scrollTo\(\{ left, behavior: 'auto' \}\)/);
+  assert.match(inputHelpers, /data-wt-day-exercise-slide="\$\{slideIndex\}"/);
+  assert.match(saveFn, /const restoreState = options\?\.preserveInput[\s\S]*_captureWorkoutSheetScrollState\(\)/);
+  assert.match(saveFn, /if \(nextRestoreState\) _restoreWorkoutSheetInputState\(nextRestoreState\)/);
+  assert.match(toggleFn, /\{ preserveSheetScroll: true \}/);
+});
+
 test('day sheet exercise card renders prior workout record instead of today set summary', () => {
   const rowStart = calendarJs.indexOf('function _exerciseRows');
   const rowEnd = calendarJs.indexOf('function _workoutMetrics', rowStart);
@@ -793,5 +825,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260703z3-workout-complete-stamp-marker/);
+  assert.match(swJs, /tomatofarm-v20260703z4-workout-carousel-position/);
 });

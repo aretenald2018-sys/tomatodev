@@ -1,5 +1,28 @@
 # 다음 자동 액션
 
+## 2026-07-03 운동 카드 캐러셀 위치 보존
+
+- 상태: `complete`
+- 계획: `docs/ai/features/2026-07-03-workout-carousel-position-preserve.md`
+- 리뷰: `docs/ai/reviews/2026-07-03-workout-carousel-position-preserve-review.md`
+- 요청: 캐러셀에서 두 번째 종목을 입력하거나 체크하면 저장/재렌더 후 강제로 첫 번째 종목으로 이동하는 회귀를 막는다.
+- 진단 요약:
+  1. 세트 입력/체크는 올바른 `exerciseIndex`를 전달하지만 저장 후 하단시트가 재렌더된다.
+  2. `_saveWorkoutHomeSessionResult()`는 세로 scroll/focus만 복원하고 캐러셀 track의 `scrollLeft` 또는 활성 slide를 복원하지 않는다.
+  3. 따라서 새 DOM의 `data-wt-day-exercise-carousel-track`이 기본 scroll 위치 0으로 시작해 첫 번째 종목으로 튄다.
+- 구현 요약:
+  1. `_workoutSheetScrollState()`가 하단시트 운동 카드 캐러셀의 `scrollLeft`와 활성 slide index를 함께 캡처한다.
+  2. `_restoreWorkoutSheetScrollState()`가 재렌더 후 `data-wt-day-exercise-carousel-track` 위치를 복원한다.
+  3. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z4-workout-carousel-position`으로 bump하고 cache marker 테스트를 갱신했다.
+- 검증:
+  1. PASS: `node --check render-calendar.js; node --check sw.js`
+  2. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-active-session-recovery.test.js tests/workout-save-mode-guard.test.js` - 39 pass
+  3. PASS: `node --test tests/*.test.js` - 647 pass
+  4. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=868`
+  5. PASS: `git diff --check`
+  6. not verified yet: 인증 계정 실제 UI에서 `두 번째 종목 카드 -> 세트 입력/체크 -> 같은 카드 유지` 클릭 플로우는 자동 검증하지 못했다.
+- 다음 액션: 운영계 배포 후 인증 계정 실제 UI에서 위 클릭 플로우를 확인한다.
+
 ## 2026-07-03 운동 완료 도장 명시 액션 제한
 
 - 상태: `complete`
