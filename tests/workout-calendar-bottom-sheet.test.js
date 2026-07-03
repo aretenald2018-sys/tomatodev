@@ -269,7 +269,9 @@ test('day sheet exercise card uses inline plus row and one complete button', () 
   const completeFn = calendarJs.slice(completeStart, completeEnd);
 
   assert.match(card, /const editing = !collapsed/);
+  assert.match(calendarJs, /function _workoutExerciseCompletionStampAt\(row\)/);
   assert.match(calendarJs, /function _isWorkoutExerciseComplete\(row\)/);
+  assert.match(calendarJs, /if \(_workoutExerciseCompletionStampAt\(row\) == null\) return false/);
   assert.match(calendarJs, /completableSets\.length > 0 && completableSets\.every\(set => set\.done === true\)/);
   assert.match(card, /const stamped = _isWorkoutExerciseCompletionStamped\(cardId, row\)/);
   assert.doesNotMatch(calendarJs, /WORKOUT_EXERCISE_STAMP_MS/);
@@ -294,6 +296,7 @@ test('day sheet exercise card uses inline plus row and one complete button', () 
   assert.match(calendarJs, /window\._wtCalCompleteExercise = _completeWorkoutExerciseFromSheet/);
   assert.match(completeFn, /_hasCompletableWorkoutSheetSet\(nextSet\)/);
   assert.match(completeFn, /nextSet\.done = true/);
+  assert.match(completeFn, /_markWorkoutExerciseEntryComplete\(entry, now\)/);
   assert.match(completeFn, /_markWorkoutExerciseCompletionStamp\(cardId\)/);
   assert.match(calendarJs, /data-wt-set-done-toggle[\s\S]*_toggleWorkoutExerciseSetDoneFromSheet/);
   assert.match(calendarJs, /data-wt-set-remove[\s\S]*_removeWorkoutExerciseSetFromSheet/);
@@ -305,6 +308,51 @@ test('day sheet exercise card uses inline plus row and one complete button', () 
   assert.match(styleCss, /\.wt-max-complete-stamp\s*\{/);
   assert.match(styleCss, /@keyframes wt-complete-stamp-pop/);
   assert.match(styleCss, /\.wt-max-set-toggle,\s*\n\.wt-max-set-remove-btn\s*\{/);
+});
+
+test('day sheet complete stamp requires the explicit exercise complete marker', () => {
+  const rowsStart = calendarJs.indexOf('function _exerciseRows');
+  const rowsEnd = calendarJs.indexOf('function _workoutMetrics', rowsStart);
+  const stampStart = calendarJs.indexOf('function _workoutExerciseCompletionStampAt');
+  const stampEnd = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard', stampStart);
+  const updateStart = calendarJs.indexOf('async function _updateWorkoutExerciseSetFromSheet');
+  const updateEnd = calendarJs.indexOf('async function _addWorkoutExerciseSetFromSheet', updateStart);
+  const addStart = calendarJs.indexOf('async function _addWorkoutExerciseSetFromSheet');
+  const addEnd = calendarJs.indexOf('async function _removeWorkoutExerciseSetFromSheet', addStart);
+  const removeStart = calendarJs.indexOf('async function _removeWorkoutExerciseSetFromSheet');
+  const removeEnd = calendarJs.indexOf('async function _toggleWorkoutExerciseSetDoneFromSheet', removeStart);
+  const toggleStart = calendarJs.indexOf('async function _toggleWorkoutExerciseSetDoneFromSheet');
+  const toggleEnd = calendarJs.indexOf('async function _completeWorkoutExerciseFromSheet', toggleStart);
+  const completeStart = calendarJs.indexOf('async function _completeWorkoutExerciseFromSheet');
+  const completeEnd = calendarJs.indexOf('async function _addWorkoutHomeSession', completeStart);
+  assert.ok(rowsStart >= 0 && rowsEnd > rowsStart, 'exercise row mapper should exist');
+  assert.ok(stampStart >= 0 && stampEnd > stampStart, 'stamp helpers should exist');
+  assert.ok(updateStart >= 0 && updateEnd > updateStart, 'set update function should exist');
+  assert.ok(addStart >= 0 && addEnd > addStart, 'set add function should exist');
+  assert.ok(removeStart >= 0 && removeEnd > removeStart, 'set remove function should exist');
+  assert.ok(toggleStart >= 0 && toggleEnd > toggleStart, 'set toggle function should exist');
+  assert.ok(completeStart >= 0 && completeEnd > completeStart, 'exercise complete function should exist');
+  const rows = calendarJs.slice(rowsStart, rowsEnd);
+  const stampFns = calendarJs.slice(stampStart, stampEnd);
+  const updateFn = calendarJs.slice(updateStart, updateEnd);
+  const addFn = calendarJs.slice(addStart, addEnd);
+  const removeFn = calendarJs.slice(removeStart, removeEnd);
+  const toggleFn = calendarJs.slice(toggleStart, toggleEnd);
+  const completeFn = calendarJs.slice(completeStart, completeEnd);
+
+  assert.match(rows, /exerciseCompletedAt: _workoutExerciseCompletionStampAt\(entry\)/);
+  assert.match(stampFns, /const stampAt = Number\(row\?\.exerciseCompletedAt\)/);
+  assert.match(stampFns, /if \(_workoutExerciseCompletionStampAt\(row\) == null\) return false/);
+  assert.match(stampFns, /completableSets\.every\(set => set\.done === true\)/);
+  assert.match(completeFn, /_markWorkoutExerciseEntryComplete\(entry, now\)/);
+  assert.doesNotMatch(addFn, /_markWorkoutExerciseEntryComplete|entry\.exerciseCompletedAt = now/);
+  assert.doesNotMatch(updateFn, /_markWorkoutExerciseEntryComplete|entry\.exerciseCompletedAt = now/);
+  assert.doesNotMatch(removeFn, /_markWorkoutExerciseEntryComplete|entry\.exerciseCompletedAt = now/);
+  assert.doesNotMatch(toggleFn, /_markWorkoutExerciseEntryComplete|entry\.exerciseCompletedAt = now/);
+  assert.match(addFn, /_clearWorkoutExerciseCompletionMarker\(entry\)/);
+  assert.match(updateFn, /_clearWorkoutExerciseCompletionMarker\(entry\)/);
+  assert.match(removeFn, /_clearWorkoutExerciseCompletionMarker\(entry\)/);
+  assert.match(toggleFn, /_clearWorkoutExerciseCompletionMarker\(entry\)/);
 });
 
 test('day sheet save syncs saved session over stale active workout draft', () => {
@@ -745,5 +793,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260703z2-workout-delete-priority/);
+  assert.match(swJs, /tomatofarm-v20260703z3-workout-complete-stamp-marker/);
 });

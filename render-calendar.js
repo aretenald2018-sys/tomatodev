@@ -1204,6 +1204,7 @@ function _exerciseRows(day, lookup = _buildWorkoutLookup(), key = null, options 
         recommendationMeta: entry?.recommendationMeta || null,
         maxPrescription: entry?.maxPrescription || null,
         maxTrackPreference: lib?.maxTrackPreference || null,
+        exerciseCompletedAt: _workoutExerciseCompletionStampAt(entry),
         setCount: sets.length,
         volume,
         topSetText: topSet ? _formatSetText(topSet) : '세트 기록 없음',
@@ -2153,7 +2154,13 @@ function _renderWorkoutSetRows(row, options = {}) {
   return `${rows}${addRow}`;
 }
 
+function _workoutExerciseCompletionStampAt(row) {
+  const stampAt = Number(row?.exerciseCompletedAt);
+  return Number.isFinite(stampAt) && stampAt > 0 ? stampAt : null;
+}
+
 function _isWorkoutExerciseComplete(row) {
+  if (_workoutExerciseCompletionStampAt(row) == null) return false;
   const sets = Array.isArray(row?.rawSetDetails) ? row.rawSetDetails : [];
   const completableSets = sets.filter(_hasCompletableWorkoutSheetSet);
   return completableSets.length > 0 && completableSets.every(set => set.done === true);
@@ -2997,6 +3004,16 @@ function _markWorkoutExerciseCompletionStamp(cardId) {
   _workoutExerciseCompletionStamps.set(cardId, Date.now());
 }
 
+function _markWorkoutExerciseEntryComplete(entry, now = Date.now()) {
+  if (!entry || typeof entry !== 'object') return;
+  entry.exerciseCompletedAt = now;
+}
+
+function _clearWorkoutExerciseCompletionMarker(entry) {
+  if (!entry || typeof entry !== 'object') return;
+  delete entry.exerciseCompletedAt;
+}
+
 function _editWorkoutHomeSession(key, sessionIndex = _workoutHomeSessionIndex) {
   const targetKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
   _workoutHomeSelectedKey = targetKey;
@@ -3069,6 +3086,7 @@ async function _updateWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseInd
       if (safeField === 'romPct') nextSet.romPct = _setWorkoutSheetNumber(value, Number.isFinite(Number(nextSet.romPct)) ? Number(nextSet.romPct) : 100, { min: 0, max: 100, integer: true });
       sets[targetIndex] = nextSet;
       entry.sets = sets;
+      _clearWorkoutExerciseCompletionMarker(entry);
       return true;
     }, { preserveInput: true, sourceInput, ignoreSourceInput: true });
   } catch (e) {
@@ -3083,6 +3101,7 @@ async function _addWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseIndex)
       const sets = Array.isArray(entry.sets) ? entry.sets : [];
       sets.push(_defaultWorkoutSheetSet(sets[sets.length - 1]));
       entry.sets = sets;
+      _clearWorkoutExerciseCompletionMarker(entry);
       return true;
     }, { preserveSheetScroll: true });
     if (ok) window.showToast?.('세트를 추가했어요', 1200, 'success');
@@ -3100,6 +3119,7 @@ async function _removeWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseInd
       if (!sets[targetIndex]) return false;
       sets.splice(targetIndex, 1);
       entry.sets = sets;
+      _clearWorkoutExerciseCompletionMarker(entry);
       return true;
     });
     if (ok) window.showToast?.('세트를 삭제했어요', 1200, 'success');
@@ -3128,6 +3148,7 @@ async function _toggleWorkoutExerciseSetDoneFromSheet(key, sessionIndex, exercis
       }
       sets[targetIndex] = nextSet;
       entry.sets = sets;
+      _clearWorkoutExerciseCompletionMarker(entry);
       return true;
     }, { preserveSheetScroll: true });
   } catch (e) {
@@ -3157,6 +3178,7 @@ async function _completeWorkoutExerciseFromSheet(cardId, key, sessionIndex, exer
         return false;
       }
       entry.sets = nextSets;
+      _markWorkoutExerciseEntryComplete(entry, now);
       return true;
     }, { preserveSheetScroll: true });
     if (!ok) return;

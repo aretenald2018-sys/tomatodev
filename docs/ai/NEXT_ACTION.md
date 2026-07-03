@@ -1,5 +1,28 @@
 # 다음 자동 액션
 
+## 2026-07-03 운동 완료 도장 명시 액션 제한
+
+- 상태: `complete`
+- 계획: `docs/ai/features/2026-07-03-workout-complete-stamp-explicit-action.md`
+- 리뷰: `docs/ai/reviews/2026-07-03-workout-complete-stamp-explicit-action-review.md`
+- 요청: `+` 버튼만 눌렀는데 `종목완료`를 누르지 않아도 완료 도장이 찍히는 회귀를 막는다.
+- 진단 요약:
+  1. `_defaultWorkoutSheetSet()`은 `done: false`로 시작하므로 `+`가 직접 완료 세트를 복사하는 문제가 아니다.
+  2. 현재 도장 표시 조건은 `_isWorkoutExerciseComplete(row)`의 세트 `done` 상태 기반이라, `종목완료` 클릭 여부와 분리되어 있지 않다.
+  3. 완료 도장은 세트 단위 체크가 아니라 `종목완료` 명시 액션 marker를 기준으로 표시해야 한다.
+- 구현 요약:
+  1. `render-calendar.js`가 `exerciseCompletedAt` marker와 완료 가능한 세트 `done` 상태를 함께 만족할 때만 `완료` 도장을 렌더한다.
+  2. `종목완료` 경로만 marker를 저장하고, 세트 수정/추가/삭제/토글은 marker를 지워 `+` 버튼만으로 도장이 찍히지 않게 했다.
+  3. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260703z3-workout-complete-stamp-marker`로 bump하고 cache marker 테스트를 갱신했다.
+- 검증:
+  1. PASS: `node --check render-calendar.js; node --check sw.js`
+  2. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-active-session-recovery.test.js tests/workout-save-mode-guard.test.js` - 38 pass
+  3. PASS: `node --test tests/*.test.js` - 646 pass
+  4. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=868`
+  5. PASS: `git diff --check`
+  6. not verified yet: 인증 계정 실제 UI에서 `+ 버튼만 누름 -> 완료 도장 없음 -> 종목완료 -> 완료 도장 표시` 클릭 플로우는 자동 검증하지 못했다.
+- 다음 액션: 운영계 배포 후 인증 계정 실제 UI에서 위 클릭 플로우를 확인한다.
+
 ## 2026-07-03 운영계 전용 배포 규칙 정리
 
 - 상태: `complete`
