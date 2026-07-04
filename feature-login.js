@@ -36,6 +36,31 @@ function _showLoadingUntilAppReady() {
   }, { once: true });
 }
 
+function _runningDraftOwnerId(user) {
+  return String((user && (user.uid || user.id || user.username || user.name)) || '_anon');
+}
+
+function _hasRestorableRunningDraftForUser(user) {
+  if (!user || typeof localStorage === 'undefined') return false;
+  const ownerId = _runningDraftOwnerId(user);
+  const keys = [
+    'tomatofarm_running_session_draft_' + encodeURIComponent(ownerId),
+    'tomatofarm_running_session_draft_active',
+  ];
+  for (const key of keys) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const draft = JSON.parse(raw);
+      const phase = String(draft?.phase || '');
+      if (!['active', 'paused', 'summary'].includes(phase)) continue;
+      if (String(draft?.ownerId || '') !== ownerId) continue;
+      return true;
+    } catch {}
+  }
+  return false;
+}
+
 async function initLoginScreen() {
   const { loadSavedUser, restoreUserFromBackup, getAccountList, setCurrentUser, loadAll } = await import('./data.js');
 
@@ -104,7 +129,7 @@ async function initLoginScreen() {
     } else {
       // 길드 온보딩 팝업 (기존 사용자가 길드 미설정 시)
       const guildObKey = 'guild_onboarding_v1_' + saved.id;
-      if (!localStorage.getItem(guildObKey)) {
+      if (!localStorage.getItem(guildObKey) && !_hasRestorableRunningDraftForUser(saved)) {
         const { getAccountList, saveAccount, setCurrentUser, getAllGuilds, createGuild, createGuildJoinRequest, updateGuildMemberCount } = await import('./data.js');
         const accs = await getAccountList();
         const myAcc = accs.find(a => a.id === saved.id);

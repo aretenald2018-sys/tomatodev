@@ -55,6 +55,12 @@ test('feature-login binds login actions with a scoped idempotent bridge', () => 
   assert.match(featureLoginJs, /document\.addEventListener\('DOMContentLoaded', \(\) => \{[\s\S]*_bindLoginActions\(\);[\s\S]*initLoginScreen\(\);[\s\S]*\}\)/);
 });
 
+test('login restore skips guild onboarding when a running draft can resume', () => {
+  assert.match(featureLoginJs, /function _hasRestorableRunningDraftForUser\(user\)/);
+  assert.match(featureLoginJs, /tomatofarm_running_session_draft_active/);
+  assert.match(featureLoginJs, /if \(!localStorage\.getItem\(guildObKey\) && !_hasRestorableRunningDraftForUser\(saved\)\)/);
+});
+
 test('service worker cache version was bumped for login action bridge assets', () => {
   assert.match(swJs, /tomatofarm-v20260704z5-workout-set-type-menu-close/);
 });
