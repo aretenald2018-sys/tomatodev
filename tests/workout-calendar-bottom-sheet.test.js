@@ -513,7 +513,7 @@ test('day sheet set done toggle uses explicit done state and larger touch target
   assert.match(toggleFn, /const nextDone = !wasDone/);
   assert.doesNotMatch(toggleFn, /_isActualWorkoutSet\(nextSet\) \|\| nextSet\.done === true/);
   assert.match(toggleFn, /\{ preserveSheetScroll: true \}/);
-  assert.match(styleCss, /\.wt-max-set-main\s*\{[\s\S]*grid-template-columns:\s*30px minmax\(42px,\s*\.78fr\)[\s\S]*30px 22px 28px/);
+  assert.match(styleCss, /\.wt-max-set-main\s*\{[\s\S]*grid-template-columns:\s*30px 44px minmax\(58px,\s*1fr\) minmax\(52px,\s*\.9fr\) 24px 28px/);
   assert.match(styleCss, /\.wt-max-set-check\s*\{[\s\S]*width:\s*30px;[\s\S]*height:\s*30px;/);
   assert.match(styleCss, /\.wt-max-set-expand\s*\{[\s\S]*width:\s*28px;[\s\S]*height:\s*30px;/);
   assert.match(styleCss, /\.wt-max-set-toggle,\s*\n\.wt-max-set-remove-btn\s*\{[\s\S]*touch-action:\s*manipulation;/);
@@ -634,6 +634,44 @@ test('day sheet added workout sets copy previous user values without completion 
   assert.match(rowsFn, /data-wt-sheet-card-action="toggle-set-editor"/);
   assert.match(rowsFn, /wt-max-set-editor/);
   assert.match(rowsFn, /aria-label="\$\{expanded \? '세트 수정 닫기' : '세트 수정 열기'\}"/);
+});
+
+test('day sheet set rows keep goal/history blocks and use minimal collapsed editing', () => {
+  const cardStart = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard');
+  const cardEnd = calendarJs.indexOf('function _formatRunningDistance', cardStart);
+  const labelStart = calendarJs.indexOf('function _workoutSetTypeLabel');
+  const labelEnd = calendarJs.indexOf('function _bestWorkoutSet', labelStart);
+  const menuStart = calendarJs.indexOf('function _renderWorkoutSetTypeMenu');
+  const menuEnd = calendarJs.indexOf('function _renderWorkoutSetRows', menuStart);
+  const rowsStart = calendarJs.indexOf('function _renderWorkoutSetRows');
+  const rowsEnd = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard', rowsStart);
+  assert.ok(cardStart >= 0 && cardEnd > cardStart, 'exercise detail card renderer should exist');
+  assert.ok(labelStart >= 0 && labelEnd > labelStart, 'set type label helpers should exist');
+  assert.ok(menuStart >= 0 && menuEnd > menuStart, 'set type menu renderer should exist');
+  assert.ok(rowsStart >= 0 && rowsEnd > rowsStart, 'set row renderer should exist');
+  const card = calendarJs.slice(cardStart, cardEnd);
+  const labels = calendarJs.slice(labelStart, labelEnd);
+  const menu = calendarJs.slice(menuStart, menuEnd);
+  const rows = calendarJs.slice(rowsStart, rowsEnd);
+
+  assert.match(card, /const goalText = hasSetDetails \? `\$\{bestKg\}kg × \$\{bestReps\}회` : '세트 입력 대기'/);
+  assert.match(card, /const previousSummary = _workoutPreviousSetSummary\(row\)/);
+  assert.match(card, /<div class="wt-max-last">/);
+  assert.match(calendarJs, /const WORKOUT_SET_TYPE_OPTIONS = \[/);
+  assert.match(calendarJs, /const _workoutOpenSetTypeMenus = new Set\(\)/);
+  assert.match(labels, /type === 'failure'[\s\S]*return '실패'/);
+  assert.match(rows, /wt-max-set-type-btn/);
+  assert.match(rows, /data-wt-sheet-card-action="toggle-set-type"/);
+  assert.match(rows, /_renderWorkoutSetTypeMenu/);
+  assert.match(menu, /data-wt-sheet-card-action="set-set-type"/);
+  assert.match(menu, /data-wt-set-type-option/);
+  assert.doesNotMatch(rows, /<span class="wt-max-set-value"><em>RIR<\/em>/);
+  assert.doesNotMatch(rows, /wt-max-rom-inline/);
+  assert.match(rows, /<div class="wt-max-set-editor"/);
+  assert.match(rows, /'rir'/);
+  assert.match(rows, /'romPct'/);
+  assert.match(calendarJs, /case 'toggle-set-type':[\s\S]*_toggleWorkoutSetTypeMenuFromSheet/);
+  assert.match(calendarJs, /case 'set-set-type':[\s\S]*_setWorkoutExerciseSetTypeFromSheet/);
 });
 
 test('workout bottom sheet replaces the third gym session with a dedicated running tab', () => {
@@ -949,5 +987,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260704z1-workout-set-copy-expand/);
+  assert.match(swJs, /tomatofarm-v20260704z2-workout-set-minimal-bodycalendar/);
 });

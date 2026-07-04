@@ -13087,7 +13087,7 @@ body.lz-running-record-modal-open {
   border: 1px solid #e2e6ef;
   background: #fff;
   box-shadow: 0 3px 12px rgba(15, 23, 42, 0.07);
-  overflow: hidden;
+  overflow: visible;
 }
 .wt-max-card-kicker {
   display: flex;
@@ -13215,6 +13215,7 @@ body.lz-running-record-modal-open {
   display: none;
 }
 .wt-max-set-row {
+  position: relative;
   padding: 5px 6px;
   border-radius: 8px;
   background: #f1f3f6;
@@ -13222,9 +13223,12 @@ body.lz-running-record-modal-open {
 .wt-max-set-row.is-done {
   background: #eaf8f1;
 }
+.wt-max-set-row.is-type-menu-open {
+  z-index: 6;
+}
 .wt-max-set-main {
   display: grid;
-  grid-template-columns: 30px minmax(42px, .78fr) minmax(42px, .78fr) minmax(34px, .6fr) minmax(58px, 1fr) 30px 22px 28px;
+  grid-template-columns: 30px 44px minmax(58px, 1fr) minmax(52px, .9fr) 24px 28px;
   align-items: center;
   gap: 4px;
 }
@@ -13235,10 +13239,21 @@ body.lz-running-record-modal-open {
   flex-direction: column;
   gap: 1px;
   height: 30px;
+  padding: 0;
+  border: 0;
   border-radius: 999px;
   background: #ffe8eb;
   color: #ff3737;
+  font-family: inherit;
   line-height: 1;
+}
+.wt-max-set-type-btn {
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.wt-max-set-type-btn[aria-expanded="true"] {
+  box-shadow: 0 0 0 2px rgba(33, 124, 249, 0.16);
 }
 .wt-max-set-type b {
   color: inherit;
@@ -13258,10 +13273,13 @@ body.lz-running-record-modal-open {
   background: #fff5df;
   color: #b7791f;
 }
+.wt-max-set-type.is-failure {
+  background: #fff1f2;
+  color: #be123c;
+}
 .wt-max-set-value {
   display: grid;
   min-width: 0;
-  gap: 1px;
 }
 .wt-max-set-value em,
 .wt-max-set-editor label span {
@@ -13375,6 +13393,75 @@ body.lz-running-record-modal-open {
 .wt-max-set-row.is-done .wt-max-set-remove,
 .wt-max-set-row.is-done .wt-max-set-expand {
   color: #d5d9e1;
+}
+.wt-max-set-type-menu {
+  position: absolute;
+  top: 38px;
+  left: 38px;
+  z-index: 8;
+  display: grid;
+  gap: 4px;
+  width: min(254px, calc(100% - 46px));
+  padding: 8px;
+  border: 1px solid #dfe6ef;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+}
+.wt-max-set-type-option {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #111827;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.wt-max-set-type-option b {
+  color: #ff3737;
+  font-size: 12px;
+  font-weight: 900;
+}
+.wt-max-set-type-option span {
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 900;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wt-max-set-type-option i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid #98a2b3;
+  border-radius: 999px;
+  color: #647084;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+}
+.wt-max-set-type-option.is-warmup b {
+  color: #16a34a;
+}
+.wt-max-set-type-option.is-drop b {
+  color: #6d28d9;
+}
+.wt-max-set-type-option.is-failure b {
+  color: #ff3737;
+}
+.wt-max-set-type-option.is-active {
+  background: #f1f5f9;
 }
 .wt-max-rom-inline {
   display: grid;
@@ -14010,7 +14097,7 @@ body.lz-running-record-modal-open {
     font-size: 8px;
   }
   .wt-max-set-main {
-    grid-template-columns: 27px minmax(36px, .78fr) minmax(36px, .78fr) minmax(30px, .58fr) minmax(50px, 1fr) 28px 22px 26px;
+    grid-template-columns: 28px 40px minmax(50px, 1fr) minmax(46px, .86fr) 22px 26px;
     gap: 3px;
   }
   .wt-max-set-type {
@@ -14021,6 +14108,21 @@ body.lz-running-record-modal-open {
   }
   .wt-max-set-type small {
     font-size: 7px;
+  }
+  .wt-max-set-type-menu {
+    top: 36px;
+    left: 34px;
+    width: min(238px, calc(100% - 40px));
+    padding: 7px;
+  }
+  .wt-max-set-type-option {
+    grid-template-columns: 24px minmax(0, 1fr) 18px;
+    min-height: 36px;
+    gap: 8px;
+    padding: 0 7px;
+  }
+  .wt-max-set-type-option span {
+    font-size: 13px;
   }
   .wt-max-set-value em,
   .wt-max-set-editor label span {

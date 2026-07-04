@@ -146,3 +146,63 @@
   4. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=879`
   5. PASS: `git diff --check`
   6. PASS: `node --test tests/*.test.js` - 693 pass
+
+## 피드백 수정: Slice 2
+
+### 사용자 피드백
+
+- `똑같이 처리`는 `세트 입력 대기`와 `지난 기록` 블록을 제거하라는 뜻이 아니다.
+- 새 운동 종목을 추가했을 때 입력 행은 첫 행 1개만 있어야 한다. 추천/프로그램 목표 세트가 3~4개라도 처음부터 3~4행을 모두 노출하지 않는다.
+- 기존 Tomato Farm UI에서 살릴 것은 `ROM` 입력 개념이고, 세트 행 UX는 바디캘린더 참고 이미지 2~3처럼 요약형으로 미니멀하게 처리한다.
+- 좌측 세트 번호 버튼은 참고 이미지 4처럼 세트 유형 토글/메뉴를 열어야 한다.
+- 행의 체크 버튼은 세트 완료 처리이고, 숫자 입력은 우측 펼침 버튼을 눌렀을 때만 가능해야 한다.
+
+### Slice 2 목표
+
+1. 운동 카드 상단의 `세트 입력 대기`/`지난 기록` 영역은 유지한다.
+2. 추천/프로그램 운동 추가 시 `entry.sets`는 첫 세트 1개만 만든다. 전체 목표 세트 수와 처방 세트는 `maxPrescription` 메타에 보존한다.
+3. 기본 세트 행은 `완료 체크`, `세트 번호/유형`, `무게`, `횟수`, `삭제`, `우측 펼침`만 노출한다.
+4. `RIR`와 `ROM`은 우측 펼침 편집 패널에서만 입력한다.
+5. 좌측 세트 번호/유형 버튼은 `메인/웜업/드랍/실패` 유형 메뉴를 열고, 선택 시 해당 세트의 `setType`만 갱신한다.
+
+### 예상 수정 파일
+
+- `render-calendar.js`
+- `style.css`
+- `workout/exercises.js`
+- `workout/expert/max-benchmark-picker.js`
+- `tests/workout-calendar-bottom-sheet.test.js`
+- `tests/workout-test-mode-unified.test.js`
+- `tests/calc.max.test.js`
+- `sw.js`
+- `docs/ai/NEXT_ACTION.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-04-workout-set-minimal-bodycalendar-review.md`
+
+### 구현 지시
+
+1. `buildMaxBenchmarkPickerEntry()`는 `maxPrescription.sets`를 보존하되, `entry.sets`에는 첫 처방 세트만 넣는다.
+2. `_buildProgramPickerExerciseEntry()`와 Dashboard3 테스트모드 보정 경로도 사용자가 보는 `sets`를 1개로 정규화한다.
+3. `_renderWorkoutSetRows()`에서 collapsed 행의 `RIR`/`ROM` 요약 노출을 제거하고, 우측 펼침 패널에만 입력을 둔다.
+4. `_workoutSetTypeLabel()`/`_workoutSetTypeClass()`에 `failure` 유형을 추가한다.
+5. `_workoutOpenSetTypeMenus` 같은 UI 상태를 추가하고, 좌측 버튼 `data-wt-sheet-card-action="toggle-set-type"`과 메뉴 option `set-set-type` action을 sheet 내부 capture handler에서 처리한다.
+6. 세트 유형 변경은 `setType`만 갱신하고 완료 marker는 지우되, 숫자 입력 패널을 자동으로 열지 않는다.
+7. `render-calendar.js`, `style.css`, `workout/exercises.js`, `workout/expert/max-benchmark-picker.js`는 정적 asset이므로 수정 시 `sw.js` `CACHE_VERSION`을 bump한다.
+
+### RED/검증 방법
+
+1. RED: `node --test tests/calc.max.test.js tests/workout-test-mode-unified.test.js tests/workout-calendar-bottom-sheet.test.js`
+   - 추천/프로그램 종목 `entry.sets.length === 1` 계약이 현재 실패해야 한다.
+   - 좌측 세트 유형 토글 action/menu 계약이 현재 실패해야 한다.
+2. PASS: `node --check render-calendar.js workout/exercises.js workout/expert/max-benchmark-picker.js sw.js`
+3. PASS: `node --test tests/calc.max.test.js tests/workout-test-mode-unified.test.js tests/workout-calendar-bottom-sheet.test.js`
+4. PASS: `node scripts/verify-runtime-assets.mjs`
+5. PASS: `git diff --check`
+6. 필요 시 전체 회귀: `node --test tests/*.test.js`
+
+### 완료 증거
+
+- 새 운동 종목 추가 시 첫 세트 1개만 입력 행으로 생성된다는 테스트가 있다.
+- 추천/프로그램 처방의 전체 목표 세트는 `maxPrescription`에 남아 있다는 테스트가 있다.
+- 기본 세트 행에 숫자 입력이 없고, 우측 펼침 패널에만 `무게/횟수/RIR/ROM` 입력이 있다는 테스트가 있다.
+- 좌측 세트 번호 버튼의 세트 유형 메뉴와 `setType` 변경 action이 테스트로 고정되어 있다.
+- `세트 입력 대기`와 `지난 기록` 렌더 계약이 유지된다.

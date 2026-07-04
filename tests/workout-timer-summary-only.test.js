@@ -63,5 +63,5 @@ test('workout finish saves without opening the old completion insight modal', ()
 });
 
 test('service worker cache version was bumped for workout timer summary-only UI', () => {
-  assert.match(swJs, /tomatofarm-v20260704z1-workout-set-copy-expand/);
+  assert.match(swJs, /tomatofarm-v20260704z2-workout-set-minimal-bodycalendar/);
 });

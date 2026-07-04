@@ -309,6 +309,23 @@ function _makeTrackPrescription({ benchmark, cycle, todayKey, track }) {
   };
 }
 
+function _firstPickerSetFromPrescription(prescription = {}) {
+  const first = Array.isArray(prescription?.sets) && prescription.sets.length
+    ? prescription.sets[0]
+    : null;
+  const next = {
+    kg: _roundKg(first?.kg ?? prescription?.startKg),
+    reps: Math.max(0, Number(first?.reps ?? prescription?.repsHigh ?? prescription?.repsLow) || 0),
+    setType: first?.setType || 'main',
+    done: false,
+  };
+  const rpe = Number(first?.rpe ?? prescription?.targetRpe);
+  if (Number.isFinite(rpe) && rpe > 0) next.rpe = rpe;
+  const romPct = Number(first?.romPct);
+  if (Number.isFinite(romPct)) next.romPct = Math.max(0, Math.min(100, Math.round(romPct)));
+  return next;
+}
+
 export function buildMaxBenchmarkPickerEntry({
   exercise = null,
   benchmark = null,
@@ -363,7 +380,7 @@ export function buildMaxBenchmarkPickerEntry({
     gymTagAtTime: gymTag,
     maxWeakPart: null,
     maxPrescription: prescription,
-    sets: prescription.sets || [],
+    sets: [_firstPickerSetFromPrescription(prescription)],
   };
 }
 

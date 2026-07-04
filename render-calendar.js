@@ -68,6 +68,7 @@ const _workoutDetailCollapsed = new Set();
 let _workoutEditingCardId = null;
 const _workoutExerciseCompletionStamps = new Map();
 const _workoutExpandedSetEditors = new Set();
+const _workoutOpenSetTypeMenus = new Set();
 const _workoutSheetCarouselSnapshots = new Map();
 let _workoutTrackGraphSeq = 0;
 const WORKOUT_GYM_SESSION_COUNT = 2;
@@ -77,6 +78,12 @@ const _workoutRunningMapPayloads = new Map();
 const WORKOUT_HOME_SHEET_STATES = ['bar', 'full'];
 const WORKOUT_HOME_SHEET_CLASS_STATES = ['bar', 'full'];
 const WORKOUT_SHEET_SET_INPUT_SELECTOR = '[data-wt-set-input]';
+const WORKOUT_SET_TYPE_OPTIONS = [
+  { type: 'main', code: 'M', label: '메인세트', className: 'is-main' },
+  { type: 'warmup', code: 'W', label: '웜업세트', className: 'is-warmup' },
+  { type: 'drop', code: 'D', label: '드랍세트', className: 'is-drop' },
+  { type: 'failure', code: 'F', label: '실패세트', className: 'is-failure' },
+];
 
 const MAX_WEAK_LABEL = {
   chest_upper:'가슴 상부', chest_lower:'가슴 하부',
@@ -2014,6 +2021,7 @@ function _workoutSetTypeLabel(setOrType = {}) {
   }
   if (type === 'warmup') return '프리';
   if (type === 'drop') return '드랍';
+  if (type === 'failure') return '실패';
   if (type === 'deload') return '디로드';
   return '본';
 }
@@ -2023,7 +2031,13 @@ function _workoutSetTypeClass(setOrType = {}) {
   const type = typeof setOrType === 'string' ? setOrType : set.setType;
   if (set.wendlerRole === 'warmup' || type === 'warmup') return 'is-warmup';
   if (set.wendlerRole === 'supplemental' || type === 'drop' || type === 'deload') return 'is-drop';
+  if (type === 'failure') return 'is-failure';
   return '';
+}
+
+function _normalizeWorkoutSetType(type) {
+  const value = String(type || '').trim();
+  return WORKOUT_SET_TYPE_OPTIONS.some(option => option.type === value) ? value : 'main';
 }
 
 function _bestWorkoutSet(row) {
@@ -2249,6 +2263,10 @@ function _isWorkoutSetEditorExpanded(key, sessionIndex, exerciseIndex, setIndex)
   return _workoutExpandedSetEditors.has(_workoutSetEditorKey(key, sessionIndex, exerciseIndex, setIndex));
 }
 
+function _isWorkoutSetTypeMenuOpen(key, sessionIndex, exerciseIndex, setIndex) {
+  return _workoutOpenSetTypeMenus.has(_workoutSetEditorKey(key, sessionIndex, exerciseIndex, setIndex));
+}
+
 function _clearWorkoutSetEditorsForExercise(key, sessionIndex, exerciseIndex) {
   const prefix = [
     _parseDateKey(key) ? key : _workoutHomeSelectedKey,
@@ -2258,6 +2276,9 @@ function _clearWorkoutSetEditorsForExercise(key, sessionIndex, exerciseIndex) {
   [..._workoutExpandedSetEditors].forEach((editorKey) => {
     if (editorKey.startsWith(prefix)) _workoutExpandedSetEditors.delete(editorKey);
   });
+  [..._workoutOpenSetTypeMenus].forEach((menuKey) => {
+    if (menuKey.startsWith(prefix)) _workoutOpenSetTypeMenus.delete(menuKey);
+  });
 }
 
 function _renderWorkoutSetAddRow(key, sessionIndex, exerciseIndex, cardId = '') {
@@ -2265,6 +2286,21 @@ function _renderWorkoutSetAddRow(key, sessionIndex, exerciseIndex, cardId = '') 
     <button type="button" class="wt-max-set-add-row" data-wt-sheet-card-action="add-exercise-set" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" aria-label="세트 추가">
       <span aria-hidden="true">+</span>
     </button>
+  `;
+}
+
+function _renderWorkoutSetTypeMenu(key, sessionIndex, exerciseIndex, setIndex, currentType = 'main') {
+  const normalized = _normalizeWorkoutSetType(currentType);
+  return `
+    <div class="wt-max-set-type-menu" data-wt-set-type-menu="${_esc(_workoutSetEditorKey(key, sessionIndex, exerciseIndex, setIndex))}">
+      ${WORKOUT_SET_TYPE_OPTIONS.map(option => `
+        <button type="button" class="wt-max-set-type-option ${option.type === normalized ? 'is-active' : ''} ${_esc(option.className)}" data-wt-sheet-card-action="set-set-type" data-wt-set-type-option data-set-type="${_esc(option.type)}" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" aria-pressed="${option.type === normalized ? 'true' : 'false'}">
+          <b>${_esc(option.code)}</b>
+          <span>${_esc(option.label)}</span>
+          <i aria-hidden="true">i</i>
+        </button>
+      `).join('')}
+    </div>
   `;
 }
 
@@ -2284,30 +2320,32 @@ function _renderWorkoutSetRows(row, options = {}) {
     const rom = Math.max(0, Math.min(100, Math.round(_num(set.romPct) || 100)));
     const kgText = _formatWorkoutKg(set.kg);
     const repsText = _formatWorkoutReps(set.reps);
-    const rirText = _formatWorkoutRir(set);
     const expanded = editable && _isWorkoutSetEditorExpanded(key, sessionIndex, exerciseIndex, setIndex);
+    const typeMenuOpen = editable && _isWorkoutSetTypeMenuOpen(key, sessionIndex, exerciseIndex, setIndex);
     const setTypeLabel = _workoutSetTypeLabel(set);
     const setTypeClass = _workoutSetTypeClass(set);
+    const setTypeValue = _normalizeWorkoutSetType(set?.setType);
+    const typeControl = editable
+      ? `<button type="button" class="wt-max-set-type wt-max-set-type-btn ${_esc(setTypeClass)}" data-wt-sheet-card-action="toggle-set-type" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" aria-expanded="${typeMenuOpen ? 'true' : 'false'}" aria-label="${setIndex + 1}세트 유형 선택"><b>${setIndex + 1}</b><small>${_esc(setTypeLabel)}</small></button>`
+      : `<span class="wt-max-set-type ${_esc(setTypeClass)}"><b>${setIndex + 1}</b><small>${_esc(setTypeLabel)}</small></span>`;
     return `
-      <div class="wt-max-set-row ${set.done ? 'is-done' : ''} ${editable ? 'is-editing' : ''} ${expanded ? 'is-expanded-editor' : ''}">
+      <div class="wt-max-set-row ${set.done ? 'is-done' : ''} ${editable ? 'is-editing' : ''} ${expanded ? 'is-expanded-editor' : ''} ${typeMenuOpen ? 'is-type-menu-open' : ''}">
         <div class="wt-max-set-main">
-          <span class="wt-max-set-type ${_esc(setTypeClass)}"><b>${setIndex + 1}</b><small>${_esc(setTypeLabel)}</small></span>
-          <span class="wt-max-set-value"><em>무게</em><b>${_esc(kgText)}${kgText === '-' ? '' : '<small>kg</small>'}</b></span>
-          <span class="wt-max-set-value"><em>횟수</em><b>${_esc(repsText)}${repsText === '-' ? '' : '<small>회</small>'}</b></span>
-          <span class="wt-max-set-value"><em>RIR</em><b>${_esc(rirText)}</b></span>
-          <div class="wt-max-rom-inline">
-            <span>ROM</span>
-            <i><b style="width:${rom}%"></b></i>
-            <strong>${rom}</strong>
-          </div>
           ${editable
             ? `<button type="button" class="wt-max-set-check wt-max-set-toggle" data-wt-set-done-toggle data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" aria-pressed="${set.done ? 'true' : 'false'}" aria-label="세트 완료 토글">✓</button>
+               ${typeControl}
+               <span class="wt-max-set-value"><b>${_esc(kgText)}${kgText === '-' ? '' : '<small>kg</small>'}</b></span>
+               <span class="wt-max-set-value"><b>${_esc(repsText)}${repsText === '-' ? '' : '<small>회</small>'}</b></span>
                <button type="button" class="wt-max-set-remove wt-max-set-remove-btn" data-wt-set-remove data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" aria-label="세트 삭제">×</button>
                <button type="button" class="wt-max-set-expand" data-wt-sheet-card-action="toggle-set-editor" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '세트 수정 닫기' : '세트 수정 열기'}"><span aria-hidden="true">${expanded ? '⌃' : '⌄'}</span></button>`
             : `<i class="wt-max-set-check" aria-hidden="true">✓</i>
+               ${typeControl}
+               <span class="wt-max-set-value"><b>${_esc(kgText)}${kgText === '-' ? '' : '<small>kg</small>'}</b></span>
+               <span class="wt-max-set-value"><b>${_esc(repsText)}${repsText === '-' ? '' : '<small>회</small>'}</b></span>
                <i class="wt-max-set-remove" aria-hidden="true">×</i>
                <i class="wt-max-set-expand" aria-hidden="true">⌄</i>`}
         </div>
+        ${typeMenuOpen ? _renderWorkoutSetTypeMenu(key, sessionIndex, exerciseIndex, setIndex, setTypeValue) : ''}
         ${expanded ? `
           <div class="wt-max-set-editor" data-wt-set-editor-panel="${_esc(_workoutSetEditorKey(key, sessionIndex, exerciseIndex, setIndex))}">
             <label><span>무게</span>${_renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setIndex, 'kg', _workoutSheetInputValue(set.kg, 1), '무게', '0.5')}<em>kg</em></label>
@@ -2883,6 +2921,7 @@ function _runWorkoutHomeSheetCardAction(action, control) {
   const sessionIndex = control?.getAttribute?.('data-session-index');
   const exerciseIndex = control?.getAttribute?.('data-exercise-index');
   const setIndex = control?.getAttribute?.('data-set-index');
+  const setType = control?.getAttribute?.('data-set-type') || '';
   const cardId = control?.getAttribute?.('data-card-id') || '';
   const activityKey = control?.getAttribute?.('data-activity-key') || '';
   switch (action) {
@@ -2890,6 +2929,10 @@ function _runWorkoutHomeSheetCardAction(action, control) {
       return _addWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseIndex);
     case 'toggle-set-editor':
       return _toggleWorkoutSetEditorFromSheet(key, sessionIndex, exerciseIndex, setIndex);
+    case 'toggle-set-type':
+      return _toggleWorkoutSetTypeMenuFromSheet(key, sessionIndex, exerciseIndex, setIndex);
+    case 'set-set-type':
+      return _setWorkoutExerciseSetTypeFromSheet(key, sessionIndex, exerciseIndex, setIndex, setType);
     case 'complete-exercise':
       return _completeWorkoutExerciseFromSheet(cardId, key, sessionIndex, exerciseIndex);
     case 'toggle-card':
@@ -3239,12 +3282,31 @@ function _toggleWorkoutSetEditorFromSheet(key, sessionIndex, exerciseIndex, setI
   const targetSessionIndex = Math.max(0, Math.min(WORKOUT_GYM_SESSION_COUNT - 1, Math.floor(Number(sessionIndex) || 0)));
   const editorKey = _workoutSetEditorKey(targetKey, targetSessionIndex, exerciseIndex, setIndex);
   const restoreState = _captureWorkoutSheetScrollState();
+  _workoutOpenSetTypeMenus.delete(editorKey);
   if (_workoutExpandedSetEditors.has(editorKey)) _workoutExpandedSetEditors.delete(editorKey);
   else _workoutExpandedSetEditors.add(editorKey);
   _workoutHomeSelectedKey = targetKey;
   _workoutHomeSessionIndex = targetSessionIndex;
   _workoutHomeSheetState = 'full';
   _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:set-editor' });
+  renderWorkoutCalendarHome();
+  _restoreWorkoutSheetScrollState(restoreState);
+  return true;
+}
+
+function _toggleWorkoutSetTypeMenuFromSheet(key, sessionIndex, exerciseIndex, setIndex) {
+  const targetKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
+  const targetSessionIndex = Math.max(0, Math.min(WORKOUT_GYM_SESSION_COUNT - 1, Math.floor(Number(sessionIndex) || 0)));
+  const menuKey = _workoutSetEditorKey(targetKey, targetSessionIndex, exerciseIndex, setIndex);
+  const restoreState = _captureWorkoutSheetScrollState();
+  const wasOpen = _workoutOpenSetTypeMenus.has(menuKey);
+  _workoutOpenSetTypeMenus.clear();
+  _workoutExpandedSetEditors.delete(menuKey);
+  if (!wasOpen) _workoutOpenSetTypeMenus.add(menuKey);
+  _workoutHomeSelectedKey = targetKey;
+  _workoutHomeSessionIndex = targetSessionIndex;
+  _workoutHomeSheetState = 'full';
+  _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:set-type' });
   renderWorkoutCalendarHome();
   _restoreWorkoutSheetScrollState(restoreState);
   return true;
@@ -3328,6 +3390,36 @@ async function _updateWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseInd
   } catch (e) {
     console.warn('[workout-calendar] sheet set update failed:', e);
     window.showToast?.('세트 수정에 실패했어요', 2200, 'error');
+  }
+}
+
+async function _setWorkoutExerciseSetTypeFromSheet(key, sessionIndex, exerciseIndex, setIndex, setType) {
+  const safeType = _normalizeWorkoutSetType(setType);
+  try {
+    const targetKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
+    const targetSessionIndex = Math.max(0, Math.min(WORKOUT_GYM_SESSION_COUNT - 1, Math.floor(Number(sessionIndex) || 0)));
+    const targetSetIndex = Math.max(0, Math.floor(Number(setIndex) || 0));
+    const menuKey = _workoutSetEditorKey(targetKey, targetSessionIndex, exerciseIndex, targetSetIndex);
+    const ok = await _mutateWorkoutExerciseFromSheet(targetKey, targetSessionIndex, exerciseIndex, (entry) => {
+      const sets = Array.isArray(entry.sets) ? entry.sets : [];
+      while (sets.length <= targetSetIndex) sets.push(_defaultWorkoutSheetSet(sets[sets.length - 1]));
+      const nextSet = { ...(sets[targetSetIndex] || _defaultWorkoutSheetSet(sets[sets.length - 1])) };
+      nextSet.setType = safeType;
+      delete nextSet.wendlerRole;
+      delete nextSet.wendlerPct;
+      delete nextSet.supplementalKind;
+      delete nextSet.amrap;
+      sets[targetSetIndex] = nextSet;
+      entry.sets = sets;
+      _clearWorkoutExerciseCompletionMarker(entry);
+      return true;
+    }, { preserveSheetScroll: true });
+    _workoutOpenSetTypeMenus.delete(menuKey);
+    return ok;
+  } catch (e) {
+    console.warn('[workout-calendar] sheet set type update failed:', e);
+    window.showToast?.('세트 유형 변경에 실패했어요', 2200, 'error');
+    return false;
   }
 }
 

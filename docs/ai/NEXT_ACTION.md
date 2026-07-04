@@ -1,35 +1,37 @@
 # 다음 자동 액션
 
-## 2026-07-04 Workout Set Copy Expand Edit
+## 2026-07-04 Running Lock GPS Recovery
 
-- 상태: `complete`
-- 계획: `docs/ai/features/2026-07-04-workout-set-copy-expand-edit.md`
-- 요청: 운동 카드 세트 입력을 1~3번 참고 이미지처럼 세트 추가 시 직전 세트를 복사하고, 우측 버튼으로 해당 세트만 펼쳐 수정하는 구조로 바꾼다.
-- 계획 요약:
-  1. `+` 행은 직전 세트의 사용자 입력값(`kg`, `reps`, `rir`, `romPct`, `setType`)을 복사해 새 세트를 만든다.
-  2. 완료 상태(`done`, `completedAt`, 종목 완료 marker)는 복사하지 않는다.
-  3. 세트 행은 기본 요약형으로 렌더하고, 우측 펼침 버튼을 누른 행만 `KG/REP/RIR/ROM` 수정 패널을 연다.
-  4. `render-calendar.js`와 `style.css`는 `STATIC_ASSETS`에 있으므로 수정 시 `sw.js` `CACHE_VERSION`을 bump한다.
+- 상태: `ready_for_execution`
+- 계획: `docs/ai/features/2026-07-04-running-lock-gps-recovery.md`
+- 요청: 러닝 진행 화면의 가짜 좌우 스와이프 점 표시를 제거하고, 폰 잠금/재시작/로그인 재진입 후 러닝 기록과 GPS draft가 날아가지 않도록 처리한다.
+- 진단 요약:
+  1. `workout/running-session.js` 진행 화면이 `.wt-run-live-pages` 점 3개를 렌더하지만 실제 페이지/스와이프 기능은 없다.
+  2. 현재 러닝은 WebView `navigator.geolocation.watchPosition()` 기반이고 Android native background location permission/service가 없어, 잠금 중 GPS point 수집은 웹만으로 보장할 수 없다.
+  3. 러닝 draft 저장은 있으나 `localStorage.currentUser` 기반 key와 `wtOpenRunningSession()` 수동 진입에 묶여 있어, 재시작/로그인 복귀 후 자동 복구가 약하다.
 - 실행 슬라이스:
-  1. Slice 1: `render-calendar.js`, `style.css`, 관련 테스트, `sw.js` 범위에서 세트 복사 추가와 우측 펼침 편집을 구현한다.
+  1. Slice 1: 웹 러닝 세션 복구와 가짜 스와이프 affordance 제거.
+  2. Slice 2: Android locked-phone GPS를 위한 native foreground location bridge.
+- 다음 액션: Slice 1만 실행한다. RED 테스트를 먼저 만들고, `workout/running-session.js`, `workout/index.js`, `render-workout.js`, `app.js`, `style.css`, 관련 테스트, `sw.js` 범위에서 자동 복구 hook과 점 표시 제거를 구현한다.
+
+## 2026-07-04 Workout Set Minimal BodyCalendar Correction
+
+- 상태: `ready_for_execution`
+- 계획: `docs/ai/features/2026-07-04-workout-set-copy-expand-edit.md`
+- 요청: `세트 입력 대기`와 `지난 기록`은 유지하고, 그 아래 세트 행을 바디캘린더 참고 이미지 2~4처럼 미니멀하게 수정한다.
+- 계획 요약:
+  1. 추천/프로그램 운동 추가 시 처음 보이는 입력 행은 첫 세트 1개만 만든다.
+  2. 전체 목표 세트 수와 처방 세트는 `maxPrescription` 메타에 보존한다.
+  3. 기본 세트 행은 완료 체크, 세트 번호/유형, 무게, 횟수, 삭제, 우측 펼침만 노출한다.
+  4. 숫자 입력은 우측 펼침 패널에서만 가능하고, `RIR`/`ROM` 입력도 그 안에 둔다.
+  5. 좌측 세트 번호 버튼은 `메인/웜업/드랍/실패` 세트 유형 메뉴를 연다.
+- 실행 슬라이스:
+  1. Slice 2: 추천/프로그램 운동 초기 세트 1행화와 세트 행 미니멀 UI/세트유형 토글을 구현한다.
 - 계획 검증:
-  1. PASS: 현재 코드에서 `_defaultWorkoutSheetSet(prev)`가 `kg`/`reps`를 빈 값으로 만드는 원인을 확인했다.
-  2. PASS: 현재 세트 action이 `.cal-workout-day-sheet` capture handler 경로로 처리되는 것을 확인했다.
-  3. PASS: 기존 테스트의 빈 세트 추가 고정 테스트를 새 복사 동작 테스트로 교체해야 함을 확인했다.
-- Slice 1 실행 요약:
-  1. `+` 세트 추가가 직전 세트의 `kg`, `reps`, `rir`, `romPct`, `setType`을 복사하도록 바꿨다.
-  2. 완료 상태와 완료 시간, Wendler/프로그램 처방 meta는 새 수동 세트에 복사하지 않는다.
-  3. 세트 행은 기본 요약형으로 렌더하고, 우측 `toggle-set-editor` 버튼을 누른 행만 `KG/REP/RIR/ROM` 편집 패널을 연다.
-  4. `style.css`에서 모바일 폭의 요약 행/편집 패널 grid를 조정했고, `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260704z1-workout-set-copy-expand`로 bump했다.
-- Slice 1 검증:
-  1. PASS: `node --check render-calendar.js && node --check sw.js && node --check tests/workout-calendar-bottom-sheet.test.js`
-  2. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js` - 31 pass
-  3. PASS: `node --test tests/workout-card-layout-css.test.js tests/workout-calendar-bottom-sheet.test.js` - 37 pass
-  4. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=879`
-  5. PASS: `git diff --check`
-  6. PASS: `node --test tests/*.test.js` - 693 pass
-- 리뷰: `docs/ai/reviews/2026-07-04-workout-set-copy-expand-edit-review.md`
-- 다음 액션: 운영 Pages 배포 후 `verify:deploy`와 deployed marker 검증을 실행한다.
+  1. PASS: `render-calendar.js`에서 `세트 입력 대기`/`지난 기록` 블록은 `_renderWorkoutExerciseDetailCard()`에 남아 있음을 확인했다.
+  2. PASS: `buildMaxBenchmarkPickerEntry()`와 `_buildProgramPickerExerciseEntry()`가 현재 처방 세트를 그대로 `entry.sets`로 넣어 3~4행을 노출할 수 있음을 확인했다.
+  3. PASS: 세트 action은 `.cal-workout-day-sheet` capture handler의 `data-wt-sheet-card-action` 경로에서 처리된다.
+- 다음 액션: Slice 2의 RED 테스트를 먼저 추가해 실패를 확인한 뒤 구현한다.
 
 ## 2026-07-03 Home Social Notification Decoupling
 

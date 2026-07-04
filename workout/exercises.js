@@ -1868,19 +1868,34 @@ function _normalizeTestModeSets(sets) {
   });
 }
 
+function _firstTestModePrescriptionSet(prescription) {
+  const first = Array.isArray(prescription?.sets) && prescription.sets.length
+    ? prescription.sets[0]
+    : null;
+  if (first) {
+    const next = {
+      ..._defaultTestModeSet(),
+      ...first,
+      setType: first?.setType || 'main',
+      done: first?.done === true,
+      romPct: _normalizeRomPct(first?.romPct) ?? 100,
+    };
+    return next.done === true ? next : stripSetCompletedAt(next);
+  }
+  const rpe = Number(prescription?.targetRpe) || null;
+  return {
+    ..._defaultTestModeSet(),
+    rpe,
+  };
+}
+
 function _testModeSetsFromPrescription(prescription) {
   if (!prescription) return null;
   if (prescription.applySets === true && Array.isArray(prescription.sets) && prescription.sets.length) {
-    return prescription.sets.map(set => {
-      const next = {
-        ..._defaultTestModeSet(),
-        ...set,
-        setType: set?.setType || 'main',
-        done: set?.done === true,
-        romPct: _normalizeRomPct(set?.romPct) ?? 100,
-      };
-      return next.done === true ? next : stripSetCompletedAt(next);
-    });
+    return [_firstTestModePrescriptionSet(prescription)];
+  }
+  if (Array.isArray(prescription.sets) && prescription.sets.length) {
+    return [_firstTestModePrescriptionSet(prescription)];
   }
   const rpe = Number(prescription.targetRpe) || null;
   return [{
@@ -1949,7 +1964,7 @@ function _buildProgramPickerExerciseEntry(ex) {
     exerciseId: ex.id,
     name: ex.name || benchmark.label || '',
     movementId: ex.movementId || benchmark.movementId || null,
-    sets: program.prescription.sets || [{ kg: 0, reps: 0, setType: 'main', done: false }],
+    sets: [_firstTestModePrescriptionSet(program.prescription)],
     maxPrescription: program.prescription,
     recommendationMeta: {
       ...program.recommendationMeta,

@@ -78,11 +78,17 @@ test('exercise picker always creates test-mode entries on Dashboard3', () => {
   assert.match(ensureEntry, /keepExistingSets = Array\.isArray\(base\.sets\) && base\.sets\.length && !generatedSets/);
 
   const generatedSets = sliceByFirstBrace(exercisesJs, 'function _testModeSetsFromPrescription');
+  assert.match(generatedSets, /_firstTestModePrescriptionSet/);
   assert.match(generatedSets, /_defaultTestModeSet\(\)/);
   assert.match(generatedSets, /prescription\.applySets === true/);
   assert.match(generatedSets, /prescription\.sets/);
+  assert.doesNotMatch(generatedSets, /prescription\.sets\.map/);
   assert.match(generatedSets, /Number\(prescription\.targetRpe\) \|\| null/);
   assert.doesNotMatch(generatedSets, /targetSets|startKg|repsHigh|repsLow|Array\.from/);
+
+  const programEntry = sliceByFirstBrace(exercisesJs, 'function _buildProgramPickerExerciseEntry');
+  assert.match(programEntry, /_firstTestModePrescriptionSet\(program\.prescription\)/);
+  assert.doesNotMatch(programEntry, /sets:\s*program\.prescription\.sets\s*\|\|/);
 
   const pickerEntry = sliceByFirstBrace(exercisesJs, 'function _buildPickerExerciseEntry');
   assert.match(pickerEntry, /_buildProgramPickerExerciseEntry/);
@@ -143,5 +149,5 @@ test('Dashboard3 mode controls cannot persist normal or pro workout record UI', 
 });
 
 test('service worker cache version was bumped for workout asset changes', () => {
-  assert.match(swJs, /tomatofarm-v20260704z1-workout-set-copy-expand/);
+  assert.match(swJs, /tomatofarm-v20260704z2-workout-set-minimal-bodycalendar/);
 });
