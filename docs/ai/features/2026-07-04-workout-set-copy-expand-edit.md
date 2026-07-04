@@ -206,3 +206,21 @@
 - 기본 세트 행에 숫자 입력이 없고, 우측 펼침 패널에만 `무게/횟수/RIR/ROM` 입력이 있다는 테스트가 있다.
 - 좌측 세트 번호 버튼의 세트 유형 메뉴와 `setType` 변경 action이 테스트로 고정되어 있다.
 - `세트 입력 대기`와 `지난 기록` 렌더 계약이 유지된다.
+
+### Slice 2 상태
+
+- 상태: `complete`
+- 차단 질문: 없음
+- 구현 커밋: `391a4f4 fix: simplify workout set entry rows`
+- 운영 배포 커밋: `e43f24e fix: recover running sessions after reload`
+- 리뷰 문서: `docs/ai/reviews/2026-07-04-workout-set-minimal-bodycalendar-review.md`
+- 검증 요약:
+  1. PASS: RED focused tests 실패 확인.
+  2. PASS: `node --check render-calendar.js && node --check workout/exercises.js && node --check workout/expert/max-benchmark-picker.js && node --check sw.js`
+  3. PASS: `node --test tests/calc.max.test.js tests/workout-test-mode-unified.test.js tests/workout-calendar-bottom-sheet.test.js` - 95 pass
+  4. PASS: `node --test tests/*.test.js` - 695 pass
+  5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=880`
+  6. PASS: `git diff --check HEAD`
+  7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ e43f24e2ef9b57f847a9ad80d8f2f966d1bb7a18`
+  8. PASS: deployed marker 검증 - `WORKOUT_SET_TYPE_OPTIONS`, `toggle-set-type`, `set-set-type`, `wt-max-set-type-menu`, first-set helper markers 확인.
+  9. not verified yet: 인증 세션이 없어 운영 URL에서 실제 workout 내부 클릭 flow는 자동 검증하지 못했다.

@@ -29,8 +29,9 @@
 
 ## 2026-07-04 Workout Set Minimal BodyCalendar Correction
 
-- 상태: `ready_for_execution`
+- 상태: `complete`
 - 계획: `docs/ai/features/2026-07-04-workout-set-copy-expand-edit.md`
+- 리뷰: `docs/ai/reviews/2026-07-04-workout-set-minimal-bodycalendar-review.md`
 - 요청: `세트 입력 대기`와 `지난 기록`은 유지하고, 그 아래 세트 행을 바디캘린더 참고 이미지 2~4처럼 미니멀하게 수정한다.
 - 계획 요약:
   1. 추천/프로그램 운동 추가 시 처음 보이는 입력 행은 첫 세트 1개만 만든다.
@@ -44,7 +45,22 @@
   1. PASS: `render-calendar.js`에서 `세트 입력 대기`/`지난 기록` 블록은 `_renderWorkoutExerciseDetailCard()`에 남아 있음을 확인했다.
   2. PASS: `buildMaxBenchmarkPickerEntry()`와 `_buildProgramPickerExerciseEntry()`가 현재 처방 세트를 그대로 `entry.sets`로 넣어 3~4행을 노출할 수 있음을 확인했다.
   3. PASS: 세트 action은 `.cal-workout-day-sheet` capture handler의 `data-wt-sheet-card-action` 경로에서 처리된다.
-- 다음 액션: Slice 2의 RED 테스트를 먼저 추가해 실패를 확인한 뒤 구현한다.
+- Slice 2 실행 요약:
+  1. 추천/프로그램 운동 추가 시 `entry.sets`는 첫 처방 세트 1개만 만들고, 전체 처방은 `maxPrescription`에 보존했다.
+  2. collapsed 세트 행은 완료 체크, 세트 번호/유형, 무게, 횟수, 삭제, 우측 펼침만 노출한다.
+  3. `무게/횟수/RIR/ROM` 입력은 우측 펼침 편집 패널에서만 노출한다.
+  4. 좌측 세트 번호 버튼은 `M/W/D/F` 세트 유형 메뉴를 열고 `setType`만 갱신한다.
+  5. `세트 입력 대기`와 `지난 기록` 블록은 유지했다.
+- Slice 2 검증:
+  1. PASS: RED focused tests 실패 확인.
+  2. PASS: `node --check render-calendar.js && node --check workout/exercises.js && node --check workout/expert/max-benchmark-picker.js && node --check sw.js`
+  3. PASS: `node --test tests/calc.max.test.js tests/workout-test-mode-unified.test.js tests/workout-calendar-bottom-sheet.test.js` - 95 pass
+  4. PASS: `node --test tests/*.test.js` - 695 pass
+  5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=880`
+  6. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ e43f24e2ef9b57f847a9ad80d8f2f966d1bb7a18`
+  7. PASS: deployed marker 검증 - current cache `tomatofarm-v20260704z3-running-lock-gps-recovery`와 세트 UI marker 확인.
+  8. not verified yet: 인증 세션이 없어 운영 URL 내부 workout 클릭 flow는 자동 검증하지 못했다.
+- 다음 액션: 없음. 이 피드백 수정은 완료됐다.
 
 ## 2026-07-03 Home Social Notification Decoupling
 
