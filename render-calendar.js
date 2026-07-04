@@ -67,6 +67,7 @@ let _workoutHomeSessionIndex = 0;
 const _workoutDetailCollapsed = new Set();
 let _workoutEditingCardId = null;
 const _workoutExerciseCompletionStamps = new Map();
+const _workoutExpandedSetEditors = new Set();
 const _workoutSheetCarouselSnapshots = new Map();
 let _workoutTrackGraphSeq = 0;
 const WORKOUT_GYM_SESSION_COUNT = 2;
@@ -2235,6 +2236,30 @@ function _renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setIndex, fiel
   return `<input type="number" inputmode="${inputMode}" min="0" step="${_esc(step)}" value="${_esc(value)}" aria-label="${_esc(label)}" data-wt-set-input data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" data-field="${_esc(field)}" onchange="window._wtCalUpdateExerciseSet('${key}', ${sessionIndex}, ${exerciseIndex}, ${setIndex}, '${field}', this.value, this)">`;
 }
 
+function _workoutSetEditorKey(key, sessionIndex, exerciseIndex, setIndex) {
+  return [
+    _parseDateKey(key) ? key : _workoutHomeSelectedKey,
+    Math.max(0, Math.floor(Number(sessionIndex) || 0)),
+    Math.max(0, Math.floor(Number(exerciseIndex) || 0)),
+    Math.max(0, Math.floor(Number(setIndex) || 0)),
+  ].join(':');
+}
+
+function _isWorkoutSetEditorExpanded(key, sessionIndex, exerciseIndex, setIndex) {
+  return _workoutExpandedSetEditors.has(_workoutSetEditorKey(key, sessionIndex, exerciseIndex, setIndex));
+}
+
+function _clearWorkoutSetEditorsForExercise(key, sessionIndex, exerciseIndex) {
+  const prefix = [
+    _parseDateKey(key) ? key : _workoutHomeSelectedKey,
+    Math.max(0, Math.floor(Number(sessionIndex) || 0)),
+    Math.max(0, Math.floor(Number(exerciseIndex) || 0)),
+  ].join(':') + ':';
+  [..._workoutExpandedSetEditors].forEach((editorKey) => {
+    if (editorKey.startsWith(prefix)) _workoutExpandedSetEditors.delete(editorKey);
+  });
+}
+
 function _renderWorkoutSetAddRow(key, sessionIndex, exerciseIndex, cardId = '') {
   return `
     <button type="button" class="wt-max-set-add-row" data-wt-sheet-card-action="add-exercise-set" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" aria-label="세트 추가">
@@ -2260,27 +2285,37 @@ function _renderWorkoutSetRows(row, options = {}) {
     const kgText = _formatWorkoutKg(set.kg);
     const repsText = _formatWorkoutReps(set.reps);
     const rirText = _formatWorkoutRir(set);
+    const expanded = editable && _isWorkoutSetEditorExpanded(key, sessionIndex, exerciseIndex, setIndex);
+    const setTypeLabel = _workoutSetTypeLabel(set);
+    const setTypeClass = _workoutSetTypeClass(set);
     return `
-      <div class="wt-max-set-row ${set.done ? 'is-done' : ''} ${editable ? 'is-editing' : ''}">
+      <div class="wt-max-set-row ${set.done ? 'is-done' : ''} ${editable ? 'is-editing' : ''} ${expanded ? 'is-expanded-editor' : ''}">
         <div class="wt-max-set-main">
-          <span class="wt-max-set-type ${_esc(_workoutSetTypeClass(set))}">${_esc(_workoutSetTypeLabel(set))}</span>
-          <label><span>KG</span>${editable ? _renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setIndex, 'kg', _workoutSheetInputValue(set.kg, 1), '무게', '0.5') : `<b>${_esc(kgText)}</b>`}</label>
-          <label><span>REP</span>${editable ? _renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setIndex, 'reps', _workoutSheetInputValue(set.reps, 0), '반복', '1') : `<b>${_esc(repsText)}</b>`}</label>
-          <label><span>RIR</span>${editable ? _renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setIndex, 'rir', set.rir == null ? '2' : _fmtNum(set.rir, 1), 'RIR', '0.5') : `<b>${_esc(rirText)}</b>`}</label>
-          <div class="wt-max-rom-inline ${editable ? 'is-editing' : ''}">
+          <span class="wt-max-set-type ${_esc(setTypeClass)}"><b>${setIndex + 1}</b><small>${_esc(setTypeLabel)}</small></span>
+          <span class="wt-max-set-value"><em>무게</em><b>${_esc(kgText)}${kgText === '-' ? '' : '<small>kg</small>'}</b></span>
+          <span class="wt-max-set-value"><em>횟수</em><b>${_esc(repsText)}${repsText === '-' ? '' : '<small>회</small>'}</b></span>
+          <span class="wt-max-set-value"><em>RIR</em><b>${_esc(rirText)}</b></span>
+          <div class="wt-max-rom-inline">
             <span>ROM</span>
             <i><b style="width:${rom}%"></b></i>
-            ${editable
-              ? _renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setIndex, 'romPct', rom, 'ROM', '1')
-              : `<strong>${rom}</strong>`}
+            <strong>${rom}</strong>
           </div>
           ${editable
             ? `<button type="button" class="wt-max-set-check wt-max-set-toggle" data-wt-set-done-toggle data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" aria-pressed="${set.done ? 'true' : 'false'}" aria-label="세트 완료 토글">✓</button>
-               <button type="button" class="wt-max-set-remove wt-max-set-remove-btn" data-wt-set-remove data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" aria-label="세트 삭제">×</button>`
+               <button type="button" class="wt-max-set-remove wt-max-set-remove-btn" data-wt-set-remove data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" aria-label="세트 삭제">×</button>
+               <button type="button" class="wt-max-set-expand" data-wt-sheet-card-action="toggle-set-editor" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '세트 수정 닫기' : '세트 수정 열기'}"><span aria-hidden="true">${expanded ? '⌃' : '⌄'}</span></button>`
             : `<i class="wt-max-set-check" aria-hidden="true">✓</i>
-               <i class="wt-max-set-remove" aria-hidden="true">×</i>`}
-          <i class="wt-max-set-grip" aria-hidden="true">⋮</i>
+               <i class="wt-max-set-remove" aria-hidden="true">×</i>
+               <i class="wt-max-set-expand" aria-hidden="true">⌄</i>`}
         </div>
+        ${expanded ? `
+          <div class="wt-max-set-editor" data-wt-set-editor-panel="${_esc(_workoutSetEditorKey(key, sessionIndex, exerciseIndex, setIndex))}">
+            <label><span>무게</span>${_renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setIndex, 'kg', _workoutSheetInputValue(set.kg, 1), '무게', '0.5')}<em>kg</em></label>
+            <label><span>횟수</span>${_renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setIndex, 'reps', _workoutSheetInputValue(set.reps, 0), '반복', '1')}<em>회</em></label>
+            <label><span>RIR</span>${_renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setIndex, 'rir', set.rir == null ? '2' : _fmtNum(set.rir, 1), 'RIR', '0.5')}</label>
+            <label class="wt-max-set-editor-rom"><span>ROM</span>${_renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setIndex, 'romPct', rom, 'ROM', '1')}<em>%</em></label>
+          </div>
+        ` : ''}
       </div>
     `;
   }).join('');
@@ -2847,11 +2882,14 @@ function _runWorkoutHomeSheetCardAction(action, control) {
   const key = control?.getAttribute?.('data-date-key') || _workoutHomeSelectedKey;
   const sessionIndex = control?.getAttribute?.('data-session-index');
   const exerciseIndex = control?.getAttribute?.('data-exercise-index');
+  const setIndex = control?.getAttribute?.('data-set-index');
   const cardId = control?.getAttribute?.('data-card-id') || '';
   const activityKey = control?.getAttribute?.('data-activity-key') || '';
   switch (action) {
     case 'add-exercise-set':
       return _addWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseIndex);
+    case 'toggle-set-editor':
+      return _toggleWorkoutSetEditorFromSheet(key, sessionIndex, exerciseIndex, setIndex);
     case 'complete-exercise':
       return _completeWorkoutExerciseFromSheet(cardId, key, sessionIndex, exerciseIndex);
     case 'toggle-card':
@@ -3196,6 +3234,22 @@ function _clearWorkoutExerciseCompletionMarker(entry) {
   delete entry.exerciseCompletedAt;
 }
 
+function _toggleWorkoutSetEditorFromSheet(key, sessionIndex, exerciseIndex, setIndex) {
+  const targetKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
+  const targetSessionIndex = Math.max(0, Math.min(WORKOUT_GYM_SESSION_COUNT - 1, Math.floor(Number(sessionIndex) || 0)));
+  const editorKey = _workoutSetEditorKey(targetKey, targetSessionIndex, exerciseIndex, setIndex);
+  const restoreState = _captureWorkoutSheetScrollState();
+  if (_workoutExpandedSetEditors.has(editorKey)) _workoutExpandedSetEditors.delete(editorKey);
+  else _workoutExpandedSetEditors.add(editorKey);
+  _workoutHomeSelectedKey = targetKey;
+  _workoutHomeSessionIndex = targetSessionIndex;
+  _workoutHomeSheetState = 'full';
+  _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:set-editor' });
+  renderWorkoutCalendarHome();
+  _restoreWorkoutSheetScrollState(restoreState);
+  return true;
+}
+
 function _editWorkoutHomeSession(key, sessionIndex = _workoutHomeSessionIndex) {
   const targetKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
   _workoutHomeSelectedKey = targetKey;
@@ -3220,8 +3274,8 @@ function _setWorkoutSheetNumber(value, fallback = 0, options = {}) {
 function _defaultWorkoutSheetSet(prev = null) {
   return {
     setType: prev?.setType || 'main',
-    kg: '',
-    reps: '',
+    kg: prev ? _workoutSheetRawNumber(prev.kg) : '',
+    reps: prev ? _workoutSheetRawNumber(prev.reps) : '',
     rpe: 0,
     rir: Number.isFinite(Number(prev?.rir)) ? Number(prev.rir) : 2,
     romPct: Number.isFinite(Number(prev?.romPct)) ? Number(prev.romPct) : 100,
@@ -3279,14 +3333,16 @@ async function _updateWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseInd
 
 async function _addWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseIndex) {
   try {
+    let copiedPreviousSet = false;
     const ok = await _mutateWorkoutExerciseFromSheet(key, sessionIndex, exerciseIndex, (entry) => {
       const sets = Array.isArray(entry.sets) ? entry.sets : [];
+      copiedPreviousSet = sets.length > 0;
       sets.push(_defaultWorkoutSheetSet(sets[sets.length - 1]));
       entry.sets = sets;
       _clearWorkoutExerciseCompletionMarker(entry);
       return true;
     }, { preserveSheetScroll: true });
-    if (ok) window.showToast?.('세트를 추가했어요', 1200, 'success');
+    if (ok) window.showToast?.(copiedPreviousSet ? '직전 세트를 복사했어요' : '세트를 추가했어요', 1200, 'success');
   } catch (e) {
     console.warn('[workout-calendar] sheet set add failed:', e);
     window.showToast?.('세트 추가에 실패했어요', 2200, 'error');
@@ -3302,6 +3358,7 @@ async function _removeWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseInd
       sets.splice(targetIndex, 1);
       entry.sets = sets;
       _clearWorkoutExerciseCompletionMarker(entry);
+      _clearWorkoutSetEditorsForExercise(key, sessionIndex, exerciseIndex);
       return true;
     });
     if (ok) window.showToast?.('세트를 삭제했어요', 1200, 'success');

@@ -397,6 +397,9 @@ test('day sheet exercise card uses inline plus row and one complete button', () 
   assert.match(setRows, /window\._wtCalUpdateExerciseSet/);
   assert.match(setRows, /data-wt-set-done-toggle/);
   assert.match(setRows, /data-wt-set-remove/);
+  assert.match(setRows, /data-wt-sheet-card-action="toggle-set-editor"/);
+  assert.match(setRows, /aria-expanded="\$\{expanded \? 'true' : 'false'\}"/);
+  assert.match(setRows, /wt-max-set-editor/);
   assert.doesNotMatch(setRows, /onclick="window\._wtCalToggleExerciseSetDone/);
   assert.doesNotMatch(setRows, /onclick="window\._wtCalRemoveExerciseSet/);
   assert.doesNotMatch(oldEditFn, /_openWorkoutEditorForSession/);
@@ -409,6 +412,7 @@ test('day sheet exercise card uses inline plus row and one complete button', () 
   assert.match(calendarJs, /data-wt-sheet-card-action[\s\S]*_runWorkoutHomeSheetCardAction/);
   assert.match(calendarJs, /case 'complete-exercise':[\s\S]*_completeWorkoutExerciseFromSheet\(cardId, key, sessionIndex, exerciseIndex\)/);
   assert.match(calendarJs, /case 'add-exercise-set':[\s\S]*_addWorkoutExerciseSetFromSheet\(key, sessionIndex, exerciseIndex\)/);
+  assert.match(calendarJs, /case 'toggle-set-editor':[\s\S]*_toggleWorkoutSetEditorFromSheet\(key, sessionIndex, exerciseIndex, setIndex\)/);
   assert.match(completeFn, /_hasCompletableWorkoutSheetSet\(nextSet\)/);
   assert.match(completeFn, /nextSet\.done = true/);
   assert.match(completeFn, /_markWorkoutExerciseEntryComplete\(entry, now\)/);
@@ -416,8 +420,9 @@ test('day sheet exercise card uses inline plus row and one complete button', () 
   assert.match(calendarJs, /data-wt-set-done-toggle[\s\S]*_toggleWorkoutExerciseSetDoneFromSheet/);
   assert.match(calendarJs, /data-wt-set-remove[\s\S]*_removeWorkoutExerciseSetFromSheet/);
   assert.match(calendarJs, /upsertWorkoutSession\(day, nextSession, index, \{ now: Date\.now\(\) \}\)/);
-  assert.match(styleCss, /\.wt-max-set-main label input\s*\{/);
+  assert.match(styleCss, /\.wt-max-set-editor label input\s*\{/);
   assert.match(styleCss, /\.wt-max-rom-inline\.is-editing input\s*\{/);
+  assert.match(styleCss, /\.wt-max-set-expand\s*\{/);
   assert.match(styleCss, /\.wt-max-set-add-row\s*\{/);
   assert.match(styleCss, /\.wt-max-actions--single\s*\{/);
   assert.match(styleCss, /\.wt-max-complete-stamp\s*\{/);
@@ -508,8 +513,9 @@ test('day sheet set done toggle uses explicit done state and larger touch target
   assert.match(toggleFn, /const nextDone = !wasDone/);
   assert.doesNotMatch(toggleFn, /_isActualWorkoutSet\(nextSet\) \|\| nextSet\.done === true/);
   assert.match(toggleFn, /\{ preserveSheetScroll: true \}/);
-  assert.match(styleCss, /\.wt-max-set-main\s*\{[\s\S]*grid-template-columns:\s*30px minmax\(44px,\s*\.78fr\)[\s\S]*32px 24px 12px/);
+  assert.match(styleCss, /\.wt-max-set-main\s*\{[\s\S]*grid-template-columns:\s*30px minmax\(42px,\s*\.78fr\)[\s\S]*30px 22px 28px/);
   assert.match(styleCss, /\.wt-max-set-check\s*\{[\s\S]*width:\s*30px;[\s\S]*height:\s*30px;/);
+  assert.match(styleCss, /\.wt-max-set-expand\s*\{[\s\S]*width:\s*28px;[\s\S]*height:\s*30px;/);
   assert.match(styleCss, /\.wt-max-set-toggle,\s*\n\.wt-max-set-remove-btn\s*\{[\s\S]*touch-action:\s*manipulation;/);
 });
 
@@ -593,29 +599,41 @@ test('day sheet set inputs preserve keyboard next focus without restoring the ch
   assert.match(updateFn, /\{ preserveInput: true, sourceInput, ignoreSourceInput: true \}/);
 });
 
-test('day sheet added workout sets start with blank kg and reps inputs', () => {
+test('day sheet added workout sets copy previous user values without completion state', () => {
   const defaultsStart = calendarJs.indexOf('function _defaultWorkoutSheetSet');
   const defaultsEnd = calendarJs.indexOf('async function _mutateWorkoutExerciseFromSheet', defaultsStart);
   const updateStart = calendarJs.indexOf('async function _updateWorkoutExerciseSetFromSheet');
   const updateEnd = calendarJs.indexOf('async function _addWorkoutExerciseSetFromSheet', updateStart);
+  const addStart = calendarJs.indexOf('async function _addWorkoutExerciseSetFromSheet');
+  const addEnd = calendarJs.indexOf('async function _removeWorkoutExerciseSetFromSheet', addStart);
   const rowsStart = calendarJs.indexOf('function _renderWorkoutSetRows');
   const rowsEnd = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard', rowsStart);
   assert.ok(defaultsStart >= 0 && defaultsEnd > defaultsStart, 'default set function should exist');
+  assert.ok(addStart >= 0 && addEnd > addStart, 'add set function should exist');
   const defaults = calendarJs.slice(defaultsStart, defaultsEnd);
   const updateFn = calendarJs.slice(updateStart, updateEnd);
+  const addFn = calendarJs.slice(addStart, addEnd);
   const rowsFn = calendarJs.slice(rowsStart, rowsEnd);
 
   assert.match(calendarJs, /function _isBlankWorkoutSheetNumber/);
   assert.match(calendarJs, /function _workoutSheetInputValue/);
   assert.match(calendarJs, /function _workoutSheetRawNumber/);
-  assert.match(defaults, /kg:\s*''/);
-  assert.match(defaults, /reps:\s*''/);
-  assert.doesNotMatch(defaults, /kg:\s*_num|kg:\s*0/);
-  assert.doesNotMatch(defaults, /reps:\s*_num|reps:\s*10/);
+  assert.match(defaults, /kg:\s*prev \? _workoutSheetRawNumber\(prev\.kg\) : ''/);
+  assert.match(defaults, /reps:\s*prev \? _workoutSheetRawNumber\(prev\.reps\) : ''/);
+  assert.match(defaults, /setType:\s*prev\?\.setType \|\| 'main'/);
+  assert.match(defaults, /done:\s*false/);
+  assert.doesNotMatch(defaults, /completedAt|exerciseCompletedAt|wendlerRole|wendlerPct|supplementalKind|amrap/);
+  assert.match(addFn, /copiedPreviousSet = sets\.length > 0/);
+  assert.match(addFn, /sets\.push\(_defaultWorkoutSheetSet\(sets\[sets\.length - 1\]\)\)/);
+  assert.match(addFn, /직전 세트를 복사했어요/);
   assert.match(updateFn, /safeField === 'kg'[\s\S]*allowEmpty: true/);
   assert.match(updateFn, /safeField === 'reps'[\s\S]*allowEmpty: true/);
   assert.match(rowsFn, /_workoutSheetInputValue\(set\.kg, 1\)/);
   assert.match(rowsFn, /_workoutSheetInputValue\(set\.reps, 0\)/);
+  assert.match(rowsFn, /const expanded = editable && _isWorkoutSetEditorExpanded/);
+  assert.match(rowsFn, /data-wt-sheet-card-action="toggle-set-editor"/);
+  assert.match(rowsFn, /wt-max-set-editor/);
+  assert.match(rowsFn, /aria-label="\$\{expanded \? '세트 수정 닫기' : '세트 수정 열기'\}"/);
 });
 
 test('workout bottom sheet replaces the third gym session with a dedicated running tab', () => {
@@ -931,5 +949,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260703z22-input-ux-timer-guard/);
+  assert.match(swJs, /tomatofarm-v20260704z1-workout-set-copy-expand/);
 });

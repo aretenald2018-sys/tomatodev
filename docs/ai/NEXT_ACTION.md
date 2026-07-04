@@ -1,5 +1,36 @@
 # 다음 자동 액션
 
+## 2026-07-04 Workout Set Copy Expand Edit
+
+- 상태: `complete`
+- 계획: `docs/ai/features/2026-07-04-workout-set-copy-expand-edit.md`
+- 요청: 운동 카드 세트 입력을 1~3번 참고 이미지처럼 세트 추가 시 직전 세트를 복사하고, 우측 버튼으로 해당 세트만 펼쳐 수정하는 구조로 바꾼다.
+- 계획 요약:
+  1. `+` 행은 직전 세트의 사용자 입력값(`kg`, `reps`, `rir`, `romPct`, `setType`)을 복사해 새 세트를 만든다.
+  2. 완료 상태(`done`, `completedAt`, 종목 완료 marker)는 복사하지 않는다.
+  3. 세트 행은 기본 요약형으로 렌더하고, 우측 펼침 버튼을 누른 행만 `KG/REP/RIR/ROM` 수정 패널을 연다.
+  4. `render-calendar.js`와 `style.css`는 `STATIC_ASSETS`에 있으므로 수정 시 `sw.js` `CACHE_VERSION`을 bump한다.
+- 실행 슬라이스:
+  1. Slice 1: `render-calendar.js`, `style.css`, 관련 테스트, `sw.js` 범위에서 세트 복사 추가와 우측 펼침 편집을 구현한다.
+- 계획 검증:
+  1. PASS: 현재 코드에서 `_defaultWorkoutSheetSet(prev)`가 `kg`/`reps`를 빈 값으로 만드는 원인을 확인했다.
+  2. PASS: 현재 세트 action이 `.cal-workout-day-sheet` capture handler 경로로 처리되는 것을 확인했다.
+  3. PASS: 기존 테스트의 빈 세트 추가 고정 테스트를 새 복사 동작 테스트로 교체해야 함을 확인했다.
+- Slice 1 실행 요약:
+  1. `+` 세트 추가가 직전 세트의 `kg`, `reps`, `rir`, `romPct`, `setType`을 복사하도록 바꿨다.
+  2. 완료 상태와 완료 시간, Wendler/프로그램 처방 meta는 새 수동 세트에 복사하지 않는다.
+  3. 세트 행은 기본 요약형으로 렌더하고, 우측 `toggle-set-editor` 버튼을 누른 행만 `KG/REP/RIR/ROM` 편집 패널을 연다.
+  4. `style.css`에서 모바일 폭의 요약 행/편집 패널 grid를 조정했고, `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260704z1-workout-set-copy-expand`로 bump했다.
+- Slice 1 검증:
+  1. PASS: `node --check render-calendar.js && node --check sw.js && node --check tests/workout-calendar-bottom-sheet.test.js`
+  2. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js` - 31 pass
+  3. PASS: `node --test tests/workout-card-layout-css.test.js tests/workout-calendar-bottom-sheet.test.js` - 37 pass
+  4. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=879`
+  5. PASS: `git diff --check`
+  6. PASS: `node --test tests/*.test.js` - 693 pass
+- 리뷰: `docs/ai/reviews/2026-07-04-workout-set-copy-expand-edit-review.md`
+- 다음 액션: 운영 Pages 배포 후 `verify:deploy`와 deployed marker 검증을 실행한다.
+
 ## 2026-07-03 Home Social Notification Decoupling
 
 - 상태: `ready_for_execution`

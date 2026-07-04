@@ -13224,7 +13224,7 @@ body.lz-running-record-modal-open {
 }
 .wt-max-set-main {
   display: grid;
-  grid-template-columns: 30px minmax(44px, .78fr) minmax(44px, .78fr) minmax(40px, .7fr) minmax(68px, 1fr) 32px 24px 12px;
+  grid-template-columns: 30px minmax(42px, .78fr) minmax(42px, .78fr) minmax(34px, .6fr) minmax(58px, 1fr) 30px 22px 28px;
   align-items: center;
   gap: 4px;
 }
@@ -13232,11 +13232,22 @@ body.lz-running-record-modal-open {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 24px;
+  flex-direction: column;
+  gap: 1px;
+  height: 30px;
   border-radius: 999px;
   background: #ffe8eb;
   color: #ff3737;
+  line-height: 1;
+}
+.wt-max-set-type b {
+  color: inherit;
   font-size: 10px;
+  font-weight: 900;
+}
+.wt-max-set-type small {
+  color: inherit;
+  font-size: 7px;
   font-weight: 900;
 }
 .wt-max-set-type.is-warmup {
@@ -13247,18 +13258,19 @@ body.lz-running-record-modal-open {
   background: #fff5df;
   color: #b7791f;
 }
-.wt-max-set-main label {
+.wt-max-set-value {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 3px;
+  min-width: 0;
+  gap: 1px;
 }
-.wt-max-set-main label span {
+.wt-max-set-value em,
+.wt-max-set-editor label span {
   color: #687486;
   font-size: 8px;
   font-weight: 900;
+  font-style: normal;
 }
-.wt-max-set-main label b {
+.wt-max-set-value b {
   min-width: 0;
   height: 26px;
   padding: 0 5px;
@@ -13269,8 +13281,17 @@ body.lz-running-record-modal-open {
   font-size: 14px;
   line-height: 26px;
   font-weight: 900;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.wt-max-set-main label input {
+.wt-max-set-value b small {
+  margin-left: 2px;
+  color: #687486;
+  font-size: 9px;
+  font-weight: 900;
+}
+.wt-max-set-editor label input {
   min-width: 0;
   width: 100%;
   height: 26px;
@@ -13286,14 +13307,14 @@ body.lz-running-record-modal-open {
   font-weight: 900;
   outline: none;
 }
-.wt-max-set-main label input:focus,
+.wt-max-set-editor label input:focus,
 .wt-max-rom-inline.is-editing input:focus {
   border-color: #217cf9;
   box-shadow: 0 0 0 2px rgba(33, 124, 249, 0.12);
 }
 .wt-max-set-check,
 .wt-max-set-remove,
-.wt-max-set-grip {
+.wt-max-set-expand {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -13326,19 +13347,33 @@ body.lz-running-record-modal-open {
 .wt-max-set-toggle {
   border: 1px solid #d9dee8;
 }
-.wt-max-set-remove-btn {
+.wt-max-set-remove-btn,
+.wt-max-set-expand {
   background: transparent;
 }
 .wt-max-set-remove {
   width: 24px;
   height: 30px;
 }
-.wt-max-set-grip {
-  width: 12px;
-  pointer-events: none;
+.wt-max-set-expand {
+  width: 28px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.wt-max-set-expand[aria-expanded="true"] {
+  background: #fff;
+  color: #111827;
 }
 .wt-max-set-row.is-done .wt-max-set-remove,
-.wt-max-set-row.is-done .wt-max-set-grip {
+.wt-max-set-row.is-done .wt-max-set-expand {
   color: #d5d9e1;
 }
 .wt-max-rom-inline {
@@ -13394,6 +13429,26 @@ body.lz-running-record-modal-open {
   line-height: 24px;
   font-weight: 900;
   outline: none;
+}
+.wt-max-set-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid #dde3ed;
+}
+.wt-max-set-editor label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+}
+.wt-max-set-editor label em {
+  color: #687486;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
 }
 .wt-max-empty-sets {
   padding: 9px;
@@ -13955,26 +14010,32 @@ body.lz-running-record-modal-open {
     font-size: 8px;
   }
   .wt-max-set-main {
-    grid-template-columns: 27px minmax(36px, .78fr) minmax(36px, .78fr) minmax(34px, .68fr) minmax(56px, 1fr) 28px 22px 10px;
+    grid-template-columns: 27px minmax(36px, .78fr) minmax(36px, .78fr) minmax(30px, .58fr) minmax(50px, 1fr) 28px 22px 26px;
     gap: 3px;
   }
   .wt-max-set-type {
-    height: 22px;
+    height: 28px;
+  }
+  .wt-max-set-type b {
     font-size: 9px;
   }
-  .wt-max-set-main label {
-    gap: 4px;
+  .wt-max-set-type small {
+    font-size: 7px;
   }
-  .wt-max-set-main label span {
-    font-size: 8px;
+  .wt-max-set-value em,
+  .wt-max-set-editor label span {
+    font-size: 7px;
   }
-  .wt-max-set-main label b {
+  .wt-max-set-value b {
     height: 24px;
     padding: 0 4px;
-    font-size: 13px;
+    font-size: 12px;
     line-height: 24px;
   }
-  .wt-max-set-main label input {
+  .wt-max-set-value b small {
+    font-size: 8px;
+  }
+  .wt-max-set-editor label input {
     height: 24px;
     padding: 0 4px;
     font-size: 13px;
@@ -13988,8 +14049,10 @@ body.lz-running-record-modal-open {
     width: 22px;
     height: 28px;
   }
-  .wt-max-set-grip {
-    width: 10px;
+  .wt-max-set-expand {
+    width: 26px;
+    height: 28px;
+    font-size: 15px;
   }
   .wt-max-set-add-row {
     min-height: 34px;
@@ -14014,6 +14077,14 @@ body.lz-running-record-modal-open {
     height: 22px;
     font-size: 12px;
     line-height: 22px;
+  }
+  .wt-max-set-editor {
+    gap: 6px;
+    margin-top: 5px;
+    padding-top: 7px;
+  }
+  .wt-max-set-editor label {
+    gap: 4px;
   }
   .wt-max-actions button {
     height: 34px;

@@ -56,5 +56,5 @@ test('feature-login binds login actions with a scoped idempotent bridge', () => 
 });
 
 test('service worker cache version was bumped for login action bridge assets', () => {
-  assert.match(swJs, /tomatofarm-v20260703z22-input-ux-timer-guard/);
+  assert.match(swJs, /tomatofarm-v20260704z1-workout-set-copy-expand/);
 });
