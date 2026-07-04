@@ -2,7 +2,7 @@
 
 ## 2026-07-04 Running Lock GPS Recovery
 
-- 상태: `slice1_ready_for_final_deploy`
+- 상태: `complete`
 - 계획: `docs/ai/features/2026-07-04-running-lock-gps-recovery.md`
 - 리뷰: `docs/ai/reviews/2026-07-04-running-lock-gps-recovery-slice1-review.md`
 - 요청: 러닝 진행 화면의 가짜 좌우 스와이프 점 표시를 제거하고, 폰 잠금/재시작/로그인 재진입 후 러닝 기록과 GPS draft가 날아가지 않도록 처리한다.
@@ -18,18 +18,23 @@
   2. 러닝 draft에 `ownerId`와 active fallback key를 추가해 로그인 재진입 후 현재 사용자와 일치할 때만 복구한다.
   3. `wtRestoreRunningSessionIfActive()`를 `workout/index.js`/`render-workout.js`/`window`로 노출하고 `app.js` 초기화에서 일반 팝업보다 먼저 호출한다.
   4. 복구된 러닝 화면 위로 다이어트 리포트/웰컴/튜토리얼/PWA 배너가 겹치지 않도록 `runningSessionRestored`로 팝업 경로를 막았다.
-  5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260704z5-workout-set-type-menu-close`로 bump했다.
+  5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260704z6-running-restore-overlay`로 bump했다.
   6. 리뷰 중 발견된 dateKey 저장 블로커를 수정했다. 복구 draft의 `dateKey`를 `S.shared.date`에 반영하고, 복구 중에는 `loadWorkoutDate(TODAY)`가 날짜를 덮지 않게 했다.
   7. `saveWorkoutDay()` no-op을 `false`로 반환하게 하고, 러닝 저장은 `false`를 성공으로 처리하지 않아 draft/세션을 보존한다.
+  8. 복구 가능한 러닝 draft가 있으면 기존 사용자 길드 온보딩을 띄우지 않도록 했다.
+  9. 러닝 root를 `document.body` 직속 overlay로 승격해 홈 탭에서 복구돼도 0×0 hidden tab 조상에 갇히지 않게 했다.
 - Slice 1 검증:
   1. PASS: RED `node --test tests/running-entry.test.js tests/running-tracker.test.js` - fake dots, active fallback/app restore, ownerId 보존 조건으로 실패 확인.
   2. PASS: GREEN `node --test tests/running-entry.test.js tests/running-tracker.test.js tests/running-session-recovery-behavior.test.js` - 23 pass.
   3. PASS: `node --check workout/running-session.js && node --check workout/save.js && node --check app.js && node --check tests/running-session-recovery-behavior.test.js && node --check tests/running-entry.test.js`.
   4. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=880`.
-  5. PASS: `node --test tests/*.test.js` - 697 pass.
+  5. PASS: `node --test tests/*.test.js` - 700 pass.
   6. PASS: Puppeteer file harness screenshot `.omo/evidence/running-lock-gps-20260704/slice1-progress-no-dots.png` - `restored=true`, `screen=progress`, `dotCount=0`, `hasDots=false`.
   7. PASS: Puppeteer 행동 테스트 - 복구된 summary가 draft 날짜로 저장되고, 날짜 없음 save no-op은 draft/세션을 유지한다.
-- 다음 액션: Slice 1을 커밋/푸시하고 Tomato Farm Pages 배포 검증 및 production authenticated running restore smoke를 완료한다. 완료 후 상태를 `complete`로 닫는다. Slice 2(Android foreground location bridge)는 별도 계획/실행으로 남긴다.
+  8. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 8e8e9ee6f40a` - deployed commit/cache 확인.
+  9. PASS: deployed marker 검증 - `sw.js::tomatofarm-v20260704z6-running-restore-overlay`, `feature-login.js::_hasRestorableRunningDraftForUser`, `workout/running-session.js::document.body.appendChild(root)`, `app.js::runningSessionRestored`.
+  10. PASS: production authenticated running restore smoke - `screen=progress`, `rootRect=390x844`, `rootParentIsBody=true`, `centerHitInsideRunningRoot=true`, `dotCount=0`, `loginVisible=false`, `guildOnboardingVisible=false`, `pageErrors=[]`.
+- 다음 액션: Slice 1은 완료. Slice 2(Android foreground location bridge)는 별도 계획/실행으로 남긴다.
 
 ## 2026-07-04 Workout Set Minimal BodyCalendar Correction
 
