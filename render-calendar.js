@@ -3400,6 +3400,7 @@ async function _setWorkoutExerciseSetTypeFromSheet(key, sessionIndex, exerciseIn
     const targetSessionIndex = Math.max(0, Math.min(WORKOUT_GYM_SESSION_COUNT - 1, Math.floor(Number(sessionIndex) || 0)));
     const targetSetIndex = Math.max(0, Math.floor(Number(setIndex) || 0));
     const menuKey = _workoutSetEditorKey(targetKey, targetSessionIndex, exerciseIndex, targetSetIndex);
+    _workoutOpenSetTypeMenus.delete(menuKey);
     const ok = await _mutateWorkoutExerciseFromSheet(targetKey, targetSessionIndex, exerciseIndex, (entry) => {
       const sets = Array.isArray(entry.sets) ? entry.sets : [];
       while (sets.length <= targetSetIndex) sets.push(_defaultWorkoutSheetSet(sets[sets.length - 1]));
@@ -3414,7 +3415,6 @@ async function _setWorkoutExerciseSetTypeFromSheet(key, sessionIndex, exerciseIn
       _clearWorkoutExerciseCompletionMarker(entry);
       return true;
     }, { preserveSheetScroll: true });
-    _workoutOpenSetTypeMenus.delete(menuKey);
     return ok;
   } catch (e) {
     console.warn('[workout-calendar] sheet set type update failed:', e);

@@ -205,6 +205,7 @@
 - 추천/프로그램 처방의 전체 목표 세트는 `maxPrescription`에 남아 있다는 테스트가 있다.
 - 기본 세트 행에 숫자 입력이 없고, 우측 펼침 패널에만 `무게/횟수/RIR/ROM` 입력이 있다는 테스트가 있다.
 - 좌측 세트 번호 버튼의 세트 유형 메뉴와 `setType` 변경 action이 테스트로 고정되어 있다.
+- 브라우저 DOM harness가 우측 펼침, 좌측 세트 유형 메뉴, 유형 선택 후 메뉴 닫힘을 실행한다.
 - `세트 입력 대기`와 `지난 기록` 렌더 계약이 유지된다.
 
 ### Slice 2 상태
@@ -218,9 +219,10 @@
   1. PASS: RED focused tests 실패 확인.
   2. PASS: `node --check render-calendar.js && node --check workout/exercises.js && node --check workout/expert/max-benchmark-picker.js && node --check sw.js`
   3. PASS: `node --test tests/calc.max.test.js tests/workout-test-mode-unified.test.js tests/workout-calendar-bottom-sheet.test.js` - 95 pass
-  4. PASS: `node --test tests/*.test.js` - 695 pass
-  5. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=880`
-  6. PASS: `git diff --check HEAD`
-  7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ e43f24e2ef9b57f847a9ad80d8f2f966d1bb7a18`
-  8. PASS: deployed marker 검증 - `WORKOUT_SET_TYPE_OPTIONS`, `toggle-set-type`, `set-set-type`, `wt-max-set-type-menu`, first-set helper markers 확인.
-  9. not verified yet: 인증 세션이 없어 운영 URL에서 실제 workout 내부 클릭 flow는 자동 검증하지 못했다.
+  4. PASS: `node --test tests/workout-set-minimal-dom.test.js` - 2 pass
+  5. PASS: `node --test tests/*.test.js` - 695 pass
+  6. PASS: `node scripts/verify-runtime-assets.mjs` - `[runtime-assets] ok refs=880`
+  7. PASS: `git diff --check HEAD`
+  8. PASS: 운영 Pages 배포 검증
+  9. PASS: deployed marker 검증 - `WORKOUT_SET_TYPE_OPTIONS`, `toggle-set-type`, `set-set-type`, `wt-max-set-type-menu`, first-set helper, DOM test markers 확인.
+  10. not verified yet: 인증 세션이 없어 운영 URL에서 실제 workout 내부 클릭 flow는 자동 검증하지 못했다. 대신 Puppeteer DOM harness로 같은 row click/action path를 검증했다.
