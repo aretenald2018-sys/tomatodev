@@ -20,6 +20,7 @@ const runningMapJs = await readFile(new URL('../workout/running-map.js', import.
 test('running type has a dedicated full-screen session root and no legacy inline form', () => {
   assert.match(indexHtml, /id="wt-chip-running"[^>]*onclick="wtSwitchType\('running'\)"[^>]*>🏃 런닝\/조깅<\/button>/);
   assert.match(indexHtml, /id="wt-running-session-root"/);
+  assert.match(runningSessionJs, /root\.parentElement !== document\.body[\s\S]*document\.body\.appendChild\(root\)/);
   assert.doesNotMatch(indexHtml, /id="wt-running-section"/);
   assert.doesNotMatch(indexHtml, /id="wt-run-distance"/);
   assert.doesNotMatch(indexHtml, /id="wt-run-gps-primary"/);
@@ -258,7 +259,7 @@ test('running workout save writes a running life-zone snapshot', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260704z5-workout-set-type-menu-close/);
+  assert.match(swJs, /tomatofarm-v20260704z6-running-restore-overlay/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/sprites\/jups-running-track\.png/);

@@ -50,7 +50,11 @@ const _session = {
 let _runningDraftEventsBound = false;
 
 function _root() {
-  return document.getElementById('wt-running-session-root');
+  const root = document.getElementById('wt-running-session-root');
+  if (root && document.body && root.parentElement !== document.body) {
+    document.body.appendChild(root);
+  }
+  return root;
 }
 
 function _now() {
