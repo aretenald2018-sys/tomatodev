@@ -126,6 +126,7 @@ test('running session draft normalizer preserves reload-safe live state', () => 
     pausedMs: 60_000,
     updatedAt: 181_000,
     route,
+    ownerId: 'runner-1',
     placeSummary: { status: 'resolved', label: '잠실동, 송파구, 서울특별시' },
     goal: { type: 'distance', value: 5 },
     audioGuide: false,
@@ -137,6 +138,7 @@ test('running session draft normalizer preserves reload-safe live state', () => 
   assert.equal(draft.startedAt, 1_000);
   assert.equal(draft.pausedAt, 181_000);
   assert.equal(draft.pausedMs, 60_000);
+  assert.equal(draft.ownerId, 'runner-1');
   assert.equal(draft.route.length, 3);
   assert.equal(draft.placeSummary.label, '잠실동, 송파구, 서울특별시');
   assert.deepEqual(draft.goal, { type: 'distance', value: 5 });

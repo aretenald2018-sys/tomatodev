@@ -7692,21 +7692,6 @@ body.wt-running-session-open {
   font-weight: 800;
   cursor: pointer;
 }
-.wt-run-live-pages {
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-  padding-bottom: 8px;
-}
-.wt-run-live-pages span {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: rgba(17, 17, 17, 0.28);
-}
-.wt-run-live-pages span.active {
-  background: #111;
-}
 .wt-run-music-bar {
   min-height: 84px;
   flex: 0 0 auto;

@@ -987,5 +987,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260704z2-workout-set-minimal-bodycalendar/);
+  assert.match(swJs, /tomatofarm-v20260704z3-running-lock-gps-recovery/);
 });

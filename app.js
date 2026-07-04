@@ -49,7 +49,7 @@ import { showWelcomeBackPopup } from './home/welcome-back.js';
 import { showDietPremiumReportIfNeeded } from './feature-diet-premium-report.js';
 import {
   loadWorkoutDate, changeWorkoutDate, goToTodayWorkout, saveWorkoutDay,
-  openNutritionPhotoUpload, wtRecoverTimers,
+  openNutritionPhotoUpload, wtRecoverTimers, wtRestoreRunningSessionIfActive,
 } from './render-workout.js?v=20260702z19-current-user-set-button';
 
 // ── 레이지 로딩 탭 캐시 ──
@@ -606,6 +606,7 @@ function openWorkoutTab(y, m, d) {
 // ── 초기화 ───────────────────────────────────────────────────────
 async function init() {
   let bootUser = null;
+  let runningSessionRestored = false;
   try {
     // 로그인 안 되어있으면 모달만 로드하고 대기
     const { getCurrentUser, loadSavedUser } = await import('./data.js');
@@ -671,17 +672,22 @@ async function init() {
     // 편지 버튼 표시 (모든 사용자)
     const letterBtn = document.getElementById('letter-btn');
     if (letterBtn) letterBtn.style.display = '';
+    runningSessionRestored = wtRestoreRunningSessionIfActive();
 
     if (isAdmin()) {
-      await switchTab('admin');
-      await showDietPremiumReportIfNeeded().catch((e) => console.warn('[diet-premium-report]', e));
+      if (!runningSessionRestored) {
+        await switchTab('admin');
+        await showDietPremiumReportIfNeeded().catch((e) => console.warn('[diet-premium-report]', e));
+      }
     } else {
       renderHome({ deferCheerCard: true });
-      let priorityPopupShown = false;
-      priorityPopupShown = await showDietPremiumReportIfNeeded().catch((e) => {
-        console.warn('[diet-premium-report]', e);
-        return false;
-      });
+      let priorityPopupShown = runningSessionRestored;
+      if (!priorityPopupShown) {
+        priorityPopupShown = await showDietPremiumReportIfNeeded().catch((e) => {
+          console.warn('[diet-premium-report]', e);
+          return false;
+        });
+      }
       if (previousLastLoginAt) {
         if (!priorityPopupShown) {
           const hoursSinceLogin = (Date.now() - previousLastLoginAt) / 3600000;
@@ -725,15 +731,17 @@ async function init() {
     window.__tomatoAppReady = true;
     window.dispatchEvent(new Event('tomato-app-ready'));
     if (bootUser) {
-      requestAnimationFrame(() => {
-        showDietPremiumReportIfNeeded().catch((e) => console.warn('[diet-premium-report]', e));
-      });
-      setTimeout(() => {
-        document.querySelectorAll('.today-cell')[0]
-          ?.scrollIntoView({ behavior:'smooth', block:'center' });
-      }, 400);
-      // PWA 설치 안내 배너 (앱 미설치 + 이전에 닫지 않았으면)
-      showPWAInstallBanner();
+      if (!runningSessionRestored) {
+        requestAnimationFrame(() => {
+          showDietPremiumReportIfNeeded().catch((e) => console.warn('[diet-premium-report]', e));
+        });
+        setTimeout(() => {
+          document.querySelectorAll('.today-cell')[0]
+            ?.scrollIntoView({ behavior:'smooth', block:'center' });
+        }, 400);
+        // PWA 설치 안내 배너 (앱 미설치 + 이전에 닫지 않았으면)
+        showPWAInstallBanner();
+      }
       updateInstallBtn();
     }
   }

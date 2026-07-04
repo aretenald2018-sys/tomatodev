@@ -11,6 +11,7 @@ const RUNNING_WORKOUT_SESSION_INDEX = 2;
 const RUNNING_SESSION_DRAFT_VERSION = 1;
 const RUNNING_SESSION_DRAFT_MAX_MS = 24 * 60 * 60 * 1000;
 const RUNNING_SESSION_DRAFT_KEY_PREFIX = 'tomatofarm_running_session_draft_';
+const RUNNING_SESSION_DRAFT_ACTIVE_KEY = 'tomatofarm_running_session_draft_active';
 const RESTORABLE_RUNNING_PHASES = new Set(['active', 'paused', 'summary']);
 const GEO_OPTIONS = {
   enableHighAccuracy: true,
@@ -295,6 +296,7 @@ export function normalizeRunningSessionDraft(raw, options = {}) {
   const now = _num(options.now, _now());
   const phase = _safeRunningPhase(raw.phase);
   if (!phase) return null;
+  const ownerId = String(raw.ownerId || raw.userId || raw.uid || '').trim();
 
   const route = downsampleRunningRoute(raw.route || [], MAX_ROUTE_POINTS);
   const startedAt = _num(raw.startedAt, route[0]?.ts || 0);
@@ -316,6 +318,7 @@ export function normalizeRunningSessionDraft(raw, options = {}) {
     version: RUNNING_SESSION_DRAFT_VERSION,
     phase,
     dateKey: String(raw.dateKey || ''),
+    ownerId,
     startedAt,
     endedAt: endedAt && Number.isFinite(endedAt) ? endedAt : null,
     pausedAt: pausedAt && Number.isFinite(pausedAt) ? pausedAt : null,
@@ -476,15 +479,23 @@ function _workoutSessionIndexFromState() {
   return RUNNING_WORKOUT_SESSION_INDEX;
 }
 
-function _runningDraftKey() {
+function _currentRunningDraftOwnerId() {
   try {
     const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('currentUser') : '';
     const u = raw ? JSON.parse(raw) : null;
     const uid = (u && (u.uid || u.id || u.username || u.name)) || '_anon';
-    return RUNNING_SESSION_DRAFT_KEY_PREFIX + encodeURIComponent(String(uid));
+    return String(uid || '_anon');
   } catch {
-    return RUNNING_SESSION_DRAFT_KEY_PREFIX + '_anon';
+    return '_anon';
   }
+}
+
+function _runningDraftKey(ownerId = _currentRunningDraftOwnerId()) {
+  return RUNNING_SESSION_DRAFT_KEY_PREFIX + encodeURIComponent(String(ownerId || '_anon'));
+}
+
+function _runningDraftBelongsToCurrentUser(draft, ownerId = _currentRunningDraftOwnerId()) {
+  return !!draft?.ownerId && String(draft.ownerId) === String(ownerId || '_anon');
 }
 
 function _buildRunningDraft(context = 'manual') {
@@ -493,6 +504,7 @@ function _buildRunningDraft(context = 'manual') {
   return {
     version: RUNNING_SESSION_DRAFT_VERSION,
     context,
+    ownerId: _currentRunningDraftOwnerId(),
     dateKey: _workoutDateKeyFromState() || '',
     phase,
     startedAt: _session.startedAt,
@@ -516,31 +528,50 @@ function _persistRunningDraft(context = 'manual') {
   const draft = _buildRunningDraft(context);
   if (!draft) return null;
   try {
-    localStorage.setItem(_runningDraftKey(), JSON.stringify(draft));
+    const payload = JSON.stringify(draft);
+    localStorage.setItem(_runningDraftKey(draft.ownerId), payload);
+    localStorage.setItem(RUNNING_SESSION_DRAFT_ACTIVE_KEY, payload);
     return draft;
   } catch {
+    return null;
+  }
+}
+
+function _readRunningDraftFromKey(key) {
+  let raw = null;
+  try {
+    raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const draft = normalizeRunningSessionDraft(JSON.parse(raw));
+    if (!draft) localStorage.removeItem(key);
+    return draft;
+  } catch {
+    try { localStorage.removeItem(key); } catch {}
     return null;
   }
 }
 
 function _readRunningDraft() {
   if (typeof localStorage === 'undefined') return null;
-  let raw = null;
-  try {
-    raw = localStorage.getItem(_runningDraftKey());
-    if (!raw) return null;
-    const draft = normalizeRunningSessionDraft(JSON.parse(raw));
-    if (!draft) localStorage.removeItem(_runningDraftKey());
-    return draft;
-  } catch {
-    try { localStorage.removeItem(_runningDraftKey()); } catch {}
-    return null;
+  const ownerId = _currentRunningDraftOwnerId();
+  const ownerKey = _runningDraftKey(ownerId);
+  const keyedDraft = _readRunningDraftFromKey(ownerKey);
+  if (keyedDraft) {
+    if (!keyedDraft.ownerId || _runningDraftBelongsToCurrentUser(keyedDraft, ownerId)) return keyedDraft;
+    try { localStorage.removeItem(ownerKey); } catch {}
   }
+  const activeDraft = _readRunningDraftFromKey(RUNNING_SESSION_DRAFT_ACTIVE_KEY);
+  return _runningDraftBelongsToCurrentUser(activeDraft, ownerId) ? activeDraft : null;
 }
 
 function _clearRunningDraft() {
   if (typeof localStorage === 'undefined') return;
-  try { localStorage.removeItem(_runningDraftKey()); } catch {}
+  const ownerId = _currentRunningDraftOwnerId();
+  try { localStorage.removeItem(_runningDraftKey(ownerId)); } catch {}
+  const activeDraft = _readRunningDraftFromKey(RUNNING_SESSION_DRAFT_ACTIVE_KEY);
+  if (_runningDraftBelongsToCurrentUser(activeDraft, ownerId)) {
+    try { localStorage.removeItem(RUNNING_SESSION_DRAFT_ACTIVE_KEY); } catch {}
+  }
 }
 
 function _applyRunningDraft(draft) {
@@ -1155,7 +1186,6 @@ function _renderProgress() {
         <button type="button" class="wt-run-live-btn" data-running-action="${isPaused ? 'resume' : 'pause'}" aria-label="${isPaused ? '재개' : '일시정지'}">${isPaused ? '▶' : 'Ⅱ'}</button>
         ${isPaused ? '<button type="button" class="wt-run-finish-btn" data-running-action="finish">종료</button>' : ''}
       </div>
-      <div class="wt-run-live-pages" aria-hidden="true"><span></span><span class="active"></span><span></span></div>
       <footer class="wt-run-music-bar">
         <span class="wt-run-muted-music">♩</span>
         <strong>선택된 음악 없음</strong>
@@ -1281,13 +1311,18 @@ export function initRunningSession() {
 
 export function wtOpenRunningSession() {
   initRunningSession();
-  if (_restoreRunningDraftIfAvailable()) return;
+  if (wtRestoreRunningSessionIfActive()) return;
   _resetLiveSession();
   S.workout.sessionIndex = RUNNING_WORKOUT_SESSION_INDEX;
   S.workout.sessionId = 'running-track';
   _session.open = true;
   _session.phase = 'start';
   _render();
+}
+
+export function wtRestoreRunningSessionIfActive() {
+  initRunningSession();
+  return _restoreRunningDraftIfAvailable();
 }
 
 export function wtCloseRunningSession() {

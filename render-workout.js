@@ -20,5 +20,6 @@ export {
   wtRestTimerStart, wtRestTimerSkip, wtRestTimerAdjust,
   wtRestTimerShowIdle, wtRestTimerHideIdle,
   wtOpenRestPresetSheet,
+  wtRestoreRunningSessionIfActive,
   tm2RenderEntry,
 } from './workout/index.js?v=20260702z19-current-user-set-button';

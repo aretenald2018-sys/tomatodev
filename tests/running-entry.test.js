@@ -82,6 +82,11 @@ test('running picker tile and session screens have dedicated styles', () => {
   assert.doesNotMatch(styleCss, /\.wt-run-map-label/);
 });
 
+test('running live progress does not show fake swipe pagination dots', () => {
+  assert.doesNotMatch(runningSessionJs, /wt-run-live-pages/);
+  assert.doesNotMatch(styleCss, /\.wt-run-live-pages/);
+});
+
 test('running session has goal setup and Korean voice guidance cues', () => {
   assert.match(runningSessionJs, /DEFAULT_RUNNING_GOAL/);
   assert.match(runningSessionJs, /RUNNING_GOAL_DEFAULTS/);
@@ -189,13 +194,23 @@ test('running summary save opens the saved workout day detail sheet', () => {
 
 test('running session persists unsaved live records across app reloads', () => {
   assert.match(runningSessionJs, /RUNNING_SESSION_DRAFT_KEY_PREFIX = 'tomatofarm_running_session_draft_'/);
+  assert.match(runningSessionJs, /RUNNING_SESSION_DRAFT_ACTIVE_KEY = 'tomatofarm_running_session_draft_active'/);
   assert.match(runningSessionJs, /export function normalizeRunningSessionDraft/);
-  assert.match(runningSessionJs, /localStorage\.setItem\(_runningDraftKey\(\), JSON\.stringify\(draft\)\)/);
+  assert.match(runningSessionJs, /ownerId:\s*_currentRunningDraftOwnerId\(\)/);
+  assert.match(runningSessionJs, /localStorage\.setItem\(_runningDraftKey\(draft\.ownerId\), payload\)/);
+  assert.match(runningSessionJs, /localStorage\.setItem\(RUNNING_SESSION_DRAFT_ACTIVE_KEY, payload\)/);
+  assert.match(runningSessionJs, /function _readRunningDraft\(\)[\s\S]*RUNNING_SESSION_DRAFT_ACTIVE_KEY[\s\S]*_runningDraftBelongsToCurrentUser/);
   assert.match(runningSessionJs, /window\.addEventListener\('pagehide', \(\) => _persistRunningDraft\('pagehide'\)\)/);
   assert.match(runningSessionJs, /window\.addEventListener\('beforeunload', \(\) => _persistRunningDraft\('beforeunload'\)\)/);
   assert.match(runningSessionJs, /document\.addEventListener\('visibilitychange', \(\) => \{[\s\S]*document\.hidden[\s\S]*_persistRunningDraft\('visibility hidden'\)/);
   assert.match(runningSessionJs, /function _restoreRunningDraftIfAvailable\(\)[\s\S]*_applyRunningDraft\(draft\)[\s\S]*_startWatch\(\)/);
-  assert.match(runningSessionJs, /export function wtOpenRunningSession\(\) \{[\s\S]*if \(_restoreRunningDraftIfAvailable\(\)\) return;/);
+  assert.match(runningSessionJs, /export function wtRestoreRunningSessionIfActive/);
+  assert.match(runningSessionJs, /export function wtOpenRunningSession\(\) \{[\s\S]*if \(wtRestoreRunningSessionIfActive\(\)\) return;/);
+  assert.match(appJs, /wtRestoreRunningSessionIfActive/);
+  const restoreCallIndex = appJs.indexOf('runningSessionRestored = wtRestoreRunningSessionIfActive');
+  assert.ok(restoreCallIndex > 0, 'app init should explicitly restore a running draft after login');
+  const popupIndex = appJs.indexOf('showDietPremiumReportIfNeeded().catch', restoreCallIndex);
+  assert.ok(popupIndex > restoreCallIndex, 'running draft restore must run before ordinary popups');
   assert.match(runningSessionJs, /function _finishRun\(\)[\s\S]*_persistRunningDraft\('finish'\)/);
   assert.match(runningSessionJs, /export function wtCloseRunningSession\(\) \{[\s\S]*_clearRunningDraft\(\);[\s\S]*_resetLiveSession\(\);/);
 });
@@ -235,7 +250,7 @@ test('running workout save writes a running life-zone snapshot', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260704z2-workout-set-minimal-bodycalendar/);
+  assert.match(swJs, /tomatofarm-v20260704z3-running-lock-gps-recovery/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/sprites\/jups-running-track\.png/);

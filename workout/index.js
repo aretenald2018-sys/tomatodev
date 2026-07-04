@@ -39,6 +39,9 @@ export { wtStartWorkoutTimer, wtPauseWorkoutTimer,
          wtOpenRestPresetSheet }
   from './timers.js';
 
+export { initRunningSession, wtOpenRunningSession, wtHandleRunningSessionBack, wtRestoreRunningSessionIfActive }
+  from './running-session.js';
+
 // ── 내부 import (window 등록 + 초기화용) ─────────────────────────
 import { saveWorkoutDay }                          from './save.js';
 import { wtAddFoodItem, wtRemoveFoodItem }         from './render.js';
@@ -58,7 +61,7 @@ import { wtStartWorkoutTimer, wtTogglePauseWorkoutTimer,
 import { _initRestTimerPresets }                   from './timers.js';
 import { _initRunningEvents }                      from './activity-forms.js';
 import { _initTypeFormEvents }                     from './activity-forms.js';
-import { initRunningSession, wtOpenRunningSession, wtHandleRunningSessionBack } from './running-session.js';
+import { initRunningSession, wtOpenRunningSession, wtHandleRunningSessionBack, wtRestoreRunningSessionIfActive } from './running-session.js';
 import { confirmAction }                           from '../utils/confirm-modal.js';
 
 // ── window.* 등록 (HTML onclick 연결) ───────────────────────────
@@ -80,6 +83,7 @@ window.wtFinishWorkout = wtFinishWorkout;
 window.wtRecoverTimers = wtRecoverTimers;
 window.wtOpenRunningSession = wtOpenRunningSession;
 window.wtHandleRunningSessionBack = wtHandleRunningSessionBack;
+window.wtRestoreRunningSessionIfActive = wtRestoreRunningSessionIfActive;
 
 // 운동종료 → 확인 모달 → 실제 타이머 정지/저장.
 // 실수 방지를 위해 confirm 모달을 먼저 띄우고, 승인 시에만 종료 흐름을 실행.

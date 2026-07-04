@@ -95,5 +95,5 @@ test('remaining Max inline handlers are limited to the existing V4 sheet shell',
 });
 
 test('service worker cache version was bumped for Max auxiliary modal actions', () => {
-  assert.match(swJs, /tomatofarm-v20260704z2-workout-set-minimal-bodycalendar/);
+  assert.match(swJs, /tomatofarm-v20260704z3-running-lock-gps-recovery/);
 });

@@ -2,7 +2,7 @@
 
 ## 2026-07-04 Running Lock GPS Recovery
 
-- 상태: `ready_for_execution`
+- 상태: `slice1_ready_for_deploy_review`
 - 계획: `docs/ai/features/2026-07-04-running-lock-gps-recovery.md`
 - 요청: 러닝 진행 화면의 가짜 좌우 스와이프 점 표시를 제거하고, 폰 잠금/재시작/로그인 재진입 후 러닝 기록과 GPS draft가 날아가지 않도록 처리한다.
 - 진단 요약:
@@ -12,7 +12,20 @@
 - 실행 슬라이스:
   1. Slice 1: 웹 러닝 세션 복구와 가짜 스와이프 affordance 제거.
   2. Slice 2: Android locked-phone GPS를 위한 native foreground location bridge.
-- 다음 액션: Slice 1만 실행한다. RED 테스트를 먼저 만들고, `workout/running-session.js`, `workout/index.js`, `render-workout.js`, `app.js`, `style.css`, 관련 테스트, `sw.js` 범위에서 자동 복구 hook과 점 표시 제거를 구현한다.
+- Slice 1 실행 요약:
+  1. `workout/running-session.js`의 진행 화면 `.wt-run-live-pages` DOM을 제거했고 `style.css`의 page-dot 스타일도 제거했다.
+  2. 러닝 draft에 `ownerId`와 active fallback key를 추가해 로그인 재진입 후 현재 사용자와 일치할 때만 복구한다.
+  3. `wtRestoreRunningSessionIfActive()`를 `workout/index.js`/`render-workout.js`/`window`로 노출하고 `app.js` 초기화에서 일반 팝업보다 먼저 호출한다.
+  4. 복구된 러닝 화면 위로 다이어트 리포트/웰컴/튜토리얼/PWA 배너가 겹치지 않도록 `runningSessionRestored`로 팝업 경로를 막았다.
+  5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260704z3-running-lock-gps-recovery`로 bump했다.
+- Slice 1 검증:
+  1. PASS: RED `node --test tests/running-entry.test.js tests/running-tracker.test.js` - fake dots, active fallback/app restore, ownerId 보존 조건으로 실패 확인.
+  2. PASS: GREEN `node --test tests/running-entry.test.js tests/running-tracker.test.js` - 21 pass.
+  3. PASS: `node --check workout/running-session.js && node --check workout/index.js && node --check render-workout.js && node --check app.js && node --check sw.js`.
+  4. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=880`.
+  5. PASS: `node --test tests/*.test.js` - 695 pass.
+  6. PASS: Puppeteer file harness screenshot `.omo/evidence/running-lock-gps-20260704/slice1-progress-no-dots.png` - `restored=true`, `screen=progress`, `dotCount=0`, `hasDots=false`.
+- 다음 액션: Slice 1을 커밋/푸시하고 Tomato Farm Pages 배포 검증을 완료한 뒤 review 문서를 남긴다. Slice 2(Android foreground location bridge)는 별도 계획/실행으로 남긴다.
 
 ## 2026-07-04 Workout Set Minimal BodyCalendar Correction
 
