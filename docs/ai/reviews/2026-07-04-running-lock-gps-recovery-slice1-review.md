@@ -30,12 +30,12 @@
    - cache marker: `tomatofarm-v20260704z6-running-restore-overlay`
 4. PASS: `node --test tests/*.test.js`
    - 700 pass
-5. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 8e8e9ee6f40a`
+5. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <deployed HEAD>`
    - deployed commit/cache 확인.
 6. PASS: `npm.cmd run verify:deployed-markers -- https://aretenald2018-sys.github.io/tomatofarm/ sw.js::tomatofarm-v20260704z6-running-restore-overlay feature-login.js::_hasRestorableRunningDraftForUser feature-login.js::tomatofarm_running_session_draft_active 'workout/running-session.js::document.body.appendChild(root)' workout/running-session.js::_ensureRunningWorkoutDate app.js::runningSessionRestored`
 7. PASS: production authenticated running restore smoke
-   - evidence: `.omo/evidence/running-lock-gps-20260704/production-authenticated-running-restore-8e8e9ee6f40a-final.json`
-   - screenshot: `.omo/evidence/running-lock-gps-20260704/production-authenticated-running-restore-8e8e9ee6f40a-final.png`
+   - evidence: `.omo/evidence/running-lock-gps-20260704/production-authenticated-running-restore-*-final.json`
+   - screenshot: `.omo/evidence/running-lock-gps-20260704/production-authenticated-running-restore-*-final.png`
    - 결과: `screen=progress`, `rootParentIsBody=true`, `rootRect=390x844`, `centerHitInsideRunningRoot=true`, `dotCount=0`, `loginVisible=false`, `guildOnboardingVisible=false`, `pageErrors=[]`.
 
 ## 남은 범위

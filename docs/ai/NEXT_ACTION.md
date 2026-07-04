@@ -31,9 +31,9 @@
   5. PASS: `node --test tests/*.test.js` - 700 pass.
   6. PASS: Puppeteer file harness screenshot `.omo/evidence/running-lock-gps-20260704/slice1-progress-no-dots.png` - `restored=true`, `screen=progress`, `dotCount=0`, `hasDots=false`.
   7. PASS: Puppeteer 행동 테스트 - 복구된 summary가 draft 날짜로 저장되고, 날짜 없음 save no-op은 draft/세션을 유지한다.
-  8. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 8e8e9ee6f40a` - deployed commit/cache 확인.
+  8. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <deployed HEAD>` - deployed commit/cache 확인.
   9. PASS: deployed marker 검증 - `sw.js::tomatofarm-v20260704z6-running-restore-overlay`, `feature-login.js::_hasRestorableRunningDraftForUser`, `workout/running-session.js::document.body.appendChild(root)`, `app.js::runningSessionRestored`.
-  10. PASS: production authenticated running restore smoke - `screen=progress`, `rootRect=390x844`, `rootParentIsBody=true`, `centerHitInsideRunningRoot=true`, `dotCount=0`, `loginVisible=false`, `guildOnboardingVisible=false`, `pageErrors=[]`.
+  10. PASS: production authenticated running restore smoke on deployed runtime - `screen=progress`, `rootRect=390x844`, `rootParentIsBody=true`, `centerHitInsideRunningRoot=true`, `dotCount=0`, `loginVisible=false`, `guildOnboardingVisible=false`, `pageErrors=[]`.
 - 다음 액션: Slice 1은 완료. Slice 2(Android foreground location bridge)는 별도 계획/실행으로 남긴다.
 
 ## 2026-07-04 Workout Set Minimal BodyCalendar Correction
