@@ -186,10 +186,14 @@ test('running summary save opens the saved workout day detail sheet', () => {
   assert.match(appJs, /async function openWorkoutDaySheetFromAction/);
   assert.match(appJs, /openWorkoutDaySheet\(dateKey,[\s\S]*sheetState:\s*'full'/);
   assert.match(appJs, /window\.wtOpenWorkoutDaySheet = openWorkoutDaySheetFromAction/);
-  assert.match(runningSessionJs, /const targetDateKey = _workoutDateKeyFromState\(\)/);
+  assert.match(runningSessionJs, /_ensureRunningWorkoutDate\(draft\.dateKey, \{ allowCurrent: false \}\)/);
   assert.match(runningSessionJs, /const targetSessionIndex = _workoutSessionIndexFromState\(\)/);
+  assert.match(runningSessionJs, /const saved = await saveWorkoutDay\(\{ silent: true \}\)/);
+  assert.match(runningSessionJs, /if \(!saved\) throw new Error\('running save skipped: workout date is unavailable or invalid'\)/);
   assert.match(runningSessionJs, /await window\.wtOpenWorkoutDaySheet\(targetDateKey, targetSessionIndex,[\s\S]*action:\s*'running:save-detail'/);
   assert.match(runningSessionJs, /wtCloseRunningSession\(\);[\s\S]*typeof window\.wtOpenWorkoutDaySheet === 'function'/);
+  assert.match(saveJs, /if \(!ctx\) return false/);
+  assert.match(saveJs, /return true;\s*\n}/);
 });
 
 test('running session persists unsaved live records across app reloads', () => {
@@ -204,6 +208,9 @@ test('running session persists unsaved live records across app reloads', () => {
   assert.match(runningSessionJs, /window\.addEventListener\('beforeunload', \(\) => _persistRunningDraft\('beforeunload'\)\)/);
   assert.match(runningSessionJs, /document\.addEventListener\('visibilitychange', \(\) => \{[\s\S]*document\.hidden[\s\S]*_persistRunningDraft\('visibility hidden'\)/);
   assert.match(runningSessionJs, /function _restoreRunningDraftIfAvailable\(\)[\s\S]*_applyRunningDraft\(draft\)[\s\S]*_startWatch\(\)/);
+  assert.match(runningSessionJs, /function _applyRunningDraftDate\(dateKey\)/);
+  assert.match(runningSessionJs, /S\.shared\.date = date/);
+  assert.match(runningSessionJs, /function _ensureRunningWorkoutDate\(dateKey, options = \{\}\)/);
   assert.match(runningSessionJs, /export function wtRestoreRunningSessionIfActive/);
   assert.match(runningSessionJs, /export function wtOpenRunningSession\(\) \{[\s\S]*if \(wtRestoreRunningSessionIfActive\(\)\) return;/);
   assert.match(appJs, /wtRestoreRunningSessionIfActive/);
@@ -211,6 +218,7 @@ test('running session persists unsaved live records across app reloads', () => {
   assert.ok(restoreCallIndex > 0, 'app init should explicitly restore a running draft after login');
   const popupIndex = appJs.indexOf('showDietPremiumReportIfNeeded().catch', restoreCallIndex);
   assert.ok(popupIndex > restoreCallIndex, 'running draft restore must run before ordinary popups');
+  assert.match(appJs, /if \(!runningSessionRestored\) \{\s*loadWorkoutDate\(TODAY\.getFullYear\(\), TODAY\.getMonth\(\), TODAY\.getDate\(\)\);\s*\}/);
   assert.match(runningSessionJs, /function _finishRun\(\)[\s\S]*_persistRunningDraft\('finish'\)/);
   assert.match(runningSessionJs, /export function wtCloseRunningSession\(\) \{[\s\S]*_clearRunningDraft\(\);[\s\S]*_resetLiveSession\(\);/);
 });
@@ -250,7 +258,7 @@ test('running workout save writes a running life-zone snapshot', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260704z3-running-lock-gps-recovery/);
+  assert.match(swJs, /tomatofarm-v20260704z4-running-lock-gps-recovery/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/sprites\/jups-running-track\.png/);

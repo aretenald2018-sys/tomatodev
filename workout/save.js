@@ -413,10 +413,10 @@ export async function saveWorkoutDay(options = {}) {
   const { silent = false, keepDraftExercises = false } = options || {};
   const startedKey = _workoutDateKeyFromState();
   const ctx = _prepareSave({ syncWorkoutDetails: true, keepDraftExercises });
-  if (!ctx) return;
+  if (!ctx) return false;
   const { y, m, d, cleanEx, isDietSuccess } = ctx;
   const ctxKey = dateKey(y, m, d);
-  if (startedKey !== ctxKey || !_isWorkoutDateStill(startedKey, 'prepared')) return;
+  if (startedKey !== ctxKey || !_isWorkoutDateStill(startedKey, 'prepared')) return false;
 
   const btn = silent ? null : document.getElementById('wt-save-btn');
   if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
@@ -426,7 +426,7 @@ export async function saveWorkoutDay(options = {}) {
   );
   _assertSchemaParity('workout', payload, WORKOUT_PAYLOAD_KEYS);
   try {
-    if (!_isWorkoutDateStill(startedKey, 'before-write')) return;
+    if (!_isWorkoutDateStill(startedKey, 'before-write')) return false;
     await saveDay(ctxKey, payload, { rethrow: true, mode: 'merge' });
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = '저장'; }
@@ -446,6 +446,7 @@ export async function saveWorkoutDay(options = {}) {
   document.dispatchEvent(new CustomEvent('sheet:saved'));
 
   if (!silent) window.showToast?.('저장 완료', 2000, 'success');
+  return true;
 }
 
 // ── 식단 자동 저장 (식단 도메인) ────────────────────────────────

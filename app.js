@@ -715,7 +715,9 @@ async function init() {
     requestAnimationFrame(() => {
       if (!isAdmin()) {
         refreshNotifCenter();
-        loadWorkoutDate(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+        if (!runningSessionRestored) {
+          loadWorkoutDate(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+        }
       }
     });
 

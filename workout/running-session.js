@@ -475,6 +475,34 @@ function _workoutDateKeyFromState() {
   return `${Number(d.y)}-${String(Number(d.m) + 1).padStart(2, '0')}-${String(Number(d.d)).padStart(2, '0')}`;
 }
 
+function _datePartsFromKey(key) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(key || ''));
+  if (!match) return null;
+  const y = Number(match[1]);
+  const month = Number(match[2]);
+  const d = Number(match[3]);
+  if (!Number.isInteger(y) || !Number.isInteger(month) || !Number.isInteger(d)) return null;
+  if (month < 1 || month > 12 || d < 1 || d > 31) return null;
+  const parsed = new Date(y, month - 1, d);
+  if (parsed.getFullYear() !== y || parsed.getMonth() !== month - 1 || parsed.getDate() !== d) return null;
+  return { y, m: month - 1, d };
+}
+
+function _applyRunningDraftDate(dateKey) {
+  const date = _datePartsFromKey(dateKey);
+  if (!date) return false;
+  S.shared.date = date;
+  return true;
+}
+
+function _ensureRunningWorkoutDate(dateKey, options = {}) {
+  const current = _workoutDateKeyFromState();
+  if (dateKey && current !== dateKey && _applyRunningDraftDate(dateKey)) return _workoutDateKeyFromState();
+  if (current && options.allowCurrent !== false) return current;
+  if (!_applyRunningDraftDate(dateKey)) return null;
+  return _workoutDateKeyFromState();
+}
+
 function _workoutSessionIndexFromState() {
   return RUNNING_WORKOUT_SESSION_INDEX;
 }
@@ -578,6 +606,7 @@ function _applyRunningDraft(draft) {
   const normalized = normalizeRunningSessionDraft(draft);
   if (!normalized) return false;
   _resetLiveSession();
+  _applyRunningDraftDate(normalized.dateKey);
   Object.assign(_session, {
     open: true,
     phase: normalized.phase,
@@ -959,14 +988,19 @@ async function _saveSummary() {
   if (_session.saving) return;
   _session.saving = true;
   const summary = _currentSummary();
-  const targetDateKey = _workoutDateKeyFromState();
+  const draft = _readRunningDraft();
+  const targetDateKey = draft
+    ? _ensureRunningWorkoutDate(draft.dateKey, { allowCurrent: false })
+    : _workoutDateKeyFromState();
   const targetSessionIndex = _workoutSessionIndexFromState();
   const placeSummary = await _ensureRunningPlaceSummary(summary);
   _syncWorkoutRunData(summary, placeSummary);
   _render();
   try {
+    if (!targetDateKey) throw new Error('running save skipped: restored workout date is unavailable');
     const { saveWorkoutDay } = await import('./save.js');
-    await saveWorkoutDay({ silent: true });
+    const saved = await saveWorkoutDay({ silent: true });
+    if (!saved) throw new Error('running save skipped: workout date is unavailable or invalid');
     await _showToast('러닝 기록 저장 완료', 2200, 'success');
   } catch (e) {
     console.error('[running-session] save failed:', e);
