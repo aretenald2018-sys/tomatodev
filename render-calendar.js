@@ -947,6 +947,9 @@ async function _saveWorkoutHomeSessionResult(key, result, options = {}) {
   };
   const savePromise = saveDay(key, payload, { mode: 'merge', rethrow: true });
   if (options?.optimisticRender) {
+    const cache = getCache() || {};
+    const currentDay = cache[key] && typeof cache[key] === 'object' ? cache[key] : {};
+    cache[key] = { ...currentDay, ...payload };
     _syncWorkoutHomeSavedSessionState(key, result, options.sessionIndex);
     const nextRestoreState = restoreState;
     _workoutDetailCollapsed.clear();

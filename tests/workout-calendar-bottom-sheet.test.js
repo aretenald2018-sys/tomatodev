@@ -527,6 +527,7 @@ test('day sheet save syncs saved session over stale active workout draft', () =>
   assert.match(calendarJs, /import \{ S \} from '\.\/workout\/state\.js'/);
   assert.match(calendarJs, /import \{ wtReplaceActiveWorkoutDraftSession \} from '\.\/workout\/timers\.js'/);
   assert.match(saveFn, /const savePromise = saveDay\(key, payload, \{ mode: 'merge', rethrow: true \}\)/);
+  assert.match(saveFn, /const cache = getCache\(\) \|\| \{\}[\s\S]*cache\[key\] = \{ \.\.\.currentDay, \.\.\.payload \}/);
   assert.match(saveFn, /if \(options\?\.optimisticRender\)[\s\S]*_syncWorkoutHomeSavedSessionState\(key, result, options\.sessionIndex\)[\s\S]*await savePromise[\s\S]*return/);
   assert.match(saveFn, /await savePromise[\s\S]*_syncWorkoutHomeSavedSessionState\(key, result, options\.sessionIndex\)/);
   assert.match(syncFn, /const targetIndex = Math\.max\(0, Math\.floor\(targetIndexRaw\)\)/);
@@ -1036,5 +1037,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260705z1-workout-set-entry-followup-z5-workout-set-swipe-capture/);
+  assert.match(swJs, /tomatofarm-v20260705z1-workout-set-entry-followup-z6-workout-set-swipe-cache/);
 });
