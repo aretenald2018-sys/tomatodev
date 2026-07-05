@@ -945,7 +945,18 @@ async function _saveWorkoutHomeSessionResult(key, result, options = {}) {
     ..._workoutSessionSavePayload(result),
     ..._mealOkPatchForWorkoutHomeDay(key, existingDay, result.aggregate || {}),
   };
-  await saveDay(key, payload, { mode: 'merge', rethrow: true });
+  const savePromise = saveDay(key, payload, { mode: 'merge', rethrow: true });
+  if (options?.optimisticRender) {
+    _syncWorkoutHomeSavedSessionState(key, result, options.sessionIndex);
+    const nextRestoreState = restoreState;
+    _workoutDetailCollapsed.clear();
+    renderWorkoutCalendarHome();
+    if (nextRestoreState) _restoreWorkoutSheetInputState(nextRestoreState);
+    await savePromise;
+    document.dispatchEvent(new CustomEvent('sheet:saved'));
+    return;
+  }
+  await savePromise;
   _syncWorkoutHomeSavedSessionState(key, result, options.sessionIndex);
   if (options?.preserveInput) await _waitWorkoutSheetFocusTransition();
   const latestInputState = options?.preserveInput
@@ -3737,7 +3748,7 @@ async function _removeWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseInd
       _clearWorkoutExerciseCompletionMarker(entry);
       _clearWorkoutSetEditorsForExercise(key, sessionIndex, exerciseIndex);
       return true;
-    });
+    }, { preserveSheetScroll: true, optimisticRender: true });
     if (ok) window.showToast?.('세트를 삭제했어요', 1200, 'success');
   } catch (e) {
     console.warn('[workout-calendar] sheet set remove failed:', e);

@@ -456,6 +456,7 @@ test('day sheet exercise card uses inline plus row and one complete button', () 
   assert.match(completeFn, /_markWorkoutExerciseCompletionStamp\(cardId\)/);
   assert.match(calendarJs, /data-wt-set-done-toggle[\s\S]*_toggleWorkoutExerciseSetDoneFromSheet/);
   assert.match(calendarJs, /data-wt-set-remove[\s\S]*_removeWorkoutExerciseSetFromSheet/);
+  assert.match(calendarJs, /optimisticRender:\s*true/);
   assert.match(calendarJs, /upsertWorkoutSession\(day, nextSession, index, \{ now: Date\.now\(\) \}\)/);
   assert.match(styleCss, /\.wt-max-set-editor label input\s*\{/);
   assert.match(styleCss, /\.wt-max-rom-inline\.is-editing input\s*\{/);
@@ -524,8 +525,9 @@ test('day sheet save syncs saved session over stale active workout draft', () =>
 
   assert.match(calendarJs, /import \{ S \} from '\.\/workout\/state\.js'/);
   assert.match(calendarJs, /import \{ wtReplaceActiveWorkoutDraftSession \} from '\.\/workout\/timers\.js'/);
-  assert.match(saveFn, /await saveDay\(key, payload, \{ mode: 'merge', rethrow: true \}\)/);
-  assert.match(saveFn, /_syncWorkoutHomeSavedSessionState\(key, result, options\.sessionIndex\)/);
+  assert.match(saveFn, /const savePromise = saveDay\(key, payload, \{ mode: 'merge', rethrow: true \}\)/);
+  assert.match(saveFn, /if \(options\?\.optimisticRender\)[\s\S]*_syncWorkoutHomeSavedSessionState\(key, result, options\.sessionIndex\)[\s\S]*await savePromise[\s\S]*return/);
+  assert.match(saveFn, /await savePromise[\s\S]*_syncWorkoutHomeSavedSessionState\(key, result, options\.sessionIndex\)/);
   assert.match(syncFn, /const targetIndex = Math\.max\(0, Math\.floor\(targetIndexRaw\)\)/);
   assert.match(syncFn, /wtReplaceActiveWorkoutDraftSession\(date, targetIndex, targetSession, 'sheet session save'\)/);
   assert.match(syncFn, /if \(!_isSameWorkoutStateDate\(key\)\) return/);
@@ -1033,5 +1035,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260705z1-workout-set-entry-followup-z3-workout-set-inline-swipe/);
+  assert.match(swJs, /tomatofarm-v20260705z1-workout-set-entry-followup-z4-workout-set-swipe-row/);
 });

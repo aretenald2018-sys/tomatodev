@@ -91,6 +91,8 @@ function buildHarnessScript() {
     window.__syncCalls = [];
     window.__restoreCalls = [];
     window.__mutateCalls = [];
+    window.__deferSetMutationRender = false;
+    window.__pendingMutationRender = null;
 
     function _esc(value = '') {
       return String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -163,7 +165,11 @@ function buildHarnessScript() {
     async function _mutateWorkoutExerciseFromSheet(targetKey, targetSessionIndex, exerciseIndex, mutator, options = {}) {
       const ok = mutator(window.__entry);
       window.__mutateCalls.push({ targetKey, targetSessionIndex, exerciseIndex, options });
-      renderWorkoutCalendarHome();
+      if (options?.optimisticRender || !window.__deferSetMutationRender) {
+        renderWorkoutCalendarHome();
+      } else {
+        window.__pendingMutationRender = { targetKey, targetSessionIndex, exerciseIndex, options };
+      }
       return ok;
     }
     window._wtCalUpdateExerciseSet = _updateWorkoutExerciseSetFromSheet;
@@ -350,12 +356,12 @@ test('mobile set row inline editing clears values and both swipe directions remo
       };
     });
 
-    async function swipeSelector(selector, deltaX) {
-      const row = await page.waitForSelector(selector, { visible: true });
-      const rowBox = await row.boundingBox();
+    async function swipeElement(selector, deltaX) {
+      const target = await page.waitForSelector(selector, { visible: true });
+      const rowBox = await target.boundingBox();
       assert.ok(rowBox, `${selector} should have a bounding box`);
       const client = await page.target().createCDPSession();
-      const startX = rowBox.x + rowBox.width * (deltaX > 0 ? 0.38 : 0.62);
+      const startX = rowBox.x + rowBox.width / 2;
       const startY = rowBox.y + rowBox.height / 2;
       await client.send('Input.dispatchTouchEvent', {
         type: 'touchStart',
@@ -372,16 +378,25 @@ test('mobile set row inline editing clears values and both swipe directions remo
       await client.detach();
     }
 
-    await swipeSelector('[data-wt-set-swipe-row][data-set-index="2"]', 74);
-    await page.waitForFunction(() => window.__entry.sets.length === 2);
-    await swipeSelector('[data-wt-set-swipe-row][data-set-index="1"]', -74);
-    await page.waitForFunction(() => window.__entry.sets.length === 1);
+    await page.evaluate(() => { window.__deferSetMutationRender = true; });
+    await swipeElement('[data-wt-set-edit-field="kg"][data-set-index="2"]', 74);
+    await page.waitForFunction(() => (
+      window.__entry.sets.length === 2
+      && document.querySelectorAll('[data-wt-set-swipe-row]').length === 2
+    ), { timeout: 1500 });
+    await swipeElement('[data-wt-set-edit-field="reps"][data-set-index="1"]', -74);
+    await page.waitForFunction(() => (
+      window.__entry.sets.length === 1
+      && document.querySelectorAll('[data-wt-set-swipe-row]').length === 1
+    ), { timeout: 1500 });
 
     const finalState = await page.evaluate(() => ({
       sets: window.__entry.sets,
       rows: document.querySelectorAll('[data-wt-set-swipe-row]').length,
       values: Array.from(document.querySelectorAll('.wt-max-set-value')).map(node => node.textContent.replace(/\s+/g, '').trim()),
       syncActions: window.__syncCalls.map(call => call.action),
+      mutationOptions: window.__mutateCalls.map(call => call.options),
+      pendingMutationRender: window.__pendingMutationRender,
       restoreCount: window.__restoreCalls.length,
       toast: window.__lastToast,
     }));
@@ -403,6 +418,8 @@ test('mobile set row inline editing clears values and both swipe directions remo
   assert.equal(result.finalState.rows, 1);
   assert.deepEqual(result.finalState.values, ['55kg', '15회']);
   assert.ok(result.finalState.syncActions.includes('sheet:set-inline-field'));
+  assert.equal(result.finalState.mutationOptions.filter(options => options.optimisticRender === true).length, 2);
+  assert.equal(result.finalState.pendingMutationRender, null);
   assert.equal(result.finalState.toast?.message, '세트를 삭제했어요');
 });
 
