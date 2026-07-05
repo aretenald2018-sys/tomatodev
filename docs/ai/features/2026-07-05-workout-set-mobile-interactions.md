@@ -148,12 +148,15 @@
 6. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=880`.
 7. PASS: `git diff --check`.
 8. PASS: 모바일 브라우저 에뮬레이션 E2E - `kg/reps` tap focus clear, 값 변경, 삭제 hit target `38x34`, 삭제/펼침 gap `4`, 좌측 swipe 삭제 후 set count `1`, toast `세트를 삭제했어요`.
-9. PASS: 시각 확인 - `.omo/evidence/workout-set-mobile-interactions/mobile-set-row-after.png`.
-10. not verified yet: 운영 Pages 배포 검증은 커밋/푸시 후 실행해야 한다.
+9. PASS: 운영 Pages 배포 검증 - `npm.cmd run deploy:production`, deployed commit `147f25da88e9`, cache `tomatofarm-v20260705z1-workout-set-entry-followup-z2-workout-set-mobile-interactions`.
+10. PASS: 운영 Pages feature marker 검증 - `render-calendar.js::data-wt-set-edit-field`, `_bindWorkoutSetSwipeDelete`, `sheet:set-field-editor`, `style.css::is-swipe-delete-ready`.
+11. PASS: 운영 앱 모바일 smoke - 배포 URL에서 테스트 사용자/날짜 캐시로 day sheet를 열고 실제 터치가 `70kg` 버튼을 hit, `kg` input focus, value `''`, editor open, 삭제 hit target `36x34`, gap `3`.
+12. PASS: 운영 배포 source 모바일 swipe harness - 배포된 `render-calendar.js`/`style.css`를 사용해 `55kg / 15회` 변경 후 좌측 swipe 삭제, set count `1`, toast `세트를 삭제했어요`.
+13. PASS: 시각 확인 - `.omo/evidence/workout-set-mobile-interactions/mobile-set-row-after.png`, `.omo/evidence/workout-set-mobile-interactions/production-app-mobile-focus.png`, `.omo/evidence/workout-set-mobile-interactions/production-source-mobile-swipe.png`.
 
 ## 상태
 
 - 상태: `complete`
 - 차단 질문: 없음
 - 리뷰: `docs/ai/reviews/2026-07-05-workout-set-mobile-interactions-review.md`
-- 다음 액션: 커밋/운영 Pages 배포 검증
+- 다음 액션: 없음

@@ -19,8 +19,10 @@
   2. PASS: `node --test tests/*.test.js` - 704 pass.
   3. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=880`.
   4. PASS: 모바일 Chromium E2E evidence - `.omo/evidence/workout-set-mobile-interactions/mobile-set-row-e2e.json`, `.omo/evidence/workout-set-mobile-interactions/mobile-set-row-after.png`.
-  5. not verified yet: 운영 Pages 배포 검증은 커밋 후 남아 있다.
-- 다음 액션: 운영 Pages 배포 검증.
+  5. PASS: 운영 Pages 배포 검증 - commit `147f25da88e9`, cache `tomatofarm-v20260705z1-workout-set-entry-followup-z2-workout-set-mobile-interactions`.
+  6. PASS: 운영 앱 모바일 smoke - 실제 터치가 `70kg` 버튼을 hit하고 `kg` input focus/value `''`/editor open 확인.
+  7. PASS: 운영 배포 source 모바일 swipe harness - `55kg / 15회` 변경 후 좌측 swipe 삭제로 set count `1`.
+- 다음 액션: 없음.
 
 ## 2026-07-05 Workout Set Entry Follow-up
 
