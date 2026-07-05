@@ -1,5 +1,29 @@
 # 다음 자동 액션
 
+## 2026-07-06 Stats Raw Export Download
+
+- 상태: `complete`
+- 계획: `docs/ai/features/2026-07-06-stats-raw-export-download.md`
+- 리뷰: `docs/ai/reviews/2026-07-06-stats-raw-export-download-review.md`
+- 요청: 기간별 운동분석 카드 위에 `전체통계 다운로드` 버튼을 만들고, 운동 및 식단 관련 일자별 raw 데이터를 모두 내보낸다.
+- 그릴 결과:
+  1. raw 데이터는 CSV가 아니라 JSON으로 내보낸다. 운동 세트, 세션, 러닝 route, food 배열, 사진/추정 메타가 중첩 구조라 CSV는 정보 손실이 크다.
+  2. 통계 화면은 Firestore를 직접 조회하지 않고 `data.js`의 현재 일자 cache를 원천으로 쓴다.
+  3. raw workout/diet field boundary는 `workout/save-schema.js`의 payload key contract를 재사용한다.
+- 실행 슬라이스:
+  1. Slice 1: stats 탭 raw 일자별 JSON 다운로드 버튼과 export payload를 구현하고 테스트/asset/SW cache bump를 검증한다.
+- 실행 요약:
+  1. 기간별 운동분석 컨트롤 상단에 `전체통계 다운로드` 버튼을 추가하고 기존 하단 CSV inline 버튼을 제거했다.
+  2. `render-stats.js`에 `buildStatsRawExport()`와 다운로드 핸들러를 추가해 일자별 운동/식단 raw snapshot, schema payload key, body checkin 데이터를 JSON으로 내보낸다.
+  3. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260706z4-stats-raw-export`로 bump하고 cache marker 테스트를 갱신했다.
+- 검증:
+  1. PASS: `node --check render-stats.js`.
+  2. PASS: focused stats tests - 15 pass.
+  3. PASS: `node --test tests/*.test.js` - 709 pass.
+  4. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=882`.
+  5. PASS: Puppeteer static visual QA - mobile/desktop에서 버튼이 기간 버튼 위, 분석 카드 위에 있고 텍스트 clipping 없음.
+- 다음 액션: 없음.
+
 ## 2026-07-06 Running GPS Full Route Render
 
 - 상태: `complete`

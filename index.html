@@ -832,12 +832,20 @@
     <span>전체통계</span>
     <b>기간별 운동 분석</b>
   </div>
-  <div class="stats-analysis-periods" role="group" aria-label="운동 분석 기간">
-    <button type="button" class="stats-analysis-period" data-stats-analysis-period="week">이번주</button>
-    <button type="button" class="stats-analysis-period" data-stats-analysis-period="30">30일</button>
-    <button type="button" class="stats-analysis-period active" data-stats-analysis-period="90">90일</button>
-    <button type="button" class="stats-analysis-period" data-stats-analysis-period="180">180일</button>
-    <button type="button" class="stats-analysis-period" data-stats-analysis-period="all">전체</button>
+  <div class="stats-analysis-actions">
+    <button type="button" class="stats-raw-export-btn" data-stats-raw-export>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M12 1.7c.442 0 .8.358.8.8v14.069l5.634-5.634a.8.8 0 011.132 1.13l-7 7a.8.8 0 01-1.132 0l-7-7a.8.8 0 011.132-1.13L11.2 16.568V2.5c0-.442.358-.8.8-.8zM4.2 21.5c0-.442.358-.8.8-.8h14c.442 0 .8.358.8.8s-.358.8-.8.8H5c-.442 0-.8-.358-.8-.8z" fill="currentColor"/>
+      </svg>
+      <span>전체통계 다운로드</span>
+    </button>
+    <div class="stats-analysis-periods" role="group" aria-label="운동 분석 기간">
+      <button type="button" class="stats-analysis-period" data-stats-analysis-period="week">이번주</button>
+      <button type="button" class="stats-analysis-period" data-stats-analysis-period="30">30일</button>
+      <button type="button" class="stats-analysis-period active" data-stats-analysis-period="90">90일</button>
+      <button type="button" class="stats-analysis-period" data-stats-analysis-period="180">180일</button>
+      <button type="button" class="stats-analysis-period" data-stats-analysis-period="all">전체</button>
+    </div>
   </div>
 </div>
 <div class="stats-block stats-muscle-fatigue-block">
@@ -859,9 +867,6 @@
 <div class="stats-health-report">
 <div id="calorie-month-summary"></div>
 </div>
-</div>
-<div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
-<button class="export-btn" onclick="openExportModal()">📊 CSV 내보내기</button>
 </div>
 <div class="stats-block stats-performance-block">
 <div class="stats-block-title">운동별 퍼포먼스 추이</div>

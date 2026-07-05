@@ -2452,6 +2452,42 @@ body.wt-modal-scroll-lock {
   justify-content: flex-end;
   gap: 6px;
 }
+.stats-analysis-actions {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+.stats-raw-export-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  max-width: 100%;
+  padding: 7px 12px;
+  gap: 6px;
+  border: 1px solid var(--seed-stroke-neutral);
+  border-radius: var(--seed-r-full);
+  background: var(--seed-bg-fill);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.25;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform var(--transition), border-color var(--transition), background var(--transition), color var(--transition);
+  -webkit-tap-highlight-color: transparent;
+}
+.stats-raw-export-btn svg {
+  flex: 0 0 auto;
+}
+.stats-raw-export-btn:active {
+  transform: scale(0.97);
+}
+.stats-raw-export-btn:focus-visible {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-bg);
+}
 .stats-analysis-period {
   min-height: 30px;
   padding: 5px 10px;
@@ -3776,7 +3812,9 @@ body.wt-modal-scroll-lock {
   .stats-block { padding: 14px; }
   .stats-summary-block { padding: 0; }
   .stats-analysis-controls { grid-template-columns: 1fr; align-items: start; }
+  .stats-analysis-actions { justify-items: start; width: 100%; }
   .stats-analysis-periods { justify-content: flex-start; }
+  .stats-raw-export-btn { width: 100%; }
   .stats-summary-head { align-items: flex-start; flex-direction: column; gap: 2px; }
   .stats-summary-kpis,
   .stats-analysis-kpis,
@@ -4502,7 +4540,7 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 .quest-cell-title, .quest-item-title, .quest-period-badge,
 .diet-meal-label, .diet-badge, .diet-db-btn, .diet-skip-btn,
 .cooking-card-name, .cooking-dash-label,
-.stats-block-title, .period-btn, .export-btn, .stats-analysis-period,
+.stats-block-title, .period-btn, .export-btn, .stats-analysis-period, .stats-raw-export-btn,
 .home-card-title, .section-category-title, .sheet-section-label,
 .modal-title, .ex-editor-label, .ex-picker-group-label,
 .more-menu-item, .memo-input, .memo-item-label,
