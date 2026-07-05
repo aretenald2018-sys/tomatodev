@@ -47,11 +47,14 @@ function buildHarnessScript() {
     '_workoutSetTypeLabel',
     '_workoutSetTypeClass',
     '_workoutSetEditorKey',
+    '_workoutSetInlineFieldKey',
     '_isWorkoutSetEditorExpanded',
+    '_isWorkoutSetInlineEditing',
     '_isWorkoutSetTypeMenuOpen',
     '_workoutHomeScrollRoot',
     '_workoutSheetSelectorValue',
     '_renderWorkoutSetInput',
+    '_renderWorkoutSetInlineInput',
     '_renderWorkoutSetAddRow',
     '_renderWorkoutSetTypeMenu',
     '_renderWorkoutSetRows',
@@ -60,6 +63,8 @@ function buildHarnessScript() {
     '_clearWorkoutSetInputOnFocus',
     '_bindWorkoutSetSwipeDelete',
     '_bindWorkoutHomeSheetActions',
+    '_focusWorkoutSetInlineFieldFromSheet',
+    '_cancelWorkoutSetInlineFieldFromSheet',
     '_focusWorkoutSetEditorFieldFromSheet',
     '_toggleWorkoutSetEditorFromSheet',
     '_toggleWorkoutSetTypeMenuFromSheet',
@@ -81,6 +86,7 @@ function buildHarnessScript() {
     let _workoutHomeSheetState = 'bar';
     const _workoutOpenSetTypeMenus = new Set();
     const _workoutExpandedSetEditors = new Set();
+    let _workoutInlineSetEditor = null;
     window.__renderCalls = 0;
     window.__syncCalls = [];
     window.__restoreCalls = [];
@@ -278,13 +284,14 @@ test('mobile set row exposes editable kg/reps values and swipe delete targets in
   assert.equal(result.removeBeforeExpand, true);
 });
 
-test('mobile set row tap editing clears values and left swipe removes a set', async () => {
+test('mobile set row inline editing clears values and both swipe directions remove sets', async () => {
   const result = await runHarnessPage(async (page) => {
     await page.evaluate(() => {
       window.__entry = {
         sets: [
           { kg: 70, reps: 10, rir: 2, romPct: 100, setType: 'main', done: false },
           { kg: 40, reps: 12, rir: 2, romPct: 100, setType: 'main', done: false },
+          { kg: 35, reps: 14, rir: 2, romPct: 100, setType: 'main', done: false },
         ],
       };
       window.__syncCalls = [];
@@ -300,12 +307,14 @@ test('mobile set row tap editing clears values and left swipe removes a set', as
     }
 
     await tapSelector('[data-wt-set-edit-field="kg"][data-set-index="0"]');
-    await page.waitForFunction(() => document.activeElement?.matches?.('[data-wt-set-input][data-field="kg"][data-set-index="0"]'));
+    await page.waitForFunction(() => document.activeElement?.matches?.('[data-wt-set-inline-input][data-field="kg"][data-set-index="0"]'));
     const kgFocus = await page.evaluate(() => ({
       field: document.activeElement?.getAttribute('data-field') || '',
       value: document.activeElement?.value ?? null,
+      editorOpen: !!document.querySelector('.wt-max-set-editor'),
+      inlineEditing: !!document.querySelector('[data-wt-set-inline-input][data-field="kg"][data-set-index="0"]'),
     }));
-    await page.$eval('[data-wt-set-input][data-field="kg"][data-set-index="0"]', input => {
+    await page.$eval('[data-wt-set-inline-input][data-field="kg"][data-set-index="0"]', input => {
       input.value = '55';
       input.dispatchEvent(new Event('input', { bubbles: true }));
       input.dispatchEvent(new Event('change', { bubbles: true }));
@@ -313,12 +322,14 @@ test('mobile set row tap editing clears values and left swipe removes a set', as
     await page.waitForFunction(() => window.__entry.sets[0]?.kg === 55);
 
     await tapSelector('[data-wt-set-edit-field="reps"][data-set-index="0"]');
-    await page.waitForFunction(() => document.activeElement?.matches?.('[data-wt-set-input][data-field="reps"][data-set-index="0"]'));
+    await page.waitForFunction(() => document.activeElement?.matches?.('[data-wt-set-inline-input][data-field="reps"][data-set-index="0"]'));
     const repsFocus = await page.evaluate(() => ({
       field: document.activeElement?.getAttribute('data-field') || '',
       value: document.activeElement?.value ?? null,
+      editorOpen: !!document.querySelector('.wt-max-set-editor'),
+      inlineEditing: !!document.querySelector('[data-wt-set-inline-input][data-field="reps"][data-set-index="0"]'),
     }));
-    await page.$eval('[data-wt-set-input][data-field="reps"][data-set-index="0"]', input => {
+    await page.$eval('[data-wt-set-inline-input][data-field="reps"][data-set-index="0"]', input => {
       input.value = '15';
       input.dispatchEvent(new Event('input', { bubbles: true }));
       input.dispatchEvent(new Event('change', { bubbles: true }));
@@ -339,25 +350,31 @@ test('mobile set row tap editing clears values and left swipe removes a set', as
       };
     });
 
-    const row = await page.waitForSelector('[data-wt-set-swipe-row][data-set-index="1"]', { visible: true });
-    const rowBox = await row.boundingBox();
-    assert.ok(rowBox, 'second set row should have a bounding box');
-    const client = await page.target().createCDPSession();
-    const startX = rowBox.x + rowBox.width * 0.62;
-    const startY = rowBox.y + rowBox.height / 2;
-    await client.send('Input.dispatchTouchEvent', {
-      type: 'touchStart',
-      touchPoints: [{ x: startX, y: startY }],
-    });
-    await client.send('Input.dispatchTouchEvent', {
-      type: 'touchMove',
-      touchPoints: [{ x: startX - 74, y: startY + 3 }],
-    });
-    await client.send('Input.dispatchTouchEvent', {
-      type: 'touchEnd',
-      touchPoints: [],
-    });
-    await client.detach();
+    async function swipeSelector(selector, deltaX) {
+      const row = await page.waitForSelector(selector, { visible: true });
+      const rowBox = await row.boundingBox();
+      assert.ok(rowBox, `${selector} should have a bounding box`);
+      const client = await page.target().createCDPSession();
+      const startX = rowBox.x + rowBox.width * (deltaX > 0 ? 0.38 : 0.62);
+      const startY = rowBox.y + rowBox.height / 2;
+      await client.send('Input.dispatchTouchEvent', {
+        type: 'touchStart',
+        touchPoints: [{ x: startX, y: startY }],
+      });
+      await client.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [{ x: startX + deltaX, y: startY + 3 }],
+      });
+      await client.send('Input.dispatchTouchEvent', {
+        type: 'touchEnd',
+        touchPoints: [],
+      });
+      await client.detach();
+    }
+
+    await swipeSelector('[data-wt-set-swipe-row][data-set-index="2"]', 74);
+    await page.waitForFunction(() => window.__entry.sets.length === 2);
+    await swipeSelector('[data-wt-set-swipe-row][data-set-index="1"]', -74);
     await page.waitForFunction(() => window.__entry.sets.length === 1);
 
     const finalState = await page.evaluate(() => ({
@@ -376,16 +393,16 @@ test('mobile set row tap editing clears values and left swipe removes a set', as
     return { kgFocus, repsFocus, hitTargets, finalState };
   });
 
-  assert.deepEqual(result.kgFocus, { field: 'kg', value: '' });
-  assert.deepEqual(result.repsFocus, { field: 'reps', value: '' });
-  assert.ok(result.hitTargets.removeWidth >= 34);
-  assert.ok(result.hitTargets.removeHeight >= 34);
+  assert.deepEqual(result.kgFocus, { field: 'kg', value: '', editorOpen: false, inlineEditing: true });
+  assert.deepEqual(result.repsFocus, { field: 'reps', value: '', editorOpen: false, inlineEditing: true });
+  assert.ok(result.hitTargets.removeWidth >= 42);
+  assert.ok(result.hitTargets.removeHeight >= 38);
   assert.ok(result.hitTargets.removeCenterX < result.hitTargets.expandCenterX);
-  assert.ok(result.hitTargets.gap >= 0);
+  assert.ok(result.hitTargets.gap >= 8);
   assert.deepEqual(result.finalState.sets, [{ kg: 55, reps: 15, rir: 2, romPct: 100, setType: 'main', done: false }]);
   assert.equal(result.finalState.rows, 1);
   assert.deepEqual(result.finalState.values, ['55kg', '15회']);
-  assert.ok(result.finalState.syncActions.includes('sheet:set-field-editor'));
+  assert.ok(result.finalState.syncActions.includes('sheet:set-inline-field'));
   assert.equal(result.finalState.toast?.message, '세트를 삭제했어요');
 });
 
