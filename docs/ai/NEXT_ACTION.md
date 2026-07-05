@@ -2,7 +2,7 @@
 
 ## 2026-07-06 Running GPS Full Route Render
 
-- 상태: `local_verified_reviewing`
+- 상태: `complete`
 - 계획: `docs/ai/features/2026-07-06-running-gps-full-route-render.md`
 - 리뷰: `docs/ai/reviews/2026-07-06-running-gps-full-route-render-review.md`
 - 요청: 러닝 GPS 지도가 시작점과 끝점만 직선으로 연결하지 않고, 폰이 수집한 전체 이동경로를 순서대로 렌더링한다.
@@ -24,7 +24,9 @@
   3. PASS: Google provider boundary QA - polyline path key set `lat,lng` only.
   4. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=880`.
   5. PASS: `node --test tests/*.test.js`.
-- 다음 액션: review-work gate 재확인 후 commit/push 및 production Pages `verify:deploy`.
+  6. PASS: production deploy verify - cache `tomatofarm-v20260706z1-running-gps-full-route`.
+  7. PASS: production UI flow - Pages URL HTTP 200, deployed `workout/running-map.js` import, VWorld route `data-map-point-count=4`, polyline point count `4`.
+- 다음 액션: 없음.
 
 ## 2026-07-05 Workout Set Row Real Swipe Fix
 

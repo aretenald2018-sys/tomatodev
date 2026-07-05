@@ -54,7 +54,7 @@
 
 ## 다음 상태
 
-- 상태: `local_verified`
+- 상태: `complete`
 - 실행 요약:
   1. `workout/running-map.js`의 route point normalizer가 `lat/lng`, `latitude/longitude`, `latitude/lon` 샘플을 모두 같은 경로 배열로 정규화한다.
   2. `timestamp/time`을 `ts`로 통합하고 `accuracy`, `altitude`, `speed` metadata를 보존한다.
@@ -67,5 +67,6 @@
   3. PASS: Google provider boundary QA - polyline path, marker, bounds inputs are `lat/lng` only.
   4. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=880`.
   5. PASS: `node --test tests/*.test.js`.
-  6. PENDING: commit/push 후 production Pages `verify:deploy`.
-- 다음 실행 슬라이스: 리뷰와 production deploy verification만 남았다.
+  6. PASS: production Pages `verify:deploy` - cache `tomatofarm-v20260706z1-running-gps-full-route`.
+  7. PASS: production UI flow - Pages URL HTTP 200, deployed `workout/running-map.js` import, route point count `4`, polyline point count `4`.
+- 다음 실행 슬라이스: 없음.

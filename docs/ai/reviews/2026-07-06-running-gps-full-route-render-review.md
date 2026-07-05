@@ -17,8 +17,8 @@
 
 ## 결과
 
-- 상태: `local_verified_reviewing`
-- 판정: local implementation PASS, production deploy verification pending
+- 상태: `complete`
+- 판정: PASS
 
 ## 주요 확인
 
@@ -35,11 +35,12 @@
 - PASS: `node --test tests/*.test.js`
 - PASS: `.omo/evidence/gps-full-route-20260706/route-map-browser-qa.json`
 - PASS: `.omo/evidence/gps-full-route-20260706/google-provider-route-sanitized.json`
-- NOT YET: production Pages `verify:deploy` and deployed UI flow
+- PASS: production Pages `verify:deploy` - cache `tomatofarm-v20260706z1-running-gps-full-route`
+- PASS: production UI flow - Pages URL HTTP 200, deployed `workout/running-map.js` import, route point count `4`, polyline point count `4`
 
 ## 리뷰 메모
 
 - QA lane: PASS, short-lived browser harness로 전체 polyline point count 확인.
 - Code quality lane: PASS, blocking issue 없음.
 - Security lane: PASS 후 MEDIUM privacy note를 반영해 외부 provider 전달 route를 좌표 전용으로 제한.
-- Gate/context lane: 최초 FAIL 사유는 stale `NEXT_ACTION`, review doc 누락, ULW 상태/production verification pending이었다. stale 문서와 provider 보강은 반영했고, production verification은 commit/push 후 수행한다.
+- Gate/context lane: 최초 FAIL 사유는 stale `NEXT_ACTION`, review doc 누락, ULW 상태/production verification pending이었다. 문서 상태, provider 보강, commit/push, production verification을 반영했다.
