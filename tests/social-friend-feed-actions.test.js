@@ -68,5 +68,5 @@ test('reaction picker options inherit the feed action contract', () => {
 });
 
 test('service worker cache version was bumped for social feed actions', () => {
-  assert.match(swJs, /tomatofarm-v20260705z1-workout-set-entry-followup/);
+  assert.match(swJs, /tomatofarm-v20260706z1-running-gps-full-route/);
 });

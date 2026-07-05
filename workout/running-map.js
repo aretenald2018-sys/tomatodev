@@ -25,11 +25,29 @@ function _num(value, fallback = NaN) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function _finitePointNumber(value) {
+  if (value === null || value === undefined || value === '') return NaN;
+  return _num(value);
+}
+
 function _point(point) {
-  const lat = _num(point?.lat);
-  const lng = _num(point?.lng);
+  const lat = _finitePointNumber(point?.lat ?? point?.latitude);
+  const lng = _finitePointNumber(point?.lng ?? point?.lon ?? point?.longitude);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  return { lat, lng };
+  const normalized = { lat, lng };
+  const ts = _finitePointNumber(point?.ts ?? point?.timestamp ?? point?.time);
+  if (Number.isFinite(ts)) normalized.ts = ts;
+  const accuracy = _finitePointNumber(point?.accuracy);
+  if (Number.isFinite(accuracy)) normalized.accuracy = accuracy;
+  const altitude = _finitePointNumber(point?.altitude);
+  if (Number.isFinite(altitude)) normalized.altitude = altitude;
+  const speed = _finitePointNumber(point?.speed);
+  if (Number.isFinite(speed)) normalized.speed = speed;
+  return normalized;
+}
+
+function _providerRoutePoints(route) {
+  return route.map(({ lat, lng }) => ({ lat, lng }));
 }
 
 function _clearNode(node) {
@@ -659,6 +677,7 @@ export async function renderRunningMap(shell, options = {}) {
 
   const config = options.config || readRunningMapConfig();
   const route = normalizeRunningMapPoints(options.points || []);
+  const providerRoute = _providerRoutePoints(route);
   shell.dataset.mapProvider = config.provider;
   shell.dataset.mapPointCount = String(route.length);
 
@@ -670,10 +689,10 @@ export async function renderRunningMap(shell, options = {}) {
   _setState(shell, 'loading', `${config.label} 불러오는 중`);
   try {
     const instance = config.provider === 'vworld'
-      ? _renderVworldMap(canvas, route, config)
+      ? _renderVworldMap(canvas, providerRoute, config)
       : config.provider === 'tmap'
-        ? _renderTmap(canvas, await _loadTmap(config.key), route)
-        : _renderGoogleMap(canvas, await _loadGoogleMaps(config.key), route);
+        ? _renderTmap(canvas, await _loadTmap(config.key), providerRoute)
+        : _renderGoogleMap(canvas, await _loadGoogleMaps(config.key), providerRoute);
     _instances.set(shell, instance);
     _setState(shell, 'ready');
     return instance;

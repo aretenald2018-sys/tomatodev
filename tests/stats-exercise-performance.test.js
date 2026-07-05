@@ -33,5 +33,5 @@ test('exercise performance card uses TDS-like compact table styling', () => {
   assert.match(styleCss, /\.stats-perf-status/);
   assert.match(styleCss, /\.stats-perf-row\.is-growth \.stats-perf-status b \{ color: #2563eb; \}/);
   assert.doesNotMatch(styleCss, /\.stats-perf-row\.is-growth \.stats-perf-status b \{ color: var\(--diet-ok\); \}/);
-  assert.match(swJs, /tomatofarm-v20260705z1-workout-set-entry-followup/);
+  assert.match(swJs, /tomatofarm-v20260706z1-running-gps-full-route/);
 });

@@ -1,5 +1,31 @@
 # 다음 자동 액션
 
+## 2026-07-06 Running GPS Full Route Render
+
+- 상태: `local_verified_reviewing`
+- 계획: `docs/ai/features/2026-07-06-running-gps-full-route-render.md`
+- 리뷰: `docs/ai/reviews/2026-07-06-running-gps-full-route-render-review.md`
+- 요청: 러닝 GPS 지도가 시작점과 끝점만 직선으로 연결하지 않고, 폰이 수집한 전체 이동경로를 순서대로 렌더링한다.
+- 진단 요약:
+  1. `workout/running-map.js`의 공유 지도 normalizer는 현재 `lat/lng`만 허용한다.
+  2. `home/life-zone-state.js`는 이미 `latitude/longitude/lon` 형태를 지원한다.
+  3. 저장 상세 화면은 `runRoute`를 `row.route`로 전달하므로 지도 입력 경계에서 중간 샘플이 누락되지 않게 보정한다.
+  4. `workout/running-map.js`는 `sw.js` `STATIC_ASSETS`에 있으므로 cache version bump가 필요하다.
+- 실행 슬라이스:
+  1. Slice 1: 공유 러닝 지도 route point normalization 보정과 RED/GREEN/browser QA.
+- 실행 요약:
+  1. `workout/running-map.js`의 route point normalizer가 `lat/lng`, `latitude/longitude`, `latitude/lon` 샘플을 같은 경로 배열로 정규화한다.
+  2. 유효하지 않은 좌표는 버리고, 유효 샘플 순서와 지도 point count를 유지한다.
+  3. 외부 지도 provider에는 `lat/lng` 좌표만 전달해 `accuracy`, `altitude`, `speed`, `ts` metadata가 SDK 경계로 나가지 않게 했다.
+  4. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260706z1-running-gps-full-route`로 bump하고 cache marker 테스트를 갱신했다.
+- 검증:
+  1. PASS: focused RED/GREEN - `.omo/evidence/gps-full-route-20260706/red-green-tests.txt`.
+  2. PASS: VWorld browser QA - `data-map-point-count=4`, polyline point count `4`.
+  3. PASS: Google provider boundary QA - polyline path key set `lat,lng` only.
+  4. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=880`.
+  5. PASS: `node --test tests/*.test.js`.
+- 다음 액션: review-work gate 재확인 후 commit/push 및 production Pages `verify:deploy`.
+
 ## 2026-07-05 Workout Set Row Real Swipe Fix
 
 - 상태: `complete`

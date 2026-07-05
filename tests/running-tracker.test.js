@@ -80,6 +80,25 @@ test('running session route downsamples without rendering a fake map', () => {
   });
 });
 
+test('running map point normalizer preserves mixed phone route samples in order', () => {
+  const mixedRoute = [
+    { lat: 37.5209, lng: 126.9770, ts: 1000, accuracy: 8, altitude: 20, speed: 2.1 },
+    { latitude: 37.5215, longitude: 126.9790, timestamp: 61000, accuracy: 9, altitude: 22, speed: 2.4 },
+    { latitude: 37.5221, lon: 126.9810, time: 121000, accuracy: 10, altitude: 24, speed: 2.8 },
+    { latitude: 37.6, longitude: null, timestamp: 150000, accuracy: 7, altitude: 21, speed: 2.2 },
+    { latitude: null, longitude: 126.98, timestamp: 151000, accuracy: 7, altitude: 21, speed: 2.2 },
+    { lat: Infinity, lng: 126.9820, ts: 152000, accuracy: 7, altitude: 21, speed: 2.2 },
+    { lat: 37.5230, lng: 126.9830, time: 181000, accuracy: 11, altitude: 19, speed: 2.6 },
+  ];
+
+  assert.deepEqual(normalizeRunningMapPoints(mixedRoute), [
+    { lat: 37.5209, lng: 126.9770, ts: 1000, accuracy: 8, altitude: 20, speed: 2.1 },
+    { lat: 37.5215, lng: 126.9790, ts: 61000, accuracy: 9, altitude: 22, speed: 2.4 },
+    { lat: 37.5221, lng: 126.9810, ts: 121000, accuracy: 10, altitude: 24, speed: 2.8 },
+    { lat: 37.5230, lng: 126.9830, ts: 181000, accuracy: 11, altitude: 19, speed: 2.6 },
+  ]);
+});
+
 test('running real map provider config resolves VWorld, Google, and TMAP keys', () => {
   assert.deepEqual(resolveRunningMapConfig({ provider: 'auto' }), {
     provider: 'none',
