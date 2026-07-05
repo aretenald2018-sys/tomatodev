@@ -1,5 +1,29 @@
 # 다음 자동 액션
 
+## 2026-07-05 Workout Set Inline Swipe Fix
+
+- 상태: `complete`
+- 계획: `docs/ai/features/2026-07-05-workout-set-inline-swipe-fix.md`
+- 리뷰: `docs/ai/reviews/2026-07-05-workout-set-inline-swipe-fix-review.md`
+- 요청: 모바일 세트 행에서 `kg/횟수`를 펼침 패널 없이 해당 칸에서 직접 수정하고, 삭제 `×` hit target을 키워 파란 펼침 토글과 분리하며, 좌우 swipe로 세트 행을 삭제한다. 새 종목 추가 후 화면이 최초 종목으로 고정되는 회귀도 검증한다.
+- 실행 슬라이스:
+  1. Slice 1: 세트 행 인라인 숫자 수정, 삭제 hit target, 좌우 swipe 삭제, 새 종목 focus 회귀 검증.
+- 실행 요약:
+  1. 접힌 세트 행의 `kg/횟수` 값 버튼을 해당 칸 안의 숫자 input으로 전환하는 인라인 편집 경로를 추가했다.
+  2. 인라인 input focus 시 기존 숫자를 비워 바로 재입력할 수 있게 했다.
+  3. 삭제 `×` hit target을 모바일 기준 42px x 38px 이상으로 키우고, 파란 펼침 토글과 8px 간격으로 분리했다.
+  4. 세트 행 swipe 삭제 판정을 좌우 양방향으로 확장했다.
+  5. 새 종목 추가 후 선택 slide 복원 회귀 테스트를 유지하고 실행했다.
+  6. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260705z1-workout-set-entry-followup-z3-workout-set-inline-swipe`로 bump했다.
+- 검증:
+  1. PASS: RED focused tests 실패 확인.
+  2. PASS: focused syntax/assets/tests - `verify:assets`, 37 pass.
+  3. PASS: `node --test tests/*.test.js` - 704 pass.
+  4. PASS: `npm.cmd run deploy:production` - GitHub Pages deploy and marker verification passed.
+  5. PASS: production mobile E2E - `kg` focus value `''`, editor open `false`, inline editing `true`, delete target `42 x 38`, expand gap `8`.
+  6. PASS: production source harness - `55kg / 15회` 저장 후 오른쪽 swipe와 왼쪽 swipe로 두 세트 삭제, 최종 row count `1`.
+- 다음 액션: 없음.
+
 ## 2026-07-05 Workout Set Mobile Interactions
 
 - 상태: `complete`
