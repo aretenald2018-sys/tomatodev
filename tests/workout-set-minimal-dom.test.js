@@ -206,7 +206,7 @@ test('minimal set row opens right editor and left M/W/D/F menu in a browser DOM'
 
   assert.equal(result.collapsed.inputCount, 0);
   assert.equal(result.collapsed.hasEditor, false);
-  assert.equal(result.collapsed.typeText, '1본');
+  assert.equal(result.collapsed.typeText, '1메인');
   assert.deepEqual(result.collapsed.valueText, ['40kg', '10회']);
   assert.equal(result.collapsed.hasRirText, false);
   assert.equal(result.collapsed.hasRomText, false);

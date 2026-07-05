@@ -2012,18 +2012,18 @@ function _formatWorkoutVolumeTon(value) {
 function _workoutSetTypeLabel(setOrType = {}) {
   const set = setOrType && typeof setOrType === 'object' ? setOrType : {};
   const type = typeof setOrType === 'string' ? setOrType : set.setType;
-  if (set.wendlerRole === 'warmup') return '프리';
+  if (set.wendlerRole === 'warmup') return '웜업';
   if (set.wendlerRole === 'main') return '메인';
   if (set.wendlerRole === 'supplemental') {
     if (set.supplementalKind === 'bbb') return 'BBB';
     if (set.supplementalKind === 'fsl') return 'FSL';
     return '보조';
   }
-  if (type === 'warmup') return '프리';
+  if (type === 'warmup') return '웜업';
   if (type === 'drop') return '드랍';
   if (type === 'failure') return '실패';
   if (type === 'deload') return '디로드';
-  return '본';
+  return '메인';
 }
 
 function _workoutSetTypeClass(setOrType = {}) {
@@ -2320,6 +2320,10 @@ function _renderWorkoutSetRows(row, options = {}) {
     const rom = Math.max(0, Math.min(100, Math.round(_num(set.romPct) || 100)));
     const kgText = _formatWorkoutKg(set.kg);
     const repsText = _formatWorkoutReps(set.reps);
+    const kgDisplayText = kgText === '-' ? '미입력' : kgText;
+    const repsDisplayText = repsText === '-' ? '미입력' : repsText;
+    const kgUnit = kgText === '-' ? '' : '<small>kg</small>';
+    const repsUnit = repsText === '-' ? '' : '<small>회</small>';
     const expanded = editable && _isWorkoutSetEditorExpanded(key, sessionIndex, exerciseIndex, setIndex);
     const typeMenuOpen = editable && _isWorkoutSetTypeMenuOpen(key, sessionIndex, exerciseIndex, setIndex);
     const setTypeLabel = _workoutSetTypeLabel(set);
@@ -2334,14 +2338,14 @@ function _renderWorkoutSetRows(row, options = {}) {
           ${editable
             ? `<button type="button" class="wt-max-set-check wt-max-set-toggle" data-wt-set-done-toggle data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" aria-pressed="${set.done ? 'true' : 'false'}" aria-label="세트 완료 토글">✓</button>
                ${typeControl}
-               <span class="wt-max-set-value"><b>${_esc(kgText)}${kgText === '-' ? '' : '<small>kg</small>'}</b></span>
-               <span class="wt-max-set-value"><b>${_esc(repsText)}${repsText === '-' ? '' : '<small>회</small>'}</b></span>
+               <span class="wt-max-set-value"><b>${_esc(kgDisplayText)}${kgUnit}</b></span>
+               <span class="wt-max-set-value"><b>${_esc(repsDisplayText)}${repsUnit}</b></span>
                <button type="button" class="wt-max-set-remove wt-max-set-remove-btn" data-wt-set-remove data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" aria-label="세트 삭제">×</button>
                <button type="button" class="wt-max-set-expand" data-wt-sheet-card-action="toggle-set-editor" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '세트 수정 닫기' : '세트 수정 열기'}"><span aria-hidden="true">${expanded ? '⌃' : '⌄'}</span></button>`
             : `<i class="wt-max-set-check" aria-hidden="true">✓</i>
                ${typeControl}
-               <span class="wt-max-set-value"><b>${_esc(kgText)}${kgText === '-' ? '' : '<small>kg</small>'}</b></span>
-               <span class="wt-max-set-value"><b>${_esc(repsText)}${repsText === '-' ? '' : '<small>회</small>'}</b></span>
+               <span class="wt-max-set-value"><b>${_esc(kgDisplayText)}${kgUnit}</b></span>
+               <span class="wt-max-set-value"><b>${_esc(repsDisplayText)}${repsUnit}</b></span>
                <i class="wt-max-set-remove" aria-hidden="true">×</i>
                <i class="wt-max-set-expand" aria-hidden="true">⌄</i>`}
         </div>
@@ -3334,10 +3338,12 @@ function _setWorkoutSheetNumber(value, fallback = 0, options = {}) {
 }
 
 function _defaultWorkoutSheetSet(prev = null) {
+  const kg = _workoutSheetRawNumber(prev?.kg);
+  const reps = _workoutSheetRawNumber(prev?.reps);
   return {
     setType: prev?.setType || 'main',
-    kg: prev ? _workoutSheetRawNumber(prev.kg) : '',
-    reps: prev ? _workoutSheetRawNumber(prev.reps) : '',
+    kg: kg === '' ? 40 : kg,
+    reps: reps === '' ? 10 : reps,
     rpe: 0,
     rir: Number.isFinite(Number(prev?.rir)) ? Number(prev.rir) : 2,
     romPct: Number.isFinite(Number(prev?.romPct)) ? Number(prev.romPct) : 100,

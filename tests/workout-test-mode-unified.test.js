@@ -79,15 +79,16 @@ test('exercise picker always creates test-mode entries on Dashboard3', () => {
 
   const generatedSets = sliceByFirstBrace(exercisesJs, 'function _testModeSetsFromPrescription');
   assert.match(generatedSets, /_firstTestModePrescriptionSet/);
+  assert.match(generatedSets, /prescription\.program === 'wendler'/);
   assert.match(generatedSets, /_defaultTestModeSet\(\)/);
   assert.match(generatedSets, /prescription\.applySets === true/);
   assert.match(generatedSets, /prescription\.sets/);
-  assert.doesNotMatch(generatedSets, /prescription\.sets\.map/);
+  assert.match(generatedSets, /prescription\.sets\.map/);
   assert.match(generatedSets, /Number\(prescription\.targetRpe\) \|\| null/);
   assert.doesNotMatch(generatedSets, /targetSets|startKg|repsHigh|repsLow|Array\.from/);
 
   const programEntry = sliceByFirstBrace(exercisesJs, 'function _buildProgramPickerExerciseEntry');
-  assert.match(programEntry, /_firstTestModePrescriptionSet\(program\.prescription\)/);
+  assert.match(programEntry, /_testModeSetsFromPrescription\(program\.prescription\)/);
   assert.doesNotMatch(programEntry, /sets:\s*program\.prescription\.sets\s*\|\|/);
 
   const pickerEntry = sliceByFirstBrace(exercisesJs, 'function _buildPickerExerciseEntry');
@@ -100,13 +101,33 @@ test('exercise picker always creates test-mode entries on Dashboard3', () => {
   );
 });
 
+test('exercise picker seeds the first manual row from latest work set or 40x10 fallback', () => {
+  const defaultSet = sliceByFirstBrace(exercisesJs, 'function _defaultPickerExerciseSet');
+  assert.match(defaultSet, /const latest = _latestPickerExerciseSet\(ex\?\.id\)/);
+  assert.match(defaultSet, /kg:\s*latest\?\.kg \|\| 40/);
+  assert.match(defaultSet, /reps:\s*latest\?\.reps \|\| 10/);
+  assert.match(defaultSet, /done:\s*false/);
+
+  const latestSet = sliceByFirstBrace(exercisesJs, 'function _latestPickerExerciseSet');
+  assert.match(latestSet, /getCache\(\)/);
+  assert.match(latestSet, /getWorkoutSessions/);
+  assert.match(latestSet, /todayKey/);
+  assert.match(latestSet, /entry\?\.exerciseId !== exerciseId/);
+  assert.match(latestSet, /set\.setType === 'warmup'/);
+
+  const pickerEntry = sliceByFirstBrace(exercisesJs, 'function _buildPickerExerciseEntry');
+  assert.match(pickerEntry, /entry\.sets = \[_defaultPickerExerciseSet\(ex\)\]/);
+  assert.match(pickerEntry, /sets:\s*\[_defaultPickerExerciseSet\(ex\)\]/);
+  assert.doesNotMatch(pickerEntry, /sets:\s*\[\{ kg:\s*0,\s*reps:\s*0,\s*setType:\s*'main'/);
+});
+
 test('wendler generated sets render program role chips instead of normal set type chips', () => {
   const labelFn = sliceByFirstBrace(exercisesJs, 'function _maxSetTypeLabel');
-  assert.match(labelFn, /set\?\.wendlerRole === 'warmup'[\s\S]*return '프리'/);
+  assert.match(labelFn, /set\?\.wendlerRole === 'warmup'[\s\S]*return '웜업'/);
   assert.match(labelFn, /set\?\.wendlerRole === 'main'[\s\S]*return '메인'/);
   assert.match(labelFn, /supplementalKind === 'bbb'[\s\S]*return 'BBB'/);
   assert.match(labelFn, /supplementalKind === 'fsl'[\s\S]*return 'FSL'/);
-  assert.match(labelFn, /return '본'/);
+  assert.match(labelFn, /return '메인'/);
 
   const nextFn = sliceByFirstBrace(exercisesJs, 'function _nextMaxSetType');
   assert.match(nextFn, /_isWendlerSet\(set\)[\s\S]*return type \|\| 'main'/);
@@ -149,5 +170,5 @@ test('Dashboard3 mode controls cannot persist normal or pro workout record UI', 
 });
 
 test('service worker cache version was bumped for workout asset changes', () => {
-  assert.match(swJs, /tomatofarm-v20260704z6-running-restore-overlay/);
+  assert.match(swJs, /tomatofarm-v20260705z1-workout-set-entry-followup/);
 });

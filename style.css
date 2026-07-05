@@ -13276,9 +13276,9 @@ body.lz-running-record-modal-open {
 .wt-max-set-value b {
   min-width: 0;
   height: 26px;
-  padding: 0 5px;
-  border-radius: 7px;
-  background: #fff;
+  padding: 0 2px;
+  border-radius: 0;
+  background: transparent;
   color: #111827;
   text-align: center;
   font-size: 14px;
@@ -13350,8 +13350,7 @@ body.lz-running-record-modal-open {
 .wt-max-set-toggle {
   border: 1px solid #d9dee8;
 }
-.wt-max-set-remove-btn,
-.wt-max-set-expand {
+.wt-max-set-remove-btn {
   background: transparent;
 }
 .wt-max-set-remove {
@@ -13364,6 +13363,9 @@ body.lz-running-record-modal-open {
   padding: 0;
   border: 0;
   border-radius: 8px;
+  background: rgba(33, 124, 249, 0.12);
+  color: #217cf9;
+  box-shadow: 0 0 0 1px rgba(33, 124, 249, 0.18), 0 0 14px rgba(33, 124, 249, 0.24);
   cursor: pointer;
   font-family: inherit;
   font-size: 16px;
@@ -13372,12 +13374,16 @@ body.lz-running-record-modal-open {
   -webkit-tap-highlight-color: transparent;
 }
 .wt-max-set-expand[aria-expanded="true"] {
-  background: #fff;
-  color: #111827;
+  background: #217cf9;
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(33, 124, 249, 0.24), 0 0 16px rgba(33, 124, 249, 0.32);
 }
-.wt-max-set-row.is-done .wt-max-set-remove,
-.wt-max-set-row.is-done .wt-max-set-expand {
+.wt-max-set-row.is-done .wt-max-set-remove {
   color: #d5d9e1;
+}
+.wt-max-set-row.is-done .wt-max-set-expand {
+  color: #217cf9;
+  opacity: 0.72;
 }
 .wt-max-set-type-menu {
   position: absolute;
@@ -13504,23 +13510,37 @@ body.lz-running-record-modal-open {
 }
 .wt-max-set-editor {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
   margin-top: 6px;
   padding-top: 8px;
   border-top: 1px solid #dde3ed;
 }
 .wt-max-set-editor label {
+  position: relative;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 12px 26px;
   align-items: center;
-  gap: 5px;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+  min-height: 40px;
+}
+.wt-max-set-editor label span {
+  text-align: center;
 }
 .wt-max-set-editor label em {
+  position: absolute;
+  right: 6px;
+  bottom: 3px;
   color: #687486;
-  font-size: 10px;
+  font-size: 9px;
+  line-height: 20px;
   font-style: normal;
   font-weight: 900;
+  text-align: center;
+  pointer-events: none;
 }
 .wt-max-empty-sets {
   padding: 9px;
@@ -14166,6 +14186,7 @@ body.lz-running-record-modal-open {
     line-height: 22px;
   }
   .wt-max-set-editor {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 6px;
     margin-top: 5px;
     padding-top: 7px;

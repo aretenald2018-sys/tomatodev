@@ -59,6 +59,6 @@ test('friend profile feed refreshes are scheduled instead of direct dependency c
 });
 
 test('service worker caches social render scheduler assets', () => {
-  assert.match(swJs, /tomatofarm-v20260704z6-running-restore-overlay/);
+  assert.match(swJs, /tomatofarm-v20260705z1-workout-set-entry-followup/);
   assert.match(swJs, /\.\/home\/social-render-scheduler\.js/);
 });

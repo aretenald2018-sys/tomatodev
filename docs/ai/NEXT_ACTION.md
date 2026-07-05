@@ -1,5 +1,36 @@
 # 다음 자동 액션
 
+## 2026-07-05 Workout Set Entry Follow-up
+
+- 상태: `complete`
+- 계획: `docs/ai/features/2026-07-05-workout-set-entry-followup.md`
+- 리뷰: `docs/ai/reviews/2026-07-05-workout-set-entry-followup-review.md`
+- 요청: 운동 첫 추가 시 첫 세트 값을 직전 수행 세트 또는 `40kg x 10회`로 채우고, 접힌 행의 입력칸 오인 요소를 제거하며, 펼친 편집 필드를 한 줄로 만들고, 세트 유형 라벨을 `메인/웜업`으로 바꾼다. 단, 웬들러 프로그램 운동은 해당 주 처방 세트를 전부 불러온다.
+- 진단 요약:
+  1. `render-calendar.js`의 `_defaultWorkoutSheetSet(prev)`는 직전 세트가 있으면 복사하지만 직전 세트가 없으면 빈 값으로 둔다.
+  2. `workout/exercises.js`의 일반 picker entry는 현재 `{ kg: 0, reps: 0 }` 첫 행을 만들고, 웬들러 program prescription은 전체 세트를 갖고 있어도 사용자 표시용 `entry.sets`가 1행으로 줄어들 수 있다.
+  3. `render-calendar.js`의 `_workoutSetTypeLabel()`은 일반 main/warmup을 `본`/`프리`로 표기한다.
+  4. `style.css`의 `.wt-max-set-expand`와 `.wt-max-set-editor`가 우측 파란 affordance 및 한 줄 입력 밀도 보정 지점이다.
+- 실행 슬라이스:
+  1. Slice 1: 첫 행 기본값, 접힌 행 affordance, 한 줄 편집 패널, `메인/웜업` 라벨, 웬들러 전체 세트 예외를 구현한다.
+- 계획 검증:
+  1. PASS: 기존 완료 계획 `docs/ai/features/2026-07-04-workout-set-copy-expand-edit.md`와 충돌하지 않는 후속 계획을 새로 작성했다.
+  2. PASS: 정적 asset 수정 예상 파일에 따라 `sw.js` cache bump가 필수임을 계획에 명시했다.
+  3. PASS: 실행 범위가 `render-calendar.js`, `style.css`, `workout/exercises.js`, 관련 테스트, `sw.js`로 제한된다.
+- 실행 요약:
+  1. 운동 첫 추가 시 최근 유효 본세트 `kg/reps`를 seed로 쓰고, 이력이 없으면 `40kg x 10회`를 표시한다.
+  2. 접힌 세트 행은 입력칸 없이 값 정보만 표출하고, 레거시 빈 값은 `미입력`으로 표시한다.
+  3. 우측 펼침 버튼은 파란 affordance/glow를 가진다.
+  4. 펼친 편집 패널은 `무게/횟수/RIR/ROM` 4개 입력을 한 줄로 배치한다.
+  5. 라벨은 `메인/웜업`으로 바꿨고, 웬들러 프로그램 운동은 해당 주 처방 세트 전체를 불러온다.
+  6. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260705z1-workout-set-entry-followup`로 bump했다.
+- 검증:
+  1. PASS: RED targeted tests 실패 확인.
+  2. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-set-minimal-dom.test.js tests/workout-test-mode-unified.test.js tests/calc.max.test.js` - 98 pass.
+  3. PASS: `node --test tests/*.test.js` - 701 pass.
+  4. PASS: Puppeteer visual DOM QA - `.omo/evidence/workout-set-entry-followup-dom.png`.
+- 다음 액션: 없음. 운영 배포 검증이 끝나면 최종 완료.
+
 ## 2026-07-04 Running Lock GPS Recovery
 
 - 상태: `complete`

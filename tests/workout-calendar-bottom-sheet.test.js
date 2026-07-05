@@ -542,7 +542,7 @@ test('day sheet set rows preserve wendler set role chips', () => {
   assert.match(rows, /wendlerRole:\s*set\.wendlerRole \|\| ''/);
   assert.match(rows, /supplementalKind:\s*set\.supplementalKind \|\| ''/);
   assert.match(rows, /wendlerPct/);
-  assert.match(labelFn, /set\.wendlerRole === 'warmup'[\s\S]*return '프리'/);
+  assert.match(labelFn, /set\.wendlerRole === 'warmup'[\s\S]*return '웜업'/);
   assert.match(labelFn, /set\.wendlerRole === 'main'[\s\S]*return '메인'/);
   assert.match(labelFn, /set\.wendlerRole === 'supplemental'[\s\S]*supplementalKind === 'bbb'[\s\S]*return 'BBB'/);
   assert.match(labelFn, /supplementalKind === 'fsl'[\s\S]*return 'FSL'/);
@@ -618,8 +618,10 @@ test('day sheet added workout sets copy previous user values without completion 
   assert.match(calendarJs, /function _isBlankWorkoutSheetNumber/);
   assert.match(calendarJs, /function _workoutSheetInputValue/);
   assert.match(calendarJs, /function _workoutSheetRawNumber/);
-  assert.match(defaults, /kg:\s*prev \? _workoutSheetRawNumber\(prev\.kg\) : ''/);
-  assert.match(defaults, /reps:\s*prev \? _workoutSheetRawNumber\(prev\.reps\) : ''/);
+  assert.match(defaults, /const kg = _workoutSheetRawNumber\(prev\?\.kg\)/);
+  assert.match(defaults, /const reps = _workoutSheetRawNumber\(prev\?\.reps\)/);
+  assert.match(defaults, /kg:\s*kg === '' \? 40 : kg/);
+  assert.match(defaults, /reps:\s*reps === '' \? 10 : reps/);
   assert.match(defaults, /setType:\s*prev\?\.setType \|\| 'main'/);
   assert.match(defaults, /done:\s*false/);
   assert.doesNotMatch(defaults, /completedAt|exerciseCompletedAt|wendlerRole|wendlerPct|supplementalKind|amrap/);
@@ -630,10 +632,16 @@ test('day sheet added workout sets copy previous user values without completion 
   assert.match(updateFn, /safeField === 'reps'[\s\S]*allowEmpty: true/);
   assert.match(rowsFn, /_workoutSheetInputValue\(set\.kg, 1\)/);
   assert.match(rowsFn, /_workoutSheetInputValue\(set\.reps, 0\)/);
+  assert.match(rowsFn, /const kgDisplayText = kgText === '-' \? '미입력' : kgText/);
+  assert.match(rowsFn, /const repsDisplayText = repsText === '-' \? '미입력' : repsText/);
   assert.match(rowsFn, /const expanded = editable && _isWorkoutSetEditorExpanded/);
   assert.match(rowsFn, /data-wt-sheet-card-action="toggle-set-editor"/);
   assert.match(rowsFn, /wt-max-set-editor/);
   assert.match(rowsFn, /aria-label="\$\{expanded \? '세트 수정 닫기' : '세트 수정 열기'\}"/);
+  assert.match(styleCss, /\.wt-max-set-editor\s*\{[\s\S]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(styleCss, /\.wt-max-set-editor label\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(styleCss, /\.wt-max-set-expand\s*\{[\s\S]*background:\s*rgba\(33,\s*124,\s*249,\s*0\.12\);[\s\S]*box-shadow:\s*0 0 0 1px rgba\(33,\s*124,\s*249,\s*0\.18\),\s*0 0 14px rgba\(33,\s*124,\s*249,\s*0\.24\);/);
+  assert.match(styleCss, /\.wt-max-set-expand\[aria-expanded="true"\]\s*\{[\s\S]*background:\s*#217cf9;[\s\S]*color:\s*#fff;/);
 });
 
 test('day sheet set rows keep goal/history blocks and use minimal collapsed editing', () => {
@@ -987,5 +995,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260704z6-running-restore-overlay/);
+  assert.match(swJs, /tomatofarm-v20260705z1-workout-set-entry-followup/);
 });

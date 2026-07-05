@@ -811,16 +811,16 @@ function _isWendlerSet(set = {}) {
 }
 
 function _maxSetTypeLabel(type, set = {}) {
-  if (set?.wendlerRole === 'warmup') return '프리';
+  if (set?.wendlerRole === 'warmup') return '웜업';
   if (set?.wendlerRole === 'main') return '메인';
   if (set?.wendlerRole === 'supplemental') {
     if (set.supplementalKind === 'bbb') return 'BBB';
     if (set.supplementalKind === 'fsl') return 'FSL';
     return '보조';
   }
-  if (type === 'warmup') return '프리';
+  if (type === 'warmup') return '웜업';
   if (type === 'drop') return '드랍';
-  return '본';
+  return '메인';
 }
 
 function _maxSetTypeClass(type, set = {}) {
@@ -1625,7 +1625,7 @@ function _renderSets(entryIdx, targetEl = null) {
       : `
         <span class="set-num">${si+1}</span>
         <select class="set-type-select ${isWarmup ? 'warmup' : (isDrop ? 'drop' : 'main')}" data-idx="${si}">
-          <option value="main"   ${!isWarmup && !isDrop ?'selected':''}>본</option>
+          <option value="main"   ${!isWarmup && !isDrop ?'selected':''}>메인</option>
           <option value="warmup" ${isWarmup ?'selected':''}>웜업</option>
           <option value="drop"   ${isDrop ?'selected':''}>드랍</option>
         </select>
@@ -1791,6 +1791,59 @@ function _formatPickerSetBadge(set) {
     : `${_fmtNum(reps)}회`;
 }
 
+function _normalizePickerSeedNumber(value, options = {}) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return options.integer ? Math.round(n) : Math.round(n * 10) / 10;
+}
+
+function _pickerSeedFromSet(set = {}) {
+  const kg = _normalizePickerSeedNumber(set?.kg);
+  const reps = _normalizePickerSeedNumber(set?.reps, { integer: true });
+  if (kg <= 0 || reps <= 0) return null;
+  return { kg, reps };
+}
+
+function _latestPickerExerciseSet(rawExerciseId) {
+  const exerciseId = String(rawExerciseId || '').trim();
+  if (!exerciseId) return null;
+  const cache = getCache() || {};
+  const todayKey = _todayDateKey();
+  const keys = Object.keys(cache)
+    .filter(key => /^\d{4}-\d{2}-\d{2}$/.test(key) && key !== todayKey)
+    .sort((a, b) => b.localeCompare(a));
+  for (const key of keys) {
+    const sessions = getWorkoutSessions(cache[key]);
+    for (let sessionIndex = sessions.length - 1; sessionIndex >= 0; sessionIndex -= 1) {
+      const entries = Array.isArray(sessions[sessionIndex]?.exercises)
+        ? sessions[sessionIndex].exercises
+        : [];
+      for (let entryIndex = entries.length - 1; entryIndex >= 0; entryIndex -= 1) {
+        const entry = entries[entryIndex];
+        if (entry?.exerciseId !== exerciseId) continue;
+        const sets = Array.isArray(entry?.sets) ? entry.sets : [];
+        for (let setIndex = sets.length - 1; setIndex >= 0; setIndex -= 1) {
+          const set = sets[setIndex];
+          if (!set || set.setType === 'warmup') continue;
+          const seed = _pickerSeedFromSet(set);
+          if (seed) return seed;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function _defaultPickerExerciseSet(ex = null) {
+  const latest = _latestPickerExerciseSet(ex?.id);
+  return {
+    kg: latest?.kg || 40,
+    reps: latest?.reps || 10,
+    setType: 'main',
+    done: false,
+  };
+}
+
 function _renderMaxBenchmarkPickerMeta(ex) {
   const b = ex?.__maxBenchmark || null;
   if (!b) {
@@ -1891,6 +1944,19 @@ function _firstTestModePrescriptionSet(prescription) {
 
 function _testModeSetsFromPrescription(prescription) {
   if (!prescription) return null;
+  if (prescription.applySets === true && prescription.program === 'wendler' && Array.isArray(prescription.sets) && prescription.sets.length) {
+    return prescription.sets.map(set => {
+      const next = {
+        ..._defaultTestModeSet(),
+        ...set,
+        rpe: set?.rpe ?? set?.rpeTarget ?? null,
+        setType: set?.setType || 'main',
+        done: set?.done === true,
+        romPct: _normalizeRomPct(set?.romPct) ?? 100,
+      };
+      return next.done === true ? next : stripSetCompletedAt(next);
+    });
+  }
   if (prescription.applySets === true && Array.isArray(prescription.sets) && prescription.sets.length) {
     return [_firstTestModePrescriptionSet(prescription)];
   }
@@ -1964,7 +2030,7 @@ function _buildProgramPickerExerciseEntry(ex) {
     exerciseId: ex.id,
     name: ex.name || benchmark.label || '',
     movementId: ex.movementId || benchmark.movementId || null,
-    sets: [_firstTestModePrescriptionSet(program.prescription)],
+    sets: _testModeSetsFromPrescription(program.prescription),
     maxPrescription: program.prescription,
     recommendationMeta: {
       ...program.recommendationMeta,
@@ -1987,14 +2053,19 @@ function _buildPickerExerciseEntry(ex) {
       todayKey: _todayDateKey(),
       currentGymId: _currentPickerGymId(),
     });
-    if (entry) return _ensureTestModePickerEntry(entry, ex, { benchmark: ex.__maxBenchmark, cycle: ex.__maxCycle });
+    if (entry) {
+      if (!entry.maxPrescription && !ex.__maxBenchmark) {
+        entry.sets = [_defaultPickerExerciseSet(ex)];
+      }
+      return _ensureTestModePickerEntry(entry, ex, { benchmark: ex.__maxBenchmark, cycle: ex.__maxCycle });
+    }
   }
   const entry = {
     muscleId: ex.muscleId,
     exerciseId: ex.id,
     name: ex.name,
     movementId: ex.movementId || null,
-    sets: [{ kg: 0, reps: 0, setType: 'main', done: false }],
+    sets: [_defaultPickerExerciseSet(ex)],
   };
   return _isTestModePickerContext() ? _ensureTestModePickerEntry(entry, ex) : entry;
 }
