@@ -2247,7 +2247,7 @@ function _renderWorkoutTrackGraph(row, bestSet) {
 
 function _renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setIndex, field, value, label, step = '1') {
   const inputMode = field === 'reps' || field === 'romPct' ? 'numeric' : 'decimal';
-  return `<input type="number" inputmode="${inputMode}" min="0" step="${_esc(step)}" value="${_esc(value)}" aria-label="${_esc(label)}" data-wt-set-input data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" data-field="${_esc(field)}" onchange="window._wtCalUpdateExerciseSet('${key}', ${sessionIndex}, ${exerciseIndex}, ${setIndex}, '${field}', this.value, this)">`;
+  return `<input type="number" inputmode="${inputMode}" min="0" step="${_esc(step)}" value="${_esc(value)}" aria-label="${_esc(label)}" data-wt-set-input data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" data-field="${_esc(field)}" data-wt-set-clear-on-focus onchange="window._wtCalUpdateExerciseSet('${key}', ${sessionIndex}, ${exerciseIndex}, ${setIndex}, '${field}', this.value, this)">`;
 }
 
 function _workoutSetEditorKey(key, sessionIndex, exerciseIndex, setIndex) {
@@ -2332,14 +2332,17 @@ function _renderWorkoutSetRows(row, options = {}) {
     const typeControl = editable
       ? `<button type="button" class="wt-max-set-type wt-max-set-type-btn ${_esc(setTypeClass)}" data-wt-sheet-card-action="toggle-set-type" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" aria-expanded="${typeMenuOpen ? 'true' : 'false'}" aria-label="${setIndex + 1}세트 유형 선택"><b>${setIndex + 1}</b><small>${_esc(setTypeLabel)}</small></button>`
       : `<span class="wt-max-set-type ${_esc(setTypeClass)}"><b>${setIndex + 1}</b><small>${_esc(setTypeLabel)}</small></span>`;
+    const swipeAttrs = editable
+      ? ` data-wt-set-swipe-row data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}"`
+      : '';
     return `
-      <div class="wt-max-set-row ${set.done ? 'is-done' : ''} ${editable ? 'is-editing' : ''} ${expanded ? 'is-expanded-editor' : ''} ${typeMenuOpen ? 'is-type-menu-open' : ''}">
+      <div class="wt-max-set-row ${set.done ? 'is-done' : ''} ${editable ? 'is-editing' : ''} ${expanded ? 'is-expanded-editor' : ''} ${typeMenuOpen ? 'is-type-menu-open' : ''}"${swipeAttrs}>
         <div class="wt-max-set-main">
           ${editable
             ? `<button type="button" class="wt-max-set-check wt-max-set-toggle" data-wt-set-done-toggle data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" aria-pressed="${set.done ? 'true' : 'false'}" aria-label="세트 완료 토글">✓</button>
                ${typeControl}
-               <span class="wt-max-set-value"><b>${_esc(kgDisplayText)}${kgUnit}</b></span>
-               <span class="wt-max-set-value"><b>${_esc(repsDisplayText)}${repsUnit}</b></span>
+               <button type="button" class="wt-max-set-value" data-wt-set-edit-field="kg" data-wt-sheet-card-action="edit-set-field" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" aria-label="무게 수정"><b>${_esc(kgDisplayText)}${kgUnit}</b></button>
+               <button type="button" class="wt-max-set-value" data-wt-set-edit-field="reps" data-wt-sheet-card-action="edit-set-field" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" aria-label="횟수 수정"><b>${_esc(repsDisplayText)}${repsUnit}</b></button>
                <button type="button" class="wt-max-set-remove wt-max-set-remove-btn" data-wt-set-remove data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" aria-label="세트 삭제">×</button>
                <button type="button" class="wt-max-set-expand" data-wt-sheet-card-action="toggle-set-editor" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '세트 수정 닫기' : '세트 수정 열기'}"><span aria-hidden="true">${expanded ? '⌃' : '⌄'}</span></button>`
             : `<i class="wt-max-set-check" aria-hidden="true">✓</i>
@@ -2928,9 +2931,12 @@ function _runWorkoutHomeSheetCardAction(action, control) {
   const setType = control?.getAttribute?.('data-set-type') || '';
   const cardId = control?.getAttribute?.('data-card-id') || '';
   const activityKey = control?.getAttribute?.('data-activity-key') || '';
+  const field = control?.getAttribute?.('data-wt-set-edit-field') || '';
   switch (action) {
     case 'add-exercise-set':
       return _addWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseIndex);
+    case 'edit-set-field':
+      return _focusWorkoutSetEditorFieldFromSheet(key, sessionIndex, exerciseIndex, setIndex, field);
     case 'toggle-set-editor':
       return _toggleWorkoutSetEditorFromSheet(key, sessionIndex, exerciseIndex, setIndex);
     case 'toggle-set-type':
@@ -2956,8 +2962,30 @@ function _runWorkoutHomeSheetCardAction(action, control) {
 function _bindWorkoutHomeSheetActions(root) {
   const sheet = root?.querySelector?.('[data-wt-day-sheet]');
   if (!sheet) return;
+  _bindWorkoutSetSwipeDelete(sheet);
+  sheet.addEventListener('focusin', (event) => {
+    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    const input = target?.closest?.('[data-wt-set-clear-on-focus]');
+    if (!input || !sheet.contains(input) || !input.matches(WORKOUT_SHEET_SET_INPUT_SELECTOR)) return;
+    _clearWorkoutSetInputOnFocus(input);
+  }, true);
   sheet.addEventListener('click', (event) => {
     const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    const editField = target?.closest?.('[data-wt-set-edit-field]');
+    if (editField && sheet.contains(editField)) {
+      event.preventDefault();
+      event.stopPropagation();
+      Promise.resolve(_focusWorkoutSetEditorFieldFromSheet(
+        editField.getAttribute('data-date-key') || _workoutHomeSelectedKey,
+        editField.getAttribute('data-session-index'),
+        editField.getAttribute('data-exercise-index'),
+        editField.getAttribute('data-set-index'),
+        editField.getAttribute('data-wt-set-edit-field')
+      )).catch((e) => {
+        console.warn('[workout-calendar] set field edit action failed:', e);
+      });
+      return;
+    }
     const doneToggle = target?.closest?.('[data-wt-set-done-toggle]');
     if (doneToggle && sheet.contains(doneToggle)) {
       event.preventDefault();
@@ -3029,6 +3057,94 @@ function _bindWorkoutHomeSheetActions(root) {
       window.showToast?.('종목 추가 화면을 열지 못했어요', 2200, 'error');
     });
   }, true);
+}
+
+function _clearWorkoutSetInputOnFocus(input) {
+  if (!input?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)) return;
+  if (!input.hasAttribute('data-wt-set-clear-on-focus')) return;
+  input.removeAttribute('data-wt-set-clear-on-focus');
+  if (input.value !== '') input.value = '';
+}
+
+function _bindWorkoutSetSwipeDelete(sheet) {
+  if (!sheet || sheet.__wtSetSwipeDeleteBound) return;
+  sheet.__wtSetSwipeDeleteBound = true;
+  let swipe = null;
+  const resetRow = (row) => {
+    if (!row) return;
+    row.classList.remove('is-swiping', 'is-swipe-delete-ready');
+    row.style.transform = '';
+  };
+  const interactiveSelector = [
+    'input',
+    'select',
+    'textarea',
+    'label',
+    '[data-wt-set-type-menu]',
+  ].join(',');
+  sheet.addEventListener('touchstart', (event) => {
+    if (event.touches.length !== 1) return;
+    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    if (target?.closest?.(interactiveSelector)) return;
+    const row = target?.closest?.('[data-wt-set-swipe-row]');
+    if (!row || !sheet.contains(row)) return;
+    const touch = event.touches[0];
+    swipe = {
+      row,
+      startX: touch.clientX,
+      startY: touch.clientY,
+      dx: 0,
+      dy: 0,
+      active: false,
+    };
+  }, { passive: true });
+  sheet.addEventListener('touchmove', (event) => {
+    if (!swipe || event.touches.length !== 1) return;
+    const touch = event.touches[0];
+    const dx = touch.clientX - swipe.startX;
+    const dy = touch.clientY - swipe.startY;
+    const ax = Math.abs(dx);
+    const ay = Math.abs(dy);
+    swipe.dx = dx;
+    swipe.dy = dy;
+    if (!swipe.active && (ax < 8 || ax <= ay)) return;
+    if (dx >= 0) {
+      resetRow(swipe.row);
+      return;
+    }
+    swipe.active = true;
+    if (event.cancelable) event.preventDefault();
+    event.stopPropagation();
+    const offset = Math.max(-76, Math.min(0, dx));
+    swipe.row.classList.add('is-swiping');
+    swipe.row.classList.toggle('is-swipe-delete-ready', dx <= -64 && ax > ay * 1.2);
+    swipe.row.style.transform = `translateX(${offset}px)`;
+  }, { passive: false });
+  const finish = () => {
+    if (!swipe) return;
+    const current = swipe;
+    swipe = null;
+    const accepted = current.active && current.dx <= -64 && Math.abs(current.dx) > Math.abs(current.dy) * 1.2;
+    if (!accepted) {
+      resetRow(current.row);
+      return;
+    }
+    current.row.classList.remove('is-swiping');
+    Promise.resolve(_removeWorkoutExerciseSetFromSheet(
+      current.row.getAttribute('data-date-key') || _workoutHomeSelectedKey,
+      current.row.getAttribute('data-session-index'),
+      current.row.getAttribute('data-exercise-index'),
+      current.row.getAttribute('data-set-index')
+    )).catch((e) => {
+      resetRow(current.row);
+      console.warn('[workout-calendar] set swipe remove action failed:', e);
+    });
+  };
+  sheet.addEventListener('touchend', finish, { passive: true });
+  sheet.addEventListener('touchcancel', () => {
+    if (swipe) resetRow(swipe.row);
+    swipe = null;
+  }, { passive: true });
 }
 
 function _bindWorkoutHomeSheetInputIsolation(root) {
@@ -3279,6 +3395,51 @@ function _markWorkoutExerciseEntryComplete(entry, now = Date.now()) {
 function _clearWorkoutExerciseCompletionMarker(entry) {
   if (!entry || typeof entry !== 'object') return;
   delete entry.exerciseCompletedAt;
+}
+
+function _focusWorkoutSetEditorFieldFromSheet(key, sessionIndex, exerciseIndex, setIndex, field) {
+  const safeField = String(field || '');
+  if (!['kg', 'reps', 'rir', 'romPct'].includes(safeField)) return false;
+  const targetKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
+  const targetSessionIndex = Math.max(0, Math.min(WORKOUT_GYM_SESSION_COUNT - 1, Math.floor(Number(sessionIndex) || 0)));
+  const targetExerciseIndex = Math.max(0, Math.floor(Number(exerciseIndex) || 0));
+  const targetSetIndex = Math.max(0, Math.floor(Number(setIndex) || 0));
+  const editorKey = _workoutSetEditorKey(targetKey, targetSessionIndex, targetExerciseIndex, targetSetIndex);
+  const restoreState = _captureWorkoutSheetScrollState();
+  _workoutOpenSetTypeMenus.delete(editorKey);
+  _workoutExpandedSetEditors.add(editorKey);
+  _workoutHomeSelectedKey = targetKey;
+  _workoutHomeSessionIndex = targetSessionIndex;
+  _workoutHomeSheetState = 'full';
+  _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:set-field-editor' });
+  renderWorkoutCalendarHome();
+  const focusInput = () => {
+    _restoreWorkoutSheetScrollState(restoreState);
+    if (typeof document === 'undefined') return;
+    const root = _workoutHomeScrollRoot();
+    const sheet = root?.querySelector?.('[data-wt-day-sheet]')
+      || document.querySelector?.('#workout-calendar-root [data-wt-day-sheet]');
+    const selector = [
+      WORKOUT_SHEET_SET_INPUT_SELECTOR,
+      `[data-session-index="${_workoutSheetSelectorValue(targetSessionIndex)}"]`,
+      `[data-exercise-index="${_workoutSheetSelectorValue(targetExerciseIndex)}"]`,
+      `[data-set-index="${_workoutSheetSelectorValue(targetSetIndex)}"]`,
+      `[data-field="${_workoutSheetSelectorValue(safeField)}"]`,
+    ].join('');
+    const input = sheet?.querySelector?.(selector);
+    if (!input) return;
+    input.setAttribute('data-wt-set-clear-on-focus', '');
+    try { input.focus({ preventScroll: true }); }
+    catch { input.focus?.(); }
+    if (document.activeElement === input) _clearWorkoutSetInputOnFocus(input);
+    _restoreWorkoutSheetScrollState(restoreState);
+  };
+  focusInput();
+  if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+    window.requestAnimationFrame(focusInput);
+    window.setTimeout?.(focusInput, 80);
+  }
+  return true;
 }
 
 function _toggleWorkoutSetEditorFromSheet(key, sessionIndex, exerciseIndex, setIndex) {

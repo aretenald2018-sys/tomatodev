@@ -207,6 +207,36 @@ test('day sheet add picker focuses the selected exercise carousel slide', () => 
   assert.match(helper, /window\.setTimeout\(restore, 220\)/);
 });
 
+test('day sheet set rows support mobile value editing, clear-on-focus, and swipe delete', () => {
+  const inputStart = calendarJs.indexOf('function _renderWorkoutSetInput');
+  const rowsStart = calendarJs.indexOf('function _renderWorkoutSetRows');
+  const rowsEnd = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard', rowsStart);
+  const bindStart = calendarJs.indexOf('function _bindWorkoutHomeSheetActions');
+  const bindEnd = calendarJs.indexOf('function _bindWorkoutHomeSheetInputIsolation', bindStart);
+  assert.ok(inputStart >= 0 && rowsStart > inputStart, 'set input renderer should exist');
+  assert.ok(rowsStart >= 0 && rowsEnd > rowsStart, 'set row renderer should exist');
+  assert.ok(bindStart >= 0 && bindEnd > bindStart, 'sheet action binder should exist');
+  const inputFn = calendarJs.slice(inputStart, rowsStart);
+  const rows = calendarJs.slice(rowsStart, rowsEnd);
+  const binder = calendarJs.slice(bindStart, bindEnd);
+
+  assert.match(inputFn, /data-wt-set-clear-on-focus/);
+  assert.match(calendarJs, /function _focusWorkoutSetEditorFieldFromSheet/);
+  assert.match(rows, /data-wt-set-swipe-row/);
+  assert.match(rows, /data-wt-set-edit-field="kg"/);
+  assert.match(rows, /data-wt-set-edit-field="reps"/);
+  assert.match(rows, /data-wt-sheet-card-action="edit-set-field"/);
+  assert.match(binder, /const editField = target\?\.closest\?\.\('\[data-wt-set-edit-field\]'\)/);
+  assert.match(binder, /_focusWorkoutSetEditorFieldFromSheet/);
+  assert.match(calendarJs, /function _bindWorkoutSetSwipeDelete/);
+  assert.match(calendarJs, /_bindWorkoutSetSwipeDelete\(sheet\)/);
+  assert.match(calendarJs, /focusin[\s\S]*data-wt-set-clear-on-focus/);
+  assert.match(styleCss, /\.wt-max-set-main\s*\{[\s\S]*grid-template-columns:\s*30px 44px minmax\(54px,\s*1fr\) minmax\(48px,\s*\.86fr\) 38px 34px/);
+  assert.match(styleCss, /\.wt-max-set-remove-btn\s*\{[\s\S]*width:\s*34px;[\s\S]*height:\s*34px;/);
+  assert.match(styleCss, /\.wt-max-set-row\.is-swiping/);
+  assert.match(styleCss, /\.wt-max-set-row\s*\{[\s\S]*touch-action:\s*pan-y;/);
+});
+
 test('day sheet remembers exercise carousel slide across close and reopen', () => {
   const stateStart = calendarJs.indexOf('const _workoutSheetCarouselSnapshots = new Map()');
   const helperStart = calendarJs.indexOf('function _workoutSheetCarouselSnapshotKey');
@@ -513,9 +543,9 @@ test('day sheet set done toggle uses explicit done state and larger touch target
   assert.match(toggleFn, /const nextDone = !wasDone/);
   assert.doesNotMatch(toggleFn, /_isActualWorkoutSet\(nextSet\) \|\| nextSet\.done === true/);
   assert.match(toggleFn, /\{ preserveSheetScroll: true \}/);
-  assert.match(styleCss, /\.wt-max-set-main\s*\{[\s\S]*grid-template-columns:\s*30px 44px minmax\(58px,\s*1fr\) minmax\(52px,\s*\.9fr\) 24px 28px/);
+  assert.match(styleCss, /\.wt-max-set-main\s*\{[\s\S]*grid-template-columns:\s*30px 44px minmax\(54px,\s*1fr\) minmax\(48px,\s*\.86fr\) 38px 34px/);
   assert.match(styleCss, /\.wt-max-set-check\s*\{[\s\S]*width:\s*30px;[\s\S]*height:\s*30px;/);
-  assert.match(styleCss, /\.wt-max-set-expand\s*\{[\s\S]*width:\s*28px;[\s\S]*height:\s*30px;/);
+  assert.match(styleCss, /\.wt-max-set-expand\s*\{[\s\S]*width:\s*34px;[\s\S]*height:\s*34px;/);
   assert.match(styleCss, /\.wt-max-set-toggle,\s*\n\.wt-max-set-remove-btn\s*\{[\s\S]*touch-action:\s*manipulation;/);
 });
 
@@ -995,5 +1025,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260705z1-workout-set-entry-followup/);
+  assert.match(swJs, /tomatofarm-v20260705z1-workout-set-entry-followup-z2-workout-set-mobile-interactions/);
 });

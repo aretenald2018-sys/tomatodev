@@ -1,5 +1,27 @@
 # 다음 자동 액션
 
+## 2026-07-05 Workout Set Mobile Interactions
+
+- 상태: `complete`
+- 계획: `docs/ai/features/2026-07-05-workout-set-mobile-interactions.md`
+- 리뷰: `docs/ai/reviews/2026-07-05-workout-set-mobile-interactions-review.md`
+- 요청: 모바일 세트 행에서 `kg/횟수` 더블탭 편집, input focus 시 숫자 초기화, 삭제 `×` 터치 영역 확대/분리, 새 종목 추가 후 새 카드 포커스 유지, 세트 행 스와이프 삭제를 구현하고 모바일 E2E로 검증한다.
+- 실행 슬라이스:
+  1. Slice 1: 모바일 세트 행 편집/삭제/포커스 보정.
+- 실행 요약:
+  1. 접힌 세트 행 `kg/횟수` 값을 탭 가능한 편집 버튼으로 바꾸고 해당 input focus/clear 경로를 추가했다.
+  2. 삭제 `×` hit target을 38px × 34px로 키우고 파란 펼침 토글과 분리했다.
+  3. 세트 행 좌측 swipe 삭제를 `_removeWorkoutExerciseSetFromSheet()` 경로로 연결했다.
+  4. 새 종목 추가 후 새 slide 복원 회귀 테스트를 유지했다.
+  5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260705z1-workout-set-entry-followup-z2-workout-set-mobile-interactions`로 bump했다.
+- 검증:
+  1. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js tests/workout-set-minimal-dom.test.js` - 37 pass.
+  2. PASS: `node --test tests/*.test.js` - 704 pass.
+  3. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=880`.
+  4. PASS: 모바일 Chromium E2E evidence - `.omo/evidence/workout-set-mobile-interactions/mobile-set-row-e2e.json`, `.omo/evidence/workout-set-mobile-interactions/mobile-set-row-after.png`.
+  5. not verified yet: 운영 Pages 배포 검증은 커밋 후 남아 있다.
+- 다음 액션: 운영 Pages 배포 검증.
+
 ## 2026-07-05 Workout Set Entry Follow-up
 
 - 상태: `complete`

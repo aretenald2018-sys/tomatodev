@@ -1,9 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 
 const calendarJs = readFileSync(new URL('../render-calendar.js', import.meta.url), 'utf8');
+const styleCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+const mobileEvidenceDir = fileURLToPath(new URL('../.omo/evidence/workout-set-mobile-interactions/', import.meta.url));
+const mobileEvidenceJson = fileURLToPath(new URL('../.omo/evidence/workout-set-mobile-interactions/mobile-set-row-e2e.json', import.meta.url));
+const mobileEvidenceScreenshot = fileURLToPath(new URL('../.omo/evidence/workout-set-mobile-interactions/mobile-set-row-after.png', import.meta.url));
 
 function extractFunctionSource(source, name) {
   const asyncStart = source.indexOf(`async function ${name}`);
@@ -44,13 +49,24 @@ function buildHarnessScript() {
     '_workoutSetEditorKey',
     '_isWorkoutSetEditorExpanded',
     '_isWorkoutSetTypeMenuOpen',
+    '_workoutHomeScrollRoot',
+    '_workoutSheetSelectorValue',
     '_renderWorkoutSetInput',
     '_renderWorkoutSetAddRow',
     '_renderWorkoutSetTypeMenu',
     '_renderWorkoutSetRows',
+    '_clearWorkoutSetEditorsForExercise',
+    '_runWorkoutHomeSheetCardAction',
+    '_clearWorkoutSetInputOnFocus',
+    '_bindWorkoutSetSwipeDelete',
+    '_bindWorkoutHomeSheetActions',
+    '_focusWorkoutSetEditorFieldFromSheet',
     '_toggleWorkoutSetEditorFromSheet',
     '_toggleWorkoutSetTypeMenuFromSheet',
+    '_setWorkoutSheetNumber',
+    '_updateWorkoutExerciseSetFromSheet',
     '_setWorkoutExerciseSetTypeFromSheet',
+    '_removeWorkoutExerciseSetFromSheet',
   ];
   const sourceBundle = [
     extractConstArraySource(calendarJs, 'WORKOUT_SET_TYPE_OPTIONS'),
@@ -59,6 +75,7 @@ function buildHarnessScript() {
 
   return `
     const WORKOUT_GYM_SESSION_COUNT = 2;
+    const WORKOUT_SHEET_SET_INPUT_SELECTOR = '[data-wt-set-input]';
     let _workoutHomeSelectedKey = '2026-07-04';
     let _workoutHomeSessionIndex = 0;
     let _workoutHomeSheetState = 'bar';
@@ -102,6 +119,14 @@ function buildHarnessScript() {
     function _syncWorkoutHomeNavState(payload) {
       window.__syncCalls.push(payload);
     }
+    function _toggleWorkoutHomeSheet() {}
+    function _openWorkoutHomeRunning() { return false; }
+    function _addWorkoutHomeSession() { return false; }
+    function _toggleWorkoutExerciseSetDoneFromSheet() { return false; }
+    function _completeWorkoutExerciseFromSheet() { return false; }
+    function _toggleWorkoutDetailCard() { return false; }
+    function _deleteWorkoutExercise() { return false; }
+    function _deleteWorkoutActivity() { return false; }
     function _defaultWorkoutSheetSet(prev = {}) {
       return { kg: prev.kg ?? '', reps: prev.reps ?? '', setType: prev.setType || 'main', done: false };
     }
@@ -120,13 +145,14 @@ function buildHarnessScript() {
     }
     function renderWorkoutCalendarHome() {
       window.__renderCalls += 1;
-      document.body.innerHTML = _renderWorkoutSetRows(_rowFromEntry(), {
+      document.body.innerHTML = '<main id="workout-calendar-root"><section data-wt-day-sheet><div class="wt-day-sheet-scroll"><div data-wt-day-exercise-carousel-track>' + _renderWorkoutSetRows(_rowFromEntry(), {
         editable: true,
         key: '2026-07-04',
         sessionIndex: 0,
         exerciseIndex: 0,
         cardId: 'qa-card',
-      });
+      }) + '</div></div></section></main>';
+      _bindWorkoutHomeSheetActions(document.getElementById('workout-calendar-root'));
     }
     async function _mutateWorkoutExerciseFromSheet(targetKey, targetSessionIndex, exerciseIndex, mutator, options = {}) {
       const ok = mutator(window.__entry);
@@ -134,42 +160,40 @@ function buildHarnessScript() {
       renderWorkoutCalendarHome();
       return ok;
     }
-    document.addEventListener('click', async event => {
-      const control = event.target.closest('[data-wt-sheet-card-action]');
-      if (!control) return;
-      const action = control.getAttribute('data-wt-sheet-card-action');
-      const key = control.getAttribute('data-date-key');
-      const sessionIndex = control.getAttribute('data-session-index');
-      const exerciseIndex = control.getAttribute('data-exercise-index');
-      const setIndex = control.getAttribute('data-set-index');
-      if (action === 'toggle-set-editor') _toggleWorkoutSetEditorFromSheet(key, sessionIndex, exerciseIndex, setIndex);
-      if (action === 'toggle-set-type') _toggleWorkoutSetTypeMenuFromSheet(key, sessionIndex, exerciseIndex, setIndex);
-      if (action === 'set-set-type') await _setWorkoutExerciseSetTypeFromSheet(key, sessionIndex, exerciseIndex, setIndex, control.getAttribute('data-set-type'));
-    });
+    window._wtCalUpdateExerciseSet = _updateWorkoutExerciseSetFromSheet;
+    window.showToast = (message, duration, type) => {
+      window.__lastToast = { message, duration, type };
+    };
     window.renderWorkoutCalendarHome = renderWorkoutCalendarHome;
     window.__harnessReady = true;
   `;
 }
 
-async function runHarness(fn) {
+async function runHarnessPage(fn) {
   const harnessScript = buildHarnessScript();
   assert.doesNotThrow(() => new Function(harnessScript));
   const browser = await puppeteer.launch({ headless: true });
   try {
     const page = await browser.newPage();
+    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
     const pageErrors = [];
     page.on('pageerror', error => pageErrors.push(String(error?.stack || error?.message || error)));
     await page.setContent('<!doctype html><html lang="ko"><body></body></html>');
+    await page.addStyleTag({ content: styleCss });
     await page.addScriptTag({ content: harnessScript });
     const ready = await page.evaluate(() => window.__harnessReady === true);
     assert.deepEqual(pageErrors, []);
     assert.equal(ready, true);
-    const result = await page.evaluate(fn);
+    const result = await fn(page);
     assert.deepEqual(pageErrors, []);
     return result;
   } finally {
     await browser.close();
   }
+}
+
+async function runHarness(fn) {
+  return runHarnessPage(page => page.evaluate(fn));
 }
 
 test('minimal set row opens right editor and left M/W/D/F menu in a browser DOM', async () => {
@@ -219,6 +243,150 @@ test('minimal set row opens right editor and left M/W/D/F menu in a browser DOM'
   assert.equal(result.menu.typeAria, 'true');
   assert.ok(result.renderCalls >= 3);
   assert.deepEqual(result.syncCalls.map(call => call.action), ['sheet:set-editor', 'sheet:set-type']);
+});
+
+test('mobile set row exposes editable kg/reps values and swipe delete targets in a browser DOM', async () => {
+  const result = await runHarness(() => {
+    window.__entry = {
+      sets: [
+        { kg: 70, reps: 10, rir: 2, romPct: 100, setType: 'main', done: false },
+        { kg: 40, reps: 12, rir: 2, romPct: 100, setType: 'main', done: false },
+      ],
+    };
+    window.renderWorkoutCalendarHome();
+    const editFields = Array.from(document.querySelectorAll('[data-wt-set-edit-field]')).map(node => node.dataset.wtSetEditField);
+    const swipeRows = Array.from(document.querySelectorAll('[data-wt-set-swipe-row]')).map(node => node.dataset.setIndex);
+    const remove = document.querySelector('.wt-max-set-remove-btn');
+    const expand = document.querySelector('.wt-max-set-expand');
+    return {
+      editFields,
+      swipeRows,
+      firstKgText: document.querySelector('[data-wt-set-edit-field="kg"]')?.textContent?.replace(/\s+/g, '').trim() || '',
+      firstRepsText: document.querySelector('[data-wt-set-edit-field="reps"]')?.textContent?.replace(/\s+/g, '').trim() || '',
+      removeAction: remove?.getAttribute('data-wt-set-remove') ?? null,
+      removeLabel: remove?.getAttribute('aria-label') ?? '',
+      removeBeforeExpand: !!(remove && expand && remove.compareDocumentPosition(expand) & Node.DOCUMENT_POSITION_FOLLOWING),
+    };
+  });
+
+  assert.deepEqual(result.editFields, ['kg', 'reps', 'kg', 'reps']);
+  assert.deepEqual(result.swipeRows, ['0', '1']);
+  assert.equal(result.firstKgText, '70kg');
+  assert.equal(result.firstRepsText, '10회');
+  assert.equal(result.removeAction, '');
+  assert.match(result.removeLabel, /세트 삭제/);
+  assert.equal(result.removeBeforeExpand, true);
+});
+
+test('mobile set row tap editing clears values and left swipe removes a set', async () => {
+  const result = await runHarnessPage(async (page) => {
+    await page.evaluate(() => {
+      window.__entry = {
+        sets: [
+          { kg: 70, reps: 10, rir: 2, romPct: 100, setType: 'main', done: false },
+          { kg: 40, reps: 12, rir: 2, romPct: 100, setType: 'main', done: false },
+        ],
+      };
+      window.__syncCalls = [];
+      window.__restoreCalls = [];
+      window.renderWorkoutCalendarHome();
+    });
+
+    async function tapSelector(selector) {
+      const handle = await page.waitForSelector(selector, { visible: true });
+      const box = await handle.boundingBox();
+      assert.ok(box, `${selector} should have a bounding box`);
+      await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    }
+
+    await tapSelector('[data-wt-set-edit-field="kg"][data-set-index="0"]');
+    await page.waitForFunction(() => document.activeElement?.matches?.('[data-wt-set-input][data-field="kg"][data-set-index="0"]'));
+    const kgFocus = await page.evaluate(() => ({
+      field: document.activeElement?.getAttribute('data-field') || '',
+      value: document.activeElement?.value ?? null,
+    }));
+    await page.$eval('[data-wt-set-input][data-field="kg"][data-set-index="0"]', input => {
+      input.value = '55';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await page.waitForFunction(() => window.__entry.sets[0]?.kg === 55);
+
+    await tapSelector('[data-wt-set-edit-field="reps"][data-set-index="0"]');
+    await page.waitForFunction(() => document.activeElement?.matches?.('[data-wt-set-input][data-field="reps"][data-set-index="0"]'));
+    const repsFocus = await page.evaluate(() => ({
+      field: document.activeElement?.getAttribute('data-field') || '',
+      value: document.activeElement?.value ?? null,
+    }));
+    await page.$eval('[data-wt-set-input][data-field="reps"][data-set-index="0"]', input => {
+      input.value = '15';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await page.waitForFunction(() => window.__entry.sets[0]?.reps === 15);
+
+    const hitTargets = await page.evaluate(() => {
+      const remove = document.querySelector('.wt-max-set-remove-btn');
+      const expand = document.querySelector('.wt-max-set-expand');
+      const removeRect = remove.getBoundingClientRect();
+      const expandRect = expand.getBoundingClientRect();
+      return {
+        removeWidth: removeRect.width,
+        removeHeight: removeRect.height,
+        removeCenterX: removeRect.left + removeRect.width / 2,
+        expandCenterX: expandRect.left + expandRect.width / 2,
+        gap: expandRect.left - removeRect.right,
+      };
+    });
+
+    const row = await page.waitForSelector('[data-wt-set-swipe-row][data-set-index="1"]', { visible: true });
+    const rowBox = await row.boundingBox();
+    assert.ok(rowBox, 'second set row should have a bounding box');
+    const client = await page.target().createCDPSession();
+    const startX = rowBox.x + rowBox.width * 0.62;
+    const startY = rowBox.y + rowBox.height / 2;
+    await client.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [{ x: startX, y: startY }],
+    });
+    await client.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x: startX - 74, y: startY + 3 }],
+    });
+    await client.send('Input.dispatchTouchEvent', {
+      type: 'touchEnd',
+      touchPoints: [],
+    });
+    await client.detach();
+    await page.waitForFunction(() => window.__entry.sets.length === 1);
+
+    const finalState = await page.evaluate(() => ({
+      sets: window.__entry.sets,
+      rows: document.querySelectorAll('[data-wt-set-swipe-row]').length,
+      values: Array.from(document.querySelectorAll('.wt-max-set-value')).map(node => node.textContent.replace(/\s+/g, '').trim()),
+      syncActions: window.__syncCalls.map(call => call.action),
+      restoreCount: window.__restoreCalls.length,
+      toast: window.__lastToast,
+    }));
+
+    mkdirSync(mobileEvidenceDir, { recursive: true });
+    writeFileSync(mobileEvidenceJson, JSON.stringify({ kgFocus, repsFocus, hitTargets, finalState }, null, 2), 'utf8');
+    await page.screenshot({ path: mobileEvidenceScreenshot, fullPage: true });
+
+    return { kgFocus, repsFocus, hitTargets, finalState };
+  });
+
+  assert.deepEqual(result.kgFocus, { field: 'kg', value: '' });
+  assert.deepEqual(result.repsFocus, { field: 'reps', value: '' });
+  assert.ok(result.hitTargets.removeWidth >= 34);
+  assert.ok(result.hitTargets.removeHeight >= 34);
+  assert.ok(result.hitTargets.removeCenterX < result.hitTargets.expandCenterX);
+  assert.ok(result.hitTargets.gap >= 0);
+  assert.deepEqual(result.finalState.sets, [{ kg: 55, reps: 15, rir: 2, romPct: 100, setType: 'main', done: false }]);
+  assert.equal(result.finalState.rows, 1);
+  assert.deepEqual(result.finalState.values, ['55kg', '15회']);
+  assert.ok(result.finalState.syncActions.includes('sheet:set-field-editor'));
+  assert.equal(result.finalState.toast?.message, '세트를 삭제했어요');
 });
 
 test('set type menu click mutates only the target set type and clears completion marker', async () => {
