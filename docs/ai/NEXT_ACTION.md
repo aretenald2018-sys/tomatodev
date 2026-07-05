@@ -1,5 +1,30 @@
 # 다음 자동 액션
 
+## 2026-07-05 Workout Set Row Real Swipe Fix
+
+- 상태: `complete`
+- 계획: `docs/ai/features/2026-07-05-workout-set-swipe-row-real-fix.md`
+- 리뷰: `docs/ai/reviews/2026-07-05-workout-set-swipe-row-real-fix-review.md`
+- 요청: 운동 종목 내 세트 행의 실제 모바일 swipe 삭제가 전혀 되지 않는 문제를 끝까지 수정한다.
+- 진단 요약:
+  1. 기존 테스트는 row 배경 origin swipe를 주로 검증해 실제 사용자가 누르는 `kg/reps` 숫자 영역 origin swipe를 놓쳤다.
+  2. `.wt-day-sheet-scroll`의 `touchmove` propagation guard가 sheet bubble 단계 swipe handler보다 먼저 실행되어 실제 앱에서 handler가 안정적으로 제스처를 소유하지 못했다.
+  3. handler를 capture 단계로 옮긴 뒤에도 `saveDay()` dateKey 직렬화 큐 때문에 local cache 갱신이 뒤로 밀리면 optimistic render가 stale cache를 읽어 삭제 전 row를 다시 그릴 수 있었다.
+- 실행 요약:
+  1. 세트 row swipe handler를 capture 단계에 바인딩했다.
+  2. 삭제 경로에 `optimisticRender: true`를 적용했다.
+  3. optimistic render 전에 `getCache()[key]`를 `saveDay(merge)`와 같은 방식으로 먼저 merge한다.
+  4. DOM harness에 실제 scroller `touchmove` propagation block을 추가하고, `kg/reps` 실제 컨트롤 중심 swipe를 회귀 테스트로 고정했다.
+  5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260705z1-workout-set-entry-followup-z6-workout-set-swipe-cache`로 bump했다.
+- 검증:
+  1. PASS: focused syntax/tests - 37 pass.
+  2. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=880`.
+  3. PASS: `node --test tests/*.test.js` - 704 pass.
+  4. PASS: production deploy verify - commit `ec0dc846a7e2`, cache `tomatofarm-v20260705z1-workout-set-entry-followup-z6-workout-set-swipe-cache`.
+  5. PASS: production mobile E2E - `kg` 숫자 영역 origin swipe 후 row count `2 -> 1`.
+  6. PASS: production inline/swipe regression - `kg/reps` focus clear, editor closed, delete target/gap, 좌우 swipe 삭제, 새 종목 carousel focus source checks 통과.
+- 다음 액션: 없음.
+
 ## 2026-07-05 Workout Set Inline Swipe Fix
 
 - 상태: `complete`
