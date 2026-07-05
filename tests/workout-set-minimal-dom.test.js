@@ -93,6 +93,7 @@ function buildHarnessScript() {
     window.__mutateCalls = [];
     window.__deferSetMutationRender = false;
     window.__pendingMutationRender = null;
+    window.__scrollerTouchMoveBlocks = 0;
 
     function _esc(value = '') {
       return String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -161,6 +162,10 @@ function buildHarnessScript() {
         cardId: 'qa-card',
       }) + '</div></div></section></main>';
       _bindWorkoutHomeSheetActions(document.getElementById('workout-calendar-root'));
+      document.querySelector('.wt-day-sheet-scroll')?.addEventListener('touchmove', (event) => {
+        window.__scrollerTouchMoveBlocks += 1;
+        event.stopPropagation();
+      }, { passive: false });
     }
     async function _mutateWorkoutExerciseFromSheet(targetKey, targetSessionIndex, exerciseIndex, mutator, options = {}) {
       const ok = mutator(window.__entry);

@@ -457,6 +457,7 @@ test('day sheet exercise card uses inline plus row and one complete button', () 
   assert.match(calendarJs, /data-wt-set-done-toggle[\s\S]*_toggleWorkoutExerciseSetDoneFromSheet/);
   assert.match(calendarJs, /data-wt-set-remove[\s\S]*_removeWorkoutExerciseSetFromSheet/);
   assert.match(calendarJs, /optimisticRender:\s*true/);
+  assert.match(calendarJs, /sheet\.addEventListener\('touchmove',[\s\S]*\{ passive: false, capture: true \}\)/);
   assert.match(calendarJs, /upsertWorkoutSession\(day, nextSession, index, \{ now: Date\.now\(\) \}\)/);
   assert.match(styleCss, /\.wt-max-set-editor label input\s*\{/);
   assert.match(styleCss, /\.wt-max-rom-inline\.is-editing input\s*\{/);
@@ -1035,5 +1036,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260705z1-workout-set-entry-followup-z4-workout-set-swipe-row/);
+  assert.match(swJs, /tomatofarm-v20260705z1-workout-set-entry-followup-z5-workout-set-swipe-capture/);
 });

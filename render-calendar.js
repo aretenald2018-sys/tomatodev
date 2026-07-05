@@ -3159,7 +3159,7 @@ function _bindWorkoutSetSwipeDelete(sheet) {
       dy: 0,
       active: false,
     };
-  }, { passive: true });
+  }, { passive: true, capture: true });
   sheet.addEventListener('touchmove', (event) => {
     if (!swipe || event.touches.length !== 1) return;
     const touch = event.touches[0];
@@ -3180,7 +3180,7 @@ function _bindWorkoutSetSwipeDelete(sheet) {
     swipe.row.classList.toggle('is-swipe-delete-right', dx > 0);
     swipe.row.classList.toggle('is-swipe-delete-ready', ready);
     swipe.row.style.transform = `translateX(${offset}px)`;
-  }, { passive: false });
+  }, { passive: false, capture: true });
   const finish = () => {
     if (!swipe) return;
     const current = swipe;
@@ -3201,11 +3201,11 @@ function _bindWorkoutSetSwipeDelete(sheet) {
       console.warn('[workout-calendar] set swipe remove action failed:', e);
     });
   };
-  sheet.addEventListener('touchend', finish, { passive: true });
+  sheet.addEventListener('touchend', finish, { passive: true, capture: true });
   sheet.addEventListener('touchcancel', () => {
     if (swipe) resetRow(swipe.row);
     swipe = null;
-  }, { passive: true });
+  }, { passive: true, capture: true });
 }
 
 function _bindWorkoutHomeSheetInputIsolation(root) {
