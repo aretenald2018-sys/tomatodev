@@ -2,7 +2,7 @@
 
 ## 2026-07-06 App Update Refresh Auth Loop
 
-- 상태: `ready_for_execution`
+- 상태: `complete`
 - 계획: `docs/ai/features/2026-07-06-app-update-refresh-auth-loop.md`
 - 리뷰: `docs/ai/reviews/2026-07-06-app-update-refresh-auth-loop-review.md`
 - 요청: 앱 업데이트/새로고침 때 로그아웃/로그인이 여러 번 반복되는 무한 로딩성 현상을 막는다.
@@ -25,7 +25,12 @@
   6. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=882`.
   7. PASS: `git diff --check`.
   8. PASS: review-work context/QA/code/security lanes, no blockers after test cleanup.
-- 다음 액션: commit/push 후 production Pages deploy verification을 수행하고 이 항목을 `complete`로 갱신한다.
+- 운영 검증:
+  1. PASS: `npm.cmd run deploy:production` - pushed `95cb27110d45` to `origin/main`.
+  2. PASS: `[deploy-verify] ok 95cb27110d45 tomatofarm-v20260706z6-sw-reload-stability static=242`.
+  3. PASS: deployed `index.html`, `pwa-register.js`, `sw.js` returned HTTP 200.
+  4. PASS: deployed refresh-loop harness - timeout without `controllerchange` produced `reloads=0`, `banners=1`; same update key auto-applied once; actual `controllerchange` still produced exactly one reload.
+- 다음 액션: 없음.
 
 ## 2026-07-06 Stats Raw Export Download
 

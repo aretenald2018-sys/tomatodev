@@ -76,12 +76,20 @@
    - QA PASS.
    - code quality PASS, no blockers.
    - security PASS, severity NONE.
-   - goal/constraint gate found only deployment/docs/test-slop blockers; test-slop was fixed, docs are being updated, production deploy remains.
+   - goal/constraint gate found only deployment/docs/test-slop blockers; test-slop was fixed and docs/production deploy were completed in the follow-up commit.
 
 ## 운영 검증
 
-not verified yet: production Pages deploy and deployed PWA refresh harness remain. 다음 액션은 commit/push 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>` 및 배포 URL marker/harness 검증이다.
+1. PASS: `npm.cmd run deploy:production` - pushed `95cb27110d45` to `origin/main`.
+2. PASS: deploy verification - `[deploy-verify] ok 95cb27110d45 tomatofarm-v20260706z6-sw-reload-stability static=242`.
+3. PASS: deployed marker verification - `index.html` app marker, `app.js` build-info marker, `sw.js` cache version marker.
+4. PASS: deployed asset HTTP status - `index.html`, `pwa-register.js`, `sw.js` all returned HTTP 200 from `https://aretenald2018-sys.github.io/tomatofarm/`.
+5. PASS: deployed PWA refresh-loop harness:
+   - timeout without `controllerchange`: `reloads=0`, `banners=1`.
+   - same SW update key: first auto apply `true`, second auto apply `false`, `messages=1`.
+   - real `controllerchange`: `reloads=1`.
+   - active workout draft: `reloads=0`, `banners=1`.
 
 ## 다음 실행 프롬프트
 
-이 계획의 Slice 1을 실행한다. 변경 범위는 `pwa-register.js`, `index.html`, `sw.js`, `tests/pwa-update-auto-reload.test.js`, 관련 리뷰/NEXT_ACTION 문서로 제한한다.
+완료. 다음 액션 없음.

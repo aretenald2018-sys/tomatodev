@@ -13,7 +13,7 @@
 
 ## 결론
 
-현재 로컬 리뷰 기준 PASS. Production Pages 배포 검증은 아직 남아 있다.
+PASS. 로컬 회귀, post-implementation review, Production Pages 배포 검증까지 완료했다.
 
 ## 확인 결과
 
@@ -39,7 +39,10 @@
    - QA: PASS, focused/full tests rerun.
    - Code quality: PASS, no blockers.
    - Security: PASS, severity NONE.
+10. PASS: `npm.cmd run deploy:production` - pushed and verified `95cb27110d45` on `origin/main`.
+11. PASS: Production Pages deploy marker - `[deploy-verify] ok 95cb27110d45 tomatofarm-v20260706z6-sw-reload-stability static=242`.
+12. PASS: deployed refresh-loop harness - deployed `index.html`, `pwa-register.js`, `sw.js` returned HTTP 200; timeout without `controllerchange` produced `reloads=0`, `banners=1`; same update key applied only once; actual `controllerchange` still produced exactly one reload.
 
 ## 남은 검증
 
-not verified yet: production Pages deploy verification. 다음 단계에서 commit/push 후 배포된 `https://aretenald2018-sys.github.io/tomatofarm/`의 `build-info.json`, `sw.js`, `index.html`, `pwa-register.js` marker와 refresh-loop harness를 확인한다.
+없음.
