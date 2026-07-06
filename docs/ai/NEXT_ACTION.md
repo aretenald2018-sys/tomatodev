@@ -1,5 +1,24 @@
 # 다음 자동 액션
 
+## 2026-07-06 Workout Set Type Menu Clipping
+
+- 상태: `ready_for_execution`
+- 계획: `docs/ai/features/2026-07-06-workout-set-type-menu-clipping.md`
+- 리뷰: `docs/ai/reviews/2026-07-06-workout-set-type-menu-clipping-review.md`
+- 요청: 운동 세트 타입 메뉴(`메인세트`, `웜업세트`, `드랍세트`)가 하단에서 열릴 때 화면 아래로 잘리는 문제를 수정한다.
+- 실행 Slice 1:
+  1. 열린 세트 타입 메뉴의 DOM 위치를 측정해 하단 여유가 부족하면 위 방향으로 열리게 한다.
+  2. 메뉴가 sheet body/viewport 안에 들어오도록 최소 스크롤 보정을 추가한다.
+  3. focused regression test와 `sw.js` cache bump를 포함한다.
+- 실행 검증:
+  1. PASS: RED/GREEN focused regression.
+  2. PASS: `node --test tests/*.test.js` - 714 pass.
+  3. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=882`.
+  4. PASS: Puppeteer mobile visual QA harness - `isAbove=true`, `optionCount=4`, `clipped=false`.
+- 변경 파일: `render-calendar.js`, `style.css`, `sw.js`, `tests/*.test.js` cache marker assertions, `tests/workout-calendar-bottom-sheet.test.js`, `tests/workout-set-minimal-dom.test.js`.
+- 리뷰 결과: PASS. blocker 없음.
+- 다음 액션: 운영 Pages 배포 검증 후 `complete`로 갱신한다.
+
 ## 2026-07-06 App Update Refresh Auth Loop
 
 - 상태: `complete`

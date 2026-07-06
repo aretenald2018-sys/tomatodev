@@ -931,6 +931,26 @@ test('day sheet set rows keep goal/history blocks and use minimal collapsed edit
   assert.match(calendarJs, /case 'set-set-type':[\s\S]*_setWorkoutExerciseSetTypeFromSheet/);
 });
 
+test('set type menu flips above and scrolls into the visible sheet area near bottom', () => {
+  const positionFn = extractFunctionSource(calendarJs, '_positionOpenWorkoutSetTypeMenu');
+  const toggleFn = extractFunctionSource(calendarJs, '_toggleWorkoutSetTypeMenuFromSheet');
+
+  assert.match(positionFn, /getBoundingClientRect\(\)/);
+  assert.match(positionFn, /is-menu-above/);
+  assert.match(positionFn, /scrollTop/);
+  assert.match(positionFn, /_workoutHomeScrollRoot\(\)/);
+  assert.match(toggleFn, /_positionOpenWorkoutSetTypeMenu/);
+  assert.match(toggleFn, /requestAnimationFrame/);
+  assert.match(
+    styleCss,
+    /\.wt-max-set-row\.is-menu-above\s+\.wt-max-set-type-menu\s*\{[\s\S]*top:\s*auto;[\s\S]*bottom:\s*38px;/
+  );
+  assert.match(
+    styleCss,
+    /@media\s*\(max-width:\s*420px\)[\s\S]*\.wt-max-set-row\.is-menu-above\s+\.wt-max-set-type-menu\s*\{[\s\S]*bottom:\s*36px;/
+  );
+});
+
 test('workout bottom sheet replaces the third gym session with a dedicated running tab', () => {
   const tabStart = calendarJs.indexOf('function _renderWorkoutDetailSessionTabs');
   const tabEnd = calendarJs.indexOf('function _renderWorkoutDetailRecorded', tabStart);
@@ -1244,5 +1264,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260706z6-sw-reload-stability/);
+  assert.match(swJs, /tomatofarm-v20260706z7-set-type-menu-clip/);
 });

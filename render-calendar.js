@@ -586,6 +586,43 @@ function _restoreWorkoutSheetScrollState(state) {
   }
 }
 
+function _positionOpenWorkoutSetTypeMenu() {
+  if (typeof document === 'undefined') return false;
+  const root = _workoutHomeScrollRoot();
+  const sheet = root?.querySelector?.('[data-wt-day-sheet]')
+    || document.querySelector?.('#workout-calendar-root [data-wt-day-sheet]');
+  const menu = sheet?.querySelector?.('[data-wt-set-type-menu]');
+  const row = menu?.closest?.('.wt-max-set-row');
+  if (!menu || !row) return false;
+
+  const scroller = menu.closest?.('.wt-day-sheet-scroll') || sheet?.querySelector?.('.wt-day-sheet-scroll') || null;
+  const sheetRect = sheet?.getBoundingClientRect?.() || null;
+  const scrollerRect = scroller?.getBoundingClientRect?.() || null;
+  const windowHeight = typeof window !== 'undefined' ? Number(window.innerHeight) || Infinity : Infinity;
+  const visibleTop = Math.max(0, sheetRect?.top ?? 0, scrollerRect?.top ?? 0) + 8;
+  const visibleBottom = Math.min(windowHeight, sheetRect?.bottom ?? windowHeight, scrollerRect?.bottom ?? windowHeight) - 8;
+
+  row.classList.remove('is-menu-above');
+  let menuRect = menu.getBoundingClientRect();
+  const rowRect = row.getBoundingClientRect();
+  const belowOverflow = menuRect.bottom - visibleBottom;
+  const spaceAbove = rowRect.top - visibleTop;
+  const spaceBelow = visibleBottom - rowRect.bottom;
+  if (belowOverflow > 0 && spaceAbove > spaceBelow) {
+    row.classList.add('is-menu-above');
+    menuRect = menu.getBoundingClientRect();
+  }
+
+  if (scroller && Number.isFinite(visibleTop) && Number.isFinite(visibleBottom)) {
+    let delta = 0;
+    if (menuRect.bottom > visibleBottom) delta = menuRect.bottom - visibleBottom;
+    else if (menuRect.top < visibleTop) delta = menuRect.top - visibleTop;
+    if (delta !== 0) scroller.scrollTop = Math.max(0, (Number(scroller.scrollTop) || 0) + delta);
+  }
+
+  return row.classList.contains('is-menu-above');
+}
+
 function _restoreWorkoutSheetInputState(state) {
   if (!state || typeof document === 'undefined') return;
   const restore = () => {
@@ -3630,6 +3667,11 @@ function _toggleWorkoutSetTypeMenuFromSheet(key, sessionIndex, exerciseIndex, se
   _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:set-type' });
   renderWorkoutCalendarHome();
   _restoreWorkoutSheetScrollState(restoreState);
+  _positionOpenWorkoutSetTypeMenu();
+  if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+    window.requestAnimationFrame(_positionOpenWorkoutSetTypeMenu);
+    window.setTimeout?.(_positionOpenWorkoutSetTypeMenu, 80);
+  }
   return true;
 }
 

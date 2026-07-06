@@ -53,6 +53,7 @@ function buildHarnessScript() {
     '_isWorkoutSetTypeMenuOpen',
     '_workoutHomeScrollRoot',
     '_workoutSheetSelectorValue',
+    '_positionOpenWorkoutSetTypeMenu',
     '_renderWorkoutSetInput',
     '_renderWorkoutSetInlineInput',
     '_renderWorkoutSetAddRow',
