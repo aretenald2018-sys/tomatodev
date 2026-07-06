@@ -1,25 +1,172 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
 
 const pwaRegisterJs = readFileSync(new URL('../pwa-register.js', import.meta.url), 'utf8');
 const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 
-test('production app service worker updates auto apply when no workout draft is active', () => {
-  assert.match(pwaRegisterJs, /APP_SW_AUTO_RELOAD_TIMEOUT_MS\s*=\s*1500/);
-  assert.match(pwaRegisterJs, /function _hasActiveWorkoutDraftForAppSWUpdate\(\)/);
-  assert.match(pwaRegisterJs, /window\.__wtHasActiveDraft/);
-  assert.match(pwaRegisterJs, /function _autoApplyAppSWUpdate\(registration,\s*worker = null\)/);
-  assert.match(pwaRegisterJs, /navigator\.serviceWorker\.addEventListener\('controllerchange',\s*reloadOnce,\s*\{ once: true \}\)/);
-  assert.match(pwaRegisterJs, /targetWorker\.postMessage\(\{ type: 'SKIP_WAITING' \}\)/);
-  assert.match(pwaRegisterJs, /setTimeout\(reloadOnce,\s*APP_SW_AUTO_RELOAD_TIMEOUT_MS\)/);
-  assert.match(pwaRegisterJs, /allowAutoReload && _autoApplyAppSWUpdate\(pending\.registration,\s*pending\.worker\)/);
-  assert.match(pwaRegisterJs, /window\.__tomatoAppReady && show\(\)/);
-  assert.match(pwaRegisterJs, /window\.addEventListener\('tomato-app-ready',\s*show,\s*\{ once: true \}\)/);
+function loadPwaRegisterHarness({ activeDraft = false } = {}) {
+  const state = {
+    banners: [],
+    messages: [],
+    reloads: 0,
+    serviceWorkerListeners: new Map(),
+    timers: [],
+    windowListeners: new Map(),
+  };
+  const sessionItems = new Map();
+
+  const addMappedListener = (map, type, handler) => {
+    const handlers = map.get(type) || [];
+    handlers.push(handler);
+    map.set(type, handlers);
+  };
+
+  const context = {
+    URL,
+    clearTimeout() {},
+    console: { error() {}, log() {}, warn() {} },
+    location: {
+      hostname: 'aretenald2018-sys.github.io',
+      href: 'https://aretenald2018-sys.github.io/tomatofarm/',
+    },
+    navigator: {
+      serviceWorker: {
+        controller: {},
+        addEventListener(type, handler) {
+          addMappedListener(state.serviceWorkerListeners, type, handler);
+        },
+        getRegistration() {
+          return Promise.resolve(null);
+        },
+        getRegistrations() {
+          return Promise.resolve([]);
+        },
+        ready: Promise.resolve({ scope: 'https://aretenald2018-sys.github.io/tomatofarm/' }),
+        register() {
+          return Promise.resolve({
+            active: {},
+            addEventListener() {},
+            installing: null,
+            scope: 'https://aretenald2018-sys.github.io/tomatofarm/',
+            update() { return Promise.resolve(this); },
+            waiting: null,
+          });
+        },
+      },
+    },
+    sessionStorage: {
+      getItem(key) { return sessionItems.has(key) ? sessionItems.get(key) : null; },
+      removeItem(key) { sessionItems.delete(key); },
+      setItem(key, value) { sessionItems.set(key, String(value)); },
+    },
+    setTimeout(handler, ms) {
+      state.timers.push({ handler, ms });
+      return state.timers.length;
+    },
+    window: {
+      __showAppUpdateBanner(registration, meta) {
+        state.banners.push({ registration, meta });
+      },
+      __tomatoAppReady: true,
+      __wtHasActiveDraft() {
+        return activeDraft;
+      },
+      addEventListener(type, handler) {
+        addMappedListener(state.windowListeners, type, handler);
+      },
+      location: {
+        reload() { state.reloads += 1; },
+      },
+    },
+  };
+
+  vm.runInNewContext(pwaRegisterJs, context, { filename: 'pwa-register.js' });
+  return { context, state };
+}
+
+function makeWaitingRegistration(state) {
+  const worker = {
+    scriptURL: 'https://aretenald2018-sys.github.io/tomatofarm/sw.js',
+    state: 'installed',
+    postMessage(message) {
+      state.messages.push(message);
+    },
+  };
+  return {
+    registration: {
+      scope: 'https://aretenald2018-sys.github.io/tomatofarm/',
+      waiting: worker,
+      update() { return Promise.resolve(this); },
+    },
+    worker,
+  };
+}
+
+test('active workout draft blocks automatic service worker reload and shows update banner', () => {
+  const { context, state } = loadPwaRegisterHarness({ activeDraft: true });
+  const { registration, worker } = makeWaitingRegistration(state);
+
+  context._requestAppUpdateBanner(registration, worker);
+
+  assert.equal(JSON.stringify(state.messages), JSON.stringify([]));
+  assert.equal(state.reloads, 0);
+  assert.equal(state.banners.length, 1);
+});
+
+test('service worker update timeout shows banner instead of reloading without controllerchange', () => {
+  const { context, state } = loadPwaRegisterHarness();
+  const { registration, worker } = makeWaitingRegistration(state);
+
+  assert.equal(typeof context._requestAppUpdateBanner, 'function');
+  context._requestAppUpdateBanner(registration, worker);
+
+  assert.equal(JSON.stringify(state.messages), JSON.stringify([{ type: 'SKIP_WAITING' }]));
+  assert.equal(state.reloads, 0);
+
+  for (const timer of state.timers.filter((entry) => entry.ms === 1500)) {
+    timer.handler();
+  }
+
+  assert.equal(state.reloads, 0);
+  assert.equal(state.banners.length, 1);
+});
+
+test('same service worker update does not auto apply repeatedly in one session', () => {
+  const { context, state } = loadPwaRegisterHarness();
+  const { registration, worker } = makeWaitingRegistration(state);
+
+  context._requestAppUpdateBanner(registration, worker);
+  for (const timer of state.timers.filter((entry) => entry.ms === 1500)) {
+    timer.handler();
+  }
+  context._requestAppUpdateBanner(registration, worker);
+
+  assert.equal(JSON.stringify(state.messages), JSON.stringify([{ type: 'SKIP_WAITING' }]));
+  assert.equal(state.reloads, 0);
+  assert.equal(state.banners.length, 2);
+});
+
+test('service worker controllerchange still reloads once', () => {
+  const { context, state } = loadPwaRegisterHarness();
+  const { registration, worker } = makeWaitingRegistration(state);
+
+  context._requestAppUpdateBanner(registration, worker);
+  const [controllerChange] = state.serviceWorkerListeners.get('controllerchange') || [];
+  assert.equal(typeof controllerChange, 'function');
+
+  controllerChange();
+  for (const timer of state.timers.filter((entry) => entry.ms === 1500)) {
+    timer.handler();
+  }
+
+  assert.equal(state.reloads, 1);
+  assert.equal(state.banners.length, 0);
 });
 
 test('production app cache busts the service worker registrar script', () => {
-  assert.match(indexHtml, /pwa-register\.js\?v=20260630z14-sw-auto-update/);
-  assert.match(swJs, /tomatofarm-v20260706z5-workout-carousel-focus/);
+  assert.match(indexHtml, /pwa-register\.js\?v=20260706z6-sw-reload-stability/);
+  assert.match(swJs, /tomatofarm-v20260706z6-sw-reload-stability/);
 });

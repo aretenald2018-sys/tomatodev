@@ -1,5 +1,32 @@
 # 다음 자동 액션
 
+## 2026-07-06 App Update Refresh Auth Loop
+
+- 상태: `ready_for_execution`
+- 계획: `docs/ai/features/2026-07-06-app-update-refresh-auth-loop.md`
+- 리뷰: `docs/ai/reviews/2026-07-06-app-update-refresh-auth-loop-review.md`
+- 요청: 앱 업데이트/새로고침 때 로그아웃/로그인이 여러 번 반복되는 무한 로딩성 현상을 막는다.
+- 진단 요약:
+  1. `pwa-register.js`가 `SKIP_WAITING` 후 `controllerchange`가 없어도 1.5초 timeout으로 강제 reload했다.
+  2. 새 Service Worker가 아직 제어권을 얻지 못한 상태에서 reload되면 앱 bootstrap과 로그인 복원이 반복 진입할 수 있다.
+  3. `initLoginScreen()` 중복 DOMContentLoaded 바인딩은 원인이 아니었다.
+- 실행 요약:
+  1. 자동 reload는 `controllerchange`에서만 수행하도록 변경했다.
+  2. timeout/postMessage 실패는 update banner fallback으로 바꿨다.
+  3. 같은 SW update key는 한 탭 세션에서 자동 적용을 1회만 시도한다.
+  4. active workout draft가 있으면 자동 reload 없이 배너만 보여주는 행동 테스트를 추가했다.
+  5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260706z6-sw-reload-stability`로 bump하고 `index.html`의 `pwa-register.js` cache-bust query를 갱신했다.
+- 로컬 검증:
+  1. PASS: `node --test tests/pwa-update-auto-reload.test.js` - 5 pass.
+  2. PASS: `node --check pwa-register.js`.
+  3. PASS: `node --check sw.js`.
+  4. PASS: `node --check tests/pwa-update-auto-reload.test.js`.
+  5. PASS: `node --test tests/*.test.js` - 713 pass.
+  6. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=882`.
+  7. PASS: `git diff --check`.
+  8. PASS: review-work context/QA/code/security lanes, no blockers after test cleanup.
+- 다음 액션: commit/push 후 production Pages deploy verification을 수행하고 이 항목을 `complete`로 갱신한다.
+
 ## 2026-07-06 Stats Raw Export Download
 
 - 상태: `complete`

@@ -11,6 +11,7 @@ const APP_SW_SCOPE = new URL('./', location.href).pathname;
 const FCM_SW_SCOPE = new URL('firebase-cloud-messaging-push/', new URL('./', location.href)).pathname;
 const _pendingAppSWUpdates = new Map();
 const APP_SW_AUTO_RELOAD_TIMEOUT_MS = 1500;
+const APP_SW_AUTO_RELOAD_ATTEMPT_PREFIX = 'tomatofarm_app_sw_auto_reload_attempted:';
 let _appSWUpdateSeq = 0;
 let _latestAppSWUpdateSeq = 0;
 let _appSWAutoReloading = false;
@@ -43,21 +44,63 @@ function _hasActiveWorkoutDraftForAppSWUpdate() {
   }
 }
 
+function _hasAttemptedAppSWAutoReload(key) {
+  try {
+    return sessionStorage.getItem(APP_SW_AUTO_RELOAD_ATTEMPT_PREFIX + key) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function _markAppSWAutoReloadAttempted(key) {
+  try {
+    sessionStorage.setItem(APP_SW_AUTO_RELOAD_ATTEMPT_PREFIX + key, '1');
+  } catch {}
+}
+
+function _showPendingAppSWUpdateBanner(registration, worker = null, key = null) {
+  const updateKey = key || _appSWUpdateKey(registration, worker);
+  if (typeof window.__showAppUpdateBanner !== 'function') {
+    _pendingAppSWUpdates.set(updateKey, { registration, worker, seq: _latestAppSWUpdateSeq });
+    return false;
+  }
+  window.__showAppUpdateBanner(registration, { key: updateKey });
+  return true;
+}
+
 function _autoApplyAppSWUpdate(registration, worker = null) {
   if (_appSWAutoReloading || !registration || !navigator.serviceWorker.controller) return false;
   if (_hasActiveWorkoutDraftForAppSWUpdate()) return false;
   const targetWorker = worker || registration.waiting;
   if (!targetWorker || typeof targetWorker.postMessage !== 'function') return false;
+  const key = _appSWUpdateKey(registration, targetWorker);
+  if (_hasAttemptedAppSWAutoReload(key)) return false;
+  _markAppSWAutoReloadAttempted(key);
   _appSWAutoReloading = true;
-  let reloaded = false;
+  let settled = false;
+  const settle = () => {
+    if (settled) return false;
+    settled = true;
+    _appSWAutoReloading = false;
+    return true;
+  };
   const reloadOnce = () => {
-    if (reloaded) return;
-    reloaded = true;
+    if (!settle()) return;
     window.location.reload();
   };
+  const fallbackToBanner = () => {
+    if (!settle()) return;
+    _showPendingAppSWUpdateBanner(registration, targetWorker, key);
+  };
   navigator.serviceWorker.addEventListener('controllerchange', reloadOnce, { once: true });
-  targetWorker.postMessage({ type: 'SKIP_WAITING' });
-  setTimeout(reloadOnce, APP_SW_AUTO_RELOAD_TIMEOUT_MS);
+  try {
+    targetWorker.postMessage({ type: 'SKIP_WAITING' });
+  } catch (error) {
+    console.warn('[PWA] Service Worker 업데이트 적용 요청 실패:', error?.message || error);
+    fallbackToBanner();
+    return true;
+  }
+  setTimeout(fallbackToBanner, APP_SW_AUTO_RELOAD_TIMEOUT_MS);
   return true;
 }
 
@@ -75,12 +118,7 @@ function _requestAppUpdateBanner(registration, worker = null) {
     _pendingAppSWUpdates.delete(key);
     if (pending.seq < _latestAppSWUpdateSeq) return true;
     if (allowAutoReload && _autoApplyAppSWUpdate(pending.registration, pending.worker)) return true;
-    if (typeof window.__showAppUpdateBanner !== 'function') {
-      _pendingAppSWUpdates.set(key, pending);
-      return false;
-    }
-    window.__showAppUpdateBanner(pending.registration, { key });
-    return true;
+    return _showPendingAppSWUpdateBanner(pending.registration, pending.worker, key);
   };
 
   if (window.__tomatoAppReady && show()) return;
