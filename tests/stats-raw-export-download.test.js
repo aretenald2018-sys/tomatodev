@@ -42,5 +42,5 @@ test('stats raw export button uses compact TDS-style controls and bumped cache',
   assert.match(styleCss, /border:\s*1px solid var\(--seed-stroke-neutral\)/);
   assert.match(styleCss, /border-radius:\s*var\(--seed-r-full\)/);
   assert.match(styleCss, /\.stats-raw-export-btn:focus-visible/);
-  assert.match(swJs, /tomatofarm-v20260706z4-stats-raw-export/);
+  assert.match(swJs, /tomatofarm-v20260706z5-workout-carousel-focus/);
 });

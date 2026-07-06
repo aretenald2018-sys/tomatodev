@@ -24,6 +24,29 @@
   5. PASS: Puppeteer static visual QA - mobile/desktop에서 버튼이 기간 버튼 위, 분석 카드 위에 있고 텍스트 clipping 없음.
 - 다음 액션: 없음.
 
+## 2026-07-06 Workout Add Exercise Carousel Focus
+
+- 상태: `deploy_pending`
+- 계획: `docs/ai/features/2026-07-06-workout-add-exercise-carousel-focus.md`
+- 리뷰: `docs/ai/reviews/2026-07-06-workout-add-exercise-carousel-focus-review.md`
+- 요청: 운동 탭에서 종목을 추가하면 `종목을 추가했어요` 토스트만 띄우지 말고 캐러셀 화면을 방금 추가한 종목 카드로 이동시킨다.
+- 실행 슬라이스:
+  1. Slice 1: day sheet add picker가 선택한 exercise slide를 DOM 생성 이후까지 pending focus request로 보존하고 복원한다.
+- 실행 요약:
+  1. `render-calendar.js`에 day sheet carousel pending focus request map을 추가했다.
+  2. add-picker `afterSelect`에서 선택된 `entryIdx`를 요청으로 저장하고, sheet render 이후 slide가 실제 DOM에 있을 때만 복원 성공 처리한다.
+  3. 복원 성공 시 pending request를 제거해 이후 사용자의 수동 carousel 위치를 덮어쓰지 않는다.
+  4. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260706z5-workout-carousel-focus`로 bump하고 cache marker 테스트를 갱신했다.
+- 검증:
+  1. PASS: RED/GREEN focused carousel focus evidence - `.omo/evidence/workout-carousel-focus-20260706/focused-test.txt`.
+  2. PASS: `node --check render-calendar.js`.
+  3. PASS: `node --test tests/workout-calendar-bottom-sheet.test.js` - 34 pass.
+  4. PASS: `node --test tests/*.test.js` - 710 pass.
+  5. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=882`.
+  6. PASS: browser/mobile carousel focus harness - `entryIdx=2`, delayed render `scrollLeft=736`, `expectedScrollLeft=736`, `scrollDelta=0`, toast `종목을 추가했어요`.
+  7. PASS: focused final gate review - `.omo/evidence/workout-carousel-focus-20260706-gate-review.md`.
+  8. not verified yet: production Pages 배포 검증은 commit/push 후 진행한다.
+
 ## 2026-07-06 Running GPS Full Route Render
 
 - 상태: `complete`

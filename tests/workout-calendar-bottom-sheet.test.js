@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import puppeteer from 'puppeteer';
 
 const calendarJs = readFileSync(new URL('../render-calendar.js', import.meta.url), 'utf8');
 const styleCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
@@ -8,6 +9,172 @@ const tm2Css = readFileSync(new URL('../test-mode-v2.css', import.meta.url), 'ut
 const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 const tm2EntryJs = readFileSync(new URL('../workout/test-v2/entry.js', import.meta.url), 'utf8');
 const tm2BoardJs = readFileSync(new URL('../workout/test-v2/board-render.js', import.meta.url), 'utf8');
+
+function extractFunctionSource(source, name) {
+  const asyncStart = source.indexOf(`async function ${name}`);
+  const normalStart = source.indexOf(`function ${name}`);
+  const start = asyncStart >= 0 ? asyncStart : normalStart;
+  assert.ok(start >= 0, `${name} should exist`);
+  const signatureEnd = source.indexOf(') {', start);
+  const braceStart = signatureEnd >= 0 ? signatureEnd + 2 : source.indexOf('{', start);
+  assert.ok(braceStart > start, `${name} body should start`);
+  let depth = 0;
+  for (let i = braceStart; i < source.length; i += 1) {
+    if (source[i] === '{') depth += 1;
+    if (source[i] === '}') {
+      depth -= 1;
+      if (depth === 0) return source.slice(start, i + 1);
+    }
+  }
+  throw new Error(`${name} body should end`);
+}
+
+function buildAddCarouselFocusHarnessScript() {
+  const sourceBundle = [
+    '_workoutHomeScrollRoot',
+    '_restoreWorkoutSheetCarouselState',
+    '_restoreWorkoutSheetCarouselToSlide',
+    '_workoutSheetCarouselSnapshotKey',
+    '_rememberWorkoutSheetCarouselSlide',
+    '_requestWorkoutSheetPendingCarouselFocus',
+    '_tryRestorePendingWorkoutSheetCarouselFocus',
+    '_refreshWorkoutHomeAfterPickerSelect',
+  ].map(name => extractFunctionSource(calendarJs, name)).join('\n\n');
+
+  return `
+    const WORKOUT_GYM_SESSION_COUNT = 2;
+    const _workoutSheetCarouselSnapshots = new Map();
+    const _workoutSheetPendingCarouselFocus = new Map();
+    let _viewYear = 2026;
+    let _viewMonth = 6;
+    let _workoutHomeSelectedKey = '2026-07-06';
+    let _workoutHomeSessionIndex = 0;
+    let _workoutHomeView = 'detail';
+    let _workoutHomeSheetState = 'full';
+    window.__renderCalls = 0;
+    window.__openCalls = [];
+    window.__toastCalls = [];
+    window.__exercises = ['인클라인 바벨 벤치프레스', '랫풀다운', '새로 추가한 덤벨 숄더프레스'];
+    window.__allowAddedSlide = false;
+
+    function _parseDateKey(key) {
+      const match = String(key || '').match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+      if (!match) return null;
+      return { y: Number(match[1]), m: Number(match[2]) - 1, d: Number(match[3]) };
+    }
+    function normalizeWorkoutExerciseSelectionDetail(detail = {}) {
+      return { entryIdx: detail.entryIdx, existing: detail.existing === true };
+    }
+    function _workoutHomeScrollTop() { return 0; }
+    function openWorkoutDaySheet(key, options = {}) {
+      window.__openCalls.push({ key, options });
+    }
+    function renderWorkoutCalendarHome() {
+      window.__renderCalls += 1;
+      const root = document.getElementById('workout-calendar-root');
+      const visibleExercises = window.__allowAddedSlide ? window.__exercises : window.__exercises.slice(0, 2);
+      root.innerHTML = '<section data-wt-day-sheet><div class="wt-day-exercise-carousel-track" data-wt-day-exercise-carousel-track>' +
+        visibleExercises.map((name, index) => (
+          '<article class="wt-day-exercise-slide" data-wt-day-exercise-slide="' + index + '">' +
+          '<h2>' + name + '</h2>' +
+          '</article>'
+        )).join('') +
+        '</div></section>';
+      _tryRestorePendingWorkoutSheetCarouselFocus(_workoutHomeSelectedKey, _workoutHomeSessionIndex);
+    }
+    window.showToast = (message, duration, type) => {
+      window.__toastCalls.push({ message, duration, type });
+      document.getElementById('qa-toast').textContent = message;
+    };
+
+    ${sourceBundle}
+
+    window.__runAddCarouselFocusScenario = async () => {
+      renderWorkoutCalendarHome();
+      await _refreshWorkoutHomeAfterPickerSelect('2026-07-06', 0, { entryIdx: 2, existing: false });
+      const afterImmediate = {
+        slideCount: document.querySelectorAll('[data-wt-day-exercise-slide]').length,
+        scrollLeft: document.querySelector('[data-wt-day-exercise-carousel-track]')?.scrollLeft ?? null,
+        pendingSize: _workoutSheetPendingCarouselFocus.size,
+        toastText: document.getElementById('qa-toast').textContent,
+      };
+      window.__allowAddedSlide = true;
+      renderWorkoutCalendarHome();
+      await new Promise(resolve => setTimeout(resolve, 260));
+      const track = document.querySelector('[data-wt-day-exercise-carousel-track]');
+      const slide = document.querySelector('[data-wt-day-exercise-slide="2"]');
+      const maxScrollLeft = Math.max(0, track.scrollWidth - track.clientWidth);
+      const expectedScrollLeft = Math.min(slide.offsetLeft, maxScrollLeft);
+      const trackRect = track.getBoundingClientRect();
+      const slideRect = slide.getBoundingClientRect();
+      return {
+        afterImmediate,
+        afterDelayedRender: {
+          slideCount: document.querySelectorAll('[data-wt-day-exercise-slide]').length,
+          scrollLeft: track.scrollLeft,
+          expectedScrollLeft,
+          scrollDelta: Math.abs(track.scrollLeft - expectedScrollLeft),
+          pendingSize: _workoutSheetPendingCarouselFocus.size,
+          toastText: document.getElementById('qa-toast').textContent,
+          visibleSlideTitle: slide.querySelector('h2')?.textContent || '',
+          slideLeftWithinTrack: Math.round(slideRect.left - trackRect.left),
+          slideRightWithinTrack: Math.round(slideRect.right - trackRect.left),
+          trackWidth: Math.round(trackRect.width),
+        },
+        openCalls: window.__openCalls,
+        toastCalls: window.__toastCalls,
+        renderCalls: window.__renderCalls,
+      };
+    };
+  `;
+}
+
+async function runAddCarouselFocusHarness() {
+  const browser = await puppeteer.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    const pageErrors = [];
+    page.on('pageerror', error => pageErrors.push(String(error?.stack || error?.message || error)));
+    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+    await page.setContent(`<!doctype html>
+      <html lang="ko">
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <style>
+            * { box-sizing: border-box; }
+            body { margin: 0; background: #f7f7fb; }
+            #workout-calendar-root { width: 390px; padding: 24px 18px; }
+            .wt-day-exercise-carousel-track {
+              width: 354px;
+              display: flex;
+              gap: 14px;
+              overflow-x: auto;
+              scroll-snap-type: x mandatory;
+              padding: 0;
+            }
+            .wt-day-exercise-slide {
+              flex: 0 0 354px;
+              min-width: 0;
+              height: 220px;
+              scroll-snap-align: start;
+            }
+          </style>
+        </head>
+        <body>
+          <main id="workout-calendar-root"></main>
+          <div id="wt-workout-timer-bar"></div>
+          <div id="qa-toast"></div>
+        </body>
+      </html>`);
+    await page.addScriptTag({ content: buildAddCarouselFocusHarnessScript() });
+    assert.deepEqual(pageErrors, []);
+    const result = await page.evaluate(() => window.__runAddCarouselFocusScenario());
+    assert.deepEqual(pageErrors, []);
+    return result;
+  } finally {
+    await browser.close();
+  }
+}
 
 test('workout calendar keeps the month surface and renders the existing day bar as a sheet header', () => {
   const start = calendarJs.indexOf('export function renderWorkoutCalendarHome');
@@ -171,8 +338,9 @@ test('day sheet add picker stays on the current sheet session', () => {
   assert.match(refresh, /const entryIndex = selectionDetail\.entryIdx/);
   assert.match(refresh, /openWorkoutDaySheet\(key,[\s\S]*sheetState:\s*'full'[\s\S]*action:\s*'sheet:add-exercise'/);
   assert.match(refresh, /timerBar\.classList\.add\('wt-open'\)/);
+  assert.match(refresh, /if \(entryIndex != null\) _requestWorkoutSheetPendingCarouselFocus\(key, targetIndex, entryIndex\)/);
   assert.match(refresh, /renderWorkoutCalendarHome\(\)/);
-  assert.match(refresh, /if \(entryIndex != null\) _restoreWorkoutSheetCarouselToSlide\(entryIndex, \{ key, sessionIndex: targetIndex \}\)/);
+  assert.match(refresh, /if \(entryIndex != null\) _tryRestorePendingWorkoutSheetCarouselFocus\(key, targetIndex\)/);
   assert.match(refresh, /if \(!selectionDetail\.existing\) window\.showToast\?\.\('종목을 추가했어요'/);
   assert.match(addFn, /const targetKey = _parseDateKey\(key\) \? key : _workoutHomeSelectedKey/);
   assert.match(addFn, /const targetIndex = Math\.max\(0, Math\.min\(_workoutHomeSessionIndex, WORKOUT_GYM_SESSION_COUNT - 1\)\)/);
@@ -184,27 +352,65 @@ test('day sheet add picker stays on the current sheet session', () => {
 });
 
 test('day sheet add picker focuses the selected exercise carousel slide', () => {
+  const pendingState = calendarJs.indexOf('const _workoutSheetPendingCarouselFocus = new Map()');
   const helperStart = calendarJs.indexOf('function _restoreWorkoutSheetCarouselToSlide');
-  const helperEnd = calendarJs.indexOf('function _workoutSheetInputSelection', helperStart);
+  const helperEnd = calendarJs.indexOf('function _requestWorkoutSheetPendingCarouselFocus', helperStart);
+  const pendingStart = helperEnd;
+  const pendingEnd = calendarJs.indexOf('function _workoutSheetInputSelection', pendingStart);
   const refreshStart = calendarJs.indexOf('async function _refreshWorkoutHomeAfterPickerSelect');
   const refreshEnd = calendarJs.indexOf('function _sortedCheckins', refreshStart);
+  const renderStart = calendarJs.indexOf('export function renderWorkoutCalendarHome');
+  const renderEnd = calendarJs.indexOf('function _renderWorkoutHomeDetail', renderStart);
+  assert.ok(pendingState >= 0, 'pending carousel focus request map should exist');
   assert.ok(helperStart >= 0 && helperEnd > helperStart, 'selected slide restore helper should exist');
+  assert.ok(pendingStart >= 0 && pendingEnd > pendingStart, 'pending carousel focus helpers should exist');
   assert.ok(refreshStart >= 0 && refreshEnd > refreshStart, 'sheet refresh callback should exist');
+  assert.ok(renderStart >= 0 && renderEnd > renderStart, 'workout home render should exist');
   const helper = calendarJs.slice(helperStart, helperEnd);
+  const pending = calendarJs.slice(pendingStart, pendingEnd);
   const refresh = calendarJs.slice(refreshStart, refreshEnd);
+  const render = calendarJs.slice(renderStart, renderEnd);
 
   assert.match(refresh, /const selectionDetail = normalizeWorkoutExerciseSelectionDetail\(detail\)/);
   assert.match(refresh, /const entryIndex = selectionDetail\.entryIdx/);
-  assert.match(refresh, /renderWorkoutCalendarHome\(\);[\s\S]*_restoreWorkoutSheetCarouselToSlide\(entryIndex, \{ key, sessionIndex: targetIndex \}\)/);
+  assert.match(refresh, /if \(entryIndex != null\) _requestWorkoutSheetPendingCarouselFocus\(key, targetIndex, entryIndex\)/);
+  assert.match(refresh, /renderWorkoutCalendarHome\(\);[\s\S]*if \(entryIndex != null\) _tryRestorePendingWorkoutSheetCarouselFocus\(key, targetIndex\)/);
   assert.match(helper, /const index = Math\.max\(0, Math\.floor\(Number\(slideIndex\)\)\)/);
   assert.match(helper, /_rememberWorkoutSheetCarouselSlide\(options\?\.key \?\? _workoutHomeSelectedKey, options\?\.sessionIndex \?\? _workoutHomeSessionIndex, index\)/);
+  assert.match(helper, /const slide = track\?\.querySelector\?\.\(`\[data-wt-day-exercise-slide="\$\{index\}"\]`\)/);
+  assert.match(helper, /if \(!slide\) return false/);
   assert.match(helper, /carouselSlideIndex: index/);
   assert.match(helper, /carouselScrollLeft: null/);
-  assert.match(helper, /root\?\.querySelector\?\.\('\[data-wt-day-sheet\]'\)/);
   assert.match(helper, /_restoreWorkoutSheetCarouselState\(sheet, state\)/);
   assert.match(helper, /window\.requestAnimationFrame\(restore\)/);
   assert.match(helper, /window\.setTimeout\(restore, 80\)/);
   assert.match(helper, /window\.setTimeout\(restore, 220\)/);
+  assert.match(helper, /return true/);
+  assert.match(pending, /_workoutSheetPendingCarouselFocus\.set\(_workoutSheetCarouselSnapshotKey\(key, sessionIndex\)/);
+  assert.match(pending, /_workoutSheetPendingCarouselFocus\.get\(_workoutSheetCarouselSnapshotKey\(key, sessionIndex\)\)/);
+  assert.match(pending, /_restoreWorkoutSheetCarouselToSlide\(pending\.slideIndex, \{ key, sessionIndex \}\)/);
+  assert.match(pending, /_workoutSheetPendingCarouselFocus\.delete\(_workoutSheetCarouselSnapshotKey\(key, sessionIndex\)\)/);
+  assert.match(render, /_tryRestorePendingWorkoutSheetCarouselFocus\(_workoutHomeSelectedKey, _workoutHomeSessionIndex\)/);
+});
+
+test('day sheet add picker pending focus survives until the selected slide exists in the browser DOM', { timeout: 30000 }, async () => {
+  const result = await runAddCarouselFocusHarness();
+
+  assert.equal(result.afterImmediate.slideCount, 2);
+  assert.equal(result.afterImmediate.scrollLeft, 0);
+  assert.equal(result.afterImmediate.pendingSize, 1);
+  assert.equal(result.afterImmediate.toastText, '종목을 추가했어요');
+  assert.equal(result.afterDelayedRender.slideCount, 3);
+  assert.equal(result.afterDelayedRender.pendingSize, 0);
+  assert.equal(result.afterDelayedRender.toastText, '종목을 추가했어요');
+  assert.equal(result.afterDelayedRender.visibleSlideTitle, '새로 추가한 덤벨 숄더프레스');
+  assert.equal(result.afterDelayedRender.scrollDelta, 0);
+  assert.equal(result.afterDelayedRender.scrollLeft, result.afterDelayedRender.expectedScrollLeft);
+  assert.equal(result.afterDelayedRender.slideLeftWithinTrack, 0);
+  assert.equal(result.afterDelayedRender.slideRightWithinTrack, result.afterDelayedRender.trackWidth);
+  assert.equal(result.toastCalls.length, 1);
+  assert.equal(result.toastCalls[0].type, 'success');
+  assert.equal(result.openCalls[0].options.action, 'sheet:add-exercise');
 });
 
 test('day sheet set rows support mobile value editing, clear-on-focus, and swipe delete', () => {
@@ -355,6 +561,7 @@ test('day sheet preserves exercise carousel position across set saves', () => {
   assert.match(inputHelpers, /carouselSlideIndex: carousel\?\.slideIndex \?\? null/);
   assert.match(inputHelpers, /function _restoreWorkoutSheetCarouselState\(sheet = null, state = null\)/);
   assert.match(restoreFn, /_restoreWorkoutSheetCarouselState\(sheet, state\)/);
+  assert.match(inputHelpers, /state\.carouselScrollLeft != null && Number\.isFinite\(Number\(state\.carouselScrollLeft\)\)/);
   assert.match(inputHelpers, /track\.scrollTo\(\{ left, behavior: 'auto' \}\)/);
   assert.match(inputHelpers, /data-wt-day-exercise-slide="\$\{slideIndex\}"/);
   assert.match(saveFn, /const restoreState = options\?\.preserveInput[\s\S]*_captureWorkoutSheetScrollState\(\)/);
@@ -1037,5 +1244,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260706z4-stats-raw-export/);
+  assert.match(swJs, /tomatofarm-v20260706z5-workout-carousel-focus/);
 });

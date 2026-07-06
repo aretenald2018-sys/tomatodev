@@ -71,6 +71,7 @@ const _workoutExpandedSetEditors = new Set();
 const _workoutOpenSetTypeMenus = new Set();
 let _workoutInlineSetEditor = null;
 const _workoutSheetCarouselSnapshots = new Map();
+const _workoutSheetPendingCarouselFocus = new Map();
 let _workoutTrackGraphSeq = 0;
 const WORKOUT_GYM_SESSION_COUNT = 2;
 const WORKOUT_RUNNING_SESSION_INDEX = 2;
@@ -406,7 +407,7 @@ function _restoreWorkoutSheetCarouselState(sheet = null, state = null) {
     ? null
     : track.querySelector?.(`[data-wt-day-exercise-slide="${slideIndex}"]`);
   const fallbackLeft = slide ? Math.max(0, Number(slide.offsetLeft) || 0) : 0;
-  const left = Number.isFinite(Number(state.carouselScrollLeft))
+  const left = state.carouselScrollLeft != null && Number.isFinite(Number(state.carouselScrollLeft))
     ? Math.max(0, Number(state.carouselScrollLeft) || 0)
     : fallbackLeft;
   if (typeof track.scrollTo === 'function') track.scrollTo({ left, behavior: 'auto' });
@@ -417,8 +418,14 @@ function _restoreWorkoutSheetCarouselState(sheet = null, state = null) {
 }
 
 function _restoreWorkoutSheetCarouselToSlide(slideIndex = null, options = {}) {
-  if (!Number.isFinite(Number(slideIndex)) || typeof document === 'undefined') return;
+  if (!Number.isFinite(Number(slideIndex)) || typeof document === 'undefined') return false;
   const index = Math.max(0, Math.floor(Number(slideIndex)));
+  const root = _workoutHomeScrollRoot();
+  const sheet = root?.querySelector?.('[data-wt-day-sheet]')
+    || document.querySelector?.('#workout-calendar-root [data-wt-day-sheet]');
+  const track = sheet?.querySelector?.('[data-wt-day-exercise-carousel-track]');
+  const slide = track?.querySelector?.(`[data-wt-day-exercise-slide="${index}"]`);
+  if (!slide) return false;
   const state = {
     carouselSlideIndex: index,
     carouselScrollLeft: null,
@@ -440,6 +447,7 @@ function _restoreWorkoutSheetCarouselToSlide(slideIndex = null, options = {}) {
     window.setTimeout(restore, 80);
     window.setTimeout(restore, 220);
   }
+  return true;
 }
 
 function _workoutSheetCarouselSnapshotKey(key = _workoutHomeSelectedKey, sessionIndex = _workoutHomeSessionIndex) {
@@ -488,6 +496,23 @@ function _restoreRememberedWorkoutSheetCarousel(key = _workoutHomeSelectedKey, s
     window.setTimeout(restore, 80);
     window.setTimeout(restore, 220);
   }
+}
+
+function _requestWorkoutSheetPendingCarouselFocus(key, sessionIndex, slideIndex) {
+  if (!Number.isFinite(Number(slideIndex))) return false;
+  const index = Math.max(0, Math.floor(Number(slideIndex)));
+  _workoutSheetPendingCarouselFocus.set(_workoutSheetCarouselSnapshotKey(key, sessionIndex), {
+    slideIndex: index,
+  });
+  return true;
+}
+
+function _tryRestorePendingWorkoutSheetCarouselFocus(key = _workoutHomeSelectedKey, sessionIndex = _workoutHomeSessionIndex) {
+  const pending = _workoutSheetPendingCarouselFocus.get(_workoutSheetCarouselSnapshotKey(key, sessionIndex));
+  if (!pending) return false;
+  if (!_restoreWorkoutSheetCarouselToSlide(pending.slideIndex, { key, sessionIndex })) return false;
+  _workoutSheetPendingCarouselFocus.delete(_workoutSheetCarouselSnapshotKey(key, sessionIndex));
+  return true;
 }
 
 function _workoutSheetInputSelection(input) {
@@ -769,6 +794,7 @@ async function _refreshWorkoutHomeAfterPickerSelect(key, sessionIndex = _workout
   _workoutHomeSessionIndex = targetIndex;
   _workoutHomeView = 'detail';
   _workoutHomeSheetState = 'full';
+  if (entryIndex != null) _requestWorkoutSheetPendingCarouselFocus(key, targetIndex, entryIndex);
   openWorkoutDaySheet(key, {
     sessionIndex: targetIndex,
     sheetState: 'full',
@@ -782,7 +808,7 @@ async function _refreshWorkoutHomeAfterPickerSelect(key, sessionIndex = _workout
   const timerBar = typeof document !== 'undefined' ? document.getElementById('wt-workout-timer-bar') : null;
   if (timerBar && !timerBar.classList.contains('wt-open')) timerBar.classList.add('wt-open');
   renderWorkoutCalendarHome();
-  if (entryIndex != null) _restoreWorkoutSheetCarouselToSlide(entryIndex, { key, sessionIndex: targetIndex });
+  if (entryIndex != null) _tryRestorePendingWorkoutSheetCarouselFocus(key, targetIndex);
   if (!selectionDetail.existing) window.showToast?.('종목을 추가했어요', 1500, 'success');
   return true;
 }
@@ -1835,6 +1861,7 @@ export function renderWorkoutCalendarHome() {
   _bindWorkoutHomeSheetActions(root);
   _bindWorkoutHomeSheetInputIsolation(root);
   _mountWorkoutRunningMaps(root);
+  _tryRestorePendingWorkoutSheetCarouselFocus(_workoutHomeSelectedKey, _workoutHomeSessionIndex);
 }
 
 function _renderWorkoutHomeDetail(root, args) {
