@@ -40,7 +40,9 @@ PASS. 리뷰에서 수정이 필요한 blocker를 찾지 못했다.
 5. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=882`.
 6. PASS: `git diff --check`.
 7. PASS: Puppeteer mobile visual QA harness - `isAbove=true`, `optionCount=4`, `clipped=false`.
+8. PASS: `npm.cmd run deploy:production` - `origin/main` 배포 및 deployed marker 검증 통과.
+9. PASS: 배포 URL `https://aretenald2018-sys.github.io/tomatofarm/`의 `render-calendar.js`/`style.css` 기반 mobile placement harness - `positionedAbove=true`, `optionCount=4`, `clipped=false`.
 
 ## 남은 작업
 
-운영 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`와 배포 자산 기반 메뉴 placement harness를 실행한다.
+없음.

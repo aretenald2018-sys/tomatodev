@@ -2,7 +2,7 @@
 
 ## 2026-07-06 Workout Set Type Menu Clipping
 
-- 상태: `ready_for_execution`
+- 상태: `complete`
 - 계획: `docs/ai/features/2026-07-06-workout-set-type-menu-clipping.md`
 - 리뷰: `docs/ai/reviews/2026-07-06-workout-set-type-menu-clipping-review.md`
 - 요청: 운동 세트 타입 메뉴(`메인세트`, `웜업세트`, `드랍세트`)가 하단에서 열릴 때 화면 아래로 잘리는 문제를 수정한다.
@@ -15,9 +15,13 @@
   2. PASS: `node --test tests/*.test.js` - 714 pass.
   3. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=882`.
   4. PASS: Puppeteer mobile visual QA harness - `isAbove=true`, `optionCount=4`, `clipped=false`.
+- 운영 검증:
+  1. PASS: `npm.cmd run deploy:production` - `origin/main` 배포 및 deployed marker 검증 통과.
+  2. PASS: `[deploy-verify] ok ... tomatofarm-v20260706z7-set-type-menu-clip static=242`.
+  3. PASS: 배포 URL `https://aretenald2018-sys.github.io/tomatofarm/`의 `render-calendar.js`/`style.css`를 로드한 mobile placement harness - `positionedAbove=true`, `optionCount=4`, `clipped=false`.
 - 변경 파일: `render-calendar.js`, `style.css`, `sw.js`, `tests/*.test.js` cache marker assertions, `tests/workout-calendar-bottom-sheet.test.js`, `tests/workout-set-minimal-dom.test.js`.
 - 리뷰 결과: PASS. blocker 없음.
-- 다음 액션: 운영 Pages 배포 검증 후 `complete`로 갱신한다.
+- 다음 액션: 없음.
 
 ## 2026-07-06 App Update Refresh Auth Loop
 
