@@ -45,7 +45,7 @@
   5. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=882`.
   6. PASS: browser/mobile carousel focus harness - `entryIdx=2`, delayed render `scrollLeft=736`, `expectedScrollLeft=736`, `scrollDelta=0`, toast `종목을 추가했어요`.
   7. PASS: focused final gate review - `.omo/evidence/workout-carousel-focus-20260706-gate-review.md`.
-  8. PASS: Production Pages deploy verification - `c4412fa0d54e`, HTTP 200, deployed cache `tomatofarm-v20260706z5-workout-carousel-focus`.
+  8. PASS: Production Pages deploy verification - final deployed commit, HTTP 200, deployed cache `tomatofarm-v20260706z5-workout-carousel-focus`.
   9. PASS: Production Pages mobile carousel focus harness - deployed `render-calendar.js`, `entryIdx=2`, delayed render `scrollLeft=736`, `expectedScrollLeft=736`, `scrollDelta=0`, toast `종목을 추가했어요`.
 - 다음 액션: 없음.
 

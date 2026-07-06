@@ -35,4 +35,4 @@
 3. Regression: `node --test tests/*.test.js`, `npm.cmd run verify:assets`.
 4. Browser QA: 모바일 viewport에서 day sheet에 여러 종목이 있는 상태로 add-picker afterSelect를 실행한 뒤 carousel track `scrollLeft`가 추가된 slide offset과 일치하고 toast가 표시되는지 확인한다.
 5. PASS: browser/mobile harness - `.omo/evidence/workout-carousel-focus-20260706/browser-add-carousel-focus.json` 및 screenshot.
-6. PASS: Production Pages - `c4412fa0d54e`, HTTP 200, deployed `render-calendar.js`, cache `tomatofarm-v20260706z5-workout-carousel-focus`, and mobile carousel focus harness `scrollLeft=736`, `expectedScrollLeft=736`.
+6. PASS: Production Pages - final deployed commit, HTTP 200, deployed `render-calendar.js`, cache `tomatofarm-v20260706z5-workout-carousel-focus`, and mobile carousel focus harness `scrollLeft=736`, `expectedScrollLeft=736`.

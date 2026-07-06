@@ -30,7 +30,7 @@
 5. PASS: `.omo/evidence/workout-carousel-focus-20260706/syntax-render-calendar.txt`.
 6. PASS: `.omo/evidence/workout-carousel-focus-20260706-gate-review.md` - focused final gate `APPROVE`.
 7. PASS: `.omo/evidence/workout-carousel-focus-20260706/production-add-carousel-focus.json`
-   - Production Pages `HTTP 200`, deployed commit `c4412fa0d54e`, cache `tomatofarm-v20260706z5-workout-carousel-focus`.
+   - Production Pages `HTTP 200`, final deployed commit, cache `tomatofarm-v20260706z5-workout-carousel-focus`.
    - deployed `render-calendar.js` 기반 모바일 harness에서 `entryIdx=2`, delayed render `scrollLeft=736`, `expectedScrollLeft=736`, `scrollDelta=0`, toast `종목을 추가했어요`.
 
 ## 남은 사항
