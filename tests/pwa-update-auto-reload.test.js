@@ -168,5 +168,5 @@ test('service worker controllerchange still reloads once', () => {
 
 test('production app cache busts the service worker registrar script', () => {
   assert.match(indexHtml, /pwa-register\.js\?v=20260706z6-sw-reload-stability/);
-  assert.match(swJs, /tomatofarm-v20260706z8-cardio-picker-card/);
+  assert.match(swJs, /tomatofarm-v20260706z10-cardio-picker-images/);
 });

@@ -3,7 +3,7 @@
 
 // 캐시 버전: 타임스탬프 기반 자동 생성 — 파일 수정 시 SW 자동 업데이트
 // (SW 파일 내용이 1바이트라도 바뀌면 브라우저가 새 SW로 인식)
-const CACHE_VERSION = 'tomatofarm-v20260706z8-cardio-picker-card';
+const CACHE_VERSION = 'tomatofarm-v20260706z10-cardio-picker-images';
 const RUNTIME_CACHE = 'dashboard3-runtime';
 const STATIC_ASSETS = [
   './',
@@ -24,10 +24,17 @@ const STATIC_ASSETS = [
   './assets/nav-icons/stats.svg',
   './assets/nav-icons/workout.svg',
   './assets/stats/muscle-fatigue-body.png',
+  './assets/workout/cardio/indoor-cycling.png',
+  './assets/workout/cardio/recumbent-bike.png',
+  './assets/workout/cardio/rowing.png',
+  './assets/workout/cardio/stationary-bike.png',
+  './assets/workout/cardio/step-machine.png',
+  './assets/workout/cardio/treadmill-running.png',
   './assets/workout/muscles/abs.png',
   './assets/workout/muscles/back.png',
   './assets/workout/muscles/bicep.png',
   './assets/workout/muscles/chest.png',
+  './assets/workout/muscles/full-body.png',
   './assets/workout/muscles/glute.png',
   './assets/workout/muscles/lower.png',
   './assets/workout/muscles/shoulder.png',

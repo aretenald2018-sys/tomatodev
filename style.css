@@ -6231,7 +6231,11 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  word-break: keep-all;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 .ex-picker-rail-chip b {
   color: var(--primary);
@@ -6304,42 +6308,40 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   display: block;
   object-fit: contain;
 }
-.ex-picker-activity-figure {
+.ex-picker-body-figure {
   width: 60px;
   height: 50px;
   display: grid;
-  place-items: center;
-  border-radius: 18px;
-  background: rgba(33, 124, 249, 0.08);
-  color: #217cf9;
-  box-shadow: inset 0 0 0 1px rgba(33, 124, 249, 0.1);
+  place-items: end center;
 }
-.ex-picker-activity-figure svg {
-  width: 34px;
-  height: 34px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.ex-picker-body-figure.has-asset {
+  width: 60px;
+  height: 50px;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
 }
-.ex-picker-activity-figure circle {
-  fill: currentColor;
-  stroke: none;
+.ex-picker-muscle-figure.ex-picker-body-figure.has-asset img {
+  width: auto;
+  height: 50px;
+  max-width: 60px;
+  max-height: 50px;
+  display: block;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 1px rgba(15, 23, 42, 0.18));
 }
-.ex-picker-activity-tile .ex-picker-muscle-name {
-  color: #217cf9;
+.ex-picker-body-figure--running img {
+  filter: drop-shadow(0 1px 1px rgba(33, 124, 249, 0.24));
 }
-.ex-picker-activity-tile .ex-picker-muscle-count {
+.ex-picker-body-figure--cardio img {
+  filter: drop-shadow(0 1px 1px rgba(15, 143, 111, 0.24));
+}
+.ex-picker-body-category-tile .ex-picker-muscle-name {
+  color: var(--picker-muscle);
+}
+.ex-picker-body-category-tile .ex-picker-muscle-count {
   color: var(--seed-fg-muted, var(--text-secondary));
-}
-.ex-picker-activity-tile--manual-cardio .ex-picker-muscle-name {
-  color: #0f8f6f;
-}
-.ex-picker-activity-tile--manual-cardio .ex-picker-activity-figure {
-  background: rgba(15, 143, 111, 0.08);
-  color: #0f8f6f;
-  box-shadow: inset 0 0 0 1px rgba(15, 143, 111, 0.12);
 }
 .ex-picker-cardio-backdrop {
   position: absolute;
@@ -6617,32 +6619,36 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   opacity: 0.52;
 }
 #ex-picker-modal .ex-picker-cardio-item {
-  grid-template-columns: 58px minmax(0, 1fr) minmax(66px, max-content);
+  grid-template-columns: 58px minmax(0, 1fr);
 }
-#ex-picker-modal .ex-picker-cardio-item .ex-picker-activity-figure {
+#ex-picker-modal .ex-picker-cardio-item .ex-picker-body-figure {
   width: 50px;
   height: 46px;
   border-radius: 14px;
-  background: rgba(15, 143, 111, 0.08);
-  color: #0f8f6f;
 }
-#ex-picker-modal .ex-picker-cardio-item .ex-picker-activity-figure svg {
-  width: 29px;
-  height: 29px;
+#ex-picker-modal .ex-picker-cardio-item .ex-picker-muscle-figure.ex-picker-body-figure.has-asset img {
+  height: 46px;
+  max-height: 46px;
 }
-.ex-picker-cardio-meta {
-  justify-self: end;
-  max-width: 78px;
-  padding: 5px 8px;
-  border-radius: 999px;
-  background: #f1f5f9;
-  color: #64748b;
-  font-size: 10px;
-  line-height: 14px;
-  font-weight: 850;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+#ex-picker-modal .ex-picker-cardio-item .ex-picker-muscle-figure.ex-picker-cardio-figure.has-asset {
+  width: 58px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+#ex-picker-modal .ex-picker-cardio-item .ex-picker-muscle-figure.ex-picker-cardio-figure.has-asset img {
+  width: 58px;
+  height: 46px;
+  max-width: 58px;
+  max-height: 46px;
+  display: block;
+  object-fit: contain;
+  opacity: 0.78;
+  filter: grayscale(1) contrast(0.94) drop-shadow(0 1px 1px rgba(15, 23, 42, 0.12));
 }
 #ex-picker-modal .ex-picker-main {
   min-width: 0;

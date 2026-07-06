@@ -68,5 +68,5 @@ test('reaction picker options inherit the feed action contract', () => {
 });
 
 test('service worker cache version was bumped for social feed actions', () => {
-  assert.match(swJs, /tomatofarm-v20260706z8-cardio-picker-card/);
+  assert.match(swJs, /tomatofarm-v20260706z10-cardio-picker-images/);
 });

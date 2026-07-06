@@ -62,5 +62,5 @@ test('login restore skips guild onboarding when a running draft can resume', () 
 });
 
 test('service worker cache version was bumped for login action bridge assets', () => {
-  assert.match(swJs, /tomatofarm-v20260706z8-cardio-picker-card/);
+  assert.match(swJs, /tomatofarm-v20260706z10-cardio-picker-images/);
 });

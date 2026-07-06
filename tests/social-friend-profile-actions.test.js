@@ -119,5 +119,5 @@ test('comment reaction and edit actions inherit the profile delegate contract', 
 });
 
 test('service worker cache version was bumped for social profile action assets', () => {
-  assert.match(swJs, /tomatofarm-v20260706z8-cardio-picker-card/);
+  assert.match(swJs, /tomatofarm-v20260706z10-cardio-picker-images/);
 });

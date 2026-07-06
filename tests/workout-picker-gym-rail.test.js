@@ -83,12 +83,14 @@ test('exercise picker equipment manager opens for the selected rail gym', () => 
   assert.match(manager, /openMaxEquipmentPoolModal\(\{ gymId: _selectedPickerManagerGymId\(gymId\) \}\)/);
 });
 
-test('exercise picker rail chips support active and multiline gym labels', () => {
+test('exercise picker rail chips keep active and Korean-safe multiline gym labels', () => {
   const chip = ruleBody('.ex-picker-rail-chip,\n.ex-picker-rail-action');
   const label = ruleBody('.ex-picker-rail-chip span');
   const active = ruleBody('.ex-picker-rail-chip.active');
 
   assert.match(chip, /display:\s*grid/);
-  assert.match(label, /overflow-wrap:\s*anywhere/);
+  assert.match(label, /word-break:\s*keep-all/);
+  assert.match(label, /-webkit-line-clamp:\s*2/);
+  assert.doesNotMatch(label, /overflow-wrap:\s*anywhere/);
   assert.match(active, /border-color:\s*rgba\(250,\s*52,\s*44,\s*0\.62\)/);
 });

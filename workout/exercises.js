@@ -94,13 +94,14 @@ function _isMaxWorkoutMode() {
 
 const NEW_MUSCLE_OPTION = '__new_custom_muscle__';
 const CARDIO_EXERCISE_ID_PREFIX = 'cardio:';
+const CARDIO_PICKER_ASSET_BASE = './assets/workout/cardio/';
 const CARDIO_PICKER_EXERCISES = Object.freeze([
-  { id: 'treadmill-running', label: '트레드밀 러닝', detail: '러닝머신' },
-  { id: 'step-machine', label: '스텝머신', detail: '계단 오르기' },
-  { id: 'stationary-bike', label: '실내 자전거', detail: '고정식 바이크' },
-  { id: 'rowing', label: '로잉', detail: '로잉 머신' },
-  { id: 'indoor-cycling', label: '인도어 사이클링', detail: '스핀 바이크' },
-  { id: 'recumbent-bike', label: '리컴번트 바이크', detail: '좌식 자전거' },
+  { id: 'treadmill-running', label: '트레드밀 러닝', detail: '러닝머신', image: `${CARDIO_PICKER_ASSET_BASE}treadmill-running.png` },
+  { id: 'step-machine', label: '스텝머신', detail: '계단 오르기', image: `${CARDIO_PICKER_ASSET_BASE}step-machine.png` },
+  { id: 'stationary-bike', label: '실내 자전거', detail: '고정식 바이크', image: `${CARDIO_PICKER_ASSET_BASE}stationary-bike.png` },
+  { id: 'rowing', label: '로잉', detail: '로잉 머신', image: `${CARDIO_PICKER_ASSET_BASE}rowing.png` },
+  { id: 'indoor-cycling', label: '인도어 사이클링', detail: '스핀 바이크', image: `${CARDIO_PICKER_ASSET_BASE}indoor-cycling.png` },
+  { id: 'recumbent-bike', label: '리컴번트 바이크', detail: '좌식 자전거', image: `${CARDIO_PICKER_ASSET_BASE}recumbent-bike.png` },
 ]);
 const _embeddedMaxCards = new Map();
 const WORKOUT_NUMBER_INPUT_SELECTOR = '.set-input, .set-rpe-input, .set-rom-input';
@@ -2743,49 +2744,62 @@ const PICKER_MUSCLE_ASSETS = {
   tricep: './assets/workout/muscles/tricep.png',
   abs: './assets/workout/muscles/abs.png',
 };
+const PICKER_BODY_CATEGORY_ASSET = './assets/workout/muscles/full-body.png';
+const PICKER_BODY_CATEGORIES = Object.freeze([
+  { id: 'running', label: '런닝/조깅', action: 'running', color: '#217cf9' },
+  { id: 'cardio', label: '유산소', action: 'cardio', color: '#0f8f6f' },
+]);
 
-function _pickerRunningFigureHtml() {
+function _pickerBodyCategoryCount(category) {
+  if (category?.id === 'running') return S?.workout?.running ? '기록' : '러닝';
+  if (category?.id === 'cardio') return CARDIO_PICKER_EXERCISES.length;
+  return '';
+}
+
+function _pickerBodyCategoryById(id) {
+  return PICKER_BODY_CATEGORIES.find(category => category.id === id) || PICKER_BODY_CATEGORIES[0];
+}
+
+function _pickerBodyCategoryFigureHtml(category) {
+  const id = String(category?.id || 'body').replace(/[^a-z0-9_-]/gi, '');
   return `
-    <span class="ex-picker-activity-figure" aria-hidden="true">
-      <svg viewBox="0 0 24 24" focusable="false">
-        <circle cx="15.5" cy="4.5" r="2.2"></circle>
-        <path d="M11.7 8.2 8.8 11l3.1 2.8 1.9 5.2"></path>
-        <path d="M12 8.1 16 10l2.5 2.6"></path>
-        <path d="M9.4 12.2 6.5 15.6 3.8 19"></path>
-        <path d="M13.5 18.7 17 20.5"></path>
-      </svg>
+    <span class="ex-picker-muscle-figure ex-picker-body-figure has-asset ex-picker-body-figure--${_escPicker(id)}" aria-hidden="true">
+      <img src="${_escPicker(PICKER_BODY_CATEGORY_ASSET)}" alt="" loading="eager" decoding="async" draggable="false">
     </span>
   `;
 }
 
-function _pickerManualCardioFigureHtml() {
+function _pickerCardioFigureHtml(cardio) {
+  const image = String(cardio?.image || '').trim();
+  if (!image) return _pickerBodyCategoryFigureHtml(_pickerBodyCategoryById('cardio'));
+  const id = String(cardio?.id || 'cardio').replace(/[^a-z0-9_-]/gi, '');
   return `
-    <span class="ex-picker-activity-figure" aria-hidden="true">
-      <svg viewBox="0 0 24 24" focusable="false">
-        <path d="M4 17.5h16"></path>
-        <path d="M6.2 15.2 9 10.5l3.4 2.8 4.7-6.6"></path>
-        <path d="M16.7 6.7h3.1v3.1"></path>
-        <circle cx="6.2" cy="15.2" r="1.5"></circle>
-      </svg>
+    <span class="ex-picker-muscle-figure ex-picker-cardio-figure has-asset ex-picker-cardio-figure--${_escPicker(id)}" aria-hidden="true">
+      <img src="${_escPicker(image)}" alt="" loading="eager" decoding="async" draggable="false" data-picker-cardio-img>
     </span>
   `;
 }
 
-function _renderPickerActivityTiles() {
-  const hasRunning = !!S?.workout?.running;
-  const cardioCount = CARDIO_PICKER_EXERCISES.length;
-  return `
-    <button type="button" class="ex-picker-muscle-tile ex-picker-activity-tile" data-picker-activity="running" style="--picker-muscle:#217cf9">
-      ${_pickerRunningFigureHtml()}
-      <span class="ex-picker-muscle-name">런닝/조깅</span>
-      <span class="ex-picker-muscle-count">${hasRunning ? '기록' : '러닝'}</span>
+function _bindPickerCardioFigureFallback(root) {
+  const img = root?.querySelector?.('[data-picker-cardio-img]');
+  img?.addEventListener('error', () => {
+    const figure = img.closest('.ex-picker-cardio-figure');
+    if (figure) figure.outerHTML = _pickerBodyCategoryFigureHtml(_pickerBodyCategoryById('cardio'));
+  }, { once: true });
+}
+
+function _renderPickerBodyCategoryTiles() {
+  return PICKER_BODY_CATEGORIES.map(category => `
+    <button type="button"
+      class="ex-picker-muscle-tile ex-picker-body-category-tile ex-picker-body-category-tile--${_escPicker(category.id)}"
+      data-picker-body-category="${_escPicker(category.id)}"
+      data-picker-body-action="${_escPicker(category.action)}"
+      style="--picker-muscle:${_safePickerColor(category.color)}">
+      ${_pickerBodyCategoryFigureHtml(category)}
+      <span class="ex-picker-muscle-name">${_escPicker(category.label)}</span>
+      <span class="ex-picker-muscle-count">${_escPicker(_pickerBodyCategoryCount(category))}</span>
     </button>
-    <button type="button" class="ex-picker-muscle-tile ex-picker-activity-tile ex-picker-activity-tile--manual-cardio" data-picker-activity="manual-cardio" style="--picker-muscle:#0f8f6f">
-      ${_pickerManualCardioFigureHtml()}
-      <span class="ex-picker-muscle-name">유산소</span>
-      <span class="ex-picker-muscle-count">${cardioCount}</span>
-    </button>
-  `;
+  `).join('');
 }
 
 function _manualCardioExerciseId(cardio) {
@@ -3263,12 +3277,12 @@ function _renderPickerTabs(ctx) {
       role="tab"
       aria-selected="${active ? 'true' : 'false'}">${_escPicker(label)}</button>
   `;
-  const html = _pickerView === 'cardio' && !_pickerSearchQuery
-    ? [
-        button({ key: 'category', label: '분류', active: false }),
-        button({ key: 'cardio', label: '유산소', active: true }),
-      ].join('')
-    : listTabs
+  const bodyCategoryTabs = PICKER_BODY_CATEGORIES.map(category => button({
+    key: category.action,
+    label: category.label,
+    active: !_pickerSearchQuery && _pickerView === 'cardio' && category.action === 'cardio',
+  }));
+  const html = listTabs
     ? [
         button({ key: 'category', label: '분류', active: false }),
         ...ctx.visibleMuscles.map(m => button({
@@ -3277,12 +3291,16 @@ function _renderPickerTabs(ctx) {
           muscleId: m.id,
           active: !_pickerSearchQuery && _pickerMuscleFilter === m.id,
         })),
+        ...bodyCategoryTabs,
       ].join('')
       : [
         button({ key: 'category', label: '분류', active: true }),
         button({ key: 'all', label: '전체', active: false }),
       ].join('');
   tabs.innerHTML = html;
+  requestAnimationFrame(() => {
+    tabs.querySelector('.ex-picker-tab.active')?.scrollIntoView?.({ block: 'nearest', inline: 'center' });
+  });
   tabs.querySelectorAll('[data-picker-tab]').forEach(btn => {
     btn.addEventListener('click', () => {
       const tab = btn.getAttribute('data-picker-tab');
@@ -3296,6 +3314,12 @@ function _renderPickerTabs(ctx) {
       }
       if (tab === 'cardio') {
         _openPickerCardioList();
+        return;
+      }
+      if (tab === 'running') {
+        wtCloseExercisePicker();
+        if (typeof window.wtSwitchType === 'function') window.wtSwitchType('running');
+        else window.wtOpenRunningSession?.();
         return;
       }
       _openPickerList(tab === 'custom' ? 'custom' : 'all');
@@ -3700,13 +3724,13 @@ function _renderPickerCardioList(container) {
     btn.className = 'ex-picker-item ex-picker-cardio-item' + (alreadyAdded ? ' already' : '');
     btn.dataset.pickerCardioId = cardio.id;
     btn.innerHTML = `
-      ${_pickerManualCardioFigureHtml()}
+      ${_pickerCardioFigureHtml(cardio)}
       <span class="ex-picker-main">
         <span class="ex-picker-name">${_escPicker(cardio.label)}${alreadyAdded ? ' ✓' : ''}</span>
         <span class="ex-picker-history-meta">${_escPicker(_pickerStatsMeta(pickerStats))}</span>
       </span>
-      <span class="ex-picker-cardio-meta">${_escPicker(cardio.detail)}</span>
     `;
+    _bindPickerCardioFigureFallback(btn);
     group.appendChild(btn);
   });
   _renderPickerCardioListToolbar(container);
@@ -3768,7 +3792,7 @@ function _renderPickerCategory(container, ctx) {
         <button type="button" class="ex-picker-rail-action" data-picker-action="manage-gyms" data-picker-gym-manage="${_escPicker(manageGymId || '')}">헬스장 관리</button>
       </aside>
       <section class="ex-picker-muscle-panel" aria-label="부위 분류">
-        ${tiles}${_renderPickerActivityTiles()}
+        ${tiles}${_renderPickerBodyCategoryTiles()}
       </section>
     </div>
   `;
@@ -3781,14 +3805,14 @@ function _renderPickerCategory(container, ctx) {
   container.querySelectorAll('[data-picker-muscle]').forEach(btn => {
     btn.addEventListener('click', () => _openPickerList('all', btn.getAttribute('data-picker-muscle'), { preserveGymScope: true }));
   });
-  container.querySelectorAll('[data-picker-activity]').forEach(btn => {
+  container.querySelectorAll('[data-picker-body-category]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const activity = btn.getAttribute('data-picker-activity');
-      if (activity === 'manual-cardio') {
+      const action = btn.getAttribute('data-picker-body-action') || btn.getAttribute('data-picker-body-category');
+      if (action === 'cardio') {
         _openPickerCardioList();
         return;
       }
-      if (activity !== 'running') return;
+      if (action !== 'running') return;
       wtCloseExercisePicker();
       if (typeof window.wtSwitchType === 'function') window.wtSwitchType('running');
       else window.wtOpenRunningSession?.();
