@@ -106,6 +106,23 @@ describe('calcBurnedKcal', () => {
     assert.equal(r.gym, 0);
   });
 
+  test('수기 유산소 카드의 kcal은 총 소모 칼로리에 포함', () => {
+    const day = {
+      exercises: [
+        {
+          muscleId: 'cardio',
+          exerciseId: 'cardio:step-machine',
+          name: '스텝머신',
+          sets: [],
+          cardio: { kcal: 180, distanceKm: 1.2, speedKmh: 5.5, laps: 12 },
+        },
+      ],
+    };
+    const r = calcBurnedKcal(day, 70);
+    assert.equal(r.cardio, 180);
+    assert.equal(r.total, 180);
+  });
+
   test('running: 5km/30분 → 속도 10km/h → MET 9.8 → ≈ 343 kcal', () => {
     // speed = 5 / (30/60) = 10.0 km/h
     // _runMET: speedKmh <= 10.5 → 9.8 (Ainsworth 2011: 10km/h 근처는 9.8 MET)

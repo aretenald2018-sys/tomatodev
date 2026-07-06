@@ -1895,7 +1895,7 @@ function _runMET(speedKmh) {
  * 하루 운동 소모칼로리 계산 (MET 기반)
  * @param {object} day - workouts/{dateKey} 도큐먼트
  * @param {number} weightKg - 체중(kg). 없으면 70 기본
- * @returns {{total:number, gym:number, running:number, swimming:number, cf:number}}
+ * @returns {{total:number, gym:number, cardio:number, running:number, swimming:number, cf:number}}
  */
 export function calcBurnedKcal(day, weightKg) {
   const w = Number(weightKg) > 0 ? Number(weightKg) : 70;
@@ -1903,8 +1903,13 @@ export function calcBurnedKcal(day, weightKg) {
 
   // 근력: 완료 세트(done) × 부위별 MET
   let gym = 0;
+  let cardio = 0;
   if (Array.isArray(d.exercises)) {
     for (const ex of d.exercises) {
+      const manualCardioKcal = Number(ex?.cardio?.kcal);
+      if (Number.isFinite(manualCardioKcal) && manualCardioKcal > 0) {
+        cardio += manualCardioKcal;
+      }
       const mid = ex?.muscleId;
       const met = MUSCLE_MET[mid];
       if (!met) continue;
@@ -1942,10 +1947,11 @@ export function calcBurnedKcal(day, weightKg) {
     cf = 8.0 * w * durH;
   }
 
-  const total = Math.round(gym + running + swimming + cf);
+  const total = Math.round(gym + cardio + running + swimming + cf);
   return {
     total,
     gym:      Math.round(gym),
+    cardio:   Math.round(cardio),
     running:  Math.round(running),
     swimming: Math.round(swimming),
     cf:       Math.round(cf),

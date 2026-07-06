@@ -93,6 +93,15 @@ function _isMaxWorkoutMode() {
 }
 
 const NEW_MUSCLE_OPTION = '__new_custom_muscle__';
+const CARDIO_EXERCISE_ID_PREFIX = 'cardio:';
+const CARDIO_PICKER_EXERCISES = Object.freeze([
+  { id: 'treadmill-running', label: '트레드밀 러닝', detail: '러닝머신' },
+  { id: 'step-machine', label: '스텝머신', detail: '계단 오르기' },
+  { id: 'stationary-bike', label: '실내 자전거', detail: '고정식 바이크' },
+  { id: 'rowing', label: '로잉', detail: '로잉 머신' },
+  { id: 'indoor-cycling', label: '인도어 사이클링', detail: '스핀 바이크' },
+  { id: 'recumbent-bike', label: '리컴번트 바이크', detail: '좌식 자전거' },
+]);
 const _embeddedMaxCards = new Map();
 const WORKOUT_NUMBER_INPUT_SELECTOR = '.set-input, .set-rpe-input, .set-rom-input';
 const WORKOUT_INPUT_SCROLL_GUARD_BOTTOM_PX = 156;
@@ -121,6 +130,7 @@ function _workoutEntries() {
 }
 
 function _isWorkoutEntryComplete(entry) {
+  if (_isManualCardioEntry(entry)) return true;
   const sets = Array.isArray(entry?.sets) ? entry.sets : [];
   return sets.length > 0 && sets.every(set => set.done !== false);
 }
@@ -1397,6 +1407,25 @@ export function _renderExerciseList() {
   const track = shell.querySelector('.ex-entry-carousel-track');
 
   entries.forEach((entry, idx) => {
+    if (_isManualCardioEntry(entry)) {
+      const slide = document.createElement('div');
+      slide.className = 'ex-entry-carousel-slide' + (idx === activeIdx ? ' is-active' : '');
+      slide.setAttribute('data-wt-entry-slide-idx', String(idx));
+      const block = document.createElement('div');
+      block.className = 'ex-block ex-block--max-v2 ex-block--cardio is-complete';
+      block.dataset.wtEntryIdx = String(idx);
+      block.innerHTML = _renderManualCardioEntryCard(entry, idx);
+      block.querySelector('.ex-remove-btn')?.addEventListener('click', () => wtRemoveExerciseEntry(idx));
+      block.querySelector('.ex-max-v2-primary')?.addEventListener('click', () => _advanceWorkoutEntry(idx));
+      block.querySelector('[data-cardio-edit]')?.addEventListener('click', () => {
+        const cardio = _manualCardioEntryData(S.workout.exercises[idx]).cardio;
+        _openManualCardioInput({ standalone: true, cardio });
+      });
+      _bindWorkoutEntryRecordFocus(block, idx);
+      slide.appendChild(block);
+      track?.appendChild(slide);
+      return;
+    }
     const ex   = getExList().find(e => e.id === entry.exerciseId);
     const mc   = allMuscles.find(m => m.id === entry.muscleId);
     const sparkline = _buildMaxTrackSparkline(entry, ex);
@@ -2661,6 +2690,13 @@ function _handlePickerListClick(event) {
     Promise.resolve(result).catch(err => console.error('[picker] row action failed:', err));
     return;
   }
+  const cardioItem = target.closest?.('[data-picker-cardio-id]');
+  if (cardioItem && container.contains(cardioItem)) {
+    event.preventDefault();
+    const cardio = _pickerCardioById(cardioItem.getAttribute('data-picker-cardio-id'));
+    _openManualCardioInput({ standalone: false, cardio });
+    return;
+  }
   const item = target.closest?.('[data-picker-exercise-id]');
   if (!item || !container.contains(item)) return;
   event.preventDefault();
@@ -2697,7 +2733,6 @@ let _pickerListMode = 'all'; // all | custom
 let _pickerSortMode = 'recent'; // recent | frequency | name
 let _pickerSearchQuery = '';
 let _pickerAfterSelect = null;
-const PICKER_MANUAL_CARDIO_SESSION_INDEX = 2;
 const PICKER_MUSCLE_ASSETS = {
   chest: './assets/workout/muscles/chest.png',
   shoulder: './assets/workout/muscles/shoulder.png',
@@ -2738,6 +2773,7 @@ function _pickerManualCardioFigureHtml() {
 
 function _renderPickerActivityTiles() {
   const hasRunning = !!S?.workout?.running;
+  const cardioCount = CARDIO_PICKER_EXERCISES.length;
   return `
     <button type="button" class="ex-picker-muscle-tile ex-picker-activity-tile" data-picker-activity="running" style="--picker-muscle:#217cf9">
       ${_pickerRunningFigureHtml()}
@@ -2747,13 +2783,22 @@ function _renderPickerActivityTiles() {
     <button type="button" class="ex-picker-muscle-tile ex-picker-activity-tile ex-picker-activity-tile--manual-cardio" data-picker-activity="manual-cardio" style="--picker-muscle:#0f8f6f">
       ${_pickerManualCardioFigureHtml()}
       <span class="ex-picker-muscle-name">유산소</span>
-      <span class="ex-picker-muscle-count">${hasRunning ? '수정' : '수기'}</span>
+      <span class="ex-picker-muscle-count">${cardioCount}</span>
     </button>
   `;
 }
 
-function _manualCardioModeLabel(mode) {
-  return mode === 'walk' ? '걷기' : '뛰기';
+function _manualCardioExerciseId(cardio) {
+  return `${CARDIO_EXERCISE_ID_PREFIX}${String(cardio?.id || '').trim()}`;
+}
+
+function _pickerCardioById(id) {
+  const cardioId = String(id || '').replace(CARDIO_EXERCISE_ID_PREFIX, '');
+  return CARDIO_PICKER_EXERCISES.find(item => item.id === cardioId) || CARDIO_PICKER_EXERCISES[0];
+}
+
+function _isManualCardioEntry(entry) {
+  return !!entry?.cardio || String(entry?.exerciseId || '').startsWith(CARDIO_EXERCISE_ID_PREFIX);
 }
 
 function _manualCardioRound(value, digits = 1) {
@@ -2763,67 +2808,177 @@ function _manualCardioRound(value, digits = 1) {
   return Math.round(n * unit) / unit;
 }
 
-function _manualCardioInitialValues() {
-  const run = S?.workout?.runData || {};
-  const summary = run.routeSummary && typeof run.routeSummary === 'object' ? run.routeSummary : {};
-  const isManualCardio = run.source === 'manual-cardio' || summary.source === 'manual-cardio';
-  if (!isManualCardio) return { mode: 'walk', speedKmh: 5.5, minutes: 30 };
-  const durationMin = (Number(run.durationMin) || 0) + ((Number(run.durationSec) || 0) / 60);
-  const speedFromDistance = durationMin > 0 && Number(run.distance) > 0
-    ? Number(run.distance) / (durationMin / 60)
-    : 0;
+function _manualCardioNumber(value, digits = 1) {
+  const raw = String(value ?? '').trim();
+  if (raw === '') return 0;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return _manualCardioRound(n, digits);
+}
+
+function _manualCardioInputValue(value, digits = 1) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? _manualCardioRound(n, digits) : '';
+}
+
+function _manualCardioInitialValues(cardio) {
+  const exerciseId = _manualCardioExerciseId(cardio);
+  const existing = (Array.isArray(S?.workout?.exercises) ? S.workout.exercises : [])
+    .find(entry => String(entry?.exerciseId || '') === exerciseId);
+  const data = existing?.cardio || {};
   return {
-    mode: summary.activityMode === 'walk' ? 'walk' : 'run',
-    speedKmh: _manualCardioRound(Number(summary.speedKmh) || speedFromDistance || 5.5, 1),
-    minutes: Math.max(1, Math.round(durationMin || 30)),
+    kcal: _manualCardioInputValue(data.kcal, 0),
+    distanceKm: _manualCardioInputValue(data.distanceKm, 2),
+    speedKmh: _manualCardioInputValue(data.speedKmh, 1),
+    laps: _manualCardioInputValue(data.laps, 0),
   };
 }
 
-function _manualCardioSummary({ mode, speedKmh, minutes }) {
-  const durationSecTotal = Math.max(1, Math.round(minutes * 60));
-  const distanceKm = _manualCardioRound(speedKmh * (durationSecTotal / 3600), 2);
-  const avgPaceSecPerKm = speedKmh > 0 ? Math.round(3600 / speedKmh) : 0;
+function _manualCardioSummary({ kcal, distanceKm, speedKmh, laps }) {
+  const summary = {
+    kcal: _manualCardioNumber(kcal, 0),
+    distanceKm: _manualCardioNumber(distanceKm, 2),
+    speedKmh: _manualCardioNumber(speedKmh, 1),
+    laps: _manualCardioNumber(laps, 0),
+  };
+  if (Object.values(summary).some(value => value == null)) return null;
+  if (!Object.values(summary).some(value => Number(value) > 0)) return null;
+  return summary;
+}
+
+function _manualCardioEntryData(entry) {
+  const raw = entry?.cardio || {};
+  const cardio = _pickerCardioById(raw.id || String(entry?.exerciseId || '').replace(CARDIO_EXERCISE_ID_PREFIX, ''));
+  const summary = _manualCardioSummary({
+    kcal: raw.kcal,
+    distanceKm: raw.distanceKm,
+    speedKmh: raw.speedKmh,
+    laps: raw.laps,
+  }) || { kcal: 0, distanceKm: 0, speedKmh: 0, laps: 0 };
+  return { cardio, ...summary };
+}
+
+function _buildManualCardioEntry(cardio, summary) {
   return {
-    mode,
-    speedKmh: _manualCardioRound(speedKmh, 1),
-    durationSec: durationSecTotal,
-    durationMin: Math.floor(durationSecTotal / 60),
-    durationSecRemainder: durationSecTotal % 60,
-    distanceKm,
-    avgPaceSecPerKm,
-    calories: Math.round(distanceKm * 70),
+    muscleId: 'cardio',
+    muscleIds: [],
+    movementId: null,
+    exerciseId: _manualCardioExerciseId(cardio),
+    name: cardio.label,
+    sets: [],
+    cardio: {
+      id: cardio.id,
+      label: cardio.label,
+      detail: cardio.detail,
+      kcal: summary.kcal,
+      distanceKm: summary.distanceKm,
+      speedKmh: summary.speedKmh,
+      laps: summary.laps,
+      unit: 'metric',
+      source: 'manual-cardio',
+      recordedAt: Date.now(),
+    },
   };
 }
 
-function _renderManualCardioSheet({ standalone = false } = {}) {
-  const initial = _manualCardioInitialValues();
+function _manualCardioMetricText(value, unit, digits = 1) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return '--';
+  return `${_manualCardioRound(n, digits)}${unit}`;
+}
+
+function _manualCardioPreviewText(summary) {
+  if (!summary) return '칼로리, 거리, 속도, 랩/반복 중 하나 이상 입력해주세요';
+  const parts = [
+    summary.kcal > 0 ? `${Math.round(summary.kcal)} kcal` : '',
+    summary.distanceKm > 0 ? `${_manualCardioRound(summary.distanceKm, 2)} km` : '',
+    summary.speedKmh > 0 ? `${_manualCardioRound(summary.speedKmh, 1)} km/h` : '',
+    summary.laps > 0 ? `${Math.round(summary.laps)}회` : '',
+  ].filter(Boolean);
+  return parts.join(' · ');
+}
+
+function _renderManualCardioEntryCard(entry, idx) {
+  const data = _manualCardioEntryData(entry);
+  const metrics = [
+    { label: '칼로리', value: _manualCardioMetricText(data.kcal, ' kcal', 0) },
+    { label: '거리', value: _manualCardioMetricText(data.distanceKm, ' km', 2) },
+    { label: '속도', value: _manualCardioMetricText(data.speedKmh, ' km/h', 1) },
+    { label: '랩/반복', value: _manualCardioMetricText(data.laps, '회', 0) },
+  ];
+  const summary = _manualCardioPreviewText(data);
+  return `
+    <div class="ex-max-v2-head ex-cardio-head">
+      <div class="ex-max-v2-title-row">
+        <div>
+          <div class="ex-max-v2-source"><i style="background:#0f8f6f"></i>유산소 · 수기 입력</div>
+          <div class="ex-max-v2-name" tabindex="0">${_escPicker(data.cardio.label)}</div>
+        </div>
+        <button class="ex-remove-btn ex-max-v2-menu" data-idx="${idx}" aria-label="종목 삭제">×</button>
+      </div>
+      <div class="ex-max-v2-plan">
+        <div class="ex-max-v2-plan-goal">
+          <div class="ex-max-v2-kicker">오늘 유산소 기록</div>
+          <div class="ex-max-v2-main">${_escPicker(summary)}</div>
+          <div class="ex-max-v2-sub">${_escPicker(data.cardio.detail)} · 카드 저장됨</div>
+        </div>
+        <div class="ex-cardio-mini-chart" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+    </div>
+    <div class="ex-cardio-metrics" aria-label="유산소 입력값">
+      ${metrics.map(item => `
+        <span>
+          <i>${_escPicker(item.label)}</i>
+          <strong>${_escPicker(item.value)}</strong>
+        </span>
+      `).join('')}
+    </div>
+    <div class="ex-max-v2-actions ex-cardio-actions">
+      <button class="ex-max-v2-primary is-done" data-idx="${idx}">운동 완료</button>
+      <button class="ex-max-v2-secondary" data-cardio-edit="${idx}">수정</button>
+    </div>
+  `;
+}
+
+function _renderManualCardioSheet({ standalone = false, cardio = CARDIO_PICKER_EXERCISES[0] } = {}) {
+  const target = _pickerCardioById(cardio?.id);
+  const initial = _manualCardioInitialValues(target);
   const backdropClass = standalone
     ? 'ex-picker-cardio-backdrop ex-picker-cardio-backdrop--standalone'
     : 'ex-picker-cardio-backdrop';
   return `
-    <div class="${backdropClass}" data-picker-cardio-sheet>
-      <form class="ex-picker-cardio-sheet" data-picker-cardio-form data-cardio-selected-mode="${_escPicker(initial.mode)}">
+    <div class="${backdropClass}" data-picker-cardio-sheet data-cardio-id="${_escPicker(target.id)}">
+      <form class="ex-picker-cardio-sheet" data-picker-cardio-form>
         <div class="ex-picker-cardio-head">
           <div>
             <span>유산소</span>
-            <strong>수기 입력</strong>
+            <strong>${_escPicker(target.label)}</strong>
+            <em>${_escPicker(target.detail)}</em>
           </div>
           <button type="button" class="ex-picker-cardio-close" data-cardio-close aria-label="닫기">×</button>
         </div>
-        <div class="ex-picker-cardio-mode" aria-label="운동 방식">
-          <button type="button" class="${initial.mode === 'walk' ? 'active' : ''}" data-cardio-mode="walk" aria-pressed="${initial.mode === 'walk' ? 'true' : 'false'}">걷기</button>
-          <button type="button" class="${initial.mode === 'run' ? 'active' : ''}" data-cardio-mode="run" aria-pressed="${initial.mode === 'run' ? 'true' : 'false'}">뛰기</button>
-        </div>
         <div class="ex-picker-cardio-fields">
           <label>
+            <span>칼로리</span>
+            <input id="ex-cardio-kcal" type="number" inputmode="numeric" min="0" max="5000" step="1" value="${_escPicker(initial.kcal)}">
+            <em>kcal</em>
+          </label>
+          <label>
+            <span>거리</span>
+            <input id="ex-cardio-distance" type="number" inputmode="decimal" min="0" max="300" step="0.01" value="${_escPicker(initial.distanceKm)}">
+            <em>km</em>
+          </label>
+          <label>
             <span>속도</span>
-            <input id="ex-cardio-speed" type="number" inputmode="decimal" min="0.1" max="30" step="0.1" value="${_escPicker(initial.speedKmh)}">
+            <input id="ex-cardio-speed" type="number" inputmode="decimal" min="0" max="80" step="0.1" value="${_escPicker(initial.speedKmh)}">
             <em>km/h</em>
           </label>
           <label>
-            <span>시간</span>
-            <input id="ex-cardio-minutes" type="number" inputmode="numeric" min="1" max="600" step="1" value="${_escPicker(initial.minutes)}">
-            <em>분</em>
+            <span>랩/반복</span>
+            <input id="ex-cardio-laps" type="number" inputmode="numeric" min="0" max="9999" step="1" value="${_escPicker(initial.laps)}">
+            <em>회</em>
           </label>
         </div>
         <div class="ex-picker-cardio-preview" data-cardio-preview></div>
@@ -2841,13 +2996,12 @@ function _closeManualCardioInput() {
 }
 
 function _readManualCardioSheet(sheet) {
-  const form = sheet?.querySelector?.('[data-picker-cardio-form]');
-  const mode = form?.dataset.cardioSelectedMode === 'run' ? 'run' : 'walk';
-  const speedKmh = Number(sheet?.querySelector?.('#ex-cardio-speed')?.value);
-  const minutes = Number(sheet?.querySelector?.('#ex-cardio-minutes')?.value);
-  if (!Number.isFinite(speedKmh) || speedKmh <= 0 || speedKmh > 30) return null;
-  if (!Number.isFinite(minutes) || minutes <= 0 || minutes > 600) return null;
-  return _manualCardioSummary({ mode, speedKmh, minutes });
+  return _manualCardioSummary({
+    kcal: sheet?.querySelector?.('#ex-cardio-kcal')?.value,
+    distanceKm: sheet?.querySelector?.('#ex-cardio-distance')?.value,
+    speedKmh: sheet?.querySelector?.('#ex-cardio-speed')?.value,
+    laps: sheet?.querySelector?.('#ex-cardio-laps')?.value,
+  });
 }
 
 function _syncManualCardioPreview(sheet) {
@@ -2855,54 +3009,20 @@ function _syncManualCardioPreview(sheet) {
   if (!preview) return;
   const summary = _readManualCardioSheet(sheet);
   if (!summary) {
-    preview.innerHTML = '<span>입력 확인</span><strong>속도와 시간을 확인해주세요</strong>';
+    preview.innerHTML = '<span>입력 확인</span><strong>칼로리, 거리, 속도, 랩/반복 중 하나 이상 입력해주세요</strong>';
     return;
   }
-  const paceMin = Math.floor(summary.avgPaceSecPerKm / 60);
-  const paceSec = summary.avgPaceSecPerKm % 60;
   preview.innerHTML = `
-    <span>${_escPicker(_manualCardioModeLabel(summary.mode))} · ${_escPicker(summary.speedKmh)}km/h</span>
-    <strong>${_escPicker(summary.distanceKm.toFixed(2))}km · ${_escPicker(summary.durationMin)}분 · ${paceMin}'${String(paceSec).padStart(2, '0')}''/km</strong>
+    <span>카드 미리보기</span>
+    <strong>${_escPicker(_manualCardioPreviewText(summary))}</strong>
   `;
 }
 
-function _workoutDateKeyFromPickerState() {
-  const d = S.shared?.date;
-  if (!d || !Number.isFinite(Number(d.y)) || !Number.isFinite(Number(d.m)) || !Number.isFinite(Number(d.d))) return null;
-  return `${Number(d.y)}-${String(Number(d.m) + 1).padStart(2, '0')}-${String(Number(d.d)).padStart(2, '0')}`;
-}
-
-function _snapshotManualCardioPreviousWorkout() {
-  return {
-    exercises: S.workout.exercises,
-    cf: S.workout.cf,
-    stretching: S.workout.stretching,
-    swimming: S.workout.swimming,
-    running: S.workout.running,
-    runData: S.workout.runData,
-    cfData: S.workout.cfData,
-    stretchData: S.workout.stretchData,
-    swimData: S.workout.swimData,
-    wineFree: S.workout.wineFree,
-    workoutDuration: S.workout.workoutDuration,
-    workoutTimeline: S.workout.workoutTimeline,
-    sessionIndex: S.workout.sessionIndex,
-    sessionId: S.workout.sessionId,
-    currentGymId: S.workout.currentGymId,
-    routineMeta: S.workout.routineMeta,
-    maxMeta: S.workout.maxMeta,
-  };
-}
-
-function _restoreManualCardioPreviousWorkout(snapshot) {
-  if (!snapshot) return;
-  Object.assign(S.workout, snapshot);
-}
-
 async function _saveManualCardioFromSheet(sheet) {
+  const cardio = _pickerCardioById(sheet?.getAttribute?.('data-cardio-id'));
   const summary = _readManualCardioSheet(sheet);
   if (!summary) {
-    window.showToast?.('속도와 시간을 확인해주세요', 2200, 'warning');
+    window.showToast?.('유산소 수치를 하나 이상 입력해주세요', 2200, 'warning');
     return;
   }
   const saveBtn = sheet?.querySelector?.('[data-cardio-save]');
@@ -2910,78 +3030,45 @@ async function _saveManualCardioFromSheet(sheet) {
     saveBtn.disabled = true;
     saveBtn.textContent = '저장 중...';
   }
-  const routeSummary = {
-    source: 'manual-cardio',
-    activityMode: summary.mode,
-    speedKmh: summary.speedKmh,
-    pointCount: 0,
-    durationSec: summary.durationSec,
-    distanceKm: summary.distanceKm,
-    avgPaceSecPerKm: summary.avgPaceSecPerKm,
-    calories: summary.calories,
-    bbox: null,
-    centroid: null,
-    elevationGainM: null,
-    avgHeartRateBpm: null,
-    cadenceSpm: null,
-    gpsAccuracySummary: null,
-  };
-  const previousWorkout = _snapshotManualCardioPreviousWorkout();
-  const memoEl = document.getElementById('wt-workout-memo');
-  const previousMemo = memoEl ? memoEl.value : null;
-  S.workout.exercises = [];
-  S.workout.cf = false;
-  S.workout.stretching = false;
-  S.workout.swimming = false;
-  S.workout.running = true;
-  S.workout.sessionIndex = PICKER_MANUAL_CARDIO_SESSION_INDEX;
-  S.workout.sessionId = 'running-track';
-  S.workout.runData = {
-    ...(S.workout.runData || {}),
-    distance: summary.distanceKm,
-    durationMin: summary.durationMin,
-    durationSec: summary.durationSecRemainder,
-    memo: '',
-    source: 'manual-cardio',
-    startedAt: null,
-    endedAt: null,
-    route: [],
-    routeSummary,
-    placeSummary: null,
-    avgPaceSecPerKm: summary.avgPaceSecPerKm,
-    gpsAccuracySummary: null,
-  };
-  S.workout.cfData = { wod: '', durationMin: 0, durationSec: 0, memo: '' };
-  S.workout.stretchData = { duration: 0, memo: '' };
-  S.workout.swimData = { distance: 0, durationMin: 0, durationSec: 0, stroke: '', memo: '' };
-  S.workout.wineFree = false;
-  S.workout.workoutDuration = 0;
-  S.workout.workoutTimeline = null;
-  S.workout.currentGymId = null;
-  S.workout.routineMeta = null;
-  S.workout.maxMeta = null;
-  if (memoEl) memoEl.value = '';
-  const targetDateKey = _workoutDateKeyFromPickerState();
+  const exerciseId = _manualCardioExerciseId(cardio);
+  const afterSelect = _consumePickerAfterSelect();
+  const shouldRefreshWorkoutTab = !afterSelect;
+  if (!Array.isArray(S.workout.exercises)) S.workout.exercises = Array.of();
+  const existingIdx = (Array.isArray(S.workout.exercises) ? S.workout.exercises : [])
+    .findIndex(entry => String(entry?.exerciseId || '') === exerciseId);
+  const entry = _buildManualCardioEntry(cardio, summary);
+  const entryIdx = existingIdx >= 0 ? existingIdx : S.workout.exercises.length;
+  if (existingIdx >= 0) S.workout.exercises.splice(existingIdx, 1, entry);
+  else S.workout.exercises.push(entry);
+  if (shouldRefreshWorkoutTab) {
+    _normalizeActiveWorkoutEntryIdx(entryIdx);
+    _renderExerciseList();
+    _syncExpertTopArea();
+    const timerBar = document.getElementById('wt-workout-timer-bar');
+    if (timerBar && !timerBar.classList.contains('wt-open')) timerBar.classList.add('wt-open');
+    _refreshWorkoutTimeline('manual cardio add');
+  }
+  wtPersistActiveWorkoutDraft('manual cardio add');
   try {
-    await saveWorkoutDay({ silent: true });
-    _restoreManualCardioPreviousWorkout(previousWorkout);
-    if (memoEl && previousMemo != null) memoEl.value = previousMemo;
+    const savePromise = saveWorkoutDay({ silent: true });
     _closeManualCardioInput();
     wtCloseExercisePicker();
-    window.showToast?.('유산소 기록 저장 완료', 1800, 'success');
-    if (targetDateKey && typeof window.wtOpenWorkoutDaySheet === 'function') {
-      try {
-        await window.wtOpenWorkoutDaySheet(targetDateKey, PICKER_MANUAL_CARDIO_SESSION_INDEX, {
-          history: 'replace',
-          action: 'manual-cardio:save-detail',
-        });
-      } catch (e) {
-        console.warn('[manual-cardio.save-detail]:', e);
-      }
+    window.showToast?.(existingIdx >= 0 ? '유산소 기록을 수정했어요' : '유산소 기록을 추가했어요', 1800, 'success');
+    if (afterSelect) {
+      await savePromise;
+      await _runPickerAfterSelect(afterSelect, workoutExerciseSelectionDetail({
+        existing: existingIdx >= 0,
+        created: existingIdx < 0,
+        entryIdx,
+        exerciseId,
+        exercise: { id: exerciseId, name: cardio.label, muscleId: 'cardio' },
+        entry,
+      }));
+      return;
     }
+    wtFocusWorkoutEntryCard(entryIdx);
+    savePromise.catch(e => console.error('Save error:', e));
   } catch (e) {
-    _restoreManualCardioPreviousWorkout(previousWorkout);
-    if (memoEl && previousMemo != null) memoEl.value = previousMemo;
     console.error('[manual-cardio.save]:', e);
     window.showToast?.('유산소 기록 저장 실패', 2400, 'error');
   } finally {
@@ -3002,23 +3089,11 @@ function _bindManualCardioSheet(sheet) {
       _closeManualCardioInput();
       return;
     }
-    const modeBtn = target?.closest?.('[data-cardio-mode]');
-    if (modeBtn) {
-      const form = sheet.querySelector('[data-picker-cardio-form]');
-      const mode = modeBtn.getAttribute('data-cardio-mode') === 'run' ? 'run' : 'walk';
-      if (form) form.dataset.cardioSelectedMode = mode;
-      sheet.querySelectorAll('[data-cardio-mode]').forEach(btn => {
-        const active = btn === modeBtn;
-        btn.classList.toggle('active', active);
-        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
-      });
-      _syncManualCardioPreview(sheet);
-    }
   });
   sheet.addEventListener('input', () => _syncManualCardioPreview(sheet));
   sheet.querySelector('[data-picker-cardio-form]')?.addEventListener('submit', (event) => {
     event.preventDefault();
-    _saveManualCardioFromSheet(sheet);
+    _saveManualCardioFromSheet(sheet).catch(e => console.error('[manual-cardio.submit]:', e));
   });
 }
 
@@ -3028,15 +3103,16 @@ export function wtOpenManualCardioInput(options = {}) {
 
 function _openManualCardioInput(options = {}) {
   const standalone = options.standalone === true;
+  const cardio = _pickerCardioById(options.cardio?.id || options.cardioId);
   const modal = document.getElementById('ex-picker-modal');
   const host = standalone ? document.body : modal?.querySelector?.('.ex-picker-sheet');
   if (!host) return;
   _closeManualCardioInput();
-  host.insertAdjacentHTML('beforeend', _renderManualCardioSheet({ standalone }));
+  host.insertAdjacentHTML('beforeend', _renderManualCardioSheet({ standalone, cardio }));
   const sheet = host.querySelector('[data-picker-cardio-sheet]');
   _bindManualCardioSheet(sheet);
   _syncManualCardioPreview(sheet);
-  sheet?.querySelector?.('#ex-cardio-speed')?.focus?.();
+  sheet?.querySelector?.('#ex-cardio-kcal')?.focus?.();
 }
 
 function _pickerMuscleFigureHtml(muscleId) {
@@ -3106,6 +3182,16 @@ function _openPickerList(mode = 'all', muscleId = null, options = {}) {
   _renderPickerList();
 }
 
+function _openPickerCardioList() {
+  _pickerView = 'cardio';
+  _pickerListMode = 'all';
+  _pickerMuscleFilter = null;
+  _resetPickerGymScope();
+  _pickerSearchQuery = '';
+  _setPickerSearchUi('');
+  _renderPickerList();
+}
+
 function _handlePickerBack() {
   if (_pickerView !== 'category' || _pickerSearchQuery) {
     _openPickerCategory({ preserveGymScope: true });
@@ -3168,7 +3254,7 @@ function _renderPickerTabs(ctx) {
   const modal = document.getElementById('ex-picker-modal');
   const tabs = modal?.querySelector?.('.ex-picker-tabs');
   if (!tabs) return;
-  const listTabs = (_pickerView === 'list' || !!_pickerSearchQuery);
+  const listTabs = (_pickerView === 'list' || _pickerView === 'cardio' || !!_pickerSearchQuery);
   const button = ({ key, label, active, muscleId = '' }) => `
     <button type="button"
       class="ex-picker-tab${active ? ' active' : ''}"
@@ -3177,7 +3263,12 @@ function _renderPickerTabs(ctx) {
       role="tab"
       aria-selected="${active ? 'true' : 'false'}">${_escPicker(label)}</button>
   `;
-  const html = listTabs
+  const html = _pickerView === 'cardio' && !_pickerSearchQuery
+    ? [
+        button({ key: 'category', label: '분류', active: false }),
+        button({ key: 'cardio', label: '유산소', active: true }),
+      ].join('')
+    : listTabs
     ? [
         button({ key: 'category', label: '분류', active: false }),
         ...ctx.visibleMuscles.map(m => button({
@@ -3201,6 +3292,10 @@ function _renderPickerTabs(ctx) {
       }
       if (tab === 'muscle') {
         _openPickerList(_pickerListMode, btn.getAttribute('data-picker-muscle-tab'), { preserveGymScope: true });
+        return;
+      }
+      if (tab === 'cardio') {
+        _openPickerCardioList();
         return;
       }
       _openPickerList(tab === 'custom' ? 'custom' : 'all');
@@ -3249,6 +3344,10 @@ window._wtSetPickerSort = (mode) => {
 };
 
 window._wtSetPickerScope = (mode) => {
+  if (_pickerView === 'cardio') {
+    _renderPickerList();
+    return;
+  }
   _pickerView = 'list';
   _pickerListMode = mode === 'custom' ? 'custom' : 'all';
   _renderPickerList();
@@ -3331,6 +3430,7 @@ function _exerciseMajorIds(ex) {
 
 function _pickerEntryHasWork(entry) {
   if (!entry || typeof entry !== 'object') return false;
+  if (_isManualCardioEntry(entry)) return _hasManualCardioMetrics(entry?.cardio);
   const sets = Array.isArray(entry.sets) ? entry.sets : [];
   if (sets.some(set => {
     if (!set || set.setType === 'warmup') return false;
@@ -3376,6 +3476,34 @@ function _buildPickerExerciseStats() {
   return stats;
 }
 
+function _hasManualCardioMetrics(cardio) {
+  if (!cardio || typeof cardio !== 'object') return false;
+  return ['kcal', 'distanceKm', 'speedKmh', 'laps'].some(key => Number(cardio[key]) > 0);
+}
+
+function _buildPickerCardioStats() {
+  const stats = new Map();
+  const cache = getCache?.() || {};
+  const todayKey = _todayDateKey();
+  Object.entries(cache).forEach(([key, day]) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || key === todayKey) return;
+    getWorkoutSessions(day).forEach(session => {
+      const seenInSession = new Set();
+      (Array.isArray(session?.exercises) ? session.exercises : []).forEach(entry => {
+        if (!_isManualCardioEntry(entry) || !_hasManualCardioMetrics(entry?.cardio)) return;
+        const cardioId = entry?.cardio?.id || String(entry?.exerciseId || '').replace(CARDIO_EXERCISE_ID_PREFIX, '');
+        if (!cardioId || seenInSession.has(cardioId)) return;
+        seenInSession.add(cardioId);
+        const prev = stats.get(cardioId) || { count: 0, lastDate: null };
+        prev.count += 1;
+        if (!prev.lastDate || key > prev.lastDate) prev.lastDate = key;
+        stats.set(cardioId, prev);
+      });
+    });
+  });
+  return stats;
+}
+
 function _pickerStatsMeta(stats) {
   const count = Number(stats?.count) || 0;
   if (count <= 0 || !stats?.lastDate) return '-';
@@ -3405,6 +3533,28 @@ function _sortPickerExercises(list, statsByExercise) {
     return String(bs.lastDate || '').localeCompare(String(as.lastDate || ''))
       || (bs.count - as.count)
       || collator.compare(a?.name || '', b?.name || '');
+  });
+}
+
+function _sortPickerCardioExercises(list, statsByCardio) {
+  const collator = new Intl.Collator('ko-KR', { numeric: true, sensitivity: 'base' });
+  const statOf = (item) => statsByCardio.get(item?.id) || { count: 0, lastDate: '' };
+  return [...list].sort((a, b) => {
+    const as = statOf(a);
+    const bs = statOf(b);
+    if (_pickerSortMode === 'frequency') {
+      return (bs.count - as.count)
+        || String(bs.lastDate || '').localeCompare(String(as.lastDate || ''))
+        || collator.compare(a?.label || '', b?.label || '');
+    }
+    if (_pickerSortMode === 'name') {
+      return collator.compare(a?.label || '', b?.label || '')
+        || (bs.count - as.count)
+        || String(bs.lastDate || '').localeCompare(String(as.lastDate || ''));
+    }
+    return String(bs.lastDate || '').localeCompare(String(as.lastDate || ''))
+      || (bs.count - as.count)
+      || collator.compare(a?.label || '', b?.label || '');
   });
 }
 
@@ -3506,6 +3656,63 @@ function _renderPickerListToolbar(container) {
   container.appendChild(toolbar);
 }
 
+function _renderPickerCardioListToolbar(container) {
+  const sortOptions = [
+    { id: 'recent', label: '↑ 최근' },
+    { id: 'frequency', label: '↑ 빈도' },
+    { id: 'name', label: '↓ 이름' },
+  ];
+  const toolbar = document.createElement('div');
+  toolbar.className = 'ex-picker-list-toolbar ex-picker-cardio-toolbar';
+  toolbar.innerHTML = `
+    <div class="ex-picker-toolbar-row">
+      <div class="ex-picker-sort-controls" aria-label="정렬">
+        ${sortOptions.map(opt => `
+          <button type="button"
+            class="ex-picker-sort-btn${_pickerSortMode === opt.id ? ' active' : ''}"
+            data-picker-sort="${_escPicker(opt.id)}">${_escPicker(opt.label)}</button>
+        `).join('')}
+      </div>
+    </div>
+    <div class="ex-picker-scope-controls" aria-label="범위">
+      <button type="button" class="ex-picker-scope-btn active" disabled>전체</button>
+      <button type="button" class="ex-picker-scope-btn is-disabled" disabled aria-label="즐겨찾기 준비 중">☆</button>
+      <button type="button" class="ex-picker-scope-btn is-disabled" disabled>기본</button>
+    </div>
+  `;
+  toolbar.querySelectorAll('[data-picker-sort]').forEach(btn => {
+    btn.addEventListener('click', () => window._wtSetPickerSort?.(btn.getAttribute('data-picker-sort')));
+  });
+  container.appendChild(toolbar);
+}
+
+function _renderPickerCardioList(container) {
+  const statsByCardio = _buildPickerCardioStats();
+  const group = document.createElement('div');
+  group.className = 'ex-picker-group ex-picker-cardio-group';
+  group.innerHTML = '<div class="ex-picker-group-label" style="color:#0f8f6f">유산소</div>';
+  _sortPickerCardioExercises(CARDIO_PICKER_EXERCISES, statsByCardio).forEach(cardio => {
+    const exerciseId = _manualCardioExerciseId(cardio);
+    const alreadyAdded = (Array.isArray(S.workout.exercises) ? S.workout.exercises : [])
+      .some(entry => String(entry?.exerciseId || '') === exerciseId);
+    const pickerStats = statsByCardio.get(cardio.id) || { count: 0, lastDate: null };
+    const btn = document.createElement('button');
+    btn.className = 'ex-picker-item ex-picker-cardio-item' + (alreadyAdded ? ' already' : '');
+    btn.dataset.pickerCardioId = cardio.id;
+    btn.innerHTML = `
+      ${_pickerManualCardioFigureHtml()}
+      <span class="ex-picker-main">
+        <span class="ex-picker-name">${_escPicker(cardio.label)}${alreadyAdded ? ' ✓' : ''}</span>
+        <span class="ex-picker-history-meta">${_escPicker(_pickerStatsMeta(pickerStats))}</span>
+      </span>
+      <span class="ex-picker-cardio-meta">${_escPicker(cardio.detail)}</span>
+    `;
+    group.appendChild(btn);
+  });
+  _renderPickerCardioListToolbar(container);
+  container.appendChild(group);
+}
+
 function _renderPickerBenchmarkScope(ctx) {
   return '';
 }
@@ -3578,7 +3785,7 @@ function _renderPickerCategory(container, ctx) {
     btn.addEventListener('click', () => {
       const activity = btn.getAttribute('data-picker-activity');
       if (activity === 'manual-cardio') {
-        _openManualCardioInput({ standalone: false });
+        _openPickerCardioList();
         return;
       }
       if (activity !== 'running') return;
@@ -3604,6 +3811,10 @@ export function _renderPickerList() {
   _syncPickerChrome(ctx);
   if (_pickerView === 'category' && !_pickerSearchQuery) {
     _renderPickerCategory(container, ctx);
+    return;
+  }
+  if (_pickerView === 'cardio' && !_pickerSearchQuery) {
+    _renderPickerCardioList(container);
     return;
   }
   const muscleFiltered = _pickerMuscleFilter

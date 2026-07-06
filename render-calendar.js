@@ -152,6 +152,49 @@ function _hasDraftWorkoutEntry(entry) {
   );
 }
 
+function _isManualCardioEntry(entry) {
+  return !!entry?.cardio || String(entry?.exerciseId || '').startsWith('cardio:');
+}
+
+function _cardioEntryData(entry = {}) {
+  if (!_isManualCardioEntry(entry)) return null;
+  const raw = entry.cardio && typeof entry.cardio === 'object' ? entry.cardio : {};
+  const kcal = Math.max(0, Math.round(_num(raw.kcal)));
+  const distanceKm = Math.max(0, _num(raw.distanceKm));
+  const speedKmh = Math.max(0, _num(raw.speedKmh));
+  const laps = Math.max(0, Math.round(_num(raw.laps)));
+  const hasMetric = kcal > 0 || distanceKm > 0 || speedKmh > 0 || laps > 0;
+  if (!hasMetric && raw.source !== 'manual-cardio') return null;
+  const fallbackId = String(entry.exerciseId || '').replace(/^cardio:/, '');
+  return {
+    id: raw.id || fallbackId || 'manual',
+    label: raw.label || entry.name || entry.exerciseName || '유산소',
+    detail: raw.detail || '수기 입력',
+    kcal,
+    distanceKm,
+    speedKmh,
+    laps,
+    source: raw.source || 'manual-cardio',
+  };
+}
+
+function _formatCardioMetric(value, unit, digits = 1) {
+  const n = _num(value);
+  if (n <= 0) return '--';
+  return `${_fmtNum(n, digits)}${unit}`;
+}
+
+function _cardioSummaryText(cardio) {
+  if (!cardio) return '수기 유산소 기록';
+  const parts = [
+    cardio.kcal > 0 ? `${Math.round(cardio.kcal)} kcal` : '',
+    cardio.distanceKm > 0 ? `${_fmtNum(cardio.distanceKm, 2)} km` : '',
+    cardio.speedKmh > 0 ? `${_fmtNum(cardio.speedKmh, 1)} km/h` : '',
+    cardio.laps > 0 ? `${Math.round(cardio.laps)}회` : '',
+  ].filter(Boolean);
+  return parts.join(' · ') || '수기 유산소 기록';
+}
+
 function _formatSetText(set) {
   const kg = _num(set?.kg);
   const reps = _num(set?.reps);
@@ -1315,7 +1358,15 @@ function _majorLabel(id, lookup) {
 
 function _partDisplayLabels(exercises, lookup) {
   const byMajor = new Map();
+  const cardioLabels = [];
   exercises.forEach((row) => {
+    if (row.cardio) {
+      cardioLabels.push({
+        text: row.name,
+        title: `${row.name} · 유산소`,
+      });
+      return;
+    }
     if (row.setCount <= 0) return;
     const id = row.majorId || 'other';
     if (!byMajor.has(id)) {
@@ -1331,12 +1382,15 @@ function _partDisplayLabels(exercises, lookup) {
     item.setCount += row.setCount;
     item.volume += row.volume;
   });
-  return [...byMajor.values()]
+  return [
+    ...cardioLabels,
+    ...[...byMajor.values()]
     .sort((a, b) => (b.setCount - a.setCount) || (b.volume - a.volume) || (a.order - b.order))
     .map(item => ({
       text: `${item.name} ${item.setCount}`,
       title: `${item.name} ${item.setCount}세트`,
-    }));
+    })),
+  ];
 }
 
 function _workoutEntryName(entry = {}) {
@@ -1408,25 +1462,26 @@ function _exerciseRows(day, lookup = _buildWorkoutLookup(), key = null, options 
       const sets = rawSets.filter(_isActualWorkoutSet);
       const note = (entry?.note || '').toString().trim();
       const hasDraftExercise = includeDraftExercises && _hasDraftWorkoutEntry(entry);
-      if (!sets.length && !note && !hasDraftExercise) return null;
+      const cardio = _cardioEntryData(entry);
+      if (!sets.length && !note && !hasDraftExercise && !cardio) return null;
       const volume = sets.reduce((sum, set) => sum + calcSetVolume(set), 0);
       const topSet = [...sets].sort((a, b) => calcSetVolume(b) - calcSetVolume(a))[0] || null;
-      const majorId = _resolveExerciseMajorId(entry, lookup);
+      const majorId = cardio ? 'cardio' : _resolveExerciseMajorId(entry, lookup);
       const lib = lookup?.exById?.get(entry?.exerciseId);
       const row = {
         dateKey: key,
         exerciseId: entry?.exerciseId || null,
         movementId: entry?.movementId || lib?.movementId || null,
-        name: entry?.name || entry?.exerciseName || entry?.exerciseId || '운동',
+        name: cardio?.label || entry?.name || entry?.exerciseName || entry?.exerciseId || '운동',
         majorId,
-        majorName: _majorLabel(majorId, lookup),
+        majorName: cardio ? '유산소' : _majorLabel(majorId, lookup),
         recommendationMeta: entry?.recommendationMeta || null,
         maxPrescription: entry?.maxPrescription || null,
         maxTrackPreference: lib?.maxTrackPreference || null,
         exerciseCompletedAt: _workoutExerciseCompletionStampAt(entry),
         setCount: sets.length,
         volume,
-        topSetText: topSet ? _formatSetText(topSet) : '세트 기록 없음',
+        topSetText: cardio ? _cardioSummaryText(cardio) : (topSet ? _formatSetText(topSet) : '세트 기록 없음'),
         setTexts: sets.map(_formatSetText),
         setDetails: sets.map((set, setIndex) => ({
           setIndex,
@@ -1459,6 +1514,7 @@ function _exerciseRows(day, lookup = _buildWorkoutLookup(), key = null, options 
           done: set.done === true,
         })),
         note,
+        cardio,
         originalIndex,
       };
       if (includePreviousRecord) {
@@ -2491,7 +2547,51 @@ function _isWorkoutExerciseCompletionStamped(cardId, row = null) {
   return false;
 }
 
+function _cardioMetricItems(row) {
+  const cardio = row?.cardio || {};
+  return [
+    { label: '칼로리', value: _formatCardioMetric(cardio.kcal, ' kcal', 0) },
+    { label: '거리', value: _formatCardioMetric(cardio.distanceKm, ' km', 2) },
+    { label: '속도', value: _formatCardioMetric(cardio.speedKmh, ' km/h', 1) },
+    { label: '랩/반복', value: _formatCardioMetric(cardio.laps, '회', 0) },
+  ];
+}
+
+function _renderWorkoutCardioDetailCard(key, sessionIndex, row, index) {
+  const originalIndex = Number.isFinite(Number(row.originalIndex)) ? Number(row.originalIndex) : index;
+  const metrics = _cardioMetricItems(row);
+  const headline = row?.cardio?.kcal > 0 ? `${Math.round(row.cardio.kcal)} kcal` : row.name;
+  const summary = _cardioSummaryText(row.cardio);
+  return `
+    <article class="wt-day-ex-card wt-max-read-card wt-cardio-read-card is-expanded">
+      <div class="wt-max-card-kicker wt-cardio-card-kicker">
+        <span><i></i>유산소 · 수기 입력</span>
+        <button type="button" data-wt-sheet-card-action="delete-exercise" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${originalIndex}" aria-label="유산소 삭제">×</button>
+      </div>
+      <div class="wt-max-card-name">${_esc(row.name)}</div>
+      <div class="wt-running-headline wt-cardio-headline">
+        <strong>${_esc(headline)}</strong>
+        <span>${_esc(summary)}</span>
+      </div>
+      <div class="wt-running-metric-grid wt-cardio-metric-grid">
+        ${metrics.map(item => `
+          <span>
+            <i>${_esc(item.label)}</i>
+            <strong>${_esc(item.value)}</strong>
+          </span>
+        `).join('')}
+      </div>
+      ${row.note ? `<div class="wt-max-note">${_esc(row.note)}</div>` : ''}
+      <div class="wt-max-collapsed-note">유산소 완료 · 카드가 접혔어요</div>
+      <div class="wt-max-actions wt-max-actions--single">
+        <button type="button" class="wt-max-action-primary is-muted" aria-disabled="true" tabindex="-1">운동 완료</button>
+      </div>
+    </article>
+  `;
+}
+
 function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) {
+  if (row?.cardio) return _renderWorkoutCardioDetailCard(key, sessionIndex, row, index);
   const cardId = `ex:${key}:${sessionIndex}:${index}`;
   const collapsed = false;
   const editing = !collapsed;
@@ -2738,6 +2838,18 @@ function _openWorkoutDay(key) {
       <div class="cal-workout-detail-title">근력</div>
       <div class="cal-workout-detail-list">
         ${wx.exercises.map((row) => {
+          if (row.cardio) {
+            return `
+              <div class="cal-workout-ex-row cal-workout-ex-row-cardio">
+                <div class="cal-workout-ex-head">
+                  <strong>${_esc(row.name)}</strong>
+                  <span>유산소</span>
+                </div>
+                <div class="cal-workout-ex-top">${_esc(_cardioSummaryText(row.cardio))}</div>
+                ${row.note ? `<div class="cal-workout-note">${_esc(row.note)}</div>` : ''}
+              </div>
+            `;
+          }
           const volumeText = row.volume > 0 ? ` · ${_formatVolume(row.volume)} vol` : '';
           return `
             <div class="cal-workout-ex-row">
@@ -2865,6 +2977,7 @@ function _openDay(key) {
   const b = mx.burnedBreakdown;
   const workoutParts = [];
   if (b.gym > 0)      workoutParts.push(`헬스 ${b.gym}`);
+  if (b.cardio > 0)   workoutParts.push(`유산소 ${b.cardio}`);
   if (b.running > 0)  workoutParts.push(`러닝 ${b.running}`);
   if (b.swimming > 0) workoutParts.push(`수영 ${b.swimming}`);
   if (b.cf > 0)       workoutParts.push(`CF ${b.cf}`);
@@ -3956,6 +4069,11 @@ function _formatWorkoutExportText(key, sessionIndex, session, wx) {
 
   wx.exercises.forEach((row) => {
     lines.push('', `${row.name}${row.majorName ? ` (${row.majorName})` : ''}`);
+    if (row.cardio) {
+      lines.push(`- 유산소: ${_cardioSummaryText(row.cardio)}`);
+      if (row.note) lines.push(`- 메모: ${row.note}`);
+      return;
+    }
     row.setTexts.forEach((text, i) => lines.push(`- ${i + 1}세트: ${text}`));
     if (row.note) lines.push(`- 메모: ${row.note}`);
   });

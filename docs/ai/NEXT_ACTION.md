@@ -1,5 +1,30 @@
 # 다음 자동 액션
 
+## 2026-07-06 Cardio Picker Card Entry
+
+- 상태: `complete`
+- 계획: `docs/ai/features/2026-07-06-cardio-picker-card-entry.md`
+- 요청: `런닝/조깅`과 `유산소` 버튼을 기존 운동 추가 버튼 디자인에 맞추고, `유산소` 클릭 시 기본 유산소 종목 리스트를 보여준 뒤 한국어 입력값으로 기존 운동 카드/캐러셀 시스템에 유산소 카드를 추가한다.
+- 실행 Slice 1:
+  1. `유산소` activity tile을 하위 리스트 view로 연결하고 기본 6개 유산소 종목을 전 사용자 공통 catalog로 제공한다.
+  2. 하위 종목 클릭 시 `칼로리(kcal)`, `거리(km)`, `속도(km/h)`, `랩/반복` 한국어 입력 sheet를 연다.
+  3. 저장된 유산소 기록을 기존 운동 카드/캐러셀 시스템에 맞는 카드 엔트리로 추가하고, 새 카드 포커스 및 디자인 일관성을 검증한다.
+  4. `STATIC_ASSETS` 수정 시 `sw.js` cache version을 bump하고 focused/full tests, asset verification, production Pages flow까지 확인한다.
+- 실행 요약:
+  1. `유산소` activity tile을 기본 6개 유산소 종목 리스트 view로 연결했다.
+  2. 하위 종목 클릭 시 `칼로리(kcal)`, `거리(km)`, `속도(km/h)`, `랩/반복` 한국어 입력 sheet를 열고 저장한다.
+  3. 저장된 유산소 기록을 기존 `S.workout.exercises` 엔트리로 추가해 운동 카드/캐러셀과 같은 경로를 사용한다.
+  4. 날짜 시트, 칼로리 계산, 세션 존재 판정, 운동 상세 카드에서 유산소 엔트리를 유지/표시한다.
+  5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260706z8-cardio-picker-card`로 bump했다.
+- 검증:
+  1. PASS: `node --check workout/exercises.js render-calendar.js workout/save.js workout/sessions.js calc.js`.
+  2. PASS: `node --test tests/running-entry.test.js tests/calc.score.test.js` - 74 pass.
+  3. PASS: `node --test tests/*.test.js` - 715 pass.
+  4. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=882`.
+  5. LSP diagnostics: TypeScript language server missing, install declined; `node --check`와 test suite로 대체했다.
+- 리뷰: `docs/ai/reviews/2026-07-06-cardio-picker-card-entry-review.md`
+- 다음 액션: 없음.
+
 ## 2026-07-06 Workout Set Type Menu Clipping
 
 - 상태: `complete`

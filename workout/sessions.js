@@ -36,8 +36,16 @@ function _isActualWorkoutSet(set) {
   return _num(set.kg) > 0 && _num(set.reps) > 0;
 }
 
+function _hasManualCardioEntry(entry) {
+  const cardio = entry?.cardio;
+  if (!cardio || typeof cardio !== 'object') return false;
+  if (cardio.source === 'manual-cardio') return true;
+  return ['kcal', 'distanceKm', 'speedKmh', 'laps'].some(key => _num(cardio[key]) > 0);
+}
+
 function _hasActualWorkoutEntry(entry) {
   if (!entry || typeof entry !== 'object') return false;
+  if (_hasManualCardioEntry(entry)) return true;
   if (_str(entry.note)) return true;
   return (Array.isArray(entry.sets) ? entry.sets : []).some(_isActualWorkoutSet);
 }

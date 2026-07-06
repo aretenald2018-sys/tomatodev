@@ -324,6 +324,13 @@ function _hasSaveWorthySet(set) {
   return (Number(set.kg) || 0) > 0 && (Number(set.reps) || 0) > 0;
 }
 
+function _hasManualCardioEntry(entry) {
+  const cardio = entry?.cardio;
+  if (!cardio || typeof cardio !== 'object') return false;
+  if (cardio.source === 'manual-cardio') return true;
+  return ['kcal', 'distanceKm', 'speedKmh', 'laps'].some(key => Number(cardio[key]) > 0);
+}
+
 export function shouldKeepMaxDraftExercisesForSave(workout = S.workout) {
   return shouldKeepMaxDraftExercisesForSavePure(workout, _workoutDateKeyFromState());
 }
@@ -359,7 +366,7 @@ function _cleanExercises(includeNotes, includeDrafts = false) {
         sets,
       };
     })
-    .filter(e => e.sets.length > 0 || (includeNotes && e.note) || (includeDrafts && e.exerciseId));
+    .filter(e => e.sets.length > 0 || _hasManualCardioEntry(e) || (includeNotes && e.note) || (includeDrafts && e.exerciseId));
 }
 
 // ── 공통 저장 prep ──────────────────────────────────────────────

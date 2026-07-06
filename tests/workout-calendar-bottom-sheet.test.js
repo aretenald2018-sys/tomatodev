@@ -511,7 +511,8 @@ test('day sheet detail renders picker-added draft exercise rows', () => {
   assert.match(rows, /includeDraftExercises/);
   assert.match(rows, /rawSetDetails/);
   assert.match(rows, /const hasDraftExercise = includeDraftExercises && _hasDraftWorkoutEntry\(entry\)/);
-  assert.match(rows, /if \(!sets\.length && !note && !hasDraftExercise\) return null/);
+  assert.match(rows, /const cardio = _cardioEntryData\(entry\)/);
+  assert.match(rows, /if \(!sets\.length && !note && !hasDraftExercise && !cardio\) return null/);
   assert.match(metrics, /_exerciseRows\(d, lookup, key, options\)/);
   assert.match(detail, /includeDraftExercises:\s*true/);
   assert.match(detail, /includePreviousRecord:\s*true/);
@@ -1264,5 +1265,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260706z7-set-type-menu-clip/);
+  assert.match(swJs, /tomatofarm-v20260706z8-cardio-picker-card/);
 });

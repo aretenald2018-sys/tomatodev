@@ -39,27 +39,39 @@ test('exercise picker category renders a running activity tile that opens runnin
   assert.match(exercisesJs, /wtSwitchType\('running'\)/);
   assert.match(exercisesJs, /data-picker-activity="manual-cardio"/);
   assert.match(exercisesJs, /유산소/);
+  assert.match(exercisesJs, /CARDIO_PICKER_EXERCISES/);
+  assert.match(exercisesJs, /트레드밀 러닝/);
+  assert.match(exercisesJs, /스텝머신/);
+  assert.match(exercisesJs, /실내 자전거/);
+  assert.match(exercisesJs, /로잉/);
+  assert.match(exercisesJs, /인도어 사이클링/);
+  assert.match(exercisesJs, /리컴번트 바이크/);
+  assert.match(exercisesJs, /function _openPickerCardioList/);
+  assert.match(exercisesJs, /data-picker-cardio-id/);
   assert.match(exercisesJs, /function _openManualCardioInput/);
+  assert.match(exercisesJs, /id="ex-cardio-kcal"/);
+  assert.match(exercisesJs, /id="ex-cardio-distance"/);
   assert.match(exercisesJs, /id="ex-cardio-speed"/);
-  assert.match(exercisesJs, /id="ex-cardio-minutes"/);
+  assert.match(exercisesJs, /id="ex-cardio-laps"/);
+  assert.match(exercisesJs, /_buildManualCardioEntry/);
+  assert.match(exercisesJs, /cardio:\s*\{/);
   assert.match(exercisesJs, /source: 'manual-cardio'/);
-  assert.match(exercisesJs, /speedKmh/);
-  assert.match(exercisesJs, /S\.workout\.exercises = \[\]/);
-  assert.match(exercisesJs, /S\.workout\.cf = false/);
-  assert.match(exercisesJs, /function _snapshotManualCardioPreviousWorkout/);
-  assert.match(exercisesJs, /function _restoreManualCardioPreviousWorkout/);
   assert.match(exercisesJs, /saveWorkoutDay\(\{ silent: true \}\)/);
-  assert.match(exercisesJs, /PICKER_MANUAL_CARDIO_SESSION_INDEX = 2/);
-  assert.match(exercisesJs, /window\.wtOpenWorkoutDaySheet\(targetDateKey, PICKER_MANUAL_CARDIO_SESSION_INDEX/);
+  assert.doesNotMatch(exercisesJs, /S\.workout\.exercises = \[\]/);
+  assert.doesNotMatch(exercisesJs, /function _snapshotManualCardioPreviousWorkout/);
+  assert.doesNotMatch(exercisesJs, /PICKER_MANUAL_CARDIO_SESSION_INDEX = 2/);
   assert.doesNotMatch(exercisesJs, /wt-running-section/);
 });
 
 test('running picker tile and session screens have dedicated styles', () => {
   assert.match(styleCss, /\.ex-picker-activity-tile \.ex-picker-muscle-name/);
   assert.match(styleCss, /\.ex-picker-activity-tile--manual-cardio \.ex-picker-muscle-name/);
+  assert.match(styleCss, /\.ex-picker-cardio-item/);
   assert.match(styleCss, /\.ex-picker-cardio-backdrop/);
-  assert.match(styleCss, /\.ex-picker-cardio-mode/);
+  assert.match(styleCss, /\.ex-picker-cardio-fields/);
   assert.match(styleCss, /\.ex-picker-cardio-preview/);
+  assert.match(styleCss, /\.ex-block--cardio/);
+  assert.match(styleCss, /\.wt-cardio-read-card/);
   assert.match(styleCss, /\.ex-picker-activity-figure/);
   assert.match(styleCss, /\.wt-running-session-root/);
   assert.match(styleCss, /\.wt-running-screen--start/);
@@ -259,7 +271,7 @@ test('running workout save writes a running life-zone snapshot', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260706z7-set-type-menu-clip/);
+  assert.match(swJs, /tomatofarm-v20260706z8-cardio-picker-card/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/sprites\/jups-running-track\.png/);
