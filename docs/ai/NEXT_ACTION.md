@@ -26,7 +26,7 @@
 
 ## 2026-07-06 Workout Add Exercise Carousel Focus
 
-- 상태: `deploy_pending`
+- 상태: `complete`
 - 계획: `docs/ai/features/2026-07-06-workout-add-exercise-carousel-focus.md`
 - 리뷰: `docs/ai/reviews/2026-07-06-workout-add-exercise-carousel-focus-review.md`
 - 요청: 운동 탭에서 종목을 추가하면 `종목을 추가했어요` 토스트만 띄우지 말고 캐러셀 화면을 방금 추가한 종목 카드로 이동시킨다.
@@ -45,7 +45,9 @@
   5. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=882`.
   6. PASS: browser/mobile carousel focus harness - `entryIdx=2`, delayed render `scrollLeft=736`, `expectedScrollLeft=736`, `scrollDelta=0`, toast `종목을 추가했어요`.
   7. PASS: focused final gate review - `.omo/evidence/workout-carousel-focus-20260706-gate-review.md`.
-  8. not verified yet: production Pages 배포 검증은 commit/push 후 진행한다.
+  8. PASS: Production Pages deploy verification - `c4412fa0d54e`, HTTP 200, deployed cache `tomatofarm-v20260706z5-workout-carousel-focus`.
+  9. PASS: Production Pages mobile carousel focus harness - deployed `render-calendar.js`, `entryIdx=2`, delayed render `scrollLeft=736`, `expectedScrollLeft=736`, `scrollDelta=0`, toast `종목을 추가했어요`.
+- 다음 액션: 없음.
 
 ## 2026-07-06 Running GPS Full Route Render
 

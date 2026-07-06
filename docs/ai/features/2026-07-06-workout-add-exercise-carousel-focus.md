@@ -2,7 +2,7 @@
 
 ## 상태
 
-- 단계: review-pass
+- 단계: complete
 - 요청: 운동 탭에서 종목을 추가하면 `종목을 추가했어요` 토스트만 띄우지 말고 캐러셀 화면을 방금 추가한 종목 카드로 이동시킨다.
 
 ## 그릴 결과
@@ -35,4 +35,4 @@
 3. Regression: `node --test tests/*.test.js`, `npm.cmd run verify:assets`.
 4. Browser QA: 모바일 viewport에서 day sheet에 여러 종목이 있는 상태로 add-picker afterSelect를 실행한 뒤 carousel track `scrollLeft`가 추가된 slide offset과 일치하고 toast가 표시되는지 확인한다.
 5. PASS: browser/mobile harness - `.omo/evidence/workout-carousel-focus-20260706/browser-add-carousel-focus.json` 및 screenshot.
-6. Production: 커밋/푸시 후 `npm.cmd run deploy:production` 또는 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`로 운영 Pages 확인.
+6. PASS: Production Pages - `c4412fa0d54e`, HTTP 200, deployed `render-calendar.js`, cache `tomatofarm-v20260706z5-workout-carousel-focus`, and mobile carousel focus harness `scrollLeft=736`, `expectedScrollLeft=736`.

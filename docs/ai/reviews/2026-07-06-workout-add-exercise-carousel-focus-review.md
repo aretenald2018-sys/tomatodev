@@ -29,7 +29,10 @@
 4. PASS: `.omo/evidence/workout-carousel-focus-20260706/assets.txt` - `[runtime-assets] ok refs=882`.
 5. PASS: `.omo/evidence/workout-carousel-focus-20260706/syntax-render-calendar.txt`.
 6. PASS: `.omo/evidence/workout-carousel-focus-20260706-gate-review.md` - focused final gate `APPROVE`.
+7. PASS: `.omo/evidence/workout-carousel-focus-20260706/production-add-carousel-focus.json`
+   - Production Pages `HTTP 200`, deployed commit `c4412fa0d54e`, cache `tomatofarm-v20260706z5-workout-carousel-focus`.
+   - deployed `render-calendar.js` 기반 모바일 harness에서 `entryIdx=2`, delayed render `scrollLeft=736`, `expectedScrollLeft=736`, `scrollDelta=0`, toast `종목을 추가했어요`.
 
 ## 남은 사항
 
-- Production Pages 배포 검증은 커밋/푸시 후 `npm.cmd run deploy:production` 또는 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`로 이어서 수행한다.
+- 없음.
