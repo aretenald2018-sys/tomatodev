@@ -2,7 +2,7 @@
 
 ## 2026-07-07 Refresh Unification Cardio Intensity
 
-- 상태: `ready_for_deploy_verification`
+- 상태: `complete`
 - 계획: `docs/ai/features/2026-07-07-refresh-unification-cardio-intensity.md`
 - 요청: 새 헤더 새로고침 버튼으로 중복 update/refresh UI를 통합하고, 유산소에 `마이마운틴`을 추가한다. `마이마운틴`은 각도, `스텝머신`은 단계를 입력받아 자동 칼로리 계산과 저장 카드에 반영한다. 새 이미지를 생성하고 cache version/static assets, production Pages 배포 검증까지 수행한다.
 - 실행 Slice 1:
@@ -17,9 +17,13 @@
   3. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=905`.
   4. PASS: `node --test tests/*.test.js` - 741 tests, 741 pass.
   5. PASS: local browser QA harness - 헤더 refresh button 1개, legacy update indicator 0개, `마이마운틴` 목록 1개, angle 12 -> 522 kcal, step level 10 -> 450 kcal, pageerror 없음.
-  6. not verified yet: `npm.cmd run deploy:production` 및 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`.
+  6. PASS: `npm.cmd run deploy:production` - `f42b2e8ad398055a1c1899d3a2ffda141b200c40`를 `origin/main`에 push하고 Pages deploy verify 통과.
+  7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ f42b2e8ad398055a1c1899d3a2ffda141b200c40`.
+  8. PASS: deployed marker 검증 - `index.html::20260707e-refresh-cardio-intensity`, `app.js::20260707e-refresh-cardio-intensity`, `utils/build-info.js::app-refresh-btn`, `workout/exercises.js::my-mountain`, `workout/exercises.js::ex-cardio-angle`, `workout/exercises.js::ex-cardio-level`, `render-calendar.js::angleDeg`, `sw.js::assets/workout/cardio/my-mountain.png`.
+  9. PASS: production browser QA - actual URL HTTP 200, pageerror 0, `#app-refresh-btn` 1개, legacy `#app-update-indicator` 0개, DOM click 후 page complete.
+  10. PASS: production module harness QA - deployed `workout/exercises.js` 기준 `마이마운틴` 목록 1개, `my-mountain.png` HTTP 200, angle 12 -> 522 kcal, step level 10 -> 450 kcal, pageerror/console error 없음.
 - 리뷰: `docs/ai/reviews/2026-07-07-refresh-unification-cardio-intensity-review.md`
-- 다음 액션: 커밋 후 production Pages에 배포하고 헤더 새로고침 단일 UI와 유산소 강도 입력 flow를 운영 URL에서 확인한다.
+- 다음 액션: 없음. 사용자는 운영 URL에서 로그인 후 헤더 새로고침 버튼, `운동 -> 종목 추가 -> 유산소 -> 마이마운틴/스텝머신` flow를 확인한다.
 
 ## 2026-07-07 Header App Refresh Update
 
