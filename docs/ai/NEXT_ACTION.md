@@ -2,7 +2,7 @@
 
 ## 2026-07-07 Header App Refresh Update
 
-- 상태: `ready_for_deploy_verification`
+- 상태: `complete`
 - 계획: `docs/ai/features/2026-07-07-header-app-refresh-update.md`
 - 요청: 알림 아이콘 오른쪽에 항상 보이는 새로고침 아이콘을 추가하고, 누르면 최신 `CACHE_VERSION`/배포본을 확인·적용한다. 최근 코드 수정이 반영되지 않은 것처럼 보이면 운영 Pages 배포와 검증까지 수행한다.
 - 실행 Slice 1 완료:
@@ -11,6 +11,7 @@
   3. `app.js` app shell action bridge에 `refresh-app-update` case를 추가했다.
   4. `utils/build-info.js`에 `requestTomatoAppRefresh()`를 추가하고 `window.__requestTomatoAppRefresh`로 노출했다.
   5. `STATIC_ASSETS` 변경에 맞춰 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260707z19-wear-bridge-load-binding`로 bump하고 cache/query marker 테스트를 갱신했다.
+  6. production QA 중 발견한 `workout/index.js` top-level `loadWorkoutDate is not defined` 회귀를 local import로 수정하고 `app.js -> render-workout.js -> workout/index.js` query marker를 갱신했다.
 - 검증:
   1. PASS: `node --check app.js && node --check utils/build-info.js && node --check pwa-register.js && node --check sw.js`.
   2. PASS: `node --test tests/app-shell-action-bridge.test.js tests/pwa-update-auto-reload.test.js tests/workout-active-session-recovery.test.js`.
@@ -18,8 +19,11 @@
   4. PASS: `node --test tests/*.test.js` - 741 tests, 741 pass.
   5. PASS: `git diff --check`.
   6. INFO: TypeScript LSP diagnostics는 local LSP 미설치로 실행하지 못했다.
-  7. not verified yet: production Pages 배포/`verify:deploy`와 배포 URL 헤더 버튼 클릭 QA.
-- 다음 액션: dirty worktree의 배포 대기 변경을 함께 커밋한 뒤 `npm.cmd run deploy:production`, deployed marker 검증, 배포 URL 헤더 버튼 QA를 수행한다.
+  7. PASS: `npm.cmd run deploy:production` - `origin/main` Pages 배포와 `verify:deploy` 통과.
+  8. PASS: deployed marker 검증 - `index.html::app-refresh-btn`, `app.js::__requestTomatoAppRefresh`, `render-workout.js::workout/index.js?v=20260707d-wear-bridge-load-binding`, `workout/index.js::import { loadWorkoutDate`, `sw.js::tomatofarm-v20260707z19-wear-bridge-load-binding`.
+  9. PASS: production Puppeteer QA - 모바일 390x844에서 `#notif-bell` 오른쪽에 `#app-refresh-btn`이 보이고 click 후 reload, `window.__requestTomatoAppRefresh === true`, pageerror 없음. Screenshot: `.omo/evidence/header-app-refresh-update/production-mobile-header-puppeteer.png`.
+  10. INFO: in-app browser 기존 탭은 이전 service worker cache로 `app.js?v=20260707c-header-app-refresh`를 한 번 보여줬다. 배포 파일 marker와 clean Puppeteer production session은 최종 `20260707d`/`z19`를 확인했다.
+- 다음 액션: 없음. 사용자는 운영 URL에서 헤더 새로고침 버튼을 눌러 최신 앱 reload를 확인한다.
 
 ## 2026-07-07 Workout Rest Counter
 

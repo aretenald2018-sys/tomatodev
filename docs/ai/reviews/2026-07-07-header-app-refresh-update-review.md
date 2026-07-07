@@ -18,6 +18,7 @@ PASS. 코드 리뷰 기준으로 새 버튼은 기존 app shell action bridge를
 4. `styles/components.css`에 refresh icon busy 상태를 추가했다.
 5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260707z19-wear-bridge-load-binding`로 bump했다.
 6. `tests/app-shell-action-bridge.test.js`와 `tests/pwa-update-auto-reload.test.js`에 header refresh/update marker 검증을 추가했다.
+7. production QA에서 발견한 `workout/index.js` local binding 누락을 수정하고 query marker를 `20260707d-wear-bridge-load-binding`로 갱신했다.
 
 ## 검증
 
@@ -27,14 +28,17 @@ PASS. 코드 리뷰 기준으로 새 버튼은 기존 app shell action bridge를
 4. PASS: `node --test tests/*.test.js` - 741 tests, 741 pass.
 5. PASS: `git diff --check`.
 6. INFO: TypeScript LSP diagnostics는 local LSP 미설치로 실행하지 못했다.
+7. PASS: `npm.cmd run deploy:production`.
+8. PASS: deployed marker 검증.
+9. PASS: production Puppeteer QA - `window.__requestTomatoAppRefresh === true`, click 후 reload, 모바일 390x844에서 알림 버튼 오른쪽 배치, pageerror 없음.
 
 ## 남은 운영 확인
 
-운영 Pages 배포 후 다음을 확인한다.
+운영 Pages 배포 후 다음을 확인했다.
 
 1. `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>` PASS.
-2. 배포된 `index.html`, `app.js`, `utils/build-info.js`, `sw.js`에서 refresh button/action/update helper/cache marker가 확인된다.
-3. 모바일 폭에서 알림 아이콘 오른쪽에 새로고침 아이콘이 보이고, 클릭 시 콘솔 오류 없이 최신 앱 확인/재로드 flow가 실행된다.
+2. 배포된 `index.html`, `app.js`, `render-workout.js`, `workout/index.js`, `utils/build-info.js`, `sw.js`에서 refresh button/action/update helper/query/cache marker가 확인된다.
+3. 모바일 폭에서 알림 아이콘 오른쪽에 새로고침 아이콘이 보이고, 클릭 시 pageerror 없이 최신 앱 확인/재로드 flow가 실행된다.
 
 ## 제한
 

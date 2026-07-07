@@ -71,6 +71,7 @@
 4. `styles/components.css`에 refresh 버튼 busy spin 상태를 추가했다.
 5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260707z19-wear-bridge-load-binding`로 bump했다.
 6. `tests/app-shell-action-bridge.test.js`와 `tests/pwa-update-auto-reload.test.js`에 refresh marker 검증을 추가했다.
+7. production QA 중 발견한 `workout/index.js` top-level `loadWorkoutDate is not defined` 회귀를 local import로 수정하고 `app.js -> render-workout.js -> workout/index.js` query marker를 `20260707d-wear-bridge-load-binding`로 갱신했다.
 
 ## 로컬 검증 결과
 
@@ -80,3 +81,6 @@
 4. PASS: `node --test tests/*.test.js` - 741 tests, 741 pass.
 5. PASS: `git diff --check`.
 6. INFO: TypeScript LSP diagnostics는 local LSP 미설치로 실행하지 못했다.
+7. PASS: `npm.cmd run deploy:production` - production Pages `verify:deploy` 통과.
+8. PASS: deployed marker 검증 - refresh button/action/helper/query/cache marker 확인.
+9. PASS: production Puppeteer QA - 모바일 헤더 배치와 새로고침 버튼 click reload flow 확인, pageerror 없음.
