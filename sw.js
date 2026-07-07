@@ -3,7 +3,7 @@
 
 // 캐시 버전: 타임스탬프 기반 자동 생성 — 파일 수정 시 SW 자동 업데이트
 // (SW 파일 내용이 1바이트라도 바뀌면 브라우저가 새 SW로 인식)
-const CACHE_VERSION = 'tomatofarm-v20260707z19-wear-bridge-load-binding';
+const CACHE_VERSION = 'tomatofarm-v20260707z20-refresh-cardio-intensity';
 const RUNTIME_CACHE = 'dashboard3-runtime';
 const STATIC_ASSETS = [
   './',
@@ -25,6 +25,7 @@ const STATIC_ASSETS = [
   './assets/nav-icons/workout.svg',
   './assets/stats/muscle-fatigue-body.png',
   './assets/workout/cardio/indoor-cycling.png',
+  './assets/workout/cardio/my-mountain.png',
   './assets/workout/cardio/recumbent-bike.png',
   './assets/workout/cardio/rowing.png',
   './assets/workout/cardio/stationary-bike.png',
@@ -45,6 +46,7 @@ const STATIC_ASSETS = [
   './app.js?v=20260702z19-current-user-set-button',
   './app.js?v=20260625z47-workout-record-card-standard',
   './app.js?v=20260707d-wear-bridge-load-binding',
+  './app.js?v=20260707e-refresh-cardio-intensity',
   './data.js',
   './calc.js',
   './config.js',
@@ -163,6 +165,7 @@ const STATIC_ASSETS = [
   './utils/haptics.js',
   './utils/action-router.js',
   './utils/build-info.js',
+  './utils/build-info.js?v=20260707e-refresh-cardio-intensity',
   './home/personalize.js',
   './home/streak-warning.js',
   './home/admin-onboarding.js',

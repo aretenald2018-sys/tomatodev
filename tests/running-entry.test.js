@@ -47,22 +47,29 @@ test('exercise picker category renders running and cardio as body-category tiles
   assert.match(exercisesJs, /function _pickerCardioFigureHtml/);
   assert.match(exercisesJs, /data-picker-cardio-img/);
   assert.match(exercisesJs, /트레드밀 러닝/);
+  assert.match(exercisesJs, /마이마운틴/);
   assert.match(exercisesJs, /스텝머신/);
   assert.match(exercisesJs, /실내 자전거/);
   assert.match(exercisesJs, /로잉/);
   assert.match(exercisesJs, /인도어 사이클링/);
   assert.match(exercisesJs, /리컴번트 바이크/);
   assert.match(exercisesJs, /assets\/workout\/cardio\/[\s\S]*treadmill-running\.png/);
+  assert.match(exercisesJs, /assets\/workout\/cardio\/[\s\S]*my-mountain\.png/);
   assert.match(exercisesJs, /function _openPickerCardioList/);
   assert.match(exercisesJs, /data-picker-cardio-id/);
   assert.match(exercisesJs, /function _openManualCardioInput/);
   assert.match(exercisesJs, /id="ex-cardio-kcal"/);
   assert.match(exercisesJs, /id="ex-cardio-distance"/);
   assert.match(exercisesJs, /id="ex-cardio-speed"/);
+  assert.match(exercisesJs, /id="\$\{_escPicker\(config\.inputId\)\}"/);
+  assert.match(exercisesJs, /angleDeg/);
+  assert.match(exercisesJs, /level/);
   assert.match(exercisesJs, /id="ex-cardio-laps"/);
   assert.match(exercisesJs, /_buildManualCardioEntry/);
-  assert.match(exercisesJs, /cardio:\s*\{/);
+  assert.match(exercisesJs, /const cardioData = \{/);
+  assert.match(exercisesJs, /cardio: cardioData/);
   assert.match(exercisesJs, /source: 'manual-cardio'/);
+  assert.match(exercisesJs, /function _manualCardioIntensityMultiplier/);
   assert.match(exercisesJs, /saveWorkoutDay\(\{ silent: true \}\)/);
   assert.doesNotMatch(exercisesJs, /S\.workout\.exercises = \[\]/);
   assert.doesNotMatch(exercisesJs, /function _snapshotManualCardioPreviousWorkout/);
@@ -283,7 +290,7 @@ test('running workout save writes a running life-zone snapshot', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260707z19-wear-bridge-load-binding/);
+  assert.match(swJs, /tomatofarm-v20260707z20-refresh-cardio-intensity/);
   assert.match(swJs, /\.\/workout\/index\.js\?v=20260707d-wear-bridge-load-binding/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);

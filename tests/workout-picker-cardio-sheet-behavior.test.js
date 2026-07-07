@@ -192,19 +192,60 @@ try {
   speed.dispatchEvent(new Event('input', { bubbles: true }));
   await nextFrame();
   const autoInput = document.querySelector('#ex-cardio-kcal');
-  const auto = {
+  const autoBase = {
     kcal: autoInput?.value || '',
     mode: autoInput?.dataset.cardioKcalMode || '',
     status: document.querySelector('[data-cardio-kcal-status]')?.textContent || '',
     preview: document.querySelector('[data-cardio-preview]')?.textContent || ''
   };
 
-  autoInput.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
+  const level = document.querySelector('#ex-cardio-level');
+  if (!level) throw new Error('step-machine level input missing');
+  level.value = '10';
+  level.dispatchEvent(new Event('input', { bubbles: true }));
   await nextFrame();
-  const cleared = {
+  const stepLevel = {
     kcal: autoInput?.value || '',
     mode: autoInput?.dataset.cardioKcalMode || '',
+    status: document.querySelector('[data-cardio-kcal-status]')?.textContent || '',
+    preview: document.querySelector('[data-cardio-preview]')?.textContent || ''
+  };
+  document.querySelector('[data-picker-cardio-form]')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  await nextFrame();
+  const savedStep = state.S.workout.exercises.find(entry => entry.exerciseId === 'cardio:step-machine')?.cardio || null;
+
+  exercises.wtOpenManualCardioInput({ cardioId: 'step-machine' });
+  await nextFrame();
+  const clearInput = document.querySelector('#ex-cardio-kcal');
+  clearInput.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
+  await nextFrame();
+  const cleared = {
+    kcal: clearInput?.value || '',
+    mode: clearInput?.dataset.cardioKcalMode || '',
     status: document.querySelector('[data-cardio-kcal-status]')?.textContent || ''
+  };
+
+  document.querySelector('[data-picker-cardio-sheet]')?.remove();
+  state.S.workout.exercises = [];
+  exercises.wtOpenManualCardioInput({ cardioId: 'my-mountain' });
+  await nextFrame();
+  const mountainDistance = document.querySelector('#ex-cardio-distance');
+  const mountainSpeed = document.querySelector('#ex-cardio-speed');
+  const angle = document.querySelector('#ex-cardio-angle');
+  if (!angle) throw new Error('my-mountain angle input missing');
+  mountainDistance.value = '5';
+  mountainDistance.dispatchEvent(new Event('input', { bubbles: true }));
+  mountainSpeed.value = '10';
+  mountainSpeed.dispatchEvent(new Event('input', { bubbles: true }));
+  angle.value = '12';
+  angle.dispatchEvent(new Event('input', { bubbles: true }));
+  await nextFrame();
+  const mountainInput = document.querySelector('#ex-cardio-kcal');
+  const myMountain = {
+    kcal: mountainInput?.value || '',
+    mode: mountainInput?.dataset.cardioKcalMode || '',
+    status: document.querySelector('[data-cardio-kcal-status]')?.textContent || '',
+    preview: document.querySelector('[data-cardio-preview]')?.textContent || ''
   };
 
   document.querySelector('[data-picker-cardio-sheet]')?.remove();
@@ -241,7 +282,7 @@ try {
     runningCalls: window.__runningSessionCalls,
     modalOpen: document.querySelector('#ex-picker-modal')?.classList.contains('open') || false,
   };
-  window.__qaDone = { legacy, auto, cleared, runningBeforeStart, runningAfterStart };
+  window.__qaDone = { legacy, autoBase, stepLevel, savedStep, cleared, myMountain, runningBeforeStart, runningAfterStart };
 } catch (e) {
   window.__qaError = String(e && (e.stack || e.message) || e);
 }
@@ -270,7 +311,7 @@ try {
   }
 }
 
-test('manual cardio sheet preserves legacy kcal records and auto-calculates new distance/speed entries', async () => {
+test('manual cardio sheet preserves legacy kcal records and auto-calculates intensity fields', async () => {
   const result = await runCardioSheetHarness();
 
   assert.equal(result.legacy.kcal, '123');
@@ -278,14 +319,27 @@ test('manual cardio sheet preserves legacy kcal records and auto-calculates new 
   assert.equal(result.legacy.status, '직접 입력');
   assert.match(result.legacy.preview, /123 kcal/);
 
-  assert.equal(result.auto.kcal, '368');
-  assert.equal(result.auto.mode, 'auto');
-  assert.equal(result.auto.status, '거리/속도 자동 산출');
-  assert.match(result.auto.preview, /368 kcal/);
+  assert.equal(result.autoBase.kcal, '368');
+  assert.equal(result.autoBase.mode, 'auto');
+  assert.equal(result.autoBase.status, '거리/속도/단계 자동 산출');
+  assert.match(result.autoBase.preview, /368 kcal/);
+
+  assert.equal(result.stepLevel.kcal, '450');
+  assert.equal(result.stepLevel.mode, 'auto');
+  assert.equal(result.stepLevel.status, '거리/속도/단계 자동 산출');
+  assert.match(result.stepLevel.preview, /450 kcal/);
+  assert.match(result.stepLevel.preview, /10단계/);
+  assert.equal(result.savedStep.level, 10);
 
   assert.equal(result.cleared.kcal, '');
   assert.equal(result.cleared.mode, 'manual');
   assert.equal(result.cleared.status, '직접 입력');
+
+  assert.equal(result.myMountain.kcal, '522');
+  assert.equal(result.myMountain.mode, 'auto');
+  assert.equal(result.myMountain.status, '거리/속도/각도 자동 산출');
+  assert.match(result.myMountain.preview, /522 kcal/);
+  assert.match(result.myMountain.preview, /각도 12°/);
 
   assert.equal(result.runningBeforeStart.view, 'running');
   assert.equal(result.runningBeforeStart.activeTab, '런닝/조깅');

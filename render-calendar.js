@@ -163,6 +163,8 @@ function _cardioEntryData(entry = {}) {
   const distanceKm = Math.max(0, _num(raw.distanceKm));
   const speedKmh = Math.max(0, _num(raw.speedKmh));
   const laps = Math.max(0, Math.round(_num(raw.laps)));
+  const angleDeg = Math.max(0, _num(raw.angleDeg));
+  const level = Math.max(0, Math.round(_num(raw.level)));
   const hasMetric = kcal > 0 || distanceKm > 0 || speedKmh > 0 || laps > 0;
   if (!hasMetric && raw.source !== 'manual-cardio') return null;
   const fallbackId = String(entry.exerciseId || '').replace(/^cardio:/, '');
@@ -174,6 +176,8 @@ function _cardioEntryData(entry = {}) {
     distanceKm,
     speedKmh,
     laps,
+    angleDeg,
+    level,
     source: raw.source || 'manual-cardio',
   };
 }
@@ -190,6 +194,8 @@ function _cardioSummaryText(cardio) {
     cardio.kcal > 0 ? `${Math.round(cardio.kcal)} kcal` : '',
     cardio.distanceKm > 0 ? `${_fmtNum(cardio.distanceKm, 2)} km` : '',
     cardio.speedKmh > 0 ? `${_fmtNum(cardio.speedKmh, 1)} km/h` : '',
+    cardio.id === 'my-mountain' && cardio.angleDeg > 0 ? `각도 ${_fmtNum(cardio.angleDeg, 1)}°` : '',
+    cardio.id === 'step-machine' && cardio.level > 0 ? `${Math.round(cardio.level)}단계` : '',
     cardio.laps > 0 ? `${Math.round(cardio.laps)}회` : '',
   ].filter(Boolean);
   return parts.join(' · ') || '수기 유산소 기록';
@@ -2553,6 +2559,8 @@ function _cardioMetricItems(row) {
     { label: '칼로리', value: _formatCardioMetric(cardio.kcal, ' kcal', 0) },
     { label: '거리', value: _formatCardioMetric(cardio.distanceKm, ' km', 2) },
     { label: '속도', value: _formatCardioMetric(cardio.speedKmh, ' km/h', 1) },
+    ...(cardio.id === 'my-mountain' ? [{ label: '각도', value: _formatCardioMetric(cardio.angleDeg, '°', 1) }] : []),
+    ...(cardio.id === 'step-machine' ? [{ label: '단계', value: _formatCardioMetric(cardio.level, '단계', 0) }] : []),
     { label: '랩/반복', value: _formatCardioMetric(cardio.laps, '회', 0) },
   ];
 }

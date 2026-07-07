@@ -62,5 +62,5 @@ test('login restore skips guild onboarding when a running draft can resume', () 
 });
 
 test('service worker cache version was bumped for login action bridge assets', () => {
-  assert.match(swJs, /tomatofarm-v20260707z19-wear-bridge-load-binding/);
+  assert.match(swJs, /tomatofarm-v20260707z20-refresh-cardio-intensity/);
 });

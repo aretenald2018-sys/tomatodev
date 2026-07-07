@@ -130,13 +130,7 @@ function _setAppUpdatePanelOpen(open) {
   if (typeof document === 'undefined') return;
   const state = _updateBannerState();
   state.panelOpen = !!open;
-  const root = document.getElementById('app-update-indicator');
-  if (!root) return;
-  const toggle = root.querySelector('#app-update-toggle');
-  const panel = root.querySelector('#app-update-panel');
-  root.dataset.open = state.panelOpen ? 'true' : 'false';
-  if (toggle) toggle.setAttribute('aria-expanded', state.panelOpen ? 'true' : 'false');
-  if (panel) panel.hidden = !state.panelOpen;
+  _syncAppRefreshButtonState();
 }
 
 function _hasActiveWorkoutDraftForUpdate() {
@@ -162,78 +156,30 @@ function _activeUpdateCopy() {
       };
 }
 
-function _syncAppUpdateCopy(root, { loading = false } = {}) {
-  if (!root) return;
+function _syncAppRefreshButtonState({ loading = false } = {}) {
+  if (typeof document === 'undefined') return;
   const copy = _activeUpdateCopy();
-  const title = root.querySelector('[data-app-update-title]');
-  const body = root.querySelector('[data-app-update-body]');
-  const reload = root.querySelector('#app-update-reload');
-  if (title) title.textContent = copy.title;
-  if (body) body.textContent = copy.body;
-  if (reload) reload.textContent = loading ? '새로고침 중...' : copy.button;
-  root.classList.toggle('has-active-workout-draft', copy.button !== '새로고침');
+  const state = _updateBannerState();
+  const button = document.getElementById('app-refresh-btn');
+  if (!button) return;
+  const hasUpdate = !!state.latestRegistration || state.shownKeys.size > 0;
+  button.classList.toggle('has-update', hasUpdate);
+  button.classList.toggle('has-active-workout-draft', hasUpdate && copy.button !== '새로고침');
+  button.title = loading
+    ? '앱 새로고침 중'
+    : (hasUpdate ? `${copy.title} - ${copy.button}` : '앱 새로고침');
+  button.setAttribute('aria-label', loading
+    ? '앱 새로고침 중'
+    : (hasUpdate ? `${copy.title}, ${copy.button}` : '앱 새로고침'));
 }
 
 function _ensureAppUpdateIndicator() {
   if (typeof document === 'undefined' || !document.body) return null;
   document.getElementById('app-update-banner')?.remove();
-
-  let root = document.getElementById('app-update-indicator');
-  if (!root) {
-    root = document.createElement('div');
-    root.id = 'app-update-indicator';
-    root.className = 'app-update-indicator';
-    root.dataset.open = 'false';
-    root.innerHTML = `
-      <button type="button" class="app-update-icon-btn" id="app-update-toggle" aria-label="새 버전 확인" aria-expanded="false" aria-controls="app-update-panel">
-        <span class="app-update-icon" aria-hidden="true">↻</span>
-        <span class="app-update-dot" aria-hidden="true"></span>
-      </button>
-      <div class="app-update-panel" id="app-update-panel" role="dialog" aria-label="앱 업데이트" hidden>
-        <div class="app-update-panel-copy">
-          <strong data-app-update-title>새 버전이 준비됐어요</strong>
-          <span data-app-update-body>최신 버전으로 다시 시작할 수 있어요.</span>
-        </div>
-        <button type="button" class="app-update-reload" id="app-update-reload">새로고침</button>
-      </div>
-    `;
-    root.addEventListener('click', (event) => {
-      const target = event.target;
-      const toggle = target?.closest?.('#app-update-toggle');
-      const reload = target?.closest?.('#app-update-reload');
-      if (toggle) {
-        event.preventDefault();
-        event.stopPropagation();
-        _syncAppUpdateCopy(root);
-        _setAppUpdatePanelOpen(!_updateBannerState().panelOpen);
-        return;
-      }
-      if (reload) {
-        event.preventDefault();
-        event.stopPropagation();
-        _reloadForAppUpdate(_updateBannerState().latestRegistration, reload);
-      }
-    });
-    document.body.appendChild(root);
-  }
-
   const state = _updateBannerState();
-  if (!state.outsideCloseBound) {
-    document.addEventListener('click', (event) => {
-      const current = document.getElementById('app-update-indicator');
-      if (!current || current.contains(event.target)) return;
-      _setAppUpdatePanelOpen(false);
-    });
-    state.outsideCloseBound = true;
-  }
-
-  const reload = root.querySelector('#app-update-reload');
-  if (reload) {
-    reload.disabled = !!state.reloadRequested;
-  }
-  _syncAppUpdateCopy(root, { loading: !!state.reloadRequested });
+  _syncAppRefreshButtonState({ loading: !!state.reloadRequested });
   _setAppUpdatePanelOpen(state.panelOpen);
-  return root;
+  return document.getElementById('app-refresh-btn');
 }
 
 function _waitForWorkerState(worker, targetStates, timeoutMs = 8000) {
@@ -341,6 +287,7 @@ export async function requestTomatoAppRefresh({ control = null, source = 'manual
   const button = control || document.getElementById('app-refresh-btn');
   if (button?.disabled) return { started: false, reason: 'busy', source };
   _setRefreshControlBusy(button, true);
+  _syncAppRefreshButtonState({ loading: true });
   _toastAppRefresh('최신 앱 버전을 확인하고 있어요.', 'info');
 
   try {
@@ -355,7 +302,10 @@ export async function requestTomatoAppRefresh({ control = null, source = 'manual
     }
 
     const started = await _reloadForAppUpdate(registration);
-    if (!started) _setRefreshControlBusy(button, false);
+    if (!started) {
+      _setRefreshControlBusy(button, false);
+      _syncAppRefreshButtonState();
+    }
     return {
       started,
       hasWaitingWorker: !!waiting,

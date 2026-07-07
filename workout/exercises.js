@@ -98,12 +98,37 @@ const CARDIO_EXERCISE_ID_PREFIX = 'cardio:';
 const CARDIO_PICKER_ASSET_BASE = './assets/workout/cardio/';
 const CARDIO_PICKER_EXERCISES = Object.freeze([
   { id: 'treadmill-running', label: '트레드밀 러닝', detail: '러닝머신', image: `${CARDIO_PICKER_ASSET_BASE}treadmill-running.png` },
+  { id: 'my-mountain', label: '마이마운틴', detail: '각도 조절 유산소', image: `${CARDIO_PICKER_ASSET_BASE}my-mountain.png` },
   { id: 'step-machine', label: '스텝머신', detail: '계단 오르기', image: `${CARDIO_PICKER_ASSET_BASE}step-machine.png` },
   { id: 'stationary-bike', label: '실내 자전거', detail: '고정식 바이크', image: `${CARDIO_PICKER_ASSET_BASE}stationary-bike.png` },
   { id: 'rowing', label: '로잉', detail: '로잉 머신', image: `${CARDIO_PICKER_ASSET_BASE}rowing.png` },
   { id: 'indoor-cycling', label: '인도어 사이클링', detail: '스핀 바이크', image: `${CARDIO_PICKER_ASSET_BASE}indoor-cycling.png` },
   { id: 'recumbent-bike', label: '리컴번트 바이크', detail: '좌식 자전거', image: `${CARDIO_PICKER_ASSET_BASE}recumbent-bike.png` },
 ]);
+const CARDIO_INTENSITY_FIELDS = Object.freeze({
+  'my-mountain': {
+    key: 'angleDeg',
+    inputId: 'ex-cardio-angle',
+    label: '각도',
+    unit: '°',
+    min: 0,
+    max: 40,
+    step: 0.5,
+    digits: 1,
+    autoStatus: '거리/속도/각도 자동 산출',
+  },
+  'step-machine': {
+    key: 'level',
+    inputId: 'ex-cardio-level',
+    label: '단계',
+    unit: '단계',
+    min: 1,
+    max: 30,
+    step: 1,
+    digits: 0,
+    autoStatus: '거리/속도/단계 자동 산출',
+  },
+});
 const _embeddedMaxCards = new Map();
 const WORKOUT_NUMBER_INPUT_SELECTOR = '.set-input, .set-rpe-input, .set-rom-input';
 const WORKOUT_INPUT_SCROLL_GUARD_BOTTOM_PX = 156;
@@ -2845,31 +2870,69 @@ function _manualCardioInputValue(value, digits = 1) {
   return Number.isFinite(n) && n > 0 ? _manualCardioRound(n, digits) : '';
 }
 
+function _manualCardioIntensityConfig(cardio) {
+  const id = String(cardio?.id || cardio || '').replace(CARDIO_EXERCISE_ID_PREFIX, '');
+  return CARDIO_INTENSITY_FIELDS[id] || null;
+}
+
+function _manualCardioIntensityNumber(value, config) {
+  if (!config) return 0;
+  const n = _manualCardioNumber(value, config.digits);
+  if (n == null) return null;
+  if (n <= 0) return 0;
+  const clamped = Math.min(config.max, Math.max(config.min, n));
+  return _manualCardioRound(clamped, config.digits);
+}
+
+function _manualCardioIntensityValue(data, config) {
+  if (!config) return 0;
+  return _manualCardioIntensityNumber(data?.[config.key], config);
+}
+
 function _manualCardioInitialValues(cardio) {
   const exerciseId = _manualCardioExerciseId(cardio);
   const existing = (Array.isArray(S?.workout?.exercises) ? S.workout.exercises : [])
     .find(entry => String(entry?.exerciseId || '') === exerciseId);
   const data = existing?.cardio || {};
+  const intensityConfig = _manualCardioIntensityConfig(cardio);
   const savedKcal = Number(data.kcal);
   const kcalMode = data.kcalMode === 'manual'
     ? 'manual'
     : (data.kcalMode === 'auto' || !Number.isFinite(savedKcal) || savedKcal <= 0 ? 'auto' : 'manual');
-  return {
+  const initial = {
     kcal: _manualCardioInputValue(data.kcal, 0),
     distanceKm: _manualCardioInputValue(data.distanceKm, 2),
     speedKmh: _manualCardioInputValue(data.speedKmh, 1),
     laps: _manualCardioInputValue(data.laps, 0),
     kcalMode,
   };
+  if (intensityConfig) {
+    initial[intensityConfig.key] = _manualCardioInputValue(data[intensityConfig.key], intensityConfig.digits);
+  }
+  return initial;
 }
 
-function _estimateManualCardioCalories(distanceKm, speedKmh) {
+function _manualCardioIntensityMultiplier(cardioId, intensity = {}) {
+  const id = String(cardioId || '').replace(CARDIO_EXERCISE_ID_PREFIX, '');
+  if (id === 'my-mountain') {
+    const angle = Math.min(40, Math.max(0, Number(intensity.angleDeg) || 0));
+    return 1 + (angle * 0.035);
+  }
+  if (id === 'step-machine') {
+    const level = Math.min(30, Math.max(0, Number(intensity.level) || 0));
+    return 1 + (Math.max(0, level - 1) * 0.025);
+  }
+  return 1;
+}
+
+function _estimateManualCardioCalories(distanceKm, speedKmh, { cardioId = '', angleDeg = 0, level = 0 } = {}) {
   const distance = Number(distanceKm);
   const speed = Number(speedKmh);
   if (!Number.isFinite(distance) || !Number.isFinite(speed) || distance <= 0 || speed <= 0) return 0;
   const durationHours = distance / speed;
   const met = speed < 4 ? 3.5 : speed < 6 ? 5 : speed < 8 ? 7 : speed < 10 ? 9 : 10.5;
-  return Math.min(5000, Math.max(1, Math.round(met * 70 * durationHours)));
+  const multiplier = _manualCardioIntensityMultiplier(cardioId, { angleDeg, level });
+  return Math.min(5000, Math.max(1, Math.round(met * 70 * durationHours * multiplier)));
 }
 
 function _manualCardioKcalMode(sheet) {
@@ -2882,7 +2945,9 @@ function _syncManualCardioKcalStatus(sheet) {
   const status = sheet?.querySelector?.('[data-cardio-kcal-status]');
   if (!input || !status) return;
   const manual = input.dataset.cardioKcalMode === 'manual';
-  status.textContent = manual ? '직접 입력' : '거리/속도 자동 산출';
+  const cardio = _pickerCardioById(sheet?.getAttribute?.('data-cardio-id'));
+  const intensityConfig = _manualCardioIntensityConfig(cardio);
+  status.textContent = manual ? '직접 입력' : (intensityConfig?.autoStatus || '거리/속도 자동 산출');
   input.setAttribute('aria-label', manual ? '칼로리 직접 입력' : '칼로리 자동 산출');
 }
 
@@ -2895,13 +2960,25 @@ function _syncManualCardioAutoCalories(sheet) {
   }
   const distance = _manualCardioNumber(sheet?.querySelector?.('#ex-cardio-distance')?.value, 2);
   const speed = _manualCardioNumber(sheet?.querySelector?.('#ex-cardio-speed')?.value, 1);
-  const estimated = distance == null || speed == null ? 0 : _estimateManualCardioCalories(distance, speed);
+  const cardio = _pickerCardioById(sheet?.getAttribute?.('data-cardio-id'));
+  const intensityConfig = _manualCardioIntensityConfig(cardio);
+  const intensity = intensityConfig
+    ? _manualCardioIntensityNumber(sheet?.querySelector?.(`#${intensityConfig.inputId}`)?.value, intensityConfig)
+    : 0;
+  const estimated = distance == null || speed == null || intensity == null
+    ? 0
+    : _estimateManualCardioCalories(distance, speed, {
+        cardioId: cardio.id,
+        [intensityConfig?.key || '']: intensity,
+      });
   kcalInput.value = estimated > 0 ? String(estimated) : '';
   kcalInput.dataset.cardioKcalMode = 'auto';
   _syncManualCardioKcalStatus(sheet);
 }
 
-function _manualCardioSummary({ kcal, distanceKm, speedKmh, laps, kcalMode = 'auto' }) {
+function _manualCardioSummary({ kcal, distanceKm, speedKmh, laps, kcalMode = 'auto', cardio = null, angleDeg, level }) {
+  const target = _pickerCardioById(cardio?.id || cardio);
+  const intensityConfig = _manualCardioIntensityConfig(target);
   const summary = {
     kcal: _manualCardioNumber(kcal, 0),
     distanceKm: _manualCardioNumber(distanceKm, 2),
@@ -2909,8 +2986,13 @@ function _manualCardioSummary({ kcal, distanceKm, speedKmh, laps, kcalMode = 'au
     laps: _manualCardioNumber(laps, 0),
   };
   if (Object.values(summary).some(value => value == null)) return null;
-  if (!Object.values(summary).some(value => Number(value) > 0)) return null;
-  return { ...summary, kcalMode: kcalMode === 'manual' ? 'manual' : 'auto' };
+  if (intensityConfig) {
+    const intensity = _manualCardioIntensityNumber({ angleDeg, level }[intensityConfig.key], intensityConfig);
+    if (intensity == null) return null;
+    summary[intensityConfig.key] = intensity;
+  }
+  if (![summary.kcal, summary.distanceKm, summary.speedKmh, summary.laps].some(value => Number(value) > 0)) return null;
+  return { ...summary, cardio: target, kcalMode: kcalMode === 'manual' ? 'manual' : 'auto' };
 }
 
 function _manualCardioEntryData(entry) {
@@ -2921,11 +3003,29 @@ function _manualCardioEntryData(entry) {
     distanceKm: raw.distanceKm,
     speedKmh: raw.speedKmh,
     laps: raw.laps,
+    cardio,
+    angleDeg: raw.angleDeg,
+    level: raw.level,
   }) || { kcal: 0, distanceKm: 0, speedKmh: 0, laps: 0 };
   return { cardio, ...summary };
 }
 
 function _buildManualCardioEntry(cardio, summary) {
+  const intensityConfig = _manualCardioIntensityConfig(cardio);
+  const cardioData = {
+    id: cardio.id,
+    label: cardio.label,
+    detail: cardio.detail,
+    kcal: summary.kcal,
+    distanceKm: summary.distanceKm,
+    speedKmh: summary.speedKmh,
+    laps: summary.laps,
+    kcalMode: summary.kcalMode || 'auto',
+    unit: 'metric',
+    source: 'manual-cardio',
+    recordedAt: Date.now(),
+  };
+  if (intensityConfig) cardioData[intensityConfig.key] = summary[intensityConfig.key] || 0;
   return {
     muscleId: 'cardio',
     muscleIds: [],
@@ -2933,19 +3033,7 @@ function _buildManualCardioEntry(cardio, summary) {
     exerciseId: _manualCardioExerciseId(cardio),
     name: cardio.label,
     sets: [],
-    cardio: {
-      id: cardio.id,
-      label: cardio.label,
-      detail: cardio.detail,
-      kcal: summary.kcal,
-      distanceKm: summary.distanceKm,
-      speedKmh: summary.speedKmh,
-      laps: summary.laps,
-      kcalMode: summary.kcalMode || 'auto',
-      unit: 'metric',
-      source: 'manual-cardio',
-      recordedAt: Date.now(),
-    },
+    cardio: cardioData,
   };
 }
 
@@ -2955,12 +3043,21 @@ function _manualCardioMetricText(value, unit, digits = 1) {
   return `${_manualCardioRound(n, digits)}${unit}`;
 }
 
+function _manualCardioIntensityPreviewText(config, value) {
+  if (!config || !(Number(value) > 0)) return '';
+  const rounded = _manualCardioRound(value, config.digits);
+  if (config.key === 'level') return `${Math.round(rounded)}${config.unit}`;
+  return `${config.label} ${rounded}${config.unit}`;
+}
+
 function _manualCardioPreviewText(summary) {
   if (!summary) return '칼로리, 거리, 속도, 랩/반복 중 하나 이상 입력해주세요';
+  const intensityConfig = _manualCardioIntensityConfig(summary.cardio);
   const parts = [
     summary.kcal > 0 ? `${Math.round(summary.kcal)} kcal` : '',
     summary.distanceKm > 0 ? `${_manualCardioRound(summary.distanceKm, 2)} km` : '',
     summary.speedKmh > 0 ? `${_manualCardioRound(summary.speedKmh, 1)} km/h` : '',
+    _manualCardioIntensityPreviewText(intensityConfig, summary[intensityConfig?.key]),
     summary.laps > 0 ? `${Math.round(summary.laps)}회` : '',
   ].filter(Boolean);
   return parts.join(' · ');
@@ -2968,13 +3065,18 @@ function _manualCardioPreviewText(summary) {
 
 function _renderManualCardioEntryCard(entry, idx) {
   const data = _manualCardioEntryData(entry);
+  const intensityConfig = _manualCardioIntensityConfig(data.cardio);
   const metrics = [
     { label: '칼로리', value: _manualCardioMetricText(data.kcal, ' kcal', 0) },
     { label: '거리', value: _manualCardioMetricText(data.distanceKm, ' km', 2) },
     { label: '속도', value: _manualCardioMetricText(data.speedKmh, ' km/h', 1) },
+    ...(intensityConfig ? [{
+      label: intensityConfig.label,
+      value: _manualCardioMetricText(data[intensityConfig.key], intensityConfig.unit, intensityConfig.digits),
+    }] : []),
     { label: '랩/반복', value: _manualCardioMetricText(data.laps, '회', 0) },
   ];
-  const summary = _manualCardioPreviewText(data);
+  const summary = _manualCardioPreviewText({ ...data, cardio: data.cardio });
   return `
     <div class="ex-max-v2-head ex-cardio-head">
       <div class="ex-max-v2-title-row">
@@ -3010,6 +3112,19 @@ function _renderManualCardioEntryCard(entry, idx) {
   `;
 }
 
+function _renderManualCardioIntensityField(cardio, initial) {
+  const config = _manualCardioIntensityConfig(cardio);
+  if (!config) return '';
+  const value = initial?.[config.key] || '';
+  return `
+          <label data-cardio-intensity-field>
+            <span>${_escPicker(config.label)}</span>
+            <input id="${_escPicker(config.inputId)}" type="number" inputmode="decimal" min="${_escPicker(config.min)}" max="${_escPicker(config.max)}" step="${_escPicker(config.step)}" value="${_escPicker(value)}" data-cardio-intensity="${_escPicker(config.key)}">
+            <em>${_escPicker(config.unit)}</em>
+          </label>
+  `;
+}
+
 function _renderManualCardioSheet({ standalone = false, cardio = CARDIO_PICKER_EXERCISES[0] } = {}) {
   const target = _pickerCardioById(cardio?.id);
   const initial = _manualCardioInitialValues(target);
@@ -3038,6 +3153,7 @@ function _renderManualCardioSheet({ standalone = false, cardio = CARDIO_PICKER_E
             <input id="ex-cardio-speed" type="number" inputmode="decimal" min="0" max="80" step="0.1" value="${_escPicker(initial.speedKmh)}">
             <em>km/h</em>
           </label>
+          ${_renderManualCardioIntensityField(target, initial)}
           <label>
             <span>랩/반복</span>
             <input id="ex-cardio-laps" type="number" inputmode="numeric" min="0" max="9999" step="1" value="${_escPicker(initial.laps)}">
@@ -3066,12 +3182,16 @@ function _closeManualCardioInput() {
 
 function _readManualCardioSheet(sheet) {
   _syncManualCardioAutoCalories(sheet);
+  const cardio = _pickerCardioById(sheet?.getAttribute?.('data-cardio-id'));
+  const intensityConfig = _manualCardioIntensityConfig(cardio);
   return _manualCardioSummary({
     kcal: sheet?.querySelector?.('#ex-cardio-kcal')?.value,
     distanceKm: sheet?.querySelector?.('#ex-cardio-distance')?.value,
     speedKmh: sheet?.querySelector?.('#ex-cardio-speed')?.value,
     laps: sheet?.querySelector?.('#ex-cardio-laps')?.value,
     kcalMode: _manualCardioKcalMode(sheet),
+    cardio,
+    [intensityConfig?.key || '']: intensityConfig ? sheet?.querySelector?.(`#${intensityConfig.inputId}`)?.value : 0,
   });
 }
 

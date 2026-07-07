@@ -6450,6 +6450,9 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
 .ex-picker-cardio-fields label[data-cardio-kcal-field] {
   background: #f5fbf8;
 }
+.ex-picker-cardio-fields label[data-cardio-intensity-field] {
+  background: var(--seed-bg-fill, #f8fafc);
+}
 .ex-picker-cardio-fields span {
   grid-column: 1 / -1;
   color: #64748b;
@@ -15001,44 +15004,14 @@ body.lz-running-record-modal-open {
   font-weight: 700;
   cursor: pointer;
 }
-.app-update-indicator {
-  position: fixed;
-  right: max(12px, env(safe-area-inset-right));
-  top: max(12px, env(safe-area-inset-top));
-  z-index: 10000;
-}
-.app-update-icon-btn {
+.app-refresh-btn {
   position: relative;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 8px;
-  background: var(--surface, #fff);
-  color: var(--text, #191f28);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
-  cursor: pointer;
-  transition: transform 0.1s ease-in-out, background 0.1s ease-in-out;
 }
-.app-update-icon-btn:active {
-  transform: scale(0.97);
-}
-.app-update-icon-btn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--primary-bg, #fdf0f0), 0 0 0 4px var(--primary, #fa342c);
-}
-.app-update-icon {
-  font-size: 19px;
-  line-height: 1;
-  font-weight: 800;
-}
-.app-update-dot {
+.app-refresh-btn.has-update::after {
+  content: '';
   position: absolute;
-  top: 7px;
-  right: 7px;
+  top: 6px;
+  right: 6px;
   width: 8px;
   height: 8px;
   border: 2px solid var(--surface, #fff);
@@ -15046,54 +15019,11 @@ body.lz-running-record-modal-open {
   background: var(--primary, #fa342c);
   box-sizing: content-box;
 }
-.app-update-panel {
-  position: absolute;
-  top: 48px;
-  right: 0;
-  width: min(280px, calc(100vw - 24px));
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 8px;
-  background: var(--surface, #fff);
-  color: var(--text, #191f28);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+.app-refresh-btn.is-loading svg {
+  animation: app-refresh-spin 0.8s linear infinite;
 }
-.app-update-panel[hidden] {
-  display: none;
-}
-.app-update-panel-copy {
-  min-width: 0;
-  flex: 1 1 auto;
-  display: grid;
-  gap: 2px;
-}
-.app-update-panel-copy strong {
-  font-size: 13px;
-  line-height: 1.35;
-  font-weight: 700;
-}
-.app-update-panel-copy span {
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--muted, #6b7280);
-}
-.app-update-reload {
-  flex: 0 0 auto;
-  border: none;
-  border-radius: 8px;
-  background: var(--primary, #fa342c);
-  color: #fff;
-  padding: 9px 10px;
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-}
-.app-update-reload:disabled {
-  opacity: 0.55;
-  cursor: default;
+@keyframes app-refresh-spin {
+  to { transform: rotate(360deg); }
 }
 
 /* ── 개발자 편지 상태 ───────────────────────────────────────── */

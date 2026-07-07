@@ -28,7 +28,7 @@ import {
 } from './navigation.js';
 import { initUxPolish } from './utils/ux-polish.js';
 import { initActionRouter } from './utils/action-router.js';
-import { initBuildInfoSurface } from './utils/build-info.js?v=20260707c-header-app-refresh';
+import { initBuildInfoSurface } from './utils/build-info.js?v=20260707e-refresh-cardio-intensity';
 import {
   enableWorkoutPwaHistory,
   getWorkoutNavSnapshot,

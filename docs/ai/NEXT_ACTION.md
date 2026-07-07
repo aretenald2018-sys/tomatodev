@@ -1,5 +1,26 @@
 # 다음 자동 액션
 
+## 2026-07-07 Refresh Unification Cardio Intensity
+
+- 상태: `ready_for_deploy_verification`
+- 계획: `docs/ai/features/2026-07-07-refresh-unification-cardio-intensity.md`
+- 요청: 새 헤더 새로고침 버튼으로 중복 update/refresh UI를 통합하고, 유산소에 `마이마운틴`을 추가한다. `마이마운틴`은 각도, `스텝머신`은 단계를 입력받아 자동 칼로리 계산과 저장 카드에 반영한다. 새 이미지를 생성하고 cache version/static assets, production Pages 배포 검증까지 수행한다.
+- 실행 Slice 1:
+  1. `utils/build-info.js` legacy floating `#app-update-indicator`를 헤더 `#app-refresh-btn` 상태로 통합한다.
+  2. `workout/exercises.js` `CARDIO_PICKER_EXERCISES`에 `마이마운틴`과 종목별 강도 입력/칼로리 multiplier를 추가한다.
+  3. `render-calendar.js` 날짜 시트 유산소 카드에 각도/단계 metric을 표시한다.
+  4. `assets/workout/cardio/my-mountain.png`를 기존 회색 PNG 톤으로 생성한다.
+  5. `style.css`, `sw.js`, focused tests, browser QA, production deploy verification을 갱신한다.
+- 검증:
+  1. PASS: `git diff --check`.
+  2. PASS: `node --check app.js && node --check utils/build-info.js && node --check workout/exercises.js && node --check render-calendar.js && node --check sw.js`.
+  3. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=905`.
+  4. PASS: `node --test tests/*.test.js` - 741 tests, 741 pass.
+  5. PASS: local browser QA harness - 헤더 refresh button 1개, legacy update indicator 0개, `마이마운틴` 목록 1개, angle 12 -> 522 kcal, step level 10 -> 450 kcal, pageerror 없음.
+  6. not verified yet: `npm.cmd run deploy:production` 및 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`.
+- 리뷰: `docs/ai/reviews/2026-07-07-refresh-unification-cardio-intensity-review.md`
+- 다음 액션: 커밋 후 production Pages에 배포하고 헤더 새로고침 단일 UI와 유산소 강도 입력 flow를 운영 URL에서 확인한다.
+
 ## 2026-07-07 Header App Refresh Update
 
 - 상태: `complete`

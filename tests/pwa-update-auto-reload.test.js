@@ -170,10 +170,10 @@ test('service worker controllerchange still reloads once', () => {
 
 test('production app cache busts the service worker registrar script', () => {
   assert.match(indexHtml, /pwa-register\.js\?v=20260707b6-sw-reload-stability/);
-  assert.match(indexHtml, /app\.js\?v=20260707d-wear-bridge-load-binding/);
-  assert.match(appJs, /utils\/build-info\.js\?v=20260707c-header-app-refresh/);
+  assert.match(indexHtml, /app\.js\?v=20260707e-refresh-cardio-intensity/);
+  assert.match(appJs, /utils\/build-info\.js\?v=20260707e-refresh-cardio-intensity/);
   assert.match(appJs, /render-workout\.js\?v=20260707d-wear-bridge-load-binding/);
-  assert.match(swJs, /tomatofarm-v20260707z19-wear-bridge-load-binding/);
+  assert.match(swJs, /tomatofarm-v20260707z20-refresh-cardio-intensity/);
 });
 
 test('top-nav manual app refresh uses build-info update helper', () => {
@@ -183,4 +183,9 @@ test('top-nav manual app refresh uses build-info update helper', () => {
   assert.match(buildInfoJs, /window\.__requestTomatoAppRefresh = requestTomatoAppRefresh/);
   assert.match(buildInfoJs, /__refreshTomatoAppSWRegistration/);
   assert.match(buildInfoJs, /__wtPersistActiveDraft/);
+  assert.match(buildInfoJs, /_syncAppRefreshButtonState/);
+  assert.match(buildInfoJs, /has-update/);
+  assert.doesNotMatch(buildInfoJs, /app-update-indicator/);
+  assert.doesNotMatch(buildInfoJs, /app-update-toggle/);
+  assert.doesNotMatch(buildInfoJs, /app-update-reload/);
 });

@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 const exercisesJs = readFileSync(new URL('../workout/exercises.js', import.meta.url), 'utf8');
 const styleCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
 const cardioImageIds = Object.freeze([
+  'my-mountain',
   'rowing',
   'recumbent-bike',
   'step-machine',
@@ -77,6 +78,7 @@ test('cardio picker rows use per-exercise gray image assets with body fallback',
   assert.match(functionBody('_bindPickerCardioFigureFallback'), /_pickerBodyCategoryFigureHtml\(_pickerBodyCategoryById\('cardio'\)\)/);
   assert.match(styleCss, /\.ex-picker-cardio-figure/);
   assert.match(styleCss, /\.ex-picker-muscle-figure\.ex-picker-cardio-figure\.has-asset img/);
+  assert.match(exercisesJs, /마이마운틴/);
 
   for (const id of cardioImageIds) {
     assert.match(exercisesJs, new RegExp(`id:\\s*'${id}'[\\s\\S]*image:`));

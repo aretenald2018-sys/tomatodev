@@ -1,10 +1,10 @@
 {
   "app": "tomatofarm",
-  "commit": "fc6c050ba508a90e5ad94e13b8e36d0fc6f57baf",
-  "shortCommit": "fc6c050ba508",
-  "branch": "refactor/large-rework",
-  "deployedAt": "2026-06-23T12:03:02.598Z",
-  "cacheVersion": "tomatofarm-v20260623z5-diet-report-off",
+  "commit": "6546e7c7d7ca27498d7a158fa272b64166ada78d",
+  "shortCommit": "6546e7c7d7ca",
+  "branch": "main",
+  "deployedAt": "2026-07-07T07:04:18.134Z",
+  "cacheVersion": "tomatofarm-v20260707z20-refresh-cardio-intensity",
   "runId": null,
   "runAttempt": null
 }
