@@ -69,7 +69,7 @@
 2. `app.js` app shell action bridge에 `refresh-app-update` case를 추가했다.
 3. `utils/build-info.js`에 `requestTomatoAppRefresh()`를 추가하고 `window.__requestTomatoAppRefresh`로 노출했다.
 4. `styles/components.css`에 refresh 버튼 busy spin 상태를 추가했다.
-5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260707z18-header-app-refresh`로 bump했다.
+5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260707z19-wear-bridge-load-binding`로 bump했다.
 6. `tests/app-shell-action-bridge.test.js`와 `tests/pwa-update-auto-reload.test.js`에 refresh marker 검증을 추가했다.
 
 ## 로컬 검증 결과

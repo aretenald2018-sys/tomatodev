@@ -16,7 +16,7 @@ PASS. 코드 리뷰 기준으로 새 버튼은 기존 app shell action bridge를
 2. `app.js`에 `refresh-app-update` action case를 추가했다.
 3. `utils/build-info.js`에 `requestTomatoAppRefresh()`와 `window.__requestTomatoAppRefresh` 노출을 추가했다.
 4. `styles/components.css`에 refresh icon busy 상태를 추가했다.
-5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260707z18-header-app-refresh`로 bump했다.
+5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260707z19-wear-bridge-load-binding`로 bump했다.
 6. `tests/app-shell-action-bridge.test.js`와 `tests/pwa-update-auto-reload.test.js`에 header refresh/update marker 검증을 추가했다.
 
 ## 검증

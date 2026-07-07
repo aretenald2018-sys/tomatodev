@@ -50,7 +50,7 @@ import { showDietPremiumReportIfNeeded } from './feature-diet-premium-report.js'
 import {
   loadWorkoutDate, changeWorkoutDate, goToTodayWorkout, saveWorkoutDay,
   openNutritionPhotoUpload, wtRecoverTimers, wtRestoreRunningSessionIfActive,
-} from './render-workout.js?v=20260702z19-current-user-set-button';
+} from './render-workout.js?v=20260707d-wear-bridge-load-binding';
 
 // ── 레이지 로딩 탭 캐시 ──
 const _lazyModules = {};

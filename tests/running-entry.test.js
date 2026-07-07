@@ -194,6 +194,8 @@ test('running session is wired into app init, save, load, and sessions', () => {
   assert.doesNotMatch(activityFormsJs, /initRunningTracker|renderRunningTracker/);
   assert.match(workoutIndexJs, /initRunningSession/);
   assert.match(workoutIndexJs, /window\.wtOpenRunningSession/);
+  assert.match(workoutIndexJs, /import \{ loadWorkoutDate, changeWorkoutDate, goToTodayWorkout \}\s+from '\.\/load\.js\?v=20260517v3';/);
+  assert.match(workoutIndexJs, /configureWearWorkoutBridge\(\{[\s\S]*loadWorkoutDate,[\s\S]*saveWorkoutDay/);
   assert.match(appJs, /wtHandleRunningSessionBack/);
   assert.doesNotMatch(saveJs, /wt-run-distance|wt-run-duration-min|wt-run-duration-sec|wt-run-memo/);
   assert.match(saveJs, /runRoute:\s*Array\.isArray\(run\.route\) \? run\.route : \[\]/);
@@ -281,7 +283,8 @@ test('running workout save writes a running life-zone snapshot', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260707z18-header-app-refresh/);
+  assert.match(swJs, /tomatofarm-v20260707z19-wear-bridge-load-binding/);
+  assert.match(swJs, /\.\/workout\/index\.js\?v=20260707d-wear-bridge-load-binding/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/sprites\/jups-running-track\.png/);

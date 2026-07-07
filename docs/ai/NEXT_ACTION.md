@@ -10,7 +10,7 @@
   2. 버튼은 `data-app-action="refresh-app-update"`를 사용하며 inline handler를 추가하지 않았다.
   3. `app.js` app shell action bridge에 `refresh-app-update` case를 추가했다.
   4. `utils/build-info.js`에 `requestTomatoAppRefresh()`를 추가하고 `window.__requestTomatoAppRefresh`로 노출했다.
-  5. `STATIC_ASSETS` 변경에 맞춰 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260707z18-header-app-refresh`로 bump하고 cache/query marker 테스트를 갱신했다.
+  5. `STATIC_ASSETS` 변경에 맞춰 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260707z19-wear-bridge-load-binding`로 bump하고 cache/query marker 테스트를 갱신했다.
 - 검증:
   1. PASS: `node --check app.js && node --check utils/build-info.js && node --check pwa-register.js && node --check sw.js`.
   2. PASS: `node --test tests/app-shell-action-bridge.test.js tests/pwa-update-auto-reload.test.js tests/workout-active-session-recovery.test.js`.
@@ -43,7 +43,7 @@
   3. 시간 초과 후에도 타이머를 닫지 않고 기존 `_formatTime()` 경로의 `+m:ss` 증가 표시를 유지한다.
   4. 실행 중 프리셋 변경은 타이머를 재시작하지 않고 총 쉬는시간만 바꿔 현재 elapsed 기준으로 남은/초과 시간을 다시 계산한다.
   5. 저장 payload에 `restBetweenSets`를 추가하고 `WORKOUT_PAYLOAD_KEYS`에 포함해 `전체통계` raw export에서 추출 가능하게 했다.
-  6. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260707z18-header-app-refresh`로 bump했고 `build-info.json`도 `verify:assets`로 갱신됐다.
+  6. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260707z19-wear-bridge-load-binding`로 bump했고 `build-info.json`도 `verify:assets`로 갱신됐다.
 - 검증:
   1. PASS: RED/GREEN `node --test tests/workout-rest-counter.test.js`.
   2. PASS: Data/export `node --test tests/workout-rest-counter.test.js tests/stats-raw-export-download.test.js tests/save-schema.test.js`.
@@ -73,7 +73,7 @@
   2. active running이 아닌 saved running + workout 동시 기록은 workout을 우선하도록 바꿨다.
   3. workout actor에 large muscle 기반 preferred slot을 추가해 `chest -> bench`, `lower/glute -> squat`, `back -> lat`, `unknown/default -> bench`를 우선 배정한다.
   4. preferred workout slot이 점유되어 있으면 남은 workout slot으로 fallback한다.
-  5. `home/life-zone-state.js`가 `STATIC_ASSETS`에 포함되어 `sw.js` `CACHE_VERSION`을 bump했다. 이후 같은 dirty worktree의 rest-counter slice가 현재 `CACHE_VERSION`을 `tomatofarm-v20260707z18-header-app-refresh`로 다시 올렸고, cache marker 테스트도 현재 `sw.js` 기준으로 동기화했다.
+  5. `home/life-zone-state.js`가 `STATIC_ASSETS`에 포함되어 `sw.js` `CACHE_VERSION`을 bump했다. 이후 같은 dirty worktree의 rest-counter slice가 현재 `CACHE_VERSION`을 `tomatofarm-v20260707z19-wear-bridge-load-binding`로 다시 올렸고, cache marker 테스트도 현재 `sw.js` 기준으로 동기화했다.
   6. saved running-only가 `workout`으로 오분류되지 않도록 `hasLifeZoneWeightWorkoutActivity()`를 분리했다.
 - 검증:
   1. RED/GREEN: `node --test tests/home-life-zone-state.test.js` - RED 2건 확인 후 GREEN 27 pass.

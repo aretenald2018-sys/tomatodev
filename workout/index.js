@@ -6,8 +6,10 @@
 export { tm2RenderEntry } from './test-v2/entry.js?v=20260702z19-current-user-set-button';
 
 // ── 서브모듈 import ─────────────────────────────────────────────
-export { loadWorkoutDate, changeWorkoutDate, goToTodayWorkout }
+import { loadWorkoutDate, changeWorkoutDate, goToTodayWorkout }
   from './load.js?v=20260517v3';
+
+export { loadWorkoutDate, changeWorkoutDate, goToTodayWorkout };
 
 export { saveWorkoutDay }
   from './save.js';
