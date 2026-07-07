@@ -25,6 +25,7 @@ test('app shell markup uses data-app actions instead of inline handlers', () => 
     'install-pwa',
     'open-letter-modal',
     'toggle-notif-center',
+    'refresh-app-update',
     'logout-account',
     'mark-all-notifs-read',
     'close-notif-center',
@@ -55,6 +56,7 @@ test('app module binds app shell actions with one idempotent bridge', () => {
     'install-pwa',
     'open-letter-modal',
     'toggle-notif-center',
+    'refresh-app-update',
     'logout-account',
     'mark-all-notifs-read',
     'close-notif-center',
@@ -80,5 +82,5 @@ test('dynamic more menu items inherit the app shell action contract', () => {
 });
 
 test('service worker cache version was bumped for app shell action bridge assets', () => {
-  assert.match(swJs, /tomatofarm-v20260706z10-cardio-picker-images/);
+  assert.match(swJs, /tomatofarm-v20260707z18-header-app-refresh/);
 });

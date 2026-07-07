@@ -161,11 +161,54 @@ test('detects running activity and keeps active running as home track priority',
   assert.equal(hasLifeZoneActiveRunning({ runStartedAt: 1000, runEndedAt: 2000 }), false);
   assert.equal(hasLifeZoneActiveRunning({ runStartedAt: 1000 }), true);
   assert.equal(resolveLifeZoneActivity({
-    running: true,
+    runLiveActive: true,
     exercises: [{ sets: [{ done: true }] }],
     lKcal: 620
   }), 'running');
   assert.equal(getLifeZoneRunningSpeech({ running: true }), '러닝중');
+});
+
+test('resolves saved running plus workout as workout unless running is active', () => {
+  const savedRunAndWorkout = {
+    running: true,
+    runRoute: [{ lat: 37.5209, lng: 126.977, ts: 1000 }],
+    runRouteSummary: { pointCount: 1 },
+    exercises: [{ muscleId: 'chest', sets: [{ done: true }] }]
+  };
+
+  assert.equal(resolveLifeZoneActivity(savedRunAndWorkout), 'workout');
+  assert.equal(resolveLifeZoneActivity({
+    ...savedRunAndWorkout,
+    runLiveActive: true
+  }), 'running');
+  assert.equal(resolveLifeZoneActivity({
+    ...savedRunAndWorkout,
+    runStartedAt: 1000,
+    runEndedAt: undefined
+  }), 'running');
+});
+
+test('keeps saved running-only records on the running track', () => {
+  const savedRunOnly = {
+    running: true,
+    runRoute: [{ lat: 37.5209, lng: 126.977, ts: 1000 }],
+    runRouteSummary: { pointCount: 1 }
+  };
+
+  assert.equal(resolveLifeZoneActivity(savedRunOnly), 'running');
+
+  const actors = resolveLifeZoneActors({
+    accounts: [{ id: 'u1', resolvedNickname: '줍스' }],
+    currentUser: { id: 'u1' },
+    dayByAccountId: { u1: savedRunOnly }
+  });
+  const selfActor = actors.find((actor) => actor.accountId === 'u1');
+
+  assert.equal(selfActor?.state, 'running');
+  assert.equal(selfActor?.slot.id, 'track-bottom-left');
+  assert.equal(selfActor?.sprite, 'jups-running-track.png');
+  assert.equal(selfActor?.workoutSlotId, null);
+  assert.equal(selfActor?.runningMap?.pointCount, 1);
 });
 
 test('builds life zone workout speech with large muscles only', () => {
@@ -199,12 +242,54 @@ test('assigns separate slots for three actors in the same state', () => {
     { id: 'c', spritePrefix: 'lee-jaeheon', state: 'workout' }
   ]);
 
-  assert.deepEqual(assigned.map((actor) => actor.slot.id), ['lat', 'bench', 'squat']);
+  assert.deepEqual(assigned.map((actor) => actor.slot.id), ['bench', 'lat', 'squat']);
   assert.deepEqual(assigned.map((actor) => actor.sprite), [
-    'jups-workout-lat.png',
-    'moonjung-tomato-workout-bench.png',
+    'jups-workout-bench.png',
+    'moonjung-tomato-workout-lat.png',
     'lee-jaeheon-workout-squat.png'
   ]);
+});
+
+test('assigns workout actors to weight stations by muscle preference with occupied-slot fallback', () => {
+  const musclePreferredActors = resolveLifeZoneActors({
+    accounts: [
+      { id: 'u1', resolvedNickname: '줍스' },
+      { id: 'u2', resolvedNickname: '문정토마토' },
+      { id: 'u3', resolvedNickname: '이재헌' }
+    ],
+    friends: [{ friendId: 'u2' }, { friendId: 'u3' }],
+    currentUser: { id: 'u1' },
+    dayByAccountId: {
+      u1: { exercises: [{ muscleId: 'chest', sets: [{ done: true }] }] },
+      u2: { exercises: [{ muscleId: 'glute', sets: [{ done: true }] }] },
+      u3: { exercises: [{ muscleId: 'back', sets: [{ done: true }] }] }
+    }
+  });
+
+  assert.deepEqual(musclePreferredActors.map((actor) => actor.slot.id), ['bench', 'squat', 'lat']);
+  assert.deepEqual(musclePreferredActors.map((actor) => actor.sprite), [
+    'jups-workout-bench.png',
+    'moonjung-tomato-workout-squat.png',
+    'lee-jaeheon-workout-lat.png'
+  ]);
+
+  const fallbackActors = resolveLifeZoneActors({
+    accounts: [
+      { id: 'u1', resolvedNickname: '줍스' },
+      { id: 'u2', resolvedNickname: '문정토마토' },
+      { id: 'u3', resolvedNickname: '이재헌' }
+    ],
+    friends: [{ friendId: 'u2' }, { friendId: 'u3' }],
+    currentUser: { id: 'u1' },
+    dayByAccountId: {
+      u1: { exercises: [{ muscleId: 'chest', sets: [{ done: true }] }] },
+      u2: { exercises: [{ muscleId: 'chest', sets: [{ done: true }] }] },
+      u3: { exercises: [{ sets: [{ done: true }] }] }
+    }
+  });
+
+  assert.deepEqual(fallbackActors.map((actor) => actor.slot.id), ['bench', 'lat', 'squat']);
+  assert.equal(new Set(fallbackActors.map((actor) => actor.slot.id)).size, 3);
 });
 
 test('assigns running actors to existing home track slots and running sprite sheets', () => {
@@ -298,7 +383,7 @@ test('resolves activity priority and slot distribution from account days', () =>
   });
 
   assert.deepEqual(actors.map((actor) => actor.state), ['workout', 'diet', 'office']);
-  assert.deepEqual(actors.map((actor) => actor.slot.id), ['lat', 'island-left', 'desk-upper']);
+  assert.deepEqual(actors.map((actor) => actor.slot.id), ['bench', 'island-left', 'desk-upper']);
   assert.deepEqual(actors.map((actor) => actor.speech), ['오늘 운동 완료', '점심냠냠', '다른 일 하는중']);
 });
 

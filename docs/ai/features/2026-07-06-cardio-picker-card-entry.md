@@ -201,3 +201,69 @@
 ## Slice 3 다음 세션 시작 프롬프트
 
 `docs/ai/features/2026-07-06-cardio-picker-card-entry.md`의 Slice 3를 실행한다. 유산소 하위 종목별 회색 기구/운동 제스처 bitmap asset을 생성해 picker cardio list row에 삽입하고, STATIC_ASSETS/cache bump, tests, browser visual QA, production Pages 배포 검증까지 남긴다.
+
+## 실행 Slice 4: 유산소 자동 칼로리와 런닝 picker 탭 내 렌더링
+
+### 요청
+
+- 유산소 입력 sheet를 1행 `거리`, 2행 `속도`, 3행 `랩/반복`, 4행 `칼로리` 순서로 바꾼다.
+- `거리(km)`와 `속도(km/h)`가 입력되면 칼로리를 자동 추정해 `칼로리(kcal)`에 산출한다.
+- 사용자가 `칼로리` 입력란을 더블클릭하면 자동 산출값과 기존 입력값을 지우고 직접 입력할 수 있게 한다.
+- 운동 추가 picker에서 `런닝/조깅` 클릭 시 standalone running session UI로 바로 빠지지 않고, 삼두/복부/유산소 같은 상단 탭 아래 picker hierarchy 안에서 `GPS 위치`와 `시작` 버튼만 렌더링되게 한다. 기존 종목 리스트처럼 `최근/빈도/이름`, `전체/기본`, 러닝 row를 보여주지 않는다.
+
+### 범위
+
+1. `workout/exercises.js`
+   - 유산소 sheet field 순서를 거리, 속도, 랩/반복, 칼로리로 변경한다.
+   - 거리/속도 기반 칼로리 추정 함수와 preview 동기화를 추가한다.
+   - 칼로리 필드는 자동 상태를 기본으로 유지하고, 더블클릭 시 수동 override 상태로 전환해 입력값을 비운다.
+   - 저장 시 자동 산출값과 수동 입력값 모두 기존 `entry.cardio.kcal` 경로를 사용한다.
+   - picker의 `런닝/조깅` category/tab 클릭은 standalone running UI를 호출하지 않고 picker 안의 running start panel로 이동한다.
+   - running start panel은 `GPS 위치` 상태와 `시작` 버튼만 렌더링한다. `최근/빈도/이름`, `전체/기본`, manual-cardio row는 렌더링하지 않는다.
+   - `시작` 버튼을 눌렀을 때만 기존 full-screen running session을 연다.
+
+2. `style.css`
+   - 4행 단일열 입력 grid가 모바일 360-390px에서 안정적으로 보이게 조정한다.
+   - 칼로리 자동/수동 상태가 작은 보조 라벨로 구분되되 기존 TDS/Seed sheet 밀도를 깨지 않게 한다.
+
+3. `tests/running-entry.test.js`, `tests/workout-picker-cardio-hierarchy.test.js`
+   - RED: 기존 코드에서 칼로리 필드가 첫 번째이고, 거리/속도 자동 계산/더블클릭 override가 없으며, `런닝/조깅` picker click이 `wtSwitchType('running')`/`wtOpenRunningSession`을 호출하면 실패한다.
+   - GREEN: field 순서, 자동 산출, 수동 override, picker 내부 running view 계약이 통과한다.
+
+4. `sw.js`
+   - `workout/exercises.js` 또는 `style.css`가 `STATIC_ASSETS`에 포함되어 있으므로 `CACHE_VERSION`을 bump한다.
+
+### 제외
+
+- 운동 탭의 `런닝/조깅` 타입 칩이 여는 full-screen running session 자체는 제거하지 않는다.
+- GPS/지도/러닝 저장 schema, Wear OS POC, 유산소 catalog asset은 변경하지 않는다.
+- 유산소 칼로리 추정은 입력 편의를 위한 추정값이며 개인 체중/심박 기반 정밀 계산은 이번 slice에 포함하지 않는다.
+
+### 검증
+
+1. RED/GREEN
+   - `node --test tests/running-entry.test.js tests/workout-picker-cardio-hierarchy.test.js`
+   - evidence: `.omo/evidence/cardio-auto-calorie/red-green-focused.txt`
+
+2. 정적/회귀
+   - `node --check workout/exercises.js sw.js`
+   - `node --test tests/running-entry.test.js tests/workout-picker-cardio-hierarchy.test.js tests/input-ux-commercial-completion.test.js`
+   - `node --test tests/*.test.js`
+   - `npm.cmd run verify:assets`
+
+3. 브라우저/시각 QA
+   - 모바일 375x812 picker에서 `유산소 -> 스텝머신` sheet를 열고 입력 순서가 거리/속도/랩/칼로리인지 확인한다.
+   - 거리 `2`, 속도 `6` 입력 시 칼로리 필드가 자동값으로 채워지는지 확인한다.
+   - 칼로리 필드를 더블클릭하면 값이 비고 직접 입력 가능한지 확인한다.
+   - `런닝/조깅` 클릭 시 standalone running session root가 열리지 않고 picker tab 아래 `GPS 위치`/`시작` panel만 남는지 확인한다.
+   - running panel에는 `최근/빈도/이름`, `전체/기본`, 러닝 row가 없어야 하며, `시작` 버튼 클릭 시 기존 running session 호출이 발생해야 한다.
+   - evidence: `.omo/evidence/cardio-auto-calorie/browser-cardio-autocalc.json`, `.omo/evidence/cardio-auto-calorie/picker-cardio-sheet.png`
+
+4. 운영 검증
+   - `npm.cmd run deploy:production`
+   - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`
+   - 배포 URL에서 로그인 없이 source/browser harness로 배포된 `workout/exercises.js`, `style.css`, cache marker와 picker contract를 확인한다. 로그인 UI flow가 막히면 `not verified yet`과 blocker를 명시한다.
+
+## Slice 4 다음 세션 시작 프롬프트
+
+`docs/ai/features/2026-07-06-cardio-picker-card-entry.md`의 Slice 4를 실행한다. 유산소 입력 sheet의 거리/속도 기반 칼로리 자동 산출과 더블클릭 수동 override, `런닝/조깅` picker 내부 렌더링 계약만 구현하고, RED/GREEN 테스트와 모바일 browser evidence, production Pages 검증까지 남긴다.

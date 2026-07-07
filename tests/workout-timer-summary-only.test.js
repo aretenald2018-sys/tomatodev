@@ -63,5 +63,5 @@ test('workout finish saves without opening the old completion insight modal', ()
 });
 
 test('service worker cache version was bumped for workout timer summary-only UI', () => {
-  assert.match(swJs, /tomatofarm-v20260706z10-cardio-picker-images/);
+  assert.match(swJs, /tomatofarm-v20260707z18-header-app-refresh/);
 });

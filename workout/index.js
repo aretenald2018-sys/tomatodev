@@ -44,6 +44,7 @@ export { initRunningSession, wtOpenRunningSession, wtHandleRunningSessionBack, w
 
 // ── 내부 import (window 등록 + 초기화용) ─────────────────────────
 import { saveWorkoutDay }                          from './save.js';
+import { S }                                       from './state.js';
 import { wtAddFoodItem, wtRemoveFoodItem }         from './render.js';
 import { wtToggleMealSkipped }                     from './status.js';
 import { wtOpenExercisePicker, wtCloseExercisePicker,
@@ -62,6 +63,7 @@ import { _initRestTimerPresets }                   from './timers.js';
 import { _initRunningEvents }                      from './activity-forms.js';
 import { _initTypeFormEvents }                     from './activity-forms.js';
 import { initRunningSession, wtOpenRunningSession, wtHandleRunningSessionBack, wtRestoreRunningSessionIfActive } from './running-session.js';
+import { configureWearWorkoutBridge, initWearWorkoutBridge } from './wear-bridge.js';
 import { confirmAction }                           from '../utils/confirm-modal.js';
 
 // ── window.* 등록 (HTML onclick 연결) ───────────────────────────
@@ -84,6 +86,12 @@ window.wtRecoverTimers = wtRecoverTimers;
 window.wtOpenRunningSession = wtOpenRunningSession;
 window.wtHandleRunningSessionBack = wtHandleRunningSessionBack;
 window.wtRestoreRunningSessionIfActive = wtRestoreRunningSessionIfActive;
+configureWearWorkoutBridge({
+  state: S,
+  loadWorkoutDate,
+  saveWorkoutDay,
+  focusEntry: wtFocusWorkoutEntryCard,
+});
 
 // 운동종료 → 확인 모달 → 실제 타이머 정지/저장.
 // 실수 방지를 위해 confirm 모달을 먼저 띄우고, 승인 시에만 종료 흐름을 실행.
@@ -123,3 +131,4 @@ setTimeout(_initRestTimerPresets, 0);
 setTimeout(_initRunningEvents, 0);
 setTimeout(_initTypeFormEvents, 0);
 setTimeout(initRunningSession, 0);
+setTimeout(initWearWorkoutBridge, 0);

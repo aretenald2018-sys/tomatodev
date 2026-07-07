@@ -100,6 +100,14 @@ const LARGE_MUSCLE_LABELS = {
   shoulder: '어깨',
   glute: '하체'
 };
+const WORKOUT_SLOT_BY_MAJOR = {
+  chest: 'bench',
+  back: 'lat',
+  lower: 'squat',
+  shoulder: 'lat',
+  glute: 'squat'
+};
+const DEFAULT_WORKOUT_SLOT_ID = 'bench';
 const LARGE_MUSCLE_ORDER = ['chest', 'back', 'lower', 'shoulder', 'glute'];
 const SUBPATTERN_TO_MAJOR = {
   chest_all: 'chest',
@@ -385,6 +393,13 @@ export function hasLifeZoneWorkoutActivity(dayData = null) {
   return (dayData.stretchDuration || 0) > 0;
 }
 
+function hasLifeZoneWeightWorkoutActivity(dayData = null) {
+  if (!dayData) return false;
+  if ((dayData.exercises || []).some(hasActualLifeZoneExercise)) return true;
+  if ((dayData.muscles || []).length > 0) return true;
+  return (dayData.workoutTimeline?.checkedSetCount || 0) > 0;
+}
+
 export function hasLifeZoneRunningActivity(dayData = null) {
   if (!dayData) return false;
   const runData = dayData.runData || {};
@@ -513,9 +528,12 @@ export function hasLifeZoneDietActivity(dayData = null) {
 export function resolveLifeZoneActivity(dayData = null) {
   if (hasLifeZoneActiveRunning(dayData)) return 'running';
   const snapshotState = resolveLifeZoneActivitySnapshot(dayData);
-  if (snapshotState) return snapshotState;
+  const hasWorkout = hasLifeZoneWorkoutActivity(dayData);
+  const hasWeightWorkout = hasLifeZoneWeightWorkoutActivity(dayData);
+  if (snapshotState && (snapshotState !== 'running' || !hasWeightWorkout)) return snapshotState;
+  if (hasWeightWorkout) return 'workout';
   if (hasLifeZoneRunningActivity(dayData)) return 'running';
-  if (hasLifeZoneWorkoutActivity(dayData)) return 'workout';
+  if (hasWorkout) return 'workout';
   if (hasLifeZoneDietActivity(dayData)) return 'diet';
   return 'office';
 }
@@ -601,6 +619,20 @@ function resolveExerciseMajor(exercise = {}) {
   return normalizeLargeMuscleId(MOVEMENT_TO_MAJOR.get(exercise.movementId));
 }
 
+function resolveLifeZoneWorkoutSlotId(dayData = null) {
+  if (!hasLifeZoneWorkoutActivity(dayData)) return null;
+  for (const exercise of dayData?.exercises || []) {
+    if (!hasActualLifeZoneExercise(exercise)) continue;
+    const major = resolveExerciseMajor(exercise);
+    if (major) return WORKOUT_SLOT_BY_MAJOR[major] || DEFAULT_WORKOUT_SLOT_ID;
+  }
+  for (const muscle of dayData?.muscles || []) {
+    const major = normalizeLargeMuscleId(muscle);
+    if (major) return WORKOUT_SLOT_BY_MAJOR[major] || DEFAULT_WORKOUT_SLOT_ID;
+  }
+  return DEFAULT_WORKOUT_SLOT_ID;
+}
+
 export function getLifeZoneWorkoutSpeech(dayData = null) {
   if (!hasLifeZoneWorkoutActivity(dayData)) return '';
   const found = new Set();
@@ -670,10 +702,23 @@ export function getLifeZoneSpeech(dayData = null, state = resolveLifeZoneActivit
 
 export function assignLifeZoneSlots(actorStates = [], slots = LIFE_ZONE_SLOTS) {
   const counters = { running: 0, workout: 0, diet: 0, office: 0 };
+  const usedWorkoutSlots = new Set();
   return actorStates.map((actor) => {
     const state = slots[actor.state] ? actor.state : 'office';
     const zoneSlots = slots[state] || slots.office;
-    const slot = zoneSlots[counters[state] % zoneSlots.length];
+    let slot = zoneSlots[counters[state] % zoneSlots.length];
+    if (state === 'workout') {
+      const preferredSlotId = actor.workoutSlotId || DEFAULT_WORKOUT_SLOT_ID;
+      const preferredSlot = zoneSlots.find((candidate) => candidate.id === preferredSlotId);
+      const orderedSlots = [
+        preferredSlot,
+        ...zoneSlots.filter((candidate) => candidate.id !== preferredSlotId)
+      ].filter(Boolean);
+      slot = orderedSlots.find((candidate) => !usedWorkoutSlots.has(candidate.id))
+        || orderedSlots[counters[state] % orderedSlots.length]
+        || slot;
+      usedWorkoutSlots.add(slot.id);
+    }
     counters[state] += 1;
 
     return {
@@ -700,6 +745,7 @@ export function resolveLifeZoneActors({
       ...actor,
       state,
       speech: getLifeZoneSpeech(dayData, state),
+      workoutSlotId: state === 'workout' ? resolveLifeZoneWorkoutSlotId(dayData) : null,
       runningMap: state === 'running' ? getLifeZoneRunningMapData(dayData) : null
     };
   });

@@ -28,7 +28,7 @@ import {
 } from './navigation.js';
 import { initUxPolish } from './utils/ux-polish.js';
 import { initActionRouter } from './utils/action-router.js';
-import { initBuildInfoSurface } from './utils/build-info.js?v=20260528a';
+import { initBuildInfoSurface } from './utils/build-info.js?v=20260707c-header-app-refresh';
 import {
   enableWorkoutPwaHistory,
   getWorkoutNavSnapshot,
@@ -277,6 +277,13 @@ function _runAppShellAction(action, control, event) {
       break;
     case 'toggle-notif-center':
       _runWindowAction('toggleNotifCenter');
+      break;
+    case 'refresh-app-update':
+      if (typeof window.__requestTomatoAppRefresh === 'function') {
+        void window.__requestTomatoAppRefresh({ control, source: 'top-nav' });
+      } else {
+        window.location.reload();
+      }
       break;
     case 'logout-account':
       _runWindowAction('logoutAccount');

@@ -4,7 +4,9 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const pwaRegisterJs = readFileSync(new URL('../pwa-register.js', import.meta.url), 'utf8');
+const buildInfoJs = readFileSync(new URL('../utils/build-info.js', import.meta.url), 'utf8');
 const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const appJs = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 
 function loadPwaRegisterHarness({ activeDraft = false } = {}) {
@@ -167,6 +169,17 @@ test('service worker controllerchange still reloads once', () => {
 });
 
 test('production app cache busts the service worker registrar script', () => {
-  assert.match(indexHtml, /pwa-register\.js\?v=20260706z6-sw-reload-stability/);
-  assert.match(swJs, /tomatofarm-v20260706z10-cardio-picker-images/);
+  assert.match(indexHtml, /pwa-register\.js\?v=20260707b6-sw-reload-stability/);
+  assert.match(indexHtml, /app\.js\?v=20260707c-header-app-refresh/);
+  assert.match(appJs, /utils\/build-info\.js\?v=20260707c-header-app-refresh/);
+  assert.match(swJs, /tomatofarm-v20260707z18-header-app-refresh/);
+});
+
+test('top-nav manual app refresh uses build-info update helper', () => {
+  assert.match(indexHtml, /id="app-refresh-btn"[^>]+data-app-action="refresh-app-update"/);
+  assert.match(appJs, /case 'refresh-app-update':/);
+  assert.match(buildInfoJs, /export async function requestTomatoAppRefresh/);
+  assert.match(buildInfoJs, /window\.__requestTomatoAppRefresh = requestTomatoAppRefresh/);
+  assert.match(buildInfoJs, /__refreshTomatoAppSWRegistration/);
+  assert.match(buildInfoJs, /__wtPersistActiveDraft/);
 });

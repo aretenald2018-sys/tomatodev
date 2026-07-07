@@ -1,8 +1,215 @@
 # 다음 자동 액션
 
+## 2026-07-07 Header App Refresh Update
+
+- 상태: `ready_for_deploy_verification`
+- 계획: `docs/ai/features/2026-07-07-header-app-refresh-update.md`
+- 요청: 알림 아이콘 오른쪽에 항상 보이는 새로고침 아이콘을 추가하고, 누르면 최신 `CACHE_VERSION`/배포본을 확인·적용한다. 최근 코드 수정이 반영되지 않은 것처럼 보이면 운영 Pages 배포와 검증까지 수행한다.
+- 실행 Slice 1 완료:
+  1. `index.html` `#notif-bell` 바로 오른쪽에 `id="app-refresh-btn"` 새로고침 버튼을 추가했다.
+  2. 버튼은 `data-app-action="refresh-app-update"`를 사용하며 inline handler를 추가하지 않았다.
+  3. `app.js` app shell action bridge에 `refresh-app-update` case를 추가했다.
+  4. `utils/build-info.js`에 `requestTomatoAppRefresh()`를 추가하고 `window.__requestTomatoAppRefresh`로 노출했다.
+  5. `STATIC_ASSETS` 변경에 맞춰 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260707z18-header-app-refresh`로 bump하고 cache/query marker 테스트를 갱신했다.
+- 검증:
+  1. PASS: `node --check app.js && node --check utils/build-info.js && node --check pwa-register.js && node --check sw.js`.
+  2. PASS: `node --test tests/app-shell-action-bridge.test.js tests/pwa-update-auto-reload.test.js tests/workout-active-session-recovery.test.js`.
+  3. PASS: `npm.cmd run verify:assets`.
+  4. PASS: `node --test tests/*.test.js` - 741 tests, 741 pass.
+  5. PASS: `git diff --check`.
+  6. INFO: TypeScript LSP diagnostics는 local LSP 미설치로 실행하지 못했다.
+  7. not verified yet: production Pages 배포/`verify:deploy`와 배포 URL 헤더 버튼 클릭 QA.
+- 다음 액션: dirty worktree의 배포 대기 변경을 함께 커밋한 뒤 `npm.cmd run deploy:production`, deployed marker 검증, 배포 URL 헤더 버튼 QA를 수행한다.
+
+## 2026-07-07 Workout Rest Counter
+
+- 상태: `local_browser_verified_production_not_verified`
+- 계획: `docs/ai/features/2026-07-07-workout-rest-counter.md`
+- ULW: `.omo/ulw-loop/rest-counter-20260707/goals.json`
+- 요청: 사진 속 초록 원형 스탑워치처럼 운동 화면에 세트 간 쉬는시간 카운터를 구현하고, 시간이 초과되면 초과 시간을 증가 방향으로 계속 카운팅하며, 더블클릭으로 총 쉬는시간을 변경하고, 세트 간 쉬는시간 기록을 저장해 통계 `전체통계` raw export에서 추출 가능하게 한다.
+- 계획 결정:
+  1. 기존 `workout/timers.js` rest timer를 새 시스템으로 대체하지 않고 원형 UI/저장 메타데이터로 확장한다.
+  2. set-level 휴식 메타데이터를 원본으로 저장하고, raw export 편의를 위해 top-level `restBetweenSets` 배열도 저장한다.
+  3. `index.html`, `style.css`, `workout/timers.js`, `workout/exercises.js`, `workout/save.js`, `workout/save-schema.js`, `render-stats.js` 수정 시 `sw.js` `CACHE_VERSION`을 함께 bump한다.
+- 실행 Slice 1:
+  1. 세트 완료 시 초록 원형 카운터를 띄우고 남은 시간을 ring + `mm:ss`로 표시한다.
+  2. 목표 시간을 초과하면 카운터를 닫지 않고 초과 시간을 증가 방향으로 표시한다.
+  3. 카운터 더블클릭으로 총 쉬는시간 변경 sheet/control을 연다.
+  4. 세트 간 쉬는시간을 set-level metadata와 `restBetweenSets` top-level 배열로 저장한다.
+  5. `전체통계` raw export에서 `daily[].raw.workout.restBetweenSets`를 추출할 수 있게 한다.
+- 실행 요약:
+  1. 기존 `#wt-rest-section`을 초록 원형 SVG ring 카운터로 바꾸고 `#wt-rest-time`을 중앙에 배치했다.
+  2. `wtRestTimerStart(seconds, context, meta)`가 세트 origin을 받아 `restStartedAt`, `restPlannedSec`, `restElapsedSec`, `restOverSec`, `restEndedBy`를 세트에 기록한다.
+  3. 시간 초과 후에도 타이머를 닫지 않고 기존 `_formatTime()` 경로의 `+m:ss` 증가 표시를 유지한다.
+  4. 실행 중 프리셋 변경은 타이머를 재시작하지 않고 총 쉬는시간만 바꿔 현재 elapsed 기준으로 남은/초과 시간을 다시 계산한다.
+  5. 저장 payload에 `restBetweenSets`를 추가하고 `WORKOUT_PAYLOAD_KEYS`에 포함해 `전체통계` raw export에서 추출 가능하게 했다.
+  6. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260707z18-header-app-refresh`로 bump했고 `build-info.json`도 `verify:assets`로 갱신됐다.
+- 검증:
+  1. PASS: RED/GREEN `node --test tests/workout-rest-counter.test.js`.
+  2. PASS: Data/export `node --test tests/workout-rest-counter.test.js tests/stats-raw-export-download.test.js tests/save-schema.test.js`.
+  3. PASS: `node --check workout/timers.js workout/exercises.js workout/save.js workout/save-schema.js workout/state.js render-stats.js`.
+  4. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=898`.
+  5. PASS: `git diff --check`.
+  6. PASS: 임시 localhost visual harness at `390x844` - `#wt-rest-section` visible, green circular ring, `#wt-rest-time = 0:58`, double-click handler attribute, no counter/control overlap, screenshot/action log captured, browser tab/viewport/server cleanup confirmed.
+  7. not verified yet: production Pages 배포/검증과 인증된 실제 UI flow exercise.
+- evidence: `.omo/evidence/rest-counter-20260707/`
+- 리뷰: `docs/ai/reviews/2026-07-07-workout-rest-counter-review.md`
+- 다음 액션: unrelated dirty worktree를 정리한 뒤 production Pages 배포/검증을 수행하고, 인증된 배포 URL에서 `운동 -> 세트 완료 -> 원형 쉬는시간 카운터 -> 더블클릭 휴식시간 변경 -> 전체통계 다운로드` flow를 확인한다.
+
+## 2026-07-07 Life Zone Weight Motion
+
+- 상태: `review_passed_production_not_verified`
+- 계획: `docs/ai/features/2026-07-07-life-zone-weight-motion.md`
+- ULW: `.omo/ulw-loop/lifezone-weight-motion-20260707/goals.json`
+- 요청: 러닝 후 웨이트 기구 운동도 한 경우 홈 라이프존 캐릭터가 러닝이 아니라 웨이트 모션을 취하고, 웨이트 모션은 하체=스쿼트, 가슴=벤치프레스 우선으로 배정하되 해당 위치 점유 시 다른 웨이트 모션으로 fallback한다.
+- 실행 Slice 1:
+  1. active running은 러닝 트랙 우선으로 유지한다.
+  2. saved running + workout 동시 기록은 workout 우선으로 바꾼다.
+  3. workout large muscle 기반 preferred slot을 추가해 `chest -> bench`, `lower/glute -> squat`, `back -> lat`, `unknown/default -> bench`를 우선 배정한다.
+  4. preferred workout slot이 이미 점유되어 있으면 다른 workout slot으로 fallback한다.
+  5. `home/life-zone-state.js`가 `STATIC_ASSETS` 대상이면 `sw.js` `CACHE_VERSION`을 bump한다.
+- 실행 요약:
+  1. active running은 계속 러닝 트랙을 우선하도록 유지했다.
+  2. active running이 아닌 saved running + workout 동시 기록은 workout을 우선하도록 바꿨다.
+  3. workout actor에 large muscle 기반 preferred slot을 추가해 `chest -> bench`, `lower/glute -> squat`, `back -> lat`, `unknown/default -> bench`를 우선 배정한다.
+  4. preferred workout slot이 점유되어 있으면 남은 workout slot으로 fallback한다.
+  5. `home/life-zone-state.js`가 `STATIC_ASSETS`에 포함되어 `sw.js` `CACHE_VERSION`을 bump했다. 이후 같은 dirty worktree의 rest-counter slice가 현재 `CACHE_VERSION`을 `tomatofarm-v20260707z18-header-app-refresh`로 다시 올렸고, cache marker 테스트도 현재 `sw.js` 기준으로 동기화했다.
+  6. saved running-only가 `workout`으로 오분류되지 않도록 `hasLifeZoneWeightWorkoutActivity()`를 분리했다.
+- 검증:
+  1. RED/GREEN: `node --test tests/home-life-zone-state.test.js` - RED 2건 확인 후 GREEN 27 pass.
+  2. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/home-life-zone-state.test.js` - 37 pass.
+  3. PASS: `node --check home/life-zone-state.js`, `node --check tests/home-life-zone-state.test.js`, `node --check sw.js`.
+  4. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=895`.
+  5. PASS: `git diff --check` scoped to 라이프존/테스트/cache 변경.
+  6. PASS: 375x812 Puppeteer DOM harness - `lz-actor--workout lz-actor--pose-workout-bench`, `jups-workout-bench.png`.
+  7. BROAD: `node --test tests/*.test.js`는 현재 별도 `tests/workout-rest-counter.test.js` 실패가 있어 이 slice의 승인 근거로 쓰지 않았다. `tests/pwa-update-auto-reload.test.js`는 QA 재실행에서 단독 PASS.
+- evidence: `.omo/evidence/lifezone-weight-motion-20260707/`
+- 리뷰: `docs/ai/reviews/2026-07-07-life-zone-weight-motion-review.md`
+- 리뷰 결과: PASS. QA/code/security/context gate 모두 current source 기준 승인. production Pages deploy/UI verification은 unrelated dirty/staged worktree 때문에 `not verified yet`.
+- 다음 액션: production Pages 배포/검증은 현재 워크트리의 unrelated staged/unstaged 변경을 정리한 뒤 `npm.cmd run deploy:production`과 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`로 수행한다.
+
+## 2026-07-06 Wear Cardio Running POC
+
+- 상태: `slice6_local_complete_needs_paired_device_save_verification`
+- 계획: `docs/ai/features/2026-07-06-wear-cardio-running-poc.md`
+- ULW: `.omo/ulw-loop/tomato-wear-cardio-poc-20260706/goals.json`
+- 요청: 첨부 사진 4장을 참고해 Tomato Farm Android APK와 Galaxy Watch용 앱을 만들고, 워치 운동 캐러셀에서 POC로 `런닝/조깅`을 구현한다. 운동 중 화면에는 심박수를 포함하고, 최종 종료 시 폰에서 종목 추가 저장한 것처럼 그날 운동 카드/캐러셀에 저장한다.
+- 계획 결정:
+  1. Watch는 Firestore를 직접 쓰지 않고 Wear OS Data Layer로 폰 앱에 final workout payload를 보낸다.
+  2. 폰 앱은 기존 `data.js`/`saveWorkoutDay()` 경계를 통해 `S.workout.exercises` cardio/running card entry로 저장한다.
+  3. 심박수는 Health Services `ExerciseClient`와 기본 batching을 우선하고, 저장 payload는 10초 bucket 샘플/avg/max bpm으로 정규화한다.
+  4. 초기 POC는 GPS route를 제외했지만, 사용자 실제 워치 제보에 따라 Slice 6에서 GPS route 저장까지 포함했다. Health Connect/iOS pair는 계속 제외한다.
+- 실행 Slice 1:
+  1. `android/wear`에 Watch 런닝 payload 모델/serializer를 추가한다.
+  2. heart-rate 10초 샘플 정규화, 평균/최고 심박, 거리/페이스 계산 계약을 JVM test로 RED/GREEN 한다.
+  3. Watch UI, Health Services 실제 연결, Data Layer 송신, phone 저장 bridge는 Slice 1에서 건드리지 않는다.
+- 계획 기준:
+  1. RED/GREEN: `.\android\gradlew.bat -p android :wear:testDebugUnitTest`.
+  2. evidence: `.omo/evidence/wear-cardio-running-poc/slice1-red-green.txt`.
+- 실행 요약:
+  1. `WearWorkoutType`, `HeartRateSample`, `WearRunSession`, `WearRunSummary`, `WearWorkoutPayload`를 추가했다.
+  2. payload JSON은 `{ type: "running", source: "wear", dateKey, startedAt, endedAt, durationSec, distanceKm, avgPaceSecPerKm, avgHeartRateBpm, maxHeartRateBpm, samples10s }` 계약을 따른다.
+  3. 심박 샘플은 30-240bpm 범위와 세션 시간 안의 값만 사용하고 10초 bucket으로 정규화한다.
+  4. malformed date/end/distance 입력은 payload 생성 전 거부하고, 실제 calendar date와 payload 크기 상한(6시간, raw HR 50,000개, 10초 bucket 2,161개)을 검증한다.
+  5. `android/`는 `.gitignore` 대상이라 추후 native 파일 커밋 시 `git add -f`가 필요하다.
+- 검증:
+  1. RED: focused JVM test가 모델 미존재 `Unresolved reference`로 실패함을 확인했다.
+  2. PASS: `JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./android/gradlew.bat -p android :wear:testDebugUnitTest --tests com.lifestreak.wear.workout.WearRunPayloadTest`.
+  3. PASS: `JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./android/gradlew.bat -p android :wear:testDebugUnitTest :wear:assembleDebug`.
+  4. PASS: security hardening rerun `JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./android/gradlew.bat -p android :wear:testDebugUnitTest :wear:assembleDebug`.
+  5. evidence: `.omo/evidence/wear-cardio-running-poc/slice1-red-green.txt`.
+- 산출물: `android/wear/build/outputs/apk/debug/wear-debug.apk` 생성됨. 단, Slice 1 범위의 debug APK이며 Watch UI/저장 bridge는 아직 포함하지 않는다.
+- 리뷰: `docs/ai/reviews/2026-07-06-wear-cardio-running-poc-slice1-review.md`
+- 리뷰 결과: PASS. 보안 리뷰에서 지적한 payload 크기 상한과 실제 날짜 검증을 보강한 뒤 재리뷰 PASS.
+- 다음 액션: paired physical phone/watch 또는 Android Studio paired emulator에서 phone app까지 설치해 Data Layer 저장 완료와 토마토앱 해당 날짜 운동 카드/캐러셀 생성을 검증한다.
+- Slice 2 완료 요약:
+  1. `page_workout.xml`에 유산소 캐러셀, `런닝/조깅` start button, active/pause/summary 화면을 추가했다.
+  2. `WearWorkoutUiController`가 Watch UI 바인딩과 active tick을 관리하고, `WearRunUiState`가 elapsed/distance/pace/HR 표시 상태를 계산한다.
+  3. 기존 오늘 운동 기록은 캐러셀 아래 ScrollView에 유지했다.
+  4. PASS: `node --test tests/wear-slice2-artifacts.test.js`.
+  5. PASS: `JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./android/gradlew.bat -p android :wear:testDebugUnitTest :wear:assembleDebug`.
+  6. PASS: Wear OS 5 small round AVD `TomatoWearSmallRound`에서 `picker`, `active`, `paused`, `summary` screenshots 캡처.
+  7. 리뷰: `docs/ai/reviews/2026-07-06-wear-cardio-running-poc-slice2-review.md`.
+  8. evidence: `.omo/evidence/wear-cardio-running-poc/slice2-watch-ui.png`, `.omo/evidence/wear-cardio-running-poc/slice2-action-log.txt`.
+- Slice 3 완료 요약:
+  1. `WearExerciseService` foreground service가 Health Services `ExerciseClient`를 소유하고 `RUNNING` exercise를 start/pause/resume/end 한다.
+  2. 권한은 `ACTIVITY_RECOGNITION`, `BODY_SENSORS`, API 36+ `android.permission.health.READ_HEART_RATE`, foreground service health type을 선언/요청한다.
+  3. metric은 `HEART_RATE_BPM`, `DISTANCE_TOTAL`, `SPEED`, `ACTIVE_EXERCISE_DURATION_TOTAL`를 capability와 교차 요청하고, UI에는 최신 bpm/distance를 반영한다.
+  4. `WearExerciseMetricAccumulator`가 저장 payload용 심박 샘플을 10초 bucket으로 제한한다.
+  5. `health-services-client:1.1.0-rc02`는 현재 Kotlin 1.9.22와 metadata가 맞지 않아 AndroidX stable `1.0.0`과 Android Guava `33.2.1-android`를 사용했다.
+  6. PASS: `node --test tests/wear-slice3-health-services.test.js`.
+  7. PASS: `JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./android/gradlew.bat -p android :wear:testDebugUnitTest :wear:assembleDebug`.
+  8. PASS: Wear AVD `TomatoWearSmallRound`에서 최종 APK 설치 -> 권한 grant -> 운동 page -> `런닝/조깅` start -> 12초 후 `115 bpm` active 화면과 foreground service 확인 -> pause/final stop -> summary/cleanup 확인.
+  9. evidence: `.omo/evidence/wear-cardio-running-poc/slice3-watch-active-hr-final.png`, `.omo/evidence/wear-cardio-running-poc/slice3-final-runtime-active-adb.txt`, `.omo/evidence/wear-cardio-running-poc/slice3-runtime-cleanup.txt`, `.omo/evidence/wear-cardio-running-poc/slice3-emulator-cleanup.txt`.
+  10. 리뷰: `docs/ai/reviews/2026-07-06-wear-cardio-running-poc-slice3-review.md`.
+- Slice 4 완료 요약:
+  1. Wear final stop에서 `WearWorkoutDataLayer`가 `/tomato/workout/run/complete` message로 final `WearWorkoutPayload`만 전송한다. 운동 중 rapid live update는 보내지 않는다.
+  2. Wear summary에는 `폰 저장 전송 중`, `폰 저장 전송 완료`, `폰 연결 대기` 등 전송 상태를 표시한다.
+  3. phone `android/app`에는 `TomatoWearWorkoutListenerService`와 `TomatoWearWorkoutBridge`를 추가해 Data Layer message를 SharedPreferences queue에 넣고, WebView가 살아 있으면 `window.__tomatoWearWorkoutBridge.saveFromNative(...)`로 drain한다.
+  4. 공식 Wear OS Data Layer 제약에 맞춰 phone/watch `applicationId`를 모두 `com.lifestreak.app`로 맞췄다. Kotlin namespace/package는 기존 `com.lifestreak.wear`를 유지한다.
+  5. root `workout/wear-bridge.js`는 payload 검증, localStorage queue, `loadWorkoutDate()` 후 `S.workout.exercises` cardio/running card upsert, `saveWorkoutDay({ silent: true })`, toast/focus를 처리한다.
+  6. `sw.js`에 `./workout/wear-bridge.js`를 추가하고 `CACHE_VERSION`을 `tomatofarm-v20260707z16-lifezone-weight-motion`로 bump했다. `npm.cmd run cap:sync`로 Android app asset에도 반영했다.
+  7. PASS: `node --test tests/wear-workout-bridge.test.js tests/wear-slice3-health-services.test.js tests/wear-slice2-artifacts.test.js tests/running-entry.test.js tests/workout-save-mode-guard.test.js`.
+  8. PASS: `JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./android/gradlew.bat -p android :app:assembleDebug :wear:testDebugUnitTest :wear:assembleDebug`.
+  9. PASS: Wear AVD에서 final stop summary까지 실행했고, 현재 emulator pair에는 reachable node가 없어 `폰 연결 대기` fallback이 표시되는 것을 확인했다. `dumpsys activity service WearableService`에서 reachable nodes 0도 확인했다.
+  10. evidence: `.omo/evidence/wear-cardio-running-poc/slice4-post-sync-node.txt`, `.omo/evidence/wear-cardio-running-poc/slice4-post-sync-gradle.txt`, `.omo/evidence/wear-cardio-running-poc/slice4-watch-summary-fallback.png`, `.omo/evidence/wear-cardio-running-poc/slice4-wearable-service-before.txt`, `.omo/evidence/wear-cardio-running-poc/slice4-emulator-cleanup.txt`.
+  11. 실제 paired phone/watch 저장 완료와 phone card screenshot은 현재 에뮬레이터 조합이 Data Layer pair를 제공하지 않아 Slice 5/실기기 검증 항목으로 남긴다.
+- Slice 5 완료 요약:
+  1. Phone debug APK와 Watch debug APK를 최종 산출했다.
+  2. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=895`.
+  3. PASS: `node --test tests/*.test.js` - 727 pass.
+  4. PASS: `JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./android/gradlew.bat -p android :app:assembleDebug :wear:testDebugUnitTest :wear:assembleDebug`.
+  5. PASS: `git diff --check` - whitespace error 없음. LF/CRLF working copy warning만 표시됨.
+  6. APK: `android/app/build/outputs/apk/debug/app-debug.apk` 45M, `android/wear/build/outputs/apk/debug/wear-debug.apk` 14M.
+  7. 리뷰: `docs/ai/reviews/2026-07-06-wear-cardio-running-poc-slice5-review.md`.
+  8. 한계: 현재 emulator pair는 reachable Data Layer node가 없어 실제 phone card 생성 screenshot은 아직 미검증이다. production Pages deploy도 현재 워크트리의 unrelated staged/unstaged 변경 때문에 실행하지 않았다.
+- Slice 6 완료 요약:
+  1. `ACCESS_FINE_LOCATION`, foreground service location type, Health Services `DataType.LOCATION`, `isGpsEnabled = true` 경로를 추가했다.
+  2. Watch payload가 `route`와 `routeSummary`를 포함하고, phone web bridge가 이를 `runData.route`와 cardio route metadata로 저장한다.
+  3. Watch active/summary 화면에 GPS 상태를 추가했다.
+  4. PASS: `node --test tests/wear-gps-running-contract.test.js`.
+  5. PASS: `node --test tests/*.test.js` - 731 pass.
+  6. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=895`.
+  7. PASS: `JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./android/gradlew.bat -p android :app:assembleDebug :wear:testDebugUnitTest :wear:assembleDebug`.
+  8. PASS: Wear AVD `TomatoWearSmallRound`에서 vertical swipe -> `유산소` page -> `런닝/조깅` tap -> active -> pause -> final stop summary까지 실제 터치 검증. Summary: `0.18 km`, `01:19`, `145 bpm`, `GPS 7점`, `폰 연결 대기`.
+  9. evidence: `.omo/evidence/wear-cardio-running-poc/slice6-watch-summary.png`, `.omo/evidence/wear-cardio-running-poc/slice6-watch-qa-log.md`, `.omo/evidence/wear-cardio-running-poc/slice6-full-node-rerun.txt`, `.omo/evidence/wear-cardio-running-poc/slice6-gradle-final.txt`.
+  10. 리뷰: `docs/ai/reviews/2026-07-06-wear-cardio-running-poc-slice6-review.md`.
+  11. not verified yet: 실제 paired phone/watch Data Layer 저장 완료와 phone workout card 생성 screenshot.
+
+## 2026-07-06 Cardio Picker Hierarchy Follow-up
+
+- 상태: `ready_for_deploy_verification`
+- 계획: `docs/ai/features/2026-07-06-cardio-picker-card-entry.md`
+- ULW: `.omo/ulw-loop/cardio-picker-hierarchy-20260706/goals.json`
+- 요청: picker 첫 화면에서 `런닝/조깅`, `유산소`가 다른 근육 부위 렌더링처럼 보이지 않고, `유산소` 상단탭이 다른 헬스 종목과 다른 위계로 사일로 처리되는 문제를 수정한다. 추가로 유산소 6개 하위 종목 각각은 비슷한 회색 톤의 실제 기구/운동 제스처 이미지로 렌더링해 picker row에 삽입한다.
+- 실행 Slice 2:
+  1. `런닝/조깅`, `유산소`를 activity 전용 tile이 아니라 기존 picker category/muscle tile primitive와 같은 전신/유산소 범주로 렌더링한다.
+  2. cardio list view에서도 상단탭을 `분류 | 유산소` 사일로가 아니라 기존 `분류 | 전체 | ...부위탭` 위계와 일관되게 유지한다.
+  3. `유산소` 클릭은 기존 6개 리스트와 카드 입력 흐름으로 이동하고, `런닝/조깅` 클릭은 기존 러닝 시작/전환 동작을 유지한다.
+  4. `STATIC_ASSETS` 수정 시 `sw.js` cache version을 bump하고 RED/GREEN, focused/full tests, visual QA, production Pages deploy verification을 남긴다.
+- 검증 예정:
+  1. RED/GREEN: `node --test tests/workout-picker-cardio-hierarchy.test.js`.
+  2. 정적/회귀: `node --check workout/exercises.js sw.js`, focused picker tests, `node --test tests/*.test.js`, `npm.cmd run verify:assets`.
+  3. 브라우저/시각 QA: 375x812 picker category screenshot/JSON evidence.
+  4. 운영 검증: `npm.cmd run deploy:production`, `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`.
+- 다음 액션: Slice 2 구현 후 review 문서를 작성하고 이 항목을 `ready_for_review` 또는 blocker 상태로 갱신한다.
+- 실행 Slice 3 추가:
+  1. 기본 유산소 6개 종목별 bitmap asset을 생성하고 `assets/workout/cardio/`에 저장한다.
+  2. `workout/exercises.js`의 `CARDIO_PICKER_EXERCISES`에 종목별 image asset을 연결하고, cardio list row가 전신 fallback 대신 해당 종목 이미지를 렌더링한다.
+  3. `style.css`에서 종목별 cardio figure가 기존 picker row 밀도와 맞도록 크기/톤/텍스트 겹침을 검증한다. `최근/빈도/이름` 필터는 기존 text-button CSS를 유지하고, row 우측 `로잉 머신`/`좌식 자전거` 기구명 chip은 표시하지 않는다.
+  4. 새 asset이 `STATIC_ASSETS`에 들어가면 `sw.js` `CACHE_VERSION`을 다시 bump하고 tests/visual QA/production deploy verification을 갱신한다.
+- 다음 액션: Slice 2+3 구현 후 review 문서를 작성하고 이 항목을 `ready_for_review` 또는 blocker 상태로 갱신한다.
+- 실행 Slice 4 추가:
+  1. 유산소 입력 sheet를 `거리 -> 속도 -> 랩/반복 -> 칼로리` 4행 순서로 바꾼다.
+  2. 거리와 속도가 입력되면 칼로리를 자동 추정해 채우고, 칼로리 필드 더블클릭 시 값을 지운 뒤 수동 입력 상태로 전환한다.
+  3. 운동 추가 picker의 `런닝/조깅` 클릭은 standalone running session UI를 즉시 열지 않고, 삼두/복부/유산소와 같은 상단 탭 아래 `GPS 위치`/`시작` panel만 렌더링한다. `최근/빈도/이름`, `전체/기본`, 러닝 row는 보이지 않아야 하며 `시작` 버튼을 눌렀을 때만 running session을 연다.
+  4. `workout/exercises.js` 또는 `style.css` 수정 시 `sw.js` `CACHE_VERSION`을 bump하고 RED/GREEN, focused/full tests, visual QA, production deploy verification을 남긴다.
+- Slice 4 ULW: `.omo/ulw-loop/cardio-auto-calorie-running-tab-20260706/goals.json`
+- 다음 액션: Slice 4 구현과 리뷰 보정은 완료됐다. `origin/main` 배포와 `verify:deploy` 확인 후 이 항목을 `complete` 또는 production UI blocker 상태로 갱신한다.
+
 ## 2026-07-06 Cardio Picker Card Entry
 
-- 상태: `complete`
+- 상태: `needs_user_auth_for_production_ui_verification`
 - 계획: `docs/ai/features/2026-07-06-cardio-picker-card-entry.md`
 - 요청: `런닝/조깅`과 `유산소` 버튼을 기존 운동 추가 버튼 디자인에 맞추고, `유산소` 클릭 시 기본 유산소 종목 리스트를 보여준 뒤 한국어 입력값으로 기존 운동 카드/캐러셀 시스템에 유산소 카드를 추가한다.
 - 실행 Slice 1:
@@ -22,8 +229,12 @@
   3. PASS: `node --test tests/*.test.js` - 715 pass.
   4. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=882`.
   5. LSP diagnostics: TypeScript language server missing, install declined; `node --check`와 test suite로 대체했다.
+  6. PASS: `npm.cmd run deploy:production` - pushed `ef60f8672fe8` to `origin/main`.
+  7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ ef60f8672fe8` - `[deploy-verify] ok ef60f8672fe8 tomatofarm-v20260706z8-cardio-picker-card static=242`.
+  8. PASS: deployed marker verification - `CARDIO_PICKER_EXERCISES`, `data-picker-cardio-id`, `ex-cardio-kcal`, `ex-cardio-distance`, `ex-cardio-speed`, `ex-cardio-laps`, `wt-cardio-read-card`, `ex-picker-cardio-item`, cache marker.
+  9. BLOCKED: in-app browser production page shows `#login-screen` and no `currentUser`; without user login, the target flow cannot be clicked without creating external Firebase data or bypassing authentication.
 - 리뷰: `docs/ai/reviews/2026-07-06-cardio-picker-card-entry-review.md`
-- 다음 액션: 없음.
+- 다음 액션: 사용자가 in-app browser에서 로그인한 뒤, 배포 URL에서 `운동 -> 종목 추가 -> 유산소 -> 스텝머신 -> 칼로리/거리/속도/랩 입력 -> 저장 -> 새 유산소 카드 캐러셀 포커스`를 직접 검증한다.
 
 ## 2026-07-06 Workout Set Type Menu Clipping
 

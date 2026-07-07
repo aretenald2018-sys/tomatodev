@@ -288,7 +288,7 @@ async function _resolveLatestAppSWRegistration(registration = null) {
 
 async function _reloadForAppUpdate(registration = null, button = null) {
   const state = _updateBannerState();
-  if (_updateReloadRequested || state.reloadRequested) return;
+  if (_updateReloadRequested || state.reloadRequested) return false;
   try {
     if (typeof window.__wtPersistActiveDraft === 'function') {
       await Promise.resolve(window.__wtPersistActiveDraft());
@@ -317,10 +317,56 @@ async function _reloadForAppUpdate(registration = null, button = null) {
     navigator.serviceWorker.addEventListener('controllerchange', reloadOnce, { once: true });
     waiting.postMessage({ type: 'SKIP_WAITING' });
     setTimeout(reloadOnce, 1500);
-    return;
+    return true;
   }
 
   window.location.reload();
+  return true;
+}
+
+function _setRefreshControlBusy(control, busy) {
+  if (!control || typeof control !== 'object') return;
+  if ('disabled' in control) control.disabled = !!busy;
+  control.setAttribute?.('aria-busy', busy ? 'true' : 'false');
+  control.classList?.toggle?.('is-loading', !!busy);
+}
+
+function _toastAppRefresh(message, type = 'info') {
+  try {
+    window.showToast?.(message, 2200, type);
+  } catch {}
+}
+
+export async function requestTomatoAppRefresh({ control = null, source = 'manual' } = {}) {
+  const button = control || document.getElementById('app-refresh-btn');
+  if (button?.disabled) return { started: false, reason: 'busy', source };
+  _setRefreshControlBusy(button, true);
+  _toastAppRefresh('최신 앱 버전을 확인하고 있어요.', 'info');
+
+  try {
+    const registration = await _resolveLatestAppSWRegistration();
+    const waiting = registration?.waiting;
+    if (waiting) {
+      const key = `${registration?.scope || APP_SW_SCOPE}|${waiting.scriptURL || 'sw.js'}`;
+      showAppUpdateBanner(registration, { key });
+      _toastAppRefresh('새 버전을 적용합니다.', 'info');
+    } else {
+      _toastAppRefresh('최신 앱을 다시 불러옵니다.', 'info');
+    }
+
+    const started = await _reloadForAppUpdate(registration);
+    if (!started) _setRefreshControlBusy(button, false);
+    return {
+      started,
+      hasWaitingWorker: !!waiting,
+      source,
+    };
+  } catch (error) {
+    console.warn('[PWA] 수동 앱 새로고침 실패:', error?.message || error);
+    _toastAppRefresh('업데이트 확인에 실패해 앱을 다시 불러옵니다.', 'warning');
+    window.location.reload();
+    return { started: true, error, source };
+  }
 }
 
 export function showAppUpdateBanner(registration = null, { key = null } = {}) {
@@ -334,5 +380,6 @@ export function showAppUpdateBanner(registration = null, { key = null } = {}) {
 
 export function initBuildInfoSurface() {
   window.__showAppUpdateBanner = showAppUpdateBanner;
+  window.__requestTomatoAppRefresh = requestTomatoAppRefresh;
   loadBuildInfo({ force: false }).catch(() => {});
 }

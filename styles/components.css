@@ -790,6 +790,9 @@ body {
   color: var(--text-secondary); transition: background var(--transition);
 }
 .icon-btn:hover { background: var(--surface2); }
+.icon-btn:disabled { opacity: 0.55; cursor: default; }
+.app-refresh-btn.is-loading svg { animation: app-refresh-spin 0.8s linear infinite; }
+@keyframes app-refresh-spin { to { transform: rotate(360deg); } }
 
 /* ── Notification Bell & Badge ── */
 .notif-bell { position: relative; }

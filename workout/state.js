@@ -60,7 +60,7 @@ function emptyWorkout() {
     workoutTimerInterval: null,
     // 타이머가 소속된 날짜 — 시작 시점에 캡처. 날짜 네비게이션 시에도 유지, 끝내기/리셋 시만 null.
     workoutTimerDate: null,              // { y, m, d } | null
-    restTimer:  { interval: null, remaining: 0, total: 90, running: false, startedAt: null },
+    restTimer:  { interval: null, remaining: 0, total: 90, running: false, startedAt: null, origin: null, context: '', expiredNotified: false },
     sessionIndex: 0,
     sessionId: 'session-1',
     // 전문가 모드

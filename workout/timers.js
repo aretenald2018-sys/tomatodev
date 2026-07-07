@@ -629,6 +629,10 @@ export function wtTogglePauseWorkoutTimer() {
 //      기다려야 다른 레이어(getCache 소비자, analytics 등)와의 순서가 명확해진다.
 export function wtFinishWorkout() {
   const finalDuration = _finalWorkoutDurationSec();
+  if (S.workout.restTimer.running) {
+    _finalizeRestTimerRecord('finish');
+    _stopRestTimerUi();
+  }
   S.workout.workoutStartTime = null;
   S.workout.workoutDuration = finalDuration;
   S.workout.workoutTimerDate = null;
@@ -708,6 +712,7 @@ function _restBarEl()     { return document.getElementById('wt-workout-timer-bar
 function _restProgEl()    { return document.getElementById('wt-tbar-progress'); }
 function _restTimeEl()    { return document.getElementById('wt-rest-time'); }
 function _restFillEl()    { return document.getElementById('wt-rest-fill'); }
+function _restRingEl()    { return document.getElementById('wt-rest-ring-progress'); }
 
 const _REST_CTRL_IDS   = ['wt-rest-minus-btn', 'wt-rest-plus-btn', 'wt-rest-skip-btn'];
 const _WORK_CTRL_IDS   = ['wt-timer-pause-btn', 'wt-timer-play-btn', 'wt-timer-reset-btn', 'wt-finish-workout-btn'];
@@ -732,16 +737,167 @@ function _formatTime(sec) {
   return `${sign}${m}:${String(s).padStart(2, '0')}`;
 }
 
-export function wtRestTimerStart(seconds, context) {
+function _restTimerRecordOrigin(meta = {}) {
+  const entryIdx = Number(meta.entryIdx);
+  const setIdx = Number(meta.setIdx);
+  if (!Number.isInteger(entryIdx) || !Number.isInteger(setIdx)) return null;
+  return {
+    entryIdx,
+    setIdx,
+    exerciseId: meta.exerciseId || null,
+    exerciseName: meta.exerciseName || null,
+    setNumber: Math.max(1, Math.floor(Number(meta.setNumber) || (setIdx + 1))),
+  };
+}
+
+function _activeRestOrigin() {
+  const origin = S.workout.restTimer.origin;
+  if (origin) return _restTimerRecordOrigin(origin);
+  return _restTimerRecordOrigin(S.workout.restTimer);
+}
+
+function _sameRestOrigin(a, b) {
+  return !!a && !!b && a.entryIdx === b.entryIdx && a.setIdx === b.setIdx;
+}
+
+function _restSetFromOrigin(origin) {
+  if (!origin) return null;
+  return S.workout.exercises?.[origin.entryIdx]?.sets?.[origin.setIdx] || null;
+}
+
+function _clearRestSetFields(set) {
+  if (!set) return;
+  delete set.restStartedAt;
+  delete set.restPlannedSec;
+  delete set.restEndedAt;
+  delete set.restElapsedSec;
+  delete set.restOverSec;
+  delete set.restEndedBy;
+}
+
+function _restElapsedSec(now = Date.now()) {
+  const startedAt = Number(S.workout.restTimer.startedAt) || now;
+  return Math.max(0, Math.floor((now - startedAt) / 1000));
+}
+
+function _syncRestProgress(remaining, total) {
+  const safeTotal = Math.max(1, Math.floor(Number(total) || 1));
+  const ring = _restRingEl();
+  if (ring) {
+    const offset = remaining <= 0
+      ? 0
+      : Math.max(0, Math.min(100, 100 - (Math.max(0, remaining) / safeTotal) * 100));
+    ring.style.strokeDasharray = '100';
+    ring.style.strokeDashoffset = String(offset);
+  }
+  const fill = _restFillEl();
+  if (fill) {
+    const width = remaining <= 0
+      ? 100
+      : Math.max(0, Math.min(100, (Math.max(0, remaining) / safeTotal) * 100));
+    fill.style.width = `${width}%`;
+  }
+}
+
+function _syncRestVisual() {
+  const remaining = Math.floor(Number(S.workout.restTimer.remaining) || 0);
+  const total = Math.max(1, Math.floor(Number(S.workout.restTimer.total) || 1));
+  const t = _restTimeEl();
+  if (t) t.textContent = _formatTime(remaining);
+  _syncRestProgress(remaining, total);
+  _restBarEl()?.classList.toggle('rest-expired', remaining <= 0);
+}
+
+function _writeRestTimerStartRecord(origin, total, startedAt) {
+  const set = _restSetFromOrigin(origin);
+  if (!set) return;
+  set.restStartedAt = new Date(startedAt).toISOString();
+  set.restPlannedSec = total;
+  set.restEndedAt = null;
+  set.restElapsedSec = 0;
+  set.restOverSec = 0;
+  set.restEndedBy = null;
+}
+
+function _writeActiveRestPlannedSec(total) {
+  const set = _restSetFromOrigin(_activeRestOrigin());
+  if (set?.restStartedAt) set.restPlannedSec = total;
+}
+
+function _finalizeRestTimerRecord(endedBy = 'skip') {
+  const set = _restSetFromOrigin(_activeRestOrigin());
+  if (!set?.restStartedAt) return false;
+  const now = Date.now();
+  const startedMs = Number(S.workout.restTimer.startedAt) || Date.parse(set.restStartedAt);
+  const elapsedSec = Number.isFinite(startedMs)
+    ? Math.max(0, Math.floor((now - startedMs) / 1000))
+    : Math.max(0, Math.floor(Number(set.restElapsedSec) || 0));
+  const plannedSec = Math.max(0, Math.floor(Number(S.workout.restTimer.total || set.restPlannedSec) || 0));
+  set.restPlannedSec = plannedSec;
+  set.restEndedAt = new Date(now).toISOString();
+  set.restElapsedSec = elapsedSec;
+  set.restOverSec = Math.max(0, elapsedSec - plannedSec);
+  set.restEndedBy = endedBy;
+  wtPersistActiveWorkoutDraft(`rest timer ${endedBy}`);
+  return true;
+}
+
+function _saveRestTimerRecord(context) {
+  saveWorkoutDay({ silent: true }).catch(e => console.error(`[rest timer ${context}] save error:`, e));
+}
+
+function _stopRestTimerUi() {
+  if (S.workout.restTimer.interval) clearInterval(S.workout.restTimer.interval);
+  S.workout.restTimer.interval = null;
+  S.workout.restTimer.running = false;
+  S.workout.restTimer.startedAt = null;
+  S.workout.restTimer.origin = null;
+  S.workout.restTimer.context = '';
+  S.workout.restTimer.expiredNotified = false;
+  const seg = _restSegEl();
+  if (seg) seg.style.display = 'none';
+  const prog = _restProgEl();
+  if (prog) prog.style.display = 'none';
+  _restBarEl()?.classList.remove('has-rest', 'rest-expired');
+  _hideRestControls();
+}
+
+function _setRestTimerTotal(seconds, { persist = false } = {}) {
+  const total = Math.max(15, Math.floor(Number(seconds) || 0));
+  S.workout.restTimer.total = total;
+  S.workout.restTimer.remaining = S.workout.restTimer.running
+    ? total - _restElapsedSec()
+    : total;
+  _writeActiveRestPlannedSec(total);
+  _syncRestVisual();
+  if (S.workout.restTimer.remaining > 0) S.workout.restTimer.expiredNotified = false;
+  if (persist) {
+    wtPersistActiveWorkoutDraft('rest timer total update');
+    _saveRestTimerRecord('total update');
+  }
+}
+
+export function wtRestTimerStart(seconds, context, meta = {}) {
   const seg = _restSegEl();
   const bar = _restBarEl();
   if (!seg || !bar) return;
-  if (seconds) S.workout.restTimer.total = seconds;
+  const origin = _restTimerRecordOrigin(meta);
+  if (S.workout.restTimer.running && !_sameRestOrigin(_activeRestOrigin(), origin)) {
+    _finalizeRestTimerRecord(origin ? 'next-set' : 'restart');
+  }
+  if (Number(seconds) > 0) S.workout.restTimer.total = Math.max(1, Math.floor(Number(seconds)));
+  const total = Math.max(1, Math.floor(Number(S.workout.restTimer.total) || 90));
+  const startedAt = Date.now();
   const ctxEl = document.getElementById('wt-rest-context');
   if (ctxEl) ctxEl.textContent = context || '';
-  S.workout.restTimer.remaining = S.workout.restTimer.total;
+  S.workout.restTimer.total = total;
+  S.workout.restTimer.remaining = total;
   S.workout.restTimer.running = true;
-  S.workout.restTimer.startedAt = Date.now();
+  S.workout.restTimer.startedAt = startedAt;
+  S.workout.restTimer.context = context || '';
+  S.workout.restTimer.origin = origin;
+  S.workout.restTimer.expiredNotified = false;
+  _writeRestTimerStartRecord(origin, total, startedAt);
 
   seg.style.display = '';
   const prog = _restProgEl();
@@ -749,75 +905,53 @@ export function wtRestTimerStart(seconds, context) {
   bar.classList.add('has-rest');
   bar.classList.remove('rest-expired');
   _showRestControls();
-
-  const t = _restTimeEl(); if (t) t.textContent = _formatTime(S.workout.restTimer.remaining);
-  const f = _restFillEl(); if (f) f.style.width = '100%';
+  _syncRestVisual();
 
   if (S.workout.restTimer.interval) clearInterval(S.workout.restTimer.interval);
   S.workout.restTimer.interval = setInterval(_syncRestTimerFromNow, 1000);
+  wtPersistActiveWorkoutDraft('rest timer start');
 }
 
-// idle 상태는 새 통합 바에서 사용하지 않음 (세트 체크 시점에만 쉬는시간 등장)
-export function wtRestTimerShowIdle() { /* no-op (통합 바에서 idle UX 제거) */ }
-export function wtRestTimerHideIdle() { /* no-op */ }
+export function wtRestTimerShowIdle() {}
+export function wtRestTimerHideIdle() {}
 
 export function wtRestTimerSkip() {
-  const seg = _restSegEl();
-  const bar = _restBarEl();
-  if (!seg || !bar) return;
-  if (S.workout.restTimer.interval) clearInterval(S.workout.restTimer.interval);
-  S.workout.restTimer.interval = null;
-  S.workout.restTimer.running = false;
-  S.workout.restTimer.startedAt = null;
+  const recorded = _finalizeRestTimerRecord('skip');
+  _stopRestTimerUi();
+  wtPersistActiveWorkoutDraft('rest timer skip');
+  if (recorded) _saveRestTimerRecord('skip');
+}
 
-  seg.style.display = 'none';
-  const prog = _restProgEl();
-  if (prog) prog.style.display = 'none';
-  bar.classList.remove('has-rest', 'rest-expired');
-  _hideRestControls();
+export function wtRestTimerClearSetRecord(entryIdx, si) {
+  const origin = _restTimerRecordOrigin({ entryIdx, setIdx: si });
+  const set = _restSetFromOrigin(origin);
+  _clearRestSetFields(set);
+  if (_sameRestOrigin(_activeRestOrigin(), origin)) _stopRestTimerUi();
+  wtPersistActiveWorkoutDraft('rest timer clear set');
 }
 
 export function wtRestTimerAdjust(delta) {
   if (!S.workout.restTimer.running) return;
-  const elapsed = Math.floor((Date.now() - (S.workout.restTimer.startedAt || Date.now())) / 1000);
-  const currentRemaining = (S.workout.restTimer.total || 0) - elapsed;
-  S.workout.restTimer.remaining = Math.max(0, currentRemaining + delta);
-  S.workout.restTimer.total = Math.max(S.workout.restTimer.total, S.workout.restTimer.remaining);
-  S.workout.restTimer.startedAt = Date.now() - Math.max(0, S.workout.restTimer.total - S.workout.restTimer.remaining) * 1000;
-  const t = _restTimeEl(); if (t) t.textContent = _formatTime(S.workout.restTimer.remaining);
-  const f = _restFillEl(); if (f) f.style.width = `${(S.workout.restTimer.remaining / S.workout.restTimer.total) * 100}%`;
-  _restBarEl()?.classList.remove('rest-expired');
+  const nextTotal = Math.max(15, Math.floor(Number(S.workout.restTimer.total) || 90) + Math.floor(Number(delta) || 0));
+  _setRestTimerTotal(nextTotal, { persist: true });
 }
 
 function _syncRestTimerFromNow() {
   const bar = _restBarEl();
   if (!bar || !S.workout.restTimer.running) return;
-  const startedAt = S.workout.restTimer.startedAt || Date.now();
-  const elapsed = Math.floor((Date.now() - startedAt) / 1000);
-  S.workout.restTimer.remaining = (S.workout.restTimer.total || 0) - elapsed;
-
-  const t = _restTimeEl(); if (t) t.textContent = _formatTime(S.workout.restTimer.remaining);
+  S.workout.restTimer.remaining = (S.workout.restTimer.total || 0) - _restElapsedSec();
+  _syncRestVisual();
   if (S.workout.restTimer.remaining > 0) {
-    const f = _restFillEl(); if (f) f.style.width = `${(S.workout.restTimer.remaining / S.workout.restTimer.total) * 100}%`;
-    bar.classList.remove('rest-expired');
+    S.workout.restTimer.expiredNotified = false;
     return;
   }
-  if (S.workout.restTimer.remaining === 0) {
-    const f = _restFillEl(); if (f) f.style.width = '100%';
-    bar.classList.add('rest-expired');
+  if (S.workout.restTimer.remaining === 0 && !S.workout.restTimer.expiredNotified) {
+    S.workout.restTimer.expiredNotified = true;
     if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-    return;
-  }
-  // 2026-04-20: 이전에는 -600초(10분 초과) 시 자동 wtRestTimerSkip() 호출.
-  //   유저 요구 "운동을 쉬든 시간을 오버하든 항상 떠있어야 함" 에 따라 자동 skip 제거.
-  //   rest-expired 클래스만 유지해 오버 상태를 시각적으로 표시하고, 건너뛰기는 유저가 명시적으로.
-  if (S.workout.restTimer.remaining < 0) {
-    const f = _restFillEl(); if (f) f.style.width = '100%';
-    bar.classList.add('rest-expired');
   }
 }
 
-export function _initRestTimerPresets() { /* no-op — Preset은 Bottom Sheet로 이동 */ }
+export function _initRestTimerPresets() {}
 
 // ── Rest Preset Bottom Sheet ──────────────────────────────────────
 export function wtOpenRestPresetSheet() {
@@ -858,10 +992,11 @@ export function wtOpenRestPresetSheet() {
     btn.addEventListener('click', () => {
       const sec = +btn.dataset.sec;
       if (S.workout.restTimer.running) {
-        wtRestTimerStart(sec);
+        _setRestTimerTotal(sec, { persist: true });
       } else {
         S.workout.restTimer.total = sec;
-        const t = _restTimeEl(); if (t) t.textContent = _formatTime(sec);
+        S.workout.restTimer.remaining = sec;
+        _syncRestVisual();
       }
       close();
     });

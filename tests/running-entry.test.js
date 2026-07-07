@@ -39,7 +39,6 @@ test('exercise picker category renders running and cardio as body-category tiles
   assert.match(exercisesJs, /data-picker-body-action="\$\{_escPicker\(category\.action\)\}"/);
   assert.match(exercisesJs, /assets\/workout\/muscles\/full-body\.png/);
   assert.match(exercisesJs, /런닝\/조깅/);
-  assert.match(exercisesJs, /wtSwitchType\('running'\)/);
   assert.match(exercisesJs, /id:\s*'cardio'/);
   assert.match(exercisesJs, /action:\s*'cardio'/);
   assert.match(exercisesJs, /유산소/);
@@ -282,7 +281,7 @@ test('running workout save writes a running life-zone snapshot', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260706z10-cardio-picker-images/);
+  assert.match(swJs, /tomatofarm-v20260707z18-header-app-refresh/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/sprites\/jups-running-track\.png/);

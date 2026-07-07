@@ -39,7 +39,7 @@ function _isActualWorkoutSet(set) {
 function _hasManualCardioEntry(entry) {
   const cardio = entry?.cardio;
   if (!cardio || typeof cardio !== 'object') return false;
-  if (cardio.source === 'manual-cardio') return true;
+  if (cardio.source === 'manual-cardio' || cardio.source === 'wear-running') return true;
   return ['kcal', 'distanceKm', 'speedKmh', 'laps'].some(key => _num(cardio[key]) > 0);
 }
 

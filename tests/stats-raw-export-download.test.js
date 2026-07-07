@@ -22,6 +22,7 @@ test('stats raw export preserves daily workout and diet payload contracts as JSO
   assert.match(statsJs, /daily,/);
   assert.match(statsJs, /bodyCheckins: checkins\.map\(_jsonSafeClone\)/);
   assert.match(statsJs, /raw:\s*\{[\s\S]*workout: _pickRawFields\(day, _RAW_WORKOUT_KEYS\)[\s\S]*diet: _pickRawFields\(day, _RAW_DIET_KEYS\)[\s\S]*shared: _pickRawFields\(day, SHARED_PAYLOAD_KEYS\)[\s\S]*day: _jsonSafeClone\(day \|\| \{\}\)/);
+  assert.match(readFileSync('workout/save-schema.js', 'utf8'), /'restBetweenSets'/);
   assert.match(statsJs, /hasExerciseRecord\(y, m, d\)/);
   assert.match(statsJs, /hasDietRecord\(y, m, d\)/);
   assert.match(statsJs, /dietDayOk\(y, m, d\)/);
@@ -42,5 +43,5 @@ test('stats raw export button uses compact TDS-style controls and bumped cache',
   assert.match(styleCss, /border:\s*1px solid var\(--seed-stroke-neutral\)/);
   assert.match(styleCss, /border-radius:\s*var\(--seed-r-full\)/);
   assert.match(styleCss, /\.stats-raw-export-btn:focus-visible/);
-  assert.match(swJs, /tomatofarm-v20260706z10-cardio-picker-images/);
+  assert.match(swJs, /tomatofarm-v20260707z18-header-app-refresh/);
 });

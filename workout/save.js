@@ -82,6 +82,47 @@ function _assertSchemaParity(name, payload, expectedKeys) {
   }
 }
 
+function _restInt(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
+}
+
+function _restElapsedFromDates(startedAt, endedAt) {
+  const startMs = Date.parse(startedAt || '');
+  const endMs = endedAt ? Date.parse(endedAt) : Date.now();
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) return 0;
+  return Math.floor((endMs - startMs) / 1000);
+}
+
+function _buildRestBetweenSets(cleanEx) {
+  const rests = [];
+  (Array.isArray(cleanEx) ? cleanEx : []).forEach((entry, entryIdx) => {
+    const sets = Array.isArray(entry?.sets) ? entry.sets : [];
+    sets.forEach((set, setIdx) => {
+      if (!set?.restStartedAt) return;
+      const plannedSec = _restInt(set.restPlannedSec);
+      const elapsedSec = Math.max(
+        _restInt(set.restElapsedSec),
+        _restElapsedFromDates(set.restStartedAt, set.restEndedAt)
+      );
+      rests.push({
+        exerciseId: entry.exerciseId || null,
+        exerciseName: entry.name || null,
+        entryIdx,
+        setIdx,
+        setNumber: setIdx + 1,
+        plannedSec,
+        elapsedSec,
+        overSec: Math.max(_restInt(set.restOverSec), Math.max(0, elapsedSec - plannedSec)),
+        startedAt: set.restStartedAt || null,
+        endedAt: set.restEndedAt || null,
+        endedBy: set.restEndedBy || null,
+      });
+    });
+  });
+  return rests;
+}
+
 // ── 운동 도메인 페이로드 ─────────────────────────────────────────
 // 식단 필드(breakfast/bFoods/bKcal/bPhoto/EstimateMeta 등)는 전부 제외 → merge 저장이
 // Firestore 의 식단 필드를 건드릴 수 없다.
@@ -122,6 +163,7 @@ function _buildWorkoutPayload(cleanEx, isDietSuccess) {
     swimMemo:      w.swimData.memo,
     workoutDuration: workoutTimeline.durationSec,
     workoutTimeline,
+    restBetweenSets: _buildRestBetweenSets(cleanEx),
     wine_free:  w.wineFree,
     memo:       document.getElementById('wt-workout-memo')?.value.trim() || '',
     workoutPhoto: window._mealPhotos?.workout || null,
@@ -327,7 +369,7 @@ function _hasSaveWorthySet(set) {
 function _hasManualCardioEntry(entry) {
   const cardio = entry?.cardio;
   if (!cardio || typeof cardio !== 'object') return false;
-  if (cardio.source === 'manual-cardio') return true;
+  if (cardio.source === 'manual-cardio' || cardio.source === 'wear-running') return true;
   return ['kcal', 'distanceKm', 'speedKmh', 'laps'].some(key => Number(cardio[key]) > 0);
 }
 

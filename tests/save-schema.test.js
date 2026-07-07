@@ -50,7 +50,7 @@ const WORKOUT_ONLY_SAMPLES = [
   'exercises', 'cf', 'swimming', 'running', 'stretching',
   'runDistance', 'runRoute', 'runPlaceSummary', 'runGpsAccuracySummary',
   'cfWod', 'swimStroke', 'stretchDuration',
-  'workoutDuration', 'workoutTimeline', 'wine_free', 'memo',
+  'workoutDuration', 'workoutTimeline', 'restBetweenSets', 'wine_free', 'memo',
   'workoutPhoto', 'gymId', 'pickerGymFilter', 'routineMeta', 'maxMeta',
 ];
 for (const key of WORKOUT_ONLY_SAMPLES) {
