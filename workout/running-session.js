@@ -7,6 +7,7 @@ import { destroyRunningMaps, renderRunningMap, readRunningMapConfig } from './ru
 
 const MAX_ROUTE_POINTS = 240;
 const MIN_ROUTE_STEP_M = 3;
+const ROUTE_GAP_MS = 45_000;
 const RUNNING_WORKOUT_SESSION_INDEX = 2;
 const RUNNING_SESSION_DRAFT_VERSION = 1;
 const RUNNING_SESSION_DRAFT_MAX_MS = 24 * 60 * 60 * 1000;
@@ -32,6 +33,7 @@ const _session = {
   pausedAt: null,
   pausedMs: 0,
   route: [],
+  pendingGapReason: '',
   previewPoint: null,
   previewRequested: false,
   mapRenderSeq: 0,
@@ -242,6 +244,11 @@ function _safePoint(point) {
   const cadenceSpm = _optionalNumber(point?.cadenceSpm ?? point?.cadence ?? point?.stepsPerMinute);
   if (heartRateBpm != null) normalized.heartRateBpm = heartRateBpm;
   if (cadenceSpm != null) normalized.cadenceSpm = cadenceSpm;
+  const segmentId = Number(point?.segmentId);
+  if (Number.isFinite(segmentId) && segmentId >= 0) normalized.segmentId = Math.floor(segmentId);
+  if (point?.gapBefore === true) normalized.gapBefore = true;
+  const gapReason = _routeGapReason(point?.gapReason);
+  if (gapReason) normalized.gapReason = gapReason;
   return normalized;
 }
 
@@ -253,6 +260,55 @@ function _optionalNumber(value) {
 function _optionalFiniteNumber(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
+}
+
+function _routeGapReason(value) {
+  const raw = String(value || '').trim();
+  return raw ? raw.slice(0, 48) : '';
+}
+
+function _routeSegmentId(point, fallback = 0) {
+  const n = Number(point?.segmentId);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : fallback;
+}
+
+function _normalizeRunningRoute(points = []) {
+  const raw = (Array.isArray(points) ? points : []).map(_safePoint).filter(Boolean);
+  let currentSegment = 0;
+  return raw.map((point, index) => {
+    const requestedSegment = _routeSegmentId(point, currentSegment);
+    const segmentChanged = index > 0 && requestedSegment !== currentSegment;
+    const gapBefore = index > 0 && (point.gapBefore === true || segmentChanged);
+    currentSegment = gapBefore && !segmentChanged ? currentSegment + 1 : requestedSegment;
+
+    const normalized = { ...point, segmentId: currentSegment };
+    if (gapBefore) {
+      normalized.gapBefore = true;
+      normalized.gapReason = _routeGapReason(point.gapReason) || 'interruption';
+    } else {
+      delete normalized.gapBefore;
+      delete normalized.gapReason;
+    }
+    return normalized;
+  });
+}
+
+function _isRouteGapEdge(prev, next) {
+  if (!prev || !next) return false;
+  return next.gapBefore === true || _routeSegmentId(prev, 0) !== _routeSegmentId(next, 0);
+}
+
+function _routeGapCount(route = []) {
+  return route.filter(point => point?.gapBefore === true).length;
+}
+
+function _routeSegmentCount(route = []) {
+  if (!route.length) return 0;
+  let count = 1;
+  for (let i = 1; i < route.length; i += 1) {
+    if (_isRouteGapEdge(route[i - 1], route[i])) count += 1;
+  }
+  return count;
 }
 
 export function runningDistanceMeters(a, b) {
@@ -271,23 +327,31 @@ export function runningDistanceMeters(a, b) {
 }
 
 export function runningRouteDistanceMeters(points = []) {
-  const route = (Array.isArray(points) ? points : []).map(_safePoint).filter(Boolean);
+  const route = _normalizeRunningRoute(points);
   let total = 0;
   for (let i = 1; i < route.length; i += 1) {
+    if (_isRouteGapEdge(route[i - 1], route[i])) continue;
     total += runningDistanceMeters(route[i - 1], route[i]);
   }
   return total;
 }
 
 export function downsampleRunningRoute(points = [], max = MAX_ROUTE_POINTS) {
-  const route = (Array.isArray(points) ? points : []).map(_safePoint).filter(Boolean);
-  if (route.length <= max) return route;
-  const out = [];
-  const step = (route.length - 1) / (max - 1);
-  for (let i = 0; i < max; i += 1) {
-    out.push(route[Math.round(i * step)]);
+  const route = _normalizeRunningRoute(points);
+  const limit = Math.max(2, Math.floor(_num(max, MAX_ROUTE_POINTS)));
+  if (route.length <= limit) return route;
+  const selected = new Set([0, route.length - 1]);
+  route.forEach((point, index) => {
+    if (point.gapBefore === true) {
+      selected.add(index);
+      if (index > 0) selected.add(index - 1);
+    }
+  });
+  const step = (route.length - 1) / (limit - 1);
+  for (let i = 0; selected.size < limit && i < limit; i += 1) {
+    selected.add(Math.round(i * step));
   }
-  return out;
+  return _normalizeRunningRoute(Array.from(selected).sort((a, b) => a - b).slice(0, limit).map(index => route[index]));
 }
 
 function _safeRunningPhase(phase) {
@@ -328,6 +392,7 @@ export function normalizeRunningSessionDraft(raw, options = {}) {
     pausedAt: pausedAt && Number.isFinite(pausedAt) ? pausedAt : null,
     pausedMs: Math.max(0, _num(raw.pausedMs, 0)),
     route,
+    pendingGapReason: _routeGapReason(raw.pendingGapReason),
     placeSummary: raw.placeSummary && typeof raw.placeSummary === 'object' ? _cloneJson(raw.placeSummary, null) : null,
     goal: _cloneRunningGoal(raw.goal),
     audioGuide: raw.audioGuide !== false,
@@ -387,6 +452,7 @@ function _elevationGain(route) {
   let gain = 0;
   let pairs = 0;
   for (let i = 1; i < route.length; i += 1) {
+    if (_isRouteGapEdge(route[i - 1], route[i])) continue;
     const prev = route[i - 1].altitude;
     const next = route[i].altitude;
     if (!Number.isFinite(prev) || !Number.isFinite(next)) continue;
@@ -422,12 +488,17 @@ export function summarizeRunningRoute(points = [], options = {}) {
   const bbox = _routeBounds(route);
   const centroid = _routeCentroid(route);
   const elevationGainM = _elevationGain(route);
+  const gapCount = _routeGapCount(route);
+  const segmentCount = _routeSegmentCount(route);
   return {
     source: 'gps',
     startedAt,
     endedAt,
     pausedMs,
     pointCount: route.length,
+    segmentCount,
+    gapCount,
+    interrupted: gapCount > 0,
     durationSec,
     distanceKm,
     avgPaceSecPerKm,
@@ -544,6 +615,7 @@ function _buildRunningDraft(context = 'manual') {
     pausedAt: _session.pausedAt || null,
     pausedMs: Math.max(0, _num(_session.pausedMs, 0)),
     route: downsampleRunningRoute(_session.route, MAX_ROUTE_POINTS),
+    pendingGapReason: _routeGapReason(_session.pendingGapReason),
     placeSummary: _cloneJson(_session.placeSummary, null),
     goal: _cloneRunningGoal(_session.goal),
     audioGuide: !!_session.audioGuide,
@@ -619,6 +691,7 @@ function _applyRunningDraft(draft) {
     pausedAt: normalized.pausedAt,
     pausedMs: normalized.pausedMs,
     route: normalized.route,
+    pendingGapReason: normalized.pendingGapReason,
     previewPoint: normalized.route[normalized.route.length - 1] || null,
     placeSummary: normalized.placeSummary,
     goal: normalized.goal,
@@ -638,7 +711,10 @@ function _restoreRunningDraftIfAvailable() {
   if (!draft || !_applyRunningDraft(draft)) return false;
   S.workout.sessionIndex = RUNNING_WORKOUT_SESSION_INDEX;
   S.workout.sessionId = 'running-track';
-  if (_session.phase === 'active') _startWatch();
+  if (_session.phase === 'active') {
+    _markRouteGap('restore');
+    _startWatch();
+  }
   if (_session.phase === 'active' || _session.phase === 'paused') _startTicker();
   _publishRunningLiveState(_session.phase === 'active' || _session.phase === 'paused');
   _render();
@@ -649,11 +725,20 @@ function _restoreRunningDraftIfAvailable() {
 function _bindRunningDraftEvents() {
   if (_runningDraftEventsBound || typeof window === 'undefined') return;
   _runningDraftEventsBound = true;
-  window.addEventListener('pagehide', () => _persistRunningDraft('pagehide'));
-  window.addEventListener('beforeunload', () => _persistRunningDraft('beforeunload'));
+  window.addEventListener('pagehide', () => {
+    _markRouteGap('pagehide');
+    _persistRunningDraft('pagehide');
+  });
+  window.addEventListener('beforeunload', () => {
+    _markRouteGap('beforeunload');
+    _persistRunningDraft('beforeunload');
+  });
   if (typeof document !== 'undefined') {
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) _persistRunningDraft('visibility hidden');
+      if (document.hidden) {
+        _markRouteGap('visibility-hidden');
+        _persistRunningDraft('visibility hidden');
+      }
     });
   }
 }
@@ -754,6 +839,7 @@ function _resetLiveSession() {
     pausedAt: null,
     pausedMs: 0,
     route: [],
+    pendingGapReason: '',
     previewPoint: null,
     previewRequested: false,
     mapRenderSeq: _session.mapRenderSeq + 1,
@@ -846,6 +932,58 @@ function _positionToPoint(position) {
   });
 }
 
+function _markRouteGap(reason = 'interruption') {
+  if (!_session.open || !_session.route.length) return false;
+  if (_session.phase !== 'active' && _session.phase !== 'paused') return false;
+  _session.pendingGapReason = _routeGapReason(reason) || 'interruption';
+  return true;
+}
+
+function _pushRoutePoint(point, options = {}) {
+  const safe = _safePoint(point);
+  if (!safe) return false;
+
+  const last = _session.route[_session.route.length - 1];
+  const pendingReason = _routeGapReason(options.gapReason) || _routeGapReason(_session.pendingGapReason);
+  const elapsedGap = last ? safe.ts - _num(last.ts, safe.ts) : 0;
+  const gapReason = last && (options.gapBefore || pendingReason || elapsedGap > ROUTE_GAP_MS)
+    ? pendingReason || (elapsedGap > ROUTE_GAP_MS ? 'time-gap' : 'resume')
+    : '';
+
+  if (last && !gapReason && !options.force && runningDistanceMeters(last, safe) < MIN_ROUTE_STEP_M) return false;
+
+  const segmentId = last ? _routeSegmentId(last, 0) + (gapReason ? 1 : 0) : 0;
+  const stored = { ...safe, segmentId };
+  if (gapReason) {
+    stored.gapBefore = true;
+    stored.gapReason = gapReason;
+  }
+  _session.route.push(stored);
+  _session.pendingGapReason = '';
+  if (_session.route.length > MAX_ROUTE_POINTS * 2) {
+    _session.route = downsampleRunningRoute(_session.route, MAX_ROUTE_POINTS);
+  }
+  return true;
+}
+
+function _requestActiveSeedPosition() {
+  if (typeof navigator === 'undefined' || !navigator.geolocation?.getCurrentPosition) return;
+  navigator.geolocation.getCurrentPosition(
+    position => {
+      if (!_session.open || _session.phase !== 'active' || _session.route.length) return;
+      _pushPosition(position, { force: true });
+      _render();
+    },
+    () => {},
+    GEO_OPTIONS
+  );
+}
+
+function _seedRunningStartPoint() {
+  if (_session.previewPoint && _pushRoutePoint(_session.previewPoint, { force: true })) return;
+  _requestActiveSeedPosition();
+}
+
 function _readRunningSensorSnapshot(position = null) {
   if (typeof window === 'undefined') return {};
   const providers = [
@@ -891,15 +1029,9 @@ function _requestPreviewPosition() {
   );
 }
 
-function _pushPosition(position) {
+function _pushPosition(position, options = {}) {
   const point = _positionToPoint(position);
-  if (!point) return;
-  const last = _session.route[_session.route.length - 1];
-  if (last && runningDistanceMeters(last, point) < MIN_ROUTE_STEP_M) return;
-  _session.route.push(point);
-  if (_session.route.length > MAX_ROUTE_POINTS * 2) {
-    _session.route = downsampleRunningRoute(_session.route, MAX_ROUTE_POINTS);
-  }
+  if (!_pushRoutePoint(point, options)) return;
   _publishRunningLiveState(true);
   _persistRunningDraft('route point');
 }
@@ -916,6 +1048,7 @@ function _startWatch() {
     },
     error => {
       _session.lastError = error?.message || 'GPS 권한을 확인해주세요';
+      if (_session.phase === 'active') _markRouteGap('gps-error');
       _render();
     },
     GEO_OPTIONS
@@ -925,13 +1058,16 @@ function _startWatch() {
 function _startRun() {
   const goal = _cloneRunningGoal(_session.goal);
   const audioGuide = !!_session.audioGuide;
+  const previewPoint = _session.previewPoint;
   _resetLiveSession();
   _session.goal = goal;
   _session.audioGuide = audioGuide;
+  _session.previewPoint = previewPoint;
   _session.open = true;
   _session.phase = 'active';
   _session.startedAt = _now();
   _session.pausedMs = 0;
+  _seedRunningStartPoint();
   _startWatch();
   _startTicker();
   _publishRunningLiveState(true);
@@ -945,6 +1081,7 @@ function _pauseRun() {
   if (_session.phase !== 'active') return;
   _session.phase = 'paused';
   _session.pausedAt = _now();
+  _markRouteGap('pause');
   _stopWatch();
   _publishRunningLiveState(true);
   _render();

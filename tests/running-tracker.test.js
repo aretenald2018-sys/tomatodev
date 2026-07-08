@@ -17,6 +17,7 @@ import {
   readRunningMapConfig,
   resolveRunningMapConfig,
   runningMapCenter,
+  splitRunningMapSegments,
 } from '../workout/running-map.js';
 
 const route = [
@@ -28,6 +29,27 @@ const route = [
 test('running route distance uses haversine meters', () => {
   const meters = runningRouteDistanceMeters(route);
   assert.ok(meters > 360 && meters < 420, `unexpected meters=${meters}`);
+});
+
+test('running route distance and summary do not connect interrupted GPS gaps', () => {
+  // Given: two short real route segments separated by a background/app interruption.
+  const interrupted = [
+    { lat: 37.5209, lng: 126.9770, ts: 1_000, segmentId: 0 },
+    { lat: 37.5210, lng: 126.9772, ts: 61_000, segmentId: 0 },
+    { lat: 37.5600, lng: 127.0300, ts: 661_000, segmentId: 1, gapBefore: true, gapReason: 'resume' },
+    { lat: 37.5602, lng: 127.0302, ts: 721_000, segmentId: 1 },
+  ];
+
+  // When: route distance and summary are calculated.
+  const meters = runningRouteDistanceMeters(interrupted);
+  const summary = summarizeRunningRoute(interrupted, { startedAt: 1_000, endedAt: 721_000 });
+
+  // Then: the unobserved jump between segment 0 and segment 1 is not counted as a run.
+  assert.ok(meters > 35 && meters < 75, `gap edge should be excluded, meters=${meters}`);
+  assert.equal(summary.pointCount, 4);
+  assert.equal(summary.segmentCount, 2);
+  assert.equal(summary.gapCount, 1);
+  assert.equal(summary.interrupted, true);
 });
 
 test('running session route summary stores distance, duration, bbox, centroid, and pace', () => {
@@ -99,6 +121,28 @@ test('running map point normalizer preserves mixed phone route samples in order'
   ]);
 });
 
+test('running route downsample and map normalization preserve gap metadata', () => {
+  const many = Array.from({ length: 300 }, (_, i) => ({
+    lat: 37.52 + i * 0.00001,
+    lng: 126.97 + i * 0.00002,
+    segmentId: i < 180 ? 0 : 1,
+    gapBefore: i === 180,
+    gapReason: i === 180 ? 'visibility-hidden' : '',
+    ts: i * 1000,
+  }));
+
+  const downsampled = downsampleRunningRoute(many, 24);
+  const normalized = normalizeRunningMapPoints(downsampled);
+  const segments = splitRunningMapSegments(normalized);
+
+  assert.equal(downsampled.length, 24);
+  assert.equal(downsampled.some(point => point.gapBefore === true && point.gapReason === 'visibility-hidden'), true);
+  assert.equal(normalized.some(point => point.gapBefore === true && point.segmentId === 1), true);
+  assert.equal(segments.length, 2);
+  assert.equal(segments[0].every(point => point.segmentId === 0), true);
+  assert.equal(segments[1][0].gapBefore, true);
+});
+
 test('running real map provider config resolves VWorld, Google, and TMAP keys', () => {
   assert.deepEqual(resolveRunningMapConfig({ provider: 'auto' }), {
     provider: 'none',
@@ -167,4 +211,22 @@ test('running session draft normalizer preserves reload-safe live state', () => 
 
   assert.equal(normalizeRunningSessionDraft({ phase: 'start', startedAt: 1_000, updatedAt: 1_000 }, { now: 2_000 }), null);
   assert.equal(normalizeRunningSessionDraft({ phase: 'active', startedAt: 1_000, updatedAt: 1_000 }, { now: 90_000_000 }), null);
+});
+
+test('running session draft normalizer preserves interrupted route metadata', () => {
+  const draft = normalizeRunningSessionDraft({
+    phase: 'active',
+    startedAt: 1_000,
+    updatedAt: 721_000,
+    route: [
+      { lat: 37.5209, lng: 126.9770, ts: 1_000, segmentId: 0 },
+      { lat: 37.5210, lng: 126.9772, ts: 61_000, segmentId: 0 },
+      { lat: 37.5600, lng: 127.0300, ts: 661_000, segmentId: 1, gapBefore: true, gapReason: 'pagehide' },
+    ],
+  }, { now: 800_000 });
+
+  assert.equal(draft.route.length, 3);
+  assert.equal(draft.route[2].segmentId, 1);
+  assert.equal(draft.route[2].gapBefore, true);
+  assert.equal(draft.route[2].gapReason, 'pagehide');
 });

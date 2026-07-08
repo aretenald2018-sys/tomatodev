@@ -1,5 +1,33 @@
 # 다음 자동 액션
 
+## 2026-07-09 러닝 GPS 전체 궤적 및 중단 복구
+
+- 상태: `ready_for_deploy`
+- 기준 작업트리: `C:\Users\USER\Desktop\Tomato Project\tomatofarm-deploy-life-zone-nickname`
+- 계획 문서: `docs/ai/features/2026-07-09-running-gps-full-route-resilience.md`
+- 요청: 러닝 결과 지도가 전체 GPS 궤적이 아니라 시작점과 끝점만 직선으로 연결되는 문제를 고치고, Android/iPhone 환경에서 앱 background/중단이 발생할 때도 거짓 직선으로 이어지지 않도록 설계한다.
+- 진단 요약:
+  - `runRoute` 저장/로드/상세 렌더 경로는 배열을 보존한다.
+  - 이전 변경들은 홈 말풍선 표현과 리로드 draft 복구 중심이었고, route segment/gap 및 OS background 중단 처리는 범위 밖이었다.
+  - 웹/PWA만으로 OS가 제공하지 않은 중간 GPS 샘플을 복원할 수 없으므로, 중단 구간은 선을 끊고 거리 계산에서 제외해야 한다.
+- 실행 요약:
+  - Slice 1 `웹/PWA 러닝 route integrity 수정`을 구현했다.
+  - `segmentId`, `gapBefore`, `gapReason`을 route point에 보존하고, gap edge는 거리/지도 polyline에서 제외한다.
+  - 시작점 seed, hidden/pagehide/beforeunload/pause/restore/time-gap 처리, draft/downsample metadata 보존을 추가했다.
+  - 상세 러닝 카드에 `GPS 중단 구간` 상태를 표시한다.
+  - Android foreground service와 iOS Core Location은 이번 Slice 1에서 구현하지 않았다.
+- 검증:
+  - PASS: `node --test tests/running-tracker.test.js tests/running-entry.test.js tests/workout-calendar-bottom-sheet.test.js` - 49 pass
+  - PASS: `node --test tests/*.test.js` - 647 pass
+  - PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=866`
+  - PASS: `git diff --check`
+  - PASS: `node --check workout/running-session.js && node --check workout/running-map.js && node --check render-calendar.js && node --check sw.js`
+  - PASS: 수동 route driver - `{"segments":2,"distanceM":44,"gapCount":1,"interrupted":true}`
+- 리뷰 문서: `docs/ai/reviews/2026-07-09-running-gps-full-route-resilience-review.md`
+- 다음 액션:
+  - 의도한 변경을 커밋하고 Dashboard3 Pages 배포 검증을 수행한다.
+  - 배포 후 인증 계정 실제 UI에서 `운동 -> 러닝 시작 -> background/pause/reload -> 종료 -> 저장 -> 상세 카드` 플로우를 확인한다.
+
 ## 2026-07-08 App Refresh Deployment Check
 
 - 상태: `complete`
@@ -1123,6 +1151,7 @@
   5. PASS: `git diff --check`
   6. not verified yet: 인증 계정 실제 UI에서 `운동 홈 하단시트 -> 종목완료 -> x 삭제 -> 새로고침/재진입 후 삭제 유지` 클릭 플로우는 자동 검증하지 못했다.
 - 다음 액션: 배포가 필요하면 `origin/main`에 push하고 Tomato Farm 운영계 Pages에서 배포 commit 및 실제 UI flow를 확인한다.
+
 
 ## 2026-07-03 종목완료 도장 유지 핫픽스
 

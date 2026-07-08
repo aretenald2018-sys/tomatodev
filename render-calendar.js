@@ -1399,6 +1399,9 @@ function _activityRows(day) {
       cadenceSpm: Number(runSummary.cadenceSpm) > 0 ? Number(runSummary.cadenceSpm) : null,
       avgHeartRateBpm: Number(runSummary.avgHeartRateBpm) > 0 ? Number(runSummary.avgHeartRateBpm) : null,
       pointCount: _num(runSummary.pointCount) || (Array.isArray(d.runRoute) ? d.runRoute.length : 0),
+      segmentCount: _num(runSummary.segmentCount),
+      gapCount: _num(runSummary.gapCount),
+      interrupted: !!runSummary.interrupted || _num(runSummary.gapCount) > 0,
       source: runSource,
       activityMode: runMode,
       route: Array.isArray(d.runRoute) ? d.runRoute : [],
@@ -2867,6 +2870,19 @@ function _renderRunningRouteDetail(row) {
   return '';
 }
 
+function _renderRunningGpsStatus(row) {
+  const gapCount = Math.max(0, Math.floor(_num(row?.gapCount ?? row?.routeSummary?.gapCount)));
+  if (!gapCount && !row?.interrupted) return '';
+  const segmentCount = Math.max(0, Math.floor(_num(row?.segmentCount ?? row?.routeSummary?.segmentCount)));
+  const segmentText = segmentCount > 1 ? ` · 기록 구간 ${segmentCount}개` : '';
+  return `
+    <div class="wt-run-gps-status" role="status">
+      <strong>GPS 중단 구간 ${Math.max(1, gapCount)}개${_esc(segmentText)}</strong>
+      <span>끊긴 구간은 거리와 지도 선에서 제외했어요.</span>
+    </div>
+  `;
+}
+
 function _renderWorkoutRunningDetailCard(key, sessionIndex, row, index) {
   const cardId = `act:${key}:${sessionIndex}:${index}`;
   const collapsed = _workoutDetailCollapsed.has(cardId);
@@ -2891,6 +2907,7 @@ function _renderWorkoutRunningDetailCard(key, sessionIndex, row, index) {
       <div class="wt-running-route-wrap">
         ${_renderRunningRouteMap(row)}
       </div>
+      ${_renderRunningGpsStatus(row)}
       ${metrics.length ? `
         <div class="wt-running-metric-grid">
           ${metrics.map(item => `

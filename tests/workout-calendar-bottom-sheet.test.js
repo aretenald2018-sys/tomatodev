@@ -1010,6 +1010,7 @@ test('running detail card uses the workout read-card shell with running metrics 
   assert.doesNotMatch(card, /window\._wtCalToggleExerciseCard|window\._wtCalDeleteActivity|window\._wtCalAddRunning/);
   assert.match(card, /wt-running-headline/);
   assert.match(card, /_renderRunningRouteMap\(row\)/);
+  assert.match(card, /_renderRunningGpsStatus\(row\)/);
   assert.match(mapRenderer, /wt-running-route-map wt-run-real-map/);
   assert.match(mapRenderer, /data-wt-running-route-map/);
   assert.match(mapRenderer, /wt-running-route-place/);
@@ -1029,10 +1030,13 @@ test('running detail card uses the workout read-card shell with running metrics 
   assert.match(metricBuilder, /row\.cadenceSpm == null \? '--'/);
   assert.doesNotMatch(card, /REP|RIR|KG|_renderWorkoutSetRows|wt-max-set-row/);
   assert.doesNotMatch(card, /wt-max-plan wt-running-plan|wt-running-route-mini|경로 포인트|GPS 평균 정확도|대한민국 위치 기록|오늘 러닝|row\.detail/);
-  assert.match(calendarJs, /function _renderRunningRouteDetail\(row\) \{\s*return '';\s*\}/);
+  assert.match(calendarJs, /function _renderRunningGpsStatus\(row\)/);
+  assert.match(calendarJs, /GPS 중단 구간/);
+  assert.match(calendarJs, /wt-run-gps-status/);
   assert.match(styleCss, /\.wt-running-read-card/);
   assert.match(styleCss, /\.wt-running-route-map/);
   assert.match(styleCss, /\.wt-running-route-place/);
+  assert.match(styleCss, /\.wt-run-gps-status/);
   assert.doesNotMatch(styleCss, /wt-running-route-mini/);
   assert.match(styleCss, /\.wt-running-metric-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(styleCss, /\.wt-running-read-card\.is-collapsed \.wt-running-metric-grid/);
@@ -1316,5 +1320,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260708z6-calendar-goal-input-header/);
+  assert.match(swJs, /tomatofarm-v20260709z1-running-gps-route-resilience/);
 });

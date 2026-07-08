@@ -14264,6 +14264,34 @@ body.lz-running-record-modal-open {
   font-weight: 850;
   box-shadow: 0 4px 12px rgba(15, 23, 42, .12);
 }
+.wt-run-gps-status {
+  display: grid;
+  gap: 3px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid #dbe7f6;
+  border-radius: 9px;
+  background: #f6f9fd;
+  color: #344054;
+}
+.wt-run-gps-status strong,
+.wt-run-gps-status span {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.wt-run-gps-status strong {
+  color: #111827;
+  font-size: 12px;
+  line-height: 17px;
+  font-weight: 900;
+}
+.wt-run-gps-status span {
+  color: #667085;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 750;
+}
 .wt-running-metric-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -14300,6 +14328,7 @@ body.lz-running-record-modal-open {
   font-weight: 900;
 }
 .wt-running-read-card.is-collapsed .wt-running-metric-grid,
+.wt-running-read-card.is-collapsed .wt-run-gps-status,
 .wt-running-read-card.is-collapsed .wt-running-route-wrap {
   display: none;
 }

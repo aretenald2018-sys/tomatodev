@@ -43,11 +43,22 @@ function _point(point) {
   if (Number.isFinite(altitude)) normalized.altitude = altitude;
   const speed = _finitePointNumber(point?.speed);
   if (Number.isFinite(speed)) normalized.speed = speed;
+  const segmentId = Number(point?.segmentId);
+  if (Number.isFinite(segmentId) && segmentId >= 0) normalized.segmentId = Math.floor(segmentId);
+  if (point?.gapBefore === true) normalized.gapBefore = true;
+  const gapReason = String(point?.gapReason || '').trim();
+  if (gapReason) normalized.gapReason = gapReason.slice(0, 48);
   return normalized;
 }
 
 function _providerRoutePoints(route) {
-  return route.map(({ lat, lng }) => ({ lat, lng }));
+  return route.map(({ lat, lng, segmentId, gapBefore, gapReason }) => {
+    const point = { lat, lng };
+    if (Number.isFinite(Number(segmentId))) point.segmentId = Number(segmentId);
+    if (gapBefore === true) point.gapBefore = true;
+    if (gapReason) point.gapReason = gapReason;
+    return point;
+  });
 }
 
 function _clearNode(node) {
@@ -87,8 +98,34 @@ export function normalizeRunningMapPoints(points = []) {
   return (Array.isArray(points) ? points : []).map(_point).filter(Boolean);
 }
 
-export function runningMapCenter(points = []) {
+export function splitRunningMapSegments(points = []) {
   const route = normalizeRunningMapPoints(points);
+  const segments = [];
+  let segment = [];
+  for (const point of route) {
+    const prev = segment[segment.length - 1];
+    const prevSegmentId = Number(prev?.segmentId);
+    const nextSegmentId = Number(point?.segmentId);
+    const segmentChanged = segment.length > 0
+      && Number.isFinite(prevSegmentId)
+      && Number.isFinite(nextSegmentId)
+      && prevSegmentId !== nextSegmentId;
+    if (segment.length > 0 && (point.gapBefore === true || segmentChanged)) {
+      segments.push(segment);
+      segment = [];
+    }
+    segment.push(point);
+  }
+  if (segment.length) segments.push(segment);
+  return segments;
+}
+
+function _routeForBounds(route) {
+  return normalizeRunningMapPoints(route);
+}
+
+export function runningMapCenter(points = []) {
+  const route = _routeForBounds(points);
   if (!route.length) return { ...DEFAULT_CENTER };
   const sum = route.reduce((acc, p) => {
     acc.lat += p.lat;
@@ -267,20 +304,24 @@ function _renderGoogleMap(canvas, maps, route) {
   });
   const markers = [];
   const lines = [];
+  const segments = splitRunningMapSegments(route);
 
   if (route.length > 1) {
-    const line = new maps.Polyline({
-      path: route,
-      geodesic: true,
-      strokeColor: '#55d632',
-      strokeOpacity: 0.92,
-      strokeWeight: 7,
-      map,
-    });
-    lines.push(line);
+    for (const segment of segments) {
+      if (segment.length > 1) {
+        lines.push(new maps.Polyline({
+          path: segment,
+          geodesic: true,
+          strokeColor: '#55d632',
+          strokeOpacity: 0.92,
+          strokeWeight: 7,
+          map,
+        }));
+      }
+    }
     markers.push(new maps.Marker({ position: route[0], map, icon: _googleIcon(maps, '#20b84d') }));
     markers.push(new maps.Marker({ position: route[route.length - 1], map, icon: _googleIcon(maps, '#f40000', 9) }));
-    _fitGoogle(maps, map, route);
+    _fitGoogle(maps, map, _routeForBounds(route));
   } else if (route.length === 1) {
     markers.push(new maps.Marker({ position: route[0], map, icon: _googleIcon(maps, '#f40000', 9) }));
   }
@@ -318,14 +359,19 @@ function _renderTmap(canvas, Tmapv2, route) {
   const markers = [];
   const lines = [];
   const latLngs = route.map(p => _tmapPoint(Tmapv2, p));
+  const segments = splitRunningMapSegments(route);
 
   if (latLngs.length > 1) {
-    lines.push(new Tmapv2.Polyline({
-      path: latLngs,
-      strokeColor: '#55d632',
-      strokeWeight: 7,
-      map,
-    }));
+    for (const segment of segments) {
+      if (segment.length > 1) {
+        lines.push(new Tmapv2.Polyline({
+          path: segment.map(point => _tmapPoint(Tmapv2, point)),
+          strokeColor: '#55d632',
+          strokeWeight: 7,
+          map,
+        }));
+      }
+    }
     markers.push(new Tmapv2.Marker({ position: latLngs[0], iconHTML: _tmapMarkerHtml('#20b84d'), map }));
     markers.push(new Tmapv2.Marker({ position: latLngs[latLngs.length - 1], iconHTML: _tmapMarkerHtml('#f40000'), map }));
     _fitTmap(Tmapv2, map, latLngs);
@@ -410,8 +456,17 @@ function _screenPointScaled(point, zoom, scale, topLeft) {
 }
 
 function _vworldRouteSvg(route, zoom, scale, topLeft, width, height) {
-  const points = route.map(point => _screenPointScaled(point, zoom, scale, topLeft));
-  const line = points.map(point => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ');
+  const points = _routeForBounds(route).map(point => _screenPointScaled(point, zoom, scale, topLeft));
+  const lines = splitRunningMapSegments(route).map((segment, index) => {
+    if (segment.length > 1) {
+      const line = segment
+        .map(point => _screenPointScaled(point, zoom, scale, topLeft))
+        .map(point => `${point.x.toFixed(1)},${point.y.toFixed(1)}`)
+        .join(' ');
+      return `<polyline class="wt-vworld-route-line" data-route-segment="${index}" points="${line}"></polyline>`;
+    }
+    return '';
+  }).filter(Boolean).join('');
   const start = points[0];
   const end = points[points.length - 1];
   const markers = points.length > 1
@@ -420,13 +475,14 @@ function _vworldRouteSvg(route, zoom, scale, topLeft, width, height) {
     : `<circle class="wt-vworld-route-end" cx="${end.x.toFixed(1)}" cy="${end.y.toFixed(1)}" r="9"></circle>`;
   return `
     <svg class="wt-vworld-route-layer" viewBox="0 0 ${width} ${height}" aria-hidden="true">
-      ${points.length > 1 ? `<polyline class="wt-vworld-route-line" points="${line}"></polyline>` : ''}
+      ${lines}
       ${markers}
     </svg>`;
 }
 
 function _renderVworldMap(canvas, route, config) {
   const layer = _normalizeVworldLayer(config.layer);
+  const boundsRoute = _routeForBounds(route);
   const root = document.createElement('div');
   root.className = `wt-vworld-map wt-vworld-map--${layer}`;
   root.dataset.interactiveMap = 'vworld';
@@ -434,7 +490,7 @@ function _renderVworldMap(canvas, route, config) {
   canvas.appendChild(root);
 
   const state = {
-    center: _routeBoundsCenter(route.length ? route : [DEFAULT_CENTER]),
+    center: _routeBoundsCenter(boundsRoute.length ? boundsRoute : [DEFAULT_CENTER]),
     zoom: 17,
     width: 360,
     height: 320,
@@ -455,7 +511,7 @@ function _renderVworldMap(canvas, route, config) {
   }
 
   measure();
-  state.zoom = _vworldZoomForRoute(route, state.width, state.height);
+  state.zoom = _vworldZoomForRoute(boundsRoute, state.width, state.height);
 
   function topLeftForCurrentView() {
     const centerPx = _projectMercator(state.center, state.zoom);
@@ -680,6 +736,7 @@ export async function renderRunningMap(shell, options = {}) {
   const providerRoute = _providerRoutePoints(route);
   shell.dataset.mapProvider = config.provider;
   shell.dataset.mapPointCount = String(route.length);
+  shell.dataset.mapSegmentCount = String(splitRunningMapSegments(route).length);
 
   if (!config.configured) {
     _setState(shell, 'missing-key', '지도를 불러오지 못했어요. 잠시 후 다시 시도해주세요.');

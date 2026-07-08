@@ -231,13 +231,19 @@ test('running summary save opens the saved workout day detail sheet', () => {
 test('running session persists unsaved live records across app reloads', () => {
   assert.match(runningSessionJs, /RUNNING_SESSION_DRAFT_KEY_PREFIX = 'tomatofarm_running_session_draft_'/);
   assert.match(runningSessionJs, /RUNNING_SESSION_DRAFT_ACTIVE_KEY = 'tomatofarm_running_session_draft_active'/);
+  assert.match(runningSessionJs, /ROUTE_GAP_MS/);
+  assert.match(runningSessionJs, /pendingGapReason/);
+  assert.match(runningSessionJs, /function _markRouteGap/);
   assert.match(runningSessionJs, /export function normalizeRunningSessionDraft/);
   assert.match(runningSessionJs, /ownerId:\s*_currentRunningDraftOwnerId\(\)/);
+  assert.match(runningSessionJs, /segmentId/);
+  assert.match(runningSessionJs, /gapBefore/);
+  assert.match(runningSessionJs, /gapReason/);
   assert.match(runningSessionJs, /localStorage\.setItem\(_runningDraftKey\(draft\.ownerId\), payload\)/);
   assert.match(runningSessionJs, /localStorage\.setItem\(RUNNING_SESSION_DRAFT_ACTIVE_KEY, payload\)/);
   assert.match(runningSessionJs, /function _readRunningDraft\(\)[\s\S]*RUNNING_SESSION_DRAFT_ACTIVE_KEY[\s\S]*_runningDraftBelongsToCurrentUser/);
-  assert.match(runningSessionJs, /window\.addEventListener\('pagehide', \(\) => _persistRunningDraft\('pagehide'\)\)/);
-  assert.match(runningSessionJs, /window\.addEventListener\('beforeunload', \(\) => _persistRunningDraft\('beforeunload'\)\)/);
+  assert.match(runningSessionJs, /window\.addEventListener\('pagehide', \(\) => \{[\s\S]*_markRouteGap\('pagehide'\)[\s\S]*_persistRunningDraft\('pagehide'\)/);
+  assert.match(runningSessionJs, /window\.addEventListener\('beforeunload', \(\) => \{[\s\S]*_markRouteGap\('beforeunload'\)[\s\S]*_persistRunningDraft\('beforeunload'\)/);
   assert.match(runningSessionJs, /document\.addEventListener\('visibilitychange', \(\) => \{[\s\S]*document\.hidden[\s\S]*_persistRunningDraft\('visibility hidden'\)/);
   assert.match(runningSessionJs, /function _restoreRunningDraftIfAvailable\(\)[\s\S]*_applyRunningDraft\(draft\)[\s\S]*_startWatch\(\)/);
   assert.match(runningSessionJs, /function _applyRunningDraftDate\(dateKey\)/);
@@ -253,6 +259,18 @@ test('running session persists unsaved live records across app reloads', () => {
   assert.match(appJs, /if \(!runningSessionRestored\) \{\s*loadWorkoutDate\(TODAY\.getFullYear\(\), TODAY\.getMonth\(\), TODAY\.getDate\(\)\);\s*\}/);
   assert.match(runningSessionJs, /function _finishRun\(\)[\s\S]*_persistRunningDraft\('finish'\)/);
   assert.match(runningSessionJs, /export function wtCloseRunningSession\(\) \{[\s\S]*_clearRunningDraft\(\);[\s\S]*_resetLiveSession\(\);/);
+});
+
+test('running route rendering splits GPS interruptions instead of connecting endpoints', () => {
+  assert.match(runningMapJs, /export function splitRunningMapSegments/);
+  assert.match(runningMapJs, /gapBefore/);
+  assert.match(runningMapJs, /segmentId/);
+  assert.match(runningMapJs, /_routeForBounds\(route\)/);
+  assert.match(runningMapJs, /splitRunningMapSegments\(route\)/);
+  assert.match(runningMapJs, /segment\.length > 1/);
+  assert.match(runningSessionJs, /segmentCount/);
+  assert.match(runningSessionJs, /gapCount/);
+  assert.match(runningSessionJs, /interrupted/);
 });
 
 test('running records save into a dedicated running session with place and device metrics', () => {
@@ -290,7 +308,7 @@ test('running workout save writes a running life-zone snapshot', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260708z6-calendar-goal-input-header/);
+  assert.match(swJs, /tomatofarm-v20260709z1-running-gps-route-resilience/);
   assert.match(swJs, /\.\/workout\/index\.js\?v=20260707d-wear-bridge-load-binding/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
