@@ -23,7 +23,7 @@
   - PASS: `git diff --check`
   - PASS: `node --check workout/running-session.js && node --check workout/running-map.js && node --check render-calendar.js && node --check sw.js`
   - PASS: 수동 route driver - `{"segments":2,"distanceM":44,"gapCount":1,"interrupted":true}`
-  - PASS: `npm.cmd run deploy:production` - `a0e5085ff05b130be5a88c081b0969d448a19dac`를 `origin/main`에 push하고 `https://aretenald2018-sys.github.io/tomatofarm/` 배포 검증 통과.
+  - PASS: `npm.cmd run deploy:production` - 코드 변경 commit `a0e5085ff05b130be5a88c081b0969d448a19dac`를 포함한 current `origin/main`을 `https://aretenald2018-sys.github.io/tomatofarm/`에 배포 검증했다.
   - PASS: production browser QA - 모바일 390x844에서 HTTP 200, commit/cache marker, route segment helper 결과 `segments=2`, `gapCount=1`, `interrupted=true` 확인.
   - INFO: `node --test tests/*.test.js` 전체는 현재 `origin/main`에도 없는 `android/wear`/`android/app/build.gradle` 파일을 요구하는 Wear 계약 테스트 6개 때문에 실패한다. 이번 GPS 수정 경로는 Wear 제외 전체와 focused tests로 검증했다.
   - INFO: `https://aretenald2018-sys.github.io/dashboard3/`는 2026-07-02 배포본에 머문 legacy 경로다. TomatoFarm Lite 실제 최신 운영 검증 대상은 `https://aretenald2018-sys.github.io/tomatofarm/`다.

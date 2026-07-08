@@ -6,7 +6,8 @@
 - 계획 문서: `docs/ai/features/2026-07-09-running-gps-full-route-resilience.md`
 - 실행 범위: Slice 1 `웹/PWA 러닝 route integrity 수정`
 - 제외 범위: Android foreground service, iOS Core Location background tracking
-- 배포 commit: `a0e5085ff05b130be5a88c081b0969d448a19dac`
+- 코드 변경 commit: `a0e5085ff05b130be5a88c081b0969d448a19dac`
+- 최종 배포: 코드 변경 commit을 포함한 current `origin/main`
 - 운영 URL: `https://aretenald2018-sys.github.io/tomatofarm/`
 
 ## 변경 요약
@@ -53,8 +54,8 @@
 7. PASS: 수동 route driver
    - 출력: `{"segments":2,"distanceM":44,"gapCount":1,"interrupted":true}`
 8. PASS: `npm.cmd run deploy:production`
-   - `origin/main`에 `a0e5085ff05b130be5a88c081b0969d448a19dac` 반영.
-   - `[deploy-verify] ok a0e5085ff05b tomatofarm-v20260709z1-running-gps-route-resilience static=260`
+   - `origin/main`에 코드 변경 commit `a0e5085ff05b130be5a88c081b0969d448a19dac`를 포함해 반영.
+   - `[deploy-verify] ok ... tomatofarm-v20260709z1-running-gps-route-resilience static=260`
    - deployed marker: `index.html::app.js`, `app.js::initBuildInfoSurface`, `sw.js::tomatofarm-v20260709z1-running-gps-route-resilience`
 9. PASS: production browser QA
    - 모바일 390x844, `https://aretenald2018-sys.github.io/tomatofarm/` HTTP 200.
