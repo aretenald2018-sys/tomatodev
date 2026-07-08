@@ -1168,6 +1168,7 @@ test('workout calendar week rail renders cycle prescriptions instead of weekly a
   assert.match(styleCss, /\.cal-cycle-branch::before\s*\{[\s\S]*border-top:\s*2px solid var\(--cal-cycle-rail-color,\s*#aeb9c5\)/);
   assert.match(styleCss, /\.cal-cycle-branch-text/);
   assert.match(styleCss, /\.cal-cycle-branch-text\s*\{[\s\S]*flex-direction:\s*column/);
+  assert.match(styleCss, /\.cal-cycle-branch-list\s*\{[\s\S]*justify-content:\s*flex-start/);
   assert.match(styleCss, /\.cal-cycle-branch-head\s*\{[\s\S]*display:\s*flex;[\s\S]*overflow:\s*hidden;[\s\S]*white-space:\s*nowrap/);
   assert.match(styleCss, /\.cal-cycle-branch-week/);
   assert.match(styleCss, /\.cal-cycle-branch-name\s*\{[\s\S]*flex:\s*1 1 auto;[\s\S]*min-width:\s*0;[\s\S]*font-size:\s*8px/);
@@ -1213,6 +1214,19 @@ test('workout calendar week rail opens goal input sheet before exercise editor',
   assert.ok(goalSheetStart >= 0 && goalSheetEnd > goalSheetStart, 'goal input flow should sit before cycle target settings');
   const goalSheetFlow = calendarJs.slice(goalSheetStart, goalSheetEnd);
   assert.doesNotMatch(goalSheetFlow, /saveWorkoutDay|selectWorkoutExerciseEntry|_addWorkoutHomeSession/);
+});
+
+test('workout calendar goal input is the first rail control', () => {
+  const railStart = calendarJs.indexOf('function _renderWorkoutCycleRail');
+  const railEnd = calendarJs.indexOf('function _workoutGoalExerciseMuscleIds', railStart);
+  assert.ok(railStart >= 0 && railEnd > railStart, 'cycle rail renderer should exist');
+  const rail = calendarJs.slice(railStart, railEnd);
+
+  const goalIndex = rail.indexOf('class="cal-cycle-goal-input"');
+  const cycleBranchIndex = rail.indexOf('class="cal-cycle-branch is-${_esc(item.kind)}');
+  assert.ok(goalIndex >= 0, 'goal input button should render inside the cycle rail');
+  assert.ok(cycleBranchIndex >= 0, 'cycle branch button should render inside the cycle rail');
+  assert.ok(goalIndex < cycleBranchIndex, 'goal input must stay at row 1 column 1 before cycle cards');
 });
 
 test('cycle rail target cards open the existing growth-board benchmark settings sheet', () => {
@@ -1292,5 +1306,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260708z4-calendar-goal-input/);
+  assert.match(swJs, /tomatofarm-v20260708z5-calendar-goal-input-top/);
 });

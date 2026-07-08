@@ -68,7 +68,7 @@ test('raw statistics export can include set rest intervals', () => {
 test('service worker cache is bumped for changed static assets', () => {
   const sw = read('sw.js');
 
-  assert.match(sw, /tomatofarm-v20260708z4-calendar-goal-input/);
+  assert.match(sw, /tomatofarm-v20260708z5-calendar-goal-input-top/);
 });
 
 async function runRestTimerRuntimeHarness() {

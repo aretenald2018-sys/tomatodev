@@ -11,7 +11,7 @@
 
 - 핵심 질문: 새 목표 입력 UI를 기존 성장보드/종목 수정 흐름과 별도로 만들지, 기존 시트를 재사용할지.
 - 답변/결정: 기존 `workout/exercises.js`의 `wtOpenExerciseEditor()`가 두 번째 사진의 `종목 수정` 시트를 이미 열고 프로그램 입력까지 보강하므로, 새 UI는 `목표입력 -> 종목 선택 드롭다운 -> 기존 종목 수정 시트`로 연결한다.
-- 남은 가정: `목표입력` 버튼은 각 주 row의 왼쪽 rail(`.cal-workout-week-rail`)에 항상 보이게 한다. 기존 목표 카드가 있으면 아래쪽 compact 보조 버튼으로 보이고, 목표 카드가 없는 주에는 이 버튼이 왼쪽 칸의 주 동작이 된다.
+- 남은 가정: `목표입력` 버튼은 각 주 row의 왼쪽 rail(`.cal-workout-week-rail`)에 항상 보이게 한다. 기존 목표 카드가 있어도 rail의 첫 컨트롤로 보이며, 목표 카드가 없는 주에는 이 버튼이 왼쪽 칸의 주 동작이 된다.
 
 ## 현재 구조
 
@@ -27,7 +27,7 @@
 ## 설계 결정
 
 1. 왼쪽 목표 칸 위치는 기존 cycle rail을 확장한다.
-   - `_renderWorkoutCycleRail(weekStart, items)` 안의 `.cal-cycle-branch-list` 아래 또는 빈 rail body에 `목표입력` 버튼을 추가한다.
+   - `_renderWorkoutCycleRail(weekStart, items)` 안의 `.cal-cycle-branch-list` 첫 번째 컨트롤로 `목표입력` 버튼을 추가한다.
    - 버튼에는 `data-cal-goal-input`과 `data-week-start`를 넣고 inline handler는 쓰지 않는다.
    - 기존 `[data-cal-cycle-target]` 카드 클릭 동작은 그대로 유지한다.
 
@@ -122,6 +122,17 @@
    - `npm.cmd run deploy:production`
    - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`
    - production Pages URL에서 위 브라우저 QA flow를 직접 확인한다.
+
+## 2026-07-08 배치 회귀 수정
+
+- 사용자 피드백: `목표입력`은 왼쪽 목표 칸의 1행 1열에 보여야 하는데 2행 1열부터 보였다.
+- 진단 가설:
+  1. 버튼이 cycle branch 뒤에 렌더되어 첫 주에 기존 목표 카드가 있으면 아래로 밀린다.
+  2. `.cal-cycle-branch-list`가 `justify-content: center`라 rail 내부 컨트롤 묶음이 세로 중앙에서 시작한다.
+  3. 첫 주가 비어 있거나 외부 날짜를 포함할 때 `_workoutCalendarRowWeekStart()`가 한 행 늦게 계산된다.
+- 확인 결과: 새 RED 테스트에서 1, 2번이 실패로 재현됐다. `_workoutCalendarRowWeekStart()` 계산과 row 렌더 루프는 첫 row부터 rail을 만들고 있어 3번은 원인이 아니었다.
+- 수정: `목표입력` 버튼을 `.cal-cycle-branch-list`의 첫 번째 요소로 이동하고, rail 목록 정렬을 `flex-start`로 변경했다.
+- 회귀 테스트: `tests/workout-calendar-bottom-sheet.test.js`에 버튼 순서와 rail 상단 정렬 계약을 추가했다.
 
 ## 다음 세션 시작점
 

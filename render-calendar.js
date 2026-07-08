@@ -344,13 +344,13 @@ function _renderWorkoutCycleRail(weekStart, items = []) {
     <div class="cal-workout-week-rail ${visibleItems.length ? 'has-cycle' : 'is-empty'}" aria-label="${_esc(label)}">
       <span class="cal-cycle-rail-line" aria-hidden="true"></span>
       <div class="cal-cycle-branch-list">
+        <button type="button" class="cal-cycle-goal-input" data-cal-goal-input data-week-start="${_esc(weekStart)}" aria-label="${_esc(`${weekStart} 목표입력`)}">목표입력</button>
         ${visibleItems.map(item => {
           const achievedClass = item.isAchieved ? ' is-achieved' : '';
           return `
           <button type="button" class="cal-cycle-branch is-${_esc(item.kind)}${achievedClass}" data-cal-cycle-target="${_esc(item.benchmarkId)}" title="${_esc(item.title)}" aria-label="${_esc(`${item.title} 설정 열기`)}"><span class="cal-cycle-branch-text"><span class="cal-cycle-branch-head"><span class="cal-cycle-branch-week">${_esc(item.weekLabel)}</span><span class="cal-cycle-branch-name">${_esc(item.exerciseLabel)}</span></span><span class="cal-cycle-branch-target">${_esc(item.targetLabel)}</span></span></button>
         `;
         }).join('')}
-        <button type="button" class="cal-cycle-goal-input" data-cal-goal-input data-week-start="${_esc(weekStart)}" aria-label="${_esc(`${weekStart} 목표입력`)}">목표입력</button>
       </div>
     </div>
   `;
