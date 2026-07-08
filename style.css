@@ -12888,6 +12888,36 @@ body.lz-running-record-modal-open {
   cursor: pointer;
 }
 .cal-cycle-branch:active { transform: scale(0.98); }
+.cal-cycle-goal-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 14px;
+  min-height: 22px;
+  padding: 2px 5px;
+  border: 1px dashed var(--cal-cycle-rail-color, #aeb9c5);
+  border-radius: 4px;
+  background: var(--seed-bg-brand-weak, rgba(47, 125, 244, 0.08));
+  color: var(--primary);
+  font-family: var(--font-sans);
+  font-size: 8.5px;
+  line-height: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.cal-cycle-goal-input::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: -10px;
+  width: 10px;
+  border-top: 2px dashed var(--cal-cycle-rail-color, #aeb9c5);
+}
+.cal-cycle-goal-input:active {
+  transform: scale(0.98);
+}
 .cal-cycle-branch-text {
   display: flex;
   flex-direction: column;
@@ -12973,6 +13003,95 @@ body.lz-running-record-modal-open {
 .cal-cycle-branch.is-achieved .cal-cycle-branch-name,
 .cal-cycle-branch.is-achieved .cal-cycle-branch-target {
   color: #ffffff;
+}
+.cal-goal-input-modal {
+  z-index: 650;
+}
+.cal-goal-input-sheet {
+  max-width: 540px;
+  padding: 28px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  background: var(--seed-bg-layer, var(--surface));
+  border-top: 1px solid var(--seed-stroke-neutral, var(--border-light));
+  box-shadow: var(--seed-s3, 0 -12px 34px rgba(15, 23, 42, 0.18));
+}
+.cal-goal-input-handle {
+  display: block;
+  width: 52px;
+  height: 5px;
+  margin: 0 auto 18px;
+  border-radius: 999px;
+  background: var(--seed-stroke-neutral, #d1d5db);
+}
+.cal-goal-input-body {
+  display: grid;
+  gap: 10px;
+}
+.cal-goal-input-field {
+  display: grid;
+  gap: 8px;
+}
+.cal-goal-input-field span {
+  color: var(--seed-fg-muted, var(--text-secondary));
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 800;
+}
+.cal-goal-input-select {
+  width: 100%;
+  min-height: 54px;
+  padding: 0 14px;
+  border: 1px solid var(--seed-stroke-neutral, var(--border));
+  border-radius: 8px;
+  background: var(--seed-bg-fill, var(--surface2));
+  color: var(--seed-fg-neutral, var(--text));
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 700;
+}
+.cal-goal-input-select:focus {
+  border-color: var(--primary);
+  outline: 2px solid var(--seed-bg-brand-weak, rgba(47, 125, 244, 0.16));
+  outline-offset: 1px;
+}
+.cal-goal-input-empty {
+  margin: 0;
+  color: var(--seed-fg-muted, var(--text-secondary));
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+}
+.cal-goal-input-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 18px;
+}
+.cal-goal-input-cancel,
+.cal-goal-input-next {
+  min-height: 48px;
+  border-radius: 10px;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.cal-goal-input-cancel {
+  border: 1px solid var(--seed-stroke-neutral, var(--border));
+  background: var(--seed-bg-fill, var(--surface2));
+  color: var(--seed-fg-neutral, var(--text));
+}
+.cal-goal-input-next {
+  border: 1px solid var(--primary);
+  background: var(--primary);
+  color: #ffffff;
+}
+.cal-goal-input-next:disabled {
+  border-color: var(--seed-stroke-neutral, var(--border));
+  background: var(--seed-bg-disabled, var(--surface2));
+  color: var(--seed-fg-muted, var(--text-muted));
+  cursor: default;
 }
 .cal-workout-week-cells {
   display: grid;
@@ -14366,6 +14485,12 @@ body.lz-running-record-modal-open {
   .cal-cycle-branch {
     min-height: 22px;
     padding: 2px 2px 2px 5px;
+    font-size: 8px;
+    line-height: 9px;
+  }
+  .cal-cycle-goal-input {
+    min-height: 21px;
+    padding: 2px 4px;
     font-size: 8px;
     line-height: 9px;
   }

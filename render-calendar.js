@@ -350,9 +350,160 @@ function _renderWorkoutCycleRail(weekStart, items = []) {
           <button type="button" class="cal-cycle-branch is-${_esc(item.kind)}${achievedClass}" data-cal-cycle-target="${_esc(item.benchmarkId)}" title="${_esc(item.title)}" aria-label="${_esc(`${item.title} 설정 열기`)}"><span class="cal-cycle-branch-text"><span class="cal-cycle-branch-head"><span class="cal-cycle-branch-week">${_esc(item.weekLabel)}</span><span class="cal-cycle-branch-name">${_esc(item.exerciseLabel)}</span></span><span class="cal-cycle-branch-target">${_esc(item.targetLabel)}</span></span></button>
         `;
         }).join('')}
+        <button type="button" class="cal-cycle-goal-input" data-cal-goal-input data-week-start="${_esc(weekStart)}" aria-label="${_esc(`${weekStart} 목표입력`)}">목표입력</button>
       </div>
     </div>
   `;
+}
+
+function _workoutGoalExerciseMuscleIds(ex = {}) {
+  return Array.from(new Set([
+    ex.muscleId,
+    ...(Array.isArray(ex.muscleIds) ? ex.muscleIds : []),
+    SUBPATTERN_TO_MAJOR[ex.subPattern],
+  ].filter(Boolean).map(String)));
+}
+
+function _isWorkoutGoalExercise(ex = {}, muscleIds = new Set()) {
+  const id = String(ex.id || '');
+  const kind = String(ex.kind || ex.type || ex.category || '').toLowerCase();
+  if (!id || id.startsWith('cardio:') || ex.cardio || kind.includes('cardio')) return false;
+  return _workoutGoalExerciseMuscleIds(ex).some(muscleId => muscleIds.has(muscleId));
+}
+
+function _workoutGoalExerciseOptions() {
+  const muscles = getMuscleParts();
+  const muscleOrder = new Map(muscles.map((muscle, idx) => [String(muscle.id), idx]));
+  const muscleNames = new Map(muscles.map(muscle => [String(muscle.id), muscle.name || '기타']));
+  const muscleIds = new Set(muscles.map(muscle => String(muscle.id)));
+  return getExList()
+    .filter(ex => _isWorkoutGoalExercise(ex, muscleIds))
+    .map((ex) => {
+      const muscleId = _workoutGoalExerciseMuscleIds(ex).find(id => muscleIds.has(id)) || '';
+      return {
+        id: String(ex.id || ''),
+        name: String(ex.name || ex.label || '이름 없는 종목').trim() || '이름 없는 종목',
+        muscleId,
+        muscleName: muscleNames.get(muscleId) || '기타',
+        muscleOrder: muscleOrder.has(muscleId) ? muscleOrder.get(muscleId) : 999,
+      };
+    })
+    .sort((a, b) => a.muscleOrder - b.muscleOrder || a.name.localeCompare(b.name, 'ko'));
+}
+
+function _setWorkoutGoalInputLock(on) {
+  document.body?.classList.toggle('wt-modal-scroll-lock', !!on);
+}
+
+function _closeWorkoutGoalInputSheet(modal) {
+  const root = modal || document.getElementById('cal-goal-input-modal');
+  if (!root) return;
+  root.classList.remove('open');
+  root.setAttribute('hidden', '');
+  _setWorkoutGoalInputLock(false);
+}
+
+function _goalInputSheetOptionsHtml(options = []) {
+  if (!options.length) return '<option value="">선택할 수 있는 헬스 운동 종목이 없어요</option>';
+  return [
+    '<option value="">운동 종목 선택</option>',
+    ...options.map(ex => `<option value="${_esc(ex.id)}">${_esc(ex.muscleName)} · ${_esc(ex.name)}</option>`),
+  ].join('');
+}
+
+function _ensureWorkoutGoalInputSheet() {
+  let modal = document.getElementById('cal-goal-input-modal');
+  if (modal) return modal;
+  modal = document.createElement('div');
+  modal.id = 'cal-goal-input-modal';
+  modal.className = 'modal-backdrop cal-goal-input-modal';
+  modal.setAttribute('hidden', '');
+  modal.innerHTML = `
+    <div class="modal-sheet cal-goal-input-sheet" role="dialog" aria-modal="true" aria-labelledby="cal-goal-input-title">
+      <span class="cal-goal-input-handle" aria-hidden="true"></span>
+      <div class="modal-title" id="cal-goal-input-title">목표입력</div>
+      <div class="cal-goal-input-body">
+        <label class="cal-goal-input-field">
+          <span>운동 종목</span>
+          <select class="cal-goal-input-select" data-cal-goal-select></select>
+        </label>
+        <p class="cal-goal-input-empty" data-cal-goal-empty hidden>헬스 운동 종목을 먼저 추가해주세요.</p>
+      </div>
+      <div class="cal-goal-input-actions">
+        <button type="button" class="cal-goal-input-cancel" data-cal-goal-cancel>취소</button>
+        <button type="button" class="cal-goal-input-next" data-cal-goal-next>다음</button>
+      </div>
+    </div>
+  `;
+  modal.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    if (target?.closest?.('[data-cal-goal-cancel]') || target === modal) {
+      event.preventDefault();
+      _closeWorkoutGoalInputSheet(modal);
+      return;
+    }
+    if (target?.closest?.('[data-cal-goal-next]')) {
+      event.preventDefault();
+      Promise.resolve(_openSelectedWorkoutGoalExercise(modal)).catch((e) => {
+        console.warn('[workout-calendar] goal exercise editor open failed:', e);
+      });
+    }
+  });
+  modal.addEventListener('change', (event) => {
+    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    if (!target?.closest?.('[data-cal-goal-select]')) return;
+    Promise.resolve(_openSelectedWorkoutGoalExercise(modal)).catch((e) => {
+      console.warn('[workout-calendar] goal exercise editor select failed:', e);
+    });
+  });
+  document.body?.appendChild(modal);
+  return modal;
+}
+
+function _openWorkoutGoalInputSheet(weekStart) {
+  const modal = _ensureWorkoutGoalInputSheet();
+  const options = _workoutGoalExerciseOptions();
+  const select = modal.querySelector('[data-cal-goal-select]');
+  const nextBtn = modal.querySelector('[data-cal-goal-next]');
+  const empty = modal.querySelector('[data-cal-goal-empty]');
+  if (select) {
+    select.innerHTML = _goalInputSheetOptionsHtml(options);
+    select.disabled = !options.length;
+    select.value = '';
+  }
+  if (nextBtn) nextBtn.disabled = !options.length;
+  if (empty) empty.hidden = !!options.length;
+  modal.dataset.weekStart = String(weekStart || '');
+  modal.removeAttribute('hidden');
+  modal.classList.add('open');
+  _setWorkoutGoalInputLock(true);
+  window.requestAnimationFrame?.(() => select?.focus?.());
+}
+
+async function _openSelectedWorkoutGoalExercise(modal) {
+  const root = modal || document.getElementById('cal-goal-input-modal');
+  const select = root?.querySelector?.('[data-cal-goal-select]');
+  const exId = String(select?.value || '').trim();
+  if (!exId) {
+    window.showToast?.('운동 종목을 선택해주세요', 1800, 'warning');
+    return;
+  }
+  _closeWorkoutGoalInputSheet(root);
+  try {
+    const { loadAndInjectModals } = await import('./modal-manager.js');
+    await loadAndInjectModals();
+    if (typeof window.wtOpenExerciseEditor !== 'function') {
+      await import('./render-workout.js');
+    }
+    if (typeof window.wtOpenExerciseEditor === 'function') {
+      window.wtOpenExerciseEditor(exId, null, { returnToPicker: false, source: 'calendar-goal-input' });
+      return;
+    }
+    throw new Error('exercise editor entry is not registered');
+  } catch (e) {
+    console.warn('[workout-calendar] goal exercise editor open failed:', e);
+    window.showToast?.('종목 수정 화면을 여는 데 실패했어요', 2200, 'error');
+  }
 }
 
 async function _openWorkoutCycleTargetSettings(benchmarkId) {
@@ -3498,6 +3649,15 @@ function _bindWorkoutCycleRailActions(root) {
   if (!grid) return;
   grid.addEventListener('click', (event) => {
     const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    const goalBtn = target?.closest?.('[data-cal-goal-input]');
+    if (goalBtn) {
+      event.preventDefault();
+      event.stopPropagation();
+      Promise.resolve(_openWorkoutGoalInputSheet(goalBtn.getAttribute('data-week-start'))).catch((e) => {
+        console.warn('[workout-calendar] goal input click failed:', e);
+      });
+      return;
+    }
     const btn = target?.closest?.('[data-cal-cycle-target]');
     if (!btn) return;
     event.preventDefault();

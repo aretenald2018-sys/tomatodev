@@ -135,6 +135,7 @@ const WORKOUT_INPUT_SCROLL_GUARD_BOTTOM_PX = 156;
 const WORKOUT_INPUT_SCROLL_GUARD_MAX_DELTA = 96;
 const _workoutInputFocusState = new WeakMap();
 let _activeWorkoutEntryIdx = 0;
+let _exerciseEditorReturnToPicker = true;
 
 function _isEmbeddedMaxEntry(entryIdx) {
   const slot = _embeddedMaxCards.get(entryIdx);
@@ -324,6 +325,16 @@ function _syncExpertTopArea() {
 
 function _setWorkoutModalLock(on) {
   document.body?.classList.toggle('wt-modal-scroll-lock', !!on);
+}
+
+function _setExerciseEditorReturnMode(options = {}) {
+  _exerciseEditorReturnToPicker = options?.returnToPicker !== false;
+}
+
+function _finishExerciseEditorReturn() {
+  const returnToPicker = _exerciseEditorReturnToPicker !== false;
+  _exerciseEditorReturnToPicker = true;
+  if (returnToPicker) wtOpenExercisePicker();
 }
 
 function _workoutScrollTop() {
@@ -4193,7 +4204,8 @@ export async function wtOpenExercisePicker(options = {}) {
   _setWorkoutModalLock(true);
 }
 
-export function wtOpenExerciseEditor(exId, defaultMuscleId) {
+export function wtOpenExerciseEditor(exId, defaultMuscleId, options = {}) {
+  _setExerciseEditorReturnMode(options);
   const editor       = document.getElementById('ex-editor-modal');
   const nameInput    = document.getElementById('ex-editor-name');
   const muscleSelect = document.getElementById('ex-editor-muscle');
@@ -4259,7 +4271,7 @@ export function wtOpenExerciseEditor(exId, defaultMuscleId) {
   if (customNameInput) customNameInput.value = '';
   addMuscleWrap.style.display = muscleSelect.value === NEW_MUSCLE_OPTION ? '' : 'none';
 
-  document.getElementById('ex-picker-modal').classList.remove('open');
+  document.getElementById('ex-picker-modal')?.classList.remove('open');
   editor.classList.add('open');
   _setWorkoutModalLock(true);
 }
@@ -4275,7 +4287,7 @@ export function wtCloseExerciseEditor(e) {
   if (e && e.target !== document.getElementById('ex-editor-modal')) return;
   document.getElementById('ex-editor-modal').classList.remove('open');
   _setWorkoutModalLock(false);
-  wtOpenExercisePicker();
+  _finishExerciseEditorReturn();
 }
 
 export async function wtSaveExerciseFromEditor() {
@@ -4326,7 +4338,7 @@ export async function wtSaveExerciseFromEditor() {
   }
   editor.classList.remove('open');
   _setWorkoutModalLock(false);
-  wtOpenExercisePicker();
+  _finishExerciseEditorReturn();
   window.showToast?.('종목 저장 완료', 1600, 'success');
 }
 
@@ -4344,6 +4356,6 @@ export async function wtDeleteExerciseFromEditor() {
   await deleteExercise(editor.dataset.editingId);
   editor.classList.remove('open');
   _setWorkoutModalLock(false);
-  wtOpenExercisePicker();
+  _finishExerciseEditorReturn();
   window.showToast?.('종목이 삭제됐어요', 2000, 'info');
 }

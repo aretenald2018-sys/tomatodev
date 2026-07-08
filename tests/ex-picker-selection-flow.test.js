@@ -61,3 +61,36 @@ test('exercise picker supports sheet afterSelect without record-card focus', () 
   assert.match(selectionHandler, /if \(afterSelect\) \{[\s\S]*await savePromise;[\s\S]*_runPickerAfterSelect\(afterSelect, workoutExerciseSelectionDetail\(selection\)\)/);
   assert.match(selectionHandler, /if \(afterSelect\) \{[\s\S]*return;[\s\S]*\}[\s\S]*wtFocusWorkoutEntryCard\(entryIdx\)/);
 });
+
+test('exercise editor can close without reopening the picker for calendar goal input', () => {
+  assert.match(exercisesJs, /let _exerciseEditorReturnToPicker = true/);
+  assert.match(exercisesJs, /function _setExerciseEditorReturnMode\(options = \{\}\)/);
+  assert.match(exercisesJs, /_exerciseEditorReturnToPicker = options\?\.returnToPicker !== false/);
+  assert.match(exercisesJs, /function _finishExerciseEditorReturn\(\)/);
+  assert.match(exercisesJs, /export function wtOpenExerciseEditor\(exId, defaultMuscleId, options = \{\}\)/);
+
+  const returnStart = exercisesJs.indexOf('function _finishExerciseEditorReturn()');
+  const returnEnd = exercisesJs.indexOf('export function wtOpenExerciseEditor', returnStart);
+  assert.ok(returnStart >= 0 && returnEnd > returnStart, 'editor return helper should exist before editor open');
+  const returnHelper = exercisesJs.slice(returnStart, returnEnd);
+  assert.match(returnHelper, /const returnToPicker = _exerciseEditorReturnToPicker !== false/);
+  assert.match(returnHelper, /_exerciseEditorReturnToPicker = true/);
+  assert.match(returnHelper, /if \(returnToPicker\) wtOpenExercisePicker\(\)/);
+
+  const closeStart = exercisesJs.indexOf('export function wtCloseExerciseEditor');
+  const closeEnd = exercisesJs.indexOf('export async function wtSaveExerciseFromEditor', closeStart);
+  assert.ok(closeStart >= 0 && closeEnd > closeStart, 'editor close function should exist');
+  const closeFn = exercisesJs.slice(closeStart, closeEnd);
+  assert.match(closeFn, /_finishExerciseEditorReturn\(\)/);
+
+  const saveStart = exercisesJs.indexOf('export async function wtSaveExerciseFromEditor');
+  const saveEnd = exercisesJs.indexOf('export async function wtDeleteExerciseFromEditor', saveStart);
+  assert.ok(saveStart >= 0 && saveEnd > saveStart, 'editor save function should exist');
+  const saveFn = exercisesJs.slice(saveStart, saveEnd);
+  assert.match(saveFn, /_finishExerciseEditorReturn\(\)/);
+
+  const deleteStart = exercisesJs.indexOf('export async function wtDeleteExerciseFromEditor');
+  assert.ok(deleteStart >= 0, 'editor delete function should exist');
+  const deleteFn = exercisesJs.slice(deleteStart);
+  assert.match(deleteFn, /_finishExerciseEditorReturn\(\)/);
+});

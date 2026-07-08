@@ -1188,6 +1188,33 @@ test('workout calendar week rail renders cycle prescriptions instead of weekly a
   assert.match(styleCss, /\.cal-cycle-branch\.is-achieved \.cal-cycle-branch-week,[\s\S]*\.cal-cycle-branch\.is-achieved \.cal-cycle-branch-target\s*\{[\s\S]*color:\s*#ffffff/);
 });
 
+test('workout calendar week rail opens goal input sheet before exercise editor', () => {
+  assert.match(calendarJs, /data-cal-goal-input/);
+  assert.match(calendarJs, /data-week-start="\$\{_esc\(weekStart\)\}"/);
+  assert.match(calendarJs, />목표입력<\/button>/);
+  assert.match(calendarJs, /function _openWorkoutGoalInputSheet\(weekStart\)/);
+  assert.match(calendarJs, /function _workoutGoalExerciseOptions\(\)/);
+  assert.match(calendarJs, /getExList\(\)/);
+  assert.match(calendarJs, /getMuscleParts\(\)/);
+  assert.match(calendarJs, /data-cal-goal-select/);
+  assert.match(calendarJs, /운동 종목/);
+  assert.match(calendarJs, /modal\.addEventListener\('change'/);
+  assert.match(calendarJs, /target\?\.closest\?\.\('\[data-cal-goal-select\]'\)/);
+  assert.match(calendarJs, /function _openSelectedWorkoutGoalExercise\(modal\)/);
+  assert.match(calendarJs, /window\.wtOpenExerciseEditor\(exId, null, \{ returnToPicker: false, source: 'calendar-goal-input' \}\)/);
+  assert.match(calendarJs, /target\?\.closest\?\.\('\[data-cal-goal-input\]'\)/);
+  assert.match(calendarJs, /_openWorkoutGoalInputSheet\(goalBtn\.getAttribute\('data-week-start'\)\)/);
+  assert.match(styleCss, /\.cal-cycle-goal-input/);
+  assert.match(styleCss, /\.cal-goal-input-sheet/);
+  assert.match(styleCss, /\.cal-goal-input-select/);
+
+  const goalSheetStart = calendarJs.indexOf('function _openWorkoutGoalInputSheet');
+  const goalSheetEnd = calendarJs.indexOf('function _openWorkoutCycleTargetSettings', goalSheetStart);
+  assert.ok(goalSheetStart >= 0 && goalSheetEnd > goalSheetStart, 'goal input flow should sit before cycle target settings');
+  const goalSheetFlow = calendarJs.slice(goalSheetStart, goalSheetEnd);
+  assert.doesNotMatch(goalSheetFlow, /saveWorkoutDay|selectWorkoutExerciseEntry|_addWorkoutHomeSession/);
+});
+
 test('cycle rail target cards open the existing growth-board benchmark settings sheet', () => {
   const rootsStart = tm2BoardJs.indexOf('function _ensureRoots');
   const rootsEnd = tm2BoardJs.indexOf('export function closeSheet', rootsStart);
@@ -1265,5 +1292,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260708z3-diet-frequent-foods/);
+  assert.match(swJs, /tomatofarm-v20260708z4-calendar-goal-input/);
 });
