@@ -344,7 +344,6 @@ function _renderWorkoutCycleRail(weekStart, items = []) {
     <div class="cal-workout-week-rail ${visibleItems.length ? 'has-cycle' : 'is-empty'}" aria-label="${_esc(label)}">
       <span class="cal-cycle-rail-line" aria-hidden="true"></span>
       <div class="cal-cycle-branch-list">
-        <button type="button" class="cal-cycle-goal-input" data-cal-goal-input data-week-start="${_esc(weekStart)}" aria-label="${_esc(`${weekStart} 목표입력`)}">목표입력</button>
         ${visibleItems.map(item => {
           const achievedClass = item.isAchieved ? ' is-achieved' : '';
           return `
@@ -1810,6 +1809,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
     ? `${y}.${String(m + 1).padStart(2, '0')}`
     : `${y}년 ${m + 1}월`;
   const weekdays = ['일','월','화','수','목','금','토'];
+  const goalInputWeekStart = isWorkoutHome ? _workoutCalendarRowWeekStart(y, m, 0, firstDow) : '';
   const summaryHtml = monthSum.days > 0 ? `
     <div class="cal-month-summary cal-workout-summary">
       <div class="cal-month-avg">
@@ -1831,7 +1831,9 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
 
   const weekdayHtml = isWorkoutHome ? `
     <div class="cal-weekdays cal-workout-weekdays">
-      <div class="cal-week-rail-spacer" aria-hidden="true"></div>
+      <div class="cal-week-rail-spacer">
+        <button type="button" class="cal-cycle-goal-input" data-cal-goal-input data-week-start="${_esc(goalInputWeekStart)}" aria-label="${_esc(`${goalInputWeekStart} 목표입력`)}">목표입력</button>
+      </div>
       ${weekdays.map((w, i) => `<div class="cal-wd ${i === 0 ? 'cal-wd-sun' : ''} ${i === 6 ? 'cal-wd-sat' : ''}">${w}</div>`).join('')}
     </div>
   ` : `

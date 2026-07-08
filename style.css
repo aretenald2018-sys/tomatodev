@@ -12805,6 +12805,10 @@ body.lz-running-record-modal-open {
   background: #f7f7fb;
 }
 .cal-week-rail-spacer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 4px;
   border-right: 1px solid #d8dae4;
 }
 .cal-workout-surface-home .cal-wd {
@@ -12862,7 +12866,7 @@ body.lz-running-record-modal-open {
   z-index: 1;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: center;
   gap: 3px;
   width: 100%;
   min-width: 0;
@@ -12917,6 +12921,15 @@ body.lz-running-record-modal-open {
 }
 .cal-cycle-goal-input:active {
   transform: scale(0.98);
+}
+.cal-week-rail-spacer .cal-cycle-goal-input {
+  width: 100%;
+  margin-left: 0;
+  min-height: 22px;
+  padding: 2px 4px;
+}
+.cal-week-rail-spacer .cal-cycle-goal-input::before {
+  display: none;
 }
 .cal-cycle-branch-text {
   display: flex;
@@ -14482,6 +14495,9 @@ body.lz-running-record-modal-open {
   .cal-workout-week-rail {
     padding: 7px 3px 7px 5px;
   }
+  .cal-week-rail-spacer {
+    padding: 5px 3px;
+  }
   .cal-cycle-branch {
     min-height: 22px;
     padding: 2px 2px 2px 5px;
@@ -14493,6 +14509,10 @@ body.lz-running-record-modal-open {
     padding: 2px 4px;
     font-size: 8px;
     line-height: 9px;
+  }
+  .cal-week-rail-spacer .cal-cycle-goal-input {
+    padding: 2px 3px;
+    font-size: 7.5px;
   }
   .cal-cycle-branch-text {
     line-height: 9px;

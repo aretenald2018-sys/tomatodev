@@ -1168,7 +1168,7 @@ test('workout calendar week rail renders cycle prescriptions instead of weekly a
   assert.match(styleCss, /\.cal-cycle-branch::before\s*\{[\s\S]*border-top:\s*2px solid var\(--cal-cycle-rail-color,\s*#aeb9c5\)/);
   assert.match(styleCss, /\.cal-cycle-branch-text/);
   assert.match(styleCss, /\.cal-cycle-branch-text\s*\{[\s\S]*flex-direction:\s*column/);
-  assert.match(styleCss, /\.cal-cycle-branch-list\s*\{[\s\S]*justify-content:\s*flex-start/);
+  assert.match(styleCss, /\.cal-cycle-branch-list\s*\{[\s\S]*justify-content:\s*center/);
   assert.match(styleCss, /\.cal-cycle-branch-head\s*\{[\s\S]*display:\s*flex;[\s\S]*overflow:\s*hidden;[\s\S]*white-space:\s*nowrap/);
   assert.match(styleCss, /\.cal-cycle-branch-week/);
   assert.match(styleCss, /\.cal-cycle-branch-name\s*\{[\s\S]*flex:\s*1 1 auto;[\s\S]*min-width:\s*0;[\s\S]*font-size:\s*8px/);
@@ -1191,7 +1191,7 @@ test('workout calendar week rail renders cycle prescriptions instead of weekly a
 
 test('workout calendar week rail opens goal input sheet before exercise editor', () => {
   assert.match(calendarJs, /data-cal-goal-input/);
-  assert.match(calendarJs, /data-week-start="\$\{_esc\(weekStart\)\}"/);
+  assert.match(calendarJs, /data-week-start="\$\{_esc\(goalInputWeekStart\)\}"/);
   assert.match(calendarJs, />목표입력<\/button>/);
   assert.match(calendarJs, /function _openWorkoutGoalInputSheet\(weekStart\)/);
   assert.match(calendarJs, /function _workoutGoalExerciseOptions\(\)/);
@@ -1208,6 +1208,8 @@ test('workout calendar week rail opens goal input sheet before exercise editor',
   assert.match(styleCss, /\.cal-cycle-goal-input/);
   assert.match(styleCss, /\.cal-goal-input-sheet/);
   assert.match(styleCss, /\.cal-goal-input-select/);
+  assert.match(styleCss, /\.cal-week-rail-spacer \.cal-cycle-goal-input/);
+  assert.match(styleCss, /\.cal-week-rail-spacer \.cal-cycle-goal-input::before\s*\{[\s\S]*display:\s*none/);
 
   const goalSheetStart = calendarJs.indexOf('function _openWorkoutGoalInputSheet');
   const goalSheetEnd = calendarJs.indexOf('function _openWorkoutCycleTargetSettings', goalSheetStart);
@@ -1216,17 +1218,25 @@ test('workout calendar week rail opens goal input sheet before exercise editor',
   assert.doesNotMatch(goalSheetFlow, /saveWorkoutDay|selectWorkoutExerciseEntry|_addWorkoutHomeSession/);
 });
 
-test('workout calendar goal input is the first rail control', () => {
+test('workout calendar goal input sits in the Sunday-left weekday spacer', () => {
   const railStart = calendarJs.indexOf('function _renderWorkoutCycleRail');
   const railEnd = calendarJs.indexOf('function _workoutGoalExerciseMuscleIds', railStart);
   assert.ok(railStart >= 0 && railEnd > railStart, 'cycle rail renderer should exist');
   const rail = calendarJs.slice(railStart, railEnd);
+  const weekdayStart = calendarJs.indexOf('const weekdayHtml = isWorkoutHome');
+  const weekdayEnd = calendarJs.indexOf('const gridHtml = isWorkoutHome', weekdayStart);
+  assert.ok(weekdayStart >= 0 && weekdayEnd > weekdayStart, 'weekday header renderer should exist');
+  const weekday = calendarJs.slice(weekdayStart, weekdayEnd);
 
-  const goalIndex = rail.indexOf('class="cal-cycle-goal-input"');
+  assert.match(calendarJs, /const goalInputWeekStart = isWorkoutHome \? _workoutCalendarRowWeekStart\(y, m, 0, firstDow\) : ''/);
+  assert.match(weekday, /<div class="cal-week-rail-spacer">\s*<button type="button" class="cal-cycle-goal-input"/);
+  assert.match(weekday, /data-cal-goal-input/);
+  assert.match(weekday, /data-week-start="\$\{_esc\(goalInputWeekStart\)\}"/);
+  assert.doesNotMatch(weekday, /aria-hidden="true"/);
+  assert.doesNotMatch(rail, /data-cal-goal-input|cal-cycle-goal-input/);
+
   const cycleBranchIndex = rail.indexOf('class="cal-cycle-branch is-${_esc(item.kind)}');
-  assert.ok(goalIndex >= 0, 'goal input button should render inside the cycle rail');
   assert.ok(cycleBranchIndex >= 0, 'cycle branch button should render inside the cycle rail');
-  assert.ok(goalIndex < cycleBranchIndex, 'goal input must stay at row 1 column 1 before cycle cards');
 });
 
 test('cycle rail target cards open the existing growth-board benchmark settings sheet', () => {
@@ -1306,5 +1316,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260708z5-calendar-goal-input-top/);
+  assert.match(swJs, /tomatofarm-v20260708z6-calendar-goal-input-header/);
 });
