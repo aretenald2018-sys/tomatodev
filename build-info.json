@@ -1,10 +1,10 @@
 {
   "app": "tomatofarm",
-  "commit": "ea8543a76cb6baa28936ff83ac15b1cbdbadc13e",
-  "shortCommit": "ea8543a76cb6",
+  "commit": "ec2b46ccddaa625e8e262ebbf8b2b8c7447485d1",
+  "shortCommit": "ec2b46ccddaa",
   "branch": "main",
-  "deployedAt": "2026-07-08T09:30:39.438Z",
-  "cacheVersion": "tomatofarm-v20260708z2-diet-frequent-foods",
+  "deployedAt": "2026-07-08T09:58:44.692Z",
+  "cacheVersion": "tomatofarm-v20260708z3-diet-frequent-foods",
   "runId": null,
   "runAttempt": null
 }

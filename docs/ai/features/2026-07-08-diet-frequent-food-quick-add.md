@@ -54,9 +54,9 @@
    - 추천 계산은 현재 cache에서 파생하는 UI 상태다.
 
 6. UI 밀도는 현재 식단 행을 유지한다.
-   - chip은 `안 먹었어요`와 유사한 높이/라운딩의 작은 버튼으로 만든다.
-   - 한 줄에 2~3개가 들어가되 360~390px에서 긴 음식명은 말줄임 처리한다.
-   - chip label은 `닭가슴살 120g`처럼 음식명과 중량을 우선 표시하고, kcal은 보조 텍스트나 title/aria-label에 넣는다.
+   - 추천 후보는 큰 묶음 chip/card 하나 안에 배치하고, 좌측 상단에 `이때 자주 먹었던 것` label을 둔다.
+   - 묶음 안의 각 추천 후보는 별도 chip이 아니라 텍스트형 button으로 보이게 하며, 옆의 붉은 `+`로 추가 후보임을 표시한다.
+   - 실제 섭취 음식 chip은 추천 option보다 더 두껍고 bold하게 보여 이미 추가된 음식과 추천 후보를 구분한다.
    - 후보가 1개뿐이면 1개만 보여준다. 후보가 없으면 영역 자체를 숨긴다.
 
 ## 실행 Slice 1
@@ -82,7 +82,7 @@
    - 새 API가 필요하면 기존 workout render export/window 노출 패턴에 맞춰 연결한다.
 
 5. `style.css`
-   - `.diet-frequent-foods`, `.diet-frequent-food-btn` 스타일을 TDS/Seed 토큰 기반으로 추가한다.
+   - `.diet-frequent-foods`, `.diet-frequent-food-card`, `.diet-frequent-food-option` 스타일을 TDS/Seed 토큰 기반으로 추가한다.
    - 360px 모바일에서 텍스트가 겹치지 않도록 min-height, gap, ellipsis, wrapping 정책을 고정한다.
 
 6. `sw.js`

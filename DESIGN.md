@@ -118,6 +118,15 @@ All new spacing derives from 4px and existing Seed/TDS variables.
 - Accessibility: action buttons are full-width or stable grid cells with visible text and no icon-only ambiguity.
 - Motion: sheet open/close only; no decorative motion.
 
+### Meal Frequent Food Group
+
+- Structure: one wide, soft chip/card under a regular meal row with the label `이때 자주 먹었던 것` and inline text options.
+- Variants: breakfast, lunch, dinner; snack is excluded until product rules add snack recommendations.
+- States: hidden when no candidate exists, default with 1-3 inline add options, pressed option.
+- Visual hierarchy: actual consumed `.meal-food-chip` entries are thicker and bold; recommendation options are lighter text inside the group and must not look like already-consumed food chips.
+- Accessibility: each inline option remains a real button with a visible food name and amount; the `+` sign is a secondary add affordance, not the only label.
+- Motion: option press only; no decorative motion.
+
 ### Manual Cardio Sheet
 
 - Structure: backdrop plus sheet with mode segmented control, speed, duration, preview, cancel/save.

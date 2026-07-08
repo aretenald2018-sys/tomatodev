@@ -199,17 +199,22 @@ function _renderFrequentFoodSuggestions(meal) {
     return;
   }
   container.hidden = false;
-  container.innerHTML = suggestions.map(({ key, item, count }) => {
+  const optionHtml = suggestions.map(({ key, item, count }) => {
     const name = _escapeHtml(item.name || '음식');
     const amount = _escapeHtml(_foodAmountLabel(item));
     const kcal = Math.round(Number(item.kcal) || 0);
     const title = _escapeHtml(`${item.name || '음식'} ${amount ? amount + ' ' : ''}${kcal}kcal 추가`);
-    return `<button type="button" class="diet-frequent-food-btn" data-action="addFrequentFood" data-meal="${meal}" data-suggestion-key="${_escapeHtml(key)}" title="${title}">
+    return `<button type="button" class="diet-frequent-food-option" data-action="addFrequentFood" data-meal="${meal}" data-suggestion-key="${_escapeHtml(key)}" title="${title}">
       <span class="diet-frequent-food-name">${name}</span>
       <span class="diet-frequent-food-meta">${amount}</span>
       <span class="diet-frequent-food-count">${count}회</span>
+      <span class="diet-frequent-food-add" aria-hidden="true">+</span>
     </button>`;
   }).join('');
+  container.innerHTML = `<div class="diet-frequent-food-card">
+    <div class="diet-frequent-food-label">이때 자주 먹었던 것</div>
+    <div class="diet-frequent-food-options">${optionHtml}</div>
+  </div>`;
 }
 
 // ── 스파크라인 (볼륨 히스토리) ───────────────────────────────────
