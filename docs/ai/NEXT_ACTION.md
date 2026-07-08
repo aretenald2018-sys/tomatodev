@@ -20,7 +20,7 @@
 
 ## 2026-07-08 Diet Frequent Food Quick Add
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획: `docs/ai/features/2026-07-08-diet-frequent-food-quick-add.md`
 - ULW: `.omo/ulw-loop/diet-quick-add-suggestions-20260708/goals.json`
 - 요청: 식단 탭의 아침/점심/저녁 `메모 (선택)` visible 영역을, 이용자가 해당 끼니에 자주 추가하던 음식 2~3개 빠른추가 버튼으로 대체한다. 버튼을 누르면 기존 `wtAddFoodItem(meal, item)` 저장 경로로 자동 추가된다.
@@ -59,7 +59,13 @@
   4. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=909`.
   5. PASS: `node --test tests/*.test.js` - 744 tests, 744 pass.
   6. PASS: `git diff --check`.
-- 다음 액션: 실행 slice 리뷰와 production Pages 배포/검증을 완료한 뒤 이 항목을 `complete`로 갱신한다.
+- 운영 검증:
+  1. PASS: `npm.cmd run deploy:production` - `5f392eb9b6876028573c3a30de8ae31dfa5cd1a7`를 `origin/main`에 push하고 Pages deploy verify 통과.
+  2. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 5f392eb9b6876028573c3a30de8ae31dfa5cd1a7` - deployed commit/cache/static assets 확인.
+  3. PASS: production browser QA - 모바일 390x844에서 아침/점심/저녁 추천 chip 표시, visible 메모 input 0개, snack 추천 container 없음, 점심 추천 클릭 시 `안 먹었어요` 해제 및 `현미밥 180g 280kcal` 자동 추가 확인.
+  4. PASS: compact chip visual QA - 기존 z1 화면은 추천이 넓은 row처럼 보여 z2에서 chip 폭과 meta 문구를 줄였다.
+- 리뷰: `docs/ai/reviews/2026-07-08-diet-frequent-food-quick-add-review.md`
+- 다음 액션: 없음. 사용자는 운영 URL에서 `식단 -> 아침/점심/저녁`을 열고 해당 끼니의 최근 반복 음식 chip을 눌러 자동 추가되는지 확인한다.
 
 ## 2026-07-07 Refresh Unification Cardio Intensity
 
