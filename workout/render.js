@@ -206,7 +206,7 @@ function _renderFrequentFoodSuggestions(meal) {
     const title = _escapeHtml(`${item.name || '음식'} ${amount ? amount + ' ' : ''}${kcal}kcal 추가`);
     return `<button type="button" class="diet-frequent-food-btn" data-action="addFrequentFood" data-meal="${meal}" data-suggestion-key="${_escapeHtml(key)}" title="${title}">
       <span class="diet-frequent-food-name">${name}</span>
-      <span class="diet-frequent-food-meta">${amount ? `${amount} · ` : ''}${kcal}kcal</span>
+      <span class="diet-frequent-food-meta">${amount}</span>
       <span class="diet-frequent-food-count">${count}회</span>
     </button>`;
   }).join('');

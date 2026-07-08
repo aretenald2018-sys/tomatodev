@@ -2050,9 +2050,9 @@ body.wt-modal-scroll-lock {
   display: flex;
   align-items: center;
   gap: 5px;
-  flex: 1 1 calc(50% - 3px);
+  flex: 0 1 auto;
   min-width: 0;
-  max-width: 100%;
+  max-width: calc(50% - 3px);
   min-height: 34px;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -8266,6 +8266,7 @@ body.wt-running-session-open {
   border-radius: var(--seed-r-full);
   color: var(--seed-fg-muted);
   font-size: var(--seed-t2);
+  max-width: calc(50% - var(--seed-x1));
   padding: var(--seed-x1) var(--seed-x2);
 }
 #tab-diet .diet-frequent-food-btn:active {

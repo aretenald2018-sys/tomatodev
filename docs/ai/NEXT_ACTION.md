@@ -50,7 +50,7 @@
   1. 아침/점심/저녁의 visible `메모 (선택)` 위치를 `diet-frequent-foods` 추천 chip container로 대체했고, 기존 `wt-meal-*` input은 숨김 DOM으로 유지했다.
   2. 최근 90일 cache의 끼니별 `bFoods/lFoods/dFoods`에서 같은 이름/중량이 2회 이상 나온 음식만 최대 3개 추천한다. 현재 날짜와 이미 현재 끼니에 들어간 음식은 제외한다.
   3. `data-action="addFrequentFood"` 버튼은 `wtAddFrequentFoodSuggestion(meal, key)`로 연결되고, skipped 상태면 해제한 뒤 기존 `wtAddFoodItem()`/`_autoSaveDiet({ meal })` 경로로 저장한다.
-  4. `app.js`, `render-workout.js`, `workout/index.js` query marker와 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260708z1-diet-frequent-foods` 기준으로 동기화했다.
+  4. `app.js`, `render-workout.js`, `workout/index.js` query marker와 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260708z2-diet-frequent-foods` 기준으로 동기화했다.
   5. cache marker를 직접 고정하던 기존 테스트들의 기대값을 새 cache version으로 갱신했다.
 - 로컬 검증:
   1. RED 확인: 추천 영역/action 부재로 focused tests 3건이 실패하는 것을 먼저 확인했다.
