@@ -114,7 +114,7 @@
 3. `node scripts/verify-runtime-assets.mjs`
 4. `node --test --test-reporter=dot tests/*.test.js`
 5. `git diff --check`
-6. Dashboard3 Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/dashboard3/ <commit>`
+6. TomatoFarm Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`
 7. 운영 asset marker 확인: 새 `CACHE_VERSION`, `gapBefore`, `segmentId`, route split helper, `GPS 중단 구간`.
 8. 운영 UI flow: 인증 계정에서 `운동 -> 런닝/조깅 -> 시작 -> 이동/일시정지/재개 또는 브라우저 background -> 종료 -> 저장 -> 상세 카드`로 진입해 지도 선이 중단 구간을 직선으로 잇지 않고 저장된 route point count/gap count가 표시되는지 확인한다.
 

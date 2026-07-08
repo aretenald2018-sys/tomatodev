@@ -6,6 +6,8 @@
 - 계획 문서: `docs/ai/features/2026-07-09-running-gps-full-route-resilience.md`
 - 실행 범위: Slice 1 `웹/PWA 러닝 route integrity 수정`
 - 제외 범위: Android foreground service, iOS Core Location background tracking
+- 배포 commit: `a0e5085ff05b130be5a88c081b0969d448a19dac`
+- 운영 URL: `https://aretenald2018-sys.github.io/tomatofarm/`
 
 ## 변경 요약
 
@@ -41,19 +43,28 @@
 1. FAIL 확인: `node --test tests/running-tracker.test.js tests/running-entry.test.js tests/workout-calendar-bottom-sheet.test.js`
    - 초기 실패: `splitRunningMapSegments` 없음, gap metadata/cache/UI 기대값 미충족.
 2. PASS: `node --test tests/running-tracker.test.js tests/running-entry.test.js tests/workout-calendar-bottom-sheet.test.js`
-   - 49 pass.
-3. PASS: `node --test tests/*.test.js`
-   - 647 pass.
+   - 63 pass.
+3. PASS: `find tests -maxdepth 1 -name '*.test.js' ! -name 'wear-*.test.js' -print0 | xargs -0 node --test`
+   - 743 pass.
 4. PASS: `npm.cmd run verify:assets`
-   - `[runtime-assets] ok refs=866`.
+   - `[runtime-assets] ok refs=903`.
 5. PASS: `git diff --check`
 6. PASS: `node --check workout/running-session.js && node --check workout/running-map.js && node --check render-calendar.js && node --check sw.js`
 7. PASS: 수동 route driver
    - 출력: `{"segments":2,"distanceM":44,"gapCount":1,"interrupted":true}`
+8. PASS: `npm.cmd run deploy:production`
+   - `origin/main`에 `a0e5085ff05b130be5a88c081b0969d448a19dac` 반영.
+   - `[deploy-verify] ok a0e5085ff05b tomatofarm-v20260709z1-running-gps-route-resilience static=260`
+   - deployed marker: `index.html::app.js`, `app.js::initBuildInfoSurface`, `sw.js::tomatofarm-v20260709z1-running-gps-route-resilience`
+9. PASS: production browser QA
+   - 모바일 390x844, `https://aretenald2018-sys.github.io/tomatofarm/` HTTP 200.
+   - `build-info.json` commit/cache marker가 `a0e5085ff05b` / `tomatofarm-v20260709z1-running-gps-route-resilience`.
+   - 실제 브라우저 module import에서 `segments=2`, `distanceM=44`, `gapCount=1`, `interrupted=true`.
+10. INFO: `node --test tests/*.test.js` 전체는 현재 `origin/main`에도 없는 `android/wear`/`android/app/build.gradle` 파일을 요구하는 Wear 계약 테스트 6개 때문에 실패한다. 이번 slice의 JS/PWA 러닝 경로는 Wear 제외 전체와 focused tests로 검증했다.
 
 ## 남은 확인
 
-- not verified yet: 인증 계정 실제 운영 UI에서 `운동 -> 러닝 시작 -> background/pause/reload -> 종료 -> 저장 -> 상세 카드` 플로우를 클릭 검증하지 못했다.
+- not verified yet: 인증 계정 실제 기기 GPS로 `운동 -> 러닝 시작 -> background/pause/reload -> 종료 -> 저장 -> 상세 카드` 플로우를 끝까지 저장 검증하지는 못했다. 이 세션에서는 로그인 계정과 OS 위치 센서 권한이 없어 production browser module QA로 route split/summary 동작을 검증했다.
 - LSP diagnostics: TypeScript LSP server가 설치되어 있지 않고 이전에 설치가 거절된 상태라 실행하지 못했다.
 
 ## 리뷰 결론

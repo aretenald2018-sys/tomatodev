@@ -2,7 +2,7 @@
 
 ## 2026-07-09 러닝 GPS 전체 궤적 및 중단 복구
 
-- 상태: `ready_for_deploy`
+- 상태: `complete`
 - 기준 작업트리: `C:\Users\USER\Desktop\Tomato Project\tomatofarm-deploy-life-zone-nickname`
 - 계획 문서: `docs/ai/features/2026-07-09-running-gps-full-route-resilience.md`
 - 요청: 러닝 결과 지도가 전체 GPS 궤적이 아니라 시작점과 끝점만 직선으로 연결되는 문제를 고치고, Android/iPhone 환경에서 앱 background/중단이 발생할 때도 거짓 직선으로 이어지지 않도록 설계한다.
@@ -17,16 +17,19 @@
   - 상세 러닝 카드에 `GPS 중단 구간` 상태를 표시한다.
   - Android foreground service와 iOS Core Location은 이번 Slice 1에서 구현하지 않았다.
 - 검증:
-  - PASS: `node --test tests/running-tracker.test.js tests/running-entry.test.js tests/workout-calendar-bottom-sheet.test.js` - 49 pass
-  - PASS: `node --test tests/*.test.js` - 647 pass
-  - PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=866`
+  - PASS: `node --test tests/running-tracker.test.js tests/running-entry.test.js tests/workout-calendar-bottom-sheet.test.js` - 63 pass
+  - PASS: `find tests -maxdepth 1 -name '*.test.js' ! -name 'wear-*.test.js' -print0 | xargs -0 node --test` - 743 pass
+  - PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=903`
   - PASS: `git diff --check`
   - PASS: `node --check workout/running-session.js && node --check workout/running-map.js && node --check render-calendar.js && node --check sw.js`
   - PASS: 수동 route driver - `{"segments":2,"distanceM":44,"gapCount":1,"interrupted":true}`
+  - PASS: `npm.cmd run deploy:production` - `a0e5085ff05b130be5a88c081b0969d448a19dac`를 `origin/main`에 push하고 `https://aretenald2018-sys.github.io/tomatofarm/` 배포 검증 통과.
+  - PASS: production browser QA - 모바일 390x844에서 HTTP 200, commit/cache marker, route segment helper 결과 `segments=2`, `gapCount=1`, `interrupted=true` 확인.
+  - INFO: `node --test tests/*.test.js` 전체는 현재 `origin/main`에도 없는 `android/wear`/`android/app/build.gradle` 파일을 요구하는 Wear 계약 테스트 6개 때문에 실패한다. 이번 GPS 수정 경로는 Wear 제외 전체와 focused tests로 검증했다.
+  - INFO: `https://aretenald2018-sys.github.io/dashboard3/`는 2026-07-02 배포본에 머문 legacy 경로다. TomatoFarm Lite 실제 최신 운영 검증 대상은 `https://aretenald2018-sys.github.io/tomatofarm/`다.
 - 리뷰 문서: `docs/ai/reviews/2026-07-09-running-gps-full-route-resilience-review.md`
 - 다음 액션:
-  - 의도한 변경을 커밋하고 Dashboard3 Pages 배포 검증을 수행한다.
-  - 배포 후 인증 계정 실제 UI에서 `운동 -> 러닝 시작 -> background/pause/reload -> 종료 -> 저장 -> 상세 카드` 플로우를 확인한다.
+  - 사용자 실제 기기에서 `운동 -> 러닝 시작 -> background/pause/reload -> 종료 -> 저장 -> 상세 카드` 플로우를 확인한다. OS가 중간 GPS 샘플을 제공하지 않은 구간은 선이 끊기고 `GPS 중단 구간`으로 표시되어야 한다.
 
 ## 2026-07-08 App Refresh Deployment Check
 
