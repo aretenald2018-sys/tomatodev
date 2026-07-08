@@ -31,3 +31,12 @@ test('frequent food suggestions are rendered from cached meal history and add th
   assert.match(styleCss, /#tab-diet .meal-food-chip-name {[^}]*font-weight: 700/, 'actual consumed food chips should read stronger than recommendations');
   assert.match(styleCss, /#tab-diet .diet-frequent-food-option {[^}]*font-weight: 500/, 'recommendation options should not be bold like consumed chips');
 });
+
+test('frequent and recent suggestions stay compact, capped, and de-duplicated', () => {
+  assert.match(renderJs, /\.slice\(0, 3\)/, 'frequent suggestions should remain capped at three');
+  assert.match(renderJs, /function _collectRecentFoodSuggestions\(meal, excludedGroupKeys = new Set\(\)\)/, 'recent suggestions should have a dedicated collector');
+  assert.match(renderJs, /excludedGroupKeys\.has\(groupKey\)/, 'recent suggestions should exclude frequent row group keys');
+  assert.match(renderJs, /최근에 먹은 것/, 'recent suggestions should render with a visible section label');
+  assert.match(styleCss, /#tab-diet \.diet-frequent-food-options {[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/, 'suggestion rows should use a stable three-column grid');
+  assert.match(styleCss, /#tab-diet \.diet-frequent-food-option {[^}]*font-size: var\(--seed-t1\)/, 'suggestion option font should be smaller than the previous compact text style');
+});

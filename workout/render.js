@@ -185,36 +185,91 @@ function _collectFrequentFoodSuggestions(meal) {
       const key = _suggestionKey(meal, entry.groupKey, entry.lastDateKey);
       const item = _cloneFoodItem(entry.item);
       _frequentFoodSuggestions.set(key, { meal, item });
-      return { key, item, count: entry.count };
+      return { key, item, count: entry.count, groupKey: entry.groupKey };
     });
+}
+
+function _collectRecentFoodSuggestions(meal, excludedGroupKeys = new Set()) {
+  const cfg = _FREQUENT_MEAL_CFG[meal];
+  if (!cfg) return [];
+  const cache = getCache?.() || {};
+  const currentKey = _selectedDateKey();
+  const currentFoods = Array.isArray(S.diet[cfg.foodsKey]) ? S.diet[cfg.foodsKey] : [];
+  const currentGroups = new Set(currentFoods.map(_foodGroupKey));
+  const seen = new Set();
+  const suggestions = [];
+
+  const historyEntries = Object.entries(cache)
+    .map(([historyKey, day]) => ({
+      historyKey,
+      day,
+      ageDays: _ageDaysFromKey(currentKey, historyKey),
+    }))
+    .filter(entry => entry.historyKey !== currentKey && entry.ageDays != null && entry.ageDays >= 1 && entry.ageDays <= _FREQUENT_LOOKBACK_DAYS)
+    .sort((a, b) => b.historyKey.localeCompare(a.historyKey));
+
+  for (const { historyKey, day } of historyEntries) {
+    const foods = Array.isArray(day?.[cfg.foodsKey]) ? day[cfg.foodsKey] : [];
+    for (const food of foods) {
+      const name = _normalizeFoodName(food?.name);
+      const kcal = Number(food?.kcal);
+      if (!name || !Number.isFinite(kcal) || kcal <= 0) continue;
+      const groupKey = _foodGroupKey(food);
+      if (currentGroups.has(groupKey) || excludedGroupKeys.has(groupKey) || seen.has(groupKey)) continue;
+      seen.add(groupKey);
+      suggestions.push({ groupKey, item: food, lastDateKey: historyKey });
+    }
+  }
+
+  return suggestions.slice(0, 3).map(entry => {
+    const key = _suggestionKey(meal, `recent|${entry.groupKey}`, entry.lastDateKey);
+    const item = _cloneFoodItem(entry.item);
+    _frequentFoodSuggestions.set(key, { meal, item });
+    return { key, item, groupKey: entry.groupKey };
+  });
+}
+
+function _renderFoodSuggestionOptions(meal, suggestions) {
+  return suggestions.map(({ key, item, count }) => {
+    const name = _escapeHtml(item.name || '음식');
+    const amount = _escapeHtml(_foodAmountLabel(item));
+    const kcal = Math.round(Number(item.kcal) || 0);
+    const title = _escapeHtml(`${item.name || '음식'} ${amount ? amount + ' ' : ''}${kcal}kcal 추가`);
+    const countHtml = count ? `<span class="diet-frequent-food-count">${count}회</span>` : '';
+    return `<button type="button" class="diet-frequent-food-option" data-action="addFrequentFood" data-meal="${meal}" data-suggestion-key="${_escapeHtml(key)}" title="${title}">
+      <span class="diet-frequent-food-name">${name}</span>
+      <span class="diet-frequent-food-meta">${amount}</span>
+      ${countHtml}
+      <span class="diet-frequent-food-add" aria-hidden="true">+</span>
+    </button>`;
+  }).join('');
+}
+
+function _renderFoodSuggestionSection(meal, label, suggestions) {
+  if (!suggestions.length) return '';
+  return `<div class="diet-frequent-food-section">
+    <div class="diet-frequent-food-label">${label}</div>
+    <div class="diet-frequent-food-options">${_renderFoodSuggestionOptions(meal, suggestions)}</div>
+  </div>`;
 }
 
 function _renderFrequentFoodSuggestions(meal) {
   const container = document.getElementById(`wt-frequent-${meal}`);
   if (!container) return;
-  const suggestions = _collectFrequentFoodSuggestions(meal);
-  if (!suggestions.length) {
+  const frequentSuggestions = _collectFrequentFoodSuggestions(meal);
+  const frequentGroups = new Set(frequentSuggestions.map(suggestion => suggestion.groupKey));
+  const recentSuggestions = _collectRecentFoodSuggestions(meal, frequentGroups);
+  const sections = [
+    _renderFoodSuggestionSection(meal, '이때 자주 먹었던 것', frequentSuggestions),
+    _renderFoodSuggestionSection(meal, '최근에 먹은 것', recentSuggestions),
+  ].filter(Boolean);
+  if (!sections.length) {
     container.innerHTML = '';
     container.hidden = true;
     return;
   }
   container.hidden = false;
-  const optionHtml = suggestions.map(({ key, item, count }) => {
-    const name = _escapeHtml(item.name || '음식');
-    const amount = _escapeHtml(_foodAmountLabel(item));
-    const kcal = Math.round(Number(item.kcal) || 0);
-    const title = _escapeHtml(`${item.name || '음식'} ${amount ? amount + ' ' : ''}${kcal}kcal 추가`);
-    return `<button type="button" class="diet-frequent-food-option" data-action="addFrequentFood" data-meal="${meal}" data-suggestion-key="${_escapeHtml(key)}" title="${title}">
-      <span class="diet-frequent-food-name">${name}</span>
-      <span class="diet-frequent-food-meta">${amount}</span>
-      <span class="diet-frequent-food-count">${count}회</span>
-      <span class="diet-frequent-food-add" aria-hidden="true">+</span>
-    </button>`;
-  }).join('');
-  container.innerHTML = `<div class="diet-frequent-food-card">
-    <div class="diet-frequent-food-label">이때 자주 먹었던 것</div>
-    <div class="diet-frequent-food-options">${optionHtml}</div>
-  </div>`;
+  container.innerHTML = `<div class="diet-frequent-food-card">${sections.join('')}</div>`;
 }
 
 // ── 스파크라인 (볼륨 히스토리) ───────────────────────────────────

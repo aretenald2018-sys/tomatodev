@@ -2052,34 +2052,44 @@ body.wt-modal-scroll-lock {
   border: 1px solid var(--border);
   border-radius: 18px;
   background: var(--surface2);
-  padding: 9px 12px 10px;
+  padding: 8px 10px 9px;
+}
+.diet-frequent-food-section + .diet-frequent-food-section {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
 }
 .diet-frequent-food-label {
-  margin-bottom: 7px;
+  margin-bottom: 5px;
   color: var(--text-tertiary);
   font-size: 10px;
   font-weight: 500;
   line-height: 1.2;
 }
 .diet-frequent-food-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px 12px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
   min-width: 0;
 }
 .diet-frequent-food-option {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "name add"
+    "meta add";
   align-items: center;
-  gap: 4px;
+  column-gap: 3px;
   min-width: 0;
   max-width: 100%;
   border: none;
   background: transparent;
   color: var(--text-secondary);
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
-  padding: 0;
+  padding: 2px 0;
+  text-align: left;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: color var(--transition), transform var(--transition);
@@ -2089,20 +2099,22 @@ body.wt-modal-scroll-lock {
   transform: scale(0.98);
 }
 .diet-frequent-food-add {
+  grid-area: add;
   flex: 0 0 auto;
   display: inline-grid;
   place-items: center;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 999px;
   background: var(--primary-bg);
   color: var(--primary);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   line-height: 1;
   pointer-events: none;
 }
 .diet-frequent-food-name {
+  grid-area: name;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2110,10 +2122,15 @@ body.wt-modal-scroll-lock {
 }
 .diet-frequent-food-meta,
 .diet-frequent-food-count {
+  grid-area: meta;
   flex: 0 0 auto;
   color: var(--text-tertiary);
   font-size: 10px;
   font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .diet-frequent-food-count { display: none; }
 .meal-food-list { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
@@ -8293,10 +8310,11 @@ body.wt-running-session-open {
 #tab-diet .meal-food-chip-name { color: var(--seed-fg-neutral); font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #tab-diet .meal-food-chip-kcal { color: var(--seed-fg-subtle); font-size: var(--seed-t1); }
 #tab-diet .diet-frequent-foods { margin: var(--seed-x2) 0 var(--seed-x1); }
-#tab-diet .diet-frequent-food-card { background: var(--seed-bg-neutral-weak); border: 1px solid var(--seed-stroke-neutral); border-radius: 18px; padding: var(--seed-x2) var(--seed-x3) var(--seed-x3); }
-#tab-diet .diet-frequent-food-label { color: var(--seed-fg-subtle); font-size: var(--seed-t1); font-weight: 500; }
-#tab-diet .diet-frequent-food-options { gap: var(--seed-x2) var(--seed-x4); }
-#tab-diet .diet-frequent-food-option { color: var(--seed-fg-muted); font-size: var(--seed-t2); font-weight: 500; }
+#tab-diet .diet-frequent-food-card { background: var(--seed-bg-neutral-weak); border: 1px solid var(--seed-stroke-neutral); border-radius: 18px; padding: var(--seed-x2) var(--seed-x3); }
+#tab-diet .diet-frequent-food-section + .diet-frequent-food-section { border-top-color: var(--seed-stroke-neutral); }
+#tab-diet .diet-frequent-food-label { color: var(--seed-fg-subtle); font-size: var(--seed-t1); font-weight: 500; margin-bottom: var(--seed-x1); }
+#tab-diet .diet-frequent-food-options { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--seed-x1); }
+#tab-diet .diet-frequent-food-option { color: var(--seed-fg-muted); font-size: var(--seed-t1); font-weight: 500; min-height: 28px; }
 #tab-diet .diet-frequent-food-option:active { color: var(--primary); }
 #tab-diet .diet-frequent-food-name { color: var(--seed-fg-muted); font-weight: 500; }
 #tab-diet .diet-frequent-food-meta { color: var(--seed-fg-subtle); font-size: var(--seed-t1); font-weight: 500; }
