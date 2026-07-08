@@ -1891,6 +1891,7 @@ body.wt-modal-scroll-lock {
   outline: none; line-height: 1.6;
 }
 .diet-meal-input::placeholder { color: var(--text-tertiary); }
+.diet-meal-input-hidden { display: none !important; }
 .diet-result { margin-top: 6px; font-size: 11px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .diet-badge {
   padding: 3px 10px; border-radius: var(--radius-full);
@@ -2037,6 +2038,53 @@ body.wt-modal-scroll-lock {
   transition: all var(--transition); -webkit-tap-highlight-color: transparent;
 }
 .diet-skip-btn.active { background: #7c2d12; border-color: #dc2626; color: #fca5a5; }
+.diet-frequent-foods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 4px;
+  min-width: 0;
+}
+.diet-frequent-foods[hidden] { display: none !important; }
+.diet-frequent-food-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: 1 1 calc(50% - 3px);
+  min-width: 0;
+  max-width: 100%;
+  min-height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 10px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition), border-color var(--transition), transform var(--transition);
+}
+.diet-frequent-food-btn:active {
+  background: var(--surface3);
+  border-color: var(--primary);
+  transform: scale(0.97);
+}
+.diet-frequent-food-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.diet-frequent-food-meta,
+.diet-frequent-food-count {
+  flex: 0 0 auto;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: 500;
+}
+.diet-frequent-food-count { display: none; }
 .meal-food-list { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
 .meal-food-chip {
   display: flex; align-items: center; gap: 6px;
@@ -8211,6 +8259,21 @@ body.wt-running-session-open {
 #tab-diet .meal-food-chip { background: var(--seed-bg-fill); border: 1px solid var(--seed-stroke-neutral); border-radius: var(--seed-r-full); padding: var(--seed-x1) var(--seed-x3); font-size: var(--seed-t2); gap: var(--seed-x2); min-width: 0; max-width: 100%; }
 #tab-diet .meal-food-chip-name { color: var(--seed-fg-neutral); font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #tab-diet .meal-food-chip-kcal { color: var(--seed-fg-subtle); font-size: var(--seed-t1); }
+#tab-diet .diet-frequent-foods { gap: var(--seed-x2); margin: var(--seed-x2) 0 var(--seed-x1); }
+#tab-diet .diet-frequent-food-btn {
+  background: var(--seed-bg-neutral-weak);
+  border: 1px solid var(--seed-stroke-neutral);
+  border-radius: var(--seed-r-full);
+  color: var(--seed-fg-muted);
+  font-size: var(--seed-t2);
+  padding: var(--seed-x1) var(--seed-x2);
+}
+#tab-diet .diet-frequent-food-btn:active {
+  background: var(--seed-bg-fill);
+  border-color: var(--primary);
+}
+#tab-diet .diet-frequent-food-name { color: var(--seed-fg-neutral); }
+#tab-diet .diet-frequent-food-meta { color: var(--seed-fg-subtle); font-size: var(--seed-t1); }
 #tab-diet .diet-badge { border-radius: var(--seed-r-full); font-size: var(--seed-t1); font-weight: 700; padding: 2px var(--seed-x2); border: none; }
 #tab-diet .diet-badge.ok { background: var(--seed-bg-positive-weak); color: var(--seed-fg-positive); }
 #tab-diet .diet-badge.bad { background: var(--seed-bg-critical-weak); color: var(--seed-fg-critical); }

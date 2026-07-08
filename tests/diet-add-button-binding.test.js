@@ -104,6 +104,9 @@ function createDietHarness() {
     wtSkipMeal(meal) {
       calls.push(`skip:${meal}`);
     },
+    wtAddFrequentFoodSuggestion(meal, key) {
+      calls.push(`frequent:${meal}:${key}`);
+    },
   };
   const start = appJs.indexOf('const _MEAL_QUICK_LABELS =');
   const end = appJs.indexOf('_bindLifeZoneNpcQuestEvent();', start);
@@ -200,4 +203,28 @@ test('quick-add actions route to existing search direct photo and skip flows', a
   await clickQuickAction(harness, 'skip');
   assert.deepEqual(harness.calls.splice(0), ['skip:breakfast']);
   assert.equal(harness.documentRef.quickAdd, null);
+});
+
+test('frequent food chips route through the diet grid delegated handler', async () => {
+  const harness = createDietHarness();
+  harness.window.__initDietInputButtons();
+
+  const handler = harness.documentRef.dietGrid.listeners.get('click');
+  assert.equal(typeof handler, 'function', 'diet grid click handler should be bound');
+
+  const target = new FakeElement({
+    kind: 'frequent-food',
+    dataset: {
+      action: 'addFrequentFood',
+      meal: 'lunch',
+      suggestionKey: 'lunch-rice-120',
+    },
+  });
+  await handler({
+    target,
+    preventDefault() {},
+    stopPropagation() {},
+  });
+
+  assert.deepEqual(harness.calls, ['frequent:lunch:lunch-rice-120']);
 });

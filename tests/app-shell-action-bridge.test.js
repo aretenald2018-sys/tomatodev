@@ -82,5 +82,5 @@ test('dynamic more menu items inherit the app shell action contract', () => {
 });
 
 test('service worker cache version was bumped for app shell action bridge assets', () => {
-  assert.match(swJs, /tomatofarm-v20260707z20-refresh-cardio-intensity/);
+  assert.match(swJs, /tomatofarm-v20260708z1-diet-frequent-foods/);
 });

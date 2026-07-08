@@ -1,5 +1,66 @@
 # 다음 자동 액션
 
+## 2026-07-08 App Refresh Deployment Check
+
+- 상태: `complete`
+- 진단: `docs/ai/diagnoses/2026-07-08-app-refresh-deployment-check.md`
+- 요청: 헤더 새로고침 버튼을 눌렀는데도 화면이 그대로인 상황에서, 강제 새로고침 기능이 실제 동작하는지와 최신 변경이 production Pages에 배포된 것이 맞는지 확인한다.
+- 결론:
+  1. production Pages 배포는 정상이다. `origin/main`/로컬 `HEAD`/production `build-info.json`이 모두 `b7a6a43ba5749b36fe925058a8b884fa15891385`를 가리킨다.
+  2. production `sw.js` cache version은 `tomatofarm-v20260707z20-refresh-cardio-intensity`다.
+  3. 오버레이가 없는 로그인 상태에서는 `#app-refresh-btn` 좌표 클릭이 `window.__requestTomatoAppRefresh({ source: 'top-nav' })`까지 도달하고 reload navigation이 발생한다.
+  4. 비로그인 화면이나 길드 온보딩 overlay가 떠 있으면 실제 클릭 타깃이 `#login-screen` 또는 `#guild-onboarding-overlay`라서 헤더 버튼 클릭이 막힌다.
+- 검증:
+  1. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ b7a6a43ba5749b36fe925058a8b884fa15891385`.
+  2. PASS: production direct fetch에서 `build-info.json`, `sw.js`, `index.html` marker 확인.
+  3. PASS: `node --test tests/pwa-update-auto-reload.test.js tests/app-shell-action-bridge.test.js` - 10 tests, 10 pass.
+  4. PASS: production Chromium QA - 오버레이 없는 로그인 상태에서 refresh click `navigated=true`, `afterRefreshCalled.source="top-nav"`.
+  5. PASS: `git diff --check`.
+- 후속 선택지: 사용자가 원하면 로그인/길드 온보딩 overlay 위에서도 refresh를 누를 수 있게 하는 별도 fix 계획을 작성한다. 앱 코드는 이번 진단에서 수정하지 않았다.
+
+## 2026-07-08 Diet Frequent Food Quick Add
+
+- 상태: `ready_for_review`
+- 계획: `docs/ai/features/2026-07-08-diet-frequent-food-quick-add.md`
+- ULW: `.omo/ulw-loop/diet-quick-add-suggestions-20260708/goals.json`
+- 요청: 식단 탭의 아침/점심/저녁 `메모 (선택)` visible 영역을, 이용자가 해당 끼니에 자주 추가하던 음식 2~3개 빠른추가 버튼으로 대체한다. 버튼을 누르면 기존 `wtAddFoodItem(meal, item)` 저장 경로로 자동 추가된다.
+- 계획 결정:
+  1. 추천은 고정 목록이 아니라 현재 사용자 cache의 `bFoods/lFoods/dFoods` 히스토리에서 끼니별 빈도와 최근성을 계산한다.
+  2. 히스토리가 부족하면 임의 기본 추천을 만들지 않고 추천 영역을 숨긴다.
+  3. 새 Firestore top-level 필드나 settings 저장 없이 기존 food item shape와 `_autoSaveDiet({ meal })` 경로를 재사용한다.
+  4. 아침/점심/저녁만 변경하고 간식은 이번 slice에서 제외한다.
+  5. 기존 `wt-meal-breakfast/lunch/dinner` input id는 저장 동기화와 기존 텍스트 데이터 보존을 위해 DOM에 남긴다.
+- 실행 Slice 1:
+  1. `index.html` 아침/점심/저녁 visible `메모 (선택)` 자리를 `diet-frequent-foods` container로 대체한다.
+  2. `workout/render.js`에 끼니별 추천 후보 계산, 렌더, `wtAddFrequentFoodSuggestion(meal, key)`를 추가한다.
+  3. `app.js` `.diet-grid` 위임 핸들러에 `data-action="addFrequentFood"`를 연결한다.
+  4. 필요한 경우 `workout/index.js`와 `render-workout.js` export/window 노출을 동기화한다.
+  5. `style.css`에 TDS/Seed 기반 compact chip 스타일을 추가한다.
+  6. `STATIC_ASSETS` 대상 파일 변경에 맞춰 `sw.js` `CACHE_VERSION`을 bump한다.
+  7. focused tests와 browser QA, production Pages verification을 수행한다.
+- 검증 계획:
+  1. RED: 추천 chip/action이 없는 현재 코드에서 focused test가 먼저 실패한다.
+  2. PASS 목표: `node --check app.js && node --check workout/render.js && node --check workout/index.js && node --check render-workout.js && node --check sw.js`.
+  3. PASS 목표: `node --test tests/diet-add-button-binding.test.js tests/diet-frequent-food-suggestions.test.js tests/save-schema.test.js`.
+  4. PASS 목표: `node --test tests/*.test.js`.
+  5. PASS 목표: `npm.cmd run verify:assets`.
+  6. PASS 목표: 모바일 식단 탭에서 추천 chip 표시, 클릭 자동 추가, skip 해제 후 추가, 후보 없음 상태, 기존 quick-add flow를 확인한다.
+  7. PASS 목표: `npm.cmd run deploy:production` 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`.
+- 실행 결과:
+  1. 아침/점심/저녁의 visible `메모 (선택)` 위치를 `diet-frequent-foods` 추천 chip container로 대체했고, 기존 `wt-meal-*` input은 숨김 DOM으로 유지했다.
+  2. 최근 90일 cache의 끼니별 `bFoods/lFoods/dFoods`에서 같은 이름/중량이 2회 이상 나온 음식만 최대 3개 추천한다. 현재 날짜와 이미 현재 끼니에 들어간 음식은 제외한다.
+  3. `data-action="addFrequentFood"` 버튼은 `wtAddFrequentFoodSuggestion(meal, key)`로 연결되고, skipped 상태면 해제한 뒤 기존 `wtAddFoodItem()`/`_autoSaveDiet({ meal })` 경로로 저장한다.
+  4. `app.js`, `render-workout.js`, `workout/index.js` query marker와 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260708z1-diet-frequent-foods` 기준으로 동기화했다.
+  5. cache marker를 직접 고정하던 기존 테스트들의 기대값을 새 cache version으로 갱신했다.
+- 로컬 검증:
+  1. RED 확인: 추천 영역/action 부재로 focused tests 3건이 실패하는 것을 먼저 확인했다.
+  2. PASS: `node --check app.js && node --check workout/render.js && node --check workout/index.js && node --check render-workout.js && node --check sw.js`.
+  3. PASS: `node --test tests/diet-add-button-binding.test.js tests/diet-frequent-food-suggestions.test.js tests/save-schema.test.js`.
+  4. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=909`.
+  5. PASS: `node --test tests/*.test.js` - 744 tests, 744 pass.
+  6. PASS: `git diff --check`.
+- 다음 액션: 실행 slice 리뷰와 production Pages 배포/검증을 완료한 뒤 이 항목을 `complete`로 갱신한다.
+
 ## 2026-07-07 Refresh Unification Cardio Intensity
 
 - 상태: `complete`

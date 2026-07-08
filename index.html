@@ -717,7 +717,8 @@
             </div>
             <input type="file" id="photo-input-breakfast" accept="image/*" style="display:none" onchange="uploadMealPhoto('breakfast',this)">
             <input type="file" id="ai-photo-input-breakfast" accept="image/*" style="display:none" onchange="uploadMealPhotoAI('breakfast',this)">
-            <input class="diet-meal-input" id="wt-meal-breakfast" placeholder="메모 (선택)">
+            <div class="diet-frequent-foods" id="wt-frequent-breakfast" aria-label="최근 자주 추가한 아침 음식" hidden></div>
+            <input class="diet-meal-input diet-meal-input-hidden" id="wt-meal-breakfast" placeholder="메모 (선택)" aria-hidden="true" tabindex="-1" autocomplete="off">
             <div class="diet-result" id="wt-result-breakfast"></div>
           </div>
         </div>
@@ -740,7 +741,8 @@
             </div>
             <input type="file" id="photo-input-lunch" accept="image/*" style="display:none" onchange="uploadMealPhoto('lunch',this)">
             <input type="file" id="ai-photo-input-lunch" accept="image/*" style="display:none" onchange="uploadMealPhotoAI('lunch',this)">
-            <input class="diet-meal-input" id="wt-meal-lunch" placeholder="메모 (선택)">
+            <div class="diet-frequent-foods" id="wt-frequent-lunch" aria-label="최근 자주 추가한 점심 음식" hidden></div>
+            <input class="diet-meal-input diet-meal-input-hidden" id="wt-meal-lunch" placeholder="메모 (선택)" aria-hidden="true" tabindex="-1" autocomplete="off">
             <div class="diet-result" id="wt-result-lunch"></div>
           </div>
         </div>
@@ -763,7 +765,8 @@
             </div>
             <input type="file" id="photo-input-dinner" accept="image/*" style="display:none" onchange="uploadMealPhoto('dinner',this)">
             <input type="file" id="ai-photo-input-dinner" accept="image/*" style="display:none" onchange="uploadMealPhotoAI('dinner',this)">
-            <input class="diet-meal-input" id="wt-meal-dinner" placeholder="메모 (선택)">
+            <div class="diet-frequent-foods" id="wt-frequent-dinner" aria-label="최근 자주 추가한 저녁 음식" hidden></div>
+            <input class="diet-meal-input diet-meal-input-hidden" id="wt-meal-dinner" placeholder="메모 (선택)" aria-hidden="true" tabindex="-1" autocomplete="off">
             <div class="diet-result" id="wt-result-dinner"></div>
           </div>
         </div>
@@ -893,7 +896,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
 <script src="feature-login.js?v=20260707b"></script>
-<script type="module" src="app.js?v=20260707e-refresh-cardio-intensity"></script>
+<script type="module" src="app.js?v=20260708a-diet-frequent-foods"></script>
 
 <!-- PWA Service Worker 등록 -->
 <script src="pwa-register.js?v=20260707b6-sw-reload-stability"></script>

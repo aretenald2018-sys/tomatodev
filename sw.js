@@ -3,7 +3,7 @@
 
 // 캐시 버전: 타임스탬프 기반 자동 생성 — 파일 수정 시 SW 자동 업데이트
 // (SW 파일 내용이 1바이트라도 바뀌면 브라우저가 새 SW로 인식)
-const CACHE_VERSION = 'tomatofarm-v20260707z20-refresh-cardio-intensity';
+const CACHE_VERSION = 'tomatofarm-v20260708z1-diet-frequent-foods';
 const RUNTIME_CACHE = 'dashboard3-runtime';
 const STATIC_ASSETS = [
   './',
@@ -47,6 +47,7 @@ const STATIC_ASSETS = [
   './app.js?v=20260625z47-workout-record-card-standard',
   './app.js?v=20260707d-wear-bridge-load-binding',
   './app.js?v=20260707e-refresh-cardio-intensity',
+  './app.js?v=20260708a-diet-frequent-foods',
   './data.js',
   './calc.js',
   './config.js',
@@ -86,11 +87,13 @@ const STATIC_ASSETS = [
   './render-workout.js?v=20260625z47-workout-record-card-standard',
   './render-workout.js?v=20260702z19-current-user-set-button',
   './render-workout.js?v=20260707d-wear-bridge-load-binding',
+  './render-workout.js?v=20260708a-diet-frequent-foods',
   './workout/index.js',
   './workout/index.js?v=20260620z27-selected-scope',
   './workout/index.js?v=20260625z47-workout-record-card-standard',
   './workout/index.js?v=20260702z19-current-user-set-button',
   './workout/index.js?v=20260707d-wear-bridge-load-binding',
+  './workout/index.js?v=20260708a-diet-frequent-foods',
   './workout/state.js',
   './workout/sessions.js',
   './workout/timeline.js',
@@ -166,6 +169,7 @@ const STATIC_ASSETS = [
   './utils/action-router.js',
   './utils/build-info.js',
   './utils/build-info.js?v=20260707e-refresh-cardio-intensity',
+  './utils/build-info.js?v=20260708a-diet-frequent-foods',
   './home/personalize.js',
   './home/streak-warning.js',
   './home/admin-onboarding.js',

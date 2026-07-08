@@ -63,5 +63,5 @@ test('workout finish saves without opening the old completion insight modal', ()
 });
 
 test('service worker cache version was bumped for workout timer summary-only UI', () => {
-  assert.match(swJs, /tomatofarm-v20260707z20-refresh-cardio-intensity/);
+  assert.match(swJs, /tomatofarm-v20260708z1-diet-frequent-foods/);
 });

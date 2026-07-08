@@ -5,7 +5,7 @@
 import { S }                        from './state.js';
 import { _autoSaveDiet }            from './save.js';
 import { DAYS }                     from '../config.js';
-import { isFuture, TODAY,
+import { isFuture, TODAY, dateKey, getCache,
          getDietPlan, calcDietMetrics,
          getBodyCheckins,
          calcExerciseCalorieCredit } from '../data.js';
@@ -51,6 +51,165 @@ export function _renderMealSkippedToggles() {
   document.getElementById('wt-breakfast-skipped')?.classList.toggle('active', S.diet.breakfastSkipped);
   document.getElementById('wt-lunch-skipped')?.classList.toggle('active', S.diet.lunchSkipped);
   document.getElementById('wt-dinner-skipped')?.classList.toggle('active', S.diet.dinnerSkipped);
+}
+
+const _FREQUENT_MEAL_CFG = {
+  breakfast: { foodsKey: 'bFoods', skipKey: 'breakfastSkipped' },
+  lunch:     { foodsKey: 'lFoods', skipKey: 'lunchSkipped' },
+  dinner:    { foodsKey: 'dFoods', skipKey: 'dinnerSkipped' },
+};
+const _FREQUENT_LOOKBACK_DAYS = 90;
+const _frequentFoodSuggestions = new Map();
+
+function _selectedDateKey() {
+  const date = S.shared.date;
+  if (!date || typeof date.y !== 'number') return dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+  return dateKey(date.y, date.m, date.d);
+}
+
+function _dateKeyToUtc(key) {
+  const match = String(key || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+}
+
+function _ageDaysFromKey(currentKey, historyKey) {
+  const current = _dateKeyToUtc(currentKey);
+  const history = _dateKeyToUtc(historyKey);
+  if (current == null || history == null) return null;
+  return Math.round((current - history) / 86400000);
+}
+
+function _escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function _normalizeFoodName(name) {
+  return String(name || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('ko-KR');
+}
+
+function _foodAmountLabel(food) {
+  const grams = Number(food?.grams);
+  if (Number.isFinite(grams) && grams > 0) return `${Math.round(grams)}g`;
+  const label = food?.servingRef?.label || food?.unit || food?.base?.label || '';
+  return String(label || '').trim();
+}
+
+function _foodGroupKey(food) {
+  const name = _normalizeFoodName(food?.name);
+  const amount = _foodAmountLabel(food).toLocaleLowerCase('ko-KR');
+  return `${name}|${amount}`;
+}
+
+function _macroCompleteness(food) {
+  return ['kcal', 'protein', 'carbs', 'fat'].reduce((score, key) => {
+    const value = Number(food?.[key]);
+    return score + (Number.isFinite(value) && value > 0 ? 1 : 0);
+  }, 0);
+}
+
+function _cloneFoodItem(food) {
+  try {
+    if (typeof structuredClone === 'function') return structuredClone(food);
+  } catch {}
+  return JSON.parse(JSON.stringify(food));
+}
+
+function _suggestionKey(meal, groupKey, lastDateKey) {
+  let hash = 0;
+  const raw = `${meal}|${groupKey}|${lastDateKey}`;
+  for (let i = 0; i < raw.length; i += 1) {
+    hash = ((hash << 5) - hash + raw.charCodeAt(i)) | 0;
+  }
+  return `${meal}-${Math.abs(hash).toString(36)}`;
+}
+
+function _collectFrequentFoodSuggestions(meal) {
+  const cfg = _FREQUENT_MEAL_CFG[meal];
+  if (!cfg) return [];
+  const cache = getCache?.() || {};
+  const currentKey = _selectedDateKey();
+  const currentFoods = Array.isArray(S.diet[cfg.foodsKey]) ? S.diet[cfg.foodsKey] : [];
+  const currentGroups = new Set(currentFoods.map(_foodGroupKey));
+  const groups = new Map();
+
+  for (const [historyKey, day] of Object.entries(cache)) {
+    if (historyKey === currentKey) continue;
+    const ageDays = _ageDaysFromKey(currentKey, historyKey);
+    if (ageDays == null || ageDays < 1 || ageDays > _FREQUENT_LOOKBACK_DAYS) continue;
+    const foods = Array.isArray(day?.[cfg.foodsKey]) ? day[cfg.foodsKey] : [];
+    for (const food of foods) {
+      const name = _normalizeFoodName(food?.name);
+      const kcal = Number(food?.kcal);
+      if (!name || !Number.isFinite(kcal) || kcal <= 0) continue;
+      const groupKey = _foodGroupKey(food);
+      if (currentGroups.has(groupKey)) continue;
+      const macroScore = _macroCompleteness(food);
+      const recencyScore = (_FREQUENT_LOOKBACK_DAYS - ageDays) / _FREQUENT_LOOKBACK_DAYS;
+      const prev = groups.get(groupKey);
+      if (!prev) {
+        groups.set(groupKey, {
+          groupKey,
+          count: 1,
+          lastDateKey: historyKey,
+          item: food,
+          macroScore,
+          recencyScore,
+        });
+        continue;
+      }
+      prev.count += 1;
+      prev.recencyScore = Math.max(prev.recencyScore, recencyScore);
+      if (historyKey > prev.lastDateKey || (historyKey === prev.lastDateKey && macroScore > prev.macroScore)) {
+        prev.lastDateKey = historyKey;
+        prev.item = food;
+        prev.macroScore = macroScore;
+      }
+    }
+  }
+
+  return [...groups.values()]
+    .filter(entry => entry.count >= 2)
+    .map(entry => ({
+      ...entry,
+      score: entry.count * 12 + entry.recencyScore * 4 + entry.macroScore,
+    }))
+    .sort((a, b) => b.score - a.score || b.lastDateKey.localeCompare(a.lastDateKey))
+    .slice(0, 3)
+    .map(entry => {
+      const key = _suggestionKey(meal, entry.groupKey, entry.lastDateKey);
+      const item = _cloneFoodItem(entry.item);
+      _frequentFoodSuggestions.set(key, { meal, item });
+      return { key, item, count: entry.count };
+    });
+}
+
+function _renderFrequentFoodSuggestions(meal) {
+  const container = document.getElementById(`wt-frequent-${meal}`);
+  if (!container) return;
+  const suggestions = _collectFrequentFoodSuggestions(meal);
+  if (!suggestions.length) {
+    container.innerHTML = '';
+    container.hidden = true;
+    return;
+  }
+  container.hidden = false;
+  container.innerHTML = suggestions.map(({ key, item, count }) => {
+    const name = _escapeHtml(item.name || '음식');
+    const amount = _escapeHtml(_foodAmountLabel(item));
+    const kcal = Math.round(Number(item.kcal) || 0);
+    const title = _escapeHtml(`${item.name || '음식'} ${amount ? amount + ' ' : ''}${kcal}kcal 추가`);
+    return `<button type="button" class="diet-frequent-food-btn" data-action="addFrequentFood" data-meal="${meal}" data-suggestion-key="${_escapeHtml(key)}" title="${title}">
+      <span class="diet-frequent-food-name">${name}</span>
+      <span class="diet-frequent-food-meta">${amount ? `${amount} · ` : ''}${kcal}kcal</span>
+      <span class="diet-frequent-food-count">${count}회</span>
+    </button>`;
+  }).join('');
 }
 
 // ── 스파크라인 (볼륨 히스토리) ───────────────────────────────────
@@ -160,6 +319,7 @@ export function _renderDietResults() {
       headerKcal.textContent = kcal > 0 ? `${kcal.toLocaleString()}kcal` : '';
       headerKcal.className = 'diet-toss-kcal' + (ok === false ? ' diet-toss-over' : ok === true ? ' diet-toss-ok' : '');
     }
+    _renderFrequentFoodSuggestions(meal);
   });
   _renderCalorieTracker();
 }
@@ -310,6 +470,20 @@ export function wtAddFoodItem(meal, item) {
   _renderMealFoodItems(meal);
   _renderDietResults();
   _autoSaveDiet({ meal });
+}
+
+export function wtAddFrequentFoodSuggestion(meal, suggestionKey) {
+  const suggestion = _frequentFoodSuggestions.get(suggestionKey);
+  if (!suggestion || suggestion.meal !== meal) {
+    window.showToast?.('추천 음식을 찾지 못했어요. 새로고침 후 다시 시도해주세요.', 2200, 'error');
+    return;
+  }
+  const cfg = _FREQUENT_MEAL_CFG[meal];
+  if (cfg?.skipKey && S.diet[cfg.skipKey]) {
+    S.diet[cfg.skipKey] = false;
+    _renderMealSkippedToggles();
+  }
+  wtAddFoodItem(meal, _cloneFoodItem(suggestion.item));
 }
 
 export function wtRemoveFoodItem(meal, idx) {

@@ -28,7 +28,7 @@ import {
 } from './navigation.js';
 import { initUxPolish } from './utils/ux-polish.js';
 import { initActionRouter } from './utils/action-router.js';
-import { initBuildInfoSurface } from './utils/build-info.js?v=20260707e-refresh-cardio-intensity';
+import { initBuildInfoSurface } from './utils/build-info.js?v=20260708a-diet-frequent-foods';
 import {
   enableWorkoutPwaHistory,
   getWorkoutNavSnapshot,
@@ -50,7 +50,7 @@ import { showDietPremiumReportIfNeeded } from './feature-diet-premium-report.js'
 import {
   loadWorkoutDate, changeWorkoutDate, goToTodayWorkout, saveWorkoutDay,
   openNutritionPhotoUpload, wtRecoverTimers, wtRestoreRunningSessionIfActive,
-} from './render-workout.js?v=20260707d-wear-bridge-load-binding';
+} from './render-workout.js?v=20260708a-diet-frequent-foods';
 
 // ── 레이지 로딩 탭 캐시 ──
 const _lazyModules = {};
@@ -874,6 +874,18 @@ function _initDietInputButtons() {
         return;
       }
       openMealQuickAdd(meal);
+    } else if (action === 'addFrequentFood') {
+      if (!meal || !btn.dataset.suggestionKey) {
+        console.warn('[diet-input] addFrequentFood 정보 누락');
+        showToast?.('추천 음식을 추가하지 못했어요. 새로고침 후 다시 시도해주세요.', 2500, 'error');
+        return;
+      }
+      if (typeof window.wtAddFrequentFoodSuggestion !== 'function') {
+        console.error('[diet-input] wtAddFrequentFoodSuggestion 미등록');
+        showToast?.('추천 음식 추가를 준비하지 못했어요. 새로고침 후 다시 시도해주세요.', 2500, 'error');
+        return;
+      }
+      window.wtAddFrequentFoodSuggestion(meal, btn.dataset.suggestionKey);
     } else if (action === 'addFood') {
       if (typeof window.openNutritionSearch !== 'function') {
         console.error('[diet-input] openNutritionSearch 미등록');

@@ -5,7 +5,7 @@ export {
   loadWorkoutDate, changeWorkoutDate, goToTodayWorkout,
   saveWorkoutDay,
   renderCalorieTracker, _renderMealPhotos, openNutritionPhotoUpload,
-  wtAddFoodItem, wtRemoveFoodItem,
+  wtAddFoodItem, wtRemoveFoodItem, wtAddFrequentFoodSuggestion,
   wtToggleWineFree, wtToggleMealSkipped,
   wtAddSet, wtRemoveSet, wtUpdateSet,
   wtToggleSetDone, wtUpdateSetType, wtMoveSet,
@@ -22,4 +22,4 @@ export {
   wtOpenRestPresetSheet,
   wtRestoreRunningSessionIfActive,
   tm2RenderEntry,
-} from './workout/index.js?v=20260707d-wear-bridge-load-binding';
+} from './workout/index.js?v=20260708a-diet-frequent-foods';

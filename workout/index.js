@@ -16,6 +16,7 @@ export { saveWorkoutDay }
 
 export { renderCalorieTracker, _renderMealPhotos,
          wtAddFoodItem, wtRemoveFoodItem,
+         wtAddFrequentFoodSuggestion,
          openNutritionPhotoUpload }
   from './render.js';
 
@@ -47,7 +48,8 @@ export { initRunningSession, wtOpenRunningSession, wtHandleRunningSessionBack, w
 // ── 내부 import (window 등록 + 초기화용) ─────────────────────────
 import { saveWorkoutDay }                          from './save.js';
 import { S }                                       from './state.js';
-import { wtAddFoodItem, wtRemoveFoodItem }         from './render.js';
+import { wtAddFoodItem, wtRemoveFoodItem,
+         wtAddFrequentFoodSuggestion }             from './render.js';
 import { wtToggleMealSkipped }                     from './status.js';
 import { wtOpenExercisePicker, wtCloseExercisePicker,
          wtHandleExercisePickerBack,
@@ -127,6 +129,7 @@ window.wtRestTimerHideIdle = wtRestTimerHideIdle;
 window.wtOpenRestPresetSheet = wtOpenRestPresetSheet;
 window.wtAddFoodItem = wtAddFoodItem;
 window.wtRemoveFoodItem = wtRemoveFoodItem;
+window.wtAddFrequentFoodSuggestion = wtAddFrequentFoodSuggestion;
 
 // ── 초기화 (모듈 로드 시 이벤트 바인딩) ─────────────────────────
 setTimeout(_initRestTimerPresets, 0);
