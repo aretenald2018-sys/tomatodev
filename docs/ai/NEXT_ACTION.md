@@ -2,7 +2,7 @@
 
 ## 2026-07-09 Life Zone Meal Photo Bubble
 
-- 상태: `ready_for_review_local_verified_production_pending`
+- 상태: `complete`
 - 기준 작업트리: `C:\Users\USER\Desktop\Tomato Project\tomatofarm-deploy-life-zone-meal-photo`
 - 계획 문서: `docs/ai/features/2026-07-09-life-zone-meal-photo-bubble.md`
 - 요청: 식사 사진을 올린 경우 홈 라이프존 actor 말풍선에서 `아침냠냠`/`점심냠냠` 텍스트보다 작은 사진 썸네일을 우선 표시한다.
@@ -16,9 +16,11 @@
   - PASS: `node --test tests/home-life-zone-state.test.js tests/home-life-zone-npc-quest.test.js` - 39 pass.
   - PASS: nonblocked broad tests - 696 pass.
   - PASS: `npm.cmd run verify:assets` - `runtime-assets ok refs=903`.
+  - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 992e1981b1708366cafb119581491ff25ca54b84` - `[deploy-verify] ok 992e1981b170 tomatofarm-v20260709z5-life-zone-meal-photo static=260`.
   - PASS rendered UI QA: `.omo/evidence/life-zone-meal-photo-bubble/clean-render-result.json`에서 `photoBubbleCount=1`, `bubbleText=""`, `imageAlt="점심냠냠"`, `objectFit="cover"`.
+  - PASS production rendered UI QA: deployed `home/life-zone.js`/`style.css` 기준 `.omo/evidence/life-zone-meal-photo-bubble/production-render-result.json`에서 `photoBubbleCount=1`, `bubbleText=""`, `imageAlt="점심냠냠"`, `objectFit="cover"`, console messages none.
   - not verified yet: full `node --test tests/*.test.js`는 현재 `origin/main` 기준에 없는 Wear Android 파일과 별도 worktree의 missing `puppeteer` 때문에 관련 테스트가 실패한다.
-- 다음 액션: 이 slice만 commit/push한 뒤 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`와 production `홈 -> 오늘의 라이프존` flow를 확인한다.
+- 다음 액션: 없음. 사용자는 production `https://aretenald2018-sys.github.io/tomatofarm/`에서 식사 사진이 있는 당일 홈 `오늘의 라이프존` 말풍선이 `xx냠냠` 대신 작은 사진 썸네일로 보이는지 확인한다.
 
 ## 2026-07-09 러닝 GPS 전체 궤적 및 중단 복구
 

@@ -36,7 +36,7 @@
 
 ## 상태
 
-- 상태: `ready_for_review_local_verified_production_pending`
+- 상태: `complete`
 - 작업트리: `C:\Users\USER\Desktop\Tomato Project\tomatofarm-deploy-life-zone-meal-photo`
 
 ## 실행 결과
@@ -57,5 +57,6 @@
 6. PASS rendered UI QA: `.omo/evidence/life-zone-meal-photo-bubble/clean-render-result.json`
    - mobile 390: `photoBubbleCount=1`, `bubbleText=""`, `imageAlt="점심냠냠"`, `imageWidth=34`, `imageHeight=34`, `objectFit="cover"`.
    - wide 520: `photoBubbleCount=1`, `bubbleText=""`, `imageAlt="점심냠냠"`, `imageWidth=40`, `imageHeight=40`, `objectFit="cover"`.
-7. not verified yet: full `node --test tests/*.test.js`는 현재 `origin/main` 기준에서도 필요한 Wear Android 파일이 없고 별도 worktree에 `puppeteer`가 설치되지 않아 관련 테스트가 import/파일 접근 단계에서 실패한다.
-8. not verified yet: Production Pages 검증은 commit/push 후 수행한다.
+7. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 992e1981b1708366cafb119581491ff25ca54b84` - `[deploy-verify] ok 992e1981b170 tomatofarm-v20260709z5-life-zone-meal-photo static=260`.
+8. PASS production rendered UI QA: `https://aretenald2018-sys.github.io/tomatofarm/life-zone-photo-qa.html` harness with deployed `home/life-zone.js`/`style.css` and mocked `data.js` rendered `photoBubbleCount=1`, `bubbleText=""`, `imageAlt="점심냠냠"`, `objectFit="cover"`, console messages none. Evidence: `.omo/evidence/life-zone-meal-photo-bubble/production-render-result.json`.
+9. not verified yet: full `node --test tests/*.test.js`는 현재 `origin/main` 기준에서도 필요한 Wear Android 파일이 없고 별도 worktree에 `puppeteer`가 설치되지 않아 관련 테스트가 import/파일 접근 단계에서 실패한다.
