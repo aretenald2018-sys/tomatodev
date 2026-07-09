@@ -23,6 +23,7 @@ test('app shell markup uses data-app actions instead of inline handlers', () => 
   const shellMarkup = sliceBetween(indexHtml, '<!-- 상단 네비게이션 -->', '<!-- ═══ 홈 탭 ═══ -->');
   const actions = [
     'install-pwa',
+    'install-apk',
     'open-letter-modal',
     'toggle-notif-center',
     'refresh-app-update',
@@ -42,6 +43,7 @@ test('app shell markup uses data-app actions instead of inline handlers', () => 
   }
 
   assert.doesNotMatch(shellMarkup, /\sonclick="/);
+  assert.match(shellMarkup, /data-app-action="install-apk"[\s\S]*APK 설치하기/);
 });
 
 test('app module binds app shell actions with one idempotent bridge', () => {
@@ -54,6 +56,7 @@ test('app module binds app shell actions with one idempotent bridge', () => {
 
   for (const action of [
     'install-pwa',
+    'install-apk',
     'open-letter-modal',
     'toggle-notif-center',
     'refresh-app-update',
@@ -82,5 +85,5 @@ test('dynamic more menu items inherit the app shell action contract', () => {
 });
 
 test('service worker cache version was bumped for app shell action bridge assets', () => {
-  assert.match(swJs, /tomatofarm-v20260709z2-diet-recent-compact/);
+  assert.match(swJs, /tomatofarm-v20260709z4-more-menu-apk-deploy/);
 });

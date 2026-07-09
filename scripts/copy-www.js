@@ -14,6 +14,7 @@ mkdirSync(www, { recursive: true });
 const targets = [
   'index.html', 'build-info.json', 'style.css', 'app.js', 'ai.js', 'config.js', 'data.js',
   'calc.js',
+  'expert-mode.css', 'test-mode-v2.css',
   'navigation.js', 'workout-ui.js', 'pwa-fcm.js',
   'fatsecret-api.js', 'sheet.js',
   'feature-login.js', 'pwa-register.js',  // R1: index.html 인라인 스크립트 분리 산출물
@@ -25,6 +26,7 @@ const targets = [
   'home',
   'workout',
   'admin',
+  'calc',
   'data',
   'utils',
   'modals',

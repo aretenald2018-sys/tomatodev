@@ -5,6 +5,7 @@
 let _buildInfoCache = null;
 let _updateReloadRequested = false;
 const APP_SW_SCOPE = '/tomatofarm/';
+const WEAR_APP_REFRESH_TIMEOUT_MS = 1200;
 
 function _updateBannerState() {
   if (typeof window === 'undefined') {
@@ -283,6 +284,85 @@ function _toastAppRefresh(message, type = 'info') {
   } catch {}
 }
 
+function _wearAppRefreshPayload(source) {
+  const info = window.__BUILD_INFO || _buildInfoCache || {};
+  return {
+    source,
+    cacheVersion: info.cacheVersion || 'unknown',
+    commit: info.commit || info.shortCommit || 'unknown',
+  };
+}
+
+function _timeoutWearAppRefresh(promise, timeoutMs = WEAR_APP_REFRESH_TIMEOUT_MS) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(value);
+    };
+    const timer = setTimeout(() => finish({ timedOut: true }), timeoutMs);
+    Promise.resolve(promise)
+      .then((value) => finish(value || null))
+      .catch((error) => finish({ error }));
+  });
+}
+
+async function _requestWearAppRefreshOrInstall({ source = 'manual' } = {}) {
+  if (typeof window === 'undefined') return null;
+  const plugin = window.Capacitor?.Plugins?.TomatoWearAppUpdate;
+  if (!plugin || typeof plugin.requestRefreshOrInstall !== 'function') return null;
+
+  const result = await _timeoutWearAppRefresh(
+    plugin.requestRefreshOrInstall(_wearAppRefreshPayload(source)),
+  );
+  if (result?.timedOut) return result;
+  if (result?.error) {
+    console.warn('[WearOS] 갤럭시워치 업데이트 확인 실패:', result.error?.message || result.error);
+    return result;
+  }
+
+  const installPrompted = Number(result?.installPrompted || 0);
+  const refreshSent = Number(result?.refreshSent || 0);
+  if (installPrompted > 0) {
+    _toastAppRefresh('갤럭시워치 설치 화면을 열었어요.', 'info');
+  } else if (refreshSent > 0) {
+    _toastAppRefresh('갤럭시워치에도 새로고침 신호를 보냈어요.', 'info');
+  }
+  return result;
+}
+
+export async function requestTomatoApkInstall({ control = null, source = 'manual' } = {}) {
+  const button = control || (typeof document !== 'undefined' ? document.getElementById('app-refresh-btn') : null);
+  if (button?.disabled) return { started: false, reason: 'busy', source };
+  _setRefreshControlBusy(button, true);
+  _toastAppRefresh('APK 설치 경로를 확인하고 있어요.', 'info');
+
+  try {
+    const wearRefresh = await _requestWearAppRefreshOrInstall({ source });
+    if (!wearRefresh) {
+      _toastAppRefresh(
+        'APK 설치는 Android 앱에서 실행하거나 PC에서 npm.cmd run install:wear-watch를 사용해주세요.',
+        'warning',
+      );
+      return { started: false, reason: 'native-bridge-unavailable', source };
+    }
+    if (wearRefresh?.timedOut) {
+      _toastAppRefresh('갤럭시워치 설치 확인이 지연되고 있어요.', 'warning');
+    } else if (wearRefresh?.error) {
+      _toastAppRefresh('APK 설치 요청에 실패했어요.', 'warning');
+    } else if (Array.isArray(wearRefresh?.failures) && wearRefresh.failures.length > 0) {
+      _toastAppRefresh('워치 설치 요청이 막혔어요. PC에서 npm.cmd run install:wear-watch를 실행해주세요.', 'warning');
+    } else if (!Number(wearRefresh?.installPrompted || 0) && !Number(wearRefresh?.refreshSent || 0)) {
+      _toastAppRefresh('연결된 갤럭시워치를 찾지 못했어요.', 'warning');
+    }
+    return { started: true, wearRefresh, source };
+  } finally {
+    _setRefreshControlBusy(button, false);
+  }
+}
+
 export async function requestTomatoAppRefresh({ control = null, source = 'manual' } = {}) {
   const button = control || document.getElementById('app-refresh-btn');
   if (button?.disabled) return { started: false, reason: 'busy', source };
@@ -291,6 +371,7 @@ export async function requestTomatoAppRefresh({ control = null, source = 'manual
   _toastAppRefresh('최신 앱 버전을 확인하고 있어요.', 'info');
 
   try {
+    const wearRefresh = await _requestWearAppRefreshOrInstall({ source });
     const registration = await _resolveLatestAppSWRegistration();
     const waiting = registration?.waiting;
     if (waiting) {
@@ -309,6 +390,7 @@ export async function requestTomatoAppRefresh({ control = null, source = 'manual
     return {
       started,
       hasWaitingWorker: !!waiting,
+      wearRefresh,
       source,
     };
   } catch (error) {
@@ -331,5 +413,6 @@ export function showAppUpdateBanner(registration = null, { key = null } = {}) {
 export function initBuildInfoSurface() {
   window.__showAppUpdateBanner = showAppUpdateBanner;
   window.__requestTomatoAppRefresh = requestTomatoAppRefresh;
+  window.__requestTomatoApkInstall = requestTomatoApkInstall;
   loadBuildInfo({ force: false }).catch(() => {});
 }

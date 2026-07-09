@@ -272,6 +272,18 @@ function _runAppShellAction(action, control, event) {
     case 'install-pwa':
       installPWA();
       break;
+    case 'install-apk':
+      if (typeof window.__requestTomatoApkInstall === 'function') {
+        void window.__requestTomatoApkInstall({ control, source: 'more-menu' });
+      } else {
+        window.showToast?.(
+          'APK 설치는 Android 앱에서 실행하거나 PC에서 npm.cmd run install:wear-watch를 사용해주세요.',
+          3000,
+          'warning',
+        );
+      }
+      _closeMoreMenu();
+      break;
     case 'open-letter-modal':
       _runWindowAction('openLetterModal');
       break;
