@@ -1,5 +1,7 @@
 # 더보기 메뉴 APK 설치 버튼 리뷰
 
+> 현재 동작 아님: 이 리뷰는 최초 `APK 설치하기` 버튼과 Wear native bridge 계획의 historical record다. 사용자 피드백 이후 현재 운영 동작은 `docs/ai/reviews/2026-07-09-more-menu-apk-mobile-download-review.md`가 기준이며, `APK 설치하기`는 Wear bridge를 호출하지 않고 `tomato-mobile-debug.apk`만 다운로드한다.
+
 ## Verdict
 
 PASS for mobile WebView UI, generated Android assets, and static/contracts. not verified yet for real phone APK native bridge to Galaxy Watch.

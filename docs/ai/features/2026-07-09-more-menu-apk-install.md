@@ -96,6 +96,8 @@
 
 ## 사용자 피드백: 브라우저 직접 APK 다운로드 (2026-07-09)
 
+> 현재 동작 아님: 이 Slice 2 결정은 아래 `모바일 APK 대상 수정`에서 superseded됐다. 현재 `APK 설치하기`는 `tomato-mobile-debug.apk`만 다운로드하며, `tomato-wear-debug.apk`는 공개 배포에서 제거됐다.
+
 ### 증상
 
 운영 Pages를 Android 브라우저에서 열고 `APK 설치하기`를 누르면 화면 하단에 `APK 설치는 Android 앱에서 실행하거나 PC에서 npm.cmd run install:wear-watch를 사용해주세요.` 안내 toast가 뜬다. 사용자는 이 안내를 경고/알림처럼 느끼며, 버튼을 누르면 APK가 바로 다운로드되기를 원한다.
@@ -176,7 +178,7 @@
 
 ## 다음 세션 시작 프롬프트
 
-이 흐름은 production Pages까지 검증 완료됐다. 다음 세션에서 같은 요청이 이어지면 새 기능 작업을 시작하지 말고, 먼저 현재 배포 URL에서 `더보기 -> APK 설치하기`가 계속 `tomato-wear-debug.apk`를 직접 다운로드하는지 smoke check만 수행한다.
+Superseded by `사용자 피드백: 모바일 APK 대상 수정 (2026-07-09)`. 다음 세션에서 같은 요청이 이어지면 아래 최신 프롬프트를 기준으로 `tomato-mobile-debug.apk` 다운로드와 `tomato-wear-debug.apk` 404만 확인한다.
 
 ## 사용자 피드백: 모바일 APK 대상 수정 (2026-07-09)
 
@@ -225,3 +227,27 @@
 4. PASS 목표: `npm.cmd run verify:assets`.
 5. PASS 목표: `node --test tests/*.test.js`.
 6. Production-flow QA: 배포 URL에서 `더보기 -> APK 설치하기` 클릭 시 old warning 없이 `tomato-mobile-debug.apk`가 다운로드되고 파일 크기가 모바일 APK 산출물 크기 `50,133,878 bytes`와 일치하는지 확인한다.
+
+### 실행 결과
+
+1. `public/downloads/tomato-mobile-debug.apk`를 추가했다. 원본은 현재 checkout의 `android/app/build/outputs/apk/debug/app-debug.apk`이며 크기는 `50,133,878 bytes`다.
+2. `public/downloads/tomato-wear-debug.apk`를 제거했다. 운영 Pages에서도 해당 URL은 `404`다.
+3. `utils/build-info.js`의 다운로드 상수를 `TOMATO_MOBILE_APK_DOWNLOAD_PATH`, `TOMATO_MOBILE_APK_DOWNLOAD_NAME`으로 바꿨다.
+4. `requestTomatoApkInstall()`은 더 이상 `TomatoWearAppUpdate` native bridge나 `_requestWearAppRefreshOrInstall()`을 호출하지 않고, 항상 모바일 APK 직접 다운로드를 시도한다.
+5. `requestTomatoAppRefresh()`의 갤럭시워치 refresh/install bridge는 유지했다.
+6. `app.js`의 helper-missing fallback URL도 `public/downloads/tomato-mobile-debug.apk`로 바꿨다.
+7. `sw.js` cache version과 cache marker tests는 `tomatofarm-v20260709z10-mobile-apk-download`로 동기화했다.
+
+### 검증 결과
+
+1. PASS RED: `node --test tests/wear-app-refresh-update.test.js`가 구현 전 모바일 APK 상수/asset 부재와 Wear bridge 호출로 실패했다.
+2. PASS: `git diff --check; node --check app.js; node --check utils/build-info.js; node --check sw.js`.
+3. PASS: `node --test tests/app-shell-action-bridge.test.js tests/wear-app-refresh-update.test.js tests/pwa-update-auto-reload.test.js` - 15 tests, 15 pass.
+4. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=903`.
+5. PASS: 현재 작업 루트에서 전체 test file 목록을 명시해 `node --test <all tests>` 실행 - 771 tests, 771 pass.
+6. PASS production deploy: commit `25da0a3595d69a34dcf4eb05b914e96651e9e5f0`를 `origin/main`에 push했고, `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 25da0a3`가 `[deploy-verify] ok 25da0a3595d6 tomatofarm-v20260709z10-mobile-apk-download static=260`로 통과했다.
+7. PASS production browser-flow QA: production URL에서 390x844 Android viewport로 `더보기 -> APK 설치하기`를 클릭했다. 인증 테스트 세션이 없어 로그인 overlay만 숨긴 뒤 실제 배포된 app-shell 버튼을 클릭했으며, menu는 닫히고 old warning은 없었고 `tomato-mobile-debug.apk`가 `50,133,878 bytes`로 다운로드됐다. `public/downloads/tomato-mobile-debug.apk`는 `200`, `public/downloads/tomato-wear-debug.apk`는 `404`다. Evidence: `.omo/evidence/more-menu-apk-install/production-mobile-apk-25da0a3/result.json`, `menu-open.png`, `after-click.png`.
+
+## 다음 세션 시작 프롬프트
+
+이 흐름은 production Pages까지 검증 완료됐다. 다음 세션에서 같은 요청이 이어지면 새 기능 작업을 시작하지 말고, 먼저 현재 배포 URL에서 `더보기 -> APK 설치하기`가 `tomato-mobile-debug.apk`를 직접 다운로드하고 `tomato-wear-debug.apk`가 계속 404인지 smoke check만 수행한다.

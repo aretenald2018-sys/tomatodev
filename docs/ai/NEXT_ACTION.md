@@ -1,5 +1,29 @@
 # 다음 자동 액션
 
+## 2026-07-09 More Menu APK Mobile Download Fix
+
+- 상태: `complete_production_verified`
+- 계획: `docs/ai/features/2026-07-09-more-menu-apk-install.md`
+- 리뷰: `docs/ai/reviews/2026-07-09-more-menu-apk-mobile-download-review.md`
+- 요청: `APK 설치하기`가 갤럭시워치용 APK를 설치/다운로드하지 않고 토마토 모바일 앱 APK를 바로 다운로드해야 한다.
+- 실행 결과:
+  1. `public/downloads/tomato-mobile-debug.apk`를 공개 다운로드 asset으로 추가했다. 원본은 `android/app/build/outputs/apk/debug/app-debug.apk`, 크기는 `50,133,878 bytes`다.
+  2. 이전 공개 워치 APK `public/downloads/tomato-wear-debug.apk`를 제거했다.
+  3. `utils/build-info.js`의 APK 다운로드 상수와 helper를 모바일 APK로 바꿨다.
+  4. `requestTomatoApkInstall()`은 더 이상 `TomatoWearAppUpdate` native bridge나 `_requestWearAppRefreshOrInstall()`을 호출하지 않고 모바일 APK 직접 다운로드만 시작한다.
+  5. `requestTomatoAppRefresh()`의 갤럭시워치 refresh/install bridge는 유지했다.
+  6. `app.js`의 helper 미노출 fallback도 `public/downloads/tomato-mobile-debug.apk`로 이동하게 바꿨다.
+  7. `sw.js` cache version은 `tomatofarm-v20260709z10-mobile-apk-download`로 bump했고 cache marker tests를 동기화했다.
+- 검증:
+  1. PASS RED: `node --test tests/wear-app-refresh-update.test.js`가 구현 전 모바일 APK 상수/asset 부재와 Wear bridge 호출로 실패했다.
+  2. PASS: `node --check app.js && node --check utils/build-info.js && node --check sw.js`.
+  3. PASS: `node --test tests/app-shell-action-bridge.test.js tests/wear-app-refresh-update.test.js tests/pwa-update-auto-reload.test.js` - 15 tests, 15 pass.
+  4. PASS: `npm.cmd run verify:assets` - `runtime-assets ok refs=903`.
+  5. PASS: 현재 작업 루트에서 전체 test file 목록을 명시해 `node --test <all tests>` 실행 - 771 tests, 771 pass.
+  6. PASS production deploy: commit `25da0a3595d69a34dcf4eb05b914e96651e9e5f0`를 `origin/main`에 push했고, `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 25da0a3`가 `[deploy-verify] ok 25da0a3595d6 tomatofarm-v20260709z10-mobile-apk-download static=260`로 통과했다.
+  7. PASS production browser QA: 390x844 Android viewport에서 `더보기 -> APK 설치하기`를 클릭해 menu close, old warning 없음, `tomato-mobile-debug.apk` `50,133,878 bytes` 다운로드를 확인했다. `public/downloads/tomato-mobile-debug.apk`는 `200`, `public/downloads/tomato-wear-debug.apk`는 `404`다. 인증 테스트 세션이 없어 로그인 overlay만 숨기고 실제 배포된 app-shell 버튼을 클릭했다. Evidence: `.omo/evidence/more-menu-apk-install/production-mobile-apk-25da0a3/`.
+- 다음 액션: 이 모바일 APK 다운로드 흐름은 완료. 새 요청이 없으면 다른 대기 항목으로 넘어가기 전에 production URL에서 `더보기 -> APK 설치하기` smoke check만 수행한다.
+
 ## 2026-07-09 Wear Running Live Pages
 
 - 상태: `implemented_static_verified_device_not_verified`
@@ -25,9 +49,11 @@
 
 ## 2026-07-09 Life Zone Photo Preview Like Flow
 
-- 상태: `ready_for_review_local_verified_production_not_verified`
+- 상태: `complete_production_verified`
 - 계획: `docs/ai/features/2026-07-09-life-zone-photo-preview-like-flow.md`
+- 리뷰: `docs/ai/reviews/2026-07-09-life-zone-photo-bubble-polish-review.md`
 - 요청: 라이프존 식사 사진 말풍선을 클릭하면 사진을 크게 보는 sheet/modal을 열고, 열린 사진 더블클릭/더블탭 및 닫힌 말풍선 좋아요 버튼에서 인스타그램식 하트 플로우 모션을 보여준다.
+- 추가 피드백: 첨부 스크린샷 기준 닫힌 사진 말풍선의 하트 주변 원형 제거, 말풍선 내부 사진 꽉 채움, 마름모 밑동을 말풍선 꼬리 형태로 수정한다.
 - 결정:
   1. 확대 UI는 모바일 바텀시트형 lightbox, 넓은 화면은 중앙 modal처럼 보이는 동일 컴포넌트로 구현한다.
   2. 사진 말풍선 click은 preview open, 별도 heart button은 닫힌 상태 좋아요/하트 플로우로 분리한다.
@@ -38,7 +64,8 @@
   2. 사진 말풍선은 preview button과 별도 heart button을 렌더한다. inline `onclick=`과 nested button은 쓰지 않는다.
   3. preview sheet는 `role=dialog`, `aria-modal=true`, 닫기 버튼, backdrop 닫기, `Escape` 닫기를 지원한다.
   4. 열린 사진 double-click/double-tap과 닫힌 말풍선 heart button 모두 저장형 좋아요와 하트 stream 모션을 실행한다.
-  5. `sw.js`/`build-info.json` cache version은 `tomatofarm-v20260709z6-life-zone-photo-like-flow`로 bump했고 cache marker tests도 동기화했다.
+  5. 리뷰 피드백 fix에서 닫힌 사진 말풍선의 heart surface를 투명화하고, 사진/말풍선 padding을 0으로 고정했으며, 마름모 꼬리를 polygon 말풍선 꼬리로 교체했다.
+  6. `sw.js`/`build-info.json` cache version은 `tomatofarm-v20260709z9-life-zone-photo-bubble-polish` 기준으로 cache marker tests와 동기화했다.
 - 검증:
   1. PASS RED: `node --test tests/home-life-zone-state.test.js tests/home-life-zone-npc-quest.test.js` 구현 전 신규 테스트 실패 확인.
   2. PASS: `node --check home/life-zone-state.js && node --check home/life-zone.js && node --check sw.js`.
@@ -46,9 +73,12 @@
   4. PASS: `node --test tests/home-life-zone-state.test.js tests/home-life-zone-npc-quest.test.js` - 40 tests, 40 pass.
   5. PASS browser UI QA: `node .omo/evidence/life-zone-photo-preview-like-flow/capture.mjs`로 `mobile-390`/`wide-520` rest, preview-open, double-like, bubble-like 상태를 캡처했다. double-like와 bubble-like 모두 `field="meal_lunch"`, `emoji="❤"`, `heartParticleCount=6` 확인.
   6. PASS with CRLF warnings only: `git diff --check`.
-  7. not verified yet: `node --test tests/*.test.js`는 이 요청 밖 Wear 러닝 live pages 대기 slice의 `runMetricPager` 기대값 미구현으로 실패한다.
-  8. not verified yet: production Pages commit/push/deploy 검증은 이 checkout의 대량 unrelated dirty worktree 때문에 수행하지 않았다.
-- 다음 액션: 리뷰 세션에서 이 slice 변경만 검토한다. production 검증은 관련 변경만 안전하게 분리한 뒤 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`와 production UI flow를 확인한다.
+  7. PASS 리뷰 피드백 fix: focused checks/assets, fresh Puppeteer UI capture, 독립 visual QA pass A/B 모두 통과.
+  8. PASS: `git diff --check && node --test tests/*.test.js` - 771 tests, 771 pass.
+  9. PASS production deploy: isolated commit `eebd7c82835e7bf932e7987e6d5f11efe75811b6`를 `origin/main`에 push했고, `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ eebd7c82835e7bf932e7987e6d5f11efe75811b6`가 `[deploy-verify] ok eebd7c82835e tomatofarm-v20260709z9-life-zone-photo-bubble-polish static=260`로 통과했다.
+  10. PASS latest production deploy: 이후 `origin/main`의 후속 commit `25da0a3595d69a34dcf4eb05b914e96651e9e5f0`도 life-zone commit을 포함하며, `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 25da0a3595d69a34dcf4eb05b914e96651e9e5f0`가 `[deploy-verify] ok 25da0a3595d6 tomatofarm-v20260709z10-mobile-apk-download static=260`로 통과했다.
+  11. PASS production browser QA: 390x844 viewport에서 production `style.css`를 실제 브라우저에 적용한 사진 말풍선 sample을 렌더해 `bubblePaddingTop/Left=0px`, `photoButtonPaddingTop/Left=0px`, heart background transparent/border 0/shadow none, tail polygon + translate-only transform을 확인했다.
+- 다음 액션: 이 life-zone 사진 말풍선 polish 배포는 완료. 새 요청이 없으면 다른 대기 항목으로 이동한다.
 
 ## 2026-07-09 Life Zone Meal Photo Bubble
 
@@ -92,6 +122,8 @@
 - 다음 액션: 리뷰 세션에서 이 slice 변경만 검토한다. 현재 worktree에는 `.gitignore`, `render-calendar.js`, Android/Wear, 여러 `.omo/evidence/` 등 이 요청 밖 변경이 섞여 있고 local `main`도 upstream보다 앞서 있으므로, 관련 변경만 안전하게 분리해 별도 commit/push한 뒤 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`와 production UI flow(`홈 -> 오늘의 라이프존`)를 확인한다.
 
 ## 2026-07-09 More Menu APK Install
+
+> 현재 동작 아님: 이 항목은 최초 `APK 설치하기` 버튼/워치 설치 브릿지 계획의 historical record다. 현재 운영 동작은 위 `More Menu APK Mobile Download Fix`가 기준이며, `APK 설치하기`는 모바일 APK `tomato-mobile-debug.apk`만 다운로드하고 공개 Wear APK는 제거됐다.
 
 - 상태: `implemented_mobile_app_verified`
 - 계획: `docs/ai/features/2026-07-09-more-menu-apk-install.md`

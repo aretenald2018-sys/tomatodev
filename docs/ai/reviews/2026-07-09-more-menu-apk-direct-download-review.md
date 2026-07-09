@@ -1,5 +1,7 @@
 # 더보기 메뉴 APK 직접 다운로드 리뷰
 
+> 현재 동작 아님: 이 리뷰는 `tomato-wear-debug.apk` 직접 다운로드를 검증한 historical record다. 사용자 피드백 이후 현재 운영 동작은 `docs/ai/reviews/2026-07-09-more-menu-apk-mobile-download-review.md`가 기준이며, `APK 설치하기`는 `tomato-mobile-debug.apk`만 다운로드한다.
+
 ## 범위
 
 - 계획: `docs/ai/features/2026-07-09-more-menu-apk-install.md`
