@@ -173,7 +173,7 @@ test('production app cache busts the service worker registrar script', () => {
   assert.match(indexHtml, /app\.js\?v=20260708a-diet-frequent-foods/);
   assert.match(appJs, /utils\/build-info\.js\?v=20260708a-diet-frequent-foods/);
   assert.match(appJs, /render-workout\.js\?v=20260708a-diet-frequent-foods/);
-  assert.match(swJs, /tomatofarm-v20260709z5-life-zone-meal-photo/);
+  assert.match(swJs, /tomatofarm-v20260709z6-life-zone-photo-like-flow/);
 });
 
 test('top-nav manual app refresh uses build-info update helper', () => {

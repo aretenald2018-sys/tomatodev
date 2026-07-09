@@ -5,10 +5,13 @@ import {
   getCurrentUser,
   getDay,
   getFriendWorkout,
-  getMyFriends
+  getMyFriends,
+  getLikes,
+  toggleLike,
+  isSameInstance
 } from '../data.js';
 import { CONFIG } from '../config.js';
-import { escapeHtml, resolveNickname } from './utils.js';
+import { escapeHtml, resolveNickname, showToast } from './utils.js';
 import {
   buildVworldTileUrl,
   normalizeRunningMapPoints,
@@ -34,6 +37,8 @@ const LIFE_ZONE_NPC_NAME = '트레이너';
 const LIFE_ZONE_MIRANDA_NAME = '미란다';
 const LIFE_ZONE_CONSULTING_CHIEF_NAME = '상담실장';
 const LIFE_ZONE_CACHE_MS = 0;
+const LIFE_ZONE_PHOTO_LIKE_REACTION = '\u2764';
+const LIFE_ZONE_PHOTO_DOUBLE_TAP_MS = 320;
 const RUNNING_MAP_WIDTH = 300;
 const RUNNING_MAP_HEIGHT = 210;
 const RUNNING_MAP_TILE_SIZE = 256;
@@ -45,6 +50,7 @@ const RUNNING_MAP_SINGLE_POINT_ZOOM = 14;
 let _actorStateCache = null;
 let _lifeZoneVisitContext = null;
 let _runningRecordEscHandler = null;
+let _photoPreviewEscHandler = null;
 
 const STATE_LABELS = {
   running: '러닝',
@@ -577,6 +583,226 @@ function _closeRunningRecordModal() {
   }
 }
 
+function _todayLifeZoneKey() {
+  return dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+}
+
+function _lifeZoneHeartIconSvg(extraClass = '') {
+  const cls = extraClass ? ` class="${extraClass}"` : '';
+  return `<svg${cls} viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21s-6.9-4.42-9.42-8.16C.38 9.58 1.33 5.6 4.7 4.36 7 3.51 9.32 4.38 10.7 6.18L12 7.88l1.3-1.7c1.38-1.8 3.7-2.67 6-1.82 3.37 1.24 4.32 5.22 2.12 8.48C18.9 16.58 12 21 12 21z"/></svg>`;
+}
+
+function _lifeZoneCloseIconSvg() {
+  return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6.4 5.2 5.2 6.4 10.8 12l-5.6 5.6 1.2 1.2 5.6-5.6 5.6 5.6 1.2-1.2-5.6-5.6 5.6-5.6-1.2-1.2-5.6 5.6-5.6-5.6z"/></svg>';
+}
+
+function _lifeZonePhotoAlt(actor = {}) {
+  return actor.speech || '식사 사진';
+}
+
+function _lifeZonePhotoLikeKey(actor = {}) {
+  return `${actor.accountId || actor.id || actor.displayName || 'actor'}:${actor.speechLikeField || 'meal'}`;
+}
+
+function _syncLifeZonePhotoLikeButtons(actor = {}, liked = false) {
+  const key = _lifeZonePhotoLikeKey(actor);
+  document.querySelectorAll('[data-lz-photo-like-key]').forEach((button) => {
+    if (button.dataset.lzPhotoLikeKey !== key) return;
+    button.classList.toggle('is-liked', !!liked);
+    button.dataset.lzPhotoLiked = liked ? '1' : '0';
+    button.setAttribute('aria-pressed', liked ? 'true' : 'false');
+    button.title = liked ? '좋아요 취소' : '좋아요';
+  });
+}
+
+function _emitLifeZoneHeartStream(anchor) {
+  if (!anchor) return;
+  const stream = document.createElement('span');
+  stream.className = 'lz-heart-stream';
+  stream.setAttribute('aria-hidden', 'true');
+  for (let i = 1; i <= 6; i += 1) {
+    const particle = document.createElement('span');
+    particle.className = `lz-heart-particle lz-heart-particle--${i}`;
+    particle.innerHTML = _lifeZoneHeartIconSvg('lz-heart-particle-icon');
+    stream.append(particle);
+  }
+  anchor.append(stream);
+  window.setTimeout(() => stream.remove(), 920);
+}
+
+async function _handleLifeZonePhotoLike(actor, anchor, { forceLiked = false } = {}) {
+  if (!actor?.speechPhoto) return false;
+  _emitLifeZoneHeartStream(anchor);
+  if (!actor.accountId || !actor.speechLikeField) return false;
+
+  const wasLiked = !!actor.speechPhotoLiked;
+  if (forceLiked && wasLiked) {
+    _syncLifeZonePhotoLikeButtons(actor, true);
+    return true;
+  }
+
+  try {
+    let liked = await toggleLike(actor.accountId, _todayLifeZoneKey(), actor.speechLikeField, LIFE_ZONE_PHOTO_LIKE_REACTION);
+    if (forceLiked && liked === false) {
+      liked = await toggleLike(actor.accountId, _todayLifeZoneKey(), actor.speechLikeField, LIFE_ZONE_PHOTO_LIKE_REACTION);
+    }
+    if (typeof liked !== 'boolean') return wasLiked;
+    actor.speechPhotoLiked = liked;
+    const count = Number(actor.speechPhotoLikeCount) || 0;
+    if (liked !== wasLiked) {
+      actor.speechPhotoLikeCount = Math.max(0, count + (liked ? 1 : -1));
+    }
+    _syncLifeZonePhotoLikeButtons(actor, liked);
+    return liked;
+  } catch (error) {
+    console.warn('[life-zone] photo like failed:', error);
+    showToast('좋아요 저장 실패', 1800, 'error');
+    _syncLifeZonePhotoLikeButtons(actor, wasLiked);
+    return wasLiked;
+  }
+}
+
+function _bindLifeZonePhotoDoubleLike(target, actor, anchor) {
+  let lastTapAt = 0;
+  const like = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    _handleLifeZonePhotoLike(actor, anchor, { forceLiked: true });
+  };
+  target.addEventListener('dblclick', (event) => {
+    if (event.type === 'dblclick') like(event);
+  });
+  target.addEventListener('pointerup', (event) => {
+    if (event.pointerType === 'mouse') return;
+    const now = Date.now();
+    if (now - lastTapAt <= LIFE_ZONE_PHOTO_DOUBLE_TAP_MS) {
+      lastTapAt = 0;
+      like(event);
+      return;
+    }
+    lastTapAt = now;
+  });
+}
+
+function _closeLifeZonePhotoPreview() {
+  const modal = document.getElementById('life-zone-photo-preview-modal');
+  if (modal) modal.remove();
+  if (_photoPreviewEscHandler) {
+    document.removeEventListener('keydown', _photoPreviewEscHandler);
+    _photoPreviewEscHandler = null;
+  }
+}
+
+function _openLifeZonePhotoPreview(actor = {}) {
+  if (!actor.speechPhoto) return;
+  _closeLifeZonePhotoPreview();
+
+  const modal = document.createElement('div');
+  const sheet = document.createElement('section');
+  const header = document.createElement('div');
+  const title = document.createElement('h3');
+  const meta = document.createElement('div');
+  const closeButton = document.createElement('button');
+  const figure = document.createElement('figure');
+  const image = document.createElement('img');
+  const likeButton = document.createElement('button');
+  const titleId = 'life-zone-photo-preview-title';
+  const likeKey = _lifeZonePhotoLikeKey(actor);
+
+  modal.id = 'life-zone-photo-preview-modal';
+  modal.className = 'lz-photo-preview-backdrop open';
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) _closeLifeZonePhotoPreview();
+  });
+
+  sheet.className = 'lz-photo-preview-sheet';
+  sheet.setAttribute('role', 'dialog');
+  sheet.setAttribute('aria-modal', 'true');
+  sheet.setAttribute('aria-labelledby', titleId);
+  sheet.tabIndex = -1;
+
+  header.className = 'lz-photo-preview-header';
+  title.id = titleId;
+  title.className = 'lz-photo-preview-title';
+  title.textContent = `${actor.displayName || '이웃'} 식사 사진`;
+  meta.className = 'lz-photo-preview-meta';
+  meta.textContent = actor.speech || '식사 기록';
+
+  closeButton.type = 'button';
+  closeButton.className = 'lz-photo-preview-close';
+  closeButton.setAttribute('aria-label', '사진 닫기');
+  closeButton.dataset.lzPhotoAction = 'close';
+  closeButton.innerHTML = _lifeZoneCloseIconSvg();
+  closeButton.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    _closeLifeZonePhotoPreview();
+  });
+
+  figure.className = 'lz-photo-preview-figure';
+  image.className = 'lz-photo-preview-image';
+  image.src = actor.speechPhoto;
+  image.alt = _lifeZonePhotoAlt(actor);
+  image.decoding = 'async';
+  image.draggable = false;
+
+  likeButton.type = 'button';
+  likeButton.className = `lz-photo-preview-like-btn lz-photo-like-btn${actor.speechPhotoLiked ? ' is-liked' : ''}`;
+  likeButton.dataset.lzPhotoAction = 'like';
+  likeButton.dataset.lzPhotoLikeKey = likeKey;
+  likeButton.dataset.lzPhotoLiked = actor.speechPhotoLiked ? '1' : '0';
+  likeButton.setAttribute('aria-label', `${actor.displayName || '이웃'} 식사 사진 좋아요`);
+  likeButton.setAttribute('aria-pressed', actor.speechPhotoLiked ? 'true' : 'false');
+  likeButton.title = actor.speechPhotoLiked ? '좋아요 취소' : '좋아요';
+  likeButton.innerHTML = _lifeZoneHeartIconSvg();
+  likeButton.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    _handleLifeZonePhotoLike(actor, figure, { forceLiked: false });
+  });
+
+  _bindLifeZonePhotoDoubleLike(image, actor, figure);
+
+  header.append(title, meta);
+  figure.append(image, likeButton);
+  sheet.append(closeButton, header, figure);
+  modal.append(sheet);
+  document.body.append(modal);
+
+  if (_photoPreviewEscHandler) document.removeEventListener('keydown', _photoPreviewEscHandler);
+  _photoPreviewEscHandler = (event) => {
+    if (event.key === 'Escape') _closeLifeZonePhotoPreview();
+  };
+  document.addEventListener('keydown', _photoPreviewEscHandler);
+  requestAnimationFrame(() => sheet.focus({ preventScroll: true }));
+}
+
+async function _withLifeZonePhotoLikeStates(actors = [], todayKey, currentUser = null) {
+  const targets = [...new Set(
+    actors
+      .filter((actor) => actor.speechPhoto && actor.accountId && actor.speechLikeField)
+      .map((actor) => actor.accountId)
+  )];
+  if (!targets.length) return actors;
+
+  const results = await Promise.allSettled(targets.map(async (targetId) => [targetId, await getLikes(targetId, todayKey)]));
+  const likesByTarget = new Map();
+  results.forEach((result) => {
+    if (result.status === 'fulfilled') likesByTarget.set(result.value[0], result.value[1] || []);
+  });
+
+  return actors.map((actor) => {
+    if (!actor.speechPhoto || !actor.accountId || !actor.speechLikeField) return actor;
+    const fieldLikes = (likesByTarget.get(actor.accountId) || [])
+      .filter((like) => like.field === actor.speechLikeField);
+    return {
+      ...actor,
+      speechPhotoLiked: fieldLikes.some((like) => like.from === currentUser?.id || isSameInstance(like.from, currentUser?.id)),
+      speechPhotoLikeCount: fieldLikes.length
+    };
+  });
+}
+
 function _openRunningRecordModal(actor = {}, preparedMap = null) {
   if (typeof document === 'undefined') return;
   const runningMap = actor.runningMap || {};
@@ -708,16 +934,45 @@ function _renderActors(card, actors) {
     }
 
     if (actor.speech) {
-      const bubble = document.createElement('div');
+      const bubble = document.createElement(actor.speechPhoto ? 'span' : 'div');
       bubble.className = `lz-speech lz-speech--${actor.state}${actor.speechPhoto ? ' lz-speech--photo' : ''}`;
       if (actor.speechPhoto) {
+        const previewButton = document.createElement('button');
         const photo = document.createElement('img');
+        const likeButton = document.createElement('button');
+        const likeKey = _lifeZonePhotoLikeKey(actor);
+        previewButton.type = 'button';
+        previewButton.className = 'lz-speech-photo-btn';
+        previewButton.dataset.lzPhotoAction = 'preview';
+        previewButton.setAttribute('aria-label', `${actor.displayName} ${actor.speech || '식사'} 사진 크게 보기`);
+        previewButton.title = `${actor.displayName} ${actor.speech || '식사 사진'}`;
         photo.className = 'lz-speech-photo';
         photo.src = actor.speechPhoto;
         photo.alt = actor.speech || '식사 사진';
         photo.loading = 'lazy';
         photo.decoding = 'async';
-        bubble.append(photo);
+        previewButton.append(photo);
+        previewButton.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          _openLifeZonePhotoPreview(actor);
+        });
+        likeButton.type = 'button';
+        likeButton.className = 'lz-photo-like-btn';
+        likeButton.classList.toggle('is-liked', !!actor.speechPhotoLiked);
+        likeButton.dataset.lzPhotoAction = 'like';
+        likeButton.dataset.lzPhotoLikeKey = likeKey;
+        likeButton.dataset.lzPhotoLiked = actor.speechPhotoLiked ? '1' : '0';
+        likeButton.setAttribute('aria-label', `${actor.displayName} ${actor.speech || '식사'} 좋아요`);
+        likeButton.setAttribute('aria-pressed', actor.speechPhotoLiked ? 'true' : 'false');
+        likeButton.title = actor.speechPhotoLiked ? '좋아요 취소' : '좋아요';
+        likeButton.innerHTML = _lifeZoneHeartIconSvg();
+        likeButton.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          _handleLifeZonePhotoLike(actor, bubble, { forceLiked: false });
+        });
+        bubble.append(previewButton, likeButton);
       } else {
         bubble.textContent = actor.speech;
       }
@@ -769,7 +1024,11 @@ async function _loadLifeZoneActorStates() {
       : {};
   });
 
-  const actors = resolveLifeZoneActors({ accounts, friends, currentUser, dayByAccountId });
+  const actors = await _withLifeZonePhotoLikeStates(
+    resolveLifeZoneActors({ accounts, friends, currentUser, dayByAccountId }),
+    todayKey,
+    currentUser
+  );
   _actorStateCache = { key: cacheKey, at: Date.now(), actors };
   return actors;
 }

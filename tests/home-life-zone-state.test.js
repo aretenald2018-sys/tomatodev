@@ -501,6 +501,8 @@ test('adds the selected meal photo to diet actors while keeping text fallback', 
   assert.equal(actors[0].state, 'diet');
   assert.equal(actors[0].speech, '점심냠냠');
   assert.equal(actors[0].speechPhoto, lunchPhoto);
+  assert.equal(actors[0].speechPhotoMeal, 'lunch');
+  assert.equal(actors[0].speechLikeField, 'meal_lunch');
 
   const textOnlyActors = resolveLifeZoneActors({
     accounts: [{ id: 'u2', resolvedNickname: '문정토마토' }],
@@ -513,6 +515,8 @@ test('adds the selected meal photo to diet actors while keeping text fallback', 
   assert.equal(textOnlyActors[1].state, 'diet');
   assert.equal(textOnlyActors[1].speech, '점심냠냠');
   assert.equal(textOnlyActors[1].speechPhoto, null);
+  assert.equal(textOnlyActors[1].speechPhotoMeal, null);
+  assert.equal(textOnlyActors[1].speechLikeField, null);
 });
 
 test('uses the latest life zone activity snapshot when workout and snack both exist', () => {

@@ -1,57 +1,315 @@
 # 다음 자동 액션
 
+## 2026-07-09 Wear Running Live Pages
+
+- 상태: `implemented_static_verified_device_not_verified`
+- 계획: `docs/ai/features/2026-07-09-wear-running-live-pages.md`
+- 리뷰: `docs/ai/reviews/2026-07-09-wear-running-live-pages-review.md`
+- 요청: 첨부 사진처럼 갤럭시워치에서 러닝 중 화면을 넘기면 요약, 페이스, 심박수, 심박수 구간, 경로가 실시간으로 보여야 한다.
+- 실행 결과:
+  1. 기존 6-page 대시보드는 되살리지 않고, 러닝 active 상태 안에만 `ViewPager2` 기반 `runMetricPager`를 추가했다.
+  2. 5개 live page layout을 추가했다: summary, pace, heart, heart zones, route.
+  3. `WearRunMetricPagerAdapter.kt`와 `WearRunGraphViews.kt`를 추가해 거리/시간/평균 페이스/kcal, 페이스 graph, 심박 graph, zone bars, route sketch를 바인딩한다.
+  4. `WearRunUiState.kt`와 `WearRunUiMetrics.kt`가 distance samples, heart samples, kcal estimate, 10초 기반 heart-zone duration, degenerate route projection을 계산한다.
+  5. `WearExerciseMetricAccumulator.kt`/`WearExerciseSessionStore.kt`가 distance samples를 실시간 snapshot에 포함한다.
+  6. 저장 payload schema는 확장하지 않고 기존 `/tomato/workout/run/complete` 경계를 보존했다. route fallback distance로도 average pace가 계산되도록 보정했다.
+  7. `.gitignore`는 Wear source/resource/proguard 파일이 clean checkout에서 누락되지 않도록 narrow exception을 보강했다.
+- 검증:
+  1. PASS RED/GREEN: `node --test tests/wear-running-live-pages.test.js tests/wear-running-only-shell.test.js tests/wear-slice2-artifacts.test.js` - 13 tests, 13 pass.
+  2. PASS RED/GREEN: `JAVA_HOME="C:Program FilesAndroidAndroid Studiojbr" .androidgradlew.bat -p android :wear:testDebugUnitTest` - BUILD SUCCESSFUL.
+  3. PASS: `JAVA_HOME="C:Program FilesAndroidAndroid Studiojbr" .androidgradlew.bat -p android :wear:assembleDebug` - BUILD SUCCESSFUL.
+  4. PASS: review regressions for Wear resource reviewability, 10초 heart-zone duration, route fallback avg pace, degenerate route projection.
+  5. PASS: code review and gate review after fixes. Evidence lives under `.omo/evidence/wear-running-live-pages-20260709/`.
+  6. not verified yet: attached Wear device/emulator가 없어 ADB install/launch/swipe screenshot QA는 수행하지 못했다. `adb devices` returned no device rows.
+- 다음 액션: Galaxy Watch 또는 Wear emulator를 ADB에 연결한 뒤 `.androidgradlew.bat -p android :wear:installDebug`로 설치하고, Wear 앱에서 `런닝 -> 시작 -> summary/pace/heart/zones/route` 5개 page swipe UI를 실기기 캡처로 확인한다.
+
+## 2026-07-09 Life Zone Photo Preview Like Flow
+
+- 상태: `ready_for_review_local_verified_production_not_verified`
+- 계획: `docs/ai/features/2026-07-09-life-zone-photo-preview-like-flow.md`
+- 요청: 라이프존 식사 사진 말풍선을 클릭하면 사진을 크게 보는 sheet/modal을 열고, 열린 사진 더블클릭/더블탭 및 닫힌 말풍선 좋아요 버튼에서 인스타그램식 하트 플로우 모션을 보여준다.
+- 결정:
+  1. 확대 UI는 모바일 바텀시트형 lightbox, 넓은 화면은 중앙 modal처럼 보이는 동일 컴포넌트로 구현한다.
+  2. 사진 말풍선 click은 preview open, 별도 heart button은 닫힌 상태 좋아요/하트 플로우로 분리한다.
+  3. 애니메이션은 `transform`/`opacity`만 사용하고 `prefers-reduced-motion`을 지원한다.
+  4. 사용자는 `저장형`을 선택했고, 기존 `_likes`/`toggleLike()`를 쓰는 실제 저장형 소셜 리액션으로 구현한다.
+- 실행 결과:
+  1. `resolveLifeZoneActors()` diet actor에 `speechPhotoMeal`/`speechLikeField`를 추가해 `meal_lunch` 같은 저장 field를 제공한다.
+  2. 사진 말풍선은 preview button과 별도 heart button을 렌더한다. inline `onclick=`과 nested button은 쓰지 않는다.
+  3. preview sheet는 `role=dialog`, `aria-modal=true`, 닫기 버튼, backdrop 닫기, `Escape` 닫기를 지원한다.
+  4. 열린 사진 double-click/double-tap과 닫힌 말풍선 heart button 모두 저장형 좋아요와 하트 stream 모션을 실행한다.
+  5. `sw.js`/`build-info.json` cache version은 `tomatofarm-v20260709z6-life-zone-photo-like-flow`로 bump했고 cache marker tests도 동기화했다.
+- 검증:
+  1. PASS RED: `node --test tests/home-life-zone-state.test.js tests/home-life-zone-npc-quest.test.js` 구현 전 신규 테스트 실패 확인.
+  2. PASS: `node --check home/life-zone-state.js && node --check home/life-zone.js && node --check sw.js`.
+  3. PASS: `npm.cmd run verify:assets` - `runtime-assets ok refs=913`.
+  4. PASS: `node --test tests/home-life-zone-state.test.js tests/home-life-zone-npc-quest.test.js` - 40 tests, 40 pass.
+  5. PASS browser UI QA: `node .omo/evidence/life-zone-photo-preview-like-flow/capture.mjs`로 `mobile-390`/`wide-520` rest, preview-open, double-like, bubble-like 상태를 캡처했다. double-like와 bubble-like 모두 `field="meal_lunch"`, `emoji="❤"`, `heartParticleCount=6` 확인.
+  6. PASS with CRLF warnings only: `git diff --check`.
+  7. not verified yet: `node --test tests/*.test.js`는 이 요청 밖 Wear 러닝 live pages 대기 slice의 `runMetricPager` 기대값 미구현으로 실패한다.
+  8. not verified yet: production Pages commit/push/deploy 검증은 이 checkout의 대량 unrelated dirty worktree 때문에 수행하지 않았다.
+- 다음 액션: 리뷰 세션에서 이 slice 변경만 검토한다. production 검증은 관련 변경만 안전하게 분리한 뒤 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`와 production UI flow를 확인한다.
+
 ## 2026-07-09 Life Zone Meal Photo Bubble
 
-- 상태: `complete`
-- 기준 작업트리: `C:\Users\USER\Desktop\Tomato Project\tomatofarm-deploy-life-zone-meal-photo`
-- 계획 문서: `docs/ai/features/2026-07-09-life-zone-meal-photo-bubble.md`
-- 요청: 식사 사진을 올린 경우 홈 라이프존 actor 말풍선에서 `아침냠냠`/`점심냠냠` 텍스트보다 작은 사진 썸네일을 우선 표시한다.
-- 실행 요약:
-  - `resolveLifeZoneActors()` diet actor에 `speechPhoto`를 추가했다.
-  - 기존 diet speech meal 선택 기준을 재사용해 선택된 meal의 `bPhoto`/`lPhoto`/`dPhoto`/`sPhoto`를 표시한다.
-  - `home/life-zone.js`는 사진이 있으면 `.lz-speech--photo > img.lz-speech-photo`를 렌더하고, 사진이 없을 때만 기존 텍스트를 렌더한다.
-  - `sw.js` cache version은 `tomatofarm-v20260709z5-life-zone-meal-photo`로 갱신했다.
+- 상태: `ready_for_review_local_verified_production_not_verified`
+- 계획: `docs/ai/features/2026-07-09-life-zone-meal-photo-bubble.md`
+- 요청: 식사 사진을 올린 경우 홈 라이프존 actor 말풍선에 `아침냠냠`/`점심냠냠` 같은 텍스트보다 해당 이미지를 작게 우선 표시한다.
+- 계획 결정:
+  1. 기존 `getLifeZoneDietSpeech()`의 meal 선택 기준을 유지한다.
+  2. diet actor에는 기존 `speech` 텍스트를 유지하고, 사진이 있으면 별도 사진 필드(예: `speechPhoto`)를 추가한다.
+  3. `home/life-zone.js`는 `actor.speechPhoto`를 `actor.speech`보다 먼저 렌더한다.
+  4. 사진이 없으면 현재 `xx냠냠` 텍스트 말풍선을 그대로 유지한다.
+  5. `home/life-zone.js`, `home/life-zone-state.js`, `style.css`는 `STATIC_ASSETS` 대상이므로 수정 시 `sw.js` `CACHE_VERSION`을 같은 변경에서 bump한다.
+- 실행 Slice 1:
+  1. `tests/home-life-zone-state.test.js`에 RED 테스트를 추가해 diet actor 사진 필드와 기존 speech fallback을 고정한다.
+  2. `tests/home-life-zone-npc-quest.test.js`에 RED 테스트를 추가해 사진 우선 DOM 렌더링과 `.lz-speech--photo`/`.lz-speech-photo` 스타일 계약을 고정한다.
+  3. `home/life-zone-state.js`에 기존 meal 선택 로직을 재사용하는 사진 선택 helper를 추가한다.
+  4. `home/life-zone.js`에서 사진이 있으면 작은 이미지 썸네일 말풍선을 렌더하고, 사진이 없으면 기존 텍스트 렌더를 유지한다.
+  5. `style.css`에 사진 말풍선 스타일을 추가한다.
+  6. `sw.js` `CACHE_VERSION`을 bump한다.
+- 검증 계획:
+  1. RED: `node --test tests/home-life-zone-state.test.js tests/home-life-zone-npc-quest.test.js`.
+  2. PASS 목표: `node --check home/life-zone-state.js && node --check home/life-zone.js && node --check sw.js`.
+  3. PASS 목표: `node --test tests/home-life-zone-state.test.js tests/home-life-zone-npc-quest.test.js`.
+  4. PASS 목표: `npm.cmd run verify:assets`.
+  5. PASS 목표: `node --test tests/*.test.js`.
+  6. UI 검증: 홈 탭 `오늘의 라이프존`에서 식사 사진이 저장된 actor의 말풍선이 `xx냠냠` 대신 작은 사진 썸네일을 표시하고, 사진 없는 actor는 기존 텍스트를 유지한다.
+  7. 운영 배포 검증: 관련 변경만 안전하게 commit/push한 뒤 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`를 실행한다. 배포 URL UI flow를 직접 확인하지 못하면 `not verified yet`으로 blocker를 남긴다.
+- 실행 결과:
+  1. `resolveLifeZoneActors()` diet actor에 `speechPhoto`를 추가했다. 기존 `speech`는 fallback/alt/title용으로 유지한다.
+  2. 사진 선택 기준은 기존 diet speech meal 선택과 동일하게 `lifeZoneLastActivity`/`lifeZoneDietActivity` snapshot meal을 우선하고, 없으면 기존 meal fallback 순서를 따른다.
+  3. `home/life-zone.js` actor speech bubble은 `actor.speechPhoto`가 있으면 `.lz-speech--photo` 안에 `<img class="lz-speech-photo">`를 렌더하고, 사진이 없을 때만 기존 `xx냠냠` 텍스트를 렌더한다.
+  4. `style.css`에 사진 말풍선 fixed thumbnail 스타일과 mobile size rule을 추가했다.
+  5. `sw.js`/`build-info.json` cache version은 이 slice 전용 `tomatofarm-v20260709z6-life-zone-photo-like-flow`로 bump했고, cache marker tests도 같은 값으로 맞췄다.
 - 검증:
-  - PASS: `node --check home/life-zone-state.js; node --check home/life-zone.js; node --check sw.js`
-  - PASS: `node --test tests/home-life-zone-state.test.js tests/home-life-zone-npc-quest.test.js` - 39 pass.
-  - PASS: nonblocked broad tests - 696 pass.
-  - PASS: `npm.cmd run verify:assets` - `runtime-assets ok refs=903`.
-  - PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 992e1981b1708366cafb119581491ff25ca54b84` - `[deploy-verify] ok 992e1981b170 tomatofarm-v20260709z5-life-zone-meal-photo static=260`.
-  - PASS rendered UI QA: `.omo/evidence/life-zone-meal-photo-bubble/clean-render-result.json`에서 `photoBubbleCount=1`, `bubbleText=""`, `imageAlt="점심냠냠"`, `objectFit="cover"`.
-  - PASS production rendered UI QA: deployed `home/life-zone.js`/`style.css` 기준 `.omo/evidence/life-zone-meal-photo-bubble/production-render-result.json`에서 `photoBubbleCount=1`, `bubbleText=""`, `imageAlt="점심냠냠"`, `objectFit="cover"`, console messages none.
-  - not verified yet: full `node --test tests/*.test.js`는 현재 `origin/main` 기준에 없는 Wear Android 파일과 별도 worktree의 missing `puppeteer` 때문에 관련 테스트가 실패한다.
-- 다음 액션: 없음. 사용자는 production `https://aretenald2018-sys.github.io/tomatofarm/`에서 식사 사진이 있는 당일 홈 `오늘의 라이프존` 말풍선이 `xx냠냠` 대신 작은 사진 썸네일로 보이는지 확인한다.
+  1. PASS RED: `node --test tests/home-life-zone-state.test.js tests/home-life-zone-npc-quest.test.js` 구현 전 신규 테스트 실패 확인.
+  2. PASS: `node --test tests/home-life-zone-state.test.js tests/home-life-zone-npc-quest.test.js tests/running-session-recovery-behavior.test.js` - 41 tests, 41 pass.
+  3. PASS: `node --test tests/*.test.js` - 760 tests, 760 pass.
+  4. PASS: `node --check home/life-zone-state.js; node --check home/life-zone.js; node --check sw.js; git diff --check; npm.cmd run verify:assets` - `runtime-assets ok refs=913`.
+  5. PASS rendered UI QA: Puppeteer harness at `.omo/evidence/life-zone-meal-photo-bubble/` rendered the attached meal image in the life-zone speech bubble. `bubbleText=""`, `imageAlt="점심냠냠"`, `objectFit="cover"`, console errors none. Evidence: `mobile-390-rerun.png`, `wide-520-rerun.png`, `rerun-result.json`.
+  6. not verified yet: production Pages commit/push/deploy verification was not run because this checkout has large pre-existing unrelated dirty changes and local `main` contains other ahead work; deploying now would risk publishing unrelated work.
+- 다음 액션: 리뷰 세션에서 이 slice 변경만 검토한다. 현재 worktree에는 `.gitignore`, `render-calendar.js`, Android/Wear, 여러 `.omo/evidence/` 등 이 요청 밖 변경이 섞여 있고 local `main`도 upstream보다 앞서 있으므로, 관련 변경만 안전하게 분리해 별도 commit/push한 뒤 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`와 production UI flow(`홈 -> 오늘의 라이프존`)를 확인한다.
 
-## 2026-07-09 러닝 GPS 전체 궤적 및 중단 복구
+## 2026-07-09 More Menu APK Install
 
-- 상태: `complete`
-- 기준 작업트리: `C:\Users\USER\Desktop\Tomato Project\tomatofarm-deploy-life-zone-nickname`
-- 계획 문서: `docs/ai/features/2026-07-09-running-gps-full-route-resilience.md`
-- 요청: 러닝 결과 지도가 전체 GPS 궤적이 아니라 시작점과 끝점만 직선으로 연결되는 문제를 고치고, Android/iPhone 환경에서 앱 background/중단이 발생할 때도 거짓 직선으로 이어지지 않도록 설계한다.
-- 진단 요약:
-  - `runRoute` 저장/로드/상세 렌더 경로는 배열을 보존한다.
-  - 이전 변경들은 홈 말풍선 표현과 리로드 draft 복구 중심이었고, route segment/gap 및 OS background 중단 처리는 범위 밖이었다.
-  - 웹/PWA만으로 OS가 제공하지 않은 중간 GPS 샘플을 복원할 수 없으므로, 중단 구간은 선을 끊고 거리 계산에서 제외해야 한다.
-- 실행 요약:
-  - Slice 1 `웹/PWA 러닝 route integrity 수정`을 구현했다.
-  - `segmentId`, `gapBefore`, `gapReason`을 route point에 보존하고, gap edge는 거리/지도 polyline에서 제외한다.
-  - 시작점 seed, hidden/pagehide/beforeunload/pause/restore/time-gap 처리, draft/downsample metadata 보존을 추가했다.
-  - 상세 러닝 카드에 `GPS 중단 구간` 상태를 표시한다.
-  - Android foreground service와 iOS Core Location은 이번 Slice 1에서 구현하지 않았다.
+- 상태: `implemented_mobile_app_verified`
+- 계획: `docs/ai/features/2026-07-09-more-menu-apk-install.md`
+- 리뷰: `docs/ai/reviews/2026-07-09-more-menu-apk-install-review.md`
+- 요청: 하단바 `더보기`에 `APK 설치하기` 버튼을 추가해 설치 흐름을 시작할 수 있게 한다.
+- 계획 결정:
+  1. 브라우저/PWA는 PC `adb install` 또는 local debug APK sideload를 직접 실행할 수 없다.
+  2. Android Capacitor APK에서는 기존 `TomatoWearAppUpdate.requestRefreshOrInstall()` native bridge를 reload 없이 호출한다.
+  3. PWA/일반 브라우저에서는 실제 설치 완료처럼 표시하지 않고, Android APK 실행 또는 `npm.cmd run install:wear-watch` 안내 toast를 띄운다.
+  4. `index.html`, `app.js`, `utils/build-info.js`, `styles/components.css`가 `STATIC_ASSETS`에 있으므로 변경 시 `sw.js` `CACHE_VERSION`을 bump한다.
+- 실행 Slice 1:
+  1. 완료: `#more-menu`에 `data-app-action="install-apk"` 버튼과 `APK 설치하기` 라벨을 추가했다.
+  2. 완료: `app.js` app shell action handler에 `install-apk`를 추가해 `window.__requestTomatoApkInstall({ control, source: 'more-menu' })` 호출 후 더보기 메뉴를 닫는다.
+  3. 완료: `utils/build-info.js`에 reload 없는 `requestTomatoApkInstall()`을 export하고 window binding으로 노출했다.
+  4. 완료: native bridge가 없거나 Wear install prompt가 실패하면 실제 설치 완료처럼 표시하지 않고 `npm.cmd run install:wear-watch` 안내 toast를 보여준다.
+  5. 완료: `styles/components.css`에 기존 nav-icon mask 체계에 맞춘 APK 아이콘을 추가했고, `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260709z2-more-menu-apk-install`로 bump했다.
+  6. 완료: 모바일앱 assets 반영을 위해 `node scripts/copy-www.js && npx.cmd cap sync android`를 실행해 `www/`와 `android/app/src/main/assets/public/`에 같은 버튼/handler를 동기화했다.
+  7. 완료: `scripts/copy-www.js`가 모바일앱 런타임 dependency(`calc/`, `expert-mode.css`, `test-mode-v2.css`)를 빠뜨려 app shell binding이 실패하던 blocker를 수정했다.
+- 검증 결과:
+  1. PASS: `git diff --check; node --check app.js && node --check utils/build-info.js && node --check sw.js && npm.cmd run verify:assets && node --test tests/app-shell-action-bridge.test.js tests/wear-app-refresh-update.test.js`.
+  2. PASS: `node --test tests/pwa-update-auto-reload.test.js tests/app-shell-action-bridge.test.js tests/wear-app-refresh-update.test.js`.
+  3. PASS: `git diff --check; node --check app.js && node --check utils/build-info.js && node --check sw.js && node --check scripts/copy-www.js && npm.cmd run verify:assets && node --test tests/app-shell-action-bridge.test.js tests/wear-app-refresh-update.test.js tests/pwa-update-auto-reload.test.js tests/copy-www-mobile-assets.test.js`.
+  4. PASS mobile WebView QA: `android/app/src/main/assets/public`를 임시 HTTP server로 서빙하고 390x844 viewport에서 `더보기 -> APK 설치하기` 클릭을 확인했다. 메뉴가 `flex`로 열리고 label=`APK 설치하기`, 클릭 후 메뉴는 `none`으로 닫히며 fallback toast가 기록됐다. Evidence: `.omo/evidence/more-menu-apk-install/mobile-app-more-menu-apk-open.png`, `.omo/evidence/more-menu-apk-install/mobile-app-more-menu-apk-after-click.png`.
+  5. not verified yet: 실제 Android phone APK에서 native `TomatoWearAppUpdate` plugin이 Galaxy Watch 설치/refresh 요청을 수행하는 실기기 flow는 이번 세션에서 실행하지 않았다.
+- 다음 액션: 변경 포함 APK를 빌드/설치한 뒤 실기기에서 `더보기 -> APK 설치하기`가 native bridge로 워치 설치/refresh 요청을 보내는지 확인한다.
+
+## 2026-07-09 Diet Frequent Recent Compact
+
+- 상태: `ready_for_review_production_not_verified`
+- 계획: `docs/ai/features/2026-07-09-diet-frequent-recent-compact.md`
+- 리뷰: `docs/ai/reviews/2026-07-09-diet-frequent-recent-compact-review.md`
+- 요청: 식단 탭의 `이때 자주 먹었던 것` 추천 폰트를 줄이고 한 줄에 3개가 들어오게 하며, `최근에 먹은 것`도 위 항목과 중복 없이 최대 3개 표시한다.
+- 실행 Slice 1:
+  1. `tests/diet-frequent-food-suggestions.test.js`에 빈도/최근 추천 3개, 중복 제외, 3열 스타일 회귀 조건을 추가한다.
+  2. `workout/render.js`에 최근 음식 추천 collector와 두 섹션 렌더링을 추가한다.
+  3. `style.css` 추천 option 폰트와 grid 밀도를 조정한다.
+  4. `sw.js` cache version과 관련 cache marker 테스트를 갱신한다.
+- 검증 계획:
+  1. RED: `node --test tests/diet-frequent-food-suggestions.test.js`.
+  2. PASS 목표: `node --check workout/render.js && node --check sw.js`.
+  3. PASS 목표: `node --test tests/diet-frequent-food-suggestions.test.js tests/diet-add-button-binding.test.js tests/save-schema.test.js`.
+  4. PASS 목표: `npm.cmd run verify:assets`.
+  5. UI 검증: 식단 탭에서 아침/점심/저녁 추천 카드의 3열 배치와 중복 없는 `최근에 먹은 것` 표시, option 클릭 추가 흐름을 확인한다.
+- 실행 결과:
+  1. 빈도 추천은 기존처럼 최대 3개를 유지하고, 각 추천에 `groupKey`를 포함했다.
+  2. 최근 추천 collector를 추가해 같은 끼니 히스토리 최신순 최대 3개를 고르며, 현재 끼니 음식과 빈도 추천 `groupKey`를 제외한다.
+  3. 추천 카드는 `이때 자주 먹었던 것`과 `최근에 먹은 것` 두 섹션을 렌더한다.
+  4. 추천 option은 3열 grid와 작은 Seed text token으로 조정했다.
+  5. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260709z1-diet-recent-compact`로 bump하고 cache marker tests/build-info를 동기화했다.
 - 검증:
-  - PASS: `node --test tests/running-tracker.test.js tests/running-entry.test.js tests/workout-calendar-bottom-sheet.test.js` - 63 pass
-  - PASS: `find tests -maxdepth 1 -name '*.test.js' ! -name 'wear-*.test.js' -print0 | xargs -0 node --test` - 743 pass
-  - PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=903`
-  - PASS: `git diff --check`
-  - PASS: `node --check workout/running-session.js && node --check workout/running-map.js && node --check render-calendar.js && node --check sw.js`
-  - PASS: 수동 route driver - `{"segments":2,"distanceM":44,"gapCount":1,"interrupted":true}`
-  - PASS: `npm.cmd run deploy:production` - 코드 변경 commit `a0e5085ff05b130be5a88c081b0969d448a19dac`를 포함한 current `origin/main`을 `https://aretenald2018-sys.github.io/tomatofarm/`에 배포 검증했다.
-  - PASS: production browser QA - 모바일 390x844에서 HTTP 200, commit/cache marker, route segment helper 결과 `segments=2`, `gapCount=1`, `interrupted=true` 확인.
-  - INFO: `node --test tests/*.test.js` 전체는 현재 `origin/main`에도 없는 `android/wear`/`android/app/build.gradle` 파일을 요구하는 Wear 계약 테스트 6개 때문에 실패한다. 이번 GPS 수정 경로는 Wear 제외 전체와 focused tests로 검증했다.
-  - INFO: `https://aretenald2018-sys.github.io/dashboard3/`는 2026-07-02 배포본에 머문 legacy 경로다. TomatoFarm Lite 실제 최신 운영 검증 대상은 `https://aretenald2018-sys.github.io/tomatofarm/`다.
-- 리뷰 문서: `docs/ai/reviews/2026-07-09-running-gps-full-route-resilience-review.md`
-- 다음 액션:
-  - 사용자 실제 기기에서 `운동 -> 러닝 시작 -> background/pause/reload -> 종료 -> 저장 -> 상세 카드` 플로우를 확인한다. OS가 중간 GPS 샘플을 제공하지 않은 구간은 선이 끊기고 `GPS 중단 구간`으로 표시되어야 한다.
+  1. PASS RED: `node --test tests/diet-frequent-food-suggestions.test.js`가 구현 전 `recent suggestions should have a dedicated collector`에서 실패.
+  2. PASS: `node --check workout/render.js && node --check sw.js`.
+  3. PASS: `node --test tests/diet-frequent-food-suggestions.test.js tests/diet-add-button-binding.test.js tests/save-schema.test.js` - 63 tests, 63 pass.
+  4. PASS: `npm.cmd run verify:assets` - refs=911.
+  5. PASS: `node --test tests/*.test.js` - 756 tests, 756 pass.
+  6. PASS visual harness: `.omo/evidence/diet-frequent-recent-compact/mobile-390.png`, `mobile-360.png`, `mobile-390.json`, `mobile-360.json`에서 각 섹션 3개, sameRow=true, overflowX=false.
+  7. PASS with CRLF warnings only: `git diff --check`.
+  8. not verified yet: TypeScript LSP 미설치로 LSP diagnostics 불가.
+  9. not verified yet: production Pages commit/push/deploy 검증은 이 요청과 무관한 대량 미커밋 변경 때문에 수행하지 않았다.
+- 다음 액션: 관련 변경만 안전하게 분리해 commit/push한 뒤 production Pages에서 `식단 -> 아침/점심/저녁` 추천 카드와 option 클릭 추가 flow를 검증한다.
+
+## 2026-07-08 Wear App Refresh Update Install
+
+- 상태: `ready_for_review_paired_qa_not_verified`
+- 계획: `docs/ai/features/2026-07-08-wear-app-refresh-update-install.md`
+- 요청: 앱 상단 새로고침 버튼을 누를 때마다 WearOS/Galaxy Watch 쪽도 함께 업데이트 흐름을 타게 하고, 워치에 Tomato Farm 앱이 설치되어 있지 않으면 다운로드할 수 있게 처리한다.
+- 계획 결정:
+  1. Android/Wear OS는 phone 앱이 watch 앱을 무음 설치/무음 업데이트할 수 없으므로, 누락된 watch에는 Play Store 설치/업데이트 화면을 `RemoteActivityHelper`로 원격 오픈한다.
+  2. 이미 설치된 watch에는 `/tomato/app/refresh` Data Layer message를 보내 refresh/update ping을 전달한다.
+  3. 운동 저장 bridge(`/tomato/workout/run/complete`, `workout/wear-bridge.js`)와 섞지 않고 별도 `TomatoWearAppUpdate` native plugin/listener로 구현한다.
+  4. `android/`가 `.gitignore`에 걸려 새 native 파일이 diff에서 빠지는 문제를 먼저 해결한다.
+  5. `utils/build-info.js`를 수정하므로 `sw.js` `CACHE_VERSION`을 같은 변경에서 bump한다.
+- 실행 Slice 1:
+  1. `tests/wear-app-refresh-update.test.js`를 RED로 추가해 native plugin, capability, listener, RemoteActivityHelper, JS hook 계약을 고정한다.
+  2. `.gitignore` Android source/resource 예외를 추가해 새 native 변경이 리뷰 가능한 diff에 포함되게 한다.
+  3. `android/app`에 `TomatoWearAppUpdatePlugin`을 추가하고 `MainActivity.java`에 `registerPlugin(...)`을 등록한다.
+  4. `android/wear`에 `tomato_farm_wear_app` capability와 `/tomato/app/refresh` listener를 추가한다.
+  5. `utils/build-info.js`의 `requestTomatoAppRefresh()` 시작부에서 native plugin을 짧은 timeout으로 호출하고, plugin이 없는 web/PWA에서는 no-op으로 유지한다.
+  6. `sw.js` cache version과 관련 cache marker tests를 갱신한다.
+- 검증 계획:
+  1. RED: `node --test tests/wear-app-refresh-update.test.js`.
+  2. PASS 목표: `node --check utils/build-info.js && node --check sw.js`.
+  3. PASS 목표: `node --test tests/wear-app-refresh-update.test.js tests/pwa-update-auto-reload.test.js tests/app-shell-action-bridge.test.js tests/wear-workout-bridge.test.js`.
+  4. PASS 목표: `npm.cmd run verify:assets`.
+  5. PASS 목표: `JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./android/gradlew.bat -p android :app:assembleDebug :wear:testDebugUnitTest :wear:assembleDebug`.
+  6. PASS 목표: paired phone/Galaxy Watch에서 refresh click 시 installed watch는 `/tomato/app/refresh` 수신, missing watch는 Play Store 설치 화면 오픈. paired 환경 또는 Play Store listing이 없으면 `not verified yet`으로 blocker를 기록한다.
+- 다음 액션: `실행 Slice 1`은 완료됐다. 리뷰 세션에서 paired phone/Galaxy Watch runtime QA를 수행하고, installed watch `/tomato/app/refresh` 수신과 missing watch Play Store install prompt를 검증한다.
+- 실행 결과:
+  1. `tests/wear-app-refresh-update.test.js`를 RED/GREEN으로 추가했다.
+  2. `.gitignore`에 Android source/resource 예외를 추가해 이 slice의 새 native 파일이 git status에 보이도록 했다. 앱 로컬 secret(`google-services.json`, `*.jks`, `*.keystore`, `*.p12`, `*.key`)은 ignore로 보호했다.
+  3. `android/app/src/main/java/com/lifestreak/app/wear/TomatoWearAppUpdatePlugin.kt`를 추가했다. installed watch에는 `/tomato/app/refresh`를 보내고, missing watch에는 `RemoteActivityHelper`로 `market://details?id=com.lifestreak.app` 설치 화면을 연다. 동기 prompt 실패는 `failures` summary에 담는다.
+  4. `MainActivity.java`에 `TomatoWearAppUpdatePlugin` 등록을 추가했다.
+  5. `android/app/build.gradle`에 `androidx.wear:wear-remote-interactions:1.2.0`을 추가했다.
+  6. `android/wear/src/main/res/values/wear.xml` capability와 `WearAppRefreshListenerService`/manifest registration을 추가했다. listener는 payload를 decode 전 2048 bytes로 제한한다.
+  7. `utils/build-info.js`의 `requestTomatoAppRefresh()`가 reload 전 native Wear update/install bridge를 짧은 timeout으로 호출한다.
+  8. `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260708z8-wear-app-refresh-install`로 bump하고 cache marker tests/build-info를 동기화했다.
+- 검증:
+  1. PASS RED: `node --test tests/wear-app-refresh-update.test.js` 구현 전 실패 확인.
+  2. PASS: `node --check utils/build-info.js && node --check sw.js`.
+  3. PASS: `node --test tests/wear-app-refresh-update.test.js tests/pwa-update-auto-reload.test.js tests/app-shell-action-bridge.test.js tests/wear-workout-bridge.test.js` - 15 tests, 15 pass.
+  4. PASS: `npm.cmd run verify:assets` - refs=911.
+  5. PASS: `node --test tests/*.test.js` - 754 tests, 754 pass.
+  6. PASS: `JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./android/gradlew.bat -p android :app:assembleDebug :wear:testDebugUnitTest :wear:assembleDebug` - BUILD SUCCESSFUL.
+  7. PASS with existing CRLF warnings: `git diff --check` exited 0. `git check-ignore` confirmed app-local secret files stay ignored and exact new native files are visible.
+  8. not verified yet: paired phone/Galaxy Watch runtime QA and missing-watch Play Store install prompt QA could not run in this session.
+  9. not verified yet probe: `node --check scripts/verify-wear-refresh-adb.mjs && npm.cmd run verify:wear-refresh -- --mode probe` found `adb` but attached device count was 0. Evidence: `.omo/evidence/wear-app-refresh-update-install/adb-device-probe-latest.txt`.
+- evidence: `.omo/evidence/wear-app-refresh-update-install/`
+- 리뷰 결과: `not verified yet`. Static/build/security review는 통과했지만, paired phone/Galaxy Watch runtime QA가 attached device 0개로 불가했다. Review note: `docs/ai/reviews/2026-07-08-wear-app-refresh-update-install-review.md`.
+- 사용자 피드백: "안되는데? 안깔려있어" / "워치연결되어있는디 안깔려" - Galaxy Wearable에서 연결되어 있어도 PC의 `adb devices`에 phone/watch가 보이지 않으면 debug APK를 설치할 수 없다. local/debug 경로에서는 Play Store listing만 열어서는 watch APK가 설치되지 않는다. `npm.cmd run install:wear-pair`를 추가했고, ADB에 phone/watch가 정확히 하나씩 보이면 serial 없이 자동 판별해 이미 빌드된 phone/watch debug APK를 각각 sideload한다.
+- 사용자 피드백: "PC에 연결했으면 PC에서 그냥 다운로드받게하면 안됨? 폰연결왜필요함" - 워치 아이콘/앱 설치만 목적이면 폰 연결은 필요 없다. `npm.cmd run install:wear-watch`를 추가해 ADB에 보이는 Galaxy Watch에 `wear-debug.apk`만 직접 sideload할 수 있게 했다.
+- 검증: `npm.cmd run install:wear-watch`가 `192.168.0.106:46473` Galaxy Watch를 자동 선택했고 `watchInstallStatus=0`, `watchPackageInstalledAfter=true`, `result=PASS`를 기록했다. `adb shell monkey -p com.lifestreak.app -c android.intent.category.LAUNCHER 1`도 `launchExit=0`으로 앱 실행이 확인됐다. Evidence: `.omo/evidence/wear-app-refresh-update-install/wear-watch-install-adb-verification.txt`.
+- 다음 액션: 워치 앱 아이콘은 설치 완료. 폰 앱 새로고침 버튼이 설치된 워치에 `/tomato/app/refresh`를 보내는 end-to-end 검증을 하려면 phone도 ADB에 연결한 뒤 `npm.cmd run verify:wear-refresh -- --mode installed`를 실행하고, 대기 중 phone 앱 상단 새로고침 버튼을 누른다.
+
+## 2026-07-08 Exercise Program Goal Labels
+
+- 상태: `ready_for_execution`
+- 계획: `docs/ai/features/2026-07-08-exercise-program-goal-labels.md`
+- 요청: `종목 수정` 바텀시트의 `프로그램` 목표설정에서 `세트`를 `목표 세트`, `볼륨 kg`을 `현재 n세트당 수행 kg`, `볼륨 회`를 `현재 n세트당 수행 횟수`, `증량`을 `3주 후 추가증량목표`로 바꾸고, `목표 세트` 입력을 첫 번째로 받으며 그 값을 뒤의 `n세트당` 라벨에 반영한다.
+- 계획 결정:
+  1. 대상은 `workout/exercises.js`의 `종목 수정 > 프로그램` editor 영역이다.
+  2. 저장 schema와 프로그램 산식은 바꾸지 않고 UI 라벨, 입력 순서, 라벨 동기화만 바꾼다.
+  3. `목표 세트` input 값이 바뀌면 `현재 n세트당 수행 kg`/`현재 n세트당 수행 횟수` 라벨의 n을 즉시 업데이트한다.
+  4. `workout/exercises.js`가 `STATIC_ASSETS`에 있으므로 `sw.js` `CACHE_VERSION`을 bump하고 cache version 고정 테스트도 갱신한다.
+- 실행 Slice 1:
+  1. `tests/exercise-program-editor.test.js`에 RED 테스트를 추가해 새 라벨, 구 라벨 제거, `목표 세트` 우선 순서, label sync binding을 고정한다.
+  2. `workout/exercises.js`에서 program editor HTML 라벨/순서를 변경하고 label sync helper를 추가한다.
+  3. `sw.js`와 cache version 테스트 기대값을 갱신한다.
+- 검증 계획:
+  1. RED: `node --test tests/exercise-program-editor.test.js`.
+  2. PASS 목표: `node --check workout/exercises.js && node --check sw.js`.
+  3. PASS 목표: `node --test tests/exercise-program-editor.test.js`.
+  4. PASS 목표: `node --test tests/*.test.js`.
+  5. PASS 목표: `npm.cmd run verify:assets`.
+  6. PASS 목표: production Pages 배포 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`.
+- 다음 액션: 위 계획의 `실행 Slice 1`을 실행한다. 앱 코드 변경 전 RED 테스트를 먼저 추가한다.
+
+## 2026-07-08 Calendar Goal Input Exercise Editor
+
+- 상태: `ready_for_execution`
+- 계획: `docs/ai/features/2026-07-08-calendar-goal-input-exercise-editor.md`
+- 요청: 운동 달력의 일요일 왼쪽 목표 칸에 `목표입력` 버튼을 만들고, 클릭 시 바텀시트 드롭다운으로 헬스 운동 종목을 선택한 뒤 선택한 종목의 기존 `종목 수정` 바텀시트를 연다.
+- 계획 결정:
+  1. 버튼 위치는 기존 workout calendar cycle rail(`.cal-workout-week-rail`)이다. 기존 목표 카드가 있는 주에도 버튼을 함께 표시하고, 빈 주에는 이 버튼이 왼쪽 칸의 주 동작이 된다.
+  2. 첫 단계는 실제 `<select>` 기반 `목표입력` 바텀시트다. 후보는 `getExList()`와 `getMuscleParts()` 기준 헬스 근력 종목만 포함하고 러닝/유산소 후보는 제외한다.
+  3. 선택 후에는 새 editor를 만들지 않고 기존 `wtOpenExerciseEditor()`와 `#ex-editor-modal`을 재사용한다.
+  4. 목표입력 경로에서 열린 `종목 수정` 시트는 취소/저장/삭제 후 exercise picker로 자동 복귀하지 않도록 editor return mode를 추가한다. 기존 picker 경로는 기본값으로 picker 복귀를 유지한다.
+  5. 목표입력은 오늘 운동 기록 추가가 아니므로 `saveWorkoutDay()`, `_addWorkoutHomeSession()`, `selectWorkoutExerciseEntry()`를 호출하지 않는다.
+- 실행 Slice 1:
+  1. `render-calendar.js`에 `목표입력` rail 버튼, capture click binding, 목표입력 dropdown sheet, `loadAndInjectModals()` 후 `wtOpenExerciseEditor(exId, null, { returnToPicker: false, source: 'calendar-goal-input' })` 연결을 추가한다.
+  2. `workout/exercises.js`에 editor return mode 옵션을 추가해 기존 picker 복귀와 calendar goal input 직접 진입을 분리한다.
+  3. `style.css`에 rail 버튼과 목표입력 sheet/select/action 스타일을 TDS/Seed 토큰으로 추가한다.
+  4. `render-calendar.js`, `workout/exercises.js`, `style.css`가 `STATIC_ASSETS`에 있으므로 `sw.js` `CACHE_VERSION`을 bump한다.
+  5. `tests/workout-calendar-bottom-sheet.test.js`, `tests/ex-picker-selection-flow.test.js` 또는 `tests/exercise-program-editor.test.js`에 focused regression tests를 추가한다.
+- 검증 계획:
+  1. RED: `node --test tests/workout-calendar-bottom-sheet.test.js tests/ex-picker-selection-flow.test.js tests/exercise-program-editor.test.js`.
+  2. PASS 목표: `node --check render-calendar.js && node --check workout/exercises.js && node --check sw.js`.
+  3. PASS 목표: `node --test tests/workout-calendar-bottom-sheet.test.js tests/ex-picker-selection-flow.test.js tests/exercise-program-editor.test.js`.
+  4. PASS 목표: `node --test tests/*.test.js`.
+  5. PASS 목표: `npm.cmd run verify:assets`.
+  6. PASS 목표: production Pages에서 `운동 -> 달력 홈 -> 목표입력 -> 운동 종목 select -> 다음 -> 종목 수정` flow 확인. 선택 종목명이 editor에 보이고 취소/저장 후 picker가 갑자기 열리지 않아야 한다.
+- 다음 액션: 위 계획의 `실행 Slice 1`을 실행한다. 계획 범위 밖 앱 변경은 하지 말고, `STATIC_ASSETS` 수정 시 `sw.js` cache version을 같은 변경에 포함한다.
+
+## 2026-07-08 Wear Running Only Shell
+
+- 상태: `ready_for_paired_phone_save_qa`
+- 계획: `docs/ai/features/2026-07-08-wear-running-only-shell.md`
+- 리뷰: `docs/ai/reviews/2026-07-08-wear-running-only-shell-review.md`
+- 진단: `docs/ai/diagnoses/2026-07-09-wear-running-phone-save-payload.md`
+- ULW: `.omo/ulw-loop/watch-running-only-20260708/goals.json`
+- 요청: 갤럭시워치에서 현재 구현된 6개의 화면과 관련 UX/UI 코드를 삭제하고, 워치 앱을 Tomato Farm 러닝 시작/저장 기능과만 연동한다. 러닝 중 시간/거리/심박수는 반드시 웨어 화면에 동시에 보여야 한다.
+- 계획 결정:
+  1. 6-page ViewPager 대시보드(`page_streak`, `page_checkin`, `page_workout`, `page_week`, `page_stocks`, `page_timer`)와 우측 6-dot indicator를 제거한다.
+  2. 워치 첫 화면은 러닝 전용 start 상태로 바꾸고, active/pause/summary는 하나의 러닝 workflow 상태로 유지한다.
+  3. `page_workout.xml`의 비러닝 carousel 후보, 준비중 버튼, 오늘 운동 목록은 삭제한다.
+  4. `WearExerciseService`, Health Services metric 수집, `WearWorkoutDataLayer.sendRunComplete()`, phone `workout/wear-bridge.js`의 `saveWorkoutDay({ silent: true })` 저장 경계는 유지한다.
+  5. Watch module의 Firestore 직접 읽기/쓰기와 old dashboard용 `FirebaseHelper.fetchWorkouts()/fetchCalEvents()` 경로는 제거한다.
+- 실행 Slice 1:
+  1. `tests/wear-running-only-shell.test.js`를 RED로 추가해 ViewPager/dots/old page refs/coming-soon carousel/Firestore dashboard reads가 남으면 실패하게 한다.
+  2. `activity_main.xml`, `page_workout.xml`, `MainActivity.kt`, `WearWorkoutUiController.kt`, 필요 시 `WearRunUiState.kt`, `android/wear/build.gradle`을 러닝 전용 셸로 축소한다.
+  3. 더 이상 참조되지 않는 `page_streak.xml`, `page_checkin.xml`, `page_week.xml`, `page_stocks.xml`, `page_timer.xml`, `FirebaseHelper.kt`는 삭제한다.
+  4. 기존 wear bridge/Health Services/GPS 계약 테스트를 함께 통과시킨다.
+  5. Watch surface QA와 paired phone/watch 저장 QA 증거를 `.omo/evidence/wear-running-only-shell-20260708/`에 남긴다.
+- 검증 계획:
+  1. RED: `node --test tests/wear-running-only-shell.test.js`.
+  2. PASS 목표: `node --test tests/wear-running-only-shell.test.js`.
+  3. PASS 목표: `node --test tests/wear-workout-bridge.test.js tests/wear-slice3-health-services.test.js tests/wear-gps-running-contract.test.js tests/running-entry.test.js tests/workout-save-mode-guard.test.js`.
+  4. PASS 목표: `JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./android/gradlew.bat -p android :wear:testDebugUnitTest :app:assembleDebug :wear:assembleDebug`.
+  5. PASS 목표: Watch APK 실행 첫 화면에 러닝 start만 보이고, 6-dot indicator와 vertical swipe page가 없으며, active 화면에서 시간/거리/심박수가 동시에 보인다.
+  6. PASS 목표: paired phone/watch에서 final stop 후 phone Tomato Farm 해당 날짜 운동 카드/캐러셀에 `wear-running` cardio entry가 저장된다. paired 환경이 없으면 `not verified yet`으로 남긴다.
+- 실행 결과:
+  1. `activity_main.xml`은 `page_workout.xml` 단일 include로 축소했고 `ViewPager2`/6-dot indicator를 제거했다.
+  2. `page_workout.xml`은 러닝 준비/진행/일시정지/요약 상태만 남겼고 active 화면에서 시간/거리/심박수 슬롯을 동시에 표시한다.
+  3. `MainActivity.kt`의 6-page dashboard, Firestore read helper, timer, stocks, weekly/check-in binding을 제거했다.
+  4. `WearWorkoutUiController.kt`의 coming-soon carousel 코드를 제거하고 `READY` 기반 러닝 workflow만 유지했다.
+  5. old layout/helper/drawable 파일과 unused `RecyclerView`/`ViewPager2` dependency를 제거했다.
+- 검증:
+  1. PASS RED: `node --test tests/wear-running-only-shell.test.js` 기존 코드에서 실패 확인.
+  2. PASS GREEN: `node --test tests/wear-running-only-shell.test.js tests/wear-slice2-artifacts.test.js tests/wear-workout-bridge.test.js tests/wear-slice3-health-services.test.js tests/wear-gps-running-contract.test.js tests/running-entry.test.js tests/workout-save-mode-guard.test.js` - 30 tests, 30 pass.
+  3. PASS Gradle: `JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./android/gradlew.bat -p android :wear:testDebugUnitTest :wear:assembleDebug :app:assembleDebug` - BUILD SUCCESSFUL.
+  4. PASS Wear emulator QA: `TomatoWearSmallRound`에서 `watch-ready.png`, `watch-active.png`, `watch-paused.png`, `watch-summary.png` 캡처. 첫 화면은 러닝 전용이고 active 화면은 시간/거리/심박수 동시 표시.
+  5. PASS fallback QA: `BODY_SENSORS` denied/user-fixed 상태에서 `watch-permission-fallback.png` 캡처. 앱 crash 없이 심박 slot이 `-- bpm` fallback.
+  6. not verified yet: paired phone/watch Data Layer 저장 완료와 phone WebView `saveWorkoutDay({ silent: true })` 실제 호출은 paired phone node가 없어 on-device 검증하지 못했다. 정적/단위 테스트는 통과했고 watch summary는 `폰 연결 대기`를 표시했다.
+- evidence: `.omo/evidence/wear-running-only-shell-20260708/`
+- 리뷰 결과: 부분 해결. `android/wear`/phone workout bridge 추적 정책은 `.gitignore` 정확한 예외와 `tests/wear-running-only-shell.test.js` 회귀 테스트로 해결했다. paired phone/watch Data Layer 저장 완료와 phone WebView `saveWorkoutDay({ silent: true })` 실제 호출은 아직 `not verified yet`이다.
+- 사용자 피드백: 워치 summary에 `폰 저장 payload 오류`가 표시됨. 원인은 phone/PWA 저장 단계가 아니라 watch-side `WearRunSession.toPayload()` 실패 경로였고, 1초 미만 Health Services duration이 `durationSec=0`으로 내려가 payload 검증에서 실패할 수 있었다.
+- 수정 결과:
+  1. `WearWorkoutUiController.kt`에 `buildWearRunSessionForSummary()`를 추가해 종료 payload duration을 `maxOf(exerciseSnapshot.activeDurationMs, uiSnapshot.durationMs, 1_000L)`로 계산한다.
+  2. payload 생성 실패는 `TomatoWearRun` logcat tag로 남긴다.
+  3. `WearRunUiStateTest.kt`에 1초 미만 duration 회귀 테스트를 추가했다.
+  4. phone native workout bridge, Wear source/layout/test/build.gradle이 `git check-ignore`에 걸리지 않도록 `.gitignore`와 테스트를 갱신했다.
+- 검증:
+  1. PASS RED: `node --test tests/wear-running-only-shell.test.js`가 수정 전 ignored 파일 목록 때문에 실패.
+  2. PASS GREEN: `node --test tests/wear-running-only-shell.test.js` - 5 tests, 5 pass.
+  3. PASS: `node --test tests/wear-running-only-shell.test.js tests/wear-workout-bridge.test.js tests/wear-slice3-health-services.test.js tests/wear-gps-running-contract.test.js tests/running-entry.test.js tests/workout-save-mode-guard.test.js tests/wear-app-refresh-update.test.js` - 33 tests, 33 pass.
+  4. PASS: `git diff --check` exited 0 with existing CRLF warnings only.
+  5. not verified yet: watch ADB는 `192.168.0.106:46473 offline`이고 reconnect가 `10060` timeout으로 실패했다.
+  6. not verified yet: PWA browser 단독은 Wear Data Layer receiver가 없으므로 워치 기록 저장 검증 대상이 아니다. phone Android APK의 `TomatoWearWorkoutListenerService`/`TomatoWearWorkoutBridge`가 필요하다.
+- 다음 액션: 워치를 Wireless debugging으로 재페어링한 뒤 phone APK와 watch APK를 모두 설치한다. phone 앱이 로그인된 상태에서 워치 러닝 `시작 -> 최종종료`를 수행하고, phone Tomato Farm 운동 탭 해당 날짜 `러닝` 카드에 `wear-running` cardio entry가 저장되는지 확인한다.
 
 ## 2026-07-08 App Refresh Deployment Check
 
@@ -97,13 +355,13 @@
   3. PASS 목표: `node --test tests/diet-add-button-binding.test.js tests/diet-frequent-food-suggestions.test.js tests/save-schema.test.js`.
   4. PASS 목표: `node --test tests/*.test.js`.
   5. PASS 목표: `npm.cmd run verify:assets`.
-  6. PASS 목표: 모바일 식단 탭에서 추천 chip 표시, 클릭 자동 추가, skip 해제 후 추가, 후보 없음 상태, 기존 quick-add flow를 확인한다.
+  6. PASS 목표: 모바일 식단 탭에서 큰 추천 묶음 chip과 inline 추천 option 표시, 클릭 자동 추가, skip 해제 후 추가, 후보 없음 상태, 기존 quick-add flow를 확인한다.
   7. PASS 목표: `npm.cmd run deploy:production` 후 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`.
 - 실행 결과:
-  1. 아침/점심/저녁의 visible `메모 (선택)` 위치를 `diet-frequent-foods` 추천 chip container로 대체했고, 기존 `wt-meal-*` input은 숨김 DOM으로 유지했다.
+  1. 아침/점심/저녁의 visible `메모 (선택)` 위치를 `diet-frequent-foods` 추천 묶음 container로 대체했고, 기존 `wt-meal-*` input은 숨김 DOM으로 유지했다.
   2. 최근 90일 cache의 끼니별 `bFoods/lFoods/dFoods`에서 같은 이름/중량이 2회 이상 나온 음식만 최대 3개 추천한다. 현재 날짜와 이미 현재 끼니에 들어간 음식은 제외한다.
   3. `data-action="addFrequentFood"` 버튼은 `wtAddFrequentFoodSuggestion(meal, key)`로 연결되고, skipped 상태면 해제한 뒤 기존 `wtAddFoodItem()`/`_autoSaveDiet({ meal })` 경로로 저장한다.
-  4. `app.js`, `render-workout.js`, `workout/index.js` query marker와 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260708z2-diet-frequent-foods` 기준으로 동기화했다.
+  4. `app.js`, `render-workout.js`, `workout/index.js` query marker와 `sw.js` `CACHE_VERSION`을 `tomatofarm-v20260708z3-diet-frequent-foods` 기준으로 동기화했다.
   5. cache marker를 직접 고정하던 기존 테스트들의 기대값을 새 cache version으로 갱신했다.
 - 로컬 검증:
   1. RED 확인: 추천 영역/action 부재로 focused tests 3건이 실패하는 것을 먼저 확인했다.
@@ -115,10 +373,10 @@
 - 운영 검증:
   1. PASS: `npm.cmd run deploy:production` - `5f392eb9b6876028573c3a30de8ae31dfa5cd1a7`를 `origin/main`에 push하고 Pages deploy verify 통과.
   2. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 5f392eb9b6876028573c3a30de8ae31dfa5cd1a7` - deployed commit/cache/static assets 확인.
-  3. PASS: production browser QA - 모바일 390x844에서 아침/점심/저녁 추천 chip 표시, visible 메모 input 0개, snack 추천 container 없음, 점심 추천 클릭 시 `안 먹었어요` 해제 및 `현미밥 180g 280kcal` 자동 추가 확인.
-  4. PASS: compact chip visual QA - 기존 z1 화면은 추천이 넓은 row처럼 보여 z2에서 chip 폭과 meta 문구를 줄였다.
+  3. PASS 목표: production browser QA - 모바일 390x844에서 아침/점심/저녁 큰 추천 묶음 chip, 좌측 상단 `이때 자주 먹었던 것` label, inline 추천 option, 붉은 `+` 표시, visible 메모 input 0개, snack 추천 container 없음, 점심 추천 클릭 시 `안 먹었어요` 해제 및 음식 자동 추가 확인.
+  4. PASS 목표: visual QA - 실제 섭취 음식 chip은 더 두껍고 bold, 추천 option은 옅고 regular weight로 구분되는지 확인한다.
 - 리뷰: `docs/ai/reviews/2026-07-08-diet-frequent-food-quick-add-review.md`
-- 다음 액션: 없음. 사용자는 운영 URL에서 `식단 -> 아침/점심/저녁`을 열고 해당 끼니의 최근 반복 음식 chip을 눌러 자동 추가되는지 확인한다.
+- 다음 액션: 최종 UI 변경을 검증하고 production Pages 배포/검증을 완료한 뒤 이 항목을 최신 commit 기준으로 갱신한다.
 
 ## 2026-07-07 Refresh Unification Cardio Intensity
 
@@ -1176,7 +1434,6 @@
   5. PASS: `git diff --check`
   6. not verified yet: 인증 계정 실제 UI에서 `운동 홈 하단시트 -> 종목완료 -> x 삭제 -> 새로고침/재진입 후 삭제 유지` 클릭 플로우는 자동 검증하지 못했다.
 - 다음 액션: 배포가 필요하면 `origin/main`에 push하고 Tomato Farm 운영계 Pages에서 배포 commit 및 실제 UI flow를 확인한다.
-
 
 ## 2026-07-03 종목완료 도장 유지 핫픽스
 

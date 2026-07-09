@@ -30,6 +30,7 @@ test('wear slice3 declares Health Services dependency, permissions, and foregrou
 test('wear slice3 service owns ExerciseClient and streams run metrics to UI state', () => {
   const service = readProjectFile('android/wear/src/main/java/com/lifestreak/wear/workout/WearExerciseService.kt');
   const controller = readProjectFile('android/wear/src/main/java/com/lifestreak/wear/workout/WearWorkoutUiController.kt');
+  const runState = readProjectFile('android/wear/src/main/java/com/lifestreak/wear/workout/WearRunUiState.kt');
 
   [
     'HealthServices.getClient',
@@ -53,8 +54,12 @@ test('wear slice3 service owns ExerciseClient and streams run metrics to UI stat
     'WearExerciseService.resumeRun',
     'WearExerciseService.endRun',
     'WearExerciseSessionStore',
-    'runState.updateMetrics',
+    'WearExerciseSessionStore.addListener',
+    'updateRunLiveMetrics',
+    'runState.updateLiveMetrics',
   ].forEach((needle) => {
     assert.ok(controller.includes(needle), `missing ${needle}`);
   });
+
+  assert.match(runState, /fun updateLiveMetrics\([\s\S]*updateMetrics\(/);
 });

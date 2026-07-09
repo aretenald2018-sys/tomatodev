@@ -87,20 +87,61 @@ test('life zone diet speech bubble renders meal photo before text fallback', () 
   const source = readText('home/life-zone.js');
   const css = readText('style.css');
 
+  assert.match(source, /toggleLike/);
+  assert.match(source, /getLikes/);
   assert.match(source, /actor\.speechPhoto/);
   assert.match(source, /lz-speech--photo/);
+  assert.match(source, /const previewButton = document\.createElement\('button'\)/);
+  assert.match(source, /previewButton\.className = 'lz-speech-photo-btn'/);
+  assert.match(source, /previewButton\.dataset\.lzPhotoAction = 'preview'/);
   assert.match(source, /const photo = document\.createElement\('img'\)/);
   assert.match(source, /photo\.className = 'lz-speech-photo'/);
   assert.match(source, /photo\.src = actor\.speechPhoto/);
   assert.match(source, /photo\.alt = actor\.speech \|\| '식사 사진'/);
   assert.match(source, /photo\.loading = 'lazy'/);
   assert.match(source, /photo\.decoding = 'async'/);
-  assert.match(source, /bubble\.append\(photo\)/);
+  assert.match(source, /previewButton\.append\(photo\)/);
+  assert.match(source, /const likeButton = document\.createElement\('button'\)/);
+  assert.match(source, /likeButton\.className = 'lz-photo-like-btn'/);
+  assert.match(source, /likeButton\.dataset\.lzPhotoAction = 'like'/);
+  assert.match(source, /likeButton\.setAttribute\('aria-pressed'/);
+  assert.match(source, /bubble\.append\(previewButton, likeButton\)/);
   assert.match(source, /bubble\.textContent = actor\.speech/);
+  assert.doesNotMatch(source, /onclick=/);
 
-  assert.match(css, /\.lz-speech--photo \{[\s\S]*width: 40px;[\s\S]*height: 40px;[\s\S]*padding: 2px;[\s\S]*overflow: hidden;/);
+  assert.match(css, /\.lz-speech--photo \{[\s\S]*width: 40px;[\s\S]*height: 40px;[\s\S]*overflow: visible;[\s\S]*pointer-events: auto;/);
+  assert.match(css, /\.lz-speech-photo-btn \{[\s\S]*width: 100%;[\s\S]*height: 100%;[\s\S]*overflow: hidden;/);
   assert.match(css, /\.lz-speech-photo \{[\s\S]*width: 100%;[\s\S]*height: 100%;[\s\S]*object-fit: cover;[\s\S]*border-radius: 6px;/);
+  assert.match(css, /\.lz-photo-like-btn \{[\s\S]*position: absolute;[\s\S]*transform: translateZ\(0\);/);
   assert.match(css, /@media \(max-width: 420px\) \{[\s\S]*\.lz-speech--photo \{[\s\S]*width: 34px;[\s\S]*height: 34px;/);
+});
+
+test('life zone photo preview sheet and heart flow use stored likes without inline handlers', () => {
+  const source = readText('home/life-zone.js');
+  const css = readText('style.css');
+
+  assert.match(source, /function _openLifeZonePhotoPreview/);
+  assert.match(source, /function _closeLifeZonePhotoPreview/);
+  assert.match(source, /life-zone-photo-preview-modal/);
+  assert.match(source, /lz-photo-preview-backdrop/);
+  assert.match(source, /lz-photo-preview-sheet/);
+  assert.match(source, /role', 'dialog'/);
+  assert.match(source, /aria-modal', 'true'/);
+  assert.match(source, /_bindLifeZonePhotoDoubleLike/);
+  assert.match(source, /event\.type === 'dblclick'/);
+  assert.match(source, /LIFE_ZONE_PHOTO_DOUBLE_TAP_MS/);
+  assert.match(source, /_handleLifeZonePhotoLike\(actor,[\s\S]*forceLiked: true/);
+  assert.match(source, /toggleLike\(actor\.accountId, _todayLifeZoneKey\(\), actor\.speechLikeField, LIFE_ZONE_PHOTO_LIKE_REACTION\)/);
+  assert.match(source, /_syncLifeZonePhotoLikeButtons/);
+  assert.doesNotMatch(source, /onclick=/);
+
+  assert.match(css, /\.lz-photo-preview-backdrop \{/);
+  assert.match(css, /\.lz-photo-preview-sheet \{[\s\S]*border-radius:[\s\S]*box-shadow:/);
+  assert.match(css, /\.lz-photo-preview-image \{[\s\S]*object-fit: contain;/);
+  assert.match(css, /\.lz-heart-stream \{[\s\S]*pointer-events: none;/);
+  assert.match(css, /\.lz-heart-particle \{[\s\S]*animation: lzHeartFloat/);
+  assert.match(css, /@keyframes lzHeartFloat \{[\s\S]*transform:[\s\S]*opacity:/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*\.lz-heart-particle \{/);
 });
 
 test('life zone NPC quest bubble has a stable clickable overlay style', () => {
@@ -336,7 +377,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260709z5-life-zone-meal-photo/);
+  assert.match(sw, /tomatofarm-v20260709z6-life-zone-photo-like-flow/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,
@@ -378,7 +419,7 @@ test('life zone consulting room sofa assets are separate transparent runtime PNG
     ['consulting-visitor-gray-shirt-home.png', { width: 230, height: 298, colorType: 6 }]
   ];
 
-  assert.match(sw, /tomatofarm-v20260709z5-life-zone-meal-photo/);
+  assert.match(sw, /tomatofarm-v20260709z6-life-zone-photo-like-flow/);
   for (const [asset, expected] of assets) {
     assert.match(sw, new RegExp(`\\.\\/assets\\/home\\/life-zone\\/ui\\/${asset.replace('.', '\\.')}`));
     assert.deepEqual(readPngHeader(`assets/home/life-zone/ui/${asset}`), expected);

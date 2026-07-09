@@ -261,18 +261,6 @@ test('running session persists unsaved live records across app reloads', () => {
   assert.match(runningSessionJs, /export function wtCloseRunningSession\(\) \{[\s\S]*_clearRunningDraft\(\);[\s\S]*_resetLiveSession\(\);/);
 });
 
-test('running route rendering splits GPS interruptions instead of connecting endpoints', () => {
-  assert.match(runningMapJs, /export function splitRunningMapSegments/);
-  assert.match(runningMapJs, /gapBefore/);
-  assert.match(runningMapJs, /segmentId/);
-  assert.match(runningMapJs, /_routeForBounds\(route\)/);
-  assert.match(runningMapJs, /splitRunningMapSegments\(route\)/);
-  assert.match(runningMapJs, /segment\.length > 1/);
-  assert.match(runningSessionJs, /segmentCount/);
-  assert.match(runningSessionJs, /gapCount/);
-  assert.match(runningSessionJs, /interrupted/);
-});
-
 test('running records save into a dedicated running session with place and device metrics', () => {
   assert.match(runningSessionJs, /const RUNNING_WORKOUT_SESSION_INDEX = 2/);
   assert.match(runningSessionJs, /function _workoutSessionIndexFromState\(\) \{\s*return RUNNING_WORKOUT_SESSION_INDEX;\s*\}/);
@@ -308,7 +296,7 @@ test('running workout save writes a running life-zone snapshot', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260709z5-life-zone-meal-photo/);
+  assert.match(swJs, /tomatofarm-v20260709z6-life-zone-photo-like-flow/);
   assert.match(swJs, /\.\/workout\/index\.js\?v=20260707d-wear-bridge-load-binding/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);

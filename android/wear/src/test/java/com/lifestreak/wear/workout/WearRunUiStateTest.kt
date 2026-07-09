@@ -1,0 +1,277 @@
+package com.lifestreak.wear.workout
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class WearRunUiStateTest {
+    private var now = 1_000L
+    private val state = WearRunUiState { now }
+
+    @Test
+    fun advancesRunningSessionThroughPauseResumeSummaryAndReset() {
+        state.start()
+        now += 65_000L
+
+        var snapshot = state.snapshot()
+        assertEquals(WearRunUiScreen.ACTIVE, snapshot.screen)
+        assertEquals("01:05", snapshot.durationText)
+        assertEquals("0.00", snapshot.distanceText)
+        assertEquals("-- bpm", snapshot.heartRateText)
+
+        state.pause()
+        now += 30_000L
+        snapshot = state.snapshot()
+        assertEquals(WearRunUiScreen.PAUSED, snapshot.screen)
+        assertEquals("01:05", snapshot.durationText)
+
+        state.resume()
+        now += 15_000L
+        state.updateMetrics(distanceKm = 0.4, heartRateBpm = 142)
+        snapshot = state.snapshot()
+        assertEquals(WearRunUiScreen.ACTIVE, snapshot.screen)
+        assertEquals("01:20", snapshot.durationText)
+        assertEquals("0.40", snapshot.distanceText)
+        assertEquals("3'20\"", snapshot.paceText)
+        assertEquals("142 bpm", snapshot.heartRateText)
+
+        state.finish()
+        now += 40_000L
+        snapshot = state.snapshot()
+        assertEquals(WearRunUiScreen.SUMMARY, snapshot.screen)
+        assertEquals("01:20", snapshot.durationText)
+        assertEquals("0.40 km", snapshot.distanceSummaryText)
+
+        state.reset()
+        snapshot = state.snapshot()
+        assertEquals(WearRunUiScreen.READY, snapshot.screen)
+        assertEquals("00:00", snapshot.durationText)
+    }
+
+    @Test
+    fun rejectsInvalidDisplayMetrics() {
+        state.start()
+        state.updateMetrics(distanceKm = Double.POSITIVE_INFINITY, heartRateBpm = 999)
+
+        val snapshot = state.snapshot()
+        assertEquals("0.00", snapshot.distanceText)
+        assertEquals("-- bpm", snapshot.heartRateText)
+    }
+
+    @Test
+    fun summarySessionUsesAtLeastOneSecondForVeryShortHealthDurations() {
+        val session = buildWearRunSessionForSummary(
+            exerciseSnapshot = WearExerciseSessionSnapshot(
+                startedAtWallClockMs = 10_000L,
+                activeDurationMs = 450L,
+            ),
+            uiSnapshot = WearRunUiSnapshot(
+                screen = WearRunUiScreen.SUMMARY,
+                durationMs = 300L,
+                distanceKm = 0.0,
+                heartRateBpm = null,
+            ),
+            nowWallClockMs = 10_500L,
+            dateKeyFor = { "2026-07-09" },
+        )
+
+        assertEquals(10_000L, session.startedAtMs)
+        assertEquals(11_000L, session.endedAtMs)
+        assertEquals(1L, session.toPayload().getOrThrow().summary.durationSec)
+    }
+
+    @Test
+    fun derivesLivePageMetricsFromSamples() {
+        state.start()
+        now += 300_000L
+
+        state.updateLiveMetrics(
+            distanceKm = 0.75,
+            distanceSamples = listOf(
+                WearDistanceSample(timestampMs = 1_000L, distanceKm = 0.0),
+                WearDistanceSample(timestampMs = 61_000L, distanceKm = 0.12),
+                WearDistanceSample(timestampMs = 121_000L, distanceKm = 0.25),
+                WearDistanceSample(timestampMs = 181_000L, distanceKm = 0.42),
+                WearDistanceSample(timestampMs = 241_000L, distanceKm = 0.62),
+                WearDistanceSample(timestampMs = 301_000L, distanceKm = 0.75),
+            ),
+            heartRateSamples = listOf(
+                HeartRateSample(timestampMs = 1_000L, bpm = 110),
+                HeartRateSample(timestampMs = 61_000L, bpm = 130),
+                HeartRateSample(timestampMs = 121_000L, bpm = 145),
+                HeartRateSample(timestampMs = 181_000L, bpm = 165),
+                HeartRateSample(timestampMs = 241_000L, bpm = 185),
+            ),
+            routePoints = listOf(
+                WearRoutePoint(timestampMs = 1_000L, lat = 37.56650, lng = 126.97800),
+                WearRoutePoint(timestampMs = 61_000L, lat = 37.56685, lng = 126.97840),
+                WearRoutePoint(timestampMs = 121_000L, lat = 37.56720, lng = 126.97890),
+            ),
+        )
+
+        val snapshot = state.snapshot()
+
+        assertEquals("6'40\"", snapshot.averagePaceText)
+        assertEquals("5'00\"", snapshot.fastestPaceText)
+        assertEquals(listOf(500, 461, 352, 300, 461), snapshot.paceTrend.map { it.secondsPerKm })
+        assertEquals(48, snapshot.estimatedCaloriesKcal)
+        assertEquals("48 kcal", snapshot.calorieText)
+
+        assertEquals(147, snapshot.averageHeartRateBpm)
+        assertEquals(185, snapshot.maxHeartRateBpm)
+        assertEquals(listOf(110, 130, 145, 165, 185), snapshot.heartRateTrend.map { it.bpm })
+        assertEquals(listOf("5", "4", "3", "2", "1"), snapshot.heartZoneRows.map { it.zoneLabel })
+        assertEquals(
+            listOf(60_000L, 60_000L, 60_000L, 60_000L, 60_000L),
+            snapshot.heartZoneRows.map { it.durationMs },
+        )
+
+        assertTrue(snapshot.routeProjection.isReady)
+        assertNull(snapshot.routeProjection.fallbackText)
+        assertEquals(3, snapshot.routeProjection.points.size)
+        assertTrue(
+            snapshot.routeProjection.points.all { point ->
+                point.x in 0.0..1.0 && point.y in 0.0..1.0
+            },
+        )
+    }
+
+    @Test
+    fun derivesHeartZoneDurationsFromTenSecondSamples() {
+        state.start()
+        now += 50_000L
+
+        state.updateLiveMetrics(
+            distanceKm = 0.5,
+            distanceSamples = emptyList(),
+            heartRateSamples = listOf(
+                HeartRateSample(timestampMs = 1_000L, bpm = 110),
+                HeartRateSample(timestampMs = 11_000L, bpm = 130),
+                HeartRateSample(timestampMs = 21_000L, bpm = 145),
+                HeartRateSample(timestampMs = 31_000L, bpm = 165),
+                HeartRateSample(timestampMs = 41_000L, bpm = 185),
+            ),
+            routePoints = emptyList(),
+        )
+
+        val snapshot = state.snapshot()
+
+        assertEquals(listOf("5", "4", "3", "2", "1"), snapshot.heartZoneRows.map { it.zoneLabel })
+        assertEquals(
+            listOf(10_000L, 10_000L, 10_000L, 10_000L, 10_000L),
+            snapshot.heartZoneRows.map { it.durationMs },
+        )
+    }
+
+    @Test
+    fun fallsBackWhenLiveSamplesAreEmpty() {
+        state.start()
+        now += 75_000L
+
+        state.updateLiveMetrics(
+            distanceKm = 0.0,
+            distanceSamples = emptyList(),
+            heartRateSamples = emptyList(),
+            routePoints = emptyList(),
+        )
+
+        val snapshot = state.snapshot()
+
+        assertEquals("--", snapshot.averagePaceText)
+        assertEquals("--", snapshot.fastestPaceText)
+        assertTrue(snapshot.paceTrend.isEmpty())
+        assertEquals(0, snapshot.estimatedCaloriesKcal)
+        assertEquals("0 kcal", snapshot.calorieText)
+
+        assertNull(snapshot.averageHeartRateBpm)
+        assertNull(snapshot.maxHeartRateBpm)
+        assertTrue(snapshot.heartRateTrend.isEmpty())
+        assertEquals(listOf(0L, 0L, 0L, 0L, 0L), snapshot.heartZoneRows.map { it.durationMs })
+
+        assertFalse(snapshot.routeProjection.isReady)
+        assertEquals("GPS 대기", snapshot.routeProjection.fallbackText)
+        assertTrue(snapshot.routeProjection.points.isEmpty())
+    }
+
+    @Test
+    fun rejectsInvalidLiveSamples() {
+        state.start()
+        now += 120_000L
+
+        state.updateLiveMetrics(
+            distanceKm = 1.0,
+            distanceSamples = listOf(
+                WearDistanceSample(timestampMs = -1L, distanceKm = 0.0),
+                WearDistanceSample(timestampMs = 1_000L, distanceKm = 0.0),
+                WearDistanceSample(timestampMs = 61_000L, distanceKm = Double.NaN),
+                WearDistanceSample(timestampMs = 121_000L, distanceKm = 1.0),
+            ),
+            heartRateSamples = listOf(
+                HeartRateSample(timestampMs = 1_000L, bpm = 29),
+                HeartRateSample(timestampMs = 61_000L, bpm = 150),
+                HeartRateSample(timestampMs = 121_000L, bpm = 241),
+            ),
+            routePoints = listOf(
+                WearRoutePoint(timestampMs = 1_000L, lat = Double.NaN, lng = 126.97800),
+                WearRoutePoint(timestampMs = 61_000L, lat = 91.0, lng = 126.97810),
+                WearRoutePoint(timestampMs = 121_000L, lat = 37.56650, lng = 126.97800),
+                WearRoutePoint(timestampMs = 181_000L, lat = 37.56660, lng = 126.97815),
+            ),
+        )
+
+        val snapshot = state.snapshot()
+
+        assertEquals(listOf(600), snapshot.paceTrend.map { it.secondsPerKm })
+        assertEquals(150, snapshot.averageHeartRateBpm)
+        assertEquals(150, snapshot.maxHeartRateBpm)
+        assertEquals(listOf(150), snapshot.heartRateTrend.map { it.bpm })
+        assertEquals(2, snapshot.routeProjection.points.size)
+        assertTrue(snapshot.routeProjection.isReady)
+        assertTrue(
+            snapshot.routeProjection.points.all { point ->
+                point.x in 0.0..1.0 && point.y in 0.0..1.0
+            },
+        )
+    }
+
+    @Test
+    fun handlesDegenerateRouteProjectionInputs() {
+        state.start()
+        now += 120_000L
+
+        state.updateLiveMetrics(
+            distanceKm = 0.0,
+            distanceSamples = emptyList(),
+            heartRateSamples = emptyList(),
+            routePoints = listOf(
+                WearRoutePoint(timestampMs = 1_000L, lat = 37.56650, lng = 126.97800),
+            ),
+        )
+
+        var snapshot = state.snapshot()
+        assertFalse(snapshot.routeProjection.isReady)
+        assertEquals("GPS 대기", snapshot.routeProjection.fallbackText)
+        assertTrue(snapshot.routeProjection.points.isEmpty())
+
+        state.updateLiveMetrics(
+            distanceKm = 0.0,
+            distanceSamples = emptyList(),
+            heartRateSamples = emptyList(),
+            routePoints = listOf(
+                WearRoutePoint(timestampMs = 1_000L, lat = 37.56650, lng = 126.97800),
+                WearRoutePoint(timestampMs = 11_000L, lat = 37.56650, lng = 126.97800),
+            ),
+        )
+
+        snapshot = state.snapshot()
+        assertTrue(snapshot.routeProjection.isReady)
+        assertEquals(2, snapshot.routeProjection.points.size)
+        assertTrue(
+            snapshot.routeProjection.points.all { point ->
+                point.x == 0.5 && point.y == 0.5
+            },
+        )
+    }
+}

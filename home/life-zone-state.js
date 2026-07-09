@@ -700,6 +700,19 @@ function getLifeZoneDietSpeechPhoto(dayData = null) {
   return photo || null;
 }
 
+function getLifeZoneDietSpeechPhotoMeta(dayData = null) {
+  if (!hasLifeZoneDietActivity(dayData)) return null;
+  const meal = resolveDietMeal(dayData);
+  if (!meal) return null;
+  const photo = typeof dayData?.[meal.photo] === 'string' ? dayData[meal.photo].trim() : '';
+  if (!photo) return null;
+  return {
+    photo,
+    meal: meal.text,
+    likeField: `meal_${meal.text}`
+  };
+}
+
 export function getLifeZoneRunningSpeech(dayData = null) {
   return hasLifeZoneRunningActivity(dayData) ? '러닝중' : '';
 }
@@ -752,11 +765,14 @@ export function resolveLifeZoneActors({
   const actorStates = resolvedRoster.map((actor) => {
     const dayData = actor.canRead && actor.accountId ? dayByAccountId[actor.accountId] : null;
     const state = resolveLifeZoneActivity(dayData);
+    const photoMeta = state === 'diet' ? getLifeZoneDietSpeechPhotoMeta(dayData) : null;
     return {
       ...actor,
       state,
       speech: getLifeZoneSpeech(dayData, state),
-      speechPhoto: state === 'diet' ? getLifeZoneDietSpeechPhoto(dayData) : null,
+      speechPhoto: photoMeta?.photo || null,
+      speechPhotoMeal: photoMeta?.meal || null,
+      speechLikeField: photoMeta?.likeField || null,
       workoutSlotId: state === 'workout' ? resolveLifeZoneWorkoutSlotId(dayData) : null,
       runningMap: state === 'running' ? getLifeZoneRunningMapData(dayData) : null
     };

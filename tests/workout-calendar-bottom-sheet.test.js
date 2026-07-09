@@ -1010,7 +1010,6 @@ test('running detail card uses the workout read-card shell with running metrics 
   assert.doesNotMatch(card, /window\._wtCalToggleExerciseCard|window\._wtCalDeleteActivity|window\._wtCalAddRunning/);
   assert.match(card, /wt-running-headline/);
   assert.match(card, /_renderRunningRouteMap\(row\)/);
-  assert.match(card, /_renderRunningGpsStatus\(row\)/);
   assert.match(mapRenderer, /wt-running-route-map wt-run-real-map/);
   assert.match(mapRenderer, /data-wt-running-route-map/);
   assert.match(mapRenderer, /wt-running-route-place/);
@@ -1030,13 +1029,10 @@ test('running detail card uses the workout read-card shell with running metrics 
   assert.match(metricBuilder, /row\.cadenceSpm == null \? '--'/);
   assert.doesNotMatch(card, /REP|RIR|KG|_renderWorkoutSetRows|wt-max-set-row/);
   assert.doesNotMatch(card, /wt-max-plan wt-running-plan|wt-running-route-mini|경로 포인트|GPS 평균 정확도|대한민국 위치 기록|오늘 러닝|row\.detail/);
-  assert.match(calendarJs, /function _renderRunningGpsStatus\(row\)/);
-  assert.match(calendarJs, /GPS 중단 구간/);
-  assert.match(calendarJs, /wt-run-gps-status/);
+  assert.match(calendarJs, /function _renderRunningRouteDetail\(row\) \{\s*return '';\s*\}/);
   assert.match(styleCss, /\.wt-running-read-card/);
   assert.match(styleCss, /\.wt-running-route-map/);
   assert.match(styleCss, /\.wt-running-route-place/);
-  assert.match(styleCss, /\.wt-run-gps-status/);
   assert.doesNotMatch(styleCss, /wt-running-route-mini/);
   assert.match(styleCss, /\.wt-running-metric-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(styleCss, /\.wt-running-read-card\.is-collapsed \.wt-running-metric-grid/);
@@ -1194,6 +1190,11 @@ test('workout calendar week rail renders cycle prescriptions instead of weekly a
 });
 
 test('workout calendar week rail opens goal input sheet before exercise editor', () => {
+  const bindStart = calendarJs.indexOf('function _bindWorkoutCycleRailActions');
+  const bindEnd = calendarJs.indexOf('function _openWorkoutHomeDay', bindStart);
+  assert.ok(bindStart >= 0 && bindEnd > bindStart, 'cycle rail action binding should exist');
+  const bindFlow = calendarJs.slice(bindStart, bindEnd);
+
   assert.match(calendarJs, /data-cal-goal-input/);
   assert.match(calendarJs, /data-week-start="\$\{_esc\(goalInputWeekStart\)\}"/);
   assert.match(calendarJs, />목표입력<\/button>/);
@@ -1207,13 +1208,28 @@ test('workout calendar week rail opens goal input sheet before exercise editor',
   assert.match(calendarJs, /target\?\.closest\?\.\('\[data-cal-goal-select\]'\)/);
   assert.match(calendarJs, /function _openSelectedWorkoutGoalExercise\(modal\)/);
   assert.match(calendarJs, /window\.wtOpenExerciseEditor\(exId, null, \{ returnToPicker: false, source: 'calendar-goal-input' \}\)/);
-  assert.match(calendarJs, /target\?\.closest\?\.\('\[data-cal-goal-input\]'\)/);
-  assert.match(calendarJs, /_openWorkoutGoalInputSheet\(goalBtn\.getAttribute\('data-week-start'\)\)/);
+  assert.match(bindFlow, /const actionRoot = root\?\.querySelector\?\.\('\.cal-workout-surface-home'\) \|\| root/);
+  assert.match(bindFlow, /if \(!actionRoot\) return/);
+  assert.match(bindFlow, /actionRoot\.addEventListener\('click'/);
+  assert.match(bindFlow, /target\?\.closest\?\.\('\[data-cal-goal-input\]'\)/);
+  assert.match(bindFlow, /_openWorkoutGoalInputSheet\(goalBtn\.getAttribute\('data-week-start'\)\)/);
+  assert.doesNotMatch(bindFlow, /const grid = root\?\.querySelector\?\.\('\.cal-workout-month-grid'\)/);
+  assert.doesNotMatch(bindFlow, /grid\.addEventListener\('click'/);
+  const goalInputRuleStart = styleCss.indexOf('.cal-cycle-goal-input {');
+  const goalInputRuleEnd = styleCss.indexOf('.cal-cycle-goal-input::before', goalInputRuleStart);
+  assert.ok(goalInputRuleStart >= 0 && goalInputRuleEnd > goalInputRuleStart, 'goal input base style should exist');
+  const goalInputRule = styleCss.slice(goalInputRuleStart, goalInputRuleEnd);
   assert.match(styleCss, /\.cal-cycle-goal-input/);
   assert.match(styleCss, /\.cal-goal-input-sheet/);
   assert.match(styleCss, /\.cal-goal-input-select/);
   assert.match(styleCss, /\.cal-week-rail-spacer \.cal-cycle-goal-input/);
-  assert.match(styleCss, /\.cal-week-rail-spacer \.cal-cycle-goal-input::before\s*\{[\s\S]*display:\s*none/);
+  assert.match(styleCss, /\.cal-week-rail-spacer \.cal-cycle-goal-input\s*\{[\s\S]*background:\s*var\(--primary-bg\)/);
+  assert.match(styleCss, /\.cal-week-rail-spacer \.cal-cycle-goal-input\s*\{[\s\S]*color:\s*var\(--primary\)/);
+  assert.match(styleCss, /\.cal-week-rail-spacer \.cal-cycle-goal-input:hover/);
+  assert.match(styleCss, /\.cal-week-rail-spacer \.cal-cycle-goal-input:focus-visible/);
+  assert.match(styleCss, /\.cal-week-rail-spacer \.cal-cycle-goal-input\s*\{[\s\S]*touch-action:\s*manipulation/);
+  assert.doesNotMatch(goalInputRule, /border:\s*1px dashed/);
+  assert.doesNotMatch(goalInputRule, /rgba\(47,\s*125,\s*244,\s*0\.08\)/);
 
   const goalSheetStart = calendarJs.indexOf('function _openWorkoutGoalInputSheet');
   const goalSheetEnd = calendarJs.indexOf('function _openWorkoutCycleTargetSettings', goalSheetStart);
@@ -1320,5 +1336,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260709z5-life-zone-meal-photo/);
+  assert.match(swJs, /tomatofarm-v20260709z6-life-zone-photo-like-flow/);
 });

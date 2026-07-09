@@ -132,6 +132,13 @@
 - 수정: `목표입력` 버튼을 workout-home `weekdayHtml`의 `.cal-week-rail-spacer`로 이동하고, `_renderWorkoutCycleRail()`에서는 제거했다. 주차별 목표 카드는 다시 `.cal-cycle-branch-list` 중앙 정렬을 사용한다.
 - 회귀 테스트: `tests/workout-calendar-bottom-sheet.test.js`에 `.cal-week-rail-spacer` 렌더, `goalInputWeekStart`, cycle rail 내 `목표입력` 미렌더 계약을 추가했다.
 
+## 2026-07-08 클릭/시각 회귀 수정
+
+- 사용자 피드백: `목표입력` 버튼이 클릭처럼 동작하지 않고 주변 달력 디자인과 조화되지 않았다.
+- 진단: 버튼은 요일 헤더 `.cal-week-rail-spacer`로 이동했지만 `_bindWorkoutCycleRailActions()`는 여전히 `.cal-workout-month-grid`에만 click listener를 붙였다. 따라서 헤더 버튼 클릭은 handler에 도달하지 않았다.
+- 수정: click listener를 workout-home surface에 capture phase로 붙여 헤더 버튼과 기존 cycle target 카드 모두를 받게 했다. 버튼은 dashed placeholder 스타일을 제거하고 `--primary`, `--primary-bg`, `--seed-stroke-neutral` 기반의 compact action chip으로 바꿨으며 hover/focus/touch 상태를 추가했다.
+- 회귀 테스트: `tests/workout-calendar-bottom-sheet.test.js`에 surface-level click binding, grid-only binding 금지, dashed/blue placeholder 금지, hover/focus/touch action 스타일 계약을 추가했다.
+
 ## 다음 세션 시작점
 
-`docs/ai/features/2026-07-08-calendar-goal-input-exercise-editor.md`의 `실행 Slice 1`을 실행한다. 앱 코드는 이 계획 범위만 수정하고, `render-calendar.js`, `workout/exercises.js`, `style.css`를 바꾸면 `sw.js` `CACHE_VERSION`도 같은 변경에 포함한다.
+`목표입력` 배치/클릭/시각 회귀는 `render-calendar.js`, `style.css`, `tests/workout-calendar-bottom-sheet.test.js`에서 잠겼다. 추가 변경이 필요하면 같은 문서에 새 회귀 섹션을 추가하고, `render-calendar.js` 또는 `style.css`를 바꾸면 `sw.js` `CACHE_VERSION`도 같은 변경에 포함한다.

@@ -3664,9 +3664,9 @@ function _workoutHomeSheetWheelWouldChain(scroller, deltaY) {
 }
 
 function _bindWorkoutCycleRailActions(root) {
-  const grid = root?.querySelector?.('.cal-workout-month-grid');
-  if (!grid) return;
-  grid.addEventListener('click', (event) => {
+  const actionRoot = root?.querySelector?.('.cal-workout-surface-home') || root;
+  if (!actionRoot) return;
+  actionRoot.addEventListener('click', (event) => {
     const target = event.target instanceof Element ? event.target : event.target?.parentElement;
     const goalBtn = target?.closest?.('[data-cal-goal-input]');
     if (goalBtn) {
