@@ -2,7 +2,7 @@
 
 ## 결론
 
-로컬 구현/테스트 기준으로 통과했다. 기존 웹/PWA 러닝 GPS gap split은 이미 반영되어 있었고, 이번 Slice는 갤럭시워치 저장 경로에서 빠졌던 gap metadata 보존, timestamp gap 추론, phone native restart queue 보존을 보강했다.
+로컬/production 검증 기준으로 통과했다. 기존 웹/PWA 러닝 GPS gap split은 이미 반영되어 있었고, 이번 Slice는 갤럭시워치 저장 경로에서 빠졌던 gap metadata 보존, timestamp gap 추론, phone native restart queue 보존을 보강했다.
 
 ## 반영 내용
 
@@ -32,20 +32,23 @@
    - 45 tests, 45 pass.
 3. PASS targeted native: `./android/gradlew.bat -p android :app:testDebugUnitTest --tests com.lifestreak.app.wear.TomatoWearWorkoutBridgeTest :wear:testDebugUnitTest --tests com.lifestreak.wear.workout.WearRunPayloadTest --tests com.lifestreak.wear.workout.WearExerciseMetricAccumulatorTest`
    - BUILD SUCCESSFUL.
-4. PASS assets/native: `npm.cmd run verify:assets && ./android/gradlew.bat -p android :app:testDebugUnitTest :wear:testDebugUnitTest`
-   - `[runtime-assets] ok refs=916`, BUILD SUCCESSFUL.
-5. PASS full JS retry: `node --test tests/*.test.js`
-   - 775 tests, 775 pass.
-   - 참고: 첫 full JS run은 `tests/running-session-recovery-behavior.test.js` 1건이 타이밍성 실패했지만 isolated 재실행과 full retry는 통과했다.
+4. PASS final local: `node --check workout/wear-bridge.js && node --check render-calendar.js && node --check workout/index.js && node --check sw.js && node --test tests/wear-workout-bridge.test.js tests/wear-gps-running-contract.test.js tests/workout-calendar-bottom-sheet.test.js && node --test --test-concurrency=1 tests/*.test.js && npm.cmd run verify:assets && ./android/gradlew.bat -p android :app:testDebugUnitTest :wear:testDebugUnitTest && node --test tests/wear-app-refresh-update.test.js && git diff --check`
+   - focused JS 45/45, full JS 776/776, `verify:assets` `[runtime-assets] ok refs=904`, Android app/wear unit `BUILD SUCCESSFUL`, APK freshness 6/6.
+5. PASS security rereview:
+   - Web persistent queue allow-list redaction and Android native route time-window sanitization passed.
 6. PASS whitespace: `git diff --check`.
+7. PASS production deploy:
+   - Commit `6c9dcb00e3ee1f144a7d3da70bd2b45cc33f261e` pushed to `origin/main`.
+   - `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 6c9dcb00e3ee1f144a7d3da70bd2b45cc33f261e` returned `[deploy-verify] ok 6c9dcb00e3ee tomatofarm-v20260709z12-watch-running-gps-gap-resilience static=260`.
+8. PASS production browser QA:
+   - Read-only browser fixture opened `운동 -> 해당 날짜 sheet -> 러닝`, rendered 2 stacked running cards, confirmed 2 `경로 보기` buttons, clicked the first route, and saw 1 active route map with `GPS 중단 구간 1개 · 기록 구간 2개` copy.
 
 ## 남은 범위
 
 1. Android phone foreground service 기반 지속 GPS 수집은 아직 별도 native slice다.
 2. iOS/Core Location background tracking은 현재 repo에 iOS target이 없어 구현하지 않았다.
 3. 누락된 GPS 샘플을 보간하지 않는다. 샘플이 없는 구간은 중단 구간으로 남기고 선을 끊는 것이 이번 결정이다.
-4. production Pages deploy/verify는 현재 브랜치가 `origin/main`보다 6커밋 뒤이고 unrelated dirty worktree가 많아 수행하지 않았다.
-5. 실기기 Galaxy Watch/phone GPS run은 연결된 기기가 없어 수행하지 않았다.
+4. 실기기 Galaxy Watch/phone GPS run은 연결된 기기가 없어 수행하지 않았다.
 
 ## 실기기 QA 기준
 
