@@ -14563,6 +14563,29 @@ body.lz-running-record-modal-open {
   position: relative;
   inset: auto;
 }
+.wt-running-route-show {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 96px;
+  min-height: 40px;
+  border: 1px solid rgba(27, 45, 66, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #162234;
+  font-size: 13px;
+  font-weight: 900;
+  box-shadow: 0 10px 24px rgba(20, 29, 42, 0.14);
+}
+.wt-running-route-show[hidden],
+.wt-running-route-map.is-active .wt-running-route-show {
+  display: none;
+}
+.wt-running-route-map:not(.is-active) .wt-run-map-canvas {
+  opacity: 0.28;
+}
 .wt-running-route-place {
   position: absolute;
   z-index: 4;

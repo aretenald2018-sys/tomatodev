@@ -21,6 +21,9 @@ data class WearRoutePoint(
     val lng: Double,
     val altitude: Double? = null,
     val bearing: Double? = null,
+    val segmentId: Int? = null,
+    val gapBefore: Boolean = false,
+    val gapReason: String? = null,
 )
 
 data class WearRouteSummary(
@@ -30,6 +33,9 @@ data class WearRouteSummary(
     val durationSec: Long,
     val startedAtMs: Long,
     val endedAtMs: Long,
+    val segmentCount: Int = 0,
+    val gapCount: Int = 0,
+    val interrupted: Boolean = false,
 )
 
 data class WearRunSession(
@@ -84,7 +90,10 @@ data class WearWorkoutPayload(
                                 .put("lat", point.lat)
                                 .put("lng", point.lng)
                                 .putNullable("altitude", point.altitude)
-                                .putNullable("bearing", point.bearing),
+                                .putNullable("bearing", point.bearing)
+                                .putNullable("segmentId", point.segmentId)
+                                .put("gapBefore", point.gapBefore)
+                                .putNullable("gapReason", point.gapReason),
                         )
                     }
                 },
@@ -97,7 +106,10 @@ data class WearWorkoutPayload(
                     .put("distanceKm", summary.routeSummary.distanceKm)
                     .put("durationSec", summary.routeSummary.durationSec)
                     .put("startedAt", summary.routeSummary.startedAtMs)
-                    .put("endedAt", summary.routeSummary.endedAtMs),
+                    .put("endedAt", summary.routeSummary.endedAtMs)
+                    .put("segmentCount", summary.routeSummary.segmentCount)
+                    .put("gapCount", summary.routeSummary.gapCount)
+                    .put("interrupted", summary.routeSummary.interrupted),
             )
             .put(
                 "samples10s",
@@ -122,6 +134,7 @@ data class WearWorkoutPayload(
         private const val MAX_HEART_RATE_BUCKETS = 2_161
         private const val MAX_HEART_RATE_SAMPLE_COUNT = 50_000
         private const val MAX_ROUTE_POINT_COUNT = 2_161
+        private const val ROUTE_GAP_MS = 45_000L
         private val DATE_KEY_PATTERN = Regex("""\d{4}-\d{2}-\d{2}""")
 
         fun fromSession(session: WearRunSession): Result<WearWorkoutPayload> = runCatching {
@@ -142,6 +155,7 @@ data class WearWorkoutPayload(
             require(durationSec > 0L) { "durationSec must be positive" }
             require(durationSec <= MAX_RUN_DURATION_SEC) { "durationSec exceeds payload limit" }
             val route = normalizeRoute(session)
+            val routeGapSummary = summarizeRouteGaps(route)
             val distanceMeters = session.distanceMeters.takeIf { it > 0.0 }
                 ?: distanceMetersFromRoute(route)
             val distanceKm = roundTo(distanceMeters / 1_000.0, digits = 2)
@@ -181,6 +195,9 @@ data class WearWorkoutPayload(
                         durationSec = durationSec,
                         startedAtMs = session.startedAtMs,
                         endedAtMs = session.endedAtMs,
+                        segmentCount = routeGapSummary.segmentCount,
+                        gapCount = routeGapSummary.gapCount,
+                        interrupted = routeGapSummary.interrupted,
                     ),
                 ),
             )
@@ -210,7 +227,7 @@ data class WearWorkoutPayload(
         }
 
         private fun normalizeRoute(session: WearRunSession): List<WearRoutePoint> {
-            return session.routePoints
+            val points = session.routePoints
                 .asSequence()
                 .filter { point ->
                     point.timestampMs in session.startedAtMs..session.endedAtMs &&
@@ -222,11 +239,66 @@ data class WearWorkoutPayload(
                 .sortedBy { it.timestampMs }
                 .take(MAX_ROUTE_POINT_COUNT)
                 .toList()
+            val normalized = mutableListOf<WearRoutePoint>()
+            var currentSegmentId = 0
+            points.forEach { point ->
+                val previous = normalized.lastOrNull()
+                val previousSegmentId = previous?.segmentId ?: currentSegmentId
+                val explicitSegmentId = point.segmentId
+                val segmentChanged = previous != null &&
+                    explicitSegmentId != null &&
+                    explicitSegmentId != previousSegmentId
+                val timeGap = previous != null && point.timestampMs - previous.timestampMs > ROUTE_GAP_MS
+                val gapBefore = previous != null && (point.gapBefore || segmentChanged || timeGap)
+                currentSegmentId = when {
+                    explicitSegmentId != null && gapBefore && !segmentChanged -> {
+                        maxOf(explicitSegmentId, previousSegmentId + 1)
+                    }
+                    explicitSegmentId != null -> explicitSegmentId
+                    gapBefore -> previousSegmentId + 1
+                    else -> previousSegmentId
+                }
+                normalized.add(
+                    point.copy(
+                        segmentId = currentSegmentId,
+                        gapBefore = gapBefore,
+                        gapReason = if (gapBefore) {
+                            point.gapReason ?: if (timeGap) "time-gap" else "watch-gap"
+                        } else {
+                            null
+                        },
+                    ),
+                )
+            }
+            return normalized
         }
 
         private fun distanceMetersFromRoute(route: List<WearRoutePoint>): Double {
             if (route.size < 2) return 0.0
-            return route.zipWithNext().sumOf { (a, b) -> haversineMeters(a, b) }
+            return route.zipWithNext().sumOf { (a, b) ->
+                if (isGapEdge(a, b)) 0.0 else haversineMeters(a, b)
+            }
+        }
+
+        private fun summarizeRouteGaps(route: List<WearRoutePoint>): RouteGapSummary {
+            if (route.isEmpty()) return RouteGapSummary(segmentCount = 0, gapCount = 0)
+
+            var segmentCount = 1
+            var gapCount = 0
+            route.zipWithNext().forEach { (previous, point) ->
+                if (isGapEdge(previous, point)) {
+                    segmentCount += 1
+                    gapCount += 1
+                }
+            }
+            return RouteGapSummary(segmentCount = segmentCount, gapCount = gapCount)
+        }
+
+        private fun isGapEdge(previous: WearRoutePoint, point: WearRoutePoint): Boolean {
+            val segmentChanged = previous.segmentId != null &&
+                point.segmentId != null &&
+                previous.segmentId != point.segmentId
+            return point.gapBefore || segmentChanged
         }
 
         private fun haversineMeters(a: WearRoutePoint, b: WearRoutePoint): Double {
@@ -250,6 +322,13 @@ data class WearWorkoutPayload(
             val multiplier = (1..digits).fold(1.0) { acc, _ -> acc * 10.0 }
             return round(value * multiplier) / multiplier
         }
+    }
+
+    private data class RouteGapSummary(
+        val segmentCount: Int,
+        val gapCount: Int,
+    ) {
+        val interrupted: Boolean = gapCount > 0
     }
 }
 

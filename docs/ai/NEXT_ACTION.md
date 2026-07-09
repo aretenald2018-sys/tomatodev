@@ -1,5 +1,58 @@
 # 다음 자동 액션
 
+## 2026-07-09 Watch Running GPS Gap Resilience
+
+- 상태: `reviewed_local_verified_production_not_verified`
+- 계획: `docs/ai/features/2026-07-09-watch-running-gps-gap-resilience.md`
+- 리뷰: `docs/ai/reviews/2026-07-09-watch-running-gps-gap-resilience-review.md`
+- 요청: 이전 GPS 전체 궤적/백그라운드 중단 고려 작업이 충분히 반영됐는지 확인하고, 빠진 범위를 `omo:ulw-loop`로 반영한다.
+- 판정:
+  1. 웹/PWA 러닝 GPS gap-aware 저장/지도 split은 기존 Slice 1에 반영되어 있다.
+  2. 워치 저장 경로는 이번 Slice에서 route gap metadata 보존/추론을 반영했다.
+  3. Android/iPhone background 지속 추적은 native foreground service/Core Location 영역이다. 이번 Slice는 워치 저장 payload와 phone bridge restart queue가 중단 구간을 잃지 않는 범위로 닫았다.
+- 실행 결과:
+  1. `workout/wear-bridge.js`가 explicit `segmentId`, `gapBefore`, `gapReason`을 보존하고 timestamp gap을 추론한다.
+  2. route summary에 `segmentCount`, `gapCount`, `interrupted`를 저장한다.
+  3. Wear native payload schema/test에 gap metadata field를 추가했고, metadata 없는 timestamp gap도 native payload에서 추론한다.
+  4. Wear metric accumulator가 Health Services location update 공백을 `gapBefore` segment로 표시한다.
+  5. Android phone bridge persistent queue는 raw JSON을 그대로 보존하지 않고 allow-list safe payload를 재구성하며, route/gap metadata만 정규화해서 WebView 재시도에 남긴다.
+  6. `sw.js` cache version은 `tomatofarm-v20260709z12-watch-running-gps-gap-resilience`로 bump했고 cache marker tests를 동기화했다.
+- 검증:
+  1. PASS RED: 구현 전 `node --test tests/wear-workout-bridge.test.js`가 `segmentId` 보존 실패로 깨졌다.
+  2. PASS focused JS/native: `node --check workout/wear-bridge.js && node --check sw.js && node --test tests/wear-workout-bridge.test.js tests/wear-gps-running-contract.test.js tests/workout-calendar-bottom-sheet.test.js && ./android/gradlew.bat -p android :app:testDebugUnitTest --tests com.lifestreak.app.wear.TomatoWearWorkoutBridgeTest :wear:testDebugUnitTest --tests com.lifestreak.wear.workout.WearRunPayloadTest --tests com.lifestreak.wear.workout.WearExerciseMetricAccumulatorTest`.
+  3. PASS full JS retry: `node --test tests/*.test.js` - 775 tests, 775 pass. 첫 full run은 `tests/running-session-recovery-behavior.test.js` 1건이 타이밍성 실패했지만 isolated 재실행과 full retry는 통과했다.
+  4. PASS assets/native: `npm.cmd run verify:assets && ./android/gradlew.bat -p android :app:testDebugUnitTest :wear:testDebugUnitTest`.
+  5. PASS whitespace: `git diff --check`.
+  6. not verified yet: production Pages deploy/verify는 현재 브랜치가 `origin/main`보다 6커밋 뒤이고 unrelated dirty worktree가 많아 수행하지 않았다.
+  7. not verified yet: 실기기 Galaxy Watch/phone Data Layer GPS run은 연결 기기가 없어 수행하지 않았다.
+- 다음 액션: 관련 변경만 clean `origin/main` worktree에 선별 반영해 commit/push한 뒤 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`를 실행한다. 실기기에서는 워치 `런닝 -> 시작 -> 일시적 위치 공백/백그라운드 -> 종료` 후 폰 `운동 -> 해당 날짜 -> 러닝 -> 경로 보기`에서 카드 스택과 gap 구간 비연결 궤적을 확인한다.
+
+## 2026-07-09 Watch Running Save GPS Cards
+
+- 상태: `reviewed_local_verified_production_not_verified`
+- 계획: `docs/ai/features/2026-07-09-watch-running-save-gps-cards.md`
+- 리뷰: `docs/ai/reviews/2026-07-09-watch-running-save-gps-cards-review.md`
+- 요청: 갤럭시워치 러닝 저장이 운동탭 1회차가 아니라 러닝에만 저장되어야 하고, GPS 궤적을 보존하며, 러닝 n회 저장 시 러닝 카드가 스택되어야 한다.
+- 실행 결과:
+  1. `workout/wear-bridge.js`는 웨어 러닝 payload를 운동 `exercises`에 넣지 않고 `sessionIndex >= 2` 러닝 세션으로만 저장한다. 같은 `startedAt`/`endedAt`은 기존 러닝 세션을 갱신하고, 다른 러닝은 다음 러닝 슬롯에 추가한다.
+  2. 웨어 queue는 저장 위치별 정책을 분리한다. Web `localStorage` persistent queue는 `route: []`, `samples10s: []`, `redacted routeSummary`만 저장하고, Android native phone `SharedPreferences` retry queue는 WebView/app 재시작 후에도 궤적 복구가 가능하도록 app-private 영역에 allow-list sanitized route/gap metadata만 저장한다.
+  3. `android/wear/.../WearExerciseService.kt`는 `supportedDataTypes` 필터 뒤 `DataType.LOCATION`을 강제 재추가하지 않는다. 지원되는 `LOCATION`/`HEART_RATE_BPM`만 `WarmUpConfig`로 `prepareExerciseAsync()` 후 start한다.
+  4. `render-calendar.js` 러닝 탭은 2번 이후 러닝 세션들을 여러 러닝 카드로 스택하고, legacy index `0` 러닝은 삭제/토글 target을 `0`으로 보존한다.
+  5. 러닝 상세 지도는 탭 진입 시 전체 route map provider를 자동 로드하지 않고, 카드별 `경로 보기` 클릭 시 해당 카드 하나만 `renderRunningMap(... phase: 'detail')`를 호출한다.
+  6. `sw.js` cache version은 `tomatofarm-v20260709z11-watch-running-gps-cards`로 bump했고 cache marker tests를 동기화했다.
+- 검증:
+  1. PASS focused JS: `node --test tests/wear-workout-bridge.test.js tests/wear-gps-running-contract.test.js tests/workout-calendar-bottom-sheet.test.js` - 44 tests, 44 pass.
+  2. PASS Android app/wear: `export JAVA_HOME='/c/Program Files/Android/Android Studio/jbr'; ./android/gradlew.bat -p android :app:compileDebugKotlin :wear:testDebugUnitTest` - BUILD SUCCESSFUL.
+  3. PASS full JS: `node --test tests/*.test.js` - 774 tests, 774 pass.
+  4. PASS assets: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=914`.
+  5. PASS syntax: `node --check workout/wear-bridge.js && node --check render-calendar.js && node --check workout/index.js && node --check sw.js`.
+  6. PASS browser QA: Puppeteer mobile render of actual `_renderWorkoutRunningDetailCard` helpers produced 2 stacked cards, no overlap, click-before mapCalls `0`, first `경로 보기` click mapCalls `1` with `pointCount=2`, second card still inactive. Evidence: `.omo/evidence/watch-running-save-gps-cards-20260709/c003-running-cards-real-render/`.
+  7. PASS whitespace: `git diff --check` with CRLF warnings only.
+  8. PASS rereview: security rereview and gate rereview both passed after persistent queue privacy was split by surface: Web `localStorage` stays route-redacted, while native `SharedPreferences` keeps only sanitized app-private route/gap retry data.
+  9. not verified yet: physical Galaxy Watch GPS capture and phone Data Layer save were not exercised because `adb` is not installed/found and no paired device is available in this checkout.
+  10. not verified yet: production Pages deploy/verify was blocked by this worktree containing unrelated dirty APK/life-zone/build-info/test changes and local branch being behind `origin/main`.
+- 다음 액션: unrelated dirty worktree를 분리/정리한 뒤 관련 변경만 commit/push하고 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`를 실행한다. 실기기 검증은 ADB/폰/갤럭시워치 연결 후 워치 `런닝 -> 시작 -> 종료`를 수행하고 폰 `운동 -> 해당 날짜 -> 러닝`에서 카드 스택과 `경로 보기` 궤적을 확인한다.
+
 ## 2026-07-09 More Menu APK Mobile Asset Refresh
 
 - 상태: `complete_production_verified`

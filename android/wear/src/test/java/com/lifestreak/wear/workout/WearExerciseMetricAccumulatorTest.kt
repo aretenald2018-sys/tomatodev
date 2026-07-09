@@ -50,9 +50,37 @@ class WearExerciseMetricAccumulatorTest {
             snapshot.heartRateSamples,
         )
         assertEquals(
-            listOf(WearRoutePoint(timestampMs = 20_000L, lat = 37.5665, lng = 126.9780)),
+            listOf(WearRoutePoint(timestampMs = 20_000L, lat = 37.5665, lng = 126.9780, segmentId = 0)),
             snapshot.routePoints,
         )
+    }
+
+    @Test
+    fun marksRouteGapWhenLocationUpdatesResumeAfterLongPause() {
+        val accumulator = WearExerciseMetricAccumulator(
+            startedAtWallClockMs = 10_000L,
+            startedAtElapsedRealtimeMs = 1_000L,
+        )
+
+        accumulator.applyMetricUpdate(
+            elapsedRealtimeMs = 1_000L,
+            routePoint = WearRoutePoint(timestampMs = 10_000L, lat = 37.5665, lng = 126.9780),
+        )
+        accumulator.applyMetricUpdate(
+            elapsedRealtimeMs = 11_000L,
+            routePoint = WearRoutePoint(timestampMs = 20_000L, lat = 37.5666, lng = 126.9781),
+        )
+        accumulator.applyMetricUpdate(
+            elapsedRealtimeMs = 71_000L,
+            routePoint = WearRoutePoint(timestampMs = 80_000L, lat = 37.5700, lng = 126.9800),
+        )
+
+        val route = accumulator.snapshot().routePoints
+
+        assertEquals(listOf(0, 0, 1), route.map { it.segmentId })
+        assertEquals(false, route[1].gapBefore)
+        assertEquals(true, route[2].gapBefore)
+        assertEquals("time-gap", route[2].gapReason)
     }
 
     @Test

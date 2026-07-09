@@ -86,6 +86,9 @@ class WearRunPayloadTest {
         assertEquals(2, payload.summary.route.size)
         assertEquals("wear-gps", payload.summary.routeSummary.source)
         assertEquals(2, payload.summary.routeSummary.pointCount)
+        assertEquals(1, payload.summary.routeSummary.segmentCount)
+        assertEquals(0, payload.summary.routeSummary.gapCount)
+        assertFalse(payload.summary.routeSummary.interrupted)
         assertTrue(payload.summary.distanceKm > 0.0)
         assertTrue((payload.summary.avgPaceSecPerKm ?: 0) > 0)
 
@@ -94,6 +97,110 @@ class WearRunPayloadTest {
         assertEquals("wear-gps", json.getJSONObject("routeSummary").getString("source"))
         assertEquals(2, json.getJSONObject("routeSummary").getInt("pointCount"))
         assertFalse(json.isNull("avgPaceSecPerKm"))
+    }
+
+    @Test
+    fun includesGpsGapMetadataAndRouteSummaryCounts() {
+        val payload = WearRunSession(
+            dateKey = "2026-07-06",
+            startedAtMs = 1_000L,
+            endedAtMs = 41_000L,
+            distanceMeters = 600.0,
+            routePoints = listOf(
+                WearRoutePoint(timestampMs = 1_000L, lat = 37.5665, lng = 126.9780, segmentId = 0),
+                WearRoutePoint(timestampMs = 11_000L, lat = 37.5666, lng = 126.9790, segmentId = 0),
+                WearRoutePoint(
+                    timestampMs = 21_000L,
+                    lat = 37.5675,
+                    lng = 126.9800,
+                    segmentId = 1,
+                    gapBefore = true,
+                    gapReason = "gps-timeout",
+                ),
+                WearRoutePoint(timestampMs = 31_000L, lat = 37.5676, lng = 126.9810, segmentId = 1),
+            ),
+        ).toPayload().getOrThrow()
+
+        assertEquals(4, payload.summary.route.size)
+        assertEquals(4, payload.summary.routeSummary.pointCount)
+        assertEquals(2, payload.summary.routeSummary.segmentCount)
+        assertEquals(1, payload.summary.routeSummary.gapCount)
+        assertTrue(payload.summary.routeSummary.interrupted)
+
+        val json = JSONObject(payload.toJsonString())
+        val route = json.getJSONArray("route")
+        assertEquals(4, route.length())
+        assertEquals(0, route.getJSONObject(0).getInt("segmentId"))
+        assertFalse(route.getJSONObject(0).getBoolean("gapBefore"))
+        assertTrue(route.getJSONObject(0).isNull("gapReason"))
+
+        val gapPoint = route.getJSONObject(2)
+        assertEquals(1, gapPoint.getInt("segmentId"))
+        assertTrue(gapPoint.getBoolean("gapBefore"))
+        assertEquals("gps-timeout", gapPoint.getString("gapReason"))
+
+        val routeSummary = json.getJSONObject("routeSummary")
+        assertEquals(2, routeSummary.getInt("segmentCount"))
+        assertEquals(1, routeSummary.getInt("gapCount"))
+        assertTrue(routeSummary.getBoolean("interrupted"))
+    }
+
+    @Test
+    fun routeDistanceFallbackSkipsGpsGapEdges() {
+        val payload = WearRunSession(
+            dateKey = "2026-07-06",
+            startedAtMs = 1_000L,
+            endedAtMs = 61_000L,
+            distanceMeters = 0.0,
+            routePoints = listOf(
+                WearRoutePoint(timestampMs = 1_000L, lat = 37.5665, lng = 126.9780, segmentId = 0),
+                WearRoutePoint(timestampMs = 11_000L, lat = 37.5666, lng = 126.9780, segmentId = 0),
+                WearRoutePoint(
+                    timestampMs = 21_000L,
+                    lat = 35.1796,
+                    lng = 129.0756,
+                    segmentId = 1,
+                    gapBefore = true,
+                    gapReason = "gps-timeout",
+                ),
+                WearRoutePoint(timestampMs = 31_000L, lat = 35.1797, lng = 129.0756, segmentId = 1),
+                WearRoutePoint(timestampMs = 41_000L, lat = 33.4996, lng = 126.5312, segmentId = 2),
+                WearRoutePoint(timestampMs = 51_000L, lat = 33.4997, lng = 126.5312, segmentId = 2),
+            ),
+        ).toPayload().getOrThrow()
+
+        assertEquals(0.03, payload.summary.distanceKm, 0.0001)
+        assertEquals(3, payload.summary.routeSummary.segmentCount)
+        assertEquals(2, payload.summary.routeSummary.gapCount)
+        assertTrue(payload.summary.routeSummary.interrupted)
+    }
+
+    @Test
+    fun infersGpsGapMetadataFromTimestampBreaks() {
+        val payload = WearRunSession(
+            dateKey = "2026-07-06",
+            startedAtMs = 1_000L,
+            endedAtMs = 101_000L,
+            distanceMeters = 0.0,
+            routePoints = listOf(
+                WearRoutePoint(timestampMs = 1_000L, lat = 37.5665, lng = 126.9780),
+                WearRoutePoint(timestampMs = 11_000L, lat = 37.5666, lng = 126.9781),
+                WearRoutePoint(timestampMs = 81_000L, lat = 37.5700, lng = 126.9800),
+                WearRoutePoint(timestampMs = 91_000L, lat = 37.5701, lng = 126.9801),
+            ),
+        ).toPayload().getOrThrow()
+
+        assertEquals(listOf(0, 0, 1, 1), payload.summary.route.map { it.segmentId })
+        assertFalse(payload.summary.route[1].gapBefore)
+        assertTrue(payload.summary.route[2].gapBefore)
+        assertEquals("time-gap", payload.summary.route[2].gapReason)
+        assertEquals(2, payload.summary.routeSummary.segmentCount)
+        assertEquals(1, payload.summary.routeSummary.gapCount)
+        assertTrue(payload.summary.routeSummary.interrupted)
+        assertTrue(
+            "gap edge should not inflate inferred route distance: ${payload.summary.distanceKm}",
+            payload.summary.distanceKm < 1.0,
+        )
     }
 
     @Test

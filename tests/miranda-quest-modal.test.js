@@ -58,7 +58,7 @@ test('Miranda modal styles and runtime assets are registered', () => {
   assert.match(styleCss, /\.lz-miranda-npc \{/);
   assert.match(styleCss, /\.lz-miranda-npc \.lz-npc-bulb \{/);
   assert.match(styleCss, /\.lz-miranda-npc \.lz-npc-bulb,\s*\.lz-consulting-chief-npc \.lz-npc-bulb\s*\{[\s\S]*display: none;/);
-  assert.match(swJs, /tomatofarm-v20260709z10-mobile-apk-download/);
+  assert.match(swJs, /tomatofarm-v20260709z12-watch-running-gps-gap-resilience/);
   assert.match(swJs, /\.\/modals\/miranda-quest-modal\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/miranda-npc-seated\.png/);
   assert.deepEqual(readPngHeader('assets/home/life-zone/ui/miranda-npc-seated.png'), {

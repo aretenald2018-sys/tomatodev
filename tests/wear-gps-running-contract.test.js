@@ -26,22 +26,40 @@ test('wear run uses GPS location data and sends route result in final payload', 
 
   assert.match(service, /DataType\.LOCATION/);
   assert.match(service, /isGpsEnabled = hasLocationPermission\(\)/);
+  assert.match(service, /WarmUpConfig/);
+  assert.match(service, /prepareExerciseAsync/);
+  assert.match(service, /requestedDataTypes\(\)\.intersect\(runningCapabilities\.supportedDataTypes\)/);
+  assert.match(service, /warmUpDataTypes\(config\.dataTypes\)/);
+  assert.doesNotMatch(service, /ensureGpsDataTypes/);
   assert.match(service, /hasLocationPermission/);
   assert.match(service, /getData\(DataType\.LOCATION\)/);
 
   assert.match(accumulator, /WearRoutePoint/);
   assert.match(accumulator, /routePoints/);
+  assert.match(accumulator, /ROUTE_GAP_MS = 45_000L/);
+  assert.match(accumulator, /gapBefore = explicitGap \|\| inferredGap/);
+  assert.match(accumulator, /gapReason = routePoint\.gapReason \?: if \(inferredGap\) "time-gap" else null/);
   assert.match(store, /routePoints: List<WearRoutePoint>/);
   assert.match(payload, /data class WearRoutePoint/);
+  assert.match(payload, /ROUTE_GAP_MS = 45_000L/);
+  assert.match(payload, /segmentId: Int\?/);
+  assert.match(payload, /gapBefore: Boolean/);
+  assert.match(payload, /gapReason: String\?/);
   assert.match(payload, /"route"/);
   assert.match(payload, /"routeSummary"/);
+  assert.match(payload, /"segmentId"/);
+  assert.match(payload, /"gapBefore"/);
+  assert.match(payload, /"gapReason"/);
+  assert.match(payload, /"segmentCount"/);
+  assert.match(payload, /"gapCount"/);
+  assert.match(payload, /"interrupted"/);
   assert.match(controller, /routePoints = exerciseSnapshot\.routePoints/);
 
   assert.match(layout, /@\+id\/runActiveGpsStatus/);
   assert.match(layout, /@\+id\/runSummaryGpsStatus/);
 });
 
-test('web wear bridge saves GPS route into running data and cardio metadata', async () => {
+test('web wear bridge saves GPS route into running data only', async () => {
   const tmp = await mkdtemp(join(tmpdir(), 'wear-gps-bridge-'));
   try {
     const modulePath = join(tmp, 'wear-bridge-under-test.mjs');
@@ -83,6 +101,7 @@ test('web wear bridge saves GPS route into running data and cardio metadata', as
       loadWorkoutDate: globalThis.__wearGpsLoad,
       saveWorkoutDay: globalThis.__wearGpsSave,
       focusEntry: globalThis.__wearGpsFocus,
+      getDay() { return { workoutSessions: [] }; },
     });
 
     await bridge.saveWearWorkoutPayload({
@@ -116,8 +135,8 @@ test('web wear bridge saves GPS route into running data and cardio metadata', as
     assert.equal(state.workout.runData.route[0].lat, 37.5665);
     assert.equal(state.workout.runData.routeSummary.source, 'wear-gps');
     assert.equal(state.workout.runData.routeSummary.pointCount, 2);
-    assert.equal(state.workout.exercises[0].cardio.routeSummary.source, 'wear-gps');
-    assert.equal(state.workout.exercises[0].cardio.routeSummary.pointCount, 2);
+    assert.equal(state.workout.sessionIndex, 2);
+    assert.equal(state.workout.exercises.length, 0);
   } finally {
     delete globalThis.window;
     delete globalThis.localStorage;

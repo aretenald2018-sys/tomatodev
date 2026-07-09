@@ -34,6 +34,16 @@ android/app/src/main/java/com/lifestreak/app/wear/**
 !android/app/src/main/java/com/lifestreak/app/wear/TomatoWearAppUpdatePlugin.kt
 !android/app/src/main/java/com/lifestreak/app/wear/TomatoWearWorkoutBridge.kt
 !android/app/src/main/java/com/lifestreak/app/wear/TomatoWearWorkoutListenerService.kt
+!android/app/src/test/
+android/app/src/test/**
+!android/app/src/test/java/
+android/app/src/test/java/**
+!android/app/src/test/java/com/
+!android/app/src/test/java/com/lifestreak/
+!android/app/src/test/java/com/lifestreak/app/
+!android/app/src/test/java/com/lifestreak/app/wear/
+android/app/src/test/java/com/lifestreak/app/wear/**
+!android/app/src/test/java/com/lifestreak/app/wear/TomatoWearWorkoutBridgeTest.kt
 android/app/google-services.json
 android/app/*.jks
 android/app/*.keystore

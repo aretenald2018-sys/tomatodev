@@ -11,8 +11,8 @@ const tm2EntryJs = readFileSync(new URL('../workout/test-v2/entry.js', import.me
 const tm2BoardJs = readFileSync(new URL('../workout/test-v2/board-render.js', import.meta.url), 'utf8');
 
 function extractFunctionSource(source, name) {
-  const asyncStart = source.indexOf(`async function ${name}`);
-  const normalStart = source.indexOf(`function ${name}`);
+  const asyncStart = source.indexOf(`async function ${name}(`);
+  const normalStart = source.indexOf(`function ${name}(`);
   const start = asyncStart >= 0 ? asyncStart : normalStart;
   assert.ok(start >= 0, `${name} should exist`);
   const signatureEnd = source.indexOf(') {', start);
@@ -994,7 +994,10 @@ test('running detail card uses the workout read-card shell with running metrics 
 
   assert.match(calendarJs, /import \{ destroyRunningMaps, renderRunningMap \} from '\.\/workout\/running-map\.js'/);
   assert.match(calendarJs, /function _mountWorkoutRunningMaps/);
+  assert.match(calendarJs, /\[data-wt-running-route-map\]\.is-active/);
   assert.match(calendarJs, /renderRunningMap\(shell, \{ points: payload\.points, phase: 'detail' \}\)/);
+  assert.match(calendarJs, /case 'show-running-route':/);
+  assert.match(calendarJs, /_showWorkoutRunningRoute\(control, routeMapId\)/);
   assert.match(calendarJs, /runRouteSummary && typeof d\.runRouteSummary === 'object'/);
   assert.match(calendarJs, /distanceKm:\s*runDistance/);
   assert.match(calendarJs, /speedKmh:\s*runSpeedKmh/);
@@ -1012,8 +1015,11 @@ test('running detail card uses the workout read-card shell with running metrics 
   assert.match(card, /_renderRunningRouteMap\(row\)/);
   assert.match(mapRenderer, /wt-running-route-map wt-run-real-map/);
   assert.match(mapRenderer, /data-wt-running-route-map/);
+  assert.match(mapRenderer, /wt-running-route-show/);
+  assert.match(mapRenderer, /data-wt-sheet-card-action="show-running-route"/);
+  assert.match(mapRenderer, /data-route-map-id/);
   assert.match(mapRenderer, /wt-running-route-place/);
-  assert.match(mapRenderer, /실제 지도 준비 중/);
+  assert.match(mapRenderer, /경로 대기 중/);
   assert.match(card, /wt-running-metric-grid/);
   assert.match(metricBuilder, /거리/);
   assert.match(metricBuilder, /시간/);
@@ -1038,6 +1044,94 @@ test('running detail card uses the workout read-card shell with running metrics 
   assert.match(styleCss, /\.wt-running-read-card\.is-collapsed \.wt-running-metric-grid/);
 });
 
+test('running tab stacks multiple running session cards after the gym sessions', () => {
+  const infoStart = calendarJs.indexOf('function _runningTrackSessionInfo');
+  const infoEnd = calendarJs.indexOf('function _clearRunningFields', infoStart);
+  const stackStart = calendarJs.indexOf('function _runningStackSession');
+  const stackEnd = calendarJs.indexOf('function _workoutRecordOrdinalForKey', stackStart);
+  const detailStart = calendarJs.indexOf('function _renderWorkoutHomeDetailHtml');
+  const detailEnd = calendarJs.indexOf('function _renderWorkoutDetailSummaryCard', detailStart);
+  assert.ok(infoStart >= 0 && infoEnd > infoStart, 'running session info helper should exist');
+  assert.ok(stackStart >= 0 && stackEnd > stackStart, 'running stack helper should exist');
+  assert.ok(detailStart >= 0 && detailEnd > detailStart, 'detail renderer should exist');
+  const infoHelper = calendarJs.slice(infoStart, infoEnd);
+  const stackHelper = calendarJs.slice(stackStart, stackEnd);
+  const detail = calendarJs.slice(detailStart, detailEnd);
+
+  assert.match(infoHelper, /list\.slice\(WORKOUT_RUNNING_SESSION_INDEX\)/);
+  assert.match(infoHelper, /runningSessions/);
+  assert.match(detail, /_runningStackSession/);
+  assert.match(detail, /runningInfo\.runningSessions/);
+  assert.match(detail, /activities:\s*runningInfo\.runningSessions/);
+  assert.match(stackHelper, /_activityRows\(_onlyRunningFields\(sourceSession\)\)\.find\(row => row\?\.key === 'running'\)/);
+  assert.match(stackHelper, /sessionIndex:\s*_runningStackSessionIndex\(item\.index\)/);
+  assert.match(detail, /wx\.activities = runningStack\.rows/);
+
+  const sourceBundle = [
+    'const WORKOUT_RUNNING_SESSION_INDEX = 2;',
+    extractFunctionSource(calendarJs, '_num'),
+    extractFunctionSource(calendarJs, '_fmtNum'),
+    extractFunctionSource(calendarJs, '_formatDuration'),
+    extractFunctionSource(calendarJs, '_durationFromMinSec'),
+    extractFunctionSource(calendarJs, '_hasRunningRecord'),
+    extractFunctionSource(calendarJs, '_onlyRunningFields'),
+    extractFunctionSource(calendarJs, '_activityRows'),
+    extractFunctionSource(calendarJs, '_runningStackSessionIndex'),
+    extractFunctionSource(calendarJs, '_runningTrackSessionInfo'),
+    extractFunctionSource(calendarJs, '_runningStackSession'),
+  ].join('\n\n');
+  const buildRunningStack = new Function(`${sourceBundle}
+    return function buildRunningStack(sessions) {
+      const info = _runningTrackSessionInfo(sessions);
+      return { info, stack: _runningStackSession({ session: info.session, activities: info.runningSessions }) };
+    };
+  `)();
+
+  const stacked = buildRunningStack([
+    { id: 'session-1', exercises: [{ exerciseId: 'bench' }] },
+    { id: 'session-2', exercises: [{ exerciseId: 'squat' }] },
+    {
+      running: true,
+      runDistance: 3.21,
+      runDurationMin: 21,
+      runDurationSec: 5,
+      runStartedAt: 1783400000000,
+      runEndedAt: 1783401265000,
+      runRoute: [{ lat: 37.5665, lng: 126.978 }, { lat: 37.5666, lng: 126.979 }],
+      runRouteSummary: { source: 'wear-gps', pointCount: 2, distanceKm: 3.21, durationSec: 1265 },
+    },
+    {
+      running: true,
+      runDistance: 1.4,
+      runDurationMin: 10,
+      runDurationSec: 0,
+      runStartedAt: 1783402000000,
+      runEndedAt: 1783402600000,
+      runRoute: [{ lat: 37.57, lng: 126.98 }, { lat: 37.571, lng: 126.981 }],
+      runRouteSummary: { source: 'wear-gps', pointCount: 2, distanceKm: 1.4, durationSec: 600 },
+    },
+  ]);
+  assert.equal(stacked.info.index, 2);
+  assert.equal(stacked.stack.rows.length, 2);
+  assert.deepEqual(stacked.stack.rows.map(row => row.sessionIndex), [2, 3]);
+  assert.equal(stacked.stack.rows[0].route.length, 2);
+  assert.equal(stacked.stack.rows[1].distanceKm, 1.4);
+
+  const legacy = buildRunningStack([
+    {
+      running: true,
+      runDistance: 2,
+      runDurationMin: 12,
+      runDurationSec: 0,
+      runRoute: [{ lat: 37.1, lng: 127.1 }, { lat: 37.2, lng: 127.2 }],
+      runRouteSummary: { source: 'legacy-gps', pointCount: 2, distanceKm: 2, durationSec: 720 },
+    },
+  ]);
+  assert.equal(legacy.info.index, 0);
+  assert.equal(legacy.stack.rows.length, 1);
+  assert.equal(legacy.stack.rows[0].sessionIndex, 0);
+});
+
 test('generic activity detail card uses delegated sheet card actions', () => {
   const cardStart = calendarJs.indexOf('function _renderWorkoutActivityDetailCard');
   const cardEnd = calendarJs.indexOf('function _renderWorkoutDetailEmpty', cardStart);
@@ -1049,7 +1143,8 @@ test('generic activity detail card uses delegated sheet card actions', () => {
   assert.match(card, /data-card-id="\$\{_esc\(cardId\)\}"/);
   assert.match(card, /data-wt-sheet-card-action="delete-activity"/);
   assert.match(card, /data-date-key="\$\{_esc\(key\)\}"/);
-  assert.match(card, /data-session-index="\$\{sessionIndex\}"/);
+  assert.match(card, /const rowSessionIndex = Number\.isFinite\(Number\(row\?\.sessionIndex\)\)/);
+  assert.match(card, /data-session-index="\$\{rowSessionIndex\}"/);
   assert.match(card, /data-activity-key="\$\{_esc\(activityKey\)\}"/);
   assert.doesNotMatch(card, /onclick=|window\._wtCalToggleExerciseCard|window\._wtCalDeleteActivity/);
   assert.match(calendarJs, /case 'delete-activity':[\s\S]*_deleteWorkoutActivity\(key, sessionIndex, activityKey\)/);
@@ -1336,5 +1431,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260709z10-mobile-apk-download/);
+  assert.match(swJs, /tomatofarm-v20260709z12-watch-running-gps-gap-resilience/);
 });

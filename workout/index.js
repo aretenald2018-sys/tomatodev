@@ -69,6 +69,7 @@ import { _initTypeFormEvents }                     from './activity-forms.js';
 import { initRunningSession, wtOpenRunningSession, wtHandleRunningSessionBack, wtRestoreRunningSessionIfActive } from './running-session.js';
 import { configureWearWorkoutBridge, initWearWorkoutBridge } from './wear-bridge.js';
 import { confirmAction }                           from '../utils/confirm-modal.js';
+import { getDay }                                  from '../data.js';
 
 // ── window.* 등록 (HTML onclick 연결) ───────────────────────────
 window.wtToggleMealSkipped = wtToggleMealSkipped;
@@ -95,6 +96,7 @@ configureWearWorkoutBridge({
   loadWorkoutDate,
   saveWorkoutDay,
   focusEntry: wtFocusWorkoutEntryCard,
+  getDay,
 });
 
 // 운동종료 → 확인 모달 → 실제 타이머 정지/저장.

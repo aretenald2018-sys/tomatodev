@@ -19,10 +19,12 @@ import androidx.health.services.client.ExerciseUpdateCallback
 import androidx.health.services.client.HealthServices
 import androidx.health.services.client.data.Availability
 import androidx.health.services.client.data.DataType
+import androidx.health.services.client.data.DeltaDataType
 import androidx.health.services.client.data.ExerciseConfig
 import androidx.health.services.client.data.ExerciseLapSummary
 import androidx.health.services.client.data.ExerciseType
 import androidx.health.services.client.data.ExerciseUpdate
+import androidx.health.services.client.data.WarmUpConfig
 import kotlin.math.roundToInt
 
 class WearExerciseService : Service() {
@@ -100,25 +102,57 @@ class WearExerciseService : Service() {
                     isGpsEnabled = hasLocationPermission(),
                     exerciseGoals = emptyList(),
                 )
-                val startFuture = exerciseClient.startExerciseAsync(config)
-                startFuture.addListener(
-                    {
-                        try {
-                            startFuture.get()
-                            exerciseStarted = true
-                            WearExerciseSessionStore.publishFromAccumulator(
-                                status = WearExerciseSessionStatus.ACTIVE,
-                                accumulator = nextAccumulator,
-                                message = locationStatusMessage(),
-                            )
-                        } catch (error: Exception) {
-                            WearExerciseSessionStore.markFallback(
-                                "Health Services start failed: ${error.message ?: error.javaClass.simpleName}",
-                            )
-                        }
-                    },
-                    healthCallbackExecutor,
-                )
+                prepareThenStartExercise(config, nextAccumulator)
+            },
+            healthCallbackExecutor,
+        )
+    }
+
+    private fun prepareThenStartExercise(
+        config: ExerciseConfig,
+        nextAccumulator: WearExerciseMetricAccumulator,
+    ) {
+        val warmUpTypes = warmUpDataTypes(config.dataTypes)
+        if (warmUpTypes.isEmpty()) {
+            startConfiguredExercise(config, nextAccumulator)
+            return
+        }
+        val warmUpFuture = exerciseClient.prepareExerciseAsync(
+            WarmUpConfig(ExerciseType.RUNNING, warmUpTypes),
+        )
+        warmUpFuture.addListener(
+            {
+                try {
+                    warmUpFuture.get()
+                } catch (_: Exception) {
+                } finally {
+                    startConfiguredExercise(config, nextAccumulator)
+                }
+            },
+            healthCallbackExecutor,
+        )
+    }
+
+    private fun startConfiguredExercise(
+        config: ExerciseConfig,
+        nextAccumulator: WearExerciseMetricAccumulator,
+    ) {
+        val startFuture = exerciseClient.startExerciseAsync(config)
+        startFuture.addListener(
+            {
+                try {
+                    startFuture.get()
+                    exerciseStarted = true
+                    WearExerciseSessionStore.publishFromAccumulator(
+                        status = WearExerciseSessionStatus.ACTIVE,
+                        accumulator = nextAccumulator,
+                        message = locationStatusMessage(),
+                    )
+                } catch (error: Exception) {
+                    WearExerciseSessionStore.markFallback(
+                        "Health Services start failed: ${error.message ?: error.javaClass.simpleName}",
+                    )
+                }
             },
             healthCallbackExecutor,
         )
@@ -286,6 +320,13 @@ class WearExerciseService : Service() {
             dataTypes.add(DataType.LOCATION)
         }
         return dataTypes
+    }
+
+    private fun warmUpDataTypes(dataTypes: Set<DataType<*, *>>): Set<DeltaDataType<*, *>> {
+        val warmUpTypes = mutableSetOf<DeltaDataType<*, *>>()
+        if (dataTypes.contains(DataType.LOCATION)) warmUpTypes.add(DataType.LOCATION)
+        if (dataTypes.contains(DataType.HEART_RATE_BPM)) warmUpTypes.add(DataType.HEART_RATE_BPM)
+        return warmUpTypes
     }
 
     private fun hasActivityRecognitionPermission(): Boolean {

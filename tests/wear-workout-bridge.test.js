@@ -37,6 +37,17 @@ test('wear workout bridge native contracts are wired through Data Layer and WebV
   assert.match(phoneBridge, /__tomatoWearWorkoutBridge/);
   assert.match(phoneBridge, /saveFromNative/);
   assert.match(phoneBridge, /drainPendingToWebView/);
+  assert.match(phoneBridge, /volatilePayloadQueue/);
+  assert.match(phoneBridge, /sanitizePayloadForPrefs/);
+  assert.match(phoneBridge, /sanitizeRouteForPrefs/);
+  assert.match(phoneBridge, /MAX_PERSISTED_ROUTE_POINTS/);
+  assert.match(phoneBridge, /\.put\("samples10s", JSONArray\(\)\)/);
+  assert.match(phoneBridge, /"segmentCount"/);
+  assert.match(phoneBridge, /"gapCount"/);
+  assert.match(phoneBridge, /"interrupted"/);
+  assert.match(phoneBridge, /copyOptionalNumber/);
+  assert.match(phoneBridge, /"redacted", true/);
+  assert.match(phoneBridge, /volatilePayloadQueue\.firstOrNull\(\) \?: readQueue/);
   assert.match(mainActivity, /TomatoWearWorkoutBridge\.registerActivity/);
   assert.match(mainActivity, /TomatoWearWorkoutBridge\.drainPendingToWebView/);
   assert.match(wearSender, /MessageClient/);
@@ -47,7 +58,7 @@ test('wear workout bridge native contracts are wired through Data Layer and WebV
   assert.match(wearLayout, /@\+id\/runSummarySyncStatus/);
 });
 
-test('web bridge saves a valid wear run as a cardio card and preserves existing fields', async () => {
+test('web bridge saves a valid wear run into running-only session storage', async () => {
     const tmp = await mkdtemp(join(tmpdir(), 'wear-bridge-'));
     try {
       const modulePath = join(tmp, 'wear-bridge-under-test.mjs');
@@ -86,6 +97,7 @@ test('web bridge saves a valid wear run as a cardio card and preserves existing 
     const state = {
       workout: {
         exercises: [],
+        sessionIndex: 0,
         running: false,
         runData: {},
       },
@@ -112,6 +124,14 @@ test('web bridge saves a valid wear run as a cardio card and preserves existing 
       loadWorkoutDate: globalThis.__wearBridgeTestLoad,
       saveWorkoutDay: globalThis.__wearBridgeTestSave,
       focusEntry: globalThis.__wearBridgeTestFocus,
+      getDay() {
+        return {
+          workoutSessions: [
+            { id: 'session-1', label: '1회차', exercises: [{ exerciseId: 'bench' }] },
+            { id: 'session-2', label: '2회차', exercises: [{ exerciseId: 'squat' }] },
+          ],
+        };
+      },
     });
 
     await assert.rejects(
@@ -143,17 +163,14 @@ test('web bridge saves a valid wear run as a cardio card and preserves existing 
     assert.equal(saved[0].diet.breakfast, '토스트');
     assert.deepEqual(saved[0].diet.bFoods, [{ name: '토스트' }]);
     assert.equal(state.workout.running, true);
+    assert.equal(state.workout.sessionIndex, 2);
+    assert.equal(state.workout.sessionId, 'running-track');
     assert.equal(state.workout.runData.source, 'wear');
     assert.equal(state.workout.runData.distance, 3.21);
     assert.equal(state.workout.runData.durationMin, 21);
     assert.equal(state.workout.runData.durationSec, 5);
-    assert.equal(state.workout.exercises.length, 1);
-    assert.equal(state.workout.exercises[0].exerciseId, 'cardio:treadmill-running');
-    assert.equal(state.workout.exercises[0].cardio.source, 'wear-running');
-    assert.equal(state.workout.exercises[0].cardio.avgHeartRateBpm, 141);
-    assert.equal(state.workout.exercises[0].cardio.maxHeartRateBpm, 166);
-    assert.equal(state.workout.exercises[0].cardio.distanceKm, 3.21);
-    assert.equal(focused[0], 0);
+    assert.equal(state.workout.exercises.length, 0);
+    assert.equal(focused.length, 0);
     assert.ok(events.includes('sheet:saved'));
     assert.ok(toast.some(item => item.message.includes('워치 런닝 기록')));
 
@@ -170,7 +187,8 @@ test('web bridge saves a valid wear run as a cardio card and preserves existing 
       maxHeartRateBpm: 166,
       samples10s: [],
     });
-    assert.equal(state.workout.exercises.length, 1, 'same wear session should update, not duplicate');
+    assert.equal(state.workout.exercises.length, 0, 'wear running should never create a workout exercise card');
+    assert.equal(saved[1].workout.sessionIndex, 2, 'same wear session should update the existing running slot');
   } finally {
     delete globalThis.window;
     delete globalThis.localStorage;
@@ -180,6 +198,284 @@ test('web bridge saves a valid wear run as a cardio card and preserves existing 
     delete globalThis.__wearBridgeTestLoad;
     delete globalThis.__wearBridgeTestSave;
     delete globalThis.__wearBridgeTestFocus;
+    await rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('web bridge preserves and infers wear route gap metadata for map segments', async () => {
+  const tmp = await mkdtemp(join(tmpdir(), 'wear-bridge-gap-'));
+  try {
+    const modulePath = join(tmp, 'wear-bridge-under-test.mjs');
+    await writeFile(modulePath, await read('workout/wear-bridge.js'), 'utf8');
+
+    const bridgeModule = await import(pathToFileURL(modulePath).href);
+    const basePayload = {
+      type: 'running',
+      source: 'wear',
+      dateKey: '2026-07-07',
+      startedAt: 1783400000000,
+      endedAt: 1783400120000,
+      durationSec: 120,
+      distanceKm: 0.5,
+      avgPaceSecPerKm: 240,
+      samples10s: [],
+      route: [
+        { timestampMs: 1783400000000, lat: 37.5665, lng: 126.9780, segmentId: 0 },
+        { timestampMs: 1783400010000, lat: 37.5666, lng: 126.9790, segmentId: 0 },
+        {
+          timestampMs: 1783400080000,
+          lat: 37.5670,
+          lng: 126.9800,
+          segmentId: 1,
+          gapBefore: true,
+          gapReason: 'time-gap',
+        },
+      ],
+      routeSummary: {
+        source: 'wear-gps',
+        pointCount: 3,
+        distanceKm: 0.5,
+        durationSec: 120,
+        segmentCount: 2,
+        gapCount: 1,
+        interrupted: true,
+      },
+    };
+
+    const explicit = bridgeModule.normalizeWearWorkoutPayload(basePayload);
+    assert.equal(explicit.route[2].segmentId, 1);
+    assert.equal(explicit.route[2].gapBefore, true);
+    assert.equal(explicit.route[2].gapReason, 'time-gap');
+    assert.equal(explicit.routeSummary.segmentCount, 2);
+    assert.equal(explicit.routeSummary.gapCount, 1);
+    assert.equal(explicit.routeSummary.interrupted, true);
+
+    const inferred = bridgeModule.normalizeWearWorkoutPayload({
+      ...basePayload,
+      route: basePayload.route.map(({ segmentId, gapBefore, gapReason, ...point }) => point),
+      routeSummary: { source: 'wear-gps', pointCount: 3, distanceKm: 0.5, durationSec: 120 },
+    });
+    assert.equal(inferred.route[2].segmentId, 1);
+    assert.equal(inferred.route[2].gapBefore, true);
+    assert.equal(inferred.route[2].gapReason, 'time-gap');
+    assert.equal(inferred.routeSummary.segmentCount, 2);
+    assert.equal(inferred.routeSummary.gapCount, 1);
+    assert.equal(inferred.routeSummary.interrupted, true);
+
+    const saved = [];
+    const state = { workout: { exercises: [], sessionIndex: 0, running: false, runData: {} }, diet: {}, shared: {} };
+    bridgeModule.configureWearWorkoutBridgeForTest({
+      state,
+      loadWorkoutDate: async () => {},
+      saveWorkoutDay: async () => {
+        saved.push(JSON.parse(JSON.stringify(state.workout)));
+        return true;
+      },
+      focusEntry: () => {},
+      getDay() { return { workoutSessions: [] }; },
+    });
+
+    await bridgeModule.saveWearWorkoutPayload(basePayload);
+    assert.equal(saved[0].runData.route[2].segmentId, 1);
+    assert.equal(saved[0].runData.route[2].gapBefore, true);
+    assert.equal(saved[0].runData.routeSummary.segmentCount, 2);
+    assert.equal(saved[0].runData.routeSummary.gapCount, 1);
+    assert.equal(saved[0].runData.routeSummary.interrupted, true);
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('web bridge redacts precise GPS route from persistent queue but drains memory route', async () => {
+  const tmp = await mkdtemp(join(tmpdir(), 'wear-bridge-privacy-'));
+  try {
+    const modulePath = join(tmp, 'wear-bridge-under-test.mjs');
+    await writeFile(join(tmp, 'state.js'), 'export const S = globalThis.__wearBridgePrivacyState;\n', 'utf8');
+    await writeFile(join(tmp, 'load.js'), 'export const loadWorkoutDate = globalThis.__wearBridgePrivacyLoad;\n', 'utf8');
+    await writeFile(join(tmp, 'save.js'), 'export const saveWorkoutDay = globalThis.__wearBridgePrivacySave;\n', 'utf8');
+    await writeFile(join(tmp, 'exercises.js'), 'export const wtFocusWorkoutEntryCard = globalThis.__wearBridgePrivacyFocus;\n', 'utf8');
+    await writeFile(modulePath, await read('workout/wear-bridge.js'), 'utf8');
+
+    const store = new Map();
+    const saved = [];
+    globalThis.window = {
+      showToast() {},
+      localStorage: {
+        getItem(key) { return store.has(key) ? store.get(key) : null; },
+        setItem(key, value) { store.set(key, String(value)); },
+        removeItem(key) { store.delete(key); },
+      },
+    };
+    globalThis.localStorage = globalThis.window.localStorage;
+    globalThis.document = { dispatchEvent() {} };
+    globalThis.CustomEvent = class CustomEvent {};
+
+    const state = { workout: { exercises: [], sessionIndex: 0, running: false, runData: {} }, diet: {}, shared: {} };
+    globalThis.__wearBridgePrivacyState = state;
+    globalThis.__wearBridgePrivacyLoad = async () => {};
+    globalThis.__wearBridgePrivacySave = async () => {
+      saved.push(JSON.parse(JSON.stringify(state.workout)));
+      return true;
+    };
+    globalThis.__wearBridgePrivacyFocus = () => {};
+
+    const bridgeModule = await import(pathToFileURL(modulePath).href);
+    const payload = {
+      type: 'running',
+      source: 'wear',
+      dateKey: '2026-07-07',
+      startedAt: 1783400000000,
+      endedAt: 1783400060000,
+      durationSec: 60,
+      distanceKm: 0.12,
+      avgPaceSecPerKm: 500,
+      lat: 37.1111,
+      lng: 126.1111,
+      gpsDump: { lat: 37.9999, lng: 126.9999 },
+      rawRoute: [{ lat: 37.7777, lng: 126.7777 }],
+      samples10s: [],
+      route: [
+        { timestampMs: 1783400000000, lat: 37.5665, lng: 126.978 },
+        { timestampMs: 1783400010000, lat: 37.5666, lng: 126.979 },
+      ],
+      routeSummary: { source: 'wear-gps', pointCount: 2, distanceKm: 0.12, durationSec: 60 },
+    };
+
+    bridgeModule.enqueueWearWorkoutPayload(payload);
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const storedRaw = Array.from(store.values()).join('\n');
+    assert.doesNotMatch(storedRaw, /37\.5665|37\.5666|126\.978|126\.979|37\.1111|126\.1111|37\.9999|126\.9999|37\.7777|126\.7777|gpsDump|rawRoute/);
+    const storedQueue = JSON.parse(storedRaw || '[]');
+    assert.equal(storedQueue.length, 1);
+    assert.deepEqual(storedQueue[0].payload.route, []);
+    assert.equal(storedQueue[0].payload.routeSummary.pointCount, 2);
+    assert.equal(storedQueue[0].payload.routeSummary.redacted, true);
+    assert.equal(storedQueue[0].payload.lat, undefined);
+    assert.equal(storedQueue[0].payload.gpsDump, undefined);
+    assert.equal(storedQueue[0].payload.rawRoute, undefined);
+
+    store.set('tomatofarm_wear_workout_queue_v1', JSON.stringify([{
+      id: storedQueue[0].id,
+      queuedAt: Date.now(),
+      payload: {
+        ...payload,
+        route: [],
+        samples10s: [],
+        routeSummary: { source: 'wear-gps', pointCount: 2, redacted: true },
+        lat: 37.3333,
+        lng: 126.3333,
+        gpsDump: { lat: 37.4444, lng: 126.4444 },
+        rawRoute: [{ lat: 37.5555, lng: 126.5555 }],
+      },
+    }]));
+    await bridgeModule.drainWearWorkoutQueue();
+    const legacyResanitizedRaw = Array.from(store.values()).join('\n');
+    assert.doesNotMatch(legacyResanitizedRaw, /37\.3333|126\.3333|37\.4444|126\.4444|37\.5555|126\.5555|gpsDump|rawRoute/);
+
+    bridgeModule.configureWearWorkoutBridgeForTest({
+      state,
+      loadWorkoutDate: globalThis.__wearBridgePrivacyLoad,
+      saveWorkoutDay: globalThis.__wearBridgePrivacySave,
+      focusEntry: globalThis.__wearBridgePrivacyFocus,
+      getDay() { return { workoutSessions: [] }; },
+    });
+    const result = await bridgeModule.drainWearWorkoutQueue();
+
+    assert.equal(result.ok, true);
+    assert.equal(saved.length, 1);
+    assert.equal(saved[0].runData.route.length, 2);
+    assert.equal(saved[0].runData.route[0].lat, 37.5665);
+    assert.deepEqual(JSON.parse(Array.from(store.values()).join('\n') || '[]'), []);
+  } finally {
+    delete globalThis.window;
+    delete globalThis.localStorage;
+    delete globalThis.document;
+    delete globalThis.CustomEvent;
+    delete globalThis.__wearBridgePrivacyState;
+    delete globalThis.__wearBridgePrivacyLoad;
+    delete globalThis.__wearBridgePrivacySave;
+    delete globalThis.__wearBridgePrivacyFocus;
+    await rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('web bridge stacks distinct wear runs after the running tab session index', async () => {
+  const tmp = await mkdtemp(join(tmpdir(), 'wear-bridge-stack-'));
+  try {
+    const modulePath = join(tmp, 'wear-bridge-under-test.mjs');
+    await writeFile(join(tmp, 'state.js'), 'export const S = globalThis.__wearBridgeStackState;\n', 'utf8');
+    await writeFile(join(tmp, 'load.js'), 'export const loadWorkoutDate = globalThis.__wearBridgeStackLoad;\n', 'utf8');
+    await writeFile(join(tmp, 'save.js'), 'export const saveWorkoutDay = globalThis.__wearBridgeStackSave;\n', 'utf8');
+    await writeFile(join(tmp, 'exercises.js'), 'export const wtFocusWorkoutEntryCard = globalThis.__wearBridgeStackFocus;\n', 'utf8');
+    await writeFile(modulePath, await read('workout/wear-bridge.js'), 'utf8');
+
+    const saved = [];
+    const existingDay = {
+      workoutSessions: [
+        { id: 'session-1', label: '1회차', exercises: [{ exerciseId: 'bench' }] },
+        { id: 'session-2', label: '2회차', exercises: [] },
+        {
+          id: 'session-3',
+          label: '3회차',
+          exercises: [],
+          running: true,
+          runStartedAt: 1783400000000,
+          runEndedAt: 1783401265000,
+          runDistance: 3.21,
+        },
+      ],
+    };
+    const state = { workout: { exercises: [], sessionIndex: 0, running: false, runData: {} }, diet: {}, shared: {} };
+
+    globalThis.window = {
+      showToast() {},
+      localStorage: { getItem() { return '[]'; }, setItem() {}, removeItem() {} },
+    };
+    globalThis.localStorage = globalThis.window.localStorage;
+    globalThis.document = { dispatchEvent() {} };
+    globalThis.CustomEvent = class CustomEvent {};
+    globalThis.__wearBridgeStackState = state;
+    globalThis.__wearBridgeStackLoad = async () => {};
+    globalThis.__wearBridgeStackSave = async () => {
+      saved.push(JSON.parse(JSON.stringify(state.workout)));
+      return true;
+    };
+    globalThis.__wearBridgeStackFocus = () => {};
+
+    const bridgeModule = await import(pathToFileURL(modulePath).href);
+    bridgeModule.configureWearWorkoutBridgeForTest({
+      state,
+      loadWorkoutDate: globalThis.__wearBridgeStackLoad,
+      saveWorkoutDay: globalThis.__wearBridgeStackSave,
+      focusEntry: globalThis.__wearBridgeStackFocus,
+      getDay() { return existingDay; },
+    });
+
+    await bridgeModule.saveWearWorkoutPayload({
+      type: 'running',
+      source: 'wear',
+      dateKey: '2026-07-07',
+      startedAt: 1783402000000,
+      endedAt: 1783402600000,
+      durationSec: 600,
+      distanceKm: 1.4,
+      avgPaceSecPerKm: 428,
+      samples10s: [],
+    });
+
+    assert.equal(saved.length, 1);
+    assert.equal(saved[0].sessionIndex, 3, 'a distinct second run should append after existing running sessions');
+    assert.equal(saved[0].exercises.length, 0);
+  } finally {
+    delete globalThis.window;
+    delete globalThis.localStorage;
+    delete globalThis.document;
+    delete globalThis.CustomEvent;
+    delete globalThis.__wearBridgeStackState;
+    delete globalThis.__wearBridgeStackLoad;
+    delete globalThis.__wearBridgeStackSave;
+    delete globalThis.__wearBridgeStackFocus;
     await rm(tmp, { recursive: true, force: true });
   }
 });

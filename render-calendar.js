@@ -943,11 +943,28 @@ function _hasRunningRecord(session = {}) {
 
 function _runningTrackSessionInfo(sessions = []) {
   const list = Array.isArray(sessions) ? sessions : [];
-  const preferred = list[WORKOUT_RUNNING_SESSION_INDEX];
-  if (_hasRunningRecord(preferred)) return { index: WORKOUT_RUNNING_SESSION_INDEX, session: preferred, hasRecord: true };
+  const runningSessions = list.slice(WORKOUT_RUNNING_SESSION_INDEX)
+    .map((session, offset) => ({ index: WORKOUT_RUNNING_SESSION_INDEX + offset, session }))
+    .filter(item => _hasRunningRecord(item.session));
+  if (runningSessions.length) {
+    return {
+      index: WORKOUT_RUNNING_SESSION_INDEX,
+      session: runningSessions[0].session,
+      runningSessions,
+      hasRecord: true,
+    };
+  }
   const legacyIndex = list.findIndex(_hasRunningRecord);
-  if (legacyIndex >= 0) return { index: legacyIndex, session: list[legacyIndex], hasRecord: true };
-  return { index: WORKOUT_RUNNING_SESSION_INDEX, session: preferred || {}, hasRecord: false };
+  if (legacyIndex >= 0) {
+    const legacy = { index: legacyIndex, session: list[legacyIndex] };
+    return { index: legacyIndex, session: legacy.session, runningSessions: [legacy], hasRecord: true };
+  }
+  return {
+    index: WORKOUT_RUNNING_SESSION_INDEX,
+    session: list[WORKOUT_RUNNING_SESSION_INDEX] || {},
+    runningSessions: [],
+    hasRecord: false,
+  };
 }
 
 function _clearRunningFields(session = {}) {
@@ -992,6 +1009,29 @@ function _onlyRunningFields(session = {}) {
     workoutDuration: 0,
     workoutTimeline: null,
     memo: '',
+  };
+}
+
+function _runningStackSessionIndex(index) {
+  const n = Number(index);
+  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : WORKOUT_RUNNING_SESSION_INDEX;
+}
+
+function _runningStackSession({ session = {}, activities = [] } = {}) {
+  const rows = (Array.isArray(activities) ? activities : [])
+    .map((item) => {
+      const sourceSession = item?.session || {};
+      const row = _activityRows(_onlyRunningFields(sourceSession)).find(row => row?.key === 'running');
+      if (!row) return null;
+      return {
+        ...row,
+        sessionIndex: _runningStackSessionIndex(item.index),
+      };
+    })
+    .filter(Boolean);
+  return {
+    session: _onlyRunningFields(session),
+    rows,
   };
 }
 
@@ -2134,14 +2174,36 @@ function _registerWorkoutRunningMapPayload(row = {}) {
   return id;
 }
 
+function _findWorkoutRunningMapShell(root, mapId) {
+  if (!mapId) return null;
+  const shells = root?.querySelectorAll?.('[data-wt-running-route-map]') || [];
+  return Array.from(shells).find(shell => shell.getAttribute('data-wt-running-route-map') === mapId) || null;
+}
+
 function _mountWorkoutRunningMaps(root) {
-  root?.querySelectorAll?.('[data-wt-running-route-map]').forEach((shell) => {
+  root?.querySelectorAll?.('[data-wt-running-route-map].is-active').forEach((shell) => {
+    if (shell.getAttribute('data-wt-running-map-mounted') === 'true') return;
     const id = shell.getAttribute('data-wt-running-route-map');
     const payload = _workoutRunningMapPayloads.get(id) || { points: [] };
+    shell.setAttribute('data-wt-running-map-mounted', 'true');
+    const status = shell.querySelector?.('[data-running-map-status]');
+    if (status) status.textContent = '지도 불러오는 중';
     renderRunningMap(shell, { points: payload.points, phase: 'detail' }).catch((e) => {
+      shell.removeAttribute('data-wt-running-map-mounted');
+      if (status) status.textContent = '지도 표시 실패';
       console.warn('[workout-calendar] running map render failed:', e);
     });
   });
+}
+
+function _showWorkoutRunningRoute(control, mapId) {
+  const root = control?.closest?.('[data-wt-day-sheet]') || document;
+  const shell = _findWorkoutRunningMapShell(root, mapId);
+  if (!shell) return false;
+  shell.classList.add('is-active');
+  shell.querySelector?.('[data-wt-running-route-show]')?.setAttribute('hidden', '');
+  _mountWorkoutRunningMaps(root);
+  return true;
 }
 
 function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, includeHead = true }) {
@@ -2155,13 +2217,29 @@ function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, includeHead 
     ? runningInfo.index
     : Math.max(0, Math.min(WORKOUT_GYM_SESSION_COUNT - 1, Math.floor(Number(_workoutHomeSessionIndex) || 0)));
   const rawSession = sessions[sessionIndex] || sessions[0] || {};
-  const session = runningActive ? _onlyRunningFields(runningInfo.session) : _clearRunningFields(rawSession);
+  const runningStack = runningActive
+    ? _runningStackSession({ session: runningInfo.session, activities: runningInfo.runningSessions })
+    : null;
+  const session = runningActive ? (runningStack?.session || _onlyRunningFields(runningInfo.session)) : _clearRunningFields(rawSession);
   const bodyWeight = _weightAt(checkins, key) ?? getLatestCheckinWeight() ?? plan?.weight ?? 70;
   const wx = _workoutMetrics(key, session, bodyWeight, lookup, {
     includeDraftExercises: true,
     includePreviousRecord: true,
     cache,
   });
+  if (runningActive && runningStack?.rows?.length) {
+    const activityDurationSec = runningStack.rows.reduce((sum, row) => sum + (row.durationSec || 0), 0);
+    wx.activities = runningStack.rows;
+    wx.activityDurationSec = activityDurationSec;
+    wx.durationSec = Math.max(wx.durationSec || 0, activityDurationSec);
+    wx.displayLabels = runningStack.rows.map(row => ({
+      text: row.label,
+      title: row.main ? `${row.label} · ${row.main}` : row.label,
+    }));
+    wx.labels = wx.displayLabels.map(row => row.text);
+    wx.primaryLabel = wx.labels[0] || '';
+    wx.hasWorkout = true;
+  }
   const ordinal = _workoutRecordOrdinalForKey(cache, key, plan, checkins, lookup);
   const recordText = ordinal > 0 ? `${ordinal}번째 기록` : '운동 기록 없음';
   const sessionTabs = _renderWorkoutDetailSessionTabs(sessions, runningActive ? WORKOUT_RUNNING_SESSION_INDEX : sessionIndex, runningInfo);
@@ -2859,8 +2937,9 @@ function _renderRunningRouteMap(row) {
   const place = _runningPlaceLabel(row);
   return `
     <div class="wt-running-route-map wt-run-real-map" data-wt-running-route-map="${_esc(mapId)}" aria-label="러닝 경로 지도">
+      <button type="button" class="wt-running-route-show" data-wt-sheet-card-action="show-running-route" data-route-map-id="${_esc(mapId)}" data-wt-running-route-show>경로 보기</button>
       <div class="wt-run-map-canvas" data-running-map-canvas aria-label="${_esc(place)}"></div>
-      <div class="wt-run-map-status" data-running-map-status>실제 지도 준비 중</div>
+      <div class="wt-run-map-status" data-running-map-status>경로 대기 중</div>
       <div class="wt-running-route-place">${_esc(place)}</div>
     </div>
   `;
@@ -2884,7 +2963,10 @@ function _renderRunningGpsStatus(row) {
 }
 
 function _renderWorkoutRunningDetailCard(key, sessionIndex, row, index) {
-  const cardId = `act:${key}:${sessionIndex}:${index}`;
+  const rowSessionIndex = Number.isFinite(Number(row?.sessionIndex))
+    ? Math.max(0, Math.floor(Number(row.sessionIndex)))
+    : sessionIndex;
+  const cardId = `act:${key}:${rowSessionIndex}:${index}`;
   const collapsed = _workoutDetailCollapsed.has(cardId);
   const activityKey = String(row.key || '').replace(/[^a-z0-9_-]/gi, '');
   const metrics = _runningMetricItems(row);
@@ -2897,7 +2979,7 @@ function _renderWorkoutRunningDetailCard(key, sessionIndex, row, index) {
     <article class="wt-day-ex-card wt-max-read-card wt-running-read-card ${collapsed ? 'is-collapsed' : 'is-expanded'}">
       <div class="wt-max-card-kicker wt-running-card-kicker">
         <span><i></i>${_esc(row.label || '러닝')} · ${_esc(_runningSourceLabel(row.source))}</span>
-        <button type="button" data-wt-sheet-card-action="delete-activity" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-activity-key="${_esc(activityKey)}" aria-label="러닝 삭제">×</button>
+        <button type="button" data-wt-sheet-card-action="delete-activity" data-date-key="${_esc(key)}" data-session-index="${rowSessionIndex}" data-activity-key="${_esc(activityKey)}" aria-label="러닝 삭제">×</button>
       </div>
       <div class="wt-max-card-name">${_esc(row.label || '러닝')}</div>
       <div class="wt-running-headline">
@@ -2933,7 +3015,10 @@ function _renderWorkoutRunningDetailCard(key, sessionIndex, row, index) {
 
 function _renderWorkoutActivityDetailCard(key, sessionIndex, row, index) {
   if (row?.key === 'running') return _renderWorkoutRunningDetailCard(key, sessionIndex, row, index);
-  const cardId = `act:${key}:${sessionIndex}:${index}`;
+  const rowSessionIndex = Number.isFinite(Number(row?.sessionIndex))
+    ? Math.max(0, Math.floor(Number(row.sessionIndex)))
+    : sessionIndex;
+  const cardId = `act:${key}:${rowSessionIndex}:${index}`;
   const collapsed = _workoutDetailCollapsed.has(cardId);
   const activityKey = String(row.key || '').replace(/[^a-z0-9_-]/gi, '');
   return `
@@ -2952,7 +3037,7 @@ function _renderWorkoutActivityDetailCard(key, sessionIndex, row, index) {
         <span class="wt-day-check">✓</span>
         <span>${row.durationSec ? _formatDurationShort(row.durationSec) : '기록'}</span>
         <button type="button" data-wt-sheet-card-action="toggle-card" data-card-id="${_esc(cardId)}">${collapsed ? '펼치기' : '접기'}</button>
-        <button type="button" data-wt-sheet-card-action="delete-activity" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-activity-key="${_esc(activityKey)}">삭제</button>
+        <button type="button" data-wt-sheet-card-action="delete-activity" data-date-key="${_esc(key)}" data-session-index="${rowSessionIndex}" data-activity-key="${_esc(activityKey)}">삭제</button>
       </div>
     </article>
   `;
@@ -3329,6 +3414,7 @@ function _runWorkoutHomeSheetCardAction(action, control) {
   const cardId = control?.getAttribute?.('data-card-id') || '';
   const activityKey = control?.getAttribute?.('data-activity-key') || '';
   const field = control?.getAttribute?.('data-wt-set-edit-field') || '';
+  const routeMapId = control?.getAttribute?.('data-route-map-id') || '';
   switch (action) {
     case 'add-exercise-set':
       return _addWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseIndex);
@@ -3347,6 +3433,8 @@ function _runWorkoutHomeSheetCardAction(action, control) {
       return true;
     case 'add-running':
       return _openWorkoutHomeRunning(key);
+    case 'show-running-route':
+      return _showWorkoutRunningRoute(control, routeMapId);
     case 'delete-exercise':
       return _deleteWorkoutExercise(key, sessionIndex, exerciseIndex);
     case 'delete-activity':

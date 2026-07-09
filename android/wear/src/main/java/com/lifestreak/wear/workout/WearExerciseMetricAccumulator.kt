@@ -22,6 +22,8 @@ class WearExerciseMetricAccumulator(
     private val distanceSamplesByBucket = linkedMapOf<Long, WearDistanceSample>()
     private val heartRateSamplesByBucket = linkedMapOf<Long, HeartRateSample>()
     private val routePointsByBucket = linkedMapOf<Long, WearRoutePoint>()
+    private var lastRoutePointBucketMs: Long? = null
+    private var currentRouteSegmentId = 0
 
     fun applyMetricUpdate(
         elapsedRealtimeMs: Long,
@@ -51,7 +53,19 @@ class WearExerciseMetricAccumulator(
         }
         if (routePoint != null && isValidRoutePoint(routePoint)) {
             val bucketStartMs = bucketStartFor(elapsedRealtimeMs)
-            routePointsByBucket[bucketStartMs] = routePoint.copy(timestampMs = bucketStartMs)
+            val previousBucketMs = lastRoutePointBucketMs
+            val inferredGap = previousBucketMs != null && bucketStartMs - previousBucketMs > ROUTE_GAP_MS
+            val explicitGap = routePoint.gapBefore
+            if ((inferredGap || explicitGap) && previousBucketMs != bucketStartMs) {
+                currentRouteSegmentId += 1
+            }
+            routePointsByBucket[bucketStartMs] = routePoint.copy(
+                timestampMs = bucketStartMs,
+                segmentId = routePoint.segmentId ?: currentRouteSegmentId,
+                gapBefore = explicitGap || inferredGap,
+                gapReason = routePoint.gapReason ?: if (inferredGap) "time-gap" else null,
+            )
+            lastRoutePointBucketMs = bucketStartMs
         }
     }
 
@@ -96,6 +110,7 @@ class WearExerciseMetricAccumulator(
 
     private companion object {
         const val HEART_RATE_BUCKET_MS = 10_000L
+        const val ROUTE_GAP_MS = 45_000L
         const val MIN_HEART_RATE_BPM = 30
         const val MAX_HEART_RATE_BPM = 240
     }
