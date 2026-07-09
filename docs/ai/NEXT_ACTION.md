@@ -1,5 +1,31 @@
 # 다음 자동 액션
 
+## 2026-07-09 More Menu APK Mobile Asset Refresh
+
+- 상태: `implemented_static_verified_production_not_verified`
+- 계획: `docs/ai/features/2026-07-09-more-menu-apk-install.md`
+- 요청: 다운로드되는 모바일 APK가 구버전처럼 보이며, 라이프존 식사 사진 말풍선 꼬리와 하트 버튼 동작이 최신 배포본과 다르다.
+- 진단:
+  1. root `sw.js`는 `tomatofarm-v20260709z10-mobile-apk-download`다.
+  2. 기존 `public/downloads/tomato-mobile-debug.apk` 내부 `assets/public/sw.js`/`build-info.json`은 `tomatofarm-v20260709z4-more-menu-apk-deploy`였다.
+  3. `www/`와 `android/app/src/main/assets/public/`도 `z4`였으므로 APK 패키징 입력 자산이 최신 root와 동기화되지 않았다.
+- 실행 결과:
+  1. `node scripts/generate-build-info.mjs`와 `node scripts/copy-www.js`로 최신 root asset을 `www/`에 재생성했다.
+  2. 기존 checkout의 설치된 Capacitor CLI를 `NODE_PATH`로 연결해 `cap sync android`를 실행했고, Android WebView assets를 최신 `z10`으로 동기화했다.
+  3. Android app debug APK를 다시 빌드해 `public/downloads/tomato-mobile-debug.apk`를 새 APK로 교체했다. 새 크기는 `39,511,153 bytes`다.
+  4. `tests/wear-app-refresh-update.test.js`에 APK zip 내부의 `sw.js`, `build-info.json`, `home/life-zone.js`, `style.css`를 직접 검사하는 회귀 테스트를 추가했다.
+- 검증:
+  1. PASS RED: `node --test tests/wear-app-refresh-update.test.js`가 기존 APK 내부 `z4`와 root `z10` 불일치로 실패했다.
+  2. PASS: `node scripts/generate-build-info.mjs && node scripts/copy-www.js`.
+  3. PASS: `NODE_PATH="../tomatofarm(for lite version)/node_modules" node "../tomatofarm(for lite version)/node_modules/@capacitor/cli/bin/capacitor" sync android`.
+  4. PASS: `JAVA_HOME="C:/Program Files/Android/Android Studio/jbr" android/gradlew.bat -p android :app:assembleDebug` - `BUILD SUCCESSFUL`.
+  5. PASS: 새 APK 내부 `assets/public/sw.js`와 `assets/public/build-info.json`이 `tomatofarm-v20260709z10-mobile-apk-download`를 담고, `home/life-zone.js`는 `data-lz-photo-like-key`/`toggleLike(...)`, `style.css`는 polygon 꼬리와 투명 `.lz-photo-like-btn` 스타일을 담는다.
+  6. PASS: `node --test tests/wear-app-refresh-update.test.js` - 6 tests, 6 pass.
+  7. PASS: `npm.cmd run verify:assets` - `runtime-assets ok refs=903`.
+  8. PASS: `node --test tests/app-shell-action-bridge.test.js tests/wear-app-refresh-update.test.js tests/pwa-update-auto-reload.test.js` - 16 tests, 16 pass.
+  9. PASS: `node --test --test-concurrency=1 tests/*.test.js` - 772 tests, 772 pass. 병렬 전체 실행은 `running-session-recovery-behavior.test.js` 1건이 일시 실패했지만 같은 파일 단독 재실행은 2/2 pass였고, 직렬 전체 실행은 772/772 pass였다.
+- 다음 액션: 변경 커밋을 `origin/main`에 push한 뒤 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`와 production APK 다운로드/내부 marker 검증을 수행한다.
+
 ## 2026-07-09 More Menu APK Mobile Download Fix
 
 - 상태: `complete_production_verified`

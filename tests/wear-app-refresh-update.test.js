@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
+import { inflateRawSync } from 'node:zlib';
 
 const root = new URL('../', import.meta.url);
 
@@ -22,6 +23,53 @@ function assertOrder(source, first, second, message) {
   assert.notEqual(firstIndex, -1, `${first} should exist`);
   assert.notEqual(secondIndex, -1, `${second} should exist`);
   assert.ok(firstIndex < secondIndex, message);
+}
+
+function cacheVersionFrom(source) {
+  const match = source.match(/CACHE_VERSION\s*=\s*'([^']+)'/);
+  assert.ok(match, 'CACHE_VERSION should exist');
+  return match[1];
+}
+
+function readApkEntryText(apkPath, entryName) {
+  const buffer = readFileSync(new URL(apkPath, root));
+  const eocdOffset = findEndOfCentralDirectory(buffer);
+  const entryCount = buffer.readUInt16LE(eocdOffset + 10);
+  let cursor = buffer.readUInt32LE(eocdOffset + 16);
+
+  for (let index = 0; index < entryCount; index += 1) {
+    assert.equal(buffer.readUInt32LE(cursor), 0x02014b50, 'APK central directory should be readable');
+    const compressionMethod = buffer.readUInt16LE(cursor + 10);
+    const compressedSize = buffer.readUInt32LE(cursor + 20);
+    const nameLength = buffer.readUInt16LE(cursor + 28);
+    const extraLength = buffer.readUInt16LE(cursor + 30);
+    const commentLength = buffer.readUInt16LE(cursor + 32);
+    const localHeaderOffset = buffer.readUInt32LE(cursor + 42);
+    const name = buffer.toString('utf8', cursor + 46, cursor + 46 + nameLength);
+
+    if (name === entryName) {
+      assert.equal(buffer.readUInt32LE(localHeaderOffset), 0x04034b50, 'APK local file header should be readable');
+      const localNameLength = buffer.readUInt16LE(localHeaderOffset + 26);
+      const localExtraLength = buffer.readUInt16LE(localHeaderOffset + 28);
+      const dataOffset = localHeaderOffset + 30 + localNameLength + localExtraLength;
+      const compressed = buffer.subarray(dataOffset, dataOffset + compressedSize);
+      if (compressionMethod === 0) return compressed.toString('utf8');
+      if (compressionMethod === 8) return inflateRawSync(compressed).toString('utf8');
+      assert.fail(`Unsupported APK compression method ${compressionMethod} for ${entryName}`);
+    }
+
+    cursor += 46 + nameLength + extraLength + commentLength;
+  }
+
+  assert.fail(`${entryName} should exist inside ${apkPath}`);
+}
+
+function findEndOfCentralDirectory(buffer) {
+  const minimumOffset = Math.max(0, buffer.length - 65_557);
+  for (let offset = buffer.length - 22; offset >= minimumOffset; offset -= 1) {
+    if (buffer.readUInt32LE(offset) === 0x06054b50) return offset;
+  }
+  assert.fail('APK end of central directory should be readable');
 }
 
 test('phone native plugin can refresh installed watches or open watch install prompt', () => {
@@ -137,6 +185,25 @@ test('manual app refresh keeps native Wear bridge while APK button downloads mob
     'APK install helper should stay separate from the page reload path',
   );
   assert.match(swJs, /tomatofarm-v20260709z10-mobile-apk-download/);
+});
+
+test('published mobile APK contains current life-zone photo bubble assets', () => {
+  const rootSw = readProjectFile('sw.js');
+  const apkSw = readApkEntryText('public/downloads/tomato-mobile-debug.apk', 'assets/public/sw.js');
+  const apkBuildInfo = JSON.parse(readApkEntryText('public/downloads/tomato-mobile-debug.apk', 'assets/public/build-info.json'));
+  const apkLifeZoneJs = readApkEntryText('public/downloads/tomato-mobile-debug.apk', 'assets/public/home/life-zone.js');
+  const apkStyleCss = readApkEntryText('public/downloads/tomato-mobile-debug.apk', 'assets/public/style.css');
+  const expectedCacheVersion = cacheVersionFrom(rootSw);
+
+  assert.equal(cacheVersionFrom(apkSw), expectedCacheVersion);
+  assert.equal(apkBuildInfo.cacheVersion, expectedCacheVersion);
+  assert.match(apkLifeZoneJs, /LIFE_ZONE_PHOTO_LIKE_REACTION/);
+  assert.match(apkLifeZoneJs, /data-lz-photo-like-key/);
+  assert.match(apkLifeZoneJs, /toggleLike\(actor\.accountId,\s*_todayLifeZoneKey\(\),\s*actor\.speechLikeField/);
+  assert.match(apkStyleCss, /\.lz-speech::after\s*{[\s\S]*clip-path:\s*polygon\(50% 100%, 0 0, 100% 0\)/);
+  assert.match(apkStyleCss, /\.lz-speech-photo-btn\s*{[\s\S]*padding:\s*0/);
+  assert.match(apkStyleCss, /\.lz-speech--photo \.lz-photo-like-btn\s*{[\s\S]*background:\s*transparent/);
+  assert.match(apkStyleCss, /\.lz-speech--photo \.lz-photo-like-btn\s*{[\s\S]*box-shadow:\s*none/);
 });
 
 test('browser APK fallback starts direct download without old warning toast', async () => {
