@@ -38,6 +38,9 @@ PASS for production Pages deploy, production browser-flow QA, focused regression
 5. Documentation consistency:
    - PASS after fix. 이전 Wear APK 직접 다운로드 리뷰와 초기 버튼 리뷰는 historical record로 표시했고, 현재 기준 리뷰를 이 문서로 분리했다.
 
+6. Anti-slop / overfit review:
+   - PASS after fix. `tests/wear-app-refresh-update.test.js`에서 private constant 이름과 helper body substring에 기대던 assertions를 제거했고, 실제 module import + fake DOM + fake Wear bridge로 `requestTomatoApkInstall()`의 모바일 APK 다운로드와 Wear bridge 미호출을 검증한다. 남은 source assertions는 공개 fallback URL, 공개 APK asset 존재/부재, service worker cache marker, refresh bridge ordering 같은 계약 수준으로 제한했다.
+
 ## 검증
 
 1. PASS RED: `node --test tests/wear-app-refresh-update.test.js`가 구현 전 모바일 APK 상수/asset 부재와 Wear bridge 호출로 실패했다.
@@ -47,6 +50,7 @@ PASS for production Pages deploy, production browser-flow QA, focused regression
 5. PASS: 현재 작업 루트에서 전체 test file 목록을 명시해 `node --test <all tests>` 실행 - 771 tests, 771 pass.
 6. PASS production deploy: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 25da0a3` - `[deploy-verify] ok 25da0a3595d6 tomatofarm-v20260709z10-mobile-apk-download static=260`.
 7. PASS production browser QA: 390x844 Android viewport에서 `더보기 -> APK 설치하기` 클릭. `tomato-mobile-debug.apk`가 `50,133,878 bytes`로 다운로드됐고, old warning은 없었으며, `public/downloads/tomato-wear-debug.apk`는 `404`였다. Evidence: `.omo/evidence/more-menu-apk-install/production-mobile-apk-25da0a3/result.json`, `menu-open.png`, `after-click.png`.
+8. PASS gate fix: `node --test tests/wear-app-refresh-update.test.js` - 5 tests, 5 pass after reducing source-string overfit.
 
 ## 남은 리스크
 

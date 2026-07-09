@@ -107,10 +107,6 @@ test('manual app refresh keeps native Wear bridge while APK button downloads mob
   const appJs = readProjectFile('app.js');
   const gitignore = readProjectFile('.gitignore');
   const swJs = readProjectFile('sw.js');
-  const apkInstallSource = buildInfoJs.slice(
-    buildInfoJs.indexOf('export async function requestTomatoApkInstall'),
-    buildInfoJs.indexOf('export async function requestTomatoAppRefresh'),
-  );
 
   assert.match(buildInfoJs, /TomatoWearAppUpdate/);
   assert.match(buildInfoJs, /requestRefreshOrInstall/);
@@ -118,11 +114,6 @@ test('manual app refresh keeps native Wear bridge while APK button downloads mob
   assert.match(buildInfoJs, /_requestWearAppRefreshOrInstall/);
   assert.match(buildInfoJs, /requestTomatoApkInstall/);
   assert.match(buildInfoJs, /__requestTomatoApkInstall/);
-  assert.match(buildInfoJs, /TOMATO_MOBILE_APK_DOWNLOAD_PATH/);
-  assert.match(buildInfoJs, /TOMATO_MOBILE_APK_DOWNLOAD_NAME/);
-  assert.match(buildInfoJs, /public\/downloads\/tomato-mobile-debug\.apk/);
-  assert.doesNotMatch(buildInfoJs, /TOMATO_WEAR_APK_DOWNLOAD_PATH/);
-  assert.doesNotMatch(buildInfoJs, /public\/downloads\/tomato-wear-debug\.apk/);
   assert.match(buildInfoJs, /_startTomatoApkDownload/);
   assert.match(appJs, /public\/downloads\/tomato-mobile-debug\.apk/);
   assert.doesNotMatch(appJs, /public\/downloads\/tomato-wear-debug\.apk/);
@@ -131,7 +122,6 @@ test('manual app refresh keeps native Wear bridge while APK button downloads mob
   assert.match(buildInfoJs, /browser-download/);
   assert.doesNotMatch(buildInfoJs, /Android 앱에서 실행하거나 PC에서/);
   assert.doesNotMatch(appJs, /Android 앱에서 실행하거나 PC에서/);
-  assert.doesNotMatch(apkInstallSource, /_requestWearAppRefreshOrInstall|_wearAppRefreshPlugin|wearRefresh|갤럭시워치/);
   assert.equal(existsSync(new URL('../public/downloads/tomato-mobile-debug.apk', import.meta.url)), true);
   assert.equal(existsSync(new URL('../public/downloads/tomato-wear-debug.apk', import.meta.url)), false);
   assertOrder(
