@@ -8,7 +8,7 @@
 
 ## 결론
 
-PASS for local browser-flow, source contracts, runtime assets, and full Node regression suite. not verified yet for production Pages because the checkout already contains large unrelated dirty worktree changes, so committing/pushing now would risk deploying unrelated work.
+PASS for local browser-flow, source contracts, runtime assets, full Node regression suite, production Pages deploy, and production browser-flow QA.
 
 ## 변경 파일
 
@@ -48,6 +48,9 @@ PASS for local browser-flow, source contracts, runtime assets, and full Node reg
 5. PASS: `node --test tests/*.test.js` - 771 tests, 771 pass.
 6. PASS browser-flow QA: `.omo/evidence/more-menu-apk-install/direct-download/result.json`.
 
-## 남은 검증
+## Production 검증
 
-not verified yet: production Pages URL `https://aretenald2018-sys.github.io/tomatofarm/`에서 직접 다운로드 flow는 아직 확인하지 않았다. 관련 변경만 안전하게 분리해 commit/push한 뒤 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`와 실제 Android 브라우저 `더보기 -> APK 설치하기` flow를 확인해야 한다.
+1. PASS: APK 직접 다운로드 변경만 commit `7bda2200532f2e9fa07a145bd054cbd55b97c5dc`로 분리해 `origin/main`에 push했다.
+2. PASS: `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 7bda2200532f2e9fa07a145bd054cbd55b97c5dc` - `[deploy-verify] ok 7bda2200532f tomatofarm-v20260709z8-direct-apk-download static=260`.
+3. PASS: production browser QA에서 390x844 Android viewport로 `더보기 -> APK 설치하기`를 클릭했다. 인증 테스트 세션이 없어 로그인 overlay만 숨긴 뒤 실제 배포된 app-shell 버튼을 클릭했으며, menu는 닫히고 old warning은 없었고 `tomato-wear-debug.apk`가 `14548385 bytes`로 다운로드됐다.
+4. Evidence: `.omo/evidence/more-menu-apk-install/production-direct-download-precise/result.json`, `menu-open.png`, `after-click.png`.

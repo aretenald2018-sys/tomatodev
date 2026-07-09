@@ -171,8 +171,9 @@
 4. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=913`, build-info marker `tomatofarm-v20260709z8-direct-apk-download`.
 5. PASS: `node --test tests/*.test.js` - 771 tests, 771 pass.
 6. PASS browser-flow QA: short-lived local HTTP harness at mobile viewport `390x844`에서 local auth overlay만 숨긴 뒤 `더보기 -> APK 설치하기` flow를 실행했다. `serverSawApkRequest=true`, `downloaded=true`, `downloadedSize=14548385`, `oldWarningToastSeen=false`, `menuDisplayAfterClick="none"`, console/page errors 0. Evidence: `.omo/evidence/more-menu-apk-install/direct-download/result.json`, `after-click.png`.
-7. not verified yet: production Pages 배포 검증은 이 checkout의 대량 pre-existing dirty worktree 때문에 수행하지 않았다. 안전하게 분리 가능한 commit/push 뒤 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`와 production browser flow 확인이 필요하다.
+7. PASS production deploy: APK 직접 다운로드 변경만 commit `7bda2200532f2e9fa07a145bd054cbd55b97c5dc`로 분리해 `origin/main`에 push했고, `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ 7bda2200532f2e9fa07a145bd054cbd55b97c5dc`가 `[deploy-verify] ok 7bda2200532f tomatofarm-v20260709z8-direct-apk-download static=260`로 통과했다.
+8. PASS production browser-flow QA: production URL에서 390x844 Android viewport로 `더보기 -> APK 설치하기`를 클릭했다. 인증 테스트 세션이 없어 로그인 overlay만 숨긴 뒤 실제 배포된 app-shell 버튼을 클릭했으며, menu는 닫히고 old warning은 없었고 `tomato-wear-debug.apk`가 `14548385 bytes`로 다운로드됐다. Evidence: `.omo/evidence/more-menu-apk-install/production-direct-download-precise/result.json`, `menu-open.png`, `after-click.png`.
 
 ## 다음 세션 시작 프롬프트
 
-리뷰 세션에서 `docs/ai/features/2026-07-09-more-menu-apk-install.md`의 실행 Slice 2 결과를 검토한다. 특히 공개 APK asset 추적, browser/PWA direct-download fallback, native bridge 유지, service worker cache marker 동기화, production Pages 미검증 blocker를 확인한다.
+이 흐름은 production Pages까지 검증 완료됐다. 다음 세션에서 같은 요청이 이어지면 새 기능 작업을 시작하지 말고, 먼저 현재 배포 URL에서 `더보기 -> APK 설치하기`가 계속 `tomato-wear-debug.apk`를 직접 다운로드하는지 smoke check만 수행한다.
