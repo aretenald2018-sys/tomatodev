@@ -115,3 +115,46 @@
 6. PASS with CRLF warnings only: `git diff --check`.
 7. not verified yet: `node --test tests/*.test.js`는 이 요청 밖 Wear 러닝 live pages 대기 slice의 `runMetricPager` 기대값 미구현으로 실패한다. 이 slice의 focused tests는 통과했다.
 8. not verified yet: production Pages commit/push/deploy 검증은 이 checkout에 다른 요청의 대량 dirty worktree와 local ahead work가 섞여 있어 수행하지 않았다.
+
+## 리뷰 피드백 Fix Slice
+
+- 요청: 첨부 스크린샷 기준 닫힌 사진 말풍선의 하트 주변 원형을 제거하고, 말풍선 안 사진이 꽉 차게 하며, 밑동이 마름모가 아닌 말풍선 꼬리처럼 보이게 한다.
+- 진단 가설:
+  1. 하트 주변 원형은 `.lz-photo-like-btn`의 흰 배경, 테두리, shadow가 닫힌 말풍선에도 공통 적용되어 발생한다.
+  2. 사진이 꽉 차지 않는 문제는 `.lz-speech-photo-btn`의 `padding: 2px` 때문에 썸네일 이미지가 안쪽으로 밀려 발생한다.
+  3. 마름모 밑동은 `.lz-speech::after`가 8px 정사각형을 `rotate(45deg)`로 회전해 만든 형태라 발생한다.
+- 실행 범위:
+  1. `style.css`에서 닫힌 사진 말풍선의 하트 버튼만 투명 icon button으로 보이게 한다. preview sheet의 큰 좋아요 버튼은 유지한다.
+  2. `style.css`에서 사진 버튼 padding을 제거해 이미지가 말풍선 내부를 채우게 한다.
+  3. `style.css`에서 말풍선 꼬리를 회전 정사각형이 아닌 아래쪽 삼각형/곡선형 꼬리로 바꾼다.
+  4. `tests/home-life-zone-npc-quest.test.js`에 세 CSS 계약을 고정한다.
+  5. `sw.js` `CACHE_VERSION`과 cache marker 기대값을 bump한다.
+- 하지 않을 일: 좋아요 저장 로직, preview modal 구조, 식단 사진 저장 schema, actor 배치는 바꾸지 않는다.
+- 검증 계획:
+  1. RED: `node --test tests/home-life-zone-npc-quest.test.js`
+  2. PASS: `node --check home/life-zone.js && node --check sw.js`
+  3. PASS: `node --test tests/home-life-zone-npc-quest.test.js tests/home-life-zone-state.test.js`
+  4. PASS: `npm.cmd run verify:assets`
+  5. UI 검증: `.omo/evidence/life-zone-photo-preview-like-flow/capture.mjs`로 `mobile-390`/`wide-520`에서 하트 버튼 배경/테두리/shadow 제거, 사진 버튼 padding 0, 말풍선 꼬리 rotate 없음, preview/like flow 유지 확인.
+
+## 리뷰 피드백 Fix 실행 결과
+
+1. `style.css`에서 `.lz-speech::after`의 회전 정사각형 꼬리를 `clip-path: polygon(...)` 기반 아래쪽 꼬리로 바꿨다.
+2. `.lz-speech-photo-btn` padding을 `0`으로 바꿔 사진이 말풍선 내부를 채우게 했다.
+3. 닫힌 사진 말풍선 안의 `.lz-photo-like-btn`만 투명 icon button으로 오버라이드해 하트 주변 원형 배경/테두리/shadow를 제거했다. preview sheet의 큰 좋아요 버튼은 유지했다.
+4. 모바일 `@media (max-width: 420px)`에서 `.lz-speech` padding이 사진 말풍선에 재적용되지 않도록 `.lz-speech--photo`에 `max-width: none`과 `padding: 0`을 다시 고정했다.
+5. `tests/home-life-zone-npc-quest.test.js`에 padding, heart surface, tail shape, mobile override 계약을 추가했다.
+6. `sw.js`/`build-info.json` cache version과 cache marker tests는 `tomatofarm-v20260709z9-life-zone-photo-bubble-polish` 기준으로 동기화됐다.
+7. `.omo/evidence/life-zone-photo-preview-like-flow/capture.mjs`에 bubble 자체 padding과 사진 버튼 padding, 하트 surface, tail shape를 computed style로 검증하는 assertion을 추가했다.
+
+## 리뷰 피드백 Fix 검증
+
+1. PASS RED: `node --test tests/home-life-zone-npc-quest.test.js`가 CSS 계약 추가 직후 기존 CSS에서 실패했다.
+2. PASS: `node --check home/life-zone.js && node --check sw.js && node --test tests/home-life-zone-npc-quest.test.js tests/home-life-zone-state.test.js && npm.cmd run verify:assets` - 40 tests pass, `runtime-assets ok refs=913`.
+3. PASS UI QA: `node .omo/evidence/life-zone-photo-preview-like-flow/capture.mjs`
+   - `mobile-390`: rest bubble `36x36`, `bubblePaddingTop/Left=0px`, `speechPhotoButtonPaddingTop/Left=0px`, heart background transparent/border 0/shadow none, tail polygon + translate-only transform.
+   - `wide-520`: rest bubble `42x42`, same padding/heart/tail metrics.
+   - preview/double-like/bubble-like flow 유지: `role=dialog`, `aria-modal=true`, `field="meal_lunch"`, `heartParticleCount=6`, console/page errors none.
+4. PASS: 독립 visual QA pass A/B 재리뷰 모두 PASS, blocking 없음.
+5. PASS: `git diff --check && node --test tests/*.test.js` - 771 tests, 771 pass.
+6. not verified yet: production Pages commit/push/deploy 검증은 이 checkout의 unrelated dirty worktree와 현재 `sw.js` cache version에 다른 변경(`direct-apk-download`)이 함께 반영된 상태라 이번 요청만 분리해 수행하지 않았다.

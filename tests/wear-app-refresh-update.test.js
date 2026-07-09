@@ -138,7 +138,7 @@ test('manual app refresh invokes native Wear update bridge before page reload', 
     'export async function requestTomatoAppRefresh',
     'APK install helper should stay separate from the page reload path',
   );
-  assert.match(swJs, /tomatofarm-v20260709z8-direct-apk-download/);
+  assert.match(swJs, /tomatofarm-v20260709z9-life-zone-photo-bubble-polish/);
 });
 
 test('browser APK fallback starts direct download without old warning toast', async () => {

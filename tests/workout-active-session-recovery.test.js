@@ -75,5 +75,5 @@ test('app update reload flushes workout draft and changes copy while workout is 
 });
 
 test('service worker cache version was bumped for recovery assets', () => {
-  assert.match(swJs, /tomatofarm-v20260709z8-direct-apk-download/);
+  assert.match(swJs, /tomatofarm-v20260709z9-life-zone-photo-bubble-polish/);
 });

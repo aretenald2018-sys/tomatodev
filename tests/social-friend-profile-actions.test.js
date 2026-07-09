@@ -119,5 +119,5 @@ test('comment reaction and edit actions inherit the profile delegate contract', 
 });
 
 test('service worker cache version was bumped for social profile action assets', () => {
-  assert.match(swJs, /tomatofarm-v20260709z8-direct-apk-download/);
+  assert.match(swJs, /tomatofarm-v20260709z9-life-zone-photo-bubble-polish/);
 });

@@ -86,6 +86,7 @@ test('life zone actor nameplates are rendered as text under actor feet', () => {
 test('life zone diet speech bubble renders meal photo before text fallback', () => {
   const source = readText('home/life-zone.js');
   const css = readText('style.css');
+  const speechTailRule = css.match(/\.lz-speech::after \{[\s\S]*?\n\}/)?.[0] || '';
 
   assert.match(source, /toggleLike/);
   assert.match(source, /getLikes/);
@@ -110,10 +111,13 @@ test('life zone diet speech bubble renders meal photo before text fallback', () 
   assert.doesNotMatch(source, /onclick=/);
 
   assert.match(css, /\.lz-speech--photo \{[\s\S]*width: 40px;[\s\S]*height: 40px;[\s\S]*overflow: visible;[\s\S]*pointer-events: auto;/);
-  assert.match(css, /\.lz-speech-photo-btn \{[\s\S]*width: 100%;[\s\S]*height: 100%;[\s\S]*overflow: hidden;/);
+  assert.match(css, /\.lz-speech-photo-btn \{[\s\S]*width: 100%;[\s\S]*height: 100%;[\s\S]*padding: 0;[\s\S]*overflow: hidden;/);
   assert.match(css, /\.lz-speech-photo \{[\s\S]*width: 100%;[\s\S]*height: 100%;[\s\S]*object-fit: cover;[\s\S]*border-radius: 6px;/);
   assert.match(css, /\.lz-photo-like-btn \{[\s\S]*position: absolute;[\s\S]*transform: translateZ\(0\);/);
-  assert.match(css, /@media \(max-width: 420px\) \{[\s\S]*\.lz-speech--photo \{[\s\S]*width: 34px;[\s\S]*height: 34px;/);
+  assert.match(css, /\.lz-speech--photo \.lz-photo-like-btn \{[\s\S]*border: 0;[\s\S]*background: transparent;[\s\S]*box-shadow: none;/);
+  assert.match(speechTailRule, /clip-path: polygon\(/);
+  assert.doesNotMatch(speechTailRule, /rotate\(45deg\)/);
+  assert.match(css, /@media \(max-width: 420px\) \{[\s\S]*\.lz-speech--photo \{[\s\S]*width: 34px;[\s\S]*height: 34px;[\s\S]*max-width: none;[\s\S]*padding: 0;/);
 });
 
 test('life zone photo preview sheet and heart flow use stored likes without inline handlers', () => {
@@ -377,7 +381,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260709z8-direct-apk-download/);
+  assert.match(sw, /tomatofarm-v20260709z9-life-zone-photo-bubble-polish/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,
@@ -419,7 +423,7 @@ test('life zone consulting room sofa assets are separate transparent runtime PNG
     ['consulting-visitor-gray-shirt-home.png', { width: 230, height: 298, colorType: 6 }]
   ];
 
-  assert.match(sw, /tomatofarm-v20260709z8-direct-apk-download/);
+  assert.match(sw, /tomatofarm-v20260709z9-life-zone-photo-bubble-polish/);
   for (const [asset, expected] of assets) {
     assert.match(sw, new RegExp(`\\.\\/assets\\/home\\/life-zone\\/ui\\/${asset.replace('.', '\\.')}`));
     assert.deepEqual(readPngHeader(`assets/home/life-zone/ui/${asset}`), expected);
