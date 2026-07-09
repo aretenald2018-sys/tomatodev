@@ -2,8 +2,9 @@
 
 ## 2026-07-09 More Menu APK Mobile Asset Refresh
 
-- 상태: `implemented_static_verified_production_not_verified`
+- 상태: `complete_production_verified`
 - 계획: `docs/ai/features/2026-07-09-more-menu-apk-install.md`
+- 리뷰: `docs/ai/reviews/2026-07-09-mobile-apk-asset-refresh-review.md`
 - 요청: 다운로드되는 모바일 APK가 구버전처럼 보이며, 라이프존 식사 사진 말풍선 꼬리와 하트 버튼 동작이 최신 배포본과 다르다.
 - 진단:
   1. root `sw.js`는 `tomatofarm-v20260709z10-mobile-apk-download`다.
@@ -24,7 +25,9 @@
   7. PASS: `npm.cmd run verify:assets` - `runtime-assets ok refs=903`.
   8. PASS: `node --test tests/app-shell-action-bridge.test.js tests/wear-app-refresh-update.test.js tests/pwa-update-auto-reload.test.js` - 16 tests, 16 pass.
   9. PASS: `node --test --test-concurrency=1 tests/*.test.js` - 772 tests, 772 pass. 병렬 전체 실행은 `running-session-recovery-behavior.test.js` 1건이 일시 실패했지만 같은 파일 단독 재실행은 2/2 pass였고, 직렬 전체 실행은 772/772 pass였다.
-- 다음 액션: 변경 커밋을 `origin/main`에 push한 뒤 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`와 production APK 다운로드/내부 marker 검증을 수행한다.
+  10. PASS production deploy: commit `ea2f3828c28c17e61cda5fa2935bc241a866501a`를 `origin/main`에 push했다. 최초 Pages run은 `cancelled`였고 rerun 뒤 성공했다. `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ ea2f382`가 `[deploy-verify] ok ea2f3828c28c tomatofarm-v20260709z10-mobile-apk-download static=260`으로 통과했다.
+  11. PASS production APK QA: production `public/downloads/tomato-mobile-debug.apk`는 `200`, `content-length=39511153`, `public/downloads/tomato-wear-debug.apk`는 `404`다. 내려받은 APK 내부 `assets/public/sw.js`는 `tomatofarm-v20260709z10-mobile-apk-download`, `home/life-zone.js`는 photo-like JS, `style.css`는 photo bubble CSS를 포함한다.
+- 다음 액션: 이 APK 구버전 자산 문제는 완료. 사용자가 직접 휴대폰에 설치한 뒤에도 오래된 화면을 보면 기존 설치 앱 삭제 후 새 APK 설치 또는 앱 데이터/캐시 삭제를 안내한다.
 
 ## 2026-07-09 More Menu APK Mobile Download Fix
 
