@@ -276,7 +276,7 @@ function _runAppShellAction(action, control, event) {
       if (typeof window.__requestTomatoApkInstall === 'function') {
         void window.__requestTomatoApkInstall({ control, source: 'more-menu' });
       } else {
-        window.location.assign(new URL('./public/downloads/tomato-wear-debug.apk', window.location.href).href);
+        window.location.assign(new URL('./public/downloads/tomato-mobile-debug.apk', window.location.href).href);
       }
       _closeMoreMenu();
       break;

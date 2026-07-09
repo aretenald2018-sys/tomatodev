@@ -177,3 +177,51 @@
 ## 다음 세션 시작 프롬프트
 
 이 흐름은 production Pages까지 검증 완료됐다. 다음 세션에서 같은 요청이 이어지면 새 기능 작업을 시작하지 말고, 먼저 현재 배포 URL에서 `더보기 -> APK 설치하기`가 계속 `tomato-wear-debug.apk`를 직접 다운로드하는지 smoke check만 수행한다.
+
+## 사용자 피드백: 모바일 APK 대상 수정 (2026-07-09)
+
+### 증상
+
+`APK 설치하기`를 누르면 토마토 모바일 앱 APK가 아니라 갤럭시워치용 APK가 설치된다. 현재 공개 다운로드 asset도 `tomato-wear-debug.apk`이고, helper가 Android native bridge를 우선 호출하면 워치 설치/refresh 경로로 빠질 수 있다.
+
+### 결정
+
+1. `APK 설치하기`는 토마토 모바일 앱 APK 다운로드 전용 버튼으로 고정한다.
+2. 공개 다운로드 asset은 `android/app/build/outputs/apk/debug/app-debug.apk`에서 복사한 `public/downloads/tomato-mobile-debug.apk`로 바꾼다.
+3. 이전 공개 워치 APK `public/downloads/tomato-wear-debug.apk`는 제거해 사용자가 워치 APK를 잘못 설치할 가능성을 없앤다.
+4. `requestTomatoApkInstall()`은 `TomatoWearAppUpdate` native bridge를 호출하지 않고 항상 모바일 APK 다운로드를 시작한다.
+5. 워치 설치/refresh native bridge는 상단 앱 새로고침 경로 `requestTomatoAppRefresh()`에만 남긴다.
+6. `app.js`, `utils/build-info.js`, `sw.js`는 `STATIC_ASSETS` 영향권이므로 `CACHE_VERSION`과 cache marker tests를 함께 갱신한다.
+
+## 실행 Slice 3: 모바일 APK 다운로드 대상 고정
+
+### 범위
+
+1. 공개 APK asset
+   - `android/app/build/outputs/apk/debug/app-debug.apk`를 `public/downloads/tomato-mobile-debug.apk`로 복사한다.
+   - `public/downloads/tomato-wear-debug.apk`를 삭제한다.
+
+2. `utils/build-info.js`
+   - APK 다운로드 상수를 모바일 APK 이름/경로로 바꾼다.
+   - `requestTomatoApkInstall()`에서 `_requestWearAppRefreshOrInstall()` 호출을 제거한다.
+   - 다운로드 실패 시에만 warning toast를 표시한다.
+
+3. `app.js`
+   - helper missing fallback URL을 `public/downloads/tomato-mobile-debug.apk`로 바꾼다.
+
+4. `sw.js`와 cache marker tests
+   - `CACHE_VERSION`을 `tomatofarm-v20260709z10-mobile-apk-download`로 bump한다.
+   - 관련 cache marker assertions를 같은 값으로 갱신한다.
+
+5. Tests
+   - 공개 mobile APK asset 존재와 공개 wear APK asset 부재를 source test로 고정한다.
+   - `requestTomatoApkInstall()`이 native wear bridge를 호출하지 않고 `tomato-mobile-debug.apk`를 다운로드하는지 고정한다.
+
+### 검증 계획
+
+1. RED: `node --test tests/wear-app-refresh-update.test.js`.
+2. PASS 목표: `node --check app.js && node --check utils/build-info.js && node --check sw.js`.
+3. PASS 목표: `node --test tests/app-shell-action-bridge.test.js tests/wear-app-refresh-update.test.js tests/pwa-update-auto-reload.test.js`.
+4. PASS 목표: `npm.cmd run verify:assets`.
+5. PASS 목표: `node --test tests/*.test.js`.
+6. Production-flow QA: 배포 URL에서 `더보기 -> APK 설치하기` 클릭 시 old warning 없이 `tomato-mobile-debug.apk`가 다운로드되고 파일 크기가 모바일 APK 산출물 크기 `50,133,878 bytes`와 일치하는지 확인한다.

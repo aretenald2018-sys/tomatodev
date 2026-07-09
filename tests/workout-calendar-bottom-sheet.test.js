@@ -1336,5 +1336,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260709z9-life-zone-photo-bubble-polish/);
+  assert.match(swJs, /tomatofarm-v20260709z10-mobile-apk-download/);
 });

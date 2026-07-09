@@ -102,11 +102,15 @@ test('wear app advertises capability and receives app refresh pings', () => {
   assert.doesNotMatch(listener, /WearExerciseService\.startRun|WearWorkoutDataLayer\.sendRunComplete/);
 });
 
-test('manual app refresh invokes native Wear update bridge before page reload', () => {
+test('manual app refresh keeps native Wear bridge while APK button downloads mobile app', () => {
   const buildInfoJs = readProjectFile('utils/build-info.js');
   const appJs = readProjectFile('app.js');
   const gitignore = readProjectFile('.gitignore');
   const swJs = readProjectFile('sw.js');
+  const apkInstallSource = buildInfoJs.slice(
+    buildInfoJs.indexOf('export async function requestTomatoApkInstall'),
+    buildInfoJs.indexOf('export async function requestTomatoAppRefresh'),
+  );
 
   assert.match(buildInfoJs, /TomatoWearAppUpdate/);
   assert.match(buildInfoJs, /requestRefreshOrInstall/);
@@ -114,18 +118,22 @@ test('manual app refresh invokes native Wear update bridge before page reload', 
   assert.match(buildInfoJs, /_requestWearAppRefreshOrInstall/);
   assert.match(buildInfoJs, /requestTomatoApkInstall/);
   assert.match(buildInfoJs, /__requestTomatoApkInstall/);
-  assert.match(buildInfoJs, /TOMATO_WEAR_APK_DOWNLOAD_PATH/);
-  assert.match(buildInfoJs, /public\/downloads\/tomato-wear-debug\.apk/);
+  assert.match(buildInfoJs, /TOMATO_MOBILE_APK_DOWNLOAD_PATH/);
+  assert.match(buildInfoJs, /TOMATO_MOBILE_APK_DOWNLOAD_NAME/);
+  assert.match(buildInfoJs, /public\/downloads\/tomato-mobile-debug\.apk/);
+  assert.doesNotMatch(buildInfoJs, /TOMATO_WEAR_APK_DOWNLOAD_PATH/);
+  assert.doesNotMatch(buildInfoJs, /public\/downloads\/tomato-wear-debug\.apk/);
   assert.match(buildInfoJs, /_startTomatoApkDownload/);
-  assert.match(appJs, /public\/downloads\/tomato-wear-debug\.apk/);
+  assert.match(appJs, /public\/downloads\/tomato-mobile-debug\.apk/);
+  assert.doesNotMatch(appJs, /public\/downloads\/tomato-wear-debug\.apk/);
   assert.match(gitignore, /!public\/downloads\/\*\.apk/);
   assert.match(buildInfoJs, /갤럭시워치 설치 화면/);
   assert.match(buildInfoJs, /browser-download/);
   assert.doesNotMatch(buildInfoJs, /Android 앱에서 실행하거나 PC에서/);
   assert.doesNotMatch(appJs, /Android 앱에서 실행하거나 PC에서/);
-  assert.match(buildInfoJs, /npm\.cmd run install:wear-watch/);
-  assert.match(buildInfoJs, /wearRefresh\?\.failures/);
-  assert.equal(existsSync(new URL('../public/downloads/tomato-wear-debug.apk', import.meta.url)), true);
+  assert.doesNotMatch(apkInstallSource, /_requestWearAppRefreshOrInstall|_wearAppRefreshPlugin|wearRefresh|갤럭시워치/);
+  assert.equal(existsSync(new URL('../public/downloads/tomato-mobile-debug.apk', import.meta.url)), true);
+  assert.equal(existsSync(new URL('../public/downloads/tomato-wear-debug.apk', import.meta.url)), false);
   assertOrder(
     buildInfoJs,
     'await _requestWearAppRefreshOrInstall',
@@ -138,7 +146,7 @@ test('manual app refresh invokes native Wear update bridge before page reload', 
     'export async function requestTomatoAppRefresh',
     'APK install helper should stay separate from the page reload path',
   );
-  assert.match(swJs, /tomatofarm-v20260709z9-life-zone-photo-bubble-polish/);
+  assert.match(swJs, /tomatofarm-v20260709z10-mobile-apk-download/);
 });
 
 test('browser APK fallback starts direct download without old warning toast', async () => {
@@ -146,6 +154,7 @@ test('browser APK fallback starts direct download without old warning toast', as
   const previousDocument = globalThis.document;
   const toasts = [];
   const anchors = [];
+  let nativeWearBridgeCalls = 0;
   const control = {
     disabled: false,
     attrs: {},
@@ -163,6 +172,16 @@ test('browser APK fallback starts direct download without old warning toast', as
   globalThis.window = {
     showToast(message, duration, type) {
       toasts.push({ message, duration, type });
+    },
+    Capacitor: {
+      Plugins: {
+        TomatoWearAppUpdate: {
+          requestRefreshOrInstall() {
+            nativeWearBridgeCalls += 1;
+            throw new Error('APK install should not invoke Wear bridge');
+          },
+        },
+      },
     },
   };
   globalThis.document = {
@@ -196,18 +215,19 @@ test('browser APK fallback starts direct download without old warning toast', as
   };
 
   try {
-    const moduleUrl = new URL(`../utils/build-info.js?direct-apk-download=${Date.now()}`, import.meta.url);
+    const moduleUrl = new URL(`../utils/build-info.js?mobile-apk-download=${Date.now()}`, import.meta.url);
     const { requestTomatoApkInstall } = await import(moduleUrl.href);
     const result = await requestTomatoApkInstall({ control, source: 'test' });
 
     assert.equal(result.started, true);
     assert.equal(result.reason, 'browser-download');
-    assert.match(result.downloadUrl, /\/public\/downloads\/tomato-wear-debug\.apk$/);
+    assert.match(result.downloadUrl, /\/public\/downloads\/tomato-mobile-debug\.apk$/);
     assert.equal(anchors.length, 1);
-    assert.equal(anchors[0].download, 'tomato-wear-debug.apk');
+    assert.equal(anchors[0].download, 'tomato-mobile-debug.apk');
     assert.equal(anchors[0].clicked, true);
     assert.equal(anchors[0].removed, true);
     assert.equal(toasts.length, 0);
+    assert.equal(nativeWearBridgeCalls, 0);
     assert.equal(toasts.some(toast => String(toast.message).includes('Android 앱에서 실행하거나 PC에서')), false);
     assert.equal(control.disabled, false);
     assert.equal(control.attrs['aria-busy'], 'false');

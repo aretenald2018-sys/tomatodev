@@ -6,8 +6,8 @@ let _buildInfoCache = null;
 let _updateReloadRequested = false;
 const APP_SW_SCOPE = '/tomatofarm/';
 const WEAR_APP_REFRESH_TIMEOUT_MS = 1200;
-const TOMATO_WEAR_APK_DOWNLOAD_PATH = '../public/downloads/tomato-wear-debug.apk';
-const TOMATO_WEAR_APK_DOWNLOAD_NAME = 'tomato-wear-debug.apk';
+const TOMATO_MOBILE_APK_DOWNLOAD_PATH = '../public/downloads/tomato-mobile-debug.apk';
+const TOMATO_MOBILE_APK_DOWNLOAD_NAME = 'tomato-mobile-debug.apk';
 
 function _updateBannerState() {
   if (typeof window === 'undefined') {
@@ -286,12 +286,12 @@ function _toastAppRefresh(message, type = 'info') {
   } catch {}
 }
 
-function _tomatoWearApkDownloadUrl() {
-  return new URL(TOMATO_WEAR_APK_DOWNLOAD_PATH, import.meta.url).href;
+function _tomatoMobileApkDownloadUrl() {
+  return new URL(TOMATO_MOBILE_APK_DOWNLOAD_PATH, import.meta.url).href;
 }
 
 function _startTomatoApkDownload() {
-  const downloadUrl = _tomatoWearApkDownloadUrl();
+  const downloadUrl = _tomatoMobileApkDownloadUrl();
   if (typeof document === 'undefined') {
     return { started: false, reason: 'document-unavailable', downloadUrl };
   }
@@ -302,7 +302,7 @@ function _startTomatoApkDownload() {
   }
 
   link.href = downloadUrl;
-  link.download = TOMATO_WEAR_APK_DOWNLOAD_NAME;
+  link.download = TOMATO_MOBILE_APK_DOWNLOAD_NAME;
   link.rel = 'noopener';
   link.style.display = 'none';
   document.body?.appendChild?.(link);
@@ -371,35 +371,12 @@ export async function requestTomatoApkInstall({ control = null, source = 'manual
   _setRefreshControlBusy(button, true);
 
   try {
-    if (!_wearAppRefreshPlugin()) {
-      const download = _startTomatoApkDownload();
-      if (download.started) {
-        return { started: true, reason: 'browser-download', downloadUrl: download.downloadUrl, source };
-      }
-      _toastAppRefresh('APK 다운로드를 시작하지 못했어요. 브라우저에서 다운로드를 허용해주세요.', 'warning');
-      return { started: false, reason: download.reason, downloadUrl: download.downloadUrl, source };
+    const download = _startTomatoApkDownload();
+    if (download.started) {
+      return { started: true, reason: 'browser-download', downloadUrl: download.downloadUrl, source };
     }
-
-    _toastAppRefresh('APK 설치 경로를 확인하고 있어요.', 'info');
-    const wearRefresh = await _requestWearAppRefreshOrInstall({ source });
-    if (!wearRefresh) {
-      const download = _startTomatoApkDownload();
-      if (download.started) {
-        return { started: true, reason: 'browser-download', downloadUrl: download.downloadUrl, source };
-      }
-      _toastAppRefresh('APK 다운로드를 시작하지 못했어요. 브라우저에서 다운로드를 허용해주세요.', 'warning');
-      return { started: false, reason: download.reason, downloadUrl: download.downloadUrl, source };
-    }
-    if (wearRefresh?.timedOut) {
-      _toastAppRefresh('갤럭시워치 설치 확인이 지연되고 있어요.', 'warning');
-    } else if (wearRefresh?.error) {
-      _toastAppRefresh('APK 설치 요청에 실패했어요.', 'warning');
-    } else if (Array.isArray(wearRefresh?.failures) && wearRefresh.failures.length > 0) {
-      _toastAppRefresh('워치 설치 요청이 막혔어요. PC에서 npm.cmd run install:wear-watch를 실행해주세요.', 'warning');
-    } else if (!Number(wearRefresh?.installPrompted || 0) && !Number(wearRefresh?.refreshSent || 0)) {
-      _toastAppRefresh('연결된 갤럭시워치를 찾지 못했어요.', 'warning');
-    }
-    return { started: true, wearRefresh, source };
+    _toastAppRefresh('APK 다운로드를 시작하지 못했어요. 브라우저에서 다운로드를 허용해주세요.', 'warning');
+    return { started: false, reason: download.reason, downloadUrl: download.downloadUrl, source };
   } finally {
     _setRefreshControlBusy(button, false);
   }

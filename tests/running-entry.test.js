@@ -296,7 +296,7 @@ test('running workout save writes a running life-zone snapshot', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260709z9-life-zone-photo-bubble-polish/);
+  assert.match(swJs, /tomatofarm-v20260709z10-mobile-apk-download/);
   assert.match(swJs, /\.\/workout\/index\.js\?v=20260707d-wear-bridge-load-binding/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
