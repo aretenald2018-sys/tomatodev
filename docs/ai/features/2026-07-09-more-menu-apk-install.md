@@ -94,6 +94,85 @@
    - PASS: `node --test tests/copy-www-mobile-assets.test.js`.
 6. 다음 검증: APK-menu 관련 변경만 commit/push한 뒤 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`와 production browser flow(`더보기 -> APK 설치하기`)를 확인한다.
 
+## 사용자 피드백: 브라우저 직접 APK 다운로드 (2026-07-09)
+
+### 증상
+
+운영 Pages를 Android 브라우저에서 열고 `APK 설치하기`를 누르면 화면 하단에 `APK 설치는 Android 앱에서 실행하거나 PC에서 npm.cmd run install:wear-watch를 사용해주세요.` 안내 toast가 뜬다. 사용자는 이 안내를 경고/알림처럼 느끼며, 버튼을 누르면 APK가 바로 다운로드되기를 원한다.
+
+### 진단 결과
+
+1. `utils/build-info.js`의 `requestTomatoApkInstall()`은 native `TomatoWearAppUpdate` bridge가 없으면 다운로드를 시도하지 않고 warning toast만 띄운다.
+2. 현재 repo에는 `android/wear/build/outputs/apk/debug/wear-debug.apk` 산출물이 있지만, production Pages가 서빙하는 공개 APK asset은 없다.
+3. `.gitignore`의 전역 `*.apk` 규칙 때문에 의도적으로 배포할 APK는 좁은 예외 없이는 git에 포함되지 않는다.
+4. `app.js`의 비상 fallback도 같은 warning toast 문구를 가지고 있어 helper 초기화 실패 시 같은 증상이 반복될 수 있다.
+
+### 결정
+
+1. `public/downloads/tomato-wear-debug.apk`를 명시적인 공개 다운로드 asset으로 둔다.
+2. 브라우저/PWA에서 native bridge가 없으면 warning toast 대신 이 APK asset의 다운로드를 즉시 시작한다.
+3. Android Capacitor 앱 안에서는 기존 native bridge 경로를 유지한다.
+4. native bridge가 실제로 실패한 경우의 ADB 안내는 유지하되, browser/PWA의 bridge-unavailable 분기에서는 노출하지 않는다.
+5. `app.js`, `utils/build-info.js`, `sw.js`는 `STATIC_ASSETS` 영향권이므로 `CACHE_VERSION`과 cache marker tests를 함께 갱신한다.
+
+## 실행 Slice 2: 브라우저/PWA 직접 APK 다운로드
+
+### 범위
+
+1. 공개 APK asset
+   - `android/wear/build/outputs/apk/debug/wear-debug.apk`를 `public/downloads/tomato-wear-debug.apk`로 복사한다.
+   - `.gitignore`에 `public/downloads/*.apk`만 허용하는 좁은 예외를 추가한다.
+
+2. `utils/build-info.js`
+   - APK 다운로드 URL/name 상수를 추가한다.
+   - native bridge가 없으면 `download` 속성이 있는 임시 `<a>`를 클릭해 `public/downloads/tomato-wear-debug.apk` 다운로드를 시작한다.
+   - 이 분기는 old warning toast 없이 `{ started: true, reason: 'browser-download', downloadUrl, source }`를 반환한다.
+
+3. `app.js`
+   - `window.__requestTomatoApkInstall` helper가 없을 때도 warning toast 대신 같은 APK URL로 이동/다운로드한다.
+
+4. `sw.js`와 cache marker tests
+   - `CACHE_VERSION`을 `tomatofarm-v20260709z8-direct-apk-download`로 bump한다.
+   - 관련 cache marker assertions를 같은 값으로 갱신한다.
+
+5. Tests
+   - browser/PWA fallback이 old warning을 띄우지 않고 APK 다운로드를 시작하는 RED/GREEN 테스트를 추가한다.
+   - 공개 APK asset과 `.gitignore` 예외가 빠지면 실패하는 source test를 추가한다.
+
+### 하지 않는 것
+
+- PC ADB 설치를 브라우저에서 실행한다고 속이지 않는다.
+- debug APK를 service worker precache에 넣지 않는다.
+- `www/`를 직접 수정하지 않는다.
+
+### 검증 계획
+
+1. RED: `node --test tests/wear-app-refresh-update.test.js`.
+2. PASS 목표: `node --check app.js && node --check utils/build-info.js && node --check sw.js`.
+3. PASS 목표: `node --test tests/app-shell-action-bridge.test.js tests/wear-app-refresh-update.test.js tests/pwa-update-auto-reload.test.js`.
+4. PASS 목표: `npm.cmd run verify:assets`.
+5. Browser-flow QA: `APK 설치하기` click path에서 old warning toast가 없고 `public/downloads/tomato-wear-debug.apk` 다운로드 URL이 생성되는지 확인한다.
+
+### 실행 결과
+
+1. `public/downloads/tomato-wear-debug.apk`를 추가했다. 원본은 현재 checkout의 `android/wear/build/outputs/apk/debug/wear-debug.apk`이며 크기는 `14,548,385 bytes`다.
+2. `.gitignore`에 `public/downloads/*.apk`만 허용하는 예외를 추가해 전역 `*.apk` ignore는 유지하면서 이 공개 다운로드 asset만 추적 가능하게 했다.
+3. `utils/build-info.js`에 `TOMATO_WEAR_APK_DOWNLOAD_PATH`, `TOMATO_WEAR_APK_DOWNLOAD_NAME`, `_startTomatoApkDownload()`를 추가했다.
+4. 브라우저/PWA에서 `TomatoWearAppUpdate` native bridge가 없으면 old warning toast 없이 임시 `<a download>`를 클릭해 `public/downloads/tomato-wear-debug.apk` 다운로드를 시작한다.
+5. Android Capacitor native bridge가 있는 경우 기존 `TomatoWearAppUpdate.requestRefreshOrInstall()` 경로는 유지한다.
+6. `app.js`의 helper-missing fallback에서도 old warning toast 대신 같은 APK URL로 이동하도록 바꿨다.
+7. `sw.js`/`build-info.json` cache marker와 관련 테스트 기대값은 `tomatofarm-v20260709z8-direct-apk-download`로 동기화했다.
+
+### 검증 결과
+
+1. PASS RED: `node --test tests/wear-app-refresh-update.test.js`가 구현 전 `TOMATO_WEAR_APK_DOWNLOAD_PATH` 부재와 browser download 미시작으로 실패했다.
+2. PASS: `node --check app.js && node --check utils/build-info.js && node --check sw.js`.
+3. PASS: `node --test tests/app-shell-action-bridge.test.js tests/wear-app-refresh-update.test.js tests/pwa-update-auto-reload.test.js` - 15 tests, 15 pass.
+4. PASS: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=913`, build-info marker `tomatofarm-v20260709z8-direct-apk-download`.
+5. PASS: `node --test tests/*.test.js` - 771 tests, 771 pass.
+6. PASS browser-flow QA: short-lived local HTTP harness at mobile viewport `390x844`에서 local auth overlay만 숨긴 뒤 `더보기 -> APK 설치하기` flow를 실행했다. `serverSawApkRequest=true`, `downloaded=true`, `downloadedSize=14548385`, `oldWarningToastSeen=false`, `menuDisplayAfterClick="none"`, console/page errors 0. Evidence: `.omo/evidence/more-menu-apk-install/direct-download/result.json`, `after-click.png`.
+7. not verified yet: production Pages 배포 검증은 이 checkout의 대량 pre-existing dirty worktree 때문에 수행하지 않았다. 안전하게 분리 가능한 commit/push 뒤 `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`와 production browser flow 확인이 필요하다.
+
 ## 다음 세션 시작 프롬프트
 
-`docs/ai/features/2026-07-09-more-menu-apk-install.md`의 실행 Slice 1을 구현한다. 기존 app shell `data-app-action` 패턴을 따르고, `STATIC_ASSETS` 변경에 맞춰 `sw.js` cache version을 bump한다.
+리뷰 세션에서 `docs/ai/features/2026-07-09-more-menu-apk-install.md`의 실행 Slice 2 결과를 검토한다. 특히 공개 APK asset 추적, browser/PWA direct-download fallback, native bridge 유지, service worker cache marker 동기화, production Pages 미검증 blocker를 확인한다.

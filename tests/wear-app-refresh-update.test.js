@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const root = new URL('../', import.meta.url);
@@ -104,6 +104,8 @@ test('wear app advertises capability and receives app refresh pings', () => {
 
 test('manual app refresh invokes native Wear update bridge before page reload', () => {
   const buildInfoJs = readProjectFile('utils/build-info.js');
+  const appJs = readProjectFile('app.js');
+  const gitignore = readProjectFile('.gitignore');
   const swJs = readProjectFile('sw.js');
 
   assert.match(buildInfoJs, /TomatoWearAppUpdate/);
@@ -112,10 +114,18 @@ test('manual app refresh invokes native Wear update bridge before page reload', 
   assert.match(buildInfoJs, /_requestWearAppRefreshOrInstall/);
   assert.match(buildInfoJs, /requestTomatoApkInstall/);
   assert.match(buildInfoJs, /__requestTomatoApkInstall/);
+  assert.match(buildInfoJs, /TOMATO_WEAR_APK_DOWNLOAD_PATH/);
+  assert.match(buildInfoJs, /public\/downloads\/tomato-wear-debug\.apk/);
+  assert.match(buildInfoJs, /_startTomatoApkDownload/);
+  assert.match(appJs, /public\/downloads\/tomato-wear-debug\.apk/);
+  assert.match(gitignore, /!public\/downloads\/\*\.apk/);
   assert.match(buildInfoJs, /갤럭시워치 설치 화면/);
-  assert.match(buildInfoJs, /native-bridge-unavailable/);
+  assert.match(buildInfoJs, /browser-download/);
+  assert.doesNotMatch(buildInfoJs, /Android 앱에서 실행하거나 PC에서/);
+  assert.doesNotMatch(appJs, /Android 앱에서 실행하거나 PC에서/);
   assert.match(buildInfoJs, /npm\.cmd run install:wear-watch/);
   assert.match(buildInfoJs, /wearRefresh\?\.failures/);
+  assert.equal(existsSync(new URL('../public/downloads/tomato-wear-debug.apk', import.meta.url)), true);
   assertOrder(
     buildInfoJs,
     'await _requestWearAppRefreshOrInstall',
@@ -128,7 +138,83 @@ test('manual app refresh invokes native Wear update bridge before page reload', 
     'export async function requestTomatoAppRefresh',
     'APK install helper should stay separate from the page reload path',
   );
-  assert.match(swJs, /tomatofarm-v20260709z6-life-zone-photo-like-flow/);
+  assert.match(swJs, /tomatofarm-v20260709z8-direct-apk-download/);
+});
+
+test('browser APK fallback starts direct download without old warning toast', async () => {
+  const previousWindow = globalThis.window;
+  const previousDocument = globalThis.document;
+  const toasts = [];
+  const anchors = [];
+  const control = {
+    disabled: false,
+    attrs: {},
+    classToggles: [],
+    setAttribute(name, value) {
+      this.attrs[name] = value;
+    },
+    classList: {
+      toggle(name, value) {
+        control.classToggles.push({ name, value });
+      },
+    },
+  };
+
+  globalThis.window = {
+    showToast(message, duration, type) {
+      toasts.push({ message, duration, type });
+    },
+  };
+  globalThis.document = {
+    getElementById() {
+      return null;
+    },
+    createElement(tag) {
+      assert.equal(tag, 'a');
+      const anchor = {
+        download: '',
+        href: '',
+        rel: '',
+        style: {},
+        clicked: false,
+        removed: false,
+        click() {
+          this.clicked = true;
+        },
+        remove() {
+          this.removed = true;
+        },
+      };
+      anchors.push(anchor);
+      return anchor;
+    },
+    body: {
+      appendChild(anchor) {
+        anchor.appended = true;
+      },
+    },
+  };
+
+  try {
+    const moduleUrl = new URL(`../utils/build-info.js?direct-apk-download=${Date.now()}`, import.meta.url);
+    const { requestTomatoApkInstall } = await import(moduleUrl.href);
+    const result = await requestTomatoApkInstall({ control, source: 'test' });
+
+    assert.equal(result.started, true);
+    assert.equal(result.reason, 'browser-download');
+    assert.match(result.downloadUrl, /\/public\/downloads\/tomato-wear-debug\.apk$/);
+    assert.equal(anchors.length, 1);
+    assert.equal(anchors[0].download, 'tomato-wear-debug.apk');
+    assert.equal(anchors[0].clicked, true);
+    assert.equal(anchors[0].removed, true);
+    assert.equal(toasts.length, 0);
+    assert.equal(toasts.some(toast => String(toast.message).includes('Android 앱에서 실행하거나 PC에서')), false);
+    assert.equal(control.disabled, false);
+    assert.equal(control.attrs['aria-busy'], 'false');
+  } finally {
+    globalThis.window = previousWindow;
+    globalThis.document = previousDocument;
+  }
 });
 
 test('local paired install helper can sideload phone and wear debug APKs', () => {

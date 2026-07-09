@@ -276,11 +276,7 @@ function _runAppShellAction(action, control, event) {
       if (typeof window.__requestTomatoApkInstall === 'function') {
         void window.__requestTomatoApkInstall({ control, source: 'more-menu' });
       } else {
-        window.showToast?.(
-          'APK 설치는 Android 앱에서 실행하거나 PC에서 npm.cmd run install:wear-watch를 사용해주세요.',
-          3000,
-          'warning',
-        );
+        window.location.assign(new URL('./public/downloads/tomato-wear-debug.apk', window.location.href).href);
       }
       _closeMoreMenu();
       break;
