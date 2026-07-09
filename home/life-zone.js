@@ -709,8 +709,18 @@ function _renderActors(card, actors) {
 
     if (actor.speech) {
       const bubble = document.createElement('div');
-      bubble.className = `lz-speech lz-speech--${actor.state}`;
-      bubble.textContent = actor.speech;
+      bubble.className = `lz-speech lz-speech--${actor.state}${actor.speechPhoto ? ' lz-speech--photo' : ''}`;
+      if (actor.speechPhoto) {
+        const photo = document.createElement('img');
+        photo.className = 'lz-speech-photo';
+        photo.src = actor.speechPhoto;
+        photo.alt = actor.speech || '식사 사진';
+        photo.loading = 'lazy';
+        photo.decoding = 'async';
+        bubble.append(photo);
+      } else {
+        bubble.textContent = actor.speech;
+      }
       bubble.style.setProperty('--lz-bx', slot.x + slot.width * 0.54);
       bubble.style.setProperty('--lz-by', Math.max(28, slot.y - 12));
       bubble.style.setProperty('--lz-actor-color', actor.color || '#94a3b8');

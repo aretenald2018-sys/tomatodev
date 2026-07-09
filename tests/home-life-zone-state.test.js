@@ -480,6 +480,41 @@ test('treats diet-only Jups record as diet state in life zone', () => {
   assert.equal(actors[0].speech, '점심냠냠');
 });
 
+test('adds the selected meal photo to diet actors while keeping text fallback', () => {
+  const lunchPhoto = 'data:image/jpeg;base64,LUNCH';
+  const actors = resolveLifeZoneActors({
+    accounts: [{ id: 'u1', resolvedNickname: '줍스' }],
+    currentUser: { id: 'u1' },
+    dayByAccountId: {
+      u1: {
+        breakfast: '계란',
+        bPhoto: 'data:image/jpeg;base64,BREAKFAST',
+        lunch: '샐러드',
+        lPhoto: lunchPhoto,
+        dinner: '닭가슴살',
+        dPhoto: 'data:image/jpeg;base64,DINNER',
+        lifeZoneLastActivity: { state: 'diet', meal: 'lunch', updatedAt: 3000 }
+      }
+    }
+  });
+
+  assert.equal(actors[0].state, 'diet');
+  assert.equal(actors[0].speech, '점심냠냠');
+  assert.equal(actors[0].speechPhoto, lunchPhoto);
+
+  const textOnlyActors = resolveLifeZoneActors({
+    accounts: [{ id: 'u2', resolvedNickname: '문정토마토' }],
+    currentUser: { id: 'u2' },
+    dayByAccountId: {
+      u2: { lFoods: [{ name: 'salad' }], lKcal: 420 }
+    }
+  });
+
+  assert.equal(textOnlyActors[1].state, 'diet');
+  assert.equal(textOnlyActors[1].speech, '점심냠냠');
+  assert.equal(textOnlyActors[1].speechPhoto, null);
+});
+
 test('uses the latest life zone activity snapshot when workout and snack both exist', () => {
   const actors = resolveLifeZoneActors({
     accounts: [{ id: 'u2', resolvedNickname: '문정토마토' }],

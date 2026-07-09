@@ -9619,6 +9619,24 @@ body.lz-running-record-modal-open {
   -webkit-backdrop-filter: blur(2px) saturate(1.08);
   transform: translateX(-50%) rotate(45deg);
 }
+.lz-speech--photo {
+  width: 40px;
+  height: 40px;
+  max-width: none;
+  padding: 2px;
+  border-radius: 9px;
+  line-height: 0;
+  overflow: hidden;
+}
+.lz-speech-photo {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+}
 @media (max-width: 420px) {
   .lz-nameplate {
     max-width: 74px;
@@ -9629,6 +9647,12 @@ body.lz-running-record-modal-open {
     padding: 3px 5px;
     border-radius: 7px;
     font-size: 9px;
+  }
+  .lz-speech--photo {
+    width: 34px;
+    height: 34px;
+    padding: 2px;
+    border-radius: 8px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

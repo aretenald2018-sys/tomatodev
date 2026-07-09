@@ -85,5 +85,5 @@ test('dynamic more menu items inherit the app shell action contract', () => {
 });
 
 test('service worker cache version was bumped for app shell action bridge assets', () => {
-  assert.match(swJs, /tomatofarm-v20260709z4-more-menu-apk-deploy/);
+  assert.match(swJs, /tomatofarm-v20260709z5-life-zone-meal-photo/);
 });

@@ -83,6 +83,26 @@ test('life zone actor nameplates are rendered as text under actor feet', () => {
   assert.doesNotMatch(source, /lz-status-chip/);
 });
 
+test('life zone diet speech bubble renders meal photo before text fallback', () => {
+  const source = readText('home/life-zone.js');
+  const css = readText('style.css');
+
+  assert.match(source, /actor\.speechPhoto/);
+  assert.match(source, /lz-speech--photo/);
+  assert.match(source, /const photo = document\.createElement\('img'\)/);
+  assert.match(source, /photo\.className = 'lz-speech-photo'/);
+  assert.match(source, /photo\.src = actor\.speechPhoto/);
+  assert.match(source, /photo\.alt = actor\.speech \|\| '식사 사진'/);
+  assert.match(source, /photo\.loading = 'lazy'/);
+  assert.match(source, /photo\.decoding = 'async'/);
+  assert.match(source, /bubble\.append\(photo\)/);
+  assert.match(source, /bubble\.textContent = actor\.speech/);
+
+  assert.match(css, /\.lz-speech--photo \{[\s\S]*width: 40px;[\s\S]*height: 40px;[\s\S]*padding: 2px;[\s\S]*overflow: hidden;/);
+  assert.match(css, /\.lz-speech-photo \{[\s\S]*width: 100%;[\s\S]*height: 100%;[\s\S]*object-fit: cover;[\s\S]*border-radius: 6px;/);
+  assert.match(css, /@media \(max-width: 420px\) \{[\s\S]*\.lz-speech--photo \{[\s\S]*width: 34px;[\s\S]*height: 34px;/);
+});
+
 test('life zone NPC quest bubble has a stable clickable overlay style', () => {
   const css = readText('style.css');
 
@@ -316,7 +336,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
   const sw = readText('sw.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260709z2-diet-recent-compact/);
+  assert.match(sw, /tomatofarm-v20260709z5-life-zone-meal-photo/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,
@@ -358,7 +378,7 @@ test('life zone consulting room sofa assets are separate transparent runtime PNG
     ['consulting-visitor-gray-shirt-home.png', { width: 230, height: 298, colorType: 6 }]
   ];
 
-  assert.match(sw, /tomatofarm-v20260709z2-diet-recent-compact/);
+  assert.match(sw, /tomatofarm-v20260709z5-life-zone-meal-photo/);
   for (const [asset, expected] of assets) {
     assert.match(sw, new RegExp(`\\.\\/assets\\/home\\/life-zone\\/ui\\/${asset.replace('.', '\\.')}`));
     assert.deepEqual(readPngHeader(`assets/home/life-zone/ui/${asset}`), expected);

@@ -675,18 +675,29 @@ function resolveDietSpeechMeal(dayData) {
   return null;
 }
 
-export function getLifeZoneDietSpeech(dayData = null) {
-  if (!hasLifeZoneDietActivity(dayData)) return '';
+function resolveDietMeal(dayData) {
   const snapshotMeal = resolveDietSpeechMeal(dayData);
-  if (snapshotMeal) {
-    return snapshotMeal.skipped && dayData?.[snapshotMeal.skipped] ? `${snapshotMeal.label}기록` : `${snapshotMeal.label}냠냠`;
-  }
+  if (snapshotMeal) return snapshotMeal;
   for (let i = MEALS.length - 1; i >= 0; i--) {
     const meal = MEALS[i];
-    if (!mealHasRecord(dayData, meal)) continue;
-    return meal.skipped && dayData?.[meal.skipped] ? `${meal.label}기록` : `${meal.label}냠냠`;
+    if (mealHasRecord(dayData, meal)) return meal;
   }
+  return null;
+}
+
+export function getLifeZoneDietSpeech(dayData = null) {
+  if (!hasLifeZoneDietActivity(dayData)) return '';
+  const meal = resolveDietMeal(dayData);
+  if (meal) return meal.skipped && dayData?.[meal.skipped] ? `${meal.label}기록` : `${meal.label}냠냠`;
   return '식단냠냠';
+}
+
+function getLifeZoneDietSpeechPhoto(dayData = null) {
+  if (!hasLifeZoneDietActivity(dayData)) return null;
+  const meal = resolveDietMeal(dayData);
+  if (!meal) return null;
+  const photo = typeof dayData?.[meal.photo] === 'string' ? dayData[meal.photo].trim() : '';
+  return photo || null;
 }
 
 export function getLifeZoneRunningSpeech(dayData = null) {
@@ -745,6 +756,7 @@ export function resolveLifeZoneActors({
       ...actor,
       state,
       speech: getLifeZoneSpeech(dayData, state),
+      speechPhoto: state === 'diet' ? getLifeZoneDietSpeechPhoto(dayData) : null,
       workoutSlotId: state === 'workout' ? resolveLifeZoneWorkoutSlotId(dayData) : null,
       runningMap: state === 'running' ? getLifeZoneRunningMapData(dayData) : null
     };
