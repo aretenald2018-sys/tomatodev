@@ -26,6 +26,19 @@ const route = [
   { lat: 37.5221, lng: 126.9810, accuracy: 12, ts: 121000 },
 ];
 
+function denseRoute(count = 620) {
+  return Array.from({ length: count }, (_, index) => ({
+    lat: 37.5209 + Math.sin(index / 8) * 0.00003,
+    lng: 126.977 + index * 0.000005,
+    ts: 1_000 + Math.floor(index / 2) * 1_000,
+    accuracy: index === 0 ? 0 : 5,
+    altitude: index === 0 ? 0 : 20 + Math.sin(index / 12),
+    speed: index === 0 ? 0 : 2.8,
+    heartRateBpm: index === 0 ? 0 : 145,
+    cadenceSpm: index === 0 ? 0 : 166,
+  }));
+}
+
 test('running route distance uses haversine meters', () => {
   const meters = runningRouteDistanceMeters(route);
   assert.ok(meters > 360 && meters < 420, `unexpected meters=${meters}`);
@@ -229,4 +242,28 @@ test('running session draft normalizer preserves interrupted route metadata', ()
   assert.equal(draft.route[2].segmentId, 1);
   assert.equal(draft.route[2].gapBefore, true);
   assert.equal(draft.route[2].gapReason, 'pagehide');
+});
+
+test('dense running route remains lossless in draft normalization and summary', () => {
+  const input = denseRoute();
+  const draft = normalizeRunningSessionDraft({
+    phase: 'paused',
+    startedAt: 1_000,
+    pausedAt: 311_000,
+    pausedMs: 0,
+    updatedAt: 311_000,
+    route: input,
+    ownerId: 'dense-runner',
+  }, { now: 312_000 });
+  const summary = summarizeRunningRoute(input, { startedAt: 1_000, endedAt: 311_000 });
+
+  assert.equal(draft.route.length, 620);
+  assert.deepEqual(draft.route, input);
+  assert.equal(summary.pointCount, 620);
+  assert.deepEqual(summary.bbox, {
+    minLat: Math.round(Math.min(...input.map(point => point.lat)) * 1e6) / 1e6,
+    minLng: 126.977,
+    maxLat: Math.round(Math.max(...input.map(point => point.lat)) * 1e6) / 1e6,
+    maxLng: Math.round(input.at(-1).lng * 1e6) / 1e6,
+  });
 });

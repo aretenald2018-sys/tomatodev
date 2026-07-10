@@ -4,10 +4,15 @@
 
 import { S } from './state.js';
 import { destroyRunningMaps, renderRunningMap, readRunningMapConfig } from './running-map.js';
+import {
+  MAX_RUNNING_ROUTE_POINTS,
+  buildRunningRoutePreview,
+  normalizeRunningRoutePoints,
+} from './running-route-store.js';
 
-const MAX_ROUTE_POINTS = 240;
-const MIN_ROUTE_STEP_M = 3;
+const RUNNING_ROUTE_PREVIEW_POINTS = 240;
 const ROUTE_GAP_MS = 45_000;
+const RUNNING_DRAFT_ROUTE_WRITE_INTERVAL_MS = 30_000;
 const RUNNING_WORKOUT_SESSION_INDEX = 2;
 const RUNNING_SESSION_DRAFT_VERSION = 1;
 const RUNNING_SESSION_DRAFT_MAX_MS = 24 * 60 * 60 * 1000;
@@ -50,6 +55,9 @@ const _session = {
   lastSpeechAt: 0,
 };
 let _runningDraftEventsBound = false;
+let _runningDraftRouteTimer = null;
+let _runningDraftRoutePendingContext = '';
+let _lastRunningDraftPersistAt = 0;
 
 function _root() {
   const root = document.getElementById('wt-running-session-root');
@@ -229,19 +237,30 @@ function _checkRunningAudioCues() {
 }
 
 function _safePoint(point) {
-  const lat = _num(point?.lat, NaN);
-  const lng = _num(point?.lng, NaN);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  const normalized = {
-    lat,
-    lng,
-    ts: _num(point?.ts, _now()),
-    accuracy: Number.isFinite(Number(point?.accuracy)) ? Number(point.accuracy) : null,
-    altitude: Number.isFinite(Number(point?.altitude)) ? Number(point.altitude) : null,
-    speed: Number.isFinite(Number(point?.speed)) ? Number(point.speed) : null,
-  };
-  const heartRateBpm = _optionalNumber(point?.heartRateBpm ?? point?.heartRate ?? point?.bpm);
-  const cadenceSpm = _optionalNumber(point?.cadenceSpm ?? point?.cadence ?? point?.stepsPerMinute);
+  const lat = point?.lat;
+  const lng = point?.lng;
+  const ts = point?.ts ?? _now();
+  if (typeof lat !== 'number' || !Number.isFinite(lat)
+    || typeof lng !== 'number' || !Number.isFinite(lng)
+    || typeof ts !== 'number' || !Number.isFinite(ts)) return null;
+  const normalized = { lat, lng, ts };
+  for (const [key, value] of [
+    ['accuracy', point?.accuracy],
+    ['altitude', point?.altitude],
+    ['speed', point?.speed],
+    ['bearing', point?.bearing],
+  ]) {
+    if (value == null) continue;
+    const metric = _optionalFiniteNumber(value);
+    if (metric == null) return null;
+    normalized[key] = metric;
+  }
+  const rawHeartRateBpm = point?.heartRateBpm ?? point?.heartRate ?? point?.bpm;
+  const rawCadenceSpm = point?.cadenceSpm ?? point?.cadence ?? point?.stepsPerMinute;
+  const heartRateBpm = _optionalFiniteNumber(rawHeartRateBpm);
+  const cadenceSpm = _optionalFiniteNumber(rawCadenceSpm);
+  if (rawHeartRateBpm != null && heartRateBpm == null) return null;
+  if (rawCadenceSpm != null && cadenceSpm == null) return null;
   if (heartRateBpm != null) normalized.heartRateBpm = heartRateBpm;
   if (cadenceSpm != null) normalized.cadenceSpm = cadenceSpm;
   const segmentId = Number(point?.segmentId);
@@ -253,11 +272,13 @@ function _safePoint(point) {
 }
 
 function _optionalNumber(value) {
+  if (value == null || value === '') return null;
   const n = Number(value);
-  return Number.isFinite(n) && n > 0 ? n : null;
+  return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
 function _optionalFiniteNumber(value) {
+  if (value == null || value === '') return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
@@ -273,24 +294,7 @@ function _routeSegmentId(point, fallback = 0) {
 }
 
 function _normalizeRunningRoute(points = []) {
-  const raw = (Array.isArray(points) ? points : []).map(_safePoint).filter(Boolean);
-  let currentSegment = 0;
-  return raw.map((point, index) => {
-    const requestedSegment = _routeSegmentId(point, currentSegment);
-    const segmentChanged = index > 0 && requestedSegment !== currentSegment;
-    const gapBefore = index > 0 && (point.gapBefore === true || segmentChanged);
-    currentSegment = gapBefore && !segmentChanged ? currentSegment + 1 : requestedSegment;
-
-    const normalized = { ...point, segmentId: currentSegment };
-    if (gapBefore) {
-      normalized.gapBefore = true;
-      normalized.gapReason = _routeGapReason(point.gapReason) || 'interruption';
-    } else {
-      delete normalized.gapBefore;
-      delete normalized.gapReason;
-    }
-    return normalized;
-  });
+  return normalizeRunningRoutePoints(points);
 }
 
 function _isRouteGapEdge(prev, next) {
@@ -336,22 +340,8 @@ export function runningRouteDistanceMeters(points = []) {
   return total;
 }
 
-export function downsampleRunningRoute(points = [], max = MAX_ROUTE_POINTS) {
-  const route = _normalizeRunningRoute(points);
-  const limit = Math.max(2, Math.floor(_num(max, MAX_ROUTE_POINTS)));
-  if (route.length <= limit) return route;
-  const selected = new Set([0, route.length - 1]);
-  route.forEach((point, index) => {
-    if (point.gapBefore === true) {
-      selected.add(index);
-      if (index > 0) selected.add(index - 1);
-    }
-  });
-  const step = (route.length - 1) / (limit - 1);
-  for (let i = 0; selected.size < limit && i < limit; i += 1) {
-    selected.add(Math.round(i * step));
-  }
-  return _normalizeRunningRoute(Array.from(selected).sort((a, b) => a - b).slice(0, limit).map(index => route[index]));
+export function downsampleRunningRoute(points = [], max = RUNNING_ROUTE_PREVIEW_POINTS) {
+  return buildRunningRoutePreview(points, max);
 }
 
 function _safeRunningPhase(phase) {
@@ -366,7 +356,7 @@ export function normalizeRunningSessionDraft(raw, options = {}) {
   if (!phase) return null;
   const ownerId = String(raw.ownerId || raw.userId || raw.uid || '').trim();
 
-  const route = downsampleRunningRoute(raw.route || [], MAX_ROUTE_POINTS);
+  const route = normalizeRunningRoutePoints(raw.route || []);
   const startedAt = _num(raw.startedAt, route[0]?.ts || 0);
   if (!Number.isFinite(startedAt) || startedAt <= 0) return null;
   if ((now - startedAt) > RUNNING_SESSION_DRAFT_MAX_MS) return null;
@@ -477,7 +467,7 @@ export function estimateRunningCalories(distanceKm, weightKg = 70) {
 }
 
 export function summarizeRunningRoute(points = [], options = {}) {
-  const route = downsampleRunningRoute(points);
+  const route = normalizeRunningRoutePoints(points);
   const startedAt = _num(options.startedAt, route[0]?.ts || _now());
   const endedAt = _num(options.endedAt, route[route.length - 1]?.ts || startedAt);
   const pausedMs = Math.max(0, _num(options.pausedMs, 0));
@@ -614,7 +604,7 @@ function _buildRunningDraft(context = 'manual') {
     endedAt: _session.endedAt || null,
     pausedAt: _session.pausedAt || null,
     pausedMs: Math.max(0, _num(_session.pausedMs, 0)),
-    route: downsampleRunningRoute(_session.route, MAX_ROUTE_POINTS),
+    route: normalizeRunningRoutePoints(_session.route),
     pendingGapReason: _routeGapReason(_session.pendingGapReason),
     placeSummary: _cloneJson(_session.placeSummary, null),
     goal: _cloneRunningGoal(_session.goal),
@@ -629,16 +619,44 @@ function _buildRunningDraft(context = 'manual') {
 
 function _persistRunningDraft(context = 'manual') {
   if (typeof localStorage === 'undefined') return null;
+  _clearScheduledRunningRouteDraftPersist();
   const draft = _buildRunningDraft(context);
   if (!draft) return null;
+  _lastRunningDraftPersistAt = draft.updatedAt;
   try {
     const payload = JSON.stringify(draft);
     localStorage.setItem(_runningDraftKey(draft.ownerId), payload);
     localStorage.setItem(RUNNING_SESSION_DRAFT_ACTIVE_KEY, payload);
     return draft;
-  } catch {
+  } catch (error) {
+    console.error(`[running-session] draft persistence failed (${context}):`, error);
+    _session.lastError = '러닝 임시 저장에 실패했어요. 저장 공간을 확인해주세요.';
+    _showToast(_session.lastError, 3000, 'error');
     return null;
   }
+}
+
+function _clearScheduledRunningRouteDraftPersist() {
+  if (_runningDraftRouteTimer) clearTimeout(_runningDraftRouteTimer);
+  _runningDraftRouteTimer = null;
+  _runningDraftRoutePendingContext = '';
+}
+
+function _scheduleRunningRouteDraftPersist(context = 'route point') {
+  if (typeof localStorage === 'undefined') return;
+  _runningDraftRoutePendingContext = context;
+  const elapsed = _now() - _lastRunningDraftPersistAt;
+  if (elapsed >= RUNNING_DRAFT_ROUTE_WRITE_INTERVAL_MS) {
+    _persistRunningDraft(context);
+    return;
+  }
+  if (_runningDraftRouteTimer) return;
+  _runningDraftRouteTimer = setTimeout(() => {
+    _runningDraftRouteTimer = null;
+    const pendingContext = _runningDraftRoutePendingContext || context;
+    _runningDraftRoutePendingContext = '';
+    _persistRunningDraft(pendingContext);
+  }, RUNNING_DRAFT_ROUTE_WRITE_INTERVAL_MS - elapsed);
 }
 
 function _readRunningDraftFromKey(key) {
@@ -669,6 +687,7 @@ function _readRunningDraft() {
 }
 
 function _clearRunningDraft() {
+  _clearScheduledRunningRouteDraftPersist();
   if (typeof localStorage === 'undefined') return;
   const ownerId = _currentRunningDraftOwnerId();
   try { localStorage.removeItem(_runningDraftKey(ownerId)); } catch {}
@@ -819,7 +838,7 @@ function _syncWorkoutRunData(summary, placeSummary = _session.placeSummary) {
     source: 'gps',
     startedAt: summary.startedAt || null,
     endedAt: summary.endedAt || null,
-    route: downsampleRunningRoute(_session.route),
+    route: normalizeRunningRoutePoints(_session.route),
     routeSummary: summary,
     placeSummary: placeSummary || _runningPlaceFallback(summary),
     avgPaceSecPerKm: summary.avgPaceSecPerKm || 0,
@@ -830,6 +849,8 @@ function _syncWorkoutRunData(summary, placeSummary = _session.placeSummary) {
 function _resetLiveSession() {
   _stopWatch();
   _stopTicker();
+  _clearScheduledRunningRouteDraftPersist();
+  _lastRunningDraftPersistAt = 0;
   Object.assign(_session, {
     phase: 'start',
     watchId: null,
@@ -858,10 +879,11 @@ function _resetLiveSession() {
 }
 
 function _publishRunningLiveState(active = false) {
-  const route = downsampleRunningRoute(_session.route, MAX_ROUTE_POINTS);
-  const routeSummary = route.length
-    ? summarizeRunningRoute(_session.route, {
-      startedAt: _session.startedAt || route[0]?.ts || _now(),
+  const sourceRoute = _session.route;
+  const route = buildRunningRoutePreview(sourceRoute, RUNNING_ROUTE_PREVIEW_POINTS);
+  const routeSummary = sourceRoute.length
+    ? summarizeRunningRoute(sourceRoute, {
+      startedAt: _session.startedAt || sourceRoute[0]?.ts || _now(),
       endedAt: _session.endedAt || _now(),
       pausedMs: _session.pausedMs,
     })
@@ -871,7 +893,7 @@ function _publishRunningLiveState(active = false) {
     phase: _session.phase,
     startedAt: _session.startedAt || null,
     updatedAt: _now(),
-    pointCount: route.length,
+    pointCount: sourceRoute.length,
     route,
     routeSummary,
     placeSummary: _session.placeSummary || (routeSummary ? _runningPlaceFallback(routeSummary) : null),
@@ -923,10 +945,11 @@ function _positionToPoint(position) {
   return _safePoint({
     lat: coords.latitude,
     lng: coords.longitude,
-    ts: position?.timestamp || _now(),
+    ts: position?.timestamp ?? _now(),
     accuracy: coords.accuracy,
     altitude: coords.altitude ?? sensor.altitude,
     speed: coords.speed,
+    bearing: coords.heading,
     heartRateBpm: sensor.heartRateBpm,
     cadenceSpm: sensor.cadenceSpm,
   });
@@ -941,29 +964,69 @@ function _markRouteGap(reason = 'interruption') {
 
 function _pushRoutePoint(point, options = {}) {
   const safe = _safePoint(point);
-  if (!safe) return false;
+  if (!safe) {
+    _rejectRunningRoutePoint('GPS 좌표가 올바르지 않아 이 위치를 기록하지 않았어요.');
+    return false;
+  }
+
+  let normalized;
+  try {
+    [normalized] = normalizeRunningRoutePoints([safe]);
+  } catch (error) {
+    _rejectRunningRoutePoint('GPS 좌표가 올바르지 않아 이 위치를 기록하지 않았어요.', error);
+    return false;
+  }
+
+  if (_session.route.length >= MAX_RUNNING_ROUTE_POINTS) {
+    _pauseRunningCaptureAtRouteLimit();
+    return false;
+  }
 
   const last = _session.route[_session.route.length - 1];
   const pendingReason = _routeGapReason(options.gapReason) || _routeGapReason(_session.pendingGapReason);
-  const elapsedGap = last ? safe.ts - _num(last.ts, safe.ts) : 0;
+  if (last && normalized.ts < last.ts) {
+    _rejectRunningRoutePoint('이전 위치보다 오래된 GPS 좌표를 기록하지 않았어요.');
+    return false;
+  }
+  const elapsedGap = last ? normalized.ts - last.ts : 0;
   const gapReason = last && (options.gapBefore || pendingReason || elapsedGap > ROUTE_GAP_MS)
     ? pendingReason || (elapsedGap > ROUTE_GAP_MS ? 'time-gap' : 'resume')
     : '';
 
-  if (last && !gapReason && !options.force && runningDistanceMeters(last, safe) < MIN_ROUTE_STEP_M) return false;
-
   const segmentId = last ? _routeSegmentId(last, 0) + (gapReason ? 1 : 0) : 0;
-  const stored = { ...safe, segmentId };
+  const stored = { ...normalized, segmentId };
   if (gapReason) {
     stored.gapBefore = true;
     stored.gapReason = gapReason;
   }
   _session.route.push(stored);
   _session.pendingGapReason = '';
-  if (_session.route.length > MAX_ROUTE_POINTS * 2) {
-    _session.route = downsampleRunningRoute(_session.route, MAX_ROUTE_POINTS);
+  if (_session.route.length === MAX_RUNNING_ROUTE_POINTS) {
+    _pauseRunningCaptureAtRouteLimit();
+    return false;
   }
   return true;
+}
+
+function _pauseRunningCaptureAtRouteLimit() {
+  if (_session.phase === 'active') {
+    _session.phase = 'paused';
+    _session.pausedAt = _now();
+  }
+  _session.lastError = 'GPS 경로가 25,000개 제한에 도달해 위치 기록을 중지했어요.';
+  console.error('[running-session] route point limit reached:', MAX_RUNNING_ROUTE_POINTS);
+  _stopWatch();
+  _stopTicker();
+  _publishRunningLiveState(false);
+  _persistRunningDraft('route point limit');
+  _render();
+  _showToast(_session.lastError, 3500, 'error');
+}
+
+function _rejectRunningRoutePoint(message, error = null) {
+  _session.lastError = message;
+  if (error) console.warn('[running-session] route point rejected:', error);
+  if (_session.open) _render();
 }
 
 function _requestActiveSeedPosition() {
@@ -1033,7 +1096,7 @@ function _pushPosition(position, options = {}) {
   const point = _positionToPoint(position);
   if (!_pushRoutePoint(point, options)) return;
   _publishRunningLiveState(true);
-  _persistRunningDraft('route point');
+  _scheduleRunningRouteDraftPersist('route point');
 }
 
 function _startWatch() {
@@ -1178,7 +1241,7 @@ async function _shareSummary() {
 
 function _mapPointsFor(kind) {
   if (kind === 'summary') {
-    if (_session.route.length) return _session.route;
+    if (_session.route.length) return buildRunningRoutePreview(_session.route, RUNNING_ROUTE_PREVIEW_POINTS);
     return _session.previewPoint ? [_session.previewPoint] : [];
   }
   if (kind === 'start') return _session.previewPoint ? [_session.previewPoint] : [];
