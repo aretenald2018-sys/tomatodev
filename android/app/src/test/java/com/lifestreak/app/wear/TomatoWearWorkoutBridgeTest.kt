@@ -128,6 +128,52 @@ class TomatoWearWorkoutBridgeTest {
     }
 
     @Test
+    fun invalidLeadingMetadataDoesNotBlockLaterValidPayload() = withFilesDir { filesDir ->
+        val valid = writePayload(filesDir, "valid.tmp", 110_000L, 111_000L, 37.45)
+        val validQueue = JSONArray(requireNotNull(enqueue(filesDir, "[]", valid)))
+        val zeros = "0".repeat(64)
+        val missingId = "1-2-$zeros"
+        val corruptId = "3-4-$zeros"
+        val corruptFile = File(payloadDirectory(filesDir), "$corruptId.json").apply { writeText("corrupt") }
+        val mixedQueue = JSONArray()
+            .put(metadataEntry(missingId, 123L, zeros))
+            .put(metadataEntry(corruptId, corruptFile.length(), zeros))
+            .put(validQueue.getJSONObject(0))
+
+        val reconciled = JSONArray(TomatoWearWorkoutFileQueue.reconcileForTest(filesDir, mixedQueue.toString()))
+
+        assertEquals(1, reconciled.length())
+        assertEquals(valid.id, reconciled.getJSONObject(0).getString("id"))
+        println("WEAR_QUEUE_QA reconciliation=invalid-leading-dropped,valid-later-drainable")
+    }
+
+    @Test
+    fun staleAckTimeoutTokenCannotClearNewerDispatch() {
+        val tracker = TomatoWearWorkoutBridge.PendingAckTracker()
+        val firstToken = tracker.start("transfer")
+        assertTrue(tracker.clear("transfer"))
+        val secondToken = tracker.start("transfer")
+
+        assertFalse(tracker.expire("transfer", firstToken))
+        assertTrue(tracker.isPending("transfer"))
+        assertTrue(tracker.expire("transfer", secondToken))
+        assertFalse(tracker.isPending("transfer"))
+        println("WEAR_QUEUE_QA ackTimeout=stale-token-ignored,current-token-expired")
+    }
+
+    @Test
+    fun acknowledgedTombstoneCannotResurrectDuringReconciliation() = withFilesDir { filesDir ->
+        val payload = writePayload(filesDir, "accepted.tmp", 120_000L, 121_000L, 37.46)
+        val queue = requireNotNull(enqueue(filesDir, "[]", payload))
+        assertEquals("[]", TomatoWearWorkoutFileQueue.acknowledgeForTest(filesDir, queue, payload.id, true))
+        val tombstone = File(payloadDirectory(filesDir), "${payload.id}.acked").apply { writeBytes(payload.bytes) }
+
+        assertEquals("[]", TomatoWearWorkoutFileQueue.reconcileForTest(filesDir, "[]"))
+        assertFalse("acknowledged tombstones must be cleaned instead of recovered", tombstone.exists())
+        println("WEAR_QUEUE_QA acknowledgedOrphan=cleaned,not-recovered")
+    }
+
+    @Test
     fun oversizedCorruptAndMissingPayloadsAreRejected() = withFilesDir { filesDir ->
         val oversized = File(payloadDirectory(filesDir), "oversized.tmp")
         RandomAccessFile(oversized, "rw").use { it.setLength(TomatoWearWorkoutFileQueue.maxPayloadBytes() + 1L) }
@@ -177,6 +223,15 @@ class TomatoWearWorkoutBridgeTest {
             payload.bytes.size.toLong(),
             payload.sha256,
         )
+    }
+
+    private fun metadataEntry(id: String, byteLength: Long, sha256: String): JSONObject {
+        return JSONObject()
+            .put("id", id)
+            .put("fileName", "$id.json")
+            .put("queuedAt", 1L)
+            .put("byteLength", byteLength)
+            .put("sha256", sha256)
     }
 
     private fun writePayload(

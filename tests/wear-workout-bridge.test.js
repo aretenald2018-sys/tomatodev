@@ -48,6 +48,8 @@ test('wear workout bridge uses Asset transfer and app-private file retry for ful
   assert.match(fileQueue, /"sha256"/);
   assert.match(fileQueue, /reconcile/);
   assert.match(fileQueue, /renameTo/);
+  assert.match(fileQueue, /ACKNOWLEDGED_EXTENSION/);
+  assert.match(fileQueue, /persisted\.distinctBy[\s\S]*readPayloadFile/);
   assert.doesNotMatch(fileQueue, /takeLast|dropLast/);
   assert.match(phoneBridge, /evaluateJavascript/);
   assert.match(phoneBridge, /__tomatoWearWorkoutBridge/);
@@ -58,6 +60,9 @@ test('wear workout bridge uses Asset transfer and app-private file retry for ful
   assert.match(phoneBridge, /__tomatoWearWorkoutNativeAck/);
   assert.match(phoneBridge, /Promise\.resolve/);
   assert.match(phoneBridge, /nativeAck\.accept/);
+  assert.match(phoneBridge, /ACK_TIMEOUT_MS\s*=\s*30_000L/);
+  assert.match(phoneBridge, /PendingAckTracker/);
+  assert.match(phoneBridge, /scheduleAckTimeout/);
   assert.doesNotMatch(`${phoneBridge}\n${fileQueue}`, /sanitizePayloadForPrefs|sanitizeRouteForPrefs|MAX_PERSISTED_ROUTE_POINTS/);
   assert.match(webBridge, /saveFromNative\(raw\)\s*{\s*return saveWearWorkoutPayload\(raw\);\s*}/);
   assert.match(mainActivity, /TomatoWearWorkoutBridge\.registerActivity/);

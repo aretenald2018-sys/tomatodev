@@ -16,6 +16,7 @@ internal object TomatoWearWorkoutFileQueue {
     private const val QUEUE_KEY = "pending_payloads"
     private const val MAX_PAYLOAD_BYTES = 8 * 1024 * 1024
     private const val MAX_QUEUE_SIZE = 20
+    private const val ACKNOWLEDGED_EXTENSION = "acked"
     private val transferIdPattern = Regex("^[0-9]+-[0-9]+-[a-f0-9]{64}$")
     private val sha256Pattern = Regex("^[a-f0-9]{64}$")
 
@@ -58,10 +59,9 @@ internal object TomatoWearWorkoutFileQueue {
     fun acknowledge(context: Context, id: String): Boolean = synchronized(this) {
         val prefs = context.getSharedPreferences(QUEUE_PREFS, Context.MODE_PRIVATE)
         val queue = parseQueue(prefs.getString(QUEUE_KEY, "[]") ?: "[]")
-        val entry = queue.firstOrNull { it.id == id } ?: return false
-        if (!prefs.edit().putString(QUEUE_KEY, serializeQueue(queue.filterNot { it.id == id })).commit()) return false
-        resolvePayloadFile(context.filesDir, entry.fileName)?.delete()
-        true
+        acknowledgeEntry(context.filesDir, queue, id) { remaining ->
+            prefs.edit().putString(QUEUE_KEY, serializeQueue(remaining)).commit()
+        }
     }
 
     fun readPayload(filesDir: File, entry: Entry): String? {
@@ -106,9 +106,17 @@ internal object TomatoWearWorkoutFileQueue {
     }
 
     private fun reconcileFiles(filesDir: File, persisted: List<Entry>): List<Entry> {
-        val queue = persisted.distinctBy { it.id }.toMutableList()
+        val directory = payloadDirectory(filesDir)
+        directory.listFiles()
+            ?.filter { it.isFile && it.extension == ACKNOWLEDGED_EXTENSION }
+            ?.forEach { it.delete() }
+        val queue = persisted.distinctBy { it.id }.filter { entry ->
+            val file = resolvePayloadFile(filesDir, entry.fileName) ?: return@filter false
+            val payload = readPayloadFile(file, entry.byteLength, entry.sha256) ?: return@filter false
+            stableTransferId(payload.json, payload.sha256) == entry.id
+        }.toMutableList()
         val knownFiles = queue.mapTo(mutableSetOf()) { it.fileName }
-        payloadDirectory(filesDir).listFiles()
+        directory.listFiles()
             ?.filter { it.isFile && it.extension == "json" && it.name !in knownFiles }
             ?.sortedBy { it.lastModified() }
             ?.forEach { file ->
@@ -120,6 +128,27 @@ internal object TomatoWearWorkoutFileQueue {
                 queue += Entry(id, file.name, file.lastModified().coerceAtLeast(0L), payload.byteLength, payload.sha256)
             }
         return queue
+    }
+
+    private fun acknowledgeEntry(
+        filesDir: File,
+        queue: List<Entry>,
+        id: String,
+        persist: (List<Entry>) -> Boolean,
+    ): Boolean {
+        val entry = queue.firstOrNull { it.id == id } ?: return false
+        val payloadFile = resolvePayloadFile(filesDir, entry.fileName) ?: return false
+        val tombstone = resolvePayloadFile(filesDir, "$id.$ACKNOWLEDGED_EXTENSION") ?: return false
+        if (payloadFile.exists()) {
+            if (tombstone.exists() && !tombstone.delete()) return false
+            if (!payloadFile.renameTo(tombstone)) return false
+        }
+        if (!persist(queue.filterNot { it.id == id })) {
+            if (tombstone.exists()) tombstone.renameTo(payloadFile)
+            return false
+        }
+        tombstone.delete()
+        return true
     }
 
     private fun readPayloadFile(file: File, expectedLength: Long, expectedSha256: String): PayloadFile? {
@@ -217,8 +246,9 @@ internal object TomatoWearWorkoutFileQueue {
     fun acknowledgeForTest(filesDir: File, queueJson: String, id: String, accepted: Boolean): String {
         val queue = parseQueue(queueJson)
         if (!accepted) return serializeQueue(queue)
-        queue.firstOrNull { it.id == id }?.let { resolvePayloadFile(filesDir, it.fileName)?.delete() }
-        return serializeQueue(queue.filterNot { it.id == id })
+        var remaining = queue
+        val acknowledged = acknowledgeEntry(filesDir, queue, id) { next -> remaining = next; true }
+        return if (acknowledged) serializeQueue(remaining) else serializeQueue(queue)
     }
 
     fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256")

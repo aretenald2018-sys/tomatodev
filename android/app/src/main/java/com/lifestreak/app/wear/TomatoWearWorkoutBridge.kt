@@ -19,9 +19,10 @@ object TomatoWearWorkoutBridge {
 
     private const val NATIVE_ACK_NAME = "__tomatoWearWorkoutNativeAck"
     private const val MAX_DRAIN_ATTEMPTS = 6
+    private const val ACK_TIMEOUT_MS = 30_000L
     private val transferIdPattern = Regex("^[A-Za-z0-9_-]{1,128}$")
     private val mainHandler: Handler by lazy { Handler(Looper.getMainLooper()) }
-    private val pendingAcknowledgements = mutableSetOf<String>()
+    private val pendingAcknowledgements = PendingAckTracker()
     private val nativeAck = NativeAck()
     private var activityRef: WeakReference<MainActivity>? = null
 
@@ -29,7 +30,7 @@ object TomatoWearWorkoutBridge {
     fun registerActivity(activity: MainActivity) {
         synchronized(this) {
             activityRef = WeakReference(activity)
-            pendingAcknowledgements.clear()
+            pendingAcknowledgements.clearAll()
         }
         TomatoWearWorkoutFileQueue.reconcile(activity)
         activity.bridge?.webView?.addJavascriptInterface(nativeAck, NATIVE_ACK_NAME)
@@ -41,7 +42,7 @@ object TomatoWearWorkoutBridge {
         activity.bridge?.webView?.removeJavascriptInterface(NATIVE_ACK_NAME)
         synchronized(this) {
             if (activityRef?.get() === activity) activityRef = null
-            pendingAcknowledgements.clear()
+            pendingAcknowledgements.clearAll()
         }
     }
 
@@ -73,7 +74,7 @@ object TomatoWearWorkoutBridge {
     private fun drainOne(activity: MainActivity, attempt: Int) {
         val entry = synchronized(this) {
             val next = TomatoWearWorkoutFileQueue.first(activity) ?: return
-            if (pendingAcknowledgements.contains(next.id)) return
+            if (pendingAcknowledgements.isPending(next.id)) return
             next
         }
         val payload = TomatoWearWorkoutFileQueue.readPayload(activity.filesDir, entry)
@@ -86,12 +87,13 @@ object TomatoWearWorkoutBridge {
             retry(activity, attempt)
             return
         }
-        synchronized(this) { pendingAcknowledgements.add(entry.id) }
+        val token = synchronized(this) { pendingAcknowledgements.start(entry.id) }
         val script = buildJavascript(entry.id, payload)
         webView.post {
             evaluateBridge(webView, script) { dispatched ->
-                if (!dispatched) {
-                    synchronized(this) { pendingAcknowledgements.remove(entry.id) }
+                if (dispatched) {
+                    scheduleAckTimeout(activity, entry.id, token, attempt)
+                } else if (synchronized(this) { pendingAcknowledgements.expire(entry.id, token) }) {
                     retry(activity, attempt)
                 }
             }
@@ -105,6 +107,16 @@ object TomatoWearWorkoutBridge {
     private fun retry(activity: MainActivity, attempt: Int) {
         if (attempt >= MAX_DRAIN_ATTEMPTS) return
         mainHandler.postDelayed({ drainOne(activity, attempt + 1) }, 1_000L * (attempt + 1))
+    }
+
+    private fun scheduleAckTimeout(activity: MainActivity, id: String, token: Long, attempt: Int) {
+        mainHandler.postDelayed(
+            {
+                val expired = synchronized(this) { pendingAcknowledgements.expire(id, token) }
+                if (expired) retry(activity, attempt)
+            },
+            ACK_TIMEOUT_MS,
+        )
     }
 
     private fun buildJavascript(id: String, payload: String): String {
@@ -140,7 +152,7 @@ object TomatoWearWorkoutBridge {
     private fun handleNativeAck(id: String, accepted: Boolean) {
         if (!transferIdPattern.matches(id)) return
         val activity = synchronized(this) { activityRef?.get() } ?: return
-        if (!synchronized(this) { pendingAcknowledgements.remove(id) }) return
+        if (!synchronized(this) { pendingAcknowledgements.clear(id) }) return
         if (!accepted) {
             mainHandler.postDelayed({ drainOne(activity, 1) }, 1_000L)
             return
@@ -154,4 +166,27 @@ object TomatoWearWorkoutBridge {
     }
 
     internal fun buildJavascriptForTest(id: String, payload: String): String = buildJavascript(id, payload)
+
+    internal class PendingAckTracker {
+        private val tokens = mutableMapOf<String, Long>()
+        private var nextToken = 0L
+
+        fun start(id: String): Long {
+            nextToken += 1L
+            tokens[id] = nextToken
+            return nextToken
+        }
+
+        fun isPending(id: String): Boolean = tokens.containsKey(id)
+
+        fun clear(id: String): Boolean = tokens.remove(id) != null
+
+        fun expire(id: String, token: Long): Boolean {
+            if (tokens[id] != token) return false
+            tokens.remove(id)
+            return true
+        }
+
+        fun clearAll() = tokens.clear()
+    }
 }
