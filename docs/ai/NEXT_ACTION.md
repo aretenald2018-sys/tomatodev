@@ -2,7 +2,7 @@
 
 ## 2026-07-10 Running GPS Lossless Route Rewrite
 
-- 상태: `accuracy_fix_verified_ready_for_production_deploy`
+- 상태: `production_verified_physical_device_not_verified`
 - 계획: `docs/ai/features/2026-07-10-running-gps-lossless-route-rewrite.md`
 - ULW: `.omo/ulw-loop/tomatofarm-gps-fidelity-20260710/`
 - 요청: 잘못 선택한 `budgetproject`가 아니라 Tomato Farm Lite에서 모바일/갤럭시워치 GPS 전체 좌표와 거리·시간을 실제 러닝 궤적대로 저장/표시한다.
@@ -19,10 +19,11 @@
   2. PASS Android: app/wear unit tests 및 debug APK assemble - `BUILD SUCCESSFUL` (final Health Services update ordering 포함).
   3. PASS assets: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=923`.
   4. PASS UI harness: 375px에서 click 전 map 0회, click 후 full 620점 1회 렌더, overlap/clipping 없음.
-  5. not verified yet: 물리 Galaxy Watch/phone GPS round-trip과 production 배포 UI.
+  5. PASS production: commit `400a2cf`가 `origin/main` 및 `https://aretenald2018-sys.github.io/tomatofarm/`에 배포됐고 login-screen smoke가 통과했다.
+  6. not verified: 로그인 계정이 필요한 authenticated GPS flow와 물리 Galaxy Watch/phone GPS round-trip.
 - 별도 정리: `budgetproject` GPS commit은 Tomato Farm 배포와 섞지 않고 해당 저장소에서 revert한다.
-- 사용자 다음 액션: 없음.
-- Codex 다음 액션: `origin/main`에 fast-forward 배포 → `https://aretenald2018-sys.github.io/tomatofarm/` 운영 asset/login smoke 검증.
+- 사용자 다음 액션: 운영 계정으로 러닝 시작/종료 1회 확인(선택).
+- Codex 다음 액션: 없음.
 
 ## 2026-07-09 Watch Running GPS Gap Resilience
 
