@@ -313,6 +313,9 @@ test('web bridge preserves and infers wear route gap metadata for map segments',
 
 test('web bridge redacts precise GPS route from persistent queue but drains memory route', async () => {
   const tmp = await mkdtemp(join(tmpdir(), 'wear-bridge-privacy-'));
+  const originalWarn = console.warn;
+  const warnings = [];
+  console.warn = (...args) => warnings.push(args.map(String).join(' '));
   try {
     const modulePath = join(tmp, 'wear-bridge-under-test.mjs');
     await writeFile(join(tmp, 'state.js'), 'export const S = globalThis.__wearBridgePrivacyState;\n', 'utf8');
@@ -397,6 +400,10 @@ test('web bridge redacts precise GPS route from persistent queue but drains memo
     await bridgeModule.drainWearWorkoutQueue();
     const legacyResanitizedRaw = Array.from(store.values()).join('\n');
     assert.doesNotMatch(legacyResanitizedRaw, /37\.3333|126\.3333|37\.4444|126\.4444|37\.5555|126\.5555|gpsDump|rawRoute/);
+    assert.equal(warnings.length, 2);
+    warnings.forEach(warning => {
+      assert.match(warning, /\[wear-bridge\] queued payload save failed: Error: wear workout bridge dependencies are not configured/);
+    });
 
     bridgeModule.configureWearWorkoutBridgeForTest({
       state,
@@ -412,7 +419,9 @@ test('web bridge redacts precise GPS route from persistent queue but drains memo
     assert.equal(saved[0].runData.route.length, 2);
     assert.equal(saved[0].runData.route[0].lat, 37.5665);
     assert.deepEqual(JSON.parse(Array.from(store.values()).join('\n') || '[]'), []);
+    assert.equal(warnings.length, 2, 'configured drain should not add warnings');
   } finally {
+    console.warn = originalWarn;
     delete globalThis.window;
     delete globalThis.localStorage;
     delete globalThis.document;
