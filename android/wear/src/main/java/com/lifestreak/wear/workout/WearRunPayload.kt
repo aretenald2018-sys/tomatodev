@@ -133,7 +133,7 @@ data class WearWorkoutPayload(
         private const val MAX_RUN_DURATION_SEC = 6L * 60L * 60L
         private const val MAX_HEART_RATE_BUCKETS = 2_161
         private const val MAX_HEART_RATE_SAMPLE_COUNT = 50_000
-        private const val MAX_ROUTE_POINT_COUNT = 2_161
+        private const val MAX_ROUTE_POINT_COUNT = 25_000
         private const val ROUTE_GAP_MS = 45_000L
         private val DATE_KEY_PATTERN = Regex("""\d{4}-\d{2}-\d{2}""")
 
@@ -154,6 +154,7 @@ data class WearWorkoutPayload(
             val durationSec = (session.endedAtMs - session.startedAtMs) / 1_000L
             require(durationSec > 0L) { "durationSec must be positive" }
             require(durationSec <= MAX_RUN_DURATION_SEC) { "durationSec exceeds payload limit" }
+            validateRoutePoints(session)
             val route = normalizeRoute(session)
             val routeGapSummary = summarizeRouteGaps(route)
             val distanceMeters = session.distanceMeters.takeIf { it > 0.0 }
@@ -228,17 +229,7 @@ data class WearWorkoutPayload(
 
         private fun normalizeRoute(session: WearRunSession): List<WearRoutePoint> {
             val points = session.routePoints
-                .asSequence()
-                .filter { point ->
-                    point.timestampMs in session.startedAtMs..session.endedAtMs &&
-                        point.lat.isFinite() &&
-                        point.lng.isFinite() &&
-                        point.lat in -90.0..90.0 &&
-                        point.lng in -180.0..180.0
-                }
                 .sortedBy { it.timestampMs }
-                .take(MAX_ROUTE_POINT_COUNT)
-                .toList()
             val normalized = mutableListOf<WearRoutePoint>()
             var currentSegmentId = 0
             points.forEach { point ->
@@ -271,6 +262,29 @@ data class WearWorkoutPayload(
                 )
             }
             return normalized
+        }
+
+        private fun validateRoutePoints(session: WearRunSession) {
+            session.routePoints.forEachIndexed { index, point ->
+                require(point.timestampMs in session.startedAtMs..session.endedAtMs) {
+                    "routePoints[$index].timestampMs must be within the session"
+                }
+                require(point.lat.isFinite() && point.lat in -90.0..90.0) {
+                    "routePoints[$index].lat must be finite and within -90..90"
+                }
+                require(point.lng.isFinite() && point.lng in -180.0..180.0) {
+                    "routePoints[$index].lng must be finite and within -180..180"
+                }
+                require(point.altitude == null || point.altitude.isFinite()) {
+                    "routePoints[$index].altitude must be finite"
+                }
+                require(point.bearing == null || point.bearing.isFinite()) {
+                    "routePoints[$index].bearing must be finite"
+                }
+                require(point.segmentId == null || point.segmentId >= 0) {
+                    "routePoints[$index].segmentId must be non-negative"
+                }
+            }
         }
 
         private fun distanceMetersFromRoute(route: List<WearRoutePoint>): Double {

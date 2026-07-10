@@ -33,6 +33,7 @@ class WearExerciseService : Service() {
     private var exerciseCallback: ExerciseUpdateCallback? = null
     private var accumulator: WearExerciseMetricAccumulator? = null
     private var exerciseStarted = false
+    private var wallClockOffsetMs = 0L
 
     override fun onCreate() {
         super.onCreate()
@@ -59,6 +60,7 @@ class WearExerciseService : Service() {
     private fun handleStartRun() {
         val startedAtWallClockMs = System.currentTimeMillis()
         val startedAtElapsedRealtimeMs = SystemClock.elapsedRealtime()
+        wallClockOffsetMs = startedAtWallClockMs - startedAtElapsedRealtimeMs
         val nextAccumulator = WearExerciseMetricAccumulator(
             startedAtWallClockMs = startedAtWallClockMs,
             startedAtElapsedRealtimeMs = startedAtElapsedRealtimeMs,
@@ -264,25 +266,28 @@ class WearExerciseService : Service() {
             ?.roundToInt()
         val distanceMeters = metrics.getData(DataType.DISTANCE_TOTAL)?.total
         val activeDurationMs = update.activeDurationCheckpoint?.activeDuration?.toMillis()
-        val locationPoint = metrics.getData(DataType.LOCATION)
-            .lastOrNull()
-            ?.let { point ->
-                WearRoutePoint(
-                    timestampMs = wallClockMsForElapsed(point.timeDurationFromBoot.toMillis()),
-                    lat = point.value.latitude,
-                    lng = point.value.longitude,
-                    altitude = point.value.altitude.takeIf { it.isFinite() },
-                    bearing = point.value.bearing.takeIf { it.isFinite() },
-                )
-            }
+        val locationPoints = metrics.getData(DataType.LOCATION)
+            .sortedBy { point -> point.timeDurationFromBoot }
 
         nextAccumulator.applyMetricUpdate(
             elapsedRealtimeMs = SystemClock.elapsedRealtime(),
             distanceMeters = distanceMeters,
             heartRateBpm = heartRateBpm,
             activeDurationMs = activeDurationMs,
-            routePoint = locationPoint,
         )
+        locationPoints.forEach { point ->
+            val pointElapsedRealtimeMs = point.timeDurationFromBoot.toMillis()
+            nextAccumulator.applyMetricUpdate(
+                elapsedRealtimeMs = pointElapsedRealtimeMs,
+                routePoint = WearRoutePoint(
+                    timestampMs = wallClockMsForElapsed(pointElapsedRealtimeMs),
+                    lat = point.value.latitude,
+                    lng = point.value.longitude,
+                    altitude = point.value.altitude.takeIf { it.isFinite() },
+                    bearing = point.value.bearing.takeIf { it.isFinite() },
+                ),
+            )
+        }
 
         val status = if (update.exerciseStateInfo.state.isEnded) {
             WearExerciseSessionStatus.ENDED
@@ -360,8 +365,7 @@ class WearExerciseService : Service() {
     }
 
     private fun wallClockMsForElapsed(elapsedRealtimeMs: Long): Long {
-        val currentElapsed = SystemClock.elapsedRealtime()
-        return System.currentTimeMillis() - (currentElapsed - elapsedRealtimeMs).coerceAtLeast(0L)
+        return wallClockOffsetMs + elapsedRealtimeMs
     }
 
     private fun buildNotification(): Notification {

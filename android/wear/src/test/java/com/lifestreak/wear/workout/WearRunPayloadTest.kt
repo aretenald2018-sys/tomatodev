@@ -79,7 +79,6 @@ class WearRunPayloadTest {
             routePoints = listOf(
                 WearRoutePoint(timestampMs = 1_000L, lat = 37.5665, lng = 126.9780, altitude = 34.1, bearing = 91.2),
                 WearRoutePoint(timestampMs = 11_000L, lat = 37.5666, lng = 126.9790, altitude = 35.0, bearing = 94.4),
-                WearRoutePoint(timestampMs = 50_000L, lat = 37.0, lng = 126.0),
             ),
         ).toPayload().getOrThrow()
 
@@ -360,12 +359,84 @@ class WearRunPayloadTest {
             WearRunSession(
                 dateKey = "2026-07-06",
                 startedAtMs = 1_000L,
-                endedAtMs = 11_000L,
+                endedAtMs = 1_000L + 25_001L * 500L,
                 distanceMeters = 100.0,
-                routePoints = List(2_162) { index ->
-                    WearRoutePoint(timestampMs = 1_000L + index, lat = 37.0, lng = 126.0)
+                routePoints = List(25_001) { index ->
+                    WearRoutePoint(timestampMs = 1_000L + index * 500L, lat = 37.0, lng = 126.0)
                 },
             ).toPayload().isFailure,
         )
+    }
+
+    @Test
+    fun preservesMoreThanLegacyTwoThousandOneHundredSixtyOneRoutePoints() {
+        val route = List(2_162) { index ->
+            WearRoutePoint(
+                timestampMs = 1_000L + index * 1_000L,
+                lat = 37.5 + index * 0.000001,
+                lng = 127.0 + index * 0.000001,
+            )
+        }
+        val payload = WearRunSession(
+            dateKey = "2026-07-06",
+            startedAtMs = 1_000L,
+            endedAtMs = 1_000L + 2_162_000L,
+            distanceMeters = 3_200.0,
+            routePoints = route,
+        ).toPayload().getOrThrow()
+
+        assertEquals(route.size, payload.summary.route.size)
+        assertEquals(route.first().lat, payload.summary.route.first().lat, 0.0)
+        assertEquals(route.last().lng, payload.summary.route.last().lng, 0.0)
+    }
+
+    @Test
+    fun acceptsExactlyTwentyFiveThousandRoutePoints() {
+        val route = List(25_000) { index ->
+            WearRoutePoint(
+                timestampMs = 1_000L + index * 500L,
+                lat = 37.5 + index * 0.000001,
+                lng = 127.0 + index * 0.000001,
+            )
+        }
+        val payload = WearRunSession(
+            dateKey = "2026-07-06",
+            startedAtMs = 1_000L,
+            endedAtMs = 1_000L + 25_000L * 500L,
+            distanceMeters = 10_000.0,
+            routePoints = route,
+        ).toPayload().getOrThrow()
+
+        assertEquals(25_000, payload.summary.route.size)
+    }
+
+    @Test
+    fun rejectsInvalidRoutePointsInsteadOfFilteringThem() {
+        val invalidPoints = listOf(
+            WearRoutePoint(timestampMs = 999L, lat = 37.5, lng = 127.0),
+            WearRoutePoint(timestampMs = 11_001L, lat = 37.5, lng = 127.0),
+            WearRoutePoint(timestampMs = 5_000L, lat = Double.NaN, lng = 127.0),
+            WearRoutePoint(timestampMs = 5_000L, lat = 91.0, lng = 127.0),
+            WearRoutePoint(timestampMs = 5_000L, lat = 37.5, lng = Double.POSITIVE_INFINITY),
+            WearRoutePoint(timestampMs = 5_000L, lat = 37.5, lng = 181.0),
+            WearRoutePoint(timestampMs = 5_000L, lat = 37.5, lng = 127.0, altitude = Double.NaN),
+            WearRoutePoint(timestampMs = 5_000L, lat = 37.5, lng = 127.0, bearing = Double.NaN),
+        )
+
+        invalidPoints.forEachIndexed { index, invalidPoint ->
+            val result = WearRunSession(
+                dateKey = "2026-07-06",
+                startedAtMs = 1_000L,
+                endedAtMs = 11_000L,
+                distanceMeters = 100.0,
+                routePoints = listOf(invalidPoint),
+            ).toPayload()
+
+            assertTrue("invalid route point $index should fail", result.isFailure)
+            assertTrue(
+                "invalid route point $index should identify its index",
+                result.exceptionOrNull()?.message?.contains("routePoints[0]") == true,
+            )
+        }
     }
 }

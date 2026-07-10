@@ -33,9 +33,12 @@ test('wear run uses GPS location data and sends route result in final payload', 
   assert.doesNotMatch(service, /ensureGpsDataTypes/);
   assert.match(service, /hasLocationPermission/);
   assert.match(service, /getData\(DataType\.LOCATION\)/);
+  assert.doesNotMatch(service, /getData\(DataType\.LOCATION\)[\s\S]{0,120}lastOrNull\(\)/);
+  assert.match(service, /locationPoints\.forEach/);
 
   assert.match(accumulator, /WearRoutePoint/);
   assert.match(accumulator, /routePoints/);
+  assert.doesNotMatch(accumulator, /routePointsByBucket/);
   assert.match(accumulator, /ROUTE_GAP_MS = 45_000L/);
   assert.match(accumulator, /gapBefore = explicitGap \|\| inferredGap/);
   assert.match(accumulator, /gapReason = routePoint\.gapReason \?: if \(inferredGap\) "time-gap" else null/);

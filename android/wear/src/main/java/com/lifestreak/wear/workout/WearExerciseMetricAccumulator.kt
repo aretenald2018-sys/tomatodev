@@ -21,9 +21,7 @@ class WearExerciseMetricAccumulator(
     private var activeDurationMs = 0L
     private val distanceSamplesByBucket = linkedMapOf<Long, WearDistanceSample>()
     private val heartRateSamplesByBucket = linkedMapOf<Long, HeartRateSample>()
-    private val routePointsByBucket = linkedMapOf<Long, WearRoutePoint>()
-    private var lastRoutePointBucketMs: Long? = null
-    private var currentRouteSegmentId = 0
+    private val routePoints = linkedSetOf<WearRoutePoint>()
 
     fun applyMetricUpdate(
         elapsedRealtimeMs: Long,
@@ -52,20 +50,7 @@ class WearExerciseMetricAccumulator(
             )
         }
         if (routePoint != null && isValidRoutePoint(routePoint)) {
-            val bucketStartMs = bucketStartFor(elapsedRealtimeMs)
-            val previousBucketMs = lastRoutePointBucketMs
-            val inferredGap = previousBucketMs != null && bucketStartMs - previousBucketMs > ROUTE_GAP_MS
-            val explicitGap = routePoint.gapBefore
-            if ((inferredGap || explicitGap) && previousBucketMs != bucketStartMs) {
-                currentRouteSegmentId += 1
-            }
-            routePointsByBucket[bucketStartMs] = routePoint.copy(
-                timestampMs = bucketStartMs,
-                segmentId = routePoint.segmentId ?: currentRouteSegmentId,
-                gapBefore = explicitGap || inferredGap,
-                gapReason = routePoint.gapReason ?: if (inferredGap) "time-gap" else null,
-            )
-            lastRoutePointBucketMs = bucketStartMs
+            routePoints.add(routePoint)
         }
     }
 
@@ -77,7 +62,7 @@ class WearExerciseMetricAccumulator(
             activeDurationMs = activeDurationMs,
             distanceSamples = distanceSamplesByBucket.values.sortedBy { it.timestampMs },
             heartRateSamples = heartRateSamplesByBucket.values.sortedBy { it.timestampMs },
-            routePoints = routePointsByBucket.values.sortedBy { it.timestampMs },
+            routePoints = normalizedRoutePoints(),
         )
     }
 
@@ -99,6 +84,28 @@ class WearExerciseMetricAccumulator(
             point.lat in -90.0..90.0 &&
             point.lng in -180.0..180.0 &&
             point.timestampMs >= 0L
+    }
+
+    private fun normalizedRoutePoints(): List<WearRoutePoint> {
+        var lastRouteTimestampMs: Long? = null
+        var currentRouteSegmentId = 0
+        return routePoints
+            .sortedBy { point -> point.timestampMs }
+            .map { routePoint ->
+                val previousTimestampMs = lastRouteTimestampMs
+                val inferredGap = previousTimestampMs != null &&
+                    routePoint.timestampMs - previousTimestampMs > ROUTE_GAP_MS
+                val explicitGap = routePoint.gapBefore
+                if ((inferredGap || explicitGap) && previousTimestampMs != routePoint.timestampMs) {
+                    currentRouteSegmentId += 1
+                }
+                lastRouteTimestampMs = routePoint.timestampMs
+                routePoint.copy(
+                    segmentId = routePoint.segmentId ?: currentRouteSegmentId,
+                    gapBefore = explicitGap || inferredGap,
+                    gapReason = routePoint.gapReason ?: if (inferredGap) "time-gap" else null,
+                )
+            }
     }
 
     private fun bucketStartFor(elapsedRealtimeMs: Long): Long {
