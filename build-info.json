@@ -1,10 +1,10 @@
 {
   "app": "tomatofarm",
-  "commit": "fef8665ea979f7e545cee38d9388043219300420",
-  "shortCommit": "fef8665ea979",
+  "commit": "656b13939efe712deceff14b0b05a6b6a50b3de7",
+  "shortCommit": "656b13939efe",
   "branch": "codex/watch-running-gps-gap-deploy-20260709",
-  "deployedAt": "2026-07-09T14:40:15.103Z",
-  "cacheVersion": "tomatofarm-v20260709z12-watch-running-gps-gap-resilience",
+  "deployedAt": "2026-07-10T02:12:03.267Z",
+  "cacheVersion": "tomatofarm-v20260710z1-running-gps-lossless",
   "runId": null,
   "runAttempt": null
 }

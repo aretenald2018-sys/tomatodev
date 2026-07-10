@@ -3,7 +3,7 @@
 
 // 캐시 버전: 타임스탬프 기반 자동 생성 — 파일 수정 시 SW 자동 업데이트
 // (SW 파일 내용이 1바이트라도 바뀌면 브라우저가 새 SW로 인식)
-const CACHE_VERSION = 'tomatofarm-v20260709z12-watch-running-gps-gap-resilience';
+const CACHE_VERSION = 'tomatofarm-v20260710z1-running-gps-lossless';
 const RUNTIME_CACHE = 'dashboard3-runtime';
 const STATIC_ASSETS = [
   './',
@@ -113,6 +113,8 @@ const STATIC_ASSETS = [
   './workout/activity-forms.js',
   './workout/wear-bridge.js',
   './workout/running-map.js',
+  './workout/running-route-store.js',
+  './workout/running-route-hydration.js',
   './workout/running-session.js',
   './workout/expert/onboarding.js',
   './workout/expert/migrate-gym-v1.js',
@@ -178,6 +180,8 @@ const STATIC_ASSETS = [
   './data/data-load.js',
   './data/data-save.js',
   './data/data-pure.js',
+  './data/running-route-storage-plan.js',
+  './data/data-running-route.js',
   './data/data-auth.js',
   './data/data-account.js',
   './data/data-date.js',
