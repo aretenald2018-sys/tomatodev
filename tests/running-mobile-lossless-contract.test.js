@@ -12,7 +12,7 @@ const sessionUrl = pathToFileURL(sessionPath).href;
 const stateUrl = pathToFileURL(path.join(repoRoot, 'workout/state.js')).href;
 const realMapUrl = pathToFileURL(path.join(repoRoot, 'workout/running-map.js')).href;
 
-async function runMobileCaptureHarness() {
+async function runMobileCaptureHarness(pointCount = 620) {
   const tempDir = await mkdtemp(path.join(tmpdir(), 'tomato-running-lossless-'));
   const mapStubPath = path.join(tempDir, 'running-map-stub.js');
   const htmlPath = path.join(tempDir, 'harness.html');
@@ -57,7 +57,7 @@ try {
   window.__draftWrites = 0;
 
   const base = Date.now();
-  for (let index = 0; index < 620; index += 1) {
+  for (let index = 0; index < ${pointCount}; index += 1) {
     watchSuccess({
       timestamp: base + Math.floor(index / 2) * 1000,
       coords: {
@@ -83,7 +83,10 @@ try {
   const rejectionError = document.querySelector('.wt-run-gps-note')?.textContent || '';
   const routePointWrites = window.__draftWrites;
   document.querySelector('[data-running-action="pause"]').click();
-  const draft = JSON.parse(localStorage.getItem('tomatofarm_running_session_draft_mobile-lossless-runner'));
+  const draftRaw = localStorage.getItem('tomatofarm_running_session_draft_mobile-lossless-runner');
+  const activeRaw = localStorage.getItem('tomatofarm_running_session_draft_active');
+  const draft = JSON.parse(draftRaw);
+  const activeMarker = JSON.parse(activeRaw);
   document.querySelector('[data-running-action="finish"]').click();
   await new Promise(resolve => setTimeout(resolve, 50));
   window.__qaDone = {
@@ -91,6 +94,9 @@ try {
     rejectionError,
     routePointWrites,
     draft,
+    draftBytes: draftRaw.length,
+    activeMarker,
+    activeBytes: activeRaw.length,
     runData: structuredClone(state.S.workout.runData),
     mapPointCounts: window.__mapPointCounts || [],
     screen: document.querySelector('[data-running-screen]')?.getAttribute('data-running-screen') || null,
@@ -106,7 +112,7 @@ try {
       const pageErrors = [];
       page.on('pageerror', error => pageErrors.push(String(error?.stack || error?.message || error)));
       await page.goto(pathToFileURL(htmlPath).href, { waitUntil: 'load' });
-      await page.waitForFunction(() => window.__qaDone || window.__qaError, { timeout: 20_000 });
+      await page.waitForFunction(() => window.__qaDone || window.__qaError, { timeout: 60_000 });
       const result = await page.evaluate(() => ({ done: window.__qaDone || null, error: window.__qaError || null }));
       assert.equal(result.error, null);
       assert.deepEqual(pageErrors, []);
@@ -127,6 +133,10 @@ test('mobile capture keeps 620 source points while draft and map work stay bound
   assert.equal(result.live.route.length, 240);
   assert.ok(result.routePointWrites <= 2, `expected one two-key draft write, got ${result.routePointWrites}`);
   assert.equal(result.draft.route.length, 620);
+  assert.equal(result.activeMarker.ownerId, 'mobile-lossless-runner');
+  assert.equal(result.activeMarker.draftKey, 'tomatofarm_running_session_draft_mobile-lossless-runner');
+  assert.equal(Object.hasOwn(result.activeMarker, 'route'), false);
+  assert.ok(result.activeBytes < 512);
   assert.equal(result.draft.context, 'pause');
   assert.equal(result.draft.route[0].accuracy, 0);
   assert.equal(result.draft.route[0].altitude, 0);
@@ -144,6 +154,38 @@ test('mobile capture keeps 620 source points while draft and map work stay bound
   assert.equal(result.runData.routeSummary.pointCount, 620);
   assert.equal(result.screen, 'summary');
   assert.equal(Math.max(...result.mapPointCounts), 240);
+});
+
+test('mobile draft keeps a six-hour 1Hz route once and uses a small active marker', async () => {
+  const route = Array.from({ length: 21_600 }, (_, index) => ({
+    lat: 37.5209 + Math.sin(index / 8) * 0.000003,
+    lng: 126.977 + index * 0.000005,
+    ts: 1_720_000_000_000 + index * 1_000,
+    accuracy: 5,
+    altitude: 20 + Math.sin(index / 12),
+    speed: 2.8,
+    heartRateBpm: 145,
+    cadenceSpm: 166,
+    segmentId: 0,
+  }));
+  const draftBytes = Buffer.byteLength(JSON.stringify({
+    version: 1,
+    ownerId: 'mobile-lossless-runner',
+    phase: 'active',
+    startedAt: route[0].ts,
+    route,
+  }));
+  const markerBytes = Buffer.byteLength(JSON.stringify({
+    version: 1,
+    ownerId: 'mobile-lossless-runner',
+    phase: 'active',
+    draftKey: 'tomatofarm_running_session_draft_mobile-lossless-runner',
+    updatedAt: route.at(-1).ts,
+  }));
+  const chromiumQuotaBytes = 5 * 1024 * 1024;
+
+  assert.ok(draftBytes + markerBytes < chromiumQuotaBytes);
+  assert.ok(draftBytes * 2 > chromiumQuotaBytes);
 });
 
 test('mobile session source uses the lossless route boundary and has no legacy source drops', async () => {

@@ -83,6 +83,33 @@ class WearRunUiStateTest {
     }
 
     @Test
+    fun summarySessionEndsAfterPostResumeGpsSamples() {
+        val session = buildWearRunSessionForSummary(
+            exerciseSnapshot = WearExerciseSessionSnapshot(
+                startedAtWallClockMs = 10_000L,
+                activeDurationMs = 80_000L,
+                routePoints = listOf(
+                    WearRoutePoint(timestampMs = 10_000L, lat = 37.5, lng = 127.0),
+                    WearRoutePoint(timestampMs = 105_000L, lat = 37.6, lng = 127.1),
+                ),
+            ),
+            uiSnapshot = WearRunUiSnapshot(
+                screen = WearRunUiScreen.SUMMARY,
+                durationMs = 80_000L,
+                distanceKm = 1.0,
+                heartRateBpm = 140,
+            ),
+            nowWallClockMs = 110_000L,
+            dateKeyFor = { "2026-07-10" },
+        )
+
+        assertEquals(110_000L, session.endedAtMs)
+        val payload = session.toPayload().getOrThrow()
+        assertEquals(80L, payload.summary.durationSec)
+        assertEquals(2, payload.summary.route.size)
+    }
+
+    @Test
     fun derivesLivePageMetricsFromSamples() {
         state.start()
         now += 300_000L

@@ -96,6 +96,16 @@
 - `budgetproject` commit `1a43f87`의 GPS 기능은 그 저장소의 최신 `origin/main` 기준 clean worktree에서 `git revert`해 별도 배포한다.
 - `budgetproject`의 다른 설정/디자인 변경과 Tomato Farm Lite의 기존 dirty worktree는 포함하지 않는다.
 
+## 긴급 정확성 Slice 2. 배포 전 데이터 유실 차단
+
+독립 리뷰에서 확인된 정확성 결함만 고친다. 보안 저장 구조 확장과 별도 `budgetproject` 작업은 이 Slice에 포함하지 않는다.
+
+1. 일시정지/재개가 있어도 Wear payload `endedAt`은 마지막 GPS/심박 timestamp를 포함하는 실제 종료 시각이어야 한다.
+2. Wear 종료는 `endExerciseAsync()` 성공만으로 `ENDED`를 합성하지 않고, 최종 `ExerciseState.ENDED` Health Services snapshot 반영 뒤 payload를 만든다. 종료 실패는 불완전 payload를 저장하지 않는다.
+3. 모바일 러닝 draft 원본 route는 한 번만 저장하고 active key는 owner draft를 가리키는 작은 marker로 유지한다.
+4. 기존 full route ref가 있으면 inline preview와 stale summary가 원본 ref를 덮어쓰지 못한다. ref 없는 legacy preview도 완전 원본으로 승격하지 않는다.
+5. 각 경계에 실패 재현 테스트를 추가한 뒤 focused JS/Kotlin, 전체 JS, Android app/wear, assets, diff 검증을 재실행한다.
+
 ## 로컬 구현 결과
 
 - 모바일 `watchPosition` 620개 fixture는 source/draft/save가 모두 620개이고 day/session preview만 240개다.

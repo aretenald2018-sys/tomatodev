@@ -255,6 +255,28 @@ test('preview plus larger existing ref resaves without rewriting immutable route
   })}`);
 });
 
+test('stale preview summary cannot replace a larger existing full-route ref', async () => {
+  const fullRoute = canonicalRoute();
+  const preview = buildRunningRoutePreview(fullRoute);
+  const existingRef = routeRef();
+  const out = await runSaveHarness({
+    runData: {
+      distance: 7.4,
+      durationMin: 42,
+      durationSec: 12,
+      source: 'gps',
+      route: preview,
+      routeRef: existingRef,
+      routeSummary: { source: 'gps', pointCount: preview.length, distanceKm: 7.4 },
+    },
+  });
+
+  assert.equal(out.calls.filter(call => call.type === 'saveRunningRoute').length, 0);
+  const payload = out.calls.find(call => call.type === 'saveDay').payload;
+  assert.deepEqual(payload.runRouteRef, existingRef);
+  assert.equal(payload.runRouteSummary.pointCount, 620);
+});
+
 test('full route matching an existing ref rewrites idempotently and corrects stale summary count', async () => {
   const fullRoute = canonicalRoute();
   const existingRef = routeRef();
@@ -307,6 +329,28 @@ test('legacy inline GPS route without ref remains readable and migrates to immut
   assert.deepEqual(payload.runRouteRef, migratedRef);
   assert.equal(payload.runSource, 'gps');
   assert.equal(payload.runRouteSummary.pointCount, 12);
+});
+
+test('legacy preview without a ref is not promoted to a complete immutable route', async () => {
+  const fullRoute = canonicalRoute(340);
+  const preview = buildRunningRoutePreview(fullRoute);
+  const out = await runSaveHarness({
+    runData: {
+      distance: 4.2,
+      durationMin: 28,
+      durationSec: 0,
+      source: 'gps',
+      route: preview,
+      routeRef: null,
+      routeSummary: { source: 'gps', pointCount: 340 },
+    },
+  });
+
+  assert.equal(out.calls.filter(call => call.type === 'saveRunningRoute').length, 0);
+  const payload = out.calls.find(call => call.type === 'saveDay').payload;
+  assert.equal(payload.runRouteRef, null);
+  assert.equal(payload.runRoute.length, 240);
+  assert.equal(payload.runRouteSummary.pointCount, 340);
 });
 
 test('manual non-GPS workout stores an empty preview and null route ref', async () => {

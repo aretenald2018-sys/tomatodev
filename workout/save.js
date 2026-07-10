@@ -154,11 +154,12 @@ async function _prepareRunningRoutePayload() {
     : assertRunningRouteReference(routeInput.runRouteRef);
   const canonicalRoute = normalizeRunningRoutePoints(sourceRoute);
   const summaryPointCount = Number(run.routeSummary?.pointCount);
-  const hasFullCapturedRoute = canonicalRoute.length > 0 && (
-    !existingRef
-    || (Number.isSafeInteger(summaryPointCount) && canonicalRoute.length === summaryPointCount)
-    || canonicalRoute.length === existingRef?.pointCount
-  );
+  const declaredPointCount = Number.isSafeInteger(summaryPointCount) && summaryPointCount >= canonicalRoute.length
+    ? summaryPointCount
+    : canonicalRoute.length;
+  const hasFullCapturedRoute = canonicalRoute.length > 0 && (existingRef
+    ? canonicalRoute.length === existingRef.pointCount
+    : canonicalRoute.length === declaredPointCount);
 
   let routeRef = existingRef;
   if (hasFullCapturedRoute) {

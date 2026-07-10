@@ -202,23 +202,40 @@ class WearExerciseService : Service() {
     }
 
     private fun handleEndRun() {
-        WearExerciseSessionStore.markEnded()
         if (exerciseStarted) {
             val endFuture = exerciseClient.endExerciseAsync()
             endFuture.addListener(
                 {
                     try {
                         endFuture.get()
-                    } catch (_: Exception) {
-                    } finally {
+                        WearExerciseEndPolicy.afterEndFuture(success = true)
+                    } catch (error: Exception) {
+                        WearExerciseEndPolicy.afterEndFuture(success = false)
+                        WearExerciseSessionStore.markError(
+                            "Health Services end failed: ${error.message ?: error.javaClass.simpleName}",
+                        )
                         finishService()
                     }
                 },
                 healthCallbackExecutor,
             )
         } else {
+            publishEndedSnapshot()
             finishService()
         }
+    }
+
+    private fun publishEndedSnapshot(message: String? = null) {
+        val currentAccumulator = accumulator
+        if (currentAccumulator == null) {
+            WearExerciseSessionStore.markEnded(message)
+            return
+        }
+        WearExerciseSessionStore.publishFromAccumulator(
+            status = WearExerciseSessionStatus.ENDED,
+            accumulator = currentAccumulator,
+            message = message,
+        )
     }
 
     private fun finishService() {
@@ -289,10 +306,14 @@ class WearExerciseService : Service() {
             )
         }
 
-        val status = if (update.exerciseStateInfo.state.isEnded) {
-            WearExerciseSessionStatus.ENDED
-        } else {
-            WearExerciseSessionStatus.ACTIVE
+        val endAction = WearExerciseEndPolicy.afterExerciseUpdate(
+            update.exerciseStateInfo.state.isEnded,
+        )
+        val status = when (endAction) {
+            WearExerciseEndAction.PUBLISH_FINAL_UPDATE -> WearExerciseSessionStatus.ENDED
+            WearExerciseEndAction.WAIT_FOR_FINAL_UPDATE,
+            WearExerciseEndAction.PUBLISH_ERROR,
+            -> WearExerciseSessionStatus.ACTIVE
         }
         WearExerciseSessionStore.publishFromAccumulator(
             status = status,
@@ -300,7 +321,7 @@ class WearExerciseService : Service() {
             message = locationStatusMessage(),
         )
 
-        if (update.exerciseStateInfo.state.isEnded) {
+        if (endAction == WearExerciseEndAction.PUBLISH_FINAL_UPDATE) {
             finishService()
         }
     }

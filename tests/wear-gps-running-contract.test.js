@@ -67,6 +67,15 @@ test('wear run uses GPS location data and sends route result in final payload', 
   assert.match(payload, /"gapCount"/);
   assert.match(payload, /"interrupted"/);
   assert.match(controller, /routePoints = exerciseSnapshot\.routePoints/);
+  const endHandler = service.match(/private fun handleEndRun\(\) \{([\s\S]*?)\n    private fun publishEndedSnapshot/);
+  assert.ok(endHandler, 'expected Wear end handler');
+  const startedEndBranch = endHandler[1].split('} else {', 1)[0];
+  assert.doesNotMatch(startedEndBranch, /endFuture\.get\(\)[\s\S]*publishEndedSnapshot/);
+  assert.match(service, /afterEndFuture\(success = true\)/);
+  assert.match(service, /WearExerciseEndPolicy\.afterExerciseUpdate\(\s*update\.exerciseStateInfo\.state\.isEnded\s*,?\s*\)/);
+  assert.match(service, /PUBLISH_FINAL_UPDATE[\s\S]*WearExerciseSessionStatus\.ENDED/);
+  assert.match(controller, /WearExerciseSessionStatus\.ENDED[\s\S]*syncRunSummary\(v\)/);
+  assert.match(controller, /WearExerciseSessionStatus\.ERROR[\s\S]*운동 종료 실패/);
 
   assert.match(layout, /@\+id\/runActiveGpsStatus/);
   assert.match(layout, /@\+id\/runSummaryGpsStatus/);

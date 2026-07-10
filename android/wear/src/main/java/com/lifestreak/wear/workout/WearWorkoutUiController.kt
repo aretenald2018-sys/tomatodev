@@ -17,6 +17,7 @@ class WearWorkoutUiController(
 ) {
     private val runState = WearRunUiState(nowMs)
     private var sessionStoreUnsubscribe: (() -> Unit)? = null
+    private var runEndUnsubscribe: (() -> Unit)? = null
     private var metricPagerAdapter: WearRunMetricPagerAdapter? = null
     private var summarySyncStatus = ""
     private var gpsStatus = "GPS 대기"
@@ -55,6 +56,8 @@ class WearWorkoutUiController(
     fun dispose() {
         sessionStoreUnsubscribe?.invoke()
         sessionStoreUnsubscribe = null
+        runEndUnsubscribe?.invoke()
+        runEndUnsubscribe = null
         handler.removeCallbacksAndMessages(null)
     }
 
@@ -91,6 +94,8 @@ class WearWorkoutUiController(
     }
 
     private fun startRun(v: View) {
+        runEndUnsubscribe?.invoke()
+        runEndUnsubscribe = null
         summarySyncStatus = ""
         gpsStatus = "GPS 대기"
         runState.start()
@@ -115,10 +120,39 @@ class WearWorkoutUiController(
 
     private fun finishRun(v: View) {
         runState.finish()
-        WearExerciseService.endRun(v.context)
         clearRunTick(v)
+        summarySyncStatus = "운동 종료 중"
         render(v)
-        syncRunSummary(v)
+        waitForFinalExerciseSnapshot(v)
+        WearExerciseService.endRun(v.context)
+    }
+
+    private fun waitForFinalExerciseSnapshot(v: View) {
+        runEndUnsubscribe?.invoke()
+        lateinit var unsubscribe: () -> Unit
+        unsubscribe = WearExerciseSessionStore.addListener { snapshot ->
+            if (snapshot.status !in setOf(
+                    WearExerciseSessionStatus.ENDED,
+                    WearExerciseSessionStatus.ERROR,
+                    WearExerciseSessionStatus.FALLBACK,
+                )
+            ) {
+                return@addListener
+            }
+            handler.post {
+                if (runEndUnsubscribe == null) return@post
+                runEndUnsubscribe?.invoke()
+                runEndUnsubscribe = null
+                updateRunLiveMetrics(snapshot)
+                if (snapshot.status == WearExerciseSessionStatus.ENDED) {
+                    syncRunSummary(v)
+                } else {
+                    summarySyncStatus = "운동 종료 실패"
+                    render(v)
+                }
+            }
+        }
+        runEndUnsubscribe = { unsubscribe() }
     }
 
     private fun render(v: View) {
@@ -238,10 +272,17 @@ internal fun buildWearRunSessionForSummary(
         uiSnapshot.durationMs,
         1_000L,
     )
+    val latestSampleAt = maxOf(
+        exerciseSnapshot.routePoints.maxOfOrNull { it.timestampMs } ?: startedAt,
+        exerciseSnapshot.heartRateSamples.maxOfOrNull { it.timestampMs } ?: startedAt,
+        exerciseSnapshot.distanceSamples.maxOfOrNull { it.timestampMs } ?: startedAt,
+    )
+    val endedAt = maxOf(startedAt + durationMs, latestSampleAt, nowWallClockMs)
     return WearRunSession(
         dateKey = dateKeyFor(startedAt),
         startedAtMs = startedAt,
-        endedAtMs = startedAt + durationMs,
+        endedAtMs = endedAt,
+        activeDurationMs = durationMs,
         distanceMeters = exerciseSnapshot.distanceMeters,
         heartRateSamples = exerciseSnapshot.heartRateSamples,
         routePoints = exerciseSnapshot.routePoints,

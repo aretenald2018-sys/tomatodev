@@ -43,6 +43,7 @@ data class WearRunSession(
     val startedAtMs: Long,
     val endedAtMs: Long,
     val distanceMeters: Double,
+    val activeDurationMs: Long? = null,
     val heartRateSamples: List<HeartRateSample> = emptyList(),
     val routePoints: List<WearRoutePoint> = emptyList(),
 ) {
@@ -151,7 +152,12 @@ data class WearWorkoutPayload(
                 "routePoints exceeds payload limit"
             }
 
-            val durationSec = (session.endedAtMs - session.startedAtMs) / 1_000L
+            val wallDurationMs = session.endedAtMs - session.startedAtMs
+            val durationMs = session.activeDurationMs
+                ?.takeIf { it > 0L }
+                ?.coerceAtMost(wallDurationMs)
+                ?: wallDurationMs
+            val durationSec = durationMs / 1_000L
             require(durationSec > 0L) { "durationSec must be positive" }
             require(durationSec <= MAX_RUN_DURATION_SEC) { "durationSec exceeds payload limit" }
             validateRoutePoints(session)

@@ -591,6 +591,17 @@ function _runningDraftBelongsToCurrentUser(draft, ownerId = _currentRunningDraft
   return !!draft?.ownerId && String(draft.ownerId) === String(ownerId || '_anon');
 }
 
+function _runningDraftActiveMarker(draft) {
+  const ownerId = String(draft?.ownerId || '_anon');
+  return {
+    version: RUNNING_SESSION_DRAFT_VERSION,
+    ownerId,
+    phase: _safeRunningPhase(draft?.phase),
+    draftKey: _runningDraftKey(ownerId),
+    updatedAt: Math.max(0, _num(draft?.updatedAt, _now())),
+  };
+}
+
 function _buildRunningDraft(context = 'manual') {
   const phase = _safeRunningPhase(_session.phase);
   if (!phase || !_session.startedAt) return null;
@@ -626,7 +637,7 @@ function _persistRunningDraft(context = 'manual') {
   try {
     const payload = JSON.stringify(draft);
     localStorage.setItem(_runningDraftKey(draft.ownerId), payload);
-    localStorage.setItem(RUNNING_SESSION_DRAFT_ACTIVE_KEY, payload);
+    localStorage.setItem(RUNNING_SESSION_DRAFT_ACTIVE_KEY, JSON.stringify(_runningDraftActiveMarker(draft)));
     return draft;
   } catch (error) {
     console.error(`[running-session] draft persistence failed (${context}):`, error);
@@ -673,6 +684,25 @@ function _readRunningDraftFromKey(key) {
   }
 }
 
+function _readRunningActiveDraft(ownerId) {
+  try {
+    const raw = localStorage.getItem(RUNNING_SESSION_DRAFT_ACTIVE_KEY);
+    if (!raw) return null;
+    const value = JSON.parse(raw);
+    const ownerKey = _runningDraftKey(ownerId);
+    if (value?.draftKey) {
+      if (!_runningDraftBelongsToCurrentUser(value, ownerId) || value.draftKey !== ownerKey) return null;
+      return _readRunningDraftFromKey(ownerKey);
+    }
+    const legacyDraft = normalizeRunningSessionDraft(value);
+    if (!legacyDraft) localStorage.removeItem(RUNNING_SESSION_DRAFT_ACTIVE_KEY);
+    return _runningDraftBelongsToCurrentUser(legacyDraft, ownerId) ? legacyDraft : null;
+  } catch {
+    try { localStorage.removeItem(RUNNING_SESSION_DRAFT_ACTIVE_KEY); } catch {}
+    return null;
+  }
+}
+
 function _readRunningDraft() {
   if (typeof localStorage === 'undefined') return null;
   const ownerId = _currentRunningDraftOwnerId();
@@ -682,17 +712,21 @@ function _readRunningDraft() {
     if (!keyedDraft.ownerId || _runningDraftBelongsToCurrentUser(keyedDraft, ownerId)) return keyedDraft;
     try { localStorage.removeItem(ownerKey); } catch {}
   }
-  const activeDraft = _readRunningDraftFromKey(RUNNING_SESSION_DRAFT_ACTIVE_KEY);
-  return _runningDraftBelongsToCurrentUser(activeDraft, ownerId) ? activeDraft : null;
+  return _readRunningActiveDraft(ownerId);
 }
 
 function _clearRunningDraft() {
   _clearScheduledRunningRouteDraftPersist();
   if (typeof localStorage === 'undefined') return;
   const ownerId = _currentRunningDraftOwnerId();
+  let clearActive = false;
+  try {
+    const raw = localStorage.getItem(RUNNING_SESSION_DRAFT_ACTIVE_KEY);
+    const value = raw ? JSON.parse(raw) : null;
+    clearActive = _runningDraftBelongsToCurrentUser(value, ownerId);
+  } catch {}
   try { localStorage.removeItem(_runningDraftKey(ownerId)); } catch {}
-  const activeDraft = _readRunningDraftFromKey(RUNNING_SESSION_DRAFT_ACTIVE_KEY);
-  if (_runningDraftBelongsToCurrentUser(activeDraft, ownerId)) {
+  if (clearActive) {
     try { localStorage.removeItem(RUNNING_SESSION_DRAFT_ACTIVE_KEY); } catch {}
   }
 }

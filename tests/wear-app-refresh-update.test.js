@@ -184,7 +184,7 @@ test('manual app refresh keeps native Wear bridge while APK button downloads mob
     'export async function requestTomatoAppRefresh',
     'APK install helper should stay separate from the page reload path',
   );
-  assert.match(swJs, /tomatofarm-v20260710z1-running-gps-lossless/);
+  assert.match(swJs, /tomatofarm-v20260710z2-running-gps-accuracy/);
 });
 
 test('published mobile APK contains current life-zone photo bubble assets', () => {

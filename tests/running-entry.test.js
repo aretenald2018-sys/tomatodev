@@ -240,7 +240,7 @@ test('running session persists unsaved live records across app reloads', () => {
   assert.match(runningSessionJs, /gapBefore/);
   assert.match(runningSessionJs, /gapReason/);
   assert.match(runningSessionJs, /localStorage\.setItem\(_runningDraftKey\(draft\.ownerId\), payload\)/);
-  assert.match(runningSessionJs, /localStorage\.setItem\(RUNNING_SESSION_DRAFT_ACTIVE_KEY, payload\)/);
+  assert.match(runningSessionJs, /localStorage\.setItem\(RUNNING_SESSION_DRAFT_ACTIVE_KEY, JSON\.stringify\(_runningDraftActiveMarker\(draft\)\)\)/);
   assert.match(runningSessionJs, /function _readRunningDraft\(\)[\s\S]*RUNNING_SESSION_DRAFT_ACTIVE_KEY[\s\S]*_runningDraftBelongsToCurrentUser/);
   assert.match(runningSessionJs, /window\.addEventListener\('pagehide', \(\) => \{[\s\S]*_markRouteGap\('pagehide'\)[\s\S]*_persistRunningDraft\('pagehide'\)/);
   assert.match(runningSessionJs, /window\.addEventListener\('beforeunload', \(\) => \{[\s\S]*_markRouteGap\('beforeunload'\)[\s\S]*_persistRunningDraft\('beforeunload'\)/);
@@ -296,7 +296,7 @@ test('running workout save writes a running life-zone snapshot', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260710z1-running-gps-lossless/);
+  assert.match(swJs, /tomatofarm-v20260710z2-running-gps-accuracy/);
   assert.match(swJs, /\.\/workout\/index\.js\?v=20260707d-wear-bridge-load-binding/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);

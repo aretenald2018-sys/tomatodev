@@ -51,7 +51,14 @@ function _hasRestorableRunningDraftForUser(user) {
     try {
       const raw = localStorage.getItem(key);
       if (!raw) continue;
-      const draft = JSON.parse(raw);
+      let draft = JSON.parse(raw);
+      if (draft?.draftKey) {
+        const ownerKey = 'tomatofarm_running_session_draft_' + encodeURIComponent(ownerId);
+        if (draft.draftKey !== ownerKey) continue;
+        const ownerRaw = localStorage.getItem(ownerKey);
+        if (!ownerRaw) continue;
+        draft = JSON.parse(ownerRaw);
+      }
       const phase = String(draft?.phase || '');
       if (!['active', 'paused', 'summary'].includes(phase)) continue;
       if (String(draft?.ownerId || '') !== ownerId) continue;
