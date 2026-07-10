@@ -11,6 +11,7 @@ import {
   getMuscleParts,
   getLatestCheckinWeight,
   getTestBoardV2,
+  loadRunningRoute,
   saveDay,
 } from './data.js';
 import {
@@ -37,6 +38,7 @@ import {
 import { S } from './workout/state.js';
 import { wtReplaceActiveWorkoutDraftSession } from './workout/timers.js';
 import { destroyRunningMaps, renderRunningMap } from './workout/running-map.js';
+import { createRunningRouteHydrationController } from './workout/running-route-hydration.js';
 import { deriveDietSuccessFromWorkout } from './workout/cross-domain.js';
 import {
   closeWorkoutDaySheet,
@@ -77,6 +79,7 @@ const WORKOUT_GYM_SESSION_COUNT = 2;
 const WORKOUT_RUNNING_SESSION_INDEX = 2;
 let _workoutRunningMapSeq = 0;
 const _workoutRunningMapPayloads = new Map();
+const _workoutRunningRouteHydration = createRunningRouteHydrationController(loadRunningRoute);
 const WORKOUT_HOME_SHEET_STATES = ['bar', 'full'];
 const WORKOUT_HOME_SHEET_CLASS_STATES = ['bar', 'full'];
 const WORKOUT_SHEET_SET_INPUT_SELECTOR = '[data-wt-set-input]';
@@ -979,6 +982,7 @@ function _clearRunningFields(session = {}) {
     runStartedAt: null,
     runEndedAt: null,
     runRoute: [],
+    runRouteRef: null,
     runRouteSummary: null,
     runPlaceSummary: null,
     runAvgPaceSecPerKm: 0,
@@ -1002,6 +1006,7 @@ function _onlyRunningFields(session = {}) {
     runStartedAt: s.runStartedAt || null,
     runEndedAt: s.runEndedAt || null,
     runRoute: Array.isArray(s.runRoute) ? s.runRoute : [],
+    runRouteRef: s.runRouteRef || null,
     runRouteSummary: s.runRouteSummary || null,
     runPlaceSummary: s.runPlaceSummary || null,
     runAvgPaceSecPerKm: Number(s.runAvgPaceSecPerKm) || 0,
@@ -1143,6 +1148,7 @@ function _applyWorkoutHomeSessionToActiveState(session = {}, sessionIndex = 0) {
     startedAt: session.runStartedAt || null,
     endedAt: session.runEndedAt || null,
     route: Array.isArray(session.runRoute) ? _clonePlain(session.runRoute) : [],
+    routeRef: _clonePlain(session.runRouteRef || null),
     routeSummary: _clonePlain(session.runRouteSummary || null),
     placeSummary: _clonePlain(session.runPlaceSummary || null),
     avgPaceSecPerKm: Number(session.runAvgPaceSecPerKm) || 0,
@@ -1445,6 +1451,7 @@ function _activityRows(day) {
       source: runSource,
       activityMode: runMode,
       route: Array.isArray(d.runRoute) ? d.runRoute : [],
+      routeRef: d.runRouteRef || null,
       routeSummary: runSummary,
       placeSummary: d.runPlaceSummary || null,
       gpsAccuracySummary: runAccuracy,
@@ -2130,6 +2137,7 @@ export function renderWorkoutCalendarHome() {
   const root = document.getElementById('workout-calendar-root');
   if (!root) return;
   destroyRunningMaps(root);
+  _workoutRunningRouteHydration.invalidateAll();
   _workoutRunningMapPayloads.clear();
 
   const cache = getCache() || {};
@@ -2161,6 +2169,7 @@ export function renderWorkoutCalendarHome() {
 
 function _renderWorkoutHomeDetail(root, args) {
   destroyRunningMaps(root);
+  _workoutRunningRouteHydration.invalidateAll();
   _workoutRunningMapPayloads.clear();
   root.innerHTML = _renderWorkoutHomeDetailHtml(args);
   _mountWorkoutRunningMaps(root);
@@ -2168,9 +2177,10 @@ function _renderWorkoutHomeDetail(root, args) {
 
 function _registerWorkoutRunningMapPayload(row = {}) {
   const id = `running-detail-map-${++_workoutRunningMapSeq}`;
-  _workoutRunningMapPayloads.set(id, {
+  _workoutRunningMapPayloads.set(id, _workoutRunningRouteHydration.register({
     points: Array.isArray(row.route) ? row.route : [],
-  });
+    routeRef: row.routeRef || null,
+  }));
   return id;
 }
 
@@ -2199,11 +2209,45 @@ function _mountWorkoutRunningMaps(root) {
 function _showWorkoutRunningRoute(control, mapId) {
   const root = control?.closest?.('[data-wt-day-sheet]') || document;
   const shell = _findWorkoutRunningMapShell(root, mapId);
-  if (!shell) return false;
-  shell.classList.add('is-active');
-  shell.querySelector?.('[data-wt-running-route-show]')?.setAttribute('hidden', '');
-  _mountWorkoutRunningMaps(root);
-  return true;
+  const payload = _workoutRunningMapPayloads.get(mapId);
+  if (!shell || !payload) return false;
+  if (!payload.routeRef) {
+    shell.classList.add('is-active');
+    shell.querySelector?.('[data-wt-running-route-show]')?.setAttribute('hidden', '');
+    _mountWorkoutRunningMaps(root);
+    return true;
+  }
+  if (payload.uiPromise) return payload.uiPromise;
+
+  const button = shell.querySelector?.('[data-wt-running-route-show]') || control;
+  const status = shell.querySelector?.('[data-running-map-status]');
+  button.disabled = true;
+  button.setAttribute('aria-busy', 'true');
+  if (status) status.textContent = '전체 경로 불러오는 중';
+
+  const uiPromise = _workoutRunningRouteHydration.hydrate(payload).then((result) => {
+    if (result.status !== 'ready' || _workoutRunningMapPayloads.get(mapId) !== payload) return false;
+    const currentShell = _findWorkoutRunningMapShell(root, mapId);
+    if (currentShell !== shell) return false;
+    payload.uiPromise = null;
+    button.removeAttribute('aria-busy');
+    button.setAttribute('hidden', '');
+    shell.classList.add('is-active');
+    _mountWorkoutRunningMaps(root);
+    return true;
+  }).catch((error) => {
+    if (_workoutRunningMapPayloads.get(mapId) === payload && _findWorkoutRunningMapShell(root, mapId) === shell) {
+      payload.uiPromise = null;
+      button.disabled = false;
+      button.removeAttribute('aria-busy');
+      button.textContent = '다시 시도';
+      if (status) status.textContent = '전체 경로를 불러오지 못했어요';
+    }
+    console.warn('[workout-calendar] running route hydration failed:', error);
+    return false;
+  });
+  payload.uiPromise = uiPromise;
+  return uiPromise;
 }
 
 function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, includeHead = true }) {
@@ -4480,6 +4524,7 @@ function _clearWorkoutActivityFields(activityKey) {
       runStartedAt: null,
       runEndedAt: null,
       runRoute: [],
+      runRouteRef: null,
       runRouteSummary: null,
       runPlaceSummary: null,
       runAvgPaceSecPerKm: 0,

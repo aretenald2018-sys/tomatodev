@@ -992,12 +992,20 @@ test('running detail card uses the workout read-card shell with running metrics 
   const mapRenderer = calendarJs.slice(mapStart, cardStart);
   const card = calendarJs.slice(cardStart, cardEnd);
 
+  assert.match(calendarJs, /loadRunningRoute,/);
   assert.match(calendarJs, /import \{ destroyRunningMaps, renderRunningMap \} from '\.\/workout\/running-map\.js'/);
+  assert.match(calendarJs, /createRunningRouteHydrationController/);
   assert.match(calendarJs, /function _mountWorkoutRunningMaps/);
   assert.match(calendarJs, /\[data-wt-running-route-map\]\.is-active/);
   assert.match(calendarJs, /renderRunningMap\(shell, \{ points: payload\.points, phase: 'detail' \}\)/);
   assert.match(calendarJs, /case 'show-running-route':/);
   assert.match(calendarJs, /_showWorkoutRunningRoute\(control, routeMapId\)/);
+  assert.match(calendarJs, /runRouteRef:\s*s\.runRouteRef \|\| null/);
+  assert.match(calendarJs, /routeRef:\s*d\.runRouteRef \|\| null/);
+  assert.match(calendarJs, /routeRef:\s*row\.routeRef \|\| null/);
+  assert.match(calendarJs, /전체 경로 불러오는 중/);
+  assert.match(calendarJs, /전체 경로를 불러오지 못했어요/);
+  assert.match(calendarJs, /다시 시도/);
   assert.match(calendarJs, /runRouteSummary && typeof d\.runRouteSummary === 'object'/);
   assert.match(calendarJs, /distanceKm:\s*runDistance/);
   assert.match(calendarJs, /speedKmh:\s*runSpeedKmh/);
@@ -1098,6 +1106,7 @@ test('running tab stacks multiple running session cards after the gym sessions',
       runStartedAt: 1783400000000,
       runEndedAt: 1783401265000,
       runRoute: [{ lat: 37.5665, lng: 126.978 }, { lat: 37.5666, lng: 126.979 }],
+      runRouteRef: { routeId: 'route-620', pointCount: 620 },
       runRouteSummary: { source: 'wear-gps', pointCount: 2, distanceKm: 3.21, durationSec: 1265 },
     },
     {
@@ -1115,6 +1124,7 @@ test('running tab stacks multiple running session cards after the gym sessions',
   assert.equal(stacked.stack.rows.length, 2);
   assert.deepEqual(stacked.stack.rows.map(row => row.sessionIndex), [2, 3]);
   assert.equal(stacked.stack.rows[0].route.length, 2);
+  assert.equal(stacked.stack.rows[0].routeRef.pointCount, 620);
   assert.equal(stacked.stack.rows[1].distanceKm, 1.4);
 
   const legacy = buildRunningStack([
