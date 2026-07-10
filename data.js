@@ -78,6 +78,14 @@ export {
 } from './data/data-auth.js';
 // core
 export { getDataOwnerId, getKimMode, setKimMode } from './data/data-core.js';
+export {
+  saveRunningRoute,
+  loadRunningRoute,
+  RunningRouteAuthenticationError,
+  RunningRouteWriteError,
+  RunningRouteReadError,
+  RunningRouteNotFoundError,
+} from './data/data-running-route.js';
 // account
 export {
   getAccountList, saveAccount, refreshCurrentUserFromDB,
