@@ -471,7 +471,7 @@ function _installWindowBridge() {
   window.__tomatoWearWorkoutBridge = {
     save: saveWearWorkoutPayload,
     saveFromNative(raw) {
-      return enqueueWearWorkoutPayload(raw);
+      return saveWearWorkoutPayload(raw);
     },
     drain: drainWearWorkoutQueue,
   };

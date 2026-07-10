@@ -4,98 +4,216 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
+import java.io.RandomAccessFile
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
 
 class TomatoWearWorkoutBridgeTest {
     @Test
-    fun sanitizedPrefsPayloadKeepsRouteGapsWithoutArbitraryCoordinateFields() {
-        val payload = JSONObject()
-            .put("type", "running")
-            .put("source", "wear")
-            .put("dateKey", "2026-07-09")
-            .put("startedAt", 1_000L)
-            .put("endedAt", 91_000L)
-            .put("durationSec", 90L)
-            .put("distanceKm", 0.42)
-            .put("avgPaceSecPerKm", 214)
-            .put("lat", 37.123456)
-            .put("gpsDump", JSONObject().put("lat", 37.999999).put("lng", 127.999999))
-            .put(
-                "route",
-                JSONArray()
-                    .put(JSONObject().put("timestampMs", 999L).put("lat", 37.1111).put("lng", 126.1111))
-                    .put(JSONObject().put("timestampMs", 1_000L).put("lat", 37.5665).put("lng", 126.9780).put("segmentId", 0))
-                    .put(JSONObject().put("timestampMs", 11_000L).put("lat", 37.5666).put("lng", 126.9781).put("segmentId", 0))
-                    .put(
-                        JSONObject()
-                            .put("timestampMs", 81_000L)
-                            .put("lat", 37.5700)
-                            .put("lng", 126.9800)
-                            .put("segmentId", 1)
-                            .put("gapBefore", true)
-                            .put("gapReason", "time-gap"),
-                    )
-                    .put(JSONObject().put("timestampMs", 91_001L).put("lat", 37.2222).put("lng", 126.2222)),
-            )
-            .put(
-                "samples10s",
-                JSONArray().put(JSONObject().put("timestampMs", 1_000L).put("bpm", 130)),
-            )
-            .put(
-                "routeSummary",
-                JSONObject()
-                    .put("source", "wear-gps")
-                    .put("pointCount", 3)
-                    .put("segmentCount", 2)
-                    .put("gapCount", 1)
-                    .put("interrupted", true),
-            )
+    fun queuePreferencesContainContentMetadataOnly() = withFilesDir { filesDir ->
+        val payload = writePayload(filesDir, "incoming.tmp", 1_000L, 2_000L, 37.5665)
+        val raw = requireNotNull(enqueue(filesDir, "[]", payload))
+        val entry = JSONArray(raw).getJSONObject(0)
 
-        val sanitized = JSONObject(TomatoWearWorkoutBridge.sanitizePayloadForPrefsForTest(payload.toString()))
-
-        assertFalse(sanitized.has("lat"))
-        assertFalse(sanitized.has("gpsDump"))
-        assertEquals(0, sanitized.getJSONArray("samples10s").length())
-        val route = sanitized.getJSONArray("route")
-        assertEquals(3, route.length())
-        assertEquals(1, route.getJSONObject(2).getInt("segmentId"))
-        assertTrue(route.getJSONObject(2).getBoolean("gapBefore"))
-        assertEquals("time-gap", route.getJSONObject(2).getString("gapReason"))
-
-        val summary = sanitized.getJSONObject("routeSummary")
-        assertEquals(3, summary.getInt("pointCount"))
-        assertEquals(2, summary.getInt("segmentCount"))
-        assertEquals(1, summary.getInt("gapCount"))
-        assertTrue(summary.getBoolean("interrupted"))
-        assertEquals(false, summary.getBoolean("redacted"))
+        assertEquals(
+            setOf("id", "fileName", "queuedAt", "byteLength", "sha256"),
+            entry.keys().asSequence().toSet(),
+        )
+        assertEquals(payload.id, entry.getString("id"))
+        assertEquals("${payload.id}.json", entry.getString("fileName"))
+        assertEquals(payload.bytes.size.toLong(), entry.getLong("byteLength"))
+        assertEquals(payload.sha256, entry.getString("sha256"))
+        assertFalse(raw.contains("payload"))
+        assertFalse(raw.contains("route"))
+        assertFalse(raw.contains("37.5665"))
+        println("WEAR_QUEUE_QA metadataKeys=${entry.keys().asSequence().toSet().sorted()} payloadInPrefs=false")
     }
 
     @Test
-    fun sanitizedPrefsPayloadDropsRouteWhenTimeWindowIsInvalid() {
-        val route = JSONArray()
-            .put(JSONObject().put("timestampMs", 2_000L).put("lat", 37.5665).put("lng", 126.9780))
+    fun legacyPayloadJsonIsPurgedInsteadOfPersisted() = withFilesDir { filesDir ->
+        val legacy = JSONArray().put(
+            JSONObject()
+                .put("id", "legacy")
+                .put("queuedAt", 1L)
+                .put("payload", JSONObject().put("route", JSONArray().put(JSONObject().put("lat", 37.5665)))),
+        ).toString()
 
-        val missingWindow = JSONObject()
+        assertEquals("[]", TomatoWearWorkoutFileQueue.reconcileForTest(filesDir, legacy))
+    }
+
+    @Test
+    fun payloadResolutionStaysInsideCanonicalAppPrivateDirectory() = withFilesDir { filesDir ->
+        val directory = payloadDirectory(filesDir).canonicalFile
+        val expected = File(directory, "transfer.json").canonicalFile
+
+        assertEquals(expected, TomatoWearWorkoutFileQueue.resolveForTest(filesDir, "transfer.json"))
+        assertNull(TomatoWearWorkoutFileQueue.resolveForTest(filesDir, "../escape.json"))
+        assertNull(TomatoWearWorkoutFileQueue.resolveForTest(filesDir, expected.absolutePath))
+    }
+
+    @Test
+    fun hashAndLengthMismatchLeaveIncomingFileUnqueued() = withFilesDir { filesDir ->
+        val payload = writePayload(filesDir, "mismatch.tmp", 3_000L, 4_000L, 37.1)
+
+        assertNull(
+            TomatoWearWorkoutFileQueue.enqueueForTest(
+                filesDir, "[]", payload.id, payload.file, payload.bytes.size + 1L, payload.sha256,
+            ),
+        )
+        assertTrue(payload.file.exists())
+        assertNull(
+            TomatoWearWorkoutFileQueue.enqueueForTest(
+                filesDir, "[]", payload.id, payload.file, payload.bytes.size.toLong(), "0".repeat(64),
+            ),
+        )
+        assertTrue(payload.file.exists())
+    }
+
+    @Test
+    fun duplicateTransferEventKeepsOneFileAndMetadataEntry() = withFilesDir { filesDir ->
+        val first = writePayload(filesDir, "first.tmp", 5_000L, 6_000L, 37.2)
+        val initial = requireNotNull(enqueue(filesDir, "[]", first))
+        val durable = requireNotNull(TomatoWearWorkoutFileQueue.resolveForTest(filesDir, "${first.id}.json"))
+        val duplicate = writePayload(filesDir, "duplicate.tmp", 5_000L, 6_000L, 37.2)
+
+        val deduped = requireNotNull(enqueue(filesDir, initial, duplicate))
+
+        assertEquals(1, JSONArray(deduped).length())
+        assertEquals(initial, deduped)
+        assertTrue(durable.exists())
+        assertFalse(duplicate.file.exists())
+    }
+
+    @Test
+    fun saturatedQueueRejectsNewPayloadWithoutEvictingExistingFiles() = withFilesDir { filesDir ->
+        var queue = "[]"
+        val accepted = mutableListOf<PayloadFixture>()
+        repeat(TomatoWearWorkoutFileQueue.maxQueueSizeForTest()) { index ->
+            val payload = writePayload(
+                filesDir,
+                "incoming-$index.tmp",
+                10_000L + index * 2_000L,
+                11_000L + index * 2_000L,
+                37.0 + index,
+            )
+            queue = requireNotNull(enqueue(filesDir, queue, payload))
+            accepted += payload
+        }
+        val overflow = writePayload(filesDir, "overflow.tmp", 90_000L, 91_000L, 38.0)
+
+        assertNull(enqueue(filesDir, queue, overflow))
+        assertEquals(TomatoWearWorkoutFileQueue.maxQueueSizeForTest(), JSONArray(queue).length())
+        accepted.forEach { payload ->
+            assertTrue(requireNotNull(TomatoWearWorkoutFileQueue.resolveForTest(filesDir, "${payload.id}.json")).exists())
+        }
+        assertTrue(overflow.file.exists())
+        println("WEAR_QUEUE_QA queueCount=${JSONArray(queue).length()} saturationPreservedExisting=true")
+    }
+
+    @Test
+    fun durableOrphanFileIsRecoveredIntoMetadataOnRestart() = withFilesDir { filesDir ->
+        val payload = writePayload(filesDir, "orphan.tmp", 100_000L, 101_000L, 37.4)
+        val orphan = File(payloadDirectory(filesDir), "${payload.id}.json")
+        assertTrue(payload.file.renameTo(orphan))
+
+        val reconciled = TomatoWearWorkoutFileQueue.reconcileForTest(filesDir, "[]")
+
+        assertEquals(1, JSONArray(reconciled).length())
+        assertEquals(payload.id, JSONArray(reconciled).getJSONObject(0).getString("id"))
+        assertTrue(orphan.exists())
+    }
+
+    @Test
+    fun oversizedCorruptAndMissingPayloadsAreRejected() = withFilesDir { filesDir ->
+        val oversized = File(payloadDirectory(filesDir), "oversized.tmp")
+        RandomAccessFile(oversized, "rw").use { it.setLength(TomatoWearWorkoutFileQueue.maxPayloadBytes() + 1L) }
+        val zeros = "0".repeat(64)
+        assertNull(TomatoWearWorkoutFileQueue.enqueueForTest(filesDir, "[]", "1-2-$zeros", oversized, oversized.length(), zeros))
+
+        val corrupt = File(payloadDirectory(filesDir), "corrupt.tmp").apply { writeText("not-json") }
+        val corruptSha = TomatoWearWorkoutFileQueue.sha256(corrupt.readBytes())
+        assertNull(TomatoWearWorkoutFileQueue.enqueueForTest(filesDir, "[]", "1-2-$corruptSha", corrupt, corrupt.length(), corruptSha))
+
+        val missingEntry = JSONArray().put(
+            JSONObject()
+                .put("id", "1-2-$zeros")
+                .put("fileName", "1-2-$zeros.json")
+                .put("queuedAt", 3L)
+                .put("byteLength", 123L)
+                .put("sha256", zeros),
+        ).toString()
+        assertNull(TomatoWearWorkoutFileQueue.readForTest(filesDir, missingEntry))
+    }
+
+    @Test
+    fun dispatchAndRejectionRetainFileUntilExplicitAsyncAccept() = withFilesDir { filesDir ->
+        val payload = writePayload(filesDir, "async.tmp", 200_000L, 201_000L, 37.5)
+        val queue = requireNotNull(enqueue(filesDir, "[]", payload))
+        val durable = requireNotNull(TomatoWearWorkoutFileQueue.resolveForTest(filesDir, "${payload.id}.json"))
+        val script = TomatoWearWorkoutBridge.buildJavascriptForTest(payload.id, durable.readText())
+
+        assertTrue(script.contains("Promise.resolve"))
+        assertTrue(script.contains("nativeAck.accept"))
+        assertEquals(queue, TomatoWearWorkoutFileQueue.acknowledgeForTest(filesDir, queue, payload.id, false))
+        assertTrue("a rejected save must retain the payload", durable.exists())
+        assertEquals(queue, TomatoWearWorkoutFileQueue.reconcileForTest(filesDir, queue))
+        assertTrue("restart reconciliation must retain the payload", durable.exists())
+
+        assertEquals("[]", TomatoWearWorkoutFileQueue.acknowledgeForTest(filesDir, queue, payload.id, true))
+        assertFalse("only explicit async accept may delete the payload", durable.exists())
+        println("WEAR_QUEUE_QA lifecycle=queued,rejected-retained,recovered-retained,accepted-deleted")
+    }
+
+    private fun enqueue(filesDir: File, queue: String, payload: PayloadFixture): String? {
+        return TomatoWearWorkoutFileQueue.enqueueForTest(
+            filesDir,
+            queue,
+            payload.id,
+            payload.file,
+            payload.bytes.size.toLong(),
+            payload.sha256,
+        )
+    }
+
+    private fun writePayload(
+        filesDir: File,
+        name: String,
+        startedAt: Long,
+        endedAt: Long,
+        latitude: Double,
+    ): PayloadFixture {
+        val bytes = JSONObject()
             .put("type", "running")
-            .put("source", "wear")
-            .put("dateKey", "2026-07-09")
-            .put("durationSec", 60L)
-            .put("distanceKm", 0.1)
-            .put("route", route)
+            .put("startedAt", startedAt)
+            .put("endedAt", endedAt)
+            .put("route", JSONArray().put(JSONObject().put("lat", latitude).put("lng", 126.978)))
+            .toString()
+            .toByteArray(StandardCharsets.UTF_8)
+        val sha256 = TomatoWearWorkoutFileQueue.sha256(bytes)
+        val file = File(payloadDirectory(filesDir), name).apply { writeBytes(bytes) }
+        return PayloadFixture(file, bytes, sha256, "$startedAt-$endedAt-$sha256")
+    }
 
-        val equalWindow = JSONObject(missingWindow.toString())
-            .put("startedAt", 2_000L)
-            .put("endedAt", 2_000L)
+    private fun payloadDirectory(filesDir: File): File =
+        File(filesDir, TomatoWearWorkoutFileQueue.PAYLOAD_DIRECTORY).apply { mkdirs() }
 
-        val invertedWindow = JSONObject(missingWindow.toString())
-            .put("startedAt", 3_000L)
-            .put("endedAt", 2_000L)
-
-        listOf(missingWindow, equalWindow, invertedWindow).forEach { payload ->
-            val sanitized = JSONObject(TomatoWearWorkoutBridge.sanitizePayloadForPrefsForTest(payload.toString()))
-            assertEquals(0, sanitized.getJSONArray("route").length())
-            assertEquals(0, sanitized.getJSONObject("routeSummary").getInt("pointCount"))
+    private inline fun withFilesDir(block: (File) -> Unit) {
+        val filesDir = Files.createTempDirectory("wear-bridge-test").toFile()
+        try {
+            block(filesDir)
+        } finally {
+            filesDir.deleteRecursively()
         }
     }
+
+    private data class PayloadFixture(
+        val file: File,
+        val bytes: ByteArray,
+        val sha256: String,
+        val id: String,
+    )
 }
