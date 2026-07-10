@@ -9,6 +9,16 @@ async function read(path) {
   return readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 }
 
+async function writeWearBridgeModule(tmp) {
+  const modulePath = join(tmp, 'wear-bridge-under-test.mjs');
+  await Promise.all([
+    writeFile(modulePath, await read('workout/wear-bridge.js'), 'utf8'),
+    writeFile(join(tmp, 'running-route-store.js'), await read('workout/running-route-store.js'), 'utf8'),
+    writeFile(join(tmp, 'package.json'), '{"type":"module"}\n', 'utf8'),
+  ]);
+  return modulePath;
+}
+
 test('wear run uses GPS location data and sends route result in final payload', async () => {
   const manifest = await read('android/wear/src/main/AndroidManifest.xml');
   const mainActivity = await read('android/wear/src/main/java/com/lifestreak/wear/MainActivity.kt');
@@ -65,12 +75,11 @@ test('wear run uses GPS location data and sends route result in final payload', 
 test('web wear bridge saves GPS route into running data only', async () => {
   const tmp = await mkdtemp(join(tmpdir(), 'wear-gps-bridge-'));
   try {
-    const modulePath = join(tmp, 'wear-bridge-under-test.mjs');
+    const modulePath = await writeWearBridgeModule(tmp);
     await writeFile(join(tmp, 'state.js'), 'export const S = globalThis.__wearGpsState;\n', 'utf8');
     await writeFile(join(tmp, 'load.js'), 'export const loadWorkoutDate = globalThis.__wearGpsLoad;\n', 'utf8');
     await writeFile(join(tmp, 'save.js'), 'export const saveWorkoutDay = globalThis.__wearGpsSave;\n', 'utf8');
     await writeFile(join(tmp, 'exercises.js'), 'export const wtFocusWorkoutEntryCard = globalThis.__wearGpsFocus;\n', 'utf8');
-    await writeFile(modulePath, await read('workout/wear-bridge.js'), 'utf8');
 
     const saved = [];
     globalThis.window = {

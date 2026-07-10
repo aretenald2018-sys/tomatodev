@@ -11,6 +11,43 @@ async function read(path) {
   return readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 }
 
+async function writeWearBridgeModule(tmp) {
+  const modulePath = join(tmp, 'wear-bridge-under-test.mjs');
+  await Promise.all([
+    writeFile(modulePath, await read('workout/wear-bridge.js'), 'utf8'),
+    writeFile(join(tmp, 'running-route-store.js'), await read('workout/running-route-store.js'), 'utf8'),
+    writeFile(join(tmp, 'package.json'), '{"type":"module"}\n', 'utf8'),
+  ]);
+  return modulePath;
+}
+
+function wearPayload(route = [], overrides = {}) {
+  const startedAt = 1_783_400_000_000;
+  return {
+    type: 'running',
+    source: 'wear',
+    dateKey: '2026-07-07',
+    startedAt,
+    endedAt: startedAt + Math.max(60_000, (route.length - 1) * 1_000),
+    durationSec: Math.max(60, route.length - 1),
+    distanceKm: 3.21,
+    samples10s: [],
+    route,
+    ...overrides,
+  };
+}
+
+function curvedRoute(count) {
+  const startedAt = 1_783_400_000_000;
+  return Array.from({ length: count }, (_, index) => ({
+    timestampMs: startedAt + index * 1_000,
+    lat: 37.5 + index / 10_000_000,
+    lng: 127.05 + Math.sin(index / 23) / 1_000 + index / 20_000_000,
+    altitude: 20 + Math.cos(index / 31),
+    bearing: (index * 7.25) % 360,
+  }));
+}
+
 test('wear workout bridge uses Asset transfer and app-private file retry for full routes', async () => {
   const appGradle = await read('android/app/build.gradle');
   const wearGradle = await read('android/wear/build.gradle');
@@ -83,15 +120,202 @@ test('wear workout bridge uses Asset transfer and app-private file retry for ful
   assert.match(wearLayout, /@\+id\/runSummarySyncStatus/);
 });
 
+test('web Wear boundary normalizes and saves all 2,162 curved route points without changing order or values', async () => {
+  const tmp = await mkdtemp(join(tmpdir(), 'wear-bridge-lossless-'));
+  try {
+    const modulePath = await writeWearBridgeModule(tmp);
+    const route = curvedRoute(2_162);
+    const payload = wearPayload(route);
+    const saved = [];
+    const state = { workout: { exercises: [], runData: {} }, diet: {} };
+    globalThis.window = { showToast() {} };
+    globalThis.document = { dispatchEvent() {} };
+    globalThis.CustomEvent = class CustomEvent {};
+
+    const bridge = await import(pathToFileURL(modulePath).href);
+    bridge.configureWearWorkoutBridgeForTest({
+      state,
+      loadWorkoutDate: async () => {},
+      saveWorkoutDay: async () => {
+        saved.push(structuredClone(state.workout.runData.route));
+        return true;
+      },
+      getDay() { return { workoutSessions: [] }; },
+    });
+
+    const normalized = bridge.normalizeWearWorkoutPayload(payload);
+    assert.equal(normalized.route.length, 2_162);
+    normalized.route.forEach((point, index) => {
+      assert.equal(point.ts, route[index].timestampMs, `normalized timestamp at index ${index}`);
+      assert.equal(point.lat, route[index].lat, `normalized latitude at index ${index}`);
+      assert.equal(point.lng, route[index].lng, `normalized longitude at index ${index}`);
+    });
+
+    const result = await globalThis.window.__tomatoWearWorkoutBridge.saveFromNative(payload);
+    assert.equal(result.ok, true);
+    assert.equal(saved.length, 1);
+    assert.equal(saved[0].length, 2_162);
+    saved[0].forEach((point, index) => {
+      assert.equal(point.ts, route[index].timestampMs, `saved timestamp at index ${index}`);
+      assert.equal(point.lat, route[index].lat, `saved latitude at index ${index}`);
+      assert.equal(point.lng, route[index].lng, `saved longitude at index ${index}`);
+    });
+  } finally {
+    delete globalThis.window;
+    delete globalThis.document;
+    delete globalThis.CustomEvent;
+    await rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('web Wear boundary rejects 25,001 route points instead of truncating', async () => {
+  const tmp = await mkdtemp(join(tmpdir(), 'wear-bridge-overflow-'));
+  try {
+    const modulePath = await writeWearBridgeModule(tmp);
+    const bridge = await import(pathToFileURL(modulePath).href);
+    const route = curvedRoute(25_001);
+
+    assert.throws(
+      () => bridge.normalizeWearWorkoutPayload(wearPayload(route)),
+      /25,?001|25,?000|overflow|limit/i,
+    );
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('web Wear boundary rejects a malformed middle route point by index without saving a partial route', async () => {
+  const tmp = await mkdtemp(join(tmpdir(), 'wear-bridge-invalid-'));
+  try {
+    const modulePath = await writeWearBridgeModule(tmp);
+    const route = curvedRoute(9);
+    route[4] = { ...route[4], lat: Number.NaN };
+    let saveCalls = 0;
+    const state = { workout: { exercises: [], runData: {} }, diet: {} };
+    const bridge = await import(pathToFileURL(modulePath).href);
+    bridge.configureWearWorkoutBridgeForTest({
+      state,
+      loadWorkoutDate: async () => {},
+      saveWorkoutDay: async () => {
+        saveCalls += 1;
+        return true;
+      },
+      getDay() { return { workoutSessions: [] }; },
+    });
+
+    await assert.rejects(
+      () => bridge.saveWearWorkoutPayload(wearPayload(route)),
+      /index 4.*latitude|latitude.*index 4/i,
+    );
+    assert.equal(saveCalls, 0);
+    assert.deepEqual(state.workout.runData, {});
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('web Wear boundary keeps distinct equal-timestamp route points in input order', async () => {
+  const tmp = await mkdtemp(join(tmpdir(), 'wear-bridge-equal-time-'));
+  try {
+    const modulePath = await writeWearBridgeModule(tmp);
+    const bridge = await import(pathToFileURL(modulePath).href);
+    const route = curvedRoute(4);
+    route[2].timestampMs = route[1].timestampMs;
+
+    const normalized = bridge.normalizeWearWorkoutPayload(wearPayload(route));
+    assert.deepEqual(
+      normalized.route.map(point => [point.lat, point.lng, point.ts]),
+      route.map(point => [point.lat, point.lng, point.timestampMs]),
+    );
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('web Wear boundary rejects decreasing route timestamps instead of sorting', async () => {
+  const tmp = await mkdtemp(join(tmpdir(), 'wear-bridge-time-order-'));
+  try {
+    const modulePath = await writeWearBridgeModule(tmp);
+    const bridge = await import(pathToFileURL(modulePath).href);
+    const route = curvedRoute(3);
+    route[2].timestampMs = route[1].timestampMs - 1;
+
+    assert.throws(
+      () => bridge.normalizeWearWorkoutPayload(wearPayload(route)),
+      /index 2.*timestamp|timestamp.*non-decreasing|chronological/i,
+    );
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('web Wear boundary enforces the 2,161-sample heart-rate limit', async () => {
+  const tmp = await mkdtemp(join(tmpdir(), 'wear-bridge-heart-rate-'));
+  try {
+    const modulePath = await writeWearBridgeModule(tmp);
+    const bridge = await import(pathToFileURL(modulePath).href);
+    const startedAt = 1_783_400_000_000;
+    const validSamples = Array.from({ length: 2_161 }, (_, index) => ({
+      timestampMs: startedAt + index * 10_000,
+      bpm: 80 + (index % 40),
+    }));
+    const payload = wearPayload([], {
+      startedAt,
+      endedAt: startedAt + 2_161 * 10_000,
+      durationSec: 6 * 60 * 60,
+      samples10s: validSamples,
+    });
+
+    assert.equal(bridge.normalizeWearWorkoutPayload(payload).samples10s.length, 2_161);
+    assert.throws(
+      () => bridge.normalizeWearWorkoutPayload({
+        ...payload,
+        samples10s: [...validSamples, { timestampMs: payload.endedAt, bpm: 120 }],
+      }),
+      /2,?161|heart.?rate.*limit|sample.*limit|overflow/i,
+    );
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('web Wear boundary rejects an invalid heart-rate sample by index', async () => {
+  const tmp = await mkdtemp(join(tmpdir(), 'wear-bridge-heart-rate-invalid-'));
+  try {
+    const modulePath = await writeWearBridgeModule(tmp);
+    const bridge = await import(pathToFileURL(modulePath).href);
+    const startedAt = 1_783_400_000_000;
+    const validSamples = Array.from({ length: 2_161 }, (_, index) => ({
+      timestampMs: startedAt + index * 10_000,
+      bpm: 80 + (index % 40),
+    }));
+    const payload = wearPayload([], {
+      startedAt,
+      endedAt: startedAt + 2_161 * 10_000,
+      durationSec: 6 * 60 * 60,
+      samples10s: validSamples,
+    });
+
+    assert.throws(
+      () => bridge.normalizeWearWorkoutPayload({
+        ...payload,
+        samples10s: validSamples.map((sample, index) => index === 1_080 ? { ...sample, bpm: 0 } : sample),
+      }),
+      /index 1080.*bpm|bpm.*index 1080|heart.?rate.*1080/i,
+    );
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
+});
+
 test('web bridge saves a valid wear run into running-only session storage', async () => {
     const tmp = await mkdtemp(join(tmpdir(), 'wear-bridge-'));
     try {
-      const modulePath = join(tmp, 'wear-bridge-under-test.mjs');
+      const modulePath = await writeWearBridgeModule(tmp);
       await writeFile(join(tmp, 'state.js'), 'export const S = globalThis.__wearBridgeTestState;\n', 'utf8');
       await writeFile(join(tmp, 'load.js'), 'export const loadWorkoutDate = globalThis.__wearBridgeTestLoad;\n', 'utf8');
       await writeFile(join(tmp, 'save.js'), 'export const saveWorkoutDay = globalThis.__wearBridgeTestSave;\n', 'utf8');
       await writeFile(join(tmp, 'exercises.js'), 'export const wtFocusWorkoutEntryCard = globalThis.__wearBridgeTestFocus;\n', 'utf8');
-      await writeFile(modulePath, await read('workout/wear-bridge.js'), 'utf8');
 
     const saved = [];
     const focused = [];
@@ -230,8 +454,7 @@ test('web bridge saves a valid wear run into running-only session storage', asyn
 test('web bridge preserves and infers wear route gap metadata for map segments', async () => {
   const tmp = await mkdtemp(join(tmpdir(), 'wear-bridge-gap-'));
   try {
-    const modulePath = join(tmp, 'wear-bridge-under-test.mjs');
-    await writeFile(modulePath, await read('workout/wear-bridge.js'), 'utf8');
+    const modulePath = await writeWearBridgeModule(tmp);
 
     const bridgeModule = await import(pathToFileURL(modulePath).href);
     const basePayload = {
@@ -317,12 +540,11 @@ test('web bridge redacts precise GPS route from persistent queue but drains memo
   const warnings = [];
   console.warn = (...args) => warnings.push(args.map(String).join(' '));
   try {
-    const modulePath = join(tmp, 'wear-bridge-under-test.mjs');
+    const modulePath = await writeWearBridgeModule(tmp);
     await writeFile(join(tmp, 'state.js'), 'export const S = globalThis.__wearBridgePrivacyState;\n', 'utf8');
     await writeFile(join(tmp, 'load.js'), 'export const loadWorkoutDate = globalThis.__wearBridgePrivacyLoad;\n', 'utf8');
     await writeFile(join(tmp, 'save.js'), 'export const saveWorkoutDay = globalThis.__wearBridgePrivacySave;\n', 'utf8');
     await writeFile(join(tmp, 'exercises.js'), 'export const wtFocusWorkoutEntryCard = globalThis.__wearBridgePrivacyFocus;\n', 'utf8');
-    await writeFile(modulePath, await read('workout/wear-bridge.js'), 'utf8');
 
     const store = new Map();
     const saved = [];
@@ -437,12 +659,11 @@ test('web bridge redacts precise GPS route from persistent queue but drains memo
 test('web bridge stacks distinct wear runs after the running tab session index', async () => {
   const tmp = await mkdtemp(join(tmpdir(), 'wear-bridge-stack-'));
   try {
-    const modulePath = join(tmp, 'wear-bridge-under-test.mjs');
+    const modulePath = await writeWearBridgeModule(tmp);
     await writeFile(join(tmp, 'state.js'), 'export const S = globalThis.__wearBridgeStackState;\n', 'utf8');
     await writeFile(join(tmp, 'load.js'), 'export const loadWorkoutDate = globalThis.__wearBridgeStackLoad;\n', 'utf8');
     await writeFile(join(tmp, 'save.js'), 'export const saveWorkoutDay = globalThis.__wearBridgeStackSave;\n', 'utf8');
     await writeFile(join(tmp, 'exercises.js'), 'export const wtFocusWorkoutEntryCard = globalThis.__wearBridgeStackFocus;\n', 'utf8');
-    await writeFile(modulePath, await read('workout/wear-bridge.js'), 'utf8');
 
     const saved = [];
     const existingDay = {

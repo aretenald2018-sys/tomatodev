@@ -1,7 +1,13 @@
+import {
+  MAX_RUNNING_ROUTE_POINTS,
+  normalizeRunningRoutePoints,
+} from './running-route-store.js';
+
 const WEAR_QUEUE_KEY = 'tomatofarm_wear_workout_queue_v1';
 const RUNNING_WORKOUT_SESSION_INDEX = 2;
 const RUNNING_SESSION_ID = 'running-track';
 const WEAR_ROUTE_GAP_MS = 45_000;
+const MAX_WEAR_HEART_RATE_SAMPLES = 2_161;
 
 let deps = {
   state: null,
@@ -34,13 +40,8 @@ function _bool(value) {
 
 function _segmentId(value, fallback = null) {
   if (value == null || value === '') return fallback;
-  const n = Math.floor(_num(value, NaN));
-  return Number.isFinite(n) ? Math.max(0, Math.min(2160, n)) : fallback;
-}
-
-function _gapReason(value, fallback = 'time-gap') {
-  const raw = String(value || '').trim().toLowerCase();
-  return /^[a-z0-9-]{1,40}$/.test(raw) ? raw : fallback;
+  const n = Number(value);
+  return Number.isSafeInteger(n) && n >= 0 ? n : fallback;
 }
 
 function _dateParts(dateKey) {
@@ -66,73 +67,67 @@ function _boundedInt(value, { min = 0, max = Number.MAX_SAFE_INTEGER, nullable =
   return Math.max(min, Math.min(max, n));
 }
 
-function _normalizeSamples(samples) {
-  return (Array.isArray(samples) ? samples : [])
-    .slice(0, 2161)
-    .map(sample => ({
-      timestampMs: _boundedInt(sample?.timestampMs, { min: 0 }),
-      bpm: _boundedInt(sample?.bpm, { min: 30, max: 240 }),
-    }))
-    .filter(sample => sample.timestampMs > 0 && sample.bpm >= 30 && sample.bpm <= 240)
-    .sort((a, b) => a.timestampMs - b.timestampMs);
+function _normalizeSamples(samples, startedAt, endedAt) {
+  const input = samples == null ? [] : samples;
+  if (!Array.isArray(input)) {
+    throw new Error('Wear heart-rate samples must be an array');
+  }
+  if (input.length > MAX_WEAR_HEART_RATE_SAMPLES) {
+    throw new Error(`Wear heart-rate sample count ${input.length} exceeds the ${MAX_WEAR_HEART_RATE_SAMPLES}-sample limit`);
+  }
+
+  return input.map((sample, index) => {
+    if (!sample || typeof sample !== 'object' || Array.isArray(sample)) {
+      throw new Error(`Invalid Wear heart-rate sample at index ${index}: sample must be an object`);
+    }
+    if (!Number.isSafeInteger(sample.timestampMs)
+      || sample.timestampMs < startedAt
+      || sample.timestampMs > endedAt) {
+      throw new Error(`Invalid Wear heart-rate sample at index ${index}: timestampMs must be an integer within the workout interval`);
+    }
+    if (!Number.isSafeInteger(sample.bpm) || sample.bpm < 30 || sample.bpm > 240) {
+      throw new Error(`Invalid Wear heart-rate sample at index ${index}: bpm must be an integer between 30 and 240`);
+    }
+    if (index > 0 && sample.timestampMs < input[index - 1].timestampMs) {
+      throw new Error(`Invalid Wear heart-rate sample at index ${index}: timestamps must be non-decreasing`);
+    }
+    return { timestampMs: sample.timestampMs, bpm: sample.bpm };
+  });
 }
 
 function _normalizeRoutePoints(route, startedAt, endedAt) {
-  const points = (Array.isArray(route) ? route : [])
-    .slice(0, 2161)
-    .map(point => {
-      const normalized = {
-        timestampMs: _boundedInt(point?.timestampMs, { min: startedAt, max: endedAt }),
-        lat: _round(_num(point?.lat, NaN), 6),
-        lng: _round(_num(point?.lng, NaN), 6),
-        altitude: point?.altitude == null ? null : _round(_num(point.altitude, NaN), 1),
-        bearing: point?.bearing == null ? null : _round(_num(point.bearing, NaN), 1),
-        _rawSegmentId: _segmentId(point?.segmentId, null),
-        _rawGapBefore: _bool(point?.gapBefore),
-        _rawGapReason: point?.gapReason,
-      };
-      return normalized;
-    })
-    .filter(point => (
-      point.timestampMs >= startedAt &&
-      point.timestampMs <= endedAt &&
-      Number.isFinite(point.lat) &&
-      Number.isFinite(point.lng) &&
-      point.lat >= -90 &&
-      point.lat <= 90 &&
-      point.lng >= -180 &&
-      point.lng <= 180 &&
-      (point.altitude == null || Number.isFinite(point.altitude)) &&
-      (point.bearing == null || Number.isFinite(point.bearing))
-    ))
-    .sort((a, b) => a.timestampMs - b.timestampMs);
+  const input = route == null ? [] : route;
+  if (Array.isArray(input) && input.length > MAX_RUNNING_ROUTE_POINTS) {
+    throw new Error(`Wear route point count ${input.length} exceeds the ${MAX_RUNNING_ROUTE_POINTS.toLocaleString('en-US')}-point limit`);
+  }
+  const points = normalizeRunningRoutePoints(input);
+  points.forEach((point, index) => {
+    if (point.ts < startedAt || point.ts > endedAt) {
+      throw new Error(`Invalid running route point at index ${index}: timestamp must be within the workout interval`);
+    }
+  });
 
-  return points.map((point, index) => {
-    const previous = index > 0 ? points[index - 1] : null;
-    const previousSegmentId = previous?._segmentId ?? 0;
-    const explicitSegmentId = point._rawSegmentId;
+  const normalizedRoute = [];
+  points.forEach((point, index) => {
+    const previous = index > 0 ? normalizedRoute[index - 1] : null;
+    const previousSegmentId = previous?.segmentId ?? 0;
+    const explicitSegmentId = point.segmentId;
     const segmentChanged = previous != null && explicitSegmentId != null && explicitSegmentId !== previousSegmentId;
-    const timeGap = previous != null && point.timestampMs - previous.timestampMs > WEAR_ROUTE_GAP_MS;
-    const gapBefore = previous != null && (point._rawGapBefore || segmentChanged || timeGap);
+    const timeGap = previous != null && point.ts - previous.ts > WEAR_ROUTE_GAP_MS;
+    const gapBefore = previous != null && (point.gapBefore === true || segmentChanged || timeGap);
     const segmentId = explicitSegmentId != null
       ? (gapBefore ? Math.max(explicitSegmentId, segmentChanged ? explicitSegmentId : previousSegmentId + 1) : explicitSegmentId)
       : (gapBefore ? previousSegmentId + 1 : previousSegmentId);
-    point._segmentId = segmentId;
-
-    const normalized = {
-      timestampMs: point.timestampMs,
-      lat: point.lat,
-      lng: point.lng,
-      altitude: point.altitude,
-      bearing: point.bearing,
-      segmentId,
-    };
+    const normalized = { ...point, segmentId };
+    delete normalized.gapBefore;
+    delete normalized.gapReason;
     if (gapBefore) {
       normalized.gapBefore = true;
-      normalized.gapReason = _gapReason(point._rawGapReason, timeGap ? 'time-gap' : 'watch-gap');
+      normalized.gapReason = point.gapReason || (timeGap ? 'time-gap' : 'watch-gap');
     }
-    return normalized;
+    normalizedRoute.push(normalized);
   });
+  return normalizedRoute;
 }
 
 function _routeGapSummary(route, summary = {}) {
@@ -214,7 +209,7 @@ export function normalizeWearWorkoutPayload(raw) {
     avgPaceSecPerKm,
     avgHeartRateBpm,
     maxHeartRateBpm,
-    samples10s: _normalizeSamples(payload.samples10s),
+    samples10s: _normalizeSamples(payload.samples10s, startedAt, endedAt),
     route,
     routeSummary,
   };
