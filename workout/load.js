@@ -141,6 +141,7 @@ export function loadWorkoutDate(y, m, d) {
     startedAt:   workoutSource.runStartedAt || null,
     endedAt:     workoutSource.runEndedAt || null,
     route:       Array.isArray(workoutSource.runRoute) ? workoutSource.runRoute : [],
+    routeRef:    workoutSource.runRouteRef || null,
     routeSummary: workoutSource.runRouteSummary || null,
     placeSummary: workoutSource.runPlaceSummary || null,
     avgPaceSecPerKm: Number(workoutSource.runAvgPaceSecPerKm) || 0,

@@ -55,7 +55,16 @@ test('upsertWorkoutSession preserves running GPS route metadata', () => {
     runDurationMin: 1,
     runSource: 'gps',
     runRoute: route,
-    runRouteSummary: { source: 'gps', pointCount: 2, distanceKm: 0.2 },
+    runRouteRef: {
+      version: 1,
+      routeId: 'v1-1000-' + 'a'.repeat(64),
+      revision: 'a'.repeat(64),
+      pointCount: 620,
+      chunkCount: 3,
+      firstTimestampMs: 1000,
+      lastTimestampMs: 620000,
+    },
+    runRouteSummary: { source: 'gps', pointCount: 620, distanceKm: 0.2 },
     runPlaceSummary: { status: 'pending_provider', label: '장소 확인 대기' },
     runGpsAccuracySummary: { avgAccuracyM: 9 },
   }, 0, { now: 1 });
@@ -63,9 +72,25 @@ test('upsertWorkoutSession preserves running GPS route metadata', () => {
   assert.equal(hasWorkoutSessionData(out.workoutSessions[0]), true);
   assert.equal(out.aggregate.runSource, 'gps');
   assert.deepEqual(out.aggregate.runRoute, route);
-  assert.equal(out.aggregate.runRouteSummary.pointCount, 2);
+  assert.equal(out.aggregate.runRouteRef.pointCount, 620);
+  assert.equal(out.workoutSessions[0].runRouteRef.pointCount, 620);
+  assert.equal(out.aggregate.runRouteSummary.pointCount, 620);
   assert.equal(out.aggregate.runPlaceSummary.label, '장소 확인 대기');
   assert.equal(out.aggregate.runGpsAccuracySummary.avgAccuracyM, 9);
+});
+
+test('legacy inline route without ref remains active and ref-only preview records count as data', () => {
+  const legacy = getWorkoutSessions({
+    runRoute: [{ lat: 37.5, lng: 127, ts: 1000 }],
+    runRouteSummary: { pointCount: 1 },
+  });
+  assert.equal(legacy[0].runRouteRef, null);
+  assert.equal(hasWorkoutSessionData(legacy[0]), true);
+
+  assert.equal(hasWorkoutSessionData({
+    runRoute: [],
+    runRouteRef: { routeId: 'route-1', pointCount: 620 },
+  }), true);
 });
 
 test('deleteWorkoutSession removes selected session and rebuilds aggregate', () => {

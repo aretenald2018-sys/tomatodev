@@ -11,7 +11,7 @@
 
 import { S }                        from './state.js';
 import { showCenterToast }          from '../home/utils.js';
-import { saveDay, dateKey, isFuture, trackEvent, getExList, getDay } from '../data.js';
+import { saveDay, saveRunningRoute, dateKey, isFuture, trackEvent, getExList, getDay } from '../data.js';
 import { WORKOUT_PAYLOAD_KEYS, DIET_PAYLOAD_KEYS } from './save-schema.js';
 import { deriveActivityFlagsFromDetails, deriveDietSuccessFromWorkout } from './cross-domain.js';
 import { MOVEMENTS } from '../config.js';
@@ -20,6 +20,8 @@ import { shouldKeepMaxDraftExercisesForSavePure } from './save-pure.js';
 import { upsertWorkoutSession } from './sessions.js';
 import { hasLifeZoneDietActivity, hasLifeZoneRunningActivity, hasLifeZoneWorkoutActivity } from '../home/life-zone-state.js';
 import { buildWorkoutSetTimeline, normalizeSetCompletedAt } from './timeline.js';
+import { assertRunningRouteReference } from '../data/running-route-storage-plan.js';
+import { buildRunningRoutePreview, normalizeRunningRoutePoints } from './running-route-store.js';
 
 // 미래 날짜 저장 가드 — 어떤 경로로든 미래 날짜 쓰기 금지 (B-3).
 function _blockIfFutureDate() {
@@ -126,7 +128,55 @@ function _buildRestBetweenSets(cleanEx) {
 // ── 운동 도메인 페이로드 ─────────────────────────────────────────
 // 식단 필드(breakfast/bFoods/bKcal/bPhoto/EstimateMeta 등)는 전부 제외 → merge 저장이
 // Firestore 의 식단 필드를 건드릴 수 없다.
-function _buildWorkoutPayload(cleanEx, isDietSuccess) {
+function _fullRoutePointCount(summary, routeRef, route) {
+  if (routeRef) return routeRef.pointCount;
+  const summaryCount = Number(summary?.pointCount);
+  if (Number.isSafeInteger(summaryCount) && summaryCount >= route.length) return summaryCount;
+  return route.length;
+}
+
+async function _prepareRunningRoutePayload() {
+  const run = S.workout.runData || {};
+  const routeInput = {
+    runRoute: Array.isArray(run.route) ? run.route : [],
+    runRouteRef: run.routeRef ?? null,
+  };
+  const sourceRoute = routeInput.runRoute;
+  const source = run.source || ((sourceRoute.length || routeInput.runRouteRef) ? 'gps' : 'manual');
+  const isGpsRecord = sourceRoute.length > 0 || (source !== 'manual' && routeInput.runRouteRef);
+  if (!isGpsRecord) {
+    run.routeRef = null;
+    return { source: 'manual', route: [], routeRef: null, routeSummary: run.routeSummary || null };
+  }
+
+  const existingRef = routeInput.runRouteRef == null
+    ? null
+    : assertRunningRouteReference(routeInput.runRouteRef);
+  const canonicalRoute = normalizeRunningRoutePoints(sourceRoute);
+  const summaryPointCount = Number(run.routeSummary?.pointCount);
+  const hasFullCapturedRoute = canonicalRoute.length > 0 && (
+    !existingRef
+    || (Number.isSafeInteger(summaryPointCount) && canonicalRoute.length === summaryPointCount)
+    || canonicalRoute.length === existingRef?.pointCount
+  );
+
+  let routeRef = existingRef;
+  if (hasFullCapturedRoute) {
+    routeRef = assertRunningRouteReference(await saveRunningRoute(canonicalRoute));
+  }
+
+  const pointCount = _fullRoutePointCount(run.routeSummary, routeRef, canonicalRoute);
+  const routeSummary = {
+    ...(run.routeSummary && typeof run.routeSummary === 'object' ? run.routeSummary : {}),
+    pointCount,
+  };
+  const route = canonicalRoute.length ? buildRunningRoutePreview(canonicalRoute) : [];
+  run.routeRef = routeRef;
+  run.routeSummary = routeSummary;
+  return { source: source === 'manual' ? 'gps' : source, route, routeRef, routeSummary };
+}
+
+function _buildWorkoutPayload(cleanEx, isDietSuccess, persistedRoute) {
   const w = S.workout;
   const workoutTimeline = buildWorkoutSetTimeline(cleanEx, w.workoutDuration);
   w.workoutTimeline = workoutTimeline;
@@ -142,11 +192,12 @@ function _buildWorkoutPayload(cleanEx, isDietSuccess) {
     runDurationMin: run.durationMin,
     runDurationSec: run.durationSec,
     runMemo:        run.memo,
-    runSource:      run.source || (Array.isArray(run.route) && run.route.length ? 'gps' : 'manual'),
+    runSource:      persistedRoute.source,
     runStartedAt:   run.startedAt || null,
     runEndedAt:     run.endedAt || null,
-    runRoute:       Array.isArray(run.route) ? run.route : [],
-    runRouteSummary: run.routeSummary || null,
+    runRoute:       persistedRoute.route,
+    runRouteRef:    persistedRoute.routeRef,
+    runRouteSummary: persistedRoute.routeSummary,
     runPlaceSummary: run.placeSummary || null,
     runAvgPaceSecPerKm: Number(run.avgPaceSecPerKm) || 0,
     runGpsAccuracySummary: run.gpsAccuracySummary || null,
@@ -470,12 +521,20 @@ export async function saveWorkoutDay(options = {}) {
   const btn = silent ? null : document.getElementById('wt-save-btn');
   if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
 
-  const payload = _attachLifeZoneWorkoutSnapshot(
-    _buildWorkoutPayloadWithSessions(ctxKey, _buildWorkoutPayload(cleanEx, isDietSuccess))
-  );
-  _assertSchemaParity('workout', payload, WORKOUT_PAYLOAD_KEYS);
   try {
-    if (!_isWorkoutDateStill(startedKey, 'before-write')) return false;
+    if (!_isWorkoutDateStill(startedKey, 'before-route-write')) {
+      if (btn) { btn.disabled = false; btn.textContent = '저장'; }
+      return false;
+    }
+    const persistedRoute = await _prepareRunningRoutePayload();
+    if (!_isWorkoutDateStill(startedKey, 'before-day-write')) {
+      if (btn) { btn.disabled = false; btn.textContent = '저장'; }
+      return false;
+    }
+    const payload = _attachLifeZoneWorkoutSnapshot(
+      _buildWorkoutPayloadWithSessions(ctxKey, _buildWorkoutPayload(cleanEx, isDietSuccess, persistedRoute))
+    );
+    _assertSchemaParity('workout', payload, WORKOUT_PAYLOAD_KEYS);
     await saveDay(ctxKey, payload, { rethrow: true, mode: 'merge' });
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = '저장'; }
