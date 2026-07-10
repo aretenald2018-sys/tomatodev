@@ -1,5 +1,29 @@
 # 다음 자동 액션
 
+## 2026-07-10 Running GPS Lossless Route Rewrite
+
+- 상태: `ready_for_review_local_verified_production_not_verified`
+- 계획: `docs/ai/features/2026-07-10-running-gps-lossless-route-rewrite.md`
+- ULW: `.omo/ulw-loop/tomatofarm-gps-fidelity-20260710/`
+- 요청: 잘못 선택한 `budgetproject`가 아니라 Tomato Farm Lite에서 모바일/갤럭시워치 GPS 전체 좌표와 거리·시간을 실제 러닝 궤적대로 저장/표시한다.
+- 진단: 모바일 240점 축소, Wear update `lastOrNull()`, GPS 10초 bucket overwrite, 2,161점 truncation, MessageClient 대용량 오용, day document inline route가 좌표 유실의 원인이다.
+- 실행 결과:
+  1. 모바일 `watchPosition` 원본 620개를 모두 보존하고, 30초에는 좌표 수집이 아니라 로컬 draft 저장만 batch 처리한다.
+  2. Wear는 update의 전체 LOCATION을 보존하고 `DataClient` Asset + SHA/length/fsync app-private file queue + save ACK로 전달한다.
+  3. 웹 Wear 경계는 2,162개를 그대로 저장하고 25,001개/malformed/decreasing route를 명시적으로 거부한다.
+  4. Firestore는 immutable content-addressed route ref와 250점/900KB chunk를 한 batch로 저장하며 day/session에는 240점 preview와 full pointCount를 둔다.
+  5. `경로 보기`는 클릭 후 전체 route를 single-flight hydrate하고 실패 재시도와 stale response 무시를 지원한다.
+  6. `sw.js`는 `tomatofarm-v20260710z1-running-gps-lossless`, 공개 모바일 APK는 최신 GPS WebView asset으로 재빌드했다.
+- 검증:
+  1. PASS JS full: `node --test --test-concurrency=1 tests/*.test.js` - 824/824.
+  2. PASS Android: app/wear unit tests 및 debug APK assemble - `BUILD SUCCESSFUL`.
+  3. PASS assets: `npm.cmd run verify:assets` - `[runtime-assets] ok refs=923`.
+  4. PASS UI harness: 375px에서 click 전 map 0회, click 후 full 620점 1회 렌더, overlap/clipping 없음.
+  5. not verified yet: 물리 Galaxy Watch/phone GPS round-trip과 production 배포 UI.
+- 별도 정리: `budgetproject` GPS commit은 Tomato Farm 배포와 섞지 않고 해당 저장소에서 revert한다.
+- 사용자 다음 액션: 없음.
+- Codex 다음 액션: GPT-5.6 독립 리뷰 → production 배포/브라우저 검증 → budgetproject revert 배포.
+
 ## 2026-07-09 Watch Running GPS Gap Resilience
 
 - 상태: `complete_production_verified_physical_device_not_verified`
