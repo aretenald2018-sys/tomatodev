@@ -266,6 +266,9 @@ export async function saveDay(key, payload, opts = {}) {
   window.__qaCache = { ...(window.__qaCache || {}), [key]: window.__qaSaved.payload };
   return true;
 }
+export async function saveRunningRoute() {
+  throw new Error('manual workout must not persist a running route');
+}
 export function dateKey(y, m, d) { return keyOf(y, m, d); }
 export function isFuture() { return false; }
 export function trackEvent() {}
