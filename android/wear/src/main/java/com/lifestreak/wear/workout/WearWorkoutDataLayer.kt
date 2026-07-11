@@ -37,10 +37,10 @@ object WearWorkoutDataLayer {
 
         Wearable.getDataClient(context.applicationContext).putDataItem(request)
             .addOnSuccessListener {
-                onComplete(WearWorkoutSendResult(true, "폰 저장 대기열 등록 완료"))
+                onComplete(WearWorkoutSendResult(true, "휴대폰에 자동 저장돼요"))
             }
-            .addOnFailureListener { error ->
-                onComplete(WearWorkoutSendResult(false, error.message ?: "전송 대기열 등록 실패"))
+            .addOnFailureListener {
+                onComplete(WearWorkoutSendResult(false, "휴대폰에 보내지 못했어요"))
             }
     }
 }

@@ -23,4 +23,29 @@ class WearExerciseEndPolicyTest {
             WearExerciseEndPolicy.afterEndFuture(success = false),
         )
     }
+
+    @Test
+    fun lateHealthUpdateCannotResumeUserPausedRun() {
+        assertEquals(
+            WearExerciseSessionStatus.PAUSED,
+            WearExerciseEndPolicy.sessionStatusAfterExerciseUpdate(
+                action = WearExerciseEndAction.WAIT_FOR_FINAL_UPDATE,
+                currentStatus = WearExerciseSessionStatus.PAUSED,
+            ),
+        )
+        assertEquals(
+            WearExerciseSessionStatus.ACTIVE,
+            WearExerciseEndPolicy.sessionStatusAfterExerciseUpdate(
+                action = WearExerciseEndAction.WAIT_FOR_FINAL_UPDATE,
+                currentStatus = WearExerciseSessionStatus.ACTIVE,
+            ),
+        )
+        assertEquals(
+            WearExerciseSessionStatus.ENDED,
+            WearExerciseEndPolicy.sessionStatusAfterExerciseUpdate(
+                action = WearExerciseEndAction.PUBLISH_FINAL_UPDATE,
+                currentStatus = WearExerciseSessionStatus.PAUSED,
+            ),
+        )
+    }
 }

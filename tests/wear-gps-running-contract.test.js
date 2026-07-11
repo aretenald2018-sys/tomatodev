@@ -23,6 +23,7 @@ test('wear run uses GPS location data and sends route result in final payload', 
   const manifest = await read('android/wear/src/main/AndroidManifest.xml');
   const mainActivity = await read('android/wear/src/main/java/com/lifestreak/wear/MainActivity.kt');
   const service = await read('android/wear/src/main/java/com/lifestreak/wear/workout/WearExerciseService.kt');
+  const endPolicy = await read('android/wear/src/main/java/com/lifestreak/wear/workout/WearExerciseEndPolicy.kt');
   const durationTracker = await read('android/wear/src/main/java/com/lifestreak/wear/workout/WearExerciseActiveDurationTracker.kt');
   const store = await read('android/wear/src/main/java/com/lifestreak/wear/workout/WearExerciseSessionStore.kt');
   const accumulator = await read('android/wear/src/main/java/com/lifestreak/wear/workout/WearExerciseMetricAccumulator.kt');
@@ -80,9 +81,10 @@ test('wear run uses GPS location data and sends route result in final payload', 
   assert.doesNotMatch(startedEndBranch, /endFuture\.get\(\)[\s\S]*publishEndedSnapshot/);
   assert.match(service, /afterEndFuture\(success = true\)/);
   assert.match(service, /WearExerciseEndPolicy\.afterExerciseUpdate\(\s*update\.exerciseStateInfo\.state\.isEnded\s*,?\s*\)/);
-  assert.match(service, /PUBLISH_FINAL_UPDATE[\s\S]*WearExerciseSessionStatus\.ENDED/);
+  assert.match(endPolicy, /PUBLISH_FINAL_UPDATE\s*->\s*WearExerciseSessionStatus\.ENDED/);
+  assert.match(endPolicy, /currentStatus\s*==\s*WearExerciseSessionStatus\.PAUSED[\s\S]*WearExerciseSessionStatus\.PAUSED/);
   assert.match(controller, /WearExerciseSessionStatus\.ENDED[\s\S]*syncRunSummary\(v\)/);
-  assert.match(controller, /WearExerciseSessionStatus\.ERROR[\s\S]*운동 종료 실패/);
+  assert.match(controller, /WearExerciseSessionStatus\.ERROR[\s\S]*저장 상태를 확인해 주세요/);
 
   assert.match(layout, /@\+id\/runActiveGpsStatus/);
   assert.match(layout, /@\+id\/runSummaryGpsStatus/);

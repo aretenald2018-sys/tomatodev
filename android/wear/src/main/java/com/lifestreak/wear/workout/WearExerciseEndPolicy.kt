@@ -20,4 +20,18 @@ internal object WearExerciseEndPolicy {
         } else {
             WearExerciseEndAction.WAIT_FOR_FINAL_UPDATE
         }
+
+    fun sessionStatusAfterExerciseUpdate(
+        action: WearExerciseEndAction,
+        currentStatus: WearExerciseSessionStatus,
+    ): WearExerciseSessionStatus = when (action) {
+        WearExerciseEndAction.PUBLISH_FINAL_UPDATE -> WearExerciseSessionStatus.ENDED
+        WearExerciseEndAction.WAIT_FOR_FINAL_UPDATE,
+        WearExerciseEndAction.PUBLISH_ERROR,
+        -> if (currentStatus == WearExerciseSessionStatus.PAUSED) {
+            WearExerciseSessionStatus.PAUSED
+        } else {
+            WearExerciseSessionStatus.ACTIVE
+        }
+    }
 }

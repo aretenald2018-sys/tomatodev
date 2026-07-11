@@ -407,10 +407,14 @@ class WearExerciseService : Service() {
     private fun publishExerciseUpdate(update: ExerciseUpdate) {
         val nextAccumulator = accumulator ?: return
         if (update.exerciseStateInfo.state.isEnded && !endRequested) {
+            val currentStatus = WearExerciseSessionStore.current().status
             exerciseStarted = false
             clearExerciseCallback()
             WearExerciseSessionStore.publishFromAccumulator(
-                status = WearExerciseSessionStatus.ACTIVE,
+                status = WearExerciseEndPolicy.sessionStatusAfterExerciseUpdate(
+                    action = WearExerciseEndAction.WAIT_FOR_FINAL_UPDATE,
+                    currentStatus = currentStatus,
+                ),
                 accumulator = nextAccumulator,
                 message = "GPS direct · Health Services ended",
             )
@@ -456,12 +460,10 @@ class WearExerciseService : Service() {
         }
 
         val endAction = WearExerciseEndPolicy.afterExerciseUpdate(update.exerciseStateInfo.state.isEnded)
-        val status = when (endAction) {
-            WearExerciseEndAction.PUBLISH_FINAL_UPDATE -> WearExerciseSessionStatus.ENDED
-            WearExerciseEndAction.WAIT_FOR_FINAL_UPDATE,
-            WearExerciseEndAction.PUBLISH_ERROR,
-            -> WearExerciseSessionStatus.ACTIVE
-        }
+        val status = WearExerciseEndPolicy.sessionStatusAfterExerciseUpdate(
+            action = endAction,
+            currentStatus = WearExerciseSessionStore.current().status,
+        )
         WearExerciseSessionStore.publishFromAccumulator(
             status = status,
             accumulator = nextAccumulator,

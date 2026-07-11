@@ -78,9 +78,12 @@ test('watch uses direct GPS fallback and refuses to start without precise locati
 test('watch UI does not invent calories, pace, or heart-zone time when sensors have no data', () => {
   const metrics = read('android/wear/src/main/java/com/lifestreak/wear/workout/WearRunUiMetrics.kt');
   const summary = read('android/wear/src/main/res/layout/wear_run_page_summary.xml');
+  const workoutLayout = read('android/wear/src/main/res/layout/page_workout.xml');
   const adapter = read('android/wear/src/main/java/com/lifestreak/wear/workout/WearRunMetricPagerAdapter.kt');
   const graphs = read('android/wear/src/main/java/com/lifestreak/wear/workout/WearRunGraphViews.kt');
   const routePage = read('android/wear/src/main/res/layout/wear_run_page_route.xml');
+  const controller = read('android/wear/src/main/java/com/lifestreak/wear/workout/WearWorkoutUiController.kt');
+  const dataLayer = read('android/wear/src/main/java/com/lifestreak/wear/workout/WearWorkoutDataLayer.kt');
 
   assert.doesNotMatch(metrics, /calorieText|estimateCaloriesKcal|FALLBACK_SECONDS_PER_KM|HEART_ZONE_DEFAULT_SAMPLE_MS/);
   assert.doesNotMatch(summary, /kcal|Calories/);
@@ -91,6 +94,9 @@ test('watch UI does not invent calories, pace, or heart-zone time when sensors h
   assert.match(routePage, /android:clipToOutline="true"/);
   assert.match(metrics, /if \(secondsPerKm < MIN_VALID_SECONDS_PER_KM\) return@mapNotNull null/);
   assert.match(metrics, /\.takeIf \{ it\.size >= 2 \}/);
+  assert.doesNotMatch(controller, /summarySyncStatus\s*=\s*"[^"]*(?:대기열|payload|전송 중)/);
+  assert.doesNotMatch(dataLayer, /대기열|등록 완료/);
+  assert.doesNotMatch(workoutLayout, /RUN SAVED/);
 });
 
 test('empty running routes never render the Seoul City Hall fallback as a recorded route', () => {

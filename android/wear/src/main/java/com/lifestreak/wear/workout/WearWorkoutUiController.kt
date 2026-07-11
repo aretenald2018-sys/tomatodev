@@ -139,7 +139,7 @@ class WearWorkoutUiController(
     private fun finishRun(v: View) {
         runState.finish()
         clearRunTick(v)
-        summarySyncStatus = "운동 종료 중"
+        summarySyncStatus = "러닝 저장 중"
         render(v)
         waitForFinalExerciseSnapshot(v)
         WearExerciseService.endRun(v.context)
@@ -165,7 +165,7 @@ class WearWorkoutUiController(
                 if (snapshot.status == WearExerciseSessionStatus.ENDED) {
                     syncRunSummary(v)
                 } else {
-                    summarySyncStatus = "운동 종료 실패"
+                    summarySyncStatus = "저장 상태를 확인해 주세요"
                     render(v)
                 }
             }
@@ -205,7 +205,7 @@ class WearWorkoutUiController(
     }
 
     private fun syncRunSummary(v: View) {
-        summarySyncStatus = "폰 저장 전송 중"
+        summarySyncStatus = "휴대폰에 저장 중"
         render(v)
         val session = buildWearRunSessionForSummary(
             exerciseSnapshot = WearExerciseSessionStore.current(),
@@ -224,7 +224,7 @@ class WearWorkoutUiController(
             }
             .onFailure { error ->
                 Log.w(TAG, "Wear run payload build failed", error)
-                summarySyncStatus = "폰 저장 payload 오류"
+                summarySyncStatus = "러닝을 저장하지 못했어요"
                 render(v)
             }
     }
