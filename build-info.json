@@ -1,10 +1,10 @@
 {
   "app": "tomatofarm",
-  "commit": "d26e6d049a9c4facfa0562412908db455482e473",
-  "shortCommit": "d26e6d049a9c",
+  "commit": "8edd46e0a765a810ae4570a656fec2c6f9e48010",
+  "shortCommit": "8edd46e0a765",
   "branch": "main",
-  "deployedAt": "2026-07-11T02:34:29.709Z",
-  "cacheVersion": "tomatofarm-v20260711z3-apk-login-loading-fallback",
+  "deployedAt": "2026-07-11T02:54:37.837Z",
+  "cacheVersion": "tomatofarm-v20260711z4-running-native-gps",
   "runId": null,
   "runAttempt": null
 }
