@@ -439,8 +439,8 @@ test('day sheet set rows support mobile value editing, clear-on-focus, and swipe
   assert.match(binder, /_focusWorkoutSetInlineFieldFromSheet/);
   assert.match(calendarJs, /function _bindWorkoutSetSwipeDelete/);
   assert.match(calendarJs, /_bindWorkoutSetSwipeDelete\(sheet\)/);
-  assert.match(calendarJs, /Math\.abs\(current\.dx\) >= 64/);
-  assert.doesNotMatch(calendarJs, /if \(dx >= 0\) \{\s*resetRow/);
+  assert.match(calendarJs, /dx >= 0 \|\| ax < 8 \|\| ax <= ay/);
+  assert.match(calendarJs, /current\.dx <= -64/);
   assert.match(calendarJs, /focusin[\s\S]*data-wt-set-clear-on-focus/);
   assert.match(binder, /_showWorkoutSetKeyboard\(input\)/);
   assert.match(calendarJs, /function _moveWorkoutSetKeyboardFocus/);
@@ -450,7 +450,7 @@ test('day sheet set rows support mobile value editing, clear-on-focus, and swipe
   assert.match(styleCss, /\[data-wt-day-sheet\]\.has-set-keyboard \.wt-day-sheet-scroll/);
   assert.match(styleCss, /\.wt-max-set-remove-btn\s*\{[\s\S]*width:\s*44px;[\s\S]*height:\s*38px;/);
   assert.match(styleCss, /\.wt-max-set-row\.is-swiping/);
-  assert.match(styleCss, /\.wt-max-set-row\.is-swipe-delete-right/);
+  assert.match(styleCss, /\.wt-max-set-row\.is-swipe-delete-left/);
   assert.match(styleCss, /\.wt-max-set-row\s*\{[\s\S]*touch-action:\s*pan-y;/);
 });
 
@@ -1452,5 +1452,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260711z16-workout-keyboard-check-seconds/);
+  assert.match(swJs, /tomatofarm-v20260711z18-diet-food-chip-merge/);
 });

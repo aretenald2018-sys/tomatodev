@@ -321,7 +321,7 @@ test('mobile set row exposes editable kg/reps values and swipe delete targets in
   assert.equal(result.removeBeforeExpand, true);
 });
 
-test('mobile set row inline editing clears values and both swipe directions remove sets', async () => {
+test('mobile set row inline editing clears values and only right-to-left swipe removes sets', async () => {
   const result = await runHarnessPage(async (page) => {
     await page.evaluate(() => {
       window.__entry = {
@@ -411,14 +411,22 @@ test('mobile set row inline editing clears values and both swipe directions remo
 
     await page.evaluate(() => { window.__deferSetMutationRender = true; });
     await swipeElement('[data-wt-set-edit-field="kg"][data-set-index="2"]', 74);
+    await new Promise(resolve => setTimeout(resolve, 80));
+    const afterRightSwipe = await page.evaluate(() => {
+      const row = document.querySelector('[data-wt-set-swipe-row][data-set-index="2"]');
+      return {
+        rows: document.querySelectorAll('[data-wt-set-swipe-row]').length,
+        sets: window.__entry.sets.length,
+        transform: row?.style.transform || '',
+        swiping: row?.classList.contains('is-swiping') || false,
+      };
+    });
+    assert.deepEqual(afterRightSwipe, { rows: 3, sets: 3, transform: '', swiping: false });
+
+    await swipeElement('[data-wt-set-edit-field="reps"][data-set-index="1"]', -74);
     await page.waitForFunction(() => (
       window.__entry.sets.length === 2
       && document.querySelectorAll('[data-wt-set-swipe-row]').length === 2
-    ), { timeout: 1500 });
-    await swipeElement('[data-wt-set-edit-field="reps"][data-set-index="1"]', -74);
-    await page.waitForFunction(() => (
-      window.__entry.sets.length === 1
-      && document.querySelectorAll('[data-wt-set-swipe-row]').length === 1
     ), { timeout: 1500 });
 
     const finalState = await page.evaluate(() => ({
@@ -445,11 +453,14 @@ test('mobile set row inline editing clears values and both swipe directions remo
   assert.ok(result.hitTargets.removeHeight >= 38);
   assert.ok(result.hitTargets.removeCenterX < result.hitTargets.expandCenterX);
   assert.ok(result.hitTargets.gap >= 8);
-  assert.deepEqual(result.finalState.sets, [{ kg: 55, reps: 15, rir: 2, romPct: 100, setType: 'main', done: false }]);
-  assert.equal(result.finalState.rows, 1);
-  assert.deepEqual(result.finalState.values, ['55kg', '15회']);
+  assert.deepEqual(result.finalState.sets, [
+    { kg: 55, reps: 15, rir: 2, romPct: 100, setType: 'main', done: false },
+    { kg: 35, reps: 14, rir: 2, romPct: 100, setType: 'main', done: false },
+  ]);
+  assert.equal(result.finalState.rows, 2);
+  assert.deepEqual(result.finalState.values, ['55kg', '15회', '35kg', '14회']);
   assert.ok(result.finalState.syncActions.includes('sheet:set-inline-field'));
-  assert.equal(result.finalState.mutationOptions.filter(options => options.optimisticRender === true).length, 2);
+  assert.equal(result.finalState.mutationOptions.filter(options => options.optimisticRender === true).length, 1);
   assert.equal(result.finalState.pendingMutationRender, null);
   assert.equal(result.finalState.toast?.message, '세트를 삭제했어요');
 });

@@ -108,6 +108,30 @@ function _foodGroupKey(food) {
   return `${name}|${amount}`;
 }
 
+function _foodMergeKey(food) {
+  const id = String(food?.recipeId || food?.id || '').trim();
+  if (id) return `id:${id}`;
+  const name = _normalizeFoodName(food?.name);
+  if (!name) return '';
+  return `name:${name}|source:${String(food?.source || '').trim().toLocaleLowerCase('ko-KR')}`;
+}
+
+function _sumFoodNumber(a, b, precision = 10) {
+  const av = Number(a);
+  const bv = Number(b);
+  const sum = (Number.isFinite(av) ? av : 0) + (Number.isFinite(bv) ? bv : 0);
+  return Math.round(sum * precision) / precision;
+}
+
+function _mergeFoodItem(existing, incoming) {
+  const merged = { ...existing };
+  for (const key of ['grams', 'kcal', 'protein', 'carbs', 'fat']) {
+    merged[key] = _sumFoodNumber(existing?.[key], incoming?.[key], key === 'kcal' ? 100 : 10);
+  }
+  if (existing?.source !== 'ai' && incoming?.source === 'ai') merged.source = 'ai';
+  return merged;
+}
+
 function _macroCompleteness(food) {
   return ['kcal', 'protein', 'carbs', 'fat'].reduce((score, key) => {
     const value = Number(food?.[key]);
@@ -522,7 +546,12 @@ export function _recalcMealMacros(meal) {
 // ── 음식 추가/삭제 ──────────────────────────────────────────────
 export function wtAddFoodItem(meal, item) {
   const key = _mealKey(meal);
-  S.diet[key] = [...(S.diet[key] || []), item];
+  const foods = [...(S.diet[key] || [])];
+  const mergeKey = _foodMergeKey(item);
+  const existingIdx = mergeKey ? foods.findIndex(food => _foodMergeKey(food) === mergeKey) : -1;
+  if (existingIdx >= 0) foods[existingIdx] = _mergeFoodItem(foods[existingIdx], item);
+  else foods.push(item);
+  S.diet[key] = foods;
   _recalcMealMacros(meal);
   _renderMealFoodItems(meal);
   _renderDietResults();

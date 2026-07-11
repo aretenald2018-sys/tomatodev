@@ -4160,15 +4160,15 @@ function _bindWorkoutSetSwipeDelete(sheet) {
     const ay = Math.abs(dy);
     swipe.dx = dx;
     swipe.dy = dy;
-    if (!swipe.active && (ax < 8 || ax <= ay)) return;
+    if (!swipe.active && (dx >= 0 || ax < 8 || ax <= ay)) return;
     swipe.active = true;
     if (event.cancelable) event.preventDefault();
     event.stopPropagation();
-    const offset = Math.max(-76, Math.min(76, dx));
-    const ready = ax >= 64 && ax > ay * 1.2;
+    const offset = Math.max(-76, Math.min(0, dx));
+    const ready = dx <= -64 && ax > ay * 1.2;
     swipe.row.classList.add('is-swiping');
     swipe.row.classList.toggle('is-swipe-delete-left', dx < 0);
-    swipe.row.classList.toggle('is-swipe-delete-right', dx > 0);
+    swipe.row.classList.remove('is-swipe-delete-right');
     swipe.row.classList.toggle('is-swipe-delete-ready', ready);
     swipe.row.style.transform = `translateX(${offset}px)`;
   }, { passive: false, capture: true });
@@ -4176,7 +4176,7 @@ function _bindWorkoutSetSwipeDelete(sheet) {
     if (!swipe) return;
     const current = swipe;
     swipe = null;
-    const accepted = current.active && Math.abs(current.dx) >= 64 && Math.abs(current.dx) > Math.abs(current.dy) * 1.2;
+    const accepted = current.active && current.dx <= -64 && Math.abs(current.dx) > Math.abs(current.dy) * 1.2;
     if (!accepted) {
       resetRow(current.row);
       return;
