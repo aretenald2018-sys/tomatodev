@@ -445,7 +445,6 @@ class WearExerciseService : Service() {
             .lastOrNull()
             ?.value
             ?.roundToInt()
-        val distanceMeters = metrics.getData(DataType.DISTANCE_TOTAL)?.total
         val elapsedRealtimeMs = SystemClock.elapsedRealtime()
         val healthActiveDurationMs = activeDurationTracker.plausibleHealthDuration(
             reportedDurationMs = update.activeDurationCheckpoint?.activeDuration?.toMillis(),
@@ -463,7 +462,6 @@ class WearExerciseService : Service() {
 
         nextAccumulator.applyMetricUpdate(
             elapsedRealtimeMs = elapsedRealtimeMs,
-            distanceMeters = distanceMeters,
             heartRateBpm = heartRateBpm,
             activeDurationMs = activeDurationMs,
         )
@@ -688,11 +686,6 @@ class WearExerciseService : Service() {
                 accuracy = accuracy.toDouble(),
             ),
         )
-        currentAccumulator.applyMetricUpdate(
-            elapsedRealtimeMs = elapsedRealtimeMs,
-            distanceMeters = currentAccumulator.snapshot().distanceMeters,
-            activeDurationMs = activeDurationMs,
-        )
         val gpsMessage = if (accuracy <= MAX_READY_GPS_ACCURACY_M) {
             GPS_STATUS_DIRECT
         } else {
@@ -781,8 +774,6 @@ class WearExerciseService : Service() {
 
     private fun requestedDataTypes(): Set<DataType<*, *>> {
         val dataTypes = mutableSetOf<DataType<*, *>>(
-            DataType.DISTANCE_TOTAL,
-            DataType.SPEED,
             DataType.ACTIVE_EXERCISE_DURATION_TOTAL,
         )
         if (hasHeartRatePermission()) {

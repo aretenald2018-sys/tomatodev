@@ -68,26 +68,22 @@ class WearExerciseMetricAccumulatorTest {
 
         accumulator.applyMetricUpdate(
             elapsedRealtimeMs = 1_000L,
-            distanceMeters = 0.0,
             heartRateBpm = 88,
             activeDurationMs = 0L,
         )
         accumulator.applyMetricUpdate(
             elapsedRealtimeMs = 5_000L,
-            distanceMeters = 250.4,
             heartRateBpm = 150,
             activeDurationMs = 4_000L,
         )
         accumulator.applyMetricUpdate(
             elapsedRealtimeMs = 12_500L,
-            distanceMeters = 502.0,
             heartRateBpm = 152,
             activeDurationMs = 11_500L,
             routePoint = WearRoutePoint(timestampMs = 22_500L, lat = 37.5665, lng = 126.9780),
         )
         accumulator.applyMetricUpdate(
             elapsedRealtimeMs = 13_000L,
-            distanceMeters = Double.NaN,
             heartRateBpm = 999,
             activeDurationMs = -1L,
         )
@@ -171,7 +167,6 @@ class WearExerciseMetricAccumulatorTest {
 
         accumulator.applyMetricUpdate(
             elapsedRealtimeMs = 11_000L,
-            distanceMeters = 1_000.0,
             heartRateBpm = 140,
             activeDurationMs = 10_000L,
         )
@@ -228,6 +223,42 @@ class WearExerciseMetricAccumulatorTest {
         val snapshot = accumulator.snapshot()
         assertEquals(2, snapshot.routePoints.size)
         assertEquals(0.0, snapshot.distanceMeters, 0.0001)
+    }
+
+    @Test
+    fun buildsDistanceSamplesOnlyFromConfirmedGpsMovement() {
+        val accumulator = WearExerciseMetricAccumulator(
+            startedAtWallClockMs = 10_000L,
+            startedAtElapsedRealtimeMs = 1_000L,
+        )
+        accumulator.applyMetricUpdate(
+            elapsedRealtimeMs = 1_000L,
+            heartRateBpm = 90,
+        )
+        assertEquals(emptyList<WearDistanceSample>(), accumulator.snapshot().distanceSamples)
+
+        accumulator.applyMetricUpdate(
+            elapsedRealtimeMs = 11_000L,
+            routePoint = WearRoutePoint(
+                timestampMs = 20_000L,
+                lat = 37.5665,
+                lng = 126.9780,
+                accuracy = 5.0,
+            ),
+        )
+        accumulator.applyMetricUpdate(
+            elapsedRealtimeMs = 21_000L,
+            routePoint = WearRoutePoint(
+                timestampMs = 30_000L,
+                lat = 37.5667,
+                lng = 126.9780,
+                accuracy = 5.0,
+            ),
+        )
+
+        val snapshot = accumulator.snapshot()
+        assertEquals(2, snapshot.distanceSamples.size)
+        assertEquals(snapshot.distanceMeters / 1_000.0, snapshot.distanceSamples.last().distanceKm, 0.000001)
     }
 
     @Test

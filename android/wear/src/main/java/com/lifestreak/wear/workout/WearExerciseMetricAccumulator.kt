@@ -21,10 +21,8 @@ class WearExerciseMetricAccumulator(
     private val startedAtWallClockMs: Long,
     private val startedAtElapsedRealtimeMs: Long,
 ) {
-    private var distanceMeters = 0.0
     private var latestHeartRateBpm: Int? = null
     private var activeDurationMs = 0L
-    private val distanceSamplesByBucket = linkedMapOf<Long, WearDistanceSample>()
     private val heartRateSamplesByBucket = linkedMapOf<Long, HeartRateSample>()
     private val routePoints = linkedSetOf<WearRoutePoint>()
     private var pendingRouteGapReason: String? = null
@@ -35,19 +33,10 @@ class WearExerciseMetricAccumulator(
 
     fun applyMetricUpdate(
         elapsedRealtimeMs: Long,
-        distanceMeters: Double? = null,
         heartRateBpm: Int? = null,
         activeDurationMs: Long? = null,
         routePoint: WearRoutePoint? = null,
     ) {
-        if (distanceMeters != null && distanceMeters.isFinite() && distanceMeters >= 0.0) {
-            this.distanceMeters = distanceMeters
-            val bucketStartMs = bucketStartFor(elapsedRealtimeMs)
-            distanceSamplesByBucket[bucketStartMs] = WearDistanceSample(
-                timestampMs = bucketStartMs,
-                distanceKm = distanceMeters / 1_000.0,
-            )
-        }
         if (activeDurationMs != null && activeDurationMs >= 0L) {
             this.activeDurationMs = maxOf(this.activeDurationMs, activeDurationMs)
         }
@@ -72,12 +61,13 @@ class WearExerciseMetricAccumulator(
     fun snapshot(): WearExerciseMetricsSnapshot {
         val normalizedRoute = normalizedRoutePoints()
         val movementRoute = confirmedMovementRoute(normalizedRoute)
+        val routeDistanceMeters = routeDistanceMeters(movementRoute)
         return WearExerciseMetricsSnapshot(
             startedAtWallClockMs = startedAtWallClockMs,
-            distanceMeters = routeDistanceMeters(movementRoute),
+            distanceMeters = routeDistanceMeters,
             latestHeartRateBpm = latestHeartRateBpm,
             activeDurationMs = activeDurationMs,
-            distanceSamples = distanceSamplesByBucket.values.sortedBy { it.timestampMs },
+            distanceSamples = routeDistanceSamples(movementRoute),
             heartRateSamples = heartRateSamplesByBucket.values.sortedBy { it.timestampMs },
             routePoints = normalizedRoute,
         )
@@ -172,6 +162,28 @@ class WearExerciseMetricAccumulator(
         }
     }
 
+    private fun routeDistanceSamples(route: List<WearRoutePoint>): List<WearDistanceSample> {
+        if (route.isEmpty()) return emptyList()
+        var cumulativeDistanceMeters = 0.0
+        val samplesByBucket = linkedMapOf<Long, WearDistanceSample>()
+        route.forEachIndexed { index, point ->
+            if (index > 0) {
+                val previous = route[index - 1]
+                if (!point.gapBefore && previous.segmentId == point.segmentId) {
+                    cumulativeDistanceMeters += haversineMeters(previous, point)
+                }
+            }
+            val elapsedSinceStartMs = (point.timestampMs - startedAtWallClockMs).coerceAtLeast(0L)
+            val bucketStartMs = startedAtWallClockMs +
+                (elapsedSinceStartMs / HEART_RATE_BUCKET_MS) * HEART_RATE_BUCKET_MS
+            samplesByBucket[bucketStartMs] = WearDistanceSample(
+                timestampMs = bucketStartMs,
+                distanceKm = cumulativeDistanceMeters / 1_000.0,
+            )
+        }
+        return samplesByBucket.values.toList()
+    }
+
     private fun haversineMeters(a: WearRoutePoint, b: WearRoutePoint): Double {
         val earthRadiusM = 6_371_000.0
         val lat1 = Math.toRadians(a.lat)
@@ -200,13 +212,9 @@ class WearExerciseMetricAccumulator(
                 startedAtWallClockMs = snapshot.startedAtWallClockMs,
                 startedAtElapsedRealtimeMs = startedAtElapsedRealtimeMs,
             )
-            accumulator.distanceMeters = snapshot.distanceMeters.coerceAtLeast(0.0)
             accumulator.latestHeartRateBpm = snapshot.latestHeartRateBpm
                 ?: snapshot.heartRateSamples.lastOrNull()?.bpm
             accumulator.activeDurationMs = snapshot.activeDurationMs.coerceAtLeast(0L)
-            snapshot.distanceSamples
-                .filter { sample -> sample.timestampMs >= 0L && sample.distanceKm.isFinite() && sample.distanceKm >= 0.0 }
-                .forEach { sample -> accumulator.distanceSamplesByBucket[sample.timestampMs] = sample }
             snapshot.heartRateSamples
                 .filter { sample -> sample.timestampMs >= 0L && sample.bpm in MIN_HEART_RATE_BPM..MAX_HEART_RATE_BPM }
                 .forEach { sample -> accumulator.heartRateSamplesByBucket[sample.timestampMs] = sample }

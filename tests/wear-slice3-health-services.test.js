@@ -40,13 +40,14 @@ test('wear slice3 service owns ExerciseClient and streams run metrics to UI stat
     'ExerciseConfig',
     'ExerciseType.RUNNING',
     'DataType.HEART_RATE_BPM',
-    'DataType.DISTANCE_TOTAL',
-    'DataType.SPEED',
+    'DataType.LOCATION',
     'DataType.ACTIVE_EXERCISE_DURATION_TOTAL',
     'startForeground',
   ].forEach((needle) => {
     assert.ok(service.includes(needle), `missing ${needle}`);
   });
+  assert.ok(!service.includes('DataType.DISTANCE_TOTAL'), 'distance must come from the filtered GPS route');
+  assert.ok(!service.includes('DataType.SPEED'), 'pace must come from the filtered GPS route');
 
   [
     'WearExerciseService.startRun',

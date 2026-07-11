@@ -56,7 +56,8 @@ test('PWA, phone APK, and Wear preserve the raw route while distance uses drift 
   assert.match(wearAccumulatorKt, /MAX_GPS_ACCURACY_M = 35\.0/);
   assert.match(wearAccumulatorKt, /MIN_ROUTE_DISPLACEMENT_M = 12\.0/);
   assert.match(wearAccumulatorKt, /MIN_CONFIDENT_RUNNING_SPEED_MPS = 0\.3/);
-  assert.match(wearAccumulatorKt, /distanceMeters = routeDistanceMeters\(movementRoute\)/);
+  assert.match(wearAccumulatorKt, /val routeDistanceMeters = routeDistanceMeters\(movementRoute\)/);
+  assert.match(wearAccumulatorKt, /distanceSamples = routeDistanceSamples\(movementRoute\)/);
   assert.match(wearAccumulatorKt, /fun markRouteGap/);
   assert.match(wearServiceKt, /currentAccumulator\.markRouteGap\("pause"\)/);
   assert.match(wearServiceKt, /MAX_DIRECT_GPS_ACCURACY_M = 35f/);

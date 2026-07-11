@@ -46,6 +46,7 @@ test('phone route collection rejects stale and inaccurate fixes and drains nativ
 test('watch uses direct GPS fallback and refuses to start without precise location permission', () => {
   const service = read('android/wear/src/main/java/com/lifestreak/wear/workout/WearExerciseService.kt');
   const controller = read('android/wear/src/main/java/com/lifestreak/wear/workout/WearWorkoutUiController.kt');
+  const accumulator = read('android/wear/src/main/java/com/lifestreak/wear/workout/WearExerciseMetricAccumulator.kt');
 
   assert.match(service, /LocationManager\.GPS_PROVIDER/);
   assert.match(service, /startDirectLocationUpdates\(\)/);
@@ -75,6 +76,9 @@ test('watch uses direct GPS fallback and refuses to start without precise locati
   assert.match(service, /ACTIVE_DURATION_CHECKPOINT_MS = 10_000L/);
   assert.match(service, /checkpointHandler\.postDelayed\(checkpointRunnable, ACTIVE_DURATION_CHECKPOINT_MS\)/);
   assert.match(service, /activeDurationMs = activeDurationTracker\.activeDurationAt\(elapsedRealtimeMs\)/);
+  assert.doesNotMatch(service, /metrics\.getData\(DataType\.DISTANCE_TOTAL\)/);
+  assert.doesNotMatch(service, /DataType\.SPEED/);
+  assert.match(accumulator, /distanceSamples = routeDistanceSamples\(movementRoute\)/);
   assert.match(service, /private fun handlePauseRun\(\)[\s\S]*stopActiveDurationCheckpoints\(\)/);
   assert.match(controller, /ACCESS_FINE_LOCATION/);
   assert.match(controller, /위치 권한을 켜주세요/);
