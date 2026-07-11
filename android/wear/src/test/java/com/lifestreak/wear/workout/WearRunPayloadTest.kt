@@ -145,7 +145,7 @@ class WearRunPayloadTest {
     }
 
     @Test
-    fun routeDistanceFallbackSkipsGpsGapEdges() {
+    fun zeroFilteredDistanceDoesNotFallBackToNoisyRouteGeometry() {
         val payload = WearRunSession(
             dateKey = "2026-07-06",
             startedAtMs = 1_000L,
@@ -168,14 +168,14 @@ class WearRunPayloadTest {
             ),
         ).toPayload().getOrThrow()
 
-        assertEquals(0.03, payload.summary.distanceKm, 0.0001)
+        assertEquals(0.0, payload.summary.distanceKm, 0.0001)
         assertEquals(3, payload.summary.routeSummary.segmentCount)
         assertEquals(2, payload.summary.routeSummary.gapCount)
         assertTrue(payload.summary.routeSummary.interrupted)
     }
 
     @Test
-    fun infersGpsGapMetadataFromTimestampBreaks() {
+    fun sparseGpsTimestampsRemainOneContinuousRouteWithoutAnExplicitPause() {
         val payload = WearRunSession(
             dateKey = "2026-07-06",
             startedAtMs = 1_000L,
@@ -189,17 +189,15 @@ class WearRunPayloadTest {
             ),
         ).toPayload().getOrThrow()
 
-        assertEquals(listOf(0, 0, 1, 1), payload.summary.route.map { it.segmentId })
+        assertEquals(listOf(0, 0, 0, 0), payload.summary.route.map { it.segmentId })
         assertFalse(payload.summary.route[1].gapBefore)
-        assertTrue(payload.summary.route[2].gapBefore)
-        assertEquals("time-gap", payload.summary.route[2].gapReason)
-        assertEquals(2, payload.summary.routeSummary.segmentCount)
-        assertEquals(1, payload.summary.routeSummary.gapCount)
-        assertTrue(payload.summary.routeSummary.interrupted)
-        assertTrue(
-            "gap edge should not inflate inferred route distance: ${payload.summary.distanceKm}",
-            payload.summary.distanceKm < 1.0,
-        )
+        assertFalse(payload.summary.route[2].gapBefore)
+        assertEquals(null, payload.summary.route[2].gapReason)
+        assertEquals(1, payload.summary.routeSummary.segmentCount)
+        assertEquals(0, payload.summary.routeSummary.gapCount)
+        assertFalse(payload.summary.routeSummary.interrupted)
+        assertTrue(payload.summary.distanceKm > 0.3)
+        assertTrue(payload.summary.distanceKm < 0.5)
     }
 
     @Test

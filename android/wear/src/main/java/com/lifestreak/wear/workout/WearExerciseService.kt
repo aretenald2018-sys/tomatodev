@@ -177,6 +177,7 @@ class WearExerciseService : Service() {
     }
 
     private fun handlePauseRun() {
+        accumulator?.markRouteGap("pause")
         WearExerciseSessionStore.markPaused()
         stopDirectLocationUpdates()
         if (!exerciseStarted) return

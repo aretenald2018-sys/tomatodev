@@ -49,12 +49,13 @@ test('wear run uses GPS location data and sends route result in final payload', 
   assert.match(accumulator, /WearRoutePoint/);
   assert.match(accumulator, /routePoints/);
   assert.doesNotMatch(accumulator, /routePointsByBucket/);
-  assert.match(accumulator, /ROUTE_GAP_MS = 45_000L/);
-  assert.match(accumulator, /gapBefore = explicitGap \|\| inferredGap/);
-  assert.match(accumulator, /gapReason = routePoint\.gapReason \?: if \(inferredGap\) "time-gap" else null/);
+  assert.doesNotMatch(accumulator, /ROUTE_GAP_MS/);
+  assert.match(accumulator, /fun markRouteGap/);
+  assert.match(accumulator, /gapBefore = explicitGap/);
   assert.match(store, /routePoints: List<WearRoutePoint>/);
   assert.match(payload, /data class WearRoutePoint/);
-  assert.match(payload, /ROUTE_GAP_MS = 45_000L/);
+  assert.doesNotMatch(payload, /ROUTE_GAP_MS/);
+  assert.match(payload, /confirmedMovementDistanceMeters\(route\)/);
   assert.match(payload, /segmentId: Int\?/);
   assert.match(payload, /gapBefore: Boolean/);
   assert.match(payload, /gapReason: String\?/);

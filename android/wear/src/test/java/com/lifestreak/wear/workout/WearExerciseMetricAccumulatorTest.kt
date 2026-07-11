@@ -111,7 +111,7 @@ class WearExerciseMetricAccumulatorTest {
     }
 
     @Test
-    fun marksRouteGapWhenLocationUpdatesResumeAfterLongPause() {
+    fun marksRouteGapWhenLocationUpdatesResumeAfterExplicitPause() {
         val accumulator = WearExerciseMetricAccumulator(
             startedAtWallClockMs = 10_000L,
             startedAtElapsedRealtimeMs = 1_000L,
@@ -125,6 +125,7 @@ class WearExerciseMetricAccumulatorTest {
             elapsedRealtimeMs = 11_000L,
             routePoint = WearRoutePoint(timestampMs = 20_000L, lat = 37.5666, lng = 126.9781),
         )
+        accumulator.markRouteGap("pause")
         accumulator.applyMetricUpdate(
             elapsedRealtimeMs = 71_000L,
             routePoint = WearRoutePoint(timestampMs = 80_000L, lat = 37.5700, lng = 126.9800),
@@ -135,11 +136,11 @@ class WearExerciseMetricAccumulatorTest {
         assertEquals(listOf(0, 0, 1), route.map { it.segmentId })
         assertEquals(false, route[1].gapBefore)
         assertEquals(true, route[2].gapBefore)
-        assertEquals("time-gap", route[2].gapReason)
+        assertEquals("pause", route[2].gapReason)
     }
 
     @Test
-    fun detectsRouteGapFromExactPriorTimestampInsteadOfTenSecondBucket() {
+    fun preservesTheExactExplicitGapReason() {
         val accumulator = WearExerciseMetricAccumulator(
             startedAtWallClockMs = 10_000L,
             startedAtElapsedRealtimeMs = 1_000L,
@@ -149,6 +150,7 @@ class WearExerciseMetricAccumulatorTest {
             elapsedRealtimeMs = 1_001L,
             routePoint = WearRoutePoint(timestampMs = 10_001L, lat = 37.5665, lng = 126.9780),
         )
+        accumulator.markRouteGap("service-restart")
         accumulator.applyMetricUpdate(
             elapsedRealtimeMs = 50_999L,
             routePoint = WearRoutePoint(timestampMs = 59_999L, lat = 37.5700, lng = 126.9800),
@@ -157,7 +159,7 @@ class WearExerciseMetricAccumulatorTest {
         val route = accumulator.snapshot().routePoints
         assertEquals(listOf(0, 1), route.map { it.segmentId })
         assertEquals(true, route[1].gapBefore)
-        assertEquals("time-gap", route[1].gapReason)
+        assertEquals("service-restart", route[1].gapReason)
     }
 
     @Test
@@ -188,7 +190,7 @@ class WearExerciseMetricAccumulatorTest {
     }
 
     @Test
-    fun ignoresStationaryGpsDriftInsteadOfCreatingDistance() {
+    fun keepsStationaryGpsSamplesForTheMapWithoutCreatingDistance() {
         val accumulator = WearExerciseMetricAccumulator(
             startedAtWallClockMs = 10_000L,
             startedAtElapsedRealtimeMs = 1_000L,
@@ -200,11 +202,55 @@ class WearExerciseMetricAccumulatorTest {
         )
         accumulator.applyMetricUpdate(
             elapsedRealtimeMs = 62_000L,
-            routePoint = WearRoutePoint(timestampMs = 71_000L, lat = 37.56677, lng = 126.9780, accuracy = 10.0),
+            routePoint = WearRoutePoint(timestampMs = 71_000L, lat = 37.56658, lng = 126.9780, accuracy = 10.0),
         )
 
         val snapshot = accumulator.snapshot()
-        assertEquals(1, snapshot.routePoints.size)
+        assertEquals(2, snapshot.routePoints.size)
+        assertEquals(0.0, snapshot.distanceMeters, 0.0001)
+    }
+
+    @Test
+    fun keepsOneContinuousSegmentAcrossSparseGpsUpdates() {
+        val accumulator = WearExerciseMetricAccumulator(
+            startedAtWallClockMs = 10_000L,
+            startedAtElapsedRealtimeMs = 1_000L,
+        )
+        accumulator.applyMetricUpdate(
+            elapsedRealtimeMs = 1_000L,
+            routePoint = WearRoutePoint(timestampMs = 10_000L, lat = 37.5665, lng = 126.9780),
+        )
+        accumulator.applyMetricUpdate(
+            elapsedRealtimeMs = 61_000L,
+            routePoint = WearRoutePoint(timestampMs = 70_000L, lat = 37.5680, lng = 126.9780),
+        )
+
+        val snapshot = accumulator.snapshot()
+        assertEquals(listOf(0, 0), snapshot.routePoints.map { it.segmentId })
+        assertEquals(false, snapshot.routePoints[1].gapBefore)
+        assertEquals(true, snapshot.distanceMeters > 150.0)
+    }
+
+    @Test
+    fun marksAnExplicitPauseGapWithoutCountingTheMissingEdge() {
+        val accumulator = WearExerciseMetricAccumulator(
+            startedAtWallClockMs = 10_000L,
+            startedAtElapsedRealtimeMs = 1_000L,
+        )
+        accumulator.applyMetricUpdate(
+            elapsedRealtimeMs = 1_000L,
+            routePoint = WearRoutePoint(timestampMs = 10_000L, lat = 37.5665, lng = 126.9780),
+        )
+        accumulator.markRouteGap("pause")
+        accumulator.applyMetricUpdate(
+            elapsedRealtimeMs = 61_000L,
+            routePoint = WearRoutePoint(timestampMs = 70_000L, lat = 37.5680, lng = 126.9780),
+        )
+
+        val snapshot = accumulator.snapshot()
+        assertEquals(listOf(0, 1), snapshot.routePoints.map { it.segmentId })
+        assertEquals(true, snapshot.routePoints[1].gapBefore)
+        assertEquals("pause", snapshot.routePoints[1].gapReason)
         assertEquals(0.0, snapshot.distanceMeters, 0.0001)
     }
 }

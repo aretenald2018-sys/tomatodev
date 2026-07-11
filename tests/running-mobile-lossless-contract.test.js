@@ -59,13 +59,13 @@ try {
   const base = Date.now();
   for (let index = 0; index < ${pointCount}; index += 1) {
     watchSuccess({
-      timestamp: base + Math.floor(index / 2) * 1000,
+      timestamp: base + index * 1000,
       coords: {
         latitude: 37.5209 + Math.sin(index / 8) * 0.000003,
-        longitude: 126.977 + index * 0.000005,
+        longitude: 126.977 + index * 0.000032,
         accuracy: index === 0 ? 0 : 5,
         altitude: index === 0 ? 0 : 20 + Math.sin(index / 12),
-        speed: index === 0 ? 0 : 2.8,
+        speed: 0,
       },
       __sensor: {
         heartRateBpm: index === 0 ? 0 : 145,
@@ -127,13 +127,13 @@ try {
   }
 }
 
-test('mobile capture stores only confirmed movement and renders it on the inline map', async () => {
+test('mobile capture preserves the full route while rendering a bounded map preview', async () => {
   const result = await runMobileCaptureHarness();
 
-  assert.ok(result.live.pointCount > 1);
-  assert.ok(result.live.pointCount < 620);
+  assert.equal(result.live.pointCount, 620);
   assert.equal(result.live.routeSummary.pointCount, result.live.pointCount);
-  assert.equal(result.live.route.length, result.live.pointCount);
+  assert.equal(result.live.route.length, 240);
+  assert.ok(result.live.routeSummary.distanceKm > 1.7);
   assert.ok(result.routePointWrites <= 2, `expected one two-key draft write, got ${result.routePointWrites}`);
   assert.equal(result.draft.route.length, result.live.pointCount);
   assert.equal(result.activeMarker.ownerId, 'mobile-lossless-runner');
@@ -156,7 +156,7 @@ test('mobile capture stores only confirmed movement and renders it on the inline
   assert.match(result.inlineCardBeforeFinish, /wt-running-live-card/);
   assert.match(result.inlineCardAfterFinish, /is-summary/);
   assert.ok(result.mapPointCounts.length >= 2);
-  assert.equal(result.mapPointCounts.at(-1), result.live.pointCount);
+  assert.equal(result.mapPointCounts.at(-1), 240);
 });
 
 test('mobile draft keeps a six-hour 1Hz route once and uses a small active marker', async () => {

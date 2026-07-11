@@ -6,7 +6,6 @@ import {
 const WEAR_QUEUE_KEY = 'tomatofarm_wear_workout_queue_v1';
 const RUNNING_WORKOUT_SESSION_INDEX = 2;
 const RUNNING_SESSION_ID = 'running-track';
-const WEAR_ROUTE_GAP_MS = 45_000;
 const MAX_WEAR_HEART_RATE_SAMPLES = 2_161;
 
 let deps = {
@@ -113,8 +112,7 @@ function _normalizeRoutePoints(route, startedAt, endedAt) {
     const previousSegmentId = previous?.segmentId ?? 0;
     const explicitSegmentId = point.segmentId;
     const segmentChanged = previous != null && explicitSegmentId != null && explicitSegmentId !== previousSegmentId;
-    const timeGap = previous != null && point.ts - previous.ts > WEAR_ROUTE_GAP_MS;
-    const gapBefore = previous != null && (point.gapBefore === true || segmentChanged || timeGap);
+    const gapBefore = previous != null && (point.gapBefore === true || segmentChanged);
     const segmentId = explicitSegmentId != null
       ? (gapBefore ? Math.max(explicitSegmentId, segmentChanged ? explicitSegmentId : previousSegmentId + 1) : explicitSegmentId)
       : (gapBefore ? previousSegmentId + 1 : previousSegmentId);
@@ -123,7 +121,7 @@ function _normalizeRoutePoints(route, startedAt, endedAt) {
     delete normalized.gapReason;
     if (gapBefore) {
       normalized.gapBefore = true;
-      normalized.gapReason = point.gapReason || (timeGap ? 'time-gap' : 'watch-gap');
+      normalized.gapReason = point.gapReason || 'watch-gap';
     }
     normalizedRoute.push(normalized);
   });

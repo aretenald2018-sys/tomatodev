@@ -27,6 +27,11 @@ class WearExerciseMetricAccumulator(
     private val distanceSamplesByBucket = linkedMapOf<Long, WearDistanceSample>()
     private val heartRateSamplesByBucket = linkedMapOf<Long, HeartRateSample>()
     private val routePoints = linkedSetOf<WearRoutePoint>()
+    private var pendingRouteGapReason: String? = null
+
+    fun markRouteGap(reason: String = "interruption") {
+        if (routePoints.isNotEmpty()) pendingRouteGapReason = reason.take(48)
+    }
 
     fun applyMetricUpdate(
         elapsedRealtimeMs: Long,
@@ -55,15 +60,21 @@ class WearExerciseMetricAccumulator(
             )
         }
         if (routePoint != null && isValidRoutePoint(routePoint)) {
-            routePoints.add(routePoint)
+            val gapReason = pendingRouteGapReason
+            routePoints.add(if (gapReason == null) routePoint else routePoint.copy(
+                gapBefore = true,
+                gapReason = gapReason,
+            ))
+            pendingRouteGapReason = null
         }
     }
 
     fun snapshot(): WearExerciseMetricsSnapshot {
         val normalizedRoute = normalizedRoutePoints()
+        val movementRoute = confirmedMovementRoute(normalizedRoute)
         return WearExerciseMetricsSnapshot(
             startedAtWallClockMs = startedAtWallClockMs,
-            distanceMeters = routeDistanceMeters(normalizedRoute),
+            distanceMeters = routeDistanceMeters(movementRoute),
             latestHeartRateBpm = latestHeartRateBpm,
             activeDurationMs = activeDurationMs,
             distanceSamples = distanceSamplesByBucket.values.sortedBy { it.timestampMs },
@@ -102,23 +113,40 @@ class WearExerciseMetricAccumulator(
             .forEach { routePoint ->
                 val previous = accepted.lastOrNull()
                 if (previous != null) {
-                    if (!isConfidentRunningMovement(previous, routePoint)) return@forEach
+                    val elapsedMs = routePoint.timestampMs - previous.timestampMs
+                    if (elapsedMs <= 0L) return@forEach
+                    val inferredSpeedMps = haversineMeters(previous, routePoint) / (elapsedMs / 1_000.0)
+                    if (!inferredSpeedMps.isFinite() || inferredSpeedMps > MAX_RUNNING_SPEED_MPS) return@forEach
                 }
-                val previousTimestampMs = lastRouteTimestampMs
-                val inferredGap = previousTimestampMs != null &&
-                    routePoint.timestampMs - previousTimestampMs > ROUTE_GAP_MS
                 val explicitGap = routePoint.gapBefore
-                if ((inferredGap || explicitGap) && previousTimestampMs != routePoint.timestampMs) {
+                if (explicitGap && lastRouteTimestampMs != routePoint.timestampMs) {
                     currentRouteSegmentId += 1
                 }
                 lastRouteTimestampMs = routePoint.timestampMs
                 accepted.add(routePoint.copy(
                     segmentId = routePoint.segmentId ?: currentRouteSegmentId,
-                    gapBefore = explicitGap || inferredGap,
-                    gapReason = routePoint.gapReason ?: if (inferredGap) "time-gap" else null,
+                    gapBefore = explicitGap,
+                    gapReason = routePoint.gapReason,
                 ))
             }
         return accepted
+    }
+
+    private fun confirmedMovementRoute(route: List<WearRoutePoint>): List<WearRoutePoint> {
+        if (route.size < 2) return route
+        val confirmed = mutableListOf<WearRoutePoint>()
+        var anchor: WearRoutePoint? = null
+        route.forEach { point ->
+            val previous = anchor
+            if (previous == null || point.gapBefore || previous.segmentId != point.segmentId) {
+                confirmed.add(point)
+                anchor = point
+            } else if (isConfidentRunningMovement(previous, point)) {
+                confirmed.add(point)
+                anchor = point
+            }
+        }
+        return confirmed
     }
 
     private fun isConfidentRunningMovement(previous: WearRoutePoint, point: WearRoutePoint): Boolean {
@@ -162,11 +190,10 @@ class WearExerciseMetricAccumulator(
 
     private companion object {
         const val HEART_RATE_BUCKET_MS = 10_000L
-        const val ROUTE_GAP_MS = 45_000L
         const val MAX_GPS_ACCURACY_M = 35.0
         const val MIN_ROUTE_DISPLACEMENT_M = 12.0
         const val MAX_GPS_ERROR_RADIUS_M = 30.0
-        const val MIN_CONFIDENT_RUNNING_SPEED_MPS = 0.8
+        const val MIN_CONFIDENT_RUNNING_SPEED_MPS = 0.3
         const val MAX_RUNNING_SPEED_MPS = 15.0
         const val MIN_HEART_RATE_BPM = 30
         const val MAX_HEART_RATE_BPM = 240

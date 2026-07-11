@@ -137,7 +137,10 @@ data class WearWorkoutPayload(
         private const val MAX_HEART_RATE_BUCKETS = 2_161
         private const val MAX_HEART_RATE_SAMPLE_COUNT = 50_000
         private const val MAX_ROUTE_POINT_COUNT = 25_000
-        private const val ROUTE_GAP_MS = 45_000L
+        private const val MIN_ROUTE_DISPLACEMENT_M = 12.0
+        private const val MAX_GPS_ERROR_RADIUS_M = 30.0
+        private const val MIN_CONFIDENT_RUNNING_SPEED_MPS = 0.3
+        private const val MAX_RUNNING_SPEED_MPS = 15.0
         private val DATE_KEY_PATTERN = Regex("""\d{4}-\d{2}-\d{2}""")
 
         fun fromSession(session: WearRunSession): Result<WearWorkoutPayload> = runCatching {
@@ -166,7 +169,7 @@ data class WearWorkoutPayload(
             val route = normalizeRoute(session)
             val routeGapSummary = summarizeRouteGaps(route)
             val distanceMeters = session.distanceMeters.takeIf { it > 0.0 }
-                ?: distanceMetersFromRoute(route)
+                ?: confirmedMovementDistanceMeters(route)
             val distanceKm = roundTo(distanceMeters / 1_000.0, digits = 2)
             val validHeartRateSamples = session.heartRateSamples
                 .filter { sample ->
@@ -247,8 +250,7 @@ data class WearWorkoutPayload(
                 val segmentChanged = previous != null &&
                     explicitSegmentId != null &&
                     explicitSegmentId != previousSegmentId
-                val timeGap = previous != null && point.timestampMs - previous.timestampMs > ROUTE_GAP_MS
-                val gapBefore = previous != null && (point.gapBefore || segmentChanged || timeGap)
+                val gapBefore = previous != null && (point.gapBefore || segmentChanged)
                 currentSegmentId = when {
                     explicitSegmentId != null && gapBefore && !segmentChanged -> {
                         maxOf(explicitSegmentId, previousSegmentId + 1)
@@ -262,7 +264,7 @@ data class WearWorkoutPayload(
                         segmentId = currentSegmentId,
                         gapBefore = gapBefore,
                         gapReason = if (gapBefore) {
-                            point.gapReason ?: if (timeGap) "time-gap" else "watch-gap"
+                            point.gapReason ?: "watch-gap"
                         } else {
                             null
                         },
@@ -298,13 +300,6 @@ data class WearWorkoutPayload(
             }
         }
 
-        private fun distanceMetersFromRoute(route: List<WearRoutePoint>): Double {
-            if (route.size < 2) return 0.0
-            return route.zipWithNext().sumOf { (a, b) ->
-                if (isGapEdge(a, b)) 0.0 else haversineMeters(a, b)
-            }
-        }
-
         private fun summarizeRouteGaps(route: List<WearRoutePoint>): RouteGapSummary {
             if (route.isEmpty()) return RouteGapSummary(segmentCount = 0, gapCount = 0)
 
@@ -326,6 +321,33 @@ data class WearWorkoutPayload(
             return point.gapBefore || segmentChanged
         }
 
+        private fun confirmedMovementDistanceMeters(route: List<WearRoutePoint>): Double {
+            if (route.size < 2) return 0.0
+            var anchor: WearRoutePoint? = null
+            var total = 0.0
+            route.forEach { point ->
+                val previous = anchor
+                if (previous == null || isGapEdge(previous, point)) {
+                    anchor = point
+                    return@forEach
+                }
+                val elapsedMs = point.timestampMs - previous.timestampMs
+                if (elapsedMs <= 0L) return@forEach
+                val distanceM = haversineMeters(previous, point)
+                val errorRadiusM = maxOf(
+                    MIN_ROUTE_DISPLACEMENT_M,
+                    minOf(MAX_GPS_ERROR_RADIUS_M, maxOf(previous.accuracy ?: 0.0, point.accuracy ?: 0.0) * 2.0),
+                )
+                val inferredSpeedMps = distanceM / (elapsedMs / 1_000.0)
+                if (distanceM <= errorRadiusM || inferredSpeedMps !in MIN_CONFIDENT_RUNNING_SPEED_MPS..MAX_RUNNING_SPEED_MPS) {
+                    return@forEach
+                }
+                total += distanceM
+                anchor = point
+            }
+            return total
+        }
+
         private fun haversineMeters(a: WearRoutePoint, b: WearRoutePoint): Double {
             val radiusMeters = 6_371_000.0
             val dLat = Math.toRadians(b.lat - a.lat)
@@ -334,7 +356,7 @@ data class WearWorkoutPayload(
             val lat2 = Math.toRadians(b.lat)
             val h = kotlin.math.sin(dLat / 2) * kotlin.math.sin(dLat / 2) +
                 kotlin.math.cos(lat1) * kotlin.math.cos(lat2) *
-                kotlin.math.sin(dLng / 2) * kotlin.math.sin(dLng / 2)
+                    kotlin.math.sin(dLng / 2) * kotlin.math.sin(dLng / 2)
             return 2 * radiusMeters * kotlin.math.atan2(kotlin.math.sqrt(h), kotlin.math.sqrt(1 - h))
         }
 

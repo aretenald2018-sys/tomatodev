@@ -173,7 +173,7 @@ test('production app cache busts the service worker registrar script', () => {
   assert.match(indexHtml, /app\.js\?v=20260711c-apk-login-handoff/);
   assert.match(appJs, /utils\/build-info\.js\?v=20260708a-diet-frequent-foods/);
   assert.match(appJs, /render-workout\.js\?v=20260708a-diet-frequent-foods/);
-  assert.match(swJs, /tomatofarm-v20260711z4-running-native-gps/);
+  assert.match(swJs, /tomatofarm-v20260711z7-running-gps-full-route/);
 });
 
 test('top-nav manual app refresh uses build-info update helper', () => {

@@ -451,7 +451,7 @@ test('web bridge saves a valid wear run into running-only session storage', asyn
   }
 });
 
-test('web bridge preserves and infers wear route gap metadata for map segments', async () => {
+test('web bridge preserves explicit wear gaps without inventing gaps from sparse GPS', async () => {
   const tmp = await mkdtemp(join(tmpdir(), 'wear-bridge-gap-'));
   try {
     const modulePath = await writeWearBridgeModule(tmp);
@@ -503,12 +503,12 @@ test('web bridge preserves and infers wear route gap metadata for map segments',
       route: basePayload.route.map(({ segmentId, gapBefore, gapReason, ...point }) => point),
       routeSummary: { source: 'wear-gps', pointCount: 3, distanceKm: 0.5, durationSec: 120 },
     });
-    assert.equal(inferred.route[2].segmentId, 1);
-    assert.equal(inferred.route[2].gapBefore, true);
-    assert.equal(inferred.route[2].gapReason, 'time-gap');
-    assert.equal(inferred.routeSummary.segmentCount, 2);
-    assert.equal(inferred.routeSummary.gapCount, 1);
-    assert.equal(inferred.routeSummary.interrupted, true);
+    assert.equal(inferred.route[2].segmentId, 0);
+    assert.equal(inferred.route[2].gapBefore, undefined);
+    assert.equal(inferred.route[2].gapReason, undefined);
+    assert.equal(inferred.routeSummary.segmentCount, 1);
+    assert.equal(inferred.routeSummary.gapCount, 0);
+    assert.equal(inferred.routeSummary.interrupted, false);
 
     const saved = [];
     const state = { workout: { exercises: [], sessionIndex: 0, running: false, runData: {} }, diet: {}, shared: {} };

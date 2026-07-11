@@ -28,9 +28,9 @@ test('phone route collection rejects stale and inaccurate fixes and drains nativ
   const store = read('android/app/src/main/java/com/lifestreak/app/running/PhoneRunningLocationStore.java');
   const session = read('workout/running-session.js');
 
-  assert.match(store, /MAX_ACCURACY_M = 100f/);
+  assert.match(store, /MAX_ACCURACY_M = 35f/);
   assert.match(store, /MAX_LOCATION_AGE_MS = 30_000L/);
-  assert.match(store, /MAX_SPEED_MPS = 15\.0/);
+  assert.match(store, /MAX_RUNNING_SPEED_MPS = 15\.0/);
   assert.match(session, /maximumAge:\s*0/);
   assert.match(session, /TomatoRunningLocation/);
   assert.match(session, /await _stopWatch\('finish'\)/);

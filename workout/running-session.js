@@ -11,7 +11,6 @@ import {
 } from './running-route-store.js';
 
 const RUNNING_ROUTE_PREVIEW_POINTS = 240;
-const ROUTE_GAP_MS = 45_000;
 const RUNNING_DRAFT_ROUTE_WRITE_INTERVAL_MS = 30_000;
 const RUNNING_WORKOUT_SESSION_INDEX = 2;
 const RUNNING_SESSION_DRAFT_VERSION = 1;
@@ -28,7 +27,7 @@ const MAX_LIVE_GPS_AGE_MS = 30_000;
 const MAX_LIVE_GPS_ACCURACY_M = 35;
 const MIN_RUNNING_DISPLACEMENT_M = 12;
 const MAX_RUNNING_GPS_ERROR_RADIUS_M = 30;
-const MIN_CONFIDENT_RUNNING_SPEED_MPS = 0.8;
+const MIN_CONFIDENT_RUNNING_SPEED_MPS = 0.3;
 const MAX_PLAUSIBLE_RUNNING_SPEED_MPS = 15;
 const NATIVE_LOCATION_POLL_MS = 2_000;
 const DEFAULT_RUNNING_GOAL = Object.freeze({ type: 'free', value: 0 });
@@ -315,7 +314,7 @@ export function runningDistanceMeters(a, b) {
 }
 
 export function runningRouteDistanceMeters(points = []) {
-  const route = _normalizeRunningRoute(points);
+  const route = buildConfirmedRunningMovementRoute(points);
   let total = 0;
   for (let i = 1; i < route.length; i += 1) {
     if (_isRouteGapEdge(route[i - 1], route[i])) continue;
@@ -343,10 +342,25 @@ export function isConfidentRunningMovement(previous, point) {
   if (inferredSpeedMps < MIN_CONFIDENT_RUNNING_SPEED_MPS
     || inferredSpeedMps > MAX_PLAUSIBLE_RUNNING_SPEED_MPS) return false;
 
-  const reportedSpeedMps = _optionalFiniteNumber(point?.speed);
-  return reportedSpeedMps == null
-    || (reportedSpeedMps >= MIN_CONFIDENT_RUNNING_SPEED_MPS
-      && reportedSpeedMps <= MAX_PLAUSIBLE_RUNNING_SPEED_MPS);
+  return true;
+}
+
+export function buildConfirmedRunningMovementRoute(points = []) {
+  const route = _normalizeRunningRoute(points);
+  if (route.length < 2) return route;
+  const confirmed = [];
+  let anchor = null;
+  for (const point of route) {
+    if (!anchor || point.gapBefore === true || _routeSegmentId(anchor, 0) !== _routeSegmentId(point, 0)) {
+      confirmed.push(point);
+      anchor = point;
+      continue;
+    }
+    if (!isConfidentRunningMovement(anchor, point)) continue;
+    confirmed.push(point);
+    anchor = point;
+  }
+  return confirmed;
 }
 
 export function downsampleRunningRoute(points = [], max = RUNNING_ROUTE_PREVIEW_POINTS) {
@@ -477,13 +491,16 @@ export function estimateRunningCalories(distanceKm, weightKg = 70) {
 
 export function summarizeRunningRoute(points = [], options = {}) {
   const route = normalizeRunningRoutePoints(points);
+  const movementRoute = buildConfirmedRunningMovementRoute(route);
   const startedAt = _num(options.startedAt, route[0]?.ts || _now());
   const endedAt = _num(options.endedAt, route[route.length - 1]?.ts || startedAt);
   const pausedMs = Math.max(0, _num(options.pausedMs, 0));
   const durationSec = Math.max(0, Math.floor((endedAt - startedAt - pausedMs) / 1000));
   const distanceM = Math.max(0, _num(options.distanceM, runningRouteDistanceMeters(route)));
-  const distanceKm = _round(distanceM / 1000, 2);
-  const avgPaceSecPerKm = distanceKm > 0 && durationSec > 0 ? Math.round(durationSec / distanceKm) : 0;
+  const preciseDistanceKm = distanceM / 1000;
+  const distanceKm = _round(preciseDistanceKm, 2);
+  const avgPaceSecPerKm = preciseDistanceKm > 0 && durationSec > 0 ? Math.round(durationSec / preciseDistanceKm) : 0;
+  const speedKmh = preciseDistanceKm > 0 && durationSec > 0 ? _round(preciseDistanceKm / (durationSec / 3600), 2) : 0;
   const bbox = _routeBounds(route);
   const centroid = _routeCentroid(route);
   const elevationGainM = _elevationGain(route);
@@ -499,12 +516,14 @@ export function summarizeRunningRoute(points = [], options = {}) {
     gapCount,
     interrupted: gapCount > 0,
     durationSec,
+    distanceM: _round(distanceM, 2),
     distanceKm,
     avgPaceSecPerKm,
+    speedKmh,
     bbox,
     centroid,
-    elevationGainM,
-    calories: estimateRunningCalories(distanceKm),
+    elevationGainM: _elevationGain(movementRoute) ?? elevationGainM,
+    calories: estimateRunningCalories(preciseDistanceKm),
     avgHeartRateBpm: _avgRouteMetric(route, 'heartRateBpm'),
     cadenceSpm: _avgRouteMetric(route, 'cadenceSpm'),
     gpsAccuracySummary: _accuracySummary(route),
@@ -775,7 +794,7 @@ function _restoreRunningDraftIfAvailable() {
   S.workout.sessionIndex = RUNNING_WORKOUT_SESSION_INDEX;
   S.workout.sessionId = 'running-track';
   if (_session.phase === 'active') {
-    _markRouteGap('restore');
+    if (!_nativeRunningLocationPlugin()) _markRouteGap('restore');
     _startWatch();
   }
   if (_session.phase === 'active' || _session.phase === 'paused') _startTicker();
@@ -789,17 +808,17 @@ function _bindRunningDraftEvents() {
   if (_runningDraftEventsBound || typeof window === 'undefined') return;
   _runningDraftEventsBound = true;
   window.addEventListener('pagehide', () => {
-    _markRouteGap('pagehide');
+    if (!_nativeRunningLocationPlugin()) _markRouteGap('pagehide');
     _persistRunningDraft('pagehide');
   });
   window.addEventListener('beforeunload', () => {
-    _markRouteGap('beforeunload');
+    if (!_nativeRunningLocationPlugin()) _markRouteGap('beforeunload');
     _persistRunningDraft('beforeunload');
   });
   if (typeof document !== 'undefined') {
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
-        _markRouteGap('visibility-hidden');
+        if (!_nativeRunningLocationPlugin()) _markRouteGap('visibility-hidden');
         _persistRunningDraft('visibility hidden');
       }
     });
@@ -995,7 +1014,11 @@ function _isUsableLiveGpsPoint(point, now = _now()) {
   const accuracy = Number(point.accuracy);
   if (Number.isFinite(accuracy) && accuracy > MAX_LIVE_GPS_ACCURACY_M) return false;
   const last = _session.route[_session.route.length - 1];
-  return isConfidentRunningMovement(last, point);
+  if (!last) return true;
+  const elapsedSec = (Number(point.ts) - Number(last.ts)) / 1000;
+  if (!Number.isFinite(elapsedSec) || elapsedSec <= 0) return false;
+  const inferredSpeedMps = runningDistanceMeters(last, point) / elapsedSec;
+  return Number.isFinite(inferredSpeedMps) && inferredSpeedMps <= MAX_PLAUSIBLE_RUNNING_SPEED_MPS;
 }
 
 function _ingestNativeLocationResult(result = {}) {
@@ -1148,9 +1171,8 @@ function _pushRoutePoint(point, options = {}) {
     _rejectRunningRoutePoint('이전 위치보다 오래된 GPS 좌표를 기록하지 않았어요.');
     return false;
   }
-  const elapsedGap = last ? normalized.ts - last.ts : 0;
-  const gapReason = last && (options.gapBefore || pendingReason || elapsedGap > ROUTE_GAP_MS)
-    ? pendingReason || (elapsedGap > ROUTE_GAP_MS ? 'time-gap' : 'resume')
+  const gapReason = last && (options.gapBefore || pendingReason)
+    ? pendingReason || 'resume'
     : '';
 
   const segmentId = last ? _routeSegmentId(last, 0) + (gapReason ? 1 : 0) : 0;
@@ -1261,7 +1283,6 @@ function _startWatch() {
     },
     error => {
       _session.lastError = error?.message || 'GPS 권한을 확인해주세요';
-      if (_session.phase === 'active') _markRouteGap('gps-error');
       _render();
     },
     GEO_OPTIONS

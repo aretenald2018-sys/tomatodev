@@ -235,7 +235,7 @@ test('running summary save opens the saved workout day detail sheet', () => {
 test('running session persists unsaved live records across app reloads', () => {
   assert.match(runningSessionJs, /RUNNING_SESSION_DRAFT_KEY_PREFIX = 'tomatofarm_running_session_draft_'/);
   assert.match(runningSessionJs, /RUNNING_SESSION_DRAFT_ACTIVE_KEY = 'tomatofarm_running_session_draft_active'/);
-  assert.match(runningSessionJs, /ROUTE_GAP_MS/);
+  assert.doesNotMatch(runningSessionJs, /ROUTE_GAP_MS/);
   assert.match(runningSessionJs, /pendingGapReason/);
   assert.match(runningSessionJs, /function _markRouteGap/);
   assert.match(runningSessionJs, /export function normalizeRunningSessionDraft/);
@@ -300,7 +300,7 @@ test('running workout save writes a running life-zone snapshot', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260711z6-running-gps-stationary-map/);
+  assert.match(swJs, /tomatofarm-v20260711z7-running-gps-full-route/);
   assert.match(swJs, /\.\/workout\/index\.js\?v=20260707d-wear-bridge-load-binding/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
