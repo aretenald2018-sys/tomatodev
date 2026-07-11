@@ -182,22 +182,6 @@
   <span id="sync-text">동기화 연결 중...</span>
 </div>
 
-<!-- 상단 네비게이션 -->
-<header class="top-nav top-nav--actions-only">
-  <div style="display:flex;align-items:center;gap:4px;">
-    <button class="icon-btn" id="pwa-install-btn" type="button" data-app-action="install-pwa" title="앱 설치" style="display:none;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 1.7c.442 0 .8.358.8.8v14.069l5.634-5.634a.8.8 0 011.132 1.13l-7 7a.8.8 0 01-1.132 0l-7-7a.8.8 0 011.132-1.13L11.2 16.568V2.5c0-.442.358-.8.8-.8zM4.2 21.5c0-.442.358-.8.8-.8h14c.442 0 .8.358.8.8s-.358.8-.8.8H5c-.442 0-.8-.358-.8-.8z" fill="currentColor"/></svg></button>
-    <button class="icon-btn" id="letter-btn" type="button" data-app-action="open-letter-modal" title="개발자에게 편지" style="display:none;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M2.4 5.6A2.4 2.4 0 014.8 3.2h14.4a2.4 2.4 0 012.4 2.4v12.8a2.4 2.4 0 01-2.4 2.4H4.8a2.4 2.4 0 01-2.4-2.4V5.6zm2.4-.8a.8.8 0 00-.8.8v.469l8 5.333 8-5.333V5.6a.8.8 0 00-.8-.8H4.8zM20 7.931l-7.553 5.035a.8.8 0 01-.894 0L4 7.931V18.4a.8.8 0 00.8.8h14.4a.8.8 0 00.8-.8V7.931z" fill="currentColor"/></svg></button>
-    <button class="icon-btn notif-bell" id="notif-bell" type="button" data-app-action="toggle-notif-center" title="알림" style="display:none;">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2.2c-3.752 0-6.8 3.048-6.8 6.8v4.758l-1.866 2.798A.797.797 0 003.2 17v1c0 .442.358.8.8.8h5.206l-.005.133A.97.97 0 009.2 18.966C9.2 20.514 10.446 21.8 12 21.8s2.8-1.286 2.8-2.834V18.8H20c.442 0 .8-.358.8-.8v-1a.797.797 0 00-.134-.444L18.8 13.758V9c0-3.752-3.048-6.8-6.8-6.8zm1.2 16.6h-2.392l-.008.181c.008.682.559 1.219 1.2 1.219.646 0 1.2-.544 1.2-1.234V18.8zM19.172 17.2l-1.837-2.756A.797.797 0 0117.2 14V9c0-2.868-2.332-5.2-5.2-5.2S6.8 6.132 6.8 9v5a.797.797 0 01-.134.444L4.828 17.2h14.344z" fill="currentColor"/></svg>
-      <span class="notif-badge" id="notif-badge" style="display:none;">0</span>
-    </button>
-    <button class="icon-btn app-refresh-btn" id="app-refresh-btn" type="button" data-app-action="refresh-app-update" title="앱 새로고침" aria-label="앱 새로고침">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20.2 12a8.2 8.2 0 11-2.402-5.798L20.2 8.604V4.4a.8.8 0 111.6 0v6.4a.8.8 0 01-.8.8h-6.4a.8.8 0 110-1.6h4.066l-2-2.667A6.6 6.6 0 1018.6 12a.8.8 0 111.6 0z" fill="currentColor"/></svg>
-    </button>
-    <button class="icon-btn" type="button" data-app-action="logout-account" title="계정 전환"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M19.546 20.411A11.26 11.26 0 0112 23.3C5.759 23.3.7 18.241.7 12S5.759.7 12 .7 23.3 5.759 23.3 12c0 2.68-.933 5.142-2.492 7.079a12.01 12.01 0 01-1.262 1.332zM2.3 12a9.7 9.7 0 009.7 9.7 9.66 9.66 0 006.915-2.898c-.979-1.465-2.782-2.633-4.515-3.33A5.29 5.29 0 0017.3 10.5c0-2.927-2.373-5.3-5.3-5.3s-5.3 2.373-5.3 5.3c0 1.43.566 2.725 1.484 3.678-1.734.696-3.197 1.857-4.176 3.322A9.66 9.66 0 012.3 12zm2.785 6.802C6.844 20.591 9.293 21.7 12 21.7s5.156-1.109 6.915-2.898c-.969-1.715-2.772-3.043-4.99-3.541a.8.8 0 01-.618-.82.8.8 0 01.419-.813A4.49 4.49 0 0015.7 10.5c0-2.044-1.657-3.7-3.7-3.7s-3.7 1.656-3.7 3.7a4.49 4.49 0 001.974 3.274.8.8 0 01.419.813.8.8 0 01-.618.82c-2.217.497-4.02 1.826-4.99 3.54z" fill="currentColor"/></svg></button>
-  </div>
-</header>
-
 <!-- 알림센터 패널 -->
 <div class="notif-center" id="notif-center">
   <div class="notif-center-header">
@@ -243,6 +227,24 @@
     <button class="more-menu-item" type="button" data-app-action="install-apk">
       <span class="tab-icon nav-icon nav-icon-apk" aria-hidden="true"></span><span>APK 설치하기</span>
     </button>
+    <div class="more-menu-section more-menu-section--app-actions">
+      <button class="more-menu-item" id="pwa-install-btn" type="button" data-app-action="install-pwa" title="앱 설치" style="display:none;">
+        <span class="tab-icon nav-icon nav-icon-install" aria-hidden="true"></span><span>앱 설치</span>
+      </button>
+      <button class="more-menu-item" id="letter-btn" type="button" data-app-action="open-letter-modal" title="개발자에게 편지" style="display:none;">
+        <span class="tab-icon nav-icon nav-icon-letter" aria-hidden="true"></span><span>개발자에게 편지</span>
+      </button>
+      <button class="more-menu-item notif-bell" id="notif-bell" type="button" data-app-action="toggle-notif-center" title="알림" style="display:none;">
+        <span class="tab-icon nav-icon nav-icon-notification" aria-hidden="true"></span><span>알림</span>
+        <span class="notif-badge" id="notif-badge" style="display:none;">0</span>
+      </button>
+      <button class="more-menu-item app-refresh-btn" id="app-refresh-btn" type="button" data-app-action="refresh-app-update" title="앱 새로고침" aria-label="앱 새로고침">
+        <span class="tab-icon nav-icon nav-icon-refresh" aria-hidden="true"></span><span>앱 새로고침</span>
+      </button>
+      <button class="more-menu-item" type="button" data-app-action="logout-account" title="계정 전환">
+        <span class="tab-icon nav-icon nav-icon-account" aria-hidden="true"></span><span>계정 전환</span>
+      </button>
+    </div>
     <div id="admin-menu-items" style="display:none;">
       <div style="border-top:1px solid var(--border);margin-top:4px;padding-top:4px">
         <button class="more-menu-item tab-btn" type="button" data-tab="admin" data-app-action="switch-tab-close-more">
@@ -896,7 +898,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
 <script src="feature-login.js?v=20260711d-apk-login-handoff"></script>
-<script type="module" src="app.js?v=20260711e8-diet-search-carousel-food-db"></script>
+<script type="module" src="app.js?v=20260711e9-headerless-lifezone-trapezoid"></script>
 
 <!-- PWA Service Worker 등록 -->
 <script src="pwa-register.js?v=20260711e7-single-update-refresh"></script>

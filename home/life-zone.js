@@ -1080,7 +1080,7 @@ export function renderLifeZoneCard({
     `;
 
   const heroHtml = hero ? `
-    <div class="lz-hero tf-hero tf-hero--gradient">
+    <div class="lz-overview-hero">
       <div class="tf-hero-left">
         <div class="tf-hero-label" data-hero-message-target>${escapeHtml(hero.label || '')}</div>
         <div class="tf-hero-count">${hero.countHtml || ''}</div>
@@ -1094,13 +1094,15 @@ export function renderLifeZoneCard({
   ` : '';
 
   card.innerHTML = `
-    ${heroHtml}
-    <div class="lz-head">
-      <div>
-        <span class="lz-eyebrow" data-lz-date>${escapeHtml(formatLifeZoneDateLabel(TODAY))}</span>
-        <h3 class="lz-title" data-lz-title>오늘의 라이프존</h3>
+    <div class="lz-overview${hero ? '' : ' lz-overview--life-only'}">
+      <div class="lz-head lz-overview-life">
+        <div class="lz-title-stack">
+          <span class="lz-eyebrow" data-lz-date>${escapeHtml(formatLifeZoneDateLabel(TODAY))}</span>
+          <h3 class="lz-title" data-lz-title>오늘의 라이프존</h3>
+        </div>
+        <span class="lz-sync" data-lz-sync>불러오는 중</span>
       </div>
-      <span class="lz-sync" data-lz-sync>불러오는 중</span>
+      ${heroHtml}
     </div>
     <div class="lz-scene">
       <div class="lz-world">

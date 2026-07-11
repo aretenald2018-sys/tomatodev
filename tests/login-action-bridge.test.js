@@ -21,7 +21,7 @@ const swJs = read('sw.js');
 const welcomeBackJs = read('home/welcome-back.js');
 
 test('login screen markup uses data-login actions instead of inline handlers', () => {
-  const loginMarkup = sliceBetween(indexHtml, '<!-- 로그인 화면 -->', '<!-- 상단 네비게이션 -->');
+  const loginMarkup = sliceBetween(indexHtml, '<!-- 로그인 화면 -->', '<!-- 알림센터 패널 -->');
 
   assert.match(loginMarkup, /id="login-password"[^>]*data-login-enter-action="create-account-login"/);
   assert.match(loginMarkup, /id="login-create-btn"[^>]*data-login-action="create-account-login"/);
@@ -98,5 +98,5 @@ test('APK login does not wait for optional welcome data before showing the app s
 });
 
 test('service worker cache version was bumped for APK login handoff assets', () => {
-  assert.match(swJs, /tomatofarm-v20260711z10-diet-search-live-food-db/);
+  assert.match(swJs, /tomatofarm-v20260711z11-headerless-lifezone-trapezoid/);
 });

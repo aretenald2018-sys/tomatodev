@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 const indexHtml = readFileSync('index.html', 'utf8');
 const renderJs = readFileSync('workout/render.js', 'utf8');
 const styleCss = readFileSync('style.css', 'utf8');
+const navigationJs = readFileSync('navigation.js', 'utf8');
 
 test('breakfast lunch and dinner have frequent food chip containers instead of visible memo inputs', () => {
   for (const meal of ['breakfast', 'lunch', 'dinner']) {
@@ -42,6 +43,9 @@ test('frequent and recent suggestions persist after adding, support ten entries,
   assert.match(renderJs, /excludedGroupKeys\.has\(groupKey\)/, 'recent suggestions should exclude frequent row group keys');
   assert.match(renderJs, /최근에 먹은 것/, 'recent suggestions should render with a visible section label');
   assert.match(renderJs, /diet-frequent-food-carousel/, 'both suggestion lists should render as horizontal carousels');
+  assert.match(renderJs, /data-swipe-nav-lock/, 'food suggestion carousels should not trigger global tab swipes');
+  assert.match(navigationJs, /function isSwipeNavigationLocked\(target = null\)/, 'global swipe navigation should have a carousel lock guard');
+  assert.match(navigationJs, /data-swipe-nav-lock[\s\S]*diet-frequent-food-carousel[\s\S]*diet-frequent-food-options/, 'diet carousels should be excluded from tab swipe navigation');
   assert.match(styleCss, /\.diet-frequent-food-options {[^}]*overflow-x: auto/, 'suggestion rows should scroll horizontally');
   assert.match(styleCss, /\.diet-frequent-food-option {[^}]*flex: 0 0 min\(132px, 34vw\)/, 'each carousel entry should keep a readable fixed card width');
   assert.match(styleCss, /#tab-diet \.diet-frequent-food-option {[^}]*font-size: var\(--seed-t1\)/, 'suggestion option font should be smaller than the previous compact text style');

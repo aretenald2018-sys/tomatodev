@@ -184,7 +184,7 @@ test('manual app refresh keeps native Wear bridge while APK button downloads mob
     'export async function requestTomatoAppRefresh',
     'APK install helper should stay separate from the page reload path',
   );
-  assert.match(swJs, /tomatofarm-v20260711z10-diet-search-live-food-db/);
+  assert.match(swJs, /tomatofarm-v20260711z11-headerless-lifezone-trapezoid/);
 });
 
 test('published mobile APK contains current life-zone photo bubble assets', () => {

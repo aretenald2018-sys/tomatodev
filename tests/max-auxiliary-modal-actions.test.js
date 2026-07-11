@@ -95,5 +95,5 @@ test('remaining Max inline handlers are limited to the existing V4 sheet shell',
 });
 
 test('service worker cache version was bumped for Max auxiliary modal actions', () => {
-  assert.match(swJs, /tomatofarm-v20260711z10-diet-search-live-food-db/);
+  assert.match(swJs, /tomatofarm-v20260711z11-headerless-lifezone-trapezoid/);
 });

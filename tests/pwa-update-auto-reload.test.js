@@ -170,15 +170,17 @@ test('service worker controllerchange still reloads once', () => {
 
 test('production app cache busts the service worker registrar script', () => {
   assert.match(indexHtml, /pwa-register\.js\?v=20260711e7-single-update-refresh/);
-  assert.match(indexHtml, /app\.js\?v=20260711e8-diet-search-carousel-food-db/);
+  assert.match(indexHtml, /app\.js\?v=20260711e9-headerless-lifezone-trapezoid/);
   assert.match(appJs, /utils\/build-info\.js\?v=20260708a-diet-frequent-foods/);
   assert.match(appJs, /render-workout\.js\?v=20260708a-diet-frequent-foods/);
-  assert.match(swJs, /tomatofarm-v20260711z10-diet-search-live-food-db/);
+  assert.match(swJs, /tomatofarm-v20260711z11-headerless-lifezone-trapezoid/);
 });
 
-test('top-nav manual app refresh uses build-info update helper', () => {
-  assert.match(indexHtml, /id="app-refresh-btn"[^>]+data-app-action="refresh-app-update"/);
+test('more-menu manual app refresh uses build-info update helper', () => {
+  assert.doesNotMatch(indexHtml, /class="[^"]*\btop-nav\b/);
+  assert.match(indexHtml, /more-menu-section--app-actions[\s\S]*id="app-refresh-btn"[^>]+data-app-action="refresh-app-update"/);
   assert.match(appJs, /case 'refresh-app-update':/);
+  assert.match(appJs, /window\.__requestTomatoAppRefresh\(\{ control, source: 'more-menu' \}\)/);
   assert.match(buildInfoJs, /export async function requestTomatoAppRefresh/);
   assert.match(buildInfoJs, /window\.__requestTomatoAppRefresh = requestTomatoAppRefresh/);
   assert.match(buildInfoJs, /__refreshTomatoAppSWRegistration/);

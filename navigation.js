@@ -85,10 +85,15 @@ export function initSwipeNavigation() {
       || !!target?.closest?.('.modal, .modal-backdrop, .modal-overlay, .sheet-overlay');
   }
 
+  function isSwipeNavigationLocked(target = null) {
+    return !!target?.closest?.('[data-swipe-nav-lock], .diet-frequent-food-carousel, .diet-frequent-food-options');
+  }
+
   document.body.addEventListener('touchstart', e => {
     if (isModalInteraction(e.target)) return;
     const t = e.target;
-    if (t.closest('.tab-nav') || t.closest('input[type="range"]') ||
+    if (isSwipeNavigationLocked(t) ||
+        t.closest('.tab-nav') || t.closest('input[type="range"]') ||
         t.closest('canvas') || t.closest('textarea') ||
         t.closest('.grid-wrap') ||
         t.closest('#neighbor-section') || t.closest('.friend-paging-controls') ||

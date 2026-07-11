@@ -235,7 +235,6 @@ window._getCurrentTab = () => _currentTab;
 function _syncNavigationForCurrentRole() {
   const adminOnlyMode = isAdmin();
   const tabNav = document.getElementById('tab-nav');
-  const topNav = document.querySelector('.top-nav');
   const moreMenu = document.getElementById('more-menu');
   const adminMenu = document.getElementById('admin-menu-items');
   const moreBtn = tabNav?.querySelector('.tab-more-btn');
@@ -260,11 +259,10 @@ function _syncNavigationForCurrentRole() {
   if (adminMenu) adminMenu.style.display = isAdmin() ? '' : 'none';
 
   if (tabNav) tabNav.style.display = '';
-  if (topNav) topNav.style.display = adminOnlyMode && _currentTab === 'admin' ? 'none' : '';
   if (moreMenu && adminOnlyMode) moreMenu.style.display = 'none';
 }
 
-const APP_SHELL_ACTION_SCOPE = '.top-nav, #notif-center, #notif-center-backdrop, #tab-nav, #more-menu, #tab-settings-modal';
+const APP_SHELL_ACTION_SCOPE = '#notif-center, #notif-center-backdrop, #tab-nav, #more-menu, #tab-settings-modal';
 
 function _closeMoreMenu() {
   const menu = document.getElementById('more-menu');
@@ -283,6 +281,7 @@ function _runAppShellAction(action, control, event) {
   switch (action) {
     case 'install-pwa':
       installPWA();
+      _closeMoreMenu();
       break;
     case 'install-apk':
       if (typeof window.__requestTomatoApkInstall === 'function') {
@@ -293,19 +292,23 @@ function _runAppShellAction(action, control, event) {
       _closeMoreMenu();
       break;
     case 'open-letter-modal':
+      _closeMoreMenu();
       _runWindowAction('openLetterModal');
       break;
     case 'toggle-notif-center':
+      _closeMoreMenu();
       _runWindowAction('toggleNotifCenter');
       break;
     case 'refresh-app-update':
+      _closeMoreMenu();
       if (typeof window.__requestTomatoAppRefresh === 'function') {
-        void window.__requestTomatoAppRefresh({ control, source: 'top-nav' });
+        void window.__requestTomatoAppRefresh({ control, source: 'more-menu' });
       } else {
         window.location.reload();
       }
       break;
     case 'logout-account':
+      _closeMoreMenu();
       _runWindowAction('logoutAccount');
       break;
     case 'mark-all-notifs-read':

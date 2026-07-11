@@ -20,7 +20,7 @@ const navigationJs = read('navigation.js');
 const swJs = read('sw.js');
 
 test('app shell markup uses data-app actions instead of inline handlers', () => {
-  const shellMarkup = sliceBetween(indexHtml, '<!-- 상단 네비게이션 -->', '<!-- ═══ 홈 탭 ═══ -->');
+  const shellMarkup = sliceBetween(indexHtml, '<!-- 알림센터 패널 -->', '<!-- ═══ 홈 탭 ═══ -->');
   const actions = [
     'install-pwa',
     'install-apk',
@@ -43,11 +43,17 @@ test('app shell markup uses data-app actions instead of inline handlers', () => 
   }
 
   assert.doesNotMatch(shellMarkup, /\sonclick="/);
+  assert.doesNotMatch(shellMarkup, /class="[^"]*\btop-nav\b/);
   assert.match(shellMarkup, /data-app-action="install-apk"[\s\S]*APK 설치하기/);
+  assert.match(shellMarkup, /more-menu-section--app-actions[\s\S]*id="letter-btn"[\s\S]*개발자에게 편지/);
+  assert.match(shellMarkup, /more-menu-section--app-actions[\s\S]*id="notif-bell"[\s\S]*알림/);
+  assert.match(shellMarkup, /more-menu-section--app-actions[\s\S]*id="app-refresh-btn"[\s\S]*앱 새로고침/);
+  assert.match(shellMarkup, /more-menu-section--app-actions[\s\S]*data-app-action="logout-account"[\s\S]*계정 전환/);
 });
 
 test('app module binds app shell actions with one idempotent bridge', () => {
   assert.match(appJs, /const APP_SHELL_ACTION_SCOPE = /);
+  assert.doesNotMatch(appJs, /APP_SHELL_ACTION_SCOPE = '[^']*\.top-nav/);
   assert.match(appJs, /function _bindAppShellActions\(root = document\)/);
   assert.match(appJs, /appShellActionsBound/);
   assert.match(appJs, /target\?\.closest\?\.\('\[data-app-action\]'\)/);
@@ -76,6 +82,7 @@ test('app module binds app shell actions with one idempotent bridge', () => {
   assert.match(appJs, /moreBtn\.dataset\.appAction = adminOnlyMode \? 'switch-tab' : 'toggle-more-menu'/);
   assert.match(appJs, /moreBtn\.dataset\.tab = adminOnlyMode \? 'admin' : 'more'/);
   assert.match(appJs, /moreBtn\.onclick = null/);
+  assert.match(appJs, /window\.__requestTomatoAppRefresh\(\{ control, source: 'more-menu' \}\)/);
 });
 
 test('dynamic more menu items inherit the app shell action contract', () => {
@@ -85,5 +92,5 @@ test('dynamic more menu items inherit the app shell action contract', () => {
 });
 
 test('service worker cache version was bumped for app shell action bridge assets', () => {
-  assert.match(swJs, /tomatofarm-v20260711z10-diet-search-live-food-db/);
+  assert.match(swJs, /tomatofarm-v20260711z11-headerless-lifezone-trapezoid/);
 });

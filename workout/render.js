@@ -246,7 +246,7 @@ function _renderFoodSuggestionSection(meal, label, suggestions) {
   if (!suggestions.length) return '';
   return `<div class="diet-frequent-food-section">
     <div class="diet-frequent-food-label">${label}</div>
-    <div class="diet-frequent-food-options diet-frequent-food-carousel" role="list">${_renderFoodSuggestionOptions(meal, suggestions)}</div>
+    <div class="diet-frequent-food-options diet-frequent-food-carousel" role="list" data-swipe-nav-lock>${_renderFoodSuggestionOptions(meal, suggestions)}</div>
   </div>`;
 }
 
