@@ -2193,17 +2193,35 @@ function _findWorkoutRunningMapShell(root, mapId) {
 }
 
 function _mountWorkoutRunningMaps(root) {
-  root?.querySelectorAll?.('[data-wt-running-route-map].is-active').forEach((shell) => {
+  root?.querySelectorAll?.('[data-wt-running-route-map]').forEach((shell) => {
     if (shell.getAttribute('data-wt-running-map-mounted') === 'true') return;
     const id = shell.getAttribute('data-wt-running-route-map');
     const payload = _workoutRunningMapPayloads.get(id) || { points: [] };
     shell.setAttribute('data-wt-running-map-mounted', 'true');
     const status = shell.querySelector?.('[data-running-map-status]');
-    if (status) status.textContent = '지도 불러오는 중';
-    renderRunningMap(shell, { points: payload.points, phase: 'detail' }).catch((e) => {
+    const mount = () => {
+      if (status) status.textContent = '지도 불러오는 중';
+      return renderRunningMap(shell, { points: payload.points, phase: 'detail' }).catch((e) => {
+        shell.removeAttribute('data-wt-running-map-mounted');
+        if (status) status.textContent = '지도 표시 실패';
+        console.warn('[workout-calendar] running map render failed:', e);
+      });
+    };
+    if (!payload.routeRef) {
+      if (status) status.textContent = '지도 불러오는 중';
+      void mount();
+      return;
+    }
+    if (status) status.textContent = '전체 경로 불러오는 중';
+    void _workoutRunningRouteHydration.hydrate(payload).then((result) => {
+      if (result.status !== 'ready' || _workoutRunningMapPayloads.get(id) !== payload) return;
+      if (_findWorkoutRunningMapShell(root, id) !== shell) return;
+      void mount();
+    }).catch((error) => {
+      if (_workoutRunningMapPayloads.get(id) !== payload || _findWorkoutRunningMapShell(root, id) !== shell) return;
       shell.removeAttribute('data-wt-running-map-mounted');
-      if (status) status.textContent = '지도 표시 실패';
-      console.warn('[workout-calendar] running map render failed:', e);
+      if (status) status.textContent = '전체 경로를 불러오지 못했어요';
+      console.warn('[workout-calendar] running route hydration failed:', error);
     });
   });
 }
@@ -2211,45 +2229,9 @@ function _mountWorkoutRunningMaps(root) {
 function _showWorkoutRunningRoute(control, mapId) {
   const root = control?.closest?.('[data-wt-day-sheet]') || document;
   const shell = _findWorkoutRunningMapShell(root, mapId);
-  const payload = _workoutRunningMapPayloads.get(mapId);
-  if (!shell || !payload) return false;
-  if (!payload.routeRef) {
-    shell.classList.add('is-active');
-    shell.querySelector?.('[data-wt-running-route-show]')?.setAttribute('hidden', '');
-    _mountWorkoutRunningMaps(root);
-    return true;
-  }
-  if (payload.uiPromise) return payload.uiPromise;
-
-  const button = shell.querySelector?.('[data-wt-running-route-show]') || control;
-  const status = shell.querySelector?.('[data-running-map-status]');
-  button.disabled = true;
-  button.setAttribute('aria-busy', 'true');
-  if (status) status.textContent = '전체 경로 불러오는 중';
-
-  const uiPromise = _workoutRunningRouteHydration.hydrate(payload).then((result) => {
-    if (result.status !== 'ready' || _workoutRunningMapPayloads.get(mapId) !== payload) return false;
-    const currentShell = _findWorkoutRunningMapShell(root, mapId);
-    if (currentShell !== shell) return false;
-    payload.uiPromise = null;
-    button.removeAttribute('aria-busy');
-    button.setAttribute('hidden', '');
-    shell.classList.add('is-active');
-    _mountWorkoutRunningMaps(root);
-    return true;
-  }).catch((error) => {
-    if (_workoutRunningMapPayloads.get(mapId) === payload && _findWorkoutRunningMapShell(root, mapId) === shell) {
-      payload.uiPromise = null;
-      button.disabled = false;
-      button.removeAttribute('aria-busy');
-      button.textContent = '다시 시도';
-      if (status) status.textContent = '전체 경로를 불러오지 못했어요';
-    }
-    console.warn('[workout-calendar] running route hydration failed:', error);
-    return false;
-  });
-  payload.uiPromise = uiPromise;
-  return uiPromise;
+  if (!shell || !_workoutRunningMapPayloads.has(mapId)) return false;
+  _mountWorkoutRunningMaps(root);
+  return true;
 }
 
 function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, includeHead = true }) {
@@ -2999,10 +2981,9 @@ function _renderRunningRouteMap(row) {
   const mapId = _registerWorkoutRunningMapPayload(row);
   const place = _runningPlaceLabel(row);
   return `
-    <div class="wt-running-route-map wt-run-real-map" data-wt-running-route-map="${_esc(mapId)}" aria-label="러닝 경로 지도">
-      <button type="button" class="wt-running-route-show" data-wt-sheet-card-action="show-running-route" data-route-map-id="${_esc(mapId)}" data-wt-running-route-show>경로 보기</button>
+    <div class="wt-running-route-map wt-run-real-map is-active" data-wt-running-route-map="${_esc(mapId)}" aria-label="러닝 경로 지도">
       <div class="wt-run-map-canvas" data-running-map-canvas aria-label="${_esc(place)}"></div>
-      <div class="wt-run-map-status" data-running-map-status>경로 대기 중</div>
+      <div class="wt-run-map-status" data-running-map-status>전체 경로 불러오는 중</div>
       <div class="wt-running-route-place">${_esc(place)}</div>
     </div>
   `;
@@ -3033,32 +3014,46 @@ function _renderWorkoutRunningDetailCard(key, sessionIndex, row, index) {
   const collapsed = _workoutDetailCollapsed.has(cardId);
   const activityKey = String(row.key || '').replace(/[^a-z0-9_-]/gi, '');
   const metrics = _runningMetricItems(row);
-  const distanceText = _formatRunningDistance(row.distanceKm);
+  const distanceValue = row.distanceKm > 0 ? _fmtNum(row.distanceKm, 2) : '0.00';
   const durationText = row.durationSec ? _formatDurationShort(row.durationSec) : '';
   const paceText = _formatRunningPaceCard(row.avgPaceSecPerKm);
-  const headline = distanceText || '0.00km';
-  const summary = [paceText, durationText].filter(Boolean).join(' · ') || _runningSourceLabel(row.source);
+  const speedText = row.speedKmh > 0 ? `${_fmtNum(row.speedKmh, 1)} km/h` : '--';
+  const primaryMetrics = [
+    { label: '평균 페이스', value: paceText || "--'--''" },
+    { label: '시간', value: durationText || '--' },
+    { label: '속도', value: speedText },
+  ];
+  const detailMetrics = metrics.filter(item => !['거리', '시간', '속도', '평균 페이스'].includes(item.label));
   return `
     <article class="wt-day-ex-card wt-max-read-card wt-running-read-card ${collapsed ? 'is-collapsed' : 'is-expanded'}">
       <div class="wt-max-card-kicker wt-running-card-kicker">
         <span><i></i>${_esc(row.label || '러닝')} · ${_esc(_runningSourceLabel(row.source))}</span>
         <button type="button" data-wt-sheet-card-action="delete-activity" data-date-key="${_esc(key)}" data-session-index="${rowSessionIndex}" data-activity-key="${_esc(activityKey)}" aria-label="러닝 삭제">×</button>
       </div>
-      <div class="wt-max-card-name">${_esc(row.label || '러닝')}</div>
-      <div class="wt-running-headline">
-        <strong>${_esc(headline)}</strong>
-        <span>${_esc(summary)}</span>
+      <div class="wt-running-overview">
+        <div class="wt-running-distance-hero">
+          <strong>${_esc(distanceValue)}</strong>
+          <span>킬로미터</span>
+        </div>
+        <div class="wt-running-primary-stats" aria-label="러닝 핵심 지표">
+          ${primaryMetrics.map(item => `
+            <span>
+              <strong>${_esc(item.value)}</strong>
+              <i>${_esc(item.label)}</i>
+            </span>
+          `).join('')}
+        </div>
       </div>
       <div class="wt-running-route-wrap">
         ${_renderRunningRouteMap(row)}
       </div>
       ${_renderRunningGpsStatus(row)}
-      ${metrics.length ? `
-        <div class="wt-running-metric-grid">
-          ${metrics.map(item => `
+      ${detailMetrics.length ? `
+        <div class="wt-running-detail-stats" aria-label="러닝 상세 지표">
+          ${detailMetrics.map(item => `
             <span>
-              <i>${_esc(item.label)}</i>
               <strong>${_esc(item.value)}</strong>
+              <i>${_esc(item.label)}</i>
             </span>
           `).join('')}
         </div>

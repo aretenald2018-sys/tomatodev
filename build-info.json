@@ -1,10 +1,10 @@
 {
   "app": "tomatofarm",
-  "commit": "1f1bc59b594cbcdb38cf2f4a3aaf84597faa9785",
-  "shortCommit": "1f1bc59b594c",
+  "commit": "8b2fa2da79db048ed6ef123efac895c096c59e65",
+  "shortCommit": "8b2fa2da79db",
   "branch": "main",
-  "deployedAt": "2026-07-11T03:55:08.691Z",
-  "cacheVersion": "tomatofarm-v20260711z7-running-gps-full-route",
+  "deployedAt": "2026-07-11T05:17:38.958Z",
+  "cacheVersion": "tomatofarm-v20260711z8-running-card-inline-route",
   "runId": null,
   "runAttempt": null
 }

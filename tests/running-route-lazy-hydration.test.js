@@ -154,7 +154,7 @@ test('invalidation makes a late prior response stale without overwriting newer s
   assert.equal(oldPayload.points.length, 240);
 });
 
-test('calendar route action waits for full hydration before mounting the map', async () => {
+test('calendar running card automatically hydrates the full route before mounting the map', async () => {
   const sourceBundle = [
     '_registerWorkoutRunningMapPayload',
     '_findWorkoutRunningMapShell',
@@ -176,61 +176,42 @@ test('calendar route action waits for full hydration before mounting the map', a
     return function run(row) {
       const attributes = new Map();
       const status = { textContent: '경로 대기 중' };
-      const button = {
-        disabled: false,
-        textContent: '경로 보기',
-        setAttribute(name, value = '') { attributes.set(name, value); },
-        removeAttribute(name) { attributes.delete(name); },
-        getAttribute(name) { return attributes.get(name) ?? null; },
-      };
-      const classes = new Set();
       const shell = {
-        classList: { add(name) { classes.add(name); } },
         getAttribute(name) { return name === 'data-wt-running-route-map' ? mapId : attributes.get(name) ?? null; },
         setAttribute(name, value) { attributes.set(name, value); },
         removeAttribute(name) { attributes.delete(name); },
         querySelector(selector) {
           if (selector === '[data-running-map-status]') return status;
-          if (selector === '[data-wt-running-route-show]') return button;
           return null;
         },
       };
       const root = { querySelectorAll() { return [shell]; } };
-      button.closest = () => root;
       const mapId = _registerWorkoutRunningMapPayload(row);
+      _mountWorkoutRunningMaps(root);
       return {
         mapId,
         payload: () => _workoutRunningMapPayloads.get(mapId),
-        click: () => _showWorkoutRunningRoute(button, mapId),
+        ready: () => _workoutRunningMapPayloads.get(mapId).promise,
         snapshot: () => ({
           renderCalls,
           renderedPointCount,
           status: status.textContent,
-          buttonText: button.textContent,
-          disabled: button.disabled,
-          busy: button.getAttribute('aria-busy'),
-          hidden: button.getAttribute('hidden') !== null,
-          active: classes.has('is-active'),
+          mounted: attributes.get('data-wt-running-map-mounted') === 'true',
         }),
       };
     };
   `)(createRunningRouteHydrationController, () => Promise.resolve(routePoints(620)));
 
   const harness = buildHarness({ route: routePoints(240), routeRef: routeRef() });
-  const clickPromise = harness.click();
   assert.equal(harness.snapshot().renderCalls, 0);
-  await clickPromise;
+  await harness.ready();
 
   assert.equal(harness.payload().points.length, 620);
   assert.deepEqual(harness.snapshot(), {
     renderCalls: 1,
     renderedPointCount: 620,
     status: '지도 불러오는 중',
-    buttonText: '경로 보기',
-    disabled: true,
-    busy: null,
-    hidden: true,
-    active: true,
+    mounted: true,
   });
 });
 
@@ -280,7 +261,6 @@ test('375px running detail card hydrates the full route without overlap or clipp
       let loaderCalls = 0;
       let renderCalls = 0;
       let pendingLoad = null;
-      let clickPromise = Promise.resolve(false);
       function loadRunningRoute() {
         loaderCalls += 1;
         return new Promise((resolve, reject) => { pendingLoad = { resolve, reject }; });
@@ -299,14 +279,9 @@ test('375px running detail card hydrates the full route without overlap or clipp
         root.innerHTML = '<section data-wt-day-sheet>' +
           _renderWorkoutRunningDetailCard('2026-07-10', 2, row, 0) +
           '</section>';
-        const button = root.querySelector('[data-wt-running-route-show]');
-        const mapId = button.getAttribute('data-route-map-id');
-        button.addEventListener('click', () => {
-          clickPromise = Promise.resolve(_showWorkoutRunningRoute(button, mapId));
-        });
+        _mountWorkoutRunningMaps(root);
       };
       window.__resolveRunningRoute = points => pendingLoad.resolve(points);
-      window.__awaitRunningClick = () => clickPromise;
       window.__runningSnapshot = () => {
         const shell = document.querySelector('[data-wt-running-route-map]');
         return {
@@ -314,18 +289,17 @@ test('375px running detail card hydrates the full route without overlap or clipp
           renderCalls,
           mapPointCount: Number(shell?.dataset.mapPointCount || 0),
           status: shell?.querySelector('[data-running-map-status]')?.textContent || '',
-          buttonHidden: shell?.querySelector('[data-wt-running-route-show]')?.hasAttribute('hidden') === true,
+          mapMounted: shell?.getAttribute('data-wt-running-map-mounted') === 'true',
         };
       };
       window.__runningLayout = () => {
         const card = document.querySelector('.wt-running-read-card');
         const map = document.querySelector('[data-wt-running-route-map]');
-        const button = document.querySelector('[data-wt-running-route-show]');
         const blocks = [
-          document.querySelector('.wt-running-headline'),
+          document.querySelector('.wt-running-overview'),
           document.querySelector('.wt-running-route-wrap'),
           document.querySelector('.wt-run-gps-status'),
-          document.querySelector('.wt-running-metric-grid'),
+          document.querySelector('.wt-running-detail-stats'),
           document.querySelector('.wt-max-actions'),
         ].filter(Boolean);
         const overlaps = [];
@@ -335,18 +309,15 @@ test('375px running detail card hydrates the full route without overlap or clipp
           if (current.bottom > next.top + 1) overlaps.push(index);
         }
         const clipped = Array.from(card.querySelectorAll(
-          '.wt-running-headline strong, .wt-running-headline span, .wt-running-metric-grid i, .wt-running-metric-grid strong, [data-wt-running-route-show], [data-running-map-status]'
+          '.wt-running-distance-hero strong, .wt-running-primary-stats strong, .wt-running-detail-stats strong, [data-running-map-status]'
         )).filter(element => element.getClientRects().length && element.scrollWidth > element.clientWidth + 1)
           .map(element => element.textContent.trim());
         const cardRect = card.getBoundingClientRect();
-        const mapRect = map.getBoundingClientRect();
-        const buttonRect = button.getBoundingClientRect();
         return {
           viewportWidth: window.innerWidth,
           horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 1,
           cardInsideViewport: cardRect.left >= 0 && cardRect.right <= window.innerWidth + 1,
-          buttonInsideMap: buttonRect.left >= mapRect.left && buttonRect.right <= mapRect.right &&
-            buttonRect.top >= mapRect.top && buttonRect.bottom <= mapRect.bottom,
+          mapVisible: map.getBoundingClientRect().height > 0,
           overlaps,
           clipped,
         };
@@ -377,40 +348,34 @@ test('375px running detail card hydrates the full route without overlap or clipp
     });
 
     assert.deepEqual(await page.evaluate(() => window.__runningSnapshot()), {
-      loaderCalls: 0,
+      loaderCalls: 1,
       renderCalls: 0,
       mapPointCount: 0,
-      status: '경로 대기 중',
-      buttonHidden: false,
+      status: '전체 경로 불러오는 중',
+      mapMounted: true,
     });
     const layout = await page.evaluate(() => window.__runningLayout());
     assert.equal(layout.viewportWidth, 375);
     assert.equal(layout.horizontalOverflow, false);
     assert.equal(layout.cardInsideViewport, true);
-    assert.equal(layout.buttonInsideMap, true);
+    assert.equal(layout.mapVisible, true);
     assert.deepEqual(layout.overlaps, []);
     assert.deepEqual(layout.clipped, []);
 
-    await page.click('[data-wt-running-route-show]');
-    const pending = await page.evaluate(() => window.__runningSnapshot());
-    assert.equal(pending.loaderCalls, 1);
-    assert.equal(pending.renderCalls, 0);
-    assert.equal(pending.status, '전체 경로 불러오는 중');
-
     await page.evaluate(points => window.__resolveRunningRoute(points), fullRoute);
-    await page.evaluate(() => window.__awaitRunningClick());
+    await page.waitForFunction(() => Number(document.querySelector('[data-wt-running-route-map]')?.dataset.mapPointCount || 0) === 620);
     const hydrated = await page.evaluate(() => window.__runningSnapshot());
     assert.equal(hydrated.loaderCalls, 1);
     assert.equal(hydrated.renderCalls, 1);
     assert.equal(hydrated.mapPointCount, 620);
-    assert.equal(hydrated.buttonHidden, true);
+    assert.equal(hydrated.mapMounted, true);
     assert.deepEqual(pageErrors, []);
   } finally {
     await browser.close();
   }
 });
 
-test('calendar source propagates route refs and exposes loading and retry states', () => {
+test('calendar source propagates route refs and loads the full route automatically', () => {
   assert.match(calendarJs, /loadRunningRoute,/);
   assert.match(calendarJs, /createRunningRouteHydrationController/);
   assert.match(calendarJs, /runRouteRef:\s*null/);
@@ -420,5 +385,5 @@ test('calendar source propagates route refs and exposes loading and retry states
   assert.match(calendarJs, /routeRef:\s*row\.routeRef\s*\|\|\s*null/);
   assert.match(calendarJs, /전체 경로 불러오는 중/);
   assert.match(calendarJs, /전체 경로를 불러오지 못했어요/);
-  assert.match(calendarJs, /다시 시도/);
+  assert.match(calendarJs, /querySelectorAll\?\.\('\[data-wt-running-route-map\]'\)/);
 });

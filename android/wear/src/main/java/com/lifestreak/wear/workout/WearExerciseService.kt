@@ -366,10 +366,10 @@ class WearExerciseService : Service() {
         }
         directLocationListener = listener
         try {
-            if (manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            val gpsEnabled = manager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+            if (gpsEnabled) {
                 manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1_000L, 2f, listener)
-            }
-            if (manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+            } else if (manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
                 manager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 2_000L, 5f, listener)
             }
         } catch (_: SecurityException) {

@@ -169,11 +169,11 @@ test('service worker controllerchange still reloads once', () => {
 });
 
 test('production app cache busts the service worker registrar script', () => {
-  assert.match(indexHtml, /pwa-register\.js\?v=20260711c6-sw-reload-stability/);
-  assert.match(indexHtml, /app\.js\?v=20260711c-apk-login-handoff/);
+  assert.match(indexHtml, /pwa-register\.js\?v=20260711d6-sw-reload-stability/);
+  assert.match(indexHtml, /app\.js\?v=20260711d-apk-login-handoff/);
   assert.match(appJs, /utils\/build-info\.js\?v=20260708a-diet-frequent-foods/);
   assert.match(appJs, /render-workout\.js\?v=20260708a-diet-frequent-foods/);
-  assert.match(swJs, /tomatofarm-v20260711z7-running-gps-full-route/);
+  assert.match(swJs, /tomatofarm-v20260711z8-running-card-inline-route/);
 });
 
 test('top-nav manual app refresh uses build-info update helper', () => {

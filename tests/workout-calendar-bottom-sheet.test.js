@@ -996,16 +996,13 @@ test('running detail card uses the workout read-card shell with running metrics 
   assert.match(calendarJs, /import \{ destroyRunningMaps, renderRunningMap \} from '\.\/workout\/running-map\.js'/);
   assert.match(calendarJs, /createRunningRouteHydrationController/);
   assert.match(calendarJs, /function _mountWorkoutRunningMaps/);
-  assert.match(calendarJs, /\[data-wt-running-route-map\]\.is-active/);
+  assert.match(calendarJs, /querySelectorAll\?\.\('\[data-wt-running-route-map\]'\)/);
   assert.match(calendarJs, /renderRunningMap\(shell, \{ points: payload\.points, phase: 'detail' \}\)/);
-  assert.match(calendarJs, /case 'show-running-route':/);
-  assert.match(calendarJs, /_showWorkoutRunningRoute\(control, routeMapId\)/);
   assert.match(calendarJs, /runRouteRef:\s*s\.runRouteRef \|\| null/);
   assert.match(calendarJs, /routeRef:\s*d\.runRouteRef \|\| null/);
   assert.match(calendarJs, /routeRef:\s*row\.routeRef \|\| null/);
   assert.match(calendarJs, /전체 경로 불러오는 중/);
   assert.match(calendarJs, /전체 경로를 불러오지 못했어요/);
-  assert.match(calendarJs, /다시 시도/);
   assert.match(calendarJs, /runRouteSummary && typeof d\.runRouteSummary === 'object'/);
   assert.match(calendarJs, /distanceKm:\s*runDistance/);
   assert.match(calendarJs, /speedKmh:\s*runSpeedKmh/);
@@ -1019,16 +1016,14 @@ test('running detail card uses the workout read-card shell with running metrics 
   assert.match(card, /data-wt-sheet-card-action="toggle-card"/);
   assert.match(card, /data-wt-sheet-card-action="add-running"/);
   assert.doesNotMatch(card, /window\._wtCalToggleExerciseCard|window\._wtCalDeleteActivity|window\._wtCalAddRunning/);
-  assert.match(card, /wt-running-headline/);
+  assert.match(card, /wt-running-distance-hero/);
+  assert.match(card, /wt-running-primary-stats/);
   assert.match(card, /_renderRunningRouteMap\(row\)/);
   assert.match(mapRenderer, /wt-running-route-map wt-run-real-map/);
   assert.match(mapRenderer, /data-wt-running-route-map/);
-  assert.match(mapRenderer, /wt-running-route-show/);
-  assert.match(mapRenderer, /data-wt-sheet-card-action="show-running-route"/);
-  assert.match(mapRenderer, /data-route-map-id/);
   assert.match(mapRenderer, /wt-running-route-place/);
-  assert.match(mapRenderer, /경로 대기 중/);
-  assert.match(card, /wt-running-metric-grid/);
+  assert.match(mapRenderer, /전체 경로 불러오는 중/);
+  assert.match(card, /wt-running-detail-stats/);
   assert.match(metricBuilder, /거리/);
   assert.match(metricBuilder, /시간/);
   assert.match(metricBuilder, /속도/);
@@ -1048,8 +1043,8 @@ test('running detail card uses the workout read-card shell with running metrics 
   assert.match(styleCss, /\.wt-running-route-map/);
   assert.match(styleCss, /\.wt-running-route-place/);
   assert.doesNotMatch(styleCss, /wt-running-route-mini/);
-  assert.match(styleCss, /\.wt-running-metric-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(styleCss, /\.wt-running-read-card\.is-collapsed \.wt-running-metric-grid/);
+  assert.match(styleCss, /\.wt-running-primary-stats,[\s\S]*\.wt-running-detail-stats\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(styleCss, /\.wt-running-read-card\.is-collapsed \.wt-running-detail-stats/);
 });
 
 test('running tab stacks multiple running session cards after the gym sessions', () => {
@@ -1441,5 +1436,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260711z7-running-gps-full-route/);
+  assert.match(swJs, /tomatofarm-v20260711z8-running-card-inline-route/);
 });

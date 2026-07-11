@@ -196,5 +196,5 @@ test('new input UX styles and service worker cache marker are present', () => {
   assert.match(styleCss, /\.meal-quick-add-backdrop/);
   assert.match(styleCss, /\.meal-quick-add-sheet/);
   assert.match(styleCss, /\.ex-picker-cardio-backdrop--standalone/);
-  assert.match(swJs, /tomatofarm-v20260711z7-running-gps-full-route/);
+  assert.match(swJs, /tomatofarm-v20260711z8-running-card-inline-route/);
 });

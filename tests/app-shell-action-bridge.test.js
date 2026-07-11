@@ -85,5 +85,5 @@ test('dynamic more menu items inherit the app shell action contract', () => {
 });
 
 test('service worker cache version was bumped for app shell action bridge assets', () => {
-  assert.match(swJs, /tomatofarm-v20260711z7-running-gps-full-route/);
+  assert.match(swJs, /tomatofarm-v20260711z8-running-card-inline-route/);
 });

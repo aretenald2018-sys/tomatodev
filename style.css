@@ -14571,22 +14571,95 @@ body.lz-running-record-modal-open {
 .wt-cardio-read-card .wt-cardio-metric-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-.wt-running-headline {
+.wt-running-read-card {
+  padding: 16px 14px 14px;
+  background: #fff;
+}
+.wt-running-live-card .wt-running-headline {
   display: grid;
   gap: 2px;
   margin-top: 8px;
 }
-.wt-running-headline strong {
+.wt-running-live-card .wt-running-headline strong {
   color: #111827;
   font-size: 34px;
   line-height: 38px;
   font-weight: 950;
   letter-spacing: 0;
 }
-.wt-running-headline span {
+.wt-running-live-card .wt-running-headline span {
   color: #667085;
   font-size: 13px;
   line-height: 18px;
+  font-weight: 800;
+}
+.wt-running-overview {
+  margin-top: 6px;
+}
+.wt-running-distance-hero {
+  display: grid;
+  gap: 1px;
+}
+.wt-running-distance-hero strong {
+  color: #111;
+  font-size: clamp(46px, 14vw, 64px);
+  line-height: .95;
+  font-weight: 950;
+  letter-spacing: -.055em;
+  font-variant-numeric: tabular-nums;
+}
+.wt-running-distance-hero span {
+  color: #8a8f98;
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 800;
+}
+.wt-running-primary-stats,
+.wt-running-detail-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 14px;
+  row-gap: 16px;
+}
+.wt-running-primary-stats {
+  margin-top: 18px;
+}
+.wt-running-primary-stats span,
+.wt-running-detail-stats span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.wt-running-primary-stats strong,
+.wt-running-detail-stats strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #111827;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.wt-running-primary-stats strong {
+  font-size: clamp(17px, 5.3vw, 22px);
+  line-height: 24px;
+  font-weight: 950;
+  letter-spacing: -.035em;
+}
+.wt-running-detail-stats strong {
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 900;
+  letter-spacing: -.02em;
+}
+.wt-running-primary-stats i,
+.wt-running-detail-stats i {
+  overflow: hidden;
+  color: #8a8f98;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  line-height: 15px;
+  font-style: normal;
   font-weight: 800;
 }
 .wt-running-route-wrap {
@@ -14607,29 +14680,6 @@ body.lz-running-record-modal-open {
   position: relative;
   inset: auto;
 }
-.wt-running-route-show {
-  position: absolute;
-  z-index: 5;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  min-width: 96px;
-  min-height: 40px;
-  border: 1px solid rgba(27, 45, 66, 0.14);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.94);
-  color: #162234;
-  font-size: 13px;
-  font-weight: 900;
-  box-shadow: 0 10px 24px rgba(20, 29, 42, 0.14);
-}
-.wt-running-route-show[hidden],
-.wt-running-route-map.is-active .wt-running-route-show {
-  display: none;
-}
-.wt-running-route-map:not(.is-active) .wt-run-map-canvas {
-  opacity: 0.28;
-}
 .wt-running-route-place {
   position: absolute;
   z-index: 4;
@@ -14645,42 +14695,11 @@ body.lz-running-record-modal-open {
   font-weight: 850;
   box-shadow: 0 4px 12px rgba(15, 23, 42, .12);
 }
-.wt-running-metric-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: 12px;
+.wt-running-detail-stats {
+  margin-top: 22px;
 }
-.wt-running-metric-grid span {
-  min-width: 0;
-  padding: 8px 9px;
-  border: 1px solid #e1e7f0;
-  border-radius: 9px;
-  background: #f8fafc;
-}
-.wt-running-metric-grid i,
-.wt-running-metric-grid strong {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.wt-running-metric-grid i {
-  color: #647084;
-  font-size: 10px;
-  line-height: 14px;
-  font-style: normal;
-  font-weight: 900;
-}
-.wt-running-metric-grid strong {
-  margin-top: 2px;
-  color: #111827;
-  font-size: 14px;
-  line-height: 18px;
-  font-weight: 900;
-}
-.wt-running-read-card.is-collapsed .wt-running-metric-grid,
+.wt-running-read-card.is-collapsed .wt-running-primary-stats,
+.wt-running-read-card.is-collapsed .wt-running-detail-stats,
 .wt-running-read-card.is-collapsed .wt-running-route-wrap {
   display: none;
 }
@@ -15021,16 +15040,18 @@ body.lz-running-record-modal-open {
     min-height: 194px;
     height: min(252px, 44dvh);
   }
-  .wt-running-metric-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 5px;
+  .wt-running-primary-stats,
+  .wt-running-detail-stats {
+    column-gap: 10px;
+    row-gap: 14px;
   }
-  .wt-running-metric-grid span {
-    padding: 7px 8px;
+  .wt-running-primary-stats strong {
+    font-size: 17px;
+    line-height: 21px;
   }
-  .wt-running-metric-grid strong {
-    font-size: 13px;
-    line-height: 17px;
+  .wt-running-detail-stats strong {
+    font-size: 15px;
+    line-height: 20px;
   }
   .wt-max-plan-goal strong {
     font-size: 18px;

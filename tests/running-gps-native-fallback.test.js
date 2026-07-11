@@ -43,6 +43,11 @@ test('watch uses direct GPS fallback and refuses to start without precise locati
 
   assert.match(service, /LocationManager\.GPS_PROVIDER/);
   assert.match(service, /startDirectLocationUpdates\(\)/);
+  assert.match(
+    service,
+    /if \(gpsEnabled\)[\s\S]*GPS_PROVIDER[\s\S]*else if[\s\S]*NETWORK_PROVIDER/,
+    'watch should use network location only when GPS is unavailable so providers cannot corrupt one route',
+  );
   assert.match(service, /WearRoutePoint\([\s\S]*accuracy = accuracy\.toDouble\(\)/);
   assert.match(controller, /ACCESS_FINE_LOCATION/);
   assert.match(controller, /GPS 권한 필요/);
