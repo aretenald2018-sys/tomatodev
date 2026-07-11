@@ -738,6 +738,16 @@ export async function renderRunningMap(shell, options = {}) {
   shell.dataset.mapPointCount = String(route.length);
   shell.dataset.mapSegmentCount = String(splitRunningMapSegments(route).length);
 
+  if (!route.length) {
+    const waiting = options.phase === 'start' || options.phase === 'active';
+    _setState(
+      shell,
+      'no-location',
+      waiting ? '현재 GPS 위치를 확인하는 중이에요' : '저장된 GPS 경로가 없어요',
+    );
+    return null;
+  }
+
   if (!config.configured) {
     _setState(shell, 'missing-key', '지도를 불러오지 못했어요. 잠시 후 다시 시도해주세요.');
     return null;

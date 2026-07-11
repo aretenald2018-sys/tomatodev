@@ -49,5 +49,5 @@ test('wendler graph uses a separate W history instead of volume or intensity row
 });
 
 test('service worker cache version was bumped for track pp delta assets', () => {
-  assert.match(swJs, /tomatofarm-v20260711z3-apk-login-loading-fallback/);
+  assert.match(swJs, /tomatofarm-v20260711z4-running-native-gps/);
 });

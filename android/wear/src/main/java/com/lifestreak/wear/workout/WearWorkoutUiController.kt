@@ -1,9 +1,12 @@
 package com.lifestreak.wear.workout
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Handler
 import android.os.SystemClock
 import android.util.Log
 import android.view.View
+import androidx.core.content.ContextCompat
 import android.widget.TextView
 import androidx.viewpager2.widget.ViewPager2
 import com.lifestreak.wear.R
@@ -94,6 +97,12 @@ class WearWorkoutUiController(
     }
 
     private fun startRun(v: View) {
+        if (ContextCompat.checkSelfPermission(v.context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            gpsStatus = "GPS 권한 필요"
+            summarySyncStatus = "워치 설정에서 정확한 위치를 허용해주세요"
+            render(v)
+            return
+        }
         runEndUnsubscribe?.invoke()
         runEndUnsubscribe = null
         summarySyncStatus = ""

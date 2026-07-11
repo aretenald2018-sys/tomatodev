@@ -21,9 +21,13 @@ const RUNNING_SESSION_DRAFT_ACTIVE_KEY = 'tomatofarm_running_session_draft_activ
 const RESTORABLE_RUNNING_PHASES = new Set(['active', 'paused', 'summary']);
 const GEO_OPTIONS = {
   enableHighAccuracy: true,
-  maximumAge: 1000,
+  maximumAge: 0,
   timeout: 15000,
 };
+const MAX_LIVE_GPS_AGE_MS = 30_000;
+const MAX_LIVE_GPS_ACCURACY_M = 100;
+const MAX_PLAUSIBLE_RUNNING_SPEED_MPS = 15;
+const NATIVE_LOCATION_POLL_MS = 2_000;
 const DEFAULT_RUNNING_GOAL = Object.freeze({ type: 'free', value: 0 });
 const RUNNING_GOAL_DEFAULTS = Object.freeze({ distance: 5, time: 30 });
 const RUNNING_AUDIO_MIN_MS = 3500;
@@ -53,6 +57,9 @@ const _session = {
   announcedGoalHalf: false,
   announcedGoalDone: false,
   lastSpeechAt: 0,
+  nativeLocationStarted: false,
+  nativeLocationCursor: 0,
+  nativeLocationPollId: null,
 };
 let _runningDraftEventsBound = false;
 let _runningDraftRouteTimer = null;
@@ -880,8 +887,8 @@ function _syncWorkoutRunData(summary, placeSummary = _session.placeSummary) {
   };
 }
 
-function _resetLiveSession() {
-  _stopWatch();
+function _resetLiveSession(options = {}) {
+  if (!options.skipStop) void _stopWatch('reset');
   _stopTicker();
   _clearScheduledRunningRouteDraftPersist();
   _lastRunningDraftPersistAt = 0;
@@ -909,6 +916,9 @@ function _resetLiveSession() {
     announcedGoalHalf: false,
     announcedGoalDone: false,
     lastSpeechAt: 0,
+    nativeLocationStarted: false,
+    nativeLocationCursor: 0,
+    nativeLocationPollId: null,
   });
 }
 
@@ -951,9 +961,129 @@ function _publishRunningLiveState(active = false) {
   }
 }
 
-function _stopWatch() {
+function _nativeRunningLocationPlugin() {
+  if (typeof window === 'undefined') return null;
+  const capacitor = window.Capacitor;
+  const plugin = capacitor?.Plugins?.TomatoRunningLocation;
+  if (!plugin) return null;
+  if (typeof capacitor?.isNativePlatform === 'function' && !capacitor.isNativePlatform()) return null;
+  return plugin;
+}
+
+function _clearNativeLocationPoll() {
+  if (_session.nativeLocationPollId) clearInterval(_session.nativeLocationPollId);
+  _session.nativeLocationPollId = null;
+}
+
+function _nativePointToRoutePoint(point = {}) {
+  return _safePoint({
+    lat: Number(point.lat),
+    lng: Number(point.lng),
+    ts: Number(point.ts ?? point.timestamp ?? point.timestampMs),
+    accuracy: point.accuracy == null ? null : Number(point.accuracy),
+    altitude: point.altitude == null ? null : Number(point.altitude),
+    speed: point.speed == null ? null : Number(point.speed),
+    bearing: point.bearing == null ? null : Number(point.bearing),
+  });
+}
+
+function _isUsableLiveGpsPoint(point, now = _now()) {
+  if (!point) return false;
+  const ageMs = now - Number(point.ts);
+  if (!Number.isFinite(ageMs) || ageMs > MAX_LIVE_GPS_AGE_MS) return false;
+  const accuracy = Number(point.accuracy);
+  if (Number.isFinite(accuracy) && accuracy > MAX_LIVE_GPS_ACCURACY_M) return false;
+  const last = _session.route[_session.route.length - 1];
+  if (!last) return true;
+  const elapsedSec = (point.ts - last.ts) / 1000;
+  if (elapsedSec <= 0) return true;
+  const distanceM = runningDistanceMeters(last, point);
+  const accuracyAllowance = Math.max(80, Number(last.accuracy) || 0, accuracy || 0);
+  return distanceM <= accuracyAllowance
+    || (distanceM / elapsedSec) <= MAX_PLAUSIBLE_RUNNING_SPEED_MPS;
+}
+
+function _ingestNativeLocationResult(result = {}) {
+  const points = Array.isArray(result.points) ? result.points : [];
+  let changed = false;
+  points.forEach(raw => {
+    const point = _nativePointToRoutePoint(raw);
+    if (!_isUsableLiveGpsPoint(point)) return;
+    if (_pushRoutePoint(point)) changed = true;
+  });
+  const nextIndex = Number(result.nextIndex);
+  if (Number.isFinite(nextIndex) && nextIndex >= 0) _session.nativeLocationCursor = Math.floor(nextIndex);
+  if (changed) {
+    _session.lastError = '';
+    _publishRunningLiveState(_session.phase === 'active' || _session.phase === 'paused');
+    _scheduleRunningRouteDraftPersist('native route point');
+    if (_session.open) _render();
+  }
+  return changed;
+}
+
+async function _drainNativeLocationUpdates(plugin = _nativeRunningLocationPlugin()) {
+  if (!plugin?.getUpdates || !_session.nativeLocationStarted) return false;
+  const result = await plugin.getUpdates({ afterIndex: _session.nativeLocationCursor });
+  return _ingestNativeLocationResult(result);
+}
+
+async function _startNativeLocationWatch(plugin) {
+  _clearNativeLocationPoll();
+  try {
+    if (!_session.nativeLocationStarted) {
+      const status = await plugin.getStatus?.();
+      const canResume = !!status?.tracking
+        && Math.abs(Number(status.startedAt || 0) - Number(_session.startedAt || 0)) < 60_000;
+      if (canResume) {
+        _session.nativeLocationStarted = true;
+        _session.nativeLocationCursor = 0;
+        await plugin.resumeTracking?.();
+      } else {
+        const started = await plugin.startTracking({ startedAt: _session.startedAt || _now() });
+        _session.nativeLocationStarted = true;
+        _session.nativeLocationCursor = 0;
+        _ingestNativeLocationResult(started);
+      }
+    } else {
+      await plugin.resumeTracking?.();
+    }
+    await _drainNativeLocationUpdates(plugin);
+    _session.nativeLocationPollId = setInterval(() => {
+      _drainNativeLocationUpdates(plugin).catch(error => {
+        console.warn('[running-session] native GPS poll failed:', error);
+      });
+    }, NATIVE_LOCATION_POLL_MS);
+  } catch (error) {
+    _session.nativeLocationStarted = false;
+    _session.lastError = '휴대폰 위치 권한을 허용해주세요';
+    console.warn('[running-session] native GPS start failed:', error);
+    if (_session.open) _render();
+  }
+}
+
+async function _stopWatch(mode = 'pause') {
+  _clearNativeLocationPoll();
+  const nativePlugin = _nativeRunningLocationPlugin();
+  if (_session.nativeLocationStarted && nativePlugin) {
+    try {
+      if (mode === 'finish') {
+        const result = await nativePlugin.stopTracking?.({ afterIndex: _session.nativeLocationCursor });
+        _ingestNativeLocationResult(result);
+        _session.nativeLocationStarted = false;
+      } else if (mode === 'reset') {
+        await nativePlugin.stopTracking?.();
+        _session.nativeLocationStarted = false;
+      } else {
+        await _drainNativeLocationUpdates(nativePlugin);
+        await nativePlugin.pauseTracking?.();
+      }
+    } catch (error) {
+      console.warn(`[running-session] native GPS ${mode} failed:`, error);
+    }
+  }
   if (_session.watchId != null && typeof navigator !== 'undefined' && navigator.geolocation?.clearWatch) {
-    navigator.geolocation.clearWatch(_session.watchId);
+    if (typeof _session.watchId === 'number') navigator.geolocation.clearWatch(_session.watchId);
   }
   _session.watchId = null;
 }
@@ -976,7 +1106,7 @@ function _startTicker() {
 function _positionToPoint(position) {
   const coords = position?.coords || {};
   const sensor = _readRunningSensorSnapshot(position);
-  return _safePoint({
+  const point = _safePoint({
     lat: coords.latitude,
     lng: coords.longitude,
     ts: position?.timestamp ?? _now(),
@@ -987,6 +1117,7 @@ function _positionToPoint(position) {
     heartRateBpm: sensor.heartRateBpm,
     cadenceSpm: sensor.cadenceSpm,
   });
+  return _isUsableLiveGpsPoint(point) ? point : null;
 }
 
 function _markRouteGap(reason = 'interruption') {
@@ -1134,6 +1265,12 @@ function _pushPosition(position, options = {}) {
 }
 
 function _startWatch() {
+  const nativePlugin = _nativeRunningLocationPlugin();
+  if (nativePlugin) {
+    _session.watchId = 'native';
+    void _startNativeLocationWatch(nativePlugin);
+    return;
+  }
   if (typeof navigator === 'undefined' || !navigator.geolocation?.watchPosition) {
     _session.lastError = '이 브라우저는 위치 기록을 지원하지 않아요';
     return;
@@ -1152,11 +1289,7 @@ function _startWatch() {
   );
 }
 
-function _startRun() {
-  const goal = _cloneRunningGoal(_session.goal);
-  const audioGuide = !!_session.audioGuide;
-  const previewPoint = _session.previewPoint;
-  _resetLiveSession();
+function _beginRunningSession(goal, audioGuide, previewPoint) {
   _session.goal = goal;
   _session.audioGuide = audioGuide;
   _session.previewPoint = previewPoint;
@@ -1174,12 +1307,28 @@ function _startRun() {
   _persistRunningDraft('start');
 }
 
+function _startRun() {
+  const goal = _cloneRunningGoal(_session.goal);
+  const audioGuide = !!_session.audioGuide;
+  const previewPoint = _session.previewPoint;
+  if (_nativeRunningLocationPlugin()) {
+    void (async () => {
+      await _stopWatch('reset');
+      _resetLiveSession({ skipStop: true });
+      _beginRunningSession(goal, audioGuide, previewPoint);
+    })();
+    return;
+  }
+  _resetLiveSession();
+  _beginRunningSession(goal, audioGuide, previewPoint);
+}
+
 function _pauseRun() {
   if (_session.phase !== 'active') return;
   _session.phase = 'paused';
   _session.pausedAt = _now();
   _markRouteGap('pause');
-  _stopWatch();
+  void _stopWatch('pause');
   _publishRunningLiveState(true);
   _render();
   _speakRunning('러닝을 일시정지했습니다.', { force: true });
@@ -1198,15 +1347,15 @@ function _resumeRun() {
   _persistRunningDraft('resume');
 }
 
-function _finishRun() {
+async function _finishRun() {
   if (_session.phase !== 'active' && _session.phase !== 'paused') return;
   if (_session.phase === 'paused' && _session.pausedAt) {
     _session.pausedMs += Math.max(0, _now() - _session.pausedAt);
   }
+  _session.pausedAt = null;
+  await _stopWatch('finish');
   _session.phase = 'summary';
   _session.endedAt = _now();
-  _session.pausedAt = null;
-  _stopWatch();
   _stopTicker();
   const summary = _currentSummary();
   _session.placeSummary = _runningPlaceFallback(summary);

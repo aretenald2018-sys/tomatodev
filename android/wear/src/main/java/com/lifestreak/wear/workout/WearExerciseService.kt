@@ -9,6 +9,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
 import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
@@ -34,10 +37,13 @@ class WearExerciseService : Service() {
     private var accumulator: WearExerciseMetricAccumulator? = null
     private var exerciseStarted = false
     private var wallClockOffsetMs = 0L
+    private var directLocationManager: LocationManager? = null
+    private var directLocationListener: LocationListener? = null
 
     override fun onCreate() {
         super.onCreate()
         exerciseClient = HealthServices.getClient(this).exerciseClient
+        directLocationManager = getSystemService(LocationManager::class.java)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -54,6 +60,7 @@ class WearExerciseService : Service() {
 
     override fun onDestroy() {
         clearExerciseCallback()
+        stopDirectLocationUpdates()
         super.onDestroy()
     }
 
@@ -69,13 +76,22 @@ class WearExerciseService : Service() {
         exerciseStarted = false
         WearExerciseSessionStore.resetForStart(startedAtWallClockMs)
 
-        if (!hasActivityRecognitionPermission()) {
-            WearExerciseSessionStore.markFallback("ACTIVITY_RECOGNITION permission missing")
+        if (!hasLocationPermission()) {
+            WearExerciseSessionStore.markFallback("location permission missing")
             stopSelf()
             return
         }
 
         startForegroundWithHealthType(buildNotification())
+        startDirectLocationUpdates()
+        if (!hasActivityRecognitionPermission()) {
+            WearExerciseSessionStore.publishFromAccumulator(
+                status = WearExerciseSessionStatus.ACTIVE,
+                accumulator = nextAccumulator,
+                message = "GPS direct · activity permission missing",
+            )
+            return
+        }
         registerExerciseCallback()
         startHealthExercise(nextAccumulator)
     }
@@ -162,6 +178,7 @@ class WearExerciseService : Service() {
 
     private fun handlePauseRun() {
         WearExerciseSessionStore.markPaused()
+        stopDirectLocationUpdates()
         if (!exerciseStarted) return
         val pauseFuture = exerciseClient.pauseExerciseAsync()
         pauseFuture.addListener(
@@ -185,6 +202,7 @@ class WearExerciseService : Service() {
                 accumulator = it,
             )
         }
+        startDirectLocationUpdates()
         if (!exerciseStarted) return
         val resumeFuture = exerciseClient.resumeExerciseAsync()
         resumeFuture.addListener(
@@ -239,6 +257,7 @@ class WearExerciseService : Service() {
     }
 
     private fun finishService() {
+        stopDirectLocationUpdates()
         clearExerciseCallback()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -331,6 +350,70 @@ class WearExerciseService : Service() {
             exerciseClient.clearUpdateCallbackAsync(callback)
         }
         exerciseCallback = null
+    }
+
+    private fun startDirectLocationUpdates() {
+        if (!hasLocationPermission() || directLocationListener != null) return
+        val manager = directLocationManager ?: return
+        val listener = object : LocationListener {
+            override fun onLocationChanged(location: Location) {
+                publishDirectLocation(location)
+            }
+
+            override fun onProviderEnabled(provider: String) = Unit
+            override fun onProviderDisabled(provider: String) = Unit
+        }
+        directLocationListener = listener
+        try {
+            if (manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1_000L, 2f, listener)
+            }
+            if (manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+                manager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 2_000L, 5f, listener)
+            }
+        } catch (_: SecurityException) {
+            directLocationListener = null
+            WearExerciseSessionStore.markFallback("location permission missing")
+        }
+    }
+
+    private fun stopDirectLocationUpdates() {
+        val listener = directLocationListener ?: return
+        try {
+            directLocationManager?.removeUpdates(listener)
+        } catch (_: SecurityException) {
+        }
+        directLocationListener = null
+    }
+
+    private fun publishDirectLocation(location: Location) {
+        val accuracy = location.accuracy.takeIf { location.hasAccuracy() && it.isFinite() && it > 0f } ?: return
+        if (accuracy > MAX_DIRECT_GPS_ACCURACY_M) return
+        val now = System.currentTimeMillis()
+        val locationTime = location.time.takeIf { it > 0L } ?: now
+        if (now - locationTime > MAX_DIRECT_GPS_AGE_MS || locationTime - now > 10_000L) return
+        val currentAccumulator = accumulator ?: return
+        val elapsedRealtimeMs = if (location.elapsedRealtimeNanos > 0L) {
+            location.elapsedRealtimeNanos / 1_000_000L
+        } else {
+            SystemClock.elapsedRealtime()
+        }
+        currentAccumulator.applyMetricUpdate(
+            elapsedRealtimeMs = elapsedRealtimeMs,
+            routePoint = WearRoutePoint(
+                timestampMs = wallClockMsForElapsed(elapsedRealtimeMs),
+                lat = location.latitude,
+                lng = location.longitude,
+                altitude = location.altitude.takeIf { location.hasAltitude() && it.isFinite() },
+                bearing = location.bearing.toDouble().takeIf { location.hasBearing() && it.isFinite() },
+                accuracy = accuracy.toDouble(),
+            ),
+        )
+        WearExerciseSessionStore.publishFromAccumulator(
+            status = WearExerciseSessionStatus.ACTIVE,
+            accumulator = currentAccumulator,
+            message = "GPS direct",
+        )
     }
 
     private fun requestedDataTypes(): Set<DataType<*, *>> {
@@ -434,6 +517,8 @@ class WearExerciseService : Service() {
         private const val ACTION_END_RUN = "com.lifestreak.wear.workout.END_RUN"
         private const val NOTIFICATION_CHANNEL_ID = "wear-exercise"
         private const val NOTIFICATION_ID = 2001
+        private const val MAX_DIRECT_GPS_ACCURACY_M = 100f
+        private const val MAX_DIRECT_GPS_AGE_MS = 30_000L
         const val PERMISSION_READ_HEART_RATE = "android.permission.health.READ_HEART_RATE"
 
         fun startRun(context: Context) {

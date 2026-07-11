@@ -21,6 +21,7 @@ data class WearRoutePoint(
     val lng: Double,
     val altitude: Double? = null,
     val bearing: Double? = null,
+    val accuracy: Double? = null,
     val segmentId: Int? = null,
     val gapBefore: Boolean = false,
     val gapReason: String? = null,
@@ -92,6 +93,7 @@ data class WearWorkoutPayload(
                                 .put("lng", point.lng)
                                 .putNullable("altitude", point.altitude)
                                 .putNullable("bearing", point.bearing)
+                                .putNullable("accuracy", point.accuracy)
                                 .putNullable("segmentId", point.segmentId)
                                 .put("gapBefore", point.gapBefore)
                                 .putNullable("gapReason", point.gapReason),
@@ -286,6 +288,9 @@ data class WearWorkoutPayload(
                 }
                 require(point.bearing == null || point.bearing.isFinite()) {
                     "routePoints[$index].bearing must be finite"
+                }
+                require(point.accuracy == null || (point.accuracy.isFinite() && point.accuracy > 0.0)) {
+                    "routePoints[$index].accuracy must be finite and positive"
                 }
                 require(point.segmentId == null || point.segmentId >= 0) {
                     "routePoints[$index].segmentId must be non-negative"

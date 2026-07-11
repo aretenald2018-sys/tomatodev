@@ -59,6 +59,6 @@ test('friend profile feed refreshes are scheduled instead of direct dependency c
 });
 
 test('service worker caches social render scheduler assets', () => {
-  assert.match(swJs, /tomatofarm-v20260711z3-apk-login-loading-fallback/);
+  assert.match(swJs, /tomatofarm-v20260711z4-running-native-gps/);
   assert.match(swJs, /\.\/home\/social-render-scheduler\.js/);
 });

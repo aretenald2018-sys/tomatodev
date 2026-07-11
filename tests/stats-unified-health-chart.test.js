@@ -57,5 +57,5 @@ test('stats health rollback chart cards are styled and cache version is bumped',
   assert.doesNotMatch(styleCss, /\.stats-health-toggle/);
   assert.doesNotMatch(styleCss, /\.stats-health-curves/);
   assert.doesNotMatch(styleCss, /\.stats-health-period/);
-  assert.match(swJs, /tomatofarm-v20260711z3-apk-login-loading-fallback/);
+  assert.match(swJs, /tomatofarm-v20260711z4-running-native-gps/);
 });

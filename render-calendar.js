@@ -2977,6 +2977,17 @@ function _runningPlaceLabel(row) {
 }
 
 function _renderRunningRouteMap(row) {
+  const hasStoredRoute = (Array.isArray(row?.route) && row.route.length > 0)
+    || !!row?.routeRef
+    || _num(row?.pointCount ?? row?.routeSummary?.pointCount) > 0;
+  if (!hasStoredRoute) {
+    return `
+      <div class="wt-running-route-map wt-running-route-map--unavailable" aria-label="GPS 경로 없음">
+        <div class="wt-run-map-status">GPS 경로가 저장되지 않았어요</div>
+        <div class="wt-running-route-place">위치 정보 없음</div>
+      </div>
+    `;
+  }
   const mapId = _registerWorkoutRunningMapPayload(row);
   const place = _runningPlaceLabel(row);
   return `
