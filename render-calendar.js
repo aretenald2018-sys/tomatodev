@@ -2954,7 +2954,7 @@ function _runningMetricItems(row) {
     { label: '평균 페이스', value: paceText },
     { label: '칼로리', value: row.calories > 0 ? `${Math.round(row.calories)} kcal` : '--' },
     { label: '고도 상승', value: row.elevationGainM == null ? '--' : `${Math.round(row.elevationGainM)} m` },
-    { label: '평균 심박수', value: row.avgHeartRateBpm == null ? '--' : `${Math.round(row.avgHeartRateBpm)} bpm` },
+    { label: '평균 심박수', value: row.avgHeartRateBpm == null ? '--' : `${Math.round(row.avgHeartRateBpm)}` },
     { label: '케이던스', value: row.cadenceSpm == null ? '--' : `${Math.round(row.cadenceSpm)}` },
   ];
   return items.filter(item => item?.value);
@@ -3017,13 +3017,13 @@ function _renderWorkoutRunningDetailCard(key, sessionIndex, row, index) {
   const distanceValue = row.distanceKm > 0 ? _fmtNum(row.distanceKm, 2) : '0.00';
   const durationText = row.durationSec ? _formatDurationShort(row.durationSec) : '';
   const paceText = _formatRunningPaceCard(row.avgPaceSecPerKm);
-  const speedText = row.speedKmh > 0 ? `${_fmtNum(row.speedKmh, 1)} km/h` : '--';
+  const caloriesText = row.calories > 0 ? `${Math.round(row.calories)}` : '--';
   const primaryMetrics = [
     { label: '평균 페이스', value: paceText || "--'--''" },
     { label: '시간', value: durationText || '--' },
-    { label: '속도', value: speedText },
+    { label: '칼로리', value: caloriesText },
   ];
-  const detailMetrics = metrics.filter(item => !['거리', '시간', '속도', '평균 페이스'].includes(item.label));
+  const detailMetrics = metrics.filter(item => !['거리', '시간', '속도', '평균 페이스', '칼로리'].includes(item.label));
   return `
     <article class="wt-day-ex-card wt-max-read-card wt-running-read-card ${collapsed ? 'is-collapsed' : 'is-expanded'}">
       <div class="wt-max-card-kicker wt-running-card-kicker">

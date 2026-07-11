@@ -31,5 +31,5 @@ test('Max top area render requests are coalesced through a scheduler', () => {
 });
 
 test('service worker cache version was bumped for Max render scheduler', () => {
-  assert.match(swJs, /tomatofarm-v20260711z11-headerless-lifezone-trapezoid/);
+  assert.match(swJs, /tomatofarm-v20260711z12-running-card-metrics/);
 });

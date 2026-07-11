@@ -52,5 +52,5 @@ test('exercise picker exposes visible create actions for CRUD', () => {
 });
 
 test('service worker cache version was bumped for stats picker UI polish', () => {
-  assert.match(swJs, /tomatofarm-v20260711z11-headerless-lifezone-trapezoid/);
+  assert.match(swJs, /tomatofarm-v20260711z12-running-card-metrics/);
 });

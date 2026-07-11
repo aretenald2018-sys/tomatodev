@@ -288,9 +288,9 @@ test('running records save into a dedicated running session with place and devic
   assert.match(runningSessionJs, /altitude:\s*_optionalFiniteNumber/);
   assert.match(runningSessionJs, /heartRateBpm:\s*_optionalNumber/);
   assert.match(runningSessionJs, /cadenceSpm:\s*_optionalNumber/);
-  assert.match(runningSessionJs, /summary\.elevationGainM == null \? '--'/);
-  assert.match(runningSessionJs, /summary\.avgHeartRateBpm == null \? '--'/);
-  assert.match(runningSessionJs, /summary\.cadenceSpm == null \? '--'/);
+  assert.match(runningSessionJs, /_runningElevationText\(summary\.elevationGainM\)/);
+  assert.match(runningSessionJs, /_runningRoundedText\(summary\.avgHeartRateBpm, '-- ♡'\)/);
+  assert.match(runningSessionJs, /_runningRoundedText\(summary\.cadenceSpm\)/);
 });
 
 test('running workout save writes a running life-zone snapshot', () => {
@@ -300,7 +300,7 @@ test('running workout save writes a running life-zone snapshot', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260711z11-headerless-lifezone-trapezoid/);
+  assert.match(swJs, /tomatofarm-v20260711z12-running-card-metrics/);
   assert.match(swJs, /\.\/workout\/index\.js\?v=20260707d-wear-bridge-load-binding/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);

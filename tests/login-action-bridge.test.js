@@ -98,5 +98,5 @@ test('APK login does not wait for optional welcome data before showing the app s
 });
 
 test('service worker cache version was bumped for APK login handoff assets', () => {
-  assert.match(swJs, /tomatofarm-v20260711z11-headerless-lifezone-trapezoid/);
+  assert.match(swJs, /tomatofarm-v20260711z12-running-card-metrics/);
 });

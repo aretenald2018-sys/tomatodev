@@ -1416,15 +1416,41 @@ function _latestRouteMetric(key) {
   return null;
 }
 
-function _renderRunningMetrics(items) {
+function _runningElevationText(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? `${Math.round(n)} m` : '--';
+}
+
+function _runningRoundedText(value, empty = '--') {
+  const n = Number(value);
+  return Number.isFinite(n) ? `${Math.round(n)}` : empty;
+}
+
+function _runningCaloriesText(value) {
+  return `${Math.max(0, Math.round(_num(value)))}`;
+}
+
+function _renderRunningMetrics(items, className = 'wt-running-primary-stats', label = '러닝 지표') {
   return `
-    <div class="wt-running-metric-grid" aria-label="러닝 기록">
+    <div class="${className}" aria-label="${_escapeHtml(label)}">
       ${items.map(item => `
         <span>
-          <i>${_escapeHtml(item.label)}</i>
           <strong>${_escapeHtml(item.value)}</strong>
+          <i>${_escapeHtml(item.label)}</i>
         </span>
       `).join('')}
+    </div>
+  `;
+}
+
+function _renderRunningLiveOverview(distance, stats) {
+  return `
+    <div class="wt-running-overview wt-running-live-overview">
+      <div class="wt-running-distance-hero">
+        <strong>${_escapeHtml(distance)}</strong>
+        <span>킬로미터</span>
+      </div>
+      ${_renderRunningMetrics(stats, 'wt-running-primary-stats', '러닝 핵심 지표')}
     </div>
   `;
 }
@@ -1434,13 +1460,22 @@ function _renderProgress() {
   const elapsed = _elapsedSec();
   const isPaused = _session.phase === 'paused';
   const pace = summary.distanceKm > 0 ? formatRunningPace(elapsed / summary.distanceKm) : "--'--''";
-  const bpm = _latestRouteMetric('heartRateBpm');
+  const bpm = summary.avgHeartRateBpm == null ? _latestRouteMetric('heartRateBpm') : summary.avgHeartRateBpm;
+  const cadence = summary.cadenceSpm == null ? _latestRouteMetric('cadenceSpm') : summary.cadenceSpm;
   const state = isPaused ? '일시정지됨' : 'GPS 측정 중';
   const status = _session.lastError || (isPaused
     ? '재개하면 GPS 기록을 이어갑니다'
     : _session.route.length > 1
       ? '실제 이동이 확인된 GPS 경로만 기록하고 있어요'
       : 'GPS 정확도와 실제 이동을 확인하고 있어요');
+  const stats = [
+    { label: '페이스', value: pace },
+    { label: '시간', value: formatRunningDuration(elapsed) },
+    { label: '칼로리', value: _runningCaloriesText(summary.calories) },
+    { label: '고도 상승', value: _runningElevationText(summary.elevationGainM) },
+    { label: '평균 심박수', value: _runningRoundedText(bpm, '-- ♡') },
+    { label: '케이던스', value: _runningRoundedText(cadence) },
+  ];
   return `
     <article class="wt-day-ex-card wt-max-read-card wt-running-read-card wt-running-live-card" data-running-screen="progress">
       <div class="wt-max-card-kicker wt-running-card-kicker">
@@ -1448,17 +1483,9 @@ function _renderProgress() {
         <em class="wt-running-live-state ${isPaused ? 'is-paused' : ''}">${state}</em>
       </div>
       <div class="wt-max-card-name">러닝</div>
-      <div class="wt-running-headline">
-        <strong>${summary.distanceKm.toFixed(2)}km</strong>
-        <span>${formatRunningDuration(elapsed)} · ${pace}/km</span>
-      </div>
+      ${_renderRunningLiveOverview(summary.distanceKm.toFixed(2), stats)}
       <p class="wt-running-live-status">${_escapeHtml(status)}</p>
       ${_renderLiveRunningMap()}
-      ${_renderRunningMetrics([
-        { label: '시간', value: formatRunningDuration(elapsed) },
-        { label: '페이스', value: `${pace}/km` },
-        { label: '심박', value: bpm == null ? '--' : `${bpm} BPM` },
-      ])}
       <div class="wt-max-actions">
         <button type="button" class="wt-max-action-primary" data-running-action="${isPaused ? 'resume' : 'pause'}">${isPaused ? '러닝 재개' : '일시정지'}</button>
         <button type="button" class="wt-max-action-secondary" data-running-action="finish">러닝 종료</button>
@@ -1473,9 +1500,14 @@ function _renderSummary() {
   const pace = formatRunningPace(summary.avgPaceSecPerKm);
   const time = formatRunningDuration(summary.durationSec);
   const location = _session.placeSummary?.label || _runningPlaceFallback(summary).label;
-  const elevation = summary.elevationGainM == null ? '--' : `${Math.round(summary.elevationGainM)} m`;
-  const heartRate = summary.avgHeartRateBpm == null ? '--' : `${Math.round(summary.avgHeartRateBpm)}`;
-  const cadence = summary.cadenceSpm == null ? '--' : `${Math.round(summary.cadenceSpm)}`;
+  const stats = [
+    { label: '평균 페이스', value: pace },
+    { label: '시간', value: time },
+    { label: '칼로리', value: _runningCaloriesText(summary.calories) },
+    { label: '고도 상승', value: _runningElevationText(summary.elevationGainM) },
+    { label: '평균 심박수', value: _runningRoundedText(summary.avgHeartRateBpm, '-- ♡') },
+    { label: '케이던스', value: _runningRoundedText(summary.cadenceSpm) },
+  ];
   return `
     <article class="wt-day-ex-card wt-max-read-card wt-running-read-card wt-running-live-card is-summary" data-running-screen="summary">
       <div class="wt-max-card-kicker wt-running-card-kicker">
@@ -1483,20 +1515,9 @@ function _renderSummary() {
         <em class="wt-running-live-state is-finished">측정 완료</em>
       </div>
       <div class="wt-max-card-name">러닝 완료</div>
-      <div class="wt-running-headline">
-        <strong>${distance}km</strong>
-        <span>${time} · ${pace}/km</span>
-      </div>
+      ${_renderRunningLiveOverview(distance, stats)}
       <p class="wt-running-live-status">${_escapeHtml(location)}</p>
       ${_renderLiveRunningMap()}
-      ${_renderRunningMetrics([
-        { label: '평균 페이스', value: `${pace}/km` },
-        { label: '시간', value: time },
-        { label: '칼로리', value: `${summary.calories} kcal` },
-        { label: '고도 상승', value: elevation },
-        { label: '평균 심박수', value: heartRate },
-        { label: '케이던스', value: cadence },
-      ])}
       <div class="wt-max-actions wt-max-actions--single">
         <button type="button" class="wt-max-action-primary" data-running-action="save" ${_session.saving ? 'disabled' : ''}>${_session.saving ? '저장 중' : '러닝 기록 저장'}</button>
       </div>

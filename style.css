@@ -14580,11 +14580,11 @@ body.lz-running-record-modal-open {
   color: #16803c;
 }
 .wt-running-live-status {
-  margin: 10px 0 0;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: #f4f7fb;
-  color: #526071;
+  margin: 14px 0 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #8a8f98;
   font-size: 12px;
   line-height: 17px;
   font-weight: 800;
@@ -14609,23 +14609,15 @@ body.lz-running-record-modal-open {
   padding: 16px 14px 14px;
   background: #fff;
 }
-.wt-running-live-card .wt-running-headline {
-  display: grid;
-  gap: 2px;
+.wt-running-live-card .wt-running-live-overview {
   margin-top: 8px;
 }
-.wt-running-live-card .wt-running-headline strong {
-  color: #111827;
-  font-size: 34px;
-  line-height: 38px;
-  font-weight: 950;
-  letter-spacing: 0;
+.wt-running-live-card .wt-running-primary-stats {
+  margin-top: 20px;
+  row-gap: 18px;
 }
-.wt-running-live-card .wt-running-headline span {
-  color: #667085;
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 800;
+.wt-running-live-card .wt-running-live-status + .wt-running-route-wrap {
+  margin-top: 10px;
 }
 .wt-running-overview {
   margin-top: 6px;
@@ -14639,7 +14631,7 @@ body.lz-running-record-modal-open {
   font-size: clamp(46px, 14vw, 64px);
   line-height: .95;
   font-weight: 950;
-  letter-spacing: -.055em;
+  letter-spacing: 0;
   font-variant-numeric: tabular-nums;
 }
 .wt-running-distance-hero span {
@@ -14677,13 +14669,13 @@ body.lz-running-record-modal-open {
   font-size: clamp(17px, 5.3vw, 22px);
   line-height: 24px;
   font-weight: 950;
-  letter-spacing: -.035em;
+  letter-spacing: 0;
 }
 .wt-running-detail-stats strong {
   font-size: 17px;
   line-height: 22px;
   font-weight: 900;
-  letter-spacing: -.02em;
+  letter-spacing: 0;
 }
 .wt-running-primary-stats i,
 .wt-running-detail-stats i {
