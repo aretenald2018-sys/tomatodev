@@ -1,9 +1,9 @@
 // ================================================================
-// workout/running-session.js — full-screen running session flow
+// workout/running-session.js — inline running session card flow
 // ================================================================
 
 import { S } from './state.js';
-import { destroyRunningMaps, renderRunningMap, readRunningMapConfig } from './running-map.js';
+import { readRunningMapConfig } from './running-map.js';
 import {
   MAX_RUNNING_ROUTE_POINTS,
   buildRunningRoutePreview,
@@ -44,14 +44,11 @@ const _session = {
   route: [],
   pendingGapReason: '',
   previewPoint: null,
-  previewRequested: false,
-  mapRenderSeq: 0,
   lastError: '',
   saving: false,
   placeSummary: null,
   placePromise: null,
   goal: { ...DEFAULT_RUNNING_GOAL },
-  goalSheetOpen: false,
   audioGuide: true,
   announcedSplits: 0,
   announcedGoalHalf: false,
@@ -67,11 +64,7 @@ let _runningDraftRoutePendingContext = '';
 let _lastRunningDraftPersistAt = 0;
 
 function _root() {
-  const root = document.getElementById('wt-running-session-root');
-  if (root && document.body && root.parentElement !== document.body) {
-    document.body.appendChild(root);
-  }
-  return root;
+  return document.getElementById('wt-running-session-root');
 }
 
 function _now() {
@@ -117,31 +110,11 @@ function _cloneJson(value, fallback = null) {
   catch { return fallback; }
 }
 
-function _sanitizeRunningGoal(type, rawValue) {
-  const safeType = type === 'distance' || type === 'time' ? type : 'free';
-  if (safeType === 'free') return { ...DEFAULT_RUNNING_GOAL };
-  const fallback = RUNNING_GOAL_DEFAULTS[safeType];
-  const min = safeType === 'distance' ? 0.1 : 1;
-  const max = safeType === 'distance' ? 99.99 : 999;
-  const value = Math.min(max, Math.max(min, _num(rawValue, fallback)));
-  return {
-    type: safeType,
-    value: safeType === 'distance' ? _round(value, 2) : Math.round(value),
-  };
-}
-
 function _runningGoalLabel(goal = _session.goal) {
   const safe = _cloneRunningGoal(goal);
   if (safe.type === 'distance') return `${_round(safe.value, 2)} km`;
   if (safe.type === 'time') return `${Math.round(safe.value)}분`;
   return '자유 러닝';
-}
-
-function _runningGoalShortType(goal = _session.goal) {
-  const safe = _cloneRunningGoal(goal);
-  if (safe.type === 'distance') return '거리 목표';
-  if (safe.type === 'time') return '시간 목표';
-  return '목표 없음';
 }
 
 function _runningGoalProgress(summary = _currentSummary()) {
@@ -903,14 +876,11 @@ function _resetLiveSession(options = {}) {
     route: [],
     pendingGapReason: '',
     previewPoint: null,
-    previewRequested: false,
-    mapRenderSeq: _session.mapRenderSeq + 1,
     lastError: '',
     saving: false,
     placeSummary: null,
     placePromise: null,
     goal: { ...DEFAULT_RUNNING_GOAL },
-    goalSheetOpen: false,
     audioGuide: true,
     announcedSplits: 0,
     announcedGoalHalf: false,
@@ -1238,25 +1208,6 @@ function _readRunningSensorSnapshot(position = null) {
   return {};
 }
 
-function _requestPreviewPosition() {
-  if (_session.previewRequested || typeof navigator === 'undefined' || !navigator.geolocation?.getCurrentPosition) return;
-  _session.previewRequested = true;
-  navigator.geolocation.getCurrentPosition(
-    position => {
-      const point = _positionToPoint(position);
-      if (!point) return;
-      _session.previewPoint = point;
-      _session.lastError = '';
-      if (_session.open && _session.phase === 'start') _render();
-    },
-    error => {
-      _session.lastError = error?.message || 'GPS 권한을 확인해주세요';
-      if (_session.open && _session.phase === 'start') _mountRunningMaps();
-    },
-    GEO_OPTIONS
-  );
-}
-
 function _pushPosition(position, options = {}) {
   const point = _positionToPoint(position);
   if (!_pushRoutePoint(point, options)) return;
@@ -1408,176 +1359,24 @@ async function _saveSummary() {
   }
 }
 
-async function _shareSummary() {
-  const summary = _currentSummary();
-  const text = `러닝 ${summary.distanceKm.toFixed(2)}km · ${formatRunningDuration(summary.durationSec)} · ${formatRunningPace(summary.avgPaceSecPerKm)}/km`;
-  try {
-    if (typeof navigator !== 'undefined' && navigator.share) await navigator.share({ title: '러닝 기록', text });
-    else if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      await _showToast('공유 문구를 복사했어요', 1800, 'success');
-    }
-  } catch (e) {
-    console.warn('[running-session] share skipped:', e);
+function _latestRouteMetric(key) {
+  for (let i = _session.route.length - 1; i >= 0; i -= 1) {
+    const value = _optionalNumber(_session.route[i]?.[key]);
+    if (value != null) return Math.round(value);
   }
+  return null;
 }
 
-function _mapPointsFor(kind) {
-  if (kind === 'summary') {
-    if (_session.route.length) return buildRunningRoutePreview(_session.route, RUNNING_ROUTE_PREVIEW_POINTS);
-    return _session.previewPoint ? [_session.previewPoint] : [];
-  }
-  if (kind === 'start') return _session.previewPoint ? [_session.previewPoint] : [];
-  return [];
-}
-
-function _renderRealMapShell(kind, label) {
-  const safeKind = _escapeHtml(kind);
-  const safeLabel = _escapeHtml(label || '실제 지도');
+function _renderRunningMetrics(items) {
   return `
-    <div class="wt-run-real-map wt-run-real-map--${safeKind}" data-running-real-map="${safeKind}">
-      <div class="wt-run-map-canvas" data-running-map-canvas aria-label="${safeLabel}"></div>
-      <div class="wt-run-map-status" data-running-map-status>실제 지도 준비 중</div>
-    </div>
-  `;
-}
-
-function _mountRunningMaps() {
-  const root = _root();
-  if (!root || !_session.open) return;
-  const seq = ++_session.mapRenderSeq;
-  root.querySelectorAll('[data-running-real-map]').forEach(shell => {
-    const kind = shell.getAttribute('data-running-real-map') || 'start';
-    const points = _mapPointsFor(kind);
-    renderRunningMap(shell, { points, phase: kind }).then(() => {
-      if (seq !== _session.mapRenderSeq) destroyRunningMaps(shell);
-    });
-  });
-}
-
-function _renderStartOptions() {
-  const audioLabel = _session.audioGuide ? '켜짐' : '꺼짐';
-  return `
-    <div class="wt-run-start-options">
-      <button type="button" data-running-action="goal">
-        <span>${_runningGoalShortType()}</span>
-        <strong>${_escapeHtml(_runningGoalLabel())}</strong>
-      </button>
-      <button type="button" class="${_session.audioGuide ? 'active' : ''}" data-running-action="audio-toggle" aria-pressed="${_session.audioGuide ? 'true' : 'false'}">
-        <span>음성 안내</span>
-        <strong>${audioLabel}</strong>
-      </button>
-    </div>
-  `;
-}
-
-function _renderGoalProgress(summary) {
-  const progress = _runningGoalProgress(summary);
-  if (!progress.active) return '';
-  const pct = Math.round(progress.ratio * 100);
-  const goalLabel = _runningGoalLabel();
-  const remaining = _runningGoalRemainingLabel(progress);
-  return `
-    <div class="wt-run-goal-progress" aria-label="${_escapeHtml(`${goalLabel} ${pct}%`)}">
-      <div class="wt-run-goal-progress-head">
-        <span>${_escapeHtml(goalLabel)}</span>
-        <strong>${pct}%</strong>
-      </div>
-      <div class="wt-run-goal-progress-bar"><i style="width:${pct}%"></i></div>
-      <p>${_escapeHtml(remaining)}</p>
-    </div>
-  `;
-}
-
-function _renderGoalSheet() {
-  const goal = _cloneRunningGoal(_session.goal);
-  const distanceValue = goal.type === 'distance' ? goal.value : RUNNING_GOAL_DEFAULTS.distance;
-  const timeValue = goal.type === 'time' ? goal.value : RUNNING_GOAL_DEFAULTS.time;
-  const checked = type => goal.type === type ? 'checked' : '';
-  return `
-    <div class="wt-run-goal-sheet-backdrop" data-running-action="goal-close" aria-hidden="true"></div>
-    <form class="wt-run-goal-sheet" data-running-goal-sheet>
-      <header>
-        <div>
-          <span>러닝 목표</span>
-          <strong>목표와 음성 안내</strong>
-        </div>
-        <button type="button" class="wt-run-icon-btn" data-running-action="goal-close" aria-label="닫기">×</button>
-      </header>
-      <div class="wt-run-goal-modes" role="radiogroup" aria-label="러닝 목표 종류">
-        <label><input type="radio" name="running-goal-type" value="free" ${checked('free')}><span>자유</span></label>
-        <label><input type="radio" name="running-goal-type" value="distance" ${checked('distance')}><span>거리</span></label>
-        <label><input type="radio" name="running-goal-type" value="time" ${checked('time')}><span>시간</span></label>
-      </div>
-      <div class="wt-run-goal-fields">
-        <label>
-          <span>거리 목표</span>
-          <input id="wt-run-goal-distance" type="number" inputmode="decimal" min="0.1" max="99.99" step="0.1" value="${_escapeHtml(distanceValue)}">
-          <i>km</i>
-        </label>
-        <label>
-          <span>시간 목표</span>
-          <input id="wt-run-goal-time" type="number" inputmode="numeric" min="1" max="999" step="1" value="${_escapeHtml(timeValue)}">
-          <i>분</i>
-        </label>
-      </div>
-      <label class="wt-run-audio-row">
-        <input type="checkbox" name="running-audio-guide" ${_session.audioGuide ? 'checked' : ''}>
+    <div class="wt-running-metric-grid" aria-label="러닝 기록">
+      ${items.map(item => `
         <span>
-          <strong>음성 안내</strong>
-          <em>시작, 1km split, 목표 절반/완료, 종료를 안내</em>
+          <i>${_escapeHtml(item.label)}</i>
+          <strong>${_escapeHtml(item.value)}</strong>
         </span>
-      </label>
-      <footer>
-        <button type="button" data-running-action="goal-close">취소</button>
-        <button type="button" data-running-action="goal-save">저장</button>
-      </footer>
-    </form>
-  `;
-}
-
-function _readRunningGoalForm() {
-  const root = _root();
-  const sheet = root?.querySelector?.('[data-running-goal-sheet]');
-  const type = sheet?.querySelector?.('input[name="running-goal-type"]:checked')?.value || 'free';
-  const valueSource = type === 'distance'
-    ? sheet?.querySelector?.('#wt-run-goal-distance')?.value
-    : sheet?.querySelector?.('#wt-run-goal-time')?.value;
-  return {
-    goal: _sanitizeRunningGoal(type, valueSource),
-    audioGuide: !!sheet?.querySelector?.('input[name="running-audio-guide"]')?.checked,
-  };
-}
-
-function _saveRunningGoalForm() {
-  const next = _readRunningGoalForm();
-  _session.goal = next.goal;
-  _session.audioGuide = next.audioGuide;
-  _session.goalSheetOpen = false;
-  _render();
-  _persistRunningDraft('goal save');
-  const label = _session.goal.type === 'free' ? '자유 러닝' : `${_runningGoalLabel(_session.goal)} 목표`;
-  _showToast(`${label}로 설정했어요`, 1800, 'success');
-}
-
-function _renderStart() {
-  return `
-    <section class="wt-running-screen wt-running-screen--start" data-running-screen="start">
-      <header class="wt-run-start-topbar">
-        <button type="button" class="wt-run-icon-btn" data-running-action="close" aria-label="닫기">☰</button>
-        <strong>러닝</strong>
-        <button type="button" class="wt-run-icon-btn" data-running-action="goal" aria-label="추가">＋</button>
-      </header>
-      <div class="wt-run-start-tabs" role="tablist" aria-label="러닝 모드">
-        <button type="button" class="active" data-running-action="noop">바로 시작</button>
-      </div>
-      ${_renderStartOptions()}
-      <div class="wt-run-start-map">
-        ${_renderRealMapShell('start', '러닝 지도')}
-        <button type="button" class="wt-run-start-btn" data-running-action="start">시작</button>
-        <button type="button" class="wt-run-goal-btn" data-running-action="goal">목표 설정</button>
-      </div>
-    </section>
+      `).join('')}
+    </div>
   `;
 }
 
@@ -1587,47 +1386,31 @@ function _renderProgress() {
   const isPaused = _session.phase === 'paused';
   const pace = summary.distanceKm > 0 ? formatRunningPace(elapsed / summary.distanceKm) : "--'--''";
   const bpm = _latestRouteMetric('heartRateBpm');
-  const error = _session.lastError ? `<div class="wt-run-gps-note">${_escapeHtml(_session.lastError)}</div>` : '';
+  const state = isPaused ? '일시정지됨' : 'GPS 측정 중';
+  const status = _session.lastError || (isPaused ? '재개하면 GPS 기록을 이어갑니다' : 'GPS 위치를 기록하고 있어요');
   return `
-    <section class="wt-running-screen wt-running-screen--progress" data-running-screen="progress">
-      <div class="wt-run-live-stats">
-        <div><b>${pace}</b><span>페이스</span></div>
-        <div><b>${bpm ?? '--'}</b><span>BPM</span></div>
-        <div><b>${formatRunningDuration(elapsed)}</b><span>시간</span></div>
+    <article class="wt-day-ex-card wt-max-read-card wt-running-read-card wt-running-live-card" data-running-screen="progress">
+      <div class="wt-max-card-kicker wt-running-card-kicker">
+        <span><i></i>러닝 · GPS</span>
+        <em class="wt-running-live-state ${isPaused ? 'is-paused' : ''}">${state}</em>
       </div>
-      ${_renderGoalProgress(summary)}
-      <main class="wt-run-live-main">
-        <div class="wt-run-live-heart">
-          <strong>${bpm ?? '--'}</strong>
-          <span>분당 심박수</span>
-          ${error}
-        </div>
-      </main>
-      <div class="wt-run-live-actions">
-        <button type="button" class="wt-run-live-btn" data-running-action="${isPaused ? 'resume' : 'pause'}" aria-label="${isPaused ? '재개' : '일시정지'}">${isPaused ? '▶' : 'Ⅱ'}</button>
-        ${isPaused ? '<button type="button" class="wt-run-finish-btn" data-running-action="finish">종료</button>' : ''}
+      <div class="wt-max-card-name">러닝</div>
+      <div class="wt-running-headline">
+        <strong>${summary.distanceKm.toFixed(2)}km</strong>
+        <span>${formatRunningDuration(elapsed)} · ${pace}/km</span>
       </div>
-      <footer class="wt-run-music-bar">
-        <span class="wt-run-muted-music">♩</span>
-        <strong>선택된 음악 없음</strong>
-        <span>♫</span>
-      </footer>
-    </section>
+      <p class="wt-running-live-status">${_escapeHtml(status)}</p>
+      ${_renderRunningMetrics([
+        { label: '시간', value: formatRunningDuration(elapsed) },
+        { label: '페이스', value: `${pace}/km` },
+        { label: '심박', value: bpm == null ? '--' : `${bpm} BPM` },
+      ])}
+      <div class="wt-max-actions">
+        <button type="button" class="wt-max-action-primary" data-running-action="${isPaused ? 'resume' : 'pause'}">${isPaused ? '러닝 재개' : '일시정지'}</button>
+        <button type="button" class="wt-max-action-secondary" data-running-action="finish">러닝 종료</button>
+      </div>
+    </article>
   `;
-}
-
-function _latestRouteMetric(key) {
-  for (let i = _session.route.length - 1; i >= 0; i -= 1) {
-    const value = _optionalNumber(_session.route[i]?.[key]);
-    if (value != null) return Math.round(value);
-  }
-  return null;
-}
-
-function _summaryTitle(summary) {
-  const d = new Date(summary.endedAt || _now());
-  const weekday = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'][d.getDay()];
-  return `${weekday} 러닝`;
 }
 
 function _renderSummary() {
@@ -1640,52 +1423,50 @@ function _renderSummary() {
   const heartRate = summary.avgHeartRateBpm == null ? '--' : `${Math.round(summary.avgHeartRateBpm)}`;
   const cadence = summary.cadenceSpm == null ? '--' : `${Math.round(summary.cadenceSpm)}`;
   return `
-    <section class="wt-running-screen wt-running-screen--summary" data-running-screen="summary">
-      <header class="wt-run-summary-topbar">
-        <div><span>오늘</span><strong>${_summaryTitle(summary)}</strong></div>
-        <button type="button" class="wt-run-icon-btn" data-running-action="close" aria-label="닫기">×</button>
-      </header>
-      <main class="wt-run-summary-body">
-        <div class="wt-run-summary-distance">
-          <b>${distance}</b>
-          <span>킬로미터</span>
-        </div>
-        <div class="wt-run-summary-grid">
-          <div><b>${pace}</b><span>평균 페이스</span></div>
-          <div><b>${time}</b><span>시간</span></div>
-          <div><b>${summary.calories}</b><span>칼로리</span></div>
-          <div><b>${elevation}</b><span>고도 상승</span></div>
-          <div><b>${heartRate}</b><span>평균 심박수</span></div>
-          <div><b>${cadence}</b><span>케이던스</span></div>
-        </div>
-        <div class="wt-run-summary-map">
-          ${_renderRealMapShell('summary', location)}
-          <div class="wt-run-summary-map-label">${_escapeHtml(location)}</div>
-        </div>
-      </main>
-      <footer class="wt-run-summary-actions">
-        <button type="button" data-running-action="share">공유</button>
-        <button type="button" data-running-action="save" ${_session.saving ? 'disabled' : ''}>${_session.saving ? '저장 중' : '저장'}</button>
-      </footer>
-    </section>
+    <article class="wt-day-ex-card wt-max-read-card wt-running-read-card wt-running-live-card is-summary" data-running-screen="summary">
+      <div class="wt-max-card-kicker wt-running-card-kicker">
+        <span><i></i>러닝 · GPS 기록</span>
+        <em class="wt-running-live-state is-finished">측정 완료</em>
+      </div>
+      <div class="wt-max-card-name">러닝 완료</div>
+      <div class="wt-running-headline">
+        <strong>${distance}km</strong>
+        <span>${time} · ${pace}/km</span>
+      </div>
+      <p class="wt-running-live-status">${_escapeHtml(location)}</p>
+      ${_renderRunningMetrics([
+        { label: '평균 페이스', value: `${pace}/km` },
+        { label: '시간', value: time },
+        { label: '칼로리', value: `${summary.calories} kcal` },
+        { label: '고도 상승', value: elevation },
+        { label: '평균 심박수', value: heartRate },
+        { label: '케이던스', value: cadence },
+      ])}
+      <div class="wt-max-actions wt-max-actions--single">
+        <button type="button" class="wt-max-action-primary" data-running-action="save" ${_session.saving ? 'disabled' : ''}>${_session.saving ? '저장 중' : '러닝 기록 저장'}</button>
+      </div>
+    </article>
   `;
+}
+
+function _syncInlineRunningVisibility(open, root = _root()) {
+  const host = root?.closest?.('[data-wt-running-session-host]');
+  if (host) host.hidden = !open;
+  document.querySelectorAll?.('[data-wt-running-empty]').forEach(empty => { empty.hidden = !!open; });
+  const detail = root?.closest?.('.wt-day-detail');
+  detail?.querySelector?.('.wt-day-fab--running')?.toggleAttribute('hidden', !!open);
 }
 
 function _render() {
   const root = _root();
-  if (!root || !_session.open) return;
+  if (!root || !_session.open) {
+    _syncInlineRunningVisibility(false, root);
+    return;
+  }
   root.classList.add('is-open');
   root.hidden = false;
-  document.body?.classList.add('wt-running-session-open');
-  destroyRunningMaps(root);
-  _session.mapRenderSeq += 1;
-  let screen = '';
-  if (_session.phase === 'active' || _session.phase === 'paused') screen = _renderProgress();
-  else if (_session.phase === 'summary') screen = _renderSummary();
-  else screen = _renderStart();
-  root.innerHTML = `${screen}${_session.goalSheetOpen ? _renderGoalSheet() : ''}`;
-  if (_session.phase === 'start') _requestPreviewPosition();
-  _mountRunningMaps();
+  _syncInlineRunningVisibility(true, root);
+  root.innerHTML = _session.phase === 'summary' ? _renderSummary() : _renderProgress();
 }
 
 function _handleAction(action) {
@@ -1696,24 +1477,6 @@ function _handleAction(action) {
   if (action === 'resume') return _resumeRun();
   if (action === 'finish') return _finishRun();
   if (action === 'save') return _saveSummary();
-  if (action === 'share') return _shareSummary();
-  if (action === 'goal') {
-    if (_session.phase !== 'start') return _showToast('러닝 중에는 시작 전 목표를 유지해요', 1800, 'info');
-    _session.goalSheetOpen = true;
-    return _render();
-  }
-  if (action === 'goal-close') {
-    _session.goalSheetOpen = false;
-    return _render();
-  }
-  if (action === 'goal-save') return _saveRunningGoalForm();
-  if (action === 'audio-toggle') {
-    _session.audioGuide = !_session.audioGuide;
-    _render();
-    return _showToast(`음성 안내 ${_session.audioGuide ? '켜짐' : '꺼짐'}`, 1500, 'info');
-  }
-  if (action === 'settings') return _showToast('러닝 설정은 준비 중이에요', 1800, 'info');
-  if (action === 'music') return _showToast('음악 연동은 준비 중이에요', 1800, 'info');
 }
 
 export function initRunningSession() {
@@ -1730,15 +1493,24 @@ export function initRunningSession() {
   });
 }
 
-export function wtOpenRunningSession() {
+export function wtMountRunningSession() {
   initRunningSession();
+  if (_session.open) _render();
+}
+
+export function wtOpenRunningSession() {
+  if (!_root()) window._wtCalSelectRunning?.();
+  initRunningSession();
+  if (_session.open) {
+    _render();
+    return;
+  }
   if (wtRestoreRunningSessionIfActive()) return;
   _resetLiveSession();
   S.workout.sessionIndex = RUNNING_WORKOUT_SESSION_INDEX;
   S.workout.sessionId = 'running-track';
   _session.open = true;
-  _session.phase = 'start';
-  _render();
+  _startRun();
 }
 
 export function wtRestoreRunningSessionIfActive() {
@@ -1748,7 +1520,6 @@ export function wtRestoreRunningSessionIfActive() {
 
 export function wtCloseRunningSession() {
   const root = _root();
-  if (root) destroyRunningMaps(root);
   _clearRunningDraft();
   _resetLiveSession();
   _session.open = false;
@@ -1758,8 +1529,7 @@ export function wtCloseRunningSession() {
     root.hidden = true;
     root.innerHTML = '';
   }
-  document.body?.classList.remove('wt-running-session-open');
-  window._wtSetActiveType?.('gym');
+  _syncInlineRunningVisibility(false, root);
 }
 
 export function wtHandleRunningSessionBack() {

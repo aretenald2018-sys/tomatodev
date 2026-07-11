@@ -2163,6 +2163,7 @@ export function renderWorkoutCalendarHome() {
   _bindWorkoutCycleRailActions(root);
   _bindWorkoutHomeSheetActions(root);
   _bindWorkoutHomeSheetInputIsolation(root);
+  window.wtMountRunningSession?.();
   _mountWorkoutRunningMaps(root);
   _tryRestorePendingWorkoutSheetCarouselFocus(_workoutHomeSelectedKey, _workoutHomeSessionIndex);
 }
@@ -2172,6 +2173,7 @@ function _renderWorkoutHomeDetail(root, args) {
   _workoutRunningRouteHydration.invalidateAll();
   _workoutRunningMapPayloads.clear();
   root.innerHTML = _renderWorkoutHomeDetailHtml(args);
+  window.wtMountRunningSession?.();
   _mountWorkoutRunningMaps(root);
 }
 
@@ -2290,6 +2292,11 @@ function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, includeHead 
   const content = wx.hasWorkout
     ? _renderWorkoutDetailRecorded(key, sessionIndex, wx)
     : (runningActive ? _renderWorkoutRunningEmpty(key) : _renderWorkoutDetailEmpty(sessionIndex));
+  const runningSessionHost = runningActive ? `
+        <div class="wt-running-inline-host" data-wt-running-session-host>
+          <div id="wt-running-session-root" class="wt-running-inline-root" aria-live="polite" hidden></div>
+        </div>
+      ` : '';
   const fabAttrs = runningActive
     ? `data-wt-day-add-running data-date-key="${_esc(key)}" aria-label="러닝 시작"`
     : `data-wt-day-add-session data-date-key="${_esc(key)}" aria-label="운동 추가"`;
@@ -2314,6 +2321,7 @@ function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, includeHead 
       ${headHtml}
 
       <div class="wt-day-sheet-scroll">
+        ${runningSessionHost}
         ${content}
       </div>
 
@@ -3118,7 +3126,7 @@ function _renderWorkoutDetailEmpty(sessionIndex) {
 
 function _renderWorkoutRunningEmpty(key) {
   return `
-    <div class="wt-day-empty wt-running-empty">
+    <div class="wt-day-empty wt-running-empty" data-wt-running-empty>
       <div class="wt-day-session-label">러닝</div>
       <div class="wt-empty-center">
         <div class="wt-empty-run" aria-hidden="true"></div>

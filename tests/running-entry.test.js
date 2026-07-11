@@ -16,11 +16,18 @@ const swJs = await readFile(new URL('../sw.js', import.meta.url), 'utf8');
 const configJs = await readFile(new URL('../config.js', import.meta.url), 'utf8');
 const runningSessionJs = await readFile(new URL('../workout/running-session.js', import.meta.url), 'utf8');
 const runningMapJs = await readFile(new URL('../workout/running-map.js', import.meta.url), 'utf8');
+const calendarJs = await readFile(new URL('../render-calendar.js', import.meta.url), 'utf8');
 
-test('running type has a dedicated full-screen session root and no legacy inline form', () => {
+test('running session mounts as an inline card below the day summary instead of a full-screen root', () => {
   assert.match(indexHtml, /id="wt-chip-running"[^>]*onclick="wtSwitchType\('running'\)"[^>]*>🏃 런닝\/조깅<\/button>/);
-  assert.match(indexHtml, /id="wt-running-session-root"/);
-  assert.match(runningSessionJs, /root\.parentElement !== document\.body[\s\S]*document\.body\.appendChild\(root\)/);
+  assert.doesNotMatch(indexHtml, /id="wt-running-session-root"/);
+  assert.match(calendarJs, /data-wt-running-session-host/);
+  assert.match(calendarJs, /id="wt-running-session-root" class="wt-running-inline-root"/);
+  assert.match(calendarJs, /window\.wtMountRunningSession\?\.\(\)/);
+  assert.match(runningSessionJs, /export function wtMountRunningSession/);
+  assert.match(runningSessionJs, /wt-running-live-card/);
+  assert.doesNotMatch(runningSessionJs, /document\.body\.appendChild\(root\)/);
+  assert.doesNotMatch(runningSessionJs, /wt-running-screen--start/);
   assert.doesNotMatch(indexHtml, /id="wt-running-section"/);
   assert.doesNotMatch(indexHtml, /id="wt-run-distance"/);
   assert.doesNotMatch(indexHtml, /id="wt-run-gps-primary"/);
@@ -78,7 +85,7 @@ test('exercise picker category renders running and cardio as body-category tiles
   assert.doesNotMatch(exercisesJs, /wt-running-section/);
 });
 
-test('running picker tile and session screens have dedicated styles', () => {
+test('running picker tile and inline session card have dedicated styles', () => {
   assert.match(styleCss, /\.ex-picker-body-category-tile \.ex-picker-muscle-name/);
   assert.match(styleCss, /\.ex-picker-body-figure--cardio/);
   assert.match(styleCss, /\.ex-picker-cardio-item/);
@@ -90,16 +97,11 @@ test('running picker tile and session screens have dedicated styles', () => {
   assert.match(styleCss, /\.ex-picker-body-figure/);
   assert.match(styleCss, /\.ex-picker-cardio-figure/);
   assert.doesNotMatch(styleCss, /\.ex-picker-activity-figure/);
-  assert.match(styleCss, /\.wt-running-session-root/);
-  assert.match(styleCss, /\.wt-running-screen--start/);
-  assert.match(styleCss, /\.wt-running-screen--progress/);
-  assert.match(styleCss, /\.wt-running-screen--summary/);
-  assert.match(styleCss, /\.wt-run-real-map/);
-  assert.match(styleCss, /\.wt-run-map-canvas/);
-  assert.match(styleCss, /\.wt-run-map-status/);
-  assert.match(styleCss, /\.wt-run-start-options/);
-  assert.match(styleCss, /\.wt-run-goal-sheet/);
-  assert.match(styleCss, /\.wt-run-goal-progress/);
+  assert.match(styleCss, /\.wt-running-inline-host/);
+  assert.match(styleCss, /\.wt-running-inline-root/);
+  assert.match(styleCss, /\.wt-running-live-card/);
+  assert.match(styleCss, /\.wt-running-live-state/);
+  assert.match(styleCss, /\.wt-running-live-status/);
   assert.match(styleCss, /image-rendering:\s*auto/);
   assert.match(styleCss, /-webkit-font-smoothing:\s*antialiased/);
   assert.match(styleCss, /width:\s*min\(24vw,\s*110px\)/);
@@ -117,14 +119,9 @@ test('running live progress does not show fake swipe pagination dots', () => {
   assert.doesNotMatch(styleCss, /\.wt-run-live-pages/);
 });
 
-test('running session has goal setup and Korean voice guidance cues', () => {
+test('running session keeps Korean voice guidance without the separate setup screen', () => {
   assert.match(runningSessionJs, /DEFAULT_RUNNING_GOAL/);
   assert.match(runningSessionJs, /RUNNING_GOAL_DEFAULTS/);
-  assert.match(runningSessionJs, /data-running-action="audio-toggle"/);
-  assert.match(runningSessionJs, /data-running-action="goal-save"/);
-  assert.match(runningSessionJs, /name="running-goal-type"/);
-  assert.match(runningSessionJs, /id="wt-run-goal-distance"/);
-  assert.match(runningSessionJs, /id="wt-run-goal-time"/);
   assert.match(runningSessionJs, /function _runningGoalProgress/);
   assert.match(runningSessionJs, /function _checkRunningAudioCues/);
   assert.match(runningSessionJs, /announcedSplits/);
@@ -134,7 +131,9 @@ test('running session has goal setup and Korean voice guidance cues', () => {
   assert.match(runningSessionJs, /utterance\.lang = 'ko-KR'/);
   assert.match(runningSessionJs, /킬로미터 통과/);
   assert.match(runningSessionJs, /목표를 완료했습니다/);
-  assert.doesNotMatch(runningSessionJs, /목표 설정은 준비 중이에요/);
+  assert.doesNotMatch(runningSessionJs, /data-running-action="audio-toggle"/);
+  assert.doesNotMatch(runningSessionJs, /data-running-action="goal-save"/);
+  assert.doesNotMatch(runningSessionJs, /name="running-goal-type"/);
 });
 
 test('running session publishes home life-zone live state without rendering a duplicate home track', () => {
@@ -162,7 +161,7 @@ test('running session publishes home life-zone live state without rendering a du
   assert.doesNotMatch(styleCss, /assets\/workout\/running-track-live\.png/);
 });
 
-test('running maps use real provider shell instead of fake svg maps', () => {
+test('saved running cards own the real map renderer instead of the live inline card', () => {
   assert.match(configJs, /PUBLIC_VWORLD_MAP_KEY/);
   assert.match(configJs, /cfg_running_map_provider/);
   assert.match(configJs, /cfg_vworld_api_key/);
@@ -184,8 +183,11 @@ test('running maps use real provider shell instead of fake svg maps', () => {
   assert.match(runningMapJs, /function _vworldZoomForRoute/);
   assert.match(runningMapJs, /const pad = 72/);
   assert.doesNotMatch(runningMapJs, /RUNNING_MAP_HOME_MAX_ZOOM/);
-  assert.match(runningSessionJs, /data-running-real-map/);
-  assert.match(runningSessionJs, /renderRunningMap/);
+  assert.match(calendarJs, /renderRunningMap/);
+  assert.match(calendarJs, /data-wt-running-route-map/);
+  assert.match(runningSessionJs, /readRunningMapConfig/);
+  assert.doesNotMatch(runningSessionJs, /data-running-real-map/);
+  assert.doesNotMatch(runningSessionJs, /renderRunningMap/);
   assert.doesNotMatch(runningMapJs, /키를 설정하면/);
   assert.doesNotMatch(runningSessionJs, /밤에 러닝하시나요/);
   assert.doesNotMatch(runningSessionJs, /러닝 가이드/);
@@ -200,6 +202,7 @@ test('running maps use real provider shell instead of fake svg maps', () => {
 test('running session is wired into app init, save, load, and sessions', () => {
   assert.doesNotMatch(activityFormsJs, /initRunningTracker|renderRunningTracker/);
   assert.match(workoutIndexJs, /initRunningSession/);
+  assert.match(workoutIndexJs, /window\.wtMountRunningSession/);
   assert.match(workoutIndexJs, /window\.wtOpenRunningSession/);
   assert.match(workoutIndexJs, /import \{ loadWorkoutDate, changeWorkoutDate, goToTodayWorkout \}\s+from '\.\/load\.js\?v=20260517v3';/);
   assert.match(workoutIndexJs, /configureWearWorkoutBridge\(\{[\s\S]*loadWorkoutDate,[\s\S]*saveWorkoutDay/);
@@ -296,7 +299,7 @@ test('running workout save writes a running life-zone snapshot', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260711z4-running-native-gps/);
+  assert.match(swJs, /tomatofarm-v20260711z5-running-inline-card/);
   assert.match(swJs, /\.\/workout\/index\.js\?v=20260707d-wear-bridge-load-binding/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);

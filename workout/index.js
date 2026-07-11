@@ -42,7 +42,7 @@ export { wtStartWorkoutTimer, wtPauseWorkoutTimer,
          wtOpenRestPresetSheet }
   from './timers.js';
 
-export { initRunningSession, wtOpenRunningSession, wtHandleRunningSessionBack, wtRestoreRunningSessionIfActive }
+export { initRunningSession, wtMountRunningSession, wtOpenRunningSession, wtHandleRunningSessionBack, wtRestoreRunningSessionIfActive }
   from './running-session.js';
 
 // ── 내부 import (window 등록 + 초기화용) ─────────────────────────
@@ -66,7 +66,7 @@ import { wtStartWorkoutTimer, wtTogglePauseWorkoutTimer,
 import { _initRestTimerPresets }                   from './timers.js';
 import { _initRunningEvents }                      from './activity-forms.js';
 import { _initTypeFormEvents }                     from './activity-forms.js';
-import { initRunningSession, wtOpenRunningSession, wtHandleRunningSessionBack, wtRestoreRunningSessionIfActive } from './running-session.js';
+import { initRunningSession, wtMountRunningSession, wtOpenRunningSession, wtHandleRunningSessionBack, wtRestoreRunningSessionIfActive } from './running-session.js';
 import { configureWearWorkoutBridge, initWearWorkoutBridge } from './wear-bridge.js';
 import { confirmAction }                           from '../utils/confirm-modal.js';
 import { getDay }                                  from '../data.js';
@@ -89,6 +89,7 @@ window.wtResetWorkoutTimer = wtResetWorkoutTimer;
 window.wtFinishWorkout = wtFinishWorkout;
 window.wtRecoverTimers = wtRecoverTimers;
 window.wtOpenRunningSession = wtOpenRunningSession;
+window.wtMountRunningSession = wtMountRunningSession;
 window.wtHandleRunningSessionBack = wtHandleRunningSessionBack;
 window.wtRestoreRunningSessionIfActive = wtRestoreRunningSessionIfActive;
 configureWearWorkoutBridge({

@@ -54,7 +54,7 @@ function _renderActivityCopyHint(type, applyCopy) {
 }
 
 // ── 런닝 폼 ─────────────────────────────────────────────────────
-// 2026-06-27: inline 러닝 입력 폼은 전용 running-session 화면으로 대체됨.
+// 2026-07-11: 러닝은 날짜 시트의 인라인 세션 카드에서 측정한다.
 export function _renderRunningForm() {
   // Kept as an exported no-op because load.js still calls all activity renderers.
 }

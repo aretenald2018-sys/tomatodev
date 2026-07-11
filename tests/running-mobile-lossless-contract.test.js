@@ -53,7 +53,7 @@ try {
   state.S.shared.date = { y: 2026, m: 6, d: 10 };
   const session = await import(${JSON.stringify(sessionUrl)});
   session.wtOpenRunningSession();
-  document.querySelector('[data-running-action="start"]').click();
+  const inlineCardBeforeFinish = document.querySelector('.wt-running-live-card')?.className || '';
   window.__draftWrites = 0;
 
   const base = Date.now();
@@ -80,7 +80,7 @@ try {
     coords: { latitude: 37.6, longitude: 127.1, accuracy: 5, altitude: 20, speed: 2.8 },
     __sensor: { heartRateBpm: 145, cadenceSpm: 166 },
   });
-  const rejectionError = document.querySelector('.wt-run-gps-note')?.textContent || '';
+  const rejectionError = document.querySelector('.wt-running-live-status')?.textContent || '';
   const routePointWrites = window.__draftWrites;
   document.querySelector('[data-running-action="pause"]').click();
   const draftRaw = localStorage.getItem('tomatofarm_running_session_draft_mobile-lossless-runner');
@@ -100,6 +100,8 @@ try {
     runData: structuredClone(state.S.workout.runData),
     mapPointCounts: window.__mapPointCounts || [],
     screen: document.querySelector('[data-running-screen]')?.getAttribute('data-running-screen') || null,
+    inlineCardBeforeFinish,
+    inlineCardAfterFinish: document.querySelector('.wt-running-live-card')?.className || '',
   };
 } catch (error) {
   window.__qaError = String(error?.stack || error?.message || error);
@@ -153,7 +155,9 @@ test('mobile capture keeps 620 source points while draft and map work stay bound
   assert.equal(result.runData.route.length, 620);
   assert.equal(result.runData.routeSummary.pointCount, 620);
   assert.equal(result.screen, 'summary');
-  assert.equal(Math.max(...result.mapPointCounts), 240);
+  assert.match(result.inlineCardBeforeFinish, /wt-running-live-card/);
+  assert.match(result.inlineCardAfterFinish, /is-summary/);
+  assert.deepEqual(result.mapPointCounts, []);
 });
 
 test('mobile draft keeps a six-hour 1Hz route once and uses a small active marker', async () => {
