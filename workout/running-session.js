@@ -880,9 +880,22 @@ async function _ensureRunningPlaceSummary(summary) {
   return _session.placePromise;
 }
 
+function _matchingCapturedRouteReference(routeRef, route) {
+  if (!routeRef || typeof routeRef !== 'object' || route.length === 0) return null;
+  const firstTimestampMs = route[0]?.ts;
+  const lastTimestampMs = route.at(-1)?.ts;
+  return Number(routeRef.pointCount) === route.length
+    && Number(routeRef.firstTimestampMs) === firstTimestampMs
+    && Number(routeRef.lastTimestampMs) === lastTimestampMs
+    ? routeRef
+    : null;
+}
+
 function _syncWorkoutRunData(summary, placeSummary = _session.placeSummary) {
   const durationMin = Math.floor(summary.durationSec / 60);
   const durationSec = summary.durationSec % 60;
+  const route = normalizeRunningRoutePoints(_session.route);
+  const routeRef = _matchingCapturedRouteReference(S.workout.runData?.routeRef, route);
   S.workout.running = !!(summary.distanceKm > 0 || summary.durationSec > 0 || summary.pointCount > 0);
   S.workout.sessionIndex = RUNNING_WORKOUT_SESSION_INDEX;
   S.workout.sessionId = 'running-track';
@@ -895,7 +908,8 @@ function _syncWorkoutRunData(summary, placeSummary = _session.placeSummary) {
     source: 'gps',
     startedAt: summary.startedAt || null,
     endedAt: summary.endedAt || null,
-    route: normalizeRunningRoutePoints(_session.route),
+    route,
+    routeRef,
     routeSummary: summary,
     placeSummary: placeSummary || _runningPlaceFallback(summary),
     avgPaceSecPerKm: summary.avgPaceSecPerKm || 0,

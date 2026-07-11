@@ -232,6 +232,16 @@ test('running summary save opens the saved workout day detail sheet', () => {
   assert.match(saveJs, /return true;\s*\n}/);
 });
 
+test('a new running summary cannot inherit an immutable route ref from a previous run', () => {
+  const syncStart = runningSessionJs.indexOf('function _syncWorkoutRunData');
+  const syncEnd = runningSessionJs.indexOf('\nfunction ', syncStart + 1);
+  const syncBlock = runningSessionJs.slice(syncStart, syncEnd);
+  assert.match(syncBlock, /const routeRef = _matchingCapturedRouteReference\(S\.workout\.runData\?\.routeRef, route\)/);
+  assert.match(syncBlock, /routeRef,/);
+  assert.match(runningSessionJs, /Number\(routeRef\.firstTimestampMs\) === firstTimestampMs/);
+  assert.match(runningSessionJs, /Number\(routeRef\.lastTimestampMs\) === lastTimestampMs/);
+});
+
 test('running session persists unsaved live records across app reloads', () => {
   assert.match(runningSessionJs, /RUNNING_SESSION_DRAFT_KEY_PREFIX = 'tomatofarm_running_session_draft_'/);
   assert.match(runningSessionJs, /RUNNING_SESSION_DRAFT_ACTIVE_KEY = 'tomatofarm_running_session_draft_active'/);

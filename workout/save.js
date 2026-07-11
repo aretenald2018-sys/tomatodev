@@ -135,6 +135,12 @@ function _fullRoutePointCount(summary, routeRef, route) {
   return route.length;
 }
 
+function _routeReferenceMatchesCapturedRoute(routeRef, route) {
+  if (!routeRef || route.length === 0 || route.length > routeRef.pointCount) return false;
+  return route[0]?.ts === routeRef.firstTimestampMs
+    && route.at(-1)?.ts === routeRef.lastTimestampMs;
+}
+
 async function _prepareRunningRoutePayload() {
   const run = S.workout.runData || {};
   const routeInput = {
@@ -153,15 +159,18 @@ async function _prepareRunningRoutePayload() {
     ? null
     : assertRunningRouteReference(routeInput.runRouteRef);
   const canonicalRoute = normalizeRunningRoutePoints(sourceRoute);
+  const matchingExistingRef = _routeReferenceMatchesCapturedRoute(existingRef, canonicalRoute)
+    ? existingRef
+    : null;
   const summaryPointCount = Number(run.routeSummary?.pointCount);
   const declaredPointCount = Number.isSafeInteger(summaryPointCount) && summaryPointCount >= canonicalRoute.length
     ? summaryPointCount
     : canonicalRoute.length;
-  const hasFullCapturedRoute = canonicalRoute.length > 0 && (existingRef
-    ? canonicalRoute.length === existingRef.pointCount
+  const hasFullCapturedRoute = canonicalRoute.length > 0 && (matchingExistingRef
+    ? canonicalRoute.length === matchingExistingRef.pointCount
     : canonicalRoute.length === declaredPointCount);
 
-  let routeRef = existingRef;
+  let routeRef = matchingExistingRef;
   if (hasFullCapturedRoute) {
     routeRef = assertRunningRouteReference(await saveRunningRoute(canonicalRoute));
   }

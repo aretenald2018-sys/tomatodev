@@ -25,8 +25,7 @@ function canonicalRoute(pointCount = 620) {
   }));
 }
 
-function routeRef(pointCount = 620, revision = 'a'.repeat(64)) {
-  const firstTimestampMs = 1_720_000_000_000;
+function routeRef(pointCount = 620, revision = 'a'.repeat(64), firstTimestampMs = 1_720_000_000_000) {
   return {
     version: 1,
     routeId: `v1-${firstTimestampMs}-${revision}`,
@@ -222,6 +221,40 @@ test('620-point GPS save writes immutable full route before day preview and pres
   assert.equal(payload.workoutSessions[0].runRouteSummary.pointCount, 620);
   assert.equal(out.state.workout.runData.route.length, 620);
   assert.deepEqual(out.state.workout.runData.route, fullRoute);
+});
+
+test('a second same-sized run rejects the first run ref and stores its own full route', async () => {
+  const previousRef = routeRef();
+  const timestampOffsetMs = 3_600_000;
+  const secondRoute = canonicalRoute().map(point => ({
+    ...point,
+    lat: point.lat + 0.02,
+    ts: point.ts + timestampOffsetMs,
+  }));
+  const secondRef = routeRef(620, 'b'.repeat(64), secondRoute[0].ts);
+  const out = await runSaveHarness({
+    runData: {
+      distance: 6.8,
+      durationMin: 39,
+      durationSec: 30,
+      memo: '',
+      source: 'gps',
+      startedAt: secondRoute[0].ts,
+      endedAt: secondRoute.at(-1).ts,
+      route: secondRoute,
+      routeRef: previousRef,
+      routeSummary: { source: 'gps', pointCount: secondRoute.length, distanceKm: 6.8 },
+    },
+    savedRef: secondRef,
+  });
+
+  assert.equal(out.error, null);
+  assert.deepEqual(out.calls.map(call => call.type), ['saveRunningRoute', 'saveDay']);
+  assert.deepEqual(out.calls[0].points, secondRoute);
+  const payload = out.calls[1].payload;
+  assert.deepEqual(payload.runRouteRef, secondRef);
+  assert.notDeepEqual(payload.runRouteRef, previousRef);
+  assert.equal(payload.runRouteSummary.pointCount, secondRoute.length);
 });
 
 test('preview plus larger existing ref resaves without rewriting immutable route content', async () => {
