@@ -31,5 +31,5 @@ test('Max top area render requests are coalesced through a scheduler', () => {
 });
 
 test('service worker cache version was bumped for Max render scheduler', () => {
-  assert.match(swJs, /tomatofarm-v20260711z15-workout-summary-rest-timer/);
+  assert.match(swJs, /tomatofarm-v20260711z16-workout-keyboard-check-seconds/);
 });

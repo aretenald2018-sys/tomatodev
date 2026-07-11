@@ -2274,15 +2274,13 @@ function _formatWorkoutCompletionElapsed(completedAt, now = Date.now()) {
   const stamp = _coerceWorkoutCompletionAt(completedAt);
   const current = Number(now);
   if (stamp == null || !Number.isFinite(current)) return '—';
-  const elapsedMin = Math.max(0, Math.floor((current - stamp) / 60000));
-  if (elapsedMin < 60) return `${elapsedMin}분`;
-  const hours = Math.floor(elapsedMin / 60);
-  const minutes = elapsedMin % 60;
-  if (hours < 24) return minutes ? `${hours}시간 ${minutes}분` : `${hours}시간`;
-  const days = Math.floor(hours / 24);
-  const dayHours = hours % 24;
-  if (days < 7) return dayHours ? `${days}일 ${dayHours}시간` : `${days}일`;
-  return `${days}일`;
+  const elapsedSec = Math.max(0, Math.floor((current - stamp) / 1000));
+  const seconds = elapsedSec % 60;
+  const totalMinutes = Math.floor(elapsedSec / 60);
+  const minutes = totalMinutes % 60;
+  const hours = Math.floor(totalMinutes / 60);
+  if (hours > 0) return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
 function _syncWorkoutSummaryElapsedTimers(root = document) {
@@ -2312,7 +2310,7 @@ function _mountWorkoutSummaryElapsedTimers(root = document) {
       return;
     }
     _syncWorkoutSummaryElapsedTimers(document);
-  }, 30000) || null;
+  }, 1000) || null;
 }
 
 function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, includeHead = true }) {
@@ -3827,6 +3825,30 @@ function _focusWorkoutSetKeyboardTarget(target) {
   );
 }
 
+function _focusWorkoutSetKeyboardRenderedTarget(target) {
+  if (!target || typeof document === 'undefined') return false;
+  const sheet = _workoutSetKeyboardSheet();
+  const inlineKey = _workoutSetInlineFieldKey(target.key, target.sessionIndex, target.exerciseIndex, target.setIndex, target.field);
+  const selector = [
+    '[data-wt-set-inline-input]',
+    `[data-date-key="${_workoutSheetSelectorValue(target.key || _workoutHomeSelectedKey)}"]`,
+    `[data-session-index="${_workoutSheetSelectorValue(target.sessionIndex || '0')}"]`,
+    `[data-exercise-index="${_workoutSheetSelectorValue(target.exerciseIndex || '0')}"]`,
+    `[data-set-index="${_workoutSheetSelectorValue(target.setIndex || '0')}"]`,
+    `[data-field="${_workoutSheetSelectorValue(target.field || 'kg')}"]`,
+  ].join('');
+  const input = inlineKey
+    ? (sheet?.querySelector?.(`[data-wt-inline-editor-key="${_workoutSheetSelectorValue(inlineKey)}"]`) || sheet?.querySelector?.(selector))
+    : sheet?.querySelector?.(selector);
+  if (!input) return false;
+  input.setAttribute('data-wt-set-clear-on-focus', '');
+  try { input.focus({ preventScroll: true }); }
+  catch { input.focus?.(); }
+  if (document.activeElement === input) _clearWorkoutSetInputOnFocus(input);
+  _showWorkoutSetKeyboard(input);
+  return true;
+}
+
 function _syncWorkoutSetKeyboardButtons(input = null) {
   const keyboard = _workoutSetKeyboardElement();
   const active = _workoutSetKeyboardActiveInput(input);
@@ -3885,7 +3907,7 @@ function _ensureWorkoutSetKeyboard() {
     if (action === 'backspace') return _applyWorkoutSetKeyboardBackspace();
     if (action === 'clear') return _applyWorkoutSetKeyboardClear();
     if (action === 'prev' || action === 'next') return _moveWorkoutSetKeyboardFocus(action);
-    if (action === 'done') return _hideWorkoutSetKeyboard({ commit: true });
+    if (action === 'done') return _completeWorkoutSetKeyboardInput();
   };
   keyboard.addEventListener('touchstart', event => {
     lastKeyboardTouchAt = Date.now();
@@ -3998,6 +4020,10 @@ function _commitWorkoutSetKeyboardInput(input, options = {}) {
   const dirty = input.getAttribute('data-wt-set-keyboard-dirty') === 'true';
   input.removeAttribute('data-wt-set-keyboard-dirty');
   input.removeAttribute('data-wt-set-keyboard-cursor');
+  const nextTarget = options?.nextTarget || null;
+  const nextInlineEditorKey = nextTarget?.mode === 'inline'
+    ? _workoutSetInlineFieldKey(nextTarget.key, nextTarget.sessionIndex, nextTarget.exerciseIndex, nextTarget.setIndex, nextTarget.field)
+    : '';
   if (!dirty) {
     if (options?.closeInline && input.hasAttribute('data-wt-set-inline-input')) {
       return Promise.resolve(_cancelWorkoutSetInlineFieldFromSheet(
@@ -4017,16 +4043,76 @@ function _commitWorkoutSetKeyboardInput(input, options = {}) {
     input.getAttribute('data-set-index'),
     input.getAttribute('data-field'),
     input.value,
-    input
+    input,
+    { nextInlineEditorKey }
   ));
+}
+
+function _commitWorkoutSetKeyboardDone(input) {
+  if (!input?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)) return Promise.resolve(false);
+  const meta = _workoutSetKeyboardMeta(input);
+  if (!meta) return Promise.resolve(false);
+  const safeField = ['kg', 'reps', 'rir', 'romPct'].includes(String(meta.field || '')) ? String(meta.field) : 'kg';
+  const dirty = input.getAttribute('data-wt-set-keyboard-dirty') === 'true';
+  const value = input.value;
+  input.removeAttribute('data-wt-set-keyboard-dirty');
+  input.removeAttribute('data-wt-set-keyboard-cursor');
+  if (input.hasAttribute('data-wt-set-inline-input')) {
+    const inlineEditorKey = input.getAttribute('data-wt-inline-editor-key') || '';
+    if (inlineEditorKey && _workoutInlineSetEditor === inlineEditorKey) _workoutInlineSetEditor = null;
+  }
+  return _mutateWorkoutExerciseFromSheet(meta.key, meta.sessionIndex, meta.exerciseIndex, (entry) => {
+    const sets = Array.isArray(entry.sets) ? entry.sets : [];
+    const targetIndex = Math.max(0, Math.floor(Number(meta.setIndex) || 0));
+    while (sets.length <= targetIndex) sets.push(_defaultWorkoutSheetSet(sets[sets.length - 1]));
+    const nextSet = { ...(sets[targetIndex] || _defaultWorkoutSheetSet(sets[sets.length - 1])) };
+    if (dirty) {
+      if (safeField === 'kg') nextSet.kg = _setWorkoutSheetNumber(value, _num(nextSet.kg), { min: 0, allowEmpty: true });
+      if (safeField === 'reps') nextSet.reps = _setWorkoutSheetNumber(value, _num(nextSet.reps), { min: 0, integer: true, allowEmpty: true });
+      if (safeField === 'rir') nextSet.rir = _setWorkoutSheetNumber(value, Number.isFinite(Number(nextSet.rir)) ? Number(nextSet.rir) : 2, { min: 0, max: 10 });
+      if (safeField === 'romPct') nextSet.romPct = _setWorkoutSheetNumber(value, Number.isFinite(Number(nextSet.romPct)) ? Number(nextSet.romPct) : 100, { min: 0, max: 100, integer: true });
+    }
+    const wasDone = nextSet.done === true;
+    nextSet.done = true;
+    if (!wasDone || !Number.isFinite(Number(nextSet.completedAt))) nextSet.completedAt = Date.now();
+    if (!Number.isFinite(Number(nextSet.romPct))) nextSet.romPct = 100;
+    if (!Number.isFinite(Number(nextSet.rir))) nextSet.rir = 2;
+    sets[targetIndex] = nextSet;
+    entry.sets = sets;
+    _clearWorkoutExerciseCompletionMarker(entry);
+    return true;
+  }, { preserveSheetScroll: true });
+}
+
+function _completeWorkoutSetKeyboardInput() {
+  const input = _workoutSetKeyboardActiveInput();
+  if (!input) {
+    _clearWorkoutSetKeyboardSurface(input);
+    return Promise.resolve(false);
+  }
+  return Promise.resolve(_commitWorkoutSetKeyboardDone(input))
+    .catch((e) => {
+      console.warn('[workout-calendar] set keyboard complete failed:', e);
+      window.showToast?.('세트 완료에 실패했어요', 2200, 'error');
+      return false;
+    })
+    .finally(() => _clearWorkoutSetKeyboardSurface(input));
 }
 
 function _moveWorkoutSetKeyboardFocus(direction) {
   const input = _workoutSetKeyboardActiveInput();
   const target = _findWorkoutSetKeyboardMoveTarget(input, direction);
   if (!input || !target) return false;
-  return Promise.resolve(_commitWorkoutSetKeyboardInput(input, { closeInline: false }))
-    .then(() => _focusWorkoutSetKeyboardTarget(target))
+  const inlineMove = input.hasAttribute('data-wt-set-inline-input') && target.mode === 'inline';
+  if (inlineMove) _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:set-inline-field' });
+  return Promise.resolve(_commitWorkoutSetKeyboardInput(input, { closeInline: false, nextTarget: target }))
+    .then(() => {
+      if (!inlineMove) return _focusWorkoutSetKeyboardTarget(target);
+      if (_focusWorkoutSetKeyboardRenderedTarget(target)) return true;
+      window.requestAnimationFrame?.(() => _focusWorkoutSetKeyboardRenderedTarget(target));
+      window.setTimeout?.(() => _focusWorkoutSetKeyboardRenderedTarget(target), 80);
+      return true;
+    })
     .catch((e) => {
       console.warn('[workout-calendar] set keyboard move failed:', e);
       return false;
@@ -4581,12 +4667,15 @@ async function _mutateWorkoutExerciseFromSheet(key, sessionIndex, exerciseIndex,
   return true;
 }
 
-async function _updateWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseIndex, setIndex, field, value, sourceInput = null) {
+async function _updateWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseIndex, setIndex, field, value, sourceInput = null, options = {}) {
   const safeField = String(field || '');
   if (!['kg', 'reps', 'rir', 'romPct'].includes(safeField)) return;
   const isInlineSource = sourceInput?.hasAttribute?.('data-wt-set-inline-input') === true;
   const inlineEditorKey = sourceInput?.getAttribute?.('data-wt-inline-editor-key') || '';
-  if (isInlineSource && inlineEditorKey && _workoutInlineSetEditor === inlineEditorKey) _workoutInlineSetEditor = null;
+  const nextInlineEditorKey = options?.nextInlineEditorKey || '';
+  if (isInlineSource && inlineEditorKey && _workoutInlineSetEditor === inlineEditorKey) {
+    _workoutInlineSetEditor = nextInlineEditorKey || null;
+  }
   try {
     await _mutateWorkoutExerciseFromSheet(key, sessionIndex, exerciseIndex, (entry) => {
       const sets = Array.isArray(entry.sets) ? entry.sets : [];

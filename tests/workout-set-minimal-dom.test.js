@@ -70,6 +70,7 @@ function buildHarnessScript() {
     '_workoutSetKeyboardInlineTargets',
     '_findWorkoutSetKeyboardMoveTarget',
     '_focusWorkoutSetKeyboardTarget',
+    '_focusWorkoutSetKeyboardRenderedTarget',
     '_syncWorkoutSetKeyboardButtons',
     '_ensureWorkoutSetKeyboard',
     '_showWorkoutSetKeyboard',
@@ -82,6 +83,8 @@ function buildHarnessScript() {
     '_applyWorkoutSetKeyboardBackspace',
     '_applyWorkoutSetKeyboardClear',
     '_commitWorkoutSetKeyboardInput',
+    '_commitWorkoutSetKeyboardDone',
+    '_completeWorkoutSetKeyboardInput',
     '_moveWorkoutSetKeyboardFocus',
     '_bindWorkoutSetSwipeDelete',
     '_bindWorkoutHomeSheetActions',
@@ -496,19 +499,31 @@ test('custom workout set keypad enters values and moves left or right across inl
       dirty: document.activeElement?.getAttribute('data-wt-set-keyboard-dirty') || '',
     }));
 
+    const renderBeforeNext = await page.evaluate(() => window.__renderCalls);
     await tapSelector('[data-wt-set-keyboard-action="next"]');
     await page.waitForFunction(() => (
       window.__entry.sets[0]?.kg === 55
       && document.activeElement?.matches?.('[data-wt-set-inline-input][data-field="reps"][data-set-index="0"]')
     ), { timeout: 1500 });
+    const afterNextMove = await page.evaluate((before) => ({
+      renderDelta: window.__renderCalls - before,
+      activeField: document.activeElement?.getAttribute('data-field') || '',
+      keyboardOpen: !!document.querySelector('[data-wt-set-keyboard].is-open'),
+    }), renderBeforeNext);
 
     await tapSelector('[data-wt-set-keyboard-key="1"]');
     await tapSelector('[data-wt-set-keyboard-key="5"]');
+    const renderBeforePrev = await page.evaluate(() => window.__renderCalls);
     await tapSelector('[data-wt-set-keyboard-action="prev"]');
     await page.waitForFunction(() => (
       window.__entry.sets[0]?.reps === 15
       && document.activeElement?.matches?.('[data-wt-set-inline-input][data-field="kg"][data-set-index="0"]')
     ));
+    const afterPrevMove = await page.evaluate((before) => ({
+      renderDelta: window.__renderCalls - before,
+      activeField: document.activeElement?.getAttribute('data-field') || '',
+      keyboardOpen: !!document.querySelector('[data-wt-set-keyboard].is-open'),
+    }), renderBeforePrev);
 
     const afterPrev = await page.evaluate(() => ({
       activeField: document.activeElement?.getAttribute('data-field') || '',
@@ -527,11 +542,12 @@ test('custom workout set keypad enters values and moves left or right across inl
 
     const hidden = await page.evaluate(() => ({
       sets: window.__entry.sets,
+      firstCompletedAtIsNumber: Number.isFinite(Number(window.__entry.sets[0]?.completedAt)),
       keyboardOpenClass: document.documentElement.classList.contains('wt-set-keyboard-open'),
       sheetPadded: document.querySelector('[data-wt-day-sheet]')?.classList.contains('has-set-keyboard') || false,
     }));
 
-    return { shown, typedKg, afterPrev, hidden };
+    return { shown, typedKg, afterNextMove, afterPrevMove, afterPrev, hidden };
   });
 
   assert.deepEqual(result.shown, {
@@ -545,20 +561,21 @@ test('custom workout set keypad enters values and moves left or right across inl
     sheetPadded: true,
   });
   assert.deepEqual(result.typedKg, { value: '55', dirty: 'true' });
+  assert.deepEqual(result.afterNextMove, { renderDelta: 1, activeField: 'reps', keyboardOpen: true });
+  assert.deepEqual(result.afterPrevMove, { renderDelta: 1, activeField: 'kg', keyboardOpen: true });
   assert.equal(result.afterPrev.activeField, 'kg');
   assert.equal(result.afterPrev.activeValue, '');
   assert.deepEqual(result.afterPrev.sets[0], { kg: 55, reps: 15, rir: 2, romPct: 100, setType: 'main', done: false });
   assert.equal(result.afterPrev.keyboardOpen, true);
   assert.ok(result.afterPrev.syncActions.filter(action => action === 'sheet:set-inline-field').length >= 3);
   assert.ok(result.afterPrev.mutationOptions.every(options => options.preserveSheetScroll === true));
-  assert.deepEqual(result.hidden, {
-    sets: [
-      { kg: 55, reps: 15, rir: 2, romPct: 100, setType: 'main', done: false },
-      { kg: 40, reps: 12, rir: 2, romPct: 100, setType: 'main', done: false },
-    ],
-    keyboardOpenClass: false,
-    sheetPadded: false,
-  });
+  assert.equal(result.hidden.sets[0].kg, 55);
+  assert.equal(result.hidden.sets[0].reps, 15);
+  assert.equal(result.hidden.sets[0].done, true);
+  assert.equal(result.hidden.firstCompletedAtIsNumber, true);
+  assert.deepEqual(result.hidden.sets[1], { kg: 40, reps: 12, rir: 2, romPct: 100, setType: 'main', done: false });
+  assert.equal(result.hidden.keyboardOpenClass, false);
+  assert.equal(result.hidden.sheetPadded, false);
 });
 
 test('set type menu click mutates only the target set type and clears completion marker', async () => {

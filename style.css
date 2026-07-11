@@ -14216,17 +14216,21 @@ body.lz-running-record-modal-open {
   box-shadow: 0 0 0 2px rgba(33, 124, 249, 0.12);
 }
 [data-wt-day-sheet].has-set-keyboard .wt-day-sheet-scroll {
-  padding-bottom: calc(272px + env(safe-area-inset-bottom, 0px));
-  scroll-padding-bottom: calc(272px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(var(--wt-set-keyboard-height, 268px) + 14px + env(safe-area-inset-bottom, 0px));
+  scroll-padding-bottom: calc(var(--wt-set-keyboard-height, 268px) + 14px + env(safe-area-inset-bottom, 0px));
 }
 .wt-set-keyboard {
+  --wt-set-keyboard-button: 56px;
+  --wt-set-keyboard-gap: 8px;
+  --wt-set-keyboard-pad-y: 10px;
+  --wt-set-keyboard-height: calc((var(--wt-set-keyboard-button) * 4) + (var(--wt-set-keyboard-gap) * 3) + (var(--wt-set-keyboard-pad-y) * 2));
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 12000;
   display: block;
-  padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+  padding: var(--wt-set-keyboard-pad-y) 14px calc(var(--wt-set-keyboard-pad-y) + env(safe-area-inset-bottom, 0px));
   background: #050505;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 -12px 28px rgba(15, 23, 42, 0.22);
@@ -14239,13 +14243,13 @@ body.lz-running-record-modal-open {
 .wt-set-keyboard-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--wt-set-keyboard-gap);
   max-width: 620px;
   margin: 0 auto;
 }
 .wt-set-keyboard button {
   min-width: 0;
-  height: clamp(48px, 7.4vh, 68px);
+  height: var(--wt-set-keyboard-button);
   border: 0;
   border-radius: 9px;
   background: #2d2d2d;

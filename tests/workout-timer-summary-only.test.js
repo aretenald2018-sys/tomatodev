@@ -72,9 +72,10 @@ test('workout summary elapsed helpers use only completed workout timestamps', ()
   };
 
   assert.equal(helpers.latest(wx), 1900000);
-  assert.equal(helpers.format(1000000, 1000000 + (7 * 60000) + 31000), '7분');
-  assert.equal(helpers.format(1000000, 1000000 + (65 * 60000)), '1시간 5분');
+  assert.equal(helpers.format(1000000, 1000000 + (7 * 60000) + 31000), '07:31');
+  assert.equal(helpers.format(1000000, 1000000 + (65 * 60000)), '1:05:00');
   assert.equal(helpers.format(null, 1000000), '—');
+  assert.match(calendarJs, /}, 1000\) \|\| null/);
 });
 
 test('workout calendar duration can fall back to set completion timeline', () => {
@@ -111,5 +112,5 @@ test('workout finish saves without opening the old completion insight modal', ()
 });
 
 test('service worker cache version was bumped for workout timer summary-only UI', () => {
-  assert.match(swJs, /tomatofarm-v20260711z15-workout-summary-rest-timer/);
+  assert.match(swJs, /tomatofarm-v20260711z16-workout-keyboard-check-seconds/);
 });

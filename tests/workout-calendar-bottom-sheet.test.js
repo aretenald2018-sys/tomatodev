@@ -829,6 +829,12 @@ test('day sheet set inputs preserve keyboard next focus without restoring the ch
   assert.match(inputFn, /data-set-index="\$\{setIndex\}"/);
   assert.match(inputFn, /data-field="\$\{_esc\(field\)\}"/);
   assert.match(inputFn, /this\.value, this/);
+  assert.match(styleCss, /\.wt-set-keyboard\s*\{[\s\S]*--wt-set-keyboard-button:\s*56px;[\s\S]*--wt-set-keyboard-height:/);
+  assert.match(styleCss, /\.wt-set-keyboard button\s*\{[\s\S]*height:\s*var\(--wt-set-keyboard-button\)/);
+  const keyboardButtonStart = styleCss.indexOf('.wt-set-keyboard button');
+  const keyboardButtonEnd = styleCss.indexOf('.wt-set-keyboard button:active', keyboardButtonStart);
+  assert.ok(keyboardButtonStart >= 0 && keyboardButtonEnd > keyboardButtonStart, 'keyboard button rule should exist');
+  assert.doesNotMatch(styleCss.slice(keyboardButtonStart, keyboardButtonEnd), /vh/);
   assert.match(inputHelpers, /\.wt-day-sheet-scroll/);
   assert.match(inputHelpers, /function _captureWorkoutSheetInputState\(sourceInput = null, options = \{\}\)/);
   assert.match(inputHelpers, /const focused = document\.activeElement/);
@@ -1446,5 +1452,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260711z15-workout-summary-rest-timer/);
+  assert.match(swJs, /tomatofarm-v20260711z16-workout-keyboard-check-seconds/);
 });
