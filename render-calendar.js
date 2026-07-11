@@ -73,6 +73,7 @@ const _workoutExpandedSetEditors = new Set();
 const _workoutOpenSetTypeMenus = new Set();
 let _workoutInlineSetEditor = null;
 let _workoutSetKeyboardInput = null;
+let _workoutSummaryElapsedTimer = null;
 const _workoutSheetCarouselSnapshots = new Map();
 const _workoutSheetPendingCarouselFocus = new Map();
 let _workoutTrackGraphSeq = 0;
@@ -2166,6 +2167,7 @@ export function renderWorkoutCalendarHome() {
   _bindWorkoutHomeSheetInputIsolation(root);
   window.wtMountRunningSession?.();
   _mountWorkoutRunningMaps(root);
+  _mountWorkoutSummaryElapsedTimers(root);
   _tryRestorePendingWorkoutSheetCarouselFocus(_workoutHomeSelectedKey, _workoutHomeSessionIndex);
 }
 
@@ -2176,6 +2178,7 @@ function _renderWorkoutHomeDetail(root, args) {
   root.innerHTML = _renderWorkoutHomeDetailHtml(args);
   window.wtMountRunningSession?.();
   _mountWorkoutRunningMaps(root);
+  _mountWorkoutSummaryElapsedTimers(root);
 }
 
 function _registerWorkoutRunningMapPayload(row = {}) {
@@ -2233,6 +2236,83 @@ function _showWorkoutRunningRoute(control, mapId) {
   if (!shell || !_workoutRunningMapPayloads.has(mapId)) return false;
   _mountWorkoutRunningMaps(root);
   return true;
+}
+
+function _coerceWorkoutCompletionAt(value) {
+  const stamp = Number(value);
+  return Number.isFinite(stamp) && stamp > 0 ? stamp : null;
+}
+
+function _latestWorkoutCompletionAtFromRows(exercises = []) {
+  let latest = null;
+  const addStamp = (value) => {
+    const stamp = _coerceWorkoutCompletionAt(value);
+    if (stamp == null) return;
+    if (latest == null || stamp > latest) latest = stamp;
+  };
+
+  (Array.isArray(exercises) ? exercises : []).forEach((row) => {
+    addStamp(row?.exerciseCompletedAt);
+    const rawSets = Array.isArray(row?.rawSetDetails) ? row.rawSetDetails : [];
+    const fallbackSets = Array.isArray(row?.setDetails) ? row.setDetails : [];
+    const sets = rawSets.length ? rawSets : fallbackSets;
+    sets.forEach((set) => {
+      if (set?.done === false) return;
+      addStamp(set?.completedAt);
+    });
+  });
+
+  return latest;
+}
+
+function _latestWorkoutCompletionAt(wx) {
+  const source = wx || {};
+  return _coerceWorkoutCompletionAt(source.lastCompletedAt) ?? _latestWorkoutCompletionAtFromRows(source.exercises);
+}
+
+function _formatWorkoutCompletionElapsed(completedAt, now = Date.now()) {
+  const stamp = _coerceWorkoutCompletionAt(completedAt);
+  const current = Number(now);
+  if (stamp == null || !Number.isFinite(current)) return '—';
+  const elapsedMin = Math.max(0, Math.floor((current - stamp) / 60000));
+  if (elapsedMin < 60) return `${elapsedMin}분`;
+  const hours = Math.floor(elapsedMin / 60);
+  const minutes = elapsedMin % 60;
+  if (hours < 24) return minutes ? `${hours}시간 ${minutes}분` : `${hours}시간`;
+  const days = Math.floor(hours / 24);
+  const dayHours = hours % 24;
+  if (days < 7) return dayHours ? `${days}일 ${dayHours}시간` : `${days}일`;
+  return `${days}일`;
+}
+
+function _syncWorkoutSummaryElapsedTimers(root = document) {
+  const scope = root?.querySelectorAll ? root : document;
+  scope.querySelectorAll('[data-wt-last-complete-elapsed]').forEach((node) => {
+    node.textContent = _formatWorkoutCompletionElapsed(node.getAttribute('data-completed-at'));
+  });
+}
+
+function _clearWorkoutSummaryElapsedTimer() {
+  if (!_workoutSummaryElapsedTimer) return;
+  const timerApi = typeof window !== 'undefined' ? window : globalThis;
+  timerApi.clearInterval?.(_workoutSummaryElapsedTimer);
+  _workoutSummaryElapsedTimer = null;
+}
+
+function _mountWorkoutSummaryElapsedTimers(root = document) {
+  if (typeof document === 'undefined') return;
+  const scope = root?.querySelectorAll ? root : document;
+  _syncWorkoutSummaryElapsedTimers(scope);
+  _clearWorkoutSummaryElapsedTimer();
+  if (!document.querySelector('[data-wt-last-complete-elapsed]')) return;
+  const timerApi = typeof window !== 'undefined' ? window : globalThis;
+  _workoutSummaryElapsedTimer = timerApi.setInterval?.(() => {
+    if (!document.querySelector('[data-wt-last-complete-elapsed]')) {
+      _clearWorkoutSummaryElapsedTimer();
+      return;
+    }
+    _syncWorkoutSummaryElapsedTimers(document);
+  }, 30000) || null;
 }
 
 function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, includeHead = true }) {
@@ -2317,8 +2397,14 @@ function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, includeHead 
 }
 
 function _renderWorkoutDetailSummaryCard(wx) {
+  const lastCompletedAt = _latestWorkoutCompletionAt(wx);
   const metrics = [
     { label: '운동시간', value: wx?.durationSec ? _formatDurationShort(wx.durationSec) : '—' },
+    {
+      label: '휴식',
+      value: _formatWorkoutCompletionElapsed(lastCompletedAt),
+      attrs: lastCompletedAt ? ` data-wt-last-complete-elapsed data-completed-at="${lastCompletedAt}"` : '',
+    },
     { label: '세트', value: wx?.setCount ? `${wx.setCount}세트` : '—' },
     { label: '볼륨', value: wx?.volume > 0 ? `${_formatVolume(wx.volume)}톤` : '—' },
   ];
@@ -2327,7 +2413,7 @@ function _renderWorkoutDetailSummaryCard(wx) {
       ${metrics.map(item => `
         <span>
           <i>${item.label}</i>
-          <strong>${item.value}</strong>
+          <strong${item.attrs || ''}>${item.value}</strong>
         </span>
       `).join('')}
     </div>

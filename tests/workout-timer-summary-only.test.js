@@ -29,6 +29,54 @@ test('workout duration remains in the top-right summary card', () => {
   assert.match(summary, /wx\?\.durationSec/);
 });
 
+test('workout summary card shows elapsed rest since the latest completed set', () => {
+  const summary = sliceByFirstBrace(calendarJs, 'function _renderWorkoutDetailSummaryCard');
+  assert.match(summary, /const lastCompletedAt = _latestWorkoutCompletionAt\(wx\)/);
+  assert.match(summary, /label:\s*'휴식'/);
+  assert.match(summary, /_formatWorkoutCompletionElapsed\(lastCompletedAt\)/);
+  assert.match(summary, /data-wt-last-complete-elapsed/);
+  assert.match(summary, /data-completed-at="\$\{lastCompletedAt\}"/);
+  assert.match(calendarJs, /function _mountWorkoutSummaryElapsedTimers/);
+  assert.match(calendarJs, /_mountWorkoutSummaryElapsedTimers\(root\)/);
+});
+
+test('workout summary elapsed helpers use only completed workout timestamps', () => {
+  const sourceBundle = [
+    sliceByFirstBrace(calendarJs, 'function _coerceWorkoutCompletionAt'),
+    sliceByFirstBrace(calendarJs, 'function _latestWorkoutCompletionAtFromRows'),
+    sliceByFirstBrace(calendarJs, 'function _latestWorkoutCompletionAt(wx'),
+    sliceByFirstBrace(calendarJs, 'function _formatWorkoutCompletionElapsed'),
+  ].join('\n\n');
+  const helpers = new Function(`${sourceBundle}
+    return {
+      latest: _latestWorkoutCompletionAt,
+      format: _formatWorkoutCompletionElapsed,
+    };
+  `)();
+
+  const wx = {
+    exercises: [
+      {
+        exerciseCompletedAt: 1500000,
+        rawSetDetails: [
+          { done: true, completedAt: 1000000 },
+          { done: false, completedAt: 2500000 },
+        ],
+      },
+      {
+        rawSetDetails: [
+          { done: true, completedAt: 1900000 },
+        ],
+      },
+    ],
+  };
+
+  assert.equal(helpers.latest(wx), 1900000);
+  assert.equal(helpers.format(1000000, 1000000 + (7 * 60000) + 31000), '7분');
+  assert.equal(helpers.format(1000000, 1000000 + (65 * 60000)), '1시간 5분');
+  assert.equal(helpers.format(null, 1000000), '—');
+});
+
 test('workout calendar duration can fall back to set completion timeline', () => {
   assert.match(calendarJs, /import \{ buildWorkoutSetTimeline \} from '\.\/workout\/timeline\.js'/);
   const metricsStart = calendarJs.indexOf('function _workoutMetrics');
@@ -63,5 +111,5 @@ test('workout finish saves without opening the old completion insight modal', ()
 });
 
 test('service worker cache version was bumped for workout timer summary-only UI', () => {
-  assert.match(swJs, /tomatofarm-v20260711z14-workout-set-keyboard/);
+  assert.match(swJs, /tomatofarm-v20260711z15-workout-summary-rest-timer/);
 });
