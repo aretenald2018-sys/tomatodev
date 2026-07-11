@@ -211,6 +211,26 @@ class WearExerciseMetricAccumulatorTest {
     }
 
     @Test
+    fun weakGpsCannotCreateDistanceFromStationaryDrift() {
+        val accumulator = WearExerciseMetricAccumulator(
+            startedAtWallClockMs = 10_000L,
+            startedAtElapsedRealtimeMs = 1_000L,
+        )
+        accumulator.applyMetricUpdate(
+            elapsedRealtimeMs = 1_000L,
+            routePoint = WearRoutePoint(timestampMs = 10_000L, lat = 37.5, lng = 127.0, accuracy = 17.0),
+        )
+        accumulator.applyMetricUpdate(
+            elapsedRealtimeMs = 21_000L,
+            routePoint = WearRoutePoint(timestampMs = 30_000L, lat = 37.5004, lng = 127.0004, accuracy = 17.0),
+        )
+
+        val snapshot = accumulator.snapshot()
+        assertEquals(2, snapshot.routePoints.size)
+        assertEquals(0.0, snapshot.distanceMeters, 0.0001)
+    }
+
+    @Test
     fun keepsOneContinuousSegmentAcrossSparseGpsUpdates() {
         val accumulator = WearExerciseMetricAccumulator(
             startedAtWallClockMs = 10_000L,

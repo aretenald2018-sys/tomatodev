@@ -63,12 +63,19 @@ test('watch uses direct GPS fallback and refuses to start without precise locati
   );
   assert.match(service, /WearRoutePoint\([\s\S]*accuracy = accuracy\.toDouble\(\)/);
   assert.match(service, /GPS weak ±\$\{accuracy\.roundToInt\(\)\}m/);
+  assert.match(service, /accuracy = recentDirectGpsAccuracy\(pointElapsedRealtimeMs\) \?: MAX_DIRECT_GPS_ACCURACY_M\.toDouble\(\)/);
+  assert.match(service, /lastDirectGpsAccuracyM = accuracy\.toDouble\(\)[\s\S]*if \(accuracy > MAX_DIRECT_GPS_ACCURACY_M\)/);
+  assert.match(service, /it in MIN_ALTITUDE_M\.\.MAX_ALTITUDE_M/);
   assert.match(controller, /야외로 이동해 주세요/);
   assert.match(controller, /위치 확인 중/);
   assert.match(controller, /경로 기록 중/);
   assert.doesNotMatch(controller, /\$\{snapshot\.routePoints\.size\}점|accuracyText/);
   assert.match(service, /Sensor\.TYPE_HEART_RATE/);
   assert.match(service, /registerListener\(listener, sensor, SensorManager\.SENSOR_DELAY_NORMAL\)/);
+  assert.match(service, /ACTIVE_DURATION_CHECKPOINT_MS = 10_000L/);
+  assert.match(service, /checkpointHandler\.postDelayed\(checkpointRunnable, ACTIVE_DURATION_CHECKPOINT_MS\)/);
+  assert.match(service, /activeDurationMs = activeDurationTracker\.activeDurationAt\(elapsedRealtimeMs\)/);
+  assert.match(service, /private fun handlePauseRun\(\)[\s\S]*stopActiveDurationCheckpoints\(\)/);
   assert.match(controller, /ACCESS_FINE_LOCATION/);
   assert.match(controller, /위치 권한을 켜주세요/);
   assert.match(controller, /경로 저장됨/);
@@ -77,6 +84,7 @@ test('watch uses direct GPS fallback and refuses to start without precise locati
 
 test('watch UI does not invent calories, pace, or heart-zone time when sensors have no data', () => {
   const metrics = read('android/wear/src/main/java/com/lifestreak/wear/workout/WearRunUiMetrics.kt');
+  const accumulator = read('android/wear/src/main/java/com/lifestreak/wear/workout/WearExerciseMetricAccumulator.kt');
   const summary = read('android/wear/src/main/res/layout/wear_run_page_summary.xml');
   const workoutLayout = read('android/wear/src/main/res/layout/page_workout.xml');
   const adapter = read('android/wear/src/main/java/com/lifestreak/wear/workout/WearRunMetricPagerAdapter.kt');
@@ -94,6 +102,7 @@ test('watch UI does not invent calories, pace, or heart-zone time when sensors h
   assert.match(routePage, /android:clipToOutline="true"/);
   assert.match(metrics, /if \(secondsPerKm < MIN_VALID_SECONDS_PER_KM\) return@mapNotNull null/);
   assert.match(metrics, /\.takeIf \{ it\.size >= 2 \}/);
+  assert.match(accumulator, /reportedAccuracyM > MAX_DISTANCE_GPS_ACCURACY_M/);
   assert.doesNotMatch(controller, /summarySyncStatus\s*=\s*"[^"]*(?:대기열|payload|전송 중)/);
   assert.doesNotMatch(dataLayer, /대기열|등록 완료/);
   assert.doesNotMatch(workoutLayout, /RUN SAVED/);

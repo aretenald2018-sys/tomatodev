@@ -16,10 +16,14 @@ import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import kotlin.math.floor
+import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
+import kotlin.math.sin
+import kotlin.math.sqrt
 import kotlin.math.tan
 
 internal data class WearRouteMapViewport(
@@ -43,6 +47,34 @@ internal object WearRouteMapProjection {
     const val TILE_SIZE_PX = 256
     const val MIN_ZOOM = 12
     const val MAX_ZOOM = 17
+
+    fun displayRoute(points: List<WearRoutePoint>): List<WearRoutePoint> {
+        val sorted = points
+            .filter { point -> point.lat.isFinite() && point.lng.isFinite() }
+            .sortedBy { point -> point.timestampMs }
+        if (sorted.size < 2) return sorted
+        val hasAccuracy = sorted.any { point -> point.accuracy != null }
+        val candidates = if (hasAccuracy) {
+            sorted.filter { point -> point.accuracy?.let { it <= MAX_DISPLAY_GPS_ACCURACY_M } == true }
+        } else {
+            sorted
+        }
+        if (candidates.isEmpty()) return listOf(sorted.last())
+        val displayed = mutableListOf<WearRoutePoint>()
+        candidates.forEach { point ->
+            val previous = displayed.lastOrNull()
+            if (previous == null || point.gapBefore || previous.segmentId != point.segmentId) {
+                displayed.add(point)
+                return@forEach
+            }
+            val errorRadiusM = max(
+                MIN_DISPLAY_DISPLACEMENT_M,
+                max(previous.accuracy ?: 0.0, point.accuracy ?: 0.0) * 2.0,
+            )
+            if (haversineMeters(previous, point) > errorRadiusM) displayed.add(point)
+        }
+        return if (displayed.size == 1) listOf(candidates.last()) else displayed
+    }
 
     fun worldPoint(point: WearRoutePoint, zoom: Int): WearRouteMapWorldPoint {
         val tileCount = 2.0.pow(zoom.toDouble())
@@ -78,6 +110,20 @@ internal object WearRouteMapProjection {
         val tileCount = 1 shl zoom
         return ((tileX % tileCount) + tileCount) % tileCount
     }
+
+    private fun haversineMeters(a: WearRoutePoint, b: WearRoutePoint): Double {
+        val earthRadiusM = 6_371_000.0
+        val lat1 = Math.toRadians(a.lat)
+        val lat2 = Math.toRadians(b.lat)
+        val dLat = lat2 - lat1
+        val dLng = Math.toRadians(b.lng - a.lng)
+        val h = sin(dLat / 2) * sin(dLat / 2) +
+            cos(lat1) * cos(lat2) * sin(dLng / 2) * sin(dLng / 2)
+        return 2 * earthRadiusM * atan2(sqrt(h), sqrt(1 - h))
+    }
+
+    private const val MAX_DISPLAY_GPS_ACCURACY_M = 15.0
+    private const val MIN_DISPLAY_DISPLACEMENT_M = 12.0
 }
 
 /**
@@ -110,8 +156,7 @@ class WearRunLiveRouteMapView @JvmOverloads constructor(
 
     fun setRouteProjection(routeProjection: WearRouteProjection) {
         val next = routeProjection.geoPoints
-            .filter { it.lat.isFinite() && it.lng.isFinite() }
-            .sortedBy { it.timestampMs }
+            .let(WearRouteMapProjection::displayRoute)
         if (routePoints == next) return
         routePoints = next
         updateViewport()

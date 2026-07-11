@@ -17,7 +17,9 @@ import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
@@ -44,6 +46,8 @@ class WearExerciseService : Service() {
     private var wallClockOffsetMs = 0L
     private val activeDurationTracker = WearExerciseActiveDurationTracker()
     private var lastDirectLocationElapsedRealtimeMs = 0L
+    private var lastDirectGpsAccuracyM: Double? = null
+    private var lastDirectGpsFixElapsedRealtimeMs = 0L
     private var lastGpsStatusPublishedElapsedRealtimeMs = 0L
     private var gpsStatusMessage = GPS_STATUS_SEARCHING
     private var directLocationManager: LocationManager? = null
@@ -51,6 +55,12 @@ class WearExerciseService : Service() {
     private var directHeartRateManager: SensorManager? = null
     private var directHeartRateListener: SensorEventListener? = null
     private var persistenceUnsubscribe: (() -> Unit)? = null
+    private val checkpointHandler by lazy { Handler(Looper.getMainLooper()) }
+    private val checkpointRunnable = object : Runnable {
+        override fun run() {
+            checkpointActiveDuration()
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -82,6 +92,7 @@ class WearExerciseService : Service() {
         clearExerciseCallback()
         stopDirectLocationUpdates()
         stopDirectHeartRateUpdates()
+        stopActiveDurationCheckpoints()
         super.onDestroy()
     }
 
@@ -97,6 +108,8 @@ class WearExerciseService : Service() {
         wallClockOffsetMs = startedAtWallClockMs - startedAtElapsedRealtimeMs
         activeDurationTracker.start(startedAtElapsedRealtimeMs)
         lastDirectLocationElapsedRealtimeMs = 0L
+        lastDirectGpsAccuracyM = null
+        lastDirectGpsFixElapsedRealtimeMs = 0L
         lastGpsStatusPublishedElapsedRealtimeMs = 0L
         gpsStatusMessage = GPS_STATUS_SEARCHING
         val nextAccumulator = WearExerciseMetricAccumulator(
@@ -111,6 +124,7 @@ class WearExerciseService : Service() {
         startForegroundWithHealthType(buildNotification())
         startDirectLocationUpdates()
         startDirectHeartRateUpdates()
+        startActiveDurationCheckpoints()
         if (!hasActivityRecognitionPermission()) {
             WearExerciseSessionStore.publishFromAccumulator(
                 status = WearExerciseSessionStatus.ACTIVE,
@@ -146,6 +160,7 @@ class WearExerciseService : Service() {
                 startForegroundWithHealthType(buildNotification())
                 startDirectLocationUpdates()
                 startDirectHeartRateUpdates()
+                startActiveDurationCheckpoints()
                 if (hasActivityRecognitionPermission()) {
                     registerExerciseCallback()
                     exerciseStarted = true
@@ -155,6 +170,7 @@ class WearExerciseService : Service() {
                 startForegroundWithHealthType(buildNotification("러닝 기록 일시정지"))
                 stopDirectLocationUpdates()
                 stopDirectHeartRateUpdates()
+                stopActiveDurationCheckpoints()
                 if (hasActivityRecognitionPermission()) {
                     registerExerciseCallback()
                     exerciseStarted = true
@@ -266,6 +282,7 @@ class WearExerciseService : Service() {
         } ?: WearExerciseSessionStore.markPaused()
         stopDirectLocationUpdates()
         stopDirectHeartRateUpdates()
+        stopActiveDurationCheckpoints()
         if (!exerciseStarted) return
         val pauseFuture = exerciseClient.pauseExerciseAsync()
         pauseFuture.addListener(
@@ -298,6 +315,7 @@ class WearExerciseService : Service() {
         startForegroundWithHealthType(buildNotification())
         startDirectLocationUpdates()
         startDirectHeartRateUpdates()
+        startActiveDurationCheckpoints()
         if (!exerciseStarted) return
         val resumeFuture = exerciseClient.resumeExerciseAsync()
         resumeFuture.addListener(
@@ -325,6 +343,7 @@ class WearExerciseService : Service() {
             elapsedRealtimeMs = nowElapsedRealtimeMs,
             activeDurationMs = activeDurationTracker.pause(nowElapsedRealtimeMs),
         )
+        stopActiveDurationCheckpoints()
         endRequested = true
         if (exerciseStarted) {
             val endFuture = exerciseClient.endExerciseAsync()
@@ -369,6 +388,7 @@ class WearExerciseService : Service() {
     private fun finishService() {
         stopDirectLocationUpdates()
         stopDirectHeartRateUpdates()
+        stopActiveDurationCheckpoints()
         clearExerciseCallback()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -437,7 +457,9 @@ class WearExerciseService : Service() {
         )
         val locationPoints = metrics.getData(DataType.LOCATION)
             .sortedBy { point -> point.timeDurationFromBoot }
-        if (locationPoints.isNotEmpty()) gpsStatusMessage = GPS_STATUS_DIRECT
+        if (locationPoints.isNotEmpty() && lastDirectGpsAccuracyM?.let { it <= MAX_READY_GPS_ACCURACY_M } == true) {
+            gpsStatusMessage = GPS_STATUS_DIRECT
+        }
 
         nextAccumulator.applyMetricUpdate(
             elapsedRealtimeMs = elapsedRealtimeMs,
@@ -453,8 +475,9 @@ class WearExerciseService : Service() {
                     timestampMs = wallClockMsForElapsed(pointElapsedRealtimeMs),
                     lat = point.value.latitude,
                     lng = point.value.longitude,
-                    altitude = point.value.altitude.takeIf { it.isFinite() },
+                    altitude = point.value.altitude.takeIf { it.isFinite() && it in MIN_ALTITUDE_M..MAX_ALTITUDE_M },
                     bearing = point.value.bearing.takeIf { it.isFinite() },
+                    accuracy = recentDirectGpsAccuracy(pointElapsedRealtimeMs) ?: MAX_DIRECT_GPS_ACCURACY_M.toDouble(),
                 ),
             )
         }
@@ -500,6 +523,9 @@ class WearExerciseService : Service() {
         lastDirectLocationElapsedRealtimeMs = snapshot.routePoints
             .maxOfOrNull { point -> (point.timestampMs - wallClockOffsetMs).coerceAtLeast(0L) }
             ?: 0L
+        lastDirectGpsAccuracyM = snapshot.routePoints.lastOrNull()?.accuracy
+            ?.takeIf { accuracy -> accuracy.isFinite() && accuracy > 0.0 && accuracy <= MAX_DIRECT_GPS_ACCURACY_M }
+        lastDirectGpsFixElapsedRealtimeMs = if (lastDirectGpsAccuracyM == null) 0L else nowElapsedRealtimeMs
         gpsStatusMessage = snapshot.message
             ?.takeIf { message -> message.startsWith("GPS ") }
             ?: if (snapshot.routePoints.isEmpty()) GPS_STATUS_SEARCHING else GPS_STATUS_DIRECT
@@ -542,6 +568,37 @@ class WearExerciseService : Service() {
         persistenceUnsubscribe = WearExerciseSessionStore.addListener { snapshot ->
             WearExerciseSessionPersistence.saveOrClear(this, snapshot)
         }
+    }
+
+    private fun startActiveDurationCheckpoints() {
+        checkpointHandler.removeCallbacks(checkpointRunnable)
+        checkpointHandler.postDelayed(checkpointRunnable, ACTIVE_DURATION_CHECKPOINT_MS)
+    }
+
+    private fun stopActiveDurationCheckpoints() {
+        checkpointHandler.removeCallbacks(checkpointRunnable)
+    }
+
+    private fun checkpointActiveDuration() {
+        val status = WearExerciseSessionStore.current().status
+        if (status !in setOf(
+                WearExerciseSessionStatus.STARTING,
+                WearExerciseSessionStatus.ACTIVE,
+                WearExerciseSessionStatus.FALLBACK,
+            )
+        ) return
+        val currentAccumulator = accumulator ?: return
+        val elapsedRealtimeMs = SystemClock.elapsedRealtime()
+        currentAccumulator.applyMetricUpdate(
+            elapsedRealtimeMs = elapsedRealtimeMs,
+            activeDurationMs = activeDurationTracker.activeDurationAt(elapsedRealtimeMs),
+        )
+        WearExerciseSessionStore.publishFromAccumulator(
+            status = status,
+            accumulator = currentAccumulator,
+            message = locationStatusMessage(),
+        )
+        checkpointHandler.postDelayed(checkpointRunnable, ACTIVE_DURATION_CHECKPOINT_MS)
     }
 
     private fun startDirectLocationUpdates() {
@@ -597,22 +654,25 @@ class WearExerciseService : Service() {
         val now = System.currentTimeMillis()
         val locationTime = location.time.takeIf { it > 0L } ?: now
         if (now - locationTime > MAX_DIRECT_GPS_AGE_MS || locationTime - now > 10_000L) return
-        if (accuracy > MAX_DIRECT_GPS_ACCURACY_M) {
-            publishGpsStatus("GPS weak ±${accuracy.roundToInt()}m")
-            return
-        }
-        val currentAccumulator = accumulator ?: return
         val reportedElapsedRealtimeMs = if (location.elapsedRealtimeNanos > 0L) {
             location.elapsedRealtimeNanos / 1_000_000L
         } else {
             0L
         }
         val systemElapsedRealtimeMs = SystemClock.elapsedRealtime()
+        lastDirectGpsAccuracyM = accuracy.toDouble()
+        lastDirectGpsFixElapsedRealtimeMs = reportedElapsedRealtimeMs.takeIf { it > 0L } ?: systemElapsedRealtimeMs
+        if (accuracy > MAX_DIRECT_GPS_ACCURACY_M) {
+            publishGpsStatus("GPS weak ±${accuracy.roundToInt()}m")
+            return
+        }
+        val currentAccumulator = accumulator ?: return
         val elapsedRealtimeMs = when {
             reportedElapsedRealtimeMs > lastDirectLocationElapsedRealtimeMs -> reportedElapsedRealtimeMs
             else -> systemElapsedRealtimeMs
         }.coerceAtLeast(lastDirectLocationElapsedRealtimeMs + 1L)
         lastDirectLocationElapsedRealtimeMs = elapsedRealtimeMs
+        lastDirectGpsFixElapsedRealtimeMs = elapsedRealtimeMs
         val activeDurationMs = activeDurationTracker.activeDurationAt(elapsedRealtimeMs)
         currentAccumulator.applyMetricUpdate(
             elapsedRealtimeMs = elapsedRealtimeMs,
@@ -621,7 +681,9 @@ class WearExerciseService : Service() {
                 timestampMs = wallClockMsForElapsed(elapsedRealtimeMs),
                 lat = location.latitude,
                 lng = location.longitude,
-                altitude = location.altitude.takeIf { location.hasAltitude() && it.isFinite() },
+                altitude = location.altitude.takeIf {
+                    location.hasAltitude() && it.isFinite() && it in MIN_ALTITUDE_M..MAX_ALTITUDE_M
+                },
                 bearing = location.bearing.toDouble().takeIf { location.hasBearing() && it.isFinite() },
                 accuracy = accuracy.toDouble(),
             ),
@@ -631,12 +693,23 @@ class WearExerciseService : Service() {
             distanceMeters = currentAccumulator.snapshot().distanceMeters,
             activeDurationMs = activeDurationMs,
         )
+        val gpsMessage = if (accuracy <= MAX_READY_GPS_ACCURACY_M) {
+            GPS_STATUS_DIRECT
+        } else {
+            "GPS weak ±${accuracy.roundToInt()}m"
+        }
         WearExerciseSessionStore.publishFromAccumulator(
             status = WearExerciseSessionStatus.ACTIVE,
             accumulator = currentAccumulator,
-            message = GPS_STATUS_DIRECT,
+            message = gpsMessage,
         )
-        gpsStatusMessage = GPS_STATUS_DIRECT
+        gpsStatusMessage = gpsMessage
+    }
+
+    private fun recentDirectGpsAccuracy(pointElapsedRealtimeMs: Long): Double? {
+        val accuracy = lastDirectGpsAccuracyM ?: return null
+        val ageMs = pointElapsedRealtimeMs - lastDirectGpsFixElapsedRealtimeMs
+        return accuracy.takeIf { ageMs in 0L..MAX_DIRECT_GPS_AGE_MS }
     }
 
     private fun publishGpsStatus(message: String) {
@@ -809,12 +882,16 @@ class WearExerciseService : Service() {
         private const val NOTIFICATION_CHANNEL_ID = "wear-exercise"
         private const val NOTIFICATION_ID = 2001
         private const val MAX_DIRECT_GPS_ACCURACY_M = 35f
+        private const val MAX_READY_GPS_ACCURACY_M = 15f
         private const val MAX_DIRECT_GPS_AGE_MS = 30_000L
+        private const val ACTIVE_DURATION_CHECKPOINT_MS = 10_000L
         private const val GPS_STATUS_PUBLISH_INTERVAL_MS = 5_000L
         private const val GPS_STATUS_SEARCHING = "GPS searching"
         private const val GPS_STATUS_DIRECT = "GPS direct"
         private const val MIN_HEART_RATE_BPM = 30f
         private const val MAX_HEART_RATE_BPM = 240f
+        private const val MIN_ALTITUDE_M = -500.0
+        private const val MAX_ALTITUDE_M = 9_000.0
         const val PERMISSION_READ_HEART_RATE = "android.permission.health.READ_HEART_RATE"
 
         fun startRun(context: Context) {

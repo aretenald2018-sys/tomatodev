@@ -153,9 +153,11 @@ class WearExerciseMetricAccumulator(
         val elapsedMs = point.timestampMs - previous.timestampMs
         if (elapsedMs <= 0L) return false
         val distanceM = haversineMeters(previous, point)
+        val reportedAccuracyM = maxOf(previous.accuracy ?: 0.0, point.accuracy ?: 0.0)
+        if (reportedAccuracyM > MAX_DISTANCE_GPS_ACCURACY_M) return false
         val errorRadiusM = maxOf(
             MIN_ROUTE_DISPLACEMENT_M,
-            minOf(MAX_GPS_ERROR_RADIUS_M, maxOf(previous.accuracy ?: 0.0, point.accuracy ?: 0.0) * 2.0),
+            minOf(MAX_GPS_ERROR_RADIUS_M, reportedAccuracyM * 2.0),
         )
         if (distanceM <= errorRadiusM) return false
         val inferredSpeedMps = distanceM / (elapsedMs / 1_000.0)
@@ -220,6 +222,7 @@ class WearExerciseMetricAccumulator(
 
         private const val HEART_RATE_BUCKET_MS = 10_000L
         private const val MAX_GPS_ACCURACY_M = 35.0
+        private const val MAX_DISTANCE_GPS_ACCURACY_M = 15.0
         private const val MIN_ROUTE_DISPLACEMENT_M = 12.0
         private const val MAX_GPS_ERROR_RADIUS_M = 30.0
         private const val MIN_CONFIDENT_RUNNING_SPEED_MPS = 0.3

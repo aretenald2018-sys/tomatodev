@@ -28,4 +28,20 @@ class WearRouteMapProjectionTest {
         assertEquals(0, WearRouteMapProjection.normalizedTileX(1 shl 16, 16))
         assertEquals((1 shl 16) - 1, WearRouteMapProjection.normalizedTileX(-1, 16))
     }
+
+    @Test
+    fun weakOrStationaryGpsDoesNotDrawAFakeRoute() {
+        val weak = listOf(
+            WearRoutePoint(timestampMs = 1_000L, lat = 37.5, lng = 127.0, accuracy = 17.0),
+            WearRoutePoint(timestampMs = 2_000L, lat = 37.5002, lng = 127.0002, accuracy = 17.0),
+        )
+        val jitter = listOf(
+            WearRoutePoint(timestampMs = 1_000L, lat = 37.5, lng = 127.0, accuracy = 5.0),
+            WearRoutePoint(timestampMs = 2_000L, lat = 37.50002, lng = 127.00002, accuracy = 5.0),
+            WearRoutePoint(timestampMs = 3_000L, lat = 37.50003, lng = 127.00003, accuracy = 5.0),
+        )
+
+        assertEquals(listOf(weak.last()), WearRouteMapProjection.displayRoute(weak))
+        assertEquals(listOf(jitter.last()), WearRouteMapProjection.displayRoute(jitter))
+    }
 }
