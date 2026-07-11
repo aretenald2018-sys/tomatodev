@@ -11,6 +11,75 @@
 // 테마 토글
 // ── 계정 시스템 ──
 let _pendingAccount = null;
+const LOGIN_SESSION_RESTORE_TIMEOUT_MS = 1800;
+
+function _withLoginTimeout(promise, ms, label) {
+  let timer = null;
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(() => {
+      console.warn(`[login] ${label} timed out after ${ms}ms; showing sign-in instead`);
+      resolve(null);
+    }, ms);
+  });
+  return Promise.race([
+    Promise.resolve(promise).finally(() => { if (timer) clearTimeout(timer); }),
+    timeout,
+  ]);
+}
+
+function _setLoginScreenVisible(visible) {
+  const loginScreen = document.getElementById('login-screen');
+  const loading = document.getElementById('loading');
+  if (loginScreen) loginScreen.style.display = visible ? 'flex' : 'none';
+  if (loading) {
+    loading.style.display = visible ? 'none' : 'flex';
+    loading.classList.toggle('hidden', visible);
+  }
+}
+
+function _continueToAppAfterLogin() {
+  _setLoginScreenVisible(false);
+
+  const startSession = window.__startTomatoUserSession;
+  if (typeof startSession !== 'function') {
+    console.error('[login] app session bootstrap is unavailable');
+    _setLoginScreenVisible(true);
+    document.getElementById('login-status').textContent = '앱을 시작하지 못했어요. 잠시 후 다시 시도해주세요.';
+    return Promise.resolve(false);
+  }
+
+  // Capacitor WebView의 전체 reload는 Firebase 모듈/IndexedDB 복원을 처음부터 다시
+  // 기다리게 한다. 이미 선택한 사용자 세션으로 앱 bootstrap만 다시 시작한다.
+  return Promise.resolve(startSession()).catch((error) => {
+    console.error('[login] session bootstrap failed:', error);
+    _setLoginScreenVisible(true);
+    document.getElementById('login-status').textContent = '데이터를 불러오지 못했어요. 다시 시도해주세요.';
+    return false;
+  });
+}
+
+function _runDeferredLoginMaintenance() {
+  // 로그인 화면은 원격 계정 정리와 무관하게 즉시 사용할 수 있어야 한다.
+  // 특히 APK의 느린 네트워크에서 이 작업이 로그인 진입을 막으면 안 된다.
+  Promise.resolve().then(async () => {
+    const { hashPassword, saveAccount, getAccountList, recoverDeletedAccounts } = await import('./data.js');
+    const { getAdminId } = await import('./data.js');
+
+    if (!localStorage.getItem('accounts_recovered_v1')) {
+      const cnt = await recoverDeletedAccounts();
+      if (cnt > 0) console.log('[login] 삭제된 계정 ' + cnt + '개 복구됨');
+      localStorage.setItem('accounts_recovered_v1', 'done');
+    }
+
+    const freshAccounts = await getAccountList();
+    const adminAcc = freshAccounts.find(a => a.id === getAdminId());
+    if (adminAcc) {
+      adminAcc.hasPassword = true;
+      adminAcc.passwordHash = hashPassword('kimtw100');
+      await saveAccount(adminAcc);
+    }
+  }).catch((error) => console.warn('[login] deferred account maintenance failed:', error));
+}
 
 function _needsPassword(account) {
   if (!account) return false;
@@ -73,7 +142,11 @@ async function initLoginScreen() {
 
   // 이미 로그인된 사용자가 있으면 바로 진입 (localStorage → IndexedDB 순)
   let saved = loadSavedUser();
-  if (!saved) saved = await restoreUserFromBackup();
+  if (!saved) saved = await _withLoginTimeout(
+    restoreUserFromBackup(),
+    LOGIN_SESSION_RESTORE_TIMEOUT_MS,
+    'IndexedDB session restore'
+  );
   if (saved) {
     const { isAdminInstance, getAdminId } = await import('./data.js');
     const isKimSaved = isAdminInstance(saved.id);
@@ -82,8 +155,7 @@ async function initLoginScreen() {
       if (localStorage.getItem('admin_authenticated') || localStorage.getItem('kim_authenticated')) {
         const { recordLogin: rlAuto } = await import('./data.js');
         rlAuto();
-        document.getElementById('login-screen').style.display = 'none';
-        _showLoadingUntilAppReady();
+        void _continueToAppAfterLogin();
         return;
       }
       // 김태우 잠금 화면
@@ -118,8 +190,7 @@ async function initLoginScreen() {
           backupAdminAuth();
           import('./data.js').then(m => m.recordLogin());
           lockDiv.remove();
-          document.getElementById('loading').style.display = 'flex';
-          location.reload();
+          void _continueToAppAfterLogin();
         } else {
           document.getElementById('kim-lock-error').textContent = '비밀번호가 맞지 않아요';
         }
@@ -228,8 +299,7 @@ async function initLoginScreen() {
 
       const { recordLogin: rlAuto2 } = await import('./data.js');
       rlAuto2();
-      document.getElementById('login-screen').style.display = 'none';
-      _showLoadingUntilAppReady();
+      void _continueToAppAfterLogin();
       return;
     }
   }
@@ -294,33 +364,9 @@ async function initLoginScreen() {
     el.addEventListener('blur', checkAccountExists);
   });
 
-  // 김태우 계정(Admin/Guest) 비밀번호 통일 + 더미 계정 정리
-  try {
-    const { hashPassword, saveAccount } = await import('./data.js');
-    const { getAdminId: gAId } = await import('./data.js');
-
-    // 더미 계정 삭제 — 비활성화 (계정이 삭제되는 버그 원인이었음)
-    // 삭제된 계정 1회 복구 (이전 삭제 코드로 유실된 계정)
-    if (!localStorage.getItem('accounts_recovered_v1')) {
-      const { recoverDeletedAccounts } = await import('./data.js');
-      const cnt = await recoverDeletedAccounts();
-      if (cnt > 0) console.log('[login] 삭제된 계정 ' + cnt + '개 복구됨');
-      localStorage.setItem('accounts_recovered_v1', 'done');
-    }
-
-    // Admin/Guest 비밀번호 통일 + nickname/firstName 완전 동기화
-    const freshAccounts = await getAccountList();
-    const adminAcc2 = freshAccounts.find(a => a.id === gAId());
-    if (adminAcc2) {
-      adminAcc2.hasPassword = true;
-      adminAcc2.passwordHash = hashPassword('kimtw100');
-      await saveAccount(adminAcc2);
-    }
-  } catch(e) { console.warn('[login] pw update err:', e); }
-
-  // 로딩 숨기기, 로그인 표시
-  document.getElementById('loading').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
+  // 로딩 숨기기, 로그인 표시 후 원격 유지보수는 백그라운드에서 실행한다.
+  _setLoginScreenVisible(true);
+  _runDeferredLoginMaintenance();
 }
 
 async function selectAccount(accountId) {
@@ -339,9 +385,7 @@ async function selectAccount(accountId) {
   }
 
   setCurrentUser(account);
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('loading').style.display = 'flex';
-  location.reload();
+  return _continueToAppAfterLogin();
 }
 
 async function verifyAndLogin() {
@@ -363,9 +407,7 @@ async function verifyAndLogin() {
 
   setCurrentUser(_pendingAccount);
   document.getElementById('login-pw-modal').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('loading').style.display = 'flex';
-  location.reload();
+  return _continueToAppAfterLogin();
 }
 
 function closePasswordModal() {
@@ -555,9 +597,7 @@ async function createAccountFromSignup() {
   setCurrentUser(account);
   const { recordLogin: rl } = await import('./data.js');
   rl();
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('loading').style.display = 'flex';
-  location.reload();
+  return _continueToAppAfterLogin();
 }
 window.createAccountFromSignup = createAccountFromSignup;
 
@@ -716,9 +756,7 @@ async function createAccountAndLogin() {
     rl2();
   }
 
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('loading').style.display = 'flex';
-  location.reload();
+  return _continueToAppAfterLogin();
 }
 
 async function logoutAccount() {

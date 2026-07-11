@@ -6,6 +6,22 @@ import {
 } from '../data.js';
 import { showConfetti, haptic } from './utils.js';
 
+const WELCOME_BACK_DATA_TIMEOUT_MS = 2500;
+
+function _withWelcomeDataTimeout(promise, fallback, label) {
+  let timer = null;
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(() => {
+      console.warn(`[welcome-back] ${label} timed out; using cached fallback`);
+      resolve(fallback);
+    }, WELCOME_BACK_DATA_TIMEOUT_MS);
+  });
+  return Promise.race([
+    Promise.resolve(promise).finally(() => { if (timer) clearTimeout(timer); }),
+    timeout,
+  ]);
+}
+
 function _localDateKey() {
   const now = new Date();
   const pad = (n) => String(n).padStart(2, '0');
@@ -96,8 +112,8 @@ export async function showWelcomeBackPopup(hoursSinceLogin) {
   sessionStorage.setItem(storageKey, '1');
 
   const [notifications, guildRanking] = await Promise.all([
-    getMyNotifications(),
-    getGlobalGuildWeeklyRanking(),
+    _withWelcomeDataTimeout(getMyNotifications(), [], 'notifications'),
+    _withWelcomeDataTimeout(getGlobalGuildWeeklyRanking(), null, 'guild ranking'),
   ]);
 
   const unreadCount = notifications.filter((item) => !item.read).length;

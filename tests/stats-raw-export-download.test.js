@@ -43,5 +43,5 @@ test('stats raw export button uses compact TDS-style controls and bumped cache',
   assert.match(styleCss, /border:\s*1px solid var\(--seed-stroke-neutral\)/);
   assert.match(styleCss, /border-radius:\s*var\(--seed-r-full\)/);
   assert.match(styleCss, /\.stats-raw-export-btn:focus-visible/);
-  assert.match(swJs, /tomatofarm-v20260710z2-running-gps-accuracy/);
+  assert.match(swJs, /tomatofarm-v20260711z3-apk-login-loading-fallback/);
 });

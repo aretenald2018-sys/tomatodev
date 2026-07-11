@@ -16,7 +16,9 @@ function sliceBetween(source, startToken, endToken) {
 
 const indexHtml = read('index.html');
 const featureLoginJs = read('feature-login.js');
+const appJs = read('app.js');
 const swJs = read('sw.js');
+const welcomeBackJs = read('home/welcome-back.js');
 
 test('login screen markup uses data-login actions instead of inline handlers', () => {
   const loginMarkup = sliceBetween(indexHtml, '<!-- 로그인 화면 -->', '<!-- 상단 네비게이션 -->');
@@ -61,6 +63,40 @@ test('login restore skips guild onboarding when a running draft can resume', () 
   assert.match(featureLoginJs, /if \(!localStorage\.getItem\(guildObKey\) && !_hasRestorableRunningDraftForUser\(saved\)\)/);
 });
 
-test('service worker cache version was bumped for login action bridge assets', () => {
-  assert.match(swJs, /tomatofarm-v20260710z2-running-gps-accuracy/);
+test('APK login reboots the in-page user session without a WebView reload', () => {
+  assert.match(featureLoginJs, /function _continueToAppAfterLogin\(\)/);
+  assert.match(featureLoginJs, /window\.__startTomatoUserSession/);
+  assert.match(featureLoginJs, /function _runDeferredLoginMaintenance\(\)/);
+  assert.match(featureLoginJs, /LOGIN_SESSION_RESTORE_TIMEOUT_MS = 1800/);
+  assert.match(featureLoginJs, /restoreUserFromBackup\(\),[\s\S]*LOGIN_SESSION_RESTORE_TIMEOUT_MS/);
+
+  for (const [start, end] of [
+    ['async function selectAccount', 'async function verifyAndLogin'],
+    ['async function verifyAndLogin', 'function closePasswordModal'],
+    ['async function createAccountFromSignup', 'window.createAccountFromSignup'],
+    ['async function createAccountAndLogin', 'async function logoutAccount'],
+  ]) {
+    const loginPath = sliceBetween(featureLoginJs, start, end);
+    assert.match(loginPath, /return _continueToAppAfterLogin\(\);/);
+    assert.doesNotMatch(loginPath, /location\.reload\(\)/);
+  }
+
+  assert.match(appJs, /function startTomatoUserSession\(\) \{[\s\S]*return init\(\);[\s\S]*\}/);
+  assert.match(appJs, /window\.__startTomatoUserSession = startTomatoUserSession;/);
+  assert.match(appJs, /await _withTimeout\(loadAndInjectModals\(\), 3000, 'login modal load'\);/);
+});
+
+test('APK login does not wait for optional welcome data before showing the app shell', () => {
+  assert.match(appJs, /const APP_BOOT_AUXILIARY_TIMEOUT_MS = 2500;/);
+  assert.match(appJs, /async function _showPostLoginExperience\(/);
+  assert.match(appJs, /void _showPostLoginExperience\(\{ previousLastLoginAt, runningSessionRestored \}\)/);
+  assert.match(appJs, /await _withTimeout\(\s*showWelcomeBackPopup\(hoursSinceLogin\),[\s\S]*APP_BOOT_AUXILIARY_TIMEOUT_MS,[\s\S]*'welcome back data'/);
+  assert.match(appJs, /await _withTimeout\(switchTab\('admin'\), APP_BOOT_AUXILIARY_TIMEOUT_MS, 'admin tab render'\);/);
+  assert.match(welcomeBackJs, /const WELCOME_BACK_DATA_TIMEOUT_MS = 2500;/);
+  assert.match(welcomeBackJs, /_withWelcomeDataTimeout\(getMyNotifications\(\), \[\], 'notifications'\)/);
+  assert.match(welcomeBackJs, /_withWelcomeDataTimeout\(getGlobalGuildWeeklyRanking\(\), null, 'guild ranking'\)/);
+});
+
+test('service worker cache version was bumped for APK login handoff assets', () => {
+  assert.match(swJs, /tomatofarm-v20260711z3-apk-login-loading-fallback/);
 });

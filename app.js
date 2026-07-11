@@ -4,7 +4,8 @@
 
 import { loadAll, TODAY, getTabOrder,
          getRawVisibleTabs, DEFAULT_VIS_TABS,
-         isAdmin, isAdminGuest, trackEvent } from './data.js';
+         isAdmin, isAdminGuest, trackEvent,
+         getCurrentUser, loadSavedUser, refreshCurrentUserFromDB } from './data.js';
 import { loadCSVDatabase } from './fatsecret-api.js';
 import { getDietRec, getWorkoutRec,
          analyzeGoalFeasibility }                 from './ai.js';
@@ -73,6 +74,15 @@ function _withTimeout(promise, ms, label) {
   ]);
 }
 
+const APP_BOOT_AUXILIARY_TIMEOUT_MS = 2500;
+
+function _hideLoadingOverlay() {
+  const loading = document.getElementById('loading');
+  if (!loading) return;
+  loading.style.display = 'none';
+  loading.classList.add('hidden');
+}
+
 // ── 탭 스켈레톤 삽입 (레이지 로드 피드백) ──
 function _showTabSkeleton(tabId) {
   const tab = document.getElementById(tabId);
@@ -118,7 +128,9 @@ import {
 
 // ── 모달 및 CSV 초기화 ───────────────────────────────────────────
 async function initializeApp() {
-  await loadAndInjectModals();
+  // 앱 시작 화면은 session bootstrap과 별개다. APK WebView에서 모달 청크 하나가
+  // 지연돼도 전역 action/router 초기화가 영구히 멈추지 않도록 제한한다.
+  await _withTimeout(loadAndInjectModals(), 8000, 'post-load modal initialization');
   initWorkoutSystemBack();
 
   // 전역 data-action 이벤트 위임 라우터 (R0 인프라)
@@ -619,17 +631,75 @@ function openWorkoutTab(y, m, d) {
 
 // ── 다이어트 플랜/체크인은 feature-*.js로 분리됨 ──────
 // ── 초기화 ───────────────────────────────────────────────────────
-async function init() {
+let _appInitPromise = null;
+let _appInitUserId = null;
+
+function _getAppInitUserId() {
+  // localStorage 세션은 data 모듈이 로드된 직후 동기 복원할 수 있다.
+  // 이 값을 먼저 확인해야 로그인 화면의 자동 복원과 app bootstrap이 같은
+  // 세션을 중복으로 초기화하지 않는다.
+  return (getCurrentUser() || loadSavedUser())?.id || null;
+}
+
+function init() {
+  const requestedUserId = _getAppInitUserId();
+  if (_appInitPromise) {
+    if (_appInitUserId === requestedUserId) return _appInitPromise;
+    // 비로그인 bootstrap이 끝나기 전에 로그인한 경우, 기존 초기화를 끝낸 뒤
+    // 새 사용자 세션을 한 번만 시작한다.
+    return _appInitPromise.then(() => init(), () => init());
+  }
+
+  _appInitUserId = requestedUserId;
+  const task = _initializeAppSession();
+  _appInitPromise = task;
+  task.then(
+    () => { if (_appInitPromise === task) _appInitPromise = null; },
+    () => { if (_appInitPromise === task) _appInitPromise = null; }
+  );
+  return task;
+}
+
+function startTomatoUserSession() {
+  return init();
+}
+
+async function _showPostLoginExperience({ previousLastLoginAt, runningSessionRestored }) {
+  let priorityPopupShown = runningSessionRestored;
+  if (!priorityPopupShown) {
+    priorityPopupShown = await _withTimeout(
+      showDietPremiumReportIfNeeded(),
+      APP_BOOT_AUXILIARY_TIMEOUT_MS,
+      'diet premium report'
+    );
+  }
+  if (previousLastLoginAt && !priorityPopupShown) {
+    const hoursSinceLogin = (Date.now() - previousLastLoginAt) / 3600000;
+    priorityPopupShown = await _withTimeout(
+      showWelcomeBackPopup(hoursSinceLogin),
+      APP_BOOT_AUXILIARY_TIMEOUT_MS,
+      'welcome back data'
+    );
+  }
+  if (!priorityPopupShown) {
+    priorityPopupShown = showTutorialIfNeeded({ previousLastLoginAt });
+  }
+  if (!priorityPopupShown) {
+    renderHome();
+  }
+}
+
+async function _initializeAppSession() {
   let bootUser = null;
   let runningSessionRestored = false;
   try {
     // 로그인 안 되어있으면 모달만 로드하고 대기
-    const { getCurrentUser, loadSavedUser } = await import('./data.js');
     const user = loadSavedUser() || getCurrentUser();
     bootUser = user;
     const previousLastLoginAt = user?.lastLoginAt || 0;
     if (!user) {
-      await loadAndInjectModals();
+      // APK에서 네트워크/캐시 상태가 불안정해도 로그인 진입이 멈추지 않게 한다.
+      await _withTimeout(loadAndInjectModals(), 3000, 'login modal load');
       document.getElementById('loading').style.display = 'none';
       return; // 로그인 화면이 표시됨
     }
@@ -640,7 +710,6 @@ async function init() {
       _withTimeout(loadAll(), 10000, 'data load'),
     ]);
     // localStorage 캐시를 Firebase 최신으로 동기화
-    const { refreshCurrentUserFromDB } = await import('./data.js');
     await _withTimeout(refreshCurrentUserFromDB(), 6000, 'user refresh');
     const refreshedUser = getCurrentUser() || user;
     setLifeZoneVisitContext({
@@ -691,38 +760,19 @@ async function init() {
 
     if (isAdmin()) {
       if (!runningSessionRestored) {
-        await switchTab('admin');
-        await showDietPremiumReportIfNeeded().catch((e) => console.warn('[diet-premium-report]', e));
+        await _withTimeout(switchTab('admin'), APP_BOOT_AUXILIARY_TIMEOUT_MS, 'admin tab render');
+        void showDietPremiumReportIfNeeded().catch((e) => console.warn('[diet-premium-report]', e));
       }
     } else {
       renderHome({ deferCheerCard: true });
-      let priorityPopupShown = runningSessionRestored;
-      if (!priorityPopupShown) {
-        priorityPopupShown = await showDietPremiumReportIfNeeded().catch((e) => {
-          console.warn('[diet-premium-report]', e);
-          return false;
-        });
-      }
-      if (previousLastLoginAt) {
-        if (!priorityPopupShown) {
-          const hoursSinceLogin = (Date.now() - previousLastLoginAt) / 3600000;
-          priorityPopupShown = await showWelcomeBackPopup(hoursSinceLogin).catch((e) => {
-            console.warn('[welcome-back]', e);
-            return false;
-          });
-        }
-      }
-      if (!priorityPopupShown) {
-        priorityPopupShown = showTutorialIfNeeded({ previousLastLoginAt });
-      }
-      if (!priorityPopupShown) {
-        renderHome();
-      }
+      // 알림/길드 조회는 APK의 느린 Firebase 연결에서 오래 멈출 수 있다. 앱 셸은
+      // 먼저 표시하고, 환영 팝업 같은 보조 경험은 백그라운드에서 처리한다.
+      void _showPostLoginExperience({ previousLastLoginAt, runningSessionRestored })
+        .catch((e) => console.warn('[post-login]', e));
     }
 
-    // 홈 렌더링 후 즉시 로딩 화면 숨기기 (나머지는 백그라운드)
-    const loadEl2 = document.getElementById('loading');
-    if (loadEl2) { loadEl2.style.display = 'none'; loadEl2.classList.add('hidden'); }
+    // 홈/관리자 첫 화면이 준비되면, 보조 네트워크 작업을 기다리지 않고 닫는다.
+    _hideLoadingOverlay();
 
     // 나머지 초기화는 비동기로 (체감 속도 개선)
     const bellBtn = document.getElementById('notif-bell');
@@ -743,8 +793,7 @@ async function init() {
     // 오류가 발생해도 로딩 화면 숨기고 기본 렌더링
     renderHome();
   } finally {
-    const loadEl = document.getElementById('loading');
-    if (loadEl) { loadEl.style.display = 'none'; loadEl.classList.add('hidden'); }
+    _hideLoadingOverlay();
     window.__tomatoAppReady = true;
     window.dispatchEvent(new Event('tomato-app-ready'));
     if (bootUser) {
@@ -921,6 +970,7 @@ _initDietInputButtons();
 
 // ── window 등록 ──────────────────────────────────────────────────
 window.renderAll                = renderAll;
+window.__startTomatoUserSession = startTomatoUserSession;
 window.renderHome               = renderHome;
 window.switchTab                = switchTab;
 window.showToast                = showToast;

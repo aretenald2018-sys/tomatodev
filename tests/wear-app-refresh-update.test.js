@@ -184,19 +184,24 @@ test('manual app refresh keeps native Wear bridge while APK button downloads mob
     'export async function requestTomatoAppRefresh',
     'APK install helper should stay separate from the page reload path',
   );
-  assert.match(swJs, /tomatofarm-v20260710z2-running-gps-accuracy/);
+  assert.match(swJs, /tomatofarm-v20260711z3-apk-login-loading-fallback/);
 });
 
 test('published mobile APK contains current life-zone photo bubble assets', () => {
   const rootSw = readProjectFile('sw.js');
   const apkSw = readApkEntryText('public/downloads/tomato-mobile-debug.apk', 'assets/public/sw.js');
   const apkBuildInfo = JSON.parse(readApkEntryText('public/downloads/tomato-mobile-debug.apk', 'assets/public/build-info.json'));
+  const apkAppJs = readApkEntryText('public/downloads/tomato-mobile-debug.apk', 'assets/public/app.js');
+  const apkWelcomeBackJs = readApkEntryText('public/downloads/tomato-mobile-debug.apk', 'assets/public/home/welcome-back.js');
   const apkLifeZoneJs = readApkEntryText('public/downloads/tomato-mobile-debug.apk', 'assets/public/home/life-zone.js');
   const apkStyleCss = readApkEntryText('public/downloads/tomato-mobile-debug.apk', 'assets/public/style.css');
   const expectedCacheVersion = cacheVersionFrom(rootSw);
 
   assert.equal(cacheVersionFrom(apkSw), expectedCacheVersion);
   assert.equal(apkBuildInfo.cacheVersion, expectedCacheVersion);
+  assert.match(apkAppJs, /const APP_BOOT_AUXILIARY_TIMEOUT_MS = 2500;/);
+  assert.match(apkAppJs, /void _showPostLoginExperience\(\{ previousLastLoginAt, runningSessionRestored \}\)/);
+  assert.match(apkWelcomeBackJs, /const WELCOME_BACK_DATA_TIMEOUT_MS = 2500;/);
   assert.match(apkLifeZoneJs, /LIFE_ZONE_PHOTO_LIKE_REACTION/);
   assert.match(apkLifeZoneJs, /data-lz-photo-like-key/);
   assert.match(apkLifeZoneJs, /toggleLike\(actor\.accountId,\s*_todayLifeZoneKey\(\),\s*actor\.speechLikeField/);
