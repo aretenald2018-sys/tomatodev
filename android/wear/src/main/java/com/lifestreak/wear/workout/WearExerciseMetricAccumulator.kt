@@ -188,14 +188,43 @@ class WearExerciseMetricAccumulator(
             HEART_RATE_BUCKET_MS
     }
 
-    private companion object {
-        const val HEART_RATE_BUCKET_MS = 10_000L
-        const val MAX_GPS_ACCURACY_M = 35.0
-        const val MIN_ROUTE_DISPLACEMENT_M = 12.0
-        const val MAX_GPS_ERROR_RADIUS_M = 30.0
-        const val MIN_CONFIDENT_RUNNING_SPEED_MPS = 0.3
-        const val MAX_RUNNING_SPEED_MPS = 15.0
-        const val MIN_HEART_RATE_BPM = 30
-        const val MAX_HEART_RATE_BPM = 240
+    companion object {
+        fun fromSnapshot(
+            snapshot: WearExerciseSessionSnapshot,
+            startedAtElapsedRealtimeMs: Long,
+            markRestartGap: Boolean = false,
+        ): WearExerciseMetricAccumulator {
+            val accumulator = WearExerciseMetricAccumulator(
+                startedAtWallClockMs = snapshot.startedAtWallClockMs,
+                startedAtElapsedRealtimeMs = startedAtElapsedRealtimeMs,
+            )
+            accumulator.distanceMeters = snapshot.distanceMeters.coerceAtLeast(0.0)
+            accumulator.latestHeartRateBpm = snapshot.latestHeartRateBpm
+                ?: snapshot.heartRateSamples.lastOrNull()?.bpm
+            accumulator.activeDurationMs = snapshot.activeDurationMs.coerceAtLeast(0L)
+            snapshot.distanceSamples
+                .filter { sample -> sample.timestampMs >= 0L && sample.distanceKm.isFinite() && sample.distanceKm >= 0.0 }
+                .forEach { sample -> accumulator.distanceSamplesByBucket[sample.timestampMs] = sample }
+            snapshot.heartRateSamples
+                .filter { sample -> sample.timestampMs >= 0L && sample.bpm in MIN_HEART_RATE_BPM..MAX_HEART_RATE_BPM }
+                .forEach { sample -> accumulator.heartRateSamplesByBucket[sample.timestampMs] = sample }
+            snapshot.routePoints
+                .filter { point -> accumulator.isValidRoutePoint(point) }
+                .sortedBy { point -> point.timestampMs }
+                .forEach { point -> accumulator.routePoints.add(point) }
+            if (markRestartGap && accumulator.routePoints.isNotEmpty()) {
+                accumulator.markRouteGap("service-restart")
+            }
+            return accumulator
+        }
+
+        private const val HEART_RATE_BUCKET_MS = 10_000L
+        private const val MAX_GPS_ACCURACY_M = 35.0
+        private const val MIN_ROUTE_DISPLACEMENT_M = 12.0
+        private const val MAX_GPS_ERROR_RADIUS_M = 30.0
+        private const val MIN_CONFIDENT_RUNNING_SPEED_MPS = 0.3
+        private const val MAX_RUNNING_SPEED_MPS = 15.0
+        private const val MIN_HEART_RATE_BPM = 30
+        private const val MAX_HEART_RATE_BPM = 240
     }
 }

@@ -266,4 +266,37 @@ class WearExerciseMetricAccumulatorTest {
 
         assertEquals(20_000L, accumulator.snapshot().activeDurationMs)
     }
+
+    @Test
+    fun restoresPersistedSnapshotAndMarksNextLocationAfterServiceRestart() {
+        val accumulator = WearExerciseMetricAccumulator.fromSnapshot(
+            snapshot = WearExerciseSessionSnapshot(
+                status = WearExerciseSessionStatus.ACTIVE,
+                startedAtWallClockMs = 10_000L,
+                latestHeartRateBpm = 150,
+                activeDurationMs = 40_000L,
+                heartRateSamples = listOf(HeartRateSample(timestampMs = 20_000L, bpm = 150)),
+                routePoints = listOf(
+                    WearRoutePoint(timestampMs = 10_000L, lat = 37.5665, lng = 126.9780, segmentId = 0),
+                    WearRoutePoint(timestampMs = 20_000L, lat = 37.5667, lng = 126.9782, segmentId = 0),
+                ),
+            ),
+            startedAtElapsedRealtimeMs = 1_000L,
+            markRestartGap = true,
+        )
+
+        accumulator.applyMetricUpdate(
+            elapsedRealtimeMs = 71_000L,
+            activeDurationMs = 70_000L,
+            routePoint = WearRoutePoint(timestampMs = 80_000L, lat = 37.5670, lng = 126.9785),
+        )
+
+        val snapshot = accumulator.snapshot()
+
+        assertEquals(70_000L, snapshot.activeDurationMs)
+        assertEquals(150, snapshot.latestHeartRateBpm)
+        assertEquals(listOf(0, 0, 1), snapshot.routePoints.map { it.segmentId })
+        assertEquals(true, snapshot.routePoints[2].gapBefore)
+        assertEquals("service-restart", snapshot.routePoints[2].gapReason)
+    }
 }

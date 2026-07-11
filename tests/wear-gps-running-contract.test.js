@@ -23,6 +23,7 @@ test('wear run uses GPS location data and sends route result in final payload', 
   const manifest = await read('android/wear/src/main/AndroidManifest.xml');
   const mainActivity = await read('android/wear/src/main/java/com/lifestreak/wear/MainActivity.kt');
   const service = await read('android/wear/src/main/java/com/lifestreak/wear/workout/WearExerciseService.kt');
+  const durationTracker = await read('android/wear/src/main/java/com/lifestreak/wear/workout/WearExerciseActiveDurationTracker.kt');
   const store = await read('android/wear/src/main/java/com/lifestreak/wear/workout/WearExerciseSessionStore.kt');
   const accumulator = await read('android/wear/src/main/java/com/lifestreak/wear/workout/WearExerciseMetricAccumulator.kt');
   const payload = await read('android/wear/src/main/java/com/lifestreak/wear/workout/WearRunPayload.kt');
@@ -32,7 +33,9 @@ test('wear run uses GPS location data and sends route result in final payload', 
   assert.match(manifest, /android\.permission\.ACCESS_FINE_LOCATION/);
   assert.match(manifest, /android\.permission\.FOREGROUND_SERVICE_LOCATION/);
   assert.match(manifest, /android:foregroundServiceType="health\|location"/);
+  assert.match(manifest, /BODY_SENSORS"[\s\S]*android:maxSdkVersion="35"/);
   assert.match(mainActivity, /Manifest\.permission\.ACCESS_FINE_LOCATION/);
+  assert.match(mainActivity, /if \(Build\.VERSION\.SDK_INT >= 36\)[\s\S]*PERMISSION_READ_HEART_RATE[\s\S]*else[\s\S]*BODY_SENSORS/);
 
   assert.match(service, /DataType\.LOCATION/);
   assert.match(service, /isGpsEnabled = hasLocationPermission\(\)/);
@@ -45,6 +48,9 @@ test('wear run uses GPS location data and sends route result in final payload', 
   assert.match(service, /getData\(DataType\.LOCATION\)/);
   assert.doesNotMatch(service, /getData\(DataType\.LOCATION\)[\s\S]{0,120}lastOrNull\(\)/);
   assert.match(service, /locationPoints\.forEach/);
+  assert.match(service, /activeDurationTracker\.plausibleHealthDuration/);
+  assert.match(service, /activeDurationTracker\.pause/);
+  assert.match(durationTracker, /MAX_HEALTH_DURATION_LEAD_MS = 15_000L/);
 
   assert.match(accumulator, /WearRoutePoint/);
   assert.match(accumulator, /routePoints/);

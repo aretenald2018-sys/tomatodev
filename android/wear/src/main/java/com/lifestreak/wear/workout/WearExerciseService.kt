@@ -38,10 +38,11 @@ class WearExerciseService : Service() {
     private var exerciseStarted = false
     private var endRequested = false
     private var wallClockOffsetMs = 0L
-    private var sessionStartedElapsedRealtimeMs = 0L
+    private val activeDurationTracker = WearExerciseActiveDurationTracker()
     private var lastDirectLocationElapsedRealtimeMs = 0L
     private var directLocationManager: LocationManager? = null
     private var directLocationListener: LocationListener? = null
+    private var persistenceUnsubscribe: (() -> Unit)? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -54,24 +55,37 @@ class WearExerciseService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START_RUN -> handleStartRun()
+            ACTION_RESTORE_RUN -> handleRestoreRun()
             ACTION_PAUSE_RUN -> handlePauseRun()
             ACTION_RESUME_RUN -> handleResumeRun()
             ACTION_END_RUN -> handleEndRun()
+            else -> handleRestoreRun()
         }
+        // addListener immediately emits the in-memory snapshot. Restore first so a
+        // fresh service process cannot overwrite a saved workout with IDLE.
+        ensurePersistenceListener()
         return START_STICKY
     }
 
     override fun onDestroy() {
+        persistenceUnsubscribe?.invoke()
+        persistenceUnsubscribe = null
         clearExerciseCallback()
         stopDirectLocationUpdates()
         super.onDestroy()
     }
 
     private fun handleStartRun() {
+        if (!hasLocationPermission()) {
+            WearExerciseSessionPersistence.clear(this)
+            WearExerciseSessionStore.markError("location permission missing")
+            stopSelf()
+            return
+        }
         val startedAtWallClockMs = System.currentTimeMillis()
         val startedAtElapsedRealtimeMs = SystemClock.elapsedRealtime()
         wallClockOffsetMs = startedAtWallClockMs - startedAtElapsedRealtimeMs
-        sessionStartedElapsedRealtimeMs = startedAtElapsedRealtimeMs
+        activeDurationTracker.start(startedAtElapsedRealtimeMs)
         lastDirectLocationElapsedRealtimeMs = 0L
         val nextAccumulator = WearExerciseMetricAccumulator(
             startedAtWallClockMs = startedAtWallClockMs,
@@ -81,12 +95,6 @@ class WearExerciseService : Service() {
         exerciseStarted = false
         endRequested = false
         WearExerciseSessionStore.resetForStart(startedAtWallClockMs)
-
-        if (!hasLocationPermission()) {
-            WearExerciseSessionStore.markFallback("location permission missing")
-            stopSelf()
-            return
-        }
 
         startForegroundWithHealthType(buildNotification())
         startDirectLocationUpdates()
@@ -100,6 +108,48 @@ class WearExerciseService : Service() {
         }
         registerExerciseCallback()
         startHealthExercise(nextAccumulator)
+    }
+
+    private fun handleRestoreRun() {
+        val restored = restorePersistedSessionIfMissing(markRestartGap = true) ?: run {
+            stopSelf()
+            return
+        }
+        if (!hasLocationPermission() && restored.status in setOf(
+                WearExerciseSessionStatus.STARTING,
+                WearExerciseSessionStatus.ACTIVE,
+                WearExerciseSessionStatus.FALLBACK,
+            )
+        ) {
+            publishEndedSnapshot("location permission missing")
+            finishService()
+            return
+        }
+        when (restored.status) {
+            WearExerciseSessionStatus.STARTING,
+            WearExerciseSessionStatus.ACTIVE,
+            WearExerciseSessionStatus.FALLBACK,
+            -> {
+                startForegroundWithHealthType(buildNotification())
+                startDirectLocationUpdates()
+                if (hasActivityRecognitionPermission()) {
+                    registerExerciseCallback()
+                    exerciseStarted = true
+                }
+            }
+            WearExerciseSessionStatus.PAUSED -> {
+                startForegroundWithHealthType(buildNotification("러닝 기록 일시정지"))
+                stopDirectLocationUpdates()
+                if (hasActivityRecognitionPermission()) {
+                    registerExerciseCallback()
+                    exerciseStarted = true
+                }
+            }
+            WearExerciseSessionStatus.ENDED -> stopSelf()
+            WearExerciseSessionStatus.IDLE,
+            WearExerciseSessionStatus.ERROR,
+            -> stopSelf()
+        }
     }
 
     private fun startHealthExercise(nextAccumulator: WearExerciseMetricAccumulator) {
@@ -186,8 +236,19 @@ class WearExerciseService : Service() {
     }
 
     private fun handlePauseRun() {
-        accumulator?.markRouteGap("pause")
-        WearExerciseSessionStore.markPaused()
+        restorePersistedSessionIfMissing(markRestartGap = true)
+        val nowElapsedRealtimeMs = SystemClock.elapsedRealtime()
+        accumulator?.let { currentAccumulator ->
+            currentAccumulator.markRouteGap("pause")
+            currentAccumulator.applyMetricUpdate(
+                elapsedRealtimeMs = nowElapsedRealtimeMs,
+                activeDurationMs = activeDurationTracker.pause(nowElapsedRealtimeMs),
+            )
+            WearExerciseSessionStore.publishFromAccumulator(
+                status = WearExerciseSessionStatus.PAUSED,
+                accumulator = currentAccumulator,
+            )
+        } ?: WearExerciseSessionStore.markPaused()
         stopDirectLocationUpdates()
         if (!exerciseStarted) return
         val pauseFuture = exerciseClient.pauseExerciseAsync()
@@ -196,8 +257,8 @@ class WearExerciseService : Service() {
                 try {
                     pauseFuture.get()
                 } catch (error: Exception) {
-                    WearExerciseSessionStore.markError(
-                        "Health Services pause failed: ${error.message ?: error.javaClass.simpleName}",
+                    WearExerciseSessionStore.markPaused(
+                        "GPS direct · Health Services pause failed: ${error.message ?: error.javaClass.simpleName}",
                     )
                 }
             },
@@ -206,12 +267,19 @@ class WearExerciseService : Service() {
     }
 
     private fun handleResumeRun() {
+        restorePersistedSessionIfMissing(markRestartGap = true)
+        val nowElapsedRealtimeMs = SystemClock.elapsedRealtime()
         accumulator?.let {
+            it.applyMetricUpdate(
+                elapsedRealtimeMs = nowElapsedRealtimeMs,
+                activeDurationMs = activeDurationTracker.resume(nowElapsedRealtimeMs),
+            )
             WearExerciseSessionStore.publishFromAccumulator(
                 status = WearExerciseSessionStatus.ACTIVE,
                 accumulator = it,
             )
         }
+        startForegroundWithHealthType(buildNotification())
         startDirectLocationUpdates()
         if (!exerciseStarted) return
         val resumeFuture = exerciseClient.resumeExerciseAsync()
@@ -220,9 +288,13 @@ class WearExerciseService : Service() {
                 try {
                     resumeFuture.get()
                 } catch (error: Exception) {
-                    WearExerciseSessionStore.markError(
-                        "Health Services resume failed: ${error.message ?: error.javaClass.simpleName}",
-                    )
+                    accumulator?.let {
+                        WearExerciseSessionStore.publishFromAccumulator(
+                            status = WearExerciseSessionStatus.ACTIVE,
+                            accumulator = it,
+                            message = "GPS direct · Health Services resume failed: ${error.message ?: error.javaClass.simpleName}",
+                        )
+                    }
                 }
             },
             healthCallbackExecutor,
@@ -230,6 +302,12 @@ class WearExerciseService : Service() {
     }
 
     private fun handleEndRun() {
+        restorePersistedSessionIfMissing(markRestartGap = true)
+        val nowElapsedRealtimeMs = SystemClock.elapsedRealtime()
+        accumulator?.applyMetricUpdate(
+            elapsedRealtimeMs = nowElapsedRealtimeMs,
+            activeDurationMs = activeDurationTracker.pause(nowElapsedRealtimeMs),
+        )
         endRequested = true
         if (exerciseStarted) {
             val endFuture = exerciseClient.endExerciseAsync()
@@ -240,9 +318,7 @@ class WearExerciseService : Service() {
                         WearExerciseEndPolicy.afterEndFuture(success = true)
                     } catch (error: Exception) {
                         WearExerciseEndPolicy.afterEndFuture(success = false)
-                        WearExerciseSessionStore.markError(
-                            "Health Services end failed: ${error.message ?: error.javaClass.simpleName}",
-                        )
+                        publishEndFailure(error)
                         finishService()
                     }
                 },
@@ -252,6 +328,12 @@ class WearExerciseService : Service() {
             publishEndedSnapshot()
             finishService()
         }
+    }
+
+    private fun publishEndFailure(error: Exception) {
+        publishEndedSnapshot(
+            "GPS direct · Health Services end failed: ${error.message ?: error.javaClass.simpleName}",
+        )
     }
 
     private fun publishEndedSnapshot(message: String? = null) {
@@ -322,12 +404,20 @@ class WearExerciseService : Service() {
             ?.value
             ?.roundToInt()
         val distanceMeters = metrics.getData(DataType.DISTANCE_TOTAL)?.total
-        val activeDurationMs = update.activeDurationCheckpoint?.activeDuration?.toMillis()
+        val elapsedRealtimeMs = SystemClock.elapsedRealtime()
+        val healthActiveDurationMs = activeDurationTracker.plausibleHealthDuration(
+            reportedDurationMs = update.activeDurationCheckpoint?.activeDuration?.toMillis(),
+            nowElapsedRealtimeMs = elapsedRealtimeMs,
+        )
+        val activeDurationMs = maxOf(
+            activeDurationTracker.activeDurationAt(elapsedRealtimeMs),
+            healthActiveDurationMs ?: 0L,
+        )
         val locationPoints = metrics.getData(DataType.LOCATION)
             .sortedBy { point -> point.timeDurationFromBoot }
 
         nextAccumulator.applyMetricUpdate(
-            elapsedRealtimeMs = SystemClock.elapsedRealtime(),
+            elapsedRealtimeMs = elapsedRealtimeMs,
             distanceMeters = distanceMeters,
             heartRateBpm = heartRateBpm,
             activeDurationMs = activeDurationMs,
@@ -346,7 +436,7 @@ class WearExerciseService : Service() {
             )
         }
 
-        val endAction = WearExerciseEndPolicy.afterExerciseUpdate(update.exerciseStateInfo.state.isEnded && endRequested)
+        val endAction = WearExerciseEndPolicy.afterExerciseUpdate(update.exerciseStateInfo.state.isEnded)
         val status = when (endAction) {
             WearExerciseEndAction.PUBLISH_FINAL_UPDATE -> WearExerciseSessionStatus.ENDED
             WearExerciseEndAction.WAIT_FOR_FINAL_UPDATE,
@@ -371,6 +461,65 @@ class WearExerciseService : Service() {
         exerciseCallback = null
     }
 
+    private fun restorePersistedSessionIfMissing(markRestartGap: Boolean = false): WearExerciseSessionSnapshot? {
+        if (accumulator != null && WearExerciseSessionStore.current().status != WearExerciseSessionStatus.IDLE) {
+            return WearExerciseSessionStore.current()
+        }
+        val persisted = WearExerciseSessionPersistence.load(this) ?: return null
+        restoreRuntimeFromSnapshot(persisted, markRestartGap)
+        return WearExerciseSessionStore.current()
+    }
+
+    private fun restoreRuntimeFromSnapshot(
+        snapshot: WearExerciseSessionSnapshot,
+        markRestartGap: Boolean,
+    ) {
+        val nowElapsedRealtimeMs = SystemClock.elapsedRealtime()
+        wallClockOffsetMs = System.currentTimeMillis() - nowElapsedRealtimeMs
+        lastDirectLocationElapsedRealtimeMs = snapshot.routePoints
+            .maxOfOrNull { point -> (point.timestampMs - wallClockOffsetMs).coerceAtLeast(0L) }
+            ?: 0L
+        val runningStatus = snapshot.status in setOf(
+            WearExerciseSessionStatus.STARTING,
+            WearExerciseSessionStatus.ACTIVE,
+            WearExerciseSessionStatus.FALLBACK,
+        )
+        activeDurationTracker.restore(
+            persistedActiveDurationMs = snapshot.activeDurationMs,
+            nowElapsedRealtimeMs = nowElapsedRealtimeMs,
+            isRunning = runningStatus,
+        )
+        val restoredAccumulator = WearExerciseMetricAccumulator.fromSnapshot(
+            snapshot = snapshot,
+            startedAtElapsedRealtimeMs = (nowElapsedRealtimeMs - snapshot.activeDurationMs)
+                .coerceAtLeast(0L),
+            markRestartGap = markRestartGap && runningStatus,
+        )
+        accumulator = restoredAccumulator
+        exerciseStarted = false
+        endRequested = false
+        if (runningStatus) {
+            restoredAccumulator.applyMetricUpdate(
+                elapsedRealtimeMs = nowElapsedRealtimeMs,
+                activeDurationMs = activeDurationTracker.activeDurationAt(nowElapsedRealtimeMs),
+            )
+            WearExerciseSessionStore.publishFromAccumulator(
+                status = snapshot.status,
+                accumulator = restoredAccumulator,
+                message = snapshot.message ?: "GPS direct · restored",
+            )
+        } else {
+            WearExerciseSessionStore.restore(snapshot)
+        }
+    }
+
+    private fun ensurePersistenceListener() {
+        if (persistenceUnsubscribe != null) return
+        persistenceUnsubscribe = WearExerciseSessionStore.addListener { snapshot ->
+            WearExerciseSessionPersistence.saveOrClear(this, snapshot)
+        }
+    }
+
     private fun startDirectLocationUpdates() {
         if (!hasLocationPermission() || directLocationListener != null) return
         val manager = directLocationManager ?: return
@@ -382,17 +531,23 @@ class WearExerciseService : Service() {
             override fun onProviderEnabled(provider: String) = Unit
             override fun onProviderDisabled(provider: String) = Unit
         }
-        directLocationListener = listener
         try {
             val gpsEnabled = manager.isProviderEnabled(LocationManager.GPS_PROVIDER)
             if (gpsEnabled) {
                 manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1_000L, 2f, listener)
+                directLocationListener = listener
             } else if (manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
                 manager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 2_000L, 5f, listener)
+                directLocationListener = listener
+            } else {
+                WearExerciseSessionStore.markFallback("GPS provider unavailable")
             }
         } catch (_: SecurityException) {
             directLocationListener = null
             WearExerciseSessionStore.markFallback("location permission missing")
+        } catch (_: IllegalArgumentException) {
+            directLocationListener = null
+            WearExerciseSessionStore.markFallback("GPS provider unavailable")
         }
     }
 
@@ -423,7 +578,7 @@ class WearExerciseService : Service() {
             else -> systemElapsedRealtimeMs
         }.coerceAtLeast(lastDirectLocationElapsedRealtimeMs + 1L)
         lastDirectLocationElapsedRealtimeMs = elapsedRealtimeMs
-        val activeDurationMs = (elapsedRealtimeMs - sessionStartedElapsedRealtimeMs).coerceAtLeast(0L)
+        val activeDurationMs = activeDurationTracker.activeDurationAt(elapsedRealtimeMs)
         currentAccumulator.applyMetricUpdate(
             elapsedRealtimeMs = elapsedRealtimeMs,
             activeDurationMs = activeDurationMs,
@@ -504,12 +659,12 @@ class WearExerciseService : Service() {
         return wallClockOffsetMs + elapsedRealtimeMs
     }
 
-    private fun buildNotification(): Notification {
+    private fun buildNotification(contentText: String = "런닝/조깅 기록 중"): Notification {
         ensureNotificationChannel()
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentTitle("Tomato Farm")
-            .setContentText("런닝/조깅 기록 중")
+            .setContentText(contentText)
             .setOngoing(true)
             .setSilent(true)
             .build()
@@ -544,6 +699,7 @@ class WearExerciseService : Service() {
 
     companion object {
         private const val ACTION_START_RUN = "com.lifestreak.wear.workout.START_RUN"
+        private const val ACTION_RESTORE_RUN = "com.lifestreak.wear.workout.RESTORE_RUN"
         private const val ACTION_PAUSE_RUN = "com.lifestreak.wear.workout.PAUSE_RUN"
         private const val ACTION_RESUME_RUN = "com.lifestreak.wear.workout.RESUME_RUN"
         private const val ACTION_END_RUN = "com.lifestreak.wear.workout.END_RUN"
@@ -555,6 +711,10 @@ class WearExerciseService : Service() {
 
         fun startRun(context: Context) {
             ContextCompat.startForegroundService(context, intentFor(context, ACTION_START_RUN))
+        }
+
+        fun restoreRun(context: Context) {
+            ContextCompat.startForegroundService(context, intentFor(context, ACTION_RESTORE_RUN))
         }
 
         fun pauseRun(context: Context) {

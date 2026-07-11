@@ -31,6 +31,12 @@ test('phone route collection rejects stale and inaccurate fixes and drains nativ
   assert.match(store, /MAX_ACCURACY_M = 35f/);
   assert.match(store, /MAX_LOCATION_AGE_MS = 30_000L/);
   assert.match(store, /MAX_RUNNING_SPEED_MPS = 15\.0/);
+  assert.match(store, /PREFS_NAME = "tomato_running_location"/);
+  assert.match(store, /POINTS_FILE_NAME = "running-location-points\.jsonl"/);
+  assert.match(store, /public static synchronized void restore\(Context context\)/);
+  assert.match(store, /appendLastPoint\(context\)/);
+  assert.match(store, /void resume\(Context context\) \{\s*restore\(context\);\s*resume\(\);/);
+  assert.match(store, /void stop\(Context context\) \{\s*restore\(context\);\s*stop\(\);/);
   assert.match(session, /maximumAge:\s*0/);
   assert.match(session, /TomatoRunningLocation/);
   assert.match(session, /await _stopWatch\('finish'\)/);
@@ -48,9 +54,18 @@ test('watch uses direct GPS fallback and refuses to start without precise locati
     /if \(gpsEnabled\)[\s\S]*GPS_PROVIDER[\s\S]*else if[\s\S]*NETWORK_PROVIDER/,
     'watch should use network location only when GPS is unavailable so providers cannot corrupt one route',
   );
+  assert.match(service, /when \(intent\?\.action\)[\s\S]*ensurePersistenceListener\(\)/);
+  assert.match(service, /directLocationListener = listener/);
+  assert.match(service, /GPS provider unavailable/);
+  assert.match(
+    read('android/wear/src/main/java/com/lifestreak/wear/workout/WearExerciseSessionStore.kt'),
+    /ROUTE_FILE_NAME = "wear-running-route\.jsonl"/,
+  );
   assert.match(service, /WearRoutePoint\([\s\S]*accuracy = accuracy\.toDouble\(\)/);
   assert.match(controller, /ACCESS_FINE_LOCATION/);
   assert.match(controller, /GPS 권한 필요/);
+  assert.match(controller, /GPS 기록 중/);
+  assert.match(controller, /runMetricPageIndicator/);
 });
 
 test('empty running routes never render the Seoul City Hall fallback as a recorded route', () => {

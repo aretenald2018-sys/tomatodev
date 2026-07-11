@@ -1,18 +1,8 @@
 # Tomato Project Codex Rules
 
-- Default AI Workflow: For any request that may change code, docs, data, config, tests, deployment, or UX, follow `docs/ai/WORKFLOW.md` by default.
-- NPC/life-zone character art workflow: For any NPC, home life-zone character, quest bubble, or NPC modal art request, read and follow `docs/ai/NPC_ASSET_WORKFLOW.md` before planning or editing assets/code.
-- Required order: planning session -> execution session -> review session.
-- AI가 생성하는 계획, 리뷰, ADR, 로드맵, 핸드오프 문서는 기본적으로 한국어로 작성한다. 코드 식별자, 파일 경로, 명령어, API 이름, 라이브러리 이름, 인용 원문은 원래 언어를 유지한다.
-- 기본 트리거: 기능, 디자인, UX, 아키텍처, 모호한 변경 요청에는 `/grill-me`를 자동 적용한다. 버그, 오류, 실패, 회귀, UI 깨짐, 성능 문제에는 `/diagnose`를 자동 적용한다. 둘 다 해당될 수 있으면 `/diagnose`를 먼저 적용한다.
-- 자동 진행: 세션 시작 시 `docs/ai/NEXT_ACTION.md`를 먼저 확인한다. 대기 중인 다음 단계가 있고 사용자의 새 요청과 충돌하지 않으면 다음/리뷰 프롬프트를 사용자에게 요구하지 말고 그 단계로 바로 진행한다. 각 단계 종료 시 이 파일을 갱신한다.
-- If the user asks to "just implement", "fix", "build", or "change" something without naming an approved `docs/ai/features/*.md` plan, create or update the plan first and do not edit app code yet.
-- In a planning session, only edit `docs/ai/` or `docs/adr/` unless the user explicitly identifies an approved plan and asks for a specific execution slice.
-- In an execution session, implement exactly one approved slice from the plan. Do not combine adjacent features or opportunistic refactors.
-- In a review session, review against the plan and changed files. Do not add new feature work during review.
-- Durable handoff matters more than chat memory: every substantial request must leave a plan, review, or ADR document that a fresh session can read.
-
-- Apply all rules in `CLAUDE.md` for this project before making changes.
+- Implement directly by default. Create a plan only when the user requests one, the scope is materially ambiguous, or the change spans several independent modules.
+- Diagnose before editing only when the bug cannot be reproduced or its cause is uncertain.
+- Read task-specific documentation only when the affected feature requires it. For NPC/life-zone art, read `docs/ai/NPC_ASSET_WORKFLOW.md`.
 - Project Root: `C:\Users\USER\Desktop\Tomato Project\tomatofarm(for lite version)`
 - Always run `python`, `node`, and `git` commands from the project root.
 - Production Deploy Rule for this checkout: do not use localhost as the final handoff or verification target. When work is ready for user-facing verification, commit and push to `origin/main` so GitHub Pages deploys `https://aretenald2018-sys.github.io/tomatofarm/`, then verify with `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>`.
@@ -26,9 +16,5 @@
 - Deployment is allowed for this checkout whenever the user asks to finish or verify work, because the user has instructed that work here should go through Tomato Farm production Pages rather than localhost. Push only to `origin/main` for production unless the user explicitly names another remote or repo. Do not deploy to Dashboard3 unless the user explicitly asks for Dashboard3.
 - Keep the project in vanilla JavaScript. Do not introduce frameworks, bundlers, or build tooling.
 - Modal/Button Event Rule: If a modal sheet or inner container uses `event.stopPropagation()`, do not rely on delegated click handlers from the overlay/backdrop for buttons, tabs, or actions inside it. Bind handlers inside the sheet/body or use explicit direct handlers, then verify every new button/tab in the browser.
-- Max V4 Plan Sheet Rule: `#max-v4-sheet .wt-v4-sheet` uses `event.stopPropagation()`. Any new `data-action`, week selector, benchmark editor, equipment, cleanse, or adjust button inside the plan sheet must be bound on `.wt-v4-sheet` itself or in capture phase before the stop; never bind only on `#max-v4-sheet`.
-- Max V4 Inline Handler Ban: Do not render `onclick="..."` inside `renderMaxPlanEditor` or other `max-cycle.js` plan sheet HTML. The plan sheet is produced by a lazy module, so all save/add/delete/equipment/cleanse buttons must use `data-action` plus the `.wt-v4-sheet` capture binding in `max.js`. Add or update a test that fails on `onclick=` in plan editor HTML.
-- Max V4 Draft Preservation Rule: Any action that re-renders the plan editor, especially `add-max-benchmark`, must first read the current sheet DOM values into a draft cycle. Never re-render from `_cycleOrDraft()` alone, because that discards unsaved benchmark weights/reps/tracks.
-- Max V4 Benchmark Option Dedupe Rule: Benchmark exercise selectors must not show duplicate common-module exercises. Collapse barbell, dumbbell, and bodyweight options by `movementId`; collapse machine/cable/smith options by gym scope plus `movementId`; choose the representative with the strongest recent benchmark data.
 - Lazy Module Button Rule: Do not add new always-visible `onclick="moduleFunction()"` buttons that depend on functions from lazy-loaded modules. Bind the button inside the module's render/init function, or expose a stable global before the HTML can be clicked. Verify each new tab/segmented button by clicking it in the browser.
-- Final verification must include changed files, the local URL or flow to test, and the exact server command.
+- Final handoff must name changed files and verification performed. Include a URL or server command only when the requested work exercised that surface.

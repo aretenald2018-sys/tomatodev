@@ -1,12 +1,26 @@
 package com.lifestreak.app.running;
 
+import android.content.Context;
 import android.location.Location;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import org.json.JSONObject;
 
 public final class PhoneRunningLocationStore {
+    private static final String PREFS_NAME = "tomato_running_location";
+    private static final String KEY_STATE = "state";
+    private static final String POINTS_FILE_NAME = "running-location-points.jsonl";
+    private static final int VERSION = 1;
     private static final int MAX_POINTS = 25_000;
     private static final float MAX_ACCURACY_M = 35f;
     private static final double MAX_RUNNING_SPEED_MPS = 15.0;
@@ -16,8 +30,43 @@ public final class PhoneRunningLocationStore {
     private static long startedAt = 0L;
     private static boolean tracking = false;
     private static boolean paused = false;
+    private static boolean restored = false;
 
     private PhoneRunningLocationStore() {}
+
+    public static synchronized void restore(Context context) {
+        if (restored || context == null) return;
+        restored = true;
+        String raw = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getString(KEY_STATE, null);
+        if (raw == null || raw.trim().isEmpty()) return;
+        try {
+            JSONObject state = new JSONObject(raw);
+            if (state.optInt("version", 0) != VERSION || !state.optBoolean("tracking", false)) {
+                clearPersistence(context);
+                return;
+            }
+            startedAt = Math.max(0L, state.optLong("startedAt", 0L));
+            tracking = startedAt > 0L;
+            paused = state.optBoolean("paused", false);
+            points.clear();
+            readPersistedPoints(context);
+            if (!tracking) clearPersistence(context);
+        } catch (Exception ignored) {
+            points.clear();
+            startedAt = 0L;
+            tracking = false;
+            paused = false;
+            clearPersistence(context);
+        }
+    }
+
+    public static synchronized void start(Context context, long requestedStartedAt) {
+        start(requestedStartedAt);
+        restored = true;
+        if (context == null) return;
+        deletePointsFile(context);
+        persist(context);
+    }
 
     public static synchronized void start(long requestedStartedAt) {
         points.clear();
@@ -26,12 +75,30 @@ public final class PhoneRunningLocationStore {
         paused = false;
     }
 
+    public static synchronized void pause(Context context) {
+        restore(context);
+        pause();
+        persist(context);
+    }
+
     public static synchronized void pause() {
         if (tracking) paused = true;
     }
 
+    public static synchronized void resume(Context context) {
+        restore(context);
+        resume();
+        persist(context);
+    }
+
     public static synchronized void resume() {
         if (tracking) paused = false;
+    }
+
+    public static synchronized void stop(Context context) {
+        restore(context);
+        stop();
+        clearPersistence(context);
     }
 
     public static synchronized void stop() {
@@ -41,6 +108,15 @@ public final class PhoneRunningLocationStore {
 
     public static synchronized boolean isTracking() {
         return tracking;
+    }
+
+    public static synchronized boolean accept(Context context, Location location) {
+        boolean accepted = accept(location);
+        if (accepted && context != null) {
+            appendLastPoint(context);
+            persist(context);
+        }
+        return accepted;
     }
 
     public static synchronized boolean accept(Location location) {
@@ -78,6 +154,35 @@ public final class PhoneRunningLocationStore {
         return true;
     }
 
+    public static synchronized void persist(Context context) {
+        if (context == null) return;
+        if (!tracking) {
+            clearPersistence(context);
+            return;
+        }
+        try {
+            JSONObject state = new JSONObject()
+                .put("version", VERSION)
+                .put("startedAt", startedAt)
+                .put("tracking", tracking)
+                .put("paused", paused)
+                .put("pointCount", points.size());
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEY_STATE, state.toString())
+                .apply();
+        } catch (Exception ignored) {}
+    }
+
+    public static synchronized void clearPersistence(Context context) {
+        if (context == null) return;
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .remove(KEY_STATE)
+            .apply();
+        deletePointsFile(context);
+    }
+
     public static synchronized JSObject status() {
         return snapshotAfter(points.size());
     }
@@ -108,6 +213,48 @@ public final class PhoneRunningLocationStore {
         return result;
     }
 
+    private static void readPersistedPoints(Context context) {
+        File file = pointsFile(context);
+        if (!file.isFile()) return;
+        try (
+            BufferedReader reader = new BufferedReader(
+                new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8)
+            )
+        ) {
+            String line;
+            while ((line = reader.readLine()) != null && points.size() < MAX_POINTS) {
+                Point point = Point.fromJson(line);
+                if (point != null && point.timestampMs >= startedAt) points.add(point);
+            }
+        } catch (Exception ignored) {
+            points.clear();
+        }
+    }
+
+    private static void appendLastPoint(Context context) {
+        if (points.isEmpty()) return;
+        Point point = points.get(points.size() - 1);
+        try (
+            BufferedWriter writer = new BufferedWriter(
+                new OutputStreamWriter(new FileOutputStream(pointsFile(context), true), StandardCharsets.UTF_8)
+            )
+        ) {
+            writer.write(point.toJson().toString());
+            writer.newLine();
+        } catch (Exception ignored) {}
+    }
+
+    private static File pointsFile(Context context) {
+        return new File(context.getFilesDir(), POINTS_FILE_NAME);
+    }
+
+    private static void deletePointsFile(Context context) {
+        File file = pointsFile(context);
+        if (file.exists() && !file.delete()) {
+            file.deleteOnExit();
+        }
+    }
+
     private static final class Point {
         final long timestampMs;
         final double lat;
@@ -125,6 +272,51 @@ public final class PhoneRunningLocationStore {
             this.altitude = altitude;
             this.speed = speed;
             this.bearing = bearing;
+        }
+
+        JSONObject toJson() throws Exception {
+            JSONObject json = new JSONObject()
+                .put("ts", timestampMs)
+                .put("lat", lat)
+                .put("lng", lng)
+                .put("accuracy", accuracy);
+            if (altitude != null) json.put("altitude", altitude);
+            if (speed != null) json.put("speed", speed);
+            if (bearing != null) json.put("bearing", bearing);
+            return json;
+        }
+
+        static Point fromJson(String raw) {
+            try {
+                JSONObject json = new JSONObject(raw);
+                long timestampMs = json.optLong("ts", -1L);
+                double lat = json.optDouble("lat", Double.NaN);
+                double lng = json.optDouble("lng", Double.NaN);
+                double accuracy = json.optDouble("accuracy", Double.NaN);
+                if (timestampMs < 0L ||
+                    !Double.isFinite(lat) ||
+                    !Double.isFinite(lng) ||
+                    !Double.isFinite(accuracy) ||
+                    accuracy <= 0.0 ||
+                    accuracy > MAX_ACCURACY_M) {
+                    return null;
+                }
+                Double altitude = json.has("altitude") && !json.isNull("altitude")
+                    ? json.optDouble("altitude")
+                    : null;
+                if (altitude != null && !Double.isFinite(altitude)) altitude = null;
+                Float speed = json.has("speed") && !json.isNull("speed")
+                    ? (float) json.optDouble("speed")
+                    : null;
+                if (speed != null && !Float.isFinite(speed)) speed = null;
+                Float bearing = json.has("bearing") && !json.isNull("bearing")
+                    ? (float) json.optDouble("bearing")
+                    : null;
+                if (bearing != null && !Float.isFinite(bearing)) bearing = null;
+                return new Point(timestampMs, lat, lng, (float) accuracy, altitude, speed, bearing);
+            } catch (Exception ignored) {
+                return null;
+            }
         }
     }
 }

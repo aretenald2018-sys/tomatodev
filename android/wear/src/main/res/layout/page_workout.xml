@@ -92,30 +92,50 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="38dp"
+            android:layout_height="42dp"
             android:gravity="center"
             android:orientation="horizontal"
             android:paddingStart="8dp"
             android:paddingEnd="8dp">
 
-            <TextView
-                android:id="@+id/runActiveGpsStatus"
+            <LinearLayout
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:layout_marginEnd="8dp"
                 android:layout_weight="1"
-                android:ellipsize="end"
                 android:gravity="center_vertical|end"
-                android:maxLines="1"
-                android:text="GPS 대기"
-                android:textColor="#7C8499"
-                android:textSize="8sp" />
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/runMetricPageIndicator"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:gravity="end"
+                    android:maxLines="1"
+                    android:text="요약 · 1/5"
+                    android:textColor="#C8CFDE"
+                    android:textSize="8sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/runActiveGpsStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:gravity="end"
+                    android:maxLines="1"
+                    android:text="GPS 준비 중"
+                    android:textColor="#7C8499"
+                    android:textSize="9sp" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/runPauseButton"
                 android:layout_width="34dp"
                 android:layout_height="34dp"
                 android:background="@drawable/wear_cardio_circle_muted"
+                android:contentDescription="러닝 기록 일시정지"
                 android:gravity="center"
                 android:text="II"
                 android:textColor="#D6DAE6"

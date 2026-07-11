@@ -42,14 +42,14 @@ public class TomatoRunningLocationPlugin extends Plugin {
 
     private void startWithPermission(PluginCall call) {
         long startedAt = call.getLong("startedAt", System.currentTimeMillis());
-        PhoneRunningLocationStore.start(startedAt);
+        PhoneRunningLocationStore.start(getContext(), startedAt);
         startService(TomatoRunningLocationService.ACTION_START, true);
         call.resolve(PhoneRunningLocationStore.snapshotAfter(0));
     }
 
     @PluginMethod
     public void pauseTracking(PluginCall call) {
-        PhoneRunningLocationStore.pause();
+        PhoneRunningLocationStore.pause(getContext());
         startService(TomatoRunningLocationService.ACTION_PAUSE, false);
         call.resolve(PhoneRunningLocationStore.status());
     }
@@ -60,14 +60,14 @@ public class TomatoRunningLocationPlugin extends Plugin {
             call.reject("Precise location permission is required for running GPS");
             return;
         }
-        PhoneRunningLocationStore.resume();
+        PhoneRunningLocationStore.resume(getContext());
         startService(TomatoRunningLocationService.ACTION_RESUME, true);
         call.resolve(PhoneRunningLocationStore.status());
     }
 
     @PluginMethod
     public void stopTracking(PluginCall call) {
-        PhoneRunningLocationStore.stop();
+        PhoneRunningLocationStore.stop(getContext());
         JSObject result = PhoneRunningLocationStore.snapshotAfter(call.getInt("afterIndex", 0));
         startService(TomatoRunningLocationService.ACTION_STOP, false);
         call.resolve(result);
@@ -75,11 +75,13 @@ public class TomatoRunningLocationPlugin extends Plugin {
 
     @PluginMethod
     public void getUpdates(PluginCall call) {
+        PhoneRunningLocationStore.restore(getContext());
         call.resolve(PhoneRunningLocationStore.snapshotAfter(call.getInt("afterIndex", 0)));
     }
 
     @PluginMethod
     public void getStatus(PluginCall call) {
+        PhoneRunningLocationStore.restore(getContext());
         call.resolve(PhoneRunningLocationStore.status());
     }
 

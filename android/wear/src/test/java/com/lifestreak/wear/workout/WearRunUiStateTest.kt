@@ -326,4 +326,64 @@ class WearRunUiStateTest {
             },
         )
     }
+
+    @Test
+    fun roundTripsRecoverableRunningSnapshotForPersistence() {
+        val snapshot = WearExerciseSessionSnapshot(
+            status = WearExerciseSessionStatus.ACTIVE,
+            startedAtWallClockMs = 10_000L,
+            distanceMeters = 24.0,
+            latestHeartRateBpm = 142,
+            activeDurationMs = 70_000L,
+            distanceSamples = listOf(WearDistanceSample(timestampMs = 20_000L, distanceKm = 0.02)),
+            heartRateSamples = listOf(HeartRateSample(timestampMs = 20_000L, bpm = 142)),
+            routePoints = listOf(
+                WearRoutePoint(
+                    timestampMs = 20_000L,
+                    lat = 37.5665,
+                    lng = 126.9780,
+                    accuracy = 8.0,
+                    segmentId = 0,
+                ),
+                WearRoutePoint(
+                    timestampMs = 80_000L,
+                    lat = 37.5668,
+                    lng = 126.9783,
+                    accuracy = 9.0,
+                    segmentId = 1,
+                    gapBefore = true,
+                    gapReason = "service-restart",
+                ),
+            ),
+            message = "GPS direct",
+        )
+
+        val decoded = WearExerciseSessionPersistence.decode(
+            WearExerciseSessionPersistence.encode(snapshot),
+        )
+
+        assertEquals(snapshot, decoded)
+        assertTrue(WearExerciseSessionPersistence.shouldPersist(snapshot))
+    }
+
+    @Test
+    fun doesNotPersistIdleOrInvalidRunningSnapshots() {
+        assertFalse(
+            WearExerciseSessionPersistence.shouldPersist(
+                WearExerciseSessionSnapshot(
+                    status = WearExerciseSessionStatus.IDLE,
+                    startedAtWallClockMs = 10_000L,
+                ),
+            ),
+        )
+        assertFalse(
+            WearExerciseSessionPersistence.shouldPersist(
+                WearExerciseSessionSnapshot(
+                    status = WearExerciseSessionStatus.ACTIVE,
+                    startedAtWallClockMs = 0L,
+                ),
+            ),
+        )
+        assertNull(WearExerciseSessionPersistence.decode("{not-json"))
+    }
 }

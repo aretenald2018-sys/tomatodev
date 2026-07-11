@@ -40,17 +40,18 @@ public class TomatoRunningLocationService extends Service implements LocationLis
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        PhoneRunningLocationStore.restore(this);
         String action = intent != null ? intent.getAction() : null;
         if (ACTION_PAUSE.equals(action)) {
-            PhoneRunningLocationStore.pause();
+            PhoneRunningLocationStore.pause(this);
             stopLocationUpdates();
         } else if (ACTION_STOP.equals(action)) {
-            PhoneRunningLocationStore.stop();
+            PhoneRunningLocationStore.stop(this);
             stopLocationUpdates();
             stopForegroundCompat();
             stopSelf();
         } else if (ACTION_START.equals(action) || ACTION_RESUME.equals(action)) {
-            PhoneRunningLocationStore.resume();
+            PhoneRunningLocationStore.resume(this);
             startForegroundCompat();
             startLocationUpdates();
         } else if (PhoneRunningLocationStore.isTracking()) {
@@ -70,13 +71,14 @@ public class TomatoRunningLocationService extends Service implements LocationLis
 
     @Override
     public void onDestroy() {
+        PhoneRunningLocationStore.persist(this);
         stopLocationUpdates();
         super.onDestroy();
     }
 
     @Override
     public void onLocationChanged(Location location) {
-        PhoneRunningLocationStore.accept(location);
+        PhoneRunningLocationStore.accept(this, location);
     }
 
     @Override public void onStatusChanged(String provider, int status, Bundle extras) {}
@@ -98,7 +100,7 @@ public class TomatoRunningLocationService extends Service implements LocationLis
                 locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 2_000L, 5f, this);
             }
         } catch (SecurityException ignored) {
-            PhoneRunningLocationStore.pause();
+            PhoneRunningLocationStore.pause(this);
         }
     }
 

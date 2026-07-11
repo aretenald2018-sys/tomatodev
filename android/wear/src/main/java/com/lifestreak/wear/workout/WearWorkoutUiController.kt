@@ -2,6 +2,7 @@ package com.lifestreak.wear.workout
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Handler
 import android.os.SystemClock
 import android.util.Log
@@ -22,8 +23,12 @@ class WearWorkoutUiController(
     private var sessionStoreUnsubscribe: (() -> Unit)? = null
     private var runEndUnsubscribe: (() -> Unit)? = null
     private var metricPagerAdapter: WearRunMetricPagerAdapter? = null
+    private var metricPager: ViewPager2? = null
+    private var metricPageCallback: ViewPager2.OnPageChangeCallback? = null
+    private var metricPagePosition = 0
     private var summarySyncStatus = ""
-    private var gpsStatus = "GPS 대기"
+    private var gpsStatus = "GPS 준비 중"
+    private var gpsStatusColor = Color.parseColor("#7C8499")
 
     private companion object {
         const val TAG = "TomatoWearRun"
@@ -50,6 +55,7 @@ class WearWorkoutUiController(
         v.findViewById<View>(R.id.runSummaryDoneButton)?.setOnClickListener {
             runState.reset()
             WearExerciseSessionStore.reset()
+            WearExerciseSessionPersistence.clear(v.context)
             render(v)
         }
 
@@ -62,6 +68,9 @@ class WearWorkoutUiController(
         sessionStoreUnsubscribe = null
         runEndUnsubscribe?.invoke()
         runEndUnsubscribe = null
+        metricPageCallback?.let { callback -> metricPager?.unregisterOnPageChangeCallback(callback) }
+        metricPageCallback = null
+        metricPager = null
         handler.removeCallbacksAndMessages(null)
     }
 
@@ -70,17 +79,7 @@ class WearWorkoutUiController(
         sessionStoreUnsubscribe = WearExerciseSessionStore.addListener { snapshot ->
             runState.restoreFromSession(snapshot)
             updateRunLiveMetrics(snapshot)
-            gpsStatus = when {
-                snapshot.routePoints.size >= 2 -> "GPS ${snapshot.routePoints.size}점"
-                snapshot.routePoints.size == 1 -> "현재 위치 수신"
-                snapshot.message?.contains("location", ignoreCase = true) == true -> "GPS 권한 필요"
-                snapshot.status in setOf(
-                    WearExerciseSessionStatus.STARTING,
-                    WearExerciseSessionStatus.ACTIVE,
-                    WearExerciseSessionStatus.FALLBACK,
-                ) -> "GPS 위치 수신 대기"
-                else -> gpsStatus
-            }
+            updateGpsPresentation(snapshot)
             render(v)
             if (runState.screen == WearRunUiScreen.ACTIVE) scheduleRunTick(v)
         }
@@ -97,6 +96,7 @@ class WearWorkoutUiController(
             }
 
             override fun onViewDetachedFromWindow(view: View) {
+                view.keepScreenOn = false
                 clearRunTick(view)
             }
         }
@@ -114,7 +114,8 @@ class WearWorkoutUiController(
         runEndUnsubscribe?.invoke()
         runEndUnsubscribe = null
         summarySyncStatus = ""
-        gpsStatus = "GPS 대기"
+        gpsStatus = "GPS 준비 중"
+        gpsStatusColor = Color.parseColor("#7C8499")
         runState.start()
         WearExerciseService.startRun(v.context)
         render(v)
@@ -174,6 +175,7 @@ class WearWorkoutUiController(
 
     private fun render(v: View) {
         val snapshot = runState.snapshot()
+        v.keepScreenOn = snapshot.screen == WearRunUiScreen.ACTIVE
         v.findViewById<View>(R.id.runReadyScreen)?.visibility =
             if (snapshot.screen == WearRunUiScreen.READY) View.VISIBLE else View.GONE
         v.findViewById<View>(R.id.runActiveScreen)?.visibility =
@@ -188,6 +190,8 @@ class WearWorkoutUiController(
         v.findViewById<TextView>(R.id.runActivePace)?.text = snapshot.paceText
         v.findViewById<TextView>(R.id.runActiveHeartRate)?.text = snapshot.heartRateText
         v.findViewById<TextView>(R.id.runActiveGpsStatus)?.text = gpsStatus
+        v.findViewById<TextView>(R.id.runActiveGpsStatus)?.setTextColor(gpsStatusColor)
+        v.findViewById<TextView>(R.id.runMetricPageIndicator)?.text = metricPageLabel()
         initializeMetricPager(v)?.submitSnapshot(snapshot, gpsStatus)
 
         v.findViewById<TextView>(R.id.runPausedElapsed)?.text = snapshot.durationText
@@ -232,7 +236,59 @@ class WearWorkoutUiController(
             pager.adapter = adapter
             pager.offscreenPageLimit = 1
         }
+        if (metricPager !== pager) {
+            metricPageCallback?.let { callback -> metricPager?.unregisterOnPageChangeCallback(callback) }
+            metricPager = pager
+            metricPagePosition = pager.currentItem.coerceIn(0, WearRunMetricPagerAdapter.PAGE_COUNT - 1)
+            metricPageCallback = object : ViewPager2.OnPageChangeCallback() {
+                override fun onPageSelected(position: Int) {
+                    metricPagePosition = position.coerceIn(0, WearRunMetricPagerAdapter.PAGE_COUNT - 1)
+                    v.findViewById<TextView>(R.id.runMetricPageIndicator)?.text = metricPageLabel()
+                }
+            }.also { callback -> pager.registerOnPageChangeCallback(callback) }
+        }
         return adapter
+    }
+
+    private fun metricPageLabel(): String {
+        val labels = listOf("요약", "페이스", "심박", "심박 존", "지도")
+        val position = metricPagePosition.coerceIn(0, labels.lastIndex)
+        return "${labels[position]} · ${position + 1}/${labels.size}"
+    }
+
+    private fun updateGpsPresentation(snapshot: WearExerciseSessionSnapshot) {
+        val message = snapshot.message.orEmpty()
+        val lastPoint = snapshot.routePoints.lastOrNull()
+        val accuracyText = lastPoint?.accuracy
+            ?.takeIf { accuracy -> accuracy.isFinite() && accuracy > 0.0 }
+            ?.let { accuracy -> " · ±${accuracy.toInt()}m" }
+            .orEmpty()
+        when {
+            message.contains("permission", ignoreCase = true) -> {
+                gpsStatus = "GPS 권한 필요"
+                gpsStatusColor = Color.parseColor("#FF6B6B")
+            }
+            message.contains("provider unavailable", ignoreCase = true) -> {
+                gpsStatus = "GPS를 켜주세요"
+                gpsStatusColor = Color.parseColor("#FFB35A")
+            }
+            snapshot.routePoints.size >= 2 -> {
+                gpsStatus = "GPS 기록 중 · ${snapshot.routePoints.size}점$accuracyText"
+                gpsStatusColor = Color.parseColor("#8EF7A5")
+            }
+            lastPoint != null -> {
+                gpsStatus = "GPS 수신$accuracyText · 경로 준비"
+                gpsStatusColor = Color.parseColor("#56F0D2")
+            }
+            snapshot.status in setOf(
+                WearExerciseSessionStatus.STARTING,
+                WearExerciseSessionStatus.ACTIVE,
+                WearExerciseSessionStatus.FALLBACK,
+            ) -> {
+                gpsStatus = "GPS 위치 수신 대기"
+                gpsStatusColor = Color.parseColor("#FFB35A")
+            }
+        }
     }
 
     private fun updateRunLiveMetrics(snapshot: WearExerciseSessionSnapshot) {
