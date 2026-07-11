@@ -161,7 +161,7 @@ test('running session publishes home life-zone live state without rendering a du
   assert.doesNotMatch(styleCss, /assets\/workout\/running-track-live\.png/);
 });
 
-test('saved running cards own the real map renderer instead of the live inline card', () => {
+test('saved and live running cards render the real map inside their cards', () => {
   assert.match(configJs, /PUBLIC_VWORLD_MAP_KEY/);
   assert.match(configJs, /cfg_running_map_provider/);
   assert.match(configJs, /cfg_vworld_api_key/);
@@ -186,8 +186,9 @@ test('saved running cards own the real map renderer instead of the live inline c
   assert.match(calendarJs, /renderRunningMap/);
   assert.match(calendarJs, /data-wt-running-route-map/);
   assert.match(runningSessionJs, /readRunningMapConfig/);
-  assert.doesNotMatch(runningSessionJs, /data-running-real-map/);
-  assert.doesNotMatch(runningSessionJs, /renderRunningMap/);
+  assert.match(runningSessionJs, /data-running-real-map="live"/);
+  assert.match(runningSessionJs, /data-running-live-map/);
+  assert.match(runningSessionJs, /renderRunningMap\(shell, \{ points, phase \}\)/);
   assert.doesNotMatch(runningMapJs, /키를 설정하면/);
   assert.doesNotMatch(runningSessionJs, /밤에 러닝하시나요/);
   assert.doesNotMatch(runningSessionJs, /러닝 가이드/);
@@ -299,7 +300,7 @@ test('running workout save writes a running life-zone snapshot', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260711z5-running-inline-card/);
+  assert.match(swJs, /tomatofarm-v20260711z6-running-gps-stationary-map/);
   assert.match(swJs, /\.\/workout\/index\.js\?v=20260707d-wear-bridge-load-binding/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);

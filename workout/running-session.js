@@ -3,7 +3,7 @@
 // ================================================================
 
 import { S } from './state.js';
-import { readRunningMapConfig } from './running-map.js';
+import { destroyRunningMaps, readRunningMapConfig, renderRunningMap } from './running-map.js';
 import {
   MAX_RUNNING_ROUTE_POINTS,
   buildRunningRoutePreview,
@@ -25,7 +25,10 @@ const GEO_OPTIONS = {
   timeout: 15000,
 };
 const MAX_LIVE_GPS_AGE_MS = 30_000;
-const MAX_LIVE_GPS_ACCURACY_M = 100;
+const MAX_LIVE_GPS_ACCURACY_M = 35;
+const MIN_RUNNING_DISPLACEMENT_M = 12;
+const MAX_RUNNING_GPS_ERROR_RADIUS_M = 30;
+const MIN_CONFIDENT_RUNNING_SPEED_MPS = 0.8;
 const MAX_PLAUSIBLE_RUNNING_SPEED_MPS = 15;
 const NATIVE_LOCATION_POLL_MS = 2_000;
 const DEFAULT_RUNNING_GOAL = Object.freeze({ type: 'free', value: 0 });
@@ -42,6 +45,7 @@ const _session = {
   pausedAt: null,
   pausedMs: 0,
   route: [],
+  routeRevision: 0,
   pendingGapReason: '',
   previewPoint: null,
   lastError: '',
@@ -318,6 +322,31 @@ export function runningRouteDistanceMeters(points = []) {
     total += runningDistanceMeters(route[i - 1], route[i]);
   }
   return total;
+}
+
+export function isConfidentRunningMovement(previous, point) {
+  if (!previous) return true;
+  const elapsedSec = (Number(point?.ts) - Number(previous?.ts)) / 1000;
+  if (!Number.isFinite(elapsedSec) || elapsedSec <= 0) return false;
+
+  const distanceM = runningDistanceMeters(previous, point);
+  if (!Number.isFinite(distanceM)) return false;
+  const previousAccuracy = Math.max(0, Number(previous?.accuracy) || 0);
+  const currentAccuracy = Math.max(0, Number(point?.accuracy) || 0);
+  const errorRadiusM = Math.max(
+    MIN_RUNNING_DISPLACEMENT_M,
+    Math.min(MAX_RUNNING_GPS_ERROR_RADIUS_M, Math.max(previousAccuracy, currentAccuracy) * 2),
+  );
+  if (distanceM <= errorRadiusM) return false;
+
+  const inferredSpeedMps = distanceM / elapsedSec;
+  if (inferredSpeedMps < MIN_CONFIDENT_RUNNING_SPEED_MPS
+    || inferredSpeedMps > MAX_PLAUSIBLE_RUNNING_SPEED_MPS) return false;
+
+  const reportedSpeedMps = _optionalFiniteNumber(point?.speed);
+  return reportedSpeedMps == null
+    || (reportedSpeedMps >= MIN_CONFIDENT_RUNNING_SPEED_MPS
+      && reportedSpeedMps <= MAX_PLAUSIBLE_RUNNING_SPEED_MPS);
 }
 
 export function downsampleRunningRoute(points = [], max = RUNNING_ROUTE_PREVIEW_POINTS) {
@@ -724,6 +753,7 @@ function _applyRunningDraft(draft) {
     pausedAt: normalized.pausedAt,
     pausedMs: normalized.pausedMs,
     route: normalized.route,
+    routeRevision: normalized.route.length,
     pendingGapReason: normalized.pendingGapReason,
     previewPoint: normalized.route[normalized.route.length - 1] || null,
     placeSummary: normalized.placeSummary,
@@ -874,6 +904,7 @@ function _resetLiveSession(options = {}) {
     pausedAt: null,
     pausedMs: 0,
     route: [],
+    routeRevision: 0,
     pendingGapReason: '',
     previewPoint: null,
     lastError: '',
@@ -964,13 +995,7 @@ function _isUsableLiveGpsPoint(point, now = _now()) {
   const accuracy = Number(point.accuracy);
   if (Number.isFinite(accuracy) && accuracy > MAX_LIVE_GPS_ACCURACY_M) return false;
   const last = _session.route[_session.route.length - 1];
-  if (!last) return true;
-  const elapsedSec = (point.ts - last.ts) / 1000;
-  if (elapsedSec <= 0) return true;
-  const distanceM = runningDistanceMeters(last, point);
-  const accuracyAllowance = Math.max(80, Number(last.accuracy) || 0, accuracy || 0);
-  return distanceM <= accuracyAllowance
-    || (distanceM / elapsedSec) <= MAX_PLAUSIBLE_RUNNING_SPEED_MPS;
+  return isConfidentRunningMovement(last, point);
 }
 
 function _ingestNativeLocationResult(result = {}) {
@@ -1135,6 +1160,7 @@ function _pushRoutePoint(point, options = {}) {
     stored.gapReason = gapReason;
   }
   _session.route.push(stored);
+  _session.routeRevision += 1;
   _session.pendingGapReason = '';
   if (_session.route.length === MAX_RUNNING_ROUTE_POINTS) {
     _pauseRunningCaptureAtRouteLimit();
@@ -1178,7 +1204,9 @@ function _requestActiveSeedPosition() {
 }
 
 function _seedRunningStartPoint() {
-  if (_session.previewPoint && _pushRoutePoint(_session.previewPoint, { force: true })) return;
+  if (_session.previewPoint
+    && _isUsableLiveGpsPoint(_session.previewPoint)
+    && _pushRoutePoint(_session.previewPoint, { force: true })) return;
   _requestActiveSeedPosition();
 }
 
@@ -1387,7 +1415,11 @@ function _renderProgress() {
   const pace = summary.distanceKm > 0 ? formatRunningPace(elapsed / summary.distanceKm) : "--'--''";
   const bpm = _latestRouteMetric('heartRateBpm');
   const state = isPaused ? '일시정지됨' : 'GPS 측정 중';
-  const status = _session.lastError || (isPaused ? '재개하면 GPS 기록을 이어갑니다' : 'GPS 위치를 기록하고 있어요');
+  const status = _session.lastError || (isPaused
+    ? '재개하면 GPS 기록을 이어갑니다'
+    : _session.route.length > 1
+      ? '실제 이동이 확인된 GPS 경로만 기록하고 있어요'
+      : 'GPS 정확도와 실제 이동을 확인하고 있어요');
   return `
     <article class="wt-day-ex-card wt-max-read-card wt-running-read-card wt-running-live-card" data-running-screen="progress">
       <div class="wt-max-card-kicker wt-running-card-kicker">
@@ -1400,6 +1432,7 @@ function _renderProgress() {
         <span>${formatRunningDuration(elapsed)} · ${pace}/km</span>
       </div>
       <p class="wt-running-live-status">${_escapeHtml(status)}</p>
+      ${_renderLiveRunningMap()}
       ${_renderRunningMetrics([
         { label: '시간', value: formatRunningDuration(elapsed) },
         { label: '페이스', value: `${pace}/km` },
@@ -1434,6 +1467,7 @@ function _renderSummary() {
         <span>${time} · ${pace}/km</span>
       </div>
       <p class="wt-running-live-status">${_escapeHtml(location)}</p>
+      ${_renderLiveRunningMap()}
       ${_renderRunningMetrics([
         { label: '평균 페이스', value: `${pace}/km` },
         { label: '시간', value: time },
@@ -1447,6 +1481,32 @@ function _renderSummary() {
       </div>
     </article>
   `;
+}
+
+function _renderLiveRunningMap() {
+  return `
+    <div class="wt-running-route-wrap wt-running-live-route-wrap">
+      <div class="wt-running-route-map wt-run-real-map is-active" data-running-real-map="live" data-running-live-map aria-label="실시간 러닝 GPS 경로 지도">
+        <div class="wt-run-map-canvas" data-running-map-canvas></div>
+        <div class="wt-run-map-status" data-running-map-status>GPS 경로를 확인하는 중이에요</div>
+      </div>
+    </div>
+  `;
+}
+
+function _liveRunningMapKey() {
+  return `${_session.phase}:${_session.routeRevision}`;
+}
+
+function _mountLiveRunningMap(shell, key) {
+  if (!shell) return;
+  shell.dataset.runningLiveMapKey = key;
+  const phase = _session.phase === 'summary' ? 'detail' : _session.phase;
+  const points = buildRunningRoutePreview(_session.route, RUNNING_ROUTE_PREVIEW_POINTS);
+  renderRunningMap(shell, { points, phase }).catch(error => {
+    if (shell.dataset.runningLiveMapKey !== key) return;
+    console.warn('[running-session] live map render failed:', error);
+  });
 }
 
 function _syncInlineRunningVisibility(open, root = _root()) {
@@ -1466,7 +1526,16 @@ function _render() {
   root.classList.add('is-open');
   root.hidden = false;
   _syncInlineRunningVisibility(true, root);
+  const previousMap = root.querySelector('[data-running-live-map]');
+  const mapKey = _liveRunningMapKey();
   root.innerHTML = _session.phase === 'summary' ? _renderSummary() : _renderProgress();
+  const nextMap = root.querySelector('[data-running-live-map]');
+  if (previousMap?.dataset.runningLiveMapKey === mapKey && nextMap) {
+    nextMap.replaceWith(previousMap);
+    return;
+  }
+  destroyRunningMaps(previousMap);
+  _mountLiveRunningMap(nextMap, mapKey);
 }
 
 function _handleAction(action) {
@@ -1525,6 +1594,7 @@ export function wtCloseRunningSession() {
   _session.open = false;
   _publishRunningLiveState(false);
   if (root) {
+    destroyRunningMaps(root);
     root.classList.remove('is-open');
     root.hidden = true;
     root.innerHTML = '';

@@ -5,7 +5,7 @@ import org.junit.Test
 
 class WearExerciseMetricAccumulatorTest {
     @Test
-    fun keepsEveryDistinctLocationInsideOneTenSecondWindow() {
+    fun keepsEachConfirmedRunningLocationInsideOneTenSecondWindow() {
         val accumulator = WearExerciseMetricAccumulator(
             startedAtWallClockMs = 10_000L,
             startedAtElapsedRealtimeMs = 1_000L,
@@ -16,8 +16,8 @@ class WearExerciseMetricAccumulatorTest {
                 elapsedRealtimeMs = 1_000L + index * 1_000L,
                 routePoint = WearRoutePoint(
                     timestampMs = 10_000L + index * 1_000L,
-                    lat = 37.5665 + index * 0.00001,
-                    lng = 126.9780 + index * 0.00002,
+                    lat = 37.5665,
+                    lng = 126.9780 + index * 0.00015,
                 ),
             )
         }
@@ -32,14 +32,14 @@ class WearExerciseMetricAccumulatorTest {
     }
 
     @Test
-    fun deduplicatesExactReplayWithoutCollapsingDistinctPointsAtTheSameTimestamp() {
+    fun rejectsSameTimestampLocationsUntilAConfirmedMoveArrives() {
         val accumulator = WearExerciseMetricAccumulator(
             startedAtWallClockMs = 10_000L,
             startedAtElapsedRealtimeMs = 1_000L,
         )
         val first = WearRoutePoint(timestampMs = 11_000L, lat = 37.5665, lng = 126.9780)
         val second = WearRoutePoint(timestampMs = 11_000L, lat = 37.5666, lng = 126.9781)
-        val later = WearRoutePoint(timestampMs = 12_000L, lat = 37.5667, lng = 126.9782)
+        val later = WearRoutePoint(timestampMs = 21_000L, lat = 37.5666, lng = 126.9781)
 
         listOf(later, first, second, first).forEach { point ->
             accumulator.applyMetricUpdate(
@@ -49,12 +49,11 @@ class WearExerciseMetricAccumulatorTest {
         }
 
         val route = accumulator.snapshot().routePoints
-        assertEquals(listOf(11_000L, 11_000L, 12_000L), route.map { it.timestampMs })
+        assertEquals(listOf(11_000L, 21_000L), route.map { it.timestampMs })
         assertEquals(
             listOf(
                 37.5665 to 126.9780,
                 37.5666 to 126.9781,
-                37.5667 to 126.9782,
             ),
             route.map { it.lat to it.lng },
         )
@@ -95,7 +94,7 @@ class WearExerciseMetricAccumulatorTest {
 
         val snapshot = accumulator.snapshot()
 
-        assertEquals(502.0, snapshot.distanceMeters, 0.0001)
+        assertEquals(0.0, snapshot.distanceMeters, 0.0001)
         assertEquals(152, snapshot.latestHeartRateBpm)
         assertEquals(11_500L, snapshot.activeDurationMs)
         assertEquals(
@@ -183,8 +182,29 @@ class WearExerciseMetricAccumulatorTest {
         assertEquals("2026-07-06", session.dateKey)
         assertEquals(10_000L, session.startedAtMs)
         assertEquals(20_000L, session.endedAtMs)
-        assertEquals(1_000.0, session.distanceMeters, 0.0001)
+        assertEquals(0.0, session.distanceMeters, 0.0001)
         assertEquals(listOf(HeartRateSample(timestampMs = 20_000L, bpm = 140)), session.heartRateSamples)
         assertEquals(emptyList<WearRoutePoint>(), session.routePoints)
+    }
+
+    @Test
+    fun ignoresStationaryGpsDriftInsteadOfCreatingDistance() {
+        val accumulator = WearExerciseMetricAccumulator(
+            startedAtWallClockMs = 10_000L,
+            startedAtElapsedRealtimeMs = 1_000L,
+        )
+
+        accumulator.applyMetricUpdate(
+            elapsedRealtimeMs = 1_000L,
+            routePoint = WearRoutePoint(timestampMs = 10_000L, lat = 37.5665, lng = 126.9780, accuracy = 10.0),
+        )
+        accumulator.applyMetricUpdate(
+            elapsedRealtimeMs = 62_000L,
+            routePoint = WearRoutePoint(timestampMs = 71_000L, lat = 37.56677, lng = 126.9780, accuracy = 10.0),
+        )
+
+        val snapshot = accumulator.snapshot()
+        assertEquals(1, snapshot.routePoints.size)
+        assertEquals(0.0, snapshot.distanceMeters, 0.0001)
     }
 }

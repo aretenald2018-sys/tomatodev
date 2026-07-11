@@ -127,14 +127,15 @@ try {
   }
 }
 
-test('mobile capture keeps 620 source points while draft and map work stay bounded', async () => {
+test('mobile capture stores only confirmed movement and renders it on the inline map', async () => {
   const result = await runMobileCaptureHarness();
 
-  assert.equal(result.live.pointCount, 620);
-  assert.equal(result.live.routeSummary.pointCount, 620);
-  assert.equal(result.live.route.length, 240);
+  assert.ok(result.live.pointCount > 1);
+  assert.ok(result.live.pointCount < 620);
+  assert.equal(result.live.routeSummary.pointCount, result.live.pointCount);
+  assert.equal(result.live.route.length, result.live.pointCount);
   assert.ok(result.routePointWrites <= 2, `expected one two-key draft write, got ${result.routePointWrites}`);
-  assert.equal(result.draft.route.length, 620);
+  assert.equal(result.draft.route.length, result.live.pointCount);
   assert.equal(result.activeMarker.ownerId, 'mobile-lossless-runner');
   assert.equal(result.activeMarker.draftKey, 'tomatofarm_running_session_draft_mobile-lossless-runner');
   assert.equal(Object.hasOwn(result.activeMarker, 'route'), false);
@@ -145,19 +146,17 @@ test('mobile capture keeps 620 source points while draft and map work stay bound
   assert.equal(result.draft.route[0].speed, 0);
   assert.equal(result.draft.route[0].heartRateBpm, 0);
   assert.equal(result.draft.route[0].cadenceSpm, 0);
-  assert.equal(result.draft.route[0].ts, result.draft.route[1].ts);
-  result.draft.route.forEach((point, index) => {
-    assert.equal(point.lat, 37.5209 + Math.sin(index / 8) * 0.000003);
-    assert.equal(point.lng, 126.977 + index * 0.000005);
-    assert.equal(point.ts, result.draft.route[0].ts + Math.floor(index / 2) * 1_000);
+  result.draft.route.slice(1).forEach((point, index) => {
+    assert.ok(point.ts > result.draft.route[index].ts);
   });
-  assert.match(result.rejectionError, /오래된 GPS 좌표/);
-  assert.equal(result.runData.route.length, 620);
-  assert.equal(result.runData.routeSummary.pointCount, 620);
+  assert.match(result.rejectionError, /GPS 좌표|오래된 GPS 좌표/);
+  assert.equal(result.runData.route.length, result.live.pointCount);
+  assert.equal(result.runData.routeSummary.pointCount, result.live.pointCount);
   assert.equal(result.screen, 'summary');
   assert.match(result.inlineCardBeforeFinish, /wt-running-live-card/);
   assert.match(result.inlineCardAfterFinish, /is-summary/);
-  assert.deepEqual(result.mapPointCounts, []);
+  assert.ok(result.mapPointCounts.length >= 2);
+  assert.equal(result.mapPointCounts.at(-1), result.live.pointCount);
 });
 
 test('mobile draft keeps a six-hour 1Hz route once and uses a small active marker', async () => {

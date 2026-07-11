@@ -517,7 +517,7 @@ class WearExerciseService : Service() {
         private const val ACTION_END_RUN = "com.lifestreak.wear.workout.END_RUN"
         private const val NOTIFICATION_CHANNEL_ID = "wear-exercise"
         private const val NOTIFICATION_ID = 2001
-        private const val MAX_DIRECT_GPS_ACCURACY_M = 100f
+        private const val MAX_DIRECT_GPS_ACCURACY_M = 35f
         private const val MAX_DIRECT_GPS_AGE_MS = 30_000L
         const val PERMISSION_READ_HEART_RATE = "android.permission.health.READ_HEART_RATE"
 

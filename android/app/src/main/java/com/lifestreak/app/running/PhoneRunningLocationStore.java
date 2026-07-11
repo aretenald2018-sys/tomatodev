@@ -8,8 +8,11 @@ import java.util.List;
 
 public final class PhoneRunningLocationStore {
     private static final int MAX_POINTS = 25_000;
-    private static final float MAX_ACCURACY_M = 100f;
-    private static final double MAX_SPEED_MPS = 15.0;
+    private static final float MAX_ACCURACY_M = 35f;
+    private static final double MIN_ROUTE_DISPLACEMENT_M = 12.0;
+    private static final double MAX_GPS_ERROR_RADIUS_M = 30.0;
+    private static final double MIN_CONFIDENT_RUNNING_SPEED_MPS = 0.8;
+    private static final double MAX_RUNNING_SPEED_MPS = 15.0;
     private static final long MAX_LOCATION_AGE_MS = 30_000L;
 
     private static final List<Point> points = new ArrayList<>();
@@ -62,8 +65,17 @@ public final class PhoneRunningLocationStore {
             float[] distance = new float[1];
             Location.distanceBetween(previous.lat, previous.lng, location.getLatitude(), location.getLongitude(), distance);
             double distanceM = distance[0];
-            double allowanceM = Math.max(80.0, Math.max(previous.accuracy, location.getAccuracy()));
-            if (distanceM > allowanceM && distanceM / (elapsedMs / 1000.0) > MAX_SPEED_MPS) return false;
+            double errorRadiusM = Math.max(
+                MIN_ROUTE_DISPLACEMENT_M,
+                Math.min(MAX_GPS_ERROR_RADIUS_M, Math.max(previous.accuracy, location.getAccuracy()) * 2.0)
+            );
+            double inferredSpeedMps = distanceM / (elapsedMs / 1000.0);
+            if (distanceM <= errorRadiusM
+                || inferredSpeedMps < MIN_CONFIDENT_RUNNING_SPEED_MPS
+                || inferredSpeedMps > MAX_RUNNING_SPEED_MPS) return false;
+            if (location.hasSpeed()
+                && (location.getSpeed() < MIN_CONFIDENT_RUNNING_SPEED_MPS
+                    || location.getSpeed() > MAX_RUNNING_SPEED_MPS)) return false;
         }
 
         points.add(new Point(
