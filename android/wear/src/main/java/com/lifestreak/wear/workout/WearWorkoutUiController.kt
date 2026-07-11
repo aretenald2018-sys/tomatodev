@@ -27,7 +27,7 @@ class WearWorkoutUiController(
     private var metricPageCallback: ViewPager2.OnPageChangeCallback? = null
     private var metricPagePosition = 0
     private var summarySyncStatus = ""
-    private var gpsStatus = "GPS 준비 중"
+    private var gpsStatus = "위치 확인 중"
     private var gpsStatusColor = Color.parseColor("#7C8499")
 
     private companion object {
@@ -106,7 +106,7 @@ class WearWorkoutUiController(
 
     private fun startRun(v: View) {
         if (ContextCompat.checkSelfPermission(v.context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            gpsStatus = "GPS 권한 필요"
+            gpsStatus = "위치 권한을 켜주세요"
             summarySyncStatus = "워치 설정에서 정확한 위치를 허용해주세요"
             render(v)
             return
@@ -114,7 +114,7 @@ class WearWorkoutUiController(
         runEndUnsubscribe?.invoke()
         runEndUnsubscribe = null
         summarySyncStatus = ""
-        gpsStatus = "GPS 준비 중"
+        gpsStatus = "위치 확인 중"
         gpsStatusColor = Color.parseColor("#7C8499")
         runState.start()
         WearExerciseService.startRun(v.context)
@@ -192,7 +192,7 @@ class WearWorkoutUiController(
         v.findViewById<TextView>(R.id.runActiveGpsStatus)?.text = gpsStatus
         v.findViewById<TextView>(R.id.runActiveGpsStatus)?.setTextColor(gpsStatusColor)
         v.findViewById<TextView>(R.id.runMetricPageIndicator)?.text = metricPageLabel()
-        initializeMetricPager(v)?.submitSnapshot(snapshot, gpsStatus)
+        initializeMetricPager(v)?.submitSnapshot(snapshot)
 
         v.findViewById<TextView>(R.id.runPausedElapsed)?.text = snapshot.durationText
 
@@ -253,39 +253,56 @@ class WearWorkoutUiController(
     private fun metricPageLabel(): String {
         val labels = listOf("요약", "페이스", "심박", "심박 존", "지도")
         val position = metricPagePosition.coerceIn(0, labels.lastIndex)
-        return "${labels[position]} · ${position + 1}/${labels.size}"
+        val dots = labels.indices.joinToString(" ") { index -> if (index == position) "●" else "○" }
+        return "${labels[position]}  $dots"
     }
 
     private fun updateGpsPresentation(snapshot: WearExerciseSessionSnapshot) {
         val message = snapshot.message.orEmpty()
         val lastPoint = snapshot.routePoints.lastOrNull()
-        val accuracyText = lastPoint?.accuracy
-            ?.takeIf { accuracy -> accuracy.isFinite() && accuracy > 0.0 }
-            ?.let { accuracy -> " · ±${accuracy.toInt()}m" }
-            .orEmpty()
         when {
-            message.contains("permission", ignoreCase = true) -> {
-                gpsStatus = "GPS 권한 필요"
+            message.contains("location permission", ignoreCase = true) -> {
+                gpsStatus = "위치 권한을 켜주세요"
                 gpsStatusColor = Color.parseColor("#FF6B6B")
             }
             message.contains("provider unavailable", ignoreCase = true) -> {
-                gpsStatus = "GPS를 켜주세요"
+                gpsStatus = "위치 서비스를 켜주세요"
                 gpsStatusColor = Color.parseColor("#FFB35A")
             }
+            message.contains("GPS weak", ignoreCase = true) -> {
+                gpsStatus = "야외로 이동해 주세요"
+                gpsStatusColor = Color.parseColor("#FFB35A")
+            }
+            message.contains("GPS searching", ignoreCase = true) -> {
+                gpsStatus = "위치 확인 중"
+                gpsStatusColor = Color.parseColor("#FFB35A")
+            }
+            snapshot.status == WearExerciseSessionStatus.ENDED && snapshot.routePoints.size >= 2 -> {
+                gpsStatus = "경로 저장됨"
+                gpsStatusColor = Color.parseColor("#D7FF3F")
+            }
+            snapshot.status == WearExerciseSessionStatus.ENDED && lastPoint != null -> {
+                gpsStatus = "위치 저장됨"
+                gpsStatusColor = Color.parseColor("#D7FF3F")
+            }
+            snapshot.status == WearExerciseSessionStatus.ENDED -> {
+                gpsStatus = "경로 없이 저장됨"
+                gpsStatusColor = Color.parseColor("#81877D")
+            }
             snapshot.routePoints.size >= 2 -> {
-                gpsStatus = "GPS 기록 중 · ${snapshot.routePoints.size}점$accuracyText"
-                gpsStatusColor = Color.parseColor("#8EF7A5")
+                gpsStatus = "경로 기록 중"
+                gpsStatusColor = Color.parseColor("#D7FF3F")
             }
             lastPoint != null -> {
-                gpsStatus = "GPS 수신$accuracyText · 경로 준비"
-                gpsStatusColor = Color.parseColor("#56F0D2")
+                gpsStatus = "경로 기록 시작됨"
+                gpsStatusColor = Color.parseColor("#D7FF3F")
             }
             snapshot.status in setOf(
                 WearExerciseSessionStatus.STARTING,
                 WearExerciseSessionStatus.ACTIVE,
                 WearExerciseSessionStatus.FALLBACK,
             ) -> {
-                gpsStatus = "GPS 위치 수신 대기"
+                gpsStatus = "위치 확인 중"
                 gpsStatusColor = Color.parseColor("#FFB35A")
             }
         }

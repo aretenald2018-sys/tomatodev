@@ -90,7 +90,7 @@ class WearRunLiveRouteMapView @JvmOverloads constructor(
     defStyleAttr: Int = 0,
 ) : View(context, attrs, defStyleAttr) {
     private val routePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.rgb(87, 241, 122)
+        color = Color.rgb(215, 255, 63)
         strokeWidth = 4f
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
@@ -125,10 +125,10 @@ class WearRunLiveRouteMapView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        canvas.drawColor(Color.rgb(7, 18, 18))
+        canvas.drawColor(Color.rgb(5, 7, 6))
         val activeViewport = viewport
         if (activeViewport == null) {
-            drawCenteredLabel(canvas, "GPS 위치 수신 대기", Color.rgb(124, 132, 153))
+            drawCenteredLabel(canvas, "위치 확인 중", Color.rgb(129, 135, 125))
             return
         }
 
@@ -255,7 +255,7 @@ class WearRunLiveRouteMapView @JvmOverloads constructor(
             markerPaint.color = Color.rgb(15, 32, 27)
             markerPaint.style = Paint.Style.FILL
             canvas.drawCircle(point.x.toFloat(), point.y.toFloat(), 9f, markerPaint)
-            markerPaint.color = Color.rgb(87, 241, 122)
+            markerPaint.color = Color.rgb(215, 255, 63)
             canvas.drawCircle(point.x.toFloat(), point.y.toFloat(), 6f, markerPaint)
             markerPaint.color = Color.WHITE
             canvas.drawCircle(point.x.toFloat(), point.y.toFloat(), 2.2f, markerPaint)

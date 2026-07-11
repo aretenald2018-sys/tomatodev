@@ -2,13 +2,14 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000"
-    android:padding="10dp">
+    android:background="#050706">
 
     <com.lifestreak.wear.workout.WearRunLiveRouteMapView
         android:id="@+id/runRouteMap"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:background="@drawable/wear_run_map_round"
+        android:clipToOutline="true" />
 
     <TextView
         android:id="@+id/runRouteCoordinate"
@@ -19,20 +20,15 @@
         android:background="#AA000000"
         android:gravity="center"
         android:maxLines="1"
-        android:text="GPS 위치 수신 대기"
-        android:textColor="#F4F7FF"
-        android:textSize="7sp" />
+        android:fontFamily="sans-serif-medium"
+        android:letterSpacing="0.12"
+        android:paddingStart="7dp"
+        android:paddingTop="3dp"
+        android:paddingEnd="7dp"
+        android:paddingBottom="3dp"
+        android:text="내 경로"
+        android:textColor="#D7FF3F"
+        android:textSize="8sp"
+        android:textStyle="bold" />
 
-    <TextView
-        android:id="@+id/runRouteStatus"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|center_horizontal"
-        android:layout_marginBottom="6dp"
-        android:background="#AA000000"
-        android:gravity="center"
-        android:maxLines="1"
-        android:text="GPS 위치 수신 대기"
-        android:textColor="#8EF7A5"
-        android:textSize="8sp" />
 </FrameLayout>

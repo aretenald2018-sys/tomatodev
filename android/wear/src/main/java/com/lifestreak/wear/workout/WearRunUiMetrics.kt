@@ -49,13 +49,11 @@ data class WearRunUiSnapshot(
     val paceText: String = formatPace(durationMs, distanceKm)
     val averagePaceText: String = paceText
     val fastestPaceText: String = paceTrend.minOfOrNull { it.secondsPerKm }?.let(::formatPaceSeconds) ?: "--"
-    val estimatedCaloriesKcal: Int = estimateCaloriesKcal(distanceKm)
-    val calorieText: String = "$estimatedCaloriesKcal kcal"
     val heartRateText: String = heartRateBpm?.let { "$it bpm" } ?: "-- bpm"
     val averageHeartRateBpm: Int? = averageHeartRateBpm(heartRateTrend)
     val maxHeartRateBpm: Int? = heartRateTrend.maxOfOrNull { it.bpm }
     val heartZoneRows: List<WearHeartZoneRow> = heartRateTrend
-        .takeIf { it.isNotEmpty() }
+        .takeIf { it.size >= 2 }
         ?.let(::buildHeartZoneRows)
         ?: emptyList()
 }
@@ -79,13 +77,10 @@ internal fun buildPaceTrend(samples: List<WearDistanceSample>): List<WearPaceTre
             val distanceDeltaKm = next.distanceKm - previous.distanceKm
             if (durationMs <= 0L || distanceDeltaKm <= 0.0) return@mapNotNull null
             val secondsPerKm = (durationMs / 1000.0 / distanceDeltaKm).toInt()
+            if (secondsPerKm < MIN_VALID_SECONDS_PER_KM) return@mapNotNull null
             WearPaceTrendPoint(
                 timestampMs = next.timestampMs,
-                secondsPerKm = if (secondsPerKm < MIN_VALID_SECONDS_PER_KM) {
-                    FALLBACK_SECONDS_PER_KM
-                } else {
-                    secondsPerKm
-                },
+                secondsPerKm = secondsPerKm,
             )
         }
 }
@@ -137,11 +132,6 @@ private fun formatPaceSeconds(secondsPerKm: Int): String {
     return String.format(Locale.US, "%d'%02d\"", safeSeconds / 60, safeSeconds % 60)
 }
 
-private fun estimateCaloriesKcal(distanceKm: Double): Int {
-    if (!distanceKm.isFinite() || distanceKm <= 0.0) return 0
-    return (distanceKm * 64.0).roundToInt()
-}
-
 private fun averageHeartRateBpm(samples: List<HeartRateSample>): Int? {
     if (samples.isEmpty()) return null
     return samples.map { it.bpm }.average().roundToInt()
@@ -166,16 +156,11 @@ private fun buildHeartZoneRows(samples: List<HeartRateSample>): List<WearHeartZo
 
 private fun heartZoneDurationMs(samples: List<HeartRateSample>, index: Int): Long {
     val current = samples[index]
-    val nextDurationMs = samples.getOrNull(index + 1)?.let { next ->
+    val measuredDurationMs = samples.getOrNull(index + 1)?.let { next ->
         next.timestampMs - current.timestampMs
-    }
-    val previousDurationMs = samples.getOrNull(index - 1)?.let { previous ->
-        current.timestampMs - previous.timestampMs
-    }
-    val inferredDurationMs = listOfNotNull(nextDurationMs, previousDurationMs)
-        .firstOrNull { it > 0L }
-        ?: HEART_ZONE_DEFAULT_SAMPLE_MS
-    return inferredDurationMs.coerceIn(1_000L, HEART_ZONE_MAX_SAMPLE_MS)
+    } ?: return 0L
+    if (measuredDurationMs <= 0L) return 0L
+    return measuredDurationMs.coerceAtMost(HEART_ZONE_MAX_SAMPLE_MS)
 }
 
 private fun heartZoneFor(bpm: Int): String =
@@ -200,8 +185,6 @@ private fun isValidRoutePoint(point: WearRoutePoint): Boolean =
         point.lng in -180.0..180.0
 
 private const val MIN_VALID_SECONDS_PER_KM = 180
-private const val FALLBACK_SECONDS_PER_KM = 600
 private const val MIN_HEART_RATE_BPM = 30
 private const val MAX_HEART_RATE_BPM = 240
-private const val HEART_ZONE_DEFAULT_SAMPLE_MS = 10_000L
 private const val HEART_ZONE_MAX_SAMPLE_MS = 60_000L

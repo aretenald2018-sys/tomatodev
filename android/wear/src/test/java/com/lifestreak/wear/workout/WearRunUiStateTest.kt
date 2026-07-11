@@ -167,15 +167,13 @@ class WearRunUiStateTest {
         assertEquals("6'40\"", snapshot.averagePaceText)
         assertEquals("5'00\"", snapshot.fastestPaceText)
         assertEquals(listOf(500, 461, 352, 300, 461), snapshot.paceTrend.map { it.secondsPerKm })
-        assertEquals(48, snapshot.estimatedCaloriesKcal)
-        assertEquals("48 kcal", snapshot.calorieText)
 
         assertEquals(147, snapshot.averageHeartRateBpm)
         assertEquals(185, snapshot.maxHeartRateBpm)
         assertEquals(listOf(110, 130, 145, 165, 185), snapshot.heartRateTrend.map { it.bpm })
         assertEquals(listOf("5", "4", "3", "2", "1"), snapshot.heartZoneRows.map { it.zoneLabel })
         assertEquals(
-            listOf(60_000L, 60_000L, 60_000L, 60_000L, 60_000L),
+            listOf(0L, 60_000L, 60_000L, 60_000L, 60_000L),
             snapshot.heartZoneRows.map { it.durationMs },
         )
 
@@ -211,7 +209,7 @@ class WearRunUiStateTest {
 
         assertEquals(listOf("5", "4", "3", "2", "1"), snapshot.heartZoneRows.map { it.zoneLabel })
         assertEquals(
-            listOf(10_000L, 10_000L, 10_000L, 10_000L, 10_000L),
+            listOf(0L, 10_000L, 10_000L, 10_000L, 10_000L),
             snapshot.heartZoneRows.map { it.durationMs },
         )
     }
@@ -233,8 +231,6 @@ class WearRunUiStateTest {
         assertEquals("--", snapshot.averagePaceText)
         assertEquals("--", snapshot.fastestPaceText)
         assertTrue(snapshot.paceTrend.isEmpty())
-        assertEquals(0, snapshot.estimatedCaloriesKcal)
-        assertEquals("0 kcal", snapshot.calorieText)
 
         assertNull(snapshot.averageHeartRateBpm)
         assertNull(snapshot.maxHeartRateBpm)
@@ -274,10 +270,11 @@ class WearRunUiStateTest {
 
         val snapshot = state.snapshot()
 
-        assertEquals(listOf(600), snapshot.paceTrend.map { it.secondsPerKm })
+        assertTrue(snapshot.paceTrend.isEmpty())
         assertEquals(150, snapshot.averageHeartRateBpm)
         assertEquals(150, snapshot.maxHeartRateBpm)
         assertEquals(listOf(150), snapshot.heartRateTrend.map { it.bpm })
+        assertTrue(snapshot.heartZoneRows.isEmpty())
         assertEquals(2, snapshot.routeProjection.points.size)
         assertTrue(snapshot.routeProjection.isReady)
         assertTrue(

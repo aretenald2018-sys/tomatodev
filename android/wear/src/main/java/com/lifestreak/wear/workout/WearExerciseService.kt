@@ -9,6 +9,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
@@ -40,14 +44,19 @@ class WearExerciseService : Service() {
     private var wallClockOffsetMs = 0L
     private val activeDurationTracker = WearExerciseActiveDurationTracker()
     private var lastDirectLocationElapsedRealtimeMs = 0L
+    private var lastGpsStatusPublishedElapsedRealtimeMs = 0L
+    private var gpsStatusMessage = GPS_STATUS_SEARCHING
     private var directLocationManager: LocationManager? = null
     private var directLocationListener: LocationListener? = null
+    private var directHeartRateManager: SensorManager? = null
+    private var directHeartRateListener: SensorEventListener? = null
     private var persistenceUnsubscribe: (() -> Unit)? = null
 
     override fun onCreate() {
         super.onCreate()
         exerciseClient = HealthServices.getClient(this).exerciseClient
         directLocationManager = getSystemService(LocationManager::class.java)
+        directHeartRateManager = getSystemService(SensorManager::class.java)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -72,6 +81,7 @@ class WearExerciseService : Service() {
         persistenceUnsubscribe = null
         clearExerciseCallback()
         stopDirectLocationUpdates()
+        stopDirectHeartRateUpdates()
         super.onDestroy()
     }
 
@@ -87,6 +97,8 @@ class WearExerciseService : Service() {
         wallClockOffsetMs = startedAtWallClockMs - startedAtElapsedRealtimeMs
         activeDurationTracker.start(startedAtElapsedRealtimeMs)
         lastDirectLocationElapsedRealtimeMs = 0L
+        lastGpsStatusPublishedElapsedRealtimeMs = 0L
+        gpsStatusMessage = GPS_STATUS_SEARCHING
         val nextAccumulator = WearExerciseMetricAccumulator(
             startedAtWallClockMs = startedAtWallClockMs,
             startedAtElapsedRealtimeMs = startedAtElapsedRealtimeMs,
@@ -98,11 +110,12 @@ class WearExerciseService : Service() {
 
         startForegroundWithHealthType(buildNotification())
         startDirectLocationUpdates()
+        startDirectHeartRateUpdates()
         if (!hasActivityRecognitionPermission()) {
             WearExerciseSessionStore.publishFromAccumulator(
                 status = WearExerciseSessionStatus.ACTIVE,
                 accumulator = nextAccumulator,
-                message = "GPS direct · activity permission missing",
+                message = "$gpsStatusMessage · activity permission missing",
             )
             return
         }
@@ -132,6 +145,7 @@ class WearExerciseService : Service() {
             -> {
                 startForegroundWithHealthType(buildNotification())
                 startDirectLocationUpdates()
+                startDirectHeartRateUpdates()
                 if (hasActivityRecognitionPermission()) {
                     registerExerciseCallback()
                     exerciseStarted = true
@@ -140,6 +154,7 @@ class WearExerciseService : Service() {
             WearExerciseSessionStatus.PAUSED -> {
                 startForegroundWithHealthType(buildNotification("러닝 기록 일시정지"))
                 stopDirectLocationUpdates()
+                stopDirectHeartRateUpdates()
                 if (hasActivityRecognitionPermission()) {
                     registerExerciseCallback()
                     exerciseStarted = true
@@ -250,6 +265,7 @@ class WearExerciseService : Service() {
             )
         } ?: WearExerciseSessionStore.markPaused()
         stopDirectLocationUpdates()
+        stopDirectHeartRateUpdates()
         if (!exerciseStarted) return
         val pauseFuture = exerciseClient.pauseExerciseAsync()
         pauseFuture.addListener(
@@ -281,6 +297,7 @@ class WearExerciseService : Service() {
         }
         startForegroundWithHealthType(buildNotification())
         startDirectLocationUpdates()
+        startDirectHeartRateUpdates()
         if (!exerciseStarted) return
         val resumeFuture = exerciseClient.resumeExerciseAsync()
         resumeFuture.addListener(
@@ -351,6 +368,7 @@ class WearExerciseService : Service() {
 
     private fun finishService() {
         stopDirectLocationUpdates()
+        stopDirectHeartRateUpdates()
         clearExerciseCallback()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -415,6 +433,7 @@ class WearExerciseService : Service() {
         )
         val locationPoints = metrics.getData(DataType.LOCATION)
             .sortedBy { point -> point.timeDurationFromBoot }
+        if (locationPoints.isNotEmpty()) gpsStatusMessage = GPS_STATUS_DIRECT
 
         nextAccumulator.applyMetricUpdate(
             elapsedRealtimeMs = elapsedRealtimeMs,
@@ -479,6 +498,9 @@ class WearExerciseService : Service() {
         lastDirectLocationElapsedRealtimeMs = snapshot.routePoints
             .maxOfOrNull { point -> (point.timestampMs - wallClockOffsetMs).coerceAtLeast(0L) }
             ?: 0L
+        gpsStatusMessage = snapshot.message
+            ?.takeIf { message -> message.startsWith("GPS ") }
+            ?: if (snapshot.routePoints.isEmpty()) GPS_STATUS_SEARCHING else GPS_STATUS_DIRECT
         val runningStatus = snapshot.status in setOf(
             WearExerciseSessionStatus.STARTING,
             WearExerciseSessionStatus.ACTIVE,
@@ -528,8 +550,13 @@ class WearExerciseService : Service() {
                 publishDirectLocation(location)
             }
 
-            override fun onProviderEnabled(provider: String) = Unit
-            override fun onProviderDisabled(provider: String) = Unit
+            override fun onProviderEnabled(provider: String) {
+                publishGpsStatus(GPS_STATUS_SEARCHING)
+            }
+
+            override fun onProviderDisabled(provider: String) {
+                publishGpsStatus("GPS provider unavailable")
+            }
         }
         try {
             val gpsEnabled = manager.isProviderEnabled(LocationManager.GPS_PROVIDER)
@@ -540,13 +567,16 @@ class WearExerciseService : Service() {
                 manager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 2_000L, 5f, listener)
                 directLocationListener = listener
             } else {
+                gpsStatusMessage = "GPS provider unavailable"
                 WearExerciseSessionStore.markFallback("GPS provider unavailable")
             }
         } catch (_: SecurityException) {
             directLocationListener = null
+            gpsStatusMessage = "location permission missing"
             WearExerciseSessionStore.markFallback("location permission missing")
         } catch (_: IllegalArgumentException) {
             directLocationListener = null
+            gpsStatusMessage = "GPS provider unavailable"
             WearExerciseSessionStore.markFallback("GPS provider unavailable")
         }
     }
@@ -562,10 +592,13 @@ class WearExerciseService : Service() {
 
     private fun publishDirectLocation(location: Location) {
         val accuracy = location.accuracy.takeIf { location.hasAccuracy() && it.isFinite() && it > 0f } ?: return
-        if (accuracy > MAX_DIRECT_GPS_ACCURACY_M) return
         val now = System.currentTimeMillis()
         val locationTime = location.time.takeIf { it > 0L } ?: now
         if (now - locationTime > MAX_DIRECT_GPS_AGE_MS || locationTime - now > 10_000L) return
+        if (accuracy > MAX_DIRECT_GPS_ACCURACY_M) {
+            publishGpsStatus("GPS weak ±${accuracy.roundToInt()}m")
+            return
+        }
         val currentAccumulator = accumulator ?: return
         val reportedElapsedRealtimeMs = if (location.elapsedRealtimeNanos > 0L) {
             location.elapsedRealtimeNanos / 1_000_000L
@@ -599,7 +632,75 @@ class WearExerciseService : Service() {
         WearExerciseSessionStore.publishFromAccumulator(
             status = WearExerciseSessionStatus.ACTIVE,
             accumulator = currentAccumulator,
-            message = "GPS direct",
+            message = GPS_STATUS_DIRECT,
+        )
+        gpsStatusMessage = GPS_STATUS_DIRECT
+    }
+
+    private fun publishGpsStatus(message: String) {
+        gpsStatusMessage = message
+        val elapsedRealtimeMs = SystemClock.elapsedRealtime()
+        if (elapsedRealtimeMs - lastGpsStatusPublishedElapsedRealtimeMs < GPS_STATUS_PUBLISH_INTERVAL_MS) return
+        val currentAccumulator = accumulator ?: return
+        lastGpsStatusPublishedElapsedRealtimeMs = elapsedRealtimeMs
+        WearExerciseSessionStore.publishFromAccumulator(
+            status = WearExerciseSessionStatus.ACTIVE,
+            accumulator = currentAccumulator,
+            message = message,
+        )
+    }
+
+    private fun startDirectHeartRateUpdates() {
+        if (!hasHeartRatePermission() || directHeartRateListener != null) return
+        val manager = directHeartRateManager ?: return
+        val sensor = manager.getDefaultSensor(Sensor.TYPE_HEART_RATE) ?: return
+        val listener = object : SensorEventListener {
+            override fun onSensorChanged(event: SensorEvent) {
+                if (event.sensor.type != Sensor.TYPE_HEART_RATE) return
+                val bpm = event.values.firstOrNull()
+                    ?.takeIf { value -> value.isFinite() && value in MIN_HEART_RATE_BPM..MAX_HEART_RATE_BPM }
+                    ?.roundToInt()
+                    ?: return
+                publishDirectHeartRate(bpm, event.timestamp)
+            }
+
+            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+        }
+        try {
+            if (manager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_NORMAL)) {
+                directHeartRateListener = listener
+            }
+        } catch (_: SecurityException) {
+            directHeartRateListener = null
+        }
+    }
+
+    private fun stopDirectHeartRateUpdates() {
+        val listener = directHeartRateListener ?: return
+        directHeartRateManager?.unregisterListener(listener)
+        directHeartRateListener = null
+    }
+
+    private fun publishDirectHeartRate(bpm: Int, timestampNanos: Long) {
+        if (WearExerciseSessionStore.current().status !in setOf(
+                WearExerciseSessionStatus.STARTING,
+                WearExerciseSessionStatus.ACTIVE,
+                WearExerciseSessionStatus.FALLBACK,
+            )
+        ) return
+        val currentAccumulator = accumulator ?: return
+        val elapsedRealtimeMs = (timestampNanos / 1_000_000L)
+            .takeIf { timestampMs -> timestampMs > 0L }
+            ?: SystemClock.elapsedRealtime()
+        currentAccumulator.applyMetricUpdate(
+            elapsedRealtimeMs = elapsedRealtimeMs,
+            heartRateBpm = bpm,
+            activeDurationMs = activeDurationTracker.activeDurationAt(elapsedRealtimeMs),
+        )
+        WearExerciseSessionStore.publishFromAccumulator(
+            status = WearExerciseSessionStatus.ACTIVE,
+            accumulator = currentAccumulator,
+            message = locationStatusMessage(),
         )
     }
 
@@ -652,7 +753,7 @@ class WearExerciseService : Service() {
     }
 
     private fun locationStatusMessage(): String? {
-        return if (hasLocationPermission()) null else "location permission missing"
+        return if (hasLocationPermission()) gpsStatusMessage else "location permission missing"
     }
 
     private fun wallClockMsForElapsed(elapsedRealtimeMs: Long): Long {
@@ -707,6 +808,11 @@ class WearExerciseService : Service() {
         private const val NOTIFICATION_ID = 2001
         private const val MAX_DIRECT_GPS_ACCURACY_M = 35f
         private const val MAX_DIRECT_GPS_AGE_MS = 30_000L
+        private const val GPS_STATUS_PUBLISH_INTERVAL_MS = 5_000L
+        private const val GPS_STATUS_SEARCHING = "GPS searching"
+        private const val GPS_STATUS_DIRECT = "GPS direct"
+        private const val MIN_HEART_RATE_BPM = 30f
+        private const val MAX_HEART_RATE_BPM = 240f
         const val PERMISSION_READ_HEART_RATE = "android.permission.health.READ_HEART_RATE"
 
         fun startRun(context: Context) {

@@ -312,7 +312,7 @@ function _renderGoogleMap(canvas, maps, route) {
         lines.push(new maps.Polyline({
           path: segment,
           geodesic: true,
-          strokeColor: '#55d632',
+          strokeColor: '#d7ff3f',
           strokeOpacity: 0.92,
           strokeWeight: 7,
           map,
@@ -366,7 +366,7 @@ function _renderTmap(canvas, Tmapv2, route) {
       if (segment.length > 1) {
         lines.push(new Tmapv2.Polyline({
           path: segment.map(point => _tmapPoint(Tmapv2, point)),
-          strokeColor: '#55d632',
+          strokeColor: '#d7ff3f',
           strokeWeight: 7,
           map,
         }));

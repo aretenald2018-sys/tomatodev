@@ -234,8 +234,6 @@ class WearRunPayloadTest {
         )
 
         val snapshot = state.snapshot()
-        assertTrue(snapshot.estimatedCaloriesKcal > 0)
-        assertTrue(snapshot.calorieText.endsWith("kcal"))
         assertTrue(snapshot.heartZoneRows.isNotEmpty())
         assertTrue(snapshot.paceTrend.isNotEmpty())
         assertTrue(snapshot.heartRateTrend.isNotEmpty())
@@ -271,7 +269,6 @@ class WearRunPayloadTest {
             assertTrue("missing phone-save key: $key", json.has(key))
         }
         listOf(
-            "calorieText",
             "estimatedCaloriesKcal",
             "heartZoneRows",
             "paceTrend",

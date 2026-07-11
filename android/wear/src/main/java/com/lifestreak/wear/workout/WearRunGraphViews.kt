@@ -8,7 +8,6 @@ import android.graphics.Path
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
-import kotlin.math.min
 
 class WearRunPaceGraphView @JvmOverloads constructor(
     context: Context,
@@ -16,6 +15,7 @@ class WearRunPaceGraphView @JvmOverloads constructor(
     defStyleAttr: Int = 0,
 ) : View(context, attrs, defStyleAttr) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val path = Path()
     private var values: List<Float> = emptyList()
 
     fun setTrend(trend: List<WearPaceTrendPoint>) {
@@ -33,36 +33,46 @@ class WearRunPaceGraphView @JvmOverloads constructor(
         val bottom = (height - paddingBottom).toFloat()
         val chartWidth = (right - left).coerceAtLeast(1f)
         val chartHeight = (bottom - top).coerceAtLeast(1f)
-        if (values.isEmpty()) {
-            drawEmptyState(canvas, left, right, top, bottom, "페이스 수집 중")
+        if (values.size < 2) {
+            drawEmptyState(canvas, left, right, top, bottom, "페이스 계산 중")
             return
         }
-        val bars = values
-        val maxValue = bars.maxOrNull()?.coerceAtLeast(1f) ?: 1f
-        val gap = 3f
-        val barWidth = ((chartWidth - gap * (bars.size - 1)) / bars.size).coerceAtLeast(2f)
+        val samples = values
+        val minValue = samples.minOrNull() ?: 0f
+        val maxValue = samples.maxOrNull() ?: minValue
+        val valueRange = (maxValue - minValue).takeIf { it > 0f } ?: 1f
 
         paint.style = Paint.Style.STROKE
-        paint.strokeWidth = 1.2f
-        paint.color = Color.rgb(22, 78, 86)
-        canvas.drawLine(left, bottom - 1f, right, bottom - 1f, paint)
-
-        paint.style = Paint.Style.FILL
-        bars.forEachIndexed { index, rawValue ->
-            val normalized = (rawValue / maxValue).coerceIn(0.08f, 1f)
-            val barLeft = left + index * (barWidth + gap)
-            val barTop = bottom - normalized * chartHeight
-            paint.color = if (values.isEmpty()) Color.rgb(25, 96, 105) else Color.rgb(66, 220, 224)
-            canvas.drawRoundRect(
-                barLeft,
-                barTop,
-                barLeft + barWidth,
-                bottom,
-                2.6f,
-                2.6f,
-                paint,
-            )
+        paint.strokeWidth = 1f
+        paint.color = Color.rgb(35, 42, 33)
+        for (line in 1..3) {
+            val y = top + chartHeight * line / 4f
+            canvas.drawLine(left, y, right, y, paint)
         }
+
+        path.reset()
+        samples.forEachIndexed { index, value ->
+            val x = left + chartWidth * index / (samples.size - 1).coerceAtLeast(1)
+            val y = if (maxValue == minValue) {
+                top + chartHeight / 2f
+            } else {
+                top + ((value - minValue) / valueRange).coerceIn(0f, 1f) * chartHeight
+            }
+            if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+        }
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 3f
+        paint.strokeCap = Paint.Cap.ROUND
+        paint.strokeJoin = Paint.Join.ROUND
+        paint.color = Color.rgb(215, 255, 63)
+        canvas.drawPath(path, paint)
+
+        val lastValue = samples.last()
+        val lastY = if (maxValue == minValue) top + chartHeight / 2f else {
+            top + ((lastValue - minValue) / valueRange).coerceIn(0f, 1f) * chartHeight
+        }
+        paint.style = Paint.Style.FILL
+        canvas.drawCircle(right, lastY, 4f, paint)
     }
 }
 
@@ -100,7 +110,7 @@ class WearRunHeartGraphView @JvmOverloads constructor(
 
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = 1f
-        paint.color = Color.rgb(64, 43, 35)
+        paint.color = Color.rgb(51, 31, 29)
         for (line in 1..3) {
             val y = top + chartHeight * line / 4f
             canvas.drawLine(left, y, right, y, paint)
@@ -115,7 +125,7 @@ class WearRunHeartGraphView @JvmOverloads constructor(
         paint.strokeWidth = 3f
         paint.strokeCap = Paint.Cap.ROUND
         paint.strokeJoin = Paint.Join.ROUND
-        paint.color = if (values.isEmpty()) Color.rgb(108, 68, 43) else Color.rgb(255, 128, 54)
+        paint.color = Color.rgb(255, 119, 95)
         canvas.drawPath(path, paint)
 
         paint.style = Paint.Style.FILL
@@ -166,11 +176,11 @@ class WearRunHeartZonesView @JvmOverloads constructor(
             paint.style = Paint.Style.FILL
             paint.textAlign = Paint.Align.LEFT
             paint.textSize = 11f
-            paint.color = Color.rgb(214, 218, 230)
+            paint.color = Color.rgb(247, 248, 244)
             canvas.drawText(row.label, left, centerY + 4f, paint)
 
             val track = RectF(barLeft, centerY - 5f, barRight, centerY + 5f)
-            paint.color = Color.rgb(30, 34, 44)
+            paint.color = Color.rgb(30, 35, 29)
             canvas.drawRoundRect(track, 5f, 5f, paint)
 
             val fillRight = barLeft + (barRight - barLeft) * row.fraction.coerceIn(0f, 1f)
@@ -179,7 +189,7 @@ class WearRunHeartZonesView @JvmOverloads constructor(
 
             paint.textAlign = Paint.Align.RIGHT
             paint.textSize = 10f
-            paint.color = Color.rgb(124, 132, 153)
+            paint.color = Color.rgb(129, 135, 125)
             canvas.drawText(row.timeText, timeRight, centerY + 4f, paint)
         }
     }
@@ -224,7 +234,7 @@ private fun drawEmptyState(
     text: String,
 ) {
     val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.rgb(124, 132, 153)
+        color = Color.rgb(129, 135, 125)
         textAlign = Paint.Align.CENTER
         textSize = 11f
         style = Paint.Style.FILL

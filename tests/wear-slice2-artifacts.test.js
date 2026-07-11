@@ -46,7 +46,7 @@ test('wear layout declares the run-only surfaces', () => {
     'page_workout.xml must declare exactly one active metrics pager',
   );
   assert.match(activeFlow, /androidx\.viewpager2\.widget\.ViewPager2/);
-  assert.match(layout, /런닝/);
+  assert.match(layout, /러닝/);
   assert.doesNotMatch(
     layout,
     /@\+id\/pager|@\+id\/indicator|dot[0-5]|page_(streak|checkin|week|stocks|timer)|wearWorkoutCarousel|wearWorkoutCarouselStrip|wo_list|준비중|오늘 앱 기록 없음/,

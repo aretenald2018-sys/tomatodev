@@ -288,9 +288,12 @@ test('running records save into a dedicated running session with place and devic
   assert.match(runningSessionJs, /altitude:\s*_optionalFiniteNumber/);
   assert.match(runningSessionJs, /heartRateBpm:\s*_optionalNumber/);
   assert.match(runningSessionJs, /cadenceSpm:\s*_optionalNumber/);
-  assert.match(runningSessionJs, /_runningElevationText\(summary\.elevationGainM\)/);
-  assert.match(runningSessionJs, /_runningRoundedText\(summary\.avgHeartRateBpm, '-- ♡'\)/);
-  assert.match(runningSessionJs, /_runningRoundedText\(summary\.cadenceSpm\)/);
+  assert.match(runningSessionJs, /const bpm = summary\.avgHeartRateBpm/);
+  assert.match(runningSessionJs, /\{ label: '심박', value: bpm == null \? '--' : `\$\{Math\.round\(bpm\)\} bpm` \}/);
+  assert.match(runningSessionJs, /\{ label: '평균 페이스', value: pace \}/);
+  assert.doesNotMatch(runningSessionJs, /label: '칼로리'|estimateRunningCalories|GPS 측정 중|GPS 정확도/);
+  assert.match(runningSessionJs, /OUTDOOR RUN/);
+  assert.match(runningSessionJs, /RUN COMPLETE/);
 });
 
 test('running workout save writes a running life-zone snapshot', () => {

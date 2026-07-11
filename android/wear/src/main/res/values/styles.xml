@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="WearTheme" parent="Theme.AppCompat.NoActionBar">
-        <item name="android:windowBackground">#FF000000</item>
-        <item name="android:colorBackground">#FF000000</item>
-        <item name="colorPrimary">#FFD54F</item>
-        <item name="colorAccent">#10b981</item>
+        <item name="android:windowBackground">#FF050706</item>
+        <item name="android:colorBackground">#FF050706</item>
+        <item name="colorPrimary">#FFD7FF3F</item>
+        <item name="colorAccent">#FFD7FF3F</item>
     </style>
 </resources>

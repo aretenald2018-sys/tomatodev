@@ -483,12 +483,6 @@ function _avgRouteMetric(route, key) {
   return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
 }
 
-export function estimateRunningCalories(distanceKm, weightKg = 70) {
-  const km = Math.max(0, _num(distanceKm, 0));
-  const weight = Math.max(1, _num(weightKg, 70));
-  return Math.round(km * weight);
-}
-
 export function summarizeRunningRoute(points = [], options = {}) {
   const route = normalizeRunningRoutePoints(points);
   const movementRoute = buildConfirmedRunningMovementRoute(route);
@@ -523,7 +517,7 @@ export function summarizeRunningRoute(points = [], options = {}) {
     bbox,
     centroid,
     elevationGainM: _elevationGain(movementRoute) ?? elevationGainM,
-    calories: estimateRunningCalories(preciseDistanceKm),
+    calories: null,
     avgHeartRateBpm: _avgRouteMetric(route, 'heartRateBpm'),
     cadenceSpm: _avgRouteMetric(route, 'cadenceSpm'),
     gpsAccuracySummary: _accuracySummary(route),
@@ -1196,7 +1190,7 @@ function _pauseRunningCaptureAtRouteLimit() {
     _session.phase = 'paused';
     _session.pausedAt = _now();
   }
-  _session.lastError = 'GPS 경로가 25,000개 제한에 도달해 위치 기록을 중지했어요.';
+  _session.lastError = '더 이상 경로를 기록할 수 없습니다. 러닝을 저장한 뒤 새로 시작해주세요.';
   console.error('[running-session] route point limit reached:', MAX_RUNNING_ROUTE_POINTS);
   _stopWatch();
   _stopTicker();
@@ -1416,20 +1410,6 @@ function _latestRouteMetric(key) {
   return null;
 }
 
-function _runningElevationText(value) {
-  const n = Number(value);
-  return Number.isFinite(n) ? `${Math.round(n)} m` : '--';
-}
-
-function _runningRoundedText(value, empty = '--') {
-  const n = Number(value);
-  return Number.isFinite(n) ? `${Math.round(n)}` : empty;
-}
-
-function _runningCaloriesText(value) {
-  return `${Math.max(0, Math.round(_num(value)))}`;
-}
-
 function _renderRunningMetrics(items, className = 'wt-running-primary-stats', label = '러닝 지표') {
   return `
     <div class="${className}" aria-label="${_escapeHtml(label)}">
@@ -1448,7 +1428,7 @@ function _renderRunningLiveOverview(distance, stats) {
     <div class="wt-running-overview wt-running-live-overview">
       <div class="wt-running-distance-hero">
         <strong>${_escapeHtml(distance)}</strong>
-        <span>킬로미터</span>
+        <span>KM</span>
       </div>
       ${_renderRunningMetrics(stats, 'wt-running-primary-stats', '러닝 핵심 지표')}
     </div>
@@ -1461,34 +1441,24 @@ function _renderProgress() {
   const isPaused = _session.phase === 'paused';
   const pace = summary.distanceKm > 0 ? formatRunningPace(elapsed / summary.distanceKm) : "--'--''";
   const bpm = summary.avgHeartRateBpm == null ? _latestRouteMetric('heartRateBpm') : summary.avgHeartRateBpm;
-  const cadence = summary.cadenceSpm == null ? _latestRouteMetric('cadenceSpm') : summary.cadenceSpm;
-  const state = isPaused ? '일시정지됨' : 'GPS 측정 중';
-  const status = _session.lastError || (isPaused
-    ? '재개하면 GPS 기록을 이어갑니다'
-    : _session.route.length > 1
-      ? '실제 이동이 확인된 GPS 경로만 기록하고 있어요'
-      : 'GPS 정확도와 실제 이동을 확인하고 있어요');
+  const state = isPaused ? '일시정지' : '러닝 중';
   const stats = [
-    { label: '페이스', value: pace },
     { label: '시간', value: formatRunningDuration(elapsed) },
-    { label: '칼로리', value: _runningCaloriesText(summary.calories) },
-    { label: '고도 상승', value: _runningElevationText(summary.elevationGainM) },
-    { label: '평균 심박수', value: _runningRoundedText(bpm, '-- ♡') },
-    { label: '케이던스', value: _runningRoundedText(cadence) },
+    { label: '평균 페이스', value: pace },
+    { label: '심박', value: bpm == null ? '--' : `${Math.round(bpm)} bpm` },
   ];
   return `
     <article class="wt-day-ex-card wt-max-read-card wt-running-read-card wt-running-live-card" data-running-screen="progress">
       <div class="wt-max-card-kicker wt-running-card-kicker">
-        <span><i></i>러닝 · GPS</span>
+        <span><i></i>OUTDOOR RUN</span>
         <em class="wt-running-live-state ${isPaused ? 'is-paused' : ''}">${state}</em>
       </div>
-      <div class="wt-max-card-name">러닝</div>
       ${_renderRunningLiveOverview(summary.distanceKm.toFixed(2), stats)}
-      <p class="wt-running-live-status">${_escapeHtml(status)}</p>
+      ${_session.lastError ? `<p class="wt-running-live-status is-error">${_escapeHtml(_session.lastError)}</p>` : ''}
       ${_renderLiveRunningMap()}
       <div class="wt-max-actions">
-        <button type="button" class="wt-max-action-primary" data-running-action="${isPaused ? 'resume' : 'pause'}">${isPaused ? '러닝 재개' : '일시정지'}</button>
-        <button type="button" class="wt-max-action-secondary" data-running-action="finish">러닝 종료</button>
+        <button type="button" class="wt-max-action-primary" data-running-action="${isPaused ? 'resume' : 'pause'}">${isPaused ? '계속' : '일시정지'}</button>
+        <button type="button" class="wt-max-action-secondary" data-running-action="finish">종료</button>
       </div>
     </article>
   `;
@@ -1501,18 +1471,15 @@ function _renderSummary() {
   const time = formatRunningDuration(summary.durationSec);
   const location = _session.placeSummary?.label || _runningPlaceFallback(summary).label;
   const stats = [
-    { label: '평균 페이스', value: pace },
     { label: '시간', value: time },
-    { label: '칼로리', value: _runningCaloriesText(summary.calories) },
-    { label: '고도 상승', value: _runningElevationText(summary.elevationGainM) },
-    { label: '평균 심박수', value: _runningRoundedText(summary.avgHeartRateBpm, '-- ♡') },
-    { label: '케이던스', value: _runningRoundedText(summary.cadenceSpm) },
+    { label: '평균 페이스', value: pace },
+    { label: '심박', value: summary.avgHeartRateBpm == null ? '--' : `${Math.round(summary.avgHeartRateBpm)} bpm` },
   ];
   return `
     <article class="wt-day-ex-card wt-max-read-card wt-running-read-card wt-running-live-card is-summary" data-running-screen="summary">
       <div class="wt-max-card-kicker wt-running-card-kicker">
-        <span><i></i>러닝 · GPS 기록</span>
-        <em class="wt-running-live-state is-finished">측정 완료</em>
+        <span><i></i>RUN COMPLETE</span>
+        <em class="wt-running-live-state is-finished">완료</em>
       </div>
       <div class="wt-max-card-name">러닝 완료</div>
       ${_renderRunningLiveOverview(distance, stats)}
@@ -1530,7 +1497,7 @@ function _renderLiveRunningMap() {
     <div class="wt-running-route-wrap wt-running-live-route-wrap">
       <div class="wt-running-route-map wt-run-real-map is-active" data-running-real-map="live" data-running-live-map aria-label="실시간 러닝 GPS 경로 지도">
         <div class="wt-run-map-canvas" data-running-map-canvas></div>
-        <div class="wt-run-map-status" data-running-map-status>GPS 경로를 확인하는 중이에요</div>
+        <div class="wt-run-map-status" data-running-map-status>경로 준비 중</div>
       </div>
     </div>
   `;

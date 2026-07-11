@@ -62,10 +62,35 @@ test('watch uses direct GPS fallback and refuses to start without precise locati
     /ROUTE_FILE_NAME = "wear-running-route\.jsonl"/,
   );
   assert.match(service, /WearRoutePoint\([\s\S]*accuracy = accuracy\.toDouble\(\)/);
+  assert.match(service, /GPS weak ±\$\{accuracy\.roundToInt\(\)\}m/);
+  assert.match(controller, /야외로 이동해 주세요/);
+  assert.match(controller, /위치 확인 중/);
+  assert.match(controller, /경로 기록 중/);
+  assert.doesNotMatch(controller, /\$\{snapshot\.routePoints\.size\}점|accuracyText/);
+  assert.match(service, /Sensor\.TYPE_HEART_RATE/);
+  assert.match(service, /registerListener\(listener, sensor, SensorManager\.SENSOR_DELAY_NORMAL\)/);
   assert.match(controller, /ACCESS_FINE_LOCATION/);
-  assert.match(controller, /GPS 권한 필요/);
-  assert.match(controller, /GPS 기록 중/);
+  assert.match(controller, /위치 권한을 켜주세요/);
+  assert.match(controller, /경로 저장됨/);
   assert.match(controller, /runMetricPageIndicator/);
+});
+
+test('watch UI does not invent calories, pace, or heart-zone time when sensors have no data', () => {
+  const metrics = read('android/wear/src/main/java/com/lifestreak/wear/workout/WearRunUiMetrics.kt');
+  const summary = read('android/wear/src/main/res/layout/wear_run_page_summary.xml');
+  const adapter = read('android/wear/src/main/java/com/lifestreak/wear/workout/WearRunMetricPagerAdapter.kt');
+  const graphs = read('android/wear/src/main/java/com/lifestreak/wear/workout/WearRunGraphViews.kt');
+  const routePage = read('android/wear/src/main/res/layout/wear_run_page_route.xml');
+
+  assert.doesNotMatch(metrics, /calorieText|estimateCaloriesKcal|FALLBACK_SECONDS_PER_KM|HEART_ZONE_DEFAULT_SAMPLE_MS/);
+  assert.doesNotMatch(summary, /kcal|Calories/);
+  assert.match(summary, /runSummaryPageHeartRate/);
+  assert.doesNotMatch(adapter, /String\.format[\s\S]*point\.lat/);
+  assert.match(graphs, /if \(values\.size < 2\)[\s\S]*페이스 계산 중/);
+  assert.match(routePage, /wear_run_map_round/);
+  assert.match(routePage, /android:clipToOutline="true"/);
+  assert.match(metrics, /if \(secondsPerKm < MIN_VALID_SECONDS_PER_KM\) return@mapNotNull null/);
+  assert.match(metrics, /\.takeIf \{ it\.size >= 2 \}/);
 });
 
 test('empty running routes never render the Seoul City Hall fallback as a recorded route', () => {
