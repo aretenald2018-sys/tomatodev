@@ -49,6 +49,7 @@ class WearWorkoutUiController(
         }
         v.findViewById<View>(R.id.runSummaryDoneButton)?.setOnClickListener {
             runState.reset()
+            WearExerciseSessionStore.reset()
             render(v)
         }
 
@@ -67,14 +68,21 @@ class WearWorkoutUiController(
     private fun bindExerciseStore(v: View) {
         sessionStoreUnsubscribe?.invoke()
         sessionStoreUnsubscribe = WearExerciseSessionStore.addListener { snapshot ->
+            runState.restoreFromSession(snapshot)
             updateRunLiveMetrics(snapshot)
             gpsStatus = when {
-                snapshot.routePoints.isNotEmpty() -> "GPS ${snapshot.routePoints.size}점"
+                snapshot.routePoints.size >= 2 -> "GPS ${snapshot.routePoints.size}점"
+                snapshot.routePoints.size == 1 -> "현재 위치 수신"
                 snapshot.message?.contains("location", ignoreCase = true) == true -> "GPS 권한 필요"
-                snapshot.status == WearExerciseSessionStatus.ACTIVE -> "GPS 대기"
+                snapshot.status in setOf(
+                    WearExerciseSessionStatus.STARTING,
+                    WearExerciseSessionStatus.ACTIVE,
+                    WearExerciseSessionStatus.FALLBACK,
+                ) -> "GPS 위치 수신 대기"
                 else -> gpsStatus
             }
             render(v)
+            if (runState.screen == WearRunUiScreen.ACTIVE) scheduleRunTick(v)
         }
     }
 

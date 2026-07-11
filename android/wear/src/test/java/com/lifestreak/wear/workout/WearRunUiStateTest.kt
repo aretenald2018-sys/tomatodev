@@ -51,6 +51,30 @@ class WearRunUiStateTest {
     }
 
     @Test
+    fun restoresAnActiveSessionWhenTheWorkoutScreenIsReopened() {
+        state.restoreFromSession(
+            WearExerciseSessionSnapshot(
+                status = WearExerciseSessionStatus.ACTIVE,
+                startedAtWallClockMs = 10_000L,
+                activeDurationMs = 45_000L,
+                distanceMeters = 360.0,
+                routePoints = listOf(
+                    WearRoutePoint(timestampMs = 20_000L, lat = 37.52070, lng = 127.11900),
+                ),
+            ),
+        )
+
+        now += 5_000L
+        val snapshot = state.snapshot()
+
+        assertEquals(WearRunUiScreen.ACTIVE, snapshot.screen)
+        assertEquals("00:50", snapshot.durationText)
+        assertEquals("0.36", snapshot.distanceText)
+        assertTrue(snapshot.routeProjection.hasCurrentLocation)
+        assertEquals(1, snapshot.routeProjection.geoPoints.size)
+    }
+
+    @Test
     fun rejectsInvalidDisplayMetrics() {
         state.start()
         state.updateMetrics(distanceKm = Double.POSITIVE_INFINITY, heartRateBpm = 999)
@@ -156,8 +180,8 @@ class WearRunUiStateTest {
         )
 
         assertTrue(snapshot.routeProjection.isReady)
-        assertNull(snapshot.routeProjection.fallbackText)
         assertEquals(3, snapshot.routeProjection.points.size)
+        assertEquals(3, snapshot.routeProjection.geoPoints.size)
         assertTrue(
             snapshot.routeProjection.points.all { point ->
                 point.x in 0.0..1.0 && point.y in 0.0..1.0
@@ -215,11 +239,11 @@ class WearRunUiStateTest {
         assertNull(snapshot.averageHeartRateBpm)
         assertNull(snapshot.maxHeartRateBpm)
         assertTrue(snapshot.heartRateTrend.isEmpty())
-        assertEquals(listOf(0L, 0L, 0L, 0L, 0L), snapshot.heartZoneRows.map { it.durationMs })
+        assertTrue(snapshot.heartZoneRows.isEmpty())
 
         assertFalse(snapshot.routeProjection.isReady)
-        assertEquals("GPS 대기", snapshot.routeProjection.fallbackText)
         assertTrue(snapshot.routeProjection.points.isEmpty())
+        assertTrue(snapshot.routeProjection.geoPoints.isEmpty())
     }
 
     @Test
@@ -279,8 +303,9 @@ class WearRunUiStateTest {
 
         var snapshot = state.snapshot()
         assertFalse(snapshot.routeProjection.isReady)
-        assertEquals("GPS 대기", snapshot.routeProjection.fallbackText)
         assertTrue(snapshot.routeProjection.points.isEmpty())
+        assertEquals(1, snapshot.routeProjection.geoPoints.size)
+        assertTrue(snapshot.routeProjection.hasCurrentLocation)
 
         state.updateLiveMetrics(
             distanceKm = 0.0,

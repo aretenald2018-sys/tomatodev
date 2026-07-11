@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.lifestreak.wear.R
+import java.util.Locale
 
 class WearRunMetricPagerAdapter : RecyclerView.Adapter<WearRunMetricPagerAdapter.PageViewHolder>() {
     private var snapshot: WearRunUiSnapshot? = null
@@ -71,14 +72,19 @@ class WearRunMetricPagerAdapter : RecyclerView.Adapter<WearRunMetricPagerAdapter
         }
 
         private fun bindRoute(snapshot: WearRunUiSnapshot, gpsStatus: String) {
-            itemView.findViewById<WearRunRouteView>(R.id.runRouteSketch)
+            itemView.findViewById<WearRunLiveRouteMapView>(R.id.runRouteMap)
                 ?.setRouteProjection(snapshot.routeProjection)
             itemView.findViewById<TextView>(R.id.runRouteStatus)?.text = routeStatus(snapshot.routeProjection, gpsStatus)
+            itemView.findViewById<TextView>(R.id.runRouteCoordinate)?.text = snapshot.routeProjection.currentLocation
+                ?.let { point -> String.format(Locale.US, "현재 %.5f, %.5f", point.lat, point.lng) }
+                ?: "GPS 위치 수신 대기"
         }
 
         private fun routeStatus(routeProjection: WearRouteProjection, gpsStatus: String): String {
             return if (routeProjection.isReady) {
                 "경로 ${routeProjection.points.size}점"
+            } else if (routeProjection.hasCurrentLocation) {
+                "현재 위치 수신 · 경로 대기"
             } else {
                 gpsStatus
             }

@@ -253,4 +253,17 @@ class WearExerciseMetricAccumulatorTest {
         assertEquals("pause", snapshot.routePoints[1].gapReason)
         assertEquals(0.0, snapshot.distanceMeters, 0.0001)
     }
+
+    @Test
+    fun neverLetsAStaleHealthDurationResetDirectGpsElapsedTime() {
+        val accumulator = WearExerciseMetricAccumulator(
+            startedAtWallClockMs = 10_000L,
+            startedAtElapsedRealtimeMs = 1_000L,
+        )
+
+        accumulator.applyMetricUpdate(elapsedRealtimeMs = 21_000L, activeDurationMs = 20_000L)
+        accumulator.applyMetricUpdate(elapsedRealtimeMs = 22_000L, activeDurationMs = 0L)
+
+        assertEquals(20_000L, accumulator.snapshot().activeDurationMs)
+    }
 }

@@ -36,7 +36,10 @@ class WearExerciseService : Service() {
     private var exerciseCallback: ExerciseUpdateCallback? = null
     private var accumulator: WearExerciseMetricAccumulator? = null
     private var exerciseStarted = false
+    private var endRequested = false
     private var wallClockOffsetMs = 0L
+    private var sessionStartedElapsedRealtimeMs = 0L
+    private var lastDirectLocationElapsedRealtimeMs = 0L
     private var directLocationManager: LocationManager? = null
     private var directLocationListener: LocationListener? = null
 
@@ -68,12 +71,15 @@ class WearExerciseService : Service() {
         val startedAtWallClockMs = System.currentTimeMillis()
         val startedAtElapsedRealtimeMs = SystemClock.elapsedRealtime()
         wallClockOffsetMs = startedAtWallClockMs - startedAtElapsedRealtimeMs
+        sessionStartedElapsedRealtimeMs = startedAtElapsedRealtimeMs
+        lastDirectLocationElapsedRealtimeMs = 0L
         val nextAccumulator = WearExerciseMetricAccumulator(
             startedAtWallClockMs = startedAtWallClockMs,
             startedAtElapsedRealtimeMs = startedAtElapsedRealtimeMs,
         )
         accumulator = nextAccumulator
         exerciseStarted = false
+        endRequested = false
         WearExerciseSessionStore.resetForStart(startedAtWallClockMs)
 
         if (!hasLocationPermission()) {
@@ -166,9 +172,12 @@ class WearExerciseService : Service() {
                         accumulator = nextAccumulator,
                         message = locationStatusMessage(),
                     )
-                } catch (error: Exception) {
-                    WearExerciseSessionStore.markFallback(
-                        "Health Services start failed: ${error.message ?: error.javaClass.simpleName}",
+                } catch (_: Exception) {
+                    exerciseStarted = false
+                    WearExerciseSessionStore.publishFromAccumulator(
+                        status = WearExerciseSessionStatus.ACTIVE,
+                        accumulator = nextAccumulator,
+                        message = "GPS direct · Health Services unavailable",
                     )
                 }
             },
@@ -221,6 +230,7 @@ class WearExerciseService : Service() {
     }
 
     private fun handleEndRun() {
+        endRequested = true
         if (exerciseStarted) {
             val endFuture = exerciseClient.endExerciseAsync()
             endFuture.addListener(
@@ -296,6 +306,16 @@ class WearExerciseService : Service() {
 
     private fun publishExerciseUpdate(update: ExerciseUpdate) {
         val nextAccumulator = accumulator ?: return
+        if (update.exerciseStateInfo.state.isEnded && !endRequested) {
+            exerciseStarted = false
+            clearExerciseCallback()
+            WearExerciseSessionStore.publishFromAccumulator(
+                status = WearExerciseSessionStatus.ACTIVE,
+                accumulator = nextAccumulator,
+                message = "GPS direct · Health Services ended",
+            )
+            return
+        }
         val metrics = update.latestMetrics
         val heartRateBpm = metrics.getData(DataType.HEART_RATE_BPM)
             .lastOrNull()
@@ -326,9 +346,7 @@ class WearExerciseService : Service() {
             )
         }
 
-        val endAction = WearExerciseEndPolicy.afterExerciseUpdate(
-            update.exerciseStateInfo.state.isEnded,
-        )
+        val endAction = WearExerciseEndPolicy.afterExerciseUpdate(update.exerciseStateInfo.state.isEnded && endRequested)
         val status = when (endAction) {
             WearExerciseEndAction.PUBLISH_FINAL_UPDATE -> WearExerciseSessionStatus.ENDED
             WearExerciseEndAction.WAIT_FOR_FINAL_UPDATE,
@@ -394,13 +412,21 @@ class WearExerciseService : Service() {
         val locationTime = location.time.takeIf { it > 0L } ?: now
         if (now - locationTime > MAX_DIRECT_GPS_AGE_MS || locationTime - now > 10_000L) return
         val currentAccumulator = accumulator ?: return
-        val elapsedRealtimeMs = if (location.elapsedRealtimeNanos > 0L) {
+        val reportedElapsedRealtimeMs = if (location.elapsedRealtimeNanos > 0L) {
             location.elapsedRealtimeNanos / 1_000_000L
         } else {
-            SystemClock.elapsedRealtime()
+            0L
         }
+        val systemElapsedRealtimeMs = SystemClock.elapsedRealtime()
+        val elapsedRealtimeMs = when {
+            reportedElapsedRealtimeMs > lastDirectLocationElapsedRealtimeMs -> reportedElapsedRealtimeMs
+            else -> systemElapsedRealtimeMs
+        }.coerceAtLeast(lastDirectLocationElapsedRealtimeMs + 1L)
+        lastDirectLocationElapsedRealtimeMs = elapsedRealtimeMs
+        val activeDurationMs = (elapsedRealtimeMs - sessionStartedElapsedRealtimeMs).coerceAtLeast(0L)
         currentAccumulator.applyMetricUpdate(
             elapsedRealtimeMs = elapsedRealtimeMs,
+            activeDurationMs = activeDurationMs,
             routePoint = WearRoutePoint(
                 timestampMs = wallClockMsForElapsed(elapsedRealtimeMs),
                 lat = location.latitude,
@@ -409,6 +435,11 @@ class WearExerciseService : Service() {
                 bearing = location.bearing.toDouble().takeIf { location.hasBearing() && it.isFinite() },
                 accuracy = accuracy.toDouble(),
             ),
+        )
+        currentAccumulator.applyMetricUpdate(
+            elapsedRealtimeMs = elapsedRealtimeMs,
+            distanceMeters = currentAccumulator.snapshot().distanceMeters,
+            activeDurationMs = activeDurationMs,
         )
         WearExerciseSessionStore.publishFromAccumulator(
             status = WearExerciseSessionStatus.ACTIVE,

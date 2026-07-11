@@ -49,7 +49,7 @@ class WearExerciseMetricAccumulator(
             )
         }
         if (activeDurationMs != null && activeDurationMs >= 0L) {
-            this.activeDurationMs = activeDurationMs
+            this.activeDurationMs = maxOf(this.activeDurationMs, activeDurationMs)
         }
         if (heartRateBpm != null && heartRateBpm in MIN_HEART_RATE_BPM..MAX_HEART_RATE_BPM) {
             latestHeartRateBpm = heartRateBpm

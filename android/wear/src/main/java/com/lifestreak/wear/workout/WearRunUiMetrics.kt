@@ -27,9 +27,11 @@ data class WearProjectedRoutePoint(
 
 data class WearRouteProjection(
     val points: List<WearProjectedRoutePoint> = emptyList(),
-    val fallbackText: String? = "GPS 대기",
+    val geoPoints: List<WearRoutePoint> = emptyList(),
 ) {
-    val isReady: Boolean = points.size >= 2 && fallbackText == null
+    val currentLocation: WearRoutePoint? = geoPoints.lastOrNull()
+    val hasCurrentLocation: Boolean = currentLocation != null
+    val isReady: Boolean = geoPoints.size >= 2
 }
 
 data class WearRunUiSnapshot(
@@ -52,7 +54,10 @@ data class WearRunUiSnapshot(
     val heartRateText: String = heartRateBpm?.let { "$it bpm" } ?: "-- bpm"
     val averageHeartRateBpm: Int? = averageHeartRateBpm(heartRateTrend)
     val maxHeartRateBpm: Int? = heartRateTrend.maxOfOrNull { it.bpm }
-    val heartZoneRows: List<WearHeartZoneRow> = buildHeartZoneRows(heartRateTrend)
+    val heartZoneRows: List<WearHeartZoneRow> = heartRateTrend
+        .takeIf { it.isNotEmpty() }
+        ?.let(::buildHeartZoneRows)
+        ?: emptyList()
 }
 
 internal fun validHeartRateSamples(samples: List<HeartRateSample>): List<HeartRateSample> {
@@ -89,7 +94,7 @@ internal fun projectRoute(points: List<WearRoutePoint>): WearRouteProjection {
     val validPoints = points
         .filter(::isValidRoutePoint)
         .sortedBy { it.timestampMs }
-    if (validPoints.size < 2) return WearRouteProjection()
+    if (validPoints.size < 2) return WearRouteProjection(geoPoints = validPoints)
 
     val minLng = validPoints.minOf { it.lng }
     val maxLng = validPoints.maxOf { it.lng }
@@ -105,7 +110,7 @@ internal fun projectRoute(points: List<WearRoutePoint>): WearRouteProjection {
                 y = 1.0 - normalized(point.lat, minLat, latRange),
             )
         },
-        fallbackText = null,
+        geoPoints = validPoints,
     )
 }
 

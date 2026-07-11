@@ -5,10 +5,23 @@
     android:background="#000000"
     android:padding="10dp">
 
-    <com.lifestreak.wear.workout.WearRunRouteView
-        android:id="@+id/runRouteSketch"
+    <com.lifestreak.wear.workout.WearRunLiveRouteMapView
+        android:id="@+id/runRouteMap"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
+
+    <TextView
+        android:id="@+id/runRouteCoordinate"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="6dp"
+        android:background="#AA000000"
+        android:gravity="center"
+        android:maxLines="1"
+        android:text="GPS 위치 수신 대기"
+        android:textColor="#F4F7FF"
+        android:textSize="7sp" />
 
     <TextView
         android:id="@+id/runRouteStatus"
@@ -19,7 +32,7 @@
         android:background="#AA000000"
         android:gravity="center"
         android:maxLines="1"
-        android:text="GPS 대기"
+        android:text="GPS 위치 수신 대기"
         android:textColor="#8EF7A5"
         android:textSize="8sp" />
 </FrameLayout>

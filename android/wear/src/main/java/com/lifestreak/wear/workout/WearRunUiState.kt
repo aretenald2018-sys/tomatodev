@@ -64,6 +64,39 @@ class WearRunUiState(
         routePoints = emptyList()
     }
 
+    fun restoreFromSession(snapshot: WearExerciseSessionSnapshot) {
+        when (snapshot.status) {
+            WearExerciseSessionStatus.STARTING,
+            WearExerciseSessionStatus.ACTIVE,
+            WearExerciseSessionStatus.FALLBACK -> {
+                screen = WearRunUiScreen.ACTIVE
+                startedAtMs = nowMs()
+                accumulatedMs = snapshot.activeDurationMs.coerceAtLeast(0L)
+                finishedMs = 0L
+            }
+            WearExerciseSessionStatus.PAUSED -> {
+                screen = WearRunUiScreen.PAUSED
+                startedAtMs = nowMs()
+                accumulatedMs = snapshot.activeDurationMs.coerceAtLeast(0L)
+                finishedMs = 0L
+            }
+            WearExerciseSessionStatus.ENDED -> {
+                screen = WearRunUiScreen.SUMMARY
+                startedAtMs = nowMs()
+                accumulatedMs = snapshot.activeDurationMs.coerceAtLeast(0L)
+                finishedMs = accumulatedMs
+            }
+            WearExerciseSessionStatus.IDLE,
+            WearExerciseSessionStatus.ERROR -> return
+        }
+        updateLiveMetrics(
+            distanceKm = snapshot.distanceMeters / 1_000.0,
+            distanceSamples = snapshot.distanceSamples,
+            heartRateSamples = snapshot.heartRateSamples,
+            routePoints = snapshot.routePoints,
+        )
+    }
+
     fun updateMetrics(distanceKm: Double = this.distanceKm, heartRateBpm: Int? = this.heartRateBpm) {
         if (distanceKm.isFinite() && distanceKm >= 0.0) {
             this.distanceKm = distanceKm

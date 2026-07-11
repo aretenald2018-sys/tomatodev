@@ -33,7 +33,11 @@ class WearRunPaceGraphView @JvmOverloads constructor(
         val bottom = (height - paddingBottom).toFloat()
         val chartWidth = (right - left).coerceAtLeast(1f)
         val chartHeight = (bottom - top).coerceAtLeast(1f)
-        val bars = values.takeIf { it.isNotEmpty() } ?: listOf(0.28f, 0.42f, 0.34f, 0.58f, 0.46f)
+        if (values.isEmpty()) {
+            drawEmptyState(canvas, left, right, top, bottom, "페이스 수집 중")
+            return
+        }
+        val bars = values
         val maxValue = bars.maxOrNull()?.coerceAtLeast(1f) ?: 1f
         val gap = 3f
         val barWidth = ((chartWidth - gap * (bars.size - 1)) / bars.size).coerceAtLeast(2f)
@@ -86,7 +90,11 @@ class WearRunHeartGraphView @JvmOverloads constructor(
         val bottom = (height - paddingBottom).toFloat()
         val chartWidth = (right - left).coerceAtLeast(1f)
         val chartHeight = (bottom - top).coerceAtLeast(1f)
-        val samples = values.takeIf { it.size >= 2 } ?: listOf(92f, 108f, 116f, 128f, 122f, 136f)
+        if (values.size < 2) {
+            drawEmptyState(canvas, left, right, top, bottom, "심박 수집 중")
+            return
+        }
+        val samples = values
         val minValue = samples.minOrNull() ?: 80f
         val maxValue = samples.maxOrNull()?.takeIf { it > minValue } ?: (minValue + 1f)
 
@@ -125,15 +133,26 @@ class WearRunHeartZonesView @JvmOverloads constructor(
     defStyleAttr: Int = 0,
 ) : View(context, attrs, defStyleAttr) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private var rows: List<ZoneRow> = DEFAULT_ZONE_ROWS
+    private var rows: List<ZoneRow> = emptyList()
 
     fun setZoneRows(zoneRows: List<WearHeartZoneRow>) {
-        rows = zoneRows.toZoneRows().ifEmpty { DEFAULT_ZONE_ROWS }
+        rows = zoneRows.toZoneRows()
         invalidate()
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        if (rows.isEmpty()) {
+            drawEmptyState(
+                canvas,
+                paddingLeft.toFloat(),
+                (width - paddingRight).toFloat(),
+                paddingTop.toFloat(),
+                (height - paddingBottom).toFloat(),
+                "심박 수집 중",
+            )
+            return
+        }
         val left = paddingLeft.toFloat()
         val right = (width - paddingRight).toFloat()
         val top = paddingTop.toFloat()
@@ -166,79 +185,6 @@ class WearRunHeartZonesView @JvmOverloads constructor(
     }
 }
 
-class WearRunRouteView @JvmOverloads constructor(
-    context: Context,
-    attrs: AttributeSet? = null,
-    defStyleAttr: Int = 0,
-) : View(context, attrs, defStyleAttr) {
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val path = Path()
-    private var points: List<RoutePoint> = emptyList()
-
-    fun setRouteProjection(routeProjection: WearRouteProjection) {
-        points = routeProjection.points.map { point ->
-            RoutePoint(
-                x = point.x.toFloat(),
-                y = point.y.toFloat(),
-            )
-        }
-        invalidate()
-    }
-
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-        val left = paddingLeft.toFloat() + 4f
-        val right = (width - paddingRight).toFloat() - 4f
-        val top = paddingTop.toFloat() + 4f
-        val bottom = (height - paddingBottom).toFloat() - 4f
-        val centerX = (left + right) / 2f
-        val centerY = (top + bottom) / 2f
-        val radius = min(right - left, bottom - top) / 2f
-
-        paint.style = Paint.Style.FILL
-        paint.color = Color.rgb(8, 16, 14)
-        canvas.drawCircle(centerX, centerY, radius.coerceAtLeast(1f), paint)
-
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = 1f
-        paint.color = Color.rgb(22, 56, 43)
-        canvas.drawCircle(centerX, centerY, radius * 0.72f, paint)
-        canvas.drawCircle(centerX, centerY, radius * 0.42f, paint)
-
-        if (points.size < 2) {
-            paint.style = Paint.Style.FILL
-            paint.textAlign = Paint.Align.CENTER
-            paint.textSize = 11f
-            paint.color = Color.rgb(124, 132, 153)
-            canvas.drawText("GPS 대기", centerX, centerY + 4f, paint)
-            return
-        }
-
-        path.reset()
-        points.forEachIndexed { index, point ->
-            val x = left + point.x.coerceIn(0f, 1f) * (right - left)
-            val y = top + point.y.coerceIn(0f, 1f) * (bottom - top)
-            if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
-        }
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = 4f
-        paint.strokeCap = Paint.Cap.ROUND
-        paint.strokeJoin = Paint.Join.ROUND
-        paint.color = Color.rgb(87, 241, 122)
-        canvas.drawPath(path, paint)
-
-        paint.style = Paint.Style.FILL
-        paint.color = Color.rgb(244, 247, 255)
-        points.firstOrNull()?.let { start ->
-            canvas.drawCircle(left + start.x * (right - left), top + start.y * (bottom - top), 4f, paint)
-        }
-        paint.color = Color.rgb(87, 241, 122)
-        points.lastOrNull()?.let { current ->
-            canvas.drawCircle(left + current.x * (right - left), top + current.y * (bottom - top), 5f, paint)
-        }
-    }
-}
-
 private const val MAX_TREND_POINTS = 18
 
 private data class ZoneRow(
@@ -248,28 +194,40 @@ private data class ZoneRow(
     val color: Int,
 )
 
-private data class RoutePoint(
-    val x: Float,
-    val y: Float,
-)
-
-private val DEFAULT_ZONE_ROWS = listOf(
-    ZoneRow("Z5", "--", 0f, Color.rgb(255, 78, 78)),
-    ZoneRow("Z4", "--", 0f, Color.rgb(255, 129, 54)),
-    ZoneRow("Z3", "--", 0f, Color.rgb(255, 190, 64)),
-    ZoneRow("Z2", "--", 0f, Color.rgb(108, 215, 116)),
-    ZoneRow("Z1", "--", 0f, Color.rgb(87, 166, 255)),
+private val HEART_ZONE_COLORS = listOf(
+    Color.rgb(255, 78, 78),
+    Color.rgb(255, 129, 54),
+    Color.rgb(255, 190, 64),
+    Color.rgb(108, 215, 116),
+    Color.rgb(87, 166, 255),
 )
 
 private fun List<WearHeartZoneRow>.toZoneRows(): List<ZoneRow> {
     val maxDurationMs = maxOfOrNull { it.durationMs }?.takeIf { it > 0L } ?: 1L
     return mapIndexedNotNull { index, row ->
-        val default = DEFAULT_ZONE_ROWS.getOrNull(index) ?: return@mapIndexedNotNull null
+        val color = HEART_ZONE_COLORS.getOrNull(index) ?: return@mapIndexedNotNull null
         ZoneRow(
             label = "Z${row.zoneLabel}",
             timeText = row.durationText,
             fraction = row.durationMs.toFloat() / maxDurationMs,
-            color = default.color,
+            color = color,
         )
     }
+}
+
+private fun drawEmptyState(
+    canvas: Canvas,
+    left: Float,
+    right: Float,
+    top: Float,
+    bottom: Float,
+    text: String,
+) {
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(124, 132, 153)
+        textAlign = Paint.Align.CENTER
+        textSize = 11f
+        style = Paint.Style.FILL
+    }
+    canvas.drawText(text, (left + right) / 2f, (top + bottom) / 2f + 4f, paint)
 }

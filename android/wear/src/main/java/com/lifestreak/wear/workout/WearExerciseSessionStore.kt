@@ -82,6 +82,10 @@ object WearExerciseSessionStore {
         updateStatus(WearExerciseSessionStatus.ENDED, message)
     }
 
+    fun reset() {
+        publish(WearExerciseSessionSnapshot())
+    }
+
     fun markFallback(message: String) {
         updateStatus(WearExerciseSessionStatus.FALLBACK, message)
     }
