@@ -63,5 +63,5 @@ test('workout finish saves without opening the old completion insight modal', ()
 });
 
 test('service worker cache version was bumped for workout timer summary-only UI', () => {
-  assert.match(swJs, /tomatofarm-v20260711z8-running-card-inline-route/);
+  assert.match(swJs, /tomatofarm-v20260711z10-diet-search-live-food-db/);
 });

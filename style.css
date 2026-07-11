@@ -36,6 +36,7 @@
   text-align: center;
 }
 .home-hero:has(.tf-card) { padding: 0 0 8px; text-align: left; }
+.home-hero--integrated { display: none; }
 .hero-date {
   font-size: 13px; font-weight: 500;
   color: var(--text-secondary);
@@ -2067,12 +2068,19 @@ body.wt-modal-scroll-lock {
   line-height: 1.2;
 }
 .diet-frequent-food-options {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
   gap: 6px;
   min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  padding: 1px 1px 5px;
+  scroll-snap-type: inline mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
+.diet-frequent-food-options::-webkit-scrollbar { display: none; }
 .diet-frequent-food-option {
+  flex: 0 0 min(132px, 34vw);
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
@@ -2093,6 +2101,7 @@ body.wt-modal-scroll-lock {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: color var(--transition), transform var(--transition);
+  scroll-snap-align: start;
 }
 .diet-frequent-food-option:active {
   color: var(--primary);
@@ -7352,76 +7361,6 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--primary-bg);
 }
-.meal-quick-add-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 2147482550;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  background: rgba(17, 24, 39, .34);
-}
-.meal-quick-add-sheet {
-  width: 100%;
-  max-width: 520px;
-  padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0px));
-  border-radius: 20px 20px 0 0;
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: 0 -16px 38px rgba(15, 23, 42, .18);
-}
-.meal-quick-add-head {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-bottom: 14px;
-}
-.meal-quick-add-head span {
-  color: var(--primary);
-  font-size: 12px;
-  font-weight: 850;
-}
-.meal-quick-add-head strong {
-  color: var(--text);
-  font-size: 19px;
-  line-height: 25px;
-  font-weight: 900;
-}
-.meal-quick-add-close {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 36px;
-  height: 36px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--surface2);
-  color: var(--text-secondary);
-  font-size: 22px;
-  line-height: 1;
-}
-.meal-quick-add-actions {
-  display: grid;
-  gap: 8px;
-}
-.meal-quick-add-actions button {
-  min-height: 46px;
-  border: 1px solid var(--seed-stroke-neutral, var(--border));
-  border-radius: 12px;
-  background: var(--surface2);
-  color: var(--text);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 800;
-  text-align: left;
-  padding: 0 14px;
-}
-.meal-quick-add-actions button:first-child {
-  border-color: var(--primary);
-  background: var(--primary-bg);
-  color: var(--primary);
-}
 body.wt-running-session-open {
   overflow: hidden;
 }
@@ -8313,7 +8252,7 @@ body.wt-running-session-open {
 #tab-diet .diet-frequent-food-card { background: var(--seed-bg-neutral-weak); border: 1px solid var(--seed-stroke-neutral); border-radius: 18px; padding: var(--seed-x2) var(--seed-x3); }
 #tab-diet .diet-frequent-food-section + .diet-frequent-food-section { border-top-color: var(--seed-stroke-neutral); }
 #tab-diet .diet-frequent-food-label { color: var(--seed-fg-subtle); font-size: var(--seed-t1); font-weight: 500; margin-bottom: var(--seed-x1); }
-#tab-diet .diet-frequent-food-options { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--seed-x1); }
+#tab-diet .diet-frequent-food-options { display: flex; gap: var(--seed-x1); }
 #tab-diet .diet-frequent-food-option { color: var(--seed-fg-muted); font-size: var(--seed-t1); font-weight: 500; min-height: 28px; }
 #tab-diet .diet-frequent-food-option:active { color: var(--primary); }
 #tab-diet .diet-frequent-food-name { color: var(--seed-fg-muted); font-weight: 500; }
@@ -8785,6 +8724,21 @@ body.wt-running-session-open {
   overflow: hidden;
   background: var(--surface);
 }
+.lz-hero {
+  min-height: 74px;
+  padding: 10px 42px 10px 16px;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+.lz-hero .hero-social-proof {
+  position: absolute;
+  left: 16px;
+  right: 42px;
+  bottom: 8px;
+  margin: 0;
+  color: rgba(255,255,255,0.82);
+  font-size: 11px;
+}
+.lz-hero .hero-social-proof strong { color: #fff; }
 .lz-head {
   display: flex;
   align-items: center;
@@ -8808,15 +8762,6 @@ body.wt-running-session-open {
   color: var(--text);
   font-size: 15px;
   font-weight: 800;
-  line-height: 1.25;
-  overflow-wrap: anywhere;
-}
-.lz-names {
-  display: block;
-  margin-top: 3px;
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 700;
   line-height: 1.25;
   overflow-wrap: anywhere;
 }

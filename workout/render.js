@@ -59,6 +59,8 @@ const _FREQUENT_MEAL_CFG = {
   dinner:    { foodsKey: 'dFoods', skipKey: 'dinnerSkipped' },
 };
 const _FREQUENT_LOOKBACK_DAYS = 90;
+const _FREQUENT_SUGGESTION_LIMIT = 10;
+const _RECENT_SUGGESTION_LIMIT = 10;
 const _frequentFoodSuggestions = new Map();
 
 function _selectedDateKey() {
@@ -134,8 +136,6 @@ function _collectFrequentFoodSuggestions(meal) {
   if (!cfg) return [];
   const cache = getCache?.() || {};
   const currentKey = _selectedDateKey();
-  const currentFoods = Array.isArray(S.diet[cfg.foodsKey]) ? S.diet[cfg.foodsKey] : [];
-  const currentGroups = new Set(currentFoods.map(_foodGroupKey));
   const groups = new Map();
 
   for (const [historyKey, day] of Object.entries(cache)) {
@@ -148,7 +148,6 @@ function _collectFrequentFoodSuggestions(meal) {
       const kcal = Number(food?.kcal);
       if (!name || !Number.isFinite(kcal) || kcal <= 0) continue;
       const groupKey = _foodGroupKey(food);
-      if (currentGroups.has(groupKey)) continue;
       const macroScore = _macroCompleteness(food);
       const recencyScore = (_FREQUENT_LOOKBACK_DAYS - ageDays) / _FREQUENT_LOOKBACK_DAYS;
       const prev = groups.get(groupKey);
@@ -180,7 +179,7 @@ function _collectFrequentFoodSuggestions(meal) {
       score: entry.count * 12 + entry.recencyScore * 4 + entry.macroScore,
     }))
     .sort((a, b) => b.score - a.score || b.lastDateKey.localeCompare(a.lastDateKey))
-    .slice(0, 3)
+    .slice(0, _FREQUENT_SUGGESTION_LIMIT)
     .map(entry => {
       const key = _suggestionKey(meal, entry.groupKey, entry.lastDateKey);
       const item = _cloneFoodItem(entry.item);
@@ -194,8 +193,6 @@ function _collectRecentFoodSuggestions(meal, excludedGroupKeys = new Set()) {
   if (!cfg) return [];
   const cache = getCache?.() || {};
   const currentKey = _selectedDateKey();
-  const currentFoods = Array.isArray(S.diet[cfg.foodsKey]) ? S.diet[cfg.foodsKey] : [];
-  const currentGroups = new Set(currentFoods.map(_foodGroupKey));
   const seen = new Set();
   const suggestions = [];
 
@@ -215,13 +212,13 @@ function _collectRecentFoodSuggestions(meal, excludedGroupKeys = new Set()) {
       const kcal = Number(food?.kcal);
       if (!name || !Number.isFinite(kcal) || kcal <= 0) continue;
       const groupKey = _foodGroupKey(food);
-      if (currentGroups.has(groupKey) || excludedGroupKeys.has(groupKey) || seen.has(groupKey)) continue;
+      if (excludedGroupKeys.has(groupKey) || seen.has(groupKey)) continue;
       seen.add(groupKey);
       suggestions.push({ groupKey, item: food, lastDateKey: historyKey });
     }
   }
 
-  return suggestions.slice(0, 3).map(entry => {
+  return suggestions.slice(0, _RECENT_SUGGESTION_LIMIT).map(entry => {
     const key = _suggestionKey(meal, `recent|${entry.groupKey}`, entry.lastDateKey);
     const item = _cloneFoodItem(entry.item);
     _frequentFoodSuggestions.set(key, { meal, item });
@@ -249,7 +246,7 @@ function _renderFoodSuggestionSection(meal, label, suggestions) {
   if (!suggestions.length) return '';
   return `<div class="diet-frequent-food-section">
     <div class="diet-frequent-food-label">${label}</div>
-    <div class="diet-frequent-food-options">${_renderFoodSuggestionOptions(meal, suggestions)}</div>
+    <div class="diet-frequent-food-options diet-frequent-food-carousel" role="list">${_renderFoodSuggestionOptions(meal, suggestions)}</div>
   </div>`;
 }
 

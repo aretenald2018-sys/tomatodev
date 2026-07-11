@@ -183,8 +183,7 @@
 </div>
 
 <!-- 상단 네비게이션 -->
-<header class="top-nav">
-  <span class="top-nav-title"><img src="icon-192.png" alt="토마토" style="height:28px;width:28px;vertical-align:middle;margin-right:6px;border-radius:6px;">토마토 키우기</span>
+<header class="top-nav top-nav--actions-only">
   <div style="display:flex;align-items:center;gap:4px;">
     <button class="icon-btn" id="pwa-install-btn" type="button" data-app-action="install-pwa" title="앱 설치" style="display:none;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 1.7c.442 0 .8.358.8.8v14.069l5.634-5.634a.8.8 0 011.132 1.13l-7 7a.8.8 0 01-1.132 0l-7-7a.8.8 0 011.132-1.13L11.2 16.568V2.5c0-.442.358-.8.8-.8zM4.2 21.5c0-.442.358-.8.8-.8h14c.442 0 .8.358.8.8s-.358.8-.8.8H5c-.442 0-.8-.358-.8-.8z" fill="currentColor"/></svg></button>
     <button class="icon-btn" id="letter-btn" type="button" data-app-action="open-letter-modal" title="개발자에게 편지" style="display:none;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M2.4 5.6A2.4 2.4 0 014.8 3.2h14.4a2.4 2.4 0 012.4 2.4v12.8a2.4 2.4 0 01-2.4 2.4H4.8a2.4 2.4 0 01-2.4-2.4V5.6zm2.4-.8a.8.8 0 00-.8.8v.469l8 5.333 8-5.333V5.6a.8.8 0 00-.8-.8H4.8zM20 7.931l-7.553 5.035a.8.8 0 01-.894 0L4 7.931V18.4a.8.8 0 00.8.8h14.4a.8.8 0 00.8-.8V7.931z" fill="currentColor"/></svg></button>
@@ -710,7 +709,7 @@
           </div>
           <div class="diet-toss-body">
             <div class="diet-meal-actions">
-              <button class="diet-add-btn" type="button" data-action="openMealQuickAdd" data-meal="breakfast">+ 음식 추가</button>
+              <button class="diet-add-btn" type="button" data-action="addFood" data-meal="breakfast">+ 음식 추가</button>
               <button class="diet-skip-btn" id="wt-breakfast-skipped" onclick="wtSkipMeal('breakfast')">안 먹었어요</button>
             </div>
             <div class="meal-content-row" id="wt-meal-content-breakfast">
@@ -734,7 +733,7 @@
           </div>
           <div class="diet-toss-body">
             <div class="diet-meal-actions">
-              <button class="diet-add-btn" type="button" data-action="openMealQuickAdd" data-meal="lunch">+ 음식 추가</button>
+              <button class="diet-add-btn" type="button" data-action="addFood" data-meal="lunch">+ 음식 추가</button>
               <button class="diet-skip-btn" id="wt-lunch-skipped" onclick="wtSkipMeal('lunch')">안 먹었어요</button>
             </div>
             <div class="meal-content-row" id="wt-meal-content-lunch">
@@ -758,7 +757,7 @@
           </div>
           <div class="diet-toss-body">
             <div class="diet-meal-actions">
-              <button class="diet-add-btn" type="button" data-action="openMealQuickAdd" data-meal="dinner">+ 음식 추가</button>
+              <button class="diet-add-btn" type="button" data-action="addFood" data-meal="dinner">+ 음식 추가</button>
               <button class="diet-skip-btn" id="wt-dinner-skipped" onclick="wtSkipMeal('dinner')">안 먹었어요</button>
             </div>
             <div class="meal-content-row" id="wt-meal-content-dinner">
@@ -782,7 +781,7 @@
           </div>
           <div class="diet-toss-body">
             <div class="diet-meal-actions">
-              <button class="diet-add-btn" type="button" data-action="openMealQuickAdd" data-meal="snack">+ 음식 추가</button>
+              <button class="diet-add-btn" type="button" data-action="addFood" data-meal="snack">+ 음식 추가</button>
             </div>
             <div class="meal-content-row" id="wt-meal-content-snack">
               <div class="meal-food-list" id="wt-foods-snack"></div>
@@ -897,9 +896,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
 <script src="feature-login.js?v=20260711d-apk-login-handoff"></script>
-<script type="module" src="app.js?v=20260711d-apk-login-handoff"></script>
+<script type="module" src="app.js?v=20260711e8-diet-search-carousel-food-db"></script>
 
 <!-- PWA Service Worker 등록 -->
-<script src="pwa-register.js?v=20260711d6-sw-reload-stability"></script>
+<script src="pwa-register.js?v=20260711e7-single-update-refresh"></script>
 </body>
 </html>

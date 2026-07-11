@@ -32,11 +32,17 @@ test('frequent food suggestions are rendered from cached meal history and add th
   assert.match(styleCss, /#tab-diet .diet-frequent-food-option {[^}]*font-weight: 500/, 'recommendation options should not be bold like consumed chips');
 });
 
-test('frequent and recent suggestions stay compact, capped, and de-duplicated', () => {
-  assert.match(renderJs, /\.slice\(0, 3\)/, 'frequent suggestions should remain capped at three');
+test('frequent and recent suggestions persist after adding, support ten entries, and render as carousels', () => {
+  assert.match(renderJs, /const _FREQUENT_SUGGESTION_LIMIT = 10/, 'frequent suggestions should support ten entries');
+  assert.match(renderJs, /const _RECENT_SUGGESTION_LIMIT = 10/, 'recent suggestions should support ten entries');
+  assert.match(renderJs, /\.slice\(0, _FREQUENT_SUGGESTION_LIMIT\)/, 'frequent suggestions should use the shared ten-entry cap');
+  assert.match(renderJs, /\.slice\(0, _RECENT_SUGGESTION_LIMIT\)/, 'recent suggestions should use the shared ten-entry cap');
+  assert.doesNotMatch(renderJs, /currentGroups\.has\(groupKey\)/, 'suggestions must not disappear after the same food is added to the current meal');
   assert.match(renderJs, /function _collectRecentFoodSuggestions\(meal, excludedGroupKeys = new Set\(\)\)/, 'recent suggestions should have a dedicated collector');
   assert.match(renderJs, /excludedGroupKeys\.has\(groupKey\)/, 'recent suggestions should exclude frequent row group keys');
   assert.match(renderJs, /최근에 먹은 것/, 'recent suggestions should render with a visible section label');
-  assert.match(styleCss, /#tab-diet \.diet-frequent-food-options {[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/, 'suggestion rows should use a stable three-column grid');
+  assert.match(renderJs, /diet-frequent-food-carousel/, 'both suggestion lists should render as horizontal carousels');
+  assert.match(styleCss, /\.diet-frequent-food-options {[^}]*overflow-x: auto/, 'suggestion rows should scroll horizontally');
+  assert.match(styleCss, /\.diet-frequent-food-option {[^}]*flex: 0 0 min\(132px, 34vw\)/, 'each carousel entry should keep a readable fixed card width');
   assert.match(styleCss, /#tab-diet \.diet-frequent-food-option {[^}]*font-size: var\(--seed-t1\)/, 'suggestion option font should be smaller than the previous compact text style');
 });

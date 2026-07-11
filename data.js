@@ -395,6 +395,7 @@ function _getNutritionSearchCandidates(item) {
   const rawValues = [
     item?.name,
     item?.manufacturer,
+    item?.brand,
     ..._splitNutritionAliases(item?.aliases),
   ];
   const candidates = new Set();

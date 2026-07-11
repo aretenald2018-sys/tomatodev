@@ -781,6 +781,7 @@ body {
   padding: 0 16px;
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
 }
+.top-nav--actions-only { justify-content: flex-end; }
 /* TDS Mobile Top Nav title — t4 (20px/29px) */
 .top-nav-title { font-size: 20px; font-weight: 700; line-height: 29px; letter-spacing: -0.02em; }
 .icon-btn {

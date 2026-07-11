@@ -152,6 +152,7 @@ export function normalizeFromTopLevel(item) {
     id: item.id,
     name: item.name,
     brand: item.manufacturer || item.brand || null,
+    aliases: Array.isArray(item.aliases) ? [...item.aliases] : [],
     source: item._source || item.source || 'external',
     _grp: grp,
     base,
@@ -438,6 +439,7 @@ export function serializeForStorage(canonical, extras) {
     id: canonical.id,
     name: canonical.name,
     brand: canonical.brand || null,
+    aliases: Array.isArray(canonical.aliases) ? [...canonical.aliases] : [],
     _grp: canonical._grp || null,
     // 레거시 호환
     unit,

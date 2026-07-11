@@ -12,6 +12,15 @@ const FCM_SW_SCOPE = new URL('firebase-cloud-messaging-push/', new URL('./', loc
 const _pendingAppSWUpdates = new Map();
 const APP_SW_AUTO_RELOAD_TIMEOUT_MS = 1500;
 const APP_SW_AUTO_RELOAD_ATTEMPT_PREFIX = 'tomatofarm_app_sw_auto_reload_attempted:';
+const APP_SW_UPDATE_HANDLED_PREFIX = 'tomatofarm_app_sw_update_handled:';
+const APP_SW_UPDATE_RELEASE = (() => {
+  try {
+    const scriptUrl = typeof document !== 'undefined' ? document.currentScript?.src : '';
+    return scriptUrl ? new URL(scriptUrl, location.href).href : location.href;
+  } catch {
+    return 'unversioned';
+  }
+})();
 let _appSWUpdateSeq = 0;
 let _latestAppSWUpdateSeq = 0;
 let _appSWAutoReloading = false;
@@ -33,7 +42,7 @@ async function _refreshAppSWRegistration(registration = null) {
 
 function _appSWUpdateKey(registration, worker = null) {
   const scriptURL = worker?.scriptURL || registration?.waiting?.scriptURL || 'sw.js';
-  return `${registration?.scope || APP_SW_SCOPE}|${scriptURL}`;
+  return `${registration?.scope || APP_SW_SCOPE}|${scriptURL}|${APP_SW_UPDATE_RELEASE}`;
 }
 
 function _hasActiveWorkoutDraftForAppSWUpdate() {
@@ -55,6 +64,20 @@ function _hasAttemptedAppSWAutoReload(key) {
 function _markAppSWAutoReloadAttempted(key) {
   try {
     sessionStorage.setItem(APP_SW_AUTO_RELOAD_ATTEMPT_PREFIX + key, '1');
+  } catch {}
+}
+
+function _hasHandledAppSWUpdate(key) {
+  try {
+    return sessionStorage.getItem(APP_SW_UPDATE_HANDLED_PREFIX + key) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function _markAppSWUpdateHandled(key) {
+  try {
+    sessionStorage.setItem(APP_SW_UPDATE_HANDLED_PREFIX + key, '1');
   } catch {}
 }
 
@@ -107,6 +130,8 @@ function _autoApplyAppSWUpdate(registration, worker = null) {
 function _requestAppUpdateBanner(registration, worker = null) {
   if (!registration || !navigator.serviceWorker.controller) return;
   const key = _appSWUpdateKey(registration, worker);
+  if (_hasHandledAppSWUpdate(key)) return;
+  _markAppSWUpdateHandled(key);
   const seq = ++_appSWUpdateSeq;
   _latestAppSWUpdateSeq = seq;
   const wasPending = _pendingAppSWUpdates.has(key);

@@ -153,7 +153,10 @@ export function searchCSVFood(searchTerm) {
 // 검색 결과 캐시 (sessionStorage + 메모리)
 const _govFoodCache = {};
 const _GOV_CACHE_KEY = 'govFoodCache';
-const _GOV_CACHE_TTL = 24 * 60 * 60 * 1000; // 24시간
+const _GOV_CACHE_TTL = 6 * 60 * 60 * 1000; // 최신 가공식품 반영을 위해 6시간
+const _openFoodFactsCache = new Map();
+const _OPEN_FOOD_FACTS_CACHE_TTL = 60 * 60 * 1000;
+const _OPEN_FOOD_FACTS_SEARCH_URL = 'https://world.openfoodfacts.org/cgi/search.pl';
 
 function _loadGovCache() {
   try {
@@ -191,6 +194,17 @@ const _QUERY_VARIANTS = {
   '돈까스':  ['돈가스'],
   '돈가스':  ['돈까스'],
 };
+
+// 식약처 DB의 식품명은 대체로 한글 표기이므로, 영문 브랜드로 검색해도
+// 동일 제품을 찾을 수 있도록 한글/제조사 표기를 함께 질의한다.
+// 새 브랜드는 아래 별칭을 한 번만 추가하면 공공DB와 외부 브랜드DB 모두에 적용된다.
+const _BRAND_QUERY_ALIASES = Object.freeze({
+  benson: ['벤슨', '베러스쿱', '베러스쿱크리머리'],
+  '벤슨': ['benson', '베러스쿱', '베러스쿱크리머리'],
+  '베러스쿱': ['벤슨', 'benson', '베러스쿱크리머리'],
+  '베러스쿱크리머리': ['벤슨', 'benson', '베러스쿱'],
+});
+
 function _expandQueryVariants(term) {
   const t = (term || '').trim();
   if (!t) return [];
@@ -202,7 +216,12 @@ function _expandQueryVariants(term) {
       }
     }
   }
-  return Array.from(variants);
+  const normalizedTerm = t.toLocaleLowerCase('ko-KR');
+  for (const [brand, aliases] of Object.entries(_BRAND_QUERY_ALIASES)) {
+    if (!normalizedTerm.includes(brand.toLocaleLowerCase('ko-KR'))) continue;
+    aliases.forEach(alias => variants.add(alias));
+  }
+  return Array.from(variants).slice(0, 6);
 }
 
 async function _fetchGovPage(term, pageNo, numOfRows) {
@@ -271,6 +290,7 @@ export async function searchGovFoodAPI(searchTerm) {
     if (allItems.length === 0) return [];
 
     const qLower = (searchTerm || '').toLowerCase();
+    const queryVariants = variants.map(v => v.toLowerCase()).filter(Boolean);
 
     // 중복 제거 + 매핑 + 스코어링
     const seen = new Set();
@@ -278,14 +298,17 @@ export async function searchGovFoodAPI(searchTerm) {
 
     for (const item of allItems) {
       const name = item.FOOD_NM_KR || '';
-      if (!name || seen.has(name)) continue;
-      seen.add(name);
+      const manufacturer = item.MAKER_NM || '';
+      const resultKey = `${name}|${manufacturer}`.toLocaleLowerCase('ko-KR');
+      if (!name || seen.has(resultKey)) continue;
+      seen.add(resultKey);
 
       const grp = item.DB_GRP_NM || '';
       const isRaw  = grp === '원재료성';
       const isMeal = grp === '음식';
       const isProc = grp === '가공식품';
       const nLower = name.toLowerCase();
+      const mLower = manufacturer.toLowerCase();
 
       // 스코어: 원재료 > 음식 > 가공식품, 같은 카테고리 안에서는 이름 일치도 우선
       let score = 0;
@@ -300,10 +323,15 @@ export async function searchGovFoodAPI(searchTerm) {
       else if (nLower.startsWith(qLower + '_')) score += 12;  // 셀러리_생것 패턴
       else if (nLower.includes('_' + qLower)) score += 5;
 
+      // 제조사명이 브랜드 검색어와 일치하면 같은 일반 제품명보다 위로 올린다.
+      if (queryVariants.some(query => query && mLower.includes(query))) score += 24;
+      else if (queryVariants.some(query => query && nLower.includes(query))) score += 8;
+
       results.push({
-        id: `gov_${encodeURIComponent(name)}`,
+        id: `gov_${encodeURIComponent(name)}_${encodeURIComponent(manufacturer)}`,
         name,
-        manufacturer: item.MAKER_NM || (isRaw ? '자연식품' : ''),
+        manufacturer: manufacturer || (isRaw ? '자연식품' : ''),
+        aliases: manufacturer ? [manufacturer] : [],
         energy:  parseFloat(item.AMT_NUM1)  || 0,   // kcal
         protein: parseFloat(item.AMT_NUM3)  || 0,   // 단백질(g)
         fat:     parseFloat(item.AMT_NUM4)  || 0,   // 지방(g)
@@ -321,7 +349,7 @@ export async function searchGovFoodAPI(searchTerm) {
 
     // 스코어 내림차순
     results.sort((a, b) => b.score - a.score);
-    const sliced = results.slice(0, 15);
+    const sliced = results.slice(0, 30);
 
     // 캐시 저장 (rawData 제외 — 용량 절약)
     _govFoodCache[searchTerm] = sliced.map(({ rawData, ...rest }) => rest);
@@ -332,6 +360,106 @@ export async function searchGovFoodAPI(searchTerm) {
     return sliced;
   } catch (err) {
     console.error('[공공API] 검색 실패:', err);
+    return [];
+  }
+}
+
+function _number(value) {
+  const parsed = Number(String(value ?? '').replace(',', '.'));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function _parseServingWeight(value) {
+  const match = String(value || '').match(/(\d+(?:[.,]\d+)?)\s*(g|ml)\b/i);
+  return match ? _number(match[1]) : 0;
+}
+
+function _externalFoodScore(name, manufacturer, queryVariants) {
+  const haystack = `${name || ''} ${manufacturer || ''}`.toLocaleLowerCase('ko-KR');
+  let score = 0;
+  for (const query of queryVariants) {
+    const normalized = String(query || '').toLocaleLowerCase('ko-KR');
+    if (!normalized) continue;
+    if (haystack === normalized) score = Math.max(score, 130);
+    else if (haystack.startsWith(normalized)) score = Math.max(score, 115);
+    else if (haystack.includes(normalized)) score = Math.max(score, 100);
+  }
+  return score;
+}
+
+async function _fetchOpenFoodFacts(term) {
+  const params = new URLSearchParams({
+    search_terms: term,
+    search_simple: '1',
+    action: 'process',
+    json: '1',
+    page_size: '24',
+    fields: 'code,product_name,product_name_ko,brands,nutriments,serving_size,quantity,last_modified_t',
+  });
+  const response = await fetch(`${_OPEN_FOOD_FACTS_SEARCH_URL}?${params.toString()}`);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const data = await response.json();
+  return Array.isArray(data?.products) ? data.products : [];
+}
+
+// 신제품·수입식품은 공공DB 반영 전 공백이 생길 수 있다. 그 경우에만 보조로
+// 공개 브랜드 식품 DB를 함께 검색하고, 영양성분이 있는 항목만 노출한다.
+export async function searchOpenFoodFacts(searchTerm) {
+  const cacheKey = String(searchTerm || '').trim().toLocaleLowerCase('ko-KR');
+  if (!cacheKey) return [];
+  const cached = _openFoodFactsCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < _OPEN_FOOD_FACTS_CACHE_TTL) return cached.items;
+
+  const queryVariants = _expandQueryVariants(searchTerm);
+  try {
+    const productLists = await Promise.all(
+      queryVariants.slice(0, 4).map(term => _fetchOpenFoodFacts(term).catch(() => []))
+    );
+    const seen = new Set();
+    const results = [];
+    for (const product of productLists.flat()) {
+      const code = String(product?.code || '').trim();
+      const name = String(product?.product_name_ko || product?.product_name || '').trim();
+      const manufacturer = String(product?.brands || '').trim();
+      if (!code || !name || seen.has(code)) continue;
+      seen.add(code);
+
+      const nutriments = product?.nutriments || {};
+      const energy = _number(nutriments['energy-kcal_100g'])
+        || (_number(nutriments['energy_100g']) / 4.184);
+      const protein = _number(nutriments.proteins_100g);
+      const carbs = _number(nutriments.carbohydrates_100g);
+      const fat = _number(nutriments.fat_100g);
+      if (!(energy > 0) && !(protein > 0 || carbs > 0 || fat > 0)) continue;
+
+      const score = _externalFoodScore(name, manufacturer, queryVariants);
+      if (!score) continue;
+      results.push({
+        id: `off_${encodeURIComponent(code)}`,
+        name,
+        manufacturer,
+        aliases: manufacturer ? [manufacturer] : [],
+        energy: Math.round(energy * 10) / 10,
+        protein,
+        carbs,
+        fat,
+        sodium: _number(nutriments.sodium_100g) * 1000,
+        defaultWeight: _parseServingWeight(product?.serving_size)
+          || _parseServingWeight(product?.quantity)
+          || _estimateServingSize(name),
+        score,
+        source: '브랜드 식품 DB(Open Food Facts)',
+        _grp: '브랜드식품',
+      });
+    }
+    const items = results
+      .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, 'ko-KR'))
+      .slice(0, 12);
+    _openFoodFactsCache.set(cacheKey, { ts: Date.now(), items });
+    return items;
+  } catch (error) {
+    console.warn('[브랜드식품DB] 검색 실패:', error.message);
+    _openFoodFactsCache.set(cacheKey, { ts: Date.now(), items: [] });
     return [];
   }
 }

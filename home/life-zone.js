@@ -23,7 +23,6 @@ import {
   assignLifeZoneSlots,
   formatLifeZoneDateLabel,
   getLifeZoneAccountDisplayName,
-  getLifeZoneTitleNames,
   resolveLifeZoneConsultingVisitor,
   resolveLifeZoneActivity,
   resolveLifeZoneActors,
@@ -89,20 +88,11 @@ function _isCurrentLifeZoneRosterActor(currentUser = null) {
   return resolveLifeZoneRoster({ accounts, currentUser }).some((actor) => actor.source === 'self');
 }
 
-function _lifeZoneTitleNames(visitor = null, actors = LIFE_ZONE_ACTORS) {
-  const names = getLifeZoneTitleNames(actors);
-  const visitorName = visitor?.displayName || '';
-  if (visitorName && !names.includes(visitorName)) names.push(visitorName);
-  return names;
-}
-
-function _renderLifeZoneTitle(card, visitor = _resolveConsultingVisitor(), actors = LIFE_ZONE_ACTORS) {
+function _renderLifeZoneTitle(card) {
   const date = card?.querySelector('[data-lz-date]');
   const title = card?.querySelector('[data-lz-title]');
-  const names = card?.querySelector('[data-lz-names]');
   if (date) date.textContent = formatLifeZoneDateLabel(TODAY);
   if (title) title.textContent = '오늘의 라이프존';
-  if (names) names.textContent = _lifeZoneTitleNames(visitor, actors).join(' · ');
 }
 
 export function setLifeZoneVisitContext(context = null) {
@@ -127,7 +117,7 @@ function _renderConsultingVisitor(card, actors = LIFE_ZONE_ACTORS) {
   const visitorEl = card?.querySelector('[data-lz-consulting-visitor]');
   if (!visitorEl) return;
   const visitor = _resolveConsultingVisitor();
-  _renderLifeZoneTitle(card, visitor, actors);
+  _renderLifeZoneTitle(card);
   if (!visitor) {
     visitorEl.hidden = true;
     delete visitorEl.dataset.lzVisitorState;
@@ -1050,6 +1040,7 @@ export async function hydrateLifeZoneCard(card) {
 }
 
 export function renderLifeZoneCard({
+  hero = null,
   totalIntake = 0,
   todayTarget = 0,
   kcalState = '',
@@ -1088,12 +1079,26 @@ export function renderLifeZoneCard({
       </button>
     `;
 
+  const heroHtml = hero ? `
+    <div class="lz-hero tf-hero tf-hero--gradient">
+      <div class="tf-hero-left">
+        <div class="tf-hero-label" data-hero-message-target>${escapeHtml(hero.label || '')}</div>
+        <div class="tf-hero-count">${hero.countHtml || ''}</div>
+      </div>
+      <button class="tf-info-btn tf-info-btn--light tf-hero-info-btn" id="tomato-rule-info-card" aria-label="토마토 획득 규칙">ⓘ</button>
+      <div class="tf-hero-right">
+        <div class="tf-hero-tomato tf-hero-tomato--svg" data-mood="${escapeHtml(hero.characterMood || 'seed')}">${hero.characterSvg || ''}</div>
+      </div>
+      <div class="hero-social-proof" id="hero-social-proof" style="display:none;"></div>
+    </div>
+  ` : '';
+
   card.innerHTML = `
+    ${heroHtml}
     <div class="lz-head">
       <div>
         <span class="lz-eyebrow" data-lz-date>${escapeHtml(formatLifeZoneDateLabel(TODAY))}</span>
         <h3 class="lz-title" data-lz-title>오늘의 라이프존</h3>
-        <span class="lz-names" data-lz-names></span>
       </div>
       <span class="lz-sync" data-lz-sync>불러오는 중</span>
     </div>

@@ -28,7 +28,8 @@ export function setHeroDeps({ renderTomatoHero, renderHome }) {
 // ── 히어로 카드 (토스 스타일 핵심 메시지) ─────────────────────────
 export async function renderHero() {
   const el = document.getElementById('hero-content');
-  if (!el) return;
+  const labelEl = document.querySelector('[data-hero-message-target]');
+  if (!el && !labelEl) return;
 
   const currentUser = getCurrentUser();
   const todayDateKey = _currentDateKey();
@@ -45,7 +46,6 @@ export async function renderHero() {
     }
   };
 
-  const labelEl = el.querySelector('.tf-hero-label');
   if (labelEl) {
     labelEl.textContent = customMsg.emoji ? `${customMsg.emoji} ${customMsg.message}` : customMsg.message;
     labelEl.classList.add('hero-message-custom');
@@ -59,7 +59,7 @@ export async function renderHero() {
     return;
   }
 
-  const msgEl = el.querySelector('.tomato-message');
+  const msgEl = el?.querySelector('.tomato-message');
   if (msgEl) {
     msgEl.textContent = customMsg.emoji ? `${customMsg.emoji} ${customMsg.message}` : customMsg.message;
     msgEl.classList.add('hero-message-custom');

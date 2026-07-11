@@ -136,7 +136,7 @@ test('service worker update timeout shows banner instead of reloading without co
   assert.equal(state.banners.length, 1);
 });
 
-test('same service worker update does not auto apply repeatedly in one session', () => {
+test('same service worker update is handled only once even if duplicate signals arrive', () => {
   const { context, state } = loadPwaRegisterHarness();
   const { registration, worker } = makeWaitingRegistration(state);
 
@@ -148,7 +148,7 @@ test('same service worker update does not auto apply repeatedly in one session',
 
   assert.equal(JSON.stringify(state.messages), JSON.stringify([{ type: 'SKIP_WAITING' }]));
   assert.equal(state.reloads, 0);
-  assert.equal(state.banners.length, 2);
+  assert.equal(state.banners.length, 1);
 });
 
 test('service worker controllerchange still reloads once', () => {
@@ -169,11 +169,11 @@ test('service worker controllerchange still reloads once', () => {
 });
 
 test('production app cache busts the service worker registrar script', () => {
-  assert.match(indexHtml, /pwa-register\.js\?v=20260711d6-sw-reload-stability/);
-  assert.match(indexHtml, /app\.js\?v=20260711d-apk-login-handoff/);
+  assert.match(indexHtml, /pwa-register\.js\?v=20260711e7-single-update-refresh/);
+  assert.match(indexHtml, /app\.js\?v=20260711e8-diet-search-carousel-food-db/);
   assert.match(appJs, /utils\/build-info\.js\?v=20260708a-diet-frequent-foods/);
   assert.match(appJs, /render-workout\.js\?v=20260708a-diet-frequent-foods/);
-  assert.match(swJs, /tomatofarm-v20260711z8-running-card-inline-route/);
+  assert.match(swJs, /tomatofarm-v20260711z10-diet-search-live-food-db/);
 });
 
 test('top-nav manual app refresh uses build-info update helper', () => {
@@ -185,6 +185,7 @@ test('top-nav manual app refresh uses build-info update helper', () => {
   assert.match(buildInfoJs, /__wtPersistActiveDraft/);
   assert.match(buildInfoJs, /_syncAppRefreshButtonState/);
   assert.match(buildInfoJs, /has-update/);
+  assert.match(pwaRegisterJs, /APP_SW_UPDATE_HANDLED_PREFIX/);
   assert.doesNotMatch(buildInfoJs, /app-update-indicator/);
   assert.doesNotMatch(buildInfoJs, /app-update-toggle/);
   assert.doesNotMatch(buildInfoJs, /app-update-reload/);

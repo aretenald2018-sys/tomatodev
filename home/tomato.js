@@ -800,23 +800,7 @@ export function renderTomatoCard() {
   const characterMood = streakToCharacterMood(bestStreak);
   const characterSvg = renderCharacterSVG(characterMood, { size: 44 });
 
-  heroEl.innerHTML = `
-    <div class="tf-card">
-      <div class="tf-hero tf-hero--gradient">
-        <div class="tf-hero-left">
-          <div class="tf-hero-label">${heroLabel}</div>
-          <div class="tf-hero-count">${heroCount}</div>
-        </div>
-        <button class="tf-info-btn tf-info-btn--light tf-hero-info-btn" id="tomato-rule-info-card" aria-label="토마토 획득 규칙">ⓘ</button>
-        <div class="tf-hero-right">
-          <div class="tf-hero-tomato tf-hero-tomato--svg" data-mood="${characterMood}">${characterSvg}</div>
-        </div>
-      </div>
-      <div class="hero-social-proof" id="hero-social-proof" style="display:none;padding:0 16px 12px;"></div>
-    </div>
-  `;
-
-  document.getElementById('tomato-rule-info-card')?.addEventListener('click', _showTomatoRuleTooltip);
+  heroEl.replaceChildren();
 
   checkStreakMilestone('workout', streaks.workout);
   checkStreakMilestone('diet', streaks.diet);
@@ -858,7 +842,14 @@ export function renderTomatoCard() {
   }
 
   if (!homeHero) return;
+  homeHero.classList.add('home-hero--integrated');
   const lifeZoneCard = renderLifeZoneCard({
+    hero: {
+      label: heroLabel,
+      countHtml: heroCount,
+      characterMood,
+      characterSvg
+    },
     totalIntake,
     todayTarget,
     kcalState,
@@ -869,5 +860,6 @@ export function renderTomatoCard() {
     onWeightClick: () => openCheckinModal()
   });
   homeHero.after(lifeZoneCard);
+  document.getElementById('tomato-rule-info-card')?.addEventListener('click', _showTomatoRuleTooltip);
   hydrateLifeZoneCard(lifeZoneCard);
 }

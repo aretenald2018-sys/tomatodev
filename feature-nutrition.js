@@ -4,14 +4,14 @@
 
 import { searchNutritionDB, getNutritionDB, getRecentNutritionItems,
          deleteNutritionItem, getCookingRecords } from './data.js';
-import { loadCSVDatabase, searchCSVFood, searchGovFoodAPI } from './fatsecret-api.js';
+import { loadCSVDatabase, searchCSVFood, searchGovFoodAPI, searchOpenFoodFacts } from './fatsecret-api.js';
 import { searchRawIngredients } from './data/raw-ingredients.js';
 import { wtAddFoodItem } from './render-workout.js';
 import { loadAndInjectModals } from './modal-manager.js';
 
 // ── 상태 ──────────────────────────────────────────────────────────
 let _nutritionSearchMeal = null;
-let _nutritionSearchCache = { db: [], csv: [], recent: [], raw: [] };
+let _nutritionSearchCache = { db: [], csv: [], recent: [], raw: [], brand: [] };
 let _nutritionSearchTimer = null;
 let _lastSearchQuery = null;
 
@@ -79,9 +79,20 @@ export function debouncedNutritionSearch() {
 }
 
 // ── 렌더링 헬퍼 ──────────────────────────────────────────────────
+function _escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function _renderNutritionRow(item, { icon = '🏠', removable = false, isCSV = false } = {}) {
   const itemDataKey = `_nutritionItem_${item.id}`;
   window[itemDataKey] = item;
+  const name = _escapeHtml(item.name || '이름 없는 식품');
+  const manufacturer = _escapeHtml(item.manufacturer || item.brand || '');
   const kcal = isCSV ? (item.energy || 0) : (item.nutrition?.kcal || item.kcal || 0);
   const carbs = isCSV ? item.carbs : (item.nutrition?.carbs ?? item.carbs);
   const protein = isCSV ? item.protein : (item.nutrition?.protein ?? item.protein);
@@ -92,7 +103,7 @@ function _renderNutritionRow(item, { icon = '🏠', removable = false, isCSV = f
   return `
     <div class="nutrition-result-row"${removable ? ' style="display:flex;justify-content:space-between;align-items:center"' : ''}>
       <div onclick="selectNutritionItemFromCache('${itemDataKey}')" style="cursor:pointer;flex:1">
-        <div class="nutrition-result-name">${icon} ${item.name}</div>
+        <div class="nutrition-result-name">${icon} ${name}${manufacturer ? ` <span style="color:var(--muted);font-size:10px">· ${manufacturer}</span>` : ''}</div>
         <div class="nutrition-result-meta">
           ${item.defaultWeight && item.defaultWeight !== 100 ? `<span style="color:var(--primary);font-weight:600">1인분 ${item.defaultWeight}g · ${Math.round(kcal * item.defaultWeight / 100)}kcal</span>` : `<span>${(!isCSV && item.unit) ? item.unit : '100g'}</span><span>${kcal}kcal</span>`}
           ${carbs != null ? `<span>탄${Math.round(carbs)}g</span>` : ''}
@@ -139,7 +150,7 @@ export async function renderNutritionSearchResults() {
   if (!q) {
     const recentItems = getRecentNutritionItems(10);
     const csvResults = searchCSVFood('');
-    _nutritionSearchCache = { db: [], csv: csvResults, recent: recentItems };
+    _nutritionSearchCache = { db: [], csv: csvResults, recent: recentItems, raw: [], brand: [] };
 
     html += _renderNutritionSection(`⭐ 즐겨찾기 (최근 ${recentItems.length}개)`, recentItems, { removable: true });
     html += _renderNutritionSection('📊 CSV 데이터', csvResults.slice(0, 20), { icon: '📊', isCSV: true, marginTop: true });
@@ -154,7 +165,7 @@ export async function renderNutritionSearchResults() {
     const csvResults = searchCSVFood(q);
     // 로컬 원재료(큐레이티드) DB 검색 — 샐러리/닭가슴살처럼 단일 재료일 때 즉시 나옴
     const rawResults = searchRawIngredients(q);
-    _nutritionSearchCache = { db: dbResults, csv: csvResults, recent: recentFiltered, raw: rawResults };
+    _nutritionSearchCache = { db: dbResults, csv: csvResults, recent: recentFiltered, raw: rawResults, brand: [] };
 
     html += _renderNutritionSection('⭐ 즐겨찾기', recentFiltered, { removable: true, color: 'var(--accent)' });
 
@@ -174,7 +185,7 @@ export async function renderNutritionSearchResults() {
 
     allNames = new Set([...dbNames, ...rawNames, ...dedupedCsv.map(c => c.name?.toLowerCase())]);
 
-    html += `<div id="gov-api-results-placeholder" style="font-size:11px;color:var(--text-tertiary);text-align:center;padding:12px">🏛️ 공공 식품DB 검색 중...</div>`;
+    html += `<div id="live-food-db-results-placeholder" style="font-size:11px;color:var(--text-tertiary);text-align:center;padding:12px">🏛️ 최신 공공·브랜드 식품DB 검색 중...</div>`;
 
     html += _buildRecipeResultsHtml(q);
   }
@@ -189,58 +200,83 @@ export async function renderNutritionSearchResults() {
 
   if (q) {
     try {
-      const govResults = await searchGovFoodAPI(q);
-      const placeholder = document.getElementById('gov-api-results-placeholder');
-      if (placeholder && govResults && govResults.length > 0) {
-        const dedupedGov = govResults.filter(g => !allNames?.has(g.name?.toLowerCase()));
-        if (dedupedGov.length > 0) {
-          const mapItem = (g) => ({
-            id: g.id,
-            name: g.name,
-            defaultWeight: g.defaultWeight || 100,
-            unit: '100g',
-            kcal: g.energy,
-            protein: g.protein,
-            fat: g.fat,
-            carbs: g.carbs,
-            _source: g.source || '공공DB',
-          });
-          const rawItems  = dedupedGov.filter(g => g._grp === '원재료성').map(mapItem);
-          const mealItems = dedupedGov.filter(g => g._grp === '음식').map(mapItem);
-          const procItems = dedupedGov.filter(g => !g._grp || (g._grp !== '원재료성' && g._grp !== '음식')).map(mapItem);
+      const [govResults, brandResults] = await Promise.all([
+        searchGovFoodAPI(q),
+        searchOpenFoodFacts(q),
+      ]);
+      const placeholder = document.getElementById('live-food-db-results-placeholder');
+      if (!placeholder || (input.value || '').trim() !== q) return;
 
-          let govHtml = '';
-          if (rawItems.length) {
-            govHtml += _renderNutritionSection(
-              '🌿 공공DB 원재료',
-              rawItems.slice(0, 10),
-              { icon: '🌿', marginTop: false }
-            );
-          }
-          if (mealItems.length) {
-            govHtml += _renderNutritionSection(
-              '🍽️ 공공DB 음식',
-              mealItems.slice(0, 8),
-              { icon: '🍽️', marginTop: true }
-            );
-          }
-          if (procItems.length) {
-            govHtml += _renderNutritionSection(
-              '🏛️ 공공DB 가공식품',
-              procItems.slice(0, 8),
-              { icon: '🏛️', marginTop: true }
-            );
-          }
-          placeholder.outerHTML = govHtml || '';
-        } else {
-          placeholder.remove();
-        }
-      } else if (placeholder) {
-        placeholder.remove();
+      const resultKey = (item) => `${item?.name || ''}|${item?.manufacturer || item?.brand || ''}`.toLocaleLowerCase('ko-KR');
+      const shouldHideAsDuplicate = (item, keys) => {
+        if (keys.has(resultKey(item))) return true;
+        const hasBrand = Boolean(item?.manufacturer || item?.brand);
+        return !hasBrand && allNames?.has(item?.name?.toLowerCase());
+      };
+      const localKeys = new Set([
+        ...dbResults,
+        ...recentFiltered,
+        ...rawResults,
+        ...dedupedCsv,
+      ].map(resultKey));
+      const dedupedGov = (govResults || []).filter(g => !shouldHideAsDuplicate(g, localKeys));
+      const govKeys = new Set(dedupedGov.map(resultKey));
+      const dedupedBrand = (brandResults || []).filter(item => !shouldHideAsDuplicate(item, localKeys) && !govKeys.has(resultKey(item)));
+      _nutritionSearchCache.brand = dedupedBrand;
+
+      const mapItem = (item) => ({
+        id: item.id,
+        name: item.name,
+        manufacturer: item.manufacturer,
+        aliases: item.aliases,
+        defaultWeight: item.defaultWeight || 100,
+        unit: '100g',
+        kcal: item.energy,
+        protein: item.protein,
+        fat: item.fat,
+        carbs: item.carbs,
+        sodium: item.sodium,
+        _grp: item._grp,
+        _source: item.source || '식품DB',
+      });
+      const rawItems  = dedupedGov.filter(g => g._grp === '원재료성').map(mapItem);
+      const mealItems = dedupedGov.filter(g => g._grp === '음식').map(mapItem);
+      const procItems = dedupedGov.filter(g => !g._grp || (g._grp !== '원재료성' && g._grp !== '음식')).map(mapItem);
+      const brandedItems = dedupedBrand.map(mapItem);
+
+      let liveHtml = '';
+      if (rawItems.length) {
+        liveHtml += _renderNutritionSection(
+          '🌿 공공DB 원재료',
+          rawItems.slice(0, 10),
+          { icon: '🌿', marginTop: false }
+        );
       }
+      if (mealItems.length) {
+        liveHtml += _renderNutritionSection(
+          '🍽️ 공공DB 음식',
+          mealItems.slice(0, 10),
+          { icon: '🍽️', marginTop: true }
+        );
+      }
+      if (procItems.length) {
+        liveHtml += _renderNutritionSection(
+          '🏛️ 공공DB 가공식품',
+          procItems.slice(0, 10),
+          { icon: '🏛️', marginTop: true }
+        );
+      }
+      if (brandedItems.length) {
+        liveHtml += _renderNutritionSection(
+          '🏷️ 최신 브랜드 식품',
+          brandedItems.slice(0, 10),
+          { icon: '🏷️', marginTop: true }
+        );
+      }
+      placeholder.outerHTML = liveHtml;
     } catch (e) {
-      console.warn('[공공API] 검색 실패:', e);
-      document.getElementById('gov-api-results-placeholder')?.remove();
+      console.warn('[식품DB] 검색 실패:', e);
+      document.getElementById('live-food-db-results-placeholder')?.remove();
     }
   }
 }
@@ -374,6 +410,9 @@ export function selectNutritionItem(itemId) {
   }
   if (!item && _nutritionSearchCache.csv && _nutritionSearchCache.csv.length > 0) {
     item = _nutritionSearchCache.csv.find(c => c.id === itemId);
+  }
+  if (!item && _nutritionSearchCache.brand && _nutritionSearchCache.brand.length > 0) {
+    item = _nutritionSearchCache.brand.find(c => c.id === itemId);
   }
   if (!item) {
     item = getNutritionDB().find(n => n.id === itemId);

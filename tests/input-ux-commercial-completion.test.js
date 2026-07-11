@@ -193,8 +193,8 @@ test('workout type state machine opens activity surfaces without starting non-gy
 
 test('new input UX styles and service worker cache marker are present', () => {
   assert.match(styleCss, /\.wt-activity-fields/);
-  assert.match(styleCss, /\.meal-quick-add-backdrop/);
-  assert.match(styleCss, /\.meal-quick-add-sheet/);
+  assert.match(styleCss, /\.diet-frequent-food-options/);
+  assert.doesNotMatch(styleCss, /\.meal-quick-add-backdrop/);
   assert.match(styleCss, /\.ex-picker-cardio-backdrop--standalone/);
-  assert.match(swJs, /tomatofarm-v20260711z8-running-card-inline-route/);
+  assert.match(swJs, /tomatofarm-v20260711z10-diet-search-live-food-db/);
 });

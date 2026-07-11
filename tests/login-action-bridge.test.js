@@ -98,5 +98,5 @@ test('APK login does not wait for optional welcome data before showing the app s
 });
 
 test('service worker cache version was bumped for APK login handoff assets', () => {
-  assert.match(swJs, /tomatofarm-v20260711z8-running-card-inline-route/);
+  assert.match(swJs, /tomatofarm-v20260711z10-diet-search-live-food-db/);
 });
