@@ -2966,6 +2966,14 @@ function _runningPlaceLabel(row) {
   return row?.routeSummary?.centroid ? '위치 확인 중' : '위치 정보 없음';
 }
 
+function _runningGpsInfoLabel(row) {
+  const gapCount = Math.max(0, Math.floor(_num(row?.gapCount ?? row?.routeSummary?.gapCount)));
+  if (!gapCount && !row?.interrupted) return '';
+  const segmentCount = Math.max(0, Math.floor(_num(row?.segmentCount ?? row?.routeSummary?.segmentCount)));
+  const segmentText = segmentCount > 1 ? ` · 기록 구간 ${segmentCount}개` : '';
+  return `GPS 중단 구간 ${Math.max(1, gapCount)}개${segmentText}. 끊긴 구간은 거리와 지도 선에서 제외했어요.`;
+}
+
 function _renderRunningRouteMap(row) {
   const hasStoredRoute = (Array.isArray(row?.route) && row.route.length > 0)
     || !!row?.routeRef
@@ -2980,11 +2988,13 @@ function _renderRunningRouteMap(row) {
   }
   const mapId = _registerWorkoutRunningMapPayload(row);
   const place = _runningPlaceLabel(row);
+  const gpsInfoLabel = _runningGpsInfoLabel(row);
   return `
     <div class="wt-running-route-map wt-run-real-map is-active" data-wt-running-route-map="${_esc(mapId)}" aria-label="러닝 경로 지도">
       <div class="wt-run-map-canvas" data-running-map-canvas aria-label="${_esc(place)}"></div>
       <div class="wt-run-map-status" data-running-map-status>전체 경로 불러오는 중</div>
       <div class="wt-running-route-place">${_esc(place)}</div>
+      ${gpsInfoLabel ? `<span class="wt-run-gps-info" role="note" tabindex="0" aria-label="${_esc(gpsInfoLabel)}" title="${_esc(gpsInfoLabel)}" data-tip="${_esc(gpsInfoLabel)}">?</span>` : ''}
     </div>
   `;
 }
@@ -2994,16 +3004,7 @@ function _renderRunningRouteDetail(row) {
 }
 
 function _renderRunningGpsStatus(row) {
-  const gapCount = Math.max(0, Math.floor(_num(row?.gapCount ?? row?.routeSummary?.gapCount)));
-  if (!gapCount && !row?.interrupted) return '';
-  const segmentCount = Math.max(0, Math.floor(_num(row?.segmentCount ?? row?.routeSummary?.segmentCount)));
-  const segmentText = segmentCount > 1 ? ` · 기록 구간 ${segmentCount}개` : '';
-  return `
-    <div class="wt-run-gps-status" role="status">
-      <strong>GPS 중단 구간 ${Math.max(1, gapCount)}개${_esc(segmentText)}</strong>
-      <span>끊긴 구간은 거리와 지도 선에서 제외했어요.</span>
-    </div>
-  `;
+  return '';
 }
 
 function _renderWorkoutRunningDetailCard(key, sessionIndex, row, index) {
@@ -3013,17 +3014,21 @@ function _renderWorkoutRunningDetailCard(key, sessionIndex, row, index) {
   const cardId = `act:${key}:${rowSessionIndex}:${index}`;
   const collapsed = _workoutDetailCollapsed.has(cardId);
   const activityKey = String(row.key || '').replace(/[^a-z0-9_-]/gi, '');
-  const metrics = _runningMetricItems(row);
   const distanceValue = row.distanceKm > 0 ? _fmtNum(row.distanceKm, 2) : '0.00';
   const durationText = row.durationSec ? _formatDurationShort(row.durationSec) : '';
   const paceText = _formatRunningPaceCard(row.avgPaceSecPerKm);
   const caloriesText = row.calories > 0 ? `${Math.round(row.calories)}` : '--';
+  const elevationText = row.elevationGainM == null ? '--' : `${Math.round(row.elevationGainM)} m`;
+  const heartRateText = row.avgHeartRateBpm == null ? '-- ♡' : `${Math.round(row.avgHeartRateBpm)}`;
+  const cadenceText = row.cadenceSpm == null ? '--' : `${Math.round(row.cadenceSpm)}`;
   const primaryMetrics = [
     { label: '평균 페이스', value: paceText || "--'--''" },
     { label: '시간', value: durationText || '--' },
     { label: '칼로리', value: caloriesText },
+    { label: '고도 상승', value: elevationText },
+    { label: '평균 심박수', value: heartRateText },
+    { label: '케이던스', value: cadenceText },
   ];
-  const detailMetrics = metrics.filter(item => !['거리', '시간', '속도', '평균 페이스', '칼로리'].includes(item.label));
   return `
     <article class="wt-day-ex-card wt-max-read-card wt-running-read-card ${collapsed ? 'is-collapsed' : 'is-expanded'}">
       <div class="wt-max-card-kicker wt-running-card-kicker">
@@ -3048,16 +3053,6 @@ function _renderWorkoutRunningDetailCard(key, sessionIndex, row, index) {
         ${_renderRunningRouteMap(row)}
       </div>
       ${_renderRunningGpsStatus(row)}
-      ${detailMetrics.length ? `
-        <div class="wt-running-detail-stats" aria-label="러닝 상세 지표">
-          ${detailMetrics.map(item => `
-            <span>
-              <strong>${_esc(item.value)}</strong>
-              <i>${_esc(item.label)}</i>
-            </span>
-          `).join('')}
-        </div>
-      ` : ''}
       ${_renderRunningRouteDetail(row)}
       <div class="wt-max-collapsed-note">러닝 완료 · 카드가 접혔어요</div>
       <div class="wt-max-actions">

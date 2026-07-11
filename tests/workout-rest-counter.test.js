@@ -68,7 +68,7 @@ test('raw statistics export can include set rest intervals', () => {
 test('service worker cache is bumped for changed static assets', () => {
   const sw = read('sw.js');
 
-  assert.match(sw, /tomatofarm-v20260711z12-running-card-metrics/);
+  assert.match(sw, /tomatofarm-v20260711z13-running-card-copy/);
 });
 
 async function runRestTimerRuntimeHarness() {

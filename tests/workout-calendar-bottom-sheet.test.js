@@ -1022,8 +1022,12 @@ test('running detail card uses the workout read-card shell with running metrics 
   assert.match(mapRenderer, /wt-running-route-map wt-run-real-map/);
   assert.match(mapRenderer, /data-wt-running-route-map/);
   assert.match(mapRenderer, /wt-running-route-place/);
+  assert.match(mapRenderer, /wt-run-gps-info/);
   assert.match(mapRenderer, /전체 경로 불러오는 중/);
-  assert.match(card, /wt-running-detail-stats/);
+  assert.doesNotMatch(card, /wt-running-detail-stats/);
+  assert.match(card, /고도 상승/);
+  assert.match(card, /평균 심박수/);
+  assert.match(card, /케이던스/);
   assert.match(metricBuilder, /거리/);
   assert.match(metricBuilder, /시간/);
   assert.match(metricBuilder, /속도/);
@@ -1042,6 +1046,7 @@ test('running detail card uses the workout read-card shell with running metrics 
   assert.match(styleCss, /\.wt-running-read-card/);
   assert.match(styleCss, /\.wt-running-route-map/);
   assert.match(styleCss, /\.wt-running-route-place/);
+  assert.match(styleCss, /\.wt-run-gps-info/);
   assert.doesNotMatch(styleCss, /wt-running-route-mini/);
   assert.match(styleCss, /\.wt-running-primary-stats,[\s\S]*\.wt-running-detail-stats\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(styleCss, /\.wt-running-read-card\.is-collapsed \.wt-running-detail-stats/);
@@ -1436,5 +1441,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260711z12-running-card-metrics/);
+  assert.match(swJs, /tomatofarm-v20260711z13-running-card-copy/);
 });

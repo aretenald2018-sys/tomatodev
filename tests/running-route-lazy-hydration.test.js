@@ -239,6 +239,7 @@ test('375px running detail card hydrates the full route without overlap or clipp
       '_runningSourceLabel',
       '_runningMetricItems',
       '_runningPlaceLabel',
+      '_runningGpsInfoLabel',
       '_registerWorkoutRunningMapPayload',
       '_findWorkoutRunningMapShell',
       '_mountWorkoutRunningMaps',
@@ -298,7 +299,6 @@ test('375px running detail card hydrates the full route without overlap or clipp
         const blocks = [
           document.querySelector('.wt-running-overview'),
           document.querySelector('.wt-running-route-wrap'),
-          document.querySelector('.wt-run-gps-status'),
           document.querySelector('.wt-running-detail-stats'),
           document.querySelector('.wt-max-actions'),
         ].filter(Boolean);
@@ -318,6 +318,9 @@ test('375px running detail card hydrates the full route without overlap or clipp
           horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 1,
           cardInsideViewport: cardRect.left >= 0 && cardRect.right <= window.innerWidth + 1,
           mapVisible: map.getBoundingClientRect().height > 0,
+          gpsInfoVisible: !!document.querySelector('.wt-run-gps-info'),
+          gpsStatusVisible: !!document.querySelector('.wt-run-gps-status'),
+          metricCount: document.querySelectorAll('.wt-running-primary-stats span').length,
           overlaps,
           clipped,
         };
@@ -359,6 +362,9 @@ test('375px running detail card hydrates the full route without overlap or clipp
     assert.equal(layout.horizontalOverflow, false);
     assert.equal(layout.cardInsideViewport, true);
     assert.equal(layout.mapVisible, true);
+    assert.equal(layout.gpsInfoVisible, true);
+    assert.equal(layout.gpsStatusVisible, false);
+    assert.equal(layout.metricCount, 6);
     assert.deepEqual(layout.overlaps, []);
     assert.deepEqual(layout.clipped, []);
 
