@@ -52,5 +52,5 @@ test('exercise picker exposes visible create actions for CRUD', () => {
 });
 
 test('service worker cache version was bumped for stats picker UI polish', () => {
-  assert.match(swJs, /tomatofarm-v20260711z13-running-card-copy/);
+  assert.match(swJs, /tomatofarm-v20260711z14-workout-set-keyboard/);
 });

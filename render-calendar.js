@@ -72,6 +72,7 @@ const _workoutExerciseCompletionStamps = new Map();
 const _workoutExpandedSetEditors = new Set();
 const _workoutOpenSetTypeMenus = new Set();
 let _workoutInlineSetEditor = null;
+let _workoutSetKeyboardInput = null;
 const _workoutSheetCarouselSnapshots = new Map();
 const _workoutSheetPendingCarouselFocus = new Map();
 let _workoutTrackGraphSeq = 0;
@@ -2655,8 +2656,7 @@ function _renderWorkoutTrackGraph(row, bestSet) {
 }
 
 function _renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setIndex, field, value, label, step = '1') {
-  const inputMode = field === 'reps' || field === 'romPct' ? 'numeric' : 'decimal';
-  return `<input type="number" inputmode="${inputMode}" min="0" step="${_esc(step)}" value="${_esc(value)}" aria-label="${_esc(label)}" data-wt-set-input data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" data-field="${_esc(field)}" data-wt-set-clear-on-focus onchange="window._wtCalUpdateExerciseSet('${key}', ${sessionIndex}, ${exerciseIndex}, ${setIndex}, '${field}', this.value, this)">`;
+  return `<input type="text" inputmode="none" pattern="[0-9.]*" readonly min="0" step="${_esc(step)}" value="${_esc(value)}" aria-label="${_esc(label)}" data-wt-set-input data-wt-set-keyboard-input data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" data-field="${_esc(field)}" data-wt-set-clear-on-focus onchange="window._wtCalUpdateExerciseSet('${key}', ${sessionIndex}, ${exerciseIndex}, ${setIndex}, '${field}', this.value, this)">`;
 }
 
 function _workoutSetEditorKey(key, sessionIndex, exerciseIndex, setIndex) {
@@ -2704,9 +2704,8 @@ function _clearWorkoutSetEditorsForExercise(key, sessionIndex, exerciseIndex) {
 
 function _renderWorkoutSetInlineInput(key, sessionIndex, exerciseIndex, setIndex, field, value, label, step = '1') {
   const safeField = ['kg', 'reps'].includes(String(field || '')) ? String(field) : 'kg';
-  const inputMode = safeField === 'reps' ? 'numeric' : 'decimal';
   const inlineKey = _workoutSetInlineFieldKey(key, sessionIndex, exerciseIndex, setIndex, safeField);
-  return `<input type="number" inputmode="${inputMode}" min="0" step="${_esc(step)}" value="${_esc(value)}" class="wt-max-set-value-input" aria-label="${_esc(label)}" data-wt-set-input data-wt-set-inline-input data-wt-inline-editor-key="${_esc(inlineKey)}" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" data-field="${_esc(safeField)}" data-wt-set-clear-on-focus onchange="window._wtCalUpdateExerciseSet('${key}', ${sessionIndex}, ${exerciseIndex}, ${setIndex}, '${safeField}', this.value, this)">`;
+  return `<input type="text" inputmode="none" pattern="[0-9.]*" readonly min="0" step="${_esc(step)}" value="${_esc(value)}" class="wt-max-set-value-input" aria-label="${_esc(label)}" data-wt-set-input data-wt-set-keyboard-input data-wt-set-inline-input data-wt-inline-editor-key="${_esc(inlineKey)}" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" data-field="${_esc(safeField)}" data-wt-set-clear-on-focus onchange="window._wtCalUpdateExerciseSet('${key}', ${sessionIndex}, ${exerciseIndex}, ${setIndex}, '${safeField}', this.value, this)">`;
 }
 
 function _renderWorkoutSetAddRow(key, sessionIndex, exerciseIndex, cardId = '') {
@@ -3506,6 +3505,24 @@ function _bindWorkoutHomeSheetActions(root) {
     const input = target?.closest?.('[data-wt-set-clear-on-focus]');
     if (!input || !sheet.contains(input) || !input.matches(WORKOUT_SHEET_SET_INPUT_SELECTOR)) return;
     _clearWorkoutSetInputOnFocus(input);
+    _showWorkoutSetKeyboard(input);
+  }, true);
+  sheet.addEventListener('input', (event) => {
+    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    const input = target?.closest?.(WORKOUT_SHEET_SET_INPUT_SELECTOR);
+    if (!input || !sheet.contains(input)) return;
+    input.setAttribute('data-wt-set-keyboard-dirty', 'true');
+  }, true);
+  sheet.addEventListener('focusout', (event) => {
+    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    const input = target?.closest?.(WORKOUT_SHEET_SET_INPUT_SELECTOR);
+    if (!input || !sheet.contains(input)) return;
+    window.setTimeout?.(() => {
+      const active = document.activeElement;
+      if (active?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)) return;
+      if (active?.closest?.('[data-wt-set-keyboard]')) return;
+      _hideWorkoutSetKeyboard({ commit: true });
+    }, 0);
   }, true);
   sheet.addEventListener('keydown', (event) => {
     const target = event.target instanceof Element ? event.target : event.target?.parentElement;
@@ -3625,6 +3642,309 @@ function _clearWorkoutSetInputOnFocus(input) {
   if (!input.hasAttribute('data-wt-set-clear-on-focus')) return;
   input.removeAttribute('data-wt-set-clear-on-focus');
   if (input.value !== '') input.value = '';
+}
+
+function _workoutSetKeyboardElement() {
+  if (typeof document === 'undefined') return null;
+  return document.querySelector('[data-wt-set-keyboard]');
+}
+
+function _workoutSetKeyboardSheet(input = null) {
+  if (typeof document === 'undefined') return null;
+  const source = input?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)
+    ? input
+    : _workoutSetKeyboardInput?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)
+      ? _workoutSetKeyboardInput
+      : null;
+  return source?.closest?.('[data-wt-day-sheet]')
+    || document.querySelector?.('#workout-calendar-root [data-wt-day-sheet]')
+    || document.querySelector?.('[data-wt-day-sheet]');
+}
+
+function _workoutSetKeyboardActiveInput(input = null) {
+  if (input?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)) return input;
+  if (typeof document === 'undefined') return null;
+  const active = document.activeElement;
+  if (active?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)) return active;
+  if (_workoutSetKeyboardInput?.isConnected && _workoutSetKeyboardInput.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)) {
+    return _workoutSetKeyboardInput;
+  }
+  return null;
+}
+
+function _workoutSetKeyboardMeta(input) {
+  if (!input?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)) return null;
+  return {
+    key: input.getAttribute('data-date-key') || _workoutHomeSelectedKey,
+    sessionIndex: input.getAttribute('data-session-index') || '0',
+    exerciseIndex: input.getAttribute('data-exercise-index') || '0',
+    setIndex: input.getAttribute('data-set-index') || '0',
+    field: input.getAttribute('data-field') || 'kg',
+    mode: input.hasAttribute('data-wt-set-inline-input') ? 'inline' : 'editor',
+  };
+}
+
+function _sameWorkoutSetKeyboardTarget(a, b) {
+  return !!a && !!b
+    && String(a.key || '') === String(b.key || '')
+    && String(a.sessionIndex || '') === String(b.sessionIndex || '')
+    && String(a.exerciseIndex || '') === String(b.exerciseIndex || '')
+    && String(a.setIndex || '') === String(b.setIndex || '')
+    && String(a.field || '') === String(b.field || '');
+}
+
+function _workoutSetKeyboardInlineTargets(sheet, input) {
+  const current = _workoutSetKeyboardMeta(input);
+  const rows = Array.from(sheet?.querySelectorAll?.('[data-wt-set-swipe-row]') || []);
+  return rows.flatMap(row => ['kg', 'reps'].map(field => ({
+    key: row.getAttribute('data-date-key') || current?.key || _workoutHomeSelectedKey,
+    sessionIndex: row.getAttribute('data-session-index') || current?.sessionIndex || '0',
+    exerciseIndex: row.getAttribute('data-exercise-index') || current?.exerciseIndex || '0',
+    setIndex: row.getAttribute('data-set-index') || '0',
+    field,
+    mode: 'inline',
+  })));
+}
+
+function _findWorkoutSetKeyboardMoveTarget(input, direction) {
+  const active = _workoutSetKeyboardActiveInput(input);
+  const sheet = _workoutSetKeyboardSheet(active);
+  const step = direction === 'prev' ? -1 : 1;
+  if (!active || !sheet) return null;
+  const current = _workoutSetKeyboardMeta(active);
+  const targets = active.hasAttribute('data-wt-set-inline-input')
+    ? _workoutSetKeyboardInlineTargets(sheet, active)
+    : Array.from(sheet.querySelectorAll(WORKOUT_SHEET_SET_INPUT_SELECTOR)).map(node => _workoutSetKeyboardMeta(node));
+  const index = targets.findIndex(target => _sameWorkoutSetKeyboardTarget(target, current));
+  if (index < 0) return null;
+  const nextIndex = Math.max(0, Math.min(targets.length - 1, index + step));
+  return nextIndex === index ? null : targets[nextIndex];
+}
+
+function _focusWorkoutSetKeyboardTarget(target) {
+  if (!target) return false;
+  if (target.mode === 'inline') {
+    return _focusWorkoutSetInlineFieldFromSheet(
+      target.key,
+      target.sessionIndex,
+      target.exerciseIndex,
+      target.setIndex,
+      target.field
+    );
+  }
+  return _focusWorkoutSetEditorFieldFromSheet(
+    target.key,
+    target.sessionIndex,
+    target.exerciseIndex,
+    target.setIndex,
+    target.field
+  );
+}
+
+function _syncWorkoutSetKeyboardButtons(input = null) {
+  const keyboard = _workoutSetKeyboardElement();
+  const active = _workoutSetKeyboardActiveInput(input);
+  if (!keyboard || !active) return;
+  const field = active.getAttribute('data-field') || '';
+  keyboard.querySelectorAll('[data-wt-set-keyboard-field]').forEach(node => {
+    node.classList.toggle('is-active', node.getAttribute('data-wt-set-keyboard-field') === field);
+  });
+  const prev = keyboard.querySelector('[data-wt-set-keyboard-action="prev"]');
+  const next = keyboard.querySelector('[data-wt-set-keyboard-action="next"]');
+  if (prev) prev.disabled = !_findWorkoutSetKeyboardMoveTarget(active, 'prev');
+  if (next) next.disabled = !_findWorkoutSetKeyboardMoveTarget(active, 'next');
+}
+
+function _ensureWorkoutSetKeyboard() {
+  if (typeof document === 'undefined') return null;
+  const existing = _workoutSetKeyboardElement();
+  if (existing) return existing;
+  const keyboard = document.createElement('div');
+  keyboard.className = 'wt-set-keyboard';
+  keyboard.setAttribute('data-wt-set-keyboard', '');
+  keyboard.setAttribute('role', 'group');
+  keyboard.setAttribute('aria-label', '운동 숫자 키보드');
+  keyboard.innerHTML = `
+    <div class="wt-set-keyboard-grid">
+      <button type="button" data-wt-set-keyboard-key="1">1</button>
+      <button type="button" data-wt-set-keyboard-key="2">2</button>
+      <button type="button" data-wt-set-keyboard-key="3">3</button>
+      <button type="button" class="wt-set-keyboard-tool" data-wt-set-keyboard-action="backspace" aria-label="한 글자 지우기">⌫</button>
+      <button type="button" data-wt-set-keyboard-key="4">4</button>
+      <button type="button" data-wt-set-keyboard-key="5">5</button>
+      <button type="button" data-wt-set-keyboard-key="6">6</button>
+      <button type="button" class="wt-set-keyboard-tool" data-wt-set-keyboard-action="prev" aria-label="왼쪽 입력으로 이동">‹</button>
+      <button type="button" data-wt-set-keyboard-key="7">7</button>
+      <button type="button" data-wt-set-keyboard-key="8">8</button>
+      <button type="button" data-wt-set-keyboard-key="9">9</button>
+      <button type="button" class="wt-set-keyboard-tool" data-wt-set-keyboard-action="next" aria-label="오른쪽 입력으로 이동">›</button>
+      <button type="button" data-wt-set-keyboard-key=".">.</button>
+      <button type="button" data-wt-set-keyboard-key="0">0</button>
+      <button type="button" class="wt-set-keyboard-tool" data-wt-set-keyboard-action="clear" aria-label="전체 지우기">C</button>
+      <button type="button" class="wt-set-keyboard-tool is-primary" data-wt-set-keyboard-action="done" aria-label="입력 완료">✓</button>
+    </div>
+  `;
+  let lastKeyboardTouchAt = 0;
+  const runKeyboardButton = (event) => {
+    const button = event.target?.closest?.('button');
+    if (!button || !keyboard.contains(button) || button.disabled) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const key = button.getAttribute('data-wt-set-keyboard-key');
+    const action = button.getAttribute('data-wt-set-keyboard-action');
+    if (key != null) {
+      _applyWorkoutSetKeyboardKey(key);
+      return;
+    }
+    if (action === 'backspace') return _applyWorkoutSetKeyboardBackspace();
+    if (action === 'clear') return _applyWorkoutSetKeyboardClear();
+    if (action === 'prev' || action === 'next') return _moveWorkoutSetKeyboardFocus(action);
+    if (action === 'done') return _hideWorkoutSetKeyboard({ commit: true });
+  };
+  keyboard.addEventListener('touchstart', event => {
+    lastKeyboardTouchAt = Date.now();
+    runKeyboardButton(event);
+  }, { passive: false });
+  keyboard.addEventListener('click', event => {
+    const button = event.target?.closest?.('button');
+    if (!button || !keyboard.contains(button)) return;
+    if (Date.now() - lastKeyboardTouchAt < 450) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    runKeyboardButton(event);
+  });
+  document.body.appendChild(keyboard);
+  return keyboard;
+}
+
+function _showWorkoutSetKeyboard(input) {
+  if (!input?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)) return;
+  _workoutSetKeyboardInput = input;
+  input.removeAttribute('data-wt-set-keyboard-dirty');
+  input.setAttribute('data-wt-set-keyboard-cursor', String(String(input.value || '').length));
+  const keyboard = _ensureWorkoutSetKeyboard();
+  const sheet = _workoutSetKeyboardSheet(input);
+  document.documentElement?.classList?.add('wt-set-keyboard-open');
+  sheet?.classList?.add('has-set-keyboard');
+  keyboard?.classList?.add('is-open');
+  _syncWorkoutSetKeyboardButtons(input);
+}
+
+function _clearWorkoutSetKeyboardSurface(input = null) {
+  if (typeof document === 'undefined') return;
+  const keyboard = _workoutSetKeyboardElement();
+  const active = _workoutSetKeyboardActiveInput(input);
+  if (document.activeElement === active) active?.blur?.();
+  keyboard?.remove();
+  document.documentElement?.classList?.remove('wt-set-keyboard-open');
+  document.querySelectorAll?.('[data-wt-day-sheet].has-set-keyboard').forEach(sheet => {
+    sheet.classList.remove('has-set-keyboard');
+  });
+  _workoutSetKeyboardInput = null;
+}
+
+function _hideWorkoutSetKeyboard(options = {}) {
+  const input = _workoutSetKeyboardActiveInput();
+  if (!input || options?.commit === false) {
+    _clearWorkoutSetKeyboardSurface(input);
+    return Promise.resolve(false);
+  }
+  return Promise.resolve(_commitWorkoutSetKeyboardInput(input, { closeInline: true }))
+    .finally(() => _clearWorkoutSetKeyboardSurface(input));
+}
+
+function _markWorkoutSetKeyboardInputDirty(input) {
+  if (!input?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)) return;
+  input.setAttribute('data-wt-set-keyboard-dirty', 'true');
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function _replaceWorkoutSetKeyboardInputValue(input, value, cursor) {
+  input.value = value;
+  input.setAttribute('data-wt-set-keyboard-cursor', String(Math.max(0, Math.min(String(value).length, cursor))));
+  _markWorkoutSetKeyboardInputDirty(input);
+  try { input.setSelectionRange(cursor, cursor); } catch {}
+  _syncWorkoutSetKeyboardButtons(input);
+}
+
+function _workoutSetKeyboardCursor(input, value) {
+  const stored = Number(input?.getAttribute?.('data-wt-set-keyboard-cursor'));
+  if (Number.isFinite(stored)) return Math.max(0, Math.min(value.length, Math.floor(stored)));
+  const selected = Number(input?.selectionStart);
+  if (Number.isFinite(selected)) return Math.max(0, Math.min(value.length, Math.floor(selected)));
+  return value.length;
+}
+
+function _applyWorkoutSetKeyboardKey(key) {
+  const input = _workoutSetKeyboardActiveInput();
+  if (!input) return;
+  const field = input.getAttribute('data-field') || '';
+  if (key === '.' && (field === 'reps' || field === 'romPct')) return;
+  const value = String(input.value || '');
+  const start = _workoutSetKeyboardCursor(input, value);
+  const end = start;
+  const next = `${value.slice(0, start)}${key}${value.slice(end)}`;
+  if (key === '.' && next.indexOf('.') !== next.lastIndexOf('.')) return;
+  _replaceWorkoutSetKeyboardInputValue(input, next, start + key.length);
+}
+
+function _applyWorkoutSetKeyboardBackspace() {
+  const input = _workoutSetKeyboardActiveInput();
+  if (!input) return;
+  const value = String(input.value || '');
+  const start = _workoutSetKeyboardCursor(input, value);
+  const end = start;
+  if (start <= 0 && end <= 0) return;
+  const removeFrom = start === end ? Math.max(0, start - 1) : start;
+  _replaceWorkoutSetKeyboardInputValue(input, `${value.slice(0, removeFrom)}${value.slice(end)}`, removeFrom);
+}
+
+function _applyWorkoutSetKeyboardClear() {
+  const input = _workoutSetKeyboardActiveInput();
+  if (!input) return;
+  _replaceWorkoutSetKeyboardInputValue(input, '', 0);
+}
+
+function _commitWorkoutSetKeyboardInput(input, options = {}) {
+  if (!input?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)) return Promise.resolve(false);
+  const dirty = input.getAttribute('data-wt-set-keyboard-dirty') === 'true';
+  input.removeAttribute('data-wt-set-keyboard-dirty');
+  input.removeAttribute('data-wt-set-keyboard-cursor');
+  if (!dirty) {
+    if (options?.closeInline && input.hasAttribute('data-wt-set-inline-input')) {
+      return Promise.resolve(_cancelWorkoutSetInlineFieldFromSheet(
+        input.getAttribute('data-date-key') || _workoutHomeSelectedKey,
+        input.getAttribute('data-session-index'),
+        input.getAttribute('data-exercise-index'),
+        input.getAttribute('data-set-index'),
+        input.getAttribute('data-field')
+      ));
+    }
+    return Promise.resolve(false);
+  }
+  return Promise.resolve(_updateWorkoutExerciseSetFromSheet(
+    input.getAttribute('data-date-key') || _workoutHomeSelectedKey,
+    input.getAttribute('data-session-index'),
+    input.getAttribute('data-exercise-index'),
+    input.getAttribute('data-set-index'),
+    input.getAttribute('data-field'),
+    input.value,
+    input
+  ));
+}
+
+function _moveWorkoutSetKeyboardFocus(direction) {
+  const input = _workoutSetKeyboardActiveInput();
+  const target = _findWorkoutSetKeyboardMoveTarget(input, direction);
+  if (!input || !target) return false;
+  return Promise.resolve(_commitWorkoutSetKeyboardInput(input, { closeInline: false }))
+    .then(() => _focusWorkoutSetKeyboardTarget(target))
+    .catch((e) => {
+      console.warn('[workout-calendar] set keyboard move failed:', e);
+      return false;
+    });
 }
 
 function _bindWorkoutSetSwipeDelete(sheet) {

@@ -62,6 +62,27 @@ function buildHarnessScript() {
     '_clearWorkoutSetEditorsForExercise',
     '_runWorkoutHomeSheetCardAction',
     '_clearWorkoutSetInputOnFocus',
+    '_workoutSetKeyboardElement',
+    '_workoutSetKeyboardSheet',
+    '_workoutSetKeyboardActiveInput',
+    '_workoutSetKeyboardMeta',
+    '_sameWorkoutSetKeyboardTarget',
+    '_workoutSetKeyboardInlineTargets',
+    '_findWorkoutSetKeyboardMoveTarget',
+    '_focusWorkoutSetKeyboardTarget',
+    '_syncWorkoutSetKeyboardButtons',
+    '_ensureWorkoutSetKeyboard',
+    '_showWorkoutSetKeyboard',
+    '_clearWorkoutSetKeyboardSurface',
+    '_hideWorkoutSetKeyboard',
+    '_markWorkoutSetKeyboardInputDirty',
+    '_replaceWorkoutSetKeyboardInputValue',
+    '_workoutSetKeyboardCursor',
+    '_applyWorkoutSetKeyboardKey',
+    '_applyWorkoutSetKeyboardBackspace',
+    '_applyWorkoutSetKeyboardClear',
+    '_commitWorkoutSetKeyboardInput',
+    '_moveWorkoutSetKeyboardFocus',
     '_bindWorkoutSetSwipeDelete',
     '_bindWorkoutHomeSheetActions',
     '_focusWorkoutSetInlineFieldFromSheet',
@@ -88,6 +109,7 @@ function buildHarnessScript() {
     const _workoutOpenSetTypeMenus = new Set();
     const _workoutExpandedSetEditors = new Set();
     let _workoutInlineSetEditor = null;
+    let _workoutSetKeyboardInput = null;
     window.__renderCalls = 0;
     window.__syncCalls = [];
     window.__restoreCalls = [];
@@ -427,6 +449,116 @@ test('mobile set row inline editing clears values and both swipe directions remo
   assert.equal(result.finalState.mutationOptions.filter(options => options.optimisticRender === true).length, 2);
   assert.equal(result.finalState.pendingMutationRender, null);
   assert.equal(result.finalState.toast?.message, '세트를 삭제했어요');
+});
+
+test('custom workout set keypad enters values and moves left or right across inline fields', async () => {
+  const result = await runHarnessPage(async (page) => {
+    await page.evaluate(() => {
+      window.__entry = {
+        sets: [
+          { kg: 70, reps: 10, rir: 2, romPct: 100, setType: 'main', done: false },
+          { kg: 40, reps: 12, rir: 2, romPct: 100, setType: 'main', done: false },
+        ],
+      };
+      window.__syncCalls = [];
+      window.__mutateCalls = [];
+      window.renderWorkoutCalendarHome();
+    });
+
+    async function tapSelector(selector) {
+      const handle = await page.waitForSelector(selector, { visible: true });
+      const box = await handle.boundingBox();
+      assert.ok(box, `${selector} should have a bounding box`);
+      await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    }
+
+    await tapSelector('[data-wt-set-edit-field="kg"][data-set-index="0"]');
+    await page.waitForFunction(() => document.querySelector('[data-wt-set-keyboard].is-open'));
+    await new Promise(resolve => setTimeout(resolve, 220));
+    const shown = await page.evaluate(() => {
+      const input = document.activeElement;
+      return {
+        field: input?.getAttribute('data-field') || '',
+        value: input?.value ?? null,
+        readOnly: input?.readOnly === true,
+        inputMode: input?.getAttribute('inputmode') || '',
+        keyCount: document.querySelectorAll('[data-wt-set-keyboard-key]').length,
+        hasPrev: !!document.querySelector('[data-wt-set-keyboard-action="prev"]'),
+        hasNext: !!document.querySelector('[data-wt-set-keyboard-action="next"]'),
+        sheetPadded: document.querySelector('[data-wt-day-sheet]')?.classList.contains('has-set-keyboard') || false,
+      };
+    });
+
+    await tapSelector('[data-wt-set-keyboard-key="5"]');
+    await tapSelector('[data-wt-set-keyboard-key="5"]');
+    const typedKg = await page.evaluate(() => ({
+      value: document.activeElement?.value ?? null,
+      dirty: document.activeElement?.getAttribute('data-wt-set-keyboard-dirty') || '',
+    }));
+
+    await tapSelector('[data-wt-set-keyboard-action="next"]');
+    await page.waitForFunction(() => (
+      window.__entry.sets[0]?.kg === 55
+      && document.activeElement?.matches?.('[data-wt-set-inline-input][data-field="reps"][data-set-index="0"]')
+    ), { timeout: 1500 });
+
+    await tapSelector('[data-wt-set-keyboard-key="1"]');
+    await tapSelector('[data-wt-set-keyboard-key="5"]');
+    await tapSelector('[data-wt-set-keyboard-action="prev"]');
+    await page.waitForFunction(() => (
+      window.__entry.sets[0]?.reps === 15
+      && document.activeElement?.matches?.('[data-wt-set-inline-input][data-field="kg"][data-set-index="0"]')
+    ));
+
+    const afterPrev = await page.evaluate(() => ({
+      activeField: document.activeElement?.getAttribute('data-field') || '',
+      activeValue: document.activeElement?.value ?? null,
+      sets: window.__entry.sets,
+      keyboardOpen: !!document.querySelector('[data-wt-set-keyboard].is-open'),
+      syncActions: window.__syncCalls.map(call => call.action),
+      mutationOptions: window.__mutateCalls.map(call => call.options),
+    }));
+
+    await tapSelector('[data-wt-set-keyboard-action="done"]');
+    await page.waitForFunction(() => (
+      !document.querySelector('[data-wt-set-keyboard]')
+      && !document.querySelector('[data-wt-set-inline-input]')
+    ));
+
+    const hidden = await page.evaluate(() => ({
+      sets: window.__entry.sets,
+      keyboardOpenClass: document.documentElement.classList.contains('wt-set-keyboard-open'),
+      sheetPadded: document.querySelector('[data-wt-day-sheet]')?.classList.contains('has-set-keyboard') || false,
+    }));
+
+    return { shown, typedKg, afterPrev, hidden };
+  });
+
+  assert.deepEqual(result.shown, {
+    field: 'kg',
+    value: '',
+    readOnly: true,
+    inputMode: 'none',
+    keyCount: 11,
+    hasPrev: true,
+    hasNext: true,
+    sheetPadded: true,
+  });
+  assert.deepEqual(result.typedKg, { value: '55', dirty: 'true' });
+  assert.equal(result.afterPrev.activeField, 'kg');
+  assert.equal(result.afterPrev.activeValue, '');
+  assert.deepEqual(result.afterPrev.sets[0], { kg: 55, reps: 15, rir: 2, romPct: 100, setType: 'main', done: false });
+  assert.equal(result.afterPrev.keyboardOpen, true);
+  assert.ok(result.afterPrev.syncActions.filter(action => action === 'sheet:set-inline-field').length >= 3);
+  assert.ok(result.afterPrev.mutationOptions.every(options => options.preserveSheetScroll === true));
+  assert.deepEqual(result.hidden, {
+    sets: [
+      { kg: 55, reps: 15, rir: 2, romPct: 100, setType: 'main', done: false },
+      { kg: 40, reps: 12, rir: 2, romPct: 100, setType: 'main', done: false },
+    ],
+    keyboardOpenClass: false,
+    sheetPadded: false,
+  });
 });
 
 test('set type menu click mutates only the target set type and clears completion marker', async () => {

@@ -442,8 +442,12 @@ test('day sheet set rows support mobile value editing, clear-on-focus, and swipe
   assert.match(calendarJs, /Math\.abs\(current\.dx\) >= 64/);
   assert.doesNotMatch(calendarJs, /if \(dx >= 0\) \{\s*resetRow/);
   assert.match(calendarJs, /focusin[\s\S]*data-wt-set-clear-on-focus/);
+  assert.match(binder, /_showWorkoutSetKeyboard\(input\)/);
+  assert.match(calendarJs, /function _moveWorkoutSetKeyboardFocus/);
   assert.match(styleCss, /\.wt-max-set-main\s*\{[\s\S]*grid-template-columns:\s*30px 44px minmax\(52px,\s*1fr\) minmax\(46px,\s*\.84fr\) 44px 36px/);
   assert.match(styleCss, /\.wt-max-set-value-input\s*\{/);
+  assert.match(styleCss, /\.wt-set-keyboard\s*\{/);
+  assert.match(styleCss, /\[data-wt-day-sheet\]\.has-set-keyboard \.wt-day-sheet-scroll/);
   assert.match(styleCss, /\.wt-max-set-remove-btn\s*\{[\s\S]*width:\s*44px;[\s\S]*height:\s*38px;/);
   assert.match(styleCss, /\.wt-max-set-row\.is-swiping/);
   assert.match(styleCss, /\.wt-max-set-row\.is-swipe-delete-right/);
@@ -819,7 +823,8 @@ test('day sheet set inputs preserve keyboard next focus without restoring the ch
   const inputFn = calendarJs.slice(rowsStart, rowsEnd);
 
   assert.match(calendarJs, /const WORKOUT_SHEET_SET_INPUT_SELECTOR = '\[data-wt-set-input\]'/);
-  assert.match(inputFn, /data-wt-set-input data-session-index="\$\{sessionIndex\}"/);
+  assert.match(inputFn, /type="text" inputmode="none"/);
+  assert.match(inputFn, /data-wt-set-input data-wt-set-keyboard-input data-session-index="\$\{sessionIndex\}"/);
   assert.match(inputFn, /data-exercise-index="\$\{exerciseIndex\}"/);
   assert.match(inputFn, /data-set-index="\$\{setIndex\}"/);
   assert.match(inputFn, /data-field="\$\{_esc\(field\)\}"/);
@@ -1441,5 +1446,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260711z13-running-card-copy/);
+  assert.match(swJs, /tomatofarm-v20260711z14-workout-set-keyboard/);
 });

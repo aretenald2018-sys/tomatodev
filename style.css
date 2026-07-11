@@ -14215,6 +14215,64 @@ body.lz-running-record-modal-open {
   border-color: #217cf9;
   box-shadow: 0 0 0 2px rgba(33, 124, 249, 0.12);
 }
+[data-wt-day-sheet].has-set-keyboard .wt-day-sheet-scroll {
+  padding-bottom: calc(272px + env(safe-area-inset-bottom, 0px));
+  scroll-padding-bottom: calc(272px + env(safe-area-inset-bottom, 0px));
+}
+.wt-set-keyboard {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 12000;
+  display: block;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: #050505;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -12px 28px rgba(15, 23, 42, 0.22);
+  transform: translateY(100%);
+  transition: transform 160ms ease;
+}
+.wt-set-keyboard.is-open {
+  transform: translateY(0);
+}
+.wt-set-keyboard-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  max-width: 620px;
+  margin: 0 auto;
+}
+.wt-set-keyboard button {
+  min-width: 0;
+  height: clamp(48px, 7.4vh, 68px);
+  border: 0;
+  border-radius: 9px;
+  background: #2d2d2d;
+  color: #f5f7fb;
+  font-family: inherit;
+  font-size: 30px;
+  line-height: 1;
+  font-weight: 500;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.wt-set-keyboard button:active {
+  background: #3a3a3a;
+}
+.wt-set-keyboard button:disabled {
+  opacity: .32;
+}
+.wt-set-keyboard .wt-set-keyboard-tool {
+  background: #202020;
+  color: #d9dde5;
+  font-size: 24px;
+  font-weight: 800;
+}
+.wt-set-keyboard .wt-set-keyboard-tool.is-primary {
+  color: #217cf9;
+}
 .wt-max-set-check,
 .wt-max-set-remove,
 .wt-max-set-expand {
