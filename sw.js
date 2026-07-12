@@ -3,7 +3,7 @@
 
 // 캐시 버전: 타임스탬프 기반 자동 생성 — 파일 수정 시 SW 자동 업데이트
 // (SW 파일 내용이 1바이트라도 바뀌면 브라우저가 새 SW로 인식)
-const CACHE_VERSION = 'tomatofarm-v20260713z21-css-entry-compat';
+const CACHE_VERSION = 'tomatofarm-v20260713z24-css-entry-compat';
 const RUNTIME_CACHE = 'dashboard3-runtime';
 importScripts('./runtime-assets.js');
 const STATIC_ASSETS = self.TOMATO_STATIC_ASSETS;
@@ -52,7 +52,12 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('message', (event) => {
-  if (event?.data?.type === 'SKIP_WAITING') self.skipWaiting();
+  if (event?.data?.type !== 'SKIP_WAITING') return;
+  // Keep the message event alive until activation is requested. Without
+  // waitUntil(), a backgrounded mobile client can reload while this update is
+  // still waiting, leaving the old worker in control.
+  const activation = self.skipWaiting();
+  if (typeof event.waitUntil === 'function') event.waitUntil(activation);
 });
 
 self.addEventListener('fetch', (event) => {
