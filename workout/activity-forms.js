@@ -53,18 +53,6 @@ function _renderActivityCopyHint(type, applyCopy) {
   el.querySelector('.wt-activity-copy-btn')?.addEventListener('click', () => applyCopy(last));
 }
 
-// ── 런닝 폼 ─────────────────────────────────────────────────────
-// 2026-07-11: 러닝은 날짜 시트의 인라인 세션 카드에서 측정한다.
-export function _renderRunningForm() {
-  // Kept as an exported no-op because load.js still calls all activity renderers.
-}
-
-let _runEventsBound = false;
-export function _initRunningEvents() {
-  if (_runEventsBound) return;
-  _runEventsBound = true;
-}
-
 // ── 크로스핏 폼 ─────────────────────────────────────────────────
 export function _renderCfForm() {
   const wod  = document.getElementById('wt-cf-wod');

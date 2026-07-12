@@ -220,11 +220,25 @@ function _bindLifeZoneNpcQuestEvent() {
 }
 
 let _runningLiveEventBound = false;
+let _runningLiveRenderTimer = null;
+let _lastRunningLiveRenderAt = 0;
+
+function _scheduleRunningLiveHomeRender() {
+  if (_currentTab !== 'home' || _runningLiveRenderTimer) return;
+  const delay = Math.max(0, 1500 - (Date.now() - _lastRunningLiveRenderAt));
+  _runningLiveRenderTimer = setTimeout(() => {
+    _runningLiveRenderTimer = null;
+    if (_currentTab !== 'home') return;
+    _lastRunningLiveRenderAt = Date.now();
+    renderHome();
+  }, delay);
+}
+
 function _bindRunningLiveEvent() {
   if (_runningLiveEventBound) return;
   _runningLiveEventBound = true;
   document.addEventListener('life-zone:running-live', () => {
-    if (_currentTab === 'home') renderHome();
+    _scheduleRunningLiveHomeRender();
   });
 }
 

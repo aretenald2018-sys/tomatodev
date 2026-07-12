@@ -16,6 +16,8 @@ async function writeWearBridgeModule(tmp) {
   await Promise.all([
     writeFile(modulePath, await read('workout/wear-bridge.js'), 'utf8'),
     writeFile(join(tmp, 'running-route-store.js'), await read('workout/running-route-store.js'), 'utf8'),
+    writeFile(join(tmp, 'session-policy.js'), await read('workout/session-policy.js'), 'utf8'),
+    writeFile(join(tmp, 'running-model.js'), await read('workout/running-model.js'), 'utf8'),
     writeFile(join(tmp, 'package.json'), '{"type":"module"}\n', 'utf8'),
   ]);
   return modulePath;

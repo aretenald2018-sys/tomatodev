@@ -2,6 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import puppeteer from 'puppeteer';
+import {
+  runningStackSession,
+  runningTrackSessionInfo,
+} from '../workout/calendar-running.js';
+import {
+  WORKOUT_GYM_SESSION_COUNT,
+  WORKOUT_RUNNING_SESSION_INDEX,
+} from '../workout/session-policy.js';
 
 const calendarJs = readFileSync(new URL('../render-calendar.js', import.meta.url), 'utf8');
 const styleCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
@@ -9,6 +17,7 @@ const tm2Css = readFileSync(new URL('../test-mode-v2.css', import.meta.url), 'ut
 const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 const tm2EntryJs = readFileSync(new URL('../workout/test-v2/entry.js', import.meta.url), 'utf8');
 const tm2BoardJs = readFileSync(new URL('../workout/test-v2/board-render.js', import.meta.url), 'utf8');
+const runningModelJs = readFileSync(new URL('../workout/running-model.js', import.meta.url), 'utf8');
 
 function extractFunctionSource(source, name) {
   const asyncStart = source.indexOf(`async function ${name}(`);
@@ -216,7 +225,7 @@ test('sheet tap toggles directly between bar and full without drag or suppressio
   assert.match(toggleFn, /sheetState: 'full'/);
   assert.match(toggleFn, /renderWorkoutCalendarHome\(\)/);
   assert.match(toggleFn, /_setWorkoutHomeSheetState\('bar'\)/);
-  assert.match(calendarJs, /window\._wtCalToggleSheet = _toggleWorkoutHomeSheet/);
+  assert.doesNotMatch(calendarJs, /window\._wtCalToggleSheet/);
   assert.doesNotMatch(calendarJs, /function _stepWorkoutHomeSheet/);
   assert.doesNotMatch(calendarJs, /function _resolveWorkoutHomeSheetDragTarget/);
   assert.doesNotMatch(calendarJs, /function _startWorkoutHomeSheetDrag/);
@@ -276,12 +285,12 @@ test('full sheet header tap collapses through the sheet toggle path', () => {
 
   assert.match(barFn, /class="cal-workout-day-main" data-wt-sheet-main data-wt-sheet-toggle data-date-key=/);
   assert.match(barFn, /data-wt-sheet-main data-wt-sheet-toggle data-date-key="\$\{selected\}" aria-expanded="\$\{expanded \? 'true' : 'false'\}" aria-label="\$\{expanded \? '날짜 상세 접기' : '선택한 날짜 열기'\}"/);
-  assert.match(barFn, /onclick="window\._wtCalGoToday\(\)">오늘<\/button>/);
+  assert.match(barFn, /data-wt-calendar-action="go-today-detail">오늘<\/button>/);
+  assert.match(calendarJs, /action === 'go-today-detail'[\s\S]*?_goTodayWorkoutDetail\(\)/);
   assert.doesNotMatch(barFn, />루틴<\/button>/);
   assert.doesNotMatch(barFn, /window\._wtCalOpenRoutine\('\$\{selected\}'\)/);
   assert.doesNotMatch(barFn, /cal-workout-day-main" onclick="window\._wtCalOpenDay/);
   assert.doesNotMatch(barFn, /data-wt-sheet-toggle onclick="window\._wtCalToggleSheet/);
-  assert.match(bindFn, /target\?\.closest\?\.\('\[data-wt-sheet-action\]'\)[\s\S]*return/);
   assert.match(bindFn, /target\?\.closest\?\.\('\[data-wt-sheet-toggle\]'\)/);
   assert.match(bindFn, /_toggleWorkoutHomeSheet\(toggle\.getAttribute\('data-date-key'\) \|\| _workoutHomeSelectedKey\)/);
   assert.match(applyFn, /querySelectorAll\('\[data-wt-sheet-toggle\]'\)\.forEach/);
@@ -643,7 +652,8 @@ test('day sheet exercise card uses inline plus row and one complete button', () 
   assert.match(setRows, /data-session-index="\$\{sessionIndex\}"/);
   assert.match(setRows, /data-exercise-index="\$\{exerciseIndex\}"/);
   assert.doesNotMatch(setRows, /window\._wtCalAddExerciseSet/);
-  assert.match(setRows, /window\._wtCalUpdateExerciseSet/);
+  assert.match(setRows, /data-wt-set-input/);
+  assert.match(setRows, /data-date-key=/);
   assert.match(setRows, /data-wt-set-done-toggle/);
   assert.match(setRows, /data-wt-set-remove/);
   assert.match(setRows, /data-wt-sheet-card-action="toggle-set-editor"/);
@@ -653,8 +663,8 @@ test('day sheet exercise card uses inline plus row and one complete button', () 
   assert.doesNotMatch(setRows, /onclick="window\._wtCalRemoveExerciseSet/);
   assert.doesNotMatch(oldEditFn, /_openWorkoutEditorForSession/);
   assert.match(oldEditFn, /action:\s*'sheet:edit-inline'/);
-  assert.match(calendarJs, /window\._wtCalEditExerciseCard = _editWorkoutExerciseCard/);
-  assert.match(calendarJs, /window\._wtCalUpdateExerciseSet = _updateWorkoutExerciseSetFromSheet/);
+  assert.doesNotMatch(calendarJs, /window\._wtCalEditExerciseCard/);
+  assert.doesNotMatch(calendarJs, /window\._wtCalUpdateExerciseSet/);
   assert.doesNotMatch(calendarJs, /window\._wtCalCompleteExercise = _completeWorkoutExerciseFromSheet/);
   assert.doesNotMatch(calendarJs, /window\._wtCalAddExerciseSet = _addWorkoutExerciseSetFromSheet/);
   assert.match(calendarJs, /function _runWorkoutHomeSheetCardAction\(action, control\)/);
@@ -824,11 +834,12 @@ test('day sheet set inputs preserve keyboard next focus without restoring the ch
 
   assert.match(calendarJs, /const WORKOUT_SHEET_SET_INPUT_SELECTOR = '\[data-wt-set-input\]'/);
   assert.match(inputFn, /type="text" inputmode="none"/);
-  assert.match(inputFn, /data-wt-set-input data-wt-set-keyboard-input data-session-index="\$\{sessionIndex\}"/);
+  assert.match(inputFn, /data-wt-set-input data-wt-set-keyboard-input data-date-key="\$\{_esc\(key\)\}" data-session-index="\$\{sessionIndex\}"/);
   assert.match(inputFn, /data-exercise-index="\$\{exerciseIndex\}"/);
   assert.match(inputFn, /data-set-index="\$\{setIndex\}"/);
   assert.match(inputFn, /data-field="\$\{_esc\(field\)\}"/);
-  assert.match(inputFn, /this\.value, this/);
+  assert.doesNotMatch(inputFn, /onchange=/);
+  assert.match(calendarJs, /input\.value,\s*input,/);
   assert.match(styleCss, /\.wt-set-keyboard\s*\{[\s\S]*--wt-set-keyboard-button:\s*56px;[\s\S]*--wt-set-keyboard-height:/);
   assert.match(styleCss, /\.wt-set-keyboard button\s*\{[\s\S]*height:\s*var\(--wt-set-keyboard-button\)/);
   const keyboardButtonStart = styleCss.indexOf('.wt-set-keyboard button');
@@ -973,14 +984,14 @@ test('workout bottom sheet replaces the third gym session with a dedicated runni
   const tabs = calendarJs.slice(tabStart, tabEnd);
   const opener = calendarJs.slice(openStart, openEnd);
 
-  assert.match(calendarJs, /const WORKOUT_GYM_SESSION_COUNT = 2/);
-  assert.match(calendarJs, /const WORKOUT_RUNNING_SESSION_INDEX = 2/);
+  assert.equal(WORKOUT_GYM_SESSION_COUNT, 2);
+  assert.equal(WORKOUT_RUNNING_SESSION_INDEX, 2);
   assert.match(tabs, /\.slice\(0, WORKOUT_GYM_SESSION_COUNT\)/);
-  assert.match(tabs, /window\._wtCalSelectRunning\(\)/);
+  assert.match(tabs, /data-wt-sheet-card-action="select-running"/);
   assert.match(tabs, />\s*러닝\$\{hasRunning \? '<b><\/b>' : ''\}\s*<\/button>/);
   assert.doesNotMatch(tabs, /3회차/);
   assert.match(calendarJs, /function _selectWorkoutHomeRunning\(\)[\s\S]*_workoutHomeSessionIndex = WORKOUT_RUNNING_SESSION_INDEX/);
-  assert.match(calendarJs, /window\._wtCalSelectRunning = _selectWorkoutHomeRunning/);
+  assert.match(calendarJs, /document\.addEventListener\('workout:select-running', _selectWorkoutHomeRunning\)/);
   assert.doesNotMatch(calendarJs, /window\._wtCalAddRunning = _openWorkoutHomeRunning/);
   assert.match(calendarJs, /case 'add-running':[\s\S]*_openWorkoutHomeRunning\(key\)/);
   assert.match(opener, /_loadWorkoutStateForSheetSession\(targetKey, WORKOUT_RUNNING_SESSION_INDEX\)/);
@@ -1009,7 +1020,7 @@ test('running detail card uses the workout read-card shell with running metrics 
   assert.match(calendarJs, /function _mountWorkoutRunningMaps/);
   assert.match(calendarJs, /querySelectorAll\?\.\('\[data-wt-running-route-map\]'\)/);
   assert.match(calendarJs, /renderRunningMap\(shell, \{ points: payload\.points, phase: 'detail' \}\)/);
-  assert.match(calendarJs, /runRouteRef:\s*s\.runRouteRef \|\| null/);
+  assert.match(runningModelJs, /runRouteRef:\s*_clone\(source\.runRouteRef, null\)/);
   assert.match(calendarJs, /routeRef:\s*d\.runRouteRef \|\| null/);
   assert.match(calendarJs, /routeRef:\s*row\.routeRef \|\| null/);
   assert.match(calendarJs, /전체 경로 불러오는 중/);
@@ -1064,47 +1075,29 @@ test('running detail card uses the workout read-card shell with running metrics 
 });
 
 test('running tab stacks multiple running session cards after the gym sessions', () => {
-  const infoStart = calendarJs.indexOf('function _runningTrackSessionInfo');
-  const infoEnd = calendarJs.indexOf('function _clearRunningFields', infoStart);
-  const stackStart = calendarJs.indexOf('function _runningStackSession');
-  const stackEnd = calendarJs.indexOf('function _workoutRecordOrdinalForKey', stackStart);
   const detailStart = calendarJs.indexOf('function _renderWorkoutHomeDetailHtml');
   const detailEnd = calendarJs.indexOf('function _renderWorkoutDetailSummaryCard', detailStart);
-  assert.ok(infoStart >= 0 && infoEnd > infoStart, 'running session info helper should exist');
-  assert.ok(stackStart >= 0 && stackEnd > stackStart, 'running stack helper should exist');
   assert.ok(detailStart >= 0 && detailEnd > detailStart, 'detail renderer should exist');
-  const infoHelper = calendarJs.slice(infoStart, infoEnd);
-  const stackHelper = calendarJs.slice(stackStart, stackEnd);
   const detail = calendarJs.slice(detailStart, detailEnd);
 
-  assert.match(infoHelper, /list\.slice\(WORKOUT_RUNNING_SESSION_INDEX\)/);
-  assert.match(infoHelper, /runningSessions/);
-  assert.match(detail, /_runningStackSession/);
+  assert.match(detail, /runningStackSession/);
   assert.match(detail, /runningInfo\.runningSessions/);
   assert.match(detail, /activities:\s*runningInfo\.runningSessions/);
-  assert.match(stackHelper, /_activityRows\(_onlyRunningFields\(sourceSession\)\)\.find\(row => row\?\.key === 'running'\)/);
-  assert.match(stackHelper, /sessionIndex:\s*_runningStackSessionIndex\(item\.index\)/);
   assert.match(detail, /wx\.activities = runningStack\.rows/);
 
-  const sourceBundle = [
-    'const WORKOUT_RUNNING_SESSION_INDEX = 2;',
-    extractFunctionSource(calendarJs, '_num'),
-    extractFunctionSource(calendarJs, '_fmtNum'),
-    extractFunctionSource(calendarJs, '_formatDuration'),
-    extractFunctionSource(calendarJs, '_durationFromMinSec'),
-    extractFunctionSource(calendarJs, '_hasRunningRecord'),
-    extractFunctionSource(calendarJs, '_onlyRunningFields'),
-    extractFunctionSource(calendarJs, '_activityRows'),
-    extractFunctionSource(calendarJs, '_runningStackSessionIndex'),
-    extractFunctionSource(calendarJs, '_runningTrackSessionInfo'),
-    extractFunctionSource(calendarJs, '_runningStackSession'),
-  ].join('\n\n');
-  const buildRunningStack = new Function(`${sourceBundle}
-    return function buildRunningStack(sessions) {
-      const info = _runningTrackSessionInfo(sessions);
-      return { info, stack: _runningStackSession({ session: info.session, activities: info.runningSessions }) };
+  const activityRows = (session) => session.running ? [{
+    key: 'running',
+    distanceKm: session.runDistance,
+    route: session.runRoute,
+    routeRef: session.runRouteRef,
+  }] : [];
+  const buildRunningStack = (sessions) => {
+    const info = runningTrackSessionInfo(sessions);
+    return {
+      info,
+      stack: runningStackSession({ session: info.session, activities: info.runningSessions }, activityRows),
     };
-  `)();
+  };
 
   const stacked = buildRunningStack([
     { id: 'session-1', exercises: [{ exerciseId: 'bench' }] },
@@ -1452,5 +1445,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260712z1-gps-route-model-road-replay/);
+  assert.match(swJs, /tomatofarm-v20260712z2-workout-running-refactor/);
 });

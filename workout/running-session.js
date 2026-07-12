@@ -18,6 +18,18 @@ import {
   runningDistanceMeters,
   runningRouteDistanceMeters,
 } from './running-route-policy.js';
+import {
+  RUNNING_SESSION_ID,
+  WORKOUT_RUNNING_SESSION_INDEX,
+} from './session-policy.js';
+import { applyRunningDataToWorkout } from './running-model.js';
+import { RunningLiveAccumulator } from './running-live-accumulator.js';
+import {
+  RUNNING_DRAFT_STORAGE_VERSION,
+  clearRunningDraftRecord,
+  readRunningDraftRecord,
+  writeRunningDraftRecord,
+} from './running-draft-store.js';
 
 export {
   buildConfirmedRunningMovementRoute,
@@ -29,8 +41,7 @@ export {
 
 const RUNNING_ROUTE_PREVIEW_POINTS = 240;
 const RUNNING_DRAFT_ROUTE_WRITE_INTERVAL_MS = 30_000;
-const RUNNING_WORKOUT_SESSION_INDEX = 2;
-const RUNNING_SESSION_DRAFT_VERSION = 1;
+const RUNNING_SESSION_DRAFT_VERSION = RUNNING_DRAFT_STORAGE_VERSION;
 const RUNNING_SESSION_DRAFT_MAX_MS = 24 * 60 * 60 * 1000;
 const RUNNING_SESSION_DRAFT_KEY_PREFIX = 'tomatofarm_running_session_draft_';
 const RUNNING_SESSION_DRAFT_ACTIVE_KEY = 'tomatofarm_running_session_draft_active';
@@ -44,6 +55,7 @@ const MAX_LIVE_GPS_AGE_MS = 30_000;
 const MAX_LIVE_GPS_ACCURACY_M = 35;
 const MAX_PLAUSIBLE_RUNNING_SPEED_MPS = RUNNING_ROUTE_POLICY.maxPlausibleSpeedMps;
 const NATIVE_LOCATION_POLL_MS = 2_000;
+const RUNNING_MAP_UPDATE_INTERVAL_MS = 3_000;
 const DEFAULT_RUNNING_GOAL = Object.freeze({ type: 'free', value: 0 });
 const RUNNING_GOAL_DEFAULTS = Object.freeze({ distance: 5, time: 30 });
 const RUNNING_AUDIO_MIN_MS = 3500;
@@ -58,6 +70,7 @@ const _session = {
   pausedAt: null,
   pausedMs: 0,
   route: [],
+  routeAccumulator: new RunningLiveAccumulator(),
   routeRevision: 0,
   pendingGapReason: '',
   previewPoint: null,
@@ -74,6 +87,7 @@ const _session = {
   nativeLocationStarted: false,
   nativeLocationCursor: 0,
   nativeLocationPollId: null,
+  lastMapRenderAt: 0,
 };
 let _runningDraftEventsBound = false;
 let _runningDraftRouteTimer = null;
@@ -496,7 +510,10 @@ function _elapsedSec() {
 
 function _currentSummary() {
   const endedAt = _session.endedAt || _now();
-  return summarizeRunningRoute(_session.route, {
+  if (_session.routeAccumulator.state.pointCount !== _session.route.length) {
+    _session.routeAccumulator.rebuild(_session.route);
+  }
+  return _session.routeAccumulator.summary({
     startedAt: _session.startedAt || endedAt,
     endedAt,
     pausedMs: _session.pausedMs,
@@ -538,7 +555,7 @@ function _ensureRunningWorkoutDate(dateKey, options = {}) {
 }
 
 function _workoutSessionIndexFromState() {
-  return RUNNING_WORKOUT_SESSION_INDEX;
+  return WORKOUT_RUNNING_SESSION_INDEX;
 }
 
 function _currentRunningDraftOwnerId() {
@@ -604,9 +621,13 @@ function _persistRunningDraft(context = 'manual') {
   if (!draft) return null;
   _lastRunningDraftPersistAt = draft.updatedAt;
   try {
-    const payload = JSON.stringify(draft);
-    localStorage.setItem(_runningDraftKey(draft.ownerId), payload);
-    localStorage.setItem(RUNNING_SESSION_DRAFT_ACTIVE_KEY, JSON.stringify(_runningDraftActiveMarker(draft)));
+    writeRunningDraftRecord(
+      localStorage,
+      _runningDraftKey(draft.ownerId),
+      RUNNING_SESSION_DRAFT_ACTIVE_KEY,
+      draft,
+      _runningDraftActiveMarker(draft),
+    );
     return draft;
   } catch (error) {
     console.error(`[running-session] draft persistence failed (${context}):`, error);
@@ -640,15 +661,14 @@ function _scheduleRunningRouteDraftPersist(context = 'route point') {
 }
 
 function _readRunningDraftFromKey(key) {
-  let raw = null;
   try {
-    raw = localStorage.getItem(key);
-    if (!raw) return null;
-    const draft = normalizeRunningSessionDraft(JSON.parse(raw));
-    if (!draft) localStorage.removeItem(key);
+    const stored = readRunningDraftRecord(localStorage, key);
+    if (!stored) return null;
+    const draft = normalizeRunningSessionDraft(stored);
+    if (!draft) clearRunningDraftRecord(localStorage, key);
     return draft;
   } catch {
-    try { localStorage.removeItem(key); } catch {}
+    try { clearRunningDraftRecord(localStorage, key); } catch {}
     return null;
   }
 }
@@ -679,7 +699,7 @@ function _readRunningDraft() {
   const keyedDraft = _readRunningDraftFromKey(ownerKey);
   if (keyedDraft) {
     if (!keyedDraft.ownerId || _runningDraftBelongsToCurrentUser(keyedDraft, ownerId)) return keyedDraft;
-    try { localStorage.removeItem(ownerKey); } catch {}
+    try { clearRunningDraftRecord(localStorage, ownerKey); } catch {}
   }
   return _readRunningActiveDraft(ownerId);
 }
@@ -694,7 +714,7 @@ function _clearRunningDraft() {
     const value = raw ? JSON.parse(raw) : null;
     clearActive = _runningDraftBelongsToCurrentUser(value, ownerId);
   } catch {}
-  try { localStorage.removeItem(_runningDraftKey(ownerId)); } catch {}
+  try { clearRunningDraftRecord(localStorage, _runningDraftKey(ownerId)); } catch {}
   if (clearActive) {
     try { localStorage.removeItem(RUNNING_SESSION_DRAFT_ACTIVE_KEY); } catch {}
   }
@@ -724,6 +744,7 @@ function _applyRunningDraft(draft) {
     announcedGoalDone: normalized.announcedGoalDone,
     lastSpeechAt: normalized.lastSpeechAt,
   });
+  _session.routeAccumulator.rebuild(normalized.route);
   const summary = _currentSummary();
   _syncWorkoutRunData(summary, _session.placeSummary || _runningPlaceFallback(summary));
   return true;
@@ -732,8 +753,8 @@ function _applyRunningDraft(draft) {
 function _restoreRunningDraftIfAvailable() {
   const draft = _readRunningDraft();
   if (!draft || !_applyRunningDraft(draft)) return false;
-  S.workout.sessionIndex = RUNNING_WORKOUT_SESSION_INDEX;
-  S.workout.sessionId = 'running-track';
+  S.workout.sessionIndex = WORKOUT_RUNNING_SESSION_INDEX;
+  S.workout.sessionId = RUNNING_SESSION_ID;
   if (_session.phase === 'active') {
     if (!_nativeRunningLocationPlugin()) _markRouteGap('restore');
     _startWatch();
@@ -843,11 +864,7 @@ function _syncWorkoutRunData(summary, placeSummary = _session.placeSummary) {
   const durationSec = summary.durationSec % 60;
   const route = normalizeRunningRoutePoints(_session.route);
   const routeRef = _matchingCapturedRouteReference(S.workout.runData?.routeRef, route);
-  S.workout.running = !!(summary.distanceKm > 0 || summary.durationSec > 0 || summary.pointCount > 0);
-  S.workout.sessionIndex = RUNNING_WORKOUT_SESSION_INDEX;
-  S.workout.sessionId = 'running-track';
-  S.workout.runData = {
-    ...(S.workout.runData || {}),
+  applyRunningDataToWorkout(S.workout, {
     distance: summary.distanceKm,
     durationMin,
     durationSec,
@@ -861,7 +878,10 @@ function _syncWorkoutRunData(summary, placeSummary = _session.placeSummary) {
     placeSummary: placeSummary || _runningPlaceFallback(summary),
     avgPaceSecPerKm: summary.avgPaceSecPerKm || 0,
     gpsAccuracySummary: summary.gpsAccuracySummary || null,
-  };
+  }, {
+    sessionIndex: WORKOUT_RUNNING_SESSION_INDEX,
+    sessionId: RUNNING_SESSION_ID,
+  });
 }
 
 function _resetLiveSession(options = {}) {
@@ -894,19 +914,15 @@ function _resetLiveSession(options = {}) {
     nativeLocationStarted: false,
     nativeLocationCursor: 0,
     nativeLocationPollId: null,
+    lastMapRenderAt: 0,
   });
+  _session.routeAccumulator.reset();
 }
 
 function _publishRunningLiveState(active = false) {
   const sourceRoute = _session.route;
   const route = buildRunningRoutePreview(sourceRoute, RUNNING_ROUTE_PREVIEW_POINTS);
-  const routeSummary = sourceRoute.length
-    ? summarizeRunningRoute(sourceRoute, {
-      startedAt: _session.startedAt || sourceRoute[0]?.ts || _now(),
-      endedAt: _session.endedAt || _now(),
-      pausedMs: _session.pausedMs,
-    })
-    : null;
+  const routeSummary = sourceRoute.length ? _currentSummary() : null;
   const detail = {
     active: !!active,
     phase: _session.phase,
@@ -1140,6 +1156,7 @@ function _pushRoutePoint(point, options = {}) {
     stored.gapReason = gapReason;
   }
   _session.route.push(stored);
+  _session.routeAccumulator.append(stored);
   _session.routeRevision += 1;
   _session.pendingGapReason = '';
   if (_session.route.length === MAX_RUNNING_ROUTE_POINTS) {
@@ -1478,6 +1495,8 @@ function _liveRunningRenderPoints() {
 function _mountLiveRunningMap(shell, key) {
   if (!shell) return;
   shell.dataset.runningLiveMapKey = key;
+  shell.dataset.runningLiveMapRevision = String(_session.routeRevision);
+  _session.lastMapRenderAt = _now();
   const phase = _session.phase === 'summary' ? 'detail' : _session.phase;
   const points = _liveRunningRenderPoints();
   renderRunningMap(shell, { points, phase }).catch(error => {
@@ -1509,10 +1528,16 @@ function _render() {
   const nextMap = root.querySelector('[data-running-live-map]');
   if (previousMap?.dataset.runningLiveMapKey === mapKey && nextMap) {
     nextMap.replaceWith(previousMap);
+    const renderedRevision = Number(previousMap.dataset.runningLiveMapRevision || -1);
+    const routeChanged = renderedRevision !== _session.routeRevision;
+    const updateDue = (_now() - _session.lastMapRenderAt) >= RUNNING_MAP_UPDATE_INTERVAL_MS;
+    if (!routeChanged || (!updateDue && _session.phase !== 'summary')) return;
     const phase = _session.phase === 'summary' ? 'detail' : _session.phase;
     updateRunningMap(previousMap, { points: _liveRunningRenderPoints(), phase }).catch(error => {
       console.warn('[running-session] live map update failed:', error);
     });
+    previousMap.dataset.runningLiveMapRevision = String(_session.routeRevision);
+    _session.lastMapRenderAt = _now();
     return;
   }
   destroyRunningMaps(previousMap);
@@ -1549,18 +1574,25 @@ export function wtMountRunningSession() {
 }
 
 export function wtOpenRunningSession() {
-  if (!_root()) window._wtCalSelectRunning?.();
+  if (!_root() && typeof document !== 'undefined' && typeof CustomEvent === 'function') {
+    document.dispatchEvent(new CustomEvent('workout:select-running'));
+  }
   initRunningSession();
+  if (!_root()) {
+    _showToast('러닝 화면을 먼저 열어주세요', 2200, 'warning');
+    return false;
+  }
   if (_session.open) {
     _render();
     return;
   }
   if (wtRestoreRunningSessionIfActive()) return;
   _resetLiveSession();
-  S.workout.sessionIndex = RUNNING_WORKOUT_SESSION_INDEX;
-  S.workout.sessionId = 'running-track';
+  S.workout.sessionIndex = WORKOUT_RUNNING_SESSION_INDEX;
+  S.workout.sessionId = RUNNING_SESSION_ID;
   _session.open = true;
   _startRun();
+  return true;
 }
 
 export function wtRestoreRunningSessionIfActive() {

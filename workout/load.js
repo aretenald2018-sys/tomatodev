@@ -14,7 +14,7 @@ import { _renderWorkoutTimer, _renderTimerControls,
          _fmtDuration, wtRestTimerSkip, _isViewingTimerDate,
          wtApplyActiveWorkoutDraft, wtPersistActiveWorkoutDraft }
                                      from './timers.js';
-import { _renderRunningForm, _renderCfForm,
+import { _renderCfForm,
          _renderStretchForm, _renderSwimForm }
                                      from './activity-forms.js';
 import { _initButtonEventListeners } from './status.js';
@@ -222,7 +222,6 @@ export function loadWorkoutDate(y, m, d) {
   _renderStretchingToggle();
   document.getElementById('wt-chip-swimming')?.classList.toggle('active', w.swimming);
   document.getElementById('wt-chip-running')?.classList.toggle('has-record', w.running);
-  _renderRunningForm();
   _renderCfForm();
   _renderStretchForm();
   _renderSwimForm();

@@ -16,12 +16,31 @@ export function createRunningRouteHydrationController(loadRoute) {
 
   let generation = 0;
   const payloads = new Set();
+  const resolvedRoutes = new Map();
+
+  function routeKey(routeRef) {
+    const routeId = String(routeRef?.routeId || '');
+    const revision = String(routeRef?.revision || '');
+    return routeId && revision ? `${routeId}:${revision}` : '';
+  }
+
+
+  function cacheRoute(key, points) {
+    if (!key) return;
+    resolvedRoutes.delete(key);
+    resolvedRoutes.set(key, points);
+    while (resolvedRoutes.size > 8) {
+      resolvedRoutes.delete(resolvedRoutes.keys().next().value);
+    }
+  }
 
   function register({ points = [], routeRef = null } = {}) {
+    const key = routeKey(routeRef);
+    const cached = key ? resolvedRoutes.get(key) : null;
     const payload = {
-      points: Array.isArray(points) ? points : [],
+      points: cached || (Array.isArray(points) ? points : []),
       routeRef: routeRef || null,
-      status: routeRef ? 'idle' : 'ready',
+      status: routeRef && !cached ? 'idle' : 'ready',
       error: null,
       promise: null,
       generation,
@@ -59,6 +78,8 @@ export function createRunningRouteHydrationController(loadRoute) {
           return { status: 'stale', points: payload.points };
         }
         payload.points = _assertHydratedPoints(points, payload.routeRef);
+        const key = routeKey(payload.routeRef);
+        cacheRoute(key, payload.points);
         payload.status = 'ready';
         payload.promise = null;
         return { status: 'ready', points: payload.points };
@@ -84,9 +105,21 @@ export function createRunningRouteHydrationController(loadRoute) {
     payloads.clear();
   }
 
+  function invalidateRoute(routeRef) {
+    const key = routeKey(routeRef);
+    if (key) resolvedRoutes.delete(key);
+  }
+
+  function clearCache() {
+    invalidateAll();
+    resolvedRoutes.clear();
+  }
+
   return Object.freeze({
     register,
     hydrate,
     invalidateAll,
+    invalidateRoute,
+    clearCache,
   });
 }

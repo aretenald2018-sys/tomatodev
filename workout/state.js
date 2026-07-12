@@ -47,7 +47,7 @@ function emptyWorkout() {
     runData:    {
       distance: 0, durationMin: 0, durationSec: 0, memo: '',
       source: 'manual', startedAt: null, endedAt: null,
-      route: [], routeSummary: null, placeSummary: null,
+      route: [], routeRef: null, routeSummary: null, placeSummary: null,
       avgPaceSecPerKm: 0, gpsAccuracySummary: null,
     },
     cfData:     { wod: '', durationMin: 0, durationSec: 0, memo: '' },

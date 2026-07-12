@@ -2,6 +2,8 @@
 // workout/sessions.js — 날짜별 운동 회차 호환 레이어
 // ================================================================
 
+import { hasRunningSessionRecord } from './running-model.js';
+
 export const WORKOUT_SESSION_KEYS = Object.freeze([
   'exercises', 'cf', 'stretching', 'swimming', 'running',
   'runDistance', 'runDurationMin', 'runDurationSec', 'runMemo',
@@ -121,7 +123,7 @@ export function buildLegacyWorkoutSession(day = {}, index = 0) {
 export function hasWorkoutSessionData(session = {}) {
   const s = normalizeWorkoutSession(session, 0);
   if (s.exercises.some(_hasActualWorkoutEntry)) return true;
-  if (s.cf || s.stretching || s.swimming || s.running) return true;
+  if (s.cf || s.stretching || s.swimming || hasRunningSessionRecord(s)) return true;
   if (_num(s.runDistance) > 0 || _num(s.runDurationMin) > 0 || _num(s.runDurationSec) > 0) return true;
   if (Array.isArray(s.runRoute) && s.runRoute.length > 0) return true;
   if (s.runRouteRef) return true;
@@ -191,36 +193,102 @@ function _aggregateWorkoutTimeline(sessions) {
   };
 }
 
+function _aggregateRunningSessions(sessions) {
+  const runs = sessions.filter(hasRunningSessionRecord);
+  if (!runs.length) {
+    return {
+      running: false,
+      runDistance: 0,
+      runDurationMin: 0,
+      runDurationSec: 0,
+      runMemo: '',
+      runSource: 'manual',
+      runStartedAt: null,
+      runEndedAt: null,
+      runRoute: [],
+      runRouteRef: null,
+      runRouteSummary: null,
+      runPlaceSummary: null,
+      runAvgPaceSecPerKm: 0,
+      runGpsAccuracySummary: null,
+    };
+  }
+
+  const duration = _sumDurationMinSec(runs, 'runDurationMin', 'runDurationSec');
+  const durationSec = duration.min * 60 + duration.sec;
+  const distanceKm = runs.reduce((sum, session) => sum + _num(session.runDistance), 0);
+  const startedValues = runs.map(session => _num(session.runStartedAt)).filter(value => value > 0);
+  const endedValues = runs.map(session => _num(session.runEndedAt)).filter(value => value > 0);
+  const pointCount = runs.reduce((sum, session) => (
+    sum + Math.max(
+      _num(session.runRouteSummary?.pointCount),
+      Array.isArray(session.runRoute) ? session.runRoute.length : 0,
+    )
+  ), 0);
+  const avgPaceSecPerKm = distanceKm > 0 && durationSec > 0
+    ? Math.round(durationSec / distanceKm)
+    : 0;
+
+  if (runs.length === 1) {
+    const run = runs[0];
+    return {
+      running: true,
+      runDistance: distanceKm,
+      runDurationMin: duration.min,
+      runDurationSec: duration.sec,
+      runMemo: _str(run.runMemo),
+      runSource: run.runSource || 'manual',
+      runStartedAt: run.runStartedAt || null,
+      runEndedAt: run.runEndedAt || null,
+      runRoute: _clone(run.runRoute || []),
+      runRouteRef: _clone(run.runRouteRef || null),
+      runRouteSummary: _clone(run.runRouteSummary || null),
+      runPlaceSummary: _clone(run.runPlaceSummary || null),
+      runAvgPaceSecPerKm: _num(run.runAvgPaceSecPerKm) || avgPaceSecPerKm,
+      runGpsAccuracySummary: _clone(run.runGpsAccuracySummary || null),
+    };
+  }
+
+  return {
+    running: true,
+    runDistance: distanceKm,
+    runDurationMin: duration.min,
+    runDurationSec: duration.sec,
+    runMemo: _joinMemos(runs, 'runMemo'),
+    runSource: 'session-aggregate',
+    runStartedAt: startedValues.length ? Math.min(...startedValues) : null,
+    runEndedAt: endedValues.length ? Math.max(...endedValues) : null,
+    runRoute: [],
+    runRouteRef: null,
+    runRouteSummary: {
+      source: 'session-aggregate',
+      multiSession: true,
+      activityCount: runs.length,
+      pointCount,
+      distanceKm,
+      durationSec,
+      avgPaceSecPerKm,
+    },
+    runPlaceSummary: null,
+    runAvgPaceSecPerKm: avgPaceSecPerKm,
+    runGpsAccuracySummary: null,
+  };
+}
+
 export function aggregateWorkoutSessions(sessions = []) {
   const active = (Array.isArray(sessions) ? sessions : [])
     .map((session, index) => normalizeWorkoutSession(session, index))
     .filter(hasWorkoutSessionData);
-  const runDur = _sumDurationMinSec(active, 'runDurationMin', 'runDurationSec');
   const cfDur = _sumDurationMinSec(active, 'cfDurationMin', 'cfDurationSec');
   const swimDur = _sumDurationMinSec(active, 'swimDurationMin', 'swimDurationSec');
   const firstWith = (key) => active.find(session => session[key])?.[key] ?? null;
-  const firstRunRouteSession = active.find(session => session.runRouteRef || (Array.isArray(session.runRoute) && session.runRoute.length > 0));
-  const firstRunRoute = firstRunRouteSession?.runRoute || [];
-  const firstRunSource = active.find(session => session.runSource && session.runSource !== 'manual')?.runSource || firstWith('runSource') || 'manual';
+  const running = _aggregateRunningSessions(active);
   return {
     exercises: active.flatMap(session => _clone(session.exercises || [])),
     cf: active.some(session => !!session.cf),
     stretching: active.some(session => !!session.stretching),
     swimming: active.some(session => !!session.swimming),
-    running: active.some(session => !!session.running),
-    runDistance: active.reduce((sum, session) => sum + _num(session.runDistance), 0),
-    runDurationMin: runDur.min,
-    runDurationSec: runDur.sec,
-    runMemo: _joinMemos(active, 'runMemo'),
-    runSource: firstRunSource,
-    runStartedAt: firstWith('runStartedAt'),
-    runEndedAt: firstWith('runEndedAt'),
-    runRoute: firstRunRoute,
-    runRouteRef: firstRunRouteSession?.runRouteRef || null,
-    runRouteSummary: firstRunRouteSession?.runRouteSummary || firstWith('runRouteSummary'),
-    runPlaceSummary: firstWith('runPlaceSummary'),
-    runAvgPaceSecPerKm: firstWith('runAvgPaceSecPerKm') || 0,
-    runGpsAccuracySummary: firstWith('runGpsAccuracySummary'),
+    ...running,
     cfWod: active.map(session => _str(session.cfWod)).filter(Boolean).join('\n'),
     cfDurationMin: cfDur.min,
     cfDurationSec: cfDur.sec,

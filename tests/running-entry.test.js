@@ -17,6 +17,9 @@ const configJs = await readFile(new URL('../config.js', import.meta.url), 'utf8'
 const runningSessionJs = await readFile(new URL('../workout/running-session.js', import.meta.url), 'utf8');
 const runningMapJs = await readFile(new URL('../workout/running-map.js', import.meta.url), 'utf8');
 const calendarJs = await readFile(new URL('../render-calendar.js', import.meta.url), 'utf8');
+const sessionPolicyJs = await readFile(new URL('../workout/session-policy.js', import.meta.url), 'utf8');
+const runningModelJs = await readFile(new URL('../workout/running-model.js', import.meta.url), 'utf8');
+const runningDraftStoreJs = await readFile(new URL('../workout/running-draft-store.js', import.meta.url), 'utf8');
 
 test('running session mounts as an inline card below the day summary instead of a full-screen root', () => {
   assert.match(indexHtml, /id="wt-chip-running"[^>]*onclick="wtSwitchType\('running'\)"[^>]*>🏃 런닝\/조깅<\/button>/);
@@ -147,7 +150,8 @@ test('running session publishes home life-zone live state without rendering a du
   assert.match(runningSessionJs, /route,\s*\n\s*routeSummary/);
   assert.match(runningSessionJs, /_publishRunningLiveState\(true\);[\s\S]*function _startWatch/);
   assert.match(appJs, /document\.addEventListener\('life-zone:running-live'/);
-  assert.match(appJs, /if \(_currentTab === 'home'\) renderHome\(\)/);
+  assert.match(appJs, /function _scheduleRunningLiveHomeRender/);
+  assert.match(appJs, /_runningLiveRenderTimer = setTimeout/);
 
   assert.doesNotMatch(runningSessionJs, /function _renderLiveTrackStage/);
   assert.doesNotMatch(runningSessionJs, /wt-run-home-track-stage/);
@@ -214,7 +218,8 @@ test('running session is wired into app init, save, load, and sessions', () => {
   assert.match(loadJs, /route:\s*Array\.isArray\(workoutSource\.runRoute\) \? workoutSource\.runRoute : \[\]/);
   assert.match(loadJs, /if \(active === 'running'\) active = 'gym'/);
   assert.match(sessionsJs, /'runRoute'/);
-  assert.match(sessionsJs, /firstRunRoute/);
+  assert.match(sessionsJs, /function _aggregateRunningSessions/);
+  assert.match(sessionsJs, /multiSession:\s*true/);
 });
 
 test('running summary save opens the saved workout day detail sheet', () => {
@@ -253,8 +258,9 @@ test('running session persists unsaved live records across app reloads', () => {
   assert.match(runningSessionJs, /segmentId/);
   assert.match(runningSessionJs, /gapBefore/);
   assert.match(runningSessionJs, /gapReason/);
-  assert.match(runningSessionJs, /localStorage\.setItem\(_runningDraftKey\(draft\.ownerId\), payload\)/);
-  assert.match(runningSessionJs, /localStorage\.setItem\(RUNNING_SESSION_DRAFT_ACTIVE_KEY, JSON\.stringify\(_runningDraftActiveMarker\(draft\)\)\)/);
+  assert.match(runningSessionJs, /writeRunningDraftRecord\(/);
+  assert.match(runningDraftStoreJs, /storage:\s*'chunked-route-v2'/);
+  assert.match(runningDraftStoreJs, /RUNNING_DRAFT_ROUTE_CHUNK_SIZE = 500/);
   assert.match(runningSessionJs, /function _readRunningDraft\(\)[\s\S]*RUNNING_SESSION_DRAFT_ACTIVE_KEY[\s\S]*_runningDraftBelongsToCurrentUser/);
   assert.match(runningSessionJs, /window\.addEventListener\('pagehide', \(\) => \{[\s\S]*_markRouteGap\('pagehide'\)[\s\S]*_persistRunningDraft\('pagehide'\)/);
   assert.match(runningSessionJs, /window\.addEventListener\('beforeunload', \(\) => \{[\s\S]*_markRouteGap\('beforeunload'\)[\s\S]*_persistRunningDraft\('beforeunload'\)/);
@@ -264,7 +270,7 @@ test('running session persists unsaved live records across app reloads', () => {
   assert.match(runningSessionJs, /S\.shared\.date = date/);
   assert.match(runningSessionJs, /function _ensureRunningWorkoutDate\(dateKey, options = \{\}\)/);
   assert.match(runningSessionJs, /export function wtRestoreRunningSessionIfActive/);
-  assert.match(runningSessionJs, /export function wtOpenRunningSession\(\) \{[\s\S]*if \(wtRestoreRunningSessionIfActive\(\)\) return;/);
+  assert.match(runningSessionJs, /export function wtOpenRunningSession\(\) \{[\s\S]*if \(wtRestoreRunningSessionIfActive\(\)\) return/);
   assert.match(appJs, /wtRestoreRunningSessionIfActive/);
   const restoreCallIndex = appJs.indexOf('runningSessionRestored = wtRestoreRunningSessionIfActive');
   assert.ok(restoreCallIndex > 0, 'app init should explicitly restore a running draft after login');
@@ -276,10 +282,11 @@ test('running session persists unsaved live records across app reloads', () => {
 });
 
 test('running records save into a dedicated running session with place and device metrics', () => {
-  assert.match(runningSessionJs, /const RUNNING_WORKOUT_SESSION_INDEX = 2/);
-  assert.match(runningSessionJs, /function _workoutSessionIndexFromState\(\) \{\s*return RUNNING_WORKOUT_SESSION_INDEX;\s*\}/);
-  assert.match(runningSessionJs, /S\.workout\.sessionIndex = RUNNING_WORKOUT_SESSION_INDEX/);
-  assert.match(runningSessionJs, /S\.workout\.sessionId = 'running-track'/);
+  assert.match(sessionPolicyJs, /WORKOUT_RUNNING_SESSION_INDEX = WORKOUT_GYM_SESSION_COUNT/);
+  assert.match(sessionPolicyJs, /RUNNING_SESSION_ID = 'running-track'/);
+  assert.match(runningSessionJs, /return WORKOUT_RUNNING_SESSION_INDEX/);
+  assert.match(runningSessionJs, /applyRunningDataToWorkout\(S\.workout/);
+  assert.match(runningModelJs, /workout\.sessionId = options\.sessionId/);
   assert.match(runningSessionJs, /memo:\s*''/);
   assert.doesNotMatch(runningSessionJs, /러닝 세션/);
   assert.doesNotMatch(runningSessionJs, /대한민국 위치 기록/);
@@ -313,10 +320,12 @@ test('running workout save writes a running life-zone snapshot', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /tomatofarm-v20260712z1-gps-route-model-road-replay/);
+  assert.match(swJs, /tomatofarm-v20260712z2-workout-running-refactor/);
   assert.match(swJs, /\.\/workout\/index\.js\?v=20260707d-wear-bridge-load-binding/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);
   assert.match(swJs, /\.\/workout\/running-session\.js/);
+  assert.match(swJs, /\.\/workout\/running-live-accumulator\.js/);
+  assert.match(swJs, /\.\/workout\/running-draft-store\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/sprites\/jups-running-track\.png/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/sprites\/moonjung-tomato-running-track\.png/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/sprites\/lee-jaeheon-running-track\.png/);

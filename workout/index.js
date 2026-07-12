@@ -64,7 +64,6 @@ import { wtStartWorkoutTimer, wtTogglePauseWorkoutTimer,
          wtRestTimerAdjust, wtRestTimerShowIdle,
          wtRestTimerHideIdle, wtOpenRestPresetSheet } from './timers.js';
 import { _initRestTimerPresets }                   from './timers.js';
-import { _initRunningEvents }                      from './activity-forms.js';
 import { _initTypeFormEvents }                     from './activity-forms.js';
 import { initRunningSession, wtMountRunningSession, wtOpenRunningSession, wtHandleRunningSessionBack, wtRestoreRunningSessionIfActive } from './running-session.js';
 import { configureWearWorkoutBridge, initWearWorkoutBridge } from './wear-bridge.js';
@@ -136,7 +135,6 @@ window.wtAddFrequentFoodSuggestion = wtAddFrequentFoodSuggestion;
 
 // ── 초기화 (모듈 로드 시 이벤트 바인딩) ─────────────────────────
 setTimeout(_initRestTimerPresets, 0);
-setTimeout(_initRunningEvents, 0);
 setTimeout(_initTypeFormEvents, 0);
 setTimeout(initRunningSession, 0);
 setTimeout(initWearWorkoutBridge, 0);

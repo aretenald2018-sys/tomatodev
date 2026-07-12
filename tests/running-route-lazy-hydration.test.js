@@ -6,6 +6,7 @@ import { createRunningRouteHydrationController } from '../workout/running-route-
 
 const calendarJs = readFileSync(new URL('../render-calendar.js', import.meta.url), 'utf8');
 const hydrationJs = readFileSync(new URL('../workout/running-route-hydration.js', import.meta.url), 'utf8');
+const runningModelJs = readFileSync(new URL('../workout/running-model.js', import.meta.url), 'utf8');
 const styleCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
 
 function deferred() {
@@ -385,7 +386,7 @@ test('calendar source propagates route refs and loads the full route automatical
   assert.match(calendarJs, /loadRunningRoute,/);
   assert.match(calendarJs, /createRunningRouteHydrationController/);
   assert.match(calendarJs, /runRouteRef:\s*null/);
-  assert.match(calendarJs, /runRouteRef:\s*s\.runRouteRef\s*\|\|\s*null/);
+  assert.match(runningModelJs, /runRouteRef:\s*_clone\(source\.runRouteRef, null\)/);
   assert.match(calendarJs, /routeRef:\s*_clonePlain\(session\.runRouteRef\s*\|\|\s*null\)/);
   assert.match(calendarJs, /routeRef:\s*d\.runRouteRef\s*\|\|\s*null/);
   assert.match(calendarJs, /routeRef:\s*row\.routeRef\s*\|\|\s*null/);

@@ -37,5 +37,5 @@ test('home tomato hero is integrated into the life-zone trapezoid header without
   assert.match(css, /\.lz-overview-hero \.tf-hero-info-btn \{[\s\S]*top: 7px;[\s\S]*right: 8px;/);
   assert.doesNotMatch(css, /\.lz-hero/);
   assert.doesNotMatch(css, /\.tf-hero-sub/);
-  assert.match(sw, /tomatofarm-v20260712z1-gps-route-model-road-replay/);
+  assert.match(sw, /tomatofarm-v20260712z2-workout-running-refactor/);
 });

@@ -39,6 +39,19 @@ import { S } from './workout/state.js';
 import { wtReplaceActiveWorkoutDraftSession } from './workout/timers.js';
 import { destroyRunningMaps, renderRunningMap } from './workout/running-map.js';
 import { createRunningRouteHydrationController } from './workout/running-route-hydration.js';
+import {
+  WORKOUT_GYM_SESSION_COUNT,
+  WORKOUT_RUNNING_SESSION_INDEX,
+} from './workout/session-policy.js';
+import {
+  clearRunningSessionFields,
+  runningOnlySessionFields,
+} from './workout/running-model.js';
+import {
+  isWorkoutRunningTabIndex,
+  runningStackSession,
+  runningTrackSessionInfo,
+} from './workout/calendar-running.js';
 import { deriveDietSuccessFromWorkout } from './workout/cross-domain.js';
 import {
   closeWorkoutDaySheet,
@@ -77,8 +90,6 @@ let _workoutSummaryElapsedTimer = null;
 const _workoutSheetCarouselSnapshots = new Map();
 const _workoutSheetPendingCarouselFocus = new Map();
 let _workoutTrackGraphSeq = 0;
-const WORKOUT_GYM_SESSION_COUNT = 2;
-const WORKOUT_RUNNING_SESSION_INDEX = 2;
 let _workoutRunningMapSeq = 0;
 const _workoutRunningMapPayloads = new Map();
 const _workoutRunningRouteHydration = createRunningRouteHydrationController(loadRunningRoute);
@@ -930,116 +941,7 @@ function _sessionLabel(index) {
 }
 
 function _isRunningTabIndex(index) {
-  return Math.max(0, Math.floor(Number(index) || 0)) === WORKOUT_RUNNING_SESSION_INDEX;
-}
-
-function _hasRunningRecord(session = {}) {
-  const s = session || {};
-  const summary = s.runRouteSummary && typeof s.runRouteSummary === 'object' ? s.runRouteSummary : {};
-  return !!(
-    s.running
-    || _num(s.runDistance) > 0
-    || _num(s.runDurationMin) > 0
-    || _num(s.runDurationSec) > 0
-    || (Array.isArray(s.runRoute) && s.runRoute.length > 0)
-    || _num(summary.pointCount) > 0
-  );
-}
-
-function _runningTrackSessionInfo(sessions = []) {
-  const list = Array.isArray(sessions) ? sessions : [];
-  const runningSessions = list.slice(WORKOUT_RUNNING_SESSION_INDEX)
-    .map((session, offset) => ({ index: WORKOUT_RUNNING_SESSION_INDEX + offset, session }))
-    .filter(item => _hasRunningRecord(item.session));
-  if (runningSessions.length) {
-    return {
-      index: WORKOUT_RUNNING_SESSION_INDEX,
-      session: runningSessions[0].session,
-      runningSessions,
-      hasRecord: true,
-    };
-  }
-  const legacyIndex = list.findIndex(_hasRunningRecord);
-  if (legacyIndex >= 0) {
-    const legacy = { index: legacyIndex, session: list[legacyIndex] };
-    return { index: legacyIndex, session: legacy.session, runningSessions: [legacy], hasRecord: true };
-  }
-  return {
-    index: WORKOUT_RUNNING_SESSION_INDEX,
-    session: list[WORKOUT_RUNNING_SESSION_INDEX] || {},
-    runningSessions: [],
-    hasRecord: false,
-  };
-}
-
-function _clearRunningFields(session = {}) {
-  return {
-    ...session,
-    running: false,
-    runDistance: 0,
-    runDurationMin: 0,
-    runDurationSec: 0,
-    runMemo: '',
-    runSource: 'manual',
-    runStartedAt: null,
-    runEndedAt: null,
-    runRoute: [],
-    runRouteRef: null,
-    runRouteSummary: null,
-    runPlaceSummary: null,
-    runAvgPaceSecPerKm: 0,
-    runGpsAccuracySummary: null,
-  };
-}
-
-function _onlyRunningFields(session = {}) {
-  const s = session || {};
-  return {
-    exercises: [],
-    cf: false,
-    stretching: false,
-    swimming: false,
-    running: !!s.running,
-    runDistance: s.runDistance || 0,
-    runDurationMin: s.runDurationMin || 0,
-    runDurationSec: s.runDurationSec || 0,
-    runMemo: '',
-    runSource: s.runSource || 'gps',
-    runStartedAt: s.runStartedAt || null,
-    runEndedAt: s.runEndedAt || null,
-    runRoute: Array.isArray(s.runRoute) ? s.runRoute : [],
-    runRouteRef: s.runRouteRef || null,
-    runRouteSummary: s.runRouteSummary || null,
-    runPlaceSummary: s.runPlaceSummary || null,
-    runAvgPaceSecPerKm: Number(s.runAvgPaceSecPerKm) || 0,
-    runGpsAccuracySummary: s.runGpsAccuracySummary || null,
-    workoutDuration: 0,
-    workoutTimeline: null,
-    memo: '',
-  };
-}
-
-function _runningStackSessionIndex(index) {
-  const n = Number(index);
-  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : WORKOUT_RUNNING_SESSION_INDEX;
-}
-
-function _runningStackSession({ session = {}, activities = [] } = {}) {
-  const rows = (Array.isArray(activities) ? activities : [])
-    .map((item) => {
-      const sourceSession = item?.session || {};
-      const row = _activityRows(_onlyRunningFields(sourceSession)).find(row => row?.key === 'running');
-      if (!row) return null;
-      return {
-        ...row,
-        sessionIndex: _runningStackSessionIndex(item.index),
-      };
-    })
-    .filter(Boolean);
-  return {
-    session: _onlyRunningFields(session),
-    rows,
-  };
+  return isWorkoutRunningTabIndex(index);
 }
 
 function _workoutRecordOrdinalForKey(cache, selectedKey, plan, checkins, lookup) {
@@ -1780,9 +1682,6 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
   const lookup = _buildWorkoutLookup();
   const isWorkoutHome = surface === 'workout-home';
   const cycleBoard = isWorkoutHome ? getTestBoardV2() : null;
-  const openDayFn = isWorkoutHome ? '_wtCalOpenDay' : '_calOpenDay';
-  const shiftMonthFn = isWorkoutHome ? '_wtCalShiftMonth' : '_calShiftMonth';
-  const goTodayFn = isWorkoutHome ? '_wtCalGoToday' : '_calGoToday';
   const surfaceClass = isWorkoutHome ? 'cal-workout-surface-home' : 'cal-workout-surface-calendar';
   const scrollSurfaceAttr = isWorkoutHome ? ' data-wt-calendar-scroll-surface' : '';
   const selectedParsed = _parseDateKey(_workoutHomeSelectedKey);
@@ -1824,7 +1723,11 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
       disabled ? 'cal-cell-disabled' : '',
       wx.hasWorkout ? 'cal-workout-cell-active' : 'cal-workout-cell-rest',
     ].filter(Boolean).join(' ');
-    const onclick = disabled ? '' : `onclick="window.${openDayFn}('${k}')"`;
+    const dayAction = disabled
+      ? ''
+      : isWorkoutHome
+        ? `data-wt-calendar-action="open-day" data-date-key="${k}"`
+        : `onclick="window._calOpenDay('${k}')"`;
     const maxLabelLines = isWorkoutHome ? 4 : (wx.durationSec > 0 && wx.setCount > 0 ? 3 : 4);
     const labelLines = wx.displayLabels.slice(0, maxLabelLines);
     const moreCount = Math.max(0, wx.displayLabels.length - labelLines.length);
@@ -1841,7 +1744,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
     `;
 
     const cellHtml = `
-      <div class="${classes}" ${onclick}>
+      <div class="${classes}" ${dayAction}>
         <div class="cal-cell-head">
           <span class="cal-cell-date">${d}</span>
           ${wx.hasWorkout ? `<span class="cal-workout-dot"></span>` : ''}
@@ -1901,15 +1804,24 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
     ? _renderWorkoutHomeBottomSheet(_workoutHomeSelectedKey, { cache, plan, checkins, lookup })
     : '';
 
+  const previousMonthAction = isWorkoutHome
+    ? 'data-wt-calendar-action="shift-month" data-delta="-1"'
+    : 'onclick="window._calShiftMonth(-1)"';
+  const nextMonthAction = isWorkoutHome
+    ? 'data-wt-calendar-action="shift-month" data-delta="1"'
+    : 'onclick="window._calShiftMonth(1)"';
+  const todayAction = isWorkoutHome
+    ? 'data-wt-calendar-action="go-today"'
+    : 'onclick="window._calGoToday()"';
   root.innerHTML = `
     <div class="cal-workout-surface ${surfaceClass}"${scrollSurfaceAttr}>
       <div class="cal-header">
-        <button class="cal-nav-btn" onclick="window.${shiftMonthFn}(-1)" aria-label="이전 달">‹</button>
+        <button class="cal-nav-btn" ${previousMonthAction} aria-label="이전 달">‹</button>
         <div class="cal-title">
           <span>${monthLabel}</span>
-          <button class="cal-today-btn" onclick="window.${goTodayFn}()">오늘</button>
+          <button class="cal-today-btn" ${todayAction}>오늘</button>
         </div>
-        <button class="cal-nav-btn" onclick="window.${shiftMonthFn}(1)" aria-label="다음 달">›</button>
+        <button class="cal-nav-btn" ${nextMonthAction} aria-label="다음 달">›</button>
       </div>
 
       ${showModeTabs ? _renderCalendarModeTabs() : ''}
@@ -1966,7 +1878,7 @@ function _renderWorkoutHomeDayBar(selectedKey, { cache, plan, checkins, lookup }
         <span class="cal-workout-day-sub">${recordText} · ${sessionText}</span>
       </button>
       <div class="cal-workout-day-actions">
-        <button type="button" data-wt-sheet-action onclick="window._wtCalGoToday()">오늘</button>
+        <button type="button" data-wt-calendar-action="go-today-detail">오늘</button>
       </div>
     </div>
   `;
@@ -2318,16 +2230,18 @@ function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, includeHead 
   const day = cache[key] || {};
   const sessions = getWorkoutSessions(day, { minCount: WORKOUT_RUNNING_SESSION_INDEX + 1 });
   if (_workoutHomeSessionIndex > WORKOUT_RUNNING_SESSION_INDEX) _workoutHomeSessionIndex = WORKOUT_RUNNING_SESSION_INDEX;
-  const runningInfo = _runningTrackSessionInfo(sessions);
+  const runningInfo = runningTrackSessionInfo(sessions);
   const runningActive = _isRunningTabIndex(_workoutHomeSessionIndex);
   const sessionIndex = runningActive
     ? runningInfo.index
     : Math.max(0, Math.min(WORKOUT_GYM_SESSION_COUNT - 1, Math.floor(Number(_workoutHomeSessionIndex) || 0)));
   const rawSession = sessions[sessionIndex] || sessions[0] || {};
   const runningStack = runningActive
-    ? _runningStackSession({ session: runningInfo.session, activities: runningInfo.runningSessions })
+    ? runningStackSession({ session: runningInfo.session, activities: runningInfo.runningSessions }, _activityRows)
     : null;
-  const session = runningActive ? (runningStack?.session || _onlyRunningFields(runningInfo.session)) : _clearRunningFields(rawSession);
+  const session = runningActive
+    ? (runningStack?.session || runningOnlySessionFields(runningInfo.session))
+    : clearRunningSessionFields(rawSession);
   const bodyWeight = _weightAt(checkins, key) ?? getLatestCheckinWeight() ?? plan?.weight ?? 70;
   const wx = _workoutMetrics(key, session, bodyWeight, lookup, {
     includeDraftExercises: true,
@@ -2364,7 +2278,7 @@ function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, includeHead 
   const fabText = runningActive ? '▶' : '＋';
   const headHtml = includeHead ? `
       <div class="wt-day-head">
-        <button type="button" class="wt-day-back" onclick="window._wtCalBackToMonth()" aria-label="캘린더로 돌아가기">⌄</button>
+        <button type="button" class="wt-day-back" data-wt-sheet-card-action="back-month" aria-label="캘린더로 돌아가기">⌄</button>
         <div class="wt-day-titlebox">
           <div class="wt-day-date">${_dateTitle(key)} <span>${_dateDistanceLabel(key)}</span></div>
           <div class="wt-day-record">${recordText}</div>
@@ -2425,7 +2339,7 @@ function _renderWorkoutDetailSessionTabs(sessions, activeIndex, runningInfo = nu
     return `
       <button type="button"
         class="${index === activeIndex ? 'active' : ''} ${hasRecord ? 'has-record' : ''}"
-        onclick="window._wtCalSelectSession(${index})">
+        data-wt-sheet-card-action="select-session" data-session-index="${index}">
         ${_sessionLabel(index)}${hasRecord ? '<b></b>' : ''}
       </button>
     `;
@@ -2434,7 +2348,7 @@ function _renderWorkoutDetailSessionTabs(sessions, activeIndex, runningInfo = nu
   tabs.push(`
       <button type="button"
         class="wt-day-session-running ${activeIndex === WORKOUT_RUNNING_SESSION_INDEX ? 'active' : ''} ${hasRunning ? 'has-record' : ''}"
-        onclick="window._wtCalSelectRunning()">
+        data-wt-sheet-card-action="select-running">
         러닝${hasRunning ? '<b></b>' : ''}
       </button>
   `);
@@ -2740,7 +2654,7 @@ function _renderWorkoutTrackGraph(row, bestSet) {
 }
 
 function _renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setIndex, field, value, label, step = '1') {
-  return `<input type="text" inputmode="none" pattern="[0-9.]*" readonly min="0" step="${_esc(step)}" value="${_esc(value)}" aria-label="${_esc(label)}" data-wt-set-input data-wt-set-keyboard-input data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" data-field="${_esc(field)}" data-wt-set-clear-on-focus onchange="window._wtCalUpdateExerciseSet('${key}', ${sessionIndex}, ${exerciseIndex}, ${setIndex}, '${field}', this.value, this)">`;
+  return `<input type="text" inputmode="none" pattern="[0-9.]*" readonly min="0" step="${_esc(step)}" value="${_esc(value)}" aria-label="${_esc(label)}" data-wt-set-input data-wt-set-keyboard-input data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" data-field="${_esc(field)}" data-wt-set-clear-on-focus>`;
 }
 
 function _workoutSetEditorKey(key, sessionIndex, exerciseIndex, setIndex) {
@@ -2789,7 +2703,7 @@ function _clearWorkoutSetEditorsForExercise(key, sessionIndex, exerciseIndex) {
 function _renderWorkoutSetInlineInput(key, sessionIndex, exerciseIndex, setIndex, field, value, label, step = '1') {
   const safeField = ['kg', 'reps'].includes(String(field || '')) ? String(field) : 'kg';
   const inlineKey = _workoutSetInlineFieldKey(key, sessionIndex, exerciseIndex, setIndex, safeField);
-  return `<input type="text" inputmode="none" pattern="[0-9.]*" readonly min="0" step="${_esc(step)}" value="${_esc(value)}" class="wt-max-set-value-input" aria-label="${_esc(label)}" data-wt-set-input data-wt-set-keyboard-input data-wt-set-inline-input data-wt-inline-editor-key="${_esc(inlineKey)}" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" data-field="${_esc(safeField)}" data-wt-set-clear-on-focus onchange="window._wtCalUpdateExerciseSet('${key}', ${sessionIndex}, ${exerciseIndex}, ${setIndex}, '${safeField}', this.value, this)">`;
+  return `<input type="text" inputmode="none" pattern="[0-9.]*" readonly min="0" step="${_esc(step)}" value="${_esc(value)}" class="wt-max-set-value-input" aria-label="${_esc(label)}" data-wt-set-input data-wt-set-keyboard-input data-wt-set-inline-input data-wt-inline-editor-key="${_esc(inlineKey)}" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" data-field="${_esc(safeField)}" data-wt-set-clear-on-focus>`;
 }
 
 function _renderWorkoutSetAddRow(key, sessionIndex, exerciseIndex, cardId = '') {
@@ -3552,6 +3466,15 @@ function _runWorkoutHomeSheetCardAction(action, control) {
   const field = control?.getAttribute?.('data-wt-set-edit-field') || '';
   const routeMapId = control?.getAttribute?.('data-route-map-id') || '';
   switch (action) {
+    case 'back-month':
+      _backWorkoutHomeMonth();
+      return true;
+    case 'select-session':
+      _selectWorkoutHomeSession(sessionIndex);
+      return true;
+    case 'select-running':
+      _selectWorkoutHomeRunning();
+      return true;
     case 'add-exercise-set':
       return _addWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseIndex);
     case 'edit-set-field':
@@ -3596,6 +3519,23 @@ function _bindWorkoutHomeSheetActions(root) {
     const input = target?.closest?.(WORKOUT_SHEET_SET_INPUT_SELECTOR);
     if (!input || !sheet.contains(input)) return;
     input.setAttribute('data-wt-set-keyboard-dirty', 'true');
+  }, true);
+  sheet.addEventListener('change', (event) => {
+    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    const input = target?.closest?.(WORKOUT_SHEET_SET_INPUT_SELECTOR);
+    if (!input || !sheet.contains(input)) return;
+    input.removeAttribute('data-wt-set-keyboard-dirty');
+    Promise.resolve(_updateWorkoutExerciseSetFromSheet(
+      input.getAttribute('data-date-key') || _workoutHomeSelectedKey,
+      input.getAttribute('data-session-index'),
+      input.getAttribute('data-exercise-index'),
+      input.getAttribute('data-set-index'),
+      input.getAttribute('data-field'),
+      input.value,
+      input,
+    )).catch((error) => {
+      console.warn('[workout-calendar] set input change failed:', error);
+    });
   }, true);
   sheet.addEventListener('focusout', (event) => {
     const target = event.target instanceof Element ? event.target : event.target?.parentElement;
@@ -4301,6 +4241,22 @@ function _bindWorkoutCycleRailActions(root) {
   if (!actionRoot) return;
   actionRoot.addEventListener('click', (event) => {
     const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    const calendarAction = target?.closest?.('[data-wt-calendar-action]');
+    if (calendarAction && actionRoot.contains(calendarAction)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const action = calendarAction.getAttribute('data-wt-calendar-action');
+      if (action === 'shift-month') {
+        _shiftMonth(Number(calendarAction.getAttribute('data-delta')) || 0);
+      } else if (action === 'go-today') {
+        _goToday();
+      } else if (action === 'go-today-detail') {
+        _goTodayWorkoutDetail();
+      } else if (action === 'open-day') {
+        _openWorkoutHomeDay(calendarAction.getAttribute('data-date-key'));
+      }
+      return;
+    }
     const goalBtn = target?.closest?.('[data-cal-goal-input]');
     if (goalBtn) {
       event.preventDefault();
@@ -5108,23 +5064,8 @@ window._calSetMode      = _setCalendarMode;
 window._calOpenDay      = _openDay;
 window._calCloseDay     = _closeDay;
 window.renderCalendar   = renderCalendar;
-window._wtCalShiftMonth = _shiftMonth;
-window._wtCalGoToday    = _goToday;
-window._wtCalOpenDay    = _openWorkoutHomeDay;
-window._wtCalToggleSheet = _toggleWorkoutHomeSheet;
-window._wtCalOpenRoutine = _openWorkoutHomeRoutine;
-window._wtCalBackToMonth = _backWorkoutHomeMonth;
-window._wtCalGoTodayDetail = _goTodayWorkoutDetail;
-window._wtCalSelectSession = _selectWorkoutHomeSession;
-window._wtCalSelectRunning = _selectWorkoutHomeRunning;
-window._wtCalEditSession = _editWorkoutHomeSession;
-window._wtCalEditExerciseCard = _editWorkoutExerciseCard;
-window._wtCalFinishExerciseEdit = _finishWorkoutExerciseEdit;
-window._wtCalUpdateExerciseSet = _updateWorkoutExerciseSetFromSheet;
-window._wtCalRemoveExerciseSet = _removeWorkoutExerciseSetFromSheet;
-window._wtCalToggleExerciseSetDone = _toggleWorkoutExerciseSetDoneFromSheet;
-window._wtCalAddSession = _addWorkoutHomeSession;
-window._wtCalExportSession = _exportWorkoutHomeSession;
-window._wtCalDeleteSession = _deleteWorkoutHomeSession;
+if (typeof document !== 'undefined') {
+  document.addEventListener('workout:select-running', _selectWorkoutHomeRunning);
+}
 window.__wtApplyCalendarNavSnapshot = applyWorkoutCalendarNavSnapshot;
 window.renderWorkoutCalendarHome = renderWorkoutCalendarHome;

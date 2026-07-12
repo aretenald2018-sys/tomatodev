@@ -2,10 +2,16 @@ import {
   MAX_RUNNING_ROUTE_POINTS,
   normalizeRunningRoutePoints,
 } from './running-route-store.js';
+import {
+  RUNNING_SESSION_ID,
+  WORKOUT_RUNNING_SESSION_INDEX,
+} from './session-policy.js';
+import {
+  applyRunningDataToWorkout,
+  findRunningSessionIndex,
+} from './running-model.js';
 
 const WEAR_QUEUE_KEY = 'tomatofarm_wear_workout_queue_v1';
-const RUNNING_WORKOUT_SESSION_INDEX = 2;
-const RUNNING_SESSION_ID = 'running-track';
 const MAX_WEAR_HEART_RATE_SAMPLES = 2_161;
 
 let deps = {
@@ -213,19 +219,6 @@ export function normalizeWearWorkoutPayload(raw) {
   };
 }
 
-function _hasRunningSessionRecord(session = {}) {
-  const s = session || {};
-  const summary = s.runRouteSummary && typeof s.runRouteSummary === 'object' ? s.runRouteSummary : {};
-  return !!(
-    s.running ||
-    _num(s.runDistance) > 0 ||
-    _num(s.runDurationMin) > 0 ||
-    _num(s.runDurationSec) > 0 ||
-    (Array.isArray(s.runRoute) && s.runRoute.length > 0) ||
-    _num(summary.pointCount) > 0
-  );
-}
-
 function _sameRunningSession(session = {}, payload) {
   return Number(session?.runStartedAt) === payload.startedAt &&
     Number(session?.runEndedAt) === payload.endedAt;
@@ -236,41 +229,13 @@ function _targetRunningSessionIndex(payload) {
     ? deps.getDay(payload.date.y, payload.date.m, payload.date.d)
     : null;
   const sessions = Array.isArray(existingDay?.workoutSessions) ? existingDay.workoutSessions : [];
-  const exactIndex = sessions.findIndex((session, index) => (
-    index >= RUNNING_WORKOUT_SESSION_INDEX && _sameRunningSession(session, payload)
-  ));
-  if (exactIndex >= RUNNING_WORKOUT_SESSION_INDEX) return exactIndex;
-
-  let lastRunningIndex = RUNNING_WORKOUT_SESSION_INDEX - 1;
-  sessions.forEach((session, index) => {
-    if (index >= RUNNING_WORKOUT_SESSION_INDEX && _hasRunningSessionRecord(session)) {
-      lastRunningIndex = Math.max(lastRunningIndex, index);
-    }
-  });
-  return Math.max(RUNNING_WORKOUT_SESSION_INDEX, lastRunningIndex + 1);
+  return findRunningSessionIndex(sessions, session => _sameRunningSession(session, payload));
 }
 
 function _syncRunData(workout, payload, sessionIndex) {
   const durationMin = Math.floor(payload.durationSec / 60);
   const durationSec = payload.durationSec % 60;
-  workout.sessionIndex = sessionIndex;
-  workout.sessionId = RUNNING_SESSION_ID;
-  workout.exercises = [];
-  workout.cf = false;
-  workout.stretching = false;
-  workout.swimming = false;
-  workout.cfData = { wod: '', durationMin: 0, durationSec: 0, memo: '' };
-  workout.stretchData = { duration: 0, memo: '' };
-  workout.swimData = { distance: 0, durationMin: 0, durationSec: 0, stroke: '', memo: '' };
-  workout.workoutDuration = 0;
-  workout.workoutTimeline = null;
-  workout.wineFree = false;
-  workout.currentGymId = null;
-  workout.pickerGymFilter = null;
-  workout.routineMeta = null;
-  workout.maxMeta = null;
-  workout.running = payload.distanceKm > 0 || payload.durationSec > 0;
-  workout.runData = {
+  return applyRunningDataToWorkout(workout, {
     distance: payload.distanceKm,
     durationMin,
     durationSec,
@@ -296,7 +261,7 @@ function _syncRunData(workout, payload, sessionIndex) {
     placeSummary: { status: 'unavailable', label: '워치 기록', provider: 'wear' },
     avgPaceSecPerKm: payload.avgPaceSecPerKm || 0,
     gpsAccuracySummary: null,
-  };
+  }, { sessionIndex, sessionId: RUNNING_SESSION_ID });
 }
 
 function _queueId(payload) {

@@ -11,6 +11,7 @@ const sessionPath = path.join(repoRoot, 'workout/running-session.js');
 const sessionUrl = pathToFileURL(sessionPath).href;
 const stateUrl = pathToFileURL(path.join(repoRoot, 'workout/state.js')).href;
 const realMapUrl = pathToFileURL(path.join(repoRoot, 'workout/running-map.js')).href;
+const draftStoreUrl = pathToFileURL(path.join(repoRoot, 'workout/running-draft-store.js')).href;
 
 async function runMobileCaptureHarness(pointCount = 620) {
   const tempDir = await mkdtemp(path.join(tmpdir(), 'tomato-running-lossless-'));
@@ -53,6 +54,7 @@ try {
   });
 
   const state = await import(${JSON.stringify(stateUrl)});
+  const draftStore = await import(${JSON.stringify(draftStoreUrl)});
   state.S.shared.date = { y: 2026, m: 6, d: 10 };
   const session = await import(${JSON.stringify(sessionUrl)});
   session.wtOpenRunningSession();
@@ -88,7 +90,7 @@ try {
   document.querySelector('[data-running-action="pause"]').click();
   const draftRaw = localStorage.getItem('tomatofarm_running_session_draft_mobile-lossless-runner');
   const activeRaw = localStorage.getItem('tomatofarm_running_session_draft_active');
-  const draft = JSON.parse(draftRaw);
+  const draft = draftStore.readRunningDraftRecord(localStorage, 'tomatofarm_running_session_draft_mobile-lossless-runner');
   const activeMarker = JSON.parse(activeRaw);
   document.querySelector('[data-running-action="finish"]').click();
   await new Promise(resolve => setTimeout(resolve, 50));
@@ -137,7 +139,7 @@ test('mobile capture preserves the full route and sends every captured coordinat
   assert.equal(result.live.routeSummary.pointCount, result.live.pointCount);
   assert.equal(result.live.route.length, 240);
   assert.ok(result.live.routeSummary.distanceKm > 1.7);
-  assert.ok(result.routePointWrites <= 2, `expected one two-key draft write, got ${result.routePointWrites}`);
+  assert.ok(result.routePointWrites <= 3, `expected one chunked draft checkpoint, got ${result.routePointWrites}`);
   assert.equal(result.draft.route.length, result.live.pointCount);
   assert.equal(result.activeMarker.ownerId, 'mobile-lossless-runner');
   assert.equal(result.activeMarker.draftKey, 'tomatofarm_running_session_draft_mobile-lossless-runner');

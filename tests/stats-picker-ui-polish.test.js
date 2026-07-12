@@ -52,5 +52,5 @@ test('exercise picker exposes visible create actions for CRUD', () => {
 });
 
 test('service worker cache version was bumped for stats picker UI polish', () => {
-  assert.match(swJs, /tomatofarm-v20260712z1-gps-route-model-road-replay/);
+  assert.match(swJs, /tomatofarm-v20260712z2-workout-running-refactor/);
 });
