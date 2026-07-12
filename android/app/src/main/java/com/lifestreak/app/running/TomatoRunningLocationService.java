@@ -20,8 +20,14 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 import com.lifestreak.app.MainActivity;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
 
-public class TomatoRunningLocationService extends Service implements LocationListener {
+public class TomatoRunningLocationService extends Service {
     public static final String ACTION_START = "com.lifestreak.app.running.START";
     public static final String ACTION_PAUSE = "com.lifestreak.app.running.PAUSE";
     public static final String ACTION_RESUME = "com.lifestreak.app.running.RESUME";
@@ -29,12 +35,16 @@ public class TomatoRunningLocationService extends Service implements LocationLis
     private static final String CHANNEL_ID = "phone-running-location";
     private static final int NOTIFICATION_ID = 2101;
 
-    private LocationManager locationManager;
+    private FusedLocationProviderClient fusedLocationClient;
+    private LocationCallback fusedLocationCallback;
+    private LocationManager fallbackLocationManager;
+    private LocationListener fallbackLocationListener;
 
     @Override
     public void onCreate() {
         super.onCreate();
-        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        fallbackLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         ensureNotificationChannel();
     }
 
@@ -76,39 +86,70 @@ public class TomatoRunningLocationService extends Service implements LocationLis
         super.onDestroy();
     }
 
-    @Override
-    public void onLocationChanged(Location location) {
-        PhoneRunningLocationStore.accept(this, location);
-    }
-
-    @Override public void onStatusChanged(String provider, int status, Bundle extras) {}
-    @Override public void onProviderEnabled(String provider) {}
-    @Override public void onProviderDisabled(String provider) {}
-
     private boolean hasLocationPermission() {
         return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
     }
 
     private void startLocationUpdates() {
-        if (!hasLocationPermission() || locationManager == null) return;
+        if (!hasLocationPermission() || fusedLocationClient == null) return;
         stopLocationUpdates();
+        LocationCallback callback = new LocationCallback() {
+            @Override
+            public void onLocationResult(LocationResult result) {
+                for (Location location : result.getLocations()) {
+                    PhoneRunningLocationStore.accept(TomatoRunningLocationService.this, location);
+                }
+            }
+        };
+        fusedLocationCallback = callback;
+        LocationRequest request = new LocationRequest.Builder(
+            Priority.PRIORITY_HIGH_ACCURACY,
+            1_000L
+        )
+            .setMinUpdateIntervalMillis(500L)
+            .setMinUpdateDistanceMeters(1f)
+            .setMaxUpdateAgeMillis(0L)
+            .build();
         try {
-            if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1_000L, 2f, this);
-            }
-            if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 2_000L, 5f, this);
-            }
+            fusedLocationClient.requestLocationUpdates(request, callback, getMainLooper())
+                .addOnFailureListener(error -> startGpsFallback());
         } catch (SecurityException ignored) {
             PhoneRunningLocationStore.pause(this);
         }
     }
 
-    private void stopLocationUpdates() {
-        if (locationManager == null) return;
+    private void startGpsFallback() {
+        if (!hasLocationPermission() || fallbackLocationManager == null || fallbackLocationListener != null) return;
+        LocationListener listener = new LocationListener() {
+            @Override
+            public void onLocationChanged(Location location) {
+                PhoneRunningLocationStore.accept(TomatoRunningLocationService.this, location);
+            }
+
+            @Override public void onStatusChanged(String provider, int status, Bundle extras) {}
+            @Override public void onProviderEnabled(String provider) {}
+            @Override public void onProviderDisabled(String provider) {}
+        };
         try {
-            locationManager.removeUpdates(this);
-        } catch (SecurityException ignored) {}
+            if (!fallbackLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) return;
+            fallbackLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1_000L, 2f, listener);
+            fallbackLocationListener = listener;
+        } catch (SecurityException | IllegalArgumentException ignored) {
+            fallbackLocationListener = null;
+        }
+    }
+
+    private void stopLocationUpdates() {
+        if (fusedLocationClient != null && fusedLocationCallback != null) {
+            fusedLocationClient.removeLocationUpdates(fusedLocationCallback);
+            fusedLocationCallback = null;
+        }
+        if (fallbackLocationManager != null && fallbackLocationListener != null) {
+            try {
+                fallbackLocationManager.removeUpdates(fallbackLocationListener);
+            } catch (SecurityException ignored) {}
+            fallbackLocationListener = null;
+        }
     }
 
     private void startForegroundCompat() {

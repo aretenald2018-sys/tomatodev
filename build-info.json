@@ -1,10 +1,10 @@
 {
   "app": "tomatofarm",
-  "commit": "771ea00ebf6a34cc0fcf21937b454ba32ebd1f9c",
-  "shortCommit": "771ea00ebf6a",
+  "commit": "65e2cc9f7fd5855d2031ca8926da118a2d91adfd",
+  "shortCommit": "65e2cc9f7fd5",
   "branch": "main",
-  "deployedAt": "2026-07-11T23:50:53.843Z",
-  "cacheVersion": "tomatofarm-v20260711z18-diet-food-chip-merge-run-commercial-ui-route-ref-reset",
+  "deployedAt": "2026-07-12T02:10:19.525Z",
+  "cacheVersion": "tomatofarm-v20260712z1-gps-route-model-road-replay",
   "runId": null,
   "runAttempt": null
 }

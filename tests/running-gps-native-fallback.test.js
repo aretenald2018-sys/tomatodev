@@ -9,6 +9,7 @@ const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 
 test('phone APK requests precise location and runs a foreground GPS service', () => {
   const manifest = read('android/app/src/main/AndroidManifest.xml');
+  const build = read('android/app/build.gradle');
   const activity = read('android/app/src/main/java/com/lifestreak/app/MainActivity.java');
   const plugin = read('android/app/src/main/java/com/lifestreak/app/running/TomatoRunningLocationPlugin.java');
   const service = read('android/app/src/main/java/com/lifestreak/app/running/TomatoRunningLocationService.java');
@@ -21,6 +22,11 @@ test('phone APK requests precise location and runs a foreground GPS service', ()
   assert.match(plugin, /requestPermissionForAlias\("location"/);
   assert.match(plugin, /startForegroundService/);
   assert.match(service, /LocationManager\.GPS_PROVIDER/);
+  assert.match(build, /play-services-location:21\.3\.0/);
+  assert.match(service, /FusedLocationProviderClient/);
+  assert.match(service, /Priority\.PRIORITY_HIGH_ACCURACY/);
+  assert.match(service, /result\.getLocations\(\)/);
+  assert.doesNotMatch(service, /LocationManager\.NETWORK_PROVIDER/);
   assert.match(service, /requestLocationUpdates/);
 });
 

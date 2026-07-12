@@ -98,5 +98,5 @@ test('APK login does not wait for optional welcome data before showing the app s
 });
 
 test('service worker cache version was bumped for APK login handoff assets', () => {
-  assert.match(swJs, /tomatofarm-v20260711z18-diet-food-chip-merge/);
+  assert.match(swJs, /tomatofarm-v20260712z1-gps-route-model-road-replay/);
 });

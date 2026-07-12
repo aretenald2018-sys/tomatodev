@@ -10,6 +10,7 @@ import {
 } from '../workout/running-session.js';
 
 const runningSessionJs = await readFile(new URL('../workout/running-session.js', import.meta.url), 'utf8');
+const runningRoutePolicyJs = await readFile(new URL('../workout/running-route-policy.js', import.meta.url), 'utf8');
 const phoneStoreJava = await readFile(new URL('../android/app/src/main/java/com/lifestreak/app/running/PhoneRunningLocationStore.java', import.meta.url), 'utf8');
 const wearAccumulatorKt = await readFile(new URL('../android/wear/src/main/java/com/lifestreak/wear/workout/WearExerciseMetricAccumulator.kt', import.meta.url), 'utf8');
 const wearServiceKt = await readFile(new URL('../android/wear/src/main/java/com/lifestreak/wear/workout/WearExerciseService.kt', import.meta.url), 'utf8');
@@ -46,11 +47,19 @@ test('a weak first watch fix cannot poison all later precise distance fixes', ()
   );
 });
 
+test('phone and browser split render geometry only on explicit capture lifecycle gaps', () => {
+  assert.doesNotMatch(runningSessionJs, /MAX_CONTIGUOUS_GPS_SILENCE_MS|timedOut \? 'location-timeout'/);
+  assert.match(runningRoutePolicyJs, /Only a capture lifecycle event recorded in the route may split a line/);
+  assert.match(runningRoutePolicyJs, /splitExplicitRunningRouteSegments/);
+});
+
 test('PWA, phone APK, and Wear preserve the raw route while distance uses drift thresholds', () => {
   assert.match(runningSessionJs, /MAX_LIVE_GPS_ACCURACY_M = 35/);
-  assert.match(runningSessionJs, /MIN_RUNNING_DISPLACEMENT_M = 12/);
-  assert.match(runningSessionJs, /MIN_CONFIDENT_RUNNING_SPEED_MPS = 0\.3/);
+  assert.match(runningRoutePolicyJs, /maxDistanceAccuracyM: 35/);
+  assert.match(runningRoutePolicyJs, /minDisplacementM: 12/);
+  assert.match(runningRoutePolicyJs, /minConfidentSpeedMps: 0\.3/);
   assert.match(runningSessionJs, /buildConfirmedRunningMovementRoute/);
+  assert.match(runningSessionJs, /buildRunningRouteModel\(_session\.route\)\.renderRoute/);
   assert.doesNotMatch(runningSessionJs, /_markRouteGap\('gps-error'\)/);
   assert.match(runningSessionJs, /data-running-live-map/);
   assert.match(runningSessionJs, /renderRunningMap\(shell, \{ points, phase \}\)/);

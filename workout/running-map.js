@@ -3,6 +3,7 @@
 // ================================================================
 
 import { CONFIG } from '../config.js';
+import { splitExplicitRunningRouteSegments } from './running-route-policy.js';
 
 const DEFAULT_CENTER = { lat: 37.5665, lng: 126.978 };
 const GOOGLE_CALLBACK = '__tomatoRunningGoogleMapsReady';
@@ -19,6 +20,22 @@ const VWORLD_LAYER_SPECS = {
 let _googleLoader = null;
 let _tmapLoader = null;
 const _instances = new WeakMap();
+const _renderEpochs = new WeakMap();
+
+function _nextRenderEpoch(shell) {
+  const epoch = (_renderEpochs.get(shell) || 0) + 1;
+  _renderEpochs.set(shell, epoch);
+  return epoch;
+}
+
+function _destroyMapInstance(instance) {
+  if (!instance) return;
+  try {
+    for (const marker of instance.markers || []) marker?.setMap?.(null);
+    for (const line of instance.lines || []) line?.setMap?.(null);
+    instance.map?.destroy?.();
+  } catch {}
+}
 
 function _num(value, fallback = NaN) {
   const n = Number(value);
@@ -86,11 +103,7 @@ function _providerLabel(provider) {
 function _removeInstance(shell) {
   const instance = _instances.get(shell);
   if (!instance) return;
-  try {
-    for (const marker of instance.markers || []) marker?.setMap?.(null);
-    for (const line of instance.lines || []) line?.setMap?.(null);
-    instance.map?.destroy?.();
-  } catch {}
+  _destroyMapInstance(instance);
   _instances.delete(shell);
 }
 
@@ -100,24 +113,22 @@ export function normalizeRunningMapPoints(points = []) {
 
 export function splitRunningMapSegments(points = []) {
   const route = normalizeRunningMapPoints(points);
-  const segments = [];
-  let segment = [];
-  for (const point of route) {
-    const prev = segment[segment.length - 1];
-    const prevSegmentId = Number(prev?.segmentId);
-    const nextSegmentId = Number(point?.segmentId);
-    const segmentChanged = segment.length > 0
-      && Number.isFinite(prevSegmentId)
-      && Number.isFinite(nextSegmentId)
-      && prevSegmentId !== nextSegmentId;
-    if (segment.length > 0 && (point.gapBefore === true || segmentChanged)) {
-      segments.push(segment);
-      segment = [];
-    }
-    segment.push(point);
-  }
-  if (segment.length) segments.push(segment);
-  return segments;
+  return splitExplicitRunningRouteSegments(route);
+}
+
+export function buildRunningMapRenderModel(points = []) {
+  const route = normalizeRunningMapPoints(points);
+  const segments = splitExplicitRunningRouteSegments(route);
+  return {
+    route,
+    segments,
+    diagnostics: Object.freeze({
+      sourcePointCount: Array.isArray(points) ? points.length : 0,
+      renderPointCount: route.length,
+      droppedInvalidPointCount: (Array.isArray(points) ? points.length : 0) - route.length,
+      segmentCount: segments.length,
+    }),
+  };
 }
 
 function _routeForBounds(route) {
@@ -304,29 +315,33 @@ function _renderGoogleMap(canvas, maps, route) {
   });
   const markers = [];
   const lines = [];
-  const segments = splitRunningMapSegments(route);
 
-  if (route.length > 1) {
+  function updateRoute(nextRoute) {
+    markers.splice(0).forEach(marker => marker?.setMap?.(null));
+    lines.splice(0).forEach(line => line?.setMap?.(null));
+    const segments = splitRunningMapSegments(nextRoute);
     for (const segment of segments) {
-      if (segment.length > 1) {
-        lines.push(new maps.Polyline({
-          path: segment,
-          geodesic: true,
-          strokeColor: '#d7ff3f',
-          strokeOpacity: 0.92,
-          strokeWeight: 7,
-          map,
-        }));
-      }
+      if (segment.length < 2) continue;
+      lines.push(new maps.Polyline({
+        path: segment,
+        geodesic: true,
+        strokeColor: '#d7ff3f',
+        strokeOpacity: 0.92,
+        strokeWeight: 7,
+        map,
+      }));
     }
-    markers.push(new maps.Marker({ position: route[0], map, icon: _googleIcon(maps, '#20b84d') }));
-    markers.push(new maps.Marker({ position: route[route.length - 1], map, icon: _googleIcon(maps, '#f40000', 9) }));
-    _fitGoogle(maps, map, _routeForBounds(route));
-  } else if (route.length === 1) {
-    markers.push(new maps.Marker({ position: route[0], map, icon: _googleIcon(maps, '#f40000', 9) }));
+    if (nextRoute.length > 1) {
+      markers.push(new maps.Marker({ position: nextRoute[0], map, icon: _googleIcon(maps, '#20b84d') }));
+    }
+    if (nextRoute.length) {
+      markers.push(new maps.Marker({ position: nextRoute[nextRoute.length - 1], map, icon: _googleIcon(maps, '#f40000', 9) }));
+    }
+    _fitGoogle(maps, map, _routeForBounds(nextRoute));
   }
 
-  return { map, markers, lines };
+  updateRoute(route);
+  return { map, markers, lines, updateRoute };
 }
 
 function _tmapPoint(Tmapv2, point) {
@@ -358,28 +373,31 @@ function _renderTmap(canvas, Tmapv2, route) {
   });
   const markers = [];
   const lines = [];
-  const latLngs = route.map(p => _tmapPoint(Tmapv2, p));
-  const segments = splitRunningMapSegments(route);
 
-  if (latLngs.length > 1) {
-    for (const segment of segments) {
-      if (segment.length > 1) {
-        lines.push(new Tmapv2.Polyline({
-          path: segment.map(point => _tmapPoint(Tmapv2, point)),
-          strokeColor: '#d7ff3f',
-          strokeWeight: 7,
-          map,
-        }));
-      }
+  function updateRoute(nextRoute) {
+    markers.splice(0).forEach(marker => marker?.setMap?.(null));
+    lines.splice(0).forEach(line => line?.setMap?.(null));
+    const latLngs = nextRoute.map(point => _tmapPoint(Tmapv2, point));
+    for (const segment of splitRunningMapSegments(nextRoute)) {
+      if (segment.length < 2) continue;
+      lines.push(new Tmapv2.Polyline({
+        path: segment.map(point => _tmapPoint(Tmapv2, point)),
+        strokeColor: '#d7ff3f',
+        strokeWeight: 7,
+        map,
+      }));
     }
-    markers.push(new Tmapv2.Marker({ position: latLngs[0], iconHTML: _tmapMarkerHtml('#20b84d'), map }));
-    markers.push(new Tmapv2.Marker({ position: latLngs[latLngs.length - 1], iconHTML: _tmapMarkerHtml('#f40000'), map }));
+    if (latLngs.length > 1) {
+      markers.push(new Tmapv2.Marker({ position: latLngs[0], iconHTML: _tmapMarkerHtml('#20b84d'), map }));
+    }
+    if (latLngs.length) {
+      markers.push(new Tmapv2.Marker({ position: latLngs[latLngs.length - 1], iconHTML: _tmapMarkerHtml('#f40000'), map }));
+    }
     _fitTmap(Tmapv2, map, latLngs);
-  } else if (latLngs.length === 1) {
-    markers.push(new Tmapv2.Marker({ position: latLngs[0], iconHTML: _tmapMarkerHtml('#f40000'), map }));
   }
 
-  return { map, markers, lines };
+  updateRoute(route);
+  return { map, markers, lines, updateRoute };
 }
 
 function _projectMercator(point, zoom) {
@@ -480,9 +498,10 @@ function _vworldRouteSvg(route, zoom, scale, topLeft, width, height) {
     </svg>`;
 }
 
-function _renderVworldMap(canvas, route, config) {
+function _renderVworldMap(canvas, initialRoute, config) {
   const layer = _normalizeVworldLayer(config.layer);
-  const boundsRoute = _routeForBounds(route);
+  let route = _routeForBounds(initialRoute);
+  const boundsRoute = route;
   const root = document.createElement('div');
   root.className = `wt-vworld-map wt-vworld-map--${layer}`;
   root.dataset.interactiveMap = 'vworld';
@@ -720,6 +739,14 @@ function _renderVworldMap(canvas, route, config) {
     },
     markers: [],
     lines: [],
+    updateRoute: nextRoute => {
+      route = _routeForBounds(nextRoute);
+      if (route.length) {
+        state.center = _routeBoundsCenter(route);
+        state.zoom = _vworldZoomForRoute(route, state.width, state.height);
+      }
+      scheduleRender();
+    },
   };
 }
 
@@ -730,13 +757,17 @@ export async function renderRunningMap(shell, options = {}) {
 
   _removeInstance(shell);
   _clearNode(canvas);
+  const renderEpoch = _nextRenderEpoch(shell);
 
   const config = options.config || readRunningMapConfig();
-  const route = normalizeRunningMapPoints(options.points || []);
+  const model = buildRunningMapRenderModel(options.points || []);
+  const route = model.route;
   const providerRoute = _providerRoutePoints(route);
   shell.dataset.mapProvider = config.provider;
   shell.dataset.mapPointCount = String(route.length);
-  shell.dataset.mapSegmentCount = String(splitRunningMapSegments(route).length);
+  shell.dataset.mapSourcePointCount = String(model.diagnostics.sourcePointCount);
+  shell.dataset.mapDroppedPointCount = String(model.diagnostics.droppedInvalidPointCount);
+  shell.dataset.mapSegmentCount = String(model.diagnostics.segmentCount);
 
   if (!route.length) {
     const waiting = options.phase === 'start' || options.phase === 'active';
@@ -760,14 +791,33 @@ export async function renderRunningMap(shell, options = {}) {
       : config.provider === 'tmap'
         ? _renderTmap(canvas, await _loadTmap(config.key), providerRoute)
         : _renderGoogleMap(canvas, await _loadGoogleMaps(config.key), providerRoute);
+    if (_renderEpochs.get(shell) !== renderEpoch) {
+      _destroyMapInstance(instance);
+      return _instances.get(shell) || null;
+    }
     _instances.set(shell, instance);
     _setState(shell, 'ready');
     return instance;
   } catch (error) {
+    if (_renderEpochs.get(shell) !== renderEpoch) return _instances.get(shell) || null;
     console.warn('[running-map] provider render failed:', error);
     _setState(shell, 'error', `${config.label} 로드 실패`);
     return null;
   }
+}
+
+export async function updateRunningMap(shell, options = {}) {
+  if (!shell) return null;
+  const instance = _instances.get(shell);
+  if (!instance?.updateRoute) return renderRunningMap(shell, options);
+  const model = buildRunningMapRenderModel(options.points || []);
+  shell.dataset.mapPointCount = String(model.diagnostics.renderPointCount);
+  shell.dataset.mapSourcePointCount = String(model.diagnostics.sourcePointCount);
+  shell.dataset.mapDroppedPointCount = String(model.diagnostics.droppedInvalidPointCount);
+  shell.dataset.mapSegmentCount = String(model.diagnostics.segmentCount);
+  instance.updateRoute(_providerRoutePoints(model.route));
+  _setState(shell, model.route.length ? 'ready' : 'no-location', model.route.length ? '' : 'GPS 위치를 기다리는 중');
+  return instance;
 }
 
 export function destroyRunningMaps(scope) {
@@ -775,5 +825,8 @@ export function destroyRunningMaps(scope) {
   const shells = [];
   if (scope.matches?.('[data-running-real-map]')) shells.push(scope);
   scope.querySelectorAll?.('[data-running-real-map]').forEach(el => shells.push(el));
-  shells.forEach(_removeInstance);
+  shells.forEach(shell => {
+    _nextRenderEpoch(shell);
+    _removeInstance(shell);
+  });
 }

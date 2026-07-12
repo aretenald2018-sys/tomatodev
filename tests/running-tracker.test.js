@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  buildConfirmedRunningMovementRoute,
+  buildRunningRouteModel,
   downsampleRunningRoute,
   formatRunningDuration,
   formatRunningPace,
@@ -22,8 +24,8 @@ import {
 
 const route = [
   { lat: 37.5209, lng: 126.9770, accuracy: 8, ts: 1000 },
-  { lat: 37.5215, lng: 126.9790, accuracy: 10, ts: 61000 },
-  { lat: 37.5221, lng: 126.9810, accuracy: 12, ts: 121000 },
+  { lat: 37.5215, lng: 126.9790, accuracy: 10, ts: 15000 },
+  { lat: 37.5221, lng: 126.9810, accuracy: 12, ts: 29000 },
 ];
 
 function denseRoute(count = 620) {
@@ -48,9 +50,9 @@ test('running route distance and summary do not connect interrupted GPS gaps', (
   // Given: two short real route segments separated by a background/app interruption.
   const interrupted = [
     { lat: 37.5209, lng: 126.9770, ts: 1_000, segmentId: 0 },
-    { lat: 37.5210, lng: 126.9772, ts: 61_000, segmentId: 0 },
+    { lat: 37.5210, lng: 126.9772, ts: 11_000, segmentId: 0 },
     { lat: 37.5600, lng: 127.0300, ts: 661_000, segmentId: 1, gapBefore: true, gapReason: 'resume' },
-    { lat: 37.5602, lng: 127.0302, ts: 721_000, segmentId: 1 },
+    { lat: 37.5602, lng: 127.0302, ts: 671_000, segmentId: 1 },
   ];
 
   // When: route distance and summary are calculated.
@@ -63,6 +65,31 @@ test('running route distance and summary do not connect interrupted GPS gaps', (
   assert.equal(summary.segmentCount, 2);
   assert.equal(summary.gapCount, 1);
   assert.equal(summary.interrupted, true);
+});
+
+test('running map preserves captured geometry across delivery silence without inventing a gap', () => {
+  const sparse = [
+    { lat: 37.48, lng: 127.12, ts: 1_000, accuracy: 5 },
+    { lat: 37.49, lng: 127.13, ts: 661_000, accuracy: 5 },
+  ];
+
+  const model = buildRunningRouteModel(sparse);
+  const segments = splitRunningMapSegments(model.renderRoute);
+  assert.deepEqual(model.renderRoute, sparse);
+  assert.equal(segments.length, 1);
+  assert.equal(segments[0].length, 2);
+});
+
+test('weak first phone fix does not block later precise running distance', () => {
+  const points = [
+    { lat: 37.5, lng: 127.0, ts: 1_000, accuracy: 30 },
+    { lat: 37.5, lng: 127.0, ts: 11_000, accuracy: 5 },
+    { lat: 37.501, lng: 127.0, ts: 21_000, accuracy: 5 },
+  ];
+
+  const confirmed = buildConfirmedRunningMovementRoute(points);
+  assert.equal(confirmed.length, 2);
+  assert.ok(runningRouteDistanceMeters(points) > 100);
 });
 
 test('running session route summary stores distance, duration, bbox, centroid, and pace', () => {
@@ -88,9 +115,9 @@ test('running session route summary stores distance, duration, bbox, centroid, a
 test('running route summary aggregates optional device elevation, heart rate, and cadence', () => {
   const sensorRoute = [
     { lat: 37.52, lng: 126.97, altitude: 12, heartRateBpm: 140, cadenceSpm: 160, ts: 1000 },
-    { lat: 37.5205, lng: 126.9705, altitude: 19, heartRateBpm: 148, cadenceSpm: 164, ts: 61000 },
-    { lat: 37.521, lng: 126.971, altitude: 16, heartRateBpm: 152, cadenceSpm: 166, ts: 121000 },
-    { lat: 37.5215, lng: 126.9715, altitude: 23, heartRateBpm: 0, cadenceSpm: null, ts: 181000 },
+    { lat: 37.5205, lng: 126.9705, altitude: 19, heartRateBpm: 148, cadenceSpm: 164, ts: 11000 },
+    { lat: 37.521, lng: 126.971, altitude: 16, heartRateBpm: 152, cadenceSpm: 166, ts: 21000 },
+    { lat: 37.5215, lng: 126.9715, altitude: 23, heartRateBpm: 0, cadenceSpm: null, ts: 31000 },
   ];
   const summary = summarizeRunningRoute(sensorRoute, { startedAt: 1000, endedAt: 181000 });
 
@@ -233,7 +260,7 @@ test('running session draft normalizer preserves interrupted route metadata', ()
     updatedAt: 721_000,
     route: [
       { lat: 37.5209, lng: 126.9770, ts: 1_000, segmentId: 0 },
-      { lat: 37.5210, lng: 126.9772, ts: 61_000, segmentId: 0 },
+      { lat: 37.5210, lng: 126.9772, ts: 11_000, segmentId: 0 },
       { lat: 37.5600, lng: 127.0300, ts: 661_000, segmentId: 1, gapBefore: true, gapReason: 'pagehide' },
     ],
   }, { now: 800_000 });

@@ -23,6 +23,9 @@ export function readRunningMapConfig() { return { provider: 'none', configured: 
 export async function renderRunningMap(_shell, options = {}) {
   window.__mapPointCounts = (window.__mapPointCounts || []).concat([options.points?.length || 0]);
 }
+export async function updateRunningMap(_shell, options = {}) {
+  window.__mapPointCounts = (window.__mapPointCounts || []).concat([options.points?.length || 0]);
+}
 `, 'utf8');
     await writeFile(htmlPath, `<!doctype html><html><head><meta charset="utf-8">
 <script type="importmap">${JSON.stringify({ imports: { [realMapUrl]: pathToFileURL(mapStubPath).href } })}</script>
@@ -127,7 +130,7 @@ try {
   }
 }
 
-test('mobile capture preserves the full route while rendering a bounded map preview', async () => {
+test('mobile capture preserves the full route and sends every captured coordinate to the map', async () => {
   const result = await runMobileCaptureHarness();
 
   assert.equal(result.live.pointCount, 620);
@@ -156,7 +159,7 @@ test('mobile capture preserves the full route while rendering a bounded map prev
   assert.match(result.inlineCardBeforeFinish, /wt-running-live-card/);
   assert.match(result.inlineCardAfterFinish, /is-summary/);
   assert.ok(result.mapPointCounts.length >= 2);
-  assert.equal(result.mapPointCounts.at(-1), 240);
+  assert.equal(result.mapPointCounts.at(-1), result.live.pointCount);
 });
 
 test('mobile draft keeps a six-hour 1Hz route once and uses a small active marker', async () => {

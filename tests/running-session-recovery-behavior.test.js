@@ -60,7 +60,7 @@ try {
     pausedMs: 0,
     route: [
       { lat: 37, lng: 127, ts: now - 120000 },
-      { lat: 37.001, lng: 127.001, ts: now - 60000 }
+      { lat: 37.001, lng: 127.001, ts: now - 110000 }
     ],
     placeSummary: { status: 'resolved', label: 'QA 위치' },
     goal: { type: 'free', value: 0 },

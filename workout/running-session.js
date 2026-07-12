@@ -3,12 +3,29 @@
 // ================================================================
 
 import { S } from './state.js';
-import { destroyRunningMaps, readRunningMapConfig, renderRunningMap } from './running-map.js';
+import { destroyRunningMaps, readRunningMapConfig, renderRunningMap, updateRunningMap } from './running-map.js';
 import {
   MAX_RUNNING_ROUTE_POINTS,
   buildRunningRoutePreview,
   normalizeRunningRoutePoints,
 } from './running-route-store.js';
+import {
+  RUNNING_ROUTE_POLICY,
+  buildConfirmedRunningMovementRoute,
+  buildRunningRouteModel,
+  isConfidentRunningMovement,
+  isExplicitRunningRouteGap,
+  runningDistanceMeters,
+  runningRouteDistanceMeters,
+} from './running-route-policy.js';
+
+export {
+  buildConfirmedRunningMovementRoute,
+  buildRunningRouteModel,
+  isConfidentRunningMovement,
+  runningDistanceMeters,
+  runningRouteDistanceMeters,
+} from './running-route-policy.js';
 
 const RUNNING_ROUTE_PREVIEW_POINTS = 240;
 const RUNNING_DRAFT_ROUTE_WRITE_INTERVAL_MS = 30_000;
@@ -25,10 +42,7 @@ const GEO_OPTIONS = {
 };
 const MAX_LIVE_GPS_AGE_MS = 30_000;
 const MAX_LIVE_GPS_ACCURACY_M = 35;
-const MIN_RUNNING_DISPLACEMENT_M = 12;
-const MAX_RUNNING_GPS_ERROR_RADIUS_M = 30;
-const MIN_CONFIDENT_RUNNING_SPEED_MPS = 0.3;
-const MAX_PLAUSIBLE_RUNNING_SPEED_MPS = 15;
+const MAX_PLAUSIBLE_RUNNING_SPEED_MPS = RUNNING_ROUTE_POLICY.maxPlausibleSpeedMps;
 const NATIVE_LOCATION_POLL_MS = 2_000;
 const DEFAULT_RUNNING_GOAL = Object.freeze({ type: 'free', value: 0 });
 const RUNNING_GOAL_DEFAULTS = Object.freeze({ distance: 5, time: 30 });
@@ -276,13 +290,8 @@ function _routeSegmentId(point, fallback = 0) {
   return Number.isFinite(n) && n >= 0 ? Math.floor(n) : fallback;
 }
 
-function _normalizeRunningRoute(points = []) {
-  return normalizeRunningRoutePoints(points);
-}
-
 function _isRouteGapEdge(prev, next) {
-  if (!prev || !next) return false;
-  return next.gapBefore === true || _routeSegmentId(prev, 0) !== _routeSegmentId(next, 0);
+  return isExplicitRunningRouteGap(prev, next);
 }
 
 function _routeGapCount(route = []) {
@@ -296,71 +305,6 @@ function _routeSegmentCount(route = []) {
     if (_isRouteGapEdge(route[i - 1], route[i])) count += 1;
   }
   return count;
-}
-
-export function runningDistanceMeters(a, b) {
-  const pa = _safePoint(a);
-  const pb = _safePoint(b);
-  if (!pa || !pb) return 0;
-  const R = 6371000;
-  const toRad = deg => deg * Math.PI / 180;
-  const dLat = toRad(pb.lat - pa.lat);
-  const dLng = toRad(pb.lng - pa.lng);
-  const lat1 = toRad(pa.lat);
-  const lat2 = toRad(pb.lat);
-  const h = Math.sin(dLat / 2) ** 2
-    + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
-}
-
-export function runningRouteDistanceMeters(points = []) {
-  const route = buildConfirmedRunningMovementRoute(points);
-  let total = 0;
-  for (let i = 1; i < route.length; i += 1) {
-    if (_isRouteGapEdge(route[i - 1], route[i])) continue;
-    total += runningDistanceMeters(route[i - 1], route[i]);
-  }
-  return total;
-}
-
-export function isConfidentRunningMovement(previous, point) {
-  if (!previous) return true;
-  const elapsedSec = (Number(point?.ts) - Number(previous?.ts)) / 1000;
-  if (!Number.isFinite(elapsedSec) || elapsedSec <= 0) return false;
-
-  const distanceM = runningDistanceMeters(previous, point);
-  if (!Number.isFinite(distanceM)) return false;
-  const previousAccuracy = Math.max(0, Number(previous?.accuracy) || 0);
-  const currentAccuracy = Math.max(0, Number(point?.accuracy) || 0);
-  const errorRadiusM = Math.max(
-    MIN_RUNNING_DISPLACEMENT_M,
-    Math.min(MAX_RUNNING_GPS_ERROR_RADIUS_M, Math.max(previousAccuracy, currentAccuracy) * 2),
-  );
-  if (distanceM <= errorRadiusM) return false;
-
-  const inferredSpeedMps = distanceM / elapsedSec;
-  if (inferredSpeedMps < MIN_CONFIDENT_RUNNING_SPEED_MPS
-    || inferredSpeedMps > MAX_PLAUSIBLE_RUNNING_SPEED_MPS) return false;
-
-  return true;
-}
-
-export function buildConfirmedRunningMovementRoute(points = []) {
-  const route = _normalizeRunningRoute(points);
-  if (route.length < 2) return route;
-  const confirmed = [];
-  let anchor = null;
-  for (const point of route) {
-    if (!anchor || point.gapBefore === true || _routeSegmentId(anchor, 0) !== _routeSegmentId(point, 0)) {
-      confirmed.push(point);
-      anchor = point;
-      continue;
-    }
-    if (!isConfidentRunningMovement(anchor, point)) continue;
-    confirmed.push(point);
-    anchor = point;
-  }
-  return confirmed;
 }
 
 export function downsampleRunningRoute(points = [], max = RUNNING_ROUTE_PREVIEW_POINTS) {
@@ -379,6 +323,8 @@ export function normalizeRunningSessionDraft(raw, options = {}) {
   if (!phase) return null;
   const ownerId = String(raw.ownerId || raw.userId || raw.uid || '').trim();
 
+  // Preserve every captured point exactly as stored. Gap inference belongs to
+  // distance/map consumers; mutating a draft would make the raw recording lossy.
   const route = normalizeRunningRoutePoints(raw.route || []);
   const startedAt = _num(raw.startedAt, route[0]?.ts || 0);
   if (!Number.isFinite(startedAt) || startedAt <= 0) return null;
@@ -484,8 +430,9 @@ function _avgRouteMetric(route, key) {
 }
 
 export function summarizeRunningRoute(points = [], options = {}) {
-  const route = normalizeRunningRoutePoints(points);
-  const movementRoute = buildConfirmedRunningMovementRoute(route);
+  const model = buildRunningRouteModel(points);
+  const route = model.rawRoute;
+  const movementRoute = model.movementRoute;
   const startedAt = _num(options.startedAt, route[0]?.ts || _now());
   const endedAt = _num(options.endedAt, route[route.length - 1]?.ts || startedAt);
   const pausedMs = Math.max(0, _num(options.pausedMs, 0));
@@ -1179,8 +1126,11 @@ function _pushRoutePoint(point, options = {}) {
     _rejectRunningRoutePoint('이전 위치보다 오래된 GPS 좌표를 기록하지 않았어요.');
     return false;
   }
-  const gapReason = last && (options.gapBefore || pendingReason)
-    ? pendingReason || 'resume'
+  const sourceGapReason = normalized.gapBefore === true
+    ? _routeGapReason(normalized.gapReason) || 'interruption'
+    : '';
+  const gapReason = last && (options.gapBefore || pendingReason || sourceGapReason)
+    ? pendingReason || sourceGapReason || 'resume'
     : '';
 
   const segmentId = last ? _routeSegmentId(last, 0) + (gapReason ? 1 : 0) : 0;
@@ -1518,14 +1468,18 @@ function _renderLiveRunningMap() {
 }
 
 function _liveRunningMapKey() {
-  return `${_session.phase}:${_session.routeRevision}`;
+  return _session.phase;
+}
+
+function _liveRunningRenderPoints() {
+  return buildRunningRouteModel(_session.route).renderRoute;
 }
 
 function _mountLiveRunningMap(shell, key) {
   if (!shell) return;
   shell.dataset.runningLiveMapKey = key;
   const phase = _session.phase === 'summary' ? 'detail' : _session.phase;
-  const points = buildRunningRoutePreview(_session.route, RUNNING_ROUTE_PREVIEW_POINTS);
+  const points = _liveRunningRenderPoints();
   renderRunningMap(shell, { points, phase }).catch(error => {
     if (shell.dataset.runningLiveMapKey !== key) return;
     console.warn('[running-session] live map render failed:', error);
@@ -1555,6 +1509,10 @@ function _render() {
   const nextMap = root.querySelector('[data-running-live-map]');
   if (previousMap?.dataset.runningLiveMapKey === mapKey && nextMap) {
     nextMap.replaceWith(previousMap);
+    const phase = _session.phase === 'summary' ? 'detail' : _session.phase;
+    updateRunningMap(previousMap, { points: _liveRunningRenderPoints(), phase }).catch(error => {
+      console.warn('[running-session] live map update failed:', error);
+    });
     return;
   }
   destroyRunningMaps(previousMap);

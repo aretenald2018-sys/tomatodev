@@ -92,5 +92,5 @@ test('dynamic more menu items inherit the app shell action contract', () => {
 });
 
 test('service worker cache version was bumped for app shell action bridge assets', () => {
-  assert.match(swJs, /tomatofarm-v20260711z18-diet-food-chip-merge/);
+  assert.match(swJs, /tomatofarm-v20260712z1-gps-route-model-road-replay/);
 });
