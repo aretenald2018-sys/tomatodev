@@ -17,9 +17,9 @@
 | `data.js` facade | 통과 | `data/data-api.js` re-export만 수행 |
 | PWA/runtime import graph | 통과 | literal import 존재·precache·named export와 tab registry lazy 경로를 모두 검증; 누락 10개를 `59258cd`에서 보완 |
 | CSS WebView 진입점 | 통과 | `style.css`를 44개 owner source에서 하나의 WebView-safe bundle로 생성; `fac2a35` 배포본의 360px 하단 탭 설정 sheet와 `4cda585`의 운동 상세 sheet에서 CSS 적용·가로 넘침 없음 확인 |
-| 자동 회귀 | 통과 | 현재 코드에서 전체 `npm.cmd test` 통과; 운동·러닝·APK 자산 검사는 이 전체 회귀에 포함 |
-| Android APK 정적 자산 | 통과 | APK 안의 `sw.js`/`build-info.json` cache version이 root와 같은 `z29`임을 직접 검사했고 `:app:assembleDebug`로 재빌드 |
-| 실제 Pages 테스트 계정 흐름 | 부분 통과 | 계정 생성·세션 복원·식단 목표 저장/재로드, 하단 탭, 운동/캘린더/통계/요리 lazy 탭, 더보기/계정 전환/편지 진입을 확인했다. 테스트 계정에서 운동 종목 추가 → 20kg × 10회 세트 입력 → 완전 새로고침 → 기록·완료 상태 복원도 현재 감사에서 다시 확인했다. 360px 홈·식단·운동 화면은 가로 넘침 없이 panel/nav가 viewport 폭 안에 있었다. 최신 Pages 새 탭에서 식단 `+ 음식 추가`가 실제로 음식 검색 모달을 여는 것도 재확인했다. 단, 이 자동화 브라우저는 계속 `오프라인 상태`를 표시해 저장이 필요한 식사 스킵의 서버 반영을 최신 코드에서 확인하지 못했다. 따라서 과거 배포에서의 식사 스킵 성공 기록은 현재 코드의 완료 증거로 사용하지 않는다. |
+| 자동 회귀 | 통과 | 현재 코드에서 전체 `npm.cmd test` 통과; 이 감사 중 UI suite 145개와 calendar/day-sheet·mobile set DOM·picker 행동 43개를 별도로 다시 통과시켰다. 운동·러닝·APK 자산 검사는 전체 회귀에 포함된다. |
+| Android APK 정적 자산 | 통과 | APK 안의 `sw.js`/`build-info.json` cache version이 root와 같은 `z29`임을 직접 검사했고, `:app:testDebugUnitTest`, `:wear:testDebugUnitTest`, 두 debug APK assemble을 현재 소스로 통과시켰다. |
+| 실제 Pages 테스트 계정 흐름 | 부분 통과 | 계정 생성·세션 복원·식단 목표 저장/재로드, 하단 탭, 운동/캘린더/통계/요리 lazy 탭, 더보기/계정 전환/편지 진입을 확인했다. 테스트 계정에서 운동 종목 추가 → 20kg × 10회 세트 입력 → 완전 새로고침 → 기록·완료 상태 복원도 현재 감사에서 다시 확인했다. 360px 홈·식단·운동 화면은 가로 넘침 없이 panel/nav가 viewport 폭 안에 있었다. 최신 Pages 새 탭에서 식단 `+ 음식 추가`가 실제로 음식 검색 모달을 열었고, 운동의 오늘 sheet 확장 → 세트 수정 입력 → 세트 유형 메뉴 → 종목 picker 진입/복귀, 캘린더 종합/운동 모드 전환까지 다시 실행했으며 해당 탭의 console error/warn은 0건이었다. 브라우저 연결이 일반 캘린더 날짜 클릭 직전에 끊겨 그 한 실제 클릭은 재시도하지 못했으나, 같은 day-sheet 흐름은 위의 43개 행동 테스트로 통과했다. 단, 이 자동화 브라우저는 계속 `오프라인 상태`를 표시해 저장이 필요한 식사 스킵의 서버 반영을 최신 코드에서 확인하지 못했다. 따라서 과거 배포에서의 식사 스킵 성공 기록은 현재 코드의 완료 증거로 사용하지 않는다. |
 | 관리자 서버 권한 | 미검증 | `firebase.json`에는 Functions만 선언돼 있고 Firestore rules source/배포 검증이 저장소에 없음 |
 | 대형 파일 단일 책임 | 미완료 | `render-calendar.js` 4,806줄, `workout/exercises.js` 4,136줄, `workout/expert.js` 3,286줄, `workout/expert/max.js` 4,068줄 |
 | 사용자 행동 테스트 | 미완료 | 소스 파일을 읽는 테스트가 70개라, 많은 UI 회귀가 구현 문자열에 묶여 있음 |
