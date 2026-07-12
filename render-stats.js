@@ -804,7 +804,7 @@ function _fatigueRowsHtml(groups) {
     })
     .map(group => {
       const pct = group.score > 0 ? Math.max(8, group.relativePct) : 8;
-      const volume = group.volume ? `${_fmt(group.volume / 1000, 1)}k` : '0.0k';
+      const volume = _formatVolumeMass(group.volume);
       return `
         <div class="stats-fatigue-row is-${_esc(group.tone)}" style="--mf:${group.tint};--pct:${pct}%">
           <span class="stats-fatigue-name">${_esc(group.label)}<em>${_esc(group.statusLabel)}</em></span>
@@ -873,7 +873,7 @@ function _renderMuscleFatigue(scope = document) {
       <div class="stats-fatigue-summary">
         <div><span>집중 부위</span><b>${_esc(hotText)}</b></div>
         <div><span>보강 후보</span><b>${_esc(focusText)}</b></div>
-        <div><span>총 볼륨</span><b>${_fmt(state.totalVolume)}vol</b></div>
+        <div><span>총 볼륨</span><b>${_formatVolumeMass(state.totalVolume)}</b></div>
       </div>
       <div class="stats-fatigue-insight is-${_esc(insight.tone)}">
         <span>다음 운동 힌트</span>
@@ -905,6 +905,19 @@ function _fmt(n, digits = 0) {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   });
+}
+function _formatVolumeMass(value) {
+  const volume = Math.max(0, _num(value));
+  if (volume >= 1000) {
+    const tons = Math.round((volume / 1000) * 10) / 10;
+    return `${_fmt(tons, Number.isInteger(tons) ? 0 : 1)}t`;
+  }
+  return `${_fmt(Math.round(volume))}kg`;
+}
+function _formatVolumeDelta(value) {
+  const volume = _num(value);
+  if (!volume) return '0kg';
+  return `${volume > 0 ? '+' : '-'}${_formatVolumeMass(Math.abs(volume))}`;
 }
 function _fmtSigned(n, digits = 1, unit = 'kg') {
   return `${n >= 0 ? '+' : ''}${_fmt(n, digits)} ${unit}`;
@@ -1428,7 +1441,7 @@ function _renderWorkoutAnalysis(scope = document) {
       ${_summaryKpi('주당 유효세트', hasWorkout ? `${_fmt(weeklySets)}세트` : null, 'RPE 7 이상 또는 반복 기록 기준')}
       ${_summaryKpi('평균 RPE', current.avgRpe ? current.avgRpe.toFixed(1) : null, current.avgRpe >= 8.6 ? '피로 높음' : '기록 기준')}
       ${_summaryKpi('계획 이행률', adherence !== null ? `${adherence}%` : null, adherence !== null ? `완료 세트 ${_fmt(plan.doneSets)}/${_fmt(plan.plannedSets)}` : '테스트모드 기록 없음', planTone)}
-      ${_summaryKpi('계획 대비 볼륨', volumeDelta !== null ? `${volumeDelta >= 0 ? '+' : ''}${_fmt(volumeDelta)}` : null, 'kg x reps 합계', planTone)}
+      ${_summaryKpi('계획 대비 볼륨', volumeDelta !== null ? _formatVolumeDelta(volumeDelta) : null, 'kg x reps 합계', planTone)}
       ${_summaryKpi('완료 세트', plan.plannedSets ? `${_fmt(plan.doneSets)}/${_fmt(plan.plannedSets)}` : null, '테스트모드 처방 기준', planTone)}
     </div>
     <div class="stats-analysis-card">
@@ -1552,11 +1565,11 @@ function _performanceRowHtml(row) {
       <div class="stats-perf-exercise">
         <span>${_esc(row.majorLabel)}</span>
         <b>${_esc(row.name)}</b>
-        <small>${_fmt(row.sessionDays)}일 · ${_fmt(row.totalVolume)}vol</small>
+        <small>${_fmt(row.sessionDays)}일 · ${_formatVolumeMass(row.totalVolume)}</small>
       </div>
       <div class="stats-perf-trend">
         ${_trendSparkline(row.volumeSeries, '#f97316')}
-        <small>${latestVolume ? `${_fmt(latestVolume)}vol` : '--'}</small>
+        <small>${latestVolume ? _formatVolumeMass(latestVolume) : '--'}</small>
       </div>
       <div class="stats-perf-trend">
         ${_trendSparkline(row.e1rmSeries, '#2563eb')}
@@ -1591,7 +1604,7 @@ function _renderExercisePerformanceSection(scope = document) {
 export function exportCSV(period) {
   const cache  = getCache();
   const exList = getExList();
-  const rows   = [['날짜','운동부위','종목','세트수','총볼륨(vol)','아침','점심','저녁','총칼로리','식단OK']];
+  const rows   = [['날짜','운동부위','종목','세트수','총볼륨(kg)','아침','점심','저녁','총칼로리','식단OK']];
 
   // 기간 필터
   const now   = new Date(TODAY);
@@ -1690,7 +1703,7 @@ function _volumeSetRowsHtml(entry) {
       <div class="vol-set-row ${counted ? '' : 'is-muted'}">
         <span class="vol-set-no">${idx + 1}</span>
         <span class="vol-set-main">${_esc(parts.join(' × '))}<small>${_esc(kind)}</small></span>
-        <b>${counted ? `${_fmt(Math.round(vol))} vol` : '-'}</b>
+        <b>${counted ? _formatVolumeMass(vol) : '-'}</b>
       </div>`;
   }).join('');
   return rows || '<div class="vol-set-empty">세트 기록이 없어요.</div>';
@@ -1710,7 +1723,7 @@ function _volumeEntryDetailHtml(entry, selectedExerciseId) {
           <span>${_esc(muscle?.name || '운동')}</span>
           <b>${_esc(ex?.name || entry?.name || entry?.exerciseId || '운동')}</b>
         </div>
-        <strong>${_fmt(Math.round(total))} vol</strong>
+        <strong>${_formatVolumeMass(total)}</strong>
       </div>
       <div class="vol-entry-meta">${countedSets}개 본세트 반영</div>
       <div class="vol-set-list">${_volumeSetRowsHtml(entry)}</div>
@@ -1733,11 +1746,11 @@ function _renderVolumeDayDetail(detailEl, exerciseId, date, pointVolume = null) 
   detailEl.innerHTML = `
     <div class="vol-detail-head">
       <div><span>선택일</span><b>${_esc(_volumeDateLabel(date))}</b></div>
-      <div><span>그래프값</span><b>${_fmt(Math.round(selectedVolume))} vol</b></div>
+      <div><span>그래프값</span><b>${_formatVolumeMass(selectedVolume)}</b></div>
       <div><span>기준 세트</span><b>${selectedSets}세트</b></div>
     </div>
     <div class="vol-detail-note">
-      ${_esc(selectedEx?.name || exerciseId)} 기준 ${_fmt(Math.round(selectedVolume))} vol · 해당일 전체 ${_fmt(Math.round(dayVolume))} vol
+      ${_esc(selectedEx?.name || exerciseId)} 기준 ${_formatVolumeMass(selectedVolume)} · 해당일 전체 ${_formatVolumeMass(dayVolume)}
     </div>
     <div class="vol-entry-list">
       ${orderedEntries.length ? orderedEntries.map(entry => _volumeEntryDetailHtml(entry, exerciseId)).join('') : '<div class="vol-set-empty">해당일 운동 기록이 없어요.</div>'}
@@ -1832,8 +1845,8 @@ function _renderVolumeSection(scope = document) {
       const col=diff>0?'var(--diet-ok)':diff<0?'var(--diet-bad)':'var(--muted)';
       return `<button type="button" class="vol-row" data-volume-date="${_esc(h.date)}" aria-label="${_esc(_volumeDateLabel(h.date))} 운동 상세">
         <span class="vol-date">${h.date.replace(/-/g,'/')}</span>
-        <span class="vol-val">${h.volume.toLocaleString()} vol</span>
-        <span class="vol-diff" style="color:${col}">${diff!==0?arrow+Math.abs(diff).toLocaleString():arrow}</span>
+        <span class="vol-val">${_formatVolumeMass(h.volume)}</span>
+        <span class="vol-diff" style="color:${col}">${diff!==0?`${arrow}${_formatVolumeMass(Math.abs(diff))}`:arrow}</span>
       </button>`;
     }).join('');
   container.appendChild(tableWrap);
@@ -1865,10 +1878,10 @@ function _drawVolumeChart(canvas,history,onSelect,color){
       },
       plugins:{legend:{display:false},tooltip:{callbacks:{
         title:items=>_volumeDateLabel(history[items[0]?.dataIndex]?.date),
-        label:ctx=>`볼륨: ${_fmt(Math.round(ctx.parsed.y))} vol`,
+        label:ctx=>`볼륨: ${_formatVolumeMass(ctx.parsed.y)}`,
       }}},
       scales:{x:{ticks:{color:'#5c6478',font:{size:10}},grid:{color:document.documentElement.classList.contains('light') ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}},
-              y:{title:{display:true,text:'vol',color:'#5c6478',font:{size:10}},ticks:{color:'#5c6478',font:{size:10}},grid:{color:document.documentElement.classList.contains('light') ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}}}},
+              y:{title:{display:true,text:'kg',color:'#5c6478',font:{size:10}},ticks:{color:'#5c6478',font:{size:10}},grid:{color:document.documentElement.classList.contains('light') ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}}}},
   });
 }
 

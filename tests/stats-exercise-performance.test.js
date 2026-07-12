@@ -28,6 +28,17 @@ test('exercise performance trend uses period-scoped volume and estimated 1rm sig
   assert.match(statsJs, /exercisePerformanceStatus\(row, _fmt\)/);
 });
 
+test('stats renders workout volume as kg or t rather than an opaque vol unit', () => {
+  assert.match(statsJs, /function _formatVolumeMass\(value\)/);
+  assert.match(statsJs, /return `\$\{_fmt\(Math\.round\(volume\)\)\}kg`/);
+  assert.match(statsJs, /return `\$\{_fmt\(tons, Number\.isInteger\(tons\) \? 0 : 1\)\}t`/);
+  assert.match(statsJs, /총 볼륨<\/span><b>\$\{_formatVolumeMass\(state\.totalVolume\)\}/);
+  assert.match(statsJs, /_formatVolumeMass\(row\.totalVolume\)/);
+  assert.match(statsJs, /_formatVolumeMass\(h\.volume\)/);
+  assert.match(statsJs, /총볼륨\(kg\)/);
+  assert.doesNotMatch(statsJs, /\}\s*vol|text:'vol'|총볼륨\(vol\)/);
+});
+
 test('exercise performance card uses TDS-like compact table styling', () => {
   assert.match(styleCss, /\.stats-performance-block/);
   assert.match(styleCss, /\.stats-perf-table/);
