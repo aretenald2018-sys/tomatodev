@@ -38,6 +38,15 @@ import { wtReplaceActiveWorkoutDraftSession } from './workout/timers.js';
 import { destroyRunningMaps, renderRunningMap } from './workout/running-map.js';
 import { createRunningRouteHydrationController } from './workout/running-route-hydration.js';
 import {
+  formatRunningClock as _formatRunningClock,
+  formatRunningDistance as _formatRunningDistance,
+  formatRunningPaceCard as _formatRunningPaceCard,
+  runningGpsInfoLabel as _runningGpsInfoLabel,
+  runningMetricItems as _runningMetricItems,
+  runningPlaceLabel as _runningPlaceLabel,
+  runningSourceLabel as _runningSourceLabel,
+} from './workout/running-presentation.js';
+import {
   WORKOUT_GYM_SESSION_COUNT,
   WORKOUT_RUNNING_SESSION_INDEX,
 } from './workout/session-policy.js';
@@ -2616,67 +2625,6 @@ function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) {
       </div>
     </article>
   `;
-}
-
-function _formatRunningDistance(value) {
-  const km = _num(value);
-  if (km <= 0) return '';
-  return `${_fmtNum(km, km < 10 ? 2 : 1)}km`;
-}
-
-function _formatRunningPaceCard(secPerKm) {
-  const sec = Math.round(_num(secPerKm));
-  if (sec <= 0) return '';
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${m}'${String(s).padStart(2, '0')}''/km`;
-}
-
-function _formatRunningClock(ts) {
-  const n = Number(ts);
-  if (!Number.isFinite(n) || n <= 0) return '';
-  const d = new Date(n);
-  if (Number.isNaN(d.getTime())) return '';
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
-
-function _runningSourceLabel(source) {
-  if (source === 'gps') return 'GPS 기록';
-  if (source === 'wear' || source === 'wear-gps') return '워치 기록';
-  if (source === 'manual-cardio') return '수기 입력';
-  if (source === 'manual') return '수동 기록';
-  return '러닝 기록';
-}
-
-function _runningMetricItems(row) {
-  const durationText = row.durationSec ? _formatDurationShort(row.durationSec) : '--';
-  const paceText = _formatRunningPaceCard(row.avgPaceSecPerKm) || "--'--''";
-  const speedText = row.speedKmh > 0 ? `${_fmtNum(row.speedKmh, 1)} km/h` : '--';
-  const items = [
-    { label: '거리', value: _formatRunningDistance(row.distanceKm) || '--' },
-    { label: '시간', value: durationText },
-    { label: '속도', value: speedText },
-    { label: '평균 페이스', value: paceText },
-    { label: '칼로리', value: row.calories > 0 ? `${Math.round(row.calories)} kcal` : '--' },
-    { label: '고도 상승', value: row.elevationGainM == null ? '--' : `${Math.round(row.elevationGainM)} m` },
-    { label: '평균 심박수', value: row.avgHeartRateBpm == null ? '--' : `${Math.round(row.avgHeartRateBpm)}` },
-    { label: '케이던스', value: row.cadenceSpm == null ? '--' : `${Math.round(row.cadenceSpm)}` },
-  ];
-  return items.filter(item => item?.value);
-}
-
-function _runningPlaceLabel(row) {
-  const label = String(row?.placeSummary?.label || '').trim();
-  if (label && !/대한민국 위치 기록|위치 기록/.test(label)) return label;
-  return row?.routeSummary?.centroid ? '위치 확인 중' : '위치 정보 없음';
-}
-
-function _runningGpsInfoLabel(row) {
-  const gapCount = Math.max(0, Math.floor(_num(row?.gapCount ?? row?.routeSummary?.gapCount)));
-  if (!gapCount && !row?.interrupted) return '';
-  const segmentCount = Math.max(0, Math.floor(_num(row?.segmentCount ?? row?.routeSummary?.segmentCount)));
-  const segmentText = segmentCount > 1 ? ` · 기록 구간 ${segmentCount}개` : '';
-  return `GPS 중단 구간 ${Math.max(1, gapCount)}개${segmentText}. 끊긴 구간은 거리와 지도 선에서 제외했어요.`;
 }
 
 function _renderRunningRouteMap(row) {

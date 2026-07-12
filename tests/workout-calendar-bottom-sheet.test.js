@@ -23,6 +23,7 @@ const calendarActivityModelJs = readFileSync(new URL('../calendar/activity-model
 const trackMetricsJs = readFileSync(new URL('../workout/track-metrics.js', import.meta.url), 'utf8');
 const setPresentationJs = readFileSync(new URL('../workout/set-presentation.js', import.meta.url), 'utf8');
 const exerciseCompletionJs = readFileSync(new URL('../workout/exercise-completion.js', import.meta.url), 'utf8');
+const runningPresentationJs = readFileSync(new URL('../workout/running-presentation.js', import.meta.url), 'utf8');
 
 function extractFunctionSource(source, name) {
   const asyncStart = source.indexOf(`async function ${name}(`);
@@ -917,7 +918,7 @@ test('day sheet added workout sets copy previous user values without completion 
 
 test('day sheet set rows keep goal/history blocks and use minimal collapsed editing', () => {
   const cardStart = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard');
-  const cardEnd = calendarJs.indexOf('function _formatRunningDistance', cardStart);
+  const cardEnd = calendarJs.indexOf('function _renderRunningRouteMap', cardStart);
   const menuStart = calendarJs.indexOf('function _renderWorkoutSetTypeMenu');
   const menuEnd = calendarJs.indexOf('function _renderWorkoutSetRows', menuStart);
   const rowsStart = calendarJs.indexOf('function _renderWorkoutSetRows');
@@ -998,18 +999,19 @@ test('workout bottom sheet replaces the third gym session with a dedicated runni
 });
 
 test('running detail card uses the workout read-card shell with aggregated running metrics and splits', () => {
-  const metricStart = calendarJs.indexOf('function _runningMetricItems');
+  const metricStart = runningPresentationJs.indexOf('export function runningMetricItems');
   const mapStart = calendarJs.indexOf('function _renderRunningRouteMap');
   const cardStart = calendarJs.indexOf('function _renderWorkoutRunningDetailCard');
   const cardEnd = calendarJs.indexOf('function _renderWorkoutActivityDetailCard', cardStart);
-  assert.ok(metricStart >= 0 && metricStart < cardStart, 'running metric builder should exist before the card');
+  assert.ok(metricStart >= 0, 'running metric builder should be extracted into the presentation module');
   assert.ok(mapStart >= 0 && mapStart < cardStart, 'running map renderer should exist before the card');
   assert.ok(cardStart >= 0 && cardEnd > cardStart, 'running detail card renderer should exist');
-  const metricBuilder = calendarJs.slice(metricStart, cardStart);
+  const metricBuilder = runningPresentationJs.slice(metricStart);
   const mapRenderer = calendarJs.slice(mapStart, cardStart);
   const card = calendarJs.slice(cardStart, cardEnd);
 
   assert.match(calendarJs, /loadRunningRoute,/);
+  assert.match(calendarJs, /from '\.\/workout\/running-presentation\.js'/);
   assert.match(calendarJs, /import \{ destroyRunningMaps, renderRunningMap \} from '\.\/workout\/running-map\.js'/);
   assert.match(calendarJs, /createRunningRouteHydrationController/);
   assert.match(calendarJs, /function _mountWorkoutRunningMaps/);

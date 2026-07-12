@@ -9,6 +9,8 @@ const calendarJs = readFileSync(new URL('../render-calendar.js', import.meta.url
 const calendarActivityModelJs = readFileSync(new URL('../calendar/activity-model.js', import.meta.url), 'utf8');
 const hydrationJs = readFileSync(new URL('../workout/running-route-hydration.js', import.meta.url), 'utf8');
 const runningModelJs = readFileSync(new URL('../workout/running-model.js', import.meta.url), 'utf8');
+const runningPresentationJs = readFileSync(new URL('../workout/running-presentation.js', import.meta.url), 'utf8');
+const runningPresentationBrowserJs = runningPresentationJs.replaceAll('export function ', 'function ');
 const styleCss = readAppCssSync();
 
 function deferred() {
@@ -237,12 +239,6 @@ test('375px running detail card hydrates the full route without overlap or clipp
       '_num',
       '_fmtNum',
       '_formatDurationShort',
-      '_formatRunningDistance',
-      '_formatRunningPaceCard',
-      '_runningSourceLabel',
-      '_runningMetricItems',
-      '_runningPlaceLabel',
-      '_runningGpsInfoLabel',
       '_registerWorkoutRunningMapPayload',
       '_findWorkoutRunningMapShell',
       '_mountWorkoutRunningMaps',
@@ -276,6 +272,14 @@ test('375px running detail card hydrates the full route without overlap or clipp
       }
       function destroyRunningMaps() {}
       const _workoutRunningRouteHydration = createRunningRouteHydrationController(loadRunningRoute);
+      ${runningPresentationBrowserJs}
+      const _formatRunningClock = formatRunningClock;
+      const _formatRunningDistance = formatRunningDistance;
+      const _formatRunningPaceCard = formatRunningPaceCard;
+      const _runningSourceLabel = runningSourceLabel;
+      const _runningMetricItems = runningMetricItems;
+      const _runningPlaceLabel = runningPlaceLabel;
+      const _runningGpsInfoLabel = runningGpsInfoLabel;
       ${sourceBundle}
 
       window.__mountRunningCard = (row) => {
@@ -387,6 +391,7 @@ test('375px running detail card hydrates the full route without overlap or clipp
 test('calendar source propagates route refs and loads the full route automatically', () => {
   assert.match(calendarJs, /loadRunningRoute,/);
   assert.match(calendarJs, /createRunningRouteHydrationController/);
+  assert.match(calendarJs, /from '\.\/workout\/running-presentation\.js'/);
   assert.match(calendarJs, /runRouteRef:\s*null/);
   assert.match(runningModelJs, /runRouteRef:\s*_clone\(source\.runRouteRef, null\)/);
   assert.match(calendarJs, /routeRef:\s*_clonePlain\(session\.runRouteRef\s*\|\|\s*null\)/);
