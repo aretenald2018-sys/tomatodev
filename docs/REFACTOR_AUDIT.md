@@ -35,6 +35,7 @@
 - 운동 회차·월간·상세·통계·내보내기 화면이 중량 볼륨을 `톤` 또는 `vol`로 제각각 표기하던 문제를 수정했다. 모든 표면에서 200kg은 `200kg`, 1,000kg 이상만 `t`로 표기하며 회귀 테스트를 추가했다.
 - `render-calendar.js`의 볼륨/강도 트랙 판정·추세·단위 계산 114줄을 `workout/track-metrics.js`로 분리했다. DOM과 Firebase 상태 없이 직접 테스트하고, runtime manifest에도 명시해 PWA lazy 경로에서 누락되지 않게 했다.
 - 같은 파일의 운동 완료 시각 선택·휴식 경과 시간 계산을 `workout/completion-metrics.js`로 분리했다. 완료되지 않은 세트를 제외하고 raw/fallback set 상세를 다루는 계산은 직접 단위 테스트로 고정했으며, 화면에는 타이머 갱신만 남겼다.
+- 운동 종목의 완료 marker, 유효 세트 판정, 완료 조건과 marker 변경을 `workout/exercise-completion.js`로 분리했다. 종목 완료/해제의 동일한 입력·출력 규칙을 직접 테스트로 고정했고, 390px 세트 편집 DOM 행동 테스트도 새 공개 경계를 통해 통과한다.
 - 세트 중량/횟수·RIR·볼륨 표시, 세트 유형 라벨/class, 최상위 세트와 이전 기록 요약을 `workout/set-presentation.js`로 분리했다. 390px 터치 DOM에서 키패드 입력·좌우 필드 이동·세트 유형 변경·우→좌 스와이프 삭제를 수행하는 기존 행동 테스트가 새 모듈 경계를 포함해 통과한다.
 - 360px 실제 sheet 감사에서 세트 체크·유형·삭제·확장과 하단 회차 탭이 24~38px이라 발견했다. `calendar-home.css`와 `workout-day-sheet.css`에서 각 조작 영역을 최소 44px으로 확장하고, 좁은 행 grid는 44px 터치를 유지하면서 넘치지 않도록 재배치했다.
 - Firestore의 deprecated 단일 탭 `enableIndexedDbPersistence()`를 다중 탭 `persistentLocalCache({ tabManager: persistentMultipleTabManager() })` 초기화로 교체했다. 지원하지 않는 WebView는 memory cache로 안전하게 복귀하며, factory는 독립 단위 테스트로 성공·실패·미지원 경로를 검증한다.
