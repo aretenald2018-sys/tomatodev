@@ -5,14 +5,14 @@
 1. `styles/tokens.css`: color, spacing, radius, typography, elevation, motion, interaction tokens only.
 2. `styles/components.css`: established TDS component contracts and utilities.
 3. `styles/primitives.css`: composable field, chip, sheet, and feedback-state primitives.
-4. `styles/features/*.css`: feature-owned rules in the exact order declared by the `style.css` import manifest. A file owns one screen or interaction surface; later files are explicit compatibility overrides.
+4. `styles/features/*.css`: feature-owned rules in the exact order declared by `scripts/generate-style-entry.mjs`. A file owns one screen or interaction surface; later files are explicit compatibility overrides.
 5. `styles/compatibility.css`: app-shell font and temporary light-mode compatibility only. Feature rules do not belong here.
 6. `styles/workout/expert-mode.css`: the isolated expert-mode scene stylesheet. `expert-mode.css` is a temporary empty compatibility entry.
 7. `styles/accessibility.css`: last-loaded focus, minimum touch target, assistive text, and reduced-motion guarantees.
 
 Feature selectors should stay under their feature root. New selectors must not rely on a later `!important` override. Shared components use the `tds-` prefix; feature-owned classes keep their existing feature prefix.
 
-`style.css` is the single ordered import manifest. This is also a native WebView compatibility boundary: an older cached `index.html` that requests only `style.css` still receives every feature stylesheet after an update. Moving a rule between feature files requires checking its adjacent imports in `style.css`; alphabetic filename order is not the cascade contract. `runtime-assets.js` must list every imported stylesheet so offline startup sees the same cascade.
+`style.css` is a generated standalone entry bundle, not an import manifest and not an editing surface. `scripts/generate-style-entry.mjs` concatenates each owned stylesheet with source boundary comments in its declared order. This is a native WebView compatibility boundary: an older cached `index.html` that requests only `style.css` still receives the complete cascade after an update. Moving a rule between feature files requires checking its adjacent source in that generator; alphabetic filename order is not the cascade contract. `runtime-assets.js` must list every source stylesheet so offline startup sees the same cascade.
 
 ### Large stylesheet exceptions
 

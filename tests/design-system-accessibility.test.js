@@ -77,11 +77,11 @@ test('design system owns tokens, primitives, accessibility, and CSS order', asyn
   assert.match(index, /href="style\.css"/);
   assert.doesNotMatch(index, /href="styles\/features\//);
   const entry = await readFile(resolve(root, 'style.css'), 'utf8');
-  assert.ok(entry.indexOf('styles/tokens.css') < entry.indexOf('styles/primitives.css'));
-  assert.ok(entry.indexOf('styles/accessibility.css') > entry.indexOf('styles/workout/expert-mode.css'));
-  assert.match(entry, /styles\/features\/home-foundations\.css/);
-  assert.match(entry, /styles\/features\/workout-day-sheet\.css/);
-  assert.match(entry, /styles\/features\/app-status\.css/);
+  assert.ok(entry.indexOf('SOURCE: styles/tokens.css') < entry.indexOf('SOURCE: styles/primitives.css'));
+  assert.ok(entry.indexOf('SOURCE: styles/accessibility.css') > entry.indexOf('SOURCE: styles/workout/expert-mode.css'));
+  assert.match(entry, /SOURCE: styles\/features\/home-foundations\.css/);
+  assert.match(entry, /SOURCE: styles\/features\/workout-day-sheet\.css/);
+  assert.match(entry, /SOURCE: styles\/features\/app-status\.css/);
   assert.match(sw, /importScripts\('\.\/runtime-assets\.js'\)/);
   assert.match(runtimeAssets, /\.\/styles\/primitives\.css/);
   assert.match(runtimeAssets, /\.\/styles\/accessibility\.css/);
