@@ -2233,7 +2233,7 @@ function _renderWorkoutDetailSummaryCard(wx) {
       attrs: lastCompletedAt ? ` data-wt-last-complete-elapsed data-completed-at="${lastCompletedAt}"` : '',
     },
     { label: '세트', value: wx?.setCount ? `${wx.setCount}세트` : '—' },
-    { label: '볼륨', value: wx?.volume > 0 ? `${_formatVolume(wx.volume)}톤` : '—' },
+    { label: '볼륨', value: wx?.volume > 0 ? _formatWorkoutTrackValue('M', wx.volume) : '—' },
   ];
   return `
     <div class="wt-day-summary-card" aria-label="선택한 회차 요약">
@@ -4792,7 +4792,7 @@ function _formatWorkoutExportText(key, sessionIndex, session, wx) {
     `운동시간: ${_formatDuration(wx.durationSec)}`,
   ];
   if (wx.setCount > 0) lines.push(`총 세트: ${wx.setCount}세트`);
-  if (wx.volume > 0) lines.push(`총 볼륨: ${_formatVolume(wx.volume)}톤`);
+  if (wx.volume > 0) lines.push(`총 볼륨: ${_formatWorkoutTrackValue('M', wx.volume)}`);
   if (wx.burned?.total > 0) lines.push(`소모: ${wx.burned.total} kcal`);
 
   wx.exercises.forEach((row) => {

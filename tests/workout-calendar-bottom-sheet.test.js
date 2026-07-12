@@ -1454,6 +1454,28 @@ test('workout calendar home header and monthly workout card stay compact', () =>
   assert.match(styleCss, /\.cal-workout-surface-home \.cal-month-side\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*max-content\)/);
 });
 
+test('workout volume summary uses a mass-aware formatter', () => {
+  const summaryStart = calendarJs.indexOf('function _renderWorkoutDetailSummaryCard');
+  const summaryEnd = calendarJs.indexOf('function _workoutSetTypeLabel', summaryStart);
+  const exportStart = calendarJs.indexOf('function _formatWorkoutExportText');
+  const exportEnd = calendarJs.indexOf('async function _shareOrCopyText', exportStart);
+  const trackFormatStart = calendarJs.indexOf('function _formatWorkoutTrackValue');
+  const trackFormatEnd = calendarJs.indexOf('function _formatWorkoutTrackDelta', trackFormatStart);
+  const summary = calendarJs.slice(summaryStart, summaryEnd);
+  const exported = calendarJs.slice(exportStart, exportEnd);
+  const trackFormat = calendarJs.slice(trackFormatStart, trackFormatEnd);
+
+  assert.ok(summaryStart >= 0 && summaryEnd > summaryStart, 'day summary renderer should exist');
+  assert.ok(exportStart >= 0 && exportEnd > exportStart, 'workout export formatter should exist');
+  assert.ok(trackFormatStart >= 0 && trackFormatEnd > trackFormatStart, 'volume formatter should exist');
+  assert.match(trackFormat, /if \(v >= 1000\) return `\$\{_fmtNum\(v \/ 1000, 1\)\}t`/);
+  assert.match(trackFormat, /return `\$\{Math\.round\(v\)\}kg`/);
+  assert.match(summary, /_formatWorkoutTrackValue\('M', wx\.volume\)/);
+  assert.match(exported, /_formatWorkoutTrackValue\('M', wx\.volume\)/);
+  assert.doesNotMatch(summary, /_formatVolume\(wx\?\.volume\).*톤/);
+  assert.doesNotMatch(exported, /_formatVolume\(wx\.volume\).*톤/);
+});
+
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
   assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });
