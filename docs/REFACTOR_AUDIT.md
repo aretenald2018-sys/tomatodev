@@ -37,6 +37,7 @@
 - 같은 파일의 운동 완료 시각 선택·휴식 경과 시간 계산을 `workout/completion-metrics.js`로 분리했다. 완료되지 않은 세트를 제외하고 raw/fallback set 상세를 다루는 계산은 직접 단위 테스트로 고정했으며, 화면에는 타이머 갱신만 남겼다.
 - 세트 중량/횟수·RIR·볼륨 표시, 세트 유형 라벨/class, 최상위 세트와 이전 기록 요약을 `workout/set-presentation.js`로 분리했다. 390px 터치 DOM에서 키패드 입력·좌우 필드 이동·세트 유형 변경·우→좌 스와이프 삭제를 수행하는 기존 행동 테스트가 새 모듈 경계를 포함해 통과한다.
 - 360px 실제 sheet 감사에서 세트 체크·유형·삭제·확장과 하단 회차 탭이 24~38px이라 발견했다. `calendar-home.css`와 `workout-day-sheet.css`에서 각 조작 영역을 최소 44px으로 확장하고, 좁은 행 grid는 44px 터치를 유지하면서 넘치지 않도록 재배치했다.
+- Firestore의 deprecated 단일 탭 `enableIndexedDbPersistence()`를 다중 탭 `persistentLocalCache({ tabManager: persistentMultipleTabManager() })` 초기화로 교체했다. 지원하지 않는 WebView는 memory cache로 안전하게 복귀하며, factory는 독립 단위 테스트로 성공·실패·미지원 경로를 검증한다.
 
 ## 남은 리팩토링 순서
 

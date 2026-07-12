@@ -230,6 +230,7 @@
   './home/streak-warning.js',
   './home/admin-onboarding.js',
   // data 리팩토링 모듈
+  './data/firestore-cache.js',
   './data/data-core.js',
   './data/data-api.js',
   './data/data-functions.js',

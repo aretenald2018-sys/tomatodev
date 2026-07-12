@@ -5,13 +5,15 @@
 import { initializeApp }    from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app-check.js";
 import {
-  getFirestore, doc, setDoc, updateDoc, deleteDoc, getDoc,
-  collection, getDocs, query, where, documentId, orderBy, limit, enableIndexedDbPersistence,
+  getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+  doc, setDoc, updateDoc, deleteDoc, getDoc,
+  collection, getDocs, query, where, documentId, orderBy, limit,
   arrayUnion, writeBatch,
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 import { getFunctions } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-functions.js";
 import { CONFIG } from '../config.js';
 import { generateId } from '../utils/id.js';
+import { createFirestoreWithMultiTabCache } from './firestore-cache.js';
 
 // ── Firebase 초기화 ─────────────────────────────────────────────
 const app = initializeApp(CONFIG.FIREBASE);
@@ -36,18 +38,16 @@ if (_appCheckSiteKey && !_appCheckSiteKey.startsWith('REPLACE_WITH_')) {
   console.warn('[data] APPCHECK_SITE_KEY 미설정 — Gemini proxy 호출 전 config.js를 채워주세요');
 }
 
-export const db  = getFirestore(app);
-export const functions = getFunctions(app, 'asia-northeast3');
-
-enableIndexedDbPersistence(db).catch(err => {
-  if (err.code === 'failed-precondition') {
-    console.warn('[data] 멀티탭 환경 감지 — 다른 탭의 대시보드를 닫아주세요');
-  } else if (err.code === 'unimplemented') {
-    console.warn('[data] 브라우저가 오프라인 캐시 미지원');
-  } else {
-    console.warn('[data] IndexedDB 초기화 실패:', err.code);
-  }
+export const db = createFirestoreWithMultiTabCache(app, {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  onCacheError(err) {
+    console.warn('[data] IndexedDB 캐시 초기화 실패 — memory cache로 계속합니다:', err?.code || err?.message || err);
+  },
 });
+export const functions = getFunctions(app, 'asia-northeast3');
 
 // Firestore 함수 re-export (하위 모듈용)
 export { doc, setDoc, updateDoc, deleteDoc, getDoc, collection, getDocs, query, where, documentId, orderBy, limit, arrayUnion, writeBatch };
