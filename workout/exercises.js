@@ -75,6 +75,17 @@ import {
   safePickerColor as _safePickerColor,
   sortPickerItems,
 } from './exercise-picker-model.js';
+import {
+  filterPickerExercisesByGym,
+  isConcretePickerGymFilter as _isConcretePickerGymFilter,
+  isPickerExerciseEditable as _isExerciseEditable,
+  isPickerExerciseGlobalScope as _isExerciseGlobalScope,
+  isPickerExerciseUsableAtGym,
+  normalizePickerGymFilter as _normalizePickerGymFilter,
+  pickerExerciseGymIds as _exerciseGymIds,
+  pickerExerciseGymKey as _exerciseGymKey,
+  pickerExerciseSourceMeta,
+} from './picker-gym-scope.js';
 // resolveCurrentGymId는 expert.js의 단일 진실원 (preset + S.workout.currentGymId 동기화).
 // isExpertViewShown은 세션 뷰 상태 (일반 모드 뷰 ↔ 프로 모드 뷰) 조회용.
 // expert.js는 exercises.js를 static import 하지 않으므로 순환 참조 없음.
@@ -2179,72 +2190,22 @@ function _currentPickerGymId() {
 }
 
 function _exerciseSourceMeta(ex) {
-  const gyms = getGyms?.() || [];
-  const currentGymId = _currentPickerGymId();
-  const gymIds = _exerciseGymIds(ex);
-  const gymId = gymIds[0] || null;
-  const gym = gymId ? gyms.find(g => g.id === gymId) : null;
-  const currentGym = currentGymId ? gyms.find(g => g.id === currentGymId) : null;
-  if (_isExerciseGlobalScope(ex)) {
-    return { label: '공통', detail: '모든 헬스장', cls: 'global', filterId: 'global', actionLabel: '공통 기구만 보기' };
-  }
-  if (currentGymId && gymIds.includes(currentGymId)) {
-    const label = currentGym?.name || gym?.name || '현재 헬스장';
-    return { label, detail: '전용 기구', cls: 'current', filterId: currentGymId, actionLabel: `${label} 기구만 보기` };
-  }
-  const label = gym?.name || '다른 헬스장';
-  return { label, detail: '전용 기구', cls: 'other', filterId: gymId, actionLabel: `${label} 기구만 보기` };
-}
-
-function _exerciseGymIds(ex) {
-  return [...new Set([
-    ex?.gymId,
-    ex?.primaryGymId,
-    ...(Array.isArray(ex?.gymTags) ? ex.gymTags.filter(tag => tag && tag !== '*') : []),
-  ].filter(Boolean))];
-}
-
-function _isExerciseGlobalScope(ex) {
-  const tags = Array.isArray(ex?.gymTags) ? ex.gymTags : [];
-  return tags.includes('*') || _exerciseGymIds(ex).length === 0;
-}
-
-function _exerciseGymKey(ex) {
-  return _exerciseGymIds(ex)[0] || '';
+  return pickerExerciseSourceMeta(ex, {
+    gyms: getGyms?.() || [],
+    currentGymId: _currentPickerGymId(),
+  });
 }
 
 function _isExerciseUsableAtCurrentGym(ex) {
-  const currentGymId = _currentPickerGymId();
-  if (_isExerciseGlobalScope(ex) || !currentGymId) return true;
-  return _exerciseGymIds(ex).includes(currentGymId);
-}
-
-function _isConcretePickerGymFilter(gymId) {
-  return !!gymId && !['all', 'usable', 'global'].includes(String(gymId));
-}
-
-function _normalizePickerGymFilter(gymId) {
-  const value = String(gymId || '').trim();
-  return value || 'all';
+  return isPickerExerciseUsableAtGym(ex, 'usable', _currentPickerGymId());
 }
 
 function _isExerciseUsableAtGym(ex, gymId) {
-  const scope = _normalizePickerGymFilter(gymId);
-  if (scope === 'global') return _isExerciseGlobalScope(ex);
-  if (scope === 'usable') return _isExerciseUsableAtCurrentGym(ex);
-  if (scope === 'all' || _isExerciseGlobalScope(ex)) return true;
-  return _exerciseGymIds(ex).includes(scope);
+  return isPickerExerciseUsableAtGym(ex, gymId, _currentPickerGymId());
 }
 
 function _applyPickerGymScope(pool, gymId = _pickerGymFilter) {
-  const scope = _normalizePickerGymFilter(gymId);
-  if (scope === 'all') return pool;
-  return pool.filter(ex => _isExerciseUsableAtGym(ex, scope));
-}
-
-function _isExerciseEditable(ex) {
-  if (!ex?.id) return false;
-  return /^custom_/.test(String(ex.id)) || _exerciseGymIds(ex).length > 0 || !ex.movementId;
+  return filterPickerExercisesByGym(pool, gymId, _currentPickerGymId());
 }
 
 const EX_PROGRAM_MODES = [

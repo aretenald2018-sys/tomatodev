@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const exercisesJs = await readFile(new URL('../workout/exercises.js', import.meta.url), 'utf8');
+const pickerGymScopeJs = await readFile(new URL('../workout/picker-gym-scope.js', import.meta.url), 'utf8');
 const css = readAppCssSync().replace(/\r\n/g, '\n');
 
 function sliceByFirstBrace(source, startToken) {
@@ -67,10 +68,10 @@ test('exercise picker preserves selected gym scope when entering muscle lists', 
 });
 
 test('specific gym scope includes global exercises and feeds list rendering', () => {
-  const usableAtGym = sliceByFirstBrace(exercisesJs, 'function _isExerciseUsableAtGym');
   const list = sliceByFirstBrace(exercisesJs, 'export function _renderPickerList');
 
-  assert.match(usableAtGym, /scope === 'all' \|\| _isExerciseGlobalScope\(ex\)/);
+  assert.match(exercisesJs, /from '\.\/picker-gym-scope\.js'/);
+  assert.match(pickerGymScopeJs, /scope === 'all' \|\| isPickerExerciseGlobalScope\(exercise\)/);
   assert.match(list, /_applyPickerGymScope\(modeFiltered, _pickerGymFilter\)/);
   assert.doesNotMatch(list, /_exerciseGymIds\(e\)\.includes\(_pickerGymFilter\)/);
 });

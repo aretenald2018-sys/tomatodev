@@ -152,6 +152,7 @@
   './workout/exercises.js',
   './workout/exercise-editor-actions.js',
   './workout/exercise-entry-actions.js',
+  './workout/picker-gym-scope.js',
   './workout/timers.js',
   './workout/activity-forms.js',
   './workout/wear-bridge.js',
