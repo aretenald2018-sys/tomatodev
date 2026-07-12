@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 
 const calendarJs = readFileSync(new URL('../render-calendar.js', import.meta.url), 'utf8');
+const setPresentationJs = readFileSync(new URL('../workout/set-presentation.js', import.meta.url), 'utf8');
 const styleCss = readAppCssSync();
 const mobileEvidenceDir = fileURLToPath(new URL('../.omo/evidence/workout-set-mobile-interactions/', import.meta.url));
 const mobileEvidenceJson = fileURLToPath(new URL('../.omo/evidence/workout-set-mobile-interactions/mobile-set-row-e2e.json', import.meta.url));
@@ -41,12 +42,7 @@ function extractConstArraySource(source, name) {
 
 function buildHarnessScript() {
   const functionNames = [
-    '_normalizeWorkoutSetType',
     '_workoutSheetInputValue',
-    '_formatWorkoutKg',
-    '_formatWorkoutReps',
-    '_workoutSetTypeLabel',
-    '_workoutSetTypeClass',
     '_workoutSetEditorKey',
     '_workoutSetInlineFieldKey',
     '_isWorkoutSetEditorExpanded',
@@ -100,6 +96,7 @@ function buildHarnessScript() {
     '_removeWorkoutExerciseSetFromSheet',
   ];
   const sourceBundle = [
+    setPresentationJs.replace(/^export /gmu, ''),
     extractConstArraySource(calendarJs, 'WORKOUT_SET_TYPE_OPTIONS'),
     ...functionNames.map(name => extractFunctionSource(calendarJs, name)),
   ].join('\n\n');

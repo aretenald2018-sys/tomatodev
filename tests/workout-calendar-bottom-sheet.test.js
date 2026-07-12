@@ -21,6 +21,7 @@ const tm2BoardJs = readFileSync(new URL('../workout/test-v2/board-render.js', im
 const runningModelJs = readFileSync(new URL('../workout/running-model.js', import.meta.url), 'utf8');
 const calendarActivityModelJs = readFileSync(new URL('../calendar/activity-model.js', import.meta.url), 'utf8');
 const trackMetricsJs = readFileSync(new URL('../workout/track-metrics.js', import.meta.url), 'utf8');
+const setPresentationJs = readFileSync(new URL('../workout/set-presentation.js', import.meta.url), 'utf8');
 
 function extractFunctionSource(source, name) {
   const asyncStart = source.indexOf(`async function ${name}(`);
@@ -538,7 +539,7 @@ test('day sheet detail renders picker-added draft exercise rows', () => {
 
 test('day sheet exercise cards render as a horizontal carousel instead of a vertical stack', () => {
   const cardsStart = calendarJs.indexOf('function _renderWorkoutDetailCards');
-  const cardsEnd = calendarJs.indexOf('function _formatWorkoutKg', cardsStart);
+  const cardsEnd = calendarJs.indexOf('function _renderWorkoutSetInput', cardsStart);
   assert.ok(cardsStart >= 0 && cardsEnd > cardsStart, 'detail card renderer should exist');
   const cards = calendarJs.slice(cardsStart, cardsEnd);
 
@@ -610,7 +611,6 @@ test('day sheet exercise card renders prior workout record instead of today set 
   assert.match(card, /previousSummary\.summary/);
   assert.match(calendarJs, /지난 기록/);
   assert.doesNotMatch(card, /<span>오늘 기록<\/span>/);
-  assert.doesNotMatch(card, /const setSummary = _workoutSetSummary\(row\)/);
 });
 
 test('day sheet exercise card uses inline plus row and one complete button', () => {
@@ -791,17 +791,13 @@ test('day sheet set rows preserve wendler set role chips', () => {
   const actualEnd = calendarJs.indexOf('function _hasDraftWorkoutEntry', actualStart);
   const rowsStart = calendarJs.indexOf('function _exerciseRows');
   const rowsEnd = calendarJs.indexOf('function _workoutMetrics', rowsStart);
-  const labelStart = calendarJs.indexOf('function _workoutSetTypeLabel');
-  const labelEnd = calendarJs.indexOf('function _bestWorkoutSet', labelStart);
   const renderStart = calendarJs.indexOf('function _renderWorkoutSetRows');
   const renderEnd = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard', renderStart);
   assert.ok(actualStart >= 0 && actualEnd > actualStart, 'actual set filter should exist');
   assert.ok(rowsStart >= 0 && rowsEnd > rowsStart, 'exercise row mapper should exist');
-  assert.ok(labelStart >= 0 && labelEnd > labelStart, 'set type label helper should exist');
   assert.ok(renderStart >= 0 && renderEnd > renderStart, 'set row renderer should exist');
   const actualFn = calendarJs.slice(actualStart, actualEnd);
   const rows = calendarJs.slice(rowsStart, rowsEnd);
-  const labelFn = calendarJs.slice(labelStart, labelEnd);
   const renderFn = calendarJs.slice(renderStart, renderEnd);
 
   assert.match(actualFn, /type === 'deload'/);
@@ -809,13 +805,15 @@ test('day sheet set rows preserve wendler set role chips', () => {
   assert.match(rows, /wendlerRole:\s*set\.wendlerRole \|\| ''/);
   assert.match(rows, /supplementalKind:\s*set\.supplementalKind \|\| ''/);
   assert.match(rows, /wendlerPct/);
-  assert.match(labelFn, /set\.wendlerRole === 'warmup'[\s\S]*return '웜업'/);
-  assert.match(labelFn, /set\.wendlerRole === 'main'[\s\S]*return '메인'/);
-  assert.match(labelFn, /set\.wendlerRole === 'supplemental'[\s\S]*supplementalKind === 'bbb'[\s\S]*return 'BBB'/);
-  assert.match(labelFn, /supplementalKind === 'fsl'[\s\S]*return 'FSL'/);
-  assert.match(labelFn, /type === 'deload'[\s\S]*return '디로드'/);
-  assert.match(renderFn, /_workoutSetTypeClass\(set\)/);
-  assert.match(renderFn, /_workoutSetTypeLabel\(set\)/);
+  assert.match(calendarJs, /from '\.\/workout\/set-presentation\.js'/);
+  assert.match(setPresentationJs, /export function workoutSetTypeLabel\(setOrType = \{\}\)/);
+  assert.match(setPresentationJs, /set\.wendlerRole === 'warmup'[\s\S]*return '웜업'/);
+  assert.match(setPresentationJs, /set\.wendlerRole === 'main'[\s\S]*return '메인'/);
+  assert.match(setPresentationJs, /set\.wendlerRole === 'supplemental'[\s\S]*supplementalKind === 'bbb'[\s\S]*return 'BBB'/);
+  assert.match(setPresentationJs, /supplementalKind === 'fsl'[\s\S]*return 'FSL'/);
+  assert.match(setPresentationJs, /type === 'deload'[\s\S]*return '디로드'/);
+  assert.match(renderFn, /workoutSetTypeClass\(set\)/);
+  assert.match(renderFn, /workoutSetTypeLabel\(set\)/);
 });
 
 test('day sheet set inputs preserve keyboard next focus without restoring the changed source input', () => {
@@ -922,18 +920,14 @@ test('day sheet added workout sets copy previous user values without completion 
 test('day sheet set rows keep goal/history blocks and use minimal collapsed editing', () => {
   const cardStart = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard');
   const cardEnd = calendarJs.indexOf('function _formatRunningDistance', cardStart);
-  const labelStart = calendarJs.indexOf('function _workoutSetTypeLabel');
-  const labelEnd = calendarJs.indexOf('function _bestWorkoutSet', labelStart);
   const menuStart = calendarJs.indexOf('function _renderWorkoutSetTypeMenu');
   const menuEnd = calendarJs.indexOf('function _renderWorkoutSetRows', menuStart);
   const rowsStart = calendarJs.indexOf('function _renderWorkoutSetRows');
   const rowsEnd = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard', rowsStart);
   assert.ok(cardStart >= 0 && cardEnd > cardStart, 'exercise detail card renderer should exist');
-  assert.ok(labelStart >= 0 && labelEnd > labelStart, 'set type label helpers should exist');
   assert.ok(menuStart >= 0 && menuEnd > menuStart, 'set type menu renderer should exist');
   assert.ok(rowsStart >= 0 && rowsEnd > rowsStart, 'set row renderer should exist');
   const card = calendarJs.slice(cardStart, cardEnd);
-  const labels = calendarJs.slice(labelStart, labelEnd);
   const menu = calendarJs.slice(menuStart, menuEnd);
   const rows = calendarJs.slice(rowsStart, rowsEnd);
 
@@ -942,7 +936,7 @@ test('day sheet set rows keep goal/history blocks and use minimal collapsed edit
   assert.match(card, /<div class="wt-max-last">/);
   assert.match(calendarJs, /const WORKOUT_SET_TYPE_OPTIONS = \[/);
   assert.match(calendarJs, /const _workoutOpenSetTypeMenus = new Set\(\)/);
-  assert.match(labels, /type === 'failure'[\s\S]*return '실패'/);
+  assert.match(setPresentationJs, /type === 'failure'[\s\S]*return '실패'/);
   assert.match(rows, /wt-max-set-type-btn/);
   assert.match(rows, /data-wt-sheet-card-action="toggle-set-type"/);
   assert.match(rows, /_renderWorkoutSetTypeMenu/);
@@ -1457,7 +1451,7 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 
 test('workout volume summary delegates to the mass-aware track metrics module', () => {
   const summaryStart = calendarJs.indexOf('function _renderWorkoutDetailSummaryCard');
-  const summaryEnd = calendarJs.indexOf('function _workoutSetTypeLabel', summaryStart);
+  const summaryEnd = calendarJs.indexOf('function _renderWorkoutDetailSessionTabs', summaryStart);
   const exportStart = calendarJs.indexOf('function _formatWorkoutExportText');
   const exportEnd = calendarJs.indexOf('async function _shareOrCopyText', exportStart);
   const summary = calendarJs.slice(summaryStart, summaryEnd);

@@ -83,6 +83,15 @@ import {
   formatWorkoutCompletionElapsed,
   latestWorkoutCompletionAt,
 } from './workout/completion-metrics.js';
+import {
+  bestWorkoutSet,
+  formatWorkoutKg,
+  formatWorkoutReps,
+  normalizeWorkoutSetType,
+  workoutSetSummary,
+  workoutSetTypeClass,
+  workoutSetTypeLabel,
+} from './workout/set-presentation.js';
 
 // ═════════════════════════════════════════════════════════════
 // 뷰 상태
@@ -2263,91 +2272,13 @@ function _renderWorkoutExerciseDetailCarousel(key, sessionIndex, exercises = [])
   `;
 }
 
-function _formatWorkoutKg(value) {
-  const n = _num(value);
-  if (n <= 0) return '-';
-  return _fmtNum(n, 1);
-}
-
-function _formatWorkoutReps(value) {
-  const n = _num(value);
-  if (n <= 0) return '-';
-  return _fmtNum(n, 0);
-}
-
-function _formatWorkoutRir(set) {
-  if (set?.rir != null && Number.isFinite(Number(set.rir))) return _fmtNum(set.rir, 1);
-  const rpe = _num(set?.rpe);
-  if (rpe > 0) return _fmtNum(Math.max(0, 10 - rpe), 1);
-  return '-';
-}
-
-function _formatWorkoutVolumeTon(value) {
-  const tons = _num(value) / 1000;
-  if (tons <= 0) return '0t';
-  return `${_fmtNum(tons, 1)}t`;
-}
-
-function _workoutSetTypeLabel(setOrType = {}) {
-  const set = setOrType && typeof setOrType === 'object' ? setOrType : {};
-  const type = typeof setOrType === 'string' ? setOrType : set.setType;
-  if (set.wendlerRole === 'warmup') return '웜업';
-  if (set.wendlerRole === 'main') return '메인';
-  if (set.wendlerRole === 'supplemental') {
-    if (set.supplementalKind === 'bbb') return 'BBB';
-    if (set.supplementalKind === 'fsl') return 'FSL';
-    return '보조';
-  }
-  if (type === 'warmup') return '웜업';
-  if (type === 'drop') return '드랍';
-  if (type === 'failure') return '실패';
-  if (type === 'deload') return '디로드';
-  return '메인';
-}
-
-function _workoutSetTypeClass(setOrType = {}) {
-  const set = setOrType && typeof setOrType === 'object' ? setOrType : {};
-  const type = typeof setOrType === 'string' ? setOrType : set.setType;
-  if (set.wendlerRole === 'warmup' || type === 'warmup') return 'is-warmup';
-  if (set.wendlerRole === 'supplemental' || type === 'drop' || type === 'deload') return 'is-drop';
-  if (type === 'failure') return 'is-failure';
-  return '';
-}
-
-function _normalizeWorkoutSetType(type) {
-  const value = String(type || '').trim();
-  return WORKOUT_SET_TYPE_OPTIONS.some(option => option.type === value) ? value : 'main';
-}
-
-function _bestWorkoutSet(row) {
-  const sets = Array.isArray(row?.setDetails) ? row.setDetails : [];
-  return [...sets].sort((a, b) => (_num(b.kg) * _num(b.reps)) - (_num(a.kg) * _num(a.reps)))[0] || null;
-}
-
-function _workoutSetSummary(row) {
-  const sets = Array.isArray(row?.setDetails) ? row.setDetails : [];
-  if (!sets.length) return row?.topSetText || '세트 기록 없음';
-  const grouped = new Map();
-  sets.forEach((set) => {
-    const kg = _formatWorkoutKg(set.kg);
-    const reps = _formatWorkoutReps(set.reps);
-    const key = `${kg}kg×${reps}`;
-    const cur = grouped.get(key) || { kg, reps, count: 0 };
-    cur.count += 1;
-    grouped.set(key, cur);
-  });
-  return [...grouped.values()]
-    .map(item => `${item.kg}kg×${item.reps} ${item.count}세트`)
-    .join(' / ');
-}
-
 function _workoutPreviousSetSummary(row) {
   const previous = row?.previousRecord || null;
   if (!previous) return { label: '지난 기록', summary: '이전 세트 기록 없음' };
   const dateLabel = previous.dateLabel || _dateDistanceLabel(previous.dateKey) || '이전';
   return {
     label: `지난 기록 · ${dateLabel}`,
-    summary: _workoutSetSummary(previous),
+    summary: workoutSetSummary(previous),
   };
 }
 
@@ -2496,7 +2427,7 @@ function _renderWorkoutSetAddRow(key, sessionIndex, exerciseIndex, cardId = '') 
 }
 
 function _renderWorkoutSetTypeMenu(key, sessionIndex, exerciseIndex, setIndex, currentType = 'main') {
-  const normalized = _normalizeWorkoutSetType(currentType);
+  const normalized = normalizeWorkoutSetType(currentType);
   return `
     <div class="wt-max-set-type-menu" data-wt-set-type-menu="${_esc(_workoutSetEditorKey(key, sessionIndex, exerciseIndex, setIndex))}">
       ${WORKOUT_SET_TYPE_OPTIONS.map(option => `
@@ -2524,8 +2455,8 @@ function _renderWorkoutSetRows(row, options = {}) {
   const rows = sets.map((set) => {
     const setIndex = Math.max(0, Math.floor(Number(set.setIndex) || 0));
     const rom = Math.max(0, Math.min(100, Math.round(_num(set.romPct) || 100)));
-    const kgText = _formatWorkoutKg(set.kg);
-    const repsText = _formatWorkoutReps(set.reps);
+    const kgText = formatWorkoutKg(set.kg);
+    const repsText = formatWorkoutReps(set.reps);
     const kgDisplayText = kgText === '-' ? '미입력' : kgText;
     const repsDisplayText = repsText === '-' ? '미입력' : repsText;
     const kgUnit = kgText === '-' ? '' : '<small>kg</small>';
@@ -2534,9 +2465,9 @@ function _renderWorkoutSetRows(row, options = {}) {
     const kgInline = editable && _isWorkoutSetInlineEditing(key, sessionIndex, exerciseIndex, setIndex, 'kg');
     const repsInline = editable && _isWorkoutSetInlineEditing(key, sessionIndex, exerciseIndex, setIndex, 'reps');
     const typeMenuOpen = editable && _isWorkoutSetTypeMenuOpen(key, sessionIndex, exerciseIndex, setIndex);
-    const setTypeLabel = _workoutSetTypeLabel(set);
-    const setTypeClass = _workoutSetTypeClass(set);
-    const setTypeValue = _normalizeWorkoutSetType(set?.setType);
+    const setTypeLabel = workoutSetTypeLabel(set);
+    const setTypeClass = workoutSetTypeClass(set);
+    const setTypeValue = normalizeWorkoutSetType(set?.setType);
     const typeControl = editable
       ? `<button type="button" class="wt-max-set-type wt-max-set-type-btn ${_esc(setTypeClass)}" data-wt-sheet-card-action="toggle-set-type" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" aria-expanded="${typeMenuOpen ? 'true' : 'false'}" aria-label="${setIndex + 1}세트 유형 선택"><b>${setIndex + 1}</b><small>${_esc(setTypeLabel)}</small></button>`
       : `<span class="wt-max-set-type ${_esc(setTypeClass)}"><b>${setIndex + 1}</b><small>${_esc(setTypeLabel)}</small></span>`;
@@ -2651,9 +2582,9 @@ function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) {
   const editing = !collapsed;
   const stamped = _isWorkoutExerciseCompletionStamped(cardId, row);
   const originalIndex = Number.isFinite(Number(row.originalIndex)) ? Number(row.originalIndex) : index;
-  const bestSet = _bestWorkoutSet(row);
-  const bestKg = bestSet ? _formatWorkoutKg(bestSet.kg) : '-';
-  const bestReps = bestSet ? _formatWorkoutReps(bestSet.reps) : '-';
+  const bestSet = bestWorkoutSet(row);
+  const bestKg = bestSet ? formatWorkoutKg(bestSet.kg) : '-';
+  const bestReps = bestSet ? formatWorkoutReps(bestSet.reps) : '-';
   const previousSummary = _workoutPreviousSetSummary(row);
   const hasSetDetails = Array.isArray(row?.setDetails) && row.setDetails.length > 0;
   const activeTrack = activeWorkoutTrack(row, bestSet);
@@ -4480,7 +4411,7 @@ async function _updateWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseInd
 }
 
 async function _setWorkoutExerciseSetTypeFromSheet(key, sessionIndex, exerciseIndex, setIndex, setType) {
-  const safeType = _normalizeWorkoutSetType(setType);
+  const safeType = normalizeWorkoutSetType(setType);
   try {
     const targetKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
     const targetSessionIndex = Math.max(0, Math.min(WORKOUT_GYM_SESSION_COUNT - 1, Math.floor(Number(sessionIndex) || 0)));
