@@ -5,6 +5,20 @@
 - 범위: 웹 SPA, PWA/Service Worker, Firebase 데이터 계층과 Functions, Capacitor Android, Wear OS, 테스트·배포·문서
 - 제약: Vanilla JavaScript와 현재 정적 배포 구조 유지, `www/` 직접 수정 금지, 데이터 호환성과 무중단 배포 우선
 
+> 상태 주의: 아래 `2. 현재 기준선`의 수치는 2026-07-12 작성 당시의 시작점 기록이다. 현재 완료 여부나 파일 크기 판단에는 사용하지 않는다. 현재 감사 근거와 미완료 범위는 [`docs/REFACTOR_AUDIT.md`](docs/REFACTOR_AUDIT.md)를 단일 기준으로 사용한다.
+
+## 0. 현재 실행 순서 (2026-07-13 감사 후)
+
+Phase 2~6의 일부 구조 작업이 이미 반영됐더라도 전체 리팩토링 완료를 뜻하지 않는다. 새 작업은 아래 순서와 각 게이트를 따른다.
+
+1. **배포 안정성 — 완료, 계속 감시**: PWA precache가 HTTP cache의 이전 CSS/모듈을 재사용하지 않게 하고, 공개 Android APK도 같은 `CACHE_VERSION`으로 재빌드한다. 매 정적 자산 변경에는 source·Pages·APK 버전 일치를 검사한다.
+2. **행동 테스트 전환 — 최우선 미완료**: source-string 검사를 architecture/asset 계약으로 한정하고, 식단 저장·운동 세트·캘린더 sheet·Max 모달의 실제 클릭/저장/재로드 DOM 테스트를 먼저 고정한다. 파일 이동은 이 게이트를 통과한 흐름만 수행한다.
+3. **캘린더/운동 홈 분리 — 미완료**: `render-calendar.js`에서 월 grid/read model, day-sheet controller, set keyboard/editor, running detail 순서로 작은 slice를 분리한다. 과거 날짜 편집·active draft·set save 후 carousel/scroll 복구를 각각 배포본에서 확인한다.
+4. **운동 종목과 Expert/Max 분리 — 미완료**: `workout/exercises.js`는 catalog/picker → entry mutation → renderer/controller 순서로, `workout/expert.js`와 `workout/expert/max.js`는 순수 계산 → modal draft → scoped binding 순서로 분리한다. 저장 schema와 program migration은 같은 배포에 섞지 않는다.
+5. **모바일 최종 게이트 — 미완료**: 360~430px CSS/44px 터치 영역, PWA 업데이트 후 식단 스킵 저장, Android APK 설치 후 재시작, Phone/Wear·Firebase rules 권한을 실제 대상에서 검증한다.
+
+전체 완료 선언은 위 2~5와 이 문서의 Phase 8 게이트를 모두 만족하기 전까지 금지한다.
+
 ## 1. 목표
 
 이번 리팩토링의 목적은 화면을 다시 만드는 것이 아니라 다음 변경을 안전하고 빠르게 할 수 있는 구조를 만드는 것이다.
