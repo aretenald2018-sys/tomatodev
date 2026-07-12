@@ -16,3 +16,11 @@ export function applyInstallBannerLayout(banner) {
     'animation:slideUp 0.3s ease',
   ].join(';') + ';';
 }
+
+export function dismissInstallBanner({ root = globalThis.document, storage = globalThis.sessionStorage } = {}) {
+  try { storage?.setItem?.('pwa_banner_dismissed', '1'); } catch {}
+  const banner = root?.getElementById?.('pwa-install-banner');
+  if (!banner) return false;
+  banner.remove?.();
+  return true;
+}

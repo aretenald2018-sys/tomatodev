@@ -15,7 +15,7 @@ import './feature-misc.js';
 import './workout-ui.js';
 import './workout/expert.js';  // 전문가 모드 렌더와 scoped action binding
 import { showTutorialIfNeeded } from './feature-tutorial.js';
-import { initFCM, installPWA, showPWAInstallBanner, updateInstallBtn } from './pwa-fcm.js';
+import { dismissPWAInstallBanner, initFCM, installPWA, showPWAInstallBanner, updateInstallBtn } from './pwa-fcm.js';
 import {
   initTabDrag,
   initSwipeNavigation,
@@ -507,6 +507,7 @@ async function switchTab(tab, options = {}) {
     return false;
   }
   const tabDefinition = getTabDefinition(tab);
+  if (tab !== _currentTab) dismissPWAInstallBanner();
   _currentTab = tab;
   document.body?.classList.toggle('wt-workout-tab-active', tab === 'workout');
   trackEvent('nav', 'tab_visit', { tab });

@@ -1,5 +1,5 @@
 import { showToast } from './ui/toast.js';
-import { applyInstallBannerLayout } from './pwa/install-banner.js';
+import { applyInstallBannerLayout, dismissInstallBanner } from './pwa/install-banner.js';
 // ================================================================
 // pwa-fcm.js — FCM 푸시 알림 + PWA 설치 배너
 // ================================================================
@@ -9,6 +9,7 @@ import { refreshNotifCenter } from './home/index.js';
 
 // ── 상태 ──────────────────────────────────────────────────────────
 let _deferredInstallPrompt = null;
+let _installBannerTimer = null;
 const FCM_SW_SCOPE = '/tomatofarm/firebase-cloud-messaging-push/';
 
 async function _getFCMServiceWorkerRegistration() {
@@ -167,12 +168,22 @@ async function _initFCMCapacitor() {
 }
 
 // ── PWA 설치 배너 ────────────────────────────────────────────────
+export function dismissPWAInstallBanner() {
+  if (_installBannerTimer) {
+    clearTimeout(_installBannerTimer);
+    _installBannerTimer = null;
+  }
+  return dismissInstallBanner();
+}
+
 export function showPWAInstallBanner() {
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
   if (isStandalone) return;
   if (sessionStorage.getItem('pwa_banner_dismissed')) return;
+  if (_installBannerTimer) return;
 
-  setTimeout(() => {
+  _installBannerTimer = setTimeout(() => {
+    _installBannerTimer = null;
     const existing = document.getElementById('pwa-install-banner');
     if (existing) return;
 
@@ -247,9 +258,7 @@ window.addEventListener('appinstalled', () => {
 });
 
 function _showIOSInstallGuide() {
-  const banner = document.getElementById('pwa-install-banner');
-  if (banner) banner.remove();
-  sessionStorage.setItem('pwa_banner_dismissed', '1');
+  dismissPWAInstallBanner();
 
   const modal = document.createElement('div');
   modal.id = 'ios-install-guide';
@@ -280,12 +289,9 @@ function _bindPwaActions(root = document) {
     if (action === 'ios-guide') _showIOSInstallGuide();
     if (action === 'install') {
       void installPWA();
-      document.getElementById('pwa-install-banner')?.remove();
+      dismissPWAInstallBanner();
     }
-    if (action === 'dismiss') {
-      sessionStorage.setItem('pwa_banner_dismissed', '1');
-      document.getElementById('pwa-install-banner')?.remove();
-    }
+    if (action === 'dismiss') dismissPWAInstallBanner();
     if (action === 'close-ios-guide') document.getElementById('ios-install-guide')?.remove();
   });
 }
