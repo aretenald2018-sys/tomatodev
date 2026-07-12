@@ -33,6 +33,7 @@
 - `app/tab-registry.js`의 경로가 `app/lazy-loader.js` 기준으로 해석돼 calendar/stats/cooking/admin lazy tab이 `app/render-*.js`를 요청하던 문제를 수정했다. registry 경로·파일 존재·precache를 검사하고 실제 Pages에서 운동, 캘린더, 통계, 요리 진입을 확인했다.
 - 더보기 메뉴가 제거된 `window.toggleMoreMenu`를 호출해 열리지 않던 문제를 수정했다. 계정 전환과 개발자 편지도 직접 module API로 연결해 실제 Pages에서 modal 진입을 확인했다.
 - 운동 회차·월간·상세·통계·내보내기 화면이 중량 볼륨을 `톤` 또는 `vol`로 제각각 표기하던 문제를 수정했다. 모든 표면에서 200kg은 `200kg`, 1,000kg 이상만 `t`로 표기하며 회귀 테스트를 추가했다.
+- `render-calendar.js`의 볼륨/강도 트랙 판정·추세·단위 계산 114줄을 `workout/track-metrics.js`로 분리했다. DOM과 Firebase 상태 없이 직접 테스트하고, runtime manifest에도 명시해 PWA lazy 경로에서 누락되지 않게 했다.
 
 ## 남은 리팩토링 순서
 

@@ -135,6 +135,7 @@
   './workout/running-input.js',
   './workout/running-analytics.js',
   './workout/calendar-running.js',
+  './workout/track-metrics.js',
   './workout/timeline.js',
   './workout/navigation-stack.js',
   './workout/save.js',

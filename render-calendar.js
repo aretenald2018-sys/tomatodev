@@ -20,9 +20,6 @@ import {
   getDayTargetKcal,
   calcBurnedKcal,
   calcDayScore,
-  getTrackMetricHistory,
-  normalizeWorkoutTrack,
-  estimateSet1RM,
   SUBPATTERN_TO_MAJOR,
 } from './calc.js';
 import { calcSetVolume } from './calc/volume.js';
@@ -75,6 +72,13 @@ import {
 import { buildWorkoutSetTimeline } from './workout/timeline.js';
 import { buildCalendarActivityRows } from './calendar/activity-model.js';
 import { tm2OpenBenchmarkSettings, tm2OpenBoard } from './workout/test-v2/entry.js';
+import {
+  activeWorkoutTrack,
+  buildWorkoutTrackTrend,
+  formatWorkoutTrackValue,
+  workoutFallbackSparkValues,
+  workoutTrackLabel,
+} from './workout/track-metrics.js';
 
 // ═════════════════════════════════════════════════════════════
 // 뷰 상태
@@ -1680,7 +1684,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
       <div class="cal-month-side">
         <div><span>총 시간</span><strong>${_formatDurationShort(monthSum.durationSec)}</strong></div>
         <div><span>총 세트</span><strong>${monthSum.sets.toLocaleString()}세트</strong></div>
-        <div><span>총 볼륨</span><strong>${_formatWorkoutTrackValue('M', monthSum.volume)}</strong></div>
+        <div><span>총 볼륨</span><strong>${formatWorkoutTrackValue('M', monthSum.volume)}</strong></div>
         <div><span>총 소모</span><strong>${monthSum.kcalBurn.toLocaleString()} kcal</strong></div>
       </div>
     </div>
@@ -2226,7 +2230,7 @@ function _renderWorkoutDetailSummaryCard(wx) {
       attrs: lastCompletedAt ? ` data-wt-last-complete-elapsed data-completed-at="${lastCompletedAt}"` : '',
     },
     { label: '세트', value: wx?.setCount ? `${wx.setCount}세트` : '—' },
-    { label: '볼륨', value: wx?.volume > 0 ? _formatWorkoutTrackValue('M', wx.volume) : '—' },
+    { label: '볼륨', value: wx?.volume > 0 ? formatWorkoutTrackValue('M', wx.volume) : '—' },
   ];
   return `
     <div class="wt-day-summary-card" aria-label="선택한 회차 요약">
@@ -2411,104 +2415,11 @@ function _smoothPath(points) {
   return d;
 }
 
-function _activeWorkoutTrack(row = {}, bestSet = null) {
-  const explicit = normalizeWorkoutTrack(
-    row?.recommendationMeta?.track ||
-    row?.maxPrescription?.benchmarkTrack ||
-    row?.maxPrescription?.track ||
-    row?.maxTrackPreference
-  );
-  if (explicit) return explicit;
-  const reps = _num(bestSet?.reps);
-  return reps > 0 && reps <= 8 ? 'H' : 'M';
-}
-
-function _workoutTrackLabel(track) {
-  return track === 'H' ? '강도' : '볼륨';
-}
-
-function _formatWorkoutTrackValue(track, value) {
-  const v = _num(value);
-  if (v <= 0) return track === 'H' ? '추정1RM' : '총볼륨';
-  if (track === 'H') return `${Math.round(v)}kg`;
-  if (v >= 1000) return `${_fmtNum(v / 1000, 1)}t`;
-  return `${Math.round(v)}kg`;
-}
-
-function _formatWorkoutTrackDelta(points = []) {
-  if (!Array.isArray(points) || points.length < 2) return '';
-  const last = _num(points[points.length - 1]?.value);
-  const prev = _num(points[points.length - 2]?.value);
-  if (!(last > 0) || !(prev > 0)) return '';
-  const pct = Math.round(((last - prev) / prev) * 100);
-  if (!Number.isFinite(pct) || pct === 0) return '0%';
-  return `${pct > 0 ? '+' : ''}${pct}%`;
-}
-
-function _workoutTrackDeltaClass(delta) {
-  if (!delta) return 'flat';
-  if (delta.startsWith('+')) return 'up';
-  if (delta.startsWith('-')) return 'down';
-  return 'flat';
-}
-
-function _workoutTrackHistoryPoints(row, track) {
-  if (!row?.exerciseId) return [];
-  const history = getTrackMetricHistory(getCache(), getExList(), row.exerciseId);
-  const points = Array.isArray(history?.[track]) ? history[track] : [];
-  const currentKey = String(row?.dateKey || '');
-  const scoped = currentKey
-    ? points.filter(point => !point?.date || String(point.date) <= currentKey)
-    : points;
-  return scoped.slice(-6);
-}
-
-function _workoutFallbackSparkValues(row, track = 'M') {
-  const sets = Array.isArray(row?.setDetails) ? row.setDetails : [];
-  const raw = sets.map((set) => {
-    const kg = _num(set.kg);
-    if (track === 'H') return estimateSet1RM(set) || kg;
-    return Math.max(0, kg * _num(set.reps));
-  }).filter(v => v > 0);
-  return raw.length >= 2 ? raw : raw.length === 1 ? [raw[0], raw[0], raw[0]] : [0, 1, 0];
-}
-
-function _workoutFallbackTrackValue(row, bestSet, track = 'M') {
-  if (track !== 'H') return _num(row?.volume);
-  const sets = Array.isArray(row?.setDetails) ? row.setDetails : [];
-  const values = sets
-    .map(set => estimateSet1RM(set) || _num(set.kg))
-    .filter(value => value > 0);
-  if (values.length) return Math.max(...values);
-  return bestSet ? estimateSet1RM(bestSet) || _num(bestSet.kg) : 0;
-}
-
-function _buildWorkoutTrackTrend(row, bestSet, requestedTrack = null) {
-  const activeTrack = _activeWorkoutTrack(row, bestSet);
-  const track = requestedTrack === 'H' || requestedTrack === 'M' ? requestedTrack : activeTrack;
-  const points = _workoutTrackHistoryPoints(row, track);
-  const latest = points.length ? points[points.length - 1] : null;
-  const fallbackValue = _workoutFallbackTrackValue(row, bestSet, track);
-  const value = _num(latest?.value) || fallbackValue;
-  const delta = _formatWorkoutTrackDelta(points);
-  const bestKg = bestSet ? _formatWorkoutKg(bestSet.kg) : '-';
-  return {
-    track,
-    trackLabel: _workoutTrackLabel(track),
-    activeTrack,
-    points,
-    valueLabel: _formatWorkoutTrackValue(track, value),
-    delta,
-    deltaClass: _workoutTrackDeltaClass(delta),
-    bottomLabel: bestKg === '-' ? `${row?.setCount || 0}세트` : `${bestKg}kg`,
-  };
-}
-
 function _renderWorkoutSparkline(row, trend = null) {
   const historyValues = (Array.isArray(trend?.points) ? trend.points : [])
     .map(point => _num(point?.value))
     .filter(value => value > 0);
-  const raw = historyValues.length >= 2 ? historyValues : _workoutFallbackSparkValues(row, trend?.track === 'H' ? 'H' : 'M');
+  const raw = historyValues.length >= 2 ? historyValues : workoutFallbackSparkValues(row, trend?.track === 'H' ? 'H' : 'M');
   const values = raw.length >= 2 ? raw : raw.length === 1 ? [raw[0], raw[0], raw[0]] : [0, 1, 0];
   const min = Math.min(...values);
   const max = Math.max(...values);
@@ -2540,7 +2451,10 @@ function _renderWorkoutSparkline(row, trend = null) {
 }
 
 function _renderWorkoutTrackGraphRow(row, bestSet, track, activeTrack) {
-  const trend = _buildWorkoutTrackTrend(row, bestSet, track);
+  const trend = buildWorkoutTrackTrend(row, bestSet, {
+    cache: getCache(),
+    exList: getExList(),
+  }, track);
   const delta = trend.delta || '';
   return `
     <div class="ex-max-track-graph-row ${track === activeTrack ? 'is-active' : ''}" data-track="${track}">
@@ -2552,7 +2466,7 @@ function _renderWorkoutTrackGraphRow(row, bestSet, track, activeTrack) {
 }
 
 function _renderWorkoutTrackGraph(row, bestSet) {
-  const activeTrack = _activeWorkoutTrack(row, bestSet);
+  const activeTrack = activeWorkoutTrack(row, bestSet);
   return `
     <div class="ex-max-track-graph wt-max-track-graph" title="볼륨 트랙은 총볼륨, 강도 트랙은 추정 1RM으로 따로 그립니다.">
       ${_renderWorkoutTrackGraphRow(row, bestSet, 'M', activeTrack)}
@@ -2783,8 +2697,8 @@ function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) {
   const bestReps = bestSet ? _formatWorkoutReps(bestSet.reps) : '-';
   const previousSummary = _workoutPreviousSetSummary(row);
   const hasSetDetails = Array.isArray(row?.setDetails) && row.setDetails.length > 0;
-  const activeTrack = _activeWorkoutTrack(row, bestSet);
-  const activeTrackLabel = _workoutTrackLabel(activeTrack);
+  const activeTrack = activeWorkoutTrack(row, bestSet);
+  const activeTrackLabel = workoutTrackLabel(activeTrack);
   const goalText = hasSetDetails ? `${bestKg}kg × ${bestReps}회` : '세트 입력 대기';
   const trackText = hasSetDetails ? `오늘 ${activeTrackLabel} 트랙 · ${row.setCount}세트` : '+ 행으로 세트를 입력하세요';
   return `
@@ -3119,7 +3033,7 @@ function _openWorkoutDay(key) {
               </div>
             `;
           }
-          const volumeText = row.volume > 0 ? ` · ${_formatWorkoutTrackValue('M', row.volume)}` : '';
+          const volumeText = row.volume > 0 ? ` · ${formatWorkoutTrackValue('M', row.volume)}` : '';
           return `
             <div class="cal-workout-ex-row">
               <div class="cal-workout-ex-head">
@@ -3162,7 +3076,7 @@ function _openWorkoutDay(key) {
     <div class="cal-workout-detail-summary">
       <div><span>시간</span><strong>${_formatDurationShort(wx.durationSec)}</strong></div>
       <div><span>세트</span><strong>${wx.setCount ? `${wx.setCount}세트` : '—'}</strong></div>
-      <div><span>볼륨</span><strong>${wx.volume > 0 ? _formatWorkoutTrackValue('M', wx.volume) : '—'}</strong></div>
+      <div><span>볼륨</span><strong>${wx.volume > 0 ? formatWorkoutTrackValue('M', wx.volume) : '—'}</strong></div>
       <div><span>소모</span><strong>${wx.burned.total > 0 ? `${wx.burned.total} kcal` : '—'}</strong></div>
     </div>
 
@@ -3274,7 +3188,7 @@ function _openDay(key) {
     ? maxWeak.selected.map(x => MAX_WEAK_LABEL[x] || x).join(' · ')
     : '선택 없음';
   const maxWeakDesc = maxWeak?.hasAny
-    ? `약점 ${weakNames} · ${maxWeak.durationMin}분 · ${maxWeak.sets}세트 · ${_formatWorkoutTrackValue('M', maxWeak.volume)} · +${maxWeak.bonus}점`
+    ? `약점 ${weakNames} · ${maxWeak.durationMin}분 · ${maxWeak.sets}세트 · ${formatWorkoutTrackValue('M', maxWeak.volume)} · +${maxWeak.bonus}점`
     : '';
 
   body.innerHTML = `
@@ -4785,7 +4699,7 @@ function _formatWorkoutExportText(key, sessionIndex, session, wx) {
     `운동시간: ${_formatDuration(wx.durationSec)}`,
   ];
   if (wx.setCount > 0) lines.push(`총 세트: ${wx.setCount}세트`);
-  if (wx.volume > 0) lines.push(`총 볼륨: ${_formatWorkoutTrackValue('M', wx.volume)}`);
+  if (wx.volume > 0) lines.push(`총 볼륨: ${formatWorkoutTrackValue('M', wx.volume)}`);
   if (wx.burned?.total > 0) lines.push(`소모: ${wx.burned.total} kcal`);
 
   wx.exercises.forEach((row) => {

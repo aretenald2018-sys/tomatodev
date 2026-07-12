@@ -20,6 +20,7 @@ const tm2EntryJs = readFileSync(new URL('../workout/test-v2/entry.js', import.me
 const tm2BoardJs = readFileSync(new URL('../workout/test-v2/board-render.js', import.meta.url), 'utf8');
 const runningModelJs = readFileSync(new URL('../workout/running-model.js', import.meta.url), 'utf8');
 const calendarActivityModelJs = readFileSync(new URL('../calendar/activity-model.js', import.meta.url), 'utf8');
+const trackMetricsJs = readFileSync(new URL('../workout/track-metrics.js', import.meta.url), 'utf8');
 
 function extractFunctionSource(source, name) {
   const asyncStart = source.indexOf(`async function ${name}(`);
@@ -1454,26 +1455,24 @@ test('workout calendar home header and monthly workout card stay compact', () =>
   assert.match(styleCss, /\.cal-workout-surface-home \.cal-month-side\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*max-content\)/);
 });
 
-test('workout volume summary uses a mass-aware formatter', () => {
+test('workout volume summary delegates to the mass-aware track metrics module', () => {
   const summaryStart = calendarJs.indexOf('function _renderWorkoutDetailSummaryCard');
   const summaryEnd = calendarJs.indexOf('function _workoutSetTypeLabel', summaryStart);
   const exportStart = calendarJs.indexOf('function _formatWorkoutExportText');
   const exportEnd = calendarJs.indexOf('async function _shareOrCopyText', exportStart);
-  const trackFormatStart = calendarJs.indexOf('function _formatWorkoutTrackValue');
-  const trackFormatEnd = calendarJs.indexOf('function _formatWorkoutTrackDelta', trackFormatStart);
   const summary = calendarJs.slice(summaryStart, summaryEnd);
   const exported = calendarJs.slice(exportStart, exportEnd);
-  const trackFormat = calendarJs.slice(trackFormatStart, trackFormatEnd);
 
   assert.ok(summaryStart >= 0 && summaryEnd > summaryStart, 'day summary renderer should exist');
   assert.ok(exportStart >= 0 && exportEnd > exportStart, 'workout export formatter should exist');
-  assert.ok(trackFormatStart >= 0 && trackFormatEnd > trackFormatStart, 'volume formatter should exist');
-  assert.match(trackFormat, /if \(v >= 1000\) return `\$\{_fmtNum\(v \/ 1000, 1\)\}t`/);
-  assert.match(trackFormat, /return `\$\{Math\.round\(v\)\}kg`/);
-  assert.match(summary, /_formatWorkoutTrackValue\('M', wx\.volume\)/);
-  assert.match(exported, /_formatWorkoutTrackValue\('M', wx\.volume\)/);
-  assert.match(calendarJs, /_formatWorkoutTrackValue\('M', monthSum\.volume\)/);
-  assert.match(calendarJs, /_formatWorkoutTrackValue\('M', row\.volume\)/);
+  assert.match(calendarJs, /from '\.\/workout\/track-metrics\.js'/);
+  assert.match(trackMetricsJs, /export function formatWorkoutTrackValue\(track, value\)/);
+  assert.match(trackMetricsJs, /if \(number >= 1000\) return `\$\{_fmtNum\(number \/ 1000, 1\)\}t`/);
+  assert.match(trackMetricsJs, /return `\$\{Math\.round\(number\)\}kg`/);
+  assert.match(summary, /formatWorkoutTrackValue\('M', wx\.volume\)/);
+  assert.match(exported, /formatWorkoutTrackValue\('M', wx\.volume\)/);
+  assert.match(calendarJs, /formatWorkoutTrackValue\('M', monthSum\.volume\)/);
+  assert.match(calendarJs, /formatWorkoutTrackValue\('M', row\.volume\)/);
   assert.doesNotMatch(summary, /_formatVolume\(wx\?\.volume\).*톤/);
   assert.doesNotMatch(exported, /_formatVolume\(wx\.volume\).*톤/);
   assert.doesNotMatch(calendarJs, /_formatVolume\(/);
