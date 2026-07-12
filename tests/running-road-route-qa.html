@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tomato Farm GPS 도로 경로 QA</title>
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    body { margin: 0; padding: 24px 16px; background: #10130f; color: #fff; font-family: system-ui, sans-serif; }
+    main { width: min(100%, 480px); margin: 0 auto; }
+    h1 { margin: 0 0 8px; font-size: 22px; }
+    p { margin: 0 0 16px; color: #c9d0c4; font-size: 14px; }
+    .qa-result { margin: 0 0 12px; padding: 10px 12px; border-radius: 10px; background: #252b22; font-weight: 700; }
+    .qa-result[data-state="pass"] { color: #d7ff3f; }
+    .qa-result[data-state="fail"] { color: #ff7979; }
+    .wt-running-route-map { position: relative; width: 100%; height: 520px; overflow: hidden; border-radius: 18px; }
+    .wt-run-map-canvas { width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>올림픽공원 보행로 GPS 재생</h1>
+    <p>BRouter trekking 경로 4,177m · 도로망 좌표 51점 렌더 검증</p>
+    <div class="qa-result" data-road-qa-result data-state="running">검증 중</div>
+    <div class="wt-running-route-map" data-running-real-map="road-qa" aria-label="올림픽공원 보행로 GPS 경로 지도">
+      <div class="wt-run-map-canvas" data-running-map-canvas></div>
+      <div class="wt-run-map-status" data-running-map-status>경로 준비 중</div>
+    </div>
+  </main>
+  <script type="module">
+    import { readRunningMapConfig, renderRunningMap } from '../workout/running-map.js';
+    import { OLYMPIC_PARK_ROAD_ROUTE } from './fixtures/olympic-park-road-route.js';
+
+    const shell = document.querySelector('[data-running-real-map]');
+    const resultNode = document.querySelector('[data-road-qa-result]');
+    try {
+      await renderRunningMap(shell, {
+        points: OLYMPIC_PARK_ROAD_ROUTE,
+        phase: 'detail',
+        config: readRunningMapConfig(),
+      });
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const lines = [...shell.querySelectorAll('.wt-vworld-route-line')];
+      const result = {
+        sourcePointCount: Number(shell.dataset.mapSourcePointCount),
+        renderPointCount: Number(shell.dataset.mapPointCount),
+        droppedPointCount: Number(shell.dataset.mapDroppedPointCount),
+        segmentCount: Number(shell.dataset.mapSegmentCount),
+        svgVertexCount: lines.reduce((sum, line) => sum + line.getAttribute('points').trim().split(/\s+/).length, 0),
+        mapState: shell.dataset.mapState,
+      };
+      const pass = result.sourcePointCount === OLYMPIC_PARK_ROAD_ROUTE.length
+        && result.renderPointCount === OLYMPIC_PARK_ROAD_ROUTE.length
+        && result.droppedPointCount === 0
+        && result.segmentCount === 1
+        && result.svgVertexCount === OLYMPIC_PARK_ROAD_ROUTE.length
+        && result.mapState === 'ready';
+      window.__ROAD_QA_RESULT__ = { ...result, pass };
+      resultNode.dataset.state = pass ? 'pass' : 'fail';
+      resultNode.textContent = pass
+        ? `PASS · 입력 ${result.sourcePointCount} · 렌더 ${result.renderPointCount} · 탈락 ${result.droppedPointCount} · vertex ${result.svgVertexCount}`
+        : `FAIL · ${JSON.stringify(result)}`;
+    } catch (error) {
+      window.__ROAD_QA_RESULT__ = { pass: false, error: String(error?.stack || error) };
+      resultNode.dataset.state = 'fail';
+      resultNode.textContent = `FAIL · ${String(error?.message || error)}`;
+    }
+  </script>
+</body>
+</html>
