@@ -175,7 +175,7 @@ test('trainer quest modal styles and runtime cache asset are registered', () => 
   assert.match(styleCss, /\.trainer-running-stats/);
   assert.match(styleCss, /\.trainer-running-activity-card/);
   assert.match(styleCss, /\.trainer-running-split-table/);
-  assert.match(swJs, /tomatofarm-v20260712z4-trainer-running-stats/);
+  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
   assert.match(swJs, /\.\/modals\/trainer-quest-modal\.js/);
   assert.match(swJs, /\.\/modals\/trainer-running-stats\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/trainer-quest-seated-trainer\.png/);

@@ -80,11 +80,9 @@ async function openDietPlanModal() {
   const dpExGym  = document.getElementById('dp-ex-gym');
   const dpExCF   = document.getElementById('dp-ex-cf');
   const dpExSwim = document.getElementById('dp-ex-swim');
-  const dpExRun  = document.getElementById('dp-ex-run');
   if (dpExGym)  dpExGym.value  = plan.exerciseKcalGym ?? 250;
   if (dpExCF)   dpExCF.value   = plan.exerciseKcalCF ?? 300;
   if (dpExSwim) dpExSwim.value = plan.exerciseKcalSwimming ?? 200;
-  if (dpExRun)  dpExRun.value  = plan.exerciseKcalRunning ?? 250;
 
   _updateMacroSum('dp-def-protein', 'dp-def-carb', 'dp-def-fat', 'dp-def-macro-sum');
   _updateMacroSum('dp-ref-protein', 'dp-ref-carb', 'dp-ref-fat', 'dp-ref-macro-sum');
@@ -183,7 +181,7 @@ async function saveDietPlanFromModal() {
     exerciseKcalGym:    parseFloat(document.getElementById('dp-ex-gym')?.value) || 250,
     exerciseKcalCF:     parseFloat(document.getElementById('dp-ex-cf')?.value) || 300,
     exerciseKcalSwimming: parseFloat(document.getElementById('dp-ex-swim')?.value) || 200,
-    exerciseKcalRunning: parseFloat(document.getElementById('dp-ex-run')?.value) || 250,
+    exerciseKcalRunning: null,
   };
   if (!plan.weight || !plan.height) { window.showToast?.('키와 체중을 입력해주세요', 2500, 'warning'); return; }
   if (isAdvanced) {

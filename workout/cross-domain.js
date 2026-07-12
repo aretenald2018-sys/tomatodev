@@ -55,6 +55,7 @@ export function deriveDietSuccessFromWorkout(workout, diet, date, cleanEx) {
     cf: !!workout?.cf,
     swimming: !!workout?.swimming,
     running: !!workout?.running,
+    runRouteSummary: workout?.runData?.routeSummary || null,
   };
   const dayTarget = getDayTargetKcal(plan, y, m, d, dayData);
   const totalKcal = (diet?.bKcal||0) + (diet?.lKcal||0) + (diet?.dKcal||0) + (diet?.sKcal||0);

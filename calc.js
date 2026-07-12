@@ -41,8 +41,33 @@ const DEFAULT_DIET_PLAN = {
   dietTolerance: 50,
   exerciseCalorieCredit: false,
   exerciseKcalGym: 250, exerciseKcalCF: 300,
-  exerciseKcalSwimming: 200, exerciseKcalRunning: 250,
+  exerciseKcalSwimming: 200, exerciseKcalRunning: null,
 };
+
+const RUNNING_CALORIE_METHOD = 'acsm-speed-grade-v1';
+
+function _isTrustedRunningCalories(summary = {}) {
+  const calories = Number(summary?.calories);
+  if (!Number.isFinite(calories) || calories <= 0) return false;
+  const source = String(summary?.calorieSource || '').trim();
+  if (['wear', 'device', 'health-connect'].includes(source)) return true;
+  const weight = Number(summary?.calorieWeightKg);
+  return source === 'estimated'
+    && summary?.calorieMethod === RUNNING_CALORIE_METHOD
+    && Number.isFinite(weight)
+    && weight >= 25
+    && weight <= 300;
+}
+
+function _recordedRunningCalories(day = {}) {
+  const sessions = Array.isArray(day?.workoutSessions) && day.workoutSessions.length
+    ? day.workoutSessions
+    : [day];
+  return Math.round(sessions.reduce((total, session) => {
+    const summary = session?.runRouteSummary;
+    return total + (_isTrustedRunningCalories(summary) ? Number(summary.calories) || 0 : 0);
+  }, 0));
+}
 
 /**
  * BMR 계산 — 체지방률이 있으면 Katch-McArdle, 없으면 Mifflin-St Jeor
@@ -147,7 +172,8 @@ export function calcExerciseCalorieCredit(plan, dayData) {
   if (hasGym)          credit += (plan.exerciseKcalGym      || 250);
   if (dayData.cf)      credit += (plan.exerciseKcalCF       || 300);
   if (dayData.swimming) credit += (plan.exerciseKcalSwimming || 200);
-  if (dayData.running)  credit += (plan.exerciseKcalRunning  || 250);
+  // 러닝은 설정된 임의 숫자가 아니라 저장된 워치 값 또는 체중 기반 추정값만 반영한다.
+  credit += _recordedRunningCalories(dayData);
   return credit;
 }
 
@@ -1894,7 +1920,7 @@ function _runMET(speedKmh) {
 /**
  * 하루 운동 소모칼로리 계산 (MET 기반)
  * @param {object} day - workouts/{dateKey} 도큐먼트
- * @param {number} weightKg - 체중(kg). 없으면 70 기본
+ * @param {number} weightKg - 체중(kg). 근력/수영/CF MET 추정에 사용
  * @returns {{total:number, gym:number, cardio:number, running:number, swimming:number, cf:number}}
  */
 export function calcBurnedKcal(day, weightKg) {
@@ -1920,18 +1946,9 @@ export function calcBurnedKcal(day, weightKg) {
     }
   }
 
-  // 런닝: 시간 + 속도 기반
-  let running = 0;
-  if (d.running && !d.running_skip) {
-    const min = (Number(d.runDurationMin) || 0) + (Number(d.runDurationSec) || 0) / 60;
-    const km  = Number(d.runDistance) || 0;
-    if (min > 0) {
-      const speed = km > 0 ? (km / (min / 60)) : 0;
-      running = _runMET(speed) * w * (min / 60);
-    } else {
-      running = 8.0 * w * 0.5; // 시간 미기록: 기본 30분
-    }
-  }
+  // 러닝: 기록된 실제 워치 kcal 또는 체중·속도·경사 추정값만 사용한다.
+  // 시간/체중이 빠진 기록에 임의 체중·30분을 대입하지 않는다.
+  const running = d.running_skip ? 0 : _recordedRunningCalories(d);
 
   // 수영: 기본 30분 (workoutDuration 있으면 우선)
   let swimming = 0;

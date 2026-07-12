@@ -52,6 +52,7 @@ import {
   runningStackSession,
   runningTrackSessionInfo,
 } from './workout/calendar-running.js';
+import { isTrustedRunningCalories } from './workout/running-analytics.js';
 import { deriveDietSuccessFromWorkout } from './workout/cross-domain.js';
 import {
   closeWorkoutDaySheet,
@@ -1345,8 +1346,8 @@ function _activityRows(day) {
       speedKmh: runSpeedKmh,
       avgPaceSecPerKm: _num(d.runAvgPaceSecPerKm) || _num(runSummary.avgPaceSecPerKm),
       bestPaceSecPerKm: _num(runSummary.bestPaceSecPerKm),
-      calories: _num(runSummary.calories),
-      calorieSource: runSummary.calorieSource || null,
+      calories: isTrustedRunningCalories(runSummary) ? _num(runSummary.calories) : 0,
+      calorieSource: isTrustedRunningCalories(runSummary) ? runSummary.calorieSource : null,
       elevationGainM: Number.isFinite(Number(runSummary.elevationGainM)) ? Number(runSummary.elevationGainM) : null,
       elevationLossM: Number.isFinite(Number(runSummary.elevationLossM)) ? Number(runSummary.elevationLossM) : null,
       cadenceSpm: Number(runSummary.cadenceSpm) > 0 ? Number(runSummary.cadenceSpm) : null,

@@ -97,21 +97,39 @@ function _heartRateValues(route = [], samples = []) {
   return sampleValues.length ? sampleValues : _metricValues(route, 'heartRateBpm');
 }
 
-function _runningMet(speedKmh) {
-  if (!Number.isFinite(speedKmh) || speedKmh <= 0) return 8;
-  if (speedKmh < 6) return 6;
-  if (speedKmh < 8) return 8;
-  if (speedKmh <= 10.5) return 9.8;
-  return 11;
+export const RUNNING_CALORIE_METHOD = 'acsm-speed-grade-v1';
+
+export function isValidRunningWeightKg(value) {
+  const weight = _num(value, NaN);
+  return Number.isFinite(weight) && weight >= 25 && weight <= 300;
 }
 
-export function estimateRunningCalories({ distanceKm = 0, durationSec = 0, weightKg = 70 } = {}) {
-  const distance = Math.max(0, _num(distanceKm));
+// ACSM 대사 방정식: 달리기/걷기의 속도(m/min), 경사, 실제 체중으로 VO₂를 추정한다.
+// 심박은 개인의 안정시·최대심박·성별 보정 없이는 오차를 키울 수 있어 여기서는 보정값으로 쓰지 않는다.
+export function estimateRunningCalories({ distanceKm = 0, durationSec = 0, weightKg, elevationGainM = 0 } = {}) {
+  const distanceM = Math.max(0, _num(distanceKm) * KM_IN_METERS);
   const duration = Math.max(0, _num(durationSec));
-  if (distance <= 0 || duration <= 0) return 0;
-  const weight = Math.min(300, Math.max(25, _num(weightKg, 70) || 70));
-  const speedKmh = distance / (duration / 3600);
-  return Math.round(_runningMet(speedKmh) * weight * (duration / 3600));
+  if (distanceM <= 0 || duration <= 0 || !isValidRunningWeightKg(weightKg)) return null;
+
+  const weight = _num(weightKg);
+  const speedMPerMin = (distanceM / duration) * 60;
+  // GPS 고도 노이즈가 칼로리를 과대 산출하지 않도록 실효 경사는 15%까지만 반영한다.
+  const grade = Math.min(.15, Math.max(0, _num(elevationGainM) / distanceM));
+  const oxygenMlPerKgPerMin = speedMPerMin < 134
+    ? 3.5 + (.1 * speedMPerMin) + (1.8 * speedMPerMin * grade)
+    : 3.5 + (.2 * speedMPerMin) + (.9 * speedMPerMin * grade);
+  const calories = (oxygenMlPerKgPerMin * weight / 1000) * 5 * (duration / 60);
+  return Number.isFinite(calories) && calories > 0 ? Math.round(calories) : null;
+}
+
+export function isTrustedRunningCalories(summary = {}) {
+  const calories = _positive(summary?.calories);
+  if (calories == null) return false;
+  const source = String(summary?.calorieSource || '').trim();
+  if (['wear', 'device', 'health-connect'].includes(source)) return true;
+  return source === 'estimated'
+    && summary?.calorieMethod === RUNNING_CALORIE_METHOD
+    && isValidRunningWeightKg(summary?.calorieWeightKg);
 }
 
 function _splitHeartRateMetrics(splits = [], samples = [], route = []) {
@@ -265,9 +283,14 @@ export function buildRunningActivityAnalytics(points = [], options = {}) {
     ? Math.min(...fullKilometerSplits.map(split => split.paceSecPerKm))
     : avgPaceSecPerKm;
   const requestedCalories = _positive(options.calories);
-  const calories = requestedCalories != null
-    ? Math.round(requestedCalories)
-    : estimateRunningCalories({ distanceKm: preciseDistanceKm, durationSec, weightKg: options.weightKg });
+  const calorieWeightKg = isValidRunningWeightKg(options.weightKg) ? _round(options.weightKg, 1) : null;
+  const estimatedCalories = estimateRunningCalories({
+    distanceKm: preciseDistanceKm,
+    durationSec,
+    weightKg: calorieWeightKg,
+    elevationGainM: fallbackElevation.elevationGainM,
+  });
+  const calories = requestedCalories != null ? Math.round(requestedCalories) : estimatedCalories;
   const bbox = route.length ? {
     minLat: _round(Math.min(...route.map(point => point.lat)), 6),
     minLng: _round(Math.min(...route.map(point => point.lng)), 6),
@@ -305,7 +328,9 @@ export function buildRunningActivityAnalytics(points = [], options = {}) {
     elevationGainM: fallbackElevation.elevationGainM,
     elevationLossM: fallbackElevation.elevationLossM,
     calories: calories || null,
-    calorieSource: requestedCalories != null ? (options.calorieSource || 'device') : (calories ? 'estimated' : null),
+    calorieSource: requestedCalories != null ? (options.calorieSource || 'device') : (estimatedCalories ? 'estimated' : null),
+    calorieMethod: estimatedCalories ? RUNNING_CALORIE_METHOD : null,
+    calorieWeightKg: estimatedCalories ? calorieWeightKg : null,
     avgHeartRateBpm: _positive(options.avgHeartRateBpm) ? Math.round(options.avgHeartRateBpm) : heart.average,
     maxHeartRateBpm: _positive(options.maxHeartRateBpm) ? Math.round(options.maxHeartRateBpm) : heart.maximum,
     heartRateSampleCount: heart.count,
@@ -333,6 +358,7 @@ export function listRunningActivities(entries = []) {
       const summary = session?.runRouteSummary && typeof session.runRouteSummary === 'object'
         ? session.runRouteSummary
         : {};
+      const hasTrustedCalories = isTrustedRunningCalories(summary);
       const durationSec = _sessionDurationSec(session) || Math.max(0, Math.floor(_num(summary.durationSec)));
       const distanceKm = _positive(session.runDistance) ?? _positive(summary.distanceKm) ?? 0;
       if (durationSec <= 0 && distanceKm <= 0) return;
@@ -350,8 +376,10 @@ export function listRunningActivities(entries = []) {
         elapsedDurationSec: Math.max(0, Math.floor(_num(summary.elapsedDurationSec, durationSec))),
         avgPaceSecPerKm,
         bestPaceSecPerKm: _positive(summary.bestPaceSecPerKm) ?? avgPaceSecPerKm,
-        calories: _positive(summary.calories) ?? estimateRunningCalories({ distanceKm, durationSec }),
-        calorieSource: summary.calorieSource || 'estimated',
+        calories: hasTrustedCalories ? _positive(summary.calories) : null,
+        calorieSource: hasTrustedCalories ? summary.calorieSource : null,
+        calorieMethod: hasTrustedCalories ? summary.calorieMethod || null : null,
+        calorieWeightKg: hasTrustedCalories ? _positive(summary.calorieWeightKg) : null,
         elevationGainM: _positive(summary.elevationGainM) ?? 0,
         elevationLossM: _positive(summary.elevationLossM) ?? 0,
         avgHeartRateBpm: _positive(summary.avgHeartRateBpm),

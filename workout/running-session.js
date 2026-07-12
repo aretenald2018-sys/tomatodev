@@ -24,7 +24,7 @@ import {
 } from './session-policy.js';
 import { applyRunningDataToWorkout } from './running-model.js';
 import { RunningLiveAccumulator } from './running-live-accumulator.js';
-import { buildRunningActivityAnalytics } from './running-analytics.js';
+import { buildRunningActivityAnalytics, isValidRunningWeightKg } from './running-analytics.js';
 import {
   RUNNING_DRAFT_STORAGE_VERSION,
   clearRunningDraftRecord,
@@ -94,6 +94,7 @@ let _runningDraftEventsBound = false;
 let _runningDraftRouteTimer = null;
 let _runningDraftRoutePendingContext = '';
 let _lastRunningDraftPersistAt = 0;
+let _getRunningWeightKg = null;
 
 function _root() {
   return document.getElementById('wt-running-session-root');
@@ -472,8 +473,12 @@ function _elapsedSec() {
 }
 
 function _runningWeightKg() {
-  const value = Number(globalThis?.__tomatoRunningWeightKg);
-  return Number.isFinite(value) && value >= 25 && value <= 300 ? value : 70;
+  const value = typeof _getRunningWeightKg === 'function' ? _getRunningWeightKg() : null;
+  return isValidRunningWeightKg(value) ? Number(value) : null;
+}
+
+export function configureRunningWeightProvider(getWeightKg) {
+  _getRunningWeightKg = typeof getWeightKg === 'function' ? getWeightKg : null;
 }
 
 function _currentSummary() {

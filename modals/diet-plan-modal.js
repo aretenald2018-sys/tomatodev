@@ -138,7 +138,7 @@ export const MODAL_HTML = `
             </button>
           </div>
           <div id="dp-exercise-credit-body" style="display:none">
-            <div class="dp-adv-hint" style="margin-top:8px">운동 유형별 소모 칼로리를 설정하세요</div>
+            <div class="dp-adv-hint" style="margin-top:8px">헬스·크로스핏·수영은 직접 설정하고, 러닝은 기록된 데이터로 자동 반영합니다</div>
             <div class="dp-exercise-kcal-grid">
               <div class="dp-exercise-kcal-item">
                 <span class="dp-exercise-kcal-label">🏋️ 헬스</span>
@@ -154,7 +154,7 @@ export const MODAL_HTML = `
               </div>
               <div class="dp-exercise-kcal-item">
                 <span class="dp-exercise-kcal-label">🏃 러닝</span>
-                <div class="dp-adv-input-wrap"><input class="ex-editor-input" id="dp-ex-run" type="number" min="0" max="1000" step="10" placeholder="250"><span class="dp-adv-unit">kcal</span></div>
+                <div class="dp-adv-input-wrap"><span class="dp-adv-hint">기록값 자동 반영</span></div>
               </div>
             </div>
           </div>

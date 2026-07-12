@@ -8,6 +8,15 @@ import assert from 'node:assert/strict';
 
 import { calcBurnedKcal, calcDayScore } from '../calc.js';
 
+function trustedRunSummary(calories) {
+  return {
+    calories,
+    calorieSource: 'estimated',
+    calorieMethod: 'acsm-speed-grade-v1',
+    calorieWeightKg: 70,
+  };
+}
+
 // ══════════════════════════════════════════════════════════════
 // calcBurnedKcal
 // ══════════════════════════════════════════════════════════════
@@ -123,23 +132,21 @@ describe('calcBurnedKcal', () => {
     assert.equal(r.total, 180);
   });
 
-  test('running: 5km/30분 → 속도 10km/h → MET 9.8 → ≈ 343 kcal', () => {
-    // speed = 5 / (30/60) = 10.0 km/h
-    // _runMET: speedKmh <= 10.5 → 9.8 (Ainsworth 2011: 10km/h 근처는 9.8 MET)
-    // kcal = 9.8 × 70 × (30/60) = 343.0
+  test('running: 검증된 5km/30분 칼로리 기록을 반영한다', () => {
+    // 실제 체중 기반 ACSM 추정으로 저장된 칼로리만 반영한다.
     const day = {
       running: true,
       runDistance: 5,
       runDurationMin: 30,
       runDurationSec: 0,
+      runRouteSummary: trustedRunSummary(343),
     };
     const r = calcBurnedKcal(day, 70);
     assert.equal(r.running, 343);
   });
 
-  test('running: 4.9km/30분 → 속도 9.8km/h → MET 9.8 → ≈ 343 kcal', () => {
-    // speed = 4.9 / (30/60) = 9.8 km/h → _runMET: 8 <= speed <= 10.5 → 9.8
-    // kcal = 9.8 × 70 × 0.5 = 343.0
+  test('running: 저장된 체중 기반 산식이 없는 레거시 기록은 0 kcal', () => {
+    // 거리/시간만 있는 이전 기록에는 70kg 등의 기본값을 적용하지 않는다.
     const day = {
       running: true,
       runDistance: 4.9,
@@ -147,35 +154,32 @@ describe('calcBurnedKcal', () => {
       runDurationSec: 0,
     };
     const r = calcBurnedKcal(day, 70);
-    assert.equal(r.running, 343);
+    assert.equal(r.running, 0);
   });
 
-  test('running: 5.25km/30분 → 속도 10.5km/h 경계 → MET 9.8 → 343 kcal', () => {
-    // speed = 5.25 / 0.5 = 10.5 → _runMET: <= 10.5 → 9.8
+  test('running: 레거시 MET 기본값을 재사용하지 않음', () => {
     const day = { running: true, runDistance: 5.25, runDurationMin: 30, runDurationSec: 0 };
     const r = calcBurnedKcal(day, 70);
-    assert.equal(r.running, 343);
+    assert.equal(r.running, 0);
   });
 
-  test('running: 6km/30분 → 속도 12km/h → MET 11.0 → 385 kcal', () => {
-    // speed = 6 / 0.5 = 12 → _runMET: > 10.5 → 11.0
-    // kcal = 11.0 × 70 × 0.5 = 385
+  test('running: 빠른 레거시 기록도 검증된 kcal 없이는 0', () => {
     const day = { running: true, runDistance: 6, runDurationMin: 30, runDurationSec: 0 };
     const r = calcBurnedKcal(day, 70);
-    assert.equal(r.running, 385);
+    assert.equal(r.running, 0);
   });
 
-  test('running: 시간 미기록 → 기본 MET 8, 30분 → 8 × 70 × 0.5 = 280', () => {
+  test('running: 시간 미기록에 기본 30분을 만들지 않음', () => {
     const day = { running: true };
     const r = calcBurnedKcal(day, 70);
-    assert.equal(r.running, 280);
+    assert.equal(r.running, 0);
   });
 
-  test('running: 거리 있지만 시간 0 → 기본 30분 처리', () => {
+  test('running: 거리만 있는 기록에 기본 30분을 만들지 않음', () => {
     // runDurationMin=0, runDurationSec=0 → min=0 → 시간 미기록 분기
     const day = { running: true, runDistance: 5, runDurationMin: 0, runDurationSec: 0 };
     const r = calcBurnedKcal(day, 70);
-    assert.equal(r.running, 280);
+    assert.equal(r.running, 0);
   });
 
   test('running_skip:true이면 running 칼로리 0', () => {
@@ -216,10 +220,11 @@ describe('calcBurnedKcal', () => {
       running: true,
       runDurationMin: 30,
       runDistance: 5,
+      runRouteSummary: trustedRunSummary(343),
     };
     const r = calcBurnedKcal(day, 70);
     // gym: 6 × 70 × (2/60) = 14
-    // running: 속도 10km/h → MET 9.8 → 9.8 × 70 × 0.5 = 343
+    // running: 저장된 ACSM 추정값 343 kcal
     assert.equal(r.gym, 14);
     assert.equal(r.running, 343);
     assert.equal(r.total, 357);

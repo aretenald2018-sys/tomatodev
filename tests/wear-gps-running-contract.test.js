@@ -153,6 +153,7 @@ test('web wear bridge saves GPS route into running data only', async () => {
       saveWorkoutDay: globalThis.__wearGpsSave,
       focusEntry: globalThis.__wearGpsFocus,
       getDay() { return { workoutSessions: [] }; },
+      getRunningWeightKg() { return 72; },
     });
 
     await bridge.saveWearWorkoutPayload({
@@ -186,6 +187,10 @@ test('web wear bridge saves GPS route into running data only', async () => {
     assert.equal(state.workout.runData.route[0].lat, 37.5665);
     assert.equal(state.workout.runData.routeSummary.source, 'wear-gps');
     assert.equal(state.workout.runData.routeSummary.pointCount, 2);
+    assert.equal(state.workout.runData.routeSummary.calorieSource, 'estimated');
+    assert.equal(state.workout.runData.routeSummary.calorieMethod, 'acsm-speed-grade-v1');
+    assert.equal(state.workout.runData.routeSummary.calorieWeightKg, 72);
+    assert.ok(state.workout.runData.routeSummary.calories > 0);
     assert.equal(state.workout.sessionIndex, 2);
     assert.equal(state.workout.exercises.length, 0);
   } finally {

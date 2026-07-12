@@ -177,7 +177,7 @@ export const DEFAULT_DIET_PLAN = {
   dietTolerance: 50,
   exerciseCalorieCredit: false,
   exerciseKcalGym: 250, exerciseKcalCF: 300,
-  exerciseKcalSwimming: 200, exerciseKcalRunning: 250,
+  exerciseKcalSwimming: 200, exerciseKcalRunning: null,
 };
 
 export let _dietPlan = { ...DEFAULT_DIET_PLAN };

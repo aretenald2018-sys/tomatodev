@@ -10,7 +10,7 @@ import {
   applyRunningDataToWorkout,
   findRunningSessionIndex,
 } from './running-model.js';
-import { buildRunningActivityAnalytics } from './running-analytics.js';
+import { buildRunningActivityAnalytics, isValidRunningWeightKg } from './running-analytics.js';
 
 const WEAR_QUEUE_KEY = 'tomatofarm_wear_workout_queue_v1';
 const MAX_WEAR_HEART_RATE_SAMPLES = 2_161;
@@ -21,6 +21,7 @@ let deps = {
   saveWorkoutDay: null,
   focusEntry: null,
   getDay: null,
+  getRunningWeightKg: null,
 };
 let _volatileWearQueue = [];
 
@@ -188,6 +189,11 @@ function _optionalCalories(value) {
   return _boundedInt(value, { min: 1, max: 20_000, nullable: true });
 }
 
+function _runningWeightKg() {
+  const value = typeof deps.getRunningWeightKg === 'function' ? deps.getRunningWeightKg() : null;
+  return isValidRunningWeightKg(value) ? Number(value) : null;
+}
+
 export function normalizeWearWorkoutPayload(raw) {
   const payload = typeof raw === 'string' ? JSON.parse(raw) : raw;
   if (!payload || typeof payload !== 'object') throw new Error('wear payload must be an object');
@@ -219,7 +225,8 @@ export function normalizeWearWorkoutPayload(raw) {
       avgHeartRateBpm,
       maxHeartRateBpm,
       calories,
-      calorieSource: calories != null ? 'wear' : 'estimated',
+      calorieSource: calories != null ? 'wear' : undefined,
+      weightKg: _runningWeightKg(),
     }),
   };
 

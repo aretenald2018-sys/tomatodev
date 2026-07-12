@@ -20,7 +20,7 @@ test('trainer running stats provides a separate recent-activity and Nike-style r
   assert.match(runningStatsJs, /최고 페이스/);
   assert.match(runningStatsJs, /활성 시간/);
   assert.match(runningStatsJs, /경과 시간/);
-  assert.match(runningStatsJs, /칼로리\(근사치\)/);
+  assert.match(runningStatsJs, /칼로리\(ACSM 추정\)/);
   assert.match(runningStatsJs, /평균 케이던스/);
   assert.match(runningStatsJs, /고도 상승/);
   assert.match(runningStatsJs, /고도 하강/);

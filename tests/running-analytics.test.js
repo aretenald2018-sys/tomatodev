@@ -49,11 +49,28 @@ test('running analytics collects pace, calories, elevation, heart rate, cadence,
   assert.equal(analytics.maxCadenceSpm, 168);
   assert.ok(analytics.calories > 0);
   assert.equal(analytics.calorieSource, 'estimated');
+  assert.equal(analytics.calorieMethod, 'acsm-speed-grade-v1');
+  assert.equal(analytics.calorieWeightKg, 70);
   assert.equal(analytics.splits.length, 2);
   assert.deepEqual(analytics.splits.map(split => ({ distanceKm: split.distanceKm, durationSec: split.durationSec })), [
     { distanceKm: 1, durationSec: 600 },
     { distanceKm: 1, durationSec: 540 },
   ]);
+});
+
+test('running analytics leaves calories empty instead of inventing a default body weight', () => {
+  const analytics = buildRunningActivityAnalytics([
+    routePoint(0, 0),
+    routePoint(1_000, 600),
+  ], {
+    startedAt: 0,
+    endedAt: 600_000,
+    distanceKm: 1,
+  });
+
+  assert.equal(analytics.calories, null);
+  assert.equal(analytics.calorieSource, null);
+  assert.equal(analytics.calorieWeightKg, null);
 });
 
 test('running analytics aggregates every saved running session without double-counting daily rollups', () => {
@@ -63,11 +80,11 @@ test('running analytics aggregates every saved running session without double-co
         {
           id: 'running-1', running: true, runDistance: 3.5, runDurationMin: 21,
           runRoute: [routePoint(0, 0), routePoint(1_000, 360)],
-          runRouteSummary: { calories: 230, elevationGainM: 20, elevationLossM: 12, avgHeartRateBpm: 150, maxHeartRateBpm: 168, bestPaceSecPerKm: 340, splits: [{ index: 1, distanceKm: 1, durationSec: 360, paceSecPerKm: 360 }] },
+          runRouteSummary: { calories: 230, calorieSource: 'wear', elevationGainM: 20, elevationLossM: 12, avgHeartRateBpm: 150, maxHeartRateBpm: 168, bestPaceSecPerKm: 340, splits: [{ index: 1, distanceKm: 1, durationSec: 360, paceSecPerKm: 360 }] },
         },
         {
           id: 'running-2', running: true, runDistance: 2, runDurationMin: 14,
-          runRouteSummary: { calories: 140, elevationGainM: 8, elevationLossM: 6, avgHeartRateBpm: 154, maxHeartRateBpm: 172, bestPaceSecPerKm: 390 },
+          runRouteSummary: { calories: 140, calorieSource: 'wear', elevationGainM: 8, elevationLossM: 6, avgHeartRateBpm: 154, maxHeartRateBpm: 172, bestPaceSecPerKm: 390 },
         },
       ],
       // This rollup is intentionally larger, and must not be counted as a third run.
@@ -79,7 +96,7 @@ test('running analytics aggregates every saved running session without double-co
       running: true,
       runDistance: 4,
       runDurationMin: 24,
-      runRouteSummary: { calories: 280, elevationGainM: 16, elevationLossM: 15, avgHeartRateBpm: 148, maxHeartRateBpm: 165, bestPaceSecPerKm: 350 },
+      runRouteSummary: { calories: 280, calorieSource: 'wear', elevationGainM: 16, elevationLossM: 15, avgHeartRateBpm: 148, maxHeartRateBpm: 165, bestPaceSecPerKm: 350 },
     }],
   ];
 

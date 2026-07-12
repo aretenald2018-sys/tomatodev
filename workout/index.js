@@ -42,7 +42,7 @@ export { wtStartWorkoutTimer, wtPauseWorkoutTimer,
          wtOpenRestPresetSheet }
   from './timers.js';
 
-export { initRunningSession, wtMountRunningSession, wtOpenRunningSession, wtHandleRunningSessionBack, wtRestoreRunningSessionIfActive }
+export { initRunningSession, wtMountRunningSession, wtOpenRunningSession, wtHandleRunningSessionBack, wtRestoreRunningSessionIfActive, configureRunningWeightProvider }
   from './running-session.js';
 
 // ── 내부 import (window 등록 + 초기화용) ─────────────────────────
@@ -65,10 +65,10 @@ import { wtStartWorkoutTimer, wtTogglePauseWorkoutTimer,
          wtRestTimerHideIdle, wtOpenRestPresetSheet } from './timers.js';
 import { _initRestTimerPresets }                   from './timers.js';
 import { _initTypeFormEvents }                     from './activity-forms.js';
-import { initRunningSession, wtMountRunningSession, wtOpenRunningSession, wtHandleRunningSessionBack, wtRestoreRunningSessionIfActive } from './running-session.js';
+import { initRunningSession, wtMountRunningSession, wtOpenRunningSession, wtHandleRunningSessionBack, wtRestoreRunningSessionIfActive, configureRunningWeightProvider } from './running-session.js';
 import { configureWearWorkoutBridge, initWearWorkoutBridge } from './wear-bridge.js';
 import { confirmAction }                           from '../utils/confirm-modal.js';
-import { getDay }                                  from '../data.js';
+import { getDay, getLatestCheckinWeight }          from '../data.js';
 
 // ── window.* 등록 (HTML onclick 연결) ───────────────────────────
 window.wtToggleMealSkipped = wtToggleMealSkipped;
@@ -91,12 +91,14 @@ window.wtOpenRunningSession = wtOpenRunningSession;
 window.wtMountRunningSession = wtMountRunningSession;
 window.wtHandleRunningSessionBack = wtHandleRunningSessionBack;
 window.wtRestoreRunningSessionIfActive = wtRestoreRunningSessionIfActive;
+configureRunningWeightProvider(getLatestCheckinWeight);
 configureWearWorkoutBridge({
   state: S,
   loadWorkoutDate,
   saveWorkoutDay,
   focusEntry: wtFocusWorkoutEntryCard,
   getDay,
+  getRunningWeightKg: getLatestCheckinWeight,
 });
 
 // 운동종료 → 확인 모달 → 실제 타이머 정지/저장.

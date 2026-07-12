@@ -221,7 +221,7 @@ function _renderRecent(root, activities, onExit, openDetail) {
 
 function _renderDetail(root, activity, showRecent) {
   const splits = Array.isArray(activity.splits) ? activity.splits : [];
-  const caloriesLabel = activity.calorieSource === 'estimated' ? '칼로리(근사치)' : '칼로리';
+  const caloriesLabel = activity.calorieSource === 'estimated' ? '칼로리(ACSM 추정)' : '칼로리';
   root.innerHTML = `
     <section class="trainer-running-screen" aria-label="러닝 상세 정보">
       <header class="trainer-running-header">
@@ -240,7 +240,7 @@ function _renderDetail(root, activity, showRecent) {
           ${_metricRow('최고 페이스', _formatPace(activity.bestPaceSecPerKm))}
           ${_metricRow('활성 시간', _formatDuration(activity.durationSec))}
           ${_metricRow('경과 시간', _formatDuration(activity.elapsedDurationSec || activity.durationSec))}
-          ${_metricRow(caloriesLabel, activity.calories > 0 ? `${Math.round(activity.calories)} kcal` : '—')}
+          ${_metricRow(caloriesLabel, activity.calories > 0 ? `${Math.round(activity.calories)} kcal` : '체중 정보 필요')}
           ${_metricRow('평균 케이던스', _formatCadence(activity.cadenceSpm))}
           ${_metricRow('고도 상승', _formatElevation(activity.elevationGainM, '+'))}
           ${_metricRow('고도 하강', _formatElevation(activity.elevationLossM, '-'))}

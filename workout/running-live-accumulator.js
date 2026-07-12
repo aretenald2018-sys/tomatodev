@@ -4,7 +4,12 @@ import {
   isExplicitRunningRouteGap,
   runningDistanceMeters,
 } from './running-route-policy.js';
-import { buildRunningActivityAnalytics, estimateRunningCalories } from './running-analytics.js';
+import {
+  buildRunningActivityAnalytics,
+  estimateRunningCalories,
+  isValidRunningWeightKg,
+  RUNNING_CALORIE_METHOD,
+} from './running-analytics.js';
 
 function _num(value, fallback = 0) {
   const number = Number(value);
@@ -165,10 +170,13 @@ export class RunningLiveAccumulator {
     const elevationLoss = state.movementElevationPairs
       ? state.movementElevationLoss
       : state.rawElevationLoss;
+    const elevationGainM = elevationPairs ? Math.round(elevationGain) : null;
+    const calorieWeightKg = isValidRunningWeightKg(options.weightKg) ? _round(options.weightKg, 1) : null;
     const calories = estimateRunningCalories({
       distanceKm: preciseDistanceKm,
       durationSec,
-      weightKg: options.weightKg,
+      weightKg: calorieWeightKg,
+      elevationGainM,
     });
 
     const base = {
@@ -188,10 +196,12 @@ export class RunningLiveAccumulator {
       speedKmh,
       bbox,
       centroid,
-      elevationGainM: elevationPairs ? Math.round(elevationGain) : null,
+      elevationGainM,
       elevationLossM: elevationPairs ? Math.round(elevationLoss) : null,
       calories: calories || null,
       calorieSource: calories ? 'estimated' : null,
+      calorieMethod: calories ? RUNNING_CALORIE_METHOD : null,
+      calorieWeightKg: calories ? calorieWeightKg : null,
       avgHeartRateBpm: state.heartRateBpmCount
         ? Math.round(state.heartRateBpmSum / state.heartRateBpmCount)
         : null,

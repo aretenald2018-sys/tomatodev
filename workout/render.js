@@ -435,6 +435,7 @@ function _renderCalorieTracker() {
     cf: S.workout.cf,
     swimming: S.workout.swimming,
     running: S.workout.running,
+    runRouteSummary: S.workout.runData?.routeSummary || null,
   };
   const exerciseCredit = calcExerciseCalorieCredit(plan, dayData);
   const adjustedGoalKcal = dayTarget.kcal + exerciseCredit;
