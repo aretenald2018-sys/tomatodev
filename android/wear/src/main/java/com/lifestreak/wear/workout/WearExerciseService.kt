@@ -34,10 +34,17 @@ import androidx.health.services.client.data.ExerciseLapSummary
 import androidx.health.services.client.data.ExerciseType
 import androidx.health.services.client.data.ExerciseUpdate
 import androidx.health.services.client.data.WarmUpConfig
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import kotlin.math.roundToInt
 
 class WearExerciseService : Service() {
     private lateinit var exerciseClient: ExerciseClient
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
     private val healthCallbackExecutor by lazy { ContextCompat.getMainExecutor(this) }
     private var exerciseCallback: ExerciseUpdateCallback? = null
     private var accumulator: WearExerciseMetricAccumulator? = null
@@ -50,6 +57,14 @@ class WearExerciseService : Service() {
     private var lastDirectGpsFixElapsedRealtimeMs = 0L
     private var lastGpsStatusPublishedElapsedRealtimeMs = 0L
     private var gpsStatusMessage = GPS_STATUS_SEARCHING
+    private var isPreparing = false
+    private var healthPreparationInFlight = false
+    private var healthPreparationCancelInFlight = false
+    private var healthPreparationGeneration = 0
+    private var preparedExerciseConfig: ExerciseConfig? = null
+    private var pendingExerciseStart: WearExerciseMetricAccumulator? = null
+    private var assistedLocationCallback: LocationCallback? = null
+    private var fusedRouteLocationCallback: LocationCallback? = null
     private var directLocationManager: LocationManager? = null
     private var directLocationListener: LocationListener? = null
     private var directHeartRateManager: SensorManager? = null
@@ -61,10 +76,14 @@ class WearExerciseService : Service() {
             checkpointActiveDuration()
         }
     }
+    private val preparationTimeoutRunnable = Runnable {
+        if (isPreparing) handleCancelPreparation()
+    }
 
     override fun onCreate() {
         super.onCreate()
         exerciseClient = HealthServices.getClient(this).exerciseClient
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         directLocationManager = getSystemService(LocationManager::class.java)
         directHeartRateManager = getSystemService(SensorManager::class.java)
     }
@@ -73,6 +92,8 @@ class WearExerciseService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
+            ACTION_PREPARE_RUN -> handlePrepareRun()
+            ACTION_CANCEL_PREPARATION -> handleCancelPreparation()
             ACTION_START_RUN -> handleStartRun()
             ACTION_RESTORE_RUN -> handleRestoreRun()
             ACTION_PAUSE_RUN -> handlePauseRun()
@@ -90,10 +111,62 @@ class WearExerciseService : Service() {
         persistenceUnsubscribe?.invoke()
         persistenceUnsubscribe = null
         clearExerciseCallback()
+        stopAssistedLocationUpdates()
+        stopFusedRouteLocationUpdates()
         stopDirectLocationUpdates()
         stopDirectHeartRateUpdates()
         stopActiveDurationCheckpoints()
+        checkpointHandler.removeCallbacks(preparationTimeoutRunnable)
         super.onDestroy()
+    }
+
+    private fun handlePrepareRun() {
+        if (isPreparing) return
+        if (!hasLocationPermission() || WearExerciseSessionStore.current().status != WearExerciseSessionStatus.IDLE) {
+            stopSelf()
+            return
+        }
+        isPreparing = true
+        gpsStatusMessage = GPS_STATUS_SEARCHING
+        startForegroundWithHealthType(buildNotification("러닝 준비 중"))
+        startAssistedLocationUpdates()
+        startDirectLocationUpdates()
+        publishPreparationStatus(GPS_STATUS_SEARCHING)
+        checkpointHandler.removeCallbacks(preparationTimeoutRunnable)
+        checkpointHandler.postDelayed(preparationTimeoutRunnable, PREPARATION_TIMEOUT_MS)
+        if (hasActivityRecognitionPermission()) prepareHealthExercise()
+    }
+
+    private fun handleCancelPreparation() {
+        if (!isPreparing || WearExerciseSessionStore.current().status != WearExerciseSessionStatus.IDLE) return
+        isPreparing = false
+        checkpointHandler.removeCallbacks(preparationTimeoutRunnable)
+        pendingExerciseStart = null
+        preparedExerciseConfig = null
+        healthPreparationInFlight = false
+        healthPreparationGeneration += 1
+        stopAssistedLocationUpdates()
+        stopDirectLocationUpdates()
+        if (hasActivityRecognitionPermission()) {
+            healthPreparationCancelInFlight = true
+            val endFuture = exerciseClient.endExerciseAsync()
+            endFuture.addListener(
+                {
+                    runCatching { endFuture.get() }
+                    healthPreparationCancelInFlight = false
+                    val pending = pendingExerciseStart
+                    pendingExerciseStart = null
+                    if (pending != null) {
+                        startHealthExercise(pending)
+                    } else {
+                        finishService()
+                    }
+                },
+                healthCallbackExecutor,
+            )
+        } else {
+            finishService()
+        }
     }
 
     private fun handleStartRun() {
@@ -107,11 +180,12 @@ class WearExerciseService : Service() {
         val startedAtElapsedRealtimeMs = SystemClock.elapsedRealtime()
         wallClockOffsetMs = startedAtWallClockMs - startedAtElapsedRealtimeMs
         activeDurationTracker.start(startedAtElapsedRealtimeMs)
+        isPreparing = false
+        checkpointHandler.removeCallbacks(preparationTimeoutRunnable)
+        stopAssistedLocationUpdates()
         lastDirectLocationElapsedRealtimeMs = 0L
-        lastDirectGpsAccuracyM = null
-        lastDirectGpsFixElapsedRealtimeMs = 0L
         lastGpsStatusPublishedElapsedRealtimeMs = 0L
-        gpsStatusMessage = GPS_STATUS_SEARCHING
+        if (lastDirectGpsAccuracyM == null) gpsStatusMessage = GPS_STATUS_SEARCHING
         val nextAccumulator = WearExerciseMetricAccumulator(
             startedAtWallClockMs = startedAtWallClockMs,
             startedAtElapsedRealtimeMs = startedAtElapsedRealtimeMs,
@@ -123,6 +197,7 @@ class WearExerciseService : Service() {
 
         startForegroundWithHealthType(buildNotification())
         startDirectLocationUpdates()
+        startFusedRouteLocationUpdates()
         startDirectHeartRateUpdates()
         startActiveDurationCheckpoints()
         if (!hasActivityRecognitionPermission()) {
@@ -134,7 +209,79 @@ class WearExerciseService : Service() {
             return
         }
         registerExerciseCallback()
-        startHealthExercise(nextAccumulator)
+        if (healthPreparationInFlight || healthPreparationCancelInFlight) {
+            pendingExerciseStart = nextAccumulator
+        } else {
+            val preparedConfig = preparedExerciseConfig
+            preparedExerciseConfig = null
+            if (preparedConfig != null) {
+                startConfiguredExercise(preparedConfig, nextAccumulator)
+            } else {
+                startHealthExercise(nextAccumulator)
+            }
+        }
+    }
+
+    private fun prepareHealthExercise() {
+        if (healthPreparationInFlight || preparedExerciseConfig != null) return
+        healthPreparationInFlight = true
+        val generation = ++healthPreparationGeneration
+        val capabilitiesFuture = exerciseClient.getCapabilitiesAsync()
+        capabilitiesFuture.addListener(
+            {
+                if (generation != healthPreparationGeneration) return@addListener
+                if (!isPreparing && pendingExerciseStart == null) {
+                    healthPreparationInFlight = false
+                    return@addListener
+                }
+                val dataTypes = try {
+                    val runningCapabilities = capabilitiesFuture.get()
+                        .getExerciseTypeCapabilities(ExerciseType.RUNNING)
+                    requestedDataTypes().intersect(runningCapabilities.supportedDataTypes)
+                } catch (_: Exception) {
+                    requestedDataTypes()
+                }
+                val config = buildExerciseConfig(dataTypes)
+                preparedExerciseConfig = config
+                val warmUpTypes = warmUpDataTypes(config.dataTypes)
+                if (warmUpTypes.isEmpty()) {
+                    completeHealthPreparation(generation)
+                    return@addListener
+                }
+                val warmUpFuture = exerciseClient.prepareExerciseAsync(
+                    WarmUpConfig(ExerciseType.RUNNING, warmUpTypes),
+                )
+                warmUpFuture.addListener(
+                    {
+                        runCatching { warmUpFuture.get() }
+                        completeHealthPreparation(generation)
+                    },
+                    healthCallbackExecutor,
+                )
+            },
+            healthCallbackExecutor,
+        )
+    }
+
+    private fun completeHealthPreparation(generation: Int) {
+        if (generation != healthPreparationGeneration) return
+        healthPreparationInFlight = false
+        if (healthPreparationCancelInFlight) return
+        val pending = pendingExerciseStart ?: return
+        pendingExerciseStart = null
+        val config = preparedExerciseConfig
+        preparedExerciseConfig = null
+        if (config != null) startConfiguredExercise(config, pending) else startHealthExercise(pending)
+    }
+
+    private fun buildExerciseConfig(dataTypes: Set<DataType<*, *>>): ExerciseConfig {
+        return ExerciseConfig(
+            exerciseType = ExerciseType.RUNNING,
+            dataTypes = dataTypes,
+            isAutoPauseAndResumeEnabled = false,
+            isGpsEnabled = hasLocationPermission(),
+            exerciseGoals = emptyList(),
+        )
     }
 
     private fun handleRestoreRun() {
@@ -159,6 +306,7 @@ class WearExerciseService : Service() {
             -> {
                 startForegroundWithHealthType(buildNotification())
                 startDirectLocationUpdates()
+                startFusedRouteLocationUpdates()
                 startDirectHeartRateUpdates()
                 startActiveDurationCheckpoints()
                 if (hasActivityRecognitionPermission()) {
@@ -168,6 +316,7 @@ class WearExerciseService : Service() {
             }
             WearExerciseSessionStatus.PAUSED -> {
                 startForegroundWithHealthType(buildNotification("러닝 기록 일시정지"))
+                stopFusedRouteLocationUpdates()
                 stopDirectLocationUpdates()
                 stopDirectHeartRateUpdates()
                 stopActiveDurationCheckpoints()
@@ -200,13 +349,7 @@ class WearExerciseService : Service() {
                     return@addListener
                 }
 
-                val config = ExerciseConfig(
-                    exerciseType = ExerciseType.RUNNING,
-                    dataTypes = dataTypes,
-                    isAutoPauseAndResumeEnabled = false,
-                    isGpsEnabled = hasLocationPermission(),
-                    exerciseGoals = emptyList(),
-                )
+                val config = buildExerciseConfig(dataTypes)
                 prepareThenStartExercise(config, nextAccumulator)
             },
             healthCallbackExecutor,
@@ -281,6 +424,7 @@ class WearExerciseService : Service() {
             )
         } ?: WearExerciseSessionStore.markPaused()
         stopDirectLocationUpdates()
+        stopFusedRouteLocationUpdates()
         stopDirectHeartRateUpdates()
         stopActiveDurationCheckpoints()
         if (!exerciseStarted) return
@@ -314,6 +458,7 @@ class WearExerciseService : Service() {
         }
         startForegroundWithHealthType(buildNotification())
         startDirectLocationUpdates()
+        startFusedRouteLocationUpdates()
         startDirectHeartRateUpdates()
         startActiveDurationCheckpoints()
         if (!exerciseStarted) return
@@ -386,6 +531,15 @@ class WearExerciseService : Service() {
     }
 
     private fun finishService() {
+        isPreparing = false
+        healthPreparationInFlight = false
+        healthPreparationCancelInFlight = false
+        healthPreparationGeneration += 1
+        preparedExerciseConfig = null
+        pendingExerciseStart = null
+        checkpointHandler.removeCallbacks(preparationTimeoutRunnable)
+        stopAssistedLocationUpdates()
+        stopFusedRouteLocationUpdates()
         stopDirectLocationUpdates()
         stopDirectHeartRateUpdates()
         stopActiveDurationCheckpoints()
@@ -599,6 +753,95 @@ class WearExerciseService : Service() {
         checkpointHandler.postDelayed(checkpointRunnable, ACTIVE_DURATION_CHECKPOINT_MS)
     }
 
+    /**
+     * Fused location is intentionally readiness-only. On Wear OS it may be supplied by the
+     * companion phone, so it must never enter the route accumulator or distance calculation.
+     */
+    private fun startAssistedLocationUpdates() {
+        if (!hasLocationPermission() || assistedLocationCallback != null) return
+        val callback = object : LocationCallback() {
+            override fun onLocationResult(result: LocationResult) {
+                result.lastLocation?.let(::publishAssistedLocation)
+            }
+        }
+        assistedLocationCallback = callback
+        val request = LocationRequest.Builder(
+            Priority.PRIORITY_BALANCED_POWER_ACCURACY,
+            ASSISTED_LOCATION_INTERVAL_MS,
+        )
+            .setMinUpdateIntervalMillis(ASSISTED_LOCATION_MIN_INTERVAL_MS)
+            .setMaxUpdateAgeMillis(MAX_ASSISTED_LOCATION_AGE_MS)
+            .build()
+        try {
+            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                location?.let(::publishAssistedLocation)
+            }
+            fusedLocationClient.requestLocationUpdates(request, callback, Looper.getMainLooper())
+        } catch (_: SecurityException) {
+            assistedLocationCallback = null
+        }
+    }
+
+    private fun stopAssistedLocationUpdates() {
+        val callback = assistedLocationCallback ?: return
+        fusedLocationClient.removeLocationUpdates(callback)
+        assistedLocationCallback = null
+    }
+
+    private fun publishAssistedLocation(location: Location) {
+        if (!isPreparing || accumulator != null) return
+        val accuracy = location.accuracy.takeIf { location.hasAccuracy() && it.isFinite() && it > 0f } ?: return
+        if (accuracy > MAX_ASSISTED_LOCATION_ACCURACY_M) return
+        val now = System.currentTimeMillis()
+        val locationTime = location.time.takeIf { it > 0L } ?: now
+        if (now - locationTime > MAX_ASSISTED_LOCATION_AGE_MS || locationTime - now > 10_000L) return
+        if (gpsStatusMessage != GPS_STATUS_DIRECT) publishPreparationStatus(GPS_STATUS_ASSISTED)
+    }
+
+    private fun publishPreparationStatus(message: String) {
+        if (!isPreparing || WearExerciseSessionStore.current().status != WearExerciseSessionStatus.IDLE) return
+        gpsStatusMessage = message
+        WearExerciseSessionStore.restore(WearExerciseSessionStore.current().copy(message = message))
+    }
+
+    /**
+     * High-accuracy fused fixes remain active during the run. Wear OS may source these from
+     * the watch or its connected phone; only the same strict accuracy/age route gate used by
+     * watch GPS is allowed to pass them into distance calculation.
+     */
+    private fun startFusedRouteLocationUpdates() {
+        if (!hasLocationPermission() || fusedRouteLocationCallback != null) return
+        val callback = object : LocationCallback() {
+            override fun onLocationResult(result: LocationResult) {
+                if (accumulator == null) return
+                result.lastLocation?.let(::publishDirectLocation)
+            }
+        }
+        fusedRouteLocationCallback = callback
+        val request = LocationRequest.Builder(
+            Priority.PRIORITY_HIGH_ACCURACY,
+            FUSED_ROUTE_LOCATION_INTERVAL_MS,
+        )
+            .setMinUpdateIntervalMillis(FUSED_ROUTE_LOCATION_MIN_INTERVAL_MS)
+            .setMinUpdateDistanceMeters(FUSED_ROUTE_MIN_DISTANCE_M)
+            .setMaxUpdateAgeMillis(0L)
+            .build()
+        try {
+            fusedLocationClient.requestLocationUpdates(request, callback, Looper.getMainLooper())
+                .addOnFailureListener {
+                    if (fusedRouteLocationCallback === callback) fusedRouteLocationCallback = null
+                }
+        } catch (_: SecurityException) {
+            fusedRouteLocationCallback = null
+        }
+    }
+
+    private fun stopFusedRouteLocationUpdates() {
+        val callback = fusedRouteLocationCallback ?: return
+        fusedLocationClient.removeLocationUpdates(callback)
+        fusedRouteLocationCallback = null
+    }
+
     private fun startDirectLocationUpdates() {
         if (!hasLocationPermission() || directLocationListener != null) return
         val manager = directLocationManager ?: return
@@ -620,21 +863,30 @@ class WearExerciseService : Service() {
             if (gpsEnabled) {
                 manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1_000L, 2f, listener)
                 directLocationListener = listener
-            } else if (manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-                manager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 2_000L, 5f, listener)
-                directLocationListener = listener
             } else {
                 gpsStatusMessage = "GPS provider unavailable"
-                WearExerciseSessionStore.markFallback("GPS provider unavailable")
+                if (isPreparing) {
+                    publishPreparationStatus("GPS provider unavailable")
+                } else {
+                    WearExerciseSessionStore.markFallback("GPS provider unavailable")
+                }
             }
         } catch (_: SecurityException) {
             directLocationListener = null
             gpsStatusMessage = "location permission missing"
-            WearExerciseSessionStore.markFallback("location permission missing")
+            if (isPreparing) {
+                publishPreparationStatus("location permission missing")
+            } else {
+                WearExerciseSessionStore.markFallback("location permission missing")
+            }
         } catch (_: IllegalArgumentException) {
             directLocationListener = null
             gpsStatusMessage = "GPS provider unavailable"
-            WearExerciseSessionStore.markFallback("GPS provider unavailable")
+            if (isPreparing) {
+                publishPreparationStatus("GPS provider unavailable")
+            } else {
+                WearExerciseSessionStore.markFallback("GPS provider unavailable")
+            }
         }
     }
 
@@ -664,7 +916,16 @@ class WearExerciseService : Service() {
             publishGpsStatus("GPS weak ±${accuracy.roundToInt()}m")
             return
         }
-        val currentAccumulator = accumulator ?: return
+        val currentAccumulator = accumulator
+        if (currentAccumulator == null) {
+            publishPreparationStatus(
+                if (accuracy <= MAX_READY_GPS_ACCURACY_M) GPS_STATUS_DIRECT else "GPS weak ±${accuracy.roundToInt()}m",
+            )
+            return
+        }
+        if (reportedElapsedRealtimeMs > 0L &&
+            reportedElapsedRealtimeMs <= lastDirectLocationElapsedRealtimeMs
+        ) return
         val elapsedRealtimeMs = when {
             reportedElapsedRealtimeMs > lastDirectLocationElapsedRealtimeMs -> reportedElapsedRealtimeMs
             else -> systemElapsedRealtimeMs
@@ -709,10 +970,21 @@ class WearExerciseService : Service() {
         gpsStatusMessage = message
         val elapsedRealtimeMs = SystemClock.elapsedRealtime()
         if (elapsedRealtimeMs - lastGpsStatusPublishedElapsedRealtimeMs < GPS_STATUS_PUBLISH_INTERVAL_MS) return
-        val currentAccumulator = accumulator ?: return
         lastGpsStatusPublishedElapsedRealtimeMs = elapsedRealtimeMs
+        val currentAccumulator = accumulator
+        if (currentAccumulator == null) {
+            publishPreparationStatus(message)
+            return
+        }
+        val status = WearExerciseSessionStore.current().status.takeIf {
+            it in setOf(
+                WearExerciseSessionStatus.STARTING,
+                WearExerciseSessionStatus.ACTIVE,
+                WearExerciseSessionStatus.FALLBACK,
+            )
+        } ?: WearExerciseSessionStatus.ACTIVE
         WearExerciseSessionStore.publishFromAccumulator(
-            status = WearExerciseSessionStatus.ACTIVE,
+            status = status,
             accumulator = currentAccumulator,
             message = message,
         )
@@ -865,6 +1137,8 @@ class WearExerciseService : Service() {
     }
 
     companion object {
+        private const val ACTION_PREPARE_RUN = "com.lifestreak.wear.workout.PREPARE_RUN"
+        private const val ACTION_CANCEL_PREPARATION = "com.lifestreak.wear.workout.CANCEL_PREPARATION"
         private const val ACTION_START_RUN = "com.lifestreak.wear.workout.START_RUN"
         private const val ACTION_RESTORE_RUN = "com.lifestreak.wear.workout.RESTORE_RUN"
         private const val ACTION_PAUSE_RUN = "com.lifestreak.wear.workout.PAUSE_RUN"
@@ -875,15 +1149,38 @@ class WearExerciseService : Service() {
         private const val MAX_DIRECT_GPS_ACCURACY_M = 35f
         private const val MAX_READY_GPS_ACCURACY_M = 15f
         private const val MAX_DIRECT_GPS_AGE_MS = 30_000L
+        private const val MAX_ASSISTED_LOCATION_ACCURACY_M = 200f
+        private const val MAX_ASSISTED_LOCATION_AGE_MS = 30_000L
+        private const val ASSISTED_LOCATION_INTERVAL_MS = 2_000L
+        private const val ASSISTED_LOCATION_MIN_INTERVAL_MS = 1_000L
+        private const val FUSED_ROUTE_LOCATION_INTERVAL_MS = 1_000L
+        private const val FUSED_ROUTE_LOCATION_MIN_INTERVAL_MS = 500L
+        private const val FUSED_ROUTE_MIN_DISTANCE_M = 1f
         private const val ACTIVE_DURATION_CHECKPOINT_MS = 10_000L
+        private const val PREPARATION_TIMEOUT_MS = 5 * 60_000L
         private const val GPS_STATUS_PUBLISH_INTERVAL_MS = 5_000L
         private const val GPS_STATUS_SEARCHING = "GPS searching"
         private const val GPS_STATUS_DIRECT = "GPS direct"
+        private const val GPS_STATUS_ASSISTED = "GPS assisted"
         private const val MIN_HEART_RATE_BPM = 30f
         private const val MAX_HEART_RATE_BPM = 240f
         private const val MIN_ALTITUDE_M = -500.0
         private const val MAX_ALTITUDE_M = 9_000.0
         const val PERMISSION_READ_HEART_RATE = "android.permission.health.READ_HEART_RATE"
+
+        fun prepareRun(context: Context) {
+            if (WearExerciseSessionStore.current().status != WearExerciseSessionStatus.IDLE) return
+            if (ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                ) != PackageManager.PERMISSION_GRANTED
+            ) return
+            ContextCompat.startForegroundService(context, intentFor(context, ACTION_PREPARE_RUN))
+        }
+
+        fun cancelPreparation(context: Context) {
+            context.startService(intentFor(context, ACTION_CANCEL_PREPARATION))
+        }
 
         fun startRun(context: Context) {
             ContextCompat.startForegroundService(context, intentFor(context, ACTION_START_RUN))

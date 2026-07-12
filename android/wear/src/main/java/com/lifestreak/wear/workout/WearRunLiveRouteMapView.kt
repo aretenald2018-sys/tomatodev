@@ -173,7 +173,7 @@ class WearRunLiveRouteMapView @JvmOverloads constructor(
         canvas.drawColor(Color.rgb(5, 7, 6))
         val activeViewport = viewport
         if (activeViewport == null) {
-            drawCenteredLabel(canvas, "위치 확인 중", Color.rgb(129, 135, 125))
+            drawCenteredLabel(canvas, "달리면 경로가 나타나요", Color.rgb(129, 135, 125))
             return
         }
 

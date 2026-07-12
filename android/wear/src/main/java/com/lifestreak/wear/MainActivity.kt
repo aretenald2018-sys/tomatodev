@@ -34,7 +34,11 @@ class MainActivity : AppCompatActivity() {
             ?: findViewById(android.R.id.content)
         wearWorkoutUi.bind(runHost)
         if (requestWearExercisePermissionsIfNeeded()) {
-            restoreRunServiceIfNeeded()
+            if (!restoreRunServiceIfNeeded() &&
+                WearExerciseSessionStore.current().status == WearExerciseSessionStatus.IDLE
+            ) {
+                WearExerciseService.prepareRun(this)
+            }
         }
     }
 
@@ -61,7 +65,7 @@ class MainActivity : AppCompatActivity() {
         return missing.isEmpty()
     }
 
-    private fun restoreRunServiceIfNeeded() {
+    private fun restoreRunServiceIfNeeded(): Boolean {
         if (restoredRunStatus !in setOf(
                 WearExerciseSessionStatus.STARTING,
                 WearExerciseSessionStatus.ACTIVE,
@@ -69,10 +73,11 @@ class MainActivity : AppCompatActivity() {
                 WearExerciseSessionStatus.FALLBACK,
             )
         ) {
-            return
+            return false
         }
         restoredRunStatus = null
         WearExerciseService.restoreRun(this)
+        return true
     }
 
     override fun onRequestPermissionsResult(
@@ -85,11 +90,18 @@ class MainActivity : AppCompatActivity() {
             grantResults.isNotEmpty() &&
             grantResults.all { result -> result == PackageManager.PERMISSION_GRANTED }
         ) {
-            restoreRunServiceIfNeeded()
+            if (!restoreRunServiceIfNeeded() &&
+                WearExerciseSessionStore.current().status == WearExerciseSessionStatus.IDLE
+            ) {
+                WearExerciseService.prepareRun(this)
+            }
         }
     }
 
     override fun onDestroy() {
+        if (isFinishing && WearExerciseSessionStore.current().status == WearExerciseSessionStatus.IDLE) {
+            WearExerciseService.cancelPreparation(this)
+        }
         super.onDestroy()
         wearWorkoutUi.dispose()
     }

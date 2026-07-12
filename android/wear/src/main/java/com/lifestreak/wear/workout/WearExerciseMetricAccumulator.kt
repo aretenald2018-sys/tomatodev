@@ -127,6 +127,9 @@ class WearExerciseMetricAccumulator(
         val confirmed = mutableListOf<WearRoutePoint>()
         var anchor: WearRoutePoint? = null
         route.forEach { point ->
+            if ((point.accuracy ?: 0.0) > MAX_DISTANCE_GPS_ACCURACY_M) {
+                return@forEach
+            }
             val previous = anchor
             if (previous == null || point.gapBefore || previous.segmentId != point.segmentId) {
                 confirmed.add(point)

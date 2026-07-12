@@ -27,7 +27,7 @@ class WearWorkoutUiController(
     private var metricPageCallback: ViewPager2.OnPageChangeCallback? = null
     private var metricPagePosition = 0
     private var summarySyncStatus = ""
-    private var gpsStatus = "위치 확인 중"
+    private var gpsStatus = "바로 시작할 수 있어요"
     private var gpsStatusColor = Color.parseColor("#7C8499")
 
     private companion object {
@@ -56,6 +56,7 @@ class WearWorkoutUiController(
             runState.reset()
             WearExerciseSessionStore.reset()
             WearExerciseSessionPersistence.clear(v.context)
+            WearExerciseService.prepareRun(v.context)
             render(v)
         }
 
@@ -114,7 +115,7 @@ class WearWorkoutUiController(
         runEndUnsubscribe?.invoke()
         runEndUnsubscribe = null
         summarySyncStatus = ""
-        gpsStatus = "위치 확인 중"
+        gpsStatus = "경로 자동 기록"
         gpsStatusColor = Color.parseColor("#7C8499")
         runState.start()
         WearExerciseService.startRun(v.context)
@@ -189,6 +190,8 @@ class WearWorkoutUiController(
         v.findViewById<TextView>(R.id.runActiveDistance)?.text = snapshot.distanceText
         v.findViewById<TextView>(R.id.runActivePace)?.text = snapshot.paceText
         v.findViewById<TextView>(R.id.runActiveHeartRate)?.text = snapshot.heartRateText
+        v.findViewById<TextView>(R.id.runReadyGpsStatus)?.text = gpsStatus
+        v.findViewById<TextView>(R.id.runReadyGpsStatus)?.setTextColor(gpsStatusColor)
         v.findViewById<TextView>(R.id.runActiveGpsStatus)?.text = gpsStatus
         v.findViewById<TextView>(R.id.runActiveGpsStatus)?.setTextColor(gpsStatusColor)
         v.findViewById<TextView>(R.id.runMetricPageIndicator)?.text = metricPageLabel()
@@ -270,12 +273,28 @@ class WearWorkoutUiController(
                 gpsStatusColor = Color.parseColor("#FFB35A")
             }
             message.contains("GPS weak", ignoreCase = true) -> {
-                gpsStatus = "야외로 이동해 주세요"
+                gpsStatus = if (snapshot.status == WearExerciseSessionStatus.IDLE) {
+                    "바로 시작할 수 있어요"
+                } else {
+                    "야외에서 더 정확해져요"
+                }
                 gpsStatusColor = Color.parseColor("#FFB35A")
             }
             message.contains("GPS searching", ignoreCase = true) -> {
-                gpsStatus = "위치 확인 중"
-                gpsStatusColor = Color.parseColor("#FFB35A")
+                gpsStatus = if (snapshot.status == WearExerciseSessionStatus.IDLE) {
+                    "바로 시작할 수 있어요"
+                } else {
+                    "경로 자동 기록"
+                }
+                gpsStatusColor = Color.parseColor("#81877D")
+            }
+            message.contains("GPS assisted", ignoreCase = true) -> {
+                gpsStatus = "준비 완료"
+                gpsStatusColor = Color.parseColor("#D7FF3F")
+            }
+            message.contains("GPS direct", ignoreCase = true) && snapshot.status == WearExerciseSessionStatus.IDLE -> {
+                gpsStatus = "준비 완료"
+                gpsStatusColor = Color.parseColor("#D7FF3F")
             }
             snapshot.status == WearExerciseSessionStatus.ENDED && snapshot.routePoints.size >= 2 -> {
                 gpsStatus = "경로 저장됨"
@@ -302,8 +321,8 @@ class WearWorkoutUiController(
                 WearExerciseSessionStatus.ACTIVE,
                 WearExerciseSessionStatus.FALLBACK,
             ) -> {
-                gpsStatus = "위치 확인 중"
-                gpsStatusColor = Color.parseColor("#FFB35A")
+                gpsStatus = "경로 자동 기록"
+                gpsStatusColor = Color.parseColor("#81877D")
             }
         }
     }

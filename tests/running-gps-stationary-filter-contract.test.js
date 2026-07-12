@@ -39,6 +39,13 @@ test('stationary GPS drift cannot create a running distance or pace', () => {
   })), true);
 });
 
+test('a weak first watch fix cannot poison all later precise distance fixes', () => {
+  assert.match(
+    wearAccumulatorKt,
+    /if \(\(point\.accuracy \?: 0\.0\) > MAX_DISTANCE_GPS_ACCURACY_M\) \{[\s\S]*return@forEach/,
+  );
+});
+
 test('PWA, phone APK, and Wear preserve the raw route while distance uses drift thresholds', () => {
   assert.match(runningSessionJs, /MAX_LIVE_GPS_ACCURACY_M = 35/);
   assert.match(runningSessionJs, /MIN_RUNNING_DISPLACEMENT_M = 12/);

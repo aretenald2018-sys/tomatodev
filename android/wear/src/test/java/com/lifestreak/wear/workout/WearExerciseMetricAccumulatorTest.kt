@@ -226,6 +226,30 @@ class WearExerciseMetricAccumulatorTest {
     }
 
     @Test
+    fun weakFirstFixCannotPoisonLaterPreciseRunningDistance() {
+        val accumulator = WearExerciseMetricAccumulator(
+            startedAtWallClockMs = 10_000L,
+            startedAtElapsedRealtimeMs = 1_000L,
+        )
+        accumulator.applyMetricUpdate(
+            elapsedRealtimeMs = 1_000L,
+            routePoint = WearRoutePoint(timestampMs = 10_000L, lat = 37.5, lng = 127.0, accuracy = 30.0),
+        )
+        accumulator.applyMetricUpdate(
+            elapsedRealtimeMs = 11_000L,
+            routePoint = WearRoutePoint(timestampMs = 20_000L, lat = 37.5, lng = 127.0, accuracy = 5.0),
+        )
+        accumulator.applyMetricUpdate(
+            elapsedRealtimeMs = 51_000L,
+            routePoint = WearRoutePoint(timestampMs = 60_000L, lat = 37.501, lng = 127.0, accuracy = 5.0),
+        )
+
+        val snapshot = accumulator.snapshot()
+        assertEquals(3, snapshot.routePoints.size)
+        assertEquals(true, snapshot.distanceMeters > 100.0)
+    }
+
+    @Test
     fun buildsDistanceSamplesOnlyFromConfirmedGpsMovement() {
         val accumulator = WearExerciseMetricAccumulator(
             startedAtWallClockMs = 10_000L,

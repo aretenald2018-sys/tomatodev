@@ -35,10 +35,11 @@
             android:textStyle="bold" />
 
         <TextView
+            android:id="@+id/runReadyGpsStatus"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="3dp"
-            android:text="위치 · 심박 자동 기록"
+            android:text="바로 시작할 수 있어요"
             android:textColor="#81877D"
             android:textSize="9sp" />
 
@@ -137,7 +138,7 @@
                     android:ellipsize="end"
                     android:gravity="end"
                     android:maxLines="1"
-                    android:text="위치 확인 중"
+                    android:text="경로 자동 기록"
                     android:textColor="#81877D"
                     android:textSize="8sp" />
             </LinearLayout>

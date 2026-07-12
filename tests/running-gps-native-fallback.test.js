@@ -50,11 +50,7 @@ test('watch uses direct GPS fallback and refuses to start without precise locati
 
   assert.match(service, /LocationManager\.GPS_PROVIDER/);
   assert.match(service, /startDirectLocationUpdates\(\)/);
-  assert.match(
-    service,
-    /if \(gpsEnabled\)[\s\S]*GPS_PROVIDER[\s\S]*else if[\s\S]*NETWORK_PROVIDER/,
-    'watch should use network location only when GPS is unavailable so providers cannot corrupt one route',
-  );
+  assert.doesNotMatch(service, /LocationManager\.NETWORK_PROVIDER/);
   assert.match(service, /when \(intent\?\.action\)[\s\S]*ensurePersistenceListener\(\)/);
   assert.match(service, /directLocationListener = listener/);
   assert.match(service, /GPS provider unavailable/);
@@ -67,8 +63,9 @@ test('watch uses direct GPS fallback and refuses to start without precise locati
   assert.match(service, /accuracy = recentDirectGpsAccuracy\(pointElapsedRealtimeMs\) \?: MAX_DIRECT_GPS_ACCURACY_M\.toDouble\(\)/);
   assert.match(service, /lastDirectGpsAccuracyM = accuracy\.toDouble\(\)[\s\S]*if \(accuracy > MAX_DIRECT_GPS_ACCURACY_M\)/);
   assert.match(service, /it in MIN_ALTITUDE_M\.\.MAX_ALTITUDE_M/);
-  assert.match(controller, /야외로 이동해 주세요/);
-  assert.match(controller, /위치 확인 중/);
+  assert.match(controller, /야외에서 더 정확해져요/);
+  assert.match(controller, /경로 자동 기록/);
+  assert.doesNotMatch(controller, /위치 확인 중/);
   assert.match(controller, /경로 기록 중/);
   assert.doesNotMatch(controller, /\$\{snapshot\.routePoints\.size\}점|accuracyText/);
   assert.match(service, /Sensor\.TYPE_HEART_RATE/);
@@ -84,6 +81,35 @@ test('watch uses direct GPS fallback and refuses to start without precise locati
   assert.match(controller, /위치 권한을 켜주세요/);
   assert.match(controller, /경로 저장됨/);
   assert.match(controller, /runMetricPageIndicator/);
+});
+
+test('watch warms location before start and keeps companion-assisted fixes out of route distance', () => {
+  const build = read('android/wear/build.gradle');
+  const activity = read('android/wear/src/main/java/com/lifestreak/wear/MainActivity.kt');
+  const service = read('android/wear/src/main/java/com/lifestreak/wear/workout/WearExerciseService.kt');
+  const controller = read('android/wear/src/main/java/com/lifestreak/wear/workout/WearWorkoutUiController.kt');
+  const layout = read('android/wear/src/main/res/layout/page_workout.xml');
+  const map = read('android/wear/src/main/java/com/lifestreak/wear/workout/WearRunLiveRouteMapView.kt');
+
+  assert.match(build, /play-services-location:21\.3\.0/);
+  assert.match(activity, /WearExerciseService\.prepareRun\(this\)/);
+  assert.match(activity, /WearExerciseSessionStore\.current\(\)\.status == WearExerciseSessionStatus\.IDLE/);
+  assert.match(service, /ACTION_PREPARE_RUN/);
+  assert.match(service, /fun prepareRun[\s\S]*WearExerciseSessionStore\.current\(\)\.status != WearExerciseSessionStatus\.IDLE/);
+  assert.match(service, /prepareExerciseAsync/);
+  assert.match(service, /Priority\.PRIORITY_BALANCED_POWER_ACCURACY/);
+  assert.match(service, /Priority\.PRIORITY_HIGH_ACCURACY/);
+  assert.match(service, /private fun handleStartRun[\s\S]*startFusedRouteLocationUpdates\(\)/);
+  assert.match(service, /private fun handlePauseRun[\s\S]*stopFusedRouteLocationUpdates\(\)/);
+  assert.match(service, /reportedElapsedRealtimeMs <= lastDirectLocationElapsedRealtimeMs/);
+  assert.match(service, /private fun publishAssistedLocation[\s\S]*if \(!isPreparing \|\| accumulator != null\) return/);
+  assert.doesNotMatch(
+    service.match(/private fun publishAssistedLocation[\s\S]*?private fun publishPreparationStatus/)?.[0] ?? '',
+    /WearRoutePoint|applyMetricUpdate|publishFromAccumulator/,
+  );
+  assert.match(layout, /runReadyGpsStatus/);
+  assert.match(controller, /준비 완료/);
+  assert.match(map, /달리면 경로가 나타나요/);
 });
 
 test('watch UI does not invent calories, pace, or heart-zone time when sensors have no data', () => {
