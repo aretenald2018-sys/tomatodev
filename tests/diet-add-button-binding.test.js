@@ -11,9 +11,10 @@ const workoutUiJs = readFileSync('workout-ui.js', 'utf8');
 const styleCss = readAppCssSync();
 
 class FakeElement {
-  constructor({ dataset = {} } = {}) {
+  constructor({ dataset = {}, dietGrid = null } = {}) {
     this.dataset = dataset;
     this.listeners = new Map();
+    this.dietGrid = dietGrid;
   }
 
   addEventListener(type, handler) {
@@ -23,6 +24,7 @@ class FakeElement {
   closest(selector) {
     if (selector === '[data-action]' && this.dataset.action) return this;
     if (selector === '[data-meal]' && this.dataset.meal) return this;
+    if (selector === '.diet-grid') return this.dietGrid;
     return null;
   }
 }
@@ -30,9 +32,11 @@ class FakeElement {
 function createDietHarness() {
   const calls = [];
   const dietGrid = new FakeElement();
+  const listeners = new Map();
   const document = {
-    querySelector(selector) {
-      return selector === '.diet-grid' ? dietGrid : null;
+    documentElement: { dataset: {} },
+    addEventListener(type, handler, capture) {
+      listeners.set(type, { handler, capture });
     },
   };
   const window = {
@@ -56,7 +60,7 @@ function createDietHarness() {
     openNutritionSearch: async meal => calls.push(`search:${meal}`),
     showToast: message => calls.push(`toast:${message}`),
   }, { filename: 'app.js' });
-  return { calls, dietGrid, window };
+  return { calls, dietGrid, document, listeners, window };
 }
 
 function createMealSkipHarness() {
@@ -95,17 +99,17 @@ function createMealSkipHarness() {
   return { calls, run: context.__wtSkipMeal, getActive: () => active, foodList, mealInput };
 }
 
-async function clickDietAction(harness, dataset) {
-  const handler = harness.dietGrid.listeners.get('click');
-  assert.equal(typeof handler, 'function', 'diet grid click handler should be bound');
+async function clickDietAction(harness, dataset, { dietGrid = new FakeElement() } = {}) {
+  const binding = harness.listeners.get('click');
+  assert.equal(typeof binding?.handler, 'function', 'document diet click handler should be bound');
   const event = {
-    target: new FakeElement({ dataset }),
+    target: new FakeElement({ dataset, dietGrid }),
     prevented: 0,
     stopped: 0,
     preventDefault() { this.prevented += 1; },
     stopPropagation() { this.stopped += 1; },
   };
-  await handler(event);
+  await binding.handler(event);
   return event;
 }
 
@@ -145,11 +149,18 @@ test('frequent food cards continue to use the diet grid delegated handler', asyn
   assert.deepEqual(harness.calls, ['frequent:lunch:lunch-rice-120']);
 });
 
-test('diet grid handles meal skip directly and leaves unrelated namespaced actions for the global router', async () => {
+test('document-captured diet actions survive a replaced diet grid and leave unrelated namespaced actions for the global router', async () => {
   const harness = createDietHarness();
   harness.window.__initDietInputButtons();
+  harness.window.__initDietInputButtons();
+  assert.equal(harness.listeners.size, 1, 'diet action listener should bind once on the stable document');
+  assert.equal(harness.listeners.get('click').capture, true, 'diet action listener should run before document-level action routing');
 
-  const skipEvent = await clickDietAction(harness, { action: 'diet:skip-meal', actionArg: 'breakfast' });
+  const skipEvent = await clickDietAction(
+    harness,
+    { action: 'diet:skip-meal', actionArg: 'breakfast' },
+    { dietGrid: new FakeElement() }
+  );
   assert.deepEqual(harness.calls, ['skip:breakfast']);
   assert.equal(skipEvent.prevented, 1);
   assert.equal(skipEvent.stopped, 1);

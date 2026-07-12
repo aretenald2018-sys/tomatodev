@@ -803,15 +803,17 @@ async function _initializeAppSession() {
 
 // ── 식단 입력 버튼 이벤트 위임 (끼니별 버튼 지원) ──────────────────
 function _initDietInputButtons() {
-  const dietGrid = document.querySelector('.diet-grid');
-  if (!dietGrid) return;
+  const marker = document.documentElement;
+  if (!marker || marker.dataset.dietInputActionsBound === '1') return;
+  marker.dataset.dietInputActionsBound = '1';
 
-  dietGrid.addEventListener('click', async (e) => {
+  document.addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
+    if (!btn.closest('.diet-grid')) return;
     const action = btn.dataset.action;
-    // Skip buttons live inside the accordion body. Keep this direct binding so
-    // the user action remains local to the diet grid on mobile.
+    // Diet rows are re-rendered after login and date changes. Capture on the
+    // stable document so a replacement grid retains its mobile actions.
     if (action === 'diet:skip-meal') {
       const meal = btn.dataset.actionArg;
       if (!meal) {
@@ -854,7 +856,7 @@ function _initDietInputButtons() {
     } else if (action === 'photoUpload') {
       openNutritionPhotoUpload();
     }
-  }, false);
+  }, true);
 }
 
 
