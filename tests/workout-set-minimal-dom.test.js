@@ -163,7 +163,7 @@ function buildHarnessScript() {
     function _defaultWorkoutSheetSet(prev = {}) {
       return { kg: prev.kg ?? '', reps: prev.reps ?? '', setType: prev.setType || 'main', done: false };
     }
-    function _clearWorkoutExerciseCompletionMarker(entry) {
+    function clearWorkoutExerciseCompletionMarker(entry) {
       delete entry.exerciseCompletedAt;
       window.__completionMarkerCleared = true;
     }

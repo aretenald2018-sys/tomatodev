@@ -84,6 +84,13 @@ import {
   latestWorkoutCompletionAt,
 } from './workout/completion-metrics.js';
 import {
+  clearWorkoutExerciseCompletionMarker,
+  isCompletableWorkoutExerciseSet,
+  isWorkoutExerciseComplete,
+  markWorkoutExerciseEntryComplete,
+  workoutExerciseCompletionStampAt,
+} from './workout/exercise-completion.js';
+import {
   bestWorkoutSet,
   formatWorkoutKg,
   formatWorkoutReps,
@@ -1511,7 +1518,7 @@ function _exerciseRows(day, lookup = _buildWorkoutLookup(), key = null, options 
         recommendationMeta: entry?.recommendationMeta || null,
         maxPrescription: entry?.maxPrescription || null,
         maxTrackPreference: lib?.maxTrackPreference || null,
-        exerciseCompletedAt: _workoutExerciseCompletionStampAt(entry),
+        exerciseCompletedAt: workoutExerciseCompletionStampAt(entry),
         setCount: sets.length,
         volume,
         topSetText: cardio ? _cardioSummaryText(cardio) : (topSet ? _formatSetText(topSet) : '세트 기록 없음'),
@@ -2512,20 +2519,8 @@ function _renderWorkoutSetRows(row, options = {}) {
   return `${rows}${addRow}`;
 }
 
-function _workoutExerciseCompletionStampAt(row) {
-  const stampAt = Number(row?.exerciseCompletedAt);
-  return Number.isFinite(stampAt) && stampAt > 0 ? stampAt : null;
-}
-
-function _isWorkoutExerciseComplete(row) {
-  if (_workoutExerciseCompletionStampAt(row) == null) return false;
-  const sets = Array.isArray(row?.rawSetDetails) ? row.rawSetDetails : [];
-  const completableSets = sets.filter(_hasCompletableWorkoutSheetSet);
-  return completableSets.length > 0 && completableSets.every(set => set.done === true);
-}
-
 function _isWorkoutExerciseCompletionStamped(cardId, row = null) {
-  if (_isWorkoutExerciseComplete(row)) return true;
+  if (isWorkoutExerciseComplete(row)) return true;
   _workoutExerciseCompletionStamps.delete(cardId);
   return false;
 }
@@ -3793,7 +3788,7 @@ function _commitWorkoutSetKeyboardDone(input) {
     if (!Number.isFinite(Number(nextSet.rir))) nextSet.rir = 2;
     sets[targetIndex] = nextSet;
     entry.sets = sets;
-    _clearWorkoutExerciseCompletionMarker(entry);
+    clearWorkoutExerciseCompletionMarker(entry);
     return true;
   }, { preserveSheetScroll: true });
 }
@@ -4161,16 +4156,6 @@ function _markWorkoutExerciseCompletionStamp(cardId) {
   _workoutExerciseCompletionStamps.set(cardId, Date.now());
 }
 
-function _markWorkoutExerciseEntryComplete(entry, now = Date.now()) {
-  if (!entry || typeof entry !== 'object') return;
-  entry.exerciseCompletedAt = now;
-}
-
-function _clearWorkoutExerciseCompletionMarker(entry) {
-  if (!entry || typeof entry !== 'object') return;
-  delete entry.exerciseCompletedAt;
-}
-
 function _focusWorkoutSetInlineFieldFromSheet(key, sessionIndex, exerciseIndex, setIndex, field) {
   const safeField = String(field || '');
   if (!['kg', 'reps'].includes(safeField)) return false;
@@ -4356,11 +4341,6 @@ function _defaultWorkoutSheetSet(prev = null) {
   };
 }
 
-function _hasCompletableWorkoutSheetSet(set) {
-  if (!set || typeof set !== 'object') return false;
-  return set.done === true || _num(set.kg) > 0 || _num(set.reps) > 0;
-}
-
 async function _mutateWorkoutExerciseFromSheet(key, sessionIndex, exerciseIndex, mutator, options = {}) {
   const targetKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
   const { day, session, index } = _workoutHomeSessionAt(targetKey, sessionIndex, 1);
@@ -4401,7 +4381,7 @@ async function _updateWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseInd
       if (safeField === 'romPct') nextSet.romPct = _setWorkoutSheetNumber(value, Number.isFinite(Number(nextSet.romPct)) ? Number(nextSet.romPct) : 100, { min: 0, max: 100, integer: true });
       sets[targetIndex] = nextSet;
       entry.sets = sets;
-      _clearWorkoutExerciseCompletionMarker(entry);
+      clearWorkoutExerciseCompletionMarker(entry);
       return true;
     }, isInlineSource ? { preserveSheetScroll: true } : { preserveInput: true, sourceInput, ignoreSourceInput: true });
   } catch (e) {
@@ -4429,7 +4409,7 @@ async function _setWorkoutExerciseSetTypeFromSheet(key, sessionIndex, exerciseIn
       delete nextSet.amrap;
       sets[targetSetIndex] = nextSet;
       entry.sets = sets;
-      _clearWorkoutExerciseCompletionMarker(entry);
+      clearWorkoutExerciseCompletionMarker(entry);
       return true;
     }, { preserveSheetScroll: true });
     return ok;
@@ -4448,7 +4428,7 @@ async function _addWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseIndex)
       copiedPreviousSet = sets.length > 0;
       sets.push(_defaultWorkoutSheetSet(sets[sets.length - 1]));
       entry.sets = sets;
-      _clearWorkoutExerciseCompletionMarker(entry);
+      clearWorkoutExerciseCompletionMarker(entry);
       return true;
     }, { preserveSheetScroll: true });
     if (ok) showToast(copiedPreviousSet ? '직전 세트를 복사했어요' : '세트를 추가했어요', 1200, 'success');
@@ -4466,7 +4446,7 @@ async function _removeWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseInd
       if (!sets[targetIndex]) return false;
       sets.splice(targetIndex, 1);
       entry.sets = sets;
-      _clearWorkoutExerciseCompletionMarker(entry);
+      clearWorkoutExerciseCompletionMarker(entry);
       _clearWorkoutSetEditorsForExercise(key, sessionIndex, exerciseIndex);
       return true;
     }, { preserveSheetScroll: true, optimisticRender: true });
@@ -4496,7 +4476,7 @@ async function _toggleWorkoutExerciseSetDoneFromSheet(key, sessionIndex, exercis
       }
       sets[targetIndex] = nextSet;
       entry.sets = sets;
-      _clearWorkoutExerciseCompletionMarker(entry);
+      clearWorkoutExerciseCompletionMarker(entry);
       return true;
     }, { preserveSheetScroll: true });
   } catch (e) {
@@ -4513,7 +4493,7 @@ async function _completeWorkoutExerciseFromSheet(cardId, key, sessionIndex, exer
       const sets = Array.isArray(entry.sets) ? entry.sets : [];
       const nextSets = sets.map((set) => {
         const nextSet = { ...(set || {}) };
-        if (!_hasCompletableWorkoutSheetSet(nextSet)) return nextSet;
+        if (!isCompletableWorkoutExerciseSet(nextSet)) return nextSet;
         completedCount += 1;
         nextSet.done = true;
         if (!Number.isFinite(Number(nextSet.completedAt))) nextSet.completedAt = now;
@@ -4526,7 +4506,7 @@ async function _completeWorkoutExerciseFromSheet(cardId, key, sessionIndex, exer
         return false;
       }
       entry.sets = nextSets;
-      _markWorkoutExerciseEntryComplete(entry, now);
+      markWorkoutExerciseEntryComplete(entry, now);
       return true;
     }, { preserveSheetScroll: true });
     if (!ok) return;
