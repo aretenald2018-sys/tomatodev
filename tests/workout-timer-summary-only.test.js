@@ -2,6 +2,10 @@ import { readAppCssSync } from './helpers/css-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import {
+  formatWorkoutCompletionElapsed,
+  latestWorkoutCompletionAt,
+} from '../workout/completion-metrics.js';
 
 const calendarJs = readFileSync(new URL('../render-calendar.js', import.meta.url), 'utf8');
 const workoutIndexJs = readFileSync(new URL('../workout/index.js', import.meta.url), 'utf8');
@@ -32,29 +36,17 @@ test('workout duration remains in the top-right summary card', () => {
 
 test('workout summary card shows elapsed rest since the latest completed set', () => {
   const summary = sliceByFirstBrace(calendarJs, 'function _renderWorkoutDetailSummaryCard');
-  assert.match(summary, /const lastCompletedAt = _latestWorkoutCompletionAt\(wx\)/);
+  assert.match(calendarJs, /from '\.\/workout\/completion-metrics\.js'/);
+  assert.match(summary, /const lastCompletedAt = latestWorkoutCompletionAt\(wx\)/);
   assert.match(summary, /label:\s*'휴식'/);
-  assert.match(summary, /_formatWorkoutCompletionElapsed\(lastCompletedAt\)/);
+  assert.match(summary, /formatWorkoutCompletionElapsed\(lastCompletedAt\)/);
   assert.match(summary, /data-wt-last-complete-elapsed/);
   assert.match(summary, /data-completed-at="\$\{lastCompletedAt\}"/);
   assert.match(calendarJs, /function _mountWorkoutSummaryElapsedTimers/);
   assert.match(calendarJs, /_mountWorkoutSummaryElapsedTimers\(root\)/);
 });
 
-test('workout summary elapsed helpers use only completed workout timestamps', () => {
-  const sourceBundle = [
-    sliceByFirstBrace(calendarJs, 'function _coerceWorkoutCompletionAt'),
-    sliceByFirstBrace(calendarJs, 'function _latestWorkoutCompletionAtFromRows'),
-    sliceByFirstBrace(calendarJs, 'function _latestWorkoutCompletionAt(wx'),
-    sliceByFirstBrace(calendarJs, 'function _formatWorkoutCompletionElapsed'),
-  ].join('\n\n');
-  const helpers = new Function(`${sourceBundle}
-    return {
-      latest: _latestWorkoutCompletionAt,
-      format: _formatWorkoutCompletionElapsed,
-    };
-  `)();
-
+test('workout completion metrics use only completed workout timestamps', () => {
   const wx = {
     exercises: [
       {
@@ -72,10 +64,18 @@ test('workout summary elapsed helpers use only completed workout timestamps', ()
     ],
   };
 
-  assert.equal(helpers.latest(wx), 1900000);
-  assert.equal(helpers.format(1000000, 1000000 + (7 * 60000) + 31000), '07:31');
-  assert.equal(helpers.format(1000000, 1000000 + (65 * 60000)), '1:05:00');
-  assert.equal(helpers.format(null, 1000000), '—');
+  assert.equal(latestWorkoutCompletionAt(wx), 1900000);
+  assert.equal(formatWorkoutCompletionElapsed(1000000, 1000000 + (7 * 60000) + 31000), '07:31');
+  assert.equal(formatWorkoutCompletionElapsed(1000000, 1000000 + (65 * 60000)), '1:05:00');
+  assert.equal(formatWorkoutCompletionElapsed(null, 1000000), '—');
+  assert.equal(formatWorkoutCompletionElapsed(1000000, 999999), '00:00');
+  assert.equal(latestWorkoutCompletionAt({
+    lastCompletedAt: 2100000,
+    exercises: [{ setDetails: [{ done: true, completedAt: 2200000 }] }],
+  }), 2100000);
+  assert.equal(latestWorkoutCompletionAt({
+    exercises: [{ setDetails: [{ done: true, completedAt: 2300000 }] }],
+  }), 2300000);
   assert.match(calendarJs, /}, 1000\) \|\| null/);
 });
 

@@ -79,6 +79,10 @@ import {
   workoutFallbackSparkValues,
   workoutTrackLabel,
 } from './workout/track-metrics.js';
+import {
+  formatWorkoutCompletionElapsed,
+  latestWorkoutCompletionAt,
+} from './workout/completion-metrics.js';
 
 // ═════════════════════════════════════════════════════════════
 // 뷰 상태
@@ -2062,55 +2066,10 @@ function _showWorkoutRunningRoute(control, mapId) {
   return true;
 }
 
-function _coerceWorkoutCompletionAt(value) {
-  const stamp = Number(value);
-  return Number.isFinite(stamp) && stamp > 0 ? stamp : null;
-}
-
-function _latestWorkoutCompletionAtFromRows(exercises = []) {
-  let latest = null;
-  const addStamp = (value) => {
-    const stamp = _coerceWorkoutCompletionAt(value);
-    if (stamp == null) return;
-    if (latest == null || stamp > latest) latest = stamp;
-  };
-
-  (Array.isArray(exercises) ? exercises : []).forEach((row) => {
-    addStamp(row?.exerciseCompletedAt);
-    const rawSets = Array.isArray(row?.rawSetDetails) ? row.rawSetDetails : [];
-    const fallbackSets = Array.isArray(row?.setDetails) ? row.setDetails : [];
-    const sets = rawSets.length ? rawSets : fallbackSets;
-    sets.forEach((set) => {
-      if (set?.done === false) return;
-      addStamp(set?.completedAt);
-    });
-  });
-
-  return latest;
-}
-
-function _latestWorkoutCompletionAt(wx) {
-  const source = wx || {};
-  return _coerceWorkoutCompletionAt(source.lastCompletedAt) ?? _latestWorkoutCompletionAtFromRows(source.exercises);
-}
-
-function _formatWorkoutCompletionElapsed(completedAt, now = Date.now()) {
-  const stamp = _coerceWorkoutCompletionAt(completedAt);
-  const current = Number(now);
-  if (stamp == null || !Number.isFinite(current)) return '—';
-  const elapsedSec = Math.max(0, Math.floor((current - stamp) / 1000));
-  const seconds = elapsedSec % 60;
-  const totalMinutes = Math.floor(elapsedSec / 60);
-  const minutes = totalMinutes % 60;
-  const hours = Math.floor(totalMinutes / 60);
-  if (hours > 0) return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-}
-
 function _syncWorkoutSummaryElapsedTimers(root = document) {
   const scope = root?.querySelectorAll ? root : document;
   scope.querySelectorAll('[data-wt-last-complete-elapsed]').forEach((node) => {
-    node.textContent = _formatWorkoutCompletionElapsed(node.getAttribute('data-completed-at'));
+    node.textContent = formatWorkoutCompletionElapsed(node.getAttribute('data-completed-at'));
   });
 }
 
@@ -2221,12 +2180,12 @@ function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, includeHead 
 }
 
 function _renderWorkoutDetailSummaryCard(wx) {
-  const lastCompletedAt = _latestWorkoutCompletionAt(wx);
+  const lastCompletedAt = latestWorkoutCompletionAt(wx);
   const metrics = [
     { label: '운동시간', value: wx?.durationSec ? _formatDurationShort(wx.durationSec) : '—' },
     {
       label: '휴식',
-      value: _formatWorkoutCompletionElapsed(lastCompletedAt),
+      value: formatWorkoutCompletionElapsed(lastCompletedAt),
       attrs: lastCompletedAt ? ` data-wt-last-complete-elapsed data-completed-at="${lastCompletedAt}"` : '',
     },
     { label: '세트', value: wx?.setCount ? `${wx.setCount}세트` : '—' },
