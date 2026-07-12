@@ -4,8 +4,9 @@ import { readFileSync } from 'node:fs';
 
 const indexHtml = readFileSync('index.html', 'utf8');
 const statsJs = readFileSync('render-stats.js', 'utf8');
+const statsSelectorsJs = readFileSync('stats/selectors.js', 'utf8');
 const styleCss = readFileSync('style.css', 'utf8');
-const swJs = readFileSync('sw.js', 'utf8');
+const swJs = readFileSync('sw.js', 'utf8') + readFileSync('runtime-assets.js', 'utf8');
 
 test('stats page includes exercise performance trend before volume trend', () => {
   assert.match(indexHtml, /운동별 퍼포먼스 추이[\s\S]*id="exercise-performance-section"[\s\S]*종목별 볼륨 추이/);
@@ -20,9 +21,10 @@ test('exercise performance trend uses period-scoped volume and estimated 1rm sig
   assert.match(statsJs, /calcVolume\(entry\.sets \|\| \[\]\)/);
   assert.match(statsJs, /_topSetE1rm\(entry\)/);
   assert.match(statsJs, /\.slice\(0, 2\)/);
-  assert.match(statsJs, /성장중/);
-  assert.match(statsJs, /유지중/);
-  assert.match(statsJs, /점검필요/);
+  assert.match(statsSelectorsJs, /성장중/);
+  assert.match(statsSelectorsJs, /유지중/);
+  assert.match(statsSelectorsJs, /점검필요/);
+  assert.match(statsJs, /exercisePerformanceStatus\(row, _fmt\)/);
 });
 
 test('exercise performance card uses TDS-like compact table styling', () => {
@@ -33,5 +35,5 @@ test('exercise performance card uses TDS-like compact table styling', () => {
   assert.match(styleCss, /\.stats-perf-status/);
   assert.match(styleCss, /\.stats-perf-row\.is-growth \.stats-perf-status b \{ color: #2563eb; \}/);
   assert.doesNotMatch(styleCss, /\.stats-perf-row\.is-growth \.stats-perf-status b \{ color: var\(--diet-ok\); \}/);
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });

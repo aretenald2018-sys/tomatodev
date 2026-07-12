@@ -445,6 +445,35 @@ export async function getMyPendingGuildRequests(userId) {
   } catch { return []; }
 }
 
+export async function withdrawGuildJoinRequest(guildId, userId) {
+  if (!guildId || !userId) return { removedRequestCount: 0, notificationRemoved: false };
+
+  const notificationId = `guild_pending_${guildId}_${userId}`;
+  let notificationRemoved = false;
+  try {
+    await deleteDoc(doc(db, '_notifications', notificationId));
+    notificationRemoved = true;
+  } catch {}
+
+  let removedRequestCount = 0;
+  try {
+    const snapshot = await getDocs(collection(db, '_guild_requests'));
+    const matches = snapshot.docs.filter((entry) => {
+      const data = entry.data();
+      return data.guildId === guildId && data.userId === userId && data.status === 'pending';
+    });
+    const results = await Promise.allSettled(
+      matches.map((entry) => deleteDoc(doc(db, '_guild_requests', entry.id))),
+    );
+    removedRequestCount = results.filter((result) => result.status === 'fulfilled').length;
+  } catch (error) {
+    console.warn('[guild] withdraw request:', error);
+  }
+
+  invalidateGuildStatsCache();
+  return { removedRequestCount, notificationRemoved };
+}
+
 export async function getGlobalGuildWeeklyRanking() {
   try {
     const snap = await getDoc(doc(db, '_weekly_guild_ranking', 'current'));

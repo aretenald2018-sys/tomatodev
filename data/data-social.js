@@ -16,6 +16,7 @@ export {
   getAllGuilds, createGuild,
   updateGuildMemberCount, updateGuildIcon, updateGuildLeader,
   createGuildJoinRequest, approveGuildJoinRequest,
+  withdrawGuildJoinRequest,
   getGuildJoinRequests, getMyPendingGuildRequests,
   getGlobalGuildWeeklyRanking,
   getGuildLeader, transferGuildLeadership, kickGuildMember,
@@ -25,7 +26,7 @@ export {
 
 export {
   sendNotification, getMyNotifications, getAdminSentNotifications, getAdminOutreachHistory,
-  markNotificationRead, markNotificationsRead, markHeroMessageRead, sendAnnouncement,
+  markNotificationRead, markNotificationsRead, deleteNotification, markHeroMessageRead, sendAnnouncement,
   getGuestbook, writeGuestbook, deleteGuestbookEntry,
   findCommentProfileOwner, getComments, writeComment, editComment, deleteComment,
   toggleLike, getCheerStatus, getLikes, getUnseenCheers,

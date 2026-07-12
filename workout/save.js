@@ -22,6 +22,7 @@ import { hasLifeZoneDietActivity, hasLifeZoneRunningActivity, hasLifeZoneWorkout
 import { buildWorkoutSetTimeline, normalizeSetCompletedAt } from './timeline.js';
 import { assertRunningRouteReference } from '../data/running-route-storage-plan.js';
 import { buildRunningRoutePreview, normalizeRunningRoutePoints } from './running-route-store.js';
+import { getDietPhoto } from '../diet/photo-store.js';
 
 // 미래 날짜 저장 가드 — 어떤 경로로든 미래 날짜 쓰기 금지 (B-3).
 function _blockIfFutureDate() {
@@ -227,7 +228,7 @@ function _buildWorkoutPayload(cleanEx, isDietSuccess, persistedRoute) {
     restBetweenSets: _buildRestBetweenSets(cleanEx),
     wine_free:  w.wineFree,
     memo:       document.getElementById('wt-workout-memo')?.value.trim() || '',
-    workoutPhoto: window._mealPhotos?.workout || null,
+    workoutPhoto: getDietPhoto('workout'),
     gymId: w.currentGymId || null,
     pickerGymFilter: w.pickerGymFilter || null,
     routineMeta: w.routineMeta || null,
@@ -392,10 +393,10 @@ function _buildDietPayload(isDietSuccess) {
     dProtein:d.dProtein, dCarbs:d.dCarbs, dFat:d.dFat,
     sProtein:d.sProtein, sCarbs:d.sCarbs, sFat:d.sFat,
     bFoods:d.bFoods||[], lFoods:d.lFoods||[], dFoods:d.dFoods||[], sFoods:d.sFoods||[],
-    bPhoto: window._mealPhotos?.breakfast || null,
-    lPhoto: window._mealPhotos?.lunch     || null,
-    dPhoto: window._mealPhotos?.dinner    || null,
-    sPhoto: window._mealPhotos?.snack     || null,
+    bPhoto: getDietPhoto('breakfast'),
+    lPhoto: getDietPhoto('lunch'),
+    dPhoto: getDietPhoto('dinner'),
+    sPhoto: getDietPhoto('snack'),
     bEstimateMeta: d.bEstimateMeta || null,
     lEstimateMeta: d.lEstimateMeta || null,
     dEstimateMeta: d.dEstimateMeta || null,

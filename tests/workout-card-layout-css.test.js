@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 const css = await readFile(new URL('../style.css', import.meta.url), 'utf8');
 const workoutExercises = await readFile(new URL('../workout/exercises.js', import.meta.url), 'utf8');
+const setEditorJs = await readFile(new URL('../workout/set-editor.js', import.meta.url), 'utf8');
 
 function ruleBody(selector, source = css) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -158,8 +159,8 @@ test('workout number inputs are larger and guarded against keyboard focus scroll
   assert.match(workoutExercises, /function _captureWorkoutNumberInputRenderScroll/);
   assert.match(workoutExercises, /function _restoreWorkoutRenderScroll/);
   assert.match(workoutExercises, /function _parseWorkoutSetNumberInput/);
-  assert.match(addFn, /kg:\s*''/);
-  assert.match(addFn, /reps:\s*''/);
+  assert.match(setEditorJs, /kg:\s*''/);
+  assert.match(setEditorJs, /reps:\s*''/);
   assert.match(addFn, /_restoreWorkoutRenderScroll\(restoreScroll\)/);
   assert.match(updateFn, /sourceInput = null/);
   assert.match(updateFn, /_captureWorkoutNumberInputRenderScroll\(sourceInput\)/);

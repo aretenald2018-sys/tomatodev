@@ -1,10 +1,10 @@
 {
   "app": "tomatofarm",
-  "commit": "65e2cc9f7fd5855d2031ca8926da118a2d91adfd",
-  "shortCommit": "65e2cc9f7fd5",
+  "commit": "c29d0bf3d950e49c2234410b4279555ecc9233ae",
+  "shortCommit": "c29d0bf3d950",
   "branch": "main",
-  "deployedAt": "2026-07-12T02:10:19.525Z",
-  "cacheVersion": "tomatofarm-v20260712z1-gps-route-model-road-replay",
+  "deployedAt": "2026-07-12T09:12:41.395Z",
+  "cacheVersion": "tomatofarm-v20260712z14-refactor-data-boundary",
   "runId": null,
   "runAttempt": null
 }

@@ -14,6 +14,7 @@ import { SUBPATTERN_TO_MAJOR, calcBurnedKcal }       from './calc.js';
 import { getWorkoutSessions }                        from './workout/sessions.js';
 import { WORKOUT_PAYLOAD_KEYS, DIET_PAYLOAD_KEYS, SHARED_PAYLOAD_KEYS } from './workout/save-schema.js';
 import { listRunningActivities, summarizeRunningActivities } from './workout/running-analytics.js';
+import { exercisePerformanceStatus, lastRecordedValue, normalizeHealthValues, seriesDelta as selectSeriesDelta } from './stats/selectors.js';
 
 let _selectedExerciseId = null;
 let _selectedVolumeDate = null;
@@ -1465,26 +1466,11 @@ function _performanceMajor(major) {
 }
 
 function _seriesDelta(series) {
-  const values = series.map(p => Number(p.value)).filter(v => Number.isFinite(v) && v > 0);
-  if (values.length < 2) return { count: values.length, first: values[0] || 0, last: values.at(-1) || 0, pct: 0 };
-  const first = values[0];
-  const last = values.at(-1);
-  return { count: values.length, first, last, pct: first > 0 ? (last - first) / first * 100 : 0 };
+  return selectSeriesDelta(series);
 }
 
 function _performanceStatus(row) {
-  const vol = _seriesDelta(row.volumeSeries);
-  const e1rm = _seriesDelta(row.e1rmSeries);
-  if (row.sessionDays < 2 || (vol.count < 2 && e1rm.count < 2)) {
-    return { tone: 'check', label: '점검필요', note: '표본 부족' };
-  }
-  if ((e1rm.count >= 2 && e1rm.pct >= 2) || (vol.count >= 2 && vol.pct >= 10)) {
-    return { tone: 'growth', label: '성장중', note: e1rm.count >= 2 ? `1RM ${e1rm.pct >= 0 ? '+' : ''}${_fmt(e1rm.pct, 0)}%` : `볼륨 ${vol.pct >= 0 ? '+' : ''}${_fmt(vol.pct, 0)}%` };
-  }
-  if ((e1rm.count >= 2 && e1rm.pct <= -5) || (vol.count >= 2 && vol.pct <= -25)) {
-    return { tone: 'check', label: '점검필요', note: e1rm.count >= 2 ? `1RM ${_fmt(e1rm.pct, 0)}%` : `볼륨 ${_fmt(vol.pct, 0)}%` };
-  }
-  return { tone: 'steady', label: '유지중', note: vol.count >= 2 ? `볼륨 ${vol.pct >= 0 ? '+' : ''}${_fmt(vol.pct, 0)}%` : '변화 작음' };
+  return exercisePerformanceStatus(row, _fmt);
 }
 
 function _trendSparkline(series, color) {
@@ -2222,15 +2208,7 @@ function _buildHealthChartData(keys, cache, checkins) {
 }
 
 function _normalizeHealthValues(values) {
-  const finite = values.filter(value => value !== null && value !== undefined && Number.isFinite(Number(value))).map(Number);
-  if (!finite.length) return values.map(() => null);
-  const min = Math.min(...finite);
-  const max = Math.max(...finite);
-  const span = max - min;
-  return values.map(value => {
-    if (value === null || value === undefined || !Number.isFinite(Number(value))) return null;
-    return span <= 0 ? 50 : (Number(value) - min) / span * 100;
-  });
+  return normalizeHealthValues(values);
 }
 
 function _healthDataset(key, rawValues) {
@@ -2273,11 +2251,7 @@ function _healthChartSeriesWithData(data) {
 }
 
 function _lastHealthValue(values) {
-  for (let i = values.length - 1; i >= 0; i--) {
-    const value = values[i];
-    if (value !== null && value !== undefined) return value;
-  }
-  return null;
+  return lastRecordedValue(values);
 }
 
 function _formatHealthValue(key, value) {

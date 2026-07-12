@@ -12,6 +12,7 @@ import {
   clearWorkoutSetCompletedAt,
   syncWorkoutTimeline,
 } from './timeline.js';
+import { getDietPhoto } from '../diet/photo-store.js';
 
 // running 타이머가 "이 정도 이상 방치되면 freak-out" 가드 (24h). active_timer 의
 // startedAt 이 너무 오래되었다면 OS kill/탭 종료로 정산 못한 유령 세션으로 간주, 복원하지 않음.
@@ -233,7 +234,7 @@ function _activeWorkoutSessionDraftPayload(memo) {
     workoutTimeline: _cloneJson(w.workoutTimeline, null),
     wine_free: !!w.wineFree,
     memo,
-    workoutPhoto: (typeof window !== 'undefined' ? window._mealPhotos?.workout : null) || null,
+    workoutPhoto: getDietPhoto('workout'),
     gymId: w.currentGymId || null,
     pickerGymFilter: w.pickerGymFilter || null,
     routineMeta: _cloneJson(w.routineMeta, null),

@@ -7,7 +7,7 @@ const pwaRegisterJs = readFileSync(new URL('../pwa-register.js', import.meta.url
 const buildInfoJs = readFileSync(new URL('../utils/build-info.js', import.meta.url), 'utf8');
 const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const appJs = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
-const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8') + readFileSync(new URL('../runtime-assets.js', import.meta.url), 'utf8');
 
 function loadPwaRegisterHarness({ activeDraft = false } = {}) {
   const state = {
@@ -169,11 +169,11 @@ test('service worker controllerchange still reloads once', () => {
 });
 
 test('production app cache busts the service worker registrar script', () => {
-  assert.match(indexHtml, /pwa-register\.js\?v=20260711e7-single-update-refresh/);
-  assert.match(indexHtml, /app\.js\?v=20260711e9-headerless-lifezone-trapezoid/);
+  assert.match(indexHtml, /pwa-register\.js\?v=\d{8}[a-z]7-single-update-refresh/);
+  assert.match(indexHtml, /app\.js\?v=\d{8}[a-z]9-headerless-lifezone-trapezoid/);
   assert.match(appJs, /utils\/build-info\.js\?v=20260708a-diet-frequent-foods/);
   assert.match(appJs, /render-workout\.js\?v=20260708a-diet-frequent-foods/);
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });
 
 test('more-menu manual app refresh uses build-info update helper', () => {

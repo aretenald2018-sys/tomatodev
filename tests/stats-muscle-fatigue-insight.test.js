@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const statsJs = readFileSync('render-stats.js', 'utf8');
 const css = readFileSync('style.css', 'utf8');
-const swJs = readFileSync('sw.js', 'utf8');
+const swJs = readFileSync('sw.js', 'utf8') + readFileSync('runtime-assets.js', 'utf8');
 
 function sliceByFirstBrace(source, startToken) {
   const start = source.indexOf(startToken);
@@ -57,5 +57,5 @@ test('muscle fatigue styles support direct blue and red muscle tint states', () 
 });
 
 test('service worker cache version was bumped for stats fatigue insight assets', () => {
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });

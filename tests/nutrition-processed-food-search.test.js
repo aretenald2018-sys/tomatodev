@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const foodSearchApi = readFileSync('fatsecret-api.js', 'utf8');
 const nutritionFeature = readFileSync('feature-nutrition.js', 'utf8');
-const nutritionData = readFileSync('data.js', 'utf8');
+const nutritionData = readFileSync('data/data-api.js', 'utf8');
 const normalize = readFileSync('data/nutrition-normalize.js', 'utf8');
 
 test('processed-food lookup expands bilingual brand aliases and prioritizes manufacturer matches', () => {

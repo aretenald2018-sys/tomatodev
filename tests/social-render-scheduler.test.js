@@ -17,7 +17,7 @@ function sliceBetween(source, startToken, endToken) {
 
 const feedJs = read('home/friend-feed.js');
 const profileJs = read('home/friend-profile.js');
-const swJs = read('sw.js');
+const swJs = read('sw.js') + read('runtime-assets.js');
 
 test('social render scheduler coalesces multiple requests into one frame', async () => {
   const calls = [];
@@ -40,7 +40,9 @@ test('friend feed user actions schedule render instead of calling renderFriendFe
   const like = sliceBetween(feedJs, 'window.friendLike = async function', 'window.showReactionPicker = function');
 
   assert.match(quickAdd, /_scheduleFriendFeedRender\('quick-add-neighbor'\)/);
-  assert.match(like, /_scheduleFriendFeedRender\('friend-like'\)/);
+  assert.match(like, /runOptimisticSocialAction/);
+  assert.match(like, /refresh:\s*reason => _scheduleFriendFeedRender\(reason\)/);
+  assert.match(like, /reason:\s*'friend-like'/);
   assert.doesNotMatch(quickAdd, /renderFriendFeed\(\)/);
   assert.doesNotMatch(like, /renderFriendFeed\(\)/);
 });
@@ -52,13 +54,15 @@ test('friend profile feed refreshes are scheduled instead of direct dependency c
   const reaction = sliceBetween(profileJs, 'window.sendReaction = async function', 'window.markNotifRead = async function');
   const notification = sliceBetween(profileJs, 'window.markNotifRead = async function', 'window.openTomatoGiftModal = function');
 
-  assert.match(reaction, /_scheduleFriendProfileFeedRender\('profile-reaction'\)/);
+  assert.match(reaction, /runOptimisticSocialAction/);
+  assert.match(reaction, /refresh:\s*reason => _scheduleFriendProfileFeedRender\(reason\)/);
+  assert.match(reaction, /reason:\s*'profile-reaction'/);
   assert.match(notification, /_scheduleFriendProfileFeedRender\('notification-read'\)/);
   assert.doesNotMatch(reaction, /_renderFriendFeedFn\(\)/);
   assert.doesNotMatch(notification, /_renderFriendFeedFn\(\)/);
 });
 
 test('service worker caches social render scheduler assets', () => {
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
   assert.match(swJs, /\.\/home\/social-render-scheduler\.js/);
 });

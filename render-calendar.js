@@ -69,6 +69,7 @@ import {
   workoutRecordsForBenchmarkWeek,
 } from './workout/test-v2/board-core.js';
 import { buildWorkoutSetTimeline } from './workout/timeline.js';
+import { buildCalendarActivityRows } from './calendar/activity-model.js';
 
 // ═════════════════════════════════════════════════════════════
 // 뷰 상태
@@ -1324,107 +1325,7 @@ function _dayMetrics(key, day, plan, metrics, checkins) {
 }
 
 function _activityRows(day) {
-  const d = day || {};
-  const rows = [];
-
-  const runSummary = d.runRouteSummary && typeof d.runRouteSummary === 'object' ? d.runRouteSummary : {};
-  const runAccuracy = d.runGpsAccuracySummary || runSummary.gpsAccuracySummary || null;
-  const runDuration = _durationFromMinSec(d.runDurationMin, d.runDurationSec) || _num(runSummary.durationSec);
-  const runDistance = _num(d.runDistance) || _num(runSummary.distanceKm);
-  const runMemo = (d.runMemo || '').toString().trim();
-  const runSource = d.runSource || runSummary.source || 'manual';
-  const runMode = String(d.runMode || runSummary.activityMode || '').trim();
-  const runSpeedKmh = _num(runSummary.speedKmh) || (runDuration > 0 && runDistance > 0 ? runDistance / (runDuration / 3600) : 0);
-  const isManualCardio = runSource === 'manual-cardio' || runSummary.source === 'manual-cardio';
-  if (d.running || runDistance > 0 || runDuration > 0 || runMemo) {
-    rows.push({
-      key: 'running',
-      label: isManualCardio ? (runMode === 'walk' ? '걷기' : '유산소') : '러닝',
-      tone: 'run',
-      durationSec: runDuration,
-      distanceKm: runDistance,
-      speedKmh: runSpeedKmh,
-      avgPaceSecPerKm: _num(d.runAvgPaceSecPerKm) || _num(runSummary.avgPaceSecPerKm),
-      bestPaceSecPerKm: _num(runSummary.bestPaceSecPerKm),
-      calories: isTrustedRunningCalories(runSummary) ? _num(runSummary.calories) : 0,
-      calorieSource: isTrustedRunningCalories(runSummary) ? runSummary.calorieSource : null,
-      elevationGainM: Number.isFinite(Number(runSummary.elevationGainM)) ? Number(runSummary.elevationGainM) : null,
-      elevationLossM: Number.isFinite(Number(runSummary.elevationLossM)) ? Number(runSummary.elevationLossM) : null,
-      cadenceSpm: Number(runSummary.cadenceSpm) > 0 ? Number(runSummary.cadenceSpm) : null,
-      maxCadenceSpm: Number(runSummary.maxCadenceSpm) > 0 ? Number(runSummary.maxCadenceSpm) : null,
-      avgHeartRateBpm: Number(runSummary.avgHeartRateBpm) > 0 ? Number(runSummary.avgHeartRateBpm) : null,
-      maxHeartRateBpm: Number(runSummary.maxHeartRateBpm) > 0 ? Number(runSummary.maxHeartRateBpm) : null,
-      elapsedDurationSec: _num(runSummary.elapsedDurationSec) || runDuration,
-      splits: Array.isArray(runSummary.splits) ? runSummary.splits : [],
-      pointCount: _num(runSummary.pointCount) || (Array.isArray(d.runRoute) ? d.runRoute.length : 0),
-      segmentCount: _num(runSummary.segmentCount),
-      gapCount: _num(runSummary.gapCount),
-      interrupted: !!runSummary.interrupted || _num(runSummary.gapCount) > 0,
-      source: runSource,
-      activityMode: runMode,
-      route: Array.isArray(d.runRoute) ? d.runRoute : [],
-      routeRef: d.runRouteRef || null,
-      routeSummary: runSummary,
-      placeSummary: d.runPlaceSummary || null,
-      gpsAccuracySummary: runAccuracy,
-      main: [
-        runDistance > 0 ? `${_fmtNum(runDistance, 2)}km` : '',
-        _formatDuration(runDuration),
-      ].filter(Boolean).join(' · '),
-      detail: runMemo,
-    });
-  }
-
-  const swimDuration = _durationFromMinSec(d.swimDurationMin, d.swimDurationSec);
-  const swimDistance = _num(d.swimDistance);
-  const swimStroke = (d.swimStroke || '').toString().trim();
-  const swimMemo = (d.swimMemo || '').toString().trim();
-  if (d.swimming || swimDistance > 0 || swimDuration > 0 || swimStroke || swimMemo) {
-    rows.push({
-      key: 'swimming',
-      label: '수영',
-      tone: 'swim',
-      durationSec: swimDuration,
-      main: [
-        swimDistance > 0 ? `${_fmtNum(swimDistance, 1)}m` : '',
-        _formatDuration(swimDuration),
-        swimStroke,
-      ].filter(Boolean).join(' · '),
-      detail: swimMemo,
-    });
-  }
-
-  const cfDuration = _durationFromMinSec(d.cfDurationMin, d.cfDurationSec);
-  const cfWod = (d.cfWod || '').toString().trim();
-  const cfMemo = (d.cfMemo || '').toString().trim();
-  if (d.cf || cfDuration > 0 || cfWod || cfMemo) {
-    rows.push({
-      key: 'cf',
-      label: '크로스핏',
-      tone: 'cf',
-      durationSec: cfDuration,
-      main: [
-        _formatDuration(cfDuration),
-        cfWod,
-      ].filter(Boolean).join(' · '),
-      detail: cfMemo,
-    });
-  }
-
-  const stretchDuration = Math.max(0, Math.round(_num(d.stretchDuration) * 60));
-  const stretchMemo = (d.stretchMemo || '').toString().trim();
-  if (d.stretching || stretchDuration > 0 || stretchMemo) {
-    rows.push({
-      key: 'stretching',
-      label: '스트레칭',
-      tone: 'stretch',
-      durationSec: stretchDuration,
-      main: _formatDuration(stretchDuration),
-      detail: stretchMemo,
-    });
-  }
-
-  return rows;
+  return buildCalendarActivityRows(day, { isTrustedRunningCalories });
 }
 
 const FALLBACK_MAJOR_LABELS = {

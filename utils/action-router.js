@@ -55,10 +55,10 @@ export function hasAction(name) {
   return _handlers.has(name);
 }
 
-function _onClick(e) {
-  const el = e.target?.closest?.('[data-action]');
+function _dispatch(e, attribute) {
+  const el = e.target?.closest?.(`[${attribute}]`);
   if (!el) return;
-  const action = el.dataset.action;
+  const action = el.getAttribute(attribute);
   if (!action) return;
   // prefix 없는 액션은 라우터 통과 — 로컬 핸들러(querySelector 등) 영역 보장.
   if (!_isNamespaced(action)) return;
@@ -66,18 +66,25 @@ function _onClick(e) {
   if (!handler) return; // 등록 안 된 namespaced 액션도 통과 (기존 onclick 과 공존)
   const arg = el.dataset.actionArg;
   try {
-    handler(el, e, arg);
+    const result = handler(el, e, arg);
+    if (result && typeof result.catch === 'function') {
+      result.catch((err) => console.error(`[action-router] ${action} handler error:`, err));
+    }
   } catch (err) {
     console.error(`[action-router] ${action} handler error:`, err);
   }
 }
 
+function _onClick(e) { _dispatch(e, 'data-action'); }
+function _onChange(e) { _dispatch(e, 'data-change-action'); }
+function _onKeydown(e) { _dispatch(e, 'data-keydown-action'); }
+function _onDoubleClick(e) { _dispatch(e, 'data-dblclick-action'); }
+
 export function initActionRouter() {
   if (_initialized) return;
   _initialized = true;
   document.addEventListener('click', _onClick);
+  document.addEventListener('change', _onChange);
+  document.addEventListener('keydown', _onKeydown);
+  document.addEventListener('dblclick', _onDoubleClick);
 }
-
-// 비-모듈 호출부 호환
-window.registerAction = registerAction;
-window.registerActions = registerActions;

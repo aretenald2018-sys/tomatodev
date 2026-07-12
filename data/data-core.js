@@ -11,6 +11,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 import { getFunctions } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-functions.js";
 import { CONFIG } from '../config.js';
+import { generateId } from '../utils/id.js';
 
 // ── Firebase 초기화 ─────────────────────────────────────────────
 const app = initializeApp(CONFIG.FIREBASE);
@@ -296,4 +297,4 @@ export function _migrateFromLS(key, fallback) {
 }
 
 // ── ID 생성 ─────────────────────────────────────────────────────
-export function _generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
+export const _generateId = generateId;

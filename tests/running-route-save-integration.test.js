@@ -158,6 +158,7 @@ export function normalizeSetCompletedAt(value) { return value ?? null; }
       ['../home/life-zone-state.js', lifeZoneStub],
       ['./timeline.js', timelineStub],
       ['../data/running-route-storage-plan.js', repoUrl('data/running-route-storage-plan.js')],
+      ['../diet/photo-store.js', repoUrl('diet/photo-store.js')],
     ];
     for (const [specifier, replacement] of replacements) {
       saveSource = replaceImport(saveSource, specifier, replacement);
@@ -450,10 +451,11 @@ test('malformed preview ref fails before route or day persistence', async () => 
 
 test('general workout load restores preview plus ref without eager full-route hydration', () => {
   const loadSource = readFileSync(path.join(repoRoot, 'workout/load.js'), 'utf8');
+  const hydrationSource = readFileSync(path.join(repoRoot, 'workout/session-hydration.js'), 'utf8');
   const dataLoadSource = readFileSync(path.join(repoRoot, 'data/data-load.js'), 'utf8');
 
-  assert.match(loadSource, /route:\s*Array\.isArray\(workoutSource\.runRoute\)\s*\?\s*workoutSource\.runRoute\s*:\s*\[\]/);
-  assert.match(loadSource, /routeRef:\s*workoutSource\.runRouteRef\s*\|\|\s*null/);
+  assert.match(hydrationSource, /route:\s*Array\.isArray\(source\.runRoute\)\s*\?\s*source\.runRoute\s*:\s*\[\]/);
+  assert.match(hydrationSource, /routeRef:\s*source\.runRouteRef\s*\|\|\s*null/);
   assert.doesNotMatch(loadSource, /loadRunningRoute/);
   assert.match(dataLoadSource, /'runRoute',\s*'runRouteRef',\s*'runRouteSummary'/);
 });

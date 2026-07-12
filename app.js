@@ -29,6 +29,15 @@ import {
 } from './navigation.js';
 import { initUxPolish } from './utils/ux-polish.js';
 import { initActionRouter } from './utils/action-router.js';
+import { registerStaticActions } from './app/static-actions.js';
+import { installAppCompatibilityBridge } from './app/compatibility-bridge.js';
+import { loadLazyModule } from './app/lazy-loader.js';
+import { getTabDefinition, isRegisteredTab } from './app/tab-registry.js';
+import {
+  openModal as _openModal,
+  closeModal as _closeModal,
+  initOverlayStack,
+} from './app/overlay-stack.js';
 import { initBuildInfoSurface } from './utils/build-info.js?v=20260708a-diet-frequent-foods';
 import {
   enableWorkoutPwaHistory,
@@ -54,11 +63,7 @@ import {
 } from './render-workout.js?v=20260708a-diet-frequent-foods';
 
 // ── 레이지 로딩 탭 캐시 ──
-const _lazyModules = {};
-async function _lazy(name, path) {
-  if (!_lazyModules[name]) _lazyModules[name] = await import(path);
-  return _lazyModules[name];
-}
+const _lazy = loadLazyModule;
 
 function _withTimeout(promise, ms, label) {
   let timer = null;
@@ -108,12 +113,12 @@ function _hideTabSkeleton(tabId) {
 }
 
 // ── 레이지 프록시: 탭 전환 시 모듈 로드, window.* 자동 등록 ──
-async function _lazyRenderStats()   { _showTabSkeleton('tab-stats');   try { const m = await _lazy('stats',   './render-stats.js');              m.renderStats();   return m; } finally { _hideTabSkeleton('tab-stats'); } }
-async function _lazyRenderAdmin()   { _showTabSkeleton('tab-admin');   try { const m = await _lazy('admin',   './render-admin.js?v=20260410e');  m.renderAdmin();   return m; } finally { _hideTabSkeleton('tab-admin'); } }
-async function _lazyRenderCooking() { _showTabSkeleton('tab-cooking'); try { const m = await _lazy('cooking', './render-cooking.js');            m.renderCooking(); return m; } finally { _hideTabSkeleton('tab-cooking'); } }
-async function _lazyRenderCalendar(){ _showTabSkeleton('tab-calendar');try { const m = await _lazy('calendar',  './render-calendar.js');           m.renderCalendar();return m; } finally { _hideTabSkeleton('tab-calendar'); } }
-async function _lazyRenderWorkoutCalendarHome(){ const m = await _lazy('calendar', './render-calendar.js'); m.renderWorkoutCalendarHome?.(); return m; }
-import { loadAndInjectModals } from './modal-manager.js';
+async function _lazyRenderStats()   { const cfg = getTabDefinition('stats');    _showTabSkeleton(cfg.panelId); try { const m = await _lazy(cfg.id, cfg.module); m.renderStats(); return m; } finally { _hideTabSkeleton(cfg.panelId); } }
+async function _lazyRenderAdmin()   { const cfg = getTabDefinition('admin');    _showTabSkeleton(cfg.panelId); try { const m = await _lazy(cfg.id, cfg.module); m.renderAdmin(); return m; } finally { _hideTabSkeleton(cfg.panelId); } }
+async function _lazyRenderCooking() { const cfg = getTabDefinition('cooking');  _showTabSkeleton(cfg.panelId); try { const m = await _lazy(cfg.id, cfg.module); m.renderCooking(); return m; } finally { _hideTabSkeleton(cfg.panelId); } }
+async function _lazyRenderCalendar(){ const cfg = getTabDefinition('calendar'); _showTabSkeleton(cfg.panelId); try { const m = await _lazy(cfg.id, cfg.module); m.renderCalendar(); return m; } finally { _hideTabSkeleton(cfg.panelId); } }
+async function _lazyRenderWorkoutCalendarHome(){ const cfg = getTabDefinition('calendar'); const m = await _lazy(cfg.id, cfg.module); m.renderWorkoutCalendarHome?.(); return m; }
+import { ensureModal, loadAndInjectModals } from './modal-manager.js';
 
 // ── 분리된 모달 핸들러 import ──────────────────────────────────
 import {
@@ -132,10 +137,12 @@ async function initializeApp() {
   // 지연돼도 전역 action/router 초기화가 영구히 멈추지 않도록 제한한다.
   await _withTimeout(loadAndInjectModals(), 8000, 'post-load modal initialization');
   initWorkoutSystemBack();
+  initOverlayStack();
 
   // 전역 data-action 이벤트 위임 라우터 (R0 인프라)
   // 기존 onclick 과 공존. 새 UI는 registerAction 으로 등록 → window.* 점진 제거.
   try { initActionRouter(); } catch (e) { console.warn('[app] action router init 실패:', e); }
+  try { registerStaticActions(); } catch (e) { console.warn('[app] static actions init 실패:', e); }
 
   // Phase D/E UX 폴리시 (오프라인 배너 / 포커스 트랩 / aria-label)
   try { initUxPolish(); } catch (e) { console.warn('[app] UX polish init 실패:', e); }
@@ -149,37 +156,7 @@ async function initializeApp() {
 
 }
 
-// ── 모달 유틸리티 ────────────────────────────────────────────────
-let _openModalStack = [];
-
-function _openModal(id) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.classList.add('open');
-  el.setAttribute('aria-hidden', 'false');
-  _openModalStack.push(id);
-  document.body.style.overflow = 'hidden';
-}
-function _closeModal(id, e) {
-  if (e && e.target !== document.getElementById(id)) return;
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.classList.remove('open');
-  el.setAttribute('aria-hidden', 'true');
-  _openModalStack = _openModalStack.filter(x => x !== id);
-  if (_openModalStack.length === 0) document.body.style.overflow = '';
-}
-
-// ESC키로 최상위 모달 닫기
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && _openModalStack.length > 0) {
-    const topId = _openModalStack[_openModalStack.length - 1];
-    _closeModal(topId);
-  }
-});
-// feature 모듈에서 사용할 수 있도록 window에 노출
-window._openModal = _openModal;
-window._closeModal = _closeModal;
+// feature 모듈 호환 bridge. 신규 코드는 app/overlay-stack.js를 직접 import한다.
 
 let _lifeZoneNpcQuestEventBound = false;
 function _bindLifeZoneNpcQuestEvent() {
@@ -189,14 +166,17 @@ function _bindLifeZoneNpcQuestEvent() {
     const npc = event?.detail?.npc;
     const modalByNpc = {
       trainer: {
+        modalId: 'trainer-quest-modal',
         opener: 'openTrainerQuestModal',
         label: '트레이너'
       },
       miranda: {
+        modalId: 'miranda-quest-modal',
         opener: 'openMirandaQuestModal',
         label: '미란다'
       },
       consultingChief: {
+        modalId: 'consulting-chief-quest-modal',
         opener: 'openConsultingChiefQuestModal',
         label: '상담실장'
       }
@@ -205,7 +185,7 @@ function _bindLifeZoneNpcQuestEvent() {
     if (!modalConfig) return;
     event.preventDefault?.();
     try {
-      await loadAndInjectModals();
+      await ensureModal(modalConfig.modalId);
       const opener = window[modalConfig.opener];
       if (typeof opener === 'function') {
         opener();
@@ -244,7 +224,6 @@ function _bindRunningLiveEvent() {
 
 // ── 탭 전환 ──────────────────────────────────────────────────────
 let _currentTab = 'home';
-window._getCurrentTab = () => _currentTab;
 
 function _syncNavigationForCurrentRole() {
   const adminOnlyMode = isAdmin();
@@ -276,7 +255,7 @@ function _syncNavigationForCurrentRole() {
   if (moreMenu && adminOnlyMode) moreMenu.style.display = 'none';
 }
 
-const APP_SHELL_ACTION_SCOPE = '#notif-center, #notif-center-backdrop, #tab-nav, #more-menu, #tab-settings-modal';
+const APP_SHELL_ACTION_SCOPE = '#notif-center, #notif-center-backdrop, #tab-nav, #more-menu, #tab-settings-modal, #weekly-streak-grid';
 
 function _closeMoreMenu() {
   const menu = document.getElementById('more-menu');
@@ -333,6 +312,9 @@ function _runAppShellAction(action, control, event) {
       break;
     case 'switch-tab':
       if (tab) void switchTab(tab);
+      break;
+    case 'open-workout-date':
+      openWorkoutTab(control.dataset.year, control.dataset.month, control.dataset.day);
       break;
     case 'toggle-more-menu':
       _runWindowAction('toggleMoreMenu');
@@ -527,8 +509,6 @@ enableWorkoutPwaHistory({
   getActiveTab: () => _currentTab,
   handleOverlayBack: _handleWorkoutOverlayBack,
 });
-window.wtOpenWorkoutDaySheet = openWorkoutDaySheetFromAction;
-window.wtHandleWorkoutBack = () => _handleWorkoutOverlayBack() || handleWorkoutBack({ activeTab: _currentTab, preferHistory: true });
 
 let _workoutSystemBackBound = false;
 function initWorkoutSystemBack() {
@@ -547,6 +527,11 @@ setTimeout(initWorkoutPullBackGesture, 0);
 
 async function switchTab(tab, options = {}) {
   if (isAdmin() && tab !== 'admin') tab = 'admin';
+  if (!isRegisteredTab(tab)) {
+    console.warn(`[app] unknown tab ignored: ${tab}`);
+    return false;
+  }
+  const tabDefinition = getTabDefinition(tab);
   _currentTab = tab;
   document.body?.classList.toggle('wt-workout-tab-active', tab === 'workout');
   trackEvent('nav', 'tab_visit', { tab });
@@ -555,7 +540,7 @@ async function switchTab(tab, options = {}) {
     b.classList.toggle('active', b.dataset.tab === tab)
   );
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  const panel = document.getElementById('tab-' + tab);
+  const panel = document.getElementById(tabDefinition.panelId);
   if (panel) panel.classList.add('active');
 
   // 코어 탭 (즉시 로드)
@@ -610,6 +595,7 @@ async function switchTab(tab, options = {}) {
   if (tab === 'cooking')  await _lazyRenderCooking();
   if (tab === 'calendar') await _lazyRenderCalendar();
   if (tab === 'workout') await _lazyRenderWorkoutCalendarHome();
+  return true;
 }
 
 async function renderAll() {
@@ -693,7 +679,7 @@ async function _showPostLoginExperience({ previousLastLoginAt, runningSessionRes
   if (previousLastLoginAt && !priorityPopupShown) {
     const hoursSinceLogin = (Date.now() - previousLastLoginAt) / 3600000;
     priorityPopupShown = await _withTimeout(
-      showWelcomeBackPopup(hoursSinceLogin),
+      showWelcomeBackPopup(hoursSinceLogin, { onStartWorkout: () => switchTab('workout') }),
       APP_BOOT_AUXILIARY_TIMEOUT_MS,
       'welcome back data'
     );
@@ -890,43 +876,46 @@ init();
 _initDietInputButtons();
 
 // ── window 등록 ──────────────────────────────────────────────────
-window.renderAll                = renderAll;
-window.__startTomatoUserSession = startTomatoUserSession;
-window.renderHome               = renderHome;
-window.switchTab                = switchTab;
-window.showToast                = showToast;
-window.getDietRec               = getDietRec;
-window.getWorkoutRec            = getWorkoutRec;
-// 운동·식단 탭
-window.openWorkoutTab           = openWorkoutTab;
-window.openSheet                = openWorkoutTab;
-window.changeWorkoutDate        = changeWorkoutDate;
-window.goToTodayWorkout         = goToTodayWorkout;
-window.saveWorkoutDay           = saveWorkoutDay;
-window._wtExports = { loadWorkoutDate };
-// 요리 탭 (레이지)
-window.openCookingModal         = async (...a) => (await _lazy('cooking', './render-cooking.js')).openCookingModal(...a);
-window.closeCookingModal        = async (...a) => (await _lazy('cooking', './render-cooking.js')).closeCookingModal(...a);
-window.saveCookingFromModal     = async (...a) => (await _lazy('cooking', './render-cooking.js')).saveCookingFromModal(...a);
-window.deleteCookingFromModal   = async (...a) => (await _lazy('cooking', './render-cooking.js')).deleteCookingFromModal(...a);
-window.onCookingPhotoInput      = async (...a) => (await _lazy('cooking', './render-cooking.js')).onCookingPhotoInput(...a);
-// 목표
-window.openGoalModal            = openGoalModal;
-window.closeGoalModal           = closeGoalModal;
-window.saveGoalFromModal        = saveGoalFromModal;
-window.deleteGoalItem           = deleteGoalItem;
-window.analyzeGoalFeasibility   = analyzeGoalFeasibilityHandler;
-window.toggleGoalCondition      = toggleGoalCondition;
-// 퀘스트
-window.openQuestModal           = openQuestModal;
-window.closeQuestModal          = closeQuestModal;
-window.saveQuestFromModal       = saveQuestFromModal;
-window.openQuestEditModal       = openQuestEditModal;
-window.closeQuestEditModal      = closeQuestEditModal;
-window.saveQuestEdit            = saveQuestEdit;
-window.deleteQuestItem          = deleteQuestItem;
-window.toggleQuestCheck         = toggleQuestCheck;
-window.onQuestAutoChange        = onQuestAutoChange;
+installAppCompatibilityBridge({
+  _openModal,
+  _closeModal,
+  _getCurrentTab: () => _currentTab,
+  wtOpenWorkoutDaySheet: openWorkoutDaySheetFromAction,
+  wtHandleWorkoutBack: () => _handleWorkoutOverlayBack() || handleWorkoutBack({ activeTab: _currentTab, preferHistory: true }),
+  renderAll,
+  __startTomatoUserSession: startTomatoUserSession,
+  renderHome,
+  switchTab,
+  showToast,
+  getDietRec,
+  getWorkoutRec,
+  openWorkoutTab,
+  openSheet: openWorkoutTab,
+  changeWorkoutDate,
+  goToTodayWorkout,
+  saveWorkoutDay,
+  _wtExports: { loadWorkoutDate },
+  openCookingModal: async (...args) => (await _lazy('cooking', './render-cooking.js')).openCookingModal(...args),
+  closeCookingModal: async (...args) => (await _lazy('cooking', './render-cooking.js')).closeCookingModal(...args),
+  saveCookingFromModal: async (...args) => (await _lazy('cooking', './render-cooking.js')).saveCookingFromModal(...args),
+  deleteCookingFromModal: async (...args) => (await _lazy('cooking', './render-cooking.js')).deleteCookingFromModal(...args),
+  onCookingPhotoInput: async (...args) => (await _lazy('cooking', './render-cooking.js')).onCookingPhotoInput(...args),
+  openGoalModal,
+  closeGoalModal,
+  saveGoalFromModal,
+  deleteGoalItem,
+  analyzeGoalFeasibility: analyzeGoalFeasibilityHandler,
+  toggleGoalCondition,
+  openQuestModal,
+  closeQuestModal,
+  saveQuestFromModal,
+  openQuestEditModal,
+  closeQuestEditModal,
+  saveQuestEdit,
+  deleteQuestItem,
+  toggleQuestCheck,
+  onQuestAutoChange,
+});
 
 // ── 앱 초기화 ────────────────────────────────────────────────
 window.addEventListener('load', initializeApp);

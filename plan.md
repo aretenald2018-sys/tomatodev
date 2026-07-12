@@ -1,5 +1,22 @@
 # Project Plan
 
+> 상태: 아래 내용은 과거 기능 개발 이력이다. 앱 전체 리팩토링의 현재 실행 계획과 완료 게이트는 `APP_REFACTOR_PLAN.md`가 기준이다.
+> 현재 최종 검증 대상은 localhost가 아니라 `https://aretenald2018-sys.github.io/tomatofarm/` production Pages이며, `origin/main` 배포 커밋을 `npm.cmd run verify:deploy`로 확인한다.
+
+## 2026-07-12 앱 전체 리팩토링
+
+- [x] Phase 0 기준선·회귀/아키텍처 gate
+- [x] Phase 1 data facade/repository/Firebase 경계
+- [x] Phase 2 app shell/action router/modal stack
+- [x] Phase 3 운동·러닝·프로그램 domain
+- [x] Phase 4 식단·영양·AI pipeline
+- [x] Phase 5 홈·소셜·캘린더·통계·관리자 read/presentation model
+- [x] Phase 6 design token/primitive/접근성·modal focus
+- [x] Phase 7 runtime asset manifest, Wear v1, Functions validation
+- [ ] Phase 8 production commit/deploy/UI 최종 검증
+
+상세 설계와 완료 gate는 `APP_REFACTOR_PLAN.md`를 따른다. 테스트 프레임워크는 별도 Vitest 없이 `node:test`로 공식화했다.
+
 ## 작업 진행 방법
 
 ### "go" 명령 시

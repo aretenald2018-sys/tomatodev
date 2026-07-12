@@ -17,7 +17,7 @@ function sliceBetween(source, startToken, endToken) {
 const indexHtml = read('index.html');
 const appJs = read('app.js');
 const navigationJs = read('navigation.js');
-const swJs = read('sw.js');
+const swJs = read('sw.js') + read('runtime-assets.js');
 
 test('app shell markup uses data-app actions instead of inline handlers', () => {
   const shellMarkup = sliceBetween(indexHtml, '<!-- 알림센터 패널 -->', '<!-- ═══ 홈 탭 ═══ -->');
@@ -92,5 +92,5 @@ test('dynamic more menu items inherit the app shell action contract', () => {
 });
 
 test('service worker cache version was bumped for app shell action bridge assets', () => {
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });

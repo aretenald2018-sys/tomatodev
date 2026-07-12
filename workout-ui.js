@@ -12,6 +12,7 @@ import {
   wtStartWorkoutTimer, wtRestTimerShowIdle, wtRestTimerHideIdle,
   wtOpenManualCardioInput,
 } from './render-workout.js?v=20260515v6';
+import { getDietPhotos, removeDietPhoto, setDietPhoto } from './diet/photo-store.js';
 
 // ── 운동 유형 단일 탭 ────────────────────────────────────────────
 // 이전: 복수 선택(Set). 현재: 한 번에 한 탭만 노출. 기록은 각 탭 독립 저장.
@@ -56,7 +57,7 @@ function _applyActive(type) {
   document.getElementById('wt-save-section')?.classList.add('wt-open');
 }
 
-window.wtSwitchType = function(type) {
+export function wtSwitchType(type) {
   if (!_isKnownType(type)) return;
   const isReclick = _wtActiveType === type;
   _wtActiveType = type;
@@ -93,7 +94,8 @@ window.wtSwitchType = function(type) {
 };
 
 // 레거시 호환 — 기존 index.html의 onclick이 wtToggleType을 부를 수 있으니 alias
-window.wtToggleType = window.wtSwitchType;
+window.wtSwitchType = wtSwitchType;
+window.wtToggleType = wtSwitchType;
 
 window._wtSetActiveType = function(type) {
   if (!_isKnownType(type)) type = 'gym';
@@ -121,17 +123,16 @@ window._wtRestoreTypes = function(types) {
 window.wtToggleWineFree         = wtToggleWineFree;
 
 // ── 식단/운동 사진 업로드 ─────────────────────────────────────────
-window._mealPhotos = {};
-window.uploadMealPhoto = async function(meal, input) {
+export async function uploadMealPhoto(meal, input) {
   const file = input.files?.[0];
   if (!file) return;
   const { imageToBase64 } = await import('./data.js');
-  const cnt = Object.values(window._mealPhotos).filter(Boolean).length;
+  const cnt = Object.values(getDietPhotos()).filter(Boolean).length;
   const maxDim = cnt <= 1 ? 800 : cnt <= 2 ? 720 : 640;
   const quality = cnt <= 1 ? 0.75 : cnt <= 2 ? 0.7 : 0.65;
   try {
     const b64 = await imageToBase64(file, maxDim, quality);
-    window._mealPhotos[meal] = 'data:image/jpeg;base64,' + b64;
+    setDietPhoto(meal, 'data:image/jpeg;base64,' + b64);
     const { _renderMealPhotos } = await import('./render-workout.js?v=20260515v6');
     _renderMealPhotos();
     if (meal === 'workout') {
@@ -144,8 +145,8 @@ window.uploadMealPhoto = async function(meal, input) {
   } catch(e) { console.error('Photo upload error:', e); }
   input.value = '';
 };
-window.removeMealPhoto = async function(meal) {
-  delete window._mealPhotos[meal];
+export async function removeMealPhoto(meal) {
+  removeDietPhoto(meal);
   const { _renderMealPhotos } = await import('./render-workout.js?v=20260515v6');
   _renderMealPhotos();
   if (meal === 'workout') {
@@ -155,25 +156,24 @@ window.removeMealPhoto = async function(meal) {
     const { _autoSaveDiet } = await import('./workout/save.js');
     _autoSaveDiet({ meal }).catch(e => console.error('Auto-save after meal photo remove:', e));
   }
-};
+}
 
 // ── AI 추정 전용 업로드 ─────────────────────────────────────────
 // 일반 사진 업로드와 분리. AI 버튼을 통해서만 트리거.
 // 흐름: 파일 → base64 → 사진 표시 + 백그라운드 AI 분석 배너
-window.uploadMealPhotoAI = async function(meal, input) {
+export async function uploadMealPhotoAI(meal, input) {
   const file = input.files?.[0];
   if (!file) return;
   try {
     const { imageToBase64 } = await import('./data.js');
-    const cnt = Object.values(window._mealPhotos || {}).filter(Boolean).length;
+    const cnt = Object.values(getDietPhotos()).filter(Boolean).length;
     const maxDim = cnt <= 1 ? 800 : cnt <= 2 ? 720 : 640;
     const quality = cnt <= 1 ? 0.75 : cnt <= 2 ? 0.7 : 0.65;
     const b64 = await imageToBase64(file, maxDim, quality);
     const dataUrl = 'data:image/jpeg;base64,' + b64;
 
     // 1) 사진은 바로 끼니에 표시 (일반 사진 업로드와 동일한 시각 UX)
-    window._mealPhotos = window._mealPhotos || {};
-    window._mealPhotos[meal] = dataUrl;
+    setDietPhoto(meal, dataUrl);
     const { _renderMealPhotos } = await import('./render-workout.js?v=20260515v6');
     _renderMealPhotos();
 
@@ -282,14 +282,14 @@ async function _applyBulkMealEstimate(meal, estimate) {
   _renderDietResults();
 }
 
-window.openBulkMealAI = function() {
+export function openBulkMealAI() {
   const panel = document.getElementById('diet-bulk-ai-panel');
   if (!panel) return;
   panel.hidden = !panel.hidden;
   if (!panel.hidden) _setBulkAIStatus('');
 };
 
-window.toggleBulkMealAIChip = function(chip) {
+export function toggleBulkMealAIChip(chip) {
   const meal = chip?.dataset?.meal;
   if (!_BULK_AI_LABELS[meal]) return;
   if (_bulkAISelection.includes(meal)) {
@@ -300,7 +300,7 @@ window.toggleBulkMealAIChip = function(chip) {
   _syncBulkAIChips();
 };
 
-window.runBulkMealAIUpload = async function(input) {
+export async function runBulkMealAIUpload(input) {
   const files = Array.from(input.files || []);
   const meals = [..._bulkAISelection];
   if (!meals.length) {
@@ -327,7 +327,6 @@ window.runBulkMealAIUpload = async function(input) {
     const { S } = await import('./workout/state.js');
     const startDateKey = _bulkDateKeyFromState(S);
 
-    window._mealPhotos = window._mealPhotos || {};
     for (let i = 0; i < meals.length; i++) {
       const meal = meals[i];
       if (startDateKey && startDateKey !== _bulkDateKeyFromState(S)) {
@@ -336,7 +335,7 @@ window.runBulkMealAIUpload = async function(input) {
       _setBulkAIStatus(`${_BULK_AI_LABELS[meal]} 분석 중 (${i + 1}/${meals.length})`, 'info');
       const b64 = await imageToBase64(files[i], 800, 0.75);
       const dataUrl = 'data:image/jpeg;base64,' + b64;
-      window._mealPhotos[meal] = dataUrl;
+      setDietPhoto(meal, dataUrl);
       _renderMealPhotos();
       const estimate = await runAIEstimate(b64);
       if (startDateKey && startDateKey !== _bulkDateKeyFromState(S)) {
@@ -372,7 +371,7 @@ window.openMealPhotoLightbox = function(src) {
 
 // ── 식단 아코디언/스킵 ──────────────────────────────────────────
 window.wtToggleMealSkipped      = wtToggleMealSkipped;
-window.toggleDietMealRow = function(headerEl) {
+export function toggleDietMealRow(headerEl) {
   const row = headerEl.closest('.diet-toss-row');
   if (!row) return;
   const body = row.querySelector('.diet-toss-body');
@@ -384,7 +383,7 @@ window.toggleDietMealRow = function(headerEl) {
   }
 };
 
-window.wtSkipMeal = function(meal) {
+export function wtSkipMeal(meal) {
   const btn = document.getElementById(`wt-${meal}-skipped`);
   const wasActive = btn?.classList.contains('active');
   wtToggleMealSkipped(meal);
@@ -399,6 +398,14 @@ window.wtSkipMeal = function(meal) {
 
 // ── 운동 종목 편집 ──────────────────────────────────────────────
 Object.assign(window, {
+  uploadMealPhoto,
+  uploadMealPhotoAI,
+  removeMealPhoto,
+  openBulkMealAI,
+  toggleBulkMealAIChip,
+  runBulkMealAIUpload,
+  toggleDietMealRow,
+  wtSkipMeal,
   wtOpenExercisePicker,
   wtCloseExercisePicker,
   wtOpenExerciseEditor,

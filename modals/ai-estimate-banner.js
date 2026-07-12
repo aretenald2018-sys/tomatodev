@@ -13,6 +13,7 @@
 
 import { applyPortionScale, excludeItems, runAIEstimate } from '../workout/ai-estimate.js';
 import { showToast } from '../home/utils.js';
+import { removeDietPhoto } from '../diet/photo-store.js';
 
 // 상태 보관 — meal별
 // 구조: { [meal]: {
@@ -355,7 +356,7 @@ export async function dismiss(meal, options = {}) {
   if (host) host.innerHTML = '';
 
   if (options.removePhoto) {
-    if (window._mealPhotos) delete window._mealPhotos[meal];
+    removeDietPhoto(meal);
     try {
       const { _renderMealPhotos } = await import('../workout/render.js');
       _renderMealPhotos();

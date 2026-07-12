@@ -7,15 +7,12 @@
 //   - 저장 시 servingRef 메타 포함 → 나중에 재로드해도 원 단위/배수 복원 가능
 // ================================================================
 
-import { wtAddFoodItem } from '../render-workout.js';
+import { addMealFood } from '../diet/feature.js';
 import { saveNutritionItem } from '../data.js';
 import { convertNutrition } from '../calc.js';
-import {
-  normalizeFromCsv,
-  normalizeFromLocalDB,
-  normalizeFromTopLevel,
-  serializeForStorage,
-} from '../data/nutrition-normalize.js';
+import { serializeForStorage } from '../data/nutrition-normalize.js';
+import { toCanonicalNutritionItem } from '../diet/nutrition-item.js';
+import { getNutritionSearchMeal } from '../diet/selection.js';
 
 // ── 내부 상태 ──────────────────────────────────────────────────
 // _current 는 canonical NutritionItem. UI에서 수정되는 선택 서빙/배수/커스텀 중량은 별도.
@@ -90,26 +87,6 @@ export const WEIGHT_MODAL_HTML = `
 window._nutritionWeightItem = null;
 
 // ── 아이템을 canonical로 정규화 (legacy / csv / raw / gov / ocr 공통) ──
-function _toCanonical(item) {
-  if (!item) return null;
-  // 이미 canonical
-  if (item.base && Array.isArray(item.servings) && item.servings.length) {
-    return item;
-  }
-  // CSV 스타일 (top-level energy 필드) — fatsecret-api.js searchCSVFood
-  if (item.energy != null && item.nutrition == null) {
-    return normalizeFromCsv(item);
-  }
-  // raw-ingredients.js / feature-nutrition.js mapItem — top-level kcal/protein/fat/carbs
-  // (예: { id, name, unit:'100g', defaultWeight, kcal, protein, fat, carbs, _source, _grp })
-  // 과거 이 경로가 normalizeFromLocalDB로 빠져 dbItem.nutrition || {} 로 전 영양소가 0이 됐음.
-  if (item.nutrition == null && (item.kcal != null || item.protein != null || item.carbs != null)) {
-    return normalizeFromTopLevel(item);
-  }
-  // 레거시 로컬 DB / 저장 아이템 (unit/servingSize/nutrition)
-  return normalizeFromLocalDB(item);
-}
-
 // ── 현재 선택된 실 중량(g 또는 ml) 계산 ─────────────────────────
 function _computeSelectedGrams() {
   if (!_current) return 0;
@@ -128,7 +105,7 @@ function _baseUnitLabel() {
 
 // ── modal open ─────────────────────────────────────────────────
 export function openNutritionWeightModal(item) {
-  const canonical = _toCanonical(item);
+  const canonical = toCanonicalNutritionItem(item);
   if (!canonical) {
     console.error('[nutrition-weight-modal] 정규화 실패:', item);
     return;
@@ -308,7 +285,8 @@ export function closeNutritionWeightModal(event) {
 
 // ── 저장 (식단에 추가 + 최근 항목 DB) ──────────────────────────
 export function confirmNutritionItemWithWeight() {
-  if (!_current || !window._nutritionSearchMeal) return;
+  const mealId = getNutritionSearchMeal();
+  if (!_current || !mealId) return;
 
   const grams = _computeSelectedGrams();
   if (!(grams > 0)) {
@@ -316,7 +294,6 @@ export function confirmNutritionItemWithWeight() {
     return;
   }
   const out = convertNutrition(_current.nutrition, _current.base, grams);
-  const mealId = window._nutritionSearchMeal;
 
   // 선택된 serving의 정보 (servingRef 저장용)
   const sv = _selectedServingId === 'custom'
@@ -343,7 +320,7 @@ export function confirmNutritionItemWithWeight() {
 
   console.log('[nutrition-weight-modal] 음식 추가:', { mealId, foodItem });
   try {
-    wtAddFoodItem(mealId, foodItem);
+    addMealFood(mealId, foodItem);
   } catch (e) {
     console.error('[nutrition-weight-modal] 음식 추가 실패:', e);
   }

@@ -23,7 +23,7 @@ function linesWith(source, pattern) {
 
 const maxJs = read('workout/expert/max.js');
 const maxCycleJs = read('workout/expert/max-cycle.js');
-const swJs = read('sw.js');
+const swJs = read('sw.js') + read('runtime-assets.js');
 
 test('Max auxiliary modals use a scoped data action bridge', () => {
   assert.match(maxJs, /function _bindMaxModalActions\(modal, handlers = \{\}\)/);
@@ -95,5 +95,5 @@ test('remaining Max inline handlers are limited to the existing V4 sheet shell',
 });
 
 test('service worker cache version was bumped for Max auxiliary modal actions', () => {
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });

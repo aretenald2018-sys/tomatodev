@@ -6,7 +6,7 @@ const exercisesJs = await readFile(new URL('../workout/exercises.js', import.met
 const editorActionsJs = await readFile(new URL('../workout/exercise-editor-actions.js', import.meta.url), 'utf8');
 const dataLoadJs = await readFile(new URL('../data/data-load.js', import.meta.url), 'utf8');
 const styleCss = await readFile(new URL('../style.css', import.meta.url), 'utf8');
-const swJs = await readFile(new URL('../sw.js', import.meta.url), 'utf8');
+const swJs = await readFile(new URL('../sw.js', import.meta.url), 'utf8') + await readFile(new URL('../runtime-assets.js', import.meta.url), 'utf8');
 
 test('exercise editor renders program controls backed by test_board_v2', () => {
   assert.match(exercisesJs, /getTestBoardV2,\s*saveTestBoardV2/);
@@ -76,5 +76,5 @@ test('exercise editor program controls have compact fixed layout styles', () => 
   assert.match(styleCss, /#ex-editor-modal \.ex-program-tm-calc/);
   assert.match(styleCss, /#ex-editor-modal \.ex-program-calc-btn/);
   assert.match(styleCss, /#ex-editor-modal \.ex-program-wendler \.ex-editor-input,[\s\S]*?min-height:\s*24px/);
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });

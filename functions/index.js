@@ -1,6 +1,7 @@
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
+const { validateGeminiRequest, validateOcrRequest } = require("./lib/validation");
 const { defineSecret } = require("firebase-functions/params");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
@@ -427,28 +428,13 @@ exports.geminiProxy = onCall(
     memory: "256MiB",
   },
   async (request) => {
-    const { parts, maxTokens = 2000, responseMimeType } = request.data || {};
-    if (!Array.isArray(parts) || parts.length === 0) {
-      throw new HttpsError("invalid-argument", "parts 배열이 필요합니다.");
+    let validated;
+    try {
+      validated = validateGeminiRequest(request.data);
+    } catch (error) {
+      throw new HttpsError("invalid-argument", error.message);
     }
-
-    const requestSize = Buffer.byteLength(JSON.stringify(parts), "utf8");
-    if (requestSize > 8 * 1024 * 1024) {
-      throw new HttpsError("invalid-argument", "요청 크기가 너무 큽니다.");
-    }
-
-    const parsedMaxTokens = Number(maxTokens);
-    const generationConfig = {
-      maxOutputTokens: Number.isFinite(parsedMaxTokens)
-        ? Math.max(1, Math.min(Math.trunc(parsedMaxTokens), 8192))
-        : 2000,
-      thinkingConfig: { thinkingBudget: 0 },
-    };
-    if (typeof responseMimeType === "string" && responseMimeType.trim()) {
-      generationConfig.responseMimeType = responseMimeType.trim();
-    }
-    // wantJSON은 error branch(Groq fallback)에서도 쓰이므로 이 시점에 정의.
-    const wantJSON = generationConfig.responseMimeType === "application/json";
+    const { parts, generationConfig, wantJSON } = validated;
 
     const _fnStart = Date.now();
 
@@ -637,13 +623,13 @@ exports.ocrProxy = onCall(
     memory: "512MiB",
   },
   async (request) => {
-    const { imageBase64 } = request.data || {};
-    if (typeof imageBase64 !== "string" || imageBase64.length < 100) {
-      throw new HttpsError("invalid-argument", "imageBase64가 필요합니다.");
+    let validated;
+    try {
+      validated = validateOcrRequest(request.data);
+    } catch (error) {
+      throw new HttpsError("invalid-argument", error.message);
     }
-    if (imageBase64.length > 10 * 1024 * 1024) {
-      throw new HttpsError("invalid-argument", "이미지가 너무 큽니다.");
-    }
+    const { imageBase64 } = validated;
 
     const db = getFirestore();
     const monthKey = _ocrQuotaKey();

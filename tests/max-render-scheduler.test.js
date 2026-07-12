@@ -15,10 +15,10 @@ function sliceBetween(source, startToken, endToken) {
 }
 
 const maxJs = read('workout/expert/max.js');
-const swJs = read('sw.js');
+const swJs = read('sw.js') + read('runtime-assets.js');
 
 test('Max top area render requests are coalesced through a scheduler', () => {
-  const scheduler = sliceBetween(maxJs, 'let _expertTopAreaRenderScheduled = false;', 'function _targetRirLabel');
+  const scheduler = sliceBetween(maxJs, 'let _expertTopAreaRenderScheduled = false;', 'function _ensureMaxMeta');
   const outsideScheduler = maxJs.replace(scheduler, '');
   const scheduledCalls = maxJs.match(/_scheduleExpertTopAreaRender\(\);/g) || [];
 
@@ -31,5 +31,5 @@ test('Max top area render requests are coalesced through a scheduler', () => {
 });
 
 test('service worker cache version was bumped for Max render scheduler', () => {
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });

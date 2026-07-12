@@ -20,6 +20,7 @@ import { clearCheerCard, renderCheerCard }                   from './cheer-card.
 import { renderStreakWarning }                                from './streak-warning.js';
 import { renderAdminOnboarding }                              from './admin-onboarding.js';
 import { applyHomeCardPersonalization }                       from './personalize.js';
+import { cheerSignature, hasPriorityHomeOverlay, homeCardVisibility } from './read-model.js';
 
 let _lastCheerSignature = '';
 
@@ -76,17 +77,9 @@ export function renderHome(options = {}) {
 }
 
 function _applyCardVisibility() {
-  const map = {
-    unit_goal: 'card-unit-goal',
-    mini_memo: 'card-mini-memo',
-    goals:     'card-goals',
-    quests:    'card-quests',
-    diet_goal: 'card-diet-goal',
-    tomato_basket: 'card-tomato-basket',
-  };
-  for (const [key, id] of Object.entries(map)) {
+  for (const { id, visible } of homeCardVisibility(key => shouldShow('homeCards', key))) {
     const el = document.getElementById(id);
-    if (el) el.style.display = shouldShow('homeCards', key) ? '' : 'none';
+    if (el) el.style.display = visible ? '' : 'none';
   }
 }
 
@@ -106,7 +99,7 @@ async function _renderCheerCardIfNeeded() {
     return;
   }
 
-  const signature = cheers.map(c => c.id || `${c.from}_${c.createdAt}`).join('|');
+  const signature = cheerSignature(cheers);
   if (_lastCheerSignature !== signature) {
     showConfetti(3000);
     _lastCheerSignature = signature;
@@ -115,8 +108,7 @@ async function _renderCheerCardIfNeeded() {
 }
 
 function _hasPriorityOverlay() {
-  return !!document.getElementById('tutorial-overlay')
-    || !!document.querySelector('#dynamic-modal .wb-overlay');
+  return hasPriorityHomeOverlay(document);
 }
 
 // ── Export ────────────────────────────────────────────────────────

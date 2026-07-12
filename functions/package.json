@@ -3,6 +3,7 @@
   "description": "Firebase Cloud Functions for Life Streak push notifications",
   "engines": { "node": "20" },
   "main": "index.js",
+  "scripts": { "test": "node --test" },
   "dependencies": {
     "@google-cloud/vision": "^4.3.2",
     "firebase-admin": "^13.0.0",

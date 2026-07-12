@@ -2,6 +2,8 @@
 // 상태 관리 (파일 전역)
 // ═════════════════════════════════════════════════════════════
 
+import { notifyNutritionItemSaved } from '../diet/editor-events.js';
+
 let _niEditingId = null;
 let _niCurrentTab = 'manual';
 let _niPhotoBase64 = null;
@@ -588,9 +590,7 @@ export async function saveNutritionItemFromModal() {
     closeNutritionItemModal();
 
     // 콜백: 직접 추가 후 자동으로 해당 항목 선택 (요리 재료 / 식단 등)
-    if (window._onNutritionItemSaved) {
-      window._onNutritionItemSaved(savedItem);
-    }
+    notifyNutritionItemSaved(savedItem);
 
     // 저장 후 검색 결과 업데이트 (새로운 데이터 즉시 반영)
     if (window.renderNutritionSearchResults) {

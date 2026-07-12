@@ -25,6 +25,7 @@ import {
 import { MOVEMENTS } from '../../config.js';
 import { parseEquipmentFromText, parseEquipmentFromImage } from '../../ai.js';
 import { S } from '../state.js';
+import { generateId } from '../../utils/id.js';
 
 // ── Onboarding 내부 state ────────────────────────────────────────
 // phase: 'wizard' (step 1~5) | 'review' (파싱 리뷰) | 'done' (완료)
@@ -849,9 +850,8 @@ async function _commitOnboardingStart() {
 // _commitOnboardingStart/Finish 양쪽에서 호출. gym + exercises를 DB에 밀어넣고
 // dbId를 _obState.parsed[i].dbId에 역참조로 기록. 재파싱 시 중복 저장 방지.
 async function _persistOnboardingDraft() {
-  const { _generateId } = await import('../../data/data-core.js');
   let gymId = _obState.draftGymId || getExpertPreset().draftGymId || null;
-  if (!gymId) gymId = _generateId();
+  if (!gymId) gymId = generateId();
   // gym 저장 (setDoc 덮어쓰기 — 같은 id면 이름만 업데이트)
   await saveGym({ id: gymId, name: _obState.gymName, createdAt: Date.now() });
   if (_obState.draftGymId !== gymId) {
@@ -866,7 +866,7 @@ async function _persistOnboardingDraft() {
     const hasMuscles = Array.isArray(p.muscleIds) && p.muscleIds.length > 0;
     if (!hasMovement && !hasMuscles) continue;
     const mov = hasMovement ? MOVEMENTS.find(m => m.id === p.movementId) : null;
-    const exId = _generateId();
+    const exId = generateId();
     await saveExercise({
       id: exId,
       muscleId: mov?.primary || (hasMuscles ? p.muscleIds[0] : null),
@@ -1108,8 +1108,7 @@ async function _persistMuscleIdsToDb(p) {
     }
     const mov = p.movementId && p.movementId !== 'unknown'
       ? MOVEMENTS.find(m => m.id === p.movementId) : null;
-    const { _generateId } = await import('../../data/data-core.js');
-    const exId = p.dbId || _generateId();
+    const exId = p.dbId || generateId();
     await saveExercise({
       id: exId,
       muscleId: mov?.primary || p.muscleIds[0],
@@ -1157,8 +1156,7 @@ export async function expertOnbAssignMovement(idx, movementId) {
       } else {
         const mov = MOVEMENTS.find(m => m.id === movementId);
         if (mov) {
-          const { _generateId } = await import('../../data/data-core.js');
-          const exId = p.dbId || _generateId();
+          const exId = p.dbId || generateId();
           const hasMuscles = Array.isArray(p.muscleIds) && p.muscleIds.length > 0;
           await saveExercise({
             id: exId,
@@ -1237,8 +1235,7 @@ export async function expertOnbRemoveItem(idx) {
           if (gymId && removed.movementId && removed.movementId !== 'unknown') {
             const mov = MOVEMENTS.find(m => m.id === removed.movementId);
             if (mov) {
-              const { _generateId } = await import('../../data/data-core.js');
-              const exId = _generateId();
+              const exId = generateId();
               const hasMuscles = Array.isArray(removed.muscleIds) && removed.muscleIds.length > 0;
               await saveExercise({
                 id: exId,

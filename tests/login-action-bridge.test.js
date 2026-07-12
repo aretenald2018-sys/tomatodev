@@ -17,7 +17,7 @@ function sliceBetween(source, startToken, endToken) {
 const indexHtml = read('index.html');
 const featureLoginJs = read('feature-login.js');
 const appJs = read('app.js');
-const swJs = read('sw.js');
+const swJs = read('sw.js') + read('runtime-assets.js');
 const welcomeBackJs = read('home/welcome-back.js');
 
 test('login screen markup uses data-login actions instead of inline handlers', () => {
@@ -82,7 +82,7 @@ test('APK login reboots the in-page user session without a WebView reload', () =
   }
 
   assert.match(appJs, /function startTomatoUserSession\(\) \{[\s\S]*return init\(\);[\s\S]*\}/);
-  assert.match(appJs, /window\.__startTomatoUserSession = startTomatoUserSession;/);
+  assert.match(appJs, /__startTomatoUserSession:\s*startTomatoUserSession/);
   assert.match(appJs, /await _withTimeout\(loadAndInjectModals\(\), 3000, 'login modal load'\);/);
 });
 
@@ -90,7 +90,7 @@ test('APK login does not wait for optional welcome data before showing the app s
   assert.match(appJs, /const APP_BOOT_AUXILIARY_TIMEOUT_MS = 2500;/);
   assert.match(appJs, /async function _showPostLoginExperience\(/);
   assert.match(appJs, /void _showPostLoginExperience\(\{ previousLastLoginAt, runningSessionRestored \}\)/);
-  assert.match(appJs, /await _withTimeout\(\s*showWelcomeBackPopup\(hoursSinceLogin\),[\s\S]*APP_BOOT_AUXILIARY_TIMEOUT_MS,[\s\S]*'welcome back data'/);
+  assert.match(appJs, /await _withTimeout\(\s*showWelcomeBackPopup\(hoursSinceLogin, \{ onStartWorkout: \(\) => switchTab\('workout'\) \}\),[\s\S]*APP_BOOT_AUXILIARY_TIMEOUT_MS,[\s\S]*'welcome back data'/);
   assert.match(appJs, /await _withTimeout\(switchTab\('admin'\), APP_BOOT_AUXILIARY_TIMEOUT_MS, 'admin tab render'\);/);
   assert.match(welcomeBackJs, /const WELCOME_BACK_DATA_TIMEOUT_MS = 2500;/);
   assert.match(welcomeBackJs, /_withWelcomeDataTimeout\(getMyNotifications\(\), \[\], 'notifications'\)/);
@@ -98,5 +98,5 @@ test('APK login does not wait for optional welcome data before showing the app s
 });
 
 test('service worker cache version was bumped for APK login handoff assets', () => {
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });

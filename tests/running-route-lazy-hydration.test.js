@@ -5,6 +5,7 @@ import puppeteer from 'puppeteer';
 import { createRunningRouteHydrationController } from '../workout/running-route-hydration.js';
 
 const calendarJs = readFileSync(new URL('../render-calendar.js', import.meta.url), 'utf8');
+const calendarActivityModelJs = readFileSync(new URL('../calendar/activity-model.js', import.meta.url), 'utf8');
 const hydrationJs = readFileSync(new URL('../workout/running-route-hydration.js', import.meta.url), 'utf8');
 const runningModelJs = readFileSync(new URL('../workout/running-model.js', import.meta.url), 'utf8');
 const styleCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
@@ -388,7 +389,7 @@ test('calendar source propagates route refs and loads the full route automatical
   assert.match(calendarJs, /runRouteRef:\s*null/);
   assert.match(runningModelJs, /runRouteRef:\s*_clone\(source\.runRouteRef, null\)/);
   assert.match(calendarJs, /routeRef:\s*_clonePlain\(session\.runRouteRef\s*\|\|\s*null\)/);
-  assert.match(calendarJs, /routeRef:\s*d\.runRouteRef\s*\|\|\s*null/);
+  assert.match(calendarActivityModelJs, /routeRef:\s*day\.runRouteRef\s*\|\|\s*null/);
   assert.match(calendarJs, /routeRef:\s*row\.routeRef\s*\|\|\s*null/);
   assert.match(calendarJs, /전체 경로 불러오는 중/);
   assert.match(calendarJs, /전체 경로를 불러오지 못했어요/);

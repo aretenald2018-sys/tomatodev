@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 const indexHtml = readFileSync('index.html', 'utf8');
 const statsJs = readFileSync('render-stats.js', 'utf8');
 const styleCss = readFileSync('style.css', 'utf8');
-const swJs = readFileSync('sw.js', 'utf8');
+const swJs = readFileSync('sw.js', 'utf8') + readFileSync('runtime-assets.js', 'utf8');
 
 test('stats page places raw export button in the period analysis control card', () => {
   assert.match(indexHtml, /class="stats-analysis-controls"[\s\S]*data-stats-raw-export[\s\S]*전체통계 다운로드[\s\S]*class="stats-analysis-periods"/);
@@ -43,5 +43,5 @@ test('stats raw export button uses compact TDS-style controls and bumped cache',
   assert.match(styleCss, /border:\s*1px solid var\(--seed-stroke-neutral\)/);
   assert.match(styleCss, /border-radius:\s*var\(--seed-r-full\)/);
   assert.match(styleCss, /\.stats-raw-export-btn:focus-visible/);
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });

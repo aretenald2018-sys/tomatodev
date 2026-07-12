@@ -4,7 +4,7 @@
 
 import { getCurrentUser, getMyNotifications, getAccountList,
          getPendingRequests, acceptFriendRequest, removeFriend,
-         markNotificationRead, recordAction,
+         markNotificationRead, deleteNotification, recordAction,
          approveGuildJoinRequest, findCommentProfileOwner }  from '../data.js';
 import { resolveNickname, formatTimeAgo, showToast, haptic, escapeHtml } from './utils.js';
 
@@ -297,10 +297,7 @@ window.acceptGuildInvite = async function(guildId, notifId) {
   await updateGuildMemberCount(guildId, 1);
   await markNotificationRead(notifId);
   // "진행중" 알림도 제거
-  try {
-    const { deleteDoc, doc, getFirestore } = await import("https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js");
-    await deleteDoc(doc(getFirestore(), '_notifications', `guild_pending_${guildId}_${user.id}`));
-  } catch {}
+  await deleteNotification(`guild_pending_${guildId}_${user.id}`);
   haptic('success');
   showToast(`${guildId} 길드에 가입했어요!`, 2500, 'success');
   refreshNotifCenter();

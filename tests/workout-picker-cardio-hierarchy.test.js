@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const exercisesJs = readFileSync(new URL('../workout/exercises.js', import.meta.url), 'utf8');
+const cardioModelJs = readFileSync(new URL('../workout/cardio-model.js', import.meta.url), 'utf8');
 const styleCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
 const cardioImageIds = Object.freeze([
   'my-mountain',
@@ -66,7 +67,7 @@ test('picker gym rail labels keep Korean branch names intact', () => {
 });
 
 test('cardio picker rows use per-exercise gray image assets with body fallback', () => {
-  assert.match(exercisesJs, /const CARDIO_PICKER_ASSET_BASE = '\.\/assets\/workout\/cardio\/'/);
+  assert.match(cardioModelJs, /const CARDIO_PICKER_ASSET_BASE = '\.\/assets\/workout\/cardio\/'/);
   assert.match(exercisesJs, /function _pickerCardioFigureHtml/);
   assert.match(exercisesJs, /data-picker-cardio-img/);
   assert.match(exercisesJs, /function _bindPickerCardioFigureFallback/);
@@ -78,11 +79,11 @@ test('cardio picker rows use per-exercise gray image assets with body fallback',
   assert.match(functionBody('_bindPickerCardioFigureFallback'), /_pickerBodyCategoryFigureHtml\(_pickerBodyCategoryById\('cardio'\)\)/);
   assert.match(styleCss, /\.ex-picker-cardio-figure/);
   assert.match(styleCss, /\.ex-picker-muscle-figure\.ex-picker-cardio-figure\.has-asset img/);
-  assert.match(exercisesJs, /마이마운틴/);
+  assert.match(cardioModelJs, /마이마운틴/);
 
   for (const id of cardioImageIds) {
-    assert.match(exercisesJs, new RegExp(`id:\\s*'${id}'[\\s\\S]*image:`));
-    assert.ok(exercisesJs.includes(`image: \`\${CARDIO_PICKER_ASSET_BASE}${id}.png\``), `${id} catalog item should reference its image asset`);
+    assert.match(cardioModelJs, new RegExp(`id:\\s*'${id}'[\\s\\S]*image:`));
+    assert.ok(cardioModelJs.includes(`image: \`\${CARDIO_PICKER_ASSET_BASE}${id}.png\``), `${id} catalog item should reference its image asset`);
     const bytes = readFileSync(new URL(`../assets/workout/cardio/${id}.png`, import.meta.url));
     assert.ok(bytes.length > 2000, `${id} asset should not be an empty placeholder`);
     assert.equal(bytes.subarray(1, 4).toString('ascii'), 'PNG');

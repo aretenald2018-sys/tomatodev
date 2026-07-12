@@ -13,6 +13,7 @@ import { mealDisplayText } from '../ai/meal-artifact-filter.js';
 import { resolveNickname, showToast, haptic, formatTimeAgo, escapeHtml } from './utils.js';
 import { updateHeroSocialProof } from './hero.js';
 import { createSocialRenderScheduler } from './social-render-scheduler.js';
+import { runOptimisticSocialAction } from './social-action.js';
 import { confirmAction } from '../utils/confirm-modal.js';
 
 const _NEIGHBOR_PAGE_SIZE = 3;
@@ -481,7 +482,7 @@ const _scheduleFriendFeedRender = createSocialRenderScheduler(
 );
 
 // ── 친구 관리 모달 ───────────────────────────────────────────────
-window.openFriendManager = async function() {
+export async function openFriendManager() {
   _bindFriendFeedActions();
   const friends = await getMyFriends();
   const accounts = await getAccountList();
@@ -550,7 +551,9 @@ window.openFriendManager = async function() {
     </div>
   </div>`;
   _bindFriendManagerActions(modal);
-};
+}
+
+window.openFriendManager = openFriendManager;
 
 window.sendFriendReq = async function() {
   const ln = document.getElementById('friend-add-last')?.value.trim();
@@ -586,7 +589,7 @@ window.deleteFriend = async function(id) {
   try {
     await removeFriend(id);
     showToast('이웃을 삭제했어요', 2500, 'info');
-    window.openFriendManager();
+    openFriendManager();
   } finally {
     window._deleteFriendLock = false;
   }
@@ -615,7 +618,7 @@ window.editFriendNickname = async function(friendId) {
   acc.nickname = newNick.trim() || realName;
   await saveAccount(acc);
   showToast(`별명이 "${acc.nickname}"(으)로 변경되었어요`, 2500, 'success');
-  window.openFriendManager();
+  openFriendManager();
 };
 
 // ── 리액션 시스템 ────────────────────────────────────────────────
@@ -628,8 +631,11 @@ export const REACTIONS = [
 ];
 
 window.friendLike = async function(tid, dk, field) {
-  await toggleLike(tid, dk, field);
-  _scheduleFriendFeedRender('friend-like');
+  return runOptimisticSocialAction({
+    commit: () => toggleLike(tid, dk, field),
+    refresh: reason => _scheduleFriendFeedRender(reason),
+    reason: 'friend-like',
+  });
 };
 
 window.showReactionPicker = function(btn, tid, dk, field) {

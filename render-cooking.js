@@ -8,6 +8,8 @@ import { saveCooking, deleteCooking, getCookingRecords,
 import { searchCSVFood }                      from './fatsecret-api.js';
 import { searchNutritionDB }                  from './data.js';
 import { confirmAction } from './utils/confirm-modal.js';
+import { setNutritionItemSavedHandler } from './diet/editor-events.js';
+import { openNutritionItemEditor } from './modals/nutrition-item-modal.js';
 
 const CATEGORIES   = ['한식','양식','일식','중식','기타'];
 const RESULT_LABEL = { success:'✓ 성공', partial:'△ 보통', fail:'✗ 아쉬움' };
@@ -281,8 +283,7 @@ function _cancelIngredient() {
 function _openCookingDirectAdd() {
   document.getElementById('cooking-ingredient-dropdown').style.display = 'none';
   // 콜백 등록: 저장 후 자동으로 해당 항목을 재료로 선택
-  window._onNutritionItemSaved = (savedItem) => {
-    window._onNutritionItemSaved = null; // 일회성
+  setNutritionItemSavedHandler((savedItem) => {
     if (!savedItem) return;
     _selectedIngredient = {
       id:   savedItem.id,
@@ -298,8 +299,8 @@ function _openCookingDirectAdd() {
     document.getElementById('cooking-ingredient-weight-row').style.display = 'block';
     _previewIngredientNutrition();
     setTimeout(() => document.getElementById('cooking-ing-weight').focus(), 50);
-  };
-  window.openNutritionItemEditor(null);
+  });
+  openNutritionItemEditor(null);
 }
 
 function _removeIngredient(idx) {

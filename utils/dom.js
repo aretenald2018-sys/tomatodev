@@ -2,6 +2,8 @@
 // utils/dom.js — DOM 조작 유틸리티 함수
 // ================================================================
 
+import { closeModal as closeOverlayModal, openModal as openOverlayModal } from '../app/overlay-stack.js';
+
 /**
  * ID로 요소 찾기 (document.getElementById 단축)
  */
@@ -75,16 +77,14 @@ export function setDisplay(id, display = 'block') {
  * 모달 열기
  */
 export function openModal(id) {
-  const el = $(id);
-  if (el) el.classList.add('open');
+  return openOverlayModal(id);
 }
 
 /**
  * 모달 닫기
  */
 export function closeModal(id) {
-  const el = $(id);
-  if (el) el.classList.remove('open');
+  return closeOverlayModal(id);
 }
 
 /**

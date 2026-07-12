@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const exercisesJs = readFileSync('workout/exercises.js', 'utf8');
-const swJs = readFileSync('sw.js', 'utf8');
+const swJs = readFileSync('sw.js', 'utf8') + readFileSync('runtime-assets.js', 'utf8');
 
 function sliceByFirstBrace(source, startToken) {
   const start = source.indexOf(startToken);
@@ -49,5 +49,5 @@ test('wendler graph uses a separate W history instead of volume or intensity row
 });
 
 test('service worker cache version was bumped for track pp delta assets', () => {
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });

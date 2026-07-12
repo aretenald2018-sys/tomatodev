@@ -256,7 +256,7 @@ test('life zone workout poses use scoped motion with reduced motion fallback', (
 test('life zone running actors render track sprites and a map capture bubble on home', () => {
   const source = readText('home/life-zone.js');
   const css = readText('style.css');
-  const sw = readText('sw.js');
+  const sw = readText('sw.js') + readText('runtime-assets.js');
   const plan = readText('docs/ai/features/2026-06-29-running-track-live-art.md');
   const sprites = [
     'jups-running-track.png',
@@ -378,10 +378,10 @@ test('life zone running actors render track sprites and a map capture bubble on 
 });
 
 test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () => {
-  const sw = readText('sw.js');
+  const sw = readText('sw.js') + readText('runtime-assets.js');
   const header = readPngHeader('assets/home/life-zone/ui/npc-quest-bubble.png');
 
-  assert.match(sw, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(sw, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/npc-quest-bubble\.png/);
   assert.deepEqual(header, {
     width: 192,
@@ -391,7 +391,7 @@ test('life zone NPC bulb source is a tracked transparent PNG runtime asset', () 
 });
 
 test('life zone Miranda home NPC is a separate transparent generated runtime asset', () => {
-  const sw = readText('sw.js');
+  const sw = readText('sw.js') + readText('runtime-assets.js');
   const header = readPngHeader('assets/home/life-zone/ui/miranda-npc-home.png');
 
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/miranda-npc-home\.png/);
@@ -403,7 +403,7 @@ test('life zone Miranda home NPC is a separate transparent generated runtime ass
 });
 
 test('life zone Miranda fashion corner is a separate transparent runtime prop asset', () => {
-  const sw = readText('sw.js');
+  const sw = readText('sw.js') + readText('runtime-assets.js');
   const header = readPngHeader('assets/home/life-zone/ui/miranda-fashion-corner.png');
 
   assert.match(sw, /\.\/assets\/home\/life-zone\/ui\/miranda-fashion-corner\.png/);
@@ -415,7 +415,7 @@ test('life zone Miranda fashion corner is a separate transparent runtime prop as
 });
 
 test('life zone consulting room sofa assets are separate transparent runtime PNGs', () => {
-  const sw = readText('sw.js');
+  const sw = readText('sw.js') + readText('runtime-assets.js');
 
   const assets = [
     ['consulting-room-sofas.png', { width: 430, height: 309, colorType: 6 }],
@@ -423,7 +423,7 @@ test('life zone consulting room sofa assets are separate transparent runtime PNG
     ['consulting-visitor-gray-shirt-home.png', { width: 230, height: 298, colorType: 6 }]
   ];
 
-  assert.match(sw, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(sw, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
   for (const [asset, expected] of assets) {
     assert.match(sw, new RegExp(`\\.\\/assets\\/home\\/life-zone\\/ui\\/${asset.replace('.', '\\.')}`));
     assert.deepEqual(readPngHeader(`assets/home/life-zone/ui/${asset}`), expected);

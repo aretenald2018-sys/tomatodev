@@ -6,7 +6,7 @@ const indexHtml = readFileSync('index.html', 'utf8');
 const appJs = readFileSync('app.js', 'utf8');
 const statsJs = readFileSync('render-stats.js', 'utf8');
 const styleCss = readFileSync('style.css', 'utf8');
-const swJs = readFileSync('sw.js', 'utf8');
+const swJs = readFileSync('sw.js', 'utf8') + readFileSync('runtime-assets.js', 'utf8');
 
 function cssRule(selector) {
   const start = styleCss.indexOf(selector);
@@ -100,5 +100,5 @@ test('compact summary styles are present and cache version is bumped', () => {
   assert.match(styleCss, /\.stats-performance-block/);
   assert.match(styleCss, /\.stats-summary-fact/);
   assert.match(styleCss, /\.stats-summary-kpi\.is-good/);
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });

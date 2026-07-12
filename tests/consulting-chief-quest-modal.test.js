@@ -6,7 +6,7 @@ const appJs = readFileSync('app.js', 'utf8');
 const modalManagerJs = readFileSync('modal-manager.js', 'utf8');
 const modalJs = readFileSync('modals/consulting-chief-quest-modal.js', 'utf8');
 const styleCss = readFileSync('style.css', 'utf8');
-const swJs = readFileSync('sw.js', 'utf8');
+const swJs = readFileSync('sw.js', 'utf8') + readFileSync('runtime-assets.js', 'utf8');
 
 function readPngHeader(relativePath) {
   const buffer = readFileSync(relativePath);
@@ -57,7 +57,7 @@ test('consulting chief modal styles and runtime assets are registered', () => {
   assert.match(styleCss, /\.lz-consulting-chief-npc \{/);
   assert.match(styleCss, /\.lz-consulting-chief-npc \.lz-npc-bulb \{/);
   assert.match(styleCss, /\.lz-miranda-npc \.lz-npc-bulb,\s*\.lz-consulting-chief-npc \.lz-npc-bulb\s*\{[\s\S]*display: none;/);
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
   assert.match(swJs, /\.\/modals\/consulting-chief-quest-modal\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/consulting-chief-npc-modal\.png/);
   assert.deepEqual(readPngHeader('assets/home/life-zone/ui/consulting-chief-npc-modal.png'), {

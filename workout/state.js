@@ -36,7 +36,7 @@ export function emptyDiet() {
   };
 }
 
-function emptyWorkout() {
+export function emptyWorkout() {
   return {
     exercises: [],
     hiddenExercises: [],
@@ -99,3 +99,40 @@ Object.defineProperty(S, 'diet', {
   enumerable: true,
   configurable: false,
 });
+
+function _replaceObjectInPlace(target, next) {
+  if (!target || !next || typeof next !== 'object') return target;
+  for (const key of Object.keys(target)) {
+    if (!(key in next)) delete target[key];
+  }
+  Object.assign(target, next);
+  return target;
+}
+
+export function patchWorkoutState(patch = {}) {
+  if (!patch || typeof patch !== 'object') return S.workout;
+  Object.assign(S.workout, patch);
+  return S.workout;
+}
+
+export function replaceWorkoutState(next = emptyWorkout()) {
+  return _replaceObjectInPlace(S.workout, next);
+}
+
+export function replaceDietState(next = emptyDiet()) {
+  S.diet = next;
+  return S.diet;
+}
+
+export function patchSharedState(patch = {}) {
+  if (!patch || typeof patch !== 'object') return S.shared;
+  Object.assign(S.shared, patch);
+  return S.shared;
+}
+
+export function setWorkoutDateState(date = null) {
+  S.shared.date = date && typeof date === 'object'
+    ? { y: Number(date.y), m: Number(date.m), d: Number(date.d) }
+    : null;
+  return S.shared.date;
+}

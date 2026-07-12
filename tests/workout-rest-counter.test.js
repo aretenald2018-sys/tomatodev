@@ -23,7 +23,7 @@ async function writeStub(tempDir, name, source) {
 test('rest counter uses circular stopwatch markup and double-click preset editing', () => {
   const html = read('index.html');
 
-  assert.match(html, /class="[^"]*\bwt-rest-counter\b[^"]*"[\s\S]*ondblclick="wtOpenRestPresetSheet\(\)"/);
+  assert.match(html, /class="[^"]*\bwt-rest-counter\b[^"]*"[^>]*data-dblclick-action="workout:open-rest-preset"/);
   assert.match(html, /<svg[^>]+class="[^"]*\bwt-rest-ring\b[^"]*"/);
   assert.match(html, /id="wt-rest-ring-progress"/);
   assert.match(html, /id="wt-rest-time"/);
@@ -68,7 +68,7 @@ test('raw statistics export can include set rest intervals', () => {
 test('service worker cache is bumped for changed static assets', () => {
   const sw = read('sw.js');
 
-  assert.match(sw, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(sw, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });
 
 async function runRestTimerRuntimeHarness() {

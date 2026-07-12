@@ -104,7 +104,7 @@ configureWearWorkoutBridge({
 // 운동종료 → 확인 모달 → 실제 타이머 정지/저장.
 // 실수 방지를 위해 confirm 모달을 먼저 띄우고, 승인 시에만 종료 흐름을 실행.
 // 통계성 완료 인사이트는 전체통계의 기간별 운동 분석으로 통합한다.
-window.wtEndAndShowInsights = async () => {
+export async function wtEndAndShowInsights() {
   const ok = await confirmAction({
     title: '운동을 종료할까요?',
     message: '타이머가 정지되고 오늘 기록이 저장돼요.\n운동 분석은 통계 탭에서 기간별로 확인할 수 있어요.',
@@ -124,7 +124,8 @@ window.wtEndAndShowInsights = async () => {
   if (typeof window.showToast === 'function') {
     window.showToast('운동 기록 저장 완료. 통계 탭에서 기간별로 확인하세요.', 2200, 'success');
   }
-};
+}
+window.wtEndAndShowInsights = wtEndAndShowInsights;
 window.wtRestTimerStart = wtRestTimerStart;
 window.wtRestTimerSkip = wtRestTimerSkip;
 window.wtRestTimerAdjust = wtRestTimerAdjust;

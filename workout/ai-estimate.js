@@ -10,12 +10,7 @@
 import { estimateInOnePass } from '../ai.js';
 import { isNonFoodArtifactName } from '../ai/meal-artifact-filter.js';
 import { normalizeFood, sanityCheckKcal } from '../data/korean-food-normalize.js';
-
-function _makeEstimateError(code, message) {
-  const err = new Error(message);
-  err.code = code;
-  return err;
-}
+import { runDietPhotoEstimatePipeline } from '../diet/photo-estimate-pipeline.js';
 
 // ── 반상 prior 보정 ──────────────────────────────────────────────
 // 사진 속 모든 접시를 "전량 섭취"로 더하는 경향을 줄이기 위한 보수 추정.
@@ -75,7 +70,7 @@ function _scaleEstimate(estimate, targetKcal) {
 // ── 아이템 이름 정규화 + kcal sanity check ───────────────────────
 export function normalizeItems(estimate) {
   if (!estimate || !Array.isArray(estimate.detectedItems)) return estimate;
-  const items = estimate.detectedItems.filter(it => !isNonFoodArtifactName(it?.name)).map(it => {
+  const items = estimate.detectedItems.map(it => {
     const canonical = normalizeFood(it.name);
     const { kcal, corrected } = sanityCheckKcal(canonical, it.kcal, it.grams);
     return {
@@ -92,6 +87,14 @@ export function normalizeItems(estimate) {
   const totalCarbs = Math.round(items.reduce((s, i) => s + (i.carbs || 0), 0) * 10) / 10;
   const totalFat = Math.round(items.reduce((s, i) => s + (i.fat || 0), 0) * 10) / 10;
   return { ...estimate, detectedItems: items, totalKcal, totalProtein, totalCarbs, totalFat };
+}
+
+export function filterArtifactItems(estimate) {
+  if (!estimate || !Array.isArray(estimate.detectedItems)) return estimate;
+  return _recalcEstimate(
+    estimate,
+    estimate.detectedItems.filter(item => !isNonFoodArtifactName(item?.name)),
+  );
 }
 
 export function applyCafeteriaPortionGuard(estimate) {
@@ -174,23 +177,11 @@ export function excludeItems(estimate, predicate) {
 // estimateInOnePass 내부에서 이미 분류+아이템 추정이 단일 호출로 끝남.
 // 호출 1회 = Gemini RPM 1 소모. (과거 2회 소모)
 export async function runAIEstimate(imageBase64) {
-  // 단일 호출로 분류 + 상세 추정
-  let estimate = await estimateInOnePass(imageBase64);
-  if (!estimate?.detectedItems?.length) {
-    throw _makeEstimateError('AI_NO_FOOD_ITEMS', '사진에서 음식 항목을 읽지 못했어요.');
-  }
-
-  // Prior 보정 (반상만)
-  estimate = applyCafeteriaPrior(estimate);
-
-  // 한식 alias 정규화 + kcal sanity check
-  estimate = normalizeItems(estimate);
-  if (!estimate?.detectedItems?.length) {
-    throw _makeEstimateError('AI_NO_FOOD_ITEMS', '사진에서 음식 항목을 읽지 못했어요.');
-  }
-
-  // 한식 반상 과잉합산 방지
-  estimate = applyCafeteriaPortionGuard(estimate);
-
-  return estimate; // classification은 이미 내부에 포함됨
+  return runDietPhotoEstimatePipeline(imageBase64, {
+    estimate: estimateInOnePass,
+    filterArtifacts: filterArtifactItems,
+    normalize: normalizeItems,
+    applyPrior: applyCafeteriaPrior,
+    applyPortionGuard: applyCafeteriaPortionGuard,
+  });
 }

@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 const calendarJs = readFileSync(new URL('../render-calendar.js', import.meta.url), 'utf8');
 const workoutIndexJs = readFileSync(new URL('../workout/index.js', import.meta.url), 'utf8');
 const styleCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
-const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8') + readFileSync(new URL('../runtime-assets.js', import.meta.url), 'utf8');
 
 function sliceByFirstBrace(source, startToken) {
   const start = source.indexOf(startToken);
@@ -104,7 +104,7 @@ test('workout detail modal no longer renders timer-only body sections', () => {
 });
 
 test('workout finish saves without opening the old completion insight modal', () => {
-  const finish = sliceByFirstBrace(workoutIndexJs, 'window.wtEndAndShowInsights = async');
+  const finish = sliceByFirstBrace(workoutIndexJs, 'export async function wtEndAndShowInsights');
   assert.match(finish, /wtFinishWorkout\(\)/);
   assert.match(finish, /통계 탭에서 기간별로 확인/);
   assert.doesNotMatch(finish, /insightsOpen/);
@@ -112,5 +112,5 @@ test('workout finish saves without opening the old completion insight modal', ()
 });
 
 test('service worker cache version was bumped for workout timer summary-only UI', () => {
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });

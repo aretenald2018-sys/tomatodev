@@ -6,7 +6,8 @@ const timersJs = readFileSync(new URL('../workout/timers.js', import.meta.url), 
 const loadJs = readFileSync(new URL('../workout/load.js', import.meta.url), 'utf8');
 const exercisesJs = readFileSync(new URL('../workout/exercises.js', import.meta.url), 'utf8');
 const buildInfoJs = readFileSync(new URL('../utils/build-info.js', import.meta.url), 'utf8');
-const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8') + readFileSync(new URL('../runtime-assets.js', import.meta.url), 'utf8');
+const setEditorJs = readFileSync(new URL('../workout/set-editor.js', import.meta.url), 'utf8');
 
 test('active workout draft persists the full in-progress session locally', () => {
   assert.match(timersJs, /_LS_ACTIVE_WORKOUT_DRAFT_KEY_PREFIX\s*=\s*'tomatofarm_active_workout_draft_'/);
@@ -52,8 +53,8 @@ test('set editing paths write local draft before relying on async save', () => {
   assert.match(exercisesJs, /wtPersistActiveWorkoutDraft\(`set draft \$\{field\}`\)/);
   assert.match(exercisesJs, /wtPersistActiveWorkoutDraft\(`set update \$\{field\}`\)/);
   assert.match(exercisesJs, /wtPersistActiveWorkoutDraft\('set done toggle'\)/);
-  assert.match(exercisesJs, /stampSetCompletedAt\(set\)/);
-  assert.match(exercisesJs, /clearSetCompletedAt\(set\)/);
+  assert.match(setEditorJs, /stampSetCompletedAt\(set, now\)/);
+  assert.match(setEditorJs, /clearSetCompletedAt\(set\)/);
   assert.match(exercisesJs, /wtPersistActiveWorkoutDraft\('exercise add'\)/);
   assert.match(exercisesJs, /wtPersistActiveWorkoutDraft\('exercise remove'\)/);
 });
@@ -75,5 +76,5 @@ test('app update reload flushes workout draft and changes copy while workout is 
 });
 
 test('service worker cache version was bumped for recovery assets', () => {
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });

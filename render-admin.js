@@ -1,10 +1,9 @@
 import {
   isAdmin, isAdminInstance, getAnalytics, getApiUsage, dateKey, TODAY,
+  getAdminAccountRecords, getAdminSocialSnapshot,
+  getAdminRecentWorkouts, getAdminRecentBodyCheckins,
 } from './data.js';
 import { isExerciseDaySuccess } from './calc.js';
-import {
-  db, collection, getDocs, query, where, documentId,
-} from './data/data-core.js';
 import { nameResolver } from './admin/admin-utils.js';
 import { withCache, invalidateCache, DEFAULT_TTL_MS } from './admin/admin-cache.js';
 
@@ -62,40 +61,6 @@ function _daysAgo(n) {
   return d;
 }
 
-function _chunk(items, size) {
-  const chunks = [];
-  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
-  return chunks;
-}
-
-async function _getRecentWorkouts(userId, dateKeys) {
-  const workouts = [];
-  const batches = _chunk(dateKeys, 30);
-  for (const batch of batches) {
-    if (!batch.length) continue;
-    const snap = await getDocs(query(
-      collection(db, 'users', userId, 'workouts'),
-      where(documentId(), 'in', batch),
-    ));
-    snap.forEach((docSnap) => workouts.push({ dk: docSnap.id, w: docSnap.data() }));
-  }
-  return workouts;
-}
-
-async function _getRecentBodyCheckins(userId, dateKeys) {
-  const checkins = [];
-  const batches = _chunk(dateKeys, 30);
-  for (const batch of batches) {
-    if (!batch.length) continue;
-    const snap = await getDocs(query(
-      collection(db, 'users', userId, 'body_checkins'),
-      where('date', 'in', batch),
-    ));
-    snap.forEach((docSnap) => checkins.push({ id: docSnap.id, ...docSnap.data() }));
-  }
-  return checkins;
-}
-
 function _hasActivity(w) {
   if (!w) return false;
   return !!(_hasExercise(w) || _hasDiet(w) ||
@@ -118,12 +83,11 @@ function _hasDiet(w) {
 }
 
 async function _fetchBase() {
-  const [accSnap, analytics, apiUsage] = await Promise.all([
-    getDocs(collection(db, '_accounts')),
+  const [accs, analytics, apiUsage] = await Promise.all([
+    getAdminAccountRecords(),
     getAnalytics(30),
     getApiUsage(30).catch(() => ({ daily: [], ocrMonthly: { monthKey: '', count: 0, limit: 990 } })),
   ]);
-  const accs = []; accSnap.forEach((d) => accs.push(d.data()));
   const realAccs = accs.filter((a) => (
     a.id && !a.id.includes('(guest)') && !isAdminInstance(a.id)
   ));
@@ -131,18 +95,13 @@ async function _fetchBase() {
 }
 
 async function _fetchSocial() {
-  const [frSnap, gbSnap, lkSnap, ltSnap, pnSnap] = await Promise.all([
-    getDocs(collection(db, '_friend_requests')),
-    getDocs(collection(db, '_guestbook')),
-    getDocs(collection(db, '_likes')),
-    getDocs(collection(db, '_letters')),
-    getDocs(collection(db, '_patchnotes')),
-  ]);
-  const frs = []; frSnap.forEach((d) => frs.push(d.data()));
-  const gbs = []; gbSnap.forEach((d) => gbs.push(d.data()));
-  const lks = []; lkSnap.forEach((d) => lks.push(d.data()));
-  const letters = []; ltSnap.forEach((d) => letters.push(d.data()));
-  const patchnotes = []; pnSnap.forEach((d) => patchnotes.push(d.data()));
+  const {
+    friendRequests: frs,
+    guestbook: gbs,
+    likes: lks,
+    letters,
+    patchnotes,
+  } = await getAdminSocialSnapshot();
   letters.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   patchnotes.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   return { frs, gbs, lks, letters, patchnotes };
@@ -153,7 +112,7 @@ async function _fetchWorkouts(realAccs, dateKeys30) {
   const workoutResults = await Promise.all(
     realAccs.map(async (acc) => ({
       uid: acc.id,
-      workouts: await _getRecentWorkouts(acc.id, dateKeys30),
+      workouts: await getAdminRecentWorkouts(acc.id, dateKeys30),
     })),
   );
   workoutResults.forEach(({ uid, workouts }) => {
@@ -174,7 +133,7 @@ async function _fetchBodyCheckins(realAccs, dateKeys30) {
   const checkinResults = await Promise.all(
     realAccs.map(async (acc) => ({
       uid: acc.id,
-      checkins: await _getRecentBodyCheckins(acc.id, dateKeys30),
+      checkins: await getAdminRecentBodyCheckins(acc.id, dateKeys30),
     })),
   );
 

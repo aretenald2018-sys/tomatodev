@@ -34,6 +34,17 @@ export async function markNotificationRead(notifId) {
   await setDoc(doc(db, '_notifications', notifId), { read: true, readAt: Date.now() }, { merge: true });
 }
 
+export async function deleteNotification(notifId) {
+  if (!notifId) return false;
+  try {
+    await deleteDoc(doc(db, '_notifications', notifId));
+    return true;
+  } catch (error) {
+    console.warn('[notification] delete:', error);
+    return false;
+  }
+}
+
 // 여러 알림 id를 한 번에 읽음 처리 (SW에서 수신 시 사용)
 export async function markNotificationsRead(ids = []) {
   const jobs = (ids || []).filter(Boolean).map((id) => markNotificationRead(id));

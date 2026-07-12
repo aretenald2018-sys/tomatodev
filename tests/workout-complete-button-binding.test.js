@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const exercisesJs = readFileSync(new URL('../workout/exercises.js', import.meta.url), 'utf8');
 const boardRenderJs = readFileSync(new URL('../workout/test-v2/board-render.js', import.meta.url), 'utf8');
-const dataJs = readFileSync(new URL('../data.js', import.meta.url), 'utf8');
+const dataJs = readFileSync(new URL('../data/data-api.js', import.meta.url), 'utf8');
 
 function sliceByFirstBrace(source, startToken) {
   const start = source.indexOf(startToken);
@@ -50,7 +50,7 @@ test('growth board workout commit only shows a stamp after required board persis
 
 test('test board saving preserves existing completion logs and propagates failures', () => {
   const save = sliceByFirstBrace(dataJs, 'export async function saveTestBoardV2');
-  assert.match(dataJs, /import \{ mergeBoardCompletionLogs \} from '\.\/workout\/test-v2\/board-core\.js'/);
+  assert.match(dataJs, /import \{ mergeBoardCompletionLogs \} from '\.\.\/workout\/test-v2\/board-core\.js'/);
   assert.match(save, /getDoc\(_doc\('settings', 'test_board_v2'\)\)/);
   assert.match(save, /mergeBoardCompletionLogs\(latestBoard, remoteBoard\)/);
   assert.match(save, /mergeBoardCompletionLogs\(latestBoard, board\)/);

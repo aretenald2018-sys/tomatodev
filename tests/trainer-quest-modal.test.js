@@ -7,7 +7,7 @@ const modalManagerJs = readFileSync('modal-manager.js', 'utf8');
 const modalJs = readFileSync('modals/trainer-quest-modal.js', 'utf8');
 const statsJs = readFileSync('render-stats.js', 'utf8');
 const styleCss = readFileSync('style.css', 'utf8');
-const swJs = readFileSync('sw.js', 'utf8');
+const swJs = readFileSync('sw.js', 'utf8') + readFileSync('runtime-assets.js', 'utf8');
 
 function readPngHeader(relativePath) {
   const buffer = readFileSync(relativePath);
@@ -81,7 +81,7 @@ test('life zone trainer quest event opens the injected modal', () => {
   assert.match(appJs, /opener: 'openTrainerQuestModal'/);
   assert.match(appJs, /miranda: \{/);
   assert.match(appJs, /opener: 'openMirandaQuestModal'/);
-  assert.match(appJs, /await loadAndInjectModals\(\)/);
+  assert.match(appJs, /await ensureModal\(modalConfig\.modalId\)/);
   assert.match(appJs, /const opener = window\[modalConfig\.opener\]/);
   assert.match(appJs, /opener\(\)/);
 });
@@ -175,7 +175,7 @@ test('trainer quest modal styles and runtime cache asset are registered', () => 
   assert.match(styleCss, /\.trainer-running-stats/);
   assert.match(styleCss, /\.trainer-running-activity-card/);
   assert.match(styleCss, /\.trainer-running-split-table/);
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
   assert.match(swJs, /\.\/modals\/trainer-quest-modal\.js/);
   assert.match(swJs, /\.\/modals\/trainer-running-stats\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/trainer-quest-seated-trainer\.png/);

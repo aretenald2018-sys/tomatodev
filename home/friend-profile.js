@@ -14,6 +14,7 @@ import { TODAY, getCurrentUser, getMyFriends, getAccountList,
          getAllGuilds }  from '../data.js';
 import { CONFIG } from '../config.js';
 import { mealDisplayText } from '../ai/meal-artifact-filter.js';
+import { runOptimisticSocialAction } from './social-action.js';
 import { resolveNickname, showToast, haptic, formatTimeAgo, escapeHtml } from './utils.js';
 import { createSocialRenderScheduler } from './social-render-scheduler.js';
 
@@ -743,7 +744,7 @@ window.openQuickGuildJoin = async function() {
 window.quickJoinGuild = async function(guildName) {
   const user = getCurrentUser();
   if (!user) return;
-  const { createGuildJoinRequest, saveAccount, setCurrentUser, createGuild: cg, getAllGuilds } = await import('../data.js');
+  const { createGuildJoinRequest, withdrawGuildJoinRequest, saveAccount, setCurrentUser, createGuild: cg, getAllGuilds } = await import('../data.js');
 
   // 이미 가입된 길드 → 대표길드로 설정
   if ((user.guilds || []).includes(guildName)) {
@@ -761,11 +762,7 @@ window.quickJoinGuild = async function(guildName) {
     user.pendingGuilds = (user.pendingGuilds || []).filter(g => g !== guildName);
     await saveAccount(user);
     setCurrentUser(user);
-    // pending 알림 제거
-    try {
-      const { deleteDoc: dd, doc: dc, getFirestore: gfs } = await import("https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js");
-      await dd(dc(gfs(), '_notifications', `guild_pending_${guildName}_${user.id}`));
-    } catch {}
+    await withdrawGuildJoinRequest(guildName, user.id);
     showToast(`${guildName} 가입신청을 철회했어요.`, 2500, 'info');
     document.getElementById('dynamic-modal')?.remove();
     openFriendProfile(isAdminGuest() ? getAdminId() : user.id);
@@ -1015,7 +1012,11 @@ window.sendReaction = async function(tid, dk, field, emoji) {
   document.querySelectorAll('.reaction-picker').forEach(p => p.remove());
   const user = getCurrentUser();
   if (!user) return;
-  await toggleLike(tid, dk, field, emoji);
+  await runOptimisticSocialAction({
+    commit: () => toggleLike(tid, dk, field, emoji),
+    refresh: reason => _scheduleFriendProfileFeedRender(reason),
+    reason: 'profile-reaction',
+  });
   recordAction('리액션');
   haptic('light');
   showToast(`${emoji} 리액션을 보냈어요!`, 2500, 'success');
@@ -1026,7 +1027,6 @@ window.sendReaction = async function(tid, dk, field, emoji) {
     document.getElementById('dynamic-modal').remove();
     window.openFriendProfile(tid, name);
   }
-  _scheduleFriendProfileFeedRender('profile-reaction');
 };
 
 window.markNotifRead = async function(id) {

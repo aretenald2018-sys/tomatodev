@@ -44,6 +44,7 @@ class WearRunPayloadTest {
         )
 
         val json = JSONObject(payload.toJsonString())
+        assertEquals(WearWorkoutPayload.PAYLOAD_VERSION, json.getInt("payloadVersion"))
         assertEquals("running", json.getString("type"))
         assertEquals("wear", json.getString("source"))
         assertEquals(31_000L, json.getLong("endedAt"))

@@ -14,10 +14,11 @@ import {
 const calendarJs = readFileSync(new URL('../render-calendar.js', import.meta.url), 'utf8');
 const styleCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
 const tm2Css = readFileSync(new URL('../test-mode-v2.css', import.meta.url), 'utf8');
-const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8') + readFileSync(new URL('../runtime-assets.js', import.meta.url), 'utf8');
 const tm2EntryJs = readFileSync(new URL('../workout/test-v2/entry.js', import.meta.url), 'utf8');
 const tm2BoardJs = readFileSync(new URL('../workout/test-v2/board-render.js', import.meta.url), 'utf8');
 const runningModelJs = readFileSync(new URL('../workout/running-model.js', import.meta.url), 'utf8');
+const calendarActivityModelJs = readFileSync(new URL('../calendar/activity-model.js', import.meta.url), 'utf8');
 
 function extractFunctionSource(source, name) {
   const asyncStart = source.indexOf(`async function ${name}(`);
@@ -1021,19 +1022,19 @@ test('running detail card uses the workout read-card shell with aggregated runni
   assert.match(calendarJs, /querySelectorAll\?\.\('\[data-wt-running-route-map\]'\)/);
   assert.match(calendarJs, /renderRunningMap\(shell, \{ points: payload\.points, phase: 'detail' \}\)/);
   assert.match(runningModelJs, /runRouteRef:\s*_clone\(source\.runRouteRef, null\)/);
-  assert.match(calendarJs, /routeRef:\s*d\.runRouteRef \|\| null/);
+  assert.match(calendarActivityModelJs, /routeRef:\s*day\.runRouteRef \|\| null/);
   assert.match(calendarJs, /routeRef:\s*row\.routeRef \|\| null/);
   assert.match(calendarJs, /전체 경로 불러오는 중/);
   assert.match(calendarJs, /전체 경로를 불러오지 못했어요/);
-  assert.match(calendarJs, /runRouteSummary && typeof d\.runRouteSummary === 'object'/);
-  assert.match(calendarJs, /distanceKm:\s*runDistance/);
-  assert.match(calendarJs, /speedKmh:\s*runSpeedKmh/);
-  assert.match(calendarJs, /manual-cardio/);
-  assert.match(calendarJs, /avgPaceSecPerKm:\s*_num\(d\.runAvgPaceSecPerKm\)/);
-  assert.match(calendarJs, /placeSummary:\s*d\.runPlaceSummary \|\| null/);
-  assert.match(calendarJs, /avgHeartRateBpm:\s*Number\(runSummary\.avgHeartRateBpm\) > 0/);
-  assert.match(calendarJs, /bestPaceSecPerKm:\s*_num\(runSummary\.bestPaceSecPerKm\)/);
-  assert.match(calendarJs, /splits:\s*Array\.isArray\(runSummary\.splits\)/);
+  assert.match(calendarActivityModelJs, /runRouteSummary && typeof day\.runRouteSummary === 'object'/);
+  assert.match(calendarActivityModelJs, /distanceKm:\s*runDistance/);
+  assert.match(calendarActivityModelJs, /speedKmh:\s*runSpeedKmh/);
+  assert.match(calendarActivityModelJs, /manual-cardio/);
+  assert.match(calendarActivityModelJs, /avgPaceSecPerKm:\s*num\(day\.runAvgPaceSecPerKm\)/);
+  assert.match(calendarActivityModelJs, /placeSummary:\s*day\.runPlaceSummary \|\| null/);
+  assert.match(calendarActivityModelJs, /avgHeartRateBpm:\s*Number\(runSummary\.avgHeartRateBpm\) > 0/);
+  assert.match(calendarActivityModelJs, /bestPaceSecPerKm:\s*num\(runSummary\.bestPaceSecPerKm\)/);
+  assert.match(calendarActivityModelJs, /splits:\s*Array\.isArray\(runSummary\.splits\)/);
   assert.match(calendarJs, /if \(row\?\.key === 'running'\) return _renderWorkoutRunningDetailCard/);
   assert.match(card, /wt-day-ex-card wt-max-read-card wt-running-read-card/);
   assert.match(card, /data-wt-sheet-card-action="delete-activity"/);
@@ -1453,5 +1454,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });

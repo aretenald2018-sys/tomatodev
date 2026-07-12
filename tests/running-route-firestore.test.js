@@ -271,11 +271,13 @@ test('valid load returns all 620 canonical points ordered by chunk index', async
   });
 });
 
-test('data.js exposes the repository and data-core exposes writeBatch', async () => {
-  const [barrel, core] = await Promise.all([
+test('data.js facade exposes the repository and data-core exposes writeBatch', async () => {
+  const [facade, api, core] = await Promise.all([
     readFile(new URL('../data.js', import.meta.url), 'utf8'),
+    readFile(new URL('../data/data-api.js', import.meta.url), 'utf8'),
     readFile(new URL('../data/data-core.js', import.meta.url), 'utf8'),
   ]);
-  assert.match(barrel, /export\s*\{[^}]*saveRunningRoute[^}]*loadRunningRoute[^}]*\}\s*from\s*['"]\.\/data\/data-running-route\.js['"]/s);
+  assert.match(facade, /export \* from '\.\/data\/data-api\.js'/);
+  assert.match(api, /export\s*\{[^}]*saveRunningRoute[^}]*loadRunningRoute[^}]*\}\s*from\s*['"]\.\/data-running-route\.js['"]/s);
   assert.match(core, /export\s*\{[^}]*writeBatch[^}]*\}/s);
 });

@@ -6,15 +6,11 @@
 // 클라이언트는 얇은 wrapper + JSON 안전 파싱만 담당.
 // ================================================================
 
-import { functions } from '../data/data-core.js';
-import { httpsCallable } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-functions.js';
-
-const _geminiProxy = httpsCallable(functions, 'geminiProxy');
-const _ocrProxy    = httpsCallable(functions, 'ocrProxy');
+import { callGeminiProxy, callOcrProxy } from '../data/data-functions.js';
 
 // ── Cloud Vision OCR 호출 (월 990장 초과 시 resource-exhausted) ────
 export async function ocrImage(imageBase64) {
-  const { data } = await _ocrProxy({ imageBase64 });
+  const data = await callOcrProxy({ imageBase64 });
   return data?.text || '';
 }
 
@@ -116,7 +112,7 @@ async function _withTimeout(promise, ms = 25000) {
 // 서버(geminiProxy Cloud Function)가 자체적으로 Groq fallback을 수행.
 // 응답에 provider 필드 포함 ('gemini' or 'groq'). 후속 UI는 이 값으로 판단.
 export async function _callGeminiProxy(parts, { maxTokens = 400, responseMimeType } = {}) {
-  const { data } = await _withTimeout(_geminiProxy({
+  const data = await _withTimeout(callGeminiProxy({
     parts,
     maxTokens,
     responseMimeType,

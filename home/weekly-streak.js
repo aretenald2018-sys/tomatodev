@@ -4,7 +4,7 @@
 
 import { DAYS }  from '../config.js';
 import { TODAY, getMuscles, getCF, dietDayOk,
-         getHomeStreakDays, saveHomeStreakDays,
+         getHomeStreakDays,
          getBreakfastSkipped, getLunchSkipped, getDinnerSkipped,
          isFuture, isToday }  from '../data.js';
 import { getMonday } from './utils.js';
@@ -16,7 +16,6 @@ export function renderWeeklyStreak() {
   if (!container) return;
 
   const n = getHomeStreakDays(); // 0~6
-  window._homeStreakDays = n;
   const totalDays = n + 1;
 
   if (label) label.textContent = `${totalDays}일`;
@@ -80,7 +79,7 @@ export function renderWeeklyStreak() {
 
       if (today) cls += ' ws-today';
 
-      html += `<td><div class="${cls}" onclick="window.openSheet(${y},${m},${dd})">${icon}</div></td>`;
+      html += `<td><button type="button" class="${cls}" data-app-action="open-workout-date" data-year="${y}" data-month="${m}" data-day="${dd}" aria-label="${y}년 ${m + 1}월 ${dd}일 기록 열기">${icon}</button></td>`;
     });
     html += '</tr>';
   });
@@ -88,9 +87,3 @@ export function renderWeeklyStreak() {
   html += '</tbody></table>';
   container.innerHTML = html;
 }
-
-window.changeHomeStreakDays = async function(n) {
-  const clamped = Math.max(0, Math.min(6, n));
-  await saveHomeStreakDays(clamped);
-  renderWeeklyStreak();
-};

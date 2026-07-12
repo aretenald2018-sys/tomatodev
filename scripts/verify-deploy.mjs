@@ -74,8 +74,8 @@ function commitMatches(deployedCommit, expectedCommit) {
     || expectedCommit.startsWith(deployedCommit);
 }
 
-function extractStaticAssets(swText) {
-  const block = swText.match(/const\s+STATIC_ASSETS\s*=\s*\[([\s\S]*?)\];/)?.[1] || '';
+function extractStaticAssets(manifestText) {
+  const block = manifestText.match(/TOMATO_STATIC_ASSETS\s*=\s*Object\.freeze\(\[([\s\S]*?)\]\)/)?.[1] || '';
   return [...block.matchAll(/'([^']+)'/g)].map((m) => m[1]);
 }
 
@@ -89,6 +89,7 @@ async function waitForDeploySnapshot() {
       const buildInfo = JSON.parse(buildInfoText);
       const swText = await fetchTextOnce('sw.js');
       const swCacheVersion = swText.match(/CACHE_VERSION\s*=\s*['"]([^'"]+)['"]/)?.[1] || '';
+      const runtimeAssetsText = await fetchTextOnce('runtime-assets.js');
       const deployedCommit = String(buildInfo.commit || '');
 
       assertOk(
@@ -96,7 +97,7 @@ async function waitForDeploySnapshot() {
         `deployed commit mismatch: expected ${expectedCommitInput || expectedCommit}, got ${deployedCommit}`,
       );
       assertOk(buildInfo.cacheVersion === swCacheVersion, `cacheVersion mismatch: build-info=${buildInfo.cacheVersion}, sw=${swCacheVersion}`);
-      return { buildInfo, swText };
+      return { buildInfo, swText, runtimeAssetsText };
     } catch (e) {
       lastError = e;
       if (attempt < deployRetries) await sleep(deployDelayMs);
@@ -105,9 +106,10 @@ async function waitForDeploySnapshot() {
   throw lastError;
 }
 
-const { buildInfo, swText } = await waitForDeploySnapshot();
+const { buildInfo, swText, runtimeAssetsText } = await waitForDeploySnapshot();
 
-const staticAssets = extractStaticAssets(swText);
+const staticAssets = extractStaticAssets(runtimeAssetsText);
+assertOk(staticAssets.length > 0, 'runtime asset manifest is empty');
 for (const asset of staticAssets) {
   await fetchText(asset, { retries: 2, delayMs: 2000 });
 }

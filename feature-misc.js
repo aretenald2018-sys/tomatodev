@@ -11,7 +11,7 @@ import { confirmAction } from './utils/confirm-modal.js';
 import { renderBuildInfo } from './utils/build-info.js';
 
 // ── 구역 제목 편집 ────────────────────────────────────────────────
-function editSectionTitle(key) {
+export function editSectionTitle(key) {
   document.getElementById('section-title-key').value   = key;
   document.getElementById('section-title-input').value = getSectionTitle(key);
   window._openModal('section-title-modal');
@@ -31,7 +31,7 @@ async function saveSectionTitleFromModal() {
 }
 
 // ── 미니 메모 (체크리스트) ────────────────────────────────────────
-async function addMiniMemoItem() {
+export async function addMiniMemoItem() {
   const input = document.getElementById('mini-memo-new-input');
   const text  = input.value.trim();
   if (!text) return;

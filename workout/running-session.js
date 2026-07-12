@@ -23,6 +23,7 @@ import {
   WORKOUT_RUNNING_SESSION_INDEX,
 } from './session-policy.js';
 import { applyRunningDataToWorkout } from './running-model.js';
+import { runningInputFromPhoneSummary } from './running-input.js';
 import { RunningLiveAccumulator } from './running-live-accumulator.js';
 import { buildRunningActivityAnalytics, isValidRunningWeightKg } from './running-analytics.js';
 import {
@@ -842,25 +843,13 @@ function _matchingCapturedRouteReference(routeRef, route) {
 }
 
 function _syncWorkoutRunData(summary, placeSummary = _session.placeSummary) {
-  const durationMin = Math.floor(summary.durationSec / 60);
-  const durationSec = summary.durationSec % 60;
   const route = normalizeRunningRoutePoints(_session.route);
   const routeRef = _matchingCapturedRouteReference(S.workout.runData?.routeRef, route);
-  applyRunningDataToWorkout(S.workout, {
-    distance: summary.distanceKm,
-    durationMin,
-    durationSec,
-    memo: '',
-    source: 'gps',
-    startedAt: summary.startedAt || null,
-    endedAt: summary.endedAt || null,
+  applyRunningDataToWorkout(S.workout, runningInputFromPhoneSummary(summary, {
     route,
     routeRef,
-    routeSummary: summary,
     placeSummary: placeSummary || _runningPlaceFallback(summary),
-    avgPaceSecPerKm: summary.avgPaceSecPerKm || 0,
-    gpsAccuracySummary: summary.gpsAccuracySummary || null,
-  }, {
+  }), {
     sessionIndex: WORKOUT_RUNNING_SESSION_INDEX,
     sessionId: RUNNING_SESSION_ID,
   });

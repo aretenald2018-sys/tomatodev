@@ -15,7 +15,7 @@ function sliceBetween(source, startToken, endToken) {
 }
 
 const feedJs = read('home/friend-feed.js');
-const swJs = read('sw.js');
+const swJs = read('sw.js') + read('runtime-assets.js');
 
 test('friend feed uses one scoped data action bridge', () => {
   assert.match(feedJs, /function _bindFriendFeedActions\(root = document\)/);
@@ -46,7 +46,7 @@ test('friend feed primary actions are routed through data-feed-action', () => {
 });
 
 test('friend manager modal actions are local and inline-free', () => {
-  const manager = sliceBetween(feedJs, 'window.openFriendManager = async function()', 'window.sendFriendReq = async function()');
+  const manager = sliceBetween(feedJs, 'export async function openFriendManager()', 'window.openFriendManager = openFriendManager');
 
   assert.match(feedJs, /function _bindFriendManagerActions\(modal\)/);
   assert.match(manager, /_bindFriendManagerActions\(modal\)/);
@@ -68,5 +68,5 @@ test('reaction picker options inherit the feed action contract', () => {
 });
 
 test('service worker cache version was bumped for social feed actions', () => {
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });

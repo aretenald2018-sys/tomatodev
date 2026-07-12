@@ -5,10 +5,10 @@
 import { getDietPlan, saveDietPlan, calcDietMetrics } from './data.js';
 import { showToast } from './render-home.js';
 
-async function openDietPlanModal() {
+export async function openDietPlanModal() {
   if (!document.getElementById('dp-height')) {
-    const { loadAndInjectModals } = await import('./modal-manager.js');
-    await loadAndInjectModals();
+    const { ensureModal } = await import('./modal-manager.js');
+    await ensureModal('diet-plan-modal');
   }
   if (!document.getElementById('dp-height')) { console.error('[diet] modal not found'); return; }
   const plan = getDietPlan();

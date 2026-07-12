@@ -84,7 +84,10 @@ test('workout navigation keeps only rendered calendar and day sheet surfaces', a
     readFile(new URL('../workout/exercises.js', import.meta.url), 'utf8'),
     readFile(new URL('../workout/navigation-stack.js', import.meta.url), 'utf8'),
     readFile(new URL('../style.css', import.meta.url), 'utf8'),
-    readFile(new URL('../sw.js', import.meta.url), 'utf8'),
+    Promise.all([
+      readFile(new URL('../sw.js', import.meta.url), 'utf8'),
+      readFile(new URL('../runtime-assets.js', import.meta.url), 'utf8'),
+    ]).then(parts => parts.join('\n')),
   ]);
   const workoutTabHtml = indexHtml.slice(indexHtml.indexOf('<div id="tab-workout"'), indexHtml.indexOf('<div id="tab-diet"'));
 
@@ -109,7 +112,7 @@ test('workout navigation keeps only rendered calendar and day sheet surfaces', a
   assert.match(appJs, /viewMonth:\s*TODAY\.getMonth\(\)/);
   assert.match(appJs, /async function openWorkoutDaySheetFromAction/);
   assert.match(appJs, /openWorkoutDaySheet\(dateKey,[\s\S]*sheetState:\s*'full'/);
-  assert.match(appJs, /window\.wtOpenWorkoutDaySheet = openWorkoutDaySheetFromAction/);
+  assert.match(appJs, /wtOpenWorkoutDaySheet:\s*openWorkoutDaySheetFromAction/);
   assert.doesNotMatch(appJs, /_redirectWorkoutRecordRouteToDaySheet|WORKOUT_ROUTES|currentWorkoutRoute/);
   assert.doesNotMatch(appJs, /wtOpenWorkoutRecord|openWorkoutRecordFromCalendar/);
   assert.match(appJs, /function openWorkoutTab\(y, m, d\)[\s\S]*openWorkoutDaySheetFromAction\(key, _takeWorkoutTargetSessionIndex\(0\)/);
@@ -171,5 +174,5 @@ test('workout navigation keeps only rendered calendar and day sheet surfaces', a
   assert.match(styleCss, /body\.wt-workout-tab-active\s*\{[\s\S]*overscroll-behavior-y:\s*none;/);
   assert.match(styleCss, /body\.wt-workout-tab-active #tab-workout\.active\s*\{[\s\S]*overscroll-behavior-y:\s*contain;/);
   assert.match(swJs, /\.\/workout\/navigation-stack\.js/);
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });

@@ -9,7 +9,7 @@ const projectPlan = readFileSync('docs/ai/features/2026-07-03-input-ux-commercia
 const indexHtml = readFileSync('index.html', 'utf8');
 const workoutUiJs = readFileSync('workout-ui.js', 'utf8');
 const styleCss = readFileSync('style.css', 'utf8');
-const swJs = readFileSync('sw.js', 'utf8');
+const swJs = readFileSync('sw.js', 'utf8') + readFileSync('runtime-assets.js', 'utf8');
 
 class FakeClassList {
   constructor(initial = []) {
@@ -113,7 +113,15 @@ function buildWorkoutUiHarness() {
     const wtRestTimerHideIdle = () => { window.__calls.restHides += 1; };
     const wtOpenManualCardioInput = () => { window.__calls.manualCardioOpens += 1; };
     `,
-  );
+  ).replace(
+    /import\s*\{[^}]*\}\s*from\s*'\.\/diet\/photo-store\.js';/,
+    `
+    const __photos = {};
+    const getDietPhotos = () => __photos;
+    const removeDietPhoto = (meal) => { delete __photos[meal]; };
+    const setDietPhoto = (meal, value) => { __photos[meal] = value; };
+    `,
+  ).replace(/^export\s+/gm, '');
   vm.runInNewContext(runnable, {
     window: Object.assign(contextWindow, { __calls: calls }),
     document,
@@ -134,17 +142,18 @@ test('final plan and design system define the approved input UX slice', () => {
 
 test('workout shell exposes first-class activity type entries and forms', () => {
   const activityTabs = [
-    ['wt-chip-gym', "wtSwitchType('gym')", '헬스'],
-    ['wt-chip-running', "wtSwitchType('running')", '런닝'],
-    ['wt-chip-cardio', "wtSwitchType('manual-cardio')", '유산소'],
-    ['wt-chip-cf', "wtSwitchType('cf')", '크로스핏'],
-    ['wt-chip-stretch', "wtSwitchType('stretch')", '스트레칭'],
-    ['wt-chip-swimming', "wtSwitchType('swimming')", '수영'],
+    ['wt-chip-gym', 'gym', '헬스'],
+    ['wt-chip-running', 'running', '런닝'],
+    ['wt-chip-cardio', 'manual-cardio', '유산소'],
+    ['wt-chip-cf', 'cf', '크로스핏'],
+    ['wt-chip-stretch', 'stretch', '스트레칭'],
+    ['wt-chip-swimming', 'swimming', '수영'],
   ];
-  for (const [id, handler, label] of activityTabs) {
+  for (const [id, type, label] of activityTabs) {
     const tag = tagById(indexHtml, id);
     assert.match(tag, /wt-type-tab/);
-    assert.ok(tag.includes(handler), `${id} should switch through the public type API`);
+    assert.match(tag, /data-action="workout:switch-type"/);
+    assert.ok(tag.includes(`data-action-arg="${type}"`), `${id} should expose its activity type`);
     assert.ok(tag.includes(label), `${id} should expose the expected label`);
   }
 
@@ -196,5 +205,5 @@ test('new input UX styles and service worker cache marker are present', () => {
   assert.match(styleCss, /\.diet-frequent-food-options/);
   assert.doesNotMatch(styleCss, /\.meal-quick-add-backdrop/);
   assert.match(styleCss, /\.ex-picker-cardio-backdrop--standalone/);
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });

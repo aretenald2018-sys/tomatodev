@@ -10,7 +10,9 @@ import {
   applyRunningDataToWorkout,
   findRunningSessionIndex,
 } from './running-model.js';
+import { runningInputFromWearPayload } from './running-input.js';
 import { buildRunningActivityAnalytics, isValidRunningWeightKg } from './running-analytics.js';
+import { assertWearWorkoutPayloadEnvelope } from './wear-payload-contract.js';
 
 const WEAR_QUEUE_KEY = 'tomatofarm_wear_workout_queue_v1';
 const MAX_WEAR_HEART_RATE_SAMPLES = 2_161;
@@ -196,8 +198,7 @@ function _runningWeightKg() {
 
 export function normalizeWearWorkoutPayload(raw) {
   const payload = typeof raw === 'string' ? JSON.parse(raw) : raw;
-  if (!payload || typeof payload !== 'object') throw new Error('wear payload must be an object');
-  if (payload.type !== 'running') throw new Error('unsupported wear workout type');
+  const envelope = assertWearWorkoutPayloadEnvelope(payload);
   const date = _dateParts(payload.dateKey);
   const startedAt = _boundedInt(payload.startedAt, { min: 0 });
   const endedAt = _boundedInt(payload.endedAt, { min: startedAt + 1 });
@@ -231,6 +232,7 @@ export function normalizeWearWorkoutPayload(raw) {
   };
 
   return {
+    payloadVersion: envelope.payloadVersion,
     type: 'running',
     source: payload.source === 'wear' ? 'wear' : 'wear',
     dateKey: payload.dateKey,
@@ -263,25 +265,11 @@ function _targetRunningSessionIndex(payload) {
 }
 
 function _syncRunData(workout, payload, sessionIndex) {
-  const durationMin = Math.floor(payload.durationSec / 60);
-  const durationSec = payload.durationSec % 60;
-  return applyRunningDataToWorkout(workout, {
-    distance: payload.distanceKm,
-    durationMin,
-    durationSec,
-    memo: '',
-    source: 'wear',
-    startedAt: payload.startedAt,
-    endedAt: payload.endedAt,
-    route: payload.route,
-    routeSummary: {
-      ...payload.routeSummary,
-      heartRateSamples10s: payload.samples10s,
-    },
-    placeSummary: { status: 'unavailable', label: '워치 기록', provider: 'wear' },
-    avgPaceSecPerKm: payload.avgPaceSecPerKm || 0,
-    gpsAccuracySummary: null,
-  }, { sessionIndex, sessionId: RUNNING_SESSION_ID });
+  return applyRunningDataToWorkout(
+    workout,
+    runningInputFromWearPayload(payload),
+    { sessionIndex, sessionId: RUNNING_SESSION_ID },
+  );
 }
 
 function _queueId(payload) {

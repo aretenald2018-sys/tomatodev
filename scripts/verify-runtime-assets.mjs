@@ -98,7 +98,7 @@ function collectCssRefs(text, importer, refs) {
 }
 
 function collectSwRefs(text, importer, refs) {
-  const block = text.match(/const\s+STATIC_ASSETS\s*=\s*\[([\s\S]*?)\];/)?.[1] || '';
+  const block = text.match(/TOMATO_STATIC_ASSETS\s*=\s*Object\.freeze\(\[([\s\S]*?)\]\)/)?.[1] || '';
   for (const match of block.matchAll(/['"]([^'"]+)['"]/g)) addRef(refs, importer, match[1], 'sw-static-asset');
 }
 
@@ -119,7 +119,7 @@ for (const file of files) {
   if (ext === '.js' || ext === '.mjs') collectJsRefs(text, file, refs);
   if (ext === '.html') collectHtmlRefs(text, file, refs);
   if (ext === '.css') collectCssRefs(text, file, refs);
-  if (rel(file) === 'sw.js') collectSwRefs(text, file, refs);
+  if (rel(file) === 'runtime-assets.js') collectSwRefs(text, file, refs);
   if (rel(file).startsWith('.github/')) collectCommandRefs(text, file, refs);
 }
 

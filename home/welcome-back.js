@@ -101,7 +101,7 @@ function _dismissWelcomeBack() {
   setTimeout(() => host.remove(), 220);
 }
 
-export async function showWelcomeBackPopup(hoursSinceLogin) {
+export async function showWelcomeBackPopup(hoursSinceLogin, options = {}) {
   const user = getCurrentUser();
   const rawThreshold = user?.welcomeBackThresholdHours;
   const thresholdHours = Math.max(0, Number(rawThreshold ?? 24));
@@ -130,9 +130,9 @@ export async function showWelcomeBackPopup(hoursSinceLogin) {
   const modal = document.createElement('div');
   modal.id = 'dynamic-modal';
   modal.innerHTML = `
-    <div class="wb-overlay" onclick="if(event.target===this) window._dismissWelcomeBackPopup && window._dismissWelcomeBackPopup()">
-      <div class="wb-card wb-card--${level}" onclick="event.stopPropagation()">
-        <button type="button" class="wb-close" aria-label="닫기" onclick="window._dismissWelcomeBackPopup && window._dismissWelcomeBackPopup()">×</button>
+    <div class="wb-overlay">
+      <div class="wb-card wb-card--${level}" role="dialog" aria-modal="true" aria-label="복귀 환영">
+        <button type="button" class="wb-close" data-wb-action="dismiss" aria-label="닫기">×</button>
         <div class="wb-mascot-wrap">
           <div class="wb-mascot wb-mascot--${level}">
             <div class="wb-mascot-stem"></div>
@@ -159,15 +159,26 @@ export async function showWelcomeBackPopup(hoursSinceLogin) {
           </div>
         </div>
         <div class="wb-actions">
-          <button type="button" class="tds-btn fill lg" onclick="window._dismissWelcomeBackPopup && window._dismissWelcomeBackPopup(); window.switchTab && window.switchTab('workout');">오늘 기록 시작하기</button>
-          <button type="button" class="tds-btn ghost md" onclick="window._dismissWelcomeBackPopup && window._dismissWelcomeBackPopup()">나중에 할게요</button>
+          <button type="button" class="tds-btn fill lg" data-wb-action="start-workout">오늘 기록 시작하기</button>
+          <button type="button" class="tds-btn ghost md" data-wb-action="dismiss">나중에 할게요</button>
         </div>
       </div>
     </div>
   `;
 
   document.body.appendChild(modal);
-  window._dismissWelcomeBackPopup = _dismissWelcomeBack;
+  const overlay = modal.querySelector('.wb-overlay');
+  overlay?.addEventListener('click', (event) => {
+    if (event.target === overlay) _dismissWelcomeBack();
+  });
+  modal.addEventListener('click', (event) => {
+    const control = event.target?.closest?.('[data-wb-action]');
+    if (!control) return;
+    const action = control.dataset.wbAction;
+    _dismissWelcomeBack();
+    if (action === 'start-workout') options.onStartWorkout?.();
+  });
+  modal.querySelector('[data-wb-action="dismiss"]')?.focus({ preventScroll: true });
 
   setTimeout(() => _showWelcomeConfetti(level), 350);
   setTimeout(() => haptic(level === 'full' ? 'celebration' : level === 'moderate' ? 'success' : 'light'), 400);

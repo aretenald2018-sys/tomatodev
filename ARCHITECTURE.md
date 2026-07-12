@@ -1,47 +1,23 @@
-# 토마토팜 (dashboard3) 기술 아키텍처
+# Tomato Farm 기술 아키텍처
 
 ## 1. 시스템 개요
 
-건강/생산성 추적 PWA. 빌드 스텝 없는 Vanilla JS + Firebase 아키텍처. 단일 `index.html` SPA.
+건강/생산성 추적 PWA. 번들러 없는 Vanilla JS + Firebase 아키텍처이며, 단일 `index.html` SPA를 Capacitor Android와 Wear OS가 확장한다. shell → domain → data facade → Firebase adapter 방향을 유지한다.
 
 ```
-index.html (단일 SPA)
-  ├── app.js              — 오케스트레이터: switchTab, 이벤트 바인딩, window.* 함수 등록, init()
-  ├── render-*.js         — 탭 엔트리 shim (workout/admin/stats/cooking)
-  ├── render-home.js      — 홈 탭 엔트리 (home/index.js 호출)
-  ├── workout/            — 운동+식단 탭 실제 로직
-  ├── home/               — 홈 탭 실제 로직
-  ├── admin/              — 관리자 탭 실제 로직
-  ├── modals/*-modal.js   — 모달 HTML 템플릿 (문자열 export)
-  ├── data.js             — 배럴: re-export + loadAll/saveDay (데이터 접근점)
-  │   └── data/
-  │       ├── data-core.js               — Firebase init, 공유 상태, _col/_doc/_fbOp
-  │       ├── data-auth.js               — 인증, 역할 체크, 비밀번호
-  │       ├── data-account.js            — 계정 CRUD, 복구, 삭제
-  │       ├── data-analytics.js          — 이벤트 집계 (`_analytics/{dateKey}`)
-  │       ├── data-social.js             — 소셜 배럴 (하위 4개 모듈 re-export)
-  │       │   ├── data-social-friends.js     — 친구, 소개, 랭킹
-  │       │   ├── data-social-guild.js       — 길드 시스템
-  │       │   ├── data-social-interact.js    — 방명록, 댓글, 알림, 좋아요, FCM
-  │       │   └── data-social-log.js         — 로그인/액션 로그, 튜토리얼
-  │       ├── data-workout-equipment.js  — Expert mode gym/routine_templates CRUD
-  │       ├── ai-food-profile.js         — 유저 식단 prior (Phase 1: 메모리)
-  │       ├── korean-food-normalize.js   — 음식명 정규화 + kcal prior 매핑
-  │       ├── raw-ingredients.js         — 한국 상용 원재료 영양 DB (per 100g)
-  │       ├── data-date.js               — 날짜 유틸 (dateKey, TODAY)
-  │       ├── data-image.js              — 이미지 base64 변환
-  │       ├── data-external.js           — 환율, Fear & Greed API
-  │       └── data-helpers.js            — 정렬, 분기 키 유틸
-  ├── calc.js             — 순수 비즈니스 로직 (사이드이펙트 없음)
-  ├── feature-*.js        — checkin, diet-plan, misc, nutrition, tutorial
-  ├── workout-ui.js       — 운동탭 상태 머신 (wtSelectStatus, wtToggleType)
-  ├── modal-manager.js    — 29개 모달 동적 주입
-  ├── navigation.js       — 탭 드래그 정렬, 스와이프
-  ├── sheet.js            — 과거 날짜 편집 시트
-  ├── ai.js               — Claude/Gemini 호출 래퍼
-  ├── pwa-fcm.js          — FCM 푸시 구독
-  ├── sw.js               — Service Worker (CACHE_VERSION 관리)
-  └── 외부: Firebase, Claude API, Gemini, 식품안전처
+index.html
+  ├── app.js + app/                 — shell, tab registry, lazy load, overlay/action routing
+  ├── render-*.js                   — 탭 조립과 DOM rendering
+  ├── workout/                      — 운동/러닝/Wear/프로그램 domain과 session state
+  ├── diet/                         — canonical meal model, editor, photo estimate pipeline
+  ├── home/                         — home read model, life-zone, social action/rendering
+  ├── calendar/ + stats/            — 순수 read model과 selector
+  ├── data.js → data/data-api.js    — UI가 사용하는 유일한 data facade
+  │             └── data/*          — auth, workout, social, admin repository와 Firebase adapter
+  ├── styles/                       — tokens → components → primitives → accessibility
+  ├── runtime-assets.js → sw.js     — 단일 precache manifest와 service worker
+  ├── functions/                    — Firebase trigger + validation/service modules
+  └── android/                      — Capacitor phone app + Wear OS app
 ```
 
 ## 2. 기술 스택
@@ -50,11 +26,11 @@ index.html (단일 SPA)
 |------|------|
 | 언어 | JavaScript ES6 modules (빌드 없음) |
 | DB | Firebase Firestore |
-| 호스팅 | Vercel + GitHub Pages |
+| 호스팅 | GitHub Pages production (`origin/main`), Vercel 설정은 호환 목적으로 보존 |
 | 모바일 | Capacitor 8.x (Android) |
 | 함수 | Firebase Cloud Functions (`functions/`) |
 | API 서버 | Node/Express (`tools/api-server.js`) — 식품DB 프록시 |
-| 테스트 | `node:test` 기반, `tests/calc.expert.test.js` 1개 (Vitest 미도입) |
+| 테스트 | `node:test` 회귀/계약/DOM 통합 테스트 (`npm.cmd test`, `npm.cmd run test:contracts`) |
 | 디자인 | **TDS Mobile** (tossmini-docs.toss.im/tds-mobile) — 컬러 스케일만 커스텀 |
 
 ## 3. 핵심 아키텍처 결정 (코드에서 읽기 어려운 것들)
@@ -66,26 +42,26 @@ index.html (단일 SPA)
 - `_cache` 인메모리 캐시와 Firebase가 항상 동기화되어야 함
 - 직접 Firestore 호출하면 캐시가 stale → 다른 탭에서 구 데이터 표시
 - `saveDay()`는 저장 후 `_cache`를 업데이트하고 `sheet:saved` 이벤트 발생 → 이 체인이 끊기면 UI 갱신 안 됨
-- **data.js는 배럴 모듈**: 16개 하위 모듈(data/*.js)을 re-export. 기존 `import { ... } from './data.js'` 호환 유지
-- **data-core.js가 공유 상태 소유자**: db, _cache, _settings, _currentUser 등 모든 공유 상태는 data-core.js에서 관리. 의존 방향은 항상 core → 나머지 (순환 없음)
+- **data.js는 호환 facade**이고 실제 공개 API는 `data/data-api.js`가 조립한다. UI/feature는 Firebase SDK나 `data-core.js`를 직접 import하지 않는다.
+- Firebase adapter, repository, facade, UI 순으로 의존하며 `saveDay()`는 merge가 기본이다. 전체 replace는 명시적 opt-in 없이는 거부된다.
 
 ### 왜 saveWorkoutDay()와 _autoSaveDiet()가 분리되어 있는가
 - `saveWorkoutDay()` — 명시적 저장 (운동 상태 변경, 세트 체크 등)
 - `_autoSaveDiet()` — 음식 추가/삭제 시 자동 저장
-- **둘 다 `_buildSavePayload()` 공통 헬퍼를 호출해 전체 day 객체를 setDoc** → 새 필드 추가 시 `_buildSavePayload()` 한 곳만 수정하면 양쪽 반영
-- 역사적 이유로 분리되었고, 통합하면 좋지만 영향 범위가 넓어 리스크 있음
+- 운동은 `WORKOUT_PAYLOAD_KEYS`, 식단은 `DIET_PAYLOAD_KEYS`, 공통 필드는 `SHARED_PAYLOAD_KEYS` 계약으로 분리한다.
+- 사진·러닝 route·타 도메인 필드를 삭제하지 않도록 repository merge와 fixture 테스트가 저장 경계를 지킨다.
 
-### window.* 노출 패턴
-- HTML `onclick="함수명()"` 사용 → 함수가 window에 있어야 함
-- ES6 module은 자동으로 window에 노출 안 됨
-- `workout/index.js` 하단 `window.xxx = xxx;` 블록으로 수동 노출
-- **새 export 함수를 HTML onclick에서 쓰려면 반드시 window에도 등록**
+### action과 compatibility 원칙
+- 신규 UI는 `data-*` action + scoped handler 또는 직접 event binding을 사용한다. 신규 inline handler와 `window.*` 노출은 금지한다.
+- app shell의 남은 전역은 `app/compatibility-bridge.js` allowlist로만 설치한다.
+- 오래된 lazy feature가 아직 소비하는 전역은 제거 대상 목록으로 취급하며 새 사용처를 추가하지 않는다.
 
 ### 탭 로딩 전략 (app.js `switchTab`)
 - **즉시 로드**: `home`, `workout`, `diet` (import 문으로 직접; workout과 diet는 같은 `workouts` 도큐먼트를 공유 → `loadWorkoutDate` 동일 호출)
 - **레이지 로드**: `stats`, `cooking`, `admin` (app.js `_lazy*()` 함수로 동적 import)
 - **Admin 강제**: admin 유저면 `switchTab('home')` 같은 호출도 `admin`으로 강제 치환됨
-- **삭제된 탭**: calendar, finance, wine, movie, dev (경량화 2026-04) — `render-*.js` 없음. 컬렉션 데이터만 보존
+- **캘린더**: 하단 탭과 운동 홈 양쪽에서 `render-calendar.js`를 레이지 로드
+- **삭제된 탭**: finance, wine, movie, dev — UI 모듈은 제거하고 컬렉션 데이터만 보존
 
 ### 왜 shim 패턴인가 (render-workout.js)
 - `render-workout.js`는 `workout/index.js`를 re-export하는 얇은 shim
@@ -99,6 +75,7 @@ index.html (단일 SPA)
 | `home` | 즉시 | `renderHome()` (home/index.js) |
 | `workout` | 즉시 | `loadWorkoutDate(today)` + `wtRecoverTimers()` + `renderExpertTopArea()` |
 | `diet` | 즉시 | `loadWorkoutDate(today)` (workout과 동일 도큐먼트) |
+| `calendar` | 레이지 | `_lazyRenderCalendar()` → render-calendar.js |
 | `stats` | 레이지 | `_lazyRenderStats()` → render-stats.js |
 | `cooking` | 레이지 | `_lazyRenderCooking()` → render-cooking.js |
 | `admin` | 레이지 | `_lazyRenderAdmin()` → render-admin.js (admin 유저면 타 탭 → 강제 치환) |
@@ -107,7 +84,7 @@ index.html (단일 SPA)
 
 | 컬렉션 | 키 | 비고 |
 |--------|-----|------|
-| `workouts` | dateKey "2026-04-17" | **setDoc 전체 덮어쓰기** — 필드 누락 = 데이터 삭제. 운동+식단 통합 도큐먼트 |
+| `workouts` | dateKey "2026-04-17" | 운동+식단 통합 도큐먼트. runtime 저장은 domain payload + `setDoc({merge:true})`; replace는 명시적 opt-in만 허용 |
 | `users` | userId | 프로필, 설정, 식단 플랜, 권한 |
 | `goals` | goalId | 목표 정의 |
 | `quests` | questId | 일일 퀘스트 |
@@ -146,7 +123,7 @@ index.html (단일 SPA)
 }
 ```
 
-## 7. workout/ 모듈 구조 (11개 파일)
+## 7. workout/ 대표 모듈 구조
 
 | 파일 | 역할 |
 |------|------|
@@ -161,8 +138,13 @@ index.html (단일 SPA)
 | `activity-forms.js` | 런닝/크로스핏/스트레칭/수영 상세 폼 이벤트 |
 | `ai-estimate.js` | 사진 1-pass AI 음식 추정 (Bayesian prior 보정) |
 | `expert.js` | Expert mode 8-scene 위자드 (gym/equipment/루틴) |
+| `sessions.js`, `session-policy.js` | 날짜별 복수 운동 세션 정규화·집계·슬롯 정책 |
+| `running-session.js`, `running-model.js` | 러닝 세션 lifecycle과 canonical 저장 모델 |
+| `running-route-*.js` | GPS route 저장·정책·lazy hydration |
+| `wear-bridge.js` | Wear payload 검증과 웹 운동 세션 저장 경계 |
+| `expert/`, `test-v2/` | 성장 프로그램 계산·설정·보드 UI |
 
-## 8. home/ 모듈 구조 (19개 파일)
+## 8. home/ 대표 모듈 구조
 
 | 파일 | 역할 |
 |------|------|
@@ -228,7 +210,7 @@ index.html (단일 SPA)
 - 개인화: `data/ai-food-profile.js` — 유저 히스토리 기반 Bayesian prior (Phase 1: 메모리 전용, Firestore 미영속)
 - 모달: `nutrition-search-modal.js`, `nutrition-item-modal.js`, `nutrition-weight-modal.js`, `ai-estimate-banner-modal.js`
 
-## 14. 모달 시스템 (29개)
+## 14. 모달 시스템
 
 1. `modals/*-modal.js` → `export const MODAL_HTML` (HTML 문자열)
 2. `modal-manager.js` → 앱 초기화 시 MODALS 배열을 순회해 모든 모달 DOM 주입 (cache key 관리)
@@ -240,7 +222,7 @@ index.html (단일 SPA)
 - `sw.js` `CACHE_VERSION` 변수 범프 → 신규 자산 페치
 - `STATIC_ASSETS` 목록의 파일 수정 시 필수 범프
 - `firebase-messaging-sw.js`는 FCM 푸시 전용 (별도 SW)
-- 현재: `CACHE_VERSION = 'tomatofarm-v20260630z12-stale-ui-prune'`
+- 실제 버전은 `sw.js`의 `CACHE_VERSION`을 단일 기준으로 확인하며 문서에 버전 문자열을 복제하지 않는다.
 
 ## 16. 에이전트 (`.claude/agents/`)
 

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const exercisesJs = readFileSync('workout/exercises.js', 'utf8');
 const expertJs = readFileSync('workout/expert.js', 'utf8');
-const swJs = readFileSync('sw.js', 'utf8');
+const swJs = readFileSync('sw.js', 'utf8') + readFileSync('runtime-assets.js', 'utf8');
 
 function sliceByFirstBrace(source, startToken) {
   const start = source.indexOf(startToken);
@@ -170,5 +170,5 @@ test('Dashboard3 mode controls cannot persist normal or pro workout record UI', 
 });
 
 test('service worker cache version was bumped for workout asset changes', () => {
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });

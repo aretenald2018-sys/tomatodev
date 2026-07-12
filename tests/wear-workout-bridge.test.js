@@ -21,6 +21,8 @@ async function writeWearBridgeModule(tmp) {
     writeFile(join(tmp, 'sessions.js'), await read('workout/sessions.js'), 'utf8'),
     writeFile(join(tmp, 'session-policy.js'), await read('workout/session-policy.js'), 'utf8'),
     writeFile(join(tmp, 'running-model.js'), await read('workout/running-model.js'), 'utf8'),
+    writeFile(join(tmp, 'running-input.js'), await read('workout/running-input.js'), 'utf8'),
+    writeFile(join(tmp, 'wear-payload-contract.js'), await read('workout/wear-payload-contract.js'), 'utf8'),
     writeFile(join(tmp, 'package.json'), '{"type":"module"}\n', 'utf8'),
   ]);
   return modulePath;

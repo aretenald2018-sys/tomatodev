@@ -3,13 +3,21 @@
 // ================================================================
 
 import { S }                        from './state.js';
-import { _autoSaveDiet }            from './save.js';
 import { DAYS }                     from '../config.js';
 import { isFuture, TODAY, dateKey, getCache,
          getDietPlan, calcDietMetrics,
          getBodyCheckins,
          calcExerciseCalorieCredit } from '../data.js';
 import { confirmAction } from '../utils/confirm-modal.js';
+import {
+  cloneFoodItem as _cloneFoodItem,
+  foodAmountLabel as _foodAmountLabel,
+  foodGroupKey as _foodGroupKey,
+  mealConfig,
+  syncMealMacros,
+} from '../diet/meal-model.js';
+import { addMealFood, removeMealFood, restoreMealFood } from '../diet/feature.js';
+import { getDietPhoto } from '../diet/photo-store.js';
 
 // ── 날짜 라벨 ────────────────────────────────────────────────────
 export function _renderDateLabel() {
@@ -95,55 +103,11 @@ function _normalizeFoodName(name) {
   return String(name || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('ko-KR');
 }
 
-function _foodAmountLabel(food) {
-  const grams = Number(food?.grams);
-  if (Number.isFinite(grams) && grams > 0) return `${Math.round(grams)}g`;
-  const label = food?.servingRef?.label || food?.unit || food?.base?.label || '';
-  return String(label || '').trim();
-}
-
-function _foodGroupKey(food) {
-  const name = _normalizeFoodName(food?.name);
-  const amount = _foodAmountLabel(food).toLocaleLowerCase('ko-KR');
-  return `${name}|${amount}`;
-}
-
-function _foodMergeKey(food) {
-  const id = String(food?.recipeId || food?.id || '').trim();
-  if (id) return `id:${id}`;
-  const name = _normalizeFoodName(food?.name);
-  if (!name) return '';
-  return `name:${name}|source:${String(food?.source || '').trim().toLocaleLowerCase('ko-KR')}`;
-}
-
-function _sumFoodNumber(a, b, precision = 10) {
-  const av = Number(a);
-  const bv = Number(b);
-  const sum = (Number.isFinite(av) ? av : 0) + (Number.isFinite(bv) ? bv : 0);
-  return Math.round(sum * precision) / precision;
-}
-
-function _mergeFoodItem(existing, incoming) {
-  const merged = { ...existing };
-  for (const key of ['grams', 'kcal', 'protein', 'carbs', 'fat']) {
-    merged[key] = _sumFoodNumber(existing?.[key], incoming?.[key], key === 'kcal' ? 100 : 10);
-  }
-  if (existing?.source !== 'ai' && incoming?.source === 'ai') merged.source = 'ai';
-  return merged;
-}
-
 function _macroCompleteness(food) {
   return ['kcal', 'protein', 'carbs', 'fat'].reduce((score, key) => {
     const value = Number(food?.[key]);
     return score + (Number.isFinite(value) && value > 0 ? 1 : 0);
   }, 0);
-}
-
-function _cloneFoodItem(food) {
-  try {
-    if (typeof structuredClone === 'function') return structuredClone(food);
-  } catch {}
-  return JSON.parse(JSON.stringify(food));
 }
 
 function _suggestionKey(meal, groupKey, lastDateKey) {
@@ -512,7 +476,7 @@ function _renderCalorieTracker() {
 
 // ── 식사별 음식 아이템 ──────────────────────────────────────────
 export function _mealKey(meal) {
-  return meal === 'breakfast' ? 'bFoods' : meal === 'lunch' ? 'lFoods' : meal === 'dinner' ? 'dFoods' : 'sFoods';
+  return mealConfig(meal).key;
 }
 
 export function _renderMealFoodItems(meal) {
@@ -530,33 +494,12 @@ export function _renderMealFoodItems(meal) {
 }
 
 export function _recalcMealMacros(meal) {
-  const key    = _mealKey(meal);
-  const prefix = meal === 'breakfast' ? 'b' : meal === 'lunch' ? 'l' : meal === 'dinner' ? 'd' : 's';
-  const foods  = S.diet[key] || [];
-  if (!foods.length) return;
-
-  S.diet[`${prefix}Kcal`]    = Math.round(foods.reduce((s, f) => s + f.kcal,    0));
-  S.diet[`${prefix}Protein`] = Math.round(foods.reduce((s, f) => s + f.protein, 0) * 10) / 10;
-  S.diet[`${prefix}Carbs`]   = Math.round(foods.reduce((s, f) => s + f.carbs,   0) * 10) / 10;
-  S.diet[`${prefix}Fat`]     = Math.round(foods.reduce((s, f) => s + f.fat,     0) * 10) / 10;
-  S.diet[`${prefix}Ok`]      = true;
-  // 2026-04-21: Reason 은 UI 표시 문자열 — 저장은 소수 유지하되 여기선 정수로 표현.
-  S.diet[`${prefix}Reason`]  = `DB: ${S.diet[`${prefix}Kcal`]}kcal (단${Math.round(S.diet[`${prefix}Protein`])}g 탄${Math.round(S.diet[`${prefix}Carbs`])}g 지${Math.round(S.diet[`${prefix}Fat`])}g)`;
+  return syncMealMacros(S.diet, meal);
 }
 
 // ── 음식 추가/삭제 ──────────────────────────────────────────────
 export function wtAddFoodItem(meal, item) {
-  const key = _mealKey(meal);
-  const foods = [...(S.diet[key] || [])];
-  const mergeKey = _foodMergeKey(item);
-  const existingIdx = mergeKey ? foods.findIndex(food => _foodMergeKey(food) === mergeKey) : -1;
-  if (existingIdx >= 0) foods[existingIdx] = _mergeFoodItem(foods[existingIdx], item);
-  else foods.push(item);
-  S.diet[key] = foods;
-  _recalcMealMacros(meal);
-  _renderMealFoodItems(meal);
-  _renderDietResults();
-  _autoSaveDiet({ meal });
+  return addMealFood(meal, item);
 }
 
 export function wtAddFrequentFoodSuggestion(meal, suggestionKey) {
@@ -574,37 +517,27 @@ export function wtAddFrequentFoodSuggestion(meal, suggestionKey) {
 }
 
 export function wtRemoveFoodItem(meal, idx) {
-  const key = _mealKey(meal);
-  const arr = S.diet[key] || [];
-  const removed = arr[idx];
-  S.diet[key] = arr.filter((_, i) => i !== idx);
-  if ((S.diet[key] || []).length > 0) {
-    _recalcMealMacros(meal);
-  } else {
-    const prefix = meal === 'breakfast' ? 'b' : meal === 'lunch' ? 'l' : meal === 'dinner' ? 'd' : 's';
-    S.diet[`${prefix}Kcal`]    = 0;
-    S.diet[`${prefix}Protein`] = 0;
-    S.diet[`${prefix}Carbs`]   = 0;
-    S.diet[`${prefix}Fat`]     = 0;
-    S.diet[`${prefix}Ok`]      = null;
-    S.diet[`${prefix}Reason`]  = '';
-  }
-  _renderMealFoodItems(meal);
-  _renderDietResults();
-  _autoSaveDiet({ meal });
+  const result = removeMealFood(meal, idx);
+  const removed = result.removed;
   if (!removed) return;
   // Undo Toast 3초 — 원래 위치에 복원
   window.showToast?.(`'${removed.name || '음식'}' 삭제됨`, 3000, 'info', {
     action: '실행 취소',
     onAction: () => {
-      const curr = S.diet[key] || [];
-      curr.splice(Math.min(idx, curr.length), 0, removed);
-      S.diet[key] = curr;
-      _recalcMealMacros(meal);
-      _renderMealFoodItems(meal);
-      _renderDietResults();
-      _autoSaveDiet({ meal });
+      restoreMealFood(meal, idx, removed);
     },
+  });
+}
+
+if (typeof document !== 'undefined' && document.documentElement?.dataset.dietRenderBridge !== '1') {
+  document.documentElement.dataset.dietRenderBridge = '1';
+  document.addEventListener('diet:meal-changed', (event) => {
+    const meal = event?.detail?.meal;
+    if (!meal) return;
+    _renderMealFoodItems(meal);
+    _renderMealSkippedToggles();
+    _renderDietResults();
+    renderCalorieTracker();
   });
 }
 
@@ -615,7 +548,7 @@ export function _renderMealPhotos() {
     const row = document.getElementById(`wt-meal-content-${meal}`);
     if (!row) continue;
     row.querySelector('.meal-side-thumb')?.remove();
-    const photo = window._mealPhotos?.[meal];
+    const photo = getDietPhoto(meal);
     if (photo) {
       const thumb = document.createElement('div');
       thumb.className = 'meal-side-thumb';
@@ -637,7 +570,7 @@ export function _renderMealPhotos() {
   }
   const wrapW = document.getElementById('wt-photo-workout');
   if (wrapW) {
-    const photo = window._mealPhotos?.workout;
+    const photo = getDietPhoto('workout');
     if (photo) {
       wrapW.innerHTML = `<div class="meal-photo-frame" onclick="openMealPhotoLightbox(this.querySelector('img').src)">
         <img src="${photo}">

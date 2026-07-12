@@ -6,14 +6,20 @@ import { searchNutritionDB, getNutritionDB, getRecentNutritionItems,
          deleteNutritionItem, getCookingRecords } from './data.js';
 import { loadCSVDatabase, searchCSVFood, searchGovFoodAPI, searchOpenFoodFacts } from './fatsecret-api.js';
 import { searchRawIngredients } from './data/raw-ingredients.js';
-import { wtAddFoodItem } from './render-workout.js';
-import { loadAndInjectModals } from './modal-manager.js';
+import { addMealFood } from './diet/feature.js';
+import { ensureModal } from './modal-manager.js';
+import { openModal, closeModal } from './app/overlay-stack.js';
+import { canonicalNutritionDisplay, toCanonicalNutritionItem } from './diet/nutrition-item.js';
+import { setNutritionItemSavedHandler } from './diet/editor-events.js';
+import { getNutritionSearchMeal, setNutritionSearchMeal } from './diet/selection.js';
+import { openNutritionWeightModal } from './modals/nutrition-weight-modal.js';
+import { openNutritionItemEditor } from './modals/nutrition-item-modal.js';
 
 // ── 상태 ──────────────────────────────────────────────────────────
-let _nutritionSearchMeal = null;
 let _nutritionSearchCache = { db: [], csv: [], recent: [], raw: [], brand: [] };
 let _nutritionSearchTimer = null;
 let _lastSearchQuery = null;
+let _nutritionCSVLoaded = false;
 
 // NOTE: _loadPublicFoodDB / _loadAgriFoodDB는 과거에 19,495건을 localStorage에
 // 적재했지만 검색에 쓰지 않아 비용 대비 효용이 없었음. 2026-04-17 제거.
@@ -22,7 +28,7 @@ let _lastSearchQuery = null;
 
 // ── 영양 검색 모달 ────────────────────────────────────────────────
 async function _getNutritionSearchElements() {
-  await loadAndInjectModals();
+  await ensureModal('nutrition-search-modal');
   const modal = document.getElementById('nutrition-search-modal');
   const input = document.getElementById('nutrition-search-input');
   const results = document.getElementById('nutrition-search-results');
@@ -33,16 +39,15 @@ async function _getNutritionSearchElements() {
 }
 
 export async function openNutritionSearch(mealId) {
-  _nutritionSearchMeal = mealId;
-  window._nutritionSearchMeal = mealId;
+  setNutritionSearchMeal(mealId);
   const { modal, input } = await _getNutritionSearchElements();
   input.value = '';
 
-  if (!window._nutritionCSVLoaded) {
+  if (!_nutritionCSVLoaded) {
     try {
       const csvPath2 = window.location.pathname.replace(/\/[^/]*$/, '') + '/public/data/foods.csv';
       await loadCSVDatabase(csvPath2);
-      window._nutritionCSVLoaded = true;
+      _nutritionCSVLoaded = true;
       console.log('[영양검색] CSV 로드됨:', csvPath2);
     } catch (e) {
       console.warn('[영양검색] CSV 로드 실패:', e);
@@ -50,15 +55,11 @@ export async function openNutritionSearch(mealId) {
   }
 
   renderNutritionSearchInitial();
-  if (typeof window._openModal === 'function') {
-    window._openModal('nutrition-search-modal');
-  } else {
-    modal.classList.add('open');
-  }
+  openModal('nutrition-search-modal');
   setTimeout(() => input?.focus(), 100);
 }
 
-export function closeNutritionSearch(e) { window._closeModal('nutrition-search-modal', e); }
+export function closeNutritionSearch(e) { closeModal('nutrition-search-modal', e); }
 
 // ── 검색 디바운싱 ────────────────────────────────────────────────
 export function debouncedNutritionSearch() {
@@ -89,23 +90,23 @@ function _escapeHtml(value) {
 }
 
 function _renderNutritionRow(item, { icon = '🏠', removable = false, isCSV = false } = {}) {
+  const display = canonicalNutritionDisplay(item);
+  if (!display) return '';
+  const canonical = display.canonical;
   const itemDataKey = `_nutritionItem_${item.id}`;
-  window[itemDataKey] = item;
-  const name = _escapeHtml(item.name || '이름 없는 식품');
-  const manufacturer = _escapeHtml(item.manufacturer || item.brand || '');
-  const kcal = isCSV ? (item.energy || 0) : (item.nutrition?.kcal || item.kcal || 0);
-  const carbs = isCSV ? item.carbs : (item.nutrition?.carbs ?? item.carbs);
-  const protein = isCSV ? item.protein : (item.nutrition?.protein ?? item.protein);
-  const fat = isCSV ? item.fat : (item.nutrition?.fat ?? item.fat);
+  window[itemDataKey] = canonical;
+  const name = _escapeHtml(canonical.name || '이름 없는 식품');
+  const manufacturer = _escapeHtml(canonical.brand || '');
+  const { kcal, carbs, protein, fat } = display.nutrition;
   const removeBtn = removable
-    ? `<button onclick="event.stopPropagation(); removeFromFavorites('${item.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;flex-shrink:0" title="즐겨찾기에서 제거">✕</button>`
+    ? `<button onclick="event.stopPropagation(); removeFromFavorites('${canonical.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;flex-shrink:0" title="즐겨찾기에서 제거">✕</button>`
     : '';
   return `
     <div class="nutrition-result-row"${removable ? ' style="display:flex;justify-content:space-between;align-items:center"' : ''}>
       <div onclick="selectNutritionItemFromCache('${itemDataKey}')" style="cursor:pointer;flex:1">
         <div class="nutrition-result-name">${icon} ${name}${manufacturer ? ` <span style="color:var(--muted);font-size:10px">· ${manufacturer}</span>` : ''}</div>
         <div class="nutrition-result-meta">
-          ${item.defaultWeight && item.defaultWeight !== 100 ? `<span style="color:var(--primary);font-weight:600">1인분 ${item.defaultWeight}g · ${Math.round(kcal * item.defaultWeight / 100)}kcal</span>` : `<span>${(!isCSV && item.unit) ? item.unit : '100g'}</span><span>${kcal}kcal</span>`}
+          <span>${_escapeHtml(display.serving.label || canonical.base?.label || '100g')}</span><span>${Math.round(kcal)}kcal</span>
           ${carbs != null ? `<span>탄${Math.round(carbs)}g</span>` : ''}
           ${protein != null ? `<span>단${Math.round(protein)}g</span>` : ''}
           ${fat != null ? `<span>지${Math.round(fat)}g</span>` : ''}
@@ -288,38 +289,11 @@ export async function renderNutritionSearchResults() {
 //   serializeForStorage 를 거친 저장은 servingSize 를 항상 세팅하지만, 구 버전 저장이나
 //   외부 import 경로에 대한 방어.
 export function openNutritionDirectAdd() {
-  window._onNutritionItemSaved = (savedItem) => {
-    window._onNutritionItemSaved = null;
+  setNutritionItemSavedHandler((savedItem) => {
     if (!savedItem) return;
-    const baseGrams = savedItem.base && Number(savedItem.base.grams) > 0
-      ? Number(savedItem.base.grams) : null;
-    const servingGrams = Array.isArray(savedItem.servings) && savedItem.servings.length > 0
-      ? (Number(savedItem.servings[0]?.baseGrams) || null) : null;
-    const servingSize = Number(savedItem.servingSize)
-      || baseGrams
-      || servingGrams
-      || parseFloat(savedItem.unit?.match(/[\d.]+/)?.[0] || 100);
-    const item = {
-      id: savedItem.id,
-      name: savedItem.name,
-      servingSize,
-      unit: savedItem.unit || savedItem.base?.label || '100g',
-      nutrition: savedItem.nutrition || { kcal: 0, protein: 0, carbs: 0, fat: 0 },
-      // canonical 보존 — weight-modal 이 _toCanonical 로 읽어 단위 드롭다운 생성 가능.
-      base: savedItem.base,
-      servings: savedItem.servings,
-      defaultServingId: savedItem.defaultServingId,
-    };
-    if (window.openNutritionWeightModal) {
-      window.openNutritionWeightModal(item);
-    }
-  };
-  // window 경로 명시 — nutrition-item-modal.js 의 window 노출(2026-04-20 수정)에 의존.
-  if (typeof window.openNutritionItemEditor === 'function') {
-    window.openNutritionItemEditor(null);
-  } else {
-    console.error('[openNutritionDirectAdd] openNutritionItemEditor 미등록 — modal-manager 가 nutrition-item-modal 을 로드했는지 확인');
-  }
+    openNutritionWeightModal(toCanonicalNutritionItem(savedItem));
+  });
+  openNutritionItemEditor(null);
 }
 
 // ── 즐겨찾기 제거 ─────────────────────────────────────────────────
@@ -352,7 +326,8 @@ function _calcPerServing(recipe) {
 // ── 내 요리 → 식단에 추가 ──────────────────────────────────────────
 export function selectCookingRecipeForDiet(recipeId) {
   const recipe = getCookingRecords().find(r => r.id === recipeId);
-  if (!recipe || !_nutritionSearchMeal) return;
+  const searchMeal = getNutritionSearchMeal();
+  if (!recipe || !searchMeal) return;
   const ps = _calcPerServing(recipe);
   if (!ps) return;
 
@@ -367,7 +342,7 @@ export function selectCookingRecipeForDiet(recipeId) {
     recipeId: recipe.id,
   };
 
-  wtAddFoodItem(_nutritionSearchMeal, foodItem);
+  addMealFood(searchMeal, foodItem);
   document.getElementById('nutrition-search-modal')?.classList.remove('open');
 }
 
@@ -420,12 +395,13 @@ export function selectNutritionItem(itemId) {
 
   console.log('[selectNutritionItem] 찾은 항목:', { itemId, item, cacheSize: { recent: _nutritionSearchCache.recent?.length, db: _nutritionSearchCache.db?.length, csv: _nutritionSearchCache.csv?.length } });
 
-  if (!item || !_nutritionSearchMeal) {
-    console.error('[selectNutritionItem] 항목을 찾을 수 없거나 meal이 없습니다:', { itemId, hasItem: !!item, hasMeal: !!_nutritionSearchMeal });
+  const searchMeal = getNutritionSearchMeal();
+  if (!item || !searchMeal) {
+    console.error('[selectNutritionItem] 항목을 찾을 수 없거나 meal이 없습니다:', { itemId, hasItem: !!item, hasMeal: !!searchMeal });
     return;
   }
 
-  openNutritionWeightModal(item);
+  openNutritionWeightModal(toCanonicalNutritionItem(item));
 }
 
 export function selectNutritionItemFromCache(itemDataKey) {
@@ -436,13 +412,13 @@ export function selectNutritionItemFromCache(itemDataKey) {
     return;
   }
 
-  if (!_nutritionSearchMeal) {
+  if (!getNutritionSearchMeal()) {
     console.error('[selectNutritionItemFromCache] 선택된 meal이 없습니다');
     return;
   }
 
   console.log('[selectNutritionItemFromCache] 항목 열기:', { itemDataKey, item });
-  openNutritionWeightModal(item);
+  openNutritionWeightModal(toCanonicalNutritionItem(item));
 }
 
 // ── window 등록 (self-register) ─────────────────────────────────

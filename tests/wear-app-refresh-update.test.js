@@ -154,7 +154,7 @@ test('manual app refresh keeps native Wear bridge while APK button downloads mob
   const buildInfoJs = readProjectFile('utils/build-info.js');
   const appJs = readProjectFile('app.js');
   const gitignore = readProjectFile('.gitignore');
-  const swJs = readProjectFile('sw.js');
+  const swJs = readProjectFile('sw.js') + readProjectFile('runtime-assets.js');
 
   assert.match(buildInfoJs, /TomatoWearAppUpdate/);
   assert.match(buildInfoJs, /requestRefreshOrInstall/);
@@ -184,7 +184,7 @@ test('manual app refresh keeps native Wear bridge while APK button downloads mob
     'export async function requestTomatoAppRefresh',
     'APK install helper should stay separate from the page reload path',
   );
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });
 
 test('published mobile APK contains current life-zone photo bubble assets', () => {

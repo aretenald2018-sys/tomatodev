@@ -3,7 +3,7 @@
 // ================================================================
 
 // 모달 메타데이터: id, 모듈 경로, export 이름
-const MODALS = [
+export const MODALS = Object.freeze([
   { id: 'ex-picker-modal',        path: './modals/ex-picker-modal.js',        export: 'MODAL_HTML' },
   { id: 'ex-editor-modal',        path: './modals/ex-editor-modal.js',        export: 'MODAL_HTML' },
   { id: 'goal-modal',             path: './modals/goal-modal.js',             export: 'MODAL_HTML' },
@@ -37,37 +37,66 @@ const MODALS = [
   { id: 'max-onboarding-modal',   path: './modals/max-onboarding-modal.js',   export: 'MODAL_HTML' },
   { id: 'calendar-day-modal',     path: './modals/calendar-day-modal.js',     export: 'MODAL_HTML' },
   { id: 'custom-muscles-modal',   path: './modals/custom-muscles-modal.js',   export: 'MODAL_HTML' },
-];
+]);
 
 // 모달들이 로드되었는지 추적
 let _modalsLoaded = false;
 let _modalsLoadPromise = null;
+const _modalPromises = new Map();
+const CACHE_KEY = '?v=20260507-test-mode-fixes';
+
+function _modalConfig(id) {
+  return MODALS.find((config) => config.id === id) || null;
+}
+
+export async function ensureModal(id) {
+  if (!id) return null;
+  const existing = document.getElementById(id);
+  if (existing) return existing;
+  if (_modalPromises.has(id)) return _modalPromises.get(id);
+
+  const config = _modalConfig(id);
+  if (!config) throw new Error(`Unknown modal: ${id}`);
+  const promise = (async () => {
+    const container = document.getElementById('modals-container');
+    if (!container) throw new Error('modals-container not found');
+    const module = await import(config.path + CACHE_KEY);
+    const html = module[config.export] || '';
+    if (!html) throw new Error(`Modal template is empty: ${id}`);
+    container.insertAdjacentHTML('beforeend', html);
+    const element = document.getElementById(id);
+    if (!element) throw new Error(`Modal template did not create #${id}`);
+    return element;
+  })();
+  _modalPromises.set(id, promise);
+  try {
+    return await promise;
+  } catch (error) {
+    _modalPromises.delete(id);
+    throw error;
+  }
+}
 
 /**
  * 모든 모달을 동적으로 로드하고 DOM에 주입
  */
-export async function loadAndInjectModals() {
-  if (_modalsLoaded) return;
+export async function loadAndInjectModals(ids = null) {
+  const requestedIds = Array.isArray(ids) ? [...new Set(ids)] : MODALS.map((config) => config.id);
+  const loadsAll = requestedIds.length === MODALS.length && MODALS.every((config) => requestedIds.includes(config.id));
+  if (loadsAll && _modalsLoaded) return;
+  if (!loadsAll) {
+    await Promise.all(requestedIds.map((id) => ensureModal(id)));
+    return;
+  }
   if (_modalsLoadPromise) return _modalsLoadPromise;
 
   _modalsLoadPromise = (async () => {
-    const container = document.getElementById('modals-container');
-    if (!container) {
-      console.warn('[modal-manager] modals-container 를 찾지 못했습니다');
-      return;
-    }
-
-    const cacheKey = '?v=20260507-test-mode-fixes';
     const results = await Promise.allSettled(
-      MODALS.map(cfg => import(cfg.path + cacheKey).then(m => m[cfg.export] || ''))
+      MODALS.map((config) => ensureModal(config.id))
     );
-    const htmlParts = results
-      .filter(r => r.status === 'fulfilled' && r.value)
-      .map(r => r.value);
-
-    container.innerHTML = htmlParts.join('\n');
-    _modalsLoaded = true;
-    console.log('[modal-manager] 모달 로드 완료 (' + htmlParts.length + '/' + MODALS.length + ')');
+    const loadedCount = results.filter((result) => result.status === 'fulfilled').length;
+    _modalsLoaded = loadedCount === MODALS.length;
+    console.log('[modal-manager] 모달 로드 완료 (' + loadedCount + '/' + MODALS.length + ')');
   })();
 
   try {

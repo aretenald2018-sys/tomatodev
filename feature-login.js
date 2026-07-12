@@ -1194,26 +1194,14 @@ async function removeGuildFromModal(name) {
     if (!_ok7) return;
 
     // pending은 즉시 Firebase 반영 (저장하기 안 눌러도 적용)
-    const { getCurrentUser, saveAccount, setCurrentUser } = await import('./data.js');
+    const { getCurrentUser, saveAccount, setCurrentUser, withdrawGuildJoinRequest } = await import('./data.js');
     const user = getCurrentUser();
     if (user) {
       user.pendingGuilds = (user.pendingGuilds || []).filter(g => g !== name);
       await saveAccount(user);
       setCurrentUser(user);
     }
-    // pending 알림 + _guild_requests 정리
-    try {
-      const { deleteDoc: _dd, doc: _dc, getFirestore: _gfs, getDocs: _gds, collection: _col } = await import("https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js");
-      const _db = _gfs();
-      await _dd(_dc(_db, '_notifications', `guild_pending_${name}_${user.id}`)).catch(() => {});
-      const reqSnap = await _gds(_col(_db, '_guild_requests'));
-      for (const d of reqSnap.docs) {
-        const data = d.data();
-        if (data.guildId === name && data.userId === user.id && data.status === 'pending') {
-          await _dd(_dc(_db, '_guild_requests', d.id));
-        }
-      }
-    } catch {}
+    if (user) await withdrawGuildJoinRequest(name, user.id);
     const { showToast: _st } = await import('./home/utils.js');
     _st(`${name} 가입신청을 철회했어요`, 2500, 'info');
   }
@@ -1296,7 +1284,7 @@ async function createGuildFromModal() {
 
 async function syncGuildModalState(options = {}) {
   const { closeAfter = false, successMessage = '', successType = 'success', refreshCache = true } = options;
-  const { getCurrentUser, saveAccount, setCurrentUser, createGuild, createGuildJoinRequest, updateGuildMemberCount, updateGuildLeader } = await import('./data.js');
+  const { getCurrentUser, saveAccount, setCurrentUser, createGuild, createGuildJoinRequest, updateGuildMemberCount, updateGuildLeader, withdrawGuildJoinRequest } = await import('./data.js');
   const user = getCurrentUser();
   if (!user) return;
 
@@ -1337,23 +1325,10 @@ async function syncGuildModalState(options = {}) {
     }
   }
 
-  // 철회된 pending 길드 → _guild_requests 삭제 + pending 알림 제거
-  const { deleteDoc: _dd, doc: _dc, getFirestore: _gfs, getDocs: _gds, collection: _col } = await import("https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js");
-  const _db = _gfs();
+  // 철회된 pending 길드 → repository에서 요청과 pending 알림을 함께 제거
   for (const oldP of oldPending) {
     if (!newPending.includes(oldP)) {
-      // pending 알림 제거
-      try { await _dd(_dc(_db, '_notifications', `guild_pending_${oldP}_${user.id}`)); } catch {}
-      // _guild_requests에서 해당 요청 삭제
-      try {
-        const reqSnap = await _gds(_col(_db, '_guild_requests'));
-        reqSnap.forEach(async (d) => {
-          const data = d.data();
-          if (data.guildId === oldP && data.userId === user.id && data.status === 'pending') {
-            await _dd(_dc(_db, '_guild_requests', d.id));
-          }
-        });
-      } catch {}
+      await withdrawGuildJoinRequest(oldP, user.id);
     }
   }
 

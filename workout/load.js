@@ -3,7 +3,8 @@
 // 2026-04-21: S.workout / S.diet / S.shared 네임스페이스 마이그레이션 완료.
 // ================================================================
 
-import { S }                          from './state.js';
+import { S, patchWorkoutState, replaceDietState, setWorkoutDateState }
+                                     from './state.js';
 import { _renderDateLabel,
          _renderStretchingToggle, _renderWineFreeToggle,
          _renderMealSkippedToggles, _renderDietResults,
@@ -21,6 +22,8 @@ import { _initButtonEventListeners } from './status.js';
 import { _renderExerciseList }       from './exercises.js?v=20260625z47-workout-record-card-standard';
 import { getDay, isFuture, TODAY, isExpertModeEnabled, getExpertPreset, dateKey } from '../data.js';
 import { getWorkoutSessions } from './sessions.js';
+import { dietStateFromDay, workoutStateFromSession } from './session-hydration.js';
+import { replaceDietPhotos } from '../diet/photo-store.js';
 
 function _isActualWorkoutSet(set) {
   if (!set || set.setType === 'warmup') return false;
@@ -112,7 +115,7 @@ export function loadWorkoutDate(y, m, d) {
     try { window.aiEstimateClearAll(); } catch (e) { console.warn('[aiEstimateClearAll]', e); }
   }
 
-  S.shared.date = { y, m, d };
+  setWorkoutDateState({ y, m, d });
   const currentKey = dateKey(y, m, d);
   const day  = getDay(y, m, d);
   const sessions = getWorkoutSessions(day, { minCount: targetSessionIndex + 1 });
@@ -123,57 +126,13 @@ export function loadWorkoutDate(y, m, d) {
   const workoutSource = draftResult.source;
   const loadedMax = _normalizeLoadedMaxMeta(workoutSource, currentKey);
 
-  // 운동 도메인 복원
-  const w = S.workout;
-  w.sessionIndex = targetSessionIndex;
-  w.sessionId    = workoutSource.id || `session-${targetSessionIndex + 1}`;
-  w.exercises   = _restoreWorkoutExercises(workoutSource, loadedMax.rejectedLegacy);
-  w.cf          = !!workoutSource.cf;
-  w.stretching  = !!workoutSource.stretching;
-  w.swimming    = !!workoutSource.swimming;
-  w.running     = !!workoutSource.running;
-  w.runData     = {
-    distance:    workoutSource.runDistance || 0,
-    durationMin: workoutSource.runDurationMin || 0,
-    durationSec: workoutSource.runDurationSec || 0,
-    memo:        workoutSource.runMemo || '',
-    source:      workoutSource.runSource || 'manual',
-    startedAt:   workoutSource.runStartedAt || null,
-    endedAt:     workoutSource.runEndedAt || null,
-    route:       Array.isArray(workoutSource.runRoute) ? workoutSource.runRoute : [],
-    routeRef:    workoutSource.runRouteRef || null,
-    routeSummary: workoutSource.runRouteSummary || null,
-    placeSummary: workoutSource.runPlaceSummary || null,
-    avgPaceSecPerKm: Number(workoutSource.runAvgPaceSecPerKm) || 0,
-    gpsAccuracySummary: workoutSource.runGpsAccuracySummary || null,
-  };
-  w.cfData = {
-    wod:         workoutSource.cfWod || '',
-    durationMin: workoutSource.cfDurationMin || 0,
-    durationSec: workoutSource.cfDurationSec || 0,
-    memo:        workoutSource.cfMemo || '',
-  };
-  w.stretchData = {
-    duration:    workoutSource.stretchDuration || 0,
-    memo:        workoutSource.stretchMemo || '',
-  };
-  w.swimData = {
-    distance:    workoutSource.swimDistance || 0,
-    durationMin: workoutSource.swimDurationMin || 0,
-    durationSec: workoutSource.swimDurationSec || 0,
-    stroke:      workoutSource.swimStroke || '',
-    memo:        workoutSource.swimMemo || '',
-  };
-  w.wineFree        = !!workoutSource.wine_free;
-  w.workoutDuration = workoutSource.workoutDuration || 0;
-  w.workoutTimeline = workoutSource.workoutTimeline || null;
-  // 전문가 모드 메타데이터 복원 (day에 저장된 값 > preset 기본값)
-  // 테스트모드도 그날 헬스장/기구 필터를 유지해야 하므로 gymId를 복원한다.
-  w.routineMeta  = workoutSource.routineMeta || null;
-  w.pickerGymFilter = workoutSource.pickerGymFilter || null;
-  w.maxMeta = loadedMax.meta;
   const _preset = getExpertPreset();
-  w.currentGymId = workoutSource.gymId || (isExpertModeEnabled() ? (_preset.currentGymId || null) : null);
+  const w = patchWorkoutState(workoutStateFromSession(workoutSource, {
+    sessionIndex: targetSessionIndex,
+    exercises: _restoreWorkoutExercises(workoutSource, loadedMax.rejectedLegacy),
+    maxMeta: loadedMax.meta,
+    currentGymId: workoutSource.gymId || (isExpertModeEnabled() ? (_preset.currentGymId || null) : null),
+  }));
 
   // ⚠️ 스톱워치(S.workout.workoutStartTime/workoutTimerInterval/workoutTimerDate)는
   // 끝내기/리셋 전에는 절대 멈추면 안 됨. 여기서는 건드리지 않는다.
@@ -191,32 +150,16 @@ export function loadWorkoutDate(y, m, d) {
   const resultEl = document.getElementById('wt-workout-duration-result');
   if (resultEl) resultEl.style.display = 'none';
 
-  // 식단 도메인 복원 — skip 플래그까지 diet 내부로 일원화.
-  S.diet = {
-    breakfast: day.breakfast||'', lunch: day.lunch||'', dinner: day.dinner||'', snack: day.snack||'',
-    breakfastSkipped: !!day.breakfast_skipped,
-    lunchSkipped:     !!day.lunch_skipped,
-    dinnerSkipped:    !!day.dinner_skipped,
-    bOk:    day.bOk    ?? null, lOk:    day.lOk    ?? null, dOk:    day.dOk    ?? null, sOk: day.sOk ?? null,
-    bKcal:  day.bKcal  || 0,   lKcal:  day.lKcal  || 0,   dKcal:  day.dKcal  || 0,   sKcal: day.sKcal || 0,
-    bReason:day.bReason|| '',  lReason:day.lReason|| '',  dReason:day.dReason|| '',  sReason: day.sReason || '',
-    bProtein:day.bProtein||0, bCarbs:day.bCarbs||0, bFat:day.bFat||0,
-    lProtein:day.lProtein||0, lCarbs:day.lCarbs||0, lFat:day.lFat||0,
-    dProtein:day.dProtein||0, dCarbs:day.dCarbs||0, dFat:day.dFat||0,
-    sProtein:day.sProtein||0, sCarbs:day.sCarbs||0, sFat:day.sFat||0,
-    bFoods:day.bFoods||[], lFoods:day.lFoods||[], dFoods:day.dFoods||[], sFoods:day.sFoods||[],
-    bEstimateMeta: day.bEstimateMeta || null,
-    lEstimateMeta: day.lEstimateMeta || null,
-    dEstimateMeta: day.dEstimateMeta || null,
-    sEstimateMeta: day.sEstimateMeta || null,
-  };
+  // 식단 도메인 복원 — DOM과 무관한 hydration 모델을 통해 in-place 교체한다.
+  replaceDietState(dietStateFromDay(day));
 
-  window._mealPhotos = {};
-  if (day.bPhoto) window._mealPhotos.breakfast = day.bPhoto;
-  if (day.lPhoto) window._mealPhotos.lunch = day.lPhoto;
-  if (day.dPhoto) window._mealPhotos.dinner = day.dPhoto;
-  if (day.sPhoto) window._mealPhotos.snack = day.sPhoto;
-  if (workoutSource.workoutPhoto) window._mealPhotos.workout = workoutSource.workoutPhoto;
+  replaceDietPhotos({
+    ...(day.bPhoto ? { breakfast: day.bPhoto } : {}),
+    ...(day.lPhoto ? { lunch: day.lPhoto } : {}),
+    ...(day.dPhoto ? { dinner: day.dPhoto } : {}),
+    ...(day.sPhoto ? { snack: day.sPhoto } : {}),
+    ...(workoutSource.workoutPhoto ? { workout: workoutSource.workoutPhoto } : {}),
+  });
 
   _renderDateLabel();
   _renderStretchingToggle();

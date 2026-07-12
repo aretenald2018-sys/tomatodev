@@ -16,10 +16,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles/tokens.css">
 <link rel="stylesheet" href="styles/components.css">
+<link rel="stylesheet" href="styles/primitives.css">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="admin/admin-hig.css">
-<link rel="stylesheet" href="expert-mode.css?v=20260711d12">
-<link rel="stylesheet" href="test-mode-v2.css?v=20260711d27-selected-scope">
+<link rel="stylesheet" href="expert-mode.css?v=20260712h12">
+<link rel="stylesheet" href="styles/accessibility.css">
+<link rel="stylesheet" href="test-mode-v2.css?v=20260712h27-selected-scope">
 </head>
 <body>
 
@@ -284,7 +286,7 @@
     <div class="home-card" id="card-unit-goal">
       <div class="home-card-header">
         <span class="home-card-title">목표 달성</span>
-        <button class="section-title-edit-btn" onclick="openUnitGoalDatePicker()">설정</button>
+        <button class="section-title-edit-btn" data-action="home:open-unit-goal-date">설정</button>
       </div>
       <div id="unit-goal-content"></div>
     </div>
@@ -293,13 +295,13 @@
     <div class="home-card" id="card-mini-memo">
       <div class="home-card-header">
         <span class="home-card-title editable-title" id="title-mini_memo">할 일</span>
-        <button class="section-title-edit-btn" onclick="editSectionTitle('mini_memo')">관리</button>
+        <button class="section-title-edit-btn" data-action="home:edit-section-title" data-action-arg="mini_memo">관리</button>
       </div>
       <div id="mini-memo-list"></div>
       <div class="mini-memo-add-row">
         <input class="mini-memo-new-input" id="mini-memo-new-input" placeholder="할 일 추가"
-          onkeydown="if(event.key==='Enter') addMiniMemoItem()">
-        <button class="mini-memo-add-btn" onclick="addMiniMemoItem()">+</button>
+          data-keydown-action="home:add-mini-memo-key">
+        <button class="mini-memo-add-btn" data-action="home:add-mini-memo">+</button>
       </div>
     </div>
 
@@ -307,7 +309,7 @@
     <div class="home-card" id="card-goals">
       <div class="home-card-header">
         <span class="home-card-title editable-title" id="title-goals">목표</span>
-        <button class="section-title-edit-btn" onclick="editSectionTitle('goals')">관리</button>
+        <button class="section-title-edit-btn" data-action="home:edit-section-title" data-action-arg="goals">관리</button>
       </div>
       <div id="goals-section"></div>
     </div>
@@ -316,34 +318,34 @@
     <div class="home-card quest-board-card" id="card-quests">
       <div class="home-card-header">
         <span class="home-card-title editable-title" id="title-quests">퀘스트</span>
-        <button class="section-title-edit-btn" onclick="editSectionTitle('quests')">관리</button>
+        <button class="section-title-edit-btn" data-action="home:edit-section-title" data-action-arg="quests">관리</button>
       </div>
       <div class="quest-board" id="quest-board">
         <div class="quest-cell" data-type="quarterly" draggable="true">
           <div class="quest-cell-header">
             <span class="quest-cell-title">분기</span>
-            <button class="quest-add-btn" onclick="openQuestModal('quarterly')">+</button>
+            <button class="quest-add-btn" data-action="home:open-quest" data-action-arg="quarterly">+</button>
           </div>
           <div id="quarterly-quests"></div>
         </div>
         <div class="quest-cell" data-type="monthly" draggable="true">
           <div class="quest-cell-header">
             <span class="quest-cell-title">월간</span>
-            <button class="quest-add-btn" onclick="openQuestModal('monthly')">+</button>
+            <button class="quest-add-btn" data-action="home:open-quest" data-action-arg="monthly">+</button>
           </div>
           <div id="monthly-quests"></div>
         </div>
         <div class="quest-cell" data-type="weekly" draggable="true">
           <div class="quest-cell-header">
             <span class="quest-cell-title">주간</span>
-            <button class="quest-add-btn" onclick="openQuestModal('weekly')">+</button>
+            <button class="quest-add-btn" data-action="home:open-quest" data-action-arg="weekly">+</button>
           </div>
           <div id="weekly-quests"></div>
         </div>
         <div class="quest-cell" data-type="daily" draggable="true">
           <div class="quest-cell-header">
             <span class="quest-cell-title">오늘</span>
-            <button class="quest-add-btn" onclick="openQuestModal('daily')">+</button>
+            <button class="quest-add-btn" data-action="home:open-quest" data-action-arg="daily">+</button>
           </div>
           <div id="daily-quests"></div>
         </div>
@@ -354,7 +356,7 @@
     <div class="home-card" id="card-diet-goal">
       <div class="home-card-header">
         <span class="home-card-title">다이어트</span>
-        <button class="section-title-edit-btn" onclick="openDietPlanModal()">설정</button>
+        <button class="section-title-edit-btn" data-action="diet:open-plan">설정</button>
       </div>
       <div id="diet-goal-content"></div>
     </div>
@@ -368,8 +370,8 @@
       </div>
       <div class="tds-segmented" id="lb-segmented" style="margin-bottom:12px;">
         <div class="tds-segmented-indicator" id="lb-seg-indicator"></div>
-        <button class="tds-segmented-item active" data-period="cumulative" onclick="switchLeaderboardTab('cumulative')">누적</button>
-        <button class="tds-segmented-item" data-period="weekly" onclick="switchLeaderboardTab('weekly')">주간</button>
+        <button class="tds-segmented-item active" data-period="cumulative" data-action="home:switch-leaderboard" data-action-arg="cumulative">누적</button>
+        <button class="tds-segmented-item" data-period="weekly" data-action="home:switch-leaderboard" data-action-arg="weekly">주간</button>
       </div>
       <div id="leaderboard-content"></div>
     </div>
@@ -378,7 +380,7 @@
     <div class="home-card" id="card-friends">
       <div class="home-card-header">
         <span class="home-card-title">이웃</span>
-        <button class="section-title-edit-btn" onclick="openFriendManager()">더보기</button>
+        <button class="section-title-edit-btn" data-action="social:open-friend-manager">더보기</button>
       </div>
       <div id="friend-notifications" style="display:none;"></div>
       <div id="friend-feed"></div>
@@ -407,12 +409,12 @@
       <!-- 운동 유형 탭 바 (항상 노출) -->
       <div class="wt-type-section" id="wt-type-section">
         <div class="wt-type-tabs" id="wt-type-tabs-bar">
-          <button class="wt-type-tab active" id="wt-chip-gym" onclick="wtSwitchType('gym')">🏋️ 헬스</button>
-          <button class="wt-type-tab" id="wt-chip-running" onclick="wtSwitchType('running')">🏃 런닝/조깅</button>
-          <button class="wt-type-tab" id="wt-chip-cardio" onclick="wtSwitchType('manual-cardio')">🚴 유산소</button>
-          <button class="wt-type-tab" id="wt-chip-cf" onclick="wtSwitchType('cf')">🔥 크로스핏</button>
-          <button class="wt-type-tab" id="wt-chip-stretch" onclick="wtSwitchType('stretch')">🧘 스트레칭</button>
-          <button class="wt-type-tab" id="wt-chip-swimming" onclick="wtSwitchType('swimming')">🏊 수영</button>
+          <button class="wt-type-tab active" id="wt-chip-gym" data-action="workout:switch-type" data-action-arg="gym">🏋️ 헬스</button>
+          <button class="wt-type-tab" id="wt-chip-running" data-action="workout:switch-type" data-action-arg="running">🏃 런닝/조깅</button>
+          <button class="wt-type-tab" id="wt-chip-cardio" data-action="workout:switch-type" data-action-arg="manual-cardio">🚴 유산소</button>
+          <button class="wt-type-tab" id="wt-chip-cf" data-action="workout:switch-type" data-action-arg="cf">🔥 크로스핏</button>
+          <button class="wt-type-tab" id="wt-chip-stretch" data-action="workout:switch-type" data-action-arg="stretch">🧘 스트레칭</button>
+          <button class="wt-type-tab" id="wt-chip-swimming" data-action="workout:switch-type" data-action-arg="swimming">🏊 수영</button>
         </div>
       </div>
 
@@ -434,7 +436,7 @@
           <!-- 쉬는시간 세그먼트 (has-rest 시 표시) -->
           <div class="wt-tbar-seg wt-tbar-seg--rest" id="wt-rest-section" style="display:none">
             <span class="wt-tbar-divider" aria-hidden="true"></span>
-            <button type="button" class="wt-rest-counter" onclick="wtOpenRestPresetSheet()" ondblclick="wtOpenRestPresetSheet()" aria-label="휴식시간 변경" title="휴식시간 변경">
+            <button type="button" class="wt-rest-counter" data-action="workout:open-rest-preset" data-dblclick-action="workout:open-rest-preset" aria-label="휴식시간 변경" title="휴식시간 변경">
               <svg class="wt-rest-ring" width="66" height="66" viewBox="0 0 66 66" aria-hidden="true">
                 <circle class="wt-rest-ring-track" cx="33" cy="33" r="29" pathLength="100"></circle>
                 <circle class="wt-rest-ring-progress" id="wt-rest-ring-progress" cx="33" cy="33" r="29" pathLength="100"></circle>
@@ -449,21 +451,21 @@
           <!-- 컨트롤 영역 (상태별로 토글) -->
           <div class="wt-tbar-ctrls">
             <!-- 쉬는시간 컨트롤 -->
-            <button class="wt-tbar-btn wt-tbar-btn--rest" id="wt-rest-minus-btn" onclick="wtRestTimerAdjust(-15)" style="display:none" aria-label="15초 줄이기">−15</button>
-            <button class="wt-tbar-btn wt-tbar-btn--rest" id="wt-rest-plus-btn"  onclick="wtRestTimerAdjust(+15)" style="display:none" aria-label="15초 늘리기">+15</button>
-            <button class="wt-tbar-btn wt-tbar-btn--rest wt-tbar-btn--skip" id="wt-rest-skip-btn" onclick="wtRestTimerSkip()" style="display:none">건너뛰기</button>
+            <button class="wt-tbar-btn wt-tbar-btn--rest" id="wt-rest-minus-btn" data-action="workout:adjust-rest" data-action-arg="-15" style="display:none" aria-label="15초 줄이기">−15</button>
+            <button class="wt-tbar-btn wt-tbar-btn--rest" id="wt-rest-plus-btn" data-action="workout:adjust-rest" data-action-arg="15" style="display:none" aria-label="15초 늘리기">+15</button>
+            <button class="wt-tbar-btn wt-tbar-btn--rest wt-tbar-btn--skip" id="wt-rest-skip-btn" data-action="workout:skip-rest" style="display:none">건너뛰기</button>
 
             <!-- 운동 컨트롤 -->
-            <button class="wt-tbar-btn" id="wt-timer-pause-btn" onclick="wtTogglePauseWorkoutTimer()" style="display:none" title="일시정지" aria-label="일시정지">
+            <button class="wt-tbar-btn" id="wt-timer-pause-btn" data-action="workout:toggle-pause" style="display:none" title="일시정지" aria-label="일시정지">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
             </button>
-            <button class="wt-tbar-btn" id="wt-timer-play-btn" onclick="wtTogglePauseWorkoutTimer()" style="display:none" title="재개" aria-label="재개">
+            <button class="wt-tbar-btn" id="wt-timer-play-btn" data-action="workout:toggle-pause" style="display:none" title="재개" aria-label="재개">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5,3 19,12 5,21"/></svg>
             </button>
-            <button class="wt-tbar-btn" id="wt-timer-reset-btn" onclick="wtResetWorkoutTimer()" style="display:none" title="초기화" aria-label="초기화">
+            <button class="wt-tbar-btn" id="wt-timer-reset-btn" data-action="workout:reset-timer" style="display:none" title="초기화" aria-label="초기화">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
             </button>
-            <button class="wt-tbar-cta" id="wt-finish-workout-btn" onclick="wtEndAndShowInsights()" style="display:none">끝내기</button>
+            <button class="wt-tbar-cta" id="wt-finish-workout-btn" data-action="workout:finish" style="display:none">끝내기</button>
           </div>
         </div>
 
@@ -476,11 +478,11 @@
           <div class="ex-header-actions">
             <!-- 맞춤 루틴 모드 CTA (expert 모드 OFF일 때만 expert.js가 채움) -->
             <span id="expert-inline-pill"></span>
-            <button class="ex-add-btn" onclick="wtOpenExercisePicker()">+ 종목 추가(선택)</button>
+            <button class="ex-add-btn" data-action="workout:open-picker">+ 종목 추가(선택)</button>
           </div>
         </div>
         <div id="wt-exercise-list" style="margin-top:8px;"></div>
-        <button class="ex-add-bottom-btn" onclick="wtOpenExercisePicker()">+ 종목 추가(선택)</button>
+        <button class="ex-add-bottom-btn" data-action="workout:open-picker">+ 종목 추가(선택)</button>
       </div>
 
       <div class="wt-detail-section wt-activity-section" id="wt-cf-section">
@@ -573,17 +575,17 @@
       <div class="wt-detail-section" id="wt-memo-section">
         <textarea class="memo-input" id="wt-workout-memo" placeholder="운동 메모 (예: 벤치 컨디션 좋았음..)"></textarea>
         <div class="meal-photo-wrap" id="wt-photo-workout" style="margin-top:8px;"></div>
-        <button class="tds-btn tonal md wt-photo-upload-btn" onclick="document.getElementById('photo-input-workout').click()" style="margin-top:8px;width:100%;">
+        <button class="tds-btn tonal md wt-photo-upload-btn" data-action="workout:click-input" data-action-arg="photo-input-workout" style="margin-top:8px;width:100%;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
           운동 인증사진
         </button>
-        <input type="file" id="photo-input-workout" accept="image/*" style="display:none" onchange="uploadMealPhoto('workout',this)">
+        <input type="file" id="photo-input-workout" accept="image/*" style="display:none" data-change-action="workout:upload-photo" data-action-arg="workout">
         <!-- (운동종료 버튼은 타이머 바(wt-finish-workout-btn)로 단일화. 중복 제거.) -->
       </div>
 
       <!-- 저장 (자동 저장으로 대체 — 숨김) -->
       <div class="wt-detail-section" id="wt-save-section" style="display:none">
-        <button class="tds-btn fill md" id="wt-save-btn" onclick="saveWorkoutDay()" style="width:100%">저장</button>
+        <button class="tds-btn fill md" id="wt-save-btn" data-action="workout:save" style="width:100%">저장</button>
       </div>
     </div>
 
@@ -598,10 +600,10 @@
 <!-- ═══ 식단 탭 ═══ -->
 <div id="tab-diet" class="tab-panel">
   <div class="workout-date-nav">
-    <button class="wt-date-nav-btn" onclick="changeWorkoutDate(-1)">◀</button>
+    <button class="wt-date-nav-btn" data-action="workout:change-date" data-action-arg="-1">◀</button>
     <span id="wt-date-label-diet" class="workout-date-label"></span>
-    <button class="wt-date-nav-btn" onclick="changeWorkoutDate(1)">▶</button>
-    <button id="wt-today-btn-diet" class="wt-today-btn" onclick="goToTodayWorkout()" style="display:none">오늘</button>
+    <button class="wt-date-nav-btn" data-action="workout:change-date" data-action-arg="1">▶</button>
+    <button id="wt-today-btn-diet" class="wt-today-btn" data-action="workout:today" style="display:none">오늘</button>
   </div>
   <div class="workout-tab-content">
     <!-- 다이어트 인라인 설정 폼 (미설정 시 표시) -->
@@ -670,14 +672,14 @@
         </div>
       </div>
 
-      <button id="ds-submit-btn" onclick="submitDietSetup()" style="width:100%;padding:14px;border:none;border-radius:12px;background:#fa342c;color:#fff;font-size:15px;font-weight:600;cursor:pointer;margin-top:18px;transition:all 0.2s;">시작하기</button>
+      <button id="ds-submit-btn" data-action="diet:submit-setup" style="width:100%;padding:14px;border:none;border-radius:12px;background:#fa342c;color:#fff;font-size:15px;font-weight:600;cursor:pointer;margin-top:18px;transition:all 0.2s;">시작하기</button>
     </div>
 
     <!-- 오늘의 칼로리 (최상단) -->
     <div class="sheet-section" id="wt-calorie-tracker" style="display:none">
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <div class="sheet-section-label">오늘의 칼로리</div>
-        <button onclick="openDietPlanModal()" style="padding:4px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text-secondary);font-size:11px;font-weight:500;cursor:pointer;">설정</button>
+        <button data-action="diet:open-plan" style="padding:4px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text-secondary);font-size:11px;font-weight:500;cursor:pointer;">설정</button>
       </div>
       <div class="cal-tracker-header">
         <span id="wt-day-type-badge" class="cal-day-type"></span>
@@ -702,23 +704,23 @@
       <div class="diet-grid diet-toss-list">
 
         <div class="diet-toss-row" data-meal="breakfast">
-          <div class="diet-toss-header" onclick="toggleDietMealRow(this)">
+          <div class="diet-toss-header" data-action="diet:toggle-row">
             <span class="diet-toss-icon">☀️</span>
             <div class="diet-toss-title"><span class="diet-toss-label">아침</span><span class="diet-toss-kcal" id="diet-toss-kcal-breakfast"></span></div>
-            <button class="meal-ai-btn" title="AI로 영양성분 추정" onclick="event.stopPropagation();document.getElementById('ai-photo-input-breakfast').click()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.09 4.26L18.8 7 15.4 10.29l.8 4.63L12 12.77l-4.2 2.15.8-4.63L5.2 7l4.71-.74L12 2z"/><path d="M19 13l.75 2.5L22 16l-2.25.5L19 19l-.75-2.5L16 16l2.25-.5z"/></svg><span class="meal-ai-btn-label">AI</span></button>
-            <button class="meal-cam-btn" title="음식 사진 첨부" onclick="event.stopPropagation();document.getElementById('photo-input-breakfast').click()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
+            <button class="meal-ai-btn" title="AI로 영양성분 추정" data-action="diet:click-input" data-action-arg="ai-photo-input-breakfast"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.09 4.26L18.8 7 15.4 10.29l.8 4.63L12 12.77l-4.2 2.15.8-4.63L5.2 7l4.71-.74L12 2z"/><path d="M19 13l.75 2.5L22 16l-2.25.5L19 19l-.75-2.5L16 16l2.25-.5z"/></svg><span class="meal-ai-btn-label">AI</span></button>
+            <button class="meal-cam-btn" title="음식 사진 첨부" data-action="diet:click-input" data-action-arg="photo-input-breakfast"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
             <span class="diet-toss-chevron">›</span>
           </div>
           <div class="diet-toss-body">
             <div class="diet-meal-actions">
               <button class="diet-add-btn" type="button" data-action="addFood" data-meal="breakfast">+ 음식 추가</button>
-              <button class="diet-skip-btn" id="wt-breakfast-skipped" onclick="wtSkipMeal('breakfast')">안 먹었어요</button>
+              <button class="diet-skip-btn" id="wt-breakfast-skipped" data-action="diet:skip-meal" data-action-arg="breakfast">안 먹었어요</button>
             </div>
             <div class="meal-content-row" id="wt-meal-content-breakfast">
               <div class="meal-food-list" id="wt-foods-breakfast"></div>
             </div>
-            <input type="file" id="photo-input-breakfast" accept="image/*" style="display:none" onchange="uploadMealPhoto('breakfast',this)">
-            <input type="file" id="ai-photo-input-breakfast" accept="image/*" style="display:none" onchange="uploadMealPhotoAI('breakfast',this)">
+            <input type="file" id="photo-input-breakfast" accept="image/*" style="display:none" data-change-action="diet:upload-photo" data-action-arg="breakfast">
+            <input type="file" id="ai-photo-input-breakfast" accept="image/*" style="display:none" data-change-action="diet:upload-photo-ai" data-action-arg="breakfast">
             <div class="diet-frequent-foods" id="wt-frequent-breakfast" aria-label="최근 자주 추가한 아침 음식" hidden></div>
             <input class="diet-meal-input diet-meal-input-hidden" id="wt-meal-breakfast" placeholder="메모 (선택)" aria-hidden="true" tabindex="-1" autocomplete="off">
             <div class="diet-result" id="wt-result-breakfast"></div>
@@ -726,23 +728,23 @@
         </div>
 
         <div class="diet-toss-row" data-meal="lunch">
-          <div class="diet-toss-header" onclick="toggleDietMealRow(this)">
+          <div class="diet-toss-header" data-action="diet:toggle-row">
             <span class="diet-toss-icon">🌤️</span>
             <div class="diet-toss-title"><span class="diet-toss-label">점심</span><span class="diet-toss-kcal" id="diet-toss-kcal-lunch"></span></div>
-            <button class="meal-ai-btn" title="AI로 영양성분 추정" onclick="event.stopPropagation();document.getElementById('ai-photo-input-lunch').click()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.09 4.26L18.8 7 15.4 10.29l.8 4.63L12 12.77l-4.2 2.15.8-4.63L5.2 7l4.71-.74L12 2z"/><path d="M19 13l.75 2.5L22 16l-2.25.5L19 19l-.75-2.5L16 16l2.25-.5z"/></svg><span class="meal-ai-btn-label">AI</span></button>
-            <button class="meal-cam-btn" title="음식 사진 첨부" onclick="event.stopPropagation();document.getElementById('photo-input-lunch').click()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
+            <button class="meal-ai-btn" title="AI로 영양성분 추정" data-action="diet:click-input" data-action-arg="ai-photo-input-lunch"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.09 4.26L18.8 7 15.4 10.29l.8 4.63L12 12.77l-4.2 2.15.8-4.63L5.2 7l4.71-.74L12 2z"/><path d="M19 13l.75 2.5L22 16l-2.25.5L19 19l-.75-2.5L16 16l2.25-.5z"/></svg><span class="meal-ai-btn-label">AI</span></button>
+            <button class="meal-cam-btn" title="음식 사진 첨부" data-action="diet:click-input" data-action-arg="photo-input-lunch"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
             <span class="diet-toss-chevron">›</span>
           </div>
           <div class="diet-toss-body">
             <div class="diet-meal-actions">
               <button class="diet-add-btn" type="button" data-action="addFood" data-meal="lunch">+ 음식 추가</button>
-              <button class="diet-skip-btn" id="wt-lunch-skipped" onclick="wtSkipMeal('lunch')">안 먹었어요</button>
+              <button class="diet-skip-btn" id="wt-lunch-skipped" data-action="diet:skip-meal" data-action-arg="lunch">안 먹었어요</button>
             </div>
             <div class="meal-content-row" id="wt-meal-content-lunch">
               <div class="meal-food-list" id="wt-foods-lunch"></div>
             </div>
-            <input type="file" id="photo-input-lunch" accept="image/*" style="display:none" onchange="uploadMealPhoto('lunch',this)">
-            <input type="file" id="ai-photo-input-lunch" accept="image/*" style="display:none" onchange="uploadMealPhotoAI('lunch',this)">
+            <input type="file" id="photo-input-lunch" accept="image/*" style="display:none" data-change-action="diet:upload-photo" data-action-arg="lunch">
+            <input type="file" id="ai-photo-input-lunch" accept="image/*" style="display:none" data-change-action="diet:upload-photo-ai" data-action-arg="lunch">
             <div class="diet-frequent-foods" id="wt-frequent-lunch" aria-label="최근 자주 추가한 점심 음식" hidden></div>
             <input class="diet-meal-input diet-meal-input-hidden" id="wt-meal-lunch" placeholder="메모 (선택)" aria-hidden="true" tabindex="-1" autocomplete="off">
             <div class="diet-result" id="wt-result-lunch"></div>
@@ -750,23 +752,23 @@
         </div>
 
         <div class="diet-toss-row" data-meal="dinner">
-          <div class="diet-toss-header" onclick="toggleDietMealRow(this)">
+          <div class="diet-toss-header" data-action="diet:toggle-row">
             <span class="diet-toss-icon">🌙</span>
             <div class="diet-toss-title"><span class="diet-toss-label">저녁</span><span class="diet-toss-kcal" id="diet-toss-kcal-dinner"></span></div>
-            <button class="meal-ai-btn" title="AI로 영양성분 추정" onclick="event.stopPropagation();document.getElementById('ai-photo-input-dinner').click()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.09 4.26L18.8 7 15.4 10.29l.8 4.63L12 12.77l-4.2 2.15.8-4.63L5.2 7l4.71-.74L12 2z"/><path d="M19 13l.75 2.5L22 16l-2.25.5L19 19l-.75-2.5L16 16l2.25-.5z"/></svg><span class="meal-ai-btn-label">AI</span></button>
-            <button class="meal-cam-btn" title="음식 사진 첨부" onclick="event.stopPropagation();document.getElementById('photo-input-dinner').click()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
+            <button class="meal-ai-btn" title="AI로 영양성분 추정" data-action="diet:click-input" data-action-arg="ai-photo-input-dinner"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.09 4.26L18.8 7 15.4 10.29l.8 4.63L12 12.77l-4.2 2.15.8-4.63L5.2 7l4.71-.74L12 2z"/><path d="M19 13l.75 2.5L22 16l-2.25.5L19 19l-.75-2.5L16 16l2.25-.5z"/></svg><span class="meal-ai-btn-label">AI</span></button>
+            <button class="meal-cam-btn" title="음식 사진 첨부" data-action="diet:click-input" data-action-arg="photo-input-dinner"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
             <span class="diet-toss-chevron">›</span>
           </div>
           <div class="diet-toss-body">
             <div class="diet-meal-actions">
               <button class="diet-add-btn" type="button" data-action="addFood" data-meal="dinner">+ 음식 추가</button>
-              <button class="diet-skip-btn" id="wt-dinner-skipped" onclick="wtSkipMeal('dinner')">안 먹었어요</button>
+              <button class="diet-skip-btn" id="wt-dinner-skipped" data-action="diet:skip-meal" data-action-arg="dinner">안 먹었어요</button>
             </div>
             <div class="meal-content-row" id="wt-meal-content-dinner">
               <div class="meal-food-list" id="wt-foods-dinner"></div>
             </div>
-            <input type="file" id="photo-input-dinner" accept="image/*" style="display:none" onchange="uploadMealPhoto('dinner',this)">
-            <input type="file" id="ai-photo-input-dinner" accept="image/*" style="display:none" onchange="uploadMealPhotoAI('dinner',this)">
+            <input type="file" id="photo-input-dinner" accept="image/*" style="display:none" data-change-action="diet:upload-photo" data-action-arg="dinner">
+            <input type="file" id="ai-photo-input-dinner" accept="image/*" style="display:none" data-change-action="diet:upload-photo-ai" data-action-arg="dinner">
             <div class="diet-frequent-foods" id="wt-frequent-dinner" aria-label="최근 자주 추가한 저녁 음식" hidden></div>
             <input class="diet-meal-input diet-meal-input-hidden" id="wt-meal-dinner" placeholder="메모 (선택)" aria-hidden="true" tabindex="-1" autocomplete="off">
             <div class="diet-result" id="wt-result-dinner"></div>
@@ -774,11 +776,11 @@
         </div>
 
         <div class="diet-toss-row" data-meal="snack">
-          <div class="diet-toss-header" onclick="toggleDietMealRow(this)">
+          <div class="diet-toss-header" data-action="diet:toggle-row">
             <span class="diet-toss-icon">🍪</span>
             <div class="diet-toss-title"><span class="diet-toss-label">간식</span><span class="diet-toss-kcal" id="diet-toss-kcal-snack"></span></div>
-            <button class="meal-ai-btn" title="AI로 영양성분 추정" onclick="event.stopPropagation();document.getElementById('ai-photo-input-snack').click()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.09 4.26L18.8 7 15.4 10.29l.8 4.63L12 12.77l-4.2 2.15.8-4.63L5.2 7l4.71-.74L12 2z"/><path d="M19 13l.75 2.5L22 16l-2.25.5L19 19l-.75-2.5L16 16l2.25-.5z"/></svg><span class="meal-ai-btn-label">AI</span></button>
-            <button class="meal-cam-btn" title="음식 사진 첨부" onclick="event.stopPropagation();document.getElementById('photo-input-snack').click()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
+            <button class="meal-ai-btn" title="AI로 영양성분 추정" data-action="diet:click-input" data-action-arg="ai-photo-input-snack"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.09 4.26L18.8 7 15.4 10.29l.8 4.63L12 12.77l-4.2 2.15.8-4.63L5.2 7l4.71-.74L12 2z"/><path d="M19 13l.75 2.5L22 16l-2.25.5L19 19l-.75-2.5L16 16l2.25-.5z"/></svg><span class="meal-ai-btn-label">AI</span></button>
+            <button class="meal-cam-btn" title="음식 사진 첨부" data-action="diet:click-input" data-action-arg="photo-input-snack"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
             <span class="diet-toss-chevron">›</span>
           </div>
           <div class="diet-toss-body">
@@ -788,8 +790,8 @@
             <div class="meal-content-row" id="wt-meal-content-snack">
               <div class="meal-food-list" id="wt-foods-snack"></div>
             </div>
-            <input type="file" id="photo-input-snack" accept="image/*" style="display:none" onchange="uploadMealPhoto('snack',this)">
-            <input type="file" id="ai-photo-input-snack" accept="image/*" style="display:none" onchange="uploadMealPhotoAI('snack',this)">
+            <input type="file" id="photo-input-snack" accept="image/*" style="display:none" data-change-action="diet:upload-photo" data-action-arg="snack">
+            <input type="file" id="ai-photo-input-snack" accept="image/*" style="display:none" data-change-action="diet:upload-photo-ai" data-action-arg="snack">
             <input class="diet-meal-input" id="wt-meal-snack" placeholder="메모 (선택)">
             <div class="diet-result" id="wt-result-snack"></div>
           </div>
@@ -797,20 +799,20 @@
 
       </div>
       <div class="diet-bulk-ai">
-        <button class="diet-bulk-ai-toggle" type="button" onclick="openBulkMealAI()">한번에 올리기</button>
+        <button class="diet-bulk-ai-toggle" type="button" data-action="diet:open-bulk-ai">한번에 올리기</button>
         <div class="diet-bulk-ai-panel" id="diet-bulk-ai-panel" hidden>
           <div class="diet-bulk-ai-chips" aria-label="일괄 AI 식단 끼니 선택">
-            <button type="button" class="diet-bulk-ai-chip" data-meal="breakfast" onclick="toggleBulkMealAIChip(this)">아침</button>
-            <button type="button" class="diet-bulk-ai-chip" data-meal="lunch" onclick="toggleBulkMealAIChip(this)">점심</button>
-            <button type="button" class="diet-bulk-ai-chip" data-meal="dinner" onclick="toggleBulkMealAIChip(this)">저녁</button>
-            <button type="button" class="diet-bulk-ai-chip" data-meal="snack" onclick="toggleBulkMealAIChip(this)">간식</button>
+            <button type="button" class="diet-bulk-ai-chip" data-meal="breakfast" data-action="diet:toggle-bulk-chip">아침</button>
+            <button type="button" class="diet-bulk-ai-chip" data-meal="lunch" data-action="diet:toggle-bulk-chip">점심</button>
+            <button type="button" class="diet-bulk-ai-chip" data-meal="dinner" data-action="diet:toggle-bulk-chip">저녁</button>
+            <button type="button" class="diet-bulk-ai-chip" data-meal="snack" data-action="diet:toggle-bulk-chip">간식</button>
           </div>
           <div class="diet-bulk-ai-actions">
-            <button type="button" class="diet-bulk-ai-upload" onclick="document.getElementById('bulk-ai-photo-input').click()">사진 선택</button>
+            <button type="button" class="diet-bulk-ai-upload" data-action="diet:click-input" data-action-arg="bulk-ai-photo-input">사진 선택</button>
             <span class="diet-bulk-ai-hint" id="diet-bulk-ai-hint">칩을 누른 순서대로 사진을 선택하세요.</span>
           </div>
           <div class="diet-bulk-ai-status" id="diet-bulk-ai-status"></div>
-          <input type="file" id="bulk-ai-photo-input" accept="image/*" multiple style="display:none" onchange="runBulkMealAIUpload(this)">
+          <input type="file" id="bulk-ai-photo-input" accept="image/*" multiple style="display:none" data-change-action="diet:run-bulk-upload">
         </div>
       </div>
     </div>
@@ -826,7 +828,7 @@
 <div id="tab-cooking" class="tab-panel">
   <div class="wine-tab-header">
     <span class="wine-tab-title">🍳 요리 경험 기록</span>
-    <button class="wine-add-btn" onclick="openCookingModal()">+ 기록 추가</button>
+    <button class="wine-add-btn" data-action="cooking:open">+ 기록 추가</button>
   </div>
   <div id="cooking-list" class="cooking-list"></div>
 </div>
@@ -901,10 +903,10 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
-<script src="feature-login.js?v=20260711d-apk-login-handoff"></script>
-<script type="module" src="app.js?v=20260711e9-headerless-lifezone-trapezoid"></script>
+<script src="feature-login.js?v=20260712h-apk-login-handoff"></script>
+<script type="module" src="app.js?v=20260712h9-headerless-lifezone-trapezoid"></script>
 
 <!-- PWA Service Worker 등록 -->
-<script src="pwa-register.js?v=20260711e7-single-update-refresh"></script>
+<script src="pwa-register.js?v=20260712h7-single-update-refresh"></script>
 </body>
 </html>

@@ -26,6 +26,7 @@ import {
 } from '../calc.js';
 import { S } from './state.js';
 import { confirmAction } from '../utils/confirm-modal.js';
+import { generateId } from '../utils/id.js';
 
 // ── R3b 분할: 온보딩 8-scene wizard 는 ./expert/onboarding.js 로 이동 ──
 // resolveCurrentGymId 는 거기에 이동됐지만 workout/exercises.js 가 이 파일에서
@@ -2805,8 +2806,7 @@ window.__expertAddEquipment = async (name, movementId, maxKg, incKg) => {
   if (!gymId) return console.error('[expert] current gym 없음. 온보딩 먼저 하세요.');
   const mov = MOVEMENTS.find(m => m.id === movementId);
   if (!mov) return console.error('[expert] 잘못된 movementId. 사용 가능:', MOVEMENTS.map(m => m.id));
-  const { _generateId } = await import('../data/data-core.js');
-  const exId = _generateId();
+  const exId = generateId();
   await saveExercise({
     id: exId, muscleId: mov.primary, name, movementId,
     brand: '', machineType: '',
@@ -3061,8 +3061,7 @@ window.wtExcAddNewGym = () => {
     if (name.length > 40) { _toast('이름은 40자 이내로 입력해주세요', 'warning'); return; }
     saveBtn.disabled = true; saveBtn.textContent = '저장 중...';
     try {
-      const { _generateId } = await import('../data/data-core.js');
-      const id = _generateId();
+      const id = generateId();
       await saveGym({ id, name, createdAt: Date.now() });
       await saveExpertPreset({ currentGymId: id });
       S.workout.currentGymId = id;

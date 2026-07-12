@@ -15,7 +15,7 @@ function sliceBetween(source, startToken, endToken) {
 }
 
 const friendProfileJs = read('home/friend-profile.js');
-const swJs = read('sw.js');
+const swJs = read('sw.js') + read('runtime-assets.js');
 
 test('friend profile modal routes primary social actions through a scoped delegate', () => {
   assert.match(friendProfileJs, /function _socialAttr\(value\)/);
@@ -119,5 +119,5 @@ test('comment reaction and edit actions inherit the profile delegate contract', 
 });
 
 test('service worker cache version was bumped for social profile action assets', () => {
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });

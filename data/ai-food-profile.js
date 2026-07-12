@@ -10,7 +10,7 @@
 // [P1 목적]
 //  - 1주일 실사용 중 자연스럽게 쌓이는 유저 식단 패턴을 측정
 //  - canonical별 샘플 수/분포/이상치를 콘솔로 점검 → P2 튜닝 근거 확보
-//  - window.dumpFoodProfile()로 언제든 프로파일 덤프
+//  - dumpFoodProfile() export로 프로파일 덤프
 // ================================================================
 
 import { _cache }      from './data-core.js';
@@ -243,12 +243,4 @@ export function dumpFoodProfile() {
   );
   console.table(rows);
   return rows;
-}
-
-// ── window 바인딩 (디버깅/콘솔 편의) ──────────────────────────────
-if (typeof window !== 'undefined') {
-  window.rebuildFoodProfile = rebuildFoodProfile;
-  window.getFoodPrior       = getFoodPrior;
-  window.getFoodProfile     = getFoodProfile;
-  window.dumpFoodProfile    = dumpFoodProfile;
 }

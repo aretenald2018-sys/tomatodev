@@ -43,7 +43,36 @@ import {
   upsertExerciseProgramBenchmark,
 } from './test-v2/board-core.js';
 import { getWorkoutSessions } from './sessions.js';
-import { clearSetCompletedAt, stampSetCompletedAt, stripSetCompletedAt } from './timeline.js';
+import { clearSetCompletedAt, stripSetCompletedAt } from './timeline.js';
+import { applyWorkoutSetCommand, WORKOUT_SET_COMMANDS } from './set-editor.js';
+import {
+  CARDIO_EXERCISE_ID_PREFIX,
+  CARDIO_PICKER_EXERCISES,
+  buildManualCardioEntry as _buildManualCardioEntry,
+  estimateManualCardioCalories as _estimateManualCardioCalories,
+  isManualCardioEntry as _isManualCardioEntry,
+  manualCardioEntryData as _manualCardioEntryData,
+  manualCardioExerciseId as _manualCardioExerciseId,
+  manualCardioInputValue as _manualCardioInputValue,
+  manualCardioIntensityConfig as _manualCardioIntensityConfig,
+  manualCardioIntensityNumber as _manualCardioIntensityNumber,
+  manualCardioIntensityValue as _manualCardioIntensityValue,
+  manualCardioNumber as _manualCardioNumber,
+  manualCardioRound as _manualCardioRound,
+  manualCardioSummary as _manualCardioSummary,
+  pickerCardioById as _pickerCardioById,
+} from './cardio-model.js';
+import {
+  buildPickerUsageStats,
+  exerciseMajorIds as exerciseMajorIdsModel,
+  hasManualCardioMetrics as _hasManualCardioMetrics,
+  isPickerCustomExercise as _isPickerCustomExercise,
+  normalizeMajorMuscleId as normalizeMajorMuscleIdModel,
+  pickerEntryHasWork,
+  pickerStatsMeta as pickerStatsMetaModel,
+  safePickerColor as _safePickerColor,
+  sortPickerItems,
+} from './exercise-picker-model.js';
 // resolveCurrentGymId는 expert.js의 단일 진실원 (preset + S.workout.currentGymId 동기화).
 // isExpertViewShown은 세션 뷰 상태 (일반 모드 뷰 ↔ 프로 모드 뷰) 조회용.
 // expert.js는 exercises.js를 static import 하지 않으므로 순환 참조 없음.
@@ -94,41 +123,6 @@ function _isMaxWorkoutMode() {
 }
 
 const NEW_MUSCLE_OPTION = '__new_custom_muscle__';
-const CARDIO_EXERCISE_ID_PREFIX = 'cardio:';
-const CARDIO_PICKER_ASSET_BASE = './assets/workout/cardio/';
-const CARDIO_PICKER_EXERCISES = Object.freeze([
-  { id: 'treadmill-running', label: '트레드밀 러닝', detail: '러닝머신', image: `${CARDIO_PICKER_ASSET_BASE}treadmill-running.png` },
-  { id: 'my-mountain', label: '마이마운틴', detail: '각도 조절 유산소', image: `${CARDIO_PICKER_ASSET_BASE}my-mountain.png` },
-  { id: 'step-machine', label: '스텝머신', detail: '계단 오르기', image: `${CARDIO_PICKER_ASSET_BASE}step-machine.png` },
-  { id: 'stationary-bike', label: '실내 자전거', detail: '고정식 바이크', image: `${CARDIO_PICKER_ASSET_BASE}stationary-bike.png` },
-  { id: 'rowing', label: '로잉', detail: '로잉 머신', image: `${CARDIO_PICKER_ASSET_BASE}rowing.png` },
-  { id: 'indoor-cycling', label: '인도어 사이클링', detail: '스핀 바이크', image: `${CARDIO_PICKER_ASSET_BASE}indoor-cycling.png` },
-  { id: 'recumbent-bike', label: '리컴번트 바이크', detail: '좌식 자전거', image: `${CARDIO_PICKER_ASSET_BASE}recumbent-bike.png` },
-]);
-const CARDIO_INTENSITY_FIELDS = Object.freeze({
-  'my-mountain': {
-    key: 'angleDeg',
-    inputId: 'ex-cardio-angle',
-    label: '각도',
-    unit: '°',
-    min: 0,
-    max: 40,
-    step: 0.5,
-    digits: 1,
-    autoStatus: '거리/속도/각도 자동 산출',
-  },
-  'step-machine': {
-    key: 'level',
-    inputId: 'ex-cardio-level',
-    label: '단계',
-    unit: '단계',
-    min: 1,
-    max: 30,
-    step: 1,
-    digits: 0,
-    autoStatus: '거리/속도/단계 자동 산출',
-  },
-});
 const _embeddedMaxCards = new Map();
 const WORKOUT_NUMBER_INPUT_SELECTOR = '.set-input, .set-rpe-input, .set-rom-input';
 const WORKOUT_INPUT_SCROLL_GUARD_BOTTOM_PX = 156;
@@ -462,20 +456,12 @@ function _normalizeExpertSessionAfterExerciseChange() {
 
 // ── 세트 조작 ────────────────────────────────────────────────────
 export function wtAddSet(entryIdx) {
-  const entry = S.workout.exercises?.[entryIdx];
-  if (!entry) return;
-  if (!Array.isArray(entry.sets)) entry.sets = [];
-  const prev = entry.sets.slice(-1)[0];
-  entry.uiCollapsed = false;
-  const restoreScroll = _captureWorkoutRenderScroll();
-  entry.sets.push({
-    kg: '',
-    reps: '',
-    rpe: prev?.rpe ?? null,
-    romPct: prev?.romPct ?? 100,
-    setType: 'main',
-    done: false,
+  const result = applyWorkoutSetCommand(S.workout, {
+    type: WORKOUT_SET_COMMANDS.ADD_SET,
+    entryIndex: entryIdx,
   });
+  if (!result.changed) return;
+  const restoreScroll = _captureWorkoutRenderScroll();
   if (!_rerenderMaxEntryOwner(entryIdx)) _renderSets(entryIdx);
   _restoreWorkoutRenderScroll(restoreScroll);
   wtPersistActiveWorkoutDraft('set add');
@@ -484,7 +470,12 @@ export function wtAddSet(entryIdx) {
 
 export function wtRemoveSet(entryIdx, si) {
   // Undo Toast 3초: 세트 객체와 원래 위치를 기억해두고 복원 지원
-  const removed = S.workout.exercises[entryIdx].sets.splice(si, 1)[0];
+  const result = applyWorkoutSetCommand(S.workout, {
+    type: WORKOUT_SET_COMMANDS.REMOVE_SET,
+    entryIndex: entryIdx,
+    setIndex: si,
+  });
+  const removed = result.removed;
   if (!_rerenderMaxEntryOwner(entryIdx)) _renderSets(entryIdx);
   wtPersistActiveWorkoutDraft('set remove');
   saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
@@ -493,7 +484,12 @@ export function wtRemoveSet(entryIdx, si) {
     action: '실행 취소',
     onAction: () => {
       if (!S.workout.exercises[entryIdx]) return;
-      S.workout.exercises[entryIdx].sets.splice(si, 0, removed);
+      applyWorkoutSetCommand(S.workout, {
+        type: WORKOUT_SET_COMMANDS.RESTORE_SET,
+        entryIndex: entryIdx,
+        setIndex: si,
+        value: removed,
+      });
       if (!_rerenderMaxEntryOwner(entryIdx)) _renderSets(entryIdx);
       wtPersistActiveWorkoutDraft('set remove undo');
       saveWorkoutDay({ silent: true }).catch(e => console.error('Restore error:', e));
@@ -1032,12 +1028,16 @@ export function wtUpdateSet(entryIdx, si, field, val, sourceInput = null) {
   else if (field === 'rpe') parsed = _normalizeRpe(val);
   else if (field === 'romPct') parsed = _normalizeRomPct(val);
   else parsed = _parseWorkoutSetNumberInput(val, { integer: field === 'reps' });
-  if (field === 'romPct' && parsed == null) delete S.workout.exercises[entryIdx].sets[si].romPct;
-  else S.workout.exercises[entryIdx].sets[si][field] = parsed;
+  applyWorkoutSetCommand(S.workout, {
+    type: WORKOUT_SET_COMMANDS.UPDATE_SET,
+    entryIndex: entryIdx,
+    setIndex: si,
+    field,
+    value: parsed,
+    remove: field === 'romPct' && parsed == null,
+  });
   if (field === 'kg' || field === 'reps') {
     const set = S.workout.exercises[entryIdx].sets[si];
-    set.done = false;
-    clearSetCompletedAt(set);
     // 의미 있는 수치(>0)가 들어오면 완료 타임라인 표시만 다시 계산한다.
     if ((parsed || 0) > 0) _refreshWorkoutTimeline(`set update ${field}`);
   }
@@ -1068,9 +1068,13 @@ function _setSetDoneState(entryIdx, si, nextDone) {
   const wasDone = set.done === true;
   const shouldDone = nextDone === true;
   if (wasDone === shouldDone) return;
-  set.done = shouldDone;
-  if (shouldDone) stampSetCompletedAt(set);
-  else clearSetCompletedAt(set);
+  const result = applyWorkoutSetCommand(S.workout, {
+    type: WORKOUT_SET_COMMANDS.SET_DONE,
+    entryIndex: entryIdx,
+    setIndex: si,
+    value: shouldDone,
+  });
+  if (!result.changed) return;
   _refreshWorkoutTimeline('set done toggle');
   wtPersistActiveWorkoutDraft('set done toggle');
   if (_isMaxEntryMode(entryIdx)) {
@@ -1106,24 +1110,37 @@ export function wtToggleSetDone(entryIdx, si) {
 }
 
 export function wtUpdateSetType(entryIdx, si, val) {
-  S.workout.exercises[entryIdx].sets[si].setType = val;
+  applyWorkoutSetCommand(S.workout, {
+    type: WORKOUT_SET_COMMANDS.UPDATE_SET,
+    entryIndex: entryIdx,
+    setIndex: si,
+    field: 'setType',
+    value: val,
+  });
   if (!_rerenderMaxEntryOwner(entryIdx)) _renderSets(entryIdx);
   wtPersistActiveWorkoutDraft('set type update');
   saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
 }
 
 export function wtMoveSet(entryIdx, si, direction) {
-  const sets = S.workout.exercises[entryIdx].sets;
-  const targetIdx = si + direction;
-  if (targetIdx < 0 || targetIdx >= sets.length) return;
-  [sets[si], sets[targetIdx]] = [sets[targetIdx], sets[si]];
+  const result = applyWorkoutSetCommand(S.workout, {
+    type: WORKOUT_SET_COMMANDS.MOVE_SET,
+    entryIndex: entryIdx,
+    setIndex: si,
+    direction,
+  });
+  if (!result.changed) return;
   if (!_rerenderMaxEntryOwner(entryIdx)) _renderSets(entryIdx);
   wtPersistActiveWorkoutDraft('set move');
   saveWorkoutDay({ silent: true }).then(() => showToast('순서가 변경되었습니다', 1500, 'success')).catch(e => console.error('Save error:', e));
 }
 
 export function wtRemoveExerciseEntry(entryIdx) {
-  S.workout.exercises.splice(entryIdx, 1);
+  const result = applyWorkoutSetCommand(S.workout, {
+    type: WORKOUT_SET_COMMANDS.REMOVE_ENTRY,
+    entryIndex: entryIdx,
+  });
+  if (!result.changed) return;
   _normalizeActiveWorkoutEntryIdx(Math.min(_activeWorkoutEntryIdx, S.workout.exercises.length - 1));
   _normalizeExpertSessionAfterExerciseChange();
   _renderExerciseList();
@@ -2848,58 +2865,6 @@ function _renderPickerBodyCategoryTiles() {
   `).join('');
 }
 
-function _manualCardioExerciseId(cardio) {
-  return `${CARDIO_EXERCISE_ID_PREFIX}${String(cardio?.id || '').trim()}`;
-}
-
-function _pickerCardioById(id) {
-  const cardioId = String(id || '').replace(CARDIO_EXERCISE_ID_PREFIX, '');
-  return CARDIO_PICKER_EXERCISES.find(item => item.id === cardioId) || CARDIO_PICKER_EXERCISES[0];
-}
-
-function _isManualCardioEntry(entry) {
-  return !!entry?.cardio || String(entry?.exerciseId || '').startsWith(CARDIO_EXERCISE_ID_PREFIX);
-}
-
-function _manualCardioRound(value, digits = 1) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return 0;
-  const unit = 10 ** digits;
-  return Math.round(n * unit) / unit;
-}
-
-function _manualCardioNumber(value, digits = 1) {
-  const raw = String(value ?? '').trim();
-  if (raw === '') return 0;
-  const n = Number(raw);
-  if (!Number.isFinite(n) || n < 0) return null;
-  return _manualCardioRound(n, digits);
-}
-
-function _manualCardioInputValue(value, digits = 1) {
-  const n = Number(value);
-  return Number.isFinite(n) && n > 0 ? _manualCardioRound(n, digits) : '';
-}
-
-function _manualCardioIntensityConfig(cardio) {
-  const id = String(cardio?.id || cardio || '').replace(CARDIO_EXERCISE_ID_PREFIX, '');
-  return CARDIO_INTENSITY_FIELDS[id] || null;
-}
-
-function _manualCardioIntensityNumber(value, config) {
-  if (!config) return 0;
-  const n = _manualCardioNumber(value, config.digits);
-  if (n == null) return null;
-  if (n <= 0) return 0;
-  const clamped = Math.min(config.max, Math.max(config.min, n));
-  return _manualCardioRound(clamped, config.digits);
-}
-
-function _manualCardioIntensityValue(data, config) {
-  if (!config) return 0;
-  return _manualCardioIntensityNumber(data?.[config.key], config);
-}
-
 function _manualCardioInitialValues(cardio) {
   const exerciseId = _manualCardioExerciseId(cardio);
   const existing = (Array.isArray(S?.workout?.exercises) ? S.workout.exercises : [])
@@ -2921,29 +2886,6 @@ function _manualCardioInitialValues(cardio) {
     initial[intensityConfig.key] = _manualCardioInputValue(data[intensityConfig.key], intensityConfig.digits);
   }
   return initial;
-}
-
-function _manualCardioIntensityMultiplier(cardioId, intensity = {}) {
-  const id = String(cardioId || '').replace(CARDIO_EXERCISE_ID_PREFIX, '');
-  if (id === 'my-mountain') {
-    const angle = Math.min(40, Math.max(0, Number(intensity.angleDeg) || 0));
-    return 1 + (angle * 0.035);
-  }
-  if (id === 'step-machine') {
-    const level = Math.min(30, Math.max(0, Number(intensity.level) || 0));
-    return 1 + (Math.max(0, level - 1) * 0.025);
-  }
-  return 1;
-}
-
-function _estimateManualCardioCalories(distanceKm, speedKmh, { cardioId = '', angleDeg = 0, level = 0 } = {}) {
-  const distance = Number(distanceKm);
-  const speed = Number(speedKmh);
-  if (!Number.isFinite(distance) || !Number.isFinite(speed) || distance <= 0 || speed <= 0) return 0;
-  const durationHours = distance / speed;
-  const met = speed < 4 ? 3.5 : speed < 6 ? 5 : speed < 8 ? 7 : speed < 10 ? 9 : 10.5;
-  const multiplier = _manualCardioIntensityMultiplier(cardioId, { angleDeg, level });
-  return Math.min(5000, Math.max(1, Math.round(met * 70 * durationHours * multiplier)));
 }
 
 function _manualCardioKcalMode(sheet) {
@@ -2985,67 +2927,6 @@ function _syncManualCardioAutoCalories(sheet) {
   kcalInput.value = estimated > 0 ? String(estimated) : '';
   kcalInput.dataset.cardioKcalMode = 'auto';
   _syncManualCardioKcalStatus(sheet);
-}
-
-function _manualCardioSummary({ kcal, distanceKm, speedKmh, laps, kcalMode = 'auto', cardio = null, angleDeg, level }) {
-  const target = _pickerCardioById(cardio?.id || cardio);
-  const intensityConfig = _manualCardioIntensityConfig(target);
-  const summary = {
-    kcal: _manualCardioNumber(kcal, 0),
-    distanceKm: _manualCardioNumber(distanceKm, 2),
-    speedKmh: _manualCardioNumber(speedKmh, 1),
-    laps: _manualCardioNumber(laps, 0),
-  };
-  if (Object.values(summary).some(value => value == null)) return null;
-  if (intensityConfig) {
-    const intensity = _manualCardioIntensityNumber({ angleDeg, level }[intensityConfig.key], intensityConfig);
-    if (intensity == null) return null;
-    summary[intensityConfig.key] = intensity;
-  }
-  if (![summary.kcal, summary.distanceKm, summary.speedKmh, summary.laps].some(value => Number(value) > 0)) return null;
-  return { ...summary, cardio: target, kcalMode: kcalMode === 'manual' ? 'manual' : 'auto' };
-}
-
-function _manualCardioEntryData(entry) {
-  const raw = entry?.cardio || {};
-  const cardio = _pickerCardioById(raw.id || String(entry?.exerciseId || '').replace(CARDIO_EXERCISE_ID_PREFIX, ''));
-  const summary = _manualCardioSummary({
-    kcal: raw.kcal,
-    distanceKm: raw.distanceKm,
-    speedKmh: raw.speedKmh,
-    laps: raw.laps,
-    cardio,
-    angleDeg: raw.angleDeg,
-    level: raw.level,
-  }) || { kcal: 0, distanceKm: 0, speedKmh: 0, laps: 0 };
-  return { cardio, ...summary };
-}
-
-function _buildManualCardioEntry(cardio, summary) {
-  const intensityConfig = _manualCardioIntensityConfig(cardio);
-  const cardioData = {
-    id: cardio.id,
-    label: cardio.label,
-    detail: cardio.detail,
-    kcal: summary.kcal,
-    distanceKm: summary.distanceKm,
-    speedKmh: summary.speedKmh,
-    laps: summary.laps,
-    kcalMode: summary.kcalMode || 'auto',
-    unit: 'metric',
-    source: 'manual-cardio',
-    recordedAt: Date.now(),
-  };
-  if (intensityConfig) cardioData[intensityConfig.key] = summary[intensityConfig.key] || 0;
-  return {
-    muscleId: 'cardio',
-    muscleIds: [],
-    movementId: null,
-    exerciseId: _manualCardioExerciseId(cardio),
-    name: cardio.label,
-    sets: [],
-    cardio: cardioData,
-  };
 }
 
 function _manualCardioMetricText(value, unit, digits = 1) {
@@ -3634,8 +3515,7 @@ async function _openPickerEquipmentManager(gymId = null) {
 }
 
 function _normalizeMajorMuscleId(id) {
-  if (!id) return null;
-  return SUBPATTERN_TO_MAJOR[id] || id;
+  return normalizeMajorMuscleIdModel(id, SUBPATTERN_TO_MAJOR);
 }
 
 function _todayPickerMajorScope() {
@@ -3648,165 +3528,50 @@ function _todayPickerMajorScope() {
 
 // Exercise → 대분류 부위 역조회 (muscleId / muscleIds[] / movementId 기반)
 function _exerciseMajorIds(ex) {
-  const ids = new Set();
-  const major = _normalizeMajorMuscleId(ex?.muscleId);
-  if (major) ids.add(major);
-  (Array.isArray(ex?.muscleIds) ? ex.muscleIds : []).forEach(id => {
-    const normalized = _normalizeMajorMuscleId(id);
-    if (normalized) ids.add(normalized);
-  });
-  const mv = MOVEMENTS.find(m => m.id === ex?.movementId);
-  if (mv?.primary) ids.add(mv.primary);
-  if (mv?.subPattern) {
-    const normalized = _normalizeMajorMuscleId(mv.subPattern);
-    if (normalized) ids.add(normalized);
-  }
-  return [...ids];
+  return exerciseMajorIdsModel(ex, { movements: MOVEMENTS, subPatternToMajor: SUBPATTERN_TO_MAJOR });
 }
 
 function _pickerEntryHasWork(entry) {
-  if (!entry || typeof entry !== 'object') return false;
-  if (_isManualCardioEntry(entry)) return _hasManualCardioMetrics(entry?.cardio);
-  const sets = Array.isArray(entry.sets) ? entry.sets : [];
-  if (sets.some(set => {
-    if (!set || set.setType === 'warmup') return false;
-    if (set.done === true) return true;
-    if (set.done === false) return false;
-    return (Number(set.kg) || 0) > 0 && (Number(set.reps) || 0) > 0;
-  })) return true;
-  return !!String(entry.note || '').trim();
-}
-
-function _dateKeyToUtcMs(key) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(key || ''));
-  if (!m) return null;
-  return Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-}
-
-function _daysBetweenDateKeys(fromKey, toKey) {
-  const fromMs = _dateKeyToUtcMs(fromKey);
-  const toMs = _dateKeyToUtcMs(toKey);
-  if (fromMs == null || toMs == null) return null;
-  return Math.max(0, Math.round((toMs - fromMs) / 86400000));
+  return pickerEntryHasWork(entry, _isManualCardioEntry);
 }
 
 function _buildPickerExerciseStats() {
-  const stats = new Map();
-  const cache = getCache?.() || {};
-  const todayKey = _todayDateKey();
-  Object.entries(cache).forEach(([key, day]) => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || key === todayKey) return;
-    getWorkoutSessions(day).forEach(session => {
-      const seenInSession = new Set();
-      (Array.isArray(session?.exercises) ? session.exercises : []).forEach(entry => {
-        const exerciseId = entry?.exerciseId;
-        if (!exerciseId || seenInSession.has(exerciseId) || !_pickerEntryHasWork(entry)) return;
-        seenInSession.add(exerciseId);
-        const prev = stats.get(exerciseId) || { count: 0, lastDate: null };
-        prev.count += 1;
-        if (!prev.lastDate || key > prev.lastDate) prev.lastDate = key;
-        stats.set(exerciseId, prev);
-      });
-    });
+  return buildPickerUsageStats(getCache?.() || {}, {
+    todayKey: _todayDateKey(),
+    getSessions: getWorkoutSessions,
+    entryId: entry => entry?.exerciseId,
+    isEligible: _pickerEntryHasWork,
   });
-  return stats;
-}
-
-function _hasManualCardioMetrics(cardio) {
-  if (!cardio || typeof cardio !== 'object') return false;
-  return ['kcal', 'distanceKm', 'speedKmh', 'laps'].some(key => Number(cardio[key]) > 0);
 }
 
 function _buildPickerCardioStats() {
-  const stats = new Map();
-  const cache = getCache?.() || {};
-  const todayKey = _todayDateKey();
-  Object.entries(cache).forEach(([key, day]) => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || key === todayKey) return;
-    getWorkoutSessions(day).forEach(session => {
-      const seenInSession = new Set();
-      (Array.isArray(session?.exercises) ? session.exercises : []).forEach(entry => {
-        if (!_isManualCardioEntry(entry) || !_hasManualCardioMetrics(entry?.cardio)) return;
-        const cardioId = entry?.cardio?.id || String(entry?.exerciseId || '').replace(CARDIO_EXERCISE_ID_PREFIX, '');
-        if (!cardioId || seenInSession.has(cardioId)) return;
-        seenInSession.add(cardioId);
-        const prev = stats.get(cardioId) || { count: 0, lastDate: null };
-        prev.count += 1;
-        if (!prev.lastDate || key > prev.lastDate) prev.lastDate = key;
-        stats.set(cardioId, prev);
-      });
-    });
+  return buildPickerUsageStats(getCache?.() || {}, {
+    todayKey: _todayDateKey(),
+    getSessions: getWorkoutSessions,
+    entryId: entry => entry?.cardio?.id || String(entry?.exerciseId || '').replace(CARDIO_EXERCISE_ID_PREFIX, ''),
+    isEligible: entry => _isManualCardioEntry(entry) && _hasManualCardioMetrics(entry?.cardio),
   });
-  return stats;
 }
 
 function _pickerStatsMeta(stats) {
-  const count = Number(stats?.count) || 0;
-  if (count <= 0 || !stats?.lastDate) return '-';
-  const days = _daysBetweenDateKeys(stats.lastDate, _todayDateKey());
-  const dayLabel = days == null
-    ? '최근 기록'
-    : (days === 0 ? '오늘' : `${days}일 전`);
-  return `총 ${count}번, ${dayLabel}`;
+  return pickerStatsMetaModel(stats, _todayDateKey());
 }
 
 function _sortPickerExercises(list, statsByExercise) {
-  const collator = new Intl.Collator('ko-KR', { numeric: true, sensitivity: 'base' });
-  const statOf = (ex) => statsByExercise.get(ex?.id) || { count: 0, lastDate: '' };
-  return [...list].sort((a, b) => {
-    const as = statOf(a);
-    const bs = statOf(b);
-    if (_pickerSortMode === 'frequency') {
-      return (bs.count - as.count)
-        || String(bs.lastDate || '').localeCompare(String(as.lastDate || ''))
-        || collator.compare(a?.name || '', b?.name || '');
-    }
-    if (_pickerSortMode === 'name') {
-      return collator.compare(a?.name || '', b?.name || '')
-        || (bs.count - as.count)
-        || String(bs.lastDate || '').localeCompare(String(as.lastDate || ''));
-    }
-    return String(bs.lastDate || '').localeCompare(String(as.lastDate || ''))
-      || (bs.count - as.count)
-      || collator.compare(a?.name || '', b?.name || '');
-  });
+  return sortPickerItems(list, statsByExercise, { mode: _pickerSortMode });
 }
 
 function _sortPickerCardioExercises(list, statsByCardio) {
-  const collator = new Intl.Collator('ko-KR', { numeric: true, sensitivity: 'base' });
-  const statOf = (item) => statsByCardio.get(item?.id) || { count: 0, lastDate: '' };
-  return [...list].sort((a, b) => {
-    const as = statOf(a);
-    const bs = statOf(b);
-    if (_pickerSortMode === 'frequency') {
-      return (bs.count - as.count)
-        || String(bs.lastDate || '').localeCompare(String(as.lastDate || ''))
-        || collator.compare(a?.label || '', b?.label || '');
-    }
-    if (_pickerSortMode === 'name') {
-      return collator.compare(a?.label || '', b?.label || '')
-        || (bs.count - as.count)
-        || String(bs.lastDate || '').localeCompare(String(as.lastDate || ''));
-    }
-    return String(bs.lastDate || '').localeCompare(String(as.lastDate || ''))
-      || (bs.count - as.count)
-      || collator.compare(a?.label || '', b?.label || '');
+  return sortPickerItems(list, statsByCardio, {
+    mode: _pickerSortMode,
+    label: item => item?.label || '',
   });
-}
-
-function _isPickerCustomExercise(ex) {
-  return /^custom_/.test(String(ex?.id || '')) || !ex?.movementId;
 }
 
 function _isPickerVisibleExercise(ex, isMaxBenchmarkPicker) {
   if (isMaxBenchmarkPicker) return true;
   const hidden = Array.isArray(S?.workout?.hiddenExercises) ? S.workout.hiddenExercises : [];
   return !hidden.includes(ex?.id);
-}
-
-function _safePickerColor(color) {
-  const raw = String(color || '').trim();
-  return /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(raw) ? raw : '#64748b';
 }
 
 function _buildPickerContext() {

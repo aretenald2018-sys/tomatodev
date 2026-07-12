@@ -72,6 +72,7 @@ data class WearWorkoutPayload(
 ) {
     fun toJsonString(): String {
         return JSONObject()
+            .put("payloadVersion", PAYLOAD_VERSION)
             .put("type", workoutType.wireValue)
             .put("source", source)
             .put("dateKey", dateKey)
@@ -131,6 +132,7 @@ data class WearWorkoutPayload(
 
     companion object {
         const val SOURCE_WEAR = "wear"
+        const val PAYLOAD_VERSION = 1
 
         private const val HEART_RATE_BUCKET_MS = 10_000L
         private const val MAX_RUN_DURATION_SEC = 6L * 60L * 60L

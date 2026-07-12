@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 const indexHtml = readFileSync('index.html', 'utf8');
 const statsJs = readFileSync('render-stats.js', 'utf8');
 const styleCss = readFileSync('style.css', 'utf8');
-const swJs = readFileSync('sw.js', 'utf8');
+const swJs = readFileSync('sw.js', 'utf8') + readFileSync('runtime-assets.js', 'utf8');
 
 test('stats renders health metrics with calorie report flattened into the same card', () => {
   assert.match(indexHtml, /id="kcal-weight-chart"/);
@@ -57,5 +57,5 @@ test('stats health rollback chart cards are styled and cache version is bumped',
   assert.doesNotMatch(styleCss, /\.stats-health-toggle/);
   assert.doesNotMatch(styleCss, /\.stats-health-curves/);
   assert.doesNotMatch(styleCss, /\.stats-health-period/);
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });

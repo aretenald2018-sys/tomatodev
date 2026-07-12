@@ -5,6 +5,13 @@
   "description": "Personal Dashboard with Fitness, Diet, Wine Tracking",
   "main": "app.js",
   "scripts": {
+    "test": "node --test",
+    "test:contracts": "node scripts/run-test-suite.mjs contracts",
+    "test:smoke": "node scripts/run-test-suite.mjs smoke",
+    "test:workout": "node scripts/run-test-suite.mjs workout",
+    "test:data": "node scripts/run-test-suite.mjs data",
+    "test:ui": "node scripts/run-test-suite.mjs ui",
+    "test:list": "node scripts/run-test-suite.mjs --list",
     "start": "node tools/api-server.js",
     "dev": "node scripts/dev-start.mjs",
     "bump": "node scripts/bump-cache.js",

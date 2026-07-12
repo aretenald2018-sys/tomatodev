@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 const styleCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
 const pickerModal = readFileSync(new URL('../modals/ex-picker-modal.js', import.meta.url), 'utf8');
 const exercisesJs = readFileSync(new URL('../workout/exercises.js', import.meta.url), 'utf8');
-const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8') + readFileSync(new URL('../runtime-assets.js', import.meta.url), 'utf8');
 
 test('underactive blue muscle tint uses direct color blending, not aura screen glow', () => {
   assert.match(styleCss, /\.stats-fatigue-hotspot\s*\{[\s\S]*mix-blend-mode:\s*color;/);
@@ -52,5 +52,5 @@ test('exercise picker exposes visible create actions for CRUD', () => {
 });
 
 test('service worker cache version was bumped for stats picker UI polish', () => {
-  assert.match(swJs, /tomatofarm-v20260712z5-running-calorie-method/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });

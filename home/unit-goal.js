@@ -192,7 +192,7 @@ export function renderUnitGoal() {
 }
 
 // ── 단위 목표 시작일 설정 ─────────────────────────────────────────
-window.openUnitGoalDatePicker = function() {
+export function openUnitGoalDatePicker() {
   const current = getUnitGoalStart() || dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
   const [cy, cm, cd] = current.split('-').map(Number);
   let viewY = cy, viewM = cm - 1;
@@ -255,4 +255,6 @@ window.openUnitGoalDatePicker = function() {
   });
 
   render();
-};
+}
+
+window.openUnitGoalDatePicker = openUnitGoalDatePicker;
