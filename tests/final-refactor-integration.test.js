@@ -33,4 +33,6 @@ test('final documentation points to current boundaries and production workflow',
   assert.match(architecture, /shell → domain → data facade → Firebase adapter/);
   assert.match(quickstart, /verify:deploy/);
   assert.match(compatibility, /Removal target/);
+  assert.doesNotMatch(compatibility, /`app\/compatibility-bridge\.js` exposes/);
+  assert.match(compatibility, /No new code may import either shim/);
 });

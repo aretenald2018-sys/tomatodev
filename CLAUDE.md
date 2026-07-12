@@ -53,13 +53,12 @@ cd "C:\Users\USER\Desktop\Tomato Project\tomatofarm(for lite version)"; npm.cmd 
 
 ## 🔥 과거에 터졌던 것들 (반드시 확인)
 - `saveWorkoutDay()`와 `_autoSaveDiet()`는 공통 헬퍼 `_buildSavePayload()`를 호출해 저장 객체를 생성함(`workout/save.js`). **새 필드 추가 시 `_buildSavePayload()` 한 곳만 수정**하면 양쪽 저장 경로에 반영됨.
-- `window.*`에 함수를 노출하지 않으면 HTML의 `onclick="함수명()"`이 작동 안 함. `workout/index.js` 하단의 `window.xxx = xxx` 블록 확인.
-- `render-workout.js`(shim)는 `workout/index.js`를 re-export. app.js에서 호출할 새 함수를 추가하면 **shim의 export 목록에도 반드시 추가**.
+- 비즈니스 UI는 `window.*`나 HTML `onclick`에 의존하지 않는다. 기능 root의 scoped handler 또는 `data-*` action contract로 바인딩한다.
 - 사진 필드(`bPhoto`, `lPhoto`, `dPhoto`, `sPhoto`, `workoutPhoto`)를 저장 객체에 빠뜨리면 setDoc 전체 덮어쓰기로 사진 삭제됨.
 - **레이지 로드 모듈의 함수를 동기 코드에서 직접 호출하면 `ReferenceError`** — `render-cooking.js` 등 `_lazy()`로 로드되는 모듈의 export 함수는 **호출부를 async로 바꿔 `await _lazy()`로 가져올 것**.
 - **이벤트 위임(`document.addEventListener`)과 HTML `onclick`이 같은 버튼에 동시 등록되면 핸들러가 2번 실행됨** — 토글 함수가 2번 불리면 원복되어 "안 눌리는" 증상. 하나의 버튼에는 **이벤트 위임 또는 onclick 중 하나만** 사용.
 - **SW 캐시 버전 안 올리면 코드 변경이 배포에 반영 안 됨** — 현재 `CACHE_VERSION = 'tomatofarm-v20260630z12-stale-ui-prune'`. `STATIC_ASSETS` 파일을 하나라도 수정했으면 범프 필수.
-- **커밋 시 의존 파일 누락 → 배포 사이트 런타임 에러** — 예: `home/tomato.js`가 `calc.js`의 `isExerciseDaySuccess`를 import하는데 `calc.js`를 커밋 안 하면 `SyntaxError: does not provide an export named`. **파일 A를 커밋할 때, A가 import하는 다른 파일의 미커밋 변경을 반드시 확인.** 특히 `calc.js ↔ home/tomato.js`, `data/* ↔ home/*.js`, `workout/* ↔ render-workout.js` 간 export/import 의존성.
+- **커밋 시 의존 파일 누락 → 배포 사이트 런타임 에러** — 예: `home/tomato.js`가 `calc.js`의 `isExerciseDaySuccess`를 import하는데 `calc.js`를 커밋 안 하면 `SyntaxError: does not provide an export named`. **파일 A를 커밋할 때, A가 import하는 다른 파일의 미커밋 변경을 반드시 확인.** 특히 `calc.js ↔ home/tomato.js`, `data/* ↔ home/*.js`, `workout/* ↔ workout/index.js` 간 export/import 의존성.
 - **`localStorage`는 기기 단위, 유저별 아님** — 멀티 유저에서 마이그레이션 플래그 등을 `localStorage`에 저장하면 다른 유저에게도 적용됨. 유저별 상태는 **Firestore `_settings`(tomato_state 등)에 저장**. `localStorage`는 UI 상태/캐시/단말별 API 키 전용.
 - **`unit_goal_start` 같은 설정은 모든 사용자 경로에서 자동설정 필요** — `renderUnitGoal()`이 admin 전용이라 비관리자는 `unit_goal_start`가 영원히 null이었음. 특정 사용자 유형에서만 호출되는 함수에 초기화 로직 넣지 말 것. `settleTomatoCycleIfNeeded()` 같은 공통 경로에서 처리.
 - **사용자 액션에 피드백 토스트 필수** — CRUD 작업(저장, 삭제, 전송, 선물 등) 완료 시 반드시 `showToast(msg, duration, type)` 호출. `alert()` 사용 금지 — TDS Toast로 통일. 타입: success/error/warning/info. 예외: 좋아요 토글 등 UI 자체가 즉각 변하는 마이크로 인터랙션은 토스트 불필요.
@@ -68,7 +67,7 @@ cd "C:\Users\USER\Desktop\Tomato Project\tomatofarm(for lite version)"; npm.cmd 
 ```
 루트:
   app.js / data.js / calc.js / config.js / ai.js / sheet.js / sw.js / index.html / style.css
-  render-home.js / render-workout.js / render-stats.js / render-admin.js / render-cooking.js  ← 탭 엔트리/shim
+  render-stats.js / render-admin.js / render-cooking.js  ← 탭 entry
   feature-*.js  ← checkin, diet-plan, misc, nutrition, tutorial
   workout-ui.js / modal-manager.js / navigation.js / pwa-fcm.js
   app-modal-goals.js / app-modal-quests.js
@@ -111,7 +110,7 @@ cd "C:\Users\USER\Desktop\Tomato Project\tomatofarm(for lite version)"; npm.cmd 
 
 새 운동 유형을 추가할 때 건드려야 하는 파일과 위치:
 
-### 1. `workout/` 디렉토리 (render-workout.js는 shim)
+### 1. `workout/` 디렉토리
 - [ ] `workout/state.js` — 상태 변수 추가 (예: `S.newType = false`, `S.newTypeData = {}`)
 - [ ] `workout/load.js` — `loadWorkoutDate()`에서 `day.newType` 상태 복원
 - [ ] `workout/status.js` — `wtToggleNewType()` 함수 생성 + export
@@ -119,19 +118,16 @@ cd "C:\Users\USER\Desktop\Tomato Project\tomatofarm(for lite version)"; npm.cmd 
 - [ ] `workout/activity-forms.js` — 상세 입력 폼 이벤트/힌트가 있다면 여기 추가 (`_initTypeFormEvents`/`_initRunningEvents` 패턴)
 - [ ] `workout/index.js` — 새 함수 re-export + `window.wtToggleNewType = wtToggleNewType;` 추가
 
-### 2. `render-workout.js` (shim)
-- [ ] `./workout/index.js`에서 가져오는 export 목록에 새 함수 추가
-
-### 3. `workout-ui.js`
+### 2. `workout-ui.js`
 - [ ] `wtToggleType()` 함수에 `if (type === 'newType') wtToggleNewType();` 추가
 - [ ] `wtResetStatus()`에 칩 ID 추가: `'wt-chip-newType'`
 - [ ] 상세 섹션이 있다면 `wt-newType-section` 토글 로직 추가
 
-### 4. `app.js`
-- [ ] import 문에 `wtToggleNewType` 추가 (render-workout.js에서 re-export 필요)
+### 3. `app.js`
+- [ ] import 문에 `wtToggleNewType` 추가 (`workout/index.js`에서 export 필요)
 
-### 5. `index.html`
-- [ ] `wt-type-chips`에 칩 버튼 추가: `<button class="wt-type-chip" id="wt-chip-newType" onclick="wtToggleType('newType')">🏊 수영</button>`
+### 4. `index.html`
+- [ ] `wt-type-chips`에 `data-*` action 기반 칩 버튼 추가
 - [ ] 상세 입력이 필요하면 `wt-detail-section` 블록 추가
 
 ### 6. `style.css`
@@ -232,7 +228,7 @@ CSS 클래스:
 - [ ] **SW 캐시 버전 범프** — `sw.js`의 `CACHE_VERSION` 날짜/버전 올렸는가? STATIC_ASSETS에 등록된 파일을 하나라도 수정했으면 필수.
 - [ ] **import 의존성 파일 포함** — 커밋 대상 파일이 import하는 다른 파일에 미커밋 변경이 있는가? 있으면 같이 커밋.
   - `workout/*.js` → `data.js`, `workout/state.js` (상태/저장 변경 시 연쇄)
-  - `render-workout.js` (shim) → `workout/index.js` (export 목록 동기화)
+  - `workout/index.js` → 각 workout domain module (export 목록 동기화)
   - `home/tomato.js` → `calc.js`, `data.js` (export 추가/변경 시 같이 커밋)
   - `home/index.js` → `home/tomato.js` (함수 시그니처 변경 시)
   - `calc.js` 사이클 로직 변경 → `home/unit-goal.js` 동기화
@@ -253,7 +249,7 @@ CSS 클래스:
 - [ ] **브라우저에서 해당 기능 1회 실행** — `node --check` / `node --test` / `curl 200` 만으로는 동적 경로 검증 불가. 분리/이동 후 사용자 흐름(로그인, 모달 열기, 저장 등)을 한 번 직접 실행하는 게 유일한 신뢰 가능한 검증.
 
 ## 📁 파일 패턴
-- 새 탭 엔트리: `render-*.js` (shim) + 실제 로직은 하위 디렉토리 (예: `workout/`, `home/`, `admin/`)
+- 새 탭 엔트리: owner module을 직접 import하고, historical `render-*.js` entry는 새 코드의 import 대상으로 쓰지 않는다.
 - 새 기능 모듈: `feature-*.js` (checkin, diet-plan, misc, nutrition, tutorial)
 - 새 모달: `modals/*-modal.js` → `modal-manager.js`의 MODALS 배열에 등록
 - 운동 탭 UX 상태 머신: `workout-ui.js` (wtSelectStatus, wtToggleType 등)
@@ -309,6 +305,6 @@ CSS 클래스:
 3. **리팩토링**: data-guardian(베이스라인) → refactor-architect → data-guardian(검증) + `node --test tests/`
 
 ### 자동 트리거
-- `workout/*.js`, `render-workout.js`, `data.js`, `data/*.js` 변경 → **data-guardian 필수 실행**
+- `workout/*.js`, `data.js`, `data/*.js` 변경 → **data-guardian 필수 실행**
 - `style.css` 또는 `index.html` 변경 → **tds-reviewer 필수 실행**
 - `calc.js` 변경 → test-writer에게 관련 테스트 업데이트 요청

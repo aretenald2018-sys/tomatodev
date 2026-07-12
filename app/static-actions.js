@@ -39,7 +39,7 @@ import {
   wtResetWorkoutTimer,
   wtEndAndShowInsights,
   openNutritionPhotoUpload,
-} from '../render-workout.js';
+} from '../workout/index.js';
 import {
   wtSwitchType,
   uploadMealPhoto,

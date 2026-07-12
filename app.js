@@ -44,7 +44,7 @@ import {
 import './utils/haptics.js';       // window.haptic.light/medium/heavy (Capacitor + web fallback)
 try { initBuildInfoSurface(); } catch (e) { console.warn('[app] build info init 실패:', e); }
 // ── 코어 탭 (즉시 로드) ──
-import { renderHome, refreshNotifCenter, showToast } from './render-home.js';
+import { renderHome, refreshNotifCenter, showToast } from './home/index.js';
 import { closeNotifCenter, markAllNotifsRead, toggleNotifCenter } from './home/notifications.js';
 import { setLifeZoneVisitContext } from './home/life-zone.js';
 import { showWelcomeBackPopup } from './home/welcome-back.js';
@@ -53,7 +53,7 @@ import {
   loadWorkoutDate,
   openNutritionPhotoUpload, wtRecoverTimers, wtRestoreRunningSessionIfActive,
   wtAddFrequentFoodSuggestion,
-} from './render-workout.js';
+} from './workout/index.js';
 import { wtHandleExercisePickerBack } from './workout/exercises.js';
 import { wtHandleRunningSessionBack } from './workout/running-session.js';
 

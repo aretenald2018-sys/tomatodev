@@ -9,7 +9,7 @@
 | 기능 | owner | 공개 경계 |
 |---|---|---|
 | 앱 shell·탭·overlay | `app/`, `navigation.js`, `app.js` | tab registry, overlay stack, `app:*` events |
-| 운동 세션·세트 | `workout/` | `render-workout.js` facade와 명시적 module exports |
+| 운동 세션·세트 | `workout/` | `workout/index.js` 공개 exports |
 | 러닝·Wear | `workout/running-*`, `workout/wear-*` | running model/route store, versioned Wear payload |
 | 식단·영양·사진 | `diet/`, `feature-nutrition.js`, `workout/ai-estimate.js` | canonical nutrition model, photo store, diet save schema |
 | 홈·소셜 | `home/` | read models, action services, scoped UI binders |

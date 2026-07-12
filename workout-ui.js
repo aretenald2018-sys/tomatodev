@@ -5,7 +5,7 @@ import { showToast } from './ui/toast.js';
 
 import {
   wtToggleMealSkipped,
-} from './render-workout.js';
+} from './workout/index.js';
 import { getDietPhotos, setDietPhoto } from './diet/photo-store.js';
 export { wtSwitchType } from './workout/type-ui.js';
 export { removeMealPhoto } from './diet/photo-actions.js';
@@ -21,10 +21,10 @@ export async function uploadMealPhoto(meal, input) {
   try {
     const b64 = await imageToBase64(file, maxDim, quality);
     setDietPhoto(meal, 'data:image/jpeg;base64,' + b64);
-    const { _renderMealPhotos } = await import('./render-workout.js');
+    const { _renderMealPhotos } = await import('./workout/render.js');
     _renderMealPhotos();
     if (meal === 'workout') {
-      const { saveWorkoutDay } = await import('./render-workout.js');
+      const { saveWorkoutDay } = await import('./workout/save.js');
       saveWorkoutDay().catch(e => console.error('Auto-save after workout photo:', e));
     } else {
       const { _autoSaveDiet } = await import('./workout/save.js');
@@ -50,7 +50,7 @@ export async function uploadMealPhotoAI(meal, input) {
 
     // 1) 사진은 바로 끼니에 표시 (일반 사진 업로드와 동일한 시각 UX)
     setDietPhoto(meal, dataUrl);
-    const { _renderMealPhotos } = await import('./render-workout.js');
+    const { _renderMealPhotos } = await import('./workout/render.js');
     _renderMealPhotos();
 
     // 2) AI 추정 배너 시작 (pending → preview/error)
@@ -198,7 +198,7 @@ export async function runBulkMealAIUpload(input) {
   try {
     const { imageToBase64 } = await import('./data.js');
     const { runAIEstimate } = await import('./workout/ai-estimate.js');
-    const { _renderMealPhotos } = await import('./render-workout.js');
+    const { _renderMealPhotos } = await import('./workout/render.js');
     const { _autoSaveDiet } = await import('./workout/save.js');
     const { S } = await import('./workout/state.js');
     const startDateKey = _bulkDateKeyFromState(S);

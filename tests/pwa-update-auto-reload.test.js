@@ -172,7 +172,8 @@ test('production app uses canonical asset URLs and one service worker cache name
   assert.match(indexHtml, /<script src="pwa-register\.js"><\/script>/);
   assert.match(indexHtml, /<script type="module" src="app\.js"><\/script>/);
   assert.match(appJs, /utils\/build-info\.js/);
-  assert.match(appJs, /render-workout\.js/);
+  assert.match(appJs, /workout\/index\.js/);
+  assert.doesNotMatch(appJs, /render-workout\.js/);
   assert.doesNotMatch(indexHtml + appJs, /\?v=/);
   assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });

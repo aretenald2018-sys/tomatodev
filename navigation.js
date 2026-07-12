@@ -3,7 +3,7 @@
 // ================================================================
 
 import { saveTabOrder, getVisibleTabs, saveVisibleTabs } from './data.js';
-import { showToast } from './render-home.js';
+import { showToast } from './home/index.js';
 
 let _getCurrentTab = () => 'home';
 let _switchTab = () => undefined;

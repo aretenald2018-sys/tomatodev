@@ -4,7 +4,7 @@ import { showToast } from './ui/toast.js';
 // ================================================================
 
 import { CONFIG } from './config.js';
-import { refreshNotifCenter } from './render-home.js';
+import { refreshNotifCenter } from './home/index.js';
 
 // ── 상태 ──────────────────────────────────────────────────────────
 let _deferredInstallPrompt = null;

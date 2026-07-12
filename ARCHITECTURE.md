@@ -63,10 +63,10 @@ index.html
 - **캘린더**: 하단 탭과 운동 홈 양쪽에서 `render-calendar.js`를 레이지 로드
 - **삭제된 탭**: finance, wine, movie, dev — UI 모듈은 제거하고 컬렉션 데이터만 보존
 
-### 왜 shim 패턴인가 (render-workout.js)
-- `render-workout.js`는 `workout/index.js`를 re-export하는 얇은 shim
-- 히스토리: 모놀리식 `render-workout.js`(>2000 줄)를 `workout/*.js` 11개로 분할. 기존 `import { ... } from './render-workout.js'`를 깨지 않기 위해 shim 유지
-- shim에 새 함수를 추가하지 않으면 app.js에서 import 불가 → **새 공개 함수는 workout/index.js export + render-workout.js re-export 둘 다 해야 함**
+### 앱 entry와 설치 앱 호환
+
+- 현재 runtime 코드는 `home/index.js`와 `workout/index.js`를 직접 import한다.
+- `render-home.js`와 `render-workout.js`는 이미 설치된 이전 WebView가 잠시 요청할 수 있는 얇은 re-export entry만 유지한다. 새 runtime 코드는 이 파일을 import하지 않는다.
 
 ## 4. 등록된 탭
 
