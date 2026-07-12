@@ -10,6 +10,7 @@ import {
   applyRunningDataToWorkout,
   findRunningSessionIndex,
 } from './running-model.js';
+import { buildRunningActivityAnalytics } from './running-analytics.js';
 
 const WEAR_QUEUE_KEY = 'tomatofarm_wear_workout_queue_v1';
 const MAX_WEAR_HEART_RATE_SAMPLES = 2_161;
@@ -182,6 +183,11 @@ function _normalizeRouteSummary(payload, route, durationSec, distanceKm, started
   };
 }
 
+function _optionalCalories(value) {
+  if (value == null || value === '') return null;
+  return _boundedInt(value, { min: 1, max: 20_000, nullable: true });
+}
+
 export function normalizeWearWorkoutPayload(raw) {
   const payload = typeof raw === 'string' ? JSON.parse(raw) : raw;
   if (!payload || typeof payload !== 'object') throw new Error('wear payload must be an object');
@@ -199,7 +205,23 @@ export function normalizeWearWorkoutPayload(raw) {
   const avgHeartRateBpm = _boundedInt(payload.avgHeartRateBpm, { min: 30, max: 240, nullable: true });
   const maxHeartRateBpm = _boundedInt(payload.maxHeartRateBpm, { min: 30, max: 240, nullable: true });
   const route = _normalizeRoutePoints(payload.route, startedAt, endedAt);
-  const routeSummary = _normalizeRouteSummary(payload, route, durationSec, distanceKm, startedAt, endedAt);
+  const samples10s = _normalizeSamples(payload.samples10s, startedAt, endedAt);
+  const calories = _optionalCalories(payload.calories ?? payload.caloriesKcal ?? payload.activeCalories);
+  const routeSummary = {
+    ..._normalizeRouteSummary(payload, route, durationSec, distanceKm, startedAt, endedAt),
+    ...buildRunningActivityAnalytics(route, {
+      source: route.length ? 'wear-gps' : 'wear',
+      startedAt,
+      endedAt,
+      durationSec,
+      distanceKm,
+      heartRateSamples: samples10s,
+      avgHeartRateBpm,
+      maxHeartRateBpm,
+      calories,
+      calorieSource: calories != null ? 'wear' : 'estimated',
+    }),
+  };
 
   return {
     type: 'running',
@@ -213,7 +235,8 @@ export function normalizeWearWorkoutPayload(raw) {
     avgPaceSecPerKm,
     avgHeartRateBpm,
     maxHeartRateBpm,
-    samples10s: _normalizeSamples(payload.samples10s, startedAt, endedAt),
+    calories,
+    samples10s,
     route,
     routeSummary,
   };
@@ -245,18 +268,8 @@ function _syncRunData(workout, payload, sessionIndex) {
     endedAt: payload.endedAt,
     route: payload.route,
     routeSummary: {
-      source: payload.routeSummary.source,
-      distanceKm: payload.distanceKm,
-      durationSec: payload.durationSec,
-      avgPaceSecPerKm: payload.avgPaceSecPerKm,
-      avgHeartRateBpm: payload.avgHeartRateBpm,
-      maxHeartRateBpm: payload.maxHeartRateBpm,
-      pointCount: payload.routeSummary.pointCount,
-      segmentCount: payload.routeSummary.segmentCount,
-      gapCount: payload.routeSummary.gapCount,
-      interrupted: payload.routeSummary.interrupted,
-      startedAt: payload.startedAt,
-      endedAt: payload.endedAt,
+      ...payload.routeSummary,
+      heartRateSamples10s: payload.samples10s,
     },
     placeSummary: { status: 'unavailable', label: '워치 기록', provider: 'wear' },
     avgPaceSecPerKm: payload.avgPaceSecPerKm || 0,
@@ -307,9 +320,11 @@ function _sanitizeQueuedPayload(payload = {}) {
   const avgPaceSecPerKm = _boundedInt(payload?.avgPaceSecPerKm, { min: 1, max: 99 * 60, nullable: true });
   const avgHeartRateBpm = _boundedInt(payload?.avgHeartRateBpm, { min: 30, max: 240, nullable: true });
   const maxHeartRateBpm = _boundedInt(payload?.maxHeartRateBpm, { min: 30, max: 240, nullable: true });
+  const calories = _optionalCalories(payload?.calories ?? payload?.caloriesKcal ?? payload?.activeCalories);
   if (avgPaceSecPerKm != null) safe.avgPaceSecPerKm = avgPaceSecPerKm;
   if (avgHeartRateBpm != null) safe.avgHeartRateBpm = avgHeartRateBpm;
   if (maxHeartRateBpm != null) safe.maxHeartRateBpm = maxHeartRateBpm;
+  if (calories != null) safe.calories = calories;
   return {
     ...safe,
   };

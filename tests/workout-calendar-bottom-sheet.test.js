@@ -1002,7 +1002,7 @@ test('workout bottom sheet replaces the third gym session with a dedicated runni
   assert.match(styleCss, /\.wt-running-empty \.wt-empty-center/);
 });
 
-test('running detail card uses the workout read-card shell with running metrics only', () => {
+test('running detail card uses the workout read-card shell with aggregated running metrics and splits', () => {
   const metricStart = calendarJs.indexOf('function _runningMetricItems');
   const mapStart = calendarJs.indexOf('function _renderRunningRouteMap');
   const cardStart = calendarJs.indexOf('function _renderWorkoutRunningDetailCard');
@@ -1032,6 +1032,8 @@ test('running detail card uses the workout read-card shell with running metrics 
   assert.match(calendarJs, /avgPaceSecPerKm:\s*_num\(d\.runAvgPaceSecPerKm\)/);
   assert.match(calendarJs, /placeSummary:\s*d\.runPlaceSummary \|\| null/);
   assert.match(calendarJs, /avgHeartRateBpm:\s*Number\(runSummary\.avgHeartRateBpm\) > 0/);
+  assert.match(calendarJs, /bestPaceSecPerKm:\s*_num\(runSummary\.bestPaceSecPerKm\)/);
+  assert.match(calendarJs, /splits:\s*Array\.isArray\(runSummary\.splits\)/);
   assert.match(calendarJs, /if \(row\?\.key === 'running'\) return _renderWorkoutRunningDetailCard/);
   assert.match(card, /wt-day-ex-card wt-max-read-card wt-running-read-card/);
   assert.match(card, /data-wt-sheet-card-action="delete-activity"/);
@@ -1040,13 +1042,13 @@ test('running detail card uses the workout read-card shell with running metrics 
   assert.doesNotMatch(card, /window\._wtCalToggleExerciseCard|window\._wtCalDeleteActivity|window\._wtCalAddRunning/);
   assert.match(card, /wt-running-distance-hero/);
   assert.match(card, /wt-running-primary-stats/);
+  assert.match(card, /_renderRunningRouteDetail\(row\)/);
   assert.match(card, /_renderRunningRouteMap\(row\)/);
   assert.match(mapRenderer, /wt-running-route-map wt-run-real-map/);
   assert.match(mapRenderer, /data-wt-running-route-map/);
   assert.match(mapRenderer, /wt-running-route-place/);
   assert.match(mapRenderer, /wt-run-gps-info/);
   assert.match(mapRenderer, /전체 경로 불러오는 중/);
-  assert.doesNotMatch(card, /wt-running-detail-stats/);
   assert.match(card, /고도 상승/);
   assert.match(card, /평균 심박수/);
   assert.match(card, /케이던스/);
@@ -1064,11 +1066,17 @@ test('running detail card uses the workout read-card shell with running metrics 
   assert.match(metricBuilder, /row\.cadenceSpm == null \? '--'/);
   assert.doesNotMatch(card, /REP|RIR|KG|_renderWorkoutSetRows|wt-max-set-row/);
   assert.doesNotMatch(card, /wt-max-plan wt-running-plan|wt-running-route-mini|경로 포인트|GPS 평균 정확도|대한민국 위치 기록|오늘 러닝|row\.detail/);
-  assert.match(calendarJs, /function _renderRunningRouteDetail\(row\) \{\s*return '';\s*\}/);
+  assert.match(calendarJs, /function _renderRunningRouteDetail\(row\) \{/);
+  assert.match(calendarJs, /최고 페이스/);
+  assert.match(calendarJs, /경과 시간/);
+  assert.match(calendarJs, /최대 심박수/);
+  assert.match(calendarJs, /wt-running-split-table/);
   assert.match(styleCss, /\.wt-running-read-card/);
   assert.match(styleCss, /\.wt-running-route-map/);
   assert.match(styleCss, /\.wt-running-route-place/);
   assert.match(styleCss, /\.wt-run-gps-info/);
+  assert.match(styleCss, /\.wt-running-detail-block/);
+  assert.match(styleCss, /\.wt-running-split-table/);
   assert.doesNotMatch(styleCss, /wt-running-route-mini/);
   assert.match(styleCss, /\.wt-running-primary-stats,[\s\S]*\.wt-running-detail-stats\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(styleCss, /\.wt-running-read-card\.is-collapsed \.wt-running-detail-stats/);
@@ -1445,5 +1453,5 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {
-  assert.match(swJs, /tomatofarm-v20260712z2-workout-running-refactor/);
+  assert.match(swJs, /tomatofarm-v20260712z3-running-analytics/);
 });

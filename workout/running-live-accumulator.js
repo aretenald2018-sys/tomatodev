@@ -4,6 +4,7 @@ import {
   isExplicitRunningRouteGap,
   runningDistanceMeters,
 } from './running-route-policy.js';
+import { buildRunningActivityAnalytics, estimateRunningCalories } from './running-analytics.js';
 
 function _num(value, fallback = 0) {
   const number = Number(value);
@@ -19,6 +20,10 @@ function _positiveMetric(state, key, value) {
   if (!Number.isFinite(number) || number <= 0) return;
   state[`${key}Sum`] += number;
   state[`${key}Count`] += 1;
+  state[`max${key[0].toUpperCase()}${key.slice(1)}`] = Math.max(
+    state[`max${key[0].toUpperCase()}${key.slice(1)}`] || 0,
+    number,
+  );
 }
 
 function _elevationPair(state, prefix, previous, point) {
@@ -28,6 +33,7 @@ function _elevationPair(state, prefix, previous, point) {
   if (!Number.isFinite(before) || !Number.isFinite(after)) return;
   state[`${prefix}ElevationPairs`] += 1;
   if (after > before) state[`${prefix}ElevationGain`] += after - before;
+  if (after < before) state[`${prefix}ElevationLoss`] += before - after;
 }
 
 function _freshState() {
@@ -47,15 +53,20 @@ function _freshState() {
     worstAccuracy: -Infinity,
     heartRateBpmSum: 0,
     heartRateBpmCount: 0,
+    maxHeartRateBpm: 0,
     cadenceSpmSum: 0,
     cadenceSpmCount: 0,
+    maxCadenceSpm: 0,
     rawElevationGain: 0,
+    rawElevationLoss: 0,
     rawElevationPairs: 0,
     movementElevationGain: 0,
+    movementElevationLoss: 0,
     movementElevationPairs: 0,
     distanceM: 0,
     previousRaw: null,
     movementAnchor: null,
+    points: [],
   };
 }
 
@@ -82,6 +93,7 @@ export class RunningLiveAccumulator {
     const previousRaw = state.previousRaw;
     const gap = !!previousRaw && isExplicitRunningRouteGap(previousRaw, point);
     state.pointCount += 1;
+    state.points.push(point);
     if (state.pointCount === 1) state.segmentCount = 1;
     if (gap) {
       state.gapCount += 1;
@@ -150,8 +162,16 @@ export class RunningLiveAccumulator {
     const elevationGain = state.movementElevationPairs
       ? state.movementElevationGain
       : state.rawElevationGain;
+    const elevationLoss = state.movementElevationPairs
+      ? state.movementElevationLoss
+      : state.rawElevationLoss;
+    const calories = estimateRunningCalories({
+      distanceKm: preciseDistanceKm,
+      durationSec,
+      weightKg: options.weightKg,
+    });
 
-    return {
+    const base = {
       source: 'gps',
       startedAt,
       endedAt,
@@ -161,6 +181,7 @@ export class RunningLiveAccumulator {
       gapCount: state.gapCount,
       interrupted: state.gapCount > 0,
       durationSec,
+      elapsedDurationSec: Math.max(0, Math.floor((endedAt - startedAt) / 1000)),
       distanceM: _round(distanceM, 2),
       distanceKm,
       avgPaceSecPerKm,
@@ -168,18 +189,32 @@ export class RunningLiveAccumulator {
       bbox,
       centroid,
       elevationGainM: elevationPairs ? Math.round(elevationGain) : null,
-      calories: null,
+      elevationLossM: elevationPairs ? Math.round(elevationLoss) : null,
+      calories: calories || null,
+      calorieSource: calories ? 'estimated' : null,
       avgHeartRateBpm: state.heartRateBpmCount
         ? Math.round(state.heartRateBpmSum / state.heartRateBpmCount)
         : null,
+      maxHeartRateBpm: state.maxHeartRateBpm || null,
       cadenceSpm: state.cadenceSpmCount
         ? Math.round(state.cadenceSpmSum / state.cadenceSpmCount)
         : null,
+      maxCadenceSpm: state.maxCadenceSpm || null,
       gpsAccuracySummary: state.accuracyCount ? {
         avgAccuracyM: Math.round(state.accuracySum / state.accuracyCount),
         bestAccuracyM: Math.round(state.bestAccuracy),
         worstAccuracyM: Math.round(state.worstAccuracy),
       } : null,
     };
+    if (options.includeAnalytics === false) return base;
+    return buildRunningActivityAnalytics(state.points, {
+      ...options,
+      source: options.source || 'gps',
+      startedAt,
+      endedAt,
+      pausedMs,
+      durationSec,
+      distanceM,
+    });
   }
 }

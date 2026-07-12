@@ -1344,10 +1344,17 @@ function _activityRows(day) {
       distanceKm: runDistance,
       speedKmh: runSpeedKmh,
       avgPaceSecPerKm: _num(d.runAvgPaceSecPerKm) || _num(runSummary.avgPaceSecPerKm),
+      bestPaceSecPerKm: _num(runSummary.bestPaceSecPerKm),
       calories: _num(runSummary.calories),
+      calorieSource: runSummary.calorieSource || null,
       elevationGainM: Number.isFinite(Number(runSummary.elevationGainM)) ? Number(runSummary.elevationGainM) : null,
+      elevationLossM: Number.isFinite(Number(runSummary.elevationLossM)) ? Number(runSummary.elevationLossM) : null,
       cadenceSpm: Number(runSummary.cadenceSpm) > 0 ? Number(runSummary.cadenceSpm) : null,
+      maxCadenceSpm: Number(runSummary.maxCadenceSpm) > 0 ? Number(runSummary.maxCadenceSpm) : null,
       avgHeartRateBpm: Number(runSummary.avgHeartRateBpm) > 0 ? Number(runSummary.avgHeartRateBpm) : null,
+      maxHeartRateBpm: Number(runSummary.maxHeartRateBpm) > 0 ? Number(runSummary.maxHeartRateBpm) : null,
+      elapsedDurationSec: _num(runSummary.elapsedDurationSec) || runDuration,
+      splits: Array.isArray(runSummary.splits) ? runSummary.splits : [],
       pointCount: _num(runSummary.pointCount) || (Array.isArray(d.runRoute) ? d.runRoute.length : 0),
       segmentCount: _num(runSummary.segmentCount),
       gapCount: _num(runSummary.gapCount),
@@ -2935,6 +2942,7 @@ function _formatRunningClock(ts) {
 
 function _runningSourceLabel(source) {
   if (source === 'gps') return 'GPS 기록';
+  if (source === 'wear' || source === 'wear-gps') return '워치 기록';
   if (source === 'manual-cardio') return '수기 입력';
   if (source === 'manual') return '수동 기록';
   return '러닝 기록';
@@ -2997,7 +3005,54 @@ function _renderRunningRouteMap(row) {
 }
 
 function _renderRunningRouteDetail(row) {
-  return '';
+  const summary = row?.routeSummary || {};
+  const elapsedDurationSec = _num(row?.elapsedDurationSec) || _num(summary.elapsedDurationSec);
+  const detailMetrics = [
+    { label: '최고 페이스', value: _formatRunningPaceCard(row?.bestPaceSecPerKm) || '' },
+    { label: '경과 시간', value: elapsedDurationSec > 0 ? _formatDurationShort(elapsedDurationSec) : '' },
+    { label: '고도 하강', value: row?.elevationLossM == null ? '' : `${Math.round(row.elevationLossM)} m` },
+    { label: '최대 심박수', value: row?.maxHeartRateBpm == null ? '' : `${Math.round(row.maxHeartRateBpm)} bpm` },
+    { label: '최대 케이던스', value: row?.maxCadenceSpm == null ? '' : `${Math.round(row.maxCadenceSpm)} spm` },
+    { label: 'GPS 포인트', value: _num(row?.pointCount) > 0 ? `${Math.round(row.pointCount)}개` : '' },
+  ].filter(metric => metric.value);
+  const splits = Array.isArray(row?.splits) ? row.splits : [];
+  const splitRows = splits.map((split, index) => {
+    const distance = _num(split?.distanceKm);
+    const label = distance > 0.95 && distance < 1.05
+      ? `${index + 1} km`
+      : `${_fmtNum(distance, 2)} km`;
+    const pace = _formatRunningPaceCard(split?.paceSecPerKm) || '--';
+    const elevation = Number.isFinite(Number(split?.elevationGainM))
+      ? `${Math.round(split.elevationGainM)} m`
+      : '--';
+    const heart = Number(split?.avgHeartRateBpm) > 0
+      ? `${Math.round(split.avgHeartRateBpm)}`
+      : '--';
+    return `
+      <div class="wt-running-split-row" role="row">
+        <span role="cell">${_esc(label)}</span>
+        <strong role="cell">${_esc(pace)}</strong>
+        <span role="cell">${_esc(elevation)}</span>
+        <span role="cell">${_esc(heart)}</span>
+      </div>`;
+  }).join('');
+  if (!detailMetrics.length && !splitRows) return '';
+  return `
+    <section class="wt-running-detail-block" aria-label="러닝 상세 데이터">
+      ${detailMetrics.length ? `
+        <div class="wt-running-detail-title">상세 데이터</div>
+        <div class="wt-running-detail-stats">
+          ${detailMetrics.map(metric => `<span><strong>${_esc(metric.value)}</strong><i>${_esc(metric.label)}</i></span>`).join('')}
+        </div>` : ''}
+      ${splitRows ? `
+        <div class="wt-running-split-title">구간</div>
+        <div class="wt-running-split-table" role="table" aria-label="킬로미터별 러닝 구간">
+          <div class="wt-running-split-row wt-running-split-row--head" role="row">
+            <span role="columnheader">거리</span><span role="columnheader">평균 페이스</span><span role="columnheader">고도</span><span role="columnheader">심박</span>
+          </div>
+          ${splitRows}
+        </div>` : ''}
+    </section>`;
 }
 
 function _renderRunningGpsStatus(row) {

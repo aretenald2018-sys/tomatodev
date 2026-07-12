@@ -13,6 +13,7 @@ import { TODAY, getMuscles, getCF, getDiet, dietDayOk,
 import { SUBPATTERN_TO_MAJOR, calcBurnedKcal }       from './calc.js';
 import { getWorkoutSessions }                        from './workout/sessions.js';
 import { WORKOUT_PAYLOAD_KEYS, DIET_PAYLOAD_KEYS, SHARED_PAYLOAD_KEYS } from './workout/save-schema.js';
+import { listRunningActivities, summarizeRunningActivities } from './workout/running-analytics.js';
 
 let _selectedExerciseId = null;
 let _selectedVolumeDate = null;
@@ -69,6 +70,10 @@ function _trainerQuestStatsMarkup() {
     <section class="stats-block stats-summary-block trainer-quest-stats-block">
       <div class="stats-block-title">전체 요약</div>
       <div data-stats-id="stats-overall-summary"></div>
+    </section>
+    <section class="stats-block stats-running-summary-block trainer-quest-stats-block">
+      <div class="stats-block-title">러닝 분석</div>
+      <div data-stats-id="stats-running-summary"></div>
     </section>
     <section class="stats-block stats-workout-analysis-block trainer-quest-stats-block">
       <div class="stats-block-title">운동 분석</div>
@@ -213,6 +218,7 @@ export function buildTrainerQuestStatsExport() {
   const workoutAnalysis = _analyzeTrainerWindow(analysisRange.fromKey, analysisRange.toKey);
   const analysisPlan = workoutAnalysis.planStats || {};
   const performanceRows = _buildExercisePerformanceRows(analysisRange);
+  const runningSummary = summarizeRunningActivities(listRunningActivities(entries));
 
   return {
     schema: 'tomatofarm.trainerStats.v1',
@@ -258,6 +264,20 @@ export function buildTrainerQuestStatsExport() {
       averageFatG: macro.days ? macro.fat / macro.days : null,
       averageSugarG: sugar.days ? sugar.total / sugar.days : null,
       averageSodiumMg: sodium.days ? sodium.total / sodium.days : null,
+    },
+    running: {
+      activityCount: runningSummary.activityCount,
+      activeDays: runningSummary.activeDays,
+      distanceKm: runningSummary.distanceKm,
+      durationSec: runningSummary.durationSec,
+      elapsedDurationSec: runningSummary.elapsedDurationSec,
+      avgPaceSecPerKm: runningSummary.avgPaceSecPerKm || null,
+      bestPaceSecPerKm: runningSummary.bestPaceSecPerKm || null,
+      calories: runningSummary.calories || null,
+      elevationGainM: runningSummary.elevationGainM || null,
+      elevationLossM: runningSummary.elevationLossM || null,
+      avgHeartRateBpm: runningSummary.avgHeartRateBpm,
+      maxHeartRateBpm: runningSummary.maxHeartRateBpm,
     },
     healthChart: {
       periodDays: analysisRange.key === 'all' ? 'all' : analysisRange.actualDays,
@@ -508,6 +528,7 @@ function _bindStatsRawExportControls(root = document) {
 function _renderPeriodScopedStats(scope = document) {
   _renderMuscleFatigue(scope);
   _renderOverallSummary(scope);
+  _renderRunningSummary(scope);
   _renderWorkoutAnalysis(scope);
   _renderKcalWeightChart(scope);
   _renderCalorieReport(scope);
@@ -1157,6 +1178,57 @@ function _renderOverallSummary(scope = document) {
     </div>
     <div class="stats-summary-kpis">${kpis}</div>
     <div class="stats-summary-details">${facts}</div>`;
+}
+
+function _formatRunningDuration(sec) {
+  const total = Math.max(0, Math.floor(_num(sec)));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  if (hours > 0) return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+function _formatRunningPace(secPerKm) {
+  const total = Math.round(_num(secPerKm));
+  if (total <= 0) return '--';
+  return `${Math.floor(total / 60)}'${String(total % 60).padStart(2, '0')}''`;
+}
+
+function _renderRunningSummary(scope = document) {
+  const root = _statsNode(scope, 'stats-running-summary');
+  if (!root) return;
+  const range = _statsAnalysisRange();
+  const entries = _dateRange(range.fromKey, range.toKey).map(key => [key, getCache()[key] || {}]);
+  const summary = summarizeRunningActivities(listRunningActivities(entries));
+  if (!summary.activityCount) {
+    root.innerHTML = `
+      <div class="stats-running-empty">
+        <b>${_esc(range.label)}에 저장된 러닝 기록이 없어요.</b>
+        <span>GPS 또는 워치로 러닝을 기록하면 거리·페이스·심박·구간을 자동 집계합니다.</span>
+      </div>`;
+    return;
+  }
+  const heartText = summary.avgHeartRateBpm == null
+    ? '심박 데이터 없음'
+    : `평균 ${summary.avgHeartRateBpm} bpm${summary.maxHeartRateBpm == null ? '' : ` · 최고 ${summary.maxHeartRateBpm} bpm`}`;
+  root.innerHTML = `
+    <div class="stats-running-head">
+      <div><span>${_esc(range.label)} 누적</span><b>${_fmt(summary.activityCount)}회 · ${_fmt(summary.activeDays)}일</b></div>
+      <small>저장된 러닝 세션 기준</small>
+    </div>
+    <div class="stats-running-kpis">
+      <div><span>누적 거리</span><b>${_fmt(summary.distanceKm, 2)}<small>km</small></b></div>
+      <div><span>활동 시간</span><b>${_esc(_formatRunningDuration(summary.durationSec))}</b></div>
+      <div><span>평균 페이스</span><b>${_esc(_formatRunningPace(summary.avgPaceSecPerKm))}<small>/km</small></b></div>
+      <div><span>소모 칼로리</span><b>${_fmt(summary.calories)}<small>kcal</small></b></div>
+    </div>
+    <div class="stats-running-facts">
+      <span><i>최고 페이스</i><b>${_esc(_formatRunningPace(summary.bestPaceSecPerKm))}/km</b></span>
+      <span><i>누적 고도</i><b>+${_fmt(summary.elevationGainM)} m · -${_fmt(summary.elevationLossM)} m</b></span>
+      <span><i>심박</i><b>${_esc(heartText)}</b></span>
+    </div>
+    <p class="stats-running-note">칼로리는 워치가 제공한 실제값 또는 체중·속도·활동 시간 기반 추정값입니다.</p>`;
 }
 
 function _linearSlope(points) {

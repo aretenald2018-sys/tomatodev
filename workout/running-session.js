@@ -24,6 +24,7 @@ import {
 } from './session-policy.js';
 import { applyRunningDataToWorkout } from './running-model.js';
 import { RunningLiveAccumulator } from './running-live-accumulator.js';
+import { buildRunningActivityAnalytics } from './running-analytics.js';
 import {
   RUNNING_DRAFT_STORAGE_VERSION,
   clearRunningDraftRecord,
@@ -444,45 +445,7 @@ function _avgRouteMetric(route, key) {
 }
 
 export function summarizeRunningRoute(points = [], options = {}) {
-  const model = buildRunningRouteModel(points);
-  const route = model.rawRoute;
-  const movementRoute = model.movementRoute;
-  const startedAt = _num(options.startedAt, route[0]?.ts || _now());
-  const endedAt = _num(options.endedAt, route[route.length - 1]?.ts || startedAt);
-  const pausedMs = Math.max(0, _num(options.pausedMs, 0));
-  const durationSec = Math.max(0, Math.floor((endedAt - startedAt - pausedMs) / 1000));
-  const distanceM = Math.max(0, _num(options.distanceM, runningRouteDistanceMeters(route)));
-  const preciseDistanceKm = distanceM / 1000;
-  const distanceKm = _round(preciseDistanceKm, 2);
-  const avgPaceSecPerKm = preciseDistanceKm > 0 && durationSec > 0 ? Math.round(durationSec / preciseDistanceKm) : 0;
-  const speedKmh = preciseDistanceKm > 0 && durationSec > 0 ? _round(preciseDistanceKm / (durationSec / 3600), 2) : 0;
-  const bbox = _routeBounds(route);
-  const centroid = _routeCentroid(route);
-  const elevationGainM = _elevationGain(route);
-  const gapCount = _routeGapCount(route);
-  const segmentCount = _routeSegmentCount(route);
-  return {
-    source: 'gps',
-    startedAt,
-    endedAt,
-    pausedMs,
-    pointCount: route.length,
-    segmentCount,
-    gapCount,
-    interrupted: gapCount > 0,
-    durationSec,
-    distanceM: _round(distanceM, 2),
-    distanceKm,
-    avgPaceSecPerKm,
-    speedKmh,
-    bbox,
-    centroid,
-    elevationGainM: _elevationGain(movementRoute) ?? elevationGainM,
-    calories: null,
-    avgHeartRateBpm: _avgRouteMetric(route, 'heartRateBpm'),
-    cadenceSpm: _avgRouteMetric(route, 'cadenceSpm'),
-    gpsAccuracySummary: _accuracySummary(route),
-  };
+  return buildRunningActivityAnalytics(points, { source: 'gps', ...options });
 }
 
 export function formatRunningDuration(sec) {
@@ -508,15 +471,29 @@ function _elapsedSec() {
   return Math.max(0, Math.floor((end - _session.startedAt - _session.pausedMs) / 1000));
 }
 
+function _runningWeightKg() {
+  const value = Number(globalThis?.__tomatoRunningWeightKg);
+  return Number.isFinite(value) && value >= 25 && value <= 300 ? value : 70;
+}
+
 function _currentSummary() {
   const endedAt = _session.endedAt || _now();
   if (_session.routeAccumulator.state.pointCount !== _session.route.length) {
     _session.routeAccumulator.rebuild(_session.route);
   }
-  return _session.routeAccumulator.summary({
+  const summaryOptions = {
     startedAt: _session.startedAt || endedAt,
     endedAt,
     pausedMs: _session.pausedMs,
+    weightKg: _runningWeightKg(),
+    includeAnalytics: false,
+  };
+  const liveSummary = _session.routeAccumulator.summary(summaryOptions);
+  if (_session.phase !== 'summary') return liveSummary;
+  return buildRunningActivityAnalytics(_session.route, {
+    ...summaryOptions,
+    source: 'gps',
+    distanceM: liveSummary.distanceM,
   });
 }
 
