@@ -1,7 +1,7 @@
 # 리팩토링 재감사와 완료 계획
 
 기준일: 2026-07-13
-코드 기준: `67c31f9` (배포 대상, `https://aretenald2018-sys.github.io/tomatofarm/`)
+코드 기준: `6b4b29f` (배포 대상, `https://aretenald2018-sys.github.io/tomatofarm/`)
 
 ## 판정
 
@@ -17,9 +17,9 @@
 | `data.js` facade | 통과 | `data/data-api.js` re-export만 수행 |
 | PWA/runtime import graph | 통과 | literal import 존재·precache·named export와 tab registry lazy 경로를 모두 검증; 누락 10개를 `59258cd`에서 보완 |
 | CSS WebView 진입점 | 통과 | `style.css`를 44개 owner source에서 하나의 WebView-safe bundle로 생성; `fac2a35` 배포본의 360px 하단 탭 설정 sheet와 `4cda585`의 운동 상세 sheet에서 CSS 적용·가로 넘침 없음 확인 |
-| 자동 회귀 | 통과 | 전체 `npm.cmd test`와 핵심 데이터 계약 105/105 통과 |
-| Android/Wear 빌드 | 통과 | `:app:assembleDebug :wear:assembleDebug` 성공 |
-| 실제 Pages 테스트 계정 흐름 | 부분 통과 | 계정 생성·세션 복원·식단 목표 저장/재로드, 하단 탭, 운동/캘린더/통계/요리 lazy 탭, 더보기/계정 전환/편지 진입을 확인했다. 테스트 계정에서 운동 종목 추가 → 20kg × 10회 세트 입력 → 완전 새로고침 → 기록·완료 상태 복원도 현재 감사에서 다시 확인했다. 360px 홈·식단·운동 화면은 가로 넘침 없이 panel/nav가 viewport 폭 안에 있었다. 단, 이 자동화 브라우저는 앱이 계속 `오프라인 상태`를 표시하며 이전 static module을 제공해 최신 식단 action의 실제 클릭 상태를 재확인하지 못했다. 따라서 과거 배포에서의 식사 스킵 성공 기록은 현재 코드의 완료 증거로 사용하지 않는다. |
+| 자동 회귀 | 통과 | 현재 코드에서 전체 `npm.cmd test` 통과; 운동 묶음 441개도 별도로 재실행 |
+| Android APK 정적 자산 | 통과 | APK 안의 `sw.js`/`build-info.json` cache version이 root와 같은 `z29`임을 직접 검사했고 `:app:assembleDebug`로 재빌드 |
+| 실제 Pages 테스트 계정 흐름 | 부분 통과 | 계정 생성·세션 복원·식단 목표 저장/재로드, 하단 탭, 운동/캘린더/통계/요리 lazy 탭, 더보기/계정 전환/편지 진입을 확인했다. 테스트 계정에서 운동 종목 추가 → 20kg × 10회 세트 입력 → 완전 새로고침 → 기록·완료 상태 복원도 현재 감사에서 다시 확인했다. 360px 홈·식단·운동 화면은 가로 넘침 없이 panel/nav가 viewport 폭 안에 있었다. 최신 Pages 새 탭에서 식단 `+ 음식 추가`가 실제로 음식 검색 모달을 여는 것도 재확인했다. 단, 이 자동화 브라우저는 계속 `오프라인 상태`를 표시해 저장이 필요한 식사 스킵의 서버 반영을 최신 코드에서 확인하지 못했다. 따라서 과거 배포에서의 식사 스킵 성공 기록은 현재 코드의 완료 증거로 사용하지 않는다. |
 | 관리자 서버 권한 | 미검증 | `firebase.json`에는 Functions만 선언돼 있고 Firestore rules source/배포 검증이 저장소에 없음 |
 | 대형 파일 단일 책임 | 미완료 | `render-calendar.js` 4,806줄, `workout/exercises.js` 4,136줄, `workout/expert.js` 3,286줄, `workout/expert/max.js` 4,068줄 |
 | 사용자 행동 테스트 | 미완료 | 소스 파일을 읽는 테스트가 70개라, 많은 UI 회귀가 구현 문자열에 묶여 있음 |
@@ -43,7 +43,8 @@
 - 360px 실제 sheet 감사에서 세트 체크·유형·삭제·확장과 하단 회차 탭이 24~38px이라 발견했다. `calendar-home.css`와 `workout-day-sheet.css`에서 각 조작 영역을 최소 44px으로 확장하고, 좁은 행 grid는 44px 터치를 유지하면서 넘치지 않도록 재배치했다.
 - Firestore의 deprecated 단일 탭 `enableIndexedDbPersistence()`를 다중 탭 `persistentLocalCache({ tabManager: persistentMultipleTabManager() })` 초기화로 교체했다. 지원하지 않는 WebView는 memory cache로 안전하게 복귀하며, factory는 독립 단위 테스트로 성공·실패·미지원 경로를 검증한다.
 - 식단의 `+ 음식 추가`·최근 음식·스킵은 re-render 시 사라질 수 있는 별도 grid listener, prefix 없는 action, 정적 router가 섞여 있었다. 현재는 `diet:add-food`, `diet:add-frequent-food`, `diet:skip-meal`을 정적 namespaced action registry의 단일 소유자로 통합했다. 해당 owner/markup 계약과 같은 클릭의 중복 스킵 방어를 자동 테스트로 고정했다.
-- PWA가 새 cache version을 만들 때 HTTP cache의 이전 CSS/모듈을 다시 넣을 수 있음을 발견했다. 이 경우 새 app shell과 이전 `static-actions`가 섞여 CSS 또는 클릭 동작이 깨질 수 있다. `67c31f9`에서 precache request를 `cache: 'reload'`로 바꾸고, 수동 활성화 메시지의 `waitUntil` 보장도 추가했다. 온라인 모바일 클라이언트에서 새 cache가 적용된 후 식단 추가·스킵을 다시 클릭 검증하는 일은 아직 남아 있다.
+- PWA가 새 cache version을 만들 때 HTTP cache의 이전 CSS/모듈을 다시 넣을 수 있음을 발견했다. 이 경우 새 app shell과 이전 `static-actions`가 섞여 CSS 또는 클릭 동작이 깨질 수 있다. `67c31f9`에서 precache request를 `cache: 'reload'`로 바꾸고, 수동 활성화 메시지의 `waitUntil` 보장도 추가했다. 최신 Pages에서 식단 추가 모달 진입은 다시 확인했지만, 온라인 모바일 클라이언트에서 스킵 저장까지 확인하는 일은 아직 남아 있다.
+- 추가로 공개 APK 내부에는 예전 `z13` 정적 자산이 남아 있어, 웹 배포본과 다른 CSS/JS로 시작할 수 있었다. `6b4b29f`에서 `z29` 자산으로 Android APK를 다시 동기화·빌드했고, 압축 APK 내부의 `assets/public/sw.js`와 `build-info.json`을 읽는 회귀 테스트로 일치 여부를 고정했다.
 
 ## 남은 리팩토링 순서
 
