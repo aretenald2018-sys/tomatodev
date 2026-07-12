@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 
 const appJs = readFileSync('app.js', 'utf8');
 const indexHtml = readFileSync('index.html', 'utf8');
+const staticActionsJs = readFileSync('app/static-actions.js', 'utf8');
 const styleCss = readAppCssSync();
 
 class FakeElement {
@@ -121,4 +122,10 @@ test('diet grid handles meal skip directly and leaves unrelated namespaced actio
   assert.deepEqual(harness.calls, ['skip:breakfast']);
   assert.equal(event.prevented, 0);
   assert.equal(event.stopped, 0);
+
+  assert.doesNotMatch(
+    staticActionsJs,
+    /^\s*'diet:skip-meal':/m,
+    'meal skip must have one owner: the diet grid handler'
+  );
 });

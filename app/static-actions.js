@@ -48,7 +48,6 @@ import {
   toggleBulkMealAIChip,
   runBulkMealAIUpload,
   toggleDietMealRow,
-  wtSkipMeal,
 } from '../workout-ui.js';
 import { loadLazyModule } from './lazy-loader.js';
 import { getTabDefinition } from './tab-registry.js';
@@ -106,7 +105,6 @@ export function registerStaticActions() {
     'diet:submit-setup': () => submitDietSetup(),
     'diet:toggle-row': (control) => toggleDietMealRow(control),
     'diet:click-input': (_control, event, id) => { event.stopPropagation(); clickInput(id); },
-    'diet:skip-meal': (_control, _event, meal) => wtSkipMeal(meal),
     'diet:upload-photo': (control, _event, meal) => uploadMealPhoto(meal, control),
     'diet:upload-photo-ai': (control, _event, meal) => uploadMealPhotoAI(meal, control),
     'diet:open-bulk-ai': () => openBulkMealAI(),
