@@ -799,10 +799,10 @@
 }
 .cal-workout-day-expand {
   position: absolute;
-  top: 4px;
+  top: -6px;
   left: 50%;
   width: 44px;
-  height: 24px;
+  height: 44px;
   border: 0;
   background: transparent;
   color: #2f6df6;
@@ -815,6 +815,7 @@
 }
 .cal-workout-day-main {
   display: flex;
+  min-height: 44px;
   min-width: 0;
   flex-direction: row;
   align-items: center;
@@ -860,7 +861,7 @@
 }
 .cal-workout-day-actions button {
   min-width: 52px;
-  height: 34px;
+  min-height: 44px;
   padding: 0 11px;
   border: 1px solid #e0e2ea;
   border-radius: 18px;

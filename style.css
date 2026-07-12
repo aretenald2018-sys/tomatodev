@@ -15334,10 +15334,10 @@ body.lz-running-record-modal-open {
 }
 .cal-workout-day-expand {
   position: absolute;
-  top: 4px;
+  top: -6px;
   left: 50%;
   width: 44px;
-  height: 24px;
+  height: 44px;
   border: 0;
   background: transparent;
   color: #2f6df6;
@@ -15350,6 +15350,7 @@ body.lz-running-record-modal-open {
 }
 .cal-workout-day-main {
   display: flex;
+  min-height: 44px;
   min-width: 0;
   flex-direction: row;
   align-items: center;
@@ -15395,7 +15396,7 @@ body.lz-running-record-modal-open {
 }
 .cal-workout-day-actions button {
   min-width: 52px;
-  height: 34px;
+  min-height: 44px;
   padding: 0 11px;
   border: 1px solid #e0e2ea;
   border-radius: 18px;
@@ -15721,8 +15722,9 @@ body.lz-running-record-modal-open {
   background: #1fb6c9;
 }
 .wt-max-card-kicker button {
-  width: 24px;
-  height: 24px;
+  width: 44px;
+  height: 44px;
+  margin: -10px -10px -10px 0;
   border: 0;
   border-radius: 999px;
   background: transparent;
@@ -15853,9 +15855,9 @@ body.lz-running-record-modal-open {
 }
 .wt-max-set-main {
   display: grid;
-  grid-template-columns: 30px 44px minmax(52px, 1fr) minmax(46px, .84fr) 44px 36px;
+  grid-template-columns: 44px 44px minmax(48px, 1fr) minmax(44px, .84fr) 44px 44px;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 .wt-max-set-type {
   display: inline-flex;
@@ -15863,7 +15865,7 @@ body.lz-running-record-modal-open {
   justify-content: center;
   flex-direction: column;
   gap: 1px;
-  height: 30px;
+  height: 44px;
   padding: 0;
   border: 0;
   border-radius: 999px;
@@ -15905,6 +15907,7 @@ body.lz-running-record-modal-open {
 .wt-max-set-value {
   display: grid;
   min-width: 0;
+  min-height: 44px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -16056,8 +16059,8 @@ body.lz-running-record-modal-open {
   font-weight: 900;
 }
 .wt-max-set-check {
-  width: 30px;
-  height: 30px;
+  width: 44px;
+  height: 44px;
   border: 1px solid #d9dee8;
   border-radius: 8px;
   background: #f8fafc;
@@ -16082,16 +16085,16 @@ body.lz-running-record-modal-open {
 }
 .wt-max-set-remove-btn {
   width: 44px;
-  height: 38px;
+  height: 44px;
   background: transparent;
 }
 .wt-max-set-remove {
   width: 44px;
-  height: 38px;
+  height: 44px;
 }
 .wt-max-set-expand {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border: 0;
   border-radius: 8px;
@@ -16133,14 +16136,14 @@ body.lz-running-record-modal-open {
 }
 .wt-max-set-row.is-menu-above .wt-max-set-type-menu {
   top: auto;
-  bottom: 38px;
+  bottom: 48px;
 }
 .wt-max-set-type-option {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) 20px;
   align-items: center;
   gap: 10px;
-  min-height: 38px;
+  min-height: 44px;
   padding: 0 8px;
   border: 0;
   border-radius: 7px;
@@ -16288,7 +16291,7 @@ body.lz-running-record-modal-open {
   font-weight: 800;
 }
 .wt-max-set-add-row {
-  min-height: 38px;
+  min-height: 44px;
   width: 100%;
   border: 1px dashed #cbd5e1;
   border-radius: 8px;
@@ -16320,7 +16323,7 @@ body.lz-running-record-modal-open {
   grid-template-columns: 1fr;
 }
 .wt-max-actions button {
-  height: 36px;
+  min-height: 44px;
   border-radius: 999px;
   font-size: 13px;
   font-weight: 900;
@@ -16825,7 +16828,7 @@ body.lz-running-record-modal-open {
 }
 .wt-day-session-tabs button {
   position: relative;
-  min-height: 36px;
+  min-height: 44px;
   border: 0;
   border-right: 1px solid #d8dbe4;
   background: #ffffff;
@@ -16975,7 +16978,7 @@ body.lz-running-record-modal-open {
   }
   .cal-workout-day-actions button {
     min-width: 46px;
-    height: 30px;
+    min-height: 44px;
     padding: 0 9px;
     font-size: 12px;
   }
@@ -17111,11 +17114,11 @@ body.lz-running-record-modal-open {
     font-size: 8px;
   }
   .wt-max-set-main {
-    grid-template-columns: 30px 40px minmax(48px, 1fr) minmax(44px, .84fr) 42px 34px;
-    gap: 8px;
+    grid-template-columns: 44px 44px minmax(48px, 1fr) minmax(44px, .84fr) 44px 44px;
+    gap: 4px;
   }
   .wt-max-set-type {
-    height: 28px;
+    height: 44px;
   }
   .wt-max-set-type b {
     font-size: 9px;
@@ -17131,11 +17134,11 @@ body.lz-running-record-modal-open {
   }
   .wt-max-set-row.is-menu-above .wt-max-set-type-menu {
     top: auto;
-    bottom: 36px;
+    bottom: 48px;
   }
   .wt-max-set-type-option {
     grid-template-columns: 24px minmax(0, 1fr) 18px;
-    min-height: 36px;
+    min-height: 44px;
     gap: 8px;
     padding: 0 7px;
   }
@@ -17168,20 +17171,20 @@ body.lz-running-record-modal-open {
     line-height: 24px;
   }
   .wt-max-set-check {
-    width: 30px;
-    height: 30px;
+    width: 44px;
+    height: 44px;
   }
   .wt-max-set-remove {
-    width: 42px;
-    height: 38px;
+    width: 44px;
+    height: 44px;
   }
   .wt-max-set-expand {
-    width: 34px;
-    height: 34px;
+    width: 44px;
+    height: 44px;
     font-size: 15px;
   }
   .wt-max-set-add-row {
-    min-height: 34px;
+    min-height: 44px;
     font-size: 20px;
   }
   .wt-max-rom-inline {
@@ -17214,7 +17217,7 @@ body.lz-running-record-modal-open {
     gap: 4px;
   }
   .wt-max-actions button {
-    height: 34px;
+    min-height: 44px;
     font-size: 12px;
   }
   .wt-running-read-card .wt-max-actions button {
@@ -17264,7 +17267,7 @@ body.lz-running-record-modal-open {
     max-width: none;
   }
   .wt-day-session-tabs button {
-    min-height: 32px;
+    min-height: 44px;
     font-size: 13px;
   }
   .wt-day-fab {

@@ -372,11 +372,19 @@ test('mobile set row inline editing clears values and only right-to-left swipe r
     await page.waitForFunction(() => window.__entry.sets[0]?.reps === 15);
 
     const hitTargets = await page.evaluate(() => {
+      const check = document.querySelector('.wt-max-set-check');
+      const type = document.querySelector('.wt-max-set-type-btn');
       const remove = document.querySelector('.wt-max-set-remove-btn');
       const expand = document.querySelector('.wt-max-set-expand');
+      const checkRect = check.getBoundingClientRect();
+      const typeRect = type.getBoundingClientRect();
       const removeRect = remove.getBoundingClientRect();
       const expandRect = expand.getBoundingClientRect();
       return {
+        checkWidth: checkRect.width,
+        checkHeight: checkRect.height,
+        typeWidth: typeRect.width,
+        typeHeight: typeRect.height,
         removeWidth: removeRect.width,
         removeHeight: removeRect.height,
         removeCenterX: removeRect.left + removeRect.width / 2,
@@ -447,10 +455,14 @@ test('mobile set row inline editing clears values and only right-to-left swipe r
 
   assert.deepEqual(result.kgFocus, { field: 'kg', value: '', editorOpen: false, inlineEditing: true });
   assert.deepEqual(result.repsFocus, { field: 'reps', value: '', editorOpen: false, inlineEditing: true });
-  assert.ok(result.hitTargets.removeWidth >= 42);
-  assert.ok(result.hitTargets.removeHeight >= 38);
+  assert.ok(result.hitTargets.checkWidth >= 44);
+  assert.ok(result.hitTargets.checkHeight >= 44);
+  assert.ok(result.hitTargets.typeWidth >= 44);
+  assert.ok(result.hitTargets.typeHeight >= 44);
+  assert.ok(result.hitTargets.removeWidth >= 44);
+  assert.ok(result.hitTargets.removeHeight >= 44);
   assert.ok(result.hitTargets.removeCenterX < result.hitTargets.expandCenterX);
-  assert.ok(result.hitTargets.gap >= 8);
+  assert.ok(result.hitTargets.gap >= 4);
   assert.deepEqual(result.finalState.sets, [
     { kg: 55, reps: 15, rir: 2, romPct: 100, setType: 'main', done: false },
     { kg: 35, reps: 14, rir: 2, romPct: 100, setType: 'main', done: false },

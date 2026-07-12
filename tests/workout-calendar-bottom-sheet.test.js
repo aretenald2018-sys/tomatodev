@@ -457,11 +457,11 @@ test('day sheet set rows support mobile value editing, clear-on-focus, and swipe
   assert.match(calendarJs, /focusin[\s\S]*data-wt-set-clear-on-focus/);
   assert.match(binder, /_showWorkoutSetKeyboard\(input\)/);
   assert.match(calendarJs, /function _moveWorkoutSetKeyboardFocus/);
-  assert.match(styleCss, /\.wt-max-set-main\s*\{[\s\S]*grid-template-columns:\s*30px 44px minmax\(52px,\s*1fr\) minmax\(46px,\s*\.84fr\) 44px 36px/);
+  assert.match(styleCss, /\.wt-max-set-main\s*\{[\s\S]*grid-template-columns:\s*44px 44px minmax\(48px,\s*1fr\) minmax\(44px,\s*\.84fr\) 44px 44px/);
   assert.match(styleCss, /\.wt-max-set-value-input\s*\{/);
   assert.match(styleCss, /\.wt-set-keyboard\s*\{/);
   assert.match(styleCss, /\[data-wt-day-sheet\]\.has-set-keyboard \.wt-day-sheet-scroll/);
-  assert.match(styleCss, /\.wt-max-set-remove-btn\s*\{[\s\S]*width:\s*44px;[\s\S]*height:\s*38px;/);
+  assert.match(styleCss, /\.wt-max-set-remove-btn\s*\{[\s\S]*width:\s*44px;[\s\S]*height:\s*44px;/);
   assert.match(styleCss, /\.wt-max-set-row\.is-swiping/);
   assert.match(styleCss, /\.wt-max-set-row\.is-swipe-delete-left/);
   assert.match(styleCss, /\.wt-max-set-row\s*\{[\s\S]*touch-action:\s*pan-y;/);
@@ -779,10 +779,10 @@ test('day sheet set done toggle uses explicit done state and larger touch target
   assert.match(toggleFn, /const nextDone = !wasDone/);
   assert.doesNotMatch(toggleFn, /_isActualWorkoutSet\(nextSet\) \|\| nextSet\.done === true/);
   assert.match(toggleFn, /\{ preserveSheetScroll: true \}/);
-  assert.match(styleCss, /\.wt-max-set-main\s*\{[\s\S]*grid-template-columns:\s*30px 44px minmax\(52px,\s*1fr\) minmax\(46px,\s*\.84fr\) 44px 36px/);
-  assert.match(styleCss, /\.wt-max-set-check\s*\{[\s\S]*width:\s*30px;[\s\S]*height:\s*30px;/);
-  assert.match(styleCss, /\.wt-max-set-remove-btn\s*\{[\s\S]*width:\s*44px;[\s\S]*height:\s*38px;/);
-  assert.match(styleCss, /\.wt-max-set-expand\s*\{[\s\S]*width:\s*36px;[\s\S]*height:\s*36px;/);
+  assert.match(styleCss, /\.wt-max-set-main\s*\{[\s\S]*grid-template-columns:\s*44px 44px minmax\(48px,\s*1fr\) minmax\(44px,\s*\.84fr\) 44px 44px/);
+  assert.match(styleCss, /\.wt-max-set-check\s*\{[\s\S]*width:\s*44px;[\s\S]*height:\s*44px;/);
+  assert.match(styleCss, /\.wt-max-set-remove-btn\s*\{[\s\S]*width:\s*44px;[\s\S]*height:\s*44px;/);
+  assert.match(styleCss, /\.wt-max-set-expand\s*\{[\s\S]*width:\s*44px;[\s\S]*height:\s*44px;/);
   assert.match(styleCss, /\.wt-max-set-toggle,\s*\n\.wt-max-set-remove-btn\s*\{[\s\S]*touch-action:\s*manipulation;/);
 });
 
@@ -963,11 +963,11 @@ test('set type menu flips above and scrolls into the visible sheet area near bot
   assert.match(toggleFn, /requestAnimationFrame/);
   assert.match(
     styleCss,
-    /\.wt-max-set-row\.is-menu-above\s+\.wt-max-set-type-menu\s*\{[\s\S]*top:\s*auto;[\s\S]*bottom:\s*38px;/
+    /\.wt-max-set-row\.is-menu-above\s+\.wt-max-set-type-menu\s*\{[\s\S]*top:\s*auto;[\s\S]*bottom:\s*48px;/
   );
   assert.match(
     styleCss,
-    /@media\s*\(max-width:\s*420px\)[\s\S]*\.wt-max-set-row\.is-menu-above\s+\.wt-max-set-type-menu\s*\{[\s\S]*bottom:\s*36px;/
+    /@media\s*\(max-width:\s*420px\)[\s\S]*\.wt-max-set-row\.is-menu-above\s+\.wt-max-set-type-menu\s*\{[\s\S]*bottom:\s*48px;/
   );
 });
 
