@@ -47,6 +47,11 @@ import {
   runningSourceLabel as _runningSourceLabel,
 } from './workout/running-presentation.js';
 import {
+  formatManualCardioMetric as _formatCardioMetric,
+  manualCardioDisplayData as _cardioEntryData,
+  manualCardioSummaryText as _cardioSummaryText,
+} from './workout/cardio-model.js';
+import {
   WORKOUT_GYM_SESSION_COUNT,
   WORKOUT_RUNNING_SESSION_INDEX,
 } from './workout/session-policy.js';
@@ -206,55 +211,6 @@ function _hasDraftWorkoutEntry(entry) {
     entry.exerciseName ||
     String(entry.note || '').trim()
   );
-}
-
-function _isManualCardioEntry(entry) {
-  return !!entry?.cardio || String(entry?.exerciseId || '').startsWith('cardio:');
-}
-
-function _cardioEntryData(entry = {}) {
-  if (!_isManualCardioEntry(entry)) return null;
-  const raw = entry.cardio && typeof entry.cardio === 'object' ? entry.cardio : {};
-  const kcal = Math.max(0, Math.round(_num(raw.kcal)));
-  const distanceKm = Math.max(0, _num(raw.distanceKm));
-  const speedKmh = Math.max(0, _num(raw.speedKmh));
-  const laps = Math.max(0, Math.round(_num(raw.laps)));
-  const angleDeg = Math.max(0, _num(raw.angleDeg));
-  const level = Math.max(0, Math.round(_num(raw.level)));
-  const hasMetric = kcal > 0 || distanceKm > 0 || speedKmh > 0 || laps > 0;
-  if (!hasMetric && raw.source !== 'manual-cardio') return null;
-  const fallbackId = String(entry.exerciseId || '').replace(/^cardio:/, '');
-  return {
-    id: raw.id || fallbackId || 'manual',
-    label: raw.label || entry.name || entry.exerciseName || '유산소',
-    detail: raw.detail || '수기 입력',
-    kcal,
-    distanceKm,
-    speedKmh,
-    laps,
-    angleDeg,
-    level,
-    source: raw.source || 'manual-cardio',
-  };
-}
-
-function _formatCardioMetric(value, unit, digits = 1) {
-  const n = _num(value);
-  if (n <= 0) return '--';
-  return `${_fmtNum(n, digits)}${unit}`;
-}
-
-function _cardioSummaryText(cardio) {
-  if (!cardio) return '수기 유산소 기록';
-  const parts = [
-    cardio.kcal > 0 ? `${Math.round(cardio.kcal)} kcal` : '',
-    cardio.distanceKm > 0 ? `${_fmtNum(cardio.distanceKm, 2)} km` : '',
-    cardio.speedKmh > 0 ? `${_fmtNum(cardio.speedKmh, 1)} km/h` : '',
-    cardio.id === 'my-mountain' && cardio.angleDeg > 0 ? `각도 ${_fmtNum(cardio.angleDeg, 1)}°` : '',
-    cardio.id === 'step-machine' && cardio.level > 0 ? `${Math.round(cardio.level)}단계` : '',
-    cardio.laps > 0 ? `${Math.round(cardio.laps)}회` : '',
-  ].filter(Boolean);
-  return parts.join(' · ') || '수기 유산소 기록';
 }
 
 function _formatSetText(set) {
