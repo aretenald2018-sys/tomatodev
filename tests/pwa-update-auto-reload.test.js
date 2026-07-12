@@ -173,7 +173,7 @@ test('production app cache busts the service worker registrar script', () => {
   assert.match(indexHtml, /app\.js\?v=20260711e9-headerless-lifezone-trapezoid/);
   assert.match(appJs, /utils\/build-info\.js\?v=20260708a-diet-frequent-foods/);
   assert.match(appJs, /render-workout\.js\?v=20260708a-diet-frequent-foods/);
-  assert.match(swJs, /tomatofarm-v20260712z3-running-analytics/);
+  assert.match(swJs, /tomatofarm-v20260712z4-trainer-running-stats/);
 });
 
 test('more-menu manual app refresh uses build-info update helper', () => {

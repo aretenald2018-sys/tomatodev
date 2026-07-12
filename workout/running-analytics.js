@@ -357,6 +357,9 @@ export function listRunningActivities(entries = []) {
         avgHeartRateBpm: _positive(summary.avgHeartRateBpm),
         maxHeartRateBpm: _positive(summary.maxHeartRateBpm),
         cadenceSpm: _positive(summary.cadenceSpm),
+        splits: Array.isArray(summary.splits) ? summary.splits.map(split => ({ ...split })) : [],
+        route: Array.isArray(session?.runRoute) ? session.runRoute : [],
+        source: session?.runSource || summary.source || 'manual',
       });
     });
   }

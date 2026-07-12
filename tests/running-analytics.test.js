@@ -62,7 +62,8 @@ test('running analytics aggregates every saved running session without double-co
       workoutSessions: [
         {
           id: 'running-1', running: true, runDistance: 3.5, runDurationMin: 21,
-          runRouteSummary: { calories: 230, elevationGainM: 20, elevationLossM: 12, avgHeartRateBpm: 150, maxHeartRateBpm: 168, bestPaceSecPerKm: 340 },
+          runRoute: [routePoint(0, 0), routePoint(1_000, 360)],
+          runRouteSummary: { calories: 230, elevationGainM: 20, elevationLossM: 12, avgHeartRateBpm: 150, maxHeartRateBpm: 168, bestPaceSecPerKm: 340, splits: [{ index: 1, distanceKm: 1, durationSec: 360, paceSecPerKm: 360 }] },
         },
         {
           id: 'running-2', running: true, runDistance: 2, runDurationMin: 14,
@@ -94,4 +95,6 @@ test('running analytics aggregates every saved running session without double-co
   assert.equal(summary.elevationLossM, 33);
   assert.equal(summary.bestPaceSecPerKm, 340);
   assert.equal(summary.maxHeartRateBpm, 172);
+  assert.deepEqual(activities[0].splits, [{ index: 1, distanceKm: 1, durationSec: 360, paceSecPerKm: 360 }]);
+  assert.equal(activities[0].route.length, 2);
 });

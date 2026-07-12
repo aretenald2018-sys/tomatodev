@@ -3,7 +3,7 @@
 
 // 캐시 버전: 타임스탬프 기반 자동 생성 — 파일 수정 시 SW 자동 업데이트
 // (SW 파일 내용이 1바이트라도 바뀌면 브라우저가 새 SW로 인식)
-const CACHE_VERSION = 'tomatofarm-v20260712z3-running-analytics';
+const CACHE_VERSION = 'tomatofarm-v20260712z4-trainer-running-stats';
 const RUNTIME_CACHE = 'dashboard3-runtime';
 const STATIC_ASSETS = [
   './',
@@ -220,6 +220,7 @@ const STATIC_ASSETS = [
   './modals/self-cheer-modal.js',
   './modals/patchnote-modal.js',
   './modals/trainer-quest-modal.js',
+  './modals/trainer-running-stats.js',
   './modals/miranda-quest-modal.js',
   './modals/consulting-chief-quest-modal.js',
   // 전문가 모드 (Scene 02~13)

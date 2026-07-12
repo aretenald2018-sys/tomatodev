@@ -27,9 +27,11 @@ test('trainer quest modal renders game-like dialogue choice boxes', () => {
   assert.match(modalJs, /trainer-quest-game-option/);
   assert.match(modalJs, /퀘스트를 수락합니다\(향후 구현예정\)/);
   assert.match(modalJs, /내 운동 통계 살펴보기/);
+  assert.match(modalJs, /러닝 통계 살펴보기/);
   assert.match(modalJs, /trainer-quest-game-label">닫기<\/span>/);
   assert.match(modalJs, /trainer-quest-game-marker/);
   assert.match(modalJs, /data-trainer-quest-action="stats"/);
+  assert.match(modalJs, /data-trainer-quest-action="running-stats"/);
   assert.match(modalJs, /data-trainer-quest-action="close"/);
   assert.match(modalJs, /data-trainer-quest-character/);
   assert.match(modalJs, /data-trainer-quest-speech-text="\$\{TRAINER_QUEST_SPEECH_TEXT\}"/);
@@ -170,8 +172,12 @@ test('trainer quest modal styles and runtime cache asset are registered', () => 
   assert.doesNotMatch(styleCss, /\.trainer-quest-choice/);
   assert.doesNotMatch(styleCss, /\.trainer-quest-choice-caret/);
   assert.match(styleCss, /\.trainer-quest-stats-root/);
-  assert.match(swJs, /tomatofarm-v20260712z3-running-analytics/);
+  assert.match(styleCss, /\.trainer-running-stats/);
+  assert.match(styleCss, /\.trainer-running-activity-card/);
+  assert.match(styleCss, /\.trainer-running-split-table/);
+  assert.match(swJs, /tomatofarm-v20260712z4-trainer-running-stats/);
   assert.match(swJs, /\.\/modals\/trainer-quest-modal\.js/);
+  assert.match(swJs, /\.\/modals\/trainer-running-stats\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/trainer-quest-seated-trainer\.png/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/trainer-quest-stats-guide-trainer\.png/);
   assert.deepEqual(readPngHeader('assets/home/life-zone/ui/trainer-quest-stats-guide-trainer.png'), {

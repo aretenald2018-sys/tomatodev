@@ -35,6 +35,10 @@ export const MODAL_HTML = `
         <span class="trainer-quest-game-marker" aria-hidden="true">›</span>
         <span class="trainer-quest-game-label">내 운동 통계 살펴보기</span>
       </button>
+      <button type="button" class="trainer-quest-game-option" data-trainer-quest-action="running-stats">
+        <span class="trainer-quest-game-marker" aria-hidden="true">›</span>
+        <span class="trainer-quest-game-label">러닝 통계 살펴보기</span>
+      </button>
       <button type="button" class="trainer-quest-game-option" data-trainer-quest-action="close">
         <span class="trainer-quest-game-marker" aria-hidden="true">›</span>
         <span class="trainer-quest-game-label">닫기</span>
@@ -71,6 +75,10 @@ export const MODAL_HTML = `
         </div>
       </div>
       <div class="trainer-quest-stats-root" data-trainer-quest-stats-root data-stats-root="trainer-quest"></div>
+    </div>
+
+    <div class="trainer-running-stats" data-trainer-running-stats hidden>
+      <div class="trainer-running-stats-root" data-trainer-running-stats-root></div>
     </div>
   </div>
 </div>
@@ -114,9 +122,11 @@ function _showMenu() {
   if (!modal) return;
   const menu = modal.querySelector('[data-trainer-quest-game-menu]');
   const stats = modal.querySelector('[data-trainer-quest-stats]');
-  modal.querySelector('.trainer-quest-sheet')?.classList.remove('trainer-quest-sheet--stats');
+  const runningStats = modal.querySelector('[data-trainer-running-stats]');
+  modal.querySelector('.trainer-quest-sheet')?.classList.remove('trainer-quest-sheet--stats', 'trainer-quest-sheet--running-stats');
   if (menu) menu.hidden = false;
   if (stats) stats.hidden = true;
+  if (runningStats) runningStats.hidden = true;
 }
 
 async function _showStats() {
@@ -124,10 +134,14 @@ async function _showStats() {
   if (!modal) return;
   const menu = modal.querySelector('[data-trainer-quest-game-menu]');
   const stats = modal.querySelector('[data-trainer-quest-stats]');
+  const runningStats = modal.querySelector('[data-trainer-running-stats]');
   const root = modal.querySelector('[data-trainer-quest-stats-root]');
-  modal.querySelector('.trainer-quest-sheet')?.classList.add('trainer-quest-sheet--stats');
+  const sheet = modal.querySelector('.trainer-quest-sheet');
+  sheet?.classList.remove('trainer-quest-sheet--running-stats');
+  sheet?.classList.add('trainer-quest-sheet--stats');
   if (menu) menu.hidden = true;
   if (stats) stats.hidden = false;
+  if (runningStats) runningStats.hidden = true;
   if (root) {
     root.innerHTML = '<div class="trainer-quest-loading">통계를 불러오는 중입니다.</div>';
     try {
@@ -137,6 +151,32 @@ async function _showStats() {
       console.warn('[trainer-quest] stats render failed:', error);
       root.innerHTML = '<div class="trainer-quest-empty">통계를 불러오지 못했어요. 잠시 후 다시 시도해주세요.</div>';
     }
+  }
+}
+
+async function _showRunningStats() {
+  const modal = _modal();
+  if (!modal) return;
+  const menu = modal.querySelector('[data-trainer-quest-game-menu]');
+  const stats = modal.querySelector('[data-trainer-quest-stats]');
+  const runningStats = modal.querySelector('[data-trainer-running-stats]');
+  const root = modal.querySelector('[data-trainer-running-stats-root]');
+  const sheet = modal.querySelector('.trainer-quest-sheet');
+  sheet?.classList.remove('trainer-quest-sheet--stats');
+  sheet?.classList.add('trainer-quest-sheet--running-stats');
+  if (menu) menu.hidden = true;
+  if (stats) stats.hidden = true;
+  if (runningStats) runningStats.hidden = false;
+  if (!root) return;
+
+  root.innerHTML = '<div class="trainer-running-loading">러닝 기록을 불러오는 중입니다.</div>';
+  try {
+    const { mountTrainerRunningStats } = await import('./trainer-running-stats.js');
+    if (runningStats?.hidden) return;
+    mountTrainerRunningStats(root, { onExit: _showMenu });
+  } catch (error) {
+    console.warn('[trainer-quest] running stats render failed:', error);
+    root.innerHTML = '<div class="trainer-running-empty">러닝 통계를 불러오지 못했어요. 잠시 후 다시 시도해주세요.</div>';
   }
 }
 
@@ -204,6 +244,7 @@ function _bindTrainerQuestModal() {
   modal.querySelector('.trainer-quest-sheet')?.addEventListener('click', event => event.stopPropagation());
   modal.querySelector('[data-trainer-quest-back]')?.addEventListener('click', _showMenu);
   modal.querySelector('[data-trainer-quest-action="stats"]')?.addEventListener('click', _showStats);
+  modal.querySelector('[data-trainer-quest-action="running-stats"]')?.addEventListener('click', _showRunningStats);
   modal.querySelector('[data-trainer-quest-action="close"]')?.addEventListener('click', closeTrainerQuestModal);
   modal.querySelector('[data-trainer-quest-export="share"]')?.addEventListener('click', _shareStatsExport);
   modal.querySelector('[data-trainer-quest-export="copy"]')?.addEventListener('click', _copyStatsExport);
