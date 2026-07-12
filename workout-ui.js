@@ -249,11 +249,20 @@ export function toggleDietMealRow(headerEl) {
   }
 };
 
+// A meal skip can be reached through a mobile tap while an older cached action
+// registry is still finishing its update.  Treat duplicate calls in the same
+// event turn as one user action; a later tap remains a normal toggle.
+const _mealSkipDispatches = new Set();
+
 export function wtSkipMeal(meal) {
+  if (!['breakfast', 'lunch', 'dinner'].includes(meal)) return;
+  if (_mealSkipDispatches.has(meal)) return;
+  _mealSkipDispatches.add(meal);
+  Promise.resolve().then(() => _mealSkipDispatches.delete(meal));
+
   const btn = document.getElementById(`wt-${meal}-skipped`);
   const wasActive = btn?.classList.contains('active');
   wtToggleMealSkipped(meal);
-  if (btn) btn.classList.toggle('active', !wasActive);
   if (!wasActive) {
     const foodList = document.getElementById(`wt-foods-${meal}`);
     if (foodList) foodList.innerHTML = '';

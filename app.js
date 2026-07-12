@@ -810,9 +810,8 @@ function _initDietInputButtons() {
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
     const action = btn.dataset.action;
-    // Skip buttons live inside the accordion body. Bind them here as well as the
-    // static action registry so their click does not depend on document-level
-    // delegation surviving a nested mobile tap target.
+    // Skip buttons live inside the accordion body. Keep this direct binding so
+    // the user action remains local to the diet grid on mobile.
     if (action === 'diet:skip-meal') {
       const meal = btn.dataset.actionArg;
       if (!meal) {
