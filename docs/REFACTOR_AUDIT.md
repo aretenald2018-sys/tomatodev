@@ -1,13 +1,13 @@
 # 리팩토링 재감사와 완료 계획
 
-기준일: 2026-07-12
-배포 기준: `fc43804` (`https://aretenald2018-sys.github.io/tomatofarm/`)
+기준일: 2026-07-13
+코드 기준: `90b05db` (배포 대상, `https://aretenald2018-sys.github.io/tomatofarm/`)
 
 ## 판정
 
 이 저장소의 기존 Phase 2~6 완료 표시는 전체 리팩토링 완료 판정으로 사용할 수 없다. 구조 금지 규칙과 자동 회귀는 상당 부분 통과했지만, 대형 혼합 책임 파일과 사용자 행동을 소스 문자열로만 확인하는 테스트가 남아 있다. 이 문서는 완료를 선언하는 문서가 아니라, 남은 작업과 검증 근거를 고정하는 감사 기록이다.
 
-## 2026-07-12 확인 결과
+## 2026-07-13 확인 결과
 
 | 기준 | 상태 | 근거 |
 | --- | --- | --- |
@@ -19,7 +19,7 @@
 | CSS WebView 진입점 | 통과 | `style.css`를 44개 owner source에서 하나의 WebView-safe bundle로 생성; 배포 화면에서 CSS 적용 확인 |
 | 자동 회귀 | 통과 | 전체 `npm.cmd test`와 핵심 데이터 계약 105/105 통과 |
 | Android/Wear 빌드 | 통과 | `:app:assembleDebug :wear:assembleDebug` 성공 |
-| 실제 Pages 테스트 계정 흐름 | 부분 통과 | 계정 생성·세션 복원·식단 목표 저장/재로드, PWA 배너, 하단 탭, 운동/캘린더/통계/요리 lazy 탭, 더보기/계정 전환/편지 진입을 `fc43804`에서 확인 |
+| 실제 Pages 테스트 계정 흐름 | 부분 통과 | 계정 생성·세션 복원·식단 목표 저장/재로드, PWA 배너, 하단 탭, 운동/캘린더/통계/요리 lazy 탭, 더보기/계정 전환/편지 진입을 확인했다. 테스트 계정에서 운동 종목 추가 → 20kg × 10회 세트 입력 → 종목 완료 → 완전 새로고침 → 기록·완료 상태 복원도 `79b565`에서 확인했다. |
 | 관리자 서버 권한 | 미검증 | `firebase.json`에는 Functions만 선언돼 있고 Firestore rules source/배포 검증이 저장소에 없음 |
 | 대형 파일 단일 책임 | 미완료 | `render-calendar.js` 5,009줄, `workout/exercises.js` 4,136줄, `workout/expert.js` 3,286줄, `workout/expert/max.js` 4,068줄 |
 | 사용자 행동 테스트 | 미완료 | 소스 파일을 읽는 테스트가 70개라, 많은 UI 회귀가 구현 문자열에 묶여 있음 |
@@ -29,9 +29,10 @@
 - CSS 분리 후 WebView에서 `@import`가 적용되지 않는 경로를 제거했다. root `style.css`는 빌드 시 owner CSS를 단일 bundle로 만들며, source owner 분리는 유지한다.
 - runtime asset manifest가 lazy import의 하위 모듈 10개를 누락해 오프라인/PWA 부분 로드가 실패할 수 있던 문제를 수정했다. `scripts/check-runtime-syntax.mjs`가 앞으로 모든 literal static/dynamic relative import의 존재와 precache 포함 여부를 확인한다.
 - 새 runtime 코드가 과거 `render-home.js`·`render-workout.js` shim을 import하던 경로를 owner public API(`home/index.js`, `workout/index.js`)로 옮겼다. shim은 설치된 이전 WebView의 짧은 업데이트 창 동안만 남긴다.
-- PWA 설치 배너가 하단 탭을 덮어 식단/운동 탭을 누를 수 없던 문제를 수정했다. 배너는 bottom tab과 safe area 위에만 놓이며 실제 Pages에서 터치 지점과 탭 전환을 확인했다.
+- PWA 설치 배너가 하단 탭을 덮어 식단/운동 탭을 누를 수 없던 문제를 수정했다. 이후 운동 하단 sheet의 열기 버튼과 다시 충돌한 것을 실제 Pages에서 찾아, 다른 탭으로 이동할 때 배너를 즉시 닫도록 보완했다. 운동 sheet 열기와 종목 picker 진입까지 재확인했다.
 - `app/tab-registry.js`의 경로가 `app/lazy-loader.js` 기준으로 해석돼 calendar/stats/cooking/admin lazy tab이 `app/render-*.js`를 요청하던 문제를 수정했다. registry 경로·파일 존재·precache를 검사하고 실제 Pages에서 운동, 캘린더, 통계, 요리 진입을 확인했다.
 - 더보기 메뉴가 제거된 `window.toggleMoreMenu`를 호출해 열리지 않던 문제를 수정했다. 계정 전환과 개발자 편지도 직접 module API로 연결해 실제 Pages에서 modal 진입을 확인했다.
+- 운동 회차 요약과 내보내기가 1,000kg 미만의 볼륨까지 `톤`으로 표기하던 문제를 수정했다. 이제 200kg은 `200kg`, 1,000kg 이상만 `t`로 표기하며 회귀 테스트를 추가했다.
 
 ## 남은 리팩토링 순서
 
@@ -40,7 +41,7 @@
 3. **Expert/Max 흐름 분리** — recommendation/계산, wizard state, modal render/bind, external-share adapter를 분리한다. 순수 계산부터 fixture로 고정하고 UI controller를 마지막에 이동한다.
 4. **행동 테스트 전환** — source-string 검사는 architecture, asset manifest, generated bundle 같은 금지/생성 규칙에 한정한다. 로그인, 식단, 운동, 러닝, 캘린더, social, stats의 화면 동작은 DOM 또는 integration harness로 전환한다.
 5. **CSS·접근성 재검증** — 360~430px 폭에서 홈·식단·운동·캘린더·더보기와 모든 sheet/modal의 visual snapshot, tab/escape focus, 44px 터치 영역을 확인한다. bundle만 수정하지 말고 owner source를 수정한다.
-6. **실계정 production QA** — 테스트 계정으로 로그인/세션 복구, 식단 목표 저장·재로드와 핵심 lazy tab/더보기는 확인했다. 사진 필드 보존, 운동 세트 저장·재로드, 러닝 GPS, 일반/관리자 권한 거부, PWA 업데이트와 Android back/Wear 연결은 계속 실행한다. 실제 사용자 데이터에는 쓰지 않는다.
+6. **실계정 production QA** — 테스트 계정으로 로그인/세션 복구, 식단 목표 저장·재로드, 핵심 lazy tab/더보기, 운동 종목 추가·세트 입력·완료·재접속 복구까지 확인했다. 사진 필드 보존, 러닝 GPS, 일반/관리자 권한 거부, PWA 업데이트와 Android back/Wear 연결은 계속 실행한다. 실제 사용자 데이터에는 쓰지 않는다.
 7. **Firestore rules를 저장소에서 관리** — 현재 배포 rules를 export하거나 versioned `firestore.rules`를 복원하고, 일반 계정이 admin/social 전체 조회·수정에 실패하는 emulator 또는 production test를 추가한다.
 
 ## 완료 선언 조건
