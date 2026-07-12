@@ -822,6 +822,7 @@ function _initDietInputButtons() {
         return;
       }
       e.preventDefault();
+      e.stopImmediatePropagation?.();
       e.stopPropagation();
       wtSkipMeal(meal);
       return;
@@ -830,6 +831,7 @@ function _initDietInputButtons() {
     // Other namespaced actions belong to the document-level action router.
     if (!['addFood', 'addFrequentFood', 'photoUpload'].includes(action)) return;
     e.preventDefault();
+    e.stopImmediatePropagation?.();
     e.stopPropagation();
 
     const meal = btn.dataset.meal || btn.closest('[data-meal]')?.dataset.meal; // 끼니 (breakfast/lunch/dinner/snack)

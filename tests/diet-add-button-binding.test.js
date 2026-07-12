@@ -105,8 +105,10 @@ async function clickDietAction(harness, dataset, { dietGrid = new FakeElement() 
   const event = {
     target: new FakeElement({ dataset, dietGrid }),
     prevented: 0,
+    immediatelyStopped: 0,
     stopped: 0,
     preventDefault() { this.prevented += 1; },
+    stopImmediatePropagation() { this.immediatelyStopped += 1; },
     stopPropagation() { this.stopped += 1; },
   };
   await binding.handler(event);
@@ -163,12 +165,14 @@ test('document-captured diet actions survive a replaced diet grid and leave unre
   );
   assert.deepEqual(harness.calls, ['skip:breakfast']);
   assert.equal(skipEvent.prevented, 1);
+  assert.equal(skipEvent.immediatelyStopped, 1);
   assert.equal(skipEvent.stopped, 1);
 
   const event = await clickDietAction(harness, { action: 'diet:toggle-row', meal: 'breakfast' });
 
   assert.deepEqual(harness.calls, ['skip:breakfast']);
   assert.equal(event.prevented, 0);
+  assert.equal(event.immediatelyStopped, 0);
   assert.equal(event.stopped, 0);
 
   assert.doesNotMatch(
