@@ -1,4 +1,5 @@
 import { showToast } from './ui/toast.js';
+import { applyInstallBannerLayout } from './pwa/install-banner.js';
 // ================================================================
 // pwa-fcm.js — FCM 푸시 알림 + PWA 설치 배너
 // ================================================================
@@ -178,7 +179,7 @@ export function showPWAInstallBanner() {
     const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent);
     const banner = document.createElement('div');
     banner.id = 'pwa-install-banner';
-    banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:9999;background:var(--surface,#fff);border-top:1px solid var(--border,#e5e7eb);padding:16px 20px;box-shadow:0 -4px 20px rgba(0,0,0,0.1);animation:slideUp 0.3s ease;';
+    applyInstallBannerLayout(banner);
     banner.innerHTML = `
       <style>@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}</style>
       <div style="display:flex;align-items:center;gap:14px;max-width:480px;margin:0 auto;">

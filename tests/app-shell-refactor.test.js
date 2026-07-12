@@ -15,7 +15,7 @@ const [indexHtml, appJs, actionRouter, staticActions, modalManager, swJs] = awai
 
 test('tab registry is the single shell definition for every live tab', () => {
   assert.deepEqual(TAB_IDS, ['home', 'diet', 'workout', 'calendar', 'stats', 'cooking', 'admin']);
-  assert.equal(getTabDefinition('calendar').module, './render-calendar.js');
+  assert.equal(getTabDefinition('calendar').module, '../render-calendar.js');
   assert.equal(getTabDefinition('admin').adminOnly, true);
   assert.equal(isRegisteredTab('home'), true);
   assert.equal(isRegisteredTab('unknown'), false);

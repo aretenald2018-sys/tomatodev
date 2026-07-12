@@ -203,6 +203,7 @@
   './workout-ui.js',
   './navigation.js',
   './pwa-fcm.js',
+  './pwa/install-banner.js',
   // 모달 핸들러
   './app-modal-goals.js',
   './app-modal-quests.js',

@@ -1,8 +1,12 @@
 const modulePromises = new Map();
 
-export function loadLazyModule(key, path) {
+export function resolveLazyModuleUrl(modulePath) {
+  return new URL(modulePath, import.meta.url).href;
+}
+
+export function loadLazyModule(key, modulePath) {
   if (!modulePromises.has(key)) {
-    modulePromises.set(key, import(path).catch((error) => {
+    modulePromises.set(key, import(resolveLazyModuleUrl(modulePath)).catch((error) => {
       modulePromises.delete(key);
       throw error;
     }));
