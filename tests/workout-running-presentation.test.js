@@ -49,7 +49,7 @@ test('running presentation retains labels and card metrics', () => {
 });
 
 test('running presentation reports privacy-safe place and GPS interruption state', () => {
-  assert.equal(runningPlaceLabel({ placeSummary: { label: '대한민국 위치 기록' }, routeSummary: { centroid: [37.5, 127] } }), '위치 확인 중');
+  assert.equal(runningPlaceLabel({ placeSummary: { label: '대한민국 위치 기록' }, routeSummary: { centroid: [37.5, 127] } }), 'GPS 위치 기록');
   assert.equal(runningPlaceLabel({ placeSummary: { label: '서울 러닝 경로' } }), '서울 러닝 경로');
   assert.equal(runningPlaceLabel({}), '위치 정보 없음');
   assert.equal(runningGpsInfoLabel({}), '');

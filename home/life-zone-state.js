@@ -410,6 +410,7 @@ export function hasLifeZoneRunningActivity(dayData = null) {
   if (Array.isArray(dayData.runRoute) && dayData.runRoute.length > 0) return true;
   if (Array.isArray(runData.route) && runData.route.length > 0) return true;
   if ((Number(dayData.runRouteSummary?.pointCount) || 0) > 0 || (Number(runData.routeSummary?.pointCount) || 0) > 0) return true;
+  if ((Array.isArray(dayData.workoutSessions) ? dayData.workoutSessions : []).some(_hasLifeZoneRunningSession)) return true;
   return !!(dayData.runStartedAt && !dayData.runEndedAt);
 }
 
@@ -450,14 +451,37 @@ function _normalizeLifeZoneRunningRoute(points = []) {
     .filter(Boolean);
 }
 
-function _firstLifeZoneRunningRoute(dayData = {}, runData = {}) {
+function _hasLifeZoneRunningSession(session = null) {
+  if (!session || typeof session !== 'object') return false;
+  return session.running === true
+    || (Number(session.runDistance) || 0) > 0
+    || (Number(session.runDurationMin) || 0) > 0
+    || (Number(session.runDurationSec) || 0) > 0
+    || (Array.isArray(session.runRoute) && session.runRoute.length > 0)
+    || !!session.runRouteRef
+    || (Number(session.runRouteSummary?.pointCount) || 0) > 0;
+}
+
+function _latestLifeZoneRunningSession(dayData = {}) {
+  const sessions = (Array.isArray(dayData.workoutSessions) ? dayData.workoutSessions : [])
+    .filter(_hasLifeZoneRunningSession);
+  return sessions.reduce((latest, session) => {
+    if (!latest) return session;
+    const timestamp = Number(session.runEndedAt || session.updatedAt || session.runStartedAt) || 0;
+    const latestTimestamp = Number(latest.runEndedAt || latest.updatedAt || latest.runStartedAt) || 0;
+    return timestamp >= latestTimestamp ? session : latest;
+  }, null);
+}
+
+function _firstLifeZoneRunningRoute(dayData = {}, runData = {}, sessionData = {}) {
   if (dayData.lifeZoneRunningLive || dayData.runLiveActive) {
     return _normalizeLifeZoneRunningRoute(dayData.lifeZoneRunningRoute);
   }
   const candidates = [
     dayData.lifeZoneRunningRoute,
     dayData.runRoute,
-    runData.route
+    runData.route,
+    sessionData.runRoute
   ];
   for (const candidate of candidates) {
     const route = _normalizeLifeZoneRunningRoute(candidate);
@@ -487,14 +511,24 @@ function _formatLifeZoneRunningPlace(placeSummary = null) {
 export function getLifeZoneRunningMapData(dayData = null) {
   if (!hasLifeZoneRunningActivity(dayData)) return null;
   const runData = dayData?.runData || {};
-  const route = _firstLifeZoneRunningRoute(dayData || {}, runData);
-  const routeSummary = dayData?.lifeZoneRunningRouteSummary
+  const sessionData = _latestLifeZoneRunningSession(dayData || {}) || {};
+  const route = _firstLifeZoneRunningRoute(dayData || {}, runData, sessionData);
+  const aggregateSummary = dayData?.lifeZoneRunningRouteSummary
     || dayData?.runRouteSummary
     || runData.routeSummary
     || null;
+  const sessionSummary = sessionData.runRouteSummary || null;
+  const routeSummary = aggregateSummary || sessionSummary
+    ? {
+        ...(sessionSummary || {}),
+        ...(aggregateSummary || {}),
+        centroid: aggregateSummary?.centroid || sessionSummary?.centroid || null,
+      }
+    : null;
   const placeSummary = dayData?.lifeZoneRunningPlaceSummary
     || dayData?.runPlaceSummary
     || runData.placeSummary
+    || sessionData.runPlaceSummary
     || null;
   const placeLabel = _formatLifeZoneRunningPlace(placeSummary);
   const previewPoint = _normalizeLifeZoneRunningPoint(
@@ -502,6 +536,7 @@ export function getLifeZoneRunningMapData(dayData = null) {
     || dayData?.runPreviewPoint
     || runData.previewPoint
     || route[route.length - 1]
+    || sessionData.runRoute?.[sessionData.runRoute.length - 1]
     || routeSummary?.centroid
   );
   return {
@@ -511,7 +546,7 @@ export function getLifeZoneRunningMapData(dayData = null) {
     placeSummary,
     placeLabel,
     previewPoint,
-    pointCount: route.length || Number(routeSummary?.pointCount) || 0,
+    pointCount: Math.max(route.length, Number(routeSummary?.pointCount) || 0),
     updatedAt: dayData?.lifeZoneRunningUpdatedAt || dayData?.runUpdatedAt || routeSummary?.endedAt || null
   };
 }

@@ -65,7 +65,7 @@ export function runningMetricItems(row = {}) {
 export function runningPlaceLabel(row = {}) {
   const label = String(row?.placeSummary?.label || '').trim();
   if (label && !/대한민국 위치 기록|위치 기록/.test(label)) return label;
-  return row?.routeSummary?.centroid ? '위치 확인 중' : '위치 정보 없음';
+  return row?.routeSummary?.centroid ? 'GPS 위치 기록' : '위치 정보 없음';
 }
 
 export function runningGpsInfoLabel(row = {}) {

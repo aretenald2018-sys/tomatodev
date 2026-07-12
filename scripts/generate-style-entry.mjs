@@ -1,8 +1,21 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { dirname, posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+function rebaseCssUrls(source, sourcePath) {
+  const sourceDir = posix.dirname(sourcePath.replaceAll('\\', '/'));
+  return source.replace(/url\(\s*(['"]?)([^'"\)]+)\1\s*\)/g, (match, quote, rawUrl) => {
+    const url = rawUrl.trim();
+    if (!url || /^(?:[a-z]+:|\/|#)/i.test(url)) return match;
+    const suffixIndex = url.search(/[?#]/);
+    const relativePath = suffixIndex >= 0 ? url.slice(0, suffixIndex) : url;
+    const suffix = suffixIndex >= 0 ? url.slice(suffixIndex) : '';
+    const rebased = posix.normalize(posix.join(sourceDir, relativePath));
+    return `url(${quote}.${rebased.startsWith('/') ? '' : '/'}${rebased}${suffix}${quote})`;
+  });
+}
 
 export const STYLE_ENTRY_SOURCES = Object.freeze([
   'styles/tokens.css',
@@ -53,7 +66,7 @@ export const STYLE_ENTRY_SOURCES = Object.freeze([
 
 const parts = await Promise.all(STYLE_ENTRY_SOURCES.map(async (path) => {
   const source = await readFile(resolve(root, path), 'utf8');
-  return `/* SOURCE: ${path} */\n${source.trimEnd()}\n`;
+  return `/* SOURCE: ${path} */\n${rebaseCssUrls(source, path).trimEnd()}\n`;
 }));
 
 const entry = [

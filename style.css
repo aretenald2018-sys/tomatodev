@@ -1181,15 +1181,15 @@ body {
   -webkit-mask: var(--nav-icon) center / contain no-repeat;
   mask: var(--nav-icon) center / contain no-repeat;
 }
-.nav-icon-home { --nav-icon: url('../assets/nav-icons/home.svg'); }
-.nav-icon-diet { --nav-icon: url('../assets/nav-icons/diet.svg'); }
-.nav-icon-workout { --nav-icon: url('../assets/nav-icons/workout.svg'); }
-.nav-icon-calendar { --nav-icon: url('../assets/nav-icons/calendar.svg'); }
-.nav-icon-more { --nav-icon: url('../assets/nav-icons/more.svg'); }
-.nav-icon-stats { --nav-icon: url('../assets/nav-icons/stats.svg'); }
-.nav-icon-cooking { --nav-icon: url('../assets/nav-icons/cooking.svg'); }
-.nav-icon-admin { --nav-icon: url('../assets/nav-icons/admin.svg'); }
-.nav-icon-settings { --nav-icon: url('../assets/nav-icons/settings.svg'); }
+.nav-icon-home { --nav-icon: url('./assets/nav-icons/home.svg'); }
+.nav-icon-diet { --nav-icon: url('./assets/nav-icons/diet.svg'); }
+.nav-icon-workout { --nav-icon: url('./assets/nav-icons/workout.svg'); }
+.nav-icon-calendar { --nav-icon: url('./assets/nav-icons/calendar.svg'); }
+.nav-icon-more { --nav-icon: url('./assets/nav-icons/more.svg'); }
+.nav-icon-stats { --nav-icon: url('./assets/nav-icons/stats.svg'); }
+.nav-icon-cooking { --nav-icon: url('./assets/nav-icons/cooking.svg'); }
+.nav-icon-admin { --nav-icon: url('./assets/nav-icons/admin.svg'); }
+.nav-icon-settings { --nav-icon: url('./assets/nav-icons/settings.svg'); }
 .nav-icon-apk { --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M7 2.75C5.757 2.75 4.75 3.757 4.75 5v14c0 1.243 1.007 2.25 2.25 2.25h10c1.243 0 2.25-1.007 2.25-2.25V5c0-1.243-1.007-2.25-2.25-2.25H7Zm-.75 2.25c0-.414.336-.75.75-.75h10c.414 0 .75.336.75.75v14c0 .414-.336.75-.75.75H7a.75.75 0 0 1-.75-.75V5Z' fill='black'/%3E%3Cpath d='M12 6.25c.414 0 .75.336.75.75v5.189l1.72-1.719a.75.75 0 1 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 1 1 1.06-1.06l1.72 1.719V7c0-.414.336-.75.75-.75Z' fill='black'/%3E%3Cpath d='M9 17.25c0-.414.336-.75.75-.75h4.5c.414 0 .75.336.75.75s-.336.75-.75.75h-4.5a.75.75 0 0 1-.75-.75Z' fill='black'/%3E%3C/svg%3E"); }
 .nav-icon-install { --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M12 2.75c.414 0 .75.336.75.75v10.189l3.72-3.719a.75.75 0 1 1 1.06 1.06l-5 5a.75.75 0 0 1-1.06 0l-5-5a.75.75 0 1 1 1.06-1.06l3.72 3.719V3.5c0-.414.336-.75.75-.75Z' fill='black'/%3E%3Cpath d='M4.75 19.5c0-.414.336-.75.75-.75h13c.414 0 .75.336.75.75s-.336.75-.75.75h-13a.75.75 0 0 1-.75-.75Z' fill='black'/%3E%3C/svg%3E"); }
 .nav-icon-letter { --nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M4.75 5.5A2.75 2.75 0 0 1 7.5 2.75h9A2.75 2.75 0 0 1 19.25 5.5v13A2.75 2.75 0 0 1 16.5 21.25h-9A2.75 2.75 0 0 1 4.75 18.5v-13ZM7.5 4.25c-.69 0-1.25.56-1.25 1.25v13c0 .69.56 1.25 1.25 1.25h9c.69 0 1.25-.56 1.25-1.25v-13c0-.69-.56-1.25-1.25-1.25h-9Z' fill='black'/%3E%3Cpath d='M8 7.75h8v1.5H8v-1.5Zm0 4h8v1.5H8v-1.5Zm0 4h5v1.5H8v-1.5Z' fill='black'/%3E%3C/svg%3E"); }

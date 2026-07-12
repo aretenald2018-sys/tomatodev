@@ -82,6 +82,8 @@ test('design system owns tokens, primitives, accessibility, and CSS order', asyn
   assert.match(entry, /SOURCE: styles\/features\/home-foundations\.css/);
   assert.match(entry, /SOURCE: styles\/features\/workout-day-sheet\.css/);
   assert.match(entry, /SOURCE: styles\/features\/app-status\.css/);
+  assert.match(entry, /url\(['"]?\.\/assets\/nav-icons\/home\.svg/);
+  assert.doesNotMatch(entry, /url\(['"]?\.\.\/assets\/nav-icons\//);
   assert.match(sw, /importScripts\('\.\/runtime-assets\.js'\)/);
   assert.match(runtimeAssets, /\.\/styles\/primitives\.css/);
   assert.match(runtimeAssets, /\.\/styles\/accessibility\.css/);

@@ -211,6 +211,44 @@ test('keeps saved running-only records on the running track', () => {
   assert.equal(selfActor?.runningMap?.pointCount, 1);
 });
 
+test('uses the latest concrete running session map when the day aggregate only keeps totals', () => {
+  const latestRoute = [
+    { lat: 37.516, lng: 127.102, ts: 2000 },
+    { lat: 37.517, lng: 127.103, ts: 3000 }
+  ];
+  const map = getLifeZoneRunningMapData({
+    running: true,
+    runDistance: 1.12,
+    runRoute: [],
+    runRouteSummary: { source: 'session-aggregate', pointCount: 808, distanceKm: 1.12, durationSec: 796 },
+    workoutSessions: [
+      {
+        running: true,
+        runEndedAt: 1500,
+        runRoute: [{ lat: 37.51, lng: 127.1, ts: 1000 }],
+        runRouteSummary: { pointCount: 1, centroid: { lat: 37.51, lng: 127.1 } }
+      },
+      {
+        running: true,
+        runEndedAt: 3000,
+        runRoute: latestRoute,
+        runRouteSummary: { pointCount: 2, centroid: { lat: 37.5165, lng: 127.1025 } },
+        runPlaceSummary: {
+          status: 'resolved',
+          label: '문정동, 송파구, 서울특별시',
+          adminArea: { dong: '문정동', district: '송파구', city: '서울특별시' }
+        }
+      }
+    ]
+  });
+
+  assert.deepEqual(map.route, latestRoute);
+  assert.equal(map.pointCount, 808);
+  assert.deepEqual(map.routeSummary.centroid, { lat: 37.5165, lng: 127.1025 });
+  assert.equal(map.routeSummary.distanceKm, 1.12);
+  assert.equal(map.placeLabel, '문정동 · 송파구');
+});
+
 test('builds life zone workout speech with large muscles only', () => {
   assert.equal(getLifeZoneWorkoutSpeech({
     exercises: [

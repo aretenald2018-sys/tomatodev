@@ -774,7 +774,12 @@ function _bindRunningDraftEvents() {
 
 function _runningPlaceFallback(summary, status = 'resolving') {
   if (!summary?.centroid) return { status: 'unavailable', label: '위치 정보 없음', provider: null };
-  return { status, label: status === 'resolved' ? '위치 기록' : '위치 확인 중', provider: 'vworld' };
+  const label = status === 'resolved'
+    ? '위치 기록'
+    : status === 'unavailable'
+      ? 'GPS 위치 기록'
+      : '위치 확인 중';
+  return { status, label, provider: 'vworld' };
 }
 
 function _formatVworldPlace(result = null) {
