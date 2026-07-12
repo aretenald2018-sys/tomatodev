@@ -539,8 +539,6 @@ export function clearAllForDateChange() {
   }
 }
 
-export { clearAllForDateChange };
-
 function _bindAiEstimateActions(root = document) {
   if (root.documentElement?.dataset.aiEstimateActionsBound === '1') return;
   if (root.documentElement) root.documentElement.dataset.aiEstimateActionsBound = '1';

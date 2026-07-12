@@ -5,7 +5,8 @@
   "description": "Personal Dashboard with Fitness, Diet, Wine Tracking",
   "main": "app.js",
   "scripts": {
-    "test": "node --test",
+    "test": "node scripts/check-runtime-syntax.mjs && node --test",
+    "check:syntax": "node scripts/check-runtime-syntax.mjs",
     "test:contracts": "node scripts/run-test-suite.mjs contracts",
     "test:smoke": "node scripts/run-test-suite.mjs smoke",
     "test:workout": "node scripts/run-test-suite.mjs workout",

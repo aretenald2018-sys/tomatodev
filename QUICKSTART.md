@@ -7,6 +7,7 @@
 ```powershell
 cd "C:\Users\USER\Desktop\Tomato Project\tomatofarm(for lite version)"
 npm.cmd test
+npm.cmd run check:syntax
 npm.cmd run test:contracts
 npm.cmd run build
 git push origin main
