@@ -1472,8 +1472,12 @@ test('workout volume summary uses a mass-aware formatter', () => {
   assert.match(trackFormat, /return `\$\{Math\.round\(v\)\}kg`/);
   assert.match(summary, /_formatWorkoutTrackValue\('M', wx\.volume\)/);
   assert.match(exported, /_formatWorkoutTrackValue\('M', wx\.volume\)/);
+  assert.match(calendarJs, /_formatWorkoutTrackValue\('M', monthSum\.volume\)/);
+  assert.match(calendarJs, /_formatWorkoutTrackValue\('M', row\.volume\)/);
   assert.doesNotMatch(summary, /_formatVolume\(wx\?\.volume\).*톤/);
   assert.doesNotMatch(exported, /_formatVolume\(wx\.volume\).*톤/);
+  assert.doesNotMatch(calendarJs, /_formatVolume\(/);
+  assert.doesNotMatch(calendarJs, /\bvol\b/);
 });
 
 test('service worker cache version was bumped for workout calendar bottom sheet assets', () => {

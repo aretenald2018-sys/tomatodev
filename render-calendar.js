@@ -254,13 +254,6 @@ function _formatDurationShort(seconds) {
   return `${Math.round(sec / 60)}분`;
 }
 
-function _formatVolume(value) {
-  const volume = Math.round(_num(value));
-  if (volume <= 0) return '—';
-  if (volume >= 10000) return `${Math.round(volume / 1000).toLocaleString()}k`;
-  return volume.toLocaleString();
-}
-
 function _parseDateKey(key) {
   const match = String(key || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) return null;
@@ -1687,7 +1680,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
       <div class="cal-month-side">
         <div><span>총 시간</span><strong>${_formatDurationShort(monthSum.durationSec)}</strong></div>
         <div><span>총 세트</span><strong>${monthSum.sets.toLocaleString()}세트</strong></div>
-        <div><span>총 볼륨</span><strong>${_formatVolume(monthSum.volume)} vol</strong></div>
+        <div><span>총 볼륨</span><strong>${_formatWorkoutTrackValue('M', monthSum.volume)}</strong></div>
         <div><span>총 소모</span><strong>${monthSum.kcalBurn.toLocaleString()} kcal</strong></div>
       </div>
     </div>
@@ -3126,7 +3119,7 @@ function _openWorkoutDay(key) {
               </div>
             `;
           }
-          const volumeText = row.volume > 0 ? ` · ${_formatVolume(row.volume)} vol` : '';
+          const volumeText = row.volume > 0 ? ` · ${_formatWorkoutTrackValue('M', row.volume)}` : '';
           return `
             <div class="cal-workout-ex-row">
               <div class="cal-workout-ex-head">
@@ -3169,7 +3162,7 @@ function _openWorkoutDay(key) {
     <div class="cal-workout-detail-summary">
       <div><span>시간</span><strong>${_formatDurationShort(wx.durationSec)}</strong></div>
       <div><span>세트</span><strong>${wx.setCount ? `${wx.setCount}세트` : '—'}</strong></div>
-      <div><span>볼륨</span><strong>${wx.volume > 0 ? `${_formatVolume(wx.volume)} vol` : '—'}</strong></div>
+      <div><span>볼륨</span><strong>${wx.volume > 0 ? _formatWorkoutTrackValue('M', wx.volume) : '—'}</strong></div>
       <div><span>소모</span><strong>${wx.burned.total > 0 ? `${wx.burned.total} kcal` : '—'}</strong></div>
     </div>
 
@@ -3281,7 +3274,7 @@ function _openDay(key) {
     ? maxWeak.selected.map(x => MAX_WEAK_LABEL[x] || x).join(' · ')
     : '선택 없음';
   const maxWeakDesc = maxWeak?.hasAny
-    ? `약점 ${weakNames} · ${maxWeak.durationMin}분 · ${maxWeak.sets}세트 · ${maxWeak.volume.toLocaleString()}vol · +${maxWeak.bonus}점`
+    ? `약점 ${weakNames} · ${maxWeak.durationMin}분 · ${maxWeak.sets}세트 · ${_formatWorkoutTrackValue('M', maxWeak.volume)} · +${maxWeak.bonus}점`
     : '';
 
   body.innerHTML = `
