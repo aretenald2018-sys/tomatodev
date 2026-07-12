@@ -85,11 +85,14 @@ test('CSS important debt cannot grow above the Phase 0 baseline', () => {
     `CSS !important debt ${count} exceeds baseline 40: ${JSON.stringify(counts)}`);
 });
 
-test('feature CSS ownership keeps shell small and documents bounded large-file exceptions', () => {
+test('feature CSS ownership keeps the entry manifest small and documents bounded large-file exceptions', () => {
   const byPath = new Map(cssFiles.map(file => [file.path, file]));
   const shell = byPath.get('style.css');
-  assert.ok(shell, 'style.css shell should exist');
-  assert.ok(shell.source.split(/\r?\n/).length <= 200, 'style.css must remain a shell/compatibility layer');
+  assert.ok(shell, 'style.css entry manifest should exist');
+  assert.ok(shell.source.split(/\r?\n/).length <= 200, 'style.css must remain a small ordered import manifest');
+  assert.match(shell.source, /@import url\("\.\/styles\/features\/home-life-zone\.css"\)/);
+  assert.match(shell.source, /@import url\("\.\/styles\/accessibility\.css"\)/);
+  assert.ok(byPath.has('styles/compatibility.css'), 'compatibility rules must stay outside the entry manifest');
 
   const allowedLargeFiles = new Set([
     'styles/features/home-life-zone.css',

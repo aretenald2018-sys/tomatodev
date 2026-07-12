@@ -1,78 +1,50 @@
-/* App shell and compatibility styles. Feature ownership lives under styles/features/. */
-/* ══════════════════════════════════════════════════════════════════
-   Responsive
-   ══════════════════════════════════════════════════════════════════ */
-
-/* ══════════════════════════════════════════════════════════════════
-   Global Font Override — 토스 폰트 통일
-   ══════════════════════════════════════════════════════════════════ */
-body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
-.quest-cell-title, .quest-item-title, .quest-period-badge,
-.diet-meal-label, .diet-badge, .diet-db-btn, .diet-skip-btn,
-.cooking-card-name, .cooking-dash-label,
-.stats-block-title, .period-btn, .export-btn, .stats-analysis-period, .stats-raw-export-btn,
-.home-card-title, .section-category-title, .sheet-section-label,
-.modal-title, .ex-editor-label, .ex-picker-group-label,
-.more-menu-item, .memo-input, .memo-item-label,
-.goal-label, .goal-ai-label, .goal-ai-summary,
-.ws-stepper-val, .rest-preset-btn {
-  font-family: var(--font-sans) !important;
-}
-
-/* 숫자/코드는 모노스페이스 유지 */
-.dash-stat-val,
-.cal-current, .cal-goal, .cal-unit,
-.day-num, .wt-rest-time,
-.set-input, .set-vol, .set-num, .ug-val, .ug-pct,
-.macro-bar-info, .quest-time-pct, .quest-dday-badge,
-.monthly-stat-val, .heatmap-cell, .cooking-dash-val {
-  font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace !important;
-}
-
-/* ══════════════════════════════════════════════════════════════════
-   Light Mode Overrides — 라이트 모드 보정
-   ══════════════════════════════════════════════════════════════════ */
-:root.light .cell.skip-disabled { background: #f0f0f0; border-color: #d0d0d0; }
-:root.light .cell.skip-disabled .day-num { color: #888; }
-:root.light .cell.skip-disabled .cell-icon { color: #666; }
-:root.light .cell.health-issue { background: #fff0f0; border-color: #fca5a5; }
-:root.light .cell { background: #fff; border-color: var(--border); }
-:root.light .cell.gym-on { background: rgba(249,115,22,0.08); }
-:root.light .cell.cf-on { background: rgba(250,52,44,0.08); }
-:root.light .cell.diet-ok { background: rgba(16,185,129,0.08); }
-:root.light .cell.diet-bad { background: rgba(239,68,68,0.08); }
-
-/* 차트 그리드 — 라이트 모드 */
-:root.light .stats-block canvas { filter: none; }
-
-/* 모달 라이트 모드 */
-:root.light .modal-sheet { background: #fff; border-color: var(--border); }
-:root.light .sheet-handle { background: #d1d5db; }
-
-/* 홈 카드 라이트 모드 */
-:root.light .home-card { background: #fff; border-color: var(--border); box-shadow: var(--shadow-sm); }
-
-/* 운동 탭 라이트 모드 */
-:root.light .sheet-section { background: #fff; border-color: var(--border); box-shadow: var(--shadow-sm); }
-:root.light .workout-date-nav { background: #fff; border-color: var(--border); }
-:root.light .wt-rest-section { border-top-color: var(--border); }
-:root.light .set-row { border-color: var(--border); }
-
-/* 통계 라이트 모드 */
-:root.light .stats-block { background: #fff; border-color: var(--border); box-shadow: var(--shadow-sm); }
-:root.light .period-btn.active { background: var(--primary); color: #fff; }
-:root.light .heatmap-cell { background: var(--surface2); }
-
-/* 요리 라이트 모드 */
-:root.light .cooking-card { background: #fff; border-color: var(--border); box-shadow: var(--shadow-sm); }
-
-/* 퀘스트 라이트 모드 */
-:root.light .quest-cell { background: #fff; border-color: var(--border); }
-:root.light .quest-item { background: transparent; }
-
-/* 더보기 메뉴 라이트 모드 */
-:root.light .more-menu-sheet { background: #fff; }
-:root.light .more-menu-item:hover { background: var(--surface2); }
-
-/* 더보기 버튼 맨 오른쪽 */
-.tab-more-btn { order: 99; }
+/*
+ * The single CSS entry point is intentional. Native WebViews can briefly retain
+ * an older index.html while receiving a new stylesheet after an app update.
+ * Keeping the ordered manifest here makes that mixed-cache state render every
+ * feature instead of falling back to an almost unstyled screen.
+ */
+@import url("./styles/tokens.css");
+@import url("./styles/components.css");
+@import url("./styles/primitives.css");
+@import url("./styles/features/home-foundations.css");
+@import url("./styles/features/calendar-overlays.css");
+@import url("./styles/features/workout-core.css");
+@import url("./styles/features/diet-core.css");
+@import url("./styles/features/workout-picker.css");
+@import url("./styles/features/stats-core.css");
+@import url("./styles/features/stats-insights.css");
+@import url("./styles/features/home-calendar-extras.css");
+@import url("./styles/features/workout-shell.css");
+@import url("./styles/features/cooking-home-diet.css");
+@import url("./styles/compatibility.css");
+@import url("./styles/features/account-home-social.css");
+@import url("./styles/features/workout-card-overrides.css");
+@import url("./styles/features/diet-card-overrides.css");
+@import url("./styles/features/workout-picker-overrides.css");
+@import url("./styles/features/workout-flow.css");
+@import url("./styles/features/diet-tab.css");
+@import url("./styles/features/home-life-zone.css");
+@import url("./styles/features/shared-feedback.css");
+@import url("./styles/features/social-home.css");
+@import url("./styles/features/social-guild.css");
+@import url("./styles/features/home-forms.css");
+@import url("./styles/features/home-coachmark.css");
+@import url("./styles/features/home-weight.css");
+@import url("./styles/features/social-cheers.css");
+@import url("./styles/features/workout-expert-card.css");
+@import url("./styles/features/workout-gym-carousel.css");
+@import url("./styles/features/workout-timer.css");
+@import url("./styles/features/workout-rest-sheet.css");
+@import url("./styles/features/workout-expert-controls.css");
+@import url("./styles/features/workout-gym-sheet.css");
+@import url("./styles/features/workout-expert-conditions.css");
+@import url("./styles/features/calendar-home.css");
+@import url("./styles/features/workout-day-sheet.css");
+@import url("./styles/features/calendar-score-modal.css");
+@import url("./styles/features/workout-day-detail.css");
+@import url("./styles/features/app-status.css");
+@import url("./admin/admin-hig.css");
+@import url("./styles/workout/expert-mode.css");
+@import url("./styles/accessibility.css");
+@import url("./test-mode-v2.css");

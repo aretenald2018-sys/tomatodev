@@ -19,6 +19,7 @@
   './styles/features/home-calendar-extras.css',
   './styles/features/workout-shell.css',
   './styles/features/cooking-home-diet.css',
+  './styles/compatibility.css',
   './styles/features/account-home-social.css',
   './styles/features/workout-card-overrides.css',
   './styles/features/diet-card-overrides.css',
