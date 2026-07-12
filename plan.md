@@ -7,11 +7,11 @@
 
 - [x] Phase 0 기준선·회귀/아키텍처 gate
 - [x] Phase 1 data facade/repository/Firebase 경계
-- [x] Phase 2 app shell/action router/modal stack
-- [x] Phase 3 운동·러닝·프로그램 domain
-- [x] Phase 4 식단·영양·AI pipeline
-- [x] Phase 5 홈·소셜·캘린더·통계·관리자 read/presentation model
-- [x] Phase 6 design token/primitive/접근성·modal focus
+- [ ] Phase 2 app shell/action router/modal stack — 구조 gate는 통과했으나 로그인 계정 상태의 실제 전체 흐름 재검증 필요
+- [ ] Phase 3 운동·러닝·프로그램 domain — `workout/exercises.js`, `workout/expert.js`, `workout/expert/max.js` 혼합 책임 해소 필요
+- [ ] Phase 4 식단·영양·AI pipeline — 계약 테스트 통과, 실제 계정 데이터 round-trip 재검증 필요
+- [ ] Phase 5 홈·소셜·캘린더·통계·관리자 read/presentation model — `render-calendar.js` 분리와 권한별 흐름 검증 필요
+- [ ] Phase 6 design token/primitive/접근성·modal focus — CSS owner source는 분리됐으나 mobile visual·접근성 재검증 필요
 - [x] Phase 7 runtime asset manifest, Wear v1, Functions validation
 - [ ] Phase 8 production commit/deploy/UI 최종 검증
 
