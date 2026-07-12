@@ -28,10 +28,12 @@ internal object WearExerciseEndPolicy {
         WearExerciseEndAction.PUBLISH_FINAL_UPDATE -> WearExerciseSessionStatus.ENDED
         WearExerciseEndAction.WAIT_FOR_FINAL_UPDATE,
         WearExerciseEndAction.PUBLISH_ERROR,
-        -> if (currentStatus == WearExerciseSessionStatus.PAUSED) {
-            WearExerciseSessionStatus.PAUSED
-        } else {
-            WearExerciseSessionStatus.ACTIVE
+        -> when (currentStatus) {
+            WearExerciseSessionStatus.ENDED,
+            WearExerciseSessionStatus.ERROR,
+            -> currentStatus
+            WearExerciseSessionStatus.PAUSED -> WearExerciseSessionStatus.PAUSED
+            else -> WearExerciseSessionStatus.ACTIVE
         }
     }
 }

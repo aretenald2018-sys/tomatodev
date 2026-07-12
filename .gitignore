@@ -69,6 +69,15 @@ android/wear/src/test/java/com/lifestreak/wear/workout/*
 !android/wear/src/test/java/com/lifestreak/wear/workout/WearRunUiStateTest.kt
 !android/wear/src/main/
 !android/wear/src/main/AndroidManifest.xml
+!android/wear/src/debug/
+android/wear/src/debug/**
+!android/wear/src/debug/AndroidManifest.xml
+!android/wear/src/debug/java/
+!android/wear/src/debug/java/com/
+!android/wear/src/debug/java/com/lifestreak/
+!android/wear/src/debug/java/com/lifestreak/wear/
+!android/wear/src/debug/java/com/lifestreak/wear/debug/
+!android/wear/src/debug/java/com/lifestreak/wear/debug/WearRouteReplayReceiver.kt
 !android/wear/src/main/java/
 android/wear/src/main/java/**
 !android/wear/src/main/java/com/

@@ -48,4 +48,15 @@ class WearExerciseEndPolicyTest {
             ),
         )
     }
+
+    @Test
+    fun lateHealthUpdateCannotResumeEndedRun() {
+        assertEquals(
+            WearExerciseSessionStatus.ENDED,
+            WearExerciseEndPolicy.sessionStatusAfterExerciseUpdate(
+                action = WearExerciseEndAction.WAIT_FOR_FINAL_UPDATE,
+                currentStatus = WearExerciseSessionStatus.ENDED,
+            ),
+        )
+    }
 }

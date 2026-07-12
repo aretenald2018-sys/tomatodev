@@ -79,12 +79,28 @@ test('wear run uses GPS location data and sends route result in final payload', 
   assert.ok(endHandler, 'expected Wear end handler');
   const startedEndBranch = endHandler[1].split('} else {', 1)[0];
   assert.doesNotMatch(startedEndBranch, /endFuture\.get\(\)[\s\S]*publishEndedSnapshot/);
+  assert.match(endHandler[1], /endRequested = true[\s\S]*stopDirectLocationUpdates\(\)[\s\S]*stopFusedRouteLocationUpdates\(\)[\s\S]*stopDirectHeartRateUpdates\(\)/);
+  assert.match(service, /private fun publishDirectLocation\([\s\S]*endRequested \|\| WearExerciseSessionStore\.current\(\)\.status !in setOf/);
+  assert.match(service, /private fun publishGpsStatus\(message: String\) \{\s*if \(endRequested\) return/);
+  assert.match(service, /private fun publishExerciseUpdate\(update: ExerciseUpdate\) \{[\s\S]*if \(endRequested && !update\.exerciseStateInfo\.state\.isEnded\) return/);
+  assert.match(service, /private fun finishService\(\) \{[\s\S]*clearExerciseCallback\(\)[\s\S]*accumulator = null[\s\S]*exerciseStarted = false/);
   assert.match(service, /afterEndFuture\(success = true\)/);
   assert.match(service, /WearExerciseEndPolicy\.afterExerciseUpdate\(\s*update\.exerciseStateInfo\.state\.isEnded\s*,?\s*\)/);
   assert.match(endPolicy, /PUBLISH_FINAL_UPDATE\s*->\s*WearExerciseSessionStatus\.ENDED/);
-  assert.match(endPolicy, /currentStatus\s*==\s*WearExerciseSessionStatus\.PAUSED[\s\S]*WearExerciseSessionStatus\.PAUSED/);
+  assert.match(endPolicy, /WearExerciseSessionStatus\.PAUSED\s*->\s*WearExerciseSessionStatus\.PAUSED/);
+  assert.match(endPolicy, /WearExerciseSessionStatus\.ENDED,[\s\S]*-> currentStatus/);
   assert.match(controller, /WearExerciseSessionStatus\.ENDED[\s\S]*syncRunSummary\(v\)/);
   assert.match(controller, /WearExerciseSessionStatus\.ERROR[\s\S]*저장 상태를 확인해 주세요/);
+  assert.match(controller, /finishRequested && snapshot\.status !in setOf\([\s\S]*WearExerciseSessionStatus\.ENDED,[\s\S]*WearExerciseSessionStatus\.ERROR,[\s\S]*updateRunLiveMetrics\(snapshot\)[\s\S]*return@addListener/);
+  assert.match(controller, /ignoreExerciseUpdatesUntilStart && snapshot\.status != WearExerciseSessionStatus\.IDLE/);
+  const finalSnapshotWait = controller.match(/private fun waitForFinalExerciseSnapshot\(v: View\) \{([\s\S]*?)\n    private fun render/);
+  assert.ok(finalSnapshotWait, 'expected final Wear snapshot wait');
+  assert.doesNotMatch(finalSnapshotWait[1], /WearExerciseSessionStatus\.FALLBACK/);
+  assert.ok(
+    controller.indexOf('snapshot.status == WearExerciseSessionStatus.ENDED && snapshot.routePoints.size >= 2')
+      < controller.indexOf('message.contains("GPS weak"'),
+    'an ended run with saved route points must not be presented as a weak live GPS fix',
+  );
 
   assert.match(layout, /@\+id\/runActiveGpsStatus/);
   assert.match(layout, /@\+id\/runSummaryGpsStatus/);

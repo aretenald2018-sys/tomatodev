@@ -29,6 +29,8 @@ class WearWorkoutUiController(
     private var summarySyncStatus = ""
     private var gpsStatus = "바로 시작할 수 있어요"
     private var gpsStatusColor = Color.parseColor("#7C8499")
+    private var finishRequested = false
+    private var ignoreExerciseUpdatesUntilStart = false
 
     private companion object {
         const val TAG = "TomatoWearRun"
@@ -53,6 +55,8 @@ class WearWorkoutUiController(
             finishRun(v)
         }
         v.findViewById<View>(R.id.runSummaryDoneButton)?.setOnClickListener {
+            finishRequested = false
+            ignoreExerciseUpdatesUntilStart = true
             runState.reset()
             WearExerciseSessionStore.reset()
             WearExerciseSessionPersistence.clear(v.context)
@@ -78,6 +82,25 @@ class WearWorkoutUiController(
     private fun bindExerciseStore(v: View) {
         sessionStoreUnsubscribe?.invoke()
         sessionStoreUnsubscribe = WearExerciseSessionStore.addListener { snapshot ->
+            if (ignoreExerciseUpdatesUntilStart && snapshot.status != WearExerciseSessionStatus.IDLE) {
+                return@addListener
+            }
+            if (finishRequested && snapshot.status !in setOf(
+                    WearExerciseSessionStatus.ENDED,
+                    WearExerciseSessionStatus.ERROR,
+                )
+            ) {
+                updateRunLiveMetrics(snapshot)
+                render(v)
+                return@addListener
+            }
+            if (snapshot.status in setOf(
+                    WearExerciseSessionStatus.ENDED,
+                    WearExerciseSessionStatus.ERROR,
+                )
+            ) {
+                finishRequested = false
+            }
             runState.restoreFromSession(snapshot)
             updateRunLiveMetrics(snapshot)
             updateGpsPresentation(snapshot)
@@ -114,6 +137,8 @@ class WearWorkoutUiController(
         }
         runEndUnsubscribe?.invoke()
         runEndUnsubscribe = null
+        finishRequested = false
+        ignoreExerciseUpdatesUntilStart = false
         summarySyncStatus = ""
         gpsStatus = "경로 자동 기록"
         gpsStatusColor = Color.parseColor("#7C8499")
@@ -138,6 +163,8 @@ class WearWorkoutUiController(
     }
 
     private fun finishRun(v: View) {
+        if (finishRequested) return
+        finishRequested = true
         runState.finish()
         clearRunTick(v)
         summarySyncStatus = "러닝 저장 중"
@@ -153,7 +180,6 @@ class WearWorkoutUiController(
             if (snapshot.status !in setOf(
                     WearExerciseSessionStatus.ENDED,
                     WearExerciseSessionStatus.ERROR,
-                    WearExerciseSessionStatus.FALLBACK,
                 )
             ) {
                 return@addListener
@@ -264,6 +290,18 @@ class WearWorkoutUiController(
         val message = snapshot.message.orEmpty()
         val lastPoint = snapshot.routePoints.lastOrNull()
         when {
+            snapshot.status == WearExerciseSessionStatus.ENDED && snapshot.routePoints.size >= 2 -> {
+                gpsStatus = "경로 저장됨"
+                gpsStatusColor = Color.parseColor("#D7FF3F")
+            }
+            snapshot.status == WearExerciseSessionStatus.ENDED && lastPoint != null -> {
+                gpsStatus = "위치 저장됨"
+                gpsStatusColor = Color.parseColor("#D7FF3F")
+            }
+            snapshot.status == WearExerciseSessionStatus.ENDED -> {
+                gpsStatus = "경로 없이 저장됨"
+                gpsStatusColor = Color.parseColor("#81877D")
+            }
             message.contains("location permission", ignoreCase = true) -> {
                 gpsStatus = "위치 권한을 켜주세요"
                 gpsStatusColor = Color.parseColor("#FF6B6B")
@@ -295,18 +333,6 @@ class WearWorkoutUiController(
             message.contains("GPS direct", ignoreCase = true) && snapshot.status == WearExerciseSessionStatus.IDLE -> {
                 gpsStatus = "준비 완료"
                 gpsStatusColor = Color.parseColor("#D7FF3F")
-            }
-            snapshot.status == WearExerciseSessionStatus.ENDED && snapshot.routePoints.size >= 2 -> {
-                gpsStatus = "경로 저장됨"
-                gpsStatusColor = Color.parseColor("#D7FF3F")
-            }
-            snapshot.status == WearExerciseSessionStatus.ENDED && lastPoint != null -> {
-                gpsStatus = "위치 저장됨"
-                gpsStatusColor = Color.parseColor("#D7FF3F")
-            }
-            snapshot.status == WearExerciseSessionStatus.ENDED -> {
-                gpsStatus = "경로 없이 저장됨"
-                gpsStatusColor = Color.parseColor("#81877D")
             }
             snapshot.routePoints.size >= 2 -> {
                 gpsStatus = "경로 기록 중"
