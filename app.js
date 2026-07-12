@@ -12,7 +12,7 @@ import { openNutritionSearch } from './feature-nutrition.js';
 import './feature-diet-plan.js';
 import './feature-checkin.js';
 import './feature-misc.js';
-import './workout-ui.js';
+import { wtSkipMeal } from './workout-ui.js';
 import './workout/expert.js';  // 전문가 모드 렌더와 scoped action binding
 import { showTutorialIfNeeded } from './feature-tutorial.js';
 import { dismissPWAInstallBanner, initFCM, installPWA, showPWAInstallBanner, updateInstallBtn } from './pwa-fcm.js';
@@ -810,8 +810,23 @@ function _initDietInputButtons() {
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
     const action = btn.dataset.action;
-    // namespaced actions belong to the document-level action router.
-    // Stopping them here made meal accordion, skip, and photo buttons inert.
+    // Skip buttons live inside the accordion body. Bind them here as well as the
+    // static action registry so their click does not depend on document-level
+    // delegation surviving a nested mobile tap target.
+    if (action === 'diet:skip-meal') {
+      const meal = btn.dataset.actionArg;
+      if (!meal) {
+        console.warn('[diet-input] skip meal 누락');
+        showToast?.('끼니 정보를 찾지 못했어요. 새로고침 후 다시 시도해주세요.', 2500, 'error');
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      wtSkipMeal(meal);
+      return;
+    }
+
+    // Other namespaced actions belong to the document-level action router.
     if (!['addFood', 'addFrequentFood', 'photoUpload'].includes(action)) return;
     e.preventDefault();
     e.stopPropagation();

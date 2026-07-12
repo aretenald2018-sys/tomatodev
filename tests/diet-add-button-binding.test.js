@@ -37,6 +37,9 @@ function createDietHarness() {
     wtAddFrequentFoodSuggestion(meal, key) {
       calls.push(`frequent:${meal}:${key}`);
     },
+    wtSkipMeal(meal) {
+      calls.push(`skip:${meal}`);
+    },
   };
   const start = appJs.indexOf('function _initDietInputButtons()');
   const end = appJs.indexOf('_bindLifeZoneNpcQuestEvent();', start);
@@ -47,6 +50,7 @@ function createDietHarness() {
     document,
     console,
     wtAddFrequentFoodSuggestion: window.wtAddFrequentFoodSuggestion,
+    wtSkipMeal: window.wtSkipMeal,
     openNutritionSearch: async meal => calls.push(`search:${meal}`),
     showToast: message => calls.push(`toast:${message}`),
   }, { filename: 'app.js' });
@@ -103,13 +107,18 @@ test('frequent food cards continue to use the diet grid delegated handler', asyn
   assert.deepEqual(harness.calls, ['frequent:lunch:lunch-rice-120']);
 });
 
-test('diet grid leaves namespaced actions for the global action router', async () => {
+test('diet grid handles meal skip directly and leaves unrelated namespaced actions for the global router', async () => {
   const harness = createDietHarness();
   harness.window.__initDietInputButtons();
 
+  const skipEvent = await clickDietAction(harness, { action: 'diet:skip-meal', actionArg: 'breakfast' });
+  assert.deepEqual(harness.calls, ['skip:breakfast']);
+  assert.equal(skipEvent.prevented, 1);
+  assert.equal(skipEvent.stopped, 1);
+
   const event = await clickDietAction(harness, { action: 'diet:toggle-row', meal: 'breakfast' });
 
-  assert.deepEqual(harness.calls, []);
+  assert.deepEqual(harness.calls, ['skip:breakfast']);
   assert.equal(event.prevented, 0);
   assert.equal(event.stopped, 0);
 });

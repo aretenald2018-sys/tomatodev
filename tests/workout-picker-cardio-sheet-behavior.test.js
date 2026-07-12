@@ -25,10 +25,10 @@ async function runCardioSheetHarness() {
     const stateUrl = repoUrl('workout/state.js');
     const exercisesUrl = repoUrl('workout/exercises.js');
     const stubDataUrl = await writeStub(tempDir, 'stub-data.js', `
-export function getExList() { return []; }
+export function getExList() { return window.__qaExerciseList || []; }
 export function getGlobalExList() { return []; }
 export function getGymExList() { return []; }
-export function getGyms() { return []; }
+export function getGyms() { return window.__qaGyms || []; }
 export function getLastSession() { return null; }
 export function detectPRs() { return []; }
 export function getCache() { return {}; }
@@ -37,6 +37,7 @@ export async function saveExercise() { return true; }
 export async function deleteExercise() { return true; }
 export function getMuscleParts() {
   return [
+    { id: 'chest', name: '가슴', color: '#334155' },
     { id: 'biceps', name: '이두', color: '#334155' },
     { id: 'tricep', name: '삼두', color: '#334155' },
     { id: 'abs', name: '복부', color: '#334155' },
@@ -249,6 +250,67 @@ try {
   };
 
   document.querySelector('[data-picker-cardio-sheet]')?.remove();
+  window.__qaGyms = [
+    { id: 'gym-a', name: '강남점' },
+    { id: 'gym-b', name: '홍대점' },
+  ];
+  window.__qaExerciseList = [
+    { id: 'global-curl', name: '공통 컬', muscleId: 'biceps', movementId: 'curl' },
+    { id: 'gym-a-curl', name: '강남 컬', muscleId: 'biceps', movementId: 'curl', gymId: 'gym-a' },
+    { id: 'gym-b-curl', name: '홍대 컬', muscleId: 'biceps', movementId: 'curl', gymTags: ['gym-b'] },
+    { id: 'gym-b-press', name: '홍대 프레스', muscleId: 'tricep', movementId: 'press', gymId: 'gym-b' },
+  ];
+  await exercises.wtOpenExercisePicker();
+  await nextFrame();
+  const readPickerExerciseNames = () => Array.from(document.querySelectorAll('[data-picker-exercise-id]'))
+    .map(node => node.querySelector('.ex-picker-name')?.textContent?.replace(/\s+/g, ' ').trim() || '')
+    .filter(Boolean);
+  const initialGymRail = Array.from(document.querySelectorAll('[data-picker-gym]')).map(button => ({
+    id: button.getAttribute('data-picker-gym') || '',
+    active: button.classList.contains('active'),
+    count: button.querySelector('b')?.textContent?.trim() || '',
+  }));
+  const gymAButton = document.querySelector('[data-picker-gym="gym-a"]');
+  if (!gymAButton) throw new Error('gym-a rail chip missing');
+  gymAButton.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+  await nextFrame();
+  const gymACategory = {
+    view: document.querySelector('#ex-picker-modal')?.dataset.pickerView || '',
+    filter: state.S.workout.pickerGymFilter || '',
+    muscles: Array.from(document.querySelectorAll('[data-picker-muscle]')).map(node => node.getAttribute('data-picker-muscle') || ''),
+    activeGym: document.querySelector('[data-picker-gym].active')?.getAttribute('data-picker-gym') || '',
+  };
+  const bicepsTile = document.querySelector('[data-picker-muscle="biceps"]');
+  if (!bicepsTile) throw new Error('gym-a biceps tile missing');
+  bicepsTile.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+  await nextFrame();
+  const gymAList = {
+    view: document.querySelector('#ex-picker-modal')?.dataset.pickerView || '',
+    filter: state.S.workout.pickerGymFilter || '',
+    names: readPickerExerciseNames(),
+  };
+  document.getElementById('ex-picker-back')?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+  await nextFrame();
+  const restoredGymACategory = {
+    view: document.querySelector('#ex-picker-modal')?.dataset.pickerView || '',
+    filter: state.S.workout.pickerGymFilter || '',
+    activeGym: document.querySelector('[data-picker-gym].active')?.getAttribute('data-picker-gym') || '',
+  };
+  const allGymButton = document.querySelector('[data-picker-gym="all"]');
+  if (!allGymButton) throw new Error('all gym rail chip missing');
+  allGymButton.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+  await nextFrame();
+  const allBicepsTile = document.querySelector('[data-picker-muscle="biceps"]');
+  if (!allBicepsTile) throw new Error('all-scope biceps tile missing');
+  allBicepsTile.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+  await nextFrame();
+  const allGymList = {
+    view: document.querySelector('#ex-picker-modal')?.dataset.pickerView || '',
+    filter: state.S.workout.pickerGymFilter || '',
+    names: readPickerExerciseNames(),
+  };
+  const pickerGymScope = { initialGymRail, gymACategory, gymAList, restoredGymACategory, allGymList };
+
   await exercises.wtOpenExercisePicker();
   await nextFrame();
   const runningTile = document.querySelector('[data-picker-body-action="running"]');
@@ -276,7 +338,7 @@ try {
   const runningAfterStart = {
     modalOpen: document.querySelector('#ex-picker-modal')?.classList.contains('open') || false,
   };
-  window.__qaDone = { legacy, autoBase, stepLevel, savedStep, cleared, myMountain, runningBeforeStart, runningAfterStart };
+  window.__qaDone = { legacy, autoBase, stepLevel, savedStep, cleared, myMountain, pickerGymScope, runningBeforeStart, runningAfterStart };
 } catch (e) {
   window.__qaError = String(e && (e.stack || e.message) || e);
 }
@@ -305,8 +367,15 @@ try {
   }
 }
 
+let harnessResult;
+
+function getHarnessResult() {
+  if (!harnessResult) harnessResult = runCardioSheetHarness();
+  return harnessResult;
+}
+
 test('manual cardio sheet preserves legacy kcal records and auto-calculates intensity fields', async () => {
-  const result = await runCardioSheetHarness();
+  const result = await getHarnessResult();
 
   assert.equal(result.legacy.kcal, '123');
   assert.equal(result.legacy.mode, 'manual');
@@ -344,4 +413,36 @@ test('manual cardio sheet preserves legacy kcal records and auto-calculates inte
   assert.deepEqual(result.runningBeforeStart.gpsText, ['GPS 위치', '현재 위치 대기']);
   assert.equal(result.runningBeforeStart.startButtonCount, 1);
   assert.equal(result.runningAfterStart.modalOpen, false);
+});
+
+test('exercise picker keeps a selected gym scope through category and muscle-list navigation', async () => {
+  const result = await getHarnessResult();
+  const scope = result.pickerGymScope;
+
+  assert.deepEqual(scope.initialGymRail, [
+    { id: 'all', active: true, count: '4' },
+    { id: 'gym-a', active: false, count: '2' },
+    { id: 'gym-b', active: false, count: '3' },
+  ]);
+  assert.deepEqual(scope.gymACategory, {
+    view: 'category',
+    filter: 'gym-a',
+    muscles: ['biceps'],
+    activeGym: 'gym-a',
+  });
+  assert.deepEqual(scope.gymAList, {
+    view: 'list',
+    filter: 'gym-a',
+    names: ['강남 컬', '공통 컬'],
+  });
+  assert.deepEqual(scope.restoredGymACategory, {
+    view: 'category',
+    filter: 'gym-a',
+    activeGym: 'gym-a',
+  });
+  assert.deepEqual(scope.allGymList, {
+    view: 'list',
+    filter: 'all',
+    names: ['강남 컬', '공통 컬', '홍대 컬'],
+  });
 });
