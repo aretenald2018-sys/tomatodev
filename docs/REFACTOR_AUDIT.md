@@ -16,10 +16,10 @@
 | 비즈니스 `window.*` 노출 | 통과 | 구조 테스트 allowlist만 남음 |
 | `data.js` facade | 통과 | `data/data-api.js` re-export만 수행 |
 | PWA/runtime import graph | 통과 | literal import 존재·precache·named export와 tab registry lazy 경로를 모두 검증; 누락 10개를 `59258cd`에서 보완 |
-| CSS WebView 진입점 | 통과 | `style.css`를 44개 owner source에서 하나의 WebView-safe bundle로 생성; `fac2a35` 배포본의 360px 하단 탭 설정 sheet에서 CSS 적용·가로 넘침 없음 확인 |
+| CSS WebView 진입점 | 통과 | `style.css`를 44개 owner source에서 하나의 WebView-safe bundle로 생성; `fac2a35` 배포본의 360px 하단 탭 설정 sheet와 `4cda585`의 운동 상세 sheet에서 CSS 적용·가로 넘침 없음 확인 |
 | 자동 회귀 | 통과 | 전체 `npm.cmd test`와 핵심 데이터 계약 105/105 통과 |
 | Android/Wear 빌드 | 통과 | `:app:assembleDebug :wear:assembleDebug` 성공 |
-| 실제 Pages 테스트 계정 흐름 | 부분 통과 | 계정 생성·세션 복원·식단 목표 저장/재로드, PWA 배너, 하단 탭, 운동/캘린더/통계/요리 lazy 탭, 더보기/계정 전환/편지 진입을 확인했다. 테스트 계정에서 운동 종목 추가 → 20kg × 10회 세트 입력 → 종목 완료 → 완전 새로고침 → 기록·완료 상태 복원도 `79b565`에서 확인했다. `fac2a35`에서는 같은 기록의 운동·캘린더·통계 200kg 표기와 홈/식단/운동/캘린더/더보기 전환, 360·393·430px 가로 넘침 없음, 하단 탭 설정 sheet의 정상 CSS 렌더를 재확인했다. |
+| 실제 Pages 테스트 계정 흐름 | 부분 통과 | 계정 생성·세션 복원·식단 목표 저장/재로드, PWA 배너, 하단 탭, 운동/캘린더/통계/요리 lazy 탭, 더보기/계정 전환/편지 진입을 확인했다. 테스트 계정에서 운동 종목 추가 → 20kg × 10회 세트 입력 → 종목 완료 → 완전 새로고침 → 기록·완료 상태 복원도 `79b565`에서 확인했다. `fac2a35`에서는 같은 기록의 운동·캘린더·통계 200kg 표기와 홈/식단/운동/캘린더/더보기 전환, 360·393·430px 가로 넘침 없음, 하단 탭 설정 sheet의 정상 CSS 렌더를 재확인했다. `4cda585`에서는 360px 운동 상세 sheet의 모든 가시 버튼이 최소 44px이고 가로 넘침이 없음을 확인했다. `7d216b0`에서는 동기화된 두 Pages 탭을 동시에 열어도 Firestore IndexedDB 경고/오류가 발생하지 않음을 확인했다. |
 | 관리자 서버 권한 | 미검증 | `firebase.json`에는 Functions만 선언돼 있고 Firestore rules source/배포 검증이 저장소에 없음 |
 | 대형 파일 단일 책임 | 미완료 | `render-calendar.js` 4,806줄, `workout/exercises.js` 4,136줄, `workout/expert.js` 3,286줄, `workout/expert/max.js` 4,068줄 |
 | 사용자 행동 테스트 | 미완료 | 소스 파일을 읽는 테스트가 70개라, 많은 UI 회귀가 구현 문자열에 묶여 있음 |
