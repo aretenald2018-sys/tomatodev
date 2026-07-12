@@ -176,6 +176,7 @@ test('production app uses canonical asset URLs and one service worker cache name
   assert.doesNotMatch(appJs, /render-workout\.js/);
   assert.doesNotMatch(indexHtml + appJs, /\?v=/);
   assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
+  assert.match(swJs, /STATIC_ASSETS\.map\(url => cache\.add\(new Request\(url, \{ cache: 'reload' \}\)\)\)/);
   assert.match(swJs, /const activation = self\.skipWaiting\(\);[\s\S]*?event\.waitUntil\(activation\);/);
 });
 

@@ -3,7 +3,7 @@
 
 // 캐시 버전: 타임스탬프 기반 자동 생성 — 파일 수정 시 SW 자동 업데이트
 // (SW 파일 내용이 1바이트라도 바뀌면 브라우저가 새 SW로 인식)
-const CACHE_VERSION = 'tomatofarm-v20260713z27-css-entry-compat';
+const CACHE_VERSION = 'tomatofarm-v20260713z28-css-entry-compat';
 const RUNTIME_CACHE = 'dashboard3-runtime';
 importScripts('./runtime-assets.js');
 const STATIC_ASSETS = self.TOMATO_STATIC_ASSETS;
@@ -16,7 +16,10 @@ self.addEventListener('install', (event) => {
       // 개별 add + allSettled로 실패 파일명을 반드시 로깅한다.
       // (기존 addAll은 하나라도 실패하면 전체 롤백 + err.message에 파일명이 안 찍혀서 배포 디버깅 불가)
       const results = await Promise.allSettled(
-        STATIC_ASSETS.map(url => cache.add(url))
+        // A cache-version change must not repopulate the new SW cache from the
+        // browser HTTP cache. Otherwise a fresh app shell can be paired with
+        // stale modules/CSS that happen to have the same URL.
+        STATIC_ASSETS.map(url => cache.add(new Request(url, { cache: 'reload' })))
       );
       const failures = [];
       results.forEach((r, i) => {
