@@ -43,6 +43,7 @@
 - 360px 실제 sheet 감사에서 세트 체크·유형·삭제·확장과 하단 회차 탭이 24~38px이라 발견했다. `calendar-home.css`와 `workout-day-sheet.css`에서 각 조작 영역을 최소 44px으로 확장하고, 좁은 행 grid는 44px 터치를 유지하면서 넘치지 않도록 재배치했다.
 - Firestore의 deprecated 단일 탭 `enableIndexedDbPersistence()`를 다중 탭 `persistentLocalCache({ tabManager: persistentMultipleTabManager() })` 초기화로 교체했다. 지원하지 않는 WebView는 memory cache로 안전하게 복귀하며, factory는 독립 단위 테스트로 성공·실패·미지원 경로를 검증한다.
 - 실제 Pages 식단 감사에서 `+ 음식 추가`의 상위 아코디언이 열리지 않는 것을 발견했다. `.diet-grid`의 legacy 위임 핸들러가 namespaced `data-action`까지 전파 차단한 것이 원인이며, 자체 `addFood`/추천/legacy 사진 action만 처리하고 나머지는 전역 action router로 보내도록 고쳤다. 이제 아코디언·스킵·사진 action도 같은 경로를 사용한다.
+- 후속 360px Pages 검증에서 아침·점심·저녁의 `스킵`은 전역 namespaced action router 경로에서 여전히 무반응임을 발견했다. `app.js`의 식단 grid가 `diet:skip-meal`만 `wtSkipMeal`로 직접 바인딩하고, 다른 namespaced action은 기존 전역 router에 넘기도록 보완했다. 세 끼 각각 켬·끔·새로고침 후 상태 원복과 콘솔 오류 없음을 실제 배포본에서 다시 확인했다.
 
 ## 남은 리팩토링 순서
 
