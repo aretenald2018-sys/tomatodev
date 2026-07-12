@@ -1,3 +1,5 @@
+import { showToast } from '../ui/toast.js';
+import { closeModal, openModal } from '../app/overlay-stack.js';
 // ================================================================
 // modals/trainer-quest-modal.js
 // ================================================================
@@ -206,10 +208,10 @@ async function _copyStatsExport() {
   try {
     const text = await _trainerStatsExportText();
     await _writeStatsClipboard(text);
-    window.showToast?.('통계 JSON을 클립보드에 복사했어요', 2500, 'success');
+    showToast('통계 JSON을 클립보드에 복사했어요', 2500, 'success');
   } catch (error) {
     console.warn('[trainer-quest] stats copy failed:', error);
-    window.showToast?.('통계 JSON 복사에 실패했어요', 2500, 'error');
+    showToast('통계 JSON 복사에 실패했어요', 2500, 'error');
   }
 }
 
@@ -226,10 +228,10 @@ async function _shareStatsExport() {
       }
     }
     await _writeStatsClipboard(text);
-    window.showToast?.('공유를 지원하지 않아 JSON을 복사했어요', 3000, 'info');
+    showToast('공유를 지원하지 않아 JSON을 복사했어요', 3000, 'info');
   } catch (error) {
     console.warn('[trainer-quest] stats share failed:', error);
-    window.showToast?.('통계 JSON 공유에 실패했어요', 2500, 'error');
+    showToast('통계 JSON 공유에 실패했어요', 2500, 'error');
   }
 }
 
@@ -256,17 +258,12 @@ export function openTrainerQuestModal() {
   const modal = _modal();
   if (modal) modal.setAttribute('aria-hidden', 'false');
   _startSpeechTyping(modal);
-  window._openModal?.('trainer-quest-modal');
+  openModal('trainer-quest-modal');
 }
 
 export function closeTrainerQuestModal() {
   _stopSpeechTyping();
   const modal = _modal();
   if (modal) modal.setAttribute('aria-hidden', 'true');
-  window._closeModal?.('trainer-quest-modal');
+  closeModal('trainer-quest-modal');
 }
-
-Object.assign(window, {
-  openTrainerQuestModal,
-  closeTrainerQuestModal,
-});

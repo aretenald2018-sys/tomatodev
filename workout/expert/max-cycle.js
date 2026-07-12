@@ -24,11 +24,11 @@ export {
   buildMaxCycleHistoryEntry,
   buildNextMaxCycleFromSettle,
   buildMaxGrowthStairs,
-} from './max-cycle-core.js?v=20260612w1';
+} from './max-cycle-core.js';
 
 export {
   renderMaxCycleDashboard,
   renderMaxCycleBoard,
   renderMaxPlanEditor,
   renderMaxCycleSettle,
-} from './max-cycle-render.js?v=20260516v6';
+} from './max-cycle-render.js';

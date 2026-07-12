@@ -1,3 +1,4 @@
+import { readAppCssSync } from './helpers/css-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -7,8 +8,8 @@ const designMd = readFileSync('DESIGN.md', 'utf8');
 const finalPlan = readFileSync('.omo/plans/2026-07-03-input-ux-commercial-completion.md', 'utf8');
 const projectPlan = readFileSync('docs/ai/features/2026-07-03-input-ux-commercial-completion.md', 'utf8');
 const indexHtml = readFileSync('index.html', 'utf8');
-const workoutUiJs = readFileSync('workout-ui.js', 'utf8');
-const styleCss = readFileSync('style.css', 'utf8');
+const workoutTypeUiJs = readFileSync('workout/type-ui.js', 'utf8');
+const styleCss = readAppCssSync();
 const swJs = readFileSync('sw.js', 'utf8') + readFileSync('runtime-assets.js', 'utf8');
 
 class FakeClassList {
@@ -94,34 +95,15 @@ function buildWorkoutUiHarness() {
       calls.runningOpens += 1;
     },
   };
-  const runnable = workoutUiJs.replace(
-    /import\s*\{[\s\S]*?\}\s*from\s*'\.\/render-workout\.js\?v=20260515v6';/,
-    `
-    const wtToggleWineFree = () => {};
-    const wtToggleMealSkipped = () => {};
-    const wtOpenExercisePicker = () => {};
-    const wtCloseExercisePicker = () => {};
-    const wtOpenExerciseEditor = () => {};
-    const wtCloseExerciseEditor = () => {};
-    const wtSaveExerciseFromEditor = () => {};
-    const wtDeleteExerciseFromEditor = () => {};
-    const wtAddFoodItem = () => {};
-    const wtRemoveFoodItem = () => {};
-    const openNutritionPhotoUpload = () => {};
+  const runnable = `
     const wtStartWorkoutTimer = () => { window.__calls.timerStarts += 1; };
     const wtRestTimerShowIdle = () => { window.__calls.restShows += 1; };
     const wtRestTimerHideIdle = () => { window.__calls.restHides += 1; };
     const wtOpenManualCardioInput = () => { window.__calls.manualCardioOpens += 1; };
-    `,
-  ).replace(
-    /import\s*\{[^}]*\}\s*from\s*'\.\/diet\/photo-store\.js';/,
-    `
-    const __photos = {};
-    const getDietPhotos = () => __photos;
-    const removeDietPhoto = (meal) => { delete __photos[meal]; };
-    const setDietPhoto = (meal, value) => { __photos[meal] = value; };
-    `,
-  ).replace(/^export\s+/gm, '');
+    const wtOpenRunningSession = () => { window.__calls.runningOpens += 1; };
+    ${workoutTypeUiJs.replace(/^import .*;$/gm, '').replace(/^export\s+/gm, '')}
+    window.wtSwitchType = wtSwitchType;
+  `;
   vm.runInNewContext(runnable, {
     window: Object.assign(contextWindow, { __calls: calls }),
     document,

@@ -1,10 +1,11 @@
+import { readAppCssSync } from './helpers/css-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const indexHtml = readFileSync('index.html', 'utf8');
 const renderJs = readFileSync('workout/render.js', 'utf8');
-const styleCss = readFileSync('style.css', 'utf8');
+const styleCss = readAppCssSync();
 const navigationJs = readFileSync('navigation.js', 'utf8');
 
 test('breakfast lunch and dinner have frequent food chip containers instead of visible memo inputs', () => {

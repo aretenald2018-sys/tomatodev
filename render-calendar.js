@@ -1,3 +1,4 @@
+import { showToast } from './ui/toast.js';
 // ================================================================
 // render-calendar.js — 캘린더 탭
 // 월별 그리드로 일자별 100점 만점 점수 + (섭취kcal/소모kcal/체중) 표시
@@ -60,6 +61,9 @@ import {
   updateWorkoutCalendarState,
 } from './workout/navigation-stack.js';
 import { normalizeWorkoutExerciseSelectionDetail } from './workout/exercise-entry-actions.js';
+import { wtOpenExerciseEditor, wtOpenExercisePicker } from './workout/exercises.js';
+import { wtMountRunningSession, wtOpenRunningSession } from './workout/running-session.js';
+import { loadWorkoutDate as loadWorkoutSessionDate } from './workout/load.js';
 import {
   activeBenchmarks,
   activeCycleOf,
@@ -70,6 +74,7 @@ import {
 } from './workout/test-v2/board-core.js';
 import { buildWorkoutSetTimeline } from './workout/timeline.js';
 import { buildCalendarActivityRows } from './calendar/activity-model.js';
+import { tm2OpenBenchmarkSettings, tm2OpenBoard } from './workout/test-v2/entry.js';
 
 // ═════════════════════════════════════════════════════════════
 // 뷰 상태
@@ -502,24 +507,17 @@ async function _openSelectedWorkoutGoalExercise(modal) {
   const select = root?.querySelector?.('[data-cal-goal-select]');
   const exId = String(select?.value || '').trim();
   if (!exId) {
-    window.showToast?.('운동 종목을 선택해주세요', 1800, 'warning');
+    showToast('운동 종목을 선택해주세요', 1800, 'warning');
     return;
   }
   _closeWorkoutGoalInputSheet(root);
   try {
     const { loadAndInjectModals } = await import('./modal-manager.js');
     await loadAndInjectModals();
-    if (typeof window.wtOpenExerciseEditor !== 'function') {
-      await import('./render-workout.js');
-    }
-    if (typeof window.wtOpenExerciseEditor === 'function') {
-      window.wtOpenExerciseEditor(exId, null, { returnToPicker: false, source: 'calendar-goal-input' });
-      return;
-    }
-    throw new Error('exercise editor entry is not registered');
+    wtOpenExerciseEditor(exId, null, { returnToPicker: false, source: 'calendar-goal-input' });
   } catch (e) {
     console.warn('[workout-calendar] goal exercise editor open failed:', e);
-    window.showToast?.('종목 수정 화면을 여는 데 실패했어요', 2200, 'error');
+    showToast('종목 수정 화면을 여는 데 실패했어요', 2200, 'error');
   }
 }
 
@@ -527,21 +525,14 @@ async function _openWorkoutCycleTargetSettings(benchmarkId) {
   const bmId = String(benchmarkId || '').trim();
   if (!bmId) return;
   try {
-    if (typeof window.tm2OpenBenchmarkSettings !== 'function') {
-      await import('./workout/test-v2/entry.js?v=20260620z27-selected-scope');
-    }
-    if (typeof window.tm2OpenBenchmarkSettings === 'function') {
-      await window.tm2OpenBenchmarkSettings(bmId);
+    if (typeof tm2OpenBenchmarkSettings === 'function') {
+      await tm2OpenBenchmarkSettings(bmId);
       return;
     }
-    if (typeof window.tm2OpenBoard === 'function') {
-      await window.tm2OpenBoard();
-      return;
-    }
-    throw new Error('growth board entry is not registered');
+    await tm2OpenBoard();
   } catch (e) {
     console.warn('[workout-calendar] cycle target settings open failed:', e);
-    window.showToast?.('목표 설정을 여는 데 실패했어요', 2200, 'error');
+    showToast('목표 설정을 여는 데 실패했어요', 2200, 'error');
   }
 }
 
@@ -961,11 +952,10 @@ function _workoutRecordOrdinalForKey(cache, selectedKey, plan, checkins, lookup)
 
 async function _loadWorkoutStateForSheetSession(key, sessionIndex = 0) {
   const p = _parseDateKey(key);
-  if (!p || typeof window === 'undefined') return false;
-  window.__wtTargetSessionIndex = Math.max(0, Math.floor(Number(sessionIndex) || 0));
-  const loader = window._wtExports?.loadWorkoutDate || window.loadWorkoutDate;
-  if (typeof loader !== 'function') return false;
-  await Promise.resolve(loader(p.y, p.m, p.d));
+  if (!p) return false;
+  await Promise.resolve(loadWorkoutSessionDate(p.y, p.m, p.d, {
+    sessionIndex: Math.max(0, Math.floor(Number(sessionIndex) || 0)),
+  }));
   return true;
 }
 
@@ -996,7 +986,7 @@ async function _refreshWorkoutHomeAfterPickerSelect(key, sessionIndex = _workout
   if (timerBar && !timerBar.classList.contains('wt-open')) timerBar.classList.add('wt-open');
   renderWorkoutCalendarHome();
   if (entryIndex != null) _tryRestorePendingWorkoutSheetCarouselFocus(key, targetIndex);
-  if (!selectionDetail.existing) window.showToast?.('종목을 추가했어요', 1500, 'success');
+  if (!selectionDetail.existing) showToast('종목을 추가했어요', 1500, 'success');
   return true;
 }
 
@@ -1194,9 +1184,9 @@ function _renderCalendarModeTabs() {
   return `
     <div class="cal-mode-tabs" role="tablist" aria-label="캘린더 보기">
       <button type="button" class="cal-mode-tab ${_calendarMode === 'summary' ? 'active' : ''}"
-        role="tab" aria-selected="${_calendarMode === 'summary'}" onclick="window._calSetMode('summary')">종합</button>
+        role="tab" aria-selected="${_calendarMode === 'summary'}" data-cal-action="set-mode" data-mode="summary">종합</button>
       <button type="button" class="cal-mode-tab ${_calendarMode === 'workout' ? 'active' : ''}"
-        role="tab" aria-selected="${_calendarMode === 'workout'}" onclick="window._calSetMode('workout')">운동</button>
+        role="tab" aria-selected="${_calendarMode === 'workout'}" data-cal-action="set-mode" data-mode="workout">운동</button>
     </div>
   `;
 }
@@ -1326,6 +1316,20 @@ function _dayMetrics(key, day, plan, metrics, checkins) {
 
 function _activityRows(day) {
   return buildCalendarActivityRows(day, { isTrustedRunningCalories });
+}
+
+function _bindCalendarActions(root) {
+  if (!root || root.dataset.calendarActionsBound) return;
+  root.dataset.calendarActionsBound = '1';
+  root.addEventListener('click', (event) => {
+    const control = event.target.closest('[data-cal-action]');
+    if (!control || !root.contains(control)) return;
+    const action = control.dataset.calAction;
+    if (action === 'set-mode') _setCalendarMode(control.dataset.mode);
+    if (action === 'open-day') _openDay(control.dataset.dateKey);
+    if (action === 'shift-month') _shiftMonth(Number(control.dataset.delta) || 0);
+    if (action === 'go-today') _goToday();
+  });
 }
 
 const FALLBACK_MAJOR_LABELS = {
@@ -1636,7 +1640,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
       ? ''
       : isWorkoutHome
         ? `data-wt-calendar-action="open-day" data-date-key="${k}"`
-        : `onclick="window._calOpenDay('${k}')"`;
+        : `data-cal-action="open-day" data-date-key="${k}"`;
     const maxLabelLines = isWorkoutHome ? 4 : (wx.durationSec > 0 && wx.setCount > 0 ? 3 : 4);
     const labelLines = wx.displayLabels.slice(0, maxLabelLines);
     const moreCount = Math.max(0, wx.displayLabels.length - labelLines.length);
@@ -1715,13 +1719,13 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
 
   const previousMonthAction = isWorkoutHome
     ? 'data-wt-calendar-action="shift-month" data-delta="-1"'
-    : 'onclick="window._calShiftMonth(-1)"';
+    : 'data-cal-action="shift-month" data-delta="-1"';
   const nextMonthAction = isWorkoutHome
     ? 'data-wt-calendar-action="shift-month" data-delta="1"'
-    : 'onclick="window._calShiftMonth(1)"';
+    : 'data-cal-action="shift-month" data-delta="1"';
   const todayAction = isWorkoutHome
     ? 'data-wt-calendar-action="go-today"'
-    : 'onclick="window._calGoToday()"';
+    : 'data-cal-action="go-today"';
   root.innerHTML = `
     <div class="cal-workout-surface ${surfaceClass}"${scrollSurfaceAttr}>
       <div class="cal-header">
@@ -1835,6 +1839,7 @@ function _goToday() {
 export function renderCalendar() {
   const root = document.getElementById('calendar-root');
   if (!root) return;
+  _bindCalendarActions(root);
 
   const cache = getCache() || {};
   const plan = getDietPlan() || null;
@@ -1880,7 +1885,7 @@ export function renderCalendar() {
       mx.band ? `cal-cell-band-${mx.band}` : '',
     ].filter(Boolean).join(' ');
 
-    const onclick = disabled ? '' : `onclick="window._calOpenDay('${k}')"`;
+    const onclick = disabled ? '' : `data-cal-action="open-day" data-date-key="${k}"`;
     const scoreHtml = mx.score != null
       ? `<div class="cal-score">${mx.score}<span>점</span></div>`
       : `<div class="cal-score cal-score-empty">—</div>`;
@@ -1919,12 +1924,12 @@ export function renderCalendar() {
 
   root.innerHTML = `
     <div class="cal-header">
-      <button class="cal-nav-btn" onclick="window._calShiftMonth(-1)" aria-label="이전 달">‹</button>
+      <button class="cal-nav-btn" data-cal-action="shift-month" data-delta="-1" aria-label="이전 달">‹</button>
       <div class="cal-title">
         <span>${monthLabel}</span>
-        <button class="cal-today-btn" onclick="window._calGoToday()">오늘</button>
+        <button class="cal-today-btn" data-cal-action="go-today">오늘</button>
       </div>
-      <button class="cal-nav-btn" onclick="window._calShiftMonth(1)" aria-label="다음 달">›</button>
+      <button class="cal-nav-btn" data-cal-action="shift-month" data-delta="1" aria-label="다음 달">›</button>
     </div>
 
     ${_renderCalendarModeTabs()}
@@ -1959,6 +1964,7 @@ export function renderCalendar() {
 export function renderWorkoutCalendarHome() {
   const root = document.getElementById('workout-calendar-root');
   if (!root) return;
+  _bindCalendarActions(root);
   destroyRunningMaps(root);
   _workoutRunningRouteHydration.invalidateAll();
   _workoutRunningMapPayloads.clear();
@@ -1986,7 +1992,7 @@ export function renderWorkoutCalendarHome() {
   _bindWorkoutCycleRailActions(root);
   _bindWorkoutHomeSheetActions(root);
   _bindWorkoutHomeSheetInputIsolation(root);
-  window.wtMountRunningSession?.();
+  wtMountRunningSession();
   _mountWorkoutRunningMaps(root);
   _mountWorkoutSummaryElapsedTimers(root);
   _tryRestorePendingWorkoutSheetCarouselFocus(_workoutHomeSelectedKey, _workoutHomeSessionIndex);
@@ -1997,7 +2003,7 @@ function _renderWorkoutHomeDetail(root, args) {
   _workoutRunningRouteHydration.invalidateAll();
   _workoutRunningMapPayloads.clear();
   root.innerHTML = _renderWorkoutHomeDetailHtml(args);
-  window.wtMountRunningSession?.();
+  wtMountRunningSession();
   _mountWorkoutRunningMaps(root);
   _mountWorkoutSummaryElapsedTimers(root);
 }
@@ -3175,6 +3181,7 @@ function _openWorkoutDay(key) {
     `}
   `;
 
+  _bindCalendarDayModal();
   openModal('calendar-day-modal');
 }
 
@@ -3301,14 +3308,18 @@ function _openDay(key) {
     </div>
   `;
 
+  _bindCalendarDayModal();
   openModal('calendar-day-modal');
   const workoutRow = body.querySelector('.cal-bd-row-workout');
   if (workoutRow) {
     const openWorkout = () => {
       closeModal('calendar-day-modal');
       const key = `${yy}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
-      if (typeof window.wtOpenWorkoutDaySheet === 'function') window.wtOpenWorkoutDaySheet(key, 0, { action: 'calendar-modal:workout-sheet' });
-      else window.openWorkoutTab?.(yy, mm - 1, dd);
+      openWorkoutDaySheet(key, {
+        sessionIndex: 0,
+        sheetState: 'full',
+        action: 'calendar-modal:workout-sheet',
+      });
     };
     workoutRow.addEventListener('click', openWorkout);
     workoutRow.addEventListener('keydown', (e) => {
@@ -3613,7 +3624,7 @@ function _bindWorkoutHomeSheetActions(root) {
     const key = add.getAttribute('data-date-key') || _workoutHomeSelectedKey;
     Promise.resolve(_addWorkoutHomeSession(key)).catch((e) => {
       console.warn('[workout-calendar] add session action failed:', e);
-      window.showToast?.('종목 추가 화면을 열지 못했어요', 2200, 'error');
+      showToast('종목 추가 화면을 열지 못했어요', 2200, 'error');
     });
   }, true);
 }
@@ -3623,6 +3634,15 @@ function _clearWorkoutSetInputOnFocus(input) {
   if (!input.hasAttribute('data-wt-set-clear-on-focus')) return;
   input.removeAttribute('data-wt-set-clear-on-focus');
   if (input.value !== '') input.value = '';
+}
+
+function _bindCalendarDayModal() {
+  const modal = document.getElementById('calendar-day-modal');
+  if (!modal || modal.dataset.calendarDayActionsBound) return;
+  modal.dataset.calendarDayActionsBound = '1';
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal || event.target.closest('[data-cal-day-close]')) _closeDay(event);
+  });
 }
 
 function _workoutSetKeyboardElement() {
@@ -3990,7 +4010,7 @@ function _completeWorkoutSetKeyboardInput() {
   return Promise.resolve(_commitWorkoutSetKeyboardDone(input))
     .catch((e) => {
       console.warn('[workout-calendar] set keyboard complete failed:', e);
-      window.showToast?.('세트 완료에 실패했어요', 2200, 'error');
+      showToast('세트 완료에 실패했어요', 2200, 'error');
       return false;
     })
     .finally(() => _clearWorkoutSetKeyboardSurface(input));
@@ -4258,7 +4278,7 @@ async function _openWorkoutHomeRoutine(key) {
   _workoutHomeSelectedKey = key;
   const sessionIndex = _workoutHomeSessionIndex;
   if (!_isTodayKey(key)) {
-    window.showToast?.('과거 기록에서는 루틴을 열지 않아요. 오늘 운동에서 시작해 주세요.', 2200, 'info');
+    showToast('과거 기록에서는 루틴을 열지 않아요. 오늘 운동에서 시작해 주세요.', 2200, 'info');
     return;
   }
   renderWorkoutCalendarHome();
@@ -4267,28 +4287,11 @@ async function _openWorkoutHomeRoutine(key) {
     const loaded = await _loadWorkoutStateForSheetSession(key, sessionIndex);
     if (!loaded) throw new Error('workout state loader is not available');
 
-    if (typeof window.openRoutineSuggestWithRecent !== 'function' && typeof window.openRoutineSuggest !== 'function') {
-      await import('./workout/expert.js');
-    }
-    if (typeof window.openRoutineSuggestWithRecent === 'function') {
-      await window.openRoutineSuggestWithRecent();
-      return;
-    }
-    if (typeof window.openRoutineSuggest === 'function') {
-      await window.openRoutineSuggest();
-      return;
-    }
-    if (typeof window.tm2OpenBoard !== 'function') {
-      await import('./workout/test-v2/entry.js?v=20260620z27-selected-scope');
-    }
-    if (typeof window.tm2OpenBoard === 'function') {
-      await window.tm2OpenBoard();
-      return;
-    }
-    throw new Error('routine entry is not registered');
+    const expert = await import('./workout/expert.js');
+    await expert.openRoutineSuggestWithRecent();
   } catch (e) {
     console.warn('[workout-calendar] routine open failed:', e);
-    window.showToast?.('루틴을 여는 데 실패했어요', 2200, 'error');
+    showToast('루틴을 여는 데 실패했어요', 2200, 'error');
   }
 }
 
@@ -4528,7 +4531,7 @@ function _editWorkoutHomeSession(key, sessionIndex = _workoutHomeSessionIndex) {
   _workoutHomeSheetState = 'full';
   _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:edit-inline' });
   renderWorkoutCalendarHome();
-  window.showToast?.('카드 안에서 세트를 바로 수정해 주세요', 1600, 'info');
+  showToast('카드 안에서 세트를 바로 수정해 주세요', 1600, 'info');
 }
 
 function _setWorkoutSheetNumber(value, fallback = 0, options = {}) {
@@ -4569,7 +4572,7 @@ async function _mutateWorkoutExerciseFromSheet(key, sessionIndex, exerciseIndex,
   const exercises = Array.isArray(nextSession.exercises) ? nextSession.exercises : [];
   const target = exercises[exIndex];
   if (!target) {
-    window.showToast?.('수정할 운동을 찾지 못했어요', 1800, 'warning');
+    showToast('수정할 운동을 찾지 못했어요', 1800, 'warning');
     return false;
   }
   nextSession.exercises = exercises;
@@ -4606,7 +4609,7 @@ async function _updateWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseInd
     }, isInlineSource ? { preserveSheetScroll: true } : { preserveInput: true, sourceInput, ignoreSourceInput: true });
   } catch (e) {
     console.warn('[workout-calendar] sheet set update failed:', e);
-    window.showToast?.('세트 수정에 실패했어요', 2200, 'error');
+    showToast('세트 수정에 실패했어요', 2200, 'error');
   }
 }
 
@@ -4635,7 +4638,7 @@ async function _setWorkoutExerciseSetTypeFromSheet(key, sessionIndex, exerciseIn
     return ok;
   } catch (e) {
     console.warn('[workout-calendar] sheet set type update failed:', e);
-    window.showToast?.('세트 유형 변경에 실패했어요', 2200, 'error');
+    showToast('세트 유형 변경에 실패했어요', 2200, 'error');
     return false;
   }
 }
@@ -4651,10 +4654,10 @@ async function _addWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseIndex)
       _clearWorkoutExerciseCompletionMarker(entry);
       return true;
     }, { preserveSheetScroll: true });
-    if (ok) window.showToast?.(copiedPreviousSet ? '직전 세트를 복사했어요' : '세트를 추가했어요', 1200, 'success');
+    if (ok) showToast(copiedPreviousSet ? '직전 세트를 복사했어요' : '세트를 추가했어요', 1200, 'success');
   } catch (e) {
     console.warn('[workout-calendar] sheet set add failed:', e);
-    window.showToast?.('세트 추가에 실패했어요', 2200, 'error');
+    showToast('세트 추가에 실패했어요', 2200, 'error');
   }
 }
 
@@ -4670,10 +4673,10 @@ async function _removeWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseInd
       _clearWorkoutSetEditorsForExercise(key, sessionIndex, exerciseIndex);
       return true;
     }, { preserveSheetScroll: true, optimisticRender: true });
-    if (ok) window.showToast?.('세트를 삭제했어요', 1200, 'success');
+    if (ok) showToast('세트를 삭제했어요', 1200, 'success');
   } catch (e) {
     console.warn('[workout-calendar] sheet set remove failed:', e);
-    window.showToast?.('세트 삭제에 실패했어요', 2200, 'error');
+    showToast('세트 삭제에 실패했어요', 2200, 'error');
   }
 }
 
@@ -4701,7 +4704,7 @@ async function _toggleWorkoutExerciseSetDoneFromSheet(key, sessionIndex, exercis
     }, { preserveSheetScroll: true });
   } catch (e) {
     console.warn('[workout-calendar] sheet set done toggle failed:', e);
-    window.showToast?.('세트 완료 변경에 실패했어요', 2200, 'error');
+    showToast('세트 완료 변경에 실패했어요', 2200, 'error');
   }
 }
 
@@ -4722,7 +4725,7 @@ async function _completeWorkoutExerciseFromSheet(cardId, key, sessionIndex, exer
         return nextSet;
       });
       if (!completedCount) {
-        window.showToast?.('완료할 세트를 먼저 입력해 주세요', 1800, 'warning');
+        showToast('완료할 세트를 먼저 입력해 주세요', 1800, 'warning');
         return false;
       }
       entry.sets = nextSets;
@@ -4733,10 +4736,10 @@ async function _completeWorkoutExerciseFromSheet(cardId, key, sessionIndex, exer
     if (_workoutEditingCardId === cardId) _workoutEditingCardId = null;
     _markWorkoutExerciseCompletionStamp(cardId);
     renderWorkoutCalendarHome();
-    window.showToast?.('종목 기록을 저장했어요', 1200, 'success');
+    showToast('종목 기록을 저장했어요', 1200, 'success');
   } catch (e) {
     console.warn('[workout-calendar] exercise complete failed:', e);
-    window.showToast?.('종목 완료 저장에 실패했어요', 2200, 'error');
+    showToast('종목 완료 저장에 실패했어요', 2200, 'error');
   }
 }
 
@@ -4750,19 +4753,15 @@ async function _addWorkoutHomeSession(key) {
     _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:add-picker' });
     const loaded = await _loadWorkoutStateForSheetSession(targetKey, targetIndex);
     if (!loaded) throw new Error('workout state loader is not available');
-    if (typeof window.wtOpenExercisePicker === 'function') {
-      await window.wtOpenExercisePicker({
-        source: 'workout-day-sheet',
-        dateKey: targetKey,
-        sessionIndex: targetIndex,
-        afterSelect: detail => _refreshWorkoutHomeAfterPickerSelect(targetKey, targetIndex, detail),
-      });
-      return;
-    }
-    throw new Error('exercise picker is not registered');
+    await wtOpenExercisePicker({
+      source: 'workout-day-sheet',
+      dateKey: targetKey,
+      sessionIndex: targetIndex,
+      afterSelect: detail => _refreshWorkoutHomeAfterPickerSelect(targetKey, targetIndex, detail),
+    });
   } catch (e) {
     console.warn('[workout-calendar] add session picker open failed:', e);
-    window.showToast?.('종목 추가 화면을 열지 못했어요', 2200, 'error');
+    showToast('종목 추가 화면을 열지 못했어요', 2200, 'error');
     renderWorkoutCalendarHome();
   }
 }
@@ -4773,24 +4772,17 @@ async function _openWorkoutHomeRunning(key) {
   _workoutHomeSessionIndex = WORKOUT_RUNNING_SESSION_INDEX;
   _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:running-start' });
   if (!_isTodayKey(targetKey)) {
-    window.showToast?.('러닝 측정은 오늘 날짜에서 시작해 주세요', 2200, 'info');
+    showToast('러닝 측정은 오늘 날짜에서 시작해 주세요', 2200, 'info');
     renderWorkoutCalendarHome();
     return;
   }
   try {
     const loaded = await _loadWorkoutStateForSheetSession(targetKey, WORKOUT_RUNNING_SESSION_INDEX);
     if (!loaded) throw new Error('workout state loader is not available');
-    if (typeof window.wtOpenRunningSession !== 'function') {
-      await import('./workout/running-session.js');
-    }
-    if (typeof window.wtOpenRunningSession === 'function') {
-      window.wtOpenRunningSession();
-      return;
-    }
-    throw new Error('running session is not registered');
+    wtOpenRunningSession();
   } catch (e) {
     console.warn('[workout-calendar] running open failed:', e);
-    window.showToast?.('러닝 화면을 열지 못했어요', 2200, 'error');
+    showToast('러닝 화면을 열지 못했어요', 2200, 'error');
   }
 }
 
@@ -4854,7 +4846,7 @@ async function _shareOrCopyText(text, title) {
 async function _exportWorkoutHomeSession(key, sessionIndex = _workoutHomeSessionIndex) {
   const { session, index } = _workoutHomeSessionAt(key, sessionIndex, 1);
   if (!hasWorkoutSessionData(session)) {
-    window.showToast?.('내보낼 운동 기록이 없어요', 1800, 'info');
+    showToast('내보낼 운동 기록이 없어요', 1800, 'info');
     return;
   }
   const plan = getDietPlan() || null;
@@ -4866,17 +4858,17 @@ async function _exportWorkoutHomeSession(key, sessionIndex = _workoutHomeSession
   try {
     const mode = await _shareOrCopyText(text, title);
     if (mode === 'cancel') return;
-    window.showToast?.(mode === 'share' ? '운동 기록을 공유했어요' : '운동 기록을 복사했어요', 1800, 'success');
+    showToast(mode === 'share' ? '운동 기록을 공유했어요' : '운동 기록을 복사했어요', 1800, 'success');
   } catch (e) {
     console.warn('[workout-calendar] export failed:', e);
-    window.showToast?.('내보내기에 실패했어요', 2200, 'error');
+    showToast('내보내기에 실패했어요', 2200, 'error');
   }
 }
 
 async function _deleteWorkoutHomeSession(key, sessionIndex = _workoutHomeSessionIndex) {
   const { day, index, session } = _workoutHomeSessionAt(key, sessionIndex, 1);
   if (!hasWorkoutSessionData(session)) {
-    window.showToast?.('삭제할 운동 기록이 없어요', 1800, 'info');
+    showToast('삭제할 운동 기록이 없어요', 1800, 'info');
     return;
   }
   const ok = await confirmAction({
@@ -4891,10 +4883,10 @@ async function _deleteWorkoutHomeSession(key, sessionIndex = _workoutHomeSession
     const result = deleteWorkoutSession(day, index);
     _workoutHomeSessionIndex = Math.max(0, Math.min(index, result.workoutSessions.length - 1));
     await _saveWorkoutHomeSessionResult(key, result, { sessionIndex: _workoutHomeSessionIndex });
-    window.showToast?.('회차 운동 기록을 삭제했어요', 1800, 'success');
+    showToast('회차 운동 기록을 삭제했어요', 1800, 'success');
   } catch (e) {
     console.warn('[workout-calendar] session delete failed:', e);
-    window.showToast?.('회차 삭제에 실패했어요', 2200, 'error');
+    showToast('회차 삭제에 실패했어요', 2200, 'error');
   }
 }
 
@@ -4904,7 +4896,7 @@ async function _deleteWorkoutExercise(key, sessionIndex, exerciseIndex) {
   const exercises = Array.isArray(session.exercises) ? session.exercises : [];
   const target = exercises[exIndex];
   if (!target) {
-    window.showToast?.('삭제할 운동을 찾지 못했어요', 1800, 'warning');
+    showToast('삭제할 운동을 찾지 못했어요', 1800, 'warning');
     return;
   }
   const label = target.name || target.exerciseName || '운동';
@@ -4922,10 +4914,10 @@ async function _deleteWorkoutExercise(key, sessionIndex, exerciseIndex) {
     const result = upsertWorkoutSession(day, nextSession, index, { now: Date.now() });
     _workoutEditingCardId = null;
     await _saveWorkoutHomeSessionResult(key, result, { sessionIndex: index });
-    window.showToast?.('운동을 삭제했어요', 1800, 'success');
+    showToast('운동을 삭제했어요', 1800, 'success');
   } catch (e) {
     console.warn('[workout-calendar] exercise delete failed:', e);
-    window.showToast?.('운동 삭제에 실패했어요', 2200, 'error');
+    showToast('운동 삭제에 실패했어요', 2200, 'error');
   }
 }
 
@@ -4983,7 +4975,7 @@ function _clearWorkoutActivityFields(activityKey) {
 async function _deleteWorkoutActivity(key, sessionIndex, activityKey) {
   const patch = _clearWorkoutActivityFields(activityKey);
   if (!patch) {
-    window.showToast?.('삭제할 활동을 찾지 못했어요', 1800, 'warning');
+    showToast('삭제할 활동을 찾지 못했어요', 1800, 'warning');
     return;
   }
   const { day, session, index } = _workoutHomeSessionAt(key, sessionIndex, 1);
@@ -5005,24 +4997,13 @@ async function _deleteWorkoutActivity(key, sessionIndex, activityKey) {
     const nextSession = { ...(_clonePlain(session) || {}), ...patch };
     const result = upsertWorkoutSession(day, nextSession, index, { now: Date.now() });
     await _saveWorkoutHomeSessionResult(key, result, { sessionIndex: index });
-    window.showToast?.('활동을 삭제했어요', 1800, 'success');
+    showToast('활동을 삭제했어요', 1800, 'success');
   } catch (e) {
     console.warn('[workout-calendar] activity delete failed:', e);
-    window.showToast?.('활동 삭제에 실패했어요', 2200, 'error');
+    showToast('활동 삭제에 실패했어요', 2200, 'error');
   }
 }
 
-// ═════════════════════════════════════════════════════════════
-// window.* 노출
-// ═════════════════════════════════════════════════════════════
-window._calShiftMonth   = _shiftMonth;
-window._calGoToday      = _goToday;
-window._calSetMode      = _setCalendarMode;
-window._calOpenDay      = _openDay;
-window._calCloseDay     = _closeDay;
-window.renderCalendar   = renderCalendar;
 if (typeof document !== 'undefined') {
   document.addEventListener('workout:select-running', _selectWorkoutHomeRunning);
 }
-window.__wtApplyCalendarNavSnapshot = applyWorkoutCalendarNavSnapshot;
-window.renderWorkoutCalendarHome = renderWorkoutCalendarHome;

@@ -1,3 +1,4 @@
+import { showToast } from '../ui/toast.js';
 // ================================================================
 // workout/render.js — UI 렌더링 (상태 표시, 칼로리 트래커, 식단)
 // ================================================================
@@ -18,6 +19,9 @@ import {
 } from '../diet/meal-model.js';
 import { addMealFood, removeMealFood, restoreMealFood } from '../diet/feature.js';
 import { getDietPhoto } from '../diet/photo-store.js';
+import { removeMealPhoto } from '../diet/photo-actions.js';
+import { openPhotoLightbox } from '../utils/photo-lightbox.js';
+import { openNutritionItemEditor, switchNutritionTab } from '../modals/nutrition-item-modal.js';
 
 // ── 날짜 라벨 ────────────────────────────────────────────────────
 export function _renderDateLabel() {
@@ -482,6 +486,14 @@ export function _mealKey(meal) {
 export function _renderMealFoodItems(meal) {
   const container = document.getElementById(`wt-foods-${meal}`);
   if (!container) return;
+  if (!container.dataset.foodRemoveBound) {
+    container.dataset.foodRemoveBound = '1';
+    container.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-remove-food-index]');
+      if (!button || !container.contains(button)) return;
+      wtRemoveFoodItem(button.dataset.meal, Number(button.dataset.removeFoodIndex));
+    });
+  }
   const foods = S.diet[_mealKey(meal)] || [];
   if (!foods.length) { container.innerHTML = ''; return; }
 
@@ -489,7 +501,7 @@ export function _renderMealFoodItems(meal) {
     <div class="meal-food-chip"${f.source === 'ai' ? ' data-source="ai"' : ''}>
       <span class="meal-food-chip-name">${f.recipeId ? '🍳 ' : ''}${f.name} <span style="color:var(--muted);font-size:10px">${f.grams}g</span></span>
       <span class="meal-food-chip-kcal">${Math.round(f.kcal)}kcal</span>
-      <button class="meal-food-chip-del" onclick="wtRemoveFoodItem('${meal}',${idx})">✕</button>
+      <button type="button" class="meal-food-chip-del" data-meal="${meal}" data-remove-food-index="${idx}" aria-label="${f.name} 삭제">✕</button>
     </div>`).join('');
 }
 
@@ -505,7 +517,7 @@ export function wtAddFoodItem(meal, item) {
 export function wtAddFrequentFoodSuggestion(meal, suggestionKey) {
   const suggestion = _frequentFoodSuggestions.get(suggestionKey);
   if (!suggestion || suggestion.meal !== meal) {
-    window.showToast?.('추천 음식을 찾지 못했어요. 새로고침 후 다시 시도해주세요.', 2200, 'error');
+    showToast('추천 음식을 찾지 못했어요. 새로고침 후 다시 시도해주세요.', 2200, 'error');
     return;
   }
   const cfg = _FREQUENT_MEAL_CFG[meal];
@@ -521,7 +533,7 @@ export function wtRemoveFoodItem(meal, idx) {
   const removed = result.removed;
   if (!removed) return;
   // Undo Toast 3초 — 원래 위치에 복원
-  window.showToast?.(`'${removed.name || '음식'}' 삭제됨`, 3000, 'info', {
+  showToast(`'${removed.name || '음식'}' 삭제됨`, 3000, 'info', {
     action: '실행 취소',
     onAction: () => {
       restoreMealFood(meal, idx, removed);
@@ -553,7 +565,7 @@ export function _renderMealPhotos() {
       const thumb = document.createElement('div');
       thumb.className = 'meal-side-thumb';
       thumb.innerHTML = `<img src="${photo}"><button class="meal-side-thumb-delete" type="button" aria-label="사진 삭제">×</button>`;
-      thumb.onclick = () => openMealPhotoLightbox(photo);
+      thumb.onclick = () => openPhotoLightbox(photo);
       thumb.querySelector('.meal-side-thumb-delete')?.addEventListener('click', (e) => {
         e.stopPropagation();
         removeMealPhoto(meal);
@@ -572,22 +584,22 @@ export function _renderMealPhotos() {
   if (wrapW) {
     const photo = getDietPhoto('workout');
     if (photo) {
-      wrapW.innerHTML = `<div class="meal-photo-frame" onclick="openMealPhotoLightbox(this.querySelector('img').src)">
+      wrapW.innerHTML = `<div class="meal-photo-frame" data-open-workout-photo>
         <img src="${photo}">
-        <button class="meal-photo-delete" onclick="event.stopPropagation();removeMealPhoto('workout')">✕</button>
+        <button type="button" class="meal-photo-delete" aria-label="운동 사진 삭제">✕</button>
       </div>`;
+      const frame = wrapW.querySelector('[data-open-workout-photo]');
+      frame?.addEventListener('click', () => openPhotoLightbox(photo));
+      frame?.querySelector('.meal-photo-delete')?.addEventListener('click', (event) => {
+        event.stopPropagation();
+        void removeMealPhoto('workout');
+      });
     } else { wrapW.innerHTML = ''; }
   }
 }
 
 // ── 영양정보 사진 업로드 ────────────────────────────────────────
 export function openNutritionPhotoUpload() {
-  if (window.openNutritionItemEditor) {
-    window.openNutritionItemEditor(null);
-    setTimeout(() => {
-      if (window.switchNutritionTab) {
-        window.switchNutritionTab('photo');
-      }
-    }, 100);
-  }
+  openNutritionItemEditor(null);
+  setTimeout(() => switchNutritionTab('photo'), 100);
 }

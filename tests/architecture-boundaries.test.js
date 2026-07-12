@@ -36,29 +36,43 @@ function countMatches(files, expression) {
   return files.reduce((sum, file) => sum + (file.source.match(expression) || []).length, 0);
 }
 
-test('runtime Firebase access debt is explicit and cannot spread to another UI module', () => {
-  const allowedDebt = new Set([]);
+test('runtime Firebase access is confined to the data boundary', () => {
   const boundaryPattern = /firebase-firestore\.js|(?:from\s+|import\()['"][^'"]*data\/data-core\.js['"]/;
   const offenders = jsFiles
     .filter((file) => boundaryPattern.test(file.source))
     .map((file) => file.path)
     .filter((path) => path !== 'data.js' && !path.startsWith('data/'));
 
-  assert.deepEqual(offenders.sort(), [...allowedDebt].sort(),
-    'Phase 1에서 허용 목록을 0으로 줄여야 하며 신규 UI Firestore 접근은 금지');
+  assert.deepEqual(offenders.sort(), [], 'UI/feature modules must not access Firestore directly');
 });
 
-test('inline event handler debt cannot grow above the Phase 0 baseline', () => {
-  const uiFiles = runtimeFiles.filter((file) => (
-    file.path === 'index.html' || /^(admin|home|modals|workout)\//.test(file.path)
-  ));
-  const count = countMatches(uiFiles, /on(?:click|change|input|submit|touchstart|touchend)=/g);
-  assert.ok(count <= 275, `inline handler debt ${count} exceeds Phase 2 baseline 275`);
+test('runtime markup has no inline business event handlers', () => {
+  const uiFiles = runtimeFiles.filter((file) => ['.js', '.html'].includes(file.extension));
+  const offenders = uiFiles
+    .filter(file => /\son(?:click|change|input|submit|touchstart|touchend|keydown|keyup|focus|blur)=/i.test(file.source))
+    .map(file => file.path);
+  assert.deepEqual(offenders, [], `inline event handlers remain: ${JSON.stringify(offenders)}`);
 });
 
-test('window global assignment debt cannot grow above the Phase 0 baseline', () => {
-  const count = countMatches(jsFiles, /window\.[A-Za-z_$][A-Za-z0-9_$]*\s*=/g);
-  assert.ok(count <= 501, `window global debt ${count} exceeds baseline 501`);
+test('window assignments are limited to platform, PWA, and debug bridges', () => {
+  const allowedGlobals = new Set([
+    '__BUILD_INFO', '__debugHarvest', '__expertAddEquipment', '__expertDebug',
+    '__getTomatoFcmSWRegistration', '__migrateGymV1', '__migrationBackup',
+    '__migrationCleanupGyms', '__migrationRollback', '__refreshTomatoAppSWRegistration',
+    '__requestTomatoApkInstall', '__requestTomatoAppRefresh', '__showAppUpdateBanner',
+    '__showDietPremiumReportPreview', '__tomatoAppReady', '__tomatoAppSWRegistration',
+    '__tomatoAppSWRegistrationPromise', '__tomatoFcmSWRegistrationPromise',
+    '__tomatoUpdateBannerState', '__tomatoWearWorkoutBridge', '__wtHasActiveDraft',
+    '__wtPersistActiveDraft', 'haptic',
+  ]);
+  const assignmentPattern = /window\.([A-Za-z_$][A-Za-z0-9_$]*)\s*=(?!=)/g;
+  const offenders = [];
+  for (const file of jsFiles) {
+    for (const match of file.source.matchAll(assignmentPattern)) {
+      if (!allowedGlobals.has(match[1])) offenders.push(`${file.path}:${match[1]}`);
+    }
+  }
+  assert.deepEqual(offenders, [], `unauthorized business globals remain: ${JSON.stringify(offenders)}`);
 });
 
 test('CSS important debt cannot grow above the Phase 0 baseline', () => {
@@ -69,4 +83,28 @@ test('CSS important debt cannot grow above the Phase 0 baseline', () => {
   const count = counts.reduce((sum, file) => sum + file.count, 0);
   assert.ok(count <= 40,
     `CSS !important debt ${count} exceeds baseline 40: ${JSON.stringify(counts)}`);
+});
+
+test('feature CSS ownership keeps shell small and documents bounded large-file exceptions', () => {
+  const byPath = new Map(cssFiles.map(file => [file.path, file]));
+  const shell = byPath.get('style.css');
+  assert.ok(shell, 'style.css shell should exist');
+  assert.ok(shell.source.split(/\r?\n/).length <= 200, 'style.css must remain a shell/compatibility layer');
+
+  const allowedLargeFiles = new Set([
+    'styles/features/home-life-zone.css',
+    'styles/features/workout-day-sheet.css',
+    'styles/workout/expert-mode.css',
+  ]);
+  const unexpected = cssFiles
+    .map(file => ({ path: file.path, lines: file.source.split(/\r?\n/).length }))
+    .filter(file => file.lines > 1200 && !allowedLargeFiles.has(file.path));
+  assert.deepEqual(unexpected, [], `undocumented CSS files exceed 1,200 lines: ${JSON.stringify(unexpected)}`);
+});
+
+test('runtime modules use canonical URLs without per-file query versions', () => {
+  const offenders = runtimeFiles
+    .filter(file => ['.js', '.html', '.css'].includes(file.extension) && file.source.includes('?v='))
+    .map(file => file.path);
+  assert.deepEqual(offenders, [], `legacy module query versions remain: ${JSON.stringify(offenders)}`);
 });

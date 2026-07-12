@@ -168,11 +168,12 @@ test('service worker controllerchange still reloads once', () => {
   assert.equal(state.banners.length, 0);
 });
 
-test('production app cache busts the service worker registrar script', () => {
-  assert.match(indexHtml, /pwa-register\.js\?v=\d{8}[a-z]7-single-update-refresh/);
-  assert.match(indexHtml, /app\.js\?v=\d{8}[a-z]9-headerless-lifezone-trapezoid/);
-  assert.match(appJs, /utils\/build-info\.js\?v=20260708a-diet-frequent-foods/);
-  assert.match(appJs, /render-workout\.js\?v=20260708a-diet-frequent-foods/);
+test('production app uses canonical asset URLs and one service worker cache namespace', () => {
+  assert.match(indexHtml, /<script src="pwa-register\.js"><\/script>/);
+  assert.match(indexHtml, /<script type="module" src="app\.js"><\/script>/);
+  assert.match(appJs, /utils\/build-info\.js/);
+  assert.match(appJs, /render-workout\.js/);
+  assert.doesNotMatch(indexHtml + appJs, /\?v=/);
   assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });
 

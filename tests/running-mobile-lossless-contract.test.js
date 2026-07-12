@@ -32,6 +32,8 @@ export async function updateRunningMap(_shell, options = {}) {
 <script type="importmap">${JSON.stringify({ imports: { [realMapUrl]: pathToFileURL(mapStubPath).href } })}</script>
 </head><body><div id="wt-running-session-root"></div><script type="module">
 try {
+  let latestRunningLive = null;
+  document.addEventListener('life-zone:running-live', event => { latestRunningLive = event.detail; });
   const originalSetItem = Storage.prototype.setItem;
   window.__draftWrites = 0;
   Storage.prototype.setItem = function(key, value) {
@@ -79,7 +81,7 @@ try {
     });
   }
 
-  const live = structuredClone(window.__tomatoRunningLive);
+  const live = structuredClone(latestRunningLive);
   watchSuccess({
     timestamp: base - 1,
     coords: { latitude: 37.6, longitude: 127.1, accuracy: 5, altitude: 20, speed: 2.8 },

@@ -46,7 +46,7 @@ test('friend feed primary actions are routed through data-feed-action', () => {
 });
 
 test('friend manager modal actions are local and inline-free', () => {
-  const manager = sliceBetween(feedJs, 'export async function openFriendManager()', 'window.openFriendManager = openFriendManager');
+  const manager = sliceBetween(feedJs, 'export async function openFriendManager()', 'export async function sendFriendReq');
 
   assert.match(feedJs, /function _bindFriendManagerActions\(modal\)/);
   assert.match(manager, /_bindFriendManagerActions\(modal\)/);
@@ -59,7 +59,7 @@ test('friend manager modal actions are local and inline-free', () => {
 });
 
 test('reaction picker options inherit the feed action contract', () => {
-  const picker = sliceBetween(feedJs, 'window.showReactionPicker = function', 'window.showReactionDetail = async function');
+  const picker = sliceBetween(feedJs, 'export function showReactionPicker', 'export async function showReactionDetail');
 
   assert.match(picker, /data-feed-action="send-reaction"/);
   assert.match(picker, /data-target-id="\$\{_feedAttr\(tid\)\}"/);

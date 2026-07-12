@@ -23,14 +23,14 @@ import {
   maxBenchmarkTrackList,
   normalizeMaxCycleTracks,
   predictBenchmarkProgression,
-} from './max-cycle-core.js?v=20260612w1';
+} from './max-cycle-core.js';
 import {
   WENDLER_SCHEMES,
   isWendlerAllowedMajor,
   normalizeWendlerConfig,
   wendlerCycleOverview,
   wendlerWeekPrescription,
-} from './max-wendler.js?v=20260612w1';
+} from './max-wendler.js';
 
 const PLAN_MAJOR_ORDER = Object.keys(MAJOR_LABEL);
 
@@ -335,7 +335,7 @@ export function renderMaxCycleDashboard({ cycle, cache, exList, todayKey, isDraf
   return `
     <section class="wt-v4-board wt-v4-entry" id="wt-max-cycle-card">
       <div class="topbar">
-        <button type="button" class="icon" onclick="wtExcSwitchToNormalView()" aria-label="일반 모드로">‹</button>
+        <button type="button" class="icon" data-action="switch-normal-view" aria-label="일반 모드로">‹</button>
         <button type="button" class="title" data-action="open-max-cycle-board">
           <strong>${_esc(_shortDate(todayKey))}</strong>
           <span>Week ${snapshot.weekIndex} / ${snapshot.weeks}</span>

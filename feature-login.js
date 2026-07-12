@@ -1,12 +1,11 @@
+import { showToast } from './ui/toast.js';
+import { confirmAction } from './utils/confirm-modal.js';
+import { openFriendProfile } from './home/friend-profile.js';
 // ================================================================
 // feature-login.js — 로그인/가입/잠금/길드 온보딩 흐름
 // ================================================================
-// R1 리팩토링: index.html 의 1450줄 인라인 스크립트를 외부 모듈로 이관.
-// 기존 동작 무변경 — 전역 함수/전역 변수로 동작하던 것 그대로 유지.
-// HTML onclick="..." 참조를 위해 모든 주요 함수는 window.* 에 등록.
-//
-// 로드 순서: index.html 상단에서 Chart.js / Sortable 뒤, app.js(module) 앞에
-// 일반 <script> 로 로드. 비동기 import 는 함수 내부에서만 사용.
+// 로그인 화면과 동적 로그인 모달의 이벤트를 모듈 내부에서 직접 연결한다.
+// 앱 세션 시작은 app:start-user-session 이벤트 계약으로 app.js에 요청한다.
 // ================================================================
 // 테마 토글
 // ── 계정 시스템 ──
@@ -39,18 +38,9 @@ function _setLoginScreenVisible(visible) {
 
 function _continueToAppAfterLogin() {
   _setLoginScreenVisible(false);
-
-  const startSession = window.__startTomatoUserSession;
-  if (typeof startSession !== 'function') {
-    console.error('[login] app session bootstrap is unavailable');
-    _setLoginScreenVisible(true);
-    document.getElementById('login-status').textContent = '앱을 시작하지 못했어요. 잠시 후 다시 시도해주세요.';
-    return Promise.resolve(false);
-  }
-
-  // Capacitor WebView의 전체 reload는 Firebase 모듈/IndexedDB 복원을 처음부터 다시
-  // 기다리게 한다. 이미 선택한 사용자 세션으로 앱 bootstrap만 다시 시작한다.
-  return Promise.resolve(startSession()).catch((error) => {
+  return new Promise((resolve) => {
+    document.dispatchEvent(new CustomEvent('app:start-user-session', { detail: { resolve } }));
+  }).catch((error) => {
     console.error('[login] session bootstrap failed:', error);
     _setLoginScreenVisible(true);
     document.getElementById('login-status').textContent = '데이터를 불러오지 못했어요. 다시 시도해주세요.';
@@ -176,7 +166,7 @@ async function initLoginScreen() {
         <div style="width:56px;height:56px;border-radius:50%;background:#fff3e0;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 12px;">🍅</div>
         <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:4px;">${saved.nickname || '김태우'}</div>
         <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px;">비밀번호를 입력해주세요</div>
-        <input type="password" id="kim-lock-pw" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:999px;font-size:14px;text-align:center;background:var(--surface);color:var(--text);outline:none;" placeholder="비밀번호" autofocus onkeydown="if(event.key==='Enter')document.getElementById('kim-lock-btn').click()">
+        <input type="password" id="kim-lock-pw" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:999px;font-size:14px;text-align:center;background:var(--surface);color:var(--text);outline:none;" placeholder="비밀번호" autofocus>
         <div id="kim-lock-error" style="font-size:12px;color:#e53935;margin-top:6px;min-height:18px;"></div>
         <button id="kim-lock-btn" style="width:100%;padding:12px;border:none;border-radius:999px;background:var(--primary);color:#fff;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;">확인</button>
         <button id="kim-lock-other" style="width:100%;padding:10px;border:none;background:none;color:var(--text-tertiary);font-size:12px;cursor:pointer;margin-top:8px;">다른 계정으로 로그인</button>
@@ -195,6 +185,9 @@ async function initLoginScreen() {
           document.getElementById('kim-lock-error').textContent = '비밀번호가 맞지 않아요';
         }
       };
+      document.getElementById('kim-lock-pw').addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') document.getElementById('kim-lock-btn').click();
+      });
       document.getElementById('kim-lock-other').onclick = () => {
         setCurrentUser(null);
         localStorage.removeItem('admin_authenticated');
@@ -244,10 +237,8 @@ async function initLoginScreen() {
             <div style="position:relative;">
               <div style="display:flex;gap:6px;">
                 <input class="login-input" id="ob-guild-input" placeholder="길드 이름을 검색하거나 입력하세요" maxlength="20" style="flex:1;margin:0;width:100%;padding:14px 16px;border:1.5px solid var(--border,#E5E8EB);border-radius:var(--radius-md,12px);font-size:15px;color:var(--text,#191F28);background:var(--surface,#fff);outline:none;box-sizing:border-box;transition:border-color 0.1s ease-in-out;" autocomplete="off"
-                       oninput="searchGuildsFor('ob')" onfocus="searchGuildsFor('ob');this.style.borderColor='var(--primary)'"
-                       onblur="this.style.borderColor='var(--border,#E5E8EB)'"
-                       onkeydown="if(event.key==='Enter'){event.preventDefault();addGuildChipFor('ob');}">
-                <button type="button" style="padding:0 14px;border:none;border-radius:var(--radius-md,12px);background:var(--primary,#fa342c);color:#fff;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;" onclick="addGuildChipFor('ob')">추가</button>
+                       data-login-guild-prefix="ob" data-login-input-action="search-guilds" data-login-focus-action="search-guilds" data-login-enter-action="add-guild-chip">
+                <button type="button" style="padding:0 14px;border:none;border-radius:var(--radius-md,12px);background:var(--primary,#fa342c);color:#fff;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;" data-login-action="add-guild-chip" data-login-guild-prefix="ob">추가</button>
               </div>
               <div id="ob-guild-suggestions" class="guild-suggest-list" style="display:none;"></div>
             </div>
@@ -285,7 +276,6 @@ async function initLoginScreen() {
           }
           localStorage.setItem(guildObKey, 'done');
           overlay.remove();
-          window._patchnoteDone = true;
           window.dispatchEvent(new Event('patchnote-done'));
           _showLoadingUntilAppReady();
           if (!skip && _selectedGuilds.length > 0) location.reload();
@@ -353,7 +343,6 @@ async function initLoginScreen() {
       console.warn('[login] checkAccountExists error:', e);
     }
   }
-  window._checkAccountExists = checkAccountExists;
 
   [lastNameEl, firstNameEl].forEach(el => {
     el.addEventListener('input', () => {
@@ -421,14 +410,14 @@ function _loginActionTarget(eventTarget, selector) {
 }
 
 function _isLoginBridgeScope(control) {
-  return !!control?.closest?.('#login-screen, #login-pw-modal');
+  return !!control?.closest?.('#login-screen, #login-pw-modal, #guild-onboarding-overlay, #dynamic-modal, #guild-modal');
 }
 
 function _loginGuildPrefix(control) {
   return control?.dataset?.loginGuildPrefix || 'signup';
 }
 
-function _runLoginAction(action, control) {
+function _runLoginAction(action, control, event = null) {
   let result;
   switch (action) {
     case 'create-account-login':
@@ -461,6 +450,79 @@ function _runLoginAction(action, control) {
     case 'add-guild-chip':
       result = addGuildChipFor(_loginGuildPrefix(control));
       break;
+    case 'select-guild':
+      result = selectGuildFor(_loginGuildPrefix(control), control.dataset.guildName || '');
+      break;
+    case 'remove-guild-chip':
+      result = removeGuildChip(control.dataset.guildName || '', control.dataset.containerId || '');
+      break;
+    case 'switch-kim-mode':
+      result = switchKimMode(control.dataset.mode || '');
+      break;
+    case 'close-dynamic-modal':
+      if (!event || event.target === control) document.getElementById('dynamic-modal')?.remove();
+      break;
+    case 'open-nickname-edit':
+      result = openNicknameEdit();
+      break;
+    case 'open-own-profile':
+      document.getElementById('dynamic-modal')?.remove();
+      result = openFriendProfile(control.dataset.userId || '', control.dataset.userName || '');
+      break;
+    case 'confirm-logout':
+      result = confirmLogout();
+      break;
+    case 'toggle-guild-primary':
+      result = toggleGuildPrimary(control.dataset.guildName || '');
+      break;
+    case 'toggle-guild-members':
+      result = toggleGuildMembers(control.dataset.guildName || '');
+      break;
+    case 'toggle-guild-icon-picker':
+      result = toggleGuildIconPicker(control.dataset.guildName || '');
+      break;
+    case 'remove-guild':
+      result = removeGuildFromModal(control.dataset.guildName || '');
+      break;
+    case 'transfer-leadership':
+      result = transferLeadership(control.dataset.guildName || '', control.dataset.targetId || '', control.dataset.targetName || '');
+      break;
+    case 'kick-member':
+      result = kickMember(control.dataset.guildName || '', control.dataset.targetId || '', control.dataset.targetName || '');
+      break;
+    case 'leave-guild':
+      result = leaveGuildFromMembers(control.dataset.guildName || '');
+      break;
+    case 'leader-leave-guild':
+      result = leaderLeaveGuild(control.dataset.guildName || '');
+      break;
+    case 'transfer-and-leave':
+      result = transferAndLeave(control.dataset.guildName || '', control.dataset.targetId || '', control.dataset.targetName || '');
+      break;
+    case 'select-guild-icon':
+      result = selectGuildIcon(control.dataset.guildName || '', control.dataset.icon || '');
+      break;
+    case 'close-guild-modal':
+      result = closeGuildModal(control);
+      break;
+    case 'create-guild-modal':
+      result = createGuildFromModal();
+      break;
+    case 'add-guild-modal':
+      result = addGuildFromModal();
+      break;
+    case 'select-guild-modal':
+      result = selectGuildForModal(control.dataset.guildName || '');
+      break;
+    case 'search-guilds-modal':
+      result = searchGuildsForModal(control.value || '');
+      break;
+    case 'send-letter':
+      result = sendLetter();
+      break;
+    case 'refresh-letter-status':
+      result = renderLetterStatusList();
+      break;
     default:
       return;
   }
@@ -479,7 +541,7 @@ function _bindLoginActions(root = document) {
     if (!control || !_isLoginBridgeScope(control)) return;
     event.preventDefault();
     event.stopPropagation();
-    _runLoginAction(control.dataset.loginAction, control);
+    _runLoginAction(control.dataset.loginAction, control, event);
   }, true);
 
   doc.addEventListener('keydown', (event) => {
@@ -487,19 +549,27 @@ function _bindLoginActions(root = document) {
     const control = _loginActionTarget(event.target, '[data-login-enter-action]');
     if (!control || !_isLoginBridgeScope(control)) return;
     event.preventDefault();
-    _runLoginAction(control.dataset.loginEnterAction, control);
+    _runLoginAction(control.dataset.loginEnterAction, control, event);
   }, true);
 
   doc.addEventListener('input', (event) => {
     const control = _loginActionTarget(event.target, '[data-login-input-action]');
     if (!control || !_isLoginBridgeScope(control)) return;
-    _runLoginAction(control.dataset.loginInputAction, control);
+    _runLoginAction(control.dataset.loginInputAction, control, event);
   }, true);
 
   doc.addEventListener('focusin', (event) => {
     const control = _loginActionTarget(event.target, '[data-login-focus-action]');
     if (!control || !_isLoginBridgeScope(control)) return;
-    _runLoginAction(control.dataset.loginFocusAction, control);
+    _runLoginAction(control.dataset.loginFocusAction, control, event);
+  }, true);
+
+  doc.addEventListener('change', (event) => {
+    const control = _loginActionTarget(event.target, '[data-login-change-action]');
+    if (!control || !_isLoginBridgeScope(control)) return;
+    if (control.dataset.loginChangeAction === 'upload-guild-photo') {
+      void uploadGuildPhoto(control.dataset.guildName || '', control);
+    }
   }, true);
 }
 
@@ -525,14 +595,12 @@ function showLoginView() {
   document.getElementById('login-view').style.display = '';
   document.getElementById('login-last-name')?.focus();
 }
-window.showSignupView = showSignupView;
-window.showLoginView = showLoginView;
 
 // ── 가입 전용 함수 ─────────────────────────────────────────────
 async function createAccountFromSignup() {
   const lastName = document.getElementById('signup-last-name').value.trim();
   const firstName = document.getElementById('signup-first-name').value.trim();
-  if (!lastName || !firstName) { window.showToast?.('성과 이름을 입력해주세요', 2500, 'warning'); return; }
+  if (!lastName || !firstName) { showToast('성과 이름을 입력해주세요', 2500, 'warning'); return; }
 
   const { saveAccount, setCurrentUser, hashPassword, getAccountList } = await import('./data.js');
   const { getAdminId: _gAI, isAdminInstance: _isAI } = await import('./data.js');
@@ -599,7 +667,6 @@ async function createAccountFromSignup() {
   rl();
   return _continueToAppAfterLogin();
 }
-window.createAccountFromSignup = createAccountFromSignup;
 
 // ── 가입 토글 (TDS Switch) ───────────────────────────────────────
 function toggleSignupGuild() {
@@ -625,8 +692,6 @@ function toggleSignupPw() {
   field.style.display = on ? 'block' : 'none';
   if (on) document.getElementById('signup-new-password')?.focus();
 }
-window.toggleSignupGuild = toggleSignupGuild;
-window.toggleSignupPw = toggleSignupPw;
 
 // ── 길드 입력 헬퍼 (파라미터화: prefix = 'signup' | 'ob') ──────
 let _allGuildsCache = null;
@@ -650,7 +715,7 @@ async function searchGuildsFor(prefix) {
   const filtered = guilds.filter(g => (!q || g.name.toLowerCase().includes(q)) && !_selectedGuilds.some(s => s.name === g.name));
   if (!filtered.length) { sugBox.style.display = 'none'; return; }
   sugBox.innerHTML = filtered.slice(0, 8).map(g =>
-    `<div class="guild-suggest-item" onclick="selectGuildFor('${prefix}','${g.name.replace(/'/g, "\\'")}')">
+    `<div class="guild-suggest-item" data-login-action="select-guild" data-login-guild-prefix="${prefix}" data-guild-name="${g.name.replace(/"/g, '&quot;')}">
       <span>${g.name}</span><span style="font-size:11px;color:var(--text-tertiary);">${g.memberCount || 0}명</span>
     </div>`
   ).join('');
@@ -690,15 +755,11 @@ function _renderGuildChips(containerId) {
     const primaryMark = i === 0 && g.isNew ? ' primary' : '';
     return `<span class="guild-chip${primaryMark}" title="${g.isNew ? '새로 만드는 길드 (바로 가입)' : '기존 길드 (승인 필요)'}">
       ${g.name}${pendingBadge}${newBadge}
-      <button class="guild-chip-remove" onclick="removeGuildChip('${g.name.replace(/'/g, "\\'")}','${containerId}')">&times;</button>
+      <button class="guild-chip-remove" data-login-action="remove-guild-chip" data-guild-name="${g.name.replace(/"/g, '&quot;')}" data-container-id="${containerId}">&times;</button>
     </span>`;
   }).join('');
 }
 
-window.searchGuildsFor = searchGuildsFor;
-window.selectGuildFor = selectGuildFor;
-window.addGuildChipFor = addGuildChipFor;
-window.removeGuildChip = removeGuildChip;
 
 // 클릭 외부 닫기
 document.addEventListener('click', (e) => {
@@ -713,7 +774,7 @@ document.addEventListener('click', (e) => {
 async function createAccountAndLogin() {
   const lastName = document.getElementById('login-last-name').value.trim();
   const firstName = document.getElementById('login-first-name').value.trim();
-  if (!lastName || !firstName) { window.showToast?.('성과 이름을 입력해주세요', 2500, 'warning'); return; }
+  if (!lastName || !firstName) { showToast('성과 이름을 입력해주세요', 2500, 'warning'); return; }
 
   const { setCurrentUser, getAccountList, verifyPassword } = await import('./data.js');
   const { getAdminId: _gAI, isAdminInstance: _isAI } = await import('./data.js');
@@ -774,7 +835,7 @@ async function logoutAccount() {
     modeSwitch = `
       <div style="border-top:1px solid var(--border);margin:16px -24px 0;padding:16px 24px 0;">
         <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:8px;">현재: ${currentMode} 모드</div>
-        <button onclick="switchKimMode('${otherMode}')" style="width:100%;padding:12px;border-radius:var(--radius-md);border:1px solid var(--primary);background:var(--primary-bg);color:var(--primary);font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px;">${otherLabel}</button>
+        <button data-login-action="switch-kim-mode" data-mode="${otherMode}" style="width:100%;padding:12px;border-radius:var(--radius-md);border:1px solid var(--primary);background:var(--primary-bg);color:var(--primary);font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px;">${otherLabel}</button>
       </div>
     `;
   }
@@ -782,21 +843,21 @@ async function logoutAccount() {
   document.getElementById('dynamic-modal')?.remove();
   const modal = document.createElement('div'); modal.id = 'dynamic-modal'; document.body.appendChild(modal);
   modal.innerHTML = `
-    <div class="modal-backdrop" style="display:flex;z-index:10000;" onclick="if(event.target===this){document.getElementById('dynamic-modal')?.remove();}">
+    <div class="modal-backdrop" style="display:flex;z-index:10000;" data-login-action="close-dynamic-modal">
       <div class="modal-sheet" style="max-width:340px;padding:24px;text-align:center;">
         <div style="width:48px;height:48px;border-radius:50%;background:#fff3e0;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 12px;">🍅</div>
         <div style="font-size:16px;font-weight:600;margin-bottom:2px;">${name || '계정'}</div>
         <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:12px;">
           별명: ${user?.nickname || name}
-          <button onclick="openNicknameEdit()" style="background:none;border:none;color:var(--primary);font-size:11px;font-weight:600;cursor:pointer;padding:0 4px;">변경</button>
+          <button data-login-action="open-nickname-edit" style="background:none;border:none;color:var(--primary);font-size:11px;font-weight:600;cursor:pointer;padding:0 4px;">변경</button>
         </div>
         <div style="display:flex;gap:6px;margin-bottom:8px;">
-          <button onclick="document.getElementById('dynamic-modal')?.remove();openFriendProfile('${user?.id}','${name}')" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text);font-size:12px;font-weight:500;cursor:pointer;">🏡 내 프로필</button>
+          <button data-login-action="open-own-profile" data-user-id="${user?.id || ''}" data-user-name="${name.replace(/"/g, '&quot;')}" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text);font-size:12px;font-weight:500;cursor:pointer;">🏡 내 프로필</button>
         </div>
         ${modeSwitch}
         <div style="display:flex;gap:8px;margin-top:12px;">
-          <button onclick="document.getElementById('dynamic-modal')?.remove();" style="flex:1;padding:12px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer;">닫기</button>
-          <button onclick="confirmLogout()" style="flex:1;padding:12px;border-radius:999px;border:none;background:var(--surface2);color:var(--text-secondary);font-size:14px;font-weight:600;cursor:pointer;">계정 전환</button>
+          <button data-login-action="close-dynamic-modal" style="flex:1;padding:12px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer;">닫기</button>
+          <button data-login-action="confirm-logout" style="flex:1;padding:12px;border-radius:999px;border:none;background:var(--surface2);color:var(--text-secondary);font-size:14px;font-weight:600;cursor:pointer;">계정 전환</button>
         </div>
       </div>
     </div>
@@ -812,12 +873,11 @@ async function confirmLogout() {
   location.reload();
 }
 
-async function switchKimMode(mode) {
+export async function switchKimMode(mode) {
   const { setKimMode } = await import('./data.js');
   setKimMode(mode === 'Admin' ? 'admin' : 'guest');
   location.reload();
 }
-window.switchKimMode = switchKimMode;
 
 async function openNicknameEdit() {
   const { getCurrentUser, saveAccount, setCurrentUser } = await import('./data.js');
@@ -831,7 +891,6 @@ async function openNicknameEdit() {
   document.getElementById('dynamic-modal')?.remove();
   location.reload();
 }
-window.openNicknameEdit = openNicknameEdit;
 
 // ── 길드 모달 (프로필 CRUD) ──────────────────────────────────────
 let _guildModalGuilds = []; // [{name, status:'member'|'pending'}]
@@ -851,7 +910,7 @@ function _isMyGuildLeader(guildName) {
   return leader === _guildModalUserId || leader === _guildModalSocialId;
 }
 
-async function openGuildModal() {
+export async function openGuildModal() {
   const { getCurrentUser, getAllGuilds, isAdminGuest, getAdminId } = await import('./data.js');
   const user = getCurrentUser();
   if (!user) return;
@@ -911,7 +970,7 @@ function _renderGuildModalList() {
       : iconVal;
     const safeName = g.name.replace(/'/g, "\\'");
     const starBtn = g.status === 'member'
-      ? `<button class="gm-primary-btn${isPrimary ? ' is-active' : ''}" onclick="toggleGuildPrimary('${safeName}')" title="대표 길드 설정">${isPrimary ? '★' : '☆'}</button>`
+      ? `<button class="gm-primary-btn${isPrimary ? ' is-active' : ''}" data-login-action="toggle-guild-primary" data-guild-name="${safeName}" title="대표 길드 설정">${isPrimary ? '★' : '☆'}</button>`
       : '';
     const amLeader = g.status === 'member' && _isMyGuildLeader(g.name);
     const leaderBadge = amLeader ? ' <span class="guild-leader-badge">👑 길드장</span>' : '';
@@ -919,10 +978,10 @@ function _renderGuildModalList() {
       ? '<span class="guild-chip-badge pending">승인 대기 중</span>'
       : '';
     const memberBtn = g.status === 'member'
-      ? `<button class="gm-action-pill" type="button" onclick="toggleGuildMembers('${safeName}')">멤버보기</button>`
+      ? `<button class="gm-action-pill" type="button" data-login-action="toggle-guild-members" data-guild-name="${safeName}">멤버보기</button>`
       : '';
     const iconBtn = g.status === 'member'
-      ? `<button class="gm-icon-btn" type="button" onclick="toggleGuildIconPicker('${safeName}')" title="탭하여 아이콘 변경">${iconDisplay}<span class="gm-icon-edit-badge">✎</span></button>`
+      ? `<button class="gm-icon-btn" type="button" data-login-action="toggle-guild-icon-picker" data-guild-name="${safeName}" title="탭하여 아이콘 변경">${iconDisplay}<span class="gm-icon-edit-badge">✎</span></button>`
       : `<span class="gm-icon-static">${iconDisplay}</span>`;
     const safeId = g.name.replace(/[^a-zA-Z0-9가-힣]/g, '_');
     return `<div>
@@ -931,7 +990,7 @@ function _renderGuildModalList() {
         <div class="gm-guild-info"><span class="gm-guild-name${isPrimary ? ' is-primary' : ''}">${g.name}</span>${leaderBadge}${badge}</div>
         <div class="gm-guild-actions">
           ${memberBtn}
-          <button class="gm-action-pill gm-remove" type="button" onclick="removeGuildFromModal('${safeName}')">삭제</button>
+          <button class="gm-action-pill gm-remove" type="button" data-login-action="remove-guild" data-guild-name="${safeName}">삭제</button>
         </div>
       </div>
       <div class="gm-icon-picker" id="gm-icon-picker-${safeId}"></div>
@@ -968,12 +1027,12 @@ async function toggleGuildMembers(guildName) {
       if (amILeader && !isMe) {
         const safeTargetId = m.id.replace(/'/g, "\\'");
         const safeTargetName = name.replace(/'/g, "\\'");
-        actionBtns = `<div class="gm-member-actions"><button class="guild-member-action transfer" onclick="transferLeadership('${safeName}','${safeTargetId}','${safeTargetName}')">위임</button>
-          <button class="guild-member-action kick" onclick="kickMember('${safeName}','${safeTargetId}','${safeTargetName}')">강퇴</button></div>`;
+        actionBtns = `<div class="gm-member-actions"><button class="guild-member-action transfer" data-login-action="transfer-leadership" data-guild-name="${safeName}" data-target-id="${safeTargetId}" data-target-name="${safeTargetName}">위임</button>
+          <button class="guild-member-action kick" data-login-action="kick-member" data-guild-name="${safeName}" data-target-id="${safeTargetId}" data-target-name="${safeTargetName}">강퇴</button></div>`;
       } else if (isMe && !isLeader) {
-        actionBtns = `<div class="gm-member-actions"><button class="guild-member-action kick" onclick="leaveGuildFromMembers('${safeName}')">탈퇴</button></div>`;
+        actionBtns = `<div class="gm-member-actions"><button class="guild-member-action kick" data-login-action="leave-guild" data-guild-name="${safeName}">탈퇴</button></div>`;
       } else if (isMe && isLeader) {
-        actionBtns = `<div class="gm-member-actions"><button class="guild-member-action kick" onclick="leaderLeaveGuild('${safeName}')">탈퇴</button></div>`;
+        actionBtns = `<div class="gm-member-actions"><button class="guild-member-action kick" data-login-action="leader-leave-guild" data-guild-name="${safeName}">탈퇴</button></div>`;
       }
       return `<div class="gm-member-row">
         <div class="gm-member-avatar">${name.charAt(0)}</div>
@@ -984,11 +1043,10 @@ async function toggleGuildMembers(guildName) {
   }
   el.style.display = 'block';
 }
-window.toggleGuildMembers = toggleGuildMembers;
 
 // 길드장 위임
 async function transferLeadership(guildName, targetId, targetName) {
-  const _ok = await (window.confirmAction?.({ title: '길드장 위임', message: `${targetName}님에게 길드장을 위임하시겠습니까?\n위임 후에는 되돌릴 수 없습니다.`, destructive: true, longPress: 2000 }) ?? Promise.resolve(confirm(`${targetName}님에게 길드장을 위임하시겠습니까?`)));
+  const _ok = await (confirmAction({ title: '길드장 위임', message: `${targetName}님에게 길드장을 위임하시겠습니까?\n위임 후에는 되돌릴 수 없습니다.`, destructive: true, longPress: 2000 }) ?? Promise.resolve(confirm(`${targetName}님에게 길드장을 위임하시겠습니까?`)));
   if (!_ok) return;
   const { transferGuildLeadership } = await import('./data.js');
   const ok = await transferGuildLeadership(guildName, targetId);
@@ -1005,11 +1063,10 @@ async function transferLeadership(guildName, targetId, targetName) {
     _st('위임에 실패했어요', 3000, 'error');
   }
 }
-window.transferLeadership = transferLeadership;
 
 // 길드원 강퇴
 async function kickMember(guildName, targetId, targetName) {
-  const _ok2 = await (window.confirmAction?.({ title: '길드원 강퇴', message: `정말 ${targetName}님을 강퇴하시겠습니까?`, destructive: true, longPress: 2000 }) ?? Promise.resolve(confirm(`정말 ${targetName}님을 강퇴하시겠습니까?`)));
+  const _ok2 = await (confirmAction({ title: '길드원 강퇴', message: `정말 ${targetName}님을 강퇴하시겠습니까?`, destructive: true, longPress: 2000 }) ?? Promise.resolve(confirm(`정말 ${targetName}님을 강퇴하시겠습니까?`)));
   if (!_ok2) return;
   const { kickGuildMember } = await import('./data.js');
   const ok = await kickGuildMember(guildName, targetId);
@@ -1024,11 +1081,10 @@ async function kickMember(guildName, targetId, targetName) {
     _st('강퇴에 실패했어요. 길드장만 강퇴할 수 있어요.', 3000, 'error');
   }
 }
-window.kickMember = kickMember;
 
 // 일반 멤버 자진 탈퇴
 async function leaveGuildFromMembers(guildName) {
-  const _ok3 = await (window.confirmAction?.({ title: '길드 탈퇴', message: `${guildName} 길드에서 탈퇴할까요?`, destructive: true, longPress: 2000 }) ?? Promise.resolve(confirm(`${guildName} 길드에서 탈퇴할까요?`)));
+  const _ok3 = await (confirmAction({ title: '길드 탈퇴', message: `${guildName} 길드에서 탈퇴할까요?`, destructive: true, longPress: 2000 }) ?? Promise.resolve(confirm(`${guildName} 길드에서 탈퇴할까요?`)));
   if (!_ok3) return;
   const { getCurrentUser, saveAccount, setCurrentUser, updateGuildMemberCount } = await import('./data.js');
   const user = getCurrentUser();
@@ -1051,7 +1107,6 @@ async function leaveGuildFromMembers(guildName) {
   const { showToast: _st } = await import('./home/utils.js');
   _st(`${guildName}에서 탈퇴했어요`, 3000, 'success');
 }
-window.leaveGuildFromMembers = leaveGuildFromMembers;
 
 // 길드장 탈퇴: 위임할 사람 선택 후 탈퇴
 async function leaderLeaveGuild(guildName) {
@@ -1061,7 +1116,7 @@ async function leaderLeaveGuild(guildName) {
 
   if (!members.length) {
     // 혼자 남은 길드장 → 그냥 탈퇴
-    const _ok4 = await (window.confirmAction?.({ title: '길드 탈퇴', message: `${guildName}의 마지막 멤버입니다. 탈퇴하면 길드가 비게 됩니다. 탈퇴할까요?`, destructive: true, longPress: 2000 }) ?? Promise.resolve(confirm(`${guildName}의 마지막 멤버입니다. 탈퇴하면 길드가 비게 됩니다. 탈퇴할까요?`)));
+    const _ok4 = await (confirmAction({ title: '길드 탈퇴', message: `${guildName}의 마지막 멤버입니다. 탈퇴하면 길드가 비게 됩니다. 탈퇴할까요?`, destructive: true, longPress: 2000 }) ?? Promise.resolve(confirm(`${guildName}의 마지막 멤버입니다. 탈퇴하면 길드가 비게 됩니다. 탈퇴할까요?`)));
     if (!_ok4) return;
     await leaveGuildFromMembers(guildName);
     return;
@@ -1075,20 +1130,19 @@ async function leaderLeaveGuild(guildName) {
   const safeName = guildName.replace(/'/g, "\\'");
   const memberList = members.map(m => {
     const name = m.nickname || (m.lastName + m.firstName);
-    return `<button class="guild-member-action transfer" onclick="transferAndLeave('${safeName}','${m.id.replace(/'/g, "\\'")}','${name.replace(/'/g, "\\'")}')">${name}에게 위임</button>`;
+    return `<button class="guild-member-action transfer" data-login-action="transfer-and-leave" data-guild-name="${safeName}" data-target-id="${m.id.replace(/"/g, '&quot;')}" data-target-name="${name.replace(/"/g, '&quot;')}">${name}에게 위임</button>`;
   }).join('');
 
   el.innerHTML = `<div class="gm-transfer-panel">
     <div class="gm-transfer-title">길드장을 위임할 멤버를 선택하세요</div>
     <div class="gm-transfer-list">${memberList}</div>
-    <button class="guild-member-action kick" style="margin-top:8px;" onclick="toggleGuildMembers('${safeName}')">취소</button>
+    <button class="guild-member-action kick" style="margin-top:8px;" data-login-action="toggle-guild-members" data-guild-name="${safeName}">취소</button>
   </div>`;
 }
-window.leaderLeaveGuild = leaderLeaveGuild;
 
 // 위임 후 탈퇴
 async function transferAndLeave(guildName, newLeaderId, newLeaderName) {
-  const _ok5 = await (window.confirmAction?.({ title: '위임 후 탈퇴', message: `${newLeaderName}님에게 길드장을 위임하고 탈퇴할까요?`, destructive: true, longPress: 2000 }) ?? Promise.resolve(confirm(`${newLeaderName}님에게 길드장을 위임하고 탈퇴할까요?`)));
+  const _ok5 = await (confirmAction({ title: '위임 후 탈퇴', message: `${newLeaderName}님에게 길드장을 위임하고 탈퇴할까요?`, destructive: true, longPress: 2000 }) ?? Promise.resolve(confirm(`${newLeaderName}님에게 길드장을 위임하고 탈퇴할까요?`)));
   if (!_ok5) return;
   const { transferGuildLeadership } = await import('./data.js');
   const ok = await transferGuildLeadership(guildName, newLeaderId);
@@ -1100,7 +1154,6 @@ async function transferAndLeave(guildName, newLeaderId, newLeaderName) {
   _guildLeaderMap[guildName] = newLeaderId;
   await leaveGuildFromMembers(guildName);
 }
-window.transferAndLeave = transferAndLeave;
 
 function toggleGuildIconPicker(guildName) {
   const safeId = guildName.replace(/[^a-zA-Z0-9가-힣]/g, '_');
@@ -1111,11 +1164,11 @@ function toggleGuildIconPicker(guildName) {
   const safeName = guildName.replace(/'/g, "\\'");
   el.innerHTML = `<div class="gm-icon-grid">${
     GUILD_ICON_OPTIONS.map(ic =>
-      `<button class="gm-icon-option${_guildIconMap[guildName] === ic ? ' is-selected' : ''}" type="button" onclick="selectGuildIcon('${safeName}','${ic}')">${ic}</button>`
+      `<button class="gm-icon-option${_guildIconMap[guildName] === ic ? ' is-selected' : ''}" type="button" data-login-action="select-guild-icon" data-guild-name="${safeName}" data-icon="${ic}">${ic}</button>`
     ).join('')
   }
   <label class="gm-icon-upload" title="사진 업로드">
-    📷<input type="file" accept="image/*" onchange="uploadGuildPhoto('${safeName}',this)">
+    📷<input type="file" accept="image/*" data-login-change-action="upload-guild-photo" data-guild-name="${safeName}">
   </label>
   </div>`;
   el.style.display = 'block';
@@ -1162,10 +1215,7 @@ async function uploadGuildPhoto(guildName, input) {
   };
   reader.readAsDataURL(file);
 }
-window.uploadGuildPhoto = uploadGuildPhoto;
 
-window.toggleGuildIconPicker = toggleGuildIconPicker;
-window.selectGuildIcon = selectGuildIcon;
 
 async function toggleGuildPrimary(name) {
   const g = _guildModalGuilds.find(x => x.name === name);
@@ -1186,11 +1236,11 @@ async function removeGuildFromModal(name) {
       _st('길드장은 탈퇴 전에 다른 멤버에게 길드장을 위임해주세요.', 3000, 'warning');
       return;
     }
-    const _ok6 = await (window.confirmAction?.({ title: '길드 탈퇴', message: `${name} 길드에서 탈퇴할까요?\n길드 데이터는 유지됩니다.`, destructive: true, longPress: 2000 }) ?? Promise.resolve(confirm(`${name} 길드에서 탈퇴할까요?`)));
+    const _ok6 = await (confirmAction({ title: '길드 탈퇴', message: `${name} 길드에서 탈퇴할까요?\n길드 데이터는 유지됩니다.`, destructive: true, longPress: 2000 }) ?? Promise.resolve(confirm(`${name} 길드에서 탈퇴할까요?`)));
     if (!_ok6) return;
   } else {
     // 승인 대기중 → 가입신청 철회
-    const _ok7 = await (window.confirmAction?.({ title: '가입신청 철회', message: `${name} 가입신청을 철회할까요?`, destructive: true, longPress: 2000 }) ?? Promise.resolve(confirm(`${name} 가입신청을 철회할까요?`)));
+    const _ok7 = await (confirmAction({ title: '가입신청 철회', message: `${name} 가입신청을 철회할까요?`, destructive: true, longPress: 2000 }) ?? Promise.resolve(confirm(`${name} 가입신청을 철회할까요?`)));
     if (!_ok7) return;
 
     // pending은 즉시 Firebase 반영 (저장하기 안 눌러도 적용)
@@ -1224,7 +1274,7 @@ async function searchGuildsForModal(query) {
   const filtered = guilds.filter(g => (!q || g.name.toLowerCase().includes(q)) && !_guildModalGuilds.some(s => s.name === g.name));
   if (!filtered.length) { sugBox.style.display = 'none'; return; }
   sugBox.innerHTML = filtered.slice(0, 8).map(g =>
-    `<div class="guild-suggest-item" onclick="selectGuildForModal('${g.name.replace(/'/g, "\\'")}')">
+    `<div class="guild-suggest-item" data-login-action="select-guild-modal" data-guild-name="${g.name.replace(/"/g, '&quot;')}">
       <span>${g.name}</span><span style="font-size:11px;color:var(--text-tertiary);">${g.memberCount || 0}명</span>
     </div>`
   ).join('');
@@ -1358,16 +1408,6 @@ async function saveGuildFromModal() {
   await syncGuildModalState({ closeAfter: true, successMessage: '저장되었습니다', successType: 'success' });
 }
 
-window.openGuildModal = openGuildModal;
-window.openGuildInfoModal = (...args) => import('./modals/guild-info-modal.js').then(m => m.openGuildInfoModal(...args));
-window.closeGuildModal = closeGuildModal;
-window.toggleGuildPrimary = toggleGuildPrimary;
-window.removeGuildFromModal = removeGuildFromModal;
-window.searchGuildsForModal = searchGuildsForModal;
-window.selectGuildForModal = selectGuildForModal;
-window.addGuildFromModal = addGuildFromModal;
-window.createGuildFromModal = createGuildFromModal;
-window.saveGuildFromModal = saveGuildFromModal;
 
 async function manageAccountPassword(accountId) {
   const { getAccountList, saveAccount, hashPassword, verifyPassword } = await import('./data.js');
@@ -1379,7 +1419,7 @@ async function manageAccountPassword(accountId) {
     // 기존 비밀번호 확인 후 변경/해제
     const oldPw = prompt(`${account.lastName}${account.firstName} — 현재 비밀번호를 입력하세요`);
     if (oldPw === null) return;
-    if (!verifyPassword(account, oldPw)) { window.showToast?.('비밀번호가 맞지 않아요', 2500, 'error'); return; }
+    if (!verifyPassword(account, oldPw)) { showToast('비밀번호가 맞지 않아요', 2500, 'error'); return; }
 
     const action = confirm('비밀번호를 변경하시겠어요?\n\n확인 = 새 비밀번호 설정\n취소 = 비밀번호 해제');
     if (action) {
@@ -1387,12 +1427,12 @@ async function manageAccountPassword(accountId) {
       if (!newPw) return;
       account.passwordHash = hashPassword(newPw);
       await saveAccount(account);
-      window.showToast?.('비밀번호가 변경되었어요', 2500, 'success');
+      showToast('비밀번호가 변경되었어요', 2500, 'success');
     } else {
       account.hasPassword = false;
       account.passwordHash = null;
       await saveAccount(account);
-      window.showToast?.('비밀번호가 해제되었어요', 2500, 'success');
+      showToast('비밀번호가 해제되었어요', 2500, 'success');
     }
   } else {
     // 비밀번호 새로 설정
@@ -1401,19 +1441,12 @@ async function manageAccountPassword(accountId) {
     account.hasPassword = true;
     account.passwordHash = hashPassword(newPw);
     await saveAccount(account);
-    window.showToast?.('비밀번호가 설정되었어요', 2500, 'success');
+    showToast('비밀번호가 설정되었어요', 2500, 'success');
   }
   // 목록 갱신
   initLoginScreen();
 }
 
-window.manageAccountPassword = manageAccountPassword;
-window.logoutAccount = logoutAccount;
-window.confirmLogout = confirmLogout;
-window.selectAccount = selectAccount;
-window.verifyAndLogin = verifyAndLogin;
-window.closePasswordModal = closePasswordModal;
-window.createAccountAndLogin = createAccountAndLogin;
 
 // ── 개발자에게 편지 ──
 function _letterEscape(value) {
@@ -1477,23 +1510,23 @@ async function openLetterModal() {
 
   document.getElementById('dynamic-modal')?.remove();
   const modal = document.createElement('div'); modal.id = 'dynamic-modal'; document.body.appendChild(modal);
-  modal.innerHTML = `<div class="modal-backdrop" style="display:flex;z-index:10000;" onclick="if(event.target===this)document.getElementById('dynamic-modal')?.remove();">
-    <div class="modal-sheet" style="max-width:420px;padding:24px;max-height:85vh;overflow-y:auto;" onclick="event.stopPropagation()">
+  modal.innerHTML = `<div class="modal-backdrop" style="display:flex;z-index:10000;" data-login-action="close-dynamic-modal">
+    <div class="modal-sheet" style="max-width:420px;padding:24px;max-height:85vh;overflow-y:auto;">
       <div class="sheet-handle"></div>
       <div style="text-align:center;margin-bottom:20px;">
         <div style="font-size:28px;margin-bottom:8px;">✉️</div>
         <div style="font-size:17px;font-weight:700;color:var(--text);">개발자에게 편지</div>
         <div style="font-size:12px;color:var(--text-tertiary);margin-top:4px;">${_letterEscape(nick)}님의 요청 상태도 여기서 확인할 수 있어요</div>
       </div>
-      <textarea id="letter-text" style="width:100%;min-height:120px;padding:14px 16px;border:1.5px solid var(--border);border-radius:12px;font-size:14px;color:var(--text);background:var(--surface);outline:none;resize:vertical;font-family:inherit;box-sizing:border-box;line-height:1.6;transition:border-color 0.15s;" placeholder="편하게 적어주세요..." onfocus="this.style.borderColor='#fa342c'" onblur="this.style.borderColor='var(--border)'"></textarea>
+      <textarea id="letter-text" style="width:100%;min-height:120px;padding:14px 16px;border:1.5px solid var(--border);border-radius:12px;font-size:14px;color:var(--text);background:var(--surface);outline:none;resize:vertical;font-family:inherit;box-sizing:border-box;line-height:1.6;transition:border-color 0.15s;" placeholder="편하게 적어주세요..."></textarea>
       <div style="display:flex;gap:8px;margin-top:16px;">
-        <button onclick="document.getElementById('dynamic-modal')?.remove()" style="flex:1;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text-secondary);font-size:14px;font-weight:600;cursor:pointer;">닫기</button>
-        <button id="letter-send-btn" onclick="sendLetter()" style="flex:2;padding:14px;border:none;border-radius:12px;background:#fa342c;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">보내기</button>
+        <button data-login-action="close-dynamic-modal" style="flex:1;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text-secondary);font-size:14px;font-weight:600;cursor:pointer;">닫기</button>
+        <button id="letter-send-btn" data-login-action="send-letter" style="flex:2;padding:14px;border:none;border-radius:12px;background:#fa342c;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">보내기</button>
       </div>
       <div class="letter-status-panel">
         <div class="letter-status-head">
           <span>내 요청 현황</span>
-          <button type="button" onclick="renderLetterStatusList()">새로고침</button>
+          <button type="button" data-login-action="refresh-letter-status">새로고침</button>
         </div>
         <div id="letter-status-list" class="letter-status-list">
           <div class="letter-status-empty">불러오는 중...</div>
@@ -1504,16 +1537,14 @@ async function openLetterModal() {
   setTimeout(() => document.getElementById('letter-text')?.focus(), 200);
   renderLetterStatusList();
 }
-window.openLetterModal = openLetterModal;
-window.renderLetterStatusList = renderLetterStatusList;
 
 // ── 식단 탭 인라인 다이어트 설정 ──
-async function submitDietSetup() {
+export async function submitDietSetup() {
   const h = parseFloat(document.getElementById('ds-height')?.value);
   const w = parseFloat(document.getElementById('ds-weight')?.value);
   const age = parseInt(document.getElementById('ds-age')?.value);
   const tw = parseFloat(document.getElementById('ds-target-weight')?.value);
-  if (!h || !w || !age || !tw) { window.showToast?.('신장, 체중, 연령, 목표 체중을 입력해주세요', 2500, 'warning'); return; }
+  if (!h || !w || !age || !tw) { showToast('신장, 체중, 연령, 목표 체중을 입력해주세요', 2500, 'warning'); return; }
 
   // 체지방률: 미입력 시 BMI 기반 추정 (Deurenberg + 보수적 보정 -2%p)
   let bf = parseFloat(document.getElementById('ds-bodyfat')?.value);
@@ -1548,7 +1579,7 @@ async function submitDietSetup() {
   setup.style.opacity = '0';
   setup.style.transform = 'scale(0.95)';
 
-  setTimeout(() => {
+  setTimeout(async () => {
     setup.style.display = 'none';
     // 칼로리 트래커 표시 (애니메이션)
     const tracker = document.getElementById('wt-calorie-tracker');
@@ -1569,16 +1600,11 @@ async function submitDietSetup() {
       requestAnimationFrame(() => { summary.style.opacity = '1'; });
     }
     // 데이터 리렌더
-    const { loadWorkoutDate } = window._wtExports || {};
-    if (loadWorkoutDate) {
-      const t = new Date();
-      loadWorkoutDate(t.getFullYear(), t.getMonth(), t.getDate());
-    } else {
-      location.reload();
-    }
+    const { loadWorkoutDate } = await import('./workout/load.js');
+    const t = new Date();
+    loadWorkoutDate(t.getFullYear(), t.getMonth(), t.getDate());
   }, 300);
 }
-window.submitDietSetup = submitDietSetup;
 
 // "설정" 버튼 → 인라인 폼 다시 열기
 async function openDietSetupInline() {
@@ -1617,7 +1643,6 @@ async function openDietSetupInline() {
     });
   }, 200);
 }
-window.openDietSetupInline = openDietSetupInline;
 
 async function sendLetter() {
   const text = document.getElementById('letter-text')?.value.trim();
@@ -1631,14 +1656,13 @@ async function sendLetter() {
     if (textarea) textarea.value = '';
     btn.textContent = '보내기'; btn.disabled = false;
     renderLetterStatusList();
-    window.showToast?.('편지를 보냈어요. 상태는 시행전으로 표시됩니다', 2500, 'success');
+    showToast('편지를 보냈어요. 상태는 시행전으로 표시됩니다', 2500, 'success');
   } catch(e) {
     console.error('[letter]', e);
-    window.showToast?.('전송 실패: ' + e.message, 3000, 'error');
+    showToast('전송 실패: ' + e.message, 3000, 'error');
     btn.textContent = '보내기'; btn.disabled = false;
   }
 }
-window.sendLetter = sendLetter;
 
 // 페이지 로드 시 로그인 초기화
 document.addEventListener('DOMContentLoaded', () => {

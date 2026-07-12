@@ -1,3 +1,4 @@
+import { showToast } from './ui/toast.js';
 // ================================================================
 // pwa-fcm.js — FCM 푸시 알림 + PWA 설치 배너
 // ================================================================
@@ -190,10 +191,10 @@ export function showPWAInstallBanner() {
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0;">
           ${isIOS
-            ? `<button onclick="_showIOSInstallGuide()" style="padding:8px 16px;border:none;border-radius:999px;background:var(--primary,#22c55e);color:#fff;font-size:13px;font-weight:600;cursor:pointer;">방법 보기</button>`
-            : `<button onclick="installPWA();document.getElementById('pwa-install-banner')?.remove()" style="padding:8px 16px;border:none;border-radius:999px;background:var(--primary,#22c55e);color:#fff;font-size:13px;font-weight:600;cursor:pointer;">설치</button>`
+            ? `<button data-pwa-action="ios-guide" style="padding:8px 16px;border:none;border-radius:999px;background:var(--primary,#22c55e);color:#fff;font-size:13px;font-weight:600;cursor:pointer;">방법 보기</button>`
+            : `<button data-pwa-action="install" style="padding:8px 16px;border:none;border-radius:999px;background:var(--primary,#22c55e);color:#fff;font-size:13px;font-weight:600;cursor:pointer;">설치</button>`
           }
-          <button onclick="sessionStorage.setItem('pwa_banner_dismissed','1');document.getElementById('pwa-install-banner')?.remove()" style="padding:8px 10px;border:none;background:none;color:var(--text-tertiary,#888);font-size:16px;cursor:pointer;">✕</button>
+          <button data-pwa-action="dismiss" style="padding:8px 10px;border:none;background:none;color:var(--text-tertiary,#888);font-size:16px;cursor:pointer;">✕</button>
         </div>
       </div>
     `;
@@ -219,7 +220,7 @@ export function installPWA() {
       _deferredInstallPrompt = null;
     });
   } else {
-    window.showToast?.('이미 설치되었거나, 브라우저가 미지원. 메뉴에서 "홈 화면에 추가" 또는 "앱 설치"를 이용하세요', 4500, 'info');
+    showToast('이미 설치되었거나, 브라우저가 미지원. 메뉴에서 "홈 화면에 추가" 또는 "앱 설치"를 이용하세요', 4500, 'info');
   }
 }
 
@@ -244,7 +245,7 @@ window.addEventListener('appinstalled', () => {
   if (btn) btn.style.display = 'none';
 });
 
-window._showIOSInstallGuide = function() {
+function _showIOSInstallGuide() {
   const banner = document.getElementById('pwa-install-banner');
   if (banner) banner.remove();
   sessionStorage.setItem('pwa_banner_dismissed', '1');
@@ -254,7 +255,7 @@ window._showIOSInstallGuide = function() {
   modal.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;padding:20px;';
   modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
   modal.innerHTML = `
-    <div style="background:var(--surface,#fff);border-radius:16px;padding:24px;max-width:320px;width:100%;text-align:center;" onclick="event.stopPropagation()">
+    <div style="background:var(--surface,#fff);border-radius:16px;padding:24px;max-width:320px;width:100%;text-align:center;">
       <div style="font-size:40px;margin-bottom:12px;">🍅</div>
       <div style="font-size:16px;font-weight:700;color:var(--text,#111);margin-bottom:16px;">홈 화면에 추가하기</div>
       <div style="text-align:left;font-size:13px;color:var(--text-secondary,#555);line-height:1.8;">
@@ -262,15 +263,33 @@ window._showIOSInstallGuide = function() {
         <div style="padding:8px 0;border-bottom:1px solid var(--border,#e5e7eb);"><b>2.</b> <b>"홈 화면에 추가"</b> 선택</div>
         <div style="padding:8px 0;"><b>3.</b> 오른쪽 상단 <b>"추가"</b> 탭</div>
       </div>
-      <button onclick="document.getElementById('ios-install-guide')?.remove()" style="margin-top:16px;width:100%;padding:12px;border:none;border-radius:999px;background:var(--primary,#22c55e);color:#fff;font-size:14px;font-weight:600;cursor:pointer;">확인</button>
+      <button data-pwa-action="close-ios-guide" style="margin-top:16px;width:100%;padding:12px;border:none;border-radius:999px;background:var(--primary,#22c55e);color:#fff;font-size:14px;font-weight:600;cursor:pointer;">확인</button>
     </div>
   `;
   document.body.appendChild(modal);
-};
+}
 
-Object.assign(window, {
-  installPWA,
-});
+function _bindPwaActions(root = document) {
+  if (root.documentElement?.dataset.pwaActionsBound === '1') return;
+  if (root.documentElement) root.documentElement.dataset.pwaActionsBound = '1';
+  root.addEventListener('click', (event) => {
+    const control = event.target?.closest?.('[data-pwa-action]');
+    if (!control) return;
+    const action = control.dataset.pwaAction;
+    if (action === 'ios-guide') _showIOSInstallGuide();
+    if (action === 'install') {
+      void installPWA();
+      document.getElementById('pwa-install-banner')?.remove();
+    }
+    if (action === 'dismiss') {
+      sessionStorage.setItem('pwa_banner_dismissed', '1');
+      document.getElementById('pwa-install-banner')?.remove();
+    }
+    if (action === 'close-ios-guide') document.getElementById('ios-install-guide')?.remove();
+  });
+}
+
+_bindPwaActions();
 
 // Service Worker → 클라이언트 메시지 수신
 // firebase-messaging-sw.js의 notificationclick 핸들러에서 postMessage({ type:'notif_clicked', notifId })

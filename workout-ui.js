@@ -1,126 +1,14 @@
+import { showToast } from './ui/toast.js';
 // ================================================================
 // workout-ui.js — 운동 탭 UX 상태 머신 + 식단 사진/아코디언
 // ================================================================
 
 import {
-  wtToggleWineFree, wtToggleMealSkipped,
-  wtOpenExercisePicker, wtCloseExercisePicker,
-  wtOpenExerciseEditor, wtCloseExerciseEditor,
-  wtSaveExerciseFromEditor, wtDeleteExerciseFromEditor,
-  wtAddFoodItem, wtRemoveFoodItem,
-  openNutritionPhotoUpload,
-  wtStartWorkoutTimer, wtRestTimerShowIdle, wtRestTimerHideIdle,
-  wtOpenManualCardioInput,
-} from './render-workout.js?v=20260515v6';
-import { getDietPhotos, removeDietPhoto, setDietPhoto } from './diet/photo-store.js';
-
-// ── 운동 유형 단일 탭 ────────────────────────────────────────────
-// 이전: 복수 선택(Set). 현재: 한 번에 한 탭만 노출. 기록은 각 탭 독립 저장.
-let _wtActiveType = 'gym';
-
-const _WT_TYPE_SECTIONS = {
-  gym: 'wt-gym-section',
-  cf: 'wt-cf-section',
-  stretch: 'wt-stretch-section',
-  swimming: 'wt-swim-section',
-};
-
-const _WT_TYPE_TABS = {
-  gym: 'wt-chip-gym',
-  running: 'wt-chip-running',
-  'manual-cardio': 'wt-chip-cardio',
-  cf: 'wt-chip-cf',
-  stretch: 'wt-chip-stretch',
-  swimming: 'wt-chip-swimming',
-};
-
-function _isKnownType(type) {
-  return type === 'running' || type === 'manual-cardio' || !!_WT_TYPE_SECTIONS[type];
-}
-
-function _applyActive(type) {
-  Object.entries(_WT_TYPE_TABS).forEach(([t, id]) => {
-    const tab = document.getElementById(id);
-    if (tab) tab.classList.toggle('active', t === type);
-  });
-  Object.keys(_WT_TYPE_SECTIONS).forEach(t => {
-    const sec = document.getElementById(_WT_TYPE_SECTIONS[t]);
-    if (sec) sec.classList.toggle('wt-open', t === type);
-  });
-  if (type === 'running' || type === 'manual-cardio') return;
-  // B-2: 탭(유형 칩) 클릭은 "지금부터 이 종류 기록하겠다"는 의사 표시.
-  // → 이때만 타이머 바/메모/저장 섹션 오픈.
-  //   (로드 시점 자동 오픈은 load.js _restoreFlowState가 기록 유무로만 판단)
-  const timerBar = document.getElementById('wt-workout-timer-bar');
-  if (timerBar) timerBar.classList.add('wt-open');
-  document.getElementById('wt-memo-section')?.classList.add('wt-open');
-  document.getElementById('wt-save-section')?.classList.add('wt-open');
-}
-
-export function wtSwitchType(type) {
-  if (!_isKnownType(type)) return;
-  const isReclick = _wtActiveType === type;
-  _wtActiveType = type;
-  _applyActive(type);
-
-  if (type === 'running') {
-    if (typeof window.wtOpenRunningSession === 'function') {
-      window.wtOpenRunningSession();
-    } else {
-      import('./workout/running-session.js')
-        .then(m => m.wtOpenRunningSession?.())
-        .catch(e => console.warn('[workout-ui] running session open failed:', e));
-    }
-    return;
-  }
-
-  if (type === 'manual-cardio') {
-    try {
-      if (typeof window.wtOpenManualCardioInput === 'function') {
-        window.wtOpenManualCardioInput();
-      } else {
-        wtOpenManualCardioInput();
-      }
-    } catch (e) {
-      console.warn('[workout-ui] manual cardio open failed:', e);
-    }
-    return;
-  }
-
-  if (type === 'gym' && !isReclick) {
-    wtStartWorkoutTimer();
-    wtRestTimerShowIdle();
-  }
-};
-
-// 레거시 호환 — 기존 index.html의 onclick이 wtToggleType을 부를 수 있으니 alias
-window.wtSwitchType = wtSwitchType;
-window.wtToggleType = wtSwitchType;
-
-window._wtSetActiveType = function(type) {
-  if (!_isKnownType(type)) type = 'gym';
-  _wtActiveType = type;
-  _applyActive(type);
-};
-
-window._wtResetFlowUI = function() {
-  _wtActiveType = 'gym';
-  _applyActive('gym');
-  wtRestTimerHideIdle();
-  Object.values(_WT_TYPE_TABS).forEach(id => {
-    document.getElementById(id)?.classList.remove('has-record');
-  });
-};
-
-// 레거시 호환: load.js 이전 버전이 호출하던 함수
-window._wtRestoreTypes = function(types) {
-  if (!Array.isArray(types) || types.length === 0) return;
-  const first = types.find(t => _isKnownType(t)) || 'gym';
-  _wtActiveType = first;
-  _applyActive(first);
-};
-
-window.wtToggleWineFree         = wtToggleWineFree;
+  wtToggleMealSkipped,
+} from './render-workout.js';
+import { getDietPhotos, setDietPhoto } from './diet/photo-store.js';
+export { wtSwitchType } from './workout/type-ui.js';
+export { removeMealPhoto } from './diet/photo-actions.js';
 
 // ── 식단/운동 사진 업로드 ─────────────────────────────────────────
 export async function uploadMealPhoto(meal, input) {
@@ -133,10 +21,10 @@ export async function uploadMealPhoto(meal, input) {
   try {
     const b64 = await imageToBase64(file, maxDim, quality);
     setDietPhoto(meal, 'data:image/jpeg;base64,' + b64);
-    const { _renderMealPhotos } = await import('./render-workout.js?v=20260515v6');
+    const { _renderMealPhotos } = await import('./render-workout.js');
     _renderMealPhotos();
     if (meal === 'workout') {
-      const { saveWorkoutDay } = await import('./render-workout.js?v=20260515v6');
+      const { saveWorkoutDay } = await import('./render-workout.js');
       saveWorkoutDay().catch(e => console.error('Auto-save after workout photo:', e));
     } else {
       const { _autoSaveDiet } = await import('./workout/save.js');
@@ -145,18 +33,6 @@ export async function uploadMealPhoto(meal, input) {
   } catch(e) { console.error('Photo upload error:', e); }
   input.value = '';
 };
-export async function removeMealPhoto(meal) {
-  removeDietPhoto(meal);
-  const { _renderMealPhotos } = await import('./render-workout.js?v=20260515v6');
-  _renderMealPhotos();
-  if (meal === 'workout') {
-    const { saveWorkoutDay } = await import('./render-workout.js?v=20260515v6');
-    saveWorkoutDay().catch(e => console.error('Auto-save after workout photo remove:', e));
-  } else {
-    const { _autoSaveDiet } = await import('./workout/save.js');
-    _autoSaveDiet({ meal }).catch(e => console.error('Auto-save after meal photo remove:', e));
-  }
-}
 
 // ── AI 추정 전용 업로드 ─────────────────────────────────────────
 // 일반 사진 업로드와 분리. AI 버튼을 통해서만 트리거.
@@ -174,7 +50,7 @@ export async function uploadMealPhotoAI(meal, input) {
 
     // 1) 사진은 바로 끼니에 표시 (일반 사진 업로드와 동일한 시각 UX)
     setDietPhoto(meal, dataUrl);
-    const { _renderMealPhotos } = await import('./render-workout.js?v=20260515v6');
+    const { _renderMealPhotos } = await import('./render-workout.js');
     _renderMealPhotos();
 
     // 2) AI 추정 배너 시작 (pending → preview/error)
@@ -304,12 +180,12 @@ export async function runBulkMealAIUpload(input) {
   const files = Array.from(input.files || []);
   const meals = [..._bulkAISelection];
   if (!meals.length) {
-    window.showToast?.('끼니 칩을 먼저 선택해주세요', 2200, 'warning');
+    showToast('끼니 칩을 먼저 선택해주세요', 2200, 'warning');
     input.value = '';
     return;
   }
   if (files.length !== meals.length) {
-    window.showToast?.(`선택한 칩 ${meals.length}개와 사진 ${files.length}개가 맞지 않아요`, 3200, 'warning');
+    showToast(`선택한 칩 ${meals.length}개와 사진 ${files.length}개가 맞지 않아요`, 3200, 'warning');
     _setBulkAIStatus('선택한 칩 수와 사진 수를 맞춰주세요.', 'warning');
     input.value = '';
     return;
@@ -322,7 +198,7 @@ export async function runBulkMealAIUpload(input) {
   try {
     const { imageToBase64 } = await import('./data.js');
     const { runAIEstimate } = await import('./workout/ai-estimate.js');
-    const { _renderMealPhotos } = await import('./render-workout.js?v=20260515v6');
+    const { _renderMealPhotos } = await import('./render-workout.js');
     const { _autoSaveDiet } = await import('./workout/save.js');
     const { S } = await import('./workout/state.js');
     const startDateKey = _bulkDateKeyFromState(S);
@@ -347,30 +223,20 @@ export async function runBulkMealAIUpload(input) {
 
     await _autoSaveDiet();
     _setBulkAIStatus(`${meals.length}개 끼니가 자동 등록됐어요.`, 'success');
-    window.showToast?.('일괄 AI 식단 등록 완료', 2500, 'success');
+    showToast('일괄 AI 식단 등록 완료', 2500, 'success');
     _bulkAISelection = [];
     _syncBulkAIChips();
   } catch (e) {
     console.error('[runBulkMealAIUpload] error:', e);
     const msg = _formatMealAIError(e);
     _setBulkAIStatus('분석 실패: ' + msg, 'error');
-    window.showToast?.('일괄 등록 실패: ' + msg, 3500, 'error');
+    showToast('일괄 등록 실패: ' + msg, 3500, 'error');
   } finally {
     if (uploadBtn) uploadBtn.disabled = false;
     input.value = '';
   }
 };
-
-window.openMealPhotoLightbox = function(src) {
-  const lb = document.createElement('div');
-  lb.className = 'meal-photo-lightbox';
-  lb.innerHTML = `<img src="${src}">`;
-  lb.onclick = () => lb.remove();
-  document.body.appendChild(lb);
-};
-
 // ── 식단 아코디언/스킵 ──────────────────────────────────────────
-window.wtToggleMealSkipped      = wtToggleMealSkipped;
 export function toggleDietMealRow(headerEl) {
   const row = headerEl.closest('.diet-toss-row');
   if (!row) return;
@@ -395,24 +261,3 @@ export function wtSkipMeal(meal) {
     if (mealInput) mealInput.value = '';
   }
 };
-
-// ── 운동 종목 편집 ──────────────────────────────────────────────
-Object.assign(window, {
-  uploadMealPhoto,
-  uploadMealPhotoAI,
-  removeMealPhoto,
-  openBulkMealAI,
-  toggleBulkMealAIChip,
-  runBulkMealAIUpload,
-  toggleDietMealRow,
-  wtSkipMeal,
-  wtOpenExercisePicker,
-  wtCloseExercisePicker,
-  wtOpenExerciseEditor,
-  wtCloseExerciseEditor,
-  wtSaveExerciseFromEditor,
-  wtDeleteExerciseFromEditor,
-  wtAddFoodItem,
-  wtRemoveFoodItem,
-  openNutritionPhotoUpload,
-});

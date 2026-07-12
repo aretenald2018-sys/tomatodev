@@ -1,11 +1,16 @@
+import { showToast } from '../ui/toast.js';
+import { openGuildModal } from '../feature-login.js';
 export const MODAL_HTML = `
-<div class="modal-backdrop" id="guild-info-modal" style="display:none;" onclick="closeGuildInfoModal(event)">
+<div class="modal-backdrop" id="guild-info-modal" style="display:none;" data-guild-info-action="close">
   <div class="modal-sheet" style="max-width:460px;">
     <div class="sheet-handle"></div>
     <div id="guild-info-content" style="padding-bottom:8px;"></div>
   </div>
 </div>
 `;
+
+let _guildInviteAccounts = [];
+let _guildInfoName = '';
 
 function _escapeHtml(value) {
   return String(value || '')
@@ -104,7 +109,6 @@ async function _renderGuildInfo(guildName) {
   const canManage = !!user && (user.id === leaderId || isAdmin());
   const actionLabel = isPending ? '가입 승인 대기 중' : '가입 신청';
   const actionDisabled = isPending ? 'disabled' : '';
-  const actionFn = "openGuildModal(); closeGuildInfoModal();";
   const avatarHtml = guildMembers.slice(0, 5).map((member) => {
     const initial = _escapeHtml((member.name || '?').charAt(0));
     return `<div style="width:28px;height:28px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--text);margin-left:-6px;border:2px solid var(--surface);">${initial}</div>`;
@@ -134,7 +138,7 @@ async function _renderGuildInfo(guildName) {
             ${String(guildIcon).startsWith('data:') ? `<img src="${guildIcon}" style="width:100%;height:100%;object-fit:cover;">` : guildIcon}
           </div>
           ${canManage ? `
-            <button type="button" onclick="openGuildPhotoPicker()" style="position:absolute;right:-4px;bottom:-4px;width:26px;height:26px;border:none;border-radius:50%;background:linear-gradient(135deg,#fa342c,#ff8a3d);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 18px rgba(250,52,44,0.24);cursor:pointer;">
+            <button type="button" data-guild-info-action="photo-picker" style="position:absolute;right:-4px;bottom:-4px;width:26px;height:26px;border:none;border-radius:50%;background:linear-gradient(135deg,#fa342c,#ff8a3d);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 18px rgba(250,52,44,0.24);cursor:pointer;">
               <span style="font-size:16px;font-weight:700;line-height:1;">+</span>
             </button>
           ` : ''}
@@ -145,8 +149,8 @@ async function _renderGuildInfo(guildName) {
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-        ${canManage ? `<button class="tds-btn secondary md" type="button" onclick="toggleGuildInviteSection()">멤버 초대</button>` : ''}
-        <button class="tds-btn ghost md" type="button" onclick="closeGuildInfoModal()">닫기</button>
+        ${canManage ? `<button class="tds-btn secondary md" type="button" data-guild-info-action="toggle-invite">멤버 초대</button>` : ''}
+        <button class="tds-btn ghost md" type="button" data-guild-info-action="close">닫기</button>
       </div>
     </div>
 
@@ -180,10 +184,10 @@ async function _renderGuildInfo(guildName) {
     ${canManage ? `
       <div id="guild-invite-section" style="display:none;margin-bottom:12px;padding:12px;border-radius:14px;background:var(--surface2);">
         <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;">이름 또는 별명으로 초대</div>
-        <input id="guild-invite-query" type="text" placeholder="예: 김태우 / 별명" oninput="searchGuildInviteCandidates('${String(guildName).replace(/'/g, "\\'")}')" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-size:13px;box-sizing:border-box;">
+        <input id="guild-invite-query" type="text" placeholder="예: 김태우 / 별명" data-guild-info-input-action="search-invite" data-guild-name="${_escapeHtml(guildName)}" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-size:13px;box-sizing:border-box;">
         <div id="guild-invite-results" style="margin-top:8px;max-height:180px;overflow-y:auto;">
           ${inviteableAccounts.slice(0, 8).map((acc) => `
-            <button onclick="sendGuildInvite('${String(guildName).replace(/'/g, "\\'")}','${String(acc.id).replace(/'/g, "\\'")}')" style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:10px 12px;margin-bottom:6px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);cursor:pointer;">
+            <button data-guild-info-action="send-invite" data-guild-name="${_escapeHtml(guildName)}" data-user-id="${_escapeHtml(acc.id)}" style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:10px 12px;margin-bottom:6px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);cursor:pointer;">
               <span>${_escapeHtml(_displayName(acc))}</span>
               <span style="font-size:11px;color:var(--text-tertiary);">${_escapeHtml(_personLabel(acc) || _displayName(acc))}</span>
             </button>
@@ -197,14 +201,13 @@ async function _renderGuildInfo(guildName) {
 
     ${!isMember ? `
       <div style="display:flex;gap:8px;">
-        <button class="tds-btn fill md" style="flex:1;" ${actionDisabled} onclick="${actionFn}">${actionLabel}</button>
+        <button class="tds-btn fill md" style="flex:1;" ${actionDisabled} data-guild-info-action="open-join-modal">${actionLabel}</button>
       </div>
     ` : ''}
   `;
 
-  window.__guildInviteAccounts = inviteableAccounts;
-  window.__guildInfoName = guildName;
-  window.__guildInfoTodayKey = _todayDateKey();
+  _guildInviteAccounts = inviteableAccounts;
+  _guildInfoName = guildName;
 }
 
 export async function openGuildInfoModal(guildName) {
@@ -220,12 +223,12 @@ export function closeGuildInfoModal(event) {
   if (modal) modal.style.display = 'none';
 }
 
-window.openGuildPhotoPicker = function() {
+function openGuildPhotoPicker() {
   const temp = document.createElement('input');
   temp.type = 'file';
   temp.accept = 'image/*';
   temp.addEventListener('change', async () => {
-    const guildName = window.__guildInfoName;
+    const guildName = _guildInfoName;
     const file = temp.files?.[0];
     if (!guildName || !file) return;
     const { updateGuild } = await import('../data.js');
@@ -235,49 +238,70 @@ window.openGuildPhotoPicker = function() {
     await _renderGuildInfo(guildName);
   }, { once: true });
   temp.click();
-};
+}
 
-window.toggleGuildInviteSection = function() {
+function toggleGuildInviteSection() {
   const el = document.getElementById('guild-invite-section');
   if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
-};
+}
 
-window.removeGuildPhoto = async function(guildName) {
+async function removeGuildPhoto(guildName) {
   const { updateGuild } = await import('../data.js');
   await updateGuild(guildName, { icon: '🏠' });
   await _renderGuildInfo(guildName);
-};
+}
 
-window.searchGuildInviteCandidates = function(guildName) {
+function searchGuildInviteCandidates(guildName) {
   const query = document.getElementById('guild-invite-query')?.value?.trim().toLowerCase() || '';
   const wrap = document.getElementById('guild-invite-results');
   if (!wrap) return;
-  const items = (window.__guildInviteAccounts || []).filter((acc) => {
+  const items = _guildInviteAccounts.filter((acc) => {
     if (!query) return true;
     const name = _displayName(acc).toLowerCase();
     const id = String(acc.id || '').toLowerCase();
     return name.includes(query) || id.includes(query);
   });
   wrap.innerHTML = items.slice(0, 12).map((acc) => `
-    <button onclick="sendGuildInvite('${String(guildName).replace(/'/g, "\\'")}','${String(acc.id).replace(/'/g, "\\'")}')" style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:10px 12px;margin-bottom:6px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);cursor:pointer;">
+    <button data-guild-info-action="send-invite" data-guild-name="${_escapeHtml(guildName)}" data-user-id="${_escapeHtml(acc.id)}" style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:10px 12px;margin-bottom:6px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);cursor:pointer;">
       <span>${_escapeHtml(_displayName(acc))}</span>
       <span style="font-size:11px;color:var(--text-tertiary);">${_escapeHtml(_personLabel(acc) || _displayName(acc))}</span>
     </button>
   `).join('') || '<div style="font-size:12px;color:var(--text-tertiary);padding:8px 0;">검색 결과가 없어요</div>';
-};
+}
 
-window.sendGuildInvite = async function(guildName, userId) {
+async function sendGuildInvite(guildName, userId) {
   const { inviteUserToGuild, getCurrentUser } = await import('../data.js');
   const inviter = getCurrentUser();
   const inviterName = _displayName(inviter);
   const result = await inviteUserToGuild(guildName, userId, inviterName);
   if (result?.error) {
-    window.showToast?.(result.error, 3500, 'error');
+    showToast(result.error, 3500, 'error');
     return;
   }
-  window.showToast?.('길드 초대를 보냈어요', 2500, 'success');
+  showToast('길드 초대를 보냈어요', 2500, 'success');
   await _renderGuildInfo(guildName);
-};
+}
 
-window.openGuildInfoModal = openGuildInfoModal;
-window.closeGuildInfoModal = closeGuildInfoModal;
+function _bindGuildInfoActions(root = document) {
+  if (root.documentElement?.dataset.guildInfoActionsBound === '1') return;
+  if (root.documentElement) root.documentElement.dataset.guildInfoActionsBound = '1';
+  root.addEventListener('click', (event) => {
+    const control = event.target?.closest?.('[data-guild-info-action]');
+    if (!control) return;
+    const action = control.dataset.guildInfoAction;
+    if (action === 'close' && (control.id !== 'guild-info-modal' || event.target === control)) closeGuildInfoModal();
+    if (action === 'photo-picker') openGuildPhotoPicker();
+    if (action === 'toggle-invite') toggleGuildInviteSection();
+    if (action === 'send-invite') void sendGuildInvite(control.dataset.guildName || '', control.dataset.userId || '');
+    if (action === 'open-join-modal') {
+      closeGuildInfoModal();
+      void openGuildModal();
+    }
+  });
+  root.addEventListener('input', (event) => {
+    const control = event.target?.closest?.('[data-guild-info-input-action="search-invite"]');
+    if (control) searchGuildInviteCandidates(control.dataset.guildName || '');
+  });
+}
+
+_bindGuildInfoActions();

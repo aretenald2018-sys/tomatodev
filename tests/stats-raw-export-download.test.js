@@ -1,10 +1,11 @@
+import { readAppCssSync } from './helpers/css-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const indexHtml = readFileSync('index.html', 'utf8');
 const statsJs = readFileSync('render-stats.js', 'utf8');
-const styleCss = readFileSync('style.css', 'utf8');
+const styleCss = readAppCssSync();
 const swJs = readFileSync('sw.js', 'utf8') + readFileSync('runtime-assets.js', 'utf8');
 
 test('stats page places raw export button in the period analysis control card', () => {
@@ -34,7 +35,7 @@ test('stats raw export binds download action directly and gives toast feedback',
   assert.match(statsJs, /\[data-stats-raw-export\]/);
   assert.match(statsJs, /tomatofarm-raw-stats-\$\{payload\.today\}\.json/);
   assert.match(statsJs, /application\/json;charset=utf-8/);
-  assert.match(statsJs, /showToast\?\.\(`전체통계 \$\{payload\.counts\.totalDays\}일 raw 데이터를 다운로드했어요`/);
+  assert.match(statsJs, /showToast\(`전체통계 \$\{payload\.counts\.totalDays\}일 raw 데이터를 다운로드했어요`/);
 });
 
 test('stats raw export button uses compact TDS-style controls and bumped cache', () => {

@@ -90,17 +90,14 @@ export function openMirandaQuestModal() {
   const modal = _modal();
   if (modal) modal.setAttribute('aria-hidden', 'false');
   _startSpeechTyping(modal);
-  window._openModal?.('miranda-quest-modal');
+  openModal('miranda-quest-modal');
 }
 
 export function closeMirandaQuestModal() {
   _stopSpeechTyping();
   const modal = _modal();
   if (modal) modal.setAttribute('aria-hidden', 'true');
-  window._closeModal?.('miranda-quest-modal');
+  closeModal('miranda-quest-modal');
 }
 
-Object.assign(window, {
-  openMirandaQuestModal,
-  closeMirandaQuestModal,
-});
+import { closeModal, openModal } from '../app/overlay-stack.js';

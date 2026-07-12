@@ -1,10 +1,11 @@
+import { readAppCssSync } from './helpers/css-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const calendarJs = readFileSync(new URL('../render-calendar.js', import.meta.url), 'utf8');
 const workoutIndexJs = readFileSync(new URL('../workout/index.js', import.meta.url), 'utf8');
-const styleCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+const styleCss = readAppCssSync();
 const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8') + readFileSync(new URL('../runtime-assets.js', import.meta.url), 'utf8');
 
 function sliceByFirstBrace(source, startToken) {

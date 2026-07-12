@@ -1,9 +1,10 @@
+import { readAppCssSync } from './helpers/css-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const statsJs = readFileSync('render-stats.js', 'utf8');
-const css = readFileSync('style.css', 'utf8');
+const css = readAppCssSync();
 const swJs = readFileSync('sw.js', 'utf8') + readFileSync('runtime-assets.js', 'utf8');
 
 function sliceByFirstBrace(source, startToken) {

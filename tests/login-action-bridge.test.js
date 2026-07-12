@@ -44,11 +44,11 @@ test('login screen markup uses data-login actions instead of inline handlers', (
 test('feature-login binds login actions with a scoped idempotent bridge', () => {
   assert.match(featureLoginJs, /function _bindLoginActions\(root = document\)/);
   assert.match(featureLoginJs, /doc\.documentElement\.dataset\.loginActionsBound === '1'/);
-  assert.match(featureLoginJs, /return !!control\?\.closest\?\.\('#login-screen, #login-pw-modal'\)/);
-  assert.match(featureLoginJs, /doc\.addEventListener\('click', \(event\) => \{[\s\S]*\[data-login-action\][\s\S]*_runLoginAction\(control\.dataset\.loginAction, control\)[\s\S]*\}, true\)/);
-  assert.match(featureLoginJs, /doc\.addEventListener\('keydown', \(event\) => \{[\s\S]*\[data-login-enter-action\][\s\S]*event\.preventDefault\(\)[\s\S]*_runLoginAction\(control\.dataset\.loginEnterAction, control\)[\s\S]*\}, true\)/);
-  assert.match(featureLoginJs, /doc\.addEventListener\('input', \(event\) => \{[\s\S]*\[data-login-input-action\][\s\S]*_runLoginAction\(control\.dataset\.loginInputAction, control\)[\s\S]*\}, true\)/);
-  assert.match(featureLoginJs, /doc\.addEventListener\('focusin', \(event\) => \{[\s\S]*\[data-login-focus-action\][\s\S]*_runLoginAction\(control\.dataset\.loginFocusAction, control\)[\s\S]*\}, true\)/);
+  assert.match(featureLoginJs, /return !!control\?\.closest\?\.\('#login-screen, #login-pw-modal, #guild-onboarding-overlay, #dynamic-modal, #guild-modal'\)/);
+  assert.match(featureLoginJs, /doc\.addEventListener\('click', \(event\) => \{[\s\S]*\[data-login-action\][\s\S]*_runLoginAction\(control\.dataset\.loginAction, control, event\)[\s\S]*\}, true\)/);
+  assert.match(featureLoginJs, /doc\.addEventListener\('keydown', \(event\) => \{[\s\S]*\[data-login-enter-action\][\s\S]*event\.preventDefault\(\)[\s\S]*_runLoginAction\(control\.dataset\.loginEnterAction, control, event\)[\s\S]*\}, true\)/);
+  assert.match(featureLoginJs, /doc\.addEventListener\('input', \(event\) => \{[\s\S]*\[data-login-input-action\][\s\S]*_runLoginAction\(control\.dataset\.loginInputAction, control, event\)[\s\S]*\}, true\)/);
+  assert.match(featureLoginJs, /doc\.addEventListener\('focusin', \(event\) => \{[\s\S]*\[data-login-focus-action\][\s\S]*_runLoginAction\(control\.dataset\.loginFocusAction, control, event\)[\s\S]*\}, true\)/);
   assert.match(featureLoginJs, /case 'create-account-login':[\s\S]*createAccountAndLogin\(\)/);
   assert.match(featureLoginJs, /case 'create-account-signup':[\s\S]*createAccountFromSignup\(\)/);
   assert.match(featureLoginJs, /case 'verify-and-login':[\s\S]*verifyAndLogin\(\)/);
@@ -65,7 +65,8 @@ test('login restore skips guild onboarding when a running draft can resume', () 
 
 test('APK login reboots the in-page user session without a WebView reload', () => {
   assert.match(featureLoginJs, /function _continueToAppAfterLogin\(\)/);
-  assert.match(featureLoginJs, /window\.__startTomatoUserSession/);
+  assert.match(featureLoginJs, /new CustomEvent\('app:start-user-session', \{ detail: \{ resolve \} \}\)/);
+  assert.match(appJs, /document\.addEventListener\('app:start-user-session'/);
   assert.match(featureLoginJs, /function _runDeferredLoginMaintenance\(\)/);
   assert.match(featureLoginJs, /LOGIN_SESSION_RESTORE_TIMEOUT_MS = 1800/);
   assert.match(featureLoginJs, /restoreUserFromBackup\(\),[\s\S]*LOGIN_SESSION_RESTORE_TIMEOUT_MS/);
@@ -73,7 +74,7 @@ test('APK login reboots the in-page user session without a WebView reload', () =
   for (const [start, end] of [
     ['async function selectAccount', 'async function verifyAndLogin'],
     ['async function verifyAndLogin', 'function closePasswordModal'],
-    ['async function createAccountFromSignup', 'window.createAccountFromSignup'],
+    ['async function createAccountFromSignup', 'function toggleSignupGuild'],
     ['async function createAccountAndLogin', 'async function logoutAccount'],
   ]) {
     const loginPath = sliceBetween(featureLoginJs, start, end);
@@ -82,7 +83,7 @@ test('APK login reboots the in-page user session without a WebView reload', () =
   }
 
   assert.match(appJs, /function startTomatoUserSession\(\) \{[\s\S]*return init\(\);[\s\S]*\}/);
-  assert.match(appJs, /__startTomatoUserSession:\s*startTomatoUserSession/);
+  assert.doesNotMatch(appJs, /__startTomatoUserSession:\s*startTomatoUserSession/);
   assert.match(appJs, /await _withTimeout\(loadAndInjectModals\(\), 3000, 'login modal load'\);/);
 });
 

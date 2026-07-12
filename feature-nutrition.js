@@ -99,11 +99,11 @@ function _renderNutritionRow(item, { icon = '🏠', removable = false, isCSV = f
   const manufacturer = _escapeHtml(canonical.brand || '');
   const { kcal, carbs, protein, fat } = display.nutrition;
   const removeBtn = removable
-    ? `<button onclick="event.stopPropagation(); removeFromFavorites('${canonical.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;flex-shrink:0" title="즐겨찾기에서 제거">✕</button>`
+    ? `<button data-nutrition-action="remove-favorite" data-item-id="${canonical.id}" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;flex-shrink:0" title="즐겨찾기에서 제거">✕</button>`
     : '';
   return `
     <div class="nutrition-result-row"${removable ? ' style="display:flex;justify-content:space-between;align-items:center"' : ''}>
-      <div onclick="selectNutritionItemFromCache('${itemDataKey}')" style="cursor:pointer;flex:1">
+      <div data-nutrition-action="select-cache" data-item-key="${itemDataKey}" style="cursor:pointer;flex:1">
         <div class="nutrition-result-name">${icon} ${name}${manufacturer ? ` <span style="color:var(--muted);font-size:10px">· ${manufacturer}</span>` : ''}</div>
         <div class="nutrition-result-meta">
           <span>${_escapeHtml(display.serving.label || canonical.base?.label || '100g')}</span><span>${Math.round(kcal)}kcal</span>
@@ -192,7 +192,7 @@ export async function renderNutritionSearchResults() {
   }
 
   html += `<div style="padding:14px;text-align:center;border-top:1px solid var(--border);margin-top:8px">
-    <button onclick="openNutritionDirectAdd()" style="background:none;border:1px dashed var(--accent);border-radius:8px;color:var(--accent);font-size:12px;font-weight:600;padding:10px 20px;cursor:pointer;width:100%">
+    <button data-nutrition-action="open-direct-add" style="background:none;border:1px dashed var(--accent);border-radius:8px;color:var(--accent);font-size:12px;font-weight:600;padding:10px 20px;cursor:pointer;width:100%">
       ➕ 직접 추가 (사진/텍스트 파싱)
     </button>
   </div>`;
@@ -357,7 +357,7 @@ function _buildRecipeResultsHtml(q) {
     const ps = _calcPerServing(r);
     if (!ps) return '';
     return `
-      <div class="nutrition-result-row" onclick="selectCookingRecipeForDiet('${r.id}')" style="cursor:pointer">
+      <div class="nutrition-result-row" data-nutrition-action="select-recipe" data-recipe-id="${r.id}" style="cursor:pointer">
         <div class="nutrition-result-name">🍳 ${r.name} <span style="color:var(--muted);font-size:10px">${r.servings||1}인분</span></div>
         <div class="nutrition-result-meta">
           <span>${ps.kcal}kcal</span>
@@ -422,15 +422,30 @@ export function selectNutritionItemFromCache(itemDataKey) {
 }
 
 // ── window 등록 (self-register) ─────────────────────────────────
-Object.assign(window, {
-  openNutritionSearch,
-  closeNutritionSearch,
-  debouncedNutritionSearch,
-  renderNutritionSearchResults,
-  renderNutritionSearchInitial,
-  selectNutritionItem,
-  selectNutritionItemFromCache,
-  openNutritionDirectAdd,
-  removeFromFavorites,
-  selectCookingRecipeForDiet,
+function _bindNutritionActions(root = document) {
+  if (root.documentElement?.dataset.nutritionActionsBound === '1') return;
+  if (root.documentElement) root.documentElement.dataset.nutritionActionsBound = '1';
+  root.addEventListener('click', (event) => {
+    const control = event.target?.closest?.('[data-nutrition-action]');
+    if (!control) return;
+    const action = control.dataset.nutritionAction;
+    if (action === 'close-search') closeNutritionSearch(event);
+    if (action === 'open-direct-add') openNutritionDirectAdd();
+    if (action === 'remove-favorite') {
+      event.stopPropagation();
+      void removeFromFavorites(control.dataset.itemId || '');
+    }
+    if (action === 'select-cache') selectNutritionItemFromCache(control.dataset.itemKey || '');
+    if (action === 'select-recipe') selectCookingRecipeForDiet(control.dataset.recipeId || '');
+  });
+  root.addEventListener('input', (event) => {
+    if (event.target?.matches?.('[data-nutrition-input-action="search"]')) debouncedNutritionSearch();
+  });
+}
+
+_bindNutritionActions();
+document.addEventListener('nutrition:database-changed', () => {
+  if (document.getElementById('nutrition-search-modal')?.classList.contains('open')) {
+    void renderNutritionSearchResults();
+  }
 });

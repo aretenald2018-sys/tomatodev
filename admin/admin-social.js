@@ -1,3 +1,4 @@
+import { showToast } from '../ui/toast.js';
 // ================================================================
 // admin/admin-social.js — 소셜 ("커뮤니티 건강" 뷰)
 // ================================================================
@@ -94,22 +95,14 @@ async function _renderGuildAdminPanel() {
           </div>
         </div>
         <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
-          <button onclick="window._adminOpenGuildEditor('${_enc(guildId)}')" style="padding:6px 10px;border:none;border-radius:12px;background:var(--primary);color:#fff;font-size:11px;font-weight:700;cursor:pointer;">편집</button>
-          <button type="button" data-guild-members="${_enc(guildId)}" style="padding:6px 10px;border:none;border-radius:12px;background:var(--hig-green,#079171);color:#fff;font-size:11px;font-weight:700;cursor:pointer;">멤버 관리</button>
-          <button onclick="window._adminDeleteGuild('${_enc(guildId)}')" style="padding:6px 10px;border:none;border-radius:12px;background:var(--hig-red,#fa342c);color:#fff;font-size:11px;font-weight:700;cursor:pointer;">삭제</button>
+          <button type="button" data-admin-social-action="edit-guild" data-guild-id="${_enc(guildId)}" style="padding:6px 10px;border:none;border-radius:12px;background:var(--primary);color:#fff;font-size:11px;font-weight:700;cursor:pointer;">편집</button>
+          <button type="button" data-admin-social-action="members" data-guild-id="${_enc(guildId)}" style="padding:6px 10px;border:none;border-radius:12px;background:var(--hig-green,#079171);color:#fff;font-size:11px;font-weight:700;cursor:pointer;">멤버 관리</button>
+          <button type="button" data-admin-social-action="delete-guild" data-guild-id="${_enc(guildId)}" style="padding:6px 10px;border:none;border-radius:12px;background:var(--hig-red,#fa342c);color:#fff;font-size:11px;font-weight:700;cursor:pointer;">삭제</button>
         </div>
       </div>
     `;
   }).join('');
 
-  wrap.onclick = (event) => {
-    const button = event.target.closest('[data-guild-members]');
-    if (!button) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const guildIdEncoded = button.getAttribute('data-guild-members') || '';
-    window._adminOpenGuildMembers(guildIdEncoded);
-  };
 }
 
 /**
@@ -280,7 +273,7 @@ export function renderSocialSection(container, data) {
     <div style="${CARD_STYLE}">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
         <div style="${SECTION_TITLE};margin-bottom:0;">길드 관리</div>
-        <button onclick="window._adminOpenGuildEditor('')" style="padding:6px 14px;border:none;border-radius:12px;background:var(--primary);color:#fff;font-size:12px;font-weight:700;cursor:pointer;">+ 새 길드</button>
+        <button type="button" data-admin-social-action="edit-guild" data-guild-id="" style="padding:6px 14px;border:none;border-radius:12px;background:var(--primary);color:#fff;font-size:12px;font-weight:700;cursor:pointer;">+ 새 길드</button>
       </div>
       <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:10px;">길드 소개, 아이콘, 리더, 멤버를 여기서 관리합니다.</div>
       <div id="admin-guild-admin">
@@ -288,6 +281,15 @@ export function renderSocialSection(container, data) {
       </div>
     </div>
   `;
+  container.onclick = (event) => {
+    const button = event.target.closest('[data-admin-social-action]');
+    if (!button || !container.contains(button)) return;
+    event.preventDefault();
+    const guildIdEncoded = button.dataset.guildId || '';
+    if (button.dataset.adminSocialAction === 'edit-guild') void _openGuildEditor(guildIdEncoded);
+    if (button.dataset.adminSocialAction === 'members') void _openGuildMembers(guildIdEncoded);
+    if (button.dataset.adminSocialAction === 'delete-guild') void _deleteGuild(guildIdEncoded);
+  };
 
   // 차트 렌더
   const trendWrap = document.getElementById('admin-social-trend-wrap');
@@ -305,7 +307,7 @@ export function renderSocialSection(container, data) {
   });
 }
 
-window._adminOpenGuildEditor = async function(guildIdEncoded) {
+async function _openGuildEditor(guildIdEncoded) {
   const guildId = decodeURIComponent(guildIdEncoded || '');
   const guilds = await getAllGuilds();
   const guild = guilds.find((item) => (item.id || item.name) === guildId) || null;
@@ -315,8 +317,8 @@ window._adminOpenGuildEditor = async function(guildIdEncoded) {
   modal.id = 'dynamic-modal';
   document.body.appendChild(modal);
   modal.innerHTML = `
-    <div class="modal-backdrop" style="display:flex;z-index:10000;" onclick="if(event.target===this)document.getElementById('dynamic-modal')?.remove();">
-      <div class="modal-sheet" style="max-width:440px;padding:24px;" onclick="event.stopPropagation()">
+    <div class="modal-backdrop" data-admin-guild-backdrop style="display:flex;z-index:10000;">
+      <div class="modal-sheet" style="max-width:440px;padding:24px;">
         <div class="sheet-handle"></div>
         <div style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:16px;">${guild ? '길드 편집' : '새 길드 만들기'}</div>
         <div style="margin-bottom:12px;">
@@ -338,22 +340,28 @@ window._adminOpenGuildEditor = async function(guildIdEncoded) {
           <textarea id="guild-edit-desc" style="width:100%;min-height:100px;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:13px;color:var(--text);background:var(--surface);outline:none;resize:vertical;font-family:inherit;box-sizing:border-box;line-height:1.6;" placeholder="길드 소개를 적어주세요">${_escapeHtml(guild?.description || '')}</textarea>
         </div>
         <div style="display:flex;gap:8px;">
-          <button onclick="document.getElementById('dynamic-modal')?.remove()" style="flex:1;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text-secondary);font-size:14px;font-weight:600;cursor:pointer;">취소</button>
-          <button onclick="window._adminSaveGuildEditor('${_enc(guildId || '')}')" style="flex:2;padding:14px;border:none;border-radius:12px;background:var(--primary);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">저장</button>
+          <button type="button" data-admin-guild-action="close" style="flex:1;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text-secondary);font-size:14px;font-weight:600;cursor:pointer;">취소</button>
+          <button type="button" data-admin-guild-action="save" data-guild-id="${_enc(guildId || '')}" style="flex:2;padding:14px;border:none;border-radius:12px;background:var(--primary);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">저장</button>
         </div>
       </div>
     </div>
   `;
+  modal.onclick = (event) => {
+    const backdrop = event.target.closest('[data-admin-guild-backdrop]');
+    if (event.target === backdrop || event.target.closest('[data-admin-guild-action="close"]')) modal.remove();
+    const save = event.target.closest('[data-admin-guild-action="save"]');
+    if (save) void _saveGuildEditor(save.dataset.guildId);
+  };
 };
 
-window._adminSaveGuildEditor = async function(originalGuildIdEncoded) {
+async function _saveGuildEditor(originalGuildIdEncoded) {
   const originalGuildId = decodeURIComponent(originalGuildIdEncoded || '');
   const name = document.getElementById('guild-edit-name')?.value.trim();
   const description = document.getElementById('guild-edit-desc')?.value.trim();
   const imageFile = document.getElementById('guild-edit-image-file')?.files?.[0] || null;
 
   if (!name) {
-    if (typeof window.showToast === 'function') window.showToast('길드명을 입력하세요.', 3000, 'warning');
+    if (typeof showToast === 'function') showToast('길드명을 입력하세요.', 3000, 'warning');
     return;
   }
 
@@ -363,7 +371,7 @@ window._adminSaveGuildEditor = async function(originalGuildIdEncoded) {
     const currentUsers = await getAccountList();
     const leaderId = currentUsers.find((acc) => !acc.id.includes('(guest)'))?.id;
     if (!leaderId) {
-      if (typeof window.showToast === 'function') window.showToast('리더로 지정할 사용자가 없어요.', 3000, 'warning');
+      if (typeof showToast === 'function') showToast('리더로 지정할 사용자가 없어요.', 3000, 'warning');
       return;
     }
     await createGuild(name, leaderId);
@@ -378,7 +386,7 @@ window._adminSaveGuildEditor = async function(originalGuildIdEncoded) {
   await _renderGuildAdminPanel();
 };
 
-window._adminDeleteGuild = async function(guildIdEncoded) {
+async function _deleteGuild(guildIdEncoded) {
   const guildId = decodeURIComponent(guildIdEncoded || '');
   const ok = await confirmAction({ title: '길드 삭제', message: `${guildId} 길드를 삭제할까요? 멤버 계정에서도 길드 정보가 제거됩니다.`, destructive: true, longPress: 2000 });
   if (!ok) return;
@@ -441,7 +449,7 @@ function _renderGuildMemberRows() {
   });
 }
 
-window._adminOpenGuildMembers = async function(guildIdEncoded) {
+async function _openGuildMembers(guildIdEncoded) {
   const guildId = decodeURIComponent(guildIdEncoded || '');
   const [accounts, guilds] = await Promise.all([getAccountList(), getAllGuilds()]);
   const guild = guilds.find((item) => (item.id || item.name) === guildId);

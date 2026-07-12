@@ -20,10 +20,13 @@ test('runtime asset manifest is the shared SW and build source of truth', async 
     readFile(resolve(root, 'scripts/verify-deploy.mjs'), 'utf8'),
   ]);
   assert.match(manifest, /TOMATO_STATIC_ASSETS\s*=\s*Object\.freeze/);
+  assert.doesNotMatch(manifest, /\?v=/);
   assert.match(manifest, /\.\/runtime-assets\.js/);
   assert.match(sw, /importScripts\('\.\/runtime-assets\.js'\)/);
   assert.doesNotMatch(sw, /const\s+STATIC_ASSETS\s*=\s*\[/);
   assert.match(copier, /import '\.\.\/runtime-assets\.js'/);
+  assert.match(copier, /const manifestTargets = runtimeAssets/);
+  assert.match(copier, /\.\.\.manifestTargets/);
   assert.match(copier, /missingRuntimeAssets/);
   assert.match(deployVerifier, /fetchTextOnce\('runtime-assets\.js'\)/);
 });
@@ -41,12 +44,14 @@ test('Wear payload envelope accepts legacy payloads and rejects future versions'
   assert.throws(() => assertWearWorkoutPayloadEnvelope({ payloadVersion: 2, type: 'running' }), /unsupported wear payloadVersion/);
 });
 
-test('phone and Wear declare the same payload version and Functions delegate validation', async () => {
-  const [wearPayload, wearBridge, functionsIndex, validation] = await Promise.all([
+test('phone and Wear declare the same payload version and Functions delegate validation and notification services', async () => {
+  const [wearPayload, wearBridge, functionsIndex, validation, notificationProvider, notificationService] = await Promise.all([
     readFile(resolve(root, 'android/wear/src/main/java/com/lifestreak/wear/workout/WearRunPayload.kt'), 'utf8'),
     readFile(resolve(root, 'workout/wear-bridge.js'), 'utf8'),
     readFile(resolve(root, 'functions/index.js'), 'utf8'),
     readFile(resolve(root, 'functions/lib/validation.js'), 'utf8'),
+    readFile(resolve(root, 'functions/lib/notification-provider.js'), 'utf8'),
+    readFile(resolve(root, 'functions/services/notification-service.js'), 'utf8'),
   ]);
   assert.match(wearPayload, /const val PAYLOAD_VERSION = 1/);
   assert.match(wearPayload, /\.put\("payloadVersion", PAYLOAD_VERSION\)/);
@@ -56,4 +61,8 @@ test('phone and Wear declare the same payload version and Functions delegate val
   assert.match(functionsIndex, /validateOcrRequest\(request\.data\)/);
   assert.match(validation, /MAX_GEMINI_REQUEST_BYTES/);
   assert.match(validation, /MAX_OCR_BASE64_LENGTH/);
+  assert.match(functionsIndex, /require\("\.\/services\/notification-service"\)/);
+  assert.match(functionsIndex, /deliverNotification\(\{ db: getFirestore\(\), messaging: getMessaging\(\), data \}\)/);
+  assert.match(notificationProvider, /function buildMulticastMessage/);
+  assert.match(notificationService, /async function deliverNotification/);
 });

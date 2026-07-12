@@ -1,3 +1,5 @@
+import { showToast } from '../ui/toast.js';
+import { clearAllForDateChange } from '../modals/ai-estimate-banner.js';
 // ================================================================
 // workout/load.js — 날짜 로드, 상태 복원
 // 2026-04-21: S.workout / S.diet / S.shared 네임스페이스 마이그레이션 완료.
@@ -19,7 +21,8 @@ import { _renderCfForm,
          _renderStretchForm, _renderSwimForm }
                                      from './activity-forms.js';
 import { _initButtonEventListeners } from './status.js';
-import { _renderExerciseList }       from './exercises.js?v=20260625z47-workout-record-card-standard';
+import { resetWorkoutTypeUi, setActiveWorkoutType } from './type-ui.js';
+import { _renderExerciseList }       from './exercises.js';
 import { getDay, isFuture, TODAY, isExpertModeEnabled, getExpertPreset, dateKey } from '../data.js';
 import { getWorkoutSessions } from './sessions.js';
 import { dietStateFromDay, workoutStateFromSession } from './session-hydration.js';
@@ -82,19 +85,12 @@ function _restoreWorkoutExercises(day, rejectedLegacyMaxMeta) {
   return exercises.filter(entry => _isActualWorkoutEntry(entry) || !_isMaxDraftEntry(entry));
 }
 
-function _takeTargetSessionIndex() {
-  const raw = window.__wtTargetSessionIndex;
-  if (raw === undefined || raw === null) return null;
-  try { delete window.__wtTargetSessionIndex; } catch { window.__wtTargetSessionIndex = null; }
-  const n = Number(raw);
-  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null;
-}
-
 // ── 날짜 로드 ────────────────────────────────────────────────────
-export function loadWorkoutDate(y, m, d) {
+export function loadWorkoutDate(y, m, d, options = {}) {
   const cur = S.shared.date;
   const isSameDate = cur && cur.y === y && cur.m === m && cur.d === d;
-  const requestedSessionIndex = _takeTargetSessionIndex();
+  const requested = Number(options?.sessionIndex);
+  const requestedSessionIndex = Number.isFinite(requested) ? Math.max(0, Math.floor(requested)) : null;
   const targetSessionIndex = requestedSessionIndex ?? (isSameDate ? Math.max(0, Number(S.workout.sessionIndex) || 0) : 0);
 
   if (isSameDate && targetSessionIndex === (Number(S.workout.sessionIndex) || 0)) {
@@ -108,12 +104,10 @@ export function loadWorkoutDate(y, m, d) {
     return;
   }
 
-  if (window._wtResetFlowUI) window._wtResetFlowUI();
+  resetWorkoutTypeUi();
 
   // 날짜가 실제로 바뀔 때 진행 중인 AI 추정 배너/상태를 모두 정리.
-  if (window.aiEstimateClearAll) {
-    try { window.aiEstimateClearAll(); } catch (e) { console.warn('[aiEstimateClearAll]', e); }
-  }
+  try { clearAllForDateChange(); } catch (e) { console.warn('[aiEstimateClearAll]', e); }
 
   setWorkoutDateState({ y, m, d });
   const currentKey = dateKey(y, m, d);
@@ -204,7 +198,7 @@ export function loadWorkoutDate(y, m, d) {
   _restoreFlowState(workoutSource);
   if (draftResult.restored) {
     setTimeout(() => {
-      window.showToast?.('진행 중이던 운동 기록을 복구했어요', 2200, 'success');
+      showToast('진행 중이던 운동 기록을 복구했어요', 2200, 'success');
     }, 0);
   }
 }
@@ -233,7 +227,7 @@ function _restoreFlowState(day) {
     if (firstWithRecord) active = firstWithRecord[0];
   }
   if (active === 'running') active = 'gym';
-  if (window._wtSetActiveType) window._wtSetActiveType(active);
+  setActiveWorkoutType(active);
 
   // 2026-04-20: 타이머 바는 운동 탭에 있는 동안 **항상** 노출.
   const hasAnyRecord = hasExercises || hasCf || hasStretching || hasSwimming || hasRunning;

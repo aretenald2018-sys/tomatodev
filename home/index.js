@@ -13,8 +13,8 @@ import { renderMiniMemo, applyAllSectionTitles,
          renderGoals, renderQuests, initQuestDragDrop }      from './goals-quests.js';
 import { renderTomatoCard, settleTomatoCycleIfNeeded,
          renderTomatoHero }                                  from './tomato.js';
-import { renderFriendFeed, setFriendFeedDeps }               from './friend-feed.js';
-import { setFriendProfileDeps }                              from './friend-profile.js';
+import { renderFriendFeed, setFriendFeedDeps, quickAddNeighbor, showReactionPicker, showReactionDetail } from './friend-feed.js';
+import { setFriendProfileDeps, openFriendProfile, openTomatoGiftModal, openIntroduceFriend, sendReaction } from './friend-profile.js';
 import { refreshNotifCenter, setNotificationsDeps }          from './notifications.js';
 import { clearCheerCard, renderCheerCard }                   from './cheer-card.js';
 import { renderStreakWarning }                                from './streak-warning.js';
@@ -29,13 +29,18 @@ setHeroDeps({ renderTomatoHero, renderHome });
 setUnitGoalDeps({ renderHome });
 setFriendFeedDeps({
   renderHome,
-  openFriendProfile: (...args) => window.openFriendProfile(...args),
-  openTomatoGiftModal: (...args) => window.openTomatoGiftModal(...args),
+  openFriendProfile,
+  openTomatoGiftModal,
+  openIntroduceFriend,
+  sendReaction,
 });
 setFriendProfileDeps({
   renderHome,
   renderFriendFeed,
   refreshNotifCenter,
+  quickAddNeighbor,
+  showReactionPicker,
+  showReactionDetail,
 });
 setNotificationsDeps({ renderFriendFeed });
 

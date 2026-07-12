@@ -17,11 +17,47 @@
 <link rel="stylesheet" href="styles/tokens.css">
 <link rel="stylesheet" href="styles/components.css">
 <link rel="stylesheet" href="styles/primitives.css">
+<link rel="stylesheet" href="styles/features/home-foundations.css">
+<link rel="stylesheet" href="styles/features/calendar-overlays.css">
+<link rel="stylesheet" href="styles/features/workout-core.css">
+<link rel="stylesheet" href="styles/features/diet-core.css">
+<link rel="stylesheet" href="styles/features/workout-picker.css">
+<link rel="stylesheet" href="styles/features/stats-core.css">
+<link rel="stylesheet" href="styles/features/stats-insights.css">
+<link rel="stylesheet" href="styles/features/home-calendar-extras.css">
+<link rel="stylesheet" href="styles/features/workout-shell.css">
+<link rel="stylesheet" href="styles/features/cooking-home-diet.css">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="styles/features/account-home-social.css">
+<link rel="stylesheet" href="styles/features/workout-card-overrides.css">
+<link rel="stylesheet" href="styles/features/diet-card-overrides.css">
+<link rel="stylesheet" href="styles/features/workout-picker-overrides.css">
+<link rel="stylesheet" href="styles/features/workout-flow.css">
+<link rel="stylesheet" href="styles/features/diet-tab.css">
+<link rel="stylesheet" href="styles/features/home-life-zone.css">
+<link rel="stylesheet" href="styles/features/shared-feedback.css">
+<link rel="stylesheet" href="styles/features/social-home.css">
+<link rel="stylesheet" href="styles/features/social-guild.css">
+<link rel="stylesheet" href="styles/features/home-forms.css">
+<link rel="stylesheet" href="styles/features/home-coachmark.css">
+<link rel="stylesheet" href="styles/features/home-weight.css">
+<link rel="stylesheet" href="styles/features/social-cheers.css">
+<link rel="stylesheet" href="styles/features/workout-expert-card.css">
+<link rel="stylesheet" href="styles/features/workout-gym-carousel.css">
+<link rel="stylesheet" href="styles/features/workout-timer.css">
+<link rel="stylesheet" href="styles/features/workout-rest-sheet.css">
+<link rel="stylesheet" href="styles/features/workout-expert-controls.css">
+<link rel="stylesheet" href="styles/features/workout-gym-sheet.css">
+<link rel="stylesheet" href="styles/features/workout-expert-conditions.css">
+<link rel="stylesheet" href="styles/features/calendar-home.css">
+<link rel="stylesheet" href="styles/features/workout-day-sheet.css">
+<link rel="stylesheet" href="styles/features/calendar-score-modal.css">
+<link rel="stylesheet" href="styles/features/workout-day-detail.css">
+<link rel="stylesheet" href="styles/features/app-status.css">
 <link rel="stylesheet" href="admin/admin-hig.css">
-<link rel="stylesheet" href="expert-mode.css?v=20260712h12">
+<link rel="stylesheet" href="styles/workout/expert-mode.css">
 <link rel="stylesheet" href="styles/accessibility.css">
-<link rel="stylesheet" href="test-mode-v2.css?v=20260712h27-selected-scope">
+<link rel="stylesheet" href="test-mode-v2.css">
 </head>
 <body>
 
@@ -619,14 +655,14 @@
           <div>
             <label style="font-size:11px;font-weight:600;color:#4E5968;display:block;margin-bottom:5px;">신장</label>
             <div style="position:relative;">
-              <input id="ds-height" type="number" placeholder="170" style="width:100%;padding:11px 36px 11px 14px;border:1.5px solid #E5E8EB;border-radius:10px;font-size:15px;color:#191F28;background:#fff;outline:none;box-sizing:border-box;transition:border-color 0.15s;" onfocus="this.style.borderColor='#fa342c'" onblur="this.style.borderColor='#E5E8EB'">
+              <input id="ds-height" type="number" placeholder="170" style="width:100%;padding:11px 36px 11px 14px;border:1.5px solid #E5E8EB;border-radius:10px;font-size:15px;color:#191F28;background:#fff;outline:none;box-sizing:border-box;transition:border-color 0.15s;">
               <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;color:#8B95A1;">cm</span>
             </div>
           </div>
           <div>
             <label style="font-size:11px;font-weight:600;color:#4E5968;display:block;margin-bottom:5px;">연령</label>
             <div style="position:relative;">
-              <input id="ds-age" type="number" placeholder="30" style="width:100%;padding:11px 36px 11px 14px;border:1.5px solid #E5E8EB;border-radius:10px;font-size:15px;color:#191F28;background:#fff;outline:none;box-sizing:border-box;transition:border-color 0.15s;" onfocus="this.style.borderColor='#fa342c'" onblur="this.style.borderColor='#E5E8EB'">
+              <input id="ds-age" type="number" placeholder="30" style="width:100%;padding:11px 36px 11px 14px;border:1.5px solid #E5E8EB;border-radius:10px;font-size:15px;color:#191F28;background:#fff;outline:none;box-sizing:border-box;transition:border-color 0.15s;">
               <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;color:#8B95A1;">세</span>
             </div>
           </div>
@@ -636,14 +672,14 @@
           <div>
             <label style="font-size:11px;font-weight:600;color:#4E5968;display:block;margin-bottom:5px;">현재 체중</label>
             <div style="position:relative;">
-              <input id="ds-weight" type="number" step="0.1" placeholder="75" style="width:100%;padding:11px 36px 11px 14px;border:1.5px solid #E5E8EB;border-radius:10px;font-size:15px;color:#191F28;background:#fff;outline:none;box-sizing:border-box;transition:border-color 0.15s;" onfocus="this.style.borderColor='#fa342c'" onblur="this.style.borderColor='#E5E8EB'">
+              <input id="ds-weight" type="number" step="0.1" placeholder="75" style="width:100%;padding:11px 36px 11px 14px;border:1.5px solid #E5E8EB;border-radius:10px;font-size:15px;color:#191F28;background:#fff;outline:none;box-sizing:border-box;transition:border-color 0.15s;">
               <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;color:#8B95A1;">kg</span>
             </div>
           </div>
           <div>
             <label style="font-size:11px;font-weight:600;color:#4E5968;display:block;margin-bottom:5px;">목표 체중</label>
             <div style="position:relative;">
-              <input id="ds-target-weight" type="number" step="0.1" placeholder="68" style="width:100%;padding:11px 36px 11px 14px;border:1.5px solid #E5E8EB;border-radius:10px;font-size:15px;color:#191F28;background:#fff;outline:none;box-sizing:border-box;transition:border-color 0.15s;" onfocus="this.style.borderColor='#fa342c'" onblur="this.style.borderColor='#E5E8EB'">
+              <input id="ds-target-weight" type="number" step="0.1" placeholder="68" style="width:100%;padding:11px 36px 11px 14px;border:1.5px solid #E5E8EB;border-radius:10px;font-size:15px;color:#191F28;background:#fff;outline:none;box-sizing:border-box;transition:border-color 0.15s;">
               <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;color:#8B95A1;">kg</span>
             </div>
           </div>
@@ -658,11 +694,11 @@
           <div style="font-size:11px;color:#8B95A1;margin-bottom:8px;line-height:1.5;">입력하지 않아도 체중·신장·연령 기반 추정치가 자동 적용돼요.<br><span style="color:#fa342c;">직접 입력하면 다이어트 기간과 칼로리를 더 정확하게 계산</span>할 수 있어요.</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
             <div style="position:relative;">
-              <input id="ds-bodyfat" type="number" step="0.1" placeholder="자동 추정" style="width:100%;padding:11px 36px 11px 14px;border:1.5px solid #E5E8EB;border-radius:10px;font-size:14px;color:#191F28;background:#FAFBFC;outline:none;box-sizing:border-box;transition:border-color 0.15s;" onfocus="this.style.borderColor='#fa342c'" onblur="this.style.borderColor='#E5E8EB'">
+              <input id="ds-bodyfat" type="number" step="0.1" placeholder="자동 추정" style="width:100%;padding:11px 36px 11px 14px;border:1.5px solid #E5E8EB;border-radius:10px;font-size:14px;color:#191F28;background:#FAFBFC;outline:none;box-sizing:border-box;transition:border-color 0.15s;">
               <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;color:#8B95A1;">%</span>
             </div>
             <div style="position:relative;">
-              <input id="ds-target-bf" type="number" step="0.1" placeholder="자동 추정" style="width:100%;padding:11px 36px 11px 14px;border:1.5px solid #E5E8EB;border-radius:10px;font-size:14px;color:#191F28;background:#FAFBFC;outline:none;box-sizing:border-box;transition:border-color 0.15s;" onfocus="this.style.borderColor='#fa342c'" onblur="this.style.borderColor='#E5E8EB'">
+              <input id="ds-target-bf" type="number" step="0.1" placeholder="자동 추정" style="width:100%;padding:11px 36px 11px 14px;border:1.5px solid #E5E8EB;border-radius:10px;font-size:14px;color:#191F28;background:#FAFBFC;outline:none;box-sizing:border-box;transition:border-color 0.15s;">
               <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;color:#8B95A1;">%</span>
             </div>
           </div>
@@ -903,10 +939,10 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
-<script src="feature-login.js?v=20260712h-apk-login-handoff"></script>
-<script type="module" src="app.js?v=20260712h9-headerless-lifezone-trapezoid"></script>
+<script type="module" src="feature-login.js"></script>
+<script type="module" src="app.js"></script>
 
 <!-- PWA Service Worker 등록 -->
-<script src="pwa-register.js?v=20260712h7-single-update-refresh"></script>
+<script src="pwa-register.js"></script>
 </body>
 </html>

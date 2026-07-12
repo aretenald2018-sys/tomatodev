@@ -22,7 +22,7 @@ let _multiplier = 1;
 let _customGrams = null; // 'custom' 모드일 때만 사용
 
 export const WEIGHT_MODAL_HTML = `
-<div class="modal-backdrop" id="nutrition-weight-modal" onclick="closeNutritionWeightModal(event)" style="display:none;z-index:1001">
+<div class="modal-backdrop" id="nutrition-weight-modal" data-nutrition-weight-action="close" style="display:none;z-index:1001">
   <div class="modal-sheet">
     <div class="sheet-handle"></div>
     <div class="modal-title">섭취량 설정</div>
@@ -40,7 +40,7 @@ export const WEIGHT_MODAL_HTML = `
       <div style="margin-bottom:12px">
         <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px;font-weight:500">단위</label>
         <div class="tds-dropdown" id="nw-serving-dropdown">
-          <button type="button" id="nw-serving-trigger" class="tds-dropdown-trigger" aria-haspopup="listbox" aria-expanded="false" onclick="toggleNutritionServingDropdown(event)">
+          <button type="button" id="nw-serving-trigger" class="tds-dropdown-trigger" aria-haspopup="listbox" aria-expanded="false" data-nutrition-weight-action="toggle-serving">
             <span class="tds-dd-label" id="nw-serving-label">단위 선택</span>
             <svg class="tds-dd-caret" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M3 4.5 L6 7.5 L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
@@ -51,17 +51,17 @@ export const WEIGHT_MODAL_HTML = `
       <div style="margin-bottom:12px" id="nw-multiplier-row">
         <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px;font-weight:500">수량</label>
         <div style="display:flex;gap:6px;align-items:center">
-          <button type="button" class="tds-btn ghost md" style="flex:1;min-width:0" onclick="setNutritionMultiplier(0.5)">½</button>
-          <button type="button" class="tds-btn ghost md" style="flex:1;min-width:0" onclick="setNutritionMultiplier(1)">1</button>
-          <button type="button" class="tds-btn ghost md" style="flex:1;min-width:0" onclick="setNutritionMultiplier(2)">2</button>
-          <button type="button" class="tds-btn ghost md" style="flex:1;min-width:0" onclick="setNutritionMultiplier(3)">3</button>
-          <input type="number" id="nw-multiplier-input" class="tds-input" value="1" min="0.1" max="20" step="0.1" style="flex:1.2;text-align:center" oninput="onNutritionMultiplierInput()">
+          <button type="button" class="tds-btn ghost md" style="flex:1;min-width:0" data-nutrition-weight-action="set-multiplier" data-multiplier="0.5">½</button>
+          <button type="button" class="tds-btn ghost md" style="flex:1;min-width:0" data-nutrition-weight-action="set-multiplier" data-multiplier="1">1</button>
+          <button type="button" class="tds-btn ghost md" style="flex:1;min-width:0" data-nutrition-weight-action="set-multiplier" data-multiplier="2">2</button>
+          <button type="button" class="tds-btn ghost md" style="flex:1;min-width:0" data-nutrition-weight-action="set-multiplier" data-multiplier="3">3</button>
+          <input type="number" id="nw-multiplier-input" class="tds-input" value="1" min="0.1" max="20" step="0.1" style="flex:1.2;text-align:center" data-nutrition-weight-input-action="multiplier">
         </div>
       </div>
 
       <div style="margin-bottom:12px" id="nw-custom-row" hidden>
         <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px;font-weight:500">중량 (<span id="nw-custom-unit">g</span>)</label>
-        <input type="number" id="nutrition-weight-input" class="tds-input" value="100" min="1" max="5000" oninput="updateNutritionWeightPreview()">
+        <input type="number" id="nutrition-weight-input" class="tds-input" value="100" min="1" max="5000" data-nutrition-weight-input-action="weight">
       </div>
 
       <div style="padding:12px;background:var(--surface3);border-radius:4px;margin-bottom:12px;font-size:12px">
@@ -75,16 +75,13 @@ export const WEIGHT_MODAL_HTML = `
       </div>
 
       <div style="display:flex;gap:8px">
-        <button class="tds-btn fill md" onclick="confirmNutritionItemWithWeight()" style="flex:1">추가</button>
-        <button class="tds-btn cancel-btn ghost md" onclick="closeNutritionWeightModal()" style="flex:1">취소</button>
+        <button class="tds-btn fill md" data-nutrition-weight-action="confirm" style="flex:1">추가</button>
+        <button class="tds-btn cancel-btn ghost md" data-nutrition-weight-action="close" style="flex:1">취소</button>
       </div>
     </div>
   </div>
 </div>
 `;
-
-// 전역 상태 (레거시 호환) — 호출자가 window._nutritionWeightItem을 참고하는 경우 대비
-window._nutritionWeightItem = null;
 
 // ── 아이템을 canonical로 정규화 (legacy / csv / raw / gov / ocr 공통) ──
 // ── 현재 선택된 실 중량(g 또는 ml) 계산 ─────────────────────────
@@ -111,7 +108,6 @@ export function openNutritionWeightModal(item) {
     return;
   }
   _current = canonical;
-  window._nutritionWeightItem = item; // 레거시 호환
 
   // servings 드롭다운 빌드 (+ "직접 입력" 옵션) — 커스텀 TDS 드롭다운
   _selectedServingId = _current.defaultServingId || _current.servings[0]?.id;
@@ -157,7 +153,7 @@ function _renderServingOptions() {
   }
   panel.innerHTML = list.map(o => {
     const sel = o.id === _selectedServingId ? ' is-selected' : '';
-    return `<button type="button" class="tds-dropdown-option${sel}" role="option" aria-selected="${o.id === _selectedServingId}" data-serving-id="${o.id}" onclick="selectNutritionServing('${o.id}')">
+    return `<button type="button" class="tds-dropdown-option${sel}" role="option" aria-selected="${o.id === _selectedServingId}" data-serving-id="${o.id}" data-nutrition-weight-action="select-serving">
       <span>${o.label}</span>
       <svg class="tds-dd-check" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3.5 8.5 L6.5 11.5 L12.5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>`;
@@ -280,7 +276,6 @@ export function closeNutritionWeightModal(event) {
   _selectedServingId = null;
   _multiplier = 1;
   _customGrams = null;
-  window._nutritionWeightItem = null;
 }
 
 // ── 저장 (식단에 추가 + 최근 항목 DB) ──────────────────────────
@@ -343,12 +338,24 @@ export function confirmNutritionItemWithWeight() {
   document.getElementById('nutrition-search-modal')?.classList.remove('open');
 }
 
-// ── 전역 window 등록 ──────────────────────────────────────────
-window.openNutritionWeightModal = openNutritionWeightModal;
-window.updateNutritionWeightPreview = updateNutritionWeightPreview;
-window.closeNutritionWeightModal = closeNutritionWeightModal;
-window.confirmNutritionItemWithWeight = confirmNutritionItemWithWeight;
-window.toggleNutritionServingDropdown = toggleNutritionServingDropdown;
-window.selectNutritionServing = selectNutritionServing;
-window.onNutritionMultiplierInput = onNutritionMultiplierInput;
-window.setNutritionMultiplier = setNutritionMultiplier;
+function _bindNutritionWeightActions(root = document) {
+  if (root.documentElement?.dataset.nutritionWeightActionsBound === '1') return;
+  if (root.documentElement) root.documentElement.dataset.nutritionWeightActionsBound = '1';
+  root.addEventListener('click', (event) => {
+    const control = event.target?.closest?.('[data-nutrition-weight-action]');
+    if (!control) return;
+    const action = control.dataset.nutritionWeightAction;
+    if (action === 'close') closeNutritionWeightModal(event);
+    if (action === 'toggle-serving') toggleNutritionServingDropdown(event);
+    if (action === 'select-serving') selectNutritionServing(control.dataset.servingId || '');
+    if (action === 'set-multiplier') setNutritionMultiplier(Number(control.dataset.multiplier));
+    if (action === 'confirm') confirmNutritionItemWithWeight();
+  });
+  root.addEventListener('input', (event) => {
+    const action = event.target?.dataset?.nutritionWeightInputAction;
+    if (action === 'multiplier') onNutritionMultiplierInput();
+    if (action === 'weight') updateNutritionWeightPreview();
+  });
+}
+
+_bindNutritionWeightActions();

@@ -3,7 +3,7 @@
 //  1) 이름은 제외하고 본문만 작성 → 친구 화면에 "{name}님 {text}"로 표시
 //  2) 당일에만 유효, 다음 날 자정에 자동 만료되어 시스템 자동 감지 축하로 복귀
 export const MODAL_HTML = `
-<div class="modal-backdrop" id="self-cheer-modal" onclick="closeSelfCheerModal(event)">
+<div class="modal-backdrop" id="self-cheer-modal">
   <div class="modal-sheet">
     <div class="sheet-handle"></div>
     <div class="modal-title">🎉 오늘 축하받고 싶은 일</div>
@@ -18,9 +18,9 @@ export const MODAL_HTML = `
       <div id="self-cheer-preview" class="self-cheer-preview">미리보기: (입력 시 표시)</div>
       <div id="self-cheer-current" class="self-cheer-current"></div>
       <div class="self-cheer-actions">
-        <button class="tds-btn cancel-btn ghost md" onclick="closeSelfCheerModal()">취소</button>
-        <button class="tds-btn ghost md self-cheer-clear" onclick="clearSelfCheerFromModal()">지우기</button>
-        <button class="tds-btn fill md" onclick="saveSelfCheerFromModal()">저장</button>
+        <button type="button" class="tds-btn cancel-btn ghost md" data-self-cheer-action="close">취소</button>
+        <button type="button" class="tds-btn ghost md self-cheer-clear" data-self-cheer-action="clear">지우기</button>
+        <button type="button" class="tds-btn fill md" data-self-cheer-action="save">저장</button>
       </div>
     </div>
   </div>

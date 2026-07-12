@@ -1,3 +1,4 @@
+import { readAppCssSync } from './helpers/css-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -5,7 +6,7 @@ import { readFileSync } from 'node:fs';
 const appJs = readFileSync('app.js', 'utf8');
 const modalManagerJs = readFileSync('modal-manager.js', 'utf8');
 const modalJs = readFileSync('modals/consulting-chief-quest-modal.js', 'utf8');
-const styleCss = readFileSync('style.css', 'utf8');
+const styleCss = readAppCssSync();
 const swJs = readFileSync('sw.js', 'utf8') + readFileSync('runtime-assets.js', 'utf8');
 
 function readPngHeader(relativePath) {

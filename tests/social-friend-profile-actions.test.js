@@ -21,24 +21,24 @@ test('friend profile modal routes primary social actions through a scoped delega
   assert.match(friendProfileJs, /function _socialAttr\(value\)/);
   assert.match(friendProfileJs, /function _bindFriendProfileActions\(root\)/);
   assert.match(friendProfileJs, /root\.addEventListener\('click', \(event\) => \{[\s\S]*target\.closest\?\.\('\[data-social-action\]'\)[\s\S]*\}, true\)/);
-  assert.match(friendProfileJs, /root\.addEventListener\('keydown', \(event\) => \{[\s\S]*data-social-enter-action[\s\S]*window\.submitGuestbook\?\.\(targetId\)/);
-  assert.match(friendProfileJs, /case 'quick-add-neighbor':[\s\S]*window\.quickAddNeighbor\?\.\(friendId\)/);
-  assert.match(friendProfileJs, /case 'open-introduce-friend':[\s\S]*window\.openIntroduceFriend\?\.\(friendId, friendName \|\| ''\)/);
-  assert.match(friendProfileJs, /case 'open-guild-invite':[\s\S]*window\.openGuildInvite\?\.\(friendId, friendName \|\| ''\)/);
-  assert.match(friendProfileJs, /case 'open-tomato-gift':[\s\S]*window\.openTomatoGiftModal\?\.\(friendId, friendName \|\| ''\)/);
-  assert.match(friendProfileJs, /case 'toggle-comment':[\s\S]*window\.toggleCommentSection\?\.\(targetId, dk, section\)/);
-  assert.match(friendProfileJs, /case 'show-reaction-picker':[\s\S]*window\.showReactionPicker\?\.\(control, targetId, dk, field\)/);
-  assert.match(friendProfileJs, /case 'show-reaction-detail':[\s\S]*window\.showReactionDetail\?\.\(control, targetId, dk, field\)/);
-  assert.match(friendProfileJs, /case 'submit-comment':[\s\S]*window\.submitComment\?\.\(targetId, dk, section\)/);
-  assert.match(friendProfileJs, /case 'edit-comment':[\s\S]*window\.editCommentUI\?\.\(commentId, targetId, dk, section\)/);
-  assert.match(friendProfileJs, /case 'confirm-edit-comment':[\s\S]*window\.confirmEditComment\?\.\(commentId, targetId, dk, section\)/);
-  assert.match(friendProfileJs, /case 'delete-comment':[\s\S]*window\.deleteCommentUI\?\.\(commentId, targetId, dk, section\)/);
+  assert.match(friendProfileJs, /root\.addEventListener\('keydown', \(event\) => \{[\s\S]*data-social-enter-action[\s\S]*void submitGuestbook\(targetId\)/);
+  assert.match(friendProfileJs, /case 'quick-add-neighbor':[\s\S]*_quickAddNeighborFn\?\.\(friendId\)/);
+  assert.match(friendProfileJs, /case 'open-introduce-friend':[\s\S]*openIntroduceFriend\(friendId, friendName \|\| ''\)/);
+  assert.match(friendProfileJs, /case 'open-guild-invite':[\s\S]*openGuildInvite\(friendId, friendName \|\| ''\)/);
+  assert.match(friendProfileJs, /case 'open-tomato-gift':[\s\S]*openTomatoGiftModal\(friendId, friendName \|\| ''\)/);
+  assert.match(friendProfileJs, /case 'toggle-comment':[\s\S]*toggleCommentSection\(targetId, dk, section\)/);
+  assert.match(friendProfileJs, /case 'show-reaction-picker':[\s\S]*_showReactionPickerFn\?\.\(control, targetId, dk, field\)/);
+  assert.match(friendProfileJs, /case 'show-reaction-detail':[\s\S]*_showReactionDetailFn\?\.\(control, targetId, dk, field\)/);
+  assert.match(friendProfileJs, /case 'submit-comment':[\s\S]*submitComment\(targetId, dk, section\)/);
+  assert.match(friendProfileJs, /case 'edit-comment':[\s\S]*editCommentUI\(commentId, targetId, dk, section\)/);
+  assert.match(friendProfileJs, /case 'confirm-edit-comment':[\s\S]*confirmEditComment\(commentId, targetId, dk, section\)/);
+  assert.match(friendProfileJs, /case 'delete-comment':[\s\S]*deleteCommentUI\(commentId, targetId, dk, section\)/);
   assert.match(friendProfileJs, /case 'cancel-comment-reply':[\s\S]*_cancelCommentReply\(section\)/);
-  assert.match(friendProfileJs, /case 'start-gb-reply':[\s\S]*window\.startGbReply\?\.\(entryId, fromName \|\| ''\)/);
-  assert.match(friendProfileJs, /case 'delete-gb':[\s\S]*window\.deleteGb\?\.\(entryId, targetId\)/);
-  assert.match(friendProfileJs, /case 'open-friend-profile':[\s\S]*window\.openFriendProfile\?\.\(friendId, friendName \|\| '익명'\)/);
-  assert.match(friendProfileJs, /data-social-enter-action[\s\S]*submit-comment[\s\S]*window\.submitComment\?\.\(targetId, dk, section\)/);
-  assert.match(friendProfileJs, /data-social-enter-action[\s\S]*confirm-edit-comment[\s\S]*window\.confirmEditComment\?\.\(commentId, targetId, dk, section\)/);
+  assert.match(friendProfileJs, /case 'start-gb-reply':[\s\S]*startGbReply\(entryId, fromName \|\| ''\)/);
+  assert.match(friendProfileJs, /case 'delete-gb':[\s\S]*deleteGb\(entryId, targetId\)/);
+  assert.match(friendProfileJs, /case 'open-friend-profile':[\s\S]*openFriendProfile\(friendId, friendName \|\| '익명'\)/);
+  assert.match(friendProfileJs, /data-social-enter-action[\s\S]*submit-comment[\s\S]*void submitComment\(targetId, dk, section\)/);
+  assert.match(friendProfileJs, /data-social-enter-action[\s\S]*confirm-edit-comment[\s\S]*void confirmEditComment\(commentId, targetId, dk, section\)/);
 });
 
 test('profile modal markup uses data social actions instead of inline primary handlers', () => {
@@ -76,7 +76,7 @@ test('profile modal markup uses data social actions instead of inline primary ha
 });
 
 test('async guestbook entries inherit the profile modal delegate contract', () => {
-  const guestbookFn = sliceBetween(friendProfileJs, 'async function loadGuestbook(targetId)', 'window.openIntroduceFriend = async function');
+  const guestbookFn = sliceBetween(friendProfileJs, 'async function loadGuestbook(targetId)', 'export async function openIntroduceFriend');
 
   assert.match(guestbookFn, /data-social-action="delete-gb"/);
   assert.match(guestbookFn, /data-social-action="start-gb-reply"/);
@@ -91,9 +91,9 @@ test('async guestbook entries inherit the profile modal delegate contract', () =
 
 test('comment reaction and edit actions inherit the profile delegate contract', () => {
   const commentPanel = sliceBetween(friendProfileJs, 'async function loadComments(targetId, dk, section, canWrite = true)', 'function renderComment(c, isReply');
-  const commentRender = sliceBetween(friendProfileJs, 'function renderComment(c, isReply', 'window.submitComment = async function');
-  const replyFn = sliceBetween(friendProfileJs, 'window.startCommentReply = function', 'window.editCommentUI = function');
-  const editFn = sliceBetween(friendProfileJs, 'window.editCommentUI = function', 'window.confirmEditComment = async function');
+  const commentRender = sliceBetween(friendProfileJs, 'function renderComment(c, isReply', 'export async function submitComment');
+  const replyFn = sliceBetween(friendProfileJs, 'export function startCommentReply', 'export function editCommentUI');
+  const editFn = sliceBetween(friendProfileJs, 'export function editCommentUI', 'export async function confirmEditComment');
 
   assert.match(commentPanel, /data-social-enter-action="submit-comment"/);
   assert.match(commentPanel, /data-social-action="submit-comment"/);

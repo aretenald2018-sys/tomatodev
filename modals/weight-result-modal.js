@@ -115,7 +115,7 @@ function _setContent(delta, checkins) {
 }
 
 export const MODAL_HTML = `
-<div class="modal-backdrop" id="weight-result-modal" onclick="closeWeightResultModal(event)">
+<div class="modal-backdrop" id="weight-result-modal" data-action="weight-result:close">
   <div class="modal-sheet weight-result-sheet" id="weight-result-panel">
     <div class="sheet-handle"></div>
     <div class="weight-result-hero">
@@ -124,22 +124,20 @@ export const MODAL_HTML = `
       <div class="weight-result-message" id="weight-result-message"></div>
     </div>
     <div class="weight-result-graph-wrap" id="weight-result-graph-wrap"></div>
-    <button class="tds-btn fill md" style="width:100%;" onclick="closeWeightResultModal()">계속하기</button>
+    <button class="tds-btn fill md" style="width:100%;" data-action="weight-result:close">계속하기</button>
   </div>
 </div>
 `;
 
 export function openWeightResultModal(delta, checkins) {
   _setContent(delta, checkins);
-  if (delta <= -0.1 && window._showConfetti) window._showConfetti(delta <= -0.5 ? 3600 : 2400);
-  window._openModal?.('weight-result-modal');
+  if (delta <= -0.1) showConfetti(delta <= -0.5 ? 3600 : 2400);
+  openModal('weight-result-modal');
 }
 
 export function closeWeightResultModal(e) {
-  window._closeModal?.('weight-result-modal', e);
+  closeModal('weight-result-modal', e);
 }
 
-Object.assign(window, {
-  openWeightResultModal,
-  closeWeightResultModal,
-});
+import { showConfetti } from '../home/utils.js';
+import { closeModal, openModal } from '../app/overlay-stack.js';

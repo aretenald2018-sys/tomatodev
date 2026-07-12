@@ -1,3 +1,4 @@
+import { readAppCssSync } from './helpers/css-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -85,7 +86,7 @@ test('life zone actor nameplates are rendered as text under actor feet', () => {
 
 test('life zone diet speech bubble renders meal photo before text fallback', () => {
   const source = readText('home/life-zone.js');
-  const css = readText('style.css');
+  const css = readAppCssSync();
   const speechTailRule = css.match(/\.lz-speech::after \{[\s\S]*?\n\}/)?.[0] || '';
 
   assert.match(source, /toggleLike/);
@@ -122,7 +123,7 @@ test('life zone diet speech bubble renders meal photo before text fallback', () 
 
 test('life zone photo preview sheet and heart flow use stored likes without inline handlers', () => {
   const source = readText('home/life-zone.js');
-  const css = readText('style.css');
+  const css = readAppCssSync();
 
   assert.match(source, /function _openLifeZonePhotoPreview/);
   assert.match(source, /function _closeLifeZonePhotoPreview/);
@@ -149,7 +150,7 @@ test('life zone photo preview sheet and heart flow use stored likes without inli
 });
 
 test('life zone NPC quest bubble has a stable clickable overlay style', () => {
-  const css = readText('style.css');
+  const css = readAppCssSync();
 
   assert.match(css, /\.lz-scene \{[\s\S]*aspect-ratio: 1672 \/ 1872;/);
   assert.match(css, /\.lz-world \{[\s\S]*width: 112%;[\s\S]*aspect-ratio: 1672 \/ 1672;[\s\S]*overflow: visible;[\s\S]*transform: translateX\(-50%\);/);
@@ -216,7 +217,7 @@ test('life zone NPC quest bubble has a stable clickable overlay style', () => {
 });
 
 test('life zone nameplates use small pixel text with outline shadows', () => {
-  const css = readText('style.css');
+  const css = readAppCssSync();
 
   assert.match(css, /\.lz-nameplate \{/);
   assert.match(css, /font-size: 9px/);
@@ -234,7 +235,7 @@ test('life zone nameplates use small pixel text with outline shadows', () => {
 });
 
 test('life zone workout poses use scoped motion with reduced motion fallback', () => {
-  const css = readText('style.css');
+  const css = readAppCssSync();
 
   assert.match(css, /\.lz-actor--pose-workout-lat \{/);
   assert.match(css, /\.lz-actor-img \{/);
@@ -255,7 +256,7 @@ test('life zone workout poses use scoped motion with reduced motion fallback', (
 
 test('life zone running actors render track sprites and a map capture bubble on home', () => {
   const source = readText('home/life-zone.js');
-  const css = readText('style.css');
+  const css = readAppCssSync();
   const sw = readText('sw.js') + readText('runtime-assets.js');
   const plan = readText('docs/ai/features/2026-06-29-running-track-live-art.md');
   const sprites = [
@@ -264,7 +265,8 @@ test('life zone running actors render track sprites and a map capture bubble on 
     'lee-jaeheon-running-track.png'
   ];
 
-  assert.match(source, /window\.__tomatoRunningLive/);
+  assert.match(source, /getRunningLiveState\(\)/);
+  assert.match(sw, /'\.\/workout\/running-live-state\.js'/);
   assert.match(source, /lifeZoneRunningLive/);
   assert.match(source, /readRunningMapConfig/);
   assert.match(source, /resolveRunningMapConfig/);

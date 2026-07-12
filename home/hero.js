@@ -10,6 +10,8 @@ import { TODAY, calcStreaks, countLocalWeeklyActiveDays,
          getAllDateKeys, getDay, getHeroMessage, markHeroMessageRead }  from '../data.js';
 import { setText, showToast, haptic, resolveNickname } from './utils.js';
 import { confirmSimple } from '../utils/confirm-modal.js';
+import { openFriendProfile } from './friend-profile.js';
+import { openStreakMilestone } from '../modals/streak-milestone-modal.js';
 
 function _currentDateKey() {
   const now = new Date();
@@ -82,7 +84,7 @@ export function checkStreakMilestone(type, days) {
       shown[`${type}_${m}`] = true;
       saveMilestoneShown(shown);
       setTimeout(() => {
-        if (window.openStreakMilestone) window.openStreakMilestone(type, m);
+        openStreakMilestone(type, m);
       }, 500);
       break;
     }
@@ -155,12 +157,15 @@ export function renderStreakFreeze() {
         <span class="tf-freeze-title">스트릭 보호</span>
         <span class="tf-freeze-desc">토마토 1개 · 주 1회 · 보유 ${available}개</span>
       </div>
-      <button class="tf-freeze-action${canUse ? '' : ' disabled'}" onclick="useStreakFreezeUI()" ${canUse ? '' : 'disabled'}>보호하기</button>
+      <button type="button" class="tf-freeze-action${canUse ? '' : ' disabled'}" data-hero-action="use-streak-freeze" ${canUse ? '' : 'disabled'}>보호하기</button>
     </div>`;
   }
+  el.onclick = (event) => {
+    if (event.target.closest('[data-hero-action="use-streak-freeze"]')) void useStreakFreezeUI();
+  };
 }
 
-window.useStreakFreezeUI = async function() {
+export async function useStreakFreezeUI() {
   const ok = await confirmSimple('토마토 1개를 사용하여 오늘의 스트릭을 보호할까요?');
   if (!ok) return;
   const result = await useStreakFreeze('workout');
@@ -208,7 +213,6 @@ export function switchLeaderboardTab(period) {
   _syncLeaderboardSegmented(nextPeriod);
   renderLeaderboard();
 }
-window.switchLeaderboardTab = switchLeaderboardTab;
 
 function _weekKeys(baseDateLike = TODAY) {
   const keys = [];
@@ -346,7 +350,7 @@ function _renderLeaderboardHtml({ board, period, updatedAt, friendIdSet }) {
     const rank = rankIcons[i] || `${i + 1}`;
     const pct = Math.max(0, Math.min(100, Math.round(((Number(p.days) || 0) / maxDays) * 100)));
     const initial = p.isMe ? '나' : String(p.name || '').charAt(0);
-    const clickAttr = p.isMe ? '' : ` onclick="openFriendProfile('${_escapeJsSingle(p.userId)}','${_escapeJsSingle(p.name)}')" style="cursor:pointer;"`;
+    const clickAttr = p.isMe ? '' : ` data-hero-action="open-profile" data-user-id="${_escapeHtml(p.userId)}" data-user-name="${_escapeHtml(p.name)}" style="cursor:pointer;"`;
     html += `<div class="lb-row${p.isMe ? ' lb-me' : ''}"${clickAttr}>
       <span class="lb-rank">${rank}</span>
       <div class="lb-avatar active">${_escapeHtml(initial)}</div>
@@ -361,7 +365,7 @@ function _renderLeaderboardHtml({ board, period, updatedAt, friendIdSet }) {
     html += '<div class="lb-inactive-row">';
     for (const p of inactive) {
       const initial = p.isMe ? '나' : String(p.name || '').charAt(0);
-      const inactiveClickAttr = p.isMe ? '' : ` onclick="openFriendProfile('${_escapeJsSingle(p.userId)}','${_escapeJsSingle(p.name)}')" style="cursor:pointer;"`;
+      const inactiveClickAttr = p.isMe ? '' : ` data-hero-action="open-profile" data-user-id="${_escapeHtml(p.userId)}" data-user-name="${_escapeHtml(p.name)}" style="cursor:pointer;"`;
       html += `<div class="lb-inactive-item${p.isMe ? ' lb-me-inactive' : ''}"${inactiveClickAttr}>
         <div class="lb-avatar inactive">${_escapeHtml(initial)}</div>
         <span class="lb-inactive-name">${_escapeHtml(p.isMe ? '나' : p.name)}</span>
@@ -383,6 +387,13 @@ export async function renderLeaderboard() {
   const cardEl = document.getElementById('card-leaderboard');
   const contentEl = document.getElementById('leaderboard-content');
   if (!cardEl || !contentEl) return;
+  if (!contentEl.dataset.heroActionsBound) {
+    contentEl.dataset.heroActionsBound = '1';
+    contentEl.addEventListener('click', (event) => {
+      const control = event.target.closest('[data-hero-action="open-profile"]');
+      if (control) void openFriendProfile(control.dataset.userId, control.dataset.userName);
+    });
+  }
 
   try {
     const user = getCurrentUser();

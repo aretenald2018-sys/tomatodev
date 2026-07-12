@@ -4,7 +4,7 @@
 //   - _settings.home_card_hidden: 숨길 카드 id 배열
 //   - 드래그 UI는 향후 설정 모달에서 구현 — 여기서는 순서/숨김 적용만
 //
-// 전역 API (window.homeCardPersonalize):
+// 모듈 API:
 //   setOrder([...ids])        — 순서 저장 + 즉시 반영
 //   setHidden([...ids])       — 숨김 저장 + 즉시 반영
 //   moveUp(id) / moveDown(id) — 카드 하나 위/아래
@@ -104,17 +104,4 @@ async function reset() {
     saveHomeCardHidden([]),
   ]);
   applyHomeCardPersonalization();
-}
-
-if (typeof window !== 'undefined') {
-  window.homeCardPersonalize = {
-    apply: applyHomeCardPersonalization,
-    setOrder,
-    setHidden,
-    moveUp,
-    moveDown,
-    toggleHidden,
-    reset,
-    listCards: _allCardIds,
-  };
 }

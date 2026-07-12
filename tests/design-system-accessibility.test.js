@@ -75,9 +75,13 @@ test('design system owns tokens, primitives, accessibility, and CSS order', asyn
   assert.match(accessibility, /:focus-visible/);
   assert.match(accessibility, /prefers-reduced-motion:\s*reduce/);
   assert.ok(index.indexOf('styles/tokens.css') < index.indexOf('styles/primitives.css'));
-  assert.ok(index.indexOf('styles/accessibility.css') > index.indexOf('expert-mode.css'));
+  assert.ok(index.indexOf('styles/accessibility.css') > index.indexOf('styles/workout/expert-mode.css'));
+  assert.match(index, /styles\/features\/home-foundations\.css/);
+  assert.match(index, /styles\/features\/workout-day-sheet\.css/);
+  assert.match(index, /styles\/features\/app-status\.css/);
   assert.match(sw, /importScripts\('\.\/runtime-assets\.js'\)/);
   assert.match(runtimeAssets, /\.\/styles\/primitives\.css/);
   assert.match(runtimeAssets, /\.\/styles\/accessibility\.css/);
+  assert.match(runtimeAssets, /\.\/styles\/workout\/expert-mode\.css/);
   assert.match(docs, /CSS load order and ownership/);
 });

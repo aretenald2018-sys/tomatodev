@@ -3,7 +3,7 @@
 // ================================================================
 
 export const MODAL_HTML = `
-<div class="modal-backdrop" id="streak-milestone-modal" onclick="closeStreakMilestone(event)" style="display:none;z-index:1002">
+<div class="modal-backdrop" id="streak-milestone-modal" data-action="streak:close-milestone" style="display:none;z-index:1002">
   <div class="modal-sheet" style="text-align:center;padding:32px 24px;">
     <div class="sheet-handle"></div>
     <div id="milestone-emoji" style="font-size:64px;margin:16px 0;animation:tomato-bounce-in 0.5s cubic-bezier(0.34,1.56,0.64,1);"></div>
@@ -11,7 +11,7 @@ export const MODAL_HTML = `
     <div id="milestone-subtitle" style="font-size:14px;color:var(--text-secondary);line-height:1.6;margin-bottom:24px;"></div>
     <div id="milestone-badge" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:999px;background:var(--primary-bg);color:var(--primary);font-size:13px;font-weight:700;margin-bottom:24px;"></div>
     <div>
-      <button class="tds-btn fill md" onclick="closeStreakMilestone()" style="width:100%;font-size:15px;padding:14px;">계속하기 💪</button>
+      <button class="tds-btn fill md" data-action="streak:close-milestone" style="width:100%;font-size:15px;padding:14px;">계속하기 💪</button>
     </div>
   </div>
 </div>
@@ -25,7 +25,7 @@ const MILESTONE_CONFIG = {
   100: { emoji: '🏆', title: '100일! 전설적이에요', sub: '100일 연속이라니, 정말 대단해요.\n당신은 이미 다른 사람이 되었어요.' },
 };
 
-window.openStreakMilestone = function(type, days) {
+export function openStreakMilestone(type, days) {
   const config = MILESTONE_CONFIG[days];
   if (!config) return;
 
@@ -39,11 +39,12 @@ window.openStreakMilestone = function(type, days) {
   modal.style.display = 'flex';
 
   // Confetti + Haptic
-  if (window._showConfetti) window._showConfetti(3500);
+  showConfetti(3500);
   if (navigator.vibrate) navigator.vibrate([50, 30, 50, 30, 100]);
-};
+}
 
-window.closeStreakMilestone = function(e) {
+export function closeStreakMilestone(e) {
   if (e && e.target && e.target !== document.getElementById('streak-milestone-modal')) return;
   document.getElementById('streak-milestone-modal').style.display = 'none';
-};
+}
+import { showConfetti } from '../home/utils.js';

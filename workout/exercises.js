@@ -1,14 +1,16 @@
+import { showToast } from '../ui/toast.js';
+import { confirmAction } from '../utils/confirm-modal.js';
 // ================================================================
 // workout/exercises.js — 세트 CRUD + 운동 picker/editor + 운동 목록 렌더
 // ================================================================
 
 import { S }                           from './state.js';
 import { saveWorkoutDay }              from './save.js';
+import { wtOpenRunningSession }        from './running-session.js';
 import { wtRestTimerClearSetRecord,
          wtRestTimerStart,
          wtRefreshWorkoutTimelineDuration,
          wtPersistActiveWorkoutDraft } from './timers.js';
-import { showToast }                   from '../home/utils.js';
 import { getExList, getGlobalExList, getGymExList, getGyms, getLastSession, detectPRs, getCache,
          dateKey, saveExercise,
          deleteExercise, getMuscleParts,
@@ -18,12 +20,12 @@ import { getExList, getGlobalExList, getGymExList, getGyms, getLastSession, dete
          getTestBoardV2, saveTestBoardV2 }              from '../data.js';
 import { estimate1RM, estimateSet1RM, rpeRepsToPct, targetWeightKg, weightRange, SUBPATTERN_TO_MAJOR,
          getTrackMetricHistory, getWendlerMetricHistory, getLastTrackSession, normalizeWorkoutTrack,
-         calcSetVolume, isWendlerWorkoutEntry } from '../calc.js?v=20260514v72';
+         calcSetVolume, isWendlerWorkoutEntry } from '../calc.js';
 import { MOVEMENTS } from '../config.js';
 import {
   buildMaxPickerExerciseEntry,
   resolveMaxBenchmarkPickerItems,
-} from './expert/max-benchmark-picker.js?v=20260517v3';
+} from './expert/max-benchmark-picker.js';
 import {
   buildExerciseEditorRecord,
   customExerciseMuscleId,
@@ -77,6 +79,8 @@ import {
 // isExpertViewShown은 세션 뷰 상태 (일반 모드 뷰 ↔ 프로 모드 뷰) 조회용.
 // expert.js는 exercises.js를 static import 하지 않으므로 순환 참조 없음.
 import { resolveCurrentGymId, isExpertViewShown } from './expert.js';
+
+const _maxCoachShown = new Set();
 
 const DASHBOARD3_TEST_MODE_UI = true;
 
@@ -312,9 +316,7 @@ function _advanceWorkoutEntry(entryIdx) {
 }
 
 function _syncExpertTopArea() {
-  if (typeof window.renderExpertTopArea === 'function') {
-    window.renderExpertTopArea();
-  }
+  document.dispatchEvent(new CustomEvent('expert:render-top'));
 }
 
 function _setWorkoutModalLock(on) {
@@ -480,7 +482,7 @@ export function wtRemoveSet(entryIdx, si) {
   wtPersistActiveWorkoutDraft('set remove');
   saveWorkoutDay({ silent: true }).catch(e => console.error('Save error:', e));
   if (!removed) return;
-  window.showToast?.('세트 삭제됨', 3000, 'info', {
+  showToast('세트 삭제됨', 3000, 'info', {
     action: '실행 취소',
     onAction: () => {
       if (!S.workout.exercises[entryIdx]) return;
@@ -529,9 +531,8 @@ function _maybeShowMaxSetCoach(entryIdx, si) {
   const sp = _exerciseSubPattern(entry, ex);
   const isWeak = Array.isArray(meta.selectedWeakParts) && sp && meta.selectedWeakParts.includes(sp);
   const key = `${dateKey(S.shared.date.y, S.shared.date.m, S.shared.date.d)}:${entry.exerciseId}:${si}:${kg}:${reps}`;
-  window.__maxCoachShown = window.__maxCoachShown || new Set();
-  if (window.__maxCoachShown.has(key)) return;
-  window.__maxCoachShown.add(key);
+  if (_maxCoachShown.has(key)) return;
+  _maxCoachShown.add(key);
   const repsHigh = Number(prescription?.repsHigh) || (sessionType === 'heavy_volume' ? 10 : 18);
   const repsLow = Number(prescription?.repsLow) || (sessionType === 'heavy_volume' ? 6 : 12);
   if (reps >= repsHigh + 3) {
@@ -1965,11 +1966,11 @@ function _pickerEditIconSvg() {
 
 async function _deletePickerExercise(ex) {
   if (!ex?.id) {
-    window.showToast?.('삭제할 종목을 찾지 못했어요', 2200, 'error');
+    showToast('삭제할 종목을 찾지 못했어요', 2200, 'error');
     return;
   }
   const name = ex.name || ex.id;
-  const ok = await (window.confirmAction?.({
+  const ok = await (confirmAction({
     title: '종목을 삭제할까요?',
     message: `"${name}" 종목을 선택 후보에서 삭제합니다.\n과거 운동 기록은 유지됩니다.`,
     confirmLabel: '삭제',
@@ -1981,10 +1982,10 @@ async function _deletePickerExercise(ex) {
   try {
     await deleteExercise(ex.id);
     _renderPickerList();
-    window.showToast?.('종목이 삭제됐어요', 1800, 'info');
+    showToast('종목이 삭제됐어요', 1800, 'info');
   } catch (err) {
     console.warn('[picker.deleteExercise]:', err);
-    window.showToast?.('종목 삭제 실패 — 다시 시도해주세요', 2600, 'error');
+    showToast('종목 삭제 실패 — 다시 시도해주세요', 2600, 'error');
   }
 }
 
@@ -2713,7 +2714,7 @@ async function _selectPickerExercise(ex) {
 
 function _runPickerRowAction(action, ex) {
   if (!ex?.id) {
-    window.showToast?.('종목을 찾지 못했어요', 1800, 'warning');
+    showToast('종목을 찾지 못했어요', 1800, 'warning');
     return false;
   }
   switch (action) {
@@ -2740,7 +2741,7 @@ function _handlePickerListClick(event) {
     event.preventDefault();
     event.stopPropagation();
     const filterId = source.getAttribute('data-gym-filter');
-    if (filterId) window._wtSetPickerGymFilter?.(filterId);
+    if (filterId) _setPickerGymFilter(filterId);
     return;
   }
   const rowAction = target.closest?.('[data-picker-row-action]');
@@ -3106,7 +3107,7 @@ async function _saveManualCardioFromSheet(sheet) {
   const cardio = _pickerCardioById(sheet?.getAttribute?.('data-cardio-id'));
   const summary = _readManualCardioSheet(sheet);
   if (!summary) {
-    window.showToast?.('유산소 수치를 하나 이상 입력해주세요', 2200, 'warning');
+    showToast('유산소 수치를 하나 이상 입력해주세요', 2200, 'warning');
     return;
   }
   const saveBtn = sheet?.querySelector?.('[data-cardio-save]');
@@ -3137,7 +3138,7 @@ async function _saveManualCardioFromSheet(sheet) {
     const savePromise = saveWorkoutDay({ silent: true });
     _closeManualCardioInput();
     wtCloseExercisePicker();
-    window.showToast?.(existingIdx >= 0 ? '유산소 기록을 수정했어요' : '유산소 기록을 추가했어요', 1800, 'success');
+    showToast(existingIdx >= 0 ? '유산소 기록을 수정했어요' : '유산소 기록을 추가했어요', 1800, 'success');
     if (afterSelect) {
       await savePromise;
       await _runPickerAfterSelect(afterSelect, workoutExerciseSelectionDetail({
@@ -3154,7 +3155,7 @@ async function _saveManualCardioFromSheet(sheet) {
     savePromise.catch(e => console.error('Save error:', e));
   } catch (e) {
     console.error('[manual-cardio.save]:', e);
-    window.showToast?.('유산소 기록 저장 실패', 2400, 'error');
+    showToast('유산소 기록 저장 실패', 2400, 'error');
   } finally {
     if (saveBtn) {
       saveBtn.disabled = false;
@@ -3251,7 +3252,7 @@ async function _runPickerAfterSelect(handler, detail = {}) {
     return true;
   } catch (e) {
     console.warn('[exercise-picker] afterSelect failed:', e);
-    window.showToast?.('운동 추가 후 화면 갱신에 실패했어요', 2200, 'warning');
+    showToast('운동 추가 후 화면 갱신에 실패했어요', 2200, 'warning');
     return false;
   }
 }
@@ -3337,6 +3338,10 @@ function _syncPickerDoneButton() {
 function _bindPickerChrome() {
   const modal = document.getElementById('ex-picker-modal');
   if (!modal) return;
+  if (!modal.dataset.pickerBackdropBound) {
+    modal.dataset.pickerBackdropBound = '1';
+    modal.addEventListener('click', (event) => wtCloseExercisePicker(event));
+  }
   if (!modal.dataset.pickerBackCaptureBound) {
     modal.dataset.pickerBackCaptureBound = '1';
     modal.addEventListener('click', (event) => {
@@ -3351,12 +3356,27 @@ function _bindPickerChrome() {
   const add = modal.querySelector('#ex-picker-add-top');
   if (add) add.onclick = _openPickerEditorFromHeader;
   const input = modal.querySelector('#ex-picker-search');
-  if (input) input.oninput = () => window._wtOnPickerSearch(input.value);
+  if (input) input.oninput = () => _onPickerSearch(input.value);
   const clear = modal.querySelector('#ex-picker-search-clear');
-  if (clear) clear.onclick = () => window._wtClearPickerSearch();
+  if (clear) clear.onclick = _clearPickerSearch;
   const done = modal.querySelector('#ex-picker-done');
   if (done) done.onclick = () => wtCloseExercisePicker();
   _syncPickerDoneButton();
+}
+
+function _bindExerciseEditorChrome(editor) {
+  if (!editor || editor.dataset.editorChromeBound) return;
+  editor.dataset.editorChromeBound = '1';
+  editor.addEventListener('click', (event) => {
+    if (event.target === editor) {
+      wtCloseExerciseEditor(event);
+      return;
+    }
+    const action = event.target.closest('[data-action]')?.dataset?.action;
+    if (action === 'close-exercise-editor') wtCloseExerciseEditor();
+    if (action === 'save-exercise-editor') void wtSaveExerciseFromEditor();
+    if (action === 'delete-exercise-editor') void wtDeleteExerciseFromEditor();
+  });
 }
 
 function _renderPickerTabs(ctx) {
@@ -3431,13 +3451,7 @@ function _syncPickerChrome(ctx) {
   if (back) back.setAttribute('aria-label', _pickerView === 'category' && !_pickerSearchQuery ? '닫기' : '분류로 돌아가기');
 }
 
-window._wtSetPickerMuscleFilter = (muscleId) => {
-  _pickerView = 'list';
-  _pickerMuscleFilter = muscleId || null;
-  _renderPickerList();
-};
-window._wtSetPickerCategoryFilter = window._wtSetPickerMuscleFilter;
-window._wtSetPickerGymFilter = (gymId) => {
+function _setPickerGymFilter(gymId) {
   _pickerView = 'list';
   _pickerGymFilter = _normalizePickerGymFilter(gymId);
   if (S?.workout) S.workout.pickerGymFilter = _pickerGymFilter;
@@ -3455,12 +3469,12 @@ function _wtSetPickerGymCategoryFilter(gymId) {
   _renderPickerList();
 }
 
-window._wtSetPickerSort = (mode) => {
+function _setPickerSort(mode) {
   _pickerSortMode = ['recent', 'frequency', 'name'].includes(mode) ? mode : 'recent';
   _renderPickerList();
-};
+}
 
-window._wtSetPickerScope = (mode) => {
+function _setPickerScope(mode) {
   if (_pickerView === 'cardio' || _pickerView === 'running') {
     _renderPickerList();
     return;
@@ -3468,10 +3482,10 @@ window._wtSetPickerScope = (mode) => {
   _pickerView = 'list';
   _pickerListMode = mode === 'custom' ? 'custom' : 'all';
   _renderPickerList();
-};
+}
 
 // C-2: 종목명 검색 상태 (trim + lowercase)
-window._wtOnPickerSearch = (q) => {
+function _onPickerSearch(q) {
   _pickerSearchQuery = String(q || '').trim().toLowerCase();
   if (_pickerSearchQuery) {
     _pickerView = 'list';
@@ -3480,20 +3494,20 @@ window._wtOnPickerSearch = (q) => {
   }
   _setPickerSearchUi(_pickerSearchQuery ? String(q || '') : '');
   _renderPickerList();
-};
-window._wtClearPickerSearch = () => {
+}
+function _clearPickerSearch() {
   _pickerSearchQuery = '';
   _setPickerSearchUi('');
   _renderPickerList();
-};
+}
 // C-4: 모든 필터 일괄 해제 ("필터 초기화" 버튼용)
-window._wtResetAllPickerFilters = () => {
+function _resetAllPickerFilters() {
   _pickerView = 'list';
   _pickerListMode = 'all';
   _pickerMuscleFilter = null;
   _resetPickerGymScope();
-  window._wtClearPickerSearch();
-};
+  _clearPickerSearch();
+}
 
 function _selectedPickerManagerGymId(gymId = null) {
   if (_isConcretePickerGymFilter(gymId)) return gymId;
@@ -3511,7 +3525,7 @@ async function _openPickerEquipmentManager(gymId = null) {
   } catch (err) {
     console.warn('[picker.openEquipmentManager]:', err);
   }
-  window.showToast?.('기구 관리 화면을 열 수 없어요', 2400, 'error');
+  showToast('기구 관리 화면을 열 수 없어요', 2400, 'error');
 }
 
 function _normalizeMajorMuscleId(id) {
@@ -3648,10 +3662,10 @@ function _renderPickerListToolbar(container) {
     </div>
   `;
   toolbar.querySelectorAll('[data-picker-sort]').forEach(btn => {
-    btn.addEventListener('click', () => window._wtSetPickerSort?.(btn.getAttribute('data-picker-sort')));
+    btn.addEventListener('click', () => _setPickerSort(btn.getAttribute('data-picker-sort')));
   });
   toolbar.querySelectorAll('[data-picker-scope]').forEach(btn => {
-    btn.addEventListener('click', () => window._wtSetPickerScope?.(btn.getAttribute('data-picker-scope')));
+    btn.addEventListener('click', () => _setPickerScope(btn.getAttribute('data-picker-scope')));
   });
   toolbar.querySelector('[data-picker-create-exercise]')?.addEventListener('click', _openPickerEditorFromHeader);
   container.appendChild(toolbar);
@@ -3682,7 +3696,7 @@ function _renderPickerCardioListToolbar(container) {
     </div>
   `;
   toolbar.querySelectorAll('[data-picker-sort]').forEach(btn => {
-    btn.addEventListener('click', () => window._wtSetPickerSort?.(btn.getAttribute('data-picker-sort')));
+    btn.addEventListener('click', () => _setPickerSort(btn.getAttribute('data-picker-sort')));
   });
   container.appendChild(toolbar);
 }
@@ -3716,12 +3730,7 @@ function _renderPickerCardioList(container) {
 
 function _openPickerRunningSession() {
   wtCloseExercisePicker();
-  if (typeof window.wtOpenRunningSession === 'function') {
-    window.wtOpenRunningSession();
-    return;
-  }
-  const switchType = window.wtSwitchType;
-  if (typeof switchType === 'function') switchType('running');
+  wtOpenRunningSession();
 }
 
 function _renderPickerRunningList(container) {
@@ -3938,7 +3947,7 @@ export function _renderPickerList() {
          </div>`
       : `<div>${emptyMsg}</div>
          <div class="ex-picker-empty-actions">${createButton}</div>`;
-    empty.querySelector('[data-picker-reset-empty]')?.addEventListener('click', () => window._wtResetAllPickerFilters?.());
+    empty.querySelector('[data-picker-reset-empty]')?.addEventListener('click', _resetAllPickerFilters);
     empty.querySelector('[data-picker-empty-create]')?.addEventListener('click', _openPickerEditorFromHeader);
     container.appendChild(empty);
   }
@@ -3972,6 +3981,7 @@ export async function wtOpenExercisePicker(options = {}) {
 export function wtOpenExerciseEditor(exId, defaultMuscleId, options = {}) {
   _setExerciseEditorReturnMode(options);
   const editor       = document.getElementById('ex-editor-modal');
+  _bindExerciseEditorChrome(editor);
   const nameInput    = document.getElementById('ex-editor-name');
   const muscleSelect = document.getElementById('ex-editor-muscle');
   const deleteBtn    = document.getElementById('ex-editor-delete') || document.getElementById('tds-btn danger sm');
@@ -4062,10 +4072,10 @@ export async function wtSaveExerciseFromEditor() {
   const gymId = document.getElementById('ex-editor-gym-scope')?.value || null;
   const saveBtn = editor?.querySelector('[data-action="save-exercise-editor"]');
   let muscleId = muscleSelect.value;
-  if (!name) { window.showToast?.('종목 이름을 입력해주세요', 2500, 'warning'); return; }
+  if (!name) { showToast('종목 이름을 입력해주세요', 2500, 'warning'); return; }
   if (muscleId === NEW_MUSCLE_OPTION) {
     const newMuscleName = document.getElementById('ex-editor-new-muscle-name')?.value?.trim() || '';
-    if (!newMuscleName) { window.showToast?.('새 부위 이름을 입력해주세요', 2500, 'warning'); return; }
+    if (!newMuscleName) { showToast('새 부위 이름을 입력해주세요', 2500, 'warning'); return; }
     muscleId = customExerciseMuscleId();
     await saveCustomMuscle({ id: muscleId, name: newMuscleName, color: '#8b5cf6' });
   }
@@ -4080,7 +4090,7 @@ export async function wtSaveExerciseFromEditor() {
     id: editingId || exerciseEditorRecordId(),
   });
   if (!built.ok) {
-    window.showToast?.('종목 저장 정보가 부족해요', 2500, 'warning');
+    showToast('종목 저장 정보가 부족해요', 2500, 'warning');
     return;
   }
   const record = built.record;
@@ -4096,7 +4106,7 @@ export async function wtSaveExerciseFromEditor() {
     await _saveExerciseProgramFromEditor(programRecord);
   } catch (e) {
     console.warn('[wtSaveExerciseFromEditor]:', e);
-    window.showToast?.('종목 저장 실패 — 다시 시도해주세요', 2800, 'error');
+    showToast('종목 저장 실패 — 다시 시도해주세요', 2800, 'error');
     return;
   } finally {
     if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '저장'; }
@@ -4104,12 +4114,12 @@ export async function wtSaveExerciseFromEditor() {
   editor.classList.remove('open');
   _setWorkoutModalLock(false);
   _finishExerciseEditorReturn();
-  window.showToast?.('종목 저장 완료', 1600, 'success');
+  showToast('종목 저장 완료', 1600, 'success');
 }
 
 export async function wtDeleteExerciseFromEditor() {
   const editor = document.getElementById('ex-editor-modal');
-  const ok = await (window.confirmAction?.({
+  const ok = await (confirmAction({
     title: '종목을 삭제할까요?',
     message: '이 종목으로 기록된 과거 세트 데이터는 유지되지만,\n앞으로는 선택할 수 없어요.',
     confirmLabel: '삭제',
@@ -4122,5 +4132,5 @@ export async function wtDeleteExerciseFromEditor() {
   editor.classList.remove('open');
   _setWorkoutModalLock(false);
   _finishExerciseEditorReturn();
-  window.showToast?.('종목이 삭제됐어요', 2000, 'info');
+  showToast('종목이 삭제됐어요', 2000, 'info');
 }

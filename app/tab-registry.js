@@ -5,7 +5,7 @@ export const TAB_REGISTRY = Object.freeze({
   calendar: Object.freeze({ id: 'calendar', panelId: 'tab-calendar', module: './render-calendar.js' }),
   stats: Object.freeze({ id: 'stats', panelId: 'tab-stats', module: './render-stats.js' }),
   cooking: Object.freeze({ id: 'cooking', panelId: 'tab-cooking', module: './render-cooking.js' }),
-  admin: Object.freeze({ id: 'admin', panelId: 'tab-admin', module: './render-admin.js?v=20260410e', adminOnly: true }),
+  admin: Object.freeze({ id: 'admin', panelId: 'tab-admin', module: './render-admin.js', adminOnly: true }),
 });
 
 export const TAB_IDS = Object.freeze(Object.keys(TAB_REGISTRY));

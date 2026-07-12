@@ -148,23 +148,23 @@ test('Dashboard3 mode controls cannot persist normal or pro workout record UI', 
   assert.match(renderTop, /_syncWorkoutModeClass\('max'\)/);
   assert.match(renderTop, /host\.innerHTML = _renderDashboardTestModeEntry\(\)/);
 
-  const showPro = sliceByFirstBrace(expertJs, 'window.wtExcShowProView = async');
+  const showPro = sliceByFirstBrace(expertJs, 'export async function wtExcShowProView');
   assert.doesNotMatch(showPro, /mode:\s*'pro'/);
   assert.match(showPro, /wtOpenGymListSheet/);
 
-  const showMax = sliceByFirstBrace(expertJs, 'window.wtExcShowMaxView = async');
+  const showMax = sliceByFirstBrace(expertJs, 'export async function wtExcShowMaxView');
   assert.match(showMax, /mode:\s*'max'/);
   assert.doesNotMatch(showMax, /openMaxMiniOnboarding\(\)/);
 
-  const switchNormal = sliceByFirstBrace(expertJs, 'window.wtExcSwitchToNormalView = async');
+  const switchNormal = sliceByFirstBrace(expertJs, 'export async function wtExcSwitchToNormalView');
   assert.match(switchNormal, /mode:\s*'max'/);
   assert.doesNotMatch(switchNormal, /mode:\s*'normal'/);
 
-  const leaveExpert = sliceByFirstBrace(expertJs, 'window.wtExcLeaveExpertMode = async');
+  const leaveExpert = sliceByFirstBrace(expertJs, 'export async function wtExcLeaveExpertMode');
   assert.match(leaveExpert, /mode:\s*'max'/);
   assert.doesNotMatch(leaveExpert, /mode:\s*'normal'/);
 
-  const reEnable = sliceByFirstBrace(expertJs, 'window.wtExcReEnableExpertMode = async');
+  const reEnable = sliceByFirstBrace(expertJs, 'export async function wtExcReEnableExpertMode');
   assert.match(reEnable, /mode:\s*'max'/);
   assert.doesNotMatch(reEnable, /mode:\s*'pro'/);
 });

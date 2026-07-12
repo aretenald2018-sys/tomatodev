@@ -1,3 +1,4 @@
+import { showToast } from '../ui/toast.js';
 import {
   MAX_RUNNING_ROUTE_POINTS,
   normalizeRunningRoutePoints,
@@ -379,7 +380,7 @@ export async function saveWearWorkoutPayload(raw) {
   if (typeof document !== 'undefined' && typeof CustomEvent !== 'undefined') {
     document.dispatchEvent(new CustomEvent('sheet:saved', { detail: { source: 'wear-running', dateKey: payload.dateKey } }));
   }
-  if (typeof window !== 'undefined') window.showToast?.('워치 런닝 기록을 저장했어요', 2200, 'success');
+  if (typeof window !== 'undefined') showToast('워치 런닝 기록을 저장했어요', 2200, 'success');
   return { ok: true, sessionIndex };
 }
 

@@ -15,6 +15,7 @@ import { updateHeroSocialProof } from './hero.js';
 import { createSocialRenderScheduler } from './social-render-scheduler.js';
 import { runOptimisticSocialAction } from './social-action.js';
 import { confirmAction } from '../utils/confirm-modal.js';
+import { openPhotoLightbox } from '../utils/photo-lightbox.js';
 
 const _NEIGHBOR_PAGE_SIZE = 3;
 let _neighborPage = 0;
@@ -23,21 +24,24 @@ let _neighborPage = 0;
 let _renderHomeFn = null;
 let _openFriendProfileFn = null;
 let _openTomatoGiftModalFn = null;
+let _openIntroduceFriendFn = null;
+let _sendReactionFn = null;
+let _deleteFriendLock = false;
 
-export function setFriendFeedDeps({ renderHome, openFriendProfile, openTomatoGiftModal }) {
+export function setFriendFeedDeps({ renderHome, openFriendProfile, openTomatoGiftModal, openIntroduceFriend, sendReaction }) {
   _renderHomeFn = renderHome;
   _openFriendProfileFn = openFriendProfile;
   _openTomatoGiftModalFn = openTomatoGiftModal;
+  _openIntroduceFriendFn = openIntroduceFriend;
+  _sendReactionFn = sendReaction;
 }
 
 function _openFriendProfile(fid, fname) {
-  if (_openFriendProfileFn) _openFriendProfileFn(fid, fname);
-  else if (window.openFriendProfile) window.openFriendProfile(fid, fname);
+  _openFriendProfileFn?.(fid, fname);
 }
 
 function _openTomatoGiftModal(fid, fname) {
-  if (_openTomatoGiftModalFn) _openTomatoGiftModalFn(fid, fname);
-  else if (window.openTomatoGiftModal) window.openTomatoGiftModal(fid, fname);
+  _openTomatoGiftModalFn?.(fid, fname);
 }
 
 function _feedAttr(value) {
@@ -65,13 +69,13 @@ function _bindFriendFeedActions(root = document) {
 async function _runFriendFeedAction(action, control, event) {
   switch (action) {
     case 'quick-add-neighbor':
-      return window.quickAddNeighbor?.(control.dataset.targetId || '');
+      return quickAddNeighbor(control.dataset.targetId || '');
     case 'accept-friend-request':
-      return window.acceptFriendReq?.(control.dataset.requestId || '');
+      return acceptFriendReq(control.dataset.requestId || '');
     case 'reject-friend-request':
-      return window.rejectFriendReq?.(control.dataset.requestId || '');
+      return rejectFriendReq(control.dataset.requestId || '');
     case 'open-meal-photo':
-      return window.openMealPhotoLightbox?.(control.dataset.photo || '');
+      return openPhotoLightbox(control.dataset.photo || '');
     case 'toggle-inactive-friends': {
       const body = control.nextElementSibling;
       if (!body) return;
@@ -97,22 +101,22 @@ async function _runFriendFeedAction(action, control, event) {
       _openTomatoGiftModal(control.dataset.giftFid || '', control.dataset.giftName || '');
       return;
     case 'send-friend-request':
-      return window.sendFriendReq?.();
+      return sendFriendReq();
     case 'close-dynamic-modal':
       document.getElementById('dynamic-modal')?.remove();
       return;
     case 'introduce-friend':
-      return window.openIntroduceFriend?.(control.dataset.friendId || '', control.dataset.friendName || '');
+      return _openIntroduceFriendFn?.(control.dataset.friendId || '', control.dataset.friendName || '');
     case 'edit-friend-nickname':
-      return window.editFriendNickname?.(control.dataset.friendId || '');
+      return editFriendNickname(control.dataset.friendId || '');
     case 'delete-friend':
-      return window.deleteFriend?.(control.dataset.requestId || '');
+      return deleteFriend(control.dataset.requestId || '');
     case 'show-reaction-picker':
-      return window.showReactionPicker?.(control, control.dataset.targetId || '', control.dataset.dateKey || '', control.dataset.field || '');
+      return showReactionPicker(control, control.dataset.targetId || '', control.dataset.dateKey || '', control.dataset.field || '');
     case 'show-reaction-detail':
-      return window.showReactionDetail?.(control, control.dataset.targetId || '', control.dataset.dateKey || '', control.dataset.field || '');
+      return showReactionDetail(control, control.dataset.targetId || '', control.dataset.dateKey || '', control.dataset.field || '');
     case 'send-reaction':
-      return window.sendReaction?.(control.dataset.targetId || '', control.dataset.dateKey || '', control.dataset.field || '', control.dataset.emoji || '');
+      return _sendReactionFn?.(control.dataset.targetId || '', control.dataset.dateKey || '', control.dataset.field || '', control.dataset.emoji || '');
     default:
       console.warn(`[friend-feed] unknown action: ${action}`);
   }
@@ -553,9 +557,7 @@ export async function openFriendManager() {
   _bindFriendManagerActions(modal);
 }
 
-window.openFriendManager = openFriendManager;
-
-window.sendFriendReq = async function() {
+export async function sendFriendReq() {
   const ln = document.getElementById('friend-add-last')?.value.trim();
   const fn = document.getElementById('friend-add-first')?.value.trim();
   const st = document.getElementById('friend-add-status');
@@ -572,30 +574,30 @@ window.sendFriendReq = async function() {
   if (!r.error) { recordAction('이웃요청'); document.getElementById('friend-add-last').value = ''; document.getElementById('friend-add-first').value = ''; }
 };
 
-window.acceptFriendReq = async function(id) {
+export async function acceptFriendReq(id) {
   await acceptFriendRequest(id);
   recordAction('이웃수락');
   showToast('🤝 이제 이웃이 되었어요!', 2500, 'success');
   haptic('success');
   if (_renderHomeFn) _renderHomeFn();
 };
-window.rejectFriendReq = async function(id) { await removeFriend(id); showToast('요청을 거절했어요', 2500, 'info'); if (_renderHomeFn) _renderHomeFn(); };
-window.deleteFriend = async function(id) {
+export async function rejectFriendReq(id) { await removeFriend(id); showToast('요청을 거절했어요', 2500, 'info'); if (_renderHomeFn) _renderHomeFn(); };
+export async function deleteFriend(id) {
   const ok = await confirmAction({ title: '이웃 삭제', message: '이웃을 삭제할까요?', destructive: true, longPress: 2000 });
   if (!ok) return;
   // 더블탭 가드: 삭제 완료 전 재호출 방지
-  if (window._deleteFriendLock) return;
-  window._deleteFriendLock = true;
+  if (_deleteFriendLock) return;
+  _deleteFriendLock = true;
   try {
     await removeFriend(id);
     showToast('이웃을 삭제했어요', 2500, 'info');
     openFriendManager();
   } finally {
-    window._deleteFriendLock = false;
+    _deleteFriendLock = false;
   }
 };
 
-window.quickAddNeighbor = async function(targetId) {
+export async function quickAddNeighbor(targetId) {
   const user = getCurrentUser();
   if (!user) return;
   const myId = isAdminGuest() ? getAdminId() : user.id;
@@ -605,7 +607,7 @@ window.quickAddNeighbor = async function(targetId) {
   _scheduleFriendFeedRender('quick-add-neighbor');
 };
 
-window.editFriendNickname = async function(friendId) {
+export async function editFriendNickname(friendId) {
   if (!isAdmin()) { showToast('별명 변경은 관리자만 가능해요', 2500, 'warning'); return; }
   const { getAccountList, saveAccount } = await import('../data.js');
   const accounts = await getAccountList();
@@ -630,7 +632,7 @@ export const REACTIONS = [
   { emoji: '🍅', label: '토마토' },
 ];
 
-window.friendLike = async function(tid, dk, field) {
+export async function friendLike(tid, dk, field) {
   return runOptimisticSocialAction({
     commit: () => toggleLike(tid, dk, field),
     refresh: reason => _scheduleFriendFeedRender(reason),
@@ -638,7 +640,7 @@ window.friendLike = async function(tid, dk, field) {
   });
 };
 
-window.showReactionPicker = function(btn, tid, dk, field) {
+export function showReactionPicker(btn, tid, dk, field) {
   _bindFriendFeedActions();
   document.querySelectorAll('.reaction-picker').forEach(p => p.remove());
   const picker = document.createElement('div');
@@ -657,7 +659,7 @@ window.showReactionPicker = function(btn, tid, dk, field) {
   });
 };
 
-window.showReactionDetail = async function(btn, tid, dk, field) {
+export async function showReactionDetail(btn, tid, dk, field) {
   document.querySelectorAll('.reaction-detail-popup').forEach(p => p.remove());
   const likes = await getLikes(tid, dk);
   const fieldLikes = likes.filter(l => l.field === field);

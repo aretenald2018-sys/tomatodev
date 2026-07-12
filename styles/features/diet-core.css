@@ -1,0 +1,287 @@
+/* ══════════════════════════════════════════════════════════════════
+   Diet Section
+   ══════════════════════════════════════════════════════════════════ */
+.diet-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.diet-meal-row {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+}
+.diet-meal-label {
+  font-size: 10px; font-weight: 700; color: var(--text-tertiary);
+  margin-bottom: 6px; letter-spacing: 0.5px; text-transform: uppercase;
+}
+.diet-meal-input {
+  width: 100%; background: transparent; border: none;
+  color: var(--text); font-family: var(--font-sans); font-size: 13px;
+  outline: none; line-height: 1.6;
+}
+.diet-meal-input::placeholder { color: var(--text-tertiary); }
+.diet-meal-input-hidden { display: none !important; }
+.diet-result { margin-top: 6px; font-size: 11px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.diet-badge {
+  padding: 3px 10px; border-radius: var(--radius-full);
+  font-size: 11px; font-weight: 600; letter-spacing: -0.01em;
+}
+.diet-badge.ok { background: var(--diet-ok-dim); color: var(--diet-ok); border: 1px solid var(--diet-ok); }
+.diet-badge.bad { background: var(--diet-bad-dim); color: var(--diet-bad); border: 1px solid var(--diet-bad); }
+.diet-badge.pending { background: var(--surface3); color: var(--text-secondary); border: 1px solid var(--border); }
+.diet-kcal { font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); }
+.diet-reason { font-size: 10px; color: var(--text-tertiary); width: 100%; margin-top: 2px; line-height: 1.4; }
+.diet-reason.bad { color: var(--diet-bad); opacity: 0.8; }
+.diet-analyze-btn {
+  width: 100%; padding: 12px; background: var(--diet-ok-dim);
+  border: 1px solid var(--diet-ok); border-radius: var(--radius-sm);
+  color: var(--diet-ok); font-family: var(--font-sans); font-size: 13px;
+  font-weight: 600; cursor: pointer; margin-top: 8px; transition: all var(--transition);
+}
+.diet-analyze-btn:active { transform: scale(0.97); }
+.diet-analyze-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.diet-bulk-ai {
+  padding: 10px 14px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.diet-bulk-ai-toggle {
+  display: block;
+  margin: 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+
+.diet-bulk-ai-panel {
+  margin-top: 10px;
+}
+
+.diet-bulk-ai-chips {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.diet-bulk-ai-chip {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 12px;
+  min-width: 52px;
+  cursor: pointer;
+}
+
+.diet-bulk-ai-chip.active {
+  border-color: var(--primary);
+  background: rgba(250, 52, 44, 0.1);
+  color: var(--primary);
+}
+
+.diet-bulk-ai-chip.active::after {
+  content: attr(data-order);
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-size: 10px;
+  line-height: 16px;
+}
+
+.diet-bulk-ai-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.diet-bulk-ai-upload {
+  border: 0;
+  border-radius: 8px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 9px 12px;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.diet-bulk-ai-upload:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.diet-bulk-ai-hint,
+.diet-bulk-ai-status {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.diet-bulk-ai-status {
+  min-height: 16px;
+  margin-top: 8px;
+  text-align: center;
+}
+
+.diet-bulk-ai-status[data-type="success"] {
+  color: var(--diet-ok);
+}
+
+.diet-bulk-ai-status[data-type="warning"],
+.diet-bulk-ai-status[data-type="error"] {
+  color: var(--diet-bad);
+}
+
+/* ── Diet DB / Food chips ── */
+.diet-db-btn {
+  /* TDS Mobile sm — padding 8/14, font 12, r8 */
+  background: var(--surface3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-tertiary); font-size: 12px;
+  line-height: 18px; font-weight: 500;
+  padding: 6px 12px; cursor: pointer; margin-top: 4px;
+  -webkit-tap-highlight-color: transparent; transition: all var(--transition);
+  font-family: var(--font-sans);
+  min-height: 32px;
+}
+.diet-db-btn:active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.diet-skip-btn {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text-tertiary); cursor: pointer;
+  transition: all var(--transition); -webkit-tap-highlight-color: transparent;
+}
+.diet-skip-btn.active { background: #7c2d12; border-color: #dc2626; color: #fca5a5; }
+.diet-frequent-foods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 4px;
+  min-width: 0;
+}
+.diet-frequent-foods[hidden] { display: none !important; }
+.diet-frequent-food-card {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface2);
+  padding: 8px 10px 9px;
+}
+.diet-frequent-food-section + .diet-frequent-food-section {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.diet-frequent-food-label {
+  margin-bottom: 5px;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.diet-frequent-food-options {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  padding: 1px 1px 5px;
+  scroll-snap-type: inline mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.diet-frequent-food-options::-webkit-scrollbar { display: none; }
+.diet-frequent-food-option {
+  flex: 0 0 min(132px, 34vw);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "name add"
+    "meta add";
+  align-items: center;
+  column-gap: 3px;
+  min-width: 0;
+  max-width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 0;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--transition), transform var(--transition);
+  scroll-snap-align: start;
+}
+.diet-frequent-food-option:active {
+  color: var(--primary);
+  transform: scale(0.98);
+}
+.diet-frequent-food-add {
+  grid-area: add;
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--primary-bg);
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+.diet-frequent-food-name {
+  grid-area: name;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.diet-frequent-food-meta,
+.diet-frequent-food-count {
+  grid-area: meta;
+  flex: 0 0 auto;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.diet-frequent-food-count { display: none; }
+.meal-food-list { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.meal-food-chip {
+  display: flex; align-items: center; gap: 6px;
+  min-width: 0; max-width: 100%;
+  background: var(--surface3); border: 1px solid var(--border);
+  border-radius: 6px; padding: 7px 12px; font-size: 11px;
+  min-height: 36px;
+}
+.meal-food-chip-name {
+  flex: 1 1 auto; min-width: 0; color: var(--text);
+  font-weight: 700;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.meal-food-chip-kcal { color: var(--text-secondary); font-family: var(--font-mono); flex-shrink: 0; }
+.meal-food-chip-del {
+  background: none; border: none; color: var(--text-secondary); font-size: 10px;
+  cursor: pointer; padding: 0 2px; -webkit-tap-highlight-color: transparent; flex-shrink: 0;
+}
+.meal-food-chip-del:active { color: var(--diet-bad); }

@@ -4,6 +4,7 @@
 
 import { TODAY, dateKey, toggleLike, saveCheerLastSeen } from '../data.js';
 import { showToast } from './utils.js';
+import { openFriendProfile } from './friend-profile.js';
 
 function _uniqueCheers(cheers) {
   const map = new Map();
@@ -111,7 +112,7 @@ export function renderCheerCard(cheers, onAfterAction) {
     showToast('응원 완료!', 1800, 'success');
     overlay.querySelector('#cheer-card-profile-btn')?.addEventListener('click', () => {
       clearCheerCard();
-      if (window.openFriendProfile) window.openFriendProfile(first.from, firstName);
+      void openFriendProfile(first.from, firstName);
       if (onAfterAction) onAfterAction();
     });
     overlay.querySelector('#cheer-card-done-close-btn')?.addEventListener('click', () => {

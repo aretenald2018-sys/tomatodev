@@ -5,6 +5,14 @@
 import { saveTabOrder, getVisibleTabs, saveVisibleTabs } from './data.js';
 import { showToast } from './render-home.js';
 
+let _getCurrentTab = () => 'home';
+let _switchTab = () => undefined;
+
+export function configureNavigation({ getCurrentTab, switchTab } = {}) {
+  if (typeof getCurrentTab === 'function') _getCurrentTab = getCurrentTab;
+  if (typeof switchTab === 'function') _switchTab = switchTab;
+}
+
 // ── 탭 드래그 순서 변경 ──────────────────────────────────────────
 export function initTabDrag() {
   const nav = document.getElementById('tab-nav');
@@ -65,7 +73,7 @@ export function initSwipeNavigation() {
 
   function getSwipeableTabs() {
     // 어드민 탭에서는 스와이프 비활성화
-    if (window._getCurrentTab() === 'admin') return [];
+    if (_getCurrentTab() === 'admin') return [];
     return [...document.querySelectorAll('#tab-nav .tab-btn[data-tab]')]
       .filter(b => b.style.display !== 'none' && !b.closest('.more-menu-dynamic-tabs'))
       .map(b => b.dataset.tab)
@@ -74,7 +82,7 @@ export function initSwipeNavigation() {
 
   function getNextTab(dir) {
     const tabs = getSwipeableTabs();
-    const idx = tabs.indexOf(window._getCurrentTab());
+    const idx = tabs.indexOf(_getCurrentTab());
     if (idx === -1) return null;
     const ni = idx + dir;
     return (ni >= 0 && ni < tabs.length) ? tabs[ni] : null;
@@ -126,7 +134,7 @@ export function initSwipeNavigation() {
         const nextTab = getNextTab(swipeDir);
         if (!nextTab) { tracking = false; return; }
 
-        curPanel = document.getElementById('tab-' + window._getCurrentTab());
+        curPanel = document.getElementById('tab-' + _getCurrentTab());
         nextPanel = document.getElementById('tab-' + nextTab);
 
         nextPanel.style.transition = 'none';
@@ -178,7 +186,7 @@ export function initSwipeNavigation() {
         const nextTab = getNextTab(swipeDir);
         curPanel.style.cssText = '';
         nextPanel.style.cssText = '';
-        if (nextTab) window.switchTab(nextTab);
+        if (nextTab) _switchTab(nextTab);
       }, duration + 10);
     } else {
       curPanel.style.transition = `transform ${duration}ms ease-out`;
@@ -295,10 +303,3 @@ export async function saveTabSettingsFromModal() {
   document.getElementById('tab-settings-modal').classList.remove('open');
   showToast('탭 설정이 저장되었습니다');
 }
-
-// ── window 등록 ─────────────────────────────────────────────────
-Object.assign(window, {
-  openTabSettingsModal,
-  closeTabSettingsModal,
-  saveTabSettingsFromModal,
-});

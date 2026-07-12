@@ -126,7 +126,7 @@ export function renderPending(meal) {
       <div class="ai-estimate-banner-head">
         <span class="ai-estimate-spinner"></span>
         <span>AI가 사진을 분석 중이에요…</span>
-        <button class="ai-close" onclick="aiEstimateDismiss('${meal}')" title="취소">✕</button>
+        <button class="ai-close" data-ai-estimate-action="dismiss" data-meal="${meal}" title="취소">✕</button>
       </div>
       <div style="font-size:11px;color:var(--muted,#888);">보통 3~5초 걸려요. 결과가 마음에 들지 않으면 취소할 수 있어요.</div>
     </div>`;
@@ -152,13 +152,13 @@ export function renderPreview(meal) {
         <span class="ai-bot">🤖</span>
         <span>AI 추정</span>
         <span class="ai-kcal">약 ${Math.round(e.totalKcal)} kcal</span>
-        <button class="ai-close" onclick="aiEstimateDismiss('${meal}')" title="닫기">✕</button>
+        <button class="ai-close" data-ai-estimate-action="dismiss" data-meal="${meal}" title="닫기">✕</button>
       </div>
       <div class="ai-estimate-items">${itemsHtml || '<span style="color:var(--muted)">항목 없음</span>'}</div>
       ${quickFix}
       <div class="ai-estimate-actions">
-        <button class="btn-confirm" onclick="aiEstimateConfirm('${meal}')">✓ 이대로 확정</button>
-        <button class="btn-edit" onclick="aiEstimateOpenEditor('${meal}')">상세 편집</button>
+        <button class="btn-confirm" data-ai-estimate-action="confirm" data-meal="${meal}">✓ 이대로 확정</button>
+        <button class="btn-edit" data-ai-estimate-action="open-editor" data-meal="${meal}">상세 편집</button>
       </div>
       <div style="margin-top:6px;font-size:10px;color:var(--muted,#888);">
         ${e.priorApplied ? '반상 평균(800~1200kcal) 기준 보정 · ' : ''}신뢰도 ${Math.round((e.confidence || 0) * 100)}%
@@ -174,7 +174,7 @@ function _renderQuickFixButtons(meal, plateType, fixes) {
   const sw = fixes?.swaps || new Set();
 
   const btn = (label, action, active) =>
-    `<button class="${active ? 'active' : ''}" onclick="aiEstimateQuickFix('${meal}','${action}')">${label}</button>`;
+    `<button class="${active ? 'active' : ''}" data-ai-estimate-action="quick-fix" data-meal="${meal}" data-fix-action="${action}">${label}</button>`;
 
   const portionRow = [
     btn('양 적게', 'portion:less', p === 'less'),
@@ -217,13 +217,13 @@ export function renderError(meal, message, errorCode) {
       <div class="ai-estimate-banner-head">
         <span class="ai-bot">🤖</span>
         <span>분석 실패</span>
-        <button class="ai-close" onclick="aiEstimateDismiss('${meal}')" title="닫기">✕</button>
+        <button class="ai-close" data-ai-estimate-action="dismiss" data-meal="${meal}" title="닫기">✕</button>
       </div>
       <div style="font-size:12px;color:var(--diet-bad,#ef4444);margin-bottom:4px;">${_esc(displayMsg)}</div>
       ${hint ? `<div style="font-size:11px;color:var(--muted,#888);margin-bottom:8px;">${_esc(hint)}</div>` : ''}
       <div class="ai-estimate-actions">
-        <button class="btn-confirm" onclick="aiEstimateRetry('${meal}')">다시 시도</button>
-        <button class="btn-edit" onclick="aiEstimateDismiss('${meal}')">수동 입력</button>
+        <button class="btn-confirm" data-ai-estimate-action="retry" data-meal="${meal}">다시 시도</button>
+        <button class="btn-edit" data-ai-estimate-action="dismiss" data-meal="${meal}">수동 입력</button>
       </div>
     </div>`;
 }
@@ -415,16 +415,16 @@ export function renderEditor(meal) {
       <div class="ai-estimate-editor-head">
         <span class="ai-bot">✎</span>
         <span>AI 추정 상세 편집</span>
-        <button class="ai-close" onclick="aiEstimateCancelEditor('${meal}')" title="취소">✕</button>
+        <button class="ai-close" data-ai-estimate-action="cancel-editor" data-meal="${meal}" title="취소">✕</button>
       </div>
       <div class="ai-estimate-editor-rows" id="ai-edit-rows-${meal}">${rows || _rowHtml(0, null)}</div>
-      <button class="ai-edit-add" onclick="aiEstimateAddEditorItem('${meal}')">＋ 항목 추가</button>
+      <button class="ai-edit-add" data-ai-estimate-action="add-editor-item" data-meal="${meal}">＋ 항목 추가</button>
       <div class="ai-estimate-editor-hint">
         값을 비우면 해당 항목은 제외됩니다. 칼로리·단탄지는 숫자만 (단위 빼고).
       </div>
       <div class="ai-estimate-actions">
-        <button class="btn-confirm" onclick="aiEstimateSaveEditor('${meal}')">✓ 저장</button>
-        <button class="btn-edit" onclick="aiEstimateCancelEditor('${meal}')">취소</button>
+        <button class="btn-confirm" data-ai-estimate-action="save-editor" data-meal="${meal}">✓ 저장</button>
+        <button class="btn-edit" data-ai-estimate-action="cancel-editor" data-meal="${meal}">취소</button>
       </div>
     </div>`;
   _openMealAccordion(meal);
@@ -439,7 +439,7 @@ function _rowHtml(idx, it) {
         <input class="ai-edit-name" placeholder="음식명" value="${name}">
         <input class="ai-edit-grams" type="number" inputmode="numeric" placeholder="g" value="${v(it?.grams)}">
         <input class="ai-edit-kcal" type="number" inputmode="numeric" placeholder="kcal" value="${v(it?.kcal)}">
-        <button class="ai-edit-del" onclick="aiEstimateDelEditorRow(this)" title="삭제">✕</button>
+        <button class="ai-edit-del" data-ai-estimate-action="delete-editor-row" title="삭제">✕</button>
       </div>
       <div class="ai-edit-row-macro">
         <input class="ai-edit-p" type="number" step="0.1" inputmode="decimal" placeholder="단" value="${v(it?.protein)}">
@@ -539,15 +539,26 @@ export function clearAllForDateChange() {
   }
 }
 
-// ── window 노출 ─────────────────────────────────────────────────
-window.aiEstimateConfirm        = (meal) => confirmEstimate(meal);
-window.aiEstimateDismiss        = (meal) => dismiss(meal);
-window.aiEstimateQuickFix       = (meal, action) => handleQuickFix(meal, action);
-window.aiEstimateOpenEditor     = (meal) => openEditor(meal);
-window.aiEstimateRetry          = (meal) => retry(meal);
-window.aiEstimateClearAll       = () => clearAllForDateChange();
-// 편집 모드 전용
-window.aiEstimateSaveEditor     = (meal) => saveEditor(meal);
-window.aiEstimateCancelEditor   = (meal) => cancelEditor(meal);
-window.aiEstimateAddEditorItem  = (meal) => addEditorItem(meal);
-window.aiEstimateDelEditorRow   = (btn) => delEditorRow(btn);
+export { clearAllForDateChange };
+
+function _bindAiEstimateActions(root = document) {
+  if (root.documentElement?.dataset.aiEstimateActionsBound === '1') return;
+  if (root.documentElement) root.documentElement.dataset.aiEstimateActionsBound = '1';
+  root.addEventListener('click', (event) => {
+    const control = event.target?.closest?.('[data-ai-estimate-action]');
+    if (!control) return;
+    const action = control.dataset.aiEstimateAction;
+    const meal = control.dataset.meal || '';
+    if (action === 'dismiss') dismiss(meal);
+    if (action === 'confirm') void confirmEstimate(meal);
+    if (action === 'quick-fix') handleQuickFix(meal, control.dataset.fixAction || '');
+    if (action === 'open-editor') openEditor(meal);
+    if (action === 'retry') void retry(meal);
+    if (action === 'save-editor') void saveEditor(meal);
+    if (action === 'cancel-editor') cancelEditor(meal);
+    if (action === 'add-editor-item') addEditorItem(meal);
+    if (action === 'delete-editor-row') delEditorRow(control);
+  });
+}
+
+_bindAiEstimateActions();

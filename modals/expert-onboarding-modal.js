@@ -6,12 +6,12 @@
 // ================================================================
 
 export const MODAL_HTML = `
-<div class="modal-overlay expert-onb-overlay" id="expert-onboarding-modal" onclick="if(event.target===this) expertOnbClose()">
+<div class="modal-overlay expert-onb-overlay" id="expert-onboarding-modal">
   <div class="modal-sheet expert-onb-sheet">
     <div class="expert-onb-topbar">
-      <button class="topbar-back" id="expert-onb-back" onclick="expertOnbBack()">‹</button>
+      <button type="button" class="topbar-back" id="expert-onb-back" data-onb-action="back">‹</button>
       <div class="topbar-title" id="expert-onb-title">맞춤 루틴 모드</div>
-      <button class="topbar-skip" id="expert-onb-skip" onclick="expertOnbSkip()">나중에</button>
+      <button type="button" class="topbar-skip" id="expert-onb-skip" data-onb-action="skip">나중에</button>
     </div>
     <div class="stepper" id="expert-onb-stepper">
       <div class="stepper-dot"></div>
@@ -24,7 +24,7 @@ export const MODAL_HTML = `
       <!-- 동적으로 렌더됨 -->
     </div>
     <div class="bottom-cta" id="expert-onb-cta">
-      <button class="btn btn-primary" id="expert-onb-next" onclick="expertOnbNext()">다음</button>
+      <button type="button" class="btn btn-primary" id="expert-onb-next" data-onb-action="next">다음</button>
       <button class="btn btn-ghost" id="expert-onb-ghost" style="display:none"></button>
     </div>
   </div>

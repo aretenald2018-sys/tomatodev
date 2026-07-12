@@ -4,6 +4,7 @@
 
 import { dateKey } from '../data.js';
 import { getAdminId, getAdminGuestId } from '../data.js';
+export { showToast, showCenterToast } from '../ui/toast.js';
 
 // ── 날짜 유틸 ────────────────────────────────────────────────────
 export function getMonday(date) {
@@ -63,69 +64,6 @@ export function resolveNickname(a, accounts) {
   return (_raw && _raw !== baseName) ? _raw : baseName;
 }
 
-// ── TDS 토스트 알림 ──────────────────────────────────────────────
-// opts: { action?: string, onAction?: Function } — Undo 등 액션 버튼 지원
-export function showToast(message, duration = 2500, type = 'default', opts = null) {
-  const existing = document.getElementById('tds-toast');
-  if (existing) existing.remove();
-  const toast = document.createElement('div');
-  toast.id = 'tds-toast';
-  toast.className = 'tds-toast';
-  toast.dataset.type = type;
-  const icons = { success: '✓ ', error: '✕ ', warning: '⚠ ', info: 'ℹ ', default: '' };
-  const hasAction = opts && typeof opts.action === 'string' && typeof opts.onAction === 'function';
-
-  if (hasAction) {
-    toast.classList.add('has-action');
-    const msgSpan = document.createElement('span');
-    msgSpan.className = 'tds-toast-msg';
-    msgSpan.textContent = (icons[type] || '') + message;
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'tds-toast-action';
-    btn.textContent = opts.action;
-    btn.setAttribute('aria-label', opts.action);
-    btn.addEventListener('click', () => {
-      try { opts.onAction(); } finally {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-      }
-    });
-    toast.appendChild(msgSpan);
-    toast.appendChild(btn);
-  } else {
-    toast.textContent = (icons[type] || '') + message;
-  }
-
-  document.body.appendChild(toast);
-  requestAnimationFrame(() => toast.classList.add('show'));
-  setTimeout(() => {
-    toast.classList.remove('show');
-    setTimeout(() => toast.remove(), 300);
-  }, duration);
-  // 햅틱: success → medium, error/warning → light, default → 없음
-  try {
-    if (type === 'success') window.haptic?.medium?.();
-    else if (type === 'error' || type === 'warning') window.haptic?.light?.();
-  } catch {}
-}
-
-// ── 화면 중앙 큰 토스트 (식단 저장 등) ──────────────────────────
-export function showCenterToast(message, duration = 1800) {
-  const existing = document.getElementById('tds-center-toast');
-  if (existing) existing.remove();
-  const toast = document.createElement('div');
-  toast.id = 'tds-center-toast';
-  toast.className = 'tds-center-toast';
-  toast.innerHTML = `<span class="tds-center-toast-icon">✓</span><span>${message}</span>`;
-  document.body.appendChild(toast);
-  requestAnimationFrame(() => toast.classList.add('show'));
-  setTimeout(() => {
-    toast.classList.remove('show');
-    setTimeout(() => toast.remove(), 300);
-  }, duration);
-}
-
 // ── Confetti 축하 애니메이션 ─────────────────────────────────────
 export function showConfetti(duration = 3000) {
   // 축하 순간: heavy haptic
@@ -148,7 +86,6 @@ export function showConfetti(duration = 3000) {
   document.body.appendChild(container);
   setTimeout(() => container.remove(), duration);
 }
-window._showConfetti = showConfetti;
 
 // ── 햅틱 피드백 ─────────────────────────────────────────────────
 export function haptic(pattern = 'light') {

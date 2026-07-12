@@ -1,9 +1,11 @@
+import { requestAppRender } from './app/render-events.js';
+import { showToast } from './ui/toast.js';
+import { closeModal } from './app/overlay-stack.js';
 // ================================================================
 // feature-diet-plan.js — 다이어트 플랜 모달
 // ================================================================
 
 import { getDietPlan, saveDietPlan, calcDietMetrics } from './data.js';
-import { showToast } from './render-home.js';
 
 export async function openDietPlanModal() {
   if (!document.getElementById('dp-height')) {
@@ -151,9 +153,9 @@ function _updateDietCalcPreview() {
   } catch(e) { preview.innerHTML = ''; }
 }
 
-function closeDietPlanModal(e) { window._closeModal('diet-plan-modal', e); }
+export function closeDietPlanModal(e) { closeModal('diet-plan-modal', e); }
 
-async function saveDietPlanFromModal() {
+export async function saveDietPlanFromModal() {
   const refeedDays = [...document.querySelectorAll('.refeed-day-btn.active')]
     .map(b => parseInt(b.dataset.dow));
   const isAdvanced = document.getElementById('dp-advanced-switch')?.classList.contains('on');
@@ -183,23 +185,17 @@ async function saveDietPlanFromModal() {
     exerciseKcalSwimming: parseFloat(document.getElementById('dp-ex-swim')?.value) || 200,
     exerciseKcalRunning: null,
   };
-  if (!plan.weight || !plan.height) { window.showToast?.('키와 체중을 입력해주세요', 2500, 'warning'); return; }
+  if (!plan.weight || !plan.height) { showToast('키와 체중을 입력해주세요', 2500, 'warning'); return; }
   if (isAdvanced) {
     const defSum = plan.deficitProteinPct + plan.deficitCarbPct + plan.deficitFatPct;
     const refSum = plan.refeedProteinPct + plan.refeedCarbPct + plan.refeedFatPct;
     if (defSum !== 100 || refSum !== 100) {
-      window.showToast?.(`매크로 비율 합계 100% 아님 · 데피싯 ${defSum}% / 리피드 ${refSum}%`, 3500, 'warning');
+      showToast(`매크로 비율 합계 100% 아님 · 데피싯 ${defSum}% / 리피드 ${refSum}%`, 3500, 'warning');
       return;
     }
   }
   await saveDietPlan(plan);
   document.getElementById('diet-plan-modal').classList.remove('open');
   showToast('플랜이 저장되었습니다');
-  window.renderAll();
+  requestAppRender();
 }
-
-Object.assign(window, {
-  openDietPlanModal,
-  closeDietPlanModal,
-  saveDietPlanFromModal,
-});

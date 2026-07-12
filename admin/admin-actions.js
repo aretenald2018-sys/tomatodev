@@ -1,3 +1,4 @@
+import { showToast } from '../ui/toast.js';
 import {
   DIET_PREMIUM_REPORT_AUTO_DELIVERY_ENABLED,
   DIET_PREMIUM_REPORT_TARGETS,
@@ -10,10 +11,13 @@ import {
   exportAll, exportAIJson,
 } from './admin-export.js';
 import { escapeHtml } from './admin-utils.js';
+import { confirmAction } from '../utils/confirm-modal.js';
+import { switchKimMode } from '../feature-login.js';
 
 let _rerender = null;
 let _dietReportPeriod = 'weekly';
 let _dietReportLastPublish = null;
+let _adminData = null;
 
 function _targetLabel(target) {
   return `${target.name}${target.nick ? `(${target.nick})` : ''}`;
@@ -28,7 +32,7 @@ function _renderDietReportPublisher() {
     <button
       class="${_dietReportPeriod === period ? 'hig-btn-primary' : 'hig-btn-secondary'}"
       type="button"
-      onclick="window._adminSetDietReportPeriod('${period}')"
+      data-admin-settings-action="set-period" data-period="${period}"
     >${label}</button>
   `).join('');
   const targetChips = DIET_PREMIUM_REPORT_TARGETS.map((target) => `
@@ -56,7 +60,7 @@ function _renderDietReportPublisher() {
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;">
         ${targetChips}
       </div>
-      <button id="admin-diet-report-publish-button" class="hig-btn-primary" style="margin-top:12px;" onclick="window._adminPublishDietReport()"${publishDisabled ? ' disabled' : ''}>
+      <button type="button" id="admin-diet-report-publish-button" class="hig-btn-primary" style="margin-top:12px;" data-admin-settings-action="publish-report"${publishDisabled ? ' disabled' : ''}>
         ${publishDisabled ? '자동 배송 중지됨' : '지금 리포트 발간/배송'}
       </button>
       <div class="hig-caption1" style="color:var(--hig-gray1);margin-top:8px;">
@@ -70,27 +74,28 @@ function _renderDietReportPublisher() {
 }
 
 async function _askDelete(uid, name) {
-  const ok = await (window.confirmAction?.({
+  const ok = await confirmAction({
     title: `${name} 계정을 삭제할까요?`,
     message: '이 작업은 되돌릴 수 없어요.\n계정의 모든 운동·식단 기록이 함께 삭제돼요.',
     confirmLabel: '삭제',
     cancelLabel: '취소',
     destructive: true,
     longPress: 2000,
-  }) || Promise.resolve(false));
+  });
   if (!ok) return;
   deleteUserAccount(uid)
     .then(() => {
-      window.showToast?.(`${name} 계정을 삭제했습니다`, 2500, 'success');
+      showToast(`${name} 계정을 삭제했습니다`, 2500, 'success');
       if (_rerender) _rerender();
     })
     .catch((error) => {
-      window.showToast?.(`삭제 실패: ${error.message}`, 3500, 'error');
+      showToast(`삭제 실패: ${error.message}`, 3500, 'error');
     });
 }
 
 export function renderSettingsSection(container, data, rerender) {
   _rerender = rerender;
+  _adminData = data;
   const users = [...data.realAccs]
     .sort((a, b) => ((a.nickname || '') > (b.nickname || '') ? 1 : -1));
 
@@ -99,10 +104,7 @@ export function renderSettingsSection(container, data, rerender) {
       <div class="hig-card">
         <div class="hig-headline">데이터 내보내기</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-          <button class="hig-btn-secondary" onclick="window._adminExportSettings('ai_json')">AI JSON</button>
-          <button class="hig-btn-secondary" onclick="window._adminExportSettings('all_csv')">전체 CSV</button>
-          <button class="hig-btn-secondary" onclick="window._adminExportSettings('users')">유저 CSV</button>
-          <button class="hig-btn-secondary" onclick="window._adminExportSettings('daily')">일일 CSV</button>
+          ${[['ai_json','AI JSON'],['all_csv','전체 CSV'],['users','유저 CSV'],['daily','일일 CSV']].map(([type,label]) => `<button type="button" class="hig-btn-secondary" data-admin-settings-action="export" data-export-type="${type}">${label}</button>`).join('')}
         </div>
       </div>
 
@@ -117,7 +119,7 @@ export function renderSettingsSection(container, data, rerender) {
       <div class="hig-card">
         <div class="hig-headline">Admin 모드 전환</div>
         <div class="hig-subhead" style="color:var(--hig-gray1);margin-top:6px;">게스트 모드로 전환하려면 아래 버튼을 사용하세요.</div>
-        <button class="hig-btn-secondary" style="margin-top:10px;" onclick="window.switchKimMode && window.switchKimMode('Guest')">게스트 모드로 전환</button>
+        <button type="button" class="hig-btn-secondary" style="margin-top:10px;" data-admin-settings-action="guest-mode">게스트 모드로 전환</button>
       </div>
 
       <div class="hig-card-grouped">
@@ -128,12 +130,22 @@ export function renderSettingsSection(container, data, rerender) {
               <div class="hig-subhead">${escapeHtml(user.nickname || `${user.lastName || ''}${user.firstName || ''}` || user.id)}</div>
               <div class="hig-caption1" style="color:var(--hig-gray1);">${escapeHtml(user.id)}</div>
             </div>
-            <button class="hig-btn-destructive" onclick="window._adminConfirmDeleteUser('${user.id}','${escapeHtml(user.nickname || user.id)}')">삭제</button>
+            <button type="button" class="hig-btn-destructive" data-admin-settings-action="delete-user" data-uid="${escapeHtml(user.id)}" data-name="${escapeHtml(user.nickname || user.id)}">삭제</button>
           </div>
         `).join('')}
       </div>
     </div>
   `;
+  container.onclick = (event) => {
+    const control = event.target.closest('[data-admin-settings-action]');
+    if (!control || !container.contains(control)) return;
+    const action = control.dataset.adminSettingsAction;
+    if (action === 'set-period') { _dietReportPeriod = control.dataset.period === 'monthly' ? 'monthly' : 'weekly'; _rerender?.(); }
+    if (action === 'publish-report') void _publishDietReport();
+    if (action === 'export') _exportSettings(control.dataset.exportType);
+    if (action === 'guest-mode') void switchKimMode('Guest');
+    if (action === 'delete-user') void _askDelete(control.dataset.uid, control.dataset.name);
+  };
 
   // cheers 관리 UI는 lazy import로 로드
   import('./admin-cheers.js').then((mod) => {
@@ -142,26 +154,19 @@ export function renderSettingsSection(container, data, rerender) {
   }).catch((err) => console.warn('[admin-actions] cheers module load:', err));
 }
 
-window._adminConfirmDeleteUser = (uid, name) => _askDelete(uid, name);
-
-window._adminSetDietReportPeriod = (period) => {
-  _dietReportPeriod = period === 'monthly' ? 'monthly' : 'weekly';
-  if (_rerender) _rerender();
-};
-
-window._adminPublishDietReport = async () => {
+async function _publishDietReport() {
   if (!DIET_PREMIUM_REPORT_AUTO_DELIVERY_ENABLED) {
-    window.showToast?.('식단 프리미엄 리포트 자동 배송은 중지되어 있습니다', 3000, 'info');
+    showToast('식단 프리미엄 리포트 자동 배송은 중지되어 있습니다', 3000, 'info');
     return;
   }
 
   const periodLabel = _dietReportPeriod === 'monthly' ? '월간' : '주간';
-  const ok = await (window.confirmAction?.({
+  const ok = await confirmAction({
     title: `${periodLabel} 식단 리포트를 발간할까요?`,
     message: DIET_PREMIUM_REPORT_TARGETS.map(_targetLabel).join(', ') + ' 계정에 다음 접속 1회성 모달로 배송됩니다.',
     confirmLabel: '발간',
     cancelLabel: '취소',
-  }) || Promise.resolve(window.confirm?.(`${periodLabel} 식단 리포트를 발간할까요?`) ?? true));
+  });
   if (!ok) return;
 
   const button = document.getElementById('admin-diet-report-publish-button');
@@ -176,10 +181,10 @@ window._adminPublishDietReport = async () => {
       targetUserIds: DIET_PREMIUM_REPORT_TARGETS.map((target) => target.id),
     });
     _dietReportLastPublish = result;
-    window.showToast?.(`${result.title}를 ${result.deliveredCount}명에게 배송했습니다`, 3000, 'success');
+    showToast(`${result.title}를 ${result.deliveredCount}명에게 배송했습니다`, 3000, 'success');
     if (_rerender) _rerender();
   } catch (error) {
-    window.showToast?.(`리포트 발간 실패: ${error.message}`, 3500, 'error');
+    showToast(`리포트 발간 실패: ${error.message}`, 3500, 'error');
     if (button) {
       button.disabled = false;
       button.textContent = '지금 리포트 발간/배송';
@@ -187,26 +192,26 @@ window._adminPublishDietReport = async () => {
   }
 };
 
-window._adminExportSettings = (type) => {
-  if (!window.__adminDataCache) return;
+function _exportSettings(type) {
+  if (!_adminData) return;
   switch (type) {
     case 'users':
-      exportUsersReport(window.__adminDataCache);
+      exportUsersReport(_adminData);
       break;
     case 'daily':
-      exportDailyActivity(window.__adminDataCache);
+      exportDailyActivity(_adminData);
       break;
     case 'social':
-      exportSocialInteractions(window.__adminDataCache);
+      exportSocialInteractions(_adminData);
       break;
     case 'letters':
-      exportLettersAndPatchnotes(window.__adminDataCache);
+      exportLettersAndPatchnotes(_adminData);
       break;
     case 'all_csv':
-      exportAll(window.__adminDataCache);
+      exportAll(_adminData);
       break;
     case 'ai_json':
-      exportAIJson(window.__adminDataCache);
+      exportAIJson(_adminData);
       break;
   }
 };

@@ -1,3 +1,5 @@
+import { requestAppRender } from '../../app/render-events.js';
+import { showToast } from '../../ui/toast.js';
 // ================================================================
 // workout/expert/max.js — 맥스 모드 보강 추천 카드 + 미니 위자드
 // ----------------------------------------------------------------
@@ -49,13 +51,13 @@ import {
   buildNextMaxCycleFromSettle,
   buildBenchmarkActuals,
   maxBenchmarkProgram,
-} from './max-cycle.js?v=20260612w1';
+} from './max-cycle.js';
 import {
   WENDLER_SCHEMES,
   isWendlerAllowedMajor,
   normalizeWendlerConfig,
   suggestWendlerTm,
-} from './max-wendler.js?v=20260612w1';
+} from './max-wendler.js';
 import {
   CAT_LABEL,
   MAX_DEFAULTS,
@@ -69,7 +71,7 @@ import {
 } from './max-config.js';
 import {
   detectMaxMajorsLoose,
-} from './max-same-day-advice.js?v=20260516v6';
+} from './max-same-day-advice.js';
 import {
   buildMaxPrescription,
   detectMaxFixedMovements,
@@ -83,7 +85,7 @@ export { buildMaxPrescription, detectMaxFixedMovements } from './max-prescriptio
 
 function _esc(s) { return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function _toast(msg, type='info') {
-  if (typeof window.showToast === 'function') window.showToast(msg, 2200, type);
+  if (typeof showToast === 'function') showToast(msg, 2200, type);
 }
 
 function _getMaxCycleSafe() {
@@ -107,9 +109,7 @@ function _scheduleExpertTopAreaRender() {
   const run = () => {
     _expertTopAreaRenderScheduled = false;
     try {
-      if (typeof window !== 'undefined' && typeof window.renderExpertTopArea === 'function') {
-        window.renderExpertTopArea();
-      }
+      document.dispatchEvent(new CustomEvent('expert:render-top'));
     } catch (err) {
       console.warn('[max.renderExpertTopArea]:', err);
     }
@@ -1407,7 +1407,9 @@ function _bindMaxHost(host) {
         return;
       }
       if (e.target.closest('[data-action="switch-normal-view"]')) {
-        Promise.resolve(window.wtExcSwitchToNormalView?.()).catch(err => console.warn('[switchNormalView]:', err));
+        import('../expert.js')
+          .then(module => module.wtExcSwitchToNormalView())
+          .catch(err => console.warn('[switchNormalView]:', err));
         return;
       }
       if (e.target.closest('[data-action="clear-max-major"]')) {
@@ -1419,12 +1421,12 @@ function _bindMaxHost(host) {
         return;
       }
       if (e.target.closest('[data-action="start-max-session"]')) {
-        const openPicker = window.wtOpenExercisePicker;
-        if (typeof openPicker === 'function') {
-          Promise.resolve(openPicker()).catch(err => console.warn('[startMaxSession.openPicker]:', err));
-        } else {
-          _toast('종목 추가 버튼을 눌러 오늘 운동을 선택하세요.', 'info');
-        }
+        import('../exercises.js')
+          .then(module => module.wtOpenExercisePicker())
+          .catch(err => {
+            console.warn('[startMaxSession.openPicker]:', err);
+            _toast('종목 추가 버튼을 눌러 오늘 운동을 선택하세요.', 'info');
+          });
         return;
       }
       const liftToggle = e.target.closest('[data-action="toggle-max-lift"]');
@@ -2421,8 +2423,8 @@ function _ensureMaxV4Sheet() {
   const container = document.getElementById('modals-container') || document.body;
   const wrapper = document.createElement('div');
   wrapper.innerHTML = `
-    <div class="modal-overlay wt-v4-modal" id="max-v4-sheet" onclick="if(event.target===this) closeMaxV4Sheet()">
-      <div class="wt-v4-sheet" onclick="event.stopPropagation()">
+    <div class="modal-overlay wt-v4-modal" id="max-v4-sheet">
+      <div class="wt-v4-sheet">
         <div class="wt-v4-handle"></div>
         <div id="max-v4-sheet-body"></div>
       </div>
@@ -2431,6 +2433,9 @@ function _ensureMaxV4Sheet() {
   container.appendChild(wrapper.firstElementChild);
   const sheet = document.getElementById('max-v4-sheet');
   _ensureMaxV4SheetActionBinding(sheet);
+  sheet?.addEventListener('click', (event) => {
+    if (event.target === sheet) closeMaxV4Sheet();
+  });
   return sheet;
 }
 
@@ -3686,7 +3691,7 @@ export async function applyMaxSuggestion(movementId, weakPart = null, recMeta = 
     return;
   }
   try {
-    const { _renderExerciseList } = await import('../exercises.js?v=20260517v3');
+    const { _renderExerciseList } = await import('../exercises.js');
     _renderExerciseList();
   } catch (e) { console.warn('[applyMaxSuggestion.renderList]:', e); }
 
@@ -4052,7 +4057,7 @@ export function _initMaxOnboardingEvents() {
           setExpertViewShown(true);
         } catch {}
         _scheduleExpertTopAreaRender();
-        if (typeof window.renderAll === 'function') window.renderAll();
+        requestAppRender();
         _toast('테스트 모드 켜짐 — 직전 같은 부위 운동 분석 시작!', 'success');
       } catch (err) {
         console.warn('[max-ob.finish]:', err);

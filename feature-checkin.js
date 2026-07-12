@@ -1,9 +1,11 @@
+import { requestAppRender } from './app/render-events.js';
+import { showToast } from './ui/toast.js';
+import { closeModal } from './app/overlay-stack.js';
 // ================================================================
 // feature-checkin.js — 체크인 모달 (체중/체지방 기록)
 // ================================================================
 
 import { dateKey, TODAY, saveBodyCheckin, deleteBodyCheckin, getBodyCheckins } from './data.js';
-import { showToast } from './home/utils.js';
 import { openWeightResultModal } from './modals/weight-result-modal.js';
 import { confirmAction } from './utils/confirm-modal.js';
 
@@ -29,7 +31,7 @@ function _setBodyFatEnabled(enabled, { clearWhenOff = false } = {}) {
   }
 }
 
-function openCheckinModal(id) {
+export function openCheckinModal(id) {
   _checkinId = id || null;
   _setCheckinSaving(false);
   if (id) {
@@ -54,16 +56,16 @@ function openCheckinModal(id) {
   document.getElementById('checkin-modal').classList.add('open');
 }
 
-function closeCheckinModal(e) { window._closeModal('checkin-modal', e); }
-function toggleCheckinBodyFat() { _setBodyFatEnabled(!_bodyFatEnabled, { clearWhenOff: !_bodyFatEnabled ? false : true }); }
+export function closeCheckinModal(e) { closeModal('checkin-modal', e); }
+export function toggleCheckinBodyFat() { _setBodyFatEnabled(!_bodyFatEnabled, { clearWhenOff: !_bodyFatEnabled ? false : true }); }
 
-async function saveCheckinFromModal() {
+export async function saveCheckinFromModal() {
   if (_checkinSaving) return;
   const date   = document.getElementById('ci-date').value;
   const weight = parseFloat(document.getElementById('ci-weight').value);
   const bf     = parseFloat(document.getElementById('ci-bodyfat').value);
   const note   = document.getElementById('ci-note').value.trim();
-  if (!date || !weight) { window.showToast?.('날짜와 체중을 입력해주세요', 2500, 'warning'); return; }
+  if (!date || !weight) { showToast('날짜와 체중을 입력해주세요', 2500, 'warning'); return; }
   const existingForDate = !_checkinId ? getBodyCheckins().find(c => c.date === date) : null;
   const rec = {
     id:         _checkinId || existingForDate?.id || `ci_${Date.now()}`,
@@ -86,7 +88,7 @@ async function saveCheckinFromModal() {
 
   document.getElementById('checkin-modal').classList.remove('open');
   _setCheckinSaving(false);
-  window.renderAll();
+  requestAppRender();
   if (checkins.length < 2) {
     showToast('첫 기록 완료!', 1800, 'success');
     return;
@@ -96,19 +98,11 @@ async function saveCheckinFromModal() {
   requestAnimationFrame(() => openWeightResultModal(delta, checkins));
 }
 
-async function deleteCheckinFromModal() {
+export async function deleteCheckinFromModal() {
   if (!_checkinId) return;
   const ok = await confirmAction({ title: '체크인 삭제', message: '체크인 기록을 삭제할까요?', destructive: true, longPress: 2000 });
   if (!ok) return;
   await deleteBodyCheckin(_checkinId);
   document.getElementById('checkin-modal').classList.remove('open');
-  window.renderAll();
+  requestAppRender();
 }
-
-Object.assign(window, {
-  openCheckinModal,
-  closeCheckinModal,
-  toggleCheckinBodyFat,
-  saveCheckinFromModal,
-  deleteCheckinFromModal,
-});

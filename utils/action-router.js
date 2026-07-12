@@ -1,8 +1,7 @@
 // ================================================================
 // utils/action-router.js — 전역 data-action 이벤트 위임 라우터
 // ================================================================
-// 목적: HTML `onclick="foo()"` + `window.foo = foo` 패턴을 점진적으로
-//       `<button data-action="ns:foo">` + registerAction('ns:foo', fn) 으로 치환.
+// HTML과 동적 마크업의 data-action 계약을 단일 이벤트 위임으로 연결한다.
 //
 // 사용법:
 //   import { registerAction } from './utils/action-router.js';
@@ -77,14 +76,20 @@ function _dispatch(e, attribute) {
 
 function _onClick(e) { _dispatch(e, 'data-action'); }
 function _onChange(e) { _dispatch(e, 'data-change-action'); }
+function _onInput(e) { _dispatch(e, 'data-input-action'); }
 function _onKeydown(e) { _dispatch(e, 'data-keydown-action'); }
 function _onDoubleClick(e) { _dispatch(e, 'data-dblclick-action'); }
+function _onFocusIn(e) { _dispatch(e, 'data-focus-action'); }
+function _onFocusOut(e) { _dispatch(e, 'data-blur-action'); }
 
 export function initActionRouter() {
   if (_initialized) return;
   _initialized = true;
   document.addEventListener('click', _onClick);
   document.addEventListener('change', _onChange);
+  document.addEventListener('input', _onInput);
   document.addEventListener('keydown', _onKeydown);
   document.addEventListener('dblclick', _onDoubleClick);
+  document.addEventListener('focusin', _onFocusIn);
+  document.addEventListener('focusout', _onFocusOut);
 }

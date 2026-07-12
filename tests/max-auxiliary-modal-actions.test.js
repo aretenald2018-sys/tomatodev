@@ -78,20 +78,19 @@ test('Max entry and mini onboarding controls avoid lazy inline globals', () => {
   const miniOnboarding = sliceBetween(maxJs, 'function _renderMaxObStep1()', '// 모달 이벤트 위임');
 
   assert.match(majorGate, /data-action="switch-normal-view"/);
-  assert.match(maxJs, /data-action="switch-normal-view"[\s\S]*window\.wtExcSwitchToNormalView\?\.\(\)/);
+  assert.match(maxJs, /data-action="switch-normal-view"[\s\S]*import\('\.\.\/expert\.js'\)[\s\S]*module\.wtExcSwitchToNormalView\(\)/);
+  assert.doesNotMatch(maxJs, /window\.wtExcSwitchToNormalView/);
   assert.doesNotMatch(majorGate, /onclick=/);
 
   assert.match(miniOnboarding, /data-close-max-ob/);
   assert.doesNotMatch(miniOnboarding, /onclick=/);
 });
 
-test('remaining Max inline handlers are limited to the existing V4 sheet shell', () => {
+test('Max renderers contain no inline handlers', () => {
   assert.doesNotMatch(maxCycleJs, /onclick=/);
-
   const remaining = linesWith(maxJs, /onclick=/);
-  assert.equal(remaining.length, 2);
-  assert.match(remaining[0].line, /id="max-v4-sheet" onclick="if\(event\.target===this\) closeMaxV4Sheet\(\)"/);
-  assert.match(remaining[1].line, /class="wt-v4-sheet" onclick="event\.stopPropagation\(\)"/);
+  assert.equal(remaining.length, 0);
+  assert.match(maxJs, /if \(event\.target === sheet\) closeMaxV4Sheet\(\)/);
 });
 
 test('service worker cache version was bumped for Max auxiliary modal actions', () => {

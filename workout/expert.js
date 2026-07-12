@@ -1,3 +1,5 @@
+import { requestAppRender } from '../app/render-events.js';
+import { showToast } from '../ui/toast.js';
 // ================================================================
 // workout/expert.js — 전문가 모드 orchestration
 // ----------------------------------------------------------------
@@ -27,6 +29,15 @@ import {
 import { S } from './state.js';
 import { confirmAction } from '../utils/confirm-modal.js';
 import { generateId } from '../utils/id.js';
+import { tm2OpenBoard } from './test-v2/entry.js';
+
+if (typeof document !== 'undefined' && document.documentElement?.dataset.expertDomainEvents !== '1') {
+  document.documentElement.dataset.expertDomainEvents = '1';
+  document.addEventListener('expert:open-custom-muscles', () => { void openCustomMusclesModal(); });
+  document.addEventListener('expert:onboarding-complete', () => wtExcSelectStatus());
+  document.addEventListener('expert:open-routine', () => openRoutineSuggest());
+  document.addEventListener('expert:render-top', () => renderExpertTopArea());
+}
 
 // ── R3b 분할: 온보딩 8-scene wizard 는 ./expert/onboarding.js 로 이동 ──
 // resolveCurrentGymId 는 거기에 이동됐지만 workout/exercises.js 가 이 파일에서
@@ -78,12 +89,12 @@ import {
   adjustMaxBenchmarkWeight,
   setMaxBenchmarkWeight,
   _initMaxOnboardingEvents,
-} from './expert/max.js?v=20260516v6';
+} from './expert/max.js';
 
 // ── 공용 소규모 헬퍼 (onboarding.js 에도 동일 정의 — 순환 import 회피) ─
 function _esc(s) { return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function _toast(msg, type='info') {
-  if (typeof window.showToast === 'function') window.showToast(msg, 2200, type);
+  if (typeof showToast === 'function') showToast(msg, 2200, type);
 }
 
 // ── 세션 단위 뷰 상태 — 프로 모드 preset(enabled)은 유지하되,
@@ -112,23 +123,16 @@ function _isDashboardTestModeOnly() {
 
 async function _openGrowthBoardEntry() {
   try {
-    if (typeof window.tm2OpenBoard !== 'function') {
-      await import('./test-v2/entry.js');
-    }
-    if (typeof window.tm2OpenBoard === 'function') {
-      await window.tm2OpenBoard();
-      return;
-    }
-    throw new Error('tm2OpenBoard is not registered');
+    await tm2OpenBoard();
   } catch (e) {
     console.error('[tm2] entry open failed', e);
-    if (typeof window.showToast === 'function') window.showToast('성장 보드를 여는 데 실패했어요', 2200, 'error');
+    if (typeof showToast === 'function') showToast('성장 보드를 여는 데 실패했어요', 2200, 'error');
   }
 }
 
 function _runWorkoutModeEntryAction(action) {
-  if (action === 'normal' || action === 'max') return window.wtExcShowMaxView?.();
-  if (action === 'pro' || action === 'equipment') return window.wtExcShowProView?.();
+  if (action === 'normal' || action === 'max') return wtExcShowMaxView();
+  if (action === 'pro' || action === 'equipment') return wtExcShowProView();
   if (action === 'growth') return _openGrowthBoardEntry();
   return undefined;
 }
@@ -137,6 +141,24 @@ function _bindWorkoutModeEntry(host) {
   if (!host || _modeEntryBoundHosts.has(host)) return;
   _modeEntryBoundHosts.add(host);
   host.addEventListener('click', (event) => {
+    const expertAction = event.target.closest('[data-expert-action]');
+    if (expertAction && host.contains(expertAction)) {
+      event.preventDefault();
+      const action = expertAction.dataset.expertAction;
+      if (action === 'open-onboarding') void expertOnbOpen();
+      if (action === 'open-onboarding-gym') expertOnbOpenForNewGym();
+      if (action === 'add-gym') wtExcAddNewGym();
+      return;
+    }
+    const stepAction = event.target.closest('[data-expert-step-action]');
+    if (stepAction && host.contains(stepAction)) {
+      event.preventDefault();
+      if (stepAction.dataset.expertStepAction === 'ai-routine') void openRoutineCandidatesDirect();
+      if (stepAction.dataset.expertStepAction === 'exercise-picker') {
+        void import('./exercises.js').then(module => module.wtOpenExercisePicker());
+      }
+      return;
+    }
     const card = event.target.closest('.wt-mode-entry-card[data-mode-action]');
     if (!card || !host.contains(card)) return;
     event.preventDefault();
@@ -454,7 +476,7 @@ function _setupGymCarousel() {
         e.preventDefault();
         e.stopPropagation();
         const gid = editTarget.getAttribute('data-gym-edit');
-        if (gid && typeof window.expertGymManageOpen === 'function') window.expertGymManageOpen(gid);
+        if (gid) expertGymManageOpen(gid);
         return;
       }
       // 일반 탭 → 중앙 스크롤 (scroll 이벤트 → updateActive → _switchToGym 체인)
@@ -471,7 +493,7 @@ function _setupGymCarousel() {
       const gid = slide.dataset.gymId;
       if (!gid) return;
       e.preventDefault();
-      if (typeof window.expertGymManageOpen === 'function') window.expertGymManageOpen(gid);
+      expertGymManageOpen(gid);
     });
   });
 }
@@ -508,7 +530,7 @@ async function _persistWorkoutBeforeModeSwitch() {
 
 async function _rerenderWorkoutAfterModeSwitch() {
   try {
-    const mod = await import('./exercises.js?v=20260517v3');
+    const mod = await import('./exercises.js');
     if (typeof mod._renderExerciseList === 'function') mod._renderExerciseList();
   } catch (err) {
     console.warn('[modeSwitch.renderExercises]:', err);
@@ -547,7 +569,7 @@ function _renderExpertStepperBody({ currentGym, gymCount, exCount, insight, step
   if (gyms.length === 0) {
     // preset은 이미 Step 1-4에서 저장됨. 여기서는 Step 5(헬스장+기구) 모달만 바로 열기.
     slidesHtml = `
-      <button type="button" class="wt-gym-slide wt-gym-slide--add wt-gym-slide--empty is-active" onclick="expertOnbOpenForNewGym()">
+      <button type="button" class="wt-gym-slide wt-gym-slide--add wt-gym-slide--empty is-active" data-expert-action="open-onboarding-gym">
         <span class="wt-gym-slide-icon">＋</span>
         <div class="wt-gym-slide-name">헬스장 등록</div>
         <div class="wt-gym-slide-sub">탭하여 시작</div>
@@ -572,12 +594,12 @@ function _renderExpertStepperBody({ currentGym, gymCount, exCount, insight, step
       `;
     }).join('');
     slidesHtml = `
-      <button type="button" class="wt-gym-slide wt-gym-slide--add" data-gym-add="1" onclick="wtExcAddNewGym()">
+      <button type="button" class="wt-gym-slide wt-gym-slide--add" data-gym-add="1" data-expert-action="add-gym">
         <span class="wt-gym-slide-icon">＋</span>
         <div class="wt-gym-slide-name">추가</div>
       </button>
       ${gymSlides}
-      <button type="button" class="wt-gym-slide wt-gym-slide--add" data-gym-add="1" onclick="wtExcAddNewGym()">
+      <button type="button" class="wt-gym-slide wt-gym-slide--add" data-gym-add="1" data-expert-action="add-gym">
         <span class="wt-gym-slide-icon">＋</span>
         <div class="wt-gym-slide-name">추가</div>
       </button>
@@ -641,12 +663,12 @@ function _renderExpertStepperBody({ currentGym, gymCount, exCount, insight, step
   const s3Dot = hasRoutine ? '✓' : '3';
   const step3Body = `
     <div class="wt-routine-choice">
-      <button class="wt-routine-card" type="button" onclick="openRoutineCandidatesDirect()"${!canGenerate ? ' disabled' : ''}>
+      <button class="wt-routine-card" type="button" data-expert-step-action="ai-routine"${!canGenerate ? ' disabled' : ''}>
         <div class="wt-routine-card-icon">🤖</div>
         <div class="wt-routine-card-title">AI 추천</div>
         <div class="wt-routine-card-sub">부위·시간 기반</div>
       </button>
-      <button class="wt-routine-card" type="button" onclick="wtOpenExercisePicker()"${!step1Done ? ' disabled' : ''}>
+      <button class="wt-routine-card" type="button" data-expert-step-action="exercise-picker"${!step1Done ? ' disabled' : ''}>
         <div class="wt-routine-card-icon">✍️</div>
         <div class="wt-routine-card-title">직접 선택</div>
         <div class="wt-routine-card-sub">내가 고를래요</div>
@@ -895,14 +917,14 @@ export function renderExpertBanner() {
   // 최상단 배너는 Issue 4로 제거됨. 필요 시 이 함수로 긴 배너 복원 가능.
   if (!shouldShowExpertBanner()) return '';
   return `
-    <div class="expert-banner" onclick="expertOnbOpen()">
+    <button type="button" class="expert-banner" data-expert-action="open-onboarding">
       <div class="expert-banner-icon">🧪</div>
       <div>
         <div class="expert-banner-title">AI가 내 헬스장 루틴 짜드려요</div>
         <div class="expert-banner-sub">2분이면 시작 · 기구는 나중에 추가할 수 있어요</div>
       </div>
       <div class="expert-banner-arrow">›</div>
-    </div>
+    </button>
   `;
 }
 
@@ -916,9 +938,39 @@ function _renderInlineExpertPill() {
 
 // ── Modal 컨트롤 ─────────────────────────────────────────────────
 
+let _insightsShareMode = 'summary';
+
+function _bindExpertModalActions(el) {
+  if (!el || el.dataset.expertModalActionsBound) return;
+  el.dataset.expertModalActionsBound = '1';
+  el.addEventListener('click', (event) => {
+    if (event.target === el) {
+      if (el.id === 'routine-suggest-modal') routineSuggestClose();
+      if (el.id === 'routine-candidates-modal') routineCandidatesClose();
+      if (el.id === 'insights-modal') insightsClose();
+      if (el.id === 'gym-equipment-modal') gymEqClose();
+      return;
+    }
+    const control = event.target.closest('[data-expert-modal-action]');
+    if (!control || !el.contains(control)) return;
+    const action = control.dataset.expertModalAction;
+    if (action === 'close-routine-suggest') routineSuggestClose();
+    if (action === 'generate-routine') void routineSuggestGenerate();
+    if (action === 'close-routine-candidates') routineCandidatesClose();
+    if (action === 'regenerate-routine') void routineCandidatesRegen();
+    if (action === 'select-routine') void routineCandidatesSelect();
+    if (action === 'close-insights') insightsClose();
+    if (action === 'set-insights-mode') insightsSetShareMode(control.dataset.mode);
+    if (action === 'share-insights') void insightsShareToAI(control.dataset.provider, _insightsShareMode);
+    if (action === 'copy-insights') void insightsCopyToClipboard(_insightsShareMode);
+    if (action === 'close-gym-equipment') gymEqClose();
+  });
+}
+
 function _openModal(id) {
   const el = document.getElementById(id);
   if (!el) return;
+  _bindExpertModalActions(el);
   el.classList.add('active');
 }
 function _closeModal(id) {
@@ -1384,7 +1436,7 @@ export async function routineSuggestGenerate() {
         } },
         { id: 'manual', label: '직접 선택', handler: () => {
           routineSuggestClose();
-          if (typeof window.wtOpenExercisePicker === 'function') window.wtOpenExercisePicker();
+          void import('./exercises.js').then(module => module.wtOpenExercisePicker());
         } },
       ],
     });
@@ -1523,7 +1575,7 @@ export async function routineCandidatesSelect() {
           })),
         };
       });
-    const { _renderExerciseList } = await import('./exercises.js?v=20260517v3');
+    const { _renderExerciseList } = await import('./exercises.js');
     _renderExerciseList();
     // 즉시 persist — 새로고침/이탈해도 루틴 유지
     try {
@@ -1534,7 +1586,7 @@ export async function routineCandidatesSelect() {
 
   _closeModal('routine-candidates-modal');
   _toast('루틴을 불러왔어요 — 첫 세트 무게를 입력하세요', 'success');
-  if (typeof window.renderAll === 'function') window.renderAll();
+  requestAppRender();
 
   // P2-8: 강한 전환 피드백 — 헬스 종목 섹션으로 스크롤 + 첫 kg 입력 포커스
   _scrollToFirstExerciseSet();
@@ -1707,7 +1759,7 @@ function _renderMaxInsight(content, today, day, exList) {
     summary: `[테스트모드 종료 인사이트]\n날짜: ${today}\n계획 이행률: ${stats.adherence}%\n계획 대비 볼륨: ${volumeText}\n${nextCopy}`,
     detail: JSON.stringify({ today, stats }, null, 2),
   };
-  insightsSetShareMode(window.insightsShareMode || 'summary');
+  insightsSetShareMode(_insightsShareMode);
 }
 
 export async function insightsOpen(sessionKey) {
@@ -1878,7 +1930,7 @@ export async function insightsOpen(sessionKey) {
   `;
 
   // 공유 모드 세그먼트를 현재 전역 상태로 동기화 (모달 재오픈 시 UI 반영)
-  insightsSetShareMode(window.insightsShareMode || 'summary');
+  insightsSetShareMode(_insightsShareMode);
 
   // AI 공유 버튼을 위한 스냅샷 저장 (요약 + 상세 2가지 모드)
   // 상세(detail) 모드는 세션 raw 세트 로그를 포함해 AI가 실제 훈련량에 근거한
@@ -2019,11 +2071,10 @@ function _preferredSubOrder(majors) {
 }
 export function insightsClose() { _closeModal('insights-modal'); }
 
-// 2026-04-20: AI 공유 모드 세그먼트 토글 (요약/상세). window.insightsShareMode 전역에 저장.
-//   onclick 핸들러가 현재 모드를 읽어 provider 버튼을 누를 때 대응되는 본문을 복사.
+// 2026-04-20: AI 공유 모드 세그먼트 토글 (요약/상세).
 export function insightsSetShareMode(mode) {
   const next = mode === 'detail' ? 'detail' : 'summary';
-  window.insightsShareMode = next;
+  _insightsShareMode = next;
   const seg = document.getElementById('ai-share-mode-seg');
   if (seg) {
     seg.querySelectorAll('.ai-share-mode-btn').forEach(btn => {
@@ -2658,61 +2709,27 @@ function _renderTrendCards(exList) {
   return cards.join('') || '<div class="hero-sub-in">아직 추세를 그릴 만큼 기록이 없어요.</div>';
 }
 
-// ── window 노출 ──────────────────────────────────────────────────
-
-window.expertOnbOpen = expertOnbOpen;
-window.expertOnbOpenForNewGym = expertOnbOpenForNewGym;
-window.expertOnbClose = expertOnbClose;
-window.expertOnbBack = expertOnbBack;
-window.expertOnbNext = expertOnbNext;
-window.expertOnbSkip = expertOnbSkip;
-window.expertOnbAddManual = expertOnbAddManual;
-window.expertOnbPickPhoto = expertOnbPickPhoto;
-window.expertOnbAssignMovement = expertOnbAssignMovement;
-window.expertOnbEditMovement = expertOnbEditMovement;
-window.expertOnbRemoveItem = expertOnbRemoveItem;
-window.expertOnbAddAnotherGym = expertOnbAddAnotherGym;
-// 2026-04-19: muscleIds 칩 에디터 onclick 대응
-window.expertOnbMuscleSetPrimary = expertOnbMuscleSetPrimary;
-window.expertOnbMuscleToggle = expertOnbMuscleToggle;
-window.expertOnbMusclePickerToggle = expertOnbMusclePickerToggle;
-window.openRoutineSuggest = openRoutineSuggest;
-window.openRoutineCandidatesDirect = openRoutineCandidatesDirect;
-window.routineSuggestClose = routineSuggestClose;
-window.routineSuggestGenerate = routineSuggestGenerate;
-window.routineCandidatesClose = routineCandidatesClose;
-window.routineCandidatesRegen = routineCandidatesRegen;
-window.routineCandidatesSelect = routineCandidatesSelect;
-window.insightsOpen = insightsOpen;
-window.insightsClose = insightsClose;
-window.insightsShareToAI = insightsShareToAI;
-window.insightsCopyToClipboard = insightsCopyToClipboard;
-window.insightsSetShareMode = insightsSetShareMode;
-// 기본 모드: summary. insightsOpen 호출 시 DOM 세그먼트와 동기화.
-if (typeof window.insightsShareMode !== 'string') window.insightsShareMode = 'summary';
-window.gymEqClose = gymEqClose;
-window.renderExpertTopArea = renderExpertTopArea;
-window.resetExpertView = resetExpertView;
+// ── 레거시 모달 연결은 각 모듈의 로컬 이벤트 바인딩으로 대체됨 ────────
 // 일반 모드 뷰 ↔ 프로 모드 뷰 ↔ 맥스 모드 뷰 — preset.enabled/mode를 토글.
 // 2026-04-25: 3-state 모드(normal|pro|max). 세그먼트 클릭은 모드 자체를 전환하며,
 //   각 모드의 카드 가시 토글(_expertViewShown)도 함께 ON.
-window.wtExcShowExpertView = () => {
+export function wtExcShowExpertView() {
   // 레거시 호환 — 프로 모드 뷰 토글 (preset 변경 없음, 세션 토글만)
   _expertViewShown = true;
   renderExpertTopArea();
-};
+}
 // Dashboard3: 프로모드 진입점은 헬스장별 기구 설정만 연다.
-window.wtExcShowProView = async () => {
+export async function wtExcShowProView() {
   try {
     await _persistWorkoutBeforeModeSwitch();
     _expertViewShown = true;
     renderExpertTopArea();
-    if (typeof window.wtOpenGymListSheet === 'function') window.wtOpenGymListSheet();
+    wtOpenGymListSheet();
     await _rerenderWorkoutAfterModeSwitch();
   } catch (e) { console.warn('[wtExcShowProView]:', e); }
-};
+}
 // 테스트모드 켜기. Dashboard3에서는 온보딩/일반카드 경유 없이 테스트모드 렌더만 유지한다.
-window.wtExcShowMaxView = async () => {
+export async function wtExcShowMaxView() {
   console.log('[max] wtExcShowMaxView called');
   try {
     await _persistWorkoutBeforeModeSwitch();
@@ -2727,11 +2744,11 @@ window.wtExcShowMaxView = async () => {
     console.log('[max] test mode view rendered');
   } catch (e) {
     console.error('[wtExcShowMaxView] FAIL:', e);
-    if (typeof window.showToast === 'function') window.showToast('테스트 모드 진입 실패: ' + e.message, 4000, 'error');
+    if (typeof showToast === 'function') showToast('테스트 모드 진입 실패: ' + e.message, 4000, 'error');
   }
-};
+}
 // 레거시 일반모드 전환 호출도 Dashboard3에서는 테스트모드 유지로 처리한다.
-window.wtExcSwitchToNormalView = async () => {
+export async function wtExcSwitchToNormalView() {
   try {
     await _persistWorkoutBeforeModeSwitch();
     const cur = getExpertPreset();
@@ -2741,42 +2758,10 @@ window.wtExcSwitchToNormalView = async () => {
     _expertViewShown = true;
     renderExpertTopArea();
     await _rerenderWorkoutAfterModeSwitch();
-    if (typeof window.showToast === 'function') window.showToast('Dashboard3는 테스트모드로 기록합니다', 1800, 'info');
+    if (typeof showToast === 'function') showToast('Dashboard3는 테스트모드로 기록합니다', 1800, 'info');
   } catch (e) { console.warn('[wtExcSwitchToNormalView]:', e); }
-};
+}
 // 맥스 모드 위자드 / 추천 칩
-window.openMaxMiniOnboarding = openMaxMiniOnboarding;
-window.closeMaxMiniOnboarding = closeMaxMiniOnboarding;
-window.applyMaxSuggestion = applyMaxSuggestion;
-window.toggleMaxWeakPart = toggleMaxWeakPart;
-window.setMaxSessionType = setMaxSessionType;
-window.toggleMaxWeakBlockTimer = toggleMaxWeakBlockTimer;
-window.openMaxBlueprintModal = openMaxBlueprintModal;
-window.closeMaxBlueprintModal = closeMaxBlueprintModal;
-window.saveMaxBlueprintModal = saveMaxBlueprintModal;
-window.closeMaxRecAdjustModal = closeMaxRecAdjustModal;
-window.applyMaxAdjustedRecommendation = applyMaxAdjustedRecommendation;
-window.startMaxCycle = startMaxCycle;
-window.settleMaxCycle = settleMaxCycle;
-window.openMaxEquipmentPoolModal = openMaxEquipmentPoolModal;
-window.closeMaxEquipmentPoolModal = closeMaxEquipmentPoolModal;
-window.openMaxDataCleanseModal = openMaxDataCleanseModal;
-window.closeMaxDataCleanseModal = closeMaxDataCleanseModal;
-window.saveMaxDataCleanseModal = saveMaxDataCleanseModal;
-window.setMaxDataCleanseTab = setMaxDataCleanseTab;
-window.openMaxExerciseHistoryModal = openMaxExerciseHistoryModal;
-window.closeMaxExerciseHistoryModal = closeMaxExerciseHistoryModal;
-window.saveMaxExerciseHistoryModal = saveMaxExerciseHistoryModal;
-window.deleteMaxCleanseExercise = deleteMaxCleanseExercise;
-window.closeMaxV4Sheet = closeMaxV4Sheet;
-window.openMaxCycleBoardSheet = openMaxCycleBoardSheet;
-window.openMaxPlanEditorSheet = openMaxPlanEditorSheet;
-window.saveMaxPlanEditorSheet = saveMaxPlanEditorSheet;
-window.openMaxAdjustSheet = openMaxAdjustSheet;
-window.setMaxCycleTrack = setMaxCycleTrack;
-window.setMaxBenchmarkTrack = setMaxBenchmarkTrack;
-window.adjustMaxBenchmarkWeight = adjustMaxBenchmarkWeight;
-window.setMaxBenchmarkWeight = setMaxBenchmarkWeight;
 // 모달 바인딩은 openMaxMiniOnboarding 진입 시점에 수행 (modal-manager 가 DOM 주입한 뒤).
 // 과거 setTimeout 즉시 호출은 modal DOM 미주입 상태에서 실행되어 버튼이 dead 였음.
 // 개발자 디버그: 콘솔에서 __expertDebug() 호출
@@ -2830,19 +2815,7 @@ window.__migrationCleanupGyms = async (targetName = null) => {
   const m = await import('./expert/migrate-gym-v1.js');
   return m.cleanup(targetName);
 };
-window.expertOpenGymSwitcher = async () => {
-  const gyms = getGyms();
-  if (gyms.length <= 1) { _toast('헬스장이 1곳이에요. 설정에서 추가할 수 있어요.', 'info'); return; }
-  const currentId = _resolveCurrentGymId();
-  const idx = gyms.findIndex(g => g.id === currentId);
-  const next = gyms[(idx + 1) % gyms.length];
-  await saveExpertPreset({ currentGymId: next.id });
-  // 현재 세션 state에도 즉시 반영 (저장 시 gymId 불일치 방지)
-  try { const { S } = await import('./state.js'); S.workout.currentGymId = next.id; } catch {}
-  _toast(`${next.name}으로 전환했어요`, 'success');
-  renderExpertTopArea();
-};
-window.openRoutineSuggestWithRecent = async () => {
+export async function openRoutineSuggestWithRecent() {
   const recent = getRecentRoutineTemplate();
   if (!recent?.items?.length) { openRoutineSuggest(); return; }
   // 최근 template의 exercises를 직접 S에 로드 (AI 재호출 없이 즉시 재사용) + 즉시 저장 (P0-1b)
@@ -2870,7 +2843,7 @@ window.openRoutineSuggestWithRecent = async () => {
         }),
       };
     }).filter(e => exById[e.exerciseId]);
-    const { _renderExerciseList } = await import('./exercises.js?v=20260517v3');
+    const { _renderExerciseList } = await import('./exercises.js');
     _renderExerciseList();
     renderExpertTopArea();
     // 즉시 persist (P0-1b) — 새로고침해도 루틴 유지
@@ -2885,21 +2858,21 @@ window.openRoutineSuggestWithRecent = async () => {
 
 // ── 전문가 카드 세그먼트 상태 전환 (레거시 호환용) ────────────────
 // 랜딩 '쉬었어요/건강이슈' 제거 후 — 항상 헬스 탭 활성화만 수행.
-window.wtExcSelectStatus = () => {
+export function wtExcSelectStatus() {
   try {
-    if (typeof window.wtSwitchType === 'function') window.wtSwitchType('gym');
+    void import('./type-ui.js').then(module => module.wtSwitchType('gym'));
   } catch (e) { console.warn('[wtExcSelectStatus]:', e); }
   renderExpertTopArea();
 };
 
 // ── 레거시 일반모드 전환 요청: Dashboard3 테스트모드 유지 ─────────
-window.wtExcLeaveExpertMode = async () => {
+export async function wtExcLeaveExpertMode() {
   try {
     await saveExpertPreset({ mode: 'max', enabled: true, snoozedUntil: null });
     _expertViewShown = true;
     _toast('Dashboard3는 테스트모드로 기록합니다', 'info');
     renderExpertTopArea();
-    if (typeof window.renderAll === 'function') window.renderAll();
+    requestAppRender();
   } catch (e) {
     console.warn('[wtExcLeaveExpertMode]:', e);
     _toast('전환에 실패했어요', 'error');
@@ -2907,15 +2880,13 @@ window.wtExcLeaveExpertMode = async () => {
 };
 
 // ── 재활성화 — Dashboard3 테스트모드로 고정 ───────────────────────
-window.wtExcReEnableExpertMode = async () => {
+export async function wtExcReEnableExpertMode() {
   try {
     await saveExpertPreset({ mode: 'max', enabled: true, snoozedUntil: null });
-    if (typeof window.wtExcSelectStatus === 'function') {
-      window.wtExcSelectStatus('done');
-    }
+    wtExcSelectStatus();
     _expertViewShown = true;
     _toast('테스트모드로 기록합니다', 'success');
-    if (typeof window.renderAll === 'function') window.renderAll();
+    requestAppRender();
   } catch (e) {
     console.warn('[wtExcReEnableExpertMode]:', e);
     _toast('다시 켜기에 실패했어요', 'error');
@@ -2923,7 +2894,7 @@ window.wtExcReEnableExpertMode = async () => {
 };
 
 // ── 헬스장 선택/추가 Bottom Sheet ────────────────────────────────
-window.wtOpenGymListSheet = () => {
+export function wtOpenGymListSheet() {
   document.querySelectorAll('.wt-gym-sheet-back').forEach(el => el.remove());
   const gyms = getGyms();
   const currentId = _resolveCurrentGymId();
@@ -2969,7 +2940,7 @@ window.wtOpenGymListSheet = () => {
     }
     if (e.target.closest('.wt-gym-sheet-add')) {
       close();
-      setTimeout(() => window.wtExcAddNewGym(), 220);
+      setTimeout(() => wtExcAddNewGym(), 220);
       return;
     }
     if (e.target.closest('.wt-gym-sheet-close')) close();
@@ -3011,7 +2982,7 @@ async function _switchToGym(gymId) {
     renderExpertTopArea();
     if (hasActiveSession) {
       try {
-        const { _renderExerciseList } = await import('./exercises.js?v=20260517v3');
+        const { _renderExerciseList } = await import('./exercises.js');
         _renderExerciseList();
       } catch { /* ignore */ }
     }
@@ -3023,7 +2994,7 @@ async function _switchToGym(gymId) {
 
 // ── 새 헬스장 추가 — 바텀시트 폼 (P1-6: window.prompt 교체) ─────────
 // 네이티브 prompt는 2026년 프로덕트 앱에서 신뢰 손상. 인라인 폼으로 대체.
-window.wtExcAddNewGym = () => {
+export function wtExcAddNewGym() {
   document.querySelectorAll('.wt-gym-sheet-back').forEach(el => el.remove());
   const back = document.createElement('div');
   back.className = 'wt-gym-sheet-back';
@@ -3097,12 +3068,12 @@ window.wtExcAddNewGym = () => {
 };
 
 // 기존 expertOpenGymSwitcher는 이제 Sheet 열기로 위임
-window.expertOpenGymSwitcher = () => window.wtOpenGymListSheet();
+export function expertOpenGymSwitcher() { wtOpenGymListSheet(); }
 
 // ── 헬스장 관리 시트 — 기구 CRUD 진입점 ──────────────────────────────
 // 캐러셀 활성 슬라이드의 ✏️ 아이콘 또는 더블클릭으로 호출됨.
 // 할 수 있는 작업: 이름 변경, 기구 삭제, 기구 추가(기존 gymId로 wizard step5 재진입).
-window.expertGymManageOpen = (gymId) => {
+export function expertGymManageOpen(gymId) {
   document.querySelectorAll('.wt-gym-manage-back').forEach(el => el.remove());
   const gym = getGyms().find(g => g.id === gymId);
   if (!gym) { _toast('헬스장을 찾을 수 없어요', 'error'); return; }
@@ -3171,7 +3142,7 @@ window.expertGymManageOpen = (gymId) => {
     if (action === 'add') {
       close();
       setTimeout(() => {
-        if (typeof window.expertOnbOpenForNewGym === 'function') window.expertOnbOpenForNewGym(gymId);
+        expertOnbOpenForNewGym(gymId);
       }, 220);
       return;
     }
@@ -3210,6 +3181,21 @@ async function _ensureCustomMusclesModal() {
     await loadAndInjectModals();
     modal = document.getElementById('custom-muscles-modal');
   }
+  if (modal && !modal.dataset.customMuscleActionsBound) {
+    modal.dataset.customMuscleActionsBound = '1';
+    modal.addEventListener('click', (event) => {
+      if (event.target === modal || event.target.closest('[data-custom-muscle-action="close"]')) {
+        closeCustomMusclesModal();
+        return;
+      }
+      if (event.target.closest('[data-custom-muscle-action="add"]')) {
+        void addCustomMuscle();
+        return;
+      }
+      const remove = event.target.closest('[data-custom-muscle-action="delete"]');
+      if (remove) void deleteCustomMuscleUi(remove.dataset.muscleId);
+    });
+  }
   return modal;
 }
 
@@ -3221,7 +3207,7 @@ function _renderCmmList() {
   host.innerHTML = all.map(m => {
     const isCustom = customIds.has(m.id);
     const delBtn = isCustom
-      ? `<button class="tds-btn tonal sm" onclick="deleteCustomMuscleUi('${m.id.replace(/'/g, "\\'")}')">삭제</button>`
+      ? `<button type="button" class="tds-btn tonal sm" data-custom-muscle-action="delete" data-muscle-id="${_esc(m.id)}">삭제</button>`
       : `<span style="color:var(--text-tertiary); font-size:12px;">기본</span>`;
     return `<div class="wt-list-row" style="display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border);">
       <span style="width:14px; height:14px; border-radius:50%; background:${m.color || '#8b5cf6'}; flex-shrink:0;"></span>
@@ -3231,18 +3217,18 @@ function _renderCmmList() {
   }).join('');
 }
 
-window.openCustomMusclesModal = async () => {
+export async function openCustomMusclesModal() {
   const modal = await _ensureCustomMusclesModal();
   if (!modal) return;
   _renderCmmList();
   modal.classList.add('open');
 };
 
-window.closeCustomMusclesModal = () => {
+export function closeCustomMusclesModal() {
   document.getElementById('custom-muscles-modal')?.classList.remove('open');
 };
 
-window.addCustomMuscle = async () => {
+export async function addCustomMuscle() {
   const nameEl  = document.getElementById('cmm-new-name');
   const colorEl = document.getElementById('cmm-new-color');
   const name = (nameEl?.value || '').trim();
@@ -3263,7 +3249,7 @@ window.addCustomMuscle = async () => {
   }
 };
 
-window.deleteCustomMuscleUi = async (id) => {
+export async function deleteCustomMuscleUi(id) {
   const m = getCustomMuscles().find(x => x.id === id);
   if (!m) return;
   // D-4: orphan 방지 — 참조 중인 Exercise가 있으면 삭제 차단 + 영향 종목명을 나열.

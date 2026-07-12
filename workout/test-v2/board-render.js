@@ -1,3 +1,4 @@
+import { showToast } from '../../ui/toast.js';
 // ================================================================
 // workout/test-v2/board-render.js — 성장 보드 UI (보드 + 시트들)
 // ----------------------------------------------------------------
@@ -28,7 +29,7 @@ import {
   mergeSessionExercises, sessionRecentMap, resolveSessionEntryGroupId,
   sortCandidatesByRecent, workoutRecordsForBenchmarkWeek,
   buildMinimapData, defaultIncrementForGroup, getLineup, toggleLineup,
-} from './board-core.js?v=20260702z20-stamp-persist-lifezone-date';
+} from './board-core.js';
 import {
   WENDLER_SCHEMES, WENDLER_SCHEME_IDS, normalizeWendlerConfig,
   wendlerWeekPrescription, wendlerCycleOverview, isWendlerAllowedMajor,
@@ -68,9 +69,8 @@ const S = {
 };
 
 const _todayKey = () => toKey(new Date());
-const TM2_MODULE_VERSION = '20260702z20-stamp-persist-lifezone-date';
 const _esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const _toast = (msg, type = 'info') => { if (typeof window.showToast === 'function') window.showToast(msg, 2200, type); };
+const _toast = (msg, type = 'info') => { if (typeof showToast === 'function') showToast(msg, 2200, type); };
 const _num = (id, fallback = 0) => {
   const el = document.getElementById(id);
   const v = Number(el?.value);
@@ -285,7 +285,7 @@ export async function tm2OpenBoard() {
   await _ensureTodayLoaded();
   const board = getTestBoardV2();
   if (!board || !Array.isArray(board.benchmarks) || !board.benchmarks.length) {
-    const mod = await import(`./onboarding.js?v=${TM2_MODULE_VERSION}`);
+    const mod = await import('./onboarding.js');
     mod.openOnboarding({
       onComplete: async (newBoard, meta = {}) => {
         S.board = newBoard;
@@ -348,7 +348,7 @@ export function tm2CloseBoard() {
 async function _backToOnboarding() {
   tm2CloseBoard();
   _ensureRoots();
-  const mod = await import(`./onboarding.js?v=${TM2_MODULE_VERSION}`);
+  const mod = await import('./onboarding.js');
   mod.openOnboarding({
     board: S.board,
     onComplete: async (newBoard, meta = {}) => {

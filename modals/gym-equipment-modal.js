@@ -4,10 +4,10 @@
 // ================================================================
 
 export const MODAL_HTML = `
-<div class="modal-overlay expert-gym-overlay" id="gym-equipment-modal" onclick="if(event.target===this) gymEqClose()">
+<div class="modal-overlay expert-gym-overlay" id="gym-equipment-modal">
   <div class="modal-sheet expert-gym-sheet">
     <div class="expert-onb-topbar">
-      <button class="topbar-back" onclick="gymEqClose()">‹</button>
+      <button type="button" class="topbar-back" data-expert-modal-action="close-gym-equipment">‹</button>
       <div class="topbar-title" id="gym-eq-title">기구 등록</div>
       <div style="width:36px"></div>
     </div>

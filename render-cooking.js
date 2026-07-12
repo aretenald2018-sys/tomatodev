@@ -1,3 +1,4 @@
+import { showToast } from './ui/toast.js';
 // ================================================================
 // render-cooking.js — 요리 탭
 // 주 1회 새 요리 실험 기록 + 재료 영양정보 + 식단 연동
@@ -18,9 +19,39 @@ const RESULT_COLOR = { success:'var(--diet-ok)', partial:'var(--accent)', fail:'
 let _editingId   = null;
 let _ingredients = [];        // 현재 편집 중인 재료 목록
 let _selectedIngredient = null; // 드롭다운에서 선택한 재료 (확정 전)
+let _cookingActionsBound = false;
+
+function _bindCookingActions(root = document) {
+  if (_cookingActionsBound) return;
+  _cookingActionsBound = true;
+  root.addEventListener('click', (event) => {
+    const control = event.target?.closest?.('[data-cooking-action]');
+    if (!control) return;
+    const action = control.dataset.cookingAction;
+    if (action === 'open') openCookingModal(control.dataset.recipeId || '');
+    if (action === 'close') closeCookingModal(event);
+    if (action === 'save') void saveCookingFromModal();
+    if (action === 'delete') void deleteCookingFromModal();
+    if (action === 'select-ingredient') _selectCookingIngredient(control.dataset.source, Number(control.dataset.index));
+    if (action === 'open-direct-add') _openCookingDirectAdd();
+    if (action === 'confirm-ingredient') _confirmIngredient();
+    if (action === 'cancel-ingredient') _cancelIngredient();
+    if (action === 'remove-ingredient') _removeIngredient(Number(control.dataset.index));
+  });
+  root.addEventListener('input', (event) => {
+    const control = event.target?.closest?.('[data-cooking-input-action]');
+    if (!control) return;
+    const action = control.dataset.cookingInputAction;
+    if (action === 'search-ingredient') _searchCookingIngredient();
+    if (action === 'preview-ingredient') _previewIngredientNutrition();
+    if (action === 'update-nutrition') _updateCookingNutrition();
+    if (action === 'photo-input') onCookingPhotoInput();
+  });
+}
 
 // ── 공개 API ─────────────────────────────────────────────────────
 export function renderCooking() {
+  _bindCookingActions();
   const records   = getCookingRecords();
   const container = document.getElementById('cooking-list');
   if (!container) return;
@@ -41,6 +72,7 @@ export function renderCooking() {
 }
 
 export function openCookingModal(id) {
+  _bindCookingActions();
   _editingId = id || null;
   _ingredients = [];
   _selectedIngredient = null;
@@ -96,8 +128,8 @@ export function closeCookingModal(e) {
 export async function saveCookingFromModal() {
   const name   = document.getElementById('cooking-name').value.trim();
   const date   = document.getElementById('cooking-date').value;
-  if (!name) { window.showToast?.('요리 이름을 입력해주세요', 2500, 'warning'); return; }
-  if (!date) { window.showToast?.('날짜를 입력해주세요', 2500, 'warning'); return; }
+  if (!name) { showToast('요리 이름을 입력해주세요', 2500, 'warning'); return; }
+  if (!date) { showToast('날짜를 입력해주세요', 2500, 'warning'); return; }
 
   const servings = parseInt(document.getElementById('cooking-servings').value) || 1;
 
@@ -172,7 +204,7 @@ function _searchCookingIngredient() {
       const kcal = item.nutrition?.kcal || 0;
       const ss   = item.servingSize || 100;
       html += `<div class="nutrition-result-row" style="padding:8px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border)"
-        onclick="window._selectCookingIngredient('db', ${i})">
+        data-cooking-action="select-ingredient" data-source="db" data-index="${i}">
         <div style="font-weight:500">${item.name}</div>
         <div style="color:var(--muted);font-size:11px">${ss}g 기준 ${kcal}kcal</div>
       </div>`;
@@ -181,7 +213,7 @@ function _searchCookingIngredient() {
 
     dedupedCsv.forEach((item, i) => {
       html += `<div class="nutrition-result-row" style="padding:8px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border)"
-        onclick="window._selectCookingIngredient('csv', ${i})">
+        data-cooking-action="select-ingredient" data-source="csv" data-index="${i}">
         <div style="font-weight:500">📊 ${item.name}</div>
         <div style="color:var(--muted);font-size:11px">100g 기준 ${item.energy||0}kcal</div>
       </div>`;
@@ -192,7 +224,7 @@ function _searchCookingIngredient() {
 
     // 맨 아래에 "직접 추가" 항목
     html += `<div class="nutrition-result-row" style="padding:10px;cursor:pointer;font-size:12px;text-align:center;color:var(--accent);font-weight:600;border-top:1px solid var(--border)"
-      onclick="window._openCookingDirectAdd()">
+      data-cooking-action="open-direct-add">
       ➕ 직접 추가 (사진/텍스트 파싱)
     </div>`;
 
@@ -324,7 +356,7 @@ function _renderIngredientsList() {
     `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px">
       <span style="flex:1">${ing.name} <span style="color:var(--muted)">${ing.grams}g</span></span>
       <span style="color:var(--muted);font-size:11px">${ing.kcal}kcal</span>
-      <button onclick="window._removeIngredient(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 4px">✕</button>
+      <button data-cooking-action="remove-ingredient" data-index="${i}" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 4px">✕</button>
     </div>`
   ).join('');
 }
@@ -425,16 +457,6 @@ async function _retroactiveUpdate(recipe) {
   console.log(`[cooking] 소급 업데이트: ${entries.length}건 갱신`);
 }
 
-// ── window 등록 ──────────────────────────────────────────────────
-window._searchCookingIngredient  = _searchCookingIngredient;
-window._selectCookingIngredient  = _selectCookingIngredient;
-window._previewIngredientNutrition = _previewIngredientNutrition;
-window._confirmIngredient        = _confirmIngredient;
-window._cancelIngredient         = _cancelIngredient;
-window._openCookingDirectAdd     = _openCookingDirectAdd;
-window._removeIngredient         = _removeIngredient;
-window._updateCookingNutrition   = _updateCookingNutrition;
-
 // ── 내부 ─────────────────────────────────────────────────────────
 function _todayStr() {
   const t = new Date();
@@ -515,7 +537,7 @@ function _buildCard(r) {
   }
 
   return `
-  <div class="cooking-card" onclick="openCookingModal('${r.id}')">
+  <div class="cooking-card" data-cooking-action="open" data-recipe-id="${r.id}">
     ${imgHtml}
     <div class="cooking-card-body">
       <div class="cooking-card-header">

@@ -26,15 +26,3 @@ export function replaceDietPhotos(next = {}) {
   if (next && typeof next === 'object') Object.assign(_photos, next);
   return _photos;
 }
-
-// Temporary compatibility for legacy tests and late-loaded modules. Runtime code imports this store.
-if (typeof window !== 'undefined') {
-  const descriptor = Object.getOwnPropertyDescriptor(window, '_mealPhotos');
-  if (!descriptor || descriptor.configurable) {
-    Object.defineProperty(window, '_mealPhotos', {
-      get: getDietPhotos,
-      set: replaceDietPhotos,
-      configurable: true,
-    });
-  }
-}

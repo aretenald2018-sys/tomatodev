@@ -1,0 +1,41 @@
+/* ══════════════════════════════════════════════════════════
+   기존 체중 카드 #tf-weight-card stale 강조 (home/tomato.js)
+   일주일 넘게 체중 미입력 시 ripple shine + 버튼 문구 강조
+══════════════════════════════════════════════════════════ */
+.tf-weight-card-stale {
+  border: 1px solid var(--primary-light, #fed4d2) !important;
+  animation: tds-shine 2.4s ease-in-out infinite;
+}
+.tf-weight-card-stale .tf-sum-hint-stale {
+  color: var(--primary) !important;
+  font-weight: 700 !important;
+  background: var(--primary-bg);
+  padding: 5px 10px;
+  border-radius: 999px;
+  animation: tds-shine-btn 2.4s ease-in-out infinite;
+  display: inline-block;
+}
+.tf-wt-stale-sub {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--primary-bg);
+  border-radius: 8px;
+  vertical-align: middle;
+}
+@keyframes tds-shine {
+  0%   { box-shadow: 0 0 0 0 rgba(250,52,44,0.35); }
+  70%  { box-shadow: 0 0 0 10px rgba(250,52,44,0); }
+  100% { box-shadow: 0 0 0 0 rgba(250,52,44,0); }
+}
+@keyframes tds-shine-btn {
+  0%   { box-shadow: 0 0 0 0 rgba(250,52,44,0.45); }
+  70%  { box-shadow: 0 0 0 6px rgba(250,52,44,0); }
+  100% { box-shadow: 0 0 0 0 rgba(250,52,44,0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tf-weight-card-stale, .tf-weight-card-stale .tf-sum-hint-stale, .lz-summary-btn.is-stale .lz-summary-sub { animation: none; }
+}

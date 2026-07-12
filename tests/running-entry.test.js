@@ -1,9 +1,11 @@
+import { readAppCssSync } from './helpers/css-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const indexHtml = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const workoutUi = await readFile(new URL('../workout-ui.js', import.meta.url), 'utf8');
+const workoutTypeUi = await readFile(new URL('../workout/type-ui.js', import.meta.url), 'utf8');
 const exercisesJs = await readFile(new URL('../workout/exercises.js', import.meta.url), 'utf8');
 const activityFormsJs = await readFile(new URL('../workout/activity-forms.js', import.meta.url), 'utf8');
 const workoutIndexJs = await readFile(new URL('../workout/index.js', import.meta.url), 'utf8');
@@ -11,7 +13,7 @@ const saveJs = await readFile(new URL('../workout/save.js', import.meta.url), 'u
 const appJs = await readFile(new URL('../app.js', import.meta.url), 'utf8');
 const loadJs = await readFile(new URL('../workout/load.js', import.meta.url), 'utf8');
 const sessionsJs = await readFile(new URL('../workout/sessions.js', import.meta.url), 'utf8');
-const styleCss = await readFile(new URL('../style.css', import.meta.url), 'utf8');
+const styleCss = readAppCssSync();
 const swJs = await readFile(new URL('../sw.js', import.meta.url), 'utf8') + await readFile(new URL('../runtime-assets.js', import.meta.url), 'utf8');
 const configJs = await readFile(new URL('../config.js', import.meta.url), 'utf8');
 const runningSessionJs = await readFile(new URL('../workout/running-session.js', import.meta.url), 'utf8');
@@ -29,7 +31,7 @@ test('running session mounts as an inline card below the day summary instead of 
   assert.doesNotMatch(indexHtml, /id="wt-running-session-root"/);
   assert.match(calendarJs, /data-wt-running-session-host/);
   assert.match(calendarJs, /id="wt-running-session-root" class="wt-running-inline-root"/);
-  assert.match(calendarJs, /window\.wtMountRunningSession\?\.\(\)/);
+  assert.match(calendarJs, /wtMountRunningSession\(\)/);
   assert.match(runningSessionJs, /export function wtMountRunningSession/);
   assert.match(runningSessionJs, /wt-running-live-card/);
   assert.doesNotMatch(runningSessionJs, /document\.body\.appendChild\(root\)/);
@@ -40,10 +42,10 @@ test('running session mounts as an inline card below the day summary instead of 
 });
 
 test('workout type switcher opens the running session instead of a detail section', () => {
-  assert.doesNotMatch(workoutUi, /running:\s*'wt-running-section'/);
-  assert.match(workoutUi, /type === 'running'/);
-  assert.match(workoutUi, /wtOpenRunningSession/);
-  assert.match(workoutUi, /workout\/running-session\.js/);
+  assert.doesNotMatch(workoutTypeUi, /running:\s*'wt-running-section'/);
+  assert.match(workoutTypeUi, /type === 'running'/);
+  assert.match(workoutTypeUi, /wtOpenRunningSession/);
+  assert.match(workoutTypeUi, /\.\/running-session\.js/);
 });
 
 test('exercise picker category renders running and cardio as body-category tiles', () => {
@@ -144,7 +146,7 @@ test('running session keeps Korean voice guidance without the separate setup scr
 
 test('running session publishes home life-zone live state without rendering a duplicate home track', () => {
   assert.match(runningSessionJs, /function _publishRunningLiveState/);
-  assert.match(runningSessionJs, /window\.__tomatoRunningLive/);
+  assert.match(runningSessionJs, /setRunningLiveState\(detail\)/);
   assert.match(runningSessionJs, /life-zone:running-live/);
   assert.match(runningSessionJs, /routeSummary/);
   assert.match(runningSessionJs, /placeSummary:\s*_session\.placeSummary \|\| \(routeSummary \? _runningPlaceFallback\(routeSummary\) : null\)/);
@@ -210,9 +212,8 @@ test('saved and live running cards render the real map inside their cards', () =
 test('running session is wired into app init, save, load, and sessions', () => {
   assert.doesNotMatch(activityFormsJs, /initRunningTracker|renderRunningTracker/);
   assert.match(workoutIndexJs, /initRunningSession/);
-  assert.match(workoutIndexJs, /window\.wtMountRunningSession/);
-  assert.match(workoutIndexJs, /window\.wtOpenRunningSession/);
-  assert.match(workoutIndexJs, /import \{ loadWorkoutDate, changeWorkoutDate, goToTodayWorkout \}\s+from '\.\/load\.js\?v=20260517v3';/);
+  assert.match(workoutIndexJs, /export \{ initRunningSession, wtMountRunningSession, wtOpenRunningSession/);
+  assert.match(workoutIndexJs, /import \{ loadWorkoutDate, changeWorkoutDate, goToTodayWorkout \}\s+from '\.\/load\.js';/);
   assert.match(workoutIndexJs, /configureWearWorkoutBridge\(\{[\s\S]*loadWorkoutDate,[\s\S]*saveWorkoutDay/);
   assert.match(appJs, /wtHandleRunningSessionBack/);
   assert.doesNotMatch(saveJs, /wt-run-distance|wt-run-duration-min|wt-run-duration-sec|wt-run-memo/);
@@ -229,13 +230,12 @@ test('running summary save opens the saved workout day detail sheet', () => {
   assert.match(appJs, /openWorkoutDaySheet,/);
   assert.match(appJs, /async function openWorkoutDaySheetFromAction/);
   assert.match(appJs, /openWorkoutDaySheet\(dateKey,[\s\S]*sheetState:\s*'full'/);
-  assert.match(appJs, /wtOpenWorkoutDaySheet:\s*openWorkoutDaySheetFromAction/);
   assert.match(runningSessionJs, /_ensureRunningWorkoutDate\(draft\.dateKey, \{ allowCurrent: false \}\)/);
   assert.match(runningSessionJs, /const targetSessionIndex = _workoutSessionIndexFromState\(\)/);
   assert.match(runningSessionJs, /const saved = await saveWorkoutDay\(\{ silent: true \}\)/);
   assert.match(runningSessionJs, /if \(!saved\) throw new Error\('running save skipped: workout date is unavailable or invalid'\)/);
-  assert.match(runningSessionJs, /await window\.wtOpenWorkoutDaySheet\(targetDateKey, targetSessionIndex,[\s\S]*action:\s*'running:save-detail'/);
-  assert.match(runningSessionJs, /wtCloseRunningSession\(\);[\s\S]*typeof window\.wtOpenWorkoutDaySheet === 'function'/);
+  assert.match(runningSessionJs, /openWorkoutDaySheet\(targetDateKey, \{[\s\S]*sessionIndex:\s*targetSessionIndex,[\s\S]*action:\s*'running:save-detail'/);
+  assert.match(runningSessionJs, /wtCloseRunningSession\(\);[\s\S]*if \(targetDateKey\)/);
   assert.match(saveJs, /if \(!ctx\) return false/);
   assert.match(saveJs, /return true;\s*\n}/);
 });

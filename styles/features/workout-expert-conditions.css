@@ -1,0 +1,22 @@
+/* ════════════════════════════════════════════════════════════════════
+   전문가 모드에서 헬스 종목 섹션 조건부 숨김
+   ════════════════════════════════════════════════════════════════════ */
+.wt-flow.wt-expert-on #wt-gym-section {
+  display: none !important;
+}
+.wt-flow.wt-expert-on.wt-step3-ready #wt-gym-section {
+  display: block !important;
+}
+.wt-flow.wt-mode-max #expert-inline-pill,
+.wt-flow.wt-mode-max .ex-header-actions .ex-add-btn {
+  display: none !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   TDS 폰트/패딩 정밀 조정 (전문가 카드)
+   ════════════════════════════════════════════════════════════════════ */
+.wt-place-name { font-size: 15px; }
+.wt-exc-title { font-size: 17px; }
+.wt-step-label { font-size: 11px; }
+.wt-st-info { font-size: 14px; }
+.wt-step-hint { font-size: 13px; line-height: 1.55; padding: 6px 0; }

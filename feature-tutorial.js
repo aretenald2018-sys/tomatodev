@@ -88,7 +88,7 @@ export function showTutorialIfNeeded(options = {}) {
     const prevOverlay = document.getElementById('tutorial-overlay');
     if (prevOverlay) prevOverlay.innerHTML = '';
 
-    window.switchTab(s.tab);
+    document.dispatchEvent(new CustomEvent('app:switch-tab', { detail: { tab: s.tab } }));
 
     setTimeout(() => {
       const targetEl = s.target.split(',').map(sel => document.querySelector(sel.trim())).find(el => el && el.offsetHeight > 0);
@@ -223,7 +223,7 @@ export function showTutorialIfNeeded(options = {}) {
       overlay.classList.add('coach-fade-out');
       setTimeout(() => overlay.remove(), 250);
     }
-    window.switchTab('home');
+    document.dispatchEvent(new CustomEvent('app:switch-tab', { detail: { tab: 'home' } }));
   }
 
   function startWhenReady() {

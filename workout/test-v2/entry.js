@@ -1,3 +1,4 @@
+import { showToast } from '../../ui/toast.js';
 // ================================================================
 // workout/test-v2/entry.js — 성장 보드(테스트모드 v2) 진입 연결
 // ----------------------------------------------------------------
@@ -6,32 +7,31 @@
 // ================================================================
 
 let _opening = false;
-const TM2_MODULE_VERSION = '20260702z20-stamp-persist-lifezone-date';
 
-async function _open() {
+export async function tm2OpenBoard() {
   if (_opening) return;
   _opening = true;
   try {
     // 주의: 이 파일은 workout/test-v2/ 깊이 — 동적 import 상대 경로는 ./ 기준
-    const mod = await import(`./board-render.js?v=${TM2_MODULE_VERSION}`);
+    const mod = await import('./board-render.js');
     await mod.tm2OpenBoard();
   } catch (e) {
     console.error('[tm2] open failed', e);
-    if (typeof window.showToast === 'function') window.showToast('성장 보드를 여는 데 실패했어요', 2200, 'error');
+    if (typeof showToast === 'function') showToast('성장 보드를 여는 데 실패했어요', 2200, 'error');
   } finally {
     _opening = false;
   }
 }
 
-async function _openBenchmarkSettings(benchmarkId) {
+export async function tm2OpenBenchmarkSettings(benchmarkId) {
   if (_opening) return;
   _opening = true;
   try {
-    const mod = await import(`./board-render.js?v=${TM2_MODULE_VERSION}`);
+    const mod = await import('./board-render.js');
     await mod.tm2OpenBenchmarkSettings(benchmarkId);
   } catch (e) {
     console.error('[tm2] open benchmark settings failed', e);
-    if (typeof window.showToast === 'function') window.showToast('목표 설정을 여는 데 실패했어요', 2200, 'error');
+    if (typeof showToast === 'function') showToast('목표 설정을 여는 데 실패했어요', 2200, 'error');
   } finally {
     _opening = false;
   }
@@ -46,11 +46,6 @@ export function tm2RenderEntry() {
   host.setAttribute('aria-hidden', 'true');
   host.innerHTML = '';
 }
-
-// 디버그/외부 진입용 전역 노출
-window.tm2OpenBoard = _open;
-window.tm2OpenBenchmarkSettings = _openBenchmarkSettings;
-window.tm2RenderEntry = tm2RenderEntry;
 
 // 모듈 로드 시점에 예전 정적 진입 카드 자리를 비운다. 실제 진입은 운동 방식 목록에서 처리한다.
 if (document.readyState === 'loading') {

@@ -1,0 +1,291 @@
+
+/* ── Hero Social Proof ── */
+.hero-social-proof {
+  font-size: 13px; color: var(--text-secondary); margin-top: 12px;
+  text-align: left; line-height: 1.45; animation: fadeIn 0.3s ease;
+}
+.hero-social-proof strong {
+  font-weight: 700; color: var(--text);
+}
+
+/* ── Seed DatePicker ── */
+.sdp-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 var(--seed-x2); margin-bottom: var(--seed-x3);
+}
+.sdp-nav-btn {
+  width: 36px; height: 36px; border-radius: var(--seed-r-full);
+  background: var(--seed-bg-neutral-weak); border: none;
+  font-size: var(--seed-t5); font-weight: 700; color: var(--seed-fg-neutral);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background var(--seed-d3) var(--seed-ease);
+}
+.sdp-nav-btn:active { background: var(--seed-gray-300); }
+.sdp-month-label {
+  font-size: var(--seed-t5); font-weight: 700; color: var(--seed-fg-neutral);
+}
+.sdp-header {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  text-align: center; font-size: var(--seed-t2); font-weight: 600;
+  color: var(--seed-fg-subtle); padding: var(--seed-x1) 0;
+  border-bottom: 1px solid var(--seed-stroke-neutral); margin-bottom: var(--seed-x1);
+}
+.sdp-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+  padding-bottom: var(--seed-x3);
+}
+.sdp-cell {
+  display: flex; align-items: center; justify-content: center;
+  height: 40px; font-size: var(--seed-t4); font-weight: 500;
+  color: var(--seed-fg-neutral); border-radius: var(--seed-r-full);
+  cursor: pointer; transition: all var(--seed-d3) var(--seed-ease);
+}
+.sdp-empty { cursor: default; }
+.sdp-day:hover { background: var(--seed-bg-neutral-weak); }
+.sdp-day:active { transform: scale(0.92); }
+.sdp-today {
+  color: var(--primary); font-weight: 700;
+  background: var(--primary-bg);
+}
+.sdp-selected {
+  background: var(--primary) !important; color: #fff !important; font-weight: 700;
+}
+
+/* 홈탭 + 모달 전체 Seed 타이포 일괄 적용 — mono 포함 모든 요소를 sans로 */
+#tab-home, #tab-home *,
+#modals-container, #modals-container * { font-family: var(--font-sans) !important; }
+
+.wt-activity-copy-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.wt-activity-copy-text { font-size: 12px; color: var(--text-secondary); }
+.wt-activity-copy-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 7px 12px;
+  background: var(--primary-bg, #fdf0f0);
+  color: var(--primary, #fa342c);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ci-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0 4px;
+  cursor: pointer;
+}
+.ci-toggle-copy { display: flex; flex-direction: column; gap: 2px; }
+.ci-toggle-sub { font-size: 12px; color: var(--text-tertiary); }
+.ci-bodyfat-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 0.3s ease, opacity 0.3s ease;
+}
+.ci-bodyfat-wrap > div { overflow: hidden; }
+.ci-bodyfat-wrap.open { grid-template-rows: 1fr; opacity: 1; }
+
+.weight-result-sheet {
+  background:
+    radial-gradient(circle at top right, rgba(250, 52, 44, 0.14), transparent 34%),
+    linear-gradient(180deg, #fff9f8 0%, var(--surface) 42%);
+}
+.weight-result-hero { padding: 6px 0 14px; text-align: center; }
+.weight-result-kicker {
+  display: inline-flex;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(250, 52, 44, 0.1);
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 700;
+}
+.weight-result-title {
+  margin-top: 12px;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text);
+}
+.weight-result-message {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.weight-result-graph-wrap {
+  margin: 8px 0 18px;
+  padding: 14px 12px 8px;
+  background: rgba(255,255,255,0.72);
+  border: 1px solid rgba(250, 52, 44, 0.1);
+  border-radius: 18px;
+}
+.weight-result-graph { width: 100%; height: auto; display: block; }
+.weight-result-axis { stroke: var(--seed-stroke-neutral, #d8dde3); stroke-width: 1; }
+.weight-result-axis-label {
+  fill: var(--text-tertiary);
+  font-size: 11px;
+  text-anchor: middle;
+}
+.weight-result-weight-line {
+  fill: none;
+  stroke: #fa342c;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.weight-result-weight-point { fill: #fa342c; }
+.weight-result-fat-line {
+  fill: none;
+  stroke: #fc6a66;
+  stroke-width: 2;
+  stroke-dasharray: 5 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.weight-result-fat-point {
+  fill: #fff;
+  stroke: #fc6a66;
+  stroke-width: 2;
+}
+.weight-result-empty {
+  padding: 26px 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.cheer-card {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top left, rgba(252, 106, 102, 0.18), transparent 32%),
+    linear-gradient(180deg, #fff8f7 0%, #ffffff 100%);
+}
+.cheer-card::after {
+  content: '';
+  position: absolute;
+  inset: auto -24px -24px auto;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgba(250, 52, 44, 0.06);
+}
+.cheer-card-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 9px;
+  background: rgba(250, 52, 44, 0.08);
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.cheer-card-title {
+  margin-top: 16px;
+  font-size: 16px;
+  line-height: 1.45;
+  font-weight: 800;
+  color: var(--text);
+}
+.cheer-card-names {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--primary);
+  font-weight: 700;
+}
+.cheer-card-message {
+  margin-top: 8px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.cheer-card-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 20px;
+}
+.cheer-card-actions .tds-btn { flex: 1; }
+
+.cheer-card-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(13, 18, 22, 0.5);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: fadeIn 0.2s ease;
+}
+.cheer-card-modal {
+  position: relative;
+  width: min(calc(100% - 48px), 420px);
+  padding: 32px 24px 20px;
+  border-radius: 20px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.16);
+  overflow: hidden;
+  background: #ffffff;
+  text-align: center;
+}
+.cheer-card-modal--done {
+  background: #ffffff;
+}
+.handshake-confetti {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1300;
+}
+.handshake-confetti-particle {
+  position: absolute;
+  top: -24px;
+  font-size: 24px;
+  animation: handshake-fall linear forwards;
+}
+@keyframes handshake-fall {
+  0% { transform: translateY(0) rotate(0deg) scale(0.9); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateY(105vh) rotate(18deg) scale(1.05); opacity: 0; }
+}
+#tab-home .home-card-title { font-size: var(--seed-t5); font-weight: 700; }
+#tab-home .home-card-header .section-title-edit-btn { font-size: var(--seed-t3); font-weight: 600; }
+#tab-home .quest-cell-title { font-size: var(--seed-t3); font-weight: 700; }
+#tab-home .mini-memo-new-input { font-size: var(--seed-t4); }
+#tab-home .ug-day-label { font-size: var(--seed-t2); font-weight: 700; }
+#tab-home .ug-date-label { font-size: var(--seed-t1); }
+#tab-home .ug-row-label { font-size: var(--seed-t2); font-weight: 600; }
+#tab-home .ug-val { font-size: var(--seed-t2); }
+#tab-home .ug-sub { font-size: var(--seed-t1); }
+#tab-home .ug-pct { font-size: var(--seed-t3); }
+#tab-home .ug-macro { font-size: var(--seed-t1); }
+#tab-home .friend-name { font-size: var(--seed-t4); font-weight: 700; }
+#tab-home .friend-feed-item { font-size: var(--seed-t3); }
+#tab-home .friend-notif-row { font-size: var(--seed-t3); }
+#tab-home .diet-goal-stat-val { font-size: var(--seed-t8); }
+#tab-home .diet-goal-prog-info { font-size: var(--seed-t1); }
+#tab-home .tomato-day-label { font-size: var(--seed-t7); }
+#tab-home .tomato-message { font-size: var(--seed-t3); }
+#tab-home .tomato-quarter-summary { font-size: var(--seed-t2); }
+#tab-home .quest-label { font-size: var(--seed-t1); }
+#tab-home .quest-dday-badge { font-size: var(--seed-t1); }
+#tab-home .quest-prog-label { font-size: var(--seed-t1); }
+#tab-home .goal-ai-val { font-size: var(--seed-t3); }

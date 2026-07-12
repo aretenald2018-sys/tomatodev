@@ -22,10 +22,10 @@ export function renderMiniMemo() {
       <label class="mini-memo-check-label">
         <input type="checkbox" class="mini-memo-checkbox"
           ${item.checked ? 'checked' : ''}
-          onchange="toggleMiniMemoItem('${item.id}')">
+          data-action="home:toggle-mini-memo" data-item-id="${item.id}">
         <span class="mini-memo-text">${item.text}</span>
       </label>
-      <button class="mini-memo-del-btn" onclick="deleteMiniMemoItem('${item.id}')">✕</button>
+      <button type="button" class="mini-memo-del-btn" data-action="home:delete-mini-memo" data-item-id="${item.id}">✕</button>
     </div>`).join('');
 }
 
@@ -49,7 +49,7 @@ export function renderGoals() {
         <div class="tds-empty-icon">🎯</div>
         <div class="tds-empty-title">아직 목표가 없어요</div>
         <div class="tds-empty-desc">작은 목표부터 시작해볼까요?</div>
-        <button class="tds-btn tonal" onclick="openGoalModal()">+ 목표 추가</button>
+        <button type="button" class="tds-btn tonal" data-action="home:open-goal">+ 목표 추가</button>
       </div>`;
     return;
   }
@@ -79,8 +79,8 @@ export function renderGoals() {
         <span class="goal-label">${g.label}</span>
         <div class="goal-item-actions">
           ${ddayStr ? `<span class="goal-dday">${ddayStr}</span>` : ''}
-          <button class="goal-ai-btn" onclick="analyzeGoalFeasibility('${g.id}')" title="AI 분석">🤖</button>
-          <button class="goal-del-btn" onclick="deleteGoalItem('${g.id}')">✕</button>
+          <button type="button" class="goal-ai-btn" data-action="home:analyze-goal" data-goal-id="${g.id}" title="AI 분석">🤖</button>
+          <button type="button" class="goal-del-btn" data-action="home:delete-goal" data-goal-id="${g.id}">✕</button>
         </div>
       </div>
       ${aiHtml}
@@ -88,7 +88,7 @@ export function renderGoals() {
   }).join('');
 
   container.innerHTML += `<div style="text-align:center;margin-top:10px">
-    <button class="quest-add-btn" onclick="openGoalModal()" style="padding:4px 16px">+ 목표 추가</button>
+    <button type="button" class="quest-add-btn" data-action="home:open-goal" style="padding:4px 16px">+ 목표 추가</button>
   </div>`;
 }
 
@@ -126,11 +126,11 @@ export function renderQuests() {
       return `<div class="quest-item ${done ? 'done' : ''}">
         <div class="quest-item-main">
           ${!isAuto && type === 'daily'
-            ? `<input type="checkbox" class="quest-check" ${done ? 'checked' : ''} onchange="toggleQuestCheck('${q.id}')">`
+            ? `<input type="checkbox" class="quest-check" ${done ? 'checked' : ''} data-action="home:toggle-quest" data-quest-id="${q.id}">`
             : ''}
           <span class="quest-item-title">${q.title}${ddayStr ? ` <span class="goal-dday" style="font-size:9px">${ddayStr}</span>` : ''}</span>
-          <button class="quest-item-edit" onclick="openQuestEditModal('${q.id}')">✏️</button>
-          <button class="goal-del-btn" onclick="deleteQuestItem('${q.id}')">✕</button>
+          <button type="button" class="quest-item-edit" data-action="home:edit-quest" data-quest-id="${q.id}">✏️</button>
+          <button type="button" class="goal-del-btn" data-action="home:delete-quest" data-quest-id="${q.id}">✕</button>
         </div>
         ${target > 1 ? `
           <div class="quest-progress-row">

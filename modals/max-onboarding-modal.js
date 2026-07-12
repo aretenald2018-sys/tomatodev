@@ -7,7 +7,7 @@
 // ================================================================
 
 export const MODAL_HTML = `
-<div class="modal-overlay wt-max-ob-back-overlay" id="max-onboarding-modal" onclick="if(event.target===this) closeMaxMiniOnboarding()">
+<div class="modal-overlay wt-max-ob-back-overlay" id="max-onboarding-modal">
   <div class="modal-sheet wt-max-ob-sheet">
     <div class="wt-max-ob-topbar">
       <div class="wt-max-ob-topbar-title">⚡ 테스트 모드 시작</div>

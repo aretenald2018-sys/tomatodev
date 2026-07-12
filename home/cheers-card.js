@@ -32,6 +32,7 @@ import {
 import { CELEBRATION_DETECTORS } from '../calc.js';
 import { resolveNickname, showToast } from './utils.js';
 import { confirmAction } from '../utils/confirm-modal.js';
+import { openFriendProfile } from './friend-profile.js';
 
 const CARD_ID = 'card-celebrations';
 const CACHE_PREFIX = '__cheersCache_v4:';
@@ -475,7 +476,7 @@ function _renderItems(rows, limit) {
       : _escapeText(_initials(row.name));
     const selfClass = row.isSelf ? ' cheers-item-self' : '';
     return `
-      <div class="cheers-item${selfClass}" data-uid="${_escapeText(row.uid)}" onclick="window._cheersOpenFriend(this.dataset.uid)">
+      <div class="cheers-item${selfClass}" data-uid="${_escapeText(row.uid)}" data-cheers-action="open-friend">
         <div class="cheers-avatar">${avatar}</div>
         <div class="cheers-text">${_renderRowText(row)}</div>
         <div class="cheers-item-icon">›</div>
@@ -497,7 +498,7 @@ function _paint(el, rows, totalEvents, mySelfCheer) {
   const editorRow = `
     <div class="cheers-self-row">
       ${myCheerLine}
-      <button class="cheers-self-btn" onclick="window.openSelfCheerModal()">
+      <button type="button" class="cheers-self-btn" data-cheers-action="open-self-cheer">
         ${mySelfCheer?.text ? '✏️ 축하 문구 수정' : '✏️ 오늘 축하받고 싶은 일 설정'}
       </button>
     </div>
@@ -516,12 +517,22 @@ function _paint(el, rows, totalEvents, mySelfCheer) {
       <div class="cheers-empty">아직 오늘 축하할 소식이 없어요. 내 축하받고 싶은 일을 먼저 알려볼까요?</div>
     `}
     ${hasMore ? `
-      <button class="cheers-more-btn" onclick="window._cheersToggleExpand()">
+      <button type="button" class="cheers-more-btn" data-cheers-action="toggle-expand">
         ${_expanded ? '접기' : `더보기 (+${rows.length - MAX_INITIAL})`}
       </button>
     ` : ''}
     ${editorRow}
   `;
+  el.onclick = (event) => {
+    const control = event.target.closest('[data-cheers-action]');
+    if (!control || !el.contains(control)) return;
+    if (control.dataset.cheersAction === 'open-friend') void openFriendProfile(control.dataset.uid);
+    if (control.dataset.cheersAction === 'open-self-cheer') void openSelfCheerModal();
+    if (control.dataset.cheersAction === 'toggle-expand') {
+      _expanded = !_expanded;
+      void renderCheersCard();
+    }
+  };
 }
 
 // ── 메인 진입 ────────────────────────────────────────────────────
@@ -589,10 +600,11 @@ export async function renderCheersCard() {
 
 // ── Self-cheer 모달 핸들러 ───────────────────────────────────────
 
-window.openSelfCheerModal = async () => {
+export async function openSelfCheerModal() {
   const modal = document.getElementById('self-cheer-modal');
   if (!modal) { console.warn('[self-cheer] modal not loaded'); return; }
   modal.style.display = 'flex';
+  _bindSelfCheerModal(modal);
 
   const textEl = document.getElementById('self-cheer-text');
   const previewEl = document.getElementById('self-cheer-preview');
@@ -631,14 +643,14 @@ window.openSelfCheerModal = async () => {
   setTimeout(() => textEl.focus(), 80);
 };
 
-window.closeSelfCheerModal = (event) => {
+export function closeSelfCheerModal(event) {
   const modal = document.getElementById('self-cheer-modal');
   if (!modal) return;
   if (event && event.target !== modal) return;
   modal.style.display = 'none';
 };
 
-window.saveSelfCheerFromModal = async () => {
+export async function saveSelfCheerFromModal() {
   const textEl = document.getElementById('self-cheer-text');
   if (!textEl) return;
   const text = (textEl.value || '').trim();
@@ -648,13 +660,13 @@ window.saveSelfCheerFromModal = async () => {
     showToast('오늘 축하 문구 저장 완료', 1800, 'success');
     const modal = document.getElementById('self-cheer-modal');
     if (modal) modal.style.display = 'none';
-    window._cheersRefresh?.();
+    _refreshCheersCard();
   } catch (e) {
     showToast('저장 실패: ' + (e.message || e), 2000, 'error');
   }
 };
 
-window.clearSelfCheerFromModal = async () => {
+export async function clearSelfCheerFromModal() {
   const ok = await confirmAction({ title: '축하 문구 삭제', message: '오늘 축하 문구를 지울까요?', destructive: true });
   if (!ok) return;
   try {
@@ -662,23 +674,13 @@ window.clearSelfCheerFromModal = async () => {
     showToast('축하 문구 삭제', 1600, 'success');
     const modal = document.getElementById('self-cheer-modal');
     if (modal) modal.style.display = 'none';
-    window._cheersRefresh?.();
+    _refreshCheersCard();
   } catch (e) {
     showToast('삭제 실패: ' + (e.message || e), 2000, 'error');
   }
 };
 
-window._cheersToggleExpand = () => {
-  _expanded = !_expanded;
-  renderCheersCard();
-};
-
-window._cheersOpenFriend = (uid) => {
-  if (!uid) return;
-  if (window.openFriendProfile) window.openFriendProfile(uid);
-};
-
-window._cheersRefresh = () => {
+function _refreshCheersCard() {
   try {
     const removals = [];
     for (let i = 0; i < sessionStorage.length; i++) {
@@ -687,8 +689,18 @@ window._cheersRefresh = () => {
     }
     removals.forEach((k) => sessionStorage.removeItem(k));
   } catch (_) { /* ignore */ }
-  renderCheersCard();
-};
+  void renderCheersCard();
+}
+
+function _bindSelfCheerModal(modal) {
+  if (!modal || modal.dataset.selfCheerActionsBound) return;
+  modal.dataset.selfCheerActionsBound = '1';
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal || event.target.closest('[data-self-cheer-action="close"]')) closeSelfCheerModal();
+    if (event.target.closest('[data-self-cheer-action="clear"]')) void clearSelfCheerFromModal();
+    if (event.target.closest('[data-self-cheer-action="save"]')) void saveSelfCheerFromModal();
+  });
+}
 
 // ── 테스트 훅 (런타임 단위 검증용) ───────────────────────────────
 // production에서도 export 되지만 일반 사용자는 호출할 일 없음.

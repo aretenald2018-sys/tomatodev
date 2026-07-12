@@ -1,3 +1,5 @@
+import { requestAppRender } from './app/render-events.js';
+import { showToast } from './ui/toast.js';
 // ================================================================
 // app-modal-goals.js — 목표 모달 핸들러
 // ================================================================
@@ -31,7 +33,7 @@ export function toggleGoalCondition() {
 export async function saveGoalFromModal() {
   const label = document.getElementById('goal-label').value.trim();
   const dday  = document.getElementById('goal-dday').value;
-  if (!label) { window.showToast?.('목표 이름을 입력해주세요', 2500, 'warning'); return; }
+  if (!label) { showToast('목표 이름을 입력해주세요', 2500, 'warning'); return; }
 
   const useCondition = document.getElementById('goal-use-condition').checked;
   const condition = useCondition ? {
@@ -41,28 +43,29 @@ export async function saveGoalFromModal() {
 
   await saveGoal({ id:`goal_${Date.now()}`, label, dday:dday||null, condition, aiAnalysis:null });
   document.getElementById('goal-modal').classList.remove('open');
-  window.renderAll();
+  requestAppRender();
 }
 
 export async function deleteGoalItem(id) {
-  const ok = await (window.confirmSimple?.('목표를 삭제할까요?', { destructive: true }) || Promise.resolve(false));
+  const ok = await confirmSimple('목표를 삭제할까요?', { destructive: true });
   if (!ok) return;
   await deleteGoal(id);
-  window.showToast?.('목표가 삭제됐어요', 2000, 'info');
-  window.renderAll();
+  showToast('목표가 삭제됐어요', 2000, 'info');
+  requestAppRender();
 }
 
 export async function analyzeGoalFeasibilityHandler(id) {
   const goal = getGoals().find(g => g.id === id);
   if (!goal) return;
-  const btns = document.querySelectorAll(`[onclick="analyzeGoalFeasibility('${id}')"]`);
+  const btns = document.querySelectorAll(`[data-action="home:analyze-goal"][data-goal-id="${id}"]`);
   btns.forEach(b => { b.disabled=true; b.textContent='분석 중...'; });
   try {
     const result = await analyzeGoalFeasibility(goal);
     await saveGoal({ ...goal, aiAnalysis: result });
     renderAll();
   } catch(e) {
-    window.showToast?.('분석 실패: ' + e.message, 3500, 'error');
+    showToast('분석 실패: ' + e.message, 3500, 'error');
     btns.forEach(b => { b.disabled=false; b.textContent='✨ AI 실현가능성 분석'; });
   }
 }
+import { confirmSimple } from './utils/confirm-modal.js';

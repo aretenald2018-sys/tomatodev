@@ -12,6 +12,7 @@ import {
 } from '../data.js';
 import { CONFIG } from '../config.js';
 import { escapeHtml, resolveNickname, showToast } from './utils.js';
+import { getRunningLiveState } from '../workout/running-live-state.js';
 import {
   buildVworldTileUrl,
   normalizeRunningMapPoints,
@@ -136,8 +137,7 @@ function _renderConsultingVisitor(card, actors = LIFE_ZONE_ACTORS) {
 }
 
 function _readRunningLiveState() {
-  if (typeof window === 'undefined') return null;
-  const live = window.__tomatoRunningLive;
+  const live = getRunningLiveState();
   return live?.active ? live : null;
 }
 

@@ -9,7 +9,8 @@ function read(path) {
 const copyWww = read('scripts/copy-www.js');
 
 test('mobile Capacitor asset copy includes app shell dependencies', () => {
-  assert.match(copyWww, /'expert-mode\.css'/);
-  assert.match(copyWww, /'test-mode-v2\.css'/);
-  assert.match(copyWww, /'calc'/);
+  assert.match(copyWww, /const manifestTargets = runtimeAssets/);
+  assert.match(copyWww, /\.\.\.manifestTargets/);
+  assert.match(copyWww, /'assets'/);
+  assert.doesNotMatch(copyWww, /'expert-mode\.css', 'test-mode-v2\.css'/);
 });

@@ -132,6 +132,4 @@ function _diff(a, b) {
 
 // ── 전역 노출 ──────────────────────────────────────────────────
 if (typeof window !== 'undefined') {
-  window.createFormGuard = createFormGuard;
-  window.registerFormGuard = registerFormGuard;
 }

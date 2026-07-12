@@ -1,3 +1,4 @@
+import { readAppCssSync } from './helpers/css-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -8,7 +9,7 @@ const calendarJs = readFileSync(new URL('../render-calendar.js', import.meta.url
 const calendarActivityModelJs = readFileSync(new URL('../calendar/activity-model.js', import.meta.url), 'utf8');
 const hydrationJs = readFileSync(new URL('../workout/running-route-hydration.js', import.meta.url), 'utf8');
 const runningModelJs = readFileSync(new URL('../workout/running-model.js', import.meta.url), 'utf8');
-const styleCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+const styleCss = readAppCssSync();
 
 function deferred() {
   let resolve;

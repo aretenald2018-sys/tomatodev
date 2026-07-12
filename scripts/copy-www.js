@@ -11,35 +11,18 @@ const www  = join(root, 'www');
 // www 폴더 초기화
 mkdirSync(www, { recursive: true });
 
-// 복사할 파일/폴더 목록
-const targets = [
-  'index.html', 'build-info.json', 'style.css', 'app.js', 'ai.js', 'config.js', 'data.js',
-  'calc.js',
-  'expert-mode.css', 'test-mode-v2.css',
-  'navigation.js', 'workout-ui.js', 'pwa-fcm.js',
-  'fatsecret-api.js', 'sheet.js',
-  'feature-login.js', 'pwa-register.js',  // R1: index.html 인라인 스크립트 분리 산출물
-  'manifest.json', 'sw.js', 'runtime-assets.js', 'firebase-messaging-sw.js',
-  'modal-manager.js',
+// SW와 Capacitor가 동일 manifest를 사용한다. `assets` 전체와 설치 스크린샷은
+// precache 대상이 아닌 런타임 선택 자산까지 포함해야 하므로 별도 보충 복사한다.
+const runtimeAssets = globalThis.TOMATO_STATIC_ASSETS || [];
+const manifestTargets = runtimeAssets
+  .map(asset => String(asset).replace(/^\.\//, '').split(/[?#]/, 1)[0])
+  .filter(Boolean);
+const targets = [...new Set([
+  ...manifestTargets,
   'assets',
-  ...readdirSync(root).filter(f => f.startsWith('render-') && f.endsWith('.js')),
-  ...readdirSync(root).filter(f => f.startsWith('feature-') && f.endsWith('.js')),
-  'home',
-  'app',
-  'workout',
-  'admin',
-  'calc',
-  'data',
-  'diet',
-  'calendar',
-  'stats',
-  'utils',
-  'modals',
-  'ai',      // R3a: ai.js → ai/ 7 모듈 분할. barrel 이 ./ai/*.js 로 re-export 하므로 필수.
-  'styles',  // R2: style.css → styles/tokens.css + components.css 분리. index.html 에서 <link> 로드.
   ...readdirSync(root).filter(f => f.startsWith('icon-') && f.endsWith('.png')),
   ...readdirSync(root).filter(f => f.startsWith('screenshot-') && f.endsWith('.png')),
-];
+])];
 
 // CSV 등 data 파일도 복사
 const extraFiles = readdirSync(root).filter(f =>
@@ -61,11 +44,11 @@ for (const name of targets) {
 
 console.log(`✅ ${copied}개 파일/폴더를 www/로 복사 완료`);
 
-const missingRuntimeAssets = (globalThis.TOMATO_STATIC_ASSETS || [])
+const missingRuntimeAssets = runtimeAssets
   .map(asset => String(asset).replace(/^\.\//, '').split(/[?#]/, 1)[0])
   .filter(Boolean)
   .filter(asset => !existsSync(join(www, asset)));
 if (missingRuntimeAssets.length) {
   throw new Error(`runtime asset copy 누락: ${missingRuntimeAssets.join(', ')}`);
 }
-console.log(`✅ runtime asset ${globalThis.TOMATO_STATIC_ASSETS.length}개 검증 완료`);
+console.log(`✅ runtime asset ${runtimeAssets.length}개 검증 완료`);

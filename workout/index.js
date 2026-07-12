@@ -1,13 +1,14 @@
+import { showToast } from '../ui/toast.js';
 // ================================================================
 // workout/index.js — 오케스트레이터: re-export + window.* 등록
 // ================================================================
 
 // ── 테스트모드 v2 성장 보드 진입 카드 (side-effect: #tm2-entry 렌더) ──
-export { tm2RenderEntry } from './test-v2/entry.js?v=20260702z19-current-user-set-button';
+export { tm2RenderEntry } from './test-v2/entry.js';
 
 // ── 서브모듈 import ─────────────────────────────────────────────
 import { loadWorkoutDate, changeWorkoutDate, goToTodayWorkout }
-  from './load.js?v=20260517v3';
+  from './load.js';
 
 export { loadWorkoutDate, changeWorkoutDate, goToTodayWorkout };
 
@@ -32,7 +33,7 @@ export { wtAddSet, wtRemoveSet, wtUpdateSet,
          wtOpenExerciseEditor, wtCloseExerciseEditor,
          wtSaveExerciseFromEditor, wtDeleteExerciseFromEditor,
          wtOpenManualCardioInput }
-  from './exercises.js?v=20260625z47-workout-record-card-standard';
+  from './exercises.js';
 
 export { wtStartWorkoutTimer, wtPauseWorkoutTimer,
          wtResetWorkoutTimer, wtTogglePauseWorkoutTimer,
@@ -45,52 +46,18 @@ export { wtStartWorkoutTimer, wtPauseWorkoutTimer,
 export { initRunningSession, wtMountRunningSession, wtOpenRunningSession, wtHandleRunningSessionBack, wtRestoreRunningSessionIfActive, configureRunningWeightProvider }
   from './running-session.js';
 
-// ── 내부 import (window 등록 + 초기화용) ─────────────────────────
+// ── 내부 import (초기화 + 도메인 브리지 구성용) ────────────────────
 import { saveWorkoutDay }                          from './save.js';
 import { S }                                       from './state.js';
-import { wtAddFoodItem, wtRemoveFoodItem,
-         wtAddFrequentFoodSuggestion }             from './render.js';
-import { wtToggleMealSkipped }                     from './status.js';
-import { wtOpenExercisePicker, wtCloseExercisePicker,
-         wtHandleExercisePickerBack,
-         wtOpenExerciseEditor, wtCloseExerciseEditor,
-         wtSaveExerciseFromEditor,
-         wtDeleteExerciseFromEditor,
-         wtFocusWorkoutEntryCard,
-         wtOpenManualCardioInput }                 from './exercises.js?v=20260625z47-workout-record-card-standard';
-import { wtStartWorkoutTimer, wtTogglePauseWorkoutTimer,
-         wtResetWorkoutTimer, wtFinishWorkout, wtRecoverTimers,
-         wtRestTimerStart, wtRestTimerSkip,
-         wtRestTimerAdjust, wtRestTimerShowIdle,
-         wtRestTimerHideIdle, wtOpenRestPresetSheet } from './timers.js';
+import { wtFocusWorkoutEntryCard }                 from './exercises.js';
+import { wtFinishWorkout }                         from './timers.js';
 import { _initRestTimerPresets }                   from './timers.js';
 import { _initTypeFormEvents }                     from './activity-forms.js';
-import { initRunningSession, wtMountRunningSession, wtOpenRunningSession, wtHandleRunningSessionBack, wtRestoreRunningSessionIfActive, configureRunningWeightProvider } from './running-session.js';
+import { initRunningSession, configureRunningWeightProvider } from './running-session.js';
 import { configureWearWorkoutBridge, initWearWorkoutBridge } from './wear-bridge.js';
 import { confirmAction }                           from '../utils/confirm-modal.js';
 import { getDay, getLatestCheckinWeight }          from '../data.js';
 
-// ── window.* 등록 (HTML onclick 연결) ───────────────────────────
-window.wtToggleMealSkipped = wtToggleMealSkipped;
-window.saveWorkoutDay = saveWorkoutDay;
-window.wtOpenExercisePicker = wtOpenExercisePicker;
-window.wtCloseExercisePicker = wtCloseExercisePicker;
-window.wtHandleExercisePickerBack = wtHandleExercisePickerBack;
-window.wtOpenExerciseEditor = wtOpenExerciseEditor;
-window.wtCloseExerciseEditor = wtCloseExerciseEditor;
-window.wtSaveExerciseFromEditor = wtSaveExerciseFromEditor;
-window.wtDeleteExerciseFromEditor = wtDeleteExerciseFromEditor;
-window.wtFocusWorkoutEntryCard = wtFocusWorkoutEntryCard;
-window.wtOpenManualCardioInput = wtOpenManualCardioInput;
-window.wtStartWorkoutTimer = wtStartWorkoutTimer;
-window.wtTogglePauseWorkoutTimer = wtTogglePauseWorkoutTimer;
-window.wtResetWorkoutTimer = wtResetWorkoutTimer;
-window.wtFinishWorkout = wtFinishWorkout;
-window.wtRecoverTimers = wtRecoverTimers;
-window.wtOpenRunningSession = wtOpenRunningSession;
-window.wtMountRunningSession = wtMountRunningSession;
-window.wtHandleRunningSessionBack = wtHandleRunningSessionBack;
-window.wtRestoreRunningSessionIfActive = wtRestoreRunningSessionIfActive;
 configureRunningWeightProvider(getLatestCheckinWeight);
 configureWearWorkoutBridge({
   state: S,
@@ -121,21 +88,10 @@ export async function wtEndAndShowInsights() {
     console.warn('[wtEndAndShowInsights.finish] 저장 실패:', e);
     return;
   }
-  if (typeof window.showToast === 'function') {
-    window.showToast('운동 기록 저장 완료. 통계 탭에서 기간별로 확인하세요.', 2200, 'success');
+  if (typeof showToast === 'function') {
+    showToast('운동 기록 저장 완료. 통계 탭에서 기간별로 확인하세요.', 2200, 'success');
   }
 }
-window.wtEndAndShowInsights = wtEndAndShowInsights;
-window.wtRestTimerStart = wtRestTimerStart;
-window.wtRestTimerSkip = wtRestTimerSkip;
-window.wtRestTimerAdjust = wtRestTimerAdjust;
-window.wtRestTimerShowIdle = wtRestTimerShowIdle;
-window.wtRestTimerHideIdle = wtRestTimerHideIdle;
-window.wtOpenRestPresetSheet = wtOpenRestPresetSheet;
-window.wtAddFoodItem = wtAddFoodItem;
-window.wtRemoveFoodItem = wtRemoveFoodItem;
-window.wtAddFrequentFoodSuggestion = wtAddFrequentFoodSuggestion;
-
 // ── 초기화 (모듈 로드 시 이벤트 바인딩) ─────────────────────────
 setTimeout(_initRestTimerPresets, 0);
 setTimeout(_initTypeFormEvents, 0);

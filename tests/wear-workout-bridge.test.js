@@ -13,8 +13,10 @@ async function read(path) {
 
 async function writeWearBridgeModule(tmp) {
   const modulePath = join(tmp, 'wear-bridge-under-test.mjs');
+  const source = (await read('workout/wear-bridge.js')).replace("'../ui/toast.js'", "'./toast.js'");
   await Promise.all([
-    writeFile(modulePath, await read('workout/wear-bridge.js'), 'utf8'),
+    writeFile(modulePath, source, 'utf8'),
+    writeFile(join(tmp, 'toast.js'), 'export function showToast(...args) { return globalThis.window?.showToast?.(...args); }\n', 'utf8'),
     writeFile(join(tmp, 'running-route-store.js'), await read('workout/running-route-store.js'), 'utf8'),
     writeFile(join(tmp, 'running-route-policy.js'), await read('workout/running-route-policy.js'), 'utf8'),
     writeFile(join(tmp, 'running-analytics.js'), await read('workout/running-analytics.js'), 'utf8'),

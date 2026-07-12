@@ -90,17 +90,14 @@ export function openConsultingChiefQuestModal() {
   const modal = _modal();
   if (modal) modal.setAttribute('aria-hidden', 'false');
   _startSpeechTyping(modal);
-  window._openModal?.('consulting-chief-quest-modal');
+  openModal('consulting-chief-quest-modal');
 }
 
 export function closeConsultingChiefQuestModal() {
   _stopSpeechTyping();
   const modal = _modal();
   if (modal) modal.setAttribute('aria-hidden', 'true');
-  window._closeModal?.('consulting-chief-quest-modal');
+  closeModal('consulting-chief-quest-modal');
 }
 
-Object.assign(window, {
-  openConsultingChiefQuestModal,
-  closeConsultingChiefQuestModal,
-});
+import { closeModal, openModal } from '../app/overlay-stack.js';

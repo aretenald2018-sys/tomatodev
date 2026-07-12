@@ -1,5 +1,5 @@
 export const MODAL_HTML = `
-<div class="modal-backdrop" id="cooking-modal" onclick="closeCookingModal(event)">
+<div class="modal-backdrop" id="cooking-modal" data-cooking-action="close">
   <div class="modal-sheet cooking-modal-sheet">
     <div class="sheet-handle"></div>
     <div class="modal-title" id="cooking-modal-title">🍳 요리 기록 추가</div>
@@ -43,23 +43,23 @@ export const MODAL_HTML = `
         <div style="display:flex;gap:4px;margin-bottom:8px">
           <div class="wine-form-field" style="flex:1;margin-bottom:0">
             <label class="wine-form-label">인분 수</label>
-            <input class="wine-form-input" id="cooking-servings" type="number" value="1" min="1" max="20" style="width:70px" oninput="window._updateCookingNutrition()">
+            <input class="wine-form-input" id="cooking-servings" type="number" value="1" min="1" max="20" style="width:70px" data-cooking-input-action="update-nutrition">
           </div>
           <div id="cooking-nutrition-summary" style="flex:2;display:flex;align-items:flex-end;padding-bottom:4px;font-size:11px;color:var(--muted)"></div>
         </div>
         <div id="cooking-ingredients-list" style="margin-bottom:8px"></div>
         <div style="position:relative">
-          <input class="wine-form-input" id="cooking-ingredient-search" placeholder="재료 검색 (예: 닭가슴살, 양파...)" oninput="window._searchCookingIngredient()" autocomplete="off">
+          <input class="wine-form-input" id="cooking-ingredient-search" placeholder="재료 검색 (예: 닭가슴살, 양파...)" data-cooking-input-action="search-ingredient" autocomplete="off">
           <div id="cooking-ingredient-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:200px;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:0 0 8px 8px;z-index:10"></div>
         </div>
         <!-- 인라인 중량 입력 (재료 선택 시 표시) -->
         <div id="cooking-ingredient-weight-row" style="display:none;margin-top:8px;padding:8px;background:var(--bg2);border-radius:6px">
           <div style="font-size:12px;font-weight:600;margin-bottom:4px" id="cooking-ing-selected-name"></div>
           <div style="display:flex;gap:8px;align-items:center">
-            <input class="wine-form-input" id="cooking-ing-weight" type="number" placeholder="중량(g)" style="width:80px" oninput="window._previewIngredientNutrition()">
+            <input class="wine-form-input" id="cooking-ing-weight" type="number" placeholder="중량(g)" style="width:80px" data-cooking-input-action="preview-ingredient">
             <span id="cooking-ing-preview" style="font-size:11px;color:var(--muted);flex:1"></span>
-            <button class="tds-btn fill md" onclick="window._confirmIngredient()" style="padding:4px 12px;font-size:12px">추가</button>
-            <button class="tds-btn cancel-btn ghost md" onclick="window._cancelIngredient()" style="padding:4px 8px;font-size:12px">취소</button>
+            <button class="tds-btn fill md" data-cooking-action="confirm-ingredient" style="padding:4px 12px;font-size:12px">추가</button>
+            <button class="tds-btn cancel-btn ghost md" data-cooking-action="cancel-ingredient" style="padding:4px 8px;font-size:12px">취소</button>
           </div>
         </div>
       </div>
@@ -86,15 +86,15 @@ export const MODAL_HTML = `
         <div class="wine-form-section-title">📸 완성 사진</div>
         <div class="wine-form-field">
           <label class="wine-form-label">사진 URL</label>
-          <input class="wine-form-input" id="cooking-photo-url" placeholder="https://..." oninput="onCookingPhotoInput()">
+          <input class="wine-form-input" id="cooking-photo-url" placeholder="https://..." data-cooking-input-action="photo-input">
         </div>
         <img id="cooking-photo-preview" style="display:none;width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-top:8px;border:1px solid var(--border)" alt="미리보기">
       </div>
       <div class="wine-form-actions">
-        <button class="tds-btn cancel-btn ghost md" onclick="closeCookingModal()">취소</button>
-        <button class="tds-btn fill md"   onclick="saveCookingFromModal()">저장하기</button>
+        <button class="tds-btn cancel-btn ghost md" data-cooking-action="close">취소</button>
+        <button class="tds-btn fill md" data-cooking-action="save">저장하기</button>
       </div>
-      <button class="tds-btn danger sm" id="cooking-delete-btn" onclick="deleteCookingFromModal()" style="display:none">🗑️ 기록 삭제</button>
+      <button class="tds-btn danger sm" id="cooking-delete-btn" data-cooking-action="delete" style="display:none">🗑️ 기록 삭제</button>
     </div>
   </div>
 </div>

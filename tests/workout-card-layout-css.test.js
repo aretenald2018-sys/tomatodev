@@ -1,8 +1,9 @@
+import { readAppCssSync } from './helpers/css-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const css = await readFile(new URL('../style.css', import.meta.url), 'utf8');
+const css = readAppCssSync();
 const workoutExercises = await readFile(new URL('../workout/exercises.js', import.meta.url), 'utf8');
 const setEditorJs = await readFile(new URL('../workout/set-editor.js', import.meta.url), 'utf8');
 

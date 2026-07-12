@@ -1,8 +1,9 @@
+import { readAppCssSync } from './helpers/css-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const styleCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+const styleCss = readAppCssSync();
 const pickerModal = readFileSync(new URL('../modals/ex-picker-modal.js', import.meta.url), 'utf8');
 const exercisesJs = readFileSync(new URL('../workout/exercises.js', import.meta.url), 'utf8');
 const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8') + readFileSync(new URL('../runtime-assets.js', import.meta.url), 'utf8');

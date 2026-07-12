@@ -1,3 +1,5 @@
+import { showToast } from '../../ui/toast.js';
+import { confirmAction } from '../../utils/confirm-modal.js';
 // ================================================================
 // workout/test-v2/onboarding.js — 성장 보드 첫 설정 (계약 11)
 // ----------------------------------------------------------------
@@ -17,7 +19,7 @@ import {
   buildOnboardingCandidates, buildBoardFromOnboarding, buildRecentMap,
   mergeSessionExercises, sessionRecentMap,
   groupIdForPart, visibleGroupIdsForSelectedParts, mondayOf, shortDate, toKey,
-} from './board-core.js?v=20260620z27-selected-scope';
+} from './board-core.js';
 import {
   WENDLER_SCHEMES, WENDLER_WARMUP_DEFAULT,
   normalizeWendlerConfig, suggestWendlerTm, wendlerWeekPrescription,
@@ -44,7 +46,7 @@ const OB = {
 };
 
 const _esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const _toast = (msg, type = 'info') => { if (typeof window.showToast === 'function') window.showToast(msg, 2200, type); };
+const _toast = (msg, type = 'info') => { if (typeof showToast === 'function') showToast(msg, 2200, type); };
 const _todayKey = () => toKey(new Date());
 const _wndKey = (c) => candKey(c);
 const _canWendler = (c) => c.groupId === 'lower' || !!c.wendler;
@@ -475,7 +477,7 @@ async function _deleteCandidate(key) {
   _syncInputs();
   const cand = OB.candidates.find(c => candKey(c) === key);
   if (!cand?.exerciseId) { _toast('삭제할 종목을 찾지 못했어요', 'error'); return; }
-  const ok = await (window.confirmAction?.({
+  const ok = await (confirmAction({
     title: '종목을 삭제할까요?',
     message: `"${cand.label}" 종목을 선택 후보에서 삭제합니다.\n과거 운동 기록은 유지됩니다.`,
     confirmLabel: '삭제',

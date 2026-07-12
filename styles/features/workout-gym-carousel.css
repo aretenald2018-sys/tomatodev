@@ -1,0 +1,162 @@
+/* ═══ 헬스장 선택 캐러셀 (좌우 fade + 중앙 자동 선택) ═══════════════ */
+.wt-gym-carousel {
+  position: relative;
+  margin-top: 4px;
+  /* 좌우 fade-out 프리뷰 — 중앙에서 양쪽으로 투명도 마스크 */
+  mask-image: linear-gradient(to right, transparent 0, #000 14%, #000 86%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14%, #000 86%, transparent 100%);
+}
+.wt-gym-scroll {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  /* 양끝 슬라이드도 중앙까지 올 수 있도록 좌우 padding = (컨테이너 - 슬라이드) / 2
+     슬라이드 너비 128px, 절반 64px */
+  padding: 6px calc(50% - 64px);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  /* 명시적으로 가로 pan 허용 — 상위 요소의 touch-action 충돌 방지 */
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+}
+.wt-gym-scroll::-webkit-scrollbar { display: none; height: 0; }
+.wt-gym-slide {
+  flex-shrink: 0;
+  width: 128px;
+  min-height: 96px;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  padding: 14px 10px;
+  border-radius: var(--seed-r3);
+  border: 1px solid var(--seed-stroke-neutral);
+  background: var(--seed-bg-layer);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  opacity: 0.4;
+  transform: scale(0.92);
+  transition: opacity 0.1s ease-in-out, transform 0.1s ease-in-out,
+              border-color 0.1s ease-in-out, box-shadow 0.1s ease-in-out;
+  cursor: pointer;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.wt-gym-slide.is-active {
+  opacity: 1;
+  transform: scale(1);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-bg);
+}
+.wt-gym-slide-icon { font-size: 24px; line-height: 1; }
+.wt-gym-slide-name {
+  font-size: 14px; font-weight: 700; color: var(--text);
+  letter-spacing: -0.2px; text-align: center;
+  line-height: 1.25; max-width: 108px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.wt-gym-slide-sub {
+  font-size: 11px; color: var(--text-secondary);
+  letter-spacing: -0.1px;
+}
+.wt-gym-slide--add {
+  border-style: dashed;
+  background: transparent;
+}
+.wt-gym-slide--add .wt-gym-slide-icon { color: var(--primary); font-weight: 700; }
+.wt-gym-slide--add .wt-gym-slide-name { color: var(--text-secondary); font-weight: 600; }
+.wt-gym-slide--empty { opacity: 1; transform: scale(1); }
+.wt-gym-slide--empty.is-active { border-color: var(--primary); }
+
+/* ── 운동 종료 버튼 (인증사진 아래, Scene 13 주간 인사이트로 이동) ── */
+.wt-end-workout-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 52px;
+  margin-top: 16px;
+  border: none;
+  border-radius: 14px;
+  background: var(--primary);
+  color: #fff;
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(250,52,44,0.28);
+  transition: all 0.1s ease-in-out;
+  -webkit-tap-highlight-color: transparent;
+}
+.wt-end-workout-btn:active {
+  transform: scale(0.98);
+  background: var(--primary-dark, #ca1d13);
+  box-shadow: 0 2px 8px rgba(250,52,44,0.2);
+}
+
+/* ── Step 2 인라인 picker (부위 / 세션시간 / RPE) ───────── */
+.wt-picker-block { margin-bottom: 14px; }
+.wt-picker-block:last-child { margin-bottom: 0; }
+.wt-picker-label {
+  font-size: 12px; font-weight: 600;
+  color: var(--text-secondary, #4c4c54);
+  letter-spacing: -0.1px;
+  margin-bottom: 8px;
+  display: flex; align-items: center; gap: 6px;
+}
+.wt-picker-hint {
+  font-size: 11px; font-weight: 500;
+  color: var(--text-tertiary, #9aa0a8);
+}
+/* chip / segmented가 button 요소로 렌더될 때 기본 reset 보강 */
+.wt-picker-block .chip,
+.wt-picker-block .seg-item {
+  appearance: none;
+  font-family: inherit;
+  cursor: pointer;
+  border: 0;
+}
+.wt-picker-block .segmented { margin: 0; }
+.wt-picker-block .chips { margin: 0; }
+
+/* ── 직접 선택 넛지 (AI 루틴 생성 하단 우측, 중요도 낮춤) ───────── */
+.wt-manual-nudge {
+  appearance: none;
+  display: block;
+  margin: 6px 2px 0 auto;
+  padding: 4px 2px;
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary, #9aa0a8);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.1px;
+  cursor: pointer;
+  text-align: right;
+  transition: color 0.1s ease-in-out;
+}
+.wt-manual-nudge:active { color: var(--primary); }
+.wt-manual-nudge[disabled] { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Step 3 placeholder (루틴 선택 전) ───────────────────── */
+.wt-step-hint {
+  font-size: 12px; color: var(--text-tertiary); line-height: 1.5;
+  padding: 6px 0 4px;
+}
+
+/* 쉬었음/건강이슈 상태 안내 (카드 내부에서 표시) */
+.wt-st-info {
+  padding: 14px 18px;
+  border-top: 1px solid var(--seed-stroke-neutral);
+  font-size: 13px; color: var(--text-secondary); line-height: 1.55;
+}
+.wt-st-info b { color: var(--text); font-weight: 600; }

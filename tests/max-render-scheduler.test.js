@@ -25,7 +25,7 @@ test('Max top area render requests are coalesced through a scheduler', () => {
   assert.match(scheduler, /let _expertTopAreaRenderScheduled = false/);
   assert.match(scheduler, /if \(_expertTopAreaRenderScheduled\) return/);
   assert.match(scheduler, /window\.requestAnimationFrame\(run\)/);
-  assert.match(scheduler, /window\.renderExpertTopArea\(\)/);
+  assert.match(scheduler, /document\.dispatchEvent\(new CustomEvent\('expert:render-top'\)\)/);
   assert.doesNotMatch(outsideScheduler, /window\.renderExpertTopArea/);
   assert.ok(scheduledCalls.length >= 20, 'Max actions should request renders through the scheduler');
 });

@@ -121,8 +121,8 @@ export function isExpertViewShown() { return false; }
         [repoUrl('workout/save.js')]: stubSaveUrl,
         [repoUrl('workout/timers.js')]: stubTimersUrl,
         [repoUrl('home/utils.js')]: stubUtilsUrl,
-        [repoUrl('calc.js', '?v=20260514v72')]: stubCalcUrl,
-        [repoUrl('workout/expert/max-benchmark-picker.js', '?v=20260517v3')]: stubMaxPickerUrl,
+        [repoUrl('calc.js')]: stubCalcUrl,
+        [repoUrl('workout/expert/max-benchmark-picker.js')]: stubMaxPickerUrl,
         [repoUrl('workout/exercise-editor-actions.js')]: stubEditorUrl,
         [repoUrl('workout/exercise-entry-actions.js')]: stubEntryUrl,
         [repoUrl('workout/test-v2/board-core.js')]: stubBoardUrl,
@@ -249,10 +249,6 @@ try {
   };
 
   document.querySelector('[data-picker-cardio-sheet]')?.remove();
-  window.__runningSessionCalls = 0;
-  window.wtOpenRunningSession = () => {
-    window.__runningSessionCalls += 1;
-  };
   await exercises.wtOpenExercisePicker();
   await nextFrame();
   const runningTile = document.querySelector('[data-picker-body-action="running"]');
@@ -272,14 +268,12 @@ try {
     rowCount: document.querySelectorAll('#ex-picker-list [data-picker-cardio-id], #ex-picker-list [data-picker-exercise-id]').length,
     gpsText,
     startButtonCount: document.querySelectorAll('[data-picker-running-start]').length,
-    runningCalls: window.__runningSessionCalls,
   };
   const startButton = document.querySelector('[data-picker-running-start]');
   if (!startButton) throw new Error('running start button missing');
   startButton.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
   await nextFrame();
   const runningAfterStart = {
-    runningCalls: window.__runningSessionCalls,
     modalOpen: document.querySelector('#ex-picker-modal')?.classList.contains('open') || false,
   };
   window.__qaDone = { legacy, autoBase, stepLevel, savedStep, cleared, myMountain, runningBeforeStart, runningAfterStart };
@@ -349,7 +343,5 @@ test('manual cardio sheet preserves legacy kcal records and auto-calculates inte
   assert.equal(result.runningBeforeStart.rowCount, 0);
   assert.deepEqual(result.runningBeforeStart.gpsText, ['GPS 위치', '현재 위치 대기']);
   assert.equal(result.runningBeforeStart.startButtonCount, 1);
-  assert.equal(result.runningBeforeStart.runningCalls, 0);
-  assert.equal(result.runningAfterStart.runningCalls, 1);
   assert.equal(result.runningAfterStart.modalOpen, false);
 });

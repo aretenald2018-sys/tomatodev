@@ -1,8 +1,14 @@
+import { showToast } from '../ui/toast.js';
+import { confirmAction } from '../utils/confirm-modal.js';
 // ═════════════════════════════════════════════════════════════
 // 상태 관리 (파일 전역)
 // ═════════════════════════════════════════════════════════════
 
 import { notifyNutritionItemSaved } from '../diet/editor-events.js';
+
+function _notifyNutritionDatabaseChanged() {
+  document.dispatchEvent(new CustomEvent('nutrition:database-changed'));
+}
 
 let _niEditingId = null;
 let _niCurrentTab = 'manual';
@@ -11,7 +17,7 @@ let _niParsedData = null;
 let _niConfidence = null;  // OCR 신뢰도
 
 export const MODAL_HTML = `
-<div class="modal-backdrop" id="nutrition-item-modal" onclick="closeNutritionItemModal(event)">
+<div class="modal-backdrop" id="nutrition-item-modal" data-nutrition-item-action="close">
   <div class="modal-sheet">
     <div class="sheet-handle"></div>
     <div class="modal-title" id="nutrition-item-title" style="font-size:17px;font-weight:700;">음식 정보 등록</div>
@@ -47,22 +53,22 @@ export const MODAL_HTML = `
     <div class="ni-tab-content" id="ni-tab-content-photo">
       <div class="ex-editor-form">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-          <div class="ni-upload-zone" style="padding:20px 12px;cursor:pointer" onclick="document.getElementById('ni-photo-input').click()">
+          <div class="ni-upload-zone" style="padding:20px 12px;cursor:pointer" data-nutrition-item-action="click-input" data-input-id="ni-photo-input">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3"/></svg>
             <div style="font-weight:600;font-size:13px;color:var(--text);margin-top:6px">갤러리</div>
             <div style="font-size:11px;color:var(--text-tertiary)">저장된 사진</div>
-            <input type="file" id="ni-photo-input" accept="image/*" style="display:none" onchange="handleNutritionPhotoSelect(event)">
+            <input type="file" id="ni-photo-input" accept="image/*" style="display:none" data-nutrition-item-change-action="photo-select">
           </div>
-          <div class="ni-upload-zone" style="padding:20px 12px;cursor:pointer" onclick="document.getElementById('ni-camera-input').click()">
+          <div class="ni-upload-zone" style="padding:20px 12px;cursor:pointer" data-nutrition-item-action="click-input" data-input-id="ni-camera-input">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
             <div style="font-weight:600;font-size:13px;color:var(--text);margin-top:6px">카메라</div>
             <div style="font-size:11px;color:var(--text-tertiary)">지금 촬영</div>
-            <input type="file" id="ni-camera-input" accept="image/*;capture=environment" style="display:none" onchange="handleNutritionPhotoSelect(event)">
+            <input type="file" id="ni-camera-input" accept="image/*;capture=environment" style="display:none" data-nutrition-item-change-action="photo-select">
           </div>
         </div>
         <div id="ni-photo-preview" style="display:none;margin-top:12px">
           <img id="ni-photo-img" style="max-width:100%;max-height:200px;border-radius:8px;margin-bottom:8px">
-          <button class="tds-btn cancel-btn ghost md" onclick="clearNutritionPhoto()" style="width:100%">사진 변경</button>
+          <button class="tds-btn cancel-btn ghost md" data-nutrition-item-action="clear-photo" style="width:100%">사진 변경</button>
         </div>
         <div id="ni-photo-analyzing" style="display:none;text-align:center;padding:20px;color:var(--muted)">
           <div style="width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 8px;"></div>
@@ -87,7 +93,7 @@ export const MODAL_HTML = `
 단백질 31g
 탄수화물 0.4g
 지방 3.6g"></textarea>
-        <button style="width:100%;margin-top:8px;padding:10px;border:none;border-radius:12px;background:var(--primary);color:#fff;font-size:14px;font-weight:600;cursor:pointer;" onclick="analyzeNutritionText()">분석하기</button>
+        <button style="width:100%;margin-top:8px;padding:10px;border:none;border-radius:12px;background:var(--primary);color:#fff;font-size:14px;font-weight:600;cursor:pointer;" data-nutrition-item-action="analyze-text">분석하기</button>
 
         <div id="ni-text-analyzing" style="display:none;text-align:center;padding:20px;color:var(--muted)">
           <div style="width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 8px;"></div>
@@ -104,9 +110,9 @@ export const MODAL_HTML = `
 
     <!-- 공통 저장/취소 버튼 -->
     <div class="ex-editor-actions">
-      <button class="tds-btn cancel-btn ghost md" id="ni-delete-btn" onclick="deleteNutritionItemFromModal()" style="display:none;color:var(--diet-bad)">삭제</button>
-      <button class="tds-btn cancel-btn ghost md" onclick="closeNutritionItemModal()">취소</button>
-      <button class="tds-btn fill md" onclick="saveNutritionItemFromModal()">저장하기</button>
+      <button class="tds-btn cancel-btn ghost md" id="ni-delete-btn" data-nutrition-item-action="delete" style="display:none;color:var(--diet-bad)">삭제</button>
+      <button class="tds-btn cancel-btn ghost md" data-nutrition-item-action="close">취소</button>
+      <button class="tds-btn fill md" data-nutrition-item-action="save">저장하기</button>
     </div>
   </div>
 </div>
@@ -319,7 +325,7 @@ export async function handleNutritionPhotoSelect(event) {
   });
 
   // 1단계: 업로드 중
-  window.showToast?.('📷 사진 압축 중...', 1500, 'info');
+  showToast('📷 사진 압축 중...', 1500, 'info');
 
   try {
     // 리사이즈 + Base64 변환 (긴 변 1280px, JPEG 0.75)
@@ -337,7 +343,7 @@ export async function handleNutritionPhotoSelect(event) {
     });
 
     // 2단계: OCR 분석 시작 (내부에서 토스트)
-    window.showToast?.('🔍 영양정보 분석 중...', 2500, 'info');
+    showToast('🔍 영양정보 분석 중...', 2500, 'info');
     _analyzeNutritionPhoto();
   } catch (e) {
     // 실패 시 업로드 존 복구
@@ -345,7 +351,7 @@ export async function handleNutritionPhotoSelect(event) {
       zone.style.pointerEvents = '';
       zone.style.opacity = '';
     });
-    window.showToast?.('사진 업로드 실패: ' + e.message, 3500, 'error');
+    showToast('사진 업로드 실패: ' + e.message, 3500, 'error');
   }
 }
 
@@ -401,8 +407,8 @@ async function _analyzeNutritionPhoto() {
       const code = err?.code || err?.details?.code || '';
       const msg  = err?.message || '';
       if (code === 'functions/resource-exhausted' || /monthly-ocr-quota/.test(msg)) {
-        if (!_ocrFallbackWarned && window.showToast) {
-          window.showToast('이번 달 OCR 무료 한도 소진 — AI 이미지 인식으로 전환', 3000, 'info');
+        if (!_ocrFallbackWarned && showToast) {
+          showToast('이번 달 OCR 무료 한도 소진 — AI 이미지 인식으로 전환', 3000, 'info');
           _ocrFallbackWarned = true;
         }
       } else {
@@ -433,11 +439,11 @@ async function _analyzeNutritionPhoto() {
       setTimeout(() => { switchNutritionTab('manual'); }, 300);
     }
     // 3단계: 완료
-    window.showToast?.('✓ 분석 완료', 1800, 'success');
+    showToast('✓ 분석 완료', 1800, 'success');
   } catch (e) {
     if (myToken !== _photoAnalyzeToken) return;
     console.error('OCR 분석 실패:', e);
-    window.showToast?.('사진 분석 실패: ' + e.message, 3000, 'error');
+    showToast('사진 분석 실패: ' + e.message, 3000, 'error');
   } finally {
     if (myToken === _photoAnalyzeToken) analyzing.style.display = 'none';
     // 업로드 존 복구 (재업로드 가능하게)
@@ -455,7 +461,7 @@ async function _analyzeNutritionPhoto() {
 export async function analyzeNutritionText() {
   const rawText = document.getElementById('ni-raw-text').value.trim();
   if (!rawText) {
-    window.showToast?.('텍스트를 입력해주세요', 2500, 'warning');
+    showToast('텍스트를 입력해주세요', 2500, 'warning');
     return;
   }
 
@@ -498,7 +504,7 @@ export async function analyzeNutritionText() {
     }
   } catch (e) {
     console.error('텍스트 분석 실패:', e);
-    window.showToast?.('텍스트 분석 실패: ' + e.message, 3500, 'error');
+    showToast('텍스트 분석 실패: ' + e.message, 3500, 'error');
   } finally {
     analyzing.style.display = 'none';
   }
@@ -511,7 +517,7 @@ export async function analyzeNutritionText() {
 export async function saveNutritionItemFromModal() {
   const name = document.getElementById('ni-name').value.trim();
   if (!name) {
-    window.showToast?.('음식 이름을 입력해주세요', 2500, 'warning');
+    showToast('음식 이름을 입력해주세요', 2500, 'warning');
     return;
   }
 
@@ -586,29 +592,22 @@ export async function saveNutritionItemFromModal() {
   try {
     const { saveNutritionItem } = await import('../data.js');
     const savedItem = await saveNutritionItem(item);
-    window.showToast?.('저장 완료', 2500, 'success');
+    showToast('저장 완료', 2500, 'success');
     closeNutritionItemModal();
 
     // 콜백: 직접 추가 후 자동으로 해당 항목 선택 (요리 재료 / 식단 등)
     notifyNutritionItemSaved(savedItem);
 
     // 저장 후 검색 결과 업데이트 (새로운 데이터 즉시 반영)
-    if (window.renderNutritionSearchResults) {
-      setTimeout(() => {
-        window.renderNutritionSearchResults();
-        if (window._renderNutritionDBList) {
-          window._renderNutritionDBList();
-        }
-      }, 100);
-    }
+    setTimeout(_notifyNutritionDatabaseChanged, 100);
   } catch (e) {
-    window.showToast?.('저장 실패: ' + e.message, 3500, 'error');
+    showToast('저장 실패: ' + e.message, 3500, 'error');
   }
 }
 
 export async function deleteNutritionItemFromModal() {
   if (!_niEditingId) return;
-  const ok = await (window.confirmAction?.({
+  const ok = await (confirmAction({
     title: '이 음식을 삭제할까요?',
     message: '음식 DB에서 제거돼요.\n과거 기록에는 영향 없어요.',
     confirmLabel: '삭제',
@@ -620,10 +619,10 @@ export async function deleteNutritionItemFromModal() {
   try {
     const { deleteNutritionItem } = await import('../data.js');
     await deleteNutritionItem(_niEditingId);
-    window.showToast?.('삭제 완료', 2500, 'success');
+    showToast('삭제 완료', 2500, 'success');
     closeNutritionItemModal();
   } catch (e) {
-    window.showToast?.('삭제 실패: ' + e.message, 3500, 'error');
+    showToast('삭제 실패: ' + e.message, 3500, 'error');
   }
 }
 
@@ -728,7 +727,7 @@ function _displayNutritionTextResult(data, langResult) {
   document.getElementById('ni-single-save-btn')?.addEventListener('click', async () => {
     const name = document.getElementById('ni-single-name').value.trim();
     if (!name) {
-      window.showToast?.('제품명을 입력해주세요', 2000, 'warning');
+      showToast('제품명을 입력해주세요', 2000, 'warning');
       return;
     }
     const btn = document.getElementById('ni-single-save-btn');
@@ -764,16 +763,11 @@ function _displayNutritionTextResult(data, langResult) {
         rawText: data.rawText || null,
       });
       await saveNutritionItem(entry);
-      window.showToast?.('저장 완료', 2500, 'success');
+      showToast('저장 완료', 2500, 'success');
       closeNutritionItemModal();
-      if (window.renderNutritionSearchResults) {
-        setTimeout(() => {
-          window.renderNutritionSearchResults();
-          if (window._renderNutritionDBList) window._renderNutritionDBList();
-        }, 100);
-      }
+      setTimeout(_notifyNutritionDatabaseChanged, 100);
     } catch (e) {
-      window.showToast?.('저장 실패: ' + e.message, 3000, 'error');
+      showToast('저장 실패: ' + e.message, 3000, 'error');
       if (btn) { btn.disabled = false; btn.textContent = '💾 저장'; }
     }
   });
@@ -864,7 +858,7 @@ function _renderInlineGrid(items, extracted, { saveBtnId, source }) {
       .filter(it => !it._skip)
       .map(it => source ? { ...it, _source: source } : it);
     if (toSave.length === 0) {
-      window.showToast?.('저장할 항목이 없습니다', 2000, 'warning');
+      showToast('저장할 항목이 없습니다', 2000, 'warning');
       return;
     }
     _saveMultipleItems(toSave, saveBtnId);
@@ -925,39 +919,36 @@ async function _saveMultipleItems(items, saveBtnId) {
       savedCount++;
     }
 
-    window.showToast?.(`${savedCount}개 저장 완료`, 2500, 'success');
+    showToast(`${savedCount}개 저장 완료`, 2500, 'success');
     closeNutritionItemModal();
 
-    if (window.renderNutritionSearchResults) {
-      setTimeout(() => {
-        window.renderNutritionSearchResults();
-        if (window._renderNutritionDBList) window._renderNutritionDBList();
-      }, 100);
-    }
+    setTimeout(_notifyNutritionDatabaseChanged, 100);
   } catch (e) {
-    window.showToast?.('저장 실패: ' + e.message, 3000, 'error');
+    showToast('저장 실패: ' + e.message, 3000, 'error');
   } finally {
     if (btn && document.contains(btn)) { btn.disabled = false; btn.textContent = '💾 체크된 항목 저장'; }
   }
 }
 
-// ═════════════════════════════════════════════════════════════
-// Window 노출 — 2026-04-20
-// ─────────────────────────────────────────────────────────────
-// MODAL_HTML 의 onclick="analyzeNutritionText()" 등은 bare identifier 를 쓰므로
-// 반드시 `window.*` 에 있어야 작동한다. 없으면 ReferenceError 로 버튼 클릭이 전부
-// 죽는다("버튼 클릭조차 안 됨" 회귀의 직접 원인). 또한 app.js / feature-nutrition.js /
-// render-cooking.js / workout/render.js 가 `openNutritionItemEditor`, `switchNutritionTab`
-// 을 window 경로로 호출한다. 모듈은 modal-manager 가 MODAL_HTML 만 import 해도 이 파일
-// top-level 이 평가되므로 아래 Object.assign 이 로드 시점에 실행된다.
-// ═════════════════════════════════════════════════════════════
-Object.assign(window, {
-  openNutritionItemEditor,      // 외부(app.js, feature-nutrition.js, render-cooking.js, workout/render.js) 진입점
-  closeNutritionItemModal,      // HTML onclick (backdrop, 취소 버튼)
-  switchNutritionTab,           // 외부(workout/render.js) + 내부 자동 탭 전환
-  handleNutritionPhotoSelect,   // HTML <input onchange>
-  clearNutritionPhoto,          // HTML onclick (사진 변경)
-  analyzeNutritionText,         // HTML onclick (분석하기)
-  saveNutritionItemFromModal,   // HTML onclick (저장하기)
-  deleteNutritionItemFromModal, // HTML onclick (삭제)
-});
+function _bindNutritionItemActions(root = document) {
+  if (root.documentElement?.dataset.nutritionItemActionsBound === '1') return;
+  if (root.documentElement) root.documentElement.dataset.nutritionItemActionsBound = '1';
+  root.addEventListener('click', (event) => {
+    const control = event.target?.closest?.('[data-nutrition-item-action]');
+    if (!control) return;
+    const action = control.dataset.nutritionItemAction;
+    if (action === 'close') closeNutritionItemModal(event);
+    if (action === 'click-input') document.getElementById(control.dataset.inputId || '')?.click();
+    if (action === 'clear-photo') clearNutritionPhoto();
+    if (action === 'analyze-text') void analyzeNutritionText();
+    if (action === 'delete') void deleteNutritionItemFromModal();
+    if (action === 'save') void saveNutritionItemFromModal();
+  });
+  root.addEventListener('change', (event) => {
+    if (event.target?.matches?.('[data-nutrition-item-change-action="photo-select"]')) {
+      void handleNutritionPhotoSelect(event);
+    }
+  });
+}
+
+_bindNutritionItemActions();

@@ -11,7 +11,7 @@
 ## 주요 구조
 
 ```text
-app/          앱 shell, 탭 registry, lazy loader, overlay stack, compatibility bridge
+app/          앱 shell, 탭 registry, lazy loader, overlay stack, action/event contracts
 data/         Firebase adapter와 도메인 repository; data.js는 공개 facade
 workout/      운동 세션, 세트, 러닝, Wear, 프로그램 도메인
 diet/         식사 모델, 영양 편집, 사진 추정 pipeline
@@ -24,7 +24,7 @@ android/      Capacitor Android 앱과 Wear OS 앱
 tests/        node:test 회귀·계약·DOM 통합 테스트
 ```
 
-자세한 의존 방향과 데이터 저장 규칙은 [ARCHITECTURE.md](ARCHITECTURE.md), 전체 리팩토링 완료 기준은 [APP_REFACTOR_PLAN.md](APP_REFACTOR_PLAN.md), 디자인 계층은 [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md)를 참고하세요.
+자세한 의존 방향과 데이터 저장 규칙은 [ARCHITECTURE.md](ARCHITECTURE.md), 기능 소유권과 rollback 규칙은 [docs/REFACTOR_OWNERSHIP.md](docs/REFACTOR_OWNERSHIP.md), 디자인 계층은 [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md)를 참고하세요.
 
 ## 검증 명령
 

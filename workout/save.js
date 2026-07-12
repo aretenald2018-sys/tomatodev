@@ -1,3 +1,4 @@
+import { showToast } from '../ui/toast.js';
 // ================================================================
 // workout/save.js — 저장 로직 (saveWorkoutDay + _autoSaveDiet)
 // ================================================================
@@ -29,7 +30,7 @@ function _blockIfFutureDate() {
   const date = S.shared.date;
   if (!date) return false;
   if (!isFuture(date.y, date.m, date.d)) return false;
-  try { window.showToast?.('미래 날짜는 저장할 수 없어요', 1800, 'warning'); } catch {}
+  try { showToast('미래 날짜는 저장할 수 없어요', 1800, 'warning'); } catch {}
   return true;
 }
 
@@ -550,7 +551,7 @@ export async function saveWorkoutDay(options = {}) {
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = '저장'; }
     console.error('[workout/save] saveWorkoutDay 실패:', e);
-    window.showToast?.('저장 실패 — 네트워크를 확인해주세요', 2800, 'error');
+    showToast('저장 실패 — 네트워크를 확인해주세요', 2800, 'error');
     throw e;
   }
 
@@ -564,7 +565,7 @@ export async function saveWorkoutDay(options = {}) {
   _refreshTabDots();
   document.dispatchEvent(new CustomEvent('sheet:saved'));
 
-  if (!silent) window.showToast?.('저장 완료', 2000, 'success');
+  if (!silent) showToast('저장 완료', 2000, 'success');
   return true;
 }
 

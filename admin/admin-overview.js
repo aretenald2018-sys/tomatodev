@@ -320,7 +320,7 @@ export function renderDashboardSection(container, data, options = {}) {
           <div class="hig-title2">토마토팜 홈</div>
           <div class="hig-footnote" style="color:var(--hig-gray1);margin-top:3px;">${_formatKoreanDate(today)} Morning Briefing</div>
         </div>
-        <button class="hig-btn-secondary" onclick="window._adminToggleExportMenu()">내보내기</button>
+        <button type="button" class="hig-btn-secondary" data-admin-shell-action="toggle-export">내보내기</button>
       </div>
 
       <div class="hig-metric-grid">
@@ -383,7 +383,7 @@ export function renderDashboardSection(container, data, options = {}) {
             <div class="hig-card" style="margin:0;background:var(--hig-surface-elevated);">
               <div class="hig-subhead">${escapeHtml(insight.message)}</div>
               <div style="margin-top:8px;">
-                <button class="hig-btn-primary" onclick="window._adminOpenComposeForUser('${insight.uid}','${escapeHtml(insight.cta)}')">메시지 보내기</button>
+                <button type="button" class="hig-btn-primary" data-admin-shell-action="open-compose" data-uid="${escapeHtml(insight.uid)}" data-message="${escapeHtml(insight.cta)}">메시지 보내기</button>
               </div>
             </div>
           `).join('') || '<div class="hig-footnote" style="color:var(--hig-gray1);">표시할 인사이트가 없습니다.</div>'}

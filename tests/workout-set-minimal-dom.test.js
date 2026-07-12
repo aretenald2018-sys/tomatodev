@@ -1,3 +1,4 @@
+import { readAppCssSync } from './helpers/css-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -5,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 
 const calendarJs = readFileSync(new URL('../render-calendar.js', import.meta.url), 'utf8');
-const styleCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+const styleCss = readAppCssSync();
 const mobileEvidenceDir = fileURLToPath(new URL('../.omo/evidence/workout-set-mobile-interactions/', import.meta.url));
 const mobileEvidenceJson = fileURLToPath(new URL('../.omo/evidence/workout-set-mobile-interactions/mobile-set-row-e2e.json', import.meta.url));
 const mobileEvidenceScreenshot = fileURLToPath(new URL('../.omo/evidence/workout-set-mobile-interactions/mobile-set-row-after.png', import.meta.url));

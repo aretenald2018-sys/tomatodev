@@ -1,0 +1,205 @@
+/* ── Friend Activity Bar (횡스크롤 아바타) ── */
+.activity-avatar-bar {
+  display: flex; gap: 12px; overflow-x: auto; padding: 4px 0 12px;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.activity-avatar-bar::-webkit-scrollbar { display: none; }
+.activity-avatar-item {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  flex-shrink: 0; cursor: pointer;
+}
+.activity-avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700; color: #fff;
+  background: var(--seed-gray-500); border: 2px solid var(--seed-gray-300);
+  transition: all 0.15s ease;
+}
+.activity-avatar.active { border-color: var(--primary, #fa342c); background: var(--primary, #fa342c); box-shadow: 0 0 0 2px rgba(250,52,44,0.25); }
+.activity-avatar.recent { border-color: #fe928d; background: #fc6a66; }
+.activity-avatar.inactive { opacity: 0.4; }
+.activity-avatar-name {
+  font-size: 10px; color: var(--text-secondary); max-width: 48px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center;
+}
+
+/* ── 저참여 이웃 접힘 ── */
+.inactive-friends-section { margin-top: 8px; }
+.inactive-friends-toggle {
+  width: 100%; padding: 10px; border: 1px dashed var(--border);
+  border-radius: 10px; background: none; color: var(--text-tertiary);
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  transition: all 0.15s ease;
+}
+.inactive-friends-toggle:active { background: var(--surface2); }
+
+/* ── Streak Freeze (TDS ghost pill) ── */
+/* ── Streak Freeze Banner (TDS) ── */
+.streak-freeze-row { margin-top: 0; }
+.tf-freeze-banner {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 20px;
+  background: var(--surface2);
+  border-top: 1px solid var(--border);
+}
+.tf-freeze-icon { font-size: 20px; line-height: 1; flex-shrink: 0; }
+.tf-freeze-text { flex: 1; min-width: 0; }
+.tf-freeze-title { display: block; font-size: 13px; font-weight: 600; color: var(--text); }
+.tf-freeze-desc { display: block; font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+.tf-freeze-action {
+  flex-shrink: 0; padding: 8px 16px;
+  background: var(--primary); color: #fff;
+  border-radius: var(--seed-r-full); font-size: 12px; font-weight: 700;
+  border: none; cursor: pointer;
+  transition: all var(--seed-d3, 0.15s) var(--seed-ease, ease);
+}
+.tf-freeze-action:active { transform: scale(0.96); opacity: 0.9; }
+.tf-freeze-action.disabled { opacity: 0.35; cursor: not-allowed; }
+.tf-freeze-used { opacity: 0.6; }
+.tf-freeze-used .tf-freeze-title { color: var(--text-secondary); }
+
+/* ── Weekly Leaderboard ── */
+.lb-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 0; border-bottom: 1px solid var(--seed-stroke-neutral);
+}
+.lb-row:last-child { border-bottom: none; }
+.lb-me { background: var(--primary-bg); margin: 0 -16px; padding: 10px 16px; border-radius: 10px; }
+.lb-rank { font-size: 16px; line-height: 24px; min-width: 28px; text-align: center; flex-shrink: 0; }
+.lb-name { font-size: 13px; line-height: 19.5px; font-weight: 600; color: var(--text); min-width: 48px; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0; }
+.lb-bar-track {
+  flex: 1; height: 8px; background: var(--surface3);
+  border-radius: var(--seed-r-full); overflow: hidden;
+}
+.lb-bar-fill {
+  height: 100%; background: var(--primary); border-radius: var(--seed-r-full);
+  transition: width 0.6s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.lb-days { font-size: 12px; line-height: 18px; font-weight: 700; color: var(--text-secondary); min-width: 52px; text-align: right; white-space: nowrap; flex-shrink: 0; }
+
+/* ── Leaderboard Context ── */
+.lb-context {
+  font-size: 12px; line-height: 18px; font-weight: 600;
+  color: var(--text-secondary);
+  padding: 0 0 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.lb-avatar {
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; line-height: 19.5px; font-weight: 700; color: #fff;
+  background: var(--primary); border: 2px solid var(--primary);
+}
+.lb-avatar.lb-avatar-photo {
+  padding: 2px;
+  border: none;
+  background: linear-gradient(135deg, #fa342c, #ff8a3d 58%, #ffd166);
+  overflow: hidden;
+}
+.lb-avatar.lb-avatar-photo img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border-radius: 50%;
+}
+.lb-avatar.inactive {
+  background: var(--seed-gray-500); border-color: var(--seed-gray-300);
+  opacity: 0.5;
+}
+.lb-inactive-label {
+  font-size: 11px; line-height: 16.5px; font-weight: 600;
+  color: var(--text-tertiary); padding: 12px 0 8px;
+  border-top: 1px solid var(--border); margin-top: 4px;
+}
+.lb-inactive-row {
+  display: flex; gap: 12px; flex-wrap: wrap;
+}
+.lb-inactive-item {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.lb-inactive-name {
+  font-size: 10px; line-height: 15px; color: var(--text-tertiary);
+  max-width: 48px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.lb-me-inactive .lb-avatar { border-color: var(--primary); opacity: 0.7; }
+.lb-freshness {
+  text-align: right; padding-top: 8px;
+  font-size: 11px; line-height: 16.5px; color: var(--text-tertiary);
+}
+
+/* ── 길드 랭킹 ── */
+.lb-name-guild {
+  width: 80px; min-width: 80px; max-width: 80px;
+}
+.lb-my-guild {
+  background: var(--primary-bg, #fdf0f0);
+  border-radius: var(--radius-md, 12px);
+  margin: 0 -12px; padding: 10px 12px;
+}
+.lb-primary-badge {
+  font-size: 10px; font-weight: 700; line-height: 15px;
+  color: var(--warning, #f59e0b); margin-left: 2px;
+}
+.lb-guild-info {
+  font-size: 10px; font-weight: 500; line-height: 15px;
+  color: var(--text-tertiary);
+  margin-right: 2px;
+}
+
+/* ── 길드 Chip (가입폼/모달/온보딩 공용) ── */
+.guild-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: var(--radius-full, 999px);
+  background: var(--surface2, #F2F4F6);
+  border: 1px solid var(--border, #E5E8EB);
+  font-size: 13px; font-weight: 500; line-height: 19.5px;
+  color: var(--text);
+  transition: border-color 0.1s ease-in-out;
+}
+.guild-chip.primary {
+  border-color: var(--primary, #fa342c);
+  background: var(--primary-bg, #fdf0f0);
+}
+.guild-chip.pending {
+  border-color: var(--warning, #f59e0b);
+}
+.guild-chip-remove {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-tertiary); font-size: 14px;
+  padding: 4px 6px; line-height: 1; min-width: 24px; min-height: 24px;
+}
+.guild-chip-remove:hover { color: var(--text); }
+.guild-chip-badge {
+  font-size: 9px; font-weight: 700;
+  padding: 2px 6px; border-radius: var(--seed-r2, 8px);
+  line-height: 1.3;
+}
+.guild-chip-badge.pending {
+  background: var(--warning-bg, #fef3c7); color: var(--warning-text, #92400e);
+}
+.guild-chip-badge.new {
+  background: var(--success-bg, #d1fae5); color: var(--success-text, #065f46);
+}
+
+/* ── 길드 자동완성 드롭다운 ── */
+.guild-suggest-list {
+  position: absolute; top: 100%; left: 0; right: 0;
+  background: var(--bg, #fff);
+  border: 1px solid var(--border, #E5E8EB);
+  border-radius: var(--radius-md, 12px); margin-top: 4px;
+  box-shadow: var(--seed-s1, 0 4px 16px rgba(0,0,0,0.08));
+  z-index: 100; overflow: hidden;
+  max-height: 200px; overflow-y: auto;
+}
+.guild-suggest-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; cursor: pointer;
+  font-size: 13px; line-height: 19.5px; color: var(--text);
+  transition: background 0.1s ease-in-out;
+}
+.guild-suggest-item:hover,
+.guild-suggest-item:active {
+  background: var(--surface2, #F2F4F6);
+}

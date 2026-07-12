@@ -1,5 +1,5 @@
 export const MODAL_HTML = `
-<div class="modal-backdrop" id="diet-plan-modal" onclick="closeDietPlanModal(event)">
+<div class="modal-backdrop" id="diet-plan-modal" data-action="diet-plan:close">
   <div class="modal-sheet" style="max-height:90vh;overflow-y:auto">
     <div class="sheet-handle"></div>
     <div class="modal-title" style="font-size:17px;font-weight:700;">다이어트 플랜 설정</div>
@@ -162,8 +162,8 @@ export const MODAL_HTML = `
       </div>
 
       <div class="ex-editor-actions">
-        <button class="tds-btn cancel-btn ghost md" onclick="closeDietPlanModal()">취소</button>
-        <button class="tds-btn fill md" onclick="saveDietPlanFromModal()">플랜 저장</button>
+        <button class="tds-btn cancel-btn ghost md" data-action="diet-plan:close">취소</button>
+        <button class="tds-btn fill md" data-action="diet-plan:save">플랜 저장</button>
       </div>
     </div>
   </div>

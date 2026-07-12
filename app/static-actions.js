@@ -1,10 +1,32 @@
 import { registerActions } from '../utils/action-router.js';
-import { editSectionTitle, addMiniMemoItem } from '../feature-misc.js';
-import { openDietPlanModal } from '../feature-diet-plan.js';
+import {
+  editSectionTitle, addMiniMemoItem, toggleMiniMemoItem, deleteMiniMemoItem,
+  closeSectionTitleModal, saveSectionTitleFromModal, closeExportModal, runExportCSV,
+  closeSettingsModal,
+  quickDeleteNutritionItem,
+} from '../feature-misc.js';
+import { openDietPlanModal, closeDietPlanModal, saveDietPlanFromModal } from '../feature-diet-plan.js';
+import {
+  openCheckinModal, closeCheckinModal, toggleCheckinBodyFat,
+  saveCheckinFromModal, deleteCheckinFromModal,
+} from '../feature-checkin.js';
+import {
+  openGoalModal, closeGoalModal, toggleGoalCondition, saveGoalFromModal,
+  deleteGoalItem, analyzeGoalFeasibilityHandler,
+} from '../app-modal-goals.js';
 import { openUnitGoalDatePicker } from '../home/unit-goal.js';
 import { switchLeaderboardTab } from '../home/hero.js';
 import { openFriendManager } from '../home/friend-feed.js';
-import { openQuestModal } from '../app-modal-quests.js';
+import {
+  openQuestModal, closeQuestModal, onQuestAutoChange, saveQuestFromModal,
+  openQuestEditModal, closeQuestEditModal, saveQuestEdit, deleteQuestItem, toggleQuestCheck,
+} from '../app-modal-quests.js';
+import { closePatchnote } from '../modals/patchnote-modal.js';
+import { closeStreakMilestone } from '../modals/streak-milestone-modal.js';
+import { closeWeightResultModal } from '../modals/weight-result-modal.js';
+import { installPWA } from '../pwa-fcm.js';
+import { submitDietSetup } from '../feature-login.js';
+import { openNutritionItemEditor } from '../modals/nutrition-item-modal.js';
 import {
   changeWorkoutDate,
   goToTodayWorkout,
@@ -16,7 +38,8 @@ import {
   wtTogglePauseWorkoutTimer,
   wtResetWorkoutTimer,
   wtEndAndShowInsights,
-} from '../render-workout.js?v=20260708a-diet-frequent-foods';
+  openNutritionPhotoUpload,
+} from '../render-workout.js';
 import {
   wtSwitchType,
   uploadMealPhoto,
@@ -54,6 +77,16 @@ export function registerStaticActions() {
       return undefined;
     },
     'home:open-quest': (_control, _event, period) => openQuestModal(period),
+    'home:open-goal': () => openGoalModal(),
+    'home:open-checkin': () => openCheckinModal(),
+    'home:switch-tab': (control) => document.dispatchEvent(new CustomEvent('app:switch-tab', { detail: { tab: control.dataset.tab } })),
+    'home:toggle-mini-memo': (control) => toggleMiniMemoItem(control.dataset.itemId),
+    'home:delete-mini-memo': (control) => deleteMiniMemoItem(control.dataset.itemId),
+    'home:analyze-goal': (control) => analyzeGoalFeasibilityHandler(control.dataset.goalId),
+    'home:delete-goal': (control) => deleteGoalItem(control.dataset.goalId),
+    'home:toggle-quest': (control) => toggleQuestCheck(control.dataset.questId),
+    'home:edit-quest': (control) => openQuestEditModal(control.dataset.questId),
+    'home:delete-quest': (control) => deleteQuestItem(control.dataset.questId),
     'home:switch-leaderboard': (control, _event, period) => switchLeaderboardTab(period || control.dataset.period),
     'social:open-friend-manager': () => openFriendManager(),
     'diet:open-plan': () => openDietPlanModal(),
@@ -70,7 +103,7 @@ export function registerStaticActions() {
     'workout:save': () => saveWorkoutDay(),
     'workout:change-date': (_control, _event, delta) => changeWorkoutDate(Number(delta) || 0),
     'workout:today': () => goToTodayWorkout(),
-    'diet:submit-setup': () => window.submitDietSetup?.(),
+    'diet:submit-setup': () => submitDietSetup(),
     'diet:toggle-row': (control) => toggleDietMealRow(control),
     'diet:click-input': (_control, event, id) => { event.stopPropagation(); clickInput(id); },
     'diet:skip-meal': (_control, _event, meal) => wtSkipMeal(meal),
@@ -79,6 +112,32 @@ export function registerStaticActions() {
     'diet:open-bulk-ai': () => openBulkMealAI(),
     'diet:toggle-bulk-chip': (control) => toggleBulkMealAIChip(control),
     'diet:run-bulk-upload': (control) => runBulkMealAIUpload(control),
+    'diet:open-nutrition-photo': () => openNutritionPhotoUpload(),
     'cooking:open': () => openCooking(),
+    'checkin:close': (_control, event) => closeCheckinModal(event),
+    'checkin:toggle-body-fat': () => toggleCheckinBodyFat(),
+    'checkin:save': () => saveCheckinFromModal(),
+    'checkin:delete': () => deleteCheckinFromModal(),
+    'diet-plan:close': (_control, event) => closeDietPlanModal(event),
+    'diet-plan:save': () => saveDietPlanFromModal(),
+    'section-title:close': (_control, event) => closeSectionTitleModal(event),
+    'section-title:save': () => saveSectionTitleFromModal(),
+    'export:close': (_control, event) => closeExportModal(event),
+    'export:run': (_control, _event, period) => runExportCSV(Number(period) || 0),
+    'settings:close': (_control, event) => closeSettingsModal(event),
+    'settings:edit-nutrition': (control) => openNutritionItemEditor(control.dataset.itemId || null),
+    'settings:delete-nutrition': (control) => quickDeleteNutritionItem(control.dataset.itemId || ''),
+    'goal:close': (_control, event) => closeGoalModal(event),
+    'goal:toggle-condition': () => toggleGoalCondition(),
+    'goal:save': () => saveGoalFromModal(),
+    'quest:close': (_control, event) => closeQuestModal(event),
+    'quest:auto-change': () => onQuestAutoChange(),
+    'quest:save': () => saveQuestFromModal(),
+    'quest-edit:close': (_control, event) => closeQuestEditModal(event),
+    'quest-edit:save': () => saveQuestEdit(),
+    'patchnote:close': (_control, event) => closePatchnote(event),
+    'streak:close-milestone': (_control, event) => closeStreakMilestone(event),
+    'weight-result:close': (_control, event) => closeWeightResultModal(event),
+    'pwa:install': () => installPWA(),
   });
 }

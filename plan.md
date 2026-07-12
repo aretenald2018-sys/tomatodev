@@ -22,15 +22,16 @@
 ### "go" 명령 시
 1. plan.md에서 다음 미완료 체크박스 찾기
 2. 해당 작업 구현 (CLAUDE.md 규칙/레시피 준수)
-3. localhost에서 동작 확인 (`bash scripts/dev-start.sh`)
-4. COMMIT: 커밋 (feat:/fix:/refactor:/style:/docs:)
-5. plan.md 체크박스 업데이트
+3. 관련 자동 테스트와 `npm.cmd run build` 실행
+4. COMMIT/PUSH: `origin/main`에 배포
+5. `npm.cmd run verify:deploy -- https://aretenald2018-sys.github.io/tomatofarm/ <commit>` 실행
+6. production UI 흐름 확인 후 체크박스 업데이트
 
 ### 작업 완료 시
 1. 모든 변경사항 커밋 완료 확인
-2. localhost에서 최종 테스트
-3. plan.md 체크박스 [x] 업데이트
-4. 다음 미완료 작업으로 이동
+2. 전체 테스트·플랫폼 빌드·정적 자산 검증
+3. production Pages의 배포 커밋과 핵심 UI 확인
+4. plan.md 체크박스 [x] 업데이트
 
 ---
 

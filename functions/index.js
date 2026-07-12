@@ -2,6 +2,7 @@ const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
 const { validateGeminiRequest, validateOcrRequest } = require("./lib/validation");
+const { deliverNotification } = require("./services/notification-service");
 const { defineSecret } = require("firebase-functions/params");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
@@ -30,99 +31,9 @@ exports.sendPushOnNotification = onDocumentCreated(
   "_notifications/{notifId}",
   async (event) => {
     const data = event.data?.data();
-    if (!data || !data.to) return;
-
-    const db = getFirestore();
-
-    // 대상 유저의 FCM 토큰 조회
-    const tokensSnap = await db.collection("_fcm_tokens")
-      .where("userId", "==", data.to)
-      .get();
-
-    if (tokensSnap.empty) return;
-
-    const tokens = tokensSnap.docs.map(d => d.data().token).filter(Boolean);
-    if (tokens.length === 0) return;
-
-    // 푸시 페이로드
-    const title = _buildTitle(data);
-    const body = data.message || "";
-
-    const message = {
-      tokens,
-      notification: { title, body },
-      data: {
-        notifId: data.id || "",
-        type: data.type || "",
-        section: data.section || "",
-      },
-      android: {
-        priority: "high",
-        notification: {
-          channelId: "tomatofarm_default",
-          icon: "ic_launcher",
-        },
-      },
-      webpush: {
-        headers: { Urgency: "high" },
-        notification: {
-          icon: "/tomatofarm/icon-192.png",
-          badge: "/tomatofarm/icon-192.png",
-        },
-      },
-    };
-
-    const result = await getMessaging().sendEachForMulticast(message);
-
-    // 만료된 토큰 자동 정리
-    const failedTokens = [];
-    result.responses.forEach((resp, idx) => {
-      if (
-        !resp.success &&
-        (resp.error?.code === "messaging/registration-token-not-registered" ||
-         resp.error?.code === "messaging/invalid-registration-token")
-      ) {
-        failedTokens.push(tokens[idx]);
-      }
-    });
-
-    if (failedTokens.length > 0) {
-      const batch = db.batch();
-      tokensSnap.docs.forEach(d => {
-        if (failedTokens.includes(d.data().token)) batch.delete(d.ref);
-      });
-      await batch.commit();
-    }
-
-    console.log(
-      `[FCM] to=${data.to} type=${data.type} sent=${result.successCount} fail=${result.failureCount}`
-    );
+    return deliverNotification({ db: getFirestore(), messaging: getMessaging(), data });
   }
 );
-
-function _buildTitle(data) {
-  switch (data.type) {
-    case "friend_request":  return "🤝 새 이웃 요청";
-    case "friend_accepted": return "🤝 이웃이 되었어요";
-    case "guestbook":       return "📝 새 방명록";
-    case "guestbook_reply": return "💬 방명록 답글";
-    case "like":            return "❤️ 새 리액션";
-    case "reaction":        return "❤️ 새 리액션";
-    case "comment":         return "💬 새 댓글";
-    case "comment_reply":   return "💬 새 답글";
-    case "tomato_gift":     return "🍅 토마토 선물";
-    case "patchnote":       return "📋 새 패치노트";
-    case "announcement":    return "📢 운영자 공지";
-    case "direct_message":  return data.title || "📬 개별 메시지";
-    case "introduce":       return "👋 이웃 소개";
-    case "letter":              return "✉️ 새 편지";
-    case "guild_join_request":  return "🏠 길드원 확인 요청";
-    case "guild_join_approved":   return "🏠 길드 가입 승인";
-    case "guild_member_joined":   return "🏠 새 길드원";
-    case "guild_invite":          return "🏠 길드 초대";
-    default:                    return "🍅 토마토팜 알림";
-  }
-}
 
 // ── 주간 랭킹 공통 로직 ─────────────────────────────────────────────
 

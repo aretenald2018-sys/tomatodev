@@ -116,7 +116,7 @@ function _renderPeople(container, data) {
         ${[
           ['streak_total', '스트릭순'],
           ['activity_days', '활동일순'],
-        ].map(([id, label]) => `<button class="${_peopleSort === id ? 'is-active' : ''}" onclick="window._adminPeopleSort('${id}')">${label}</button>`).join('')}
+        ].map(([id, label]) => `<button type="button" class="${_peopleSort === id ? 'is-active' : ''}" data-admin-user-action="sort" data-sort-id="${id}">${label}</button>`).join('')}
       </div>
 
       <div style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -128,7 +128,7 @@ function _renderPeople(container, data) {
           ['at-risk', 'At-Risk'],
           ['dormant', 'Dormant'],
         ].map(([id, label]) => `
-          <button class="hig-action-chip" style="${_peopleFilter === id ? 'opacity:1;' : 'opacity:.55;'}" onclick="window._adminPeopleFilter('${id}')">${label}</button>
+          <button type="button" class="hig-action-chip" style="${_peopleFilter === id ? 'opacity:1;' : 'opacity:.55;'}" data-admin-user-action="filter" data-filter-id="${id}">${label}</button>
         `).join('')}
       </div>
 
@@ -136,16 +136,7 @@ function _renderPeople(container, data) {
         <table class="hig-data-table">
           <thead>
             <tr>
-              <th><button onclick="window._adminPeopleSort('name')">이름${_sortIndicator('name')}</button></th>
-              <th><button onclick="window._adminPeopleSort('stage')">단계${_sortIndicator('stage')}</button></th>
-              <th><button onclick="window._adminPeopleSort('trajectory')">궤적${_sortIndicator('trajectory')}</button></th>
-              <th><button onclick="window._adminPeopleSort('score')">점수${_sortIndicator('score')}</button></th>
-              <th><button onclick="window._adminPeopleSort('workoutStreak')">운동스트릭${_sortIndicator('workoutStreak')}</button></th>
-              <th><button onclick="window._adminPeopleSort('dietStreak')">식단스트릭${_sortIndicator('dietStreak')}</button></th>
-              <th><button onclick="window._adminPeopleSort('activity_days')">활동일(14d)${_sortIndicator('activity_days')}</button></th>
-              <th><button onclick="window._adminPeopleSort('content_type')">콘텐츠유형${_sortIndicator('content_type')}</button></th>
-              <th><button onclick="window._adminPeopleSort('social_type')">소셜유형${_sortIndicator('social_type')}</button></th>
-              <th><button onclick="window._adminPeopleSort('last_login_at')">마지막접속${_sortIndicator('last_login_at')}</button></th>
+              ${['name','stage','trajectory','score','workoutStreak','dietStreak','activity_days','content_type','social_type','last_login_at'].map((id, index) => `<th><button type="button" data-admin-user-action="sort" data-sort-id="${id}">${['이름','단계','궤적','점수','운동스트릭','식단스트릭','활동일(14d)','콘텐츠유형','소셜유형','마지막접속'][index]}${_sortIndicator(id)}</button></th>`).join('')}
             </tr>
           </thead>
           <tbody>
@@ -171,12 +162,11 @@ function _renderPeople(container, data) {
     </div>
   `;
 
-  window._adminPeopleSort = (id) => {
-    _setSort(id);
-    _renderPeople(container, data);
-  };
-  window._adminPeopleFilter = (id) => {
-    _peopleFilter = id;
+  container.onclick = (event) => {
+    const control = event.target.closest('[data-admin-user-action]');
+    if (!control || !container.contains(control)) return;
+    if (control.dataset.adminUserAction === 'sort') _setSort(control.dataset.sortId);
+    if (control.dataset.adminUserAction === 'filter') _peopleFilter = control.dataset.filterId;
     _renderPeople(container, data);
   };
 }

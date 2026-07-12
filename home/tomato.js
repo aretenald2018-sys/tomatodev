@@ -17,8 +17,9 @@ import { calcTomatoCycle, evaluateCycleResult, getQuarterKey,
 import { checkStreakMilestone } from './hero.js';
 import { renderCharacterSVG } from './character.js';
 import { hydrateLifeZoneCard, renderLifeZoneCard } from './life-zone.js';
-import { showToast, haptic, resolveNickname } from './utils.js';
+import { showToast, haptic, resolveNickname, showConfetti } from './utils.js';
 import { confirmSimple } from '../utils/confirm-modal.js';
+import { openTomatoGiftModal } from './friend-profile.js';
 
 const TOMATO_STAGES = [
   { icon: '🌱', label: '씨앗을 심었어요' },
@@ -205,9 +206,11 @@ function _showTomatoRuleTooltip(e) {
   const modal = document.createElement('div');
   modal.id = 'tomato-rule-modal';
   modal.className = 'modal-backdrop';
-  modal.onclick = (ev) => { if (ev.target === modal) _closeTomatoRule(); };
+  modal.onclick = (ev) => {
+    if (ev.target === modal || ev.target.closest('[data-tomato-rule-close]')) _closeTomatoRule();
+  };
   modal.innerHTML = `
-    <div class="modal-sheet tr-sheet" onclick="event.stopPropagation()">
+    <div class="modal-sheet tr-sheet">
       <div class="sheet-handle"></div>
 
       <div class="tr-header">
@@ -264,7 +267,7 @@ function _showTomatoRuleTooltip(e) {
         </div>
       </div>
 
-      <button class="tds-btn fill md tr-close-btn" onclick="_closeTomatoRuleGlobal()">확인</button>
+      <button type="button" class="tds-btn fill md tr-close-btn" data-tomato-rule-close>확인</button>
     </div>
   `;
   document.body.appendChild(modal);
@@ -302,7 +305,7 @@ function _showTomatoRuleTooltip(e) {
       listEl.querySelectorAll('.tr-friend-item').forEach(btn => {
         btn.addEventListener('click', () => {
           _closeTomatoRule();
-          window.openTomatoGiftModal(btn.dataset.fid, btn.dataset.fname);
+          openTomatoGiftModal(btn.dataset.fid, btn.dataset.fname);
         });
       });
     } catch (e) {
@@ -312,7 +315,6 @@ function _showTomatoRuleTooltip(e) {
   });
 }
 
-window._closeTomatoRuleGlobal = _closeTomatoRule;
 
 // ── 토마토 사이클 정산 ──────────────────────────────────────────
 export function settleTomatoCycleIfNeeded() {
@@ -480,7 +482,7 @@ function _showHarvestCelebration(count, totalCount) {
   modal.style.zIndex = '1003';
   modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
   modal.innerHTML = `
-    <div class="modal-sheet" style="text-align:center;padding:32px 20px 20px 20px;" onclick="event.stopPropagation()">
+    <div class="modal-sheet" style="text-align:center;padding:32px 20px 20px 20px;">
       <div class="sheet-handle"></div>
       <div style="font-size:64px;margin:16px 0;animation:tomato-bounce-in 0.3s ease;">🍅</div>
       <div style="font-size:22px;font-weight:700;color:var(--text);margin-bottom:8px;">
@@ -512,20 +514,23 @@ function _showHarvestCelebration(count, totalCount) {
         </div>
       </div>
       <div style="margin-top:20px;">
-        <button class="tds-btn fill md" style="width:100%;" onclick="this.closest('.modal-backdrop').remove()">계속하기 💪</button>
+        <button type="button" class="tds-btn fill md" style="width:100%;" data-harvest-close>계속하기 💪</button>
       </div>
     </div>
   `;
   document.body.appendChild(modal);
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal || event.target.closest('[data-harvest-close]')) modal.remove();
+  });
 
   // Confetti + Haptic
-  if (window._showConfetti) window._showConfetti(3500);
+  showConfetti(3500);
   if (navigator.vibrate) navigator.vibrate([50, 30, 50, 30, 100]);
   haptic('success');
 }
 
 // [DEV] 콘솔에서 수확 카드 테스트: window._debugHarvest(수확개수, 누적개수)
-window._debugHarvest = (count = 3, total = 10) => _showHarvestCelebration(count, total);
+window.__debugHarvest = (count = 3, total = 10) => _showHarvestCelebration(count, total);
 
 // ── 토마토 바구니 카드 ──────────────────────────────────────────
 export function renderTomatoBasket() {
@@ -576,7 +581,7 @@ export function renderTomatoBasket() {
   el.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
       <span style="font-size:14px;font-weight:700;color:var(--text);">🍅 ${qLabel} 토마토 바구니</span>
-      <button class="section-title-edit-btn" onclick="document.getElementById('tomato-basket-detail').classList.toggle('tomato-expanded')">펼치기</button>
+      <button type="button" class="section-title-edit-btn" data-tomato-basket-toggle>펼치기</button>
     </div>
     <div class="tomato-basket-summary">
       <span>🍅 수확 ${qCount}개</span>
@@ -594,6 +599,11 @@ export function renderTomatoBasket() {
       </div>
     </div>
   `;
+  el.onclick = (event) => {
+    if (event.target.closest('[data-tomato-basket-toggle]')) {
+      document.getElementById('tomato-basket-detail')?.classList.toggle('tomato-expanded');
+    }
+  };
 }
 
 // ── 매크로 라인 헬퍼 ─────────────────────────────────────────────
@@ -641,7 +651,7 @@ function buildDietStatusHtml(plan, metrics) {
     <div class="tf-diet-section">
       <div class="tf-kcal-header">
         <span class="tf-kcal-label">다이어트 현황</span>
-        <button onclick="openCheckinModal()" style="font-size:11px;color:#fa342c;font-weight:600;background:none;border:none;cursor:pointer;padding:0;">몸무게 입력 →</button>
+        <button type="button" data-action="home:open-checkin" style="font-size:11px;color:#fa342c;font-weight:600;background:none;border:none;cursor:pointer;padding:0;">몸무게 입력 →</button>
       </div>
       <div class="tf-diet-body">
         <div class="tf-diet-stats">

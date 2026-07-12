@@ -1,3 +1,4 @@
+import { showToast } from '../ui/toast.js';
 import {
   getAccountList, sendNotification, getAdminOutreachHistory, saveHeroMessage, saveAccount, deleteUserAccount,
   createPatchnote, getDeveloperLetterStatus, getDeveloperLetterStatusMeta,
@@ -26,8 +27,8 @@ const TEMPLATES = [
 ];
 
 function _toast(msg, type = 'info') {
-  if (typeof window.showToast === 'function') {
-    window.showToast(msg, 3000, type);
+  if (typeof showToast === 'function') {
+    showToast(msg, 3000, type);
     return;
   }
   console.log(`[toast:${type}] ${msg}`);
@@ -363,12 +364,7 @@ function _manageTab(data) {
       <div class="hig-card">
         <div class="hig-headline">내보내기</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-          <button class="hig-btn-secondary" onclick="window._adminOutreachExport('ai_json')">AI JSON</button>
-          <button class="hig-btn-secondary" onclick="window._adminOutreachExport('all_csv')">전체 CSV</button>
-          <button class="hig-btn-secondary" onclick="window._adminOutreachExport('users')">유저 CSV</button>
-          <button class="hig-btn-secondary" onclick="window._adminOutreachExport('daily')">일일 CSV</button>
-          <button class="hig-btn-secondary" onclick="window._adminOutreachExport('social')">소셜 CSV</button>
-          <button class="hig-btn-secondary" onclick="window._adminOutreachExport('letters')">메시지 CSV</button>
+          ${[['ai_json','AI JSON'],['all_csv','전체 CSV'],['users','유저 CSV'],['daily','일일 CSV'],['social','소셜 CSV'],['letters','메시지 CSV']].map(([type,label]) => `<button type="button" class="hig-btn-secondary" data-outreach-action="export" data-export-type="${type}">${label}</button>`).join('')}
         </div>
       </div>
       <div class="hig-card-grouped">
@@ -379,7 +375,7 @@ function _manageTab(data) {
               <div class="hig-subhead">${escapeHtml(user.nickname || `${user.lastName || ''}${user.firstName || ''}` || user.id)}</div>
               <div class="hig-caption1" style="color:var(--hig-gray1);">${escapeHtml(user.id)}</div>
             </div>
-            <button class="hig-btn-destructive" onclick="window._adminOutreachDeleteUser('${user.id}', '${escapeHtml(user.nickname || user.id)}')">삭제</button>
+            <button type="button" class="hig-btn-destructive" data-outreach-action="delete-user" data-uid="${escapeHtml(user.id)}" data-name="${escapeHtml(user.nickname || user.id)}">삭제</button>
           </div>
         `).join('')}
       </div>
@@ -495,12 +491,12 @@ function _targetSelect(users, name, selectedUid) {
       </summary>
       <div style="display:grid;gap:6px;margin-top:10px;">
         <label class="hig-target-option" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--hig-separator);border-radius:10px;opacity:${allChecked ? '1' : '.55'};">
-          <input type="checkbox" name="${name}" value="all" ${allChecked ? 'checked' : ''} style="margin:0;accent-color:var(--primary);" onchange="window._adminToggleScheduleTarget('${name}', this.value)">
+          <input type="checkbox" name="${name}" value="all" ${allChecked ? 'checked' : ''} data-outreach-change="toggle-target" style="margin:0;accent-color:var(--primary);">
           <span>전체</span>
         </label>
         ${users.map((user) => `
           <label class="hig-target-option" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid ${stageColor(user.stage)};border-radius:10px;opacity:${selectedUid === user.uid ? '1' : '.55'};" title="${trajectoryLabel(user.trajectory)}">
-            <input type="checkbox" name="${name}" value="${user.uid}" ${selectedUid === user.uid ? 'checked' : ''} style="margin:0;accent-color:var(--primary);" onchange="window._adminToggleScheduleTarget('${name}', this.value)">
+            <input type="checkbox" name="${name}" value="${user.uid}" ${selectedUid === user.uid ? 'checked' : ''} data-outreach-change="toggle-target" style="margin:0;accent-color:var(--primary);">
             <span>${escapeHtml(user.name)} · ${stageLabel(user.stage)} ${trajectoryArrow(user.trajectory)}</span>
           </label>
         `).join('')}
@@ -667,8 +663,8 @@ function _scheduleTab(data, options) {
             <textarea id="outreach-schedule-hero-body" class="hig-subhead" style="min-height:100px;border:1px solid var(--hig-separator);border-radius:12px;padding:10px 12px;background:var(--hig-surface-elevated);color:var(--hig-text);" placeholder="홈 화면에 표시할 히어로 메시지"></textarea>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="hig-btn-primary" onclick="window._adminSaveHeroSchedule()">저장</button>
-            <button class="hig-btn-secondary" onclick="window._adminPreviewHeroSchedule()">미리보기</button>
+            <button type="button" class="hig-btn-primary" data-outreach-action="save-hero">저장</button>
+            <button type="button" class="hig-btn-secondary" data-outreach-action="preview-hero">미리보기</button>
           </div>
           <div id="outreach-hero-preview"></div>
         </div>
@@ -695,8 +691,8 @@ function _scheduleTab(data, options) {
             <textarea id="outreach-schedule-comeback-message" class="hig-subhead" style="min-height:100px;border:1px solid var(--hig-separator);border-radius:12px;padding:10px 12px;background:var(--hig-surface-elevated);color:var(--hig-text);" placeholder="복귀 카드에 노출할 메시지">${escapeHtml(message)}</textarea>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="hig-btn-primary" onclick="window._adminSaveComebackSchedule()">저장</button>
-            <button class="hig-btn-secondary" onclick="window._adminPreviewComebackSchedule()">미리보기</button>
+            <button type="button" class="hig-btn-primary" data-outreach-action="save-comeback">저장</button>
+            <button type="button" class="hig-btn-secondary" data-outreach-action="preview-comeback">미리보기</button>
           </div>
           <div id="outreach-comeback-preview"></div>
         </div>
@@ -793,7 +789,7 @@ function _composeTab(data, options) {
       <div style="display:grid;gap:12px;margin-top:10px;">
         <div>
           <div class="hig-caption1" style="color:var(--hig-gray1);margin-bottom:6px;">템플릿</div>
-          <select id="outreach-template" onchange="window._adminApplyTemplate()" style="width:100%;min-height:40px;border:1px solid var(--hig-separator);border-radius:12px;padding:0 10px;background:var(--hig-surface-elevated);color:var(--hig-text);">
+          <select id="outreach-template" data-outreach-change="apply-template" style="width:100%;min-height:40px;border:1px solid var(--hig-separator);border-radius:12px;padding:0 10px;background:var(--hig-surface-elevated);color:var(--hig-text);">
             ${TEMPLATES.map((tpl) => `<option value="${tpl.id}" ${selectedTemplate === tpl.id ? 'selected' : ''}>${tpl.label}</option>`).join('')}
           </select>
         </div>
@@ -808,7 +804,7 @@ function _composeTab(data, options) {
               ['comeback', '복귀'],
             ].map(([id, label]) => `
               <label class="hig-action-chip" style="opacity:${prefillChannel === id ? '1' : '.75'};">
-                <input type="radio" name="outreach-channel" value="${id}" ${prefillChannel === id ? 'checked' : ''} style="display:none;" onchange="window._adminUpdateChannelUI()">
+                <input type="radio" name="outreach-channel" value="${id}" ${prefillChannel === id ? 'checked' : ''} data-outreach-change="update-channel" style="display:none;">
                 ${label}
               </label>
             `).join('')}
@@ -837,7 +833,7 @@ function _composeTab(data, options) {
           </div>
         </div>
 
-        <button id="outreach-send-button" class="hig-btn-primary" onclick="window._adminSendOutreach()">보내기</button>
+        <button type="button" id="outreach-send-button" class="hig-btn-primary" data-outreach-action="send">보내기</button>
       </div>
     </div>
   `;
@@ -854,7 +850,7 @@ function _render(container, data, options) {
           ['history', '기록'],
           ['manage', '관리'],
         ].map(([id, label]) => `
-          <button class="${_outreachTab === id ? 'is-active' : ''}" onclick="window._adminOutreachTab('${id}')">${label}</button>
+          <button type="button" class="${_outreachTab === id ? 'is-active' : ''}" data-outreach-action="tab" data-tab="${id}">${label}</button>
         `).join('')}
       </div>
 
@@ -868,28 +864,7 @@ function _render(container, data, options) {
     </div>
   `;
 
-  window._adminOutreachTab = (tab) => {
-    _outreachTab = tab;
-    _render(container, data, options);
-  };
-
-  window._adminUpdateChannelUI = () => {
-    _updateComposeChannelUI();
-  };
-
-  window._adminUpdateTargetUI = () => {
-    _updateScheduleTargetUI('outreach-target');
-    _updateTargetSummary('outreach-target', data);
-    window._adminApplyTemplate();
-  };
-
-  window._adminToggleScheduleTarget = (name, changedValue) => {
-    _toggleScheduleTarget(name, changedValue);
-    _updateTargetSummary(name, data);
-    if (name === 'outreach-target') window._adminApplyTemplate();
-  };
-
-  window._adminApplyTemplate = () => {
+  const applyTemplate = () => {
     const templateId = document.getElementById('outreach-template')?.value || 'none';
     localStorage.setItem(COMPOSE_TEMPLATE_KEY, templateId);
     const body = document.getElementById('outreach-body');
@@ -899,12 +874,7 @@ function _render(container, data, options) {
     body.value = _fillTemplate(templateId, ids[0], data);
   };
 
-  window._adminSendOutreach = () => _sendCompose(data);
-  window._adminSaveHeroSchedule = () => _saveHeroSchedule(data);
-  window._adminPreviewHeroSchedule = () => _previewHeroSchedule(data);
-  window._adminSaveComebackSchedule = () => _saveComebackSchedule(data);
-  window._adminPreviewComebackSchedule = () => _previewComebackSchedule(data);
-  window._adminOutreachExport = (type) => {
+  const runExport = (type) => {
     switch (type) {
       case 'users': exportUsersReport(data); break;
       case 'daily': exportDailyActivity(data); break;
@@ -915,24 +885,51 @@ function _render(container, data, options) {
       default: break;
     }
   };
-  window._adminOutreachDeleteUser = async (uid, name) => {
+
+  const deleteUser = async (uid, name) => {
     const ok = await confirmAction({ title: '계정 삭제', message: `${name} 계정을 삭제할까요?`, destructive: true, longPress: 2000 });
     if (!ok) return;
     try {
       await deleteUserAccount(uid);
       _toast(`${name} 계정을 삭제했습니다.`, 'success');
-      if (typeof window.renderAdmin === 'function') {
-        // no-op: kept for compatibility when exposed
-      }
+      document.dispatchEvent(new CustomEvent('admin:refresh-requested'));
     } catch (error) {
       _toast(`계정 삭제 실패: ${error.message}`, 'error');
     }
   };
 
+  container.onclick = (event) => {
+    const control = event.target.closest('[data-outreach-action]');
+    if (!control || !container.contains(control)) return;
+    const action = control.dataset.outreachAction;
+    if (action === 'tab') { _outreachTab = control.dataset.tab; _render(container, data, options); }
+    if (action === 'send') void _sendCompose(data);
+    if (action === 'save-hero') void _saveHeroSchedule(data);
+    if (action === 'preview-hero') _previewHeroSchedule(data);
+    if (action === 'save-comeback') void _saveComebackSchedule(data);
+    if (action === 'preview-comeback') _previewComebackSchedule(data);
+    if (action === 'export') runExport(control.dataset.exportType);
+    if (action === 'delete-user') void deleteUser(control.dataset.uid, control.dataset.name);
+  };
+  container.onchange = (event) => {
+    const control = event.target.closest('[data-outreach-change]');
+    if (!control || !container.contains(control)) return;
+    const action = control.dataset.outreachChange;
+    if (action === 'update-channel') _updateComposeChannelUI();
+    if (action === 'apply-template') applyTemplate();
+    if (action === 'toggle-target') {
+      _toggleScheduleTarget(control.name, control.value);
+      _updateTargetSummary(control.name, data);
+      if (control.name === 'outreach-target') applyTemplate();
+    }
+  };
+
   if (_outreachTab === 'compose') {
     setTimeout(() => {
-      window._adminUpdateChannelUI();
-      window._adminUpdateTargetUI();
+      _updateComposeChannelUI();
+      _updateScheduleTargetUI('outreach-target');
+      _updateTargetSummary('outreach-target', data);
+      applyTemplate();
     }, 0);
   }
 

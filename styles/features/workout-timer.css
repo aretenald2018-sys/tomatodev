@@ -1,0 +1,267 @@
+/* ════════════════════════════════════════════════════════════════════
+   통합 타이머 바 (운동 + 쉬는시간 동시 표출)
+   ════════════════════════════════════════════════════════════════════ */
+
+.wt-tbar {
+  display: none;
+  flex-direction: column;
+  background: var(--seed-bg-layer);
+  border-top: 1px solid var(--seed-stroke-neutral);
+  border-radius: 14px 14px 0 0;
+  padding: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+  position: fixed;
+  bottom: 60px;
+  left: 0; right: 0;
+  z-index: 199;
+}
+.wt-tbar.wt-open { display: flex; }
+
+.wt-tbar-row {
+  display: flex; align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  min-height: 46px;
+}
+
+.wt-tbar-seg {
+  display: flex; align-items: center; gap: 8px;
+  min-width: 0;
+}
+.wt-tbar-seg--workout { flex: 0 0 auto; }
+.wt-tbar-seg--rest {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  gap: 10px;
+}
+
+.wt-tbar-divider {
+  width: 1px;
+  height: 26px;
+  background: var(--seed-stroke-weak);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+.wt-tbar-ico {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+.wt-tbar-seg--workout .wt-tbar-ico { color: var(--text-secondary); }
+.wt-tbar.wt-running .wt-tbar-seg--workout .wt-tbar-ico { color: var(--primary); }
+.wt-tbar-seg--rest .wt-tbar-ico { color: #217cf9; }
+.wt-tbar.rest-expired .wt-tbar-seg--rest .wt-tbar-ico { color: var(--primary); }
+
+.wt-rest-counter {
+  position: relative;
+  width: 66px;
+  height: 66px;
+  flex: 0 0 66px;
+  border: none;
+  border-radius: 50%;
+  background: var(--seed-bg-positive-weak, rgba(16,171,125,0.1));
+  color: var(--seed-fg-positive, var(--streak));
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  appearance: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.wt-rest-counter:active { transform: scale(0.97); }
+.wt-rest-ring {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+.wt-rest-ring-track,
+.wt-rest-ring-progress {
+  fill: none;
+  stroke-width: 5;
+}
+.wt-rest-ring-track {
+  stroke: var(--seed-bg-neutral, var(--surface2));
+}
+.wt-rest-ring-progress {
+  stroke: var(--seed-green-600, var(--streak));
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 0;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+  transition: stroke-dashoffset 1s linear, stroke var(--transition);
+}
+.wt-rest-counter-time {
+  position: relative;
+  z-index: 1;
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.wt-rest-copy {
+  justify-content: center;
+  min-width: 86px;
+}
+.wt-tbar.rest-expired .wt-rest-counter {
+  background: var(--primary-bg, var(--seed-bg-neutral-weak));
+  color: var(--primary);
+}
+.wt-tbar.rest-expired .wt-rest-ring-progress {
+  stroke: var(--primary);
+  stroke-dashoffset: 0;
+  animation: wt-tbar-pulse 0.8s ease-in-out infinite;
+}
+
+.wt-tbar-body {
+  display: flex; flex-direction: column; gap: 0;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+  line-height: 1;
+  min-height: 0;
+  cursor: default;
+  appearance: none;
+}
+.wt-tbar-body--btn {
+  cursor: pointer;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  border-radius: 6px;
+  transition: background 0.1s ease-in-out;
+}
+.wt-tbar-body--btn:active { background: var(--surface2); }
+
+.wt-tbar-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  letter-spacing: 0.2px;
+  line-height: 1.2;
+  margin-bottom: 2px;
+  display: flex; align-items: center; gap: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wt-tbar-ctx {
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 10px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wt-tbar-ctx:not(:empty)::before {
+  content: "·";
+  margin: 0 3px 0 2px;
+  color: var(--text-tertiary);
+  opacity: 0.7;
+}
+
+.wt-tbar-num {
+  font-size: 16px;
+  line-height: 1.1;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.3px;
+}
+.wt-tbar.wt-running .wt-tbar-seg--workout .wt-tbar-num { color: var(--primary); }
+.wt-tbar-num--rest { color: #217cf9; }
+.wt-tbar.rest-expired .wt-tbar-num--rest { color: var(--primary); }
+
+.wt-tbar-result {
+  font-size: 12px; color: var(--text-secondary); font-weight: 600;
+  margin-left: 6px;
+}
+
+.wt-tbar-ctrls {
+  display: flex; align-items: center; justify-content: flex-end; gap: 4px;
+  margin-left: auto;
+  max-width: 100%;
+  min-width: 0;
+  flex-shrink: 0;
+}
+.wt-tbar-btn {
+  appearance: none;
+  height: 30px;
+  min-width: 30px;
+  padding: 0 7px;
+  border: 1px solid var(--seed-stroke-weak);
+  background: var(--surface);
+  color: var(--text-secondary);
+  border-radius: 9px;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: inherit; font-size: 11px; font-weight: 600;
+  transition: all 0.1s ease-in-out;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  line-height: 1;
+}
+.wt-tbar-btn:active { transform: scale(0.95); background: var(--surface2); }
+.wt-tbar-btn--rest {
+  color: #217cf9;
+  border-color: rgba(33,124,249,0.25);
+  background: rgba(33,124,249,0.06);
+}
+.wt-tbar-btn--skip { padding: 0 9px; }
+
+.wt-tbar-cta {
+  appearance: none;
+  height: 30px;
+  padding: 0 12px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 9px;
+  cursor: pointer;
+  font-family: inherit; font-size: 12px; font-weight: 700;
+  transition: all 0.1s ease-in-out;
+  white-space: nowrap;
+  letter-spacing: -0.1px;
+  line-height: 1;
+}
+.wt-tbar-cta:active { transform: scale(0.96); }
+
+.wt-tbar.has-rest .wt-tbar-ctrls {
+  flex: 1 1 100%;
+}
+
+@media (min-width: 390px) {
+  .wt-tbar.has-rest .wt-tbar-ctrls {
+    flex: 0 0 auto;
+  }
+}
+
+.wt-tbar-progress {
+  height: 3px;
+  background: var(--seed-stroke-weak);
+  width: 100%;
+  overflow: hidden;
+}
+.wt-tbar-fill {
+  height: 100%;
+  width: 0%;
+  background: #217cf9;
+  /* Progress bar: 0.5s ease-in-out per TDS, background uses standard transition */
+  transition: width 1s linear, background var(--transition);
+}
+.wt-tbar.rest-expired .wt-tbar-fill {
+  background: var(--primary);
+  animation: wt-tbar-pulse 0.8s ease-in-out infinite;
+}
+@keyframes wt-tbar-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}

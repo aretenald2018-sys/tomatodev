@@ -1,0 +1,447 @@
+/* ════════════════════════════════════════════════════════════════════
+   운동 탭 전문가 카드 (Mockup A — One Card Stepper)
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Gemini 스파클 아이콘 (전역 symbol 참조) */
+.ic-gemini {
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: -0.15em;
+  width: 16px; height: 16px;
+}
+
+/* 전문가 모드 ON일 때 유형 탭 바 숨김 (카드 내부 세그먼트로 대체) */
+.wt-flow.wt-expert-on .wt-type-section {
+  display: none !important;
+}
+
+/* ── 전문가 카드 컨테이너 ──────────────────────────────────────── */
+.wt-exc {
+  background: var(--seed-bg-layer);
+  border: 1px solid var(--seed-stroke-neutral);
+  border-radius: var(--seed-r4);
+  overflow: hidden;
+  margin: 12px 0 20px;
+  box-shadow: var(--seed-s1);
+}
+.wt-exc-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 18px 12px;
+  gap: 12px;
+}
+.wt-exc-title {
+  font-size: 17px; font-weight: 700; color: var(--text);
+  display: flex; align-items: center; gap: 8px;
+  letter-spacing: -0.3px;
+  min-width: 0;
+}
+.wt-exc-meta {
+  font-size: 11px; color: var(--text-tertiary); font-weight: 600;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+
+/* ── 상태 선택 세그먼트 (운동/쉬었어요/건강이슈) ──────────────── */
+.wt-st-seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px;
+  padding: 0 14px 12px;
+}
+.wt-st-seg-btn {
+  appearance: none;
+  border: 1px solid var(--seed-stroke-weak);
+  background: var(--surface);
+  color: var(--text-secondary);
+  padding: 10px 6px;
+  border-radius: var(--seed-r3);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.1s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 40px;
+  letter-spacing: -0.1px;
+}
+.wt-st-seg-btn:active { transform: scale(0.97); }
+.wt-st-seg-btn.is-on {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+  font-weight: 700;
+}
+
+/* ── Step (수직 스텝퍼) ──────────────────────────────────────── */
+.wt-step {
+  display: flex;
+  gap: 12px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--seed-stroke-neutral);
+  position: relative;
+}
+.wt-step-rail {
+  display: flex; flex-direction: column; align-items: center;
+  padding-top: 2px;
+  flex-shrink: 0;
+}
+.wt-step-dot {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--surface2);
+  border: 1.5px solid var(--seed-stroke-weak);
+  color: var(--text-tertiary);
+  display: grid; place-items: center;
+  font-size: 11px; font-weight: 700;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.wt-step.is-done .wt-step-dot {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.wt-step.is-active .wt-step-dot {
+  background: var(--primary-bg);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.wt-step-line {
+  width: 1.5px; flex: 1;
+  background: var(--seed-stroke-weak);
+  margin-top: 4px;
+  min-height: 8px;
+}
+.wt-step:last-child .wt-step-line { display: none; }
+.wt-step-body { flex: 1; min-width: 0; }
+.wt-step-label {
+  font-size: 11px; font-weight: 700; color: var(--text-tertiary);
+  margin-bottom: 8px; letter-spacing: 0.5px; text-transform: uppercase;
+  display: flex; align-items: center; gap: 6px;
+}
+.wt-step.is-active .wt-step-label { color: var(--primary); }
+.wt-step.is-done .wt-step-label { color: var(--text-secondary); }
+.wt-step-label-dim {
+  color: var(--text-tertiary); font-weight: 500;
+  text-transform: none; letter-spacing: 0;
+  margin-left: 4px;
+}
+
+/* ── Step 1 · 위치(Place) ListRow ──────────────────────────── */
+.wt-place {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--seed-stroke-weak);
+  border-radius: var(--seed-r3);
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.1s ease-in-out;
+  min-height: 44px;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  appearance: none;
+  color: inherit;
+}
+.wt-place:active { transform: scale(0.99); background: var(--surface2); }
+.wt-place-icon {
+  width: 34px; height: 34px;
+  background: var(--seed-bg-fill);
+  border-radius: 10px;
+  display: grid; place-items: center;
+  font-size: 17px;
+  flex-shrink: 0;
+}
+.wt-place-main { flex: 1; min-width: 0; }
+.wt-place-name {
+  font-size: 14px; font-weight: 700; color: var(--text);
+  line-height: 1.3;
+}
+.wt-place-sub {
+  font-size: 11px; color: var(--text-secondary);
+  line-height: 1.35; margin-top: 2px;
+}
+.wt-place-sub--warn { color: var(--primary); font-weight: 600; }
+.wt-place-caret {
+  color: var(--text-tertiary);
+  font-size: 14px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+/* ── Step 2 · AI 카드 (TDS 표준 — Tonal BG) ───────────────── */
+.wt-ai-card {
+  background: var(--primary-bg);
+  border: 1px solid var(--primary-light, var(--primary-bg));
+  border-radius: var(--seed-r3);
+  padding: 14px;
+  margin-bottom: 10px;
+}
+.wt-ai-insight {
+  display: flex; gap: 10px; align-items: flex-start;
+  margin-bottom: 12px;
+}
+.wt-ai-insight .ic-spark {
+  width: 18px; height: 18px;
+  color: var(--primary);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.wt-ai-txt {
+  font-size: 14px; line-height: 1.5; color: var(--text);
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+.wt-ai-txt b { color: var(--primary); font-weight: 700; }
+
+.max-finish-hero {
+  padding: 16px;
+  border: 1px solid var(--seed-stroke-weak, #ededf0);
+  border-radius: 20px;
+  background: #fff;
+}
+.max-finish-kicker {
+  color: var(--primary);
+  font-size: 12px;
+  line-height: 17px;
+  font-weight: 700;
+}
+.max-finish-hero h3 {
+  margin-top: 4px;
+  color: var(--text, #111114);
+  font-size: 24px;
+  line-height: 31px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+.max-finish-hero p {
+  margin-top: 6px;
+  color: var(--text-secondary, #707078);
+  font-size: 12px;
+  line-height: 19px;
+}
+.max-finish-score-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+.max-finish-score-row div {
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--seed-bg-fill, #f3f3f5);
+}
+.max-finish-score-row b {
+  display: block;
+  color: var(--text, #111114);
+  font-size: 17px;
+  line-height: 23px;
+  font-weight: 750;
+}
+.max-finish-score-row span {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-secondary, #707078);
+  font-size: 10px;
+  line-height: 14px;
+}
+.max-finish-chart,
+.max-finish-list,
+.max-finish-coach {
+  border: 1px solid var(--seed-stroke-weak, #ededf0);
+  border-radius: 18px;
+  background: #fff;
+}
+.max-finish-chart {
+  padding: 14px;
+}
+.max-finish-chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.max-finish-chart-head b {
+  color: var(--text, #111114);
+  font-size: 14px;
+  line-height: 19px;
+  font-weight: 700;
+}
+.max-finish-chart-head span,
+.max-finish-row strong {
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.max-finish-chart-head .good,
+.max-finish-row strong.good {
+  background: #eaf8f1;
+  color: #21a66b;
+}
+.max-finish-chart-head .warn,
+.max-finish-row strong.warn {
+  background: #fff7e6;
+  color: #b7791f;
+}
+.max-finish-row strong.empty {
+  background: var(--seed-bg-fill, #f3f3f5);
+  color: var(--text-secondary, #707078);
+}
+.max-finish-list {
+  display: grid;
+  padding: 2px 14px;
+}
+.max-finish-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 11px 0;
+  border-top: 1px solid var(--seed-stroke-weak, #ededf0);
+}
+.max-finish-row:first-child {
+  border-top: 0;
+}
+.max-finish-row b {
+  display: block;
+  color: var(--text, #111114);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+}
+.max-finish-row span,
+.max-finish-empty {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-secondary, #707078);
+  font-size: 11px;
+  line-height: 15px;
+}
+.max-finish-coach {
+  margin-top: 10px;
+  padding: 14px;
+  background: #fbfbfc;
+}
+.max-finish-coach b {
+  display: block;
+  color: var(--text, #111114);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 750;
+}
+.max-finish-coach p {
+  margin-top: 5px;
+  color: var(--text-secondary, #707078);
+  font-size: 12px;
+  line-height: 19px;
+}
+/* Issue 2: AI 추천 dim 카드 — 빈 상태(기록 쌓이면) 카피에 어울리는 차분한 톤 */
+.wt-ai-txt-dim {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.55;
+  letter-spacing: -0.2px;
+  opacity: 0.92;
+}
+
+/* Step 3 루틴 선택 — AI 추천 / 직접 선택 동등 비중 카드(TDS Tonal).
+   두 경로 모두 시각 무게 동일, 아이콘·라벨로만 구분. */
+.wt-routine-choice {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.wt-routine-card {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 16px 12px;
+  border: 1px solid var(--seed-stroke-weak);
+  border-radius: var(--seed-r3);
+  background: var(--seed-bg-fill, var(--surface2));
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.1s ease-in-out, background 0.1s ease-in-out, border-color 0.1s ease-in-out;
+  min-height: 88px;
+  text-align: center;
+}
+.wt-routine-card:active {
+  transform: scale(0.98);
+  background: var(--primary-bg);
+  border-color: var(--primary);
+}
+.wt-routine-card:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.wt-routine-card-icon { font-size: 18px; margin-bottom: 4px; line-height: 1; }
+.wt-routine-card-title { font-weight: 700; font-size: 14px; line-height: 1.35; }
+.wt-routine-card-sub { font-size: 11px; line-height: 1.4; opacity: 0.7; margin-top: 2px; }
+
+/* AI CTA — TDS Primary 솔리드 */
+.wt-ai-cta {
+  appearance: none;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%;
+  height: 48px;
+  border: none;
+  border-radius: var(--seed-r3);
+  background: var(--primary);
+  color: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s ease-in-out, background 0.1s ease-in-out;
+  letter-spacing: -0.2px;
+}
+.wt-ai-cta:active {
+  transform: scale(0.98);
+  background: var(--primary-dark, var(--primary));
+}
+.wt-ai-cta:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.wt-ai-cta .ic-spark {
+  width: 16px; height: 16px;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+/* ── Step 2 보조 버튼 (지난 루틴 / 직접 선택) ──────────────── */
+.wt-step-alt { display: flex; gap: 8px; }
+.wt-btn-alt {
+  flex: 1;
+  appearance: none;
+  border: 1px solid var(--seed-stroke-weak);
+  background: var(--surface);
+  color: var(--text);
+  padding: 10px 8px;
+  border-radius: var(--seed-r3);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.1s ease-in-out;
+  min-height: 40px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  letter-spacing: -0.1px;
+}
+.wt-btn-alt:active { transform: scale(0.98); background: var(--surface2); }
+.wt-btn-alt[disabled] { opacity: 0.45; cursor: not-allowed; }

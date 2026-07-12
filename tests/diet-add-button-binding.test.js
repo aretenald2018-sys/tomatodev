@@ -1,3 +1,4 @@
+import { readAppCssSync } from './helpers/css-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -5,7 +6,7 @@ import { readFileSync } from 'node:fs';
 
 const appJs = readFileSync('app.js', 'utf8');
 const indexHtml = readFileSync('index.html', 'utf8');
-const styleCss = readFileSync('style.css', 'utf8');
+const styleCss = readAppCssSync();
 
 class FakeElement {
   constructor({ dataset = {} } = {}) {
@@ -33,9 +34,6 @@ function createDietHarness() {
     },
   };
   const window = {
-    async openNutritionSearch(meal) {
-      calls.push(`search:${meal}`);
-    },
     wtAddFrequentFoodSuggestion(meal, key) {
       calls.push(`frequent:${meal}:${key}`);
     },
@@ -48,6 +46,8 @@ function createDietHarness() {
     window,
     document,
     console,
+    wtAddFrequentFoodSuggestion: window.wtAddFrequentFoodSuggestion,
+    openNutritionSearch: async meal => calls.push(`search:${meal}`),
     showToast: message => calls.push(`toast:${message}`),
   }, { filename: 'app.js' });
   return { calls, dietGrid, window };

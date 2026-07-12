@@ -7,20 +7,19 @@ import { loadAll, TODAY, getTabOrder,
          isAdmin, isAdminGuest, trackEvent,
          getCurrentUser, loadSavedUser, refreshCurrentUserFromDB } from './data.js';
 import { loadCSVDatabase } from './fatsecret-api.js';
-import { getDietRec, getWorkoutRec,
-         analyzeGoalFeasibility }                 from './ai.js';
 // ── 분리된 모듈 ──
-import './feature-nutrition.js';
+import { openNutritionSearch } from './feature-nutrition.js';
 import './feature-diet-plan.js';
 import './feature-checkin.js';
 import './feature-misc.js';
 import './workout-ui.js';
-import './workout/expert.js?v=20260516v6';  // 전문가 모드 (window.* 노출 + 렌더)
+import './workout/expert.js';  // 전문가 모드 렌더와 scoped action binding
 import { showTutorialIfNeeded } from './feature-tutorial.js';
 import { initFCM, installPWA, showPWAInstallBanner, updateInstallBtn } from './pwa-fcm.js';
 import {
   initTabDrag,
   initSwipeNavigation,
+  configureNavigation,
   applyTabOrder,
   applyVisibleTabs,
   openTabSettingsModal,
@@ -30,15 +29,10 @@ import {
 import { initUxPolish } from './utils/ux-polish.js';
 import { initActionRouter } from './utils/action-router.js';
 import { registerStaticActions } from './app/static-actions.js';
-import { installAppCompatibilityBridge } from './app/compatibility-bridge.js';
 import { loadLazyModule } from './app/lazy-loader.js';
 import { getTabDefinition, isRegisteredTab } from './app/tab-registry.js';
-import {
-  openModal as _openModal,
-  closeModal as _closeModal,
-  initOverlayStack,
-} from './app/overlay-stack.js';
-import { initBuildInfoSurface } from './utils/build-info.js?v=20260708a-diet-frequent-foods';
+import { initOverlayStack } from './app/overlay-stack.js';
+import { initBuildInfoSurface } from './utils/build-info.js';
 import {
   enableWorkoutPwaHistory,
   getWorkoutNavSnapshot,
@@ -47,20 +41,21 @@ import {
   openWorkoutDaySheet,
   subscribeWorkoutNav,
 } from './workout/navigation-stack.js';
-import './utils/confirm-modal.js'; // window.confirmAction / confirmSimple 등록
-import './utils/form-guard.js';    // window.createFormGuard / registerFormGuard 등록
-import './utils/format.js';        // window.fmtKcal / fmtDate 등 로케일 포맷
 import './utils/haptics.js';       // window.haptic.light/medium/heavy (Capacitor + web fallback)
 try { initBuildInfoSurface(); } catch (e) { console.warn('[app] build info init 실패:', e); }
 // ── 코어 탭 (즉시 로드) ──
 import { renderHome, refreshNotifCenter, showToast } from './render-home.js';
+import { closeNotifCenter, markAllNotifsRead, toggleNotifCenter } from './home/notifications.js';
 import { setLifeZoneVisitContext } from './home/life-zone.js';
 import { showWelcomeBackPopup } from './home/welcome-back.js';
 import { showDietPremiumReportIfNeeded } from './feature-diet-premium-report.js';
 import {
-  loadWorkoutDate, changeWorkoutDate, goToTodayWorkout, saveWorkoutDay,
+  loadWorkoutDate,
   openNutritionPhotoUpload, wtRecoverTimers, wtRestoreRunningSessionIfActive,
-} from './render-workout.js?v=20260708a-diet-frequent-foods';
+  wtAddFrequentFoodSuggestion,
+} from './render-workout.js';
+import { wtHandleExercisePickerBack } from './workout/exercises.js';
+import { wtHandleRunningSessionBack } from './workout/running-session.js';
 
 // ── 레이지 로딩 탭 캐시 ──
 const _lazy = loadLazyModule;
@@ -112,24 +107,13 @@ function _hideTabSkeleton(tabId) {
   tab.dataset.rendered = '1';
 }
 
-// ── 레이지 프록시: 탭 전환 시 모듈 로드, window.* 자동 등록 ──
+// ── 레이지 프록시: 탭 전환 시 모듈 로드 후 공개 render entrypoint 호출 ──
 async function _lazyRenderStats()   { const cfg = getTabDefinition('stats');    _showTabSkeleton(cfg.panelId); try { const m = await _lazy(cfg.id, cfg.module); m.renderStats(); return m; } finally { _hideTabSkeleton(cfg.panelId); } }
 async function _lazyRenderAdmin()   { const cfg = getTabDefinition('admin');    _showTabSkeleton(cfg.panelId); try { const m = await _lazy(cfg.id, cfg.module); m.renderAdmin(); return m; } finally { _hideTabSkeleton(cfg.panelId); } }
 async function _lazyRenderCooking() { const cfg = getTabDefinition('cooking');  _showTabSkeleton(cfg.panelId); try { const m = await _lazy(cfg.id, cfg.module); m.renderCooking(); return m; } finally { _hideTabSkeleton(cfg.panelId); } }
 async function _lazyRenderCalendar(){ const cfg = getTabDefinition('calendar'); _showTabSkeleton(cfg.panelId); try { const m = await _lazy(cfg.id, cfg.module); m.renderCalendar(); return m; } finally { _hideTabSkeleton(cfg.panelId); } }
 async function _lazyRenderWorkoutCalendarHome(){ const cfg = getTabDefinition('calendar'); const m = await _lazy(cfg.id, cfg.module); m.renderWorkoutCalendarHome?.(); return m; }
 import { ensureModal, loadAndInjectModals } from './modal-manager.js';
-
-// ── 분리된 모달 핸들러 import ──────────────────────────────────
-import {
-  openGoalModal, closeGoalModal, toggleGoalCondition,
-  saveGoalFromModal, deleteGoalItem, analyzeGoalFeasibilityHandler
-} from './app-modal-goals.js';
-import {
-  openQuestModal, closeQuestModal, onQuestAutoChange,
-  saveQuestFromModal, openQuestEditModal, closeQuestEditModal,
-  saveQuestEdit, deleteQuestItem, toggleQuestCheck
-} from './app-modal-quests.js';
 
 // ── 모달 및 CSV 초기화 ───────────────────────────────────────────
 async function initializeApp() {
@@ -139,8 +123,7 @@ async function initializeApp() {
   initWorkoutSystemBack();
   initOverlayStack();
 
-  // 전역 data-action 이벤트 위임 라우터 (R0 인프라)
-  // 기존 onclick 과 공존. 새 UI는 registerAction 으로 등록 → window.* 점진 제거.
+  // shell data-action 이벤트 위임 라우터와 정적 action registry
   try { initActionRouter(); } catch (e) { console.warn('[app] action router init 실패:', e); }
   try { registerStaticActions(); } catch (e) { console.warn('[app] static actions init 실패:', e); }
 
@@ -156,8 +139,6 @@ async function initializeApp() {
 
 }
 
-// feature 모듈 호환 bridge. 신규 코드는 app/overlay-stack.js를 직접 import한다.
-
 let _lifeZoneNpcQuestEventBound = false;
 function _bindLifeZoneNpcQuestEvent() {
   if (_lifeZoneNpcQuestEventBound) return;
@@ -167,16 +148,19 @@ function _bindLifeZoneNpcQuestEvent() {
     const modalByNpc = {
       trainer: {
         modalId: 'trainer-quest-modal',
+        module: './modals/trainer-quest-modal.js',
         opener: 'openTrainerQuestModal',
         label: '트레이너'
       },
       miranda: {
         modalId: 'miranda-quest-modal',
+        module: './modals/miranda-quest-modal.js',
         opener: 'openMirandaQuestModal',
         label: '미란다'
       },
       consultingChief: {
         modalId: 'consulting-chief-quest-modal',
+        module: './modals/consulting-chief-quest-modal.js',
         opener: 'openConsultingChiefQuestModal',
         label: '상담실장'
       }
@@ -186,7 +170,8 @@ function _bindLifeZoneNpcQuestEvent() {
     event.preventDefault?.();
     try {
       await ensureModal(modalConfig.modalId);
-      const opener = window[modalConfig.opener];
+      const modalModule = await import(modalConfig.module);
+      const opener = modalModule[modalConfig.opener];
       if (typeof opener === 'function') {
         opener();
         return;
@@ -290,7 +275,7 @@ function _runAppShellAction(action, control, event) {
       break;
     case 'toggle-notif-center':
       _closeMoreMenu();
-      _runWindowAction('toggleNotifCenter');
+      toggleNotifCenter();
       break;
     case 'refresh-app-update':
       _closeMoreMenu();
@@ -305,10 +290,10 @@ function _runAppShellAction(action, control, event) {
       _runWindowAction('logoutAccount');
       break;
     case 'mark-all-notifs-read':
-      _runWindowAction('markAllNotifsRead');
+      void markAllNotifsRead();
       break;
     case 'close-notif-center':
-      _runWindowAction('closeNotifCenter');
+      closeNotifCenter();
       break;
     case 'switch-tab':
       if (tab) void switchTab(tab);
@@ -369,16 +354,6 @@ function _parseWorkoutDateKey(key) {
   return { y: Number(match[1]), m: Number(match[2]) - 1, d: Number(match[3]) };
 }
 
-function _takeWorkoutTargetSessionIndex(fallback = 0) {
-  const raw = window.__wtTargetSessionIndex;
-  if (raw !== undefined && raw !== null) {
-    try { delete window.__wtTargetSessionIndex; } catch { window.__wtTargetSessionIndex = null; }
-    const n = Number(raw);
-    return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
-  }
-  return fallback;
-}
-
 const WORKOUT_PULL_BACK_DEADZONE_PX = 8;
 const WORKOUT_PULL_BACK_THRESHOLD_PX = 72;
 function _setWorkoutSurface() {
@@ -429,8 +404,8 @@ subscribeWorkoutNav((snapshot, action) => {
 });
 function _handleWorkoutOverlayBack() {
   return _currentTab === 'workout' && (
-    window.wtHandleRunningSessionBack?.() === true ||
-    window.wtHandleExercisePickerBack?.() === true
+    wtHandleRunningSessionBack() === true ||
+    wtHandleExercisePickerBack() === true
   );
 }
 
@@ -615,6 +590,15 @@ async function renderAll() {
 
 document.addEventListener('sheet:saved',   renderAll);
 document.addEventListener('cooking:saved', renderAll);
+document.addEventListener('app:render-requested', renderAll);
+document.addEventListener('app:start-user-session', (event) => {
+  Promise.resolve(startTomatoUserSession())
+    .then((result) => event.detail?.resolve?.(result))
+    .catch((error) => {
+      console.error('[app] user session start failed:', error);
+      event.detail?.resolve?.(false);
+    });
+});
 
 // ── 운동탭에서 날짜 지정 진입 ────────────────────────────────────
 function openWorkoutTab(y, m, d) {
@@ -830,22 +814,14 @@ function _initDietInputButtons() {
     const action = btn.dataset.action;
     const meal = btn.dataset.meal || btn.closest('[data-meal]')?.dataset.meal; // 끼니 (breakfast/lunch/dinner/snack)
 
-    // meal이 있으면 해당 끼니를 미리 선택
-    if (meal) window._nutritionSearchMeal = meal;
-
     if (action === 'addFood') {
       if (!meal) {
         console.warn('[diet-input] addFood meal 누락');
         showToast?.('끼니 정보를 찾지 못했어요. 새로고침 후 다시 시도해주세요.', 2500, 'error');
         return;
       }
-      if (typeof window.openNutritionSearch !== 'function') {
-        console.error('[diet-input] openNutritionSearch 미등록');
-        showToast?.('음식 추가를 준비하지 못했어요. 새로고침 후 다시 시도해주세요.', 2500, 'error');
-        return;
-      }
       try {
-        await window.openNutritionSearch(meal);
+        await openNutritionSearch(meal);
       } catch (err) {
         console.error('[diet-input] 음식 검색 모달 열기 실패:', err);
         showToast?.('음식 검색 창을 열지 못했어요. 잠시 후 다시 시도해주세요.', 2500, 'error');
@@ -856,12 +832,7 @@ function _initDietInputButtons() {
         showToast?.('추천 음식을 추가하지 못했어요. 새로고침 후 다시 시도해주세요.', 2500, 'error');
         return;
       }
-      if (typeof window.wtAddFrequentFoodSuggestion !== 'function') {
-        console.error('[diet-input] wtAddFrequentFoodSuggestion 미등록');
-        showToast?.('추천 음식 추가를 준비하지 못했어요. 새로고침 후 다시 시도해주세요.', 2500, 'error');
-        return;
-      }
-      window.wtAddFrequentFoodSuggestion(meal, btn.dataset.suggestionKey);
+      wtAddFrequentFoodSuggestion(meal, btn.dataset.suggestionKey);
     } else if (action === 'photoUpload') {
       openNutritionPhotoUpload();
     }
@@ -872,49 +843,13 @@ function _initDietInputButtons() {
 _bindLifeZoneNpcQuestEvent();
 _bindRunningLiveEvent();
 _bindAppShellActions();
+configureNavigation({ getCurrentTab: () => _currentTab, switchTab });
 init();
 _initDietInputButtons();
 
-// ── window 등록 ──────────────────────────────────────────────────
-installAppCompatibilityBridge({
-  _openModal,
-  _closeModal,
-  _getCurrentTab: () => _currentTab,
-  wtOpenWorkoutDaySheet: openWorkoutDaySheetFromAction,
-  wtHandleWorkoutBack: () => _handleWorkoutOverlayBack() || handleWorkoutBack({ activeTab: _currentTab, preferHistory: true }),
-  renderAll,
-  __startTomatoUserSession: startTomatoUserSession,
-  renderHome,
-  switchTab,
-  showToast,
-  getDietRec,
-  getWorkoutRec,
-  openWorkoutTab,
-  openSheet: openWorkoutTab,
-  changeWorkoutDate,
-  goToTodayWorkout,
-  saveWorkoutDay,
-  _wtExports: { loadWorkoutDate },
-  openCookingModal: async (...args) => (await _lazy('cooking', './render-cooking.js')).openCookingModal(...args),
-  closeCookingModal: async (...args) => (await _lazy('cooking', './render-cooking.js')).closeCookingModal(...args),
-  saveCookingFromModal: async (...args) => (await _lazy('cooking', './render-cooking.js')).saveCookingFromModal(...args),
-  deleteCookingFromModal: async (...args) => (await _lazy('cooking', './render-cooking.js')).deleteCookingFromModal(...args),
-  onCookingPhotoInput: async (...args) => (await _lazy('cooking', './render-cooking.js')).onCookingPhotoInput(...args),
-  openGoalModal,
-  closeGoalModal,
-  saveGoalFromModal,
-  deleteGoalItem,
-  analyzeGoalFeasibility: analyzeGoalFeasibilityHandler,
-  toggleGoalCondition,
-  openQuestModal,
-  closeQuestModal,
-  saveQuestFromModal,
-  openQuestEditModal,
-  closeQuestEditModal,
-  saveQuestEdit,
-  deleteQuestItem,
-  toggleQuestCheck,
-  onQuestAutoChange,
+document.addEventListener('app:switch-tab', (event) => {
+  const tab = event.detail?.tab;
+  if (tab) void switchTab(tab);
 });
 
 // ── 앱 초기화 ────────────────────────────────────────────────

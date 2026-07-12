@@ -226,7 +226,7 @@ export function openUnitGoalDatePicker() {
   modal.style.zIndex = '1002';
   modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
   modal.innerHTML = `
-    <div class="modal-sheet" style="max-width:360px;" onclick="event.stopPropagation()">
+    <div class="modal-sheet" style="max-width:360px;">
       <div class="sheet-handle"></div>
       <div class="modal-title">시작일 선택</div>
       <div class="sdp-nav">
@@ -256,5 +256,3 @@ export function openUnitGoalDatePicker() {
 
   render();
 }
-
-window.openUnitGoalDatePicker = openUnitGoalDatePicker;

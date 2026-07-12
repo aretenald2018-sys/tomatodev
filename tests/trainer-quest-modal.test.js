@@ -1,3 +1,4 @@
+import { readAppCssSync } from './helpers/css-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -6,7 +7,7 @@ const appJs = readFileSync('app.js', 'utf8');
 const modalManagerJs = readFileSync('modal-manager.js', 'utf8');
 const modalJs = readFileSync('modals/trainer-quest-modal.js', 'utf8');
 const statsJs = readFileSync('render-stats.js', 'utf8');
-const styleCss = readFileSync('style.css', 'utf8');
+const styleCss = readAppCssSync();
 const swJs = readFileSync('sw.js', 'utf8') + readFileSync('runtime-assets.js', 'utf8');
 
 function readPngHeader(relativePath) {
@@ -82,7 +83,8 @@ test('life zone trainer quest event opens the injected modal', () => {
   assert.match(appJs, /miranda: \{/);
   assert.match(appJs, /opener: 'openMirandaQuestModal'/);
   assert.match(appJs, /await ensureModal\(modalConfig\.modalId\)/);
-  assert.match(appJs, /const opener = window\[modalConfig\.opener\]/);
+  assert.match(appJs, /const modalModule = await import\(modalConfig\.module\)/);
+  assert.match(appJs, /const opener = modalModule\[modalConfig\.opener\]/);
   assert.match(appJs, /opener\(\)/);
 });
 

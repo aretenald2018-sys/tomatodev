@@ -1,0 +1,167 @@
+/* ══════════════════════════════════════════════════════════
+   함께 축하해요 카드 (home/cheers-card.js)
+══════════════════════════════════════════════════════════ */
+.cheers-card { padding: 16px; }
+.cheers-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.cheers-card-title { font-size: 15px; font-weight: 700; line-height: 22.5px; color: var(--text); }
+.cheers-card-emoji { font-size: 18px; }
+.cheers-card-sub { font-size: 12px; color: var(--muted); margin-left: auto; }
+.cheers-list { display: flex; flex-direction: column; }
+.cheers-item {
+  display: flex; align-items: center; gap: 12px;
+  min-height: 44px; padding: 10px 0;
+  border-top: 1px solid var(--seed-stroke-weak, rgba(0,0,0,0.06));
+  cursor: pointer;
+  transition: background 0.1s ease-in-out;
+}
+.cheers-item:first-child { border-top: none; }
+.cheers-item:active { background: var(--primary-bg); }
+.cheers-avatar {
+  flex: 0 0 auto; width: 32px; height: 32px; border-radius: 50%;
+  background: var(--primary-bg); color: var(--primary);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 13px;
+  overflow: hidden;
+}
+.cheers-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.cheers-text { flex: 1; font-size: 13px; line-height: 1.45; color: var(--text); min-width: 0; }
+.cheers-text strong { font-weight: 600; color: var(--text); }
+
+/* 동일 유저의 복수 축하 메시지를 한 행에서 자동 로테이션 (N=2, N=3 지원)
+   - grid 스태킹: 모든 줄을 (1,1) 한 셀에 쌓아 컨테이너 높이가 '가장 긴 메시지' 기준으로 잡힘
+   - 짧은 첫 메시지 기준으로 고정되는 overflow 이슈 방지 */
+.cheers-text-rotator {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+.cheers-text-rotator > .cheers-rot-line {
+  grid-column: 1;
+  grid-row: 1;
+  opacity: 0;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+  will-change: opacity;
+  min-width: 0;
+}
+/* N=2: 8s 주기, 각 슬롯 50% 노출 */
+.cheers-text-rotator[data-n="2"] > .cheers-rot-line {
+  animation-duration: 8s;
+}
+.cheers-text-rotator[data-n="2"] > .cheers-rot-line:nth-child(1) { animation-name: cheersRot2a; }
+.cheers-text-rotator[data-n="2"] > .cheers-rot-line:nth-child(2) { animation-name: cheersRot2b; }
+@keyframes cheersRot2a {
+  0%, 45% { opacity: 1; }
+  50%, 95% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes cheersRot2b {
+  0%, 45% { opacity: 0; }
+  50%, 95% { opacity: 1; }
+  100% { opacity: 0; }
+}
+/* N=3: 12s 주기, 각 슬롯 ~33% 노출 */
+.cheers-text-rotator[data-n="3"] > .cheers-rot-line {
+  animation-duration: 12s;
+}
+.cheers-text-rotator[data-n="3"] > .cheers-rot-line:nth-child(1) { animation-name: cheersRot3a; }
+.cheers-text-rotator[data-n="3"] > .cheers-rot-line:nth-child(2) { animation-name: cheersRot3b; }
+.cheers-text-rotator[data-n="3"] > .cheers-rot-line:nth-child(3) { animation-name: cheersRot3c; }
+@keyframes cheersRot3a {
+  0%, 28% { opacity: 1; }
+  33%, 95% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes cheersRot3b {
+  0%, 28% { opacity: 0; }
+  33%, 61% { opacity: 1; }
+  66%, 100% { opacity: 0; }
+}
+@keyframes cheersRot3c {
+  0%, 61% { opacity: 0; }
+  66%, 94% { opacity: 1; }
+  100% { opacity: 0; }
+}
+/* 접근성: 모션 감소 설정 시 첫 메시지만 고정 노출 */
+@media (prefers-reduced-motion: reduce) {
+  .cheers-text-rotator > .cheers-rot-line { animation: none; opacity: 0; }
+  .cheers-text-rotator > .cheers-rot-line:first-child { opacity: 1; }
+}
+.cheers-item-icon { flex: 0 0 auto; font-size: 14px; opacity: 0.6; }
+.cheers-item-self { background: linear-gradient(to right, var(--primary-bg), transparent 80%); }
+.cheers-item-self .cheers-avatar { background: var(--primary); color: #fff; }
+.cheers-self-badge {
+  display: inline-block; margin-right: 6px;
+  padding: 1px 7px; border-radius: 8px;
+  background: var(--primary); color: #fff;
+  font-size: 10px; font-weight: 700; vertical-align: middle;
+}
+.cheers-empty { font-size: 13px; color: var(--muted); padding: 8px 0 4px; line-height: 1.45; }
+.cheers-more-btn {
+  margin-top: 8px; width: 100%; min-height: 36px; padding: 8px 12px;
+  background: transparent; color: var(--primary); border: none; cursor: pointer;
+  font-size: 13px; font-weight: 600; border-radius: 8px;
+  transition: background 0.1s ease-in-out;
+}
+.cheers-more-btn:active { background: var(--primary-bg); }
+
+/* 본인 축하 에디터 영역 */
+.cheers-self-row {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--seed-stroke-weak, rgba(0,0,0,0.06));
+  display: flex; flex-direction: column; gap: 8px;
+}
+.cheers-self-preview {
+  font-size: 12px; color: var(--muted);
+  line-height: 1.4;
+  padding: 8px 10px; background: var(--primary-bg);
+  border-radius: 8px;
+}
+.cheers-self-preview strong { color: var(--primary); font-weight: 600; }
+.cheers-self-btn {
+  min-height: 40px; padding: 8px 14px;
+  border: 1px dashed var(--primary-light, #fed4d2);
+  background: transparent; color: var(--primary);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  border-radius: 10px;
+  transition: background 0.1s ease-in-out;
+}
+.cheers-self-btn:active { background: var(--primary-bg); }
+.cheers-empty {
+  font-size: 13px; color: var(--muted);
+  padding: 12px 4px 4px;
+  line-height: 1.5;
+}
+
+/* self-cheer 모달 */
+.self-cheer-body { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 12px; }
+.self-cheer-hint {
+  font-size: 12px; line-height: 1.6; color: var(--muted);
+  padding: 10px 12px; background: var(--primary-bg);
+  border-radius: 10px;
+}
+.self-cheer-note { color: var(--primary); font-weight: 600; }
+.self-cheer-textarea {
+  min-height: 72px; padding: 12px 14px;
+  border: 1px solid var(--seed-stroke-weak, #d5d5d5);
+  border-radius: 12px; background: var(--seed-bg-fill, #fafafa);
+  font-size: 15px; line-height: 1.5; color: var(--text);
+  resize: vertical;
+  transition: border-color 0.1s ease-in-out, box-shadow 0.1s ease-in-out;
+}
+.self-cheer-textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-bg); }
+.self-cheer-preview {
+  font-size: 12px; color: var(--muted);
+  padding: 8px 12px; border-radius: 8px; background: var(--seed-bg-fill, #fafafa);
+  line-height: 1.5; min-height: 24px;
+}
+.self-cheer-preview strong { color: var(--primary); font-weight: 600; }
+.self-cheer-current {
+  font-size: 12px; color: var(--muted); line-height: 1.5;
+  padding: 0 4px;
+}
+.self-cheer-current strong { color: var(--text); font-weight: 600; }
+.self-cheer-actions {
+  display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px;
+}
+.self-cheer-clear { color: var(--muted) !important; }

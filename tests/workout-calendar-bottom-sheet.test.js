@@ -1,3 +1,4 @@
+import { readAppCssSync } from './helpers/css-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -12,7 +13,7 @@ import {
 } from '../workout/session-policy.js';
 
 const calendarJs = readFileSync(new URL('../render-calendar.js', import.meta.url), 'utf8');
-const styleCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+const styleCss = readAppCssSync();
 const tm2Css = readFileSync(new URL('../test-mode-v2.css', import.meta.url), 'utf8');
 const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8') + readFileSync(new URL('../runtime-assets.js', import.meta.url), 'utf8');
 const tm2EntryJs = readFileSync(new URL('../workout/test-v2/entry.js', import.meta.url), 'utf8');
@@ -340,8 +341,8 @@ test('day sheet add picker stays on the current sheet session', () => {
   const refresh = calendarJs.slice(refreshStart, refreshEnd);
   const addFn = calendarJs.slice(addStart, addEnd);
 
-  assert.match(loader, /window\.__wtTargetSessionIndex = Math\.max\(0, Math\.floor\(Number\(sessionIndex\) \|\| 0\)\)/);
-  assert.match(loader, /const loader = window\._wtExports\?\.loadWorkoutDate \|\| window\.loadWorkoutDate/);
+  assert.match(loader, /loadWorkoutSessionDate\(p\.y, p\.m, p\.d, \{/);
+  assert.match(loader, /sessionIndex: Math\.max\(0, Math\.floor\(Number\(sessionIndex\) \|\| 0\)\)/);
   assert.doesNotMatch(loader, /wtOpenWorkoutRecord|pushWorkoutRecord|switchTab\('workout'/);
   assert.match(calendarJs, /import \{ normalizeWorkoutExerciseSelectionDetail \} from '\.\/workout\/exercise-entry-actions\.js'/);
   assert.match(refresh, /const selectionDetail = normalizeWorkoutExerciseSelectionDetail\(detail\)/);
@@ -351,13 +352,13 @@ test('day sheet add picker stays on the current sheet session', () => {
   assert.match(refresh, /if \(entryIndex != null\) _requestWorkoutSheetPendingCarouselFocus\(key, targetIndex, entryIndex\)/);
   assert.match(refresh, /renderWorkoutCalendarHome\(\)/);
   assert.match(refresh, /if \(entryIndex != null\) _tryRestorePendingWorkoutSheetCarouselFocus\(key, targetIndex\)/);
-  assert.match(refresh, /if \(!selectionDetail\.existing\) window\.showToast\?\.\('종목을 추가했어요'/);
+  assert.match(refresh, /if \(!selectionDetail\.existing\) showToast\('종목을 추가했어요'/);
   assert.match(addFn, /const targetKey = _parseDateKey\(key\) \? key : _workoutHomeSelectedKey/);
   assert.match(addFn, /const targetIndex = Math\.max\(0, Math\.min\(_workoutHomeSessionIndex, WORKOUT_GYM_SESSION_COUNT - 1\)\)/);
   assert.doesNotMatch(addFn, /findIndex\(session => !hasWorkoutSessionData\(session\)\)/);
   assert.doesNotMatch(addFn, /_loadWorkoutEditorForSession\(key, targetIndex\)/);
   assert.match(addFn, /_loadWorkoutStateForSheetSession\(targetKey, targetIndex\)/);
-  assert.match(addFn, /window\.wtOpenExercisePicker\(\{[\s\S]*source:\s*'workout-day-sheet'[\s\S]*afterSelect: detail => _refreshWorkoutHomeAfterPickerSelect\(targetKey, targetIndex, detail\)/);
+  assert.match(addFn, /await wtOpenExercisePicker\(\{[\s\S]*source:\s*'workout-day-sheet'[\s\S]*afterSelect: detail => _refreshWorkoutHomeAfterPickerSelect\(targetKey, targetIndex, detail\)/);
   assert.doesNotMatch(calendarJs, /function _openWorkoutEditorForSession|function _loadWorkoutEditorForSession|window\.wtOpenWorkoutRecord/);
 });
 
@@ -997,8 +998,8 @@ test('workout bottom sheet replaces the third gym session with a dedicated runni
   assert.match(calendarJs, /case 'add-running':[\s\S]*_openWorkoutHomeRunning\(key\)/);
   assert.match(opener, /_loadWorkoutStateForSheetSession\(targetKey, WORKOUT_RUNNING_SESSION_INDEX\)/);
   assert.doesNotMatch(opener, /_loadWorkoutEditorForSession|wtOpenWorkoutRecord/);
-  assert.match(opener, /await import\('\.\/workout\/running-session\.js'\)/);
-  assert.match(opener, /window\.wtOpenRunningSession\(\)/);
+  assert.match(calendarJs, /import \{ wtMountRunningSession, wtOpenRunningSession \} from '\.\/workout\/running-session\.js'/);
+  assert.match(opener, /wtOpenRunningSession\(\)/);
   assert.match(styleCss, /\.wt-day-fab--running/);
   assert.match(styleCss, /\.wt-running-empty \.wt-empty-center/);
 });
@@ -1269,7 +1270,7 @@ test('workout calendar week rail renders cycle prescriptions instead of weekly a
   assert.match(calendarJs, /target\?\.closest\?\.\('\[data-cal-cycle-target\]'\)/);
   assert.match(calendarJs, /event\.stopPropagation\(\)/);
   assert.match(calendarJs, /function _openWorkoutCycleTargetSettings/);
-  assert.match(calendarJs, /window\.tm2OpenBenchmarkSettings/);
+  assert.match(calendarJs, /tm2OpenBenchmarkSettings\(bmId\)/);
   assert.match(calendarJs, /function _workoutCalendarRowWeekStart/);
   assert.match(calendarJs, /const rowMonday = new Date\(y, m, \(row \* 7\) - firstDow \+ 2\)/);
   assert.match(grid, /const weekStart = _workoutCalendarRowWeekStart\(y, m, row, firstDow\)/);
@@ -1325,7 +1326,7 @@ test('workout calendar week rail opens goal input sheet before exercise editor',
   assert.match(calendarJs, /modal\.addEventListener\('change'/);
   assert.match(calendarJs, /target\?\.closest\?\.\('\[data-cal-goal-select\]'\)/);
   assert.match(calendarJs, /function _openSelectedWorkoutGoalExercise\(modal\)/);
-  assert.match(calendarJs, /window\.wtOpenExerciseEditor\(exId, null, \{ returnToPicker: false, source: 'calendar-goal-input' \}\)/);
+  assert.match(calendarJs, /wtOpenExerciseEditor\(exId, null, \{ returnToPicker: false, source: 'calendar-goal-input' \}\)/);
   assert.match(bindFlow, /const actionRoot = root\?\.querySelector\?\.\('\.cal-workout-surface-home'\) \|\| root/);
   assert.match(bindFlow, /if \(!actionRoot\) return/);
   assert.match(bindFlow, /actionRoot\.addEventListener\('click'/);
@@ -1405,9 +1406,9 @@ test('cycle rail target cards open the existing growth-board benchmark settings 
   assert.match(openSheetFn, /event\.stopImmediatePropagation\(\)/);
   assert.match(openSheetFn, /_onAction\(event\)/);
   assert.match(openSheetFn, /event\.stopPropagation\(\)/);
-  assert.match(tm2EntryJs, /async function _openBenchmarkSettings\(benchmarkId\)/);
+  assert.match(tm2EntryJs, /export async function tm2OpenBenchmarkSettings\(benchmarkId\)/);
   assert.match(tm2EntryJs, /mod\.tm2OpenBenchmarkSettings\(benchmarkId\)/);
-  assert.match(tm2EntryJs, /window\.tm2OpenBenchmarkSettings = _openBenchmarkSettings/);
+  assert.doesNotMatch(tm2EntryJs, /window\.tm2OpenBenchmarkSettings/);
 });
 
 test('growth-board benchmark settings sheet merges program choice and horizontal cycle rail', () => {

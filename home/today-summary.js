@@ -18,7 +18,7 @@ export function renderDietGoalCard() {
     container.innerHTML = `<div style="text-align:center;padding:20px;">
       <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px;">체중과 목표를 설정해주세요</div>
       <div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px;line-height:1.5;">신체 정보를 입력하면 맞춤 목표와<br>진행률을 확인할 수 있어요.</div>
-      <button onclick="openDietPlanModal()" style="background:var(--primary);color:#fff;border:none;border-radius:var(--radius-md);padding:12px 24px;font-size:14px;font-weight:600;cursor:pointer;">설정하기</button>
+      <button type="button" data-action="diet:open-plan" style="background:var(--primary);color:#fff;border:none;border-radius:var(--radius-md);padding:12px 24px;font-size:14px;font-weight:600;cursor:pointer;">설정하기</button>
     </div>`;
     return;
   }
@@ -84,7 +84,7 @@ export function renderDietGoalCard() {
       <span class="diet-goal-meta-item">오늘: <strong style="color:${isRefeed?'var(--cf)':'var(--gym)'}">${isRefeed?'🔄 리피드':'🔥 데피싯'}</strong> ${dayTarget.kcal.toLocaleString()}kcal</span>
     </div>
     <div class="diet-goal-checkin-row">
-      <button class="diet-checkin-btn" onclick="openCheckinModal()">+ 주간 체크인</button>
+      <button type="button" class="diet-checkin-btn" data-action="home:open-checkin">+ 주간 체크인</button>
       ${latest ? `<span style="font-size:11px;color:var(--muted)">${latest.date.replace(/-/g,'/')} 기준</span>` : ''}
     </div>
   `;
@@ -101,7 +101,7 @@ export function renderTodayDiet() {
   if (!hasDietRecord(y, m, d)) {
     container.innerHTML = `<div style="font-size:12px;color:var(--muted);padding:4px 0">
       아직 기록이 없어요.
-      <button class="quest-add-btn" onclick="switchTab('diet')" style="margin-left:8px">기록하기</button>
+      <button type="button" class="quest-add-btn" data-action="home:switch-tab" data-tab="diet" style="margin-left:8px">기록하기</button>
     </div>`;
     return;
   }
@@ -158,7 +158,7 @@ export function renderTodayWorkout() {
   if (!hasExerciseRecord(y, m, d)) {
     container.innerHTML = `<div style="font-size:12px;color:var(--muted);padding:4px 0">
       아직 기록이 없어요.
-      <button class="quest-add-btn" onclick="switchTab('workout')" style="margin-left:8px">기록하기</button>
+      <button type="button" class="quest-add-btn" data-action="home:switch-tab" data-tab="workout" style="margin-left:8px">기록하기</button>
     </div>`;
     return;
   }

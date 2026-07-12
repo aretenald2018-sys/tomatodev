@@ -1,5 +1,5 @@
 export const MODAL_HTML = `
-<div class="modal-backdrop" id="quest-edit-modal" onclick="closeQuestEditModal(event)">
+<div class="modal-backdrop" id="quest-edit-modal" data-action="quest-edit:close">
 <div class="modal-sheet">
 <div class="sheet-handle"></div>
 <div class="modal-title">📝 퀘스트 수정</div>
@@ -18,8 +18,8 @@ export const MODAL_HTML = `
 <input class="ex-editor-input" id="quest-edit-target" type="number" min="1" placeholder="예: 12">
 </div>
 <div class="ex-editor-actions">
-<button class="tds-btn cancel-btn ghost md" onclick="closeQuestEditModal()">취소</button>
-<button class="tds-btn fill md"   onclick="saveQuestEdit()">변경사항 저장</button>
+<button class="tds-btn cancel-btn ghost md" data-action="quest-edit:close">취소</button>
+<button class="tds-btn fill md" data-action="quest-edit:save">변경사항 저장</button>
 </div>
 </div>
 </div>

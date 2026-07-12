@@ -1,5 +1,5 @@
 export const MODAL_HTML = `
-<div class="modal-backdrop" id="ex-picker-modal" onclick="wtCloseExercisePicker(event)">
+<div class="modal-backdrop" id="ex-picker-modal">
 <div class="modal-sheet ex-picker-sheet">
   <div class="ex-picker-topbar">
     <button type="button" class="ex-picker-nav-btn" id="ex-picker-back" aria-label="닫기">

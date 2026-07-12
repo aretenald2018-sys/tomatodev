@@ -1,0 +1,127 @@
+/* 운동탭 일자 상세 */
+.cal-workout-detail-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 12px;
+}
+.cal-workout-detail-summary > div {
+  min-width: 0;
+  padding: 10px 6px;
+  border: 1px solid var(--seed-stroke-neutral, #e5e7eb);
+  border-radius: 12px;
+  background: var(--seed-bg-fill, #f8f9fa);
+  text-align: center;
+}
+.cal-workout-detail-summary span {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 14px;
+  font-weight: 600;
+}
+.cal-workout-detail-summary strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+.cal-workout-detail-section {
+  margin-top: 14px;
+}
+.cal-workout-detail-title {
+  margin-bottom: 8px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 800;
+}
+.cal-workout-detail-list,
+.cal-workout-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cal-workout-ex-row,
+.cal-workout-activity-row {
+  padding: 12px;
+  border: 1px solid var(--seed-stroke-neutral, #e5e7eb);
+  border-radius: 12px;
+  background: var(--seed-bg-layer, #fff);
+}
+.cal-workout-ex-head,
+.cal-workout-activity-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.cal-workout-ex-head strong,
+.cal-workout-activity-head strong {
+  min-width: 0;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cal-workout-ex-head span,
+.cal-workout-activity-head span {
+  flex-shrink: 0;
+  color: #2563eb;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 800;
+}
+.cal-workout-ex-top,
+.cal-workout-activity-main {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 17px;
+  font-weight: 600;
+}
+.cal-workout-set-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+.cal-workout-set-list span {
+  max-width: 100%;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #214375;
+  font-size: 11px;
+  line-height: 15px;
+  font-weight: 700;
+}
+.cal-workout-note {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--seed-stroke-neutral, #e5e7eb);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 17px;
+  white-space: pre-wrap;
+}
+.cal-workout-activity-run { border-left: 3px solid #2563eb; }
+.cal-workout-activity-swim { border-left: 3px solid #0891b2; }
+.cal-workout-activity-cf { border-left: 3px solid #fa342c; }
+.cal-workout-activity-stretch { border-left: 3px solid #16a34a; }
+.cal-workout-empty-detail {
+  margin-top: 14px;
+  padding: 20px 12px;
+  border: 1px dashed var(--seed-stroke-neutral, #e5e7eb);
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}

@@ -36,8 +36,8 @@ test('friend feed user actions schedule render instead of calling renderFriendFe
   assert.match(feedJs, /import \{ createSocialRenderScheduler \} from '\.\/social-render-scheduler\.js'/);
   assert.match(feedJs, /const _scheduleFriendFeedRender = createSocialRenderScheduler\(/);
 
-  const quickAdd = sliceBetween(feedJs, 'window.quickAddNeighbor = async function', 'window.editFriendNickname = async function');
-  const like = sliceBetween(feedJs, 'window.friendLike = async function', 'window.showReactionPicker = function');
+  const quickAdd = sliceBetween(feedJs, 'export async function quickAddNeighbor', 'export async function editFriendNickname');
+  const like = sliceBetween(feedJs, 'export async function friendLike', 'export function showReactionPicker');
 
   assert.match(quickAdd, /_scheduleFriendFeedRender\('quick-add-neighbor'\)/);
   assert.match(like, /runOptimisticSocialAction/);
@@ -51,8 +51,8 @@ test('friend profile feed refreshes are scheduled instead of direct dependency c
   assert.match(profileJs, /import \{ createSocialRenderScheduler \} from '\.\/social-render-scheduler\.js'/);
   assert.match(profileJs, /const _scheduleFriendProfileFeedRender = createSocialRenderScheduler\(/);
 
-  const reaction = sliceBetween(profileJs, 'window.sendReaction = async function', 'window.markNotifRead = async function');
-  const notification = sliceBetween(profileJs, 'window.markNotifRead = async function', 'window.openTomatoGiftModal = function');
+  const reaction = sliceBetween(profileJs, 'export async function sendReaction', 'export async function markNotifRead');
+  const notification = sliceBetween(profileJs, 'export async function markNotifRead', 'export function openTomatoGiftModal');
 
   assert.match(reaction, /runOptimisticSocialAction/);
   assert.match(reaction, /refresh:\s*reason => _scheduleFriendProfileFeedRender\(reason\)/);

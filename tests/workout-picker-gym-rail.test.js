@@ -1,9 +1,10 @@
+import { readAppCssSync } from './helpers/css-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const exercisesJs = await readFile(new URL('../workout/exercises.js', import.meta.url), 'utf8');
-const css = (await readFile(new URL('../style.css', import.meta.url), 'utf8')).replace(/\r\n/g, '\n');
+const css = readAppCssSync().replace(/\r\n/g, '\n');
 
 function sliceByFirstBrace(source, startToken) {
   const start = source.indexOf(startToken);

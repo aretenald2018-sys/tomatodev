@@ -1,5 +1,5 @@
 export const MODAL_HTML = `
-<div class="modal-backdrop" id="quest-modal" onclick="closeQuestModal(event)">
+<div class="modal-backdrop" id="quest-modal" data-action="quest:close">
 <div class="modal-sheet">
 <div class="sheet-handle"></div>
 <div class="modal-title" id="quest-modal-title">⚔️ 새 퀘스트 추가</div>
@@ -19,7 +19,7 @@ export const MODAL_HTML = `
 </div>
 <div class="goal-condition-toggle-row">
 <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted2);cursor:pointer;">
-<input type="checkbox" id="quest-auto" onchange="onQuestAutoChange()" style="width:14px;height:14px;">
+<input type="checkbox" id="quest-auto" data-change-action="quest:auto-change" style="width:14px;height:14px;">
 운동/식단 기록 시 자동 완료 처리
 </label>
 </div>
@@ -31,8 +31,8 @@ export const MODAL_HTML = `
 </select>
 </div>
 <div class="ex-editor-actions">
-<button class="tds-btn cancel-btn ghost md" onclick="closeQuestModal()">취소</button>
-<button class="tds-btn fill md"   onclick="saveQuestFromModal()">저장하기</button>
+<button class="tds-btn cancel-btn ghost md" data-action="quest:close">취소</button>
+<button class="tds-btn fill md" data-action="quest:save">저장하기</button>
 </div>
 </div>
 </div>

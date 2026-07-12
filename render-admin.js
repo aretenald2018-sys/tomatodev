@@ -7,6 +7,11 @@ import { isExerciseDaySuccess } from './calc.js';
 import { nameResolver } from './admin/admin-utils.js';
 import { withCache, invalidateCache, DEFAULT_TTL_MS } from './admin/admin-cache.js';
 
+document.addEventListener('admin:refresh-requested', () => {
+  invalidateCache('admin:core');
+  void renderAdmin();
+});
+
 let _adminData = null;
 let _currentSection = 'home';
 let _outreachPrefillUid = '';
@@ -231,12 +236,12 @@ async function _renderCurrentSection() {
     switch (sectionId) {
       case 'home':
         mod.renderDashboardSection(container, _adminData, {
-          openCompose: (uid, message = '') => window._adminOpenComposeForUser(uid, message),
+          openCompose: _openComposeForUser,
         });
         break;
       case 'members':
         mod.renderPeopleSection(container, _adminData, {
-          openCompose: (uid) => window._adminOpenComposeForUser(uid, ''),
+          openCompose: (uid) => _openComposeForUser(uid, ''),
         });
         break;
       case 'community':
@@ -257,7 +262,7 @@ async function _renderCurrentSection() {
         break;
       default:
         mod.renderDashboardSection(container, _adminData, {
-          openCompose: (uid, message = '') => window._adminOpenComposeForUser(uid, message),
+          openCompose: _openComposeForUser,
         });
         break;
     }
@@ -281,16 +286,14 @@ function _switchSection(sectionId) {
   _renderCurrentSection();
 }
 
-window._adminSwitchSection = _switchSection;
-
-window._adminOpenComposeForUser = (uid, suggestedMessage = '') => {
+function _openComposeForUser(uid, suggestedMessage = '') {
   _outreachPrefillUid = uid || '';
   _outreachPrefillMessage = suggestedMessage || '';
   _outreachPrefillChannel = (suggestedMessage || '').includes('복귀') ? 'comeback' : 'push';
   _switchSection('outreach');
 };
 
-window._adminToggleExportMenu = function() {
+function _toggleExportMenu() {
   const menu = document.getElementById('admin-export-menu');
   if (!menu || !_adminData) return;
   const isOpen = menu.style.display !== 'none';
@@ -301,12 +304,7 @@ window._adminToggleExportMenu = function() {
 
   const buttonStyle = 'display:flex;align-items:center;justify-content:space-between;width:100%;background:transparent;border:none;color:var(--hig-text);padding:10px 12px;border-radius:8px;cursor:pointer;';
   menu.innerHTML = `
-    <button style="${buttonStyle}" onclick="window._adminExport('ai_json')">AI JSON <span>↓</span></button>
-    <button style="${buttonStyle}" onclick="window._adminExport('all_csv')">All CSV <span>↓</span></button>
-    <button style="${buttonStyle}" onclick="window._adminExport('users')">Users CSV <span>↓</span></button>
-    <button style="${buttonStyle}" onclick="window._adminExport('daily')">Daily CSV <span>↓</span></button>
-    <button style="${buttonStyle}" onclick="window._adminExport('social')">Social CSV <span>↓</span></button>
-    <button style="${buttonStyle}" onclick="window._adminExport('letters')">Letters CSV <span>↓</span></button>
+    ${[['ai_json','AI JSON'],['all_csv','All CSV'],['users','Users CSV'],['daily','Daily CSV'],['social','Social CSV'],['letters','Letters CSV']].map(([type,label]) => `<button type="button" style="${buttonStyle}" data-admin-shell-action="export" data-export-type="${type}">${label} <span>↓</span></button>`).join('')}
   `;
   menu.style.display = 'block';
 
@@ -319,7 +317,7 @@ window._adminToggleExportMenu = function() {
   setTimeout(() => document.addEventListener('click', close), 0);
 };
 
-window._adminExport = async function(type) {
+async function _exportAdmin(type) {
   if (!_adminData) return;
   const menu = document.getElementById('admin-export-menu');
   if (menu) menu.style.display = 'none';
@@ -337,7 +335,7 @@ window._adminExport = async function(type) {
   }
 };
 
-window._adminRefreshCache = function() {
+function _refreshAdminCache() {
   invalidateCache('admin:core');
   _adminData = null;
   renderAdmin();
@@ -355,8 +353,6 @@ export async function renderAdmin() {
 
   try {
     _adminData = await _loadCoreData();
-    window.__adminDataCache = _adminData;
-
     root.innerHTML = `
       <div style="padding:16px 16px 110px;">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
@@ -366,14 +362,14 @@ export async function renderAdmin() {
             <div class="hig-caption1" style="color:var(--hig-gray1);">TDS Mobile Segmentation + Outreach</div>
           </div>
           <div style="position:relative;">
-            <button id="admin-export-button" class="hig-btn-secondary" onclick="window._adminToggleExportMenu()">내보내기</button>
+            <button type="button" id="admin-export-button" class="hig-btn-secondary" data-admin-shell-action="toggle-export">내보내기</button>
             <div id="admin-export-menu" style="display:none;position:absolute;right:0;top:42px;z-index:10;min-width:220px;border:1px solid var(--hig-separator);border-radius:10px;background:var(--hig-surface-elevated);padding:6px;"></div>
           </div>
         </div>
 
         <div class="hig-segmented-control" style="margin-bottom:14px;overflow:auto;">
           ${SECTIONS.map((section) => `
-            <button class="admin-seg-btn ${section.id === _currentSection ? 'is-active' : ''}" data-section="${section.id}" onclick="window._adminSwitchSection('${section.id}')">
+            <button type="button" class="admin-seg-btn ${section.id === _currentSection ? 'is-active' : ''}" data-section="${section.id}" data-admin-shell-action="switch-section">
               ${section.label}${section.id === 'outreach' && _adminData.unreadLetters > 0 ? ` (${_adminData.unreadLetters})` : ''}
             </button>
           `).join('')}
@@ -382,6 +378,17 @@ export async function renderAdmin() {
         <div id="admin-section-container"></div>
       </div>
     `;
+
+    root.onclick = (event) => {
+      const control = event.target.closest('[data-admin-shell-action]');
+      if (!control || !root.contains(control)) return;
+      const action = control.dataset.adminShellAction;
+      if (action === 'switch-section') _switchSection(control.dataset.section);
+      if (action === 'toggle-export') _toggleExportMenu();
+      if (action === 'export') void _exportAdmin(control.dataset.exportType);
+      if (action === 'open-compose') _openComposeForUser(control.dataset.uid, control.dataset.message || '');
+      if (action === 'refresh-cache') _refreshAdminCache();
+    };
 
     _renderCurrentSection();
   } catch (error) {

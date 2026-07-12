@@ -1,0 +1,255 @@
+/* ══════════════════════════════════════════════════════════════════
+   Weekly Streak Calendar
+   ══════════════════════════════════════════════════════════════════ */
+.ws-stepper { display: flex; align-items: center; gap: 0; }
+.ws-stepper-btn {
+  background: none; border: none; color: var(--text-secondary); font-size: 11px;
+  cursor: pointer; padding: 2px 4px; line-height: 1;
+  -webkit-tap-highlight-color: transparent; transition: color var(--transition);
+}
+.ws-stepper-btn:active { color: var(--primary); }
+.ws-stepper-val { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); min-width: 24px; text-align: center; }
+.weekly-streak-table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; }
+.weekly-streak-table th { padding: 0 0 6px; text-align: center; vertical-align: bottom; }
+.weekly-streak-table td { padding: 0; text-align: center; }
+.ws-row-label { font-size: 13px; width: 26px; text-align: center; }
+.ws-cell {
+  width: 100%; height: 34px; background: var(--surface2);
+  padding: 0; font: inherit; color: inherit;
+  border-right: 1px solid var(--bg); border-bottom: 1px solid var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; user-select: none;
+  transition: background var(--transition);
+}
+.ws-cell:active { opacity: 0.7; }
+.ws-cell.gym-on { background: var(--gym-dim); color: var(--gym); font-weight: 700; }
+.ws-cell.cf-on { background: var(--cf-dim); color: var(--cf); font-weight: 700; }
+.ws-cell.diet-ok { background: var(--diet-ok-dim); color: var(--diet-ok); font-weight: 700; }
+.ws-cell.diet-bad { background: var(--diet-bad-dim); color: var(--diet-bad); }
+.ws-cell.skip-disabled { background: var(--surface3); color: var(--text-tertiary); }
+.ws-cell.health-issue, .ws-cell.diet-skipped { background: var(--surface3); color: var(--text-tertiary); }
+.ws-cell.ws-future { opacity: 0.15; pointer-events: none; }
+.ws-cell.ws-today { box-shadow: inset 0 0 0 1.5px var(--primary); }
+.weekly-streak-table tbody tr:first-child .ws-cell { border-radius: 6px 6px 0 0; }
+.weekly-streak-table tbody tr:last-child .ws-cell { border-radius: 0 0 6px 6px; border-bottom: none; }
+.ws-today-col { position: relative; }
+.ws-today-col::after {
+  content: ''; position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%);
+  width: 4px; height: 4px; border-radius: 50%; background: var(--primary);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Unit Goal Table
+   ══════════════════════════════════════════════════════════════════ */
+.unit-goal-range { font-size: 11px; color: var(--text-tertiary); text-align: center; margin-bottom: 8px; letter-spacing: 0.3px; }
+.unit-goal-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.unit-goal-table th { padding: 4px 2px; text-align: center; vertical-align: bottom; border-bottom: 1px solid var(--border); }
+.unit-goal-table td { padding: 6px 2px; text-align: center; vertical-align: middle; }
+.ug-day-label { display: block; font-size: 11px; font-weight: 700; color: var(--text); letter-spacing: 0.5px; }
+.ug-date-label { display: block; font-size: 9px; color: var(--text-secondary); margin-top: 1px; }
+.ug-row-label { font-size: 10px; font-weight: 700; color: var(--text-tertiary); width: 36px; text-align: center; }
+.ug-today { position: relative; }
+.ug-today::after {
+  content: ''; position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%);
+  width: 4px; height: 4px; border-radius: 50%; background: var(--primary);
+}
+.ug-total-col { background: rgba(250,52,44,0.04); border-left: 1px solid var(--border); }
+.ug-cell { vertical-align: middle; }
+.ug-val { display: block; font-family: var(--font-mono); font-size: 12px; font-weight: 700; line-height: 1.3; }
+.ug-val.ok { color: var(--diet-ok); }
+.ug-val.over { color: var(--diet-bad); }
+.ug-val.muted { color: var(--text-secondary); font-weight: 400; font-size: 11px; }
+.ug-sub { display: block; font-size: 9px; color: var(--text-secondary); font-family: var(--font-mono); }
+.ug-pct { display: block; font-family: var(--font-mono); font-size: 13px; font-weight: 700; line-height: 1.3; }
+.ug-pct.perfect { color: var(--diet-ok); }
+.ug-pct.good { color: var(--primary); }
+.ug-pct.warn { color: #f97316; }
+.ug-pct.bad { color: var(--diet-bad); }
+.ug-pct.muted { color: var(--text-secondary); font-weight: 400; font-size: 11px; }
+.ug-icon { display: block; font-size: 12px; line-height: 1; }
+.ug-row-intake td { border-bottom: 1px dashed var(--border); }
+.ug-row-macro td { padding: 2px 2px; border: none; }
+.ug-row-pct + .ug-row-macro td { border-top: 1px dashed var(--border); }
+.ug-macro-label { font-size: 9px !important; font-weight: 700; color: var(--text-secondary) !important; }
+.ug-macro { display: block; font-family: var(--font-mono); font-size: 9px; font-weight: 600; line-height: 1.2; }
+.ug-macro-pct { display: block; font-size: 8px; font-weight: 400; opacity: 0.7; margin-top: 1px; }
+.ug-macro.macro-over { color: var(--diet-bad); }
+.ug-macro.macro-under { color: var(--gym); }
+.ug-macro.macro-ok { color: var(--diet-ok); }
+.ug-macro.muted { color: var(--text-secondary); }
+
+/* ══════════════════════════════════════════════════════════════════
+   Quick Workout Bar
+   ══════════════════════════════════════════════════════════════════ */
+.quick-workout-bar { padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.quick-workout-btn {
+  width: 100%; padding: 13px; background: var(--gym-dim);
+  border: 1px solid var(--gym); border-radius: var(--radius-md);
+  color: var(--gym); font-family: var(--font-sans); font-size: 14px;
+  font-weight: 700; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; transition: all var(--transition);
+}
+.quick-workout-btn:active { transform: scale(0.97); }
+
+/* ══════════════════════════════════════════════════════════════════
+   Section Title Editing
+   ══════════════════════════════════════════════════════════════════ */
+.section-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.editable-title { cursor: default; }
+.section-title-edit-btn {
+  background: var(--surface2); border: none; color: var(--text-tertiary); font-size: 12px;
+  cursor: pointer; padding: 4px 8px; border-radius: var(--radius-full);
+  transition: all var(--transition); -webkit-tap-highlight-color: transparent;
+}
+.section-title-edit-btn:active { background: var(--surface3); }
+
+/* ══════════════════════════════════════════════════════════════════
+   Mini Memo (Checklist)
+   ══════════════════════════════════════════════════════════════════ */
+.memo-empty { font-size: 11px; color: var(--text-secondary); padding: 4px 0 8px; }
+.memo-item {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  border-radius: var(--radius-sm); margin-bottom: 4px;
+  background: var(--surface2); border: 1px solid var(--border);
+  transition: opacity var(--transition);
+}
+.memo-item.checked { opacity: 0.55; }
+.memo-item-label { display: flex; align-items: center; gap: 8px; flex: 1; cursor: pointer; min-width: 0; }
+.memo-checkbox { width: 16px; height: 16px; flex-shrink: 0; accent-color: var(--primary); cursor: pointer; }
+.memo-item-text { font-size: 13px; color: var(--text); line-height: 1.4; word-break: break-all; }
+.memo-item.checked .memo-item-text { text-decoration: line-through; color: var(--text-secondary); }
+.memo-item-del {
+  background: none; border: none; color: var(--text-secondary); font-size: 10px;
+  cursor: pointer; padding: 0 2px; flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent; transition: color var(--transition);
+}
+.memo-item-del:active { color: var(--diet-bad); }
+.mini-memo-add-row { display: flex; gap: 6px; margin-top: 6px; }
+.mini-memo-new-input {
+  flex: 1; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 12px;
+  color: var(--text); font-family: var(--font-sans); font-size: 12px; outline: none;
+  transition: border-color var(--transition);
+}
+.mini-memo-new-input:focus { border-color: var(--primary); }
+.mini-memo-new-input::placeholder { color: var(--text-tertiary); }
+.mini-memo-add-btn {
+  background: var(--primary); border: none;
+  border-radius: var(--radius-full); color: #fff;
+  font-size: 18px; width: 36px; height: 36px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; transition: all var(--transition); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.mini-memo-add-btn:active { transform: scale(0.92); opacity: 0.8; }
+
+/* ── Mini Memo (render-home.js) ── */
+.mini-memo-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.mini-memo-item:last-child { border-bottom: none; }
+.mini-memo-item.checked .mini-memo-text { opacity: 0.55; text-decoration: line-through; color: var(--text-secondary); }
+.mini-memo-check-label { display: flex; align-items: center; gap: 6px; flex: 1; cursor: pointer; min-width: 0; }
+.mini-memo-text { font-size: 13px; font-family: var(--font-sans); color: var(--text); line-height: 1.4; flex: 1; }
+.mini-memo-del-btn {
+  background: none; border: none; color: var(--text-secondary); font-size: 11px;
+  cursor: pointer; padding: 0 2px; flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent; transition: color var(--transition);
+}
+.mini-memo-del-btn:active { color: var(--diet-bad); }
+
+/* ══════════════════════════════════════════════════════════════════
+   Activity Status Buttons (Health/CF)
+   ══════════════════════════════════════════════════════════════════ */
+.activity-status-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; flex-wrap: wrap; }
+.activity-status-label { font-size: 11px; font-weight: 700; color: var(--text-tertiary); min-width: 72px; flex-shrink: 0; }
+.activity-status-btns { display: flex; gap: 5px; }
+.act-btn {
+  padding: 8px 14px; border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border); background: var(--surface2);
+  color: var(--text); font-family: var(--font-sans); font-size: 11px;
+  font-weight: 600; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; transition: all var(--transition);
+}
+.act-btn:hover { border-color: var(--text-secondary); background: var(--surface3); }
+.act-btn:active { transform: scale(0.95); }
+
+/* ── Extra Toggles (Stretch / Wine-free) ── */
+.extra-toggle-row { display: flex; gap: 16px; padding: 10px 0; border-top: 1px solid var(--border); }
+.extra-toggle-item { display: flex; align-items: center; gap: 8px; }
+.extra-toggle-label { font-size: 12px; color: var(--text); }
+
+/* ══════════════════════════════════════════════════════════════════
+   Stock Purchase Info
+   ══════════════════════════════════════════════════════════════════ */
+.s-purchase { font-size: 9px; margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--border); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.s-purchase .s-buy-info { display: inline; overflow: hidden; text-overflow: ellipsis; }
+.s-buy-info { color: var(--text-secondary); display: block; margin-bottom: 2px; font-family: var(--font-mono); }
+.s-profit { font-family: var(--font-mono); font-weight: 700; font-size: 10px; }
+.s-edit-btn { background: none; border: none; color: var(--text-secondary); font-size: 10px; cursor: pointer; padding: 0 2px; -webkit-tap-highlight-color: transparent; margin-left: 4px; }
+.s-add-purchase-btn {
+  background: none; border: 1px dashed var(--border); border-radius: 4px;
+  color: var(--text-secondary); font-size: 9px; padding: 2px 6px;
+  cursor: pointer; margin-top: 4px;
+  -webkit-tap-highlight-color: transparent; transition: all var(--transition);
+  font-family: var(--font-sans);
+}
+.s-add-purchase-btn:active { background: var(--surface3); }
+
+/* ══════════════════════════════════════════════════════════════════
+   Monthly Summary (Calendar Tab)
+   ══════════════════════════════════════════════════════════════════ */
+.monthly-summary-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 16px; margin-bottom: 14px;
+}
+.monthly-summary-title { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); letter-spacing: 0.5px; margin-bottom: 10px; }
+.monthly-summary-stats { display: flex; gap: 10px; flex-wrap: wrap; }
+.monthly-stat {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 14px; text-align: center; min-width: 60px;
+}
+.monthly-stat-val { font-family: var(--font-mono); font-size: 20px; font-weight: 700; display: block; }
+.monthly-stat-lbl { font-size: 9px; color: var(--text-secondary); display: block; margin-top: 2px; }
+
+
+/* ── Week memo rows ── */
+.monthly-week-memo-row { grid-column: 1 / -1; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.1); }
+.monthly-week-memo-input {
+  width: 100%; background: transparent; border: none; padding: 6px 12px;
+  color: var(--text-tertiary); font-family: var(--font-sans); font-size: 11px;
+  resize: none; outline: none; line-height: 1.5;
+}
+.monthly-week-memo-input:focus { background: var(--primary-bg); color: var(--text); }
+.monthly-week-memo-input::placeholder { color: var(--text-tertiary); }
+
+/* ── Monthly week wrap & events ── */
+.monthly-week-wrap { display: flex; flex-direction: column; }
+.monthly-cells-row { display: grid; grid-template-columns: repeat(7, 1fr); }
+.monthly-events-row { position: relative; width: 100%; overflow: visible; }
+.monthly-event-bar {
+  position: absolute; display: flex; align-items: center; overflow: hidden;
+  cursor: pointer; transition: opacity var(--transition); -webkit-tap-highlight-color: transparent;
+}
+.monthly-event-bar:active { opacity: 0.75; }
+.event-bar-title {
+  font-size: 10px; font-weight: 600; color: #fff; padding: 0 6px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none;
+}
+.schedule-event-bar { -webkit-tap-highlight-color: transparent; }
+.schedule-event-bar:active { opacity: 0.75; }
+.schedule-cell.drag-highlight { background: rgba(250,52,44,0.18) !important; }
+
+
+/* ══════════════════════════════════════════════════════════════════
+   AI Panel (Home Card)
+   ══════════════════════════════════════════════════════════════════ */
+.ai-inner { display: flex; flex-direction: column; gap: 8px; }
+
+/* ══════════════════════════════════════════════════════════════════
+   Tab Button Settings / Drag
+   ══════════════════════════════════════════════════════════════════ */
+.tab-btn-settings { display: none; }
+.tab-btn.tab-dragging { opacity: 0.4; }
+.tab-btn.tab-drag-over { background: var(--surface2); }

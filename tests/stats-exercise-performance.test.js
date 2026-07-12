@@ -1,3 +1,4 @@
+import { readAppCssSync } from './helpers/css-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -5,7 +6,7 @@ import { readFileSync } from 'node:fs';
 const indexHtml = readFileSync('index.html', 'utf8');
 const statsJs = readFileSync('render-stats.js', 'utf8');
 const statsSelectorsJs = readFileSync('stats/selectors.js', 'utf8');
-const styleCss = readFileSync('style.css', 'utf8');
+const styleCss = readAppCssSync();
 const swJs = readFileSync('sw.js', 'utf8') + readFileSync('runtime-assets.js', 'utf8');
 
 test('stats page includes exercise performance trend before volume trend', () => {

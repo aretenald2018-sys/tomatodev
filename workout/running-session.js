@@ -26,6 +26,8 @@ import { applyRunningDataToWorkout } from './running-model.js';
 import { runningInputFromPhoneSummary } from './running-input.js';
 import { RunningLiveAccumulator } from './running-live-accumulator.js';
 import { buildRunningActivityAnalytics, isValidRunningWeightKg } from './running-analytics.js';
+import { openWorkoutDaySheet } from './navigation-stack.js';
+import { setRunningLiveState } from './running-live-state.js';
 import {
   RUNNING_DRAFT_STORAGE_VERSION,
   clearRunningDraftRecord,
@@ -905,7 +907,7 @@ function _publishRunningLiveState(active = false) {
     placeSummary: _session.placeSummary || (routeSummary ? _runningPlaceFallback(routeSummary) : null),
     previewPoint: _session.previewPoint || route[route.length - 1] || null
   };
-  if (typeof window !== 'undefined') window.__tomatoRunningLive = detail;
+  setRunningLiveState(detail);
   if (typeof document !== 'undefined' && typeof CustomEvent === 'function') {
     document.dispatchEvent(new CustomEvent('life-zone:running-live', { detail }));
   }
@@ -1342,9 +1344,11 @@ async function _saveSummary() {
     return;
   }
   wtCloseRunningSession();
-  if (targetDateKey && typeof window.wtOpenWorkoutDaySheet === 'function') {
+  if (targetDateKey) {
     try {
-      await window.wtOpenWorkoutDaySheet(targetDateKey, targetSessionIndex, {
+      openWorkoutDaySheet(targetDateKey, {
+        sessionIndex: targetSessionIndex,
+        sheetState: 'full',
         history: 'replace',
         action: 'running:save-detail',
       });

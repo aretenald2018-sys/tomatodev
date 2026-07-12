@@ -1,3 +1,4 @@
+import { readAppCssSync } from './helpers/css-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -5,7 +6,7 @@ import { readFile } from 'node:fs/promises';
 const exercisesJs = await readFile(new URL('../workout/exercises.js', import.meta.url), 'utf8');
 const editorActionsJs = await readFile(new URL('../workout/exercise-editor-actions.js', import.meta.url), 'utf8');
 const dataLoadJs = await readFile(new URL('../data/data-load.js', import.meta.url), 'utf8');
-const styleCss = await readFile(new URL('../style.css', import.meta.url), 'utf8');
+const styleCss = readAppCssSync();
 const swJs = await readFile(new URL('../sw.js', import.meta.url), 'utf8') + await readFile(new URL('../runtime-assets.js', import.meta.url), 'utf8');
 
 test('exercise editor renders program controls backed by test_board_v2', () => {

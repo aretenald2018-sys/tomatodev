@@ -1,0 +1,197 @@
+/* ══════════════════════════════════════════════════════════════════
+   Workout / Diet Tab
+   ══════════════════════════════════════════════════════════════════ */
+.workout-date-nav {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  padding: 14px 16px; background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 10;
+}
+.wt-date-nav-btn {
+  /* TDS sm button: padding 8/14, grid-aligned h-pad changed 18 → 20 */
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); padding: 8px 20px; border-radius: var(--radius-full);
+  min-height: 40px; /* Touch target */
+  font-size: var(--tds-st11-size); line-height: var(--tds-st11-lh);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: all var(--transition);
+}
+.wt-date-nav-btn:active { background: var(--surface3); transform: scale(0.96); }
+.workout-date-label {
+  font-family: var(--font-mono); font-size: 14px; font-weight: 700;
+  color: var(--text); min-width: 160px; text-align: center;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+}
+/* TODAY badge — shown inline next to date label when current date */
+.workout-date-label .wt-today-tag {
+  display: inline-flex; align-items: center;
+  font-size: 9px; font-weight: 700; line-height: 1;
+  padding: 3px 6px; border-radius: var(--radius-sm);
+  background: var(--primary); color: #fff;
+  letter-spacing: 0.02em;
+}
+.wt-today-btn {
+  /* TDS sm button: padding 8/14, r8 (was 5/12 r6) */
+  padding: 8px 14px; background: var(--surface3);
+  border: 1px solid var(--primary); border-radius: var(--radius-sm);
+  color: var(--primary); font-size: var(--tds-st13-size); line-height: var(--tds-st13-lh);
+  font-weight: var(--tds-w-semi);
+  min-height: 36px;
+  cursor: pointer; font-family: var(--font-sans);
+  transition: background-color var(--transition), color var(--transition), transform var(--transition);
+  -webkit-tap-highlight-color: transparent;
+}
+.wt-today-btn:active { background: var(--primary); color: #fff; transform: scale(0.97); }
+.wt-future-notice {
+  background: var(--surface2); color: var(--text-secondary);
+  font-size: 12px; text-align: center; padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+}
+/* 미래 날짜 전체 가드 — disabled 속성 우회 요소(div onclick, chip 등) 차단 */
+#tab-workout.wt-readonly .workout-tab-content {
+  pointer-events: none;
+  opacity: 0.7;
+}
+.workout-calendar-root {
+  padding: 0 var(--wt-calendar-scroll-gutter, 0px) 124px 0;
+  background: #f7f7fb;
+  min-height: 100%;
+  scrollbar-gutter: stable;
+}
+body.wt-workout-tab-active {
+  overscroll-behavior-y: none;
+}
+body.wt-workout-tab-active #tab-workout.active {
+  overscroll-behavior-y: contain;
+}
+#tab-workout.wt-calendar-home-mode {
+  background: #f7f7fb;
+  height: 100dvh;
+  min-height: 100dvh;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+#tab-workout.wt-calendar-home-mode > #workout-calendar-root {
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+#tab-workout.wt-calendar-home-mode > .wt-future-notice {
+  display: none;
+}
+#tab-workout.wt-calendar-home-mode > .workout-tab-content {
+  display: block;
+  min-height: 0;
+  padding: 0;
+  pointer-events: none;
+}
+#tab-workout.wt-calendar-home-mode > .workout-tab-content > :not(#wt-workout-timer-bar) {
+  display: none !important;
+}
+#tab-workout.wt-calendar-home-mode > .workout-tab-content > #wt-workout-timer-bar {
+  pointer-events: auto;
+}
+.workout-tab-content { padding: 56px 16px 80px; } /* 상단: 날짜 네비(sticky) 높이만큼 여백 */
+.workout-tab-content .sheet-actions { padding-bottom: 0; }
+.ex-block--record-focus {
+  border-color: #2f6df6 !important;
+  box-shadow: 0 0 0 3px rgba(47,109,246,.16), 0 8px 22px rgba(17,24,39,.08) !important;
+}
+.ex-max-v2-name[role="button"],
+.ex-max-v2-plan-goal[role="button"] {
+  cursor: pointer;
+}
+.ex-max-v2-name[role="button"]:focus-visible,
+.ex-max-v2-plan-goal[role="button"]:focus-visible {
+  outline: 2px solid #2f6df6;
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+/* ══════════════════════════════════════════════════════════════════
+   Rest Timer (Floating Bar)
+   ══════════════════════════════════════════════════════════════════ */
+/* ── 세트 간 휴식 타이머 (플로팅 · Seed) ── */
+/* ── 쉬는시간 서브 섹션 (총 운동시간 카드 내부) ── */
+.wt-rest-section {
+  margin-top: var(--seed-x2); padding-top: var(--seed-x2);
+  border-top: 1px solid var(--seed-stroke-weak, var(--border));
+  display: flex; flex-direction: column; gap: var(--seed-x2);
+  animation: rest-fade-in 0.2s ease-out;
+}
+@keyframes rest-fade-in { from { opacity: 0; transform: translateY(-4px) } to { opacity: 1; transform: translateY(0) } }
+.wt-rest-section.expired { }
+.wt-rest-section.done { }
+
+.wt-rest-row-top { display: flex; align-items: center; gap: var(--seed-x2); flex-wrap: wrap; }
+.wt-rest-left { display: flex; align-items: center; gap: var(--seed-x1_5); flex-shrink: 0; }
+.wt-rest-label {
+  font-size: var(--seed-t2); font-weight: 600;
+  color: var(--seed-fg-muted, var(--text-tertiary));
+}
+.wt-rest-time {
+  font-family: var(--font-mono); font-size: 16px; font-weight: 700;
+  color: var(--primary); min-width: 40px; letter-spacing: 0.5px;
+}
+.wt-rest-section.expired .wt-rest-time { color: var(--seed-fg-critical, var(--diet-bad)); }
+.wt-rest-section.done .wt-rest-time { color: var(--seed-fg-positive, var(--streak)); }
+.wt-rest-section.wt-idle .wt-rest-time { opacity: 0.5; }
+
+.wt-rest-context {
+  font-size: var(--seed-t1); color: var(--seed-fg-muted, var(--text-tertiary));
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.wt-rest-presets { display: flex; gap: var(--seed-x1); flex-shrink: 0; }
+.rest-preset-btn {
+  padding: var(--seed-x1) var(--seed-x2); border-radius: var(--seed-r-full);
+  border: 1px solid var(--seed-stroke-neutral, var(--border));
+  background: var(--seed-bg-neutral-weak, var(--surface3));
+  color: var(--seed-fg-muted, var(--text-tertiary)); font-family: var(--font-mono);
+  font-size: var(--seed-t1); font-weight: 500; cursor: pointer;
+  transition: all var(--seed-d3) var(--seed-ease);
+  -webkit-tap-highlight-color: transparent;
+}
+.rest-preset-btn:active { transform: scale(0.95); }
+.rest-preset-btn.active {
+  background: var(--seed-bg-brand-weak, var(--gym-dim));
+  border-color: var(--primary); color: var(--seed-fg-brand, var(--primary)); font-weight: 700;
+}
+
+.wt-rest-skip {
+  margin-left: auto; flex-shrink: 0; white-space: nowrap;
+  padding: var(--seed-x1) var(--seed-x3); border-radius: var(--seed-r-full);
+  border: 1px solid var(--seed-stroke-neutral, var(--border));
+  background: var(--seed-bg-neutral-weak, var(--surface3));
+  color: var(--seed-fg-muted, var(--text-tertiary));
+  font-size: var(--seed-t2); font-weight: 600; cursor: pointer;
+  transition: all var(--seed-d3) var(--seed-ease);
+  -webkit-tap-highlight-color: transparent;
+}
+.wt-rest-skip:active { transform: scale(0.95); }
+
+.wt-rest-controls { display: flex; align-items: center; gap: var(--seed-x1_5); }
+.wt-rest-adj {
+  padding: var(--seed-x1) var(--seed-x2); border-radius: var(--seed-r-full);
+  border: 1px solid var(--seed-stroke-neutral, var(--border));
+  background: var(--seed-bg-neutral-weak, var(--surface3));
+  color: var(--seed-fg-muted, var(--text-tertiary)); font-family: var(--font-mono);
+  font-size: var(--seed-t2); font-weight: 700; cursor: pointer; flex-shrink: 0;
+  transition: all var(--seed-d3) var(--seed-ease);
+  -webkit-tap-highlight-color: transparent;
+}
+.wt-rest-adj:active { transform: scale(0.92); }
+.wt-rest-progress {
+  flex: 1; height: 4px; background: var(--seed-bg-neutral-weak, var(--surface3));
+  border-radius: var(--seed-r-full); overflow: hidden; min-width: 40px;
+}
+.wt-rest-fill {
+  height: 100%; background: var(--primary); border-radius: var(--seed-r-full);
+  transition: width 0.3s linear; width: 100%;
+}
+.wt-rest-section.expired .wt-rest-fill { background: var(--seed-red-700, var(--diet-bad)); }
+.wt-rest-section.done .wt-rest-fill { background: var(--seed-green-600, var(--streak)); }
+.wt-rest-section.wt-idle .wt-rest-fill { background: var(--seed-stroke-neutral); }

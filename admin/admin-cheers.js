@@ -1,3 +1,4 @@
+import { showToast } from '../ui/toast.js';
 // ================================================================
 // admin/admin-cheers.js — "함께 축하해요" 모듈 on/off + 수동 축하 작성
 // ================================================================
@@ -86,7 +87,7 @@ function _paint(container) {
               <div class="hig-subhead">${escapeHtml(name)} <span class="hig-caption1" style="color:var(--hig-gray1);">· ${escapeHtml(expiresText)}</span></div>
               <div class="hig-caption1" style="color:var(--hig-gray1);white-space:normal;">${escapeHtml(c.text || '')}</div>
             </div>
-            <button class="hig-btn-destructive" data-cheer-id="${escapeHtml(c.id)}" onclick="window._adminCheersDelete(this.dataset.cheerId)">삭제</button>
+            <button type="button" class="hig-btn-destructive" data-admin-cheers-action="delete" data-cheer-id="${escapeHtml(c.id)}">삭제</button>
           </div>
         `;
       }).join('')
@@ -100,7 +101,7 @@ function _paint(container) {
             <div class="hig-headline">축하 모듈</div>
             <div class="hig-caption1" style="color:var(--hig-gray1);">홈 화면 "함께 축하해요!" 카드에 표시할 감지기를 선택합니다.</div>
           </div>
-          <button class="hig-btn-primary" onclick="window._adminCheersSaveConfig()">저장</button>
+          <button type="button" class="hig-btn-primary" data-admin-cheers-action="save-config">저장</button>
         </div>
         ${moduleRows}
       </div>
@@ -120,7 +121,7 @@ function _paint(container) {
           <div id="admin-cheers-preview" class="hig-caption1" style="color:var(--hig-gray1);padding:8px 12px;border-radius:8px;background:var(--hig-surface-elevated);min-height:24px;"></div>
           <label class="hig-caption1" style="color:var(--hig-gray1);">만료 (일 단위, 기본 3)</label>
           <input id="admin-cheers-days" type="number" min="1" max="30" value="3" class="hig-input" style="padding:10px 12px;border-radius:10px;width:120px;">
-          <button class="hig-btn-primary" style="margin-top:6px;" onclick="window._adminCheersAddCustom()">추가</button>
+          <button type="button" class="hig-btn-primary" style="margin-top:6px;" data-admin-cheers-action="add-custom">추가</button>
         </div>
       </div>
 
@@ -130,6 +131,14 @@ function _paint(container) {
       </div>
     </div>
   `;
+  container.onclick = (event) => {
+    const control = event.target.closest('[data-admin-cheers-action]');
+    if (!control || !container.contains(control)) return;
+    const action = control.dataset.adminCheersAction;
+    if (action === 'save-config') void _saveCheersConfig();
+    if (action === 'add-custom') void _addCustomCheer();
+    if (action === 'delete') void _deleteCustomCheer(control.dataset.cheerId);
+  };
 
   // 체크박스 변경 → 메모리만 갱신 (저장 버튼 눌러야 반영)
   container.querySelectorAll('.admin-cheers-toggle').forEach((input) => {
@@ -164,17 +173,17 @@ function _paint(container) {
   updatePreview();
 }
 
-window._adminCheersSaveConfig = async () => {
+async function _saveCheersConfig() {
   try {
     const modules = _defaultsFor(_config);
     await saveCheersConfig({ modules });
-    window.showToast?.('축하 모듈 설정 저장 완료', 2500, 'success');
+    showToast('축하 모듈 설정 저장 완료', 2500, 'success');
   } catch (e) {
-    window.showToast?.('저장 실패: ' + (e.message || e), 3500, 'error');
+    showToast('저장 실패: ' + (e.message || e), 3500, 'error');
   }
 };
 
-window._adminCheersAddCustom = async () => {
+async function _addCustomCheer() {
   const targetSel = document.getElementById('admin-cheers-target');
   const textEl = document.getElementById('admin-cheers-text');
   const daysEl = document.getElementById('admin-cheers-days');
@@ -182,8 +191,8 @@ window._adminCheersAddCustom = async () => {
   const targetUid = targetSel.value;
   const text = (textEl.value || '').trim();
   const days = Math.max(1, Math.min(30, parseInt(daysEl?.value || '3', 10) || 3));
-  if (!targetUid) { window.showToast?.('대상 유저를 선택하세요', 2500, 'warning'); return; }
-  if (!text) { window.showToast?.('메시지를 입력하세요', 2500, 'warning'); return; }
+  if (!targetUid) { showToast('대상 유저를 선택하세요', 2500, 'warning'); return; }
+  if (!text) { showToast('메시지를 입력하세요', 2500, 'warning'); return; }
   const targetAcc = _accounts.find((a) => a.id === targetUid);
   const targetName = targetAcc?.nickname || `${targetAcc?.lastName || ''}${targetAcc?.firstName || ''}` || targetUid;
   try {
@@ -199,11 +208,11 @@ window._adminCheersAddCustom = async () => {
     const container = document.querySelector('#admin-cheers-container');
     if (container) _paint(container);
   } catch (e) {
-    window.showToast?.('추가 실패: ' + (e.message || e), 3500, 'error');
+    showToast('추가 실패: ' + (e.message || e), 3500, 'error');
   }
 };
 
-window._adminCheersDelete = async (id) => {
+async function _deleteCustomCheer(id) {
   if (!id) return;
   const ok = await confirmAction({ title: '수동 축하 삭제', message: '이 수동 축하를 삭제할까요?', destructive: true, longPress: 2000 });
   if (!ok) return;
@@ -213,6 +222,6 @@ window._adminCheersDelete = async (id) => {
     const container = document.querySelector('#admin-cheers-container');
     if (container) _paint(container);
   } catch (e) {
-    window.showToast?.('삭제 실패: ' + (e.message || e), 3500, 'error');
+    showToast('삭제 실패: ' + (e.message || e), 3500, 'error');
   }
 };

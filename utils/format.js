@@ -124,12 +124,4 @@ function _toDate(d) {
 
 // ── 전역 노출 (뷰 코드에서 바로 사용) ───────────────────────────
 if (typeof window !== 'undefined') {
-  window.fmtKcal = fmtKcal;
-  window.fmtNumber = fmtNumber;
-  window.fmtWeight = fmtWeight;
-  window.fmtMacro = fmtMacro;
-  window.fmtDate = fmtDate;
-  window.fmtDayOfWeek = fmtDayOfWeek;
-  window.fmtRelative = fmtRelative;
-  window.fmtStreak = fmtStreak;
 }

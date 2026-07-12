@@ -58,7 +58,9 @@ test('app module binds app shell actions with one idempotent bridge', () => {
   assert.match(appJs, /appShellActionsBound/);
   assert.match(appJs, /target\?\.closest\?\.\('\[data-app-action\]'\)/);
   assert.match(appJs, /control\.id === 'tab-settings-modal' && event\.target !== control/);
-  assert.match(appJs, /_bindAppShellActions\(\);\s*\ninit\(\);/);
+  assert.match(appJs, /_bindAppShellActions\(\);/);
+  assert.match(appJs, /configureNavigation\(\{ getCurrentTab: \(\) => _currentTab, switchTab \}\);/);
+  assert.match(appJs, /configureNavigation\([\s\S]*\);\s*\ninit\(\);/);
 
   for (const action of [
     'install-pwa',

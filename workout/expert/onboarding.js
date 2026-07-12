@@ -1,3 +1,5 @@
+import { requestAppRender } from '../../app/render-events.js';
+import { showToast } from '../../ui/toast.js';
 // ================================================================
 // workout/expert/onboarding.js
 // ----------------------------------------------------------------
@@ -86,7 +88,7 @@ function _closeModal(id) {
 function _esc(s) { return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 function _toast(msg, type='info') {
-  if (typeof window.showToast === 'function') window.showToast(msg, 2200, type);
+  if (typeof showToast === 'function') showToast(msg, 2200, type);
 }
 
 // subPattern(세부 부위) → 한글 라벨. expert.js 의 _subPatternLabel 과 동일.
@@ -122,8 +124,43 @@ export function resolveCurrentGymId() {
   return resolvedId;
 }
 
-// renderExpertTopArea 는 expert.js 가 window.renderExpertTopArea 로 등록 — 호출은 window 경유.
-// 이렇게 하면 onboarding.js ↔ expert.js 순환 import 없이 전 파일 간 래퍼-호출 가능.
+function _bindOnboardingActions() {
+  const root = document.getElementById('expert-onboarding-modal');
+  if (!root || root.dataset.onboardingActionsBound) return;
+  root.dataset.onboardingActionsBound = '1';
+  root.querySelector('#expert-onb-skip')?.addEventListener('click', () => void expertOnbSkip());
+  root.addEventListener('click', (event) => {
+    if (event.target === root) {
+      expertOnbClose();
+      return;
+    }
+    const control = event.target.closest('[data-onb-action]');
+    if (!control || !root.contains(control)) return;
+    const action = control.dataset.onbAction;
+    const index = Number(control.dataset.itemIndex);
+    const subPattern = control.dataset.subPattern || '';
+    if (action === 'open-custom-muscles') {
+      document.dispatchEvent(new CustomEvent('expert:open-custom-muscles'));
+    } else if (action === 'add-manual') {
+      expertOnbAddManual();
+    } else if (action === 'set-primary') {
+      expertOnbMuscleSetPrimary(index, subPattern);
+    } else if (action === 'toggle-muscle') {
+      event.preventDefault();
+      event.stopPropagation();
+      expertOnbMuscleToggle(index, subPattern);
+    } else if (action === 'toggle-picker') {
+      expertOnbMusclePickerToggle(index);
+    } else if (action === 'remove-item') {
+      void expertOnbRemoveItem(index);
+    } else if (action === 'add-another-gym') {
+      expertOnbAddAnotherGym();
+    }
+  });
+  root.addEventListener('change', (event) => {
+    if (event.target?.matches('[data-onb-change="pick-photo"]')) expertOnbPickPhoto(event);
+  });
+}
 
 export async function expertOnbOpen() {
   _resetOnboardingState();
@@ -164,10 +201,11 @@ export async function expertOnbOpen() {
         dbId: ex.id,
       }));
       _openModal('expert-onboarding-modal');
+      _bindOnboardingActions();
       // wizard 중간 렌더 건너뛰고 리뷰 화면 직행
       _openReviewScreen();
-      if (typeof window.showToast === 'function') {
-        window.showToast('진행 중인 설정을 불러왔어요', 2200, 'info');
+      if (typeof showToast === 'function') {
+        showToast('진행 중인 설정을 불러왔어요', 2200, 'info');
       }
       return;
     }
@@ -176,6 +214,7 @@ export async function expertOnbOpen() {
   }
 
   _openModal('expert-onboarding-modal');
+  _bindOnboardingActions();
   _renderOnboardingStep();
 }
 
@@ -188,7 +227,7 @@ export async function expertOnbSkip() {
   const snoozeKey = dateKey(d.getFullYear(), d.getMonth(), d.getDate());
   await saveExpertPreset({ snoozedUntil: snoozeKey });
   expertOnbClose();
-  if (typeof window.renderAll === 'function') window.renderAll();
+  requestAppRender();
 }
 
 export function expertOnbBack() {
@@ -252,6 +291,7 @@ export function expertOnbOpenForNewGym(existingGymId = null) {
     }
   }
   _openModal('expert-onboarding-modal');
+  _bindOnboardingActions();
   _renderOnboardingStep();
 }
 
@@ -321,7 +361,7 @@ export async function expertOnbNext() {
               : (code === 'PARSE_API')      ? 'AI 서버 호출 실패. 잠시 후 다시 시도해주세요.'
               : (code === 'DRAFT_SAVE_FAIL') ? '드래프트 저장 실패. 네트워크 확인 후 다시 시도해주세요.'
               :                                '기구 정리 실패. 다시 시도해주세요.';
-    if (typeof window.showToast === 'function') window.showToast(msg, 3200, 'error');
+    if (typeof showToast === 'function') showToast(msg, 3200, 'error');
   }
 }
 
@@ -489,7 +529,7 @@ function _renderStep4Preference() {
         const mark = prefer ? '<span class="mark">♥</span>' : '';
         return `<div class="${cls}" data-muscle="${m.id}">${mark}${m.name}</div>`;
       }).join('')}
-      <button type="button" class="chip chip-add" onclick="openCustomMusclesModal()" style="border-style:dashed;">+ 새 부위</button>
+      <button type="button" class="chip chip-add" data-onb-action="open-custom-muscles" style="border-style:dashed;">+ 새 부위</button>
     </div>
     ${_mismatchWarning() ? `<div class="hero-sub-in" style="font-size:11px; margin-top:6px;">${_mismatchWarning()}</div>` : ''}
     <div class="section-label" style="margin-top:22px;">금지 동작 <span style="font-weight:500; text-transform:none; color:var(--text-disabled);">(선택)</span></div>
@@ -547,7 +587,7 @@ function _renderEntryBody() {
     return `
       <div class="hero-sub-in" style="font-size:12px;">헬스장 기구 라벨/안내판 사진을 올려주세요.</div>
       <label class="btn btn-tonal" style="margin-top:10px; display:block; text-align:center; cursor:pointer;">
-        <input type="file" accept="image/*" style="display:none" onchange="expertOnbPickPhoto(event)" />
+        <input type="file" accept="image/*" style="display:none" data-onb-change="pick-photo" />
         사진 선택
       </label>
       <div id="expert-photo-preview" style="margin-top:10px;">
@@ -572,7 +612,7 @@ function _renderEntryBody() {
         ${MOVEMENTS.map(m => `<option value="${m.id}">${m.nameKo} (${m.primary})</option>`).join('')}
       </select>
     </div>
-    <button class="btn btn-tonal" onclick="expertOnbAddManual()">+ 기구 추가</button>
+    <button type="button" class="btn btn-tonal" data-onb-action="add-manual">+ 기구 추가</button>
     <div class="hero-sub-in" style="font-size:11px; margin-top:10px;">추가 후 "AI로 정리하기"를 누르면 저장됩니다.</div>
     <div id="manual-list" style="margin-top:10px;">
       ${_obState.parsed.map((p, i) => `
@@ -724,8 +764,8 @@ async function _commitInitialPreset() {
   _closeModal('expert-onboarding-modal');
   _toast('프로 모드 설정 완료! 헬스장을 추가해볼까요?', 'success');
   // 프로 모드 진입 시 status='done' 강제 (상태 선택 UI가 없는 환경)
-  if (typeof window.wtExcSelectStatus === 'function') window.wtExcSelectStatus('done');
-  if (typeof window.renderAll === 'function') window.renderAll();
+  document.dispatchEvent(new CustomEvent('expert:onboarding-complete'));
+  requestAppRender();
 }
 
 // ── Step 5 "AI로 정리하기" 진행 게이지 (기존 ai-gen-progress 스타일 재사용) ───
@@ -945,14 +985,14 @@ function _openReviewScreen() {
     const chipsHtml = muscleIds.map((sp, idx) => {
       const cls = idx === 0 ? 'eq-muscle-chip primary' : 'eq-muscle-chip';
       const title = idx === 0 ? '주동근 (자극 균형 차트 카운트 기준)' : '탭하면 주동근으로 변경 · × 로 제거';
-      return `<button type="button" class="${cls}" title="${title}" onclick="expertOnbMuscleSetPrimary(${i}, '${sp}')">
+      return `<button type="button" class="${cls}" title="${title}" data-onb-action="set-primary" data-item-index="${i}" data-sub-pattern="${sp}">
         ${_esc(_subPatternLabel(sp))}
-        <span class="chip-x" onclick="event.stopPropagation(); expertOnbMuscleToggle(${i}, '${sp}')" title="제거">×</span>
+        <span class="chip-x" data-onb-action="toggle-muscle" data-item-index="${i}" data-sub-pattern="${sp}" title="제거">×</span>
       </button>`;
     }).join('');
     // "+ 부위" 추가 토글 칩 (picker 열기/닫기)
     const addChipLabel = pickerOpen ? '닫기' : '+ 부위';
-    const addChip = `<button type="button" class="eq-muscle-chip add" onclick="expertOnbMusclePickerToggle(${i})">${addChipLabel}</button>`;
+    const addChip = `<button type="button" class="eq-muscle-chip add" data-onb-action="toggle-picker" data-item-index="${i}">${addChipLabel}</button>`;
 
     // 17개 subPattern 풀 — picker 펼침 시 노출
     const ALL_SUB_PATTERNS = [
@@ -967,7 +1007,7 @@ function _openReviewScreen() {
         ${ALL_SUB_PATTERNS.map(sp => {
           const on = muscleIds.includes(sp);
           return `<button type="button" class="eq-muscle-picker-chip${on ? ' on' : ''}"
-            onclick="expertOnbMuscleToggle(${i}, '${sp}')">${_esc(_subPatternLabel(sp))}</button>`;
+            data-onb-action="toggle-muscle" data-item-index="${i}" data-sub-pattern="${sp}">${_esc(_subPatternLabel(sp))}</button>`;
         }).join('')}
         <div class="eq-muscle-picker-hint">첫 번째 부위가 <b style="color:#fa342c;">주동근</b>이에요. 칩을 탭해서 주동근 변경.</div>
       </div>
@@ -989,7 +1029,7 @@ function _openReviewScreen() {
             <div class="eq-name">${_esc(p.name)}</div>
             <div class="eq-meta">${_esc(metaParts.join(' · '))}</div>
           </div>
-          <button type="button" class="eq-remove" onclick="expertOnbRemoveItem(${i})" aria-label="이 기구 삭제" title="이 기구 삭제">✕</button>
+          <button type="button" class="eq-remove" data-onb-action="remove-item" data-item-index="${i}" aria-label="이 기구 삭제" title="이 기구 삭제">✕</button>
         </div>
         <div class="eq-muscle-chips">
           ${chipsHtml || '<span class="eq-meta" style="font-size:11px;">부위 미지정 — 아래 "+ 부위"로 추가</span>'}
@@ -1414,14 +1454,14 @@ function _renderDoneScreen() {
     </div>
     <div class="section-label" style="margin-top:18px;">등록된 헬스장 <span style="color:var(--text-disabled); font-weight:500; text-transform:none;">${allGyms.length}곳</span></div>
     <div class="done-gym-list">${gymListHtml || '<div class="hero-sub-in">-</div>'}</div>
-    <button type="button" class="btn btn-tonal done-add-gym-btn" onclick="expertOnbAddAnotherGym()" style="margin-top:14px; width:100%;">+ 다른 헬스장도 추가</button>
+    <button type="button" class="btn btn-tonal done-add-gym-btn" data-onb-action="add-another-gym" style="margin-top:14px; width:100%;">+ 다른 헬스장도 추가</button>
     <div class="hero-sub-in" style="font-size:12px; text-align:center; margin-top:20px;">
       설정은 언제든 운동탭 상단의 헬스장 카드에서 수정할 수 있어요.
     </div>
   `;
   // Primary는 바로 Scene 10 진입, Ghost는 "나중에"
-  if (nextBtn) { nextBtn.textContent = '오늘의 루틴 만들기'; nextBtn.disabled = false; nextBtn.onclick = () => { expertOnbClose(); if (typeof window.openRoutineSuggest === 'function') window.openRoutineSuggest(); else if (typeof window.renderAll === 'function') window.renderAll(); }; }
-  if (ghost)   { ghost.style.display = 'block'; ghost.textContent = '나중에'; ghost.onclick = () => { expertOnbClose(); if (typeof window.renderAll === 'function') window.renderAll(); }; }
+  if (nextBtn) { nextBtn.textContent = '오늘의 루틴 만들기'; nextBtn.disabled = false; nextBtn.onclick = () => { expertOnbClose(); document.dispatchEvent(new CustomEvent('expert:open-routine')); }; }
+  if (ghost)   { ghost.style.display = 'block'; ghost.textContent = '나중에'; ghost.onclick = () => { expertOnbClose(); requestAppRender(); }; }
   _toast('프로 모드 설정 완료!', 'success');
 }
 

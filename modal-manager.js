@@ -43,7 +43,6 @@ export const MODALS = Object.freeze([
 let _modalsLoaded = false;
 let _modalsLoadPromise = null;
 const _modalPromises = new Map();
-const CACHE_KEY = '?v=20260507-test-mode-fixes';
 
 function _modalConfig(id) {
   return MODALS.find((config) => config.id === id) || null;
@@ -60,7 +59,7 @@ export async function ensureModal(id) {
   const promise = (async () => {
     const container = document.getElementById('modals-container');
     if (!container) throw new Error('modals-container not found');
-    const module = await import(config.path + CACHE_KEY);
+    const module = await import(config.path);
     const html = module[config.export] || '';
     if (!html) throw new Error(`Modal template is empty: ${id}`);
     container.insertAdjacentHTML('beforeend', html);

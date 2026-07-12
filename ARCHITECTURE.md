@@ -51,10 +51,10 @@ index.html
 - 운동은 `WORKOUT_PAYLOAD_KEYS`, 식단은 `DIET_PAYLOAD_KEYS`, 공통 필드는 `SHARED_PAYLOAD_KEYS` 계약으로 분리한다.
 - 사진·러닝 route·타 도메인 필드를 삭제하지 않도록 repository merge와 fixture 테스트가 저장 경계를 지킨다.
 
-### action과 compatibility 원칙
-- 신규 UI는 `data-*` action + scoped handler 또는 직접 event binding을 사용한다. 신규 inline handler와 `window.*` 노출은 금지한다.
-- app shell의 남은 전역은 `app/compatibility-bridge.js` allowlist로만 설치한다.
-- 오래된 lazy feature가 아직 소비하는 전역은 제거 대상 목록으로 취급하며 새 사용처를 추가하지 않는다.
+### action과 전역 경계 원칙
+- UI는 `data-*` action + scoped handler 또는 직접 event binding을 사용한다. inline handler와 비즈니스 `window.*` 노출은 금지한다.
+- 기능 간 조정은 ES module import 또는 이름이 명시된 `CustomEvent` 계약을 사용한다. `app:render-requested`, `app:start-user-session`, `app:switch-tab`이 shell 경계 이벤트다.
+- `window.*`는 Capacitor/PWA/native bridge와 `__` 접두사의 개발 진단 표면만 허용하며 `tests/architecture-boundaries.test.js`가 allowlist를 강제한다.
 
 ### 탭 로딩 전략 (app.js `switchTab`)
 - **즉시 로드**: `home`, `workout`, `diet` (import 문으로 직접; workout과 diet는 같은 `workouts` 도큐먼트를 공유 → `loadWorkoutDate` 동일 호출)
@@ -127,7 +127,7 @@ index.html
 
 | 파일 | 역할 |
 |------|------|
-| `index.js` | 오케스트레이터: 서브모듈 re-export + `window.*` 등록 |
+| `index.js` | 오케스트레이터: 서브모듈의 공개 API re-export |
 | `state.js` | 공유 상태 객체 `S` (운동/식단 모든 필드) |
 | `load.js` | `loadWorkoutDate()` — Firestore → `S` 복원 + UI 갱신 |
 | `save.js` | `saveWorkoutDay()`, `_autoSaveDiet()`, 공통 `_buildSavePayload()` |
@@ -172,7 +172,7 @@ index.html
 ```
 사용자 입력
   → workout/*.js 또는 home/*.js (상태 변수 변경)
-  → data.js 배럴 → data/data-core.js (Firestore + _cache)
+  → data.js facade → data/data-api.js → domain repository → Firebase adapter
   → document.dispatchEvent('sheet:saved')
   → app.js renderAll() (홈/통계/쿠킹 갱신)
 ```
@@ -201,7 +201,7 @@ index.html
 - 상태: `_settings/expert_preset` — `{goal, daysPerWeek, sessionMinutes, preferMuscles, avoidMuscles, forbiddenMovements, preferredRpe, draftGymId}`
 - 저장소: `data/data-workout-equipment.js` — `users/{uid}/gyms`, `users/{uid}/routine_templates`
 - 모달: expert-onboarding, gym-equipment, routine-suggest, routine-candidates, insights
-- 스타일: `expert-mode.css`
+- 스타일: `styles/workout/expert-mode.css`
 
 ## 13. AI 식단 파이프라인
 
@@ -213,14 +213,15 @@ index.html
 ## 14. 모달 시스템
 
 1. `modals/*-modal.js` → `export const MODAL_HTML` (HTML 문자열)
-2. `modal-manager.js` → 앱 초기화 시 MODALS 배열을 순회해 모든 모달 DOM 주입 (cache key 관리)
-3. `app.js _openModalStack[]` → ESC키로 최상위 닫기
-4. 새 모달 추가: `modal-manager.js`의 MODALS 배열에 등록 + `modals/` 파일 생성
+2. `modal-manager.js` → 필요한 모달을 지연 주입하고 중복 주입을 막음
+3. `app/overlay-stack.js` → modal/sheet의 열기·닫기·ESC/native back 순서를 소유
+4. 모달 내부 동작은 해당 body/sheet에 직접 바인딩하고 backdrop 위임에 의존하지 않음
 
 ## 15. Service Worker
 
-- `sw.js` `CACHE_VERSION` 변수 범프 → 신규 자산 페치
-- `STATIC_ASSETS` 목록의 파일 수정 시 필수 범프
+- `runtime-assets.js`가 웹 runtime asset의 단일 manifest이며 `sw.js`와 `scripts/copy-www.js`가 공유한다.
+- `sw.js` `CACHE_VERSION` 변수 범프 → 신규 자산 페치. manifest 자산 수정 시 같은 변경에서 필수 범프한다.
+- runtime import URL에는 파일별 `?v=`를 붙이지 않고 cache namespace만 교체한다.
 - `firebase-messaging-sw.js`는 FCM 푸시 전용 (별도 SW)
 - 실제 버전은 `sw.js`의 `CACHE_VERSION`을 단일 기준으로 확인하며 문서에 버전 문자열을 복제하지 않는다.
 

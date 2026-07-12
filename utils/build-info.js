@@ -1,3 +1,4 @@
+import { showToast } from '../ui/toast.js';
 // ================================================================
 // utils/build-info.js — 배포 버전 확인 + 서비스워커 업데이트 안내
 // ================================================================
@@ -282,7 +283,7 @@ function _setRefreshControlBusy(control, busy) {
 
 function _toastAppRefresh(message, type = 'info') {
   try {
-    window.showToast?.(message, 2200, type);
+    showToast(message, 2200, type);
   } catch {}
 }
 

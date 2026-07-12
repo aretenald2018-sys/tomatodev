@@ -5,7 +5,7 @@
 import { getPatchnote, markPatchnoteRead } from '../data.js';
 
 export const MODAL_HTML = `
-<div class="modal-backdrop" id="patchnote-modal" onclick="closePatchnote(event)" style="display:none;z-index:1003">
+<div class="modal-backdrop" id="patchnote-modal" data-action="patchnote:close" style="display:none;z-index:1003">
   <div class="modal-sheet" style="padding:32px 20px 20px 20px;max-width:480px;">
     <div class="sheet-handle"></div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
@@ -16,7 +16,7 @@ export const MODAL_HTML = `
     <div id="patchnote-date" style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;"></div>
     <div id="patchnote-body" style="font-size:14px;line-height:1.6;color:var(--text);white-space:pre-wrap;word-break:break-word;max-height:55vh;overflow-y:auto;padding:14px 16px;background:var(--seed-bg-layer, var(--bg-secondary));border-radius:14px;border:1px solid var(--seed-stroke-neutral, var(--border));"></div>
     <div style="margin-top:20px;">
-      <button class="tds-btn fill md" onclick="closePatchnote()" style="width:100%;font-size:15px;padding:14px;">확인</button>
+      <button class="tds-btn fill md" data-action="patchnote:close" style="width:100%;font-size:15px;padding:14px;">확인</button>
     </div>
   </div>
 </div>
@@ -31,7 +31,7 @@ function _fmtDate(ts) {
   return `${y}.${m}.${dd}`;
 }
 
-window.openPatchnote = async function(patchnoteId, fallback) {
+export async function openPatchnote(patchnoteId, fallback) {
   const modal = document.getElementById('patchnote-modal');
   if (!modal) return;
 
@@ -69,8 +69,8 @@ window.openPatchnote = async function(patchnoteId, fallback) {
   }
 };
 
-window.closePatchnote = function(e) {
+export function closePatchnote(e) {
   if (e && e.target && e.target !== document.getElementById('patchnote-modal')) return;
   const modal = document.getElementById('patchnote-modal');
   if (modal) modal.style.display = 'none';
-};
+}

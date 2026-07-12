@@ -9,17 +9,18 @@ import { renderHome, showToast } from './render-home.js';
 import { getDeferredInstallPrompt } from './pwa-fcm.js';
 import { confirmAction } from './utils/confirm-modal.js';
 import { renderBuildInfo } from './utils/build-info.js';
+import { closeModal, openModal } from './app/overlay-stack.js';
 
 // ── 구역 제목 편집 ────────────────────────────────────────────────
 export function editSectionTitle(key) {
   document.getElementById('section-title-key').value   = key;
   document.getElementById('section-title-input').value = getSectionTitle(key);
-  window._openModal('section-title-modal');
+  openModal('section-title-modal');
 }
 
-function closeSectionTitleModal(e) { window._closeModal('section-title-modal', e); }
+export function closeSectionTitleModal(e) { closeModal('section-title-modal', e); }
 
-async function saveSectionTitleFromModal() {
+export async function saveSectionTitleFromModal() {
   const key   = document.getElementById('section-title-key').value;
   const title = document.getElementById('section-title-input').value.trim();
   if (!title) return;
@@ -42,7 +43,7 @@ export async function addMiniMemoItem() {
   renderHome();
 }
 
-async function toggleMiniMemoItem(id) {
+export async function toggleMiniMemoItem(id) {
   const items = getMiniMemoItems().map(item =>
     item.id === id ? { ...item, checked: !item.checked } : item
   );
@@ -50,25 +51,25 @@ async function toggleMiniMemoItem(id) {
   renderHome();
 }
 
-async function deleteMiniMemoItem(id) {
+export async function deleteMiniMemoItem(id) {
   const items = getMiniMemoItems().filter(item => item.id !== id);
   await saveMiniMemoItems(items);
   renderHome();
 }
 
 // ── CSV 내보내기 ─────────────────────────────────────────────────
-function openExportModal() {
+export function openExportModal() {
   document.getElementById('export-modal').classList.add('open');
 }
-function closeExportModal(e) { window._closeModal('export-modal', e); }
-async function runExportCSV(period) {
+export function closeExportModal(e) { closeModal('export-modal', e); }
+export async function runExportCSV(period) {
   const m = await import('./render-stats.js');
   m.exportCSV(period);
   document.getElementById('export-modal').classList.remove('open');
 }
 
 // ── 설정 모달 ────────────────────────────────────────────────────
-function openSettingsModal() {
+export function openSettingsModal() {
   document.getElementById('cfg-anthropic').value = localStorage.getItem('cfg_anthropic') || '';
   _renderNutritionDBList();
   document.getElementById('settings-modal').classList.add('open');
@@ -97,20 +98,20 @@ function _renderNutritionDBList() {
         <div style="font-size:12px;font-weight:600;color:var(--text)">${item.name}${item.unit ? ` <span style="font-weight:400;color:var(--muted)">(${item.unit})</span>` : ''}</div>
         <div style="font-size:10px;color:var(--muted);margin-top:1px">${item.kcal}kcal ${item.protein!=null?`단${Math.round(item.protein)}g`:''} ${item.carbs!=null?`탄${Math.round(item.carbs)}g`:''} ${item.fat!=null?`지${Math.round(item.fat)}g`:''}</div>
       </div>
-      <button style="background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:4px" onclick="openNutritionItemEditor('${item.id}')">✏️</button>
-      <button style="background:none;border:none;color:var(--diet-bad);font-size:14px;cursor:pointer;padding:4px" onclick="_quickDeleteNutritionItem('${item.id}')">✕</button>
+      <button style="background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:4px" data-action="settings:edit-nutrition" data-item-id="${item.id}">✏️</button>
+      <button style="background:none;border:none;color:var(--diet-bad);font-size:14px;cursor:pointer;padding:4px" data-action="settings:delete-nutrition" data-item-id="${item.id}">✕</button>
     </div>`).join('');
 }
 
-async function _quickDeleteNutritionItem(id) {
+export async function quickDeleteNutritionItem(id) {
   const ok = await confirmAction({ title: '영양 아이템 삭제', message: '삭제할까요?', destructive: true });
   if (!ok) return;
   await deleteNutritionItem(id);
   _renderNutritionDBList();
 }
 
-function closeSettingsModal(e) { window._closeModal('settings-modal', e); }
-function saveSettings() {
+export function closeSettingsModal(e) { closeModal('settings-modal', e); }
+export function saveSettings() {
   const anthropic = document.getElementById('cfg-anthropic').value.trim();
   if (anthropic) localStorage.setItem('cfg_anthropic', anthropic);
 
@@ -118,19 +119,6 @@ function saveSettings() {
   showToast('설정이 저장되었습니다');
 }
 
-// ── window 등록 ─────────────────────────────────────────────────
-Object.assign(window, {
-  editSectionTitle,
-  closeSectionTitleModal,
-  saveSectionTitleFromModal,
-  addMiniMemoItem,
-  toggleMiniMemoItem,
-  deleteMiniMemoItem,
-  openExportModal,
-  closeExportModal,
-  runExportCSV,
-  openSettingsModal,
-  closeSettingsModal,
-  saveSettings,
-  _quickDeleteNutritionItem,
+document.addEventListener('nutrition:database-changed', () => {
+  if (document.getElementById('nutrition-db-list')) _renderNutritionDBList();
 });

@@ -1,3 +1,4 @@
+import { readAppCssSync } from './helpers/css-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -83,7 +84,7 @@ test('workout navigation keeps only rendered calendar and day sheet surfaces', a
     readFile(new URL('../index.html', import.meta.url), 'utf8'),
     readFile(new URL('../workout/exercises.js', import.meta.url), 'utf8'),
     readFile(new URL('../workout/navigation-stack.js', import.meta.url), 'utf8'),
-    readFile(new URL('../style.css', import.meta.url), 'utf8'),
+    Promise.resolve(readAppCssSync()),
     Promise.all([
       readFile(new URL('../sw.js', import.meta.url), 'utf8'),
       readFile(new URL('../runtime-assets.js', import.meta.url), 'utf8'),
@@ -112,7 +113,7 @@ test('workout navigation keeps only rendered calendar and day sheet surfaces', a
   assert.match(appJs, /viewMonth:\s*TODAY\.getMonth\(\)/);
   assert.match(appJs, /async function openWorkoutDaySheetFromAction/);
   assert.match(appJs, /openWorkoutDaySheet\(dateKey,[\s\S]*sheetState:\s*'full'/);
-  assert.match(appJs, /wtOpenWorkoutDaySheet:\s*openWorkoutDaySheetFromAction/);
+  assert.doesNotMatch(appJs, /wtOpenWorkoutDaySheet:\s*openWorkoutDaySheetFromAction/);
   assert.doesNotMatch(appJs, /_redirectWorkoutRecordRouteToDaySheet|WORKOUT_ROUTES|currentWorkoutRoute/);
   assert.doesNotMatch(appJs, /wtOpenWorkoutRecord|openWorkoutRecordFromCalendar/);
   assert.match(appJs, /function openWorkoutTab\(y, m, d\)[\s\S]*openWorkoutDaySheetFromAction\(key, _takeWorkoutTargetSessionIndex\(0\)/);
@@ -154,7 +155,7 @@ test('workout navigation keeps only rendered calendar and day sheet surfaces', a
   assert.match(calendarJs, /class="cal-workout-month-grid" data-wt-calendar-scroll-surface/);
   assert.match(styleCss, /\.cal-workout-surface-home\s*\{[\s\S]*touch-action:\s*pan-y/);
   assert.match(calendarJs, /async function _loadWorkoutStateForSheetSession/);
-  assert.match(calendarJs, /window\.wtOpenExercisePicker\(\{[\s\S]*source:\s*'workout-day-sheet'[\s\S]*afterSelect:/);
+  assert.match(calendarJs, /await wtOpenExercisePicker\(\{[\s\S]*source:\s*'workout-day-sheet'[\s\S]*afterSelect:/);
   assert.match(styleCss, /\.cal-workout-month-grid\s*\{[\s\S]*touch-action:\s*pan-y/);
   assert.match(styleCss, /#tab-workout\.wt-calendar-home-mode\s*\{[\s\S]*height:\s*100dvh;[\s\S]*overflow:\s*hidden;/);
   assert.match(styleCss, /#tab-workout\.wt-calendar-home-mode > #workout-calendar-root\s*\{[\s\S]*overflow-y:\s*auto;[\s\S]*overscroll-behavior-y:\s*contain;[\s\S]*touch-action:\s*pan-y;/);

@@ -17,20 +17,27 @@ import { mealDisplayText } from '../ai/meal-artifact-filter.js';
 import { runOptimisticSocialAction } from './social-action.js';
 import { resolveNickname, showToast, haptic, formatTimeAgo, escapeHtml } from './utils.js';
 import { createSocialRenderScheduler } from './social-render-scheduler.js';
+import { openPhotoLightbox } from '../utils/photo-lightbox.js';
 
 // 순환 참조 방지: renderHome, renderFriendFeed, refreshNotifCenter 주입
 let _renderHomeFn = null;
 let _renderFriendFeedFn = null;
 let _refreshNotifCenterFn = null;
+let _quickAddNeighborFn = null;
+let _showReactionPickerFn = null;
+let _showReactionDetailFn = null;
 const _scheduleFriendProfileFeedRender = createSocialRenderScheduler(
   () => _renderFriendFeedFn?.(),
   'friend-profile feed render',
 );
 
-export function setFriendProfileDeps({ renderHome, renderFriendFeed, refreshNotifCenter }) {
+export function setFriendProfileDeps({ renderHome, renderFriendFeed, refreshNotifCenter, quickAddNeighbor, showReactionPicker, showReactionDetail }) {
   _renderHomeFn = renderHome;
   _renderFriendFeedFn = renderFriendFeed;
   _refreshNotifCenterFn = refreshNotifCenter;
+  _quickAddNeighborFn = quickAddNeighbor;
+  _showReactionPickerFn = showReactionPicker;
+  _showReactionDetailFn = showReactionDetail;
 }
 
 function _socialAttr(value) {
@@ -41,6 +48,10 @@ function _closeDynamicModal() {
   document.getElementById('dynamic-modal')?.remove();
 }
 
+function _removeSocialModal(id) {
+  document.getElementById(id || 'dynamic-modal')?.remove();
+}
+
 function _bindFriendProfileActions(root) {
   if (!root || root.dataset.socialActionsBound === '1') return;
   root.dataset.socialActionsBound = '1';
@@ -48,7 +59,7 @@ function _bindFriendProfileActions(root) {
     const target = event.target instanceof Element ? event.target : event.target?.parentElement;
     if (!target) return;
     if (target.matches('[data-social-backdrop]')) {
-      _closeDynamicModal();
+      _removeSocialModal(target.dataset.modalId);
       return;
     }
     const control = target.closest?.('[data-social-action]');
@@ -60,66 +71,81 @@ function _bindFriendProfileActions(root) {
       case 'close-dynamic-modal':
         _closeDynamicModal();
         break;
+      case 'close-modal':
+        _removeSocialModal(control.dataset.modalId);
+        break;
+      case 'confirm-introduce':
+        void confirmIntroduce(control.dataset.friendA, control.dataset.friendB, control.dataset.nameA, control.dataset.nameB);
+        break;
+      case 'confirm-guild-invite':
+        void confirmGuildInvite(friendId, friendName || '', control.dataset.guildName || '');
+        break;
+      case 'quick-join-guild':
+        void quickJoinGuild(control.dataset.guildName || '');
+        break;
+      case 'send-tomato-gift':
+        if (friendId) void sendTomatoGiftFromModal(friendId);
+        break;
       case 'open-meal-photo':
-        if (photo) window.openMealPhotoLightbox?.(photo);
+        if (photo) openPhotoLightbox(photo);
         break;
       case 'quick-guild-join':
-        window.openQuickGuildJoin?.();
+        void openQuickGuildJoin();
         break;
       case 'quick-add-neighbor':
-        if (friendId) window.quickAddNeighbor?.(friendId);
+        if (friendId) void _quickAddNeighborFn?.(friendId);
         break;
       case 'open-introduce-friend':
-        if (friendId) window.openIntroduceFriend?.(friendId, friendName || '');
+        if (friendId) void openIntroduceFriend(friendId, friendName || '');
         break;
       case 'open-guild-invite':
-        if (friendId) window.openGuildInvite?.(friendId, friendName || '');
+        if (friendId) void openGuildInvite(friendId, friendName || '');
         break;
       case 'open-tomato-gift':
-        if (friendId) window.openTomatoGiftModal?.(friendId, friendName || '');
+        if (friendId) openTomatoGiftModal(friendId, friendName || '');
         break;
       case 'submit-guestbook':
-        if (targetId) window.submitGuestbook?.(targetId);
+        if (targetId) void submitGuestbook(targetId);
         break;
       case 'toggle-comment':
-        if (targetId && dk && section) window.toggleCommentSection?.(targetId, dk, section);
+        if (targetId && dk && section) void toggleCommentSection(targetId, dk, section);
         break;
       case 'show-reaction-picker':
-        if (targetId && dk && field) window.showReactionPicker?.(control, targetId, dk, field);
+        if (targetId && dk && field) _showReactionPickerFn?.(control, targetId, dk, field);
         break;
       case 'show-reaction-detail':
-        if (targetId && dk && field) window.showReactionDetail?.(control, targetId, dk, field);
+        if (targetId && dk && field) void _showReactionDetailFn?.(control, targetId, dk, field);
         break;
       case 'send-reaction':
-        if (targetId && dk && field && emoji) window.sendReaction?.(targetId, dk, field, emoji);
+        if (targetId && dk && field && emoji) void sendReaction(targetId, dk, field, emoji);
         break;
       case 'submit-comment':
-        if (targetId && dk && section) window.submitComment?.(targetId, dk, section);
+        if (targetId && dk && section) void submitComment(targetId, dk, section);
         break;
       case 'start-comment-reply':
-        if (commentId && section) window.startCommentReply?.(commentId, fromName || '', section);
+        if (commentId && section) startCommentReply(commentId, fromName || '', section);
         break;
       case 'edit-comment':
-        if (commentId && targetId && dk && section) window.editCommentUI?.(commentId, targetId, dk, section);
+        if (commentId && targetId && dk && section) editCommentUI(commentId, targetId, dk, section);
         break;
       case 'confirm-edit-comment':
-        if (commentId && targetId && dk && section) window.confirmEditComment?.(commentId, targetId, dk, section);
+        if (commentId && targetId && dk && section) void confirmEditComment(commentId, targetId, dk, section);
         break;
       case 'delete-comment':
-        if (commentId && targetId && dk && section) window.deleteCommentUI?.(commentId, targetId, dk, section);
+        if (commentId && targetId && dk && section) void deleteCommentUI(commentId, targetId, dk, section);
         break;
       case 'cancel-comment-reply':
         if (section) _cancelCommentReply(section);
         break;
       case 'start-gb-reply':
-        if (entryId) window.startGbReply?.(entryId, fromName || '');
+        if (entryId) startGbReply(entryId, fromName || '');
         break;
       case 'delete-gb':
-        if (entryId && targetId) window.deleteGb?.(entryId, targetId);
+        if (entryId && targetId) void deleteGb(entryId, targetId);
         break;
       case 'open-friend-profile':
         _closeDynamicModal();
-        if (friendId) window.openFriendProfile?.(friendId, friendName || '익명');
+        if (friendId) void openFriendProfile(friendId, friendName || '익명');
         break;
       default:
         break;
@@ -133,17 +159,17 @@ function _bindFriendProfileActions(root) {
     const { socialEnterAction: action, targetId, dateKey: dk, section, commentId } = control.dataset;
     if (action === 'submit-guestbook' && targetId) {
       event.preventDefault();
-      window.submitGuestbook?.(targetId);
+      void submitGuestbook(targetId);
       return;
     }
     if (action === 'submit-comment' && targetId && dk && section) {
       event.preventDefault();
-      window.submitComment?.(targetId, dk, section);
+      void submitComment(targetId, dk, section);
       return;
     }
     if (action === 'confirm-edit-comment' && commentId && targetId && dk && section) {
       event.preventDefault();
-      window.confirmEditComment?.(commentId, targetId, dk, section);
+      void confirmEditComment(commentId, targetId, dk, section);
       return;
     }
   }, true);
@@ -157,7 +183,7 @@ function _cancelCommentReply(section) {
 }
 
 // ── 친구 프로필 상세 ─────────────────────────────────────────────
-window.openFriendProfile = async function(friendId, friendName, scrollToSection, overrideDateKey) {
+export async function openFriendProfile(friendId, friendName, scrollToSection, overrideDateKey) {
   const user = getCurrentUser();
   const myDataId = getDataOwnerId();
 
@@ -500,7 +526,7 @@ window.openFriendProfile = async function(friendId, friendName, scrollToSection,
           <div style="text-align:center;padding:12px;font-size:12px;color:var(--text-tertiary);">불러오는 중...</div>
         </div>
         ${isFriend || isMyProfile ? `<div style="display:flex;gap:6px;">
-          <input id="guestbook-input" data-social-enter-action="submit-guestbook" data-target-id="${_socialAttr(normalizedFriendId)}" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:999px;font-size:13px;color:var(--text);background:var(--surface2);outline:none;font-family:var(--font-sans);transition:border-color 0.15s;" placeholder="응원 한마디 남기기" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
+          <input id="guestbook-input" data-social-enter-action="submit-guestbook" data-target-id="${_socialAttr(normalizedFriendId)}" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:999px;font-size:13px;color:var(--text);background:var(--surface2);outline:none;font-family:var(--font-sans);transition:border-color 0.15s;" placeholder="응원 한마디 남기기">
           <button data-social-action="submit-guestbook" data-target-id="${_socialAttr(normalizedFriendId)}" style="padding:8px 14px;border:none;border-radius:999px;background:var(--primary-bg);color:var(--primary);font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0;">남기기</button>
         </div>` : ''}
       </div>
@@ -544,7 +570,7 @@ window.openFriendProfile = async function(friendId, friendName, scrollToSection,
         if (cmtSection) {
           const cmtPanel = document.getElementById(`comments-${cmtSection}`);
           if (cmtPanel && cmtPanel.style.display === 'none') {
-            await window.toggleCommentSection(normalizedFriendId, tk, cmtSection);
+            await toggleCommentSection(normalizedFriendId, tk, cmtSection);
           }
           targetEl = cmtPanel;
         }
@@ -611,7 +637,7 @@ async function loadGuestbook(targetId) {
   }
 }
 
-window.openIntroduceFriend = async function(friendId, friendName) {
+export async function openIntroduceFriend(friendId, friendName) {
   const friends = await getMyFriends();
   const accounts = await getAccountList();
   const others = friends.filter(f => f.friendId !== friendId);
@@ -620,27 +646,28 @@ window.openIntroduceFriend = async function(friendId, friendName) {
     const acc = accounts.find(a => a.id === f.friendId);
     const nm = acc ? resolveNickname(acc, accounts) : f.friendId.replace(/_/g, '');
     const ini = nm.charAt(0);
-    return `<button onclick="confirmIntroduce('${friendId}','${f.friendId}','${friendName}','${nm}')" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--surface);cursor:pointer;margin-bottom:6px;text-align:left;transition:all 0.15s;">
+    return `<button type="button" data-social-action="confirm-introduce" data-friend-a="${_socialAttr(friendId)}" data-friend-b="${_socialAttr(f.friendId)}" data-name-a="${_socialAttr(friendName)}" data-name-b="${_socialAttr(nm)}" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--surface);cursor:pointer;margin-bottom:6px;text-align:left;transition:all 0.15s;">
       <div style="width:32px;height:32px;border-radius:50%;background:var(--surface3);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">${ini}</div>
       <span style="font-size:14px;font-weight:500;color:var(--text);">${nm}</span>
     </button>`;
   }).join('');
 
   const intro = document.createElement('div'); intro.id = 'introduce-modal'; document.body.appendChild(intro);
-  intro.innerHTML = `<div class="modal-backdrop" style="display:flex;z-index:1100;" onclick="if(event.target===this){document.getElementById('introduce-modal')?.remove();}">
-    <div class="modal-sheet" style="max-width:360px;" onclick="event.stopPropagation()">
+  intro.innerHTML = `<div class="modal-backdrop" data-social-backdrop data-modal-id="introduce-modal" style="display:flex;z-index:1100;">
+    <div class="modal-sheet" style="max-width:360px;">
       <div class="sheet-handle"></div>
       <div class="modal-title" style="font-size:17px;font-weight:700;">이웃 소개하기</div>
       <div style="text-align:center;font-size:13px;color:var(--text-secondary);margin-bottom:14px;">
         <b>${friendName}</b>님에게 소개해줄 이웃을 선택하세요
       </div>
       <div style="max-height:240px;overflow-y:auto;">${listHtml}</div>
-      <button onclick="document.getElementById('introduce-modal')?.remove()" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text-secondary);font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;">취소</button>
+      <button type="button" data-social-action="close-modal" data-modal-id="introduce-modal" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text-secondary);font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;">취소</button>
     </div>
   </div>`;
+  _bindFriendProfileActions(intro);
 };
 
-window.sendFriendFromIntro = async function(targetId, notifId) {
+export async function sendFriendFromIntro(targetId, notifId) {
   const user = getCurrentUser();
   if (!user) return;
   const myId = isAdminGuest() ? getAdminId() : user.id;
@@ -651,7 +678,7 @@ window.sendFriendFromIntro = async function(targetId, notifId) {
   if (_refreshNotifCenterFn) _refreshNotifCenterFn();
 };
 
-window.confirmIntroduce = async function(idA, idB, nameA, nameB) {
+export async function confirmIntroduce(idA, idB, nameA, nameB) {
   document.getElementById('introduce-modal')?.remove();
   const result = await introduceFriend(idA, idB, nameA, nameB);
   if (result.error) { showToast(result.error, 2500, 'error'); return; }
@@ -660,34 +687,35 @@ window.confirmIntroduce = async function(idA, idB, nameA, nameB) {
 };
 
 // 길드 초대 (내 길드 중 하나에 초대)
-window.openGuildInvite = async function(friendId, friendName) {
+export async function openGuildInvite(friendId, friendName) {
   const user = getCurrentUser();
   if (!user) return;
   const myGuilds = user.guilds || [];
   if (!myGuilds.length) { showToast('소속 길드가 없어요. 먼저 길드에 가입해주세요.', 2500, 'warning'); return; }
 
   let listHtml = myGuilds.map(g =>
-    `<button onclick="confirmGuildInvite('${friendId}','${friendName}','${g.replace(/'/g, "\\'")}')" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px;border:1px solid var(--border);border-radius:var(--radius-md,12px);background:var(--surface);cursor:pointer;margin-bottom:6px;text-align:left;transition:all 0.1s ease-in-out;">
+    `<button type="button" data-social-action="confirm-guild-invite" data-friend-id="${_socialAttr(friendId)}" data-friend-name="${_socialAttr(friendName)}" data-guild-name="${_socialAttr(g)}" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px;border:1px solid var(--border);border-radius:var(--radius-md,12px);background:var(--surface);cursor:pointer;margin-bottom:6px;text-align:left;transition:all 0.1s ease-in-out;">
       <div style="width:32px;height:32px;border-radius:50%;background:var(--primary-bg);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">🏠</div>
       <span style="font-size:14px;font-weight:500;color:var(--text);">${g}</span>
     </button>`
   ).join('');
 
   const modal = document.createElement('div'); modal.id = 'guild-invite-modal'; document.body.appendChild(modal);
-  modal.innerHTML = `<div class="modal-backdrop" style="display:flex;z-index:1100;" onclick="if(event.target===this){document.getElementById('guild-invite-modal')?.remove();}">
-    <div class="modal-sheet" style="max-width:360px;" onclick="event.stopPropagation()">
+  modal.innerHTML = `<div class="modal-backdrop" data-social-backdrop data-modal-id="guild-invite-modal" style="display:flex;z-index:1100;">
+    <div class="modal-sheet" style="max-width:360px;">
       <div class="sheet-handle"></div>
       <div class="modal-title" style="font-size:17px;font-weight:700;">길드에 초대하기</div>
       <div style="text-align:center;font-size:13px;color:var(--text-secondary);margin-bottom:14px;">
         <b>${friendName}</b>님을 초대할 길드를 선택하세요
       </div>
       <div style="max-height:240px;overflow-y:auto;">${listHtml}</div>
-      <button onclick="document.getElementById('guild-invite-modal')?.remove()" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text-secondary);font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;">취소</button>
+      <button type="button" data-social-action="close-modal" data-modal-id="guild-invite-modal" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text-secondary);font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;">취소</button>
     </div>
   </div>`;
+  _bindFriendProfileActions(modal);
 };
 
-window.confirmGuildInvite = async function(friendId, friendName, guildName) {
+export async function confirmGuildInvite(friendId, friendName, guildName) {
   document.getElementById('guild-invite-modal')?.remove();
   const user = getCurrentUser();
   if (!user) return;
@@ -705,7 +733,7 @@ window.confirmGuildInvite = async function(friendId, friendName, guildName) {
 };
 
 // 프로필에서 빠른 길드 가입 (추가하기 버튼)
-window.openQuickGuildJoin = async function() {
+export async function openQuickGuildJoin() {
   const listEl = document.getElementById('quick-guild-join-list');
   if (!listEl) return;
   if (listEl.style.display !== 'none') { listEl.style.display = 'none'; return; }
@@ -733,7 +761,7 @@ window.openQuickGuildJoin = async function() {
       const label = isMine ? '★' : isPending ? '⏳' : `${g.memberCount || 0}명`;
       const bg = isMine ? 'var(--primary-bg)' : 'var(--surface2)';
       const border = isMine ? 'var(--primary)' : 'var(--border)';
-      return `<button onclick="quickJoinGuild('${g.name.replace(/'/g, "\\'")}')" class="guild-chip" style="font-size:11px;padding:3px 8px;cursor:pointer;border:1px solid ${border};background:${bg};">
+      return `<button type="button" data-social-action="quick-join-guild" data-guild-name="${_socialAttr(g.name)}" class="guild-chip" style="font-size:11px;padding:3px 8px;cursor:pointer;border:1px solid ${border};background:${bg};">
         ${g.name}<span style="font-size:9px;color:var(--text-tertiary);margin-left:2px;">${label}</span>
       </button>`;
     }).join('')
@@ -741,7 +769,7 @@ window.openQuickGuildJoin = async function() {
   listEl.style.display = '';
 };
 
-window.quickJoinGuild = async function(guildName) {
+export async function quickJoinGuild(guildName) {
   const user = getCurrentUser();
   if (!user) return;
   const { createGuildJoinRequest, withdrawGuildJoinRequest, saveAccount, setCurrentUser, createGuild: cg, getAllGuilds } = await import('../data.js');
@@ -800,7 +828,7 @@ window.quickJoinGuild = async function(guildName) {
   openFriendProfile(isAdminGuest() ? getAdminId() : user.id);
 };
 
-window.openMyGuestbook = async function() {
+export async function openMyGuestbook() {
   const user = getCurrentUser();
   if (!user) return;
   const myId = isAdminGuest() ? getAdminId() : user.id;
@@ -820,24 +848,25 @@ window.openMyGuestbook = async function() {
       return `<div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:10px;">
         <div style="width:32px;height:32px;border-radius:50%;background:var(--surface3);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">${(e.fromName||'?').charAt(0)}</div>
         <div style="flex:1;">
-          <div style="display:flex;align-items:center;gap:6px;"><span style="font-size:13px;font-weight:600;color:var(--text);cursor:pointer;text-decoration:underline;" onclick="event.stopPropagation();document.getElementById('dynamic-modal')?.remove();openFriendProfile('${e.from}','${e.fromName||'익명'}')">${e.fromName||'익명'}</span><span style="font-size:10px;color:var(--text-tertiary);">${timeAgo}</span></div>
+          <div style="display:flex;align-items:center;gap:6px;"><span data-social-action="open-friend-profile" data-friend-id="${_socialAttr(e.from)}" data-friend-name="${_socialAttr(e.fromName || '익명')}" style="font-size:13px;font-weight:600;color:var(--text);cursor:pointer;text-decoration:underline;">${e.fromName||'익명'}</span><span style="font-size:10px;color:var(--text-tertiary);">${timeAgo}</span></div>
           <div style="font-size:13px;color:var(--text-secondary);margin-top:3px;line-height:1.4;">${e.message}</div>
         </div>
       </div>`;
     }).join('');
   }
 
-  modal.innerHTML = `<div class="modal-backdrop" style="display:flex;z-index:10001;" onclick="if(event.target===this){document.getElementById('dynamic-modal')?.remove();}">
-    <div class="modal-sheet" style="max-width:400px;" onclick="event.stopPropagation()">
+  modal.innerHTML = `<div class="modal-backdrop" data-social-backdrop data-modal-id="dynamic-modal" style="display:flex;z-index:10001;">
+    <div class="modal-sheet" style="max-width:400px;">
       <div class="sheet-handle"></div>
       <div class="modal-title" style="font-size:17px;font-weight:700;">📝 오늘의 방명록</div>
       <div style="max-height:400px;overflow-y:auto;padding:0 4px;">${listHtml}</div>
-      <button onclick="document.getElementById('dynamic-modal')?.remove()" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text-secondary);font-size:13px;font-weight:600;cursor:pointer;margin-top:12px;">닫기</button>
+      <button type="button" data-social-action="close-dynamic-modal" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text-secondary);font-size:13px;font-weight:600;cursor:pointer;margin-top:12px;">닫기</button>
     </div>
   </div>`;
+  _bindFriendProfileActions(modal);
 };
 
-window.startGbReply = function(parentId, fromName) {
+export function startGbReply(parentId, fromName) {
   _gbReplyParentId = parentId;
   const input = document.getElementById('guestbook-input');
   if (input) { input.placeholder = `@${fromName}에게 답글`; input.focus(); }
@@ -852,7 +881,7 @@ window.startGbReply = function(parentId, fromName) {
   }
 };
 
-window.submitGuestbook = async function(targetId) {
+export async function submitGuestbook(targetId) {
   if (document.getElementById('dynamic-modal')?.dataset.isFriend !== '1') {
     showToast('이웃만 방명록을 남길 수 있어요', 2500, 'warning'); return;
   }
@@ -870,7 +899,7 @@ window.submitGuestbook = async function(targetId) {
   loadGuestbook(targetId);
 };
 
-window.deleteGb = async function(entryId, targetId) {
+export async function deleteGb(entryId, targetId) {
   await deleteGuestbookEntry(entryId);
   loadGuestbook(targetId);
   showToast('삭제했어요', 2500, 'info');
@@ -879,7 +908,7 @@ window.deleteGb = async function(entryId, targetId) {
 // ── 댓글 시스템 UI ──────────────────────────────────────────────
 let _commentReplyParentId = null;
 
-window.toggleCommentSection = async function(targetId, dk, section) {
+export async function toggleCommentSection(targetId, dk, section) {
   const panel = document.getElementById(`comments-${section}`);
   if (!panel) return;
   if (panel.style.display === 'none') {
@@ -920,7 +949,7 @@ async function loadComments(targetId, dk, section, canWrite = true) {
 
   if (canWrite) {
     html += `<div style="display:flex;gap:6px;margin-top:8px;">
-      <input id="comment-input-${section}" data-social-enter-action="submit-comment" data-target-id="${_socialAttr(targetId)}" data-date-key="${_socialAttr(dk)}" data-section="${_socialAttr(section)}" style="flex:1;padding:7px 12px;border:1px solid var(--border);border-radius:999px;font-size:12px;color:var(--text);background:var(--surface2);outline:none;font-family:var(--font-sans);transition:border-color 0.15s;" placeholder="댓글 남기기" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
+      <input id="comment-input-${section}" data-social-enter-action="submit-comment" data-target-id="${_socialAttr(targetId)}" data-date-key="${_socialAttr(dk)}" data-section="${_socialAttr(section)}" style="flex:1;padding:7px 12px;border:1px solid var(--border);border-radius:999px;font-size:12px;color:var(--text);background:var(--surface2);outline:none;font-family:var(--font-sans);transition:border-color 0.15s;" placeholder="댓글 남기기">
       <button data-social-action="submit-comment" data-target-id="${_socialAttr(targetId)}" data-date-key="${_socialAttr(dk)}" data-section="${_socialAttr(section)}" style="padding:6px 12px;border:none;border-radius:999px;background:var(--primary-bg);color:var(--primary);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;">등록</button>
     </div>`;
   }
@@ -950,7 +979,7 @@ function renderComment(c, isReply, myId, myDataOwnerId, targetId, dk, section) {
   </div>`;
 }
 
-window.submitComment = async function(targetId, dk, section) {
+export async function submitComment(targetId, dk, section) {
   if (document.getElementById('dynamic-modal')?.dataset.isFriend !== '1') {
     showToast('이웃만 댓글을 남길 수 있어요', 2500, 'warning'); return;
   }
@@ -967,7 +996,7 @@ window.submitComment = async function(targetId, dk, section) {
   await loadComments(targetId, dk, section);
 };
 
-window.startCommentReply = function(parentId, fromName, section) {
+export function startCommentReply(parentId, fromName, section) {
   _commentReplyParentId = parentId;
   const input = document.getElementById(`comment-input-${section}`);
   if (input) { input.placeholder = `@${fromName}에게 답글`; input.focus(); }
@@ -982,7 +1011,7 @@ window.startCommentReply = function(parentId, fromName, section) {
   }
 };
 
-window.editCommentUI = function(commentId, targetId, dk, section) {
+export function editCommentUI(commentId, targetId, dk, section) {
   const msgEl = document.querySelector(`.comment-msg-${commentId}`);
   if (!msgEl) return;
   const oldText = msgEl.textContent;
@@ -993,7 +1022,7 @@ window.editCommentUI = function(commentId, targetId, dk, section) {
   document.getElementById(`edit-${commentId}`)?.focus();
 };
 
-window.confirmEditComment = async function(commentId, targetId, dk, section) {
+export async function confirmEditComment(commentId, targetId, dk, section) {
   const input = document.getElementById(`edit-${commentId}`);
   if (!input || !input.value.trim()) return;
   await editComment(commentId, input.value);
@@ -1001,14 +1030,14 @@ window.confirmEditComment = async function(commentId, targetId, dk, section) {
   await loadComments(targetId, dk, section);
 };
 
-window.deleteCommentUI = async function(commentId, targetId, dk, section) {
+export async function deleteCommentUI(commentId, targetId, dk, section) {
   await deleteComment(commentId);
   showToast('댓글을 삭제했어요', 2500, 'info');
   await loadComments(targetId, dk, section);
 };
 
 // ── 리액션 보내기 + 토마토 선물 ──────────────────────────────────
-window.sendReaction = async function(tid, dk, field, emoji) {
+export async function sendReaction(tid, dk, field, emoji) {
   document.querySelectorAll('.reaction-picker').forEach(p => p.remove());
   const user = getCurrentUser();
   if (!user) return;
@@ -1025,23 +1054,23 @@ window.sendReaction = async function(tid, dk, field, emoji) {
     const acc = accounts.find(a => a.id === tid);
     const name = acc ? resolveNickname(acc, accounts) : tid.replace(/_/g, '');
     document.getElementById('dynamic-modal').remove();
-    window.openFriendProfile(tid, name);
+    openFriendProfile(tid, name);
   }
 };
 
-window.markNotifRead = async function(id) {
+export async function markNotifRead(id) {
   await markNotificationRead(id);
   _scheduleFriendProfileFeedRender('notification-read');
   if (_refreshNotifCenterFn) _refreshNotifCenterFn();
 };
 
-window.openTomatoGiftModal = function(friendId, friendName) {
+export function openTomatoGiftModal(friendId, friendName) {
   const state = getTomatoState();
   const available = Math.max(0, state.totalTomatoes + (state.giftedReceived || 0) - (state.giftedSent || 0));
   document.getElementById('dynamic-modal')?.remove();
   const modal = document.createElement('div'); modal.id = 'dynamic-modal'; document.body.appendChild(modal);
-  modal.innerHTML = `<div class="modal-backdrop" style="display:flex;z-index:1000;" onclick="if(event.target===this){document.getElementById('dynamic-modal')?.remove();}">
-    <div class="modal-sheet" style="max-width:400px;" onclick="event.stopPropagation()">
+  modal.innerHTML = `<div class="modal-backdrop" data-social-backdrop data-modal-id="dynamic-modal" style="display:flex;z-index:1000;">
+    <div class="modal-sheet" style="max-width:400px;">
       <div class="sheet-handle"></div>
       <div class="modal-title" style="font-size:17px;font-weight:700;">토마토 선물하기</div>
       <div style="text-align:center;padding:8px 0 16px;">
@@ -1049,19 +1078,20 @@ window.openTomatoGiftModal = function(friendId, friendName) {
         <div style="font-size:13px;color:var(--text-tertiary);margin-bottom:16px;">남은 토마토: <b style="color:var(--primary);">${available}개</b></div>
         ${available <= 0
           ? `<div style="font-size:13px;color:var(--text-tertiary);padding:12px;background:var(--surface2);border-radius:12px;margin-bottom:12px;">선물할 토마토가 없어요. 목표를 달성해서 토마토를 수확하세요!</div>
-             <button onclick="document.getElementById('dynamic-modal')?.remove()" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text-secondary);font-size:14px;font-weight:600;cursor:pointer;">닫기</button>`
+             <button type="button" data-social-action="close-dynamic-modal" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text-secondary);font-size:14px;font-weight:600;cursor:pointer;">닫기</button>`
           : `<input class="login-input" id="tomato-gift-msg" placeholder="응원 메시지 (선택)" style="margin-bottom:16px;text-align:center;">
              <div style="display:flex;gap:8px;">
-               <button style="flex:1;padding:10px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text-secondary);font-size:14px;font-weight:600;cursor:pointer;" onclick="document.getElementById('dynamic-modal')?.remove()">취소</button>
-               <button style="flex:2;padding:10px;border:none;border-radius:999px;background:var(--primary);color:#fff;font-size:14px;font-weight:600;cursor:pointer;" onclick="sendTomatoGiftFromModal('${friendId}')">선물하기</button>
+               <button type="button" data-social-action="close-dynamic-modal" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text-secondary);font-size:14px;font-weight:600;cursor:pointer;">취소</button>
+               <button type="button" data-social-action="send-tomato-gift" data-friend-id="${_socialAttr(friendId)}" style="flex:2;padding:10px;border:none;border-radius:999px;background:var(--primary);color:#fff;font-size:14px;font-weight:600;cursor:pointer;">선물하기</button>
              </div>`
         }
       </div>
     </div>
   </div>`;
+  _bindFriendProfileActions(modal);
 };
 
-window.sendTomatoGiftFromModal = async function(friendId) {
+export async function sendTomatoGiftFromModal(friendId) {
   const msg = document.getElementById('tomato-gift-msg')?.value || '';
   const result = await sendTomatoGift(friendId, msg);
   if (result.error) { showToast(result.error, 2500, 'error'); return; }
@@ -1073,4 +1103,3 @@ window.sendTomatoGiftFromModal = async function(friendId) {
 };
 
 // 데이터 복구용 (콘솔에서 호출)
-window.revertTomatoGift = revertTomatoGift;

@@ -1,3 +1,4 @@
+import { readAppCssSync } from './helpers/css-source.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,7 +14,7 @@ function readText(relativePath) {
 test('home tomato hero is integrated into the life-zone trapezoid header without the removed name row', () => {
   const tomato = readText('home/tomato.js');
   const lifeZone = readText('home/life-zone.js');
-  const css = readText('style.css');
+  const css = readAppCssSync();
   const sw = readText('sw.js');
 
   assert.match(tomato, /renderCharacterSVG\(characterMood, \{ size: 44 \}\)/);

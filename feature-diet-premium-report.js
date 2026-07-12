@@ -1,3 +1,4 @@
+import { showToast } from './ui/toast.js';
 // ================================================================
 // feature-diet-premium-report.js
 // Targeted one-time premium diet reports for selected users.
@@ -431,7 +432,7 @@ async function _closeReport({ persist = true } = {}) {
     });
   } catch (e) {
     console.warn('[diet-premium-report] ack failed:', e?.message || e);
-    window.showToast?.('리포트 확인 저장에 실패했어요', 2500, 'warning');
+    showToast('리포트 확인 저장에 실패했어요', 2500, 'warning');
   }
 }
 
@@ -472,5 +473,5 @@ export async function showDietPremiumReportIfNeeded() {
 }
 
 if (['localhost', '127.0.0.1'].includes(window.location.hostname)) {
-  window.showDietPremiumReportPreview = (userId) => _showReport(userId, { persist: false });
+  window.__showDietPremiumReportPreview = (userId) => _showReport(userId, { persist: false });
 }

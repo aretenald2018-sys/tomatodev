@@ -143,6 +143,9 @@ export function hasLifeZoneWorkoutActivity() { return false; }
 export function buildWorkoutSetTimeline(_exercises, durationSec = 0) { return { mode: 'set-completion', durationSec, checkedSetCount: 0 }; }
 export function normalizeSetCompletedAt(value) { return value ?? null; }
 `);
+    const toastStub = await writeModule(tempDir, 'toast.js', `
+export function showToast(...args) { return globalThis.window?.showToast?.(...args); }
+`);
 
     let saveSource = readFileSync(path.join(repoRoot, 'workout/save.js'), 'utf8');
     const replacements = [
@@ -159,6 +162,7 @@ export function normalizeSetCompletedAt(value) { return value ?? null; }
       ['./timeline.js', timelineStub],
       ['../data/running-route-storage-plan.js', repoUrl('data/running-route-storage-plan.js')],
       ['../diet/photo-store.js', repoUrl('diet/photo-store.js')],
+      ['../ui/toast.js', toastStub],
     ];
     for (const [specifier, replacement] of replacements) {
       saveSource = replaceImport(saveSource, specifier, replacement);

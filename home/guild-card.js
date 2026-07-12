@@ -17,9 +17,9 @@ function _renderPager(total) {
   const pages = Math.ceil(total / PAGE_SIZE);
   return `
     <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:14px;">
-      <button class="tds-btn ghost md" style="min-width:84px;" onclick="window.changeGuildCardPage(-1)" ${_guildCardPage <= 0 ? 'disabled' : ''}>이전</button>
+      <button type="button" class="tds-btn ghost md" style="min-width:84px;" data-guild-card-action="page" data-delta="-1" ${_guildCardPage <= 0 ? 'disabled' : ''}>이전</button>
       <span style="font-size:12px;color:var(--text-tertiary);">${_guildCardPage + 1} / ${pages}</span>
-      <button class="tds-btn ghost md" style="min-width:84px;" onclick="window.changeGuildCardPage(1)" ${_guildCardPage >= pages - 1 ? 'disabled' : ''}>다음</button>
+      <button type="button" class="tds-btn ghost md" style="min-width:84px;" data-guild-card-action="page" data-delta="1" ${_guildCardPage >= pages - 1 ? 'disabled' : ''}>다음</button>
     </div>
   `;
 }
@@ -28,6 +28,20 @@ export async function renderGuildCard() {
   const card = document.getElementById('card-guild');
   const content = document.getElementById('guild-card-content');
   if (!card || !content) return;
+  if (!content.dataset.guildCardActionsBound) {
+    content.dataset.guildCardActionsBound = '1';
+    content.addEventListener('click', (event) => {
+      const control = event.target.closest('[data-guild-card-action]');
+      if (!control || !content.contains(control)) return;
+      const action = control.dataset.guildCardAction;
+      if (action === 'page') {
+        _guildCardPage = Math.max(0, _guildCardPage + (Number(control.dataset.delta) || 0));
+        void renderGuildCard();
+      }
+      if (action === 'create') void import('../feature-login.js').then(module => module.openGuildModal());
+      if (action === 'open-info') void import('../modals/guild-info-modal.js').then(module => module.openGuildInfoModal(control.dataset.guildName));
+    });
+  }
 
   const user = getCurrentUser();
   if (!user) {
@@ -57,7 +71,7 @@ export async function renderGuildCard() {
     content.innerHTML = `
       <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;">아직 생성된 길드가 없어요. 첫 길드를 만들어도 되고, 나중에 다른 길드가 생기면 둘러볼 수 있어요.</div>
       <div style="display:flex;gap:8px;margin-top:12px;">
-        <button class="tds-btn fill md" style="flex:1;" onclick="openGuildModal()">길드 만들기</button>
+        <button type="button" class="tds-btn fill md" style="flex:1;" data-guild-card-action="create">길드 만들기</button>
       </div>
     `;
     return;
@@ -84,7 +98,7 @@ export async function renderGuildCard() {
         const avgPrefix = item.avgActiveDays > 0 ? `${avgActiveDaysLabel}일 · ` : '';
 
         return `
-          <div onclick="openGuildInfoModal('${String(item.guildName).replace(/'/g, "\\'")}')" style="cursor:pointer;padding:14px;border-radius:18px;border:1px solid ${item.isMine ? 'rgba(250,52,44,0.24)' : 'var(--border)'};background:${item.isMine ? 'linear-gradient(135deg,rgba(250,52,44,0.08),rgba(255,138,61,0.12))' : 'var(--surface)'};box-shadow:${item.isMine ? '0 10px 24px rgba(250,52,44,0.08)' : 'none'};">
+          <div data-guild-card-action="open-info" data-guild-name="${String(item.guildName).replace(/"/g, '&quot;')}" style="cursor:pointer;padding:14px;border-radius:18px;border:1px solid ${item.isMine ? 'rgba(250,52,44,0.24)' : 'var(--border)'};background:${item.isMine ? 'linear-gradient(135deg,rgba(250,52,44,0.08),rgba(255,138,61,0.12))' : 'var(--surface)'};box-shadow:${item.isMine ? '0 10px 24px rgba(250,52,44,0.08)' : 'none'};">
             <div style="display:flex;align-items:flex-start;gap:12px;">
               <div style="width:48px;height:48px;border-radius:16px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden;flex-shrink:0;">
                 ${String(item.guildIcon).startsWith('data:') ? `<img src="${item.guildIcon}" style="width:100%;height:100%;object-fit:cover;">` : item.guildIcon}
@@ -114,8 +128,3 @@ export async function renderGuildCard() {
     ${_renderPager(allGuildRows.length)}
   `;
 }
-
-window.changeGuildCardPage = function(delta) {
-  _guildCardPage = Math.max(0, _guildCardPage + delta);
-  renderGuildCard().catch((e) => console.warn('[guild-card]', e));
-};

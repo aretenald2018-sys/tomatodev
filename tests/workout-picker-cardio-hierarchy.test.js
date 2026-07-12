@@ -1,10 +1,11 @@
+import { readAppCssSync } from './helpers/css-source.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const exercisesJs = readFileSync(new URL('../workout/exercises.js', import.meta.url), 'utf8');
 const cardioModelJs = readFileSync(new URL('../workout/cardio-model.js', import.meta.url), 'utf8');
-const styleCss = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+const styleCss = readAppCssSync();
 const cardioImageIds = Object.freeze([
   'my-mountain',
   'rowing',

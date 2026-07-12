@@ -168,6 +168,4 @@ function _escape(s) {
 
 // ── 전역 노출 (HTML onclick 에서 쓰기 위함) ────────────────────
 if (typeof window !== 'undefined') {
-  window.confirmAction = confirmAction;
-  window.confirmSimple = confirmSimple;
 }

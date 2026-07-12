@@ -1,3 +1,4 @@
+import { readAppCssSync } from './helpers/css-source.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
@@ -30,7 +31,7 @@ test('rest counter uses circular stopwatch markup and double-click preset editin
 });
 
 test('rest counter styles include circular progress and overdue state', () => {
-  const css = read('style.css');
+  const css = readAppCssSync();
 
   assert.match(css, /\.wt-rest-ring-progress/);
   assert.match(css, /stroke-dashoffset/);

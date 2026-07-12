@@ -1,3 +1,4 @@
+import { showToast } from './ui/toast.js';
 // ================================================================
 // render-stats.js
 // 의존성: config.js, data.js
@@ -506,15 +507,15 @@ function _downloadStatsRawExport() {
   try {
     const payload = buildStatsRawExport();
     if (!payload.daily.length) {
-      window.showToast?.('내보낼 통계 raw 데이터가 없어요', 2200, 'info');
+      showToast('내보낼 통계 raw 데이터가 없어요', 2200, 'info');
       return;
     }
     const filename = `tomatofarm-raw-stats-${payload.today}.json`;
     _downloadTextFile(filename, JSON.stringify(payload, null, 2), 'application/json;charset=utf-8');
-    window.showToast?.(`전체통계 ${payload.counts.totalDays}일 raw 데이터를 다운로드했어요`, 2500, 'success');
+    showToast(`전체통계 ${payload.counts.totalDays}일 raw 데이터를 다운로드했어요`, 2500, 'success');
   } catch (error) {
     console.warn('[stats] raw export failed:', error);
-    window.showToast?.('전체통계 다운로드에 실패했어요', 2500, 'error');
+    showToast('전체통계 다운로드에 실패했어요', 2500, 'error');
   }
 }
 

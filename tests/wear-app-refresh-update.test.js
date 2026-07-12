@@ -194,7 +194,7 @@ test('published mobile APK contains current life-zone photo bubble assets', () =
   const apkAppJs = readApkEntryText('public/downloads/tomato-mobile-debug.apk', 'assets/public/app.js');
   const apkWelcomeBackJs = readApkEntryText('public/downloads/tomato-mobile-debug.apk', 'assets/public/home/welcome-back.js');
   const apkLifeZoneJs = readApkEntryText('public/downloads/tomato-mobile-debug.apk', 'assets/public/home/life-zone.js');
-  const apkStyleCss = readApkEntryText('public/downloads/tomato-mobile-debug.apk', 'assets/public/style.css');
+  const apkStyleCss = readApkEntryText('public/downloads/tomato-mobile-debug.apk', 'assets/public/styles/features/home-life-zone.css');
   const expectedCacheVersion = cacheVersionFrom(rootSw);
 
   assert.equal(cacheVersionFrom(apkSw), expectedCacheVersion);
