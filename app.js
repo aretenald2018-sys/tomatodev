@@ -8,11 +8,9 @@ import { loadAll, TODAY, getTabOrder,
          getCurrentUser, loadSavedUser, refreshCurrentUserFromDB } from './data.js';
 import { loadCSVDatabase } from './fatsecret-api.js';
 // ── 분리된 모듈 ──
-import { openNutritionSearch } from './feature-nutrition.js';
 import './feature-diet-plan.js';
 import './feature-checkin.js';
 import './feature-misc.js';
-import { wtSkipMeal } from './workout-ui.js';
 import './workout/expert.js';  // 전문가 모드 렌더와 scoped action binding
 import { showTutorialIfNeeded } from './feature-tutorial.js';
 import { dismissPWAInstallBanner, initFCM, installPWA, showPWAInstallBanner, updateInstallBtn } from './pwa-fcm.js';
@@ -52,8 +50,7 @@ import { showDietPremiumReportIfNeeded } from './feature-diet-premium-report.js'
 import { logoutAccount, openLetterModal } from './feature-login.js';
 import {
   loadWorkoutDate,
-  openNutritionPhotoUpload, wtRecoverTimers, wtRestoreRunningSessionIfActive,
-  wtAddFrequentFoodSuggestion,
+  wtRecoverTimers, wtRestoreRunningSessionIfActive,
 } from './workout/index.js';
 import { wtHandleExercisePickerBack } from './workout/exercises.js';
 import { wtHandleRunningSessionBack } from './workout/running-session.js';
@@ -801,73 +798,11 @@ async function _initializeAppSession() {
   }
 }
 
-// ── 식단 입력 버튼 이벤트 위임 (끼니별 버튼 지원) ──────────────────
-function _initDietInputButtons() {
-  const marker = document.documentElement;
-  if (!marker || marker.dataset.dietInputActionsBound === '1') return;
-  marker.dataset.dietInputActionsBound = '1';
-
-  document.addEventListener('click', async (e) => {
-    const btn = e.target.closest('[data-action]');
-    if (!btn) return;
-    if (!btn.closest('.diet-grid')) return;
-    const action = btn.dataset.action;
-    // Diet rows are re-rendered after login and date changes. Capture on the
-    // stable document so a replacement grid retains its mobile actions.
-    if (action === 'diet:skip-meal') {
-      const meal = btn.dataset.actionArg;
-      if (!meal) {
-        console.warn('[diet-input] skip meal 누락');
-        showToast?.('끼니 정보를 찾지 못했어요. 새로고침 후 다시 시도해주세요.', 2500, 'error');
-        return;
-      }
-      e.preventDefault();
-      e.stopImmediatePropagation?.();
-      e.stopPropagation();
-      wtSkipMeal(meal);
-      return;
-    }
-
-    // Other namespaced actions belong to the document-level action router.
-    if (!['addFood', 'addFrequentFood', 'photoUpload'].includes(action)) return;
-    e.preventDefault();
-    e.stopImmediatePropagation?.();
-    e.stopPropagation();
-
-    const meal = btn.dataset.meal || btn.closest('[data-meal]')?.dataset.meal; // 끼니 (breakfast/lunch/dinner/snack)
-
-    if (action === 'addFood') {
-      if (!meal) {
-        console.warn('[diet-input] addFood meal 누락');
-        showToast?.('끼니 정보를 찾지 못했어요. 새로고침 후 다시 시도해주세요.', 2500, 'error');
-        return;
-      }
-      try {
-        await openNutritionSearch(meal);
-      } catch (err) {
-        console.error('[diet-input] 음식 검색 모달 열기 실패:', err);
-        showToast?.('음식 검색 창을 열지 못했어요. 잠시 후 다시 시도해주세요.', 2500, 'error');
-      }
-    } else if (action === 'addFrequentFood') {
-      if (!meal || !btn.dataset.suggestionKey) {
-        console.warn('[diet-input] addFrequentFood 정보 누락');
-        showToast?.('추천 음식을 추가하지 못했어요. 새로고침 후 다시 시도해주세요.', 2500, 'error');
-        return;
-      }
-      wtAddFrequentFoodSuggestion(meal, btn.dataset.suggestionKey);
-    } else if (action === 'photoUpload') {
-      openNutritionPhotoUpload();
-    }
-  }, true);
-}
-
-
 _bindLifeZoneNpcQuestEvent();
 _bindRunningLiveEvent();
 _bindAppShellActions();
 configureNavigation({ getCurrentTab: () => _currentTab, switchTab });
 init();
-_initDietInputButtons();
 
 document.addEventListener('app:switch-tab', (event) => {
   const tab = event.detail?.tab;
