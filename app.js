@@ -49,6 +49,7 @@ import { closeNotifCenter, markAllNotifsRead, toggleNotifCenter } from './home/n
 import { setLifeZoneVisitContext } from './home/life-zone.js';
 import { showWelcomeBackPopup } from './home/welcome-back.js';
 import { showDietPremiumReportIfNeeded } from './feature-diet-premium-report.js';
+import { logoutAccount, openLetterModal } from './feature-login.js';
 import {
   loadWorkoutDate,
   openNutritionPhotoUpload, wtRecoverTimers, wtRestoreRunningSessionIfActive,
@@ -247,11 +248,10 @@ function _closeMoreMenu() {
   if (menu) menu.style.display = 'none';
 }
 
-function _runWindowAction(actionName, ...args) {
-  const fn = window[actionName];
-  if (typeof fn === 'function') return fn(...args);
-  console.warn(`[app-shell] missing action: ${actionName}`);
-  return undefined;
+function _toggleMoreMenu() {
+  const menu = document.getElementById('more-menu');
+  if (!menu) return;
+  menu.style.display = menu.style.display === 'none' ? 'flex' : 'none';
 }
 
 function _runAppShellAction(action, control, event) {
@@ -271,7 +271,7 @@ function _runAppShellAction(action, control, event) {
       break;
     case 'open-letter-modal':
       _closeMoreMenu();
-      _runWindowAction('openLetterModal');
+      void openLetterModal();
       break;
     case 'toggle-notif-center':
       _closeMoreMenu();
@@ -287,7 +287,7 @@ function _runAppShellAction(action, control, event) {
       break;
     case 'logout-account':
       _closeMoreMenu();
-      _runWindowAction('logoutAccount');
+      void logoutAccount();
       break;
     case 'mark-all-notifs-read':
       void markAllNotifsRead();
@@ -302,7 +302,7 @@ function _runAppShellAction(action, control, event) {
       openWorkoutTab(control.dataset.year, control.dataset.month, control.dataset.day);
       break;
     case 'toggle-more-menu':
-      _runWindowAction('toggleMoreMenu');
+      _toggleMoreMenu();
       break;
     case 'switch-tab-close-more':
       if (tab) void switchTab(tab);

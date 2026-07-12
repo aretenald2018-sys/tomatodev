@@ -820,7 +820,7 @@ async function createAccountAndLogin() {
   return _continueToAppAfterLogin();
 }
 
-async function logoutAccount() {
+export async function logoutAccount() {
   const { getCurrentUser, setCurrentUser, isAdmin, isAdminGuest, getAccountList } = await import('./data.js');
   const user = getCurrentUser();
   const name = user ? `${user.lastName}${user.firstName}`.replace(/\(.*\)/, '') : '';
@@ -1502,7 +1502,7 @@ async function renderLetterStatusList() {
   }
 }
 
-async function openLetterModal() {
+export async function openLetterModal() {
   const { getCurrentUser } = await import('./data.js');
   const user = getCurrentUser();
   if (!user) return;
@@ -1680,9 +1680,3 @@ function toggleTheme() {
 (function() {
   document.documentElement.classList.add('light');
 })();
-
-// 더보기 메뉴
-function toggleMoreMenu() {
-  const menu = document.getElementById('more-menu');
-  menu.style.display = menu.style.display === 'none' ? 'flex' : 'none';
-}

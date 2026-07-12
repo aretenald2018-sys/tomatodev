@@ -85,6 +85,9 @@ test('app module binds app shell actions with one idempotent bridge', () => {
   assert.match(appJs, /moreBtn\.dataset\.tab = adminOnlyMode \? 'admin' : 'more'/);
   assert.match(appJs, /moreBtn\.onclick = null/);
   assert.match(appJs, /window\.__requestTomatoAppRefresh\(\{ control, source: 'more-menu' \}\)/);
+  assert.match(appJs, /import \{ logoutAccount, openLetterModal \} from '\.\/feature-login\.js';/);
+  assert.match(appJs, /function _toggleMoreMenu\(\)/);
+  assert.doesNotMatch(appJs, /_runWindowAction\(/);
 });
 
 test('dynamic more menu items inherit the app shell action contract', () => {
