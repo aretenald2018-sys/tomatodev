@@ -20,6 +20,7 @@
 | 자동 회귀 | 통과 | 전체 `npm.cmd test`: 909/909, 핵심 데이터 계약: 105/105 |
 | Android/Wear 빌드 | 통과 | `:app:assembleDebug :wear:assembleDebug` 성공 |
 | 실제 Pages 비파괴 흐름 | 부분 통과 | CSS 적용, 빈 로그인 검증, 가입 화면 전환 확인; 브라우저 환경이 오프라인이라 실제 계정 저장은 실행하지 않음 |
+| 관리자 서버 권한 | 미검증 | `firebase.json`에는 Functions만 선언돼 있고 Firestore rules source/배포 검증이 저장소에 없음 |
 | 대형 파일 단일 책임 | 미완료 | `render-calendar.js` 5,009줄, `workout/exercises.js` 4,136줄, `workout/expert.js` 3,286줄, `workout/expert/max.js` 4,068줄 |
 | 사용자 행동 테스트 | 미완료 | 소스 파일을 읽는 테스트가 70개라, 많은 UI 회귀가 구현 문자열에 묶여 있음 |
 
@@ -37,6 +38,7 @@
 4. **행동 테스트 전환** — source-string 검사는 architecture, asset manifest, generated bundle 같은 금지/생성 규칙에 한정한다. 로그인, 식단, 운동, 러닝, 캘린더, social, stats의 화면 동작은 DOM 또는 integration harness로 전환한다.
 5. **CSS·접근성 재검증** — 360~430px 폭에서 홈·식단·운동·캘린더·더보기와 모든 sheet/modal의 visual snapshot, tab/escape focus, 44px 터치 영역을 확인한다. bundle만 수정하지 말고 owner source를 수정한다.
 6. **실계정 production QA** — 별도 테스트 계정으로 로그인/세션 복구, 저장·재로드, 사진 필드 보존, 일반/관리자 권한 거부, PWA 업데이트와 Android back/Wear 연결을 실행한다. 실제 사용자 데이터에는 쓰지 않는다.
+7. **Firestore rules를 저장소에서 관리** — 현재 배포 rules를 export하거나 versioned `firestore.rules`를 복원하고, 일반 계정이 admin/social 전체 조회·수정에 실패하는 emulator 또는 production test를 추가한다.
 
 ## 완료 선언 조건
 
