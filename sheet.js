@@ -331,6 +331,15 @@ function _renderExerciseList() {
   });
 }
 
+function _formatSheetSetVolume(value) {
+  const volume = Math.max(0, Number(value) || 0);
+  if (volume >= 1000) {
+    const tons = Math.round((volume / 1000) * 10) / 10;
+    return `${Number.isInteger(tons) ? tons : tons.toFixed(1)}t`;
+  }
+  return `${Math.round(volume).toLocaleString()}kg`;
+}
+
 function _renderSets(entryIdx) {
   const el = document.getElementById(`sets-${entryIdx}`);
   if (!el) return;
@@ -342,7 +351,7 @@ function _renderSets(entryIdx) {
     const isDrop = set.setType === 'drop';
     const isDone   = set.done !== false; // undefined도 완료로 처리
     const vol = (set.kg && set.reps && !isWarmup && isDone)
-      ? `<span style="color:var(--accent)">${(set.kg*set.reps).toLocaleString()}vol</span>`
+      ? `<span style="color:var(--accent)">${_formatSheetSetVolume(set.kg * set.reps)}</span>`
       : (isWarmup ? '<span style="color:var(--muted);font-size:9px">웜업</span>' : '');
 
     const row = document.createElement('div');

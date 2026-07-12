@@ -1669,6 +1669,15 @@ export function renderEmbeddedMaxExerciseCard(container, entryIdx, options = {})
 }
 
 // ── 세트 행 렌더 ────────────────────────────────────────────────
+function _formatExerciseSetVolume(value) {
+  const volume = Math.max(0, Number(value) || 0);
+  if (volume >= 1000) {
+    const tons = Math.round((volume / 1000) * 10) / 10;
+    return `${Number.isInteger(tons) ? tons : tons.toFixed(1)}t`;
+  }
+  return `${Math.round(volume).toLocaleString()}kg`;
+}
+
 function _renderSets(entryIdx, targetEl = null) {
   const el = targetEl || document.getElementById(`wt-sets-${entryIdx}`);
   if (!el) return;
@@ -1691,7 +1700,7 @@ function _renderSets(entryIdx, targetEl = null) {
     const romScoreValue = _romPctToScoreInput(romValue);
     const volume = calcSetVolume(set);
     const vol = (set.kg && set.reps && !isWarmup && isDone)
-      ? `<span style="color:var(--accent)">${Math.round(volume).toLocaleString()}vol</span>`
+      ? `<span style="color:var(--accent)">${_formatExerciseSetVolume(volume)}</span>`
       : (isWarmup ? '<span style="color:var(--muted);font-size:9px">웜업</span>' : '');
 
     // 실제 수행 RIR 선택 UI — Expert + 본세트 + 완료 상태에서만 노출.
