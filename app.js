@@ -809,10 +809,13 @@ function _initDietInputButtons() {
   dietGrid.addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
+    const action = btn.dataset.action;
+    // namespaced actions belong to the document-level action router.
+    // Stopping them here made meal accordion, skip, and photo buttons inert.
+    if (!['addFood', 'addFrequentFood', 'photoUpload'].includes(action)) return;
     e.preventDefault();
     e.stopPropagation();
 
-    const action = btn.dataset.action;
     const meal = btn.dataset.meal || btn.closest('[data-meal]')?.dataset.meal; // 끼니 (breakfast/lunch/dinner/snack)
 
     if (action === 'addFood') {

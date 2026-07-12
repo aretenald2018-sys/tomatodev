@@ -56,11 +56,15 @@ function createDietHarness() {
 async function clickDietAction(harness, dataset) {
   const handler = harness.dietGrid.listeners.get('click');
   assert.equal(typeof handler, 'function', 'diet grid click handler should be bound');
-  await handler({
+  const event = {
     target: new FakeElement({ dataset }),
-    preventDefault() {},
-    stopPropagation() {},
-  });
+    prevented: 0,
+    stopped: 0,
+    preventDefault() { this.prevented += 1; },
+    stopPropagation() { this.stopped += 1; },
+  };
+  await handler(event);
+  return event;
 }
 
 test('all meal add buttons open the search UI directly through delegated clicks', async () => {
@@ -97,4 +101,15 @@ test('frequent food cards continue to use the diet grid delegated handler', asyn
   });
 
   assert.deepEqual(harness.calls, ['frequent:lunch:lunch-rice-120']);
+});
+
+test('diet grid leaves namespaced actions for the global action router', async () => {
+  const harness = createDietHarness();
+  harness.window.__initDietInputButtons();
+
+  const event = await clickDietAction(harness, { action: 'diet:toggle-row', meal: 'breakfast' });
+
+  assert.deepEqual(harness.calls, []);
+  assert.equal(event.prevented, 0);
+  assert.equal(event.stopped, 0);
 });
