@@ -74,6 +74,9 @@ function buildHarnessScript() {
     '_clearWorkoutSetKeyboardSurface',
     '_hideWorkoutSetKeyboard',
     '_markWorkoutSetKeyboardInputDirty',
+    '_workoutSetKeyboardDraftQueueKey',
+    '_queueWorkoutSetKeyboardInputDraft',
+    '_flushWorkoutSetKeyboardInputDraft',
     '_replaceWorkoutSetKeyboardInputValue',
     '_workoutSetKeyboardCursor',
     '_applyWorkoutSetKeyboardKey',
@@ -111,6 +114,7 @@ function buildHarnessScript() {
     const _workoutExpandedSetEditors = new Set();
     let _workoutInlineSetEditor = null;
     let _workoutSetKeyboardInput = null;
+    const _workoutSetKeyboardDraftQueues = new Map();
     window.__renderCalls = 0;
     window.__syncCalls = [];
     window.__restoreCalls = [];
@@ -194,7 +198,7 @@ function buildHarnessScript() {
     async function _mutateWorkoutExerciseFromSheet(targetKey, targetSessionIndex, exerciseIndex, mutator, options = {}) {
       const ok = mutator(window.__entry);
       window.__mutateCalls.push({ targetKey, targetSessionIndex, exerciseIndex, options });
-      if (options?.optimisticRender || !window.__deferSetMutationRender) {
+      if (options?.optimisticRender || (!window.__deferSetMutationRender && options?.skipRender !== true)) {
         renderWorkoutCalendarHome();
       } else {
         window.__pendingMutationRender = { targetKey, targetSessionIndex, exerciseIndex, options };
@@ -519,6 +523,8 @@ test('custom workout set keypad enters values and moves left or right across inl
       value: document.activeElement?.value ?? null,
       dirty: document.activeElement?.getAttribute('data-wt-set-keyboard-dirty') || '',
     }));
+    await page.waitForFunction(() => window.__entry.sets[0]?.kg === 55);
+    typedKg.persistedKg = await page.evaluate(() => window.__entry.sets[0]?.kg ?? null);
 
     const renderBeforeNext = await page.evaluate(() => window.__renderCalls);
     await tapSelector('[data-wt-set-keyboard-action="next"]');
@@ -581,7 +587,7 @@ test('custom workout set keypad enters values and moves left or right across inl
     hasNext: true,
     sheetPadded: true,
   });
-  assert.deepEqual(result.typedKg, { value: '55', dirty: 'true' });
+  assert.deepEqual(result.typedKg, { value: '55', dirty: 'true', persistedKg: 55 });
   assert.deepEqual(result.afterNextMove, { renderDelta: 1, activeField: 'reps', keyboardOpen: true });
   assert.deepEqual(result.afterPrevMove, { renderDelta: 1, activeField: 'kg', keyboardOpen: true });
   assert.equal(result.afterPrev.activeField, 'kg');
