@@ -132,6 +132,7 @@
   './workout/exercise-picker-model.js',
   './workout/session-policy.js',
   './workout/running-model.js',
+  './workout/running-record-import.js',
   './workout/running-input.js',
   './workout/running-analytics.js',
   './workout/calendar-running.js',

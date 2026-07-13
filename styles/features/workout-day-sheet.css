@@ -1471,10 +1471,69 @@
 }
 .wt-day-fab:active { transform: scale(0.96); }
 .wt-day-fab--running {
-  background: #2563eb;
+  position: static;
+  width: auto;
+  min-width: 72px;
+  padding: 0 14px;
+  gap: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #dbe3ee;
+  border-radius: 14px;
+  background: #111827;
   color: #fff;
-  font-size: 24px;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.3);
+  font-size: 13px;
+  font-weight: 850;
+  box-shadow: 0 7px 16px rgba(17, 24, 39, 0.18);
+}
+.wt-day-fab--running svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+  flex: 0 0 auto;
+}
+.wt-day-running-actions {
+  position: absolute;
+  right: 18px;
+  bottom: 76px;
+  z-index: 44;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wt-running-upload-action {
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid #dbe3ee;
+  border-radius: 14px;
+  background: #f7f9fc;
+  color: #315176;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 800;
+  box-shadow: 0 7px 16px rgba(47, 65, 91, 0.12);
+}
+.wt-running-upload-action svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.wt-running-upload-action.is-loading svg {
+  animation: wt-running-upload-pulse 900ms ease-in-out infinite alternate;
+}
+.wt-running-upload-action:disabled {
+  opacity: 0.72;
+}
+@keyframes wt-running-upload-pulse {
+  to { transform: translateY(-2px); opacity: 0.55; }
 }
 .wt-running-empty .wt-empty-center {
   gap: 8px;
@@ -1877,6 +1936,20 @@
     height: 46px;
     font-size: 32px;
   }
+  .wt-day-running-actions {
+    right: 12px;
+  }
+  .wt-running-upload-action {
+    min-height: 46px;
+    padding: 0 12px;
+    font-size: 12px;
+  }
+  .wt-day-fab--running {
+    min-width: 68px;
+    height: 46px;
+    padding: 0 12px;
+    font-size: 12px;
+  }
 }
 
 .cal-workout-day-backdrop {
@@ -2004,6 +2077,15 @@
   z-index: 4;
   pointer-events: auto;
   touch-action: manipulation;
+}
+.cal-workout-day-sheet .wt-day-running-actions {
+  bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  z-index: 4;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+.cal-workout-day-sheet .wt-day-sessionbar[data-running-actions="true"] {
+  padding-right: 198px;
 }
 
 @media (max-width: 430px) {

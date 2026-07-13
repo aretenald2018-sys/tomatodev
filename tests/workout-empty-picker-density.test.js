@@ -14,16 +14,17 @@ function ruleBody(selector) {
   return match[1];
 }
 
-test('empty workout view uses a floating add button beside the session tabs', () => {
+test('empty workout view keeps the gym add button and adds a compact running action dock', () => {
   const start = renderCalendar.indexOf('function _renderWorkoutHomeDetail');
   const end = renderCalendar.indexOf('function _renderWorkoutDetailSummaryCard', start);
   assert.ok(start >= 0 && end > start, 'workout day detail renderer should exist');
   const detail = renderCalendar.slice(start, end);
 
   assert.match(detail, /class="wt-day-sessionbar"[\s\S]*class="wt-day-session-tabs"/);
-  assert.match(detail, /const fabAttrs = runningActive[\s\S]*data-wt-day-add-running[\s\S]*data-date-key="\$\{_esc\(key\)\}"/);
-  assert.match(detail, /:\s*`data-wt-day-add-session data-date-key="\$\{_esc\(key\)\}"/);
-  assert.match(detail, /class="wt-day-fab \$\{runningActive \? 'wt-day-fab--running' : ''\}"/);
+  assert.match(detail, /data-wt-day-add-running data-date-key="\$\{_esc\(key\)\}"/);
+  assert.match(detail, /data-wt-day-upload-running data-date-key="\$\{_esc\(key\)\}"/);
+  assert.match(detail, /class="wt-day-fab wt-day-fab--running"/);
+  assert.match(detail, /class="wt-running-upload-action"/);
   assert.doesNotMatch(detail, /class="wt-day-fab"[^>]*onclick=/);
   assert.doesNotMatch(detail, /class="wt-day-add-inline"/);
   assert.doesNotMatch(detail, /class="wt-day-edit"/);
@@ -37,6 +38,8 @@ test('empty workout view uses a floating add button beside the session tabs', ()
   assert.match(fab, /width:\s*48px/);
   assert.match(fab, /height:\s*48px/);
   assert.match(ruleBody('.cal-workout-day-sheet .wt-day-fab'), /touch-action:\s*manipulation/);
+  assert.match(ruleBody('.wt-day-running-actions'), /display:\s*flex/);
+  assert.match(ruleBody('.wt-running-upload-action'), /min-height:\s*48px/);
 });
 
 test('empty workout guidance is compact enough for one screen', () => {

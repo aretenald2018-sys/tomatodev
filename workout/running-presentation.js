@@ -41,6 +41,7 @@ export function formatRunningClock(timestamp) {
 export function runningSourceLabel(source) {
   if (source === 'gps') return 'GPS 기록';
   if (source === 'wear' || source === 'wear-gps') return '워치 기록';
+  if (source === 'screenshot-import') return '업로드 기록';
   if (source === 'manual-cardio') return '수기 입력';
   if (source === 'manual') return '수동 기록';
   return '러닝 기록';

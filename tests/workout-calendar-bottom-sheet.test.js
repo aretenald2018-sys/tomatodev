@@ -311,14 +311,16 @@ test('full sheet header tap collapses through the sheet toggle path', () => {
   assert.doesNotMatch(applyFn, /data-wt-sheet-handle/);
 });
 
-test('floating add button uses direct sheet action binding', () => {
+test('running action dock uses direct sheet bindings for start and screenshot upload', () => {
   const detailStart = calendarJs.indexOf('function _renderWorkoutHomeDetail');
   const detailEnd = calendarJs.indexOf('function _renderWorkoutDetailSummaryCard', detailStart);
   assert.ok(detailStart >= 0 && detailEnd > detailStart, 'workout detail renderer should be present');
   const detail = calendarJs.slice(detailStart, detailEnd);
-  assert.match(detail, /const fabAttrs = runningActive[\s\S]*data-wt-day-add-running[\s\S]*data-date-key="\$\{_esc\(key\)\}"/);
-  assert.match(detail, /:\s*`data-wt-day-add-session data-date-key="\$\{_esc\(key\)\}"/);
-  assert.match(detail, /class="wt-day-fab \$\{runningActive \? 'wt-day-fab--running' : ''\}"/);
+  assert.match(detail, /class="wt-day-running-actions"/);
+  assert.match(detail, /data-wt-day-add-running data-date-key="\$\{_esc\(key\)\}"/);
+  assert.match(detail, /data-wt-day-upload-running data-date-key="\$\{_esc\(key\)\}"/);
+  assert.match(detail, /data-wt-running-upload-input/);
+  assert.match(detail, /class="wt-day-fab wt-day-fab--running"/);
   assert.doesNotMatch(detail, /class="wt-day-fab"[^>]*onclick=/);
   assert.match(calendarJs, /_bindWorkoutHomeSheetActions\(root\)/);
   assert.match(calendarJs, /function _bindWorkoutHomeSheetActions\(root\)/);
@@ -326,9 +328,14 @@ test('floating add button uses direct sheet action binding', () => {
   assert.match(calendarJs, /event\.target instanceof Element \? event\.target : event\.target\?\.parentElement/);
   assert.match(calendarJs, /const addRunning = target\?\.closest\?\.\('\[data-wt-day-add-running\]'\)/);
   assert.match(calendarJs, /Promise\.resolve\(_openWorkoutHomeRunning\(key\)\)/);
+  assert.match(calendarJs, /const uploadRunning = target\?\.closest\?\.\('\[data-wt-day-upload-running\]'\)/);
+  assert.match(calendarJs, /uploadInput\.click\(\)/);
+  assert.match(calendarJs, /sheet\.addEventListener\('change',[\s\S]*runningUploadInput[\s\S]*_importWorkoutRunningRecord/);
   assert.match(calendarJs, /target\?\.closest\?\.\('\[data-wt-day-add-session\]'\)/);
   assert.match(calendarJs, /event\.stopPropagation\(\)/);
   assert.match(calendarJs, /Promise\.resolve\(_addWorkoutHomeSession\(key\)\)/);
+  assert.match(styleCss, /\.wt-day-running-actions\s*\{/);
+  assert.match(styleCss, /\.wt-running-upload-action\s*\{/);
 });
 
 test('day sheet add picker stays on the current sheet session', () => {

@@ -24,6 +24,7 @@ test('running presentation formats distance, pace, and time without invalid valu
 
 test('running presentation retains labels and card metrics', () => {
   assert.equal(runningSourceLabel('wear-gps'), '워치 기록');
+  assert.equal(runningSourceLabel('screenshot-import'), '업로드 기록');
   assert.equal(runningSourceLabel('manual-cardio'), '수기 입력');
   assert.equal(runningSourceLabel('unknown'), '러닝 기록');
 

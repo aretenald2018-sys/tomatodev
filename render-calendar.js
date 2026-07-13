@@ -137,6 +137,7 @@ const _workoutSheetCarouselSnapshots = new Map();
 const _workoutSheetPendingCarouselFocus = new Map();
 let _workoutTrackGraphSeq = 0;
 let _workoutRunningMapSeq = 0;
+let _workoutRunningImportActive = false;
 const _workoutRunningMapPayloads = new Map();
 const _workoutRunningRouteHydration = createRunningRouteHydrationController(loadRunningRoute);
 const WORKOUT_HOME_SHEET_STATES = ['bar', 'full'];
@@ -2137,10 +2138,7 @@ function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, includeHead 
           <div id="wt-running-session-root" class="wt-running-inline-root" aria-live="polite" hidden></div>
         </div>
       ` : '';
-  const fabAttrs = runningActive
-    ? `data-wt-day-add-running data-date-key="${_esc(key)}" aria-label="러닝 시작"`
-    : `data-wt-day-add-session data-date-key="${_esc(key)}" aria-label="운동 추가"`;
-  const fabText = runningActive ? '▶' : '＋';
+  const fabAttrs = `data-wt-day-add-session data-date-key="${_esc(key)}" aria-label="운동 추가"`;
   const headHtml = includeHead ? `
       <div class="wt-day-head">
         <button type="button" class="wt-day-back" data-wt-sheet-card-action="back-month" aria-label="캘린더로 돌아가기">⌄</button>
@@ -2165,10 +2163,22 @@ function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, includeHead 
         ${content}
       </div>
 
-      <div class="wt-day-sessionbar">
+      <div class="wt-day-sessionbar" data-running-actions="${runningActive ? 'true' : 'false'}">
         <div class="wt-day-session-tabs">${sessionTabs}</div>
       </div>
-      <button type="button" class="wt-day-fab ${runningActive ? 'wt-day-fab--running' : ''}" ${fabAttrs}>${fabText}</button>
+      ${runningActive ? `
+        <div class="wt-day-running-actions" aria-label="러닝 기록 작업">
+          <button type="button" class="wt-running-upload-action" data-wt-day-upload-running data-date-key="${_esc(key)}" aria-label="러닝 기록 스크린샷 업로드">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
+            <span data-wt-running-upload-label>기록 업로드</span>
+          </button>
+          <button type="button" class="wt-day-fab wt-day-fab--running" data-wt-day-add-running data-date-key="${_esc(key)}" aria-label="러닝 시작">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>
+            <span>시작</span>
+          </button>
+          <input type="file" accept="image/jpeg,image/png,image/webp" data-wt-running-upload-input data-date-key="${_esc(key)}" hidden>
+        </div>
+      ` : `<button type="button" class="wt-day-fab" ${fabAttrs}>＋</button>`}
     </div>
   `;
 }
@@ -3187,6 +3197,57 @@ function _runWorkoutHomeSheetCardAction(action, control) {
   }
 }
 
+async function _importWorkoutRunningRecord(input, key) {
+  if (_workoutRunningImportActive) return false;
+  const file = input?.files?.[0];
+  if (!file) return false;
+  const targetKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
+  const sheet = input.closest?.('[data-wt-day-sheet]');
+  const button = sheet?.querySelector?.('[data-wt-day-upload-running]');
+  const label = button?.querySelector?.('[data-wt-running-upload-label]');
+  const originalLabel = label?.textContent || '기록 업로드';
+  _workoutRunningImportActive = true;
+  input.disabled = true;
+  if (button) {
+    button.disabled = true;
+    button.classList.add('is-loading');
+    button.setAttribute('aria-busy', 'true');
+  }
+  if (label) label.textContent = '기록 읽는 중';
+  showToast('스크린샷에서 러닝 기록을 읽고 있어요', 2400, 'info');
+  try {
+    const {
+      parseRunningRecordImage,
+      saveImportedRunningRecord,
+    } = await import('./workout/running-record-import.js');
+    const record = await parseRunningRecordImage(file, { targetDateKey: targetKey });
+    await saveImportedRunningRecord(targetKey, record);
+    _workoutHomeSelectedKey = targetKey;
+    _workoutHomeSessionIndex = WORKOUT_RUNNING_SESSION_INDEX;
+    _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:running-import' });
+    _workoutDetailCollapsed.clear();
+    document.dispatchEvent(new CustomEvent('sheet:saved', {
+      detail: { source: 'screenshot-import', dateKey: targetKey },
+    }));
+    showToast(`${_fmtNum(record.distanceKm, 2)}km 러닝 기록을 저장했어요`, 2400, 'success');
+    return true;
+  } catch (error) {
+    console.warn('[workout-calendar] running screenshot import failed:', error);
+    showToast(error?.message || '러닝 기록을 읽지 못했어요', 3200, 'error');
+    return false;
+  } finally {
+    _workoutRunningImportActive = false;
+    input.value = '';
+    input.disabled = false;
+    if (button) {
+      button.disabled = false;
+      button.classList.remove('is-loading');
+      button.removeAttribute('aria-busy');
+    }
+    if (label) label.textContent = originalLabel;
+  }
+}
+
 function _bindWorkoutHomeSheetActions(root) {
   const sheet = root?.querySelector?.('[data-wt-day-sheet]');
   if (!sheet) return;
@@ -3206,6 +3267,14 @@ function _bindWorkoutHomeSheetActions(root) {
   }, true);
   sheet.addEventListener('change', (event) => {
     const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    const runningUploadInput = target?.closest?.('[data-wt-running-upload-input]');
+    if (runningUploadInput && sheet.contains(runningUploadInput)) {
+      const key = runningUploadInput.getAttribute('data-date-key') || _workoutHomeSelectedKey;
+      Promise.resolve(_importWorkoutRunningRecord(runningUploadInput, key)).catch((error) => {
+        console.warn('[workout-calendar] running upload change failed:', error);
+      });
+      return;
+    }
     const input = target?.closest?.(WORKOUT_SHEET_SET_INPUT_SELECTOR);
     if (!input || !sheet.contains(input)) return;
     input.removeAttribute('data-wt-set-keyboard-dirty');
@@ -3331,6 +3400,16 @@ function _bindWorkoutHomeSheetActions(root) {
       Promise.resolve(_openWorkoutHomeRunning(key)).catch((e) => {
         console.warn('[workout-calendar] running action failed:', e);
       });
+      return;
+    }
+    const uploadRunning = target?.closest?.('[data-wt-day-upload-running]');
+    if (uploadRunning && sheet.contains(uploadRunning)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const uploadInput = sheet.querySelector?.('[data-wt-running-upload-input]');
+      if (!uploadInput || _workoutRunningImportActive) return;
+      uploadInput.setAttribute('data-date-key', uploadRunning.getAttribute('data-date-key') || _workoutHomeSelectedKey);
+      uploadInput.click();
       return;
     }
     const add = target?.closest?.('[data-wt-day-add-session]');
