@@ -21,7 +21,7 @@ import {
   isSettleDue, buildSettleRows, applySettle,
   archiveBenchmark, addBenchmark,
   findExerciseProgramBenchmark, getExerciseProgramSettings, upsertExerciseProgramBenchmark,
-  buildExerciseProgramWorkoutPrescription,
+  buildExerciseProgramWorkoutPrescription, orderWendlerPrescriptionSets,
   buildMinimapData, recentPaintLogs, cloneBoard, mergeBoardCompletionLogs,
 } from '../workout/test-v2/board-core.js';
 import { wendlerWeekPrescription, WENDLER_SCHEMES, defaultWendlerIncrement } from '../workout/test-v2/wendler.js';
@@ -801,7 +801,27 @@ test('종목 프로그램 처방: 웬들러는 준비운동/메인/BBB 세트를
   assert.equal(result.prescription.sets.filter(s => s.wendlerRole === 'warmup').length, 3);
   assert.equal(result.prescription.sets.filter(s => s.wendlerRole === 'main').length, 3);
   assert.equal(result.prescription.sets.filter(s => s.wendlerRole === 'supplemental').length, 5);
+  assert.deepEqual(result.prescription.sets.map(s => s.wendlerRole), [
+    'warmup', 'warmup', 'warmup',
+    'main', 'main', 'main',
+    'supplemental', 'supplemental', 'supplemental', 'supplemental', 'supplemental',
+  ]);
+  assert.equal(result.prescription.sets.slice(-5).every(s => s.supplementalKind === 'bbb'), true);
   assert.equal(result.prescription.sets.some(s => s.amrap), true);
+});
+
+test('웬들러 세트 순서는 기존 초안도 웜업 → 메인 → BBB로 복원한다', () => {
+  const ordered = orderWendlerPrescriptionSets([
+    { wendlerRole: 'supplemental', supplementalKind: 'bbb', wendlerOrder: 1 },
+    { wendlerRole: 'main', wendlerOrder: 1 },
+    { wendlerRole: 'warmup', wendlerOrder: 1 },
+    { wendlerRole: 'supplemental', supplementalKind: 'bbb', wendlerOrder: 0 },
+    { wendlerRole: 'main', wendlerOrder: 0 },
+    { wendlerRole: 'warmup', wendlerOrder: 0 },
+  ]);
+  assert.deepEqual(ordered.map(set => `${set.wendlerRole}:${set.wendlerOrder}`), [
+    'warmup:0', 'warmup:1', 'main:0', 'main:1', 'supplemental:0', 'supplemental:1',
+  ]);
 });
 
 test('종목 프로그램 처방: 같은 movementId의 다른 exerciseId도 웬들러 세트를 적용한다', () => {

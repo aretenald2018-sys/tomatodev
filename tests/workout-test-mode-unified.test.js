@@ -83,7 +83,7 @@ test('exercise picker always creates test-mode entries on Dashboard3', () => {
   assert.match(generatedSets, /_defaultTestModeSet\(\)/);
   assert.match(generatedSets, /prescription\.applySets === true/);
   assert.match(generatedSets, /prescription\.sets/);
-  assert.match(generatedSets, /prescription\.sets\.map/);
+  assert.match(generatedSets, /orderWendlerPrescriptionSets\(prescription\.sets\)\.map/);
   assert.match(generatedSets, /Number\(prescription\.targetRpe\) \|\| null/);
   assert.doesNotMatch(generatedSets, /targetSets|startKg|repsHigh|repsLow|Array\.from/);
 

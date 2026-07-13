@@ -42,6 +42,7 @@ import {
   findExerciseProgramBenchmark,
   getExerciseProgramSettings,
   mondayOf,
+  orderWendlerPrescriptionSets,
   upsertExerciseProgramBenchmark,
 } from './test-v2/board-core.js';
 import { getWorkoutSessions } from './sessions.js';
@@ -2059,7 +2060,7 @@ function _firstTestModePrescriptionSet(prescription) {
 function _testModeSetsFromPrescription(prescription) {
   if (!prescription) return null;
   if (prescription.applySets === true && prescription.program === 'wendler' && Array.isArray(prescription.sets) && prescription.sets.length) {
-    return prescription.sets.map(set => {
+    return orderWendlerPrescriptionSets(prescription.sets).map(set => {
       const next = {
         ..._defaultTestModeSet(),
         ...set,
@@ -2454,6 +2455,7 @@ function _exerciseProgramEditorHtml(settings = {}) {
           <label><span>세트</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-supp-sets" min="1" step="1" value="${_escPicker(_numText(supp.sets || 5))}"></label>
           <label><span>횟수</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-wendler-supp-reps" min="1" step="1" value="${_escPicker(_numText(supp.reps || 10))}"></label>
         </div>
+        <small class="ex-program-helper">세트 순서: 웜업 → 메인 → 보조 (기본 BBB)</small>
         </div>
       </div>
   `;

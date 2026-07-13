@@ -28,7 +28,7 @@ import {
   archiveBenchmark, addBenchmark, buildOnboardingCandidates, buildRecentMap,
   mergeSessionExercises, sessionRecentMap, resolveSessionEntryGroupId,
   sortCandidatesByRecent, workoutRecordsForBenchmarkWeek,
-  buildMinimapData, defaultIncrementForGroup, getLineup, toggleLineup,
+  buildMinimapData, defaultIncrementForGroup, getLineup, orderWendlerPrescriptionSets, toggleLineup,
 } from './board-core.js';
 import {
   WENDLER_SCHEMES, WENDLER_SCHEME_IDS, normalizeWendlerConfig,
@@ -787,7 +787,7 @@ function _wendlerRoleByIndex(idx, plan) {
 
 function _ensureWendlerSetRoles(sets, plan, bm = null, signature = _wendlerPlanSignature(plan)) {
   const rpe = bm ? _targetRpeOf(bm) : 8;
-  return (Array.isArray(sets) ? sets : []).map((set, idx) => {
+  return orderWendlerPrescriptionSets((Array.isArray(sets) ? sets : []).map((set, idx) => {
     const role = set.wendlerRole || (set.setType === 'warmup' ? 'warmup' : _wendlerRoleByIndex(idx, plan));
     return {
       ...set,
@@ -799,7 +799,7 @@ function _ensureWendlerSetRoles(sets, plan, bm = null, signature = _wendlerPlanS
       romPct: set.romPct == null ? 100 : set.romPct,
       done: !!set.done,
     };
-  });
+  }));
 }
 
 function _shouldKeepWendlerSets(cur, keepSets, plan, signature) {

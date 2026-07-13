@@ -1539,6 +1539,22 @@ export function exerciseProgramWendlerSignature(plan) {
   ].join('|');
 }
 
+// 웬들러 종목의 화면/저장 순서는 항상 웜업 → 메인 → 보조(BBB/FSL)다.
+// 기존 초안이나 다른 진입점에서 세트 배열 순서가 흐트러져도 역할 순서는 보존한다.
+export function orderWendlerPrescriptionSets(sets = []) {
+  if (!Array.isArray(sets)) return [];
+  const roleOrder = { warmup: 0, main: 1, supplemental: 2 };
+  return sets
+    .map((set, index) => ({
+      set,
+      index,
+      role: roleOrder[set?.wendlerRole] ?? (set?.setType === 'warmup' ? 0 : 1),
+      order: Number.isFinite(Number(set?.wendlerOrder)) ? Number(set.wendlerOrder) : index,
+    }))
+    .sort((a, b) => a.role - b.role || a.order - b.order || a.index - b.index)
+    .map(item => item.set);
+}
+
 function _programSetsForWorkoutCard(bm, plan) {
   const rpe = _programTargetRpeOf(bm);
   if (plan.kind === 'wendler') {
@@ -1589,7 +1605,7 @@ function _programSetsForWorkoutCard(bm, plan) {
         });
       }
     }
-    return sets;
+    return orderWendlerPrescriptionSets(sets);
   }
   return Array.from({ length: Math.max(1, Number(plan.sets) || 4) }, () => ({
     kg: plan.kg,
