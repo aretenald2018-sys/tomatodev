@@ -27,6 +27,29 @@ function _looksLiquid(name) {
   return _LIQUID_KEYWORDS.test(String(name || ''));
 }
 
+// 100g 영양값만 제공되는 검색 DB 항목을 실제 1회 섭취량으로 보여주기 위한 추정값.
+// 원재료는 기존처럼 100g 기준을 유지하고, 음식/가공식품에만 사용한다.
+export function estimateDefaultServingSize(name) {
+  const n = String(name || '').toLowerCase();
+  if (/견과|아몬드|호두|캐슈|피스타치오|마카다미아|피칸|땅콩|잣|씨앗|해바라기씨|호박씨/.test(n)) return 30;
+  if (/초콜릿|과자|쿠키|크래커|비스켓|스낵|칩|팝콘/.test(n)) return 30;
+  if (/시리얼|그래놀라|오트밀|뮤즐리/.test(n)) return 40;
+  if (/치즈/.test(n)) return 20;
+  if (/잼|꿀|버터|마요네즈|드레싱|소스|케첩|머스터드/.test(n)) return 15;
+  if (/요거트|요구르트|푸딩/.test(n)) return 150;
+  if (/빵$|빵\(|케이크|머핀|도넛/.test(n)) return 60;
+  if (/국$|탕$|찌개|국밥|곰탕|설렁탕|해장|매운탕|미역국|된장국|김치국/.test(n)) return 500;
+  if (/밥$|비빔밥|볶음밥|덮밥|김밥|리조또/.test(n)) return 300;
+  if (/면$|라면|우동|짜장|짬뽕|국수|냉면|파스타|스파게티/.test(n)) return 450;
+  if (/죽$/.test(n)) return 350;
+  if (/주스|음료|우유|두유|커피|라떼|차$|스무디|에이드/.test(n)) return 250;
+  if (/구이|스테이크|불고기|갈비|삼겹|닭가슴|치킨/.test(n)) return 180;
+  if (/전$|전\(|부침|튀김/.test(n)) return 120;
+  if (/찜$|찜\(|조림/.test(n)) return 250;
+  if (/샐러드/.test(n)) return 180;
+  return 100;
+}
+
 function _buildServings(base, defaultWeight, groupHint) {
   const servings = [];
   const baseAmount = base.type === 'per_100ml' ? (base.ml || 100) : (base.grams || 100);
@@ -41,14 +64,17 @@ function _buildServings(base, defaultWeight, groupHint) {
     servings.push({ id: 'per_serving', label: unit, grams: baseAmount });
   }
 
-  // 1인분 추정값이 base와 다르면 추가 (표기상 구분)
+  // 원재료는 100g 중복을 만들지 않는다. 음식/가공식품은 동일 중량이어도
+  // 의미가 다른 "1회 제공량" 옵션으로 유지한다.
   const est = _NUM(defaultWeight);
-  if (est > 0 && est !== baseAmount) {
-    // 가공식품이 per_serving이라면 defaultWeight는 같은 개념이므로 중복 안 넣음
-    if (!(base.type === 'per_serving' && Math.abs(est - baseAmount) < 1)) {
+  if (est > 0) {
+    const sameAsBase = Math.abs(est - baseAmount) < 1;
+    if (!(base.type === 'per_serving' && sameAsBase)
+        && !(groupHint === '원재료성' && sameAsBase)) {
+      const unit = base.type === 'per_100ml' ? 'ml' : 'g';
       servings.push({
         id: 'serving_est',
-        label: groupHint === '원재료성' ? `한 줌 ${est}g` : `1인분 ${est}g`,
+        label: groupHint === '원재료성' ? `한 줌 ${est}${unit}` : `1회 제공량 ${est}${unit}`,
         grams: est,
       });
     }
@@ -67,7 +93,11 @@ function _buildServings(base, defaultWeight, groupHint) {
 export function normalizeFromCsv(csvItem) {
   if (!csvItem) return null;
   const base = { type: 'per_100g', grams: 100, label: '100g' };
-  const servings = _buildServings(base, csvItem.defaultWeight, '가공식품');
+  const servings = _buildServings(
+    base,
+    _NUM(csvItem.defaultWeight) || estimateDefaultServingSize(csvItem.name),
+    '가공식품',
+  );
   return {
     id: csvItem.id,
     name: csvItem.name,

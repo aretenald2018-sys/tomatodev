@@ -48,6 +48,20 @@ test('canonical nutrition adapter preserves g, ml, serving, and legacy round tri
   }
 });
 
+test('canonical nutrition adapter defaults legacy nut products to one serving', () => {
+  const canonical = toCanonicalNutritionItem({
+    id: 'saved_nuts',
+    name: '하루견과 화이트',
+    base: { type: 'per_100g', grams: 100, label: '100g' },
+    servings: [{ id: 'per_100g', label: '100g', grams: 100 }],
+    defaultServingId: 'per_100g',
+    nutrition: { kcal: 605, protein: 15, carbs: 35, fat: 45 },
+  });
+  const display = canonicalNutritionDisplay(canonical);
+  assert.equal(display.serving.label, '1회 제공량 30g');
+  assert.equal(display.nutrition.kcal, 181.5);
+});
+
 test('photo estimate pipeline makes every stage and low confidence explicit', async () => {
   const result = await runDietPhotoEstimatePipeline('base64', {
     estimate: async () => ({ confidence: 0.4, detectedItems: [{ name: '접시' }, { name: '비빔밥' }] }),
