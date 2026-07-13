@@ -222,6 +222,7 @@ export let _settings = {
   exercise_catalog_seed: null,
   diet_premium_report_inbox: null,
   diet_premium_report_seen: {},
+  season_registry: null,
   // 2026-04-21: 운동 타이머 running 상태의 cross-day SoT.
   //   { startedAt: number(ms), date: {y,m,d} } | null
   //   day-doc 대신 여기에 저장함으로써 자정 넘김/다음날 앱 재진입 시에도 복원 가능.

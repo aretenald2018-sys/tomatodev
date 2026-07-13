@@ -4,8 +4,10 @@
 
 import { getSectionTitle, saveSectionTitle,
          getMiniMemoItems, saveMiniMemoItems,
-         deleteNutritionItem, getNutritionDB } from './data.js';
+         deleteNutritionItem, getNutritionDB,
+         getActiveSeason, getSeasons, startNewSeason, TODAY, dateKey } from './data.js';
 import { renderHome, showToast } from './home/index.js';
+import { requestAppRender } from './app/render-events.js';
 import { getDeferredInstallPrompt } from './pwa-fcm.js';
 import { confirmAction } from './utils/confirm-modal.js';
 import { renderBuildInfo } from './utils/build-info.js';
@@ -69,9 +71,52 @@ export async function runExportCSV(period) {
 }
 
 // ── 설정 모달 ────────────────────────────────────────────────────
-export function openSettingsModal() {
+function _escapeSeasonText(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[char]);
+}
+
+function _nextDateKey(key) {
+  const [year, month, day] = String(key || '').split('-').map(Number);
+  const next = new Date(year, (month || 1) - 1, (day || 1) + 1);
+  return dateKey(next.getFullYear(), next.getMonth(), next.getDate());
+}
+
+function _renderSeasonSettings() {
+  const active = getActiveSeason();
+  const seasons = getSeasons();
+  const badge = document.getElementById('season-settings-active');
+  const list = document.getElementById('season-settings-list');
+  const nameInput = document.getElementById('season-name-input');
+  const startInput = document.getElementById('season-start-input');
+  if (!badge || !list || !nameInput || !startInput) return;
+
+  badge.textContent = active?.name || '시즌 없음';
+  badge.className = `season-settings-active season-tone-${active?.tone ?? 0}`;
+  list.innerHTML = seasons.slice().reverse().map(season => `
+    <div class="season-settings-row ${season.id === active?.id ? 'is-active' : ''}">
+      <i class="season-tone-dot season-tone-${season.tone ?? 0}"></i>
+      <div><b>${_escapeSeasonText(season.name)}</b><span>${season.startDate}${season.endDate ? ` ~ ${season.endDate}` : ' ~ 현재'}</span></div>
+      <em>${season.id === active?.id ? '진행 중' : '종료'}</em>
+    </div>
+  `).join('');
+
+  const todayKey = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+  startInput.value = todayKey;
+  startInput.max = todayKey;
+  if (active?.startDate) startInput.min = _nextDateKey(active.startDate);
+  nameInput.value = `시즌 ${seasons.length + 1}`;
+}
+
+export async function openSettingsModal() {
+  if (!document.getElementById('settings-modal')) {
+    const { ensureModal } = await import('./modal-manager.js');
+    await ensureModal('settings-modal');
+  }
   document.getElementById('cfg-anthropic').value = localStorage.getItem('cfg_anthropic') || '';
   _renderNutritionDBList();
+  _renderSeasonSettings();
   document.getElementById('settings-modal').classList.add('open');
   renderBuildInfo().catch(e => console.warn('[settings] build info 표시 실패:', e));
   // PWA 설치 섹션 업데이트
@@ -82,6 +127,28 @@ export function openSettingsModal() {
       section.style.display = getDeferredInstallPrompt() ? 'block' : (!isInstalled ? 'block' : 'none');
     }
   } catch(e) { console.error(e); }
+}
+
+export async function startSeasonFromSettings() {
+  const name = document.getElementById('season-name-input')?.value.trim();
+  const startDate = document.getElementById('season-start-input')?.value;
+  if (!name || !startDate) {
+    showToast('시즌 이름과 시작일을 입력해주세요', 2500, 'warning');
+    return;
+  }
+  const ok = await confirmAction({
+    title: '새 시즌 시작',
+    message: `${startDate}부터 ${name}을(를) 시작할까요? 이전 기록은 삭제되지 않습니다.`,
+  });
+  if (!ok) return;
+  try {
+    const season = await startNewSeason({ name, startDate });
+    _renderSeasonSettings();
+    requestAppRender();
+    showToast(`${season.name}을 시작했어요`, 2400, 'success');
+  } catch (error) {
+    showToast(error?.message || '시즌을 시작하지 못했어요', 3000, 'error');
+  }
 }
 
 function _renderNutritionDBList() {

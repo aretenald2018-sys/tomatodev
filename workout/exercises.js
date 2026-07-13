@@ -11,7 +11,7 @@ import { wtRestTimerClearSetRecord,
          wtRestTimerStart,
          wtRefreshWorkoutTimelineDuration,
          wtPersistActiveWorkoutDraft } from './timers.js';
-import { getExList, getGlobalExList, getGymExList, getGyms, getLastSession, detectPRs, getCache,
+import { getExList, getGlobalExList, getGymExList, getGyms, getLastSession, detectPRs, getCache, getSeasonScopedCache,
          dateKey, saveExercise,
          deleteExercise, getMuscleParts,
          saveCustomMuscle,
@@ -757,7 +757,7 @@ function _buildTrackGraphRow(track, points, active) {
 function _cacheWithCurrentWorkoutForTrackMetric(entry) {
   const currentKey = _todayDateKey();
   if (!currentKey || !entry?.exerciseId) return getCache();
-  const cache = getCache() || {};
+  const cache = getSeasonScopedCache(currentKey) || {};
   const existingDay = cache[currentKey] || {};
   const currentEntries = Array.isArray(S.workout?.exercises)
     ? S.workout.exercises.filter(e => e?.exerciseId)
@@ -1566,7 +1566,7 @@ export function _renderExerciseList() {
     const ex   = getExList().find(e => e.id === entry.exerciseId);
     const mc   = allMuscles.find(m => m.id === entry.muscleId);
     const sparkline = _buildMaxTrackSparkline(entry, ex);
-    const maxTrackLast = getLastTrackSession(getCache(), getExList(), entry.exerciseId, _activeMaxTrack(entry, ex), todayKey);
+    const maxTrackLast = getLastTrackSession(getSeasonScopedCache(todayKey), getExList(), entry.exerciseId, _activeMaxTrack(entry, ex), todayKey);
     const maxLastSummary = _buildMaxLastSessionSummary(maxTrackLast, { ...entry, _idx: idx }, ex);
     const maxAllDone = (entry.sets || []).length > 0 && (entry.sets || []).every(s => s.done !== false);
     const maxCollapsed = false;
@@ -1661,7 +1661,7 @@ export function renderEmbeddedMaxExerciseCard(container, entryIdx, options = {})
   const todayKey = _todayDateKey();
   const ex = getExList().find(e => e.id === entry.exerciseId);
   const mc = allMuscles.find(m => m.id === entry.muscleId);
-  const maxTrackLast = getLastTrackSession(getCache(), getExList(), entry.exerciseId, _activeMaxTrack(entry, ex), todayKey);
+  const maxTrackLast = getLastTrackSession(getSeasonScopedCache(todayKey), getExList(), entry.exerciseId, _activeMaxTrack(entry, ex), todayKey);
   const maxLastSummary = _buildMaxLastSessionSummary(maxTrackLast, { ...entry, _idx: entryIdx }, ex);
   const sparkline = _buildMaxTrackSparkline(entry, ex);
   const maxAllDone = (entry.sets || []).length > 0 && (entry.sets || []).every(s => s.done !== false);
@@ -1925,7 +1925,7 @@ function _isMaxBenchmarkPickerExercise(ex) {
 
 function _cacheWithCurrentPickerWorkout() {
   const currentKey = _todayDateKey();
-  const cache = getCache() || {};
+  const cache = getSeasonScopedCache(currentKey) || {};
   const currentEntries = Array.isArray(S?.workout?.exercises)
     ? S.workout.exercises.filter(entry => entry?.exerciseId)
     : [];
@@ -1986,8 +1986,8 @@ function _pickerSeedFromSet(set = {}) {
 function _latestPickerExerciseSet(rawExerciseId) {
   const exerciseId = String(rawExerciseId || '').trim();
   if (!exerciseId) return null;
-  const cache = getCache() || {};
   const todayKey = _todayDateKey();
+  const cache = getSeasonScopedCache(todayKey) || {};
   const keys = Object.keys(cache)
     .filter(key => /^\d{4}-\d{2}-\d{2}$/.test(key) && key !== todayKey)
     .sort((a, b) => b.localeCompare(a));

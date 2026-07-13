@@ -51,7 +51,8 @@ test('growth board workout commit only shows a stamp after required board persis
 test('test board saving preserves existing completion logs and propagates failures', () => {
   const save = sliceByFirstBrace(dataJs, 'export async function saveTestBoardV2');
   assert.match(dataJs, /import \{ mergeBoardCompletionLogs \} from '\.\.\/workout\/test-v2\/board-core\.js'/);
-  assert.match(save, /getDoc\(_doc\('settings', 'test_board_v2'\)\)/);
+  assert.match(save, /seasonSettingKey\(active\.id, 'test_board_v2'\)/);
+  assert.match(save, /getDoc\(_doc\('settings', settingKey\)\)/);
   assert.match(save, /mergeBoardCompletionLogs\(latestBoard, remoteBoard\)/);
   assert.match(save, /mergeBoardCompletionLogs\(latestBoard, board\)/);
   assert.match(save, /rethrow:\s*true/);

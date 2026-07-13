@@ -12,6 +12,10 @@ import {
   getMuscleParts,
   getLatestCheckinWeight,
   getTestBoardV2,
+  getActiveSeason,
+  getSeasonForDate,
+  getSeasons,
+  getSeasonScopedCache,
   loadRunningRoute,
   saveDay,
 } from './data.js';
@@ -123,6 +127,29 @@ let _calendarMode = 'summary';
 let _workoutHomeSelectedKey = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
 let _workoutHomeView = 'month';
 let _workoutHomeSheetState = 'bar';
+
+function _calendarSeasonMeta(key) {
+  const season = getSeasonForDate(key);
+  return {
+    season,
+    className: season ? `cal-season-tone-${season.tone ?? 0}${key === season.startDate ? ' cal-season-start' : ''}` : '',
+    boundaryHtml: season && key === season.startDate
+      ? `<span class="cal-season-boundary" title="${_esc(season.name)} 시작">새 시즌</span>`
+      : '',
+  };
+}
+
+function _renderCalendarSeasonChip(key = null) {
+  const season = (key && getSeasonForDate(key)) || getActiveSeason();
+  if (!season) return '';
+  return `<button type="button" class="cal-season-chip season-tone-${season.tone ?? 0}" data-action="settings:open-seasons" title="시즌 관리 열기">${_esc(season.name)}</button>`;
+}
+
+function _calendarAddDays(key, amount) {
+  const [year, month, day] = String(key || '').split('-').map(Number);
+  const date = new Date(year, (month || 1) - 1, (day || 1) + Number(amount || 0));
+  return dateKey(date.getFullYear(), date.getMonth(), date.getDate());
+}
 let _workoutHomeSessionIndex = 0;
 const _workoutDetailCollapsed = new Set();
 let _workoutEditingCardId = null;
@@ -921,8 +948,10 @@ function _isRunningTabIndex(index) {
 }
 
 function _workoutRecordOrdinalForKey(cache, selectedKey, plan, checkins, lookup) {
+  const season = getSeasonForDate(selectedKey);
   const keys = Object.keys(cache || {})
     .filter(key => /^\d{4}-\d{2}-\d{2}$/.test(key))
+    .filter(key => !season || (key >= season.startDate && (!season.endDate || key <= season.endDate)))
     .filter(key => key <= selectedKey)
     .sort();
   let count = 0;
@@ -1455,8 +1484,10 @@ function _workoutRecordFromEntry(key, entry = {}) {
 function _previousWorkoutRecordForRow(cache = null, row = {}) {
   const selectedKey = String(row?.dateKey || '').trim();
   const source = cache && typeof cache === 'object' ? cache : getCache();
+  const season = getSeasonForDate(selectedKey);
   const keys = Object.keys(source || {})
     .filter(key => /^\d{4}-\d{2}-\d{2}$/.test(key) && (!selectedKey || key < selectedKey))
+    .filter(key => !season || (key >= season.startDate && (!season.endDate || key <= season.endDate)))
     .sort((a, b) => b.localeCompare(a));
   for (const key of keys) {
     const sessions = getWorkoutSessions(source[key] || {});
@@ -1589,7 +1620,6 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
   const dayCells = new Map();
   const lookup = _buildWorkoutLookup();
   const isWorkoutHome = surface === 'workout-home';
-  const cycleBoard = isWorkoutHome ? getTestBoardV2() : null;
   const surfaceClass = isWorkoutHome ? 'cal-workout-surface-home' : 'cal-workout-surface-calendar';
   const scrollSurfaceAttr = isWorkoutHome ? ' data-wt-calendar-scroll-surface' : '';
   const selectedParsed = _parseDateKey(_workoutHomeSelectedKey);
@@ -1612,8 +1642,10 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
     const today = k === todayKey;
     const selected = isWorkoutHome && k === _workoutHomeSelectedKey;
     const disabled = future || before;
-    const bodyWeight = _weightAt(checkins, k) ?? getLatestCheckinWeight() ?? plan?.weight ?? 70;
+    const dayPlan = getDietPlan(k);
+    const bodyWeight = _weightAt(checkins, k) ?? getLatestCheckinWeight() ?? dayPlan?.weight ?? 70;
     const wx = _workoutMetrics(k, day, bodyWeight, lookup);
+    const seasonMeta = _calendarSeasonMeta(k);
 
     if (wx.hasWorkout) {
       monthSum.days += 1;
@@ -1629,6 +1661,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
       today ? 'cal-cell-today' : '',
       selected ? 'cal-workout-cell-selected' : '',
       disabled ? 'cal-cell-disabled' : '',
+      seasonMeta.className,
       wx.hasWorkout ? 'cal-workout-cell-active' : 'cal-workout-cell-rest',
     ].filter(Boolean).join(' ');
     const dayAction = disabled
@@ -1657,6 +1690,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
           <span class="cal-cell-date">${d}</span>
           ${wx.hasWorkout ? `<span class="cal-workout-dot"></span>` : ''}
         </div>
+        ${seasonMeta.boundaryHtml}
         ${detailHtml}
       </div>
     `;
@@ -1706,10 +1740,10 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
   `;
 
   const gridHtml = isWorkoutHome
-    ? _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, cycleBoard, cache })
+    ? _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, cache })
     : `<div class="cal-grid cal-workout-grid">${flatCells.join('')}</div>`;
   const bottomSheetHtml = isWorkoutHome
-    ? _renderWorkoutHomeBottomSheet(_workoutHomeSelectedKey, { cache, plan, checkins, lookup })
+    ? _renderWorkoutHomeBottomSheet(_workoutHomeSelectedKey, { cache, plan: getDietPlan(_workoutHomeSelectedKey), checkins, lookup })
     : '';
 
   const previousMonthAction = isWorkoutHome
@@ -1721,12 +1755,16 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
   const todayAction = isWorkoutHome
     ? 'data-wt-calendar-action="go-today"'
     : 'data-cal-action="go-today"';
+  const seasonChipKey = isWorkoutHome
+    ? _workoutHomeSelectedKey
+    : (TODAY.getFullYear() === y && TODAY.getMonth() === m ? todayKey : dateKey(y, m, 1));
   root.innerHTML = `
     <div class="cal-workout-surface ${surfaceClass}"${scrollSurfaceAttr}>
       <div class="cal-header">
         <button class="cal-nav-btn" ${previousMonthAction} aria-label="이전 달">‹</button>
         <div class="cal-title">
           <span>${monthLabel}</span>
+          ${_renderCalendarSeasonChip(seasonChipKey)}
           <button class="cal-today-btn" ${todayAction}>오늘</button>
         </div>
         <button class="cal-nav-btn" ${nextMonthAction} aria-label="다음 달">›</button>
@@ -1741,7 +1779,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
   `;
 }
 
-function _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, cycleBoard = null, cache = {} }) {
+function _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, cache = {} }) {
   const weekRows = [];
   const rowCount = Math.ceil((firstDow + daysCount) / 7);
   for (let row = 0; row < rowCount; row++) {
@@ -1756,6 +1794,9 @@ function _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, cycl
     }
 
     const weekStart = _workoutCalendarRowWeekStart(y, m, row, firstDow);
+    const weekEnd = _calendarAddDays(weekStart, 6);
+    const boundarySeason = getSeasons().find(season => season.startDate >= weekStart && season.startDate <= weekEnd);
+    const cycleBoard = getTestBoardV2(boundarySeason?.startDate || weekStart);
     const cycleItems = _buildWorkoutCycleRailItems(cycleBoard, weekStart, cache);
     weekRows.push(`
       <div class="cal-workout-week-row">
@@ -1837,8 +1878,6 @@ export function renderCalendar() {
   _bindCalendarActions(root);
 
   const cache = getCache() || {};
-  const plan = getDietPlan() || null;
-  const metrics = (plan && plan.weight && plan.height) ? calcDietMetrics(plan) : null;
   const checkins = _sortedCheckins();
 
   const y = _viewYear, m = _viewMonth;
@@ -1847,7 +1886,7 @@ export function renderCalendar() {
   const daysCount = new Date(y, m + 1, 0).getDate();
 
   if (_calendarMode === 'workout') {
-    _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, daysCount });
+    _renderWorkoutCalendar(root, { cache, checkins, y, m, firstDow, daysCount });
     return;
   }
 
@@ -1863,8 +1902,10 @@ export function renderCalendar() {
     const before = isBeforeStart(y, m, d);
     const today  = k === dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
     const disabled = future || before;
-
-    const mx = _dayMetrics(k, day, plan, metrics, checkins);
+    const dayPlan = getDietPlan(k) || null;
+    const dayMetrics = (dayPlan && dayPlan.weight && dayPlan.height) ? calcDietMetrics(dayPlan) : null;
+    const mx = _dayMetrics(k, day, dayPlan, dayMetrics, checkins);
+    const seasonMeta = _calendarSeasonMeta(k);
 
     if (mx.score != null) {
       monthSum.scored += mx.score;
@@ -1877,6 +1918,7 @@ export function renderCalendar() {
       'cal-cell',
       today ? 'cal-cell-today' : '',
       disabled ? 'cal-cell-disabled' : '',
+      seasonMeta.className,
       mx.band ? `cal-cell-band-${mx.band}` : '',
     ].filter(Boolean).join(' ');
 
@@ -1903,6 +1945,7 @@ export function renderCalendar() {
           <span class="cal-cell-date">${d}</span>
           ${scoreHtml}
         </div>
+        ${seasonMeta.boundaryHtml}
         <div class="cal-cell-metrics">
           <div class="cal-metric"><span class="cal-metric-label">섭</span><span class="cal-metric-val">${kcalInTxt}</span></div>
           <div class="cal-metric"><span class="cal-metric-label">소</span><span class="cal-metric-val">${kcalBurnTxt}</span></div>
@@ -1916,12 +1959,16 @@ export function renderCalendar() {
   const monthLabel = `${y}년 ${m + 1}월`;
   const avgScore = monthSum.count > 0 ? Math.round(monthSum.scored / monthSum.count) : null;
   const weekdays = ['일','월','화','수','목','금','토'];
+  const seasonChipKey = TODAY.getFullYear() === y && TODAY.getMonth() === m
+    ? dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate())
+    : dateKey(y, m, 1);
 
   root.innerHTML = `
     <div class="cal-header">
       <button class="cal-nav-btn" data-cal-action="shift-month" data-delta="-1" aria-label="이전 달">‹</button>
       <div class="cal-title">
         <span>${monthLabel}</span>
+        ${_renderCalendarSeasonChip(seasonChipKey)}
         <button class="cal-today-btn" data-cal-action="go-today">오늘</button>
       </div>
       <button class="cal-nav-btn" data-cal-action="shift-month" data-delta="1" aria-label="다음 달">›</button>
@@ -1965,7 +2012,7 @@ export function renderWorkoutCalendarHome() {
   _workoutRunningMapPayloads.clear();
 
   const cache = getCache() || {};
-  const plan = getDietPlan() || null;
+  const plan = getDietPlan(_workoutHomeSelectedKey) || null;
   const checkins = _sortedCheckins();
 
   const y = _viewYear, m = _viewMonth;
@@ -2327,7 +2374,7 @@ function _renderWorkoutSparkline(row, trend = null) {
 
 function _renderWorkoutTrackGraphRow(row, bestSet, track, activeTrack) {
   const trend = buildWorkoutTrackTrend(row, bestSet, {
-    cache: getCache(),
+    cache: getSeasonScopedCache(row?.dateKey || null),
     exList: getExList(),
   }, track);
   const delta = trend.delta || '';
@@ -2808,7 +2855,7 @@ function _renderWorkoutRunningEmpty(key) {
 function _openWorkoutDay(key) {
   const cache = getCache() || {};
   const day = cache[key] || {};
-  const plan = getDietPlan() || null;
+  const plan = getDietPlan(key) || null;
   const checkins = _sortedCheckins();
   const bodyWeight = _weightAt(checkins, key) ?? getLatestCheckinWeight() ?? plan?.weight ?? 70;
   const wx = _workoutMetrics(key, day, bodyWeight, _buildWorkoutLookup());
@@ -2907,7 +2954,7 @@ function _openDay(key) {
 
   const cache = getCache() || {};
   const day = cache[key] || {};
-  const plan = getDietPlan() || null;
+  const plan = getDietPlan(key) || null;
   const metrics = (plan && plan.weight && plan.height) ? calcDietMetrics(plan) : null;
   const checkins = _sortedCheckins();
 
@@ -4661,7 +4708,7 @@ async function _exportWorkoutHomeSession(key, sessionIndex = _workoutHomeSession
     showToast('내보낼 운동 기록이 없어요', 1800, 'info');
     return;
   }
-  const plan = getDietPlan() || null;
+  const plan = getDietPlan(key) || null;
   const checkins = _sortedCheckins();
   const bodyWeight = _weightAt(checkins, key) ?? getLatestCheckinWeight() ?? plan?.weight ?? 70;
   const wx = _workoutMetrics(key, session, bodyWeight, _buildWorkoutLookup());

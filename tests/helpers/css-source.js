@@ -42,6 +42,7 @@ export const APP_STYLE_FILES = Object.freeze([
   'styles/features/calendar-score-modal.css',
   'styles/features/workout-day-detail.css',
   'styles/features/app-status.css',
+  'styles/features/seasons.css',
 ]);
 
 export function readAppCssSync() {

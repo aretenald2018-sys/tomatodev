@@ -2,7 +2,7 @@
 // ai/diet-rec.js — 오늘의 식단/운동 추천 (말풍선 UI)
 // ================================================================
 
-import { TODAY, getMemo, getExercises, getDiet, getExList } from '../data.js';
+import { TODAY, getMemo, getExercises, getDiet, getExList, getActiveSeason, dateKey } from '../data.js';
 import { callGemini } from './llm-core.js';
 
 // ── 오늘의 식단 추천 ─────────────────────────────────────────────
@@ -12,9 +12,11 @@ export async function getDietRec() {
   bubble.classList.add('loading');
 
   const recentMeals = [];
+  const seasonStart = getActiveSeason()?.startDate || null;
   for (let i = 0; i < 7; i++) {
     const d = new Date(TODAY); d.setDate(d.getDate() - i);
     const y = d.getFullYear(), mo = d.getMonth(), dd = d.getDate();
+    if (seasonStart && dateKey(y, mo, dd) < seasonStart) continue;
     const dt = getDiet(y, mo, dd);
     const foodsOrText = (meal, textVal) => {
       const foods = dt[meal + 'Foods'] || [];
@@ -53,9 +55,11 @@ export async function getWorkoutRec() {
   bubble.classList.add('loading');
 
   const weekMemos = [];
+  const seasonStart = getActiveSeason()?.startDate || null;
   for (let i = 0; i < 7; i++) {
     const d = new Date(TODAY); d.setDate(d.getDate() - i);
     const y=d.getFullYear(), mo=d.getMonth(), dd=d.getDate();
+    if (seasonStart && dateKey(y, mo, dd) < seasonStart) continue;
     const exList  = getExercises(y, mo, dd);
     const memo    = getMemo(y, mo, dd);
     if (exList.length || memo) {

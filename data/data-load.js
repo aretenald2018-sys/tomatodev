@@ -35,7 +35,75 @@ import {
   _sanitizeTabList,
   isActiveWorkoutDayData,
 } from './data-pure.js';
+import {
+  addSeasonDays,
+  activeSeasonOf,
+  createInitialSeasonRegistry,
+  isSeasonDateKey,
+  normalizeSeasonRegistry,
+  seasonDateKey,
+  seasonSettingKey,
+} from './season-model.js';
 export { _sanitizeTabList, isActiveWorkoutDayData, buildExerciseCatalogSeedPlan };
+
+const SEASON_SETTING_SLOTS = Object.freeze([
+  'diet_plan',
+  'unit_goal_start',
+  'max_cycle',
+  'max_cycle_history',
+  'test_board_v2',
+]);
+
+function _seasonLegacyValue(slot) {
+  if (slot === 'max_cycle_history') return Array.isArray(_settings.max_cycle_history) ? _settings.max_cycle_history : [];
+  return _settings[slot] ?? null;
+}
+
+function _initialSeasonStartDate() {
+  const candidates = [
+    ...Object.keys(_cache || {}).filter(isSeasonDateKey),
+    _settings.unit_goal_start,
+    _settings.diet_plan?.startDate,
+  ].filter(isSeasonDateKey).sort();
+  const todayKey = seasonDateKey();
+  const earliest = candidates[0] || todayKey;
+  return earliest >= todayKey ? addSeasonDays(todayKey, -1) : earliest;
+}
+
+async function _hydrateSeasonSettings(fbMap) {
+  let registry = normalizeSeasonRegistry(fbMap.season_registry);
+  const needsInitialSeason = registry.seasons.length === 0;
+  if (needsInitialSeason) {
+    registry = createInitialSeasonRegistry({ startDate: _initialSeasonStartDate(), now: Date.now() });
+  }
+  _settings.season_registry = registry;
+
+  const firstSeasonId = registry.seasons[0]?.id || null;
+  for (const season of registry.seasons) {
+    for (const slot of SEASON_SETTING_SLOTS) {
+      const key = seasonSettingKey(season.id, slot);
+      const fallback = season.id === firstSeasonId ? _seasonLegacyValue(slot) : (slot === 'max_cycle_history' ? [] : null);
+      _settings[key] = fbMap[key] ?? fallback;
+    }
+  }
+
+  const active = activeSeasonOf(registry);
+  if (active) {
+    for (const slot of SEASON_SETTING_SLOTS) {
+      _settings[slot] = _settings[seasonSettingKey(active.id, slot)] ?? (slot === 'max_cycle_history' ? [] : null);
+    }
+  }
+
+  if (needsInitialSeason) {
+    const writes = [setDoc(_doc('settings', 'season_registry'), { value: registry })];
+    const initial = registry.seasons[0];
+    for (const slot of SEASON_SETTING_SLOTS) {
+      const key = seasonSettingKey(initial.id, slot);
+      writes.push(setDoc(_doc('settings', key), { value: _settings[key] }));
+    }
+    await Promise.all(writes).catch(e => console.warn('[data] initial season migration failed:', e?.message || e));
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════
 // Admin ↔ Admin(guest) twin-account workout merge
@@ -247,6 +315,7 @@ export async function loadAll() {
     _settings.unit_goal_start  = fbMap.unit_goal_start  ?? null;
     _settings.active_timer     = fbMap.active_timer     ?? null;
     _settings.max_cycle        = fbMap.max_cycle        ?? null;
+    _settings.max_cycle_history= fbMap.max_cycle_history?? [];
     _settings.test_board_v2    = fbMap.test_board_v2    ?? null;
     _settings.exercise_catalog_seed = fbMap.exercise_catalog_seed ?? null;
     _settings.cheer_last_seen  = fbMap.cheer_last_seen  ?? 0;
@@ -275,7 +344,9 @@ export async function loadAll() {
       await setDoc(_doc('settings', 'expert_preset'), { value: maxCyclePlan.cleanedPreset })
         .catch(e => console.warn('[data] expert_preset maxCycle cleanup failed:', e?.message || e));
     }
+    await _hydrateSeasonSettings(fbMap);
     if (_settings.diet_plan) _setDietPlan({ ...DEFAULT_DIET_PLAN, ..._settings.diet_plan });
+    else _setDietPlan({ ...DEFAULT_DIET_PLAN });
 
     // 전문가 모드: Gym / RoutineTemplate 로드 (실패해도 전체 앱 동작 유지)
     await Promise.all([loadGyms(), loadRoutineTemplates(), loadEquipmentPool()]).catch(e =>
