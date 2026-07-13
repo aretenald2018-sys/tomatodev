@@ -31,4 +31,5 @@ test('운동 시즌 목업은 모바일 접근성 기본 계약을 포함한다'
   assert.match(html, /aria-label="운동 종목 선택"/);
   assert.match(html, /prefers-reduced-motion/);
   assert.match(html, /min-height: 44px/);
+  assert.doesNotMatch(html, /transition:[^;]*visibility/);
 });
