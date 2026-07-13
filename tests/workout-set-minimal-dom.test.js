@@ -43,6 +43,7 @@ function extractConstArraySource(source, name) {
 function buildHarnessScript() {
   const functionNames = [
     '_workoutSheetInputValue',
+    '_workoutSheetRawNumber',
     '_workoutSetEditorKey',
     '_workoutSetInlineFieldKey',
     '_isWorkoutSetEditorExpanded',
@@ -56,6 +57,8 @@ function buildHarnessScript() {
     '_renderWorkoutSetAddRow',
     '_renderWorkoutSetTypeMenu',
     '_renderWorkoutSetRows',
+    '_workoutPreviousSetSummary',
+    '_renderWorkoutExerciseDetailCard',
     '_clearWorkoutSetEditorsForExercise',
     '_runWorkoutHomeSheetCardAction',
     '_clearWorkoutSetInputOnFocus',
@@ -97,6 +100,9 @@ function buildHarnessScript() {
     '_updateWorkoutExerciseSetFromSheet',
     '_setWorkoutExerciseSetTypeFromSheet',
     '_removeWorkoutExerciseSetFromSheet',
+    '_copyPreviousWorkoutSetForSheet',
+    '_copyPreviousWorkoutRecordSetsForSheet',
+    '_copyPreviousWorkoutExerciseSetsFromSheet',
   ];
   const sourceBundle = [
     setPresentationJs.replace(/^export /gmu, ''),
@@ -164,6 +170,13 @@ function buildHarnessScript() {
     function _toggleWorkoutDetailCard() { return false; }
     function _deleteWorkoutExercise() { return false; }
     function _deleteWorkoutActivity() { return false; }
+    function _isWorkoutExerciseCompletionStamped() { return false; }
+    function _renderWorkoutTrackGraph() { return ''; }
+    function activeWorkoutTrack() { return 'M'; }
+    function workoutTrackLabel() { return '중량'; }
+    function _previousWorkoutRecordForRow() { return window.__previousRecord || null; }
+    function _workoutEntryName(entry = {}) { return String(entry?.name || entry?.exerciseId || ''); }
+    function getCache() { return window.__cache || {}; }
     function _defaultWorkoutSheetSet(prev = {}) {
       return { kg: prev.kg ?? '', reps: prev.reps ?? '', setType: prev.setType || 'main', done: false };
     }
@@ -174,21 +187,26 @@ function buildHarnessScript() {
 
     ${sourceBundle}
 
-    window.__entry = { sets: [] };
+    window.__entry = { name: '벤치프레스', exerciseId: 'bench-press', sets: [] };
+    window.__previousRecord = null;
     function _rowFromEntry() {
+      const rawSetDetails = (window.__entry.sets || []).map((set, index) => ({ ...set, setIndex: index }));
       return {
-        rawSetDetails: (window.__entry.sets || []).map((set, index) => ({ ...set, setIndex: index })),
+        name: window.__entry.name || '벤치프레스',
+        exerciseId: window.__entry.exerciseId || 'bench-press',
+        originalIndex: 0,
+        dateKey: '2026-07-04',
+        setCount: rawSetDetails.length,
+        setDetails: rawSetDetails,
+        rawSetDetails,
+        previousRecord: window.__previousRecord,
       };
     }
     function renderWorkoutCalendarHome() {
       window.__renderCalls += 1;
-      document.body.innerHTML = '<main id="workout-calendar-root"><section data-wt-day-sheet><div class="wt-day-sheet-scroll"><div data-wt-day-exercise-carousel-track>' + _renderWorkoutSetRows(_rowFromEntry(), {
-        editable: true,
-        key: '2026-07-04',
-        sessionIndex: 0,
-        exerciseIndex: 0,
-        cardId: 'qa-card',
-      }) + '</div></div></section></main>';
+      document.body.innerHTML = '<main id="workout-calendar-root"><section data-wt-day-sheet><div class="wt-day-sheet-scroll"><div data-wt-day-exercise-carousel-track>'
+        + _renderWorkoutExerciseDetailCard('2026-07-04', 0, _rowFromEntry(), 0)
+        + '</div></div></section></main>';
       _bindWorkoutHomeSheetActions(document.getElementById('workout-calendar-root'));
       document.querySelector('.wt-day-sheet-scroll')?.addEventListener('touchmove', (event) => {
         window.__scrollerTouchMoveBlocks += 1;
@@ -206,6 +224,7 @@ function buildHarnessScript() {
       return ok;
     }
     window._wtCalUpdateExerciseSet = _updateWorkoutExerciseSetFromSheet;
+    window.__copyPreviousWorkoutRecordSets = _copyPreviousWorkoutRecordSetsForSheet;
     window.showToast = (message, duration, type) => {
       window.__lastToast = { message, duration, type };
     };
@@ -603,6 +622,86 @@ test('custom workout set keypad enters values and moves left or right across inl
   assert.deepEqual(result.hidden.sets[1], { kg: 40, reps: 12, rir: 2, romPct: 100, setType: 'main', done: false });
   assert.equal(result.hidden.keyboardOpenClass, false);
   assert.equal(result.hidden.sheetPadded, false);
+});
+
+test('previous workout card copies every set value but resets completion state', async () => {
+  const result = await runHarness(async () => {
+    window.__entry = {
+      name: '벤치프레스',
+      exerciseId: 'bench-press',
+      exerciseCompletedAt: 999,
+      sets: [{ kg: 20, reps: 5, done: false }],
+    };
+    window.__previousRecord = {
+      dateLabel: '3일 전',
+      setDetails: [
+      {
+        kg: 60,
+        reps: 10,
+        rpe: 8,
+        rir: 2,
+        romPct: 90,
+        setType: 'main',
+        completedAt: 111,
+        done: true,
+      },
+      {
+        kg: 50,
+        reps: 12,
+        rpe: 9,
+        rir: 1,
+        romPct: 100,
+        setType: 'drop',
+        wendlerRole: 'backoff',
+        supplementalKind: 'bbb',
+        wendlerPct: 65,
+        amrap: true,
+        completedAt: 222,
+        done: true,
+      },
+    ],
+    };
+    window.renderWorkoutCalendarHome();
+    const copyCard = document.querySelector('[data-wt-sheet-card-action="copy-previous-sets"]');
+    copyCard?.click();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    return {
+      copiedSets: window.__entry.sets,
+      completionMarkerCleared: !('exerciseCompletedAt' in window.__entry),
+      toast: window.__lastToast,
+    };
+  });
+
+  assert.deepEqual(result.copiedSets, [
+    {
+      kg: 60,
+      reps: 10,
+      rpe: 8,
+      rir: 2,
+      romPct: 90,
+      setType: 'main',
+      done: false,
+    },
+    {
+      kg: 50,
+      reps: 12,
+      rpe: 9,
+      rir: 1,
+      romPct: 100,
+      setType: 'drop',
+      wendlerRole: 'backoff',
+      supplementalKind: 'bbb',
+      wendlerPct: 65,
+      amrap: true,
+      done: false,
+    },
+  ]);
+  assert.equal(result.completionMarkerCleared, true);
+  assert.deepEqual(result.toast, {
+    message: '지난 기록 2세트를 가져왔어요',
+    duration: 1400,
+    type: 'success',
+  });
 });
 
 test('set type menu click mutates only the target set type and clears completion marker', async () => {

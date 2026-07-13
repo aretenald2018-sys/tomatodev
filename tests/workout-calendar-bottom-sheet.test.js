@@ -615,6 +615,27 @@ test('day sheet exercise card renders prior workout record instead of today set 
   assert.doesNotMatch(card, /<span>오늘 기록<\/span>/);
 });
 
+test('past workout card copies every previous set into the current exercise draft', () => {
+  const cardStart = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard');
+  const cardEnd = calendarJs.indexOf('function _renderWorkoutRunningDetailCard', cardStart);
+  const action = extractFunctionSource(calendarJs, '_runWorkoutHomeSheetCardAction');
+  const copySet = extractFunctionSource(calendarJs, '_copyPreviousWorkoutSetForSheet');
+  const copyRecord = extractFunctionSource(calendarJs, '_copyPreviousWorkoutRecordSetsForSheet');
+  const copyAction = extractFunctionSource(calendarJs, '_copyPreviousWorkoutExerciseSetsFromSheet');
+  assert.ok(cardStart >= 0 && cardEnd > cardStart, 'exercise detail card renderer should exist');
+  const card = calendarJs.slice(cardStart, cardEnd);
+
+  assert.match(card, /data-wt-sheet-card-action="copy-previous-sets"/);
+  assert.match(card, /전체 세트 복사/);
+  assert.match(action, /case 'copy-previous-sets':\s*return _copyPreviousWorkoutExerciseSetsFromSheet/);
+  assert.match(copyAction, /_previousWorkoutRecordForRow\(getCache\(\),/);
+  assert.match(copyAction, /entry\.sets = copiedSets/);
+  assert.match(copyAction, /clearWorkoutExerciseCompletionMarker\(entry\)/);
+  assert.match(copyRecord, /details\.map\(set => _copyPreviousWorkoutSetForSheet\(set\)\)/);
+  assert.match(copySet, /done:\s*false/);
+  assert.doesNotMatch(copySet, /completedAt/);
+});
+
 test('day sheet exercise card uses inline plus row and one complete button', () => {
   const cardStart = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard');
   const cardEnd = calendarJs.indexOf('function _renderWorkoutRunningDetailCard', cardStart);

@@ -2583,8 +2583,13 @@ function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) {
         </div>
       </div>
       <div class="wt-max-last">
-        <span>${_esc(previousSummary.label)}</span>
-        <strong>${_esc(previousSummary.summary)}</strong>
+        ${Array.isArray(row?.previousRecord?.setDetails) && row.previousRecord.setDetails.length > 0 ? `
+          <button type="button" class="wt-max-last-copy" data-wt-sheet-card-action="copy-previous-sets" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${originalIndex}" aria-label="지난 기록 ${row.previousRecord.setDetails.length}세트 전체 복사">
+            <span>${_esc(previousSummary.label)}<em>전체 세트 복사</em></span>
+        ` : `
+          <span>${_esc(previousSummary.label)}</span>
+        `}
+        <strong>${_esc(previousSummary.summary)}</strong>${Array.isArray(row?.previousRecord?.setDetails) && row.previousRecord.setDetails.length > 0 ? '</button>' : ''}
       </div>
       ${row.note ? `<div class="wt-max-note">${_esc(row.note)}</div>` : ''}
       <div class="wt-max-collapsed-note">모든 세트 완료 · 카드가 접혔어요</div>
@@ -3154,6 +3159,8 @@ function _runWorkoutHomeSheetCardAction(action, control) {
       return true;
     case 'add-exercise-set':
       return _addWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseIndex);
+    case 'copy-previous-sets':
+      return _copyPreviousWorkoutExerciseSetsFromSheet(key, sessionIndex, exerciseIndex);
     case 'edit-set-field':
       return _focusWorkoutSetInlineFieldFromSheet(key, sessionIndex, exerciseIndex, setIndex, field);
     case 'toggle-set-editor':
@@ -4405,6 +4412,64 @@ async function _addWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseIndex)
   } catch (e) {
     console.warn('[workout-calendar] sheet set add failed:', e);
     showToast('세트 추가에 실패했어요', 2200, 'error');
+  }
+}
+
+function _copyPreviousWorkoutSetForSheet(set = {}) {
+  const nextSet = {
+    setType: normalizeWorkoutSetType(set?.setType),
+    kg: _workoutSheetRawNumber(set?.kg),
+    reps: _workoutSheetRawNumber(set?.reps),
+    rpe: _num(set?.rpe),
+    rir: Number.isFinite(Number(set?.rir)) ? Number(set.rir) : 2,
+    romPct: Number.isFinite(Number(set?.romPct)) ? Number(set.romPct) : 100,
+    done: false,
+  };
+  if (set?.wendlerRole) nextSet.wendlerRole = String(set.wendlerRole);
+  if (set?.supplementalKind) nextSet.supplementalKind = String(set.supplementalKind);
+  if (Number.isFinite(Number(set?.wendlerPct))) nextSet.wendlerPct = Number(set.wendlerPct);
+  if (set?.amrap === true) nextSet.amrap = true;
+  return nextSet;
+}
+
+function _copyPreviousWorkoutRecordSetsForSheet(previousRecord = null) {
+  const details = Array.isArray(previousRecord?.setDetails) ? previousRecord.setDetails : [];
+  return details.map(set => _copyPreviousWorkoutSetForSheet(set));
+}
+
+async function _copyPreviousWorkoutExerciseSetsFromSheet(key, sessionIndex, exerciseIndex) {
+  const targetKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
+  let copiedSetCount = 0;
+  let previousRecordMissing = false;
+  try {
+    const ok = await _mutateWorkoutExerciseFromSheet(targetKey, sessionIndex, exerciseIndex, (entry) => {
+      const previousRecord = _previousWorkoutRecordForRow(getCache(), {
+        dateKey: targetKey,
+        exerciseId: entry?.exerciseId || null,
+        movementId: entry?.movementId || null,
+        name: _workoutEntryName(entry),
+      });
+      const copiedSets = _copyPreviousWorkoutRecordSetsForSheet(previousRecord);
+      if (!copiedSets.length) {
+        previousRecordMissing = true;
+        return false;
+      }
+      entry.sets = copiedSets;
+      copiedSetCount = copiedSets.length;
+      clearWorkoutExerciseCompletionMarker(entry);
+      _clearWorkoutSetEditorsForExercise(targetKey, sessionIndex, exerciseIndex);
+      return true;
+    }, { preserveSheetScroll: true });
+    if (!ok) {
+      if (previousRecordMissing) showToast('복사할 지난 세트 기록이 없어요', 1800, 'warning');
+      return false;
+    }
+    showToast(`지난 기록 ${copiedSetCount}세트를 가져왔어요`, 1400, 'success');
+    return true;
+  } catch (e) {
+    console.warn('[workout-calendar] previous set copy failed:', e);
+    showToast('지난 기록 세트를 가져오지 못했어요', 2200, 'error');
+    return false;
   }
 }
 
