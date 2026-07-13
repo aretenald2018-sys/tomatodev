@@ -10,7 +10,7 @@ import { TODAY, getMuscles, getCF, getDiet, dietDayOk,
          daysInMonth, isFuture, getExList, getAllMuscles,
          getVolumeHistory, getCache, calcVolume,
          getExercises, dateKey, getBodyCheckins, getDietPlan, getDayTargetKcal,
-         hasExerciseRecord, hasDietRecord, getRawBodyCheckins, getActiveSeason }    from './data.js';
+         hasExerciseRecord, hasDietRecord, getRawBodyCheckins }    from './data.js';
 import { SUBPATTERN_TO_MAJOR, calcBurnedKcal }       from './calc.js';
 import { getWorkoutSessions }                        from './workout/sessions.js';
 import { WORKOUT_PAYLOAD_KEYS, DIET_PAYLOAD_KEYS, SHARED_PAYLOAD_KEYS } from './workout/save-schema.js';
@@ -19,9 +19,8 @@ import { exercisePerformanceStatus, lastRecordedValue, normalizeHealthValues, se
 
 let _selectedExerciseId = null;
 let _selectedVolumeDate = null;
-let _statsAnalysisPeriod = 'season';
+let _statsAnalysisPeriod = '90';
 const STATS_ANALYSIS_PERIODS = {
-  season: { label: '이번 시즌', days: 0, kind: 'season' },
   week: { label: '이번주', days: 0, kind: 'week' },
   '30': { label: '30일', days: 30 },
   '90': { label: '90일', days: 90 },
@@ -120,6 +119,7 @@ export function buildTrainerQuestStatsExport() {
     .filter(c => (c?.date || '') <= analysisRange.toKey)
     .sort((a, b) => (a?.date || '').localeCompare(b?.date || ''));
   const periodCheckins = checkins.filter(c => (c?.date || '') >= analysisRange.fromKey && (c?.date || '') <= analysisRange.toKey);
+  const plan = getDietPlan();
   const ny = TODAY.getFullYear();
   const todayKey = _keyOffset(0);
   const foodsByName = new Map();
@@ -138,7 +138,6 @@ export function buildTrainerQuestStatsExport() {
   let yearExerciseKcalDays = 0;
 
   entries.forEach(([key, day]) => {
-    const plan = getDietPlan(key);
     const kcal = _dayKcal(day);
     if (kcal > 0 && (!topFoodDay || kcal > topFoodDay.kcal)) topFoodDay = { date: key, kcal };
     _foodItems(day).forEach(food => {
@@ -418,14 +417,13 @@ function _rawDietSummary(day) {
   };
 }
 
-function _rawDailyRow(key, day, checkinsByDate, checkinsToDate) {
+function _rawDailyRow(key, day, checkinsByDate, checkinsToDate, plan) {
   const date = _dateFromKey(key);
   const y = date?.getFullYear();
   const m = date?.getMonth();
   const d = date?.getDate();
   const dietDay = date ? getDiet(y, m, d) : day;
   const bodyCheckins = checkinsByDate.get(key) || [];
-  const plan = getDietPlan(key);
   const weightForBurn = _weightOnOrBefore(checkinsToDate, key) ?? _maybeNum(plan?.weight) ?? 70;
   const exerciseKcal = Math.round(calcBurnedKcal(day, weightForBurn).total || 0);
   return {
@@ -456,6 +454,7 @@ export function buildStatsRawExport() {
     .filter(checkin => (checkin?.date || '') <= todayKey)
     .sort((a, b) => (a?.date || '').localeCompare(b?.date || ''));
   const checkinsByDate = _bodyCheckinsByDate(checkins);
+  const plan = getDietPlan();
   const dateKeys = new Set(
     Object.keys(cache)
       .filter(key => /^\d{4}-\d{2}-\d{2}$/.test(key) && key <= todayKey)
@@ -465,7 +464,7 @@ export function buildStatsRawExport() {
   });
   const daily = [...dateKeys]
     .sort((a, b) => a.localeCompare(b))
-    .map(key => _rawDailyRow(key, cache[key] || {}, checkinsByDate, checkins));
+    .map(key => _rawDailyRow(key, cache[key] || {}, checkinsByDate, checkins, plan));
   const workoutDays = daily.filter(row => row.hasWorkout).length;
   const dietDays = daily.filter(row => row.hasDiet).length;
   return {
@@ -1275,25 +1274,16 @@ function _statsAnalysisRange(key = _statsAnalysisPeriod) {
   const cfg = _analysisPeriodConfig(key);
   const todayKey = _keyOffset(0);
   const firstKey = _dateEntries()[0]?.[0] || todayKey;
-  const activeSeason = getActiveSeason();
-  const fromKey = cfg.kind === 'season'
-    ? (activeSeason?.startDate || firstKey)
-    : cfg.kind === 'week'
-      ? _weekStartKey()
-      : (cfg.days > 0 ? _keyOffset(cfg.days - 1) : firstKey);
+  const fromKey = cfg.kind === 'week' ? _weekStartKey() : (cfg.days > 0 ? _keyOffset(cfg.days - 1) : firstKey);
   const actualDays = Math.max(1, _daysBetween(fromKey, todayKey) + 1);
   return { ...cfg, key, fromKey, toKey: todayKey, actualDays };
 }
 function _statsAnalysisCompareRange(range) {
-  const requestedSpan = range.key === 'week' ? 7 : (range.days > 0 ? range.days : Math.min(180, Math.max(30, range.actualDays || 90)));
-  const spanDays = range.kind === 'season'
-    ? Math.max(1, Math.min(requestedSpan, range.actualDays || 1))
-    : requestedSpan;
-  const halfDays = Math.max(1, Math.ceil(spanDays / 2));
-  const recentStartAgo = Math.min(spanDays - 1, halfDays - 1);
+  const spanDays = range.key === 'week' ? 7 : (range.days > 0 ? range.days : Math.min(180, Math.max(30, range.actualDays || 90)));
+  const halfDays = Math.max(7, Math.round(spanDays / 2));
   return {
     halfDays,
-    recent: _analyzeTrainerWindow(_keyOffset(recentStartAgo), _keyOffset(0)),
+    recent: _analyzeTrainerWindow(_keyOffset(halfDays - 1), _keyOffset(0)),
     prior: _analyzeTrainerWindow(_keyOffset(spanDays - 1), _keyOffset(halfDays)),
   };
 }
@@ -1968,6 +1958,7 @@ function _weeklyDateBuckets(keys) {
 }
 
 function _buildWeeklyKcalWeightSeries(range, cache, checkins) {
+  const plan = getDietPlan();
   const checkinByDate = new Map(checkins.map(c => [c.date, c]));
   const buckets = _weeklyDateBuckets(_dateRange(range.fromKey, range.toKey));
   const labels = buckets.map(bucket => bucket.label);
@@ -1983,7 +1974,6 @@ function _buildWeeklyKcalWeightSeries(range, cache, checkins) {
     let weekWeight = null;
 
     bucket.keys.forEach(key => {
-      const plan = getDietPlan(key);
       const dietDay = _statsDietDayFromKey(cache, key);
       const workoutDay = _statsWorkoutDayFromKey(cache, key);
       const recordedWeight = _maybeNum(checkinByDate.get(key)?.weight);
@@ -2127,7 +2117,7 @@ function _renderCalorieReport(scope = document) {
   const y = TODAY.getFullYear();
   const m = TODAY.getMonth();
   const cache = getCache();
-  const activeSeason = getActiveSeason();
+  const plan = getDietPlan();
   const checkins = getBodyCheckins();
   const dayCount = daysInMonth(y, m);
   const lastDay = TODAY.getDate();
@@ -2137,8 +2127,6 @@ function _renderCalorieReport(scope = document) {
 
   for (let d = 1; d <= Math.min(lastDay, dayCount); d++) {
     const key = dateKey(y, m, d);
-    if (activeSeason?.startDate && key < activeSeason.startDate) continue;
-    const plan = getDietPlan(key);
     const day = getDiet(y, m, d);
     const workoutDay = cache[key] || {};
     const dayKcal = _dayKcal(day);
@@ -2210,12 +2198,12 @@ function _healthChartKeys(range = _statsAnalysisRange()) {
 }
 
 function _buildHealthChartData(keys, cache, checkins) {
+  const plan = getDietPlan();
   const checkinByDate = new Map(checkins.map(c => [c.date, c]));
   const labels = keys.map(key => key.slice(5).replace('-', '/'));
   const data = { weight: [], bodyFat: [], intake: [], burned: [] };
 
   keys.forEach(key => {
-    const plan = getDietPlan(key);
     const day = cache[key] || {};
     const checkin = checkinByDate.get(key) || null;
     const weight = _maybeNum(checkin?.weight);

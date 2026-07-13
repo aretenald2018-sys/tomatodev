@@ -10,7 +10,7 @@ import { loadCSVDatabase } from './fatsecret-api.js';
 // ── 분리된 모듈 ──
 import './feature-diet-plan.js';
 import './feature-checkin.js';
-import { openSettingsModal } from './feature-misc.js';
+import './feature-misc.js';
 import './workout/expert.js';  // 전문가 모드 렌더와 scoped action binding
 import { showTutorialIfNeeded } from './feature-tutorial.js';
 import { dismissPWAInstallBanner, initFCM, installPWA, showPWAInstallBanner, updateInstallBtn } from './pwa-fcm.js';
@@ -307,10 +307,6 @@ function _runAppShellAction(action, control, event) {
       break;
     case 'open-tab-settings-close-more':
       openTabSettingsModal();
-      _closeMoreMenu();
-      break;
-    case 'open-season-settings-close-more':
-      void openSettingsModal();
       _closeMoreMenu();
       break;
     case 'close-tab-settings':

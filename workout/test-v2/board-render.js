@@ -12,7 +12,7 @@ import { confirmAction } from '../../utils/confirm-modal.js';
 // 용어는 용어 사전 준수: 볼륨/강도 · 여유 횟수 · 자세 메모 · 1주차 · 칸.
 // ================================================================
 
-import { getTestBoardV2, saveTestBoardV2, getMaxCycle, getExList, getCache, getSeasonScopedCache, ensureWorkoutDayCached } from '../../data.js';
+import { getTestBoardV2, saveTestBoardV2, getMaxCycle, getExList, getCache, ensureWorkoutDayCached } from '../../data.js';
 import { MOVEMENTS } from '../../config.js';
 import { S as WS } from '../state.js';
 import { saveWorkoutDay } from '../save.js';
@@ -49,7 +49,7 @@ function _registryExercises() {
 // 온보딩/종목관리 후보 — 실제 등록 종목 + 오늘 세션 기반 (운동할 때와 동일 출처)
 function _candidates(groupId = null) {
   let recentMap = {};
-  try { recentMap = buildRecentMap(getSeasonScopedCache() || {}); } catch { recentMap = {}; }
+  try { recentMap = buildRecentMap(getCache() || {}); } catch { recentMap = {}; }
   const sessionEntries = _currentSessionEntries();
   recentMap = { ...recentMap, ...sessionRecentMap(sessionEntries, _todayKey()) };
   const exList = mergeSessionExercises(_registryExercises(), sessionEntries);

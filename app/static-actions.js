@@ -3,8 +3,6 @@ import {
   editSectionTitle, addMiniMemoItem, toggleMiniMemoItem, deleteMiniMemoItem,
   closeSectionTitleModal, saveSectionTitleFromModal, closeExportModal, runExportCSV,
   closeSettingsModal,
-  openSettingsModal,
-  startSeasonFromSettings,
   quickDeleteNutritionItem,
 } from '../feature-misc.js';
 import { openDietPlanModal, closeDietPlanModal, saveDietPlanFromModal } from '../feature-diet-plan.js';
@@ -131,8 +129,6 @@ export function registerStaticActions() {
     'export:close': (_control, event) => closeExportModal(event),
     'export:run': (_control, _event, period) => runExportCSV(Number(period) || 0),
     'settings:close': (_control, event) => closeSettingsModal(event),
-    'settings:open-seasons': () => openSettingsModal(),
-    'settings:start-season': () => startSeasonFromSettings(),
     'settings:edit-nutrition': (control) => openNutritionItemEditor(control.dataset.itemId || null),
     'settings:delete-nutrition': (control) => quickDeleteNutritionItem(control.dataset.itemId || ''),
     'goal:close': (_control, event) => closeGoalModal(event),

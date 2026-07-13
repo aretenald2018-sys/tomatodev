@@ -289,7 +289,6 @@ export function getCache() { return window.__qaCache || {}; }
 export function calcVolume() { return 0; }
 export function getExercises() { return []; }
 export function getBodyCheckins() { return []; }
-export function getActiveSeason() { return null; }
 export function hasExerciseRecord(y, m, d) { return !!getDay(y, m, d).exercises?.length; }
 export function hasDietRecord() { return false; }
 export function getRawBodyCheckins() { return []; }

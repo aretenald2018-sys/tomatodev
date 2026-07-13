@@ -6,7 +6,7 @@ import { CONFIG, MUSCLES, MOVEMENTS } from '../config.js';
 
 // ── data-core: 공유 상태 + Firebase 기반 ─────────────────────────
 import {
-  db, doc, setDoc, deleteDoc, getDoc, collection, getDocs, query, where, writeBatch,
+  db, doc, setDoc, deleteDoc, getDoc, collection, getDocs, query, where,
   getCurrentUserRef, setCurrentUserRef,
   ADMIN_ID, ADMIN_GUEST_ID, getDataOwnerId,
   _col, _doc,
@@ -55,14 +55,6 @@ import {
   loadEquipmentPool,
 } from './data-equipment-pool.js';
 import { mergeBoardCompletionLogs } from '../workout/test-v2/board-core.js';
-import {
-  activeSeasonOf,
-  createNextSeasonRegistry,
-  filterCacheForSeason,
-  normalizeSeasonRegistry,
-  seasonForDate,
-  seasonSettingKey,
-} from './season-model.js';
 
 // ═══════════════════════════════════════════════════════════════
 // re-exports (기존 import 호환)
@@ -242,7 +234,7 @@ function _maxCycleHasExercise(cycle = null, exerciseId = '') {
 async function _removeExerciseFromMaxCycleStores(exerciseId) {
   if (!exerciseId) return;
   const presetCycle = _settings.expert_preset?.maxCycle || null;
-  const settingCycle = getMaxCycle();
+  const settingCycle = _settings.max_cycle || null;
   if (!_maxCycleHasExercise(presetCycle, exerciseId) && !_maxCycleHasExercise(settingCycle, exerciseId)) return;
   const source = selectMaxCycleForExerciseCleanup(presetCycle, settingCycle);
   if (!source) {
@@ -288,20 +280,9 @@ const _questsCRUD  = _createCRUD('quests',     () => _quests,  v => _setQuests(v
 const _cookingCRUD = _createCRUD('cooking',    () => _cooking, v => _setCooking(v));
 const _customMusclesCRUD = _createCRUD('custom_muscles', () => _customMuscles, v => _setCustomMuscles(v));
 
-function _goalSeasonId(goal = null) {
-  if (goal?.seasonId) return goal.seasonId;
-  return getActiveSeason()?.id || null;
-}
-
-export const saveGoal    = (goal)  => _goalsCRUD.save({ ...goal, seasonId: _goalSeasonId(goal) });
+export const saveGoal    = (goal)  => _goalsCRUD.save(goal);
 export const deleteGoal  = (id)    => _goalsCRUD.delete(id);
-export const getAllGoals = ()      => _goals;
-export const getGoals    = (seasonId = null) => {
-  const registry = getSeasonRegistry();
-  const targetId = seasonId || registry.activeSeasonId;
-  const legacyId = registry.seasons[0]?.id || targetId;
-  return _goals.filter(goal => (goal.seasonId || legacyId) === targetId);
-};
+export const getGoals    = ()      => _goals;
 
 export const saveQuest   = (quest) => _questsCRUD.save(quest);
 export const deleteQuest = (id)    => _questsCRUD.delete(id);
@@ -535,112 +516,19 @@ export async function saveNutritionItemFromOCR(parsedData, source = 'ocr') {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// Seasons
-// ═══════════════════════════════════════════════════════════════
-
-const SEASON_SETTING_DEFAULTS = Object.freeze({
-  diet_plan: null,
-  unit_goal_start: null,
-  max_cycle: null,
-  max_cycle_history: [],
-  test_board_v2: null,
-});
-
-export function getSeasonRegistry() {
-  return normalizeSeasonRegistry(_settings.season_registry);
-}
-
-export function getSeasons() {
-  return getSeasonRegistry().seasons;
-}
-
-export function getActiveSeason() {
-  return activeSeasonOf(getSeasonRegistry());
-}
-
-export function getSeasonForDate(key) {
-  return seasonForDate(getSeasonRegistry(), key);
-}
-
-function _resolveSeason(ref = null) {
-  if (ref && /^\d{4}-\d{2}-\d{2}$/.test(String(ref))) return getSeasonForDate(String(ref));
-  if (ref) {
-    const byId = getSeasons().find(season => season.id === ref);
-    if (byId) return byId;
-  }
-  return getActiveSeason();
-}
-
-function _seasonValue(slot, ref = null) {
-  const season = _resolveSeason(ref);
-  if (!season) return _settings[slot] ?? SEASON_SETTING_DEFAULTS[slot];
-  const key = seasonSettingKey(season.id, slot);
-  return _settings[key] ?? SEASON_SETTING_DEFAULTS[slot];
-}
-
-async function _saveActiveSeasonValue(slot, value) {
-  const active = getActiveSeason();
-  if (!active) return _saveSetting(slot, value);
-  const key = seasonSettingKey(active.id, slot);
-  _settings[key] = value;
-  _settings[slot] = value;
-  return _saveSetting(key, value);
-}
-
-export function getSeasonScopedCache(ref = null) {
-  return filterCacheForSeason(_cache, _resolveSeason(ref));
-}
-
-export async function startNewSeason({ name, startDate } = {}) {
-  const todayKey = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
-  if (String(startDate || '') > todayKey) throw new Error('미래 날짜로 시즌을 시작할 수 없습니다.');
-  const registry = createNextSeasonRegistry(getSeasonRegistry(), { name, startDate, now: Date.now() });
-  const next = activeSeasonOf(registry);
-  const values = {
-    diet_plan: null,
-    unit_goal_start: startDate,
-    max_cycle: null,
-    max_cycle_history: [],
-    test_board_v2: null,
-  };
-
-  await _fbOp('startNewSeason', async () => {
-    const batch = writeBatch(db);
-    batch.set(_doc('settings', 'season_registry'), { value: registry });
-    Object.entries(values).forEach(([slot, value]) => {
-      batch.set(_doc('settings', seasonSettingKey(next.id, slot)), { value });
-    });
-    await batch.commit();
-  }, { rethrow: true });
-
-  _settings.season_registry = registry;
-  Object.entries(values).forEach(([slot, value]) => {
-    _settings[seasonSettingKey(next.id, slot)] = value;
-    _settings[slot] = value;
-  });
-  _setDietPlan({ ...DEFAULT_DIET_PLAN });
-  if (typeof document !== 'undefined') {
-    document.dispatchEvent(new CustomEvent('season:changed', { detail: { season: next } }));
-  }
-  return next;
-}
-
-// ═══════════════════════════════════════════════════════════════
 // Diet Plan
 // ═══════════════════════════════════════════════════════════════
 
-export const getDietPlan = (dateKeyRef = null) => {
-  const stored = _seasonValue('diet_plan', dateKeyRef);
-  const p = { ...DEFAULT_DIET_PLAN, ...(stored || {}) };
-  p._userSet = !!(stored && stored.weight && stored.height);
+export const getDietPlan = () => {
+  const p = { ...DEFAULT_DIET_PLAN, ..._settings.diet_plan };
+  p._userSet = !!(_settings.diet_plan && _settings.diet_plan.weight && _settings.diet_plan.height);
   if (isAdminGuest() && p.weight && p.height) p._userSet = true;
   return p;
 };
-export const getDietPlanForDate = (dateKeyRef) => getDietPlan(dateKeyRef);
 export const saveDietPlan = async (plan) => {
   const merged = { ...(getDietPlan()), ...plan };
   Object.assign(_dietPlan, merged);
-  return _saveActiveSeasonValue('diet_plan', merged);
+  return _saveSetting('diet_plan', merged);
 };
 
 export const calcDietMetrics = _calcDietMetrics;
@@ -697,7 +585,7 @@ export function getLatestCheckinWeight() {
     const w = list[i]?.weight;
     if (typeof w === 'number' && isFinite(w)) return w;
   }
-  const plan = getDietPlan();
+  const plan = _settings?.diet_plan;
   if (plan && typeof plan.weight === 'number' && isFinite(plan.weight)) return plan.weight;
   return null;
 }
@@ -792,22 +680,19 @@ export const getDiet = (y,m,d) => {
   };
 };
 
-export const dietDayOk = (y,m,d) => {
-  const key = dateKey(y, m, d);
-  return _dietDayOk(getDay(y,m,d), getDietPlan(key), y, m, d);
-};
+export const dietDayOk = (y,m,d) => _dietDayOk(getDay(y,m,d), getDietPlan(), y, m, d);
 
 export const calcVolume = _calcVolume;
 export const calcVolumeAll = _calcVolumeAll;
-export const getVolumeHistory = (exerciseId) => _getVolumeHistory(getSeasonScopedCache(), exerciseId);
-export const getLastSession = (exerciseId, excludeDateKey = null) => _getLastSession(getSeasonScopedCache(excludeDateKey), exerciseId, excludeDateKey);
-export const getLastActivitySession = (type, excludeDateKey = null) => _getLastActivitySession(getSeasonScopedCache(excludeDateKey), type, excludeDateKey);
+export const getVolumeHistory = (exerciseId) => _getVolumeHistory(_cache, exerciseId);
+export const getLastSession = (exerciseId, excludeDateKey = null) => _getLastSession(_cache, exerciseId, excludeDateKey);
+export const getLastActivitySession = (type, excludeDateKey = null) => _getLastActivitySession(_cache, type, excludeDateKey);
 // 전문가 모드 분석 함수 (순수함수는 calc.js, 여기서는 _cache/_exList 자동 주입)
-export const getVolumeHistoryByMovement = (movementId) => _getVolumeHistoryByMovement(getSeasonScopedCache(), _exList, movementId);
-export const getVolumeHistoryMulti = (exerciseIds) => _getVolumeHistoryMulti(getSeasonScopedCache(), exerciseIds);
-export const detectPRs = (exerciseId) => _detectPRs(getSeasonScopedCache(), exerciseId);
+export const getVolumeHistoryByMovement = (movementId) => _getVolumeHistoryByMovement(_cache, _exList, movementId);
+export const getVolumeHistoryMulti = (exerciseIds) => _getVolumeHistoryMulti(_cache, exerciseIds);
+export const detectPRs = (exerciseId) => _detectPRs(_cache, exerciseId);
 // MOVEMENTS 인자는 호출부에서 주입 (config.js 순환참조 회피)
-export const calcBalanceByPattern = (movements, weekRange) => _calcBalanceByPattern(getSeasonScopedCache(), _exList, movements, weekRange);
+export const calcBalanceByPattern = (movements, weekRange) => _calcBalanceByPattern(_cache, _exList, movements, weekRange);
 
 // ── Expert Preset 접근자 ───────────────────────────────────────
 // 2026-04-25: mode lazy migration 추가. 기존 enabled=true 유저는 mode='pro'로 derive.
@@ -846,17 +731,17 @@ export async function saveExpertPreset(patch) {
   if (merged.mode === 'normal') merged.enabled = false;
   else if (merged.mode === 'pro' || merged.mode === 'max') merged.enabled = true;
   await _saveSetting('expert_preset', merged);
-  if (hasMaxCyclePatch) await _saveActiveSeasonValue('max_cycle', maxCycleRecord);
+  if (hasMaxCyclePatch) await _saveSetting('max_cycle', maxCycleRecord);
   return merged;
 }
 export const isExpertModeEnabled = () => !!_settings.expert_preset?.enabled;
 // 2026-04-25: 'normal' | 'pro' | 'max' 모드 discriminator.
 export const getExpertMode = () => getExpertPreset().mode || 'normal';
-export const getMaxCycle = (dateKeyRef = null) => _seasonValue('max_cycle', dateKeyRef) || null;
+export const getMaxCycle = () => _settings.max_cycle || null;
 export async function saveMaxCycle(cycle) {
   const now = Date.now();
   const record = _normalizeMaxCycleSetting(cycle, now);
-  await _saveActiveSeasonValue('max_cycle', record);
+  await _saveSetting('max_cycle', record);
   const cleanup = buildMaxCycleCanonicalPlan({
     expertPreset: _settings.expert_preset,
     settingCycle: record,
@@ -866,28 +751,23 @@ export async function saveMaxCycle(cycle) {
   return record;
 }
 // 테스트모드 사이클 히스토리 — 정산 1회당 요약 1개 (성장 계단 데이터원)
-export const getMaxCycleHistory = (dateKeyRef = null) => {
-  const history = _seasonValue('max_cycle_history', dateKeyRef);
-  return Array.isArray(history) ? history : [];
-};
+export const getMaxCycleHistory = () => (Array.isArray(_settings.max_cycle_history) ? _settings.max_cycle_history : []);
 export async function appendMaxCycleHistory(entry) {
   if (!entry || typeof entry !== 'object') return getMaxCycleHistory();
   const next = [...getMaxCycleHistory(), entry].slice(-24);
-  await _saveActiveSeasonValue('max_cycle_history', next);
+  await _saveSetting('max_cycle_history', next);
   return next;
 }
 
 // ── 테스트모드 v2 "성장 보드" (workout/test-v2/) ──────────────────
 // 별도 키 test_board_v2 — v1 max_cycle은 v2 경로에서 절대 쓰지 않는다
 // (docs/ai/features/2026-06-12-test-mode-v2-board.md 금지 목록).
-export const getTestBoardV2 = (dateKeyRef = null) => _seasonValue('test_board_v2', dateKeyRef) || null;
+export const getTestBoardV2 = () => _settings.test_board_v2 || null;
 export async function saveTestBoardV2(board) {
   if (!board || typeof board !== 'object') return null;
-  const active = getActiveSeason();
-  const settingKey = active ? seasonSettingKey(active.id, 'test_board_v2') : 'test_board_v2';
-  let latestBoard = getTestBoardV2() || null;
+  let latestBoard = _settings.test_board_v2 || null;
   try {
-    const snap = await getDoc(_doc('settings', settingKey));
+    const snap = await getDoc(_doc('settings', 'test_board_v2'));
     const remoteBoard = snap.exists() ? (snap.data()?.value || null) : null;
     if (remoteBoard) latestBoard = mergeBoardCompletionLogs(latestBoard, remoteBoard);
   } catch (e) {
@@ -895,22 +775,20 @@ export async function saveTestBoardV2(board) {
   }
   const merged = mergeBoardCompletionLogs(latestBoard, board);
   await _fbOp(
-    `saveSetting(${settingKey})`,
-    () => setDoc(_doc('settings', settingKey), { value: merged }),
+    'saveSetting(test_board_v2)',
+    () => setDoc(_doc('settings', 'test_board_v2'), { value: merged }),
     { rethrow: true }
   );
-  _settings[settingKey] = merged;
   _settings.test_board_v2 = merged;
   return merged;
 }
 
 export function calcStreaks() {
-  return _calcStreaks(getSeasonScopedCache(), TODAY, getDietPlan(), dateKey);
+  return _calcStreaks(_cache, TODAY, getDietPlan(), dateKey);
 }
 
 export function countLocalWeeklyActiveDays(baseDateLike = TODAY) {
   const now = new Date(baseDateLike);
-  const active = getActiveSeason();
   const dayOfWeek = now.getDay() || 7;
   const monday = new Date(now);
   monday.setDate(now.getDate() - dayOfWeek + 1);
@@ -918,8 +796,6 @@ export function countLocalWeeklyActiveDays(baseDateLike = TODAY) {
   for (let i = 0; i < 7; i++) {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
-    const key = dateKey(d.getFullYear(), d.getMonth(), d.getDate());
-    if (active?.startDate && key < active.startDate) continue;
     if (isActiveLocalDay(d.getFullYear(), d.getMonth(), d.getDate())) activeDays++;
   }
   return activeDays;
@@ -1136,10 +1012,10 @@ export async function saveHomeStreakDays(n) {
   await _saveSetting('home_streak_days', _settings.home_streak_days);
 }
 
-export const getUnitGoalStart = (dateKeyRef = null) => _seasonValue('unit_goal_start', dateKeyRef) ?? null;
+export const getUnitGoalStart = () => _settings.unit_goal_start ?? null;
 export async function saveUnitGoalStart(dateStr) {
   _settings.unit_goal_start = dateStr;
-  await _saveActiveSeasonValue('unit_goal_start', dateStr);
+  await _saveSetting('unit_goal_start', dateStr);
 }
 
 export const getCheerLastSeen = () => _settings.cheer_last_seen ?? 0;

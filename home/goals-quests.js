@@ -5,14 +5,8 @@
 import { TODAY, getMuscles, getCF, dietDayOk,
          getGoals, getQuests, dateKey, getMiniMemoItems,
          getSectionTitle, getQuestOrder,
-         hasExerciseRecord, getActiveSeason }  from '../data.js';
+         hasExerciseRecord }  from '../data.js';
 import { getMonday, quarterStart, quarterEnd } from './utils.js';
-
-function _escapeSeasonName(value) {
-  return String(value ?? '').replace(/[&<>"']/g, char => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  })[char]);
-}
 
 // ── 미니 메모 (체크리스트) ────────────────────────────────────────
 export function renderMiniMemo() {
@@ -49,13 +43,8 @@ export function renderGoals() {
   const container = document.getElementById('goals-section');
   if (!container) return;
   const goals = getGoals();
-  const activeSeason = getActiveSeason();
-  const seasonBadge = activeSeason
-    ? `<div class="goal-season-badge season-tone-${activeSeason.tone ?? 0}">${_escapeSeasonName(activeSeason.name)} · ${activeSeason.startDate}부터</div>`
-    : '';
   if (!goals.length) {
     container.innerHTML = `
-      ${seasonBadge}
       <div class="tds-empty">
         <div class="tds-empty-icon">🎯</div>
         <div class="tds-empty-title">아직 목표가 없어요</div>
@@ -67,7 +56,7 @@ export function renderGoals() {
 
   const todayStr = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
 
-  container.innerHTML = seasonBadge + goals.map(g => {
+  container.innerHTML = goals.map(g => {
     let ddayStr = '';
     if (g.dday) {
       const diff = Math.ceil((new Date(g.dday) - new Date(todayStr)) / 86400000);
@@ -196,7 +185,6 @@ function questProgress(q, now, todayKey) {
 }
 
 function autoCountInPeriod(autoType, periodType, now) {
-  const seasonStart = getActiveSeason()?.startDate || null;
   let dates = [];
   if (periodType === 'weekly') {
     const mon = getMonday(now);
@@ -219,7 +207,6 @@ function autoCountInPeriod(autoType, periodType, now) {
     }
   }
   return dates.filter(([y,m,d]) => {
-    if (seasonStart && dateKey(y, m, d) < seasonStart) return false;
     return autoType === 'workout'
       ? hasExerciseRecord(y,m,d)
       : dietDayOk(y,m,d) === true;

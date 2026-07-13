@@ -14,7 +14,7 @@
 //   - 반환값만 사용. 부수 효과로 state 를 변이시키지 않음.
 // ================================================================
 
-import { getDietPlan, getDayTargetKcal, isDietDaySuccess, dateKey } from '../data.js';
+import { getDietPlan, getDayTargetKcal, isDietDaySuccess } from '../data.js';
 
 /**
  * 세부 입력(cfData/runData/swimData/stretchData) 존재 여부로 활동 boolean flag 파생.
@@ -48,8 +48,8 @@ export function deriveActivityFlagsFromDetails(workout) {
  */
 export function deriveDietSuccessFromWorkout(workout, diet, date, cleanEx) {
   if (!date) return null;
+  const plan = getDietPlan();
   const { y, m, d } = date;
-  const plan = getDietPlan(dateKey(y, m, d));
   const dayData = {
     exercises: cleanEx,
     cf: !!workout?.cf,

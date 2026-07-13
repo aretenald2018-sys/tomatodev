@@ -109,7 +109,7 @@ test('exercise picker seeds the first manual row from latest work set or 40x10 f
   assert.match(defaultSet, /done:\s*false/);
 
   const latestSet = sliceByFirstBrace(exercisesJs, 'function _latestPickerExerciseSet');
-  assert.match(latestSet, /getSeasonScopedCache\(todayKey\)/);
+  assert.match(latestSet, /getCache\(\)/);
   assert.match(latestSet, /getWorkoutSessions/);
   assert.match(latestSet, /todayKey/);
   assert.match(latestSet, /entry\?\.exerciseId !== exerciseId/);
