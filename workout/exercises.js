@@ -3339,15 +3339,25 @@ function _bindPickerChrome() {
 function _bindExerciseEditorChrome(editor) {
   if (!editor || editor.dataset.editorChromeBound) return;
   editor.dataset.editorChromeBound = '1';
+  const bindEditorAction = (action, handler) => {
+    const control = editor.querySelector(`[data-action="${action}"]`);
+    if (!control || control.dataset.editorActionBound === '1') return;
+    control.dataset.editorActionBound = '1';
+    control.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      handler();
+    });
+  };
+  // 모달 시트 안쪽에서 전파가 멈춰도 저장/취소/삭제가 항상 실행되게 직접 바인딩한다.
+  bindEditorAction('close-exercise-editor', () => wtCloseExerciseEditor());
+  bindEditorAction('save-exercise-editor', () => void wtSaveExerciseFromEditor());
+  bindEditorAction('delete-exercise-editor', () => void wtDeleteExerciseFromEditor());
   editor.addEventListener('click', (event) => {
     if (event.target === editor) {
       wtCloseExerciseEditor(event);
       return;
     }
-    const action = event.target.closest('[data-action]')?.dataset?.action;
-    if (action === 'close-exercise-editor') wtCloseExerciseEditor();
-    if (action === 'save-exercise-editor') void wtSaveExerciseFromEditor();
-    if (action === 'delete-exercise-editor') void wtDeleteExerciseFromEditor();
   });
 }
 

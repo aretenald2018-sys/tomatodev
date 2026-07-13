@@ -60,6 +60,18 @@ test('exercise editor saves exercise before saving program contract', () => {
   assert.ok(saveProgramIdx > verifiedProgramRecordIdx, 'program save should run after choosing the verified exercise record');
 });
 
+test('exercise editor binds save actions directly inside the modal', () => {
+  const binding = exercisesJs.slice(
+    exercisesJs.indexOf('function _bindExerciseEditorChrome'),
+    exercisesJs.indexOf('function _renderPickerTabs'),
+  );
+  assert.match(binding, /const bindEditorAction = \(action, handler\)/);
+  assert.match(binding, /event\.stopPropagation\(\)/);
+  assert.match(binding, /bindEditorAction\('save-exercise-editor', \(\) => void wtSaveExerciseFromEditor\(\)\)/);
+  assert.match(binding, /bindEditorAction\('close-exercise-editor', \(\) => wtCloseExerciseEditor\(\)\)/);
+  assert.match(binding, /bindEditorAction\('delete-exercise-editor', \(\) => void wtDeleteExerciseFromEditor\(\)\)/);
+});
+
 test('exercise program board is rehydrated from settings on load', () => {
   assert.match(dataLoadJs, /_settings\.test_board_v2\s*=\s*fbMap\.test_board_v2\s*\?\?\s*null/);
 });

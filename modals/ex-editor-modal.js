@@ -7,10 +7,10 @@ export const MODAL_HTML = `
 <div><div class="ex-editor-label">타겟 부위</div><select class="ex-editor-select" id="ex-editor-muscle"></select></div>
 <div><div class="ex-editor-label">종목 이름</div><input class="ex-editor-input" id="ex-editor-name" placeholder="예: 케이블 로우, 스쿼트"></div>
 <div class="ex-editor-actions">
-<button class="tds-btn cancel-btn ghost md" data-action="close-exercise-editor">취소</button>
-<button class="tds-btn fill md" data-action="save-exercise-editor">저장</button>
+<button type="button" class="tds-btn cancel-btn ghost md" data-action="close-exercise-editor">취소</button>
+<button type="button" class="tds-btn fill md" data-action="save-exercise-editor">저장</button>
 </div>
-<button class="tds-btn danger sm" id="ex-editor-delete" data-action="delete-exercise-editor">🗑️ 종목 삭제</button>
+<button type="button" class="tds-btn danger sm" id="ex-editor-delete" data-action="delete-exercise-editor">🗑️ 종목 삭제</button>
 </div>
 </div>
 </div>
