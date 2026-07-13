@@ -66,7 +66,7 @@ test('watch uses direct GPS fallback and refuses to start without precise locati
   );
   assert.match(service, /WearRoutePoint\([\s\S]*accuracy = accuracy\.toDouble\(\)/);
   assert.match(service, /GPS weak ±\$\{accuracy\.roundToInt\(\)\}m/);
-  assert.match(service, /accuracy = recentDirectGpsAccuracy\(pointElapsedRealtimeMs\) \?: MAX_DIRECT_GPS_ACCURACY_M\.toDouble\(\)/);
+  assert.match(service, /point\.accuracy as\? LocationAccuracy[\s\S]*horizontalPositionErrorMeters[\s\S]*recentDirectGpsAccuracy\(pointElapsedRealtimeMs\)/);
   assert.match(service, /lastDirectGpsAccuracyM = accuracy\.toDouble\(\)[\s\S]*if \(accuracy > MAX_DIRECT_GPS_ACCURACY_M\)/);
   assert.match(service, /it in MIN_ALTITUDE_M\.\.MAX_ALTITUDE_M/);
   assert.match(controller, /야외에서 더 정확해져요/);
@@ -105,7 +105,11 @@ test('watch warms location before start and keeps companion-assisted fixes out o
   assert.match(service, /prepareExerciseAsync/);
   assert.match(service, /Priority\.PRIORITY_BALANCED_POWER_ACCURACY/);
   assert.match(service, /Priority\.PRIORITY_HIGH_ACCURACY/);
-  assert.match(service, /private fun handleStartRun[\s\S]*startFusedRouteLocationUpdates\(\)/);
+  const startHandler = service.match(/private fun handleStartRun\(\)[\s\S]*?private fun handleDebugRoutePoint/)?.[0] ?? '';
+  const resumeHandler = service.match(/private fun handleResumeRun\(\)[\s\S]*?private fun handleEndRun/)?.[0] ?? '';
+  assert.doesNotMatch(startHandler, /startFusedRouteLocationUpdates\(\)/);
+  assert.doesNotMatch(resumeHandler, /startFusedRouteLocationUpdates\(\)/);
+  assert.match(service, /onProviderDisabled[\s\S]*startFusedRouteLocationUpdates\(\)/);
   assert.match(service, /private fun handlePauseRun[\s\S]*stopFusedRouteLocationUpdates\(\)/);
   assert.match(service, /reportedElapsedRealtimeMs <= lastDirectLocationElapsedRealtimeMs/);
   assert.match(service, /private fun publishAssistedLocation[\s\S]*if \(!isPreparing \|\| accumulator != null\) return/);

@@ -20,6 +20,7 @@ class MainActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private val wearWorkoutUi = WearWorkoutUiController(handler)
     private var restoredRunStatus: WearExerciseSessionStatus? = null
+    private var runHost: View? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,9 +31,9 @@ class MainActivity : AppCompatActivity() {
             restoredRunStatus = restoredRun.status
         }
 
-        val runHost = findViewById<View>(R.id.wearRunHost)
+        runHost = findViewById<View>(R.id.wearRunHost)
             ?: findViewById(android.R.id.content)
-        wearWorkoutUi.bind(runHost)
+        wearWorkoutUi.bind(requireNotNull(runHost))
         if (requestWearExercisePermissionsIfNeeded()) {
             if (!restoreRunServiceIfNeeded() &&
                 WearExerciseSessionStore.current().status == WearExerciseSessionStatus.IDLE
@@ -40,6 +41,16 @@ class MainActivity : AppCompatActivity() {
                 WearExerciseService.prepareRun(this)
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        runHost?.let(wearWorkoutUi::onHostResumed)
+    }
+
+    override fun onPause() {
+        runHost?.let(wearWorkoutUi::onHostPaused)
+        super.onPause()
     }
 
     private fun requestWearExercisePermissionsIfNeeded(): Boolean {

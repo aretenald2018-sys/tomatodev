@@ -10,9 +10,14 @@ import com.lifestreak.wear.R
 class WearRunMetricPagerAdapter : RecyclerView.Adapter<WearRunMetricPagerAdapter.PageViewHolder>() {
     private var snapshot: WearRunUiSnapshot? = null
 
-    fun submitSnapshot(nextSnapshot: WearRunUiSnapshot) {
+    fun submitSnapshot(nextSnapshot: WearRunUiSnapshot, activePage: Int) {
+        if (snapshot == nextSnapshot) return
         snapshot = nextSnapshot
-        notifyItemRangeChanged(0, PAGE_COUNT)
+        notifyItemChanged(activePage.coerceIn(0, PAGE_COUNT - 1))
+    }
+
+    fun refreshPage(position: Int) {
+        notifyItemChanged(position.coerceIn(0, PAGE_COUNT - 1))
     }
 
     override fun getItemCount(): Int = PAGE_COUNT

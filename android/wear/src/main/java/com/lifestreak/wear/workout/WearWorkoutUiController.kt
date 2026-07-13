@@ -31,6 +31,7 @@ class WearWorkoutUiController(
     private var gpsStatusColor = Color.parseColor("#7C8499")
     private var finishRequested = false
     private var ignoreExerciseUpdatesUntilStart = false
+    private var hostInteractive = true
 
     private companion object {
         const val TAG = "TomatoWearRun"
@@ -79,19 +80,43 @@ class WearWorkoutUiController(
         handler.removeCallbacksAndMessages(null)
     }
 
+    fun onHostResumed(v: View) {
+        hostInteractive = true
+        val snapshot = WearExerciseSessionStore.current()
+        if (snapshot.status in setOf(
+                WearExerciseSessionStatus.ENDED,
+                WearExerciseSessionStatus.ERROR,
+            )
+        ) {
+            finishRequested = false
+        }
+        runState.restoreFromSession(snapshot)
+        updateRunLiveMetrics(snapshot)
+        updateGpsPresentation(snapshot)
+        render(v)
+        if (runState.screen == WearRunUiScreen.ACTIVE) scheduleRunTick(v)
+    }
+
+    fun onHostPaused(v: View) {
+        hostInteractive = false
+        v.keepScreenOn = false
+        clearRunTick(v)
+    }
+
     private fun bindExerciseStore(v: View) {
         sessionStoreUnsubscribe?.invoke()
         sessionStoreUnsubscribe = WearExerciseSessionStore.addListener { snapshot ->
             if (ignoreExerciseUpdatesUntilStart && snapshot.status != WearExerciseSessionStatus.IDLE) {
                 return@addListener
             }
+            if (!hostInteractive) return@addListener
             if (finishRequested && snapshot.status !in setOf(
                     WearExerciseSessionStatus.ENDED,
                     WearExerciseSessionStatus.ERROR,
                 )
             ) {
                 updateRunLiveMetrics(snapshot)
-                render(v)
+                if (hostInteractive) render(v)
                 return@addListener
             }
             if (snapshot.status in setOf(
@@ -104,8 +129,10 @@ class WearWorkoutUiController(
             runState.restoreFromSession(snapshot)
             updateRunLiveMetrics(snapshot)
             updateGpsPresentation(snapshot)
-            render(v)
-            if (runState.screen == WearRunUiScreen.ACTIVE) scheduleRunTick(v)
+            if (hostInteractive) {
+                render(v)
+                if (runState.screen == WearRunUiScreen.ACTIVE) scheduleRunTick(v)
+            }
         }
     }
 
@@ -202,7 +229,7 @@ class WearWorkoutUiController(
 
     private fun render(v: View) {
         val snapshot = runState.snapshot()
-        v.keepScreenOn = snapshot.screen == WearRunUiScreen.ACTIVE
+        v.keepScreenOn = false
         v.findViewById<View>(R.id.runReadyScreen)?.visibility =
             if (snapshot.screen == WearRunUiScreen.READY) View.VISIBLE else View.GONE
         v.findViewById<View>(R.id.runActiveScreen)?.visibility =
@@ -221,7 +248,7 @@ class WearWorkoutUiController(
         v.findViewById<TextView>(R.id.runActiveGpsStatus)?.text = gpsStatus
         v.findViewById<TextView>(R.id.runActiveGpsStatus)?.setTextColor(gpsStatusColor)
         v.findViewById<TextView>(R.id.runMetricPageIndicator)?.text = metricPageLabel()
-        initializeMetricPager(v)?.submitSnapshot(snapshot)
+        initializeMetricPager(v)?.submitSnapshot(snapshot, metricPagePosition)
 
         v.findViewById<TextView>(R.id.runPausedElapsed)?.text = snapshot.durationText
 
@@ -272,6 +299,7 @@ class WearWorkoutUiController(
             metricPageCallback = object : ViewPager2.OnPageChangeCallback() {
                 override fun onPageSelected(position: Int) {
                     metricPagePosition = position.coerceIn(0, WearRunMetricPagerAdapter.PAGE_COUNT - 1)
+                    adapter.refreshPage(metricPagePosition)
                     v.findViewById<TextView>(R.id.runMetricPageIndicator)?.text = metricPageLabel()
                 }
             }.also { callback -> pager.registerOnPageChangeCallback(callback) }
@@ -363,11 +391,11 @@ class WearWorkoutUiController(
     }
 
     private fun scheduleRunTick(v: View) {
-        if (runState.screen != WearRunUiScreen.ACTIVE || !v.isAttachedToWindow) return
+        if (!hostInteractive || runState.screen != WearRunUiScreen.ACTIVE || !v.isAttachedToWindow) return
         clearRunTick(v)
         val tick = object : Runnable {
             override fun run() {
-                if (runState.screen != WearRunUiScreen.ACTIVE || !v.isAttachedToWindow) return
+                if (!hostInteractive || runState.screen != WearRunUiScreen.ACTIVE || !v.isAttachedToWindow) return
                 render(v)
                 handler.postDelayed(this, 1_000L)
             }
