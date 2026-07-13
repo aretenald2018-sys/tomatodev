@@ -2892,6 +2892,10 @@ body.wt-modal-scroll-lock {
 .ex-max-v2-type-btn.warmup { color: #2563eb; background: #eef4ff; }
 .ex-max-v2-type-btn.drop { color: #b7791f; background: #fff7e6; }
 .ex-max-v2-type-btn.wendler-main { color: var(--primary, #fa342c); background: var(--primary-bg, rgba(250,52,44,.12)); }
+.ex-max-v2-type-btn.wendler-single { color: #1d4ed8; background: #eff6ff; }
+.ex-max-v2-type-btn.wendler-pr { color: #b42318; background: #fff1f0; }
+.ex-max-v2-type-btn.wendler-backoff { color: #7c3aed; background: #f5f3ff; }
+.ex-max-v2-type-btn.wendler-deload { color: #0f766e; background: #ecfdf5; }
 .ex-max-v2-type-btn.bbb { color: #0f766e; background: #ecfdf5; }
 .ex-max-v2-type-btn.fsl { color: #7c3aed; background: #f5f3ff; }
 .ex-max-v2-field {
@@ -3101,6 +3105,38 @@ body.wt-modal-scroll-lock {
   grid-template-columns: 1fr 1fr;
   gap: 6px;
   padding: 0 8px 8px;
+}
+
+.ex-w863-pr-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 10px 14px 2px;
+  padding: 10px 12px;
+  border: 1px solid #ffd5d2;
+  border-radius: 12px;
+  background: #fff8f7;
+  color: #7a271a;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ex-w863-pr-chip {
+  flex: none;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--primary, #fa342c);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ex-w863-pr-chip.is-on {
+  background: #ecfdf3;
+  color: #067647;
 }
 .ex-max-v2-secondary,
 .ex-max-v2-primary {
@@ -8908,6 +8944,14 @@ body, button, input, select, textarea, .tab-btn, .act-btn, .sheet-btn,
   #ex-editor-modal .ex-program-grid-four {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+#ex-editor-modal .ex-program-wendler [data-wendler-tm-field][hidden],
+#ex-editor-modal .ex-program-wendler [data-wendler-tm-tools][hidden],
+#ex-editor-modal .ex-program-wendler [data-wendler-supp-fields][hidden],
+#ex-editor-modal .ex-program-wendler [data-w863-one-rm-field][hidden],
+#ex-editor-modal .ex-program-wendler [data-w863-profile-fields][hidden] {
+  display: none;
 }
 
 /* ── Sparkline ── */
@@ -23563,6 +23607,29 @@ body:has(#tm2-sheets.tm2-open) #tm2-sheets .tm2-sheet {
 .tm2-wendler-card-note b { display: block; font-size: 12px; color: #5f2c86; }
 .tm2-wendler-card-note span { display: block; margin-top: 2px; font-size: 11px; font-weight: 700; }
 .tm2-wcard { display: grid; gap: 10px; }
+.tm2-wpr-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #ffd5d2;
+  border-radius: 12px;
+  background: #fff8f7;
+  color: #7a271a;
+  font-size: 11px;
+  font-weight: 800;
+}
+.tm2-wpr-row button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--tm2-tomato);
+  color: #fff;
+  font: inherit;
+}
+.tm2-wpr-row button:disabled { background: #ecfdf3; color: #067647; }
 .tm2-wcard-meta {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   border: 1px solid #e7defc; background: #faf7ff; border-radius: 13px; padding: 10px 12px;

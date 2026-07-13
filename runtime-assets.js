@@ -169,6 +169,7 @@
   './workout/expert/max.js',
   './workout/expert/max-prescription.js',
   './workout/expert/max-wendler.js',
+  './workout/w863-original.js',
   // 테스트모드 v2 — 성장 보드 (workout/test-v2/)
   './test-mode-v2.css',
   './workout/test-v2/entry.js',

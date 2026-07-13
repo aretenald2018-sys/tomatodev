@@ -45,6 +45,10 @@ export function workoutSetTypeLabel(setOrType = {}) {
   const type = typeof setOrType === 'string' ? setOrType : set.setType;
   if (set.wendlerRole === 'warmup') return '웜업';
   if (set.wendlerRole === 'main') return '메인';
+  if (set.wendlerRole === 'heavy_single') return '싱글';
+  if (set.wendlerRole === 'pr_attempt') return 'PR';
+  if (set.wendlerRole === 'backoff') return '백오프';
+  if (set.wendlerRole === 'deload') return '회복';
   if (set.wendlerRole === 'supplemental') {
     if (set.supplementalKind === 'bbb') return 'BBB';
     if (set.supplementalKind === 'fsl') return 'FSL';
@@ -61,6 +65,8 @@ export function workoutSetTypeClass(setOrType = {}) {
   const set = setOrType && typeof setOrType === 'object' ? setOrType : {};
   const type = typeof setOrType === 'string' ? setOrType : set.setType;
   if (set.wendlerRole === 'warmup' || type === 'warmup') return 'is-warmup';
+  if (set.wendlerRole === 'pr_attempt') return 'is-failure';
+  if (set.wendlerRole === 'backoff' || set.wendlerRole === 'deload') return 'is-drop';
   if (set.wendlerRole === 'supplemental' || type === 'drop' || type === 'deload') return 'is-drop';
   if (type === 'failure') return 'is-failure';
   return '';

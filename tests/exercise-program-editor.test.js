@@ -22,6 +22,7 @@ test('exercise editor renders program controls backed by test_board_v2', () => {
   assert.match(exercisesJs, /data-ex-program-calendar-toggle/);
   assert.match(exercisesJs, /function _renderProgramStartCalendar/);
   assert.match(exercisesJs, /class="ex-program-calendar-row"/);
+  assert.match(exercisesJs, /_programCycleHint\(programStartDate,\s*isOriginal863 \? 7 : 6\)/);
   assert.match(exercisesJs, /programStartDate:\s*document\.getElementById\('ex-program-start-date'\)/);
   assert.match(exercisesJs, /data-ex-program-tm-calc/);
   assert.match(exercisesJs, /estimate1RM\(kg,\s*reps\)/);
@@ -33,6 +34,19 @@ test('exercise editor renders program controls backed by test_board_v2', () => {
   assert.match(exercisesJs, /todayKey,\s*\n\s*movements: MOVEMENTS/);
   assert.doesNotMatch(exercisesJs, /todayKey:\s*dateKey,/);
   assert.doesNotMatch(exercisesJs, /id="ex-program-wendler-start"[^>]+type="number"/);
+});
+
+test('8/6/3 original editor and workout card expose profile, 1RM, recovery roles, and direct PR confirmation binding', () => {
+  assert.match(exercisesJs, /8\/6\/3 원본/);
+  assert.match(exercisesJs, /id="ex-program-w863-profile"/);
+  assert.match(exercisesJs, /id="ex-program-w863-one-rm"/);
+  assert.match(exercisesJs, /data-wendler-supp-fields/);
+  assert.match(exercisesJs, /data-action="confirm-w863-pr"/);
+  assert.match(exercisesJs, /function _bindW863PrChip[\s\S]*addEventListener\('click'/);
+  assert.match(exercisesJs, /wendlerRole === 'heavy_single'[\s\S]*return '싱글'/);
+  assert.match(exercisesJs, /wendlerRole === 'backoff'[\s\S]*return '백오프'/);
+  assert.match(exercisesJs, /wendlerRole === 'deload'[\s\S]*return '회복'/);
+  assert.doesNotMatch(exercisesJs, /onclick=.*confirm-w863-pr/);
 });
 
 test('exercise editor saves exercise before saving program contract', () => {
@@ -89,5 +103,6 @@ test('exercise editor program controls have compact fixed layout styles', () => 
   assert.match(styleCss, /#ex-editor-modal \.ex-program-tm-calc/);
   assert.match(styleCss, /#ex-editor-modal \.ex-program-calc-btn/);
   assert.match(styleCss, /#ex-editor-modal \.ex-program-wendler \.ex-editor-input,[\s\S]*?min-height:\s*24px/);
+  assert.match(styleCss, /\.ex-program-wendler \[data-wendler-tm-field\]\[hidden\],[\s\S]*?\.ex-program-wendler \[data-wendler-supp-fields\]\[hidden\][\s\S]*?display:\s*none/);
   assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });

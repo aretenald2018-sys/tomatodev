@@ -228,3 +228,24 @@ test('정산: 웬들러 벤치마크 성장은 TM에 적용', () => {
   const next = buildNextMaxCycleFromSettle(cycle, settle, { todayKey: TODAY, now: 1 });
   assert.equal(next.benchmarks[0].wendler.tmKg, 157.5);
 });
+
+test('정산: 8/6/3 원본은 자동 마이그레이션되어 7주 뒤 1RM에 증량을 적용한다', () => {
+  const cycle = makeCycle();
+  cycle.benchmarks = [{
+    ...cycle.benchmarks[0],
+    label: '벤치프레스',
+    program: 'wendler',
+    wendler: { tmKg: 90, incrementKg: 2.5, roundKg: 2.5, scheme: 'w863' },
+  }];
+  const snapshot = buildRenderedMaxCycleSnapshot({ cycle, cache: {}, exList: EX_LIST, todayKey: TODAY });
+  const settle = buildMaxCycleSettleResult(cycle, snapshot, { decisions: { bm_chest_bench: 'grow' } });
+  const row = settle.rows[0];
+  assert.equal(row.wendler.templateVersion, 'w863-original-v1');
+  assert.equal(row.wendler.profileId, 'bench');
+  assert.equal(row.wendler.oneRmKg, 102.5);
+  assert.deepEqual(row.representative, { kind: 'oneRm', before: 100, after: 102.5, incrementKg: 2.5 });
+  const next = buildNextMaxCycleFromSettle(cycle, settle, { todayKey: TODAY, now: 1 });
+  assert.equal(next.weeks, 7);
+  assert.equal(next.benchmarks[0].wendler.oneRmKg, 102.5);
+  assert.equal(next.benchmarks[0].wendler.tmKg, 92.3);
+});

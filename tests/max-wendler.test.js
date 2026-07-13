@@ -19,18 +19,16 @@ import {
 } from '../workout/expert/max-wendler.js';
 import { renderMaxPlanEditor } from '../workout/expert/max-cycle.js';
 
-test('프리셋: 5/3/1과 8/6/3은 6주(3주 웨이브 ×2) weekMap을 가진다', () => {
-  for (const id of ['w531', 'w863']) {
-    const preset = WENDLER_SCHEMES[id];
-    assert.equal(preset.weekMap.length, 6);
-    assert.deepEqual(preset.weekMap[0], preset.weekMap[3]); // 웨이브 반복
-    for (const week of preset.weekMap) {
-      assert.equal(week.sets.length, 3);
-      assert.equal(week.sets[2].amrap, true); // 마지막 세트 AMRAP
-    }
-  }
-  assert.equal(WENDLER_SCHEMES.w531.weekMap[2].sets[2].pct, 95); // 5/3/1 W3 톱세트
-  assert.equal(WENDLER_SCHEMES.w863.weekMap[0].sets[0].reps, 8);
+test('프리셋: 5/3/1은 6주, 8/6/3 원본은 회복을 포함한 7주다', () => {
+  const w531 = WENDLER_SCHEMES.w531;
+  assert.equal(w531.weekMap.length, 6);
+  assert.deepEqual(w531.weekMap[0], w531.weekMap[3]);
+  assert.equal(w531.weekMap[2].sets[2].pct, 95);
+  const w863 = WENDLER_SCHEMES.w863;
+  assert.equal(w863.label, '8/6/3 원본');
+  assert.equal(w863.weekMap.length, 7);
+  assert.equal(w863.weekMap[0].sets[0].reps, 8);
+  assert.equal(w863.weekMap[6].sets.every(set => !set.amrap), true);
 });
 
 test('처방: %TM × TM을 라운딩 단위로 환산한다', () => {
@@ -67,15 +65,15 @@ test('처방: 보조 없음이면 supplemental=null', () => {
   assert.equal(rx.supplemental, null);
 });
 
-test('weekMap 셀 편집 시 scheme이 custom으로 정규화된다', () => {
-  const base = normalizeWendlerConfig({ tmKg: 100, scheme: 'w863' });
-  assert.equal(base.scheme, 'w863');
+test('5/3/1 weekMap 셀 편집 시 scheme이 custom으로 정규화된다', () => {
+  const base = normalizeWendlerConfig({ tmKg: 100, scheme: 'w531' });
+  assert.equal(base.scheme, 'w531');
   const edited = JSON.parse(JSON.stringify(base));
   edited.weekMap[5].sets[2].pct = 72.5; // W6 톱세트 % 직접 수정
   const normalized = normalizeWendlerConfig(edited);
   assert.equal(normalized.scheme, 'custom');
   assert.equal(normalized.weekMap[5].sets[2].pct, 72.5);
-  assert.equal(weekMapMatchesScheme(normalized.weekMap, 'w863'), false);
+  assert.equal(weekMapMatchesScheme(normalized.weekMap, 'w531'), false);
 });
 
 test('TM 제안: 실측 e1RM × 0.9, 없으면 트랙 시작값으로 추정', () => {
@@ -147,6 +145,32 @@ test('플랜 시트: 웬들러 벤치마크는 모듈 에디터를 렌더한다 
   assert.doesNotMatch(html, /onclick=/, '플랜 시트 버튼은 lazy module 전역 onclick에 의존하지 않는다');
   // 웬들러 카드는 기본 트랙 입력을 렌더하지 않는다
   assert.doesNotMatch(html, /data-bench-track="M"/);
+});
+
+test('플랜 시트: 8/6/3 원본은 프로필·1RM·7주 요약을 렌더하고 BBB/FSL 입력을 숨긴다', () => {
+  const cycle = {
+    startDate: '2026-06-01',
+    weeks: 6,
+    benchmarks: [{
+      id: 'bm_lower_sumo',
+      exerciseId: 'custom_sumo',
+      movementId: 'sumo_deadlift',
+      label: '스모데드',
+      primaryMajor: 'lower',
+      program: 'wendler',
+      wendler: { tmKg: 108, incrementKg: 5, roundKg: 5, scheme: 'w863' },
+      startKg: 90, targetKg: 95, incrementKg: 5,
+    }],
+  };
+  const html = renderMaxPlanEditor({ cycle, movements: [], cache: {}, exList: [], todayKey: '2026-06-08' });
+  assert.match(html, /8\/6\/3 원본/);
+  assert.match(html, /data-wendler-field="profileId"/);
+  assert.match(html, /value="deadlift" selected/);
+  assert.match(html, /data-wendler-field="oneRmKg"/);
+  assert.match(html, />W7</);
+  assert.match(html, /원본 7주 처방/);
+  assert.doesNotMatch(html, /data-wendler-field="suppKind"/);
+  assert.doesNotMatch(html, /onclick=/);
 });
 
 test('플랜 시트: linear 벤치마크는 기존 트랙 입력 + 프로그램 토글을 함께 렌더한다', () => {

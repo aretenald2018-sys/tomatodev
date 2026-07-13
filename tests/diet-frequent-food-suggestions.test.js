@@ -21,7 +21,7 @@ test('breakfast lunch and dinner have frequent food chip containers instead of v
 test('frequent food suggestions are rendered from cached meal history and add through a dedicated action', () => {
   assert.match(renderJs, /getCache/, 'suggestions should read from the existing workout cache');
   assert.match(renderJs, /export function wtAddFrequentFoodSuggestion/, 'chip click should have an exported add function');
-  assert.match(renderJs, /data-action=.*addFrequentFood/, 'rendered options should use the delegated add action');
+  assert.match(renderJs, /data-action="diet:add-frequent-food"/, 'rendered options should use the namespaced delegated add action');
   assert.match(renderJs, /diet-frequent-food-card/, 'suggestions should render as one wide recommendation group');
   assert.match(renderJs, /이때 자주 먹었던 것/, 'recommendation group should explain that these are frequent past foods');
   assert.match(renderJs, /diet-frequent-food-option/, 'individual suggestions should be inline text options, not separate chips');

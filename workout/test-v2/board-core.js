@@ -21,6 +21,7 @@ import {
   isWendlerAllowedMajor,
   roundToPlate,
 } from './wendler.js';
+import { W863_ORIGINAL_VERSION } from '../w863-original.js';
 
 export { roundToPlate, isWendlerAllowedMajor };
 
@@ -506,6 +507,9 @@ function _makeBenchmark(candidate, order) {
     bm.wendler = normalizeWendlerConfig(candidate.wendler, {
       primaryMajor: major,
       trackSpec: seed.volume ? { startKg: seed.volume.kg, startReps: seed.volume.reps } : null,
+      movementId: bm.movementId,
+      exerciseId: bm.exerciseId,
+      label: bm.label,
     });
     bm.wendlerLog = {};
   }
@@ -778,19 +782,29 @@ export function projectFutureCells(board, benchmarkId, track, minAheadWeeks = 12
   let offset = 1;
   const isWnd = bm.program === 'wendler';
   if (isWnd) _normalizeWendlerBenchmark(board, bm, { fallbackStartDate: active.startDate });
-  const baseKg = isWnd ? (_resolveWendlerTmAnchor(bm, active.startDate)?.tmKg || bm.wendler.tmKg) : currentKgOf(board, bm, track).kg;
+  const isOriginal = isWnd && bm.wendler?.templateVersion === W863_ORIGINAL_VERSION;
+  const baseKg = isOriginal
+    ? bm.wendler.oneRmKg
+    : (isWnd ? (_resolveWendlerTmAnchor(bm, active.startDate)?.tmKg || bm.wendler.tmKg) : currentKgOf(board, bm, track).kg);
   const baseReps = isWnd ? 0 : currentKgOf(board, bm, track).reps;
   const inc = isWnd ? bm.wendler.incrementKg : bm.incrementKg;
   const limit = addWeeks(addWeeks(active.startDate, active.weeks), minAheadWeeks);
   while (weeksBetween(projStart, limit) > 0 && offset <= 6) {
     if (isWnd) {
       const exactAnchor = (bm.wendler?.tmAnchors || []).find(anchor => anchor.weekStart === projStart);
-      const tm = exactAnchor ? exactAnchor.tmKg : roundToPlate(baseKg + inc * offset, 0.5);
+      const projectedKg = exactAnchor
+        ? (isOriginal ? roundToPlate(exactAnchor.tmKg / 0.9, 0.5) : exactAnchor.tmKg)
+        : roundToPlate(baseKg + inc * offset, 0.5);
+      const tm = isOriginal ? roundToPlate(projectedKg * 0.9, 0.5) : projectedKg;
       for (let w = 1; w <= active.weeks; w++) {
         const weekStart = addWeeks(projStart, w - 1);
         const programWeek = Math.max(1, weeksBetween(bm.programStartDate, weekStart) + 1);
         const cycleWeek = ((programWeek - 1) % active.weeks) + 1;
-        const rx = wendlerWeekPrescription({ ...bm.wendler, tmKg: tm }, cycleWeek);
+        const rx = wendlerWeekPrescription({
+          ...bm.wendler,
+          tmKg: tm,
+          ...(isOriginal ? { oneRmKg: projectedKg } : {}),
+        }, cycleWeek);
         const top = rx.topSet;
         cells.push({
           kind: 'wendler', weekStart, span: 1, week: cycleWeek, programWeek,
@@ -961,7 +975,10 @@ function _missedCount(board, bm, track, cycleId) {
     const cycle = (board.cycles || []).find(c => c.id === cycleId);
     if (!cycle) return 0;
     let n = 0;
-    for (let w = 0; w < cycle.weeks; w++) {
+    const scoredWeeks = bm.wendler?.templateVersion === W863_ORIGINAL_VERSION
+      ? Math.max(0, cycle.weeks - 1)
+      : cycle.weeks;
+    for (let w = 0; w < scoredWeeks; w++) {
       const log = bm.wendlerLog?.[addWeeks(cycle.startDate, w)];
       if (log?.missed && !log?.paintedAt) n++;
     }
@@ -985,20 +1002,26 @@ export function buildSettleRows(board, groupId) {
   for (const bm of activeBenchmarks(board, groupId)) {
     if (bm.program === 'wendler') {
       _normalizeWendlerBenchmark(board, bm, { fallbackStartDate: cycle.startDate });
-      const currentTm = _resolveWendlerTmAnchor(bm, cycle.startDate)?.tmKg || bm.wendler.tmKg;
+      const isOriginal = bm.wendler?.templateVersion === W863_ORIGINAL_VERSION;
+      const currentTm = isOriginal
+        ? bm.wendler.oneRmKg
+        : (_resolveWendlerTmAnchor(bm, cycle.startDate)?.tmKg || bm.wendler.tmKg);
       const missed = _missedCount(board, bm, null, cycle.id);
       rows.push({
         key: bm.id,
         benchmarkId: bm.id,
         program: 'wendler',
         label: bm.label,
-        trackLabel: '웬들러',
+        trackLabel: isOriginal ? '8/6/3 1RM' : '웬들러',
         currentKg: currentTm,
         incrementKg: bm.wendler.incrementKg,
-        nextKg: roundToPlate(currentTm + bm.wendler.incrementKg, 0.5),
+        nextKg: isOriginal
+          ? Math.round((currentTm + bm.wendler.incrementKg) * 10) / 10
+          : roundToPlate(currentTm + bm.wendler.incrementKg, 0.5),
         missedCount: missed,
         defaultDecision: missed > 0 ? 'hold' : 'grow',
-        isTm: true,
+        isTm: !isOriginal,
+        isOneRm: isOriginal,
       });
       continue;
     }
@@ -1044,9 +1067,20 @@ export function applySettle(board, groupId, decisions = {}, todayKey, now = null
     const grow = decision === 'grow';
     if (row.program === 'wendler') {
       const before = row.currentKg;
-      const after = grow ? roundToPlate(before + bm.wendler.incrementKg, 0.5) : before;
-      _upsertWendlerTmAnchor(bm, nextStart, after, { source: 'settle', updatedAt: now });
-      results.push({ benchmarkId: bm.id, program: 'wendler', before, after, decision, tmAnchorWeekStart: nextStart });
+      const after = grow
+        ? (bm.wendler?.templateVersion === W863_ORIGINAL_VERSION
+          ? Math.round((before + bm.wendler.incrementKg) * 10) / 10
+          : roundToPlate(before + bm.wendler.incrementKg, 0.5))
+        : before;
+      if (bm.wendler?.templateVersion === W863_ORIGINAL_VERSION) {
+        bm.wendler.oneRmKg = after;
+        const nextTm = roundToPlate(after * 0.9, 0.5);
+        _upsertWendlerTmAnchor(bm, nextStart, nextTm, { source: 'settle', updatedAt: now });
+        results.push({ benchmarkId: bm.id, program: 'wendler', before, after, decision, oneRmKg: after, tmAnchorWeekStart: nextStart });
+      } else {
+        _upsertWendlerTmAnchor(bm, nextStart, after, { source: 'settle', updatedAt: now });
+        results.push({ benchmarkId: bm.id, program: 'wendler', before, after, decision, tmAnchorWeekStart: nextStart });
+      }
     } else {
       const before = currentKgOf(board, bm, row.track).kg;
       const after = grow ? roundToPlate(before + bm.incrementKg, 0.5) : before;
@@ -1313,6 +1347,9 @@ function _normalizeWendlerBenchmark(board, bm, { fallbackStartDate = null, prima
   const cfg = normalizeWendlerConfig(raw, {
     primaryMajor: major,
     trackSpec: trackSpec || (bm.seed?.volume ? { startKg: bm.seed.volume.kg, startReps: bm.seed.volume.reps } : null),
+    movementId: bm.movementId,
+    exerciseId: bm.exerciseId,
+    label: bm.label,
   });
   const tmAnchors = _normalizeTmAnchors(raw.tmAnchors, programStartDate, cfg.tmKg);
   bm.wendler = {
@@ -1321,6 +1358,11 @@ function _normalizeWendlerBenchmark(board, bm, { fallbackStartDate = null, prima
     tmAnchors,
     tmKg: _latestTmAnchor(tmAnchors)?.tmKg || cfg.tmKg,
   };
+  if (cfg.templateVersion === W863_ORIGINAL_VERSION) {
+    for (const cycle of (board.cycles || [])) {
+      if (cycle.groupId === bm.groupId && cycle.status !== 'settled') cycle.weeks = Math.max(7, Number(cycle.weeks) || 0);
+    }
+  }
   return bm;
 }
 
@@ -1399,7 +1441,10 @@ function _applyExerciseProgramToBenchmark(board, bm, candidate, config, todayKey
       primaryMajor: major,
       trackSpec: bm.seed?.volume ? { startKg: bm.seed.volume.kg, startReps: bm.seed.volume.reps } : null,
     });
-    if (Number(config.wendler?.tmKg) > 0) {
+    if (bm.wendler?.templateVersion === W863_ORIGINAL_VERSION && Number(config.wendler?.oneRmKg) > 0) {
+      const derivedTm = roundToPlate(Number(config.wendler.oneRmKg) * 0.9, 0.5);
+      _upsertWendlerTmAnchor(bm, bm.programStartDate, derivedTm, { source: 'manual' });
+    } else if (Number(config.wendler?.tmKg) > 0) {
       _upsertWendlerTmAnchor(bm, bm.programStartDate, config.wendler.tmKg, { source: 'manual' });
     }
     bm.wendlerLog = bm.wendlerLog || {};
@@ -1480,7 +1525,18 @@ function _programPlanForBenchmark(board, bm, { track = 'volume', weekStart = nul
     const cycleWeek = ((programWeek - 1) % weeks) + 1;
     const groupCycleWeek = cycle ? Math.max(1, Math.min(cycle.weeks, weekIndexOf(cycle, wkMon))) : null;
     const anchor = _resolveWendlerTmAnchor(bm, wkMon);
-    const rx = wendlerWeekPrescription({ ...(bm.wendler || {}), tmKg: anchor?.tmKg || bm.wendler?.tmKg || 0 }, cycleWeek);
+    const isOriginal = bm.wendler?.templateVersion === W863_ORIGINAL_VERSION;
+    const anchorTm = anchor?.tmKg || bm.wendler?.tmKg || 0;
+    const anchorOneRm = isOriginal && anchor?.tmKg
+      ? (Math.abs(Number(anchor.tmKg) - Number(bm.wendler?.tmKg)) < 0.001
+        ? bm.wendler.oneRmKg
+        : roundToPlate(anchor.tmKg / 0.9, 0.5))
+      : null;
+    const rx = wendlerWeekPrescription({
+      ...(bm.wendler || {}),
+      tmKg: anchorTm,
+      ...(anchorOneRm ? { oneRmKg: anchorOneRm } : {}),
+    }, cycleWeek);
     return {
       kind: 'wendler',
       track: 'volume',
@@ -1530,11 +1586,18 @@ export function exerciseProgramWendlerSignature(plan) {
     : 'none';
   return [
     `tm:${rx.tmKg ?? ''}`,
+    `oneRm:${rx.oneRmKg ?? ''}`,
+    `template:${rx.templateVersion ?? ''}`,
+    `profile:${rx.profileId ?? ''}`,
     `week:${rx.week ?? ''}`,
     `board:${rx.boardWeek ?? ''}`,
     `round:${rx.roundKg ?? ''}`,
     `warm:${setSig(rx.warmup?.sets || [])}`,
     `main:${setSig(rx.sets || [])}`,
+    `singles:${setSig(rx.heavySingles || [])}`,
+    `optional:${setSig(rx.optionalSets || [])}`,
+    `backoff:${setSig(rx.backoff || [])}`,
+    `deload:${setSig(rx.deload || [])}`,
     `supp:${supp}`,
   ].join('|');
 }
@@ -1543,7 +1606,15 @@ export function exerciseProgramWendlerSignature(plan) {
 // 기존 초안이나 다른 진입점에서 세트 배열 순서가 흐트러져도 역할 순서는 보존한다.
 export function orderWendlerPrescriptionSets(sets = []) {
   if (!Array.isArray(sets)) return [];
-  const roleOrder = { warmup: 0, main: 1, supplemental: 2 };
+  const roleOrder = {
+    warmup: 0,
+    main: 1,
+    heavy_single: 2,
+    pr_attempt: 3,
+    backoff: 4,
+    deload: 5,
+    supplemental: 6,
+  };
   return sets
     .map((set, index) => ({
       set,
@@ -1559,6 +1630,21 @@ function _programSetsForWorkoutCard(bm, plan) {
   const rpe = _programTargetRpeOf(bm);
   if (plan.kind === 'wendler') {
     const signature = exerciseProgramWendlerSignature(plan);
+    if (plan.rx?.templateVersion === W863_ORIGINAL_VERSION) {
+      return (plan.rx.requiredSets || []).map((set, idx) => ({
+        kg: set.kg,
+        reps: set.reps,
+        rpe: set.role === 'warmup' || set.role === 'deload' ? Math.max(1, rpe - 2) : rpe,
+        romPct: 100,
+        setType: set.role === 'warmup' ? 'warmup' : 'main',
+        wendlerRole: set.role,
+        wendlerPct: set.pct ?? null,
+        wendlerOrder: idx,
+        wendlerSignature: signature,
+        amrap: !!set.amrap,
+        done: false,
+      }));
+    }
     const sets = [];
     for (const [idx, set] of (plan.rx?.warmup?.sets || []).entries()) {
       sets.push({
@@ -1623,6 +1709,10 @@ function _programRxLabel(plan, bm, track) {
     const supp = plan.rx?.supplemental;
     const scheme = WENDLER_SCHEMES[bm.wendler?.scheme]?.label || '커스텀';
     const main = `웬들러 ${scheme} · ${top?.kg || '—'}kg x ${top?.reps || ''}${top?.amrap ? '+' : ''}`;
+    if (plan.rx?.templateVersion === W863_ORIGINAL_VERSION) {
+      const pr = plan.rx.optionalSets?.[0];
+      return `${main}${pr ? ` · PR ${pr.kg}kg 확인` : ''}`;
+    }
     const supplemental = supp ? ` · ${supp.label} ${supp.kg}kg ${supp.sets}x${supp.reps}` : '';
     return `${main}${supplemental}`;
   }
@@ -1640,6 +1730,22 @@ export function buildExerciseProgramWorkoutPrescription(board, benchmark, { trac
   const useTrack = plan.kind === 'wendler' ? 'volume' : plan.track;
   const code = _programTrackToCode(useTrack);
   const sets = _programSetsForWorkoutCard(bm, plan);
+  const optionalSets = plan.kind === 'wendler'
+    ? (plan.rx?.optionalSets || []).map((set, idx) => ({
+      kg: set.kg,
+      reps: set.reps,
+      rpe: _programTargetRpeOf(bm),
+      romPct: 100,
+      setType: 'main',
+      wendlerRole: 'pr_attempt',
+      wendlerPct: set.pct ?? null,
+      wendlerOrder: idx,
+      wendlerSignature: exerciseProgramWendlerSignature(plan),
+      optional: true,
+      requiresConfirmation: true,
+      done: false,
+    }))
+    : [];
   const signature = plan.kind === 'wendler' ? exerciseProgramWendlerSignature(plan) : '';
   const label = _programRxLabel(plan, bm, useTrack);
   const prescription = {
@@ -1663,6 +1769,7 @@ export function buildExerciseProgramWorkoutPrescription(board, benchmark, { trac
     },
     applySets: true,
     sets,
+    ...(optionalSets.length ? { optionalSets } : {}),
     program: plan.kind,
     ...(signature ? { wendlerSignature: signature } : {}),
   };
@@ -1685,6 +1792,9 @@ export function buildExerciseProgramWorkoutPrescription(board, benchmark, { trac
       groupCycleWeek: plan.groupCycleWeek,
       tmAnchorWeekStart: plan.tmAnchorWeekStart,
       tmKg: plan.tmKg,
+      oneRmKg: plan.rx?.oneRmKg ?? null,
+      templateVersion: plan.rx?.templateVersion ?? null,
+      profileId: plan.rx?.profileId ?? null,
     } : {}),
     cycleId: cycle?.id || null,
     boardV2BenchmarkId: bm.id,
@@ -1772,7 +1882,7 @@ function _normalizeWorkoutName(name = '') {
 
 function _workSetsOf(entry = {}) {
   return (Array.isArray(entry?.sets) ? entry.sets : [])
-    .filter(s => s && s.setType !== 'warmup' && s.done !== false && Number(s.kg) > 0 && Number(s.reps) > 0)
+    .filter(s => s && s.setType !== 'warmup' && s.wendlerRole !== 'deload' && s.done !== false && Number(s.kg) > 0 && Number(s.reps) > 0)
     .map(s => ({
       kg: Number(s.kg),
       reps: Math.round(Number(s.reps)) || 0,

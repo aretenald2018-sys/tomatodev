@@ -1,4 +1,5 @@
 import { showToast } from '../../ui/toast.js';
+import { confirmAction } from '../../utils/confirm-modal.js';
 // ================================================================
 // workout/test-v2/board-render.js — 성장 보드 UI (보드 + 시트들)
 // ----------------------------------------------------------------
@@ -34,6 +35,7 @@ import {
   WENDLER_SCHEMES, WENDLER_SCHEME_IDS, normalizeWendlerConfig,
   wendlerWeekPrescription, wendlerCycleOverview, isWendlerAllowedMajor,
 } from './wendler.js';
+import { W863_ORIGINAL_PROFILES, W863_ORIGINAL_VERSION, inferW863Profile } from '../w863-original.js';
 
 function _currentSessionEntries() {
   return (Array.isArray(WS.workout?.exercises) ? WS.workout.exercises : [])
@@ -525,7 +527,7 @@ function _renderBoardView(cols, todayKey) {
   const todayIdx = model.weeksList.indexOf(todayMon);
   const nowLine = todayIdx >= 0 ? `<div class="tm2-now-line" style="top:${todayIdx * TM2_ROW_H}px"><span>오늘</span></div>` : '';
   const settleCta = model.active && isSettleDue(S.board, S.groupId, todayKey)
-    ? `<button class="tm2-settle-cta" data-action="tm2:settle">6주 정산하기 — 성장/유지 결정</button>` : '';
+    ? `<button class="tm2-settle-cta" data-action="tm2:settle">${model.active.weeks}주 정산하기 — 성장/유지 결정</button>` : '';
   return `
     ${_colHeadHtml(cols)}
     <div class="tm2-bgrid tm2-grid" style="--tm2-n:${cols.length}">
@@ -712,16 +714,29 @@ function _wendlerPlanSignature(plan) {
     : 'none';
   return [
     `tm:${rx.tmKg ?? ''}`,
+    `oneRm:${rx.oneRmKg ?? ''}`,
+    `template:${rx.templateVersion ?? ''}`,
+    `profile:${rx.profileId ?? ''}`,
     `week:${rx.week ?? ''}`,
     `board:${rx.boardWeek ?? ''}`,
     `round:${rx.roundKg ?? ''}`,
     `warm:${setSig(rx.warmup?.sets || [])}`,
     `main:${setSig(rx.sets || [])}`,
+    `singles:${setSig(rx.heavySingles || [])}`,
+    `optional:${setSig(rx.optionalSets || [])}`,
+    `backoff:${setSig(rx.backoff || [])}`,
+    `deload:${setSig(rx.deload || [])}`,
     `supp:${supp}`,
   ].join('|');
 }
 
 function _expectedWendlerCounts(plan) {
+  if (plan.rx?.templateVersion === W863_ORIGINAL_VERSION) {
+    return (plan.rx.requiredSets || []).reduce((counts, set) => {
+      counts[set.role] = (counts[set.role] || 0) + 1;
+      return counts;
+    }, {});
+  }
   const supp = plan.rx?.supplemental;
   return {
     warmup: plan.rx?.warmup?.sets?.length || 0,
@@ -733,22 +748,32 @@ function _expectedWendlerCounts(plan) {
 function _hasWendlerPlanShape(sets, plan) {
   if (!Array.isArray(sets) || !sets.some(s => s?.wendlerRole)) return false;
   const need = _expectedWendlerCounts(plan);
-  const got = { warmup: 0, main: 0, supplemental: 0 };
+  const got = {};
   for (const s of sets) {
     const role = s?.wendlerRole;
-    if (role === 'warmup') got.warmup += 1;
-    else if (role === 'supplemental') got.supplemental += 1;
-    else if (role === 'main') got.main += 1;
+    if (role) got[role] = (got[role] || 0) + 1;
   }
-  return got.warmup >= need.warmup
-    && got.main >= need.main
-    && got.supplemental >= need.supplemental;
+  return Object.entries(need).every(([role, count]) => (got[role] || 0) >= count);
 }
 
 function _setsForWorkoutCard(bm, plan) {
   const rpe = _targetRpeOf(bm);
   if (plan.kind === 'wendler') {
     const signature = _wendlerPlanSignature(plan);
+    if (plan.rx?.templateVersion === W863_ORIGINAL_VERSION) {
+      return (plan.rx.requiredSets || []).map((s, idx) => ({
+        kg: s.kg, reps: s.reps,
+        rpe: s.role === 'warmup' || s.role === 'deload' ? Math.max(1, rpe - 2) : rpe,
+        romPct: 100,
+        setType: s.role === 'warmup' ? 'warmup' : 'main',
+        wendlerRole: s.role,
+        wendlerPct: s.pct ?? null,
+        wendlerOrder: idx,
+        wendlerSignature: signature,
+        amrap: !!s.amrap,
+        done: false,
+      }));
+    }
     const sets = [];
     for (const [idx, s] of (plan.rx.warmup?.sets || []).entries()) {
       sets.push({
@@ -778,6 +803,9 @@ function _setsForWorkoutCard(bm, plan) {
 }
 
 function _wendlerRoleByIndex(idx, plan) {
+  if (plan.rx?.templateVersion === W863_ORIGINAL_VERSION) {
+    return plan.rx.requiredSets?.[idx]?.role || 'main';
+  }
   const warmCount = plan.rx?.warmup?.sets?.length || 0;
   const mainCount = plan.rx?.sets?.length || 0;
   if (idx < warmCount) return 'warmup';
@@ -1000,11 +1028,15 @@ const _fmtKg = (kg) => {
 };
 
 function _wendlerSectionMeta(role, plan) {
-  if (role === 'warmup') return { title: '준비 운동', sub: 'TM 기준 워밍업' };
+  if (role === 'warmup') return { title: '준비 운동', sub: plan.rx?.templateVersion === W863_ORIGINAL_VERSION ? '원본 기준표 비례 워밍업' : 'TM 기준 워밍업' };
   if (role === 'main') {
     const top = plan.rx?.topSet;
     return { title: '메인', sub: top?.amrap ? '마지막 세트: AMRAP' : '메인 처방 세트' };
   }
+  if (role === 'heavy_single') return { title: '고중량 싱글', sub: '기본 포함 · 1회씩 수행' };
+  if (role === 'pr_attempt') return { title: 'PR 도전', sub: '당일 확인한 기준 1RM 초과 선택 세트' };
+  if (role === 'backoff') return { title: '백오프', sub: '원본 표의 마무리 볼륨 5세트' };
+  if (role === 'deload') return { title: '회복', sub: 'W7 회복 세트 · 성장 지표에서 제외' };
   const supp = plan.rx?.supplemental;
   return {
     title: supp?.label || '보조',
@@ -1060,16 +1092,49 @@ function _renderWendlerWorkoutCard(host, bm, entryIdx, plan) {
   const scheme = WENDLER_SCHEMES[bm.wendler?.scheme]?.label || '커스텀';
   const supp = plan.rx?.supplemental;
   const top = plan.rx?.topSet;
+  const isOriginal = plan.rx?.templateVersion === W863_ORIGINAL_VERSION;
+  const optional = plan.rx?.optionalSets || [];
+  const prAdded = sets.some(set => set.wendlerRole === 'pr_attempt');
   host.innerHTML = `
     <div class="tm2-wcard">
       <div class="tm2-wcard-meta">
-        <div><b>${_esc(bm.label)} — 웬들러 ${_esc(scheme)}</b><span>사이클 ${_esc(bm.wendler?.cycleNo || 1)} · TM ${_esc(_fmtKg(plan.rx?.tmKg || bm.wendler?.tmKg))}kg</span></div>
+        <div><b>${_esc(bm.label)} — 웬들러 ${_esc(scheme)}</b><span>사이클 ${_esc(bm.wendler?.cycleNo || 1)} · ${isOriginal ? '1RM' : 'TM'} ${_esc(_fmtKg(isOriginal ? plan.rx?.oneRmKg : (plan.rx?.tmKg || bm.wendler?.tmKg)))}kg</span></div>
         <strong>${_esc(_fmtKg(top?.kg))}kg × ${_esc(top?.reps || '')}${top?.amrap ? '+' : ''}</strong>
       </div>
-      ${_wendlerSectionHtml('warmup', byRole('warmup'), plan, bm)}
-      ${_wendlerSectionHtml('main', byRole('main'), plan, bm)}
+      ${byRole('warmup').length ? _wendlerSectionHtml('warmup', byRole('warmup'), plan, bm) : ''}
+      ${byRole('main').length ? _wendlerSectionHtml('main', byRole('main'), plan, bm) : ''}
+      ${isOriginal && byRole('heavy_single').length ? _wendlerSectionHtml('heavy_single', byRole('heavy_single'), plan, bm) : ''}
+      ${isOriginal && optional.length ? `<div class="tm2-wpr-row"><span>기준 1RM 초과 싱글</span><button type="button" data-action="tm2:w863-pr-add" ${prAdded ? 'disabled' : ''}>${prAdded ? 'PR 세트 포함됨' : `PR ${optional.map(set => `${_fmtKg(set.kg)}kg`).join(' · ')} 추가`}</button></div>` : ''}
+      ${isOriginal && prAdded ? _wendlerSectionHtml('pr_attempt', byRole('pr_attempt'), plan, bm) : ''}
+      ${isOriginal && byRole('backoff').length ? _wendlerSectionHtml('backoff', byRole('backoff'), plan, bm) : ''}
+      ${isOriginal && byRole('deload').length ? _wendlerSectionHtml('deload', byRole('deload'), plan, bm) : ''}
       ${supp ? _wendlerSectionHtml('supplemental', byRole('supplemental'), plan, bm) : ''}
     </div>`;
+}
+
+async function _confirmBoardW863Pr() {
+  const entry = WS.workout.exercises?.[S.card?.entryIdx];
+  const optional = S.card?.plan?.rx?.optionalSets || [];
+  if (!entry || !optional.length || (entry.sets || []).some(set => set.wendlerRole === 'pr_attempt')) return;
+  const ok = await confirmAction({
+    title: '오늘 PR 싱글을 추가할까요?',
+    message: `${optional.map(set => `${_fmtKg(set.kg)}kg × ${set.reps}회`).join(', ')}\n현재 기준 1RM을 넘는 선택 세트입니다. 컨디션과 안전 장비를 확인하세요.`,
+    confirmLabel: 'PR 세트 추가',
+    cancelLabel: '오늘은 제외',
+  });
+  if (!ok) return;
+  const signature = _wendlerPlanSignature(S.card.plan);
+  const next = optional.map((set, idx) => ({
+    kg: set.kg, reps: set.reps, rpe: _targetRpeOf(benchmarkById(S.board, S.card.bmId)), romPct: 100,
+    setType: 'main', wendlerRole: 'pr_attempt', wendlerPct: set.pct ?? null,
+    wendlerOrder: idx, wendlerSignature: signature, optionalConfirmed: true, confirmedAt: Date.now(), done: false,
+  }));
+  const backoffIdx = (entry.sets || []).findIndex(set => set.wendlerRole === 'backoff');
+  entry.sets.splice(backoffIdx >= 0 ? backoffIdx : entry.sets.length, 0, ...next);
+  _stampCurrentWendlerMeta();
+  _saveWorkoutDraft();
+  _rerenderWendlerCardHost();
+  _toast('PR 도전 싱글을 오늘 세트에 추가했어요', 'success');
 }
 
 function _renderWorkoutCard() {
@@ -1516,7 +1581,7 @@ function _renderSettleSheet() {
     const d = S.settleDecisions[r.key];
     const sub = r.missedCount > 0
       ? `<small class="tm2-warn">못 채운 주 ${r.missedCount}회 — 유지 권장</small>`
-      : `<small>6주 진행 완료 ✓</small>`;
+      : `<small>${cycle?.weeks || 6}주 진행 완료 ✓</small>`;
     const kg = d === 'grow'
       ? `${r.currentKg} → ${r.nextKg}<em>+${r.incrementKg}</em>`
       : `${r.currentKg} 유지`;
@@ -1534,10 +1599,10 @@ function _renderSettleSheet() {
   _openSheet(`
     <div class="tm2-grab"></div>
     <div class="tm2-sh-kicker">${_esc(group?.label || '')} · ${cycle ? `${shortDate(cycle.startDate)} – ${shortDate(addWeeks(cycle.startDate, cycle.weeks - 1))}` : ''} 완료</div>
-    <div class="tm2-sh-title">사이클 ${settledCnt + 1} 정산 — 다음 6주를 결정</div>
+    <div class="tm2-sh-title">사이클 ${settledCnt + 1} 정산 — 다음 ${cycle?.weeks || 6}주를 결정</div>
     ${rowsHtml}
     <div class="tm2-note">올라가는 폭은 종목마다 정한 값 그대로예요. 못 채운 주가 있던 종목은 <b>유지가 기본</b> — 무리한 증량으로 실패를 쌓지 않아요.</div>
-    <button class="tm2-btn-primary" data-action="tm2:settle-confirm">확정 — 다음 6주${nextStart ? `(${shortDate(nextStart)}~)` : ''} 칸 채우기</button>
+    <button class="tm2-btn-primary" data-action="tm2:settle-confirm">확정 — 다음 ${cycle?.weeks || 6}주${nextStart ? `(${shortDate(nextStart)}~)` : ''} 칸 채우기</button>
     <button class="tm2-btn-ghost" data-action="tm2:sheet-close">나중에 정산</button>
   `);
 }
@@ -1549,7 +1614,7 @@ async function _confirmSettle() {
   closeSheet();
   renderBoard();
   const grown = res.entry.results.filter(r => r.decision === 'grow').length;
-  _toast(`정산 완료 — ${grown}개 종목 성장, 다음 6주 칸을 채웠어요`, 'success');
+  _toast(`정산 완료 — ${grown}개 종목 성장, 다음 ${res.nextCycle?.weeks || 6}주 칸을 채웠어요`, 'success');
 }
 
 // ----------------------------------------------------------------
@@ -1644,7 +1709,7 @@ function _renderColumnCycleRail(bm, ctx, wendlerConfig) {
     rows.push({
       kind: 'wendler',
       label: '웬들러',
-      detail: `${WENDLER_SCHEMES[ctx.scheme]?.label || '커스텀'} · TM ${_formatCycleKg(wendlerConfig?.tmKg)}`,
+      detail: `${WENDLER_SCHEMES[ctx.scheme]?.label || '커스텀'} · ${wendlerConfig?.templateVersion === W863_ORIGINAL_VERSION ? '1RM' : 'TM'} ${_formatCycleKg(wendlerConfig?.templateVersion === W863_ORIGINAL_VERSION ? wendlerConfig?.oneRmKg : wendlerConfig?.tmKg)}`,
       items: _wendlerCycleItems(bm, cycle, wendlerConfig, todayKey),
     });
   }
@@ -1691,17 +1756,25 @@ function _renderColumnSheet() {
   const wendlerMajor = bm.groupId === 'lower' ? 'lower' : (bm.groupId === 'glute' ? 'glute' : bm.groupId);
   const wendlerAllowed = isWendlerAllowedMajor(wendlerMajor);
   const isWnd = ctx.program === 'wendler';
+  const isOriginal = isWnd && ctx.scheme === 'w863';
   const trackBtn = (t) => `<button class="${!isWnd && ctx.tracks.includes(t) ? 'tm2-on' : ''}" data-action="tm2:col-track" data-track="${t}">${TM2_TRACK_LABELS[t]}</button>`;
   const programBtn = wendlerAllowed
     ? `<button class="${isWnd ? 'tm2-on ' : ''}tm2-program-wendler" data-action="tm2:col-program" data-program="wendler">웬들러</button>`
     : '';
-  const w = wendlerAllowed ? normalizeWendlerConfig({ ...(bm.wendler || {}), scheme: ctx.scheme === 'custom' ? (bm.wendler?.scheme || 'custom') : ctx.scheme, supplemental: { ...(bm.wendler?.supplemental || {}), kind: ctx.suppKind } }, { primaryMajor: wendlerMajor }) : null;
+  const w = wendlerAllowed ? normalizeWendlerConfig({ ...(bm.wendler || {}), scheme: ctx.scheme, supplemental: { ...(bm.wendler?.supplemental || {}), kind: ctx.suppKind } }, {
+    primaryMajor: wendlerMajor,
+    movementId: bm.movementId,
+    exerciseId: bm.exerciseId,
+    label: bm.label,
+  }) : null;
   const wendlerSchemeLabel = WENDLER_SCHEMES[ctx.scheme]?.label || '커스텀';
   const wendlerSuppLabel = ctx.suppKind === 'bbb' ? 'BBB' : ctx.suppKind === 'fsl' ? 'FSL' : '보조 없음';
   const overview = isWnd ? wendlerCycleOverview(w) : [];
   const wkRows = isWnd ? `
     <div class="tm2-wmap">
-      ${overview.slice(0, 3).map(o => `<b>${o.week}·${o.week + 3}주차</b> <em>${o.pctLabel}%</em> × ${o.repsLabel}`).join('<br>')}
+      ${isOriginal
+        ? overview.map(o => `<b>${o.week}주차</b> <em>${o.deload ? '회복' : `${o.pctLabel}%`}</em> × ${o.repsLabel}`).join('<br>')
+        : overview.slice(0, 3).map(o => `<b>${o.week}·${o.week + 3}주차</b> <em>${o.pctLabel}%</em> × ${o.repsLabel}`).join('<br>')}
     </div>` : '';
   _openSheet(`
     <div class="tm2-grab"></div>
@@ -1713,7 +1786,9 @@ function _renderColumnSheet() {
     <div class="tm2-fld"><span class="tm2-lb">6주 성공 시 증량<small>정산 때 "성장"이면 이만큼 (${group?.bodyRegion === 'lower' ? '하체' : '상체'} 기본 +${defaultIncrementForGroup(bm.groupId)}kg)</small></span><input type="number" id="tm2-col-inc" value="${bm.incrementKg}" step="0.5" min="0.5"></div>` : ''}
     ${isWnd ? `
     <div class="tm2-wbox">
-      <div class="tm2-fld" style="border:0;padding:2px 0"><span class="tm2-lb">기준 무게 (TM)</span><input type="number" id="tm2-col-tm" value="${bm.wendler?.tmKg || ''}" step="2.5" min="0" placeholder="kg"></div>
+      ${isOriginal ? `<div class="tm2-fld" style="border:0;padding:2px 0"><span class="tm2-lb">원본 프로필<small>표의 기준 1RM</small></span><select id="tm2-col-profile">${Object.values(W863_ORIGINAL_PROFILES).map(profile => `<option value="${profile.id}" ${profile.id === w.profileId ? 'selected' : ''}>${_esc(profile.label)} · ${profile.reference1RmKg}kg</option>`).join('')}</select></div>
+      <div class="tm2-fld" style="border:0;padding:2px 0"><span class="tm2-lb">현재 1RM<small>원본 표 비례 기준</small></span><input type="number" id="tm2-col-one-rm" value="${w.oneRmKg || ''}" step="0.5" min="0" placeholder="kg"></div>` : `<div class="tm2-fld" style="border:0;padding:2px 0"><span class="tm2-lb">기준 무게 (TM)</span><input type="number" id="tm2-col-tm" value="${bm.wendler?.tmKg || ''}" step="2.5" min="0" placeholder="kg"></div>`}
+      <div class="tm2-fld" style="border:0;padding:2px 0"><span class="tm2-lb">사이클 증량<small>${isOriginal ? 'W7 완료 뒤 1RM' : '정산 뒤 TM'} 증가</small></span><input type="number" id="tm2-col-inc" value="${w.incrementKg}" step="0.5" min="0.5"></div>
       <div class="tm2-fld" style="border:0;padding:2px 0"><span class="tm2-lb">라운딩<small>%환산 후 반올림 단위</small></span><input type="number" id="tm2-col-round" value="${bm.wendler?.roundKg ?? 2.5}" step="0.5" min="0.5"></div>
       <div class="tm2-wk-tabs">
         ${['w531', 'w863'].map(s => `<button class="${ctx.scheme === s ? 'tm2-on' : ''}" data-action="tm2:col-scheme" data-scheme="${s}">${WENDLER_SCHEMES[s].label}</button>`).join('')}
@@ -1724,7 +1799,7 @@ function _renderColumnSheet() {
            ${[0, 1, 2].map(i => `<div class="tm2-fld" style="border:0;padding:3px 0"><span class="tm2-lb">${i + 1}·${i + 4}주차 %</span><input type="text" id="tm2-col-wk${i}" value="${(bm.wendler?.weekMap?.[i]?.sets || []).map(s => s.pct).join(',') || ''}" placeholder="60,65,70"></div>
            <div class="tm2-fld" style="border:0;padding:3px 0"><span class="tm2-lb">${i + 1}·${i + 4}주차 횟수</span><input type="text" id="tm2-col-wr${i}" value="${(bm.wendler?.weekMap?.[i]?.sets || []).map(s => s.reps).join(',') || ''}" placeholder="8,8,8"></div>`).join('')}`
         : wkRows}
-      <div class="tm2-fld" style="border:0;padding:6px 0 0"><span class="tm2-lb">보조<small>메인 직후 같은 세션에서</small></span>
+      ${isOriginal ? `<div class="tm2-note">W1–6: 워밍업 · 메인 AMRAP · 싱글 · 백오프 / W7: 회복. 기준 1RM 초과 싱글은 당일 확인 후 추가됩니다.</div>` : `<div class="tm2-fld" style="border:0;padding:6px 0 0"><span class="tm2-lb">보조<small>메인 직후 같은 세션에서</small></span>
         <span class="tm2-seg2">
           ${['bbb', 'fsl', 'none'].map(k => `<button class="${ctx.suppKind === k ? 'tm2-on' : ''}" data-action="tm2:col-supp" data-supp="${k}">${k === 'bbb' ? 'BBB' : k === 'fsl' ? 'FSL' : '없음'}</button>`).join('')}
         </span>
@@ -1736,7 +1811,7 @@ function _renderColumnSheet() {
           <input type="number" id="tm2-col-supp-sets" value="${bm.wendler?.supplemental?.sets ?? 5}" style="max-width:48px" min="1">
           <input type="number" id="tm2-col-supp-reps" value="${bm.wendler?.supplemental?.reps ?? 10}" style="max-width:48px" min="1">
         </span>
-      </div>` : ''}
+      </div>` : ''}`}
     </div>` : ''}
     <div class="tm2-fld"><span class="tm2-lb">여유 횟수 (RIR)<small>세트 끝에 남길 횟수</small></span><input type="number" id="tm2-col-rir" value="${bm.meta?.rirTarget ?? 2}" min="0" max="5"></div>
     ${_renderColumnCycleRail(bm, ctx, w)}
@@ -1794,6 +1869,8 @@ async function _saveColumnSheet() {
       scheme,
       weekMap,
       tmKg: _num('tm2-col-tm', bm.wendler?.tmKg || 0) || undefined,
+      oneRmKg: _num('tm2-col-one-rm', bm.wendler?.oneRmKg || 0) || undefined,
+      profileId: document.getElementById('tm2-col-profile')?.value || bm.wendler?.profileId || inferW863Profile(bm),
       roundKg: _num('tm2-col-round', bm.wendler?.roundKg || 2.5),
       incrementKg: inc,
       supplemental: {
@@ -1802,11 +1879,20 @@ async function _saveColumnSheet() {
         sets: _num('tm2-col-supp-sets', bm.wendler?.supplemental?.sets ?? 5),
         reps: _num('tm2-col-supp-reps', bm.wendler?.supplemental?.reps ?? 10),
       },
-    }, { primaryMajor: major, trackSpec: bm.seed?.volume ? { startKg: bm.seed.volume.kg, startReps: bm.seed.volume.reps } : null });
+    }, {
+      primaryMajor: major,
+      trackSpec: bm.seed?.volume ? { startKg: bm.seed.volume.kg, startReps: bm.seed.volume.reps } : null,
+      movementId: bm.movementId,
+      exerciseId: bm.exerciseId,
+      label: bm.label,
+    });
     bm.wendlerLog = bm.wendlerLog || {};
     // 웬들러 전환 시 이 사이클의 stair 스텝 제거 (파생 처방으로 대체)
     const cycle = activeCycleOf(S.board, bm.groupId);
-    if (cycle) S.board.steps = S.board.steps.filter(s => !(s.benchmarkId === bm.id && s.cycleId === cycle.id));
+    if (cycle) {
+      if (bm.wendler.templateVersion === W863_ORIGINAL_VERSION) cycle.weeks = Math.max(7, cycle.weeks || 0);
+      S.board.steps = S.board.steps.filter(s => !(s.benchmarkId === bm.id && s.cycleId === cycle.id));
+    }
   } else if (wasWendler) {
     // 기본 계단으로 복귀 — 활성 사이클에 스텝 재생성
     const cycle = activeCycleOf(S.board, bm.groupId);
@@ -2186,6 +2272,7 @@ async function _onAction(e) {
     case 'tm2:wset-done': _toggleWendlerSet(Number(d.si)); break;
     case 'tm2:wset-add': _addWendlerSet(d.role); break;
     case 'tm2:wset-remove': _removeWendlerSet(Number(d.si)); break;
+    case 'tm2:w863-pr-add': _confirmBoardW863Pr().catch(err => console.error('[tm2] confirm w863 PR failed', err)); break;
     case 'tm2:paint': await _paintCurrent(); break;
     case 'tm2:miss-open': openMissSheet(); break;
     case 'tm2:miss-choice': S.missChoice = d.choice; _renderMissSheet(); break;

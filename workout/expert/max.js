@@ -58,6 +58,7 @@ import {
   normalizeWendlerConfig,
   suggestWendlerTm,
 } from './max-wendler.js';
+import { W863_ORIGINAL_VERSION } from '../w863-original.js';
 import {
   CAT_LABEL,
   MAX_DEFAULTS,
@@ -2701,6 +2702,15 @@ function addMaxBenchmarkEditorRow() {
 
 // ── 웬들러 프로그램 전환/모듈 편집 (플랜 시트 드래프트 위에서 동작) ──
 
+function _wendlerBenchmarkContext(benchmark = {}) {
+  return {
+    primaryMajor: benchmark.primaryMajor,
+    movementId: benchmark.movementId,
+    exerciseId: benchmark.exerciseId,
+    label: benchmark.label,
+  };
+}
+
 function _latestActualForBenchmark(benchmark) {
   const points = buildBenchmarkActuals({
     cache: getCache(),
@@ -2735,7 +2745,7 @@ function setMaxPlanBenchmarkProgram(btn) {
       return b;
     }
     const wendler = normalizeWendlerConfig(b.wendler || {}, {
-      primaryMajor: b.primaryMajor,
+      ..._wendlerBenchmarkContext(b),
       trackSpec: b.tracks?.H?.enabled === false ? b.tracks?.M : (b.tracks?.H || b.tracks?.M),
       latest: _latestActualForBenchmark(b),
     });
@@ -2748,17 +2758,17 @@ function setMaxPlanWendlerScheme(btn) {
   const scheme = btn.getAttribute('data-scheme');
   _setPlanBenchmarkPatch(benchmarkId, (b) => {
     if (maxBenchmarkProgram(b) !== 'wendler') return b;
-    const cfg = normalizeWendlerConfig(b.wendler || {}, { primaryMajor: b.primaryMajor });
+    const cfg = normalizeWendlerConfig(b.wendler || {}, _wendlerBenchmarkContext(b));
     if (scheme === 'custom') return { ...b, wendler: { ...cfg, scheme: 'custom' } };
     const preset = WENDLER_SCHEMES[scheme];
     if (!preset) return b;
     return {
       ...b,
-      wendler: {
+      wendler: normalizeWendlerConfig({
         ...cfg,
         scheme,
         weekMap: preset.weekMap.map(week => ({ sets: week.sets.map(set => ({ ...set })) })),
-      },
+      }, _wendlerBenchmarkContext(b)),
     };
   });
 }
@@ -2767,7 +2777,7 @@ function suggestMaxPlanWendlerTm(btn) {
   const benchmarkId = btn.getAttribute('data-benchmark-id');
   _setPlanBenchmarkPatch(benchmarkId, (b) => {
     if (maxBenchmarkProgram(b) !== 'wendler') return b;
-    const cfg = normalizeWendlerConfig(b.wendler || {}, { primaryMajor: b.primaryMajor });
+    const cfg = normalizeWendlerConfig(b.wendler || {}, _wendlerBenchmarkContext(b));
     const latest = _latestActualForBenchmark(b);
     const tm = suggestWendlerTm({
       latest,
@@ -2779,7 +2789,12 @@ function suggestMaxPlanWendlerTm(btn) {
       return b;
     }
     _toast(latest ? `최근 ${latest.kg}kg×${latest.reps} 기준 TM ${tm}kg 제안` : `트랙 설정 기준 TM ${tm}kg 제안`, 'info');
-    return { ...b, wendler: { ...cfg, tmKg: tm } };
+    return {
+      ...b,
+      wendler: cfg.templateVersion === W863_ORIGINAL_VERSION
+        ? normalizeWendlerConfig({ ...cfg, oneRmKg: Math.round((tm / 0.9) * 10) / 10 }, _wendlerBenchmarkContext(b))
+        : { ...cfg, tmKg: tm },
+    };
   });
 }
 
@@ -2802,7 +2817,7 @@ function _readWendlerWeekMapFromRow(row, fallbackWeekMap = []) {
 
 function _readWendlerConfigFromRow(row, original, { primaryMajor, tracks } = {}) {
   const baseCfg = normalizeWendlerConfig(original?.wendler || {}, {
-    primaryMajor,
+    ..._wendlerBenchmarkContext({ ...original, primaryMajor }),
     trackSpec: tracks?.H?.enabled === false ? tracks?.M : (tracks?.H || tracks?.M),
   });
   const num = (field, fallback) => {
@@ -2811,9 +2826,12 @@ function _readWendlerConfigFromRow(row, original, { primaryMajor, tracks } = {})
   };
   const suppKindRaw = row?.querySelector('[data-wendler-field="suppKind"]')?.value;
   const suppKind = ['none', 'bbb', 'fsl'].includes(suppKindRaw) ? suppKindRaw : baseCfg.supplemental.kind;
+  const profileId = row?.querySelector('[data-wendler-field="profileId"]')?.value || baseCfg.profileId;
   return normalizeWendlerConfig({
     ...baseCfg,
     tmKg: num('tmKg', baseCfg.tmKg),
+    oneRmKg: num('oneRmKg', baseCfg.oneRmKg),
+    profileId,
     incrementKg: num('incrementKg', baseCfg.incrementKg),
     roundKg: num('roundKg', baseCfg.roundKg),
     weekMap: _readWendlerWeekMapFromRow(row, baseCfg.weekMap),
@@ -2823,7 +2841,7 @@ function _readWendlerConfigFromRow(row, original, { primaryMajor, tracks } = {})
       sets: num('suppSets', baseCfg.supplemental.sets),
       reps: num('suppReps', baseCfg.supplemental.reps),
     },
-  }, { primaryMajor });
+  }, _wendlerBenchmarkContext({ ...original, primaryMajor }));
 }
 
 export async function saveMaxPlanEditorSheet() {
@@ -2834,7 +2852,10 @@ export async function saveMaxPlanEditorSheet() {
     || S?.workout?.currentGymId
     || getExpertPreset()?.currentGymId
     || null;
-  const weeks = Math.max(4, Math.min(12, Number(document.getElementById('max-plan-weeks-value')?.value) || Number(current.weeks) || 6));
+  const requestedWeeks = Math.max(4, Math.min(12, Number(document.getElementById('max-plan-weeks-value')?.value) || Number(current.weeks) || 6));
+  const weeks = nextBenchmarks.some(b => b?.wendler?.templateVersion === W863_ORIGINAL_VERSION)
+    ? Math.max(7, requestedWeeks)
+    : requestedWeeks;
   const startDate = document.getElementById('max-plan-start-date')?.value
     || current.startDate
     || _weekStartKey(_todayKey());

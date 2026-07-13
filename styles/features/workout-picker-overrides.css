@@ -1062,6 +1062,14 @@
   }
 }
 
+#ex-editor-modal .ex-program-wendler [data-wendler-tm-field][hidden],
+#ex-editor-modal .ex-program-wendler [data-wendler-tm-tools][hidden],
+#ex-editor-modal .ex-program-wendler [data-wendler-supp-fields][hidden],
+#ex-editor-modal .ex-program-wendler [data-w863-one-rm-field][hidden],
+#ex-editor-modal .ex-program-wendler [data-w863-profile-fields][hidden] {
+  display: none;
+}
+
 /* ── Sparkline ── */
 #tab-workout .ex-sparkline-diff {
   font-size: var(--seed-t1); font-weight: 700;

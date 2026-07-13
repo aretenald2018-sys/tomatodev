@@ -45,6 +45,7 @@ import {
   orderWendlerPrescriptionSets,
   upsertExerciseProgramBenchmark,
 } from './test-v2/board-core.js';
+import { W863_ORIGINAL_PROFILES, W863_ORIGINAL_VERSION, inferW863Profile } from './w863-original.js';
 import { getWorkoutSessions } from './sessions.js';
 import { clearSetCompletedAt, stripSetCompletedAt } from './timeline.js';
 import { applyWorkoutSetCommand, WORKOUT_SET_COMMANDS } from './set-editor.js';
@@ -863,6 +864,57 @@ function _buildMaxExerciseCardHeader(entry, ex, mc, idx, sparkline) {
   `;
 }
 
+function _buildW863PrChip(entry, idx) {
+  const optional = Array.isArray(entry?.maxPrescription?.optionalSets) ? entry.maxPrescription.optionalSets : [];
+  if (entry?.recommendationMeta?.templateVersion !== W863_ORIGINAL_VERSION || !optional.length) return '';
+  const added = (entry.sets || []).some(set => set?.wendlerRole === 'pr_attempt');
+  const weights = optional.map(set => `${_fmtNum(set.kg)}kg`).join(' · ');
+  return `<div class="ex-w863-pr-row">
+    <span>기준 1RM 초과 싱글</span>
+    <button type="button" class="ex-w863-pr-chip${added ? ' is-on' : ''}" data-action="confirm-w863-pr" data-idx="${idx}" ${added ? 'aria-pressed="true" disabled' : 'aria-pressed="false"'}>${added ? `PR ${weights} 포함됨` : `PR ${weights} 도전 추가`}</button>
+  </div>`;
+}
+
+async function _confirmW863PrSets(entryIdx) {
+  const entry = S.workout.exercises?.[entryIdx];
+  const optional = Array.isArray(entry?.maxPrescription?.optionalSets) ? entry.maxPrescription.optionalSets : [];
+  if (!entry || !optional.length || (entry.sets || []).some(set => set?.wendlerRole === 'pr_attempt')) return false;
+  const weights = optional.map(set => `${_fmtNum(set.kg)}kg × ${_fmtNum(set.reps)}회`).join(', ');
+  const ok = await confirmAction({
+    title: '오늘 PR 싱글을 추가할까요?',
+    message: `${weights}\n현재 기준 1RM을 넘는 선택 세트입니다. 컨디션과 안전 장비를 확인한 뒤 진행하세요.`,
+    confirmLabel: 'PR 세트 추가',
+    cancelLabel: '오늘은 제외',
+  });
+  if (!ok) return false;
+  const nextSets = optional.map(set => stripSetCompletedAt({
+    ..._defaultTestModeSet(),
+    ...set,
+    wendlerRole: 'pr_attempt',
+    optional: false,
+    optionalConfirmed: true,
+    confirmedAt: Date.now(),
+    done: false,
+  }));
+  const current = Array.isArray(entry.sets) ? [...entry.sets] : [];
+  const backoffIdx = current.findIndex(set => set?.wendlerRole === 'backoff');
+  current.splice(backoffIdx >= 0 ? backoffIdx : current.length, 0, ...nextSets);
+  entry.sets = current;
+  entry.maxPrescription = { ...entry.maxPrescription, optionalAcceptedAt: Date.now() };
+  wtPersistActiveWorkoutDraft('w863 pr confirmed');
+  await saveWorkoutDay({ silent: true });
+  if (!_rerenderMaxEntryOwner(entryIdx)) _renderExerciseList();
+  showToast('PR 도전 싱글을 오늘 세트에 추가했어요', 2400, 'success');
+  return true;
+}
+
+function _bindW863PrChip(block, entryIdx) {
+  block?.querySelector('[data-action="confirm-w863-pr"]')?.addEventListener('click', event => {
+    event.stopPropagation();
+    _confirmW863PrSets(entryIdx).catch(err => console.error('Confirm 8/6/3 PR set:', err));
+  });
+}
+
 function _isWendlerSet(set = {}) {
   return !!set?.wendlerRole;
 }
@@ -870,6 +922,10 @@ function _isWendlerSet(set = {}) {
 function _maxSetTypeLabel(type, set = {}) {
   if (set?.wendlerRole === 'warmup') return '웜업';
   if (set?.wendlerRole === 'main') return '메인';
+  if (set?.wendlerRole === 'heavy_single') return '싱글';
+  if (set?.wendlerRole === 'pr_attempt') return 'PR';
+  if (set?.wendlerRole === 'backoff') return '백오프';
+  if (set?.wendlerRole === 'deload') return '회복';
   if (set?.wendlerRole === 'supplemental') {
     if (set.supplementalKind === 'bbb') return 'BBB';
     if (set.supplementalKind === 'fsl') return 'FSL';
@@ -883,6 +939,10 @@ function _maxSetTypeLabel(type, set = {}) {
 function _maxSetTypeClass(type, set = {}) {
   if (set?.wendlerRole === 'warmup') return 'warmup';
   if (set?.wendlerRole === 'main') return 'wendler-main';
+  if (set?.wendlerRole === 'heavy_single') return 'wendler-single';
+  if (set?.wendlerRole === 'pr_attempt') return 'wendler-pr';
+  if (set?.wendlerRole === 'backoff') return 'wendler-backoff';
+  if (set?.wendlerRole === 'deload') return 'wendler-deload';
   if (set?.wendlerRole === 'supplemental') return set.supplementalKind === 'fsl' ? 'fsl' : 'bbb';
   if (type === 'warmup') return 'warmup';
   if (type === 'drop') return 'drop';
@@ -1520,6 +1580,7 @@ export function _renderExerciseList() {
     block.innerHTML = `
       ${_buildMaxExerciseCardHeader(entry, ex, mc, idx, sparkline)}
       ${maxLastSummary}
+      ${_buildW863PrChip(entry, idx)}
       <div class="ex-sets ex-max-v2-sets" id="wt-sets-${idx}"></div>
       <div class="ex-max-v2-actions">
         <button class="ex-max-v2-primary${maxAllDone ? ' is-done' : ''}" data-idx="${idx}">${maxAllDone || _openWorkoutSetCount(entry) <= 1 ? '운동 완료' : '다음 세트 완료'}</button>
@@ -1530,6 +1591,7 @@ export function _renderExerciseList() {
 
     block.querySelector('.ex-remove-btn').addEventListener('click', () => wtRemoveExerciseEntry(idx));
     block.querySelector('.ex-add-set-btn')?.addEventListener('click', () => wtAddSet(idx));
+    _bindW863PrChip(block, idx);
     _bindWorkoutEntryRecordFocus(block, idx);
     const maxHead = block.querySelector('[data-action="toggle-max-entry-track"]');
     maxHead?.addEventListener('click', (e) => {
@@ -1610,6 +1672,7 @@ export function renderEmbeddedMaxExerciseCard(container, entryIdx, options = {})
   block.innerHTML = `
     ${_buildMaxExerciseCardHeader(entry, ex, mc, entryIdx, sparkline)}
     ${maxLastSummary}
+    ${_buildW863PrChip(entry, entryIdx)}
     <div class="ex-sets ex-max-v2-sets" data-wt-embedded-sets="${entryIdx}"></div>
     <div class="ex-max-v2-actions">
       <button class="ex-max-v2-primary${maxAllDone ? ' is-done' : ''}" data-idx="${entryIdx}">${maxAllDone ? '운동 완료' : '다음 세트 완료'}</button>
@@ -1629,6 +1692,7 @@ export function renderEmbeddedMaxExerciseCard(container, entryIdx, options = {})
   }
 
   block.querySelector('.ex-add-set-btn')?.addEventListener('click', () => wtAddSet(entryIdx));
+  _bindW863PrChip(block, entryIdx);
   const maxHead = block.querySelector('[data-action="toggle-max-entry-track"]');
   maxHead?.addEventListener('click', (e) => {
     if (e.target.closest('.ex-remove-btn')) return;
@@ -2270,9 +2334,9 @@ function _programAddMonths(monthKey, delta) {
   return _dateKeyFromDate(dt).slice(0, 7);
 }
 
-function _programCycleEndKey(startKey) {
+function _programCycleEndKey(startKey, weeks = 6) {
   const dt = new Date(`${_programDateKey(startKey)}T00:00:00`);
-  dt.setDate(dt.getDate() + 41);
+  dt.setDate(dt.getDate() + (Math.max(1, Number(weeks) || 6) * 7) - 1);
   return _dateKeyFromDate(dt);
 }
 
@@ -2280,9 +2344,10 @@ function _programStartButtonText(key) {
   return `${mondayOf(_programDateKey(key))} 시작`;
 }
 
-function _programCycleHint(key) {
+function _programCycleHint(key, weeks = 6) {
   const start = mondayOf(_programDateKey(key));
-  return `선택한 주부터 6주 사이클 (${start} ~ ${_programCycleEndKey(start)})`;
+  const span = Math.max(1, Number(weeks) || 6);
+  return `선택한 주부터 ${span}주 사이클 (${start} ~ ${_programCycleEndKey(start, span)})`;
 }
 
 function _renderProgramStartCalendar(monthKey, selectedKey) {
@@ -2324,7 +2389,8 @@ function _updateProgramStartDateUi(key) {
   const hint = document.getElementById('ex-program-start-date-hint');
   if (input) input.value = weekStart;
   if (btn) btn.textContent = _programStartButtonText(weekStart);
-  if (hint) hint.textContent = _programCycleHint(weekStart);
+  const weeks = document.getElementById('ex-program-wendler-scheme')?.value === 'w863' ? 7 : 6;
+  if (hint) hint.textContent = _programCycleHint(weekStart, weeks);
   return weekStart;
 }
 
@@ -2386,6 +2452,14 @@ function _exerciseProgramEditorHtml(settings = {}) {
   const seed = settings.seed || {};
   const w = settings.wendler || {};
   const supp = w.supplemental || {};
+  const isOriginal863 = (w.scheme || 'w863') === 'w863';
+  const profileId = inferW863Profile({
+    profileId: w.profileId,
+    movementId: settings.movementId || settings.benchmark?.movementId,
+    exerciseId: settings.exerciseId,
+    label: settings.benchmark?.label,
+    primaryMajor: settings.benchmark?.muscleId || settings.benchmark?.groupId,
+  });
   const programStartDate = mondayOf(_programDateKey(settings.programStartDate || w.programStartDate, _todayKeyForProgramPicker()));
   const tmCalcKg = seed.volume?.kg || w.tmKg || '';
   const tmCalcReps = seed.volume?.reps || 5;
@@ -2418,23 +2492,30 @@ function _exerciseProgramEditorHtml(settings = {}) {
         <div class="ex-program-compact-list">
           <div class="ex-program-grid ex-program-grid-three">
             <label><span>방식</span><select class="ex-editor-select" id="ex-program-wendler-scheme">
-              <option value="w863"${(w.scheme || 'w863') === 'w863' ? ' selected' : ''}>8/6/3</option>
+              <option value="w863"${isOriginal863 ? ' selected' : ''}>8/6/3 원본</option>
               <option value="w531"${w.scheme === 'w531' ? ' selected' : ''}>5/3/1</option>
               <option value="custom"${w.scheme === 'custom' ? ' selected' : ''}>커스텀</option>
             </select></label>
-            <label><span>TM <small>실제 1RM보다 낮은 기준 중량</small></span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-wendler-tm" min="0" step="0.5" value="${_escPicker(_numText(w.tmKg))}"></label>
+            <label data-wendler-tm-field${isOriginal863 ? ' hidden' : ''}><span>TM <small>실제 1RM보다 낮은 기준 중량</small></span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-wendler-tm" min="0" step="0.5" value="${_escPicker(_numText(w.tmKg))}"></label>
+            <label data-w863-one-rm-field${isOriginal863 ? '' : ' hidden'}><span>현재 1RM <small>원본 표 비례 기준</small></span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-w863-one-rm" min="0" step="0.5" value="${_escPicker(_numText(w.oneRmKg || (Number(w.tmKg) > 0 ? Number(w.tmKg) / 0.9 : W863_ORIGINAL_PROFILES[profileId].reference1RmKg)))}"></label>
             <div class="ex-program-date-field">
               <span>시작 주</span>
               <button type="button" class="ex-program-date-btn" id="ex-program-start-date-btn" data-ex-program-calendar-toggle>${_escPicker(_programStartButtonText(programStartDate))}</button>
             <input type="hidden" id="ex-program-start-date" value="${_escPicker(programStartDate)}">
             <input type="hidden" id="ex-program-wendler-start" value="${_escPicker(_numText(w.startWeek || 1))}">
-            <small class="ex-program-helper" id="ex-program-start-date-hint">${_escPicker(_programCycleHint(programStartDate))}</small>
+            <small class="ex-program-helper" id="ex-program-start-date-hint">${_escPicker(_programCycleHint(programStartDate, isOriginal863 ? 7 : 6))}</small>
           </div>
         </div>
+          <div class="ex-program-grid" data-w863-profile-fields${isOriginal863 ? '' : ' hidden'}>
+            <label><span>원본 프로필</span><select class="ex-editor-select" id="ex-program-w863-profile">
+              ${Object.values(W863_ORIGINAL_PROFILES).map(profile => `<option value="${profile.id}"${profile.id === profileId ? ' selected' : ''}>${profile.label} · 기준 ${profile.reference1RmKg}kg</option>`).join('')}
+            </select></label>
+            <small class="ex-program-helper">기준표 중량에 현재 1RM 비율을 적용합니다. W7은 회복 주차입니다.</small>
+          </div>
           <div class="ex-program-calendar-row">
             <div class="ex-program-mini-cal" id="ex-program-start-calendar" data-month="${_escPicker(_programMonthKey(programStartDate))}" hidden></div>
           </div>
-          <div class="ex-program-tm-calc">
+          <div class="ex-program-tm-calc" data-wendler-tm-tools${isOriginal863 ? ' hidden' : ''}>
             <label><span>수행 kg</span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-tm-calc-kg" min="0" step="0.5" value="${_escPicker(_numText(tmCalcKg))}"></label>
             <label><span>회수</span><input class="ex-editor-input" type="number" inputmode="numeric" id="ex-program-tm-calc-reps" min="1" step="1" value="${_escPicker(_numText(tmCalcReps))}"></label>
             <button type="button" class="ex-program-calc-btn" data-ex-program-tm-calc>TM 계산</button>
@@ -2445,7 +2526,7 @@ function _exerciseProgramEditorHtml(settings = {}) {
           <label><span>증량</span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-wendler-increment" min="0" step="0.5" value="${_escPicker(_numText(w.incrementKg || settings.incrementKg))}"></label>
           <label><span>반올림</span><input class="ex-editor-input" type="number" inputmode="decimal" id="ex-program-wendler-round" min="0.5" step="0.5" value="${_escPicker(_numText(w.roundKg || 2.5))}"></label>
       </div>
-      <div class="ex-program-grid ex-program-grid-four">
+      <div class="ex-program-grid ex-program-grid-four" data-wendler-supp-fields${isOriginal863 ? ' hidden' : ''}>
         <label><span>보조</span><select class="ex-editor-select" id="ex-program-wendler-supp">
           <option value="bbb"${(supp.kind || 'bbb') === 'bbb' ? ' selected' : ''}>BBB</option>
             <option value="fsl"${supp.kind === 'fsl' ? ' selected' : ''}>FSL</option>
@@ -2487,6 +2568,18 @@ function _bindExerciseProgramEditor() {
     btn.addEventListener('click', () => _setExerciseProgramMode(btn.getAttribute('data-ex-program-mode')));
   });
   wrap.querySelector('[data-ex-program-tm-calc]')?.addEventListener('click', _calculateWendlerTmFromInputs);
+  const schemeSelect = wrap.querySelector('#ex-program-wendler-scheme');
+  const syncWendlerFields = () => {
+    const original = schemeSelect?.value === 'w863';
+    wrap.querySelector('[data-wendler-tm-field]')?.toggleAttribute('hidden', original);
+    wrap.querySelector('[data-wendler-tm-tools]')?.toggleAttribute('hidden', original);
+    wrap.querySelector('[data-wendler-supp-fields]')?.toggleAttribute('hidden', original);
+    wrap.querySelector('[data-w863-one-rm-field]')?.toggleAttribute('hidden', !original);
+    wrap.querySelector('[data-w863-profile-fields]')?.toggleAttribute('hidden', !original);
+    _updateProgramStartDateUi(_selectedProgramStartDate());
+  };
+  schemeSelect?.addEventListener('change', syncWendlerFields);
+  syncWendlerFields();
   const startBtn = wrap.querySelector('[data-ex-program-calendar-toggle]');
   if (startBtn) {
     _updateProgramStartDateUi(_selectedProgramStartDate());
@@ -2527,13 +2620,15 @@ function _readExerciseProgramConfig() {
       tracks: ['volume'],
       seed: {
         volume: {
-          kg: _numInput('ex-program-volume-kg', _numInput('ex-program-wendler-tm', 0)),
+          kg: _numInput('ex-program-volume-kg', _numInput('ex-program-w863-one-rm', _numInput('ex-program-wendler-tm', 0))),
           reps: _numInput('ex-program-volume-reps', 5),
         },
       },
       incrementKg: _numInput('ex-program-wendler-increment', undefined),
       wendler: {
         scheme: document.getElementById('ex-program-wendler-scheme')?.value || 'w863',
+        profileId: document.getElementById('ex-program-w863-profile')?.value || undefined,
+        oneRmKg: _numInput('ex-program-w863-one-rm', undefined),
         tmKg: _numInput('ex-program-wendler-tm', undefined),
         startWeek: _numInput('ex-program-wendler-start', 1),
         cycleNo: _numInput('ex-program-wendler-cycle', 1),

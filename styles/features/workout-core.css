@@ -468,6 +468,10 @@ body.wt-modal-scroll-lock {
 .ex-max-v2-type-btn.warmup { color: #2563eb; background: #eef4ff; }
 .ex-max-v2-type-btn.drop { color: #b7791f; background: #fff7e6; }
 .ex-max-v2-type-btn.wendler-main { color: var(--primary, #fa342c); background: var(--primary-bg, rgba(250,52,44,.12)); }
+.ex-max-v2-type-btn.wendler-single { color: #1d4ed8; background: #eff6ff; }
+.ex-max-v2-type-btn.wendler-pr { color: #b42318; background: #fff1f0; }
+.ex-max-v2-type-btn.wendler-backoff { color: #7c3aed; background: #f5f3ff; }
+.ex-max-v2-type-btn.wendler-deload { color: #0f766e; background: #ecfdf5; }
 .ex-max-v2-type-btn.bbb { color: #0f766e; background: #ecfdf5; }
 .ex-max-v2-type-btn.fsl { color: #7c3aed; background: #f5f3ff; }
 .ex-max-v2-field {
@@ -677,6 +681,38 @@ body.wt-modal-scroll-lock {
   grid-template-columns: 1fr 1fr;
   gap: 6px;
   padding: 0 8px 8px;
+}
+
+.ex-w863-pr-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 10px 14px 2px;
+  padding: 10px 12px;
+  border: 1px solid #ffd5d2;
+  border-radius: 12px;
+  background: #fff8f7;
+  color: #7a271a;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ex-w863-pr-chip {
+  flex: none;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--primary, #fa342c);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ex-w863-pr-chip.is-on {
+  background: #ecfdf3;
+  color: #067647;
 }
 .ex-max-v2-secondary,
 .ex-max-v2-primary {

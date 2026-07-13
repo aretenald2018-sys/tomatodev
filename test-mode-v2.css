@@ -320,6 +320,29 @@ body:has(#tm2-sheets.tm2-open) #tm2-sheets .tm2-sheet {
 .tm2-wendler-card-note b { display: block; font-size: 12px; color: #5f2c86; }
 .tm2-wendler-card-note span { display: block; margin-top: 2px; font-size: 11px; font-weight: 700; }
 .tm2-wcard { display: grid; gap: 10px; }
+.tm2-wpr-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #ffd5d2;
+  border-radius: 12px;
+  background: #fff8f7;
+  color: #7a271a;
+  font-size: 11px;
+  font-weight: 800;
+}
+.tm2-wpr-row button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--tm2-tomato);
+  color: #fff;
+  font: inherit;
+}
+.tm2-wpr-row button:disabled { background: #ecfdf3; color: #067647; }
 .tm2-wcard-meta {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   border: 1px solid #e7defc; background: #faf7ff; border-radius: 13px; padding: 10px 12px;

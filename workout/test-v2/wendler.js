@@ -1,13 +1,19 @@
 // ================================================================
 // workout/test-v2/wendler.js — 웬들러 프로그램 엔진 (순수 함수만)
 // ----------------------------------------------------------------
-// v1 workout/expert/max-wendler.js에서 복사(계획 문서 금지 목록: v1 import
-// 금지·순수 로직 복사 허용). v2 변경점:
+// v1 workout/expert/max-wendler.js와 8/6/3 원본 레퍼런스만 공유. v2 변경점:
 //   - defaultWendlerIncrement: 하체/둔부 +10 (보드 defaults.incrementLowerKg),
 //     상체 +2.5 — "6주에 한 번" 정산 기준.
 //   - 보조(BBB)는 메인 직후 같은 세션 수행(timing:'after-main')이 기본.
 // DOM/Firebase 접근 금지 — node:test 단위 테스트 대상.
 // ================================================================
+
+import {
+  W863_ORIGINAL_PROFILES,
+  W863_ORIGINAL_VERSION,
+  normalizeW863OriginalConfig,
+  w863OriginalWeekPrescription,
+} from '../w863-original.js';
 
 const _round1 = (v) => Math.round((Number(v) || 0) * 10) / 10;
 
@@ -31,15 +37,15 @@ export const WENDLER_SCHEMES = {
     ],
   },
   w863: {
-    label: '8/6/3',
-    weekMap: [
-      _wave([[60, 8], [65, 8], [70, 8]]),
-      _wave([[65, 6], [70, 6], [75, 6]]),
-      _wave([[70, 3], [75, 3], [80, 3]]),
-      _wave([[60, 8], [65, 8], [70, 8]]),
-      _wave([[65, 6], [70, 6], [75, 6]]),
-      _wave([[70, 3], [75, 3], [80, 3]]),
-    ],
+    label: '8/6/3 원본',
+    original: true,
+    weekMap: W863_ORIGINAL_PROFILES.squat.weeks.map(rows => ({
+      sets: rows.filter(set => set.role === 'main' || set.role === 'deload').map(set => ({
+        pct: _round1(set.kg / W863_ORIGINAL_PROFILES.squat.reference1RmKg * 100),
+        reps: set.reps,
+        ...(set.amrap ? { amrap: true } : {}),
+      })),
+    })),
   },
 };
 
@@ -150,13 +156,22 @@ export function suggestWendlerTm({ latest = null, trackSpec = null, roundKg = 2.
 }
 
 /** 벤치마크에 붙는 wendler 설정 정규화(필드 보충 + weekMap 6주 보장). */
-export function normalizeWendlerConfig(wendler = {}, { primaryMajor = null, trackSpec = null, latest = null } = {}) {
+export function normalizeWendlerConfig(wendler = {}, { primaryMajor = null, trackSpec = null, latest = null, movementId = null, exerciseId = null, label = null } = {}) {
   const scheme = WENDLER_SCHEME_IDS.includes(wendler?.scheme) ? wendler.scheme : 'w863';
   const roundKg = Number(wendler?.roundKg) > 0 ? Number(wendler.roundKg) : 2.5;
   const incrementKg = Number(wendler?.incrementKg) > 0 ? Number(wendler.incrementKg) : defaultWendlerIncrement(primaryMajor);
   const tmKg = Number(wendler?.tmKg) > 0
     ? _round1(Number(wendler.tmKg))
     : suggestWendlerTm({ latest, trackSpec, roundKg });
+  if (scheme === 'w863') {
+    const original = normalizeW863OriginalConfig({ ...wendler, tmKg, incrementKg, roundKg }, {
+      primaryMajor, movementId, exerciseId, label,
+    });
+    return {
+      ...original,
+      weekMap: _cloneWeekMap(WENDLER_SCHEMES.w863.weekMap),
+    };
+  }
   const baseScheme = scheme === 'custom' ? 'w863' : scheme;
   const weekMap = _normalizeWeekMap(wendler?.weekMap, baseScheme, 6);
   const startWeek = _clampWeek(wendler?.startWeek, weekMap.length);
@@ -189,6 +204,12 @@ export function wendlerWeekPrescription(wendler = {}, weekIndex = 1) {
   const weeks = cfg.weekMap.length;
   const boardIdx = Math.max(1, Math.min(weeks, Math.round(Number(weekIndex) || 1))) - 1;
   const schemeIdx = (boardIdx + (cfg.startWeek || 1) - 1) % weeks;
+  if (cfg.templateVersion === W863_ORIGINAL_VERSION) {
+    return {
+      ...wendlerOriginalBoardPrescription(cfg, schemeIdx + 1),
+      boardWeek: boardIdx + 1,
+    };
+  }
   const sets = (cfg.weekMap[schemeIdx]?.sets || []).map(set => ({
     ...set,
     kg: roundToPlate(cfg.tmKg * set.pct / 100, cfg.roundKg),
@@ -227,6 +248,22 @@ export function wendlerWeekPrescription(wendler = {}, weekIndex = 1) {
 /** 6주 전체 톱세트 요약 — 주차표 시각화용. */
 export function wendlerCycleOverview(wendler = {}) {
   const cfg = normalizeWendlerConfig(wendler);
+  if (cfg.templateVersion === W863_ORIGINAL_VERSION) {
+    return Array.from({ length: 7 }, (_, idx) => {
+      const rx = wendlerWeekPrescription(cfg, idx + 1);
+      const sets = rx.sets.length ? rx.sets : rx.deload;
+      return {
+        week: idx + 1,
+        schemeWeek: rx.week,
+        sets,
+        topSet: rx.topSet,
+        pctLabel: sets.map(set => Number.isInteger(set.pct) ? set.pct : set.pct.toFixed(1)).join('·'),
+        repsLabel: sets.map(set => `${set.reps}${set.amrap ? '+' : ''}`).join('/'),
+        optionalSets: rx.optionalSets,
+        deload: rx.deload.length > 0,
+      };
+    });
+  }
   return cfg.weekMap.map((week, idx) => {
     const rx = wendlerWeekPrescription(cfg, idx + 1);
     const sets = rx.sets || [];
@@ -239,4 +276,8 @@ export function wendlerCycleOverview(wendler = {}) {
       repsLabel: sets.map((s, i) => `${s.reps}${i === sets.length - 1 && s.amrap ? '+' : ''}`).join('/'),
     };
   });
+}
+
+function wendlerOriginalBoardPrescription(cfg, weekIndex) {
+  return w863OriginalWeekPrescription(cfg, weekIndex);
 }

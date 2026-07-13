@@ -4,6 +4,8 @@
 // ================================================================
 
 import { inferEquipmentMovementIds, inferExerciseMovementId, normalizeEquipmentCategory } from '../../data/data-pure.js';
+import { normalizeWendlerConfig } from './max-wendler.js';
+import { W863_ORIGINAL_VERSION } from '../w863-original.js';
 
 export function _esc(s) { return String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
 
@@ -113,25 +115,38 @@ export function _trackSpec(benchmark, track = 'M') {
 
 export function normalizeMaxCycleTracks(cycle) {
   if (!cycle || !Array.isArray(cycle.benchmarks)) return cycle;
+  const benchmarks = cycle.benchmarks.map(b => {
+    const m = _trackSpec(b, 'M');
+    const h = _trackSpec(b, 'H');
+    const defaultTrack = h.enabled === false
+      ? 'M'
+      : (b.defaultTrack === 'H' || b.defaultTrack === 'M' ? b.defaultTrack : null);
+    const wendler = b.program === 'wendler'
+      ? normalizeWendlerConfig(b.wendler || {}, {
+        primaryMajor: b.primaryMajor,
+        trackSpec: h.enabled === false ? m : h,
+        movementId: b.movementId,
+        exerciseId: b.exerciseId,
+        label: b.label,
+      })
+      : b.wendler;
+    return {
+      ...b,
+      ...(defaultTrack ? { defaultTrack } : {}),
+      ...(wendler ? { wendler } : {}),
+      tracks: { M: m, H: h },
+      startKg: m.startKg,
+      targetKg: m.targetKg,
+      incrementKg: m.incrementKg,
+      startReps: m.startReps,
+      targetReps: m.targetReps,
+    };
+  });
+  const hasOriginal = benchmarks.some(b => b.wendler?.templateVersion === W863_ORIGINAL_VERSION);
   return {
     ...cycle,
-    benchmarks: cycle.benchmarks.map(b => {
-      const m = _trackSpec(b, 'M');
-      const h = _trackSpec(b, 'H');
-      const defaultTrack = h.enabled === false
-        ? 'M'
-        : (b.defaultTrack === 'H' || b.defaultTrack === 'M' ? b.defaultTrack : null);
-      return {
-        ...b,
-        ...(defaultTrack ? { defaultTrack } : {}),
-        tracks: { M: m, H: h },
-        startKg: m.startKg,
-        targetKg: m.targetKg,
-        incrementKg: m.incrementKg,
-        startReps: m.startReps,
-        targetReps: m.targetReps,
-      };
-    }),
+    weeks: hasOriginal ? Math.max(7, Number(cycle.weeks) || 0) : cycle.weeks,
+    benchmarks,
   };
 }
 
@@ -831,15 +846,20 @@ export function buildMaxCycleSettleResult(cycle, snapshot, { decisions = {} } = 
         ? Number(base.wendler.incrementKg)
         : tracks.M.incrementKg;
       const delta = decision === 'grow' ? incrementKg : 0;
+      const isOriginal = base.wendler.templateVersion === W863_ORIGINAL_VERSION;
+      const before = Number(isOriginal ? base.wendler.oneRmKg : base.wendler.tmKg) || 0;
+      const after = _plus(before, delta);
       wendler = {
         ...base.wendler,
         incrementKg,
-        before: Number(base.wendler.tmKg) || 0,
-        tmKg: _plus(base.wendler.tmKg, delta),
+        before,
+        ...(isOriginal
+          ? { oneRmKg: after, tmKg: Math.round(after * 0.9 * 10) / 10 }
+          : { tmKg: after }),
       };
     }
     const representative = wendler
-      ? { kind: 'tm', before: wendler.before, after: wendler.tmKg, incrementKg: wendler.incrementKg }
+      ? { kind: wendler.templateVersion === W863_ORIGINAL_VERSION ? 'oneRm' : 'tm', before: wendler.before, after: wendler.templateVersion === W863_ORIGINAL_VERSION ? wendler.oneRmKg : wendler.tmKg, incrementKg: wendler.incrementKg }
       : { kind: 'startKg', before: tracks.M.before, after: tracks.M.startKg, incrementKg: tracks.M.incrementKg };
     return {
       id: base.id,
@@ -902,7 +922,12 @@ export function buildNextMaxCycleFromSettle(cycle, settleResult, { todayKey, now
       startKg: tracks.M.startKg,
       targetKg: tracks.M.targetKg,
       incrementKg: tracks.M.incrementKg,
-      ...(row.wendler ? { wendler: { ...base.wendler, tmKg: row.wendler.tmKg, incrementKg: row.wendler.incrementKg } } : {}),
+      ...(row.wendler ? { wendler: {
+        ...base.wendler,
+        tmKg: row.wendler.tmKg,
+        ...(row.wendler.templateVersion === W863_ORIGINAL_VERSION ? { oneRmKg: row.wendler.oneRmKg } : {}),
+        incrementKg: row.wendler.incrementKg,
+      } } : {}),
     };
   });
   const next = { ...normalized };
@@ -958,7 +983,7 @@ export function buildMaxGrowthStairs(history = [], cycle = null, { maxPoints = 6
     const program = maxBenchmarkProgram(b);
     const spec = _trackSpec(b, 'M');
     const representativeKg = program === 'wendler'
-      ? (Number(b.wendler?.tmKg) || 0)
+      ? (Number(b.wendler?.templateVersion === W863_ORIGINAL_VERSION ? b.wendler?.oneRmKg : b.wendler?.tmKg) || 0)
       : (Number(spec.startKg) || 0);
     const incrementKg = program === 'wendler'
       ? (Number(b.wendler?.incrementKg) > 0 ? Number(b.wendler.incrementKg) : (Number(spec.incrementKg) || 2.5))
