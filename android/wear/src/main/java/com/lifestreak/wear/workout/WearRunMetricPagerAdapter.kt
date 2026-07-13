@@ -9,15 +9,37 @@ import com.lifestreak.wear.R
 
 class WearRunMetricPagerAdapter : RecyclerView.Adapter<WearRunMetricPagerAdapter.PageViewHolder>() {
     private var snapshot: WearRunUiSnapshot? = null
+    private var attachedRecyclerView: RecyclerView? = null
 
     fun submitSnapshot(nextSnapshot: WearRunUiSnapshot, activePage: Int) {
         if (snapshot == nextSnapshot) return
         snapshot = nextSnapshot
-        notifyItemChanged(activePage.coerceIn(0, PAGE_COUNT - 1))
+        bindOrNotify(activePage)
     }
 
     fun refreshPage(position: Int) {
-        notifyItemChanged(position.coerceIn(0, PAGE_COUNT - 1))
+        bindOrNotify(position)
+    }
+
+    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+        super.onAttachedToRecyclerView(recyclerView)
+        attachedRecyclerView = recyclerView
+    }
+
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        if (attachedRecyclerView === recyclerView) attachedRecyclerView = null
+        super.onDetachedFromRecyclerView(recyclerView)
+    }
+
+    private fun bindOrNotify(position: Int) {
+        val page = position.coerceIn(0, PAGE_COUNT - 1)
+        val holder = attachedRecyclerView
+            ?.findViewHolderForAdapterPosition(page) as? PageViewHolder
+        if (holder != null) {
+            holder.bind(page, snapshot)
+        } else {
+            notifyItemChanged(page)
+        }
     }
 
     override fun getItemCount(): Int = PAGE_COUNT

@@ -88,5 +88,7 @@ test('wear running power policy preserves sensor samples while batching expensiv
   assert.match(service, /force = endAction == WearExerciseEndAction\.PUBLISH_FINAL_UPDATE/);
 
   assert.doesNotMatch(pager, /notifyItemRangeChanged/);
-  assert.match(pager, /notifyItemChanged\(activePage\.coerceIn\(0, PAGE_COUNT - 1\)\)/);
+  assert.match(pager, /findViewHolderForAdapterPosition\(page\)/);
+  assert.match(pager, /holder\.bind\(page, snapshot\)/);
+  assert.match(pager, /else \{\s*notifyItemChanged\(page\)/);
 });
