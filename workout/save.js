@@ -190,7 +190,9 @@ async function _prepareRunningRoutePayload() {
 
 function _buildWorkoutPayload(cleanEx, isDietSuccess, persistedRoute) {
   const w = S.workout;
-  const workoutTimeline = buildWorkoutSetTimeline(cleanEx, w.workoutDuration);
+  const workoutTimeline = buildWorkoutSetTimeline(cleanEx, w.workoutDuration, {
+    previousTimeline: w.workoutTimeline,
+  });
   w.workoutTimeline = workoutTimeline;
   w.workoutDuration = workoutTimeline.durationSec;
   const run = w.runData || {};

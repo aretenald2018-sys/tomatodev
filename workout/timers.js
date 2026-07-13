@@ -9,7 +9,9 @@ import { confirmAction }    from '../utils/confirm-modal.js';
 import { getActiveTimer, saveActiveTimer, clearActiveTimer, getCurrentUser } from '../data.js';
 import {
   buildWorkoutSetTimeline,
+  closeWorkoutTimeline,
   clearWorkoutSetCompletedAt,
+  MAX_WORKOUT_REST_GAP_SEC,
   syncWorkoutTimeline,
 } from './timeline.js';
 import { getDietPhoto } from '../diet/photo-store.js';
@@ -20,6 +22,10 @@ const _MAX_LIVE_TIMER_MS = 24 * 60 * 60 * 1000;
 const _MAX_ACTIVE_WORKOUT_DRAFT_MS = 30 * 60 * 60 * 1000;
 const _GROWTH_BOARD_AUTO_MAX_SEC = 2 * 60 * 60;
 const _GROWTH_BOARD_AUTO_GRACE_MS = 10 * 60 * 1000;
+const _WORKOUT_IDLE_LIMIT_MS = MAX_WORKOUT_REST_GAP_SEC * 1000;
+
+let _workoutIdleFinishTimeout = null;
+let _workoutIdleFinishPromise = null;
 
 function _normalizeTimerDate(date) {
   if (!date || typeof date !== 'object') return null;
@@ -448,11 +454,35 @@ function _syncWorkoutTimelineDuration() {
   return syncWorkoutTimeline(S.workout) || buildWorkoutSetTimeline([], S.workout.workoutDuration);
 }
 
-function _measuredWorkoutDurationSec() {
-  return _syncWorkoutTimelineDuration().durationSec;
+function _cancelWorkoutIdleFinishTimer() {
+  if (_workoutIdleFinishTimeout) clearTimeout(_workoutIdleFinishTimeout);
+  _workoutIdleFinishTimeout = null;
 }
 
-function _finalWorkoutDurationSec() {
+function _isTodayWorkoutDate() {
+  return _sameTimerDate(_normalizeTimerDate(S.shared.date), _todayTimerDate());
+}
+
+function _timelineEndedAfterLatestSet(timeline) {
+  if (!timeline?.lastSetCompletedAt || !timeline?.endedAt) return false;
+  if (Number(timeline.endedAfterSetCompletedAt) !== Number(timeline.lastSetCompletedAt)) return false;
+  const endedCount = Math.max(0, Math.floor(Number(timeline.endedCheckedSetCount) || 0));
+  return endedCount === 0 || endedCount === Math.max(0, Math.floor(Number(timeline.checkedSetCount) || 0));
+}
+
+function _scheduleWorkoutIdleFinish(timeline, now = Date.now()) {
+  _cancelWorkoutIdleFinishTimer();
+  if (!_isTodayWorkoutDate() || !timeline?.lastSetCompletedAt || _timelineEndedAfterLatestSet(timeline)) return null;
+  const deadlineAt = Number(timeline.lastSetCompletedAt) + _WORKOUT_IDLE_LIMIT_MS;
+  const delayMs = Math.max(0, deadlineAt - Number(now));
+  _workoutIdleFinishTimeout = setTimeout(() => {
+    _workoutIdleFinishTimeout = null;
+    wtCheckWorkoutIdleLimit().catch(e => console.error('[workout idle finish] error:', e));
+  }, delayMs);
+  return deadlineAt;
+}
+
+function _measuredWorkoutDurationSec() {
   return _syncWorkoutTimelineDuration().durationSec;
 }
 
@@ -461,7 +491,30 @@ export function wtRefreshWorkoutTimelineDuration(context = 'set timeline') {
   _renderWorkoutTimer();
   _renderTimerControls();
   wtPersistActiveWorkoutDraft(context);
+  _scheduleWorkoutIdleFinish(timeline);
   return timeline;
+}
+
+export async function wtCheckWorkoutIdleLimit(now = Date.now()) {
+  const timeline = _syncWorkoutTimelineDuration();
+  if (!_isTodayWorkoutDate() || !timeline?.lastSetCompletedAt || _timelineEndedAfterLatestSet(timeline)) {
+    _cancelWorkoutIdleFinishTimer();
+    return false;
+  }
+  const deadlineAt = Number(timeline.lastSetCompletedAt) + _WORKOUT_IDLE_LIMIT_MS;
+  if (Number(now) < deadlineAt) {
+    _scheduleWorkoutIdleFinish(timeline, now);
+    return false;
+  }
+  if (_workoutIdleFinishPromise) return _workoutIdleFinishPromise;
+  _cancelWorkoutIdleFinishTimer();
+  _workoutIdleFinishPromise = Promise.resolve(wtFinishWorkout({
+    endedAt: now,
+    endedBy: 'idle-limit',
+  })).then(() => true).finally(() => {
+    _workoutIdleFinishPromise = null;
+  });
+  return _workoutIdleFinishPromise;
 }
 
 // ── 운동 시간 측정 ───────────────────────────────────────────────
@@ -521,6 +574,7 @@ export function wtPauseWorkoutTimer() {
 }
 
 export async function wtResetWorkoutTimer() {
+  _cancelWorkoutIdleFinishTimer();
   // 운동 시간 초기화는 파괴적 액션. 실수 방지 위해 confirm 필수.
   const timeline = _syncWorkoutTimelineDuration();
   const hasTime = timeline.durationSec > 0 || timeline.checkedSetCount > 0 || !!S.workout.workoutStartTime;
@@ -628,10 +682,16 @@ export function wtTogglePauseWorkoutTimer() {
 //      insightsOpen이 cache 읽기 전에 setDoc/_cache 업데이트가 마무리돼야 한다.
 //      _cache[key]=data는 동기 경로에서 이미 갱신되지만, Firebase round-trip까지
 //      기다려야 다른 레이어(getCache 소비자, analytics 등)와의 순서가 명확해진다.
-export function wtFinishWorkout() {
-  const finalDuration = _finalWorkoutDurationSec();
+export function wtFinishWorkout(options = {}) {
+  _cancelWorkoutIdleFinishTimer();
+  const endedBy = String(options.endedBy || 'manual');
+  const finalTimeline = closeWorkoutTimeline(S.workout, {
+    endedAt: options.endedAt,
+    endedBy,
+  }) || _syncWorkoutTimelineDuration();
+  const finalDuration = finalTimeline.durationSec;
   if (S.workout.restTimer.running) {
-    _finalizeRestTimerRecord('finish');
+    _finalizeRestTimerRecord(endedBy === 'idle-limit' ? 'idle-limit' : 'finish');
     _stopRestTimerUi();
   }
   S.workout.workoutStartTime = null;
@@ -654,7 +714,10 @@ export function wtFinishWorkout() {
   }
   const bar = document.getElementById('wt-workout-timer-bar');
   if (bar) bar.classList.remove('wt-running');
-  showCenterToast(`운동 완료! ${_fmtDuration(S.workout.workoutDuration)}`, 2200);
+  const finishMessage = endedBy === 'idle-limit'
+    ? `15분 동안 추가 기록이 없어 운동을 종료했어요 · ${_fmtDuration(S.workout.workoutDuration)}`
+    : `운동 완료! ${_fmtDuration(S.workout.workoutDuration)}`;
+  showCenterToast(finishMessage, 2600);
   // 순서: saveWorkoutDay (총 duration 영속화) → clearActiveTimer (포인터 해제).
   //   save 가 throw 하면 반환 Promise 도 reject → wtEndAndShowInsights 가 인사이트 모달 차단.
   //   active_timer 는 save 성공 뒤에만 정리 — save 실패 시 포인터가 살아있어야 recovery
@@ -674,7 +737,7 @@ export function wtRecoverTimers() {
   if (fromFs) clearActiveTimer().catch(() => {});
   S.workout.workoutStartTime = null;
   if (S.workout.workoutTimerInterval) { clearInterval(S.workout.workoutTimerInterval); S.workout.workoutTimerInterval = null; }
-  _syncWorkoutTimelineDuration();
+  const timeline = _syncWorkoutTimelineDuration();
   _renderWorkoutTimer();
   _renderTimerControls();
 
@@ -687,6 +750,11 @@ export function wtRecoverTimers() {
       S.workout.restTimer.interval = setInterval(_syncRestTimerFromNow, 1000);
     }
     _syncRestTimerFromNow();
+  }
+  if (timeline?.lastSetCompletedAt && !_timelineEndedAfterLatestSet(timeline)) {
+    wtCheckWorkoutIdleLimit().catch(e => console.error('[workout idle recover] error:', e));
+  } else {
+    _cancelWorkoutIdleFinishTimer();
   }
 }
 

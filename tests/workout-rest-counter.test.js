@@ -98,18 +98,12 @@ export async function saveActiveTimer() { return true; }
 export async function clearActiveTimer() { return true; }
 export function getCurrentUser() { return { uid: 'rest-runtime-user' }; }
 `);
-    const stubTimelineUrl = await writeStub(tempDir, 'stub-timeline.js', `
-export function buildWorkoutSetTimeline() { return { durationSec: 0, checkedSetCount: 0 }; }
-export function clearWorkoutSetCompletedAt(value) { return value; }
-export function syncWorkoutTimeline() { return { durationSec: 0, checkedSetCount: 0 }; }
-`);
     const importMap = {
       imports: {
         [repoUrl('workout/save.js')]: stubSaveUrl,
         [repoUrl('home/utils.js')]: stubUtilsUrl,
         [repoUrl('utils/confirm-modal.js')]: stubConfirmUrl,
         [repoUrl('data.js')]: stubDataUrl,
-        [repoUrl('workout/timeline.js')]: stubTimelineUrl,
       },
     };
     await writeFile(htmlPath, `<!doctype html><html><head><meta charset="utf-8">
@@ -151,11 +145,12 @@ try {
   const state = await import(${JSON.stringify(stateUrl)});
   const timers = await import(${JSON.stringify(timersUrl)});
   window.wtOpenRestPresetSheet = timers.wtOpenRestPresetSheet;
-  state.S.shared.date = { y: 2026, m: 6, d: 7 };
+  const today = new Date();
+  state.S.shared.date = { y: today.getFullYear(), m: today.getMonth(), d: today.getDate() };
   state.S.workout.exercises = [{
     exerciseId: 'bench',
     name: 'Bench Press',
-    sets: [{ kg: 100, reps: 5, done: true, setType: 'main' }]
+    sets: [{ kg: 100, reps: 5, done: true, setType: 'main', completedAt: now }]
   }];
 
   timers.wtRestTimerStart(60, 'Bench Press set 1', { entryIdx: 0, setIdx: 0 });
@@ -186,17 +181,29 @@ try {
 
   timers.wtRestTimerSkip();
   const setAfterSkip = state.S.workout.exercises[0].sets[0];
+  const afterSkip = {
+    restPlannedSec: setAfterSkip.restPlannedSec,
+    restElapsedSec: setAfterSkip.restElapsedSec,
+    restOverSec: setAfterSkip.restOverSec,
+    restEndedBy: setAfterSkip.restEndedBy,
+    restEndedAt: setAfterSkip.restEndedAt,
+  };
+  timers.wtRestTimerStart(60, 'Bench Press inactivity limit', { entryIdx: 0, setIdx: 0 });
+  now += (15 * 60 * 1000) - 75000;
+  const autoEnded = await timers.wtCheckWorkoutIdleLimit(now);
   window.__qaDone = {
     afterStart,
     after75s,
     sheetExists,
-    afterSkip: {
-      restPlannedSec: setAfterSkip.restPlannedSec,
+    afterSkip,
+    autoEnded,
+    autoRest: {
+      running: state.S.workout.restTimer.running,
       restElapsedSec: setAfterSkip.restElapsedSec,
-      restOverSec: setAfterSkip.restOverSec,
       restEndedBy: setAfterSkip.restEndedBy,
-      restEndedAt: setAfterSkip.restEndedAt,
     },
+    timeline: state.S.workout.workoutTimeline,
+    durationResult: document.getElementById('wt-workout-duration-result')?.textContent || '',
     saveCalls: window.__qaSaveCalls,
   };
 } catch (e) {
@@ -229,7 +236,7 @@ try {
   }
 }
 
-test('runtime rest timer updates set metadata, overdue UI, preset sheet, and skip totals', async () => {
+test('runtime rest timer updates metadata and auto-finishes at the 15-minute idle limit', async () => {
   const result = await runRestTimerRuntimeHarness();
 
   assert.equal(result.afterStart.restStartedAt, '2026-07-07T00:00:00.000Z');
@@ -247,8 +254,16 @@ test('runtime rest timer updates set metadata, overdue UI, preset sheet, and ski
   assert.equal(result.afterSkip.restOverSec, 15);
   assert.equal(result.afterSkip.restEndedBy, 'skip');
   assert.equal(result.afterSkip.restEndedAt, '2026-07-07T00:01:15.000Z');
-  assert.equal(result.saveCalls.length, 1);
+  assert.equal(result.autoEnded, true);
+  assert.equal(result.autoRest.running, false);
+  assert.equal(result.autoRest.restElapsedSec, (15 * 60) - 75);
+  assert.equal(result.autoRest.restEndedBy, 'idle-limit');
+  assert.equal(result.timeline.endedBy, 'idle-limit');
+  assert.equal(result.timeline.endedAfterSetCompletedAt, Date.parse('2026-07-07T00:00:00.000Z'));
+  assert.equal(result.durationResult, '총 0초');
+  assert.equal(result.saveCalls.length, 2);
   assert.deepEqual(result.saveCalls[0], { silent: true });
+  assert.deepEqual(result.saveCalls[1], {});
 });
 
 async function runRestSaveExportHarness() {
