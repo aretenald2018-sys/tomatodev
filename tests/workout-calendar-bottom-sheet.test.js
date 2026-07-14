@@ -331,11 +331,26 @@ test('running action dock uses direct sheet bindings for start and screenshot up
   assert.match(calendarJs, /const uploadRunning = target\?\.closest\?\.\('\[data-wt-day-upload-running\]'\)/);
   assert.match(calendarJs, /uploadInput\.click\(\)/);
   assert.match(calendarJs, /sheet\.addEventListener\('change',[\s\S]*runningUploadInput[\s\S]*_importWorkoutRunningRecord/);
+  assert.match(calendarJs, /querySelectorAll\?\.\('\[data-wt-day-upload-running\]'\)/);
   assert.match(calendarJs, /target\?\.closest\?\.\('\[data-wt-day-add-session\]'\)/);
   assert.match(calendarJs, /event\.stopPropagation\(\)/);
   assert.match(calendarJs, /Promise\.resolve\(_addWorkoutHomeSession\(key\)\)/);
   assert.match(styleCss, /\.wt-day-running-actions\s*\{/);
   assert.match(styleCss, /\.wt-running-upload-action\s*\{/);
+});
+
+test('screenshot running records render the stored route image before GPS fallback', () => {
+  const mapStart = calendarJs.indexOf('function _renderRunningRouteMap');
+  const mapEnd = calendarJs.indexOf('function _renderRunningRouteDetail', mapStart);
+  assert.ok(mapStart >= 0 && mapEnd > mapStart, 'running route renderer should exist');
+  const mapFn = calendarJs.slice(mapStart, mapEnd);
+  assert.match(mapFn, /row\?\.routeSummary\?\.mapImageDataUrl/);
+  assert.match(mapFn, /class="wt-running-route-map wt-running-route-map--imported"/);
+  assert.match(mapFn, /<img src="\$\{_esc\(importedMapImage\)\}"/);
+  assert.ok(
+    mapFn.indexOf('mapImageDataUrl') < mapFn.indexOf('GPS 경로가 저장되지 않았어요'),
+    'stored screenshot map should win over the missing-GPS placeholder',
+  );
 });
 
 test('day sheet add picker stays on the current sheet session', () => {

@@ -10,6 +10,7 @@ import {
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 const MAX_ENCODED_LENGTH = 7 * 1024 * 1024;
+const MAX_STORED_MAP_IMAGE_LENGTH = 320_000;
 
 export class RunningRecordImportError extends Error {
   constructor(code, message, cause = null) {
@@ -35,6 +36,30 @@ function _bounded(value, min, max, fallback = null) {
 
 function _text(value, maxLength = 160) {
   return String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
+}
+
+function _normalizeMapCrop(value) {
+  if (!value || typeof value !== 'object') return null;
+  const x = _bounded(value.x, 0, 1);
+  const y = _bounded(value.y, 0, 1);
+  const width = _bounded(value.width, 0.08, 1);
+  const height = _bounded(value.height, 0.08, 1);
+  if (x == null || y == null || width == null || height == null) return null;
+  const right = Math.min(1, x + width);
+  const bottom = Math.min(1, y + height);
+  if ((right - x) < 0.08 || (bottom - y) < 0.08) return null;
+  return {
+    x: Math.round(x * 10_000) / 10_000,
+    y: Math.round(y * 10_000) / 10_000,
+    width: Math.round((right - x) * 10_000) / 10_000,
+    height: Math.round((bottom - y) * 10_000) / 10_000,
+  };
+}
+
+function _safeMapImageDataUrl(value) {
+  const dataUrl = String(value || '');
+  if (dataUrl.length > MAX_STORED_MAP_IMAGE_LENGTH) return '';
+  return /^data:image\/(?:jpeg|webp|png);base64,[a-z0-9+/=]+$/i.test(dataUrl) ? dataUrl : '';
 }
 
 function _durationSeconds(value) {
@@ -167,6 +192,7 @@ export function normalizeRunningRecordParse(raw = {}, options = {}) {
   const avgHeartRateBpm = _bounded(raw.avgHeartRateBpm, 30, 260);
   const maxHeartRateBpm = _bounded(raw.maxHeartRateBpm, 30, 280);
   const location = _text(raw.location ?? raw.place, 120);
+  const mapCrop = _normalizeMapCrop(raw.routeMapCrop ?? raw.mapCrop);
   const record = {
     targetDateKey,
     observedDate: _text(raw.observedDate ?? raw.dateText, 40),
@@ -186,6 +212,7 @@ export function normalizeRunningRecordParse(raw = {}, options = {}) {
     avgHeartRateBpm: avgHeartRateBpm == null ? null : Math.round(avgHeartRateBpm),
     maxHeartRateBpm: maxHeartRateBpm == null ? null : Math.round(maxHeartRateBpm),
     location,
+    mapCrop,
     splits,
     confidence,
     provider: _text(options.provider, 24) || null,
@@ -242,6 +269,41 @@ export async function runningRecordImageBase64(file) {
   return encoded;
 }
 
+export async function runningRecordMapImageDataUrl(file, crop) {
+  const normalizedCrop = _normalizeMapCrop(crop);
+  if (!normalizedCrop) return '';
+  const image = await _readImage(file);
+  const sourceWidth = Math.max(1, image.naturalWidth || image.width || 1);
+  const sourceHeight = Math.max(1, image.naturalHeight || image.height || 1);
+  const sx = Math.max(0, Math.round(normalizedCrop.x * sourceWidth));
+  const sy = Math.max(0, Math.round(normalizedCrop.y * sourceHeight));
+  const sw = Math.max(1, Math.min(sourceWidth - sx, Math.round(normalizedCrop.width * sourceWidth)));
+  const sh = Math.max(1, Math.min(sourceHeight - sy, Math.round(normalizedCrop.height * sourceHeight)));
+  const scale = Math.min(1, 720 / sw, 540 / sh);
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(sw * scale));
+  canvas.height = Math.max(1, Math.round(sh * scale));
+  const context = canvas.getContext('2d', { alpha: false });
+  if (!context) return '';
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = 'high';
+  context.drawImage(image, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+  const attempts = [
+    ['image/webp', 0.82],
+    ['image/webp', 0.68],
+    ['image/jpeg', 0.72],
+    ['image/jpeg', 0.56],
+  ];
+  for (const [type, quality] of attempts) {
+    const dataUrl = canvas.toDataURL(type, quality);
+    const safe = _safeMapImageDataUrl(dataUrl);
+    if (safe) return safe;
+  }
+  return '';
+}
+
 export async function parseRunningRecordImage(file, options = {}) {
   const targetDateKey = _assertTargetDate(String(options.targetDateKey || ''), options.now);
   const imageBase64 = await runningRecordImageBase64(file);
@@ -249,13 +311,14 @@ export async function parseRunningRecordImage(file, options = {}) {
 저장 대상 날짜는 ${targetDateKey}이다. 화면에 '오늘'만 보이면 observedDate는 '오늘'로 두고 날짜를 추측하지 마라.
 
 필드:
-{"isRunningRecord":true,"sourceApp":"Nike Run Club","title":"화요일 아침 러닝","observedDate":"오늘","startTime":"06:52","distanceKm":5.5,"durationSec":2118,"avgPaceSecPerKm":385,"calories":382,"elevationGainM":33,"elevationLossM":null,"avgHeartRateBpm":null,"maxHeartRateBpm":null,"cadenceSpm":119,"location":"송파구, 서울특별시","splits":[{"distanceKm":1,"paceSecPerKm":427,"durationSec":427,"elevationM":-5,"avgHeartRateBpm":null}],"confidence":0.98}
+{"isRunningRecord":true,"sourceApp":"Nike Run Club","title":"화요일 아침 러닝","observedDate":"오늘","startTime":"06:52","distanceKm":5.5,"durationSec":2118,"avgPaceSecPerKm":385,"calories":382,"elevationGainM":33,"elevationLossM":null,"avgHeartRateBpm":null,"maxHeartRateBpm":null,"cadenceSpm":119,"location":"송파구, 서울특별시","routeMapVisible":true,"routeMapCrop":{"x":0.06,"y":0.68,"width":0.88,"height":0.30},"splits":[{"distanceKm":1,"paceSecPerKm":427,"durationSec":427,"elevationM":-5,"avgHeartRateBpm":null}],"confidence":0.98}
 
 규칙:
 - 거리는 km, 시간과 페이스는 초, 고도는 m, 심박은 bpm, 케이던스는 spm 숫자로 변환하라.
 - 화면에 '--'로 표시되거나 보이지 않는 값은 null로 두고 추측하지 마라.
 - 긴 스크린샷에 구간 표가 보이면 보이는 행을 splits에 모두 넣어라. 0.50km 같은 부분 구간도 보존하라.
-- 지도 이미지만으로 GPS 좌표나 이동 경로를 만들지 마라.
+- 경로 지도가 보이면 routeMapVisible=true로 두고, 지도 이미지 사각형 전체의 x/y/width/height를 이미지 너비·높이 대비 0~1 비율로 routeMapCrop에 기록하라. 앱 헤더, 지표, 하단 내비게이션은 제외하되 지도 안의 경로와 지도 라벨은 모두 포함하라.
+- 지도가 없으면 routeMapVisible=false, routeMapCrop=null로 두라. 지도 이미지만으로 GPS 좌표나 이동 경로를 만들지 마라.
 - 러닝 결과 화면이 아니면 isRunningRecord=false로 반환하라.`;
   try {
     const { _callGeminiJSON } = await import('../ai/llm-core.js');
@@ -263,7 +326,15 @@ export async function parseRunningRecordImage(file, options = {}) {
       { text: prompt },
       { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
     ], 3200);
-    return normalizeRunningRecordParse(data, { ...options, targetDateKey, provider });
+    const record = normalizeRunningRecordParse(data, { ...options, targetDateKey, provider });
+    if (record.mapCrop) {
+      try {
+        record.mapImageDataUrl = await runningRecordMapImageDataUrl(file, record.mapCrop);
+      } catch (error) {
+        console.warn('[running-record-import] route map crop skipped:', error);
+      }
+    }
+    return record;
   } catch (error) {
     if (error instanceof RunningRecordImportError) throw error;
     throw new RunningRecordImportError('PARSE_FAILED', '스크린샷에서 러닝 기록을 읽지 못했어요.', error);
@@ -308,6 +379,8 @@ export function buildImportedRunningSession(record = {}) {
     maxCadenceSpm: null,
     splits: Array.isArray(record.splits) ? record.splits.map(split => ({ ...split })) : [],
     confidence: record.confidence ?? null,
+    mapImageDataUrl: _safeMapImageDataUrl(record.mapImageDataUrl) || null,
+    mapImageSource: _safeMapImageDataUrl(record.mapImageDataUrl) ? 'screenshot-crop' : null,
   };
   return runningOnlySessionFields({
     running: true,

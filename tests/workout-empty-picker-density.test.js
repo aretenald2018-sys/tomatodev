@@ -24,7 +24,7 @@ test('empty workout view keeps the gym add button and adds a compact running act
   assert.match(detail, /data-wt-day-add-running data-date-key="\$\{_esc\(key\)\}"/);
   assert.match(detail, /data-wt-day-upload-running data-date-key="\$\{_esc\(key\)\}"/);
   assert.match(detail, /class="wt-day-fab wt-day-fab--running"/);
-  assert.match(detail, /class="wt-running-upload-action"/);
+  assert.match(detail, /class="wt-running-upload-action wt-running-upload-action--dock"/);
   assert.doesNotMatch(detail, /class="wt-day-fab"[^>]*onclick=/);
   assert.doesNotMatch(detail, /class="wt-day-add-inline"/);
   assert.doesNotMatch(detail, /class="wt-day-edit"/);
@@ -38,8 +38,23 @@ test('empty workout view keeps the gym add button and adds a compact running act
   assert.match(fab, /width:\s*48px/);
   assert.match(fab, /height:\s*48px/);
   assert.match(ruleBody('.cal-workout-day-sheet .wt-day-fab'), /touch-action:\s*manipulation/);
-  assert.match(ruleBody('.wt-day-running-actions'), /display:\s*flex/);
-  assert.match(ruleBody('.wt-running-upload-action'), /min-height:\s*48px/);
+  assert.match(ruleBody('.wt-day-running-actions'), /display:\s*grid/);
+  assert.match(ruleBody('.wt-running-upload-action'), /min-height:\s*44px/);
+  assert.match(ruleBody('.wt-day-fab--running'), /white-space:\s*nowrap/);
+  assert.match(ruleBody('.cal-workout-day-sheet .wt-day-sessionbar[data-running-actions="true"]'), /padding-right:\s*12px/);
+});
+
+test('empty running view offers upload and start with a route illustration', () => {
+  const start = renderCalendar.indexOf('function _renderWorkoutRunningEmpty');
+  const end = renderCalendar.indexOf('// ═', start);
+  assert.ok(start >= 0 && end > start, 'running empty renderer should exist');
+  const empty = renderCalendar.slice(start, end);
+  assert.match(empty, /class="wt-empty-run"[\s\S]*wt-empty-run-route[\s\S]*wt-empty-run-pin/);
+  assert.match(empty, /class="wt-running-upload-action wt-running-upload-action--empty"/);
+  assert.match(empty, /data-wt-day-upload-running/);
+  assert.match(empty, /class="wt-running-start-inline"/);
+  assert.match(empty, /기록 업로드/);
+  assert.match(empty, /러닝 시작/);
 });
 
 test('empty workout guidance is compact enough for one screen', () => {

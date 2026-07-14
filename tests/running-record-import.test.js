@@ -24,6 +24,8 @@ test('Nike result screenshot parse normalizes metrics into running schema', () =
     avgHeartRateBpm: null,
     cadenceSpm: 119,
     location: '송파구, 서울특별시',
+    routeMapVisible: true,
+    routeMapCrop: { x: 0.06, y: 0.68, width: 0.88, height: 0.3 },
     confidence: 0.98,
   }, { targetDateKey: '2026-07-14', now: NOW, provider: 'gemini' });
 
@@ -34,6 +36,7 @@ test('Nike result screenshot parse normalizes metrics into running schema', () =
   assert.equal(new Date(record.startedAt).getHours(), 6);
   assert.equal(record.calories, 382);
   assert.equal(record.cadenceSpm, 119);
+  assert.deepEqual(record.mapCrop, { x: 0.06, y: 0.68, width: 0.88, height: 0.3 });
   assert.match(record.fingerprint, /^running-screenshot-v1\|2026-07-14\|06:52\|5\.500\|2118$/);
 });
 
@@ -68,6 +71,7 @@ test('import session is running-only and trusts calories shown by the source app
     calories: 382,
     title: '화요일 아침 러닝',
   }, { targetDateKey: '2026-07-14', now: NOW });
+  record.mapImageDataUrl = 'data:image/webp;base64,AAAA';
   const session = buildImportedRunningSession(record);
 
   assert.equal(session.running, true);
@@ -78,6 +82,8 @@ test('import session is running-only and trusts calories shown by the source app
   assert.equal(session.runRoute.length, 0);
   assert.equal(session.runRouteSummary.calorieSource, 'device');
   assert.equal(session.runRouteSummary.pointCount, 0);
+  assert.equal(session.runRouteSummary.mapImageDataUrl, 'data:image/webp;base64,AAAA');
+  assert.equal(session.runRouteSummary.mapImageSource, 'screenshot-crop');
 });
 
 test('save plan preserves gym and diet data while deduplicating the same screenshot', () => {

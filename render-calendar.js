@@ -2165,20 +2165,21 @@ function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, includeHead 
 
       <div class="wt-day-sessionbar" data-running-actions="${runningActive ? 'true' : 'false'}">
         <div class="wt-day-session-tabs">${sessionTabs}</div>
-      </div>
-      ${runningActive ? `
-        <div class="wt-day-running-actions" aria-label="러닝 기록 작업">
-          <button type="button" class="wt-running-upload-action" data-wt-day-upload-running data-date-key="${_esc(key)}" aria-label="러닝 기록 스크린샷 업로드">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
-            <span data-wt-running-upload-label>기록 업로드</span>
-          </button>
-          <button type="button" class="wt-day-fab wt-day-fab--running" data-wt-day-add-running data-date-key="${_esc(key)}" aria-label="러닝 시작">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>
-            <span>시작</span>
-          </button>
+        ${runningActive ? `
+          <div class="wt-day-running-actions" aria-label="러닝 기록 작업">
+            <button type="button" class="wt-running-upload-action wt-running-upload-action--dock" data-wt-day-upload-running data-date-key="${_esc(key)}" aria-label="러닝 기록 스크린샷 업로드">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
+              <span data-wt-running-upload-label>업로드</span>
+            </button>
+            <button type="button" class="wt-day-fab wt-day-fab--running" data-wt-day-add-running data-date-key="${_esc(key)}" aria-label="러닝 시작">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>
+              <span>시작</span>
+            </button>
+          </div>
           <input type="file" accept="image/jpeg,image/png,image/webp" data-wt-running-upload-input data-date-key="${_esc(key)}" hidden>
-        </div>
-      ` : `<button type="button" class="wt-day-fab" ${fabAttrs}>＋</button>`}
+        ` : ''}
+      </div>
+      ${runningActive ? '' : `<button type="button" class="wt-day-fab" ${fabAttrs}>＋</button>`}
     </div>
   `;
 }
@@ -2612,6 +2613,15 @@ function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) {
 }
 
 function _renderRunningRouteMap(row) {
+  const importedMapImage = String(row?.routeSummary?.mapImageDataUrl || '');
+  if (/^data:image\/(?:jpeg|webp|png);base64,[a-z0-9+/=]+$/i.test(importedMapImage)) {
+    const sourceApp = String(row?.routeSummary?.sourceApp || '외부 러닝 앱').trim();
+    return `
+      <div class="wt-running-route-map wt-running-route-map--imported" aria-label="${_esc(sourceApp)}에서 업로드한 러닝 경로 이미지">
+        <img src="${_esc(importedMapImage)}" alt="${_esc(sourceApp)} 러닝 경로">
+      </div>
+    `;
+  }
   const hasStoredRoute = (Array.isArray(row?.route) && row.route.length > 0)
     || !!row?.routeRef
     || _num(row?.pointCount ?? row?.routeSummary?.pointCount) > 0;
@@ -2803,10 +2813,21 @@ function _renderWorkoutRunningEmpty(key) {
     <div class="wt-day-empty wt-running-empty" data-wt-running-empty>
       <div class="wt-day-session-label">러닝</div>
       <div class="wt-empty-center">
-        <div class="wt-empty-run" aria-hidden="true"></div>
+        <div class="wt-empty-run" aria-hidden="true">
+          <svg viewBox="0 0 64 64"><path class="wt-empty-run-route" d="M13 45c8-13 11-24 20-24 8 0 7 12 14 12 4 0 6-4 7-8"/><circle cx="13" cy="45" r="4"/><path class="wt-empty-run-pin" d="M54 12a8 8 0 0 0-8 8c0 6 8 14 8 14s8-8 8-14a8 8 0 0 0-8-8Zm0 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z"/></svg>
+        </div>
         <p><strong>러닝 기록</strong>이 없습니다</p>
-        <span>러닝 탭은 헬스 회차 타이머와 별도로 측정됩니다</span>
-        <button type="button" class="wt-running-start-inline" data-wt-day-add-running data-date-key="${_esc(key)}">러닝 시작</button>
+        <span>직접 측정하거나 러닝 앱 기록을 가져오세요</span>
+        <div class="wt-running-empty-actions" aria-label="러닝 기록 추가">
+          <button type="button" class="wt-running-upload-action wt-running-upload-action--empty" data-wt-day-upload-running data-date-key="${_esc(key)}" aria-label="러닝 기록 스크린샷 업로드">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
+            <span data-wt-running-upload-label>기록 업로드</span>
+          </button>
+          <button type="button" class="wt-running-start-inline" data-wt-day-add-running data-date-key="${_esc(key)}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>
+            <span>러닝 시작</span>
+          </button>
+        </div>
       </div>
     </div>
   `;
@@ -3203,17 +3224,19 @@ async function _importWorkoutRunningRecord(input, key) {
   if (!file) return false;
   const targetKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
   const sheet = input.closest?.('[data-wt-day-sheet]');
-  const button = sheet?.querySelector?.('[data-wt-day-upload-running]');
-  const label = button?.querySelector?.('[data-wt-running-upload-label]');
-  const originalLabel = label?.textContent || '기록 업로드';
+  const buttons = Array.from(sheet?.querySelectorAll?.('[data-wt-day-upload-running]') || []);
+  const labels = buttons
+    .map(button => button.querySelector?.('[data-wt-running-upload-label]'))
+    .filter(Boolean);
+  const originalLabels = new Map(labels.map(label => [label, label.textContent || '기록 업로드']));
   _workoutRunningImportActive = true;
   input.disabled = true;
-  if (button) {
+  buttons.forEach((button) => {
     button.disabled = true;
     button.classList.add('is-loading');
     button.setAttribute('aria-busy', 'true');
-  }
-  if (label) label.textContent = '기록 읽는 중';
+  });
+  labels.forEach((label) => { label.textContent = '읽는 중'; });
   showToast('스크린샷에서 러닝 기록을 읽고 있어요', 2400, 'info');
   try {
     const {
@@ -3239,12 +3262,12 @@ async function _importWorkoutRunningRecord(input, key) {
     _workoutRunningImportActive = false;
     input.value = '';
     input.disabled = false;
-    if (button) {
+    buttons.forEach((button) => {
       button.disabled = false;
       button.classList.remove('is-loading');
       button.removeAttribute('aria-busy');
-    }
-    if (label) label.textContent = originalLabel;
+    });
+    labels.forEach((label) => { label.textContent = originalLabels.get(label) || '기록 업로드'; });
   }
 }
 
