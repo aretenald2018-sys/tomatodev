@@ -308,6 +308,17 @@ function _withRunningMapMeta(payload, config = null) {
 
 function _buildRunningMapBubbleData(mapData = null) {
   const route = normalizeRunningMapPoints(mapData?.route || []);
+  const mapImageDataUrl = String(mapData?.mapImageDataUrl || mapData?.routeSummary?.mapImageDataUrl || '');
+  if (/^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=]+$/i.test(mapImageDataUrl)) {
+    return _withRunningMapMeta({
+      state: 'image',
+      route,
+      tiles: [],
+      path: '',
+      dot: null,
+      imageDataUrl: mapImageDataUrl,
+    });
+  }
   const previewPoint = _mapPoint(mapData?.previewPoint);
   const summaryCenter = _mapPoint(mapData?.routeSummary?.centroid);
   const center = _routeBoundsCenter(route) || previewPoint || summaryCenter;
@@ -420,6 +431,9 @@ function _bindRunningMapTileDiagnostics(bubble, map) {
 }
 
 function _renderRunningMapSvg(map, className = 'lz-running-map-overlay') {
+  if (map.imageDataUrl) {
+    return `<img class="${escapeHtml(className)} lz-running-map-image" src="${escapeHtml(map.imageDataUrl)}" alt="업로드한 러닝 경로 지도">`;
+  }
   const tileHtml = map.tiles.map((tile) => `
     <image
       class="lz-running-map-tile"
@@ -453,6 +467,7 @@ function _renderRunningMapSvg(map, className = 'lz-running-map-overlay') {
 }
 
 function _runningMapFallbackHtml(map) {
+  if (map.state === 'image') return '';
   const emptyText = map.state === 'ready' ? '' : (map.state === 'waiting' ? 'GPS' : 'MAP');
   if (map.state === 'ready') return '<span class="lz-running-map-empty lz-running-map-empty--tile-failed">MAP</span>';
   return emptyText ? `<span class="lz-running-map-empty">${emptyText}</span>` : '';

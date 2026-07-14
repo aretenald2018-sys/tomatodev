@@ -531,6 +531,7 @@ export function getLifeZoneRunningMapData(dayData = null) {
     || sessionData.runPlaceSummary
     || null;
   const placeLabel = _formatLifeZoneRunningPlace(placeSummary);
+  const mapImageDataUrl = String(routeSummary?.mapImageDataUrl || '');
   const previewPoint = _normalizeLifeZoneRunningPoint(
     dayData?.lifeZoneRunningPreviewPoint
     || dayData?.runPreviewPoint
@@ -543,6 +544,9 @@ export function getLifeZoneRunningMapData(dayData = null) {
     live: !!(dayData?.lifeZoneRunningLive || dayData?.runLiveActive),
     route,
     routeSummary,
+    mapImageDataUrl: /^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=]+$/i.test(mapImageDataUrl)
+      ? mapImageDataUrl
+      : '',
     placeSummary,
     placeLabel,
     previewPoint,

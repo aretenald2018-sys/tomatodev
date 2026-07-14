@@ -11113,6 +11113,16 @@ body.wt-running-session-open {
 .lz-running-map-overlay {
   z-index: 2;
 }
+.lz-running-map-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+.lz-running-map-bubble--image .lz-running-map-place,
+.lz-running-record-map.lz-running-map-bubble--image .lz-running-map-place {
+  display: none;
+}
 .lz-running-map-path {
   fill: none;
   stroke-linecap: round;
@@ -16801,6 +16811,27 @@ body.lz-running-record-modal-open {
   min-height: 56px;
   font-size: 16px;
 }
+.wt-running-card-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.wt-running-card-actions svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+.wt-running-card-upload svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.wt-running-card-start svg {
+  fill: currentColor;
+}
 .wt-max-action-primary {
   border: 1px solid #111827;
   background: #111827;
@@ -16955,41 +16986,6 @@ body.lz-running-record-modal-open {
   box-shadow: 0 8px 18px rgba(47, 109, 246, 0.24);
 }
 .wt-day-fab:active { transform: scale(0.96); }
-.wt-day-fab--running {
-  position: static;
-  width: auto;
-  min-width: 64px;
-  height: 44px;
-  padding: 0 12px;
-  gap: 6px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #172033;
-  border-radius: 12px;
-  background: #172033;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 800;
-  white-space: nowrap;
-  box-shadow: none;
-}
-.wt-day-fab--running svg {
-  width: 16px;
-  height: 16px;
-  fill: currentColor;
-  flex: 0 0 auto;
-}
-.wt-day-running-actions {
-  position: static;
-  z-index: auto;
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: max-content;
-  align-items: center;
-  gap: 6px;
-  flex: 0 0 auto;
-}
 .wt-running-upload-action {
   min-width: 78px;
   min-height: 44px;
@@ -17475,19 +17471,9 @@ body.lz-running-record-modal-open {
     height: 46px;
     font-size: 32px;
   }
-  .wt-day-running-actions {
-    gap: 5px;
-  }
   .wt-running-upload-action {
     min-width: 72px;
     min-height: 42px;
-    padding: 0 10px;
-    font-size: 12px;
-  }
-  .wt-day-fab--running {
-    width: auto;
-    min-width: 60px;
-    height: 42px;
     padding: 0 10px;
     font-size: 12px;
   }
@@ -17626,18 +17612,12 @@ body.lz-running-record-modal-open {
   touch-action: manipulation;
 }
 .cal-workout-day-sheet .wt-day-sessionbar[data-running-actions="true"] {
-  gap: 6px;
-  padding-right: 12px;
+  padding-right: 18px;
 }
 .cal-workout-day-sheet .wt-day-sessionbar[data-running-actions="true"] .wt-day-session-tabs {
   max-width: none;
   grid-auto-columns: minmax(48px, 1fr);
 }
-.cal-workout-day-sheet .wt-day-running-actions {
-  pointer-events: auto;
-  touch-action: manipulation;
-}
-
 @media (max-width: 430px) {
   .cal-workout-day-sheet {
     --wt-day-sheet-height: clamp(64px, 9dvh, 84px);
@@ -17657,7 +17637,7 @@ body.lz-running-record-modal-open {
     padding: 7px 76px calc(7px + env(safe-area-inset-bottom, 0px)) 12px;
   }
   .cal-workout-day-sheet .wt-day-sessionbar[data-running-actions="true"] {
-    padding: 7px 10px calc(7px + env(safe-area-inset-bottom, 0px));
+    padding: 7px 12px calc(7px + env(safe-area-inset-bottom, 0px));
   }
 }
 

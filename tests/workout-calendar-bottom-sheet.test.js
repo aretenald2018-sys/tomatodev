@@ -311,16 +311,15 @@ test('full sheet header tap collapses through the sheet toggle path', () => {
   assert.doesNotMatch(applyFn, /data-wt-sheet-handle/);
 });
 
-test('running action dock uses direct sheet bindings for start and screenshot upload', () => {
+test('running actions use direct sheet bindings without duplicating controls in the bottom bar', () => {
   const detailStart = calendarJs.indexOf('function _renderWorkoutHomeDetail');
   const detailEnd = calendarJs.indexOf('function _renderWorkoutDetailSummaryCard', detailStart);
   assert.ok(detailStart >= 0 && detailEnd > detailStart, 'workout detail renderer should be present');
   const detail = calendarJs.slice(detailStart, detailEnd);
-  assert.match(detail, /class="wt-day-running-actions"/);
-  assert.match(detail, /data-wt-day-add-running data-date-key="\$\{_esc\(key\)\}"/);
-  assert.match(detail, /data-wt-day-upload-running data-date-key="\$\{_esc\(key\)\}"/);
   assert.match(detail, /data-wt-running-upload-input/);
-  assert.match(detail, /class="wt-day-fab wt-day-fab--running"/);
+  assert.doesNotMatch(detail, /class="wt-day-running-actions"/);
+  assert.doesNotMatch(detail, /class="wt-day-fab wt-day-fab--running"/);
+  assert.doesNotMatch(detail, /wt-running-upload-action--dock/);
   assert.doesNotMatch(detail, /class="wt-day-fab"[^>]*onclick=/);
   assert.match(calendarJs, /_bindWorkoutHomeSheetActions\(root\)/);
   assert.match(calendarJs, /function _bindWorkoutHomeSheetActions\(root\)/);
@@ -335,8 +334,8 @@ test('running action dock uses direct sheet bindings for start and screenshot up
   assert.match(calendarJs, /target\?\.closest\?\.\('\[data-wt-day-add-session\]'\)/);
   assert.match(calendarJs, /event\.stopPropagation\(\)/);
   assert.match(calendarJs, /Promise\.resolve\(_addWorkoutHomeSession\(key\)\)/);
-  assert.match(styleCss, /\.wt-day-running-actions\s*\{/);
   assert.match(styleCss, /\.wt-running-upload-action\s*\{/);
+  assert.doesNotMatch(styleCss, /\.wt-day-running-actions\s*\{/);
 });
 
 test('screenshot running records render the stored route image before GPS fallback', () => {
@@ -1037,7 +1036,7 @@ test('workout bottom sheet replaces the third gym session with a dedicated runni
   assert.doesNotMatch(opener, /_loadWorkoutEditorForSession|wtOpenWorkoutRecord/);
   assert.match(calendarJs, /import \{ wtMountRunningSession, wtOpenRunningSession \} from '\.\/workout\/running-session\.js'/);
   assert.match(opener, /wtOpenRunningSession\(\)/);
-  assert.match(styleCss, /\.wt-day-fab--running/);
+  assert.match(styleCss, /\.wt-running-start-inline/);
   assert.match(styleCss, /\.wt-running-empty \.wt-empty-center/);
 });
 
@@ -1077,8 +1076,11 @@ test('running detail card uses the workout read-card shell with aggregated runni
   assert.match(calendarJs, /if \(row\?\.key === 'running'\) return _renderWorkoutRunningDetailCard/);
   assert.match(card, /wt-day-ex-card wt-max-read-card wt-running-read-card/);
   assert.match(card, /data-wt-sheet-card-action="delete-activity"/);
-  assert.match(card, /data-wt-sheet-card-action="toggle-card"/);
+  assert.doesNotMatch(card, /data-wt-sheet-card-action="toggle-card"/);
+  assert.match(card, /data-wt-day-upload-running/);
+  assert.match(card, /data-wt-running-upload-label>추가 업로드/);
   assert.match(card, /data-wt-sheet-card-action="add-running"/);
+  assert.match(card, /<span>러닝 시작<\/span>/);
   assert.doesNotMatch(card, /window\._wtCalToggleExerciseCard|window\._wtCalDeleteActivity|window\._wtCalAddRunning/);
   assert.match(card, /wt-running-distance-hero/);
   assert.match(card, /wt-running-primary-stats/);
@@ -1119,7 +1121,7 @@ test('running detail card uses the workout read-card shell with aggregated runni
   assert.match(styleCss, /\.wt-running-split-table/);
   assert.doesNotMatch(styleCss, /wt-running-route-mini/);
   assert.match(styleCss, /\.wt-running-primary-stats,[\s\S]*\.wt-running-detail-stats\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(styleCss, /\.wt-running-read-card\.is-collapsed \.wt-running-detail-stats/);
+  assert.match(styleCss, /\.wt-running-card-actions button/);
 });
 
 test('running tab stacks multiple running session cards after the gym sessions', () => {

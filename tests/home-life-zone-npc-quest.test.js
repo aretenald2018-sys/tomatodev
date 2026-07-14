@@ -274,6 +274,8 @@ test('life zone running actors render track sprites and a map capture bubble on 
   assert.match(source, /buildVworldTileUrl/);
   assert.match(source, /normalizeRunningMapPoints/);
   assert.match(source, /function _buildRunningMapBubbleData/);
+  assert.match(source, /state: 'image'/);
+  assert.match(source, /mapData\?\.mapImageDataUrl \|\| mapData\?\.routeSummary\?\.mapImageDataUrl/);
   assert.match(source, /const RUNNING_MAP_WIDTH = 300/);
   assert.match(source, /const RUNNING_MAP_HEIGHT = 210/);
   assert.match(source, /const RUNNING_MAP_HOME_MAX_ZOOM = 14/);
@@ -281,6 +283,7 @@ test('life zone running actors render track sprites and a map capture bubble on 
   assert.match(source, /function _zoomForRunningMap\(route = \[\], width = RUNNING_MAP_WIDTH, height = RUNNING_MAP_HEIGHT\)/);
   assert.match(source, /Math\.min\(RUNNING_MAP_HOME_MAX_ZOOM, RUNNING_MAP_MAX_ZOOM, _zoomForRunningMap\(route, RUNNING_MAP_WIDTH, RUNNING_MAP_HEIGHT\)\)/);
   assert.match(source, /function _renderRunningMapSvg/);
+  assert.match(source, /class="\$\{escapeHtml\(className\)\} lz-running-map-image"/);
   assert.match(source, /function _runningMapFallbackHtml/);
   assert.match(source, /function _openRunningRecordModal/);
   assert.match(source, /function _renderRunningRecordStats/);
@@ -348,6 +351,7 @@ test('life zone running actors render track sprites and a map capture bubble on 
   assert.match(css, /cursor: pointer;/);
   assert.match(css, /\.lz-running-map-bubble:focus-visible/);
   assert.match(css, /\.lz-running-map-tile \{/);
+  assert.match(css, /\.lz-running-map-image \{[\s\S]*object-fit: cover;/);
   assert.doesNotMatch(css, /\.lz-running-map-tile \{[^}]*position: absolute;/);
   assert.match(css, /\.lz-running-map-path \{/);
   assert.match(css, /\.lz-running-map-path--casing \{[\s\S]*stroke: rgba\(255, 255, 255, 0\.96\);[\s\S]*stroke-width: 15;/);

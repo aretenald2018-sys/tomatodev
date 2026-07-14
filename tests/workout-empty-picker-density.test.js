@@ -14,17 +14,17 @@ function ruleBody(selector) {
   return match[1];
 }
 
-test('empty workout view keeps the gym add button and adds a compact running action dock', () => {
+test('running tab keeps only session tabs in the bottom bar while gym keeps its add button', () => {
   const start = renderCalendar.indexOf('function _renderWorkoutHomeDetail');
   const end = renderCalendar.indexOf('function _renderWorkoutDetailSummaryCard', start);
   assert.ok(start >= 0 && end > start, 'workout day detail renderer should exist');
   const detail = renderCalendar.slice(start, end);
 
   assert.match(detail, /class="wt-day-sessionbar"[\s\S]*class="wt-day-session-tabs"/);
-  assert.match(detail, /data-wt-day-add-running data-date-key="\$\{_esc\(key\)\}"/);
-  assert.match(detail, /data-wt-day-upload-running data-date-key="\$\{_esc\(key\)\}"/);
-  assert.match(detail, /class="wt-day-fab wt-day-fab--running"/);
-  assert.match(detail, /class="wt-running-upload-action wt-running-upload-action--dock"/);
+  assert.match(detail, /data-wt-running-upload-input data-date-key="\$\{_esc\(key\)\}" hidden/);
+  assert.doesNotMatch(detail, /class="wt-day-running-actions"/);
+  assert.doesNotMatch(detail, /class="wt-day-fab wt-day-fab--running"/);
+  assert.doesNotMatch(detail, /wt-running-upload-action--dock/);
   assert.doesNotMatch(detail, /class="wt-day-fab"[^>]*onclick=/);
   assert.doesNotMatch(detail, /class="wt-day-add-inline"/);
   assert.doesNotMatch(detail, /class="wt-day-edit"/);
@@ -38,10 +38,8 @@ test('empty workout view keeps the gym add button and adds a compact running act
   assert.match(fab, /width:\s*48px/);
   assert.match(fab, /height:\s*48px/);
   assert.match(ruleBody('.cal-workout-day-sheet .wt-day-fab'), /touch-action:\s*manipulation/);
-  assert.match(ruleBody('.wt-day-running-actions'), /display:\s*grid/);
   assert.match(ruleBody('.wt-running-upload-action'), /min-height:\s*44px/);
-  assert.match(ruleBody('.wt-day-fab--running'), /white-space:\s*nowrap/);
-  assert.match(ruleBody('.cal-workout-day-sheet .wt-day-sessionbar[data-running-actions="true"]'), /padding-right:\s*12px/);
+  assert.match(ruleBody('.cal-workout-day-sheet .wt-day-sessionbar[data-running-actions="true"]'), /padding-right:\s*18px/);
 });
 
 test('empty running view offers upload and start with a route illustration', () => {

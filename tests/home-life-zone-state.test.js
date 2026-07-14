@@ -390,6 +390,14 @@ test('builds life zone running map data from live and saved routes', () => {
   assert.deepEqual(saved.route, [{ lat: 37.1, lng: 127.1 }]);
   assert.equal(saved.pointCount, 1);
   assert.equal(saved.placeLabel, '오금동 · 송파구');
+
+  const uploadedMap = 'data:image/webp;base64,QUJDRA==';
+  const imported = getLifeZoneRunningMapData({
+    running: true,
+    runRouteSummary: { distanceKm: 5.5, mapImageDataUrl: uploadedMap }
+  });
+  assert.equal(imported.mapImageDataUrl, uploadedMap);
+  assert.equal(imported.routeSummary.mapImageDataUrl, uploadedMap);
 });
 
 test('life zone running map does not show a location placeholder before geocode resolves', () => {

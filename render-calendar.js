@@ -2165,20 +2165,8 @@ function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, includeHead 
 
       <div class="wt-day-sessionbar" data-running-actions="${runningActive ? 'true' : 'false'}">
         <div class="wt-day-session-tabs">${sessionTabs}</div>
-        ${runningActive ? `
-          <div class="wt-day-running-actions" aria-label="러닝 기록 작업">
-            <button type="button" class="wt-running-upload-action wt-running-upload-action--dock" data-wt-day-upload-running data-date-key="${_esc(key)}" aria-label="러닝 기록 스크린샷 업로드">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
-              <span data-wt-running-upload-label>업로드</span>
-            </button>
-            <button type="button" class="wt-day-fab wt-day-fab--running" data-wt-day-add-running data-date-key="${_esc(key)}" aria-label="러닝 시작">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>
-              <span>시작</span>
-            </button>
-          </div>
-          <input type="file" accept="image/jpeg,image/png,image/webp" data-wt-running-upload-input data-date-key="${_esc(key)}" hidden>
-        ` : ''}
       </div>
+      ${runningActive ? `<input type="file" accept="image/jpeg,image/png,image/webp" data-wt-running-upload-input data-date-key="${_esc(key)}" hidden>` : ''}
       ${runningActive ? '' : `<button type="button" class="wt-day-fab" ${fabAttrs}>＋</button>`}
     </div>
   `;
@@ -2705,8 +2693,6 @@ function _renderWorkoutRunningDetailCard(key, sessionIndex, row, index) {
   const rowSessionIndex = Number.isFinite(Number(row?.sessionIndex))
     ? Math.max(0, Math.floor(Number(row.sessionIndex)))
     : sessionIndex;
-  const cardId = `act:${key}:${rowSessionIndex}:${index}`;
-  const collapsed = _workoutDetailCollapsed.has(cardId);
   const activityKey = String(row.key || '').replace(/[^a-z0-9_-]/gi, '');
   const distanceValue = row.distanceKm > 0 ? _fmtNum(row.distanceKm, 2) : '0.00';
   const durationText = row.durationSec ? _formatDurationShort(row.durationSec) : '';
@@ -2724,7 +2710,7 @@ function _renderWorkoutRunningDetailCard(key, sessionIndex, row, index) {
     { label: '케이던스', value: cadenceText },
   ];
   return `
-    <article class="wt-day-ex-card wt-max-read-card wt-running-read-card ${collapsed ? 'is-collapsed' : 'is-expanded'}">
+    <article class="wt-day-ex-card wt-max-read-card wt-running-read-card is-expanded">
       <div class="wt-max-card-kicker wt-running-card-kicker">
         <span><i></i>${_esc(row.label || '러닝')} · ${_esc(_runningSourceLabel(row.source))}</span>
         <button type="button" data-wt-sheet-card-action="delete-activity" data-date-key="${_esc(key)}" data-session-index="${rowSessionIndex}" data-activity-key="${_esc(activityKey)}" aria-label="러닝 삭제">×</button>
@@ -2748,13 +2734,15 @@ function _renderWorkoutRunningDetailCard(key, sessionIndex, row, index) {
       </div>
       ${_renderRunningGpsStatus(row)}
       ${_renderRunningRouteDetail(row)}
-      <div class="wt-max-collapsed-note">러닝 완료 · 카드가 접혔어요</div>
-      <div class="wt-max-actions">
-        ${collapsed
-          ? `<button type="button" class="wt-max-action-primary is-muted" aria-disabled="true" tabindex="-1">러닝 완료</button>
-             <button type="button" class="wt-max-action-secondary" data-wt-sheet-card-action="toggle-card" data-card-id="${_esc(cardId)}">기록 다시 보기</button>`
-          : `<button type="button" class="wt-max-action-primary" data-wt-sheet-card-action="toggle-card" data-card-id="${_esc(cardId)}">카드 접기</button>
-             <button type="button" class="wt-max-action-secondary" data-wt-sheet-card-action="add-running" data-date-key="${_esc(key)}">다시 측정</button>`}
+      <div class="wt-max-actions wt-running-card-actions">
+        <button type="button" class="wt-max-action-secondary wt-running-card-upload" data-wt-day-upload-running data-date-key="${_esc(key)}" aria-label="러닝 기록 스크린샷 추가 업로드">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
+          <span data-wt-running-upload-label>추가 업로드</span>
+        </button>
+        <button type="button" class="wt-max-action-primary wt-running-card-start" data-wt-sheet-card-action="add-running" data-date-key="${_esc(key)}">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10-6.5z"/></svg>
+          <span>러닝 시작</span>
+        </button>
       </div>
     </article>
   `;

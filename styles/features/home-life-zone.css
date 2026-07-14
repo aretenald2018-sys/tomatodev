@@ -1043,6 +1043,16 @@
 .lz-running-map-overlay {
   z-index: 2;
 }
+.lz-running-map-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+.lz-running-map-bubble--image .lz-running-map-place,
+.lz-running-record-map.lz-running-map-bubble--image .lz-running-map-place {
+  display: none;
+}
 .lz-running-map-path {
   fill: none;
   stroke-linecap: round;
