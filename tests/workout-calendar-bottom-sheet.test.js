@@ -610,6 +610,21 @@ test('day sheet preserves exercise carousel position across set saves', () => {
   assert.match(toggleFn, /\{ preserveSheetScroll: true \}/);
 });
 
+test('workout keypad draft saves do not rerender the app between digits', () => {
+  const saveStart = calendarJs.indexOf('async function _saveWorkoutHomeSessionResult');
+  const saveEnd = calendarJs.indexOf('function _durationFromMinSec', saveStart);
+  assert.ok(saveStart >= 0 && saveEnd > saveStart, 'sheet save function should exist');
+  const saveFn = calendarJs.slice(saveStart, saveEnd);
+  const draftStart = saveFn.indexOf('if (options?.skipRender)');
+  const draftEnd = saveFn.indexOf('const savePromise =', draftStart);
+  assert.ok(draftStart >= 0 && draftEnd > draftStart, 'keypad draft save branch should exist');
+  const draftSave = saveFn.slice(draftStart, draftEnd);
+
+  assert.match(draftSave, /await saveDay\(key, payload, \{ mode: 'merge', rethrow: true \}\)/);
+  assert.doesNotMatch(draftSave, /document\.dispatchEvent/);
+  assert.match(saveFn.slice(draftEnd), /document\.dispatchEvent\(new CustomEvent\('sheet:saved'\)\)/);
+});
+
 test('day sheet exercise card renders prior workout record instead of today set summary', () => {
   const rowStart = calendarJs.indexOf('function _exerciseRows');
   const rowEnd = calendarJs.indexOf('function _workoutMetrics', rowStart);

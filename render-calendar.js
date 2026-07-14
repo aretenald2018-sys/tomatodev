@@ -1142,7 +1142,9 @@ async function _saveWorkoutHomeSessionResult(key, result, options = {}) {
     cache[key] = { ...currentDay, ...payload };
     _syncWorkoutHomeSavedSessionState(key, result, options.sessionIndex);
     await saveDay(key, payload, { mode: 'merge', rethrow: true });
-    document.dispatchEvent(new CustomEvent('sheet:saved'));
+    // `sheet:saved` invokes app-level renderAll(). Dispatching it between keypad
+    // taps replaces the active readonly input, so a fast second digit can be
+    // dropped. The final commit below still dispatches the normal saved event.
     return;
   }
   const savePromise = saveDay(key, payload, { mode: 'merge', rethrow: true });

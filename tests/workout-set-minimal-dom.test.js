@@ -536,19 +536,19 @@ test('custom workout set keypad enters values and moves left or right across inl
       };
     });
 
-    await tapSelector('[data-wt-set-keyboard-key="5"]');
-    await tapSelector('[data-wt-set-keyboard-key="5"]');
+    await tapSelector('[data-wt-set-keyboard-key="8"]');
+    await tapSelector('[data-wt-set-keyboard-key="0"]');
     const typedKg = await page.evaluate(() => ({
       value: document.activeElement?.value ?? null,
       dirty: document.activeElement?.getAttribute('data-wt-set-keyboard-dirty') || '',
     }));
-    await page.waitForFunction(() => window.__entry.sets[0]?.kg === 55);
+    await page.waitForFunction(() => window.__entry.sets[0]?.kg === 80);
     typedKg.persistedKg = await page.evaluate(() => window.__entry.sets[0]?.kg ?? null);
 
     const renderBeforeNext = await page.evaluate(() => window.__renderCalls);
     await tapSelector('[data-wt-set-keyboard-action="next"]');
     await page.waitForFunction(() => (
-      window.__entry.sets[0]?.kg === 55
+      window.__entry.sets[0]?.kg === 80
       && document.activeElement?.matches?.('[data-wt-set-inline-input][data-field="reps"][data-set-index="0"]')
     ), { timeout: 1500 });
     const afterNextMove = await page.evaluate((before) => ({
@@ -606,16 +606,16 @@ test('custom workout set keypad enters values and moves left or right across inl
     hasNext: true,
     sheetPadded: true,
   });
-  assert.deepEqual(result.typedKg, { value: '55', dirty: 'true', persistedKg: 55 });
+  assert.deepEqual(result.typedKg, { value: '80', dirty: 'true', persistedKg: 80 });
   assert.deepEqual(result.afterNextMove, { renderDelta: 1, activeField: 'reps', keyboardOpen: true });
   assert.deepEqual(result.afterPrevMove, { renderDelta: 1, activeField: 'kg', keyboardOpen: true });
   assert.equal(result.afterPrev.activeField, 'kg');
   assert.equal(result.afterPrev.activeValue, '');
-  assert.deepEqual(result.afterPrev.sets[0], { kg: 55, reps: 15, rir: 2, romPct: 100, setType: 'main', done: false });
+  assert.deepEqual(result.afterPrev.sets[0], { kg: 80, reps: 15, rir: 2, romPct: 100, setType: 'main', done: false });
   assert.equal(result.afterPrev.keyboardOpen, true);
   assert.ok(result.afterPrev.syncActions.filter(action => action === 'sheet:set-inline-field').length >= 3);
   assert.ok(result.afterPrev.mutationOptions.every(options => options.preserveSheetScroll === true));
-  assert.equal(result.hidden.sets[0].kg, 55);
+  assert.equal(result.hidden.sets[0].kg, 80);
   assert.equal(result.hidden.sets[0].reps, 15);
   assert.equal(result.hidden.sets[0].done, true);
   assert.equal(result.hidden.firstCompletedAtIsNumber, true);
