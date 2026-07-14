@@ -19,6 +19,7 @@ import { renderCharacterSVG } from './character.js';
 import { hydrateLifeZoneCard, renderLifeZoneCard } from './life-zone.js';
 import { showToast, haptic, resolveNickname, showConfetti } from './utils.js';
 import { confirmSimple } from '../utils/confirm-modal.js';
+import { openCheckinModal } from '../feature-checkin.js';
 import { openTomatoGiftModal } from './friend-profile.js';
 
 const TOMATO_STAGES = [
