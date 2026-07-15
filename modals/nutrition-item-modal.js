@@ -937,7 +937,12 @@ function _bindNutritionItemActions(root = document) {
     const control = event.target?.closest?.('[data-nutrition-item-action]');
     if (!control) return;
     const action = control.dataset.nutritionItemAction;
-    if (action === 'close') closeNutritionItemModal(event);
+    if (action === 'close') {
+      const modal = document.getElementById('nutrition-item-modal');
+      // Backdrop clicks close only when the backdrop itself was pressed, while
+      // an explicit close/cancel control inside the sheet must always close.
+      if (control !== modal || event.target === modal) closeNutritionItemModal();
+    }
     if (action === 'click-input') document.getElementById(control.dataset.inputId || '')?.click();
     if (action === 'clear-photo') clearNutritionPhoto();
     if (action === 'analyze-text') void analyzeNutritionText();

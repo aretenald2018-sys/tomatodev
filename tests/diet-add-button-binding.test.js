@@ -11,6 +11,7 @@ const workoutUiJs = readFileSync('workout-ui.js', 'utf8');
 const workoutRenderJs = readFileSync('workout/render.js', 'utf8');
 const featureNutritionJs = readFileSync('feature-nutrition.js', 'utf8');
 const nutritionSearchModalJs = readFileSync('modals/nutrition-search-modal.js', 'utf8');
+const nutritionItemModalJs = readFileSync('modals/nutrition-item-modal.js', 'utf8');
 const styleCss = readAppCssSync();
 
 function createMealSkipHarness() {
@@ -74,6 +75,17 @@ test('photo registration replaces the search sheet with a ready photo editor', (
   assert.match(featureNutritionJs, /if \(action === 'open-photo-add'\) void openNutritionPhotoAdd\(\)/);
   assert.match(workoutRenderJs, /export async function openNutritionPhotoUpload\(\)[\s\S]*await ensureModal\('nutrition-item-modal'\)[\s\S]*closeModal\('nutrition-search-modal'\)[\s\S]*switchNutritionTab\('photo'\)/);
   assert.doesNotMatch(workoutRenderJs, /setTimeout\(\(\) => switchNutritionTab\('photo'\)/);
+});
+
+test('nutrition item cancel closes explicitly without turning sheet clicks into backdrop closes', () => {
+  assert.match(
+    nutritionItemModalJs,
+    /if \(action === 'close'\) \{[\s\S]*?if \(control !== modal \|\| event\.target === modal\) closeNutritionItemModal\(\);[\s\S]*?\}/,
+  );
+  assert.doesNotMatch(
+    nutritionItemModalJs,
+    /if \(action === 'close'\) closeNutritionItemModal\(event\)/,
+  );
 });
 
 test('skip meals have one static action owner and retain duplicate-delivery protection', () => {
