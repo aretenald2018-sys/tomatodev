@@ -1611,7 +1611,7 @@
 
 @media (max-width: 430px) {
   .cal-workout-surface-home {
-    --cal-cycle-rail-width: 94px;
+    --cal-cycle-rail-width: 64px;
     --wt-calendar-scroll-gutter: max(18px, env(safe-area-inset-right, 0px));
   }
   .cal-workout-surface-home .cal-weekdays {
@@ -1625,31 +1625,13 @@
     min-height: 128px;
   }
   .cal-workout-week-rail {
+    gap: 6px;
     padding: 7px 3px 7px 5px;
+    font-size: 10px;
   }
+  .cal-workout-week-rail strong { font-size: 12px; }
   .cal-week-rail-spacer {
     padding: 5px 3px;
-  }
-  .cal-goal-card {
-    min-height: 26px;
-    padding: 3px 4px;
-  }
-  .cal-cycle-goal-input {
-    min-height: 22px;
-    padding: 2px 4px;
-    font-size: 8.5px;
-    line-height: 10px;
-  }
-  .cal-week-rail-spacer .cal-cycle-goal-input {
-    padding: 2px 3px;
-    font-size: 8px;
-  }
-  .cal-goal-card-head b,
-  .cal-goal-card-head strong {
-    font-size: 8px;
-  }
-  .cal-goal-card-meta {
-    font-size: 7.5px;
   }
   .cal-workout-surface-home .cal-workout-cell {
     padding: 7px 1px 4px;

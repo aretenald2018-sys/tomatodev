@@ -93,16 +93,6 @@
   font-weight: 800;
   line-height: 1.2;
 }
-.cal-workout-week-rail.is-season-archived { background: #f4f5f7; }
-.cal-workout-week-rail.is-season-archived .cal-goal-card {
-  border-color: #d6dade;
-  background: #e7eaed;
-  color: #69727a;
-}
-.cal-workout-week-rail.is-season-archived .cal-goal-card b,
-.cal-workout-week-rail.is-season-archived .cal-goal-card strong,
-.cal-workout-week-rail.is-season-archived .cal-goal-card-meta { color: #737b83; }
-.cal-workout-week-rail.is-season-archived .cal-goal-part-bookmark { background: #8a9299; }
 .cal-day-season-badge {
   display: inline-flex;
   width: max-content;
