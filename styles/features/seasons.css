@@ -92,6 +92,7 @@
 
 .workout-season-modal { z-index: 10080; align-items: flex-end; }
 .workout-season-sheet {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: min(680px, 100%);
@@ -182,16 +183,52 @@
 .season-mapping-alert > label { display: grid; grid-template-columns: minmax(90px, .8fr) minmax(0, 1.4fr); align-items: center; gap: 8px; }
 .season-mapping-alert > label > span { overflow: hidden; color: #633f3a; font-size: 11px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
 .season-mapping-alert select { width: 100%; min-height: 40px; padding: 0 9px; border: 1px solid #dfb3ac; border-radius: 9px; background: #fff; color: #2e3439; font: inherit; font-size: 11px; }
-.season-exercise-groups { display: grid; gap: 18px; }
+.season-exercise-tabs {
+  display: flex;
+  gap: 3px;
+  margin: -3px -18px 15px;
+  padding: 0 12px;
+  overflow-x: auto;
+  border-bottom: 1px solid #e7eaed;
+  scrollbar-width: none;
+}
+.season-exercise-tabs::-webkit-scrollbar { display: none; }
+.season-exercise-tabs button {
+  position: relative;
+  flex: 1 0 64px;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-height: 48px;
+  padding: 7px 8px 9px;
+  border: 0;
+  background: transparent;
+  color: #59636c;
+}
+.season-exercise-tabs button::after {
+  position: absolute;
+  right: 8px;
+  bottom: 0;
+  left: 8px;
+  height: 3px;
+  border-radius: 999px 999px 0 0;
+  background: transparent;
+  content: '';
+}
+.season-exercise-tabs button span { font-size: 12px; font-weight: 800; white-space: nowrap; }
+.season-exercise-tabs button small { color: #979ea5; font-size: 8px; }
+.season-exercise-tabs button.is-active { color: #d74f47; }
+.season-exercise-tabs button.is-active::after { background: #df554c; }
+.season-exercise-tabs button.is-active small { color: #b65a53; }
 .season-exercise-group { display: grid; gap: 8px; }
 .season-exercise-group > header { display: flex; align-items: center; justify-content: space-between; padding: 0 2px; }
 .season-exercise-group > header strong { color: #313a42; font-size: 14px; }
 .season-exercise-group > header span { color: #8a9299; font-size: 10px; }
-.season-exercise-list { display: grid; gap: 9px; }
-.season-exercise-card { overflow: hidden; border: 1px solid #dfe3e7; border-radius: 13px; background: #fff; transition: border-color .16s ease, background .16s ease; }
-.season-exercise-card > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 56px; padding: 9px 11px; }
+.season-exercise-list { display: grid; gap: 8px; }
+.season-exercise-card { overflow: hidden; border: 1px solid #dfe3e7; border-radius: 12px; background: #fff; transition: border-color .16s ease, background .16s ease; }
+.season-exercise-card > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; padding: 7px 10px; }
 .season-exercise-card > header > label { display: flex; min-width: 0; align-items: center; gap: 10px; }
-.season-exercise-card > header input[type="checkbox"] { flex: none; width: 19px; height: 19px; accent-color: #d9574d; }
+.season-exercise-card > header input[type="checkbox"] { flex: none; width: 18px; height: 18px; accent-color: #d9574d; }
 .season-exercise-card > header label > span { min-width: 0; display: grid; gap: 2px; }
 .season-exercise-card > header b { overflow: hidden; color: #28323a; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .season-exercise-card > header small { color: #78818a; font-size: 9px; }
@@ -200,25 +237,58 @@
 .season-exercise-card.is-disabled { background: #f5f6f7; }
 .season-exercise-card.is-disabled .season-card-settings { opacity: .48; }
 .season-card-settings { border-top: 1px solid #edf0f2; background: #fafbfc; transition: opacity .16s ease; }
-.season-normal-settings { display: grid; grid-template-columns: minmax(130px, .75fr) minmax(220px, 1.25fr); align-items: end; gap: 12px; padding: 11px; }
-.season-baseline-field { display: grid; gap: 5px; }
-.season-baseline-field > span:first-child,
-.season-normal-settings legend { color: #66717a; font-size: 10px; font-weight: 800; }
-.season-input-unit { display: flex; align-items: center; min-height: 42px; padding: 0 10px; border: 1px solid #d8dde2; border-radius: 10px; background: #fff; }
+.season-goal-row { display: grid; grid-template-columns: minmax(82px, .8fr) minmax(104px, 1fr) minmax(106px, 1fr); align-items: end; gap: 7px; padding: 8px 10px 10px; }
+.season-compact-field { display: grid; min-width: 0; gap: 4px; }
+.season-compact-field > span:first-child { color: #66717a; font-size: 9px; font-weight: 800; }
+.season-compact-field select {
+  width: 100%;
+  min-height: 38px;
+  box-sizing: border-box;
+  padding: 0 25px 0 8px;
+  border: 1px solid #d8dde2;
+  border-radius: 9px;
+  background: #fff;
+  color: #303940;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+}
+.season-program-field select { color: #8d463f; }
+.season-input-unit { display: flex; align-items: center; min-height: 38px; padding: 0 8px; border: 1px solid #d8dde2; border-radius: 9px; background: #fff; }
 .season-input-unit input { min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; color: #222b32; font: inherit; font-size: 13px; }
 .season-input-unit b { color: #7b848c; font-size: 10px; }
-.season-normal-settings fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
-.season-normal-settings legend { margin-bottom: 5px; }
-.season-increment-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
-.season-increment-options label { min-width: 0; }
-.season-increment-options input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-.season-increment-options span { display: grid; min-height: 42px; place-items: center; box-sizing: border-box; padding: 0 4px; border: 1px solid #d8dde2; border-radius: 9px; background: #fff; color: #626e77; font-size: 10px; font-weight: 800; }
-.season-increment-options input:checked + span { border-color: #d9574d; background: #fff0ed; color: #a9473e; box-shadow: inset 0 0 0 1px #d9574d; }
-.season-wendler-settings { padding: 11px; }
-.season-ssot-link { display: flex; align-items: baseline; gap: 6px; margin-bottom: 9px; }
-.season-ssot-link span { color: #7a858e; font-size: 9px; font-weight: 800; }
-.season-ssot-link strong { color: #2c6a4d; font-size: 11px; }
-.season-ssot-link small { overflow: hidden; color: #9aa1a7; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.season-wendler-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+.season-wendler-summary span { display: grid; gap: 2px; min-height: 38px; place-content: center; border: 1px solid #ead8d5; border-radius: 9px; background: #fff; color: #8b6d69; font-size: 8px; text-align: center; }
+.season-wendler-summary b { color: #9c453e; font-size: 11px; }
+.season-wendler-open { min-height: 38px; padding: 0 7px; border: 1px solid #d9574d; border-radius: 9px; background: #fff2ef; color: #a9473e; font-size: 10px; font-weight: 900; }
+.season-goal-row :disabled { cursor: default; }
+
+.season-wendler-editor-backdrop { position: absolute; inset: 0; z-index: 5; display: flex; align-items: flex-end; background: rgba(25, 29, 33, .46); }
+.season-wendler-editor { display: flex; flex-direction: column; width: 100%; max-height: 94%; overflow: hidden; border-radius: 19px 19px 0 0; background: #fff; box-shadow: 0 -12px 35px rgba(24, 29, 34, .18); }
+.season-wendler-editor > header { display: flex; align-items: center; justify-content: space-between; padding: 15px 17px 11px; border-bottom: 1px solid #eaedef; }
+.season-wendler-editor > header > div { display: grid; gap: 2px; }
+.season-wendler-editor > header span { color: #9d4b43; font-size: 8px; font-weight: 900; letter-spacing: .1em; }
+.season-wendler-editor > header h3 { margin: 0; color: #222b32; font-size: 18px; }
+.season-wendler-editor > header button { width: 38px; height: 38px; border: 0; border-radius: 50%; background: #f1f3f5; color: #59616a; font-size: 23px; }
+.season-wendler-editor-body { flex: 1; padding: 14px 17px; overflow-y: auto; }
+.season-wendler-exercise { display: flex; align-items: baseline; gap: 6px; margin-bottom: 12px; padding: 9px 10px; border-radius: 9px; background: #eff7f2; }
+.season-wendler-exercise span { color: #658171; font-size: 9px; font-weight: 800; }
+.season-wendler-exercise strong { color: #285e43; font-size: 12px; }
+.season-wendler-exercise small { min-width: 0; overflow: hidden; color: #83a091; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.season-ten-rm-box { display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, .55fr); align-items: end; gap: 12px; margin: 2px 0 11px; padding: 11px; border: 1px solid #ebd1cd; border-radius: 11px; background: #fff7f5; }
+.season-ten-rm-box > div { display: grid; gap: 3px; }
+.season-ten-rm-box > div strong { color: #853d36; font-size: 12px; }
+.season-ten-rm-box > div small { color: #876e6b; font-size: 9px; line-height: 1.45; }
+.season-ten-rm-box > label { display: grid; gap: 4px; }
+.season-ten-rm-box > label > span:first-child { color: #725b58; font-size: 9px; font-weight: 800; }
+.season-wendler-calc { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 9px; margin-bottom: 13px; }
+.season-wendler-calc span { display: grid; justify-items: center; gap: 3px; padding: 9px; border-radius: 10px; background: #f3f5f7; color: #747d85; font-size: 9px; }
+.season-wendler-calc strong { color: #28323a; font-size: 15px; }
+.season-wendler-calc i { color: #acb2b8; font-size: 14px; font-style: normal; }
+.season-wendler-editor-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.season-wendler-note { margin: 0; padding: 9px 10px; border-radius: 9px; background: #f5f7f8; color: #68737c; font-size: 9px; line-height: 1.5; }
+.season-wendler-editor > footer { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; padding: 11px 15px max(11px, env(safe-area-inset-bottom)); border-top: 1px solid #e9ecef; background: #fff; }
+.season-wendler-editor > footer button { min-height: 46px; border-radius: 11px; font-size: 12px; font-weight: 900; }
 .season-program-list { display: grid; gap: 10px; }
 .season-program-card { padding: 12px; border: 1px solid #e0e4e8; border-radius: 12px; background: #fafbfc; }
 .season-program-card header { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
@@ -242,6 +312,9 @@
 
 @media (max-width: 520px) {
   .season-field-row-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .season-normal-settings { grid-template-columns: 1fr; }
   .season-sheet-body { padding: 15px; }
+  .season-exercise-tabs { margin-right: -15px; margin-left: -15px; }
+  .season-goal-row { grid-template-columns: minmax(76px, .78fr) minmax(96px, 1fr) minmax(96px, 1fr); }
+  .season-wendler-editor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .season-wendler-editor-grid .season-field:first-child { grid-column: 1 / -1; }
 }

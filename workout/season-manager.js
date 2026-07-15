@@ -12,9 +12,11 @@ import {
 import {
   activeBenchmarks,
   currentKgOf,
+  roundToPlate,
 } from './test-v2/board-core.js';
 import {
   buildSeasonExerciseSetup,
+  calculateSeasonWendlerFromTenRm,
   SEASON_NORMAL_INCREMENTS_KG,
   SEASON_NORMAL_PROGRESSION_WEEKS,
   seasonResetPreview,
@@ -66,6 +68,39 @@ function _normalIncrement(benchmark, groupId) {
   return groupId === 'lower' ? 5 : 2.5;
 }
 
+function _configurationFor(exerciseId) {
+  return _state?.exerciseSetup?.configurations?.find(configuration => configuration.exerciseId === exerciseId) || null;
+}
+
+function _wendlerDraft(configuration) {
+  const id = configuration.exerciseId;
+  const override = _state.overrides[id] || {};
+  const benchmark = configuration.benchmark;
+  const profileId = override.wendler?.profileId || inferW863Profile({
+    ...benchmark,
+    exerciseId: id,
+    movementId: configuration.movementId,
+    label: configuration.label,
+    primaryMajor: configuration.groupId,
+  });
+  const profile = W863_ORIGINAL_PROFILES[profileId] || Object.values(W863_ORIGINAL_PROFILES)[0];
+  const roundKg = Number(override.wendler?.roundKg) || Number(benchmark?.wendler?.roundKg) || 2.5;
+  const oneRmKg = Number(override.wendler?.oneRmKg)
+    || Number(benchmark?.wendler?.oneRmKg)
+    || Number(benchmark?.wendler?.tmKg) / 0.9
+    || profile.reference1RmKg;
+  return {
+    profileId,
+    tenRmKg: Number(override.wendler?.tenRmKg) || 0,
+    oneRmKg: Math.round(oneRmKg * 10) / 10,
+    tmKg: roundToPlate(oneRmKg * 0.9, roundKg),
+    incrementKg: Number(override.wendler?.incrementKg)
+      || Number(benchmark?.wendler?.incrementKg)
+      || profile.defaultIncrementKg,
+    roundKg,
+  };
+}
+
 function _syncExerciseSetup(state) {
   const setup = buildSeasonExerciseSetup({
     registeredExercises: state.exercises,
@@ -76,7 +111,10 @@ function _syncExerciseSetup(state) {
   for (const configuration of setup.configurations) {
     const id = configuration.exerciseId;
     const previous = overrides[id] || {};
-    if (configuration.program === 'wendler') {
+    const program = previous.program === 'wendler' || previous.program === 'stair'
+      ? previous.program
+      : configuration.program;
+    if (program === 'wendler') {
       const benchmark = configuration.benchmark;
       const profileId = previous.wendler?.profileId || inferW863Profile({
         ...benchmark,
@@ -87,22 +125,25 @@ function _syncExerciseSetup(state) {
       const profile = W863_ORIGINAL_PROFILES[profileId] || Object.values(W863_ORIGINAL_PROFILES)[0];
       overrides[id] = {
         ...previous,
-        benchmarkId: benchmark.id,
+        program: 'wendler',
+        benchmarkId: benchmark?.id || configuration.benchmarkId,
         wendler: {
           profileId,
           oneRmKg: Number(previous.wendler?.oneRmKg)
-            || Number(benchmark.wendler?.oneRmKg)
-            || Number(benchmark.wendler?.tmKg) / 0.9
+            || Number(benchmark?.wendler?.oneRmKg)
+            || Number(benchmark?.wendler?.tmKg) / 0.9
             || profile.reference1RmKg,
           incrementKg: Number(previous.wendler?.incrementKg)
-            || Number(benchmark.wendler?.incrementKg)
+            || Number(benchmark?.wendler?.incrementKg)
             || profile.defaultIncrementKg,
-          roundKg: Number(previous.wendler?.roundKg) || Number(benchmark.wendler?.roundKg) || 5,
+          roundKg: Number(previous.wendler?.roundKg) || Number(benchmark?.wendler?.roundKg) || 2.5,
+          ...(Number(previous.wendler?.tenRmKg) > 0 ? { tenRmKg: Number(previous.wendler.tenRmKg) } : {}),
         },
       };
     } else {
       overrides[id] = {
         ...previous,
+        program: 'stair',
         benchmarkId: configuration.benchmarkId,
         baselineKg: Number.isFinite(Number(previous.baselineKg))
           ? Number(previous.baselineKg)
@@ -139,10 +180,15 @@ function _initialState() {
     overrides: {},
     weeklySessionTarget: 3,
     runningPlan: { weeklyDistanceKm: 20, weeklySessions: 3, optionalDurationMin: 120 },
+    activeGroupId: null,
+    wendlerEditor: null,
     clientRequestId: _requestId(),
     saving: false,
   };
   _syncExerciseSetup(state);
+  state.activeGroupId = GROUP_ORDER.find(groupId => (
+    state.exerciseSetup.configurations.some(configuration => configuration.groupId === groupId)
+  )) || 'other';
   return state;
 }
 
@@ -197,36 +243,65 @@ function _exerciseStep() {
     groupId,
     items: configurations.filter(configuration => configuration.groupId === groupId),
   })).filter(group => group.items.length);
+  if (!grouped.some(group => group.groupId === _state.activeGroupId)) {
+    _state.activeGroupId = grouped[0]?.groupId || 'other';
+  }
+  const activeGroup = grouped.find(group => group.groupId === _state.activeGroupId) || grouped[0] || { groupId: 'other', items: [] };
+  const tabs = grouped.map(({ groupId, items }) => {
+    const selectedCount = items.filter(item => _state.selectedExerciseIds.has(item.exerciseId)).length;
+    return `<button type="button" class="${groupId === activeGroup.groupId ? 'is-active' : ''}" data-season-action="select-group" data-season-group="${_esc(groupId)}" aria-pressed="${groupId === activeGroup.groupId}"><span>${_esc(GROUP_LABELS[groupId] || groupId)}</span><small>${selectedCount}/${items.length}</small></button>`;
+  }).join('');
   return `
     <div class="season-step-copy"><strong>부위별 종목 · 새 시즌 목표</strong><p>등록 운동의 ID와 이름을 그대로 사용합니다. 체크한 종목만 새 시즌 W1 또는 3주 증량 목표로 시작합니다.</p></div>
     ${mappingHtml}
-    <div class="season-exercise-groups">${grouped.map(({ groupId, items }) => `<section class="season-exercise-group">
-      <header><strong>${GROUP_LABELS[groupId] || groupId}</strong><span>${items.length}종목</span></header>
-      <div class="season-exercise-list">${items.map((configuration) => {
+    <nav class="season-exercise-tabs" aria-label="운동 부위">${tabs}</nav>
+    <section class="season-exercise-group">
+      <header><strong>${GROUP_LABELS[activeGroup.groupId] || activeGroup.groupId}</strong><span>${activeGroup.items.length}종목</span></header>
+      <div class="season-exercise-list">${activeGroup.items.map((configuration) => {
         const id = configuration.exerciseId;
         const selected = _state.selectedExerciseIds.has(id);
         const config = _state.overrides[id];
-        const isWendler = configuration.program === 'wendler';
+        const isWendler = config.program === 'wendler';
+        const wendler = config.wendler || _wendlerDraft(configuration);
+        const tmKg = roundToPlate(Number(wendler.oneRmKg) * 0.9, Number(wendler.roundKg) || 2.5);
         return `<section class="season-exercise-card${selected ? '' : ' is-disabled'}" data-season-exercise-card="${_esc(id)}">
           <header>
-            <label><input type="checkbox" data-season-exercise="${_esc(id)}" ${selected ? 'checked' : ''}><span><b>${_esc(configuration.label)}</b><small>${isWendler ? '등록 종목에 연결된 8/6/3 원본' : '일반 3주 증량'}</small></span></label>
-            <em class="${isWendler ? 'is-wendler' : ''}">${isWendler ? 'W1' : '+ 목표'}</em>
+            <label><input type="checkbox" data-season-exercise="${_esc(id)}" ${selected ? 'checked' : ''}><span><b>${_esc(configuration.label)}</b><small>${_esc(GROUP_LABELS[configuration.groupId] || configuration.groupId)} · ID ${_esc(id)}</small></span></label>
+            <em class="${isWendler ? 'is-wendler' : ''}">${isWendler ? 'W1 시작' : '3주 증량'}</em>
           </header>
-          ${isWendler ? `<div class="season-card-settings season-wendler-settings">
-            <div class="season-ssot-link"><span>기록 종목</span><strong>${_esc(configuration.label)}</strong><small>ID · ${_esc(id)}</small></div>
-            <div class="season-field-row season-field-row-4">
-              <label class="season-field"><span>리프트</span><select data-season-wendler="profileId" ${selected ? '' : 'disabled'}>${Object.values(W863_ORIGINAL_PROFILES).map(profile => `<option value="${profile.id}" ${profile.id === config.wendler.profileId ? 'selected' : ''}>${_esc(profile.label)}</option>`).join('')}</select></label>
-              <label class="season-field"><span>현재 1RM</span><input type="number" inputmode="decimal" min="1" step="0.5" data-season-wendler="oneRmKg" value="${config.wendler.oneRmKg}" ${selected ? '' : 'disabled'}></label>
-              <label class="season-field"><span>증량 kg</span><input type="number" inputmode="decimal" min="0.5" step="0.5" data-season-wendler="incrementKg" value="${config.wendler.incrementKg}" ${selected ? '' : 'disabled'}></label>
-              <label class="season-field"><span>반올림 kg</span><input type="number" inputmode="decimal" min="0.5" step="0.5" data-season-wendler="roundKg" value="${config.wendler.roundKg}" ${selected ? '' : 'disabled'}></label>
-            </div>
-          </div>` : `<div class="season-card-settings season-normal-settings">
-            <label class="season-baseline-field"><span>최초 기준중량</span><span class="season-input-unit"><input type="number" inputmode="decimal" min="0" step="0.25" data-season-normal="baselineKg" value="${config.baselineKg}" ${selected ? '' : 'disabled'}><b>kg</b></span></label>
-            <fieldset ${selected ? '' : 'disabled'}><legend>3주마다 증량</legend><div class="season-increment-options">${SEASON_NORMAL_INCREMENTS_KG.map(increment => `<label><input type="radio" name="season-increment-${_esc(id)}" data-season-normal="incrementKg" value="${increment}" ${Number(config.incrementKg) === increment ? 'checked' : ''}><span>+${increment}kg</span></label>`).join('')}</div></fieldset>
-          </div>`}
+          <div class="season-card-settings season-goal-row">
+            <label class="season-compact-field season-program-field"><span>프로그램</span><select data-season-program="program" ${selected ? '' : 'disabled'}><option value="stair" ${isWendler ? '' : 'selected'}>일반</option><option value="wendler" ${isWendler ? 'selected' : ''}>8/6/3</option></select></label>
+            ${isWendler ? `<div class="season-wendler-summary"><span>1RM <b>${_esc(wendler.oneRmKg)}kg</b></span><span>TM <b>${_esc(tmKg)}kg</b></span></div><button type="button" class="season-wendler-open" data-season-action="open-wendler" data-exercise-id="${_esc(id)}" ${selected ? '' : 'disabled'}>목표 설정</button>` : `<label class="season-compact-field"><span>기준중량</span><span class="season-input-unit"><input type="number" inputmode="decimal" min="0" step="0.25" data-season-normal="baselineKg" value="${config.baselineKg}" ${selected ? '' : 'disabled'}><b>kg</b></span></label><label class="season-compact-field"><span>3주 증량</span><select data-season-normal="incrementKg" ${selected ? '' : 'disabled'}>${SEASON_NORMAL_INCREMENTS_KG.map(increment => `<option value="${increment}" ${Number(config.incrementKg) === increment ? 'selected' : ''}>+${increment}kg</option>`).join('')}</select></label>`}
+          </div>
         </section>`;
       }).join('')}</div>
-    </section>`).join('')}</div>`;
+    </section>`;
+}
+
+function _wendlerEditorHtml() {
+  const editor = _state.wendlerEditor;
+  if (!editor) return '';
+  const configuration = _configurationFor(editor.exerciseId);
+  if (!configuration) return '';
+  const draft = editor.draft;
+  return `<div class="season-wendler-editor-backdrop">
+    <section class="season-wendler-editor" role="dialog" aria-modal="true" aria-labelledby="season-wendler-title">
+      <header><div><span>8/6/3 ORIGINAL</span><h3 id="season-wendler-title">웬들러 목표 설정</h3></div><button type="button" data-season-action="wendler-cancel" aria-label="닫기">×</button></header>
+      <div class="season-wendler-editor-body">
+        <div class="season-wendler-exercise"><span>기록 종목</span><strong>${_esc(configuration.label)}</strong><small>ID · ${_esc(configuration.exerciseId)}</small></div>
+        <label class="season-field"><span>리프트 프로필</span><select data-season-wendler-draft="profileId">${Object.values(W863_ORIGINAL_PROFILES).map(profile => `<option value="${profile.id}" ${profile.id === draft.profileId ? 'selected' : ''}>${_esc(profile.label)}</option>`).join('')}</select></label>
+        <section class="season-ten-rm-box"><div><strong>10RM 자동 환산</strong><small>10회 수행 가능한 중량을 입력하면 Epley 공식으로 1RM과 TM(90%)을 계산합니다.</small></div><label><span>10RM</span><span class="season-input-unit"><input type="number" inputmode="decimal" min="0" step="0.5" data-season-wendler-draft="tenRmKg" value="${draft.tenRmKg || ''}" placeholder="예: 50"><b>kg</b></span></label></section>
+        <div class="season-wendler-calc" aria-live="polite"><span>추정 1RM<strong data-season-wendler-calc-one-rm>${_esc(draft.oneRmKg)}kg</strong></span><i>→</i><span>시작 TM<strong data-season-wendler-calc-tm>${_esc(draft.tmKg)}kg</strong></span></div>
+        <div class="season-wendler-editor-grid">
+          <label class="season-field"><span>1RM 직접 조정</span><input type="number" inputmode="decimal" min="1" step="0.1" data-season-wendler-draft="oneRmKg" value="${draft.oneRmKg}"></label>
+          <label class="season-field"><span>사이클 증량</span><select data-season-wendler-draft="incrementKg">${SEASON_NORMAL_INCREMENTS_KG.map(increment => `<option value="${increment}" ${Number(draft.incrementKg) === increment ? 'selected' : ''}>+${increment}kg</option>`).join('')}</select></label>
+          <label class="season-field"><span>중량 반올림</span><select data-season-wendler-draft="roundKg">${[0.5, 1.25, 2.5, 5].map(unit => `<option value="${unit}" ${Number(draft.roundKg) === unit ? 'selected' : ''}>${unit}kg</option>`).join('')}</select></label>
+        </div>
+        <p class="season-wendler-note">이 종목의 기존 기록은 유지되고, 새 시즌에서는 연결된 등록 종목명으로 W1부터 다시 시작합니다.</p>
+      </div>
+      <footer><button type="button" class="season-secondary" data-season-action="wendler-cancel">취소</button><button type="button" class="season-primary" data-season-action="wendler-apply">이 목표 적용</button></footer>
+    </section>
+  </div>`;
 }
 
 function _runningStep() {
@@ -245,6 +320,7 @@ function _previewStep() {
   const preview = seasonResetPreview(_state.board, selected, {
     registeredExercises: _state.exercises,
     benchmarkMappings: _state.benchmarkMappings,
+    overrides: _state.overrides,
   });
   const current = findSeasonForDate(_state.registry, addSeasonDays(_state.season.startDate, -1));
   return `
@@ -272,7 +348,59 @@ function _render() {
     <footer class="season-sheet-actions">
       <button type="button" class="season-secondary" data-season-action="${_state.step ? 'back' : 'close'}">${_state.step ? '이전' : '취소'}</button>
       <button type="button" class="season-primary" data-season-action="${_state.step === STEP_LABELS.length - 1 ? 'save' : 'next'}" ${_state.saving ? 'disabled' : ''}>${_state.saving ? '시즌 생성 중…' : _state.step === STEP_LABELS.length - 1 ? '이 설정으로 시즌 시작' : '다음'}</button>
-    </footer>`;
+    </footer>
+    ${_wendlerEditorHtml()}`;
+}
+
+function _openWendlerEditor(exerciseId, previousProgram = null) {
+  const configuration = _configurationFor(exerciseId);
+  if (!configuration) return false;
+  const override = _state.overrides[exerciseId] || {};
+  const fromProgram = previousProgram || override.program || configuration.program || 'stair';
+  override.program = 'wendler';
+  _state.overrides[exerciseId] = override;
+  _state.wendlerEditor = {
+    exerciseId,
+    previousProgram: fromProgram,
+    draft: _wendlerDraft(configuration),
+  };
+  return true;
+}
+
+function _cancelWendlerEditor() {
+  const editor = _state?.wendlerEditor;
+  if (!editor) return;
+  if (editor.previousProgram !== 'wendler') {
+    _state.overrides[editor.exerciseId].program = 'stair';
+  }
+  _state.wendlerEditor = null;
+}
+
+function _applyWendlerEditor() {
+  const editor = _state?.wendlerEditor;
+  if (!editor) return false;
+  const draft = editor.draft;
+  if (!(Number(draft.oneRmKg) > 0)) {
+    showToast('1RM 또는 10RM 중량을 입력해 주세요.', 2200, 'error');
+    return false;
+  }
+  const wendler = {
+    ..._state.overrides[editor.exerciseId].wendler,
+    profileId: draft.profileId,
+    oneRmKg: Math.round(Number(draft.oneRmKg) * 10) / 10,
+    tmKg: Number(draft.tmKg),
+    incrementKg: Number(draft.incrementKg),
+    roundKg: Number(draft.roundKg),
+  };
+  if (Number(draft.tenRmKg) > 0) wendler.tenRmKg = Number(draft.tenRmKg);
+  else delete wendler.tenRmKg;
+  _state.overrides[editor.exerciseId] = {
+    ..._state.overrides[editor.exerciseId],
+    program: 'wendler',
+    wendler,
+  };
+  _state.wendlerEditor = null;
+  return true;
 }
 
 function _handleInput(event) {
@@ -290,7 +418,7 @@ function _handleInput(event) {
     target.checked ? _state.selectedExerciseIds.add(exerciseId) : _state.selectedExerciseIds.delete(exerciseId);
     const card = target.closest('[data-season-exercise-card]');
     card?.classList.toggle('is-disabled', !target.checked);
-    card?.querySelectorAll('.season-card-settings input, .season-card-settings select, .season-card-settings fieldset').forEach(input => {
+    card?.querySelectorAll('.season-card-settings input, .season-card-settings select, .season-card-settings button, .season-card-settings fieldset').forEach(input => {
       input.disabled = !target.checked;
     });
     return;
@@ -305,9 +433,46 @@ function _handleInput(event) {
   }
   const exerciseRoot = target.closest('[data-season-exercise-card]');
   const configuredExerciseId = exerciseRoot?.getAttribute('data-season-exercise-card');
-  const wendlerField = target.getAttribute('data-season-wendler');
-  if (configuredExerciseId && wendlerField) {
-    _state.overrides[configuredExerciseId].wendler[wendlerField] = wendlerField === 'profileId' ? target.value : Number(target.value);
+  const programField = target.getAttribute('data-season-program');
+  if (configuredExerciseId && programField) {
+    if (event.type !== 'change') return;
+    const previousProgram = _state.overrides[configuredExerciseId].program || 'stair';
+    if (target.value === 'wendler') {
+      _openWendlerEditor(configuredExerciseId, previousProgram);
+    } else {
+      const configuration = _configurationFor(configuredExerciseId);
+      const override = _state.overrides[configuredExerciseId];
+      override.program = 'stair';
+      if (!Number.isFinite(Number(override.baselineKg))) {
+        override.baselineKg = _normalBaseline(_state.board, configuration?.benchmark);
+      }
+      if (!SEASON_NORMAL_INCREMENTS_KG.includes(Number(override.incrementKg))) {
+        override.incrementKg = _normalIncrement(configuration?.benchmark, configuration?.groupId);
+      }
+      override.progressionWeeks = SEASON_NORMAL_PROGRESSION_WEEKS;
+      _state.wendlerEditor = null;
+    }
+    _render();
+    return;
+  }
+  const wendlerDraftField = target.getAttribute('data-season-wendler-draft');
+  if (wendlerDraftField && _state.wendlerEditor) {
+    const draft = _state.wendlerEditor.draft;
+    draft[wendlerDraftField] = wendlerDraftField === 'profileId' ? target.value : Number(target.value);
+    if (wendlerDraftField === 'tenRmKg' && Number(target.value) > 0) {
+      const calculated = calculateSeasonWendlerFromTenRm(target.value, draft.roundKg);
+      draft.oneRmKg = calculated.estimatedOneRmKg;
+      draft.tmKg = calculated.tmKg;
+      const oneRmInput = target.closest('.season-wendler-editor')?.querySelector('[data-season-wendler-draft="oneRmKg"]');
+      if (oneRmInput) oneRmInput.value = String(draft.oneRmKg);
+    } else if (wendlerDraftField === 'oneRmKg' || wendlerDraftField === 'roundKg') {
+      draft.tmKg = roundToPlate(Number(draft.oneRmKg) * 0.9, Number(draft.roundKg) || 2.5);
+    }
+    const editorRoot = target.closest('.season-wendler-editor');
+    const oneRmOutput = editorRoot?.querySelector('[data-season-wendler-calc-one-rm]');
+    const tmOutput = editorRoot?.querySelector('[data-season-wendler-calc-tm]');
+    if (oneRmOutput) oneRmOutput.textContent = `${Number(draft.oneRmKg) || 0}kg`;
+    if (tmOutput) tmOutput.textContent = `${Number(draft.tmKg) || 0}kg`;
     return;
   }
   const normalField = target.getAttribute('data-season-normal');
@@ -374,6 +539,23 @@ function _handleClick(event) {
   const button = event.target.closest?.('[data-season-action]');
   if (!button || !_state) return;
   const action = button.getAttribute('data-season-action');
+  if (action === 'select-group') {
+    _state.activeGroupId = button.getAttribute('data-season-group') || _state.activeGroupId;
+    return _render();
+  }
+  if (action === 'open-wendler') {
+    const exerciseId = button.getAttribute('data-exercise-id');
+    if (exerciseId && _openWendlerEditor(exerciseId, 'wendler')) return _render();
+    return;
+  }
+  if (action === 'wendler-cancel') {
+    _cancelWendlerEditor();
+    return _render();
+  }
+  if (action === 'wendler-apply') {
+    if (_applyWendlerEditor()) _render();
+    return;
+  }
   if (action === 'close') return closeWorkoutSeasonWizard();
   if (action === 'back') {
     _state.step = Math.max(0, _state.step - 1);

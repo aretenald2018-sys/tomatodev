@@ -5,6 +5,7 @@ import {
   currentKgOf,
   exerciseGroupId,
   mondayOf,
+  roundToPlate,
   TM2_GROUPS,
 } from './test-v2/board-core.js';
 import {
@@ -14,6 +15,18 @@ import {
 
 export const SEASON_NORMAL_INCREMENTS_KG = Object.freeze([1.25, 2.5, 5]);
 export const SEASON_NORMAL_PROGRESSION_WEEKS = 3;
+
+export function calculateSeasonWendlerFromTenRm(tenRmKg, roundKg = 2.5) {
+  const weight = _positive(tenRmKg);
+  if (!weight) return { tenRmKg: 0, estimatedOneRmKg: 0, tmKg: 0 };
+  const unit = _positive(roundKg, 2.5);
+  const estimatedOneRmKg = Math.round(weight * (1 + (10 / 30)) * 10) / 10;
+  return {
+    tenRmKg: weight,
+    estimatedOneRmKg,
+    tmKg: roundToPlate(estimatedOneRmKg * 0.9, unit),
+  };
+}
 
 function _clone(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
@@ -201,7 +214,7 @@ function _normalIncrement(value, benchmark, groupId) {
 function _wendlerConfig(benchmark, override, startDate, configuration) {
   const requested = override?.wendler || override || {};
   return normalizeW863OriginalConfig({
-    ..._clone(benchmark.wendler || {}),
+    ..._clone(benchmark?.wendler || {}),
     ...requested,
     scheme: 'w863',
     templateVersion: W863_ORIGINAL_VERSION,
@@ -232,11 +245,17 @@ export function seasonResetPreview(previousBoard = null, selectedExerciseIds = n
     const configurations = setup.configurations.filter(configuration => (
       selected == null || selected.has(configuration.exerciseId)
     ));
+    const programOf = configuration => {
+      const override = _overrideFor(options.overrides, configuration.benchmark, configuration.exercise);
+      return override.program === 'wendler' || (override.program == null && configuration.program === 'wendler')
+        ? 'wendler'
+        : 'stair';
+    };
     return {
       registeredPlanCount: configurations.length,
-      wendlerCount: configurations.filter(configuration => configuration.program === 'wendler').length,
+      wendlerCount: configurations.filter(configuration => programOf(configuration) === 'wendler').length,
       trackCount: configurations
-        .filter(configuration => configuration.program !== 'wendler')
+        .filter(configuration => programOf(configuration) !== 'wendler')
         .reduce((sum, configuration) => sum + Math.max(1, configuration.benchmark?.tracks?.length || 0), 0),
       preservedExerciseIds: configurations.map(configuration => configuration.exerciseId),
     };
@@ -244,11 +263,17 @@ export function seasonResetPreview(previousBoard = null, selectedExerciseIds = n
   const benchmarks = activeBenchmarks(previousBoard || {}).filter((benchmark) => (
     selected == null || selected.has(String(benchmark.exerciseId || benchmark.id))
   ));
+  const programOf = benchmark => {
+    const override = _overrideFor(options.overrides, benchmark, { id: benchmark.exerciseId });
+    return override.program === 'wendler' || (override.program == null && benchmark.program === 'wendler')
+      ? 'wendler'
+      : 'stair';
+  };
   return {
     registeredPlanCount: benchmarks.length,
-    wendlerCount: benchmarks.filter(benchmark => benchmark.program === 'wendler').length,
+    wendlerCount: benchmarks.filter(benchmark => programOf(benchmark) === 'wendler').length,
     trackCount: benchmarks
-      .filter(benchmark => benchmark.program !== 'wendler')
+      .filter(benchmark => programOf(benchmark) !== 'wendler')
       .reduce((sum, benchmark) => sum + Math.max(1, benchmark.tracks?.length || 0), 0),
     preservedExerciseIds: benchmarks.map(benchmark => benchmark.exerciseId).filter(Boolean),
   };
@@ -277,7 +302,8 @@ export function buildSeasonWorkoutBoard({
     .map((configuration) => {
       const { benchmark, exercise } = configuration;
       const override = _overrideFor(overrides, benchmark, exercise);
-      const isWendler = configuration.program === 'wendler';
+      const isWendler = override.program === 'wendler'
+        || (override.program == null && configuration.program === 'wendler');
       const tracks = {};
       const trackIds = isWendler ? ['volume'] : (benchmark?.tracks?.length ? benchmark.tracks : ['volume']);
       const baselineKg = _baselineKg(previousBoard, benchmark, override);

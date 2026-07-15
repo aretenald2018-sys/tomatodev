@@ -5,6 +5,7 @@ import {
   buildSeasonExerciseSetup,
   buildSeasonWorkoutBoard,
   buildSeasonWorkoutPlan,
+  calculateSeasonWendlerFromTenRm,
   seasonResetPreview,
 } from '../workout/season-reset.js';
 import { W863_ORIGINAL_VERSION } from '../workout/w863-original.js';
@@ -149,6 +150,70 @@ test('동일 movementId 변형이 여러 개면 임의 매핑하지 않고 사�
   assert.equal(resolved.unresolvedWendler.length, 0);
   assert.equal(resolved.configurations.find(item => item.exerciseId === 'wide').program, 'wendler');
   assert.equal(resolved.configurations.find(item => item.exerciseId === 'narrow').program, 'stair');
+});
+
+test('10RM 수행중량은 추정 1RM과 90% TM으로 자동 환산된다', () => {
+  assert.deepEqual(calculateSeasonWendlerFromTenRm(50, 2.5), {
+    tenRmKg: 50,
+    estimatedOneRmKg: 66.7,
+    tmKg: 60,
+  });
+  assert.deepEqual(calculateSeasonWendlerFromTenRm(0), {
+    tenRmKg: 0,
+    estimatedOneRmKg: 0,
+    tmKg: 0,
+  });
+});
+
+test('일반 등록 종목도 시즌 목표에서 웬들러를 선택하면 같은 ID와 이름으로 W1을 시작한다', () => {
+  const registeredExercises = [{
+    id: 'custom_bench', name: '벤치프레스(중간그립)', movementId: 'bench_press', muscleId: 'chest',
+  }];
+  const overrides = {
+    custom_bench: {
+      program: 'wendler',
+      wendler: {
+        profileId: 'bench', tenRmKg: 50, oneRmKg: 66.7, tmKg: 60, incrementKg: 2.5, roundKg: 2.5,
+      },
+    },
+  };
+  assert.deepEqual(seasonResetPreview(null, ['custom_bench'], { registeredExercises, overrides }), {
+    registeredPlanCount: 1,
+    wendlerCount: 1,
+    trackCount: 0,
+    preservedExerciseIds: ['custom_bench'],
+  });
+  const board = buildSeasonWorkoutBoard({
+    registeredExercises,
+    selectedExerciseIds: ['custom_bench'],
+    seasonId: 'new-wendler-season',
+    startDate: '2026-07-15',
+    overrides,
+  });
+  const [benchmark] = activeBenchmarks(board);
+  assert.equal(benchmark.exerciseId, 'custom_bench');
+  assert.equal(benchmark.label, '벤치프레스(중간그립)');
+  assert.equal(benchmark.program, 'wendler');
+  assert.equal(benchmark.wendler.profileId, 'bench');
+  assert.equal(benchmark.wendler.oneRmKg, 66.7);
+  assert.equal(benchmark.wendler.tmKg, 60);
+  assert.equal(benchmark.wendler.startWeek, 1);
+  assert.equal(benchmark.wendler.templateVersion, W863_ORIGINAL_VERSION);
+});
+
+test('기존 웬들러 종목도 명시적으로 일반 3주 증량으로 전환할 수 있다', () => {
+  const board = buildSeasonWorkoutBoard({
+    previousBoard: previousBoard(),
+    selectedExerciseIds: ['squat'],
+    seasonId: 'stair-season',
+    startDate: '2026-07-15',
+    overrides: { squat: { program: 'stair', baselineKg: 90, incrementKg: 2.5 } },
+  });
+  const [benchmark] = activeBenchmarks(board);
+  assert.equal(benchmark.exerciseId, 'squat');
+  assert.equal(benchmark.program, 'stair');
+  assert.equal(benchmark.progressionWeeks, 3);
+  assert.equal(benchmark.incrementKg, 2.5);
 });
 
 test('일반 등록 종목은 기준중량에서 선택한 무게만큼 정확히 3주마다 증량한다', () => {
