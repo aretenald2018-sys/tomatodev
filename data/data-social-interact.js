@@ -152,6 +152,23 @@ export async function sendChatMessage(rawMessage) {
   return entry;
 }
 
+export async function deleteChatMessage(messageId) {
+  const user = getCurrentUserRef();
+  if (!user) throw new Error('로그인이 필요해요.');
+  if (!messageId) throw new Error('삭제할 메시지를 찾지 못했어요.');
+
+  const messageRef = doc(db, '_chat_messages', messageId);
+  const snapshot = await _fbOp('deleteChatMessage:read', () => getDoc(messageRef), { rethrow: true });
+  if (!snapshot.exists()) return true;
+
+  const ownerId = String(snapshot.data()?.userId || '');
+  const myIds = new Set([user.id, _socialId()].filter(Boolean));
+  if (!myIds.has(ownerId)) throw new Error('내가 보낸 메시지만 삭제할 수 있어요.');
+
+  await _fbOp('deleteChatMessage', () => deleteDoc(messageRef), { rethrow: true });
+  return true;
+}
+
 export function subscribeChatMessages(onMessages, onError) {
   if (!getCurrentUserRef()) {
     onMessages?.([]);

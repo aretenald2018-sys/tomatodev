@@ -1685,7 +1685,10 @@ body.lz-running-record-modal-open {
 .lz-summary-strip {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 0.82fr);
-  border-top: 1px solid rgba(255, 255, 255, 0.02);
+}
+.home-card.lz-summary-card {
+  padding: 0;
+  overflow: hidden;
 }
 .lz-summary-btn {
   min-width: 0;

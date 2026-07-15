@@ -16,7 +16,7 @@ import { calcTomatoCycle, evaluateCycleResult, getQuarterKey,
          getDayTargetKcal as calcDayTarget }  from '../calc.js';
 import { checkStreakMilestone } from './hero.js';
 import { renderCharacterSVG } from './character.js';
-import { hydrateLifeZoneCard, renderLifeZoneCard } from './life-zone.js';
+import { hydrateLifeZoneCard, renderLifeZoneCard, renderLifeZoneSummary } from './life-zone.js';
 import { showToast, haptic, resolveNickname, showConfetti } from './utils.js';
 import { confirmSimple } from '../utils/confirm-modal.js';
 import { openCheckinModal } from '../feature-checkin.js';
@@ -822,6 +822,7 @@ export function renderTomatoCard() {
   document.getElementById('tf-meal-card')?.remove();
   document.getElementById('tf-weight-card')?.remove();
   document.getElementById('tf-life-zone-card')?.remove();
+  document.getElementById('tf-life-zone-summary')?.remove();
 
   const homeHero = document.getElementById('home-hero');
   const todayDietData = getDiet(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
@@ -860,7 +861,9 @@ export function renderTomatoCard() {
       countHtml: heroCount,
       characterMood,
       characterSvg
-    },
+    }
+  });
+  const summaryCard = renderLifeZoneSummary({
     totalIntake,
     todayTarget,
     kcalState,
@@ -871,6 +874,9 @@ export function renderTomatoCard() {
     onWeightClick: () => openCheckinModal()
   });
   homeHero.after(lifeZoneCard);
+  const chatCard = document.getElementById('card-chat');
+  if (chatCard) chatCard.after(summaryCard);
+  else lifeZoneCard.after(summaryCard);
   document.getElementById('tomato-rule-info-card')?.addEventListener('click', _showTomatoRuleTooltip);
   hydrateLifeZoneCard(lifeZoneCard);
 }

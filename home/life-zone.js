@@ -1055,15 +1055,7 @@ export async function hydrateLifeZoneCard(card) {
 }
 
 export function renderLifeZoneCard({
-  hero = null,
-  totalIntake = 0,
-  todayTarget = 0,
-  kcalState = '',
-  remaining = 0,
-  kcalPct = 0,
-  weightSummary = null,
-  onDietClick = null,
-  onWeightClick = null
+  hero = null
 } = {}) {
   const card = document.createElement('section');
   card.id = 'tf-life-zone-card';
@@ -1071,29 +1063,6 @@ export function renderLifeZoneCard({
   card.setAttribute('aria-label', '오늘의 라이프존');
 
   const fallbackActors = _defaultActorStates();
-  const overAmount = Math.max(totalIntake - todayTarget, 0);
-  const kcalHint = totalIntake > 0 && todayTarget > 0
-    ? kcalState === 'over'
-      ? `${_fmtKcal(overAmount)}kcal 초과`
-      : `${_fmtKcal(remaining)}kcal 남음`
-    : '아직 기록이 없어요';
-
-  const weightHtml = weightSummary
-    ? `
-      <button type="button" class="lz-summary-btn lz-summary-btn--weight${weightSummary.isStale ? ' is-stale' : ''}" data-lz-action="weight">
-        <span class="lz-summary-label">체중</span>
-        <span class="lz-summary-main">${weightSummary.current.toFixed(1)}<small>kg</small>${weightSummary.lost > 0 ? `<em>-${weightSummary.lost.toFixed(1)}</em>` : ''}</span>
-        <span class="lz-summary-sub">${escapeHtml(weightSummary.hint)}</span>
-      </button>
-    `
-    : `
-      <button type="button" class="lz-summary-btn lz-summary-btn--weight" data-lz-action="weight">
-        <span class="lz-summary-label">체중</span>
-        <span class="lz-summary-main">입력</span>
-        <span class="lz-summary-sub">몸무게 입력</span>
-      </button>
-    `;
-
   const heroHtml = hero ? `
     <div class="lz-overview-hero">
       <div class="tf-hero-left">
@@ -1240,30 +1209,12 @@ export function renderLifeZoneCard({
         </span>
       </div>
     </div>
-    <div class="lz-summary-strip">
-      <button type="button" class="lz-summary-btn lz-summary-btn--diet" data-lz-action="diet">
-        <span class="lz-summary-label">오늘 칼로리</span>
-        <span class="lz-summary-main ${kcalState === 'over' ? 'is-over' : ''}">
-          ${totalIntake > 0 ? _fmtKcal(totalIntake) : '-'}<small>/${_fmtKcal(todayTarget)}kcal</small>
-        </span>
-        <span class="lz-summary-sub ${kcalState}">${escapeHtml(kcalHint)}</span>
-      </button>
-      ${weightHtml}
-    </div>
   `;
 
   _renderActors(card, fallbackActors);
   _renderConsultingVisitor(card, fallbackActors);
   _renderStatus(card, false);
 
-  card.querySelector('[data-lz-action="diet"]')?.addEventListener('click', (event) => {
-    event.preventDefault();
-    onDietClick?.();
-  });
-  card.querySelector('[data-lz-action="weight"]')?.addEventListener('click', (event) => {
-    event.preventDefault();
-    onWeightClick?.();
-  });
   card.querySelector('[data-lz-action="npc-quest"]')?.addEventListener('click', (event) => {
     event.preventDefault();
     event.currentTarget.dispatchEvent(new CustomEvent('life-zone:npc-quest', {
@@ -1287,6 +1238,67 @@ export function renderLifeZoneCard({
   });
 
   return card;
+}
+
+export function renderLifeZoneSummary({
+  totalIntake = 0,
+  todayTarget = 0,
+  kcalState = '',
+  remaining = 0,
+  weightSummary = null,
+  onDietClick = null,
+  onWeightClick = null
+} = {}) {
+  const summary = document.createElement('section');
+  summary.id = 'tf-life-zone-summary';
+  summary.className = 'home-card lz-summary-card';
+  summary.setAttribute('aria-label', '오늘의 칼로리와 체중 요약');
+
+  const overAmount = Math.max(totalIntake - todayTarget, 0);
+  const kcalHint = totalIntake > 0 && todayTarget > 0
+    ? kcalState === 'over'
+      ? `${_fmtKcal(overAmount)}kcal 초과`
+      : `${_fmtKcal(remaining)}kcal 남음`
+    : '아직 기록이 없어요';
+  const weightHtml = weightSummary
+    ? `
+      <button type="button" class="lz-summary-btn lz-summary-btn--weight${weightSummary.isStale ? ' is-stale' : ''}" data-lz-action="weight">
+        <span class="lz-summary-label">체중</span>
+        <span class="lz-summary-main">${weightSummary.current.toFixed(1)}<small>kg</small>${weightSummary.lost > 0 ? `<em>-${weightSummary.lost.toFixed(1)}</em>` : ''}</span>
+        <span class="lz-summary-sub">${escapeHtml(weightSummary.hint)}</span>
+      </button>
+    `
+    : `
+      <button type="button" class="lz-summary-btn lz-summary-btn--weight" data-lz-action="weight">
+        <span class="lz-summary-label">체중</span>
+        <span class="lz-summary-main">입력</span>
+        <span class="lz-summary-sub">몸무게 입력</span>
+      </button>
+    `;
+
+  summary.innerHTML = `
+    <div class="lz-summary-strip">
+      <button type="button" class="lz-summary-btn lz-summary-btn--diet" data-lz-action="diet">
+        <span class="lz-summary-label">오늘 칼로리</span>
+        <span class="lz-summary-main ${kcalState === 'over' ? 'is-over' : ''}">
+          ${totalIntake > 0 ? _fmtKcal(totalIntake) : '-'}<small>/${_fmtKcal(todayTarget)}kcal</small>
+        </span>
+        <span class="lz-summary-sub ${kcalState}">${escapeHtml(kcalHint)}</span>
+      </button>
+      ${weightHtml}
+    </div>
+  `;
+
+  summary.querySelector('[data-lz-action="diet"]')?.addEventListener('click', (event) => {
+    event.preventDefault();
+    onDietClick?.();
+  });
+  summary.querySelector('[data-lz-action="weight"]')?.addEventListener('click', (event) => {
+    event.preventDefault();
+    onWeightClick?.();
+  });
+
+  return summary;
 }
 
 export function getLocalLifeZonePreviewState(dayData = null) {
