@@ -293,13 +293,22 @@
         <span class="home-chat-presence-label">대화 참여 0명</span>
         <span class="home-chat-presence-avatars" aria-hidden="true"></span>
       </div>
-      <form class="home-chat-form" id="home-chat-form">
-        <label class="tds-sr-only" for="home-chat-input">채팅 메시지</label>
-        <input class="home-chat-input" id="home-chat-input" type="text" maxlength="300"
-          autocomplete="off" placeholder="자유 메시지를 입력하세요">
-        <button class="home-chat-emoji" id="home-chat-emoji" type="button" aria-label="웃는 이모지 추가">☺</button>
-        <button class="home-chat-send" id="home-chat-send" type="submit">전송</button>
-      </form>
+      <div class="home-chat-compose">
+        <button class="home-chat-more" id="home-chat-more" type="button" aria-label="빠른 이모지 열기" aria-expanded="false">+</button>
+        <div class="home-chat-quick-reactions" id="home-chat-quick-reactions" hidden aria-label="빠른 이모지">
+          <button type="button" data-chat-quick-emoji="😊" aria-label="웃는 얼굴 추가">😊</button>
+          <button type="button" data-chat-quick-emoji="💪" aria-label="힘 추가">💪</button>
+          <button type="button" data-chat-quick-emoji="🍅" aria-label="토마토 추가">🍅</button>
+          <button type="button" data-chat-quick-emoji="✨" aria-label="반짝임 추가">✨</button>
+        </div>
+        <form class="home-chat-form" id="home-chat-form">
+          <label class="tds-sr-only" for="home-chat-input">채팅 메시지</label>
+          <input class="home-chat-input" id="home-chat-input" type="text" maxlength="300"
+            autocomplete="off" placeholder="자유 메시지를 입력하세요">
+          <button class="home-chat-emoji" id="home-chat-emoji" type="button" aria-label="웃는 이모지 추가">☺</button>
+          <button class="home-chat-send" id="home-chat-send" type="submit">전송</button>
+        </form>
+      </div>
     </div>
 
     <!-- 오늘의 칼로리 -->

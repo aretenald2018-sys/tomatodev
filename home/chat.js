@@ -74,15 +74,26 @@ function _createAvatar(message = {}) {
   avatar.style.setProperty('--chat-shirt', outfit.shirt);
   avatar.style.setProperty('--chat-shirt-accent', outfit.accent);
   avatar.innerHTML = `
-    <span class="home-chat-avatar-outfit"><span class="home-chat-avatar-collar"></span></span>
-    <span class="home-chat-avatar-ear home-chat-avatar-ear--left"></span>
-    <span class="home-chat-avatar-ear home-chat-avatar-ear--right"></span>
-    <span class="home-chat-avatar-face">
-      <span class="home-chat-avatar-hair"></span>
-      <span class="home-chat-avatar-eye home-chat-avatar-eye--left"></span>
-      <span class="home-chat-avatar-eye home-chat-avatar-eye--right"></span>
-      <span class="home-chat-avatar-mouth"></span>
-    </span>
+    <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false" shape-rendering="crispEdges">
+      <rect x="4" y="24" width="24" height="8" fill="var(--chat-shirt)"/>
+      <rect x="7" y="22" width="18" height="4" fill="var(--chat-shirt)"/>
+      <rect x="13" y="21" width="6" height="5" fill="var(--chat-skin)"/>
+      <rect x="12" y="23" width="4" height="3" fill="var(--chat-shirt-accent)"/>
+      <rect x="16" y="23" width="4" height="3" fill="var(--chat-shirt-accent)"/>
+      <rect x="6" y="11" width="3" height="8" fill="var(--chat-skin)"/>
+      <rect x="23" y="11" width="3" height="8" fill="var(--chat-skin)"/>
+      <rect x="8" y="7" width="16" height="15" fill="var(--chat-skin)"/>
+      <rect x="10" y="22" width="12" height="2" fill="var(--chat-skin)"/>
+      <rect x="7" y="5" width="18" height="7" fill="var(--chat-hair)"/>
+      <rect x="8" y="3" width="5" height="4" fill="var(--chat-hair)"/>
+      <rect x="13" y="2" width="9" height="5" fill="var(--chat-hair)"/>
+      <rect x="22" y="6" width="3" height="9" fill="var(--chat-hair)"/>
+      <rect x="8" y="10" width="3" height="4" fill="var(--chat-hair)"/>
+      <rect x="11" y="14" width="2" height="2" fill="#2b211e"/>
+      <rect x="19" y="14" width="2" height="2" fill="#2b211e"/>
+      <rect x="15" y="16" width="2" height="2" fill="rgba(126,67,46,.42)"/>
+      <rect x="14" y="20" width="4" height="1" fill="#873e3b"/>
+    </svg>
   `;
   return avatar;
 }
@@ -126,10 +137,6 @@ function _createMessageRow(message, currentUserId) {
   author.className = 'home-chat-author';
   author.textContent = String(message.userName || message.userId || '이용자');
 
-  const channel = document.createElement('span');
-  channel.className = `home-chat-channel is-${messageChannel}`;
-  channel.textContent = CHAT_CHANNELS[messageChannel];
-
   const time = document.createElement('time');
   time.className = 'home-chat-time';
   time.dateTime = Number.isFinite(Number(message.createdAt))
@@ -155,7 +162,7 @@ function _createMessageRow(message, currentUserId) {
     tail.append(deleteButton);
   }
 
-  meta.append(author, channel, time, tail);
+  meta.append(author, time, tail);
   body.append(meta, bubble);
   item.append(avatar, body);
   return item;
@@ -348,8 +355,33 @@ function _bindEmojiButton() {
   if (!button || !input || button.dataset.chatBound === '1') return;
   button.dataset.chatBound = '1';
   button.addEventListener('click', () => {
-    if (input.value.length + 2 <= Number(input.maxLength || 300)) input.value += '😊';
-    input.focus();
+    _appendChatEmoji(input, '😊');
+  });
+}
+
+function _appendChatEmoji(input, emoji) {
+  if (!input || !emoji) return;
+  if (input.value.length + emoji.length <= Number(input.maxLength || 300)) input.value += emoji;
+  input.focus();
+}
+
+function _bindQuickReactions() {
+  const button = document.getElementById('home-chat-more');
+  const picker = document.getElementById('home-chat-quick-reactions');
+  const input = document.getElementById('home-chat-input');
+  if (!button || !picker || !input || button.dataset.chatBound === '1') return;
+  button.dataset.chatBound = '1';
+  button.addEventListener('click', () => {
+    const willOpen = picker.hidden;
+    picker.hidden = !willOpen;
+    button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+  });
+  picker.querySelectorAll('[data-chat-quick-emoji]').forEach((option) => {
+    option.addEventListener('click', () => {
+      _appendChatEmoji(input, option.dataset.chatQuickEmoji || '');
+      picker.hidden = true;
+      button.setAttribute('aria-expanded', 'false');
+    });
   });
 }
 
@@ -385,6 +417,7 @@ function _subscribeForCurrentUser() {
 export function renderHomeChat() {
   if (!document.getElementById('card-chat')) return;
   _bindChannelTabs();
+  _bindQuickReactions();
   _bindEmojiButton();
   _bindChatForm();
   _subscribeForCurrentUser();

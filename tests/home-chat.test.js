@@ -54,6 +54,8 @@ test('reference-style channel tabs, pinned notice and safe message controls are 
   assert.match(html, /data-chat-channel="free">자유/);
   assert.match(html, /id="home-chat-presence"/);
   assert.match(html, /id="home-chat-emoji"/);
+  assert.match(html, /id="home-chat-more"/);
+  assert.match(html, /data-chat-quick-emoji="🍅"/);
   assert.match(dataSource, /CHAT_NOTICE_PREFIX = '<공지>'/);
   assert.match(dataSource, /CHAT_CHANNELS = new Set\(\['notice', 'bug', 'free'\]\)/);
   assert.match(dataSource, /sendChatMessage\(rawMessage, channel = 'free'\)/);
@@ -68,15 +70,17 @@ test('reference-style channel tabs, pinned notice and safe message controls are 
   assert.doesNotMatch(homeSource, /_setStatus\('실시간'/);
   assert.match(homeSource, /message\.userId === currentUserId/);
   assert.match(homeSource, /_deleteOwnMessage\(message\.id, deleteButton\)/);
-  assert.match(homeSource, /home-chat-avatar-face/);
-  assert.match(homeSource, /home-chat-avatar-outfit/);
+  assert.match(homeSource, /shape-rendering="crispEdges"/);
+  assert.match(homeSource, /fill="var\(--chat-shirt\)"/);
+  assert.doesNotMatch(homeSource, /channel\.className = `home-chat-channel/);
   assert.match(homeSource, /function _renderPresence\(messages\)/);
   assert.match(homeSource, /function _bindEmojiButton\(\)/);
+  assert.match(homeSource, /function _bindQuickReactions\(\)/);
   assert.doesNotMatch(homeSource, /운동고수|라이프코치|title-badge/);
   assert.match(css, /\.home-chat-message\.is-notice \.home-chat-bubble/);
   assert.match(css, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
-  assert.match(css, /\.home-chat-avatar-face/);
-  assert.match(css, /\.home-chat-avatar-outfit/);
+  assert.match(css, /\.home-chat-avatar svg/);
+  assert.doesNotMatch(chatCss, /\.home-chat-channel\s*\{/);
   assert.match(css, /\.home-chat-notices:empty/);
   assert.match(css, /#card-chat\.home-chat-card \{/);
   assert.match(css, /margin-top: -12%/);
@@ -86,5 +90,7 @@ test('reference-style channel tabs, pinned notice and safe message controls are 
   assert.match(chatCss, /border-radius: 30px 30px 0 0/);
   assert.match(chatCss, /\.home-chat-presence/);
   assert.match(chatCss, /\.home-chat-emoji/);
+  assert.match(chatCss, /\.home-chat-more/);
+  assert.match(chatCss, /\.home-chat-quick-reactions/);
   assert.doesNotMatch(chatCss, /var\(--(?:surface|text|border|primary|radius|transition)/);
 });
