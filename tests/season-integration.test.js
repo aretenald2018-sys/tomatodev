@@ -32,6 +32,10 @@ test('운동 홈은 시즌 설정과 날짜 상세를 카드형 계층으로 렌
   assert.match(calendarStyles, /\.cal-workout-calendar-card\s*\{/);
   assert.match(seasonStyles, /\.cal-season-control\s*\{[\s\S]*grid-template-columns:\s*auto minmax\(0, 1fr\) auto;/);
   assert.match(seasonStyles, /\.cal-season-settings svg\s*\{[\s\S]*stroke:\s*currentColor;/);
+  assert.match(seasonStyles, /\.cal-season-control\s*\{[\s\S]*padding:\s*11px 14px;/);
+  assert.match(seasonStyles, /\.cal-season-emblem\s*\{[\s\S]*width:\s*42px;[\s\S]*height:\s*42px;/);
+  assert.match(source, /` : \(isWorkoutHome \? '' : `\s*<div class="cal-month-summary cal-month-empty">/);
+  assert.doesNotMatch(source, /cal-month-empty-icon/);
   assert.match(daySheetStyles, /\.cal-workout-day-sheet\s*\{[\s\S]*border-radius:\s*26px 26px 0 0;/);
 });
 
@@ -75,6 +79,11 @@ test('시즌 마법사는 선택 확인을 포함한 다섯 단계와 생성·�
   assert.match(source, /action === 'save'.*_save\(\)/s);
   assert.match(styles, /grid-template-columns: repeat\(5, minmax\(0, 1fr\)\)/);
   assert.match(styles, /height: 100dvh/);
+  assert.match(styles, /\.season-stepper\s*\{[\s\S]*flex:\s*none;[\s\S]*min-height:\s*48px;[\s\S]*overflow:\s*visible;/);
+  assert.match(styles, /\.season-sheet-actions\s*\{\s*flex:\s*none;/);
+  assert.match(source, /function _syncNormalTrackCardState/);
+  assert.match(source, /_syncNormalTrackCardState\(configuredExerciseId, normalTrack, exerciseRoot\)/);
+  assert.doesNotMatch(source, /if \(event\.type === 'change'\) _render\(\)/);
 });
 
 test('기존 직전 기록·PR API는 현재 시즌 decision cache를 사용한다', () => {

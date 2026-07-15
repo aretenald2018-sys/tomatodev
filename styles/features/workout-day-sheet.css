@@ -1630,11 +1630,9 @@
   .cal-week-rail-spacer {
     padding: 5px 3px;
   }
-  .cal-cycle-branch {
-    min-height: 22px;
-    padding: 2px 2px 2px 5px;
-    font-size: 8px;
-    line-height: 9px;
+  .cal-goal-card {
+    min-height: 26px;
+    padding: 3px 4px;
   }
   .cal-cycle-goal-input {
     min-height: 22px;
@@ -1646,16 +1644,11 @@
     padding: 2px 3px;
     font-size: 8px;
   }
-  .cal-cycle-branch-text {
-    line-height: 9px;
-  }
-  .cal-cycle-branch-week {
+  .cal-goal-card-head b,
+  .cal-goal-card-head strong {
     font-size: 8px;
   }
-  .cal-cycle-branch-name {
-    font-size: 7.5px;
-  }
-  .cal-cycle-branch-target {
+  .cal-goal-card-meta {
     font-size: 7.5px;
   }
   .cal-workout-surface-home .cal-workout-cell {

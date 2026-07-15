@@ -292,9 +292,13 @@ function _cycleRailTrackLabel(track) {
   return track === 'intensity' ? '강도' : '볼륨';
 }
 
-function _cycleRailKind(benchmark = {}, track) {
-  if (benchmark.program === 'wendler') return 'wendler';
-  return track === 'intensity' ? 'intensity' : 'volume';
+const CYCLE_RAIL_GROUP_LABELS = Object.freeze({
+  chest: '가슴', back: '등', shoulder: '어깨', lower: '하체', arm: '팔', abs: '복부', other: '기타',
+});
+const CYCLE_RAIL_GROUP_ORDER = Object.freeze(['chest', 'back', 'shoulder', 'lower', 'arm', 'abs', 'other']);
+
+function _cycleRailGroupLabel(groupId) {
+  return CYCLE_RAIL_GROUP_LABELS[groupId] || CYCLE_RAIL_GROUP_LABELS.other;
 }
 
 function _cycleRailGoalStatus(cache = {}, benchmark = {}, weekStart, targetKg = 0, targetReps = 0) {
@@ -343,11 +347,13 @@ function _buildWorkoutCycleRailItems(board, weekStart, cache = {}) {
       const achievedText = goalStatus.isAchieved && goalStatus.label ? ` · ${goalStatus.label}` : '';
       items.push({
         benchmarkId: bm.id,
+        groupId: CYCLE_RAIL_GROUP_LABELS[bm.groupId] ? bm.groupId : 'other',
+        groupLabel: _cycleRailGroupLabel(bm.groupId),
         weekLabel: `W${_fmtNum(displayWeek, 0)}`,
         exerciseLabel: _cycleRailExerciseLabel(bm),
+        trackLabel,
         targetLabel: `목표 ${kgText}`,
         title: `${bm.label || bm.short || '종목'} · ${_fmtNum(displayWeek, 0)}주차${programWeekText} · ${trackLabel} · ${kgText}${reps ? ` x ${reps}` : ''}${achievedText}`,
-        kind: _cycleRailKind(bm, track),
         isAchieved: goalStatus.isAchieved,
       });
     }
@@ -355,23 +361,36 @@ function _buildWorkoutCycleRailItems(board, weekStart, cache = {}) {
   return items;
 }
 
+function _groupWorkoutCycleRailItems(items = []) {
+  const groups = new Map();
+  for (const item of items) {
+    const groupId = CYCLE_RAIL_GROUP_LABELS[item.groupId] ? item.groupId : 'other';
+    if (!groups.has(groupId)) groups.set(groupId, { groupId, label: _cycleRailGroupLabel(groupId), items: [] });
+    groups.get(groupId).items.push(item);
+  }
+  return [...groups.values()].sort((a, b) => (
+    CYCLE_RAIL_GROUP_ORDER.indexOf(a.groupId) - CYCLE_RAIL_GROUP_ORDER.indexOf(b.groupId)
+  ));
+}
+
 function _renderWorkoutCycleRail(weekStart, items = [], options = {}) {
   const visibleItems = Array.isArray(items) ? items : [];
+  const groups = _groupWorkoutCycleRailItems(visibleItems);
   const archivedClass = options.archived ? ' is-season-archived' : '';
   const label = visibleItems.length
     ? `${weekStart} 사이클 처방: ${visibleItems.map(item => item.title).join(', ')}`
     : `${weekStart} 사이클 처방 없음`;
   return `
     <div class="cal-workout-week-rail ${visibleItems.length ? 'has-cycle' : 'is-empty'}${archivedClass}" aria-label="${_esc(label)}">
-      <span class="cal-cycle-rail-line" aria-hidden="true"></span>
-      <div class="cal-cycle-branch-list">
-        ${visibleItems.map(item => {
-          const achievedClass = item.isAchieved ? ' is-achieved' : '';
-          return `
-          <button type="button" class="cal-cycle-branch is-${_esc(item.kind)}${achievedClass}" data-cal-cycle-target="${_esc(item.benchmarkId)}" title="${_esc(item.title)}" aria-label="${_esc(`${item.title} 설정 열기`)}"><span class="cal-cycle-branch-text"><span class="cal-cycle-branch-head"><span class="cal-cycle-branch-week">${_esc(item.weekLabel)}</span><span class="cal-cycle-branch-name">${_esc(item.exerciseLabel)}</span></span><span class="cal-cycle-branch-target">${_esc(item.targetLabel)}</span></span></button>
-        `;
-        }).join('')}
-      </div>
+      ${groups.length ? `<div class="cal-goal-part-carousel" aria-label="부위별 목표 캐러셀"><div class="cal-goal-part-track">${groups.map((group, groupIndex) => `
+        <section class="cal-goal-part-slide" aria-label="${_esc(group.label)} 목표">
+          <span class="cal-goal-part-bookmark">${_esc(group.label)}</span>
+          ${groups.length > 1 ? `<span class="cal-goal-part-count">${groupIndex + 1}/${groups.length}</span>` : ''}
+          <div class="cal-goal-card-list">${group.items.map(item => {
+            const achievedClass = item.isAchieved ? ' is-achieved' : '';
+            return `<button type="button" class="cal-goal-card${achievedClass}" data-cal-cycle-target="${_esc(item.benchmarkId)}" title="${_esc(item.title)}" aria-label="${_esc(`${item.title} 설정 열기`)}"><span class="cal-goal-card-head"><b>${_esc(item.weekLabel)}</b><strong>${_esc(item.exerciseLabel)}</strong></span><span class="cal-goal-card-meta">${_esc(item.trackLabel)} · ${_esc(item.targetLabel)}</span></button>`;
+          }).join('')}</div>
+        </section>`).join('')}</div></div>` : ''}
     </div>
   `;
 }
@@ -1754,12 +1773,11 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
         <div><span>총 소모</span><strong>${monthSum.kcalBurn.toLocaleString()} kcal</strong></div>
       </div>
     </div>
-  ` : `
+  ` : (isWorkoutHome ? '' : `
     <div class="cal-month-summary cal-month-empty">
-      <span class="cal-month-empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14.5" rx="2.4"/><path d="M8 3.5v4M16 3.5v4M4 10h16"/><path d="M8.25 14h.1M12 14h.1M15.75 14h.1"/></svg></span>
       <span>이번 달 운동 기록이 아직 없어요</span>
     </div>
-  `;
+  `);
 
   const weekdayHtml = isWorkoutHome ? `
     <div class="cal-weekdays cal-workout-weekdays">

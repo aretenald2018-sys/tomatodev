@@ -3,9 +3,9 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 15px;
+  gap: 10px;
   margin: 0 16px 16px;
-  padding: 22px 24px;
+  padding: 11px 14px;
   border: 1px solid #ffb9b2;
   border-radius: 22px;
   background: radial-gradient(circle at 11% 30%, rgba(255, 82, 74, .12), transparent 21%), linear-gradient(135deg, #fffdfd, #fff8f6);
@@ -14,43 +14,43 @@
 .cal-season-emblem {
   display: grid;
   place-items: center;
-  width: 58px;
-  height: 58px;
-  border-radius: 20px;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
   background: #ffe9e6;
   color: #ff3d38;
   box-shadow: 0 8px 18px rgba(255, 69, 57, .12);
 }
-.cal-season-emblem svg { width: 31px; height: 31px; fill: currentColor; stroke: #fff; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
-.cal-season-control .cal-season-copy { min-width: 0; display: grid; gap: 4px; }
-.cal-season-control .cal-season-copy > span { color: #ff3d38; font-size: 10px; font-weight: 900; letter-spacing: .12em; }
-.cal-season-control strong { color: #1e293b; font-size: 21px; line-height: 1.2; letter-spacing: -.035em; }
-.cal-season-control small { color: #677182; font-size: 14px; line-height: 1.35; }
+.cal-season-emblem svg { width: 23px; height: 23px; fill: currentColor; stroke: #fff; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.cal-season-control .cal-season-copy { min-width: 0; display: grid; gap: 2px; }
+.cal-season-control .cal-season-copy > span { color: #ff3d38; font-size: 8px; font-weight: 900; letter-spacing: .12em; }
+.cal-season-control strong { overflow: hidden; color: #1e293b; font-size: 17px; line-height: 1.15; letter-spacing: -.035em; text-overflow: ellipsis; white-space: nowrap; }
+.cal-season-control small { overflow: hidden; color: #677182; font-size: 11px; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
 .cal-season-control button {
-  min-width: 112px;
-  min-height: 54px;
-  padding: 0 19px;
+  min-width: 88px;
+  min-height: 42px;
+  padding: 0 14px;
   border: 1px solid #ff3d38;
-  border-radius: 18px;
+  border-radius: 14px;
   background: #fff;
   color: #ff3d38;
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 900;
   box-shadow: 0 7px 16px rgba(255, 61, 56, .09);
 }
 .cal-season-primary:hover { background: #fff4f2; }
 .cal-season-actions { flex: none; display: flex; align-items: center; gap: 8px; }
 .cal-season-control .cal-season-settings {
-  min-width: 48px;
-  width: 48px;
-  min-height: 48px;
+  min-width: 40px;
+  width: 40px;
+  min-height: 40px;
   padding: 0;
   border-color: #e8eaf0;
-  border-radius: 16px;
+  border-radius: 13px;
   color: #566173;
   box-shadow: 0 5px 14px rgba(30, 41, 59, .08);
 }
-.cal-season-settings svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.cal-season-settings svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .cal-season-control.needs-season { border-color: #ffb9b2; background: radial-gradient(circle at 11% 30%, rgba(255, 82, 74, .12), transparent 21%), linear-gradient(135deg, #fffdfd, #fff8f6); }
 .cal-season-control.needs-season .cal-season-copy > span,
 .cal-season-control.needs-season .cal-season-primary { color: #ff3d38; }
@@ -93,14 +93,16 @@
   font-weight: 800;
   line-height: 1.2;
 }
-.cal-workout-week-rail.is-season-archived { --cal-cycle-rail-color: #c6cbd0; background: #f4f5f7; }
-.cal-workout-week-rail.is-season-archived .cal-cycle-branch {
+.cal-workout-week-rail.is-season-archived { background: #f4f5f7; }
+.cal-workout-week-rail.is-season-archived .cal-goal-card {
   border-color: #d6dade;
   background: #e7eaed;
   color: #69727a;
 }
-.cal-workout-week-rail.is-season-archived .cal-cycle-branch-target,
-.cal-workout-week-rail.is-season-archived .cal-cycle-branch-week { color: #737b83; }
+.cal-workout-week-rail.is-season-archived .cal-goal-card b,
+.cal-workout-week-rail.is-season-archived .cal-goal-card strong,
+.cal-workout-week-rail.is-season-archived .cal-goal-card-meta { color: #737b83; }
+.cal-workout-week-rail.is-season-archived .cal-goal-part-bookmark { background: #8a9299; }
 .cal-day-season-badge {
   display: inline-flex;
   width: max-content;
@@ -132,6 +134,7 @@
   background: #fff;
 }
 .season-sheet-head {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -151,11 +154,13 @@
   font-size: 25px;
 }
 .season-stepper {
+  flex: none;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 3px;
   padding: 10px 14px 8px;
-  overflow: hidden;
+  min-height: 48px;
+  overflow: visible;
   border-bottom: 1px solid #eef0f2;
 }
 .season-stepper span {
@@ -393,7 +398,7 @@
 .season-impact-grid strong { color: #263039; font-size: 14px; }
 .season-impact-grid small { color: #717b84; font-size: 10px; line-height: 1.4; }
 .season-final-note { margin-top: 12px; padding: 10px 11px; border-radius: 10px; background: #fff2ef; color: #88433c; font-size: 11px; }
-.season-sheet-actions { display: grid; grid-template-columns: 1fr 2fr; gap: 9px; padding: 12px 16px max(12px, env(safe-area-inset-bottom)); border-top: 1px solid #e9ecef; background: #fff; }
+.season-sheet-actions { flex: none; display: grid; grid-template-columns: 1fr 2fr; gap: 9px; padding: 12px 16px max(12px, env(safe-area-inset-bottom)); border-top: 1px solid #e9ecef; background: #fff; }
 .season-sheet-actions button { min-height: 48px; border-radius: 12px; font-size: 13px; font-weight: 800; }
 .season-secondary { border: 1px solid #d8dde2; background: #fff; color: #59636c; }
 .season-primary { border: 0; background: #d9574d; color: #fff; }
@@ -414,4 +419,17 @@
   .season-review-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .season-review-summary button { grid-column: 1 / -1; min-height: 36px; }
   .season-running-presets { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 420px) {
+  .cal-season-control {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    margin-right: 10px;
+    margin-left: 10px;
+    padding: 9px 10px;
+  }
+  .cal-season-emblem { width: 38px; height: 38px; }
+  .cal-season-actions { gap: 5px; }
+  .cal-season-control button { min-width: 76px; min-height: 38px; padding: 0 10px; font-size: 12px; }
+  .cal-season-control .cal-season-settings { min-width: 36px; width: 36px; min-height: 36px; }
 }

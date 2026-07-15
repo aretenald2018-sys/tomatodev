@@ -599,6 +599,36 @@ function _applyWendlerEditor() {
   return true;
 }
 
+function _syncNormalTrackCardState(exerciseId, track, card) {
+  const config = _state?.overrides?.[exerciseId];
+  if (!config || !card) return;
+  const goalTracks = _goalTrackIds(config);
+  const selected = goalTracks.length > 0;
+  const hasPartialGoal = ['volume', 'intensity'].some(trackId => {
+    const draft = config.tracks?.[trackId] || {};
+    return draft.kg !== '' || draft.sets !== '' || draft.incrementKg !== '';
+  });
+  card.classList.toggle('has-goal', selected);
+  const trackRow = [...card.querySelectorAll('.season-track-row')].find(row => (
+    row.querySelector('[data-season-normal-track]')?.getAttribute('data-season-normal-track') === track
+  ));
+  trackRow?.classList.toggle('is-ready', _normalTrackReady(config.tracks?.[track]));
+  const badge = card.querySelector(':scope > header em');
+  if (badge) {
+    badge.classList.remove('is-wendler', 'is-goal');
+    if (selected) badge.classList.add('is-goal');
+    badge.textContent = selected ? `${goalTracks.length}트랙 목표` : hasPartialGoal ? '입력 중' : '미설정';
+  }
+  const configuration = _configurationFor(exerciseId);
+  const groupId = configuration?.groupId;
+  const groupItems = _state.exerciseSetup?.configurations?.filter(item => item.groupId === groupId) || [];
+  const groupSelectedCount = groupItems.filter(item => _state.selectedExerciseIds.has(item.exerciseId)).length;
+  const groupTab = [...card.closest('.season-sheet-body')?.querySelectorAll('[data-season-group]') || []]
+    .find(tab => tab.getAttribute('data-season-group') === groupId);
+  const groupCount = groupTab?.querySelector('small');
+  if (groupCount) groupCount.textContent = `${groupSelectedCount}/${groupItems.length}`;
+}
+
 function _handleInput(event) {
   if (!_state) return;
   const target = event.target;
@@ -662,7 +692,7 @@ function _handleInput(event) {
   if (configuredExerciseId && normalTrack && normalField) {
     _state.overrides[configuredExerciseId].tracks[normalTrack][normalField] = target.value;
     _refreshSelectedExerciseIds();
-    if (event.type === 'change') _render();
+    _syncNormalTrackCardState(configuredExerciseId, normalTrack, exerciseRoot);
     return;
   }
   const planField = target.getAttribute('data-season-plan');
