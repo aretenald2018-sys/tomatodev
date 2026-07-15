@@ -20,6 +20,7 @@ test('시즌 생성 payload는 레지스트리와 세 계획 문서를 같은 re
     clientRequestId: 'req-summer-1',
     registry: { schemaVersion: 2, seasons: [] },
     previousBoard: board(),
+    registeredExercises: [{ id: 'bench', name: '벤치프레스(중간그립)', movementId: 'barbell_bench', muscleId: 'chest' }],
     registeredExerciseIds: ['bench', 'row'],
     selectedExerciseIds: ['bench'],
     weeklySessionTarget: 4,
@@ -33,6 +34,8 @@ test('시즌 생성 payload는 레지스트리와 세 계획 문서를 같은 re
   assert.equal(result.runningPlan.weeklyDistanceKm, 25);
   assert.equal(result.workoutPlan.weeklySessionTarget, 4);
   assert.equal(result.board.benchmarks[0].wendler.startWeek, 1);
+  assert.equal(result.board.benchmarks[0].exerciseId, 'bench');
+  assert.equal(result.board.benchmarks[0].label, '벤치프레스(중간그립)');
 });
 
 test('같은 clientRequestId는 새 시즌을 만들지 않고 기존 시즌을 반환한다', () => {

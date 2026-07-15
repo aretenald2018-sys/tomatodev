@@ -495,6 +495,12 @@ function _makeBenchmark(candidate, order) {
     seed,
     setsDefault: 4,
     incrementKg: increment,
+    progressionWeeks: Number(candidate.progressionWeeks) > 0
+      ? Math.max(1, Math.round(Number(candidate.progressionWeeks)))
+      : null,
+    progressionStartDate: candidate.progressionWeeks
+      ? mondayOf(candidate.progressionStartDate || candidate.programStartDate || toKey(new Date()))
+      : null,
     program: candidate.wendler ? 'wendler' : 'stair',
     meta: {
       rirTarget: candidate.meta?.rirTarget ?? 2,
@@ -542,14 +548,36 @@ function _makeStep(benchmark, track, cycle, kg, reps, weekStart = null, span = n
   };
 }
 
-/** 활성 사이클에 벤치마크의 기본 계획 스텝 생성 (사이클당 1스텝=6주 유지) */
+function _roundStairKg(value, incrementKg = 0) {
+  const unit = Number(incrementKg) === 1.25 ? 0.25 : 0.5;
+  return Math.round((Number(value) || 0) / unit) * unit;
+}
+
+/** 활성 사이클에 벤치마크의 기본 계획 스텝 생성. progressionWeeks가 있으면 해당 주기마다 증량한다. */
 function _planBenchmarkSteps(board, benchmark, cycle, fromWeek = null) {
   if (benchmark.program === 'wendler') return; // 웬들러는 파생
   for (const t of benchmark.tracks) {
     const seed = benchmark.seed[t] || { kg: 0, reps: 12 };
     const weekStart = fromWeek || cycle.startDate;
-    const span = Math.max(1, cycle.weeks - weeksBetween(cycle.startDate, weekStart));
-    board.steps.push(_makeStep(benchmark, t, cycle, seed.kg, seed.reps, weekStart, span));
+    const remainingWeeks = Math.max(1, cycle.weeks - weeksBetween(cycle.startDate, weekStart));
+    const progressionWeeks = Math.max(0, Math.round(Number(benchmark.progressionWeeks) || 0));
+    if (!progressionWeeks) {
+      board.steps.push(_makeStep(benchmark, t, cycle, seed.kg, seed.reps, weekStart, remainingWeeks));
+      continue;
+    }
+    const progressionStartDate = benchmark.progressionStartDate || cycle.startDate;
+    const elapsedWeeks = Math.max(0, weeksBetween(progressionStartDate, weekStart));
+    const phase = elapsedWeeks % progressionWeeks;
+    let weekOffset = 0;
+    let increaseNo = 0;
+    while (weekOffset < remainingWeeks) {
+      const untilNextIncrease = weekOffset === 0 && phase > 0 ? progressionWeeks - phase : progressionWeeks;
+      const span = Math.min(untilNextIncrease, remainingWeeks - weekOffset);
+      const kg = _roundStairKg(Number(seed.kg) + Number(benchmark.incrementKg || 0) * increaseNo, benchmark.incrementKg);
+      board.steps.push(_makeStep(benchmark, t, cycle, kg, seed.reps, addWeeks(weekStart, weekOffset), span));
+      weekOffset += span;
+      increaseNo++;
+    }
   }
 }
 
@@ -573,15 +601,18 @@ export function buildBoardFromOnboarding({ selections = [], startDate, source = 
   };
   const groupsUsed = new Set();
   selections.forEach((cand, i) => {
-    const bm = _makeBenchmark(cand, i);
+    const bm = _makeBenchmark({ ...cand, progressionStartDate: cand.progressionStartDate || start }, i);
     board.benchmarks.push(bm);
     groupsUsed.add(bm.groupId);
   });
   for (const gid of groupsUsed) {
     const cycle = _makeCycle(gid, start);
     board.cycles.push(cycle);
-    for (const bm of board.benchmarks.filter(b => b.groupId === gid)) {
-      if (bm.program === 'wendler') _normalizeWendlerBenchmark(board, bm, { fallbackStartDate: cycle.startDate });
+    const groupBenchmarks = board.benchmarks.filter(b => b.groupId === gid);
+    for (const bm of groupBenchmarks.filter(b => b.program === 'wendler')) {
+      _normalizeWendlerBenchmark(board, bm, { fallbackStartDate: cycle.startDate });
+    }
+    for (const bm of groupBenchmarks) {
       _planBenchmarkSteps(board, bm, cycle);
     }
   }
@@ -789,6 +820,28 @@ export function projectFutureCells(board, benchmarkId, track, minAheadWeeks = 12
   const baseReps = isWnd ? 0 : currentKgOf(board, bm, track).reps;
   const inc = isWnd ? bm.wendler.incrementKg : bm.incrementKg;
   const limit = addWeeks(addWeeks(active.startDate, active.weeks), minAheadWeeks);
+  const progressionWeeks = isWnd ? 0 : Math.max(0, Math.round(Number(bm.progressionWeeks) || 0));
+  if (progressionWeeks) {
+    const progressionStartDate = bm.progressionStartDate || active.startDate;
+    const steps = _stepsOf(board, bm.id, track, active.id);
+    const last = steps[steps.length - 1] || { weekStart: active.startDate };
+    const lastLevel = Math.floor(Math.max(0, weeksBetween(progressionStartDate, last.weekStart)) / progressionWeeks);
+    let cursor = projStart;
+    let level = Math.floor(Math.max(0, weeksBetween(progressionStartDate, cursor)) / progressionWeeks);
+    let kg = _roundStairKg(baseKg + inc * Math.max(0, level - lastLevel), inc);
+    while (weeksBetween(cursor, limit) > 0) {
+      const phase = Math.max(0, weeksBetween(progressionStartDate, cursor)) % progressionWeeks;
+      const span = Math.min(phase > 0 ? progressionWeeks - phase : progressionWeeks, weeksBetween(cursor, limit));
+      cells.push({
+        kind: 'stair', weekStart: cursor, span, kg, reps: baseReps,
+        state: 'future', dots: [], isCurrent: false, projected: true, offset: Math.max(1, level - lastLevel),
+      });
+      cursor = addWeeks(cursor, span);
+      level++;
+      kg = _roundStairKg(kg + inc, inc);
+    }
+    return cells;
+  }
   while (weeksBetween(projStart, limit) > 0 && offset <= 6) {
     if (isWnd) {
       const exactAnchor = (bm.wendler?.tmAnchors || []).find(anchor => anchor.weekStart === projStart);
@@ -1083,7 +1136,17 @@ export function applySettle(board, groupId, decisions = {}, todayKey, now = null
       }
     } else {
       const before = currentKgOf(board, bm, row.track).kg;
-      const after = grow ? roundToPlate(before + bm.incrementKg, 0.5) : before;
+      const progressionWeeks = Math.max(0, Math.round(Number(bm.progressionWeeks) || 0));
+      const lastStep = _stepsOf(board, bm.id, row.track, cycle.id).at(-1) || null;
+      const progressionStartDate = bm.progressionStartDate || cycle.startDate;
+      const previousLevel = progressionWeeks && lastStep
+        ? Math.floor(Math.max(0, weeksBetween(progressionStartDate, lastStep.weekStart)) / progressionWeeks)
+        : 0;
+      const nextLevel = progressionWeeks
+        ? Math.floor(Math.max(0, weeksBetween(progressionStartDate, nextStart)) / progressionWeeks)
+        : previousLevel + 1;
+      const increaseCount = Math.max(0, nextLevel - previousLevel);
+      const after = grow ? _roundStairKg(before + bm.incrementKg * increaseCount, bm.incrementKg) : before;
       bm.seed[row.track] = { kg: after, reps: currentKgOf(board, bm, row.track).reps };
       results.push({ benchmarkId: bm.id, track: row.track, program: 'stair', before, after, decision });
     }
@@ -1385,6 +1448,17 @@ function _syncStairSteps(board, bm, cycle, todayKey, { fromCycleStart = false } 
   for (const track of (bm.tracks || ['volume'])) {
     const seed = bm.seed?.[track] || { kg: 0, reps: track === 'intensity' ? 8 : 12 };
     const existing = _stepsOf(board, bm.id, track, cycle.id);
+    if (!existing.length) {
+      const weekStart = fromCycleStart ? cycle.startDate : mondayOf(todayKey);
+      _planBenchmarkSteps(board, { ...bm, tracks: [track], seed: { [track]: seed } }, cycle, weekStart);
+      continue;
+    }
+    if (existing.length && existing.every(step => !_stepHasLog(step))) {
+      board.steps = (board.steps || []).filter(step => !(step.benchmarkId === bm.id && step.track === track && step.cycleId === cycle.id));
+      const weekStart = fromCycleStart ? cycle.startDate : mondayOf(todayKey);
+      _planBenchmarkSteps(board, { ...bm, tracks: [track], seed: { [track]: seed } }, cycle, weekStart);
+      continue;
+    }
     const editable = existing.find(step => !_stepHasLog(step));
     if (editable) {
       editable.kg = seed.kg;

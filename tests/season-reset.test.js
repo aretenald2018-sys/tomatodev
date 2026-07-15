@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildBoardFromOnboarding, activeBenchmarks } from '../workout/test-v2/board-core.js';
-import { buildSeasonWorkoutBoard, buildSeasonWorkoutPlan, seasonResetPreview } from '../workout/season-reset.js';
+import { applySettle, buildBoardFromOnboarding, activeBenchmarks, projectFutureCells } from '../workout/test-v2/board-core.js';
+import {
+  buildSeasonExerciseSetup,
+  buildSeasonWorkoutBoard,
+  buildSeasonWorkoutPlan,
+  seasonResetPreview,
+} from '../workout/season-reset.js';
 import { W863_ORIGINAL_VERSION } from '../workout/w863-original.js';
 
 function previousBoard() {
@@ -85,4 +90,126 @@ test('선택 종목과 시즌 운동 계획은 등록 목록 및 시작 1RM을 �
   assert.equal(plan.weeklySessionTarget, 4);
   assert.equal(plan.startingOneRmByExercise.squat, 100);
   assert.equal(plan.programVersion, W863_ORIGINAL_VERSION);
+});
+
+test('웬들러는 일반 동작명이 아니라 실제 등록 종목 ID와 이름에 연결된다', () => {
+  const legacy = buildBoardFromOnboarding({
+    startDate: '2026-05-04',
+    selections: [{
+      movementId: 'back_squat', groupId: 'lower', label: '스쿼트',
+      tracks: { volume: { kg: 90, reps: 5 } },
+      wendler: { scheme: 'w531', oneRmKg: 120 },
+    }],
+  });
+  const registeredExercises = [{
+    id: 'custom_squat_wide', name: '스쿼트(와이드)', movementId: 'back_squat', muscleId: 'lower',
+  }];
+  const setup = buildSeasonExerciseSetup({ registeredExercises, previousBoard: legacy });
+  assert.equal(setup.configurations[0].program, 'wendler');
+  assert.equal(setup.configurations[0].mappingSource, 'movement-id');
+  assert.equal(setup.unresolvedWendler.length, 0);
+
+  const next = buildSeasonWorkoutBoard({
+    previousBoard: legacy,
+    registeredExercises,
+    selectedExerciseIds: ['custom_squat_wide'],
+    seasonId: 'wide-squat-season',
+    startDate: '2026-07-15',
+  });
+  const [benchmark] = activeBenchmarks(next);
+  assert.equal(benchmark.exerciseId, 'custom_squat_wide');
+  assert.equal(benchmark.label, '스쿼트(와이드)');
+  assert.equal(benchmark.program, 'wendler');
+});
+
+test('동일 movementId 변형이 여러 개면 임의 매핑하지 않고 사용자의 명시적 선택을 요구한다', () => {
+  const legacy = buildBoardFromOnboarding({
+    startDate: '2026-05-04',
+    selections: [{
+      movementId: 'back_squat', groupId: 'lower', label: '스쿼트',
+      tracks: { volume: { kg: 80, reps: 5 } },
+      wendler: { scheme: 'w531', oneRmKg: 110 },
+    }],
+  });
+  const benchmarkId = legacy.benchmarks[0].id;
+  const registeredExercises = [
+    { id: 'wide', name: '스쿼트(와이드)', movementId: 'back_squat', muscleId: 'lower' },
+    { id: 'narrow', name: '스쿼트(내로우)', movementId: 'back_squat', muscleId: 'lower' },
+  ];
+  const unresolved = buildSeasonExerciseSetup({ registeredExercises, previousBoard: legacy });
+  assert.equal(unresolved.unresolvedWendler.length, 1);
+  assert.deepEqual(unresolved.unresolvedWendler[0].candidates.map(item => item.exerciseId), ['wide', 'narrow']);
+  assert.ok(unresolved.configurations.every(item => item.program === 'stair'));
+
+  const resolved = buildSeasonExerciseSetup({
+    registeredExercises,
+    previousBoard: legacy,
+    benchmarkMappings: { [benchmarkId]: 'wide' },
+  });
+  assert.equal(resolved.unresolvedWendler.length, 0);
+  assert.equal(resolved.configurations.find(item => item.exerciseId === 'wide').program, 'wendler');
+  assert.equal(resolved.configurations.find(item => item.exerciseId === 'narrow').program, 'stair');
+});
+
+test('일반 등록 종목은 기준중량에서 선택한 무게만큼 정확히 3주마다 증량한다', () => {
+  const board = buildSeasonWorkoutBoard({
+    previousBoard: null,
+    registeredExercises: [{ id: 'fly', name: '플라이', movementId: 'chest_fly', muscleId: 'chest' }],
+    selectedExerciseIds: ['fly'],
+    seasonId: 'normal-season',
+    startDate: '2026-07-15',
+    overrides: { fly: { baselineKg: 40, incrementKg: 1.25 } },
+  });
+  const [benchmark] = activeBenchmarks(board);
+  assert.equal(benchmark.exerciseId, 'fly');
+  assert.equal(benchmark.label, '플라이');
+  assert.equal(benchmark.progressionWeeks, 3);
+  assert.equal(benchmark.incrementKg, 1.25);
+  const steps = board.steps.filter(step => step.benchmarkId === benchmark.id);
+  assert.deepEqual(steps.map(step => ({ kg: step.kg, span: step.span })), [
+    { kg: 40, span: 3 },
+    { kg: 41.25, span: 3 },
+  ]);
+  assert.deepEqual(projectFutureCells(board, benchmark.id, 'volume', 6).slice(0, 2).map(cell => cell.kg), [42.5, 43.75]);
+});
+
+test('같은 부위의 7주 웬들러 사이클과 섞여도 일반 종목의 3주 증량 간격은 이어진다', () => {
+  const previous = buildBoardFromOnboarding({
+    startDate: '2026-05-04',
+    selections: [{
+      exerciseId: 'wide', movementId: 'back_squat', groupId: 'lower', label: '스쿼트(와이드)',
+      tracks: { volume: { kg: 90, reps: 5 } }, wendler: { scheme: 'w531', oneRmKg: 120 },
+    }],
+  });
+  const board = buildSeasonWorkoutBoard({
+    previousBoard: previous,
+    registeredExercises: [
+      { id: 'wide', name: '스쿼트(와이드)', movementId: 'back_squat', muscleId: 'lower' },
+      { id: 'legpress', name: '레그프레스', movementId: 'leg_press', muscleId: 'lower' },
+    ],
+    selectedExerciseIds: ['wide', 'legpress'],
+    seasonId: 'mixed-lower',
+    startDate: '2026-07-15',
+    overrides: { legpress: { baselineKg: 100, incrementKg: 5 } },
+  });
+  const legpress = activeBenchmarks(board).find(item => item.exerciseId === 'legpress');
+  const firstCycleSteps = board.steps.filter(step => step.benchmarkId === legpress.id);
+  assert.deepEqual(firstCycleSteps.map(step => ({ kg: step.kg, span: step.span })), [
+    { kg: 100, span: 3 },
+    { kg: 105, span: 3 },
+    { kg: 110, span: 1 },
+  ]);
+  const future = projectFutureCells(board, legpress.id, 'volume', 6);
+  assert.deepEqual(future.slice(0, 2).map(cell => ({ kg: cell.kg, span: cell.span })), [
+    { kg: 110, span: 2 },
+    { kg: 115, span: 3 },
+  ]);
+
+  applySettle(board, 'lower', {}, '2026-08-31', 123);
+  const nextCycle = board.cycles.find(cycle => cycle.groupId === 'lower' && cycle.status === 'active');
+  const nextSteps = board.steps.filter(step => step.benchmarkId === legpress.id && step.cycleId === nextCycle.id);
+  assert.deepEqual(nextSteps.slice(0, 2).map(step => ({ kg: step.kg, span: step.span })), [
+    { kg: 110, span: 2 },
+    { kg: 115, span: 3 },
+  ]);
 });

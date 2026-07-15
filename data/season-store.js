@@ -81,6 +81,7 @@ export async function createWorkoutSeason(input = {}) {
       clientRequestId,
       registry,
       previousBoard: boardSnap.exists() ? boardSnap.data()?.value : (_settings.test_board_v2 || null),
+      registeredExercises: input.registeredExercises || _exList,
       registeredExerciseIds: input.registeredExerciseIds || _exList.map(exercise => exercise.id).filter(Boolean),
     });
     const seasonId = prepared.season.id;
