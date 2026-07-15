@@ -182,6 +182,7 @@ function _renderMessages(messages) {
   _messages = messages;
   _renderChannelCounts(messages);
   _renderPinnedNotice(messages, notices);
+  _renderPresence(messages);
   if (!messages.length) {
     _appendEmptyState(list, '아직 대화가 없어요. 첫 메시지를 남겨보세요.');
     _hasRenderedMessages = true;
@@ -241,16 +242,40 @@ function _renderChannelCounts(messages) {
   });
 }
 
+function _renderPresence(messages) {
+  const presence = document.getElementById('home-chat-presence');
+  if (!presence) return;
+  const label = presence.querySelector('.home-chat-presence-label');
+  const avatarList = presence.querySelector('.home-chat-presence-avatars');
+  const participants = [];
+  const seen = new Set();
+  [...messages].reverse().forEach((message) => {
+    const key = String(message.userId || message.userName || '');
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    participants.push(message);
+  });
+  if (label) label.textContent = `대화 참여 ${participants.length}명`;
+  if (!avatarList) return;
+  const fragment = document.createDocumentFragment();
+  participants.slice(0, 6).forEach((message) => fragment.append(_createAvatar(message)));
+  if (participants.length > 6) {
+    const more = document.createElement('span');
+    more.className = 'home-chat-presence-more';
+    more.textContent = `+${participants.length - 6}`;
+    fragment.append(more);
+  }
+  avatarList.replaceChildren(fragment);
+}
+
 function _syncChannelUi() {
   document.querySelectorAll('[data-chat-channel]').forEach((button) => {
     const isActive = button.dataset.chatChannel === _activeChannel;
     button.classList.toggle('is-active', isActive);
     button.setAttribute('aria-selected', isActive ? 'true' : 'false');
   });
-  const channelLabel = document.querySelector('.home-chat-channel-select');
   const input = document.getElementById('home-chat-input');
   const sendChannel = _activeChannel === 'all' ? 'free' : _activeChannel;
-  if (channelLabel) channelLabel.textContent = CHAT_CHANNELS[sendChannel];
   if (input) input.placeholder = `${CHAT_CHANNELS[sendChannel]} 메시지를 입력하세요`;
 }
 
@@ -317,6 +342,17 @@ function _bindChatForm() {
   });
 }
 
+function _bindEmojiButton() {
+  const button = document.getElementById('home-chat-emoji');
+  const input = document.getElementById('home-chat-input');
+  if (!button || !input || button.dataset.chatBound === '1') return;
+  button.dataset.chatBound = '1';
+  button.addEventListener('click', () => {
+    if (input.value.length + 2 <= Number(input.maxLength || 300)) input.value += '😊';
+    input.focus();
+  });
+}
+
 function _subscribeForCurrentUser() {
   const user = getCurrentUser();
   const userId = user?.id || '';
@@ -349,6 +385,7 @@ function _subscribeForCurrentUser() {
 export function renderHomeChat() {
   if (!document.getElementById('card-chat')) return;
   _bindChannelTabs();
+  _bindEmojiButton();
   _bindChatForm();
   _subscribeForCurrentUser();
 }

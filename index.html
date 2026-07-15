@@ -288,11 +288,16 @@
       <div class="home-chat-list" id="home-chat-list" role="log" aria-live="polite" aria-label="이용자 채팅 기록">
         <div class="home-chat-empty">채팅을 불러오는 중이에요</div>
       </div>
+      <div class="home-chat-presence" id="home-chat-presence" aria-label="대화 참여자">
+        <span class="home-chat-presence-dot" aria-hidden="true"></span>
+        <span class="home-chat-presence-label">대화 참여 0명</span>
+        <span class="home-chat-presence-avatars" aria-hidden="true"></span>
+      </div>
       <form class="home-chat-form" id="home-chat-form">
         <label class="tds-sr-only" for="home-chat-input">채팅 메시지</label>
-        <span class="home-chat-channel-select" aria-hidden="true">전체</span>
         <input class="home-chat-input" id="home-chat-input" type="text" maxlength="300"
           autocomplete="off" placeholder="자유 메시지를 입력하세요">
+        <button class="home-chat-emoji" id="home-chat-emoji" type="button" aria-label="웃는 이모지 추가">☺</button>
         <button class="home-chat-send" id="home-chat-send" type="submit">전송</button>
       </form>
     </div>
