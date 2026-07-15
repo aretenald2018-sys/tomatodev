@@ -29,12 +29,17 @@ test('chat history uses persistent Firestore documents without session expiry or
 });
 
 test('notice messages and safe text rendering are wired into the chat card', () => {
+  const html = read('index.html');
   const dataSource = read('data/data-social-interact.js');
   const homeSource = read('home/chat.js');
   const css = read('styles/features/home-foundations.css');
 
+  assert.match(html, /class="tds-sr-only" for="home-chat-input"/);
   assert.match(dataSource, /CHAT_NOTICE_PREFIX = '<공지>'/);
   assert.match(homeSource, /bubble\.textContent =/);
   assert.match(css, /\.home-chat-message\.is-notice \.home-chat-bubble/);
   assert.match(css, /color: var\(--primary\); font-weight: 800/);
+  assert.match(css, /height: 198px; min-height: 198px; max-height: 198px/);
+  assert.match(css, /padding: 5px 8px; border: 1px solid/);
+  assert.match(css, /font-size: 11px; line-height: 1\.3/);
 });
