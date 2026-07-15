@@ -495,11 +495,11 @@
   min-width: 0;
   position: relative;
   z-index: 2;
-  transform: translateY(calc(-1 * clamp(32px, 8cqw, 46px)));
+  transform: translateY(calc(-1 * max(32px, 8cqw)));
 }
 .lz-iso-marquee .tf-hero-label {
   color: #ffe0cf;
-  font-size: clamp(8px, 1.5cqw, 11px);
+  font-size: max(8px, 1.5cqw);
   font-weight: 800;
   line-height: 1.15;
   overflow: hidden;
@@ -508,7 +508,7 @@
 }
 .lz-iso-marquee .tf-hero-count {
   color: #fff7e9;
-  font-size: clamp(21px, 4.4cqw, 30px);
+  font-size: max(21px, 4.4cqw);
   font-weight: 850;
   letter-spacing: 0;
   line-height: 1;
@@ -518,7 +518,7 @@
 }
 .lz-iso-marquee .tf-hero-unit {
   color: #fff0db;
-  font-size: clamp(9px, 1.7cqw, 12px);
+  font-size: max(9px, 1.7cqw);
   font-weight: 800;
 }
 .lz-iso-marquee .tf-hero-right {
@@ -532,16 +532,16 @@
   filter: drop-shadow(2px 2px 0 rgba(14,6,4,.7));
 }
 .lz-iso-marquee .tf-hero-character {
-  width: clamp(22px, 4cqw, 30px);
-  height: clamp(22px, 4cqw, 30px);
+  width: max(22px, 4cqw);
+  height: max(22px, 4cqw);
 }
 .lz-iso-marquee .tf-hero-info-btn {
   top: 3px;
   right: 3px;
   z-index: 3;
-  width: clamp(13px, 2.1cqw, 15px);
-  height: clamp(13px, 2.1cqw, 15px);
-  font-size: clamp(8px, 1.25cqw, 9px);
+  width: max(13px, 2.1cqw);
+  height: max(13px, 2.1cqw);
+  font-size: max(8px, 1.25cqw);
   color: #fff8ef;
   border-color: rgba(255,177,143,.88);
   border-radius: 2px;
@@ -1747,4 +1747,7 @@ body.lz-running-record-modal-open {
   .lz-summary-btn { padding: 12px 12px; }
   .lz-summary-main { font-size: 18px; }
   .lz-summary-main small { font-size: 10px; }
+}
+@container (min-width: 900px) {
+  .lz-marquee-underlay { transform: scaleY(1.45); }
 }

@@ -51,13 +51,14 @@ test('home tomato hero and marquee share the fixed 1672 life-zone world', () => 
   assert.match(css, /\.lz-marquee-underlay \{[\s\S]*top: calc\(-20 \/ 1672 \* 100%\);[\s\S]*left: calc\(-17 \/ 1672 \* 100%\);[\s\S]*width: calc\(920 \/ 1672 \* 100%\);[\s\S]*transform: scaleY\(2\);[\s\S]*transform-origin: 0 81%;/);
   assert.match(css, /\.lz-iso-marquee-panel \{[\s\S]*inset: 0;[\s\S]*width: 100%;[\s\S]*transform: skewY\(-24deg\);/);
   assert.match(css, /\.lz-iso-marquee-panel \{[\s\S]*overflow: visible;[\s\S]*border: 0;[\s\S]*background: transparent;/);
-  assert.match(css, /\.lz-iso-marquee \.tf-hero-left \{[\s\S]*translateY\(calc\(-1 \* clamp\(32px, 8cqw, 46px\)\)\);/);
+  assert.match(css, /\.lz-iso-marquee \.tf-hero-left \{[\s\S]*translateY\(calc\(-1 \* max\(32px, 8cqw\)\)\);/);
   assert.match(css, /\.tf-hero \{[\s\S]*min-height: 58px;[\s\S]*padding: 8px 38px 8px 14px;/);
-  assert.match(css, /\.lz-iso-marquee \.tf-hero-count \{[\s\S]*font-size: clamp\(21px, 4\.4cqw, 30px\);[\s\S]*-webkit-text-stroke: \.7px #71180e;/);
-  assert.match(css, /\.lz-iso-marquee \.tf-hero-character \{[\s\S]*width: clamp\(22px, 4cqw, 30px\);[\s\S]*height: clamp\(22px, 4cqw, 30px\);/);
+  assert.match(css, /\.lz-iso-marquee \.tf-hero-count \{[\s\S]*font-size: max\(21px, 4\.4cqw\);[\s\S]*-webkit-text-stroke: \.7px #71180e;/);
+  assert.match(css, /\.lz-iso-marquee \.tf-hero-character \{[\s\S]*width: max\(22px, 4cqw\);[\s\S]*height: max\(22px, 4cqw\);/);
   assert.match(css, /\.lz-iso-marquee \.tf-hero-info-btn \{[\s\S]*top: 3px;[\s\S]*right: 3px;/);
   assert.match(css, /\.lz-scene \{[\s\S]*container-type: inline-size;/);
   assert.match(css, /\.lz-scene \{[\s\S]*background: #050505;/);
+  assert.match(css, /@container \(min-width: 900px\) \{[\s\S]*\.lz-marquee-underlay \{ transform: scaleY\(1\.45\); \}/);
   assert.match(css, /\.lz-base \{[\s\S]*z-index: 1;[\s\S]*pointer-events: none;/);
   assert.match(runtimeAssets, /\.\/assets\/home\/life-zone\/ui\/streak-marquee-facade-v2\.png/);
   assert.deepEqual(readPngMeta('assets/home/life-zone/ui/streak-marquee-facade-v2.png'), {
