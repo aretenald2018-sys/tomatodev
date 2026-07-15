@@ -1048,16 +1048,18 @@ export function renderLifeZoneCard({
 
   const fallbackActors = _defaultActorStates();
   const heroHtml = hero ? `
-    <aside class="lz-glass-bookmark" aria-label="오늘의 연속 기록">
-      <div class="tf-hero-left">
-        <div class="tf-hero-label" data-hero-message-target>${escapeHtml(hero.label || '')}</div>
-        <div class="tf-hero-count">${hero.countHtml || ''}</div>
+    <aside class="lz-iso-marquee" aria-label="오늘의 연속 기록">
+      <div class="lz-iso-marquee-panel">
+        <div class="tf-hero-left">
+          <div class="tf-hero-label" data-hero-message-target>${escapeHtml(hero.label || '')}</div>
+          <div class="tf-hero-count">${hero.countHtml || ''}</div>
+        </div>
+        <button class="tf-info-btn tf-info-btn--light tf-hero-info-btn" id="tomato-rule-info-card" aria-label="토마토 획득 규칙">ⓘ</button>
+        <div class="tf-hero-right">
+          <div class="tf-hero-tomato tf-hero-tomato--svg" data-mood="${escapeHtml(hero.characterMood || 'seed')}">${hero.characterSvg || ''}</div>
+        </div>
+        <div class="hero-social-proof" id="hero-social-proof" style="display:none;"></div>
       </div>
-      <button class="tf-info-btn tf-info-btn--light tf-hero-info-btn" id="tomato-rule-info-card" aria-label="토마토 획득 규칙">ⓘ</button>
-      <div class="tf-hero-right">
-        <div class="tf-hero-tomato tf-hero-tomato--svg" data-mood="${escapeHtml(hero.characterMood || 'seed')}">${hero.characterSvg || ''}</div>
-      </div>
-      <div class="hero-social-proof" id="hero-social-proof" style="display:none;"></div>
     </aside>
   ` : '';
 
