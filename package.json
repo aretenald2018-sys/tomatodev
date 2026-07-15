@@ -1,5 +1,5 @@
 {
-  "name": "dashboard",
+  "name": "tomatofarm",
   "version": "1.0.0",
   "type": "module",
   "description": "Personal Dashboard with Fitness, Diet, Wine Tracking",
@@ -24,8 +24,9 @@
     "verify:assets": "node scripts/generate-style-entry.mjs && node scripts/generate-build-info.mjs && node scripts/verify-runtime-assets.mjs",
     "verify:deploy": "node scripts/verify-deploy.mjs",
     "verify:deployed-markers": "node scripts/verify-deployed-markers.mjs",
+    "check:repository": "node scripts/check-repository-boundary.mjs",
+    "setup:repository": "node scripts/install-repository-guard.mjs && node scripts/check-repository-boundary.mjs",
     "deploy:production": "node scripts/deploy-production.mjs",
-    "deploy:dashboard3": "node scripts/deploy-dashboard3.mjs",
     "verify:rom-graph": "node scripts/verify-rom-live-graph.mjs",
     "verify:workout": "node scripts/verify-workout-fixture.mjs",
     "verify:wear-refresh": "node scripts/verify-wear-refresh-adb.mjs",
