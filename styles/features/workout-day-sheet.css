@@ -1611,7 +1611,7 @@
 
 @media (max-width: 430px) {
   .cal-workout-surface-home {
-    --cal-cycle-rail-width: 94px;
+    --cal-cycle-rail-width: 64px;
     --wt-calendar-scroll-gutter: max(18px, env(safe-area-inset-right, 0px));
   }
   .cal-workout-surface-home .cal-weekdays {
@@ -1625,38 +1625,13 @@
     min-height: 128px;
   }
   .cal-workout-week-rail {
+    gap: 6px;
     padding: 7px 3px 7px 5px;
+    font-size: 10px;
   }
+  .cal-workout-week-rail strong { font-size: 12px; }
   .cal-week-rail-spacer {
     padding: 5px 3px;
-  }
-  .cal-cycle-branch {
-    min-height: 22px;
-    padding: 2px 2px 2px 5px;
-    font-size: 8px;
-    line-height: 9px;
-  }
-  .cal-cycle-goal-input {
-    min-height: 22px;
-    padding: 2px 4px;
-    font-size: 8.5px;
-    line-height: 10px;
-  }
-  .cal-week-rail-spacer .cal-cycle-goal-input {
-    padding: 2px 3px;
-    font-size: 8px;
-  }
-  .cal-cycle-branch-text {
-    line-height: 9px;
-  }
-  .cal-cycle-branch-week {
-    font-size: 8px;
-  }
-  .cal-cycle-branch-name {
-    font-size: 7.5px;
-  }
-  .cal-cycle-branch-target {
-    font-size: 7.5px;
   }
   .cal-workout-surface-home .cal-workout-cell {
     padding: 7px 1px 4px;
@@ -2159,4 +2134,99 @@
 .cal-footnote {
   margin-top: 12px; font-size: 11px; color: var(--muted);
   text-align: center; line-height: 1.5;
+}
+
+/* Workout calendar bottom sheet follows the home season card system. */
+.cal-workout-day-backdrop.is-full {
+  background: rgba(35, 41, 52, .18);
+  backdrop-filter: blur(3px);
+}
+.cal-workout-day-sheet {
+  --wt-day-sheet-height: clamp(88px, 12dvh, 104px);
+  --wt-day-sheet-full-clearance: 106px;
+  left: 12px;
+  right: 12px;
+  bottom: 60px;
+  overflow: hidden;
+  border: 1px solid #edf0f3;
+  border-bottom: 0;
+  border-radius: 26px 26px 0 0;
+  background: #ffffff;
+  box-shadow: 0 -10px 32px rgba(29, 41, 57, .14);
+}
+.cal-workout-day-sheet.is-bar {
+  --wt-day-sheet-height: clamp(88px, 12dvh, 104px);
+}
+.cal-workout-day-sheet.is-full {
+  box-shadow: 0 -18px 44px rgba(29, 41, 57, .2);
+}
+.cal-workout-day-sheet .cal-workout-day-bar {
+  border-radius: 26px 26px 0 0;
+  background: #ffffff;
+}
+.cal-workout-day-sheet.is-full .cal-workout-day-expand {
+  color: transparent;
+  text-shadow: none;
+  animation: none;
+}
+.cal-workout-day-sheet .cal-workout-day-expand:focus-visible {
+  outline-color: #ff4b43;
+  outline-offset: 3px;
+}
+.cal-workout-day-sheet-body {
+  border-top-color: #edf0f3;
+  background: #fbfaf9;
+}
+.cal-workout-day-sheet .wt-day-detail { background: #fbfaf9; }
+.cal-workout-day-sheet .wt-day-summary-card {
+  border-color: #edf0f3;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 6px 16px rgba(29, 41, 57, .05);
+}
+.cal-workout-day-sheet .wt-day-fab {
+  background: #ff4b43;
+  box-shadow: 0 9px 20px rgba(255, 75, 67, .28);
+}
+.cal-workout-day-sheet .wt-day-sessionbar {
+  border-top-color: #edf0f3;
+  background: rgba(255, 255, 255, .96);
+}
+@media (max-width: 430px) {
+  .cal-workout-day-sheet,
+  .cal-workout-day-sheet.is-bar {
+    --wt-day-sheet-height: clamp(88px, 12dvh, 100px);
+    left: 8px;
+    right: 8px;
+  }
+  .cal-workout-day-sheet .cal-workout-day-bar {
+    min-height: 88px;
+    gap: 10px;
+    padding: 24px 14px 13px;
+  }
+  .cal-workout-day-main {
+    grid-template-columns: 46px minmax(0, 1fr);
+    gap: 10px;
+  }
+  .cal-workout-day-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 16px;
+  }
+  .cal-workout-day-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+  .cal-workout-day-date {
+    font-size: 20px;
+    line-height: 24px;
+  }
+  .cal-workout-day-sub { font-size: 12px; }
+  .cal-workout-day-actions { gap: 6px; }
+  .cal-workout-day-actions button {
+    min-width: 56px;
+    min-height: 44px;
+    padding: 0 10px;
+    font-size: 13px;
+  }
 }

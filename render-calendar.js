@@ -12,8 +12,6 @@ import {
   getMuscleParts,
   getLatestCheckinWeight,
   getSeasonRegistry,
-  getSeasonTestBoardV2,
-  getTestBoardV2,
   loadRunningRoute,
   saveDay,
 } from './data.js';
@@ -27,10 +25,7 @@ import {
 import { calcSetVolume } from './calc/volume.js';
 import { MOVEMENTS } from './config.js';
 import { dateKey, TODAY, isFuture, isBeforeStart } from './data/data-date.js';
-import {
-  addSeasonDays,
-  findSeasonForDate,
-} from './data/season-model.js';
+import { findSeasonForDate } from './data/season-model.js';
 import { openModal, closeModal } from './utils/dom.js';
 import { confirmAction } from './utils/confirm-modal.js';
 import {
@@ -88,14 +83,6 @@ import { wtOpenExerciseEditor, wtOpenExercisePicker } from './workout/exercises.
 import { wtMountRunningSession, wtOpenRunningSession } from './workout/running-session.js';
 import { openWorkoutSeasonWizard } from './workout/season-manager.js';
 import { loadWorkoutDate as loadWorkoutSessionDate } from './workout/load.js';
-import {
-  activeBenchmarks,
-  activeCycleOf,
-  buildExerciseProgramWorkoutPrescription,
-  mondayOf,
-  weekIndexOf,
-  workoutRecordsForBenchmarkWeek,
-} from './workout/test-v2/board-core.js';
 import { buildWorkoutSetTimeline } from './workout/timeline.js';
 import { buildCalendarActivityRows } from './calendar/activity-model.js';
 import { tm2OpenBenchmarkSettings, tm2OpenBoard } from './workout/test-v2/entry.js';
@@ -275,105 +262,19 @@ function _dateFromKey(key) {
   return p ? new Date(p.y, p.m, p.d) : null;
 }
 
-function _dateKeyFromDate(date) {
-  return dateKey(date.getFullYear(), date.getMonth(), date.getDate());
+function _isoWeekNumber(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
 }
 
-function _workoutCalendarRowWeekStart(y, m, row, firstDow) {
-  const rowMonday = new Date(y, m, (row * 7) - firstDow + 2);
-  return mondayOf(_dateKeyFromDate(rowMonday));
-}
-
-function _cycleRailExerciseLabel(benchmark = {}) {
-  return String(benchmark.short || benchmark.label || '종목').trim() || '종목';
-}
-
-function _cycleRailTrackLabel(track) {
-  return track === 'intensity' ? '강도' : '볼륨';
-}
-
-function _cycleRailKind(benchmark = {}, track) {
-  if (benchmark.program === 'wendler') return 'wendler';
-  return track === 'intensity' ? 'intensity' : 'volume';
-}
-
-function _cycleRailGoalStatus(cache = {}, benchmark = {}, weekStart, targetKg = 0, targetReps = 0) {
-  const kgGoal = Number(targetKg) || 0;
-  const repsGoal = Number(targetReps) || 0;
-  if (kgGoal <= 0 || repsGoal <= 0) return { isAchieved: false, label: '' };
-  const records = workoutRecordsForBenchmarkWeek(cache || {}, benchmark || {}, weekStart);
-  const best = records
-    .map(record => record?.best || null)
-    .filter(set => set && Number(set.kg) >= kgGoal && Number(set.reps) >= repsGoal)
-    .sort((a, b) => (Number(b.kg) || 0) - (Number(a.kg) || 0) || (Number(b.reps) || 0) - (Number(a.reps) || 0))[0] || null;
-  return best
-    ? { isAchieved: true, label: `달성 ${_fmtNum(best.kg, 1)}kg x ${_fmtNum(best.reps, 0)}회` }
-    : { isAchieved: false, label: '' };
-}
-
-function _buildWorkoutCycleRailItems(board, weekStart, cache = {}) {
-  if (!board || !weekStart) return [];
-  const items = [];
-  for (const bm of activeBenchmarks(board)) {
-    const cycle = activeCycleOf(board, bm.groupId);
-    if (!cycle) continue;
-    const cycleWeek = weekIndexOf(cycle, weekStart);
-    const cycleWeeks = Math.max(1, Number(cycle.weeks) || 6);
-    if (cycleWeek < 1 || cycleWeek > cycleWeeks) continue;
-    const tracks = bm.program === 'wendler' ? ['volume'] : (Array.isArray(bm.tracks) && bm.tracks.length ? bm.tracks : ['volume']);
-    for (const track of tracks) {
-      const rx = buildExerciseProgramWorkoutPrescription(board, bm, {
-        track,
-        weekStart,
-        todayKey: weekStart,
-        includeAlternatives: false,
-      });
-      const kg = Number(rx?.plan?.kg);
-      if (!Number.isFinite(kg) || kg <= 0) continue;
-      const targetReps = Number(rx?.plan?.reps) || 0;
-      const reps = targetReps > 0 ? `${_fmtNum(targetReps, 0)}${rx.plan.amrap ? '+' : ''}회` : '';
-      const kgText = `${_fmtNum(kg, 1)}kg`;
-      const plan = rx?.plan || {};
-      const isWendler = plan.kind === 'wendler';
-      const displayWeek = Number(isWendler ? (plan.cycleWeek || plan.week || cycleWeek) : cycleWeek) || cycleWeek;
-      const programWeek = Number(plan.programWeek) || 0;
-      const programWeekText = isWendler && programWeek > 0 ? ` · 프로그램 ${_fmtNum(programWeek, 0)}주차` : '';
-      const trackLabel = isWendler ? '웬들러' : _cycleRailTrackLabel(track);
-      const goalStatus = _cycleRailGoalStatus(cache, bm, weekStart, kg, targetReps);
-      const achievedText = goalStatus.isAchieved && goalStatus.label ? ` · ${goalStatus.label}` : '';
-      items.push({
-        benchmarkId: bm.id,
-        weekLabel: `W${_fmtNum(displayWeek, 0)}`,
-        exerciseLabel: _cycleRailExerciseLabel(bm),
-        targetLabel: `목표 ${kgText}`,
-        title: `${bm.label || bm.short || '종목'} · ${_fmtNum(displayWeek, 0)}주차${programWeekText} · ${trackLabel} · ${kgText}${reps ? ` x ${reps}` : ''}${achievedText}`,
-        kind: _cycleRailKind(bm, track),
-        isAchieved: goalStatus.isAchieved,
-      });
-    }
-  }
-  return items;
-}
-
-function _renderWorkoutCycleRail(weekStart, items = [], options = {}) {
-  const visibleItems = Array.isArray(items) ? items : [];
-  const archivedClass = options.archived ? ' is-season-archived' : '';
-  const label = visibleItems.length
-    ? `${weekStart} 사이클 처방: ${visibleItems.map(item => item.title).join(', ')}`
-    : `${weekStart} 사이클 처방 없음`;
-  return `
-    <div class="cal-workout-week-rail ${visibleItems.length ? 'has-cycle' : 'is-empty'}${archivedClass}" aria-label="${_esc(label)}">
-      <span class="cal-cycle-rail-line" aria-hidden="true"></span>
-      <div class="cal-cycle-branch-list">
-        ${visibleItems.map(item => {
-          const achievedClass = item.isAchieved ? ' is-achieved' : '';
-          return `
-          <button type="button" class="cal-cycle-branch is-${_esc(item.kind)}${achievedClass}" data-cal-cycle-target="${_esc(item.benchmarkId)}" title="${_esc(item.title)}" aria-label="${_esc(`${item.title} 설정 열기`)}"><span class="cal-cycle-branch-text"><span class="cal-cycle-branch-head"><span class="cal-cycle-branch-week">${_esc(item.weekLabel)}</span><span class="cal-cycle-branch-name">${_esc(item.exerciseLabel)}</span></span><span class="cal-cycle-branch-target">${_esc(item.targetLabel)}</span></span></button>
-        `;
-        }).join('')}
-      </div>
-    </div>
-  `;
+function _formatWorkoutWeekHours(seconds) {
+  const sec = Math.max(0, Math.round(_num(seconds)));
+  if (sec <= 0) return '—';
+  const hours = Math.round((sec / 3600) * 10) / 10;
+  return `${String(hours).replace(/\.0$/, '')}h`;
 }
 
 function _workoutGoalExerciseMuscleIds(ex = {}) {
@@ -1643,9 +1544,9 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
   let monthSum = { days: 0, durationSec: 0, sets: 0, volume: 0, kcalBurn: 0 };
   const flatCells = [];
   const dayCells = new Map();
+  const dayMetrics = new Map();
   const lookup = _buildWorkoutLookup();
   const isWorkoutHome = surface === 'workout-home';
-  const cycleBoard = isWorkoutHome ? getTestBoardV2() : null;
   const surfaceClass = isWorkoutHome ? 'cal-workout-surface-home' : 'cal-workout-surface-calendar';
   const scrollSurfaceAttr = isWorkoutHome ? ' data-wt-calendar-scroll-surface' : '';
   const selectedParsed = _parseDateKey(_workoutHomeSelectedKey);
@@ -1731,6 +1632,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
 
     if (isWorkoutHome) {
       dayCells.set(d, cellHtml);
+      dayMetrics.set(d, wx);
     } else {
       flatCells.push(cellHtml);
     }
@@ -1740,7 +1642,6 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
     ? `${y}.${String(m + 1).padStart(2, '0')}`
     : `${y}년 ${m + 1}월`;
   const weekdays = ['일','월','화','수','목','금','토'];
-  const goalInputWeekStart = isWorkoutHome ? _workoutCalendarRowWeekStart(y, m, 0, firstDow) : '';
   const summaryHtml = monthSum.days > 0 ? `
     <div class="cal-month-summary cal-workout-summary">
       <div class="cal-month-avg">
@@ -1754,17 +1655,15 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
         <div><span>총 소모</span><strong>${monthSum.kcalBurn.toLocaleString()} kcal</strong></div>
       </div>
     </div>
-  ` : `
+  ` : (isWorkoutHome ? '' : `
     <div class="cal-month-summary cal-month-empty">
       <span>이번 달 운동 기록이 아직 없어요</span>
     </div>
-  `;
+  `);
 
   const weekdayHtml = isWorkoutHome ? `
     <div class="cal-weekdays cal-workout-weekdays">
-      <div class="cal-week-rail-spacer">
-        <button type="button" class="cal-cycle-goal-input" data-cal-goal-input data-week-start="${_esc(goalInputWeekStart)}" aria-label="${_esc(`${goalInputWeekStart} 목표입력`)}">목표입력</button>
-      </div>
+      <div class="cal-week-rail-spacer" aria-hidden="true"></div>
       ${weekdays.map((w, i) => `<div class="cal-wd ${i === 0 ? 'cal-wd-sun' : ''} ${i === 6 ? 'cal-wd-sat' : ''}">${w}</div>`).join('')}
     </div>
   ` : `
@@ -1774,8 +1673,11 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
   `;
 
   const gridHtml = isWorkoutHome
-    ? _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, cycleBoard, cache, seasonRegistry, currentSeason, todayKey })
+    ? _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, dayMetrics })
     : `<div class="cal-grid cal-workout-grid">${flatCells.join('')}</div>`;
+  const calendarBodyHtml = isWorkoutHome
+    ? `<section class="cal-workout-calendar-card" aria-label="${_esc(monthLabel)} 운동 달력">${weekdayHtml}${gridHtml}</section>`
+    : `${weekdayHtml}${gridHtml}`;
   const bottomSheetHtml = isWorkoutHome
     ? _renderWorkoutHomeBottomSheet(_workoutHomeSelectedKey, { cache, plan, checkins, lookup })
     : '';
@@ -1791,10 +1693,11 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
     : 'data-cal-action="go-today"';
   const seasonControlHtml = isWorkoutHome ? `
     <div class="cal-season-control ${currentSeason ? 'has-current-season' : 'needs-season'}">
-      <div><span>${currentSeason ? 'CURRENT SEASON' : 'SEASON SETUP'}</span><strong>${_esc(currentSeason?.name || '새 시즌 설정 필요')}</strong>${currentSeason ? `<small>${currentSeason.startDate}–${currentSeason.endDate}</small>` : '<small>기록은 유지하고 새 목표를 W1부터 시작합니다.</small>'}</div>
+      <span class="cal-season-emblem" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 20V5.2c4-2.4 7.2 2.4 12 0v9.3c-4.8 2.4-8-2.4-12 0"/><path d="m11.7 8.4.8 1.7 1.8.3-1.3 1.3.3 1.8-1.6-.9-1.6.9.3-1.8-1.3-1.3 1.8-.3.8-1.7Z"/></svg></span>
+      <div class="cal-season-copy"><span>${currentSeason ? 'CURRENT SEASON' : 'SEASON SETUP'}</span><strong>${_esc(currentSeason?.name || '새 시즌 설정 필요')}</strong>${currentSeason ? `<small>${currentSeason.startDate}–${currentSeason.endDate}</small>` : '<small>기록은 유지하고 새 목표를 세우며 시작합니다.</small>'}</div>
       <div class="cal-season-actions">
-        ${currentSeason ? `<button type="button" class="cal-season-settings" data-wt-season-edit="${_esc(currentSeason.id)}" aria-label="${_esc(currentSeason.name)} 설정 수정" title="시즌 설정 수정"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2Zm8.2 4.7-1.7-1a7 7 0 0 0 0-1.2l1.7-1-1.7-3-1.8.8a8 8 0 0 0-1-.6L15.5 5h-3.4l-.2 2.1a8 8 0 0 0-1 .6L9 6.9l-1.7 3 1.7 1a7 7 0 0 0 0 1.2l-1.7 1 1.7 3 1.9-.8a8 8 0 0 0 1 .6l.2 2.1h3.4l.2-2.1a8 8 0 0 0 1-.6l1.8.8 1.7-3Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></button>` : ''}
-        <button type="button" data-wt-season-manager>${currentSeason ? '다음 시즌' : '시즌 시작'}</button>
+        ${currentSeason ? `<button type="button" class="cal-season-settings" data-wt-season-edit="${_esc(currentSeason.id)}" aria-label="${_esc(currentSeason.name)} 설정 수정" title="시즌 설정 수정"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.1"/><path d="M19.2 13.5a7.8 7.8 0 0 0 .1-1.5 7.8 7.8 0 0 0-.1-1.5l2-1.5-2-3.4-2.4 1a8.4 8.4 0 0 0-2.5-1.5L14 2.5h-4L9.7 5.1a8.4 8.4 0 0 0-2.5 1.5l-2.4-1-2 3.4 2 1.5A7.8 7.8 0 0 0 4.7 12c0 .5 0 1 .1 1.5l-2 1.5 2 3.4 2.4-1a8.4 8.4 0 0 0 2.5 1.5l.3 2.6h4l.3-2.6a8.4 8.4 0 0 0 2.5-1.5l2.4 1 2-3.4-2-1.5Z"/></svg></button>` : ''}
+        <button type="button" class="cal-season-primary" data-wt-season-manager>${currentSeason ? '다음 시즌' : '시즌 시작'}</button>
       </div>
     </div>` : '';
   root.innerHTML = `
@@ -1811,36 +1714,42 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
       ${showModeTabs ? _renderCalendarModeTabs() : ''}
       ${seasonControlHtml}
       ${summaryHtml}
-      ${weekdayHtml}
-      ${gridHtml}
+      ${calendarBodyHtml}
       ${bottomSheetHtml}
     </div>
   `;
 }
 
-function _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, cycleBoard = null, cache = {}, seasonRegistry = {}, currentSeason = null, todayKey = '' }) {
+function _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, dayMetrics }) {
   const weekRows = [];
   const rowCount = Math.ceil((firstDow + daysCount) / 7);
   for (let row = 0; row < rowCount; row++) {
     const cellHtmls = [];
+    let weekDurationSec = 0;
+    let weekSets = 0;
     for (let dow = 0; dow < 7; dow++) {
       const day = (row * 7) + dow - firstDow + 1;
       if (day < 1 || day > daysCount) {
         cellHtmls.push(`<div class="cal-cell cal-cell-empty cal-workout-cell cal-workout-cell-outside"></div>`);
         continue;
       }
+      const wx = dayMetrics.get(day);
+      if (wx?.hasWorkout) {
+        weekDurationSec += wx.durationSec || 0;
+        weekSets += wx.setCount || 0;
+      }
       cellHtmls.push(dayCells.get(day) || `<div class="cal-cell cal-cell-empty cal-workout-cell"></div>`);
     }
 
-    const weekStart = _workoutCalendarRowWeekStart(y, m, row, firstDow);
-    const weekEnd = addSeasonDays(weekStart, 6);
-    const rowSeason = findSeasonForDate(seasonRegistry, weekStart) || findSeasonForDate(seasonRegistry, weekEnd);
-    const rowBoard = rowSeason ? (getSeasonTestBoardV2(rowSeason.id) || cycleBoard) : cycleBoard;
-    const archived = currentSeason ? weekEnd < currentSeason.startDate : !!(rowSeason && rowSeason.endDate < todayKey);
-    const cycleItems = _buildWorkoutCycleRailItems(rowBoard, weekStart, cache);
+    const anchorDay = Math.min(daysCount, Math.max(1, (row * 7) - firstDow + 1));
+    const weekNo = _isoWeekNumber(new Date(y, m, anchorDay));
     weekRows.push(`
       <div class="cal-workout-week-row">
-        ${_renderWorkoutCycleRail(weekStart, cycleItems, { archived })}
+        <div class="cal-workout-week-rail" aria-label="${weekNo}주 운동 요약">
+          <strong>${weekNo}주</strong>
+          <span>${_formatWorkoutWeekHours(weekDurationSec)}</span>
+          <span>${weekSets > 0 ? `${weekSets}s` : '—'}</span>
+        </div>
         <div class="cal-workout-week-cells">
           ${cellHtmls.join('')}
         </div>
@@ -1870,8 +1779,8 @@ function _renderWorkoutHomeDayBar(selectedKey, { cache, plan, checkins, lookup }
     <div class="cal-workout-day-bar" data-wt-sheet-bar aria-expanded="${expanded ? 'true' : 'false'}">
       <button type="button" class="cal-workout-day-expand" data-wt-sheet-toggle data-date-key="${selected}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '날짜 상세 접기' : '선택한 날짜 열기'}">${expanded ? '⌄' : '⌃'}</button>
       <button type="button" class="cal-workout-day-main" data-wt-sheet-main data-wt-sheet-toggle data-date-key="${selected}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '날짜 상세 접기' : '선택한 날짜 열기'}">
-        <span class="cal-workout-day-date">${selected} <em>${_dateDistanceLabel(selected)}</em><i class="cal-day-season-badge ${isArchived ? 'is-archived' : ''}">${_esc(seasonBadge)}</i></span>
-        <span class="cal-workout-day-sub">${recordText} · ${sessionText}</span>
+        <span class="cal-workout-day-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.8" y="5.2" width="16.4" height="15" rx="2.2"/><path d="M7.5 3.5v3.4M16.5 3.5v3.4M3.8 10h16.4"/><path d="M8.2 14h.1M12 14h.1M15.8 14h.1"/></svg></span>
+        <span class="cal-workout-day-copy"><span class="cal-workout-day-date">${selected} <em>${_dateDistanceLabel(selected)}</em><i class="cal-day-season-badge ${isArchived ? 'is-archived' : ''}">${_esc(seasonBadge)}</i></span><span class="cal-workout-day-sub">${recordText} · ${sessionText}</span></span>
       </button>
       <div class="cal-workout-day-actions">
         <button type="button" data-wt-calendar-action="go-today-detail">오늘</button>
