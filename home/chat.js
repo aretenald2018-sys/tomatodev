@@ -130,7 +130,7 @@ function _setStatus(text, state = '') {
   const status = document.getElementById('home-chat-status');
   if (!status) return;
   status.textContent = text;
-  status.className = `home-chat-status${state ? ` is-${state}` : ''}`;
+  status.className = `tds-sr-only home-chat-status${state ? ` is-${state}` : ''}`;
 }
 
 async function _submitChat(form) {
@@ -190,7 +190,7 @@ function _subscribeForCurrentUser() {
   _setStatus('연결 중');
   _unsubscribe = subscribeChatMessages((messages) => {
     _renderMessages(messages);
-    _setStatus('실시간', 'connected');
+    _setStatus('연결됨', 'connected');
   }, () => {
     _setStatus('연결 확인 필요', 'error');
     const list = document.getElementById('home-chat-list');

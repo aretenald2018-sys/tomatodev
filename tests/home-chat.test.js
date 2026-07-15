@@ -49,6 +49,8 @@ test('MMORPG chat rows, notices, safe text and own-message delete controls are w
   assert.match(homeSource, /channel\.textContent = message\.isNotice \? '\[공지\]' : '\[전체\]'/);
   assert.match(homeSource, /message\.isNotice \? noticeFragment : messageFragment/);
   assert.match(homeSource, /notices\.replaceChildren\(noticeFragment\)/);
+  assert.match(homeSource, /status\.className = `tds-sr-only home-chat-status/);
+  assert.doesNotMatch(homeSource, /_setStatus\('실시간'/);
   assert.match(homeSource, /message\.userId === currentUserId/);
   assert.match(homeSource, /_deleteOwnMessage\(message\.id, deleteButton\)/);
   assert.match(css, /\.home-chat-message\.is-notice \.home-chat-bubble/);
@@ -57,6 +59,8 @@ test('MMORPG chat rows, notices, safe text and own-message delete controls are w
   assert.match(css, /\.home-chat-notices:empty/);
   assert.match(css, /#card-chat\.home-chat-card \{/);
   assert.match(css, /margin-top: -8%/);
-  assert.match(css, /backdrop-filter: blur\(10px\)/);
-  assert.match(css, /background: linear-gradient\(180deg, rgba\(11, 15, 22, 0\.76\), rgba\(9, 13, 19, 0\.88\)\)/);
+  assert.match(css, /backdrop-filter: blur\(12px\)/);
+  assert.match(css, /:root\.light #card-chat\.home-chat-card/);
+  assert.match(css, /background: var\(--primary\)/);
+  assert.doesNotMatch(css, /#d8b56d|#76b9e9|#76d39b|#f2dfb5/);
 });
