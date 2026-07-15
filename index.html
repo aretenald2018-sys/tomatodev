@@ -275,6 +275,24 @@
       <div id="hero-content"></div>
     </div>
 
+    <!-- 모두의 채팅 -->
+    <div class="home-card home-chat-card" id="card-chat">
+      <div class="home-card-header home-chat-header">
+        <span class="home-card-title">채팅</span>
+        <span class="home-chat-status" id="home-chat-status" aria-live="polite">연결 중</span>
+      </div>
+      <div class="home-chat-list" id="home-chat-list" role="log" aria-live="polite" aria-label="이용자 채팅 기록">
+        <div class="home-chat-empty">채팅을 불러오는 중이에요</div>
+      </div>
+      <form class="home-chat-form" id="home-chat-form">
+        <label class="sr-only" for="home-chat-input">채팅 메시지</label>
+        <input class="home-chat-input" id="home-chat-input" type="text" maxlength="305"
+          autocomplete="off" placeholder="메시지 입력 · &lt;공지&gt;로 공지">
+        <button class="home-chat-send" id="home-chat-send" type="submit">전송</button>
+      </form>
+      <div class="home-chat-hint">&lt;공지&gt;로 시작하면 붉은 공지로 표시돼요.</div>
+    </div>
+
     <!-- 오늘의 칼로리 -->
     <div class="home-card" id="card-unit-goal">
       <div class="home-card-header">

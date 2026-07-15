@@ -21,6 +21,7 @@ import { renderStreakWarning }                                from './streak-war
 import { renderAdminOnboarding }                              from './admin-onboarding.js';
 import { applyHomeCardPersonalization }                       from './personalize.js';
 import { cheerSignature, hasPriorityHomeOverlay, homeCardVisibility } from './read-model.js';
+import { renderHomeChat }                                     from './chat.js';
 
 let _lastCheerSignature = '';
 
@@ -60,6 +61,7 @@ export function renderHome(options = {}) {
     } else {
       renderHero().catch(err => console.warn('[hero] render error:', err));
     }
+    renderHomeChat();
     if (isAdmin() && shouldShow('homeCards', 'unit_goal'))  renderUnitGoal();
     if (shouldShow('homeCards', 'mini_memo'))  renderMiniMemo();
     applyAllSectionTitles();
