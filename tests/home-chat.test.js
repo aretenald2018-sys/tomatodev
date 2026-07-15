@@ -92,8 +92,8 @@ test('reference-style channel tabs, pinned notice and safe message controls are 
   assert.match(chatCss, /\.home-chat-emoji/);
   assert.match(chatCss, /\.home-chat-more/);
   assert.match(chatCss, /\.home-chat-quick-reactions/);
-  assert.match(chatCss, /min-height: 30px/);
+  assert.match(chatCss, /min-height: 34px/);
   assert.match(chatCss, /flex: 0 0 22px/);
-  assert.match(chatCss, /font-size: 6px/);
+  assert.match(chatCss, /font-size: 8px/);
   assert.doesNotMatch(chatCss, /var\(--(?:surface|text|border|primary|radius|transition)/);
 });
