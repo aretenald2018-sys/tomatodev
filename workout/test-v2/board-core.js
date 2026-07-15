@@ -493,8 +493,16 @@ function _makeBenchmark(candidate, order) {
     status: 'active',
     tracks,
     seed,
-    setsDefault: 4,
+    setsDefault: Math.max(1, Math.round(Number(candidate.setsDefault) || 4)),
+    setsByTrack: Object.fromEntries(tracks.map(track => [
+      track,
+      Math.max(1, Math.round(Number(candidate.setsByTrack?.[track]) || Number(candidate.setsDefault) || 4)),
+    ])),
     incrementKg: increment,
+    incrementKgByTrack: Object.fromEntries(tracks.map(track => [
+      track,
+      Number(candidate.incrementKgByTrack?.[track]) > 0 ? Number(candidate.incrementKgByTrack[track]) : increment,
+    ])),
     progressionWeeks: Number(candidate.progressionWeeks) > 0
       ? Math.max(1, Math.round(Number(candidate.progressionWeeks)))
       : null,
@@ -543,9 +551,20 @@ function _makeStep(benchmark, track, cycle, kg, reps, weekStart = null, span = n
     span: span || cycle.weeks,
     kg,
     reps,
+    sets: trackSetsOf(benchmark, track),
     state: 'planned',
     weekLog: {},
   };
+}
+
+export function trackIncrementKgOf(benchmark = {}, track = 'volume') {
+  const value = Number(benchmark?.incrementKgByTrack?.[track]);
+  return value > 0 ? value : Math.max(0, Number(benchmark?.incrementKg) || 0);
+}
+
+export function trackSetsOf(benchmark = {}, track = 'volume') {
+  const value = Number(benchmark?.setsByTrack?.[track]);
+  return Math.max(1, Math.round(value > 0 ? value : (Number(benchmark?.setsDefault) || 4)));
 }
 
 function _roundStairKg(value, incrementKg = 0) {
@@ -558,6 +577,7 @@ function _planBenchmarkSteps(board, benchmark, cycle, fromWeek = null) {
   if (benchmark.program === 'wendler') return; // 웬들러는 파생
   for (const t of benchmark.tracks) {
     const seed = benchmark.seed[t] || { kg: 0, reps: 12 };
+    const incrementKg = trackIncrementKgOf(benchmark, t);
     const weekStart = fromWeek || cycle.startDate;
     const remainingWeeks = Math.max(1, cycle.weeks - weeksBetween(cycle.startDate, weekStart));
     const progressionWeeks = Math.max(0, Math.round(Number(benchmark.progressionWeeks) || 0));
@@ -573,7 +593,7 @@ function _planBenchmarkSteps(board, benchmark, cycle, fromWeek = null) {
     while (weekOffset < remainingWeeks) {
       const untilNextIncrease = weekOffset === 0 && phase > 0 ? progressionWeeks - phase : progressionWeeks;
       const span = Math.min(untilNextIncrease, remainingWeeks - weekOffset);
-      const kg = _roundStairKg(Number(seed.kg) + Number(benchmark.incrementKg || 0) * increaseNo, benchmark.incrementKg);
+      const kg = _roundStairKg(Number(seed.kg) + incrementKg * increaseNo, incrementKg);
       board.steps.push(_makeStep(benchmark, t, cycle, kg, seed.reps, addWeeks(weekStart, weekOffset), span));
       weekOffset += span;
       increaseNo++;
@@ -818,7 +838,7 @@ export function projectFutureCells(board, benchmarkId, track, minAheadWeeks = 12
     ? bm.wendler.oneRmKg
     : (isWnd ? (_resolveWendlerTmAnchor(bm, active.startDate)?.tmKg || bm.wendler.tmKg) : currentKgOf(board, bm, track).kg);
   const baseReps = isWnd ? 0 : currentKgOf(board, bm, track).reps;
-  const inc = isWnd ? bm.wendler.incrementKg : bm.incrementKg;
+  const inc = isWnd ? bm.wendler.incrementKg : trackIncrementKgOf(bm, track);
   const limit = addWeeks(addWeeks(active.startDate, active.weeks), minAheadWeeks);
   const progressionWeeks = isWnd ? 0 : Math.max(0, Math.round(Number(bm.progressionWeeks) || 0));
   if (progressionWeeks) {
@@ -1090,8 +1110,8 @@ export function buildSettleRows(board, groupId) {
         trackLabel: TM2_TRACK_LABELS[t],
         currentKg: cur.kg,
         currentReps: cur.reps,
-        incrementKg: bm.incrementKg,
-        nextKg: roundToPlate(cur.kg + bm.incrementKg, 0.5),
+        incrementKg: trackIncrementKgOf(bm, t),
+        nextKg: _roundStairKg(cur.kg + trackIncrementKgOf(bm, t), trackIncrementKgOf(bm, t)),
         missedCount: missed,
         defaultDecision: missed > 0 ? 'hold' : 'grow',
         isTm: false,
@@ -1146,7 +1166,8 @@ export function applySettle(board, groupId, decisions = {}, todayKey, now = null
         ? Math.floor(Math.max(0, weeksBetween(progressionStartDate, nextStart)) / progressionWeeks)
         : previousLevel + 1;
       const increaseCount = Math.max(0, nextLevel - previousLevel);
-      const after = grow ? _roundStairKg(before + bm.incrementKg * increaseCount, bm.incrementKg) : before;
+      const incrementKg = trackIncrementKgOf(bm, row.track);
+      const after = grow ? _roundStairKg(before + incrementKg * increaseCount, incrementKg) : before;
       bm.seed[row.track] = { kg: after, reps: currentKgOf(board, bm, row.track).reps };
       results.push({ benchmarkId: bm.id, track: row.track, program: 'stair', before, after, decision });
     }
@@ -1313,6 +1334,8 @@ function _candidateFromExerciseProgram(exercise = {}, config = {}, { movements =
     tracks: seed,
     incrementKg: config.incrementKg,
     setsDefault: config.setsDefault,
+    incrementKgByTrack: config.incrementKgByTrack,
+    setsByTrack: config.setsByTrack,
     gymNote: config.gymNote || exercise.__gymNote || '',
     meta: config.meta || {},
     wendler: program === 'wendler' ? (config.wendler || {}) : null,
@@ -1490,6 +1513,8 @@ function _applyExerciseProgramToBenchmark(board, bm, candidate, config, todayKey
   bm.short = candidate.short || bm.short || String(bm.label).slice(0, 5);
   bm.incrementKg = Number(config.incrementKg) > 0 ? Number(config.incrementKg) : (bm.incrementKg || defaultIncrementForGroup(bm.groupId));
   bm.setsDefault = Math.max(1, Math.round(Number(config.setsDefault) || bm.setsDefault || 4));
+  bm.incrementKgByTrack = { ...(bm.incrementKgByTrack || {}), ...(config.incrementKgByTrack || {}) };
+  bm.setsByTrack = { ...(bm.setsByTrack || {}), ...(config.setsByTrack || {}) };
   bm.meta = {
     ...(bm.meta || {}),
     ...(config.meta || {}),
@@ -1545,7 +1570,9 @@ export function getExerciseProgramSettings(board, exercise = {}, options = {}) {
     tracks: bm.program === 'wendler' ? ['volume'] : [...(bm.tracks || ['volume'])],
     seed: cloneBoard(bm.seed || {}),
     setsDefault: bm.setsDefault || 4,
+    setsByTrack: cloneBoard(bm.setsByTrack || {}),
     incrementKg: bm.program === 'wendler' ? bm.wendler?.incrementKg || bm.incrementKg : bm.incrementKg,
+    incrementKgByTrack: cloneBoard(bm.incrementKgByTrack || {}),
     wendler: bm.program === 'wendler' ? cloneBoard(bm.wendler || {}) : null,
     benchmark: bm,
   };
@@ -1642,7 +1669,7 @@ function _programPlanForBenchmark(board, bm, { track = 'volume', weekStart = nul
     week: cycle ? Math.max(1, Math.min(cycle.weeks, weekIndexOf(cycle, wkMon))) : 1,
     kg: cell?.kg || fallback.kg || 0,
     reps: cell?.reps || fallback.reps || (useTrack === 'intensity' ? 8 : 12),
-    sets: bm.setsDefault || 4,
+    sets: trackSetsOf(bm, useTrack),
   };
 }
 

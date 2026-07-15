@@ -12,6 +12,7 @@ import {
   W863_ORIGINAL_VERSION,
   normalizeW863OriginalConfig,
 } from './w863-original.js';
+import { getWorkoutSessions } from './sessions.js';
 
 export const SEASON_NORMAL_INCREMENTS_KG = Object.freeze([1.25, 2.5, 5]);
 export const SEASON_NORMAL_PROGRESSION_WEEKS = 3;
@@ -45,6 +46,57 @@ function _nonNegative(value, fallback = null) {
 
 function _normalizedLabel(value) {
   return String(value || '').trim().toLocaleLowerCase().replace(/\s+/g, '');
+}
+
+function _completedWorkSets(entry = {}) {
+  return (Array.isArray(entry?.sets) ? entry.sets : []).filter(set => {
+    if (!set || set.setType === 'warmup' || set.done === false) return false;
+    return _positive(set.kg) > 0 && _positive(set.reps) > 0;
+  }).map(set => ({
+    kg: _positive(set.kg),
+    reps: Math.max(1, Math.round(_positive(set.reps))),
+  }));
+}
+
+/** 등록 종목별 가장 최근 수행일과 본세트를 찾는다. 새 시즌 목표의 정렬·참고자료 전용이다. */
+export function buildSeasonExerciseHistory(cache = {}, registeredExercises = []) {
+  const exercises = _registeredExerciseRecords(registeredExercises, []);
+  const byId = new Map(exercises.map(exercise => [exercise.id, exercise.id]));
+  const uniqueLookup = (keyOf) => {
+    const buckets = new Map();
+    for (const exercise of exercises) {
+      const key = keyOf(exercise);
+      if (!key) continue;
+      const values = buckets.get(key) || [];
+      values.push(exercise.id);
+      buckets.set(key, values);
+    }
+    return new Map([...buckets.entries()].filter(([, ids]) => ids.length === 1).map(([key, ids]) => [key, ids[0]]));
+  };
+  const byMovement = uniqueLookup(exercise => String(exercise.movementId || '').trim());
+  const byName = uniqueLookup(exercise => _normalizedLabel(exercise.name || exercise.label));
+  const history = {};
+  const dates = Object.keys(cache || {}).filter(key => /^\d{4}-\d{2}-\d{2}$/.test(key)).sort().reverse();
+
+  for (const dateKey of dates) {
+    const sessions = getWorkoutSessions(cache[dateKey] || {});
+    const entries = sessions.flatMap(session => Array.isArray(session?.exercises) ? session.exercises : []);
+    const setsByExercise = new Map();
+    for (const entry of entries) {
+      const exerciseId = byId.get(String(entry?.exerciseId || entry?.id || '').trim())
+        || byMovement.get(String(entry?.movementId || '').trim())
+        || byName.get(_normalizedLabel(entry?.name));
+      if (!exerciseId || history[exerciseId]) continue;
+      const sets = _completedWorkSets(entry);
+      if (!sets.length) continue;
+      setsByExercise.set(exerciseId, [...(setsByExercise.get(exerciseId) || []), ...sets]);
+    }
+    for (const [exerciseId, sets] of setsByExercise) {
+      history[exerciseId] = { exerciseId, dateKey, sets, setCount: sets.length };
+    }
+    if (Object.keys(history).length >= exercises.length) break;
+  }
+  return history;
 }
 
 function _registeredExerciseRecords(registeredExercises, benchmarks) {
@@ -211,6 +263,21 @@ function _normalIncrement(value, benchmark, groupId) {
   return groupId === 'lower' ? 5 : 2.5;
 }
 
+function _normalTrackGoal(override = {}, track) {
+  const requested = override?.tracks?.[track] || null;
+  if (!requested || typeof requested !== 'object') return null;
+  const kg = _positive(requested.kg ?? requested.baselineKg);
+  const sets = Math.max(0, Math.round(_positive(requested.sets ?? requested.baselineSets)));
+  const incrementKg = Number(requested.incrementKg);
+  if (!kg || !sets || !SEASON_NORMAL_INCREMENTS_KG.includes(incrementKg)) return null;
+  return {
+    kg,
+    sets,
+    incrementKg,
+    reps: Math.max(1, Math.round(_positive(requested.reps, track === 'intensity' ? 8 : 12))),
+  };
+}
+
 function _wendlerConfig(benchmark, override, startDate, configuration) {
   const requested = override?.wendler || override || {};
   return normalizeW863OriginalConfig({
@@ -256,7 +323,11 @@ export function seasonResetPreview(previousBoard = null, selectedExerciseIds = n
       wendlerCount: configurations.filter(configuration => programOf(configuration) === 'wendler').length,
       trackCount: configurations
         .filter(configuration => programOf(configuration) !== 'wendler')
-        .reduce((sum, configuration) => sum + Math.max(1, configuration.benchmark?.tracks?.length || 0), 0),
+        .reduce((sum, configuration) => {
+          const override = _overrideFor(options.overrides, configuration.benchmark, configuration.exercise);
+          const configured = ['volume', 'intensity'].filter(track => _normalTrackGoal(override, track)).length;
+          return sum + (configured || Math.max(1, configuration.benchmark?.tracks?.length || 0));
+        }, 0),
       preservedExerciseIds: configurations.map(configuration => configuration.exerciseId),
     };
   }
@@ -305,10 +376,32 @@ export function buildSeasonWorkoutBoard({
       const isWendler = override.program === 'wendler'
         || (override.program == null && configuration.program === 'wendler');
       const tracks = {};
-      const trackIds = isWendler ? ['volume'] : (benchmark?.tracks?.length ? benchmark.tracks : ['volume']);
+      const configuredTrackGoals = Object.fromEntries(
+        ['volume', 'intensity'].map(track => [track, _normalTrackGoal(override, track)]).filter(([, goal]) => goal),
+      );
+      const trackIds = isWendler
+        ? ['volume']
+        : (Object.keys(configuredTrackGoals).length
+          ? Object.keys(configuredTrackGoals)
+          : (benchmark?.tracks?.length ? benchmark.tracks : ['volume']));
       const baselineKg = _baselineKg(previousBoard, benchmark, override);
       const sharedBaselineKg = !isWendler && _nonNegative(override.baselineKg) != null ? baselineKg : null;
-      for (const track of trackIds) tracks[track] = _trackSeed(previousBoard, benchmark, track, override, sharedBaselineKg);
+      for (const track of trackIds) {
+        const goal = configuredTrackGoals[track];
+        tracks[track] = goal
+          ? { kg: goal.kg, reps: goal.reps }
+          : _trackSeed(previousBoard, benchmark, track, override, sharedBaselineKg);
+      }
+      const firstTrack = trackIds[0] || 'volume';
+      const incrementKgByTrack = Object.fromEntries(trackIds.map(track => [
+        track,
+        configuredTrackGoals[track]?.incrementKg
+          || _normalIncrement(override.incrementKg, benchmark, configuration.groupId),
+      ]));
+      const setsByTrack = Object.fromEntries(trackIds.map(track => [
+        track,
+        configuredTrackGoals[track]?.sets || Math.max(1, Math.round(Number(override.setsDefault) || Number(benchmark?.setsDefault) || 4)),
+      ]));
       return {
         exerciseId: configuration.exerciseId,
         movementId: configuration.movementId,
@@ -317,9 +410,12 @@ export function buildSeasonWorkoutBoard({
         label: configuration.label,
         short: String(configuration.label).slice(0, 5),
         tracks,
+        incrementKgByTrack,
+        setsByTrack,
+        setsDefault: setsByTrack[firstTrack],
         incrementKg: isWendler
           ? _positive(override.incrementKg, _positive(benchmark?.incrementKg))
-          : _normalIncrement(override.incrementKg, benchmark, configuration.groupId),
+          : incrementKgByTrack[firstTrack],
         progressionWeeks: isWendler ? null : SEASON_NORMAL_PROGRESSION_WEEKS,
         progressionStartDate: isWendler ? null : programStartDate,
         meta: _clone(benchmark?.meta || {}),
@@ -358,6 +454,7 @@ export function buildSeasonWorkoutPlan({
   const startingWeightByExercise = {};
   const incrementKgByExercise = {};
   const progressionWeeksByExercise = {};
+  const trackGoalsByExercise = {};
   const exerciseLabels = {};
   for (const benchmark of activeBenchmarks(board || {})) {
     if (!benchmark.exerciseId) continue;
@@ -368,10 +465,15 @@ export function buildSeasonWorkoutPlan({
       startingWeightByExercise[benchmark.exerciseId] = Number(benchmark.seed?.volume?.kg) || 0;
       incrementKgByExercise[benchmark.exerciseId] = Number(benchmark.incrementKg) || 0;
       progressionWeeksByExercise[benchmark.exerciseId] = Number(benchmark.progressionWeeks) || SEASON_NORMAL_PROGRESSION_WEEKS;
+      trackGoalsByExercise[benchmark.exerciseId] = Object.fromEntries((benchmark.tracks || []).map(track => [track, {
+        baselineKg: Number(benchmark.seed?.[track]?.kg) || 0,
+        baselineSets: Number(benchmark.setsByTrack?.[track]) || Number(benchmark.setsDefault) || 4,
+        incrementKg: Number(benchmark.incrementKgByTrack?.[track]) || Number(benchmark.incrementKg) || 0,
+      }]));
     }
   }
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     seasonId: season?.id || board?.seasonId || null,
     createdAt,
     createdFromSeasonId,
@@ -383,6 +485,7 @@ export function buildSeasonWorkoutPlan({
     startingWeightByExercise,
     incrementKgByExercise,
     progressionWeeksByExercise,
+    trackGoalsByExercise,
     exerciseLabels,
   };
 }

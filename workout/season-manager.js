@@ -1,5 +1,6 @@
 import {
   createWorkoutSeason,
+  getCache,
   getExList,
   getSeasonRegistry,
   getTestBoardV2,
@@ -11,11 +12,11 @@ import {
 } from '../data/season-model.js';
 import {
   activeBenchmarks,
-  currentKgOf,
   roundToPlate,
 } from './test-v2/board-core.js';
 import {
   buildSeasonExerciseSetup,
+  buildSeasonExerciseHistory,
   calculateSeasonWendlerFromTenRm,
   SEASON_NORMAL_INCREMENTS_KG,
   SEASON_NORMAL_PROGRESSION_WEEKS,
@@ -53,23 +54,47 @@ function _requestId() {
   return globalThis.crypto?.randomUUID?.() || `season-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-function _normalBaseline(board, benchmark) {
-  if (!benchmark) return 0;
-  for (const track of (benchmark?.tracks || ['volume'])) {
-    const current = currentKgOf(board || {}, benchmark, track);
-    if (Number(current?.kg) > 0) return Number(current.kg);
-  }
-  return 0;
-}
-
-function _normalIncrement(benchmark, groupId) {
-  const inherited = Number(benchmark?.incrementKg);
-  if (SEASON_NORMAL_INCREMENTS_KG.includes(inherited)) return inherited;
-  return groupId === 'lower' ? 5 : 2.5;
-}
-
 function _configurationFor(exerciseId) {
   return _state?.exerciseSetup?.configurations?.find(configuration => configuration.exerciseId === exerciseId) || null;
+}
+
+function _emptyTrackDraft(previous = {}) {
+  return {
+    kg: previous.kg ?? '',
+    sets: previous.sets ?? '',
+    incrementKg: previous.incrementKg ?? '',
+  };
+}
+
+function _normalTrackReady(track = {}) {
+  return Number(track.kg) > 0
+    && Number(track.sets) > 0
+    && SEASON_NORMAL_INCREMENTS_KG.includes(Number(track.incrementKg));
+}
+
+function _goalTrackIds(override = {}) {
+  if (override.program === 'wendler') return Number(override.wendler?.oneRmKg) > 0 ? ['volume'] : [];
+  if (override.program !== 'stair') return [];
+  return ['volume', 'intensity'].filter(track => _normalTrackReady(override.tracks?.[track]));
+}
+
+function _refreshSelectedExerciseIds() {
+  if (!_state) return;
+  _state.selectedExerciseIds = new Set(_state.exerciseSetup.configurations
+    .filter(configuration => _goalTrackIds(_state.overrides[configuration.exerciseId]).length)
+    .map(configuration => configuration.exerciseId));
+}
+
+function _recentSetSummary(history) {
+  if (!history?.sets?.length) return '아직 수행 기록이 없습니다.';
+  const groups = [];
+  for (const set of history.sets) {
+    const key = `${set.kg}|${set.reps}`;
+    const existing = groups.find(group => group.key === key);
+    if (existing) existing.count += 1;
+    else groups.push({ key, kg: set.kg, reps: set.reps, count: 1 });
+  }
+  return groups.map(group => `${group.kg}kg×${group.reps}회 ${group.count}세트`).join(' · ');
 }
 
 function _wendlerDraft(configuration) {
@@ -111,9 +136,9 @@ function _syncExerciseSetup(state) {
   for (const configuration of setup.configurations) {
     const id = configuration.exerciseId;
     const previous = overrides[id] || {};
-    const program = previous.program === 'wendler' || previous.program === 'stair'
+    const program = ['wendler', 'stair', 'none'].includes(previous.program)
       ? previous.program
-      : configuration.program;
+      : 'none';
     if (program === 'wendler') {
       const benchmark = configuration.benchmark;
       const profileId = previous.wendler?.profileId || inferW863Profile({
@@ -143,20 +168,21 @@ function _syncExerciseSetup(state) {
     } else {
       overrides[id] = {
         ...previous,
-        program: 'stair',
+        program,
         benchmarkId: configuration.benchmarkId,
-        baselineKg: Number.isFinite(Number(previous.baselineKg))
-          ? Number(previous.baselineKg)
-          : _normalBaseline(state.board, configuration.benchmark),
-        incrementKg: SEASON_NORMAL_INCREMENTS_KG.includes(Number(previous.incrementKg))
-          ? Number(previous.incrementKg)
-          : _normalIncrement(configuration.benchmark, configuration.groupId),
+        tracks: {
+          volume: _emptyTrackDraft(previous.tracks?.volume),
+          intensity: _emptyTrackDraft(previous.tracks?.intensity),
+        },
         progressionWeeks: SEASON_NORMAL_PROGRESSION_WEEKS,
       };
     }
   }
   state.exerciseSetup = setup;
   state.overrides = overrides;
+  state.selectedExerciseIds = new Set(setup.configurations
+    .filter(configuration => _goalTrackIds(overrides[configuration.exerciseId]).length)
+    .map(configuration => configuration.exerciseId));
 }
 
 function _initialState() {
@@ -172,8 +198,9 @@ function _initialState() {
     registry,
     board,
     exercises,
+    exerciseHistory: buildSeasonExerciseHistory(getCache() || {}, exercises),
     benchmarks,
-    selectedExerciseIds: new Set(exercises.map(exercise => String(exercise.id))),
+    selectedExerciseIds: new Set(),
     season: { name: _seasonName(startDate), startDate, endDate: addSeasonDays(startDate, 83) },
     benchmarkMappings: {},
     exerciseSetup: null,
@@ -232,13 +259,11 @@ function _periodStep() {
 }
 
 function _exerciseStep() {
-  const configurations = _state.exerciseSetup.configurations;
-  const unresolved = _state.exerciseSetup.unresolvedWendler;
-  const mappingHtml = unresolved.length ? `<div class="season-mapping-alert">
-    <strong>웬들러 기록 종목 연결</strong>
-    <p>같은 동작의 등록 종목이 여러 개라 자동 선택하지 않았습니다. 실제 기록에 사용할 종목을 선택하세요.</p>
-    ${unresolved.map(({ benchmark, candidates }) => `<label><span>${_esc(benchmark.label || '웬들러 종목')}</span><select data-season-wendler-map="${_esc(benchmark.id)}"><option value="">기록 종목 선택</option>${candidates.map(candidate => `<option value="${_esc(candidate.exerciseId)}">${_esc(candidate.label)}</option>`).join('')}</select></label>`).join('')}
-  </div>` : '';
+  const configurations = [..._state.exerciseSetup.configurations].sort((left, right) => {
+    const leftDate = _state.exerciseHistory[left.exerciseId]?.dateKey || '';
+    const rightDate = _state.exerciseHistory[right.exerciseId]?.dateKey || '';
+    return rightDate.localeCompare(leftDate) || left.order - right.order;
+  });
   const grouped = GROUP_ORDER.map(groupId => ({
     groupId,
     items: configurations.filter(configuration => configuration.groupId === groupId),
@@ -252,26 +277,38 @@ function _exerciseStep() {
     return `<button type="button" class="${groupId === activeGroup.groupId ? 'is-active' : ''}" data-season-action="select-group" data-season-group="${_esc(groupId)}" aria-pressed="${groupId === activeGroup.groupId}"><span>${_esc(GROUP_LABELS[groupId] || groupId)}</span><small>${selectedCount}/${items.length}</small></button>`;
   }).join('');
   return `
-    <div class="season-step-copy"><strong>부위별 종목 · 새 시즌 목표</strong><p>등록 운동의 ID와 이름을 그대로 사용합니다. 체크한 종목만 새 시즌 W1 또는 3주 증량 목표로 시작합니다.</p></div>
-    ${mappingHtml}
+    <div class="season-step-copy"><strong>부위별 종목 · 새 시즌 목표</strong><p>최근 수행한 종목부터 표시합니다. 입력을 완료한 트랙만 목표가 되고, 비워 둔 종목은 나중에 설정할 수 있어요.</p></div>
     <nav class="season-exercise-tabs" aria-label="운동 부위">${tabs}</nav>
     <section class="season-exercise-group">
       <header><strong>${GROUP_LABELS[activeGroup.groupId] || activeGroup.groupId}</strong><span>${activeGroup.items.length}종목</span></header>
       <div class="season-exercise-list">${activeGroup.items.map((configuration) => {
         const id = configuration.exerciseId;
-        const selected = _state.selectedExerciseIds.has(id);
         const config = _state.overrides[id];
         const isWendler = config.program === 'wendler';
+        const isStair = config.program === 'stair';
+        const goalTracks = _goalTrackIds(config);
+        const selected = goalTracks.length > 0;
+        const hasPartialGoal = isStair && ['volume', 'intensity'].some(track => {
+          const draft = config.tracks?.[track] || {};
+          return draft.kg !== '' || draft.sets !== '' || draft.incrementKg !== '';
+        });
+        const history = _state.exerciseHistory[id];
         const wendler = config.wendler || _wendlerDraft(configuration);
         const tmKg = roundToPlate(Number(wendler.oneRmKg) * 0.9, Number(wendler.roundKg) || 2.5);
-        return `<section class="season-exercise-card${selected ? '' : ' is-disabled'}" data-season-exercise-card="${_esc(id)}">
+        const badge = isWendler && selected ? 'W1 시작' : selected ? `${goalTracks.length}트랙 목표` : hasPartialGoal ? '입력 중' : '미설정';
+        return `<section class="season-exercise-card${selected ? ' has-goal' : ''}" data-season-exercise-card="${_esc(id)}">
           <header>
-            <label><input type="checkbox" data-season-exercise="${_esc(id)}" ${selected ? 'checked' : ''}><span><b>${_esc(configuration.label)}</b><small>${_esc(GROUP_LABELS[configuration.groupId] || configuration.groupId)} · ID ${_esc(id)}</small></span></label>
-            <em class="${isWendler ? 'is-wendler' : ''}">${isWendler ? 'W1 시작' : '3주 증량'}</em>
+            <div class="season-exercise-identity"><b>${_esc(configuration.label)}</b><small>${_esc(GROUP_LABELS[configuration.groupId] || configuration.groupId)} · ID ${_esc(id)}</small></div>
+            <em class="${isWendler && selected ? 'is-wendler' : selected ? 'is-goal' : ''}">${badge}</em>
           </header>
-          <div class="season-card-settings season-goal-row">
-            <label class="season-compact-field season-program-field"><span>프로그램</span><select data-season-program="program" ${selected ? '' : 'disabled'}><option value="stair" ${isWendler ? '' : 'selected'}>일반</option><option value="wendler" ${isWendler ? 'selected' : ''}>8/6/3</option></select></label>
-            ${isWendler ? `<div class="season-wendler-summary"><span>1RM <b>${_esc(wendler.oneRmKg)}kg</b></span><span>TM <b>${_esc(tmKg)}kg</b></span></div><button type="button" class="season-wendler-open" data-season-action="open-wendler" data-exercise-id="${_esc(id)}" ${selected ? '' : 'disabled'}>목표 설정</button>` : `<label class="season-compact-field"><span>기준중량</span><span class="season-input-unit"><input type="number" inputmode="decimal" min="0" step="0.25" data-season-normal="baselineKg" value="${config.baselineKg}" ${selected ? '' : 'disabled'}><b>kg</b></span></label><label class="season-compact-field"><span>3주 증량</span><select data-season-normal="incrementKg" ${selected ? '' : 'disabled'}>${SEASON_NORMAL_INCREMENTS_KG.map(increment => `<option value="${increment}" ${Number(config.incrementKg) === increment ? 'selected' : ''}>+${increment}kg</option>`).join('')}</select></label>`}
+          <div class="season-recent-reference${history ? '' : ' is-empty'}"><span>최근 수행${history ? ` · ${_esc(history.dateKey.slice(5).replace('-', '.'))}` : ''}</span><strong>${_esc(_recentSetSummary(history))}</strong></div>
+          <div class="season-card-settings">
+            <label class="season-compact-field season-program-field"><span>목표 방식</span><select data-season-program="program"><option value="none" ${config.program === 'none' ? 'selected' : ''}>목표 없음</option><option value="stair" ${isStair ? 'selected' : ''}>일반 · 3주 증량</option><option value="wendler" ${isWendler ? 'selected' : ''}>8/6/3</option></select></label>
+            ${isWendler ? `<div class="season-wendler-goal"><div class="season-wendler-summary"><span>1RM <b>${_esc(wendler.oneRmKg)}kg</b></span><span>TM <b>${_esc(tmKg)}kg</b></span></div><button type="button" class="season-wendler-open" data-season-action="open-wendler" data-exercise-id="${_esc(id)}">목표 설정</button></div>` : ''}
+            ${isStair ? `<div class="season-track-grid">${[['volume', '볼륨 트랙'], ['intensity', '강도 트랙']].map(([track, label]) => {
+              const draft = config.tracks?.[track] || _emptyTrackDraft();
+              return `<section class="season-track-row${_normalTrackReady(draft) ? ' is-ready' : ''}"><strong>${label}</strong><label><span>기준중량</span><span class="season-input-unit"><input type="number" inputmode="decimal" min="0" step="0.25" data-season-normal-track="${track}" data-season-normal-field="kg" value="${_esc(draft.kg)}" placeholder="미설정"><b>kg</b></span></label><label><span>기준세트</span><span class="season-input-unit"><input type="number" inputmode="numeric" min="1" max="20" step="1" data-season-normal-track="${track}" data-season-normal-field="sets" value="${_esc(draft.sets)}" placeholder="미설정"><b>세트</b></span></label><label><span>3주 증량</span><select data-season-normal-track="${track}" data-season-normal-field="incrementKg"><option value="">미설정</option>${SEASON_NORMAL_INCREMENTS_KG.map(increment => `<option value="${increment}" ${Number(draft.incrementKg) === increment ? 'selected' : ''}>+${increment}kg</option>`).join('')}</select></label></section>`;
+            }).join('')}</div>` : ''}
           </div>
         </section>`;
       }).join('')}</div>
@@ -326,7 +363,7 @@ function _previewStep() {
   return `
     <div class="season-step-copy"><strong>영향 미리보기</strong><p>저장 후 원본 운동 기록과 사진·러닝 경로는 바뀌지 않습니다.</p></div>
     <div class="season-impact-grid">
-      <section><span>유지</span><strong>${selected.length}개 등록 종목</strong><small>과거 운동·사진·러닝 경로·운동 목록</small></section>
+      <section><span>목표</span><strong>${selected.length}개 종목</strong><small>입력하지 않은 종목은 목표 없이 등록 목록에 유지</small></section>
       <section><span>재시작</span><strong>W1 ${preview.wendlerCount}개</strong><small>8/6/3 원본 · 과거 웬들러 로그 제외</small></section>
       <section><span>새 목표</span><strong>트랙 ${preview.trackCount}개</strong><small>헬스 ${_state.weeklySessionTarget}회 · 러닝 ${_state.runningPlan.weeklyDistanceKm}km</small></section>
       <section><span>시즌</span><strong>${_esc(_state.season.name)}</strong><small>${_state.season.startDate}–${_state.season.endDate}${current ? ` · ${_esc(current.name)} 다음` : ''}</small></section>
@@ -339,6 +376,7 @@ function _stepBody() {
 }
 
 function _render() {
+  _refreshSelectedExerciseIds();
   const modal = _modal();
   const sheet = modal.querySelector('.workout-season-sheet');
   sheet.innerHTML = `
@@ -371,7 +409,7 @@ function _cancelWendlerEditor() {
   const editor = _state?.wendlerEditor;
   if (!editor) return;
   if (editor.previousProgram !== 'wendler') {
-    _state.overrides[editor.exerciseId].program = 'stair';
+    _state.overrides[editor.exerciseId].program = editor.previousProgram || 'none';
   }
   _state.wendlerEditor = null;
 }
@@ -399,6 +437,7 @@ function _applyWendlerEditor() {
     program: 'wendler',
     wendler,
   };
+  _refreshSelectedExerciseIds();
   _state.wendlerEditor = null;
   return true;
 }
@@ -411,16 +450,6 @@ function _handleInput(event) {
   if (seasonField) {
     _state.season[seasonField] = target.value;
     if (seasonField === 'startDate' && !_state.season.name.trim()) _state.season.name = _seasonName(target.value);
-    return;
-  }
-  const exerciseId = target.getAttribute('data-season-exercise');
-  if (exerciseId) {
-    target.checked ? _state.selectedExerciseIds.add(exerciseId) : _state.selectedExerciseIds.delete(exerciseId);
-    const card = target.closest('[data-season-exercise-card]');
-    card?.classList.toggle('is-disabled', !target.checked);
-    card?.querySelectorAll('.season-card-settings input, .season-card-settings select, .season-card-settings button, .season-card-settings fieldset').forEach(input => {
-      input.disabled = !target.checked;
-    });
     return;
   }
   const mapBenchmarkId = target.getAttribute('data-season-wendler-map');
@@ -439,16 +468,12 @@ function _handleInput(event) {
     const previousProgram = _state.overrides[configuredExerciseId].program || 'stair';
     if (target.value === 'wendler') {
       _openWendlerEditor(configuredExerciseId, previousProgram);
+    } else if (target.value === 'none') {
+      _state.overrides[configuredExerciseId].program = 'none';
+      _state.wendlerEditor = null;
     } else {
-      const configuration = _configurationFor(configuredExerciseId);
       const override = _state.overrides[configuredExerciseId];
       override.program = 'stair';
-      if (!Number.isFinite(Number(override.baselineKg))) {
-        override.baselineKg = _normalBaseline(_state.board, configuration?.benchmark);
-      }
-      if (!SEASON_NORMAL_INCREMENTS_KG.includes(Number(override.incrementKg))) {
-        override.incrementKg = _normalIncrement(configuration?.benchmark, configuration?.groupId);
-      }
       override.progressionWeeks = SEASON_NORMAL_PROGRESSION_WEEKS;
       _state.wendlerEditor = null;
     }
@@ -475,9 +500,12 @@ function _handleInput(event) {
     if (tmOutput) tmOutput.textContent = `${Number(draft.tmKg) || 0}kg`;
     return;
   }
-  const normalField = target.getAttribute('data-season-normal');
-  if (configuredExerciseId && normalField) {
-    _state.overrides[configuredExerciseId][normalField] = Number(target.value);
+  const normalTrack = target.getAttribute('data-season-normal-track');
+  const normalField = target.getAttribute('data-season-normal-field');
+  if (configuredExerciseId && normalTrack && normalField) {
+    _state.overrides[configuredExerciseId].tracks[normalTrack][normalField] = target.value;
+    _refreshSelectedExerciseIds();
+    if (event.type === 'change') _render();
     return;
   }
   const planField = target.getAttribute('data-season-plan');
@@ -497,10 +525,6 @@ function _validateCurrentStep() {
       ? '기존 시즌과 날짜가 겹칩니다.'
       : '시작일과 종료일을 확인해 주세요.';
   }
-  if (_state.step === 1) {
-    if (!_state.selectedExerciseIds.size) return '이번 시즌에 사용할 종목을 하나 이상 선택해 주세요.';
-    if (_state.exerciseSetup.unresolvedWendler.length) return '웬들러 종목의 실제 기록 종목을 먼저 연결해 주세요.';
-  }
   return null;
 }
 
@@ -515,7 +539,7 @@ async function _save() {
       season: _state.season,
       clientRequestId: _state.clientRequestId,
       selectedExerciseIds: [..._state.selectedExerciseIds],
-      registeredExerciseIds: [..._state.selectedExerciseIds],
+      registeredExerciseIds: _state.exercises.map(exercise => String(exercise.id)),
       registeredExercises: _state.exercises,
       benchmarkMappings: _state.benchmarkMappings,
       overrides: _state.overrides,

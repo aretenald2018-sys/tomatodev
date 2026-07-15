@@ -24,6 +24,7 @@ import {
   mondayOf, addWeeks, weeksBetween, weekIndexOf, isCycleFinished, shortDate, toKey,
   activeBenchmarks, activeCycleOf, settledCyclesOf, benchmarkById, currentKgOf,
   groupIdForPart, visibleGroupIdsForSelectedParts,
+  trackSetsOf,
   expandColumnCells, projectFutureCells, paintWeek, recordMiss, previewAdjust,
   isSettleDue, buildSettleRows, applySettle,
   archiveBenchmark, addBenchmark, buildOnboardingCandidates, buildRecentMap,
@@ -693,7 +694,7 @@ function _cellPlan(bm, track, wkMon) {
   }
   const cells = cycle ? expandColumnCells(S.board, bm.id, track, cycle.id, _todayKey()) : [];
   const cell = cells.find(c => c.kind === 'stair' && weeksBetween(c.weekStart, wkMon) >= 0 && weeksBetween(c.weekStart, wkMon) < c.span);
-  return { kind: 'stair', kg: cell?.kg || 0, reps: cell?.reps || 0, sets: bm.setsDefault || 4 };
+  return { kind: 'stair', kg: cell?.kg || 0, reps: cell?.reps || 0, sets: cell?.sets || trackSetsOf(bm, track) };
 }
 
 const _trackToCode = (track) => track === 'intensity' ? 'H' : 'M';
@@ -927,7 +928,7 @@ function _workoutEntryIndexForBenchmark(list, bm) {
 
 function _manualLineupPrescription(bm, track, kg, reps) {
   const code = _trackToCode(track);
-  const sets = Array.from({ length: bm.setsDefault || 4 }, () => ({
+  const sets = Array.from({ length: trackSetsOf(bm, track) }, () => ({
     kg, reps, rpe: _targetRpeOf(bm), romPct: 100, setType: 'main', done: false,
   }));
   return {
@@ -1410,7 +1411,7 @@ function _openPlanPreview(bm, track, wkMon) {
   S.sheet = { kind: 'preview', ctx: {} };
   const seq = plan.kind === 'wendler'
     ? plan.rx.sets.map(s => `${s.kg}×${s.reps}${s.amrap ? '+' : ''}`).join(' → ')
-    : `${bm.setsDefault || 4}세트 × ${plan.kg}kg × ${plan.reps}회`;
+    : `${plan.sets || trackSetsOf(bm, track)}세트 × ${plan.kg}kg × ${plan.reps}회`;
   _openSheet(`
     <div class="tm2-grab"></div>
     <div class="tm2-sh-kicker">${_esc(_kickerOf(bm, wkMon))} · 예정</div>
