@@ -32,6 +32,11 @@ import {
 const LIFE_ZONE_ASSET_ROOT = './assets/home/life-zone';
 const LIFE_ZONE_SPRITE_ROOT = `${LIFE_ZONE_ASSET_ROOT}/sprites`;
 const LIFE_ZONE_UI_ROOT = `${LIFE_ZONE_ASSET_ROOT}/ui`;
+const LIFE_ZONE_WORLD_SIZE = 1672;
+const LIFE_ZONE_MARQUEE_FRAME_SRC = `${LIFE_ZONE_UI_ROOT}/streak-marquee-frame-v3.png`;
+const LIFE_ZONE_MARQUEE_FRAME_X = -196;
+const LIFE_ZONE_MARQUEE_FRAME_Y = -324;
+const LIFE_ZONE_MARQUEE_FRAME_SCALE = 0.8;
 const LIFE_ZONE_NPC_NAME = '트레이너';
 const LIFE_ZONE_MIRANDA_NAME = '미란다';
 const LIFE_ZONE_CONSULTING_CHIEF_NAME = '상담실장';
@@ -50,6 +55,7 @@ let _actorStateCache = null;
 let _lifeZoneVisitContext = null;
 let _runningRecordEscHandler = null;
 let _photoPreviewEscHandler = null;
+let _marqueeFramePromise = null;
 
 const STATE_LABELS = {
   running: '러닝',
@@ -1041,6 +1047,144 @@ export async function hydrateLifeZoneCard(card) {
   }
 }
 
+const MARQUEE_PIXEL_GLYPHS = Object.freeze({
+  A: ['01110', '10001', '10001', '11111', '10001', '10001', '10001'],
+  E: ['11111', '10000', '10000', '11110', '10000', '10000', '11111'],
+  K: ['10001', '10010', '10100', '11000', '10100', '10010', '10001'],
+  R: ['11110', '10001', '10001', '11110', '10100', '10010', '10001'],
+  S: ['01111', '10000', '10000', '01110', '00001', '00001', '11110'],
+  T: ['11111', '00100', '00100', '00100', '00100', '00100', '00100']
+});
+
+const MARQUEE_DIGIT_SEGMENTS = Object.freeze({
+  0: ['a', 'b', 'c', 'd', 'e', 'f'],
+  1: ['b', 'c'],
+  2: ['a', 'b', 'g', 'e', 'd'],
+  3: ['a', 'b', 'g', 'c', 'd'],
+  4: ['f', 'g', 'b', 'c'],
+  5: ['a', 'f', 'g', 'c', 'd'],
+  6: ['a', 'f', 'g', 'e', 'c', 'd'],
+  7: ['a', 'b', 'c'],
+  8: ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
+  9: ['a', 'b', 'c', 'd', 'f', 'g']
+});
+
+function _loadMarqueeFrame() {
+  if (_marqueeFramePromise) return _marqueeFramePromise;
+
+  _marqueeFramePromise = new Promise((resolve, reject) => {
+    const image = new Image();
+    image.decoding = 'async';
+    image.addEventListener('load', () => resolve(image), { once: true });
+    image.addEventListener('error', () => reject(new Error('life-zone marquee frame failed to load')), { once: true });
+    image.src = LIFE_ZONE_MARQUEE_FRAME_SRC;
+  });
+  return _marqueeFramePromise;
+}
+
+function _resolveHeroStreak(hero) {
+  const direct = Number(hero?.streak);
+  if (Number.isFinite(direct)) return Math.max(0, Math.floor(direct));
+
+  const match = String(hero?.countHtml || '').match(/\d+/);
+  return Math.max(0, Number(match?.[0] || 0));
+}
+
+function _drawMarqueeWord(context, word, x, y, pixelSize, color) {
+  let cursor = x;
+  context.fillStyle = color;
+
+  for (const character of word) {
+    const glyph = MARQUEE_PIXEL_GLYPHS[character];
+    if (!glyph) {
+      cursor += pixelSize * 4;
+      continue;
+    }
+    glyph.forEach((row, rowIndex) => {
+      [...row].forEach((pixel, columnIndex) => {
+        if (pixel === '1') {
+          context.fillRect(cursor + columnIndex * pixelSize, y + rowIndex * pixelSize, pixelSize, pixelSize);
+        }
+      });
+    });
+    cursor += pixelSize * 6;
+  }
+}
+
+function _drawMarqueeDigit(context, digit, x, y, unit) {
+  const active = new Set(MARQUEE_DIGIT_SEGMENTS[digit] || []);
+  const segments = {
+    a: [unit, 0, unit * 3, unit],
+    b: [unit * 4, unit, unit, unit * 4],
+    c: [unit * 4, unit * 6, unit, unit * 4],
+    d: [unit, unit * 10, unit * 3, unit],
+    e: [0, unit * 6, unit, unit * 4],
+    f: [0, unit, unit, unit * 4],
+    g: [unit, unit * 5, unit * 3, unit]
+  };
+
+  for (const [name, rect] of Object.entries(segments)) {
+    context.fillStyle = active.has(name) ? '#fff4cf' : '#5d120d';
+    context.fillRect(x + rect[0], y + rect[1], rect[2], rect[3]);
+    if (active.has(name)) {
+      context.fillStyle = '#ffb278';
+      context.fillRect(
+        x + rect[0] + unit,
+        y + rect[1],
+        Math.max(unit, rect[2] - unit * 2),
+        Math.max(1, unit / 2)
+      );
+    }
+  }
+}
+
+function _drawMarqueeTomato(context, x, y, pixelSize) {
+  const pixels = ['0011100', '0111110', '1111111', '1111111', '0111110', '0011100'];
+  context.fillStyle = '#3fae58';
+  context.fillRect(x + pixelSize * 3, y - pixelSize * 2, pixelSize, pixelSize * 3);
+  context.fillStyle = '#ff594d';
+  pixels.forEach((row, rowIndex) => {
+    [...row].forEach((pixel, columnIndex) => {
+      if (pixel === '1') context.fillRect(x + columnIndex * pixelSize, y + rowIndex * pixelSize, pixelSize, pixelSize);
+    });
+  });
+  context.fillStyle = '#ffe0a6';
+  context.fillRect(x + pixelSize * 2, y + pixelSize, pixelSize, pixelSize);
+}
+
+function _paintLifeZoneMarquee(canvas, hero) {
+  if (!canvas) return;
+  const context = canvas.getContext('2d', { alpha: true });
+  if (!context) return;
+
+  const streak = _resolveHeroStreak(hero);
+  _loadMarqueeFrame().then((frame) => {
+    if (!canvas.isConnected) return;
+
+    canvas.width = LIFE_ZONE_WORLD_SIZE;
+    canvas.height = LIFE_ZONE_WORLD_SIZE;
+    context.clearRect(0, 0, LIFE_ZONE_WORLD_SIZE, LIFE_ZONE_WORLD_SIZE);
+    context.imageSmoothingEnabled = false;
+    context.save();
+    context.translate(LIFE_ZONE_MARQUEE_FRAME_X, LIFE_ZONE_MARQUEE_FRAME_Y);
+    context.scale(LIFE_ZONE_MARQUEE_FRAME_SCALE, LIFE_ZONE_MARQUEE_FRAME_SCALE);
+    context.drawImage(frame, 0, 0);
+    context.restore();
+
+    context.save();
+    context.translate(320, 120);
+    context.rotate(-Math.atan(0.5));
+    _drawMarqueeWord(context, 'STREAK', 0, 0, 9, '#ffd6b2');
+    const digits = String(Math.min(999, streak)).padStart(3, '0');
+    [...digits].forEach((digit, index) => _drawMarqueeDigit(context, digit, index * 58, 76, 10));
+    _drawMarqueeTomato(context, 336, 24, 8);
+    context.restore();
+    canvas.dataset.lzMarqueeReady = 'true';
+  }).catch((error) => {
+    console.warn('[life-zone] marquee frame failed:', error);
+  });
+}
+
 export function renderLifeZoneCard({
   hero = null
 } = {}) {
@@ -1050,37 +1194,13 @@ export function renderLifeZoneCard({
   card.setAttribute('aria-label', '오늘의 라이프존');
 
   const fallbackActors = _defaultActorStates();
-  const heroHtml = hero ? `
-    <aside class="lz-iso-marquee" aria-label="오늘의 연속 기록">
-      <div class="lz-iso-marquee-panel">
-        <div class="tf-hero-left">
-          <div class="tf-hero-label" data-hero-message-target>${escapeHtml(hero.label || '')}</div>
-          <div class="tf-hero-count">${hero.countHtml || ''}</div>
-        </div>
-        <div class="tf-hero-right">
-          <div class="tf-hero-tomato tf-hero-tomato--svg" data-mood="${escapeHtml(hero.characterMood || 'seed')}">${hero.characterSvg || ''}</div>
-        </div>
-        <button class="tf-info-btn tf-info-btn--light tf-hero-info-btn" id="tomato-rule-info-card" aria-label="토마토 획득 규칙">ⓘ</button>
-        <div class="hero-social-proof" id="hero-social-proof" style="display:none;"></div>
-      </div>
-    </aside>
-  ` : '';
+  const heroStreak = _resolveHeroStreak(hero);
+  const marqueeLabel = hero?.label || '오늘의 연속 기록';
+  const marqueeAccessibleLabel = `${marqueeLabel}. 현재 ${heroStreak}일 연속 기록. 토마토 획득 규칙 보기`;
 
   card.innerHTML = `
     <div class="lz-scene">
       <div class="lz-world">
-        <div class="lz-marquee-composite">
-          <img
-            class="lz-marquee-underlay"
-            src="${LIFE_ZONE_UI_ROOT}/streak-marquee-facade-v2.png"
-            width="1774"
-            height="887"
-            alt=""
-            aria-hidden="true"
-            decoding="async"
-          >
-          ${heroHtml}
-        </div>
         <img
           class="lz-base"
           src="${LIFE_ZONE_ASSET_ROOT}/base-room-expanded-alpha.png"
@@ -1090,6 +1210,20 @@ export function renderLifeZoneCard({
           loading="lazy"
           decoding="async"
         >
+        <canvas
+          class="lz-marquee-canvas"
+          data-lz-marquee-canvas
+          width="1672"
+          height="1672"
+          aria-hidden="true"
+        ></canvas>
+        <button
+          type="button"
+          class="lz-marquee-hotspot"
+          id="tomato-rule-info-card"
+          aria-label="${escapeHtml(marqueeAccessibleLabel)}"
+          title="${escapeHtml(`${heroStreak}일 연속 기록 · 상세 보기`)}"
+        ></button>
         <span class="lz-miranda-corner" aria-hidden="true">
           <img
             src="${LIFE_ZONE_UI_ROOT}/miranda-fashion-corner.png"
@@ -1202,6 +1336,7 @@ export function renderLifeZoneCard({
     </div>
   `;
 
+  _paintLifeZoneMarquee(card.querySelector('[data-lz-marquee-canvas]'), hero);
   _renderActors(card, fallbackActors);
   _renderConsultingVisitor(card, fallbackActors);
   card.querySelector('[data-lz-action="npc-quest"]')?.addEventListener('click', (event) => {

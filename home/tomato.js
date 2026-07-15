@@ -861,6 +861,7 @@ export function renderTomatoCard() {
   const lifeZoneCard = renderLifeZoneCard({
     hero: {
       label: heroLabel,
+      streak: bestStreak,
       countHtml: heroCount,
       characterMood,
       characterSvg
