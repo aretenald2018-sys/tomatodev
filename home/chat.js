@@ -36,6 +36,50 @@ function _appendEmptyState(list, message) {
   list.replaceChildren(empty);
 }
 
+function _createMessageRow(message, currentUserId) {
+  const item = document.createElement('article');
+  item.className = 'home-chat-message';
+  if (message.userId === currentUserId) item.classList.add('is-mine');
+  if (message.isNotice) item.classList.add('is-notice');
+
+  const channel = document.createElement('span');
+  channel.className = 'home-chat-channel';
+  channel.textContent = message.isNotice ? '[공지]' : '[전체]';
+
+  const author = document.createElement('span');
+  author.className = 'home-chat-author';
+  author.textContent = String(message.userName || message.userId || '이용자');
+
+  const time = document.createElement('time');
+  time.className = 'home-chat-time';
+  time.dateTime = Number.isFinite(Number(message.createdAt))
+    ? new Date(Number(message.createdAt)).toISOString()
+    : '';
+  time.textContent = _formatChatTime(message.createdAt);
+
+  const bubble = document.createElement('div');
+  bubble.className = 'home-chat-bubble';
+  bubble.textContent = String(message.message || '');
+
+  const tail = document.createElement('div');
+  tail.className = 'home-chat-tail';
+  tail.append(time);
+  if (message.userId === currentUserId) {
+    const deleteButton = document.createElement('button');
+    deleteButton.type = 'button';
+    deleteButton.className = 'home-chat-delete';
+    deleteButton.textContent = '삭제';
+    deleteButton.setAttribute('aria-label', `${author.textContent}님의 메시지 삭제`);
+    deleteButton.addEventListener('click', () => {
+      void _deleteOwnMessage(message.id, deleteButton);
+    });
+    tail.append(deleteButton);
+  }
+
+  item.append(channel, author, bubble, tail);
+  return item;
+}
+
 async function _deleteOwnMessage(messageId, button) {
   const confirmed = await confirmSimple('보낸 메시지를 삭제할까요?');
   if (!confirmed) return;
@@ -52,8 +96,10 @@ async function _deleteOwnMessage(messageId, button) {
 
 function _renderMessages(messages) {
   const list = document.getElementById('home-chat-list');
-  if (!list) return;
+  const notices = document.getElementById('home-chat-notices');
+  if (!list || !notices) return;
   if (!messages.length) {
+    notices.replaceChildren();
     _appendEmptyState(list, '아직 대화가 없어요. 첫 메시지를 남겨보세요.');
     _hasRenderedMessages = true;
     return;
@@ -61,53 +107,18 @@ function _renderMessages(messages) {
 
   const currentUserId = getCurrentUser()?.id || '';
   const wasNearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 72;
-  const fragment = document.createDocumentFragment();
-
+  const noticeFragment = document.createDocumentFragment();
+  const messageFragment = document.createDocumentFragment();
   messages.forEach((message) => {
-    const item = document.createElement('article');
-    item.className = 'home-chat-message';
-    if (message.userId === currentUserId) item.classList.add('is-mine');
-    if (message.isNotice) item.classList.add('is-notice');
-
-    const channel = document.createElement('span');
-    channel.className = 'home-chat-channel';
-    channel.textContent = message.isNotice ? '[공지]' : '[전체]';
-
-    const author = document.createElement('span');
-    author.className = 'home-chat-author';
-    author.textContent = String(message.userName || message.userId || '이용자');
-
-    const time = document.createElement('time');
-    time.className = 'home-chat-time';
-    time.dateTime = Number.isFinite(Number(message.createdAt))
-      ? new Date(Number(message.createdAt)).toISOString()
-      : '';
-    time.textContent = _formatChatTime(message.createdAt);
-
-    const bubble = document.createElement('div');
-    bubble.className = 'home-chat-bubble';
-    bubble.textContent = String(message.message || '');
-
-    const tail = document.createElement('div');
-    tail.className = 'home-chat-tail';
-    tail.append(time);
-    if (message.userId === currentUserId) {
-      const deleteButton = document.createElement('button');
-      deleteButton.type = 'button';
-      deleteButton.className = 'home-chat-delete';
-      deleteButton.textContent = '삭제';
-      deleteButton.setAttribute('aria-label', `${author.textContent}님의 메시지 삭제`);
-      deleteButton.addEventListener('click', () => {
-        void _deleteOwnMessage(message.id, deleteButton);
-      });
-      tail.append(deleteButton);
-    }
-
-    item.append(channel, author, bubble, tail);
-    fragment.append(item);
+    const row = _createMessageRow(message, currentUserId);
+    (message.isNotice ? noticeFragment : messageFragment).append(row);
   });
 
-  list.replaceChildren(fragment);
+  notices.replaceChildren(noticeFragment);
+  list.replaceChildren(messageFragment);
+  if (!list.childElementCount) {
+    _appendEmptyState(list, '아직 일반 대화가 없어요.');
+  }
   if (!_hasRenderedMessages || wasNearBottom || _awaitingOwnMessage) {
     list.scrollTop = list.scrollHeight;
   }
