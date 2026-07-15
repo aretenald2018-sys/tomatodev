@@ -892,3 +892,227 @@
     filter: drop-shadow(0 0 8px rgba(47, 109, 246, 0.82));
   }
 }
+
+/* Workout home visual system: warm surfaces, red season accent, preserved cycle rail. */
+.cal-workout-surface-home {
+  padding: 10px 0 calc(96px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, #fbfaf9 0%, #f6f6f7 100%);
+  color: #202938;
+}
+.cal-workout-surface-home .cal-header {
+  margin: 0 16px 16px;
+  padding: 14px 16px;
+  border: 1px solid #edf0f3;
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 9px 26px rgba(29, 41, 57, .06);
+}
+.cal-workout-surface-home .cal-title {
+  font-size: 30px;
+  font-weight: 800;
+  color: #1d2939;
+  letter-spacing: -.035em;
+}
+.cal-workout-surface-home .cal-nav-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 15px;
+  background: #ffffff;
+  color: #344054;
+  font-size: 31px;
+  box-shadow: 0 4px 12px rgba(29, 41, 57, .05);
+}
+.cal-workout-surface-home .cal-today-btn {
+  min-height: 38px;
+  padding: 0 13px;
+  border: 1px solid #edf0f3;
+  border-radius: 18px;
+  background: #ffffff;
+  color: #39465a;
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(29, 41, 57, .06);
+}
+.cal-workout-surface-home .cal-workout-summary {
+  margin: 0 16px 16px;
+  padding: 16px 18px;
+  border-color: #edf0f3;
+  border-radius: 20px;
+  box-shadow: 0 9px 24px rgba(29, 41, 57, .05);
+}
+.cal-workout-surface-home .cal-month-empty {
+  justify-content: flex-start;
+  min-height: 72px;
+  margin: 0 16px 16px;
+  padding: 12px 18px;
+  border-radius: 20px;
+  color: #536174;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -.025em;
+}
+.cal-workout-surface-home .cal-month-empty-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-right: 12px;
+  border-radius: 15px;
+  background: #fff0ee;
+  color: #ff4b43;
+}
+.cal-workout-surface-home .cal-month-empty-icon svg {
+  width: 23px;
+  height: 23px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cal-workout-calendar-card {
+  margin: 0 16px 18px;
+  overflow: hidden;
+  border: 1px solid #edf0f3;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 12px 30px rgba(29, 41, 57, .06);
+}
+.cal-workout-calendar-card .cal-weekdays {
+  border-top: 0;
+  border-bottom-color: #edf0f3;
+  background: #ffffff;
+}
+.cal-workout-calendar-card .cal-week-rail-spacer,
+.cal-workout-calendar-card .cal-workout-week-rail {
+  border-right-color: #edf0f3;
+}
+.cal-workout-calendar-card .cal-week-rail-spacer { color: #ff4b43; }
+.cal-workout-surface-home .cal-wd {
+  padding: 13px 0 12px;
+  color: #4a5567;
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 800;
+}
+.cal-workout-surface-home .cal-wd-sun { color: #ff4b43; }
+.cal-workout-surface-home .cal-wd-sat { color: #2677d9; }
+.cal-workout-month-grid,
+.cal-workout-week-cells { border-bottom-color: #edf0f3; }
+.cal-workout-week-row { --cal-cycle-rail-color: #e49b96; }
+.cal-workout-week-row:nth-child(6n + 2) { --cal-cycle-rail-color: #e8aaa4; }
+.cal-workout-week-row:nth-child(6n + 3) { --cal-cycle-rail-color: #e0a19c; }
+.cal-workout-week-row:nth-child(6n + 4) { --cal-cycle-rail-color: #e9aaa4; }
+.cal-workout-week-row:nth-child(6n + 5) { --cal-cycle-rail-color: #e3a59f; }
+.cal-workout-week-row:nth-child(6n + 6) { --cal-cycle-rail-color: #e9b0ab; }
+.cal-workout-surface-home .cal-workout-cell { border-right-color: #f0f1f3; }
+.cal-workout-surface-home .cal-workout-cell-selected {
+  outline: 2px solid #ff4b43;
+  outline-offset: -3px;
+  border-radius: 18px;
+  background: #fff9f8;
+}
+.cal-workout-surface-home .cal-workout-cell:not(.cal-cell-disabled):hover {
+  border-color: #f0f1f3;
+  box-shadow: inset 0 0 0 2px rgba(255, 75, 67, .13);
+}
+.cal-workout-surface-home .cal-workout-cell .cal-cell-date { color: #303b4d; font-size: 16px; }
+.cal-workout-surface-home .cal-cell-today .cal-cell-date { color: #ff4b43; }
+.cal-workout-surface-home .cal-workout-dot { background: #ff4b43; }
+.cal-cycle-branch,
+.cal-cycle-branch.is-wendler,
+.cal-cycle-branch.is-intensity {
+  border-color: #f1cbc7;
+  border-left-color: #e49b96;
+  border-radius: 8px;
+  background: #fff8f7;
+  color: #4e3b3b;
+}
+.cal-cycle-branch-week { color: #e1433d; }
+.cal-cycle-branch-name { color: #39465a; }
+.cal-cycle-branch-target { color: #7b6670; }
+.cal-cycle-branch.is-achieved {
+  border-color: #ff817a;
+  border-left-color: #ff4b43;
+  background: #ff4b43;
+  box-shadow: 0 4px 10px rgba(255, 75, 67, .22);
+}
+.cal-cycle-branch.is-achieved::before { border-top-color: #ff4b43; }
+
+.cal-workout-day-bar {
+  min-height: 88px;
+  gap: 12px;
+  padding: 24px 20px 15px;
+  border-top: 0;
+  background: #ffffff;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.cal-workout-day-expand {
+  top: 7px;
+  width: 50px;
+  height: 16px;
+  border-radius: 999px;
+  color: transparent;
+  font-size: 0;
+  text-shadow: none;
+  animation: none;
+}
+.cal-workout-day-expand::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  width: 42px;
+  height: 5px;
+  border-radius: 999px;
+  background: #d9dde4;
+  translate: -50% 0;
+}
+.cal-workout-day-main {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+.cal-workout-day-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+  background: #fff0ee;
+  color: #ff4b43;
+  box-shadow: 0 7px 16px rgba(255, 75, 67, .11);
+}
+.cal-workout-day-icon svg {
+  width: 27px;
+  height: 27px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cal-workout-day-copy { display: grid; min-width: 0; gap: 2px; }
+.cal-workout-day-date { font-size: 23px; line-height: 27px; letter-spacing: -.035em; }
+.cal-workout-day-date em { color: #4d596a; font-size: 14px; }
+.cal-workout-day-sub { color: #667085; font-size: 13px; line-height: 18px; }
+.cal-workout-day-actions { gap: 8px; }
+.cal-workout-day-actions button {
+  min-width: 60px;
+  min-height: 48px;
+  padding: 0 14px;
+  border-color: #edf0f3;
+  border-radius: 19px;
+  color: #43536d;
+  font-size: 14px;
+  box-shadow: 0 5px 14px rgba(29, 41, 57, .07);
+}
+.cal-workout-day-main:focus-visible,
+.cal-workout-day-actions button:focus-visible,
+.cal-workout-day-expand:focus-visible {
+  outline: 2px solid #ff4b43;
+  outline-offset: 3px;
+}

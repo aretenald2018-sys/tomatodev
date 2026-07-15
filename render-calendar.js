@@ -1756,6 +1756,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
     </div>
   ` : `
     <div class="cal-month-summary cal-month-empty">
+      <span class="cal-month-empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14.5" rx="2.4"/><path d="M8 3.5v4M16 3.5v4M4 10h16"/><path d="M8.25 14h.1M12 14h.1M15.75 14h.1"/></svg></span>
       <span>이번 달 운동 기록이 아직 없어요</span>
     </div>
   `;
@@ -1776,6 +1777,9 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
   const gridHtml = isWorkoutHome
     ? _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, cycleBoard, cache, seasonRegistry, currentSeason, todayKey })
     : `<div class="cal-grid cal-workout-grid">${flatCells.join('')}</div>`;
+  const calendarBodyHtml = isWorkoutHome
+    ? `<section class="cal-workout-calendar-card" aria-label="${_esc(monthLabel)} 운동 달력">${weekdayHtml}${gridHtml}</section>`
+    : `${weekdayHtml}${gridHtml}`;
   const bottomSheetHtml = isWorkoutHome
     ? _renderWorkoutHomeBottomSheet(_workoutHomeSelectedKey, { cache, plan, checkins, lookup })
     : '';
@@ -1791,10 +1795,11 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
     : 'data-cal-action="go-today"';
   const seasonControlHtml = isWorkoutHome ? `
     <div class="cal-season-control ${currentSeason ? 'has-current-season' : 'needs-season'}">
-      <div><span>${currentSeason ? 'CURRENT SEASON' : 'SEASON SETUP'}</span><strong>${_esc(currentSeason?.name || '새 시즌 설정 필요')}</strong>${currentSeason ? `<small>${currentSeason.startDate}–${currentSeason.endDate}</small>` : '<small>기록은 유지하고 새 목표를 W1부터 시작합니다.</small>'}</div>
+      <span class="cal-season-emblem" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 20V5.2c4-2.4 7.2 2.4 12 0v9.3c-4.8 2.4-8-2.4-12 0"/><path d="m11.7 8.4.8 1.7 1.8.3-1.3 1.3.3 1.8-1.6-.9-1.6.9.3-1.8-1.3-1.3 1.8-.3.8-1.7Z"/></svg></span>
+      <div class="cal-season-copy"><span>${currentSeason ? 'CURRENT SEASON' : 'SEASON SETUP'}</span><strong>${_esc(currentSeason?.name || '새 시즌 설정 필요')}</strong>${currentSeason ? `<small>${currentSeason.startDate}–${currentSeason.endDate}</small>` : '<small>기록은 유지하고 새 목표를 세우며 시작합니다.</small>'}</div>
       <div class="cal-season-actions">
-        ${currentSeason ? `<button type="button" class="cal-season-settings" data-wt-season-edit="${_esc(currentSeason.id)}" aria-label="${_esc(currentSeason.name)} 설정 수정" title="시즌 설정 수정"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2Zm8.2 4.7-1.7-1a7 7 0 0 0 0-1.2l1.7-1-1.7-3-1.8.8a8 8 0 0 0-1-.6L15.5 5h-3.4l-.2 2.1a8 8 0 0 0-1 .6L9 6.9l-1.7 3 1.7 1a7 7 0 0 0 0 1.2l-1.7 1 1.7 3 1.9-.8a8 8 0 0 0 1 .6l.2 2.1h3.4l.2-2.1a8 8 0 0 0 1-.6l1.8.8 1.7-3Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></button>` : ''}
-        <button type="button" data-wt-season-manager>${currentSeason ? '다음 시즌' : '시즌 시작'}</button>
+        ${currentSeason ? `<button type="button" class="cal-season-settings" data-wt-season-edit="${_esc(currentSeason.id)}" aria-label="${_esc(currentSeason.name)} 설정 수정" title="시즌 설정 수정"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.1"/><path d="M19.2 13.5a7.8 7.8 0 0 0 .1-1.5 7.8 7.8 0 0 0-.1-1.5l2-1.5-2-3.4-2.4 1a8.4 8.4 0 0 0-2.5-1.5L14 2.5h-4L9.7 5.1a8.4 8.4 0 0 0-2.5 1.5l-2.4-1-2 3.4 2 1.5A7.8 7.8 0 0 0 4.7 12c0 .5 0 1 .1 1.5l-2 1.5 2 3.4 2.4-1a8.4 8.4 0 0 0 2.5 1.5l.3 2.6h4l.3-2.6a8.4 8.4 0 0 0 2.5-1.5l2.4 1 2-3.4-2-1.5Z"/></svg></button>` : ''}
+        <button type="button" class="cal-season-primary" data-wt-season-manager>${currentSeason ? '다음 시즌' : '시즌 시작'}</button>
       </div>
     </div>` : '';
   root.innerHTML = `
@@ -1811,8 +1816,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
       ${showModeTabs ? _renderCalendarModeTabs() : ''}
       ${seasonControlHtml}
       ${summaryHtml}
-      ${weekdayHtml}
-      ${gridHtml}
+      ${calendarBodyHtml}
       ${bottomSheetHtml}
     </div>
   `;
@@ -1870,8 +1874,8 @@ function _renderWorkoutHomeDayBar(selectedKey, { cache, plan, checkins, lookup }
     <div class="cal-workout-day-bar" data-wt-sheet-bar aria-expanded="${expanded ? 'true' : 'false'}">
       <button type="button" class="cal-workout-day-expand" data-wt-sheet-toggle data-date-key="${selected}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '날짜 상세 접기' : '선택한 날짜 열기'}">${expanded ? '⌄' : '⌃'}</button>
       <button type="button" class="cal-workout-day-main" data-wt-sheet-main data-wt-sheet-toggle data-date-key="${selected}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '날짜 상세 접기' : '선택한 날짜 열기'}">
-        <span class="cal-workout-day-date">${selected} <em>${_dateDistanceLabel(selected)}</em><i class="cal-day-season-badge ${isArchived ? 'is-archived' : ''}">${_esc(seasonBadge)}</i></span>
-        <span class="cal-workout-day-sub">${recordText} · ${sessionText}</span>
+        <span class="cal-workout-day-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.8" y="5.2" width="16.4" height="15" rx="2.2"/><path d="M7.5 3.5v3.4M16.5 3.5v3.4M3.8 10h16.4"/><path d="M8.2 14h.1M12 14h.1M15.8 14h.1"/></svg></span>
+        <span class="cal-workout-day-copy"><span class="cal-workout-day-date">${selected} <em>${_dateDistanceLabel(selected)}</em><i class="cal-day-season-badge ${isArchived ? 'is-archived' : ''}">${_esc(seasonBadge)}</i></span><span class="cal-workout-day-sub">${recordText} · ${sessionText}</span></span>
       </button>
       <div class="cal-workout-day-actions">
         <button type="button" data-wt-calendar-action="go-today-detail">오늘</button>

@@ -10698,16 +10698,14 @@ body.wt-running-session-open {
 }
 .lz-iso-marquee {
   position: absolute;
-  top: 6px;
-  left: 6px;
-  z-index: 190;
-  width: min(50%, 220px);
-  aspect-ratio: 1.55;
-  overflow: hidden;
-  border: 1px solid rgba(73, 45, 32, .18);
-  border-radius: 18px;
-  background: linear-gradient(145deg, rgba(250,247,243,.96), rgba(222,211,199,.9));
-  box-shadow: 0 7px 18px rgba(42, 27, 20, .2);
+  top: calc(-1 * min(20vw, 143px));
+  left: calc(-1 * min(3.6vw, 26px));
+  z-index: 0;
+  width: min(76%, 540px);
+  aspect-ratio: 1034 / 891;
+  overflow: visible;
+  background: transparent;
+  filter: drop-shadow(2px 4px 0 rgba(0,0,0,.46));
   isolation: isolate;
 }
 .lz-iso-marquee-art {
@@ -10717,26 +10715,28 @@ body.wt-running-session-open {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: center top;
+  object-fit: contain;
   pointer-events: none;
 }
 .lz-iso-marquee-panel {
   position: absolute;
   left: 14%;
-  top: 46%;
+  top: 35%;
   z-index: 2;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 25px;
   align-items: center;
   gap: 2px;
   width: 80%;
-  height: 44%;
+  height: 34%;
   box-sizing: border-box;
-  padding: 4px 16px 4px 5px;
+  padding: 4px 14px 4px 6px;
   overflow: hidden;
   transform: skewY(-14.5deg);
   transform-origin: left top;
+  border: 1px solid rgba(255,109,73,.22);
+  border-radius: 3px;
+  background: rgba(20,0,0,.42);
 }
 .lz-iso-marquee .tf-hero-left {
   min-width: 0;
@@ -10744,27 +10744,28 @@ body.wt-running-session-open {
   z-index: 2;
 }
 .lz-iso-marquee .tf-hero-label {
-  color: #ffc0a8;
-  font-size: 6.5px;
+  color: #ffe0cf;
+  font-size: 9px;
   font-weight: 800;
-  line-height: 1.1;
+  line-height: 1.15;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .lz-iso-marquee .tf-hero-count {
-  color: #ff654b;
-  font-size: 15px;
+  color: #fff7e9;
+  font-size: 26px;
   font-weight: 850;
   letter-spacing: 0;
   line-height: 1;
-  margin-top: 3px;
-  text-shadow: 0 0 7px rgba(255,70,44,.72);
+  margin-top: 4px;
+  -webkit-text-stroke: .7px #71180e;
+  text-shadow: 2px 2px 0 #3e0a06, 0 0 8px rgba(255,70,44,.9);
 }
 .lz-iso-marquee .tf-hero-unit {
-  color: #ffab91;
-  font-size: 9px;
-  font-weight: 700;
+  color: #fff0db;
+  font-size: 11px;
+  font-weight: 800;
 }
 .lz-iso-marquee .tf-hero-right {
   position: relative;
@@ -10777,19 +10778,20 @@ body.wt-running-session-open {
   filter: drop-shadow(2px 2px 0 rgba(14,6,4,.7));
 }
 .lz-iso-marquee .tf-hero-character {
-  width: 24px;
-  height: 24px;
+  width: 31px;
+  height: 31px;
 }
 .lz-iso-marquee .tf-hero-info-btn {
-  top: 2px;
-  right: 2px;
+  top: 3px;
+  right: 3px;
   z-index: 3;
-  width: 13px;
-  height: 13px;
-  font-size: 8px;
-  color: #ffc0a8;
-  border-color: rgba(255,167,139,.68);
+  width: 15px;
+  height: 15px;
+  font-size: 9px;
+  color: #fff8ef;
+  border-color: rgba(255,177,143,.88);
   border-radius: 2px;
+  background: rgba(38,4,2,.88);
 }
 .lz-iso-marquee .hero-social-proof {
   display: none !important;
@@ -10803,11 +10805,16 @@ body.wt-running-session-open {
 }
 .lz-world {
   position: relative;
+  z-index: 1;
   left: 50%;
   width: 112%;
   aspect-ratio: 1672 / 1672;
   overflow: visible;
   transform: translateX(-50%);
+  pointer-events: none;
+}
+.lz-world [data-lz-action] {
+  pointer-events: auto;
 }
 .lz-base {
   display: block;
@@ -11984,9 +11991,9 @@ body.lz-running-record-modal-open {
   animation: tds-shine-btn 2.4s ease-in-out infinite;
 }
 @media (max-width: 420px) {
-  .lz-iso-marquee { top: 4px; left: 4px; width: 50%; border-radius: 16px; }
-  .lz-iso-marquee .tf-hero-count { font-size: 15px; }
-  .lz-iso-marquee .tf-hero-character { width: 23px; height: 23px; }
+  .lz-iso-marquee .tf-hero-label { font-size: 8.5px; }
+  .lz-iso-marquee .tf-hero-count { font-size: 24px; }
+  .lz-iso-marquee .tf-hero-character { width: 29px; height: 29px; }
   .lz-summary-btn { padding: 12px 12px; }
   .lz-summary-main { font-size: 18px; }
   .lz-summary-main small { font-size: 10px; }
@@ -15621,41 +15628,288 @@ body.lz-running-record-modal-open {
   }
 }
 
+/* Workout home visual system: warm surfaces, red season accent, preserved cycle rail. */
+.cal-workout-surface-home {
+  padding: 10px 0 calc(96px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, #fbfaf9 0%, #f6f6f7 100%);
+  color: #202938;
+}
+.cal-workout-surface-home .cal-header {
+  margin: 0 16px 16px;
+  padding: 14px 16px;
+  border: 1px solid #edf0f3;
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 9px 26px rgba(29, 41, 57, .06);
+}
+.cal-workout-surface-home .cal-title {
+  font-size: 30px;
+  font-weight: 800;
+  color: #1d2939;
+  letter-spacing: -.035em;
+}
+.cal-workout-surface-home .cal-nav-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 15px;
+  background: #ffffff;
+  color: #344054;
+  font-size: 31px;
+  box-shadow: 0 4px 12px rgba(29, 41, 57, .05);
+}
+.cal-workout-surface-home .cal-today-btn {
+  min-height: 38px;
+  padding: 0 13px;
+  border: 1px solid #edf0f3;
+  border-radius: 18px;
+  background: #ffffff;
+  color: #39465a;
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(29, 41, 57, .06);
+}
+.cal-workout-surface-home .cal-workout-summary {
+  margin: 0 16px 16px;
+  padding: 16px 18px;
+  border-color: #edf0f3;
+  border-radius: 20px;
+  box-shadow: 0 9px 24px rgba(29, 41, 57, .05);
+}
+.cal-workout-surface-home .cal-month-empty {
+  justify-content: flex-start;
+  min-height: 72px;
+  margin: 0 16px 16px;
+  padding: 12px 18px;
+  border-radius: 20px;
+  color: #536174;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -.025em;
+}
+.cal-workout-surface-home .cal-month-empty-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-right: 12px;
+  border-radius: 15px;
+  background: #fff0ee;
+  color: #ff4b43;
+}
+.cal-workout-surface-home .cal-month-empty-icon svg {
+  width: 23px;
+  height: 23px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cal-workout-calendar-card {
+  margin: 0 16px 18px;
+  overflow: hidden;
+  border: 1px solid #edf0f3;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 12px 30px rgba(29, 41, 57, .06);
+}
+.cal-workout-calendar-card .cal-weekdays {
+  border-top: 0;
+  border-bottom-color: #edf0f3;
+  background: #ffffff;
+}
+.cal-workout-calendar-card .cal-week-rail-spacer,
+.cal-workout-calendar-card .cal-workout-week-rail {
+  border-right-color: #edf0f3;
+}
+.cal-workout-calendar-card .cal-week-rail-spacer { color: #ff4b43; }
+.cal-workout-surface-home .cal-wd {
+  padding: 13px 0 12px;
+  color: #4a5567;
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 800;
+}
+.cal-workout-surface-home .cal-wd-sun { color: #ff4b43; }
+.cal-workout-surface-home .cal-wd-sat { color: #2677d9; }
+.cal-workout-month-grid,
+.cal-workout-week-cells { border-bottom-color: #edf0f3; }
+.cal-workout-week-row { --cal-cycle-rail-color: #e49b96; }
+.cal-workout-week-row:nth-child(6n + 2) { --cal-cycle-rail-color: #e8aaa4; }
+.cal-workout-week-row:nth-child(6n + 3) { --cal-cycle-rail-color: #e0a19c; }
+.cal-workout-week-row:nth-child(6n + 4) { --cal-cycle-rail-color: #e9aaa4; }
+.cal-workout-week-row:nth-child(6n + 5) { --cal-cycle-rail-color: #e3a59f; }
+.cal-workout-week-row:nth-child(6n + 6) { --cal-cycle-rail-color: #e9b0ab; }
+.cal-workout-surface-home .cal-workout-cell { border-right-color: #f0f1f3; }
+.cal-workout-surface-home .cal-workout-cell-selected {
+  outline: 2px solid #ff4b43;
+  outline-offset: -3px;
+  border-radius: 18px;
+  background: #fff9f8;
+}
+.cal-workout-surface-home .cal-workout-cell:not(.cal-cell-disabled):hover {
+  border-color: #f0f1f3;
+  box-shadow: inset 0 0 0 2px rgba(255, 75, 67, .13);
+}
+.cal-workout-surface-home .cal-workout-cell .cal-cell-date { color: #303b4d; font-size: 16px; }
+.cal-workout-surface-home .cal-cell-today .cal-cell-date { color: #ff4b43; }
+.cal-workout-surface-home .cal-workout-dot { background: #ff4b43; }
+.cal-cycle-branch,
+.cal-cycle-branch.is-wendler,
+.cal-cycle-branch.is-intensity {
+  border-color: #f1cbc7;
+  border-left-color: #e49b96;
+  border-radius: 8px;
+  background: #fff8f7;
+  color: #4e3b3b;
+}
+.cal-cycle-branch-week { color: #e1433d; }
+.cal-cycle-branch-name { color: #39465a; }
+.cal-cycle-branch-target { color: #7b6670; }
+.cal-cycle-branch.is-achieved {
+  border-color: #ff817a;
+  border-left-color: #ff4b43;
+  background: #ff4b43;
+  box-shadow: 0 4px 10px rgba(255, 75, 67, .22);
+}
+.cal-cycle-branch.is-achieved::before { border-top-color: #ff4b43; }
+
+.cal-workout-day-bar {
+  min-height: 88px;
+  gap: 12px;
+  padding: 24px 20px 15px;
+  border-top: 0;
+  background: #ffffff;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.cal-workout-day-expand {
+  top: 7px;
+  width: 50px;
+  height: 16px;
+  border-radius: 999px;
+  color: transparent;
+  font-size: 0;
+  text-shadow: none;
+  animation: none;
+}
+.cal-workout-day-expand::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  width: 42px;
+  height: 5px;
+  border-radius: 999px;
+  background: #d9dde4;
+  translate: -50% 0;
+}
+.cal-workout-day-main {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+.cal-workout-day-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+  background: #fff0ee;
+  color: #ff4b43;
+  box-shadow: 0 7px 16px rgba(255, 75, 67, .11);
+}
+.cal-workout-day-icon svg {
+  width: 27px;
+  height: 27px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cal-workout-day-copy { display: grid; min-width: 0; gap: 2px; }
+.cal-workout-day-date { font-size: 23px; line-height: 27px; letter-spacing: -.035em; }
+.cal-workout-day-date em { color: #4d596a; font-size: 14px; }
+.cal-workout-day-sub { color: #667085; font-size: 13px; line-height: 18px; }
+.cal-workout-day-actions { gap: 8px; }
+.cal-workout-day-actions button {
+  min-width: 60px;
+  min-height: 48px;
+  padding: 0 14px;
+  border-color: #edf0f3;
+  border-radius: 19px;
+  color: #43536d;
+  font-size: 14px;
+  box-shadow: 0 5px 14px rgba(29, 41, 57, .07);
+}
+.cal-workout-day-main:focus-visible,
+.cal-workout-day-actions button:focus-visible,
+.cal-workout-day-expand:focus-visible {
+  outline: 2px solid #ff4b43;
+  outline-offset: 3px;
+}
+
 /* SOURCE: styles/features/seasons.css */
 /* Workout seasons: calendar hierarchy, setup wizard, archived-plan tone. */
 .cal-season-control {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0 10px 10px;
-  padding: 11px 12px;
-  border: 1px solid #dfe5eb;
-  border-radius: 13px;
-  background: linear-gradient(135deg, #f7fbff, #f7f8fa);
+  gap: 15px;
+  margin: 0 16px 16px;
+  padding: 22px 24px;
+  border: 1px solid #ffb9b2;
+  border-radius: 22px;
+  background: radial-gradient(circle at 11% 30%, rgba(255, 82, 74, .12), transparent 21%), linear-gradient(135deg, #fffdfd, #fff8f6);
+  box-shadow: 0 12px 28px rgba(117, 47, 38, .07);
 }
-.cal-season-control > div { min-width: 0; display: grid; gap: 2px; }
-.cal-season-control span { color: #51738e; font-size: 9px; font-weight: 800; letter-spacing: .08em; }
-.cal-season-control strong { color: #20303d; font-size: 13px; line-height: 1.25; }
-.cal-season-control small { color: #687784; font-size: 10px; }
+.cal-season-emblem {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 20px;
+  background: #ffe9e6;
+  color: #ff3d38;
+  box-shadow: 0 8px 18px rgba(255, 69, 57, .12);
+}
+.cal-season-emblem svg { width: 31px; height: 31px; fill: currentColor; stroke: #fff; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.cal-season-control .cal-season-copy { min-width: 0; display: grid; gap: 4px; }
+.cal-season-control .cal-season-copy > span { color: #ff3d38; font-size: 10px; font-weight: 900; letter-spacing: .12em; }
+.cal-season-control strong { color: #1e293b; font-size: 21px; line-height: 1.2; letter-spacing: -.035em; }
+.cal-season-control small { color: #677182; font-size: 14px; line-height: 1.35; }
 .cal-season-control button {
-  min-width: 76px;
-  min-height: 38px;
-  padding: 0 12px;
-  border: 1px solid #b8ccdc;
-  border-radius: 11px;
+  min-width: 112px;
+  min-height: 54px;
+  padding: 0 19px;
+  border: 1px solid #ff3d38;
+  border-radius: 18px;
   background: #fff;
-  color: #315f80;
-  font-size: 11px;
-  font-weight: 800;
+  color: #ff3d38;
+  font-size: 17px;
+  font-weight: 900;
+  box-shadow: 0 7px 16px rgba(255, 61, 56, .09);
 }
-.cal-season-actions { flex: none; display: flex; align-items: center; gap: 6px; }
-.cal-season-control .cal-season-settings { min-width: 38px; width: 38px; padding: 0; }
-.cal-season-settings svg { width: 18px; height: 18px; }
-.cal-season-control.needs-season { border-color: #edc4bf; background: #fff8f6; }
-.cal-season-control.needs-season span,
-.cal-season-control.needs-season button { color: #a54a40; }
-.cal-season-control.needs-season button { border-color: #e6b6b0; }
+.cal-season-primary:hover { background: #fff4f2; }
+.cal-season-actions { flex: none; display: flex; align-items: center; gap: 8px; }
+.cal-season-control .cal-season-settings {
+  min-width: 48px;
+  width: 48px;
+  min-height: 48px;
+  padding: 0;
+  border-color: #e8eaf0;
+  border-radius: 16px;
+  color: #566173;
+  box-shadow: 0 5px 14px rgba(30, 41, 59, .08);
+}
+.cal-season-settings svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.cal-season-control.needs-season { border-color: #ffb9b2; background: radial-gradient(circle at 11% 30%, rgba(255, 82, 74, .12), transparent 21%), linear-gradient(135deg, #fffdfd, #fff8f6); }
+.cal-season-control.needs-season .cal-season-copy > span,
+.cal-season-control.needs-season .cal-season-primary { color: #ff3d38; }
+.cal-season-control.needs-season .cal-season-primary { border-color: #ff3d38; }
 
 .cal-workout-surface-home .cal-workout-cell-season-archived {
   background: #f6f7f9;
@@ -15675,11 +15929,11 @@ body.lz-running-record-modal-open {
 .cal-workout-surface-home .cal-workout-cell-season-archived .cal-workout-cell-kcal,
 .cal-workout-surface-home .cal-workout-cell-season-archived .cal-workout-rest-mark { color: #969da5; }
 .cal-workout-surface-home .cal-workout-cell-season-archived.cal-workout-cell-selected {
-  border-color: #2f73c9;
-  box-shadow: inset 0 0 0 1px #2f73c9;
-  background: #f5f9ff;
+  border-color: #ff5d56;
+  box-shadow: inset 0 0 0 1px #ff5d56;
+  background: #fff8f7;
 }
-.cal-workout-surface-home .cal-workout-cell-season-archived.cal-workout-cell-selected .cal-cell-date { color: #235d9f; }
+.cal-workout-surface-home .cal-workout-cell-season-archived.cal-workout-cell-selected .cal-cell-date { color: #ff4d46; }
 .cal-workout-cell-season-start { box-shadow: inset 2px 0 0 #e0574f; }
 .cal-season-start-label {
   display: block;
@@ -15708,9 +15962,9 @@ body.lz-running-record-modal-open {
   margin-left: 6px;
   padding: 2px 5px;
   border-radius: 999px;
-  background: #e8f2fb;
-  color: #326889;
-  font-size: 9px;
+  background: #edf6ff;
+  color: #2476ad;
+  font-size: 10px;
   font-style: normal;
   font-weight: 800;
   vertical-align: 2px;
@@ -18179,6 +18433,101 @@ body.lz-running-record-modal-open {
 .cal-footnote {
   margin-top: 12px; font-size: 11px; color: var(--muted);
   text-align: center; line-height: 1.5;
+}
+
+/* Workout calendar bottom sheet follows the home season card system. */
+.cal-workout-day-backdrop.is-full {
+  background: rgba(35, 41, 52, .18);
+  backdrop-filter: blur(3px);
+}
+.cal-workout-day-sheet {
+  --wt-day-sheet-height: clamp(88px, 12dvh, 104px);
+  --wt-day-sheet-full-clearance: 106px;
+  left: 12px;
+  right: 12px;
+  bottom: 60px;
+  overflow: hidden;
+  border: 1px solid #edf0f3;
+  border-bottom: 0;
+  border-radius: 26px 26px 0 0;
+  background: #ffffff;
+  box-shadow: 0 -10px 32px rgba(29, 41, 57, .14);
+}
+.cal-workout-day-sheet.is-bar {
+  --wt-day-sheet-height: clamp(88px, 12dvh, 104px);
+}
+.cal-workout-day-sheet.is-full {
+  box-shadow: 0 -18px 44px rgba(29, 41, 57, .2);
+}
+.cal-workout-day-sheet .cal-workout-day-bar {
+  border-radius: 26px 26px 0 0;
+  background: #ffffff;
+}
+.cal-workout-day-sheet.is-full .cal-workout-day-expand {
+  color: transparent;
+  text-shadow: none;
+  animation: none;
+}
+.cal-workout-day-sheet .cal-workout-day-expand:focus-visible {
+  outline-color: #ff4b43;
+  outline-offset: 3px;
+}
+.cal-workout-day-sheet-body {
+  border-top-color: #edf0f3;
+  background: #fbfaf9;
+}
+.cal-workout-day-sheet .wt-day-detail { background: #fbfaf9; }
+.cal-workout-day-sheet .wt-day-summary-card {
+  border-color: #edf0f3;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 6px 16px rgba(29, 41, 57, .05);
+}
+.cal-workout-day-sheet .wt-day-fab {
+  background: #ff4b43;
+  box-shadow: 0 9px 20px rgba(255, 75, 67, .28);
+}
+.cal-workout-day-sheet .wt-day-sessionbar {
+  border-top-color: #edf0f3;
+  background: rgba(255, 255, 255, .96);
+}
+@media (max-width: 430px) {
+  .cal-workout-day-sheet,
+  .cal-workout-day-sheet.is-bar {
+    --wt-day-sheet-height: clamp(88px, 12dvh, 100px);
+    left: 8px;
+    right: 8px;
+  }
+  .cal-workout-day-sheet .cal-workout-day-bar {
+    min-height: 88px;
+    gap: 10px;
+    padding: 24px 14px 13px;
+  }
+  .cal-workout-day-main {
+    grid-template-columns: 46px minmax(0, 1fr);
+    gap: 10px;
+  }
+  .cal-workout-day-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 16px;
+  }
+  .cal-workout-day-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+  .cal-workout-day-date {
+    font-size: 20px;
+    line-height: 24px;
+  }
+  .cal-workout-day-sub { font-size: 12px; }
+  .cal-workout-day-actions { gap: 6px; }
+  .cal-workout-day-actions button {
+    min-width: 56px;
+    min-height: 44px;
+    padding: 0 10px;
+    font-size: 13px;
+  }
 }
 
 /* SOURCE: styles/features/calendar-score-modal.css */
