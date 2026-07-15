@@ -49,4 +49,5 @@ test('MMORPG chat rows, notices, safe text and own-message delete controls are w
   assert.match(css, /\.home-chat-message\.is-notice \.home-chat-bubble/);
   assert.match(css, /grid-template-columns: auto minmax\(34px, auto\) minmax\(0, 1fr\) auto/);
   assert.match(css, /align-content: end/);
+  assert.match(css, /#card-chat\.home-chat-card \{/);
 });
