@@ -56,4 +56,7 @@ test('MMORPG chat rows, notices, safe text and own-message delete controls are w
   assert.match(css, /align-content: end/);
   assert.match(css, /\.home-chat-notices:empty/);
   assert.match(css, /#card-chat\.home-chat-card \{/);
+  assert.match(css, /margin-top: -8%/);
+  assert.match(css, /backdrop-filter: blur\(10px\)/);
+  assert.match(css, /background: linear-gradient\(180deg, rgba\(11, 15, 22, 0\.76\), rgba\(9, 13, 19, 0\.88\)\)/);
 });
