@@ -120,7 +120,7 @@ export {
   getCustomCheers, saveCustomCheer, deleteCustomCheer,
   invalidateCheersCache,
   getMySelfCheer, getMySelfCheerRaw, saveMySelfCheer, deleteMySelfCheer, getFriendSelfCheer,
-  sendChatMessage, subscribeChatMessages,
+  sendChatMessage, deleteChatMessage, subscribeChatMessages,
   getFriendLatestTomatoCycle,
   recordLogin, recordTutorialDone, markPatchnoteRead, recordAction,
   getPatchnote, createPatchnote, getLatestPatchnote,

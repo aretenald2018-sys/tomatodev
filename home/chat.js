@@ -3,11 +3,13 @@
 // ================================================================
 
 import {
+  deleteChatMessage,
   getCurrentUser,
   sendChatMessage,
   subscribeChatMessages,
 } from '../data.js';
 import { showToast } from './utils.js';
+import { confirmSimple } from '../utils/confirm-modal.js';
 
 let _unsubscribe = null;
 let _subscribedUserId = '';
@@ -34,6 +36,20 @@ function _appendEmptyState(list, message) {
   list.replaceChildren(empty);
 }
 
+async function _deleteOwnMessage(messageId, button) {
+  const confirmed = await confirmSimple('보낸 메시지를 삭제할까요?');
+  if (!confirmed) return;
+
+  button.disabled = true;
+  try {
+    await deleteChatMessage(messageId);
+    showToast('메시지를 삭제했어요.', 1800, 'success');
+  } catch (error) {
+    button.disabled = false;
+    showToast(error?.message || '메시지를 삭제하지 못했어요.', 2400, 'error');
+  }
+}
+
 function _renderMessages(messages) {
   const list = document.getElementById('home-chat-list');
   if (!list) return;
@@ -53,8 +69,9 @@ function _renderMessages(messages) {
     if (message.userId === currentUserId) item.classList.add('is-mine');
     if (message.isNotice) item.classList.add('is-notice');
 
-    const meta = document.createElement('div');
-    meta.className = 'home-chat-meta';
+    const channel = document.createElement('span');
+    channel.className = 'home-chat-channel';
+    channel.textContent = message.isNotice ? '[공지]' : '[전체]';
 
     const author = document.createElement('span');
     author.className = 'home-chat-author';
@@ -71,8 +88,22 @@ function _renderMessages(messages) {
     bubble.className = 'home-chat-bubble';
     bubble.textContent = String(message.message || '');
 
-    meta.append(author, time);
-    item.append(meta, bubble);
+    const tail = document.createElement('div');
+    tail.className = 'home-chat-tail';
+    tail.append(time);
+    if (message.userId === currentUserId) {
+      const deleteButton = document.createElement('button');
+      deleteButton.type = 'button';
+      deleteButton.className = 'home-chat-delete';
+      deleteButton.textContent = '삭제';
+      deleteButton.setAttribute('aria-label', `${author.textContent}님의 메시지 삭제`);
+      deleteButton.addEventListener('click', () => {
+        void _deleteOwnMessage(message.id, deleteButton);
+      });
+      tail.append(deleteButton);
+    }
+
+    item.append(channel, author, bubble, tail);
     fragment.append(item);
   });
 

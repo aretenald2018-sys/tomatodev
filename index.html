@@ -275,10 +275,13 @@
       <div id="hero-content"></div>
     </div>
 
-    <!-- 모두의 채팅 -->
+    <!-- 라이프존 게임 채팅 -->
     <div class="home-card home-chat-card" id="card-chat">
       <div class="home-card-header home-chat-header">
-        <span class="home-card-title">채팅</span>
+        <div class="home-chat-title-group">
+          <span class="home-chat-eyebrow">LIVE CHAT</span>
+          <span class="home-card-title home-chat-title">라이프존</span>
+        </div>
         <span class="home-chat-status" id="home-chat-status" aria-live="polite">연결 중</span>
       </div>
       <div class="home-chat-list" id="home-chat-list" role="log" aria-live="polite" aria-label="이용자 채팅 기록">
@@ -286,11 +289,15 @@
       </div>
       <form class="home-chat-form" id="home-chat-form">
         <label class="sr-only" for="home-chat-input">채팅 메시지</label>
+        <span class="home-chat-prompt" aria-hidden="true">›</span>
         <input class="home-chat-input" id="home-chat-input" type="text" maxlength="305"
-          autocomplete="off" placeholder="메시지 입력 · &lt;공지&gt;로 공지">
+          autocomplete="off" placeholder="라이프존에 메시지 입력">
         <button class="home-chat-send" id="home-chat-send" type="submit">전송</button>
       </form>
-      <div class="home-chat-hint">&lt;공지&gt;로 시작하면 붉은 공지로 표시돼요.</div>
+      <div class="home-chat-hint">
+        <span><b>[전체]</b> 모두에게 표시</span>
+        <span>&lt;공지&gt;로 공지 등록</span>
+      </div>
     </div>
 
     <!-- 오늘의 칼로리 -->

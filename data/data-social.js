@@ -36,7 +36,7 @@ export {
   getCustomCheers, saveCustomCheer, deleteCustomCheer,
   invalidateCheersCache,
   getMySelfCheer, getMySelfCheerRaw, saveMySelfCheer, deleteMySelfCheer, getFriendSelfCheer,
-  sendChatMessage, subscribeChatMessages,
+  sendChatMessage, deleteChatMessage, subscribeChatMessages,
 } from './data-social-interact.js';
 
 export {
