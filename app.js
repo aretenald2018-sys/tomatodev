@@ -53,7 +53,11 @@ import {
   wtRecoverTimers, wtRestoreRunningSessionIfActive,
 } from './workout/index.js';
 import { wtHandleExercisePickerBack } from './workout/exercises.js';
-import { wtHandleRunningSessionBack } from './workout/running-session.js';
+import { wtHandleRunningSessionBack, wtOpenRunningSession } from './workout/running-session.js';
+import {
+  initSeasonDashboardWidgetSync,
+  scheduleSeasonDashboardWidgetSync,
+} from './workout/season-widget-bridge.js';
 
 // ── 레이지 로딩 탭 캐시 ──
 const _lazy = loadLazyModule;
@@ -123,6 +127,7 @@ async function initializeApp() {
 
   // shell data-action 이벤트 위임 라우터와 정적 action registry
   try { initActionRouter(); } catch (e) { console.warn('[app] action router init 실패:', e); }
+  try { initSeasonDashboardWidgetSync(); } catch (e) { console.warn('[season-widget] init failed:', e); }
   try { registerStaticActions(); } catch (e) { console.warn('[app] static actions init 실패:', e); }
 
   // Phase D/E UX 폴리시 (오프라인 배너 / 포커스 트랩 / aria-label)
@@ -589,6 +594,23 @@ async function renderAll() {
 document.addEventListener('sheet:saved',   renderAll);
 document.addEventListener('cooking:saved', renderAll);
 document.addEventListener('app:render-requested', renderAll);
+document.addEventListener('sheet:saved', () => scheduleSeasonDashboardWidgetSync('workout-saved'));
+document.addEventListener('season:changed', () => {
+  void renderAll();
+  scheduleSeasonDashboardWidgetSync('season-changed', 0);
+});
+document.addEventListener('widget:action', (event) => {
+  const action = String(event.detail?.action || '');
+  if (action === 'refresh') {
+    scheduleSeasonDashboardWidgetSync('manual-refresh', 0);
+    return;
+  }
+  if (action === 'running') {
+    void switchTab('workout').then(() => wtOpenRunningSession());
+    return;
+  }
+  if (action === 'workout') void switchTab('workout');
+});
 document.addEventListener('app:start-user-session', (event) => {
   Promise.resolve(startTomatoUserSession())
     .then((result) => event.detail?.resolve?.(result))
@@ -758,6 +780,7 @@ async function _initializeAppSession() {
 
     // 홈/관리자 첫 화면이 준비되면, 보조 네트워크 작업을 기다리지 않고 닫는다.
     _hideLoadingOverlay();
+    scheduleSeasonDashboardWidgetSync('initial-load', 0);
 
     // 나머지 초기화는 비동기로 (체감 속도 개선)
     const bellBtn = document.getElementById('notif-bell');

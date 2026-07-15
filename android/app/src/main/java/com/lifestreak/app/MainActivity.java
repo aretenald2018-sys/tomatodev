@@ -6,6 +6,7 @@ import com.getcapacitor.BridgeActivity;
 import com.lifestreak.app.wear.TomatoWearAppUpdatePlugin;
 import com.lifestreak.app.wear.TomatoWearWorkoutBridge;
 import com.lifestreak.app.running.TomatoRunningLocationPlugin;
+import com.lifestreak.app.widget.SeasonWidgetPlugin;
 
 public class MainActivity extends BridgeActivity {
 
@@ -13,6 +14,7 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         registerPlugin(TomatoWearAppUpdatePlugin.class);
         registerPlugin(TomatoRunningLocationPlugin.class);
+        registerPlugin(SeasonWidgetPlugin.class);
         super.onCreate(savedInstanceState);
         TomatoWearWorkoutBridge.registerActivity(this);
         handleWidgetIntent(getIntent());
@@ -41,7 +43,18 @@ public class MainActivity extends BridgeActivity {
         if (intent == null) return;
         String addDate = intent.getStringExtra("addEventDate");
         String tab = intent.getStringExtra("tab");
-        if (addDate != null && !addDate.isEmpty()) {
+        String widgetAction = intent.getStringExtra("widgetAction");
+        if ("running".equals(widgetAction) || "workout".equals(widgetAction) || "refresh".equals(widgetAction)) {
+            final String safeAction = widgetAction;
+            getBridge().getWebView().postDelayed(() -> {
+                getBridge().getWebView().evaluateJavascript(
+                    "document.dispatchEvent(new CustomEvent('widget:action',{detail:{action:'" + safeAction + "'}}));",
+                    null
+                );
+            }, 800);
+            intent.removeExtra("widgetAction");
+            intent.removeExtra("tab");
+        } else if (addDate != null && !addDate.isEmpty()) {
             // 앱 로드 후 캘린더 탭으로 전환 + 일정 등록 모달 오픈
             getBridge().getWebView().postDelayed(() -> {
                 getBridge().getWebView().evaluateJavascript(

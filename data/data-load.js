@@ -248,6 +248,12 @@ export async function loadAll() {
     _settings.active_timer     = fbMap.active_timer     ?? null;
     _settings.max_cycle        = fbMap.max_cycle        ?? null;
     _settings.test_board_v2    = fbMap.test_board_v2    ?? null;
+    _settings.season_registry  = fbMap.season_registry  ?? { schemaVersion: 2, seasons: [] };
+    Object.entries(fbMap).forEach(([key, value]) => {
+      if (/^season_.+_(?:workout_plan|test_board_v2|running_plan)$/.test(key)) {
+        _settings[key] = value;
+      }
+    });
     _settings.exercise_catalog_seed = fbMap.exercise_catalog_seed ?? null;
     _settings.cheer_last_seen  = fbMap.cheer_last_seen  ?? 0;
     _settings.tomato_state     = fbMap.tomato_state     ?? { quarterlyTomatoes: {}, totalTomatoes: 0, giftedReceived: 0, giftedSent: 0 };
@@ -299,5 +305,6 @@ export async function loadAll() {
     _settings.quest_order    = _migrateFromLS('quest_order',    ['quarterly','monthly','weekly','daily']);
     _settings.section_titles = _migrateFromLS('section_titles', {});
     _settings.weekly_memos   = _migrateFromLS('weekly_memos',   {});
+    _settings.season_registry = { schemaVersion: 2, seasons: [] };
   }
 }

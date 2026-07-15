@@ -11,7 +11,7 @@ import { showToast } from '../ui/toast.js';
 
 import {
   getExpertPreset, saveExpertPreset, isExpertModeEnabled, getExpertMode,
-  saveGym, getGyms, saveExercise, deleteExercise, getExList, getGymExList, getCache,
+  saveGym, getGyms, saveExercise, deleteExercise, getExList, getGymExList, getSeasonDecisionCache as getCache,
   getRecentRoutineTemplate, getRoutineTemplates,
   detectPRs as _detectPRsFromData,
   getVolumeHistory as _getVolumeHistory,
@@ -780,7 +780,7 @@ function _estimateSetKg(ex, rpeTarget, reps) {
 
   try {
     const todayKey = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
-    const last = _getLastSessionCalc(getCache(), ex.id, todayKey);
+    const last = _getLastSessionCalc(getCache(todayKey), ex.id, todayKey);
     const mainSets = (last?.sets || []).filter(s =>
       s && s.setType !== 'warmup' && (Number(s.kg) || 0) > 0
     );

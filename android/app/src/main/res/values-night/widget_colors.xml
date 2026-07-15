@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_background">#FF15191D</color>
+    <color name="widget_panel">#FF20262B</color>
+    <color name="widget_text">#FFF3F5F7</color>
+    <color name="widget_secondary">#FFBAC1C8</color>
+    <color name="widget_muted">#FF717B84</color>
+    <color name="widget_accent">#FFFF746A</color>
+    <color name="widget_success">#FF62C98E</color>
+    <color name="widget_track">#FF343C43</color>
+    <color name="widget_border">#FF3A434A</color>
+</resources>

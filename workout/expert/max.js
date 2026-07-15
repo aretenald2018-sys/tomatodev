@@ -24,7 +24,7 @@ import {
 import { MOVEMENTS, MAX_PREFERRED_CATEGORIES } from '../../config.js';
 import { normalizeEquipmentCategory } from '../../data/data-pure.js';
 import {
-  getCache, getExList, getExpertPreset, saveExpertPreset, saveExercise, deleteExercise,
+  getSeasonDecisionCache as getCache, getExList, getExpertPreset, saveExpertPreset, saveExercise, deleteExercise,
   getMuscleParts, dateKey, TODAY,
   getGyms, saveGym, getActiveEquipmentForGym, getMaxCycle, saveMaxCycle,
   getMaxCycleHistory, appendMaxCycleHistory,

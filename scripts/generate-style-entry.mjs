@@ -54,6 +54,7 @@ export const STYLE_ENTRY_SOURCES = Object.freeze([
   'styles/features/workout-gym-sheet.css',
   'styles/features/workout-expert-conditions.css',
   'styles/features/calendar-home.css',
+  'styles/features/seasons.css',
   'styles/features/workout-day-sheet.css',
   'styles/features/calendar-score-modal.css',
   'styles/features/workout-day-detail.css',

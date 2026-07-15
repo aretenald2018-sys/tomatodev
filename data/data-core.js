@@ -8,7 +8,7 @@ import {
   getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
   doc, setDoc, updateDoc, deleteDoc, getDoc,
   collection, getDocs, query, where, documentId, orderBy, limit,
-  arrayUnion, writeBatch,
+  arrayUnion, writeBatch, runTransaction,
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 import { getFunctions } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-functions.js";
 import { CONFIG } from '../config.js';
@@ -50,7 +50,7 @@ export const db = createFirestoreWithMultiTabCache(app, {
 export const functions = getFunctions(app, 'asia-northeast3');
 
 // Firestore 함수 re-export (하위 모듈용)
-export { doc, setDoc, updateDoc, deleteDoc, getDoc, collection, getDocs, query, where, documentId, orderBy, limit, arrayUnion, writeBatch };
+export { doc, setDoc, updateDoc, deleteDoc, getDoc, collection, getDocs, query, where, documentId, orderBy, limit, arrayUnion, writeBatch, runTransaction };
 
 // ── IndexedDB 백업 (모바일 localStorage 클리어 방지) ─────────────
 const _IDB_NAME = 'dashboard3_session';
@@ -219,6 +219,8 @@ export let _settings = {
   streak_freezes: [],
   expert_preset:   { ...DEFAULT_EXPERT_PRESET },
   max_cycle: null,
+  test_board_v2: null,
+  season_registry: { schemaVersion: 2, seasons: [] },
   exercise_catalog_seed: null,
   diet_premium_report_inbox: null,
   diet_premium_report_seen: {},

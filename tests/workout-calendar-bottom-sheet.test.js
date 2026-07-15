@@ -1329,8 +1329,9 @@ test('workout calendar week rail renders cycle prescriptions instead of weekly a
   assert.match(calendarJs, /function _workoutCalendarRowWeekStart/);
   assert.match(calendarJs, /const rowMonday = new Date\(y, m, \(row \* 7\) - firstDow \+ 2\)/);
   assert.match(grid, /const weekStart = _workoutCalendarRowWeekStart\(y, m, row, firstDow\)/);
-  assert.match(grid, /const cycleItems = _buildWorkoutCycleRailItems\(cycleBoard, weekStart, cache\)/);
-  assert.match(grid, /_renderWorkoutCycleRail\(weekStart, cycleItems\)/);
+  assert.match(grid, /const rowBoard = rowSeason \? \(getSeasonTestBoardV2\(rowSeason\.id\) \|\| cycleBoard\) : cycleBoard/);
+  assert.match(grid, /const cycleItems = _buildWorkoutCycleRailItems\(rowBoard, weekStart, cache\)/);
+  assert.match(grid, /_renderWorkoutCycleRail\(weekStart, cycleItems, \{ archived \}\)/);
   assert.doesNotMatch(grid, /weekDurationSec|weekSets|weekNo|_formatWorkoutWeekHours/);
   assert.doesNotMatch(calendarJs, />\$\{weekNo\}주<\/strong>/);
   assert.match(calendarJs, /cal-cycle-branch-text/);

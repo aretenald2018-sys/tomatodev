@@ -47,46 +47,17 @@
             android:exported="false"
             android:foregroundServiceType="location" />
 
-        <!-- Streak Summary Widget (4x1) -->
+        <!-- Season workout dashboard widget (4x6, responsive to 4x4) -->
         <receiver
-            android:name=".widget.StreakWidget"
+            android:name=".widget.SeasonDashboardWidget"
             android:exported="true"
-            android:label="Streak Summary">
+            android:label="@string/season_dashboard_widget_desc">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.lifestreak.REFRESH_WIDGET" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
-                android:resource="@xml/streak_widget_info" />
-        </receiver>
-
-        <!-- Weekly Calendar Widget (4x2) -->
-        <receiver
-            android:name=".widget.WeekWidget"
-            android:exported="true"
-            android:label="Weekly Calendar">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.lifestreak.REFRESH_WIDGET" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/week_widget_info" />
-        </receiver>
-
-        <!-- Monthly Calendar Widget (4x4, resizable) -->
-        <receiver
-            android:name=".widget.MonthWidget"
-            android:exported="true"
-            android:label="Monthly Calendar">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.lifestreak.REFRESH_WIDGET" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/month_widget_info" />
+                android:resource="@xml/season_dashboard_widget_info" />
         </receiver>
 
         <provider

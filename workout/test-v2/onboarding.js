@@ -11,7 +11,7 @@ import { confirmAction } from '../../utils/confirm-modal.js';
 // 빈 보드로 시작시키지 않는다.
 // ================================================================
 
-import { getMaxCycle, getExList, getCache, getMuscleParts, saveExercise, deleteExercise } from '../../data.js';
+import { getMaxCycle, getExList, getSeasonDecisionCache as getCache, getMuscleParts, saveExercise, deleteExercise } from '../../data.js';
 import { MOVEMENTS } from '../../config.js';
 import { S as WS } from '../state.js';
 import {

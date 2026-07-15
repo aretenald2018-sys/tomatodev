@@ -32,6 +32,7 @@ export function getGyms() { return window.__qaGyms || []; }
 export function getLastSession() { return null; }
 export function detectPRs() { return []; }
 export function getCache() { return {}; }
+export function getSeasonDecisionCache() { return {}; }
 export function dateKey() { return '2026-07-06'; }
 export async function saveExercise() { return true; }
 export async function deleteExercise() { return true; }
@@ -102,6 +103,7 @@ export function buildExerciseProgramWorkoutPrescription() { return null; }
 export function findExerciseProgramBenchmark() { return null; }
 export function getExerciseProgramSettings() { return null; }
 export function mondayOf(value) { return value; }
+export function orderWendlerPrescriptionSets(value) { return value || []; }
 export function upsertExerciseProgramBenchmark() { return null; }
 `);
     const stubSessionsUrl = await writeStub(tempDir, 'stub-sessions.js', `

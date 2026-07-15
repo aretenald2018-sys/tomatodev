@@ -12,7 +12,7 @@ import { confirmAction } from '../../utils/confirm-modal.js';
 // 용어는 용어 사전 준수: 볼륨/강도 · 여유 횟수 · 자세 메모 · 1주차 · 칸.
 // ================================================================
 
-import { getTestBoardV2, saveTestBoardV2, getMaxCycle, getExList, getCache, ensureWorkoutDayCached } from '../../data.js';
+import { getTestBoardV2, saveTestBoardV2, getMaxCycle, getExList, getSeasonDecisionCache as getCache, ensureWorkoutDayCached } from '../../data.js';
 import { MOVEMENTS } from '../../config.js';
 import { S as WS } from '../state.js';
 import { saveWorkoutDay } from '../save.js';

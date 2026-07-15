@@ -11,7 +11,7 @@ import { wtRestTimerClearSetRecord,
          wtRestTimerStart,
          wtRefreshWorkoutTimelineDuration,
          wtPersistActiveWorkoutDraft } from './timers.js';
-import { getExList, getGlobalExList, getGymExList, getGyms, getLastSession, detectPRs, getCache,
+import { getExList, getGlobalExList, getGymExList, getGyms, getLastSession, detectPRs, getSeasonDecisionCache as getCache,
          dateKey, saveExercise,
          deleteExercise, getMuscleParts,
          saveCustomMuscle,

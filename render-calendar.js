@@ -11,6 +11,8 @@ import {
   getExList,
   getMuscleParts,
   getLatestCheckinWeight,
+  getSeasonRegistry,
+  getSeasonTestBoardV2,
   getTestBoardV2,
   loadRunningRoute,
   saveDay,
@@ -25,6 +27,10 @@ import {
 import { calcSetVolume } from './calc/volume.js';
 import { MOVEMENTS } from './config.js';
 import { dateKey, TODAY, isFuture, isBeforeStart } from './data/data-date.js';
+import {
+  addSeasonDays,
+  findSeasonForDate,
+} from './data/season-model.js';
 import { openModal, closeModal } from './utils/dom.js';
 import { confirmAction } from './utils/confirm-modal.js';
 import {
@@ -74,6 +80,7 @@ import {
 import { normalizeWorkoutExerciseSelectionDetail } from './workout/exercise-entry-actions.js';
 import { wtOpenExerciseEditor, wtOpenExercisePicker } from './workout/exercises.js';
 import { wtMountRunningSession, wtOpenRunningSession } from './workout/running-session.js';
+import { openWorkoutSeasonWizard } from './workout/season-manager.js';
 import { loadWorkoutDate as loadWorkoutSessionDate } from './workout/load.js';
 import {
   activeBenchmarks,
@@ -342,13 +349,14 @@ function _buildWorkoutCycleRailItems(board, weekStart, cache = {}) {
   return items;
 }
 
-function _renderWorkoutCycleRail(weekStart, items = []) {
+function _renderWorkoutCycleRail(weekStart, items = [], options = {}) {
   const visibleItems = Array.isArray(items) ? items : [];
+  const archivedClass = options.archived ? ' is-season-archived' : '';
   const label = visibleItems.length
     ? `${weekStart} 사이클 처방: ${visibleItems.map(item => item.title).join(', ')}`
     : `${weekStart} 사이클 처방 없음`;
   return `
-    <div class="cal-workout-week-rail ${visibleItems.length ? 'has-cycle' : 'is-empty'}" aria-label="${_esc(label)}">
+    <div class="cal-workout-week-rail ${visibleItems.length ? 'has-cycle' : 'is-empty'}${archivedClass}" aria-label="${_esc(label)}">
       <span class="cal-cycle-rail-line" aria-hidden="true"></span>
       <div class="cal-cycle-branch-list">
         ${visibleItems.map(item => {
@@ -1597,6 +1605,8 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
   const scrollSurfaceAttr = isWorkoutHome ? ' data-wt-calendar-scroll-surface' : '';
   const selectedParsed = _parseDateKey(_workoutHomeSelectedKey);
   const todayKey = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+  const seasonRegistry = getSeasonRegistry();
+  const currentSeason = findSeasonForDate(seasonRegistry, todayKey);
 
   if (isWorkoutHome && (!selectedParsed || selectedParsed.y !== y || selectedParsed.m !== m || selectedParsed.d < 1 || selectedParsed.d > daysCount)) {
     const todayInView = TODAY.getFullYear() === y && TODAY.getMonth() === m;
@@ -1614,11 +1624,18 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
     const before = isBeforeStart(y, m, d);
     const today = k === todayKey;
     const selected = isWorkoutHome && k === _workoutHomeSelectedKey;
+    const daySeason = findSeasonForDate(seasonRegistry, k);
+    const archivedSeason = currentSeason
+      ? k < currentSeason.startDate
+      : !!(daySeason && daySeason.endDate < todayKey);
+    const seasonStart = !!(currentSeason && k === currentSeason.startDate);
     const disabled = future || before;
     const bodyWeight = _weightAt(checkins, k) ?? getLatestCheckinWeight() ?? plan?.weight ?? 70;
     const wx = _workoutMetrics(k, day, bodyWeight, lookup);
 
-    if (wx.hasWorkout) {
+    const includeInMonthSummary = !isWorkoutHome
+      || (currentSeason ? !archivedSeason : seasonRegistry.seasons.length === 0);
+    if (wx.hasWorkout && includeInMonthSummary) {
       monthSum.days += 1;
       monthSum.durationSec += wx.durationSec;
       monthSum.sets += wx.setCount;
@@ -1633,6 +1650,8 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
       selected ? 'cal-workout-cell-selected' : '',
       disabled ? 'cal-cell-disabled' : '',
       wx.hasWorkout ? 'cal-workout-cell-active' : 'cal-workout-cell-rest',
+      archivedSeason ? 'cal-workout-cell-season-archived' : '',
+      seasonStart ? 'cal-workout-cell-season-start' : '',
     ].filter(Boolean).join(' ');
     const dayAction = disabled
       ? ''
@@ -1660,6 +1679,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
           <span class="cal-cell-date">${d}</span>
           ${wx.hasWorkout ? `<span class="cal-workout-dot"></span>` : ''}
         </div>
+        ${seasonStart ? '<span class="cal-season-start-label">새 시즌</span>' : ''}
         ${detailHtml}
       </div>
     `;
@@ -1709,7 +1729,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
   `;
 
   const gridHtml = isWorkoutHome
-    ? _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, cycleBoard, cache })
+    ? _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, cycleBoard, cache, seasonRegistry, currentSeason, todayKey })
     : `<div class="cal-grid cal-workout-grid">${flatCells.join('')}</div>`;
   const bottomSheetHtml = isWorkoutHome
     ? _renderWorkoutHomeBottomSheet(_workoutHomeSelectedKey, { cache, plan, checkins, lookup })
@@ -1724,6 +1744,11 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
   const todayAction = isWorkoutHome
     ? 'data-wt-calendar-action="go-today"'
     : 'data-cal-action="go-today"';
+  const seasonControlHtml = isWorkoutHome ? `
+    <div class="cal-season-control ${currentSeason ? 'has-current-season' : 'needs-season'}">
+      <div><span>${currentSeason ? 'CURRENT SEASON' : 'SEASON SETUP'}</span><strong>${_esc(currentSeason?.name || '새 시즌 설정 필요')}</strong>${currentSeason ? `<small>${currentSeason.startDate}–${currentSeason.endDate}</small>` : '<small>기록은 유지하고 새 목표를 W1부터 시작합니다.</small>'}</div>
+      <button type="button" data-wt-season-manager>${currentSeason ? '다음 시즌' : '시즌 시작'}</button>
+    </div>` : '';
   root.innerHTML = `
     <div class="cal-workout-surface ${surfaceClass}"${scrollSurfaceAttr}>
       <div class="cal-header">
@@ -1736,6 +1761,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
       </div>
 
       ${showModeTabs ? _renderCalendarModeTabs() : ''}
+      ${seasonControlHtml}
       ${summaryHtml}
       ${weekdayHtml}
       ${gridHtml}
@@ -1744,7 +1770,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
   `;
 }
 
-function _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, cycleBoard = null, cache = {} }) {
+function _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, cycleBoard = null, cache = {}, seasonRegistry = {}, currentSeason = null, todayKey = '' }) {
   const weekRows = [];
   const rowCount = Math.ceil((firstDow + daysCount) / 7);
   for (let row = 0; row < rowCount; row++) {
@@ -1759,10 +1785,14 @@ function _renderWorkoutHomeMonthGrid({ y, m, firstDow, daysCount, dayCells, cycl
     }
 
     const weekStart = _workoutCalendarRowWeekStart(y, m, row, firstDow);
-    const cycleItems = _buildWorkoutCycleRailItems(cycleBoard, weekStart, cache);
+    const weekEnd = addSeasonDays(weekStart, 6);
+    const rowSeason = findSeasonForDate(seasonRegistry, weekStart) || findSeasonForDate(seasonRegistry, weekEnd);
+    const rowBoard = rowSeason ? (getSeasonTestBoardV2(rowSeason.id) || cycleBoard) : cycleBoard;
+    const archived = currentSeason ? weekEnd < currentSeason.startDate : !!(rowSeason && rowSeason.endDate < todayKey);
+    const cycleItems = _buildWorkoutCycleRailItems(rowBoard, weekStart, cache);
     weekRows.push(`
       <div class="cal-workout-week-row">
-        ${_renderWorkoutCycleRail(weekStart, cycleItems)}
+        ${_renderWorkoutCycleRail(weekStart, cycleItems, { archived })}
         <div class="cal-workout-week-cells">
           ${cellHtmls.join('')}
         </div>
@@ -1781,11 +1811,18 @@ function _renderWorkoutHomeDayBar(selectedKey, { cache, plan, checkins, lookup }
   const sessionText = wx.hasWorkout ? '1회차 보기' : '1회차 없음';
   const sheetState = _currentWorkoutHomeSheetState();
   const expanded = sheetState !== 'bar';
+  const registry = getSeasonRegistry();
+  const selectedSeason = findSeasonForDate(registry, selected);
+  const currentSeason = findSeasonForDate(registry, dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate()));
+  const isArchived = currentSeason ? selected < currentSeason.startDate : !!(selectedSeason && selectedSeason.endDate < dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate()));
+  const seasonBadge = selectedSeason
+    ? `${isArchived ? '지난 시즌' : '현재 시즌'} · ${selectedSeason.name}`
+    : (isArchived ? '지난 시즌 이전 기록' : '시즌 미설정');
   return `
     <div class="cal-workout-day-bar" data-wt-sheet-bar aria-expanded="${expanded ? 'true' : 'false'}">
       <button type="button" class="cal-workout-day-expand" data-wt-sheet-toggle data-date-key="${selected}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '날짜 상세 접기' : '선택한 날짜 열기'}">${expanded ? '⌄' : '⌃'}</button>
       <button type="button" class="cal-workout-day-main" data-wt-sheet-main data-wt-sheet-toggle data-date-key="${selected}" aria-expanded="${expanded ? 'true' : 'false'}" aria-label="${expanded ? '날짜 상세 접기' : '선택한 날짜 열기'}">
-        <span class="cal-workout-day-date">${selected} <em>${_dateDistanceLabel(selected)}</em></span>
+        <span class="cal-workout-day-date">${selected} <em>${_dateDistanceLabel(selected)}</em><i class="cal-day-season-badge ${isArchived ? 'is-archived' : ''}">${_esc(seasonBadge)}</i></span>
         <span class="cal-workout-day-sub">${recordText} · ${sessionText}</span>
       </button>
       <div class="cal-workout-day-actions">
@@ -4098,6 +4135,13 @@ function _bindWorkoutCycleRailActions(root) {
       Promise.resolve(_openWorkoutGoalInputSheet(goalBtn.getAttribute('data-week-start'))).catch((e) => {
         console.warn('[workout-calendar] goal input click failed:', e);
       });
+      return;
+    }
+    const seasonBtn = target?.closest?.('[data-wt-season-manager]');
+    if (seasonBtn) {
+      event.preventDefault();
+      event.stopPropagation();
+      openWorkoutSeasonWizard();
       return;
     }
     const btn = target?.closest?.('[data-cal-cycle-target]');

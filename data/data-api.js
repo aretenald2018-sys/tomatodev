@@ -6,7 +6,7 @@ import { CONFIG, MUSCLES, MOVEMENTS } from '../config.js';
 
 // ── data-core: 공유 상태 + Firebase 기반 ─────────────────────────
 import {
-  db, doc, setDoc, deleteDoc, getDoc, collection, getDocs, query, where,
+  db, doc, setDoc, deleteDoc, getDoc, collection, getDocs, query, where, runTransaction,
   getCurrentUserRef, setCurrentUserRef,
   ADMIN_ID, ADMIN_GUEST_ID, getDataOwnerId,
   _col, _doc,
@@ -19,6 +19,7 @@ import {
 } from './data-core.js';
 
 import { dateKey, TODAY } from './data-date.js';
+import { findSeasonForDate, selectSeasonDecisionCache } from './season-model.js';
 import { _getQuarterKeyNow, _sortExList } from './data-helpers.js';
 import { bodyCheckinSequence, getEffectiveDailyBodyCheckins } from './body-checkins.js';
 import { isAdmin, isAdminGuest } from './data-auth.js';
@@ -555,6 +556,11 @@ export const getAllMuscles = () => {
 // 헬스 자극부위(유산소 활동 제외) — Expert/종목추가/장비 모달에서 사용.
 export const getMuscleParts = () => getAllMuscles().filter(m => (m.kind || 'part') === 'part');
 export const getCache     = ()      => _cache;
+export function getSeasonDecisionCache(referenceDateKey = null) {
+  const todayKey = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+  const reference = /^\d{4}-\d{2}-\d{2}$/.test(String(referenceDateKey || '')) ? String(referenceDateKey) : todayKey;
+  return selectSeasonDecisionCache(_cache, _settings.season_registry || {}, reference);
+}
 export const getAllDateKeys = () => Object.keys(_cache).filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k));
 export const getDay       = (y,m,d) => _cache[dateKey(y,m,d)] || {};
 export async function ensureWorkoutDayCached(key) {
@@ -684,13 +690,13 @@ export const dietDayOk = (y,m,d) => _dietDayOk(getDay(y,m,d), getDietPlan(), y, 
 
 export const calcVolume = _calcVolume;
 export const calcVolumeAll = _calcVolumeAll;
-export const getVolumeHistory = (exerciseId) => _getVolumeHistory(_cache, exerciseId);
-export const getLastSession = (exerciseId, excludeDateKey = null) => _getLastSession(_cache, exerciseId, excludeDateKey);
-export const getLastActivitySession = (type, excludeDateKey = null) => _getLastActivitySession(_cache, type, excludeDateKey);
+export const getVolumeHistory = (exerciseId) => _getVolumeHistory(getSeasonDecisionCache(), exerciseId);
+export const getLastSession = (exerciseId, excludeDateKey = null) => _getLastSession(getSeasonDecisionCache(excludeDateKey), exerciseId, excludeDateKey);
+export const getLastActivitySession = (type, excludeDateKey = null) => _getLastActivitySession(getSeasonDecisionCache(excludeDateKey), type, excludeDateKey);
 // 전문가 모드 분석 함수 (순수함수는 calc.js, 여기서는 _cache/_exList 자동 주입)
-export const getVolumeHistoryByMovement = (movementId) => _getVolumeHistoryByMovement(_cache, _exList, movementId);
-export const getVolumeHistoryMulti = (exerciseIds) => _getVolumeHistoryMulti(_cache, exerciseIds);
-export const detectPRs = (exerciseId) => _detectPRs(_cache, exerciseId);
+export const getVolumeHistoryByMovement = (movementId) => _getVolumeHistoryByMovement(getSeasonDecisionCache(), _exList, movementId);
+export const getVolumeHistoryMulti = (exerciseIds) => _getVolumeHistoryMulti(getSeasonDecisionCache(), exerciseIds);
+export const detectPRs = (exerciseId) => _detectPRs(getSeasonDecisionCache(), exerciseId);
 // MOVEMENTS 인자는 호출부에서 주입 (config.js 순환참조 회피)
 export const calcBalanceByPattern = (movements, weekRange) => _calcBalanceByPattern(_cache, _exList, movements, weekRange);
 
@@ -762,24 +768,39 @@ export async function appendMaxCycleHistory(entry) {
 // ── 테스트모드 v2 "성장 보드" (workout/test-v2/) ──────────────────
 // 별도 키 test_board_v2 — v1 max_cycle은 v2 경로에서 절대 쓰지 않는다
 // (docs/ai/features/2026-06-12-test-mode-v2-board.md 금지 목록).
-export const getTestBoardV2 = () => _settings.test_board_v2 || null;
+export const getTestBoardV2 = () => {
+  const todayKey = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+  const currentSeason = findSeasonForDate(_settings.season_registry || {}, todayKey);
+  const seasonBoard = currentSeason ? _settings[`season_${currentSeason.id}_test_board_v2`] : null;
+  return seasonBoard || _settings.test_board_v2 || null;
+};
 export async function saveTestBoardV2(board) {
   if (!board || typeof board !== 'object') return null;
-  let latestBoard = _settings.test_board_v2 || null;
-  try {
-    const snap = await getDoc(_doc('settings', 'test_board_v2'));
-    const remoteBoard = snap.exists() ? (snap.data()?.value || null) : null;
-    if (remoteBoard) latestBoard = mergeBoardCompletionLogs(latestBoard, remoteBoard);
-  } catch (e) {
-    console.warn('[data] test_board_v2 latest read failed:', e);
-  }
-  const merged = mergeBoardCompletionLogs(latestBoard, board);
-  await _fbOp(
-    'saveSetting(test_board_v2)',
-    () => setDoc(_doc('settings', 'test_board_v2'), { value: merged }),
+  const todayKey = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+  const currentSeason = findSeasonForDate(_settings.season_registry || {}, todayKey);
+  const seasonKey = currentSeason ? `season_${currentSeason.id}_test_board_v2` : null;
+  const activeRef = _doc('settings', 'test_board_v2');
+  const seasonRef = seasonKey ? _doc('settings', seasonKey) : null;
+  const localBoard = seasonKey ? (_settings[seasonKey] || _settings.test_board_v2 || null) : (_settings.test_board_v2 || null);
+  const merged = await _fbOp(
+    `saveSetting(${seasonKey || 'test_board_v2'})`,
+    () => runTransaction(db, async (transaction) => {
+      const seasonSnap = seasonRef ? await transaction.get(seasonRef) : null;
+      const activeSnap = await transaction.get(activeRef);
+      const remoteSeasonBoard = seasonSnap?.exists() ? (seasonSnap.data()?.value || null) : null;
+      const remoteActiveBoard = activeSnap.exists() ? (activeSnap.data()?.value || null) : null;
+      const latestBoard = remoteSeasonBoard
+        || (remoteActiveBoard?.seasonId === currentSeason?.id ? remoteActiveBoard : null)
+        || localBoard;
+      const nextBoard = mergeBoardCompletionLogs(latestBoard, board);
+      if (seasonRef) transaction.set(seasonRef, { value: nextBoard });
+      transaction.set(activeRef, { value: nextBoard });
+      return nextBoard;
+    }),
     { rethrow: true }
   );
   _settings.test_board_v2 = merged;
+  if (seasonKey) _settings[seasonKey] = merged;
   return merged;
 }
 
