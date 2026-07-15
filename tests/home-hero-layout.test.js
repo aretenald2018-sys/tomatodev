@@ -50,7 +50,8 @@ test('home tomato hero and marquee share the fixed 1672 life-zone world', () => 
   assert.match(css, /\.lz-iso-marquee \{[\s\S]*top: calc\(205 \/ 1672 \* 100%\);[\s\S]*left: calc\(105 \/ 1672 \* 100%\);[\s\S]*z-index: 2;[\s\S]*width: calc\(480 \/ 1672 \* 100%\);[\s\S]*height: calc\(120 \/ 1672 \* 100%\);/);
   assert.match(css, /\.lz-marquee-underlay \{[\s\S]*top: calc\(-20 \/ 1672 \* 100%\);[\s\S]*left: calc\(-17 \/ 1672 \* 100%\);[\s\S]*width: calc\(920 \/ 1672 \* 100%\);[\s\S]*transform: scaleY\(2\);[\s\S]*transform-origin: 0 81%;/);
   assert.match(css, /\.lz-iso-marquee-panel \{[\s\S]*inset: 0;[\s\S]*width: 100%;[\s\S]*transform: skewY\(-24deg\);/);
-  assert.match(css, /\.lz-iso-marquee-panel \{[\s\S]*background: rgba\(20,0,0,\.2\);/);
+  assert.match(css, /\.lz-iso-marquee-panel \{[\s\S]*overflow: visible;[\s\S]*border: 0;[\s\S]*background: transparent;/);
+  assert.match(css, /\.lz-iso-marquee \.tf-hero-left \{[\s\S]*translateY\(calc\(-1 \* clamp\(32px, 8cqw, 46px\)\)\);/);
   assert.match(css, /\.tf-hero \{[\s\S]*min-height: 58px;[\s\S]*padding: 8px 38px 8px 14px;/);
   assert.match(css, /\.lz-iso-marquee \.tf-hero-count \{[\s\S]*font-size: clamp\(21px, 4\.4cqw, 30px\);[\s\S]*-webkit-text-stroke: \.7px #71180e;/);
   assert.match(css, /\.lz-iso-marquee \.tf-hero-character \{[\s\S]*width: clamp\(22px, 4cqw, 30px\);[\s\S]*height: clamp\(22px, 4cqw, 30px\);/);

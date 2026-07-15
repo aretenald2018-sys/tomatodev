@@ -485,17 +485,17 @@
   height: 100%;
   box-sizing: border-box;
   padding: 2px clamp(9px, 1.8cqw, 13px) 2px 5px;
-  overflow: hidden;
+  overflow: visible;
   transform: skewY(-24deg);
   transform-origin: left top;
-  border: 1px solid rgba(255,109,73,.18);
-  border-radius: 3px;
-  background: rgba(20,0,0,.2);
+  border: 0;
+  background: transparent;
 }
 .lz-iso-marquee .tf-hero-left {
   min-width: 0;
   position: relative;
   z-index: 2;
+  transform: translateY(calc(-1 * clamp(32px, 8cqw, 46px)));
 }
 .lz-iso-marquee .tf-hero-label {
   color: #ffe0cf;
