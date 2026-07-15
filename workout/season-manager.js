@@ -30,6 +30,8 @@ import { inferW863Profile, W863_ORIGINAL_PROFILES } from './w863-original.js';
 import { showToast } from '../ui/toast.js';
 
 const STEP_LABELS = ['기간', '종목·목표', '선택 확인', '러닝', '최종 확인'];
+const WENDLER_PLATE_STEP_KG = 1.25;
+const WENDLER_THREE_WEEK_BLOCKS_PER_CYCLE = 2;
 const GROUP_LABELS = Object.freeze({
   chest: '가슴', back: '등', shoulder: '어깨', lower: '하체', arm: '팔', abs: '복부', other: '기타',
 });
@@ -163,7 +165,8 @@ function _wendlerDraft(configuration) {
     primaryMajor: configuration.groupId,
   });
   const profile = W863_ORIGINAL_PROFILES[profileId] || Object.values(W863_ORIGINAL_PROFILES)[0];
-  const roundKg = Number(override.wendler?.roundKg) || Number(benchmark?.wendler?.roundKg) || 2.5;
+  const sourceWendler = { ...(benchmark?.wendler || {}), ...(override.wendler || {}) };
+  const roundKg = WENDLER_PLATE_STEP_KG;
   const oneRmKg = Number(override.wendler?.oneRmKg)
     || Number(benchmark?.wendler?.oneRmKg)
     || Number(benchmark?.wendler?.tmKg) / 0.9
@@ -173,9 +176,7 @@ function _wendlerDraft(configuration) {
     tenRmKg: Number(override.wendler?.tenRmKg) || 0,
     oneRmKg: Math.round(oneRmKg * 10) / 10,
     tmKg: roundToPlate(oneRmKg * 0.9, roundKg),
-    incrementKg: Number(override.wendler?.incrementKg)
-      || Number(benchmark?.wendler?.incrementKg)
-      || profile.defaultIncrementKg,
+    threeWeekIncrementKg: _wendlerThreeWeekIncrement(sourceWendler, profile),
     roundKg,
   };
 }
@@ -341,6 +342,16 @@ function _periodStep() {
     </div>`;
 }
 
+function _wendlerThreeWeekIncrement(wendler = {}, profile = {}) {
+  const saved = Number(wendler.threeWeekIncrementKg);
+  if (SEASON_NORMAL_INCREMENTS_KG.includes(saved)) return saved;
+  const converted = Number(wendler.incrementKg) / WENDLER_THREE_WEEK_BLOCKS_PER_CYCLE;
+  if (SEASON_NORMAL_INCREMENTS_KG.includes(converted)) return converted;
+  const profileConverted = Number(profile.defaultIncrementKg) / WENDLER_THREE_WEEK_BLOCKS_PER_CYCLE;
+  if (SEASON_NORMAL_INCREMENTS_KG.includes(profileConverted)) return profileConverted;
+  return SEASON_NORMAL_INCREMENTS_KG[0];
+}
+
 function _exerciseStep() {
   const configurations = [..._state.exerciseSetup.configurations].sort((left, right) => {
     const leftDate = _state.exerciseHistory[left.exerciseId]?.dateKey || '';
@@ -377,7 +388,7 @@ function _exerciseStep() {
         });
         const history = _state.exerciseHistory[id];
         const wendler = config.wendler || _wendlerDraft(configuration);
-        const tmKg = roundToPlate(Number(wendler.oneRmKg) * 0.9, Number(wendler.roundKg) || 2.5);
+        const tmKg = roundToPlate(Number(wendler.oneRmKg) * 0.9, WENDLER_PLATE_STEP_KG);
         const badge = isWendler && selected ? 'W1 시작' : selected ? `${goalTracks.length}트랙 목표` : hasPartialGoal ? '입력 중' : '미설정';
         return `<section class="season-exercise-card${selected ? ' has-goal' : ''}" data-season-exercise-card="${_esc(id)}">
           <header>
@@ -424,7 +435,7 @@ function _selectionReviewStep() {
           const config = _state.overrides[configuration.exerciseId];
           const tracks = _goalTrackIds(config);
           const detail = config.program === 'wendler'
-            ? `8/6/3 · 1RM ${_esc(config.wendler?.oneRmKg || 0)}kg`
+            ? `8/6/3 · 1RM ${_esc(config.wendler?.oneRmKg || 0)}kg · 3주 +${_esc(config.wendler?.threeWeekIncrementKg || _wendlerThreeWeekIncrement(config.wendler))}kg`
             : tracks.map(track => {
               const goal = config.tracks[track];
               return `${track === 'volume' ? '볼륨' : '강도'} ${goal.kg}kg · ${goal.sets}세트 · +${goal.incrementKg}kg`;
@@ -450,10 +461,9 @@ function _wendlerEditorHtml() {
         <div class="season-wendler-calc" aria-live="polite"><span>추정 1RM<strong data-season-wendler-calc-one-rm>${_esc(draft.oneRmKg)}kg</strong></span><i>→</i><span>시작 TM<strong data-season-wendler-calc-tm>${_esc(draft.tmKg)}kg</strong></span></div>
         <div class="season-wendler-editor-grid">
           <label class="season-field"><span>1RM 직접 조정</span><input type="number" inputmode="decimal" min="1" step="0.1" data-season-wendler-draft="oneRmKg" value="${draft.oneRmKg}"></label>
-          <label class="season-field"><span>사이클 증량</span><select data-season-wendler-draft="incrementKg">${SEASON_NORMAL_INCREMENTS_KG.map(increment => `<option value="${increment}" ${Number(draft.incrementKg) === increment ? 'selected' : ''}>+${increment}kg</option>`).join('')}</select></label>
-          <label class="season-field"><span>중량 반올림</span><select data-season-wendler-draft="roundKg">${[0.5, 1.25, 2.5, 5].map(unit => `<option value="${unit}" ${Number(draft.roundKg) === unit ? 'selected' : ''}>${unit}kg</option>`).join('')}</select></label>
+          <label class="season-field"><span>3주 증량</span><select data-season-wendler-draft="threeWeekIncrementKg">${SEASON_NORMAL_INCREMENTS_KG.map(increment => `<option value="${increment}" ${Number(draft.threeWeekIncrementKg) === increment ? 'selected' : ''}>+${increment}kg</option>`).join('')}</select></label>
         </div>
-        <p class="season-wendler-note">이 종목의 기존 기록은 유지되고, 새 시즌에서는 연결된 등록 종목명으로 W1부터 다시 시작합니다.</p>
+        <p class="season-wendler-note">1.25kg 원판 단위로 처방하며, 선택한 3주 증량을 두 번 적용한 값이 7주 사이클 정산 증량으로 환산됩니다.</p>
       </div>
       <footer><button type="button" class="season-secondary" data-season-action="wendler-cancel">취소</button><button type="button" class="season-primary" data-season-action="wendler-apply">이 목표 적용</button></footer>
     </section>
@@ -573,8 +583,9 @@ function _applyWendlerEditor() {
     profileId: draft.profileId,
     oneRmKg: Math.round(Number(draft.oneRmKg) * 10) / 10,
     tmKg: Number(draft.tmKg),
-    incrementKg: Number(draft.incrementKg),
-    roundKg: Number(draft.roundKg),
+    threeWeekIncrementKg: Number(draft.threeWeekIncrementKg),
+    incrementKg: Number(draft.threeWeekIncrementKg) * WENDLER_THREE_WEEK_BLOCKS_PER_CYCLE,
+    roundKg: WENDLER_PLATE_STEP_KG,
   };
   if (Number(draft.tenRmKg) > 0) wendler.tenRmKg = Number(draft.tenRmKg);
   else delete wendler.tenRmKg;
