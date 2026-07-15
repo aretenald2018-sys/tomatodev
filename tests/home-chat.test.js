@@ -83,7 +83,7 @@ test('reference-style channel tabs, pinned notice and safe message controls are 
   assert.doesNotMatch(chatCss, /\.home-chat-channel\s*\{/);
   assert.match(css, /\.home-chat-notices:empty/);
   assert.match(css, /#card-chat\.home-chat-card \{/);
-  assert.match(css, /margin-top: -12%/);
+  assert.match(css, /margin-top: -4%/);
   assert.match(css, /backdrop-filter: blur\(16px\)/);
   assert.match(css, /:root\.light #card-chat\.home-chat-card/);
   assert.match(chatCss, /background: linear-gradient\(135deg, #e9252d, #f0443e\)/);
