@@ -55,6 +55,28 @@ test('rest timer records set-level rest metadata and preserves it on save', () =
   assert.match(exercises, /wtRestTimerClearSetRecord\(entryIdx, si/);
 });
 
+test('workout day sheet set completion enters the shared rest and idle-limit flow', () => {
+  const calendar = read('render-calendar.js');
+  const helperStart = calendar.indexOf('async function _syncWorkoutRestAfterSheetSet');
+  const helperEnd = calendar.indexOf('\nfunction _sessionLabel', helperStart);
+  const toggleStart = calendar.indexOf('async function _toggleWorkoutExerciseSetDoneFromSheet');
+  const toggleEnd = calendar.indexOf('\nasync function _completeWorkoutExerciseFromSheet', toggleStart);
+  const completeStart = toggleEnd;
+  const completeEnd = calendar.indexOf('\nasync function _addWorkoutHomeSession', completeStart);
+  const helper = calendar.slice(helperStart, helperEnd);
+  const toggle = calendar.slice(toggleStart, toggleEnd);
+  const complete = calendar.slice(completeStart, completeEnd);
+
+  assert.ok(helperStart >= 0 && helperEnd > helperStart, 'sheet rest sync helper should exist');
+  assert.match(helper, /_isTodayKey\(key\)/);
+  assert.match(helper, /wtRefreshWorkoutTimelineDuration\('calendar sheet set done'\)/);
+  assert.match(helper, /wtRestTimerStart\(null/);
+  assert.match(helper, /wtRestTimerClearSetRecord\(entryIdx, targetSetIndex\)/);
+  assert.match(helper, /await saveWorkoutDay\(\{ silent: true \}\)/);
+  assert.match(toggle, /await _syncWorkoutRestAfterSheetSet\(key, sessionIndex, exerciseIndex, setIndex, savedDone\)/);
+  assert.match(complete, /await _syncWorkoutRestAfterSheetSet\(key, sessionIndex, exerciseIndex, lastCompletedSetIndex, true\)/);
+});
+
 test('raw statistics export can include set rest intervals', () => {
   const save = read('workout/save.js');
   const schema = read('workout/save-schema.js');
@@ -189,8 +211,11 @@ try {
     restEndedAt: setAfterSkip.restEndedAt,
   };
   timers.wtRestTimerStart(60, 'Bench Press inactivity limit', { entryIdx: 0, setIdx: 0 });
-  now += (15 * 60 * 1000) - 75000;
-  const autoEnded = await timers.wtCheckWorkoutIdleLimit(now);
+  now += 30 * 60 * 1000;
+  document.dispatchEvent(new Event('visibilitychange'));
+  await nextFrame();
+  await nextFrame();
+  const autoEnded = state.S.workout.workoutTimeline?.endedBy === 'idle-limit';
   window.__qaDone = {
     afterStart,
     after75s,
@@ -201,6 +226,7 @@ try {
       running: state.S.workout.restTimer.running,
       restElapsedSec: setAfterSkip.restElapsedSec,
       restEndedBy: setAfterSkip.restEndedBy,
+      restEndedAt: setAfterSkip.restEndedAt,
     },
     timeline: state.S.workout.workoutTimeline,
     durationResult: document.getElementById('wt-workout-duration-result')?.textContent || '',
@@ -258,7 +284,9 @@ test('runtime rest timer updates metadata and auto-finishes at the 15-minute idl
   assert.equal(result.autoRest.running, false);
   assert.equal(result.autoRest.restElapsedSec, (15 * 60) - 75);
   assert.equal(result.autoRest.restEndedBy, 'idle-limit');
+  assert.equal(result.autoRest.restEndedAt, '2026-07-07T00:15:00.000Z');
   assert.equal(result.timeline.endedBy, 'idle-limit');
+  assert.equal(result.timeline.endedAt, Date.parse('2026-07-07T00:15:00.000Z'));
   assert.equal(result.timeline.endedAfterSetCompletedAt, Date.parse('2026-07-07T00:00:00.000Z'));
   assert.equal(result.durationResult, '총 0초');
   assert.equal(result.saveCalls.length, 2);

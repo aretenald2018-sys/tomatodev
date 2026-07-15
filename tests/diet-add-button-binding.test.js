@@ -9,6 +9,8 @@ const indexHtml = readFileSync('index.html', 'utf8');
 const staticActionsJs = readFileSync('app/static-actions.js', 'utf8');
 const workoutUiJs = readFileSync('workout-ui.js', 'utf8');
 const workoutRenderJs = readFileSync('workout/render.js', 'utf8');
+const featureNutritionJs = readFileSync('feature-nutrition.js', 'utf8');
+const nutritionSearchModalJs = readFileSync('modals/nutrition-search-modal.js', 'utf8');
 const styleCss = readAppCssSync();
 
 function createMealSkipHarness() {
@@ -63,6 +65,15 @@ test('the retired quick-choice sheet and its crossed-out actions are not shipped
 test('frequent food cards use the static namespaced diet action', () => {
   assert.match(workoutRenderJs, /data-action="diet:add-frequent-food"/);
   assert.match(staticActionsJs, /'diet:add-frequent-food': \(control\) => wtAddFrequentFoodSuggestion\(control\.dataset\.meal, control\.dataset\.suggestionKey\)/);
+});
+
+test('photo registration replaces the search sheet with a ready photo editor', () => {
+  assert.match(nutritionSearchModalJs, /data-nutrition-action="open-photo-add"[^>]*>사진으로 등록<\/button>/);
+  assert.doesNotMatch(nutritionSearchModalJs, /data-action="diet:open-nutrition-photo"/);
+  assert.match(featureNutritionJs, /async function _openNutritionEditorTab\(tab\)[\s\S]*await ensureModal\('nutrition-item-modal'\)[\s\S]*closeModal\('nutrition-search-modal'\)[\s\S]*await openNutritionItemEditor\(null\)[\s\S]*switchNutritionTab\(tab\)/);
+  assert.match(featureNutritionJs, /if \(action === 'open-photo-add'\) void openNutritionPhotoAdd\(\)/);
+  assert.match(workoutRenderJs, /export async function openNutritionPhotoUpload\(\)[\s\S]*await ensureModal\('nutrition-item-modal'\)[\s\S]*closeModal\('nutrition-search-modal'\)[\s\S]*switchNutritionTab\('photo'\)/);
+  assert.doesNotMatch(workoutRenderJs, /setTimeout\(\(\) => switchNutritionTab\('photo'\)/);
 });
 
 test('skip meals have one static action owner and retain duplicate-delivery protection', () => {

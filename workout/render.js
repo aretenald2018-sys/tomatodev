@@ -22,6 +22,8 @@ import { getDietPhoto } from '../diet/photo-store.js';
 import { removeMealPhoto } from '../diet/photo-actions.js';
 import { openPhotoLightbox } from '../utils/photo-lightbox.js';
 import { openNutritionItemEditor, switchNutritionTab } from '../modals/nutrition-item-modal.js';
+import { ensureModal } from '../modal-manager.js';
+import { closeModal } from '../app/overlay-stack.js';
 
 // ── 날짜 라벨 ────────────────────────────────────────────────────
 export function _renderDateLabel() {
@@ -599,7 +601,9 @@ export function _renderMealPhotos() {
 }
 
 // ── 영양정보 사진 업로드 ────────────────────────────────────────
-export function openNutritionPhotoUpload() {
-  openNutritionItemEditor(null);
-  setTimeout(() => switchNutritionTab('photo'), 100);
+export async function openNutritionPhotoUpload() {
+  await ensureModal('nutrition-item-modal');
+  closeModal('nutrition-search-modal');
+  await openNutritionItemEditor(null);
+  switchNutritionTab('photo');
 }
