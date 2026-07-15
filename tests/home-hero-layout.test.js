@@ -46,7 +46,7 @@ test('home tomato hero mounts the imagegen marquee into the upper-left dark fram
   assert.doesNotMatch(lifeZone, /data-lz-names/);
 
   assert.match(css, /\.home-hero--integrated \{ display: none; \}/);
-  assert.match(css, /\.lz-iso-marquee \{[\s\S]*top: 3px;[\s\S]*width: min\(52%, 236px\);[\s\S]*background: transparent;[\s\S]*drop-shadow\(2px 4px 0/);
+  assert.match(css, /\.lz-iso-marquee \{[\s\S]*top: calc\(-1 \* min\(20vw, 143px\)\);[\s\S]*left: calc\(-1 \* min\(3\.6vw, 26px\)\);[\s\S]*z-index: 0;[\s\S]*width: min\(76%, 540px\);[\s\S]*background: transparent;[\s\S]*drop-shadow\(2px 4px 0/);
   assert.match(css, /\.lz-iso-marquee-art \{[\s\S]*object-fit: contain;/);
   assert.match(css, /\.lz-iso-marquee-panel \{[\s\S]*left: 14%;[\s\S]*top: 35%;[\s\S]*width: 80%;[\s\S]*transform: skewY\(-14\.5deg\);/);
   assert.match(css, /\.lz-iso-marquee-panel \{[\s\S]*background: rgba\(20,0,0,\.42\);/);
@@ -54,6 +54,8 @@ test('home tomato hero mounts the imagegen marquee into the upper-left dark fram
   assert.match(css, /\.lz-iso-marquee \.tf-hero-count \{[\s\S]*font-size: 26px;[\s\S]*-webkit-text-stroke: \.7px #71180e;/);
   assert.match(css, /\.lz-iso-marquee \.tf-hero-character \{[\s\S]*width: 31px;[\s\S]*height: 31px;/);
   assert.match(css, /\.lz-iso-marquee \.tf-hero-info-btn \{[\s\S]*top: 3px;[\s\S]*right: 3px;/);
+  assert.match(css, /\.lz-world \{[\s\S]*z-index: 1;[\s\S]*pointer-events: none;/);
+  assert.match(css, /\.lz-world \[data-lz-action\] \{[\s\S]*pointer-events: auto;/);
   assert.match(runtimeAssets, /\.\/assets\/home\/life-zone\/ui\/streak-marquee-iso-card-v1\.png/);
   assert.deepEqual(readPngMeta('assets/home/life-zone/ui/streak-marquee-iso-card-v1.png'), {
     width: 1034,

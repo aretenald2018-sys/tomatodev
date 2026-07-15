@@ -450,10 +450,10 @@
 }
 .lz-iso-marquee {
   position: absolute;
-  top: 3px;
-  left: 2px;
-  z-index: 190;
-  width: min(52%, 236px);
+  top: calc(-1 * min(20vw, 143px));
+  left: calc(-1 * min(3.6vw, 26px));
+  z-index: 0;
+  width: min(76%, 540px);
   aspect-ratio: 1034 / 891;
   overflow: visible;
   background: transparent;
@@ -557,11 +557,16 @@
 }
 .lz-world {
   position: relative;
+  z-index: 1;
   left: 50%;
   width: 112%;
   aspect-ratio: 1672 / 1672;
   overflow: visible;
   transform: translateX(-50%);
+  pointer-events: none;
+}
+.lz-world [data-lz-action] {
+  pointer-events: auto;
 }
 .lz-base {
   display: block;
@@ -1738,7 +1743,6 @@ body.lz-running-record-modal-open {
   animation: tds-shine-btn 2.4s ease-in-out infinite;
 }
 @media (max-width: 420px) {
-  .lz-iso-marquee { top: 2px; left: 1px; width: 52%; }
   .lz-iso-marquee .tf-hero-label { font-size: 8.5px; }
   .lz-iso-marquee .tf-hero-count { font-size: 24px; }
   .lz-iso-marquee .tf-hero-character { width: 29px; height: 29px; }
