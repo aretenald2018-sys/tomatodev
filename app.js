@@ -498,6 +498,9 @@ function initWorkoutSystemBack() {
     if (handleWorkoutBack({ activeTab: _currentTab, preferHistory: true })) return;
     if (event.canGoBack && window.history?.back) window.history.back();
   });
+  appPlugin.addListener('appStateChange', (event = {}) => {
+    if (event.isActive) wtRecoverTimers();
+  });
 }
 setTimeout(initWorkoutSystemBack, 0);
 setTimeout(initWorkoutPullBackGesture, 0);

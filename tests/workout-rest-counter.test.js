@@ -77,6 +77,22 @@ test('workout day sheet set completion enters the shared rest and idle-limit flo
   assert.match(complete, /await _syncWorkoutRestAfterSheetSet\(key, sessionIndex, exerciseIndex, lastCompletedSetIndex, true\)/);
 });
 
+test('idle-limit recovery runs after workout hydration, same-day reopen, and native resume', () => {
+  const load = read('workout/load.js');
+  const app = read('app.js');
+  const sameDateStart = load.indexOf('if (isSameDate && targetSessionIndex');
+  const sameDateEnd = load.indexOf('\n  resetWorkoutTypeUi();', sameDateStart);
+  const sameDateBranch = load.slice(sameDateStart, sameDateEnd);
+  const hydrationStart = load.indexOf('export function loadWorkoutDate');
+  const hydrationEnd = load.indexOf('\nfunction _restoreFlowState', hydrationStart);
+  const hydrationFlow = load.slice(hydrationStart, hydrationEnd);
+
+  assert.match(load, /wtCheckWorkoutIdleLimit/);
+  assert.match(sameDateBranch, /_recoverWorkoutIdleLimit\('same-date load'\)/);
+  assert.match(hydrationFlow, /_recoverWorkoutIdleLimit\('date load'\)/);
+  assert.match(app, /addListener\('appStateChange',[\s\S]*event\.isActive[\s\S]*wtRecoverTimers\(\)/);
+});
+
 test('raw statistics export can include set rest intervals', () => {
   const save = read('workout/save.js');
   const schema = read('workout/save-schema.js');
@@ -153,8 +169,14 @@ export function getCurrentUser() { return { uid: 'rest-runtime-user' }; }
   <textarea id="wt-workout-memo"></textarea>
 <script type="module">
 try {
-  let now = Date.parse('2026-07-07T00:00:00.000Z');
-  Date.now = () => now;
+  let now = new Date(2026, 6, 7, 23, 50, 0).getTime();
+  const startNow = now;
+  const RealDate = Date;
+  class TestDate extends RealDate {
+    constructor(...args) { super(...(args.length ? args : [now])); }
+    static now() { return now; }
+  }
+  window.Date = TestDate;
   window.__qaSaveCalls = [];
   window.__qaTimerTicks = [];
   window.requestAnimationFrame = (fn) => setTimeout(fn, 0);
@@ -217,6 +239,9 @@ try {
   await nextFrame();
   const autoEnded = state.S.workout.workoutTimeline?.endedBy === 'idle-limit';
   window.__qaDone = {
+    startNow,
+    loadedDate: { ...state.S.shared.date },
+    currentDate: { y: new Date().getFullYear(), m: new Date().getMonth(), d: new Date().getDate() },
     afterStart,
     after75s,
     sheetExists,
@@ -262,10 +287,10 @@ try {
   }
 }
 
-test('runtime rest timer updates metadata and auto-finishes at the 15-minute idle limit', async () => {
+test('runtime rest timer auto-finishes across midnight at the 15-minute idle limit', async () => {
   const result = await runRestTimerRuntimeHarness();
 
-  assert.equal(result.afterStart.restStartedAt, '2026-07-07T00:00:00.000Z');
+  assert.equal(result.afterStart.restStartedAt, new Date(result.startNow).toISOString());
   assert.equal(result.afterStart.restPlannedSec, 60);
   assert.equal(result.afterStart.restElapsedSec, 0);
   assert.equal(result.afterStart.restOverSec, 0);
@@ -279,15 +304,16 @@ test('runtime rest timer updates metadata and auto-finishes at the 15-minute idl
   assert.equal(result.afterSkip.restElapsedSec, 75);
   assert.equal(result.afterSkip.restOverSec, 15);
   assert.equal(result.afterSkip.restEndedBy, 'skip');
-  assert.equal(result.afterSkip.restEndedAt, '2026-07-07T00:01:15.000Z');
+  assert.equal(result.afterSkip.restEndedAt, new Date(result.startNow + 75000).toISOString());
+  assert.notDeepEqual(result.currentDate, result.loadedDate);
   assert.equal(result.autoEnded, true);
   assert.equal(result.autoRest.running, false);
   assert.equal(result.autoRest.restElapsedSec, (15 * 60) - 75);
   assert.equal(result.autoRest.restEndedBy, 'idle-limit');
-  assert.equal(result.autoRest.restEndedAt, '2026-07-07T00:15:00.000Z');
+  assert.equal(result.autoRest.restEndedAt, new Date(result.startNow + (15 * 60 * 1000)).toISOString());
   assert.equal(result.timeline.endedBy, 'idle-limit');
-  assert.equal(result.timeline.endedAt, Date.parse('2026-07-07T00:15:00.000Z'));
-  assert.equal(result.timeline.endedAfterSetCompletedAt, Date.parse('2026-07-07T00:00:00.000Z'));
+  assert.equal(result.timeline.endedAt, result.startNow + (15 * 60 * 1000));
+  assert.equal(result.timeline.endedAfterSetCompletedAt, result.startNow);
   assert.equal(result.durationResult, '총 0초');
   assert.equal(result.saveCalls.length, 2);
   assert.deepEqual(result.saveCalls[0], { silent: true });

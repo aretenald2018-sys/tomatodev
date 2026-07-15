@@ -459,8 +459,16 @@ function _cancelWorkoutIdleFinishTimer() {
   _workoutIdleFinishTimeout = null;
 }
 
-function _isTodayWorkoutDate() {
-  return _sameTimerDate(_normalizeTimerDate(S.shared.date), _todayTimerDate());
+function _isLoadedWorkoutTimelineDate(timeline) {
+  const lastSetCompletedAt = Number(timeline?.lastSetCompletedAt);
+  if (!Number.isFinite(lastSetCompletedAt) || lastSetCompletedAt <= 0) return false;
+  const completedAt = new Date(lastSetCompletedAt);
+  const completedDate = {
+    y: completedAt.getFullYear(),
+    m: completedAt.getMonth(),
+    d: completedAt.getDate(),
+  };
+  return _sameTimerDate(_normalizeTimerDate(S.shared.date), completedDate);
 }
 
 function _timelineEndedAfterLatestSet(timeline) {
@@ -472,7 +480,7 @@ function _timelineEndedAfterLatestSet(timeline) {
 
 function _scheduleWorkoutIdleFinish(timeline, now = Date.now()) {
   _cancelWorkoutIdleFinishTimer();
-  if (!_isTodayWorkoutDate() || !timeline?.lastSetCompletedAt || _timelineEndedAfterLatestSet(timeline)) return null;
+  if (!_isLoadedWorkoutTimelineDate(timeline) || _timelineEndedAfterLatestSet(timeline)) return null;
   const deadlineAt = Number(timeline.lastSetCompletedAt) + _WORKOUT_IDLE_LIMIT_MS;
   const delayMs = Math.max(0, deadlineAt - Number(now));
   _workoutIdleFinishTimeout = setTimeout(() => {
@@ -497,7 +505,7 @@ export function wtRefreshWorkoutTimelineDuration(context = 'set timeline') {
 
 export async function wtCheckWorkoutIdleLimit(now = Date.now()) {
   const timeline = _syncWorkoutTimelineDuration();
-  if (!_isTodayWorkoutDate() || !timeline?.lastSetCompletedAt || _timelineEndedAfterLatestSet(timeline)) {
+  if (!_isLoadedWorkoutTimelineDate(timeline) || _timelineEndedAfterLatestSet(timeline)) {
     _cancelWorkoutIdleFinishTimer();
     return false;
   }

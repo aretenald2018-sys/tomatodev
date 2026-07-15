@@ -15,7 +15,8 @@ import { _renderDateLabel,
                                      from './render.js';
 import { _renderWorkoutTimer, _renderTimerControls,
          _fmtDuration, wtRestTimerSkip, _isViewingTimerDate,
-         wtApplyActiveWorkoutDraft, wtPersistActiveWorkoutDraft }
+         wtApplyActiveWorkoutDraft, wtPersistActiveWorkoutDraft,
+         wtCheckWorkoutIdleLimit }
                                      from './timers.js';
 import { _renderCfForm,
          _renderStretchForm, _renderSwimForm }
@@ -85,6 +86,10 @@ function _restoreWorkoutExercises(day, rejectedLegacyMaxMeta) {
   return exercises.filter(entry => _isActualWorkoutEntry(entry) || !_isMaxDraftEntry(entry));
 }
 
+function _recoverWorkoutIdleLimit(context) {
+  wtCheckWorkoutIdleLimit().catch(e => console.error(`[workout idle ${context}] error:`, e));
+}
+
 // ── 날짜 로드 ────────────────────────────────────────────────────
 export function loadWorkoutDate(y, m, d, options = {}) {
   const cur = S.shared.date;
@@ -101,6 +106,7 @@ export function loadWorkoutDate(y, m, d, options = {}) {
     _renderDietResults();
     renderCalorieTracker();
     _renderMealPhotos();
+    _recoverWorkoutIdleLimit('same-date load');
     return;
   }
 
@@ -201,6 +207,7 @@ export function loadWorkoutDate(y, m, d, options = {}) {
       showToast('진행 중이던 운동 기록을 복구했어요', 2200, 'success');
     }, 0);
   }
+  _recoverWorkoutIdleLimit('date load');
 }
 
 function _restoreFlowState(day) {
