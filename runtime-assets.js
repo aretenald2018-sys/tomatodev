@@ -319,6 +319,7 @@
   './assets/home/life-zone/base-room-alpha.png',
   './assets/home/life-zone/base-room-expanded.png',
   './assets/home/life-zone/base-room-expanded-alpha.png',
+  './assets/home/life-zone/ui/streak-marquee-iso-card-v1.png',
   './assets/home/life-zone/ui/npc-quest-bubble.png',
   './assets/home/life-zone/ui/trainer-quest-seated-trainer.png',
   './assets/home/life-zone/ui/trainer-quest-stats-guide-trainer.png',

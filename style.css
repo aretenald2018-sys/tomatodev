@@ -10698,83 +10698,45 @@ body.wt-running-session-open {
 }
 .lz-iso-marquee {
   position: absolute;
-  top: 12px;
-  left: 7px;
+  top: 6px;
+  left: 6px;
   z-index: 190;
-  width: min(160px, 43%);
-  height: 76px;
-  filter:
-    drop-shadow(4px 5px 0 rgba(35, 22, 16, .72))
-    drop-shadow(0 7px 7px rgba(35, 22, 16, .24));
+  width: min(50%, 220px);
+  aspect-ratio: 1.55;
+  overflow: hidden;
+  border: 1px solid rgba(73, 45, 32, .18);
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(250,247,243,.96), rgba(222,211,199,.9));
+  box-shadow: 0 7px 18px rgba(42, 27, 20, .2);
   isolation: isolate;
 }
-.lz-iso-marquee::before {
-  content: '';
+.lz-iso-marquee-art {
   position: absolute;
-  left: 17px;
-  top: 46px;
-  z-index: -2;
-  width: 7px;
-  height: 26px;
-  background: linear-gradient(90deg, #291b17 0 28%, #6e4d3b 29% 67%, #3a2720 68%);
-  box-shadow: 2px 0 0 rgba(21,13,10,.55);
-  transform: skewY(-28deg);
-  image-rendering: pixelated;
-}
-.lz-iso-marquee::after {
-  content: '';
-  position: absolute;
-  left: 11px;
-  top: 69px;
-  z-index: -3;
-  width: 22px;
-  height: 6px;
-  background: #4b3328;
-  box-shadow: inset 0 2px 0 #8a6047, 3px 3px 0 rgba(29,18,13,.5);
-  clip-path: polygon(20% 0, 100% 0, 80% 100%, 0 100%);
-  image-rendering: pixelated;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  pointer-events: none;
 }
 .lz-iso-marquee-panel {
-  position: relative;
+  position: absolute;
+  left: 14%;
+  top: 46%;
+  z-index: 2;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 28px;
+  grid-template-columns: minmax(0, 1fr) 25px;
   align-items: center;
-  gap: 4px;
-  width: 100%;
-  height: 58px;
+  gap: 2px;
+  width: 80%;
+  height: 44%;
   box-sizing: border-box;
-  padding: 9px 25px 8px 14px;
+  padding: 4px 16px 4px 5px;
   overflow: hidden;
-  background:
-    linear-gradient(135deg, rgba(155,103,75,.95), rgba(65,42,33,.96) 23%, rgba(32,20,18,.98) 24% 77%, rgba(91,58,43,.98) 78%),
-    #2c1d19;
-  clip-path: polygon(0 17%, 100% 0, 100% 83%, 0 100%);
-  image-rendering: pixelated;
-}
-.lz-iso-marquee-panel::before {
-  content: '';
-  position: absolute;
-  inset: 5px 6px;
-  z-index: 0;
-  background:
-    radial-gradient(circle, rgba(255,111,78,.35) 0 1px, transparent 1.2px) 0 0 / 4px 4px,
-    linear-gradient(110deg, rgba(93,16,10,.96), rgba(34,7,7,.98));
-  clip-path: polygon(0 13%, 100% 0, 100% 87%, 0 100%);
-  box-shadow: inset 0 0 0 2px rgba(18,7,6,.8);
-  pointer-events: none;
-}
-.lz-iso-marquee-panel::after {
-  content: '';
-  position: absolute;
-  top: 7px;
-  left: 9px;
-  z-index: 1;
-  width: calc(100% - 18px);
-  height: 2px;
-  background: rgba(255,190,151,.25);
-  transform: rotate(-5.5deg);
-  transform-origin: left center;
-  pointer-events: none;
+  transform: skewY(-14.5deg);
+  transform-origin: left top;
 }
 .lz-iso-marquee .tf-hero-left {
   min-width: 0;
@@ -10783,7 +10745,7 @@ body.wt-running-session-open {
 }
 .lz-iso-marquee .tf-hero-label {
   color: #ffc0a8;
-  font-size: 7px;
+  font-size: 6.5px;
   font-weight: 800;
   line-height: 1.1;
   overflow: hidden;
@@ -10792,7 +10754,7 @@ body.wt-running-session-open {
 }
 .lz-iso-marquee .tf-hero-count {
   color: #ff654b;
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 850;
   letter-spacing: 0;
   line-height: 1;
@@ -10815,16 +10777,16 @@ body.wt-running-session-open {
   filter: drop-shadow(2px 2px 0 rgba(14,6,4,.7));
 }
 .lz-iso-marquee .tf-hero-character {
-  width: 27px;
-  height: 27px;
+  width: 24px;
+  height: 24px;
 }
 .lz-iso-marquee .tf-hero-info-btn {
-  top: 7px;
-  right: 8px;
+  top: 2px;
+  right: 2px;
   z-index: 3;
-  width: 15px;
-  height: 15px;
-  font-size: 9px;
+  width: 13px;
+  height: 13px;
+  font-size: 8px;
   color: #ffc0a8;
   border-color: rgba(255,167,139,.68);
   border-radius: 2px;
@@ -12022,9 +11984,9 @@ body.lz-running-record-modal-open {
   animation: tds-shine-btn 2.4s ease-in-out infinite;
 }
 @media (max-width: 420px) {
-  .lz-iso-marquee { top: 10px; left: 5px; width: min(154px, 43%); }
-  .lz-iso-marquee .tf-hero-count { font-size: 16px; }
-  .lz-iso-marquee .tf-hero-character { width: 26px; height: 26px; }
+  .lz-iso-marquee { top: 4px; left: 4px; width: 50%; border-radius: 16px; }
+  .lz-iso-marquee .tf-hero-count { font-size: 15px; }
+  .lz-iso-marquee .tf-hero-character { width: 23px; height: 23px; }
   .lz-summary-btn { padding: 12px 12px; }
   .lz-summary-main { font-size: 18px; }
   .lz-summary-main small { font-size: 10px; }
