@@ -10696,135 +10696,110 @@ body.wt-running-session-open {
   overflow: hidden;
   background: var(--surface);
 }
-.lz-overview {
+.lz-glass-bookmark {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 190;
   display: grid;
-  grid-template-columns: minmax(0, 46%) minmax(0, 54%);
-  min-height: 76px;
-  overflow: hidden;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-}
-.lz-overview--life-only {
-  grid-template-columns: 1fr;
-}
-.lz-head {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 6px;
-  min-width: 0;
-  padding: 12px 20px 12px 16px;
-}
-.lz-overview-life {
-  position: relative;
-  z-index: 2;
-}
-.lz-title-stack {
-  min-width: 0;
-}
-.lz-overview-hero {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 30px;
   align-items: center;
-  gap: 6px;
-  min-width: 0;
-  margin-left: -22px;
-  padding: 10px 26px 10px 32px;
+  gap: 5px;
+  width: min(210px, 58%);
+  height: 42px;
+  box-sizing: border-box;
+  padding: 5px 25px 5px 12px;
+  overflow: hidden;
   color: #fff;
-  background: linear-gradient(135deg, #921708 0%, #ca1d13 48%, #fa342c 100%);
-  clip-path: polygon(16% 0, 100% 0, 100% 100%, 0 100%);
+  border: 1px solid rgba(255,255,255,.52);
+  border-left-color: rgba(255,255,255,.7);
+  border-radius: 14px 0 0 14px;
+  background:
+    linear-gradient(115deg, rgba(255,255,255,.34), rgba(255,255,255,.06) 38%, rgba(255,92,82,.18) 72%),
+    rgba(189, 25, 18, .64);
+  box-shadow:
+    0 7px 22px rgba(91, 18, 12, .24),
+    inset 0 1px 0 rgba(255,255,255,.62),
+    inset 0 -1px 0 rgba(119, 15, 10, .24);
+  clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 50%, calc(100% - 15px) 100%, 0 100%);
+  -webkit-backdrop-filter: blur(18px) saturate(185%);
+  backdrop-filter: blur(18px) saturate(185%);
+  isolation: isolate;
 }
-.lz-overview-hero::after {
+.lz-glass-bookmark::before {
   content: '';
   position: absolute;
-  top: -38px;
-  right: -32px;
-  width: 88px;
-  height: 88px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.08);
+  inset: 1px 17px 50% 1px;
+  z-index: -1;
+  border-radius: 12px 5px 12px 5px;
+  background: linear-gradient(180deg, rgba(255,255,255,.34), rgba(255,255,255,.04));
+  opacity: .78;
   pointer-events: none;
 }
-.lz-overview-hero .tf-hero-left {
+.lz-glass-bookmark::after {
+  content: '';
+  position: absolute;
+  top: -22px;
+  right: 21px;
+  z-index: -1;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.15);
+  filter: blur(2px);
+  pointer-events: none;
+}
+.lz-glass-bookmark .tf-hero-left {
   min-width: 0;
   position: relative;
   z-index: 1;
 }
-.lz-overview-hero .tf-hero-label {
-  color: rgba(255,255,255,0.86);
-  font-size: 11px;
+.lz-glass-bookmark .tf-hero-label {
+  color: rgba(255,255,255,.9);
+  font-size: 8px;
   font-weight: 700;
-  line-height: 1.25;
+  line-height: 1.1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.lz-overview-hero .tf-hero-count {
+.lz-glass-bookmark .tf-hero-count {
   color: #fff;
-  font-size: 25px;
+  font-size: 18px;
   font-weight: 850;
   letter-spacing: 0;
   line-height: 1;
-  margin-top: 3px;
-  text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  margin-top: 2px;
+  text-shadow: 0 2px 7px rgba(68,9,5,.28);
 }
-.lz-overview-hero .tf-hero-unit {
-  color: rgba(255,255,255,0.72);
-  font-size: 12px;
+.lz-glass-bookmark .tf-hero-unit {
+  color: rgba(255,255,255,.78);
+  font-size: 9px;
   font-weight: 700;
 }
-.lz-overview-hero .tf-hero-right {
+.lz-glass-bookmark .tf-hero-right {
   position: relative;
   z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.lz-overview-hero .tf-hero-tomato {
-  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.28));
+.lz-glass-bookmark .tf-hero-tomato {
+  filter: drop-shadow(0 3px 8px rgba(0,0,0,.24));
 }
-.lz-overview-hero .tf-hero-character {
-  width: 38px;
-  height: 38px;
+.lz-glass-bookmark .tf-hero-character {
+  width: 29px;
+  height: 29px;
 }
-.lz-overview-hero .tf-hero-info-btn {
-  top: 7px;
-  right: 8px;
-  width: 18px;
-  height: 18px;
-  font-size: 11px;
+.lz-glass-bookmark .tf-hero-info-btn {
+  top: 3px;
+  right: 17px;
+  width: 15px;
+  height: 15px;
+  font-size: 9px;
 }
-.lz-overview-hero .hero-social-proof {
+.lz-glass-bookmark .hero-social-proof {
   display: none !important;
-}
-.lz-eyebrow {
-  display: block;
-  margin-bottom: 3px;
-  color: var(--text-tertiary);
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-.lz-title {
-  margin: 0;
-  color: var(--text);
-  font-size: 15px;
-  font-weight: 800;
-  line-height: 1.25;
-  overflow-wrap: anywhere;
-}
-.lz-sync {
-  flex-shrink: 0;
-  padding: 5px 8px;
-  border-radius: 999px;
-  background: var(--surface2);
-  color: var(--text-tertiary);
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
 }
 .lz-scene {
   position: relative;
@@ -12016,19 +11991,9 @@ body.lz-running-record-modal-open {
   animation: tds-shine-btn 2.4s ease-in-out infinite;
 }
 @media (max-width: 420px) {
-  .lz-overview {
-    grid-template-columns: minmax(0, 45%) minmax(0, 55%);
-    min-height: 72px;
-  }
-  .lz-head { padding: 10px 16px 10px 14px; }
-  .lz-overview-hero {
-    margin-left: -20px;
-    padding: 9px 24px 9px 30px;
-  }
-  .lz-title { font-size: 14px; }
-  .lz-sync { display: none; }
-  .lz-overview-hero .tf-hero-count { font-size: 23px; }
-  .lz-overview-hero .tf-hero-character { width: 34px; height: 34px; }
+  .lz-glass-bookmark { top: 8px; left: 8px; width: min(196px, 61%); height: 40px; }
+  .lz-glass-bookmark .tf-hero-count { font-size: 17px; }
+  .lz-glass-bookmark .tf-hero-character { width: 27px; height: 27px; }
   .lz-summary-btn { padding: 12px 12px; }
   .lz-summary-main { font-size: 18px; }
   .lz-summary-main small { font-size: 10px; }
@@ -15691,6 +15656,9 @@ body.lz-running-record-modal-open {
   font-size: 11px;
   font-weight: 800;
 }
+.cal-season-actions { flex: none; display: flex; align-items: center; gap: 6px; }
+.cal-season-control .cal-season-settings { min-width: 38px; width: 38px; padding: 0; }
+.cal-season-settings svg { width: 18px; height: 18px; }
 .cal-season-control.needs-season { border-color: #edc4bf; background: #fff8f6; }
 .cal-season-control.needs-season span,
 .cal-season-control.needs-season button { color: #a54a40; }
@@ -15761,8 +15729,10 @@ body.lz-running-record-modal-open {
   position: relative;
   display: flex;
   flex-direction: column;
-  width: min(680px, 100%);
-  max-height: min(92dvh, 860px);
+  width: min(680px, 100vw);
+  max-width: 100vw;
+  height: min(92dvh, 860px);
+  max-height: 100dvh;
   margin: auto auto 0;
   padding: 0;
   overflow: hidden;
@@ -15790,17 +15760,17 @@ body.lz-running-record-modal-open {
 }
 .season-stepper {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 3px;
   padding: 10px 14px 8px;
-  overflow-x: auto;
+  overflow: hidden;
   border-bottom: 1px solid #eef0f2;
 }
 .season-stepper span {
   display: grid;
   justify-items: center;
   gap: 3px;
-  min-width: 45px;
+  min-width: 0;
   color: #9299a1;
   font-size: 9px;
   white-space: nowrap;
@@ -15818,7 +15788,7 @@ body.lz-running-record-modal-open {
 .season-stepper .is-current { color: #a54a40; font-weight: 800; }
 .season-stepper .is-current b { background: #d9574d; color: #fff; }
 .season-stepper .is-done b { background: #dcebdc; color: #367044; }
-.season-sheet-body { flex: 1; min-height: 260px; padding: 18px; overflow-y: auto; overscroll-behavior: contain; }
+.season-sheet-body { flex: 1 1 auto; min-width: 0; min-height: 0; padding: 18px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
 .season-step-copy { margin-bottom: 16px; }
 .season-step-copy strong { display: block; color: #222b32; font-size: 17px; }
 .season-step-copy p { margin: 5px 0 0; color: #68737d; font-size: 12px; line-height: 1.5; }
@@ -15827,6 +15797,12 @@ body.lz-running-record-modal-open {
 .season-empty-copy { flex: none; margin: 0 0 14px; padding: 7px 9px; border-radius: 8px; background: #f2f4f6; color: #69717a; font-size: 10px; }
 .season-field-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .season-field-row-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.season-length-presets { display: flex; align-items: stretch; gap: 7px; margin-bottom: 13px; }
+.season-length-presets button { display: grid; flex: 0 1 112px; gap: 1px; padding: 8px 10px; border: 1px solid #d8dde2; border-radius: 10px; background: #fff; color: #59636c; text-align: left; }
+.season-length-presets button.is-active { border-color: #dc7169; background: #fff4f2; color: #a9473e; box-shadow: inset 0 0 0 1px rgba(217, 87, 77, .12); }
+.season-length-presets button b { font-size: 12px; }
+.season-length-presets button small { font-size: 8px; opacity: .78; }
+.season-length-presets > span { margin-left: auto; align-self: center; color: #78818a; font-size: 10px; font-weight: 800; }
 .season-field { display: grid; gap: 5px; margin-bottom: 12px; }
 .season-field span { color: #69727b; font-size: 10px; font-weight: 700; }
 .season-field input,
@@ -15940,6 +15916,51 @@ body.lz-running-record-modal-open {
 .season-wendler-open { min-height: 38px; padding: 0 7px; border: 1px solid #d9574d; border-radius: 9px; background: #fff2ef; color: #a9473e; font-size: 10px; font-weight: 900; }
 .season-wendler-goal { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 7px; padding: 0 10px 10px; }
 
+.season-review-heading { margin-bottom: 12px; }
+.season-review-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 7px; margin-bottom: 14px; }
+.season-review-summary > span { display: grid; gap: 2px; padding: 9px; border-radius: 10px; background: #f3f5f7; }
+.season-review-summary small { color: #7a838b; font-size: 8px; font-weight: 800; }
+.season-review-summary b { color: #28323a; font-size: 14px; }
+.season-review-summary button { min-width: 52px; border: 1px solid #d9574d; border-radius: 10px; background: #fff2ef; color: #a9473e; font-size: 10px; font-weight: 900; }
+.season-review-groups { display: grid; gap: 10px; }
+.season-review-groups > section { overflow: hidden; border: 1px solid #e0e4e8; border-radius: 12px; background: #fff; }
+.season-review-groups > section > header { display: flex; justify-content: space-between; padding: 9px 11px; background: #f7f8f9; }
+.season-review-groups header strong { color: #303940; font-size: 12px; }
+.season-review-groups header span { color: #8a9299; font-size: 9px; }
+.season-review-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 11px; border-top: 1px solid #edf0f2; }
+.season-review-item > span { min-width: 0; display: grid; gap: 3px; }
+.season-review-item b { color: #28323a; font-size: 12px; }
+.season-review-item small { overflow: hidden; color: #6f7981; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.season-review-item i { flex: none; color: #2d7a4f; font-size: 9px; font-style: normal; font-weight: 900; }
+.season-review-empty { padding: 18px; border: 1px dashed #dca29c; border-radius: 12px; background: #fff8f6; color: #8b4c46; font-size: 11px; line-height: 1.5; text-align: center; }
+
+.season-running-presets { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin-bottom: 13px; }
+.season-running-presets button { display: grid; gap: 2px; min-width: 0; padding: 9px 5px; border: 1px solid #dfe3e7; border-radius: 10px; background: #fff; color: #66717a; text-align: center; }
+.season-running-presets button.is-active { border-color: #d9574d; background: #fff2ef; color: #a9473e; box-shadow: inset 0 0 0 1px rgba(217, 87, 77, .1); }
+.season-running-presets b { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.season-running-presets small { font-size: 8px; opacity: .76; }
+.season-race-goal { margin-bottom: 13px; padding: 13px; border: 1px solid #ead0cc; border-radius: 13px; background: linear-gradient(145deg, #fff9f7, #fff); }
+.season-race-head { display: grid; gap: 2px; margin-bottom: 11px; }
+.season-race-head span { color: #a64d44; font-size: 8px; font-weight: 900; letter-spacing: .1em; }
+.season-race-head strong { color: #302a29; font-size: 15px; }
+.season-race-head small { color: #826e6b; font-size: 9px; }
+.season-goal-toggle { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-bottom: 11px; }
+.season-goal-toggle button { min-height: 38px; border: 1px solid #d8dde2; border-radius: 9px; background: #fff; color: #66717a; font-size: 10px; font-weight: 800; }
+.season-goal-toggle button.is-active { border-color: #d9574d; background: #d9574d; color: #fff; }
+.season-race-time-row { display: grid; grid-template-columns: minmax(120px, .65fr) minmax(0, 1fr); align-items: stretch; gap: 8px; }
+.season-race-time-row .season-field { margin: 0; }
+.season-race-time-row > div { display: grid; align-content: center; gap: 3px; padding: 8px 10px; border-radius: 10px; background: #f3f5f7; }
+.season-race-time-row > div span { color: #7a838b; font-size: 8px; font-weight: 800; }
+.season-race-time-row > div strong { color: #28323a; font-size: 13px; }
+.season-race-finish-note, .season-running-base-note { padding: 10px 11px; border-radius: 10px; background: #f3f5f7; color: #68737c; font-size: 10px; line-height: 1.45; }
+.season-running-base-note { display: grid; gap: 3px; margin-bottom: 13px; background: #eff7f2; color: #49715c; }
+.season-running-base-note b { color: #285e43; font-size: 12px; }
+.season-running-metrics { padding: 12px; border: 1px solid #e0e4e8; border-radius: 13px; background: #fafbfc; }
+.season-running-metrics > header { display: flex; justify-content: space-between; margin-bottom: 10px; }
+.season-running-metrics > header strong { color: #303940; font-size: 13px; }
+.season-running-metrics > header span { color: #8a9299; font-size: 9px; }
+.season-running-metrics > p { margin: 0; color: #747e86; font-size: 9px; line-height: 1.5; }
+
 .season-wendler-editor-backdrop { position: absolute; inset: 0; z-index: 5; display: flex; align-items: flex-end; background: rgba(25, 29, 33, .46); }
 .season-wendler-editor { display: flex; flex-direction: column; width: 100%; max-height: 94%; overflow: hidden; border-radius: 19px 19px 0 0; background: #fff; box-shadow: 0 -12px 35px rgba(24, 29, 34, .18); }
 .season-wendler-editor > header { display: flex; align-items: center; justify-content: space-between; padding: 15px 17px 11px; border-bottom: 1px solid #eaedef; }
@@ -15991,6 +16012,13 @@ body.lz-running-record-modal-open {
   .season-track-row > strong { grid-column: 1 / -1; }
   .season-wendler-editor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .season-wendler-editor-grid .season-field:first-child { grid-column: 1 / -1; }
+  .workout-season-sheet { width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 18px 18px 0 0; }
+  .season-sheet-head { padding-top: max(14px, env(safe-area-inset-top)); }
+  .season-stepper { padding-right: 7px; padding-left: 7px; }
+  .season-stepper span { font-size: 8px; }
+  .season-review-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .season-review-summary button { grid-column: 1 / -1; min-height: 36px; }
+  .season-running-presets { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 /* SOURCE: styles/features/workout-day-sheet.css */

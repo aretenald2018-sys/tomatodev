@@ -1792,7 +1792,10 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
   const seasonControlHtml = isWorkoutHome ? `
     <div class="cal-season-control ${currentSeason ? 'has-current-season' : 'needs-season'}">
       <div><span>${currentSeason ? 'CURRENT SEASON' : 'SEASON SETUP'}</span><strong>${_esc(currentSeason?.name || '새 시즌 설정 필요')}</strong>${currentSeason ? `<small>${currentSeason.startDate}–${currentSeason.endDate}</small>` : '<small>기록은 유지하고 새 목표를 W1부터 시작합니다.</small>'}</div>
-      <button type="button" data-wt-season-manager>${currentSeason ? '다음 시즌' : '시즌 시작'}</button>
+      <div class="cal-season-actions">
+        ${currentSeason ? `<button type="button" class="cal-season-settings" data-wt-season-edit="${_esc(currentSeason.id)}" aria-label="${_esc(currentSeason.name)} 설정 수정" title="시즌 설정 수정"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2Zm8.2 4.7-1.7-1a7 7 0 0 0 0-1.2l1.7-1-1.7-3-1.8.8a8 8 0 0 0-1-.6L15.5 5h-3.4l-.2 2.1a8 8 0 0 0-1 .6L9 6.9l-1.7 3 1.7 1a7 7 0 0 0 0 1.2l-1.7 1 1.7 3 1.9-.8a8 8 0 0 0 1 .6l.2 2.1h3.4l.2-2.1a8 8 0 0 0 1-.6l1.8.8 1.7-3Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></button>` : ''}
+        <button type="button" data-wt-season-manager>${currentSeason ? '다음 시즌' : '시즌 시작'}</button>
+      </div>
     </div>` : '';
   root.innerHTML = `
     <div class="cal-workout-surface ${surfaceClass}"${scrollSurfaceAttr}>
@@ -4180,6 +4183,13 @@ function _bindWorkoutCycleRailActions(root) {
       Promise.resolve(_openWorkoutGoalInputSheet(goalBtn.getAttribute('data-week-start'))).catch((e) => {
         console.warn('[workout-calendar] goal input click failed:', e);
       });
+      return;
+    }
+    const seasonEditBtn = target?.closest?.('[data-wt-season-edit]');
+    if (seasonEditBtn) {
+      event.preventDefault();
+      event.stopPropagation();
+      openWorkoutSeasonWizard({ editingSeasonId: seasonEditBtn.getAttribute('data-wt-season-edit') });
       return;
     }
     const seasonBtn = target?.closest?.('[data-wt-season-manager]');

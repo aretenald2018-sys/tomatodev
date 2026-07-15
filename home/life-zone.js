@@ -22,7 +22,6 @@ import {
 import {
   LIFE_ZONE_ACTORS,
   assignLifeZoneSlots,
-  formatLifeZoneDateLabel,
   getLifeZoneAccountDisplayName,
   resolveLifeZoneConsultingVisitor,
   resolveLifeZoneActivity,
@@ -89,13 +88,6 @@ function _isCurrentLifeZoneRosterActor(currentUser = null) {
   return resolveLifeZoneRoster({ accounts, currentUser }).some((actor) => actor.source === 'self');
 }
 
-function _renderLifeZoneTitle(card) {
-  const date = card?.querySelector('[data-lz-date]');
-  const title = card?.querySelector('[data-lz-title]');
-  if (date) date.textContent = formatLifeZoneDateLabel(TODAY);
-  if (title) title.textContent = '오늘의 라이프존';
-}
-
 export function setLifeZoneVisitContext(context = null) {
   _lifeZoneVisitContext = context && typeof context === 'object' ? { ...context } : null;
 }
@@ -118,7 +110,6 @@ function _renderConsultingVisitor(card, actors = LIFE_ZONE_ACTORS) {
   const visitorEl = card?.querySelector('[data-lz-consulting-visitor]');
   if (!visitorEl) return;
   const visitor = _resolveConsultingVisitor();
-  _renderLifeZoneTitle(card);
   if (!visitor) {
     visitorEl.hidden = true;
     delete visitorEl.dataset.lzVisitorState;
@@ -990,11 +981,6 @@ function _renderActors(card, actors) {
   });
 }
 
-function _renderStatus(card, isLoaded = false) {
-  const sync = card.querySelector('[data-lz-sync]');
-  if (sync) sync.textContent = isLoaded ? '오늘 기록 반영' : '불러오는 중';
-}
-
 async function _loadLifeZoneActorStates() {
   const todayKey = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
   const currentUser = getCurrentUser();
@@ -1044,13 +1030,11 @@ export async function hydrateLifeZoneCard(card) {
     const actors = await _loadLifeZoneActorStates();
     _renderActors(card, actors);
     _renderConsultingVisitor(card, actors);
-    _renderStatus(card, true);
   } catch (error) {
     console.warn('[life-zone] hydrate failed:', error);
     const fallback = _defaultActorStates();
     _renderActors(card, fallback);
     _renderConsultingVisitor(card, fallback);
-    _renderStatus(card, false);
   }
 }
 
@@ -1064,7 +1048,7 @@ export function renderLifeZoneCard({
 
   const fallbackActors = _defaultActorStates();
   const heroHtml = hero ? `
-    <div class="lz-overview-hero">
+    <aside class="lz-glass-bookmark" aria-label="오늘의 연속 기록">
       <div class="tf-hero-left">
         <div class="tf-hero-label" data-hero-message-target>${escapeHtml(hero.label || '')}</div>
         <div class="tf-hero-count">${hero.countHtml || ''}</div>
@@ -1074,21 +1058,12 @@ export function renderLifeZoneCard({
         <div class="tf-hero-tomato tf-hero-tomato--svg" data-mood="${escapeHtml(hero.characterMood || 'seed')}">${hero.characterSvg || ''}</div>
       </div>
       <div class="hero-social-proof" id="hero-social-proof" style="display:none;"></div>
-    </div>
+    </aside>
   ` : '';
 
   card.innerHTML = `
-    <div class="lz-overview${hero ? '' : ' lz-overview--life-only'}">
-      <div class="lz-head lz-overview-life">
-        <div class="lz-title-stack">
-          <span class="lz-eyebrow" data-lz-date>${escapeHtml(formatLifeZoneDateLabel(TODAY))}</span>
-          <h3 class="lz-title" data-lz-title>오늘의 라이프존</h3>
-        </div>
-        <span class="lz-sync" data-lz-sync>불러오는 중</span>
-      </div>
-      ${heroHtml}
-    </div>
     <div class="lz-scene">
+      ${heroHtml}
       <div class="lz-world">
         <img
           class="lz-base"
@@ -1213,8 +1188,6 @@ export function renderLifeZoneCard({
 
   _renderActors(card, fallbackActors);
   _renderConsultingVisitor(card, fallbackActors);
-  _renderStatus(card, false);
-
   card.querySelector('[data-lz-action="npc-quest"]')?.addEventListener('click', (event) => {
     event.preventDefault();
     event.currentTarget.dispatchEvent(new CustomEvent('life-zone:npc-quest', {

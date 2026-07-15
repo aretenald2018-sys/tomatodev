@@ -14,6 +14,7 @@ import {
 import {
   normalizeSeasonRequestId,
   prepareWorkoutSeasonCreation,
+  prepareWorkoutSeasonUpdate,
 } from './season-creation.js';
 
 function _clone(value) {
@@ -105,5 +106,48 @@ export async function createWorkoutSeason(input = {}) {
   }
   if (result.workoutPlan) _settings[_settingKey(result.season.id, 'workout_plan')] = result.workoutPlan;
   if (result.runningPlan) _settings[_settingKey(result.season.id, 'running_plan')] = result.runningPlan;
+  return _clone(result);
+}
+
+export async function updateWorkoutSeason(input = {}) {
+  const seasonId = String(input.season?.id || '').trim();
+  if (!seasonId) throw new TypeError('season id is required');
+  const boardKey = _settingKey(seasonId, 'test_board_v2');
+  const planKey = _settingKey(seasonId, 'workout_plan');
+  const runningKey = _settingKey(seasonId, 'running_plan');
+  const refs = {
+    registry: _doc('settings', 'season_registry'),
+    activeBoard: _doc('settings', 'test_board_v2'),
+    board: _doc('settings', boardKey),
+  };
+  const result = await _fbOp('updateWorkoutSeason', () => runTransaction(db, async (transaction) => {
+    const [registrySnap, boardSnap] = await Promise.all([
+      transaction.get(refs.registry),
+      transaction.get(refs.board),
+    ]);
+    const registry = normalizeSeasonRegistry(registrySnap.exists() ? registrySnap.data()?.value : _settings.season_registry);
+    const previousBoard = boardSnap.exists() ? boardSnap.data()?.value : (_settings[boardKey] || null);
+    const prepared = prepareWorkoutSeasonUpdate({
+      ...input,
+      registry,
+      previousBoard,
+      existingWorkoutPlan: _settings[planKey] || null,
+      existingRunningPlan: _settings[runningKey] || null,
+    });
+    transaction.set(refs.registry, { value: prepared.registry });
+    transaction.set(refs.board, { value: prepared.board });
+    transaction.set(_doc('settings', planKey), { value: prepared.workoutPlan });
+    transaction.set(_doc('settings', runningKey), { value: prepared.runningPlan });
+    const activated = seasonContainsDate(prepared.season, input.todayKey || '');
+    if (activated) transaction.set(refs.activeBoard, { value: prepared.board });
+    return { ...prepared, activated };
+  }), { rethrow: true });
+
+  if (!result) throw new Error('season update transaction did not return a result');
+  _settings.season_registry = result.registry;
+  _settings[boardKey] = result.board;
+  if (result.activated) _settings.test_board_v2 = result.board;
+  _settings[planKey] = result.workoutPlan;
+  _settings[runningKey] = result.runningPlan;
   return _clone(result);
 }
