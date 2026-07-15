@@ -1282,7 +1282,7 @@ test('workout calendar mobile grid reserves a wider week rail', () => {
   assert.match(mobileCss, /\.cal-workout-surface-home \.cal-workout-bar\s*\{[\s\S]*padding:\s*1px 2px;[\s\S]*font-size:\s*9\.5px/);
 });
 
-test('workout calendar week rail renders body-part goal carousels instead of branches', () => {
+test('workout calendar week rail renders one horizontal carousel slide per exercise', () => {
   assert.match(calendarJs, /const scrollSurfaceAttr = isWorkoutHome \? ' data-wt-calendar-scroll-surface' : ''/);
   assert.match(calendarJs, /<div class="cal-workout-surface \$\{surfaceClass\}"\$\{scrollSurfaceAttr\}>/);
   const gridStart = calendarJs.indexOf('function _renderWorkoutHomeMonthGrid');
@@ -1316,17 +1316,22 @@ test('workout calendar week rail renders body-part goal carousels instead of bra
   assert.match(calendarJs, /targetLabel:\s*`목표 \$\{kgText\}`/);
   assert.match(calendarJs, /isAchieved:\s*goalStatus\.isAchieved/);
   assert.match(calendarJs, /function _buildWorkoutCycleRailItems/);
-  assert.match(calendarJs, /function _groupWorkoutCycleRailItems/);
+  assert.match(calendarJs, /function _groupWorkoutCycleRailExercises/);
   assert.match(calendarJs, /function _renderWorkoutCycleRail/);
   assert.match(calendarJs, /benchmarkId:\s*bm\.id/);
-  assert.match(calendarJs, /data-cal-cycle-target="\$\{_esc\(item\.benchmarkId\)\}"/);
-  assert.match(calendarJs, /const achievedClass = item\.isAchieved \? ' is-achieved' : ''/);
+  assert.match(calendarJs, /const exerciseId = String\(item\.benchmarkId \|\| ''\)/);
+  assert.match(calendarJs, /data-cal-cycle-target="\$\{_esc\(exercise\.benchmarkId\)\}"/);
+  assert.match(calendarJs, /const allAchieved = exercise\.items\.length > 0 && exercise\.items\.every\(item => item\.isAchieved\)/);
   assert.match(calendarJs, /CYCLE_RAIL_GROUP_LABELS.*가슴.*등.*어깨.*하체.*팔.*복부/s);
-  assert.match(calendarJs, /cal-goal-part-carousel/);
-  assert.match(calendarJs, /cal-goal-part-track/);
-  assert.match(calendarJs, /cal-goal-part-slide/);
+  assert.match(calendarJs, /cal-goal-exercise-carousel/);
+  assert.match(calendarJs, /cal-goal-exercise-track/);
+  assert.match(calendarJs, /cal-goal-exercise-slide/);
   assert.match(calendarJs, /cal-goal-part-bookmark/);
-  assert.match(calendarJs, /cal-goal-part-count/);
+  assert.match(calendarJs, /cal-goal-exercise-count/);
+  assert.match(calendarJs, /aria-label="종목별 목표 캐러셀"/);
+  assert.match(calendarJs, /role="list" data-swipe-nav-lock/);
+  assert.match(calendarJs, /data-cal-goal-exercise-slide="\$\{exerciseIndex\}"/);
+  assert.match(calendarJs, /exercise\.items\.map\(item => `<span class="cal-goal-card-meta/);
   assert.match(calendarJs, /cal-goal-card-head/);
   assert.match(calendarJs, /cal-goal-card-meta/);
   assert.match(calendarJs, /function _bindWorkoutCycleRailActions\(root\)/);
@@ -1344,8 +1349,8 @@ test('workout calendar week rail renders body-part goal carousels instead of bra
   assert.doesNotMatch(calendarJs, />\$\{weekNo\}주<\/strong>/);
   assert.doesNotMatch(calendarJs, /cal-cycle-rail-line|cal-cycle-branch/);
   assert.doesNotMatch(styleCss, /\.cal-cycle-rail-line|\.cal-cycle-branch/);
-  assert.match(styleCss, /\.cal-goal-part-track\s*\{[\s\S]*overflow-x:\s*auto;[\s\S]*scroll-snap-type:\s*x mandatory/);
-  assert.match(styleCss, /\.cal-goal-part-slide\s*\{[\s\S]*flex:\s*0 0 100%;[\s\S]*scroll-snap-align:\s*start/);
+  assert.match(styleCss, /\.cal-goal-exercise-track\s*\{[\s\S]*overflow-x:\s*auto;[\s\S]*scroll-snap-type:\s*x mandatory;[\s\S]*-webkit-overflow-scrolling:\s*touch/);
+  assert.match(styleCss, /\.cal-goal-exercise-slide\s*\{[\s\S]*flex:\s*0 0 calc\(100% - 10px\);[\s\S]*scroll-snap-align:\s*start;[\s\S]*scroll-snap-stop:\s*always/);
   assert.match(styleCss, /\.cal-goal-part-bookmark\s*\{[\s\S]*top:\s*0;[\s\S]*left:\s*0;[\s\S]*background:\s*#ff4b43/);
   assert.match(styleCss, /\.cal-goal-part-bookmark::after/);
   assert.match(styleCss, /\.cal-goal-card\s*\{[\s\S]*min-height:\s*30px;[\s\S]*background:\s*#fff8f7/);

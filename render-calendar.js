@@ -361,36 +361,50 @@ function _buildWorkoutCycleRailItems(board, weekStart, cache = {}) {
   return items;
 }
 
-function _groupWorkoutCycleRailItems(items = []) {
-  const groups = new Map();
+function _groupWorkoutCycleRailExercises(items = []) {
+  const exercises = new Map();
   for (const item of items) {
     const groupId = CYCLE_RAIL_GROUP_LABELS[item.groupId] ? item.groupId : 'other';
-    if (!groups.has(groupId)) groups.set(groupId, { groupId, label: _cycleRailGroupLabel(groupId), items: [] });
-    groups.get(groupId).items.push(item);
+    const exerciseId = String(item.benchmarkId || '');
+    if (!exercises.has(exerciseId)) {
+      exercises.set(exerciseId, {
+        benchmarkId: item.benchmarkId,
+        groupId,
+        groupLabel: _cycleRailGroupLabel(groupId),
+        weekLabel: item.weekLabel,
+        exerciseLabel: item.exerciseLabel,
+        items: [],
+      });
+    }
+    exercises.get(exerciseId).items.push(item);
   }
-  return [...groups.values()].sort((a, b) => (
+  return [...exercises.values()].sort((a, b) => (
     CYCLE_RAIL_GROUP_ORDER.indexOf(a.groupId) - CYCLE_RAIL_GROUP_ORDER.indexOf(b.groupId)
   ));
 }
 
 function _renderWorkoutCycleRail(weekStart, items = [], options = {}) {
   const visibleItems = Array.isArray(items) ? items : [];
-  const groups = _groupWorkoutCycleRailItems(visibleItems);
+  const exercises = _groupWorkoutCycleRailExercises(visibleItems);
   const archivedClass = options.archived ? ' is-season-archived' : '';
   const label = visibleItems.length
     ? `${weekStart} 사이클 처방: ${visibleItems.map(item => item.title).join(', ')}`
     : `${weekStart} 사이클 처방 없음`;
   return `
     <div class="cal-workout-week-rail ${visibleItems.length ? 'has-cycle' : 'is-empty'}${archivedClass}" aria-label="${_esc(label)}">
-      ${groups.length ? `<div class="cal-goal-part-carousel" aria-label="부위별 목표 캐러셀"><div class="cal-goal-part-track">${groups.map((group, groupIndex) => `
-        <section class="cal-goal-part-slide" aria-label="${_esc(group.label)} 목표">
-          <span class="cal-goal-part-bookmark">${_esc(group.label)}</span>
-          ${groups.length > 1 ? `<span class="cal-goal-part-count">${groupIndex + 1}/${groups.length}</span>` : ''}
-          <div class="cal-goal-card-list">${group.items.map(item => {
-            const achievedClass = item.isAchieved ? ' is-achieved' : '';
-            return `<button type="button" class="cal-goal-card${achievedClass}" data-cal-cycle-target="${_esc(item.benchmarkId)}" title="${_esc(item.title)}" aria-label="${_esc(`${item.title} 설정 열기`)}"><span class="cal-goal-card-head"><b>${_esc(item.weekLabel)}</b><strong>${_esc(item.exerciseLabel)}</strong></span><span class="cal-goal-card-meta">${_esc(item.trackLabel)} · ${_esc(item.targetLabel)}</span></button>`;
-          }).join('')}</div>
-        </section>`).join('')}</div></div>` : ''}
+      ${exercises.length ? `<div class="cal-goal-exercise-carousel" aria-label="종목별 목표 캐러셀"><div class="cal-goal-exercise-track" role="list" data-swipe-nav-lock>${exercises.map((exercise, exerciseIndex) => {
+        const allAchieved = exercise.items.length > 0 && exercise.items.every(item => item.isAchieved);
+        const achievedClass = allAchieved ? ' is-achieved' : '';
+        const exerciseTitle = exercise.items.map(item => item.title).join(', ');
+        return `<section class="cal-goal-exercise-slide" role="listitem" data-cal-goal-exercise-slide="${exerciseIndex}" aria-label="${_esc(`${exercise.exerciseLabel} 목표 ${exerciseIndex + 1}/${exercises.length}`)}">
+          <span class="cal-goal-part-bookmark">${_esc(exercise.groupLabel)}</span>
+          ${exercises.length > 1 ? `<span class="cal-goal-exercise-count">${exerciseIndex + 1}/${exercises.length}</span>` : ''}
+          <button type="button" class="cal-goal-card${achievedClass}" data-cal-cycle-target="${_esc(exercise.benchmarkId)}" title="${_esc(exerciseTitle)}" aria-label="${_esc(`${exerciseTitle} 설정 열기`)}">
+            <span class="cal-goal-card-head"><b>${_esc(exercise.weekLabel)}</b><strong>${_esc(exercise.exerciseLabel)}</strong></span>
+            <span class="cal-goal-card-tracks">${exercise.items.map(item => `<span class="cal-goal-card-meta${item.isAchieved ? ' is-achieved' : ''}">${_esc(item.trackLabel)} · ${_esc(item.targetLabel)}</span>`).join('')}</span>
+          </button>
+        </section>`;
+      }).join('')}</div></div>` : ''}
     </div>
   `;
 }
