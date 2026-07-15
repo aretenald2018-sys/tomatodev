@@ -465,9 +465,9 @@
 .lz-iso-marquee {
   position: absolute;
   top: 55.7%;
-  left: 13.3%;
+  left: 6%;
   z-index: 1;
-  width: 69.6%;
+  width: 90%;
   height: 26%;
   overflow: visible;
   background: transparent;
@@ -488,14 +488,14 @@
   inset: 0;
   z-index: 2;
   display: grid;
-  grid-template-columns: minmax(0, max-content) max(22px, 4cqw) max(13px, 2.1cqw);
+  grid-template-columns: minmax(0, max-content) clamp(16px, 4cqw, 64px) clamp(8px, 2.1cqw, 34px);
   align-items: center;
   justify-content: center;
-  gap: max(3px, .8cqw);
+  gap: clamp(2px, .8cqw, 13px);
   width: 100%;
   height: 100%;
   box-sizing: border-box;
-  padding: 2px 4px;
+  padding: 1px 2px;
   overflow: visible;
   transform: scaleY(var(--lz-marquee-inverse-y)) rotate(-20deg);
   transform-origin: left center;
@@ -509,7 +509,7 @@
 }
 .lz-iso-marquee .tf-hero-label {
   color: #ffe0cf;
-  font-size: max(8px, 1.5cqw);
+  font-size: clamp(5px, 1.5cqw, 24px);
   font-weight: 800;
   line-height: 1.15;
   overflow: hidden;
@@ -518,7 +518,7 @@
 }
 .lz-iso-marquee .tf-hero-count {
   color: #fff7e9;
-  font-size: max(21px, 4.4cqw);
+  font-size: clamp(15px, 4.4cqw, 71px);
   font-weight: 850;
   letter-spacing: 0;
   line-height: 1;
@@ -528,7 +528,7 @@
 }
 .lz-iso-marquee .tf-hero-unit {
   color: #fff0db;
-  font-size: max(9px, 1.7cqw);
+  font-size: clamp(6px, 1.7cqw, 27px);
   font-weight: 800;
 }
 .lz-iso-marquee .tf-hero-right {
@@ -542,8 +542,8 @@
   filter: drop-shadow(2px 2px 0 rgba(14,6,4,.7));
 }
 .lz-iso-marquee .tf-hero-character {
-  width: max(22px, 4cqw);
-  height: max(22px, 4cqw);
+  width: clamp(16px, 4cqw, 64px);
+  height: clamp(16px, 4cqw, 64px);
 }
 .lz-iso-marquee .tf-hero-info-btn {
   position: relative;
@@ -552,14 +552,19 @@
   z-index: 3;
   align-self: center;
   margin: 0;
-  width: max(13px, 2.1cqw);
-  height: max(13px, 2.1cqw);
-  font-size: max(8px, 1.25cqw);
+  width: clamp(8px, 2.1cqw, 34px);
+  height: clamp(8px, 2.1cqw, 34px);
+  font-size: clamp(5px, 1.25cqw, 20px);
   color: #fff8ef;
   border-color: rgba(255,177,143,.88);
   border-radius: 2px;
   background: rgba(38,4,2,.88);
   pointer-events: auto;
+}
+.lz-iso-marquee .tf-hero-info-btn::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
 }
 .lz-iso-marquee .hero-social-proof {
   display: none !important;

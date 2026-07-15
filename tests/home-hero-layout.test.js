@@ -49,17 +49,19 @@ test('home tomato hero and marquee share the fixed 1672 life-zone world', () => 
 
   assert.match(css, /\.home-hero--integrated \{ display: none; \}/);
   assert.match(css, /\.lz-marquee-composite \{[\s\S]*--lz-marquee-scale-y: 1\.55;[\s\S]*--lz-marquee-inverse-y: \.645161;[\s\S]*top: calc\(-20 \/ 1672 \* 100%\);[\s\S]*left: calc\(-17 \/ 1672 \* 100%\);[\s\S]*width: calc\(920 \/ 1672 \* 100%\);[\s\S]*aspect-ratio: 1774 \/ 887;[\s\S]*transform: scaleY\(var\(--lz-marquee-scale-y\)\);[\s\S]*transform-origin: 0 81%;/);
-  assert.match(css, /\.lz-iso-marquee \{[^}]*top: 55\.7%;[^}]*left: 13\.3%;[^}]*width: 69\.6%;[^}]*height: 26%;/);
+  assert.match(css, /\.lz-iso-marquee \{[^}]*top: 55\.7%;[^}]*left: 6%;[^}]*width: 90%;[^}]*height: 26%;/);
   assert.match(css, /\.lz-marquee-underlay \{[^}]*inset: 0;[^}]*width: 100%;[^}]*height: 100%;/);
   assert.doesNotMatch(css, /\.lz-marquee-underlay \{[^}]*transform:/);
   assert.match(css, /\.lz-iso-marquee-panel \{[\s\S]*inset: 0;[\s\S]*width: 100%;[\s\S]*transform: scaleY\(var\(--lz-marquee-inverse-y\)\) rotate\(-20deg\);[\s\S]*transform-origin: left center;/);
   assert.match(css, /\.lz-iso-marquee-panel \{[\s\S]*overflow: visible;[\s\S]*border: 0;[\s\S]*background: transparent;/);
-  assert.match(css, /\.lz-iso-marquee-panel \{[\s\S]*grid-template-columns: minmax\(0, max-content\) max\(22px, 4cqw\) max\(13px, 2\.1cqw\);[\s\S]*justify-content: center;[\s\S]*gap: max\(3px, \.8cqw\);/);
+  assert.match(css, /\.lz-iso-marquee-panel \{[\s\S]*grid-template-columns: minmax\(0, max-content\) clamp\(16px, 4cqw, 64px\) clamp\(8px, 2\.1cqw, 34px\);[\s\S]*justify-content: center;[\s\S]*gap: clamp\(2px, \.8cqw, 13px\);/);
   assert.doesNotMatch(css, /\.lz-iso-marquee \.tf-hero-left \{[^}]*translateY/);
   assert.match(css, /\.tf-hero \{[\s\S]*min-height: 58px;[\s\S]*padding: 8px 38px 8px 14px;/);
-  assert.match(css, /\.lz-iso-marquee \.tf-hero-count \{[\s\S]*font-size: max\(21px, 4\.4cqw\);[\s\S]*-webkit-text-stroke: \.7px #71180e;/);
-  assert.match(css, /\.lz-iso-marquee \.tf-hero-character \{[\s\S]*width: max\(22px, 4cqw\);[\s\S]*height: max\(22px, 4cqw\);/);
+  assert.match(css, /\.lz-iso-marquee \.tf-hero-label \{[\s\S]*font-size: clamp\(5px, 1\.5cqw, 24px\);/);
+  assert.match(css, /\.lz-iso-marquee \.tf-hero-count \{[\s\S]*font-size: clamp\(15px, 4\.4cqw, 71px\);[\s\S]*-webkit-text-stroke: \.7px #71180e;/);
+  assert.match(css, /\.lz-iso-marquee \.tf-hero-character \{[\s\S]*width: clamp\(16px, 4cqw, 64px\);[\s\S]*height: clamp\(16px, 4cqw, 64px\);/);
   assert.match(css, /\.lz-iso-marquee \.tf-hero-info-btn \{[\s\S]*position: relative;[\s\S]*top: auto;[\s\S]*right: auto;[\s\S]*align-self: center;/);
+  assert.match(css, /\.lz-iso-marquee \.tf-hero-info-btn::before \{[\s\S]*inset: -6px;/);
   assert.match(css, /\.lz-scene \{[\s\S]*container-type: inline-size;/);
   assert.match(css, /\.lz-scene \{[\s\S]*background: #050505;/);
   assert.doesNotMatch(css, /@container \(min-width: 900px\)[^{]*\{[^}]*\.lz-marquee-underlay/);
