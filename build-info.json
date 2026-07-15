@@ -1,10 +1,10 @@
 {
   "app": "tomatofarm",
-  "commit": "2c63b53b7d09cd7104d67ac3000a2a945296eb6a",
-  "shortCommit": "2c63b53b7d09",
-  "branch": "codex/tomatofarm-home-chat-20260715",
-  "deployedAt": "2026-07-15T05:31:11.865Z",
-  "cacheVersion": "tomatofarm-v20260715z10-home-chat",
+  "commit": "aa7993370a4b502a8c54b044871136e2178840ea",
+  "shortCommit": "aa7993370a4b",
+  "branch": "main",
+  "deployedAt": "2026-07-15T10:23:41.969Z",
+  "cacheVersion": "tomatofarm-v20260715z24-chat-font-ten",
   "runId": null,
   "runAttempt": null
 }
