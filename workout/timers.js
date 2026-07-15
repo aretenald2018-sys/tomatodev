@@ -509,7 +509,7 @@ export async function wtCheckWorkoutIdleLimit(now = Date.now()) {
   if (_workoutIdleFinishPromise) return _workoutIdleFinishPromise;
   _cancelWorkoutIdleFinishTimer();
   _workoutIdleFinishPromise = Promise.resolve(wtFinishWorkout({
-    endedAt: now,
+    endedAt: deadlineAt,
     endedBy: 'idle-limit',
   })).then(() => true).finally(() => {
     _workoutIdleFinishPromise = null;
@@ -685,13 +685,14 @@ export function wtTogglePauseWorkoutTimer() {
 export function wtFinishWorkout(options = {}) {
   _cancelWorkoutIdleFinishTimer();
   const endedBy = String(options.endedBy || 'manual');
+  const endedAt = Number(options.endedAt) || Date.now();
   const finalTimeline = closeWorkoutTimeline(S.workout, {
-    endedAt: options.endedAt,
+    endedAt,
     endedBy,
   }) || _syncWorkoutTimelineDuration();
   const finalDuration = finalTimeline.durationSec;
   if (S.workout.restTimer.running) {
-    _finalizeRestTimerRecord(endedBy === 'idle-limit' ? 'idle-limit' : 'finish');
+    _finalizeRestTimerRecord(endedBy === 'idle-limit' ? 'idle-limit' : 'finish', endedAt);
     _stopRestTimerUi();
   }
   S.workout.workoutStartTime = null;
@@ -766,7 +767,11 @@ if (typeof window !== 'undefined') {
   });
   if (typeof document !== 'undefined') {
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) wtPersistActiveWorkoutDraft('visibility hidden');
+      if (document.hidden) {
+        wtPersistActiveWorkoutDraft('visibility hidden');
+        return;
+      }
+      wtCheckWorkoutIdleLimit().catch(e => console.error('[workout idle visible] error:', e));
     });
   }
 }
@@ -893,10 +898,10 @@ function _writeActiveRestPlannedSec(total) {
   if (set?.restStartedAt) set.restPlannedSec = total;
 }
 
-function _finalizeRestTimerRecord(endedBy = 'skip') {
+function _finalizeRestTimerRecord(endedBy = 'skip', endedAt = Date.now()) {
   const set = _restSetFromOrigin(_activeRestOrigin());
   if (!set?.restStartedAt) return false;
-  const now = Date.now();
+  const now = Number(endedAt) || Date.now();
   const startedMs = Number(S.workout.restTimer.startedAt) || Date.parse(set.restStartedAt);
   const elapsedSec = Number.isFinite(startedMs)
     ? Math.max(0, Math.floor((now - startedMs) / 1000))
@@ -1017,6 +1022,10 @@ function _syncRestTimerFromNow() {
   if (S.workout.restTimer.remaining === 0 && !S.workout.restTimer.expiredNotified) {
     S.workout.restTimer.expiredNotified = true;
     if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+  }
+  const lastSetCompletedAt = Number(S.workout.workoutTimeline?.lastSetCompletedAt) || 0;
+  if (lastSetCompletedAt > 0 && Date.now() >= lastSetCompletedAt + _WORKOUT_IDLE_LIMIT_MS) {
+    wtCheckWorkoutIdleLimit().catch(e => console.error('[workout idle rest tick] error:', e));
   }
 }
 

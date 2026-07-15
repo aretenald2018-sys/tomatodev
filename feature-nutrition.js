@@ -13,7 +13,7 @@ import { canonicalNutritionDisplay, toCanonicalNutritionItem } from './diet/nutr
 import { setNutritionItemSavedHandler } from './diet/editor-events.js';
 import { getNutritionSearchMeal, setNutritionSearchMeal } from './diet/selection.js';
 import { openNutritionWeightModal } from './modals/nutrition-weight-modal.js';
-import { openNutritionItemEditor } from './modals/nutrition-item-modal.js';
+import { openNutritionItemEditor, switchNutritionTab } from './modals/nutrition-item-modal.js';
 
 // ── 상태 ──────────────────────────────────────────────────────────
 let _nutritionSearchCache = { db: [], csv: [], recent: [], raw: [], brand: [] };
@@ -288,12 +288,23 @@ export async function renderNutritionSearchResults() {
 //   레거시/OCR 경로로 unit 만 문자열로 들어온 아이템이 100g 로 잘못 덮어쓰이는 2차 원인.
 //   serializeForStorage 를 거친 저장은 servingSize 를 항상 세팅하지만, 구 버전 저장이나
 //   외부 import 경로에 대한 방어.
-export function openNutritionDirectAdd() {
+async function _openNutritionEditorTab(tab) {
+  await ensureModal('nutrition-item-modal');
+  closeModal('nutrition-search-modal');
+  await openNutritionItemEditor(null);
+  switchNutritionTab(tab);
+}
+
+export async function openNutritionDirectAdd() {
   setNutritionItemSavedHandler((savedItem) => {
     if (!savedItem) return;
     openNutritionWeightModal(toCanonicalNutritionItem(savedItem));
   });
-  openNutritionItemEditor(null);
+  await _openNutritionEditorTab('manual');
+}
+
+export async function openNutritionPhotoAdd() {
+  await _openNutritionEditorTab('photo');
 }
 
 // ── 즐겨찾기 제거 ─────────────────────────────────────────────────
@@ -430,7 +441,8 @@ function _bindNutritionActions(root = document) {
     if (!control) return;
     const action = control.dataset.nutritionAction;
     if (action === 'close-search') closeNutritionSearch(event);
-    if (action === 'open-direct-add') openNutritionDirectAdd();
+    if (action === 'open-direct-add') void openNutritionDirectAdd();
+    if (action === 'open-photo-add') void openNutritionPhotoAdd();
     if (action === 'remove-favorite') {
       event.stopPropagation();
       void removeFromFavorites(control.dataset.itemId || '');

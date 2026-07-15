@@ -34,7 +34,13 @@ import {
   deleteWorkoutSession,
 } from './workout/sessions.js';
 import { S } from './workout/state.js';
-import { wtReplaceActiveWorkoutDraftSession } from './workout/timers.js';
+import {
+  wtRefreshWorkoutTimelineDuration,
+  wtReplaceActiveWorkoutDraftSession,
+  wtRestTimerClearSetRecord,
+  wtRestTimerStart,
+} from './workout/timers.js';
+import { saveWorkoutDay } from './workout/save.js';
 import { destroyRunningMaps, renderRunningMap } from './workout/running-map.js';
 import { createRunningRouteHydrationController } from './workout/running-route-hydration.js';
 import {
@@ -911,6 +917,45 @@ export function applyWorkoutCalendarNavSnapshot(snapshot = {}, options = {}) {
 
 function _isTodayKey(key) {
   return key === dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+}
+
+function _clearWorkoutSheetSetRestMetadata(set) {
+  if (!set) return;
+  delete set.restStartedAt;
+  delete set.restPlannedSec;
+  delete set.restEndedAt;
+  delete set.restElapsedSec;
+  delete set.restOverSec;
+  delete set.restEndedBy;
+}
+
+async function _syncWorkoutRestAfterSheetSet(key, sessionIndex, exerciseIndex, setIndex, done) {
+  const activeSessionIndex = Math.max(0, Math.floor(Number(S.workout?.sessionIndex) || 0));
+  const targetSessionIndex = Math.max(0, Math.floor(Number(sessionIndex) || 0));
+  if (!_isTodayKey(key) || !_isSameWorkoutStateDate(key) || activeSessionIndex !== targetSessionIndex) return false;
+
+  const entryIdx = Math.max(0, Math.floor(Number(exerciseIndex) || 0));
+  const targetSetIndex = Math.max(0, Math.floor(Number(setIndex) || 0));
+  const entry = S.workout.exercises?.[entryIdx];
+  if (!entry?.sets?.[targetSetIndex]) return false;
+
+  if (done) {
+    wtRefreshWorkoutTimelineDuration('calendar sheet set done');
+    const exerciseName = entry.name || entry.exerciseName || entry.exerciseId || '운동';
+    wtRestTimerStart(null, `${exerciseName} ${targetSetIndex + 1}세트 후 휴식`, {
+      entryIdx,
+      setIdx: targetSetIndex,
+      exerciseId: entry.exerciseId || null,
+      exerciseName,
+      setNumber: targetSetIndex + 1,
+    });
+  } else {
+    wtRestTimerClearSetRecord(entryIdx, targetSetIndex);
+    wtRefreshWorkoutTimelineDuration('calendar sheet set undone');
+  }
+
+  await saveWorkoutDay({ silent: true });
+  return true;
 }
 
 function _sessionLabel(index) {
@@ -4586,14 +4631,17 @@ async function _removeWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseInd
 
 async function _toggleWorkoutExerciseSetDoneFromSheet(key, sessionIndex, exerciseIndex, setIndex) {
   try {
-    await _mutateWorkoutExerciseFromSheet(key, sessionIndex, exerciseIndex, (entry) => {
+    let savedDone = false;
+    const ok = await _mutateWorkoutExerciseFromSheet(key, sessionIndex, exerciseIndex, (entry) => {
       const sets = Array.isArray(entry.sets) ? entry.sets : [];
       const targetIndex = Math.max(0, Math.floor(Number(setIndex) || 0));
       while (sets.length <= targetIndex) sets.push(_defaultWorkoutSheetSet(sets[sets.length - 1]));
       const nextSet = { ...(sets[targetIndex] || _defaultWorkoutSheetSet(sets[sets.length - 1])) };
       const wasDone = nextSet.done === true;
       const nextDone = !wasDone;
+      savedDone = nextDone;
       nextSet.done = nextDone;
+      _clearWorkoutSheetSetRestMetadata(nextSet);
       if (nextDone) {
         nextSet.completedAt = Date.now();
         if (!Number.isFinite(Number(nextSet.romPct))) nextSet.romPct = 100;
@@ -4606,6 +4654,9 @@ async function _toggleWorkoutExerciseSetDoneFromSheet(key, sessionIndex, exercis
       clearWorkoutExerciseCompletionMarker(entry);
       return true;
     }, { preserveSheetScroll: true });
+    if (ok) {
+      await _syncWorkoutRestAfterSheetSet(key, sessionIndex, exerciseIndex, setIndex, savedDone);
+    }
   } catch (e) {
     console.warn('[workout-calendar] sheet set done toggle failed:', e);
     showToast('세트 완료 변경에 실패했어요', 2200, 'error');
@@ -4615,13 +4666,18 @@ async function _toggleWorkoutExerciseSetDoneFromSheet(key, sessionIndex, exercis
 async function _completeWorkoutExerciseFromSheet(cardId, key, sessionIndex, exerciseIndex) {
   try {
     let completedCount = 0;
+    let lastCompletedSetIndex = null;
     const ok = await _mutateWorkoutExerciseFromSheet(key, sessionIndex, exerciseIndex, (entry) => {
       const now = Date.now();
       const sets = Array.isArray(entry.sets) ? entry.sets : [];
-      const nextSets = sets.map((set) => {
+      const nextSets = sets.map((set, setIndex) => {
         const nextSet = { ...(set || {}) };
         if (!isCompletableWorkoutExerciseSet(nextSet)) return nextSet;
         completedCount += 1;
+        if (nextSet.done !== true) {
+          lastCompletedSetIndex = setIndex;
+          _clearWorkoutSheetSetRestMetadata(nextSet);
+        }
         nextSet.done = true;
         if (!Number.isFinite(Number(nextSet.completedAt))) nextSet.completedAt = now;
         if (!Number.isFinite(Number(nextSet.romPct))) nextSet.romPct = 100;
@@ -4637,6 +4693,9 @@ async function _completeWorkoutExerciseFromSheet(cardId, key, sessionIndex, exer
       return true;
     }, { preserveSheetScroll: true });
     if (!ok) return;
+    if (lastCompletedSetIndex != null) {
+      await _syncWorkoutRestAfterSheetSet(key, sessionIndex, exerciseIndex, lastCompletedSetIndex, true);
+    }
     if (_workoutEditingCardId === cardId) _workoutEditingCardId = null;
     _markWorkoutExerciseCompletionStamp(cardId);
     renderWorkoutCalendarHome();

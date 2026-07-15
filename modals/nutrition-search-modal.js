@@ -11,7 +11,7 @@ export const MODAL_HTML = `
       <div id="nutrition-search-results" style="max-height:300px;overflow-y:auto;-webkit-overflow-scrolling:touch;"></div>
       <div style="display:flex;gap:8px;margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
         <button data-nutrition-action="open-direct-add" style="flex:1;padding:10px;border:1px dashed var(--border);border-radius:12px;background:none;font-size:13px;font-weight:500;color:var(--primary);cursor:pointer;">직접 입력</button>
-        <button type="button" data-action="diet:open-nutrition-photo" style="flex:1;padding:10px;border:1px dashed var(--border);border-radius:12px;background:none;font-size:13px;font-weight:500;color:var(--text-secondary);cursor:pointer;">사진으로 등록</button>
+        <button type="button" data-nutrition-action="open-photo-add" style="flex:1;padding:10px;border:1px dashed var(--border);border-radius:12px;background:none;font-size:13px;font-weight:500;color:var(--text-secondary);cursor:pointer;">사진으로 등록</button>
       </div>
     </div>
   </div>

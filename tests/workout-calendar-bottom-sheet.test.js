@@ -806,7 +806,7 @@ test('day sheet save syncs saved session over stale active workout draft', () =>
   const syncFn = calendarJs.slice(syncStart, syncEnd);
 
   assert.match(calendarJs, /import \{ S \} from '\.\/workout\/state\.js'/);
-  assert.match(calendarJs, /import \{ wtReplaceActiveWorkoutDraftSession \} from '\.\/workout\/timers\.js'/);
+  assert.match(calendarJs, /import \{[\s\S]*?wtReplaceActiveWorkoutDraftSession[\s\S]*?\} from '\.\/workout\/timers\.js'/);
   assert.match(saveFn, /const savePromise = saveDay\(key, payload, \{ mode: 'merge', rethrow: true \}\)/);
   assert.match(saveFn, /const cache = getCache\(\) \|\| \{\}[\s\S]*cache\[key\] = \{ \.\.\.currentDay, \.\.\.payload \}/);
   assert.match(saveFn, /if \(options\?\.optimisticRender\)[\s\S]*_syncWorkoutHomeSavedSessionState\(key, result, options\.sessionIndex\)[\s\S]*await savePromise[\s\S]*return/);
