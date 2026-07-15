@@ -21,7 +21,7 @@ function readPngMeta(relativePath) {
   };
 }
 
-test('home tomato hero uses an imagegen isometric marquee inside the left half card', () => {
+test('home tomato hero mounts the imagegen marquee into the upper-left dark frame', () => {
   const tomato = readText('home/tomato.js');
   const lifeZone = readText('home/life-zone.js');
   const index = readText('index.html');
@@ -46,13 +46,14 @@ test('home tomato hero uses an imagegen isometric marquee inside the left half c
   assert.doesNotMatch(lifeZone, /data-lz-names/);
 
   assert.match(css, /\.home-hero--integrated \{ display: none; \}/);
-  assert.match(css, /\.lz-iso-marquee \{[\s\S]*width: min\(50%, 220px\);[\s\S]*aspect-ratio: 1\.55;[\s\S]*border-radius: 18px;/);
-  assert.match(css, /\.lz-iso-marquee-art \{[\s\S]*object-fit: cover;[\s\S]*object-position: center top;/);
-  assert.match(css, /\.lz-iso-marquee-panel \{[\s\S]*left: 14%;[\s\S]*top: 46%;[\s\S]*width: 80%;[\s\S]*transform: skewY\(-14\.5deg\);/);
+  assert.match(css, /\.lz-iso-marquee \{[\s\S]*top: 3px;[\s\S]*width: min\(52%, 236px\);[\s\S]*background: transparent;[\s\S]*drop-shadow\(2px 4px 0/);
+  assert.match(css, /\.lz-iso-marquee-art \{[\s\S]*object-fit: contain;/);
+  assert.match(css, /\.lz-iso-marquee-panel \{[\s\S]*left: 14%;[\s\S]*top: 35%;[\s\S]*width: 80%;[\s\S]*transform: skewY\(-14\.5deg\);/);
+  assert.match(css, /\.lz-iso-marquee-panel \{[\s\S]*background: rgba\(20,0,0,\.42\);/);
   assert.match(css, /\.tf-hero \{[\s\S]*min-height: 58px;[\s\S]*padding: 8px 38px 8px 14px;/);
-  assert.match(css, /\.lz-iso-marquee \.tf-hero-count \{[\s\S]*font-size: 15px;[\s\S]*letter-spacing: 0;/);
-  assert.match(css, /\.lz-iso-marquee \.tf-hero-character \{[\s\S]*width: 24px;[\s\S]*height: 24px;/);
-  assert.match(css, /\.lz-iso-marquee \.tf-hero-info-btn \{[\s\S]*top: 2px;[\s\S]*right: 2px;/);
+  assert.match(css, /\.lz-iso-marquee \.tf-hero-count \{[\s\S]*font-size: 26px;[\s\S]*-webkit-text-stroke: \.7px #71180e;/);
+  assert.match(css, /\.lz-iso-marquee \.tf-hero-character \{[\s\S]*width: 31px;[\s\S]*height: 31px;/);
+  assert.match(css, /\.lz-iso-marquee \.tf-hero-info-btn \{[\s\S]*top: 3px;[\s\S]*right: 3px;/);
   assert.match(runtimeAssets, /\.\/assets\/home\/life-zone\/ui\/streak-marquee-iso-card-v1\.png/);
   assert.deepEqual(readPngMeta('assets/home/life-zone/ui/streak-marquee-iso-card-v1.png'), {
     width: 1034,
