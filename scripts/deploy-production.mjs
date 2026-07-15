@@ -2,11 +2,17 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  TOMATOFARM_BRANCH,
+  TOMATOFARM_PAGES_URL,
+  TOMATOFARM_REMOTE,
+  assertTomatofarmPushTarget,
+} from './repository-boundary.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const baseUrl = process.argv[2] || process.env.PRODUCTION_URL || 'https://aretenald2018-sys.github.io/tomatofarm/';
-const remote = process.env.PRODUCTION_REMOTE || 'origin';
-const remoteRef = process.env.PRODUCTION_REMOTE_REF || 'main';
+const baseUrl = TOMATOFARM_PAGES_URL;
+const remote = TOMATOFARM_REMOTE;
+const remoteRef = TOMATOFARM_BRANCH;
 const buildInfoPath = path.join(root, 'build-info.json');
 
 function run(command, args, options = {}) {
@@ -54,6 +60,8 @@ function readCacheVersion() {
   return sw.match(/CACHE_VERSION\s*=\s*['"]([^'"]+)['"]/)?.[1] || '';
 }
 
+const remoteUrl = git(['remote', 'get-url', remote]);
+assertTomatofarmPushTarget(remote, remoteUrl);
 assertCleanTrackedTree();
 
 const head = git(['rev-parse', 'HEAD']);
