@@ -1468,111 +1468,104 @@ body {
 }
 
 /* ── Home Chat ── */
-.home-chat-card {
-  position: relative; overflow: hidden; padding: 0;
-  border: 1px solid #4a5361; border-radius: 10px;
-  background: #161b23;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03), 0 4px 12px rgba(9,12,17,0.18);
+#card-chat.home-chat-card {
+  position: relative; z-index: 3; overflow: hidden; padding: 0; margin-top: -8%;
+  border: 0; border-top: 1px solid rgba(250, 52, 44, 0.24); border-radius: 0;
+  background: linear-gradient(180deg, rgba(20, 20, 20, 0.82), rgba(10, 10, 10, 0.92));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  -webkit-backdrop-filter: blur(12px) saturate(1.05);
+  backdrop-filter: blur(12px) saturate(1.05);
 }
-.home-chat-card::before {
-  content: ''; position: absolute; z-index: 2; inset: 0 0 auto; height: 2px;
-  background: linear-gradient(90deg, transparent, #d8b36a 20%, #f2d797 50%, #d8b36a 80%, transparent);
+:root.light #card-chat.home-chat-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(247, 248, 250, 0.94));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.72);
+}
+#card-chat.home-chat-card::before {
+  content: ''; position: absolute; z-index: 2; inset: 0 0 auto; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(250, 52, 44, 0.54), transparent);
   pointer-events: none;
 }
-.home-chat-header {
-  min-height: 42px; margin: 0; padding: 8px 11px 7px;
-  border-bottom: 1px solid rgba(214,184,119,0.3);
-  background: linear-gradient(180deg, #252c37 0%, #1c222c 100%);
+.home-chat-notices:empty { display: none; }
+.home-chat-notices {
+  position: relative; z-index: 1; max-height: 84px; overflow-y: auto;
+  padding: 7px 10px 6px;
+  border-bottom: 1px solid rgba(250, 52, 44, 0.14);
+  background: linear-gradient(90deg, rgba(250, 52, 44, 0.12), rgba(250, 52, 44, 0.035));
+  scrollbar-color: var(--text-tertiary) transparent; scrollbar-width: thin;
 }
-.home-chat-title-group { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
-.home-chat-eyebrow {
-  color: #d9b66f; font-size: 9px; font-weight: 900; letter-spacing: 0.12em;
-}
-.home-chat-title { color: #f6f1e8; font-size: 13px; font-weight: 800; }
-.home-chat-status {
-  display: inline-flex; align-items: center; gap: 5px;
-  color: #8b95a4; font-size: 10px; font-weight: 700;
-}
-.home-chat-status::before {
-  content: ''; width: 5px; height: 5px; border-radius: 50%;
-  background: #747f8f; box-shadow: 0 0 5px currentColor;
-}
-.home-chat-status.is-connected { color: #7fd09a; }
-.home-chat-status.is-connected::before { background: #55c67d; }
-.home-chat-status.is-error { color: #ff8b82; }
-.home-chat-status.is-error::before { background: #ff6c63; }
 .home-chat-list {
   display: grid; align-content: end;
-  min-height: 148px; max-height: 230px; overflow-y: auto;
-  overscroll-behavior: contain; padding: 10px 11px 8px;
+  min-height: 130px; max-height: 224px; overflow-y: auto;
+  overscroll-behavior: contain; padding: 8px 10px 7px;
   background:
-    linear-gradient(180deg, rgba(8,12,18,0.2), rgba(8,12,18,0.76)),
-    repeating-linear-gradient(0deg, transparent 0 23px, rgba(255,255,255,0.015) 23px 24px);
-  scroll-behavior: smooth; scrollbar-color: #5d6776 transparent; scrollbar-width: thin;
+    linear-gradient(180deg, transparent, rgba(0,0,0,0.08)),
+    repeating-linear-gradient(0deg, transparent 0 25px, rgba(128,128,128,0.025) 25px 26px);
+  scroll-behavior: smooth; scrollbar-color: var(--text-tertiary) transparent; scrollbar-width: thin;
 }
+:root.light .home-chat-list { background: linear-gradient(180deg, transparent, rgba(78,89,104,0.04)); }
 .home-chat-empty {
-  min-height: 128px; display: flex; align-items: flex-end; justify-content: flex-start;
-  color: #7f8a99; font-size: 11px; text-align: left;
+  min-height: 112px; display: flex; align-items: center; justify-content: center;
+  color: var(--text-tertiary); font-size: 11px; text-align: left;
 }
 .home-chat-message {
   display: grid; grid-template-columns: auto minmax(34px, auto) minmax(0, 1fr) auto;
-  align-items: baseline; gap: 5px; min-height: 23px; padding: 3px 0;
-  color: #d9dee6; font-size: 11px; line-height: 1.45;
+  align-items: baseline; column-gap: 5px; min-height: 25px; padding: 3px 0;
+  color: var(--text); font-size: 11px; line-height: 1.55;
 }
-.home-chat-channel { color: #d9b66f; font-size: 10px; font-weight: 800; white-space: nowrap; }
+.home-chat-channel { color: var(--primary); font-size: 10px; font-weight: 800; white-space: nowrap; }
 .home-chat-author {
-  max-width: 76px; overflow: hidden; color: #8fc9ff; font-weight: 800;
+  max-width: 76px; overflow: hidden; color: var(--text-secondary); font-weight: 800;
   text-overflow: ellipsis; white-space: nowrap;
 }
+.home-chat-author::after { content: ':'; margin-left: 2px; color: var(--text-tertiary); }
 .home-chat-bubble {
-  min-width: 0; color: #e7eaf0; white-space: pre-wrap; overflow-wrap: anywhere;
+  min-width: 0; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere;
 }
-.home-chat-message.is-mine .home-chat-author { color: #8fe0b0; }
+.home-chat-message.is-mine .home-chat-author { color: var(--primary); }
 .home-chat-message.is-notice {
-  margin: 2px -5px; padding: 4px 5px;
-  border-left: 2px solid #f26b61; background: rgba(181,48,40,0.12);
+  min-height: 26px; padding: 2px 0;
 }
 .home-chat-message.is-notice .home-chat-channel,
-.home-chat-message.is-notice .home-chat-author,
-.home-chat-message.is-notice .home-chat-bubble { color: #ff9189; font-weight: 800; }
+.home-chat-message.is-notice .home-chat-author { color: var(--primary); }
+.home-chat-message.is-notice .home-chat-bubble { color: var(--text); font-weight: 700; }
 .home-chat-tail { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
-.home-chat-time { color: #6f7a89; font-size: 9px; font-variant-numeric: tabular-nums; }
+.home-chat-time { color: var(--text-tertiary); font-size: 9px; font-variant-numeric: tabular-nums; }
 .home-chat-delete {
-  border: 0; padding: 0; background: transparent; color: #8993a1;
-  font: inherit; font-size: 9px; text-decoration: underline; cursor: pointer;
+  border: 0; padding: 0; background: transparent; color: var(--text-tertiary);
+  font: inherit; font-size: 9px; cursor: pointer;
 }
-.home-chat-delete:hover, .home-chat-delete:focus-visible { color: #ff9189; }
+.home-chat-delete:hover, .home-chat-delete:focus-visible { color: var(--primary); text-decoration: underline; }
 .home-chat-delete:disabled { opacity: 0.4; cursor: default; }
 .home-chat-form {
-  display: flex; align-items: center; gap: 7px; margin: 0; padding: 8px 9px;
-  border-top: 1px solid rgba(214,184,119,0.24); background: #11161d;
+  display: flex; align-items: center; gap: 6px; margin: 0; padding: 7px 8px 8px;
+  border-top: 1px solid var(--border); background: rgba(20, 20, 20, 0.72);
 }
-.home-chat-prompt { color: #d9b66f; font-size: 20px; font-weight: 800; line-height: 1; }
+:root.light .home-chat-form { background: rgba(255, 255, 255, 0.72); }
+.home-chat-channel-select {
+  flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+  height: 32px; padding: 0 8px; border: 1px solid rgba(250,52,44,0.24); border-radius: var(--radius-sm);
+  background: var(--primary-bg); color: var(--primary); font-size: 10px; font-weight: 800;
+}
 .home-chat-input {
-  min-width: 0; flex: 1; height: 34px; padding: 0 10px;
-  border: 1px solid #3d4653; border-radius: 3px;
-  background: #202731; color: #f4f6f8; font: inherit; font-size: 11px;
+  min-width: 0; flex: 1; height: 32px; padding: 0 9px;
+  border: 1px solid var(--border-light); border-radius: var(--radius-sm);
+  background: rgba(28, 28, 30, 0.74); color: var(--text); font: inherit; font-size: 11px;
   outline: none; transition: border-color var(--transition), box-shadow var(--transition);
 }
+:root.light .home-chat-input { background: rgba(255, 255, 255, 0.82); }
 .home-chat-input:focus {
-  border-color: #c9a863;
-  box-shadow: 0 0 0 2px rgba(201,168,99,0.15);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(250,52,44,0.12);
 }
-.home-chat-input::placeholder { color: #6f7a89; }
+.home-chat-input::placeholder { color: var(--text-tertiary); }
 .home-chat-send {
-  flex: 0 0 auto; height: 34px; padding: 0 13px;
-  border: 1px solid #b69451; border-radius: 3px;
-  background: linear-gradient(180deg, #b9944d, #81652f);
-  color: #fff8e7; font: inherit; font-size: 11px; font-weight: 800; cursor: pointer;
-  text-shadow: 0 1px 1px rgba(0,0,0,0.35);
+  flex: 0 0 auto; height: 32px; padding: 0 11px;
+  border: 1px solid var(--primary); border-radius: var(--radius-sm);
+  background: var(--primary);
+  color: #fff; font: inherit; font-size: 11px; font-weight: 800; cursor: pointer;
 }
 .home-chat-send:active { transform: scale(0.97); }
 .home-chat-send:disabled { cursor: default; opacity: 0.5; transform: none; }
-.home-chat-hint {
-  display: flex; justify-content: space-between; gap: 8px; padding: 0 10px 8px;
-  background: #11161d; color: #6f7a89; font-size: 9px;
-}
-.home-chat-hint b { color: #bfa469; }
 
 /* ══════════════════════════════════════════════════════════════════
    Quest (Common)
@@ -15590,328 +15583,6 @@ body.lz-running-record-modal-open {
     transform: translateY(2px);
     filter: drop-shadow(0 0 8px rgba(47, 109, 246, 0.82));
   }
-}
-
-/* SOURCE: styles/features/seasons.css */
-/* Workout seasons: calendar hierarchy, setup wizard, archived-plan tone. */
-.cal-season-control {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0 10px 10px;
-  padding: 11px 12px;
-  border: 1px solid #dfe5eb;
-  border-radius: 13px;
-  background: linear-gradient(135deg, #f7fbff, #f7f8fa);
-}
-.cal-season-control > div { min-width: 0; display: grid; gap: 2px; }
-.cal-season-control span { color: #51738e; font-size: 9px; font-weight: 800; letter-spacing: .08em; }
-.cal-season-control strong { color: #20303d; font-size: 13px; line-height: 1.25; }
-.cal-season-control small { color: #687784; font-size: 10px; }
-.cal-season-control button {
-  min-width: 76px;
-  min-height: 38px;
-  padding: 0 12px;
-  border: 1px solid #b8ccdc;
-  border-radius: 11px;
-  background: #fff;
-  color: #315f80;
-  font-size: 11px;
-  font-weight: 800;
-}
-.cal-season-control.needs-season { border-color: #edc4bf; background: #fff8f6; }
-.cal-season-control.needs-season span,
-.cal-season-control.needs-season button { color: #a54a40; }
-.cal-season-control.needs-season button { border-color: #e6b6b0; }
-
-.cal-workout-surface-home .cal-workout-cell-season-archived {
-  background: #f6f7f9;
-  border-color: #e6e8eb;
-}
-.cal-workout-surface-home .cal-workout-cell-season-archived .cal-cell-date { color: #858d96; }
-.cal-workout-surface-home .cal-workout-cell-season-archived .cal-workout-dot { background: #b6bdc4; }
-.cal-workout-surface-home .cal-workout-cell-season-archived .cal-workout-bar {
-  border-color: #dfe3e7;
-  background: #e8ebee;
-  color: #69727b;
-}
-.cal-workout-surface-home .cal-workout-cell-season-archived .cal-workout-bar-time {
-  border-left-color: #aeb5bc;
-  color: #68717a;
-}
-.cal-workout-surface-home .cal-workout-cell-season-archived .cal-workout-cell-kcal,
-.cal-workout-surface-home .cal-workout-cell-season-archived .cal-workout-rest-mark { color: #969da5; }
-.cal-workout-surface-home .cal-workout-cell-season-archived.cal-workout-cell-selected {
-  border-color: #2f73c9;
-  box-shadow: inset 0 0 0 1px #2f73c9;
-  background: #f5f9ff;
-}
-.cal-workout-surface-home .cal-workout-cell-season-archived.cal-workout-cell-selected .cal-cell-date { color: #235d9f; }
-.cal-workout-cell-season-start { box-shadow: inset 2px 0 0 #e0574f; }
-.cal-season-start-label {
-  display: block;
-  width: max-content;
-  max-width: 100%;
-  margin: 1px 2px 2px;
-  padding: 1px 3px;
-  border-radius: 4px;
-  background: #fff0ed;
-  color: #a9473e;
-  font-size: 8px;
-  font-weight: 800;
-  line-height: 1.2;
-}
-.cal-workout-week-rail.is-season-archived { --cal-cycle-rail-color: #c6cbd0; background: #f4f5f7; }
-.cal-workout-week-rail.is-season-archived .cal-cycle-branch {
-  border-color: #d6dade;
-  background: #e7eaed;
-  color: #69727a;
-}
-.cal-workout-week-rail.is-season-archived .cal-cycle-branch-target,
-.cal-workout-week-rail.is-season-archived .cal-cycle-branch-week { color: #737b83; }
-.cal-day-season-badge {
-  display: inline-flex;
-  width: max-content;
-  margin-left: 6px;
-  padding: 2px 5px;
-  border-radius: 999px;
-  background: #e8f2fb;
-  color: #326889;
-  font-size: 9px;
-  font-style: normal;
-  font-weight: 800;
-  vertical-align: 2px;
-}
-.cal-day-season-badge.is-archived { background: #eceef0; color: #666e76; }
-
-.workout-season-modal { z-index: 10080; align-items: flex-end; }
-.workout-season-sheet {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  width: min(680px, 100%);
-  max-height: min(92dvh, 860px);
-  margin: auto auto 0;
-  padding: 0;
-  overflow: hidden;
-  border-radius: 20px 20px 0 0;
-  background: #fff;
-}
-.season-sheet-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 17px 18px 11px;
-  border-bottom: 1px solid #eceff2;
-}
-.season-sheet-head > div { display: grid; gap: 2px; }
-.season-sheet-head span { color: #8a4c45; font-size: 9px; font-weight: 900; letter-spacing: .11em; }
-.season-sheet-head h2 { margin: 0; color: #20262c; font-size: 20px; }
-.season-sheet-head button {
-  width: 40px;
-  height: 40px;
-  border: 0;
-  border-radius: 50%;
-  background: #f1f3f5;
-  color: #59616a;
-  font-size: 25px;
-}
-.season-stepper {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 3px;
-  padding: 10px 14px 8px;
-  overflow-x: auto;
-  border-bottom: 1px solid #eef0f2;
-}
-.season-stepper span {
-  display: grid;
-  justify-items: center;
-  gap: 3px;
-  min-width: 45px;
-  color: #9299a1;
-  font-size: 9px;
-  white-space: nowrap;
-}
-.season-stepper b {
-  display: grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #eceff2;
-  color: #78818a;
-  font-size: 10px;
-}
-.season-stepper .is-current { color: #a54a40; font-weight: 800; }
-.season-stepper .is-current b { background: #d9574d; color: #fff; }
-.season-stepper .is-done b { background: #dcebdc; color: #367044; }
-.season-sheet-body { flex: 1; min-height: 260px; padding: 18px; overflow-y: auto; overscroll-behavior: contain; }
-.season-step-copy { margin-bottom: 16px; }
-.season-step-copy strong { display: block; color: #222b32; font-size: 17px; }
-.season-step-copy p { margin: 5px 0 0; color: #68737d; font-size: 12px; line-height: 1.5; }
-.season-existing-list { display: flex; gap: 6px; margin: -5px 0 14px; overflow-x: auto; }
-.season-existing-list span,
-.season-empty-copy { flex: none; margin: 0 0 14px; padding: 7px 9px; border-radius: 8px; background: #f2f4f6; color: #69717a; font-size: 10px; }
-.season-field-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.season-field-row-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.season-field { display: grid; gap: 5px; margin-bottom: 12px; }
-.season-field span { color: #69727b; font-size: 10px; font-weight: 700; }
-.season-field input,
-.season-field select,
-.season-track-row input {
-  width: 100%;
-  min-height: 42px;
-  box-sizing: border-box;
-  padding: 0 10px;
-  border: 1px solid #d8dde2;
-  border-radius: 10px;
-  background: #fff;
-  color: #222b32;
-  font: inherit;
-  font-size: 13px;
-}
-.season-mapping-alert { display: grid; gap: 8px; margin: -3px 0 16px; padding: 12px; border: 1px solid #efb7ae; border-radius: 12px; background: #fff5f2; }
-.season-mapping-alert > strong { color: #8f3f36; font-size: 13px; }
-.season-mapping-alert > p { margin: -3px 0 2px; color: #7d625e; font-size: 10px; line-height: 1.45; }
-.season-mapping-alert > label { display: grid; grid-template-columns: minmax(90px, .8fr) minmax(0, 1.4fr); align-items: center; gap: 8px; }
-.season-mapping-alert > label > span { overflow: hidden; color: #633f3a; font-size: 11px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
-.season-mapping-alert select { width: 100%; min-height: 40px; padding: 0 9px; border: 1px solid #dfb3ac; border-radius: 9px; background: #fff; color: #2e3439; font: inherit; font-size: 11px; }
-.season-exercise-tabs {
-  display: flex;
-  gap: 3px;
-  margin: -3px -18px 15px;
-  padding: 0 12px;
-  overflow-x: auto;
-  border-bottom: 1px solid #e7eaed;
-  scrollbar-width: none;
-}
-.season-exercise-tabs::-webkit-scrollbar { display: none; }
-.season-exercise-tabs button {
-  position: relative;
-  flex: 1 0 64px;
-  display: grid;
-  justify-items: center;
-  gap: 2px;
-  min-height: 48px;
-  padding: 7px 8px 9px;
-  border: 0;
-  background: transparent;
-  color: #59636c;
-}
-.season-exercise-tabs button::after {
-  position: absolute;
-  right: 8px;
-  bottom: 0;
-  left: 8px;
-  height: 3px;
-  border-radius: 999px 999px 0 0;
-  background: transparent;
-  content: '';
-}
-.season-exercise-tabs button span { font-size: 12px; font-weight: 800; white-space: nowrap; }
-.season-exercise-tabs button small { color: #979ea5; font-size: 8px; }
-.season-exercise-tabs button.is-active { color: #d74f47; }
-.season-exercise-tabs button.is-active::after { background: #df554c; }
-.season-exercise-tabs button.is-active small { color: #b65a53; }
-.season-exercise-group { display: grid; gap: 8px; }
-.season-exercise-group > header { display: flex; align-items: center; justify-content: space-between; padding: 0 2px; }
-.season-exercise-group > header strong { color: #313a42; font-size: 14px; }
-.season-exercise-group > header span { color: #8a9299; font-size: 10px; }
-.season-exercise-list { display: grid; gap: 8px; }
-.season-exercise-card { overflow: hidden; border: 1px solid #dfe3e7; border-radius: 12px; background: #fff; transition: border-color .16s ease, background .16s ease; }
-.season-exercise-card > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; padding: 7px 10px; }
-.season-exercise-card > header > label { display: flex; min-width: 0; align-items: center; gap: 10px; }
-.season-exercise-card > header input[type="checkbox"] { flex: none; width: 18px; height: 18px; accent-color: #d9574d; }
-.season-exercise-card > header label > span { min-width: 0; display: grid; gap: 2px; }
-.season-exercise-card > header b { overflow: hidden; color: #28323a; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
-.season-exercise-card > header small { color: #78818a; font-size: 9px; }
-.season-exercise-card > header em { flex: none; padding: 3px 7px; border-radius: 999px; background: #eef3f6; color: #5d707d; font-size: 9px; font-style: normal; font-weight: 900; }
-.season-exercise-card > header em.is-wendler { background: #fff0ed; color: #a9473e; }
-.season-exercise-card.is-disabled { background: #f5f6f7; }
-.season-exercise-card.is-disabled .season-card-settings { opacity: .48; }
-.season-card-settings { border-top: 1px solid #edf0f2; background: #fafbfc; transition: opacity .16s ease; }
-.season-goal-row { display: grid; grid-template-columns: minmax(82px, .8fr) minmax(104px, 1fr) minmax(106px, 1fr); align-items: end; gap: 7px; padding: 8px 10px 10px; }
-.season-compact-field { display: grid; min-width: 0; gap: 4px; }
-.season-compact-field > span:first-child { color: #66717a; font-size: 9px; font-weight: 800; }
-.season-compact-field select {
-  width: 100%;
-  min-height: 38px;
-  box-sizing: border-box;
-  padding: 0 25px 0 8px;
-  border: 1px solid #d8dde2;
-  border-radius: 9px;
-  background: #fff;
-  color: #303940;
-  font: inherit;
-  font-size: 11px;
-  font-weight: 700;
-}
-.season-program-field select { color: #8d463f; }
-.season-input-unit { display: flex; align-items: center; min-height: 38px; padding: 0 8px; border: 1px solid #d8dde2; border-radius: 9px; background: #fff; }
-.season-input-unit input { min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; color: #222b32; font: inherit; font-size: 13px; }
-.season-input-unit b { color: #7b848c; font-size: 10px; }
-.season-wendler-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
-.season-wendler-summary span { display: grid; gap: 2px; min-height: 38px; place-content: center; border: 1px solid #ead8d5; border-radius: 9px; background: #fff; color: #8b6d69; font-size: 8px; text-align: center; }
-.season-wendler-summary b { color: #9c453e; font-size: 11px; }
-.season-wendler-open { min-height: 38px; padding: 0 7px; border: 1px solid #d9574d; border-radius: 9px; background: #fff2ef; color: #a9473e; font-size: 10px; font-weight: 900; }
-.season-goal-row :disabled { cursor: default; }
-
-.season-wendler-editor-backdrop { position: absolute; inset: 0; z-index: 5; display: flex; align-items: flex-end; background: rgba(25, 29, 33, .46); }
-.season-wendler-editor { display: flex; flex-direction: column; width: 100%; max-height: 94%; overflow: hidden; border-radius: 19px 19px 0 0; background: #fff; box-shadow: 0 -12px 35px rgba(24, 29, 34, .18); }
-.season-wendler-editor > header { display: flex; align-items: center; justify-content: space-between; padding: 15px 17px 11px; border-bottom: 1px solid #eaedef; }
-.season-wendler-editor > header > div { display: grid; gap: 2px; }
-.season-wendler-editor > header span { color: #9d4b43; font-size: 8px; font-weight: 900; letter-spacing: .1em; }
-.season-wendler-editor > header h3 { margin: 0; color: #222b32; font-size: 18px; }
-.season-wendler-editor > header button { width: 38px; height: 38px; border: 0; border-radius: 50%; background: #f1f3f5; color: #59616a; font-size: 23px; }
-.season-wendler-editor-body { flex: 1; padding: 14px 17px; overflow-y: auto; }
-.season-wendler-exercise { display: flex; align-items: baseline; gap: 6px; margin-bottom: 12px; padding: 9px 10px; border-radius: 9px; background: #eff7f2; }
-.season-wendler-exercise span { color: #658171; font-size: 9px; font-weight: 800; }
-.season-wendler-exercise strong { color: #285e43; font-size: 12px; }
-.season-wendler-exercise small { min-width: 0; overflow: hidden; color: #83a091; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
-.season-ten-rm-box { display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, .55fr); align-items: end; gap: 12px; margin: 2px 0 11px; padding: 11px; border: 1px solid #ebd1cd; border-radius: 11px; background: #fff7f5; }
-.season-ten-rm-box > div { display: grid; gap: 3px; }
-.season-ten-rm-box > div strong { color: #853d36; font-size: 12px; }
-.season-ten-rm-box > div small { color: #876e6b; font-size: 9px; line-height: 1.45; }
-.season-ten-rm-box > label { display: grid; gap: 4px; }
-.season-ten-rm-box > label > span:first-child { color: #725b58; font-size: 9px; font-weight: 800; }
-.season-wendler-calc { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 9px; margin-bottom: 13px; }
-.season-wendler-calc span { display: grid; justify-items: center; gap: 3px; padding: 9px; border-radius: 10px; background: #f3f5f7; color: #747d85; font-size: 9px; }
-.season-wendler-calc strong { color: #28323a; font-size: 15px; }
-.season-wendler-calc i { color: #acb2b8; font-size: 14px; font-style: normal; }
-.season-wendler-editor-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.season-wendler-note { margin: 0; padding: 9px 10px; border-radius: 9px; background: #f5f7f8; color: #68737c; font-size: 9px; line-height: 1.5; }
-.season-wendler-editor > footer { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; padding: 11px 15px max(11px, env(safe-area-inset-bottom)); border-top: 1px solid #e9ecef; background: #fff; }
-.season-wendler-editor > footer button { min-height: 46px; border-radius: 11px; font-size: 12px; font-weight: 900; }
-.season-program-list { display: grid; gap: 10px; }
-.season-program-card { padding: 12px; border: 1px solid #e0e4e8; border-radius: 12px; background: #fafbfc; }
-.season-program-card header { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
-.season-program-card header strong { color: #28323a; font-size: 13px; }
-.season-program-card header span { color: #9a5048; font-size: 9px; font-weight: 800; }
-.season-track-row { display: grid; grid-template-columns: 55px 1fr 1fr; align-items: end; gap: 8px; margin-top: 8px; }
-.season-track-row > b { align-self: center; color: #525d66; font-size: 11px; }
-.season-track-row label { color: #78818a; font-size: 9px; }
-.season-track-row input { min-height: 38px; margin-top: 3px; }
-.season-impact-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
-.season-impact-grid section { display: grid; gap: 4px; min-height: 82px; padding: 12px; border: 1px solid #e0e4e8; border-radius: 12px; background: #fafbfc; }
-.season-impact-grid span { color: #9a5048; font-size: 9px; font-weight: 900; }
-.season-impact-grid strong { color: #263039; font-size: 14px; }
-.season-impact-grid small { color: #717b84; font-size: 10px; line-height: 1.4; }
-.season-final-note { margin-top: 12px; padding: 10px 11px; border-radius: 10px; background: #fff2ef; color: #88433c; font-size: 11px; }
-.season-sheet-actions { display: grid; grid-template-columns: 1fr 2fr; gap: 9px; padding: 12px 16px max(12px, env(safe-area-inset-bottom)); border-top: 1px solid #e9ecef; background: #fff; }
-.season-sheet-actions button { min-height: 48px; border-radius: 12px; font-size: 13px; font-weight: 800; }
-.season-secondary { border: 1px solid #d8dde2; background: #fff; color: #59636c; }
-.season-primary { border: 0; background: #d9574d; color: #fff; }
-.season-primary:disabled { background: #c5c9cd; }
-
-@media (max-width: 520px) {
-  .season-field-row-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .season-sheet-body { padding: 15px; }
-  .season-exercise-tabs { margin-right: -15px; margin-left: -15px; }
-  .season-goal-row { grid-template-columns: minmax(76px, .78fr) minmax(96px, 1fr) minmax(96px, 1fr); }
-  .season-wendler-editor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .season-wendler-editor-grid .season-field:first-child { grid-column: 1 / -1; }
 }
 
 /* SOURCE: styles/features/workout-day-sheet.css */

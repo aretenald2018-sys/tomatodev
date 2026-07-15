@@ -1,10 +1,10 @@
 {
   "app": "tomatofarm",
-  "commit": "238e4d81ebd9e2f63fba6a8340b7048f8a2f6d00",
-  "shortCommit": "238e4d81ebd9",
-  "branch": "codex/dashboard3-season-widget-20260715",
-  "deployedAt": "2026-07-15T04:58:27.199Z",
-  "cacheVersion": "tomatofarm-v20260715z8-home-chat",
+  "commit": "2c63b53b7d09cd7104d67ac3000a2a945296eb6a",
+  "shortCommit": "2c63b53b7d09",
+  "branch": "codex/tomatofarm-home-chat-20260715",
+  "deployedAt": "2026-07-15T05:31:11.865Z",
+  "cacheVersion": "tomatofarm-v20260715z10-home-chat",
   "runId": null,
   "runAttempt": null
 }

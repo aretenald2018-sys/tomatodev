@@ -219,8 +219,6 @@ export let _settings = {
   streak_freezes: [],
   expert_preset:   { ...DEFAULT_EXPERT_PRESET },
   max_cycle: null,
-  test_board_v2: null,
-  season_registry: { schemaVersion: 2, seasons: [] },
   exercise_catalog_seed: null,
   diet_premium_report_inbox: null,
   diet_premium_report_seen: {},

@@ -821,7 +821,10 @@ export function renderTomatoCard() {
 
   document.getElementById('tf-meal-card')?.remove();
   document.getElementById('tf-weight-card')?.remove();
-  document.getElementById('tf-life-zone-card')?.remove();
+  const existingLifeZoneCard = document.getElementById('tf-life-zone-card');
+  const chatCard = document.getElementById('card-chat');
+  if (existingLifeZoneCard?.contains(chatCard)) existingLifeZoneCard.after(chatCard);
+  existingLifeZoneCard?.remove();
   document.getElementById('tf-life-zone-summary')?.remove();
 
   const homeHero = document.getElementById('home-hero');
@@ -863,6 +866,7 @@ export function renderTomatoCard() {
       characterSvg
     }
   });
+  if (chatCard) lifeZoneCard.append(chatCard);
   const summaryCard = renderLifeZoneSummary({
     totalIntake,
     todayTarget,
@@ -874,9 +878,7 @@ export function renderTomatoCard() {
     onWeightClick: () => openCheckinModal()
   });
   homeHero.after(lifeZoneCard);
-  const chatCard = document.getElementById('card-chat');
-  if (chatCard) chatCard.after(summaryCard);
-  else lifeZoneCard.after(summaryCard);
+  lifeZoneCard.after(summaryCard);
   document.getElementById('tomato-rule-info-card')?.addEventListener('click', _showTomatoRuleTooltip);
   hydrateLifeZoneCard(lifeZoneCard);
 }
