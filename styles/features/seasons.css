@@ -317,10 +317,13 @@
 .season-goal-toggle button { min-height: 38px; border: 1px solid #d8dde2; border-radius: 9px; background: #fff; color: #66717a; font-size: 10px; font-weight: 800; }
 .season-goal-toggle button.is-active { border-color: #d9574d; background: #d9574d; color: #fff; }
 .season-race-time-row { display: grid; grid-template-columns: minmax(120px, .65fr) minmax(0, 1fr); align-items: stretch; gap: 8px; }
-.season-race-time-row .season-field { margin: 0; }
-.season-race-time-row > div { display: grid; align-content: center; gap: 3px; padding: 8px 10px; border-radius: 10px; background: #f3f5f7; }
-.season-race-time-row > div span { color: #7a838b; font-size: 8px; font-weight: 800; }
-.season-race-time-row > div strong { color: #28323a; font-size: 13px; }
+.season-duration-block, .season-pace-output { display: grid; align-content: center; gap: 5px; padding: 8px 10px; border-radius: 10px; background: #f3f5f7; }
+.season-duration-block > span, .season-pace-output > span { color: #7a838b; font-size: 8px; font-weight: 800; }
+.season-pace-output strong { color: #28323a; font-size: 13px; }
+.season-duration-inputs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+.season-duration-inputs label { display: flex; align-items: center; min-width: 0; min-height: 34px; padding: 0 7px; border: 1px solid #d8dde2; border-radius: 8px; background: #fff; }
+.season-duration-inputs input { min-width: 0; width: 100%; padding: 0; border: 0; outline: 0; background: transparent; color: #28323a; font: inherit; font-size: 12px; font-weight: 800; }
+.season-duration-inputs b { flex: none; color: #7a838b; font-size: 8px; }
 .season-race-finish-note, .season-running-base-note { padding: 10px 11px; border-radius: 10px; background: #f3f5f7; color: #68737c; font-size: 10px; line-height: 1.45; }
 .season-running-base-note { display: grid; gap: 3px; margin-bottom: 13px; background: #eff7f2; color: #49715c; }
 .season-running-base-note b { color: #285e43; font-size: 12px; }

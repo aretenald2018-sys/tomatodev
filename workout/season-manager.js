@@ -77,18 +77,6 @@ function _seasonWeeks(season = {}) {
   return days ? Math.round((days / 7) * 10) / 10 : 0;
 }
 
-function _formatDurationInput(minutes) {
-  const value = Math.max(0, Math.round(Number(minutes) || 0));
-  if (!value) return '';
-  return `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
-}
-
-function _parseDurationInput(value) {
-  const match = String(value || '').match(/^(\d{1,2}):(\d{2})$/);
-  if (!match) return null;
-  return (Number(match[1]) * 60) + Number(match[2]);
-}
-
 function _goalPaceText(plan = {}) {
   const minutes = Number(plan.targetTimeMin);
   const distance = Number(plan.raceDistanceKm);
@@ -491,7 +479,7 @@ function _runningStep() {
         <button type="button" class="${plan.completionGoal !== 'time' ? 'is-active' : ''}" data-season-action="running-completion" data-running-completion="finish">완주 목표</button>
         <button type="button" class="${plan.completionGoal === 'time' ? 'is-active' : ''}" data-season-action="running-completion" data-running-completion="time">기록 목표</button>
       </div>
-      ${plan.completionGoal === 'time' ? `<div class="season-race-time-row"><label class="season-field"><span>목표 기록</span><input type="time" step="60" data-season-running-duration value="${_formatDurationInput(plan.targetTimeMin)}"></label><div><span>목표 페이스</span><strong data-season-running-pace>${_esc(_goalPaceText(plan))}</strong></div></div>` : `<div class="season-race-finish-note">기록 압박 없이 ${_esc(activeGoal.label)} 완주를 시즌 목표로 설정합니다.</div>`}
+      ${plan.completionGoal === 'time' ? `<div class="season-race-time-row"><div class="season-duration-block"><span>목표 기록</span><div class="season-duration-inputs"><label><input type="number" inputmode="numeric" min="0" max="23" data-season-running-duration-field="hours" value="${Number(plan.targetTimeMin) > 0 ? Math.floor(Number(plan.targetTimeMin) / 60) : ''}" placeholder="0"><b>시간</b></label><label><input type="number" inputmode="numeric" min="0" max="59" data-season-running-duration-field="minutes" value="${Number(plan.targetTimeMin) > 0 ? Math.round(Number(plan.targetTimeMin) % 60) : ''}" placeholder="00"><b>분</b></label></div></div><div class="season-pace-output"><span>목표 페이스</span><strong data-season-running-pace>${_esc(_goalPaceText(plan))}</strong></div></div>` : `<div class="season-race-finish-note">기록 압박 없이 ${_esc(activeGoal.label)} 완주를 시즌 목표로 설정합니다.</div>`}
     </section>` : '<div class="season-running-base-note"><b>기초 거리 만들기</b><span>대회일 없이 주간 거리·롱런·빈도를 6–7주 동안 안정적으로 쌓습니다.</span></div>'}
     <section class="season-running-metrics">
       <header><strong>훈련 메트릭</strong><span>현재 → 시즌 목표</span></header>
@@ -675,8 +663,12 @@ function _handleInput(event) {
       ? target.value
       : (target.value === '' ? null : Number(target.value));
   }
-  if (target.hasAttribute('data-season-running-duration')) {
-    _state.runningPlan.targetTimeMin = _parseDurationInput(target.value);
+  if (target.hasAttribute('data-season-running-duration-field')) {
+    const durationRoot = target.closest('.season-duration-inputs');
+    const hours = Number(durationRoot?.querySelector('[data-season-running-duration-field="hours"]')?.value) || 0;
+    const minutes = Number(durationRoot?.querySelector('[data-season-running-duration-field="minutes"]')?.value) || 0;
+    const duration = (Math.max(0, Math.min(23, hours)) * 60) + Math.max(0, Math.min(59, minutes));
+    _state.runningPlan.targetTimeMin = duration > 0 ? duration : null;
     const pace = target.closest('.season-race-time-row')?.querySelector('[data-season-running-pace]');
     if (pace) pace.textContent = _goalPaceText(_state.runningPlan);
   }
