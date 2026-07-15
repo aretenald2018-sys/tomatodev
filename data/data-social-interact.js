@@ -4,7 +4,7 @@
 
 import {
   db, doc, setDoc, deleteDoc, getDoc, collection, getDocs,
-  getCurrentUserRef,
+  query, orderBy, onSnapshot, getCurrentUserRef, _fbOp,
 } from './data-core.js';
 import { isAdmin, isAdminGuest, _simpleHash } from './data-auth.js';
 import { _socialId, _isMySocialId } from './data-social-friends.js';
@@ -109,6 +109,72 @@ export async function getAdminOutreachHistory() {
 
   history.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   return history;
+}
+
+// ── 홈 실시간 채팅 ──────────────────────────────────────────────
+const CHAT_NOTICE_PREFIX = '<공지>';
+const CHAT_MESSAGE_MAX_LENGTH = 300;
+
+function _normalizeChatDraft(rawMessage) {
+  const raw = String(rawMessage || '').trim();
+  const isNotice = raw.startsWith(CHAT_NOTICE_PREFIX);
+  const body = (isNotice ? raw.slice(CHAT_NOTICE_PREFIX.length) : raw).trim();
+  if (!body) throw new Error('메시지를 입력해주세요.');
+  if (body.length > CHAT_MESSAGE_MAX_LENGTH) {
+    throw new Error(`메시지는 ${CHAT_MESSAGE_MAX_LENGTH}자까지 입력할 수 있어요.`);
+  }
+  return {
+    message: isNotice ? `${CHAT_NOTICE_PREFIX} ${body}` : body,
+    isNotice,
+  };
+}
+
+export async function sendChatMessage(rawMessage) {
+  const user = getCurrentUserRef();
+  if (!user) throw new Error('로그인이 필요해요.');
+
+  const normalized = _normalizeChatDraft(rawMessage);
+  const createdAt = Date.now();
+  const id = `chat_${createdAt}_${Math.random().toString(36).slice(2, 8)}`;
+  const fullName = `${user.lastName || ''}${user.firstName || ''}`.trim();
+  const entry = {
+    id,
+    userId: _socialId() || user.id,
+    userName: user.nickname || fullName || user.id,
+    message: normalized.message,
+    isNotice: normalized.isNotice,
+    createdAt,
+  };
+
+  await _fbOp('sendChatMessage', () => (
+    setDoc(doc(db, '_chat_messages', id), entry)
+  ), { rethrow: true });
+  return entry;
+}
+
+export function subscribeChatMessages(onMessages, onError) {
+  if (!getCurrentUserRef()) {
+    onMessages?.([]);
+    return () => {};
+  }
+
+  const chatQuery = query(collection(db, '_chat_messages'), orderBy('createdAt', 'asc'));
+  return onSnapshot(chatQuery, (snapshot) => {
+    const messages = snapshot.docs.map((snapshotDoc) => {
+      const data = snapshotDoc.data() || {};
+      const message = String(data.message || '');
+      return {
+        ...data,
+        id: data.id || snapshotDoc.id,
+        message,
+        isNotice: data.isNotice === true || message.trimStart().startsWith(CHAT_NOTICE_PREFIX),
+      };
+    });
+    onMessages?.(messages);
+  }, (error) => {
+    console.warn('[chat] subscribe:', error);
+    onError?.(error);
+  });
 }
 
 // ── Cheers 설정 (관리자 제어용) ─────────────────────────────────

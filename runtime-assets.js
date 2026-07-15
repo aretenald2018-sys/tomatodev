@@ -102,6 +102,7 @@
   './render-home.js',
   './home/index.js',
   './home/utils.js',
+  './home/chat.js',
   './home/hero.js',
   './home/guild-card.js',
   './home/welcome-back.js',
