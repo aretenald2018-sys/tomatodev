@@ -1049,15 +1049,6 @@ export function renderLifeZoneCard({
   const fallbackActors = _defaultActorStates();
   const heroHtml = hero ? `
     <aside class="lz-iso-marquee" aria-label="오늘의 연속 기록">
-      <img
-        class="lz-iso-marquee-art"
-        src="${LIFE_ZONE_UI_ROOT}/streak-marquee-iso-card-v1.png"
-        width="1034"
-        height="891"
-        alt=""
-        aria-hidden="true"
-        decoding="async"
-      >
       <div class="lz-iso-marquee-panel">
         <div class="tf-hero-left">
           <div class="tf-hero-label" data-hero-message-target>${escapeHtml(hero.label || '')}</div>
@@ -1074,8 +1065,17 @@ export function renderLifeZoneCard({
 
   card.innerHTML = `
     <div class="lz-scene">
-      ${heroHtml}
       <div class="lz-world">
+        <img
+          class="lz-marquee-underlay"
+          src="${LIFE_ZONE_UI_ROOT}/streak-marquee-facade-v2.png"
+          width="1774"
+          height="887"
+          alt=""
+          aria-hidden="true"
+          decoding="async"
+        >
+        ${heroHtml}
         <img
           class="lz-base"
           src="${LIFE_ZONE_ASSET_ROOT}/base-room-expanded-alpha.png"

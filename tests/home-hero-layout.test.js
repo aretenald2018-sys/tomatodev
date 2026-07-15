@@ -21,7 +21,7 @@ function readPngMeta(relativePath) {
   };
 }
 
-test('home tomato hero mounts the imagegen marquee into the upper-left dark frame', () => {
+test('home tomato hero and marquee share the fixed 1672 life-zone world', () => {
   const tomato = readText('home/tomato.js');
   const lifeZone = readText('home/life-zone.js');
   const index = readText('index.html');
@@ -35,9 +35,10 @@ test('home tomato hero mounts the imagegen marquee into the upper-left dark fram
   assert.doesNotMatch(tomato, /class="tf-hero-sub">\$\{heroSub\}/);
   assert.match(tomato, /document\.getElementById\('tomato-rule-info-card'\)\?\.addEventListener\('click', _showTomatoRuleTooltip\)/);
   assert.match(lifeZone, /class="lz-iso-marquee"/);
-  assert.match(lifeZone, /class="lz-iso-marquee-art"/);
+  assert.match(lifeZone, /class="lz-marquee-underlay"/);
   assert.match(lifeZone, /class="lz-iso-marquee-panel"/);
-  assert.match(lifeZone, /streak-marquee-iso-card-v1\.png/);
+  assert.match(lifeZone, /streak-marquee-facade-v2\.png/);
+  assert.match(lifeZone, /<div class="lz-world">\s*<img[\s\S]*class="lz-marquee-underlay"[\s\S]*\$\{heroHtml\}\s*<img\s*class="lz-base"/);
   assert.match(lifeZone, /data-hero-message-target/);
   assert.doesNotMatch(lifeZone, /class="lz-overview/);
   assert.doesNotMatch(lifeZone, /data-lz-title|data-lz-sync/);
@@ -46,20 +47,20 @@ test('home tomato hero mounts the imagegen marquee into the upper-left dark fram
   assert.doesNotMatch(lifeZone, /data-lz-names/);
 
   assert.match(css, /\.home-hero--integrated \{ display: none; \}/);
-  assert.match(css, /\.lz-iso-marquee \{[\s\S]*top: calc\(-1 \* min\(20vw, 143px\)\);[\s\S]*left: calc\(-1 \* min\(3\.6vw, 26px\)\);[\s\S]*z-index: 0;[\s\S]*width: min\(76%, 540px\);[\s\S]*background: transparent;[\s\S]*drop-shadow\(2px 4px 0/);
-  assert.match(css, /\.lz-iso-marquee-art \{[\s\S]*object-fit: contain;/);
-  assert.match(css, /\.lz-iso-marquee-panel \{[\s\S]*left: 14%;[\s\S]*top: 35%;[\s\S]*width: 80%;[\s\S]*transform: skewY\(-14\.5deg\);/);
-  assert.match(css, /\.lz-iso-marquee-panel \{[\s\S]*background: rgba\(20,0,0,\.42\);/);
+  assert.match(css, /\.lz-iso-marquee \{[\s\S]*top: calc\(205 \/ 1672 \* 100%\);[\s\S]*left: calc\(105 \/ 1672 \* 100%\);[\s\S]*z-index: 2;[\s\S]*width: calc\(480 \/ 1672 \* 100%\);[\s\S]*height: calc\(120 \/ 1672 \* 100%\);/);
+  assert.match(css, /\.lz-marquee-underlay \{[\s\S]*top: calc\(-50 \/ 1672 \* 100%\);[\s\S]*left: calc\(-17 \/ 1672 \* 100%\);[\s\S]*width: calc\(920 \/ 1672 \* 100%\);[\s\S]*transform: scaleY\(2\.25\);[\s\S]*transform-origin: 0 81%;/);
+  assert.match(css, /\.lz-iso-marquee-panel \{[\s\S]*inset: 0;[\s\S]*width: 100%;[\s\S]*transform: skewY\(-24deg\);/);
+  assert.match(css, /\.lz-iso-marquee-panel \{[\s\S]*background: rgba\(20,0,0,\.2\);/);
   assert.match(css, /\.tf-hero \{[\s\S]*min-height: 58px;[\s\S]*padding: 8px 38px 8px 14px;/);
-  assert.match(css, /\.lz-iso-marquee \.tf-hero-count \{[\s\S]*font-size: 26px;[\s\S]*-webkit-text-stroke: \.7px #71180e;/);
-  assert.match(css, /\.lz-iso-marquee \.tf-hero-character \{[\s\S]*width: 31px;[\s\S]*height: 31px;/);
+  assert.match(css, /\.lz-iso-marquee \.tf-hero-count \{[\s\S]*font-size: clamp\(16px, 3\.4cqw, 24px\);[\s\S]*-webkit-text-stroke: \.7px #71180e;/);
+  assert.match(css, /\.lz-iso-marquee \.tf-hero-character \{[\s\S]*width: clamp\(20px, 3\.8cqw, 28px\);[\s\S]*height: clamp\(20px, 3\.8cqw, 28px\);/);
   assert.match(css, /\.lz-iso-marquee \.tf-hero-info-btn \{[\s\S]*top: 3px;[\s\S]*right: 3px;/);
-  assert.match(css, /\.lz-world \{[\s\S]*z-index: 1;[\s\S]*pointer-events: none;/);
-  assert.match(css, /\.lz-world \[data-lz-action\] \{[\s\S]*pointer-events: auto;/);
-  assert.match(runtimeAssets, /\.\/assets\/home\/life-zone\/ui\/streak-marquee-iso-card-v1\.png/);
-  assert.deepEqual(readPngMeta('assets/home/life-zone/ui/streak-marquee-iso-card-v1.png'), {
-    width: 1034,
-    height: 891,
+  assert.match(css, /\.lz-scene \{[\s\S]*container-type: inline-size;/);
+  assert.match(css, /\.lz-base \{[\s\S]*z-index: 1;[\s\S]*pointer-events: none;/);
+  assert.match(runtimeAssets, /\.\/assets\/home\/life-zone\/ui\/streak-marquee-facade-v2\.png/);
+  assert.deepEqual(readPngMeta('assets/home/life-zone/ui/streak-marquee-facade-v2.png'), {
+    width: 1774,
+    height: 887,
     colorType: 6
   });
   assert.doesNotMatch(css, /\.lz-hero/);
