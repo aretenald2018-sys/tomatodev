@@ -109,6 +109,7 @@ test('life zone diet speech bubble renders meal photo before text fallback', () 
   assert.match(source, /likeButton\.setAttribute\('aria-pressed'/);
   assert.match(source, /bubble\.append\(previewButton, likeButton\)/);
   assert.match(source, /bubble\.textContent = actor\.speech/);
+  assert.match(source, /Number\(slot\.x\) \+ Number\(slot\.width\) >= 1450/);
   assert.doesNotMatch(source, /onclick=/);
 
   assert.match(css, /\.lz-speech--photo \{[\s\S]*width: 40px;[\s\S]*height: 40px;[\s\S]*overflow: visible;[\s\S]*pointer-events: auto;/);
@@ -116,6 +117,8 @@ test('life zone diet speech bubble renders meal photo before text fallback', () 
   assert.match(css, /\.lz-speech-photo \{[\s\S]*width: 100%;[\s\S]*height: 100%;[\s\S]*object-fit: cover;[\s\S]*border-radius: 6px;/);
   assert.match(css, /\.lz-photo-like-btn \{[\s\S]*position: absolute;[\s\S]*transform: translateZ\(0\);/);
   assert.match(css, /\.lz-speech--photo \.lz-photo-like-btn \{[\s\S]*border: 0;[\s\S]*background: transparent;[\s\S]*box-shadow: none;/);
+  assert.match(css, /\.lz-speech--right-edge \{[\s\S]*translate\(-88%, -100%\);/);
+  assert.match(css, /\.lz-speech--right-edge::after \{[\s\S]*left: 88%;/);
   assert.match(speechTailRule, /clip-path: polygon\(/);
   assert.doesNotMatch(speechTailRule, /rotate\(45deg\)/);
   assert.match(css, /@media \(max-width: 420px\) \{[\s\S]*\.lz-speech--photo \{[\s\S]*width: 34px;[\s\S]*height: 34px;[\s\S]*max-width: none;[\s\S]*padding: 0;/);
@@ -153,7 +156,7 @@ test('life zone NPC quest bubble has a stable clickable overlay style', () => {
   const css = readAppCssSync();
 
   assert.match(css, /\.lz-scene \{[\s\S]*aspect-ratio: 1672 \/ 1872;/);
-  assert.match(css, /\.lz-world \{[\s\S]*width: 112%;[\s\S]*aspect-ratio: 1672 \/ 1672;[\s\S]*overflow: visible;[\s\S]*transform: translateX\(-50%\);/);
+  assert.match(css, /\.lz-world \{[\s\S]*width: 100%;[\s\S]*aspect-ratio: 1672 \/ 1672;[\s\S]*overflow: visible;[\s\S]*transform: translateX\(-50%\);/);
   assert.match(css, /\.lz-npc-quest \{/);
   assert.match(css, /left: calc\(1084 \/ 1672 \* 100%\)/);
   assert.match(css, /top: calc\(792 \/ 1672 \* 100%\)/);

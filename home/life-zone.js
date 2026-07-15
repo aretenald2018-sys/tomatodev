@@ -972,6 +972,9 @@ function _renderActors(card, actors) {
       } else {
         bubble.textContent = actor.speech;
       }
+      if (Number(slot.x) + Number(slot.width) >= 1450) {
+        bubble.classList.add('lz-speech--right-edge');
+      }
       bubble.style.setProperty('--lz-bx', slot.x + slot.width * 0.54);
       bubble.style.setProperty('--lz-by', Math.max(28, slot.y - 12));
       bubble.style.setProperty('--lz-actor-color', actor.color || '#94a3b8');
@@ -1054,10 +1057,10 @@ export function renderLifeZoneCard({
           <div class="tf-hero-label" data-hero-message-target>${escapeHtml(hero.label || '')}</div>
           <div class="tf-hero-count">${hero.countHtml || ''}</div>
         </div>
-        <button class="tf-info-btn tf-info-btn--light tf-hero-info-btn" id="tomato-rule-info-card" aria-label="토마토 획득 규칙">ⓘ</button>
         <div class="tf-hero-right">
           <div class="tf-hero-tomato tf-hero-tomato--svg" data-mood="${escapeHtml(hero.characterMood || 'seed')}">${hero.characterSvg || ''}</div>
         </div>
+        <button class="tf-info-btn tf-info-btn--light tf-hero-info-btn" id="tomato-rule-info-card" aria-label="토마토 획득 규칙">ⓘ</button>
         <div class="hero-social-proof" id="hero-social-proof" style="display:none;"></div>
       </div>
     </aside>
@@ -1066,16 +1069,18 @@ export function renderLifeZoneCard({
   card.innerHTML = `
     <div class="lz-scene">
       <div class="lz-world">
-        <img
-          class="lz-marquee-underlay"
-          src="${LIFE_ZONE_UI_ROOT}/streak-marquee-facade-v2.png"
-          width="1774"
-          height="887"
-          alt=""
-          aria-hidden="true"
-          decoding="async"
-        >
-        ${heroHtml}
+        <div class="lz-marquee-composite">
+          <img
+            class="lz-marquee-underlay"
+            src="${LIFE_ZONE_UI_ROOT}/streak-marquee-facade-v2.png"
+            width="1774"
+            height="887"
+            alt=""
+            aria-hidden="true"
+            decoding="async"
+          >
+          ${heroHtml}
+        </div>
         <img
           class="lz-base"
           src="${LIFE_ZONE_ASSET_ROOT}/base-room-expanded-alpha.png"
