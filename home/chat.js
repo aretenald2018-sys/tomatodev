@@ -15,6 +15,77 @@ let _unsubscribe = null;
 let _subscribedUserId = '';
 let _hasRenderedMessages = false;
 let _awaitingOwnMessage = false;
+let _activeChannel = 'all';
+let _messages = [];
+
+const CHAT_CHANNELS = Object.freeze({
+  all: '전체',
+  notice: '공지',
+  bug: '버그제보',
+  free: '자유',
+});
+
+const CHAT_AVATAR_FACES = Object.freeze([
+  { skin: '#f1bd91', hair: '#2f211d' },
+  { skin: '#e4a978', hair: '#151515' },
+  { skin: '#f6cda8', hair: '#5a3425' },
+  { skin: '#bb7652', hair: '#231713' },
+  { skin: '#d89468', hair: '#3a2720' },
+]);
+
+const CHAT_AVATAR_OUTFITS = Object.freeze([
+  { shirt: '#ef4444', accent: '#7f1d1d' },
+  { shirt: '#2563eb', accent: '#172554' },
+  { shirt: '#16a34a', accent: '#14532d' },
+  { shirt: '#f59e0b', accent: '#78350f' },
+  { shirt: '#9333ea', accent: '#581c87' },
+  { shirt: '#334155', accent: '#0f172a' },
+]);
+
+function _chatHash(value) {
+  let hash = 0;
+  for (const character of String(value || 'tomato')) {
+    hash = ((hash << 5) - hash + character.charCodeAt(0)) | 0;
+  }
+  return Math.abs(hash);
+}
+
+function _messageChannel(message = {}) {
+  if (message.isNotice || String(message.message || '').trimStart().startsWith('<공지>')) return 'notice';
+  return CHAT_CHANNELS[message.channel] && message.channel !== 'all' ? message.channel : 'free';
+}
+
+function _messageText(message = {}) {
+  const text = String(message.message || '');
+  return _messageChannel(message) === 'notice' ? text.replace(/^\s*<공지>\s*/, '') : text;
+}
+
+function _createAvatar(message = {}) {
+  const seed = `${message.userId || message.userName || ''}:${message.avatar?.face || ''}:${message.avatar?.outfit || ''}`;
+  const hash = _chatHash(seed);
+  const face = CHAT_AVATAR_FACES[hash % CHAT_AVATAR_FACES.length];
+  const outfitHash = _chatHash(`${seed}:outfit`);
+  const outfit = CHAT_AVATAR_OUTFITS[outfitHash % CHAT_AVATAR_OUTFITS.length];
+  const avatar = document.createElement('span');
+  avatar.className = 'home-chat-avatar';
+  avatar.setAttribute('aria-hidden', 'true');
+  avatar.style.setProperty('--chat-skin', face.skin);
+  avatar.style.setProperty('--chat-hair', face.hair);
+  avatar.style.setProperty('--chat-shirt', outfit.shirt);
+  avatar.style.setProperty('--chat-shirt-accent', outfit.accent);
+  avatar.innerHTML = `
+    <span class="home-chat-avatar-outfit"><span class="home-chat-avatar-collar"></span></span>
+    <span class="home-chat-avatar-ear home-chat-avatar-ear--left"></span>
+    <span class="home-chat-avatar-ear home-chat-avatar-ear--right"></span>
+    <span class="home-chat-avatar-face">
+      <span class="home-chat-avatar-hair"></span>
+      <span class="home-chat-avatar-eye home-chat-avatar-eye--left"></span>
+      <span class="home-chat-avatar-eye home-chat-avatar-eye--right"></span>
+      <span class="home-chat-avatar-mouth"></span>
+    </span>
+  `;
+  return avatar;
+}
 
 function _formatChatTime(createdAt) {
   const date = new Date(Number(createdAt));
@@ -40,15 +111,24 @@ function _createMessageRow(message, currentUserId) {
   const item = document.createElement('article');
   item.className = 'home-chat-message';
   if (message.userId === currentUserId) item.classList.add('is-mine');
-  if (message.isNotice) item.classList.add('is-notice');
+  const messageChannel = _messageChannel(message);
+  if (messageChannel === 'notice') item.classList.add('is-notice');
 
-  const channel = document.createElement('span');
-  channel.className = 'home-chat-channel';
-  channel.textContent = message.isNotice ? '[공지]' : '[전체]';
+  const avatar = _createAvatar(message);
+
+  const body = document.createElement('div');
+  body.className = 'home-chat-message-body';
+
+  const meta = document.createElement('div');
+  meta.className = 'home-chat-message-meta';
 
   const author = document.createElement('span');
   author.className = 'home-chat-author';
   author.textContent = String(message.userName || message.userId || '이용자');
+
+  const channel = document.createElement('span');
+  channel.className = `home-chat-channel is-${messageChannel}`;
+  channel.textContent = CHAT_CHANNELS[messageChannel];
 
   const time = document.createElement('time');
   time.className = 'home-chat-time';
@@ -59,11 +139,10 @@ function _createMessageRow(message, currentUserId) {
 
   const bubble = document.createElement('div');
   bubble.className = 'home-chat-bubble';
-  bubble.textContent = String(message.message || '');
+  bubble.textContent = _messageText(message);
 
   const tail = document.createElement('div');
   tail.className = 'home-chat-tail';
-  tail.append(time);
   if (message.userId === currentUserId) {
     const deleteButton = document.createElement('button');
     deleteButton.type = 'button';
@@ -76,7 +155,9 @@ function _createMessageRow(message, currentUserId) {
     tail.append(deleteButton);
   }
 
-  item.append(channel, author, bubble, tail);
+  meta.append(author, channel, time, tail);
+  body.append(meta, bubble);
+  item.append(avatar, body);
   return item;
 }
 
@@ -98,8 +179,10 @@ function _renderMessages(messages) {
   const list = document.getElementById('home-chat-list');
   const notices = document.getElementById('home-chat-notices');
   if (!list || !notices) return;
+  _messages = messages;
+  _renderChannelCounts(messages);
+  _renderPinnedNotice(messages, notices);
   if (!messages.length) {
-    notices.replaceChildren();
     _appendEmptyState(list, '아직 대화가 없어요. 첫 메시지를 남겨보세요.');
     _hasRenderedMessages = true;
     return;
@@ -107,23 +190,84 @@ function _renderMessages(messages) {
 
   const currentUserId = getCurrentUser()?.id || '';
   const wasNearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 72;
-  const noticeFragment = document.createDocumentFragment();
   const messageFragment = document.createDocumentFragment();
-  messages.forEach((message) => {
-    const row = _createMessageRow(message, currentUserId);
-    (message.isNotice ? noticeFragment : messageFragment).append(row);
+  const filteredMessages = messages.filter((message) => (
+    _activeChannel === 'all' || _messageChannel(message) === _activeChannel
+  ));
+  filteredMessages.slice(-40).forEach((message) => {
+    messageFragment.append(_createMessageRow(message, currentUserId));
   });
 
-  notices.replaceChildren(noticeFragment);
   list.replaceChildren(messageFragment);
   if (!list.childElementCount) {
-    _appendEmptyState(list, '아직 일반 대화가 없어요.');
+    _appendEmptyState(list, `아직 ${CHAT_CHANNELS[_activeChannel]} 대화가 없어요.`);
   }
+  list.setAttribute('aria-label', `${CHAT_CHANNELS[_activeChannel]} 채팅 기록`);
   if (!_hasRenderedMessages || wasNearBottom || _awaitingOwnMessage) {
     list.scrollTop = list.scrollHeight;
   }
   _awaitingOwnMessage = false;
   _hasRenderedMessages = true;
+}
+
+function _renderPinnedNotice(messages, notices) {
+  const latestNotice = [...messages].reverse().find(message => _messageChannel(message) === 'notice');
+  if (!latestNotice) {
+    notices.replaceChildren();
+    return;
+  }
+
+  const pin = document.createElement('span');
+  pin.className = 'home-chat-notice-pin';
+  pin.textContent = '📌';
+  pin.setAttribute('aria-hidden', 'true');
+  const label = document.createElement('strong');
+  label.textContent = '공지';
+  const author = document.createElement('span');
+  author.className = 'home-chat-notice-author';
+  author.textContent = String(latestNotice.userName || latestNotice.userId || '운영자');
+  const message = document.createElement('span');
+  message.className = 'home-chat-notice-message';
+  message.textContent = _messageText(latestNotice);
+  notices.replaceChildren(pin, label, author, message);
+}
+
+function _renderChannelCounts(messages) {
+  const counts = { notice: 0, bug: 0, free: 0 };
+  messages.forEach((message) => { counts[_messageChannel(message)] += 1; });
+  Object.entries(counts).forEach(([channel, count]) => {
+    const target = document.querySelector(`[data-chat-count="${channel}"]`);
+    if (target) target.textContent = count ? String(Math.min(count, 99)) + (count > 99 ? '+' : '') : '';
+  });
+}
+
+function _syncChannelUi() {
+  document.querySelectorAll('[data-chat-channel]').forEach((button) => {
+    const isActive = button.dataset.chatChannel === _activeChannel;
+    button.classList.toggle('is-active', isActive);
+    button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
+  const channelLabel = document.querySelector('.home-chat-channel-select');
+  const input = document.getElementById('home-chat-input');
+  const sendChannel = _activeChannel === 'all' ? 'free' : _activeChannel;
+  if (channelLabel) channelLabel.textContent = CHAT_CHANNELS[sendChannel];
+  if (input) input.placeholder = `${CHAT_CHANNELS[sendChannel]} 메시지를 입력하세요`;
+}
+
+function _bindChannelTabs() {
+  document.querySelectorAll('[data-chat-channel]').forEach((button) => {
+    if (button.dataset.chatBound === '1') return;
+    button.dataset.chatBound = '1';
+    button.addEventListener('click', () => {
+      const channel = button.dataset.chatChannel;
+      if (!CHAT_CHANNELS[channel] || channel === _activeChannel) return;
+      _activeChannel = channel;
+      _hasRenderedMessages = false;
+      _syncChannelUi();
+      _renderMessages(_messages);
+    });
+  });
+  _syncChannelUi();
 }
 
 function _setStatus(text, state = '') {
@@ -149,8 +293,10 @@ async function _submitChat(form) {
   input.disabled = true;
   _awaitingOwnMessage = true;
   try {
-    await sendChatMessage(draft);
+    const sendChannel = _activeChannel === 'all' ? 'free' : _activeChannel;
+    await sendChatMessage(draft, sendChannel);
     form.reset();
+    _syncChannelUi();
   } catch (error) {
     _awaitingOwnMessage = false;
     showToast(error?.message || '메시지를 보내지 못했어요.', 2600, 'error');
@@ -202,6 +348,7 @@ function _subscribeForCurrentUser() {
 
 export function renderHomeChat() {
   if (!document.getElementById('card-chat')) return;
+  _bindChannelTabs();
   _bindChatForm();
   _subscribeForCurrentUser();
 }

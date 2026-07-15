@@ -35,7 +35,7 @@ test('chat history persists in Firestore and supports owner-checked deletion', (
   assert.doesNotMatch(chatBlock, /localStorage|sessionStorage|expiresAt/);
 });
 
-test('MMORPG chat rows, notices, safe text and own-message delete controls are wired', () => {
+test('reference-style channel tabs, pinned notice and safe message controls are wired', () => {
   const html = read('index.html');
   const dataSource = read('data/data-social-interact.js');
   const homeSource = read('home/chat.js');
@@ -44,23 +44,37 @@ test('MMORPG chat rows, notices, safe text and own-message delete controls are w
   assert.match(html, /class="tds-sr-only" for="home-chat-input"/);
   assert.doesNotMatch(html, /LIVE CHAT|home-chat-header|home-chat-title-group/);
   assert.match(html, /id="home-chat-notices"/);
+  assert.match(html, /role="tablist" aria-label="채팅 채널"/);
+  assert.match(html, /data-chat-channel="all">전체/);
+  assert.match(html, /data-chat-channel="notice">공지/);
+  assert.match(html, /data-chat-channel="bug">버그제보/);
+  assert.match(html, /data-chat-channel="free">자유/);
   assert.match(dataSource, /CHAT_NOTICE_PREFIX = '<공지>'/);
+  assert.match(dataSource, /CHAT_CHANNELS = new Set\(\['notice', 'bug', 'free'\]\)/);
+  assert.match(dataSource, /sendChatMessage\(rawMessage, channel = 'free'\)/);
+  assert.match(dataSource, /channel: normalized\.channel/);
+  assert.match(dataSource, /avatar: _chatAvatarSnapshot\(user\)/);
   assert.match(homeSource, /bubble\.textContent =/);
-  assert.match(homeSource, /channel\.textContent = message\.isNotice \? '\[공지\]' : '\[전체\]'/);
-  assert.match(homeSource, /message\.isNotice \? noticeFragment : messageFragment/);
-  assert.match(homeSource, /notices\.replaceChildren\(noticeFragment\)/);
+  assert.match(homeSource, /_activeChannel === 'all' \|\| _messageChannel\(message\) === _activeChannel/);
+  assert.match(homeSource, /sendChatMessage\(draft, sendChannel\)/);
+  assert.match(homeSource, /button\.addEventListener\('click'/);
+  assert.match(homeSource, /notices\.replaceChildren\(pin, label, author, message\)/);
   assert.match(homeSource, /status\.className = `tds-sr-only home-chat-status/);
   assert.doesNotMatch(homeSource, /_setStatus\('실시간'/);
   assert.match(homeSource, /message\.userId === currentUserId/);
   assert.match(homeSource, /_deleteOwnMessage\(message\.id, deleteButton\)/);
+  assert.match(homeSource, /home-chat-avatar-face/);
+  assert.match(homeSource, /home-chat-avatar-outfit/);
+  assert.doesNotMatch(homeSource, /운동고수|라이프코치|title-badge/);
   assert.match(css, /\.home-chat-message\.is-notice \.home-chat-bubble/);
-  assert.match(css, /grid-template-columns: auto minmax\(34px, auto\) minmax\(0, 1fr\) auto/);
-  assert.match(css, /align-content: end/);
+  assert.match(css, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
+  assert.match(css, /\.home-chat-avatar-face/);
+  assert.match(css, /\.home-chat-avatar-outfit/);
   assert.match(css, /\.home-chat-notices:empty/);
   assert.match(css, /#card-chat\.home-chat-card \{/);
-  assert.match(css, /margin-top: -8%/);
-  assert.match(css, /backdrop-filter: blur\(12px\)/);
+  assert.match(css, /margin-top: -12%/);
+  assert.match(css, /backdrop-filter: blur\(16px\)/);
   assert.match(css, /:root\.light #card-chat\.home-chat-card/);
   assert.match(css, /background: var\(--primary\)/);
-  assert.doesNotMatch(css, /#d8b56d|#76b9e9|#76d39b|#f2dfb5/);
+  assert.match(css, /border-radius: 28px 28px 0 0/);
 });

@@ -114,26 +114,40 @@ export async function getAdminOutreachHistory() {
 // ── 홈 실시간 채팅 ──────────────────────────────────────────────
 const CHAT_NOTICE_PREFIX = '<공지>';
 const CHAT_MESSAGE_MAX_LENGTH = 300;
+const CHAT_CHANNELS = new Set(['notice', 'bug', 'free']);
 
-function _normalizeChatDraft(rawMessage) {
+function _normalizeChatDraft(rawMessage, requestedChannel = 'free') {
   const raw = String(rawMessage || '').trim();
-  const isNotice = raw.startsWith(CHAT_NOTICE_PREFIX);
-  const body = (isNotice ? raw.slice(CHAT_NOTICE_PREFIX.length) : raw).trim();
+  const hasNoticePrefix = raw.startsWith(CHAT_NOTICE_PREFIX);
+  const channel = hasNoticePrefix
+    ? 'notice'
+    : (CHAT_CHANNELS.has(requestedChannel) ? requestedChannel : 'free');
+  const body = (hasNoticePrefix ? raw.slice(CHAT_NOTICE_PREFIX.length) : raw).trim();
   if (!body) throw new Error('메시지를 입력해주세요.');
   if (body.length > CHAT_MESSAGE_MAX_LENGTH) {
     throw new Error(`메시지는 ${CHAT_MESSAGE_MAX_LENGTH}자까지 입력할 수 있어요.`);
   }
   return {
-    message: isNotice ? `${CHAT_NOTICE_PREFIX} ${body}` : body,
-    isNotice,
+    message: body,
+    channel,
+    isNotice: channel === 'notice',
   };
 }
 
-export async function sendChatMessage(rawMessage) {
+function _chatAvatarSnapshot(user = {}) {
+  const character = user.character && typeof user.character === 'object' ? user.character : {};
+  const avatar = user.avatar && typeof user.avatar === 'object' ? user.avatar : {};
+  return {
+    face: String(user.avatarFace || character.face || avatar.face || ''),
+    outfit: String(user.avatarOutfit || character.outfit || avatar.outfit || ''),
+  };
+}
+
+export async function sendChatMessage(rawMessage, channel = 'free') {
   const user = getCurrentUserRef();
   if (!user) throw new Error('로그인이 필요해요.');
 
-  const normalized = _normalizeChatDraft(rawMessage);
+  const normalized = _normalizeChatDraft(rawMessage, channel);
   const createdAt = Date.now();
   const id = `chat_${createdAt}_${Math.random().toString(36).slice(2, 8)}`;
   const fullName = `${user.lastName || ''}${user.firstName || ''}`.trim();
@@ -142,7 +156,9 @@ export async function sendChatMessage(rawMessage) {
     userId: _socialId() || user.id,
     userName: user.nickname || fullName || user.id,
     message: normalized.message,
+    channel: normalized.channel,
     isNotice: normalized.isNotice,
+    avatar: _chatAvatarSnapshot(user),
     createdAt,
   };
 
@@ -180,11 +196,16 @@ export function subscribeChatMessages(onMessages, onError) {
     const messages = snapshot.docs.map((snapshotDoc) => {
       const data = snapshotDoc.data() || {};
       const message = String(data.message || '');
+      const isNotice = data.isNotice === true || message.trimStart().startsWith(CHAT_NOTICE_PREFIX);
+      const channel = isNotice
+        ? 'notice'
+        : (CHAT_CHANNELS.has(data.channel) ? data.channel : 'free');
       return {
         ...data,
         id: data.id || snapshotDoc.id,
         message,
-        isNotice: data.isNotice === true || message.trimStart().startsWith(CHAT_NOTICE_PREFIX),
+        channel,
+        isNotice,
       };
     });
     onMessages?.(messages);
