@@ -37,6 +37,15 @@ const LIFE_ZONE_MARQUEE_FRAME_SRC = `${LIFE_ZONE_UI_ROOT}/streak-marquee-frame-v
 const LIFE_ZONE_MARQUEE_FRAME_X = -196;
 const LIFE_ZONE_MARQUEE_FRAME_Y = -324;
 const LIFE_ZONE_MARQUEE_FRAME_SCALE = 0.8;
+// Frame v3의 실제 LED 내부 사각형을 1672 월드로 변환한 안전 영역이다.
+// 우측 상단은 장면 밖으로 기울어져 있으므로, 이 하단 중앙 평면만 정보 표시에 사용한다.
+const MARQUEE_LED_PANEL = Object.freeze({
+  x: 140,
+  y: 188,
+  width: 360,
+  height: 168,
+  rise: -168
+});
 const LIFE_ZONE_NPC_NAME = '트레이너';
 const LIFE_ZONE_MIRANDA_NAME = '미란다';
 const LIFE_ZONE_CONSULTING_CHIEF_NAME = '상담실장';
@@ -1138,18 +1147,23 @@ function _drawMarqueeDigit(context, digit, x, y, unit) {
   }
 }
 
-function _drawMarqueeTomato(context, x, y, pixelSize) {
-  const pixels = ['0011100', '0111110', '1111111', '1111111', '0111110', '0011100'];
-  context.fillStyle = '#3fae58';
-  context.fillRect(x + pixelSize * 3, y - pixelSize * 2, pixelSize, pixelSize * 3);
-  context.fillStyle = '#ff594d';
-  pixels.forEach((row, rowIndex) => {
-    [...row].forEach((pixel, columnIndex) => {
-      if (pixel === '1') context.fillRect(x + columnIndex * pixelSize, y + rowIndex * pixelSize, pixelSize, pixelSize);
-    });
-  });
-  context.fillStyle = '#ffe0a6';
-  context.fillRect(x + pixelSize * 2, y + pixelSize, pixelSize, pixelSize);
+function _drawMarqueeDisplayContent(context, streak) {
+  const panel = MARQUEE_LED_PANEL;
+  context.save();
+  context.beginPath();
+  context.moveTo(panel.x, panel.y);
+  context.lineTo(panel.x + panel.width, panel.y + panel.rise);
+  context.lineTo(panel.x + panel.width, panel.y + panel.rise + panel.height);
+  context.lineTo(panel.x, panel.y + panel.height);
+  context.closePath();
+  context.clip();
+
+  // 로컬 LED 사각형을 실제 아이소메트릭 LED 면으로 한 번만 투영한다.
+  context.transform(1, panel.rise / panel.width, 0, 1, panel.x, panel.y);
+  _drawMarqueeWord(context, 'STREAK', 18, 60, 6, '#ffd6b2');
+  const digits = String(Math.min(999, streak)).padStart(3, '0');
+  [...digits].forEach((digit, index) => _drawMarqueeDigit(context, digit, 242 + index * 40, 42, 7));
+  context.restore();
 }
 
 function _paintLifeZoneMarquee(canvas, hero) {
@@ -1171,14 +1185,7 @@ function _paintLifeZoneMarquee(canvas, hero) {
     context.drawImage(frame, 0, 0);
     context.restore();
 
-    context.save();
-    context.translate(320, 120);
-    context.rotate(-Math.atan(0.5));
-    _drawMarqueeWord(context, 'STREAK', 0, 0, 9, '#ffd6b2');
-    const digits = String(Math.min(999, streak)).padStart(3, '0');
-    [...digits].forEach((digit, index) => _drawMarqueeDigit(context, digit, index * 58, 76, 10));
-    _drawMarqueeTomato(context, 336, 24, 8);
-    context.restore();
+    _drawMarqueeDisplayContent(context, streak);
     canvas.dataset.lzMarqueeReady = 'true';
   }).catch((error) => {
     console.warn('[life-zone] marquee frame failed:', error);

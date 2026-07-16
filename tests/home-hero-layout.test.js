@@ -41,9 +41,13 @@ test('home tomato hero and marquee share the fixed 1672 life-zone world', () => 
   assert.match(lifeZone, /class="lz-marquee-hotspot"[\s\S]*id="tomato-rule-info-card"/);
   assert.match(lifeZone, /canvas\.width = LIFE_ZONE_WORLD_SIZE/);
   assert.match(lifeZone, /context\.imageSmoothingEnabled = false/);
-  assert.match(lifeZone, /context\.rotate\(-Math\.atan\(0\.5\)\)/);
+  assert.match(lifeZone, /const MARQUEE_LED_PANEL = Object\.freeze/);
+  assert.match(lifeZone, /context\.lineTo\(panel\.x \+ panel\.width, panel\.y \+ panel\.rise\)/);
+  assert.match(lifeZone, /context\.clip\(\)/);
+  assert.match(lifeZone, /context\.transform\(1, panel\.rise \/ panel\.width, 0, 1, panel\.x, panel\.y\)/);
   assert.match(lifeZone, /String\(Math\.min\(999, streak\)\)\.padStart\(3, '0'\)/);
   assert.match(lifeZone, /canvas\.dataset\.lzMarqueeReady = 'true'/);
+  assert.doesNotMatch(lifeZone, /context\.rotate\(-Math\.atan\(0\.5\)\)/);
   assert.doesNotMatch(lifeZone, /lz-iso-marquee|lz-marquee-composite|streak-marquee-facade-v2/);
   assert.doesNotMatch(lifeZone, /class="lz-overview/);
   assert.doesNotMatch(lifeZone, /data-lz-title|data-lz-sync/);
