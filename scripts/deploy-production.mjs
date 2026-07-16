@@ -64,10 +64,17 @@ const remoteUrl = git(['remote', 'get-url', remote]);
 assertTomatofarmPushTarget(remote, remoteUrl);
 assertCleanTrackedTree();
 
+const currentBranch = git(['branch', '--show-current']);
+if (currentBranch !== remoteRef) {
+  throw new Error(
+    `production deployment requires checked-out ${remoteRef}; current branch is ${currentBranch || '(detached HEAD)'}`,
+  );
+}
+
 const head = git(['rev-parse', 'HEAD']);
 const shortHead = git(['rev-parse', '--short=12', 'HEAD']);
 console.log(`[deploy-production] push ${shortHead} -> ${remote}/${remoteRef}`);
-git(['push', remote, `HEAD:${remoteRef}`], { stdio: 'inherit' });
+git(['push', remote, remoteRef], { stdio: 'inherit' });
 
 console.log(`[deploy-production] verify deploy ${shortHead}`);
 run(process.execPath, [scriptPath('verify-deploy.mjs'), baseUrl, head], { stdio: 'inherit' });
