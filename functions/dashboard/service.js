@@ -67,7 +67,7 @@ async function loadTomatoSource(tomatoDb, ownerId, nowEpochMs) {
 async function loadBudgetSource(budgetDb, budgetUid, nowEpochMs) {
   const fromEpochMs = nowEpochMs - 70 * 24 * 60 * 60 * 1000;
   const from = new Date(fromEpochMs);
-  const base = budgetDb.collection(`users/${budgetUid}`);
+  const base = budgetDb.doc(`users/${budgetUid}`);
   const [transactionsSnap, categoriesSnap, tastingsSnap, bottlesSnap, settingsSnap] = await Promise.all([
     base.collection("transactions").where("occurredAt", ">=", from).get(),
     base.collection("categories").get(),
