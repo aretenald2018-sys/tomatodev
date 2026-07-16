@@ -16417,7 +16417,7 @@ body.lz-running-record-modal-open {
 }
 .wt-max-set-row {
   position: relative;
-  padding: 5px 6px;
+  padding: 3px 4px;
   border-radius: 8px;
   background: #f1f3f6;
   touch-action: pan-y;
@@ -16444,9 +16444,9 @@ body.lz-running-record-modal-open {
 }
 .wt-max-set-main {
   display: grid;
-  grid-template-columns: 44px 44px minmax(48px, 1fr) minmax(44px, .84fr) 44px 44px;
+  grid-template-columns: 32px 32px minmax(42px, 1fr) minmax(38px, .84fr) 32px 32px;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 .wt-max-set-type {
   display: inline-flex;
@@ -16454,7 +16454,7 @@ body.lz-running-record-modal-open {
   justify-content: center;
   flex-direction: column;
   gap: 1px;
-  height: 44px;
+  height: 32px;
   padding: 0;
   border: 0;
   border-radius: 999px;
@@ -16496,7 +16496,7 @@ body.lz-running-record-modal-open {
 .wt-max-set-value {
   display: grid;
   min-width: 0;
-  min-height: 44px;
+  min-height: 32px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -16648,8 +16648,8 @@ body.lz-running-record-modal-open {
   font-weight: 900;
 }
 .wt-max-set-check {
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
   border: 1px solid #d9dee8;
   border-radius: 8px;
   background: #f8fafc;
@@ -16673,17 +16673,17 @@ body.lz-running-record-modal-open {
   border: 1px solid #d9dee8;
 }
 .wt-max-set-remove-btn {
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
   background: transparent;
 }
 .wt-max-set-remove {
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
 }
 .wt-max-set-expand {
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border: 0;
   border-radius: 8px;
@@ -16692,7 +16692,7 @@ body.lz-running-record-modal-open {
   box-shadow: 0 0 0 1px rgba(33, 124, 249, 0.18), 0 0 14px rgba(33, 124, 249, 0.24);
   cursor: pointer;
   font-family: inherit;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
@@ -16711,8 +16711,8 @@ body.lz-running-record-modal-open {
 }
 .wt-max-set-type-menu {
   position: absolute;
-  top: 38px;
-  left: 38px;
+  top: 30px;
+  left: 30px;
   z-index: 8;
   display: grid;
   gap: 4px;
@@ -16725,7 +16725,7 @@ body.lz-running-record-modal-open {
 }
 .wt-max-set-row.is-menu-above .wt-max-set-type-menu {
   top: auto;
-  bottom: 48px;
+  bottom: 36px;
 }
 .wt-max-set-type-option {
   display: grid;
@@ -17787,11 +17787,11 @@ body.lz-running-record-modal-open {
     font-size: 8px;
   }
   .wt-max-set-main {
-    grid-template-columns: 44px 44px minmax(48px, 1fr) minmax(44px, .84fr) 44px 44px;
-    gap: 4px;
+    grid-template-columns: 32px 32px minmax(42px, 1fr) minmax(38px, .84fr) 32px 32px;
+    gap: 3px;
   }
   .wt-max-set-type {
-    height: 44px;
+    height: 32px;
   }
   .wt-max-set-type b {
     font-size: 9px;
@@ -17800,14 +17800,14 @@ body.lz-running-record-modal-open {
     font-size: 7px;
   }
   .wt-max-set-type-menu {
-    top: 36px;
-    left: 34px;
+    top: 30px;
+    left: 30px;
     width: min(238px, calc(100% - 40px));
     padding: 7px;
   }
   .wt-max-set-row.is-menu-above .wt-max-set-type-menu {
     top: auto;
-    bottom: 48px;
+    bottom: 36px;
   }
   .wt-max-set-type-option {
     grid-template-columns: 24px minmax(0, 1fr) 18px;
@@ -17844,17 +17844,17 @@ body.lz-running-record-modal-open {
     line-height: 24px;
   }
   .wt-max-set-check {
-    width: 44px;
-    height: 44px;
+    width: 32px;
+    height: 32px;
   }
   .wt-max-set-remove {
-    width: 44px;
-    height: 44px;
+    width: 32px;
+    height: 32px;
   }
   .wt-max-set-expand {
-    width: 44px;
-    height: 44px;
-    font-size: 15px;
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
   }
   .wt-max-set-add-row {
     min-height: 44px;

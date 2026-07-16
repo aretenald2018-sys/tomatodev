@@ -480,11 +480,11 @@ test('day sheet set rows support mobile value editing, clear-on-focus, and swipe
   assert.match(calendarJs, /focusin[\s\S]*data-wt-set-clear-on-focus/);
   assert.match(binder, /_showWorkoutSetKeyboard\(input\)/);
   assert.match(calendarJs, /function _moveWorkoutSetKeyboardFocus/);
-  assert.match(styleCss, /\.wt-max-set-main\s*\{[\s\S]*grid-template-columns:\s*44px 44px minmax\(48px,\s*1fr\) minmax\(44px,\s*\.84fr\) 44px 44px/);
+  assert.match(styleCss, /\.wt-max-set-main\s*\{[\s\S]*grid-template-columns:\s*32px 32px minmax\(42px,\s*1fr\) minmax\(38px,\s*\.84fr\) 32px 32px/);
   assert.match(styleCss, /\.wt-max-set-value-input\s*\{/);
   assert.match(styleCss, /\.wt-set-keyboard\s*\{/);
   assert.match(styleCss, /\[data-wt-day-sheet\]\.has-set-keyboard \.wt-day-sheet-scroll/);
-  assert.match(styleCss, /\.wt-max-set-remove-btn\s*\{[\s\S]*width:\s*44px;[\s\S]*height:\s*44px;/);
+  assert.match(styleCss, /\.wt-max-set-remove-btn\s*\{[\s\S]*width:\s*32px;[\s\S]*height:\s*32px;/);
   assert.match(styleCss, /\.wt-max-set-row\.is-swiping/);
   assert.match(styleCss, /\.wt-max-set-row\.is-swipe-delete-left/);
   assert.match(styleCss, /\.wt-max-set-row\s*\{[\s\S]*touch-action:\s*pan-y;/);
@@ -610,19 +610,22 @@ test('day sheet preserves exercise carousel position across set saves', () => {
   assert.match(toggleFn, /\{ preserveSheetScroll: true \}/);
 });
 
-test('workout keypad draft saves do not rerender the app between digits', () => {
-  const saveStart = calendarJs.indexOf('async function _saveWorkoutHomeSessionResult');
-  const saveEnd = calendarJs.indexOf('function _durationFromMinSec', saveStart);
-  assert.ok(saveStart >= 0 && saveEnd > saveStart, 'sheet save function should exist');
-  const saveFn = calendarJs.slice(saveStart, saveEnd);
-  const draftStart = saveFn.indexOf('if (options?.skipRender)');
-  const draftEnd = saveFn.indexOf('const savePromise =', draftStart);
-  assert.ok(draftStart >= 0 && draftEnd > draftStart, 'keypad draft save branch should exist');
-  const draftSave = saveFn.slice(draftStart, draftEnd);
+test('workout keypad keeps digit entry local and commits once with an optimistic render', () => {
+  const markDirty = extractFunctionSource(calendarJs, '_markWorkoutSetKeyboardInputDirty');
+  const commit = extractFunctionSource(calendarJs, '_commitWorkoutSetKeyboardInput');
+  const complete = extractFunctionSource(calendarJs, '_commitWorkoutSetKeyboardDone');
+  const move = extractFunctionSource(calendarJs, '_moveWorkoutSetKeyboardFocus');
 
-  assert.match(draftSave, /await saveDay\(key, payload, \{ mode: 'merge', rethrow: true \}\)/);
-  assert.doesNotMatch(draftSave, /document\.dispatchEvent/);
-  assert.match(saveFn.slice(draftEnd), /document\.dispatchEvent\(new CustomEvent\('sheet:saved'\)\)/);
+  assert.match(markDirty, /data-wt-set-keyboard-dirty/);
+  assert.match(markDirty, /dispatchEvent\(new Event\('input'/);
+  assert.doesNotMatch(markDirty, /saveDay|_updateWorkoutExerciseSetFromSheet|queue/i);
+  assert.doesNotMatch(calendarJs, /_workoutSetKeyboardDraftQueues|_queueWorkoutSetKeyboardInputDraft|_flushWorkoutSetKeyboardInputDraft|skipRender/);
+  assert.match(commit, /\{ nextInlineEditorKey, optimisticRender: true \}/);
+  assert.match(complete, /\{ preserveSheetScroll: true, optimisticRender: true \}/);
+  assert.match(calendarJs, /if \(_workoutSetKeyboardActiveInput\(\)\) return;[\s\S]*document\.dispatchEvent\(new CustomEvent\('sheet:saved'\)\)/);
+  assert.match(move, /const commitPromise = Promise\.resolve\(_commitWorkoutSetKeyboardInput/);
+  assert.match(move, /_focusWorkoutSetKeyboardRenderedTarget\(target\)/);
+  assert.doesNotMatch(move, /commitPromise\.then|await commitPromise/);
 });
 
 test('day sheet exercise card renders prior workout record instead of today set summary', () => {
@@ -690,6 +693,7 @@ test('day sheet exercise card uses inline plus row and one complete button', () 
   const oldEditFn = calendarJs.slice(oldEditStart, oldEditEnd);
   const completeFn = calendarJs.slice(completeStart, completeEnd);
 
+  assert.match(card, /const collapsed = stamped && _workoutEditingCardId !== cardId/);
   assert.match(card, /const editing = !collapsed/);
   assert.match(calendarJs, /from '\.\/workout\/exercise-completion\.js'/);
   assert.match(exerciseCompletionJs, /export function workoutExerciseCompletionStampAt\(entry\)/);
@@ -701,11 +705,13 @@ test('day sheet exercise card uses inline plus row and one complete button', () 
   assert.doesNotMatch(calendarJs, /_workoutExerciseCompletionStamps\.delete\(cardId\);\s*\n\s*renderWorkoutCalendarHome\(\)/);
   assert.match(card, /wt-max-actions wt-max-actions--single/);
   assert.match(card, /data-wt-sheet-card-action="complete-exercise"/);
+  assert.match(card, /data-wt-sheet-card-action="edit-exercise"/);
   assert.match(card, /data-card-id="\$\{_esc\(cardId\)\}"/);
   assert.match(card, /data-date-key="\$\{_esc\(key\)\}"/);
   assert.match(card, /data-exercise-index="\$\{originalIndex\}"/);
   assert.doesNotMatch(card, /window\._wtCalCompleteExercise|window\._wtCalDeleteExercise/);
   assert.match(card, />종목완료<\/button>/);
+  assert.match(card, />수정하기<\/button>/);
   assert.doesNotMatch(card, />편집 완료<\/button>|>세트 추가<\/button>|>카드 접기<\/button>|>편집하기<\/button>/);
   assert.doesNotMatch(card, /window\._wtCalEditSession\('\$\{key\}', \$\{sessionIndex\}\)/);
   assert.match(setRows, /function _renderWorkoutSetAddRow/);
@@ -733,11 +739,13 @@ test('day sheet exercise card uses inline plus row and one complete button', () 
   assert.match(calendarJs, /function _runWorkoutHomeSheetCardAction\(action, control\)/);
   assert.match(calendarJs, /data-wt-sheet-card-action[\s\S]*_runWorkoutHomeSheetCardAction/);
   assert.match(calendarJs, /case 'complete-exercise':[\s\S]*_completeWorkoutExerciseFromSheet\(cardId, key, sessionIndex, exerciseIndex\)/);
+  assert.match(calendarJs, /case 'edit-exercise':[\s\S]*_editWorkoutExerciseCard\(cardId\)/);
   assert.match(calendarJs, /case 'add-exercise-set':[\s\S]*_addWorkoutExerciseSetFromSheet\(key, sessionIndex, exerciseIndex\)/);
   assert.match(calendarJs, /case 'toggle-set-editor':[\s\S]*_toggleWorkoutSetEditorFromSheet\(key, sessionIndex, exerciseIndex, setIndex\)/);
   assert.match(completeFn, /isCompletableWorkoutExerciseSet\(nextSet\)/);
   assert.match(completeFn, /nextSet\.done = true/);
   assert.match(completeFn, /markWorkoutExerciseEntryComplete\(entry, now\)/);
+  assert.match(completeFn, /\{ preserveSheetScroll: true, optimisticRender: true \}/);
   assert.match(completeFn, /_markWorkoutExerciseCompletionStamp\(cardId\)/);
   assert.match(calendarJs, /data-wt-set-done-toggle[\s\S]*_toggleWorkoutExerciseSetDoneFromSheet/);
   assert.match(calendarJs, /data-wt-set-remove[\s\S]*_removeWorkoutExerciseSetFromSheet/);
@@ -820,7 +828,7 @@ test('day sheet save syncs saved session over stale active workout draft', () =>
   assert.match(calendarJs, /_saveWorkoutHomeSessionResult\(key, result, \{ sessionIndex: index \}\)/);
 });
 
-test('day sheet set done toggle uses explicit done state and larger touch targets', () => {
+test('day sheet set done toggle uses explicit state and compact 70-percent-height controls', () => {
   const rowsStart = calendarJs.indexOf('function _exerciseRows');
   const rowsEnd = calendarJs.indexOf('function _workoutMetrics', rowsStart);
   const toggleStart = calendarJs.indexOf('async function _toggleWorkoutExerciseSetDoneFromSheet');
@@ -835,10 +843,11 @@ test('day sheet set done toggle uses explicit done state and larger touch target
   assert.match(toggleFn, /const nextDone = !wasDone/);
   assert.doesNotMatch(toggleFn, /_isActualWorkoutSet\(nextSet\) \|\| nextSet\.done === true/);
   assert.match(toggleFn, /\{ preserveSheetScroll: true \}/);
-  assert.match(styleCss, /\.wt-max-set-main\s*\{[\s\S]*grid-template-columns:\s*44px 44px minmax\(48px,\s*1fr\) minmax\(44px,\s*\.84fr\) 44px 44px/);
-  assert.match(styleCss, /\.wt-max-set-check\s*\{[\s\S]*width:\s*44px;[\s\S]*height:\s*44px;/);
-  assert.match(styleCss, /\.wt-max-set-remove-btn\s*\{[\s\S]*width:\s*44px;[\s\S]*height:\s*44px;/);
-  assert.match(styleCss, /\.wt-max-set-expand\s*\{[\s\S]*width:\s*44px;[\s\S]*height:\s*44px;/);
+  assert.match(styleCss, /\.wt-max-set-row\s*\{[\s\S]*padding:\s*3px 4px;/);
+  assert.match(styleCss, /\.wt-max-set-main\s*\{[\s\S]*grid-template-columns:\s*32px 32px minmax\(42px,\s*1fr\) minmax\(38px,\s*\.84fr\) 32px 32px/);
+  assert.match(styleCss, /\.wt-max-set-check\s*\{[\s\S]*width:\s*32px;[\s\S]*height:\s*32px;/);
+  assert.match(styleCss, /\.wt-max-set-remove-btn\s*\{[\s\S]*width:\s*32px;[\s\S]*height:\s*32px;/);
+  assert.match(styleCss, /\.wt-max-set-expand\s*\{[\s\S]*width:\s*32px;[\s\S]*height:\s*32px;/);
   assert.match(styleCss, /\.wt-max-set-toggle,\s*\n\.wt-max-set-remove-btn\s*\{[\s\S]*touch-action:\s*manipulation;/);
 });
 
@@ -904,6 +913,7 @@ test('day sheet set inputs preserve keyboard next focus without restoring the ch
   assert.ok(keyboardButtonStart >= 0 && keyboardButtonEnd > keyboardButtonStart, 'keyboard button rule should exist');
   assert.doesNotMatch(styleCss.slice(keyboardButtonStart, keyboardButtonEnd), /vh/);
   assert.match(inputHelpers, /\.wt-day-sheet-scroll/);
+  assert.match(calendarJs, /_workoutSetKeyboardInput\?\.isConnected && _workoutSetKeyboardInput\.matches/);
   assert.match(inputHelpers, /function _captureWorkoutSheetInputState\(sourceInput = null, options = \{\}\)/);
   assert.match(inputHelpers, /const focused = document\.activeElement/);
   assert.match(inputHelpers, /const ignoreSourceInput = options\?\.ignoreSourceInput === true/);
@@ -1019,11 +1029,11 @@ test('set type menu flips above and scrolls into the visible sheet area near bot
   assert.match(toggleFn, /requestAnimationFrame/);
   assert.match(
     styleCss,
-    /\.wt-max-set-row\.is-menu-above\s+\.wt-max-set-type-menu\s*\{[\s\S]*top:\s*auto;[\s\S]*bottom:\s*48px;/
+    /\.wt-max-set-row\.is-menu-above\s+\.wt-max-set-type-menu\s*\{[\s\S]*top:\s*auto;[\s\S]*bottom:\s*36px;/
   );
   assert.match(
     styleCss,
-    /@media\s*\(max-width:\s*420px\)[\s\S]*\.wt-max-set-row\.is-menu-above\s+\.wt-max-set-type-menu\s*\{[\s\S]*bottom:\s*48px;/
+    /@media\s*\(max-width:\s*420px\)[\s\S]*\.wt-max-set-row\.is-menu-above\s+\.wt-max-set-type-menu\s*\{[\s\S]*bottom:\s*36px;/
   );
 });
 

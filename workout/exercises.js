@@ -2766,17 +2766,12 @@ async function _selectPickerExercise(ex) {
   wtPersistActiveWorkoutDraft('exercise add');
   wtCloseExercisePicker();
   const savePromise = saveWorkoutDay({ silent: true, keepDraftExercises: !!afterSelect });
+  savePromise.catch(e => console.error('Save error:', e));
   if (afterSelect) {
-    try {
-      await savePromise;
-      await _runPickerAfterSelect(afterSelect, workoutExerciseSelectionDetail(selection));
-    } catch (e) {
-      console.error('Save error:', e);
-    }
+    await _runPickerAfterSelect(afterSelect, workoutExerciseSelectionDetail(selection));
     return;
   }
   wtFocusWorkoutEntryCard(entryIdx);
-  savePromise.catch(e => console.error('Save error:', e));
 }
 
 function _runPickerRowAction(action, ex) {
@@ -3202,12 +3197,12 @@ async function _saveManualCardioFromSheet(sheet) {
   }
   wtPersistActiveWorkoutDraft('manual cardio add');
   try {
-    const savePromise = saveWorkoutDay({ silent: true });
+    const savePromise = saveWorkoutDay({ silent: true, keepDraftExercises: !!afterSelect });
+    savePromise.catch(e => console.error('Save error:', e));
     _closeManualCardioInput();
     wtCloseExercisePicker();
     showToast(existingIdx >= 0 ? '유산소 기록을 수정했어요' : '유산소 기록을 추가했어요', 1800, 'success');
     if (afterSelect) {
-      await savePromise;
       await _runPickerAfterSelect(afterSelect, workoutExerciseSelectionDetail({
         existing: existingIdx >= 0,
         created: existingIdx < 0,
@@ -3219,7 +3214,6 @@ async function _saveManualCardioFromSheet(sheet) {
       return;
     }
     wtFocusWorkoutEntryCard(entryIdx);
-    savePromise.catch(e => console.error('Save error:', e));
   } catch (e) {
     console.error('[manual-cardio.save]:', e);
     showToast('유산소 기록 저장 실패', 2400, 'error');

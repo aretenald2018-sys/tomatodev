@@ -77,9 +77,6 @@ function buildHarnessScript() {
     '_clearWorkoutSetKeyboardSurface',
     '_hideWorkoutSetKeyboard',
     '_markWorkoutSetKeyboardInputDirty',
-    '_workoutSetKeyboardDraftQueueKey',
-    '_queueWorkoutSetKeyboardInputDraft',
-    '_flushWorkoutSetKeyboardInputDraft',
     '_replaceWorkoutSetKeyboardInputValue',
     '_workoutSetKeyboardCursor',
     '_applyWorkoutSetKeyboardKey',
@@ -120,12 +117,12 @@ function buildHarnessScript() {
     const _workoutExpandedSetEditors = new Set();
     let _workoutInlineSetEditor = null;
     let _workoutSetKeyboardInput = null;
-    const _workoutSetKeyboardDraftQueues = new Map();
     window.__renderCalls = 0;
     window.__syncCalls = [];
     window.__restoreCalls = [];
     window.__mutateCalls = [];
     window.__deferSetMutationRender = false;
+    window.__mutationDelayMs = 0;
     window.__pendingMutationRender = null;
     window.__scrollerTouchMoveBlocks = 0;
 
@@ -167,6 +164,7 @@ function buildHarnessScript() {
     function _addWorkoutHomeSession() { return false; }
     function _toggleWorkoutExerciseSetDoneFromSheet() { return false; }
     function _completeWorkoutExerciseFromSheet() { return false; }
+    function _editWorkoutExerciseCard() { return false; }
     function _toggleWorkoutDetailCard() { return false; }
     function _deleteWorkoutExercise() { return false; }
     function _deleteWorkoutActivity() { return false; }
@@ -220,6 +218,9 @@ function buildHarnessScript() {
         renderWorkoutCalendarHome();
       } else {
         window.__pendingMutationRender = { targetKey, targetSessionIndex, exerciseIndex, options };
+      }
+      if (window.__mutationDelayMs > 0) {
+        await new Promise(resolve => setTimeout(resolve, window.__mutationDelayMs));
       }
       return ok;
     }
@@ -322,6 +323,8 @@ test('mobile set row exposes editable kg/reps values and swipe delete targets in
     const swipeRows = Array.from(document.querySelectorAll('[data-wt-set-swipe-row]')).map(node => node.dataset.setIndex);
     const remove = document.querySelector('.wt-max-set-remove-btn');
     const expand = document.querySelector('.wt-max-set-expand');
+    const row = document.querySelector('.wt-max-set-row');
+    const check = document.querySelector('.wt-max-set-check');
     return {
       editFields,
       swipeRows,
@@ -330,6 +333,8 @@ test('mobile set row exposes editable kg/reps values and swipe delete targets in
       removeAction: remove?.getAttribute('data-wt-set-remove') ?? null,
       removeLabel: remove?.getAttribute('aria-label') ?? '',
       removeBeforeExpand: !!(remove && expand && remove.compareDocumentPosition(expand) & Node.DOCUMENT_POSITION_FOLLOWING),
+      rowHeight: row?.getBoundingClientRect().height ?? 0,
+      controlHeight: check?.getBoundingClientRect().height ?? 0,
     };
   });
 
@@ -340,6 +345,9 @@ test('mobile set row exposes editable kg/reps values and swipe delete targets in
   assert.equal(result.removeAction, '');
   assert.match(result.removeLabel, /세트 삭제/);
   assert.equal(result.removeBeforeExpand, true);
+  assert.equal(result.rowHeight, 38);
+  assert.equal(result.controlHeight, 32);
+  assert.ok(Math.abs((result.rowHeight / 54) - 0.7) < 0.01);
 });
 
 test('mobile set row inline editing clears values and only right-to-left swipe removes sets', async () => {
@@ -478,14 +486,14 @@ test('mobile set row inline editing clears values and only right-to-left swipe r
 
   assert.deepEqual(result.kgFocus, { field: 'kg', value: '', editorOpen: false, inlineEditing: true });
   assert.deepEqual(result.repsFocus, { field: 'reps', value: '', editorOpen: false, inlineEditing: true });
-  assert.ok(result.hitTargets.checkWidth >= 44);
-  assert.ok(result.hitTargets.checkHeight >= 44);
-  assert.ok(result.hitTargets.typeWidth >= 44);
-  assert.ok(result.hitTargets.typeHeight >= 44);
-  assert.ok(result.hitTargets.removeWidth >= 44);
-  assert.ok(result.hitTargets.removeHeight >= 44);
+  assert.equal(result.hitTargets.checkWidth, 32);
+  assert.equal(result.hitTargets.checkHeight, 32);
+  assert.equal(result.hitTargets.typeWidth, 32);
+  assert.equal(result.hitTargets.typeHeight, 32);
+  assert.equal(result.hitTargets.removeWidth, 32);
+  assert.equal(result.hitTargets.removeHeight, 32);
   assert.ok(result.hitTargets.removeCenterX < result.hitTargets.expandCenterX);
-  assert.ok(result.hitTargets.gap >= 4);
+  assert.ok(result.hitTargets.gap >= 3);
   assert.deepEqual(result.finalState.sets, [
     { kg: 55, reps: 15, rir: 2, romPct: 100, setType: 'main', done: false },
     { kg: 35, reps: 14, rir: 2, romPct: 100, setType: 'main', done: false },
@@ -509,6 +517,7 @@ test('custom workout set keypad enters values and moves left or right across inl
       };
       window.__syncCalls = [];
       window.__mutateCalls = [];
+      window.__mutationDelayMs = 600;
       window.renderWorkoutCalendarHome();
     });
 
@@ -541,11 +550,12 @@ test('custom workout set keypad enters values and moves left or right across inl
     const typedKg = await page.evaluate(() => ({
       value: document.activeElement?.value ?? null,
       dirty: document.activeElement?.getAttribute('data-wt-set-keyboard-dirty') || '',
+      storedKg: window.__entry.sets[0]?.kg ?? null,
+      mutationCount: window.__mutateCalls.length,
     }));
-    await page.waitForFunction(() => window.__entry.sets[0]?.kg === 80);
-    typedKg.persistedKg = await page.evaluate(() => window.__entry.sets[0]?.kg ?? null);
 
     const renderBeforeNext = await page.evaluate(() => window.__renderCalls);
+    const nextStartedAt = Date.now();
     await tapSelector('[data-wt-set-keyboard-action="next"]');
     await page.waitForFunction(() => (
       window.__entry.sets[0]?.kg === 80
@@ -556,10 +566,12 @@ test('custom workout set keypad enters values and moves left or right across inl
       activeField: document.activeElement?.getAttribute('data-field') || '',
       keyboardOpen: !!document.querySelector('[data-wt-set-keyboard].is-open'),
     }), renderBeforeNext);
+    afterNextMove.elapsedMs = Date.now() - nextStartedAt;
 
     await tapSelector('[data-wt-set-keyboard-key="1"]');
     await tapSelector('[data-wt-set-keyboard-key="5"]');
     const renderBeforePrev = await page.evaluate(() => window.__renderCalls);
+    const prevStartedAt = Date.now();
     await tapSelector('[data-wt-set-keyboard-action="prev"]');
     await page.waitForFunction(() => (
       window.__entry.sets[0]?.reps === 15
@@ -570,6 +582,7 @@ test('custom workout set keypad enters values and moves left or right across inl
       activeField: document.activeElement?.getAttribute('data-field') || '',
       keyboardOpen: !!document.querySelector('[data-wt-set-keyboard].is-open'),
     }), renderBeforePrev);
+    afterPrevMove.elapsedMs = Date.now() - prevStartedAt;
 
     const afterPrev = await page.evaluate(() => ({
       activeField: document.activeElement?.getAttribute('data-field') || '',
@@ -580,6 +593,7 @@ test('custom workout set keypad enters values and moves left or right across inl
       mutationOptions: window.__mutateCalls.map(call => call.options),
     }));
 
+    const doneStartedAt = Date.now();
     await tapSelector('[data-wt-set-keyboard-action="done"]');
     await page.waitForFunction(() => (
       !document.querySelector('[data-wt-set-keyboard]')
@@ -592,6 +606,7 @@ test('custom workout set keypad enters values and moves left or right across inl
       keyboardOpenClass: document.documentElement.classList.contains('wt-set-keyboard-open'),
       sheetPadded: document.querySelector('[data-wt-day-sheet]')?.classList.contains('has-set-keyboard') || false,
     }));
+    hidden.elapsedMs = Date.now() - doneStartedAt;
 
     return { shown, typedKg, afterNextMove, afterPrevMove, afterPrev, hidden };
   });
@@ -606,15 +621,23 @@ test('custom workout set keypad enters values and moves left or right across inl
     hasNext: true,
     sheetPadded: true,
   });
-  assert.deepEqual(result.typedKg, { value: '80', dirty: 'true', persistedKg: 80 });
-  assert.deepEqual(result.afterNextMove, { renderDelta: 1, activeField: 'reps', keyboardOpen: true });
-  assert.deepEqual(result.afterPrevMove, { renderDelta: 1, activeField: 'kg', keyboardOpen: true });
+  assert.deepEqual(result.typedKg, { value: '80', dirty: 'true', storedKg: 70, mutationCount: 0 });
+  assert.deepEqual(
+    { ...result.afterNextMove, elapsedMs: undefined },
+    { renderDelta: 1, activeField: 'reps', keyboardOpen: true, elapsedMs: undefined },
+  );
+  assert.ok(result.afterNextMove.elapsedMs < 250, `next field took ${result.afterNextMove.elapsedMs}ms`);
+  assert.deepEqual(
+    { ...result.afterPrevMove, elapsedMs: undefined },
+    { renderDelta: 1, activeField: 'kg', keyboardOpen: true, elapsedMs: undefined },
+  );
+  assert.ok(result.afterPrevMove.elapsedMs < 250, `previous field took ${result.afterPrevMove.elapsedMs}ms`);
   assert.equal(result.afterPrev.activeField, 'kg');
   assert.equal(result.afterPrev.activeValue, '');
   assert.deepEqual(result.afterPrev.sets[0], { kg: 80, reps: 15, rir: 2, romPct: 100, setType: 'main', done: false });
   assert.equal(result.afterPrev.keyboardOpen, true);
   assert.ok(result.afterPrev.syncActions.filter(action => action === 'sheet:set-inline-field').length >= 3);
-  assert.ok(result.afterPrev.mutationOptions.every(options => options.preserveSheetScroll === true));
+  assert.ok(result.afterPrev.mutationOptions.every(options => options.preserveSheetScroll === true && options.optimisticRender === true));
   assert.equal(result.hidden.sets[0].kg, 80);
   assert.equal(result.hidden.sets[0].reps, 15);
   assert.equal(result.hidden.sets[0].done, true);
@@ -622,6 +645,7 @@ test('custom workout set keypad enters values and moves left or right across inl
   assert.deepEqual(result.hidden.sets[1], { kg: 40, reps: 12, rir: 2, romPct: 100, setType: 'main', done: false });
   assert.equal(result.hidden.keyboardOpenClass, false);
   assert.equal(result.hidden.sheetPadded, false);
+  assert.ok(result.hidden.elapsedMs < 250, `done button took ${result.hidden.elapsedMs}ms`);
 });
 
 test('previous workout card copies every set value but resets completion state', async () => {

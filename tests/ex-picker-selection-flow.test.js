@@ -58,8 +58,28 @@ test('exercise picker supports sheet afterSelect without record-card focus', () 
   assert.match(selectionHandler, /const shouldRefreshWorkoutTab = !afterSelect/);
   assert.match(selectionHandler, /if \(shouldRefreshWorkoutTab\) \{[\s\S]*_renderExerciseList\(\)[\s\S]*_refreshWorkoutTimeline\('exercise add'\)[\s\S]*\}[\s\S]*wtPersistActiveWorkoutDraft\('exercise add'\)/);
   assert.match(selectionHandler, /saveWorkoutDay\(\{ silent: true, keepDraftExercises: !!afterSelect \}\)/);
-  assert.match(selectionHandler, /if \(afterSelect\) \{[\s\S]*await savePromise;[\s\S]*_runPickerAfterSelect\(afterSelect, workoutExerciseSelectionDetail\(selection\)\)/);
+  const saveIndex = selectionHandler.indexOf('const savePromise = saveWorkoutDay');
+  const refreshIndex = selectionHandler.indexOf('await _runPickerAfterSelect', saveIndex);
+  const backgroundSaveIndex = selectionHandler.indexOf('savePromise.catch', saveIndex);
+  assert.ok(saveIndex >= 0 && refreshIndex > saveIndex, 'sheet refresh should follow draft persistence');
+  assert.ok(backgroundSaveIndex > saveIndex && backgroundSaveIndex < refreshIndex, 'remote save errors should be handled without delaying the immediate sheet refresh');
+  assert.equal(selectionHandler.indexOf('await savePromise', saveIndex), -1, 'picker selection must not wait for remote save before rendering');
   assert.match(selectionHandler, /if \(afterSelect\) \{[\s\S]*return;[\s\S]*\}[\s\S]*wtFocusWorkoutEntryCard\(entryIdx\)/);
+});
+
+test('manual cardio picker also refreshes the sheet before remote save settles', () => {
+  const start = exercisesJs.indexOf('async function _saveManualCardioFromSheet');
+  const end = exercisesJs.indexOf('function _bindManualCardioSheet', start);
+  assert.ok(start >= 0 && end > start, 'manual cardio sheet save function should exist');
+  const saveFn = exercisesJs.slice(start, end);
+  const saveIndex = saveFn.indexOf('const savePromise = saveWorkoutDay');
+  const refreshIndex = saveFn.indexOf('await _runPickerAfterSelect', saveIndex);
+  const backgroundSaveIndex = saveFn.indexOf('savePromise.catch', saveIndex);
+
+  assert.match(saveFn, /saveWorkoutDay\(\{ silent: true, keepDraftExercises: !!afterSelect \}\)/);
+  assert.ok(refreshIndex > saveIndex);
+  assert.ok(backgroundSaveIndex > saveIndex && backgroundSaveIndex < refreshIndex);
+  assert.equal(saveFn.indexOf('await savePromise', saveIndex), -1);
 });
 
 test('exercise editor can close without reopening the picker for calendar goal input', () => {

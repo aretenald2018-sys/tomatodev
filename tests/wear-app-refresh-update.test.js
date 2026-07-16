@@ -187,7 +187,7 @@ test('manual app refresh keeps native Wear bridge while APK button downloads mob
   assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
 });
 
-test('published mobile APK contains current life-zone photo bubble assets', () => {
+test('published mobile APK contains current runtime and workout flow assets', () => {
   const rootSw = readProjectFile('sw.js');
   const apkSw = readApkEntryText('public/downloads/tomato-mobile-debug.apk', 'assets/public/sw.js');
   const apkBuildInfo = JSON.parse(readApkEntryText('public/downloads/tomato-mobile-debug.apk', 'assets/public/build-info.json'));
@@ -195,6 +195,12 @@ test('published mobile APK contains current life-zone photo bubble assets', () =
   const apkWelcomeBackJs = readApkEntryText('public/downloads/tomato-mobile-debug.apk', 'assets/public/home/welcome-back.js');
   const apkLifeZoneJs = readApkEntryText('public/downloads/tomato-mobile-debug.apk', 'assets/public/home/life-zone.js');
   const apkStyleCss = readApkEntryText('public/downloads/tomato-mobile-debug.apk', 'assets/public/styles/features/home-life-zone.css');
+  const workoutAssetPaths = [
+    'render-calendar.js',
+    'workout/exercises.js',
+    'style.css',
+    'styles/features/workout-day-sheet.css',
+  ];
   const expectedCacheVersion = cacheVersionFrom(rootSw);
 
   assert.equal(cacheVersionFrom(apkSw), expectedCacheVersion);
@@ -209,6 +215,13 @@ test('published mobile APK contains current life-zone photo bubble assets', () =
   assert.match(apkStyleCss, /\.lz-speech-photo-btn\s*{[\s\S]*padding:\s*0/);
   assert.match(apkStyleCss, /\.lz-speech--photo \.lz-photo-like-btn\s*{[\s\S]*background:\s*transparent/);
   assert.match(apkStyleCss, /\.lz-speech--photo \.lz-photo-like-btn\s*{[\s\S]*box-shadow:\s*none/);
+  for (const assetPath of workoutAssetPaths) {
+    assert.equal(
+      readApkEntryText('public/downloads/tomato-mobile-debug.apk', `assets/public/${assetPath}`),
+      readProjectFile(assetPath),
+      `${assetPath} in the downloadable APK should match the current source`,
+    );
+  }
 });
 
 test('browser APK fallback starts direct download without old warning toast', async () => {
