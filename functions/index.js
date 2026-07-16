@@ -1,4 +1,4 @@
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentWritten } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
 const { validateGeminiRequest, validateOcrRequest } = require("./lib/validation");
@@ -8,6 +8,11 @@ const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
 const crypto = require("crypto");
+const {
+  queueDashboardRefresh,
+  refreshAllLinkedDashboards,
+  verifyInternalRequest,
+} = require("./dashboard/service");
 
 initializeApp();
 
@@ -16,6 +21,8 @@ const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 // 설정: firebase functions:secrets:set GROQ_API_KEY
 // 미설정 시 fallback 비활성 (기존 Gemini-only 동작 유지).
 const GROQ_API_KEY = defineSecret("GROQ_API_KEY");
+const BUDGET_FIREBASE_SERVICE_ACCOUNT = defineSecret("BUDGET_FIREBASE_SERVICE_ACCOUNT");
+const DASHBOARD_INTERNAL_HMAC = defineSecret("DASHBOARD_INTERNAL_HMAC");
 const GROQ_MODEL = "llama-3.3-70b-versatile";
 // Groq vision-capable model (Llama 4 Scout) — 이미지 입력 포함 요청 시 사용.
 // 텍스트 전용 요청은 기존 GROQ_MODEL 유지.
@@ -33,6 +40,85 @@ exports.sendPushOnNotification = onDocumentCreated(
     const data = event.data?.data();
     return deliverNotification({ db: getFirestore(), messaging: getMessaging(), data });
   }
+);
+
+const DASHBOARD_TRIGGER_OPTIONS = {
+  region: "asia-northeast3",
+  retry: true,
+  secrets: [BUDGET_FIREBASE_SERVICE_ACCOUNT],
+};
+
+function _queueDashboardSourceChange(event, reason) {
+  return queueDashboardRefresh({
+    tomatoDb: getFirestore(),
+    serviceAccountValue: BUDGET_FIREBASE_SERVICE_ACCOUNT.value(),
+    ownerId: event.params.ownerId,
+    reason,
+  });
+}
+
+exports.dashboardOnWorkoutWritten = onDocumentWritten(
+  { ...DASHBOARD_TRIGGER_OPTIONS, document: "users/{ownerId}/workouts/{dateKey}" },
+  (event) => _queueDashboardSourceChange(event, "tomato-workout"),
+);
+
+exports.dashboardOnSettingWritten = onDocumentWritten(
+  { ...DASHBOARD_TRIGGER_OPTIONS, document: "users/{ownerId}/settings/{settingId}" },
+  (event) => _queueDashboardSourceChange(event, "tomato-setting"),
+);
+
+exports.dashboardOnBodyCheckinWritten = onDocumentWritten(
+  { ...DASHBOARD_TRIGGER_OPTIONS, document: "users/{ownerId}/body_checkins/{checkinId}" },
+  (event) => _queueDashboardSourceChange(event, "tomato-body-checkin"),
+);
+
+exports.dashboardOnExerciseWritten = onDocumentWritten(
+  { ...DASHBOARD_TRIGGER_OPTIONS, document: "users/{ownerId}/exercises/{exerciseId}" },
+  (event) => _queueDashboardSourceChange(event, "tomato-exercise"),
+);
+
+exports.dashboardRefresh = onRequest(
+  {
+    region: "asia-northeast3",
+    cors: false,
+    secrets: [BUDGET_FIREBASE_SERVICE_ACCOUNT, DASHBOARD_INTERNAL_HMAC],
+  },
+  async (req, res) => {
+    res.set("Cache-Control", "no-store");
+    if (req.method !== "POST") return res.status(405).json({ ok: false, error: "POST only" });
+    if (!verifyInternalRequest(req, DASHBOARD_INTERNAL_HMAC.value())) {
+      return res.status(401).json({ ok: false, error: "unauthorized" });
+    }
+    const ownerId = String(req.body?.ownerId || "").trim();
+    const budgetUid = String(req.body?.budgetUid || "").trim() || null;
+    if (!ownerId) return res.status(400).json({ ok: false, error: "ownerId is required" });
+    try {
+      const result = await queueDashboardRefresh({
+        tomatoDb: getFirestore(),
+        serviceAccountValue: BUDGET_FIREBASE_SERVICE_ACCOUNT.value(),
+        ownerId,
+        budgetUid,
+        reason: String(req.body?.reason || "remote-refresh").slice(0, 80),
+      });
+      return res.json({ ok: true, result });
+    } catch (error) {
+      console.error("[dashboardRefresh]", error);
+      return res.status(500).json({ ok: false, error: "dashboard-refresh-failed" });
+    }
+  },
+);
+
+exports.dashboardDailyRefresh = onSchedule(
+  {
+    schedule: "5 0 * * *",
+    timeZone: "Asia/Seoul",
+    region: "asia-northeast3",
+    secrets: [BUDGET_FIREBASE_SERVICE_ACCOUNT],
+  },
+  () => refreshAllLinkedDashboards({
+    tomatoDb: getFirestore(),
+    serviceAccountValue: BUDGET_FIREBASE_SERVICE_ACCOUNT.value(),
+  }),
 );
 
 // ── 주간 랭킹 공통 로직 ─────────────────────────────────────────────
