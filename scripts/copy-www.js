@@ -19,6 +19,7 @@ const manifestTargets = runtimeAssets
   .filter(Boolean);
 const targets = [...new Set([
   ...manifestTargets,
+  'sw.js',
   'assets',
   ...readdirSync(root).filter(f => f.startsWith('icon-') && f.endsWith('.png')),
   ...readdirSync(root).filter(f => f.startsWith('screenshot-') && f.endsWith('.png')),

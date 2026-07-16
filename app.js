@@ -54,6 +54,7 @@ import {
 } from './workout/index.js';
 import { wtHandleExercisePickerBack } from './workout/exercises.js';
 import { wtHandleRunningSessionBack, wtOpenRunningSession } from './workout/running-session.js';
+import { tm2OpenBoard } from './workout/test-v2/entry.js';
 import {
   initSeasonDashboardWidgetSync,
   scheduleSeasonDashboardWidgetSync,
@@ -602,21 +603,58 @@ document.addEventListener('season:changed', () => {
   void renderAll();
   scheduleSeasonDashboardWidgetSync('season-changed', 0);
 });
-document.addEventListener('widget:action', (event) => {
-  const action = String(event.detail?.action || '');
+async function openDashboardDestination(action) {
   if (action === 'refresh') {
     scheduleSeasonDashboardWidgetSync('manual-refresh', 0);
     return;
   }
-  if (action === 'running') {
-    void switchTab('workout').then(() => wtOpenRunningSession());
+  if (action === 'diet') {
+    await switchTab('diet');
     return;
   }
-  if (action === 'workout') void switchTab('workout');
+  if (action === 'season') {
+    await switchTab('workout');
+    await tm2OpenBoard();
+    return;
+  }
+  if (action === 'running') {
+    await switchTab('workout');
+    wtOpenRunningSession();
+    return;
+  }
+  if (action === 'workout') await switchTab('workout');
+}
+
+function readDashboardEntry() {
+  const params = new URLSearchParams(window.location.search);
+  const entry = String(params.get('entry') || '');
+  return ['diet', 'season', 'running'].includes(entry) ? entry : '';
+}
+
+function clearDashboardEntry() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('entry');
+  window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
+}
+
+let _pendingDashboardEntry = readDashboardEntry();
+function openPendingDashboardEntry() {
+  if (!_pendingDashboardEntry || !(getCurrentUser() || loadSavedUser())) return;
+  const entry = _pendingDashboardEntry;
+  _pendingDashboardEntry = '';
+  clearDashboardEntry();
+  void openDashboardDestination(entry);
+}
+
+document.addEventListener('widget:action', (event) => {
+  void openDashboardDestination(String(event.detail?.action || ''));
 });
 document.addEventListener('app:start-user-session', (event) => {
   Promise.resolve(startTomatoUserSession())
-    .then((result) => event.detail?.resolve?.(result))
+    .then((result) => {
+      event.detail?.resolve?.(result);
+      if (result) openPendingDashboardEntry();
+    })
     .catch((error) => {
       console.error('[app] user session start failed:', error);
       event.detail?.resolve?.(false);
@@ -808,6 +846,7 @@ async function _initializeAppSession() {
     window.__tomatoAppReady = true;
     window.dispatchEvent(new Event('tomato-app-ready'));
     if (bootUser) {
+      openPendingDashboardEntry();
       if (!runningSessionRestored) {
         requestAnimationFrame(() => {
           showDietPremiumReportIfNeeded().catch((e) => console.warn('[diet-premium-report]', e));
