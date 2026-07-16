@@ -30,6 +30,7 @@ import { openModal, closeModal } from './utils/dom.js';
 import { confirmAction } from './utils/confirm-modal.js';
 import {
   getWorkoutSessions,
+  hasWorkoutGymCardData,
   hasWorkoutSessionData,
   upsertWorkoutSession,
   deleteWorkoutSession,
@@ -2205,8 +2206,7 @@ function _renderWorkoutDetailSessionTabs(sessions, activeIndex, runningInfo = nu
 }
 
 function _hasWorkoutHomeSessionRecord(session) {
-  return hasWorkoutSessionData(session)
-    || (Array.isArray(session?.exercises) && session.exercises.some(_hasDraftWorkoutEntry));
+  return hasWorkoutGymCardData(session);
 }
 
 function _renderWorkoutDetailRecorded(key, sessionIndex, wx) {

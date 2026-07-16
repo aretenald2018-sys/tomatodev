@@ -52,6 +52,17 @@ function _hasActualWorkoutEntry(entry) {
   return (Array.isArray(entry.sets) ? entry.sets : []).some(_isActualWorkoutSet);
 }
 
+function _hasWorkoutExerciseCard(entry) {
+  if (!entry || typeof entry !== 'object') return false;
+  return !!(
+    _str(entry.exerciseId)
+    || _str(entry.name)
+    || _str(entry.exerciseName)
+    || _str(entry.note)
+    || _hasManualCardioEntry(entry)
+  );
+}
+
 export function emptyWorkoutSession(index = 0) {
   return {
     id: `session-${index + 1}`,
@@ -134,6 +145,17 @@ export function hasWorkoutSessionData(session = {}) {
   if (_num(s.workoutTimeline?.durationSec) > 0 || _num(s.workoutTimeline?.checkedSetCount) > 0) return true;
   if (_str(s.memo) || _str(s.runMemo) || _str(s.cfMemo) || _str(s.swimMemo)) return true;
   if (s.workoutPhoto) return true;
+  return false;
+}
+
+// The bottom-sheet gym tab dot represents visible cards, not background
+// metadata such as elapsed time, completion timelines, photos, or memos.
+export function hasWorkoutGymCardData(session = {}) {
+  const s = normalizeWorkoutSession(session, 0);
+  if (s.exercises.some(_hasWorkoutExerciseCard)) return true;
+  if (s.cf || _num(s.cfDurationMin) > 0 || _num(s.cfDurationSec) > 0 || _str(s.cfWod) || _str(s.cfMemo)) return true;
+  if (s.stretching || _num(s.stretchDuration) > 0 || _str(s.stretchMemo)) return true;
+  if (s.swimming || _num(s.swimDistance) > 0 || _num(s.swimDurationMin) > 0 || _num(s.swimDurationSec) > 0 || _str(s.swimStroke) || _str(s.swimMemo)) return true;
   return false;
 }
 

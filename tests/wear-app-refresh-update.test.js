@@ -201,6 +201,7 @@ test('published mobile APK contains current runtime and workout flow assets', ()
   const apkStyleCss = readApkEntryText('public/downloads/tomato-mobile-debug.apk', 'assets/public/styles/features/home-life-zone.css');
   const workoutAssetPaths = [
     'render-calendar.js',
+    'workout/sessions.js',
     'workout/exercises.js',
     'style.css',
     'styles/features/workout-day-sheet.css',

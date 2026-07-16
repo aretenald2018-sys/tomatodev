@@ -1050,6 +1050,8 @@ test('workout bottom sheet replaces the third gym session with a dedicated runni
   assert.equal(WORKOUT_GYM_SESSION_COUNT, 2);
   assert.equal(WORKOUT_RUNNING_SESSION_INDEX, 2);
   assert.match(tabs, /\.slice\(0, WORKOUT_GYM_SESSION_COUNT\)/);
+  assert.match(tabs, /const hasRecord = _hasWorkoutHomeSessionRecord\(session\)/);
+  assert.match(calendarJs, /function _hasWorkoutHomeSessionRecord\(session\) \{\s*return hasWorkoutGymCardData\(session\);\s*\}/);
   assert.match(tabs, /data-wt-sheet-card-action="select-running"/);
   assert.match(tabs, />\s*러닝\$\{hasRunning \? '<b><\/b>' : ''\}\s*<\/button>/);
   assert.doesNotMatch(tabs, /3회차/);

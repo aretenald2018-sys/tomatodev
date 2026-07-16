@@ -5,6 +5,7 @@ import {
   aggregateWorkoutSessions,
   deleteWorkoutSession,
   getWorkoutSessions,
+  hasWorkoutGymCardData,
   hasWorkoutSessionData,
   upsertWorkoutSession,
 } from '../workout/sessions.js';
@@ -91,6 +92,28 @@ test('legacy inline route without ref remains active and ref-only preview record
     runRoute: [],
     runRouteRef: { routeId: 'route-1', pointCount: 620 },
   }), true);
+});
+
+test('gym tab card indicator ignores stale metadata after the last exercise card is deleted', () => {
+  const metadataOnly = {
+    exercises: [],
+    workoutDuration: 900,
+    workoutTimeline: { durationSec: 900, checkedSetCount: 2 },
+    memo: '완료한 운동 메모',
+    workoutPhoto: 'data:image/jpeg;base64,photo',
+  };
+
+  assert.equal(hasWorkoutSessionData(metadataOnly), true);
+  assert.equal(hasWorkoutGymCardData(metadataOnly), false);
+});
+
+test('gym tab card indicator tracks visible gym cards but excludes running-only records', () => {
+  assert.equal(hasWorkoutGymCardData({ exercises: [{ exerciseId: 'bench', sets: [] }] }), true);
+  assert.equal(hasWorkoutGymCardData({ cfDurationMin: 12 }), true);
+  assert.equal(hasWorkoutGymCardData({ stretchMemo: '마무리 스트레칭' }), true);
+  assert.equal(hasWorkoutGymCardData({ swimDistance: 500 }), true);
+  assert.equal(hasWorkoutGymCardData({ exercises: [{}], workoutDuration: 600 }), false);
+  assert.equal(hasWorkoutGymCardData({ running: true, runDistance: 5, runDurationMin: 30 }), false);
 });
 
 test('deleteWorkoutSession removes selected session and rebuilds aggregate', () => {
