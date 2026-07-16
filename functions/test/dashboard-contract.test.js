@@ -16,6 +16,12 @@ test("dashboard-v1 fixture is complete and leaves missing wine unrated", () => {
         season_registry: { seasons: [{ id: "s1", startDate: "2026-07-01", endDate: "2026-08-31" }] },
         season_s1_workout_plan: { weeklySessionTarget: 3 },
         season_s1_running_plan: { weeklyDistanceKm: 20, weeklySessions: 3 },
+        season_s1_test_board_v2: {
+          seasonId: "s1",
+          benchmarks: [{ id: "squat", exerciseId: "squat", groupId: "lower", label: "스쿼트", status: "active", order: 0, program: "stair", tracks: ["volume"], setsDefault: 4 }],
+          cycles: [{ id: "lower-cycle", groupId: "lower", startDate: "2026-07-13", weeks: 6, status: "active" }],
+          steps: [{ id: "squat-step", benchmarkId: "squat", track: "volume", cycleId: "lower-cycle", weekStart: "2026-07-13", span: 1, kg: 105, reps: 6, sets: 4, weekLog: {} }],
+        },
       },
       workouts: [
         {
@@ -47,6 +53,9 @@ test("dashboard-v1 fixture is complete and leaves missing wine unrated", () => {
   assert.equal(validateDashboardSnapshot(snapshot).ok, true);
   assert.ok(snapshot.domains.food.score > 0);
   assert.equal(snapshot.workouts[0].label, "스쿼트");
+  assert.equal(snapshot.workouts[0].value, "105kg × 6");
+  assert.equal(snapshot.workouts[0].status, "4세트 · 계획");
+  assert.equal(snapshot.healthGoal.seasonWeek, 3);
 });
 
 test("wine score uses only the five most recent valid ratings", () => {

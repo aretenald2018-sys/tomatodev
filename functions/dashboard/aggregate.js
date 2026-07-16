@@ -17,6 +17,7 @@ const {
   targetProgressScore,
   trendScore,
 } = require("./scoring");
+const { buildSeasonHealthGoals } = require("./season-goals");
 
 const DEFAULT_DIET_PLAN = Object.freeze({
   height: null,
@@ -361,7 +362,14 @@ function timestampOfTransaction(transaction) {
 }
 
 function transactionExpense(transaction) {
-  if (transaction?.hidden || transaction?.budgetExcluded || transaction?.excludeFromBudget) return 0;
+  if (
+    transaction?.hidden
+    || transaction?.budgetExcluded
+    || transaction?.excludedFromBudget
+    || transaction?.excludeFromBudget
+    || transaction?.reimbursementExpected
+    || transaction?.excludeReason === "reimbursement_expected"
+  ) return 0;
   if (!["card_payment", "transfer_out"].includes(transaction?.type)) return 0;
   return Math.max(0, number(transaction.amount));
 }
@@ -371,7 +379,11 @@ function spendingDomain(budget, nowEpochMs) {
   const monthStart = Date.UTC(year, monthIndex, 1) - 9 * 60 * 60 * 1000;
   const nextMonthStart = Date.UTC(year, monthIndex + 1, 1) - 9 * 60 * 60 * 1000;
   const previousMonthStart = Date.UTC(year, monthIndex - 1, 1) - 9 * 60 * 60 * 1000;
-  const previousCutoff = Date.UTC(year, monthIndex - 1, day + 1) - 9 * 60 * 60 * 1000 - 1;
+  const previousMonthEnd = Date.UTC(year, monthIndex, 1) - 9 * 60 * 60 * 1000 - 1;
+  const previousMonthDayCount = kstParts(previousMonthEnd).day;
+  const comparableDay = Math.min(day, previousMonthDayCount);
+  const currentCutoff = Date.UTC(year, monthIndex, day + 1) - 9 * 60 * 60 * 1000;
+  const previousCutoff = Date.UTC(year, monthIndex - 1, comparableDay + 1) - 9 * 60 * 60 * 1000;
   const daysInMonth = Math.round((nextMonthStart - monthStart) / (24 * 60 * 60 * 1000));
   const categories = Array.isArray(budget.categories) ? budget.categories : [];
   const byId = new Map(categories.map((category) => [category.id, category]));
@@ -387,24 +399,33 @@ function spendingDomain(budget, nowEpochMs) {
   const rows = (budget.transactions || []).map((transaction) => ({
     ...transaction,
     epochMs: timestampOfTransaction(transaction),
-    expense: isControl(transaction) ? transactionExpense(transaction) : 0,
+    expense: transactionExpense(transaction),
+    controlExpense: isControl(transaction) ? transactionExpense(transaction) : 0,
   })).filter((transaction) => transaction.epochMs != null);
-  const currentSpent = sum(rows.filter((row) => row.epochMs >= monthStart && row.epochMs < nextMonthStart).map((row) => row.expense));
-  const previousSpent = sum(rows.filter((row) => row.epochMs >= previousMonthStart && row.epochMs <= previousCutoff).map((row) => row.expense));
-  const todayStart = Date.UTC(year, monthIndex, day) - 9 * 60 * 60 * 1000;
-  const currentWeekStart = todayStart - 6 * 24 * 60 * 60 * 1000;
-  const previousWeekStart = currentWeekStart - 7 * 24 * 60 * 60 * 1000;
-  const currentWeekSpent = sum(rows.filter((row) => row.epochMs >= currentWeekStart && row.epochMs < todayStart + 24 * 60 * 60 * 1000).map((row) => row.expense));
-  const previousWeekSpent = sum(rows.filter((row) => row.epochMs >= previousWeekStart && row.epochMs < currentWeekStart).map((row) => row.expense));
+  const currentSpent = sum(rows.filter((row) => row.epochMs >= monthStart && row.epochMs < currentCutoff).map((row) => row.expense));
+  const previousSpent = sum(rows.filter((row) => row.epochMs >= previousMonthStart && row.epochMs < previousCutoff).map((row) => row.expense));
+  const currentControlSpent = sum(rows.filter((row) => row.epochMs >= monthStart && row.epochMs < currentCutoff).map((row) => row.controlExpense));
+  const previousControlSpent = sum(rows.filter((row) => row.epochMs >= previousMonthStart && row.epochMs < previousCutoff).map((row) => row.controlExpense));
   const expectedTarget = target > 0 ? target * day / daysInMonth : null;
-  const goal = ceilingTargetScore(currentSpent, expectedTarget);
-  const trend = previousSpent > 0 ? trendScore(currentSpent, previousSpent, { lowerIsBetter: true }) : null;
-  const latest = rows.filter((row) => row.expense > 0).sort((a, b) => a.epochMs - b.epochMs).at(-1);
-  const dailyTrend = [];
-  for (let offset = -6; offset <= 0; offset += 1) {
-    const key = dateKeyAt(nowEpochMs + offset * 24 * 60 * 60 * 1000);
-    dailyTrend.push(Math.round(sum(rows.filter((row) => dateKeyAt(row.epochMs) === key).map((row) => row.expense))));
+  const goal = ceilingTargetScore(currentControlSpent, expectedTarget);
+  const trend = previousControlSpent > 0 ? trendScore(currentControlSpent, previousControlSpent, { lowerIsBetter: true }) : null;
+  const latest = rows.filter((row) => row.expense > 0 && row.epochMs < currentCutoff).sort((a, b) => a.epochMs - b.epochMs).at(-1);
+  const currentCumulativeTrend = [];
+  const previousCumulativeTrend = [];
+  let currentCumulative = 0;
+  let previousCumulative = 0;
+  for (let date = 1; date <= day; date += 1) {
+    const currentDayStart = Date.UTC(year, monthIndex, date) - 9 * 60 * 60 * 1000;
+    const previousDate = Math.min(date, previousMonthDayCount);
+    const previousDayStart = Date.UTC(year, monthIndex - 1, previousDate) - 9 * 60 * 60 * 1000;
+    currentCumulative += sum(rows.filter((row) => row.epochMs >= currentDayStart && row.epochMs < currentDayStart + 24 * 60 * 60 * 1000).map((row) => row.expense));
+    if (date <= previousMonthDayCount) {
+      previousCumulative += sum(rows.filter((row) => row.epochMs >= previousDayStart && row.epochMs < previousDayStart + 24 * 60 * 60 * 1000).map((row) => row.expense));
+    }
+    currentCumulativeTrend.push(Math.round(currentCumulative));
+    previousCumulativeTrend.push(Math.round(previousCumulative));
   }
+  const samePeriodDifference = previousSpent - currentSpent;
   return {
     score: mixedScore(goal, trend),
     freshness: freshnessStatus(latest?.epochMs, nowEpochMs),
@@ -412,12 +433,16 @@ function spendingDomain(budget, nowEpochMs) {
     goalScore: goal,
     trendScore: trend,
     monthSpent: Math.round(currentSpent),
+    controlMonthSpent: Math.round(currentControlSpent),
     monthlyTarget: Math.round(target),
     expectedTarget: expectedTarget == null ? null : Math.round(expectedTarget),
-    savings: expectedTarget == null ? null : Math.round(expectedTarget - currentSpent),
+    savings: expectedTarget == null ? null : Math.round(expectedTarget - currentControlSpent),
     previousSamePeriodSpent: Math.round(previousSpent),
-    weekChangePct: previousWeekSpent > 0 ? round(((currentWeekSpent - previousWeekSpent) / previousWeekSpent) * 100, 1) : null,
-    trend: dailyTrend,
+    samePeriodDifference: Math.round(samePeriodDifference),
+    samePeriodChangePct: previousSpent > 0 ? round(((currentSpent - previousSpent) / previousSpent) * 100, 1) : null,
+    comparisonDay: comparableDay,
+    currentCumulativeTrend,
+    previousCumulativeTrend,
   };
 }
 
@@ -471,6 +496,11 @@ function buildDashboardSnapshot({ tomato = {}, budget = {}, weights, revision = 
   const activeSeason = (registry.seasons || []).find((season) => season.startDate <= todayKey && season.endDate >= todayKey) || null;
   const workoutPlan = activeSeason ? tomato.settings?.[`season_${activeSeason.id}_workout_plan`] || {} : {};
   const runningPlan = activeSeason ? tomato.settings?.[`season_${activeSeason.id}_running_plan`] || {} : {};
+  const seasonBoard = activeSeason
+    ? tomato.settings?.[`season_${activeSeason.id}_test_board_v2`]
+      || (tomato.settings?.test_board_v2?.seasonId === activeSeason.id ? tomato.settings.test_board_v2 : null)
+    : null;
+  const healthGoal = buildSeasonHealthGoals({ season: activeSeason, board: seasonBoard, todayKey });
   const domains = {
     food: foodDomain(tomato.workouts || [], tomato.settings?.diet_plan || {}, todayKey, nowEpochMs),
     health: healthDomain(tomato.workouts || [], workoutPlan, todayKey, nowEpochMs),
@@ -498,7 +528,8 @@ function buildDashboardSnapshot({ tomato = {}, budget = {}, weights, revision = 
       carbsG: domains.food.carbsG,
       fatG: domains.food.fatG,
     },
-    workouts: domains.health.workouts,
+    healthGoal,
+    workouts: healthGoal.items,
     running: {
       paceChangePct: domains.running.paceChangePct,
       cadenceChangePct: domains.running.cadenceChangePct,
@@ -508,10 +539,13 @@ function buildDashboardSnapshot({ tomato = {}, budget = {}, weights, revision = 
       trend: domains.running.trend,
     },
     spending: {
-      savings: domains.spending.savings,
+      samePeriodDifference: domains.spending.samePeriodDifference,
+      samePeriodChangePct: domains.spending.samePeriodChangePct,
+      previousSamePeriodSpent: domains.spending.previousSamePeriodSpent,
       monthSpent: domains.spending.monthSpent,
-      weeklyChangePct: domains.spending.weekChangePct,
-      trend: domains.spending.trend,
+      comparisonDay: domains.spending.comparisonDay,
+      currentCumulativeTrend: domains.spending.currentCumulativeTrend,
+      previousCumulativeTrend: domains.spending.previousCumulativeTrend,
     },
     wine: domains.wine.latest,
   };
