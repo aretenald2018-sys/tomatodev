@@ -10,6 +10,10 @@ function readProjectFile(relativePath) {
   return readFileSync(new URL(relativePath, root), 'utf8');
 }
 
+function normalizeTextEol(value) {
+  return String(value).replace(/\r\n?/g, '\n');
+}
+
 function gitCheckIgnore(relativePath) {
   return spawnSync('git', ['check-ignore', relativePath], {
     cwd: new URL('.', root),
@@ -217,8 +221,8 @@ test('published mobile APK contains current runtime and workout flow assets', ()
   assert.match(apkStyleCss, /\.lz-speech--photo \.lz-photo-like-btn\s*{[\s\S]*box-shadow:\s*none/);
   for (const assetPath of workoutAssetPaths) {
     assert.equal(
-      readApkEntryText('public/downloads/tomato-mobile-debug.apk', `assets/public/${assetPath}`),
-      readProjectFile(assetPath),
+      normalizeTextEol(readApkEntryText('public/downloads/tomato-mobile-debug.apk', `assets/public/${assetPath}`)),
+      normalizeTextEol(readProjectFile(assetPath)),
       `${assetPath} in the downloadable APK should match the current source`,
     );
   }
