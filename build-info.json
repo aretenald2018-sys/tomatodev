@@ -1,10 +1,10 @@
 {
   "app": "tomatofarm",
-  "commit": "f56c9a88db01556c04f84eacc7de4aa7664fbcda",
-  "shortCommit": "f56c9a88db01",
-  "branch": "codex/fix-workout-add-complete-compact",
-  "deployedAt": "2026-07-16T04:55:12.681Z",
-  "cacheVersion": "tomatofarm-v20260716z51-life-zone-led-clip",
+  "commit": "ee8ad0df55512b89bf07f57ce00cd50ce157f486",
+  "shortCommit": "ee8ad0df5551",
+  "branch": "codex/fix-workout-tab-dots",
+  "deployedAt": "2026-07-16T05:34:23.508Z",
+  "cacheVersion": "tomatofarm-v20260716z52-workout-tab-dot",
   "runId": null,
   "runAttempt": null
 }
