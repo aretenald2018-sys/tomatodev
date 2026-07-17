@@ -4192,7 +4192,7 @@ function _markWorkoutExerciseCompletionStamp(cardId) {
   _workoutExerciseCompletionStamps.set(cardId, Date.now());
 }
 
-function _focusWorkoutSetInlineFieldFromSheet(key, sessionIndex, exerciseIndex, setIndex, field) {
+async function _focusWorkoutSetInlineFieldFromSheet(key, sessionIndex, exerciseIndex, setIndex, field) {
   const safeField = String(field || '');
   if (!['kg', 'reps'].includes(safeField)) return false;
   const targetKey = _parseDateKey(key) ? key : _workoutHomeSelectedKey;
@@ -4202,6 +4202,25 @@ function _focusWorkoutSetInlineFieldFromSheet(key, sessionIndex, exerciseIndex, 
   const editorKey = _workoutSetEditorKey(targetKey, targetSessionIndex, targetExerciseIndex, targetSetIndex);
   const inlineKey = _workoutSetInlineFieldKey(targetKey, targetSessionIndex, targetExerciseIndex, targetSetIndex, safeField);
   const restoreState = _captureWorkoutSheetScrollState();
+  const targetMeta = {
+    key: targetKey,
+    sessionIndex: targetSessionIndex,
+    exerciseIndex: targetExerciseIndex,
+    setIndex: targetSetIndex,
+    field: safeField,
+    mode: 'inline',
+  };
+  const activeInput = _workoutSetKeyboardActiveInput();
+  const activeMeta = _workoutSetKeyboardMeta(activeInput);
+  const shouldCommitActiveInput = activeInput?.hasAttribute?.('data-wt-set-inline-input')
+    && !_sameWorkoutSetKeyboardTarget(activeMeta, targetMeta)
+    && activeInput.getAttribute('data-wt-set-keyboard-dirty') === 'true';
+  const commitPromise = shouldCommitActiveInput
+    ? Promise.resolve(_commitWorkoutSetKeyboardInput(activeInput, {
+      closeInline: false,
+      nextTarget: targetMeta,
+    }))
+    : null;
   _workoutOpenSetTypeMenus.delete(editorKey);
   _workoutExpandedSetEditors.delete(editorKey);
   _workoutInlineSetEditor = inlineKey;
@@ -4209,7 +4228,7 @@ function _focusWorkoutSetInlineFieldFromSheet(key, sessionIndex, exerciseIndex, 
   _workoutHomeSessionIndex = targetSessionIndex;
   _workoutHomeSheetState = 'full';
   _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:set-inline-field' });
-  renderWorkoutCalendarHome();
+  if (!shouldCommitActiveInput) renderWorkoutCalendarHome();
   const focusInput = () => {
     _restoreWorkoutSheetScrollState(restoreState);
     if (typeof document === 'undefined') return;
@@ -4236,6 +4255,9 @@ function _focusWorkoutSetInlineFieldFromSheet(key, sessionIndex, exerciseIndex, 
     window.requestAnimationFrame(focusInput);
     window.setTimeout?.(focusInput, 80);
   }
+  commitPromise?.catch((error) => {
+    console.warn('[workout-calendar] inline field switch commit failed:', error);
+  });
   return true;
 }
 

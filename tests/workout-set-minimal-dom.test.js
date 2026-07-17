@@ -506,6 +506,56 @@ test('mobile set row inline editing clears values and only right-to-left swipe r
   assert.equal(result.finalState.toast?.message, '세트를 삭제했어요');
 });
 
+test('mobile inline field switching commits a dirty keypad value before rerender', async () => {
+  const result = await runHarnessPage(async (page) => {
+    await page.evaluate(() => {
+      window.__entry = {
+        sets: [{ kg: 70, reps: 10, rir: 2, romPct: 100, setType: 'main', done: false }],
+      };
+      window.__mutateCalls = [];
+      window.renderWorkoutCalendarHome();
+    });
+
+    async function tapSelector(selector) {
+      const handle = await page.waitForSelector(selector, { visible: true });
+      const box = await handle.boundingBox();
+      assert.ok(box, `${selector} should have a bounding box`);
+      await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    }
+
+    await tapSelector('[data-wt-set-edit-field="kg"][data-set-index="0"]');
+    await page.waitForFunction(() => document.activeElement?.matches?.('[data-wt-set-inline-input][data-field="kg"][data-set-index="0"]'));
+    await page.$eval('[data-wt-set-inline-input][data-field="kg"][data-set-index="0"]', (input) => {
+      input.value = '55';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    const beforeSwitch = await page.evaluate(() => ({
+      inputValue: document.activeElement?.value ?? null,
+      storedKg: window.__entry.sets[0]?.kg ?? null,
+      dirty: document.activeElement?.getAttribute('data-wt-set-keyboard-dirty') || '',
+    }));
+
+    await tapSelector('[data-wt-set-edit-field="reps"][data-set-index="0"]');
+    await page.waitForFunction(() => document.activeElement?.matches?.('[data-wt-set-inline-input][data-field="reps"][data-set-index="0"]'));
+    const afterSwitch = await page.evaluate(() => ({
+      activeField: document.activeElement?.getAttribute('data-field') || '',
+      activeValue: document.activeElement?.value ?? null,
+      sets: window.__entry.sets,
+      mutationOptions: window.__mutateCalls.map(call => call.options),
+    }));
+
+    return { beforeSwitch, afterSwitch };
+  });
+
+  assert.deepEqual(result.beforeSwitch, { inputValue: '55', storedKg: 70, dirty: 'true' });
+  assert.equal(result.afterSwitch.activeField, 'reps');
+  assert.equal(result.afterSwitch.activeValue, '');
+  assert.equal(result.afterSwitch.sets[0].kg, 55);
+  assert.equal(result.afterSwitch.sets[0].reps, 10);
+  assert.equal(result.afterSwitch.mutationOptions.length, 1);
+  assert.equal(result.afterSwitch.mutationOptions[0].optimisticRender, true);
+});
+
 test('custom workout set keypad enters values and moves left or right across inline fields', async () => {
   const result = await runHarnessPage(async (page) => {
     await page.evaluate(() => {
