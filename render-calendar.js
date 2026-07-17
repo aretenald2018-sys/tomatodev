@@ -3283,6 +3283,7 @@ function _bindWorkoutHomeSheetActions(root) {
     const input = target?.closest?.(WORKOUT_SHEET_SET_INPUT_SELECTOR);
     if (!input || !sheet.contains(input)) return;
     input.setAttribute('data-wt-set-keyboard-dirty', 'true');
+    input.setAttribute('data-wt-set-keyboard-pending-value', input.value ?? '');
   }, true);
   sheet.addEventListener('change', (event) => {
     const target = event.target instanceof Element ? event.target : event.target?.parentElement;
@@ -3317,6 +3318,7 @@ function _bindWorkoutHomeSheetActions(root) {
       const active = document.activeElement;
       if (active?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)) return;
       if (active?.closest?.('[data-wt-set-keyboard]')) return;
+      if (active?.closest?.('[data-wt-set-edit-field]')) return;
       _hideWorkoutSetKeyboard({ commit: true });
     }, 0);
   }, true);
@@ -3662,6 +3664,7 @@ function _showWorkoutSetKeyboard(input) {
   if (!input?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)) return;
   _workoutSetKeyboardInput = input;
   input.removeAttribute('data-wt-set-keyboard-dirty');
+  input.removeAttribute('data-wt-set-keyboard-pending-value');
   input.setAttribute('data-wt-set-keyboard-cursor', String(String(input.value || '').length));
   const keyboard = _ensureWorkoutSetKeyboard();
   const sheet = _workoutSetKeyboardSheet(input);
@@ -3698,6 +3701,7 @@ function _hideWorkoutSetKeyboard(options = {}) {
 function _markWorkoutSetKeyboardInputDirty(input) {
   if (!input?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)) return;
   input.setAttribute('data-wt-set-keyboard-dirty', 'true');
+  input.setAttribute('data-wt-set-keyboard-pending-value', input.value ?? '');
   input.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
@@ -3750,8 +3754,11 @@ function _applyWorkoutSetKeyboardClear() {
 function _commitWorkoutSetKeyboardInput(input, options = {}) {
   if (!input?.matches?.(WORKOUT_SHEET_SET_INPUT_SELECTOR)) return Promise.resolve(false);
   const dirty = input.getAttribute('data-wt-set-keyboard-dirty') === 'true';
+  const pendingValue = input.getAttribute('data-wt-set-keyboard-pending-value');
+  const value = pendingValue == null ? input.value : pendingValue;
   input.removeAttribute('data-wt-set-keyboard-dirty');
   input.removeAttribute('data-wt-set-keyboard-cursor');
+  input.removeAttribute('data-wt-set-keyboard-pending-value');
   const nextTarget = options?.nextTarget || null;
   const nextInlineEditorKey = nextTarget?.mode === 'inline'
     ? _workoutSetInlineFieldKey(nextTarget.key, nextTarget.sessionIndex, nextTarget.exerciseIndex, nextTarget.setIndex, nextTarget.field)
@@ -3774,7 +3781,7 @@ function _commitWorkoutSetKeyboardInput(input, options = {}) {
     input.getAttribute('data-exercise-index'),
     input.getAttribute('data-set-index'),
     input.getAttribute('data-field'),
-    input.value,
+    value,
     input,
     { nextInlineEditorKey, optimisticRender: true }
   );
@@ -3786,9 +3793,11 @@ function _commitWorkoutSetKeyboardDone(input) {
   if (!meta) return false;
   const safeField = ['kg', 'reps', 'rir', 'romPct'].includes(String(meta.field || '')) ? String(meta.field) : 'kg';
   const dirty = input.getAttribute('data-wt-set-keyboard-dirty') === 'true';
-  const value = input.value;
+  const pendingValue = input.getAttribute('data-wt-set-keyboard-pending-value');
+  const value = pendingValue == null ? input.value : pendingValue;
   input.removeAttribute('data-wt-set-keyboard-dirty');
   input.removeAttribute('data-wt-set-keyboard-cursor');
+  input.removeAttribute('data-wt-set-keyboard-pending-value');
   if (input.hasAttribute('data-wt-set-inline-input')) {
     const inlineEditorKey = input.getAttribute('data-wt-inline-editor-key') || '';
     if (inlineEditorKey && _workoutInlineSetEditor === inlineEditorKey) _workoutInlineSetEditor = null;

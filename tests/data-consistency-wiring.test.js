@@ -201,7 +201,7 @@ test('workout data updates rerender the active app tab', () => {
   }
 });
 
-test('pending journal is precached and the service worker uses the z10 cache version', () => {
+test('pending journal is precached and the service worker cache includes both fixes', () => {
   const runtimeAssetList = sliceBetween(
     runtimeAssetsSource,
     'root.TOMATO_STATIC_ASSETS = Object.freeze([',
@@ -211,5 +211,5 @@ test('pending journal is precached and the service worker uses the z10 cache ver
 
   assert.match(runtimeAssetList, /'\.\/data\/pending-day-writes\.js'/);
   assert.match(serviceWorkerSource,
-    /const CACHE_VERSION = 'tomatofarm-v\d{8}z10-[a-z0-9]+(?:-[a-z0-9]+)*';/);
+    /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-owner-day-journal-workout-inline-field-commit';/);
 });
