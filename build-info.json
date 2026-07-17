@@ -1,10 +1,10 @@
 {
   "app": "tomatofarm",
-  "commit": "ee8ad0df55512b89bf07f57ce00cd50ce157f486",
-  "shortCommit": "ee8ad0df5551",
-  "branch": "codex/fix-workout-tab-dots",
-  "deployedAt": "2026-07-16T05:34:23.508Z",
-  "cacheVersion": "tomatofarm-v20260716z52-workout-tab-dot",
+  "commit": "a0d2e5007e66f06fd433d1854fce9e5dd0f7753d",
+  "shortCommit": "a0d2e5007e66",
+  "branch": "main",
+  "deployedAt": "2026-07-17T14:13:40.811Z",
+  "cacheVersion": "tomatofarm-v20260717z13-owner-day-journal-workout-inline-field-commit",
   "runId": null,
   "runAttempt": null
 }
