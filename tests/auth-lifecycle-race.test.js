@@ -6,6 +6,7 @@ const AUTH_SOURCE = readFileSync(new URL('../data/data-auth.js', import.meta.url
 const FEATURE_LOGIN_SOURCE = readFileSync(new URL('../feature-login.js', import.meta.url), 'utf8');
 const DATA_ACCOUNT_SOURCE = readFileSync(new URL('../data/data-account.js', import.meta.url), 'utf8');
 const DATA_API_SOURCE = readFileSync(new URL('../data/data-api.js', import.meta.url), 'utf8');
+const AUTH_DATA_IMPORT_MARKER = "import('./" + "data.js')";
 
 class MemoryStorage {
   constructor() {
@@ -226,7 +227,7 @@ test('both account-exit flows delay reload until auth persistence is cleared', a
     'export async function switchKimMode',
   )
     .replace('async function confirmLogout()', 'async function confirmLogout(__data)')
-    .replaceAll("import('./data.js')", 'Promise.resolve(__data)');
+    .replaceAll(AUTH_DATA_IMPORT_MARKER, 'Promise.resolve(__data)');
   const confirmLogout = new Function(
     'localStorage',
     'location',
@@ -255,7 +256,7 @@ test('both account-exit flows delay reload until auth persistence is cleared', a
     "setTimeout(() => document.getElementById('kim-lock-pw')",
   )
     .replace("document.getElementById('kim-lock-other')", 'target')
-    .replace("import('./data.js')", 'Promise.resolve(__data)');
+    .replace(AUTH_DATA_IMPORT_MARKER, 'Promise.resolve(__data)');
   const target = {};
   const lockDiv = { remove() { events.push('remove-lock'); } };
   const otherWaitGate = deferred();
