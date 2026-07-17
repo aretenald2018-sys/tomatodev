@@ -25,6 +25,6 @@ test('dashboard destinations open their exact TomatoFarm screens', () => {
 });
 
 test('the distributable TomatoFarm APK version is bumped for deep links', () => {
-  assert.match(gradle, /versionCode 2/);
-  assert.match(gradle, /versionName "1\.1"/);
+  assert.match(gradle, /versionCode 3/);
+  assert.match(gradle, /versionName "1\.2"/);
 });
