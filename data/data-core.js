@@ -14,6 +14,11 @@ import { getFunctions } from "https://www.gstatic.com/firebasejs/11.6.0/firebase
 import { CONFIG } from '../config.js';
 import { generateId } from '../utils/id.js';
 import { createFirestoreWithMultiTabCache } from './firestore-cache.js';
+import {
+  ADMIN_ACCOUNT_ID,
+  ADMIN_GUEST_ACCOUNT_ID,
+  canonicalAccountOwnerId,
+} from './account-unification.js';
 
 // ── Firebase 초기화 ─────────────────────────────────────────────
 const app = initializeApp(CONFIG.FIREBASE);
@@ -101,8 +106,8 @@ let _currentUser = null;
 export function getCurrentUserRef()  { return _currentUser; }
 export function setCurrentUserRef(u) { _currentUser = u; }
 
-export const ADMIN_ID       = '김_태우';
-export const ADMIN_GUEST_ID = '김_태우(guest)';
+export const ADMIN_ID       = ADMIN_ACCOUNT_ID;
+export const ADMIN_GUEST_ID = ADMIN_GUEST_ACCOUNT_ID;
 
 let _kimMode = localStorage.getItem('kimMode') || 'admin';
 export function getKimMode() { return _kimMode; }
@@ -113,8 +118,7 @@ export function setKimMode(mode) {
 
 export function getDataOwnerId() {
   if (!_currentUser) return null;
-  if (_currentUser.id === ADMIN_GUEST_ID) return ADMIN_ID;
-  return _currentUser.id;
+  return canonicalAccountOwnerId(_currentUser.id);
 }
 
 // ── Firebase 경로 헬퍼 ──────────────────────────────────────────

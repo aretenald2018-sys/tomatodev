@@ -6,6 +6,12 @@ const { FieldPath, FieldValue, getFirestore } = require("firebase-admin/firestor
 const { getMessaging } = require("firebase-admin/messaging");
 const { buildDashboardSnapshot, addDays, dateKeyAt } = require("./aggregate");
 const { DEFAULT_DASHBOARD_WEIGHTS, normalizeDashboardWeights } = require("./contract");
+const {
+  canonicalTomatoOwnerId,
+  isSharedTomatoOwner,
+  mergeTomatoDocuments,
+  tomatoOwnerAliases,
+} = require("./owner");
 
 const BUDGET_APP_NAME = "budget-dashboard";
 const LOCK_TTL_MS = 2 * 60 * 1000;
@@ -50,17 +56,32 @@ function verifyInternalRequest(req, secret, nowEpochMs = Date.now()) {
 }
 
 async function loadTomatoSource(tomatoDb, ownerId, nowEpochMs) {
+  const canonicalOwnerId = canonicalTomatoOwnerId(ownerId);
   const todayKey = dateKeyAt(nowEpochMs);
   const startKey = addDays(todayKey, -56);
-  const [workoutsSnap, settingsSnap, exercisesSnap] = await Promise.all([
-    tomatoDb.collection(`users/${ownerId}/workouts`).where(FieldPath.documentId(), ">=", startKey).get(),
-    tomatoDb.collection(`users/${ownerId}/settings`).get(),
-    tomatoDb.collection(`users/${ownerId}/exercises`).get(),
-  ]);
+  const accountSources = await Promise.all(tomatoOwnerAliases(canonicalOwnerId).map((sourceOwnerId) => Promise.all([
+    tomatoDb.collection(`users/${sourceOwnerId}/workouts`).where(FieldPath.documentId(), ">=", startKey).get(),
+    tomatoDb.collection(`users/${sourceOwnerId}/settings`).get(),
+    tomatoDb.collection(`users/${sourceOwnerId}/exercises`).get(),
+  ])));
+  const legacyRoot = isSharedTomatoOwner(canonicalOwnerId)
+    ? await Promise.all([
+      tomatoDb.collection("workouts").where(FieldPath.documentId(), ">=", startKey).get(),
+      tomatoDb.collection("settings").get(),
+      tomatoDb.collection("exercises").get(),
+    ])
+    : null;
+  const sourceGroups = legacyRoot ? [...accountSources, legacyRoot] : accountSources;
   return {
-    workouts: workoutsSnap.docs.map((document) => ({ id: document.id, dateKey: document.id, ...document.data() })),
-    settings: Object.fromEntries(settingsSnap.docs.map((document) => [document.id, document.data()?.value ?? document.data()])),
-    exercises: exercisesSnap.docs.map((document) => ({ id: document.id, ...document.data() })),
+    workouts: mergeTomatoDocuments(sourceGroups.map((group) => group[0]), (document) => ({
+      id: document.id, dateKey: document.id, ...document.data(),
+    })),
+    settings: Object.fromEntries(mergeTomatoDocuments(sourceGroups.map((group) => group[1]), (document) => [
+      document.id, document.data()?.value ?? document.data(),
+    ])),
+    exercises: mergeTomatoDocuments(sourceGroups.map((group) => group[2]), (document) => ({
+      id: document.id, ...document.data(),
+    })),
   };
 }
 
@@ -86,6 +107,7 @@ async function loadBudgetSource(budgetDb, budgetUid, nowEpochMs) {
 
 async function ensureDashboardLink(budgetDb, ownerId, budgetUid) {
   if (!budgetUid) return null;
+  ownerId = canonicalTomatoOwnerId(ownerId);
   const batch = budgetDb.batch();
   batch.set(budgetDb.doc(`dashboardLinks/${ownerId}`), {
     ownerId,
@@ -102,10 +124,26 @@ async function ensureDashboardLink(budgetDb, ownerId, budgetUid) {
 }
 
 async function queueDashboardRefresh({ tomatoDb, serviceAccountValue, ownerId, budgetUid = null, reason = "source-change", nowEpochMs = Date.now() }) {
+  ownerId = canonicalTomatoOwnerId(ownerId);
+  if (!ownerId) throw new Error("dashboard ownerId is required");
   const { db: budgetDb, messaging } = budgetServices(serviceAccountValue);
   if (budgetUid) await ensureDashboardLink(budgetDb, ownerId, budgetUid);
-  const linkSnap = await budgetDb.doc(`dashboardLinks/${ownerId}`).get();
-  const linkedBudgetUid = budgetUid || (linkSnap.exists ? linkSnap.data()?.budgetUid : null);
+  let linkedBudgetUid = budgetUid;
+  let linkedOwnerId = ownerId;
+  if (!linkedBudgetUid) {
+    for (const candidateOwnerId of tomatoOwnerAliases(ownerId)) {
+      const linkSnap = await budgetDb.doc(`dashboardLinks/${candidateOwnerId}`).get();
+      if (!linkSnap.exists || !linkSnap.data()?.budgetUid) continue;
+      linkedBudgetUid = linkSnap.data().budgetUid;
+      linkedOwnerId = candidateOwnerId;
+      break;
+    }
+  }
+  // Move a historical guest link forward as soon as it is used.  The old link
+  // remains readable for recovery, while every new job/snapshot uses canonical.
+  if (linkedBudgetUid && linkedOwnerId !== ownerId) {
+    await ensureDashboardLink(budgetDb, ownerId, linkedBudgetUid);
+  }
   if (!linkedBudgetUid) return { state: "unlinked", ownerId };
   const jobRef = budgetDb.doc(`dashboardJobs/${ownerId}`);
   await budgetDb.runTransaction(async (transaction) => {
@@ -247,17 +285,30 @@ async function processDashboardJob({ tomatoDb, budgetDb, messaging, ownerId, now
 async function refreshAllLinkedDashboards({ tomatoDb, serviceAccountValue, nowEpochMs = Date.now() }) {
   const { db: budgetDb } = budgetServices(serviceAccountValue);
   const links = await budgetDb.collection("dashboardLinks").get();
-  const results = [];
+  const linkedOwners = new Map();
   for (const document of links.docs) {
     const link = document.data() || {};
+    const ownerId = canonicalTomatoOwnerId(link.ownerId || document.id);
+    if (!ownerId) continue;
+    const candidate = {
+      ownerId,
+      budgetUid: link.budgetUid,
+      sourceId: document.id,
+      canonical: document.id === ownerId,
+    };
+    const current = linkedOwners.get(ownerId);
+    if (!current || (candidate.canonical && !current.canonical)) linkedOwners.set(ownerId, candidate);
+  }
+  const results = [];
+  for (const link of linkedOwners.values()) {
     results.push(await queueDashboardRefresh({
       tomatoDb,
       serviceAccountValue,
-      ownerId: link.ownerId || document.id,
+      ownerId: link.ownerId,
       budgetUid: link.budgetUid,
       reason: "daily-refresh",
       nowEpochMs,
-    }).catch((error) => ({ state: "error", ownerId: document.id, error: error.message })));
+    }).catch((error) => ({ state: "error", ownerId: link.ownerId, error: error.message })));
   }
   return results;
 }

@@ -23,6 +23,7 @@ import {
   LIFE_ZONE_ACTORS,
   assignLifeZoneSlots,
   getLifeZoneAccountDisplayName,
+  getLifeZoneActorReadCandidates,
   resolveLifeZoneConsultingVisitor,
   resolveLifeZoneActivity,
   resolveLifeZoneActors,
@@ -168,11 +169,7 @@ function _withRunningLiveDay(dayData = {}, live = null) {
 }
 
 async function _readLifeZoneActorDay(actor, todayKey) {
-  const candidates = [
-    actor.readAccountId,
-    ...(actor.ownerIdCandidates || []),
-    actor.accountId
-  ].filter(Boolean);
+  const candidates = getLifeZoneActorReadCandidates(actor);
   let emptyMatch = null;
   for (const ownerId of [...new Set(candidates)]) {
     const dayData = await getFriendWorkout(ownerId, todayKey);

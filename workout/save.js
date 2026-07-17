@@ -610,6 +610,7 @@ export async function _autoSaveDiet(options = {}) {
     document.dispatchEvent(new CustomEvent('sheet:saved'));
     showCenterToast('저장되었습니다');
   } catch(e) {
+    showToast('식단 저장에 실패했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.', 3200, 'error');
     console.error('[render-workout] 자동 저장 실패:', e);
   }
 }

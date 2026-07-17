@@ -244,6 +244,20 @@ export function getLifeZoneOwnerIdCandidates(accountId) {
   return [...new Set(ids.filter(Boolean))];
 }
 
+// The account document itself is the source of truth. Guest/format aliases are
+// only fallbacks for a missing canonical day and cannot override current data.
+export function getLifeZoneActorReadCandidates({
+  accountId = null,
+  readAccountId = null,
+  ownerIdCandidates = [],
+} = {}) {
+  return [...new Set([
+    accountId,
+    readAccountId,
+    ...(ownerIdCandidates || []),
+  ].map((value) => String(value || '').trim()).filter(Boolean))];
+}
+
 function accountCandidateNames(account = {}) {
   const first = String(account.firstName || '').replace(/\(.*?\)/g, '');
   const last = String(account.lastName || '');

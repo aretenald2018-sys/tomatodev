@@ -10,7 +10,7 @@
 
 import { CONFIG, MOVEMENTS } from '../config.js';
 import {
-  db, doc, setDoc, collection, getDocs,
+  db, doc, setDoc, collection, getDocs, getDoc,
   getCurrentUserRef, ADMIN_ID, getDataOwnerId,
   _col, _doc,
   _cache, _nutritionDB,
@@ -24,6 +24,14 @@ import { isAdmin, isAdminGuest } from './data-auth.js';
 import { _sortExList } from './data-helpers.js';
 import { loadGyms, loadRoutineTemplates } from './data-workout-equipment.js';
 import { loadEquipmentPool } from './data-equipment-pool.js';
+import {
+  ACCOUNT_DATA_COLLECTIONS,
+  ACCOUNT_UNIFICATION_MARKER_ID,
+  ACCOUNT_UNIFICATION_VERSION,
+  ADMIN_ACCOUNT_ID,
+  ADMIN_GUEST_ACCOUNT_ID,
+  buildAccountUnificationPlan,
+} from './account-unification.js';
 
 // ── Pure 헬퍼 (Firebase 비의존) ─────────────────────────────────
 // node:test 에서 import 가능하도록 data/data-pure.js 로 분리. 여기서는 re-export.
@@ -109,23 +117,65 @@ async function _mergeWorkoutTwinCache(ownerId) {
 // ═══════════════════════════════════════════════════════════════
 // migrateDataToUser — admin 최초 로그인 시 root → users/{uid}/* 이관
 // ═══════════════════════════════════════════════════════════════
-export async function migrateDataToUser(userId) {
-  const COLLECTIONS = ['workouts','exercises','goals','quests','wines','cal_events','cooking',
-    'body_checkins','nutrition_db','finance_benchmarks','finance_actuals','finance_loans',
-    'finance_positions','finance_plans','finance_budgets','settings'];
-  console.log(`[migrate] ${userId}로 데이터 마이그레이션 시작...`);
-  for (const colName of COLLECTIONS) {
-    try {
-      const snap = await getDocs(collection(db, colName));
-      let count = 0;
-      for (const d of snap.docs) {
-        await setDoc(doc(db, 'users', userId, colName, d.id), d.data());
-        count++;
-      }
-      if (count > 0) console.log(`  [migrate] ${colName}: ${count}건`);
-    } catch (e) { console.warn(`  [migrate] ${colName} 실패:`, e.message); }
+function _snapshotDocuments(snapshot) {
+  return snapshot.docs.map((document) => ({ id: document.id, data: document.data() }));
+}
+
+async function _copyMissingDocuments({ targetUserId, collectionName, guestUserId = null }) {
+  const reads = [
+    getDocs(collection(db, 'users', targetUserId, collectionName)),
+    getDocs(collection(db, collectionName)),
+  ];
+  if (guestUserId) reads.splice(1, 0, getDocs(collection(db, 'users', guestUserId, collectionName)));
+
+  const [canonicalSnap, ...sources] = await Promise.all(reads);
+  const [guestSnap, legacySnap] = guestUserId ? sources : [null, sources[0]];
+  const plan = buildAccountUnificationPlan({
+    canonicalDocuments: _snapshotDocuments(canonicalSnap),
+    guestDocuments: guestSnap ? _snapshotDocuments(guestSnap) : [],
+    legacyDocuments: legacySnap ? _snapshotDocuments(legacySnap) : [],
+  });
+
+  for (const documentData of plan) {
+    // This document is missing from the canonical account, so a complete write
+    // cannot erase a current meal, workout photo, or other canonical field.
+    await setDoc(doc(db, 'users', targetUserId, collectionName, documentData.id), documentData.data);
   }
-  console.log('[migrate] 완료');
+  return plan.length;
+}
+
+// Public legacy-root migration API.  It is now copy-only instead of replacing
+// a user document that may have been written by another app session.
+export async function migrateDataToUser(userId) {
+  let copied = 0;
+  for (const collectionName of ACCOUNT_DATA_COLLECTIONS) {
+    copied += await _copyMissingDocuments({ targetUserId: userId, collectionName });
+  }
+  return copied;
+}
+
+// The guest and root stores are read only as historical sources.  Canonical
+// same-date workouts always win so a stale guest run cannot replace a newer
+// canonical meal entry in the life zone or in the dashboard.
+export async function unifySharedAccountData() {
+  const markerRef = doc(db, 'users', ADMIN_ACCOUNT_ID, 'settings', ACCOUNT_UNIFICATION_MARKER_ID);
+  const marker = await getDoc(markerRef);
+  if (Number(marker.data()?.value?.version || 0) >= ACCOUNT_UNIFICATION_VERSION) {
+    return { state: 'already-unified', copied: 0 };
+  }
+
+  let copied = 0;
+  for (const collectionName of ACCOUNT_DATA_COLLECTIONS) {
+    copied += await _copyMissingDocuments({
+      targetUserId: ADMIN_ACCOUNT_ID,
+      guestUserId: ADMIN_GUEST_ACCOUNT_ID,
+      collectionName,
+    });
+  }
+  await setDoc(markerRef, {
+    value: { version: ACCOUNT_UNIFICATION_VERSION, copied, completedAt: Date.now() },
+  }, { merge: true });
+  return { state: 'unified', copied };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -133,21 +183,13 @@ export async function migrateDataToUser(userId) {
 // ═══════════════════════════════════════════════════════════════
 export async function loadAll() {
   try {
-    if (getCurrentUserRef() && isAdmin()) {
-      const migrateKey = `migrated_${getCurrentUserRef().id}`;
-      // localStorage 폴백 제거: 기기 단위 플래그는 멀티 유저 환경에서 오작동 위험.
-      // migrateKey(유저별 키)만 사용. 'migrated_김_태우' 하드코딩 폴백 제거.
-      const migrated = localStorage.getItem(migrateKey);
-      if (!migrated) {
-        const testSnap = await getDocs(_col('workouts'));
-        if (testSnap.empty) {
-          const rootSnap = await getDocs(collection(db, 'workouts'));
-          if (!rootSnap.empty) {
-            console.log(`[loadAll] ${getCurrentUserRef().id} 마이그레이션 실행`);
-            await migrateDataToUser(getCurrentUserRef().id);
-          }
-        }
-        localStorage.setItem(migrateKey, 'done');
+    if (getCurrentUserRef() && getDataOwnerId() === ADMIN_ACCOUNT_ID) {
+      try {
+        await unifySharedAccountData();
+      } catch (error) {
+        // Keep canonical data readable if a legacy collection is temporarily
+        // inaccessible.  No completion marker is written, so this safely retries.
+        console.warn('[data] shared account unification deferred:', error?.message || error);
       }
     }
 
@@ -166,9 +208,6 @@ export async function loadAll() {
     ]);
 
       snap.forEach(d => { _cache[d.id] = d.data(); });
-      if (getCurrentUserRef()) {
-        await _mergeWorkoutTwinCache(getDataOwnerId());
-      }
 
     const fbMap = {};
     settingsSnap.forEach(d => { fbMap[d.id] = d.data().value; });
