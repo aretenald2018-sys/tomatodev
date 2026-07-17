@@ -24,6 +24,7 @@ import { openPhotoLightbox } from '../utils/photo-lightbox.js';
 import { openNutritionItemEditor, switchNutritionTab } from '../modals/nutrition-item-modal.js';
 import { ensureModal } from '../modal-manager.js';
 import { closeModal } from '../app/overlay-stack.js';
+import { openNutritionSearch } from '../feature-nutrition.js';
 
 // ── 날짜 라벨 ────────────────────────────────────────────────────
 export function _renderDateLabel() {
@@ -261,6 +262,7 @@ function _renderFrequentFoodSuggestions(meal) {
   }
   container.hidden = false;
   container.innerHTML = `<div class="diet-frequent-food-card">${sections.join('')}</div>`;
+  bindDietFoodActions();
 }
 
 // ── 스파크라인 (볼륨 히스토리) ───────────────────────────────────
@@ -528,6 +530,30 @@ export function wtAddFrequentFoodSuggestion(meal, suggestionKey) {
     _renderMealSkippedToggles();
   }
   wtAddFoodItem(meal, _cloneFoodItem(suggestion.item));
+}
+
+// PWA/Android WebView may block the global delegated click before it reaches document.
+// Keep the core food-add actions on the diet panel itself so they always reach auto-save.
+export function bindDietFoodActions() {
+  const panel = document.getElementById('tab-diet');
+  if (!panel) return;
+
+  panel.querySelectorAll('[data-action="diet:add-food"], [data-action="diet:add-frequent-food"]').forEach((control) => {
+    if (control.dataset.dietFoodActionBound === '1') return;
+    control.dataset.dietFoodActionBound = '1';
+    control.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (control.dataset.action === 'diet:add-food') {
+        void openNutritionSearch(control.dataset.meal).catch((error) => {
+          console.error('[diet] nutrition search open failed:', error);
+          showToast('음식 추가 화면을 열지 못했어요. 다시 시도해주세요.', 2600, 'error');
+        });
+        return;
+      }
+      wtAddFrequentFoodSuggestion(control.dataset.meal, control.dataset.suggestionKey);
+    });
+  });
 }
 
 export function wtRemoveFoodItem(meal, idx) {

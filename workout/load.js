@@ -11,7 +11,7 @@ import { _renderDateLabel,
          _renderStretchingToggle, _renderWineFreeToggle,
          _renderMealSkippedToggles, _renderDietResults,
          _renderMealFoodItems, _renderMealPhotos,
-         renderCalorieTracker }
+         renderCalorieTracker, bindDietFoodActions }
                                      from './render.js';
 import { _renderWorkoutTimer, _renderTimerControls,
          _fmtDuration, wtRestTimerSkip, _isViewingTimerDate,
@@ -173,6 +173,7 @@ export function loadWorkoutDate(y, m, d, options = {}) {
   _renderWineFreeToggle();
   _renderMealSkippedToggles();
   _initButtonEventListeners();
+  bindDietFoodActions();
   _renderExerciseList();
   _renderMealFoodItems('breakfast');
   _renderMealFoodItems('lunch');

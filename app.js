@@ -122,7 +122,13 @@ import { ensureModal, loadAndInjectModals } from './modal-manager.js';
 async function initializeApp() {
   // 앱 시작 화면은 session bootstrap과 별개다. APK WebView에서 모달 청크 하나가
   // 지연돼도 전역 action/router 초기화가 영구히 멈추지 않도록 제한한다.
-  await _withTimeout(loadAndInjectModals(), 8000, 'post-load modal initialization');
+  try {
+    await _withTimeout(loadAndInjectModals(), 8000, 'post-load modal initialization');
+  } catch (e) {
+    // 모달 청크의 지연/실패가 식단 추가처럼 shell 안에 이미 있는 액션까지
+    // 막으면 안 된다. 늦게 주입된 모달은 각 기능의 ensureModal 경로가 복구한다.
+    console.warn('[app] post-load modal initialization failed:', e);
+  }
   initWorkoutSystemBack();
   initOverlayStack();
 
@@ -875,7 +881,19 @@ document.addEventListener('app:switch-tab', (event) => {
 });
 
 // ── 앱 초기화 ────────────────────────────────────────────────
-window.addEventListener('load', initializeApp);
+// PWA가 복원되거나 캐시된 모듈이 늦게 평가되면 window load가 이미 끝난 뒤
+// 이 파일이 실행될 수 있다. 그 경우에도 data-action 라우터를 반드시 등록한다.
+let _appInitializationStarted = false;
+function startInitializeApp() {
+  if (_appInitializationStarted) return;
+  _appInitializationStarted = true;
+  void initializeApp().catch((error) => {
+    console.error('[app] post-load initialization failed:', error);
+  });
+}
+
+if (document.readyState === 'complete') startInitializeApp();
+else window.addEventListener('load', startInitializeApp, { once: true });
 
 // 앱이 다시 포커스되면 홈탭 갱신 (이웃 데이터 최신화)
 document.addEventListener('visibilitychange', () => {

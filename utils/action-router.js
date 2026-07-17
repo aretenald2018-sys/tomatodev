@@ -55,10 +55,15 @@ export function hasAction(name) {
 }
 
 function _dispatch(e, attribute) {
-  const el = e.target?.closest?.(`[${attribute}]`);
+  // 일부 Android WebView 클릭은 button 내부 Text 노드를 target으로 넘긴다.
+  // Text에는 closest()가 없으므로 부모 요소로 정규화해야 식단 추가처럼
+  // data-action만 사용하는 버튼이 조용히 무시되지 않는다.
+  const target = e.target?.nodeType === 1 ? e.target : e.target?.parentElement;
+  const el = target?.closest?.(`[${attribute}]`);
   if (!el) return;
   const action = el.getAttribute(attribute);
   if (!action) return;
+  if ((action === 'diet:add-food' || action === 'diet:add-frequent-food') && el.closest?.('#tab-diet')) return;
   // prefix 없는 액션은 라우터 통과 — 로컬 핸들러(querySelector 등) 영역 보장.
   if (!_isNamespaced(action)) return;
   const handler = _handlers.get(action);
