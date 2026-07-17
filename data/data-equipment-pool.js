@@ -8,6 +8,7 @@
 // ================================================================
 
 import {
+  db, collection, getDataOwnerId,
   _doc, _col, _fbOp, _generateId,
   setDoc, deleteDoc, getDocs,
   _equipmentPool, _setEquipmentPool,
@@ -85,13 +86,19 @@ function _withDefaultPool(list) {
   });
 }
 
-export async function loadEquipmentPool() {
+export async function loadEquipmentPool(ownerId = getDataOwnerId()) {
+  if (!ownerId) {
+    _setEquipmentPool(_withDefaultPool([]));
+    return;
+  }
   try {
-    const snap = await getDocs(_col('equipment_pool'));
+    const snap = await getDocs(collection(db, 'users', ownerId, 'equipment_pool'));
+    if (getDataOwnerId() !== ownerId) return;
     const list = [];
     snap.forEach(d => list.push({ id: d.id, ...d.data() }));
     _setEquipmentPool(_withDefaultPool(list));
   } catch (e) {
+    if (getDataOwnerId() !== ownerId) return;
     console.warn('[data] equipment_pool load skipped:', e?.message || e);
     _setEquipmentPool(_withDefaultPool([]));
   }

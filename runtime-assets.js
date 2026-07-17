@@ -253,6 +253,7 @@
   './data/data-admin.js',
   './data/data-load.js',
   './data/data-save.js',
+  './data/pending-day-writes.js',
   './data/data-pure.js',
   './data/running-route-storage-plan.js',
   './data/data-running-route.js',

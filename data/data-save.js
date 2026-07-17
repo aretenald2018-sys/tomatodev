@@ -10,7 +10,259 @@
 // 문서 크기 900KB 초과 시 사진 자동 재인코딩(480px, JPEG q=0.5) 해 크기 축소.
 // ================================================================
 
-import { setDoc, deleteDoc, _cache, _doc, _fbOp } from './data-core.js';
+import {
+  db, doc, setDoc, deleteDoc,
+  getDataOwnerId,
+  _cache, _setCache, _fbOp,
+} from './data-core.js';
+import {
+  PENDING_DAY_WRITE_PREFIX,
+  enqueuePendingDayWrite,
+  listPendingDayWrites,
+  mergePendingDayWritesIntoCache,
+  acknowledgePendingDayWrites,
+} from './pending-day-writes.js';
+
+const _pendingFlushByOwnerDate = new Map();
+let _pendingSyncListenersReady = false;
+
+function _ownerDateQueueKey(ownerId, key) {
+  return `${encodeURIComponent(ownerId)}:${key}`;
+}
+
+function _pendingStorage() {
+  const storage = globalThis.localStorage;
+  if (!storage || typeof storage.getItem !== 'function' || typeof storage.setItem !== 'function') {
+    const error = new Error('기기 복구 저장소를 사용할 수 없습니다.');
+    error.code = 'PENDING_DAY_STORAGE_UNAVAILABLE';
+    throw error;
+  }
+  return storage;
+}
+
+function _normalizedPatch(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    const error = new Error('saveDay payload must be an object');
+    error.code = 'INVALID_DAY_PAYLOAD';
+    throw error;
+  }
+  const json = JSON.stringify(data);
+  if (typeof json !== 'string') {
+    const error = new Error('saveDay payload is not serializable');
+    error.code = 'INVALID_DAY_PAYLOAD';
+    throw error;
+  }
+  return { patch: JSON.parse(json), json };
+}
+
+function _markPendingWriteError(error, fallbackCode = 'PENDING_DAY_SYNC_FAILED') {
+  const value = error instanceof Error ? error : new Error(String(error || 'day write failed'));
+  value.code = value.code || fallbackCode;
+  value.pendingDayWrite = true;
+  return value;
+}
+
+function _applyPendingPayloadToCurrentCache(ownerId, key, payload) {
+  if (getDataOwnerId() !== ownerId) return;
+  const existing = _cache[key] && typeof _cache[key] === 'object' ? _cache[key] : {};
+  _cache[key] = { ...existing, ...payload };
+}
+
+function _notifyDayCacheChanged(ownerId, key, source) {
+  if (typeof document === 'undefined' || getDataOwnerId() !== ownerId) return;
+  document.dispatchEvent(new CustomEvent('data:workouts-updated', {
+    detail: { ownerId, changedDateKeys: [key], source },
+  }));
+}
+
+function _loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = src;
+  });
+}
+
+async function _fitPatchForFirestore(patch, sourceJson) {
+  if (sourceJson.length <= 900000) return { patch, changed: false };
+
+  console.warn('[data] 문서 크기 초과 위험 (' + Math.round(sourceJson.length / 1024) + 'KB) — 사진 품질 축소');
+  const next = { ...patch };
+  let changed = false;
+  const photoKeys = ['bPhoto', 'lPhoto', 'dPhoto', 'sPhoto', 'workoutPhoto'];
+  for (const photoKey of photoKeys) {
+    if (typeof next[photoKey] !== 'string' || next[photoKey].length <= 100000) continue;
+    try {
+      const image = await _loadImage(next[photoKey]);
+      const canvas = document.createElement('canvas');
+      const maxSize = 480;
+      let width = image.width;
+      let height = image.height;
+      if (width > maxSize || height > maxSize) {
+        if (width > height) {
+          height = Math.round(height * maxSize / width);
+          width = maxSize;
+        } else {
+          width = Math.round(width * maxSize / height);
+          height = maxSize;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d').drawImage(image, 0, 0, width, height);
+      next[photoKey] = canvas.toDataURL('image/jpeg', 0.5);
+      changed = true;
+    } catch (error) {
+      // 원본을 null로 지우면 복구 저널에도 사진 소실이 확정된다. 원본을 보존하고
+      // 서버가 거부할 경우 pending 상태로 남겨 다음 실행에서 다시 복구한다.
+      console.warn(`[data] ${photoKey} 사진 축소 실패 — 원본 보존:`, error?.message || error);
+    }
+  }
+  return { patch: next, changed };
+}
+
+function _restorePendingEntries(ownerId, baseCache = {}) {
+  const entries = listPendingDayWrites(_pendingStorage(), { ownerId });
+  return mergePendingDayWritesIntoCache(baseCache, entries);
+}
+
+export function restorePendingDayWritesForOwner(ownerId, baseCache = {}) {
+  if (!ownerId) return { ...baseCache };
+  try {
+    return _restorePendingEntries(ownerId, baseCache);
+  } catch (error) {
+    console.warn('[data] pending day restore skipped:', error?.message || error);
+    return { ...baseCache };
+  }
+}
+
+function _isDefinitelyOffline() {
+  return typeof navigator !== 'undefined' && navigator.onLine === false;
+}
+
+async function _drainPendingDayWrites(ownerId, key, dayRef) {
+  if (_isDefinitelyOffline()) {
+    return { state: 'pending', ownerId, dateKey: key };
+  }
+
+  while (true) {
+    const storage = _pendingStorage();
+    const entries = listPendingDayWrites(storage, { ownerId, dateKey: key });
+    if (!entries.length) return { state: 'synced', ownerId, dateKey: key };
+
+    const pendingCache = mergePendingDayWritesIntoCache({}, entries);
+    const payload = pendingCache[key];
+    if (!payload || typeof payload !== 'object') {
+      throw _markPendingWriteError(new Error('pending day payload is invalid'), 'PENDING_DAY_INVALID');
+    }
+
+    try {
+      // 대상 ref는 호출 당시 canonical owner로 고정한다. await 뒤 현재 로그인
+      // 계정을 다시 읽지 않으므로 A 계정 저장이 B/_orphan으로 새지 않는다.
+      await setDoc(dayRef, payload, { merge: true });
+    } catch (error) {
+      const marked = _markPendingWriteError(error);
+      marked.pendingDayStored = true;
+      throw marked;
+    }
+    acknowledgePendingDayWrites(storage, entries);
+  }
+}
+
+function _requestPendingDayFlush(ownerId, key, { dayRef = null, rethrow = false } = {}) {
+  const queueKey = _ownerDateQueueKey(ownerId, key);
+  let state = _pendingFlushByOwnerDate.get(queueKey);
+  if (!state) {
+    const capturedRef = dayRef || doc(db, 'users', ownerId, 'workouts', key);
+    const promise = _fbOp(
+      'flushPendingDayWrites',
+      () => _drainPendingDayWrites(ownerId, key, capturedRef),
+      { rethrow: true, dateKey: queueKey },
+    ).finally(() => {
+      if (_pendingFlushByOwnerDate.get(queueKey)?.promise === promise) {
+        _pendingFlushByOwnerDate.delete(queueKey);
+      }
+    });
+    state = { promise };
+    _pendingFlushByOwnerDate.set(queueKey, state);
+  }
+
+  if (rethrow) return state.promise;
+  return state.promise.catch((error) => {
+    console.warn('[data] pending day sync deferred:', error?.message || error);
+    return { state: 'pending', ownerId, dateKey: key, error };
+  });
+}
+
+export async function flushPendingDayWrites(ownerId = getDataOwnerId()) {
+  if (!ownerId) return { state: 'idle', synced: 0, failed: 0 };
+  let entries;
+  try {
+    entries = listPendingDayWrites(_pendingStorage(), { ownerId });
+  } catch (error) {
+    console.warn('[data] pending day flush unavailable:', error?.message || error);
+    return { state: 'unavailable', synced: 0, failed: 1 };
+  }
+  const dateKeys = [...new Set(entries.map(entry => entry.record.dateKey))];
+  if (!dateKeys.length) return { state: 'idle', synced: 0, failed: 0 };
+  const results = await Promise.allSettled(
+    dateKeys.map(key => _requestPendingDayFlush(ownerId, key, { rethrow: true })),
+  );
+  const failed = results.filter(result => result.status === 'rejected').length;
+  const pending = results.filter(result => (
+    result.status === 'fulfilled' && result.value?.state === 'pending'
+  )).length;
+  const synced = results.length - failed - pending;
+  return {
+    state: failed || pending ? 'pending' : 'synced',
+    synced,
+    pending,
+    failed,
+  };
+}
+
+function _schedulePendingFlush() {
+  const ownerId = getDataOwnerId();
+  if (!ownerId) return;
+  void flushPendingDayWrites(ownerId).catch(error => {
+    console.warn('[data] pending day background sync deferred:', error?.message || error);
+  });
+}
+
+export function initializePendingDayWriteSync() {
+  if (_pendingSyncListenersReady || typeof window === 'undefined') return;
+  _pendingSyncListenersReady = true;
+  window.addEventListener('online', _schedulePendingFlush);
+  window.addEventListener('focus', _schedulePendingFlush);
+  window.addEventListener('storage', (event) => {
+    if (!String(event?.key || '').startsWith(PENDING_DAY_WRITE_PREFIX)) return;
+    const ownerId = getDataOwnerId();
+    if (!ownerId) return;
+    const nextCache = restorePendingDayWritesForOwner(ownerId, _cache);
+    const changedDateKeys = [...new Set([
+      ...Object.keys(_cache || {}),
+      ...Object.keys(nextCache || {}),
+    ])].filter(key => {
+      try { return JSON.stringify(_cache?.[key] || null) !== JSON.stringify(nextCache?.[key] || null); }
+      catch { return true; }
+    });
+    if (getDataOwnerId() === ownerId) {
+      _setCache(nextCache);
+      if (changedDateKeys.length && typeof document !== 'undefined') {
+        document.dispatchEvent(new CustomEvent('data:workouts-updated', {
+          detail: { ownerId, changedDateKeys, source: 'pending-storage' },
+        }));
+      }
+    }
+    _schedulePendingFlush();
+  });
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') _schedulePendingFlush();
+    });
+  }
+}
 
 // 2026-04-20: `opts.rethrow=true`로 호출하면 Firebase 저장 실패가 호출자에게 전파됨.
 // 기본은 기존 동작(swallow) — fire-and-forget 호출 호환.
@@ -30,43 +282,74 @@ import { setDoc, deleteDoc, _cache, _doc, _fbOp } from './data-core.js';
 export async function saveDay(key, data, opts = {}) {
   const { rethrow = false, mode = 'merge', allowReplace = false } = opts;
   const saveMode = mode === 'replace' ? 'replace' : 'merge';
-
-  // 사진 품질 축소(문서 크기 초과 방지) — mode 무관하게 payload 에 사진이 포함되면 실행.
-  if (data) {
-    const json = JSON.stringify(data);
-    if (json.length > 900000) {
-      console.warn('[data] 문서 크기 초과 위험 (' + Math.round(json.length/1024) + 'KB) — 사진 품질 축소');
-      const photoKeys = ['bPhoto','lPhoto','dPhoto','sPhoto','workoutPhoto'];
-      for (const pk of photoKeys) {
-        if (data[pk] && data[pk].length > 100000) {
-          try {
-            const img = new Image();
-            const loaded = new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
-            img.src = data[pk];
-            await loaded;
-            const c = document.createElement('canvas');
-            const MAX = 480;
-            let w = img.width, h = img.height;
-            if (w > MAX || h > MAX) {
-              if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
-              else { w = Math.round(w * MAX / h); h = MAX; }
-            }
-            c.width = w; c.height = h;
-            c.getContext('2d').drawImage(img, 0, 0, w, h);
-            data[pk] = c.toDataURL('image/jpeg', 0.5);
-          } catch { data[pk] = null; }
-        }
-      }
-    }
+  const ownerId = getDataOwnerId();
+  if (!ownerId) {
+    const error = _markPendingWriteError(new Error('로그인 계정이 없어 날짜 기록을 저장할 수 없습니다.'), 'DAY_OWNER_REQUIRED');
+    if (rethrow) throw error;
+    console.warn('[data] saveDay blocked without owner:', key);
+    return { state: 'rejected', error };
+  }
+  const dayRef = doc(db, 'users', ownerId, 'workouts', key);
+  let normalized;
+  try {
+    normalized = _normalizedPatch(data);
+  } catch (error) {
+    if (rethrow) throw error;
+    console.warn('[data] invalid saveDay payload:', error?.message || error);
+    return { state: 'rejected', error };
   }
 
   if (saveMode === 'merge') {
-    // 부분 업데이트 — 반대편 도메인 필드를 절대 건드리지 않는다.
-    return _fbOp('saveDay(merge)', async () => {
-      const existing = _cache[key] && typeof _cache[key] === 'object' ? _cache[key] : {};
-      _cache[key] = { ...existing, ...data };
-      await setDoc(_doc('workouts', key), data, { merge: true });
-    }, { rethrow, dateKey: key });
+    let entry;
+    try {
+      // 첫 await 전에 복구 저널과 캐시를 함께 갱신한다. 운동 picker가 저장
+      // Promise를 기다리지 않고 재렌더해도 같은 날짜의 식단/운동이 사라지지 않는다.
+      entry = enqueuePendingDayWrite(_pendingStorage(), {
+        ownerId,
+        dateKey: key,
+        payload: normalized.patch,
+      });
+      _applyPendingPayloadToCurrentCache(ownerId, key, entry.record.payload);
+    } catch (error) {
+      // localStorage quota/WebView 제한이 있어도 네트워크가 살아 있으면 서버에
+      // 직접 저장한다. 이 경로는 원격 성공 전 cache를 갱신하지 않아 거짓
+      // "저장됨" 상태를 만들지 않는다.
+      const journalError = _markPendingWriteError(error, 'PENDING_DAY_STORAGE_FAILED');
+      try {
+        const fittedFallback = await _fitPatchForFirestore(normalized.patch, normalized.json);
+        return await _fbOp('saveDay(merge-direct)', async () => {
+          await setDoc(dayRef, fittedFallback.patch, { merge: true });
+          _applyPendingPayloadToCurrentCache(ownerId, key, fittedFallback.patch);
+          _notifyDayCacheChanged(ownerId, key, 'direct-fallback');
+          return { state: 'synced', ownerId, dateKey: key, recoveryJournal: false };
+        }, { rethrow: true, dateKey: _ownerDateQueueKey(ownerId, key) });
+      } catch (remoteError) {
+        const marked = _markPendingWriteError(remoteError, 'DAY_WRITE_AND_RECOVERY_FAILED');
+        marked.localRecoveryUnavailable = true;
+        marked.recoveryCause = journalError;
+        if (rethrow) throw marked;
+        console.error('[data] saveDay direct fallback failed:', marked);
+        return { state: 'rejected', error: marked };
+      }
+    }
+
+    const fitted = await _fitPatchForFirestore(normalized.patch, normalized.json);
+    if (fitted.changed) {
+      try {
+        entry = enqueuePendingDayWrite(_pendingStorage(), {
+          ownerId,
+          dateKey: key,
+          payload: fitted.patch,
+        });
+        _applyPendingPayloadToCurrentCache(ownerId, key, entry.record.payload);
+      } catch (error) {
+        const marked = _markPendingWriteError(error, 'PENDING_DAY_STORAGE_FAILED');
+        marked.pendingDayStored = true;
+        if (rethrow) throw marked;
+        return { state: 'pending', ownerId, dateKey: key, error: marked };
+      }
+    }
+    return _requestPendingDayFlush(ownerId, key, { dayRef, rethrow });
   }
 
   if (!allowReplace) {
@@ -77,18 +360,24 @@ export async function saveDay(key, data, opts = {}) {
   }
 
   // 기존 'replace' 경로 — 전체 덮어쓰기 + isEmpty 삭제.
-  const isEmpty = !data || (
-    !data.exercises?.length && !data.cf && !data.memo &&
-    !data.breakfast && !data.lunch && !data.dinner && !data.snack &&
-    !data.stretching && !data.swimming && !data.running && !data.wine_free &&
-    !data.breakfast_skipped && !data.lunch_skipped && !data.dinner_skipped &&
-    !data.bKcal && !data.lKcal && !data.dKcal && !data.sKcal &&
-    !data.runDistance && !data.swimDistance &&
-    !data.bFoods?.length && !data.lFoods?.length && !data.dFoods?.length && !data.sFoods?.length &&
-    !data.bPhoto && !data.lPhoto && !data.dPhoto && !data.sPhoto && !data.workoutPhoto
+  const replacement = normalized.patch;
+  const isEmpty = !replacement || (
+    !replacement.exercises?.length && !replacement.cf && !replacement.memo &&
+    !replacement.breakfast && !replacement.lunch && !replacement.dinner && !replacement.snack &&
+    !replacement.stretching && !replacement.swimming && !replacement.running && !replacement.wine_free &&
+    !replacement.breakfast_skipped && !replacement.lunch_skipped && !replacement.dinner_skipped &&
+    !replacement.bKcal && !replacement.lKcal && !replacement.dKcal && !replacement.sKcal &&
+    !replacement.runDistance && !replacement.swimDistance &&
+    !replacement.bFoods?.length && !replacement.lFoods?.length && !replacement.dFoods?.length && !replacement.sFoods?.length &&
+    !replacement.bPhoto && !replacement.lPhoto && !replacement.dPhoto && !replacement.sPhoto && !replacement.workoutPhoto
   );
   return _fbOp('saveDay', async () => {
-    if (isEmpty) { delete _cache[key]; await deleteDoc(_doc('workouts', key)); }
-    else { _cache[key] = data; await setDoc(_doc('workouts', key), data); }
-  }, { rethrow, dateKey: key });
+    if (isEmpty) {
+      await deleteDoc(dayRef);
+      if (getDataOwnerId() === ownerId) delete _cache[key];
+    } else {
+      await setDoc(dayRef, replacement);
+      if (getDataOwnerId() === ownerId) _cache[key] = replacement;
+    }
+  }, { rethrow, dateKey: _ownerDateQueueKey(ownerId, key) });
 }

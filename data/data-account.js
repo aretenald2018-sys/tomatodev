@@ -6,7 +6,7 @@ import {
   db, doc, setDoc, deleteDoc, getDocs, collection,
   ADMIN_ID, ADMIN_GUEST_ID,
 } from './data-core.js';
-import { isAdmin } from './data-auth.js';
+import { getCurrentUser, isAdmin, setCurrentUser } from './data-auth.js';
 
 export async function getAccountList() {
   try {
@@ -22,14 +22,12 @@ export async function saveAccount(account) {
 }
 
 export async function refreshCurrentUserFromDB() {
-  const { getCurrentUserRef, setCurrentUserRef } = await import('./data-core.js');
-  if (!getCurrentUserRef()) return;
+  const expectedOwnerId = getCurrentUser()?.id;
+  if (!expectedOwnerId) return;
   const accounts = await getAccountList();
-  const fresh = accounts.find(a => a.id === getCurrentUserRef().id);
-  if (fresh) {
-    setCurrentUserRef(fresh);
-    localStorage.setItem('currentUser', JSON.stringify(fresh));
-  }
+  if (getCurrentUser()?.id !== expectedOwnerId) return;
+  const fresh = accounts.find(a => a.id === expectedOwnerId);
+  if (fresh) setCurrentUser(fresh);
 }
 
 export async function recoverDeletedAccounts() {

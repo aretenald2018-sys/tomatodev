@@ -41,7 +41,7 @@ index.html
 ### 왜 data.js(data/ 디렉토리)를 통해서만 데이터 접근하는가
 - `_cache` 인메모리 캐시와 Firebase가 항상 동기화되어야 함
 - 직접 Firestore 호출하면 캐시가 stale → 다른 탭에서 구 데이터 표시
-- `saveDay()`는 저장 후 `_cache`를 업데이트하고 `sheet:saved` 이벤트 발생 → 이 체인이 끊기면 UI 갱신 안 됨
+- `saveDay()`는 계정·날짜별 복구 저널과 `_cache`를 첫 await 전에 함께 갱신한 뒤 Firestore에 merge하고, `sheet:saved`가 화면 갱신을 잇는다. 서버 실패 시 저널은 시작·online·foreground에서 재전송된다.
 - **data.js는 호환 facade**이고 실제 공개 API는 `data/data-api.js`가 조립한다. UI/feature는 Firebase SDK나 `data-core.js`를 직접 import하지 않는다.
 - Firebase adapter, repository, facade, UI 순으로 의존하며 `saveDay()`는 merge가 기본이다. 전체 replace는 명시적 opt-in 없이는 거부된다.
 

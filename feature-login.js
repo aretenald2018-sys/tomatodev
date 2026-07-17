@@ -188,10 +188,12 @@ async function initLoginScreen() {
       document.getElementById('kim-lock-pw').addEventListener('keydown', (event) => {
         if (event.key === 'Enter') document.getElementById('kim-lock-btn').click();
       });
-      document.getElementById('kim-lock-other').onclick = () => {
+      document.getElementById('kim-lock-other').onclick = async () => {
         setCurrentUser(null);
         localStorage.removeItem('admin_authenticated');
         localStorage.removeItem('kim_authenticated');
+        const { waitForAuthPersistence } = await import('./data.js');
+        await waitForAuthPersistence();
         lockDiv.remove();
         location.reload();
       };
@@ -870,6 +872,8 @@ async function confirmLogout() {
   localStorage.removeItem('admin_authenticated');
   localStorage.removeItem('kim_authenticated');
   clearAdminAuth();
+  const { waitForAuthPersistence } = await import('./data.js');
+  await waitForAuthPersistence();
   location.reload();
 }
 

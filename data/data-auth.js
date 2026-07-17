@@ -8,6 +8,22 @@ import {
   _idbSet, _idbGet, _idbRemove,
 } from './data-core.js';
 
+let _authSessionGeneration = 0;
+let _authPersistence = Promise.resolve();
+
+function _queueAuthPersistence(operation) {
+  const next = _authPersistence.then(operation, operation);
+  _authPersistence = next.catch(() => {});
+}
+
+export async function waitForAuthPersistence() {
+  let pending;
+  do {
+    pending = _authPersistence;
+    await pending;
+  } while (pending !== _authPersistence);
+}
+
 export function getCurrentUser() { return getCurrentUserRef(); }
 export function getAdminId() { return ADMIN_ID; }
 export function getAdminGuestId() { return ADMIN_GUEST_ID; }
@@ -49,16 +65,19 @@ export function shouldShow(section, key) {
 }
 
 export function setCurrentUser(user) {
+  _authSessionGeneration += 1;
   const normalizedUser = _normalizeKimUser(user);
   setCurrentUserRef(normalizedUser);
   if (normalizedUser) {
     localStorage.setItem('currentUser', JSON.stringify(normalizedUser));
-    _idbSet('currentUser', normalizedUser);
+    _queueAuthPersistence(() => _idbSet('currentUser', normalizedUser));
   } else {
     localStorage.removeItem('currentUser');
-    _idbRemove('currentUser');
-    _idbRemove('admin_authenticated');
-    _idbRemove('kim_authenticated');
+    _queueAuthPersistence(async () => {
+      await _idbRemove('currentUser');
+      await _idbRemove('admin_authenticated');
+      await _idbRemove('kim_authenticated');
+    });
   }
 }
 
@@ -73,23 +92,43 @@ export function loadSavedUser() {
   return null;
 }
 
-export function backupAdminAuth() { _idbSet('admin_authenticated', true); }
-export function clearAdminAuth() { _idbRemove('admin_authenticated'); }
+export function backupAdminAuth() {
+  _queueAuthPersistence(() => _idbSet('admin_authenticated', true));
+}
+export function clearAdminAuth() {
+  _queueAuthPersistence(() => _idbRemove('admin_authenticated'));
+}
 export const backupKimAuth = backupAdminAuth;
 export const clearKimAuth = clearAdminAuth;
 
 export async function restoreUserFromBackup() {
+  const restoreGeneration = _authSessionGeneration;
   if (getCurrentUserRef()) return getCurrentUserRef();
+
+  await waitForAuthPersistence();
+  if (_authSessionGeneration !== restoreGeneration || getCurrentUserRef()) {
+    return getCurrentUserRef();
+  }
+
   try {
     const backup = await _idbGet('currentUser');
-    if (backup) {
-      const normalizedBackup = _normalizeKimUser(backup);
-      setCurrentUserRef(normalizedBackup);
-      localStorage.setItem('currentUser', JSON.stringify(normalizedBackup));
-      const adminAuth = await _idbGet('admin_authenticated') || await _idbGet('kim_authenticated');
-      if (adminAuth) localStorage.setItem('admin_authenticated', 'true');
+    if (_authSessionGeneration !== restoreGeneration || getCurrentUserRef()) {
       return getCurrentUserRef();
     }
+    if (!backup) return null;
+
+    const [adminAuth, kimAuth] = await Promise.all([
+      _idbGet('admin_authenticated'),
+      _idbGet('kim_authenticated'),
+    ]);
+    if (_authSessionGeneration !== restoreGeneration || getCurrentUserRef()) {
+      return getCurrentUserRef();
+    }
+
+    const normalizedBackup = _normalizeKimUser(backup);
+    setCurrentUser(normalizedBackup);
+    if (adminAuth || kimAuth) localStorage.setItem('admin_authenticated', 'true');
+    return getCurrentUserRef();
   } catch {}
   return null;
 }

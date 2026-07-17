@@ -604,6 +604,30 @@ async function renderAll() {
 document.addEventListener('sheet:saved',   renderAll);
 document.addEventListener('cooking:saved', renderAll);
 document.addEventListener('app:render-requested', renderAll);
+let _workoutDataRefreshTimer = null;
+document.addEventListener('data:workouts-updated', () => {
+  if (_workoutDataRefreshTimer) clearTimeout(_workoutDataRefreshTimer);
+  _workoutDataRefreshTimer = setTimeout(() => {
+    _workoutDataRefreshTimer = null;
+    if (_currentTab === 'home') {
+      renderHome();
+      return;
+    }
+    if (_currentTab === 'diet') {
+      loadWorkoutDate(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+      return;
+    }
+    if (_currentTab === 'workout') {
+      void _renderWorkoutRoute(getWorkoutNavSnapshot(), 'data:workouts-updated');
+      return;
+    }
+    if (_currentTab === 'calendar') {
+      void _lazyRenderCalendar();
+      return;
+    }
+    if (_currentTab === 'stats') void _lazyRenderStats();
+  }, 80);
+});
 document.addEventListener('sheet:saved', () => scheduleSeasonDashboardWidgetSync('workout-saved'));
 document.addEventListener('season:changed', () => {
   void renderAll();

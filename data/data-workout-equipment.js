@@ -9,6 +9,7 @@
 // ================================================================
 
 import {
+  db, collection, getDataOwnerId,
   _doc, _col, _fbOp, _generateId,
   setDoc, deleteDoc, getDocs,
   _gyms, _setGyms, _routineTemplates, _setRoutineTemplates,
@@ -16,13 +17,19 @@ import {
 
 // ── Gym ─────────────────────────────────────────────────────────
 
-export async function loadGyms() {
+export async function loadGyms(ownerId = getDataOwnerId()) {
+  if (!ownerId) {
+    _setGyms([]);
+    return;
+  }
   try {
-    const snap = await getDocs(_col('gyms'));
+    const snap = await getDocs(collection(db, 'users', ownerId, 'gyms'));
+    if (getDataOwnerId() !== ownerId) return;
     const list = [];
     snap.forEach(d => list.push(d.data()));
     _setGyms(list.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)));
   } catch (e) {
+    if (getDataOwnerId() !== ownerId) return;
     console.warn('[data] gyms load skipped:', e?.message || e);
     _setGyms([]);
   }
@@ -59,13 +66,19 @@ export async function deleteGym(gymId) {
 
 // ── Routine Template ────────────────────────────────────────────
 
-export async function loadRoutineTemplates() {
+export async function loadRoutineTemplates(ownerId = getDataOwnerId()) {
+  if (!ownerId) {
+    _setRoutineTemplates([]);
+    return;
+  }
   try {
-    const snap = await getDocs(_col('routine_templates'));
+    const snap = await getDocs(collection(db, 'users', ownerId, 'routine_templates'));
+    if (getDataOwnerId() !== ownerId) return;
     const list = [];
     snap.forEach(d => list.push(d.data()));
     _setRoutineTemplates(list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
   } catch (e) {
+    if (getDataOwnerId() !== ownerId) return;
     console.warn('[data] routine_templates load skipped:', e?.message || e);
     _setRoutineTemplates([]);
   }

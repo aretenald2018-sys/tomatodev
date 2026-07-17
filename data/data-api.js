@@ -74,7 +74,7 @@ export {
   GUEST_CONFIG, shouldShow,
   setCurrentUser, loadSavedUser,
   backupAdminAuth, clearAdminAuth, backupKimAuth, clearKimAuth,
-  restoreUserFromBackup,
+  restoreUserFromBackup, waitForAuthPersistence,
   verifyPassword, hashPassword,
 } from './data-auth.js';
 // core
@@ -158,7 +158,7 @@ export {
 import {
   loadAll, migrateDataToUser, _sanitizeTabList, isActiveWorkoutDayData,
 } from './data-load.js';
-import { saveDay } from './data-save.js';
+import { saveDay, restorePendingDayWritesForOwner } from './data-save.js';
 import {
   buildMaxCycleCanonicalPlan,
   inferExerciseMovementId,
@@ -566,14 +566,23 @@ export const getAllDateKeys = () => Object.keys(_cache).filter(k => /^\d{4}-\d{2
 export const getDay       = (y,m,d) => _cache[dateKey(y,m,d)] || {};
 export async function ensureWorkoutDayCached(key) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(key || ''))) return {};
-  const existing = _cache[key];
+  const ownerId = getDataOwnerId();
+  if (!ownerId) return {};
+  const startingCache = _cache;
+  const existing = startingCache[key];
   if (existing && typeof existing === 'object' && Object.keys(existing).length > 0) return existing;
-  const snap = await getDoc(_doc('workouts', key));
-  if (snap.exists()) {
-    _cache[key] = snap.data() || {};
-    return _cache[key];
-  }
-  _cache[key] = _cache[key] || {};
+  const pendingSeed = restorePendingDayWritesForOwner(ownerId, {})[key] || {};
+  const workoutRef = doc(db, 'users', ownerId, 'workouts', key);
+  const snap = await getDoc(workoutRef);
+  // 늦은 A 계정 조회가 계정 전환 뒤 B 캐시에 들어가지 않게 폐기한다.
+  if (getDataOwnerId() !== ownerId) return {};
+  // 같은 계정이라도 대기 중 realtime/local 저장이 이 날짜를 채웠다면, 늦은
+  // getDoc 응답으로 새 캐시를 되돌리지 않는다.
+  if (_cache !== startingCache || _cache[key] !== existing) return _cache[key] || {};
+  const remoteDay = snap.exists() ? (snap.data() || {}) : {};
+  const remoteWithSeed = { [key]: { ...remoteDay, ...pendingSeed } };
+  const latest = restorePendingDayWritesForOwner(ownerId, remoteWithSeed);
+  _cache[key] = latest[key] || {};
   return _cache[key];
 }
 

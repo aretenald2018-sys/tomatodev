@@ -10,11 +10,10 @@
 
 import { CONFIG, MOVEMENTS } from '../config.js';
 import {
-  db, doc, setDoc, collection, getDocs, getDoc,
+  db, doc, setDoc, collection, getDocs, getDoc, runTransaction, onSnapshot,
   getCurrentUserRef, ADMIN_ID, getDataOwnerId,
-  _col, _doc,
   _cache, _nutritionDB,
-  _setExList, _setCustomMuscles, _setGoals, _setQuests, _setCooking, _setBodyCheckins, _setNutritionDB,
+  _setCache, _setExList, _setCustomMuscles, _setGoals, _setQuests, _setCooking, _setBodyCheckins, _setNutritionDB,
   DEFAULT_TAB_ORDER, DEFAULT_DIET_PLAN, DEFAULT_EXPERT_PRESET,
   _setDietPlan, _settings,
   _setTomatoCycles,
@@ -43,7 +42,81 @@ import {
   _sanitizeTabList,
   isActiveWorkoutDayData,
 } from './data-pure.js';
+import {
+  restorePendingDayWritesForOwner,
+  flushPendingDayWrites,
+  initializePendingDayWriteSync,
+} from './data-save.js';
 export { _sanitizeTabList, isActiveWorkoutDayData, buildExerciseCatalogSeedPlan };
+
+let _workoutRealtimeUnsubscribe = null;
+let _workoutRealtimeOwnerId = null;
+let _workoutRealtimeGeneration = 0;
+let _loadAllGeneration = 0;
+
+function _changedWorkoutDateKeys(previousCache, nextCache) {
+  const keys = new Set([
+    ...Object.keys(previousCache || {}),
+    ...Object.keys(nextCache || {}),
+  ]);
+  return [...keys].filter(key => {
+    try {
+      return JSON.stringify(previousCache?.[key] || null) !== JSON.stringify(nextCache?.[key] || null);
+    } catch {
+      return true;
+    }
+  });
+}
+
+function _notifyWorkoutCacheChanged(ownerId, changedDateKeys, source) {
+  if (!changedDateKeys.length || typeof document === 'undefined') return;
+  document.dispatchEvent(new CustomEvent('data:workouts-updated', {
+    detail: { ownerId, changedDateKeys, source },
+  }));
+}
+
+export function stopWorkoutRealtimeSync() {
+  _workoutRealtimeGeneration += 1;
+  try { _workoutRealtimeUnsubscribe?.(); } catch {}
+  _workoutRealtimeUnsubscribe = null;
+  _workoutRealtimeOwnerId = null;
+}
+
+export function startWorkoutRealtimeSync(ownerId = getDataOwnerId()) {
+  if (!ownerId) {
+    stopWorkoutRealtimeSync();
+    return;
+  }
+  if (_workoutRealtimeUnsubscribe && _workoutRealtimeOwnerId === ownerId) return;
+  stopWorkoutRealtimeSync();
+  _workoutRealtimeOwnerId = ownerId;
+  const realtimeGeneration = ++_workoutRealtimeGeneration;
+  const ownerWorkouts = collection(db, 'users', ownerId, 'workouts');
+  _workoutRealtimeUnsubscribe = onSnapshot(ownerWorkouts, (snapshot) => {
+    // An unsubscribe does not guarantee an already queued callback will not
+    // run.  Without this token, a stale A callback after A → B can stop or
+    // overwrite B's live subscription/cache.
+    if (_workoutRealtimeGeneration !== realtimeGeneration) return;
+    if (getDataOwnerId() !== ownerId) {
+      stopWorkoutRealtimeSync();
+      return;
+    }
+    const remoteCache = {};
+    snapshot.forEach(documentSnapshot => {
+      remoteCache[documentSnapshot.id] = documentSnapshot.data();
+    });
+    const nextCache = restorePendingDayWritesForOwner(ownerId, remoteCache);
+    if (getDataOwnerId() !== ownerId) return;
+    const changedDateKeys = _changedWorkoutDateKeys(_cache, nextCache);
+    _setCache(nextCache);
+    _notifyWorkoutCacheChanged(ownerId, changedDateKeys, 'firestore');
+  }, (error) => {
+    if (_workoutRealtimeGeneration !== realtimeGeneration) return;
+    if (getDataOwnerId() === ownerId) {
+      console.warn('[data] workout realtime sync deferred:', error?.message || error);
+    }
+  });
+}
 
 // ═══════════════════════════════════════════════════════════════
 // Admin ↔ Admin(guest) twin-account workout merge
@@ -136,12 +209,20 @@ async function _copyMissingDocuments({ targetUserId, collectionName, guestUserId
     legacyDocuments: legacySnap ? _snapshotDocuments(legacySnap) : [],
   });
 
+  let copied = 0;
   for (const documentData of plan) {
-    // This document is missing from the canonical account, so a complete write
-    // cannot erase a current meal, workout photo, or other canonical field.
-    await setDoc(doc(db, 'users', targetUserId, collectionName, documentData.id), documentData.data);
+    const targetRef = doc(db, 'users', targetUserId, collectionName, documentData.id);
+    // 최초 read와 write 사이 다른 클라이언트가 canonical day를 만들 수 있다.
+    // transaction 안에서 다시 확인해 현재 식단/운동/사진을 절대 덮지 않는다.
+    const didCopy = await runTransaction(db, async (transaction) => {
+      const current = await transaction.get(targetRef);
+      if (current.exists()) return false;
+      transaction.set(targetRef, documentData.data);
+      return true;
+    });
+    if (didCopy) copied += 1;
   }
-  return plan.length;
+  return copied;
 }
 
 // Public legacy-root migration API.  It is now copy-only instead of replacing
@@ -182,8 +263,38 @@ export async function unifySharedAccountData() {
 // loadAll — 앱 시작 시 전체 데이터 로드
 // ═══════════════════════════════════════════════════════════════
 export async function loadAll() {
+  const loadGeneration = ++_loadAllGeneration;
+  const ownerId = getDataOwnerId();
+  if (!ownerId) {
+    // 이전 계정 캐시를 로그인 화면이나 다음 계정에 노출하지 않는다.
+    stopWorkoutRealtimeSync();
+    _setCache({});
+    _setSyncStatus('err');
+    return;
+  }
+
+  const ownerCollection = (name) => collection(db, 'users', ownerId, name);
+  const ownerDoc = (name, id) => doc(db, 'users', ownerId, name, id);
+  const isCurrentLoad = () => (
+    _loadAllGeneration === loadGeneration && getDataOwnerId() === ownerId
+  );
+  const abandonIfStale = () => {
+    if (isCurrentLoad()) return false;
+    // 새 loadAll이 이미 시작됐다면 그 실행이 소유한 캐시를 건드리지 않는다.
+    if (_loadAllGeneration === loadGeneration) {
+      const currentOwnerId = getDataOwnerId();
+      _setCache(currentOwnerId ? restorePendingDayWritesForOwner(currentOwnerId, {}) : {});
+    }
+    return true;
+  };
+  const pendingSeed = restorePendingDayWritesForOwner(ownerId, {});
+  // 원격 getDocs가 느리거나 앱 bootstrap timeout을 넘겨도 새로고침 직후
+  // 기기에 보관된 식단/운동부터 복원한다.
+  if (abandonIfStale()) return;
+  _setCache(pendingSeed);
+
   try {
-    if (getCurrentUserRef() && getDataOwnerId() === ADMIN_ACCOUNT_ID) {
+    if (getCurrentUserRef() && ownerId === ADMIN_ACCOUNT_ID) {
       try {
         await unifySharedAccountData();
       } catch (error) {
@@ -192,22 +303,32 @@ export async function loadAll() {
         console.warn('[data] shared account unification deferred:', error?.message || error);
       }
     }
+    if (abandonIfStale()) return;
 
     const [snap, exSnap, goalSnap, questSnap,
            cookSnap, checkinSnap, nutritionSnap,
            tomatoSnap, settingsSnap] = await Promise.all([
-      getDocs(_col('workouts')),
-      getDocs(_col('exercises')),
-      getDocs(_col('goals')),
-      getDocs(_col('quests')),
-      getDocs(_col('cooking')),
-      getDocs(_col('body_checkins')),
-      getDocs(_col('nutrition_db')),
-      getDocs(_col('tomato_cycles')),
-      getDocs(_col('settings')),
+      getDocs(ownerCollection('workouts')),
+      getDocs(ownerCollection('exercises')),
+      getDocs(ownerCollection('goals')),
+      getDocs(ownerCollection('quests')),
+      getDocs(ownerCollection('cooking')),
+      getDocs(ownerCollection('body_checkins')),
+      getDocs(ownerCollection('nutrition_db')),
+      getDocs(ownerCollection('tomato_cycles')),
+      getDocs(ownerCollection('settings')),
     ]);
 
-      snap.forEach(d => { _cache[d.id] = d.data(); });
+    if (abandonIfStale()) return;
+    const remoteCache = {};
+    snap.forEach(d => { remoteCache[d.id] = d.data(); });
+    // 원격 snapshot 뒤에 load 시작 시점 pending, 그 뒤 현재 pending을 덮어
+    // 쓴다. flush ack와 snapshot 간 순서가 엇갈려도 로컬 최신 변경이 이긴다.
+    const remoteWithSeed = { ...remoteCache };
+    Object.entries(pendingSeed).forEach(([dateKey, pendingDay]) => {
+      remoteWithSeed[dateKey] = { ...(remoteWithSeed[dateKey] || {}), ...pendingDay };
+    });
+    _setCache(restorePendingDayWritesForOwner(ownerId, remoteWithSeed));
 
     const fbMap = {};
     settingsSnap.forEach(d => { fbMap[d.id] = d.data().value; });
@@ -222,20 +343,23 @@ export async function loadAll() {
     });
     if (seedPlan.needsSeed) {
       try {
-        await Promise.all(seedPlan.seedExercises.map(ex => setDoc(_doc('exercises', ex.id), ex)));
-        await setDoc(_doc('settings', EXERCISE_CATALOG_SEED_KEY), { value: seedPlan.seedMarker });
+        await Promise.all(seedPlan.seedExercises.map(ex => setDoc(ownerDoc('exercises', ex.id), ex)));
+        await setDoc(ownerDoc('settings', EXERCISE_CATALOG_SEED_KEY), { value: seedPlan.seedMarker });
         fbMap[EXERCISE_CATALOG_SEED_KEY] = seedPlan.seedMarker;
       } catch (e) {
         console.warn('[data] exercise catalog seed skipped:', e?.message || e);
       }
     }
+    if (abandonIfStale()) return;
     _setExList(_sortExList(seedPlan.exercises.map(ex => normalizeExerciseMovementRecord(ex, MOVEMENTS))));
     try {
-      const customMuscleSnap = await getDocs(_col('custom_muscles'));
+      const customMuscleSnap = await getDocs(ownerCollection('custom_muscles'));
+      if (abandonIfStale()) return;
       const customMuscles = [];
       customMuscleSnap.forEach(d => customMuscles.push({ id: d.id, ...d.data() }));
       _setCustomMuscles(customMuscles);
     } catch (e) {
+      if (abandonIfStale()) return;
       // rules 미반영/권한 오류가 있어도 로그인/기존 기능은 동작하도록 fail-safe
       console.warn('[data] custom_muscles load skipped:', e?.message || e);
       _setCustomMuscles([]);
@@ -249,11 +373,12 @@ export async function loadAll() {
 
     if (_nutritionDB.length === 0 && !isAdmin() && !isAdminGuest()) {
       getDocs(collection(db, 'users', ADMIN_ID, 'nutrition_db')).then(sharedSnap => {
+        if (!isCurrentLoad()) return;
         const sharedItems = [];
         sharedSnap.forEach(d => sharedItems.push(d.data()));
         if (sharedItems.length > 0) {
           _setNutritionDB(sharedItems);
-          Promise.all(sharedItems.map(item => setDoc(_doc('nutrition_db', item.id), item)))
+          Promise.all(sharedItems.map(item => setDoc(ownerDoc('nutrition_db', item.id), item)))
             .catch(e => console.warn('[data] 영양DB 복사 실패:', e.message));
         }
       }).catch(e => console.warn('[data] 관리자 영양DB 로드 실패:', e.message));
@@ -278,8 +403,8 @@ export async function loadAll() {
           activityFactor: 1.3, lossRatePerWeek: 0.009,
           refeedKcal: 5000, refeedDays: [0, 6], startDate: null,
         };
-        setDoc(_doc('settings', 'diet_plan'), { value: _settings.diet_plan }).catch(e => console.warn('[data] 식단 설정 저장 실패:', e.message));
-        setDoc(_doc('settings', 'admin_diet_restored'), { value: 'done' }).catch(e => console.warn('[data] admin_diet_restored 저장 실패:', e.message));
+        setDoc(ownerDoc('settings', 'diet_plan'), { value: _settings.diet_plan }).catch(e => console.warn('[data] 식단 설정 저장 실패:', e.message));
+        setDoc(ownerDoc('settings', 'admin_diet_restored'), { value: 'done' }).catch(e => console.warn('[data] admin_diet_restored 저장 실패:', e.message));
       }
     }
     _settings.home_streak_days = fbMap.home_streak_days ?? 6;
@@ -311,32 +436,37 @@ export async function loadAll() {
     if (maxCyclePlan.shouldWriteMaxCycle) {
       _settings.max_cycle = maxCyclePlan.canonicalCycle;
       fbMap.max_cycle = maxCyclePlan.canonicalCycle;
-      await setDoc(_doc('settings', 'max_cycle'), { value: maxCyclePlan.canonicalCycle })
+      await setDoc(ownerDoc('settings', 'max_cycle'), { value: maxCyclePlan.canonicalCycle })
         .catch(e => console.warn('[data] max_cycle migration failed:', e?.message || e));
+      if (abandonIfStale()) return;
     }
     if (maxCyclePlan.shouldWriteExpertPreset) {
       _settings.expert_preset = maxCyclePlan.cleanedPreset;
       fbMap.expert_preset = maxCyclePlan.cleanedPreset;
-      await setDoc(_doc('settings', 'expert_preset'), { value: maxCyclePlan.cleanedPreset })
+      await setDoc(ownerDoc('settings', 'expert_preset'), { value: maxCyclePlan.cleanedPreset })
         .catch(e => console.warn('[data] expert_preset maxCycle cleanup failed:', e?.message || e));
+      if (abandonIfStale()) return;
     }
     if (_settings.diet_plan) _setDietPlan({ ...DEFAULT_DIET_PLAN, ..._settings.diet_plan });
 
     // 전문가 모드: Gym / RoutineTemplate 로드 (실패해도 전체 앱 동작 유지)
-    await Promise.all([loadGyms(), loadRoutineTemplates(), loadEquipmentPool()]).catch(e =>
+    await Promise.all([loadGyms(ownerId), loadRoutineTemplates(ownerId), loadEquipmentPool(ownerId)]).catch(e =>
       console.warn('[data] expert equipment load skipped:', e?.message || e)
     );
+    if (abandonIfStale()) return;
 
     for (const key of ['quest_order','section_titles','weekly_memos']) {
       if (!fbMap[key] && JSON.stringify(_settings[key]) !== JSON.stringify(
           key === 'quest_order' ? ['quarterly','monthly','weekly','daily'] : {}
       )) {
-        await setDoc(_doc('settings', key), { value: _settings[key] }).catch(e => console.warn(`[data] 설정(${key}) 마이그레이션 실패:`, e.message));
+        await setDoc(ownerDoc('settings', key), { value: _settings[key] }).catch(e => console.warn(`[data] 설정(${key}) 마이그레이션 실패:`, e.message));
+        if (abandonIfStale()) return;
       }
     }
 
     _setSyncStatus('ok');
   } catch(e) {
+    if (abandonIfStale()) return;
     _setSyncStatus('err');
     console.error('[data] loadAll:', e);
     _setExList([...CONFIG.DEFAULT_EXERCISES]);
@@ -345,5 +475,13 @@ export async function loadAll() {
     _settings.section_titles = _migrateFromLS('section_titles', {});
     _settings.weekly_memos   = _migrateFromLS('weekly_memos',   {});
     _settings.season_registry = { schemaVersion: 2, seasons: [] };
+  } finally {
+    if (isCurrentLoad()) {
+      startWorkoutRealtimeSync(ownerId);
+      initializePendingDayWriteSync();
+      void flushPendingDayWrites(ownerId).catch(error => {
+        console.warn('[data] pending day startup sync deferred:', error?.message || error);
+      });
+    }
   }
 }

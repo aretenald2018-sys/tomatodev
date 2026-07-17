@@ -34,6 +34,23 @@ function _blockIfFutureDate() {
   return true;
 }
 
+function _isLocallyQueuedDayWrite(error) {
+  return error?.pendingDayWrite === true && error?.pendingDayStored === true;
+}
+
+function _dayWriteFailureMessage(error, domainLabel = '저장') {
+  if (error?.localRecoveryUnavailable) {
+    return `기기 복구 저장소와 서버 ${domainLabel}에 모두 실패했습니다. 저장공간과 네트워크를 확인해 주세요.`;
+  }
+  if (error?.name === 'QuotaExceededError' || String(error?.code || '').includes('STORAGE')) {
+    return `기기 저장공간 문제로 ${domainLabel}하지 못했습니다. 공간을 확보한 뒤 다시 시도해 주세요.`;
+  }
+  if (error?.code === 'DAY_OWNER_REQUIRED') {
+    return '로그인 계정을 확인한 뒤 다시 저장해 주세요.';
+  }
+  return `${domainLabel} 실패 — 네트워크를 확인해주세요`;
+}
+
 function _workoutDateKeyFromState() {
   const date = S.shared.date;
   if (!date || typeof date.y !== 'number') return null;
@@ -535,6 +552,7 @@ export async function saveWorkoutDay(options = {}) {
   const btn = silent ? null : document.getElementById('wt-save-btn');
   if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
 
+  let daySaveState = 'synced';
   try {
     if (!_isWorkoutDateStill(startedKey, 'before-route-write')) {
       if (btn) { btn.disabled = false; btn.textContent = '저장'; }
@@ -549,12 +567,18 @@ export async function saveWorkoutDay(options = {}) {
       _buildWorkoutPayloadWithSessions(ctxKey, _buildWorkoutPayload(cleanEx, isDietSuccess, persistedRoute))
     );
     _assertSchemaParity('workout', payload, WORKOUT_PAYLOAD_KEYS);
-    await saveDay(ctxKey, payload, { rethrow: true, mode: 'merge' });
+    const result = await saveDay(ctxKey, payload, { rethrow: true, mode: 'merge' });
+    daySaveState = result?.state === 'pending' ? 'pending' : 'synced';
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = '저장'; }
-    console.error('[workout/save] saveWorkoutDay 실패:', e);
-    showToast('저장 실패 — 네트워크를 확인해주세요', 2800, 'error');
-    throw e;
+    if (_isLocallyQueuedDayWrite(e)) {
+      daySaveState = 'pending';
+      console.warn('[workout/save] 서버 동기화 대기 — 기기 복구 저널에 보관됨:', e?.message || e);
+    } else {
+      console.error('[workout/save] saveWorkoutDay 실패:', e);
+      showToast(_dayWriteFailureMessage(e), 3200, 'error');
+      throw e;
+    }
   }
 
   // analytics
@@ -567,7 +591,13 @@ export async function saveWorkoutDay(options = {}) {
   _refreshTabDots();
   document.dispatchEvent(new CustomEvent('sheet:saved'));
 
-  if (!silent) showToast('저장 완료', 2000, 'success');
+  if (!silent) {
+    if (daySaveState === 'pending') {
+      showToast('기기에 보관했습니다 — 연결되면 자동 동기화됩니다', 3000, 'warning');
+    } else {
+      showToast('저장 완료', 2000, 'success');
+    }
+  }
   return true;
 }
 
@@ -594,7 +624,7 @@ export async function _autoSaveDiet(options = {}) {
     const payload = _attachLifeZoneDietSnapshot(_buildDietPayload(isDietSuccess), options);
     _assertSchemaParity('diet', payload, DIET_PAYLOAD_KEYS);
     if (!_isWorkoutDateStill(startedKey, 'diet-before-write')) return;
-    await saveDay(ctxKey, payload, { rethrow: true, mode: 'merge' });
+    const result = await saveDay(ctxKey, payload, { rethrow: true, mode: 'merge' });
 
     const totalFoods = (diet.bFoods?.length || 0) + (diet.lFoods?.length || 0)
       + (diet.dFoods?.length || 0) + (diet.sFoods?.length || 0);
@@ -608,9 +638,18 @@ export async function _autoSaveDiet(options = {}) {
     console.log('[render-workout] 식단 자동 저장 완료');
     _refreshTabDots();
     document.dispatchEvent(new CustomEvent('sheet:saved'));
-    showCenterToast('저장되었습니다');
+    showCenterToast(result?.state === 'pending'
+      ? '기기에 보관됨 · 연결 시 자동 동기화'
+      : '저장되었습니다');
   } catch(e) {
-    showToast('식단 저장에 실패했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.', 3200, 'error');
-    console.error('[render-workout] 자동 저장 실패:', e);
+    if (_isLocallyQueuedDayWrite(e)) {
+      console.warn('[render-workout] 식단 서버 동기화 대기 — 기기 복구 저널에 보관됨:', e?.message || e);
+      _refreshTabDots();
+      document.dispatchEvent(new CustomEvent('sheet:saved'));
+      showCenterToast('기기에 보관됨 · 연결 시 자동 동기화');
+    } else {
+      showToast(_dayWriteFailureMessage(e, '식단 저장'), 3400, 'error');
+      console.error('[render-workout] 자동 저장 실패:', e);
+    }
   }
 }
