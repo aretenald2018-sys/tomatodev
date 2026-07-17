@@ -605,6 +605,22 @@ function _restoreRememberedWorkoutSheetCarousel(key = _workoutHomeSelectedKey, s
   }
 }
 
+function _rememberRenderedWorkoutSheetCarousel(root = null) {
+  if (typeof document === 'undefined') return;
+  const targetRoot = root || _workoutHomeScrollRoot();
+  const sheet = targetRoot?.querySelector?.('[data-wt-day-sheet]')
+    || document.querySelector?.('#workout-calendar-root [data-wt-day-sheet]');
+  if (!sheet) return;
+  const key = sheet.querySelector?.('[data-wt-sheet-main][data-date-key]')?.getAttribute('data-date-key')
+    || _workoutHomeSelectedKey;
+  const sessionIndex = sheet.querySelector?.('[data-session-index]')?.getAttribute('data-session-index');
+  _rememberWorkoutSheetCarouselState(
+    key,
+    sessionIndex == null ? _workoutHomeSessionIndex : sessionIndex,
+    sheet,
+  );
+}
+
 function _requestWorkoutSheetPendingCarouselFocus(key, sessionIndex, slideIndex) {
   if (!Number.isFinite(Number(slideIndex))) return false;
   const index = Math.max(0, Math.floor(Number(slideIndex)));
@@ -1946,6 +1962,7 @@ export function renderCalendar() {
 export function renderWorkoutCalendarHome() {
   const root = document.getElementById('workout-calendar-root');
   if (!root) return;
+  _rememberRenderedWorkoutSheetCarousel(root);
   _bindCalendarActions(root);
   destroyRunningMaps(root);
   _workoutRunningRouteHydration.invalidateAll();
@@ -1977,6 +1994,7 @@ export function renderWorkoutCalendarHome() {
   wtMountRunningSession();
   _mountWorkoutRunningMaps(root);
   _mountWorkoutSummaryElapsedTimers(root);
+  _restoreRememberedWorkoutSheetCarousel(_workoutHomeSelectedKey, _workoutHomeSessionIndex);
   _tryRestorePendingWorkoutSheetCarouselFocus(_workoutHomeSelectedKey, _workoutHomeSessionIndex);
 }
 
