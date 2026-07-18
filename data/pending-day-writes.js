@@ -1,4 +1,6 @@
-export const PENDING_DAY_WRITE_PREFIX = 'tomatofarm:pending-day-write:v1:';
+// TomatoDev and production Pages share a browser origin. A development build
+// must never inspect, move, acknowledge, or flush production recovery records.
+export const PENDING_DAY_WRITE_PREFIX = 'tomatodev:pending-day-write:v1:';
 
 const PENDING_DAY_WRITE_VERSION = 1;
 const DATE_KEY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -347,4 +349,52 @@ export function acknowledgePendingDayWrites(storage, entries = []) {
   }
 
   return removed;
+}
+
+/**
+ * Moves an unresolved alias journal to the selected data owner without deleting
+ * either source until every replacement record has been durably written.
+ */
+export function reassignPendingDayWrites(storage, {
+  fromOwnerId,
+  toOwnerId,
+  now,
+} = {}) {
+  assertStorage(storage, ['key', 'getItem', 'setItem', 'removeItem']);
+  const sourceOwnerId = assertOwnerId(fromOwnerId);
+  const targetOwnerId = assertOwnerId(toOwnerId);
+  if (sourceOwnerId === targetOwnerId) return { moved: 0, created: 0 };
+
+  const sourceEntries = listPendingDayWrites(storage, { ownerId: sourceOwnerId });
+  if (!sourceEntries.length) return { moved: 0, created: 0 };
+  const targetEntries = listPendingDayWrites(storage, { ownerId: targetOwnerId });
+  const dates = [...new Set(sourceEntries.map((entry) => entry.record.dateKey))].sort();
+  const createdEntries = [];
+
+  for (const dateKey of dates) {
+    const previousEntries = [...sourceEntries, ...targetEntries]
+      .filter((entry) => entry.record.dateKey === dateKey)
+      .sort(compareEntries);
+    const latestCreatedAt = Math.max(0, ...previousEntries.map((entry) => entry.record.createdAt));
+    const requestedCreatedAt = resolveCreatedAt(now);
+    const createdAt = Math.max(requestedCreatedAt, latestCreatedAt + 1);
+    const record = {
+      version: PENDING_DAY_WRITE_VERSION,
+      ownerId: targetOwnerId,
+      dateKey,
+      writeId: createWriteId(createdAt),
+      createdAt,
+      payload: clonePayload(mergeEntryPayloads(previousEntries)),
+    };
+    const key = keyForRecord(record);
+    if (storage.getItem(key) !== null) {
+      throw new Error(`pending day writeId already exists: ${record.writeId}`);
+    }
+    const raw = JSON.stringify(record);
+    storage.setItem(key, raw);
+    createdEntries.push({ key, raw, record });
+  }
+
+  acknowledgePendingDayWrites(storage, [...sourceEntries, ...targetEntries]);
+  return { moved: sourceEntries.length, created: createdEntries.length };
 }

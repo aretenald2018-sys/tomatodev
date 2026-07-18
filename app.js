@@ -5,7 +5,7 @@
 import { loadAll, TODAY, getTabOrder,
          getRawVisibleTabs, DEFAULT_VIS_TABS,
          isAdmin, isAdminGuest, trackEvent,
-         getCurrentUser, loadSavedUser, refreshCurrentUserFromDB } from './data.js';
+         getCurrentUser, getDataOwnerId, loadSavedUser, refreshCurrentUserFromDB } from './data.js';
 import { loadCSVDatabase } from './fatsecret-api.js';
 // ── 분리된 모듈 ──
 import './feature-diet-plan.js';
@@ -84,6 +84,72 @@ function _hideLoadingOverlay() {
   if (!loading) return;
   loading.style.display = 'none';
   loading.classList.add('hidden');
+}
+
+function _isSharedOwnerSessionUnresolved() {
+  return !!getCurrentUser()
+    && (isAdmin() || isAdminGuest())
+    && !getDataOwnerId();
+}
+
+function _sharedOwnerBootstrapError(message, cause = null) {
+  const error = new Error(message, cause ? { cause } : undefined);
+  error.code = 'ACCOUNT_DATA_OWNER_UNRESOLVED';
+  return error;
+}
+
+function _withRequiredSharedOwnerTimeout(promise, ms, label) {
+  let timer = null;
+  const requiredLoad = Promise.resolve(promise)
+    .catch((cause) => {
+      throw _sharedOwnerBootstrapError(`${label} failed`, cause);
+    })
+    .finally(() => { if (timer) clearTimeout(timer); });
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      console.error(`[init] ${label} timed out after ${ms}ms; blocking shared-account access`);
+      reject(_sharedOwnerBootstrapError(`${label} timed out after ${ms}ms`));
+    }, ms);
+  });
+  return Promise.race([requiredLoad, timeout]);
+}
+
+function _showSharedOwnerBlockedOverlay(error) {
+  document.documentElement.dataset.accountOwnerState = 'blocked';
+  const loading = document.getElementById('loading');
+  if (!loading) return;
+
+  for (const child of document.body.children) {
+    if (child === loading) continue;
+    child.inert = true;
+    child.setAttribute('aria-hidden', 'true');
+  }
+
+  const card = document.createElement('div');
+  card.style.cssText = 'max-width:320px;padding:24px;border-radius:20px;background:var(--surface,#fff);box-shadow:0 18px 50px rgba(0,0,0,.18);text-align:center;';
+  const title = document.createElement('div');
+  title.style.cssText = 'font-size:17px;font-weight:700;color:var(--text,#222);margin-bottom:8px;';
+  title.textContent = '데이터 계정을 확인할 수 없어요';
+  const detail = document.createElement('div');
+  detail.style.cssText = 'font-size:13px;line-height:1.55;color:var(--text-secondary,#666);margin-bottom:16px;';
+  detail.textContent = '잘못된 계정에 저장되지 않도록 모든 입력을 잠갔습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.';
+  const retry = document.createElement('button');
+  retry.type = 'button';
+  retry.style.cssText = 'width:100%;padding:12px;border:0;border-radius:999px;background:var(--primary,#ef5b2a);color:#fff;font-size:14px;font-weight:700;cursor:pointer;';
+  retry.textContent = '다시 시도';
+  retry.addEventListener('click', () => location.reload());
+  card.append(title, detail, retry);
+
+  loading.replaceChildren(card);
+  loading.classList.remove('hidden');
+  loading.setAttribute('role', 'alert');
+  loading.setAttribute('aria-live', 'assertive');
+  Object.assign(loading.style, {
+    display: 'flex',
+    zIndex: '2147483647',
+    pointerEvents: 'auto',
+  });
+  console.error('[account-owner] bootstrap blocked:', error);
 }
 
 // ── 탭 스켈레톤 삽입 (레이지 로드 피드백) ──
@@ -268,14 +334,6 @@ function _runAppShellAction(action, control, event) {
   switch (action) {
     case 'install-pwa':
       installPWA();
-      _closeMoreMenu();
-      break;
-    case 'install-apk':
-      if (typeof window.__requestTomatoApkInstall === 'function') {
-        void window.__requestTomatoApkInstall({ control, source: 'more-menu' });
-      } else {
-        window.location.assign(new URL('./public/downloads/tomato-mobile-debug.apk', window.location.href).href);
-      }
       _closeMoreMenu();
       break;
     case 'open-letter-modal':
@@ -770,6 +828,7 @@ async function _showPostLoginExperience({ previousLastLoginAt, runningSessionRes
 async function _initializeAppSession() {
   let bootUser = null;
   let runningSessionRestored = false;
+  let sharedOwnerBootstrapFailure = null;
   try {
     // 로그인 안 되어있으면 모달만 로드하고 대기
     const user = loadSavedUser() || getCurrentUser();
@@ -783,10 +842,17 @@ async function _initializeAppSession() {
     }
 
     // 모달 로드 + 데이터 로드 병렬 실행
+    const sharedAccountBootstrapRequired = isAdmin() || isAdminGuest();
+    const dataLoadPromise = loadAll();
     await Promise.all([
       _withTimeout(loadAndInjectModals(), 8000, 'modal load'),
-      _withTimeout(loadAll(), 10000, 'data load'),
+      sharedAccountBootstrapRequired
+        ? _withRequiredSharedOwnerTimeout(dataLoadPromise, 10000, 'shared account data load')
+        : _withTimeout(dataLoadPromise, 10000, 'data load'),
     ]);
+    if (_isSharedOwnerSessionUnresolved()) {
+      throw _sharedOwnerBootstrapError('Shared account owner resolution timed out or failed');
+    }
     // localStorage 캐시를 Firebase 최신으로 동기화
     await _withTimeout(refreshCurrentUserFromDB(), 6000, 'user refresh');
     const refreshedUser = getCurrentUser() || user;
@@ -869,28 +935,39 @@ async function _initializeAppSession() {
     initFCM();
   } catch (err) {
     console.error('[init] 초기화 오류:', err);
-    // 오류가 발생해도 로딩 화면 숨기고 기본 렌더링
-    renderHome();
+    if (_isSharedOwnerSessionUnresolved() || err?.code === 'ACCOUNT_DATA_OWNER_UNRESOLVED') {
+      sharedOwnerBootstrapFailure = err?.code === 'ACCOUNT_DATA_OWNER_UNRESOLVED'
+        ? err
+        : _sharedOwnerBootstrapError('Shared account owner bootstrap failed', err);
+    } else {
+      // Non-owner auxiliary failures retain the existing local-state fallback.
+      renderHome();
+    }
   } finally {
-    _hideLoadingOverlay();
-    window.__tomatoAppReady = true;
-    window.dispatchEvent(new Event('tomato-app-ready'));
-    if (bootUser) {
-      openPendingDashboardEntry();
-      if (!runningSessionRestored) {
-        requestAnimationFrame(() => {
-          showDietPremiumReportIfNeeded().catch((e) => console.warn('[diet-premium-report]', e));
-        });
-        setTimeout(() => {
-          document.querySelectorAll('.today-cell')[0]
-            ?.scrollIntoView({ behavior:'smooth', block:'center' });
-        }, 400);
-        // PWA 설치 안내 배너 (앱 미설치 + 이전에 닫지 않았으면)
-        showPWAInstallBanner();
+    if (sharedOwnerBootstrapFailure) {
+      _showSharedOwnerBlockedOverlay(sharedOwnerBootstrapFailure);
+    } else {
+      _hideLoadingOverlay();
+      window.__tomatoAppReady = true;
+      window.dispatchEvent(new Event('tomato-app-ready'));
+      if (bootUser) {
+        openPendingDashboardEntry();
+        if (!runningSessionRestored) {
+          requestAnimationFrame(() => {
+            showDietPremiumReportIfNeeded().catch((e) => console.warn('[diet-premium-report]', e));
+          });
+          setTimeout(() => {
+            document.querySelectorAll('.today-cell')[0]
+              ?.scrollIntoView({ behavior:'smooth', block:'center' });
+          }, 400);
+          // PWA 설치 안내 배너 (앱 미설치 + 이전에 닫지 않았으면)
+          showPWAInstallBanner();
+        }
+        updateInstallBtn();
       }
-      updateInstallBtn();
     }
   }
+  return !sharedOwnerBootstrapFailure;
 }
 
 _bindLifeZoneNpcQuestEvent();

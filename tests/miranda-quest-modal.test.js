@@ -59,7 +59,7 @@ test('Miranda modal styles and runtime assets are registered', () => {
   assert.match(styleCss, /\.lz-miranda-npc \{/);
   assert.match(styleCss, /\.lz-miranda-npc \.lz-npc-bulb \{/);
   assert.match(styleCss, /\.lz-miranda-npc \.lz-npc-bulb,\s*\.lz-consulting-chief-npc \.lz-npc-bulb\s*\{[\s\S]*display: none;/);
-  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatodev-v\d{8}z\d+-[^']+';/);
   assert.match(swJs, /\.\/modals\/miranda-quest-modal\.js/);
   assert.match(swJs, /\.\/assets\/home\/life-zone\/ui\/miranda-npc-seated\.png/);
   assert.deepEqual(readPngHeader('assets/home/life-zone/ui/miranda-npc-seated.png'), {

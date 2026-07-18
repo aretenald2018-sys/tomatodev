@@ -53,5 +53,5 @@ test('exercise picker exposes visible create actions for CRUD', () => {
 });
 
 test('service worker cache version was bumped for stats picker UI polish', () => {
-  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatodev-v\d{8}z\d+-[^']+';/);
 });

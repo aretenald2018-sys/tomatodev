@@ -18,7 +18,9 @@ export async function getAccountList() {
 }
 
 export async function saveAccount(account) {
-  await setDoc(doc(db, '_accounts', account.id), account);
+  // Profile/guild callers can hold snapshots created before routing metadata
+  // existed. Merge so dataOwnerId/dataOwnerVersion survive those saves.
+  await setDoc(doc(db, '_accounts', account.id), account, { merge: true });
 }
 
 export async function refreshCurrentUserFromDB() {
@@ -89,7 +91,9 @@ export async function recoverDeletedAccounts() {
         passwordHash: null,
         createdAt: Date.now(),
       };
-      await setDoc(doc(db, '_accounts', id), account);
+      // A recovery scan can race a real account recreation. Preserve any owner
+      // metadata that was written after the initial account-list read.
+      await saveAccount(account);
       recovered++;
       console.log('[recover] 계정 복구:', id, '별명:', account.nickname);
     }

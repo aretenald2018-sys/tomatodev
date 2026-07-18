@@ -104,5 +104,5 @@ test('exercise editor program controls have compact fixed layout styles', () => 
   assert.match(styleCss, /#ex-editor-modal \.ex-program-calc-btn/);
   assert.match(styleCss, /#ex-editor-modal \.ex-program-wendler \.ex-editor-input,[\s\S]*?min-height:\s*24px/);
   assert.match(styleCss, /\.ex-program-wendler \[data-wendler-tm-field\]\[hidden\],[\s\S]*?\.ex-program-wendler \[data-wendler-supp-fields\]\[hidden\][\s\S]*?display:\s*none/);
-  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatodev-v\d{8}z\d+-[^']+';/);
 });

@@ -28,7 +28,7 @@ const branch = process.env.GITHUB_REF_NAME || git(['branch', '--show-current']) 
 const cacheVersion = await readCacheVersion();
 
 const buildInfo = {
-  app: 'tomatofarm',
+  app: 'tomatodev',
   commit,
   shortCommit: commit === 'local' ? 'local' : commit.slice(0, 12),
   branch,

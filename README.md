@@ -1,6 +1,8 @@
-# Tomato Farm
+# TomatoDev
 
-운동, 러닝/Wear OS, 식단, 생활존, 캘린더와 통계를 한곳에서 관리하는 Vanilla JavaScript PWA입니다. 웹은 GitHub Pages, 모바일은 Capacitor Android, 시계 앱은 Wear OS로 배포합니다.
+Tomato Farm의 기능을 운영 저장소와 분리해 검증하는 개발용 GitHub Pages 저장소입니다. 소스·Git 이력·Pages 산출물은 별도이며, 현재 Firebase와 브라우저 origin은 운영 앱과 공유합니다.
+
+따라서 이 저장소의 배포는 운영 Git/Pages를 건드리지 않지만 데이터 백엔드까지 격리된 스테이징 환경은 아닙니다. 웹 FCM과 APK 배포는 비활성화되어 있으며, 자세한 제한은 [환경 경계 문서](docs/reference/ENVIRONMENT_BOUNDARIES.md)에 기록합니다.
 
 ## 시작하기
 
@@ -23,6 +25,7 @@ npm.cmd run test:contracts  # 빠른 구조 계약
 npm.cmd run verify:assets   # 생성 CSS와 런타임 자산의 무변경 검증
 npm.cmd run build           # style.css, cache/build info, www 생성
 npm.cmd --prefix functions test
+npm.cmd run deploy:dev      # canonical main에서 TomatoDev Pages만 배포
 ```
 
 Android/Wear 검증이 필요한 변경은 다음을 추가로 실행합니다.
@@ -39,6 +42,7 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
 - UI/CSS 소유권: [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md)
 - 호환 레이어: [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)
 - 생활존 아트: [docs/LIFE_ZONE_ASSETS.md](docs/LIFE_ZONE_ASSETS.md)
+- 개발/운영 환경 경계: [docs/reference/ENVIRONMENT_BOUNDARIES.md](docs/reference/ENVIRONMENT_BOUNDARIES.md)
 - 작업·검증·릴리스 규칙: [AGENTS.md](AGENTS.md)
 
-Production URL: `https://aretenald2018-sys.github.io/tomatofarm/`
+Development URL: `https://aretenald2018-sys.github.io/tomatodev/`

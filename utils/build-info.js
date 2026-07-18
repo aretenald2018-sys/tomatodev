@@ -5,10 +5,14 @@ import { showToast } from '../ui/toast.js';
 
 let _buildInfoCache = null;
 let _updateReloadRequested = false;
-const APP_SW_SCOPE = '/tomatofarm/';
+const APP_SW_SCOPE = (() => {
+  try {
+    return new URL('../', import.meta.url).pathname;
+  } catch {
+    return '/tomatodev/';
+  }
+})();
 const WEAR_APP_REFRESH_TIMEOUT_MS = 1200;
-const TOMATO_MOBILE_APK_DOWNLOAD_PATH = '../public/downloads/tomato-mobile-debug.apk';
-const TOMATO_MOBILE_APK_DOWNLOAD_NAME = 'tomato-mobile-debug.apk';
 
 function _updateBannerState() {
   if (typeof window === 'undefined') {
@@ -42,7 +46,7 @@ function _buildInfoUrl({ bust = true } = {}) {
 
 function _fallbackBuildInfo(error = null) {
   return {
-    app: 'tomatofarm',
+    app: 'tomatodev',
     commit: 'unknown',
     shortCommit: 'unknown',
     branch: 'unknown',
@@ -287,31 +291,6 @@ function _toastAppRefresh(message, type = 'info') {
   } catch {}
 }
 
-function _tomatoMobileApkDownloadUrl() {
-  return new URL(TOMATO_MOBILE_APK_DOWNLOAD_PATH, import.meta.url).href;
-}
-
-function _startTomatoApkDownload() {
-  const downloadUrl = _tomatoMobileApkDownloadUrl();
-  if (typeof document === 'undefined') {
-    return { started: false, reason: 'document-unavailable', downloadUrl };
-  }
-
-  const link = document.createElement('a');
-  if (!link || typeof link.click !== 'function') {
-    return { started: false, reason: 'download-link-unavailable', downloadUrl };
-  }
-
-  link.href = downloadUrl;
-  link.download = TOMATO_MOBILE_APK_DOWNLOAD_NAME;
-  link.rel = 'noopener';
-  link.style.display = 'none';
-  document.body?.appendChild?.(link);
-  link.click();
-  link.remove?.();
-  return { started: true, downloadUrl };
-}
-
 function _wearAppRefreshPayload(source) {
   const info = window.__BUILD_INFO || _buildInfoCache || {};
   return {
@@ -372,12 +351,8 @@ export async function requestTomatoApkInstall({ control = null, source = 'manual
   _setRefreshControlBusy(button, true);
 
   try {
-    const download = _startTomatoApkDownload();
-    if (download.started) {
-      return { started: true, reason: 'browser-download', downloadUrl: download.downloadUrl, source };
-    }
-    _toastAppRefresh('APK 다운로드를 시작하지 못했어요. 브라우저에서 다운로드를 허용해주세요.', 'warning');
-    return { started: false, reason: download.reason, downloadUrl: download.downloadUrl, source };
+    _toastAppRefresh('TomatoDev에서는 운영 앱 APK를 배포하지 않아요.', 'warning');
+    return { started: false, reason: 'tomatodev-apk-disabled', source };
   } finally {
     _setRefreshControlBusy(button, false);
   }

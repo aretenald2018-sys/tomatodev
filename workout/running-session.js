@@ -43,12 +43,14 @@ export {
   runningRouteDistanceMeters,
 } from './running-route-policy.js';
 
+const TOMATODEV_CURRENT_USER_STORAGE_KEY = 'tomatodev:auth:current-user:v1';
+
 const RUNNING_ROUTE_PREVIEW_POINTS = 240;
 const RUNNING_DRAFT_ROUTE_WRITE_INTERVAL_MS = 30_000;
 const RUNNING_SESSION_DRAFT_VERSION = RUNNING_DRAFT_STORAGE_VERSION;
 const RUNNING_SESSION_DRAFT_MAX_MS = 24 * 60 * 60 * 1000;
-const RUNNING_SESSION_DRAFT_KEY_PREFIX = 'tomatofarm_running_session_draft_';
-const RUNNING_SESSION_DRAFT_ACTIVE_KEY = 'tomatofarm_running_session_draft_active';
+const RUNNING_SESSION_DRAFT_KEY_PREFIX = 'tomatodev_running_session_draft_';
+const RUNNING_SESSION_DRAFT_ACTIVE_KEY = 'tomatodev_running_session_draft_active';
 const RESTORABLE_RUNNING_PHASES = new Set(['active', 'paused', 'summary']);
 const GEO_OPTIONS = {
   enableHighAccuracy: true,
@@ -545,7 +547,9 @@ function _workoutSessionIndexFromState() {
 
 function _currentRunningDraftOwnerId() {
   try {
-    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('currentUser') : '';
+    const raw = typeof localStorage !== 'undefined'
+      ? localStorage.getItem(TOMATODEV_CURRENT_USER_STORAGE_KEY)
+      : '';
     const u = raw ? JSON.parse(raw) : null;
     const uid = (u && (u.uid || u.id || u.username || u.name)) || '_anon';
     return String(uid || '_anon');

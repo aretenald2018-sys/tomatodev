@@ -59,7 +59,7 @@ test('feature-login binds login actions with a scoped idempotent bridge', () => 
 
 test('login restore skips guild onboarding when a running draft can resume', () => {
   assert.match(featureLoginJs, /function _hasRestorableRunningDraftForUser\(user\)/);
-  assert.match(featureLoginJs, /tomatofarm_running_session_draft_active/);
+  assert.match(featureLoginJs, /tomatodev_running_session_draft_active/);
   assert.match(featureLoginJs, /if \(!localStorage\.getItem\(guildObKey\) && !_hasRestorableRunningDraftForUser\(saved\)\)/);
 });
 
@@ -99,5 +99,5 @@ test('APK login does not wait for optional welcome data before showing the app s
 });
 
 test('service worker cache version was bumped for APK login handoff assets', () => {
-  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatodev-v\d{8}z\d+-[^']+';/);
 });

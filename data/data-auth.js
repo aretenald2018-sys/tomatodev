@@ -5,6 +5,7 @@
 import {
   getCurrentUserRef, setCurrentUserRef,
   ADMIN_ID, ADMIN_GUEST_ID, getKimMode, setKimMode,
+  TOMATODEV_AUTH_STORAGE_KEYS,
   _idbSet, _idbGet, _idbRemove,
 } from './data-core.js';
 
@@ -69,21 +70,21 @@ export function setCurrentUser(user) {
   const normalizedUser = _normalizeKimUser(user);
   setCurrentUserRef(normalizedUser);
   if (normalizedUser) {
-    localStorage.setItem('currentUser', JSON.stringify(normalizedUser));
-    _queueAuthPersistence(() => _idbSet('currentUser', normalizedUser));
+    localStorage.setItem(TOMATODEV_AUTH_STORAGE_KEYS.currentUser, JSON.stringify(normalizedUser));
+    _queueAuthPersistence(() => _idbSet(TOMATODEV_AUTH_STORAGE_KEYS.currentUser, normalizedUser));
   } else {
-    localStorage.removeItem('currentUser');
+    localStorage.removeItem(TOMATODEV_AUTH_STORAGE_KEYS.currentUser);
     _queueAuthPersistence(async () => {
-      await _idbRemove('currentUser');
-      await _idbRemove('admin_authenticated');
-      await _idbRemove('kim_authenticated');
+      await _idbRemove(TOMATODEV_AUTH_STORAGE_KEYS.currentUser);
+      await _idbRemove(TOMATODEV_AUTH_STORAGE_KEYS.adminAuthenticated);
+      await _idbRemove(TOMATODEV_AUTH_STORAGE_KEYS.kimAuthenticated);
     });
   }
 }
 
 export function loadSavedUser() {
   try {
-    const saved = localStorage.getItem('currentUser');
+    const saved = localStorage.getItem(TOMATODEV_AUTH_STORAGE_KEYS.currentUser);
     if (saved) {
       setCurrentUser(_normalizeKimUser(JSON.parse(saved)));
       return getCurrentUserRef();
@@ -93,10 +94,10 @@ export function loadSavedUser() {
 }
 
 export function backupAdminAuth() {
-  _queueAuthPersistence(() => _idbSet('admin_authenticated', true));
+  _queueAuthPersistence(() => _idbSet(TOMATODEV_AUTH_STORAGE_KEYS.adminAuthenticated, true));
 }
 export function clearAdminAuth() {
-  _queueAuthPersistence(() => _idbRemove('admin_authenticated'));
+  _queueAuthPersistence(() => _idbRemove(TOMATODEV_AUTH_STORAGE_KEYS.adminAuthenticated));
 }
 export const backupKimAuth = backupAdminAuth;
 export const clearKimAuth = clearAdminAuth;
@@ -111,15 +112,15 @@ export async function restoreUserFromBackup() {
   }
 
   try {
-    const backup = await _idbGet('currentUser');
+    const backup = await _idbGet(TOMATODEV_AUTH_STORAGE_KEYS.currentUser);
     if (_authSessionGeneration !== restoreGeneration || getCurrentUserRef()) {
       return getCurrentUserRef();
     }
     if (!backup) return null;
 
     const [adminAuth, kimAuth] = await Promise.all([
-      _idbGet('admin_authenticated'),
-      _idbGet('kim_authenticated'),
+      _idbGet(TOMATODEV_AUTH_STORAGE_KEYS.adminAuthenticated),
+      _idbGet(TOMATODEV_AUTH_STORAGE_KEYS.kimAuthenticated),
     ]);
     if (_authSessionGeneration !== restoreGeneration || getCurrentUserRef()) {
       return getCurrentUserRef();
@@ -127,7 +128,9 @@ export async function restoreUserFromBackup() {
 
     const normalizedBackup = _normalizeKimUser(backup);
     setCurrentUser(normalizedBackup);
-    if (adminAuth || kimAuth) localStorage.setItem('admin_authenticated', 'true');
+    if (adminAuth || kimAuth) {
+      localStorage.setItem(TOMATODEV_AUTH_STORAGE_KEYS.adminAuthenticated, 'true');
+    }
     return getCurrentUserRef();
   } catch {}
   return null;

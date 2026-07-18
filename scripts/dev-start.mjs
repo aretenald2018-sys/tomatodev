@@ -11,6 +11,14 @@ const root = path.resolve(scriptDir, '..');
 const serverScript = path.join(scriptDir, 'static-dev-server.mjs');
 const basePort = 5500;
 const maxPort = 5510;
+const expectedApp = (() => {
+  try {
+    const buildInfo = JSON.parse(fs.readFileSync(path.join(root, 'build-info.json'), 'utf8'));
+    return String(buildInfo?.app || '').trim();
+  } catch {
+    return '';
+  }
+})();
 
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -35,8 +43,17 @@ function fetchText(port, pathname = '/index.html', timeoutMs = 1500) {
 }
 
 async function isHealthyTomatoServer(port) {
-  const response = await fetchText(port);
-  return Boolean(response?.statusCode === 200 && response.body.includes('토마토 키우기'));
+  const [pageResponse, buildInfoResponse] = await Promise.all([
+    fetchText(port),
+    fetchText(port, '/build-info.json'),
+  ]);
+  if (pageResponse?.statusCode !== 200 || !pageResponse.body.includes('토마토 키우기')) return false;
+  try {
+    const servedApp = String(JSON.parse(buildInfoResponse?.body || '{}')?.app || '').trim();
+    return Boolean(expectedApp && servedApp === expectedApp);
+  } catch {
+    return false;
+  }
 }
 
 function isPortAvailable(port) {

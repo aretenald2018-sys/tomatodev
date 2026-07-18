@@ -1,50 +1,73 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import * as accountOwnership from '../data/account-unification.js';
 import {
   ACCOUNT_DATA_COLLECTIONS,
+  ACCOUNT_OWNER_PROBE_COLLECTIONS,
+  ACCOUNT_UNIFICATION_VERSION,
   ADMIN_ACCOUNT_ID,
   ADMIN_GUEST_ACCOUNT_ID,
-  buildAccountUnificationPlan,
   canonicalAccountOwnerId,
   getAccountOwnerAliases,
+  readPersistedAccountOwner,
+  selectSharedAccountOwner,
 } from '../data/account-unification.js';
 import { getLifeZoneActorReadCandidates } from '../home/life-zone-state.js';
 
-test('shared guest identity resolves to the canonical data owner', () => {
-  assert.equal(canonicalAccountOwnerId(ADMIN_GUEST_ACCOUNT_ID), ADMIN_ACCOUNT_ID);
-  assert.deepEqual(getAccountOwnerAliases(ADMIN_GUEST_ACCOUNT_ID), [
+test('an unresolved shared identity has no writable data owner or aliases', () => {
+  assert.equal(canonicalAccountOwnerId(ADMIN_ACCOUNT_ID), null);
+  assert.equal(canonicalAccountOwnerId(ADMIN_GUEST_ACCOUNT_ID), null);
+  assert.deepEqual(getAccountOwnerAliases(ADMIN_ACCOUNT_ID), []);
+});
+
+test('a resolved admin owner remains authoritative when meaningful admin data exists', () => {
+  const selected = selectSharedAccountOwner({
+    adminInventory: { workouts: [{ id: '2026-07-18' }] },
+  });
+  assert.equal(selected, ADMIN_ACCOUNT_ID);
+  assert.equal(canonicalAccountOwnerId(ADMIN_GUEST_ACCOUNT_ID, selected), ADMIN_ACCOUNT_ID);
+  assert.deepEqual(getAccountOwnerAliases(ADMIN_GUEST_ACCOUNT_ID, selected), [
     ADMIN_ACCOUNT_ID,
     ADMIN_GUEST_ACCOUNT_ID,
   ]);
 });
 
-test('unification copies missing guest and root documents without overwriting a canonical day', () => {
-  const plan = buildAccountUnificationPlan({
-    canonicalDocuments: [{ id: '2026-07-17', data: { lFoods: [{ name: 'meal' }] } }],
-    guestDocuments: [
-      { id: '2026-07-17', data: { running: true, runDistance: 5 } },
-      { id: '2026-07-16', data: { bFoods: [{ name: 'breakfast' }] } },
-    ],
-    legacyDocuments: [
-      { id: '2026-07-16', data: { running: true } },
-      { id: '2026-07-15', data: { exercises: [{ id: 'bench' }] } },
-    ],
-  });
-
-  assert.deepEqual(plan.map((document) => document.id), ['2026-07-16', '2026-07-15']);
-  assert.equal(plan.find((document) => document.id === '2026-07-16').data.bFoods[0].name, 'breakfast');
+test('an empty or system-marker-only admin inventory selects guest SSOT', () => {
+  assert.equal(selectSharedAccountOwner({ adminInventory: {} }), ADMIN_GUEST_ACCOUNT_ID);
+  assert.equal(selectSharedAccountOwner({
+    adminInventory: {
+      settings: [
+        { id: 'account_data_unification_v1' },
+        { id: 'account_data_owner_v2' },
+      ],
+    },
+  }), ADMIN_GUEST_ACCOUNT_ID);
 });
 
-test('unification covers meals, seasons, and workout configuration collections', () => {
-  for (const collectionName of [
-    'workouts', 'settings', 'tomato_cycles', 'nutrition_db',
-    'gyms', 'routine_templates', 'equipment_pool',
-  ]) {
-    assert.ok(ACCOUNT_DATA_COLLECTIONS.includes(collectionName), `${collectionName} must be unified`);
-  }
+test('a persisted v2 owner is accepted only for the two shared aliases', () => {
+  assert.equal(readPersistedAccountOwner({
+    dataOwnerVersion: ACCOUNT_UNIFICATION_VERSION,
+    dataOwnerId: ADMIN_GUEST_ACCOUNT_ID,
+  }), ADMIN_GUEST_ACCOUNT_ID);
+  assert.equal(readPersistedAccountOwner({ dataOwnerVersion: 1, dataOwnerId: ADMIN_ACCOUNT_ID }), null);
+  assert.equal(readPersistedAccountOwner({ dataOwnerVersion: 2, dataOwnerId: 'someone-else' }), null);
 });
 
-test('life-zone reads the canonical account before a guest alias', () => {
+test('selected-owner documents are authoritative without alias recovery helpers', () => {
+  assert.equal(accountOwnership.mergeAccountWorkoutFields, undefined);
+  assert.equal(accountOwnership.buildAccountUnificationPlan, undefined);
+  assert.equal(accountOwnership.ACCOUNT_WORKOUT_FIELDS, undefined);
+});
+
+test('nested running routes affect owner choice without enabling browser migration', () => {
+  assert.ok(ACCOUNT_OWNER_PROBE_COLLECTIONS.includes('running_routes'));
+  assert.equal(ACCOUNT_DATA_COLLECTIONS.includes('running_routes'), true);
+  assert.equal(selectSharedAccountOwner({
+    adminInventory: { running_routes: [{ id: 'route-1' }] },
+  }), ADMIN_ACCOUNT_ID);
+});
+
+test('life-zone keeps the account identity ahead of display and legacy aliases', () => {
   assert.deepEqual(getLifeZoneActorReadCandidates({
     accountId: 'moonjung',
     readAccountId: 'moonjung(guest)',

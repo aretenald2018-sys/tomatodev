@@ -4,8 +4,8 @@
 
 import { TODAY, getDiet, getDietPlan, calcDietMetrics, getBodyCheckins,
          getExercises, calcStreaks, getDay, getAllDateKeys,
-         getUnitGoalStart, saveUnitGoalStart, getDayTargetKcal,
-         getTomatoState, saveTomatoState, saveTomatoCycle,
+         getUnitGoalStart, rememberUnitGoalStartInMemory, getDayTargetKcal,
+         getTomatoState, rememberTomatoStateInMemory, rememberTomatoCycleInMemory,
          getTomatoCycles, dateKey,
          getStreakFreezes, useStreakFreeze,
          getMyFriends, getAccountList, trackEvent,
@@ -331,7 +331,7 @@ export function settleTomatoCycleIfNeeded() {
       // 데이터도 없으면 오늘을 시작일로 (non-admin 포함 모든 사용자 경로 지원)
       startStr = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
     }
-    saveUnitGoalStart(startStr);
+    rememberUnitGoalStartInMemory(startStr);
   }
 
   const cycle = calcTomatoCycle(startStr, TODAY);
@@ -420,7 +420,7 @@ export function settleTomatoCycleIfNeeded() {
       settledAt: Date.now(),
     };
 
-    saveTomatoCycle(cycleResult);
+    rememberTomatoCycleInMemory(cycleResult);
     existingIds.add(cycleId);
     newlySettled++;
 
@@ -431,12 +431,13 @@ export function settleTomatoCycleIfNeeded() {
     }
   }
 
-  // 마이그레이션 완료 플래그 (유저별 Firebase에 저장)
+  // TomatoDev preview only: keep migration/default state in this session.
+  // Opening Home must never publish settlement metadata to operating Firestore.
   if (!migrated) {
     state.migrated_v2 = true;
   }
 
-  saveTomatoState(state);
+  rememberTomatoStateInMemory(state);
 
   console.log(`[tomato] awarded ${newlyAwarded} tomatoes, total=${state.totalTomatoes}`);
   // analytics 계측
@@ -700,7 +701,7 @@ export function renderTomatoCard() {
   let startStr = getUnitGoalStart();
   if (!startStr) {
     startStr = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
-    saveUnitGoalStart(startStr);
+    rememberUnitGoalStartInMemory(startStr);
   }
   const cycle = calcTomatoCycle(startStr, TODAY);
   const dayIndex = cycle.dayIndex;

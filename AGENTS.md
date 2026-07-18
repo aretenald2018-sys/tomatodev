@@ -7,8 +7,8 @@
 - Keep repository Markdown for durable architecture, ADR, contract, or reference material. Keep task plans, reviews, status logs, and generated evidence out of the source tree.
 - Use one task branch for one user outcome or one root cause. Before creating a branch, inspect active worktrees and branches for the same feature surface. Continue the existing unfinished feature branch for follow-up work; create a new branch only for independent work.
 - Base a genuinely new task on the latest `origin/main`. Never base it on another unfinished feature branch.
-- Discover the integration checkout with `git worktree list`; the checkout whose branch is `main` is the only integration and production owner. Do not hardcode a local path.
-- A task worktree may commit its branch, but it must not mutate local `main`, push `main`, or deploy production.
+- Discover the integration checkout with `git worktree list`; the `tomatodev` checkout whose branch is `main` is the only integration and development Pages owner. Do not hardcode a local path.
+- A task worktree may commit its branch, but it must not mutate local `main`, push `main`, or deploy Pages.
 
 ## Source and ownership boundaries
 
@@ -29,8 +29,10 @@
 
 ## Release
 
-- A clear implementation request authorizes implementation, checks, browser verification, task commit, safe integration, and one production release unless the user says local-only or no-deploy.
+- A clear implementation request authorizes implementation, checks, browser verification, task commit, safe integration, and one TomatoDev Pages release unless the user says local-only or no-deploy.
 - Shared surfaces such as `app.js`, `data.js`, navigation, modal infrastructure, runtime assets, CSS, or `sw.js` require a grouped release and combined regression check.
-- Immediately before integration and production push, fetch `origin`, verify the exact commit/file delta, and rebuild the integration if `origin/main` moved.
+- Immediately before integration and development push, fetch `origin`, verify the exact commit/file delta, and rebuild the integration if `origin/main` moved.
 - Only a clean canonical `main` may run `npm.cmd run check:repository` and `git push origin main`. Push once; never force-push.
-- After Pages deployment, verify the expected commit and exercise the changed production flow. HTTP 200 alone is not completion.
+- This repository may push only to `aretenald2018-sys/tomatodev` and deploy only `https://aretenald2018-sys.github.io/tomatodev/`. Never push or deploy the operating `tomatofarm` repository from this checkout.
+- Do not deploy Firebase, Functions, or Android/Wear packages from TomatoDev until dedicated development project and application IDs exist. See `docs/reference/ENVIRONMENT_BOUNDARIES.md`.
+- After Pages deployment, verify the expected commit and exercise the changed development flow. HTTP 200 alone is not completion.

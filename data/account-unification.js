@@ -3,55 +3,91 @@
 
 export const ADMIN_ACCOUNT_ID = '김_태우';
 export const ADMIN_GUEST_ACCOUNT_ID = '김_태우(guest)';
-export const ACCOUNT_UNIFICATION_MARKER_ID = 'account_data_unification_v1';
-export const ACCOUNT_UNIFICATION_VERSION = 1;
+export const ACCOUNT_UNIFICATION_MARKER_ID = 'account_data_owner_v2';
+export const ACCOUNT_UNIFICATION_VERSION = 2;
+export const ACCOUNT_OWNER_FIELD = 'dataOwnerId';
+export const ACCOUNT_OWNER_VERSION_FIELD = 'dataOwnerVersion';
 
-// Every user-scoped collection currently written by Tomato Farm, plus the
-// legacy collections that were already copied by migrateDataToUser.
-export const ACCOUNT_DATA_COLLECTIONS = Object.freeze([
-  'workouts', 'exercises', 'goals', 'quests', 'wines', 'cal_events', 'cooking',
-  'body_checkins', 'nutrition_db', 'tomato_cycles', 'custom_muscles',
-  'gyms', 'routine_templates', 'equipment_pool',
-  'finance_benchmarks', 'finance_actuals', 'finance_loans', 'finance_positions',
-  'finance_plans', 'finance_budgets', 'settings',
+const LEGACY_ACCOUNT_UNIFICATION_MARKER_IDS = Object.freeze([
+  'account_data_unification_v1',
+  ACCOUNT_UNIFICATION_MARKER_ID,
 ]);
 
-export function canonicalAccountOwnerId(ownerId) {
-  const normalized = String(ownerId || '').trim();
-  return normalized === ADMIN_GUEST_ACCOUNT_ID ? ADMIN_ACCOUNT_ID : normalized;
-}
+// Every private collection considered when selecting the one physical owner.
+// This is probe-only metadata: TomatoDev never copies documents between aliases
+// or from legacy roots during bootstrap or through a browser migration.
+export const ACCOUNT_DATA_COLLECTIONS = Object.freeze([
+  'workouts', 'exercises', 'goals', 'quests', 'wines',
+  'movies', 'cal_events', 'cooking', 'body_checkins', 'nutrition_db',
+  'tomato_cycles', 'custom_muscles', 'gyms', 'routine_templates',
+  'equipment_pool', 'running_routes', 'finance_benchmarks', 'finance_actuals', 'finance_loans',
+  'finance_positions', 'finance_plans', 'finance_budgets', 'settings',
+]);
+
+export const ACCOUNT_OWNER_PROBE_COLLECTIONS = ACCOUNT_DATA_COLLECTIONS;
 
 export function isSharedAdminAccount(ownerId) {
-  return canonicalAccountOwnerId(ownerId) === ADMIN_ACCOUNT_ID;
+  const normalized = String(ownerId || '').trim();
+  return normalized === ADMIN_ACCOUNT_ID || normalized === ADMIN_GUEST_ACCOUNT_ID;
 }
 
-export function getAccountOwnerAliases(ownerId) {
-  const canonical = canonicalAccountOwnerId(ownerId);
-  if (!canonical) return [];
-  return canonical === ADMIN_ACCOUNT_ID
-    ? [ADMIN_ACCOUNT_ID, ADMIN_GUEST_ACCOUNT_ID]
-    : [canonical];
+export function normalizeSharedAccountOwnerId(ownerId) {
+  const normalized = String(ownerId || '').trim();
+  if (normalized === ADMIN_ACCOUNT_ID) return ADMIN_ACCOUNT_ID;
+  if (normalized === ADMIN_GUEST_ACCOUNT_ID) return ADMIN_GUEST_ACCOUNT_ID;
+  return null;
 }
 
-function documentMap(documents = []) {
-  return new Map((documents || []).filter((item) => item?.id).map((item) => [item.id, item]));
+// A shared identity has no data path until the async probe explicitly selects
+// one. Empty-admin detection selects guest; a probe error remains unresolved.
+export function canonicalAccountOwnerId(
+  ownerId,
+  selectedSharedOwnerId = null,
+) {
+  const normalized = String(ownerId || '').trim();
+  if (!isSharedAdminAccount(normalized)) return normalized;
+  return normalizeSharedAccountOwnerId(selectedSharedOwnerId);
 }
 
-// Canonical documents are authoritative.  This is intentionally document-level
-// rather than field-level for workouts: a diet saved in the canonical day must
-// not be turned into an old guest running record by filling in stale fields.
-export function buildAccountUnificationPlan({
-  canonicalDocuments = [],
-  guestDocuments = [],
-  legacyDocuments = [],
-} = {}) {
-  const canonical = documentMap(canonicalDocuments);
-  const planned = new Map();
-  for (const source of [guestDocuments, legacyDocuments]) {
-    for (const document of source || []) {
-      if (!document?.id || canonical.has(document.id) || planned.has(document.id)) continue;
-      planned.set(document.id, document);
-    }
+export function getAccountOwnerAliases(
+  ownerId,
+  selectedSharedOwnerId = null,
+) {
+  const normalized = String(ownerId || '').trim();
+  if (!normalized) return [];
+  if (!isSharedAdminAccount(normalized)) return [normalized];
+  const selected = normalizeSharedAccountOwnerId(selectedSharedOwnerId);
+  if (!selected) return [];
+  const fallback = selected === ADMIN_ACCOUNT_ID
+    ? ADMIN_GUEST_ACCOUNT_ID
+    : ADMIN_ACCOUNT_ID;
+  return [selected, fallback];
+}
+
+export function isAccountSystemDocument(collectionName, documentId) {
+  return collectionName === 'settings'
+    && LEGACY_ACCOUNT_UNIFICATION_MARKER_IDS.includes(String(documentId || '').trim());
+}
+
+export function hasMeaningfulAccountInventory(inventory = {}) {
+  return Object.entries(inventory || {}).some(([collectionName, documents]) => (
+    (documents || []).some((document) => {
+      const documentId = typeof document === 'string' ? document : document?.id;
+      return documentId && !isAccountSystemDocument(collectionName, documentId);
+    })
+  ));
+}
+
+export function selectSharedAccountOwner({ adminInventory = {} } = {}) {
+  return hasMeaningfulAccountInventory(adminInventory)
+    ? ADMIN_ACCOUNT_ID
+    : ADMIN_GUEST_ACCOUNT_ID;
+}
+
+export function readPersistedAccountOwner(account = {}) {
+  if (Number(account?.[ACCOUNT_OWNER_VERSION_FIELD] || 0) < ACCOUNT_UNIFICATION_VERSION) {
+    return null;
   }
-  return [...planned.values()];
+  const ownerId = String(account?.[ACCOUNT_OWNER_FIELD] || '').trim();
+  return normalizeSharedAccountOwnerId(ownerId);
 }

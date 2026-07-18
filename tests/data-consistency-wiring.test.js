@@ -6,6 +6,7 @@ const read = (path) => readFileSync(new URL('../' + path, import.meta.url), 'utf
 
 const dataLoadSource = read('data/data-load.js');
 const dataApiSource = read('data/data-api.js');
+const dataAccountSource = read('data/data-account.js');
 const workoutEquipmentSource = read('data/data-workout-equipment.js');
 const equipmentPoolSource = read('data/data-equipment-pool.js');
 const appSource = read('app.js');
@@ -40,8 +41,6 @@ test('loadAll immediately seeds pending data and captures owner-scoped Firestore
 
   assert.match(loadAll,
     /const ownerCollection = \(name\) => collection\(db, 'users', ownerId, name\);/);
-  assert.match(loadAll,
-    /const ownerDoc = \(name, id\) => doc\(db, 'users', ownerId, name, id\);/);
 
   const pendingSeed = loadAll.indexOf('const pendingSeed = restorePendingDayWritesForOwner(ownerId, {});');
   const cacheSeed = loadAll.indexOf('_setCache(pendingSeed);');
@@ -105,7 +104,7 @@ test('workout realtime subscription stays owner-scoped and emits changed-date ev
   const realtime = sliceBetween(
     dataLoadSource,
     'export function startWorkoutRealtimeSync',
-    '// Admin ↔ Admin(guest) twin-account workout merge',
+    '// Selected shared-account owner boundary',
     'startWorkoutRealtimeSync',
   );
   const notify = sliceBetween(
@@ -135,7 +134,7 @@ test('a queued callback from an unsubscribed realtime listener cannot stop a new
   const realtime = sliceBetween(
     dataLoadSource,
     'export function startWorkoutRealtimeSync',
-    '// Admin ↔ Admin(guest) twin-account workout merge',
+    '// Selected shared-account owner boundary',
     'startWorkoutRealtimeSync',
   );
 
@@ -211,5 +210,63 @@ test('pending journal is precached under a versioned service worker cache', () =
 
   assert.match(runtimeAssetList, /'\.\/data\/pending-day-writes\.js'/);
   assert.match(serviceWorkerSource,
-    /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
+    /const CACHE_VERSION = 'tomatodev-v\d{8}z\d+-[^']+';/);
+});
+
+test('selected-owner bootstrap and compatibility migrations are write-free', () => {
+  const migrate = sliceBetween(
+    dataLoadSource,
+    'export async function migrateDataToUser',
+    'export async function unifySharedAccountData',
+    'migrateDataToUser',
+  );
+  const unify = sliceBetween(
+    dataLoadSource,
+    'export async function unifySharedAccountData',
+    '// ═══════════════════════════════════════════════════════════════\n// loadAll',
+    'unifySharedAccountData',
+  );
+  const loadAll = sliceFrom(dataLoadSource, 'export async function loadAll()', 'loadAll');
+
+  assertOrdered(migrate, [
+    'await resolveDataOwnerIdForAccount(userId)',
+    'return 0;',
+  ], 'manual migration compatibility export is a read-only no-op');
+  assert.match(unify, /return \{ state: 'disabled', ownerId: targetUserId, copied: 0 \};/);
+  assert.doesNotMatch(migrate + unify,
+    /setDoc|runTransaction|transaction\.|_copyMissingDocuments|mergeAccountWorkoutFields|runRouteRef/);
+  assert.doesNotMatch(loadAll, /\bsetDoc\s*\(|_migrateFromLS|ownerDoc/);
+  assert.doesNotMatch(dataLoadSource,
+    /_copyMissingDocuments|mergeAccountWorkoutFields|getDocs\(collection\(db, collectionName\)/);
+
+  assertOrdered(loadAll, [
+    'const seedPlan = buildExerciseCatalogSeedPlan({',
+    '_setExList(_sortExList(seedPlan.exercises',
+  ], 'exercise defaults remain memory-only');
+  assert.match(loadAll,
+    /sharedSnap\.forEach\(d => sharedItems\.push\(d\.data\(\)\)\);[\s\S]*_setNutritionDB\(sharedItems\);/);
+  assert.match(loadAll,
+    /if \(maxCyclePlan\.shouldWriteMaxCycle\) \{\s*_settings\.max_cycle = maxCyclePlan\.canonicalCycle;\s*\}/);
+  assert.match(loadAll, /flushPendingDayWrites\(ownerId\)/,
+    'only the TomatoDev recovery journal may flush during bootstrap');
+});
+
+test('account writes preserve data-owner routing metadata', () => {
+  const saveAccount = sliceBetween(
+    dataAccountSource,
+    'export async function saveAccount',
+    'export async function refreshCurrentUserFromDB',
+    'saveAccount',
+  );
+  const recover = sliceBetween(
+    dataAccountSource,
+    'export async function recoverDeletedAccounts',
+    'export async function deleteUserAccount',
+    'recoverDeletedAccounts',
+  );
+
+  assert.match(saveAccount,
+    /setDoc\(doc\(db, '_accounts', account\.id\), account, \{ merge: true \}\)/);
+  assert.match(recover, /await saveAccount\(account\);/);
+  assert.doesNotMatch(recover, /setDoc\(doc\(db, '_accounts'/);
 });

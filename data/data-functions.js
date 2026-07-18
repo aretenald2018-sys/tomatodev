@@ -1,18 +1,19 @@
-// Firebase callable functions repository.
-// Feature/AI modules consume plain async functions and never import Firebase SDKs directly.
+// TomatoDev must never invoke callables from the production Firebase project.
+// Keep this module import-free so merely loading a feature cannot instantiate a
+// production callable proxy.
 
-import { functions } from './data-core.js';
-import { httpsCallable } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-functions.js';
-
-const geminiProxy = httpsCallable(functions, 'geminiProxy');
-const ocrProxy = httpsCallable(functions, 'ocrProxy');
-
-export async function callGeminiProxy(payload) {
-  const { data } = await geminiProxy(payload);
-  return data;
+function _blockProductionCallable(callableName) {
+  const error = new Error(
+    `[TOMATODEV] Production Firebase callable "${callableName}" is disabled in TomatoDev.`,
+  );
+  error.code = 'TOMATODEV_PRODUCTION_CALLABLE_BLOCKED';
+  throw error;
 }
 
-export async function callOcrProxy(payload) {
-  const { data } = await ocrProxy(payload);
-  return data;
+export async function callGeminiProxy(_payload) {
+  _blockProductionCallable('geminiProxy');
+}
+
+export async function callOcrProxy(_payload) {
+  _blockProductionCallable('ocrProxy');
 }

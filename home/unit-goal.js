@@ -3,7 +3,7 @@
 // ================================================================
 
 import { TODAY, getDiet, getDietPlan, calcDietMetrics, getBodyCheckins,
-         getUnitGoalStart, saveUnitGoalStart, getDayTargetKcal,
+         getUnitGoalStart, rememberUnitGoalStartInMemory, saveUnitGoalStart, getDayTargetKcal,
          dateKey, isFuture, isToday }  from '../data.js';
 
 // 순환 참조 방지용 콜백
@@ -23,7 +23,7 @@ export function renderUnitGoal() {
   let startStr = getUnitGoalStart();
   if (!startStr) {
     startStr = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
-    saveUnitGoalStart(startStr);
+    rememberUnitGoalStartInMemory(startStr);
   }
 
   const startDate = new Date(startStr + 'T00:00:00');

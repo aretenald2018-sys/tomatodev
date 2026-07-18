@@ -31,6 +31,7 @@ const requiredMarkdown = new Set([
   'docs/COMPATIBILITY.md',
   'docs/DESIGN_SYSTEM.md',
   'docs/LIFE_ZONE_ASSETS.md',
+  'docs/reference/ENVIRONMENT_BOUNDARIES.md',
   'docs/adr/2026-05-15-exercise-ssot.md',
   'docs/workout-data-lineage.md',
   'workout/expert/AGENTS.md',
@@ -56,6 +57,9 @@ for (const file of files) {
   reject(forbiddenTrackedPrefixes.some((prefix) => file.startsWith(prefix)), `tracked local/history artifact: ${file}`);
 }
 reject(files.includes('scripts/dev-start.sh'), 'obsolete scripts/dev-start.sh must not be tracked');
+reject(files.includes('.firebaserc'), 'TomatoDev must not pin a default Firebase project');
+reject(files.includes('scripts/deploy-production.mjs'), 'TomatoDev must not contain the operating deployment command');
+reject(!files.includes('scripts/deploy-development.mjs'), 'TomatoDev development deployment command is missing');
 
 const staleInstructionPatterns = [
   [/Dashboard3/iu, 'cross-project Dashboard3 instruction'],
@@ -108,10 +112,21 @@ for (const script of ['dev', 'test', 'build', 'check:governance', 'verify:assets
   reject(!packageJson.scripts?.[script], `package.json is missing script ${script}`);
 }
 reject(!String(packageJson.scripts?.['verify:assets']).includes('generate-style-entry.mjs --check'), 'verify:assets must check generated CSS without rewriting it');
+reject(packageJson.scripts?.['deploy:dev'] !== 'node scripts/deploy-development.mjs', 'TomatoDev must expose only the development Pages deploy command');
+reject(Boolean(packageJson.scripts?.['deploy:production']), 'TomatoDev must not expose a production deploy command');
+
+const repositoryBoundary = read('scripts/repository-boundary.mjs');
+reject(!repositoryBoundary.includes("TOMATODEV_REPOSITORY = 'aretenald2018-sys/tomatodev'"), 'repository guard must target only TomatoDev');
+reject(repositoryBoundary.includes("TOMATOFARM_REPOSITORY = 'aretenald2018-sys/tomatofarm'"), 'repository guard must not target the operating repository');
 
 const workflow = read('.github/workflows/deploy.yml');
+const developmentDeploy = read('scripts/deploy-development.mjs');
 reject(!workflow.includes('check-project-governance.mjs'), 'Pages workflow must enforce project governance');
 reject(!workflow.includes('generate-style-entry.mjs --check'), 'Pages workflow must reject stale generated CSS');
+reject(!workflow.includes('check-repository-boundary.mjs'), 'Pages workflow must enforce the TomatoDev repository boundary');
+reject(!workflow.includes("github.repository == 'aretenald2018-sys/tomatodev'"), 'Pages workflow must reject other repositories');
+reject(!workflow.includes("github.ref == 'refs/heads/main'"), 'Pages workflow must deploy only main');
+reject(/firebase\s+deploy|deploy[^\n]*functions|functions[^\n]*deploy/iu.test(`${workflow}\n${developmentDeploy}`), 'TomatoDev Pages deployment must not deploy Firebase or Functions');
 
 if (failures.length) {
   console.error('[project-governance] failed');

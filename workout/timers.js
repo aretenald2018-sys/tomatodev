@@ -6,7 +6,7 @@ import { S }                from './state.js';
 import { saveWorkoutDay }   from './save.js';
 import { showToast, showCenterToast } from '../home/utils.js';
 import { confirmAction }    from '../utils/confirm-modal.js';
-import { getActiveTimer, saveActiveTimer, clearActiveTimer, getCurrentUser } from '../data.js';
+import { getCurrentUser } from '../data.js';
 import {
   buildWorkoutSetTimeline,
   closeWorkoutTimeline,
@@ -25,7 +25,6 @@ const _GROWTH_BOARD_AUTO_GRACE_MS = 10 * 60 * 1000;
 const _WORKOUT_IDLE_LIMIT_MS = MAX_WORKOUT_REST_GAP_SEC * 1000;
 
 let _workoutIdleFinishTimeout = null;
-let _workoutIdleFinishPromise = null;
 
 function _normalizeTimerDate(date) {
   if (!date || typeof date !== 'object') return null;
@@ -83,19 +82,19 @@ function _activeTimerState() {
   };
 }
 
-function _persistActiveTimerState(context) {
+function _persistActiveTimerState() {
   const activeState = _activeTimerState();
   if (!activeState?.date) return;
   _lsWriteTimer(activeState);
-  saveActiveTimer(activeState).catch(e => console.error(`[${context}] saveActiveTimer error:`, e));
 }
 
-// localStorage 백업(동기/로컬) — Firestore write 가 네트워크 실패했을 때의 안전망.
-//   CLAUDE.md: localStorage 는 기기 단위이므로 유저별 키를 써서 다른 계정으로 로그인 시
-//   유령 타이머가 살아나지 않게 한다.
-const _LS_TIMER_KEY_PREFIX = 'tomatofarm_active_timer_';
-const _LS_ACTIVE_WORKOUT_DRAFT_KEY_PREFIX = 'tomatofarm_active_workout_draft_';
-const _LS_GROWTH_BOARD_TIMER_KEY_PREFIX = 'tomatofarm_growth_board_auto_timer_';
+// TomatoDev timer state is local-only. The development Pages app still shares
+// the operating Firestore project, so it must never import or clear the legacy
+// settings/active_timer pointer. User-scoped TomatoDev keys also prevent one
+// local account from inheriting another account's draft.
+const _LS_TIMER_KEY_PREFIX = 'tomatodev_active_timer_';
+const _LS_ACTIVE_WORKOUT_DRAFT_KEY_PREFIX = 'tomatodev_active_workout_draft_';
+const _LS_GROWTH_BOARD_TIMER_KEY_PREFIX = 'tomatodev_growth_board_auto_timer_';
 function _lsKey() {
   try {
     const u = getCurrentUser();
@@ -288,7 +287,7 @@ export function wtPersistActiveWorkoutDraft(context = 'manual') {
   const passiveContext = ['beforeunload', 'visibility hidden', 'external flush', 'status check'].includes(context);
 
   if (S.workout.workoutStartTime && timerDate) {
-    _persistActiveTimerState(`draft ${context}`);
+    _persistActiveTimerState();
     if (currentDate && !_sameTimerDate(currentDate, timerDate)) {
       return _readValidActiveWorkoutDraft();
     }
@@ -514,15 +513,29 @@ export async function wtCheckWorkoutIdleLimit(now = Date.now()) {
     _scheduleWorkoutIdleFinish(timeline, now);
     return false;
   }
-  if (_workoutIdleFinishPromise) return _workoutIdleFinishPromise;
   _cancelWorkoutIdleFinishTimer();
-  _workoutIdleFinishPromise = Promise.resolve(wtFinishWorkout({
+
+  // A boot, hydration, visibility, or native-resume check is observational in
+  // TomatoDev. Bound the stale timeline in session memory so duration/rest UI
+  // does not continue indefinitely, but never call wtFinishWorkout here: that
+  // path persists the shared operating day document. The explicit Finish,
+  // Reset, and Pause controls retain their normal persistence behavior.
+  closeWorkoutTimeline(S.workout, {
     endedAt: deadlineAt,
-    endedBy: 'idle-limit',
-  })).then(() => true).finally(() => {
-    _workoutIdleFinishPromise = null;
+    endedBy: 'idle-limit-local',
   });
-  return _workoutIdleFinishPromise;
+  if (S.workout.restTimer.running) {
+    _finalizeRestTimerRecord('idle-limit-local', deadlineAt);
+    _stopRestTimerUi();
+  }
+  S.workout.workoutStartTime = null;
+  if (S.workout.workoutTimerInterval) {
+    clearInterval(S.workout.workoutTimerInterval);
+    S.workout.workoutTimerInterval = null;
+  }
+  _renderWorkoutTimer();
+  _renderTimerControls();
+  return true;
 }
 
 // ── 운동 시간 측정 ───────────────────────────────────────────────
@@ -565,7 +578,6 @@ export function wtStartWorkoutTimer() {
   if (S.workout.workoutTimerInterval) { clearInterval(S.workout.workoutTimerInterval); S.workout.workoutTimerInterval = null; }
   S.workout.workoutStartTime = null;
   _lsClearTimer();
-  clearActiveTimer().catch(e => console.error('[timer start] clear legacy activeTimer error:', e));
   wtRefreshWorkoutTimelineDuration('timer timeline open');
 }
 
@@ -576,7 +588,6 @@ export function wtPauseWorkoutTimer() {
   saveWorkoutDay()
     .then(() => {
       _lsClearTimer();
-      return clearActiveTimer();
     })
     .catch(e => console.error('[timer pause] persist chain error:', e));
 }
@@ -605,12 +616,10 @@ export async function wtResetWorkoutTimer() {
   _renderWorkoutTimer();
   _renderTimerControls();
   wtPersistActiveWorkoutDraft('timer reset');
-  // 순서: saveWorkoutDay → clearActiveTimer (pause 와 동일 이유).
   saveWorkoutDay()
     .then(() => {
       _lsClearTimer();
       _clearGrowthBoardAutoTimer();
-      return clearActiveTimer();
     })
     .catch(e => console.error('[timer reset] persist chain error:', e));
 }
@@ -727,23 +736,18 @@ export function wtFinishWorkout(options = {}) {
     ? `15분 동안 추가 기록이 없어 운동을 종료했어요 · ${_fmtDuration(S.workout.workoutDuration)}`
     : `운동 완료! ${_fmtDuration(S.workout.workoutDuration)}`;
   showCenterToast(finishMessage, 2600);
-  // 순서: saveWorkoutDay (총 duration 영속화) → clearActiveTimer (포인터 해제).
-  //   save 가 throw 하면 반환 Promise 도 reject → wtEndAndShowInsights 가 인사이트 모달 차단.
-  //   active_timer 는 save 성공 뒤에만 정리 — save 실패 시 포인터가 살아있어야 recovery
-  //   경로가 이어받아 유저가 재시도 가능 (2026-04-21 Codex 지적 #2).
+  // Explicit finish persists the day; the timer pointer itself is local-only in
+  // TomatoDev and is cleared only after that explicit save succeeds.
   return saveWorkoutDay().then(() => {
     _lsClearTimer();
     _clearGrowthBoardAutoTimer();
     wtClearActiveWorkoutDraft();
-    clearActiveTimer().catch(e => console.error('[timer finish] clearActiveTimer error:', e));
   });
 }
 
 export function wtRecoverTimers() {
-  const fromFs = getActiveTimer();
   const fromLs = _lsReadTimer();
   if (fromLs) _lsClearTimer();
-  if (fromFs) clearActiveTimer().catch(() => {});
   S.workout.workoutStartTime = null;
   if (S.workout.workoutTimerInterval) { clearInterval(S.workout.workoutTimerInterval); S.workout.workoutTimerInterval = null; }
   const timeline = _syncWorkoutTimelineDuration();

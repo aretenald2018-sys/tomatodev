@@ -107,7 +107,7 @@ test('raw statistics export can include set rest intervals', () => {
 test('service worker cache is bumped for changed static assets', () => {
   const sw = read('sw.js');
 
-  assert.match(sw, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
+  assert.match(sw, /const CACHE_VERSION = 'tomatodev-v\d{8}z\d+-[^']+';/);
 });
 
 async function runRestTimerRuntimeHarness() {
@@ -234,10 +234,16 @@ try {
   };
   timers.wtRestTimerStart(60, 'Bench Press inactivity limit', { entryIdx: 0, setIdx: 0 });
   now += 30 * 60 * 1000;
+  const savesBeforeAutomaticChecks = window.__qaSaveCalls.length;
+  timers.wtRecoverTimers();
+  await nextFrame();
+  await nextFrame();
+  const savesAfterBootRecovery = window.__qaSaveCalls.length;
   document.dispatchEvent(new Event('visibilitychange'));
   await nextFrame();
   await nextFrame();
-  const autoEnded = state.S.workout.workoutTimeline?.endedBy === 'idle-limit';
+  const savesAfterVisibilityResume = window.__qaSaveCalls.length;
+  const localIdleBounded = state.S.workout.workoutTimeline?.endedBy === 'idle-limit-local';
   window.__qaDone = {
     startNow,
     loadedDate: { ...state.S.shared.date },
@@ -246,7 +252,7 @@ try {
     after75s,
     sheetExists,
     afterSkip,
-    autoEnded,
+    localIdleBounded,
     autoRest: {
       running: state.S.workout.restTimer.running,
       restElapsedSec: setAfterSkip.restElapsedSec,
@@ -255,6 +261,9 @@ try {
     },
     timeline: state.S.workout.workoutTimeline,
     durationResult: document.getElementById('wt-workout-duration-result')?.textContent || '',
+    savesBeforeAutomaticChecks,
+    savesAfterBootRecovery,
+    savesAfterVisibilityResume,
     saveCalls: window.__qaSaveCalls,
   };
 } catch (e) {
@@ -287,7 +296,7 @@ try {
   }
 }
 
-test('runtime rest timer auto-finishes across midnight at the 15-minute idle limit', async () => {
+test('runtime rest timer bounds idle state locally across midnight without an automatic remote finish', async () => {
   const result = await runRestTimerRuntimeHarness();
 
   assert.equal(result.afterStart.restStartedAt, new Date(result.startNow).toISOString());
@@ -306,18 +315,19 @@ test('runtime rest timer auto-finishes across midnight at the 15-minute idle lim
   assert.equal(result.afterSkip.restEndedBy, 'skip');
   assert.equal(result.afterSkip.restEndedAt, new Date(result.startNow + 75000).toISOString());
   assert.notDeepEqual(result.currentDate, result.loadedDate);
-  assert.equal(result.autoEnded, true);
+  assert.equal(result.localIdleBounded, true);
   assert.equal(result.autoRest.running, false);
   assert.equal(result.autoRest.restElapsedSec, (15 * 60) - 75);
-  assert.equal(result.autoRest.restEndedBy, 'idle-limit');
+  assert.equal(result.autoRest.restEndedBy, 'idle-limit-local');
   assert.equal(result.autoRest.restEndedAt, new Date(result.startNow + (15 * 60 * 1000)).toISOString());
-  assert.equal(result.timeline.endedBy, 'idle-limit');
+  assert.equal(result.timeline.endedBy, 'idle-limit-local');
   assert.equal(result.timeline.endedAt, result.startNow + (15 * 60 * 1000));
   assert.equal(result.timeline.endedAfterSetCompletedAt, result.startNow);
-  assert.equal(result.durationResult, '총 0초');
-  assert.equal(result.saveCalls.length, 2);
+  assert.equal(result.durationResult, '');
+  assert.equal(result.savesAfterBootRecovery, result.savesBeforeAutomaticChecks);
+  assert.equal(result.savesAfterVisibilityResume, result.savesBeforeAutomaticChecks);
+  assert.equal(result.saveCalls.length, 1);
   assert.deepEqual(result.saveCalls[0], { silent: true });
-  assert.deepEqual(result.saveCalls[1], {});
 });
 
 async function runRestSaveExportHarness() {

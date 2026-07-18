@@ -96,8 +96,8 @@ test('incremental live summary stays equivalent to canonical full-route summary'
 
 test('chunked running draft checkpoints rewrite only the mutable tail chunk', () => {
   const storage = storageHarness();
-  const draftKey = 'tomatofarm_running_session_draft_runner';
-  const activeKey = 'tomatofarm_running_session_draft_active';
+  const draftKey = 'tomatodev_running_session_draft_runner';
+  const activeKey = 'tomatodev_running_session_draft_active';
   const marker = { ownerId: 'runner', draftKey, phase: 'active', updatedAt: 1 };
   const first = { ownerId: 'runner', phase: 'active', startedAt: 1, updatedAt: 2, route: route(620) };
   writeRunningDraftRecord(storage, draftKey, activeKey, first, marker);

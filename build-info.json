@@ -1,10 +1,10 @@
 {
-  "app": "tomatofarm",
-  "commit": "119820bb15013f36a880ec025dfe84836f8d6e36",
-  "shortCommit": "119820bb1501",
-  "branch": "main",
-  "deployedAt": "2026-07-17T14:20:02.322Z",
-  "cacheVersion": "tomatofarm-v20260717z13-owner-day-journal-workout-inline-field-commit",
+  "app": "tomatodev",
+  "commit": "297cd7cfc927a929f33794a363599def18ae93da",
+  "shortCommit": "297cd7cfc927",
+  "branch": "codex/rules-docs-architecture-dev",
+  "deployedAt": "2026-07-18T15:21:00.496Z",
+  "cacheVersion": "tomatodev-v20260719z2-shared-write-fence",
   "runId": null,
   "runAttempt": null
 }

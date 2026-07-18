@@ -71,5 +71,5 @@ test('home tomato hero and marquee share the fixed 1672 life-zone world', () => 
   });
   assert.doesNotMatch(css, /\.lz-hero/);
   assert.doesNotMatch(css, /\.tf-hero-sub/);
-  assert.match(sw, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
+  assert.match(sw, /const CACHE_VERSION = 'tomatodev-v\d{8}z\d+-[^']+';/);
 });

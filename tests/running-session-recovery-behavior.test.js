@@ -70,9 +70,12 @@ try {
     announcedGoalDone: false,
     lastSpeechAt: 0
   };
-  localStorage.setItem('currentUser', JSON.stringify({ id: ownerId }));
-  localStorage.setItem('tomatofarm_running_session_draft_' + encodeURIComponent(ownerId), JSON.stringify(draft));
-  localStorage.setItem('tomatofarm_running_session_draft_active', JSON.stringify(draft));
+  localStorage.setItem('tomatodev:auth:current-user:v1', JSON.stringify({ id: ownerId }));
+  localStorage.setItem('tomatodev_running_session_draft_' + encodeURIComponent(ownerId), JSON.stringify(draft));
+  localStorage.setItem('tomatodev_running_session_draft_active', JSON.stringify(draft));
+  localStorage.setItem('tomatofarm_running_session_draft_active', JSON.stringify({
+    phase: 'active', ownerId: 'production-user', marker: 'must-remain-untouched'
+  }));
 
   const state = await import(scenario.stateUrl);
   if (scenario.pollutedDate) state.S.shared.date = scenario.pollutedDate;
@@ -88,7 +91,8 @@ try {
     date: state.S.shared.date,
     saves: window.__qaSaves || [],
     rootOpen: !!root && !root.hidden && root.classList.contains('is-open'),
-    activeDraft: localStorage.getItem('tomatofarm_running_session_draft_active'),
+    activeDraft: localStorage.getItem('tomatodev_running_session_draft_active'),
+    productionDraft: localStorage.getItem('tomatofarm_running_session_draft_active'),
     dotCount: root?.querySelectorAll('.wt-run-live-pages span')?.length || 0,
     screen: root?.querySelector('[data-running-screen]')?.getAttribute('data-running-screen') || null
   };
@@ -133,6 +137,7 @@ test('restored running summary saves under the draft date, not a polluted boot d
   assert.ok(result.saves[0].runData.distance > 0);
   assert.equal(result.rootOpen, false);
   assert.equal(result.activeDraft, null);
+  assert.equal(JSON.parse(result.productionDraft).marker, 'must-remain-untouched');
   assert.equal(result.dotCount, 0);
 });
 
@@ -147,6 +152,7 @@ test('running summary save keeps the restored draft open when workout date is un
   assert.equal(result.saves.length, 0);
   assert.equal(result.rootOpen, true);
   assert.ok(result.activeDraft);
+  assert.equal(JSON.parse(result.productionDraft).marker, 'must-remain-untouched');
   assert.equal(result.screen, 'summary');
   assert.equal(result.dotCount, 0);
 });

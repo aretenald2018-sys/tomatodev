@@ -7,6 +7,7 @@ import {
   groupPendingDayWrites,
   listPendingDayWrites,
   mergePendingDayWritesIntoCache,
+  reassignPendingDayWrites,
 } from '../data/pending-day-writes.js';
 
 class MemoryStorage {
@@ -14,6 +15,8 @@ class MemoryStorage {
     this.values = new Map();
     this.beforeNextSet = null;
     this.nextSetError = null;
+    this.setCalls = 0;
+    this.failOnSetCall = null;
   }
 
   get length() {
@@ -30,6 +33,7 @@ class MemoryStorage {
   }
 
   setItem(key, value) {
+    this.setCalls += 1;
     if (this.beforeNextSet) {
       const callback = this.beforeNextSet;
       this.beforeNextSet = null;
@@ -40,6 +44,9 @@ class MemoryStorage {
       this.nextSetError = null;
       throw error;
     }
+    if (this.failOnSetCall === this.setCalls) {
+      throw new Error('scheduled set failure');
+    }
     this.values.set(String(key), String(value));
   }
 
@@ -49,6 +56,30 @@ class MemoryStorage {
 }
 
 const DATE = '2026-07-17';
+
+test('TomatoDev journal never scans, moves, or flushes the production namespace', () => {
+  assert.equal(PENDING_DAY_WRITE_PREFIX, 'tomatodev:pending-day-write:v1:');
+  const storage = new MemoryStorage();
+  const devEntry = enqueuePendingDayWrite(storage, {
+    ownerId: 'owner-a', dateKey: DATE, payload: { memo: 'dev' }, writeId: 'same-origin', now: 1,
+  });
+  const productionKey = devEntry.key.replace(
+    PENDING_DAY_WRITE_PREFIX,
+    'tomatofarm:pending-day-write:v1:',
+  );
+  storage.setItem(productionKey, devEntry.raw);
+
+  const moved = reassignPendingDayWrites(storage, {
+    fromOwnerId: 'owner-a',
+    toOwnerId: 'owner-b',
+    now: 10,
+  });
+
+  assert.deepEqual(moved, { moved: 1, created: 1 });
+  assert.equal(storage.getItem(productionKey), devEntry.raw);
+  assert.deepEqual(listPendingDayWrites(storage, { ownerId: 'owner-a' }), []);
+  assert.equal(listPendingDayWrites(storage, { ownerId: 'owner-b' }).length, 1);
+});
 
 test('pending writes validate owner, calendar date, and plain JSON payloads', () => {
   const storage = new MemoryStorage();
@@ -252,4 +283,64 @@ test('setItem quota failure throws while preserving every previous entry', () =>
   assert.equal(storage.getItem(existingEntry.key), existingEntry.raw);
   assert.deepEqual(listPendingDayWrites(storage, { ownerId: 'owner-a', dateKey: DATE })
     .map((entry) => entry.record.writeId), ['existing']);
+});
+
+test('owner reassignment preserves and compacts both alias journals', () => {
+  const storage = new MemoryStorage();
+  enqueuePendingDayWrite(storage, {
+    ownerId: 'admin-owner', dateKey: DATE, payload: { lFoods: [{ name: 'meal' }] },
+    writeId: 'admin-meal', now: 10,
+  });
+  enqueuePendingDayWrite(storage, {
+    ownerId: 'guest-owner', dateKey: DATE, payload: { exercises: [{ id: 'bench' }] },
+    writeId: 'guest-workout', now: 20,
+  });
+
+  assert.deepEqual(reassignPendingDayWrites(storage, {
+    fromOwnerId: 'admin-owner', toOwnerId: 'guest-owner', now: 30,
+  }), { moved: 1, created: 1 });
+  assert.equal(listPendingDayWrites(storage, { ownerId: 'admin-owner' }).length, 0);
+  const [entry] = listPendingDayWrites(storage, { ownerId: 'guest-owner', dateKey: DATE });
+  assert.deepEqual(entry.record.payload, {
+    lFoods: [{ name: 'meal' }],
+    exercises: [{ id: 'bench' }],
+  });
+});
+
+test('owner reassignment never removes the source before replacement storage succeeds', () => {
+  const storage = new MemoryStorage();
+  const source = enqueuePendingDayWrite(storage, {
+    ownerId: 'admin-owner', dateKey: DATE, payload: { memo: 'keep me' },
+    writeId: 'source', now: 10,
+  });
+  const quotaError = new Error('quota exceeded');
+  storage.nextSetError = quotaError;
+
+  assert.throws(() => reassignPendingDayWrites(storage, {
+    fromOwnerId: 'admin-owner', toOwnerId: 'guest-owner', now: 20,
+  }), (error) => error === quotaError);
+  assert.equal(storage.getItem(source.key), source.raw);
+  assert.equal(listPendingDayWrites(storage, { ownerId: 'guest-owner' }).length, 0);
+});
+
+test('multi-day reassignment keeps every source journal if a later replacement fails', () => {
+  const storage = new MemoryStorage();
+  enqueuePendingDayWrite(storage, {
+    ownerId: 'admin-owner', dateKey: '2026-07-16', payload: { memo: 'first day' },
+    writeId: 'source-first', now: 10,
+  });
+  enqueuePendingDayWrite(storage, {
+    ownerId: 'admin-owner', dateKey: DATE, payload: { memo: 'second day' },
+    writeId: 'source-second', now: 20,
+  });
+  storage.failOnSetCall = storage.setCalls + 2;
+
+  assert.throws(() => reassignPendingDayWrites(storage, {
+    fromOwnerId: 'admin-owner', toOwnerId: 'guest-owner', now: 30,
+  }), /scheduled set failure/);
+  assert.deepEqual(
+    listPendingDayWrites(storage, { ownerId: 'admin-owner' })
+      .map((entry) => entry.record.writeId),
+    ['source-first', 'source-second'],
+  );
 });

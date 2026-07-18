@@ -1,147 +1,18 @@
 // ================================================================
-// data-analytics.js — 이벤트 트래킹 (일별 집계 → _analytics/{dateKey})
+// data-analytics.js — TomatoDev 자동 트래킹 차단 + 어드민 집계 조회
 // ================================================================
 
 import {
-  db, doc, setDoc, getDoc, getDocs, collection,
-  getCurrentUserRef,
+  db, doc, getDoc, getDocs, collection,
 } from './data-core.js';
 import { dateKey, TODAY } from './data-date.js';
 
-// ── 오늘 dateKey ─────────────────────────────────────────────────
-function _todayKey() {
-  return dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
-}
-
-// ── 인메모리 버퍼 ────────────────────────────────────────────────
-let _buffer = {};       // { tabVisits: {home:3}, socialActions: {리액션:1}, ... }
-let _flushTimer = null;
-const FLUSH_INTERVAL = 30_000; // 30초
-
-function _ensureBuffer() {
-  if (!_buffer.tabVisits)      _buffer.tabVisits = {};
-  if (!_buffer.socialActions)  _buffer.socialActions = {};
-  if (!_buffer.featuresUsed)   _buffer.featuresUsed = new Set();
-}
-
 // ── trackEvent: 앱 전역에서 호출하는 단일 진입점 ─────────────────
-export function trackEvent(category, action, meta) {
-  const uid = getCurrentUserRef()?.id;
-  if (!uid) return;
-
-  _ensureBuffer();
-
-  switch (category) {
-    case 'nav':
-      // meta.tab = 탭 이름
-      if (meta?.tab) {
-        _buffer.tabVisits[meta.tab] = (_buffer.tabVisits[meta.tab] || 0) + 1;
-      }
-      break;
-
-    case 'session':
-      _buffer.sessions = (_buffer.sessions || 0) + 1;
-      break;
-
-    case 'core':
-      if (action === 'exercise_logged') _buffer.exerciseLogged = true;
-      if (action === 'diet_logged') {
-        _buffer.dietLogged = true;
-        if (meta?.meals)  _buffer.mealsLogged = meta.meals;
-        if (meta?.kcal)   _buffer.kcalLogged = meta.kcal;
-      }
-      if (action === 'meal_photo_uploaded') _buffer.featuresUsed.add('photo_upload');
-      break;
-
-    case 'social':
-      // action = 리액션, 방명록, 이웃요청, ...
-      _buffer.socialActions[action] = (_buffer.socialActions[action] || 0) + 1;
-      break;
-
-    case 'ai':
-      _buffer.featuresUsed.add(action); // ai_diet_rec, ai_workout_rec, ai_goal_analysis
-      break;
-
-    case 'gamification':
-      if (action === 'tomato_harvested') _buffer.tomatoHarvested = true;
-      if (action === 'streak_freeze_used') _buffer.featuresUsed.add('streak_freeze');
-      break;
-
-    case 'feature':
-      if (action) _buffer.featuresUsed.add(action);
-      break;
-
-    default:
-      break;
-  }
-
-  // 디바운스 flush
-  if (!_flushTimer) {
-    _flushTimer = setTimeout(() => { _flushTimer = null; flushAnalytics(); }, FLUSH_INTERVAL);
-  }
-}
+// TomatoDev keeps the public API for callers but intentionally records nothing.
+export function trackEvent(_category, _action, _meta) {}
 
 // ── Firestore flush ──────────────────────────────────────────────
-export async function flushAnalytics() {
-  const uid = getCurrentUserRef()?.id;
-  if (!uid) return;
-
-  _ensureBuffer();
-
-  // 버퍼에 기록된 게 없으면 skip
-  const hasData = _buffer.sessions || _buffer.exerciseLogged || _buffer.dietLogged
-    || _buffer.tomatoHarvested
-    || Object.keys(_buffer.tabVisits).length > 0
-    || Object.keys(_buffer.socialActions).length > 0
-    || _buffer.featuresUsed.size > 0;
-  if (!hasData) return;
-
-  const dk = _todayKey();
-  const prefix = `users.${uid}`;
-
-  // dot-notation 업데이트 객체 구성
-  const update = { date: dk };
-
-  if (_buffer.sessions)        update[`${prefix}.sessions`]        = _buffer.sessions;
-  if (_buffer.exerciseLogged)  update[`${prefix}.exerciseLogged`]  = true;
-  if (_buffer.dietLogged)      update[`${prefix}.dietLogged`]      = true;
-  if (_buffer.mealsLogged)     update[`${prefix}.mealsLogged`]     = _buffer.mealsLogged;
-  if (_buffer.kcalLogged)      update[`${prefix}.kcalLogged`]      = _buffer.kcalLogged;
-  if (_buffer.tomatoHarvested) update[`${prefix}.tomatoHarvested`] = true;
-
-  // tabVisits
-  for (const [tab, count] of Object.entries(_buffer.tabVisits)) {
-    if (count > 0) update[`${prefix}.tabVisits.${tab}`] = count;
-  }
-
-  // socialActions
-  for (const [action, count] of Object.entries(_buffer.socialActions)) {
-    if (count > 0) update[`${prefix}.socialActions.${action}`] = count;
-  }
-
-  // featuresUsed — 배열로 변환
-  if (_buffer.featuresUsed.size > 0) {
-    update[`${prefix}.featuresUsed`] = [..._buffer.featuresUsed];
-  }
-
-  try {
-    await setDoc(doc(db, '_analytics', dk), update, { merge: true });
-    console.log('[analytics] flush OK:', dk, Object.keys(update).length, 'fields');
-  } catch (e) {
-    console.warn('[analytics] flush fail:', e);
-  }
-
-  // 버퍼 리셋
-  _buffer = {};
-}
-
-// ── 앱 종료/백그라운드 시 flush ─────────────────────────────────
-if (typeof document !== 'undefined') {
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') flushAnalytics();
-  });
-  window.addEventListener('beforeunload', () => flushAnalytics());
-}
+export async function flushAnalytics() {}
 
 // ── 읽기: 어드민 대시보드용 ──────────────────────────────────────
 

@@ -15,7 +15,7 @@ import { runningInputFromWearPayload } from './running-input.js';
 import { buildRunningActivityAnalytics, isValidRunningWeightKg } from './running-analytics.js';
 import { assertWearWorkoutPayloadEnvelope } from './wear-payload-contract.js';
 
-const WEAR_QUEUE_KEY = 'tomatofarm_wear_workout_queue_v1';
+const WEAR_QUEUE_KEY = 'tomatodev_wear_workout_queue_v1';
 const MAX_WEAR_HEART_RATE_SAMPLES = 2_161;
 
 let deps = {

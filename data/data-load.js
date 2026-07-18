@@ -2,34 +2,30 @@
 // data/data-load.js — 앱 시작 시 전체 데이터 로드 + 관련 마이그레이션/헬퍼
 // ================================================================
 // loadAll: 로그인 후 _cache + _settings + _exList + _goals/_quests 등 초기 덤프.
-// migrateDataToUser: admin 최초 로그인 시 root 컬렉션 → users/{uid}/* 로 이관.
-// _mergeWorkoutTwinCache: admin <-> admin(guest) 트윈 계정의 workouts 병합.
+// migrateDataToUser/unifySharedAccountData: 호환 export만 유지하는 write-free API.
 // _sanitizeTabList: 레거시 탭 필터 (finance/wine/movie/monthly 등 제거).
 // isActiveWorkoutDayData: day 객체가 "기록 있음" 상태인지 판정.
 // ================================================================
 
 import { CONFIG, MOVEMENTS } from '../config.js';
 import {
-  db, doc, setDoc, collection, getDocs, getDoc, runTransaction, onSnapshot,
+  db, collection, getDocs, onSnapshot,
   getCurrentUserRef, ADMIN_ID, getDataOwnerId,
+  hasResolvedSharedAccountOwner, resolveDataOwnerIdForAccount, setResolvedSharedAccountOwnerId,
   _cache, _nutritionDB,
   _setCache, _setExList, _setCustomMuscles, _setGoals, _setQuests, _setCooking, _setBodyCheckins, _setNutritionDB,
   DEFAULT_TAB_ORDER, DEFAULT_DIET_PLAN, DEFAULT_EXPERT_PRESET,
   _setDietPlan, _settings,
   _setTomatoCycles,
-  _setSyncStatus, _migrateFromLS,
+  _setSyncStatus,
 } from './data-core.js';
 import { isAdmin, isAdminGuest } from './data-auth.js';
 import { _sortExList } from './data-helpers.js';
 import { loadGyms, loadRoutineTemplates } from './data-workout-equipment.js';
 import { loadEquipmentPool } from './data-equipment-pool.js';
 import {
-  ACCOUNT_DATA_COLLECTIONS,
-  ACCOUNT_UNIFICATION_MARKER_ID,
-  ACCOUNT_UNIFICATION_VERSION,
-  ADMIN_ACCOUNT_ID,
-  ADMIN_GUEST_ACCOUNT_ID,
-  buildAccountUnificationPlan,
+  getAccountOwnerAliases,
+  isSharedAdminAccount,
 } from './account-unification.js';
 
 // ── Pure 헬퍼 (Firebase 비의존) ─────────────────────────────────
@@ -47,6 +43,7 @@ import {
   flushPendingDayWrites,
   initializePendingDayWriteSync,
 } from './data-save.js';
+import { reassignPendingDayWrites } from './pending-day-writes.js';
 export { _sanitizeTabList, isActiveWorkoutDayData, buildExerciseCatalogSeedPlan };
 
 let _workoutRealtimeUnsubscribe = null;
@@ -119,151 +116,62 @@ export function startWorkoutRealtimeSync(ownerId = getDataOwnerId()) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// Admin ↔ Admin(guest) twin-account workout merge
+// Selected shared-account owner boundary
 // ═══════════════════════════════════════════════════════════════
-// 관리자/게스트 트윈 계정이 같은 사람의 운동 기록을 공유하므로 로드 시
-// 상대 계정의 활성 day 를 내 _cache 에 얕게 병합. 기록 없는 쪽을 덮어쓰지 않음.
-function _getWorkoutTwinOwnerId(ownerId) {
-  const id = String(ownerId || '').trim();
-  if (!id) return '';
-  if (/\(guest\)$/i.test(id)) return id.replace(/\(guest\)$/i, '').trim();
-  return `${id}(guest)`;
-}
-
-// 운동 도메인 필드 — 트윈 병합 시 owner 에 값이 없으면 twin 값 채우기.
-// 과거: 전체 day 객체 단위로 판정 → owner 에 식단만 있고 운동 없는 날엔 twin 의 운동이
-//       병합 안 돼 스트릭이 계정 로그인 시마다 1↔5 로 흔들렸다 (문정토마토 이슈).
-const _TWIN_WORKOUT_FIELDS = [
-  'workoutSessions',
-  'exercises', 'cf', 'swimming', 'running', 'stretching',
-  'runDistance', 'runDurationMin', 'runDurationSec', 'runMemo',
-  'runSource', 'runStartedAt', 'runEndedAt', 'runRoute', 'runRouteRef', 'runRouteSummary',
-  'runPlaceSummary', 'runAvgPaceSecPerKm', 'runGpsAccuracySummary',
-  'swimDistance', 'swimDurationMin', 'swimDurationSec', 'swimStroke', 'swimMemo',
-  'cfWod', 'cfDurationMin', 'cfDurationSec', 'cfMemo',
-  'stretchDuration', 'stretchMemo',
-  'workoutDuration', 'workoutTimeline', 'workoutPhoto',
-  'gymId', 'routineMeta',
-];
-
-function _isFieldEmpty(v) {
-  if (v === undefined || v === null) return true;
-  if (Array.isArray(v)) return v.length === 0;
-  if (typeof v === 'string') return v === '';
-  if (typeof v === 'number') return v === 0;
-  if (typeof v === 'boolean') return v === false;
-  if (typeof v === 'object') return Object.keys(v).length === 0;
-  return false;
-}
-
-function _mergeTwinWorkoutFields(existing, incoming) {
-  const merged = { ...existing };
-  for (const field of _TWIN_WORKOUT_FIELDS) {
-    if (_isFieldEmpty(existing[field]) && !_isFieldEmpty(incoming[field])) {
-      merged[field] = incoming[field];
-    }
-  }
-  return merged;
-}
-
-async function _mergeWorkoutTwinCache(ownerId) {
-  const twinOwnerId = _getWorkoutTwinOwnerId(ownerId);
-  if (!ownerId || !twinOwnerId || twinOwnerId === ownerId) return;
-
-  try {
-    const twinSnap = await getDocs(collection(db, 'users', twinOwnerId, 'workouts'));
-    twinSnap.forEach((d) => {
-      const incoming = d.data();
-      const existing = _cache[d.id];
-      if (!existing) {
-        _cache[d.id] = incoming;
-        return;
-      }
-      // 필드 단위 병합 — owner 가 값을 갖고 있지 않은 운동 필드만 twin 값으로 채움.
-      _cache[d.id] = _mergeTwinWorkoutFields(existing, incoming);
-    });
-  } catch (e) {
-    console.warn('[data] workout twin merge failed:', e.message);
-  }
-}
+// After owner resolution every normal read/write uses exactly one SSOT. Missing
+// selected-owner documents are authoritative absences; TomatoDev never revives
+// fields or documents from another alias or legacy root.
 
 // ═══════════════════════════════════════════════════════════════
-// migrateDataToUser — admin 최초 로그인 시 root → users/{uid}/* 이관
+// Disabled browser migration compatibility exports
 // ═══════════════════════════════════════════════════════════════
-function _snapshotDocuments(snapshot) {
-  return snapshot.docs.map((document) => ({ id: document.id, data: document.data() }));
-}
-
-async function _copyMissingDocuments({ targetUserId, collectionName, guestUserId = null }) {
-  const reads = [
-    getDocs(collection(db, 'users', targetUserId, collectionName)),
-    getDocs(collection(db, collectionName)),
-  ];
-  if (guestUserId) reads.splice(1, 0, getDocs(collection(db, 'users', guestUserId, collectionName)));
-
-  const [canonicalSnap, ...sources] = await Promise.all(reads);
-  const [guestSnap, legacySnap] = guestUserId ? sources : [null, sources[0]];
-  const plan = buildAccountUnificationPlan({
-    canonicalDocuments: _snapshotDocuments(canonicalSnap),
-    guestDocuments: guestSnap ? _snapshotDocuments(guestSnap) : [],
-    legacyDocuments: legacySnap ? _snapshotDocuments(legacySnap) : [],
-  });
-
-  let copied = 0;
-  for (const documentData of plan) {
-    const targetRef = doc(db, 'users', targetUserId, collectionName, documentData.id);
-    // 최초 read와 write 사이 다른 클라이언트가 canonical day를 만들 수 있다.
-    // transaction 안에서 다시 확인해 현재 식단/운동/사진을 절대 덮지 않는다.
-    const didCopy = await runTransaction(db, async (transaction) => {
-      const current = await transaction.get(targetRef);
-      if (current.exists()) return false;
-      transaction.set(targetRef, documentData.data);
-      return true;
-    });
-    if (didCopy) copied += 1;
-  }
-  return copied;
-}
-
-// Public legacy-root migration API.  It is now copy-only instead of replacing
-// a user document that may have been written by another app session.
+// Older callers may still invoke these exports. Resolve the owner read-only,
+// then return an explicit no-op instead of copying a workout runRouteRef without
+// its nested running_routes/{routeId}/chunks documents.
 export async function migrateDataToUser(userId) {
-  let copied = 0;
-  for (const collectionName of ACCOUNT_DATA_COLLECTIONS) {
-    copied += await _copyMissingDocuments({ targetUserId: userId, collectionName });
-  }
-  return copied;
+  const resolvedOwnerId = isSharedAdminAccount(userId)
+    ? await resolveDataOwnerIdForAccount(userId)
+    : String(userId || '').trim();
+  if (!resolvedOwnerId) throw new Error('Data migration requires a resolved owner');
+  return 0;
 }
 
-// The guest and root stores are read only as historical sources.  Canonical
-// same-date workouts always win so a stale guest run cannot replace a newer
-// canonical meal entry in the life zone or in the dashboard.
-export async function unifySharedAccountData() {
-  const markerRef = doc(db, 'users', ADMIN_ACCOUNT_ID, 'settings', ACCOUNT_UNIFICATION_MARKER_ID);
-  const marker = await getDoc(markerRef);
-  if (Number(marker.data()?.value?.version || 0) >= ACCOUNT_UNIFICATION_VERSION) {
-    return { state: 'already-unified', copied: 0 };
+export async function unifySharedAccountData(targetUserId = getDataOwnerId()) {
+  if (!isSharedAdminAccount(targetUserId)) {
+    throw new Error('Shared account unification requires a resolved shared owner');
   }
-
-  let copied = 0;
-  for (const collectionName of ACCOUNT_DATA_COLLECTIONS) {
-    copied += await _copyMissingDocuments({
-      targetUserId: ADMIN_ACCOUNT_ID,
-      guestUserId: ADMIN_GUEST_ACCOUNT_ID,
-      collectionName,
-    });
-  }
-  await setDoc(markerRef, {
-    value: { version: ACCOUNT_UNIFICATION_VERSION, copied, completedAt: Date.now() },
-  }, { merge: true });
-  return { state: 'unified', copied };
+  return { state: 'disabled', ownerId: targetUserId, copied: 0 };
 }
 
 // ═══════════════════════════════════════════════════════════════
 // loadAll — 앱 시작 시 전체 데이터 로드
 // ═══════════════════════════════════════════════════════════════
+async function _resolveSharedOwnerAndReload(loadGeneration, sessionUserId) {
+  const selectedOwnerId = await resolveDataOwnerIdForAccount(sessionUserId);
+  if (_loadAllGeneration !== loadGeneration
+      || String(getCurrentUserRef()?.id || '').trim() !== sessionUserId) return;
+
+  const priorOwnerId = getAccountOwnerAliases(selectedOwnerId, selectedOwnerId)
+    .find((candidate) => candidate !== selectedOwnerId);
+  if (priorOwnerId && typeof globalThis.localStorage !== 'undefined') {
+    // Keep the owner unresolved until every replacement journal is durable.
+    // If localStorage is full, this throws and all shared-account writes remain
+    // fenced instead of activating an owner with stranded alias changes.
+    reassignPendingDayWrites(globalThis.localStorage, {
+      fromOwnerId: priorOwnerId,
+      toOwnerId: selectedOwnerId,
+    });
+  }
+  setResolvedSharedAccountOwnerId(selectedOwnerId);
+  return loadAll();
+}
+
 export async function loadAll() {
   const loadGeneration = ++_loadAllGeneration;
+  const sessionUserId = String(getCurrentUserRef()?.id || '').trim();
+  if (isSharedAdminAccount(sessionUserId) && !hasResolvedSharedAccountOwner()) {
+    return _resolveSharedOwnerAndReload(loadGeneration, sessionUserId);
+  }
   const ownerId = getDataOwnerId();
   if (!ownerId) {
     // 이전 계정 캐시를 로그인 화면이나 다음 계정에 노출하지 않는다.
@@ -274,7 +182,6 @@ export async function loadAll() {
   }
 
   const ownerCollection = (name) => collection(db, 'users', ownerId, name);
-  const ownerDoc = (name, id) => doc(db, 'users', ownerId, name, id);
   const isCurrentLoad = () => (
     _loadAllGeneration === loadGeneration && getDataOwnerId() === ownerId
   );
@@ -294,15 +201,6 @@ export async function loadAll() {
   _setCache(pendingSeed);
 
   try {
-    if (getCurrentUserRef() && ownerId === ADMIN_ACCOUNT_ID) {
-      try {
-        await unifySharedAccountData();
-      } catch (error) {
-        // Keep canonical data readable if a legacy collection is temporarily
-        // inaccessible.  No completion marker is written, so this safely retries.
-        console.warn('[data] shared account unification deferred:', error?.message || error);
-      }
-    }
     if (abandonIfStale()) return;
 
     const [snap, exSnap, goalSnap, questSnap,
@@ -341,15 +239,8 @@ export async function loadAll() {
       seedState: fbMap[EXERCISE_CATALOG_SEED_KEY],
       now: Date.now(),
     });
-    if (seedPlan.needsSeed) {
-      try {
-        await Promise.all(seedPlan.seedExercises.map(ex => setDoc(ownerDoc('exercises', ex.id), ex)));
-        await setDoc(ownerDoc('settings', EXERCISE_CATALOG_SEED_KEY), { value: seedPlan.seedMarker });
-        fbMap[EXERCISE_CATALOG_SEED_KEY] = seedPlan.seedMarker;
-      } catch (e) {
-        console.warn('[data] exercise catalog seed skipped:', e?.message || e);
-      }
-    }
+    // Seed defaults are presentation fallback only. Bootstrap never persists
+    // exercises or a seed marker in TomatoDev.
     if (abandonIfStale()) return;
     _setExList(_sortExList(seedPlan.exercises.map(ex => normalizeExerciseMovementRecord(ex, MOVEMENTS))));
     try {
@@ -372,24 +263,24 @@ export async function loadAll() {
     { const ndb = []; nutritionSnap.forEach(d => ndb.push(d.data())); _setNutritionDB(ndb); }
 
     if (_nutritionDB.length === 0 && !isAdmin() && !isAdminGuest()) {
-      getDocs(collection(db, 'users', ADMIN_ID, 'nutrition_db')).then(sharedSnap => {
+      resolveDataOwnerIdForAccount(ADMIN_ID)
+        .then((sharedAdminOwnerId) => getDocs(collection(db, 'users', sharedAdminOwnerId, 'nutrition_db')))
+        .then(sharedSnap => {
         if (!isCurrentLoad()) return;
         const sharedItems = [];
         sharedSnap.forEach(d => sharedItems.push(d.data()));
         if (sharedItems.length > 0) {
           _setNutritionDB(sharedItems);
-          Promise.all(sharedItems.map(item => setDoc(ownerDoc('nutrition_db', item.id), item)))
-            .catch(e => console.warn('[data] 영양DB 복사 실패:', e.message));
         }
-      }).catch(e => console.warn('[data] 관리자 영양DB 로드 실패:', e.message));
+        }).catch(e => console.warn('[data] 관리자 영양DB 로드 실패:', e.message));
     }
 
     { const tc = []; tomatoSnap.forEach(d => tc.push(d.data())); _setTomatoCycles(tc); }
 
-    _settings.quest_order    = fbMap.quest_order    ?? _migrateFromLS('quest_order',    ['quarterly','monthly','weekly','daily']);
-    _settings.section_titles = fbMap.section_titles ?? _migrateFromLS('section_titles', {});
+    _settings.quest_order    = fbMap.quest_order    ?? ['quarterly','monthly','weekly','daily'];
+    _settings.section_titles = fbMap.section_titles ?? {};
     _settings.mini_memo_items= fbMap.mini_memo_items?? [];
-    _settings.weekly_memos   = fbMap.weekly_memos   ?? _migrateFromLS('weekly_memos',   {});
+    _settings.weekly_memos   = fbMap.weekly_memos   ?? {};
     _settings.tab_order      = _sanitizeTabList(fbMap.tab_order ?? DEFAULT_TAB_ORDER);
     _settings.visible_tabs   = fbMap.visible_tabs ? _sanitizeTabList(fbMap.visible_tabs) : null;
     _settings.diet_plan = fbMap.diet_plan ?? null;
@@ -403,13 +294,14 @@ export async function loadAll() {
           activityFactor: 1.3, lossRatePerWeek: 0.009,
           refeedKcal: 5000, refeedDays: [0, 6], startDate: null,
         };
-        setDoc(ownerDoc('settings', 'diet_plan'), { value: _settings.diet_plan }).catch(e => console.warn('[data] 식단 설정 저장 실패:', e.message));
-        setDoc(ownerDoc('settings', 'admin_diet_restored'), { value: 'done' }).catch(e => console.warn('[data] admin_diet_restored 저장 실패:', e.message));
       }
     }
     _settings.home_streak_days = fbMap.home_streak_days ?? 6;
     _settings.unit_goal_start  = fbMap.unit_goal_start  ?? null;
-    _settings.active_timer     = fbMap.active_timer     ?? null;
+    // TomatoDev shares the operating Firestore backend. Never hydrate its
+    // legacy settings/active_timer pointer into the development runtime;
+    // workout timer and draft recovery is namespaced local state only.
+    _settings.active_timer     = null;
     _settings.max_cycle        = fbMap.max_cycle        ?? null;
     _settings.test_board_v2    = fbMap.test_board_v2    ?? null;
     _settings.season_registry  = fbMap.season_registry  ?? { schemaVersion: 2, seasons: [] };
@@ -435,17 +327,9 @@ export async function loadAll() {
     });
     if (maxCyclePlan.shouldWriteMaxCycle) {
       _settings.max_cycle = maxCyclePlan.canonicalCycle;
-      fbMap.max_cycle = maxCyclePlan.canonicalCycle;
-      await setDoc(ownerDoc('settings', 'max_cycle'), { value: maxCyclePlan.canonicalCycle })
-        .catch(e => console.warn('[data] max_cycle migration failed:', e?.message || e));
-      if (abandonIfStale()) return;
     }
     if (maxCyclePlan.shouldWriteExpertPreset) {
       _settings.expert_preset = maxCyclePlan.cleanedPreset;
-      fbMap.expert_preset = maxCyclePlan.cleanedPreset;
-      await setDoc(ownerDoc('settings', 'expert_preset'), { value: maxCyclePlan.cleanedPreset })
-        .catch(e => console.warn('[data] expert_preset maxCycle cleanup failed:', e?.message || e));
-      if (abandonIfStale()) return;
     }
     if (_settings.diet_plan) _setDietPlan({ ...DEFAULT_DIET_PLAN, ..._settings.diet_plan });
 
@@ -455,15 +339,6 @@ export async function loadAll() {
     );
     if (abandonIfStale()) return;
 
-    for (const key of ['quest_order','section_titles','weekly_memos']) {
-      if (!fbMap[key] && JSON.stringify(_settings[key]) !== JSON.stringify(
-          key === 'quest_order' ? ['quarterly','monthly','weekly','daily'] : {}
-      )) {
-        await setDoc(ownerDoc('settings', key), { value: _settings[key] }).catch(e => console.warn(`[data] 설정(${key}) 마이그레이션 실패:`, e.message));
-        if (abandonIfStale()) return;
-      }
-    }
-
     _setSyncStatus('ok');
   } catch(e) {
     if (abandonIfStale()) return;
@@ -471,9 +346,9 @@ export async function loadAll() {
     console.error('[data] loadAll:', e);
     _setExList([...CONFIG.DEFAULT_EXERCISES]);
     _setCustomMuscles([]);
-    _settings.quest_order    = _migrateFromLS('quest_order',    ['quarterly','monthly','weekly','daily']);
-    _settings.section_titles = _migrateFromLS('section_titles', {});
-    _settings.weekly_memos   = _migrateFromLS('weekly_memos',   {});
+    _settings.quest_order    = ['quarterly','monthly','weekly','daily'];
+    _settings.section_titles = {};
+    _settings.weekly_memos   = {};
     _settings.season_registry = { schemaVersion: 2, seasons: [] };
   } finally {
     if (isCurrentLoad()) {

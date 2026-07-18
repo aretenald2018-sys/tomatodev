@@ -22,5 +22,5 @@ test('weight check-in entry asset is cached under a versioned service worker', (
   const swJs = read('sw.js');
 
   assert.match(runtimeAssetsJs, /'\.\/home\/tomato\.js'/);
-  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatodev-v\d{8}z\d+-[^']+';/);
 });

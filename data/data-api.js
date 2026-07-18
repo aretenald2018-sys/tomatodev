@@ -8,7 +8,7 @@ import { CONFIG, MUSCLES, MOVEMENTS } from '../config.js';
 import {
   db, doc, setDoc, deleteDoc, getDoc, collection, getDocs, query, where, runTransaction,
   getCurrentUserRef, setCurrentUserRef,
-  ADMIN_ID, ADMIN_GUEST_ID, getDataOwnerId,
+  ADMIN_ID, ADMIN_GUEST_ID, getDataOwnerId, resolveDataOwnerIdForAccount,
   _col, _doc,
   _cache, _exList, _customMuscles, _goals, _quests, _cooking, _bodyCheckins, _nutritionDB,
   _setCache, _setExList, _setCustomMuscles, _setGoals, _setQuests, _setCooking, _setBodyCheckins, _setNutritionDB,
@@ -78,7 +78,10 @@ export {
   verifyPassword, hashPassword,
 } from './data-auth.js';
 // core
-export { getDataOwnerId, getKimMode, setKimMode } from './data-core.js';
+export {
+  getDataOwnerId, resolveDataOwnerIdForAccount, getKimMode, setKimMode,
+  TOMATODEV_AUTH_STORAGE_KEYS,
+} from './data-core.js';
 export {
   saveRunningRoute,
   loadRunningRoute,
@@ -529,8 +532,9 @@ export const getDietPlan = () => {
 };
 export const saveDietPlan = async (plan) => {
   const merged = { ...(getDietPlan()), ...plan };
+  await _saveSetting('diet_plan', merged);
   Object.assign(_dietPlan, merged);
-  return _saveSetting('diet_plan', merged);
+  return merged;
 };
 
 export const calcDietMetrics = _calcDietMetrics;
@@ -661,7 +665,7 @@ export function hasDietRecord(y, m, d) {
   return _hasDietRecordData(getDay(y, m, d));
 }
 
-// isActiveWorkoutDayData / _mergeWorkoutTwinCache 는 data/data-load.js 로 이동 (R4).
+// isActiveWorkoutDayData 는 data/data-load.js 로 이동 (R4).
 // isActiveLocalDay 는 data.js 의 getDay 에 의존하므로 여기 유지.
 export const isActiveLocalDay = (y,m,d) => isActiveWorkoutDayData(getDay(y,m,d));
 
@@ -1005,14 +1009,19 @@ export async function publishDietPremiumReportIssue({ period = 'weekly', targetU
     return { ...baseIssue, deliveredCount: 0, disabled: true };
   }
 
-  await _fbOp('publishDietPremiumReportIssue', () => Promise.all(targets.map((userId) => (
-    setDoc(doc(db, 'users', userId, 'settings', 'diet_premium_report_inbox'), {
+  const resolvedTargets = await Promise.all(targets.map(async (userId) => ({
+    userId,
+    ownerId: await resolveDataOwnerIdForAccount(userId),
+  })));
+  await _fbOp('publishDietPremiumReportIssue', () => Promise.all(resolvedTargets.map(({ userId, ownerId }) => (
+    setDoc(doc(db, 'users', ownerId, 'settings', 'diet_premium_report_inbox'), {
       value: { ...baseIssue, recipientUserId: userId },
     })
   ))), { rethrow: true });
 
-  if (targets.includes(getDataOwnerId())) {
-    _settings.diet_premium_report_inbox = { ...baseIssue, recipientUserId: getDataOwnerId() };
+  const currentTarget = resolvedTargets.find(({ ownerId }) => ownerId === getDataOwnerId());
+  if (currentTarget) {
+    _settings.diet_premium_report_inbox = { ...baseIssue, recipientUserId: currentTarget.userId };
   }
 
   return { ...baseIssue, deliveredCount: targets.length };
@@ -1039,20 +1048,25 @@ export const saveHapticsEnabled = (flag) => _saveSetting('haptics_enabled', !!fl
 
 export const getHomeStreakDays = () => _settings.home_streak_days ?? 6;
 export async function saveHomeStreakDays(n) {
-  _settings.home_streak_days = Math.max(0, Math.min(6, n));
-  await _saveSetting('home_streak_days', _settings.home_streak_days);
+  const nextValue = Math.max(0, Math.min(6, n));
+  await _saveSetting('home_streak_days', nextValue);
 }
 
 export const getUnitGoalStart = () => _settings.unit_goal_start ?? null;
+// TomatoDev shares the operating Firestore project. Home rendering may derive a
+// useful default for the current session, but merely opening the page must not
+// publish that default to the operating account.
+export function rememberUnitGoalStartInMemory(dateStr) {
+  if (_settings.unit_goal_start == null) _settings.unit_goal_start = dateStr;
+  return _settings.unit_goal_start;
+}
 export async function saveUnitGoalStart(dateStr) {
-  _settings.unit_goal_start = dateStr;
   await _saveSetting('unit_goal_start', dateStr);
 }
 
 export const getCheerLastSeen = () => _settings.cheer_last_seen ?? 0;
 export async function saveCheerLastSeen(ts) {
-  _settings.cheer_last_seen = ts || 0;
-  await _saveSetting('cheer_last_seen', _settings.cheer_last_seen);
+  await _saveSetting('cheer_last_seen', ts || 0);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1060,26 +1074,39 @@ export async function saveCheerLastSeen(ts) {
 // ═══════════════════════════════════════════════════════════════
 
 export const getTomatoState = () => _settings.tomato_state || { quarterlyTomatoes: {}, totalTomatoes: 0, giftedReceived: 0, giftedSent: 0 };
-export const saveTomatoState = (state) => { _settings.tomato_state = state; return _saveSetting('tomato_state', state); };
+export function rememberTomatoStateInMemory(state) {
+  _settings.tomato_state = state;
+  return state;
+}
+export const saveTomatoState = (state) => _saveSetting('tomato_state', state);
 
-// ── 운동 타이머 cross-day SoT ────────────────────────────────────
-// 2026-04-21: day-doc 에 startedAt 을 저장하던 방식은 자정 넘김 케이스에서 실패했다
-// (오늘 doc 에는 startedAt 이 없으므로 복원 불가). _settings/active_timer 에 모으면
-// 몇일자 운동을 보고 있든 동일 포인터로 복원된다.
-// value 스키마: { startedAt: number(epoch ms), date: {y,m,d} } | null
-export const getActiveTimer   = () => _settings.active_timer || null;
-export const saveActiveTimer  = (state) => { _settings.active_timer = state; return _saveSetting('active_timer', state); };
-export const clearActiveTimer = () => { _settings.active_timer = null; return _saveSetting('active_timer', null); };
+// ── TomatoDev 운동 타이머 호환 API (메모리 전용) ─────────────────
+// 운영 Firebase를 공유하는 동안 settings/active_timer는 읽거나 쓰지 않는다.
+// 실제 재시작 복구는 workout/timers.js의 사용자별 TomatoDev localStorage와
+// active-workout draft가 담당한다. Promise 반환은 기존 호출자 호환용이다.
+export const getActiveTimer = () => _settings.active_timer || null;
+export async function saveActiveTimer(state) {
+  _settings.active_timer = state ?? null;
+  return true;
+}
+export async function clearActiveTimer() {
+  _settings.active_timer = null;
+  return true;
+}
 
 export const getMilestoneShown = () => _settings.milestone_shown || {};
-export const saveMilestoneShown = (obj) => { _settings.milestone_shown = obj; return _saveSetting('milestone_shown', obj); };
+export function rememberMilestoneShownInMemory(obj) {
+  _settings.milestone_shown = obj;
+  return obj;
+}
+export const saveMilestoneShown = (obj) => _saveSetting('milestone_shown', obj);
 
 export function getStreakFreezes() { return _settings.streak_freezes || []; }
 export async function useStreakFreeze(type) {
-  const state = getTomatoState();
+  const state = { ...getTomatoState() };
   const available = state.totalTomatoes + (state.giftedReceived || 0) - (state.giftedSent || 0);
   if (available <= 0) return { error: '토마토가 부족해요.' };
-  const freezes = getStreakFreezes();
+  const freezes = [...getStreakFreezes()];
   const now = Date.now();
   const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
   const recentFreeze = freezes.find(f => f.type === type && f.usedAt > weekAgo);
@@ -1093,8 +1120,15 @@ export async function useStreakFreeze(type) {
   return { ok: true };
 }
 
+export function rememberTomatoCycleInMemory(cycleResult) {
+  if (!_tomatoCycles.some(cycle => cycle.id === cycleResult.id)) {
+    _tomatoCycles.push(cycleResult);
+  }
+  return cycleResult;
+}
+
 export async function saveTomatoCycle(cycleResult) {
-  _tomatoCycles.push(cycleResult);
+  rememberTomatoCycleInMemory(cycleResult);
   return _fbOp('saveTomatoCycle', () => setDoc(_doc('tomato_cycles', cycleResult.id), cycleResult));
 }
 
@@ -1107,9 +1141,25 @@ export function getAllTomatoCycles() { return _tomatoCycles; }
 
 export async function sendTomatoGift(toUserId, message) {
   if (!getCurrentUserRef()) return { error: '로그인이 필요해요.' };
-  const state = getTomatoState();
+  const state = { ...getTomatoState() };
   const available = state.totalTomatoes + state.giftedReceived - state.giftedSent;
   if (available <= 0) return { error: '선물할 토마토가 없어요.' };
+  // Resolve both stores before recording or debiting the gift. Resolution alone
+  // does not activate a shared session: loadAll must also have completed the
+  // pending-journal handoff before this mutation is allowed.
+  const senderAccountId = String(getCurrentUserRef()?.id || '').trim();
+  const [fromOwnerId, toOwnerId] = await Promise.all([
+    resolveDataOwnerIdForAccount(senderAccountId),
+    resolveDataOwnerIdForAccount(toUserId),
+  ]);
+  if (!fromOwnerId || !toOwnerId) {
+    throw new Error('Tomato gift requires resolved sender and recipient owners');
+  }
+  if (getDataOwnerId() !== fromOwnerId) {
+    const error = new Error('Shared account data owner must be activated before sending a gift');
+    error.code = 'ACCOUNT_DATA_OWNER_UNRESOLVED';
+    throw error;
+  }
   const fromId = _socialId();
   const giftId = `${fromId}_${toUserId}_${Date.now()}`;
   await setDoc(doc(db, '_tomato_gifts', giftId), {
@@ -1120,18 +1170,24 @@ export async function sendTomatoGift(toUserId, message) {
   state.giftedSent++;
   await saveTomatoState(state);
   try {
-    const recvSnap = await getDoc(doc(db, 'users', toUserId, 'settings', 'tomato_state'));
+    const recvSnap = await getDoc(doc(db, 'users', toOwnerId, 'settings', 'tomato_state'));
     const recvState = recvSnap.exists()
       ? (recvSnap.data().value || { quarterlyTomatoes: {}, totalTomatoes: 0, giftedReceived: 0, giftedSent: 0 })
       : { quarterlyTomatoes: {}, totalTomatoes: 0, giftedReceived: 0, giftedSent: 0 };
     recvState.giftedReceived = (recvState.giftedReceived || 0) + 1;
-    await setDoc(doc(db, 'users', toUserId, 'settings', 'tomato_state'), { value: recvState });
+    await setDoc(doc(db, 'users', toOwnerId, 'settings', 'tomato_state'), { value: recvState });
   } catch(e) { console.warn('[gift] 받는 사람 토마토 상태 업데이트 실패:', e); }
   await sendNotification(toUserId, { type: 'tomato_gift', from: fromId, message: '토마토를 선물했어요! 🍅' });
   return { ok: true };
 }
 
 export async function revertTomatoGift(fromUserId, toUserId) {
+  // Resolve both stores before deleting the social ledger. This keeps a probe
+  // error from producing an irreversible half-revert.
+  const [fromOwnerId, toOwnerId] = await Promise.all([
+    resolveDataOwnerIdForAccount(fromUserId),
+    resolveDataOwnerIdForAccount(toUserId),
+  ]);
   const snap = await getDocs(collection(db, '_tomato_gifts'));
   let deleted = 0;
   for (const d of snap.docs) {
@@ -1141,17 +1197,17 @@ export async function revertTomatoGift(fromUserId, toUserId) {
       deleted++;
     }
   }
-  const senderSnap = await getDoc(doc(db, 'users', fromUserId, 'settings', 'tomato_state'));
+  const senderSnap = await getDoc(doc(db, 'users', fromOwnerId, 'settings', 'tomato_state'));
   if (senderSnap.exists()) {
     const sState = senderSnap.data().value;
     sState.giftedSent = Math.max(0, (sState.giftedSent || 0) - deleted);
-    await setDoc(doc(db, 'users', fromUserId, 'settings', 'tomato_state'), { value: sState });
+    await setDoc(doc(db, 'users', fromOwnerId, 'settings', 'tomato_state'), { value: sState });
   }
-  const recvSnap = await getDoc(doc(db, 'users', toUserId, 'settings', 'tomato_state'));
+  const recvSnap = await getDoc(doc(db, 'users', toOwnerId, 'settings', 'tomato_state'));
   if (recvSnap.exists()) {
     const rState = recvSnap.data().value;
     rState.giftedReceived = Math.max(0, (rState.giftedReceived || 0) - deleted);
-    await setDoc(doc(db, 'users', toUserId, 'settings', 'tomato_state'), { value: rState });
+    await setDoc(doc(db, 'users', toOwnerId, 'settings', 'tomato_state'), { value: rState });
   }
   if (_socialId() === fromUserId) {
     const s = getTomatoState();

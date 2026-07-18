@@ -40,8 +40,8 @@ function parseArgs() {
 // ── sw.js: CACHE_VERSION 범프 ────────────────────────────────────
 function bumpServiceWorker({ desc } = {}) {
   const src = readFileSync(SW_JS, 'utf8');
-  // 예시 매칭 대상: `const CACHE_VERSION = 'tomatofarm-v20260421z23-hero-character-mood-r3';`
-  const re = /(const\s+CACHE_VERSION\s*=\s*['"])tomatofarm-v(\d{8})z(\d+)(?:-([a-z0-9\-]+))?(['"])/i;
+  // 예시 매칭 대상: `const CACHE_VERSION = 'tomatodev-v20260421z23-hero-character-mood-r3';`
+  const re = /(const\s+CACHE_VERSION\s*=\s*['"])tomatodev-v(\d{8})z(\d+)(?:-([a-z0-9\-]+))?(['"])/i;
   const m = src.match(re);
   if (!m) {
     console.warn('[bump-cache] sw.js 의 CACHE_VERSION 패턴 매칭 실패 — 스킵');
@@ -50,11 +50,11 @@ function bumpServiceWorker({ desc } = {}) {
   const [, prefix, oldDate, oldN, oldDesc, quote] = m;
   const newN   = (oldDate === today) ? (parseInt(oldN, 10) + 1) : 1;
   const newDesc = desc || oldDesc || 'cache-bump';
-  const newVal = `${prefix}tomatofarm-v${today}z${newN}-${newDesc}${quote}`;
+  const newVal = `${prefix}tomatodev-v${today}z${newN}-${newDesc}${quote}`;
   const out = src.replace(re, newVal);
   const changed = out !== src;
   if (changed) writeFileSync(SW_JS, out);
-  return { changed, newVersion: `tomatofarm-v${today}z${newN}-${newDesc}` };
+  return { changed, newVersion: `tomatodev-v${today}z${newN}-${newDesc}` };
 }
 
 // ── 실행 ─────────────────────────────────────────────────────────

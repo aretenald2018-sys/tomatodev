@@ -251,8 +251,8 @@ test('a new running summary cannot inherit an immutable route ref from a previou
 });
 
 test('running session persists unsaved live records across app reloads', () => {
-  assert.match(runningSessionJs, /RUNNING_SESSION_DRAFT_KEY_PREFIX = 'tomatofarm_running_session_draft_'/);
-  assert.match(runningSessionJs, /RUNNING_SESSION_DRAFT_ACTIVE_KEY = 'tomatofarm_running_session_draft_active'/);
+  assert.match(runningSessionJs, /RUNNING_SESSION_DRAFT_KEY_PREFIX = 'tomatodev_running_session_draft_'/);
+  assert.match(runningSessionJs, /RUNNING_SESSION_DRAFT_ACTIVE_KEY = 'tomatodev_running_session_draft_active'/);
   assert.doesNotMatch(runningSessionJs, /ROUTE_GAP_MS/);
   assert.match(runningSessionJs, /pendingGapReason/);
   assert.match(runningSessionJs, /function _markRouteGap/);
@@ -323,7 +323,7 @@ test('running workout save writes a running life-zone snapshot', () => {
 });
 
 test('service worker cache version was bumped for running session assets', () => {
-  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatodev-v\d{8}z\d+-[^']+';/);
   assert.match(swJs, /\.\/workout\/index\.js/);
   assert.doesNotMatch(swJs, /\.\/workout\/index\.js\?v=/);
   assert.match(swJs, /\.\/workout\/running-map\.js/);

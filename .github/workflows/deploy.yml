@@ -1,4 +1,4 @@
-name: Verify Pages Runtime Assets
+name: Deploy TomatoDev Pages
 
 on:
   push:
@@ -11,11 +11,12 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages-runtime-assets"
+  group: "tomatodev-pages"
   cancel-in-progress: false
 
 jobs:
   deploy:
+    if: ${{ github.repository == 'aretenald2018-sys/tomatodev' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -26,6 +27,9 @@ jobs:
 
       - name: Verify project governance
         run: node scripts/check-project-governance.mjs
+
+      - name: Verify development repository boundary
+        run: node scripts/check-repository-boundary.mjs
 
       - name: Verify generated CSS
         run: node scripts/generate-style-entry.mjs --check

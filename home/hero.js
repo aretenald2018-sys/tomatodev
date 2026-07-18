@@ -3,7 +3,7 @@
 // ================================================================
 
 import { TODAY, calcStreaks, countLocalWeeklyActiveDays,
-         getMilestoneShown, saveMilestoneShown,
+         getMilestoneShown, rememberMilestoneShownInMemory,
          getStreakFreezes, getTomatoState, useStreakFreeze,
          getMyFriends, getAccountList, getCurrentUser,
          getFriendWorkout, getFriendData, dateKey, isAdmin, _isMySocialId, isActiveWorkoutDayData,
@@ -82,7 +82,7 @@ export function checkStreakMilestone(type, days) {
   for (const m of milestones) {
     if (days >= m && !shown[`${type}_${m}`]) {
       shown[`${type}_${m}`] = true;
-      saveMilestoneShown(shown);
+      rememberMilestoneShownInMemory(shown);
       setTimeout(() => {
         openStreakMilestone(type, m);
       }, 500);

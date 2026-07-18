@@ -1,8 +1,8 @@
 {
-  "name": "tomatofarm",
+  "name": "tomatodev",
   "version": "1.0.0",
   "type": "module",
-  "description": "Personal Dashboard with Fitness, Diet, Wine Tracking",
+  "description": "Development Pages mirror for Tomato Farm",
   "main": "app.js",
   "scripts": {
     "test": "node scripts/check-project-governance.mjs && node scripts/check-runtime-syntax.mjs && node --test",
@@ -27,7 +27,7 @@
     "verify:deployed-markers": "node scripts/verify-deployed-markers.mjs",
     "check:repository": "node scripts/check-repository-boundary.mjs && node scripts/check-project-governance.mjs",
     "setup:repository": "node scripts/install-repository-guard.mjs && node scripts/check-repository-boundary.mjs",
-    "deploy:production": "node scripts/deploy-production.mjs",
+    "deploy:dev": "node scripts/deploy-development.mjs",
     "verify:rom-graph": "node scripts/verify-rom-live-graph.mjs",
     "verify:workout": "node scripts/verify-workout-fixture.mjs",
     "verify:wear-refresh": "node scripts/verify-wear-refresh-adb.mjs",

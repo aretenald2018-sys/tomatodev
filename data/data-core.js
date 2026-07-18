@@ -6,22 +6,27 @@ import { initializeApp }    from "https://www.gstatic.com/firebasejs/11.6.0/fire
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app-check.js";
 import {
   getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  doc, setDoc, updateDoc, deleteDoc, getDoc,
-  collection, getDocs, query, where, documentId, orderBy, limit,
+  doc, setDoc, updateDoc, deleteDoc, getDoc, getDocFromServer,
+  collection, getDocs, getDocsFromServer, query, where, documentId, orderBy, limit,
   arrayUnion, writeBatch, runTransaction, onSnapshot,
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
-import { getFunctions } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-functions.js";
 import { CONFIG } from '../config.js';
 import { generateId } from '../utils/id.js';
 import { createFirestoreWithMultiTabCache } from './firestore-cache.js';
 import {
   ADMIN_ACCOUNT_ID,
   ADMIN_GUEST_ACCOUNT_ID,
+  ACCOUNT_OWNER_PROBE_COLLECTIONS,
   canonicalAccountOwnerId,
+  isAccountSystemDocument,
+  isSharedAdminAccount,
+  normalizeSharedAccountOwnerId,
+  readPersistedAccountOwner,
+  selectSharedAccountOwner,
 } from './account-unification.js';
 
 // ── Firebase 초기화 ─────────────────────────────────────────────
-const app = initializeApp(CONFIG.FIREBASE);
+const app = initializeApp(CONFIG.FIREBASE, 'tomatodev');
 const _appCheckSiteKey = String(CONFIG.APPCHECK_SITE_KEY || '').trim();
 const _isLocalhost = typeof location !== 'undefined' &&
   (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
@@ -52,13 +57,19 @@ export const db = createFirestoreWithMultiTabCache(app, {
     console.warn('[data] IndexedDB 캐시 초기화 실패 — memory cache로 계속합니다:', err?.code || err?.message || err);
   },
 });
-export const functions = getFunctions(app, 'asia-northeast3');
 
 // Firestore 함수 re-export (하위 모듈용)
 export { doc, setDoc, updateDoc, deleteDoc, getDoc, collection, getDocs, query, where, documentId, orderBy, limit, arrayUnion, writeBatch, runTransaction, onSnapshot };
 
 // ── IndexedDB 백업 (모바일 localStorage 클리어 방지) ─────────────
-const _IDB_NAME = 'dashboard3_session';
+export const TOMATODEV_AUTH_STORAGE_KEYS = Object.freeze({
+  currentUser: 'tomatodev:auth:current-user:v1',
+  adminAuthenticated: 'tomatodev:auth:admin-authenticated:v1',
+  kimAuthenticated: 'tomatodev:auth:kim-authenticated:v1',
+  kimMode: 'tomatodev:auth:kim-mode:v1',
+});
+
+const _IDB_NAME = 'tomatodev_session_v1';
 const _IDB_STORE = 'auth';
 
 function _openIDB() {
@@ -103,27 +114,108 @@ export async function _idbRemove(key) {
 
 // ── 사용자 상태 (핵심 공유 상태) ────────────────────────────────
 let _currentUser = null;
+let _sharedAccountOwnerId = null;
+let _sharedAccountOwnerProbePromise = null;
+
 export function getCurrentUserRef()  { return _currentUser; }
-export function setCurrentUserRef(u) { _currentUser = u; }
+export function setCurrentUserRef(user) {
+  const previousId = String(_currentUser?.id || '').trim();
+  const nextId = String(user?.id || '').trim();
+  _currentUser = user;
+  if (previousId !== nextId || !isSharedAdminAccount(nextId)) {
+    _sharedAccountOwnerId = null;
+    _sharedAccountOwnerProbePromise = null;
+  }
+}
 
 export const ADMIN_ID       = ADMIN_ACCOUNT_ID;
 export const ADMIN_GUEST_ID = ADMIN_GUEST_ACCOUNT_ID;
 
-let _kimMode = localStorage.getItem('kimMode') || 'admin';
+let _kimMode = localStorage.getItem(TOMATODEV_AUTH_STORAGE_KEYS.kimMode) || 'admin';
 export function getKimMode() { return _kimMode; }
 export function setKimMode(mode) {
   _kimMode = mode === 'guest' ? 'guest' : 'admin';
-  localStorage.setItem('kimMode', _kimMode);
+  localStorage.setItem(TOMATODEV_AUTH_STORAGE_KEYS.kimMode, _kimMode);
+}
+
+export function hasResolvedSharedAccountOwner() {
+  return !!_sharedAccountOwnerId;
+}
+
+export function setResolvedSharedAccountOwnerId(ownerId) {
+  if (!isSharedAdminAccount(ownerId)) {
+    throw new TypeError('Shared account data owner must be an admin alias');
+  }
+  _sharedAccountOwnerId = normalizeSharedAccountOwnerId(ownerId);
+  return _sharedAccountOwnerId;
+}
+
+export function getResolvedSharedAccountOwnerId() {
+  return _sharedAccountOwnerId;
 }
 
 export function getDataOwnerId() {
   if (!_currentUser) return null;
-  return canonicalAccountOwnerId(_currentUser.id);
+  if (isSharedAdminAccount(_currentUser.id) && !_sharedAccountOwnerId) return null;
+  return canonicalAccountOwnerId(_currentUser.id, _sharedAccountOwnerId);
+}
+
+async function _probeSharedAccountOwner() {
+  // Owner selection must never trust an empty or partial offline cache. A
+  // server failure rejects the probe and leaves every shared write fenced.
+  const accountSnapshot = await getDocFromServer(doc(db, '_accounts', ADMIN_ACCOUNT_ID));
+  const persistedOwnerId = accountSnapshot.exists()
+    ? readPersistedAccountOwner(accountSnapshot.data())
+    : null;
+  if (persistedOwnerId) return persistedOwnerId;
+
+  const inventoryEntries = await Promise.all(ACCOUNT_OWNER_PROBE_COLLECTIONS.map(async (collectionName) => {
+    const source = collection(db, 'users', ADMIN_ACCOUNT_ID, collectionName);
+    const snapshot = collectionName === 'settings'
+      ? await getDocsFromServer(source)
+      : await getDocsFromServer(query(source, limit(1)));
+    const documents = snapshot.docs
+      .map((documentSnapshot) => ({ id: documentSnapshot.id }))
+      .filter((documentSnapshot) => !isAccountSystemDocument(collectionName, documentSnapshot.id));
+    return [collectionName, documents];
+  }));
+
+  return selectSharedAccountOwner({ adminInventory: Object.fromEntries(inventoryEntries) });
+}
+
+export async function resolveDataOwnerIdForAccount(accountId) {
+  const normalized = String(accountId || '').trim();
+  if (!normalized || !isSharedAdminAccount(normalized)) return normalized;
+  if (isSharedAdminAccount(_currentUser?.id) && _sharedAccountOwnerId) {
+    return _sharedAccountOwnerId;
+  }
+  if (!_sharedAccountOwnerProbePromise) {
+    _sharedAccountOwnerProbePromise = _probeSharedAccountOwner();
+  }
+  const activeProbe = _sharedAccountOwnerProbePromise;
+  try {
+    return await activeProbe;
+  } catch (error) {
+    if (_sharedAccountOwnerProbePromise === activeProbe) {
+      _sharedAccountOwnerProbePromise = null;
+    }
+    throw error;
+  }
+}
+
+function _assertResolvedDataOwner(ownerId) {
+  if (ownerId) return ownerId;
+  if (_currentUser && isSharedAdminAccount(_currentUser.id)) {
+    const error = new Error('Shared account data owner must be resolved before data access');
+    error.code = 'ACCOUNT_DATA_OWNER_UNRESOLVED';
+    throw error;
+  }
+  return null;
 }
 
 // ── Firebase 경로 헬퍼 ──────────────────────────────────────────
 export function _col(name) {
-  const ownerId = getDataOwnerId();
+  const ownerId = _assertResolvedDataOwner(getDataOwnerId());
   if (!ownerId) {
     console.warn('[data] _col called without user! collection:', name);
     return collection(db, '_orphan', name);
@@ -132,7 +224,7 @@ export function _col(name) {
 }
 
 export function _doc(name, id) {
-  const ownerId = getDataOwnerId();
+  const ownerId = _assertResolvedDataOwner(getDataOwnerId());
   if (!ownerId) {
     console.warn('[data] _doc called without user! doc:', name, id);
     return doc(db, '_orphan', name, id);
@@ -279,7 +371,7 @@ export async function _fbOp(label, fn, { sync = true, rethrow = false, dateKey =
     } catch (e) {
       if (sync) _setSyncStatus('err');
       console.error(`[data] ${label}:`, e);
-      if (rethrow) throw e;
+      if (rethrow || e?.code === 'ACCOUNT_DATA_OWNER_UNRESOLVED') throw e;
     }
   };
   return dateKey ? _runSerialized(dateKey, exec) : exec();
@@ -287,8 +379,20 @@ export async function _fbOp(label, fn, { sync = true, rethrow = false, dateKey =
 
 // ── 설정 저장 헬퍼 ──────────────────────────────────────────────
 export async function _saveSetting(key, value) {
-  _settings[key] = value;
-  return _fbOp(`saveSetting(${key})`, () => setDoc(_doc('settings', key), { value }));
+  const hadPreviousValue = Object.prototype.hasOwnProperty.call(_settings, key);
+  const previousValue = _settings[key];
+  try {
+    await _fbOp(
+      `saveSetting(${key})`,
+      () => setDoc(_doc('settings', key), { value }),
+      { rethrow: true },
+    );
+    _settings[key] = value;
+  } catch (error) {
+    if (hadPreviousValue) _settings[key] = previousValue;
+    else delete _settings[key];
+    throw error;
+  }
 }
 
 // ── localStorage 마이그레이션 헬퍼 ──────────────────────────────

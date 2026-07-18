@@ -31,5 +31,5 @@ test('Max top area render requests are coalesced through a scheduler', () => {
 });
 
 test('service worker cache version was bumped for Max render scheduler', () => {
-  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatodev-v\d{8}z\d+-[^']+';/);
 });

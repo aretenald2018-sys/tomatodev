@@ -53,7 +53,7 @@ export function renderHome(options = {}) {
     // 관리자 1회성 onboarding 배너 (스트릭 경고보다 먼저 prepend → 위에 배치)
     try { renderStreakWarning(); } catch(e) { console.warn('[streak-warning]', e); }
     try { renderAdminOnboarding(); } catch(e) { console.warn('[admin-onboarding]', e); }
-    // 토마토 정산은 모든 사용자에게 실행
+    // TomatoDev 정산은 세션 미리보기만 갱신하며 Firestore에는 쓰지 않는다.
     try { settleTomatoCycleIfNeeded(); } catch(e) { console.warn('[tomato] settle error:', e); }
     if (!isAdmin()) {
       try { renderTomatoCard(); } catch(e) { console.warn('[tomato] card error:', e); }

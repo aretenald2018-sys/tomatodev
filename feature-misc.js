@@ -10,6 +10,7 @@ import { getDeferredInstallPrompt } from './pwa-fcm.js';
 import { confirmAction } from './utils/confirm-modal.js';
 import { renderBuildInfo } from './utils/build-info.js';
 import { closeModal, openModal } from './app/overlay-stack.js';
+import { TOMATODEV_LOCAL_SETTING_KEYS } from './config.js';
 
 // ── 구역 제목 편집 ────────────────────────────────────────────────
 export function editSectionTitle(key) {
@@ -70,7 +71,7 @@ export async function runExportCSV(period) {
 
 // ── 설정 모달 ────────────────────────────────────────────────────
 export function openSettingsModal() {
-  document.getElementById('cfg-anthropic').value = localStorage.getItem('cfg_anthropic') || '';
+  document.getElementById('cfg-anthropic').value = localStorage.getItem(TOMATODEV_LOCAL_SETTING_KEYS.ANTHROPIC) || '';
   _renderNutritionDBList();
   document.getElementById('settings-modal').classList.add('open');
   renderBuildInfo().catch(e => console.warn('[settings] build info 표시 실패:', e));
@@ -113,7 +114,7 @@ export async function quickDeleteNutritionItem(id) {
 export function closeSettingsModal(e) { closeModal('settings-modal', e); }
 export function saveSettings() {
   const anthropic = document.getElementById('cfg-anthropic').value.trim();
-  if (anthropic) localStorage.setItem('cfg_anthropic', anthropic);
+  if (anthropic) localStorage.setItem(TOMATODEV_LOCAL_SETTING_KEYS.ANTHROPIC, anthropic);
 
   document.getElementById('settings-modal').classList.remove('open');
   showToast('설정이 저장되었습니다');

@@ -614,7 +614,7 @@ test('web bridge redacts precise GPS route from persistent queue but drains memo
     assert.equal(storedQueue[0].payload.gpsDump, undefined);
     assert.equal(storedQueue[0].payload.rawRoute, undefined);
 
-    store.set('tomatofarm_wear_workout_queue_v1', JSON.stringify([{
+    store.set('tomatodev_wear_workout_queue_v1', JSON.stringify([{
       id: storedQueue[0].id,
       queuedAt: Date.now(),
       payload: {

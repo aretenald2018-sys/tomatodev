@@ -1,8 +1,0 @@
-{
-  "projects": {
-    "tomatofarm": "exercise-management",
-    "default": "exercise-management"
-  },
-  "targets": {},
-  "etags": {}
-}

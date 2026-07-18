@@ -1,20 +1,29 @@
-// Service Worker for Dashboard3 (Life Streak)
-// 오프라인 캐싱 및 PWA 기능 제공
-
-// 캐시 버전: 타임스탬프 기반 자동 생성 — 파일 수정 시 SW 자동 업데이트
-// (SW 파일 내용이 1바이트라도 바뀌면 브라우저가 새 SW로 인식)
-const CACHE_VERSION = 'tomatofarm-v20260717z13-owner-day-journal-workout-inline-field-commit';
-const RUNTIME_CACHE = 'dashboard3-runtime';
+// Service Worker for TomatoDev.
+// Cache names are deliberately owned by this app because TomatoDev and the
+// production app currently share the github.io origin.
+const CACHE_PREFIX = 'tomatodev-';
+const CACHE_VERSION = 'tomatodev-v20260719z2-shared-write-fence';
+const RUNTIME_CACHE = 'tomatodev-runtime';
 importScripts('./runtime-assets.js');
 const STATIC_ASSETS = self.TOMATO_STATIC_ASSETS;
+
+const APP_SCOPE_URL = new URL('./', self.registration.scope);
+const APP_FALLBACK_URL = new URL('./index.html', APP_SCOPE_URL).href;
+
+async function matchOwnedCache(request) {
+  const staticCache = await caches.open(CACHE_VERSION);
+  const staticResponse = await staticCache.match(request);
+  if (staticResponse) return staticResponse;
+
+  const runtimeCache = await caches.open(RUNTIME_CACHE);
+  return runtimeCache.match(request);
+}
 
 self.addEventListener('install', (event) => {
   console.log('[SW] Install event fired');
   event.waitUntil(
     caches.open(CACHE_VERSION).then(async (cache) => {
       console.log('[SW] Caching static assets');
-      // 개별 add + allSettled로 실패 파일명을 반드시 로깅한다.
-      // (기존 addAll은 하나라도 실패하면 전체 롤백 + err.message에 파일명이 안 찍혀서 배포 디버깅 불가)
       const results = await Promise.allSettled(
         // A cache-version change must not repopulate the new SW cache from the
         // browser HTTP cache. Otherwise a fresh app shell can be paired with
@@ -22,21 +31,22 @@ self.addEventListener('install', (event) => {
         STATIC_ASSETS.map(url => cache.add(new Request(url, { cache: 'reload' })))
       );
       const failures = [];
-      results.forEach((r, i) => {
-        if (r.status === 'rejected') {
+      results.forEach((result, index) => {
+        if (result.status === 'rejected') {
           failures.push({
-            url: STATIC_ASSETS[i],
-            error: (r.reason && r.reason.message) ? r.reason.message : String(r.reason)
+            url: STATIC_ASSETS[index],
+            error: (result.reason && result.reason.message)
+              ? result.reason.message
+              : String(result.reason),
           });
         }
       });
       if (failures.length) {
         console.error(`[SW] Precache failed for ${failures.length}/${STATIC_ASSETS.length} files:`);
-        failures.forEach(f => console.error(`  - ${f.url}: ${f.error}`));
+        failures.forEach(failure => console.error(`  - ${failure.url}: ${failure.error}`));
         throw new Error(`Precache failed for ${failures.length}/${STATIC_ASSETS.length} files`);
-      } else {
-        console.log(`[SW] Precached ${STATIC_ASSETS.length} assets successfully`);
       }
+      console.log(`[SW] Precached ${STATIC_ASSETS.length} assets successfully`);
     }).then(() => self.skipWaiting())
   );
 });
@@ -44,13 +54,15 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   console.log('[SW] Activate event fired');
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_VERSION && name !== RUNTIME_CACHE)
-          .map((name) => caches.delete(name))
-      );
-    }).then(() => self.clients.claim())
+    caches.keys().then((cacheNames) => Promise.all(
+      cacheNames
+        .filter((name) => (
+          name.startsWith(CACHE_PREFIX)
+          && name !== CACHE_VERSION
+          && name !== RUNTIME_CACHE
+        ))
+        .map((name) => caches.delete(name))
+    )).then(() => self.clients.claim())
   );
 });
 
@@ -69,8 +81,21 @@ self.addEventListener('fetch', (event) => {
 
   if (request.method !== 'GET') return;
 
-  // HTML, CSS, JS (네트워크 우선)
-  if (url.pathname.endsWith('.html') || url.pathname.endsWith('.css') || url.pathname.endsWith('.js') || url.pathname === '/' || url.pathname === '/tomatofarm/') {
+  const isAppDocument = (
+    request.mode === 'navigate'
+    || request.destination === 'document'
+    || url.pathname === APP_SCOPE_URL.pathname
+    || url.href === APP_FALLBACK_URL
+  );
+  const isCodeAsset = (
+    url.pathname.endsWith('.html')
+    || url.pathname.endsWith('.css')
+    || url.pathname.endsWith('.js')
+  );
+
+  // App documents and code are network-first so a newly deployed app shell
+  // cannot be paired with stale modules.
+  if (isAppDocument || isCodeAsset) {
     event.respondWith(
       fetch(request, { cache: 'no-cache' })
         .then((response) => {
@@ -81,22 +106,23 @@ self.addEventListener('fetch', (event) => {
           });
           return response;
         })
-        .catch(() => {
-          return caches.match(request).then((cached) => {
-            if (cached) return cached;
-            if (request.destination === 'document') {
-              return caches.match('./index.html');
-            }
-          });
+        .catch(async () => {
+          const cached = await matchOwnedCache(request);
+          if (cached) return cached;
+          if (isAppDocument) {
+            const staticCache = await caches.open(CACHE_VERSION);
+            return staticCache.match(APP_FALLBACK_URL);
+          }
+          return undefined;
         })
     );
     return;
   }
 
-  // 이미지, 폰트 (캐시 우선)
-  if (url.pathname.includes('fonts.googleapis') || url.pathname.match(/\.(woff2|woff|png|jpg|jpeg|svg|gif|ico)$/)) {
+  // Images and fonts are cache-first, but only within TomatoDev-owned caches.
+  if (url.hostname === 'fonts.googleapis.com' || url.pathname.match(/\.(woff2|woff|png|jpg|jpeg|svg|gif|ico)$/)) {
     event.respondWith(
-      caches.match(request).then((cached) => {
+      matchOwnedCache(request).then((cached) => {
         if (cached) return cached;
         return fetch(request).then((response) => {
           if (!response || response.status !== 200) return response;
@@ -105,17 +131,15 @@ self.addEventListener('fetch', (event) => {
             cache.put(request, responseClone);
           });
           return response;
-        }).catch(() => caches.match(request));
+        }).catch(() => matchOwnedCache(request));
       })
     );
     return;
   }
 
-  // 기타 (네트워크 우선)
+  // Other GET requests are network-first with an app-owned fallback.
   event.respondWith(
-    fetch(request).catch(() => {
-      return caches.match(request);
-    })
+    fetch(request).catch(() => matchOwnedCache(request))
   );
 });
 

@@ -4,9 +4,10 @@
 
 import {
   db, doc, setDoc, deleteDoc, getDoc, collection, getDocs,
-  query, orderBy, onSnapshot, getCurrentUserRef, _fbOp,
+  query, orderBy, onSnapshot, getCurrentUserRef, getDataOwnerId,
+  resolveDataOwnerIdForAccount, _fbOp,
 } from './data-core.js';
-import { isAdmin, isAdminGuest, _simpleHash } from './data-auth.js';
+import { isAdmin, isAdminGuest } from './data-auth.js';
 import { _socialId, _isMySocialId } from './data-social-friends.js';
 
 // ── 알림 ────────────────────────────────────────────────────────
@@ -277,7 +278,8 @@ export async function getMySelfCheer() {
 }
 
 export async function getMySelfCheerRaw() {
-  const u = getCurrentUserRef();
+  const ownerId = getDataOwnerId();
+  const u = ownerId ? { id: ownerId } : null;
   if (!u) return null;
   try {
     const snap = await getDoc(doc(db, 'users', u.id, 'settings', 'self_cheer'));
@@ -291,7 +293,8 @@ export async function getMySelfCheerRaw() {
 // 규약: self-cheer는 **당일에만** 유효. 로컬 자정(다음 날 00:00)에 자동 만료되어
 // 다음 날은 시스템 자동 감지 축하로 돌아간다. 계속 표출하고 싶으면 매일 재설정.
 export async function saveMySelfCheer(payload) {
-  const u = getCurrentUserRef();
+  const ownerId = getDataOwnerId();
+  const u = ownerId ? { id: ownerId } : null;
   if (!u) throw new Error('로그인 필요');
   const rawText = (payload?.text || '').trim();
   const normalizedText = rawText.replace(/^님[\s,]*/, '').trim();
@@ -307,7 +310,8 @@ export async function saveMySelfCheer(payload) {
 }
 
 export async function deleteMySelfCheer() {
-  const u = getCurrentUserRef();
+  const ownerId = getDataOwnerId();
+  const u = ownerId ? { id: ownerId } : null;
   if (!u) return;
   // 텍스트 비우고 expires=0 으로 만료 처리 (docRef 삭제 대신 merge로 비활성)
   await setDoc(doc(db, 'users', u.id, 'settings', 'self_cheer'), {
@@ -318,7 +322,8 @@ export async function deleteMySelfCheer() {
 export async function getFriendSelfCheer(friendId) {
   if (!friendId) return null;
   try {
-    const snap = await getDoc(doc(db, 'users', friendId, 'settings', 'self_cheer'));
+    const ownerId = await resolveDataOwnerIdForAccount(friendId);
+    const snap = await getDoc(doc(db, 'users', ownerId, 'settings', 'self_cheer'));
     if (!snap.exists()) return null;
     const data = snap.data();
     if (!data?.text) return null;
@@ -625,20 +630,16 @@ export async function saveHeroMessage(targetUserId, dateKey, message, emoji = ''
 }
 
 // ── FCM 토큰 ────────────────────────────────────────────────────
-export async function saveFcmToken(token) {
-  if (!getCurrentUserRef() || !token) return;
-  const userId = _socialId();
-  const tokenHash = _simpleHash(token);
-  const docId = `${userId}_${tokenHash}`;
-  await setDoc(doc(db, '_fcm_tokens', docId), {
-    userId, token, updatedAt: Date.now(),
-  });
+const TOMATODEV_FCM_DISABLED_RESULT = Object.freeze({
+  ok: false,
+  enabled: false,
+  reason: 'tomatodev-fcm-disabled',
+});
+
+export async function saveFcmToken(_token) {
+  return TOMATODEV_FCM_DISABLED_RESULT;
 }
 
-export async function removeFcmToken(token) {
-  if (!getCurrentUserRef() || !token) return;
-  const userId = _socialId();
-  const tokenHash = _simpleHash(token);
-  const docId = `${userId}_${tokenHash}`;
-  await deleteDoc(doc(db, '_fcm_tokens', docId));
+export async function removeFcmToken(_token) {
+  return TOMATODEV_FCM_DISABLED_RESULT;
 }

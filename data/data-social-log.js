@@ -1,44 +1,19 @@
 // ================================================================
-// data-social-log.js — 로그인/액션 로그, 튜토리얼, 패치노트
+// data-social-log.js — TomatoDev 자동 로그 차단 + 패치노트 조회/관리
 // ================================================================
 
 import {
-  db, doc, setDoc, updateDoc, getDoc, arrayUnion, getCurrentUserRef,
+  db, doc, setDoc, getDoc,
 } from './data-core.js';
-import { trackEvent } from './data-analytics.js';
 
-export async function recordLogin() {
-  if (!getCurrentUserRef()?.id) return;
-  const uid = getCurrentUserRef().id;
-  trackEvent('session', 'session_start');
-  try {
-    await setDoc(doc(db, '_accounts', uid), { lastLoginAt: Date.now() }, { merge: true });
-  } catch(e) { console.warn('[track] login:', e); }
-}
+// TomatoDev must not emit automatic telemetry into the production project.
+// Keep these public compatibility entry points write-free; explicit admin
+// patchnote creation and read-only queries below remain available.
+export async function recordLogin() {}
 
-export async function recordTutorialDone() {
-  if (!getCurrentUserRef()?.id) return;
-  const uid = getCurrentUserRef().id;
-  try {
-    await setDoc(doc(db, '_accounts', uid), { tutorialDoneAt: Date.now() }, { merge: true });
-  } catch(e) { console.warn('[track] tutorial:', e); }
-}
+export async function recordTutorialDone() {}
 
-export async function markPatchnoteRead(patchnoteId) {
-  if (!patchnoteId || !getCurrentUserRef()) return;
-  const uid = getCurrentUserRef().id;
-  try {
-    // 원자적 append — 동시 열람에서 다른 유저의 readBy가 유실되지 않음.
-    await updateDoc(doc(db, '_patchnotes', patchnoteId), { readBy: arrayUnion(uid) });
-  } catch(e) {
-    // 문서가 없거나 updateDoc이 실패한 경우: 보수적으로 setDoc merge + arrayUnion 재시도
-    try {
-      await setDoc(doc(db, '_patchnotes', patchnoteId), { readBy: arrayUnion(uid) }, { merge: true });
-    } catch(e2) {
-      console.warn('[track] patchnote read:', e2);
-    }
-  }
-}
+export async function markPatchnoteRead(_patchnoteId) {}
 
 export async function getPatchnote(patchnoteId) {
   if (!patchnoteId) return null;
@@ -81,15 +56,4 @@ export async function createPatchnote({ title, body }) {
   return payload;
 }
 
-export async function recordAction(action) {
-  if (!getCurrentUserRef()?.id) return;
-  const uid = getCurrentUserRef().id;
-  trackEvent('social', action);
-  try {
-    const accDoc = await getDoc(doc(db, '_accounts', uid));
-    const data = accDoc.exists() ? accDoc.data() : {};
-    const log = (data.actionLog || []).slice(-29);
-    log.push({ action, at: Date.now() });
-    await setDoc(doc(db, '_accounts', uid), { actionLog: log }, { merge: true });
-  } catch(e) { console.warn('[track] action:', e); }
-}
+export async function recordAction(_action) {}

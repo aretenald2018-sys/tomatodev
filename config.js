@@ -6,6 +6,16 @@
 
 const PUBLIC_VWORLD_MAP_KEY = '0E32F4A9-EA52-3F07-9A67-AE92A8384CE6';
 
+export const TOMATODEV_LOCAL_SETTING_KEYS = Object.freeze({
+  ANTHROPIC: 'tomatodev_cfg_anthropic',
+  ALPHAVANTAGE: 'tomatodev_cfg_alphavantage',
+  RUNNING_MAP_PROVIDER: 'tomatodev_cfg_running_map_provider',
+  VWORLD_API_KEY: 'tomatodev_cfg_vworld_api_key',
+  VWORLD_MAP_LAYER: 'tomatodev_cfg_vworld_map_layer',
+  GOOGLE_MAPS_KEY: 'tomatodev_cfg_google_maps_key',
+  TMAP_APP_KEY: 'tomatodev_cfg_tmap_app_key',
+});
+
 function _readLocalSetting(key) {
   try {
     return typeof localStorage !== 'undefined' ? (localStorage.getItem(key) || '') : '';
@@ -16,16 +26,16 @@ function _readLocalSetting(key) {
 
 export const CONFIG = {
   // 비공개 키는 localStorage에서 로드 (앱 설정에서 입력)
-  get ANTHROPIC_KEY()    { return _readLocalSetting('cfg_anthropic'); },
-  get ALPHAVANTAGE_KEY() { return _readLocalSetting('cfg_alphavantage'); },
+  get ANTHROPIC_KEY()    { return _readLocalSetting(TOMATODEV_LOCAL_SETTING_KEYS.ANTHROPIC); },
+  get ALPHAVANTAGE_KEY() { return _readLocalSetting(TOMATODEV_LOCAL_SETTING_KEYS.ALPHAVANTAGE); },
   MAPS: {
-    get RUNNING_PROVIDER()  { return _readLocalSetting('cfg_running_map_provider') || 'auto'; },
-    get VWORLD_API_KEY()    { return _readLocalSetting('cfg_vworld_api_key') || PUBLIC_VWORLD_MAP_KEY; },
-    get VWORLD_MAP_LAYER()  { return _readLocalSetting('cfg_vworld_map_layer') || 'base'; },
-    get GOOGLE_MAPS_KEY()   { return _readLocalSetting('cfg_google_maps_key'); },
-    get TMAP_APP_KEY()      { return _readLocalSetting('cfg_tmap_app_key'); },
+    get RUNNING_PROVIDER()  { return _readLocalSetting(TOMATODEV_LOCAL_SETTING_KEYS.RUNNING_MAP_PROVIDER) || 'auto'; },
+    get VWORLD_API_KEY()    { return _readLocalSetting(TOMATODEV_LOCAL_SETTING_KEYS.VWORLD_API_KEY) || PUBLIC_VWORLD_MAP_KEY; },
+    get VWORLD_MAP_LAYER()  { return _readLocalSetting(TOMATODEV_LOCAL_SETTING_KEYS.VWORLD_MAP_LAYER) || 'base'; },
+    get GOOGLE_MAPS_KEY()   { return _readLocalSetting(TOMATODEV_LOCAL_SETTING_KEYS.GOOGLE_MAPS_KEY); },
+    get TMAP_APP_KEY()      { return _readLocalSetting(TOMATODEV_LOCAL_SETTING_KEYS.TMAP_APP_KEY); },
   },
-  // Groq는 Firebase Functions(geminiProxy) 서버측 secret으로 관리 — 클라 설정 불필요.
+  // TomatoDev는 운영 Firebase callable을 차단하므로 Groq 클라이언트 설정을 두지 않는다.
   APPCHECK_SITE_KEY: '6LfUKrYsAAAAAOhty9w6l1xUVaiGDmltI0obPVRM',
 
   // 식품의약품안전처 식품영양성분 DB (data.go.kr 일반인증키) — 자연식품+가공식품 모두 포함

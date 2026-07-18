@@ -1,8 +1,6 @@
 node_modules/
 .env
 *.apk
-!public/downloads/
-!public/downloads/*.apk
 .claude/
 .omo/
 .codex-worktrees/

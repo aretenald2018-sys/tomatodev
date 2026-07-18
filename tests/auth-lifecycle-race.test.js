@@ -7,6 +7,12 @@ const FEATURE_LOGIN_SOURCE = readFileSync(new URL('../feature-login.js', import.
 const DATA_ACCOUNT_SOURCE = readFileSync(new URL('../data/data-account.js', import.meta.url), 'utf8');
 const DATA_API_SOURCE = readFileSync(new URL('../data/data-api.js', import.meta.url), 'utf8');
 const AUTH_DATA_IMPORT_MARKER = "import('./" + "data.js')";
+const AUTH_KEYS = Object.freeze({
+  currentUser: 'tomatodev:auth:current-user:v1',
+  adminAuthenticated: 'tomatodev:auth:admin-authenticated:v1',
+  kimAuthenticated: 'tomatodev:auth:kim-authenticated:v1',
+  kimMode: 'tomatodev:auth:kim-mode:v1',
+});
 
 class MemoryStorage {
   constructor() {
@@ -64,6 +70,7 @@ async function loadAuthModule(overrides = {}) {
     'const harness = globalThis[' + JSON.stringify(harnessKey) + '];',
     "export const ADMIN_ID = 'admin';",
     "export const ADMIN_GUEST_ID = 'admin(guest)';",
+    'export const TOMATODEV_AUTH_STORAGE_KEYS = ' + JSON.stringify(AUTH_KEYS) + ';',
     'export function getCurrentUserRef() { return harness.currentUser; }',
     'export function setCurrentUserRef(user) { harness.currentUser = user; }',
     'export function getKimMode() { return harness.kimMode; }',
@@ -111,7 +118,7 @@ test('late IndexedDB restore cannot replace a user selected after restore began'
   const writes = [];
   const loaded = await loadAuthModule({
     idbGet(key) {
-      if (key === 'currentUser') {
+      if (key === AUTH_KEYS.currentUser) {
         readStarted.resolve();
         return backupRead.promise;
       }
@@ -136,8 +143,40 @@ test('late IndexedDB restore cannot replace a user selected after restore began'
 
     assert.equal(restoreResult, selectedUser);
     assert.equal(loaded.harness.currentUser, selectedUser);
-    assert.equal(JSON.parse(loaded.storage.getItem('currentUser')).id, 'owner-b');
-    assert.deepEqual(writes, ['currentUser:owner-b']);
+    assert.equal(JSON.parse(loaded.storage.getItem(AUTH_KEYS.currentUser)).id, 'owner-b');
+    assert.deepEqual(writes, [AUTH_KEYS.currentUser + ':owner-b']);
+  } finally {
+    loaded.cleanup();
+  }
+});
+
+test('TomatoDev auth ignores and preserves production-origin auth records', async () => {
+  const loaded = await loadAuthModule();
+  const productionUser = JSON.stringify({ id: 'production-owner' });
+  loaded.storage.setItem('currentUser', productionUser);
+  loaded.storage.setItem('admin_authenticated', 'true');
+  loaded.storage.setItem('kim_authenticated', 'true');
+  loaded.harness.idb.set('currentUser', { id: 'production-idb-owner' });
+  loaded.harness.idb.set('admin_authenticated', true);
+
+  try {
+    assert.equal(loaded.auth.loadSavedUser(), null);
+    assert.equal(await loaded.auth.restoreUserFromBackup(), null);
+
+    loaded.auth.setCurrentUser({ id: 'development-owner' });
+    await loaded.auth.waitForAuthPersistence();
+    assert.equal(
+      JSON.parse(loaded.storage.getItem(AUTH_KEYS.currentUser)).id,
+      'development-owner',
+    );
+
+    loaded.auth.setCurrentUser(null);
+    await loaded.auth.waitForAuthPersistence();
+    assert.equal(loaded.storage.getItem('currentUser'), productionUser);
+    assert.equal(loaded.storage.getItem('admin_authenticated'), 'true');
+    assert.equal(loaded.storage.getItem('kim_authenticated'), 'true');
+    assert.equal(loaded.harness.idb.get('currentUser').id, 'production-idb-owner');
+    assert.equal(loaded.harness.idb.get('admin_authenticated'), true);
   } finally {
     loaded.cleanup();
   }
@@ -183,17 +222,17 @@ test('auth IndexedDB writes and removals run on one ordered promise chain', asyn
 
     assert.equal(maxActiveOperations, 1);
     assert.deepEqual(operations, [
-      'set:currentUser:owner-a',
-      'set:admin_authenticated:true',
-      'remove:currentUser',
-      'remove:admin_authenticated',
-      'remove:kim_authenticated',
-      'set:currentUser:owner-b',
-      'remove:admin_authenticated',
+      'set:' + AUTH_KEYS.currentUser + ':owner-a',
+      'set:' + AUTH_KEYS.adminAuthenticated + ':true',
+      'remove:' + AUTH_KEYS.currentUser,
+      'remove:' + AUTH_KEYS.adminAuthenticated,
+      'remove:' + AUTH_KEYS.kimAuthenticated,
+      'set:' + AUTH_KEYS.currentUser + ':owner-b',
+      'remove:' + AUTH_KEYS.adminAuthenticated,
     ]);
-    assert.equal(idb.get('currentUser').id, 'owner-b');
-    assert.equal(idb.has('admin_authenticated'), false);
-    assert.equal(idb.has('kim_authenticated'), false);
+    assert.equal(idb.get(AUTH_KEYS.currentUser).id, 'owner-b');
+    assert.equal(idb.has(AUTH_KEYS.adminAuthenticated), false);
+    assert.equal(idb.has(AUTH_KEYS.kimAuthenticated), false);
   } finally {
     loaded.cleanup();
   }
@@ -231,16 +270,17 @@ test('both account-exit flows delay reload until auth persistence is cleared', a
   const confirmLogout = new Function(
     'localStorage',
     'location',
+    'TOMATODEV_AUTH_STORAGE_KEYS',
     confirmLogoutSource + '\nreturn confirmLogout;',
-  )(storage, location);
+  )(storage, location, AUTH_KEYS);
 
   const confirmPromise = confirmLogout(auth);
   await Promise.resolve();
   await Promise.resolve();
   assert.deepEqual(events, [
     'clear-user',
-    'storage:admin_authenticated',
-    'storage:kim_authenticated',
+    'storage:' + AUTH_KEYS.adminAuthenticated,
+    'storage:' + AUTH_KEYS.kimAuthenticated,
     'clear-admin',
     'wait-start',
   ]);
@@ -274,6 +314,7 @@ test('both account-exit flows delay reload until auth persistence is cleared', a
     'lockDiv',
     'location',
     '__data',
+    'TOMATODEV_AUTH_STORAGE_KEYS',
     otherAccountSource,
   )(
     target,
@@ -282,6 +323,7 @@ test('both account-exit flows delay reload until auth persistence is cleared', a
     lockDiv,
     location,
     otherAuth,
+    AUTH_KEYS,
   );
 
   const eventStart = events.length;
@@ -290,8 +332,8 @@ test('both account-exit flows delay reload until auth persistence is cleared', a
   await Promise.resolve();
   assert.deepEqual(events.slice(eventStart), [
     'clear-user',
-    'storage:admin_authenticated',
-    'storage:kim_authenticated',
+    'storage:' + AUTH_KEYS.adminAuthenticated,
+    'storage:' + AUTH_KEYS.kimAuthenticated,
     'other-wait-start',
   ]);
   otherWaitGate.resolve();

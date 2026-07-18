@@ -10,7 +10,7 @@ const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8') + readFi
 const setEditorJs = readFileSync(new URL('../workout/set-editor.js', import.meta.url), 'utf8');
 
 test('active workout draft persists the full in-progress session locally', () => {
-  assert.match(timersJs, /_LS_ACTIVE_WORKOUT_DRAFT_KEY_PREFIX\s*=\s*'tomatofarm_active_workout_draft_'/);
+  assert.match(timersJs, /_LS_ACTIVE_WORKOUT_DRAFT_KEY_PREFIX\s*=\s*'tomatodev_active_workout_draft_'/);
   assert.match(timersJs, /export function wtPersistActiveWorkoutDraft/);
   assert.match(timersJs, /export function wtApplyActiveWorkoutDraft/);
   assert.match(timersJs, /export function wtHasActiveWorkoutDraft/);
@@ -76,5 +76,5 @@ test('app update reload flushes workout draft and changes copy while workout is 
 });
 
 test('service worker cache version was bumped for recovery assets', () => {
-  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatodev-v\d{8}z\d+-[^']+';/);
 });

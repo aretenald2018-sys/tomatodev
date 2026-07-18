@@ -37,10 +37,10 @@ try {
   const originalSetItem = Storage.prototype.setItem;
   window.__draftWrites = 0;
   Storage.prototype.setItem = function(key, value) {
-    if (String(key).startsWith('tomatofarm_running_session_draft')) window.__draftWrites += 1;
+    if (String(key).startsWith('tomatodev_running_session_draft')) window.__draftWrites += 1;
     return originalSetItem.call(this, key, value);
   };
-  localStorage.setItem('currentUser', JSON.stringify({ id: 'mobile-lossless-runner' }));
+  localStorage.setItem('tomatodev:auth:current-user:v1', JSON.stringify({ id: 'mobile-lossless-runner' }));
   window.__draftWrites = 0;
   window._mealPhotos = {};
   window.showToast = () => {};
@@ -90,9 +90,9 @@ try {
   const rejectionError = document.querySelector('.wt-running-live-status')?.textContent || '';
   const routePointWrites = window.__draftWrites;
   document.querySelector('[data-running-action="pause"]').click();
-  const draftRaw = localStorage.getItem('tomatofarm_running_session_draft_mobile-lossless-runner');
-  const activeRaw = localStorage.getItem('tomatofarm_running_session_draft_active');
-  const draft = draftStore.readRunningDraftRecord(localStorage, 'tomatofarm_running_session_draft_mobile-lossless-runner');
+  const draftRaw = localStorage.getItem('tomatodev_running_session_draft_mobile-lossless-runner');
+  const activeRaw = localStorage.getItem('tomatodev_running_session_draft_active');
+  const draft = draftStore.readRunningDraftRecord(localStorage, 'tomatodev_running_session_draft_mobile-lossless-runner');
   const activeMarker = JSON.parse(activeRaw);
   document.querySelector('[data-running-action="finish"]').click();
   await new Promise(resolve => setTimeout(resolve, 50));
@@ -144,7 +144,7 @@ test('mobile capture preserves the full route and sends every captured coordinat
   assert.ok(result.routePointWrites <= 3, `expected one chunked draft checkpoint, got ${result.routePointWrites}`);
   assert.equal(result.draft.route.length, result.live.pointCount);
   assert.equal(result.activeMarker.ownerId, 'mobile-lossless-runner');
-  assert.equal(result.activeMarker.draftKey, 'tomatofarm_running_session_draft_mobile-lossless-runner');
+  assert.equal(result.activeMarker.draftKey, 'tomatodev_running_session_draft_mobile-lossless-runner');
   assert.equal(Object.hasOwn(result.activeMarker, 'route'), false);
   assert.ok(result.activeBytes < 512);
   assert.equal(result.draft.context, 'pause');
@@ -189,7 +189,7 @@ test('mobile draft keeps a six-hour 1Hz route once and uses a small active marke
     version: 1,
     ownerId: 'mobile-lossless-runner',
     phase: 'active',
-    draftKey: 'tomatofarm_running_session_draft_mobile-lossless-runner',
+    draftKey: 'tomatodev_running_session_draft_mobile-lossless-runner',
     updatedAt: route.at(-1).ts,
   }));
   const chromiumQuotaBytes = 5 * 1024 * 1024;

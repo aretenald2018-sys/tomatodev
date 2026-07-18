@@ -44,5 +44,5 @@ test('stats raw export button uses compact TDS-style controls and bumped cache',
   assert.match(styleCss, /border:\s*1px solid var\(--seed-stroke-neutral\)/);
   assert.match(styleCss, /border-radius:\s*var\(--seed-r-full\)/);
   assert.match(styleCss, /\.stats-raw-export-btn:focus-visible/);
-  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatodev-v\d{8}z\d+-[^']+';/);
 });

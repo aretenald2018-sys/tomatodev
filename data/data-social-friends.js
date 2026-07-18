@@ -5,7 +5,7 @@
 import {
   db, doc, setDoc, deleteDoc, getDoc, collection, getDocs,
   query, orderBy, limit,
-  getCurrentUserRef, ADMIN_ID,
+  getCurrentUserRef, ADMIN_ID, resolveDataOwnerIdForAccount,
 } from './data-core.js';
 import { isAdminGuest } from './data-auth.js';
 
@@ -98,7 +98,8 @@ export async function getPendingRequests() {
 
 export async function getFriendData(friendId, colName) {
   try {
-    const snap = await getDocs(collection(db, 'users', friendId, colName));
+    const ownerId = await resolveDataOwnerIdForAccount(friendId);
+    const snap = await getDocs(collection(db, 'users', ownerId, colName));
     const items = [];
     snap.forEach(d => items.push({ id: d.id, ...d.data() }));
     return items;
@@ -107,7 +108,8 @@ export async function getFriendData(friendId, colName) {
 
 export async function getFriendWorkout(friendId, dateKey) {
   try {
-    const snap = await getDoc(doc(db, 'users', friendId, 'workouts', dateKey));
+    const ownerId = await resolveDataOwnerIdForAccount(friendId);
+    const snap = await getDoc(doc(db, 'users', ownerId, 'workouts', dateKey));
     return snap.exists() ? snap.data() : null;
   } catch { return null; }
 }
@@ -117,8 +119,9 @@ export async function getFriendWorkout(friendId, dateKey) {
 export async function getFriendLatestTomatoCycle(friendId) {
   if (!friendId) return null;
   try {
+    const ownerId = await resolveDataOwnerIdForAccount(friendId);
     const q = query(
-      collection(db, 'users', friendId, 'tomato_cycles'),
+      collection(db, 'users', ownerId, 'tomato_cycles'),
       orderBy('cycleEnd', 'desc'),
       limit(1),
     );
@@ -130,7 +133,8 @@ export async function getFriendLatestTomatoCycle(friendId) {
     // orderBy가 인덱스 필요 시 실패 시 legacy fallback (데이터 적을 때만 사용)
     console.warn('[tomato-cycle] getFriend (fallback to full scan):', e?.message || e);
     try {
-      const snap = await getDocs(collection(db, 'users', friendId, 'tomato_cycles'));
+      const ownerId = await resolveDataOwnerIdForAccount(friendId);
+      const snap = await getDocs(collection(db, 'users', ownerId, 'tomato_cycles'));
       let latest = null;
       snap.forEach((d) => {
         const data = d.data();
@@ -144,7 +148,8 @@ export async function getFriendLatestTomatoCycle(friendId) {
 
 export async function getFriendTomatoState(friendId) {
   try {
-    const snap = await getDoc(doc(db, 'users', friendId, 'settings', 'tomato_state'));
+    const ownerId = await resolveDataOwnerIdForAccount(friendId);
+    const snap = await getDoc(doc(db, 'users', ownerId, 'settings', 'tomato_state'));
     return snap.exists() ? (snap.data().value || { totalTomatoes: 0, giftedReceived: 0, giftedSent: 0 })
       : { totalTomatoes: 0, giftedReceived: 0, giftedSent: 0 };
   } catch { return { totalTomatoes: 0, giftedReceived: 0, giftedSent: 0 }; }

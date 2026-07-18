@@ -1,6 +1,7 @@
 import { showToast } from './ui/toast.js';
 import { confirmAction } from './utils/confirm-modal.js';
 import { openFriendProfile } from './home/friend-profile.js';
+import { TOMATODEV_AUTH_STORAGE_KEYS } from './data.js';
 // ================================================================
 // feature-login.js — 로그인/가입/잠금/길드 온보딩 흐름
 // ================================================================
@@ -49,26 +50,9 @@ function _continueToAppAfterLogin() {
 }
 
 function _runDeferredLoginMaintenance() {
-  // 로그인 화면은 원격 계정 정리와 무관하게 즉시 사용할 수 있어야 한다.
-  // 특히 APK의 느린 네트워크에서 이 작업이 로그인 진입을 막으면 안 된다.
-  Promise.resolve().then(async () => {
-    const { hashPassword, saveAccount, getAccountList, recoverDeletedAccounts } = await import('./data.js');
-    const { getAdminId } = await import('./data.js');
-
-    if (!localStorage.getItem('accounts_recovered_v1')) {
-      const cnt = await recoverDeletedAccounts();
-      if (cnt > 0) console.log('[login] 삭제된 계정 ' + cnt + '개 복구됨');
-      localStorage.setItem('accounts_recovered_v1', 'done');
-    }
-
-    const freshAccounts = await getAccountList();
-    const adminAcc = freshAccounts.find(a => a.id === getAdminId());
-    if (adminAcc) {
-      adminAcc.hasPassword = true;
-      adminAcc.passwordHash = hashPassword('kimtw100');
-      await saveAccount(adminAcc);
-    }
-  }).catch((error) => console.warn('[login] deferred account maintenance failed:', error));
+  // TomatoDev shares the production Firebase project. Opening its login screen
+  // must therefore remain read-only: no account recovery or password rewrite.
+  console.info('[login] automatic account maintenance is disabled on TomatoDev');
 }
 
 function _needsPassword(account) {
@@ -103,8 +87,8 @@ function _hasRestorableRunningDraftForUser(user) {
   if (!user || typeof localStorage === 'undefined') return false;
   const ownerId = _runningDraftOwnerId(user);
   const keys = [
-    'tomatofarm_running_session_draft_' + encodeURIComponent(ownerId),
-    'tomatofarm_running_session_draft_active',
+    'tomatodev_running_session_draft_' + encodeURIComponent(ownerId),
+    'tomatodev_running_session_draft_active',
   ];
   for (const key of keys) {
     try {
@@ -112,7 +96,7 @@ function _hasRestorableRunningDraftForUser(user) {
       if (!raw) continue;
       let draft = JSON.parse(raw);
       if (draft?.draftKey) {
-        const ownerKey = 'tomatofarm_running_session_draft_' + encodeURIComponent(ownerId);
+        const ownerKey = 'tomatodev_running_session_draft_' + encodeURIComponent(ownerId);
         if (draft.draftKey !== ownerKey) continue;
         const ownerRaw = localStorage.getItem(ownerKey);
         if (!ownerRaw) continue;
@@ -142,21 +126,17 @@ async function initLoginScreen() {
     const isKimSaved = isAdminInstance(saved.id);
     if (isKimSaved) {
       // 이미 이 세션에서 인증 완료했으면 바로 진입
-      if (localStorage.getItem('admin_authenticated') || localStorage.getItem('kim_authenticated')) {
+      if (localStorage.getItem(TOMATODEV_AUTH_STORAGE_KEYS.adminAuthenticated)
+          || localStorage.getItem(TOMATODEV_AUTH_STORAGE_KEYS.kimAuthenticated)) {
         const { recordLogin: rlAuto } = await import('./data.js');
         rlAuto();
         void _continueToAppAfterLogin();
         return;
       }
       // 김태우 잠금 화면
-      const { setCurrentUser, hashPassword, verifyPassword, getAccountList, saveAccount, backupAdminAuth } = await import('./data.js');
+      const { setCurrentUser, verifyPassword, getAccountList, backupAdminAuth } = await import('./data.js');
       const accounts = await getAccountList();
-      let kimAcc = accounts.find(a => a.id === getAdminId()) || accounts.find(a => a.id === saved.id);
-      if (kimAcc && (!kimAcc.hasPassword || !kimAcc.passwordHash)) {
-        kimAcc.hasPassword = true;
-        kimAcc.passwordHash = hashPassword('kimtw100');
-        await saveAccount(kimAcc);
-      }
+      const kimAcc = accounts.find(a => a.id === getAdminId()) || accounts.find(a => a.id === saved.id);
       document.getElementById('loading').style.display = 'none';
       document.getElementById('login-screen').style.display = 'none';
       const lockDiv = document.createElement('div');
@@ -176,7 +156,7 @@ async function initLoginScreen() {
         const pw = document.getElementById('kim-lock-pw').value;
         if (kimAcc && verifyPassword(kimAcc, pw)) {
           setCurrentUser(kimAcc);
-          localStorage.setItem('admin_authenticated', 'true');
+          localStorage.setItem(TOMATODEV_AUTH_STORAGE_KEYS.adminAuthenticated, 'true');
           backupAdminAuth();
           import('./data.js').then(m => m.recordLogin());
           lockDiv.remove();
@@ -190,8 +170,8 @@ async function initLoginScreen() {
       });
       document.getElementById('kim-lock-other').onclick = async () => {
         setCurrentUser(null);
-        localStorage.removeItem('admin_authenticated');
-        localStorage.removeItem('kim_authenticated');
+        localStorage.removeItem(TOMATODEV_AUTH_STORAGE_KEYS.adminAuthenticated);
+        localStorage.removeItem(TOMATODEV_AUTH_STORAGE_KEYS.kimAuthenticated);
         const { waitForAuthPersistence } = await import('./data.js');
         await waitForAuthPersistence();
         lockDiv.remove();
@@ -804,17 +784,17 @@ async function createAccountAndLogin() {
     setCurrentUser(found);
     const { backupAdminAuth: bkAuth, recordLogin: rl1 } = await import('./data.js');
     if (found.id === _gAI() || _isAI(found.id)) {
-      localStorage.setItem('admin_authenticated', 'true');
+      localStorage.setItem(TOMATODEV_AUTH_STORAGE_KEYS.adminAuthenticated, 'true');
       bkAuth();
     } else {
-      localStorage.removeItem('admin_authenticated');
-      localStorage.removeItem('kim_authenticated');
+      localStorage.removeItem(TOMATODEV_AUTH_STORAGE_KEYS.adminAuthenticated);
+      localStorage.removeItem(TOMATODEV_AUTH_STORAGE_KEYS.kimAuthenticated);
     }
     rl1();
   } else {
     setCurrentUser(found);
-    localStorage.removeItem('admin_authenticated');
-    localStorage.removeItem('kim_authenticated');
+    localStorage.removeItem(TOMATODEV_AUTH_STORAGE_KEYS.adminAuthenticated);
+    localStorage.removeItem(TOMATODEV_AUTH_STORAGE_KEYS.kimAuthenticated);
     const { recordLogin: rl2 } = await import('./data.js');
     rl2();
   }
@@ -869,8 +849,8 @@ export async function logoutAccount() {
 async function confirmLogout() {
   const { setCurrentUser, clearAdminAuth } = await import('./data.js');
   setCurrentUser(null);
-  localStorage.removeItem('admin_authenticated');
-  localStorage.removeItem('kim_authenticated');
+  localStorage.removeItem(TOMATODEV_AUTH_STORAGE_KEYS.adminAuthenticated);
+  localStorage.removeItem(TOMATODEV_AUTH_STORAGE_KEYS.kimAuthenticated);
   clearAdminAuth();
   const { waitForAuthPersistence } = await import('./data.js');
   await waitForAuthPersistence();

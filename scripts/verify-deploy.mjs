@@ -7,6 +7,7 @@ const expectedCommitInput = process.argv[3] || '';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const deployRetries = Number(process.env.VERIFY_DEPLOY_RETRIES || 36);
 const deployDelayMs = Number(process.env.VERIFY_DEPLOY_DELAY_MS || 5000);
+const EXPECTED_APP = 'tomatodev';
 
 if (!baseArg) {
   console.error('Usage: node scripts/verify-deploy.mjs <base-url> [expected-commit]');
@@ -96,6 +97,10 @@ async function waitForDeploySnapshot() {
         commitMatches(deployedCommit, expectedCommit),
         `deployed commit mismatch: expected ${expectedCommitInput || expectedCommit}, got ${deployedCommit}`,
       );
+      assertOk(
+        buildInfo.app === EXPECTED_APP,
+        `deployed app mismatch: expected ${EXPECTED_APP}, got ${buildInfo.app || '(missing)'}`,
+      );
       assertOk(buildInfo.cacheVersion === swCacheVersion, `cacheVersion mismatch: build-info=${buildInfo.cacheVersion}, sw=${swCacheVersion}`);
       return { buildInfo, swText, runtimeAssetsText };
     } catch (e) {
@@ -129,6 +134,10 @@ for (const item of keyFiles) {
 }
 
 const indexText = await fetchText('index.html', { retries: 2, delayMs: 2000 });
+assertOk(
+  /<html[^>]*\bdata-environment=["']tomatodev["']/iu.test(indexText),
+  'index.html TomatoDev environment marker missing',
+);
 assertOk(!indexText.includes('20260421e'), 'index.html still references stale 20260421e assets');
 
 console.log(`[deploy-verify] ok ${buildInfo.shortCommit || buildInfo.commit} ${buildInfo.cacheVersion} static=${staticAssets.length}`);

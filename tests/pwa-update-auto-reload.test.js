@@ -30,9 +30,14 @@ function loadPwaRegisterHarness({ activeDraft = false } = {}) {
     URL,
     clearTimeout() {},
     console: { error() {}, log() {}, warn() {} },
+    document: {
+      currentScript: { src: 'https://aretenald2018-sys.github.io/tomatodev/pwa-register.js' },
+      documentElement: { dataset: { webFcm: 'disabled' } },
+    },
     location: {
       hostname: 'aretenald2018-sys.github.io',
-      href: 'https://aretenald2018-sys.github.io/tomatofarm/',
+      href: 'https://aretenald2018-sys.github.io/tomatodev/',
+      origin: 'https://aretenald2018-sys.github.io',
     },
     navigator: {
       serviceWorker: {
@@ -46,13 +51,13 @@ function loadPwaRegisterHarness({ activeDraft = false } = {}) {
         getRegistrations() {
           return Promise.resolve([]);
         },
-        ready: Promise.resolve({ scope: 'https://aretenald2018-sys.github.io/tomatofarm/' }),
+        ready: Promise.resolve({ scope: 'https://aretenald2018-sys.github.io/tomatodev/' }),
         register() {
           return Promise.resolve({
             active: {},
             addEventListener() {},
             installing: null,
-            scope: 'https://aretenald2018-sys.github.io/tomatofarm/',
+            scope: 'https://aretenald2018-sys.github.io/tomatodev/',
             update() { return Promise.resolve(this); },
             waiting: null,
           });
@@ -91,7 +96,7 @@ function loadPwaRegisterHarness({ activeDraft = false } = {}) {
 
 function makeWaitingRegistration(state) {
   const worker = {
-    scriptURL: 'https://aretenald2018-sys.github.io/tomatofarm/sw.js',
+    scriptURL: 'https://aretenald2018-sys.github.io/tomatodev/sw.js',
     state: 'installed',
     postMessage(message) {
       state.messages.push(message);
@@ -99,7 +104,7 @@ function makeWaitingRegistration(state) {
   };
   return {
     registration: {
-      scope: 'https://aretenald2018-sys.github.io/tomatofarm/',
+      scope: 'https://aretenald2018-sys.github.io/tomatodev/',
       waiting: worker,
       update() { return Promise.resolve(this); },
     },
@@ -168,14 +173,14 @@ test('service worker controllerchange still reloads once', () => {
   assert.equal(state.banners.length, 0);
 });
 
-test('production app uses canonical asset URLs and one service worker cache namespace', () => {
+test('development app uses canonical asset URLs and one service worker cache namespace', () => {
   assert.match(indexHtml, /<script src="pwa-register\.js"><\/script>/);
   assert.match(indexHtml, /<script type="module" src="app\.js"><\/script>/);
   assert.match(appJs, /utils\/build-info\.js/);
   assert.match(appJs, /workout\/index\.js/);
   assert.doesNotMatch(appJs, /render-workout\.js/);
   assert.doesNotMatch(indexHtml + appJs, /\?v=/);
-  assert.match(swJs, /const CACHE_VERSION = 'tomatofarm-v\d{8}z\d+-[^']+';/);
+  assert.match(swJs, /const CACHE_VERSION = 'tomatodev-v\d{8}z\d+-[^']+';/);
   assert.match(swJs, /STATIC_ASSETS\.map\(url => cache\.add\(new Request\(url, \{ cache: 'reload' \}\)\)\)/);
   assert.match(swJs, /const activation = self\.skipWaiting\(\);[\s\S]*?event\.waitUntil\(activation\);/);
 });

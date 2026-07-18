@@ -1,170 +1,24 @@
 import { showToast } from './ui/toast.js';
 import { applyInstallBannerLayout, dismissInstallBanner } from './pwa/install-banner.js';
 // ================================================================
-// pwa-fcm.js — FCM 푸시 알림 + PWA 설치 배너
+// pwa-fcm.js — TomatoDev FCM 차단 + PWA 설치 배너
 // ================================================================
-
-import { CONFIG } from './config.js';
-import { refreshNotifCenter } from './home/index.js';
 
 // ── 상태 ──────────────────────────────────────────────────────────
 let _deferredInstallPrompt = null;
 let _installBannerTimer = null;
-const FCM_SW_SCOPE = '/tomatofarm/firebase-cloud-messaging-push/';
-
-async function _getFCMServiceWorkerRegistration() {
-  if (typeof navigator === 'undefined' || !navigator.serviceWorker) return null;
-  if (['localhost', '127.0.0.1', ''].includes(location.hostname)) return null;
-
-  if (typeof window.__getTomatoFcmSWRegistration === 'function') {
-    return window.__getTomatoFcmSWRegistration();
-  }
-  if (window.__tomatoFcmSWRegistrationPromise) {
-    return window.__tomatoFcmSWRegistrationPromise;
-  }
-
-  window.__tomatoFcmSWRegistrationPromise = navigator.serviceWorker
-    .register('firebase-messaging-sw.js', { scope: FCM_SW_SCOPE })
-    .catch((error) => {
-      window.__tomatoFcmSWRegistrationPromise = null;
-      console.warn('[FCM] Messaging SW 등록 실패:', error.message);
-      return null;
-    });
-  return window.__tomatoFcmSWRegistrationPromise;
-}
+const TOMATODEV_FCM_DISABLED_RESULT = Object.freeze({
+  ok: false,
+  enabled: false,
+  reason: 'tomatodev-fcm-disabled',
+});
 
 // ── FCM 초기화 ────────────────────────────────────────────────────
+// TomatoDev shares the operating Firebase project. Keep the public initializer
+// stable, but never request permission, register push, or persist an FCM token
+// on web, Android/Capacitor, iOS, or any future platform.
 export async function initFCM() {
-  try {
-    const isNative = window.Capacitor?.getPlatform?.() === 'android' ||
-        window.Capacitor?.getPlatform?.() === 'ios';
-
-    if (localStorage.getItem('fcm_permission_granted') === '1') {
-      if (isNative) {
-        try {
-          const { PushNotifications } = await import("@capacitor/push-notifications");
-          const check = await PushNotifications.checkPermissions();
-          if (check.receive === 'granted') {
-            await PushNotifications.register();
-          } else {
-            localStorage.removeItem('fcm_permission_granted');
-          }
-        } catch(e) { console.warn('[FCM] re-register failed:', e); }
-      } else if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-        await _registerFCMToken();
-      } else if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
-        localStorage.removeItem('fcm_permission_granted');
-      }
-      return;
-    }
-
-    if (isNative) { await _initFCMCapacitor(); return; }
-
-    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-      localStorage.setItem('fcm_permission_granted', '1');
-      await _registerFCMToken();
-    }
-  } catch(e) {
-    console.warn('[FCM] 초기화 실패:', e);
-  }
-}
-
-async function _registerFCMToken() {
-  try {
-    const { getMessaging, getToken, onMessage } = await import(
-      "https://www.gstatic.com/firebasejs/11.6.0/firebase-messaging.js"
-    );
-    const { saveFcmToken } = await import('./data.js');
-    const { initializeApp, getApps } = await import(
-      "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js"
-    );
-    const apps = getApps();
-    const app = apps.length ? apps[0] : initializeApp(CONFIG.FIREBASE);
-    const messaging = getMessaging(app);
-    const serviceWorkerRegistration = await _getFCMServiceWorkerRegistration();
-    if (!serviceWorkerRegistration) {
-      console.warn('[FCM] Web 서비스워커 등록을 찾지 못해 토큰 등록을 건너뜁니다.');
-      return;
-    }
-
-    const VAPID_KEY = 'BJDhMdCeKUGoXlAle3kS1BNQzdK-os-COSLftTtlWa-qilyv8C8Fc-TFQQNwXcIySZmIupicFsuH9cmjLY9gBZc';
-    const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration });
-    if (token) {
-      await saveFcmToken(token);
-      console.log('[FCM] 토큰 등록 완료');
-    }
-
-    onMessage(messaging, (payload) => {
-      const body = payload.notification?.body || '새 알림이 도착했어요';
-      const toastEl = document.createElement('div');
-      toastEl.className = 'tds-toast show';
-      toastEl.textContent = body;
-      document.body.appendChild(toastEl);
-      setTimeout(() => { toastEl.classList.remove('show'); setTimeout(() => toastEl.remove(), 300); }, 3000);
-      if (typeof refreshNotifCenter === 'function') refreshNotifCenter();
-      // 포그라운드 "수신"은 "사용자가 읽었다"와 다르다. admin 지표 왜곡 방지를 위해 자동 마킹하지 않음.
-    });
-  } catch(e) {
-    console.warn('[FCM] 토큰 등록 실패:', e);
-  }
-}
-
-async function _initFCMCapacitor() {
-  try {
-    const { PushNotifications } = await import("@capacitor/push-notifications");
-    const { saveFcmToken } = await import('./data.js');
-
-    if (window.Capacitor?.getPlatform?.() === 'android') {
-      await PushNotifications.createChannel({
-        id: 'tomatofarm_default',
-        name: '토마토팜 알림',
-        description: '토마토팜 앱 알림',
-        importance: 5,
-        visibility: 1,
-        sound: 'default',
-        vibration: true,
-      });
-    }
-
-    const checkResult = await PushNotifications.checkPermissions();
-
-    if (checkResult.receive !== 'granted') {
-      const permResult = await PushNotifications.requestPermissions();
-      if (permResult.receive !== 'granted') {
-        console.log('[FCM-Cap] 알림 권한 거부됨');
-        console.log('[FCM-Cap] 알림 권한 거부 — 팝업 없이 종료');
-        return;
-      }
-    }
-
-    localStorage.setItem('fcm_permission_granted', '1');
-    await PushNotifications.register();
-
-    PushNotifications.addListener('registration', async (token) => {
-      await saveFcmToken(token.value);
-      console.log('[FCM-Cap] 토큰 등록 완료');
-    });
-
-    PushNotifications.addListener('registrationError', (err) => {
-      console.warn('[FCM-Cap] 등록 실패:', err);
-    });
-
-    PushNotifications.addListener('pushNotificationReceived', (notification) => {
-      const body = notification.body || '새 알림이 도착했어요';
-      const toastEl = document.createElement('div');
-      toastEl.className = 'tds-toast show';
-      toastEl.textContent = body;
-      document.body.appendChild(toastEl);
-      setTimeout(() => { toastEl.classList.remove('show'); setTimeout(() => toastEl.remove(), 300); }, 3000);
-      if (typeof refreshNotifCenter === 'function') refreshNotifCenter();
-    });
-
-    PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-      if (typeof refreshNotifCenter === 'function') refreshNotifCenter();
-    });
-  } catch(e) {
-    console.warn('[FCM-Cap] 초기화 실패:', e);
-  }
+  return TOMATODEV_FCM_DISABLED_RESULT;
 }
 
 // ── PWA 설치 배너 ────────────────────────────────────────────────
@@ -297,24 +151,3 @@ function _bindPwaActions(root = document) {
 }
 
 _bindPwaActions();
-
-// Service Worker → 클라이언트 메시지 수신
-// firebase-messaging-sw.js의 notificationclick 핸들러에서 postMessage({ type:'notif_clicked', notifId })
-if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
-  navigator.serviceWorker.addEventListener('message', (event) => {
-    const msg = event?.data;
-    if (!msg || typeof msg !== 'object') return;
-    if (msg.type !== 'notif_clicked') return;
-    const id = msg.notifId;
-    // 실제 notification id만 허용. fallback tag 등은 차단.
-    if (typeof id !== 'string' || !id || id === 'tomatofarm-notif') return;
-    // 형식 검증: sendNotification은 `${toUserId}_${Date.now()}` 형태로 id를 만든다
-    if (!/^[^\s]+_\d{10,}$/.test(id)) return;
-    import('./data.js').then(({ markNotificationRead }) => {
-      try { markNotificationRead(id); } catch (_) { /* ignore */ }
-    }).catch(() => {});
-    if (typeof refreshNotifCenter === 'function') {
-      try { refreshNotifCenter(); } catch (_) { /* ignore */ }
-    }
-  });
-}

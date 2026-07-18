@@ -9,10 +9,12 @@
 const _isLocalDev = ['localhost', '127.0.0.1', ''].includes(location.hostname);
 const APP_SW_SCOPE = new URL('./', location.href).pathname;
 const FCM_SW_SCOPE = new URL('firebase-cloud-messaging-push/', new URL('./', location.href)).pathname;
+const FCM_SW_SCOPE_URL = new URL(FCM_SW_SCOPE, location.origin).href;
+const WEB_FCM_ENABLED = document.documentElement?.dataset?.webFcm === 'enabled';
 const _pendingAppSWUpdates = new Map();
 const APP_SW_AUTO_RELOAD_TIMEOUT_MS = 1500;
-const APP_SW_AUTO_RELOAD_ATTEMPT_PREFIX = 'tomatofarm_app_sw_auto_reload_attempted:';
-const APP_SW_UPDATE_HANDLED_PREFIX = 'tomatofarm_app_sw_update_handled:';
+const APP_SW_AUTO_RELOAD_ATTEMPT_PREFIX = 'tomatodev_app_sw_auto_reload_attempted:';
+const APP_SW_UPDATE_HANDLED_PREFIX = 'tomatodev_app_sw_update_handled:';
 const APP_SW_UPDATE_RELEASE = (() => {
   try {
     const scriptUrl = typeof document !== 'undefined' ? document.currentScript?.src : '';
@@ -162,7 +164,7 @@ function _requestLatestAppUpdateBanner(registration, worker = null) {
 }
 
 function registerFirebaseMessagingWorker() {
-  if (_isLocalDev || !('serviceWorker' in navigator)) return Promise.resolve(null);
+  if (!WEB_FCM_ENABLED || _isLocalDev || !('serviceWorker' in navigator)) return Promise.resolve(null);
   if (window.__tomatoFcmSWRegistrationPromise) return window.__tomatoFcmSWRegistrationPromise;
 
   window.__tomatoFcmSWRegistrationPromise = navigator.serviceWorker
@@ -178,6 +180,19 @@ function registerFirebaseMessagingWorker() {
     });
 
   return window.__tomatoFcmSWRegistrationPromise;
+}
+
+async function unregisterTomatoDevMessagingWorker() {
+  if (!('serviceWorker' in navigator)) return [];
+  try {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    const ownedRegistrations = registrations.filter((registration) => registration.scope === FCM_SW_SCOPE_URL);
+    await Promise.all(ownedRegistrations.map((registration) => registration.unregister()));
+    return ownedRegistrations;
+  } catch (error) {
+    console.warn('[FCM] TomatoDev Messaging SW 정리 실패:', error?.message || error);
+    return [];
+  }
 }
 
 window.__getTomatoFcmSWRegistration = registerFirebaseMessagingWorker;
@@ -237,8 +252,10 @@ if (_isLocalDev) {
 
 // Firebase Messaging 서비스워커 등록 (FCM 웹 푸시용)
 // 앱 SW와 같은 scope를 쓰면 두 SW가 매 로드마다 서로를 업데이트로 밀어내므로 FCM 전용 하위 scope를 사용한다.
-if (!_isLocalDev && 'serviceWorker' in navigator) {
+if (WEB_FCM_ENABLED && !_isLocalDev && 'serviceWorker' in navigator) {
   registerFirebaseMessagingWorker();
+} else if (!WEB_FCM_ENABLED && !_isLocalDev && 'serviceWorker' in navigator) {
+  void unregisterTomatoDevMessagingWorker();
 }
 
 // 설치 프롬프트 처리 (PWA 설치 버튼)
