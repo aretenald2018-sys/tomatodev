@@ -3848,12 +3848,17 @@ function _moveWorkoutSetKeyboardFocus(direction) {
   const inlineMove = input.hasAttribute('data-wt-set-inline-input') && target.mode === 'inline';
   if (inlineMove) _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:set-inline-field' });
   const commitPromise = Promise.resolve(_commitWorkoutSetKeyboardInput(input, { closeInline: false, nextTarget: target }));
-  if (!inlineMove) _focusWorkoutSetKeyboardTarget(target);
-  else if (!_focusWorkoutSetKeyboardRenderedTarget(target)) {
+  const focusRenderedTarget = () => {
+    if (_focusWorkoutSetKeyboardRenderedTarget(target)) return true;
     window.requestAnimationFrame?.(() => _focusWorkoutSetKeyboardRenderedTarget(target));
     window.setTimeout?.(() => _focusWorkoutSetKeyboardRenderedTarget(target), 80);
-  }
-  commitPromise.catch((e) => {
+    return false;
+  };
+  if (!inlineMove) _focusWorkoutSetKeyboardTarget(target);
+  else focusRenderedTarget();
+  commitPromise.then(() => {
+    if (inlineMove) _focusWorkoutSetKeyboardRenderedTarget(target);
+  }).catch((e) => {
     console.warn('[workout-calendar] set keyboard move failed:', e);
   });
   return true;
@@ -4240,7 +4245,7 @@ async function _focusWorkoutSetInlineFieldFromSheet(key, sessionIndex, exerciseI
   if (!shouldCommitActiveInput) renderWorkoutCalendarHome();
   const focusInput = () => {
     _restoreWorkoutSheetScrollState(restoreState);
-    if (typeof document === 'undefined') return;
+    if (typeof document === 'undefined') return false;
     const root = _workoutHomeScrollRoot();
     const sheet = root?.querySelector?.('[data-wt-day-sheet]')
       || document.querySelector?.('#workout-calendar-root [data-wt-day-sheet]');
@@ -4252,19 +4257,39 @@ async function _focusWorkoutSetInlineFieldFromSheet(key, sessionIndex, exerciseI
       `[data-field="${_workoutSheetSelectorValue(safeField)}"]`,
     ].join('');
     const input = sheet?.querySelector?.(selector);
-    if (!input) return;
+    if (!input) return false;
     input.setAttribute('data-wt-set-clear-on-focus', '');
     try { input.focus({ preventScroll: true }); }
     catch { input.focus?.(); }
     if (document.activeElement === input) _clearWorkoutSetInputOnFocus(input);
     _restoreWorkoutSheetScrollState(restoreState);
+    return document.activeElement === input;
   };
-  focusInput();
+  let focusRetryCount = 0;
+  let focusRetryTimer = null;
+  const focusInputWhenReady = () => {
+    if (focusInput()) {
+      focusRetryCount = 0;
+      focusRetryTimer = null;
+      return true;
+    }
+    if (typeof window === 'undefined' || focusRetryTimer || focusRetryCount >= 15) return false;
+    focusRetryCount += 1;
+    focusRetryTimer = window.setTimeout?.(() => {
+      focusRetryTimer = null;
+      focusInputWhenReady();
+    }, 40) || null;
+    return false;
+  };
+  focusInputWhenReady();
   if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-    window.requestAnimationFrame(focusInput);
-    window.setTimeout?.(focusInput, 80);
+    window.requestAnimationFrame(focusInputWhenReady);
+    window.setTimeout?.(focusInputWhenReady, 80);
   }
-  commitPromise?.catch((error) => {
+  commitPromise?.then(() => {
+    focusRetryCount = 0;
+    focusInputWhenReady();
+  }).catch((error) => {
     console.warn('[workout-calendar] inline field switch commit failed:', error);
   });
   return true;
@@ -4613,7 +4638,7 @@ async function _toggleWorkoutExerciseSetDoneFromSheet(key, sessionIndex, exercis
       entry.sets = sets;
       clearWorkoutExerciseCompletionMarker(entry);
       return true;
-    }, { preserveSheetScroll: true });
+    }, { preserveSheetScroll: true, optimisticRender: true });
     if (ok) {
       await _syncWorkoutRestAfterSheetSet(key, sessionIndex, exerciseIndex, setIndex, savedDone);
     }

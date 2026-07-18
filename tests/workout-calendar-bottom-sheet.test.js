@@ -607,7 +607,7 @@ test('day sheet preserves exercise carousel position across set saves', () => {
   assert.match(inputHelpers, /data-wt-day-exercise-slide="\$\{slideIndex\}"/);
   assert.match(saveFn, /const restoreState = options\?\.preserveInput[\s\S]*_captureWorkoutSheetScrollState\(\)/);
   assert.match(saveFn, /if \(nextRestoreState\) _restoreWorkoutSheetInputState\(nextRestoreState\)/);
-  assert.match(toggleFn, /\{ preserveSheetScroll: true \}/);
+  assert.match(toggleFn, /\{ preserveSheetScroll: true, optimisticRender: true \}/);
 });
 
 test('workout keypad keeps digit entry local and commits once with an optimistic render', () => {
@@ -625,7 +625,7 @@ test('workout keypad keeps digit entry local and commits once with an optimistic
   assert.match(calendarJs, /if \(_workoutSetKeyboardActiveInput\(\)\) return;[\s\S]*document\.dispatchEvent\(new CustomEvent\('sheet:saved'\)\)/);
   assert.match(move, /const commitPromise = Promise\.resolve\(_commitWorkoutSetKeyboardInput/);
   assert.match(move, /_focusWorkoutSetKeyboardRenderedTarget\(target\)/);
-  assert.doesNotMatch(move, /commitPromise\.then|await commitPromise/);
+  assert.match(move, /commitPromise\.then/);
 });
 
 test('day sheet exercise card renders prior workout record instead of today set summary', () => {
@@ -842,7 +842,7 @@ test('day sheet set done toggle uses explicit state and compact 70-percent-heigh
   assert.match(toggleFn, /const wasDone = nextSet\.done === true/);
   assert.match(toggleFn, /const nextDone = !wasDone/);
   assert.doesNotMatch(toggleFn, /_isActualWorkoutSet\(nextSet\) \|\| nextSet\.done === true/);
-  assert.match(toggleFn, /\{ preserveSheetScroll: true \}/);
+  assert.match(toggleFn, /\{ preserveSheetScroll: true, optimisticRender: true \}/);
   assert.match(styleCss, /\.wt-max-set-row\s*\{[\s\S]*padding:\s*3px 4px;/);
   assert.match(styleCss, /\.wt-max-set-main\s*\{[\s\S]*grid-template-columns:\s*32px 32px minmax\(42px,\s*1fr\) minmax\(38px,\s*\.84fr\) 32px 32px/);
   assert.match(styleCss, /\.wt-max-set-check\s*\{[\s\S]*width:\s*32px;[\s\S]*height:\s*32px;/);
