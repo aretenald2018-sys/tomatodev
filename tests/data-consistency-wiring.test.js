@@ -223,7 +223,7 @@ test('selected-owner bootstrap and compatibility migrations are write-free', () 
   const unify = sliceBetween(
     dataLoadSource,
     'export async function unifySharedAccountData',
-    '// ═══════════════════════════════════════════════════════════════\n// loadAll',
+    '// loadAll — 앱 시작 시 전체 데이터 로드',
     'unifySharedAccountData',
   );
   const loadAll = sliceFrom(dataLoadSource, 'export async function loadAll()', 'loadAll');
