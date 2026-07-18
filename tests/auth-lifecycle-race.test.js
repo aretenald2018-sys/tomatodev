@@ -78,6 +78,13 @@ async function loadAuthModule(overrides = {}) {
     'export function _idbSet(key, value) { return harness.idbSet(key, value); }',
     'export function _idbGet(key) { return harness.idbGet(key); }',
     'export function _idbRemove(key) { return harness.idbRemove(key); }',
+    'export function isTomatoDevFirebaseOwner(user) { return harness.isFirebaseOwner?.(user) ?? false; }',
+    'export function requireTomatoDevFirebaseAuth() { return harness.requireFirebaseAuth?.() ?? Promise.resolve({ email: "kim-taewoo@tomatodev.local" }); }',
+    'export function restoreTomatoDevFirebaseOwner() { return harness.restoreFirebaseOwner?.() ?? Promise.resolve(null); }',
+    'export function signInTomatoDevFirebaseOwner(password) { return harness.signInFirebaseOwner?.(password) ?? Promise.resolve({ email: "kim-taewoo@tomatodev.local" }); }',
+    'export function signOutTomatoDevFirebase() { return harness.signOutFirebase?.() ?? Promise.resolve(); }',
+    'export function updateTomatoDevFirebasePassword(current, next) { return harness.updateFirebasePassword?.(current, next) ?? Promise.resolve(); }',
+    'export function waitForTomatoDevFirebaseAuthReady() { return harness.waitFirebaseReady?.() ?? Promise.resolve(null); }',
   ].join('\n');
   const coreUrl = 'data:text/javascript;base64,' + Buffer.from(coreSource).toString('base64');
   const moduleSource = AUTH_SOURCE.replace(
@@ -238,7 +245,7 @@ test('auth IndexedDB writes and removals run on one ordered promise chain', asyn
   }
 });
 
-test('both account-exit flows delay reload until auth persistence is cleared', async () => {
+test('account logout delays reload until Firebase and local auth are cleared', async () => {
   const waitGate = deferred();
   const events = [];
   const storage = {
@@ -253,6 +260,7 @@ test('both account-exit flows delay reload until auth persistence is cleared', a
       events.push('clear-user');
     },
     clearAdminAuth() { events.push('clear-admin'); },
+    async signOutTomatoDevFirebase() { events.push('firebase-signout'); },
     async waitForAuthPersistence() {
       events.push('wait-start');
       await waitGate.promise;
@@ -278,6 +286,7 @@ test('both account-exit flows delay reload until auth persistence is cleared', a
   await Promise.resolve();
   await Promise.resolve();
   assert.deepEqual(events, [
+    'firebase-signout',
     'clear-user',
     'storage:' + AUTH_KEYS.adminAuthenticated,
     'storage:' + AUTH_KEYS.kimAuthenticated,
@@ -289,56 +298,6 @@ test('both account-exit flows delay reload until auth persistence is cleared', a
   waitGate.resolve();
   await confirmPromise;
   assert.deepEqual(events.slice(-2), ['wait-done', 'reload']);
-
-  const otherAccountSource = sliceBetween(
-    FEATURE_LOGIN_SOURCE,
-    "document.getElementById('kim-lock-other').onclick",
-    "setTimeout(() => document.getElementById('kim-lock-pw')",
-  )
-    .replace("document.getElementById('kim-lock-other')", 'target')
-    .replace(AUTH_DATA_IMPORT_MARKER, 'Promise.resolve(__data)');
-  const target = {};
-  const lockDiv = { remove() { events.push('remove-lock'); } };
-  const otherWaitGate = deferred();
-  const otherAuth = {
-    async waitForAuthPersistence() {
-      events.push('other-wait-start');
-      await otherWaitGate.promise;
-      events.push('other-wait-done');
-    },
-  };
-  new Function(
-    'target',
-    'setCurrentUser',
-    'localStorage',
-    'lockDiv',
-    'location',
-    '__data',
-    'TOMATODEV_AUTH_STORAGE_KEYS',
-    otherAccountSource,
-  )(
-    target,
-    auth.setCurrentUser,
-    storage,
-    lockDiv,
-    location,
-    otherAuth,
-    AUTH_KEYS,
-  );
-
-  const eventStart = events.length;
-  const otherPromise = target.onclick();
-  await Promise.resolve();
-  await Promise.resolve();
-  assert.deepEqual(events.slice(eventStart), [
-    'clear-user',
-    'storage:' + AUTH_KEYS.adminAuthenticated,
-    'storage:' + AUTH_KEYS.kimAuthenticated,
-    'other-wait-start',
-  ]);
-  otherWaitGate.resolve();
-  await otherPromise;
-  assert.deepEqual(events.slice(-3), ['other-wait-done', 'remove-lock', 'reload']);
 });
 
 test('auth persistence wait is exported through the public data facade', () => {

@@ -7,6 +7,13 @@ import {
   ADMIN_ID, ADMIN_GUEST_ID, getKimMode, setKimMode,
   TOMATODEV_AUTH_STORAGE_KEYS,
   _idbSet, _idbGet, _idbRemove,
+  isTomatoDevFirebaseOwner,
+  requireTomatoDevFirebaseAuth,
+  restoreTomatoDevFirebaseOwner,
+  signInTomatoDevFirebaseOwner,
+  signOutTomatoDevFirebase,
+  updateTomatoDevFirebasePassword,
+  waitForTomatoDevFirebaseAuthReady,
 } from './data-core.js';
 
 let _authSessionGeneration = 0;
@@ -178,3 +185,45 @@ export function verifyPassword(account, input) {
 }
 
 export function hashPassword(pw) { return _simpleHash(pw); }
+
+function _localAuthError(code, message) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
+}
+
+export async function authenticateTomatoDevOwner(localPassword) {
+  try {
+    if (!String(localPassword || '')) {
+      throw _localAuthError('TOMATODEV_LOCAL_PASSWORD_REQUIRED', 'The fixed owner password is required');
+    }
+    return await signInTomatoDevFirebaseOwner(localPassword);
+  } catch (error) {
+    // Failed Firebase login must
+    // never inherit a previously restored Firebase principal.
+    await signOutTomatoDevFirebase().catch(() => {});
+    throw error;
+  }
+}
+
+export async function changeTomatoDevOwnerPassword(account, currentPassword, nextPassword) {
+  if (!String(nextPassword || '')) {
+    throw _localAuthError('TOMATODEV_LOCAL_PASSWORD_REQUIRED', 'A new local password is required');
+  }
+  if (!isAdminInstance(account?.id) || !String(currentPassword || '')) {
+    throw _localAuthError('TOMATODEV_LOCAL_PASSWORD_INVALID', 'The current local password is invalid');
+  }
+  return updateTomatoDevFirebasePassword(currentPassword, nextPassword);
+}
+
+export async function rollbackTomatoDevOwnerFirebasePassword(currentPassword, previousPassword) {
+  return updateTomatoDevFirebasePassword(currentPassword, previousPassword);
+}
+
+export {
+  isTomatoDevFirebaseOwner,
+  requireTomatoDevFirebaseAuth,
+  restoreTomatoDevFirebaseOwner,
+  signOutTomatoDevFirebase,
+  waitForTomatoDevFirebaseAuthReady,
+};

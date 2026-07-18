@@ -80,7 +80,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     private String deepLinkAction(Uri uri) {
-        if (uri == null || !"tomatofarm".equals(uri.getScheme())) return null;
+        if (uri == null || !"tomatodev".equals(uri.getScheme())) return null;
         String host = uri.getHost();
         String path = uri.getPath();
         if ("diet".equals(host) && "/today".equals(path)) return "diet";

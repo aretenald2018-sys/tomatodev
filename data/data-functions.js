@@ -1,10 +1,11 @@
-// TomatoDev must never invoke callables from the production Firebase project.
+// TomatoDev callables remain disabled until they are deployed and verified in
+// the dedicated development Firebase project.
 // Keep this module import-free so merely loading a feature cannot instantiate a
 // production callable proxy.
 
 function _blockProductionCallable(callableName) {
   const error = new Error(
-    `[TOMATODEV] Production Firebase callable "${callableName}" is disabled in TomatoDev.`,
+    `[TOMATODEV] Firebase callable "${callableName}" is not configured for TomatoDev.`,
   );
   error.code = 'TOMATODEV_PRODUCTION_CALLABLE_BLOCKED';
   throw error;

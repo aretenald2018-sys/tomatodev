@@ -153,7 +153,7 @@ export function calcSeasonWorkoutStreak(cache = {}, registry = {}, todayKey) {
 }
 
 export function selectSeasonRunningStats(cache = {}, registry = {}, todayKey, plan = {}) {
-  const { season, cache: scopedCache } = selectSeasonContext(cache, registry, { dateKey: todayKey });
+  const { season, cache: seasonCache } = selectSeasonContext(cache, registry, { dateKey: todayKey });
   const emptyProgress = _clampProgress(0, plan?.weeklyDistanceKm);
   if (!season) {
     return {
@@ -163,10 +163,25 @@ export function selectSeasonRunningStats(cache = {}, registry = {}, todayKey, pl
     };
   }
 
-  const currentRange = _currentWeekRange(season, todayKey);
+  const runningSeason = {
+    ...season,
+    startDate: isSeasonDateKey(plan?.startDate) && plan.startDate >= season.startDate ? plan.startDate : season.startDate,
+    endDate: isSeasonDateKey(plan?.endDate) && plan.endDate <= season.endDate ? plan.endDate : season.endDate,
+  };
+  if (todayKey < runningSeason.startDate || todayKey > runningSeason.endDate) {
+    return {
+      seasonId: season.id,
+      windowState: todayKey < runningSeason.startDate ? 'future' : 'inactive',
+      currentWeek: { distance: emptyProgress, sessions: _clampProgress(0, plan?.weeklySessions) },
+      trend: { status: 'collecting', sampleWeeks: 0 },
+    };
+  }
+  const scopedCache = filterCacheToSeason(seasonCache, runningSeason);
+
+  const currentRange = _currentWeekRange(runningSeason, todayKey);
   const currentActivities = listRunningActivities(_entriesInRange(scopedCache, currentRange.startDate, currentRange.endDate));
   const current = summarizeRunningActivities(currentActivities);
-  const completedRanges = _completedWeekRanges(season, todayKey, 4);
+  const completedRanges = _completedWeekRanges(runningSeason, todayKey, 4);
   let trend = { status: 'collecting', sampleWeeks: completedRanges.length };
 
   if (completedRanges.length === 4) {

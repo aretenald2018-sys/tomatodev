@@ -16,15 +16,16 @@ import {
 import { writeFileSync, readFileSync, existsSync, unlinkSync, watch } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { CONFIG } from '../config.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TASK_FILE = join(__dirname, '.dev-task.json');
 const RESULT_FILE = join(__dirname, '.dev-result.json');
 
-const app = initializeApp({
-  apiKey: "AIzaSyCk2czvJ8DRautrUput8TLjdrArpQm7BBk",
-  projectId: "exercise-management",
-});
+if (CONFIG.FIREBASE.projectId !== 'tomatodev-arete') {
+  throw new Error(`Refusing dev watcher outside TomatoDev: ${CONFIG.FIREBASE.projectId}`);
+}
+const app = initializeApp(CONFIG.FIREBASE, 'tomatodev-dev-watcher');
 const db = getFirestore(app);
 
 let currentTaskId = null;

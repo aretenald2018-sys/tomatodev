@@ -1,6 +1,7 @@
 import { MOVEMENTS } from '../config.js';
 import {
   activeBenchmarks,
+  addDays,
   buildBoardFromOnboarding,
   currentKgOf,
   exerciseGroupId,
@@ -42,6 +43,24 @@ function _nonNegative(value, fallback = null) {
   if (value == null || value === '') return fallback;
   const number = Number(value);
   return Number.isFinite(number) && number >= 0 ? number : fallback;
+}
+
+export function buildSeasonStairOverrideDraft(value = {}) {
+  const source = value && typeof value === 'object' ? value : {};
+  const trackDraft = (track) => ({
+    kg: source.tracks?.[track]?.kg ?? '',
+    sets: source.tracks?.[track]?.sets ?? '',
+    incrementKg: source.tracks?.[track]?.incrementKg ?? '',
+  });
+  return {
+    ...source,
+    program: 'stair',
+    progressionWeeks: SEASON_NORMAL_PROGRESSION_WEEKS,
+    tracks: {
+      volume: trackDraft('volume'),
+      intensity: trackDraft('intensity'),
+    },
+  };
 }
 
 function _normalizedLabel(value) {
@@ -354,6 +373,8 @@ export function buildSeasonWorkoutBoard({
   previousBoard = null,
   seasonId,
   startDate,
+  endDate = null,
+  exerciseSeasonWindowsByExercise = {},
   registeredExercises = [],
   selectedExerciseIds = null,
   benchmarkMappings = {},
@@ -363,6 +384,10 @@ export function buildSeasonWorkoutBoard({
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(startDate || ''))) {
     throw new TypeError('season startDate must use YYYY-MM-DD');
   }
+  if (endDate != null && (!/^\d{4}-\d{2}-\d{2}$/.test(String(endDate)) || String(endDate) < String(startDate))) {
+    throw new TypeError('season endDate must use YYYY-MM-DD and follow startDate');
+  }
+  const effectiveEndDate = String(endDate || addDays(startDate, 41));
   const programStartDate = mondayOf(startDate);
   const selected = selectedExerciseIds == null
     ? null
@@ -373,6 +398,21 @@ export function buildSeasonWorkoutBoard({
     .map((configuration) => {
       const { benchmark, exercise } = configuration;
       const override = _overrideFor(overrides, benchmark, exercise);
+      const requestedWindow = exerciseSeasonWindowsByExercise?.[configuration.exerciseId] || {};
+      const seasonWindow = {
+        startDate: String(requestedWindow.startDate || startDate),
+        endDate: String(requestedWindow.endDate || effectiveEndDate),
+      };
+      if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(seasonWindow.startDate)
+        || !/^\d{4}-\d{2}-\d{2}$/.test(seasonWindow.endDate)
+        || seasonWindow.startDate > seasonWindow.endDate
+        || seasonWindow.startDate < String(startDate)
+        || seasonWindow.endDate > effectiveEndDate
+      ) {
+        throw new RangeError(`exercise season window must stay within the season: ${configuration.exerciseId}`);
+      }
+      const exerciseProgramStartDate = mondayOf(seasonWindow.startDate);
       const isWendler = override.program === 'wendler'
         || (override.program == null && configuration.program === 'wendler');
       const tracks = {};
@@ -417,10 +457,13 @@ export function buildSeasonWorkoutBoard({
           ? _positive(override.incrementKg, _positive(benchmark?.incrementKg))
           : incrementKgByTrack[firstTrack],
         progressionWeeks: isWendler ? null : SEASON_NORMAL_PROGRESSION_WEEKS,
-        progressionStartDate: isWendler ? null : programStartDate,
+        progressionStartDate: isWendler ? null : exerciseProgramStartDate,
+        programStartDate: exerciseProgramStartDate,
+        programEndDate: seasonWindow.endDate,
+        seasonWindow,
         meta: _clone(benchmark?.meta || {}),
         ...(isWendler
-          ? { wendler: _wendlerConfig(benchmark, override, programStartDate, configuration) }
+          ? { wendler: _wendlerConfig(benchmark, override, exerciseProgramStartDate, configuration) }
           : {}),
       };
     });
@@ -428,12 +471,16 @@ export function buildSeasonWorkoutBoard({
   const board = buildBoardFromOnboarding({
     selections,
     startDate: programStartDate,
+    endDate: endDate || null,
     source: `season:${String(seasonId || 'unknown')}`,
   });
   if (selections.some(selection => selection.groupId === 'other') && !board.groups.some(group => group.id === 'other')) {
     board.groups.push({ id: 'other', label: '기타', bodyRegion: 'upper', order: TM2_GROUPS.length });
   }
   board.seasonId = String(seasonId || '');
+  board.schemaVersion = 3;
+  board.seasonStartDate = String(startDate);
+  board.seasonEndDate = effectiveEndDate;
   board.programVersion = W863_ORIGINAL_VERSION;
   board.createdAt = createdAt;
   board.lineups = {};
@@ -446,6 +493,7 @@ export function buildSeasonWorkoutPlan({
   board,
   registeredExerciseIds = [],
   weeklySessionTarget = 3,
+  exerciseSeasonWindowsByExercise = {},
   createdFromSeasonId = null,
   clientRequestId = null,
   createdAt = Date.now(),
@@ -473,13 +521,14 @@ export function buildSeasonWorkoutPlan({
     }
   }
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     seasonId: season?.id || board?.seasonId || null,
     createdAt,
     createdFromSeasonId,
     clientRequestId,
     programVersion: W863_ORIGINAL_VERSION,
     weeklySessionTarget: Math.max(1, Math.round(Number(weeklySessionTarget) || 3)),
+    exerciseSeasonWindowsByExercise: _clone(exerciseSeasonWindowsByExercise || {}),
     registeredExerciseIds: Array.from(new Set((registeredExerciseIds || []).map(String).filter(Boolean))),
     startingOneRmByExercise,
     startingWeightByExercise,

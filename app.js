@@ -5,7 +5,9 @@
 import { loadAll, TODAY, getTabOrder,
          getRawVisibleTabs, DEFAULT_VIS_TABS,
          isAdmin, isAdminGuest, trackEvent,
-         getCurrentUser, getDataOwnerId, loadSavedUser, refreshCurrentUserFromDB } from './data.js';
+         getCurrentUser, getDataOwnerId, getSeasonRegistry,
+         loadSavedUser, refreshCurrentUserFromDB,
+         isTomatoDevFirebaseOwner, waitForTomatoDevFirebaseAuthReady } from './data.js';
 import { loadCSVDatabase } from './fatsecret-api.js';
 // ── 분리된 모듈 ──
 import './feature-diet-plan.js';
@@ -30,6 +32,7 @@ import { registerStaticActions } from './app/static-actions.js';
 import { loadLazyModule } from './app/lazy-loader.js';
 import { getTabDefinition, isRegisteredTab } from './app/tab-registry.js';
 import { initOverlayStack } from './app/overlay-stack.js';
+import { openSeasonDashboardDestination } from './app/dashboard-destination.js';
 import { initBuildInfoSurface } from './utils/build-info.js';
 import {
   enableWorkoutPwaHistory,
@@ -55,6 +58,7 @@ import {
 import { wtHandleExercisePickerBack } from './workout/exercises.js';
 import { wtHandleRunningSessionBack, wtOpenRunningSession } from './workout/running-session.js';
 import { tm2OpenBoard } from './workout/test-v2/entry.js';
+import { openSeasonOverview } from './workout/season-overview.js';
 import {
   initSeasonDashboardWidgetSync,
   scheduleSeasonDashboardWidgetSync,
@@ -662,6 +666,14 @@ async function renderAll() {
 document.addEventListener('sheet:saved',   renderAll);
 document.addEventListener('cooking:saved', renderAll);
 document.addEventListener('app:render-requested', renderAll);
+document.addEventListener('tomatodev:kim-mode-changed', () => {
+  const visibleTabs = isAdmin()
+    ? (getRawVisibleTabs() || ['home', 'diet', 'workout', 'stats'])
+    : [...DEFAULT_VIS_TABS];
+  applyVisibleTabs(visibleTabs);
+  _syncNavigationForCurrentRole();
+  void switchTab(isAdmin() ? 'admin' : 'home');
+});
 let _workoutDataRefreshTimer = null;
 document.addEventListener('data:workouts-updated', () => {
   if (_workoutDataRefreshTimer) clearTimeout(_workoutDataRefreshTimer);
@@ -701,8 +713,14 @@ async function openDashboardDestination(action) {
     return;
   }
   if (action === 'season') {
-    await switchTab('workout');
-    await tm2OpenBoard();
+    const now = new Date();
+    await openSeasonDashboardDestination({
+      registry: getSeasonRegistry(),
+      todayKey: _dateKeyFromParts(now.getFullYear(), now.getMonth(), now.getDate()),
+      switchToWorkout: () => switchTab('workout'),
+      openSeasonOverview,
+      openFallback: tm2OpenBoard,
+    });
     return;
   }
   if (action === 'running') {
@@ -830,6 +848,16 @@ async function _initializeAppSession() {
   let runningSessionRestored = false;
   let sharedOwnerBootstrapFailure = null;
   try {
+    // Firebase persistence is the outer session boundary. Never restore the
+    // app's local user or start protected reads until it has settled.
+    const firebaseUser = await waitForTomatoDevFirebaseAuthReady();
+    if (!isTomatoDevFirebaseOwner(firebaseUser)) {
+      await _withTimeout(loadAndInjectModals(), 3000, 'locked login modal load');
+      document.getElementById('loading').style.display = 'none';
+      bootUser = null;
+      return false;
+    }
+
     // 로그인 안 되어있으면 모달만 로드하고 대기
     const user = loadSavedUser() || getCurrentUser();
     bootUser = user;

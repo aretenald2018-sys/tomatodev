@@ -56,6 +56,10 @@ import {
   loadEquipmentPool,
 } from './data-equipment-pool.js';
 import { mergeBoardCompletionLogs } from '../workout/test-v2/board-core.js';
+import {
+  TOMATODEV_ACTIVE_SEASON_BOARD_KEY,
+  tomatoDevSeasonBoardKey,
+} from './season-storage.js';
 
 // ═══════════════════════════════════════════════════════════════
 // re-exports (기존 import 호환)
@@ -76,6 +80,11 @@ export {
   backupAdminAuth, clearAdminAuth, backupKimAuth, clearKimAuth,
   restoreUserFromBackup, waitForAuthPersistence,
   verifyPassword, hashPassword,
+  authenticateTomatoDevOwner, changeTomatoDevOwnerPassword,
+  rollbackTomatoDevOwnerFirebasePassword,
+  isTomatoDevFirebaseOwner, requireTomatoDevFirebaseAuth,
+  restoreTomatoDevFirebaseOwner, signOutTomatoDevFirebase,
+  waitForTomatoDevFirebaseAuthReady,
 } from './data-auth.js';
 // core
 export {
@@ -785,17 +794,19 @@ export async function appendMaxCycleHistory(entry) {
 export const getTestBoardV2 = () => {
   const todayKey = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
   const currentSeason = findSeasonForDate(_settings.season_registry || {}, todayKey);
-  const seasonBoard = currentSeason ? _settings[`season_${currentSeason.id}_test_board_v2`] : null;
-  return seasonBoard || _settings.test_board_v2 || null;
+  const seasonBoard = currentSeason ? _settings[tomatoDevSeasonBoardKey(currentSeason.id)] : null;
+  return seasonBoard || _settings[TOMATODEV_ACTIVE_SEASON_BOARD_KEY] || null;
 };
 export async function saveTestBoardV2(board) {
   if (!board || typeof board !== 'object') return null;
   const todayKey = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
   const currentSeason = findSeasonForDate(_settings.season_registry || {}, todayKey);
-  const seasonKey = currentSeason ? `season_${currentSeason.id}_test_board_v2` : null;
-  const activeRef = _doc('settings', 'test_board_v2');
+  const seasonKey = currentSeason ? tomatoDevSeasonBoardKey(currentSeason.id) : null;
+  const activeRef = _doc('settings', TOMATODEV_ACTIVE_SEASON_BOARD_KEY);
   const seasonRef = seasonKey ? _doc('settings', seasonKey) : null;
-  const localBoard = seasonKey ? (_settings[seasonKey] || _settings.test_board_v2 || null) : (_settings.test_board_v2 || null);
+  const localBoard = seasonKey
+    ? (_settings[seasonKey] || _settings[TOMATODEV_ACTIVE_SEASON_BOARD_KEY] || null)
+    : (_settings[TOMATODEV_ACTIVE_SEASON_BOARD_KEY] || null);
   const merged = await _fbOp(
     `saveSetting(${seasonKey || 'test_board_v2'})`,
     () => runTransaction(db, async (transaction) => {
@@ -813,6 +824,7 @@ export async function saveTestBoardV2(board) {
     }),
     { rethrow: true }
   );
+  _settings[TOMATODEV_ACTIVE_SEASON_BOARD_KEY] = merged;
   _settings.test_board_v2 = merged;
   if (seasonKey) _settings[seasonKey] = merged;
   return merged;
@@ -1053,9 +1065,8 @@ export async function saveHomeStreakDays(n) {
 }
 
 export const getUnitGoalStart = () => _settings.unit_goal_start ?? null;
-// TomatoDev shares the operating Firestore project. Home rendering may derive a
-// useful default for the current session, but merely opening the page must not
-// publish that default to the operating account.
+// Rendering may derive a useful default for the current session, but merely
+// opening the page must not publish a new setting.
 export function rememberUnitGoalStartInMemory(dateStr) {
   if (_settings.unit_goal_start == null) _settings.unit_goal_start = dateStr;
   return _settings.unit_goal_start;

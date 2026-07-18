@@ -8,9 +8,19 @@ import {
   selectSeasonDecisionCache,
   findSeasonForDate,
   seasonStatus,
+  seasonCalendarWeekCount,
+  seasonPresetEndDate,
   startOfSeasonWeek,
   validateSeasonRegistry,
 } from '../data/season-model.js';
+
+test('season presets cover exact Monday-to-Sunday calendar weeks', () => {
+  assert.equal(seasonPresetEndDate('2026-07-19', 6), '2026-08-23');
+  assert.equal(seasonPresetEndDate('2026-07-19', 7), '2026-08-30');
+  assert.equal(seasonPresetEndDate('2026-07-20', 6), '2026-08-30');
+  assert.equal(seasonCalendarWeekCount('2026-07-19', '2026-08-23'), 6);
+  assert.equal(seasonCalendarWeekCount('2026-07-19', '2026-08-30'), 7);
+});
 
 const REGISTRY = {
   seasons: [

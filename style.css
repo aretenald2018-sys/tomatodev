@@ -15572,6 +15572,8 @@ body.lz-running-record-modal-open {
   background: radial-gradient(circle at 11% 30%, rgba(255, 82, 74, .12), transparent 21%), linear-gradient(135deg, #fffdfd, #fff8f6);
   box-shadow: 0 12px 28px rgba(117, 47, 38, .07);
 }
+.cal-season-control.has-current-season { cursor: pointer; }
+.cal-season-control.has-current-season:focus-visible { outline: 3px solid rgba(217, 87, 77, .28); outline-offset: 2px; }
 .cal-season-emblem {
   display: grid;
   place-items: center;
@@ -15955,8 +15957,59 @@ body.lz-running-record-modal-open {
 .season-primary { border: 0; background: #d9574d; color: #fff; }
 .season-primary:disabled { background: #c5c9cd; }
 
+.season-exercise-window { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; padding: 8px; border: 1px solid #e8ebee; border-radius: 10px; background: #f8fafb; }
+.season-exercise-window label { min-width: 0; display: grid; gap: 4px; color: #6f7880; font-size: 9px; font-weight: 800; }
+.season-exercise-window input { width: 100%; min-width: 0; min-height: 36px; padding: 0 7px; border: 1px solid #d9dee2; border-radius: 8px; background: #fff; color: #2c343a; font: inherit; font-size: 10px; }
+.season-adaptive-settings { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.season-adaptive-settings .season-field { margin-bottom: 0; }
+.season-pace-input-row { margin-top: 10px; }
+
+.season-overview-modal { z-index: 10085; align-items: flex-end; }
+.season-overview-sheet { display: flex; flex-direction: column; width: min(620px, 100vw); max-height: min(90dvh, 820px); margin: 0 auto; overflow: hidden; border-radius: 22px 22px 0 0; background: #f7f8fa; box-shadow: 0 -18px 60px rgba(32, 40, 48, .22); }
+.season-overview-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 18px 18px 12px; border-bottom: 1px solid #e5e8eb; background: #fff; }
+.season-overview-head > div { min-width: 0; display: grid; gap: 2px; }
+.season-overview-head span { color: #a34d45; font-size: 9px; font-weight: 900; letter-spacing: .12em; }
+.season-overview-head h2 { overflow: hidden; margin: 0; color: #222b32; font-size: 21px; text-overflow: ellipsis; white-space: nowrap; }
+.season-overview-head p { margin: 0; color: #778089; font-size: 11px; }
+.season-overview-head button { flex: none; width: 38px; height: 38px; border: 0; border-radius: 50%; background: #f0f2f4; color: #4b555d; font-size: 23px; }
+.season-overview-running { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 2px 12px; margin: 12px 14px 8px; padding: 12px 14px; border: 1px solid #f0c7c2; border-radius: 14px; background: linear-gradient(135deg, #fff8f6, #fff); }
+.season-overview-running span { color: #a24d45; font-size: 10px; font-weight: 900; }
+.season-overview-running strong { grid-row: span 2; color: #cb4e45; font-size: 22px; }
+.season-overview-running small { color: #737b82; font-size: 10px; line-height: 1.4; }
+.season-overview-legend { display: flex; gap: 6px; padding: 0 14px 10px; overflow-x: auto; scrollbar-width: none; }
+.season-overview-legend span { flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 4px 7px; border-radius: 999px; background: #fff; color: #69727a; font-size: 9px; font-weight: 800; }
+.season-overview-legend i { display: grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; background: #e7eaed; font-style: normal; }
+.season-overview-legend .is-achieved i, .season-overview-status-icon { background: #daf0df; color: #277249; }
+.season-overview-legend .is-attempted i { background: #fff0cb; color: #9a6818; }
+.season-overview-legend .is-missed i { background: #fde0dc; color: #ae3f36; }
+.season-overview-weeks { display: grid; gap: 8px; padding: 0 14px max(18px, env(safe-area-inset-bottom)); overflow-y: auto; overscroll-behavior: contain; }
+.season-overview-week { overflow: hidden; border: 1px solid #e0e4e7; border-radius: 13px; background: #fff; }
+.season-overview-week[open] { border-color: #d6dbdf; box-shadow: 0 5px 18px rgba(33, 43, 52, .06); }
+.season-overview-week summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; padding: 8px 11px; cursor: pointer; list-style: none; }
+.season-overview-week summary::-webkit-details-marker { display: none; }
+.season-overview-week summary > span { min-width: 0; display: flex; align-items: center; gap: 7px; }
+.season-overview-week summary i { display: grid; flex: none; place-items: center; width: 25px; height: 25px; border-radius: 50%; background: #eef1f3; color: #68727a; font-style: normal; font-weight: 900; }
+.season-overview-week summary b { color: #303940; font-size: 12px; }
+.season-overview-week summary small { padding: 2px 6px; border-radius: 999px; background: #fff0ed; color: #a24a42; font-size: 8px; font-weight: 900; }
+.season-overview-week summary em { flex: none; color: #788188; font-size: 9px; font-style: normal; font-weight: 800; }
+.season-overview-week ul { display: grid; gap: 1px; margin: 0; padding: 0 10px 10px; list-style: none; }
+.season-overview-goal { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 9px; min-height: 48px; padding: 7px 3px; border-top: 1px solid #edf0f2; }
+.season-overview-status-icon { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; font-size: 12px; font-weight: 900; }
+.season-overview-goal.is-attempted .season-overview-status-icon { background: #fff0cb; color: #956313; }
+.season-overview-goal.is-missed .season-overview-status-icon { background: #fde0dc; color: #aa3d35; }
+.season-overview-goal.is-planned .season-overview-status-icon, .season-overview-goal.is-future .season-overview-status-icon { background: #e9eff7; color: #4d6d92; }
+.season-overview-goal.is-inactive .season-overview-status-icon { background: #eef0f2; color: #8a9298; }
+.season-overview-goal-copy { min-width: 0; display: grid; gap: 2px; }
+.season-overview-goal-copy b { overflow: hidden; color: #323a41; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.season-overview-goal-copy small { color: #727b83; font-size: 9px; line-height: 1.35; }
+.season-overview-goal > em { color: #727b83; font-size: 9px; font-style: normal; font-weight: 800; }
+.season-overview-heart.is-caution { color: #b24a3f; font-weight: 800; }
+.season-overview-empty { padding: 16px 4px; color: #7d858c; font-size: 10px; text-align: center; }
+
 @media (max-width: 520px) {
   .season-field-row-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .season-adaptive-settings { grid-template-columns: 1fr; }
+  .season-overview-sheet { width: 100vw; max-height: 94dvh; }
   .season-sheet-body { padding: 15px; }
   .season-exercise-tabs { margin-right: -15px; margin-left: -15px; }
   .season-track-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }

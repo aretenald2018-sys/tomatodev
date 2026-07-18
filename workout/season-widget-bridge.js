@@ -1,9 +1,12 @@
 import {
   getCache,
+  getDayTargetKcal,
+  getDietPlan,
   getSeasonBundleForDate,
 } from '../data.js';
 import { dateKey, TODAY } from '../data/data-date.js';
 import { buildSeasonDashboardSnapshot } from '../data/season-widget-snapshot.js';
+import { buildTomatoDevDaybirdSnapshot } from '../data/daybird-snapshot.js';
 
 let _syncTimer = null;
 
@@ -26,14 +29,31 @@ export function currentSeasonDashboardSnapshot(options = {}) {
 }
 
 export async function syncSeasonDashboardWidget(options = {}) {
-  const plugin = globalThis.Capacitor?.Plugins?.SeasonWidget;
-  if (!plugin?.saveSnapshot) return { skipped: true, reason: 'native-plugin-unavailable' };
+  const reason = String(options.reason || 'app-sync');
   const snapshot = currentSeasonDashboardSnapshot(options);
+  const todayKey = options.todayKey || _todayKey();
+  const cache = getCache();
+  const todayData = cache[todayKey] || {};
+  const [year, month, day] = todayKey.split('-').map(Number);
+  const daybirdSnapshot = buildTomatoDevDaybirdSnapshot({
+    seasonSnapshot: snapshot,
+    cache,
+    nutrition: {
+      dayData: todayData,
+      targetKcal: getDayTargetKcal(getDietPlan(), year, month - 1, day, todayData),
+    },
+    generatedAt: snapshot.generatedAt || options.generatedAt || Date.now(),
+    reason,
+  });
+  const plugin = globalThis.Capacitor?.Plugins?.SeasonWidget;
+  if (!plugin?.saveSnapshot) {
+    return { skipped: true, reason: 'native-plugin-unavailable', snapshot, daybirdSnapshot };
+  }
   await plugin.saveSnapshot({
     snapshotJson: JSON.stringify(snapshot),
-    reason: String(options.reason || 'app-sync'),
+    reason,
   });
-  return { skipped: false, snapshot };
+  return { skipped: false, snapshot, daybirdSnapshot, nativePluginAvailable: true };
 }
 
 export function scheduleSeasonDashboardWidgetSync(reason = 'scheduled', delayMs = 120) {

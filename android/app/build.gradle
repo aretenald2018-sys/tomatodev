@@ -5,7 +5,7 @@ android {
     namespace = "com.lifestreak.app"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.lifestreak.app"
+        applicationId "com.lifestreak.dev"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 3

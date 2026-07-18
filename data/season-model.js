@@ -55,6 +55,24 @@ export function startOfSeasonWeek(dateKey) {
   return _formatUtcDate(parts.date);
 }
 
+export function seasonCalendarWeekCount(startDate, endDate) {
+  const start = _dateParts(startDate);
+  const end = _dateParts(endDate);
+  if (!start || !end || String(startDate) > String(endDate)) return 0;
+  const firstWeek = _dateParts(startOfSeasonWeek(startDate));
+  const lastWeek = _dateParts(startOfSeasonWeek(endDate));
+  return Math.round((lastWeek.date - firstWeek.date) / (7 * 86400000)) + 1;
+}
+
+export function seasonPresetEndDate(startDate, weekCount) {
+  if (!isSeasonDateKey(startDate)) throw new TypeError('season date key must use YYYY-MM-DD');
+  const weeks = Number(weekCount);
+  if (!Number.isInteger(weeks) || weeks < 1) {
+    throw new TypeError('season preset week count must be a positive integer');
+  }
+  return addSeasonDays(startOfSeasonWeek(startDate), (weeks * 7) - 1);
+}
+
 export function normalizeSeason(value = {}) {
   const id = String(value?.id || '').trim();
   const name = String(value?.name || '').trim();
@@ -128,6 +146,39 @@ export function seasonContainsDate(season, dateKey) {
   const normalized = normalizeSeason(season);
   if (!normalized || !isSeasonDateKey(dateKey)) return false;
   return normalized.startDate <= dateKey && dateKey <= normalized.endDate;
+}
+
+export function normalizeSeasonWindow(value = {}, season = {}) {
+  const normalizedSeason = normalizeSeason(season);
+  if (!normalizedSeason) return null;
+  const startDate = isSeasonDateKey(value?.startDate) ? String(value.startDate) : normalizedSeason.startDate;
+  const endDate = isSeasonDateKey(value?.endDate) ? String(value.endDate) : normalizedSeason.endDate;
+  if (startDate > endDate) return null;
+  if (startDate < normalizedSeason.startDate || endDate > normalizedSeason.endDate) return null;
+  return { startDate, endDate };
+}
+
+export function normalizeExerciseSeasonWindows(value = {}, season = {}, exerciseIds = []) {
+  const source = value && typeof value === 'object' ? value : {};
+  const ids = new Set([
+    ...Object.keys(source),
+    ...(Array.isArray(exerciseIds) ? exerciseIds : []),
+  ].map(String).filter(Boolean));
+  const windows = {};
+  for (const exerciseId of ids) {
+    const window = normalizeSeasonWindow(source[exerciseId] || {}, season);
+    if (window) windows[exerciseId] = window;
+  }
+  return windows;
+}
+
+export function seasonWindowContainsDate(window, dateKey) {
+  return !!window
+    && isSeasonDateKey(window.startDate)
+    && isSeasonDateKey(window.endDate)
+    && isSeasonDateKey(dateKey)
+    && window.startDate <= dateKey
+    && dateKey <= window.endDate;
 }
 
 export function findSeasonById(registry, seasonId) {

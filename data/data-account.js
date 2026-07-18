@@ -3,21 +3,25 @@
 // ================================================================
 
 import {
-  db, doc, setDoc, deleteDoc, getDocs, collection,
+  db, doc, setDoc, deleteDoc, getDocFromServer, getDocs, collection,
   ADMIN_ID, ADMIN_GUEST_ID,
+  requireTomatoDevFirebaseAuth,
 } from './data-core.js';
 import { getCurrentUser, isAdmin, setCurrentUser } from './data-auth.js';
 
 export async function getAccountList() {
-  try {
-    const snap = await getDocs(collection(db, '_accounts'));
-    const accounts = [];
-    snap.forEach(d => accounts.push(d.data()));
-    return accounts;
-  } catch { return []; }
+  await requireTomatoDevFirebaseAuth();
+  const snapshot = await getDocFromServer(doc(db, '_accounts', ADMIN_ID));
+  if (!snapshot.exists()) {
+    const error = new Error('The authenticated TomatoDev owner profile does not exist');
+    error.code = 'TOMATODEV_OWNER_PROFILE_MISSING';
+    throw error;
+  }
+  return [{ ...snapshot.data(), id: ADMIN_ID }];
 }
 
 export async function saveAccount(account) {
+  await requireTomatoDevFirebaseAuth();
   // Profile/guild callers can hold snapshots created before routing metadata
   // existed. Merge so dataOwnerId/dataOwnerVersion survive those saves.
   await setDoc(doc(db, '_accounts', account.id), account, { merge: true });
@@ -34,6 +38,7 @@ export async function refreshCurrentUserFromDB() {
 
 export async function recoverDeletedAccounts() {
   try {
+    await requireTomatoDevFirebaseAuth();
     const existing = await getAccountList();
     const existingIds = new Set(existing.map(a => a.id));
     const missingIds = new Set();
@@ -106,6 +111,7 @@ export async function recoverDeletedAccounts() {
 }
 
 export async function deleteUserAccount(userId) {
+  await requireTomatoDevFirebaseAuth();
   if (!isAdmin()) throw new Error('관리자만 삭제 가능');
   if (userId === ADMIN_ID || userId === ADMIN_GUEST_ID) throw new Error('관리자 계정은 삭제 불가');
 

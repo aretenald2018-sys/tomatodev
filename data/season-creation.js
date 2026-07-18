@@ -4,8 +4,12 @@ import {
   assertSeasonRegistry,
   findSeasonById,
   findSeasonForDate,
+  isSeasonDateKey,
+  normalizeExerciseSeasonWindows,
   normalizeSeasonRegistry,
+  startOfSeasonWeek,
 } from './season-model.js';
+import { normalizeRunningPacePlan } from './running-pace-goal.js';
 import {
   buildSeasonWorkoutBoard,
   buildSeasonWorkoutPlan,
@@ -36,26 +40,35 @@ export function buildSeasonRunningPlan(seasonId, value = {}, metadata = {}) {
   const baselineDistance = Number(value.baselineWeeklyDistanceKm);
   const longestRun = Number(value.longestRunKm);
   const speedSessions = Number(value.speedSessionsPerWeek);
-  const raceDistance = Number(value.raceDistanceKm);
-  const targetTime = Number(value.targetTimeMin);
-  const goalType = ['base', '5k', '10k', 'half', 'marathon'].includes(value.goalType)
-    ? value.goalType
-    : 'base';
-  const completionGoal = value.completionGoal === 'time' ? 'time' : 'finish';
+  const pace = normalizeRunningPacePlan(value, metadata.season || {});
+  const seasonStartDate = String(metadata.season?.startDate || '');
+  const seasonEndDate = String(metadata.season?.endDate || '');
+  if (seasonStartDate && seasonEndDate && (
+    !pace.startDate
+    || !pace.endDate
+    || pace.startDate > pace.endDate
+    || pace.startDate < seasonStartDate
+    || pace.endDate > seasonEndDate
+  )) {
+    throw new RangeError('running season window must stay within the season');
+  }
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     seasonId,
     createdAt: metadata.createdAt ?? value.createdAt ?? Date.now(),
     ...(metadata.updatedAt ? { updatedAt: metadata.updatedAt } : {}),
     clientRequestId: metadata.clientRequestId ?? value.clientRequestId ?? null,
-    goalType,
-    completionGoal,
-    eventName: String(value.eventName || '').trim().slice(0, 80),
-    targetDate: String(value.targetDate || '').trim() || null,
-    raceDistanceKm: Number.isFinite(raceDistance) && raceDistance > 0 ? Math.round(raceDistance * 100) / 100 : null,
-    targetTimeMin: completionGoal === 'time' && Number.isFinite(targetTime) && targetTime > 0
-      ? Math.round(targetTime)
-      : null,
+    goalType: 'pace',
+    paceMode: pace.paceMode,
+    targetPaceSecPerKm: pace.targetPaceSecPerKm,
+    baselinePaceSecPerKm: pace.baselinePaceSecPerKm,
+    adaptiveRatePct: pace.adaptiveRatePct,
+    referenceDistanceKm: pace.referenceDistanceKm,
+    startDate: pace.startDate,
+    endDate: pace.endDate,
+    recoveryEveryWeeks: pace.recoveryEveryWeeks,
+    paceCheckWeekday: pace.paceCheckWeekday,
+    heartRateCautionBpm: pace.heartRateCautionBpm,
     baselineWeeklyDistanceKm: Number.isFinite(baselineDistance) && baselineDistance >= 0
       ? Math.round(baselineDistance * 10) / 10
       : null,
@@ -71,6 +84,37 @@ function _benchmarkExerciseKey(benchmark = {}) {
   return String(benchmark.exerciseId || benchmark.movementId || benchmark.id || '');
 }
 
+function _stepTrackKey(exerciseKey, track) {
+  return `${exerciseKey}|${String(track || 'volume')}`;
+}
+
+function _indexPreviousWeekLogs(previousBoard, previousBenchmarkKeyById) {
+  const logsByTrack = new Map();
+  for (const step of (previousBoard.steps || [])) {
+    const exerciseKey = previousBenchmarkKeyById.get(step.benchmarkId) || step.benchmarkId;
+    const trackKey = _stepTrackKey(exerciseKey, step.track);
+    const indexed = logsByTrack.get(trackKey) || new Map();
+    for (const [rawWeekStart, rawLog] of Object.entries(step.weekLog || {})) {
+      if (!isSeasonDateKey(rawWeekStart) || rawLog == null) continue;
+      const weekStart = startOfSeasonWeek(rawWeekStart);
+      indexed.set(weekStart, {
+        ...(indexed.get(weekStart) || {}),
+        ..._clone(rawLog),
+      });
+    }
+    logsByTrack.set(trackKey, indexed);
+  }
+  return logsByTrack;
+}
+
+function _stepContainsWeek(step, weekStart) {
+  if (!isSeasonDateKey(step?.weekStart) || !isSeasonDateKey(weekStart)) return false;
+  const span = Math.max(0, Math.round(Number(step.span) || 0));
+  return span > 0
+    && step.weekStart <= weekStart
+    && weekStart < addSeasonDays(step.weekStart, span * 7);
+}
+
 export function preserveSeasonBoardProgress(nextBoard = {}, previousBoard = {}) {
   const previousBenchmarks = new Map((previousBoard.benchmarks || []).map(benchmark => [
     _benchmarkExerciseKey(benchmark),
@@ -80,6 +124,7 @@ export function preserveSeasonBoardProgress(nextBoard = {}, previousBoard = {}) 
     benchmark.id,
     _benchmarkExerciseKey(benchmark),
   ]));
+  const previousWeekLogs = _indexPreviousWeekLogs(previousBoard, previousBenchmarkKeyById);
   const benchmarks = (nextBoard.benchmarks || []).map(benchmark => {
     const previous = previousBenchmarks.get(_benchmarkExerciseKey(benchmark));
     if (!previous) return benchmark;
@@ -94,14 +139,38 @@ export function preserveSeasonBoardProgress(nextBoard = {}, previousBoard = {}) 
     return [`${exerciseKey}|${step.track}|${step.weekStart}`, step];
   }));
   const nextBenchmarkKeyById = new Map(benchmarks.map(benchmark => [benchmark.id, _benchmarkExerciseKey(benchmark)]));
+  const nextStepsByTrack = new Map();
+  for (const step of (nextBoard.steps || [])) {
+    const exerciseKey = nextBenchmarkKeyById.get(step.benchmarkId) || step.benchmarkId;
+    const trackKey = _stepTrackKey(exerciseKey, step.track);
+    const trackSteps = nextStepsByTrack.get(trackKey) || [];
+    trackSteps.push(step);
+    nextStepsByTrack.set(trackKey, trackSteps);
+  }
+  for (const trackSteps of nextStepsByTrack.values()) {
+    trackSteps.sort((left, right) => left.weekStart.localeCompare(right.weekStart));
+  }
   const steps = (nextBoard.steps || []).map(step => {
     const exerciseKey = nextBenchmarkKeyById.get(step.benchmarkId) || step.benchmarkId;
     const previous = previousSteps.get(`${exerciseKey}|${step.track}|${step.weekStart}`);
-    if (!previous) return step;
+    const trackKey = _stepTrackKey(exerciseKey, step.track);
+    const indexedLogs = previousWeekLogs.get(trackKey) || new Map();
+    const trackSteps = nextStepsByTrack.get(trackKey) || [];
+    const isFirstTrackStep = trackSteps[0]?.id === step.id;
+    const weekLog = Object.fromEntries(
+      [...indexedLogs.entries()]
+        .filter(([weekStart]) => (
+          _stepContainsWeek(step, weekStart)
+          || (isFirstTrackStep && !trackSteps.some(candidate => _stepContainsWeek(candidate, weekStart)))
+        ))
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([weekStart, log]) => [weekStart, _clone(log)]),
+    );
+    const sameCoverage = previous && Number(previous.span) === Number(step.span);
     return {
       ...step,
-      ...(previous.weekLog ? { weekLog: _clone(previous.weekLog) } : {}),
-      ...(previous.state ? { state: previous.state } : {}),
+      weekLog,
+      ...(sameCoverage && previous.state ? { state: previous.state } : {}),
     };
   });
 
@@ -143,6 +212,7 @@ export function prepareWorkoutSeasonCreation({
   overrides = {},
   weeklySessionTarget = 3,
   runningPlan = {},
+  exerciseSeasonWindowsByExercise = {},
   createdAt = Date.now(),
 } = {}) {
   const clientRequestId = normalizeSeasonRequestId(rawRequestId);
@@ -161,10 +231,22 @@ export function prepareWorkoutSeasonCreation({
     seasons: [...normalizeSeasonRegistry(registry).seasons, season],
   });
   const createdFromSeason = findSeasonForDate(registry, addSeasonDays(season.startDate, -1));
+  const exerciseWindows = normalizeExerciseSeasonWindows(
+    exerciseSeasonWindowsByExercise,
+    season,
+    selectedExerciseIds || registeredExerciseIds,
+  );
+  for (const exerciseId of (selectedExerciseIds || registeredExerciseIds || []).map(String)) {
+    if (!exerciseWindows[exerciseId]) {
+      throw new RangeError(`exercise season window must stay within the season: ${exerciseId}`);
+    }
+  }
   const board = buildSeasonWorkoutBoard({
     previousBoard,
     seasonId: season.id,
     startDate: season.startDate,
+    endDate: season.endDate,
+    exerciseSeasonWindowsByExercise: exerciseWindows,
     registeredExercises,
     selectedExerciseIds,
     benchmarkMappings,
@@ -176,6 +258,7 @@ export function prepareWorkoutSeasonCreation({
     board,
     registeredExerciseIds,
     weeklySessionTarget,
+    exerciseSeasonWindowsByExercise: exerciseWindows,
     createdFromSeasonId: createdFromSeason?.id || null,
     clientRequestId,
     createdAt,
@@ -186,7 +269,7 @@ export function prepareWorkoutSeasonCreation({
     registry: nextRegistry,
     board,
     workoutPlan,
-    runningPlan: buildSeasonRunningPlan(season.id, runningPlan, { createdAt, clientRequestId }),
+    runningPlan: buildSeasonRunningPlan(season.id, runningPlan, { createdAt, clientRequestId, season }),
   };
 }
 
@@ -203,6 +286,7 @@ export function prepareWorkoutSeasonUpdate({
   overrides = {},
   weeklySessionTarget = 3,
   runningPlan = {},
+  exerciseSeasonWindowsByExercise = null,
   updatedAt = Date.now(),
 } = {}) {
   const seasonId = String(rawSeason?.id || '').trim();
@@ -222,10 +306,22 @@ export function prepareWorkoutSeasonUpdate({
     schemaVersion: SEASON_REGISTRY_SCHEMA_VERSION,
     seasons: normalizeSeasonRegistry(registry).seasons.map(item => item.id === seasonId ? season : item),
   });
+  const exerciseWindows = normalizeExerciseSeasonWindows(
+    exerciseSeasonWindowsByExercise || existingWorkoutPlan?.exerciseSeasonWindowsByExercise || {},
+    season,
+    selectedExerciseIds || registeredExerciseIds,
+  );
+  for (const exerciseId of (selectedExerciseIds || registeredExerciseIds || []).map(String)) {
+    if (!exerciseWindows[exerciseId]) {
+      throw new RangeError(`exercise season window must stay within the season: ${exerciseId}`);
+    }
+  }
   const rebuiltBoard = buildSeasonWorkoutBoard({
     previousBoard,
     seasonId,
     startDate: season.startDate,
+    endDate: season.endDate,
+    exerciseSeasonWindowsByExercise: exerciseWindows,
     registeredExercises,
     selectedExerciseIds,
     benchmarkMappings,
@@ -238,6 +334,7 @@ export function prepareWorkoutSeasonUpdate({
     board,
     registeredExerciseIds,
     weeklySessionTarget,
+    exerciseSeasonWindowsByExercise: exerciseWindows,
     createdFromSeasonId: existingWorkoutPlan?.createdFromSeasonId || null,
     clientRequestId: current.clientRequestId || existingWorkoutPlan?.clientRequestId || null,
     createdAt: existingWorkoutPlan?.createdAt || current.createdAt || updatedAt,
@@ -252,6 +349,7 @@ export function prepareWorkoutSeasonUpdate({
       createdAt: existingRunningPlan?.createdAt || current.createdAt || updatedAt,
       updatedAt,
       clientRequestId: current.clientRequestId || existingRunningPlan?.clientRequestId || null,
+      season,
     }),
   };
 }

@@ -9,9 +9,10 @@
 
 import { CONFIG, MOVEMENTS } from '../config.js';
 import {
-  db, collection, getDocs, onSnapshot,
+  db, collection, doc, getDocs, onSnapshot, runTransaction,
   getCurrentUserRef, ADMIN_ID, getDataOwnerId,
   hasResolvedSharedAccountOwner, resolveDataOwnerIdForAccount, setResolvedSharedAccountOwnerId,
+  requireTomatoDevFirebaseAuth,
   _cache, _nutritionDB,
   _setCache, _setExList, _setCustomMuscles, _setGoals, _setQuests, _setCooking, _setBodyCheckins, _setNutritionDB,
   DEFAULT_TAB_ORDER, DEFAULT_DIET_PLAN, DEFAULT_EXPERT_PRESET,
@@ -44,12 +45,47 @@ import {
   initializePendingDayWriteSync,
 } from './data-save.js';
 import { reassignPendingDayWrites } from './pending-day-writes.js';
+import {
+  TOMATODEV_ACTIVE_SEASON_BOARD_KEY,
+  TOMATODEV_SEASON_REGISTRY_KEY,
+  buildMissingTomatoDevSeasonMigrationEntries,
+  isTomatoDevSeasonSettingKey,
+  legacySeasonBoardKey,
+  legacySeasonRunningPlanKey,
+  legacySeasonWorkoutPlanKey,
+  tomatoDevSeasonBoardKey,
+  tomatoDevSeasonRunningPlanKey,
+  tomatoDevSeasonWorkoutPlanKey,
+} from './season-storage.js';
 export { _sanitizeTabList, isActiveWorkoutDayData, buildExerciseCatalogSeedPlan };
 
 let _workoutRealtimeUnsubscribe = null;
 let _workoutRealtimeOwnerId = null;
 let _workoutRealtimeGeneration = 0;
 let _loadAllGeneration = 0;
+
+async function _persistMissingTomatoDevSeasonSettings(ownerId, fbMap, isCurrentLoad) {
+  const entries = buildMissingTomatoDevSeasonMigrationEntries(fbMap);
+  const keys = Object.keys(entries);
+  if (!keys.length || !isCurrentLoad()) return {};
+  return runTransaction(db, async (transaction) => {
+    if (!isCurrentLoad()) return {};
+    const refs = keys.map(key => doc(db, 'users', ownerId, 'settings', key));
+    const snapshots = await Promise.all(refs.map(ref => transaction.get(ref)));
+    if (!isCurrentLoad()) throw new Error('stale TomatoDev season migration');
+    const resolved = {};
+    snapshots.forEach((snapshot, index) => {
+      const key = keys[index];
+      if (snapshot.exists()) {
+        resolved[key] = snapshot.data()?.value;
+        return;
+      }
+      transaction.set(refs[index], { value: entries[key] });
+      resolved[key] = entries[key];
+    });
+    return resolved;
+  });
+}
 
 function _changedWorkoutDateKeys(previousCache, nextCache) {
   const keys = new Set([
@@ -167,6 +203,7 @@ async function _resolveSharedOwnerAndReload(loadGeneration, sessionUserId) {
 }
 
 export async function loadAll() {
+  await requireTomatoDevFirebaseAuth();
   const loadGeneration = ++_loadAllGeneration;
   const sessionUserId = String(getCurrentUserRef()?.id || '').trim();
   if (isSharedAdminAccount(sessionUserId) && !hasResolvedSharedAccountOwner()) {
@@ -230,6 +267,13 @@ export async function loadAll() {
 
     const fbMap = {};
     settingsSnap.forEach(d => { fbMap[d.id] = d.data().value; });
+    try {
+      Object.assign(fbMap, await _persistMissingTomatoDevSeasonSettings(ownerId, fbMap, isCurrentLoad));
+    } catch (migrationError) {
+      if (abandonIfStale()) return;
+      console.warn('[data] TomatoDev season key migration deferred:', migrationError?.message || migrationError);
+    }
+    if (abandonIfStale()) return;
 
     const storedExercises = [];
     exSnap.forEach(d => storedExercises.push(d.data()));
@@ -298,18 +342,33 @@ export async function loadAll() {
     }
     _settings.home_streak_days = fbMap.home_streak_days ?? 6;
     _settings.unit_goal_start  = fbMap.unit_goal_start  ?? null;
-    // TomatoDev shares the operating Firestore backend. Never hydrate its
-    // legacy settings/active_timer pointer into the development runtime;
-    // workout timer and draft recovery is namespaced local state only.
+    // Keep workout timer and draft recovery in TomatoDev-local state. This
+    // avoids restoring a stale legacy pointer after the one-time data seed.
     _settings.active_timer     = null;
     _settings.max_cycle        = fbMap.max_cycle        ?? null;
-    _settings.test_board_v2    = fbMap.test_board_v2    ?? null;
-    _settings.season_registry  = fbMap.season_registry  ?? { schemaVersion: 2, seasons: [] };
+    _settings[TOMATODEV_ACTIVE_SEASON_BOARD_KEY] = fbMap[TOMATODEV_ACTIVE_SEASON_BOARD_KEY]
+      ?? fbMap.test_board_v2
+      ?? null;
+    _settings.test_board_v2 = _settings[TOMATODEV_ACTIVE_SEASON_BOARD_KEY];
+    _settings[TOMATODEV_SEASON_REGISTRY_KEY] = fbMap[TOMATODEV_SEASON_REGISTRY_KEY]
+      ?? fbMap.season_registry
+      ?? { schemaVersion: 2, seasons: [] };
+    _settings.season_registry = _settings[TOMATODEV_SEASON_REGISTRY_KEY];
     Object.entries(fbMap).forEach(([key, value]) => {
-      if (/^season_.+_(?:workout_plan|test_board_v2|running_plan)$/.test(key)) {
+      if (isTomatoDevSeasonSettingKey(key)) {
         _settings[key] = value;
       }
     });
+    for (const season of (_settings.season_registry?.seasons || [])) {
+      const seasonId = String(season?.id || '').trim();
+      if (!seasonId) continue;
+      const planKey = tomatoDevSeasonWorkoutPlanKey(seasonId);
+      const boardKey = tomatoDevSeasonBoardKey(seasonId);
+      const runningKey = tomatoDevSeasonRunningPlanKey(seasonId);
+      _settings[planKey] = fbMap[planKey] ?? fbMap[legacySeasonWorkoutPlanKey(seasonId)] ?? null;
+      _settings[boardKey] = fbMap[boardKey] ?? fbMap[legacySeasonBoardKey(seasonId)] ?? null;
+      _settings[runningKey] = fbMap[runningKey] ?? fbMap[legacySeasonRunningPlanKey(seasonId)] ?? null;
+    }
     _settings.exercise_catalog_seed = fbMap.exercise_catalog_seed ?? null;
     _settings.cheer_last_seen  = fbMap.cheer_last_seen  ?? 0;
     _settings.tomato_state     = fbMap.tomato_state     ?? { quarterlyTomatoes: {}, totalTomatoes: 0, giftedReceived: 0, giftedSent: 0 };
@@ -349,7 +408,8 @@ export async function loadAll() {
     _settings.quest_order    = ['quarterly','monthly','weekly','daily'];
     _settings.section_titles = {};
     _settings.weekly_memos   = {};
-    _settings.season_registry = { schemaVersion: 2, seasons: [] };
+    _settings[TOMATODEV_SEASON_REGISTRY_KEY] = { schemaVersion: 2, seasons: [] };
+    _settings.season_registry = _settings[TOMATODEV_SEASON_REGISTRY_KEY];
   } finally {
     if (isCurrentLoad()) {
       startWorkoutRealtimeSync(ownerId);

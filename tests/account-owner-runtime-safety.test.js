@@ -40,6 +40,7 @@ function createCoreWriteHarness({ settings = {}, setDoc, docFactory } = {}) {
     '_doc',
     '_setSyncStatus',
     '_runSerialized',
+    'requireTomatoDevFirebaseAuth',
     'console',
     `${fbOpSource}\n${saveSettingSource}\nreturn { _fbOp, _saveSetting };`,
   )(
@@ -48,6 +49,7 @@ function createCoreWriteHarness({ settings = {}, setDoc, docFactory } = {}) {
     docFactory || ((name, id) => ({ name, id })),
     () => {},
     async (_key, operation) => operation(),
+    async () => ({ uid: 'tomatodev-owner-test' }),
     { error() {} },
   );
 }

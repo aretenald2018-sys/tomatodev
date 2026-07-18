@@ -32,6 +32,9 @@ class WearWorkoutUiController(
     private var finishRequested = false
     private var ignoreExerciseUpdatesUntilStart = false
     private var hostInteractive = true
+    private var ambient = false
+    private var ambientBurnInProtectionRequired = false
+    private var ambientLowBit = false
 
     private companion object {
         const val TAG = "TomatoWearRun"
@@ -103,13 +106,55 @@ class WearWorkoutUiController(
         clearRunTick(v)
     }
 
+    fun onEnterAmbient(
+        v: View,
+        burnInProtectionRequired: Boolean,
+        lowBitAmbient: Boolean,
+    ) {
+        ambient = true
+        ambientBurnInProtectionRequired = burnInProtectionRequired
+        ambientLowBit = lowBitAmbient
+        v.keepScreenOn = false
+        clearRunTick(v)
+        refreshAmbientSnapshot()
+        render(v)
+    }
+
+    fun onUpdateAmbient(v: View) {
+        if (!ambient) return
+        refreshAmbientSnapshot()
+        render(v)
+    }
+
+    fun onExitAmbient(v: View) {
+        ambient = false
+        ambientBurnInProtectionRequired = false
+        ambientLowBit = false
+        resetAmbientPresentation(v)
+        val snapshot = WearExerciseSessionStore.current()
+        runState.restoreFromSession(snapshot)
+        updateRunLiveMetrics(snapshot)
+        updateGpsPresentation(snapshot)
+        render(v)
+        if (hostInteractive && runState.screen == WearRunUiScreen.ACTIVE) scheduleRunTick(v)
+    }
+
+    private fun refreshAmbientSnapshot() {
+        val snapshot = WearExerciseSessionStore.current()
+        runState.restoreFromSession(snapshot)
+        updateRunLiveMetrics(snapshot)
+    }
+
     private fun bindExerciseStore(v: View) {
         sessionStoreUnsubscribe?.invoke()
         sessionStoreUnsubscribe = WearExerciseSessionStore.addListener { snapshot ->
             if (ignoreExerciseUpdatesUntilStart && snapshot.status != WearExerciseSessionStatus.IDLE) {
                 return@addListener
             }
-            if (!hostInteractive) return@addListener
+            // Ambient updates are owned by AmbientLifecycleObserver at the OS cadence.
+            // Ignoring high-frequency exercise callbacks here prevents them from
+            // restarting interactive rendering while the display is in low-power mode.
+            if (!hostInteractive || ambient) return@addListener
             if (finishRequested && snapshot.status !in setOf(
                     WearExerciseSessionStatus.ENDED,
                     WearExerciseSessionStatus.ERROR,
@@ -229,15 +274,22 @@ class WearWorkoutUiController(
 
     private fun render(v: View) {
         val snapshot = runState.snapshot()
+        // The system-managed ambient screen keeps the workout visible without pinning the
+        // display in its high-power interactive state.
         v.keepScreenOn = false
+        val showAmbientRun = ambient && snapshot.screen == WearRunUiScreen.ACTIVE
         v.findViewById<View>(R.id.runReadyScreen)?.visibility =
-            if (snapshot.screen == WearRunUiScreen.READY) View.VISIBLE else View.GONE
+            if (!showAmbientRun && snapshot.screen == WearRunUiScreen.READY) View.VISIBLE else View.GONE
         v.findViewById<View>(R.id.runActiveScreen)?.visibility =
-            if (snapshot.screen == WearRunUiScreen.ACTIVE) View.VISIBLE else View.GONE
+            if (!showAmbientRun && snapshot.screen == WearRunUiScreen.ACTIVE) View.VISIBLE else View.GONE
         v.findViewById<View>(R.id.runPausedScreen)?.visibility =
-            if (snapshot.screen == WearRunUiScreen.PAUSED) View.VISIBLE else View.GONE
+            if (!showAmbientRun && snapshot.screen == WearRunUiScreen.PAUSED) View.VISIBLE else View.GONE
         v.findViewById<View>(R.id.runSummaryScreen)?.visibility =
-            if (snapshot.screen == WearRunUiScreen.SUMMARY) View.VISIBLE else View.GONE
+            if (!showAmbientRun && snapshot.screen == WearRunUiScreen.SUMMARY) View.VISIBLE else View.GONE
+        v.findViewById<View>(R.id.runAmbientScreen)?.visibility =
+            if (showAmbientRun) View.VISIBLE else View.GONE
+
+        if (showAmbientRun) renderAmbientRun(v, snapshot)
 
         v.findViewById<TextView>(R.id.runActiveElapsed)?.text = snapshot.durationText
         v.findViewById<TextView>(R.id.runActiveDistance)?.text = snapshot.distanceText
@@ -258,6 +310,32 @@ class WearWorkoutUiController(
         v.findViewById<TextView>(R.id.runSummaryHeartRate)?.text = snapshot.heartRateText
         v.findViewById<TextView>(R.id.runSummarySyncStatus)?.text = summarySyncStatus
         v.findViewById<TextView>(R.id.runSummaryGpsStatus)?.text = gpsStatus
+    }
+
+    private fun renderAmbientRun(v: View, snapshot: WearRunUiSnapshot) {
+        v.findViewById<TextView>(R.id.runAmbientElapsed)?.text = snapshot.durationText
+        v.findViewById<TextView>(R.id.runAmbientLabel)?.text = "러닝 기록 중"
+        val ambientScreen = v.findViewById<View>(R.id.runAmbientScreen)
+        val offset = if (ambientBurnInProtectionRequired && ambientMinuteShift(snapshot.durationMs)) {
+            v.resources.displayMetrics.density * 2f
+        } else {
+            0f
+        }
+        ambientScreen?.translationX = offset
+        ambientScreen?.translationY = -offset
+        val antiAlias = !ambientLowBit
+        v.findViewById<TextView>(R.id.runAmbientElapsed)?.paint?.isAntiAlias = antiAlias
+        v.findViewById<TextView>(R.id.runAmbientLabel)?.paint?.isAntiAlias = antiAlias
+    }
+
+    private fun resetAmbientPresentation(v: View) {
+        v.findViewById<View>(R.id.runAmbientScreen)?.apply {
+            translationX = 0f
+            translationY = 0f
+            visibility = View.GONE
+        }
+        v.findViewById<TextView>(R.id.runAmbientElapsed)?.paint?.isAntiAlias = true
+        v.findViewById<TextView>(R.id.runAmbientLabel)?.paint?.isAntiAlias = true
     }
 
     private fun syncRunSummary(v: View) {
@@ -391,11 +469,11 @@ class WearWorkoutUiController(
     }
 
     private fun scheduleRunTick(v: View) {
-        if (!hostInteractive || runState.screen != WearRunUiScreen.ACTIVE || !v.isAttachedToWindow) return
+        if (!shouldScheduleWearRunTick(hostInteractive, ambient, runState.screen, v.isAttachedToWindow)) return
         clearRunTick(v)
         val tick = object : Runnable {
             override fun run() {
-                if (!hostInteractive || runState.screen != WearRunUiScreen.ACTIVE || !v.isAttachedToWindow) return
+                if (!shouldScheduleWearRunTick(hostInteractive, ambient, runState.screen, v.isAttachedToWindow)) return
                 render(v)
                 handler.postDelayed(this, 1_000L)
             }
@@ -417,6 +495,15 @@ class WearWorkoutUiController(
             .format(DateTimeFormatter.ISO_LOCAL_DATE)
     }
 }
+
+internal fun ambientMinuteShift(durationMs: Long): Boolean = (durationMs / 60_000L) % 2L == 1L
+
+internal fun shouldScheduleWearRunTick(
+    hostInteractive: Boolean,
+    ambient: Boolean,
+    screen: WearRunUiScreen,
+    attachedToWindow: Boolean,
+): Boolean = hostInteractive && !ambient && screen == WearRunUiScreen.ACTIVE && attachedToWindow
 
 internal fun buildWearRunSessionForSummary(
     exerciseSnapshot: WearExerciseSessionSnapshot,

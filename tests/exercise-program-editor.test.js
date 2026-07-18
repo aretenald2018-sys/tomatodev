@@ -87,7 +87,8 @@ test('exercise editor binds save actions directly inside the modal', () => {
 });
 
 test('exercise program board is rehydrated from settings on load', () => {
-  assert.match(dataLoadJs, /_settings\.test_board_v2\s*=\s*fbMap\.test_board_v2\s*\?\?\s*null/);
+  assert.match(dataLoadJs, /_settings\[TOMATODEV_ACTIVE_SEASON_BOARD_KEY\]\s*=\s*fbMap\[TOMATODEV_ACTIVE_SEASON_BOARD_KEY\][\s\S]*?\?\?\s*fbMap\.test_board_v2/);
+  assert.match(dataLoadJs, /_settings\.test_board_v2\s*=\s*_settings\[TOMATODEV_ACTIVE_SEASON_BOARD_KEY\]/);
 });
 
 test('exercise editor program controls have compact fixed layout styles', () => {

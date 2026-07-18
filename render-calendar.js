@@ -83,6 +83,7 @@ import { normalizeWorkoutExerciseSelectionDetail } from './workout/exercise-entr
 import { wtOpenExerciseEditor, wtOpenExercisePicker } from './workout/exercises.js';
 import { wtMountRunningSession, wtOpenRunningSession } from './workout/running-session.js';
 import { openWorkoutSeasonWizard } from './workout/season-manager.js';
+import { openSeasonOverview } from './workout/season-overview.js';
 import { loadWorkoutDate as loadWorkoutSessionDate } from './workout/load.js';
 import { buildWorkoutSetTimeline } from './workout/timeline.js';
 import { buildCalendarActivityRows } from './calendar/activity-model.js';
@@ -1698,7 +1699,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
     ? 'data-wt-calendar-action="go-today"'
     : 'data-cal-action="go-today"';
   const seasonControlHtml = isWorkoutHome ? `
-    <div class="cal-season-control ${currentSeason ? 'has-current-season' : 'needs-season'}">
+    <div class="cal-season-control ${currentSeason ? 'has-current-season' : 'needs-season'}" ${currentSeason ? `data-wt-season-overview="${_esc(currentSeason.id)}" role="button" tabindex="0" aria-label="${_esc(currentSeason.name)} 시즌 목표와 주차별 달성 현황 보기"` : ''}>
       <span class="cal-season-emblem" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 20V5.2c4-2.4 7.2 2.4 12 0v9.3c-4.8 2.4-8-2.4-12 0"/><path d="m11.7 8.4.8 1.7 1.8.3-1.3 1.3.3 1.8-1.6-.9-1.6.9.3-1.8-1.3-1.3 1.8-.3.8-1.7Z"/></svg></span>
       <div class="cal-season-copy"><span>${currentSeason ? 'CURRENT SEASON' : 'SEASON SETUP'}</span><strong>${_esc(currentSeason?.name || '새 시즌 설정 필요')}</strong>${currentSeason ? `<small>${currentSeason.startDate}–${currentSeason.endDate}</small>` : '<small>기록은 유지하고 새 목표를 세우며 시작합니다.</small>'}</div>
       <div class="cal-season-actions">
@@ -4080,6 +4081,13 @@ function _bindWorkoutCycleRailActions(root) {
       openWorkoutSeasonWizard();
       return;
     }
+    const seasonOverview = target?.closest?.('[data-wt-season-overview]');
+    if (seasonOverview && actionRoot.contains(seasonOverview)) {
+      event.preventDefault();
+      event.stopPropagation();
+      openSeasonOverview(seasonOverview.getAttribute('data-wt-season-overview'));
+      return;
+    }
     const btn = target?.closest?.('[data-cal-cycle-target]');
     if (!btn) return;
     event.preventDefault();
@@ -4087,6 +4095,14 @@ function _bindWorkoutCycleRailActions(root) {
     Promise.resolve(_openWorkoutCycleTargetSettings(btn.getAttribute('data-cal-cycle-target'))).catch((e) => {
       console.warn('[workout-calendar] cycle target click failed:', e);
     });
+  }, true);
+  actionRoot.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const card = event.target?.closest?.('[data-wt-season-overview]');
+    if (!card || event.target !== card || !actionRoot.contains(card)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    openSeasonOverview(card.getAttribute('data-wt-season-overview'));
   }, true);
 }
 

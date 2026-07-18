@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { buildSeasonDashboardSnapshot } from '../data/season-widget-snapshot.js';
 import { buildBoardFromOnboarding } from '../workout/test-v2/board-core.js';
 
@@ -7,6 +8,10 @@ const registry = {
   schemaVersion: 2,
   seasons: [{ id: 'summer', name: '여름 시즌', startDate: '2026-07-01', endDate: '2026-08-31' }],
 };
+const nativePluginSource = readFileSync(
+  new URL('../android/app/src/main/java/com/lifestreak/app/widget/SeasonWidgetPlugin.kt', import.meta.url),
+  'utf8',
+);
 
 function workoutDay(distanceKm = 0) {
   return {
@@ -36,6 +41,8 @@ test('위젯 snapshot은 시즌 스트릭·러닝·헬스·주차를 한 계약�
     generatedAt: 123,
   });
   assert.equal(snapshot.state, 'ready');
+  assert.equal(snapshot.schemaVersion, 1);
+  assert.match(nativePluginSource, /optInt\("schemaVersion", 0\) != 1/);
   assert.equal(snapshot.season.name, '여름 시즌');
   assert.equal(snapshot.season.week, 3);
   assert.equal(snapshot.streak.current, 3);
@@ -45,6 +52,8 @@ test('위젯 snapshot은 시즌 스트릭·러닝·헬스·주차를 한 계약�
   assert.equal(snapshot.strength.sessions.actual, 3);
   assert.equal(snapshot.strength.liftDeltaKg > 0, true);
   assert.match(snapshot.nextPlan.health, /스쿼트/);
+  assert.ok(Array.isArray(snapshot.seasonGoals));
+  assert.equal(snapshot.running.goal.mode, 'adaptive-weekly');
 });
 
 test('현재 시즌이 없으면 위젯은 과거 수치를 섞지 않고 설정 안내 상태를 만든다', () => {

@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const defaultEvidenceDir = path.join(root, '.test-results', 'wear-app-refresh-update-install');
-const appPackage = 'com.lifestreak.app';
+const appPackage = 'com.lifestreak.dev';
 const prefsName = 'tomato_wear_app_refresh.xml';
 const prefsPath = `shared_prefs/${prefsName}`;
 const marketPackageDefault = 'com.android.vending';

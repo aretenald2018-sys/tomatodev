@@ -1,0 +1,13 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Deployment blocker: real owner and Daybird reader UIDs have not been
+    // approved or provisioned. Keep the project closed until those exact UIDs
+    // can replace this deny-all boundary; email claims are intentionally not
+    // accepted as authorization.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
