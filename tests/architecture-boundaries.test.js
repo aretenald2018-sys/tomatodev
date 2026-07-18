@@ -5,6 +5,7 @@ import { dirname, extname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const styleEntryGeneratorSource = readFileSync(resolve(root, 'scripts/generate-style-entry.mjs'), 'utf8');
 const excludedDirectories = new Set([
   '.git', 'node_modules', 'www', 'docs', 'tests', 'assets', 'public', 'android', 'functions', 'scripts', 'tools', 'mockups',
 ]);
@@ -104,6 +105,12 @@ test('feature CSS ownership generates one standalone WebView-safe entry bundle a
     .map(file => ({ path: file.path, lines: file.source.split(/\r?\n/).length }))
     .filter(file => file.path !== 'style.css' && file.lines > 1200 && !allowedLargeFiles.has(file.path));
   assert.deepEqual(unexpected, [], `undocumented CSS files exceed 1,200 lines: ${JSON.stringify(unexpected)}`);
+});
+
+test('style entry verification is portable across Git line-ending settings', () => {
+  assert.match(styleEntryGeneratorSource, /function normalizeLineEndings\(source\)/);
+  assert.match(styleEntryGeneratorSource,
+    /normalizeLineEndings\(await readFile\(outputPath, 'utf8'\)\.catch\(\(\) => ''\)\)/);
 });
 
 test('runtime modules use canonical URLs without per-file query versions', () => {
