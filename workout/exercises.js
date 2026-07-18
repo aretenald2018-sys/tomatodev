@@ -1804,7 +1804,7 @@ function _renderSets(entryIdx, targetEl = null) {
       <div class="ex-max-v2-main-row">
         <button type="button" class="ex-max-v2-type-btn ${typeClass}" title="세트 타입">${_maxSetTypeLabel(set.setType, set)}</button>
         <label class="ex-max-v2-field"><span>KG</span><input class="set-input" type="number" inputmode="decimal" placeholder="kg" min="0" step="0.5" value="${set.kg||''}"></label>
-        <label class="ex-max-v2-field"><span>REP</span><input class="set-input" type="number" inputmode="numeric" placeholder="회" min="1" step="1" value="${set.reps||''}"></label>
+        <label class="ex-max-v2-field"><span>REP</span><input class="set-input" type="number" inputmode="decimal" placeholder="회" min="1" step="1" value="${set.reps||''}"></label>
         <label class="ex-max-v2-field"><span>RIR</span><input class="set-rpe-input" type="number" inputmode="decimal" placeholder="-" min="0" max="9" step="0.5" value="${_rpeToRir(set.rpe)}"></label>
         <label class="ex-max-v2-rom-field"><span>ROM</span><input class="set-rom-input" type="number" inputmode="decimal" min="0" max="10" step="0.5" value="${romScoreValue}" aria-label="가동범위 10점 입력"><em>/10</em></label>
         <button class="set-done-btn ${isDone?'done':''}" title="완료 체크">✓</button>
@@ -1820,7 +1820,7 @@ function _renderSets(entryIdx, targetEl = null) {
         </select>
         <input class="set-input" type="number" inputmode="decimal" placeholder="kg"  min="0" step="0.5" value="${set.kg||''}">
         <span class="set-sep">kg</span>
-        <input class="set-input" type="number" inputmode="numeric" placeholder="회"  min="1" step="1"   value="${set.reps||''}">
+        <input class="set-input" type="number" inputmode="decimal" placeholder="회"  min="1" step="1"   value="${set.reps||''}">
         <span class="set-sep">회</span>
         ${rpeSelHtml}
         <span class="set-vol">${vol}</span>

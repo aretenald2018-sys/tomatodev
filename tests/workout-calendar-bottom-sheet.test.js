@@ -619,13 +619,17 @@ test('workout keypad keeps digit entry local and commits once with an optimistic
   assert.match(markDirty, /data-wt-set-keyboard-dirty/);
   assert.match(markDirty, /dispatchEvent\(new Event\('input'/);
   assert.doesNotMatch(markDirty, /saveDay|_updateWorkoutExerciseSetFromSheet|queue/i);
-  assert.doesNotMatch(calendarJs, /_workoutSetKeyboardDraftQueues|_queueWorkoutSetKeyboardInputDraft|_flushWorkoutSetKeyboardInputDraft|skipRender/);
-  assert.match(commit, /\{ nextInlineEditorKey, optimisticRender: true \}/);
+  assert.doesNotMatch(calendarJs, /_workoutSetKeyboardDraftQueues|_queueWorkoutSetKeyboardInputDraft|_flushWorkoutSetKeyboardInputDraft/);
+  assert.match(commit, /skipRender: options\?\.skipRender === true/);
   assert.match(complete, /\{ preserveSheetScroll: true, optimisticRender: true \}/);
   assert.match(calendarJs, /if \(_workoutSetKeyboardActiveInput\(\)\) return;[\s\S]*document\.dispatchEvent\(new CustomEvent\('sheet:saved'\)\)/);
   assert.match(move, /const commitPromise = Promise\.resolve\(_commitWorkoutSetKeyboardInput/);
+  assert.match(move, /const targetAlreadyMounted = inlineMove && !!_workoutSetKeyboardRenderedInput\(target\)/);
+  assert.match(move, /if \(targetAlreadyMounted\) _workoutSetKeyboardDomLocked = true/);
+  assert.match(move, /skipRender: targetAlreadyMounted/);
   assert.match(move, /_focusWorkoutSetKeyboardRenderedTarget\(target\)/);
-  assert.match(move, /commitPromise\.then/);
+  assert.match(move, /inlineMove && !targetAlreadyMounted/);
+  assert.match(calendarJs, /if \(_workoutSetKeyboardDomLocked && _workoutSetKeyboardElement\(\)\?\.classList\.contains\('is-open'\)\) return/);
 });
 
 test('day sheet exercise card renders prior workout record instead of today set summary', () => {

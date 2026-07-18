@@ -152,7 +152,8 @@ test('workout number inputs are larger and guarded against keyboard focus scroll
   assert.match(maxTabRomInput, /height:\s*30px/);
   assert.doesNotMatch(css, /wt-workout-detail-mode|wt-exercise-detail-root/);
   assert.match(fn, /inputmode="decimal" placeholder="kg"/);
-  assert.match(fn, /inputmode="numeric" placeholder="회"/);
+  assert.match(fn, /inputmode="decimal" placeholder="회"/);
+  assert.doesNotMatch(fn, /class="set-input"[^>]*inputmode="numeric"/);
   assert.match(fn, /_bindWorkoutNumberInputFocusGuard\(row\)/);
   assert.match(workoutExercises, /const WORKOUT_NUMBER_INPUT_SELECTOR = '\.set-input, \.set-rpe-input, \.set-rom-input'/);
   assert.match(workoutExercises, /input\.focus\(\{ preventScroll: true \}\)/);

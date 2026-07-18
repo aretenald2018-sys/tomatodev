@@ -70,6 +70,7 @@ function buildHarnessScript() {
     '_workoutSetKeyboardInlineTargets',
     '_findWorkoutSetKeyboardMoveTarget',
     '_focusWorkoutSetKeyboardTarget',
+    '_workoutSetKeyboardRenderedInput',
     '_focusWorkoutSetKeyboardRenderedTarget',
     '_syncWorkoutSetKeyboardButtons',
     '_ensureWorkoutSetKeyboard',
@@ -117,6 +118,7 @@ function buildHarnessScript() {
     const _workoutExpandedSetEditors = new Set();
     let _workoutInlineSetEditor = null;
     let _workoutSetKeyboardInput = null;
+    let _workoutSetKeyboardDomLocked = false;
     window.__renderCalls = 0;
     window.__syncCalls = [];
     window.__restoreCalls = [];
@@ -201,6 +203,7 @@ function buildHarnessScript() {
       };
     }
     function renderWorkoutCalendarHome() {
+      if (_workoutSetKeyboardDomLocked && _workoutSetKeyboardElement()?.classList.contains('is-open')) return;
       window.__renderCalls += 1;
       document.body.innerHTML = '<main id="workout-calendar-root"><section data-wt-day-sheet><div class="wt-day-sheet-scroll"><div data-wt-day-exercise-carousel-track>'
         + _renderWorkoutExerciseDetailCard('2026-07-04', 0, _rowFromEntry(), 0)
@@ -214,7 +217,7 @@ function buildHarnessScript() {
     async function _mutateWorkoutExerciseFromSheet(targetKey, targetSessionIndex, exerciseIndex, mutator, options = {}) {
       const ok = mutator(window.__entry);
       window.__mutateCalls.push({ targetKey, targetSessionIndex, exerciseIndex, options });
-      if (options?.optimisticRender || (!window.__deferSetMutationRender && options?.skipRender !== true)) {
+      if (options?.skipRender !== true && (options?.optimisticRender || !window.__deferSetMutationRender)) {
         renderWorkoutCalendarHome();
       } else {
         window.__pendingMutationRender = { targetKey, targetSessionIndex, exerciseIndex, options };
@@ -506,7 +509,7 @@ test('mobile set row inline editing clears values and only right-to-left swipe r
   assert.equal(result.finalState.toast?.message, '세트를 삭제했어요');
 });
 
-test('mobile inline field switching commits a dirty keypad value before rerender', async () => {
+test('mobile inline field switching commits a dirty keypad value without rerendering the row', async () => {
   const result = await runHarnessPage(async (page) => {
     await page.evaluate(() => {
       window.__entry = {
@@ -529,31 +532,77 @@ test('mobile inline field switching commits a dirty keypad value before rerender
       input.value = '55';
       input.dispatchEvent(new Event('input', { bubbles: true }));
     });
-    const beforeSwitch = await page.evaluate(() => ({
-      inputValue: document.activeElement?.value ?? null,
-      storedKg: window.__entry.sets[0]?.kg ?? null,
-      dirty: document.activeElement?.getAttribute('data-wt-set-keyboard-dirty') || '',
-    }));
+    const beforeSwitch = await page.evaluate(() => {
+      window.__fieldSwitchRow = document.querySelector('[data-wt-set-swipe-row][data-set-index="0"]');
+      window.__fieldSwitchKeyboard = document.querySelector('[data-wt-set-keyboard]');
+      return {
+        inputValue: document.activeElement?.value ?? null,
+        storedKg: window.__entry.sets[0]?.kg ?? null,
+        dirty: document.activeElement?.getAttribute('data-wt-set-keyboard-dirty') || '',
+        inlineFields: Array.from(document.querySelectorAll('[data-wt-set-inline-input][data-set-index="0"]'))
+          .map(input => input.getAttribute('data-field')),
+        renderCalls: window.__renderCalls,
+      };
+    });
 
-    await tapSelector('[data-wt-set-edit-field="reps"][data-set-index="0"]');
+    await tapSelector('[data-wt-set-inline-input][data-field="reps"][data-set-index="0"]');
     await page.waitForFunction(() => document.activeElement?.matches?.('[data-wt-set-inline-input][data-field="reps"][data-set-index="0"]'));
     const afterSwitch = await page.evaluate(() => ({
       activeField: document.activeElement?.getAttribute('data-field') || '',
       activeValue: document.activeElement?.value ?? null,
       sets: window.__entry.sets,
+      renderCalls: window.__renderCalls,
+      sameRow: window.__fieldSwitchRow === document.querySelector('[data-wt-set-swipe-row][data-set-index="0"]'),
+      sameKeyboard: window.__fieldSwitchKeyboard === document.querySelector('[data-wt-set-keyboard]'),
       mutationOptions: window.__mutateCalls.map(call => call.options),
     }));
 
-    return { beforeSwitch, afterSwitch };
+    await page.$eval('[data-wt-set-inline-input][data-field="reps"][data-set-index="0"]', (input) => {
+      input.value = '12';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await tapSelector('[data-wt-set-inline-input][data-field="kg"][data-set-index="0"]');
+    await page.waitForFunction(() => document.activeElement?.matches?.('[data-wt-set-inline-input][data-field="kg"][data-set-index="0"]'));
+    const afterReturn = await page.evaluate(() => ({
+      activeField: document.activeElement?.getAttribute('data-field') || '',
+      activeValue: document.activeElement?.value ?? null,
+      sets: window.__entry.sets,
+      renderCalls: window.__renderCalls,
+      sameRow: window.__fieldSwitchRow === document.querySelector('[data-wt-set-swipe-row][data-set-index="0"]'),
+      sameKeyboard: window.__fieldSwitchKeyboard === document.querySelector('[data-wt-set-keyboard]'),
+      keyboardOpen: !!document.querySelector('[data-wt-set-keyboard].is-open'),
+      mutationOptions: window.__mutateCalls.map(call => call.options),
+    }));
+
+    return { beforeSwitch, afterSwitch, afterReturn };
   });
 
-  assert.deepEqual(result.beforeSwitch, { inputValue: '55', storedKg: 70, dirty: 'true' });
+  assert.deepEqual(result.beforeSwitch.inlineFields, ['kg', 'reps']);
+  assert.equal(result.beforeSwitch.inputValue, '55');
+  assert.equal(result.beforeSwitch.storedKg, 70);
+  assert.equal(result.beforeSwitch.dirty, 'true');
   assert.equal(result.afterSwitch.activeField, 'reps');
   assert.equal(result.afterSwitch.activeValue, '');
   assert.equal(result.afterSwitch.sets[0].kg, 55);
   assert.equal(result.afterSwitch.sets[0].reps, 10);
+  assert.equal(result.afterSwitch.renderCalls, result.beforeSwitch.renderCalls);
+  assert.equal(result.afterSwitch.sameRow, true);
+  assert.equal(result.afterSwitch.sameKeyboard, true);
   assert.equal(result.afterSwitch.mutationOptions.length, 1);
   assert.equal(result.afterSwitch.mutationOptions[0].optimisticRender, true);
+  assert.equal(result.afterSwitch.mutationOptions[0].skipRender, true);
+  assert.equal(result.afterReturn.activeField, 'kg');
+  assert.equal(result.afterReturn.activeValue, '55');
+  assert.equal(result.afterReturn.sets[0].kg, 55);
+  assert.equal(result.afterReturn.sets[0].reps, 12);
+  assert.equal(result.afterReturn.renderCalls, result.beforeSwitch.renderCalls);
+  assert.equal(result.afterReturn.sameRow, true);
+  assert.equal(result.afterReturn.sameKeyboard, true);
+  assert.equal(result.afterReturn.keyboardOpen, true);
+  assert.equal(result.afterReturn.mutationOptions.length, 2);
+  assert.ok(result.afterReturn.mutationOptions.every(options => (
+    options.optimisticRender === true && options.skipRender === true
+  )));
 });
 
 test('custom workout set keypad enters values and moves left or right across inline fields', async () => {
@@ -604,7 +653,11 @@ test('custom workout set keypad enters values and moves left or right across inl
       mutationCount: window.__mutateCalls.length,
     }));
 
-    const renderBeforeNext = await page.evaluate(() => window.__renderCalls);
+    const renderBeforeNext = await page.evaluate(() => {
+      window.__nextMoveRow = document.querySelector('[data-wt-set-swipe-row][data-set-index="0"]');
+      window.__nextMoveKeyboard = document.querySelector('[data-wt-set-keyboard]');
+      return window.__renderCalls;
+    });
     const nextStartedAt = Date.now();
     await tapSelector('[data-wt-set-keyboard-action="next"]');
     await page.waitForFunction(() => (
@@ -615,12 +668,18 @@ test('custom workout set keypad enters values and moves left or right across inl
       renderDelta: window.__renderCalls - before,
       activeField: document.activeElement?.getAttribute('data-field') || '',
       keyboardOpen: !!document.querySelector('[data-wt-set-keyboard].is-open'),
+      sameRow: window.__nextMoveRow === document.querySelector('[data-wt-set-swipe-row][data-set-index="0"]'),
+      sameKeyboard: window.__nextMoveKeyboard === document.querySelector('[data-wt-set-keyboard]'),
     }), renderBeforeNext);
     afterNextMove.elapsedMs = Date.now() - nextStartedAt;
 
     await tapSelector('[data-wt-set-keyboard-key="1"]');
     await tapSelector('[data-wt-set-keyboard-key="5"]');
-    const renderBeforePrev = await page.evaluate(() => window.__renderCalls);
+    const renderBeforePrev = await page.evaluate(() => {
+      window.__prevMoveRow = document.querySelector('[data-wt-set-swipe-row][data-set-index="0"]');
+      window.__prevMoveKeyboard = document.querySelector('[data-wt-set-keyboard]');
+      return window.__renderCalls;
+    });
     const prevStartedAt = Date.now();
     await tapSelector('[data-wt-set-keyboard-action="prev"]');
     await page.waitForFunction(() => (
@@ -631,6 +690,8 @@ test('custom workout set keypad enters values and moves left or right across inl
       renderDelta: window.__renderCalls - before,
       activeField: document.activeElement?.getAttribute('data-field') || '',
       keyboardOpen: !!document.querySelector('[data-wt-set-keyboard].is-open'),
+      sameRow: window.__prevMoveRow === document.querySelector('[data-wt-set-swipe-row][data-set-index="0"]'),
+      sameKeyboard: window.__prevMoveKeyboard === document.querySelector('[data-wt-set-keyboard]'),
     }), renderBeforePrev);
     afterPrevMove.elapsedMs = Date.now() - prevStartedAt;
 
@@ -674,20 +735,38 @@ test('custom workout set keypad enters values and moves left or right across inl
   assert.deepEqual(result.typedKg, { value: '80', dirty: 'true', storedKg: 70, mutationCount: 0 });
   assert.deepEqual(
     { ...result.afterNextMove, elapsedMs: undefined },
-    { renderDelta: 1, activeField: 'reps', keyboardOpen: true, elapsedMs: undefined },
+    {
+      renderDelta: 0,
+      activeField: 'reps',
+      keyboardOpen: true,
+      sameRow: true,
+      sameKeyboard: true,
+      elapsedMs: undefined,
+    },
   );
   assert.ok(result.afterNextMove.elapsedMs < 250, `next field took ${result.afterNextMove.elapsedMs}ms`);
   assert.deepEqual(
     { ...result.afterPrevMove, elapsedMs: undefined },
-    { renderDelta: 1, activeField: 'kg', keyboardOpen: true, elapsedMs: undefined },
+    {
+      renderDelta: 0,
+      activeField: 'kg',
+      keyboardOpen: true,
+      sameRow: true,
+      sameKeyboard: true,
+      elapsedMs: undefined,
+    },
   );
   assert.ok(result.afterPrevMove.elapsedMs < 250, `previous field took ${result.afterPrevMove.elapsedMs}ms`);
   assert.equal(result.afterPrev.activeField, 'kg');
-  assert.equal(result.afterPrev.activeValue, '');
+  assert.equal(result.afterPrev.activeValue, '80');
   assert.deepEqual(result.afterPrev.sets[0], { kg: 80, reps: 15, rir: 2, romPct: 100, setType: 'main', done: false });
   assert.equal(result.afterPrev.keyboardOpen, true);
   assert.ok(result.afterPrev.syncActions.filter(action => action === 'sheet:set-inline-field').length >= 3);
-  assert.ok(result.afterPrev.mutationOptions.every(options => options.preserveSheetScroll === true && options.optimisticRender === true));
+  assert.ok(result.afterPrev.mutationOptions.every(options => (
+    options.preserveSheetScroll === true
+    && options.optimisticRender === true
+    && options.skipRender === true
+  )));
   assert.equal(result.hidden.sets[0].kg, 80);
   assert.equal(result.hidden.sets[0].reps, 15);
   assert.equal(result.hidden.sets[0].done, true);
