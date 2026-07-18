@@ -9,7 +9,7 @@
 - repository and pre-push guards, which validate both fetch and push URLs and reject every non-TomatoDev remote
 - Firebase project `tomatodev-arete` and its Seoul Firestore database
 - Firebase Web app `1:152955180727:web:3b5abba096d288dba15f32`
-- pre-provisioned Firebase email/password owner `kim-taewoo@tomatodev.local`; the browser can sign in but cannot create the identity, and only a domain-separated SHA-256 derivative is sent to Firebase Auth
+- pre-provisioned Firebase email/password owner `kim-taewoo@tomatodev.local`; the browser can sign in but cannot create the identity, and only a domain-separated PBKDF2-HMAC-SHA-256 derivative is sent to Firebase Auth
 - planned read-only Daybird/Budget principal `daybird-reader@tomatodev.local`; creating either real identity and storing its credential requires explicit approval
 - Android/Wear application ID `com.lifestreak.dev` and Firebase Android app `1:152955180727:android:73963660fcbbf9cda15f32`
 - TomatoDev-owned service-worker caches; the TomatoDev worker deletes only its own cache namespace

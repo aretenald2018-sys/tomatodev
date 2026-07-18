@@ -32,7 +32,11 @@ test('TomatoDev owns a named Firebase app and independent auth persistence store
   assert.match(authSessionSource, /onAuthStateChanged\(/);
   assert.match(coreSource, /const app = tomatoDevFirebaseApp;/);
   assert.match(authCredentialSource, /kim-taewoo@tomatodev\.local/);
-  assert.match(authCredentialSource, /subtle\.digest\('SHA-256'/);
+  assert.match(authCredentialSource, /subtle\.importKey\(/);
+  assert.match(authCredentialSource, /subtle\.deriveBits\(/);
+  assert.match(authCredentialSource, /hash:\s*'SHA-256'/);
+  assert.match(authCredentialSource, /TOMATODEV_FIREBASE_PASSWORD_ITERATIONS = 310_000/);
+  assert.match(authCredentialSource, /return `tdv2_\$\{hex\}`/);
   assert.match(coreSource, /const _IDB_NAME = 'tomatodev_session_v1';/);
   for (const key of [
     'tomatodev:auth:current-user:v1',
