@@ -38,10 +38,13 @@ export function buildSeasonRunningPlan(seasonId, value = {}, metadata = {}) {
   const speedSessions = Number(value.speedSessionsPerWeek);
   const raceDistance = Number(value.raceDistanceKm);
   const targetTime = Number(value.targetTimeMin);
+  const targetPace = Number(value.targetPaceSecPerKm);
+  const adaptiveRate = Number(value.adaptiveRatePct);
   const goalType = ['base', '5k', '10k', 'half', 'marathon'].includes(value.goalType)
     ? value.goalType
     : 'base';
   const completionGoal = value.completionGoal === 'time' ? 'time' : 'finish';
+  const paceGoalMode = value.paceGoalMode === 'adaptive' ? 'adaptive' : 'fixed';
   return {
     schemaVersion: 2,
     seasonId,
@@ -55,6 +58,13 @@ export function buildSeasonRunningPlan(seasonId, value = {}, metadata = {}) {
     raceDistanceKm: Number.isFinite(raceDistance) && raceDistance > 0 ? Math.round(raceDistance * 100) / 100 : null,
     targetTimeMin: completionGoal === 'time' && Number.isFinite(targetTime) && targetTime > 0
       ? Math.round(targetTime)
+      : null,
+    paceGoalMode,
+    targetPaceSecPerKm: Number.isFinite(targetPace) && targetPace >= 180 && targetPace <= 1200
+      ? Math.round(targetPace)
+      : null,
+    adaptiveRatePct: paceGoalMode === 'adaptive' && Number.isFinite(adaptiveRate) && adaptiveRate > 0 && adaptiveRate <= 10
+      ? Math.round(adaptiveRate * 10) / 10
       : null,
     baselineWeeklyDistanceKm: Number.isFinite(baselineDistance) && baselineDistance >= 0
       ? Math.round(baselineDistance * 10) / 10
@@ -149,6 +159,11 @@ export function prepareWorkoutSeasonCreation({
   const season = {
     ...rawSeason,
     id: _generatedSeasonId(rawSeason || {}, clientRequestId),
+    exerciseIds: [...new Set((Array.isArray(rawSeason?.exerciseIds)
+      ? rawSeason.exerciseIds
+      : Array.isArray(selectedExerciseIds) ? selectedExerciseIds : [])
+      .map(exerciseId => String(exerciseId || '').trim())
+      .filter(Boolean))].sort(),
     createdAt,
     sourceVersion: W863_ORIGINAL_VERSION,
     clientRequestId,
@@ -216,6 +231,11 @@ export function prepareWorkoutSeasonUpdate({
     clientRequestId: current.clientRequestId,
     sourceVersion: current.sourceVersion || W863_ORIGINAL_VERSION,
     updatedAt,
+    exerciseIds: [...new Set((Array.isArray(rawSeason?.exerciseIds)
+      ? rawSeason.exerciseIds
+      : Array.isArray(selectedExerciseIds) ? selectedExerciseIds : current.exerciseIds || [])
+      .map(exerciseId => String(exerciseId || '').trim())
+      .filter(Boolean))].sort(),
   };
   const nextRegistry = assertSeasonRegistry({
     ...registry,

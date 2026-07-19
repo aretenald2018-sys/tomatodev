@@ -214,6 +214,7 @@ function runningSessionMetrics(session = {}) {
     distanceKm,
     durationSec,
     paceSecPerKm,
+    avgHeartRateBpm: number(summary.avgHeartRateBpm || summary.heartRateBpm || session.avgHeartRateBpm) || null,
     cadenceSpm: number(summary.cadenceSpm || summary.avgCadenceSpm) || null,
     startedAt: asEpochMs(session.runStartedAt || summary.startedAt) || null,
   };
@@ -343,6 +344,22 @@ function runningDomain(workouts, runningPlan, todayKey, nowEpochMs) {
       || number(a.startedAt) - number(b.startedAt)
       || a.sessionIndex - b.sessionIndex);
   const latest = allRuns.at(-1);
+  const fixedTargetPace = number(runningPlan?.targetPaceSecPerKm) || (
+    number(runningPlan?.targetTimeMin) > 0 && number(runningPlan?.raceDistanceKm) > 0
+      ? (number(runningPlan.targetTimeMin) * 60) / number(runningPlan.raceDistanceKm)
+      : null
+  );
+  const adaptiveRatePct = number(runningPlan?.adaptiveRatePct) || null;
+  const baselinePaceSecPerKm = previous?.paceSecPerKm > 0
+    ? Math.round(previous.paceSecPerKm)
+    : (number(runningPlan?.baselinePaceSecPerKm) || null);
+  const targetPaceSecPerKm = runningPlan?.paceGoalMode === "adaptive" && baselinePaceSecPerKm > 0 && adaptiveRatePct > 0
+    ? Math.round(baselinePaceSecPerKm * (1 - adaptiveRatePct / 100))
+    : (fixedTargetPace > 0 ? Math.round(fixedTargetPace) : null);
+  const actualPaceSecPerKm = latest?.paceSecPerKm > 0 ? Math.round(latest.paceSecPerKm) : null;
+  const paceStatus = targetPaceSecPerKm == null || actualPaceSecPerKm == null
+    ? "planned"
+    : actualPaceSecPerKm <= targetPaceSecPerKm ? "achieved" : "missed";
   const updatedAtEpochMs = latest ? dateKeyToEpochMs(latest.dateKey) + 23 * 60 * 60 * 1000 : null;
   return {
     score: mixedScore(goal, trend),
@@ -355,7 +372,17 @@ function runningDomain(workouts, runningPlan, todayKey, nowEpochMs) {
     weeklySessions: current.sessions,
     weeklySessionTarget: number(runningPlan?.weeklySessions, 3),
     latestPaceSecPerKm: latest?.paceSecPerKm ? Math.round(latest.paceSecPerKm) : null,
+    latestHeartRateBpm: latest?.avgHeartRateBpm ? Math.round(latest.avgHeartRateBpm) : null,
     latestCadenceSpm: latest?.cadenceSpm ? Math.round(latest.cadenceSpm) : null,
+    goal: {
+      mode: runningPlan?.paceGoalMode === "adaptive" ? "adaptive" : "fixed",
+      targetPaceSecPerKm,
+      baselinePaceSecPerKm,
+      actualPaceSecPerKm,
+      adaptiveRatePct,
+      status: paceStatus,
+      heartRateCaution: false,
+    },
     paceChangePct: current.paceSecPerKm && previous.paceSecPerKm
       ? round(((previous.paceSecPerKm - current.paceSecPerKm) / previous.paceSecPerKm) * 100, 1)
       : null,
@@ -368,6 +395,7 @@ function runningDomain(workouts, runningPlan, todayKey, nowEpochMs) {
       distanceKm: round(run.distanceKm, 2),
       paceSecPerKm: run.paceSecPerKm > 0 ? Math.round(run.paceSecPerKm) : null,
       cadenceSpm: run.cadenceSpm ? Math.round(run.cadenceSpm) : null,
+      avgHeartRateBpm: run.avgHeartRateBpm ? Math.round(run.avgHeartRateBpm) : null,
     })),
   };
 }
@@ -512,7 +540,13 @@ function rewardPointsDomain(budget, nowEpochMs) {
   const byId = new Map(categories.map((category) => [category.id, category]));
   const pointItems = normalizePointItems(rewardSettings);
   const enabledItems = pointItems.filter((item) => item.enabled);
-  if (!enabledItems.length) return { state: "missing" };
+  const missing = (label = "와인구매 포인트") => ({
+    source: "budget-canonical",
+    schemaVersion: 1,
+    label,
+    state: "missing",
+  });
+  if (!enabledItems.length) return missing();
   const todayKey = dateKeyAt(nowEpochMs);
   const selectedDailyReward = rewardSettings?.dailyReward || {};
   const configuredFocus = enabledItems.find((item) => item.id === String(selectedDailyReward.focusBucketKey || ""));
@@ -536,7 +570,7 @@ function rewardPointsDomain(budget, nowEpochMs) {
     spendByDate.set(key, (spendByDate.get(key) || 0) + transactionExpense(transaction));
   }
   const dailyBaseline = rewardDailyBaseline(spendByDate, baselineStart, todayKey, rewardSettings.baselineMethod);
-  if (dailyBaseline <= 0) return { state: "waiting", label: point.label };
+  if (dailyBaseline <= 0) return missing(point.label);
   const daySaved = (key) => Math.max(0, dailyBaseline - number(spendByDate.get(key)));
   const monthStart = `${todayKey.slice(0, 7)}-01`;
   const earnedBetween = (startKey, endKey) => {
@@ -561,9 +595,15 @@ function rewardPointsDomain(budget, nowEpochMs) {
     return total + Math.max(0, Math.round(number(entry?.amount)));
   }, 0);
   return {
+    source: "budget-canonical",
+    schemaVersion: 1,
     state: "ready",
     label: point.label,
     balance: Math.round(earnedMonth - spentMonth),
+    monthPoints: Math.round(earnedMonth - spentMonth),
+    earnedMonthPoints: Math.round(earnedMonth),
+    spentMonthPoints: Math.round(spentMonth),
+    todayPoints: Math.round(daySaved(todayKey) * point.rate),
     earnedTwoWeek: Math.round(earnedTwoWeek),
   };
 }
@@ -656,14 +696,38 @@ function buildDashboardSnapshot({ tomato = {}, budget = {}, weights, revision = 
   const normalizedWeights = normalizeDashboardWeights(weights || budget.dashboardSettings?.weights || DEFAULT_DASHBOARD_WEIGHTS);
   const todayKey = dateKeyAt(nowEpochMs);
   const registry = tomato.settings?.season_registry || {};
-  const activeSeason = (registry.seasons || []).find((season) => season.startDate <= todayKey && season.endDate >= todayKey) || null;
-  const workoutPlan = activeSeason ? tomato.settings?.[`season_${activeSeason.id}_workout_plan`] || {} : {};
-  const runningPlan = activeSeason ? tomato.settings?.[`season_${activeSeason.id}_running_plan`] || {} : {};
-  const seasonBoard = activeSeason
-    ? tomato.settings?.[`season_${activeSeason.id}_test_board_v2`]
-      || (tomato.settings?.test_board_v2?.seasonId === activeSeason.id ? tomato.settings.test_board_v2 : null)
-    : null;
-  const healthGoal = buildSeasonHealthGoals({ season: activeSeason, board: seasonBoard, todayKey });
+  const activeSeasons = (registry.seasons || [])
+    .filter((season) => season.startDate <= todayKey && season.endDate >= todayKey)
+    .sort((left, right) => String(left.id).localeCompare(String(right.id)));
+  const activeSeason = activeSeasons[0] || null;
+  const seasonBundles = activeSeasons.map((season) => {
+    const workoutPlan = tomato.settings?.[`season_${season.id}_workout_plan`] || {};
+    const runningPlan = tomato.settings?.[`season_${season.id}_running_plan`] || {};
+    const board = tomato.settings?.[`season_${season.id}_test_board_v2`]
+      || (tomato.settings?.test_board_v2?.seasonId === season.id ? tomato.settings.test_board_v2 : null);
+    return {
+      season,
+      workoutPlan,
+      runningPlan,
+      board,
+      healthGoal: buildSeasonHealthGoals({ season, board, todayKey }),
+    };
+  });
+  const workoutPlan = seasonBundles[0]?.workoutPlan || {};
+  const runningPlan = seasonBundles.find(bundle => (
+    bundle.runningPlan?.paceGoalMode || bundle.runningPlan?.targetPaceSecPerKm || bundle.runningPlan?.adaptiveRatePct
+  ))?.runningPlan || seasonBundles[0]?.runningPlan || {};
+  const seasonGoals = seasonBundles.map(bundle => bundle.healthGoal);
+  const healthGoal = seasonGoals.length <= 1
+    ? (seasonGoals[0] || buildSeasonHealthGoals({ season: null, board: null, todayKey }))
+    : {
+      state: seasonGoals.some(goal => goal.state === "ready") ? "ready" : "empty",
+      seasonId: "multi-season",
+      seasonName: "현재 시즌 목표",
+      weekStart: seasonGoals[0]?.weekStart || mondayOf(todayKey),
+      seasonWeek: Math.max(...seasonGoals.map(goal => Number(goal.seasonWeek) || 1)),
+      items: seasonGoals.flatMap(goal => goal.items || []),
+    };
   const domains = {
     food: foodDomain(tomato.workouts || [], tomato.settings?.diet_plan || {}, todayKey, nowEpochMs),
     health: healthDomain(tomato.workouts || [], workoutPlan, todayKey, nowEpochMs),
@@ -693,12 +757,15 @@ function buildDashboardSnapshot({ tomato = {}, budget = {}, weights, revision = 
       fatG: domains.food.fatG,
     },
     healthGoal,
+    seasonGoals,
     workouts: healthGoal.items,
     running: {
       paceChangePct: domains.running.paceChangePct,
       cadenceChangePct: domains.running.cadenceChangePct,
       paceSecPerKm: domains.running.latestPaceSecPerKm,
+      avgHeartRateBpm: domains.running.latestHeartRateBpm,
       cadenceSpm: domains.running.latestCadenceSpm,
+      goal: domains.running.goal,
       weeklyDistanceKm: domains.running.weeklyDistanceKm,
       trend: domains.running.trend,
       records: domains.running.records,

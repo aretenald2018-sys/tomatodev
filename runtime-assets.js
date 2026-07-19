@@ -245,6 +245,7 @@
   './data/data-core.js',
   './data/data-api.js',
   './data/season-model.js',
+  './data/season-overview.js',
   './data/season-selectors.js',
   './data/season-creation.js',
   './data/season-store.js',

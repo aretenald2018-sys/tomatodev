@@ -35,7 +35,7 @@
                 <data
                     android:host="diet"
                     android:pathPrefix="/today"
-                    android:scheme="tomatofarm" />
+                    android:scheme="tomatodev" />
             </intent-filter>
 
             <intent-filter>
@@ -45,7 +45,7 @@
                 <data
                     android:host="workout"
                     android:pathPrefix="/season"
-                    android:scheme="tomatofarm" />
+                    android:scheme="tomatodev" />
             </intent-filter>
 
             <intent-filter>
@@ -55,7 +55,7 @@
                 <data
                     android:host="workout"
                     android:pathPrefix="/running"
-                    android:scheme="tomatofarm" />
+                    android:scheme="tomatodev" />
             </intent-filter>
 
         </activity>

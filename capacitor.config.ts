@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.lifestreak.app',
-  appName: 'Life Streak',
+  appId: 'com.lifestreak.dev',
+  appName: 'tomatodev',
   webDir: 'www',           // Capacitor가 복사할 웹 앱 폴더
   server: {
     androidScheme: 'https',

@@ -87,6 +87,16 @@ export function buildSeasonDashboardSnapshot({
   const liftDeltaKg = readyLiftDeltas.length
     ? readyLiftDeltas.sort((left, right) => Math.abs(right.deltaKg) - Math.abs(left.deltaKg))[0].deltaKg
     : null;
+  const paceGoalMode = runningPlan?.paceGoalMode === 'adaptive' ? 'adaptive' : 'fixed';
+  const actualPaceSecPerKm = Number(running.currentWeek?.summary?.avgPaceSecPerKm) || null;
+  const baselinePaceSecPerKm = Number(running.trend?.recent?.avgPaceSecPerKm)
+    || Number(running.trend?.previous?.avgPaceSecPerKm)
+    || null;
+  const targetPaceSecPerKm = paceGoalMode === 'adaptive'
+    ? (baselinePaceSecPerKm && Number(runningPlan?.adaptiveRatePct) > 0
+      ? Math.round(baselinePaceSecPerKm * (1 - Math.min(10, Number(runningPlan.adaptiveRatePct)) / 100))
+      : null)
+    : (Number(runningPlan?.targetPaceSecPerKm) > 0 ? Number(runningPlan.targetPaceSecPerKm) : null);
   const week = _boardWeek(board, todayKey);
   return {
     schemaVersion: 1,
@@ -110,6 +120,13 @@ export function buildSeasonDashboardSnapshot({
       distance: running.currentWeek.distance,
       sessions: running.currentWeek.sessions,
       trend: running.trend,
+      goal: {
+        mode: paceGoalMode,
+        targetPaceSecPerKm,
+        baselinePaceSecPerKm,
+        actualPaceSecPerKm,
+        adaptiveRatePct: paceGoalMode === 'adaptive' ? Number(runningPlan?.adaptiveRatePct) || 2 : null,
+      },
     },
     strength: {
       sessions: strength.currentWeek.sessions,

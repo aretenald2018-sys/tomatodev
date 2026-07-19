@@ -5,6 +5,7 @@ import {
   addSeasonDays,
   assertSeasonRegistry,
   filterCacheToSeason,
+  findSeasonsForDate,
   selectSeasonDecisionCache,
   findSeasonForDate,
   seasonStatus,
@@ -62,6 +63,27 @@ test('시즌 레지스트리는 겹침, 중복 id, 잘못된 날짜를 거부한
   assert.match(overlap.errors.join(' '), /overlap/);
   assert.match(overlap.errors.join(' '), /invalid/);
   assert.throws(() => assertSeasonRegistry({ seasons: overlap.registry.seasons }), /overlap/);
+});
+
+test('같은 기간이라도 서로 다른 종목 시즌은 병행하고 같은 종목 겹침은 거부한다', () => {
+  const parallel = validateSeasonRegistry({
+    seasons: [
+      { id: 'bench-season', name: '벤치', startDate: '2026-07-01', endDate: '2026-08-31', exerciseIds: ['bench'] },
+      { id: 'squat-season', name: '스쿼트', startDate: '2026-07-01', endDate: '2026-08-31', exerciseIds: ['squat'] },
+    ],
+  });
+  assert.equal(parallel.valid, true);
+  assert.equal(findSeasonsForDate(parallel.registry, '2026-07-15', { exerciseId: 'bench' }).map(season => season.id).join(','), 'bench-season');
+  assert.equal(findSeasonsForDate(parallel.registry, '2026-07-15', { exerciseId: 'squat' }).map(season => season.id).join(','), 'squat-season');
+
+  const conflict = validateSeasonRegistry({
+    seasons: [
+      { id: 'bench-a', name: '벤치 A', startDate: '2026-07-01', endDate: '2026-08-31', exerciseIds: ['bench'] },
+      { id: 'bench-b', name: '벤치 B', startDate: '2026-07-15', endDate: '2026-09-01', exerciseIds: ['bench'] },
+    ],
+  });
+  assert.equal(conflict.valid, false);
+  assert.match(conflict.errors.join(' '), /overlap/);
 });
 
 test('시즌 cache는 원본 객체를 수정하지 않고 날짜 범위만 선택한다', () => {

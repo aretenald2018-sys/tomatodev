@@ -1,6 +1,6 @@
 // Pure workout season date-range model. No DOM or Firebase access.
 
-export const SEASON_REGISTRY_SCHEMA_VERSION = 2;
+export const SEASON_REGISTRY_SCHEMA_VERSION = 3;
 
 const DATE_KEY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -62,12 +62,19 @@ export function normalizeSeason(value = {}) {
   const endDate = String(value?.endDate || '');
   if (!id || !name || !isSeasonDateKey(startDate) || !isSeasonDateKey(endDate)) return null;
   if (startDate > endDate) return null;
+  const rawExerciseIds = Array.isArray(value?.exerciseIds)
+    ? value.exerciseIds
+    : Array.isArray(value?.selectedExerciseIds) ? value.selectedExerciseIds : [];
+  const exerciseIds = [...new Set(rawExerciseIds
+    .map(exerciseId => String(exerciseId || '').trim())
+    .filter(Boolean))].sort();
   return {
     ...value,
     id,
     name,
     startDate,
     endDate,
+    exerciseIds,
   };
 }
 
@@ -102,12 +109,15 @@ export function validateSeasonRegistry(value = {}) {
     normalized.push(season);
   });
 
-  normalized.sort((left, right) => left.startDate.localeCompare(right.startDate));
-  for (let index = 1; index < normalized.length; index += 1) {
-    const previous = normalized[index - 1];
-    const current = normalized[index];
-    if (current.startDate <= previous.endDate) {
-      errors.push(`season ranges overlap: ${previous.id} / ${current.id}`);
+  normalized.sort((left, right) => left.startDate.localeCompare(right.startDate) || left.id.localeCompare(right.id));
+  for (let leftIndex = 0; leftIndex < normalized.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < normalized.length; rightIndex += 1) {
+      const left = normalized[leftIndex];
+      const right = normalized[rightIndex];
+      if (right.startDate > left.endDate) break;
+      if (seasonScopesOverlap(left, right)) {
+        errors.push(`season ranges overlap: ${left.id} / ${right.id}`);
+      }
     }
   }
 
@@ -130,15 +140,40 @@ export function seasonContainsDate(season, dateKey) {
   return normalized.startDate <= dateKey && dateKey <= normalized.endDate;
 }
 
+export function seasonExerciseIds(season) {
+  return normalizeSeason(season)?.exerciseIds || [];
+}
+
+export function seasonContainsExercise(season, exerciseId) {
+  const id = String(exerciseId || '').trim();
+  if (!id) return true;
+  const exerciseIds = seasonExerciseIds(season);
+  return exerciseIds.length === 0 || exerciseIds.includes(id);
+}
+
+export function seasonScopesOverlap(left, right) {
+  const leftIds = seasonExerciseIds(left);
+  const rightIds = seasonExerciseIds(right);
+  if (!leftIds.length || !rightIds.length) return true;
+  return leftIds.some(exerciseId => rightIds.includes(exerciseId));
+}
+
 export function findSeasonById(registry, seasonId) {
   const id = String(seasonId || '').trim();
   if (!id) return null;
   return normalizeSeasonRegistry(registry).seasons.find(season => season.id === id) || null;
 }
 
-export function findSeasonForDate(registry, dateKey) {
-  if (!isSeasonDateKey(dateKey)) return null;
-  return normalizeSeasonRegistry(registry).seasons.find(season => seasonContainsDate(season, dateKey)) || null;
+export function findSeasonsForDate(registry, dateKey, options = {}) {
+  if (!isSeasonDateKey(dateKey)) return [];
+  const exerciseId = String(options?.exerciseId || '').trim();
+  return normalizeSeasonRegistry(registry).seasons.filter(season => (
+    seasonContainsDate(season, dateKey) && (!exerciseId || seasonContainsExercise(season, exerciseId))
+  ));
+}
+
+export function findSeasonForDate(registry, dateKey, options = {}) {
+  return findSeasonsForDate(registry, dateKey, options)[0] || null;
 }
 
 export function seasonStatus(season, todayKey) {

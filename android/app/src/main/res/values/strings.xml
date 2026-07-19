@@ -1,9 +1,9 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Life Streak</string>
-    <string name="title_activity_main">Life Streak</string>
-    <string name="package_name">com.lifestreak.app</string>
-    <string name="custom_url_scheme">com.lifestreak.app</string>
+    <string name="app_name">tomatodev</string>
+    <string name="title_activity_main">tomatodev</string>
+    <string name="package_name">com.lifestreak.dev</string>
+    <string name="custom_url_scheme">com.lifestreak.dev</string>
     <string name="widget_description">시즌 운동 대시보드</string>
     <string name="season_dashboard_widget_desc">시즌 스트릭과 러닝·헬스 주간 목표 대시보드</string>
 </resources>
