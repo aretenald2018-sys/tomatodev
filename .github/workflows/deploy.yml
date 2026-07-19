@@ -59,7 +59,9 @@ jobs:
           npx cap sync android
 
       - name: Build TomatoDev debug APK
-        run: gradle -p android :app:assembleDebug
+        run: |
+          chmod +x android/gradlew
+          android/gradlew -p android :app:assembleDebug
 
       - name: Stage TomatoDev APK download
         run: |
