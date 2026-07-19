@@ -31,6 +31,7 @@ import {
   mergeSessionExercises, sessionRecentMap, resolveSessionEntryGroupId,
   sortCandidatesByRecent, workoutRecordsForBenchmarkWeek,
   buildMinimapData, defaultIncrementForGroup, getLineup, orderWendlerPrescriptionSets, toggleLineup,
+  normalizeLegacyPrograms, isWendlerBenchmark,
 } from './board-core.js';
 import {
   WENDLER_SCHEMES, WENDLER_SCHEME_IDS, normalizeWendlerConfig,
@@ -286,7 +287,11 @@ export async function tm2OpenBoard() {
   _ensureRoots();
   S.settingsOnly = false;
   await _ensureTodayLoaded();
-  const board = getTestBoardV2();
+  let board = getTestBoardV2();
+  const normalized = normalizeLegacyPrograms(board, { fallbackStartDate: _todayKey() });
+  if (normalized.changed) {
+    try { board = await saveTestBoardV2(normalized.board) || normalized.board; } catch (error) { console.warn('[tm2] legacy program normalization failed', error); }
+  }
   if (!board || !Array.isArray(board.benchmarks) || !board.benchmarks.length) {
     const mod = await import('./onboarding.js');
     mod.openOnboarding({
@@ -308,7 +313,11 @@ export async function tm2OpenBoard() {
 export async function tm2OpenBenchmarkSettings(benchmarkId) {
   _ensureRoots();
   await _ensureTodayLoaded();
-  const board = getTestBoardV2();
+  let board = getTestBoardV2();
+  const normalized = normalizeLegacyPrograms(board, { fallbackStartDate: _todayKey() });
+  if (normalized.changed) {
+    try { board = await saveTestBoardV2(normalized.board) || normalized.board; } catch (error) { console.warn('[tm2] legacy program normalization failed', error); }
+  }
   const bmId = String(benchmarkId || '').trim();
   const bm = board && bmId ? benchmarkById(board, bmId) : null;
   if (!board || !bm) {
@@ -371,8 +380,8 @@ async function _backToOnboarding() {
 function _columnsOf(groupId) {
   return activeBenchmarks(S.board, groupId).map(bm => ({
     bm,
-    tracks: bm.program === 'wendler' ? ['volume'] : (bm.tracks?.length ? bm.tracks : ['volume']),
-    wendler: bm.program === 'wendler',
+    tracks: isWendlerBenchmark(bm) ? ['volume'] : (bm.tracks?.length ? bm.tracks : ['volume']),
+    wendler: isWendlerBenchmark(bm),
   }));
 }
 

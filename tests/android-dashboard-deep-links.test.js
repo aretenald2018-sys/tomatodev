@@ -11,17 +11,18 @@ test('TomatoDev exposes the dashboard module deep-link contract', () => {
   assert.match(manifest, /android:scheme="tomatodev"/);
   assert.match(manifest, /android:host="diet"[\s\S]*android:pathPrefix="\/today"/);
   assert.match(manifest, /android:host="workout"[\s\S]*android:pathPrefix="\/season"/);
+  assert.match(manifest, /android:host="workout"[\s\S]*android:pathPrefix="\/season-overview"/);
   assert.match(manifest, /android:host="workout"[\s\S]*android:pathPrefix="\/running"/);
   assert.match(activity, /"diet"\.equals\(host\)[\s\S]*return "diet"/);
-  assert.match(activity, /"workout"\.equals\(host\)[\s\S]*"\/season"\.equals\(path\)[\s\S]*return "season"/);
+  assert.match(activity, /"workout"\.equals\(host\)[\s\S]*"\/season"\.equals\(path\)[\s\S]*"\/season-overview"\.equals\(path\)[\s\S]*return "season-overview"/);
   assert.match(activity, /"workout"\.equals\(host\)[\s\S]*"\/running"\.equals\(path\)[\s\S]*return "running"/);
 });
 
 test('dashboard destinations open their exact TomatoDev screens', () => {
   assert.match(app, /action === 'diet'[\s\S]*switchTab\('diet'\)/);
-  assert.match(app, /action === 'season'[\s\S]*switchTab\('workout'\)[\s\S]*tm2OpenBoard\(\)/);
+  assert.match(app, /action === 'season' \|\| action === 'season-overview'[\s\S]*switchTab\('workout'\)[\s\S]*openWorkoutSeasonOverview/);
   assert.match(app, /action === 'running'[\s\S]*switchTab\('workout'\)[\s\S]*wtOpenRunningSession\(\)/);
-  assert.match(app, /\['diet', 'season', 'running'\]\.includes\(entry\)/);
+  assert.match(app, /\['diet', 'season', 'season-overview', 'running'\]\.includes\(entry\)/);
 });
 
 test('the distributable TomatoDev APK version is bumped for deep links', () => {

@@ -339,6 +339,10 @@ function _openWorkoutSeasonOverview(seasonId) {
   modal.classList.add('open');
 }
 
+export function openWorkoutSeasonOverview(seasonId = '') {
+  _openWorkoutSeasonOverview(seasonId);
+}
+
 function _dateFromKey(key) {
   const p = _parseDateKey(key);
   return p ? new Date(p.y, p.m, p.d) : null;

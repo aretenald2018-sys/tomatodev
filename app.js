@@ -54,7 +54,6 @@ import {
 } from './workout/index.js';
 import { wtHandleExercisePickerBack } from './workout/exercises.js';
 import { wtHandleRunningSessionBack, wtOpenRunningSession } from './workout/running-session.js';
-import { tm2OpenBoard } from './workout/test-v2/entry.js';
 import {
   initSeasonDashboardWidgetSync,
   scheduleSeasonDashboardWidgetSync,
@@ -708,9 +707,10 @@ async function openDashboardDestination(action) {
     await switchTab('diet');
     return;
   }
-  if (action === 'season') {
+  if (action === 'season' || action === 'season-overview') {
     await switchTab('workout');
-    await tm2OpenBoard();
+    const calendarModule = await _lazyRenderWorkoutCalendarHome();
+    calendarModule.openWorkoutSeasonOverview?.();
     return;
   }
   if (action === 'running') {
@@ -724,7 +724,7 @@ async function openDashboardDestination(action) {
 function readDashboardEntry() {
   const params = new URLSearchParams(window.location.search);
   const entry = String(params.get('entry') || '');
-  return ['diet', 'season', 'running'].includes(entry) ? entry : '';
+  return ['diet', 'season', 'season-overview', 'running'].includes(entry) ? entry : '';
 }
 
 function clearDashboardEntry() {

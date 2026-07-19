@@ -1,7 +1,10 @@
 import { isExerciseDaySuccess } from '../calc.js';
 import {
   activeBenchmarks,
+  buildExerciseProgramWorkoutPrescription,
+  isWendlerBenchmark,
   mondayOf,
+  normalizeLegacyPrograms,
 } from '../workout/test-v2/board-core.js';
 import {
   addSeasonDays,
@@ -31,7 +34,8 @@ function _weekRanges(season) {
 
 function _strengthItems(board = {}, week, todayKey) {
   return activeBenchmarks(board).flatMap(benchmark => {
-    const tracks = Array.isArray(benchmark.tracks) && benchmark.tracks.length ? benchmark.tracks : ['volume'];
+    const wendler = isWendlerBenchmark(benchmark);
+    const tracks = wendler ? ['volume'] : (Array.isArray(benchmark.tracks) && benchmark.tracks.length ? benchmark.tracks : ['volume']);
     return tracks.map(track => {
       const step = (board.steps || [])
         .filter(candidate => candidate.benchmarkId === benchmark.id && candidate.track === track)
@@ -43,11 +47,21 @@ function _strengthItems(board = {}, week, todayKey) {
       const log = step?.weekLog?.[week.goalWeekStart] || {};
       const future = week.goalWeekStart > todayKey;
       const state = future ? 'planned' : log.paintedAt || log.done ? 'achieved' : log.attempted ? 'attempted' : 'not-achieved';
-      const target = step ? `${step.kg || 0}kg × ${step.reps || '-'}회` : '이번 주 처방 없음';
+      const program = wendler
+        ? buildExerciseProgramWorkoutPrescription(board, benchmark, {
+          track,
+          weekStart: week.goalWeekStart,
+          todayKey,
+          includeAlternatives: false,
+        })
+        : null;
+      const target = wendler
+        ? (program?.prescription?.label || '웬들러 처방 확인')
+        : (step ? `${step.kg || 0}kg × ${step.reps || '-'}회` : '이번 주 처방 없음');
       return {
         kind: 'strength',
         label: benchmark.label || benchmark.exerciseId || '헬스',
-        detail: `${track === 'intensity' ? '강도' : '볼륨'} · ${target}`,
+        detail: wendler ? target : `${track === 'intensity' ? '강도' : '볼륨'} · ${target}`,
         state,
       };
     });
@@ -73,6 +87,7 @@ function _runningItem(cache, season, week, runningPlan, todayKey) {
 
 export function buildSeasonOverview({ cache = {}, season, board = {}, runningPlan = {}, todayKey } = {}) {
   if (!season) return { state: 'missing', weeks: [] };
+  normalizeLegacyPrograms(board, { fallbackStartDate: season.startDate });
   const safeToday = String(todayKey || season.startDate);
   const weeks = _weekRanges(season).map(week => {
     const items = [
