@@ -1,4 +1,4 @@
-import { isExerciseDaySuccess } from '../calc.js';
+import { getDayTargetKcal, isExerciseDaySuccess } from '../calc.js';
 import {
   activeBenchmarks,
   activeCycleOf,
@@ -62,6 +62,39 @@ function _nextPlan(board, runningStats) {
   };
 }
 
+function _number(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function _foodSnapshot(cache, todayKey, dietPlan) {
+  const day = cache?.[todayKey] || {};
+  const actualKcal = Math.round(['bKcal', 'lKcal', 'dKcal', 'sKcal']
+    .reduce((sum, key) => sum + _number(day[key]), 0));
+  const targetKcal = dietPlan && (dietPlan._userSet || dietPlan.weight || dietPlan.height)
+    ? Math.max(0, Math.round(getDayTargetKcal(
+      dietPlan,
+      Number(todayKey?.slice(0, 4)),
+      Number(todayKey?.slice(5, 7)) - 1,
+      Number(todayKey?.slice(8, 10)),
+      day,
+    )))
+    : 0;
+  const recordedMeals = ['bKcal', 'lKcal', 'dKcal', 'sKcal'].filter(key => _number(day[key]) > 0).length;
+  const progress = targetKcal > 0 ? Math.round((actualKcal / targetKcal) * 100) : 0;
+  return {
+    dateKey: todayKey,
+    actualKcal,
+    targetKcal,
+    progress: Math.max(0, Math.min(100, progress)),
+    proteinG: Math.round(['bProtein', 'lProtein', 'dProtein', 'sProtein'].reduce((sum, key) => sum + _number(day[key]), 0)),
+    carbsG: Math.round(['bCarbs', 'lCarbs', 'dCarbs', 'sCarbs'].reduce((sum, key) => sum + _number(day[key]), 0)),
+    fatG: Math.round(['bFat', 'lFat', 'dFat', 'sFat'].reduce((sum, key) => sum + _number(day[key]), 0)),
+    recordedMeals,
+    state: actualKcal > 0 || targetKcal > 0 ? 'ready' : 'waiting',
+  };
+}
+
 export function buildSeasonDashboardSnapshot({
   cache = {},
   registry = {},
@@ -69,14 +102,17 @@ export function buildSeasonDashboardSnapshot({
   workoutPlan = {},
   runningPlan = {},
   board = null,
+  dietPlan = {},
   generatedAt = Date.now(),
 } = {}) {
+  const food = _foodSnapshot(cache, todayKey, dietPlan);
   const season = findSeasonForDate(registry, todayKey);
   if (!season) {
     return {
       schemaVersion: 1,
       generatedAt,
       state: 'no-season',
+      food,
       message: '새 시즌을 설정해 주세요',
     };
   }
@@ -102,6 +138,7 @@ export function buildSeasonDashboardSnapshot({
     schemaVersion: 1,
     generatedAt,
     state: 'ready',
+    food,
     season: {
       id: season.id,
       name: season.name,

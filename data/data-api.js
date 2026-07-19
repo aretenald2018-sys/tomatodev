@@ -534,6 +534,11 @@ export const saveDietPlan = async (plan) => {
   const merged = { ...(getDietPlan()), ...plan };
   await _saveSetting('diet_plan', merged);
   Object.assign(_dietPlan, merged);
+  if (typeof document !== 'undefined') {
+    document.dispatchEvent(new CustomEvent('data:diet-plan-updated', {
+      detail: { source: 'saveDietPlan' },
+    }));
+  }
   return merged;
 };
 
