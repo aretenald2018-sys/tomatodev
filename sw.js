@@ -2,7 +2,7 @@
 // Cache names are deliberately owned by this app because TomatoDev and the
 // production app currently share the github.io origin.
 const CACHE_PREFIX = 'tomatodev-';
-const CACHE_VERSION = 'tomatodev-v20260719z8-shared-write-fence';
+const CACHE_VERSION = 'tomatodev-v20260719z9-shared-write-fence';
 const RUNTIME_CACHE = 'tomatodev-runtime';
 importScripts('./runtime-assets.js');
 const STATIC_ASSETS = self.TOMATO_STATIC_ASSETS;
