@@ -607,7 +607,7 @@ test('day sheet preserves exercise carousel position across set saves', () => {
   assert.match(inputHelpers, /data-wt-day-exercise-slide="\$\{slideIndex\}"/);
   assert.match(saveFn, /const restoreState = options\?\.preserveInput[\s\S]*_captureWorkoutSheetScrollState\(\)/);
   assert.match(saveFn, /if \(nextRestoreState\) _restoreWorkoutSheetInputState\(nextRestoreState\)/);
-  assert.match(toggleFn, /\{ preserveSheetScroll: true \}/);
+  assert.match(toggleFn, /\{ preserveSheetScroll: true, optimisticRender: true \}/);
 });
 
 test('workout keypad keeps digit entry local and commits once with an optimistic render', () => {
@@ -619,13 +619,17 @@ test('workout keypad keeps digit entry local and commits once with an optimistic
   assert.match(markDirty, /data-wt-set-keyboard-dirty/);
   assert.match(markDirty, /dispatchEvent\(new Event\('input'/);
   assert.doesNotMatch(markDirty, /saveDay|_updateWorkoutExerciseSetFromSheet|queue/i);
-  assert.doesNotMatch(calendarJs, /_workoutSetKeyboardDraftQueues|_queueWorkoutSetKeyboardInputDraft|_flushWorkoutSetKeyboardInputDraft|skipRender/);
-  assert.match(commit, /\{ nextInlineEditorKey, optimisticRender: true \}/);
+  assert.doesNotMatch(calendarJs, /_workoutSetKeyboardDraftQueues|_queueWorkoutSetKeyboardInputDraft|_flushWorkoutSetKeyboardInputDraft/);
+  assert.match(commit, /skipRender: options\?\.skipRender === true/);
   assert.match(complete, /\{ preserveSheetScroll: true, optimisticRender: true \}/);
   assert.match(calendarJs, /if \(_workoutSetKeyboardActiveInput\(\)\) return;[\s\S]*document\.dispatchEvent\(new CustomEvent\('sheet:saved'\)\)/);
   assert.match(move, /const commitPromise = Promise\.resolve\(_commitWorkoutSetKeyboardInput/);
+  assert.match(move, /const targetAlreadyMounted = inlineMove && !!_workoutSetKeyboardRenderedInput\(target\)/);
+  assert.match(move, /if \(targetAlreadyMounted\) _workoutSetKeyboardDomLocked = true/);
+  assert.match(move, /skipRender: targetAlreadyMounted/);
   assert.match(move, /_focusWorkoutSetKeyboardRenderedTarget\(target\)/);
-  assert.doesNotMatch(move, /commitPromise\.then|await commitPromise/);
+  assert.match(move, /inlineMove && !targetAlreadyMounted/);
+  assert.match(calendarJs, /if \(_workoutSetKeyboardDomLocked && _workoutSetKeyboardElement\(\)\?\.classList\.contains\('is-open'\)\) return/);
 });
 
 test('day sheet exercise card renders prior workout record instead of today set summary', () => {
@@ -842,7 +846,7 @@ test('day sheet set done toggle uses explicit state and compact 70-percent-heigh
   assert.match(toggleFn, /const wasDone = nextSet\.done === true/);
   assert.match(toggleFn, /const nextDone = !wasDone/);
   assert.doesNotMatch(toggleFn, /_isActualWorkoutSet\(nextSet\) \|\| nextSet\.done === true/);
-  assert.match(toggleFn, /\{ preserveSheetScroll: true \}/);
+  assert.match(toggleFn, /\{ preserveSheetScroll: true, optimisticRender: true \}/);
   assert.match(styleCss, /\.wt-max-set-row\s*\{[\s\S]*padding:\s*3px 4px;/);
   assert.match(styleCss, /\.wt-max-set-main\s*\{[\s\S]*grid-template-columns:\s*32px 32px minmax\(42px,\s*1fr\) minmax\(38px,\s*\.84fr\) 32px 32px/);
   assert.match(styleCss, /\.wt-max-set-check\s*\{[\s\S]*width:\s*32px;[\s\S]*height:\s*32px;/);

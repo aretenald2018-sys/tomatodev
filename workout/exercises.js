@@ -379,6 +379,14 @@ function _captureWorkoutNumberInputRenderScroll(input) {
   return _captureWorkoutRenderScroll();
 }
 
+function _shouldKeepWorkoutNumberInputMounted(field, sourceInput) {
+  if (!['kg', 'reps'].includes(String(field || ''))) return false;
+  if (!sourceInput?.matches?.(WORKOUT_NUMBER_INPUT_SELECTOR) || !sourceInput.isConnected) return false;
+  const row = sourceInput.closest?.('.set-row');
+  const active = document.activeElement;
+  return !!row && active?.matches?.(WORKOUT_NUMBER_INPUT_SELECTOR) && row.contains(active);
+}
+
 function _captureWorkoutNumberInputScroll(input) {
   if (!input?.matches?.(WORKOUT_NUMBER_INPUT_SELECTOR) || !input.closest?.('#tab-workout')) return;
   const rect = input.getBoundingClientRect?.();
@@ -1096,6 +1104,7 @@ function _updateSetDraftField(entryIdx, si, field, val) {
 export function wtUpdateSet(entryIdx, si, field, val, sourceInput = null) {
   // RPE 빈 값은 null로 저장 — 0과 구분해 _computeExpertRec의 prevRpeKnown 판정을 명확히.
   const restoreScroll = _captureWorkoutNumberInputRenderScroll(sourceInput);
+  const keepNumberInputMounted = _shouldKeepWorkoutNumberInputMounted(field, sourceInput);
   let parsed;
   if (field === 'setType') parsed = val;
   else if (field === 'rpe') parsed = _normalizeRpe(val);
@@ -1116,14 +1125,16 @@ export function wtUpdateSet(entryIdx, si, field, val, sourceInput = null) {
   }
   wtPersistActiveWorkoutDraft(`set update ${field}`);
   const isMaxEntry = _isMaxEntryMode(entryIdx);
-  if (isMaxEntry && _setFieldAffectsTrackMetric(field)) {
-    if (!_rerenderMaxEntryOwner(entryIdx)) _renderExerciseList();
+  if (!keepNumberInputMounted) {
+    if (isMaxEntry && _setFieldAffectsTrackMetric(field)) {
+      if (!_rerenderMaxEntryOwner(entryIdx)) _renderExerciseList();
+    }
+    else _renderSets(entryIdx);
   }
-  else _renderSets(entryIdx);
   _restoreWorkoutRenderScroll(restoreScroll);
   saveWorkoutDay({ silent: true })
     .then(() => {
-      if (isMaxEntry && _setFieldAffectsTrackMetric(field)) {
+      if (isMaxEntry && _setFieldAffectsTrackMetric(field) && !_shouldKeepWorkoutNumberInputMounted(field, sourceInput)) {
         if (!_rerenderMaxEntryOwner(entryIdx)) _renderExerciseList();
         _restoreWorkoutRenderScroll(restoreScroll);
       }
@@ -1171,7 +1182,6 @@ function _setSetDoneState(entryIdx, si, nextDone) {
     wtRestTimerClearSetRecord(entryIdx, si);
   }
   saveWorkoutDay({ silent: true }).then(() => {
-    if (!_rerenderMaxEntryOwner(entryIdx)) _renderExerciseList();
     if (shouldDone) showToast('저장되었습니다', 1500, 'success');
   }).catch(e => console.error('Save error:', e));
 }
@@ -1794,7 +1804,7 @@ function _renderSets(entryIdx, targetEl = null) {
       <div class="ex-max-v2-main-row">
         <button type="button" class="ex-max-v2-type-btn ${typeClass}" title="세트 타입">${_maxSetTypeLabel(set.setType, set)}</button>
         <label class="ex-max-v2-field"><span>KG</span><input class="set-input" type="number" inputmode="decimal" placeholder="kg" min="0" step="0.5" value="${set.kg||''}"></label>
-        <label class="ex-max-v2-field"><span>REP</span><input class="set-input" type="number" inputmode="numeric" placeholder="회" min="1" step="1" value="${set.reps||''}"></label>
+        <label class="ex-max-v2-field"><span>REP</span><input class="set-input" type="number" inputmode="decimal" placeholder="회" min="1" step="1" value="${set.reps||''}"></label>
         <label class="ex-max-v2-field"><span>RIR</span><input class="set-rpe-input" type="number" inputmode="decimal" placeholder="-" min="0" max="9" step="0.5" value="${_rpeToRir(set.rpe)}"></label>
         <label class="ex-max-v2-rom-field"><span>ROM</span><input class="set-rom-input" type="number" inputmode="decimal" min="0" max="10" step="0.5" value="${romScoreValue}" aria-label="가동범위 10점 입력"><em>/10</em></label>
         <button class="set-done-btn ${isDone?'done':''}" title="완료 체크">✓</button>
@@ -1810,7 +1820,7 @@ function _renderSets(entryIdx, targetEl = null) {
         </select>
         <input class="set-input" type="number" inputmode="decimal" placeholder="kg"  min="0" step="0.5" value="${set.kg||''}">
         <span class="set-sep">kg</span>
-        <input class="set-input" type="number" inputmode="numeric" placeholder="회"  min="1" step="1"   value="${set.reps||''}">
+        <input class="set-input" type="number" inputmode="decimal" placeholder="회"  min="1" step="1"   value="${set.reps||''}">
         <span class="set-sep">회</span>
         ${rpeSelHtml}
         <span class="set-vol">${vol}</span>

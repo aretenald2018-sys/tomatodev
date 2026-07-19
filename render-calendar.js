@@ -136,6 +136,7 @@ const _workoutExpandedSetEditors = new Set();
 const _workoutOpenSetTypeMenus = new Set();
 let _workoutInlineSetEditor = null;
 let _workoutSetKeyboardInput = null;
+let _workoutSetKeyboardDomLocked = false;
 let _workoutSummaryElapsedTimer = null;
 const _workoutSheetCarouselSnapshots = new Map();
 const _workoutSheetPendingCarouselFocus = new Map();
@@ -1197,8 +1198,10 @@ async function _saveWorkoutHomeSessionResult(key, result, options = {}) {
     _syncWorkoutHomeSavedSessionState(key, result, options.sessionIndex);
     const nextRestoreState = restoreState;
     _workoutDetailCollapsed.clear();
-    renderWorkoutCalendarHome();
-    if (nextRestoreState) _restoreWorkoutSheetInputState(nextRestoreState);
+    if (options?.skipRender !== true) {
+      renderWorkoutCalendarHome();
+      if (nextRestoreState) _restoreWorkoutSheetInputState(nextRestoreState);
+    }
     await savePromise;
     // A previous field can finish saving after the user already moved to the
     // next keypad field. Avoid app-level renderAll() replacing that live input;
@@ -2049,6 +2052,7 @@ export function renderCalendar() {
 export function renderWorkoutCalendarHome() {
   const root = document.getElementById('workout-calendar-root');
   if (!root) return;
+  if (_workoutSetKeyboardDomLocked && _workoutSetKeyboardElement()?.classList.contains('is-open')) return;
   _rememberRenderedWorkoutSheetCarousel(root);
   _bindCalendarActions(root);
   destroyRunningMaps(root);
@@ -2538,6 +2542,7 @@ function _renderWorkoutSetRows(row, options = {}) {
     const expanded = editable && _isWorkoutSetEditorExpanded(key, sessionIndex, exerciseIndex, setIndex);
     const kgInline = editable && _isWorkoutSetInlineEditing(key, sessionIndex, exerciseIndex, setIndex, 'kg');
     const repsInline = editable && _isWorkoutSetInlineEditing(key, sessionIndex, exerciseIndex, setIndex, 'reps');
+    const rowInline = kgInline || repsInline;
     const typeMenuOpen = editable && _isWorkoutSetTypeMenuOpen(key, sessionIndex, exerciseIndex, setIndex);
     const setTypeLabel = workoutSetTypeLabel(set);
     const setTypeClass = workoutSetTypeClass(set);
@@ -2548,11 +2553,11 @@ function _renderWorkoutSetRows(row, options = {}) {
     const swipeAttrs = editable
       ? ` data-wt-set-swipe-row data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}"`
       : '';
-    const kgControl = kgInline
-      ? `<span class="wt-max-set-value is-inline-editing">${_renderWorkoutSetInlineInput(key, sessionIndex, exerciseIndex, setIndex, 'kg', _workoutSheetInputValue(set.kg, 1), '무게', '0.5')}</span>`
+    const kgControl = rowInline
+      ? `<span class="wt-max-set-value is-inline-editing ${kgInline ? 'is-active' : ''}">${_renderWorkoutSetInlineInput(key, sessionIndex, exerciseIndex, setIndex, 'kg', _workoutSheetInputValue(set.kg, 1), '무게', '0.5')}</span>`
       : `<button type="button" class="wt-max-set-value" data-wt-set-edit-field="kg" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" aria-label="무게 수정"><b>${_esc(kgDisplayText)}${kgUnit}</b></button>`;
-    const repsControl = repsInline
-      ? `<span class="wt-max-set-value is-inline-editing">${_renderWorkoutSetInlineInput(key, sessionIndex, exerciseIndex, setIndex, 'reps', _workoutSheetInputValue(set.reps, 0), '반복', '1')}</span>`
+    const repsControl = rowInline
+      ? `<span class="wt-max-set-value is-inline-editing ${repsInline ? 'is-active' : ''}">${_renderWorkoutSetInlineInput(key, sessionIndex, exerciseIndex, setIndex, 'reps', _workoutSheetInputValue(set.reps, 0), '반복', '1')}</span>`
       : `<button type="button" class="wt-max-set-value" data-wt-set-edit-field="reps" data-date-key="${_esc(key)}" data-session-index="${sessionIndex}" data-exercise-index="${exerciseIndex}" data-set-index="${setIndex}" aria-label="횟수 수정"><b>${_esc(repsDisplayText)}${repsUnit}</b></button>`;
     return `
       <div class="wt-max-set-row ${set.done ? 'is-done' : ''} ${editable ? 'is-editing' : ''} ${expanded ? 'is-expanded-editor' : ''} ${typeMenuOpen ? 'is-type-menu-open' : ''}"${swipeAttrs}>
@@ -3360,8 +3365,30 @@ function _bindWorkoutHomeSheetActions(root) {
   _bindWorkoutSetSwipeDelete(sheet);
   sheet.addEventListener('focusin', (event) => {
     const target = event.target instanceof Element ? event.target : event.target?.parentElement;
-    const input = target?.closest?.('[data-wt-set-clear-on-focus]');
-    if (!input || !sheet.contains(input) || !input.matches(WORKOUT_SHEET_SET_INPUT_SELECTOR)) return;
+    const input = target?.closest?.(WORKOUT_SHEET_SET_INPUT_SELECTOR);
+    if (!input || !sheet.contains(input)) return;
+    if (input.hasAttribute('data-wt-set-inline-input')) {
+      const previousInput = _workoutSetKeyboardInput?.isConnected ? _workoutSetKeyboardInput : null;
+      const targetMeta = _workoutSetKeyboardMeta(input);
+      const inlineEditorKey = input.getAttribute('data-wt-inline-editor-key') || '';
+      const switchingMountedField = previousInput
+        && previousInput !== input
+        && previousInput.hasAttribute('data-wt-set-inline-input');
+      if (switchingMountedField) _workoutSetKeyboardDomLocked = true;
+      if (inlineEditorKey) _workoutInlineSetEditor = inlineEditorKey;
+      if (switchingMountedField && previousInput.getAttribute('data-wt-set-keyboard-dirty') === 'true') {
+        Promise.resolve(_commitWorkoutSetKeyboardInput(previousInput, {
+          closeInline: false,
+          nextTarget: targetMeta,
+          skipRender: true,
+        })).catch((error) => {
+          console.warn('[workout-calendar] mounted inline field commit failed:', error);
+        });
+      }
+      if (switchingMountedField) {
+        _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:set-inline-field' });
+      }
+    }
     _clearWorkoutSetInputOnFocus(input);
     _showWorkoutSetKeyboard(input);
   }, true);
@@ -3645,7 +3672,7 @@ function _focusWorkoutSetKeyboardTarget(target) {
   );
 }
 
-function _focusWorkoutSetKeyboardRenderedTarget(target) {
+function _workoutSetKeyboardRenderedInput(target) {
   if (!target || typeof document === 'undefined') return false;
   const sheet = _workoutSetKeyboardSheet();
   const inlineKey = _workoutSetInlineFieldKey(target.key, target.sessionIndex, target.exerciseIndex, target.setIndex, target.field);
@@ -3660,8 +3687,12 @@ function _focusWorkoutSetKeyboardRenderedTarget(target) {
   const input = inlineKey
     ? (sheet?.querySelector?.(`[data-wt-inline-editor-key="${_workoutSheetSelectorValue(inlineKey)}"]`) || sheet?.querySelector?.(selector))
     : sheet?.querySelector?.(selector);
+  return input || null;
+}
+
+function _focusWorkoutSetKeyboardRenderedTarget(target) {
+  const input = _workoutSetKeyboardRenderedInput(target);
   if (!input) return false;
-  input.setAttribute('data-wt-set-clear-on-focus', '');
   try { input.focus({ preventScroll: true }); }
   catch { input.focus?.(); }
   if (document.activeElement === input) _clearWorkoutSetInputOnFocus(input);
@@ -3772,6 +3803,7 @@ function _clearWorkoutSetKeyboardSurface(input = null) {
     sheet.classList.remove('has-set-keyboard');
   });
   _workoutSetKeyboardInput = null;
+  _workoutSetKeyboardDomLocked = false;
 }
 
 function _hideWorkoutSetKeyboard(options = {}) {
@@ -3780,6 +3812,7 @@ function _hideWorkoutSetKeyboard(options = {}) {
     _clearWorkoutSetKeyboardSurface(input);
     return Promise.resolve(false);
   }
+  _workoutSetKeyboardDomLocked = false;
   const commitPromise = Promise.resolve(_commitWorkoutSetKeyboardInput(input, { closeInline: true }));
   _clearWorkoutSetKeyboardSurface(input);
   return commitPromise;
@@ -3870,7 +3903,11 @@ function _commitWorkoutSetKeyboardInput(input, options = {}) {
     input.getAttribute('data-field'),
     value,
     input,
-    { nextInlineEditorKey, optimisticRender: true }
+    {
+      nextInlineEditorKey,
+      optimisticRender: true,
+      skipRender: options?.skipRender === true,
+    }
   );
 }
 
@@ -3918,6 +3955,7 @@ function _completeWorkoutSetKeyboardInput() {
     _clearWorkoutSetKeyboardSurface(input);
     return Promise.resolve(false);
   }
+  _workoutSetKeyboardDomLocked = false;
   const commitPromise = Promise.resolve(_commitWorkoutSetKeyboardDone(input))
     .catch((e) => {
       console.warn('[workout-calendar] set keyboard complete failed:', e);
@@ -3933,14 +3971,26 @@ function _moveWorkoutSetKeyboardFocus(direction) {
   const target = _findWorkoutSetKeyboardMoveTarget(input, direction);
   if (!input || !target) return false;
   const inlineMove = input.hasAttribute('data-wt-set-inline-input') && target.mode === 'inline';
+  const targetAlreadyMounted = inlineMove && !!_workoutSetKeyboardRenderedInput(target);
+  if (targetAlreadyMounted) _workoutSetKeyboardDomLocked = true;
   if (inlineMove) _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:set-inline-field' });
-  const commitPromise = Promise.resolve(_commitWorkoutSetKeyboardInput(input, { closeInline: false, nextTarget: target }));
-  if (!inlineMove) _focusWorkoutSetKeyboardTarget(target);
-  else if (!_focusWorkoutSetKeyboardRenderedTarget(target)) {
+  const commitPromise = Promise.resolve(_commitWorkoutSetKeyboardInput(input, {
+    closeInline: false,
+    nextTarget: target,
+    skipRender: targetAlreadyMounted,
+  }));
+  const focusRenderedTarget = () => {
+    if (_focusWorkoutSetKeyboardRenderedTarget(target)) return true;
     window.requestAnimationFrame?.(() => _focusWorkoutSetKeyboardRenderedTarget(target));
     window.setTimeout?.(() => _focusWorkoutSetKeyboardRenderedTarget(target), 80);
-  }
-  commitPromise.catch((e) => {
+    return false;
+  };
+  if (!inlineMove) _focusWorkoutSetKeyboardTarget(target);
+  else if (targetAlreadyMounted) _focusWorkoutSetKeyboardRenderedTarget(target);
+  else focusRenderedTarget();
+  commitPromise.then(() => {
+    if (inlineMove && !targetAlreadyMounted) _focusWorkoutSetKeyboardRenderedTarget(target);
+  }).catch((e) => {
     console.warn('[workout-calendar] set keyboard move failed:', e);
   });
   return true;
@@ -4343,7 +4393,7 @@ async function _focusWorkoutSetInlineFieldFromSheet(key, sessionIndex, exerciseI
   if (!shouldCommitActiveInput) renderWorkoutCalendarHome();
   const focusInput = () => {
     _restoreWorkoutSheetScrollState(restoreState);
-    if (typeof document === 'undefined') return;
+    if (typeof document === 'undefined') return false;
     const root = _workoutHomeScrollRoot();
     const sheet = root?.querySelector?.('[data-wt-day-sheet]')
       || document.querySelector?.('#workout-calendar-root [data-wt-day-sheet]');
@@ -4355,19 +4405,39 @@ async function _focusWorkoutSetInlineFieldFromSheet(key, sessionIndex, exerciseI
       `[data-field="${_workoutSheetSelectorValue(safeField)}"]`,
     ].join('');
     const input = sheet?.querySelector?.(selector);
-    if (!input) return;
+    if (!input) return false;
     input.setAttribute('data-wt-set-clear-on-focus', '');
     try { input.focus({ preventScroll: true }); }
     catch { input.focus?.(); }
     if (document.activeElement === input) _clearWorkoutSetInputOnFocus(input);
     _restoreWorkoutSheetScrollState(restoreState);
+    return document.activeElement === input;
   };
-  focusInput();
-  if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-    window.requestAnimationFrame(focusInput);
-    window.setTimeout?.(focusInput, 80);
-  }
-  commitPromise?.catch((error) => {
+  let focusRetryCount = 0;
+  let focusRetryTimer = null;
+  let targetFocused = false;
+  const focusInputWhenReady = () => {
+    if (targetFocused) return true;
+    if (focusInput()) {
+      targetFocused = true;
+      focusRetryCount = 0;
+      focusRetryTimer = null;
+      return true;
+    }
+    if (typeof window === 'undefined' || focusRetryTimer || focusRetryCount >= 15) return false;
+    focusRetryCount += 1;
+    focusRetryTimer = window.setTimeout?.(() => {
+      focusRetryTimer = null;
+      focusInputWhenReady();
+    }, 40) || null;
+    return false;
+  };
+  focusInputWhenReady();
+  commitPromise?.then(() => {
+    if (targetFocused) return;
+    focusRetryCount = 0;
+    focusInputWhenReady();
+  }).catch((error) => {
     console.warn('[workout-calendar] inline field switch commit failed:', error);
   });
   return true;
@@ -4557,7 +4627,11 @@ async function _updateWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseInd
       clearWorkoutExerciseCompletionMarker(entry);
       return true;
     }, options?.optimisticRender
-      ? { preserveSheetScroll: true, optimisticRender: true }
+      ? {
+        preserveSheetScroll: true,
+        optimisticRender: true,
+        skipRender: options?.skipRender === true,
+      }
       : isInlineSource
         ? { preserveSheetScroll: true }
         : { preserveInput: true, sourceInput, ignoreSourceInput: true });
@@ -4716,7 +4790,7 @@ async function _toggleWorkoutExerciseSetDoneFromSheet(key, sessionIndex, exercis
       entry.sets = sets;
       clearWorkoutExerciseCompletionMarker(entry);
       return true;
-    }, { preserveSheetScroll: true });
+    }, { preserveSheetScroll: true, optimisticRender: true });
     if (ok) {
       await _syncWorkoutRestAfterSheetSet(key, sessionIndex, exerciseIndex, setIndex, savedDone);
     }
