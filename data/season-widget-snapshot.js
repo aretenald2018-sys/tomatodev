@@ -15,6 +15,8 @@ import {
   selectSeasonRunningStats,
   selectSeasonStrengthStats,
 } from './season-selectors.js';
+import { buildSeasonOverview } from './season-overview.js';
+import { listRunningActivities } from '../workout/running-analytics.js';
 
 function _round(value, digits = 1) {
   const factor = 10 ** digits;
@@ -95,6 +97,54 @@ function _foodSnapshot(cache, todayKey, dietPlan) {
   };
 }
 
+function _recentRunningRecords(cache, todayKey) {
+  const entries = Object.entries(cache || {})
+    .filter(([key]) => !todayKey || key <= todayKey);
+  return listRunningActivities(entries)
+    .sort((left, right) => (
+      right.dateKey.localeCompare(left.dateKey)
+      || Number(right.startedAt || 0) - Number(left.startedAt || 0)
+      || right.sessionIndex - left.sessionIndex
+    ))
+    .slice(0, 5)
+    .map(record => ({
+      dateKey: record.dateKey,
+      distanceKm: _round(record.distanceKm, 2),
+      durationSec: Math.max(0, Math.round(Number(record.durationSec) || 0)),
+      avgPaceSecPerKm: Math.max(0, Math.round(Number(record.avgPaceSecPerKm) || 0)),
+      source: record.source || 'manual',
+    }));
+}
+
+function _weeklyGoal(cache, season, board, runningPlan, todayKey) {
+  if (!season) return { state: 'missing', items: [] };
+  const overview = buildSeasonOverview({
+    cache,
+    season,
+    board: JSON.parse(JSON.stringify(board || {})),
+    runningPlan,
+    todayKey,
+  });
+  const week = overview.weeks.find(item => item.startDate <= todayKey && todayKey <= item.endDate)
+    || overview.weeks.find(item => item.startDate >= todayKey)
+    || overview.weeks.at(-1);
+  if (!week) return { state: 'missing', items: [] };
+  return {
+    state: week.state,
+    index: week.index,
+    startDate: week.startDate,
+    endDate: week.endDate,
+    achievedCount: week.achievedCount,
+    totalCount: week.totalCount,
+    items: week.items.slice(0, 8).map(item => ({
+      kind: item.kind,
+      label: item.label,
+      detail: item.detail,
+      state: item.state,
+    })),
+  };
+}
+
 export function buildSeasonDashboardSnapshot({
   cache = {},
   registry = {},
@@ -106,6 +156,7 @@ export function buildSeasonDashboardSnapshot({
   generatedAt = Date.now(),
 } = {}) {
   const food = _foodSnapshot(cache, todayKey, dietPlan);
+  const recentRunning = _recentRunningRecords(cache, todayKey);
   const season = findSeasonForDate(registry, todayKey);
   if (!season) {
     return {
@@ -113,6 +164,8 @@ export function buildSeasonDashboardSnapshot({
       generatedAt,
       state: 'no-season',
       food,
+      weeklyGoal: _weeklyGoal(cache, null, board, runningPlan, todayKey),
+      recentRunning,
       message: '새 시즌을 설정해 주세요',
     };
   }
@@ -139,6 +192,8 @@ export function buildSeasonDashboardSnapshot({
     generatedAt,
     state: 'ready',
     food,
+    weeklyGoal: _weeklyGoal(cache, season, board, runningPlan, todayKey),
+    recentRunning,
     season: {
       id: season.id,
       name: season.name,

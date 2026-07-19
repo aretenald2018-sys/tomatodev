@@ -11,10 +11,15 @@ object TomatoMetricWidgetStore {
             FoodIntakeWidget::class.java,
             HealthGoalWidget::class.java,
             RunningTrendWidget::class.java,
+            TomatoStatusDashboardWidget::class.java,
         ).forEach { provider ->
             val component = ComponentName(context, provider)
             manager.getAppWidgetIds(component).forEach { id ->
-                TomatoMetricWidgetRenderer.update(context, manager, id, provider)
+                if (provider == TomatoStatusDashboardWidget::class.java) {
+                    TomatoStatusDashboardRenderer.update(context, manager, id)
+                } else {
+                    TomatoMetricWidgetRenderer.update(context, manager, id, provider)
+                }
             }
         }
     }
