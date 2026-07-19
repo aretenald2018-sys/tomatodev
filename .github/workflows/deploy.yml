@@ -47,7 +47,16 @@ jobs:
         run: npm ci
 
       - name: Build TomatoDev Android web assets
-        run: npm run cap:sync
+        run: |
+          npm run build
+          # The repository intentionally tracks only the custom Android sources.
+          # Generate the Capacitor project root in CI, then restore those sources.
+          mv android android-native
+          npx cap add android
+          cp android-native/app/build.gradle android/app/build.gradle
+          cp -R android-native/app/src/. android/app/src/
+          rm -rf android-native
+          npx cap sync android
 
       - name: Build TomatoDev debug APK
         run: gradle -p android :app:assembleDebug
