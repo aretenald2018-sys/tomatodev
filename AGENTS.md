@@ -1,5 +1,12 @@
 # Tomato Project Codex Rules
 
+## Mirror policy (2026-07-19)
+
+- TomatoDev is a development mirror of tomatofarm, not an independent development line. Implement features in the tomatofarm repository and bring them here through sync; do not start new feature work in this repository.
+- The only TomatoDev-native commits allowed are the isolation overlay (Firebase/auth/owner boundaries, dev APK publication, build metadata) and sync merges from tomatofarm.
+- Sync procedure: the local remote `farm` points to the tomatofarm checkout. Run `git fetch farm main`, merge `farm/main` into `main`, resolve conflicts preferring `farm` for app code and TomatoDev for the isolation overlay and build metadata, run the repository checks, then push once.
+- The task-branch workflow below applies only to isolation-overlay maintenance, not to feature development.
+
 ## Work unit and branches
 
 - The current user request is the source of truth. Do not resume work from historical plan, review, evidence, or next-action files.
