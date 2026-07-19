@@ -1,10 +1,10 @@
 {
   "app": "tomatodev",
-  "commit": "d75b475886d6d8d776f2b89c19e2bd2a7718b6b0",
-  "shortCommit": "d75b475886d6",
+  "commit": "2ab41d919a16f544699d893eb267e5f0213845cd",
+  "shortCommit": "2ab41d919a16",
   "branch": "codex/complete-season-widget-20260719",
-  "deployedAt": "2026-07-19T02:46:24.116Z",
-  "cacheVersion": "tomatodev-v20260719z9-shared-write-fence",
+  "deployedAt": "2026-07-19T02:47:20.850Z",
+  "cacheVersion": "tomatodev-v20260719z10-shared-write-fence",
   "runId": null,
   "runAttempt": null
 }
