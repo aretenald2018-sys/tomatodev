@@ -70,8 +70,8 @@ test('wear workout bridge uses Asset transfer and app-private file retry for ful
   const wearController = await read('android/wear/src/main/java/com/lifestreak/wear/workout/WearWorkoutUiController.kt');
   const wearLayout = await read('android/wear/src/main/res/layout/page_workout.xml');
 
-  assert.match(appGradle, /applicationId "com\.lifestreak\.app"/);
-  assert.match(wearGradle, /applicationId "com\.lifestreak\.app"/);
+  assert.match(appGradle, /applicationId "com\.lifestreak\.dev"/);
+  assert.match(wearGradle, /applicationId "com\.lifestreak\.dev"/);
   assert.match(appGradle, /com\.google\.android\.gms:play-services-wearable:18\.2\.0/);
   assert.match(wearGradle, /com\.google\.android\.gms:play-services-wearable:18\.2\.0/);
   assert.match(appManifest, /TomatoWearWorkoutListenerService/);

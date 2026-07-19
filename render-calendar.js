@@ -3526,15 +3526,6 @@ function _bindWorkoutHomeSheetActions(root) {
       showToast('종목 추가 화면을 열지 못했어요', 2200, 'error');
     });
   }, true);
-  actionRoot.addEventListener('keydown', (event) => {
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
-    const seasonOverviewBtn = target?.closest?.('[data-wt-season-overview]');
-    if (!seasonOverviewBtn || target?.closest?.('[data-wt-season-edit], [data-wt-season-manager]')) return;
-    event.preventDefault();
-    event.stopPropagation();
-    _openWorkoutSeasonOverview(seasonOverviewBtn.getAttribute('data-wt-season-overview'));
-  }, true);
 }
 
 function _clearWorkoutSetInputOnFocus(input) {
@@ -4186,6 +4177,15 @@ function _bindWorkoutCycleRailActions(root) {
     Promise.resolve(_openWorkoutCycleTargetSettings(btn.getAttribute('data-cal-cycle-target'))).catch((e) => {
       console.warn('[workout-calendar] cycle target click failed:', e);
     });
+  }, true);
+  actionRoot.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    const seasonOverviewBtn = target?.closest?.('[data-wt-season-overview]');
+    if (!seasonOverviewBtn || target?.closest?.('[data-wt-season-edit], [data-wt-season-manager]')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    _openWorkoutSeasonOverview(seasonOverviewBtn.getAttribute('data-wt-season-overview'));
   }, true);
 }
 
