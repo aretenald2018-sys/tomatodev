@@ -31,7 +31,7 @@ index.html
 | 함수 | Firebase Cloud Functions (`functions/`) |
 | API 서버 | Node/Express (`tools/api-server.js`) — 식품DB 프록시 |
 | 테스트 | `node:test` 회귀/계약/DOM 통합 테스트 (`npm.cmd test`, `npm.cmd run test:contracts`) |
-| 디자인 | **TDS Mobile** (tossmini-docs.toss.im/tds-mobile) — 컬러 스케일만 커스텀 |
+| 디자인 | **TDS Mobile** (tossmini-docs.toss.im/tds-mobile) — 타이포/컴포넌트 규격 준수, 컬러는 토마토 레드를 브랜드 강조색으로 쓰되 카테고리·차트·상태 표시에는 다색 semantic 컬러 병행 (2026-07-19 레드 단일 강제 폐지) |
 
 ## 3. 핵심 아키텍처 결정 (코드에서 읽기 어려운 것들)
 

@@ -1,4 +1,4 @@
-# Product Requirements Document — 토마토팜 (dashboard3)
+# Product Requirements Document — 토마토팜 (tomatofarm)
 
 ## 1. 제품 개요
 
@@ -83,12 +83,12 @@
 ### 4.3 호환성
 - 웹: 모던 브라우저 (ES6 modules 지원)
 - 모바일: Android (Capacitor 8.x)
-- 다크모드: 기본 적용 (TDS Mobile)
+- 다크모드: 미지원 — `feature-login.js`가 항상 `document.documentElement.classList.add('light')`로 밝은 모드 고정 (2026-07-19 정정, 과거 "다크모드 기본 적용" 문구는 stale)
 
 ### 4.4 디자인 원칙
 - **TDS Mobile (Toss Design System Mobile)** 적용 — https://tossmini-docs.toss.im/tds-mobile/
-- 컬러 스케일만 커스텀: 토마토 레드 `#fa342c` Primary, `#fdf0f0` BG, `#fed4d2` Light, `#fc6a66` Sub, `#ca1d13` Dark, `#921708` Deepest
 - 타이포, 컴포넌트, 스페이싱, 라디어스, 섀도, 모션은 TDS Mobile 공식 스펙 준수
+- 토마토 레드 `#fa342c` 계열(Primary/BG/Light/Sub/Dark/Deepest)은 브랜드 강조색으로 유지하되, 근육 부위·차트·매크로·상태(success/warning/info) 등 카테고리 구분이 필요한 곳은 다색 semantic 컬러 사용 가능 (2026-07-19: "컬러 스케일만 커스텀" 단일 강제 규칙 폐지 — 실제 `style.css`에 블루/앰버/틸 등이 이미 광범위하게 쓰이고 있어 legacy 규칙이었음)
 - Typography: t1(30px)→t7(13px), Font: Toss Product Sans + Tossface
 - Transition: 0.1s ease-in-out (표준)
 - 모바일 우선 반응형 레이아웃
@@ -99,5 +99,5 @@
 - **빌드 스텝 없음**: Vanilla JS, CDN import, 번들러 미사용
 - **1인 개발**: 코드 리뷰 없음, 문서 기반 자기 검증 (에이전트 활용)
 - **Firebase 무료 티어**: Firestore 읽기/쓰기 한도 고려
-- **배포**: `tomatofarm` 리모트에만 push, AI 에이전트 배포 금지 (유저가 직접 push)
+- **배포**: `tomatofarm` 리모트에만 push. 명확한 구현 요청은 검증 후 1회 production 배포까지 포함한다 — `AGENTS.md`의 Tab-Scoped Worktree and Release Workflow가 기준 (2026-07-19: "AI 에이전트 배포 금지" 구 정책 폐지, 배포 허용으로 통일)
 - **setDoc 전체 덮어쓰기**: 사진 필드 5종 포함 모든 필드 보존 필수

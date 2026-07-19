@@ -1,5 +1,17 @@
 # 다음 자동 액션
 
+## 2026-07-19 홈 탭 오늘/이번 주 요약 위젯 (스크린샷 재현)
+
+- 상태: `ready_for_execution`
+- 계획: `docs/ai/features/2026-07-19-home-weekly-summary-widget.md`
+- 요청: 첨부 스크린샷(오늘 식단 원형게이지 + 이번 주 근력 목표 체크리스트 + 이번 주 러닝 + 이번 주 변화 4카드)과 동일한 홈 탭 위젯을 실제 데이터에 연결해 재현. 사용자가 코덱스에게 줄 작업지시서를 요청함.
+- 그릴 결과: "이번 주 근력 목표" 데이터 출처를 질문했고, 사용자가 tomatodev/tomatofarm을 참고하라고 답해 두 저장소(+dashboard3)를 직접 clone해 grep했으나 세 저장소 어디에도 이 위젯이 구현돼 있지 않음을 확인. 신규 기능으로 결론, 추천안(독립 주간 목표 목록, exerciseId 기반 자동판정) 채택.
+- 핵심 발견: `home/today-summary.js`의 `renderTodayDiet`/`renderTodayWorkout`은 `index.html`에 대응 컨테이너가 없어 어디서도 호출되지 않는 고아 코드 — 사용자가 말한 "데이터 연결 안 됨"의 실체.
+- 색상 정책 갱신(2026-07-19): "토마토 레드 단색만" 규칙은 legacy로 확인되어 CLAUDE.md/ARCHITECTURE.md/prd.md에서 폐지·수정함. 스크린샷의 파랑/보라/주황 매크로 색상을 그대로 재현해도 됨.
+- **핵심 정정(2026-07-19 2회차)**: 사용자가 "근력 목표는 이미 구현된 시즌 목표와 같고, 오늘 식단도 마찬가지"라고 정정함. 조사 결과 이 저장소에 이미 완전한 시즌 시스템(`data/season-*.js`, `workout/test-v2/board-core.js`, Android `SeasonDashboardWidget` 네이티브 위젯까지 app.js에 배선 완료)이 있었음 — 신규 `_settings/weekly_strength_goals` 데이터 모델 계획은 폐기하고, `getSeasonBundleForDate`/`selectSeasonStrengthStats`/`selectSeasonRunningStats`/`expandColumnCells`(성장 보드 셀)를 재사용하는 것으로 계획 전면 수정함. 오늘 식단은 기존 `calcDietMetrics`/`getDietPlan`/`getDiet` 그대로 재사용(변경 없음).
+- 다음 액션: calc.js에 다이어트 주간 비교 순수 함수 1개만 추가 → 시즌/다이어트 데이터로 카드 4종을 홈 탭에 렌더링. 계획 문서의 "구현 범위" 순서 참고.
+- 차단 질문: 없음. 벤치프레스 2줄 트랙 매핑, 등록 벤치마크 0개 빈 상태 문구는 구현 중 실 데이터로 확정.
+
 ## 2026-07-10 Running GPS Lossless Route Rewrite
 
 - 상태: `production_verified_physical_device_not_verified`

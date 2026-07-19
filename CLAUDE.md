@@ -1,17 +1,27 @@
 # 토마토팜 운영계 - AI 컨텍스트 가이드
 
-## Default AI Workflow (Required)
+## Default AI Workflow
 
-- For any request that may change code, docs, data, config, tests, deployment, or UX, follow `docs/ai/WORKFLOW.md` by default.
-- The required order is: planning session -> execution session -> review session.
-- AI가 생성하는 계획, 리뷰, ADR, 로드맵, 핸드오프 문서는 기본적으로 한국어로 작성한다. 코드 식별자, 파일 경로, 명령어, API 이름, 라이브러리 이름, 인용 원문은 원래 언어를 유지한다.
-- 기본 트리거: 기능, 디자인, UX, 아키텍처, 모호한 변경 요청에는 `/grill-me`를 자동 적용한다. 버그, 오류, 실패, 회귀, UI 깨짐, 성능 문제에는 `/diagnose`를 자동 적용한다. 둘 다 해당될 수 있으면 `/diagnose`를 먼저 적용한다.
-- 자동 진행: 세션 시작 시 `docs/ai/NEXT_ACTION.md`를 먼저 확인한다. 대기 중인 다음 단계가 있고 사용자의 새 요청과 충돌하지 않으면 다음/리뷰 프롬프트를 사용자에게 요구하지 말고 그 단계로 바로 진행한다. 각 단계 종료 시 이 파일을 갱신한다.
-- If the user asks to "just implement", "fix", "build", or "change" something without naming an approved `docs/ai/features/*.md` plan, create or update the plan first and do not edit app code yet.
-- In a planning session, only edit `docs/ai/` or `docs/adr/` unless the user explicitly identifies an approved plan and asks for a specific execution slice.
-- In an execution session, implement exactly one approved slice from the plan. Do not combine adjacent features or opportunistic refactors.
-- In a review session, review against the plan and changed files. Do not add new feature work during review.
-- Durable handoff matters more than chat memory: every substantial request must leave a plan, review, or ADR document that a fresh session can read.
+이 섹션은 2026-07-19에 갱신했다. 과거 버전은 "Superpowers 스타일"의 planning/execution/review
+3단계 세션 분리와 "실행당 슬라이스 1개" 강제 슬라이싱을 요구했으나, 실제 커밋 이력(예:
+`f597f68`, `2cd5075` — 각각 18개·24개 파일, 2,000줄 이상을 한 커밋으로 처리)을 보면 이 프로젝트는
+실제로 크고 연관된 변경을 한 번에 묶어서 처리해왔다. 이제 `AGENTS.md`(Codex 규칙)와 동일한
+철학을 따른다:
+
+- 기본적으로 바로 구현한다(Implement directly by default). 요청 범위가 실질적으로 모호하거나,
+  독립적인 여러 모듈에 걸쳐 있거나, 사용자가 명시적으로 계획을 요청할 때만
+  `docs/ai/features/*.md` 계획 문서를 먼저 쓴다.
+- 버그는 재현이 안 되거나 원인이 불확실할 때만 고치기 전에 진단한다(가설 3~5개를 세우고
+  검증) — 모든 버그에 `/diagnose`를 의무 적용하지 않는다.
+- 계획 문서를 쓰기로 했다면 "planning session / execution session / review session" 같은
+  경직된 단계 구분이나 "세션당 정확히 1개 슬라이스" 제한을 강제하지 않는다. 승인된 범위 안에서
+  안전하게 리뷰 가능한 만큼은 한 번에 구현해도 된다.
+- AI가 생성하는 계획, 리뷰, ADR, 로드맵, 핸드오프 문서는 기본적으로 한국어로 작성한다. 코드
+  식별자, 파일 경로, 명령어, API 이름, 라이브러리 이름, 인용 원문은 원래 언어를 유지한다.
+- `docs/ai/NEXT_ACTION.md`는 여러 세션에 걸치는 큰 작업의 인계 메모로만 선택적으로 갱신한다.
+  매 요청마다 의무적으로 갱신하지 않는다.
+- durable handoff는 여전히 유용하다 — 다만 의무가 아니라, 다음에 이어받을 사람(자신 포함)이
+  맥락 없이도 이해할 수 있어야 하는 크고 복잡한 작업에서 판단해서 남긴다.
 
 ## 프로젝트 개요
 건강/생산성 추적 PWA. Vanilla JS(ES6), Firebase, Vercel. 빌드 스텝 없는 단일 index.html.
@@ -57,7 +67,7 @@ cd "C:\Users\USER\Desktop\Tomato Project\tomatofarm(for lite version)"; npm.cmd 
 - 사진 필드(`bPhoto`, `lPhoto`, `dPhoto`, `sPhoto`, `workoutPhoto`)를 저장 객체에 빠뜨리면 setDoc 전체 덮어쓰기로 사진 삭제됨.
 - **레이지 로드 모듈의 함수를 동기 코드에서 직접 호출하면 `ReferenceError`** — `render-cooking.js` 등 `_lazy()`로 로드되는 모듈의 export 함수는 **호출부를 async로 바꿔 `await _lazy()`로 가져올 것**.
 - **이벤트 위임(`document.addEventListener`)과 HTML `onclick`이 같은 버튼에 동시 등록되면 핸들러가 2번 실행됨** — 토글 함수가 2번 불리면 원복되어 "안 눌리는" 증상. 하나의 버튼에는 **이벤트 위임 또는 onclick 중 하나만** 사용.
-- **SW 캐시 버전 안 올리면 코드 변경이 배포에 반영 안 됨** — 현재 `CACHE_VERSION = 'tomatofarm-v20260630z12-stale-ui-prune'`. `STATIC_ASSETS` 파일을 하나라도 수정했으면 범프 필수.
+- **SW 캐시 버전 안 올리면 코드 변경이 배포에 반영 안 됨** — 현재 버전은 `sw.js`의 `CACHE_VERSION`에서 직접 확인한다(이 문서에 버전 문자열을 복제하지 않음). `STATIC_ASSETS` 파일을 하나라도 수정했으면 범프 필수.
 - **커밋 시 의존 파일 누락 → 배포 사이트 런타임 에러** — 예: `home/tomato.js`가 `calc.js`의 `isExerciseDaySuccess`를 import하는데 `calc.js`를 커밋 안 하면 `SyntaxError: does not provide an export named`. **파일 A를 커밋할 때, A가 import하는 다른 파일의 미커밋 변경을 반드시 확인.** 특히 `calc.js ↔ home/tomato.js`, `data/* ↔ home/*.js`, `workout/* ↔ workout/index.js` 간 export/import 의존성.
 - **`localStorage`는 기기 단위, 유저별 아님** — 멀티 유저에서 마이그레이션 플래그 등을 `localStorage`에 저장하면 다른 유저에게도 적용됨. 유저별 상태는 **Firestore `_settings`(tomato_state 등)에 저장**. `localStorage`는 UI 상태/캐시/단말별 API 키 전용.
 - **`unit_goal_start` 같은 설정은 모든 사용자 경로에서 자동설정 필요** — `renderUnitGoal()`이 admin 전용이라 비관리자는 `unit_goal_start`가 영원히 null이었음. 특정 사용자 유형에서만 호출되는 함수에 초기화 로직 넣지 말 것. `settleTomatoCycleIfNeeded()` 같은 공통 경로에서 처리.
@@ -181,8 +191,9 @@ CSS 클래스:
 - `modals/nutrition-search-modal.js`, `nutrition-item-modal.js`, `nutrition-weight-modal.js`, `ai-estimate-banner-modal.js`
 
 ## 🎨 디자인 시스템: TDS Mobile (tossmini-docs.toss.im/tds-mobile)
-- **기준:** TDS Mobile — 컬러 스케일 제외 모든 요소 적용
-- **컬러만 커스텀:** 토마토 레드 `#fa342c` Primary, `#fdf0f0` BG, `#fed4d2` Light, `#fc6a66` Sub, `#ca1d13` Dark, `#921708` Deepest
+- **기준:** TDS Mobile — 타이포/컴포넌트/스페이싱/라디어스/섀도/모션은 공식 스펙 준수
+- **브랜드 컬러:** 토마토 레드 `#fa342c` Primary, `#fdf0f0` BG, `#fed4d2` Light, `#fc6a66` Sub, `#ca1d13` Dark, `#921708` Deepest — 버튼/포커스링/브랜드 아이덴티티에 우선 사용
+- **컬러 스케일 단일 강제 규칙 폐지 (2026-07-19):** "색상은 토마토 레드 계열만" 규칙은 legacy다. 실제 `style.css`에는 근육 부위 구분·차트·매크로·상태(success/warning/info) 등에 블루(`#2563eb`/`#217cf9`)·앰버(`#f59e0b`)·틸(`#0e7490`) 등 다색이 이미 광범위하게 쓰인다. 카테고리/차트/상태 구분이 필요한 새 UI는 semantic 컬러를 자유롭게 추가해도 된다. 단, 색은 의미를 담아야 하며 장식으로 남발하지 않는다(과거 한 화면에 5개 색 스케일이 동시에 의미를 주장해 사용자가 색을 장식으로 읽었던 사례가 `TEST_MODE_UX_V4_FROM_SCRATCH.md`에 기록되어 있음 — 완전히 자유는 아니되 레드 단색 강제는 없앤다).
 - **Typography:** t1(30/40) → t7(13/19.5), st10(16/24) → st13(11/16.5), font-weight 700/600/500/400
 - **Font Family:** `'Toss Product Sans', 'Tossface', 'SF Pro KR', ...` (TDS Mobile 풀 스택)
 - **Transition:** `0.1s ease-in-out` (표준), `0.3s ease` (슬로우/탭)
@@ -204,7 +215,7 @@ CSS 클래스:
   - 라운딩: `var(--seed-r3)`, 패딩: `var(--seed-x4)`, 그림자: `var(--seed-s1)`
   - 입력: `var(--seed-bg-fill)`, `var(--seed-stroke-weak)`, `var(--seed-r2)`
   - 포커스: `border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-bg)`
-- **새 UI 작성 시:** TDS Mobile 스펙 기준 필수. 임의 값 금지. 검증은 `tds-reviewer` 에이전트 호출.
+- **새 UI 작성 시:** TDS Mobile의 타이포/스페이싱/컴포넌트 규격(사이즈, 라운딩, 트랜지션)은 따른다. 색상은 위 컬러 규칙대로 자유롭게 선택 가능. 컴포넌트 스펙 준수 여부는 `tds-reviewer` 에이전트로 검증.
 
 ## 📋 레시피: 토마토 사이클 정산 수정 시 주의
 

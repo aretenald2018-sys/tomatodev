@@ -185,7 +185,8 @@
       "Bash(git fetch *)",
       "Bash(ls -la *.md COMMUNICATION* communication*)",
       "Bash(rm .git/index.lock)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(gh repo *)"
     ],
     "defaultMode": "bypassPermissions",
     "skipDangerousModePermissionPrompt": true
