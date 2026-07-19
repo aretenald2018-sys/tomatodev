@@ -56,6 +56,9 @@ jobs:
           cp android-native/app/build.gradle android/app/build.gradle
           cp -R android-native/app/src/. android/app/src/
           rm -rf android-native
+          # The tracked app sources include Kotlin bridge classes; the generated
+          # Capacitor root needs the Kotlin Gradle plugin for those sources.
+          sed -i "/classpath 'com.android.tools.build:gradle:/a\\        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.20'" android/build.gradle
           npx cap sync android
 
       - name: Build TomatoDev debug APK
