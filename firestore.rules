@@ -2,12 +2,37 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Deployment blocker: real owner and Daybird reader UIDs have not been
-    // approved or provisioned. Keep the project closed until those exact UIDs
-    // can replace this deny-all boundary; email claims are intentionally not
-    // accepted as authorization.
+    function isOwner() {
+      return request.auth != null && request.auth.uid == 'tdv_6Q_GpmHr0EJWbAGCN5axN-8A';
+    }
+
+    function isDaybirdReader() {
+      return request.auth != null && request.auth.uid == 'tdv_yqtwLByxeb_yvO0vzm87HNnw';
+    }
+
+    function isDaybirdSetting(settingId) {
+      return settingId == 'diet_plan'
+        || settingId == 'tomatodev_season_registry_v3'
+        || settingId == 'tomatodev_test_board_v3'
+        || settingId.matches('tomatodev_season_[A-Za-z0-9_-]+_(workout_plan_v4|test_board_v3|running_plan_v3)');
+    }
+
+    match /_accounts/{accountId} {
+      allow get: if isDaybirdReader() && accountId == '김_태우';
+    }
+
+    match /users/{accountId}/settings/{settingId} {
+      allow get: if isDaybirdReader() && accountId == '김_태우' && isDaybirdSetting(settingId);
+    }
+
+    match /users/{accountId}/workouts/{workoutId} {
+      allow get, list: if isDaybirdReader() && accountId == '김_태우';
+    }
+
+    // This is a dedicated single-owner project. Only the exact owner UID gets
+    // the catch-all needed by TomatoDev's private, admin, and social surfaces.
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if isOwner();
     }
   }
 }

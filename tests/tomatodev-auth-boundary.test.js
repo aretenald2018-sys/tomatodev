@@ -141,10 +141,14 @@ test('login signs in before profile fetch and clears both sessions on either fai
   assert.match(clearFlow, /await data\.waitForAuthPersistence\(\)/);
 });
 
-test('Firestore stays deny-all until fixed owner and reader UIDs are approved', () => {
-  assert.match(firestoreRulesSource, /allow read, write: if false;/);
+test('Firestore rules use exact owner and reader UID gates with scoped reader paths', () => {
+  assert.match(firestoreRulesSource, /request\.auth\.uid == '[A-Za-z0-9_-]{8,128}'/g);
+  assert.match(firestoreRulesSource, /match \/_accounts\/\{accountId\}/);
+  assert.match(firestoreRulesSource, /match \/users\/\{accountId\}\/settings\/\{settingId\}/);
+  assert.match(firestoreRulesSource, /match \/users\/\{accountId\}\/workouts\/\{workoutId\}/);
+  assert.match(firestoreRulesSource, /accountId == '김_태우'/);
+  assert.doesNotMatch(firestoreRulesSource, /allow read, write: if false;/);
   assert.doesNotMatch(firestoreRulesSource, /request\.auth\.token\.email|@tomatodev\.local/);
-  assert.doesNotMatch(firestoreRulesSource, /allow get:|accountId ==/);
   assert.doesNotMatch(firestoreRulesSource, /allow read, write: if true/);
 });
 

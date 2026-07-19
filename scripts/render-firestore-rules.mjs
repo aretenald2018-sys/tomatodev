@@ -30,16 +30,16 @@ service cloud.firestore {
         || settingId.matches('tomatodev_season_[A-Za-z0-9_-]+_(workout_plan_v4|test_board_v3|running_plan_v3)');
     }
 
-    match /_accounts/김_태우 {
-      allow get: if isDaybirdReader();
+    match /_accounts/{accountId} {
+      allow get: if isDaybirdReader() && accountId == '김_태우';
     }
 
-    match /users/김_태우/settings/{settingId} {
-      allow get: if isDaybirdReader() && isDaybirdSetting(settingId);
+    match /users/{accountId}/settings/{settingId} {
+      allow get: if isDaybirdReader() && accountId == '김_태우' && isDaybirdSetting(settingId);
     }
 
-    match /users/김_태우/workouts/{workoutId} {
-      allow get, list: if isDaybirdReader();
+    match /users/{accountId}/workouts/{workoutId} {
+      allow get, list: if isDaybirdReader() && accountId == '김_태우';
     }
 
     // This is a dedicated single-owner project. Only the exact owner UID gets
