@@ -99,7 +99,7 @@ object TomatoMetricWidgetRenderer {
         val sessions = strength.optJSONObject("sessions") ?: JSONObject()
         val actual = sessions.optInt("actual", 0)
         val target = sessions.optInt("target", 0)
-        views.setTextViewText(R.id.tomato_metric_widget_value, "운동 $actual / $target회")
+        views.setTextViewText(R.id.tomato_metric_widget_value, "운동 $actual / ${target}회")
         views.setProgressBar(R.id.tomato_metric_widget_progress, 100, percent(sessions), false)
         val volume = strength.optJSONObject("volumeTrend")
         val volumeText = volume?.takeIf { it.optString("status") == "ready" }?.let { signed(it.optDouble("volumeDeltaPct", 0.0), "% 볼륨") } ?: "볼륨 기준 수집 중"
