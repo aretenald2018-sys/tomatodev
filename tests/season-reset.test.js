@@ -4,7 +4,6 @@ import { applySettle, buildBoardFromOnboarding, activeBenchmarks, buildSettleRow
 import {
   buildSeasonExerciseSetup,
   buildSeasonExerciseHistory,
-  buildSeasonStairOverrideDraft,
   buildSeasonWorkoutBoard,
   buildSeasonWorkoutPlan,
   calculateSeasonWendlerFromTenRm,
@@ -267,12 +266,18 @@ test('같은 부위의 7주 웬들러 사이클과 섞여도 일반 종목의 3�
     { kg: 110, span: 1 },
   ]);
   const future = projectFutureCells(board, legpress.id, 'volume', 6);
-  assert.deepEqual(future, [], 'season benchmark does not project prescriptions beyond its window');
+  assert.deepEqual(future.slice(0, 2).map(cell => ({ kg: cell.kg, span: cell.span })), [
+    { kg: 110, span: 2 },
+    { kg: 115, span: 3 },
+  ]);
 
   applySettle(board, 'lower', {}, '2026-08-31', 123);
   const nextCycle = board.cycles.find(cycle => cycle.groupId === 'lower' && cycle.status === 'active');
   const nextSteps = board.steps.filter(step => step.benchmarkId === legpress.id && step.cycleId === nextCycle.id);
-  assert.deepEqual(nextSteps, [], 'settlement cannot create prescriptions after the season window');
+  assert.deepEqual(nextSteps.slice(0, 2).map(step => ({ kg: step.kg, span: step.span })), [
+    { kg: 110, span: 2 },
+    { kg: 115, span: 3 },
+  ]);
 });
 
 test('최근 수행 참고자료는 운동 회차를 포함해 종목별 최신 본세트만 보존한다', () => {
@@ -349,26 +354,4 @@ test('일반 목표의 일부 값이 비어 있으면 해당 트랙은 목표로
   const [benchmark] = activeBenchmarks(board);
   assert.deepEqual(benchmark.tracks, ['volume']);
   assert.equal(benchmark.seed.volume.kg, 40);
-});
-
-test('웬들러 override를 일반 목표로 전환하면 두 stair 트랙 입력 상태를 먼저 만든다', () => {
-  const previous = {
-    program: 'wendler',
-    benchmarkId: 'bm-squat',
-    wendler: { oneRmKg: 120, tmKg: 108 },
-  };
-  const next = buildSeasonStairOverrideDraft(previous);
-
-  assert.equal(next.program, 'stair');
-  assert.equal(next.progressionWeeks, 3);
-  assert.deepEqual(next.tracks, {
-    volume: { kg: '', sets: '', incrementKg: '' },
-    intensity: { kg: '', sets: '', incrementKg: '' },
-  });
-  assert.doesNotThrow(() => {
-    next.tracks.volume.kg = '80';
-    next.tracks.volume.sets = '4';
-    next.tracks.volume.incrementKg = '2.5';
-  });
-  assert.equal(previous.tracks, undefined);
 });

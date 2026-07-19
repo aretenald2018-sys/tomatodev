@@ -74,7 +74,7 @@ test('phone native plugin can refresh installed watches or open watch install pr
   assert.match(plugin, /startRemoteActivity\(intent, node\.id\)/);
   assert.match(plugin, /addListener\(/);
   assert.match(plugin, /future\.get\(\)/);
-  assert.match(plugin, /market:\/\/details\?id=com\.lifestreak\.dev/);
+  assert.match(plugin, /market:\/\/details\?id=com\.lifestreak\.app/);
   assert.match(plugin, /connectedNodes/);
   assert.match(plugin, /installedNodes/);
   assert.match(plugin, /installPrompted/);

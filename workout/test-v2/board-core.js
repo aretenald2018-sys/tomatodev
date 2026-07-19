@@ -509,12 +509,6 @@ function _makeBenchmark(candidate, order) {
     progressionStartDate: candidate.progressionWeeks
       ? mondayOf(candidate.progressionStartDate || candidate.programStartDate || toKey(new Date()))
       : null,
-    seasonWindow: candidate.seasonWindow
-      ? {
-          startDate: String(candidate.seasonWindow.startDate || ''),
-          endDate: String(candidate.seasonWindow.endDate || ''),
-        }
-      : null,
     program: candidate.wendler ? 'wendler' : 'stair',
     meta: {
       rirTarget: candidate.meta?.rirTarget ?? 2,
@@ -584,19 +578,8 @@ function _planBenchmarkSteps(board, benchmark, cycle, fromWeek = null) {
   for (const t of benchmark.tracks) {
     const seed = benchmark.seed[t] || { kg: 0, reps: 12 };
     const incrementKg = trackIncrementKgOf(benchmark, t);
-    const windowStart = benchmark.seasonWindow?.startDate
-      ? mondayOf(benchmark.seasonWindow.startDate)
-      : null;
-    const weekStart = windowStart && windowStart > (fromWeek || cycle.startDate)
-      ? windowStart
-      : (fromWeek || cycle.startDate);
-    const cycleEnd = addWeeks(cycle.startDate, cycle.weeks);
-    const windowEndExclusive = benchmark.seasonWindow?.endDate
-      ? addWeeks(mondayOf(benchmark.seasonWindow.endDate), 1)
-      : cycleEnd;
-    const effectiveEnd = windowEndExclusive < cycleEnd ? windowEndExclusive : cycleEnd;
-    const remainingWeeks = Math.max(0, weeksBetween(weekStart, effectiveEnd));
-    if (!remainingWeeks) continue;
+    const weekStart = fromWeek || cycle.startDate;
+    const remainingWeeks = Math.max(1, cycle.weeks - weeksBetween(cycle.startDate, weekStart));
     const progressionWeeks = Math.max(0, Math.round(Number(benchmark.progressionWeeks) || 0));
     if (!progressionWeeks) {
       board.steps.push(_makeStep(benchmark, t, cycle, seed.kg, seed.reps, weekStart, remainingWeeks));
@@ -622,9 +605,8 @@ function _planBenchmarkSteps(board, benchmark, cycle, fromWeek = null) {
  * 온보딩 → 보드 생성.
  * selections: buildOnboardingCandidates 결과 중 켜진 항목 (tracks[t].kg 채워진 상태)
  */
-export function buildBoardFromOnboarding({ selections = [], startDate, endDate = null, source = 'manual' } = {}) {
+export function buildBoardFromOnboarding({ selections = [], startDate, source = 'manual' } = {}) {
   const start = mondayOf(startDate);
-  const cycleWeeks = endDate ? Math.max(1, weeksBetween(start, mondayOf(endDate)) + 1) : 6;
   const board = {
     version: 2,
     bootstrappedFrom: source,
@@ -644,7 +626,7 @@ export function buildBoardFromOnboarding({ selections = [], startDate, endDate =
     groupsUsed.add(bm.groupId);
   });
   for (const gid of groupsUsed) {
-    const cycle = _makeCycle(gid, start, cycleWeeks);
+    const cycle = _makeCycle(gid, start);
     board.cycles.push(cycle);
     const groupBenchmarks = board.benchmarks.filter(b => b.groupId === gid);
     for (const bm of groupBenchmarks.filter(b => b.program === 'wendler')) {
@@ -760,26 +742,11 @@ export function expandColumnCells(board, benchmarkId, track, cycleId, todayKey) 
     const cells = [];
     for (let w = 1; w <= cycle.weeks; w++) {
       const weekStart = addWeeks(cycle.startDate, w - 1);
-      const weekEnd = addDays(weekStart, 6);
-      if (bm.seasonWindow && (weekEnd < bm.seasonWindow.startDate || weekStart > bm.seasonWindow.endDate)) {
-        cells.push({ kind: 'rest', weekStart, span: 1, inactive: true });
-        continue;
-      }
       if (weeksBetween(programStartDate, weekStart) < 0) {
         cells.push({ kind: 'rest', weekStart, span: 1 });
         continue;
       }
-      // A per-exercise window may begin after Monday. The week still belongs to
-      // the program when it overlaps the window, but using Monday as the exact
-      // window reference would make _programPlanForBenchmark return null.
-      const planReferenceDate = bm.seasonWindow && weekStart < bm.seasonWindow.startDate
-        ? bm.seasonWindow.startDate
-        : weekStart;
-      const plan = _programPlanForBenchmark(board, bm, { weekStart, todayKey: planReferenceDate });
-      if (!plan) {
-        cells.push({ kind: 'rest', weekStart, span: 1, inactive: true });
-        continue;
-      }
+      const plan = _programPlanForBenchmark(board, bm, { weekStart, todayKey: weekStart });
       const rx = plan.rx;
       const log = bm.wendlerLog?.[weekStart] || null;
       let state = 'plan';
@@ -863,7 +830,6 @@ export function projectFutureCells(board, benchmarkId, track, minAheadWeeks = 12
   if (!active) return [];
   const cells = [];
   let projStart = addWeeks(active.startDate, active.weeks);
-  if (bm.seasonWindow?.endDate && projStart > bm.seasonWindow.endDate) return [];
   let offset = 1;
   const isWnd = bm.program === 'wendler';
   if (isWnd) _normalizeWendlerBenchmark(board, bm, { fallbackStartDate: active.startDate });
@@ -1650,11 +1616,6 @@ function _programTargetRpeOf(bm = {}) {
 
 function _programPlanForBenchmark(board, bm, { track = 'volume', weekStart = null, todayKey = null } = {}) {
   if (!bm || bm.status === 'archived') return null;
-  const referenceDate = /^\d{4}-\d{2}-\d{2}$/.test(String(todayKey || ''))
-    ? String(todayKey)
-    : String(weekStart || '');
-  if (bm.seasonWindow && referenceDate
-      && (referenceDate < bm.seasonWindow.startDate || referenceDate > bm.seasonWindow.endDate)) return null;
   const wkMon = mondayOf(weekStart || todayKey || toKey(new Date()));
   const cycle = activeCycleOf(board, bm.groupId);
   if (bm.program === 'wendler') {

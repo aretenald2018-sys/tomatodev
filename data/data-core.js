@@ -2,6 +2,7 @@
 // data-core.js — 공유 상태 + Firebase 기반 + 유틸리티 래퍼
 // ================================================================
 
+import { initializeApp }    from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app-check.js";
 import {
   getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
@@ -12,16 +13,6 @@ import {
 import { CONFIG } from '../config.js';
 import { generateId } from '../utils/id.js';
 import { createFirestoreWithMultiTabCache } from './firestore-cache.js';
-import {
-  isTomatoDevFirebaseOwner,
-  requireTomatoDevFirebaseAuth,
-  restoreTomatoDevFirebaseOwner,
-  signInTomatoDevFirebaseOwner,
-  signOutTomatoDevFirebase,
-  tomatoDevFirebaseApp,
-  updateTomatoDevFirebasePassword,
-  waitForTomatoDevFirebaseAuthReady,
-} from './firebase-auth-session.js';
 import {
   ADMIN_ACCOUNT_ID,
   ADMIN_GUEST_ACCOUNT_ID,
@@ -35,7 +26,7 @@ import {
 } from './account-unification.js';
 
 // ── Firebase 초기화 ─────────────────────────────────────────────
-const app = tomatoDevFirebaseApp;
+const app = initializeApp(CONFIG.FIREBASE, 'tomatodev');
 const _appCheckSiteKey = String(CONFIG.APPCHECK_SITE_KEY || '').trim();
 const _isLocalhost = typeof location !== 'undefined' &&
   (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
@@ -67,18 +58,8 @@ export const db = createFirestoreWithMultiTabCache(app, {
   },
 });
 
-export {
-  isTomatoDevFirebaseOwner,
-  requireTomatoDevFirebaseAuth,
-  restoreTomatoDevFirebaseOwner,
-  signInTomatoDevFirebaseOwner,
-  signOutTomatoDevFirebase,
-  updateTomatoDevFirebasePassword,
-  waitForTomatoDevFirebaseAuthReady,
-};
-
 // Firestore 함수 re-export (하위 모듈용)
-export { doc, setDoc, updateDoc, deleteDoc, getDoc, getDocFromServer, collection, getDocs, query, where, documentId, orderBy, limit, arrayUnion, writeBatch, runTransaction, onSnapshot };
+export { doc, setDoc, updateDoc, deleteDoc, getDoc, collection, getDocs, query, where, documentId, orderBy, limit, arrayUnion, writeBatch, runTransaction, onSnapshot };
 
 // ── IndexedDB 백업 (모바일 localStorage 클리어 방지) ─────────────
 export const TOMATODEV_AUTH_STORAGE_KEYS = Object.freeze({
@@ -150,9 +131,9 @@ export function setCurrentUserRef(user) {
 export const ADMIN_ID       = ADMIN_ACCOUNT_ID;
 export const ADMIN_GUEST_ID = ADMIN_GUEST_ACCOUNT_ID;
 
-// A shared admin identity always enters TomatoDev through the guest surface on
-// a fresh module load. An explicit in-session switch can still set admin mode,
-// but a reload intentionally resets this value to guest again.
+// TomatoDev always opens the shared identity through the Moonjung Tomato guest
+// surface. The selected data owner remains resolved by account-unification;
+// this only prevents a stale local admin-mode flag from changing the entry UI.
 let _kimMode = 'guest';
 localStorage.setItem(TOMATODEV_AUTH_STORAGE_KEYS.kimMode, _kimMode);
 export function getKimMode() { return _kimMode; }
@@ -191,8 +172,6 @@ async function _probeSharedAccountOwner() {
     ? readPersistedAccountOwner(accountSnapshot.data())
     : null;
   if (persistedOwnerId) return persistedOwnerId;
-
-  await requireTomatoDevFirebaseAuth();
 
   const inventoryEntries = await Promise.all(ACCOUNT_OWNER_PROBE_COLLECTIONS.map(async (collectionName) => {
     const source = collection(db, 'users', ADMIN_ACCOUNT_ID, collectionName);
@@ -388,7 +367,6 @@ async function _runSerialized(dateKey, fn) {
 // opts.dateKey: 지정 시 같은 dateKey 의 write 를 직렬화 (saveDay 전용).
 export async function _fbOp(label, fn, { sync = true, rethrow = false, dateKey = null } = {}) {
   const exec = async () => {
-    await requireTomatoDevFirebaseAuth();
     if (sync) _setSyncStatus('syncing');
     try {
       const result = await fn();
@@ -397,9 +375,7 @@ export async function _fbOp(label, fn, { sync = true, rethrow = false, dateKey =
     } catch (e) {
       if (sync) _setSyncStatus('err');
       console.error(`[data] ${label}:`, e);
-      if (rethrow
-          || e?.code === 'ACCOUNT_DATA_OWNER_UNRESOLVED'
-          || e?.code === 'TOMATODEV_FIREBASE_AUTH_REQUIRED') throw e;
+      if (rethrow || e?.code === 'ACCOUNT_DATA_OWNER_UNRESOLVED') throw e;
     }
   };
   return dateKey ? _runSerialized(dateKey, exec) : exec();

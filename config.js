@@ -36,21 +36,19 @@ export const CONFIG = {
     get TMAP_APP_KEY()      { return _readLocalSetting(TOMATODEV_LOCAL_SETTING_KEYS.TMAP_APP_KEY); },
   },
   // TomatoDev는 운영 Firebase callable을 차단하므로 Groq 클라이언트 설정을 두지 않는다.
-  // Dedicated TomatoDev App Check registration is intentionally left disabled
-  // until its own site key is provisioned. Never reuse TomatoFarm's key here.
-  APPCHECK_SITE_KEY: 'REPLACE_WITH_TOMATODEV_APPCHECK_SITE_KEY',
+  APPCHECK_SITE_KEY: '6LfUKrYsAAAAAOhty9w6l1xUVaiGDmltI0obPVRM',
 
   // 식품의약품안전처 식품영양성분 DB (data.go.kr 일반인증키) — 자연식품+가공식품 모두 포함
   FOOD_DB_KEY: 'e54c5a3ae4ee20df7abd68a1b14528ad309c2fbe25a9ab1128bf7e410414d59b',
   FOOD_DB_URL: 'https://apis.data.go.kr/1471000/FoodNtrCpntDbInfo02/getFoodNtrCpntDbInq02',
 
   FIREBASE: {
-    apiKey:            "AIzaSyBG1MoX3cqkrqYnNI1l2E_KxabMiy6UX6g",
-    authDomain:        "tomatodev-arete.firebaseapp.com",
-    projectId:         "tomatodev-arete",
-    storageBucket:     "tomatodev-arete.firebasestorage.app",
-    messagingSenderId: "152955180727",
-    appId:             "1:152955180727:web:3b5abba096d288dba15f32",
+    apiKey:            "AIzaSyCk2czvJ8DRautrUput8TLjdrArpQm7BBk",
+    authDomain:        "exercise-management.firebaseapp.com",
+    projectId:         "exercise-management",
+    storageBucket:     "exercise-management.firebasestorage.app",
+    messagingSenderId: "867781711662",
+    appId:             "1:867781711662:web:8fe1e9904c94d021f2ccbf",
   },
 
   TICKERS: [

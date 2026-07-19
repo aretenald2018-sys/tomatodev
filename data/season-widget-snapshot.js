@@ -15,7 +15,6 @@ import {
   selectSeasonRunningStats,
   selectSeasonStrengthStats,
 } from './season-selectors.js';
-import { buildSeasonGoalOverview } from './season-overview.js';
 
 function _round(value, digits = 1) {
   const factor = 10 ** digits;
@@ -89,17 +88,7 @@ export function buildSeasonDashboardSnapshot({
     ? readyLiftDeltas.sort((left, right) => Math.abs(right.deltaKg) - Math.abs(left.deltaKg))[0].deltaKg
     : null;
   const week = _boardWeek(board, todayKey);
-  const overview = buildSeasonGoalOverview({
-    cache,
-    season,
-    board,
-    workoutPlan,
-    runningPlan,
-    todayKey,
-  });
   return {
-    // Native SeasonWidgetPlugin intentionally accepts schema v1. New fields
-    // remain optional additions so older widget parsers keep working.
     schemaVersion: 1,
     generatedAt,
     state: 'ready',
@@ -121,16 +110,6 @@ export function buildSeasonDashboardSnapshot({
       distance: running.currentWeek.distance,
       sessions: running.currentWeek.sessions,
       trend: running.trend,
-      goal: {
-        mode: overview.running?.mode || runningPlan?.paceMode || null,
-        targetPaceSecPerKm: overview.running?.targetPaceSecPerKm || runningPlan?.targetPaceSecPerKm || null,
-        baselinePaceSecPerKm: overview.running?.baselinePaceSecPerKm || runningPlan?.baselinePaceSecPerKm || null,
-        adaptiveRatePct: overview.running?.adaptiveRatePct || runningPlan?.adaptiveRatePct || null,
-        actualPaceSecPerKm: overview.running?.actualPaceSecPerKm || null,
-        avgHeartRateBpm: overview.running?.avgHeartRateBpm || null,
-        heartRateCaution: !!overview.running?.heartRateCaution,
-        status: overview.running?.status || 'collecting',
-      },
     },
     strength: {
       sessions: strength.currentWeek.sessions,
@@ -140,6 +119,5 @@ export function buildSeasonDashboardSnapshot({
       liftDeltas: strength.liftDeltas,
     },
     nextPlan: _nextPlan(board, running),
-    seasonGoals: overview.seasonGoals,
   };
 }

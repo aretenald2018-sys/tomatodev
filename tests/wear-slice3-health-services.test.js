@@ -74,9 +74,9 @@ test('wear running power policy preserves sensor samples while batching expensiv
   assert.match(activity, /override fun onPause\(\)[\s\S]*wearWorkoutUi::onHostPaused/);
   assert.match(controller, /fun onHostPaused[\s\S]*keepScreenOn = false[\s\S]*clearRunTick/);
   assert.match(controller, /fun onHostResumed[\s\S]*WearExerciseSessionStore\.current\(\)[\s\S]*updateRunLiveMetrics/);
-  assert.match(controller, /if \(!hostInteractive \|\| ambient\) return@addListener/);
+  assert.match(controller, /if \(!hostInteractive\) return@addListener/);
   assert.doesNotMatch(controller, /keepScreenOn\s*=\s*snapshot\.screen\s*==/);
-  assert.match(controller, /shouldScheduleWearRunTick\(hostInteractive, ambient, runState\.screen, v\.isAttachedToWindow\)/);
+  assert.match(controller, /if \(!hostInteractive \|\| runState\.screen != WearRunUiScreen\.ACTIVE/);
 
   assert.match(service, /LocationAccuracy[\s\S]*horizontalPositionErrorMeters/);
   assert.match(service, /locationPoints\.forEach/);

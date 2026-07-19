@@ -39,7 +39,7 @@ for (let index = 0; index < OLYMPIC_PARK_ROAD_ROUTE.length; index += 1) {
   const timestampMs = startedAt + activeDurationMs;
   const args = [
     'shell', 'am', 'broadcast', '--receiver-foreground',
-    '-n', 'com.lifestreak.dev/com.lifestreak.wear.debug.WearRouteReplayReceiver',
+    '-n', 'com.lifestreak.app/com.lifestreak.wear.debug.WearRouteReplayReceiver',
     '-a', 'com.lifestreak.wear.DEBUG_ROUTE_POINT',
     '--es', 'lat', String(point.lat),
     '--es', 'lng', String(point.lng),

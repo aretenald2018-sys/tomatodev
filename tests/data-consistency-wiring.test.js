@@ -44,12 +44,9 @@ test('loadAll immediately seeds pending data and captures owner-scoped Firestore
 
   const pendingSeed = loadAll.indexOf('const pendingSeed = restorePendingDayWritesForOwner(ownerId, {});');
   const cacheSeed = loadAll.indexOf('_setCache(pendingSeed);');
-  const authGate = loadAll.indexOf('await requireTomatoDevFirebaseAuth();');
-  const firstRemoteAwait = loadAll.indexOf('await Promise.all([');
-  assert.ok(authGate >= 0 && authGate < pendingSeed,
-    'Firebase Auth must settle before loadAll restores an app session cache');
-  assert.ok(pendingSeed < cacheSeed && cacheSeed < firstRemoteAwait,
-    'fresh pending cache must be visible before loadAll performs a remote read');
+  const firstAwait = loadAll.indexOf('await ');
+  assert.ok(pendingSeed >= 0 && pendingSeed < cacheSeed && cacheSeed < firstAwait,
+    'fresh pending cache must be visible before loadAll performs any asynchronous read');
 
   for (const collectionName of [
     'workouts', 'exercises', 'goals', 'quests', 'cooking',
@@ -216,7 +213,7 @@ test('pending journal is precached under a versioned service worker cache', () =
     /const CACHE_VERSION = 'tomatodev-v\d{8}z\d+-[^']+';/);
 });
 
-test('selected-owner bootstrap keeps compatibility migrations read-only except create-if-missing TomatoDev season keys', () => {
+test('selected-owner bootstrap and compatibility migrations are write-free', () => {
   const migrate = sliceBetween(
     dataLoadSource,
     'export async function migrateDataToUser',
@@ -239,9 +236,6 @@ test('selected-owner bootstrap keeps compatibility migrations read-only except c
   assert.doesNotMatch(migrate + unify,
     /setDoc|runTransaction|transaction\.|_copyMissingDocuments|mergeAccountWorkoutFields|runRouteRef/);
   assert.doesNotMatch(loadAll, /\bsetDoc\s*\(|_migrateFromLS|ownerDoc/);
-  assert.match(dataLoadSource,
-    /buildMissingTomatoDevSeasonMigrationEntries\(fbMap\)[\s\S]*snapshot\.exists\(\)[\s\S]*transaction\.set\(refs\[index\], \{ value: entries\[key\] \}\)/,
-    'the sole bootstrap migration must re-check and create only TomatoDev season destinations');
   assert.doesNotMatch(dataLoadSource,
     /_copyMissingDocuments|mergeAccountWorkoutFields|getDocs\(collection\(db, collectionName\)/);
 
@@ -254,7 +248,7 @@ test('selected-owner bootstrap keeps compatibility migrations read-only except c
   assert.match(loadAll,
     /if \(maxCyclePlan\.shouldWriteMaxCycle\) \{\s*_settings\.max_cycle = maxCyclePlan\.canonicalCycle;\s*\}/);
   assert.match(loadAll, /flushPendingDayWrites\(ownerId\)/,
-    'the TomatoDev recovery journal may flush during bootstrap');
+    'only the TomatoDev recovery journal may flush during bootstrap');
 });
 
 test('account writes preserve data-owner routing metadata', () => {

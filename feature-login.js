@@ -11,6 +11,21 @@ import { TOMATODEV_AUTH_STORAGE_KEYS } from './data.js';
 // 테마 토글
 // ── 계정 시스템 ──
 let _pendingAccount = null;
+const LOGIN_SESSION_RESTORE_TIMEOUT_MS = 1800;
+
+function _withLoginTimeout(promise, ms, label) {
+  let timer = null;
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(() => {
+      console.warn(`[login] ${label} timed out after ${ms}ms; showing sign-in instead`);
+      resolve(null);
+    }, ms);
+  });
+  return Promise.race([
+    Promise.resolve(promise).finally(() => { if (timer) clearTimeout(timer); }),
+    timeout,
+  ]);
+}
 
 function _setLoginScreenVisible(visible) {
   const loginScreen = document.getElementById('login-screen');
@@ -35,8 +50,8 @@ function _continueToAppAfterLogin() {
 }
 
 function _runDeferredLoginMaintenance() {
-  // Account maintenance remains explicit even on the isolated development
-  // backend so merely opening the login screen never rewrites credentials.
+  // TomatoDev shares the production Firebase project. Opening its login screen
+  // must therefore remain read-only: no account recovery or password rewrite.
   console.info('[login] automatic account maintenance is disabled on TomatoDev');
 }
 
@@ -46,43 +61,6 @@ function _needsPassword(account) {
   if (flag === true || flag === 'true' || flag === 1 || flag === '1') return true;
   if (flag === false || flag === 'false' || flag === 0 || flag === '0') return false;
   return !!account.passwordHash;
-}
-
-function _ownerProfileError() {
-  const error = new Error('The authenticated TomatoDev owner profile could not be loaded');
-  error.code = 'TOMATODEV_OWNER_PROFILE_MISSING';
-  return error;
-}
-
-async function _clearFailedOwnerSession(dataApi = null) {
-  const data = dataApi || await import('./data.js');
-  try {
-    await data.signOutTomatoDevFirebase();
-  } catch {}
-  data.setCurrentUser(null);
-  localStorage.removeItem(TOMATODEV_AUTH_STORAGE_KEYS.adminAuthenticated);
-  localStorage.removeItem(TOMATODEV_AUTH_STORAGE_KEYS.kimAuthenticated);
-  data.clearAdminAuth();
-  await data.waitForAuthPersistence();
-}
-
-async function _fetchAuthenticatedOwnerProfile(dataApi = null) {
-  const data = dataApi || await import('./data.js');
-  const accounts = await data.getAccountList();
-  const account = accounts.find(candidate => candidate.id === data.getAdminId());
-  if (!account) throw _ownerProfileError();
-  return account;
-}
-
-async function _authenticateAndFetchOwner(password) {
-  const data = await import('./data.js');
-  try {
-    await data.authenticateTomatoDevOwner(password);
-    return await _fetchAuthenticatedOwnerProfile(data);
-  } catch (error) {
-    await _clearFailedOwnerSession(data);
-    throw error;
-  }
 }
 
 function _showLoadingUntilAppReady() {
@@ -134,37 +112,176 @@ function _hasRestorableRunningDraftForUser(user) {
 }
 
 async function initLoginScreen() {
-  const data = await import('./data.js');
+  const { loadSavedUser, restoreUserFromBackup, getAccountList, setCurrentUser, loadAll } = await import('./data.js');
 
   // 이미 로그인된 사용자가 있으면 바로 진입 (localStorage → IndexedDB 순)
-  // Firebase persistence is authoritative. A local profile is never restored
-  // until the fixed, pre-provisioned owner session has settled and the profile
-  // can be fetched through authenticated Firestore rules.
-  try {
-    const firebaseUser = await data.waitForTomatoDevFirebaseAuthReady();
-    if (data.isTomatoDevFirebaseOwner(firebaseUser)) {
-      const owner = await _fetchAuthenticatedOwnerProfile(data);
-      data.setKimMode('guest');
-      data.setCurrentUser(owner);
-      localStorage.setItem(TOMATODEV_AUTH_STORAGE_KEYS.adminAuthenticated, 'true');
-      data.backupAdminAuth();
-      data.recordLogin();
+  let saved = loadSavedUser();
+  if (!saved) saved = await _withLoginTimeout(
+    restoreUserFromBackup(),
+    LOGIN_SESSION_RESTORE_TIMEOUT_MS,
+    'IndexedDB session restore'
+  );
+  if (saved) {
+    const { isAdminInstance, getAdminId } = await import('./data.js');
+    const isKimSaved = isAdminInstance(saved.id);
+    if (isKimSaved) {
+      // 이미 이 세션에서 인증 완료했으면 바로 진입
+      if (localStorage.getItem(TOMATODEV_AUTH_STORAGE_KEYS.adminAuthenticated)
+          || localStorage.getItem(TOMATODEV_AUTH_STORAGE_KEYS.kimAuthenticated)) {
+        const { recordLogin: rlAuto } = await import('./data.js');
+        rlAuto();
+        void _continueToAppAfterLogin();
+        return;
+      }
+      // 김태우 잠금 화면
+      const { setCurrentUser, verifyPassword, getAccountList, backupAdminAuth } = await import('./data.js');
+      const accounts = await getAccountList();
+      const kimAcc = accounts.find(a => a.id === getAdminId()) || accounts.find(a => a.id === saved.id);
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('login-screen').style.display = 'none';
+      const lockDiv = document.createElement('div');
+      lockDiv.id = 'kim-lock-screen';
+      lockDiv.style.cssText = 'position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;';
+      lockDiv.innerHTML = `<div style="text-align:center;padding:24px;max-width:300px;width:100%;">
+        <div style="width:56px;height:56px;border-radius:50%;background:#fff3e0;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 12px;">🍅</div>
+        <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:4px;">${saved.nickname || '김태우'}</div>
+        <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px;">비밀번호를 입력해주세요</div>
+        <input type="password" id="kim-lock-pw" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:999px;font-size:14px;text-align:center;background:var(--surface);color:var(--text);outline:none;" placeholder="비밀번호" autofocus>
+        <div id="kim-lock-error" style="font-size:12px;color:#e53935;margin-top:6px;min-height:18px;"></div>
+        <button id="kim-lock-btn" style="width:100%;padding:12px;border:none;border-radius:999px;background:var(--primary);color:#fff;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;">확인</button>
+        <button id="kim-lock-other" style="width:100%;padding:10px;border:none;background:none;color:var(--text-tertiary);font-size:12px;cursor:pointer;margin-top:8px;">다른 계정으로 로그인</button>
+      </div>`;
+      document.body.appendChild(lockDiv);
+      document.getElementById('kim-lock-btn').onclick = () => {
+        const pw = document.getElementById('kim-lock-pw').value;
+        if (kimAcc && verifyPassword(kimAcc, pw)) {
+          setCurrentUser(kimAcc);
+          localStorage.setItem(TOMATODEV_AUTH_STORAGE_KEYS.adminAuthenticated, 'true');
+          backupAdminAuth();
+          import('./data.js').then(m => m.recordLogin());
+          lockDiv.remove();
+          void _continueToAppAfterLogin();
+        } else {
+          document.getElementById('kim-lock-error').textContent = '비밀번호가 맞지 않아요';
+        }
+      };
+      document.getElementById('kim-lock-pw').addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') document.getElementById('kim-lock-btn').click();
+      });
+      document.getElementById('kim-lock-other').onclick = async () => {
+        setCurrentUser(null);
+        localStorage.removeItem(TOMATODEV_AUTH_STORAGE_KEYS.adminAuthenticated);
+        localStorage.removeItem(TOMATODEV_AUTH_STORAGE_KEYS.kimAuthenticated);
+        const { waitForAuthPersistence } = await import('./data.js');
+        await waitForAuthPersistence();
+        lockDiv.remove();
+        location.reload();
+      };
+      setTimeout(() => document.getElementById('kim-lock-pw')?.focus(), 100);
+      return;
+    } else {
+      // 길드 온보딩 팝업 (기존 사용자가 길드 미설정 시)
+      const guildObKey = 'guild_onboarding_v1_' + saved.id;
+      if (!localStorage.getItem(guildObKey) && !_hasRestorableRunningDraftForUser(saved)) {
+        const { getAccountList, saveAccount, setCurrentUser, getAllGuilds, createGuild, createGuildJoinRequest, updateGuildMemberCount } = await import('./data.js');
+        const accs = await getAccountList();
+        const myAcc = accs.find(a => a.id === saved.id);
+        const realName = myAcc ? myAcc.lastName + myAcc.firstName.replace(/\(.*\)/, '') : saved.id.replace(/_/g, '');
+        const displayName = myAcc?.nickname || realName;
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('login-screen').style.display = 'none';
+
+        // 길드 목록 미리 로드
+        _allGuildsCache = await getAllGuilds();
+        _selectedGuilds = [];
+
+        const overlay = document.createElement('div');
+        overlay.id = 'guild-onboarding-overlay';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;padding:20px;';
+        overlay.innerHTML = `
+        <div style="background:var(--bg,#fff);border-radius:var(--radius-lg,16px);max-width:360px;width:100%;padding:32px 20px 20px;box-shadow:var(--seed-s1,0 8px 32px rgba(0,0,0,0.12));overflow-y:auto;max-height:90vh;">
+          <div style="text-align:center;margin-bottom:24px;">
+            <div style="width:56px;height:56px;border-radius:50%;background:var(--primary-bg,#fdf0f0);display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 12px;">🏠</div>
+            <div style="font-size:17px;font-weight:700;color:var(--text,#191F28);line-height:25.5px;">소속 길드를 등록해보세요</div>
+            <div style="font-size:13px;color:var(--text-tertiary,#8B95A1);margin-top:4px;">${realName}님, 안녕하세요</div>
+          </div>
+
+          <div style="background:var(--surface2,#F2F4F6);border-radius:14px;padding:16px;margin-bottom:20px;">
+            <div style="font-size:12px;color:var(--text-secondary,#4E5968);line-height:1.7;">
+              길드에 가입하면 <b>길드 랭킹</b>에 참여할 수 있어요.<br>
+              여러 길드에 가입할 수 있고, 첫 번째가 대표 길드가 됩니다.<br>
+              기존 길드에 가입하면 길드원의 확인을 받아요.
+            </div>
+          </div>
+
+          <div id="ob-guild-section" style="margin-bottom:20px;">
+            <div style="position:relative;">
+              <div style="display:flex;gap:6px;">
+                <input class="login-input" id="ob-guild-input" placeholder="길드 이름을 검색하거나 입력하세요" maxlength="20" style="flex:1;margin:0;width:100%;padding:14px 16px;border:1.5px solid var(--border,#E5E8EB);border-radius:var(--radius-md,12px);font-size:15px;color:var(--text,#191F28);background:var(--surface,#fff);outline:none;box-sizing:border-box;transition:border-color 0.1s ease-in-out;" autocomplete="off"
+                       data-login-guild-prefix="ob" data-login-input-action="search-guilds" data-login-focus-action="search-guilds" data-login-enter-action="add-guild-chip">
+                <button type="button" style="padding:0 14px;border:none;border-radius:var(--radius-md,12px);background:var(--primary,#fa342c);color:#fff;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;" data-login-action="add-guild-chip" data-login-guild-prefix="ob">추가</button>
+              </div>
+              <div id="ob-guild-suggestions" class="guild-suggest-list" style="display:none;"></div>
+            </div>
+            <div id="ob-guild-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
+          </div>
+
+          <button id="ob-submit-btn" style="width:100%;padding:15px;border:none;border-radius:14px;background:var(--primary,#fa342c);color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:background 0.1s ease-in-out;margin-bottom:8px;">확인</button>
+          <button id="ob-skip-btn" style="width:100%;padding:12px;border:none;border-radius:14px;background:transparent;color:var(--text-tertiary,#8B95A1);font-size:13px;cursor:pointer;">건너뛰기</button>
+        </div>`;
+
+        document.body.appendChild(overlay);
+
+        const proceedOnboarding = async (skip) => {
+          if (!skip && myAcc && _selectedGuilds.length > 0) {
+            const guilds = myAcc.guilds || [];
+            const pendingGuilds = myAcc.pendingGuilds || [];
+
+            for (const g of _selectedGuilds) {
+              if (g.isNew) {
+                await createGuild(g.name, myAcc.id);
+                if (!guilds.includes(g.name)) guilds.push(g.name);
+              } else {
+                if (!pendingGuilds.includes(g.name) && !guilds.includes(g.name)) {
+                  pendingGuilds.push(g.name);
+                  await createGuildJoinRequest(g.name, g.name, myAcc.id, displayName);
+                }
+              }
+            }
+
+            myAcc.guilds = guilds;
+            myAcc.pendingGuilds = pendingGuilds;
+            if (!myAcc.primaryGuild && guilds.length > 0) myAcc.primaryGuild = guilds[0];
+            await saveAccount(myAcc);
+            setCurrentUser(myAcc);
+          }
+          localStorage.setItem(guildObKey, 'done');
+          overlay.remove();
+          window.dispatchEvent(new Event('patchnote-done'));
+          _showLoadingUntilAppReady();
+          if (!skip && _selectedGuilds.length > 0) location.reload();
+        };
+
+        document.getElementById('ob-submit-btn').onclick = () => proceedOnboarding(false);
+        document.getElementById('ob-skip-btn').onclick = () => proceedOnboarding(true);
+        setTimeout(() => document.getElementById('ob-guild-input')?.focus(), 200);
+        return;
+      }
+
+      const { recordLogin: rlAuto2 } = await import('./data.js');
+      rlAuto2();
       void _continueToAppAfterLogin();
       return;
     }
-    await _clearFailedOwnerSession(data);
-  } catch (error) {
-    console.error('[login] restored Firebase owner profile failed:', error);
-    await _clearFailedOwnerSession(data);
-    const status = document.getElementById('login-status');
-    if (status) status.textContent = 'Firebase 인증 또는 계정 정보를 확인하지 못했습니다. 다시 로그인해 주세요.';
   }
+
   // 이름 입력 시 실시간으로 기존 계정 체크
   const lastNameEl = document.getElementById('login-last-name');
   const firstNameEl = document.getElementById('login-first-name');
   let _checkTimer = null;
 
-  function checkAccountExists() {
+  async function checkAccountExists() {
     const ln = lastNameEl.value.trim();
     const fn = firstNameEl.value.trim();
     const statusEl = document.getElementById('login-status');
@@ -174,19 +291,39 @@ async function initLoginScreen() {
       statusEl.textContent = '';
       return;
     }
+    try {
+      const { getAdminId, isAdminInstance, getAccountList } = await import('./data.js');
+      const rawId = `${ln}_${fn}`.toLowerCase().replace(/\s/g, '');
+      const id = (isAdminInstance(rawId) || rawId === getAdminId()) ? getAdminId() : rawId;
+      const accounts = await getAccountList();
+      const found = accounts.find(a => a.id === id);
 
-    const rawId = `${ln}_${fn}`.toLowerCase().replace(/\s/g, '');
-    const isFixedOwner = data.isAdminInstance(rawId) || rawId === data.getAdminId();
-    const modeSection = document.getElementById('login-mode-section');
-    if (modeSection) modeSection.style.display = 'none';
-    if (isFixedOwner) {
-      pwSection.style.display = 'block';
-      statusEl.innerHTML = '<span style="color:var(--primary);">Firebase 비밀번호를 입력해주세요.</span>';
-      return;
+      // 김/태우 입력 시 비밀번호만 (Guest UX 기본)
+      const modeSection = document.getElementById('login-mode-section');
+      if (modeSection) modeSection.style.display = 'none';
+      if (ln === '김' && fn === '태우') {
+        pwSection.style.display = 'block';
+        statusEl.innerHTML = '<span style="color:var(--primary);">비밀번호를 입력해주세요.</span>';
+        return;
+      }
+
+      if (found) {
+        if (_needsPassword(found)) {
+          pwSection.style.display = 'block';
+          statusEl.innerHTML = '<span style="color:var(--primary);">비밀번호를 입력해주세요.</span>';
+        } else {
+          pwSection.style.display = 'none';
+          statusEl.innerHTML = '<span style="color:var(--primary);">기존 계정이에요. 바로 로그인할 수 있어요.</span>';
+        }
+      } else {
+        pwSection.style.display = 'none';
+        statusEl.innerHTML = '<span style="color:var(--text-tertiary);">계정이 없어요. 가입하기를 눌러주세요.</span>';
+      }
+    } catch (e) {
+      pwSection.style.display = 'none';
+      statusEl.innerHTML = '<span style="color:#ef4444;">로그인 상태 확인 중 오류가 발생했어요. 다시 시도해주세요.</span>';
+      console.warn('[login] checkAccountExists error:', e);
     }
-
-    pwSection.style.display = 'none';
-    statusEl.innerHTML = '<span style="color:#ef4444;">TomatoDev는 사전 등록된 소유자 계정만 로그인할 수 있습니다.</span>';
   }
 
   [lastNameEl, firstNameEl].forEach(el => {
@@ -204,29 +341,42 @@ async function initLoginScreen() {
 }
 
 async function selectAccount(accountId) {
-  void accountId;
-  document.getElementById('login-status').textContent = 'TomatoDev는 사전 등록된 소유자 계정만 로그인할 수 있습니다.';
-  return false;
+  const { getAccountList, verifyPassword, setCurrentUser } = await import('./data.js');
+  const accounts = await getAccountList();
+  const account = accounts.find(a => a.id === accountId);
+  if (!account) return;
+
+  if (_needsPassword(account)) {
+    _pendingAccount = account;
+    document.getElementById('login-pw-modal-name').textContent = `${account.lastName}${account.firstName}`;
+    document.getElementById('login-pw-modal').style.display = 'flex';
+    document.getElementById('login-pw-modal-error').style.display = 'none';
+    setTimeout(() => document.getElementById('login-pw-modal-input').focus(), 100);
+    return;
+  }
+
+  setCurrentUser(account);
+  return _continueToAppAfterLogin();
 }
 
 async function verifyAndLogin() {
   if (!_pendingAccount) { console.error('[login] _pendingAccount is null'); return; }
-  const { setCurrentUser, setKimMode } = await import('./data.js');
+  const { verifyPassword, setCurrentUser, hashPassword } = await import('./data.js');
   const pw = document.getElementById('login-pw-modal-input').value;
 
-  let authenticatedOwner;
-  try {
-    authenticatedOwner = await _authenticateAndFetchOwner(pw);
-  } catch (error) {
+  console.log('[login] 비밀번호 검증:', {
+    account: _pendingAccount.id,
+    hasPassword: _pendingAccount.hasPassword,
+    storedHash: _pendingAccount.passwordHash,
+    inputHash: hashPassword(pw),
+  });
+
+  if (!verifyPassword(_pendingAccount, pw)) {
     document.getElementById('login-pw-modal-error').style.display = 'block';
-    document.getElementById('login-pw-modal-error').textContent = error?.code === 'TOMATODEV_LOCAL_PASSWORD_INVALID'
-      ? '비밀번호가 맞지 않아요'
-      : 'Firebase 인증에 실패했어요. 잠시 후 다시 시도해주세요.';
     return;
   }
 
-  setKimMode('guest');
-  setCurrentUser(authenticatedOwner);
+  setCurrentUser(_pendingAccount);
   document.getElementById('login-pw-modal').style.display = 'none';
   return _continueToAppAfterLogin();
 }
@@ -416,9 +566,10 @@ document.addEventListener('change', (e) => {
 
 // ── 로그인/가입 뷰 전환 ─────────────────────────────────────────
 function showSignupView() {
-  const status = document.getElementById('login-status');
-  if (status) status.textContent = 'TomatoDev는 사전 등록된 소유자 계정만 로그인할 수 있습니다.';
-  return false;
+  _selectedGuilds = [];
+  document.getElementById('login-view').style.display = 'none';
+  document.getElementById('signup-view').style.display = '';
+  document.getElementById('signup-last-name')?.focus();
 }
 function showLoginView() {
   _selectedGuilds = [];
@@ -429,9 +580,74 @@ function showLoginView() {
 
 // ── 가입 전용 함수 ─────────────────────────────────────────────
 async function createAccountFromSignup() {
-  const status = document.getElementById('signup-status') || document.getElementById('login-status');
-  if (status) status.textContent = 'TomatoDev에서는 브라우저 계정 가입을 지원하지 않습니다.';
-  return false;
+  const lastName = document.getElementById('signup-last-name').value.trim();
+  const firstName = document.getElementById('signup-first-name').value.trim();
+  if (!lastName || !firstName) { showToast('성과 이름을 입력해주세요', 2500, 'warning'); return; }
+
+  const { saveAccount, setCurrentUser, hashPassword, getAccountList } = await import('./data.js');
+  const { getAdminId: _gAI, isAdminInstance: _isAI } = await import('./data.js');
+
+  let newId;
+  const _tryId = `${lastName}_${firstName}`.toLowerCase().replace(/\s/g, '');
+  if (_isAI(_tryId) || _tryId === _gAI()) { newId = _gAI(); }
+  else { newId = _tryId; }
+
+  const existing = await getAccountList();
+  const found = existing.find(a => a.id === newId);
+  if (found) {
+    document.getElementById('signup-status').innerHTML = '<span style="color:#ef4444;">이미 존재하는 계정이에요. 로그인해주세요.</span>';
+    return;
+  }
+
+  const nickname = document.getElementById('signup-nickname')?.value.trim() || '';
+  if (!nickname) {
+    document.getElementById('signup-status').innerHTML = '<span style="color:#ef4444;">별명을 입력해주세요.</span>';
+    document.getElementById('signup-nickname')?.focus();
+    return;
+  }
+
+  const usePw = document.getElementById('signup-pw-toggle')?.classList.contains('on');
+  const pw = document.getElementById('signup-new-password')?.value || '';
+
+  // 길드 처리
+  const { createGuild, createGuildJoinRequest } = await import('./data.js');
+  const guilds = [];
+  const pendingGuilds = [];
+
+  for (const g of _selectedGuilds) {
+    if (g.isNew) {
+      await createGuild(g.name, newId);
+      guilds.push(g.name);
+    } else {
+      pendingGuilds.push(g.name);
+    }
+  }
+
+  const primaryGuild = guilds.length > 0 ? guilds[0] : null;
+
+  const account = {
+    id: newId, lastName, firstName,
+    nickname,
+    hasPassword: usePw && pw.length > 0,
+    passwordHash: usePw && pw.length > 0 ? hashPassword(pw) : null,
+    createdAt: Date.now(),
+    guilds, pendingGuilds, primaryGuild,
+  };
+
+  await saveAccount(account);
+
+  // 길드 가입 요청 + 온보딩 플래그 설정
+  for (const gName of pendingGuilds) {
+    await createGuildJoinRequest(gName, gName, newId, nickname);
+  }
+  if (guilds.length > 0 || pendingGuilds.length > 0) {
+    localStorage.setItem('guild_onboarding_v1_' + newId, 'done');
+  }
+
+  setCurrentUser(account);
+  const { recordLogin: rl } = await import('./data.js');
+  rl();
+  return _continueToAppAfterLogin();
 }
 
 // ── 가입 토글 (TDS Switch) ───────────────────────────────────────
@@ -542,7 +758,7 @@ async function createAccountAndLogin() {
   const firstName = document.getElementById('login-first-name').value.trim();
   if (!lastName || !firstName) { showToast('성과 이름을 입력해주세요', 2500, 'warning'); return; }
 
-  const { setCurrentUser, setKimMode } = await import('./data.js');
+  const { setCurrentUser, getAccountList, verifyPassword } = await import('./data.js');
   const { getAdminId: _gAI, isAdminInstance: _isAI } = await import('./data.js');
 
   let newId;
@@ -550,38 +766,19 @@ async function createAccountAndLogin() {
   if (_isAI(_tryId) || _tryId === _gAI()) { newId = _gAI(); }
   else { newId = _tryId; }
 
-  if (newId !== _gAI()) {
-    document.getElementById('login-status').innerHTML = '<span style="color:#ef4444;">TomatoDev는 사전 등록된 소유자 계정만 로그인할 수 있습니다.</span>';
-    return;
-  }
-
-  const pw = document.getElementById('login-password')?.value || '';
-  if (!pw) { document.getElementById('login-password')?.focus(); return; }
-
-  let found;
-  try {
-    // Authenticate the pre-provisioned Firebase owner before the protected
-    // profile lookup performed by _authenticateAndFetchOwner.
-    found = await _authenticateAndFetchOwner(pw);
-  } catch (error) {
-    console.warn('[login] fixed owner sign-in failed:', error?.code || error?.message || error);
-    document.getElementById('login-status').innerHTML = '<span style="color:#ef4444;">Firebase 인증 또는 계정 정보 확인에 실패했습니다.</span>';
-    return;
-  }
+  const existing = await getAccountList();
+  const found = existing.find(a => a.id === newId);
 
   if (!found) {
     document.getElementById('login-status').innerHTML = '<span style="color:var(--text-tertiary);">계정이 없어요. 가입하기를 눌러주세요.</span>';
     return;
   }
 
-  if (found) {
-    try {
-      setKimMode('guest');
-    } catch (error) {
-      const message = error?.code === 'TOMATODEV_LOCAL_PASSWORD_INVALID'
-        ? '비밀번호가 맞지 않아요.'
-        : 'Firebase 인증에 실패했어요. 네트워크를 확인해주세요.';
-      document.getElementById('login-status').innerHTML = `<span style="color:#ef4444;">${message}</span>`;
+  if (_needsPassword(found)) {
+    const pw = document.getElementById('login-password')?.value || '';
+    if (!pw) { document.getElementById('login-password')?.focus(); return; }
+    if (!verifyPassword(found, pw)) {
+      document.getElementById('login-status').innerHTML = '<span style="color:#ef4444;">비밀번호가 맞지 않아요.</span>';
       return;
     }
     setCurrentUser(found);
@@ -595,8 +792,11 @@ async function createAccountAndLogin() {
     }
     rl1();
   } else {
-    document.getElementById('login-status').innerHTML = '<span style="color:#ef4444;">TomatoDev 고정 소유자에 로컬 비밀번호가 필요해요.</span>';
-    return;
+    setCurrentUser(found);
+    localStorage.removeItem(TOMATODEV_AUTH_STORAGE_KEYS.adminAuthenticated);
+    localStorage.removeItem(TOMATODEV_AUTH_STORAGE_KEYS.kimAuthenticated);
+    const { recordLogin: rl2 } = await import('./data.js');
+    rl2();
   }
 
   return _continueToAppAfterLogin();
@@ -647,12 +847,12 @@ export async function logoutAccount() {
 }
 
 async function confirmLogout() {
-  const { setCurrentUser, clearAdminAuth, signOutTomatoDevFirebase, waitForAuthPersistence } = await import('./data.js');
-  await signOutTomatoDevFirebase();
+  const { setCurrentUser, clearAdminAuth } = await import('./data.js');
   setCurrentUser(null);
   localStorage.removeItem(TOMATODEV_AUTH_STORAGE_KEYS.adminAuthenticated);
   localStorage.removeItem(TOMATODEV_AUTH_STORAGE_KEYS.kimAuthenticated);
   clearAdminAuth();
+  const { waitForAuthPersistence } = await import('./data.js');
   await waitForAuthPersistence();
   location.reload();
 }
@@ -1197,31 +1397,38 @@ async function saveGuildFromModal() {
 
 
 async function manageAccountPassword(accountId) {
-  const {
-    changeTomatoDevOwnerPassword,
-    getAccountList,
-  } = await import('./data.js');
+  const { getAccountList, saveAccount, hashPassword, verifyPassword } = await import('./data.js');
   const accounts = await getAccountList();
   const account = accounts.find(a => a.id === accountId);
   if (!account) return;
 
-  if (account.authProvider === 'firebase-password' || account.hasPassword) {
-    // Firebase Auth와 로컬 잠금 비밀번호를 같은 입력에서 함께 회전한다.
+  if (account.hasPassword) {
+    // 기존 비밀번호 확인 후 변경/해제
     const oldPw = prompt(`${account.lastName}${account.firstName} — 현재 비밀번호를 입력하세요`);
     if (oldPw === null) return;
-    const newPw = prompt('새 비밀번호를 입력하세요');
-    if (!newPw) return;
-    try {
-      await changeTomatoDevOwnerPassword(account, oldPw, newPw);
+    if (!verifyPassword(account, oldPw)) { showToast('비밀번호가 맞지 않아요', 2500, 'error'); return; }
+
+    const action = confirm('비밀번호를 변경하시겠어요?\n\n확인 = 새 비밀번호 설정\n취소 = 비밀번호 해제');
+    if (action) {
+      const newPw = prompt('새 비밀번호를 입력하세요');
+      if (!newPw) return;
+      account.passwordHash = hashPassword(newPw);
+      await saveAccount(account);
       showToast('비밀번호가 변경되었어요', 2500, 'success');
-    } catch (error) {
-      console.error('[login] owner password rotation failed:', error);
-      showToast('비밀번호 변경에 실패했어요. 다시 로그인한 뒤 시도해주세요.', 3000, 'error');
-      return;
+    } else {
+      account.hasPassword = false;
+      account.passwordHash = null;
+      await saveAccount(account);
+      showToast('비밀번호가 해제되었어요', 2500, 'success');
     }
   } else {
-    showToast('Firebase Auth 연결에는 기존 로컬 비밀번호가 필요해요.', 3000, 'error');
-    return;
+    // 비밀번호 새로 설정
+    const newPw = prompt(`${account.lastName}${account.firstName} — 비밀번호를 설정하세요`);
+    if (!newPw) return;
+    account.hasPassword = true;
+    account.passwordHash = hashPassword(newPw);
+    await saveAccount(account);
+    showToast('비밀번호가 설정되었어요', 2500, 'success');
   }
   // 목록 갱신
   initLoginScreen();

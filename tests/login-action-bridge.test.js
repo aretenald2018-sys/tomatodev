@@ -25,11 +25,11 @@ test('login screen markup uses data-login actions instead of inline handlers', (
 
   assert.match(loginMarkup, /id="login-password"[^>]*data-login-enter-action="create-account-login"/);
   assert.match(loginMarkup, /id="login-create-btn"[^>]*data-login-action="create-account-login"/);
-  assert.match(loginMarkup, /class="login-signup-link"[^>]*>TomatoDev는 사전 등록된 소유자만 로그인할 수 있습니다\.<\/div>/);
+  assert.match(loginMarkup, /class="login-signup-link"[^>]*data-login-action="show-signup-view"/);
   assert.match(loginMarkup, /class="signup-toggle-row"[^>]*data-login-action="toggle-signup-guild"/);
   assert.match(loginMarkup, /id="signup-guild-input"[^>]*data-login-input-action="search-guilds"[^>]*data-login-focus-action="search-guilds"[^>]*data-login-enter-action="add-guild-chip"/);
   assert.match(loginMarkup, /class="signup-toggle-row"[^>]*data-login-action="toggle-signup-pw"/);
-  assert.match(loginMarkup, /class="login-btn signup-submit-btn"[^>]*disabled[^>]*>TomatoDev 가입 비활성화<\/button>/);
+  assert.match(loginMarkup, /class="login-btn signup-submit-btn"[^>]*data-login-action="create-account-signup"/);
   assert.match(loginMarkup, /class="signup-login-link"[^>]*data-login-action="show-login-view"/);
   assert.match(loginMarkup, /id="login-pw-modal-input"[^>]*data-login-enter-action="verify-and-login"/);
   assert.match(loginMarkup, /class="login-btn login-pw-cancel[^"]*"[^>]*data-login-action="close-password-modal"/);
@@ -57,11 +57,10 @@ test('feature-login binds login actions with a scoped idempotent bridge', () => 
   assert.match(featureLoginJs, /document\.addEventListener\('DOMContentLoaded', \(\) => \{[\s\S]*_bindLoginActions\(\);[\s\S]*initLoginScreen\(\);[\s\S]*\}\)/);
 });
 
-test('login restore waits for Firebase and never restores a local-only account', () => {
-  const initLogin = sliceBetween(featureLoginJs, 'async function initLoginScreen', 'async function selectAccount');
-  assert.match(initLogin, /await data\.waitForTomatoDevFirebaseAuthReady\(\)/);
-  assert.match(initLogin, /await _fetchAuthenticatedOwnerProfile\(data\)/);
-  assert.doesNotMatch(initLogin, /loadSavedUser|restoreUserFromBackup|getAccountList/);
+test('login restore skips guild onboarding when a running draft can resume', () => {
+  assert.match(featureLoginJs, /function _hasRestorableRunningDraftForUser\(user\)/);
+  assert.match(featureLoginJs, /tomatodev_running_session_draft_active/);
+  assert.match(featureLoginJs, /if \(!localStorage\.getItem\(guildObKey\) && !_hasRestorableRunningDraftForUser\(saved\)\)/);
 });
 
 test('APK login reboots the in-page user session without a WebView reload', () => {
@@ -69,22 +68,19 @@ test('APK login reboots the in-page user session without a WebView reload', () =
   assert.match(featureLoginJs, /new CustomEvent\('app:start-user-session', \{ detail: \{ resolve \} \}\)/);
   assert.match(appJs, /document\.addEventListener\('app:start-user-session'/);
   assert.match(featureLoginJs, /function _runDeferredLoginMaintenance\(\)/);
-  assert.match(featureLoginJs, /await data\.waitForTomatoDevFirebaseAuthReady\(\)/);
-  assert.match(featureLoginJs, /await _fetchAuthenticatedOwnerProfile\(data\)/);
-  assert.doesNotMatch(featureLoginJs, /restoreUserFromBackup\(\)/);
+  assert.match(featureLoginJs, /LOGIN_SESSION_RESTORE_TIMEOUT_MS = 1800/);
+  assert.match(featureLoginJs, /restoreUserFromBackup\(\),[\s\S]*LOGIN_SESSION_RESTORE_TIMEOUT_MS/);
 
   for (const [start, end] of [
+    ['async function selectAccount', 'async function verifyAndLogin'],
     ['async function verifyAndLogin', 'function closePasswordModal'],
+    ['async function createAccountFromSignup', 'function toggleSignupGuild'],
     ['async function createAccountAndLogin', 'async function logoutAccount'],
   ]) {
     const loginPath = sliceBetween(featureLoginJs, start, end);
     assert.match(loginPath, /return _continueToAppAfterLogin\(\);/);
     assert.doesNotMatch(loginPath, /location\.reload\(\)/);
   }
-
-  const accountSelection = sliceBetween(featureLoginJs, 'async function selectAccount', 'async function verifyAndLogin');
-  assert.match(accountSelection, /TomatoDev는 사전 등록된 소유자 계정만 로그인할 수 있습니다/);
-  assert.doesNotMatch(accountSelection, /location\.reload\(\)/);
 
   assert.match(appJs, /function startTomatoUserSession\(\) \{[\s\S]*return init\(\);[\s\S]*\}/);
   assert.doesNotMatch(appJs, /__startTomatoUserSession:\s*startTomatoUserSession/);

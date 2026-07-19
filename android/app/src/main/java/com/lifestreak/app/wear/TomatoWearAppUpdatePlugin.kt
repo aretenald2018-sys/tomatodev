@@ -160,6 +160,6 @@ class TomatoWearAppUpdatePlugin : Plugin() {
     private companion object {
         const val CAPABILITY_WEAR_APP = "tomato_farm_wear_app"
         const val PATH_APP_REFRESH = "/tomato/app/refresh"
-        const val WATCH_MARKET_URI = "market://details?id=com.lifestreak.dev"
+        const val WATCH_MARKET_URI = "market://details?id=com.lifestreak.app"
     }
 }

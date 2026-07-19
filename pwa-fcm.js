@@ -14,8 +14,9 @@ const TOMATODEV_FCM_DISABLED_RESULT = Object.freeze({
 });
 
 // ── FCM 초기화 ────────────────────────────────────────────────────
-// Keep the public initializer stable, but do not request permission or persist
-// tokens until messaging is configured specifically for TomatoDev.
+// TomatoDev shares the operating Firebase project. Keep the public initializer
+// stable, but never request permission, register push, or persist an FCM token
+// on web, Android/Capacitor, iOS, or any future platform.
 export async function initFCM() {
   return TOMATODEV_FCM_DISABLED_RESULT;
 }

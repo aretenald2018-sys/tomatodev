@@ -1,8 +1,5 @@
 package com.lifestreak.wear.workout
 
-import java.nio.charset.StandardCharsets
-import java.nio.file.Files
-import java.nio.file.Path
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -12,91 +9,6 @@ import org.junit.Test
 class WearRunUiStateTest {
     private var now = 1_000L
     private val state = WearRunUiState { now }
-
-    @Test
-    fun alternatesBurnInOffsetAtAmbientMinuteCadence() {
-        assertFalse(ambientMinuteShift(0L))
-        assertFalse(ambientMinuteShift(59_999L))
-        assertTrue(ambientMinuteShift(60_000L))
-        assertTrue(ambientMinuteShift(119_999L))
-        assertFalse(ambientMinuteShift(120_000L))
-    }
-
-    @Test
-    fun neverSchedulesInteractiveTicksWhileAmbient() {
-        assertTrue(
-            shouldScheduleWearRunTick(
-                hostInteractive = true,
-                ambient = false,
-                screen = WearRunUiScreen.ACTIVE,
-                attachedToWindow = true,
-            ),
-        )
-        assertFalse(
-            shouldScheduleWearRunTick(
-                hostInteractive = true,
-                ambient = true,
-                screen = WearRunUiScreen.ACTIVE,
-                attachedToWindow = true,
-            ),
-        )
-        assertFalse(
-            shouldScheduleWearRunTick(
-                hostInteractive = false,
-                ambient = false,
-                screen = WearRunUiScreen.ACTIVE,
-                attachedToWindow = true,
-            ),
-        )
-    }
-
-    @Test
-    fun wearActivityUsesAmbientLifecycleInsteadOfForcingInteractiveDisplay() {
-        val working = Path.of(System.getProperty("user.dir"))
-        val activityCandidates = listOf(
-            working.resolve("wear/src/main/java/com/lifestreak/wear/MainActivity.kt"),
-            working.resolve("src/main/java/com/lifestreak/wear/MainActivity.kt"),
-            working.resolve("android/wear/src/main/java/com/lifestreak/wear/MainActivity.kt"),
-        )
-        val controllerCandidates = listOf(
-            working.resolve("wear/src/main/java/com/lifestreak/wear/workout/WearWorkoutUiController.kt"),
-            working.resolve("src/main/java/com/lifestreak/wear/workout/WearWorkoutUiController.kt"),
-            working.resolve("android/wear/src/main/java/com/lifestreak/wear/workout/WearWorkoutUiController.kt"),
-        )
-        val activity = String(
-            Files.readAllBytes(activityCandidates.firstOrNull(Files::isRegularFile) ?: error("MainActivity not found")),
-            StandardCharsets.UTF_8,
-        )
-        val controller = String(
-            Files.readAllBytes(controllerCandidates.firstOrNull(Files::isRegularFile) ?: error("controller not found")),
-            StandardCharsets.UTF_8,
-        )
-
-        assertTrue(activity.contains("AmbientLifecycleObserver"))
-        assertTrue(activity.contains("onEnterAmbient"))
-        assertTrue(activity.contains("onUpdateAmbient"))
-        assertTrue(activity.contains("onExitAmbient"))
-        assertTrue(controller.contains("v.keepScreenOn = false"))
-        assertTrue(controller.contains("if (!hostInteractive || ambient) return@addListener"))
-        assertFalse(controller.contains("postDelayed(this, 60_000L)"))
-    }
-
-    @Test
-    fun wearActivityIsLockedToPortrait() {
-        val working = Path.of(System.getProperty("user.dir"))
-        val candidates = listOf(
-            working.resolve("wear/src/main/AndroidManifest.xml"),
-            working.resolve("src/main/AndroidManifest.xml"),
-            working.resolve("android/wear/src/main/AndroidManifest.xml"),
-        )
-        val path = candidates.firstOrNull(Files::isRegularFile)
-            ?: error("Wear manifest not found from $working")
-        val manifest = String(Files.readAllBytes(path), StandardCharsets.UTF_8)
-        val activityStart = manifest.indexOf("android:name=\".MainActivity\"")
-        val activityEnd = manifest.indexOf(">", activityStart)
-        val activity = manifest.substring(activityStart, activityEnd)
-        assertTrue(activity.contains("android:screenOrientation=\"portrait\""))
-    }
 
     @Test
     fun advancesRunningSessionThroughPauseResumeSummaryAndReset() {

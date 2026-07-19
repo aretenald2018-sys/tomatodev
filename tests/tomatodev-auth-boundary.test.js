@@ -5,17 +5,8 @@ import { readFileSync } from 'node:fs';
 const read = (path) => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 const coreSource = read('data/data-core.js');
 const authSource = read('data/data-auth.js');
-const authSessionSource = read('data/firebase-auth-session.js');
-const authCredentialSource = read('data/firebase-auth-credential.js');
-const accountSource = read('data/data-account.js');
-const loadSource = read('data/data-load.js');
 const featureLoginSource = read('feature-login.js');
-const appSource = read('app.js');
 const runningSource = read('workout/running-session.js');
-const firebaseConfigSource = read('config.js');
-const firestoreRulesSource = read('firestore.rules');
-const runtimeAssetsSource = read('runtime-assets.js');
-const firebaseRc = JSON.parse(read('.firebaserc'));
 
 function sliceBetween(source, startToken, endToken) {
   const start = source.indexOf(startToken);
@@ -26,17 +17,7 @@ function sliceBetween(source, startToken, endToken) {
 }
 
 test('TomatoDev owns a named Firebase app and independent auth persistence stores', () => {
-  assert.match(authSessionSource, /initializeApp\(CONFIG\.FIREBASE, 'tomatodev'\)/);
-  assert.match(authSessionSource, /getAuth\(tomatoDevFirebaseApp\)/);
-  assert.match(authSessionSource, /setPersistence\(tomatoDevFirebaseAuth, browserLocalPersistence\)/);
-  assert.match(authSessionSource, /onAuthStateChanged\(/);
-  assert.match(coreSource, /const app = tomatoDevFirebaseApp;/);
-  assert.match(authCredentialSource, /kim-taewoo@tomatodev\.local/);
-  assert.match(authCredentialSource, /subtle\.importKey\(/);
-  assert.match(authCredentialSource, /subtle\.deriveBits\(/);
-  assert.match(authCredentialSource, /hash:\s*'SHA-256'/);
-  assert.match(authCredentialSource, /TOMATODEV_FIREBASE_PASSWORD_ITERATIONS = 310_000/);
-  assert.match(authCredentialSource, /return `tdv2_\$\{hex\}`/);
+  assert.match(coreSource, /initializeApp\(CONFIG\.FIREBASE, 'tomatodev'\)/);
   assert.match(coreSource, /const _IDB_NAME = 'tomatodev_session_v1';/);
   for (const key of [
     'tomatodev:auth:current-user:v1',
@@ -49,13 +30,6 @@ test('TomatoDev owns a named Firebase app and independent auth persistence store
   assert.doesNotMatch(coreSource, /localStorage\.getItem\('kimMode'\)/);
   assert.doesNotMatch(coreSource, /localStorage\.setItem\('kimMode'/);
   assert.doesNotMatch(coreSource, /dashboard3_session/);
-});
-
-test('TomatoDev runtime and deployment mapping use only the isolated Firebase project', () => {
-  assert.match(firebaseConfigSource, /projectId:\s+"tomatodev-arete"/);
-  assert.match(firebaseConfigSource, /authDomain:\s+"tomatodev-arete\.firebaseapp\.com"/);
-  assert.doesNotMatch(firebaseConfigSource, /exercise-management/);
-  assert.equal(firebaseRc.projects.default, 'tomatodev-arete');
 });
 
 test('auth, login, and running recovery never read or delete production auth keys', () => {
@@ -83,85 +57,7 @@ test('running recovery reads and deletes only TomatoDev draft records', () => {
 });
 
 test('TomatoDev does not initialize a production Firebase Functions client', () => {
-  assert.doesNotMatch(coreSource + authSessionSource, /firebase-functions\.js|getFunctions\(|export const functions\b/);
-});
-
-test('production login uses only the pre-provisioned Firebase owner', () => {
-  const authenticate = sliceBetween(
-    authSource,
-    'export async function authenticateTomatoDevOwner',
-    'export async function changeTomatoDevOwnerPassword',
-  );
-  assert.match(authenticate, /signInTomatoDevFirebaseOwner\(localPassword\)/);
-  assert.doesNotMatch(authenticate, /verifyPassword|createUser/);
-  assert.match(authSessionSource, /signInWithEmailAndPassword\(/);
-  assert.doesNotMatch(authSessionSource, /createUserWithEmailAndPassword|signInOrCreate/);
-  assert.doesNotMatch(featureLoginSource, /storedHash:|inputHash:/);
-});
-
-test('protected boot, owner resolution, and writes wait for Firebase owner auth', () => {
-  const loadAll = loadSource.slice(loadSource.indexOf('export async function loadAll'));
-  assert.ok(loadAll.indexOf('await requireTomatoDevFirebaseAuth();') < loadAll.indexOf('getDocs(ownerCollection'));
-  const firebaseOp = sliceBetween(coreSource, 'export async function _fbOp', '// ── 설정 저장 헬퍼');
-  assert.ok(firebaseOp.indexOf('await requireTomatoDevFirebaseAuth();') < firebaseOp.indexOf('const result = await fn();'));
-  const appBoot = appSource.slice(appSource.indexOf('async function _initializeAppSession'));
-  assert.ok(appBoot.indexOf('await waitForTomatoDevFirebaseAuthReady()') < appBoot.indexOf('loadSavedUser()'));
-  assert.ok(appBoot.indexOf('loadSavedUser()') < appBoot.indexOf('const dataLoadPromise = loadAll();'));
-  assert.match(appBoot, /if \(!isTomatoDevFirebaseOwner\(firebaseUser\)\)/);
-});
-
-test('account discovery requires auth, uses one exact owner get, and propagates failures', () => {
-  const getAccountList = sliceBetween(accountSource, 'export async function getAccountList', 'export async function saveAccount');
-  assert.ok(getAccountList.indexOf('await requireTomatoDevFirebaseAuth();')
-    < getAccountList.indexOf("getDocFromServer(doc(db, '_accounts', ADMIN_ID))"));
-  assert.match(getAccountList, /getDocFromServer\(doc\(db, '_accounts', ADMIN_ID\)\)/);
-  assert.doesNotMatch(getAccountList, /getDocs|collection\(/);
-  assert.doesNotMatch(getAccountList, /catch\s*\(/);
-  assert.match(getAccountList, /TOMATODEV_OWNER_PROFILE_MISSING/);
-  assert.match(accountSource, /export async function saveAccount[\s\S]*await requireTomatoDevFirebaseAuth\(\);/);
-});
-
-test('login signs in before profile fetch and clears both sessions on either failure', () => {
-  const loginFlow = sliceBetween(
-    featureLoginSource,
-    'async function _authenticateAndFetchOwner',
-    'function _showLoadingUntilAppReady',
-  );
-  assert.ok(loginFlow.indexOf('await data.authenticateTomatoDevOwner(password)')
-    < loginFlow.indexOf('await _fetchAuthenticatedOwnerProfile(data)'));
-  assert.match(loginFlow, /catch \(error\)[\s\S]*await _clearFailedOwnerSession\(data\)/);
-
-  const clearFlow = sliceBetween(
-    featureLoginSource,
-    'async function _clearFailedOwnerSession',
-    'async function _fetchAuthenticatedOwnerProfile',
-  );
-  assert.match(clearFlow, /await data\.signOutTomatoDevFirebase\(\)/);
-  assert.match(clearFlow, /data\.setCurrentUser\(null\)/);
-  assert.match(clearFlow, /await data\.waitForAuthPersistence\(\)/);
-});
-
-test('Firestore rules use exact owner and reader UID gates with scoped reader paths', () => {
-  assert.match(firestoreRulesSource, /request\.auth\.uid == '[A-Za-z0-9_-]{8,128}'/g);
-  assert.match(firestoreRulesSource, /match \/_accounts\/\{accountId\}/);
-  assert.match(firestoreRulesSource, /match \/users\/\{accountId\}\/settings\/\{settingId\}/);
-  assert.match(firestoreRulesSource, /match \/users\/\{accountId\}\/workouts\/\{workoutId\}/);
-  assert.match(firestoreRulesSource, /accountId == '김_태우'/);
-  assert.doesNotMatch(firestoreRulesSource, /allow read, write: if false;/);
-  assert.doesNotMatch(firestoreRulesSource, /request\.auth\.token\.email|@tomatodev\.local/);
-  assert.doesNotMatch(firestoreRulesSource, /allow read, write: if true/);
-});
-
-test('logout and password rotation use Firebase Auth lifecycle APIs', () => {
-  assert.match(featureLoginSource, /async function confirmLogout\(\)[\s\S]*await signOutTomatoDevFirebase\(\)/);
-  assert.match(authSessionSource, /reauthenticateWithCredential\(/);
-  assert.match(authSessionSource, /updatePassword\(user, nextPassword\)/);
-  assert.doesNotMatch(featureLoginSource, /passwordHash\s*=\s*hashPassword/);
-});
-
-test('Firebase auth modules are precached runtime assets', () => {
-  assert.match(runtimeAssetsSource, /\.\/data\/firebase-auth-credential\.js/);
-  assert.match(runtimeAssetsSource, /\.\/data\/firebase-auth-session\.js/);
+  assert.doesNotMatch(coreSource, /firebase-functions\.js|getFunctions\(|export const functions\b/);
 });
 
 test('opening the TomatoDev login screen cannot repair accounts or rewrite a password', () => {
@@ -170,13 +66,13 @@ test('opening the TomatoDev login screen cannot repair accounts or rewrite a pas
     'function _runDeferredLoginMaintenance',
     'function _needsPassword',
   );
-  const signup = sliceBetween(
+  const savedAdminLock = sliceBetween(
     featureLoginSource,
-    'async function createAccountFromSignup',
-    '// ── 가입 토글',
+    '// 김태우 잠금 화면',
+    "document.getElementById('loading').style.display = 'none';",
   );
+
   assert.doesNotMatch(maintenance, /recoverDeletedAccounts|getAccountList|saveAccount|hashPassword|setDoc/);
   assert.match(maintenance, /automatic account maintenance is disabled on TomatoDev/);
-  assert.match(signup, /TomatoDev에서는 브라우저 계정 가입을 지원하지 않습니다/);
-  assert.doesNotMatch(signup, /saveAccount|getAccountList|hashPassword/);
+  assert.doesNotMatch(savedAdminLock, /saveAccount|hashPassword|passwordHash\s*=/);
 });

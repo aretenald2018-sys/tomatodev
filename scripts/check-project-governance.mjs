@@ -57,7 +57,7 @@ for (const file of files) {
   reject(forbiddenTrackedPrefixes.some((prefix) => file.startsWith(prefix)), `tracked local/history artifact: ${file}`);
 }
 reject(files.includes('scripts/dev-start.sh'), 'obsolete scripts/dev-start.sh must not be tracked');
-reject(!files.includes('.firebaserc'), 'TomatoDev must pin its isolated Firebase project');
+reject(files.includes('.firebaserc'), 'TomatoDev must not pin a default Firebase project');
 reject(files.includes('scripts/deploy-production.mjs'), 'TomatoDev must not contain the operating deployment command');
 reject(!files.includes('scripts/deploy-development.mjs'), 'TomatoDev development deployment command is missing');
 
@@ -114,22 +114,6 @@ for (const script of ['dev', 'test', 'build', 'check:governance', 'verify:assets
 reject(!String(packageJson.scripts?.['verify:assets']).includes('generate-style-entry.mjs --check'), 'verify:assets must check generated CSS without rewriting it');
 reject(packageJson.scripts?.['deploy:dev'] !== 'node scripts/deploy-development.mjs', 'TomatoDev must expose only the development Pages deploy command');
 reject(Boolean(packageJson.scripts?.['deploy:production']), 'TomatoDev must not expose a production deploy command');
-
-const firebaseRc = JSON.parse(read('.firebaserc'));
-reject(firebaseRc.projects?.default !== 'tomatodev-arete', '.firebaserc must target only tomatodev-arete');
-const firebaseConfig = read('config.js');
-reject(!firebaseConfig.includes('projectId:         "tomatodev-arete"'), 'runtime Firebase config must target tomatodev-arete');
-reject(firebaseConfig.includes('projectId:         "exercise-management"'), 'runtime Firebase config must never target TomatoFarm');
-const appGradle = read('android/app/build.gradle');
-const wearGradle = read('android/wear/build.gradle');
-const capacitorConfig = read('capacitor.config.ts');
-for (const [file, source] of [
-  ['android/app/build.gradle', appGradle],
-  ['android/wear/build.gradle', wearGradle],
-  ['capacitor.config.ts', capacitorConfig],
-]) {
-  reject(!source.includes('com.lifestreak.dev'), `${file} must use the isolated TomatoDev application ID`);
-}
 
 const repositoryBoundary = read('scripts/repository-boundary.mjs');
 reject(!repositoryBoundary.includes("TOMATODEV_REPOSITORY = 'aretenald2018-sys/tomatodev'"), 'repository guard must target only TomatoDev');

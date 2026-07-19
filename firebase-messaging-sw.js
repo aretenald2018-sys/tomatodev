@@ -1,7 +1,8 @@
 'use strict';
 
-// Messaging remains disabled until a TomatoDev-only sender is configured. This
-// inert worker only cleans up a stale registration from an older cached page.
+// TomatoDev does not register web push against the production Firebase project.
+// This inert worker only cleans up a stale TomatoDev messaging registration if
+// an older cached page happens to request this script once more.
 self.addEventListener('install', (event) => {
   event.waitUntil(self.skipWaiting());
 });

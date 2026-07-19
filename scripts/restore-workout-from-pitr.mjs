@@ -1,11 +1,7 @@
 #!/usr/bin/env node
-import { CONFIG } from '../config.js';
 
-const API_KEY = CONFIG.FIREBASE.apiKey;
-const PROJECT_ID = CONFIG.FIREBASE.projectId;
-if (PROJECT_ID !== 'tomatodev-arete') {
-  throw new Error(`Refusing PITR access outside TomatoDev: ${PROJECT_ID}`);
-}
+const API_KEY = 'AIzaSyCk2czvJ8DRautrUput8TLjdrArpQm7BBk';
+const PROJECT_ID = 'exercise-management';
 const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
 const WORKOUT_FIELDS = [

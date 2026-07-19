@@ -13,7 +13,7 @@ function bootMode(storage) {
   return new Function('localStorage', 'TOMATODEV_AUTH_STORAGE_KEYS', `${source}; return { getKimMode, setKimMode };`)(storage, { kimMode: 'dev-mode' });
 }
 
-test('every module boot resets a previously persisted shared-admin mode to guest', () => {
+test('every module boot resets a stale shared-admin UI mode to guest', () => {
   const values = new Map([['dev-mode', 'admin']]);
   const storage = {
     getItem(key) { return values.get(key) ?? null; },
@@ -24,13 +24,12 @@ test('every module boot resets a previously persisted shared-admin mode to guest
   assert.equal(values.get('dev-mode'), 'guest');
   first.setKimMode('admin');
   assert.equal(first.getKimMode(), 'admin');
-  assert.equal(bootMode(storage).getKimMode(), 'guest', 'reload returns to guest entry');
+  assert.equal(bootMode(storage).getKimMode(), 'guest');
 });
 
-test('explicit admin switch stays in-session and app handles it without reload', () => {
+test('an explicit mode switch updates the UI without reloading or changing data ownership', () => {
   const start = login.indexOf('export async function switchKimMode(mode)');
   const end = login.indexOf('async function openNicknameEdit()', start);
-  assert.notEqual(start, -1);
   const source = login.slice(start, end);
   assert.doesNotMatch(source, /location\.reload/);
   assert.match(source, /tomatodev:kim-mode-changed/);

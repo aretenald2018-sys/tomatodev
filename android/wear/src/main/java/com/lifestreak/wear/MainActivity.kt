@@ -10,7 +10,6 @@ import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.wear.ambient.AmbientLifecycleObserver
 import com.lifestreak.wear.workout.WearExerciseService
 import com.lifestreak.wear.workout.WearExerciseSessionPersistence
 import com.lifestreak.wear.workout.WearExerciseSessionStatus
@@ -22,26 +21,6 @@ class MainActivity : AppCompatActivity() {
     private val wearWorkoutUi = WearWorkoutUiController(handler)
     private var restoredRunStatus: WearExerciseSessionStatus? = null
     private var runHost: View? = null
-    private lateinit var ambientObserver: AmbientLifecycleObserver
-    private val ambientCallbacks = object : AmbientLifecycleObserver.AmbientLifecycleCallback {
-        override fun onEnterAmbient(ambientDetails: AmbientLifecycleObserver.AmbientDetails) {
-            runHost?.let { host ->
-                wearWorkoutUi.onEnterAmbient(
-                    host,
-                    burnInProtectionRequired = ambientDetails.burnInProtectionRequired,
-                    lowBitAmbient = ambientDetails.deviceHasLowBitAmbient,
-                )
-            }
-        }
-
-        override fun onUpdateAmbient() {
-            runHost?.let(wearWorkoutUi::onUpdateAmbient)
-        }
-
-        override fun onExitAmbient() {
-            runHost?.let(wearWorkoutUi::onExitAmbient)
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,8 +34,6 @@ class MainActivity : AppCompatActivity() {
         runHost = findViewById<View>(R.id.wearRunHost)
             ?: findViewById(android.R.id.content)
         wearWorkoutUi.bind(requireNotNull(runHost))
-        ambientObserver = AmbientLifecycleObserver(this, ambientCallbacks)
-        lifecycle.addObserver(ambientObserver)
         if (requestWearExercisePermissionsIfNeeded()) {
             if (!restoreRunServiceIfNeeded() &&
                 WearExerciseSessionStore.current().status == WearExerciseSessionStatus.IDLE
@@ -136,7 +113,6 @@ class MainActivity : AppCompatActivity() {
         if (isFinishing && WearExerciseSessionStore.current().status == WearExerciseSessionStatus.IDLE) {
             WearExerciseService.cancelPreparation(this)
         }
-        if (::ambientObserver.isInitialized) lifecycle.removeObserver(ambientObserver)
         super.onDestroy()
         wearWorkoutUi.dispose()
     }
