@@ -4607,7 +4607,7 @@ async function _addWorkoutExerciseSetFromSheet(key, sessionIndex, exerciseIndex)
       entry.sets = sets;
       clearWorkoutExerciseCompletionMarker(entry);
       return true;
-    }, { preserveSheetScroll: true });
+    }, { preserveSheetScroll: true, optimisticRender: true });
     if (ok) showToast(copiedPreviousSet ? '직전 세트를 복사했어요' : '세트를 추가했어요', 1200, 'success');
   } catch (e) {
     console.warn('[workout-calendar] sheet set add failed:', e);

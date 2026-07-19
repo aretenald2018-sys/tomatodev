@@ -966,6 +966,7 @@ test('day sheet added workout sets copy previous user values without completion 
   assert.doesNotMatch(defaults, /completedAt|exerciseCompletedAt|wendlerRole|wendlerPct|supplementalKind|amrap/);
   assert.match(addFn, /copiedPreviousSet = sets\.length > 0/);
   assert.match(addFn, /sets\.push\(_defaultWorkoutSheetSet\(sets\[sets\.length - 1\]\)\)/);
+  assert.match(addFn, /\{ preserveSheetScroll: true, optimisticRender: true \}/);
   assert.match(addFn, /직전 세트를 복사했어요/);
   assert.match(updateFn, /safeField === 'kg'[\s\S]*allowEmpty: true/);
   assert.match(updateFn, /safeField === 'reps'[\s\S]*allowEmpty: true/);
