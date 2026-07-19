@@ -4,7 +4,7 @@
 
 - TomatoDev is a development mirror of tomatofarm, not an independent development line. Implement features in the tomatofarm repository and bring them here through sync; do not start new feature work in this repository.
 - The only TomatoDev-native commits allowed are the isolation overlay (Firebase/auth/owner boundaries, dev APK publication, build metadata) and sync merges from tomatofarm.
-- Sync procedure: the local remote `farm` points to the tomatofarm checkout. Run `git fetch farm main`, merge `farm/main` into `main`, resolve conflicts preferring `farm` for app code and TomatoDev for the isolation overlay and build metadata, run the repository checks, then push once.
+- Sync procedure: do NOT add a second git remote (the repository boundary check allows only `origin`). Fetch tomatofarm by path — `git fetch "<tomatofarm checkout path>" main` — then merge `FETCH_HEAD` into `main`, resolving conflicts in favor of tomatofarm for app code and in favor of TomatoDev for the isolation overlay and build metadata. Remove any governance-banned paths the merge brings in (`docs/ai/`, `.claude/`, `prd.md`), bump the `tomatodev-` cache version, run the repository checks, then push once.
 - The task-branch workflow below applies only to isolation-overlay maintenance, not to feature development.
 
 ## Work unit and branches
