@@ -33,7 +33,7 @@
 - Every user-facing UI change must be exercised in a browser with `node scripts/dev-start.mjs`. Test the exact changed controls and the affected regression surface, then stop the server.
 - Tests and verification commands must not write evidence into tracked source directories. Use a temporary or ignored artifact directory.
 - Never use `python -m http.server` or blanket process-kill commands for local verification.
-- Every completed task handoff must include a clickable Markdown link to the delivered artifact. Use an absolute local-file link for downloadable outputs (APK, archive, report, image, or similar) and absolute repository-file links for code-only work; never provide only an unlinked path.
+- Every completed task handoff must include a clickable Markdown link to the delivered artifact. For mobile or external downloads (APK, archive, report, image, or similar), use a verified public HTTPS URL first; use an absolute local-file link only as a fallback when no public URL exists. For code-only work, use absolute repository-file links; never provide only an unlinked path.
 
 ## Release
 
