@@ -1,11 +1,11 @@
 # Tomato Project Codex Rules
 
-## Mirror policy (2026-07-19)
+## Development origin and promotion
 
-- TomatoDev is a development mirror of tomatofarm, not an independent development line. Implement features in the tomatofarm repository and bring them here through sync; do not start new feature work in this repository.
-- The only TomatoDev-native commits allowed are the isolation overlay (Firebase/auth/owner boundaries, dev APK publication, build metadata) and sync merges from tomatofarm.
-- Sync procedure: do NOT add a second git remote (the repository boundary check allows only `origin`). Fetch tomatofarm by path — `git fetch "<tomatofarm checkout path>" main` — then merge `FETCH_HEAD` into `main`, resolving conflicts in favor of tomatofarm for app code and in favor of TomatoDev for the isolation overlay and build metadata. Remove any governance-banned paths the merge brings in (the AI-history directory, `.claude/`, `prd.md`), bump the `tomatodev-` cache version, run the repository checks, then push once.
-- The task-branch workflow below applies only to isolation-overlay maintenance, not to feature development.
+- TomatoDev is the development environment. New features are built and validated here first; this is the default place to start feature work.
+- tomatofarm is production. When the user decides a change is ready, its app code is promoted to tomatofarm. Promotion is user-gated: a TomatoDev change is never automatically released to production, and this checkout never pushes or deploys tomatofarm.
+- Promotion carries app code only. The TomatoDev isolation overlay stays here and is never promoted: the `tomatodev` Firebase app name and shared-backend guards, fail-closed FCM (`tomatodev-fcm-disabled`), the dev APK and retained native config, build metadata, and the `tomatodev-` cache-version prefix. tomatofarm keeps its own production overlay. See [docs/reference/ENVIRONMENT_BOUNDARIES.md](docs/reference/ENVIRONMENT_BOUNDARIES.md).
+- Do not add a second git remote; the repository boundary check allows only `origin`.
 
 ## Work unit and branches
 

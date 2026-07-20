@@ -1,6 +1,6 @@
 # TomatoDev
 
-Tomato Farm의 기능을 운영 저장소와 분리해 검증하는 개발용 GitHub Pages 저장소입니다. 소스·Git 이력·Pages 산출물은 별도이며, 현재 Firebase와 브라우저 origin은 운영 앱과 공유합니다.
+신규 기능을 먼저 개발·검증하는 개발용 GitHub Pages 저장소입니다. 준비된 기능은 사용자가 판단했을 때 운영 저장소(Tomato Farm)로 승격합니다. 소스·Git 이력·Pages 산출물은 운영과 별도이며, 현재 Firebase와 브라우저 origin은 운영 앱과 공유합니다.
 
 따라서 이 저장소의 배포는 운영 Git/Pages를 건드리지 않지만 데이터 백엔드까지 격리된 스테이징 환경은 아닙니다. 웹 FCM과 APK 배포는 비활성화되어 있으며, 자세한 제한은 [환경 경계 문서](docs/reference/ENVIRONMENT_BOUNDARIES.md)에 기록합니다.
 
