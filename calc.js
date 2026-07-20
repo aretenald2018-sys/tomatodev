@@ -163,6 +163,38 @@ export function calcDietMetrics(plan) {
  * @param {object} dayData - 해당 날짜 데이터
  * @returns {number} 운동으로 소모한 추가 허용 칼로리
  */
+/**
+ * Compare daily average protein between this week and the matching previous-week span.
+ * Accepts getDiet() rows or compact objects with a direct protein value.
+ */
+export function calcWeeklyDietMacroChange(thisWeekDietDays = [], lastWeekDietDays = []) {
+  const proteinOf = (day) => {
+    if (!day || typeof day !== "object") return 0;
+    const direct = Number(day.protein);
+    if (Number.isFinite(direct)) return Math.max(0, direct);
+    return ["bProtein", "lProtein", "dProtein", "sProtein"]
+      .reduce((sum, key) => sum + (Number(day[key]) || 0), 0);
+  };
+  const average = (days) => {
+    const rows = Array.isArray(days) ? days : [];
+    if (!rows.length) return 0;
+    return rows.reduce((sum, day) => sum + proteinOf(day), 0) / rows.length;
+  };
+  const currentAvgProteinG = average(thisWeekDietDays);
+  const previousAvgProteinG = average(lastWeekDietDays);
+  const deltaPct = previousAvgProteinG > 0
+    ? Math.round(((currentAvgProteinG - previousAvgProteinG) / previousAvgProteinG) * 1000) / 10
+    : null;
+  return {
+    status: previousAvgProteinG > 0 && Array.isArray(thisWeekDietDays) && thisWeekDietDays.length
+      ? "ready"
+      : "collecting",
+    currentAvgProteinG: Math.round(currentAvgProteinG * 10) / 10,
+    previousAvgProteinG: Math.round(previousAvgProteinG * 10) / 10,
+    deltaPct,
+  };
+}
+
 export function calcExerciseCalorieCredit(plan, dayData) {
   if (!plan.advancedMode || !plan.exerciseCalorieCredit || !dayData) return 0;
   let credit = 0;

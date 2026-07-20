@@ -1,10 +1,10 @@
 {
   "app": "tomatodev",
-  "commit": "7f135f0434b294371c66c9f697fb9ec517aa6a7a",
-  "shortCommit": "7f135f0434b2",
+  "commit": "39384ccdf719d77f9b4f80737fcbcf1fc12ab33b",
+  "shortCommit": "39384ccdf719",
   "branch": "main",
-  "deployedAt": "2026-07-19T08:58:13.835Z",
-  "cacheVersion": "tomatodev-v20260719z13-workout-set-add-responsive",
+  "deployedAt": "2026-07-20T01:39:26.229Z",
+  "cacheVersion": "tomatodev-v20260720z1-farm-sync-workout-input",
   "runId": null,
   "runAttempt": null
 }

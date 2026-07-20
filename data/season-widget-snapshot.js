@@ -1,4 +1,4 @@
-import { isExerciseDaySuccess } from '../calc.js';
+import { calcDietMetrics, calcWeeklyDietMacroChange, isExerciseDaySuccess } from '../calc.js';
 import {
   activeBenchmarks,
   activeCycleOf,
@@ -47,6 +47,82 @@ function _boardWeek(board, todayKey) {
   return cycle ? Math.max(1, weekIndexOf(cycle, todayKey)) : null;
 }
 
+
+function _dietTotal(day, suffix) {
+  return ["b", "l", "d", "s"].reduce((sum, prefix) => sum + (Number(day?.[prefix + suffix]) || 0), 0);
+}
+
+function _dietMealCount(rawDay = {}) {
+  const rows = [
+    ["breakfast", "b"],
+    ["lunch", "l"],
+    ["dinner", "d"],
+    ["snack", "s"],
+  ];
+  return rows.reduce((count, [slot, prefix]) => {
+    const foods = Array.isArray(rawDay[prefix + "Foods"]) ? rawDay[prefix + "Foods"].length : 0;
+    const hasMeal = Boolean(
+      rawDay[slot] ||
+      Number(rawDay[prefix + "Kcal"]) > 0 ||
+      foods > 0 ||
+      rawDay[prefix + "Photo"] ||
+      rawDay[slot + "_skipped"] ||
+      rawDay[prefix + "Skipped"]
+    );
+    return count + (hasMeal ? 1 : 0);
+  }, 0);
+}
+
+function _dietProgress(actual, target) {
+  return target > 0 ? Math.max(0, Math.min(100, Math.round((actual / target) * 100))) : 0;
+}
+
+function _buildDietSummary(input = {}) {
+  const plan = input.plan || {};
+  if (plan._userSet === false || !input.plan) {
+    return { state: "no-plan", message: "\uBAA9\uD45C\uB97C \uC124\uC815\uD574\uC8FC\uC138\uC694" };
+  }
+  const metrics = calcDietMetrics(plan);
+  const dateParts = String(input.todayKey || "").split("-").map(Number);
+  const dow = dateParts.length === 3
+    ? new Date(Date.UTC(dateParts[0], dateParts[1] - 1, dateParts[2])).getUTCDay()
+    : 0;
+  const target = (plan.refeedDays || []).includes(dow) ? metrics.refeed : metrics.deficit;
+  const today = input.todayDiet || {};
+  const actual = {
+    kcal: _dietTotal(today, "Kcal"),
+    carbsG: _dietTotal(today, "Carbs"),
+    proteinG: _dietTotal(today, "Protein"),
+    fatG: _dietTotal(today, "Fat"),
+    mealCount: _dietMealCount(input.todayRawDay || {}),
+  };
+  const targetValues = {
+    kcal: Number(target?.kcal) || 0,
+    carbsG: Number(target?.carbG) || 0,
+    proteinG: Number(target?.proteinG) || 0,
+    fatG: Number(target?.fatG) || 0,
+    mealCount: 4,
+  };
+  return {
+    state: "ready",
+    today: {
+      actual,
+      target: targetValues,
+      progress: {
+        kcal: _dietProgress(actual.kcal, targetValues.kcal),
+        carbs: _dietProgress(actual.carbsG, targetValues.carbsG),
+        protein: _dietProgress(actual.proteinG, targetValues.proteinG),
+        fat: _dietProgress(actual.fatG, targetValues.fatG),
+        mealCount: _dietProgress(actual.mealCount, targetValues.mealCount),
+      },
+    },
+    proteinChange: calcWeeklyDietMacroChange(
+      input.thisWeekDietDays,
+      input.lastWeekDietDays
+    ),
+  };
+}
+
 function _nextPlan(board, runningStats) {
   const benchmark = activeBenchmarks(board || {})[0] || null;
   const health = benchmark
@@ -69,6 +145,7 @@ export function buildSeasonDashboardSnapshot({
   workoutPlan = {},
   runningPlan = {},
   board = null,
+  diet = null,
   generatedAt = Date.now(),
 } = {}) {
   const season = findSeasonForDate(registry, todayKey);
@@ -97,6 +174,8 @@ export function buildSeasonDashboardSnapshot({
       ? Math.round(baselinePaceSecPerKm * (1 - Math.min(10, Number(runningPlan.adaptiveRatePct)) / 100))
       : null)
     : (Number(runningPlan?.targetPaceSecPerKm) > 0 ? Number(runningPlan.targetPaceSecPerKm) : null);
+  const dietSummary = _buildDietSummary({ ...(diet || {}), todayKey });
+  const benchmarkCount = activeBenchmarks(board || {}).length;
   const week = _boardWeek(board, todayKey);
   return {
     schemaVersion: 1,
@@ -129,12 +208,14 @@ export function buildSeasonDashboardSnapshot({
       },
     },
     strength: {
+      benchmarkCount,
       sessions: strength.currentWeek.sessions,
       totalVolumeKg: strength.currentWeek.totalVolumeKg,
       volumeTrend: strength.volumeTrend,
       liftDeltaKg,
       liftDeltas: strength.liftDeltas,
     },
+    diet: dietSummary,
     nextPlan: _nextPlan(board, running),
   };
 }
