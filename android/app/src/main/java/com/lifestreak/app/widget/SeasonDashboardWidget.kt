@@ -53,12 +53,54 @@ class SeasonDashboardWidget : AppWidgetProvider() {
             return (metric?.optDouble(field, 0.0) ?: 0.0).roundToInt().coerceIn(0, 100)
         }
 
+        private fun pace(value: Double?): String {
+            if (value == null || !value.isFinite() || value <= 0) return "\u2014"
+            val total = value.roundToInt()
+            return (total / 60).toString() + "'" + String.format(Locale.KOREA, "%02d", total % 60) + "\""
+        }
+
+        private fun strengthChecks(views: RemoteViews, strength: JSONObject, completed: Int) {
+            val ids = intArrayOf(
+                R.id.widget_strength_check_1,
+                R.id.widget_strength_check_2,
+                R.id.widget_strength_check_3,
+                R.id.widget_strength_check_4,
+                R.id.widget_strength_check_5,
+            )
+            val lifts = strength.optJSONArray("liftDeltas")
+            ids.forEachIndexed { index, id ->
+                val row = lifts?.optJSONObject(index)
+                val label = row?.optString("label")?.takeIf { it.isNotBlank() }
+                    ?: row?.optString("name")?.takeIf { it.isNotBlank() }
+                    ?: "\uC885\uBAA9 \uBAA9\uD45C"
+                val done = row != null && index < completed
+                views.setTextViewText(id, (if (done) "\u2713 " else "\u25CB ") + label)
+            }
+        }
+
         private fun empty(views: RemoteViews, message: String, sync: String = "동기화 대기") {
             views.setTextViewText(R.id.widget_season_title, "오늘/이번 주 요약")
             views.setTextViewText(R.id.widget_season_meta, message)
-            views.setTextViewText(R.id.widget_diet_value, "식단 목표 미설정")
-            views.setTextViewText(R.id.widget_diet_macros, "식단 목표를 설정하면 진행률이 표시됩니다")
-            views.setTextViewText(R.id.widget_diet_meals, "오늘 식단 기록을 기다리는 중")
+            views.setTextViewText(R.id.widget_diet_value, "\u2014")
+            views.setTextViewText(R.id.widget_diet_kcal_target, "\uBAA9\uD45C \uBBF8\uC124\uC815")
+            views.setTextViewText(R.id.widget_diet_kcal_percent, "0%")
+            views.setTextViewText(R.id.widget_diet_meals, "\uAE30\uB85D\uD55C \uC2DD\uC0AC 0\uD68C")
+            listOf(
+                R.id.widget_diet_carbs_value,
+                R.id.widget_diet_protein_value,
+                R.id.widget_diet_fat_value,
+            ).forEach { views.setTextViewText(it, "\u2014") }
+            listOf(
+                R.id.widget_diet_carbs_percent,
+                R.id.widget_diet_protein_percent,
+                R.id.widget_diet_fat_percent,
+            ).forEach { views.setTextViewText(it, "0%") }
+            listOf(
+                R.id.widget_diet_carbs_progress,
+                R.id.widget_diet_protein_progress,
+                R.id.widget_diet_fat_progress,
+            ).forEach { views.setProgressBar(it, 100, 0, false) }
+            views.setTextViewText(R.id.widget_diet_macros, "")
             views.setProgressBar(R.id.widget_diet_progress, 100, 0, false)
             views.setTextViewText(R.id.widget_strength_value, "근력 —")
             views.setTextViewText(R.id.widget_strength_detail, message)
@@ -72,6 +114,12 @@ class SeasonDashboardWidget : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_change_strength_detail, "근력 볼륨")
             views.setTextViewText(R.id.widget_change_running, "—")
             views.setTextViewText(R.id.widget_change_running_detail, "러닝 거리")
+            views.setTextViewText(R.id.widget_change_protein_detail, "\uD0C4\uBC31\uC9C8 \uBAA9\uD45C \uCDA9\uC871\uB960")
+            views.setTextViewText(R.id.widget_change_protein_note, "\uC9C0\uB09C\uC8FC \uB300\uBE44")
+            views.setTextViewText(R.id.widget_change_strength_detail, "\uC2E0\uADDC \uC6B4\uB3D9 \uBAA9\uD45C")
+            views.setTextViewText(R.id.widget_change_strength_note, "\uC9C0\uB09C\uC8FC 2 / 5")
+            views.setTextViewText(R.id.widget_change_running_detail, "\uD3C9\uADE0 \uD398\uC774\uC2A4 \uAC1C\uC120")
+            views.setTextViewText(R.id.widget_change_running_note, "\uC9C0\uB09C\uC8FC \uB300\uBE44")
             views.setTextViewText(R.id.widget_sync_time, sync)
         }
 
@@ -103,45 +151,52 @@ class SeasonDashboardWidget : AppWidgetProvider() {
                 val actual = today.optJSONObject("actual") ?: JSONObject()
                 val target = today.optJSONObject("target") ?: JSONObject()
                 val p = today.optJSONObject("progress") ?: JSONObject()
-                views.setTextViewText(
-                    R.id.widget_diet_value,
-                    String.format(Locale.KOREA, "%,.0f / %,.0f kcal", actual.optDouble("kcal", 0.0), target.optDouble("kcal", 0.0)),
-                )
-                views.setTextViewText(
-                    R.id.widget_diet_macros,
-                    "탄 " + number(actual.optDouble("carbsG", 0.0), 0) + "/" + number(target.optDouble("carbsG", 0.0), 0) +
-                        " · 단 " + number(actual.optDouble("proteinG", 0.0), 0) + "/" + number(target.optDouble("proteinG", 0.0), 0) +
-                        " · 지 " + number(actual.optDouble("fatG", 0.0), 0) + "/" + number(target.optDouble("fatG", 0.0), 0),
-                )
-                views.setTextViewText(
-                    R.id.widget_diet_meals,
-                    actual.optInt("mealCount", 0).toString() + " / " + target.optInt("mealCount", 4) + "끼 기록",
-                )
-                views.setProgressBar(R.id.widget_diet_progress, 100, progress(p, "kcal"), false)
+                val kcalProgress = progress(p, "kcal")
+                views.setTextViewText(R.id.widget_diet_value, number(actual.optDouble("kcal", 0.0), 0))
+                views.setTextViewText(R.id.widget_diet_kcal_target, String.format(Locale.KOREA, "/ %,.0f kcal", target.optDouble("kcal", 0.0)))
+                views.setTextViewText(R.id.widget_diet_kcal_percent, kcalProgress.toString() + "%")
+                views.setTextViewText(R.id.widget_diet_meals, "\uAE30\uB85D\uD55C \uC2DD\uC0AC " + actual.optInt("mealCount", 0) + "\uD68C")
+                views.setTextViewText(R.id.widget_diet_macros, "")
+                views.setTextViewText(R.id.widget_diet_carbs_value, number(actual.optDouble("carbsG", 0.0), 0) + " / " + number(target.optDouble("carbsG", 0.0), 0) + " g")
+                views.setTextViewText(R.id.widget_diet_carbs_percent, progress(p, "carbs").toString() + "%")
+                views.setProgressBar(R.id.widget_diet_carbs_progress, 100, progress(p, "carbs"), false)
+                views.setTextViewText(R.id.widget_diet_protein_value, number(actual.optDouble("proteinG", 0.0), 0) + " / " + number(target.optDouble("proteinG", 0.0), 0) + " g")
+                views.setTextViewText(R.id.widget_diet_protein_percent, progress(p, "protein").toString() + "%")
+                views.setProgressBar(R.id.widget_diet_protein_progress, 100, progress(p, "protein"), false)
+                views.setTextViewText(R.id.widget_diet_fat_value, number(actual.optDouble("fatG", 0.0), 0) + " / " + number(target.optDouble("fatG", 0.0), 0) + " g")
+                views.setTextViewText(R.id.widget_diet_fat_percent, progress(p, "fat").toString() + "%")
+                views.setProgressBar(R.id.widget_diet_fat_progress, 100, progress(p, "fat"), false)
+                views.setProgressBar(R.id.widget_diet_progress, 100, kcalProgress, false)
             } else {
-                views.setTextViewText(R.id.widget_diet_value, diet.optString("message", "식단 목표 미설정"))
-                views.setTextViewText(R.id.widget_diet_macros, "오늘 식단 목표를 설정해 주세요")
-                views.setTextViewText(R.id.widget_diet_meals, "기록이 저장되면 여기에 표시됩니다")
+                views.setTextViewText(R.id.widget_diet_value, "\u2014")
+                views.setTextViewText(R.id.widget_diet_kcal_target, "\uBAA9\uD45C \uBBF8\uC124\uC815")
+                views.setTextViewText(R.id.widget_diet_kcal_percent, "0%")
+                views.setTextViewText(R.id.widget_diet_meals, "\uAE30\uB85D\uD55C \uC2DD\uC0AC 0\uD68C")
+                listOf(R.id.widget_diet_carbs_value, R.id.widget_diet_protein_value, R.id.widget_diet_fat_value).forEach { views.setTextViewText(it, "\u2014") }
+                listOf(R.id.widget_diet_carbs_percent, R.id.widget_diet_protein_percent, R.id.widget_diet_fat_percent).forEach { views.setTextViewText(it, "0%") }
+                listOf(R.id.widget_diet_carbs_progress, R.id.widget_diet_protein_progress, R.id.widget_diet_fat_progress).forEach { views.setProgressBar(it, 100, 0, false) }
                 views.setProgressBar(R.id.widget_diet_progress, 100, 0, false)
             }
 
             val ss = strength.optJSONObject("sessions") ?: JSONObject()
+            val strengthActual = ss.optInt("actual", 0)
             if (strength.optInt("benchmarkCount", 0) <= 0) {
-                views.setTextViewText(R.id.widget_strength_value, "종목 미등록")
-                views.setTextViewText(R.id.widget_strength_detail, "벤치마크를 등록해 주세요")
+                views.setTextViewText(R.id.widget_strength_value, "0 / 0 \uBAA9\uD45C \uB2EC\uC131")
+                views.setTextViewText(R.id.widget_strength_detail, "")
                 views.setProgressBar(R.id.widget_strength_progress, 100, 0, false)
+                strengthChecks(views, strength, 0)
             } else {
-                val actual = ss.optInt("actual", 0)
                 val target = ss.optInt("target", 0)
-                views.setTextViewText(R.id.widget_strength_value, actual.toString() + " / " + target + "회 달성")
+                views.setTextViewText(R.id.widget_strength_value, strengthActual.toString() + " / " + target + "\uD68C \uB2EC\uC131")
                 val trend = strength.optJSONObject("volumeTrend")
                 val detail = if (trend?.optString("status") == "ready") {
                     signed(trend.optDouble("volumeDeltaPct", Double.NaN), "%")
                 } else {
-                    "볼륨 " + number(strength.optDouble("totalVolumeKg", 0.0), 0) + "kg"
+                    "\uC9D1\uACC4 \uC911"
                 }
                 views.setTextViewText(R.id.widget_strength_detail, detail)
                 views.setProgressBar(R.id.widget_strength_progress, 100, progress(ss), false)
+                strengthChecks(views, strength, strengthActual)
             }
 
             val distance = running.optJSONObject("distance") ?: JSONObject()
@@ -150,24 +205,32 @@ class SeasonDashboardWidget : AppWidgetProvider() {
             val runTarget = distance.optDouble("target", 0.0)
             val runSessions = sessions.optInt("actual", 0)
             val runTargetSessions = sessions.optInt("target", 0)
+            val goal = running.optJSONObject("goal") ?: JSONObject()
+            val actualPace = goal.optDouble("actualPaceSecPerKm", Double.NaN)
+            val baselinePace = goal.optDouble("baselinePaceSecPerKm", Double.NaN)
+            views.setTextViewText(R.id.widget_running_subtitle, "\uD3C9\uADE0 \uD398\uC774\uC2A4 (km\uB2F9)")
+            views.setTextViewText(R.id.widget_running_period, "\uC774\uBC88 \uC8FC")
             if (runTarget <= 0.0 && runTargetSessions <= 0) {
-                views.setTextViewText(R.id.widget_running_value, "러닝 계획 없음")
-                views.setTextViewText(R.id.widget_running_detail, "이번 주 계획을 설정해 주세요")
+                views.setTextViewText(R.id.widget_running_value, "\uACC4\uD68D \uC5C6\uC74C")
+                views.setTextViewText(R.id.widget_running_last, "\uC8FC\uAC04 \uACC4\uD68D\uC744 \uC124\uC815\uD574 \uC8FC\uC138\uC694")
+                views.setTextViewText(R.id.widget_running_improvement, "\uD398\uC774\uC2A4 \uAC1C\uC120\n\u2014")
                 views.setProgressBar(R.id.widget_running_progress, 100, 0, false)
             } else if (runDistance <= 0.0 && runSessions <= 0) {
-                views.setTextViewText(R.id.widget_running_value, "기록 없음")
-                views.setTextViewText(R.id.widget_running_detail, "러닝을 기록하면 현황이 표시됩니다")
+                views.setTextViewText(R.id.widget_running_value, "\uAE30\uB85D \uC5C6\uC74C")
+                views.setTextViewText(R.id.widget_running_last, "\uB7EC\uB2DD\uC744 \uAE30\uB85D\uD558\uBA74 \uD604\uD669\uC774 \uD45C\uC2DC\uB429\uB2C8\uB2E4")
+                views.setTextViewText(R.id.widget_running_improvement, "\uD398\uC774\uC2A4 \uAC1C\uC120\n\u2014")
                 views.setProgressBar(R.id.widget_running_progress, 100, 0, false)
             } else {
+                views.setTextViewText(R.id.widget_running_value, if (actualPace.isFinite()) pace(actualPace) + "/km" else number(runDistance, 1) + " km")
                 views.setTextViewText(
-                    R.id.widget_running_value,
-                    String.format(Locale.KOREA, "%.1f / %.1f km", runDistance, runTarget),
+                    R.id.widget_running_last,
+                    if (baselinePace.isFinite()) "\uC9C0\uB09C\uC8FC " + pace(baselinePace) + "/km"
+                    else runSessions.toString() + " / " + runTargetSessions + "\uD68C",
                 )
-                val trend = running.optJSONObject("trend")
-                val detail = if (trend?.optString("status") == "ready") {
-                    signed(trend.optDouble("distanceDeltaPct", Double.NaN), "%")
-                } else "기준 수집 중"
-                views.setTextViewText(R.id.widget_running_detail, runSessions.toString() + " / " + runTargetSessions + "회 · " + detail)
+                val diff = if (actualPace.isFinite() && baselinePace.isFinite()) (actualPace - baselinePace).roundToInt() else null
+                val diffText = if (diff != null) (if (diff > 0) "+" else "") + diff + "\uCD08" else "\u2014"
+                views.setTextViewText(R.id.widget_running_improvement, "\uD398\uC774\uC2A4 \uAC1C\uC120\n" + diffText + "\n/km")
+                views.setTextViewText(R.id.widget_running_detail, runSessions.toString() + " / " + runTargetSessions + "\uD68C")
                 views.setProgressBar(R.id.widget_running_progress, 100, progress(distance), false)
             }
 
