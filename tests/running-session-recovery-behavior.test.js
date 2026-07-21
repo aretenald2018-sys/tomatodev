@@ -83,7 +83,20 @@ try {
   const restored = mod.wtRestoreRunningSessionIfActive();
   await new Promise(resolve => setTimeout(resolve, 100));
   document.querySelector('[data-running-action="save"]')?.click();
-  await new Promise(resolve => setTimeout(resolve, 700));
+  // 저장 체인이 끝날 때까지 기다린다. 고정 sleep 은 머신 부하에 따라 흔들려서
+  // 관측값이 두 번 연속 같아질 때(정착)까지 폴링한다.
+  const snapshot = () => JSON.stringify({
+    saves: (window.__qaSaves || []).length,
+    open: (() => { const r = document.getElementById('wt-running-session-root'); return !!r && !r.hidden; })(),
+    draft: localStorage.getItem('tomatodev_running_session_draft_active')
+  });
+  let previous = null;
+  for (let i = 0; i < 40; i += 1) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+    const current = snapshot();
+    if (i >= 3 && current === previous) break;
+    previous = current;
+  }
 
   const root = document.getElementById('wt-running-session-root');
   window.__qaDone = {

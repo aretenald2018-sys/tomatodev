@@ -17065,6 +17065,40 @@ body.lz-running-record-modal-open {
   background: #d7ff3f;
   box-shadow: 0 0 0 4px rgba(215, 255, 63, .12);
 }
+.wt-running-kicker-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.wt-running-card-kicker .wt-running-card-dismiss {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(247, 248, 244, .12);
+  color: #f7f8f4;
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0;
+  cursor: pointer;
+  transition: background .1s ease-in-out, color .1s ease-in-out;
+}
+/* 시각적으로는 28px, 탭 영역은 44px 확보 */
+.wt-running-card-kicker .wt-running-card-dismiss::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+}
+.wt-running-card-kicker .wt-running-card-dismiss:active {
+  background: rgba(247, 248, 244, .26);
+}
 .wt-cardio-read-card {
   border-color: #d9ebe6;
 }

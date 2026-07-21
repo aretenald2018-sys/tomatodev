@@ -3,6 +3,7 @@
 // ================================================================
 
 import { S } from './state.js';
+import { confirmAction } from '../utils/confirm-modal.js';
 import { destroyRunningMaps, readRunningMapConfig, renderRunningMap, updateRunningMap } from './running-map.js';
 import {
   MAX_RUNNING_ROUTE_POINTS,
@@ -65,6 +66,9 @@ const RUNNING_MAP_UPDATE_INTERVAL_MS = 3_000;
 const DEFAULT_RUNNING_GOAL = Object.freeze({ type: 'free', value: 0 });
 const RUNNING_GOAL_DEFAULTS = Object.freeze({ distance: 5, time: 30 });
 const RUNNING_AUDIO_MIN_MS = 3500;
+// 카드 X(삭제)를 눌렀을 때 확인 모달을 띄우는 기준. 이 아래면 "잘못 눌렀다"로 보고 바로 닫는다.
+const RUNNING_DISCARD_CONFIRM_MIN_SEC = 60;
+const RUNNING_DISCARD_CONFIRM_MIN_KM = 0.05;
 
 const _session = {
   open: false,
@@ -96,6 +100,7 @@ const _session = {
   lastMapRenderAt: 0,
 };
 let _runningDraftEventsBound = false;
+let _discardPending = false;
 let _runningDraftRouteTimer = null;
 let _runningDraftRoutePendingContext = '';
 let _lastRunningDraftPersistAt = 0;
@@ -1400,6 +1405,13 @@ function _renderRunningLiveOverview(distance, stats) {
   `;
 }
 
+function _renderRunningCardDismiss() {
+  return `
+    <button type="button" class="wt-running-card-dismiss" data-running-action="discard"
+      aria-label="러닝 기록 삭제" title="러닝 기록 삭제">✕</button>
+  `;
+}
+
 function _renderProgress() {
   const summary = _currentSummary();
   const elapsed = _elapsedSec();
@@ -1416,7 +1428,10 @@ function _renderProgress() {
     <article class="wt-day-ex-card wt-max-read-card wt-running-read-card wt-running-live-card" data-running-screen="progress">
       <div class="wt-max-card-kicker wt-running-card-kicker">
         <span><i></i>OUTDOOR RUN</span>
-        <em class="wt-running-live-state ${isPaused ? 'is-paused' : ''}">${state}</em>
+        <span class="wt-running-kicker-actions">
+          <em class="wt-running-live-state ${isPaused ? 'is-paused' : ''}">${state}</em>
+          ${_renderRunningCardDismiss()}
+        </span>
       </div>
       ${_renderRunningLiveOverview(summary.distanceKm.toFixed(2), stats)}
       ${_session.lastError ? `<p class="wt-running-live-status is-error">${_escapeHtml(_session.lastError)}</p>` : ''}
@@ -1444,7 +1459,10 @@ function _renderSummary() {
     <article class="wt-day-ex-card wt-max-read-card wt-running-read-card wt-running-live-card is-summary" data-running-screen="summary">
       <div class="wt-max-card-kicker wt-running-card-kicker">
         <span><i></i>RUN COMPLETE</span>
-        <em class="wt-running-live-state is-finished">완료</em>
+        <span class="wt-running-kicker-actions">
+          <em class="wt-running-live-state is-finished">완료</em>
+          ${_renderRunningCardDismiss()}
+        </span>
       </div>
       <div class="wt-max-card-name">러닝 완료</div>
       ${_renderRunningLiveOverview(distance, stats)}
@@ -1528,9 +1546,38 @@ function _render() {
   _mountLiveRunningMap(nextMap, mapKey);
 }
 
+// 측정된 게 거의 없으면(=잘못 눌러 켠 경우) 확인 없이 바로 닫는다.
+function _runningDiscardNeedsConfirm() {
+  if (_session.route.length > 0 && _currentSummary().distanceKm >= RUNNING_DISCARD_CONFIRM_MIN_KM) return true;
+  return _elapsedSec() >= RUNNING_DISCARD_CONFIRM_MIN_SEC;
+}
+
+async function _discardRun() {
+  if (_discardPending || _session.saving) return;
+  if (_runningDiscardNeedsConfirm()) {
+    _discardPending = true;
+    let ok = false;
+    try {
+      ok = await confirmAction({
+        title: '러닝 기록을 삭제할까요?',
+        message: '지금까지 측정한 거리·시간·GPS 경로가 사라집니다. 저장되지 않습니다.',
+        confirmLabel: '삭제',
+        cancelLabel: '취소',
+        destructive: true,
+      });
+    } finally {
+      _discardPending = false;
+    }
+    if (!ok) return;
+  }
+  wtCloseRunningSession();
+  void _showToast('러닝 기록을 삭제했습니다', 2000, 'info');
+}
+
 function _handleAction(action) {
   if (!action || action === 'noop') return;
   if (action === 'close') return wtCloseRunningSession();
+  if (action === 'discard') return void _discardRun();
   if (action === 'start') return _startRun();
   if (action === 'pause') return _pauseRun();
   if (action === 'resume') return _resumeRun();
