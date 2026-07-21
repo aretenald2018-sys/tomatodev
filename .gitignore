@@ -1,6 +1,9 @@
 node_modules/
 .env
 *.apk
+# 배포되는 개발 APK만 예외. 서명키가 매번 바뀌지 않도록 로컬 debug 키로 빌드해
+# 커밋한다(scripts/build-mobile-apk.mjs).
+!public/downloads/tomatodev.apk
 .claude/
 .omo/
 .codex-worktrees/

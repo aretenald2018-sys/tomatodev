@@ -25,8 +25,11 @@ test('dashboard destinations open their exact TomatoDev screens', () => {
   assert.match(app, /\['diet', 'season', 'season-overview', 'running'\]\.includes\(entry\)/);
 });
 
-test('the distributable TomatoDev APK version is bumped for deep links', () => {
+test('the distributable TomatoDev APK keeps the dev id and an ever-increasing version', () => {
   assert.match(gradle, /applicationId "com\.lifestreak\.dev"/);
-  assert.match(gradle, /versionCode 5/);
   assert.match(gradle, /versionName "1\.4"/);
+  // scripts/build-mobile-apk.mjs가 게시할 때마다 올린다. 값이 뒤로 가면 기기가
+  // 다운로드한 APK를 업데이트로 받아들이지 않는다.
+  const versionCode = Number(gradle.match(/versionCode (\d+)/)?.[1]);
+  assert.ok(versionCode >= 6, `versionCode must not regress below 6, got ${versionCode}`);
 });

@@ -31,45 +31,14 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Configure Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-
-      - name: Configure Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK 36
-        run: sdkmanager "platforms;android-36" "build-tools;35.0.0"
-
       - name: Install web dependencies
         run: npm ci
 
-      - name: Build TomatoDev Android web assets
-        run: |
-          npm run build
-          # The repository intentionally tracks only the custom Android sources.
-          # Generate the Capacitor project root in CI, then restore those sources.
-          mv android android-native
-          npx cap add android
-          cp android-native/app/build.gradle android/app/build.gradle
-          cp -R android-native/app/src/. android/app/src/
-          rm -rf android-native
-          # The tracked app sources include Kotlin bridge classes; the generated
-          # Capacitor root needs the Kotlin Gradle plugin for those sources.
-          sed -i "/classpath 'com.android.tools.build:gradle:/a\\        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.20'" android/build.gradle
-          npx cap sync android
-
-      - name: Build TomatoDev debug APK
-        run: |
-          chmod +x android/gradlew
-          android/gradlew -p android :app:assembleDebug
-
-      - name: Stage TomatoDev APK download
-        run: |
-          mkdir -p downloads
-          cp android/app/build/outputs/apk/debug/app-debug.apk downloads/tomatodev.apk
+      # The downloadable APK is not built here on purpose. A CI runner generates a
+      # fresh Android debug keystore on every run, so a CI-built APK is signed with
+      # a different certificate each time and cannot install over the previous one.
+      # public/downloads/tomatodev.apk is built locally with the stable debug key
+      # (npm run build:apk) and committed.
 
       - name: Verify project governance
         run: node scripts/check-project-governance.mjs

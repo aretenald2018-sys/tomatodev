@@ -30,7 +30,7 @@ import { registerStaticActions } from './app/static-actions.js';
 import { loadLazyModule } from './app/lazy-loader.js';
 import { getTabDefinition, isRegisteredTab } from './app/tab-registry.js';
 import { initOverlayStack } from './app/overlay-stack.js';
-import { initBuildInfoSurface } from './utils/build-info.js';
+import { initBuildInfoSurface, requestTomatoApkInstall } from './utils/build-info.js';
 import {
   enableWorkoutPwaHistory,
   getWorkoutNavSnapshot,
@@ -333,6 +333,10 @@ function _runAppShellAction(action, control, event) {
   switch (action) {
     case 'install-pwa':
       installPWA();
+      _closeMoreMenu();
+      break;
+    case 'install-apk':
+      void requestTomatoApkInstall({ control, source: 'more-menu' });
       _closeMoreMenu();
       break;
     case 'open-letter-modal':

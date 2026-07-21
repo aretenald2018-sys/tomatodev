@@ -41,18 +41,37 @@ test('TomatoDev push is fail-closed on web and Capacitor/native', () => {
   assert.doesNotMatch(androidBuild, /com\.google\.gms\.google-services|google-services\.json/);
 });
 
-test('TomatoDev does not expose or download the production mobile APK', () => {
+test('TomatoDev never exposes or downloads the production mobile APK', () => {
+  const html = read('index.html');
+  const app = read('app.js');
+  const buildInfo = read('utils/build-info.js');
+  const workflow = read('.github/workflows/deploy.yml');
+
+  assert.equal(existsSync(new URL('public/downloads/tomato-mobile-debug.apk', root)), false);
+  assert.doesNotMatch(html, /tomato-mobile-debug\.apk/);
+  assert.doesNotMatch(app, /tomato-mobile-debug\.apk/);
+  assert.doesNotMatch(buildInfo, /tomato-mobile-debug\.apk/);
+  assert.doesNotMatch(buildInfo, /github\.io\/tomatofarm/);
+  assert.doesNotMatch(workflow, /tomato-mobile-debug\.apk/);
+});
+
+test('TomatoDev publishes only its own dev APK under the dev application id', () => {
   const html = read('index.html');
   const app = read('app.js');
   const buildInfo = read('utils/build-info.js');
   const gitignore = read('.gitignore');
+  const androidBuild = read('android/app/build.gradle');
+  const packageJson = JSON.parse(read('package.json'));
 
-  assert.equal(existsSync(new URL('public/downloads/tomato-mobile-debug.apk', root)), false);
-  assert.doesNotMatch(html, /data-app-action="install-apk"|tomato-mobile-debug\.apk/);
-  assert.doesNotMatch(app, /case 'install-apk'|tomato-mobile-debug\.apk/);
-  assert.doesNotMatch(buildInfo, /_startTomatoApkDownload|tomato-mobile-debug\.apk|browser-download/);
-  assert.match(buildInfo, /reason: 'tomatodev-apk-disabled'/);
-  assert.match(buildInfo, /TomatoDev에서는 운영 앱 APK를 배포하지 않아요/);
+  assert.match(androidBuild, /applicationId "com\.lifestreak\.dev"/);
+  assert.match(html, /data-app-action="install-apk"[\s\S]*APK 설치하기/);
+  assert.match(app, /case 'install-apk':[\s\S]*requestTomatoApkInstall/);
+  assert.match(buildInfo, /TOMATODEV_APK_DOWNLOAD_NAME = 'tomatodev\.apk'/);
+  assert.match(buildInfo, /github\.io\/tomatodev\/public\/downloads\/tomatodev\.apk/);
+  // 서명키가 매 CI 실행마다 새로 생성되면 업데이트 설치가 서명 불일치로 막힌다.
+  // 그래서 배포용 APK는 로컬 debug 키로 빌드해 커밋한다.
+  assert.equal(packageJson.scripts?.['build:apk'], 'node scripts/build-mobile-apk.mjs');
   assert.match(gitignore, /^\*\.apk$/m);
-  assert.doesNotMatch(gitignore, /!public\/downloads\/\*\.apk/);
+  assert.match(gitignore, /^!public\/downloads\/tomatodev\.apk$/m);
+  assert.equal(existsSync(new URL('public/downloads/tomatodev.apk', root)), true);
 });

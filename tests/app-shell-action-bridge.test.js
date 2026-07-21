@@ -23,6 +23,7 @@ test('app shell markup uses data-app actions instead of inline handlers', () => 
   const shellMarkup = sliceBetween(indexHtml, '<!-- 알림센터 패널 -->', '<!-- ═══ 홈 탭 ═══ -->');
   const actions = [
     'install-pwa',
+    'install-apk',
     'open-letter-modal',
     'toggle-notif-center',
     'refresh-app-update',
@@ -43,7 +44,8 @@ test('app shell markup uses data-app actions instead of inline handlers', () => 
 
   assert.doesNotMatch(shellMarkup, /\sonclick="/);
   assert.doesNotMatch(shellMarkup, /class="[^"]*\btop-nav\b/);
-  assert.doesNotMatch(shellMarkup, /data-app-action="install-apk"|tomato-mobile-debug\.apk/);
+  assert.doesNotMatch(shellMarkup, /tomato-mobile-debug\.apk/);
+  assert.match(shellMarkup, /data-app-action="install-apk"[\s\S]*APK 설치하기/);
   assert.match(shellMarkup, /more-menu-section--app-actions[\s\S]*id="letter-btn"[\s\S]*개발자에게 편지/);
   assert.match(shellMarkup, /more-menu-section--app-actions[\s\S]*id="notif-bell"[\s\S]*알림/);
   assert.match(shellMarkup, /more-menu-section--app-actions[\s\S]*id="app-refresh-btn"[\s\S]*앱 새로고침/);
@@ -63,6 +65,7 @@ test('app module binds app shell actions with one idempotent bridge', () => {
 
   for (const action of [
     'install-pwa',
+    'install-apk',
     'open-letter-modal',
     'toggle-notif-center',
     'refresh-app-update',
@@ -83,7 +86,7 @@ test('app module binds app shell actions with one idempotent bridge', () => {
   assert.match(appJs, /moreBtn\.dataset\.tab = adminOnlyMode \? 'admin' : 'more'/);
   assert.match(appJs, /moreBtn\.onclick = null/);
   assert.match(appJs, /window\.__requestTomatoAppRefresh\(\{ control, source: 'more-menu' \}\)/);
-  assert.doesNotMatch(appJs, /case 'install-apk'|tomato-mobile-debug\.apk/);
+  assert.doesNotMatch(appJs, /tomato-mobile-debug\.apk/);
   assert.match(appJs, /import \{ logoutAccount, openLetterModal \} from '\.\/feature-login\.js';/);
   assert.match(appJs, /dismissPWAInstallBanner/);
   assert.match(appJs, /function _toggleMoreMenu\(\)/);

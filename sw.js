@@ -2,7 +2,7 @@
 // Cache names are deliberately owned by this app because TomatoDev and the
 // production app currently share the github.io origin.
 const CACHE_PREFIX = 'tomatodev-';
-const CACHE_VERSION = 'tomatodev-v20260721z5-drop-orphaned-diet-contract';
+const CACHE_VERSION = 'tomatodev-v20260721z10-drop-orphaned-diet-contract';
 const RUNTIME_CACHE = 'tomatodev-runtime';
 importScripts('./runtime-assets.js');
 const STATIC_ASSETS = self.TOMATO_STATIC_ASSETS;
@@ -80,6 +80,11 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
 
   if (request.method !== 'GET') return;
+
+  // 다운로드용 APK(수십 MB)는 서비스워커를 그대로 통과시킨다. respondWith로
+  // 프록시하면 브라우저 다운로드 매니저 대신 워커가 전체를 버퍼링해서
+  // 설치 파일 저장이 실패한다.
+  if (url.pathname.endsWith('.apk')) return;
 
   const isAppDocument = (
     request.mode === 'navigate'

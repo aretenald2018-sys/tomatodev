@@ -102,7 +102,7 @@ test('wear app advertises capability and receives app refresh pings', () => {
   assert.doesNotMatch(listener, /WearExerciseService\.startRun|WearWorkoutDataLayer\.sendRunComplete/);
 });
 
-test('manual app refresh keeps the native Wear bridge while TomatoDev disables APK distribution', () => {
+test('manual app refresh keeps the native Wear bridge while TomatoDev ships only its own APK', () => {
   const buildInfoJs = readProjectFile('utils/build-info.js');
   const appJs = readProjectFile('app.js');
   const gitignore = readProjectFile('.gitignore');
@@ -114,15 +114,16 @@ test('manual app refresh keeps the native Wear bridge while TomatoDev disables A
   assert.match(buildInfoJs, /_requestWearAppRefreshOrInstall/);
   assert.match(buildInfoJs, /requestTomatoApkInstall/);
   assert.match(buildInfoJs, /__requestTomatoApkInstall/);
-  assert.doesNotMatch(buildInfoJs, /_startTomatoApkDownload|tomato-mobile-debug\.apk|browser-download/);
-  assert.doesNotMatch(appJs, /public\/downloads\/tomato-mobile-debug\.apk|case 'install-apk'/);
+  assert.match(buildInfoJs, /_startTomatodevApkDownload/);
+  assert.doesNotMatch(buildInfoJs, /tomato-mobile-debug\.apk/);
+  assert.doesNotMatch(appJs, /public\/downloads\/tomato-mobile-debug\.apk/);
   assert.doesNotMatch(appJs, /public\/downloads\/tomato-wear-debug\.apk/);
-  assert.doesNotMatch(gitignore, /!public\/downloads\/\*\.apk/);
   assert.match(gitignore, /^\*\.apk$/m);
+  assert.match(gitignore, /^!public\/downloads\/tomatodev\.apk$/m);
   assert.match(buildInfoJs, /갤럭시워치 설치 화면/);
-  assert.match(buildInfoJs, /tomatodev-apk-disabled/);
   assert.equal(existsSync(new URL('../public/downloads/tomato-mobile-debug.apk', import.meta.url)), false);
   assert.equal(existsSync(new URL('../public/downloads/tomato-wear-debug.apk', import.meta.url)), false);
+  assert.equal(existsSync(new URL('../public/downloads/tomatodev.apk', import.meta.url)), true);
   assertOrder(
     buildInfoJs,
     'await _requestWearAppRefreshOrInstall',
@@ -142,7 +143,7 @@ test('TomatoDev does not publish the production mobile APK', () => {
   assert.equal(existsSync(new URL('../public/downloads/tomato-mobile-debug.apk', import.meta.url)), false);
 });
 
-test('TomatoDev APK helper fails closed without creating a download', async () => {
+test('TomatoDev APK helper downloads the dev APK without touching the Wear bridge', async () => {
   const previousWindow = globalThis.window;
   const previousDocument = globalThis.document;
   const toasts = [];
@@ -176,14 +177,15 @@ test('TomatoDev APK helper fails closed without creating a download', async () =
       },
     },
   };
+  const anchor = { rel: '', href: '', download: '', style: {}, clicks: 0, click() { this.clicks += 1; }, remove() {} };
   globalThis.document = {
     getElementById() {
       return null;
     },
     createElement() {
-      assert.fail('TomatoDev must not create an APK download anchor');
+      return anchor;
     },
-    body: {},
+    body: { appendChild() {} },
   };
 
   try {
@@ -191,9 +193,12 @@ test('TomatoDev APK helper fails closed without creating a download', async () =
     const { requestTomatoApkInstall } = await import(moduleUrl.href);
     const result = await requestTomatoApkInstall({ control, source: 'test' });
 
-    assert.equal(result.started, false);
-    assert.equal(result.reason, 'tomatodev-apk-disabled');
-    assert.equal('downloadUrl' in result, false);
+    assert.equal(result.started, true);
+    assert.equal(anchor.clicks, 1);
+    assert.equal(anchor.download, 'tomatodev.apk');
+    assert.match(result.downloadUrl, /public\/downloads\/tomatodev\.apk$/);
+    assert.doesNotMatch(result.downloadUrl, /tomato-mobile-debug\.apk/);
+    // APK 다운로드는 갤럭시워치 업데이트 경로를 건드리면 안 된다.
     assert.equal(nativeWearBridgeCalls, 0);
     assert.equal(control.disabled, false);
     assert.equal(control.attrs['aria-busy'], 'false');

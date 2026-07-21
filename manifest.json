@@ -1,13 +1,13 @@
 {
   "id": ".",
-  "name": "토마토 키우기",
-  "short_name": "토마토",
-  "description": "운동과 식단을 기록하고 토마토를 키우는 건강 관리 앱",
+  "name": "토마토 키우기 DEV",
+  "short_name": "토마토DEV",
+  "description": "토마토 키우기 개발 환경 (TomatoDev). 운영 앱과 별개로 설치됩니다.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
   "orientation": "portrait",
-  "theme_color": "#ffffff",
+  "theme_color": "#1f6feb",
   "background_color": "#f7f8fa",
   "icons": [
     {
