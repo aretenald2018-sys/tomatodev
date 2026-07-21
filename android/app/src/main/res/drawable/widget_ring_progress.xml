@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:id="@android:id/background"><shape android:shape="ring" android:innerRadiusRatio="3.25" android:thicknessRatio="0.14" android:useLevel="false"><solid android:color="@color/widget_track"/></shape></item>
-    <item android:id="@android:id/progress"><rotate android:fromDegrees="-90" android:toDegrees="-90"><shape android:shape="ring" android:innerRadiusRatio="3.25" android:thicknessRatio="0.14" android:useLevel="true"><solid android:color="@color/widget_success"/></shape></rotate></item>
+    <item android:id="@android:id/background"><shape android:shape="ring" android:innerRadiusRatio="2.8" android:thicknessRatio="7" android:useLevel="false"><solid android:color="@color/widget_track"/></shape></item>
+    <item android:id="@android:id/progress"><rotate android:fromDegrees="-90" android:toDegrees="-90"><shape android:shape="ring" android:innerRadiusRatio="2.8" android:thicknessRatio="7" android:useLevel="true"><solid android:color="@color/widget_success"/></shape></rotate></item>
 </layer-list>

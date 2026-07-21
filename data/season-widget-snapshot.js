@@ -1,4 +1,4 @@
-import { calcDietMetrics, calcWeeklyDietMacroChange, isExerciseDaySuccess } from '../calc.js';
+import { calcDietMetrics, getDayTargetKcal, isExerciseDaySuccess } from '../calc.js';
 import {
   activeBenchmarks,
   activeCycleOf,
@@ -15,6 +15,8 @@ import {
   selectSeasonRunningStats,
   selectSeasonStrengthStats,
 } from './season-selectors.js';
+import { buildSeasonOverview } from './season-overview.js';
+import { listRunningActivities } from '../workout/running-analytics.js';
 
 function _round(value, digits = 1) {
   const factor = 10 ** digits;
@@ -47,82 +49,6 @@ function _boardWeek(board, todayKey) {
   return cycle ? Math.max(1, weekIndexOf(cycle, todayKey)) : null;
 }
 
-
-function _dietTotal(day, suffix) {
-  return ["b", "l", "d", "s"].reduce((sum, prefix) => sum + (Number(day?.[prefix + suffix]) || 0), 0);
-}
-
-function _dietMealCount(rawDay = {}) {
-  const rows = [
-    ["breakfast", "b"],
-    ["lunch", "l"],
-    ["dinner", "d"],
-    ["snack", "s"],
-  ];
-  return rows.reduce((count, [slot, prefix]) => {
-    const foods = Array.isArray(rawDay[prefix + "Foods"]) ? rawDay[prefix + "Foods"].length : 0;
-    const hasMeal = Boolean(
-      rawDay[slot] ||
-      Number(rawDay[prefix + "Kcal"]) > 0 ||
-      foods > 0 ||
-      rawDay[prefix + "Photo"] ||
-      rawDay[slot + "_skipped"] ||
-      rawDay[prefix + "Skipped"]
-    );
-    return count + (hasMeal ? 1 : 0);
-  }, 0);
-}
-
-function _dietProgress(actual, target) {
-  return target > 0 ? Math.max(0, Math.min(100, Math.round((actual / target) * 100))) : 0;
-}
-
-function _buildDietSummary(input = {}) {
-  const plan = input.plan || {};
-  if (plan._userSet === false || !input.plan) {
-    return { state: "no-plan", message: "\uBAA9\uD45C\uB97C \uC124\uC815\uD574\uC8FC\uC138\uC694" };
-  }
-  const metrics = calcDietMetrics(plan);
-  const dateParts = String(input.todayKey || "").split("-").map(Number);
-  const dow = dateParts.length === 3
-    ? new Date(Date.UTC(dateParts[0], dateParts[1] - 1, dateParts[2])).getUTCDay()
-    : 0;
-  const target = (plan.refeedDays || []).includes(dow) ? metrics.refeed : metrics.deficit;
-  const today = input.todayDiet || {};
-  const actual = {
-    kcal: _dietTotal(today, "Kcal"),
-    carbsG: _dietTotal(today, "Carbs"),
-    proteinG: _dietTotal(today, "Protein"),
-    fatG: _dietTotal(today, "Fat"),
-    mealCount: _dietMealCount(input.todayRawDay || {}),
-  };
-  const targetValues = {
-    kcal: Number(target?.kcal) || 0,
-    carbsG: Number(target?.carbG) || 0,
-    proteinG: Number(target?.proteinG) || 0,
-    fatG: Number(target?.fatG) || 0,
-    mealCount: 4,
-  };
-  return {
-    state: "ready",
-    today: {
-      actual,
-      target: targetValues,
-      progress: {
-        kcal: _dietProgress(actual.kcal, targetValues.kcal),
-        carbs: _dietProgress(actual.carbsG, targetValues.carbsG),
-        protein: _dietProgress(actual.proteinG, targetValues.proteinG),
-        fat: _dietProgress(actual.fatG, targetValues.fatG),
-        mealCount: _dietProgress(actual.mealCount, targetValues.mealCount),
-      },
-    },
-    proteinChange: calcWeeklyDietMacroChange(
-      input.thisWeekDietDays,
-      input.lastWeekDietDays
-    ),
-  };
-}
-
 function _nextPlan(board, runningStats) {
   const benchmark = activeBenchmarks(board || {})[0] || null;
   const health = benchmark
@@ -138,6 +64,107 @@ function _nextPlan(board, runningStats) {
   };
 }
 
+function _number(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function _foodSnapshot(cache, todayKey, dietPlan) {
+  const day = cache?.[todayKey] || {};
+  const actualKcal = Math.round(['bKcal', 'lKcal', 'dKcal', 'sKcal']
+    .reduce((sum, key) => sum + _number(day[key]), 0));
+  const targetKcal = dietPlan && (dietPlan._userSet || dietPlan.weight || dietPlan.height)
+    ? Math.max(0, Math.round(getDayTargetKcal(
+      dietPlan,
+      Number(todayKey?.slice(0, 4)),
+      Number(todayKey?.slice(5, 7)) - 1,
+      Number(todayKey?.slice(8, 10)),
+      day,
+    )))
+    : 0;
+  const recordedMeals = ['bKcal', 'lKcal', 'dKcal', 'sKcal'].filter(key => _number(day[key]) > 0).length;
+  const progress = targetKcal > 0 ? Math.round((actualKcal / targetKcal) * 100) : 0;
+  let carbsTargetG = 0;
+  let proteinTargetG = 0;
+  let fatTargetG = 0;
+  if (dietPlan && dietPlan._userSet) {
+    try {
+      const metrics = calcDietMetrics(dietPlan);
+      const weekday = new Date(Number(todayKey?.slice(0, 4)), Number(todayKey?.slice(5, 7)) - 1, Number(todayKey?.slice(8, 10))).getDay();
+      const target = (dietPlan.refeedDays || []).includes(weekday) ? metrics.refeed : metrics.deficit;
+      carbsTargetG = Math.round(_number(target?.carbG));
+      proteinTargetG = Math.round(_number(target?.proteinG));
+      fatTargetG = Math.round(_number(target?.fatG));
+    } catch (error) {
+      carbsTargetG = 0;
+      proteinTargetG = 0;
+      fatTargetG = 0;
+    }
+  }
+  return {
+    dateKey: todayKey,
+    actualKcal,
+    targetKcal,
+    progress: Math.max(0, Math.min(100, progress)),
+    proteinG: Math.round(['bProtein', 'lProtein', 'dProtein', 'sProtein'].reduce((sum, key) => sum + _number(day[key]), 0)),
+    carbsG: Math.round(['bCarbs', 'lCarbs', 'dCarbs', 'sCarbs'].reduce((sum, key) => sum + _number(day[key]), 0)),
+    fatG: Math.round(['bFat', 'lFat', 'dFat', 'sFat'].reduce((sum, key) => sum + _number(day[key]), 0)),
+    proteinTargetG,
+    carbsTargetG,
+    fatTargetG,
+    recordedMeals,
+    state: actualKcal > 0 || targetKcal > 0 ? 'ready' : 'waiting',
+  };
+}
+
+function _recentRunningRecords(cache, todayKey) {
+  const entries = Object.entries(cache || {})
+    .filter(([key]) => !todayKey || key <= todayKey);
+  return listRunningActivities(entries)
+    .sort((left, right) => (
+      right.dateKey.localeCompare(left.dateKey)
+      || Number(right.startedAt || 0) - Number(left.startedAt || 0)
+      || right.sessionIndex - left.sessionIndex
+    ))
+    .slice(0, 5)
+    .map(record => ({
+      dateKey: record.dateKey,
+      distanceKm: _round(record.distanceKm, 2),
+      durationSec: Math.max(0, Math.round(Number(record.durationSec) || 0)),
+      avgPaceSecPerKm: Math.max(0, Math.round(Number(record.avgPaceSecPerKm) || 0)),
+      source: record.source || 'manual',
+    }));
+}
+
+function _weeklyGoal(cache, season, board, runningPlan, todayKey) {
+  if (!season) return { state: 'missing', items: [] };
+  const overview = buildSeasonOverview({
+    cache,
+    season,
+    board: JSON.parse(JSON.stringify(board || {})),
+    runningPlan,
+    todayKey,
+  });
+  const week = overview.weeks.find(item => item.startDate <= todayKey && todayKey <= item.endDate)
+    || overview.weeks.find(item => item.startDate >= todayKey)
+    || overview.weeks.at(-1);
+  if (!week) return { state: 'missing', items: [] };
+  return {
+    state: week.state,
+    index: week.index,
+    startDate: week.startDate,
+    endDate: week.endDate,
+    achievedCount: week.achievedCount,
+    totalCount: week.totalCount,
+    items: week.items.slice(0, 8).map(item => ({
+      kind: item.kind,
+      label: item.label,
+      detail: item.detail,
+      state: item.state,
+    })),
+  };
+}
+
 export function buildSeasonDashboardSnapshot({
   cache = {},
   registry = {},
@@ -145,15 +172,20 @@ export function buildSeasonDashboardSnapshot({
   workoutPlan = {},
   runningPlan = {},
   board = null,
-  diet = null,
+  dietPlan = {},
   generatedAt = Date.now(),
 } = {}) {
+  const food = _foodSnapshot(cache, todayKey, dietPlan);
+  const recentRunning = _recentRunningRecords(cache, todayKey);
   const season = findSeasonForDate(registry, todayKey);
   if (!season) {
     return {
       schemaVersion: 1,
       generatedAt,
       state: 'no-season',
+      food,
+      weeklyGoal: _weeklyGoal(cache, null, board, runningPlan, todayKey),
+      recentRunning,
       message: '새 시즌을 설정해 주세요',
     };
   }
@@ -174,13 +206,14 @@ export function buildSeasonDashboardSnapshot({
       ? Math.round(baselinePaceSecPerKm * (1 - Math.min(10, Number(runningPlan.adaptiveRatePct)) / 100))
       : null)
     : (Number(runningPlan?.targetPaceSecPerKm) > 0 ? Number(runningPlan.targetPaceSecPerKm) : null);
-  const dietSummary = _buildDietSummary({ ...(diet || {}), todayKey });
-  const benchmarkCount = activeBenchmarks(board || {}).length;
   const week = _boardWeek(board, todayKey);
   return {
     schemaVersion: 1,
     generatedAt,
     state: 'ready',
+    food,
+    weeklyGoal: _weeklyGoal(cache, season, board, runningPlan, todayKey),
+    recentRunning,
     season: {
       id: season.id,
       name: season.name,
@@ -208,14 +241,12 @@ export function buildSeasonDashboardSnapshot({
       },
     },
     strength: {
-      benchmarkCount,
       sessions: strength.currentWeek.sessions,
       totalVolumeKg: strength.currentWeek.totalVolumeKg,
       volumeTrend: strength.volumeTrend,
       liftDeltaKg,
       liftDeltas: strength.liftDeltas,
     },
-    diet: dietSummary,
     nextPlan: _nextPlan(board, running),
   };
 }
