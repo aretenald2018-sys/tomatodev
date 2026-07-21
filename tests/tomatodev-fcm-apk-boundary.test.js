@@ -70,7 +70,7 @@ test('TomatoDev publishes only its own dev APK under the dev application id', ()
   assert.match(buildInfo, /github\.io\/tomatodev\/public\/downloads\/tomatodev\.apk/);
   // 서명키가 매 CI 실행마다 새로 생성되면 업데이트 설치가 서명 불일치로 막힌다.
   // 그래서 배포용 APK는 로컬 debug 키로 빌드해 커밋한다.
-  assert.equal(packageJson.scripts?.['build:apk'], 'node scripts/build-mobile-apk.mjs');
+  assert.equal(packageJson.scripts?.['build:mobile-apk'], 'node scripts/build-mobile-apk.mjs');
   assert.match(gitignore, /^\*\.apk$/m);
   assert.match(gitignore, /^!public\/downloads\/tomatodev\.apk$/m);
   assert.equal(existsSync(new URL('public/downloads/tomatodev.apk', root)), true);
