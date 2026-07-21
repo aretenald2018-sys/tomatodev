@@ -1,10 +1,10 @@
 {
   "app": "tomatodev",
-  "commit": "b34a48b44739ded28939eb163bd2476d05d2f49c",
-  "shortCommit": "b34a48b44739",
-  "branch": "feat/install-export-modal-close",
-  "deployedAt": "2026-07-21T08:51:18.575Z",
-  "cacheVersion": "tomatodev-v20260721z10-drop-orphaned-diet-contract",
+  "commit": "35127a14fd8bb74687beb9e0d1ca8bbd30bfb813",
+  "shortCommit": "35127a14fd8b",
+  "branch": "main",
+  "deployedAt": "2026-07-21T13:42:46.126Z",
+  "cacheVersion": "tomatodev-v20260721z11-drop-orphaned-diet-contract",
   "runId": null,
   "runAttempt": null
 }
