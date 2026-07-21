@@ -1,9 +1,9 @@
 {
   "app": "tomatodev",
-  "commit": "62172aac5f559881b30a141355934ec949123152",
-  "shortCommit": "62172aac5f55",
+  "commit": "c06501ac96eb68817fc85a5f940dcd6f752a92ee",
+  "shortCommit": "c06501ac96eb",
   "branch": "main",
-  "deployedAt": "2026-07-21T04:36:04.905Z",
+  "deployedAt": "2026-07-21T04:43:41.138Z",
   "cacheVersion": "tomatodev-v20260721z3-farm-sync-workout-input",
   "runId": null,
   "runAttempt": null
