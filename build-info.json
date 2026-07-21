@@ -1,10 +1,10 @@
 {
   "app": "tomatodev",
-  "commit": "fa9d11dae7499839c787e39987c2d299af347dbe",
-  "shortCommit": "fa9d11dae749",
-  "branch": "codex/native-widget-live",
-  "deployedAt": "2026-07-21T00:58:33.355Z",
-  "cacheVersion": "tomatodev-v20260721z2-farm-sync-workout-input",
+  "commit": "62172aac5f559881b30a141355934ec949123152",
+  "shortCommit": "62172aac5f55",
+  "branch": "main",
+  "deployedAt": "2026-07-21T04:36:04.905Z",
+  "cacheVersion": "tomatodev-v20260721z3-farm-sync-workout-input",
   "runId": null,
   "runAttempt": null
 }
