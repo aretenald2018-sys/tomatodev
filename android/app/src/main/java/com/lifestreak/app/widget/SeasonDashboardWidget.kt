@@ -272,5 +272,13 @@ class SeasonDashboardWidget : AppWidgetProvider() {
             else try { render(context, views, JSONObject(raw)) } catch (_: Exception) { empty(context, views, "데이터를 다시 동기화하세요") }
             manager.updateAppWidget(widgetId, views)
         }
+
+        // 테스트 전용: 스냅샷 JSON으로 RemoteViews를 만들어 렌더 결과를 비트맵으로 검증한다.
+        @androidx.annotation.VisibleForTesting
+        internal fun buildRemoteViewsForTest(context: Context, snapshotJson: String): RemoteViews {
+            val views = RemoteViews(context.packageName, R.layout.widget_season_dashboard)
+            try { render(context, views, JSONObject(snapshotJson)) } catch (_: Exception) { empty(context, views, "render error") }
+            return views
+        }
     }
 }
