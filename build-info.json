@@ -1,10 +1,10 @@
 {
   "app": "tomatodev",
-  "commit": "c06501ac96eb68817fc85a5f940dcd6f752a92ee",
-  "shortCommit": "c06501ac96eb",
+  "commit": "c5613b292b53f5a2cd686b47f3a0225d25605f0e",
+  "shortCommit": "c5613b292b53",
   "branch": "main",
-  "deployedAt": "2026-07-21T04:43:41.138Z",
-  "cacheVersion": "tomatodev-v20260721z3-farm-sync-workout-input",
+  "deployedAt": "2026-07-21T07:25:41.117Z",
+  "cacheVersion": "tomatodev-v20260721z5-drop-orphaned-diet-contract",
   "runId": null,
   "runAttempt": null
 }
