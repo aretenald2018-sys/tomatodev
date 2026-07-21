@@ -27,6 +27,6 @@ test('dashboard destinations open their exact TomatoDev screens', () => {
 
 test('the distributable TomatoDev APK version is bumped for deep links', () => {
   assert.match(gradle, /applicationId "com\.lifestreak\.dev"/);
-  assert.match(gradle, /versionCode 4/);
-  assert.match(gradle, /versionName "1\.3"/);
+  assert.match(gradle, /versionCode 5/);
+  assert.match(gradle, /versionName "1\.4"/);
 });

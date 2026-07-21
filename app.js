@@ -671,6 +671,7 @@ document.addEventListener('tomatodev:kim-mode-changed', () => {
 });
 let _workoutDataRefreshTimer = null;
 document.addEventListener('data:workouts-updated', () => {
+  scheduleSeasonDashboardWidgetSync('data-updated', 0);
   if (_workoutDataRefreshTimer) clearTimeout(_workoutDataRefreshTimer);
   _workoutDataRefreshTimer = setTimeout(() => {
     _workoutDataRefreshTimer = null;
@@ -692,6 +693,9 @@ document.addEventListener('data:workouts-updated', () => {
     }
     if (_currentTab === 'stats') void _lazyRenderStats();
   }, 80);
+});
+document.addEventListener('data:diet-plan-updated', () => {
+  scheduleSeasonDashboardWidgetSync('diet-plan-updated', 0);
 });
 document.addEventListener('sheet:saved', () => scheduleSeasonDashboardWidgetSync('workout-saved'));
 document.addEventListener('season:changed', () => {
