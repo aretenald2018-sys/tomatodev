@@ -1,4 +1,4 @@
-import { getDayTargetKcal, isExerciseDaySuccess } from '../calc.js';
+import { calcDietMetrics, getDayTargetKcal, isExerciseDaySuccess } from '../calc.js';
 import {
   activeBenchmarks,
   activeCycleOf,
@@ -84,6 +84,23 @@ function _foodSnapshot(cache, todayKey, dietPlan) {
     : 0;
   const recordedMeals = ['bKcal', 'lKcal', 'dKcal', 'sKcal'].filter(key => _number(day[key]) > 0).length;
   const progress = targetKcal > 0 ? Math.round((actualKcal / targetKcal) * 100) : 0;
+  let carbsTargetG = 0;
+  let proteinTargetG = 0;
+  let fatTargetG = 0;
+  if (dietPlan && dietPlan._userSet) {
+    try {
+      const metrics = calcDietMetrics(dietPlan);
+      const weekday = new Date(Number(todayKey?.slice(0, 4)), Number(todayKey?.slice(5, 7)) - 1, Number(todayKey?.slice(8, 10))).getDay();
+      const target = (dietPlan.refeedDays || []).includes(weekday) ? metrics.refeed : metrics.deficit;
+      carbsTargetG = Math.round(_number(target?.carbG));
+      proteinTargetG = Math.round(_number(target?.proteinG));
+      fatTargetG = Math.round(_number(target?.fatG));
+    } catch (error) {
+      carbsTargetG = 0;
+      proteinTargetG = 0;
+      fatTargetG = 0;
+    }
+  }
   return {
     dateKey: todayKey,
     actualKcal,
@@ -92,6 +109,9 @@ function _foodSnapshot(cache, todayKey, dietPlan) {
     proteinG: Math.round(['bProtein', 'lProtein', 'dProtein', 'sProtein'].reduce((sum, key) => sum + _number(day[key]), 0)),
     carbsG: Math.round(['bCarbs', 'lCarbs', 'dCarbs', 'sCarbs'].reduce((sum, key) => sum + _number(day[key]), 0)),
     fatG: Math.round(['bFat', 'lFat', 'dFat', 'sFat'].reduce((sum, key) => sum + _number(day[key]), 0)),
+    proteinTargetG,
+    carbsTargetG,
+    fatTargetG,
     recordedMeals,
     state: actualKcal > 0 || targetKcal > 0 ? 'ready' : 'waiting',
   };
