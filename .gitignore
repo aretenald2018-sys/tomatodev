@@ -49,6 +49,34 @@ android/app/src/test/java/**
 !android/app/src/test/java/com/lifestreak/app/wear/
 android/app/src/test/java/com/lifestreak/app/wear/**
 !android/app/src/test/java/com/lifestreak/app/wear/TomatoWearWorkoutBridgeTest.kt
+
+# 홈 위젯 리소스는 Capacitor 산출물이 아니라 소스다. 위의 `android/app/src/**`
+# 광범위 무시 때문에 새로 만든 drawable/layout이 `git add`에서 조용히 빠져,
+# 레이아웃이 참조하는 @drawable/... 이 리포에 없는 채로 커밋된 적이 있다
+# (APK 빌드가 R.drawable.* 를 못 찾고 깨짐). 위젯 리소스만 명시적으로 되살린다.
+!android/app/src/main/res/
+android/app/src/main/res/**
+!android/app/src/main/res/drawable/
+!android/app/src/main/res/drawable-v31/
+!android/app/src/main/res/layout/
+!android/app/src/main/res/values/
+!android/app/src/main/res/values-night/
+!android/app/src/main/res/xml/
+android/app/src/main/res/drawable/**
+android/app/src/main/res/drawable-v31/**
+android/app/src/main/res/layout/**
+android/app/src/main/res/values/**
+android/app/src/main/res/values-night/**
+android/app/src/main/res/xml/**
+!android/app/src/main/res/drawable/widget_*.xml
+!android/app/src/main/res/drawable-v31/widget_*.xml
+!android/app/src/main/res/layout/widget_*.xml
+!android/app/src/main/res/values/widget_*.xml
+!android/app/src/main/res/values/strings.xml
+!android/app/src/main/res/values/styles.xml
+!android/app/src/main/res/values-night/widget_*.xml
+!android/app/src/main/res/xml/*widget_info.xml
+
 android/app/google-services.json
 android/app/*.jks
 android/app/*.keystore

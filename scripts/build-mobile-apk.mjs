@@ -10,12 +10,37 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const androidRoot = path.join(root, 'android');
+const wrapperName = process.platform === 'win32' ? '.\\gradlew.bat' : './gradlew';
 const localGradle = path.join(androidRoot, process.platform === 'win32' ? 'gradlew.bat' : 'gradlew');
-const gradle = process.env.TOMATO_GRADLE || (existsSync(localGradle) ? localGradle : '');
+// androidRoot 기준 상대 이름으로 부른다. 체크아웃 경로에 공백이 있으면
+// `cmd /c "C:\...\gradlew.bat" :app:assembleDebug` 는 cmd가 바깥 따옴표를 벗겨내며
+// 깨진다("...는 내부 또는 외부 명령이 아닙니다"). 상대 이름에는 공백이 없다.
+const gradle = process.env.TOMATO_GRADLE || (existsSync(localGradle) ? wrapperName : '');
 const builtApk = path.join(androidRoot, 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk');
 const publishedApk = path.join(root, 'public', 'downloads', 'tomatodev.apk');
 
+// Gradle은 JAVA_HOME이 없으면 즉시 죽는다(exit 9009). 이 워크스테이션에는 별도 JDK가
+// 설치돼 있지 않고 Android Studio 번들 JBR만 있으므로, 환경변수가 비어 있을 때만
+// 그 JBR을 찾아 쓴다. 이미 JAVA_HOME이 설정돼 있으면 건드리지 않는다.
+const JBR_CANDIDATES = [
+  process.env.JAVA_HOME,
+  'C:\\Program Files\\Android\\Android Studio\\jbr',
+  'C:\\Program Files\\Android\\Android Studio Preview\\jbr',
+  path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Android Studio', 'jbr'),
+];
+
+function resolveJavaHome() {
+  if (process.platform !== 'win32') return process.env.JAVA_HOME || '';
+  for (const candidate of JBR_CANDIDATES) {
+    if (candidate && existsSync(path.join(candidate, 'bin', 'java.exe'))) return candidate;
+  }
+  return '';
+}
+
+const javaHome = resolveJavaHome();
+
 function run(command, args, cwd = root) {
+  const env = javaHome ? { ...process.env, JAVA_HOME: javaHome } : process.env;
   if (process.platform === 'win32') {
     const quote = value => {
       const text = String(value);
@@ -25,12 +50,13 @@ function run(command, args, cwd = root) {
       '/d',
       '/c',
       [command, ...args].map(quote).join(' '),
-    ], { cwd, stdio: 'inherit' });
+    ], { cwd, stdio: 'inherit', env });
     return;
   }
   execFileSync(command, args, {
     cwd,
     stdio: 'inherit',
+    env,
   });
 }
 
