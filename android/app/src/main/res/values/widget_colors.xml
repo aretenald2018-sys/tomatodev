@@ -12,4 +12,10 @@
     <color name="widget_orange">#FFF47A3C</color>
     <color name="widget_track">#FFE5E9ED</color>
     <color name="widget_border">#FFDDE3E8</color>
+    <!-- 카드 헤더 아이콘 배지 / 필 배경 (연한 톤) -->
+    <color name="widget_success_soft">#FFE6F5EC</color>
+    <color name="widget_purple_soft">#FFEDE9FB</color>
+    <color name="widget_blue_soft">#FFE5EFFD</color>
+    <color name="widget_orange_soft">#FFFDEDE4</color>
+    <color name="widget_divider">#FFEEF1F4</color>
 </resources>

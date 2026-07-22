@@ -44,9 +44,15 @@ function _strengthItems(board = {}, week, todayKey) {
           const end = start ? addSeasonDays(start, Math.max(1, Number(candidate.span) || 1) * 7 - 1) : '';
           return start <= week.goalWeekStart && week.goalWeekStart <= end;
         });
-      const log = step?.weekLog?.[week.goalWeekStart] || {};
+      // 웬들러(863 포함) 종목은 색칠 기록이 step.weekLog가 아니라 benchmark.wendlerLog에
+      // 저장된다(board-core paintWeek). step.weekLog만 보면 웬들러 종목은 아무리 달성해도
+      // 영원히 not-achieved로 남는다.
+      const log = (wendler
+        ? benchmark.wendlerLog?.[week.goalWeekStart]
+        : step?.weekLog?.[week.goalWeekStart]) || {};
       const future = week.goalWeekStart > todayKey;
-      const state = future ? 'planned' : log.paintedAt || log.done ? 'achieved' : log.attempted ? 'attempted' : 'not-achieved';
+      const attempted = log.attempted === true || log.performed === true || !!log.missedAt;
+      const state = future ? 'planned' : log.paintedAt || log.done ? 'achieved' : attempted ? 'attempted' : 'not-achieved';
       const program = wendler
         ? buildExerciseProgramWorkoutPrescription(board, benchmark, {
           track,

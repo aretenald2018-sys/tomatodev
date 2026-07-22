@@ -49,15 +49,17 @@ class SeasonDashboardWidgetRenderTest {
         """.trimIndent()
     }
 
-    @Test
-    fun renderSampleWidgetToPng() {
+    // 도넛이 잘리는지는 큰 위젯 한 장으로는 못 본다. 홈 화면에서 실제로 쓰는
+    // 크기대로 여러 장을 그려 두고 눈으로 확인한다.
+    private fun renderToPng(name: String, widthDp: Int, heightDp: Int, compact: Boolean) {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val remoteViews = SeasonDashboardWidget.buildRemoteViewsForTest(context, sampleSnapshot())
+        val density = context.resources.displayMetrics.density
+        val remoteViews = SeasonDashboardWidget.buildRemoteViewsForTest(context, sampleSnapshot(), widthDp, heightDp, compact)
         val root = FrameLayout(context)
         val view = remoteViews.apply(context, root)
 
-        val widthPx = 1080
-        val heightPx = 1480
+        val widthPx = (widthDp * density).toInt()
+        val heightPx = (heightDp * density).toInt()
         view.measure(
             View.MeasureSpec.makeMeasureSpec(widthPx, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(heightPx, View.MeasureSpec.EXACTLY),
@@ -67,8 +69,16 @@ class SeasonDashboardWidgetRenderTest {
         view.draw(Canvas(bitmap))
 
         val outDir = context.getExternalFilesDir(null) ?: context.filesDir
-        val outFile = File(outDir, "widget-render.png")
+        val outFile = File(outDir, "widget-render-$name.png")
         FileOutputStream(outFile).use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         android.util.Log.i("WidgetRenderTest", "wrote ${outFile.absolutePath}")
+    }
+
+    @Test
+    fun renderSampleWidgetToPng() {
+        renderToPng("tall", 360, 440, compact = false)
+        renderToPng("medium", 340, 340, compact = false)
+        renderToPng("short", 320, 300, compact = false)
+        renderToPng("compact", 320, 250, compact = true)
     }
 }

@@ -148,6 +148,54 @@ test('시즌 위젯 레이아웃은 폰에서 읽히는 글자 크기만 쓴다'
   }
 });
 
+test('칼로리 도넛은 고정 dp가 아니라 카드에 맞춰 줄어드는 비트맵이다', () => {
+  // 고정 dp ProgressBar는 카드가 얕아지면 위아래가 잘렸다. 이제는 직접 그린
+  // 비트맵을 fitCenter로 얹어, 위젯을 줄이면 링이 통째로 작아지기만 한다.
+  for (const layout of [
+    'android/app/src/main/res/layout/widget_season_dashboard.xml',
+    'android/app/src/main/res/layout/widget_season_dashboard_compact.xml',
+  ]) {
+    const source = read(layout);
+    const block = source.match(/id="@\+id\/widget_diet_ring"[\s\S]{0,400}?\/>/);
+    assert.ok(block, `${layout}에 widget_diet_ring이 없다`);
+    assert.match(block[0], /layout_width="match_parent"/, `${layout} 도넛이 고정 폭이다`);
+    assert.match(block[0], /layout_height="match_parent"/, `${layout} 도넛이 고정 높이다`);
+    assert.match(block[0], /scaleType="fitCenter"/, `${layout} 도넛이 fitCenter가 아니다`);
+    // 잘림의 원인이던 고정 dp ProgressBar 링은 되돌아오면 안 된다.
+    assert.doesNotMatch(source, /widget_ring_progress/, `${layout}에 옛 고정 dp 링이 남아 있다`);
+  }
+  const provider = read('android/app/src/main/java/com/lifestreak/app/widget/SeasonDashboardWidget.kt');
+  assert.match(provider, /dietRingBitmap/);
+  assert.match(provider, /setImageViewBitmap\(R\.id\.widget_diet_ring/);
+  // 링이 작아지면 가운데 글자도 같이 줄어야 구멍 밖으로 넘치지 않는다.
+  assert.match(provider, /setTextViewTextSize\(R\.id\.widget_diet_value/);
+});
+
+test('시즌 위젯 카드는 아이콘 배지·매크로 점·근력 체크 행 구조를 갖춘다', () => {
+  const layout = read('android/app/src/main/res/layout/widget_season_dashboard.xml');
+  for (const badge of ['widget_badge_green', 'widget_badge_purple', 'widget_badge_blue']) {
+    assert.match(layout, new RegExp(badge), `${badge} 배지가 없다`);
+  }
+  for (const dot of ['widget_dot_green', 'widget_dot_purple', 'widget_dot_orange']) {
+    assert.match(layout, new RegExp(dot), `${dot} 매크로 점이 없다`);
+  }
+  // 근력 목표 한 줄 = [체크 마크][종목명][처방] + 행 구분선
+  for (let index = 1; index <= 5; index += 1) {
+    assert.match(layout, new RegExp(`widget_strength_row_${index}`));
+    assert.match(layout, new RegExp(`widget_strength_mark_${index}`));
+    assert.match(layout, new RegExp(`widget_strength_detail_${index}`));
+  }
+  assert.match(layout, /widget_divider/);
+
+  const provider = read('android/app/src/main/java/com/lifestreak/app/widget/SeasonDashboardWidget.kt');
+  // 행 컨테이너를 숨겨야 구분선까지 같이 사라진다.
+  assert.match(provider, /widget_strength_row_1/);
+  assert.match(provider, /widget_check_on/);
+  assert.match(provider, /widget_check_off/);
+  // 달성/미달성이 한 TextView 안 "✓ "/"○ " 접두어로 섞여 있던 옛 방식은 쓰지 않는다.
+  assert.doesNotMatch(provider, /"○ "/);
+});
+
 test('러닝 추이 그래프는 점마다 날짜와 평균 페이스를 함께 찍는다', () => {
   const provider = read('android/app/src/main/java/com/lifestreak/app/widget/SeasonDashboardWidget.kt');
   // 그래프 값은 거리(distanceKm)가 아니라 평균 페이스라야 카드의 페이스 수치와 맞는다.
