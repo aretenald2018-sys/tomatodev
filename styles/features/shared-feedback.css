@@ -36,6 +36,7 @@
 
 /* ── TDS Toast Notification ── */
 .tds-toast {
+  display: inline-flex; align-items: center; box-sizing: border-box;
   position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
   background: var(--seed-gray-900); color: #fff;
   font-size: var(--seed-t4); font-weight: 600; font-family: var(--font-sans);
