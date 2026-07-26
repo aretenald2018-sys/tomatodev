@@ -35,7 +35,6 @@ test('stats renders workout volume as kg or t rather than an opaque vol unit', (
   assert.match(statsJs, /총 볼륨<\/span><b>\$\{_formatVolumeMass\(state\.totalVolume\)\}/);
   assert.match(statsJs, /_formatVolumeMass\(row\.totalVolume\)/);
   assert.match(statsJs, /_formatVolumeMass\(h\.volume\)/);
-  assert.match(statsJs, /총볼륨\(kg\)/);
   assert.doesNotMatch(statsJs, /\}\s*vol|text:'vol'|총볼륨\(vol\)/);
 });
 

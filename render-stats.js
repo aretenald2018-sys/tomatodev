@@ -2,7 +2,7 @@ import { showToast } from './ui/toast.js';
 // ================================================================
 // render-stats.js
 // 의존성: config.js, data.js
-// 변경: 13번 CSV 내보내기 추가
+// 통계 화면 및 raw JSON 내보내기
 // ================================================================
 
 import { MOVEMENTS }                                 from './config.js';
@@ -484,10 +484,6 @@ export function buildStatsRawExport() {
     daily,
     bodyCheckins: checkins.map(_jsonSafeClone),
   };
-}
-
-export function buildStatsRawExportText() {
-  return JSON.stringify(buildStatsRawExport(), null, 2);
 }
 
 function _downloadTextFile(filename, text, type) {
@@ -1598,65 +1594,6 @@ function _renderExercisePerformanceSection(scope = document) {
       </div>
       ${rows.length ? rows.map(_performanceRowHtml).join('') : '<div class="stats-perf-empty-card">선택 기간에 분석할 운동 기록이 없어요.</div>'}
     </div>`;
-}
-
-// ── 13번: CSV 내보내기 ───────────────────────────────────────────
-export function exportCSV(period) {
-  const cache  = getCache();
-  const exList = getExList();
-  const rows   = [['날짜','운동부위','종목','세트수','총볼륨(kg)','아침','점심','저녁','총칼로리','식단OK']];
-
-  // 기간 필터
-  const now   = new Date(TODAY);
-  const since = period > 0
-    ? new Date(now.getFullYear(), now.getMonth(), now.getDate() - period)
-    : null;
-
-  Object.entries(cache)
-    .filter(([key]) => !since || key >= dateKey(since.getFullYear(), since.getMonth(), since.getDate()))
-    .sort(([a],[b]) => a.localeCompare(b))
-    .forEach(([key, day]) => {
-      // canonical diet 기록 — 텍스트(snack 포함)/food-chip/kcal-only/skip/photo 전부 인정
-      const dietHas = day.breakfast || day.lunch || day.dinner || day.snack ||
-                      day.bFoods?.length || day.lFoods?.length || day.dFoods?.length || day.sFoods?.length ||
-                      (day.bKcal||0) > 0 || (day.lKcal||0) > 0 || (day.dKcal||0) > 0 || (day.sKcal||0) > 0 ||
-                      day.breakfast_skipped || day.lunch_skipped || day.dinner_skipped ||
-                      day.bPhoto || day.lPhoto || day.dPhoto || day.sPhoto;
-      const diet     = dietHas ? day : null;
-      const totalKcal= (day.bKcal||0)+(day.lKcal||0)+(day.dKcal||0)+(day.sKcal||0);
-      const dietOk   = diet ? (day.bOk!==false&&day.lOk!==false&&day.dOk!==false?'O':'X') : '';
-
-      if (day.exercises?.length) {
-        const allMuscles = getAllMuscles();
-        day.exercises.forEach(entry => {
-          const ex  = exList.find(e => e.id === entry.exerciseId);
-          const mc  = allMuscles.find(m => m.id === entry.muscleId);
-          const vol = calcVolume(entry.sets);
-          rows.push([
-            key,
-            mc?.name||entry.muscleId,
-            ex?.name||entry.exerciseId,
-            entry.sets.length,
-            vol,
-            day.breakfast||'', day.lunch||'', day.dinner||'',
-            totalKcal||'', dietOk,
-          ]);
-        });
-      } else if (day.cf) {
-        rows.push([key,'크로스핏','크로스핏','','','',day.breakfast||'',day.lunch||'',day.dinner||'',totalKcal||'',dietOk]);
-      } else if (diet) {
-        rows.push([key,'','','','',day.breakfast||'',day.lunch||'',day.dinner||'',totalKcal||'',dietOk]);
-      }
-    });
-
-  const csv  = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob = new Blob(['\uFEFF'+csv], { type:'text/csv;charset=utf-8;' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = `life-streak-${TODAY.toISOString().slice(0,10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 // ── 종목별 볼륨 추이 ──────────────────────────────────────────────

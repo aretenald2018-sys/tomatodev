@@ -13,8 +13,6 @@ const PRODUCTION_SETTING_KEYS = [
 ];
 
 const TOMATODEV_SETTING_KEYS = {
-  ANTHROPIC: 'tomatodev_cfg_anthropic',
-  ALPHAVANTAGE: 'tomatodev_cfg_alphavantage',
   RUNNING_MAP_PROVIDER: 'tomatodev_cfg_running_map_provider',
   VWORLD_API_KEY: 'tomatodev_cfg_vworld_api_key',
   VWORLD_MAP_LAYER: 'tomatodev_cfg_vworld_map_layer',
@@ -146,8 +144,6 @@ test('TomatoDev config reads only its own private setting namespace', async () =
     );
     assert.deepEqual(TOMATODEV_LOCAL_SETTING_KEYS, TOMATODEV_SETTING_KEYS);
 
-    assert.equal(CONFIG.ANTHROPIC_KEY, 'development:tomatodev_cfg_anthropic');
-    assert.equal(CONFIG.ALPHAVANTAGE_KEY, 'development:tomatodev_cfg_alphavantage');
     assert.equal(CONFIG.MAPS.RUNNING_PROVIDER, 'development:tomatodev_cfg_running_map_provider');
     assert.equal(CONFIG.MAPS.VWORLD_API_KEY, 'development:tomatodev_cfg_vworld_api_key');
     assert.equal(CONFIG.MAPS.VWORLD_MAP_LAYER, 'development:tomatodev_cfg_vworld_map_layer');
@@ -161,17 +157,11 @@ test('TomatoDev config reads only its own private setting namespace', async () =
   }
 });
 
-test('settings UI shares the TomatoDev key constant and has no production-key fallback', async () => {
-  const [configSource, settingsSource] = await Promise.all([
-    source('config.js'),
-    source('feature-misc.js'),
-  ]);
+test('runtime config keeps only TomatoDev map setting keys and no production-key fallback', async () => {
+  const configSource = await source('config.js');
 
-  assert.match(settingsSource, /import \{ TOMATODEV_LOCAL_SETTING_KEYS \} from '\.\/config\.js'/);
-  assert.match(settingsSource, /localStorage\.getItem\(TOMATODEV_LOCAL_SETTING_KEYS\.ANTHROPIC\)/);
-  assert.match(settingsSource, /localStorage\.setItem\(TOMATODEV_LOCAL_SETTING_KEYS\.ANTHROPIC, anthropic\)/);
+  assert.doesNotMatch(configSource, /ANTHROPIC_KEY|ALPHAVANTAGE_KEY|tomatodev_cfg_(?:anthropic|alphavantage)/);
   for (const key of PRODUCTION_SETTING_KEYS) {
     assert.doesNotMatch(configSource, exactStringPattern(key));
-    assert.doesNotMatch(settingsSource, exactStringPattern(key));
   }
 });

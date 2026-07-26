@@ -189,7 +189,7 @@ test('workout data updates rerender the active app tab', () => {
   const expectedBranches = [
     ['home', 'renderHome();'],
     ['diet', 'loadWorkoutDate(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());'],
-    ['workout', "void _renderWorkoutRoute(getWorkoutNavSnapshot(), 'data:workouts-updated');"],
+    ['workout', "void _renderWorkoutCalendarRoute(getWorkoutNavSnapshot(), 'data:workouts-updated');"],
     ['calendar', 'void _lazyRenderCalendar();'],
     ['stats', 'void _lazyRenderStats();'],
   ];

@@ -7,8 +7,6 @@
 const PUBLIC_VWORLD_MAP_KEY = '0E32F4A9-EA52-3F07-9A67-AE92A8384CE6';
 
 export const TOMATODEV_LOCAL_SETTING_KEYS = Object.freeze({
-  ANTHROPIC: 'tomatodev_cfg_anthropic',
-  ALPHAVANTAGE: 'tomatodev_cfg_alphavantage',
   RUNNING_MAP_PROVIDER: 'tomatodev_cfg_running_map_provider',
   VWORLD_API_KEY: 'tomatodev_cfg_vworld_api_key',
   VWORLD_MAP_LAYER: 'tomatodev_cfg_vworld_map_layer',
@@ -25,9 +23,6 @@ function _readLocalSetting(key) {
 }
 
 export const CONFIG = {
-  // 비공개 키는 localStorage에서 로드 (앱 설정에서 입력)
-  get ANTHROPIC_KEY()    { return _readLocalSetting(TOMATODEV_LOCAL_SETTING_KEYS.ANTHROPIC); },
-  get ALPHAVANTAGE_KEY() { return _readLocalSetting(TOMATODEV_LOCAL_SETTING_KEYS.ALPHAVANTAGE); },
   MAPS: {
     get RUNNING_PROVIDER()  { return _readLocalSetting(TOMATODEV_LOCAL_SETTING_KEYS.RUNNING_MAP_PROVIDER) || 'auto'; },
     get VWORLD_API_KEY()    { return _readLocalSetting(TOMATODEV_LOCAL_SETTING_KEYS.VWORLD_API_KEY) || PUBLIC_VWORLD_MAP_KEY; },
@@ -50,19 +45,6 @@ export const CONFIG = {
     messagingSenderId: "867781711662",
     appId:             "1:867781711662:web:8fe1e9904c94d021f2ccbf",
   },
-
-  TICKERS: [
-    { sym:'TSLA', name:'테슬라' },
-    { sym:'NVDA', name:'엔비디아' },
-    { sym:'AMZN', name:'아마존' },
-    { sym:'META', name:'메타' },
-    { sym:'GOOG', name:'알파벳C' },
-  ],
-
-  STOCK_CACHE_HOURS: 8,
-  DIET_KCAL_LIMIT:   500,
-  CLAUDE_MODEL:      'claude-haiku-4-5-20251001',
-  GEMINI_MODEL:      'gemini-flash-latest',
 
   DEFAULT_EXERCISES: [
     { muscleId:'chest',    id:'chest_1',    name:'바벨 벤치프레스',              movementId:'barbell_bench' },
@@ -313,21 +295,6 @@ export const MOVEMENT_PATTERNS = [
 ];
 
 // ════════════════════════════════════════════════════════════════
-// EQUIPMENT_CATEGORIES — 장비 등록 시 선택 옵션
-// ────────────────────────────────────────────────────────────────
-// 장비명 + 카테고리만 등록하면 운동 기록 시점에 해당 카테고리의
-// MOVEMENTS만 필터링되어 노출됨 (다대다 맵핑 부담 제거).
-// ════════════════════════════════════════════════════════════════
-export const EQUIPMENT_CATEGORIES = [
-  { id:'barbell',    label:'💪 파워랙/바벨' },
-  { id:'smith',      label:'🏗️ 스미스' },
-  { id:'dumbbell',   label:'🏋️ 덤벨' },
-  { id:'machine',    label:'⚙️ 머신' },
-  { id:'cable',      label:'🪢 케이블' },
-  { id:'bodyweight', label:'🏃 맨몸/기타' },
-];
-
-// ════════════════════════════════════════════════════════════════
 // MAX_PREFERRED_CATEGORIES — 맥스 모드 추천 가산 카테고리
 // ────────────────────────────────────────────────────────────────
 // 맥스 모드는 체육관·장비 등록 없이 직전·직직전 같은 부위 세션의
@@ -352,5 +319,4 @@ export const MUSCLES = [
   { id:'running',  name:'런닝', color:'#f43f5e', kind:'activity' },
 ];
 
-export const MONTHS = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
 export const DAYS   = ['일','월','화','수','목','금','토'];

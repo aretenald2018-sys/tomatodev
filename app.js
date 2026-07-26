@@ -438,10 +438,6 @@ async function _renderWorkoutCalendarRoute(snapshot = getWorkoutNavSnapshot(), a
   calendarModule.applyWorkoutCalendarNavSnapshot?.(snapshot, { preserveScroll: true, action });
 }
 
-async function _renderWorkoutRoute(snapshot = getWorkoutNavSnapshot(), action = '') {
-  await _renderWorkoutCalendarRoute(snapshot, action);
-}
-
 async function openWorkoutDaySheetFromAction(key, sessionIndex = 0, options = {}) {
   const dateKey = typeof key === 'string'
     ? key
@@ -464,13 +460,13 @@ async function openWorkoutDaySheetFromAction(key, sessionIndex = 0, options = {}
     await switchTab('workout', { preserveWorkoutRoute: true });
     return true;
   }
-  await _renderWorkoutRoute(getWorkoutNavSnapshot(), action);
+  await _renderWorkoutCalendarRoute(getWorkoutNavSnapshot(), action);
   return true;
 }
 
 subscribeWorkoutNav((snapshot, action) => {
   if (_currentTab !== 'workout') return;
-  _renderWorkoutRoute(snapshot, action).catch(e => console.warn('[app] workout route render failed:', e));
+  _renderWorkoutCalendarRoute(snapshot, action).catch(e => console.warn('[app] workout route render failed:', e));
 });
 function _handleWorkoutOverlayBack() {
   return _currentTab === 'workout' && (
@@ -629,10 +625,10 @@ async function switchTab(tab, options = {}) {
     const routeSnapshot = getWorkoutNavSnapshot();
     _setWorkoutSurface();
     if (hasTargetDate) {
-      await _renderWorkoutRoute(routeSnapshot, 'sheet:tab-open');
+      await _renderWorkoutCalendarRoute(routeSnapshot, 'sheet:tab-open');
     } else {
       loadWorkoutDate(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
-      await _renderWorkoutRoute(routeSnapshot, options?.preserveWorkoutRoute ? 'route:preserve-tab' : 'calendar:tab');
+      await _renderWorkoutCalendarRoute(routeSnapshot, options?.preserveWorkoutRoute ? 'route:preserve-tab' : 'calendar:tab');
     }
   }
   if (tab === 'diet')     loadWorkoutDate(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
@@ -687,7 +683,7 @@ document.addEventListener('data:workouts-updated', () => {
       return;
     }
     if (_currentTab === 'workout') {
-      void _renderWorkoutRoute(getWorkoutNavSnapshot(), 'data:workouts-updated');
+      void _renderWorkoutCalendarRoute(getWorkoutNavSnapshot(), 'data:workouts-updated');
       return;
     }
     if (_currentTab === 'calendar') {

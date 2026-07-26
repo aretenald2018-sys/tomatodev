@@ -29,7 +29,7 @@ import { calcSetVolume } from './calc/volume.js';
 import { MOVEMENTS } from './config.js';
 import { dateKey, TODAY, isFuture, isBeforeStart } from './data/data-date.js';
 import { findSeasonForDate, findSeasonsForDate } from './data/season-model.js';
-import { openModal, closeModal } from './utils/dom.js';
+import { openModal, closeModal } from './app/overlay-stack.js';
 import { confirmAction } from './utils/confirm-modal.js';
 import {
   getWorkoutSessions,

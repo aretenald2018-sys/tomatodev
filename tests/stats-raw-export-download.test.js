@@ -19,6 +19,7 @@ test('stats page places raw export button in the period analysis control card', 
 test('stats raw export preserves daily workout and diet payload contracts as JSON', () => {
   assert.match(statsJs, /WORKOUT_PAYLOAD_KEYS, DIET_PAYLOAD_KEYS, SHARED_PAYLOAD_KEYS/);
   assert.match(statsJs, /export function buildStatsRawExport\(\)/);
+  assert.doesNotMatch(statsJs, /buildStatsRawExportText|export function exportCSV/);
   assert.match(statsJs, /schema: 'tomatofarm\.rawDailyStats\.v1'/);
   assert.match(statsJs, /daily,/);
   assert.match(statsJs, /bodyCheckins: checkins\.map\(_jsonSafeClone\)/);

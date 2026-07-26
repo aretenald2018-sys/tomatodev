@@ -90,10 +90,6 @@ export function installPWA() {
   }
 }
 
-export function getDeferredInstallPrompt() {
-  return _deferredInstallPrompt;
-}
-
 // ── 이벤트 리스너 + window 등록 ──────────────────────────────────
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();

@@ -1,9 +1,7 @@
 import { registerActions } from '../utils/action-router.js';
 import {
   editSectionTitle, addMiniMemoItem, toggleMiniMemoItem, deleteMiniMemoItem,
-  closeSectionTitleModal, saveSectionTitleFromModal, closeExportModal, runExportCSV,
-  closeSettingsModal,
-  quickDeleteNutritionItem,
+  closeSectionTitleModal, saveSectionTitleFromModal,
 } from '../feature-misc.js';
 import { openDietPlanModal, closeDietPlanModal, saveDietPlanFromModal } from '../feature-diet-plan.js';
 import {
@@ -24,9 +22,7 @@ import {
 import { closePatchnote } from '../modals/patchnote-modal.js';
 import { closeStreakMilestone } from '../modals/streak-milestone-modal.js';
 import { closeWeightResultModal } from '../modals/weight-result-modal.js';
-import { installPWA } from '../pwa-fcm.js';
 import { submitDietSetup } from '../feature-login.js';
-import { openNutritionItemEditor } from '../modals/nutrition-item-modal.js';
 import {
   changeWorkoutDate,
   goToTodayWorkout,
@@ -126,11 +122,6 @@ export function registerStaticActions() {
     'diet-plan:save': () => saveDietPlanFromModal(),
     'section-title:close': (_control, event) => closeSectionTitleModal(event),
     'section-title:save': () => saveSectionTitleFromModal(),
-    'export:close': (_control, event) => closeExportModal(event),
-    'export:run': (_control, _event, period) => runExportCSV(Number(period) || 0),
-    'settings:close': (_control, event) => closeSettingsModal(event),
-    'settings:edit-nutrition': (control) => openNutritionItemEditor(control.dataset.itemId || null),
-    'settings:delete-nutrition': (control) => quickDeleteNutritionItem(control.dataset.itemId || ''),
     'goal:close': (_control, event) => closeGoalModal(event),
     'goal:toggle-condition': () => toggleGoalCondition(),
     'goal:save': () => saveGoalFromModal(),
@@ -142,6 +133,5 @@ export function registerStaticActions() {
     'patchnote:close': (_control, event) => closePatchnote(event),
     'streak:close-milestone': (_control, event) => closeStreakMilestone(event),
     'weight-result:close': (_control, event) => closeWeightResultModal(event),
-    'pwa:install': () => installPWA(),
   });
 }

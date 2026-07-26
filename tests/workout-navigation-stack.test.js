@@ -112,6 +112,7 @@ test('workout navigation keeps only rendered calendar and day sheet surfaces', a
   assert.match(appJs, /viewYear:\s*TODAY\.getFullYear\(\)/);
   assert.match(appJs, /viewMonth:\s*TODAY\.getMonth\(\)/);
   assert.match(appJs, /async function openWorkoutDaySheetFromAction/);
+  assert.doesNotMatch(appJs, /async function _renderWorkoutRoute/);
   assert.match(appJs, /openWorkoutDaySheet\(dateKey,[\s\S]*sheetState:\s*'full'/);
   assert.doesNotMatch(appJs, /wtOpenWorkoutDaySheet:\s*openWorkoutDaySheetFromAction/);
   assert.doesNotMatch(appJs, /_redirectWorkoutRecordRouteToDaySheet|WORKOUT_ROUTES|currentWorkoutRoute/);
