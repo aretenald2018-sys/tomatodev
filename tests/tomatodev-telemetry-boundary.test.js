@@ -22,7 +22,7 @@ async function makeFixture(prefix, moduleName, moduleSource, files) {
 test('app-load telemetry entry points are write-free in TomatoDev', async () => {
   const [socialSource, loginSource] = await Promise.all([
     source('data/data-social-log.js'),
-    source('feature-login.js'),
+    source('auth/login-screen.js'),
   ]);
   assert.match(loginSource, /recordLogin/);
 

@@ -243,6 +243,13 @@
   // 유틸리티
   './fatsecret-api.js',
   './feature-login.js',
+  './auth/login-screen.js',
+  './auth/login-actions.js',
+  './auth/signup.js',
+  './social/guild-picker.js',
+  './social/guild-modal.js',
+  './feature-letters.js',
+  './feature-diet-setup.js',
   './pwa-register.js',
   './utils/ux-polish.js',
   './utils/confirm-modal.js',
