@@ -664,6 +664,10 @@ test('day sheet exercise card uses inline plus row and one complete button', () 
   assert.match(card, /const collapsed = stamped && workoutDetailState\.editingCardId !== cardId/);
   assert.match(card, /const editing = !collapsed/);
   assert.match(calendarJs, /from '\.\/workout\/exercise-completion\.js'/);
+  assert.match(
+    calendarDetailTemplateJs,
+    /import \{ isWorkoutExerciseComplete \} from '\.\.\/workout\/exercise-completion\.js'/,
+  );
   assert.match(exerciseCompletionJs, /export function workoutExerciseCompletionStampAt\(entry\)/);
   assert.match(exerciseCompletionJs, /export function isWorkoutExerciseComplete\(entry\)/);
   assert.match(exerciseCompletionJs, /if \(workoutExerciseCompletionStampAt\(entry\) == null\) return false/);

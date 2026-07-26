@@ -70,7 +70,6 @@ import { formatWorkoutCompletionElapsed } from './workout/completion-metrics.js'
 import {
   clearWorkoutExerciseCompletionMarker,
   isCompletableWorkoutExerciseSet,
-  isWorkoutExerciseComplete,
   markWorkoutExerciseEntryComplete,
 } from './workout/exercise-completion.js';
 import { normalizeWorkoutSetType } from './workout/set-presentation.js';

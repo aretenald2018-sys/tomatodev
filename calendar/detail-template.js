@@ -44,6 +44,7 @@ import {
   formatWorkoutCompletionElapsed,
   latestWorkoutCompletionAt,
 } from '../workout/completion-metrics.js';
+import { isWorkoutExerciseComplete } from '../workout/exercise-completion.js';
 import {
   bestWorkoutSet,
   formatWorkoutKg,
