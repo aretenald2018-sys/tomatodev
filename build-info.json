@@ -1,10 +1,10 @@
 {
   "app": "tomatodev",
-  "commit": "bb080657468240c902f4fea82cb3c45b5345e397",
-  "shortCommit": "bb0806574682",
+  "commit": "24eb2436185e69ce89f62c4cd4eed72312aafefd",
+  "shortCommit": "24eb2436185e",
   "branch": "main",
-  "deployedAt": "2026-07-26T22:17:00.958Z",
-  "cacheVersion": "tomatodev-v20260726z19-season-exercise-windows",
+  "deployedAt": "2026-07-26T23:13:12.036Z",
+  "cacheVersion": "tomatodev-v20260726z20-season-window-board",
   "runId": null,
   "runAttempt": null
 }

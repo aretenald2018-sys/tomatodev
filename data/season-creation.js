@@ -176,6 +176,8 @@ export function prepareWorkoutSeasonCreation({
     seasons: [...normalizeSeasonRegistry(registry).seasons, season],
   });
   const createdFromSeason = findSeasonForDate(registry, addSeasonDays(season.startDate, -1));
+  // 종목별 기간은 정규화(시즌 범위로 클램프)된 값을 보드에 넘긴다.
+  const normalizedSeason = nextRegistry.seasons.find(item => item.id === season.id) || season;
   const board = buildSeasonWorkoutBoard({
     previousBoard,
     seasonId: season.id,
@@ -184,6 +186,7 @@ export function prepareWorkoutSeasonCreation({
     selectedExerciseIds,
     benchmarkMappings,
     overrides,
+    exerciseWindows: normalizedSeason.exerciseWindows || {},
     createdAt,
   });
   const workoutPlan = buildSeasonWorkoutPlan({
@@ -242,6 +245,7 @@ export function prepareWorkoutSeasonUpdate({
     schemaVersion: SEASON_REGISTRY_SCHEMA_VERSION,
     seasons: normalizeSeasonRegistry(registry).seasons.map(item => item.id === seasonId ? season : item),
   });
+  const normalizedSeason = nextRegistry.seasons.find(item => item.id === seasonId) || season;
   const rebuiltBoard = buildSeasonWorkoutBoard({
     previousBoard,
     seasonId,
@@ -250,6 +254,7 @@ export function prepareWorkoutSeasonUpdate({
     selectedExerciseIds,
     benchmarkMappings,
     overrides,
+    exerciseWindows: normalizedSeason.exerciseWindows || {},
     createdAt: previousBoard?.createdAt ?? current.createdAt ?? updatedAt,
   });
   const board = preserveSeasonBoardProgress(rebuiltBoard, previousBoard || {});
