@@ -104,38 +104,36 @@ test('wear app advertises capability and receives app refresh pings', () => {
 
 test('manual app refresh keeps the native Wear bridge while TomatoDev ships only its own APK', () => {
   const buildInfoJs = readProjectFile('utils/build-info.js');
+  const wearRefreshJs = readProjectFile('utils/wear-refresh.js');
+  const apkInstallJs = readProjectFile('utils/apk-install.js');
   const appJs = readProjectFile('app.js');
   const gitignore = readProjectFile('.gitignore');
   const swJs = readProjectFile('sw.js') + readProjectFile('runtime-assets.js');
 
-  assert.match(buildInfoJs, /TomatoWearAppUpdate/);
-  assert.match(buildInfoJs, /requestRefreshOrInstall/);
-  assert.match(buildInfoJs, /WEAR_APP_REFRESH_TIMEOUT_MS/);
-  assert.match(buildInfoJs, /_requestWearAppRefreshOrInstall/);
+  assert.match(wearRefreshJs, /TomatoWearAppUpdate/);
+  assert.match(wearRefreshJs, /requestRefreshOrInstall/);
+  assert.match(wearRefreshJs, /WEAR_APP_REFRESH_TIMEOUT_MS/);
+  assert.match(wearRefreshJs, /requestWearAppRefreshOrInstall/);
   assert.match(buildInfoJs, /requestTomatoApkInstall/);
   assert.match(buildInfoJs, /__requestTomatoApkInstall/);
-  assert.match(buildInfoJs, /_startTomatodevApkDownload/);
-  assert.doesNotMatch(buildInfoJs, /tomato-mobile-debug\.apk/);
+  assert.match(apkInstallJs, /_startTomatodevApkDownload/);
+  assert.doesNotMatch(buildInfoJs + wearRefreshJs + apkInstallJs, /tomato-mobile-debug\.apk/);
   assert.doesNotMatch(appJs, /public\/downloads\/tomato-mobile-debug\.apk/);
   assert.doesNotMatch(appJs, /public\/downloads\/tomato-wear-debug\.apk/);
   assert.match(gitignore, /^\*\.apk$/m);
   assert.match(gitignore, /^!public\/downloads\/tomatodev\.apk$/m);
-  assert.match(buildInfoJs, /갤럭시워치 설치 화면/);
+  assert.match(wearRefreshJs, /갤럭시워치 설치 화면/);
   assert.equal(existsSync(new URL('../public/downloads/tomato-mobile-debug.apk', import.meta.url)), false);
   assert.equal(existsSync(new URL('../public/downloads/tomato-wear-debug.apk', import.meta.url)), false);
   assert.equal(existsSync(new URL('../public/downloads/tomatodev.apk', import.meta.url)), true);
   assertOrder(
     buildInfoJs,
-    'await _requestWearAppRefreshOrInstall',
+    'await requestWearAppRefreshOrInstall',
     'const registration = await _resolveLatestAppSWRegistration();',
     'Wear refresh/install request must run before the page reload path',
   );
-  assertOrder(
-    buildInfoJs,
-    'export async function requestTomatoApkInstall',
-    'export async function requestTomatoAppRefresh',
-    'APK install helper should stay separate from the page reload path',
-  );
+  assert.match(apkInstallJs, /export async function requestTomatoApkInstall/);
+  assert.match(buildInfoJs, /export async function requestTomatoAppRefresh/);
   assert.match(swJs, /const CACHE_VERSION = 'tomatodev-v\d{8}z\d+-[^']+';/);
 });
 

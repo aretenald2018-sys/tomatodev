@@ -2,7 +2,7 @@
 // app.js — 앱 진입점
 // ================================================================
 
-import { loadAll, TODAY, getTabOrder,
+import { dateKey, loadAll, TODAY, getTabOrder,
          getRawVisibleTabs, DEFAULT_VIS_TABS,
          isAdmin, isAdminGuest, trackEvent,
          getCurrentUser, getDataOwnerId, loadSavedUser, refreshCurrentUserFromDB } from './data.js';
@@ -13,16 +13,14 @@ import './feature-checkin.js';
 import './feature-misc.js';
 import './workout/expert.js';  // 전문가 모드 렌더와 scoped action binding
 import { showTutorialIfNeeded } from './feature-tutorial.js';
-import { dismissPWAInstallBanner, initFCM, installPWA, showPWAInstallBanner, updateInstallBtn } from './pwa-fcm.js';
+import { dismissPWAInstallBanner, initFCM, showPWAInstallBanner, updateInstallBtn } from './pwa-fcm.js';
 import {
   initTabDrag,
   initSwipeNavigation,
   configureNavigation,
   applyTabOrder,
   applyVisibleTabs,
-  openTabSettingsModal,
-  closeTabSettingsModal,
-  saveTabSettingsFromModal
+  SHELL_TAB_ORDER,
 } from './navigation.js';
 import { initUxPolish } from './utils/ux-polish.js';
 import { initActionRouter } from './utils/action-router.js';
@@ -31,33 +29,45 @@ import { loadLazyModule } from './app/lazy-loader.js';
 import { getTabDefinition, isRegisteredTab } from './app/tab-registry.js';
 import { initOverlayStack } from './app/overlay-stack.js';
 import {
-  initBuildInfoSurface,
-  requestTomatoApkInstall,
-  requestTomatoAppRefresh,
-} from './utils/build-info.js';
+  _isSharedOwnerSessionUnresolved,
+  _sharedOwnerBootstrapError,
+  _showSharedOwnerBlockedOverlay,
+  _withRequiredSharedOwnerTimeout,
+} from './app/owner-blocked-overlay.js';
 import {
-  enableWorkoutPwaHistory,
+  _bindAppShellActions,
+  _syncNavigationForCurrentRole,
+  configureShellActions,
+} from './app/shell-actions.js';
+import {
+  configureWorkoutGestures,
+  initWorkoutSystemBack,
+} from './app/workout-gestures.js';
+import {
+  configureDeepLinkEntry,
+  openPendingDashboardEntry,
+} from './app/deep-link-entry.js';
+import { initBuildInfoSurface } from './utils/build-info.js';
+import { parseDateKey } from './utils/date-key.js';
+import {
   getWorkoutNavSnapshot,
-  handleWorkoutBack,
   openWorkoutCalendar,
   openWorkoutDaySheet,
   subscribeWorkoutNav,
 } from './workout/navigation-stack.js';
 import './utils/haptics.js';       // window.haptic.light/medium/heavy (Capacitor + web fallback)
+import { ensureModal, loadAndInjectModals } from './modal-manager.js';
 try { initBuildInfoSurface(); } catch (e) { console.warn('[app] build info init 실패:', e); }
 // ── 코어 탭 (즉시 로드) ──
-import { renderHome, refreshNotifCenter, showToast } from './home/index.js';
-import { closeNotifCenter, markAllNotifsRead, toggleNotifCenter } from './home/notifications.js';
+import { renderHome, refreshNotifCenter } from './home/index.js';
+import { showToast } from './ui/toast.js';
 import { setLifeZoneVisitContext } from './home/life-zone.js';
 import { showWelcomeBackPopup } from './home/welcome-back.js';
 import { showDietPremiumReportIfNeeded } from './feature-diet-premium-report.js';
-import { logoutAccount, openLetterModal } from './feature-login.js';
 import {
   loadWorkoutDate,
   wtRecoverTimers, wtRestoreRunningSessionIfActive,
 } from './workout/index.js';
-import { wtHandleExercisePickerBack } from './workout/exercises.js';
-import { wtHandleRunningSessionBack, wtOpenRunningSession } from './workout/running-session.js';
 import {
   initSeasonDashboardWidgetSync,
   scheduleSeasonDashboardWidgetSync,
@@ -87,72 +97,6 @@ function _hideLoadingOverlay() {
   if (!loading) return;
   loading.style.display = 'none';
   loading.classList.add('hidden');
-}
-
-function _isSharedOwnerSessionUnresolved() {
-  return !!getCurrentUser()
-    && (isAdmin() || isAdminGuest())
-    && !getDataOwnerId();
-}
-
-function _sharedOwnerBootstrapError(message, cause = null) {
-  const error = new Error(message, cause ? { cause } : undefined);
-  error.code = 'ACCOUNT_DATA_OWNER_UNRESOLVED';
-  return error;
-}
-
-function _withRequiredSharedOwnerTimeout(promise, ms, label) {
-  let timer = null;
-  const requiredLoad = Promise.resolve(promise)
-    .catch((cause) => {
-      throw _sharedOwnerBootstrapError(`${label} failed`, cause);
-    })
-    .finally(() => { if (timer) clearTimeout(timer); });
-  const timeout = new Promise((_, reject) => {
-    timer = setTimeout(() => {
-      console.error(`[init] ${label} timed out after ${ms}ms; blocking shared-account access`);
-      reject(_sharedOwnerBootstrapError(`${label} timed out after ${ms}ms`));
-    }, ms);
-  });
-  return Promise.race([requiredLoad, timeout]);
-}
-
-function _showSharedOwnerBlockedOverlay(error) {
-  document.documentElement.dataset.accountOwnerState = 'blocked';
-  const loading = document.getElementById('loading');
-  if (!loading) return;
-
-  for (const child of document.body.children) {
-    if (child === loading) continue;
-    child.inert = true;
-    child.setAttribute('aria-hidden', 'true');
-  }
-
-  const card = document.createElement('div');
-  card.style.cssText = 'max-width:320px;padding:24px;border-radius:20px;background:var(--surface,#fff);box-shadow:0 18px 50px rgba(0,0,0,.18);text-align:center;';
-  const title = document.createElement('div');
-  title.style.cssText = 'font-size:17px;font-weight:700;color:var(--text,#222);margin-bottom:8px;';
-  title.textContent = '데이터 계정을 확인할 수 없어요';
-  const detail = document.createElement('div');
-  detail.style.cssText = 'font-size:13px;line-height:1.55;color:var(--text-secondary,#666);margin-bottom:16px;';
-  detail.textContent = '잘못된 계정에 저장되지 않도록 모든 입력을 잠갔습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.';
-  const retry = document.createElement('button');
-  retry.type = 'button';
-  retry.style.cssText = 'width:100%;padding:12px;border:0;border-radius:999px;background:var(--primary,#ef5b2a);color:#fff;font-size:14px;font-weight:700;cursor:pointer;';
-  retry.textContent = '다시 시도';
-  retry.addEventListener('click', () => location.reload());
-  card.append(title, detail, retry);
-
-  loading.replaceChildren(card);
-  loading.classList.remove('hidden');
-  loading.setAttribute('role', 'alert');
-  loading.setAttribute('aria-live', 'assertive');
-  Object.assign(loading.style, {
-    display: 'flex',
-    zIndex: '2147483647',
-    pointerEvents: 'auto',
-  });
-  console.error('[account-owner] bootstrap blocked:', error);
 }
 
 // ── 탭 스켈레톤 삽입 (레이지 로드 피드백) ──
@@ -185,7 +129,6 @@ async function _lazyRenderAdmin()   { const cfg = getTabDefinition('admin');    
 async function _lazyRenderCooking() { const cfg = getTabDefinition('cooking');  _showTabSkeleton(cfg.panelId); try { const m = await _lazy(cfg.id, cfg.module); m.renderCooking(); return m; } finally { _hideTabSkeleton(cfg.panelId); } }
 async function _lazyRenderCalendar(){ const cfg = getTabDefinition('calendar'); _showTabSkeleton(cfg.panelId); try { const m = await _lazy(cfg.id, cfg.module); m.renderCalendar(); return m; } finally { _hideTabSkeleton(cfg.panelId); } }
 async function _lazyRenderWorkoutCalendarHome(){ const cfg = getTabDefinition('calendar'); const m = await _lazy(cfg.id, cfg.module); m.renderWorkoutCalendarHome?.(); return m; }
-import { ensureModal, loadAndInjectModals } from './modal-manager.js';
 
 // ── 모달 및 CSV 초기화 ───────────────────────────────────────────
 async function initializeApp() {
@@ -289,143 +232,6 @@ function _bindRunningLiveEvent() {
 // ── 탭 전환 ──────────────────────────────────────────────────────
 let _currentTab = 'home';
 
-function _syncNavigationForCurrentRole() {
-  const adminOnlyMode = isAdmin();
-  const tabNav = document.getElementById('tab-nav');
-  const moreMenu = document.getElementById('more-menu');
-  const adminMenu = document.getElementById('admin-menu-items');
-  const moreBtn = tabNav?.querySelector('.tab-more-btn');
-
-  ['home', 'diet', 'workout', 'stats', 'calendar'].forEach((tabId) => {
-    const btn = tabNav?.querySelector(`.tab-btn[data-tab="${tabId}"]`);
-    if (btn) btn.style.display = adminOnlyMode ? 'none' : '';
-  });
-
-  if (moreBtn) {
-    moreBtn.style.display = '';
-    moreBtn.dataset.mode = adminOnlyMode ? 'admin-only' : 'default';
-    moreBtn.dataset.appAction = adminOnlyMode ? 'switch-tab' : 'toggle-more-menu';
-    moreBtn.dataset.tab = adminOnlyMode ? 'admin' : 'more';
-    moreBtn.innerHTML = adminOnlyMode
-      ? '<span class="tab-icon nav-icon nav-icon-admin" aria-hidden="true"></span><span class="tab-label">토마토어드민</span>'
-      : '<span class="tab-icon nav-icon nav-icon-more" aria-hidden="true"></span><span class="tab-label">더보기</span>';
-    moreBtn.onclick = null;
-    moreBtn.classList.toggle('active', _currentTab === 'admin' && adminOnlyMode);
-  }
-
-  if (adminMenu) adminMenu.style.display = isAdmin() ? '' : 'none';
-
-  if (tabNav) tabNav.style.display = '';
-  if (moreMenu && adminOnlyMode) moreMenu.style.display = 'none';
-}
-
-const APP_SHELL_ACTION_SCOPE = '#notif-center, #notif-center-backdrop, #tab-nav, #more-menu, #tab-settings-modal, #weekly-streak-grid';
-
-function _closeMoreMenu() {
-  const menu = document.getElementById('more-menu');
-  if (menu) menu.style.display = 'none';
-}
-
-function _toggleMoreMenu() {
-  const menu = document.getElementById('more-menu');
-  if (!menu) return;
-  menu.style.display = menu.style.display === 'none' ? 'flex' : 'none';
-}
-
-function _runAppShellAction(action, control, event) {
-  const tab = control?.dataset?.tab;
-  switch (action) {
-    case 'install-pwa':
-      installPWA();
-      _closeMoreMenu();
-      break;
-    case 'install-apk':
-      void requestTomatoApkInstall({ control, source: 'more-menu' });
-      _closeMoreMenu();
-      break;
-    case 'open-letter-modal':
-      _closeMoreMenu();
-      void openLetterModal();
-      break;
-    case 'toggle-notif-center':
-      _closeMoreMenu();
-      toggleNotifCenter();
-      break;
-    case 'refresh-app-update':
-      _closeMoreMenu();
-      void requestTomatoAppRefresh({ control, source: 'more-menu' });
-      break;
-    case 'logout-account':
-      _closeMoreMenu();
-      void logoutAccount();
-      break;
-    case 'mark-all-notifs-read':
-      void markAllNotifsRead();
-      break;
-    case 'close-notif-center':
-      closeNotifCenter();
-      break;
-    case 'switch-tab':
-      if (tab) void switchTab(tab);
-      break;
-    case 'open-workout-date':
-      openWorkoutTab(control.dataset.year, control.dataset.month, control.dataset.day);
-      break;
-    case 'toggle-more-menu':
-      _toggleMoreMenu();
-      break;
-    case 'switch-tab-close-more':
-      if (tab) void switchTab(tab);
-      _closeMoreMenu();
-      break;
-    case 'open-tab-settings-close-more':
-      openTabSettingsModal();
-      _closeMoreMenu();
-      break;
-    case 'close-tab-settings':
-      closeTabSettingsModal(event);
-      break;
-    case 'save-tab-settings':
-      void saveTabSettingsFromModal();
-      break;
-    default:
-      console.warn(`[app-shell] unknown action: ${action}`);
-  }
-}
-
-function _bindAppShellActions(root = document) {
-  const marker = root.documentElement || root;
-  if (!marker || marker.dataset.appShellActionsBound === '1') return;
-  marker.dataset.appShellActionsBound = '1';
-
-  root.addEventListener('click', (event) => {
-    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
-    const control = target?.closest?.('[data-app-action]');
-    if (!control || !root.contains(control)) return;
-    if (!control.matches(APP_SHELL_ACTION_SCOPE) && !control.closest(APP_SHELL_ACTION_SCOPE)) return;
-    if (control.id === 'tab-settings-modal' && event.target !== control) return;
-
-    event.preventDefault();
-    _runAppShellAction(control.dataset.appAction, control, event);
-  });
-}
-
-function _dateKeyFromParts(y, m, d) {
-  const yy = Number(y);
-  const mm = Number(m);
-  const dd = Number(d);
-  if (!Number.isFinite(yy) || !Number.isFinite(mm) || !Number.isFinite(dd)) return null;
-  return `${yy}-${String(mm + 1).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
-}
-
-function _parseWorkoutDateKey(key) {
-  const match = String(key || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return null;
-  return { y: Number(match[1]), m: Number(match[2]) - 1, d: Number(match[3]) };
-}
-
-const WORKOUT_PULL_BACK_DEADZONE_PX = 8;
-const WORKOUT_PULL_BACK_THRESHOLD_PX = 72;
 function _setWorkoutSurface() {
   const panel = document.getElementById('tab-workout');
   if (!panel) return;
@@ -439,14 +245,14 @@ async function _renderWorkoutCalendarRoute(snapshot = getWorkoutNavSnapshot(), a
 }
 
 async function openWorkoutDaySheetFromAction(key, sessionIndex = 0, options = {}) {
-  const dateKey = typeof key === 'string'
+  const targetDateKey = typeof key === 'string'
     ? key
-    : _dateKeyFromParts(key?.y, key?.m, key?.d);
-  const parsed = _parseWorkoutDateKey(dateKey);
+    : dateKey(Number(key?.y), Number(key?.m), Number(key?.d));
+  const parsed = parseDateKey(targetDateKey);
   if (!parsed) return false;
   const targetSessionIndex = Math.max(0, Math.floor(Number(sessionIndex) || 0));
   const action = options.action || 'sheet:open-external';
-  openWorkoutDaySheet(dateKey, {
+  openWorkoutDaySheet(targetDateKey, {
     sessionIndex: targetSessionIndex,
     sheetState: 'full',
     viewYear: parsed.y,
@@ -468,107 +274,6 @@ subscribeWorkoutNav((snapshot, action) => {
   if (_currentTab !== 'workout') return;
   _renderWorkoutCalendarRoute(snapshot, action).catch(e => console.warn('[app] workout route render failed:', e));
 });
-function _handleWorkoutOverlayBack() {
-  return _currentTab === 'workout' && (
-    wtHandleRunningSessionBack() === true ||
-    wtHandleExercisePickerBack() === true
-  );
-}
-
-function _isWorkoutPullBlockedTarget(target) {
-  return !!target?.closest?.('input, textarea, select, [contenteditable="true"], [data-wt-day-sheet], [data-wt-calendar-scroll-surface], .modal-backdrop.open, .modal-overlay.open');
-}
-
-function _nearestWorkoutScroller(target) {
-  const panel = document.getElementById('tab-workout');
-  let node = target instanceof Element ? target : null;
-  while (node && node !== panel && node !== document.body && node !== document.documentElement) {
-    const style = typeof window !== 'undefined' && window.getComputedStyle ? window.getComputedStyle(node) : null;
-    const overflowY = style?.overflowY || '';
-    if (node.scrollHeight > node.clientHeight + 1 && /(auto|scroll|overlay)/.test(overflowY)) return node;
-    node = node.parentElement;
-  }
-  return document.scrollingElement || document.documentElement;
-}
-
-function _workoutPageScrollTop() {
-  return Math.max(
-    0,
-    Number(document.scrollingElement?.scrollTop) || 0,
-    Number(document.documentElement?.scrollTop) || 0,
-    Number(document.body?.scrollTop) || 0,
-    Number(window.scrollY) || 0
-  );
-}
-
-function _canStartWorkoutPullBack(target) {
-  if (_currentTab !== 'workout' || _isWorkoutPullBlockedTarget(target)) return false;
-  const rootTop = _workoutPageScrollTop();
-  const scroller = _nearestWorkoutScroller(target);
-  const scrollerTop = Math.max(0, Number(scroller?.scrollTop) || 0);
-  return rootTop <= 1 && scrollerTop <= 1;
-}
-
-let _workoutPullBackGesture = null;
-let _workoutPullBackBound = false;
-function initWorkoutPullBackGesture() {
-  if (_workoutPullBackBound || typeof window === 'undefined') return;
-  _workoutPullBackBound = true;
-
-  const reset = () => { _workoutPullBackGesture = null; };
-  const onStart = (event) => {
-    if (event.touches?.length !== 1) return reset();
-    const touch = event.touches[0];
-    _workoutPullBackGesture = {
-      startX: touch.clientX,
-      startY: touch.clientY,
-      handled: false,
-      canPull: _canStartWorkoutPullBack(event.target),
-    };
-  };
-  const onMove = (event) => {
-    const gesture = _workoutPullBackGesture;
-    if (!gesture || event.touches?.length !== 1 || _currentTab !== 'workout') return;
-    const touch = event.touches[0];
-    const dx = touch.clientX - gesture.startX;
-    const dy = touch.clientY - gesture.startY;
-    if (!gesture.canPull || dy <= WORKOUT_PULL_BACK_DEADZONE_PX || Math.abs(dx) > dy * 0.75) return;
-
-    if (event.cancelable) event.preventDefault();
-    if (gesture.handled || dy < WORKOUT_PULL_BACK_THRESHOLD_PX) return;
-    gesture.handled = true;
-    _handleWorkoutOverlayBack() || handleWorkoutBack({ activeTab: _currentTab, preferHistory: true, action: 'pull:back' });
-  };
-
-  window.addEventListener('touchstart', onStart, { passive: true, capture: true });
-  window.addEventListener('touchmove', onMove, { passive: false, capture: true });
-  window.addEventListener('touchend', reset, { passive: true, capture: true });
-  window.addEventListener('touchcancel', reset, { passive: true, capture: true });
-}
-
-enableWorkoutPwaHistory({
-  getActiveTab: () => _currentTab,
-  handleOverlayBack: _handleWorkoutOverlayBack,
-});
-
-let _workoutSystemBackBound = false;
-function initWorkoutSystemBack() {
-  if (_workoutSystemBackBound || typeof window === 'undefined') return;
-  const appPlugin = window.Capacitor?.Plugins?.App;
-  if (!appPlugin || typeof appPlugin.addListener !== 'function') return;
-  _workoutSystemBackBound = true;
-  appPlugin.addListener('backButton', (event = {}) => {
-    if (_handleWorkoutOverlayBack()) return;
-    if (handleWorkoutBack({ activeTab: _currentTab, preferHistory: true })) return;
-    if (event.canGoBack && window.history?.back) window.history.back();
-  });
-  appPlugin.addListener('appStateChange', (event = {}) => {
-    if (event.isActive) wtRecoverTimers();
-  });
-}
-setTimeout(initWorkoutSystemBack, 0);
-setTimeout(initWorkoutPullBackGesture, 0);
-
 async function switchTab(tab, options = {}) {
   if (isAdmin() && tab !== 'admin') tab = 'admin';
   if (!isRegisteredTab(tab)) {
@@ -597,8 +302,8 @@ async function switchTab(tab, options = {}) {
       && Number.isFinite(Number(targetDate.m))
       && Number.isFinite(Number(targetDate.d));
     if (hasTargetDate) {
-      const key = _dateKeyFromParts(Number(targetDate.y), Number(targetDate.m), Number(targetDate.d));
-      const parsed = _parseWorkoutDateKey(key);
+      const key = dateKey(Number(targetDate.y), Number(targetDate.m), Number(targetDate.d));
+      const parsed = parseDateKey(key);
       openWorkoutDaySheet(key, {
         sessionIndex: 0,
         sheetState: 'full',
@@ -615,7 +320,7 @@ async function switchTab(tab, options = {}) {
         history: 'replace',
         notify: false,
         closeSheet: false,
-        selectedKey: _dateKeyFromParts(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate()),
+        selectedKey: dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate()),
         selectedSessionIndex: 0,
         viewYear: TODAY.getFullYear(),
         viewMonth: TODAY.getMonth(),
@@ -662,7 +367,7 @@ document.addEventListener('cooking:saved', renderAll);
 document.addEventListener('app:render-requested', renderAll);
 document.addEventListener('tomatodev:kim-mode-changed', () => {
   const visibleTabs = isAdmin()
-    ? (getRawVisibleTabs() || ['home', 'diet', 'workout', 'stats'])
+    ? (getRawVisibleTabs() || [...SHELL_TAB_ORDER])
     : [...DEFAULT_VIS_TABS];
   applyVisibleTabs(visibleTabs);
   _syncNavigationForCurrentRole();
@@ -701,78 +406,6 @@ document.addEventListener('season:changed', () => {
   void renderAll();
   scheduleSeasonDashboardWidgetSync('season-changed', 0);
 });
-async function openDashboardDestination(action) {
-  if (action === 'refresh') {
-    scheduleSeasonDashboardWidgetSync('manual-refresh', 0);
-    return;
-  }
-  if (action === 'diet') {
-    await switchTab('diet');
-    return;
-  }
-  if (action === 'season' || action === 'season-overview') {
-    await switchTab('workout');
-    const calendarModule = await _lazyRenderWorkoutCalendarHome();
-    calendarModule.openWorkoutSeasonOverview?.();
-    return;
-  }
-  if (action === 'running') {
-    await switchTab('workout');
-    wtOpenRunningSession();
-    return;
-  }
-  if (action === 'workout') await switchTab('workout');
-}
-
-function readDashboardEntry() {
-  const params = new URLSearchParams(window.location.search);
-  const entry = String(params.get('entry') || '');
-  return ['diet', 'season', 'season-overview', 'running'].includes(entry) ? entry : '';
-}
-
-function clearDashboardEntry() {
-  const url = new URL(window.location.href);
-  url.searchParams.delete('entry');
-  window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
-}
-
-let _pendingDashboardEntry = readDashboardEntry();
-function openPendingDashboardEntry() {
-  if (!_pendingDashboardEntry || !(getCurrentUser() || loadSavedUser())) return;
-  const entry = _pendingDashboardEntry;
-  _pendingDashboardEntry = '';
-  clearDashboardEntry();
-  void openDashboardDestination(entry);
-}
-
-document.addEventListener('widget:action', (event) => {
-  void openDashboardDestination(String(event.detail?.action || ''));
-});
-document.addEventListener('app:start-user-session', (event) => {
-  Promise.resolve(startTomatoUserSession())
-    .then((result) => {
-      event.detail?.resolve?.(result);
-      if (result) openPendingDashboardEntry();
-    })
-    .catch((error) => {
-      console.error('[app] user session start failed:', error);
-      event.detail?.resolve?.(false);
-    });
-});
-
-// ── 운동탭에서 날짜 지정 진입 ────────────────────────────────────
-function openWorkoutTab(y, m, d) {
-  const key = _dateKeyFromParts(y, m, d);
-  if (key) {
-    openWorkoutDaySheetFromAction(key, 0, {
-      history: 'replace',
-      action: 'sheet:open-from-tab-date',
-    });
-    return;
-  }
-  switchTab('workout');
-}
-
 // ── 탭 드래그/스와이프/가시성은 navigation.js로 분리됨 ──────────
 // ── 목표 및 퀨스트 모달 함수는 app-modal-*.js에서 import됨 ───────────────
 
@@ -889,20 +522,10 @@ async function _initializeAppSession() {
     if (isAdminGuest()) {
       visTabs = DEFAULT_VIS_TABS;
     } else if (isAdmin()) {
-      visTabs = getRawVisibleTabs() || ['home','diet','workout','stats'];
+      visTabs = getRawVisibleTabs() || [...SHELL_TAB_ORDER];
     } else {
       visTabs = getRawVisibleTabs() || DEFAULT_VIS_TABS;
     }
-    // diet 탭이 기존 설정에 없으면 추가 + 순서 강제 (홈→식단→운동→나머지)
-    if (!visTabs.includes('diet')) {
-      visTabs.push('diet');
-    }
-    // 순서 강제: 원하는 순서대로 정렬
-    const TAB_ORDER = ['home','diet','workout','stats'];
-    visTabs.sort((a, b) => {
-      const ai = TAB_ORDER.indexOf(a), bi = TAB_ORDER.indexOf(b);
-      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-    });
     applyVisibleTabs(visTabs);
     _syncNavigationForCurrentRole();
 
@@ -983,6 +606,14 @@ async function _initializeAppSession() {
 
 _bindLifeZoneNpcQuestEvent();
 _bindRunningLiveEvent();
+configureWorkoutGestures({ getCurrentTab: () => _currentTab });
+configureDeepLinkEntry({
+  switchTab,
+  renderWorkoutCalendarHome: _lazyRenderWorkoutCalendarHome,
+  startTomatoUserSession,
+  openWorkoutDaySheetFromAction,
+});
+configureShellActions({ getCurrentTab: () => _currentTab, switchTab });
 _bindAppShellActions();
 configureNavigation({ getCurrentTab: () => _currentTab, switchTab });
 init();

@@ -8,7 +8,7 @@ import {
   sendChatMessage,
   subscribeChatMessages,
 } from '../data.js';
-import { showToast } from './utils.js';
+import { showToast } from '../ui/toast.js';
 import { confirmSimple } from '../utils/confirm-modal.js';
 
 let _unsubscribe = null;

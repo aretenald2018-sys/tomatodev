@@ -11,7 +11,8 @@ import { TODAY, getCurrentUser, getMyFriends, getAccountList,
 import { isExerciseDaySuccess } from '../calc.js';
 import { hasPositiveDayNutrient } from '../diet/day-nutrition.js';
 import { mealDisplayText } from '../ai/meal-artifact-filter.js';
-import { resolveNickname, showToast, haptic, formatTimeAgo, escapeHtml } from './utils.js';
+import { resolveNickname, haptic, formatTimeAgo, escapeHtml } from './utils.js';
+import { showToast } from '../ui/toast.js';
 import { updateHeroSocialProof } from './hero.js';
 import { createSocialRenderScheduler } from './social-render-scheduler.js';
 import { runOptimisticSocialAction } from './social-action.js';

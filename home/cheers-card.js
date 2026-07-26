@@ -30,7 +30,8 @@ import {
   getExList, getAllMuscles,
 } from '../data.js';
 import { CELEBRATION_DETECTORS } from '../calc.js';
-import { resolveNickname, showToast } from './utils.js';
+import { resolveNickname } from './utils.js';
+import { showToast } from '../ui/toast.js';
 import { confirmAction } from '../utils/confirm-modal.js';
 import { openFriendProfile } from './friend-profile.js';
 

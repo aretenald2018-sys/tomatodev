@@ -116,7 +116,7 @@ function _now() {
 
 async function _showToast(message, duration = 1800, type = 'info') {
   try {
-    const mod = await import('../home/utils.js');
+    const mod = await import('../ui/toast.js');
     mod.showToast?.(message, duration, type);
   } catch {}
 }

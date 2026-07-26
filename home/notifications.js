@@ -6,7 +6,8 @@ import { getCurrentUser, getMyNotifications, getAccountList,
          getPendingRequests, acceptFriendRequest, removeFriend,
          markNotificationRead, deleteNotification, recordAction,
          approveGuildJoinRequest, findCommentProfileOwner }  from '../data.js';
-import { resolveNickname, formatTimeAgo, showToast, haptic, escapeHtml } from './utils.js';
+import { resolveNickname, formatTimeAgo, haptic, escapeHtml } from './utils.js';
+import { showToast } from '../ui/toast.js';
 import { openFriendProfile, openMyGuestbook, sendFriendFromIntro } from './friend-profile.js';
 import { openPatchnote } from '../modals/patchnote-modal.js';
 

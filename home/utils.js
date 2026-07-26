@@ -5,7 +5,6 @@ export { escapeHtml } from '../utils/escape-html.js';
 
 import { dateKey } from '../data.js';
 import { getAdminId, getAdminGuestId } from '../data.js';
-export { showToast, showCenterToast } from '../ui/toast.js';
 
 // ── 날짜 유틸 ────────────────────────────────────────────────────
 export function getMonday(date) {

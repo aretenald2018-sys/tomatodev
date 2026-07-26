@@ -3,7 +3,7 @@
 // ================================================================
 
 import { TODAY, dateKey, toggleLike, saveCheerLastSeen } from '../data.js';
-import { showToast } from './utils.js';
+import { showToast } from '../ui/toast.js';
 import { openFriendProfile } from './friend-profile.js';
 
 function _uniqueCheers(cheers) {

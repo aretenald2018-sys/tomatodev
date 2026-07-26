@@ -159,7 +159,7 @@ export async function transferLeadership(guildName, targetId, targetName) {
   if (!_ok) return;
   const { transferGuildLeadership } = await import('../data.js');
   const ok = await transferGuildLeadership(guildName, targetId);
-  const { showToast: _st } = await import('../home/utils.js');
+  const { showToast: _st } = await import('../ui/toast.js');
   if (ok) {
     _guildLeaderMap[guildName] = targetId;
     _st(`${targetName}님에게 길드장을 위임했어요`, 3000, 'success');
@@ -179,7 +179,7 @@ export async function kickMember(guildName, targetId, targetName) {
   if (!_ok2) return;
   const { kickGuildMember } = await import('../data.js');
   const ok = await kickGuildMember(guildName, targetId);
-  const { showToast: _st } = await import('../home/utils.js');
+  const { showToast: _st } = await import('../ui/toast.js');
   if (ok) {
     _st(`${targetName}님을 내보냈어요`, 3000, 'success');
     // 멤버 목록 새로고침
@@ -213,7 +213,7 @@ export async function leaveGuildFromMembers(guildName) {
     _guildModalPrimary = first ? first.name : null;
   }
   _renderGuildModalList();
-  const { showToast: _st } = await import('../home/utils.js');
+  const { showToast: _st } = await import('../ui/toast.js');
   _st(`${guildName}에서 탈퇴했어요`, 3000, 'success');
 }
 
@@ -256,7 +256,7 @@ export async function transferAndLeave(guildName, newLeaderId, newLeaderName) {
   const { transferGuildLeadership } = await import('../data.js');
   const ok = await transferGuildLeadership(guildName, newLeaderId);
   if (!ok) {
-    const { showToast: _st } = await import('../home/utils.js');
+    const { showToast: _st } = await import('../ui/toast.js');
     _st('위임에 실패했어요', 3000, 'error');
     return;
   }
@@ -288,7 +288,7 @@ export async function selectGuildIcon(guildName, icon) {
   const { updateGuildIcon } = await import('../data.js');
   await updateGuildIcon(guildName, icon);
   _renderGuildModalList();
-  const { showToast: _st } = await import('../home/utils.js');
+  const { showToast: _st } = await import('../ui/toast.js');
   _st('아이콘이 변경되었어요', 2000, 'success');
 }
 
@@ -296,7 +296,7 @@ export async function uploadGuildPhoto(guildName, input) {
   const file = input.files?.[0];
   if (!file) return;
   if (file.size > 500 * 1024) {
-    const { showToast: _st } = await import('../home/utils.js');
+    const { showToast: _st } = await import('../ui/toast.js');
     _st('사진이 너무 커요. 500KB 이하로 올려주세요.', 3000, 'error');
     return;
   }
@@ -317,7 +317,7 @@ export async function uploadGuildPhoto(guildName, input) {
       const { updateGuildIcon } = await import('../data.js');
       await updateGuildIcon(guildName, dataUrl);
       _renderGuildModalList();
-      const { showToast: _st } = await import('../home/utils.js');
+      const { showToast: _st } = await import('../ui/toast.js');
       _st('사진이 설정되었어요', 2000, 'success');
     };
     img.src = e.target.result;
@@ -341,7 +341,7 @@ export async function removeGuildFromModal(name) {
   if (!isPending) {
     // 정식 멤버 → 탈퇴
     if (_isMyGuildLeader(name)) {
-      const { showToast: _st } = await import('../home/utils.js');
+      const { showToast: _st } = await import('../ui/toast.js');
       _st('길드장은 탈퇴 전에 다른 멤버에게 길드장을 위임해주세요.', 3000, 'warning');
       return;
     }
@@ -361,7 +361,7 @@ export async function removeGuildFromModal(name) {
       setCurrentUser(user);
     }
     if (user) await withdrawGuildJoinRequest(name, user.id);
-    const { showToast: _st } = await import('../home/utils.js');
+    const { showToast: _st } = await import('../ui/toast.js');
     _st(`${name} 가입신청을 철회했어요`, 2500, 'info');
   }
 
@@ -407,7 +407,7 @@ export async function addGuildFromModal() {
   if (!name || _guildModalGuilds.some(g => g.name === name)) { if (input) input.value = ''; return; }
   const existing = (guildPickerState.allGuildsCache || []).find(g => g.name === name);
   if (!existing) {
-    const { showToast: _st } = await import('../home/utils.js');
+    const { showToast: _st } = await import('../ui/toast.js');
     _st('검색 결과에 없는 길드는 아래에서 새로 만들어주세요.', 2600, 'info');
     return;
   }
@@ -423,14 +423,14 @@ export async function createGuildFromModal() {
   const name = (input?.value || '').trim();
   if (!name) return;
   if (_guildModalGuilds.some(g => g.name === name)) {
-    const { showToast: _st } = await import('../home/utils.js');
+    const { showToast: _st } = await import('../ui/toast.js');
     _st('이미 목록에 담긴 길드예요.', 2200, 'info');
     if (input) input.value = '';
     return;
   }
   const existing = (guildPickerState.allGuildsCache || []).find(g => g.name === name);
   if (existing) {
-    const { showToast: _st } = await import('../home/utils.js');
+    const { showToast: _st } = await import('../ui/toast.js');
     _st('이미 있는 길드예요. 위에서 검색해서 추가해 주세요.', 2600, 'warning');
     if (input) input.value = '';
     return;
@@ -508,7 +508,7 @@ export async function syncGuildModalState(options = {}) {
   }
   if (closeAfter) closeGuildModal();
   if (successMessage) {
-    const { showToast: _st } = await import('../home/utils.js');
+    const { showToast: _st } = await import('../ui/toast.js');
     _st(successMessage, 2600, successType);
   }
 }

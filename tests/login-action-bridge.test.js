@@ -20,6 +20,7 @@ const loginActionsJs = read('auth/login-actions.js');
 const loginScreenJs = read('auth/login-screen.js');
 const signupJs = read('auth/signup.js');
 const appJs = read('app.js');
+const deepLinkEntryJs = read('app/deep-link-entry.js');
 const swJs = read('sw.js') + read('runtime-assets.js');
 const welcomeBackJs = read('home/welcome-back.js');
 
@@ -69,7 +70,7 @@ test('login restore skips guild onboarding when a running draft can resume', () 
 test('APK login reboots the in-page user session without a WebView reload', () => {
   assert.match(loginScreenJs, /function _continueToAppAfterLogin\(\)/);
   assert.match(loginScreenJs, /new CustomEvent\('app:start-user-session', \{ detail: \{ resolve \} \}\)/);
-  assert.match(appJs, /document\.addEventListener\('app:start-user-session'/);
+  assert.match(deepLinkEntryJs, /document\.addEventListener\('app:start-user-session'/);
   assert.match(loginScreenJs, /function _runDeferredLoginMaintenance\(\)/);
   assert.match(loginScreenJs, /LOGIN_SESSION_RESTORE_TIMEOUT_MS = 1800/);
   assert.match(loginScreenJs, /restoreUserFromBackup\(\),[\s\S]*LOGIN_SESSION_RESTORE_TIMEOUT_MS/);

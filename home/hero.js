@@ -9,7 +9,8 @@ import { TODAY, calcStreaks, countLocalWeeklyActiveDays,
          getMyFriends, getAccountList, getCurrentUser,
          getFriendWorkout, getFriendData, dateKey, isAdmin, _isMySocialId, isActiveWorkoutDayData,
          getAllDateKeys, getDay, getHeroMessage, markHeroMessageRead }  from '../data.js';
-import { setText, showToast, haptic, resolveNickname } from './utils.js';
+import { setText, haptic, resolveNickname } from './utils.js';
+import { showToast } from '../ui/toast.js';
 import { confirmSimple } from '../utils/confirm-modal.js';
 import { openFriendProfile } from './friend-profile.js';
 import { openStreakMilestone } from '../modals/streak-milestone-modal.js';
@@ -422,4 +423,3 @@ export const __leaderboardTest__ = {
   _renderLeaderboardHtml,
   LEADERBOARD_DISPLAY_LIMIT,
 };
-

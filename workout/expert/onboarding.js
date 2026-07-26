@@ -1252,7 +1252,7 @@ export async function expertOnbRemoveItem(idx) {
   if (prevDbId) { try { await deleteExercise(prevDbId); } catch (e) { console.warn('[remove-item] delete fail:', e?.message || e); } }
   _openReviewScreen();
   try {
-    const { showToast } = await import('../../home/utils.js');
+    const { showToast } = await import('../../ui/toast.js');
     showToast(`'${removed.name}' 제거됨`, 3000, 'success', {
       action: '실행 취소',
       onAction: async () => {

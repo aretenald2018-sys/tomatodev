@@ -13,7 +13,7 @@ import { escapeHtml as _esc } from '../utils/escape-html.js';
 // ================================================================
 
 import { applyPortionScale, excludeItems, runAIEstimate } from '../workout/ai-estimate.js';
-import { showToast } from '../home/utils.js';
+import { showToast } from '../ui/toast.js';
 import { removeDietPhoto } from '../diet/photo-store.js';
 
 // 상태 보관 — meal별

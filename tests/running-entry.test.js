@@ -11,6 +11,7 @@ const activityFormsJs = await readFile(new URL('../workout/activity-forms.js', i
 const workoutIndexJs = await readFile(new URL('../workout/index.js', import.meta.url), 'utf8');
 const saveJs = await readFile(new URL('../workout/save.js', import.meta.url), 'utf8');
 const appJs = await readFile(new URL('../app.js', import.meta.url), 'utf8');
+const workoutGesturesJs = await readFile(new URL('../app/workout-gestures.js', import.meta.url), 'utf8');
 const loadJs = await readFile(new URL('../workout/load.js', import.meta.url), 'utf8');
 const sessionsJs = await readFile(new URL('../workout/sessions.js', import.meta.url), 'utf8');
 const styleCss = readAppCssSync();
@@ -216,7 +217,7 @@ test('running session is wired into app init, save, load, and sessions', () => {
   assert.match(workoutIndexJs, /export \{ initRunningSession, wtMountRunningSession, wtOpenRunningSession/);
   assert.match(workoutIndexJs, /import \{ loadWorkoutDate, changeWorkoutDate, goToTodayWorkout \}\s+from '\.\/load\.js';/);
   assert.match(workoutIndexJs, /configureWearWorkoutBridge\(\{[\s\S]*loadWorkoutDate,[\s\S]*saveWorkoutDay/);
-  assert.match(appJs, /wtHandleRunningSessionBack/);
+  assert.match(workoutGesturesJs, /wtHandleRunningSessionBack/);
   assert.doesNotMatch(saveJs, /wt-run-distance|wt-run-duration-min|wt-run-duration-sec|wt-run-memo/);
   assert.match(saveJs, /runRoute:\s*Array\.isArray\(run\.route\) \? run\.route : \[\]/);
   assert.match(saveJs, /runPlaceSummary:\s*run\.placeSummary \|\| null/);
@@ -230,7 +231,7 @@ test('running session is wired into app init, save, load, and sessions', () => {
 test('running summary save opens the saved workout day detail sheet', () => {
   assert.match(appJs, /openWorkoutDaySheet,/);
   assert.match(appJs, /async function openWorkoutDaySheetFromAction/);
-  assert.match(appJs, /openWorkoutDaySheet\(dateKey,[\s\S]*sheetState:\s*'full'/);
+  assert.match(appJs, /openWorkoutDaySheet\(targetDateKey,[\s\S]*sheetState:\s*'full'/);
   assert.match(runningSessionJs, /_ensureRunningWorkoutDate\(draft\.dateKey, \{ allowCurrent: false \}\)/);
   assert.match(runningSessionJs, /const targetSessionIndex = _workoutSessionIndexFromState\(\)/);
   assert.match(runningSessionJs, /const saved = await saveWorkoutDay\(\{ silent: true \}\)/);

@@ -16,7 +16,8 @@ import { TODAY, getCurrentUser, getMyFriends, getAccountList,
 import { CONFIG } from '../config.js';
 import { mealDisplayText } from '../ai/meal-artifact-filter.js';
 import { runOptimisticSocialAction } from './social-action.js';
-import { resolveNickname, showToast, haptic, formatTimeAgo, escapeHtml } from './utils.js';
+import { resolveNickname, haptic, formatTimeAgo, escapeHtml } from './utils.js';
+import { showToast } from '../ui/toast.js';
 import { createSocialRenderScheduler } from './social-render-scheduler.js';
 import { openPhotoLightbox } from '../utils/photo-lightbox.js';
 

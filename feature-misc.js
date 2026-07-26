@@ -4,8 +4,9 @@
 
 import { getSectionTitle, saveSectionTitle,
          getMiniMemoItems, saveMiniMemoItems } from './data.js';
-import { renderHome, showToast } from './home/index.js';
+import { renderHome } from './home/index.js';
 import { closeModal, openModal } from './app/overlay-stack.js';
+import { showToast } from './ui/toast.js';
 
 // ── 구역 제목 편집 ────────────────────────────────────────────────
 export function editSectionTitle(key) {

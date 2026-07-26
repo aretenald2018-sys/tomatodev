@@ -4,9 +4,10 @@ import { readFile } from 'node:fs/promises';
 import { TAB_IDS, getTabDefinition, isRegisteredTab } from '../app/tab-registry.js';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
-const [indexHtml, appJs, actionRouter, staticActions, modalManager, swJs] = await Promise.all([
+const [indexHtml, appJs, shellActions, actionRouter, staticActions, modalManager, swJs] = await Promise.all([
   read('index.html'),
   read('app.js'),
+  read('app/shell-actions.js'),
   read('utils/action-router.js'),
   read('app/static-actions.js'),
   read('modal-manager.js'),
@@ -49,7 +50,7 @@ test('action router handles click, change, keydown, and double-click with async 
 
 test('app shell exposes no legacy business compatibility globals', () => {
   assert.doesNotMatch(appJs, /installAppCompatibilityBridge|app\/compatibility-bridge/);
-  assert.doesNotMatch(appJs, /window\.(?:renderAll|switchTab|openGoalModal|openQuestModal|wtOpenWorkoutDaySheet)\s*=/);
+  assert.doesNotMatch(appJs + shellActions, /window\.(?:renderAll|switchTab|openGoalModal|openQuestModal|wtOpenWorkoutDaySheet)\s*=/);
 });
 
 test('modal manager can inject one requested modal without replacing the container', () => {
@@ -64,6 +65,10 @@ test('app shell modules are copied and precached', () => {
     './app/lazy-loader.js',
     './app/overlay-stack.js',
     './app/static-actions.js',
+    './app/owner-blocked-overlay.js',
+    './app/shell-actions.js',
+    './app/workout-gestures.js',
+    './app/deep-link-entry.js',
   ]) {
     assert.ok(swJs.includes(`'${asset}'`), `${asset} must be precached`);
   }

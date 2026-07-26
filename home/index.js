@@ -5,7 +5,7 @@
 import { shouldShow, isAdmin, getCheerLastSeen, getUnseenCheers } from '../data.js';
 
 // 서브 모듈 import
-import { showToast, showConfetti }                           from './utils.js';
+import { showConfetti }                                      from './utils.js';
 import { renderHero, renderLeaderboard, setHeroDeps }        from './hero.js';
 import { renderWeeklyStreak }                                from './weekly-streak.js';
 import { renderUnitGoal, setUnitGoalDeps }                   from './unit-goal.js';
@@ -119,4 +119,4 @@ function _hasPriorityOverlay() {
 }
 
 // ── Export ────────────────────────────────────────────────────────
-export { refreshNotifCenter, showToast };
+export { refreshNotifCenter };

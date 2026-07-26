@@ -18,7 +18,8 @@ import { calcTomatoCycle, evaluateCycleResult, getQuarterKey,
 import { checkStreakMilestone } from './hero.js';
 import { renderCharacterSVG } from './character.js';
 import { hydrateLifeZoneCard, renderLifeZoneCard, renderLifeZoneSummary } from './life-zone.js';
-import { showToast, haptic, resolveNickname, showConfetti } from './utils.js';
+import { haptic, resolveNickname, showConfetti } from './utils.js';
+import { showToast } from '../ui/toast.js';
 import { confirmSimple } from '../utils/confirm-modal.js';
 import { openCheckinModal } from '../feature-checkin.js';
 import { openTomatoGiftModal } from './friend-profile.js';
