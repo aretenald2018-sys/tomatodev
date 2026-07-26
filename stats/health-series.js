@@ -6,7 +6,7 @@ import { dayKcal as _dayKcal, weightOnOrBefore as _weightOnOrBefore } from './da
 import { formatNumber as _fmt, maybeNumber as _maybeNum } from './format.js';
 import { lastRecordedValue, normalizeHealthValues } from './selectors.js';
 
-const HEALTH_CHART_SERIES = {
+export const HEALTH_CHART_SERIES = {
   weight: { label: '체중', unit: 'kg', color: '#ef6a6a', background: 'rgba(239,106,106,0.08)', order: 1 },
   bodyFat: { label: '체지방률', unit: '%', color: '#10b981', background: 'rgba(16,185,129,0.08)', order: 2 },
   intake: { label: '섭취칼로리', unit: 'kcal', color: '#6366f1', background: 'rgba(99,102,241,0.10)', order: 3 },

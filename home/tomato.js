@@ -880,7 +880,7 @@ export function renderTomatoCard() {
     remaining,
     kcalPct,
     weightSummary,
-    onDietClick: () => switchTab('diet'),
+    onDietClick: () => document.dispatchEvent(new CustomEvent('app:switch-tab', { detail: { tab: 'diet' } })),
     onWeightClick: () => openCheckinModal()
   });
   homeHero.after(lifeZoneCard);
