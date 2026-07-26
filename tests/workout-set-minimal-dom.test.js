@@ -5,8 +5,20 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
+import { extractFunctionSource } from './helpers/source-function.js';
 
 const calendarJs = readFileSync(new URL('../render-calendar.js', import.meta.url), 'utf8');
+const calendarFormatJs = readFileSync(new URL('../calendar/format.js', import.meta.url), 'utf8');
+const calendarDetailTemplateJs = readFileSync(new URL('../calendar/detail-template.js', import.meta.url), 'utf8');
+const calendarSheetStateJs = readFileSync(new URL('../calendar/sheet-state.js', import.meta.url), 'utf8');
+const calendarSetKeyboardJs = readFileSync(new URL('../calendar/set-keyboard.js', import.meta.url), 'utf8');
+const calendarSources = [
+  calendarJs,
+  calendarFormatJs,
+  calendarDetailTemplateJs,
+  calendarSheetStateJs,
+  calendarSetKeyboardJs,
+];
 const setPresentationJs = readFileSync(new URL('../workout/set-presentation.js', import.meta.url), 'utf8');
 const styleCss = readAppCssSync();
 const testArtifactRoot = process.env.TOMATO_TEST_ARTIFACT_DIR
@@ -15,26 +27,6 @@ const testArtifactRoot = process.env.TOMATO_TEST_ARTIFACT_DIR
 const mobileEvidenceDir = path.join(testArtifactRoot, 'workout-set-mobile-interactions');
 const mobileEvidenceJson = path.join(mobileEvidenceDir, 'mobile-set-row-e2e.json');
 const mobileEvidenceScreenshot = path.join(mobileEvidenceDir, 'mobile-set-row-after.png');
-
-function extractFunctionSource(source, name) {
-  const asyncStart = source.indexOf(`async function ${name}`);
-  const normalStart = source.indexOf(`function ${name}`);
-  const start = asyncStart >= 0 ? asyncStart : normalStart;
-  assert.ok(start >= 0, `${name} should exist`);
-  const signatureEnd = source.indexOf(') {', start);
-  const braceStart = signatureEnd >= 0 ? signatureEnd + 2 : source.indexOf('{', start);
-  assert.ok(braceStart > start, `${name} body should start`);
-  let depth = 0;
-  for (let i = braceStart; i < source.length; i += 1) {
-    const char = source[i];
-    if (char === '{') depth += 1;
-    if (char === '}') {
-      depth -= 1;
-      if (depth === 0) return source.slice(start, i + 1);
-    }
-  }
-  throw new Error(`${name} body should end`);
-}
 
 function extractConstArraySource(source, name) {
   const start = source.indexOf(`const ${name} = [`);
@@ -111,8 +103,8 @@ function buildHarnessScript() {
   ];
   const sourceBundle = [
     setPresentationJs.replace(/^export /gmu, ''),
-    extractConstArraySource(calendarJs, 'WORKOUT_SET_TYPE_OPTIONS'),
-    ...functionNames.map(name => extractFunctionSource(calendarJs, name)),
+    extractConstArraySource(calendarDetailTemplateJs, 'WORKOUT_SET_TYPE_OPTIONS'),
+    ...functionNames.map(name => extractFunctionSource(calendarSources, name)),
   ].join('\n\n');
 
   return `
@@ -123,9 +115,15 @@ function buildHarnessScript() {
     let _workoutHomeSheetState = 'bar';
     const _workoutOpenSetTypeMenus = new Set();
     const _workoutExpandedSetEditors = new Set();
-    let _workoutInlineSetEditor = null;
-    let _workoutSetKeyboardInput = null;
-    let _workoutSetKeyboardDomLocked = false;
+    const workoutDetailState = { editingCardId: null, inlineSetEditor: null };
+    const workoutSetKeyboardState = { input: null, domLocked: false };
+    const workoutSetKeyboardRuntime = {
+      getSelectedKey: () => _workoutHomeSelectedKey,
+      clearInputOnFocus: input => _clearWorkoutSetInputOnFocus(input),
+      removeExerciseSet: (...args) => _removeWorkoutExerciseSetFromSheet(...args),
+      setWorkoutSheetNumber: (...args) => _setWorkoutSheetNumber(...args),
+      updateExerciseSet: (...args) => _updateWorkoutExerciseSetFromSheet(...args),
+    };
     window.__renderCalls = 0;
     window.__syncCalls = [];
     window.__restoreCalls = [];
@@ -211,7 +209,7 @@ function buildHarnessScript() {
       };
     }
     function renderWorkoutCalendarHome() {
-      if (_workoutSetKeyboardDomLocked && _workoutSetKeyboardElement()?.classList.contains('is-open')) return;
+      if (workoutSetKeyboardState.domLocked && _workoutSetKeyboardElement()?.classList.contains('is-open')) return;
       window.__renderCalls += 1;
       document.body.innerHTML = '<main id="workout-calendar-root"><section data-wt-day-sheet><div class="wt-day-sheet-scroll"><div data-wt-day-exercise-carousel-track>'
         + _renderWorkoutExerciseDetailCard('2026-07-04', 0, _rowFromEntry(), 0)

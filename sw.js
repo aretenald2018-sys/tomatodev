@@ -2,7 +2,7 @@
 // Cache names are deliberately owned by this app because TomatoDev and the
 // production app currently share the github.io origin.
 const CACHE_PREFIX = 'tomatodev-';
-const CACHE_VERSION = 'tomatodev-v20260726z5-split-stats-models';
+const CACHE_VERSION = 'tomatodev-v20260726z6-split-calendar-runtime';
 const RUNTIME_CACHE = 'tomatodev-runtime';
 importScripts('./runtime-assets.js');
 const STATIC_ASSETS = self.TOMATO_STATIC_ASSETS;

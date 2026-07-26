@@ -1,23 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { extractFunctionSource } from './helpers/source-function.js';
 
 const calendarJs = readFileSync(new URL('../render-calendar.js', import.meta.url), 'utf8');
-
-function extractFunctionSource(source, name) {
-  const start = source.indexOf(`function ${name}`);
-  assert.ok(start >= 0, `${name} should exist`);
-  const braceStart = source.indexOf(') {', start) + 2;
-  let depth = 0;
-  for (let i = braceStart; i < source.length; i += 1) {
-    if (source[i] === '{') depth += 1;
-    if (source[i] === '}') {
-      depth -= 1;
-      if (depth === 0) return source.slice(start, i + 1);
-    }
-  }
-  throw new Error(`${name} body should end`);
-}
+const calendarExportTextJs = readFileSync(new URL('../calendar/export-text.js', import.meta.url), 'utf8');
+const calendarSources = [calendarJs, calendarExportTextJs];
 
 // 추출 텍스트 조립은 render-calendar의 데이터 계층에 묶여 있지 않은 순수 로직이다.
 // 원본 소스를 그대로 떼어와 스텁 위에서 실행한다.
@@ -42,8 +30,8 @@ function buildExportApi({ dayBlocks = {} } = {}) {
     function getDietPlan() { return null; }
     function _workoutDayExportBlocks(key) { return dayBlocks[key] || []; }
 
-    ${extractFunctionSource(calendarJs, '_weekKeysFor')}
-    ${extractFunctionSource(calendarJs, '_buildWorkoutRecordsExport')}
+    ${extractFunctionSource(calendarSources, '_weekKeysFor')}
+    ${extractFunctionSource(calendarSources, '_buildWorkoutRecordsExport')}
 
     return { _weekKeysFor, _buildWorkoutRecordsExport };
   `);
@@ -105,8 +93,8 @@ test('export returns nothing when the range has no records', () => {
 });
 
 test('export writes to the clipboard rather than the share sheet', () => {
-  const exportFn = extractFunctionSource(calendarJs, '_exportWorkoutRecords');
-  const copyFn = extractFunctionSource(calendarJs, '_copyTextToClipboard');
+  const exportFn = extractFunctionSource(calendarSources, '_exportWorkoutRecords');
+  const copyFn = extractFunctionSource(calendarSources, '_copyTextToClipboard');
   assert.match(exportFn, /_copyTextToClipboard\(payload\.text\)/);
   assert.doesNotMatch(exportFn, /navigator\.share|_shareOrCopyText/);
   assert.match(copyFn, /clipboard\?\.writeText/);
