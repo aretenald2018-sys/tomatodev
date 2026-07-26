@@ -2,15 +2,16 @@
 // home/tomato.js — 토마토 사이클, 히어로, 바스켓, 통합 카드
 // ================================================================
 
-import { TODAY, getDiet, getDietPlan, calcDietMetrics, getBodyCheckins,
+import { TODAY, getDiet, getDietPlan, getBodyCheckins,
          getExercises, calcStreaks, getDay, getAllDateKeys,
-         getUnitGoalStart, rememberUnitGoalStartInMemory, getDayTargetKcal,
+         getUnitGoalStart, rememberUnitGoalStartInMemory,
          getTomatoState, rememberTomatoStateInMemory, rememberTomatoCycleInMemory,
          getTomatoCycles, dateKey,
          getStreakFreezes, useStreakFreeze,
          getMyFriends, getAccountList, trackEvent,
          daysSinceLastCheckin, hasDietRecord }  from '../data.js';
 import { calcTomatoCycle, evaluateCycleResult, getQuarterKey,
+         calcDietMetrics,
          isDietDaySuccess, isExerciseDaySuccess,
          streakToCharacterMood,
          getDayTargetKcal as calcDayTarget }  from '../calc.js';
