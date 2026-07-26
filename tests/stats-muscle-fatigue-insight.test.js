@@ -26,6 +26,8 @@ function sliceByFirstBrace(source, startToken) {
 
 test('muscle fatigue classifies underactive groups as blue action candidates', () => {
   const build = sliceByFirstBrace(fatigueModelJs, 'export function _buildMuscleFatigue');
+  assert.match(fatigueModelJs, /export const LANDMARKS = \{/);
+  assert.match(statsJs, /import \{[\s\S]*?LANDMARKS,[\s\S]*?\} from '\.\/stats\/fatigue-model\.js'/);
   assert.match(fatigueModelJs, /function _fatigueBlue/);
   assert.match(fatigueModelJs, /function _fatigueStatus/);
   assert.match(build, /group\.tone = status\.tone/);

@@ -51,6 +51,7 @@ import {
 } from './stats/format.js';
 import { buildStatsRawExport } from './stats/raw-export.js';
 import {
+  LANDMARKS,
   MAJOR_LABELS,
   _buildMuscleFatigue,
   _entryMajor,

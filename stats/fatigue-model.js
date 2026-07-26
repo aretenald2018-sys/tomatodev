@@ -7,7 +7,7 @@ import { statsAnalysisRange as _statsAnalysisRange } from './analysis-range.js';
 import { clamp as _clamp } from './format.js';
 
 export const MAJOR_LABELS = { chest:'가슴', back:'등', lower:'하체', shoulder:'어깨', bicep:'이두', tricep:'삼두', abs:'복근', core:'복근' };
-const LANDMARKS = {
+export const LANDMARKS = {
   chest: { label:'가슴', low:8, good:14, high:22 },
   back: { label:'등', low:10, good:16, high:25 },
   lower: { label:'하체', low:8, good:14, high:20 },
