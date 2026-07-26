@@ -43,6 +43,7 @@ export const STYLE_ENTRY_SOURCES = Object.freeze([
   'styles/features/workout-flow.css',
   'styles/features/diet-tab.css',
   'styles/features/nutrition-item-modal.css',
+  'styles/features/diet-premium-report.css',
   'styles/features/home-life-zone.css',
   'styles/features/shared-feedback.css',
   'styles/features/social-home.css',
