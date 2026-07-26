@@ -1,10 +1,10 @@
 {
   "app": "tomatodev",
-  "commit": "f1bf101c7cbf324569fddabbc8571675c0e1f887",
-  "shortCommit": "f1bf101c7cbf",
+  "commit": "971143946fe56bd5a4ce9d7de03c594dfaf37dd1",
+  "shortCommit": "971143946fe5",
   "branch": "codex/tomatodev-ssot-refactor",
-  "deployedAt": "2026-07-26T13:40:20.035Z",
-  "cacheVersion": "tomatodev-v20260726z9-css-ownership",
+  "deployedAt": "2026-07-26T13:40:58.653Z",
+  "cacheVersion": "tomatodev-v20260726z10-nutrition-css",
   "runId": null,
   "runAttempt": null
 }
