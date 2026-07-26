@@ -49,6 +49,7 @@ test('runtime saveDay calls use merge mode explicitly', () => {
     'render-calendar.js',
     'workout/save.js',
     'workout/expert/max.js',
+    'workout/running-record-import.js',
   ];
 
   for (const file of files) {

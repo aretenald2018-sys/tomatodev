@@ -6,18 +6,26 @@ Tomato Farm is an unbundled ES-module application. The root is the source tree; 
 
 ```text
 index.html / app.js
-  -> app/                 shell, tab registry, lazy loading, overlay/action routing
-  -> home/                home read models, life-zone, social UI
-  -> workout/             workout, running, Wear, program domains
+  -> app/                 shell actions, tabs, deep links, gestures, overlays, lazy loading
+  -> auth/                login screen/actions and signup flows
+  -> home/                home read models, life-zone, and social cards
+  -> social/              guild modal and picker controllers
+  -> workout/             workout, running, Wear, program, and persistence domains
   -> diet/                canonical meal and nutrition models
-  -> calendar/ + stats/   read models and selectors
+  -> calendar/            day/session models, sheet state, formatting, and keyboard policy
+  -> stats/               selectors, aggregates, series, summaries, fatigue, and exports
+  -> calc/                pure workout, volume, diet, social, and cycle calculations
+  -> config/              movement catalog behind the root config facade
+  -> utils/               shared action, date, text, identity, platform, and build helpers
   -> data.js              public data facade
        -> data/           repositories, owner resolution, Firebase adapters
   -> runtime-assets.js    runtime/precache asset manifest
   -> sw.js                service worker and cache namespace
 ```
 
-The directories above group the domains; they do not hold every module. Substantial feature and render logic still lives in flat root modules (`app.js`, `data.js`, `render-*.js`, `feature-*.js`, `calc.js`, `sw.js`, and peers). Treat the repository root itself as part of the source tree.
+Root modules are stable entry controllers and compatibility facades. `app.js`, `login.js`, `feature-social.js`, `render-calendar.js`, `render-stats.js`, `calc.js`, and `config.js` delegate focused work to the directories above; new domain logic belongs in the owning directory. `data.js` remains the permanent public data facade, and `render-home.js`/`render-workout.js` remain temporary import shims governed by `docs/COMPATIBILITY.md`.
+
+Pure calculations and read models do not render DOM or write persistence. Shell modules do not implement domain calculations. Feature controllers may compose those layers, but all private writes still cross the public data facade.
 
 ## Dependency direction
 
