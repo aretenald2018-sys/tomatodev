@@ -535,6 +535,10 @@ test('day sheet detail renders picker-added draft exercise rows', () => {
   const tabs = sliceFunctionRange(calendarSources, '_renderWorkoutDetailSessionTabs', '_renderWorkoutDetailRecorded');
 
   assert.match(calendarFormatJs, /function _hasDraftWorkoutEntry/);
+  assert.match(
+    calendarWorkoutReadModelJs,
+    /import\s*\{[\s\S]*?_hasDraftWorkoutEntry,[\s\S]*?\}\s*from '\.\/format\.js'/,
+  );
   assert.match(rows, /includeDraftExercises/);
   assert.match(rows, /rawSetDetails/);
   assert.match(rows, /const hasDraftExercise = includeDraftExercises && _hasDraftWorkoutEntry\(entry\)/);

@@ -13,6 +13,7 @@ import { workoutExerciseCompletionStampAt } from '../workout/exercise-completion
 import {
   _dateDistanceLabel,
   _formatSetText,
+  _hasDraftWorkoutEntry,
   _isActualWorkoutSet,
   _workoutSheetRawNumber,
 } from './format.js';
