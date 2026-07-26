@@ -5,6 +5,7 @@ import {
   isExerciseDaySuccess,
   resolveDietTolerance,
 } from './diet.js';
+import { sumDayNutrient } from '../diet/day-nutrition.js';
 
 // ── 토마토 키우기 시스템 ──────────────────────────────────────────
 
@@ -56,8 +57,7 @@ export function evaluateCycleResult(dayResults, plan) {
   const dietSuccesses = dayResults.map(d => {
     const dayData = d.dayData || {};
     // canonical 판정: food-chip/skip/sKcal 포함 전체 기록 기반
-    const totalKcal = (dayData.bKcal || 0) + (dayData.lKcal || 0) +
-                      (dayData.dKcal || 0) + (dayData.sKcal || 0);
+    const totalKcal = sumDayNutrient(dayData, 'kcal');
     const hasRecord = !!(dayData.breakfast || dayData.lunch || dayData.dinner ||
       (dayData.bFoods?.length) || (dayData.lFoods?.length) ||
       (dayData.dFoods?.length) || (dayData.sFoods?.length) ||

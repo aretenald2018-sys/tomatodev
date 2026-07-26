@@ -1,10 +1,10 @@
 {
   "app": "tomatodev",
-  "commit": "1be86b8851038329b32754603d22da93c6674394",
-  "shortCommit": "1be86b885103",
+  "commit": "ef08a01ea45e55fe8bce663ae7a3eaf60df7a377",
+  "shortCommit": "ef08a01ea45e",
   "branch": "codex/tomatodev-ssot-refactor",
-  "deployedAt": "2026-07-26T12:35:45.480Z",
-  "cacheVersion": "tomatodev-v20260726z3-split-calc-domains",
+  "deployedAt": "2026-07-26T12:44:45.515Z",
+  "cacheVersion": "tomatodev-v20260726z4-shared-runtime-utils",
   "runId": null,
   "runAttempt": null
 }

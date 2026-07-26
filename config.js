@@ -319,4 +319,4 @@ export const MUSCLES = [
   { id:'running',  name:'런닝', color:'#f43f5e', kind:'activity' },
 ];
 
-export const DAYS   = ['일','월','화','수','목','금','토'];
+export { KOREAN_WEEKDAYS as DAYS } from './utils/weekdays.js';

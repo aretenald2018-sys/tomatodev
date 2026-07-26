@@ -1,3 +1,4 @@
+import { escapeHtml as _esc } from './utils/escape-html.js';
 import { showToast } from './ui/toast.js';
 import { closeModal, openModal } from './app/overlay-stack.js';
 // ================================================================
@@ -134,15 +135,6 @@ const REPORTS = {
 };
 
 let _activeReport = null;
-
-function _esc(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
 
 function _ensureStyles() {
   if (document.getElementById('diet-premium-report-style')) return;

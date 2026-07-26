@@ -1,5 +1,8 @@
 // calc/diet.js — 식단 목표, 성공 판정, 일일 점수 및 영양 환산 순수 함수
 
+import { NUTRITION_FIELDS } from '../diet/nutrition-fields.js';
+import { hasPositiveDayNutrient, sumDayNutrient } from '../diet/day-nutrition.js';
+
 const DEFAULT_DIET_PLAN = {
   height: 0, weight: 0, bodyFatPct: 0, age: 0,
   targetWeight: 0, targetBodyFatPct: 0,
@@ -201,7 +204,7 @@ export function hasDietRecordData(w) {
   if (!w) return false;
   if (w.breakfast || w.lunch || w.dinner || w.snack) return true;
   if ((w.bFoods?.length) || (w.lFoods?.length) || (w.dFoods?.length) || (w.sFoods?.length)) return true;
-  if ((w.bKcal || 0) > 0 || (w.lKcal || 0) > 0 || (w.dKcal || 0) > 0 || (w.sKcal || 0) > 0) return true;
+  if (hasPositiveDayNutrient(w, 'kcal')) return true;
   if (w.breakfast_skipped || w.lunch_skipped || w.dinner_skipped) return true;
   if (w.bPhoto || w.lPhoto || w.dPhoto || w.sPhoto) return true;
   return false;
@@ -252,7 +255,7 @@ export function isExerciseDaySuccess(dayData) {
 export function dietDayOk(dayData, plan, y, m, d) {
   const r = dayData || {};
   const limitKcal = getDayTargetKcal(plan, y, m, d, dayData);
-  const totalKcal = (r.bKcal || 0) + (r.lKcal || 0) + (r.dKcal || 0) + (r.sKcal || 0);
+  const totalKcal = sumDayNutrient(r, 'kcal');
   const tolerance = resolveDietTolerance(plan);
 
   // canonical hasRecord — hasDietRecordData로 일원화 (data.js hasDietRecord와 동일 계약)
@@ -488,7 +491,7 @@ function _macroItemPenalty(actual, target, highRatio) {
  */
 function _macroPenalty(day, macroTarget) {
   if (!macroTarget) return 0;
-  const protG = (day.bProtein||0) + (day.lProtein||0) + (day.dProtein||0) + (day.sProtein||0);
+  const protG = sumDayNutrient(day, 'protein');
   const carbG = (day.bCarbs||0)   + (day.lCarbs||0)   + (day.dCarbs||0)   + (day.sCarbs||0);
   const fatG  = (day.bFat||0)     + (day.lFat||0)     + (day.dFat||0)     + (day.sFat||0);
 
@@ -560,7 +563,7 @@ export function calcDayScore(ctx) {
   const { day = {}, targetKcal, macroTarget, burnedKcal = 0,
           weightDeltaKg, weightDirSign = -1 } = ctx || {};
 
-  const actualKcal = (day.bKcal||0) + (day.lKcal||0) + (day.dKcal||0) + (day.sKcal||0);
+  const actualKcal = sumDayNutrient(day, 'kcal');
   const hasAnyLog = actualKcal > 0
     || isExerciseDaySuccess(day);
 
@@ -604,8 +607,6 @@ export function calcDayScore(ctx) {
 // convertNutrition(nutritionPerBase, base, toGrams) → 해당 중량의 환산값
 // ─────────────────────────────────────────────────────────────────
 
-const _NUTRITION_FIELDS = ['kcal', 'protein', 'carbs', 'fat', 'fiber', 'sugar', 'sodium'];
-
 /**
  * base 단위의 영양값을 toGrams(또는 toMl)에 맞춰 환산.
  * @param {object} nutritionPerBase  {kcal, protein, carbs, fat, ...} — base 기준 값
@@ -626,7 +627,7 @@ export function convertNutrition(nutritionPerBase, base, toGrams) {
   if (baseAmount <= 0) baseAmount = 100;
 
   const ratio = amount / baseAmount;
-  for (const f of _NUTRITION_FIELDS) {
+  for (const f of NUTRITION_FIELDS) {
     const v = Number(nutritionPerBase[f]) || 0;
     const scaled = v * ratio;
     if (f === 'kcal' || f === 'sodium') {

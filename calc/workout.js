@@ -2,6 +2,7 @@
 
 import { calcRomFactor, calcSetVolume, getLastSession } from './volume.js';
 import { isWorkSet as _isWorkSet } from './shared.js';
+import { dateFromKey as _dateFromKeyForCycle } from '../utils/date-key.js';
 
 // ════════════════════════════════════════════════════════════════
 // 전문가 모드 — RPE / 1RM / 추천 무게 (순수함수, 사이드이펙트 0)
@@ -942,12 +943,6 @@ export function detectMaxFixedMovements({
 // ════════════════════════════════════════════════════════════════
 // 테스트모드 v2 — 6주 듀얼 트랙 성장판 순수 함수
 // ════════════════════════════════════════════════════════════════
-
-function _dateFromKeyForCycle(key) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(key || ''));
-  if (!m) return null;
-  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-}
 
 function _keyFromDateForCycle(d) {
   const y = d.getFullYear();

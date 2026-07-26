@@ -11,6 +11,10 @@ const hydrationJs = readFileSync(new URL('../workout/running-route-hydration.js'
 const runningModelJs = readFileSync(new URL('../workout/running-model.js', import.meta.url), 'utf8');
 const runningPresentationJs = readFileSync(new URL('../workout/running-presentation.js', import.meta.url), 'utf8');
 const runningPresentationBrowserJs = runningPresentationJs.replaceAll('export function ', 'function ');
+const escapeHtmlJs = readFileSync(new URL('../utils/escape-html.js', import.meta.url), 'utf8');
+const escapeHtmlBrowserJs = escapeHtmlJs.replace('export function escapeHtml', 'function escapeHtml');
+const numberJs = readFileSync(new URL('../utils/number.js', import.meta.url), 'utf8');
+const numberBrowserJs = numberJs.replace('export function toFiniteNumber', 'function toFiniteNumber');
 const styleCss = readAppCssSync();
 
 function deferred() {
@@ -235,8 +239,6 @@ test('375px running detail card hydrates the full route without overlap or clipp
     ` });
 
     const sourceBundle = [
-      '_esc',
-      '_num',
       '_fmtNum',
       '_formatDurationShort',
       '_registerWorkoutRunningMapPayload',
@@ -272,6 +274,10 @@ test('375px running detail card hydrates the full route without overlap or clipp
       }
       function destroyRunningMaps() {}
       const _workoutRunningRouteHydration = createRunningRouteHydrationController(loadRunningRoute);
+      ${escapeHtmlBrowserJs}
+      const _esc = escapeHtml;
+      ${numberBrowserJs}
+      const _num = toFiniteNumber;
       ${runningPresentationBrowserJs}
       const _formatRunningClock = formatRunningClock;
       const _formatRunningDistance = formatRunningDistance;

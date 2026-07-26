@@ -1,3 +1,5 @@
+import { escapeHtml as _esc } from '../utils/escape-html.js';
+import { sumDayNutrient } from '../diet/day-nutrition.js';
 import { requestAppRender } from '../app/render-events.js';
 import { showToast } from '../ui/toast.js';
 // ================================================================
@@ -92,7 +94,6 @@ import {
 } from './expert/max.js';
 
 // ── 공용 소규모 헬퍼 (onboarding.js 에도 동일 정의 — 순환 import 회피) ─
-function _esc(s) { return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function _toast(msg, type='info') {
   if (typeof showToast === 'function') showToast(msg, 2200, type);
 }
@@ -2291,8 +2292,8 @@ function _collect3DayDietSummary(cache, today) {
     const dt = new Date(base); dt.setDate(base.getDate() - i);
     const key = dateKey(dt.getFullYear(), dt.getMonth(), dt.getDate());
     const day = cache?.[key];
-    const kcal = (day?.bKcal || 0) + (day?.lKcal || 0) + (day?.dKcal || 0) + (day?.sKcal || 0);
-    const protein = Math.round((day?.bProtein || 0) + (day?.lProtein || 0) + (day?.dProtein || 0) + (day?.sProtein || 0));
+    const kcal = sumDayNutrient(day, 'kcal');
+    const protein = Math.round(sumDayNutrient(day, 'protein'));
     const carbs = Math.round((day?.bCarbs || 0) + (day?.lCarbs || 0) + (day?.dCarbs || 0) + (day?.sCarbs || 0));
     const fat = Math.round((day?.bFat || 0) + (day?.lFat || 0) + (day?.dFat || 0) + (day?.sFat || 0));
     out.push({ dateKey: key, kcal: Math.round(kcal), protein, carbs, fat });

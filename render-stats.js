@@ -1,3 +1,7 @@
+import { toFiniteNumber as _num } from './utils/number.js';
+import { escapeHtml as _esc } from './utils/escape-html.js';
+import { sumDayNutrient } from './diet/day-nutrition.js';
+import { dateFromKey as _dateFromKey } from './utils/date-key.js';
 import { showToast } from './ui/toast.js';
 // ================================================================
 // render-stats.js
@@ -15,6 +19,10 @@ import { SUBPATTERN_TO_MAJOR, calcBurnedKcal }       from './calc.js';
 import { getWorkoutSessions }                        from './workout/sessions.js';
 import { WORKOUT_PAYLOAD_KEYS, DIET_PAYLOAD_KEYS, SHARED_PAYLOAD_KEYS } from './workout/save-schema.js';
 import { listRunningActivities, summarizeRunningActivities } from './workout/running-analytics.js';
+import {
+  formatRunningDuration,
+  formatRunningPace,
+} from './workout/running-presentation.js';
 import { exercisePerformanceStatus, lastRecordedValue, normalizeHealthValues, seriesDelta as selectSeriesDelta } from './stats/selectors.js';
 
 let _selectedExerciseId = null;
@@ -538,7 +546,6 @@ function _syncStatsAnalysisPeriodButton(btn) {
   btn.setAttribute('aria-pressed', active ? 'true' : 'false');
 }
 
-function _esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function _clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
 function _keyOffset(daysAgo) {
   const d = new Date(TODAY);
@@ -549,8 +556,8 @@ const FOOD_KEYS = ['bFoods', 'lFoods', 'dFoods', 'sFoods'];
 const MEAL_PREFIXES = ['b', 'l', 'd', 's'];
 const SKELETAL_KEYS = ['skeletalMuscleMassKg', 'skeletalMuscleMass', 'skeletalMuscleKg', 'muscleMassKg', 'muscleMass', 'smmKg', 'smm'];
 const BODY_FAT_MASS_KEYS = ['bodyFatMassKg', 'fatMassKg', 'bodyFatKg', 'fatKg'];
-function _dayKcal(day) { return (day?.bKcal||0)+(day?.lKcal||0)+(day?.dKcal||0)+(day?.sKcal||0); }
-function _dayProtein(day) { return (day?.bProtein||0)+(day?.lProtein||0)+(day?.dProtein||0)+(day?.sProtein||0); }
+function _dayKcal(day) { return sumDayNutrient(day, 'kcal'); }
+function _dayProtein(day) { return sumDayNutrient(day, 'protein'); }
 function _dayCarbs(day) { return (day?.bCarbs||0)+(day?.lCarbs||0)+(day?.dCarbs||0)+(day?.sCarbs||0); }
 function _dayFat(day) { return (day?.bFat||0)+(day?.lFat||0)+(day?.dFat||0)+(day?.sFat||0); }
 const MAJOR_LABELS = { chest:'가슴', back:'등', lower:'하체', shoulder:'어깨', bicep:'이두', tricep:'삼두', abs:'복근', core:'복근' };
@@ -881,10 +888,6 @@ function _renderMuscleFatigue(scope = document) {
   `;
 }
 
-function _num(v) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
-}
 function _maybeNum(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
@@ -917,11 +920,6 @@ function _formatVolumeDelta(value) {
 }
 function _fmtSigned(n, digits = 1, unit = 'kg') {
   return `${n >= 0 ? '+' : ''}${_fmt(n, digits)} ${unit}`;
-}
-function _dateFromKey(key) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(key))) return null;
-  const [y, m, d] = key.split('-').map(Number);
-  return new Date(y, m - 1, d);
 }
 function _keyFromDate(d) {
   return dateKey(d.getFullYear(), d.getMonth(), d.getDate());
@@ -1192,18 +1190,11 @@ function _renderOverallSummary(scope = document) {
 }
 
 function _formatRunningDuration(sec) {
-  const total = Math.max(0, Math.floor(_num(sec)));
-  const hours = Math.floor(total / 3600);
-  const minutes = Math.floor((total % 3600) / 60);
-  const seconds = total % 60;
-  if (hours > 0) return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  return formatRunningDuration(sec, { padMinutes: false });
 }
 
 function _formatRunningPace(secPerKm) {
-  const total = Math.round(_num(secPerKm));
-  if (total <= 0) return '--';
-  return `${Math.floor(total / 60)}'${String(total % 60).padStart(2, '0')}''`;
+  return formatRunningPace(secPerKm, { empty: '--' });
 }
 
 function _renderRunningSummary(scope = document) {

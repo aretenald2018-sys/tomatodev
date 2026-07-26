@@ -2,6 +2,7 @@
 
 import { calcSetVolume } from './volume.js';
 import { safeNumber as _safeNum } from './shared.js';
+import { hasPositiveDayNutrient, sumDayNutrient } from '../diet/day-nutrition.js';
 
 // ================================================================
 // Celebration Detectors (home/cheers-card 용 순수 함수들)
@@ -13,8 +14,7 @@ import { safeNumber as _safeNum } from './shared.js';
 // ================================================================
 
 function _totalKcal(w) {
-  if (!w) return 0;
-  return _safeNum(w.bKcal) + _safeNum(w.lKcal) + _safeNum(w.dKcal) + _safeNum(w.sKcal);
+  return sumDayNutrient(w, 'kcal');
 }
 
 function _hasExerciseActivity(w) {
@@ -25,7 +25,7 @@ function _hasExerciseActivity(w) {
 function _hasDietActivity(w) {
   if (!w) return false;
   return !!((w.bFoods||[]).length || (w.lFoods||[]).length || (w.dFoods||[]).length || (w.sFoods||[]).length)
-    || !!(w.bKcal || w.lKcal || w.dKcal || w.sKcal);
+    || hasPositiveDayNutrient(w, 'kcal');
 }
 
 function _isActiveDay(w) {
@@ -230,8 +230,7 @@ export function detectStreakMilestone({ name, streakDays }) {
 
 export function detectProteinGoal({ name, today, friendPlan }) {
   if (!today || !friendPlan) return null;
-  const protein = _safeNum(today.bProtein) + _safeNum(today.lProtein)
-    + _safeNum(today.dProtein) + _safeNum(today.sProtein);
+  const protein = sumDayNutrient(today, 'protein');
   const targetG = _safeNum(friendPlan.weight) * 1.6;
   if (targetG <= 0) return null;
   if (protein < targetG) return null;

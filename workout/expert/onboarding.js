@@ -1,3 +1,4 @@
+import { escapeHtml as _esc } from '../../utils/escape-html.js';
 import { requestAppRender } from '../../app/render-events.js';
 import { showToast } from '../../ui/toast.js';
 // ================================================================
@@ -85,8 +86,6 @@ function _closeModal(id) {
 }
 
 // ── 공용 소규모 헬퍼 (expert.js 중복) ───────────────────────────────
-function _esc(s) { return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
 function _toast(msg, type='info') {
   if (typeof showToast === 'function') showToast(msg, 2200, type);
 }

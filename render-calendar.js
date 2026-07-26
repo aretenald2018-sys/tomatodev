@@ -1,3 +1,8 @@
+import { toFiniteNumber as _num } from './utils/number.js';
+import { escapeHtml as _esc } from './utils/escape-html.js';
+import { sumDayNutrient } from './diet/day-nutrition.js';
+import { dateFromKey as _dateFromKey, parseDateKey as _parseDateKey } from './utils/date-key.js';
+import { KOREAN_WEEKDAYS } from './utils/weekdays.js';
 import { showToast } from './ui/toast.js';
 // ================================================================
 // render-calendar.js — 캘린더 탭
@@ -165,21 +170,6 @@ const MAX_WEAK_LABEL = {
 
 const CALENDAR_MODES = new Set(['summary', 'workout']);
 
-function _esc(value) {
-  return String(value ?? '').replace(/[&<>"']/g, ch => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  }[ch]));
-}
-
-function _num(value) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
-}
-
 function _fmtNum(value, digits = 1) {
   const n = _num(value);
   if (Number.isInteger(n)) return String(n);
@@ -248,18 +238,6 @@ function _formatDurationShort(seconds) {
   if (sec <= 0) return '—';
   if (sec < 60) return `${sec}초`;
   return `${Math.round(sec / 60)}분`;
-}
-
-function _parseDateKey(key) {
-  const match = String(key || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return null;
-  const y = parseInt(match[1], 10);
-  const m = parseInt(match[2], 10) - 1;
-  const d = parseInt(match[3], 10);
-  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return null;
-  const exact = new Date(y, m, d);
-  if (exact.getFullYear() !== y || exact.getMonth() !== m || exact.getDate() !== d) return null;
-  return { y, m, d };
 }
 
 function _seasonOverviewStateLabel(state) {
@@ -342,11 +320,6 @@ function _openWorkoutSeasonOverview(seasonId) {
 
 export function openWorkoutSeasonOverview(seasonId = '') {
   _openWorkoutSeasonOverview(seasonId);
-}
-
-function _dateFromKey(key) {
-  const p = _parseDateKey(key);
-  return p ? new Date(p.y, p.m, p.d) : null;
 }
 
 function _isoWeekNumber(date) {
@@ -1300,7 +1273,7 @@ function _dayMetrics(key, day, plan, metrics, checkins) {
     : (getLatestCheckinWeight() ?? plan?.weight ?? 70);
 
   // 섭취 칼로리
-  const kcalIn = (day.bKcal||0) + (day.lKcal||0) + (day.dKcal||0) + (day.sKcal||0);
+  const kcalIn = sumDayNutrient(day, 'kcal');
 
   // 소모 칼로리 (MET 기반)
   const burned = calcBurnedKcal(day, bodyWeight);
@@ -1737,7 +1710,7 @@ function _renderWorkoutCalendar(root, { cache, plan, checkins, y, m, firstDow, d
   const monthLabel = isWorkoutHome
     ? `${y}.${String(m + 1).padStart(2, '0')}`
     : `${y}년 ${m + 1}월`;
-  const weekdays = ['일','월','화','수','목','금','토'];
+  const weekdays = KOREAN_WEEKDAYS;
   const summaryHtml = monthSum.days > 0 ? `
     <div class="cal-month-summary cal-workout-summary">
       <div class="cal-month-avg">
@@ -2008,7 +1981,7 @@ export function renderCalendar() {
 
   const monthLabel = `${y}년 ${m + 1}월`;
   const avgScore = monthSum.count > 0 ? Math.round(monthSum.scored / monthSum.count) : null;
-  const weekdays = ['일','월','화','수','목','금','토'];
+  const weekdays = KOREAN_WEEKDAYS;
 
   root.innerHTML = `
     <div class="cal-header">
@@ -2947,7 +2920,7 @@ function _openWorkoutDay(key) {
 
   const [yy, mm, dd] = key.split('-').map(n => parseInt(n, 10));
   const d = new Date(yy, mm - 1, dd);
-  const dowLabel = ['일','월','화','수','목','금','토'][d.getDay()];
+  const dowLabel = KOREAN_WEEKDAYS[d.getDay()];
   const title = `${yy}.${String(mm).padStart(2,'0')}.${String(dd).padStart(2,'0')} (${dowLabel}) 운동`;
 
   const titleEl = document.getElementById('calendar-day-title');
@@ -3047,7 +3020,7 @@ function _openDay(key) {
 
   const [yy, mm, dd] = key.split('-').map(n => parseInt(n, 10));
   const d = new Date(yy, mm - 1, dd);
-  const dowLabel = ['일','월','화','수','목','금','토'][d.getDay()];
+  const dowLabel = KOREAN_WEEKDAYS[d.getDay()];
   const title = `${yy}.${String(mm).padStart(2,'0')}.${String(dd).padStart(2,'0')} (${dowLabel})`;
 
   const titleEl = document.getElementById('calendar-day-title');
@@ -3090,7 +3063,7 @@ function _openDay(key) {
 
   const macroDesc = mx.macroTarget
     ? (() => {
-        const p = (day.bProtein||0)+(day.lProtein||0)+(day.dProtein||0)+(day.sProtein||0);
+        const p = sumDayNutrient(day, 'protein');
         const c = (day.bCarbs||0)+(day.lCarbs||0)+(day.dCarbs||0)+(day.sCarbs||0);
         const f = (day.bFat||0)+(day.lFat||0)+(day.dFat||0)+(day.sFat||0);
         return `단백 ${Math.round(p)}/${mx.macroTarget.proteinG}g · 탄수 ${Math.round(c)}/${mx.macroTarget.carbG}g · 지방 ${Math.round(f)}/${mx.macroTarget.fatG}g`;

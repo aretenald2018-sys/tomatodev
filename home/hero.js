@@ -1,3 +1,4 @@
+import { escapeHtml as _escapeHtml } from '../utils/escape-html.js';
 ﻿// ================================================================
 // home/hero.js — 히어로 카드, 스트릭 대시보드, 리더보드
 // ================================================================
@@ -300,15 +301,6 @@ async function _buildWeeklyBoard(user) {
       .sort((a, b) => b.days - a.days),
     updatedAt: null,
   };
-}
-
-function _escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 }
 
 function _escapeJsSingle(value) {
