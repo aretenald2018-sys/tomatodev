@@ -29,6 +29,11 @@ import { runningInputFromPhoneSummary } from './running-input.js';
 import { RunningLiveAccumulator } from './running-live-accumulator.js';
 import { buildRunningActivityAnalytics, isValidRunningWeightKg } from './running-analytics.js';
 import { formatRunningDuration, formatRunningPace } from './running-presentation.js';
+import {
+  acquireRunningWakeLock,
+  refreshRunningWakeLock,
+  releaseRunningWakeLock,
+} from './running-wake-lock.js';
 import { parseDateKey } from '../utils/date-key.js';
 import { openWorkoutDaySheet } from './navigation-stack.js';
 import { setRunningLiveState } from './running-live-state.js';
@@ -736,7 +741,10 @@ function _bindRunningDraftEvents() {
       if (document.hidden) {
         if (!_nativeRunningLocationPlugin()) _markRouteGap('visibility-hidden');
         _persistRunningDraft('visibility hidden');
+        return;
       }
+      // 브라우저가 백그라운드 전환에서 화면 잠금을 자동 해제하므로 복귀 시 다시 잡는다.
+      void refreshRunningWakeLock();
     });
   }
 }
@@ -999,6 +1007,7 @@ async function _startNativeLocationWatch(plugin) {
 }
 
 async function _stopWatch(mode = 'pause') {
+  void releaseRunningWakeLock();
   _clearNativeLocationPoll();
   const nativePlugin = _nativeRunningLocationPlugin();
   if (_session.nativeLocationStarted && nativePlugin) {
@@ -1198,6 +1207,9 @@ function _startWatch() {
     _session.lastError = '이 브라우저는 위치 기록을 지원하지 않아요';
     return;
   }
+  // 웹 경로는 화면이 꺼지면 위치 콜백이 멈춘다. 네이티브 포그라운드 서비스가
+  // 없을 때만 화면 잠금을 막아 기록 공백을 예방한다.
+  void acquireRunningWakeLock();
   _session.watchId = navigator.geolocation.watchPosition(
     position => {
       _session.lastError = '';

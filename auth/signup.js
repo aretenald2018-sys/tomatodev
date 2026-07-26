@@ -1,4 +1,5 @@
 import { showToast } from '../ui/toast.js';
+import { _continueToAppAfterLogin } from './login-screen.js';
 import {
   _loadAllGuilds,
   guildPickerState,

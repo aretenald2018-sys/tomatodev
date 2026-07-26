@@ -150,6 +150,7 @@ import {
   _waitWorkoutSheetFocusTransition,
   _workoutHomeScrollRoot,
   _workoutHomeScrollTop,
+  _workoutSheetSelectorValue,
   configureWorkoutSheetState,
 } from './calendar/sheet-state.js';
 import {

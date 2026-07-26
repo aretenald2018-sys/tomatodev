@@ -61,6 +61,7 @@ import {
 } from './stats/fatigue-model.js';
 import { _buildWeeklyKcalWeightSeries } from './stats/weekly-series.js';
 import {
+  HEALTH_CHART_SERIES,
   _buildHealthChartData,
   _formatHealthTooltip,
   _healthChartKeys,

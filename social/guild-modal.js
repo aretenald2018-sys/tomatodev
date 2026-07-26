@@ -553,7 +553,8 @@ export async function manageAccountPassword(accountId) {
     showToast('비밀번호가 설정되었어요', 2500, 'success');
   }
   // 목록 갱신
-  initLoginScreen();
+  const { initLoginScreen } = await import('../auth/login-screen.js');
+  await initLoginScreen();
 }
 
 

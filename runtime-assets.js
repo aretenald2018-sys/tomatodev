@@ -182,6 +182,7 @@
   './workout/running-route-hydration.js',
   './workout/running-live-accumulator.js',
   './workout/running-draft-store.js',
+  './workout/running-wake-lock.js',
   './workout/running-session.js',
   './workout/expert/onboarding.js',
   './workout/expert/migrate-gym-v1.js',
