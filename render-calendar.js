@@ -189,10 +189,16 @@ configureWorkoutSheetState({
 });
 
 configureWorkoutSetKeyboard({
+  cancelInlineField: (...args) => _cancelWorkoutSetInlineFieldFromSheet(...args),
   getSelectedKey: () => _workoutHomeSelectedKey,
   clearInputOnFocus: _clearWorkoutSetInputOnFocus,
+  defaultSet: _defaultWorkoutSheetSet,
+  focusEditorField: (...args) => _focusWorkoutSetEditorFieldFromSheet(...args),
+  focusInlineField: (...args) => _focusWorkoutSetInlineFieldFromSheet(...args),
+  mutateExercise: (...args) => _mutateWorkoutExerciseFromSheet(...args),
   removeExerciseSet: (...args) => _removeWorkoutExerciseSetFromSheet(...args),
   setWorkoutSheetNumber: _setWorkoutSheetNumber,
+  syncNavState: _syncWorkoutHomeNavState,
   updateExerciseSet: (...args) => _updateWorkoutExerciseSetFromSheet(...args),
 });
 

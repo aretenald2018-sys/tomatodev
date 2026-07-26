@@ -1,5 +1,6 @@
 import { toFiniteNumber as _num } from '../utils/number.js';
 import { showToast } from '../ui/toast.js';
+import { clearWorkoutExerciseCompletionMarker } from '../workout/exercise-completion.js';
 import {
   WORKOUT_SHEET_SET_INPUT_SELECTOR,
   _workoutHomeScrollRoot,
@@ -11,10 +12,16 @@ import {
 } from './detail-template.js';
 
 const workoutSetKeyboardRuntime = {
+  cancelInlineField: () => false,
   getSelectedKey: () => '',
   clearInputOnFocus: () => {},
+  defaultSet: () => ({ kg: '', reps: '', rir: 2, romPct: 100, setType: 'main', done: false }),
+  focusEditorField: () => false,
+  focusInlineField: () => false,
+  mutateExercise: () => Promise.resolve(false),
   removeExerciseSet: () => Promise.resolve(false),
   setWorkoutSheetNumber: value => value,
+  syncNavState: () => {},
   updateExerciseSet: () => Promise.resolve(false),
 };
 
@@ -107,7 +114,7 @@ export function _findWorkoutSetKeyboardMoveTarget(input, direction) {
 export function _focusWorkoutSetKeyboardTarget(target) {
   if (!target) return false;
   if (target.mode === 'inline') {
-    return _focusWorkoutSetInlineFieldFromSheet(
+    return workoutSetKeyboardRuntime.focusInlineField(
       target.key,
       target.sessionIndex,
       target.exerciseIndex,
@@ -115,7 +122,7 @@ export function _focusWorkoutSetKeyboardTarget(target) {
       target.field
     );
   }
-  return _focusWorkoutSetEditorFieldFromSheet(
+  return workoutSetKeyboardRuntime.focusEditorField(
     target.key,
     target.sessionIndex,
     target.exerciseIndex,
@@ -337,7 +344,7 @@ export function _commitWorkoutSetKeyboardInput(input, options = {}) {
     : '';
   if (!dirty) {
     if (options?.closeInline && input.hasAttribute('data-wt-set-inline-input')) {
-      return _cancelWorkoutSetInlineFieldFromSheet(
+      return workoutSetKeyboardRuntime.cancelInlineField(
         input.getAttribute('data-date-key') || workoutSetKeyboardRuntime.getSelectedKey(),
         input.getAttribute('data-session-index'),
         input.getAttribute('data-exercise-index'),
@@ -378,11 +385,11 @@ export function _commitWorkoutSetKeyboardDone(input) {
     const inlineEditorKey = input.getAttribute('data-wt-inline-editor-key') || '';
     if (inlineEditorKey && workoutDetailState.inlineSetEditor === inlineEditorKey) workoutDetailState.inlineSetEditor = null;
   }
-  return _mutateWorkoutExerciseFromSheet(meta.key, meta.sessionIndex, meta.exerciseIndex, (entry) => {
+  return workoutSetKeyboardRuntime.mutateExercise(meta.key, meta.sessionIndex, meta.exerciseIndex, (entry) => {
     const sets = Array.isArray(entry.sets) ? entry.sets : [];
     const targetIndex = Math.max(0, Math.floor(Number(meta.setIndex) || 0));
-    while (sets.length <= targetIndex) sets.push(_defaultWorkoutSheetSet(sets[sets.length - 1]));
-    const nextSet = { ...(sets[targetIndex] || _defaultWorkoutSheetSet(sets[sets.length - 1])) };
+    while (sets.length <= targetIndex) sets.push(workoutSetKeyboardRuntime.defaultSet(sets[sets.length - 1]));
+    const nextSet = { ...(sets[targetIndex] || workoutSetKeyboardRuntime.defaultSet(sets[sets.length - 1])) };
     if (dirty) {
       if (safeField === 'kg') nextSet.kg = workoutSetKeyboardRuntime.setWorkoutSheetNumber(value, _num(nextSet.kg), { min: 0, allowEmpty: true });
       if (safeField === 'reps') nextSet.reps = workoutSetKeyboardRuntime.setWorkoutSheetNumber(value, _num(nextSet.reps), { min: 0, integer: true, allowEmpty: true });
@@ -425,7 +432,7 @@ export function _moveWorkoutSetKeyboardFocus(direction) {
   const inlineMove = input.hasAttribute('data-wt-set-inline-input') && target.mode === 'inline';
   const targetAlreadyMounted = inlineMove && !!_workoutSetKeyboardRenderedInput(target);
   if (targetAlreadyMounted) workoutSetKeyboardState.domLocked = true;
-  if (inlineMove) _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:set-inline-field' });
+  if (inlineMove) workoutSetKeyboardRuntime.syncNavState({ history: 'replace', action: 'sheet:set-inline-field' });
   const commitPromise = Promise.resolve(_commitWorkoutSetKeyboardInput(input, {
     closeInline: false,
     nextTarget: target,

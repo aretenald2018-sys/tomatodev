@@ -118,10 +118,16 @@ function buildHarnessScript() {
     const workoutDetailState = { editingCardId: null, inlineSetEditor: null };
     const workoutSetKeyboardState = { input: null, domLocked: false };
     const workoutSetKeyboardRuntime = {
+      cancelInlineField: (...args) => _cancelWorkoutSetInlineFieldFromSheet(...args),
       getSelectedKey: () => _workoutHomeSelectedKey,
       clearInputOnFocus: input => _clearWorkoutSetInputOnFocus(input),
+      defaultSet: (...args) => _defaultWorkoutSheetSet(...args),
+      focusEditorField: (...args) => _focusWorkoutSetEditorFieldFromSheet(...args),
+      focusInlineField: (...args) => _focusWorkoutSetInlineFieldFromSheet(...args),
+      mutateExercise: (...args) => _mutateWorkoutExerciseFromSheet(...args),
       removeExerciseSet: (...args) => _removeWorkoutExerciseSetFromSheet(...args),
       setWorkoutSheetNumber: (...args) => _setWorkoutSheetNumber(...args),
+      syncNavState: (...args) => _syncWorkoutHomeNavState(...args),
       updateExerciseSet: (...args) => _updateWorkoutExerciseSetFromSheet(...args),
     };
     window.__renderCalls = 0;

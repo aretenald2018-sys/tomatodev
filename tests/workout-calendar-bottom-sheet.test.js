@@ -604,6 +604,25 @@ test('workout keypad keeps digit entry local and commits once with an optimistic
   assert.doesNotMatch(calendarJs, /_workoutSetKeyboardDraftQueues|_queueWorkoutSetKeyboardInputDraft|_flushWorkoutSetKeyboardInputDraft/);
   assert.match(commit, /skipRender: options\?\.skipRender === true/);
   assert.match(complete, /\{ preserveSheetScroll: true, optimisticRender: true \}/);
+  for (const dependency of [
+    'cancelInlineField',
+    'defaultSet',
+    'focusEditorField',
+    'focusInlineField',
+    'mutateExercise',
+    'syncNavState',
+  ]) {
+    assert.match(calendarSetKeyboardJs, new RegExp(`workoutSetKeyboardRuntime\\.${dependency}`));
+    assert.match(calendarJs, new RegExp(`${dependency}:`));
+  }
+  assert.match(
+    calendarSetKeyboardJs,
+    /import \{ clearWorkoutExerciseCompletionMarker \} from '\.\.\/workout\/exercise-completion\.js'/,
+  );
+  assert.doesNotMatch(
+    calendarSetKeyboardJs,
+    /\b_(?:cancelWorkoutSetInlineFieldFromSheet|defaultWorkoutSheetSet|focusWorkoutSetEditorFieldFromSheet|focusWorkoutSetInlineFieldFromSheet|mutateWorkoutExerciseFromSheet|syncWorkoutHomeNavState)\b/,
+  );
   assert.match(calendarJs, /if \(_workoutSetKeyboardActiveInput\(\)\) return;[\s\S]*document\.dispatchEvent\(new CustomEvent\('sheet:saved'\)\)/);
   assert.match(move, /const commitPromise = Promise\.resolve\(_commitWorkoutSetKeyboardInput/);
   assert.match(move, /const targetAlreadyMounted = inlineMove && !!_workoutSetKeyboardRenderedInput\(target\)/);
