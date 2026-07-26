@@ -9,8 +9,10 @@ import { TODAY, getCurrentUser, getMyFriends, getAccountList,
          isAdmin, isAdminGuest, getAdminId, getAdminGuestId,
          recordAction }  from '../data.js';
 import { isExerciseDaySuccess } from '../calc.js';
+import { hasPositiveDayNutrient } from '../diet/day-nutrition.js';
 import { mealDisplayText } from '../ai/meal-artifact-filter.js';
-import { resolveNickname, showToast, haptic, formatTimeAgo, escapeHtml } from './utils.js';
+import { resolveNickname, haptic, formatTimeAgo, escapeHtml } from './utils.js';
+import { showToast } from '../ui/toast.js';
 import { updateHeroSocialProof } from './hero.js';
 import { createSocialRenderScheduler } from './social-render-scheduler.js';
 import { runOptimisticSocialAction } from './social-action.js';
@@ -293,7 +295,7 @@ export async function renderFriendFeed() {
         isExerciseDaySuccess(x) || (x.muscles||[]).length > 0 ||
         x.breakfast || x.lunch || x.dinner || x.snack ||
         x.bFoods?.length || x.lFoods?.length || x.dFoods?.length || x.sFoods?.length ||
-        (x.bKcal||0) > 0 || (x.lKcal||0) > 0 || (x.dKcal||0) > 0 || (x.sKcal||0) > 0 ||
+        hasPositiveDayNutrient(x, 'kcal') ||
         x.breakfast_skipped || x.lunch_skipped || x.dinner_skipped ||
         x.bPhoto || x.lPhoto || x.dPhoto || x.sPhoto
       ));

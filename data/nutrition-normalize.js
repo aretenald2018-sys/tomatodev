@@ -484,3 +484,4 @@ export function serializeForStorage(canonical, extras) {
     ...ex,
   };
 }
+export { NUTRITION_FIELDS } from '../diet/nutrition-fields.js';

@@ -2,6 +2,7 @@
 // home/friend-profile.js — 친구 프로필, 방명록, 댓글, 선물
 // ================================================================
 
+import { KOREAN_WEEKDAYS } from '../utils/weekdays.js';
 import { TODAY, getCurrentUser, getMyFriends, getAccountList,
          getFriendData, getFriendWorkout, getFriendTomatoState, getLikes, toggleLike,
          sendFriendRequest, sendTomatoGift, revertTomatoGift,
@@ -15,7 +16,8 @@ import { TODAY, getCurrentUser, getMyFriends, getAccountList,
 import { CONFIG } from '../config.js';
 import { mealDisplayText } from '../ai/meal-artifact-filter.js';
 import { runOptimisticSocialAction } from './social-action.js';
-import { resolveNickname, showToast, haptic, formatTimeAgo, escapeHtml } from './utils.js';
+import { resolveNickname, haptic, formatTimeAgo, escapeHtml } from './utils.js';
+import { showToast } from '../ui/toast.js';
 import { createSocialRenderScheduler } from './social-render-scheduler.js';
 import { openPhotoLightbox } from '../utils/photo-lightbox.js';
 
@@ -192,7 +194,7 @@ export async function openFriendProfile(friendId, friendName, scrollToSection, o
   const isMyProfile = friendId === user?.id || friendId === myDataId || normalizedFriendId === myDataId;
   const myFriends = await getMyFriends();
   const isFriend = isMyProfile || myFriends.some(f => f.friendId === friendId || f.friendId === normalizedFriendId);
-  const DOW = ['일','월','화','수','목','금','토'];
+  const DOW = KOREAN_WEEKDAYS;
 
   const allAccounts = await getAccountList();
   const friendAcc = isAdminInstance(friendId)

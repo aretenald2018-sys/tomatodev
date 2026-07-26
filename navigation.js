@@ -3,10 +3,28 @@
 // ================================================================
 
 import { saveTabOrder, getVisibleTabs, saveVisibleTabs } from './data.js';
-import { showToast } from './home/index.js';
+import { closeModal, openModal } from './app/overlay-stack.js';
+import { showToast } from './ui/toast.js';
 
 let _getCurrentTab = () => 'home';
 let _switchTab = () => undefined;
+
+export const SHELL_TAB_ORDER = Object.freeze(['home', 'diet', 'workout', 'stats']);
+export const SHELL_ROLE_TAB_IDS = Object.freeze([...SHELL_TAB_ORDER, 'calendar']);
+
+const ALL_CONFIGURABLE_TABS = Object.freeze([
+  { id: 'home',     icon: 'home', label: '홈',      fixed: true },
+  { id: 'diet',     icon: 'diet', label: '식단' },
+  { id: 'workout',  icon: 'workout', label: '운동' },
+  { id: 'stats',    icon: 'stats', label: '통계' },
+]);
+
+export function normalizeVisibleTabs(visibleTabs = []) {
+  const requested = new Set(Array.isArray(visibleTabs) ? visibleTabs : []);
+  requested.add('home');
+  requested.add('diet');
+  return SHELL_TAB_ORDER.filter(tabId => requested.has(tabId));
+}
 
 export function configureNavigation({ getCurrentTab, switchTab } = {}) {
   if (typeof getCurrentTab === 'function') _getCurrentTab = getCurrentTab;
@@ -216,25 +234,19 @@ export function initSwipeNavigation() {
 export function applyTabOrder(order) {
   const nav = document.getElementById('tab-nav');
   if (!nav || !order?.length) return;
-  if (!order.includes('diet')) {
-    const wIdx = order.indexOf('workout');
-    order.splice(wIdx >= 0 ? wIdx : 1, 0, 'diet');
+  const normalizedOrder = [...order];
+  if (!normalizedOrder.includes('diet')) {
+    const wIdx = normalizedOrder.indexOf('workout');
+    normalizedOrder.splice(wIdx >= 0 ? wIdx : 1, 0, 'diet');
   }
   const settingsBtn = nav.querySelector('.tab-btn-settings');
-  order.forEach(tabId => {
+  normalizedOrder.forEach(tabId => {
     const btn = nav.querySelector(`.tab-btn[data-tab="${tabId}"]`);
     if (btn) nav.insertBefore(btn, settingsBtn);
   });
 }
 
 // ── 하단 탭 가시성 ──────────────────────────────────────────────
-const ALL_CONFIGURABLE_TABS = [
-  { id: 'home',     icon: 'home', label: '홈',      fixed: true },
-  { id: 'diet',     icon: 'diet', label: '식단' },
-  { id: 'workout',  icon: 'workout', label: '운동' },
-  { id: 'stats',    icon: 'stats', label: '통계' },
-];
-
 function createTabIcon(icon) {
   const span = document.createElement('span');
   span.className = `tab-icon nav-icon nav-icon-${icon}`;
@@ -249,6 +261,7 @@ function tabIconHtml(icon) {
 export function applyVisibleTabs(visibleTabs) {
   const nav = document.getElementById('tab-nav');
   if (!nav) return;
+  const normalizedVisibleTabs = normalizeVisibleTabs(visibleTabs);
   const dynamicContainer = document.getElementById('more-menu-dynamic-tabs');
   if (dynamicContainer) dynamicContainer.innerHTML = '';
 
@@ -256,7 +269,7 @@ export function applyVisibleTabs(visibleTabs) {
     if (t.fixed) return;
     const btn = nav.querySelector(`.tab-btn[data-tab="${t.id}"]`);
     if (!btn) return;
-    const isVisible = visibleTabs.includes(t.id);
+    const isVisible = normalizedVisibleTabs.includes(t.id);
     btn.style.display = isVisible ? '' : 'none';
 
     if (!isVisible && dynamicContainer) {
@@ -286,20 +299,19 @@ export function openTabSettingsModal() {
       <span style="font-size:14px;font-weight:500;color:var(--text);">${t.label}</span>
     </label>`;
   }).join('');
-  document.getElementById('tab-settings-modal').classList.add('open');
+  openModal('tab-settings-modal');
 }
 
 export function closeTabSettingsModal(e) {
-  if (e && e.target !== document.getElementById('tab-settings-modal')) return;
-  document.getElementById('tab-settings-modal').classList.remove('open');
+  closeModal('tab-settings-modal', e);
 }
 
 export async function saveTabSettingsFromModal() {
   const checks = document.querySelectorAll('#tab-settings-list input[data-tab-id]');
-  const selected = ['home'];
+  const selected = [SHELL_TAB_ORDER[0]];
   checks.forEach(c => { if (c.checked) selected.push(c.dataset.tabId); });
   await saveVisibleTabs(selected);
   applyVisibleTabs(selected);
-  document.getElementById('tab-settings-modal').classList.remove('open');
+  closeModal('tab-settings-modal');
   showToast('탭 설정이 저장되었습니다');
 }

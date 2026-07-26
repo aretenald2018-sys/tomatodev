@@ -42,6 +42,8 @@ export const STYLE_ENTRY_SOURCES = Object.freeze([
   'styles/features/workout-picker-overrides.css',
   'styles/features/workout-flow.css',
   'styles/features/diet-tab.css',
+  'styles/features/nutrition-item-modal.css',
+  'styles/features/diet-premium-report.css',
   'styles/features/home-life-zone.css',
   'styles/features/shared-feedback.css',
   'styles/features/social-home.css',
@@ -65,8 +67,8 @@ export const STYLE_ENTRY_SOURCES = Object.freeze([
   'styles/features/app-status.css',
   'admin/admin-hig.css',
   'styles/workout/expert-mode.css',
-  'styles/accessibility.css',
   'test-mode-v2.css',
+  'styles/accessibility.css',
 ]);
 
 const parts = await Promise.all(STYLE_ENTRY_SOURCES.map(async (path) => {

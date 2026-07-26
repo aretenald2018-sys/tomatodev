@@ -1,3 +1,5 @@
+import { toFiniteNumber } from '../utils/number.js';
+const _num = (value, fallback = NaN) => toFiniteNumber(value, fallback);
 // ================================================================
 // workout/running-map.js — real map provider renderer for running
 // ================================================================
@@ -35,11 +37,6 @@ function _destroyMapInstance(instance) {
     for (const line of instance.lines || []) line?.setMap?.(null);
     instance.map?.destroy?.();
   } catch {}
-}
-
-function _num(value, fallback = NaN) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : fallback;
 }
 
 function _finitePointNumber(value) {
@@ -247,7 +244,7 @@ async function _loadGoogleMaps(key) {
   if (_googleLoader) return _googleLoader;
 
   _googleLoader = new Promise((resolve, reject) => {
-    window[GOOGLE_CALLBACK] = () => resolve(window.google.maps);
+    window.__tomatoRunningGoogleMapsReady = () => resolve(window.google.maps);
     const script = document.createElement('script');
     script.src = buildGoogleMapsScriptUrl(key);
     script.async = true;

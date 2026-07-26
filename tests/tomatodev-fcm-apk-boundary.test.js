@@ -44,7 +44,7 @@ test('TomatoDev push is fail-closed on web and Capacitor/native', () => {
 test('TomatoDev never exposes or downloads the production mobile APK', () => {
   const html = read('index.html');
   const app = read('app.js');
-  const buildInfo = read('utils/build-info.js');
+  const buildInfo = read('utils/build-info.js') + read('utils/apk-install.js');
   const workflow = read('.github/workflows/deploy.yml');
 
   assert.equal(existsSync(new URL('public/downloads/tomato-mobile-debug.apk', root)), false);
@@ -58,14 +58,15 @@ test('TomatoDev never exposes or downloads the production mobile APK', () => {
 test('TomatoDev publishes only its own dev APK under the dev application id', () => {
   const html = read('index.html');
   const app = read('app.js');
-  const buildInfo = read('utils/build-info.js');
+  const shellActions = read('app/shell-actions.js');
+  const buildInfo = read('utils/build-info.js') + read('utils/apk-install.js');
   const gitignore = read('.gitignore');
   const androidBuild = read('android/app/build.gradle');
   const packageJson = JSON.parse(read('package.json'));
 
   assert.match(androidBuild, /applicationId "com\.lifestreak\.dev"/);
   assert.match(html, /data-app-action="install-apk"[\s\S]*APK 설치하기/);
-  assert.match(app, /case 'install-apk':[\s\S]*requestTomatoApkInstall/);
+  assert.match(shellActions, /case 'install-apk':[\s\S]*requestTomatoApkInstall/);
   assert.match(buildInfo, /TOMATODEV_APK_DOWNLOAD_NAME = 'tomatodev\.apk'/);
   assert.match(buildInfo, /github\.io\/tomatodev\/public\/downloads\/tomatodev\.apk/);
   // 서명키가 매 CI 실행마다 새로 생성되면 업데이트 설치가 서명 불일치로 막힌다.

@@ -48,7 +48,7 @@ export function showPWAInstallBanner() {
     banner.innerHTML = `
       <style>@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}</style>
       <div style="display:flex;align-items:center;gap:14px;max-width:480px;margin:0 auto;">
-        <div style="width:48px;height:48px;border-radius:12px;background:var(--primary,#22c55e);color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">🍅</div>
+        <div style="width:48px;height:48px;border-radius:12px;background:var(--primary,#fa342c);color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">🍅</div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:14px;font-weight:700;color:var(--text,#111);">토마토 키우기 앱 설치</div>
           <div style="font-size:12px;color:var(--text-tertiary,#888);margin-top:2px;">${isIOS
@@ -57,8 +57,8 @@ export function showPWAInstallBanner() {
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0;">
           ${isIOS
-            ? `<button data-pwa-action="ios-guide" style="padding:8px 16px;border:none;border-radius:999px;background:var(--primary,#22c55e);color:#fff;font-size:13px;font-weight:600;cursor:pointer;">방법 보기</button>`
-            : `<button data-pwa-action="install" style="padding:8px 16px;border:none;border-radius:999px;background:var(--primary,#22c55e);color:#fff;font-size:13px;font-weight:600;cursor:pointer;">설치</button>`
+            ? `<button data-pwa-action="ios-guide" style="padding:8px 16px;border:none;border-radius:999px;background:var(--primary,#fa342c);color:#fff;font-size:13px;font-weight:600;cursor:pointer;">방법 보기</button>`
+            : `<button data-pwa-action="install" style="padding:8px 16px;border:none;border-radius:999px;background:var(--primary,#fa342c);color:#fff;font-size:13px;font-weight:600;cursor:pointer;">설치</button>`
           }
           <button data-pwa-action="dismiss" style="padding:8px 10px;border:none;background:none;color:var(--text-tertiary,#888);font-size:16px;cursor:pointer;">✕</button>
         </div>
@@ -88,10 +88,6 @@ export function installPWA() {
   } else {
     showToast('이미 설치되었거나, 브라우저가 미지원. 메뉴에서 "홈 화면에 추가" 또는 "앱 설치"를 이용하세요', 4500, 'info');
   }
-}
-
-export function getDeferredInstallPrompt() {
-  return _deferredInstallPrompt;
 }
 
 // ── 이벤트 리스너 + window 등록 ──────────────────────────────────
@@ -127,7 +123,7 @@ function _showIOSInstallGuide() {
         <div style="padding:8px 0;border-bottom:1px solid var(--border,#e5e7eb);"><b>2.</b> <b>"홈 화면에 추가"</b> 선택</div>
         <div style="padding:8px 0;"><b>3.</b> 오른쪽 상단 <b>"추가"</b> 탭</div>
       </div>
-      <button data-pwa-action="close-ios-guide" style="margin-top:16px;width:100%;padding:12px;border:none;border-radius:999px;background:var(--primary,#22c55e);color:#fff;font-size:14px;font-weight:600;cursor:pointer;">확인</button>
+      <button data-pwa-action="close-ios-guide" style="margin-top:16px;width:100%;padding:12px;border:none;border-radius:999px;background:var(--primary,#fa342c);color:#fff;font-size:14px;font-weight:600;cursor:pointer;">확인</button>
     </div>
   `;
   document.body.appendChild(modal);

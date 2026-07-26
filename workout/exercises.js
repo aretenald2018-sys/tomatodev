@@ -1,3 +1,4 @@
+import { KOREAN_WEEKDAYS } from '../utils/weekdays.js';
 import { showToast } from '../ui/toast.js';
 import { confirmAction } from '../utils/confirm-modal.js';
 // ================================================================
@@ -2380,7 +2381,7 @@ function _renderProgramStartCalendar(monthKey, selectedKey) {
       <button type="button" class="ex-program-cal-nav" data-ex-program-calendar-next aria-label="다음 달">&gt;</button>
     </div>
     <div class="ex-program-cal-grid ex-program-cal-weekdays" aria-hidden="true">
-      ${['일', '월', '화', '수', '목', '금', '토'].map(d => `<span>${d}</span>`).join('')}
+      ${KOREAN_WEEKDAYS.map(d => `<span>${d}</span>`).join('')}
     </div>
     <div class="ex-program-cal-grid">
       ${blanks}${dayButtons}

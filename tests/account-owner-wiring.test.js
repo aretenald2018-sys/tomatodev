@@ -11,6 +11,7 @@ const apiSource = read('data/data-api.js');
 const friendsSource = read('data/data-social-friends.js');
 const interactSource = read('data/data-social-interact.js');
 const appSource = read('app.js');
+const ownerOverlaySource = read('app/owner-blocked-overlay.js');
 
 function sliceBetween(source, startToken, endToken) {
   const start = source.indexOf(startToken);
@@ -142,12 +143,12 @@ test('shared owner bootstrap keeps the application inert after timeout or failur
     '_bindLifeZoneNpcQuestEvent();',
   );
   const blockedOverlay = sliceBetween(
-    appSource,
+    ownerOverlaySource,
     'function _showSharedOwnerBlockedOverlay',
-    '// ── 탭 스켈레톤 삽입',
+    "console.error('[account-owner] bootstrap blocked:', error);",
   );
   const requiredTimeout = sliceBetween(
-    appSource,
+    ownerOverlaySource,
     'function _withRequiredSharedOwnerTimeout',
     'function _showSharedOwnerBlockedOverlay',
   );

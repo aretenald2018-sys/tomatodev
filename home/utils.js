@@ -1,10 +1,10 @@
+export { escapeHtml } from '../utils/escape-html.js';
 // ================================================================
 // home/utils.js — 홈 탭 공통 헬퍼
 // ================================================================
 
 import { dateKey } from '../data.js';
 import { getAdminId, getAdminGuestId } from '../data.js';
-export { showToast, showCenterToast } from '../ui/toast.js';
 
 // ── 날짜 유틸 ────────────────────────────────────────────────────
 export function getMonday(date) {
@@ -28,15 +28,6 @@ export function quarterEnd(date) {
 }
 
 // ── HTML 이스케이프 ───────────────────────────────────────────────
-export function escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
 // ── 시간 포맷 ────────────────────────────────────────────────────
 export function formatTimeAgo(ts) {
   if (!ts) return '';

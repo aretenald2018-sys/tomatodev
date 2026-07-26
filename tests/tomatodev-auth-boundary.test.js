@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 const read = (path) => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 const coreSource = read('data/data-core.js');
 const authSource = read('data/data-auth.js');
-const featureLoginSource = read('feature-login.js');
+const featureLoginSource = read('auth/login-screen.js');
 const runningSource = read('workout/running-session.js');
 
 function sliceBetween(source, startToken, endToken) {

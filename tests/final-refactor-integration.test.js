@@ -32,6 +32,10 @@ test('final documentation points to current boundaries and production workflow',
   assert.match(readme, /npm\.cmd run verify:assets/);
   assert.match(architecture, /view\/controller -> domain model\/service -> data\.js/);
   assert.match(architecture, /one durable physical owner/);
+  for (const owner of ['app/', 'auth/', 'social/', 'calendar/', 'stats/', 'calc/', 'config/', 'utils/']) {
+    assert.match(architecture, new RegExp(owner.replace('/', '\\/')));
+  }
+  assert.match(architecture, /Root modules are stable entry controllers and compatibility facades/);
   assert.match(agents, /git worktree list/);
   assert.match(agents, /style\.css.+generated/is);
   assert.match(agents, /durable architecture, ADR, contract, or reference material/);

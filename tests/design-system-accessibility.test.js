@@ -4,7 +4,12 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
-import { closeModal, openModal } from '../app/overlay-stack.js';
+import {
+  acquireBodyScrollLock,
+  closeModal,
+  openModal,
+  releaseBodyScrollLock,
+} from '../app/overlay-stack.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -59,6 +64,34 @@ test('overlay stack moves focus into dialogs and restores the opener', () => {
   }
 });
 
+test('body scroll remains locked until every overlay owner releases it', () => {
+  const previousDocument = globalThis.document;
+  globalThis.document = { body: { style: { overflow: 'clip' } } };
+  const firstOwner = Symbol('first');
+  const secondOwner = Symbol('second');
+
+  try {
+    assert.equal(acquireBodyScrollLock(firstOwner), true);
+    assert.equal(acquireBodyScrollLock(secondOwner), true);
+    assert.equal(globalThis.document.body.style.overflow, 'hidden');
+    assert.equal(releaseBodyScrollLock(firstOwner), true);
+    assert.equal(globalThis.document.body.style.overflow, 'hidden');
+    assert.equal(releaseBodyScrollLock(secondOwner), true);
+    assert.equal(globalThis.document.body.style.overflow, 'clip');
+  } finally {
+    releaseBodyScrollLock(firstOwner);
+    releaseBodyScrollLock(secondOwner);
+    globalThis.document = previousDocument;
+  }
+});
+
+test('the overlay stack is the only modal focus-trap owner', async () => {
+  const uxPolish = await readFile(resolve(root, 'utils/ux-polish.js'), 'utf8');
+  const overlayStack = await readFile(resolve(root, 'app/overlay-stack.js'), 'utf8');
+  assert.doesNotMatch(uxPolish, /initModalFocusTrap|e\.key !== 'Tab'/);
+  assert.match(overlayStack, /event\.key !== 'Tab'/);
+});
+
 test('design system owns tokens, primitives, accessibility, and CSS order', async () => {
   const [tokens, primitives, accessibility, index, sw, runtimeAssets, docs] = await Promise.all([
     readFile(resolve(root, 'styles/tokens.css'), 'utf8'),
@@ -78,16 +111,29 @@ test('design system owns tokens, primitives, accessibility, and CSS order', asyn
   assert.doesNotMatch(index, /href="styles\/features\//);
   const entry = await readFile(resolve(root, 'style.css'), 'utf8');
   assert.ok(entry.indexOf('SOURCE: styles/tokens.css') < entry.indexOf('SOURCE: styles/primitives.css'));
-  assert.ok(entry.indexOf('SOURCE: styles/accessibility.css') > entry.indexOf('SOURCE: styles/workout/expert-mode.css'));
+  const adminIndex = entry.indexOf('SOURCE: admin/admin-hig.css');
+  const expertIndex = entry.indexOf('SOURCE: styles/workout/expert-mode.css');
+  const growthBoardIndex = entry.indexOf('SOURCE: test-mode-v2.css');
+  const accessibilityIndex = entry.indexOf('SOURCE: styles/accessibility.css');
+  assert.ok(adminIndex < expertIndex);
+  assert.ok(expertIndex < growthBoardIndex);
+  assert.ok(growthBoardIndex < accessibilityIndex);
+  assert.doesNotMatch(entry.slice(accessibilityIndex + 1), /SOURCE:/);
   assert.match(entry, /SOURCE: styles\/features\/home-foundations\.css/);
+  assert.match(entry, /SOURCE: styles\/features\/seasons\.css/);
   assert.match(entry, /SOURCE: styles\/features\/workout-day-sheet\.css/);
   assert.match(entry, /SOURCE: styles\/features\/app-status\.css/);
   assert.match(entry, /url\(['"]?\.\/assets\/nav-icons\/home\.svg/);
   assert.doesNotMatch(entry, /url\(['"]?\.\.\/assets\/nav-icons\//);
   assert.match(sw, /importScripts\('\.\/runtime-assets\.js'\)/);
   assert.match(runtimeAssets, /\.\/styles\/primitives\.css/);
+  assert.match(runtimeAssets, /\.\/styles\/features\/seasons\.css/);
+  assert.match(runtimeAssets, /\.\/admin\/admin-hig\.css/);
   assert.match(runtimeAssets, /\.\/styles\/accessibility\.css/);
   assert.match(runtimeAssets, /\.\/styles\/workout\/expert-mode\.css/);
+  assert.match(runtimeAssets, /\.\/test-mode-v2\.css/);
   assert.match(docs, /STYLE_ENTRY_SOURCES/);
+  assert.match(docs, /test-mode-v2\.css` is a shipped workout growth-board surface/);
+  assert.match(docs, /styles\/accessibility\.css` loads last/);
   assert.match(docs, /style\.css` is a generated standalone WebView bundle/);
 });

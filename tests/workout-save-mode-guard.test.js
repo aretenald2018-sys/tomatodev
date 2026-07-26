@@ -45,11 +45,11 @@ test('saveDay defaults to merge and blocks replace without an explicit opt-in', 
 
 test('runtime saveDay calls use merge mode explicitly', () => {
   const files = [
-    'sheet.js',
     'render-cooking.js',
     'render-calendar.js',
     'workout/save.js',
     'workout/expert/max.js',
+    'workout/running-record-import.js',
   ];
 
   for (const file of files) {

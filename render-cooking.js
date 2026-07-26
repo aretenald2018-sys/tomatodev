@@ -11,6 +11,9 @@ import { searchNutritionDB }                  from './data.js';
 import { confirmAction } from './utils/confirm-modal.js';
 import { setNutritionItemSavedHandler } from './diet/editor-events.js';
 import { openNutritionItemEditor } from './modals/nutrition-item-modal.js';
+import { calcPerServing } from './diet/recipe-nutrition.js';
+
+export { calcPerServing } from './diet/recipe-nutrition.js';
 
 const CATEGORIES   = ['한식','양식','일식','중식','기타'];
 const RESULT_LABEL = { success:'✓ 성공', partial:'△ 보통', fail:'✗ 아쉬움' };
@@ -19,6 +22,7 @@ const RESULT_COLOR = { success:'var(--diet-ok)', partial:'var(--accent)', fail:'
 let _editingId   = null;
 let _ingredients = [];        // 현재 편집 중인 재료 목록
 let _selectedIngredient = null; // 드롭다운에서 선택한 재료 (확정 전)
+let _ingredientSearchResults = { db: [], csv: [] };
 let _cookingActionsBound = false;
 
 function _bindCookingActions(root = document) {
@@ -200,6 +204,8 @@ function _searchCookingIngredient() {
 
     let html = '';
 
+    _ingredientSearchResults = { db: dbResults, csv: dedupedCsv };
+
     dbResults.forEach((item, i) => {
       const kcal = item.nutrition?.kcal || 0;
       const ss   = item.servingSize || 100;
@@ -208,7 +214,6 @@ function _searchCookingIngredient() {
         <div style="font-weight:500">${item.name}</div>
         <div style="color:var(--muted);font-size:11px">${ss}g 기준 ${kcal}kcal</div>
       </div>`;
-      window[`_cookIngDB_${i}`] = item;
     });
 
     dedupedCsv.forEach((item, i) => {
@@ -217,7 +222,6 @@ function _searchCookingIngredient() {
         <div style="font-weight:500">📊 ${item.name}</div>
         <div style="color:var(--muted);font-size:11px">100g 기준 ${item.energy||0}kcal</div>
       </div>`;
-      window[`_cookIngCSV_${i}`] = item;
     });
 
     if (!html) html = `<div style="padding:12px;font-size:12px;color:var(--muted);text-align:center">검색 결과 없음</div>`;
@@ -234,9 +238,9 @@ function _searchCookingIngredient() {
 }
 
 function _selectCookingIngredient(source, idx) {
-  let item;
+  const item = _ingredientSearchResults[source]?.[idx];
+  if (!item) return;
   if (source === 'db') {
-    item = window[`_cookIngDB_${idx}`];
     _selectedIngredient = {
       id:   item.id,
       name: item.name,
@@ -247,7 +251,6 @@ function _selectCookingIngredient(source, idx) {
       fat:     item.nutrition?.fat || 0,
     };
   } else {
-    item = window[`_cookIngCSV_${idx}`];
     _selectedIngredient = {
       id:   item.id,
       name: item.name,
@@ -384,22 +387,6 @@ function _calcTotals() {
   let kcal=0, protein=0, carbs=0, fat=0;
   _ingredients.forEach(i => { kcal+=i.kcal; protein+=i.protein; carbs+=i.carbs; fat+=i.fat; });
   return { kcal, protein, carbs, fat };
-}
-
-// ── 1인분 영양정보 계산 (외부에서도 사용) ──────────────────────────
-export function calcPerServing(recipe) {
-  const ings = recipe.ingredients || [];
-  if (!ings.length) return null;
-  const servings = recipe.servings || 1;
-  let kcal=0, protein=0, carbs=0, fat=0, totalGrams=0;
-  ings.forEach(i => { kcal+=i.kcal; protein+=i.protein; carbs+=i.carbs; fat+=i.fat; totalGrams+=i.grams; });
-  return {
-    kcal: Math.round(kcal / servings),
-    protein: Math.round(protein / servings * 10) / 10,
-    carbs: Math.round(carbs / servings * 10) / 10,
-    fat: Math.round(fat / servings * 10) / 10,
-    grams: Math.round(totalGrams / servings),
-  };
 }
 
 // ── 소급 업데이트 ─────────────────────────────────────────────────

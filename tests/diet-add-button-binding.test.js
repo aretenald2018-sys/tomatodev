@@ -97,6 +97,13 @@ test('nutrition item cancel closes explicitly without turning sheet clicks into 
   );
 });
 
+test('nutrition item modal presentation is owned by static feature CSS', () => {
+  assert.doesNotMatch(nutritionItemModalJs, /<style>/);
+  assert.match(nutritionItemModalJs, /animation:ni-spin/);
+  assert.match(styleCss, /\.ni-tabs\s*\{/);
+  assert.match(styleCss, /@keyframes ni-spin/);
+});
+
 test('skip meals have one static action owner and retain duplicate-delivery protection', () => {
   assert.match(staticActionsJs, /^\s*'diet:skip-meal': \(_control, _event, meal\) => wtSkipMeal\(meal\),/m);
   assert.match(

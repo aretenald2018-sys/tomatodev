@@ -1,3 +1,4 @@
+import { escapeHtml as _escapeHtml } from './utils/escape-html.js';
 // ================================================================
 // feature-nutrition.js — 영양 DB 검색, 공공API, 직접추가, 캐시
 // ================================================================
@@ -14,12 +15,15 @@ import { setNutritionItemSavedHandler } from './diet/editor-events.js';
 import { getNutritionSearchMeal, setNutritionSearchMeal } from './diet/selection.js';
 import { openNutritionWeightModal } from './modals/nutrition-weight-modal.js';
 import { openNutritionItemEditor, switchNutritionTab } from './modals/nutrition-item-modal.js';
+import { calcPerServing } from './diet/recipe-nutrition.js';
 
 // ── 상태 ──────────────────────────────────────────────────────────
 let _nutritionSearchCache = { db: [], csv: [], recent: [], raw: [], brand: [] };
 let _nutritionSearchTimer = null;
 let _lastSearchQuery = null;
 let _nutritionCSVLoaded = false;
+const _nutritionItemCache = new Map();
+let _nutritionItemCacheSequence = 0;
 
 // NOTE: _loadPublicFoodDB / _loadAgriFoodDB는 과거에 19,495건을 localStorage에
 // 적재했지만 검색에 쓰지 않아 비용 대비 효용이 없었음. 2026-04-17 제거.
@@ -80,21 +84,12 @@ export function debouncedNutritionSearch() {
 }
 
 // ── 렌더링 헬퍼 ──────────────────────────────────────────────────
-function _escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
 function _renderNutritionRow(item, { icon = '🏠', removable = false, isCSV = false } = {}) {
   const display = canonicalNutritionDisplay(item);
   if (!display) return '';
   const canonical = display.canonical;
-  const itemDataKey = `_nutritionItem_${item.id}`;
-  window[itemDataKey] = canonical;
+  const itemDataKey = `nutrition-item-${++_nutritionItemCacheSequence}`;
+  _nutritionItemCache.set(itemDataKey, canonical);
   const name = _escapeHtml(canonical.name || '이름 없는 식품');
   const manufacturer = _escapeHtml(canonical.brand || '');
   const { kcal, carbs, protein, fat } = display.nutrition;
@@ -126,6 +121,7 @@ function _renderNutritionSection(title, items, options = {}) {
 export function renderNutritionSearchInitial() {
   const container = document.getElementById('nutrition-search-results');
   if (!container) return;
+  _nutritionItemCache.clear();
   const recentItems = getRecentNutritionItems(10);
 
   let html = _renderNutritionSection('⭐ 최근 항목', recentItems, { removable: true });
@@ -143,6 +139,7 @@ export async function renderNutritionSearchResults() {
   const input = document.getElementById('nutrition-search-input');
   const container = document.getElementById('nutrition-search-results');
   if (!input || !container) return;
+  _nutritionItemCache.clear();
   const q = (input.value || '').trim();
 
   let html = '';
@@ -318,28 +315,12 @@ export async function removeFromFavorites(itemId) {
   }
 }
 
-// ── 1인분 영양정보 계산 ────────────────────────────────────────────
-function _calcPerServing(recipe) {
-  const ings = recipe.ingredients || [];
-  if (!ings.length) return null;
-  const servings = recipe.servings || 1;
-  let kcal=0, protein=0, carbs=0, fat=0, totalGrams=0;
-  ings.forEach(i => { kcal+=i.kcal; protein+=i.protein; carbs+=i.carbs; fat+=i.fat; totalGrams+=i.grams; });
-  return {
-    kcal: Math.round(kcal / servings),
-    protein: Math.round(protein / servings * 10) / 10,
-    carbs: Math.round(carbs / servings * 10) / 10,
-    fat: Math.round(fat / servings * 10) / 10,
-    grams: Math.round(totalGrams / servings),
-  };
-}
-
 // ── 내 요리 → 식단에 추가 ──────────────────────────────────────────
 export function selectCookingRecipeForDiet(recipeId) {
   const recipe = getCookingRecords().find(r => r.id === recipeId);
   const searchMeal = getNutritionSearchMeal();
   if (!recipe || !searchMeal) return;
-  const ps = _calcPerServing(recipe);
+  const ps = calcPerServing(recipe);
   if (!ps) return;
 
   const foodItem = {
@@ -365,7 +346,7 @@ function _buildRecipeResultsHtml(q) {
 
   let html = `<div style="font-size:12px;font-weight:600;color:var(--text);padding:12px 8px;border-bottom:1px solid var(--border);margin-top:8px">🍳 내 요리</div>`;
   html += recipes.slice(0, 10).map(r => {
-    const ps = _calcPerServing(r);
+    const ps = calcPerServing(r);
     if (!ps) return '';
     return `
       <div class="nutrition-result-row" data-nutrition-action="select-recipe" data-recipe-id="${r.id}" style="cursor:pointer">
@@ -414,7 +395,7 @@ export function selectNutritionItem(itemId) {
 }
 
 export function selectNutritionItemFromCache(itemDataKey) {
-  const item = window[itemDataKey];
+  const item = _nutritionItemCache.get(itemDataKey);
 
   if (!item) {
     console.error('[selectNutritionItemFromCache] 항목을 찾을 수 없습니다:', itemDataKey);

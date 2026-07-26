@@ -4,13 +4,22 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import puppeteer from 'puppeteer';
 import { createRunningRouteHydrationController } from '../workout/running-route-hydration.js';
+import { extractFunctionSource } from './helpers/source-function.js';
 
 const calendarJs = readFileSync(new URL('../render-calendar.js', import.meta.url), 'utf8');
+const calendarFormatJs = readFileSync(new URL('../calendar/format.js', import.meta.url), 'utf8');
+const calendarSessionStateJs = readFileSync(new URL('../calendar/session-state.js', import.meta.url), 'utf8');
+const calendarDetailTemplateJs = readFileSync(new URL('../calendar/detail-template.js', import.meta.url), 'utf8');
+const calendarSources = [calendarJs, calendarFormatJs, calendarSessionStateJs, calendarDetailTemplateJs];
 const calendarActivityModelJs = readFileSync(new URL('../calendar/activity-model.js', import.meta.url), 'utf8');
 const hydrationJs = readFileSync(new URL('../workout/running-route-hydration.js', import.meta.url), 'utf8');
 const runningModelJs = readFileSync(new URL('../workout/running-model.js', import.meta.url), 'utf8');
 const runningPresentationJs = readFileSync(new URL('../workout/running-presentation.js', import.meta.url), 'utf8');
 const runningPresentationBrowserJs = runningPresentationJs.replaceAll('export function ', 'function ');
+const escapeHtmlJs = readFileSync(new URL('../utils/escape-html.js', import.meta.url), 'utf8');
+const escapeHtmlBrowserJs = escapeHtmlJs.replace('export function escapeHtml', 'function escapeHtml');
+const numberJs = readFileSync(new URL('../utils/number.js', import.meta.url), 'utf8');
+const numberBrowserJs = numberJs.replace('export function toFiniteNumber', 'function toFiniteNumber');
 const styleCss = readAppCssSync();
 
 function deferred() {
@@ -41,22 +50,6 @@ function routeRef(pointCount = 620) {
     firstTimestampMs: 1000,
     lastTimestampMs: 1000 + pointCount - 1,
   };
-}
-
-function extractFunctionSource(source, name) {
-  const start = source.indexOf(`function ${name}(`);
-  assert.ok(start >= 0, `${name} should exist`);
-  const signatureEnd = source.indexOf(') {', start);
-  const braceStart = signatureEnd >= 0 ? signatureEnd + 2 : source.indexOf('{', start);
-  let depth = 0;
-  for (let index = braceStart; index < source.length; index += 1) {
-    if (source[index] === '{') depth += 1;
-    if (source[index] === '}') {
-      depth -= 1;
-      if (depth === 0) return source.slice(start, index + 1);
-    }
-  }
-  throw new Error(`${name} body should end`);
 }
 
 test('legacy inline route becomes ready without calling the repository loader', async () => {
@@ -165,7 +158,7 @@ test('calendar running card automatically hydrates the full route before mountin
     '_findWorkoutRunningMapShell',
     '_mountWorkoutRunningMaps',
     '_showWorkoutRunningRoute',
-  ].map(name => extractFunctionSource(calendarJs, name)).join('\n\n');
+  ].map(name => extractFunctionSource(calendarSources, name)).join('\n\n');
   const buildHarness = new Function('createRunningRouteHydrationController', 'loadRunningRoute', `
     const _workoutRunningMapPayloads = new Map();
     const _workoutRunningRouteHydration = createRunningRouteHydrationController(loadRunningRoute);
@@ -235,8 +228,6 @@ test('375px running detail card hydrates the full route without overlap or clipp
     ` });
 
     const sourceBundle = [
-      '_esc',
-      '_num',
       '_fmtNum',
       '_formatDurationShort',
       '_registerWorkoutRunningMapPayload',
@@ -247,7 +238,7 @@ test('375px running detail card hydrates the full route without overlap or clipp
       '_renderRunningRouteDetail',
       '_renderRunningGpsStatus',
       '_renderWorkoutRunningDetailCard',
-    ].map(name => extractFunctionSource(calendarJs, name)).join('\n\n');
+    ].map(name => extractFunctionSource(calendarSources, name)).join('\n\n');
     const controllerSource = hydrationJs.replace(
       'export function createRunningRouteHydrationController',
       'function createRunningRouteHydrationController',
@@ -258,6 +249,9 @@ test('375px running detail card hydrates the full route without overlap or clipp
       const _workoutDetailCollapsed = new Set();
       const _workoutRunningMapPayloads = new Map();
       let _workoutRunningMapSeq = 0;
+      const workoutDetailRuntime = {
+        registerRunningMapPayload: row => _registerWorkoutRunningMapPayload(row),
+      };
       let loaderCalls = 0;
       let renderCalls = 0;
       let pendingLoad = null;
@@ -272,6 +266,10 @@ test('375px running detail card hydrates the full route without overlap or clipp
       }
       function destroyRunningMaps() {}
       const _workoutRunningRouteHydration = createRunningRouteHydrationController(loadRunningRoute);
+      ${escapeHtmlBrowserJs}
+      const _esc = escapeHtml;
+      ${numberBrowserJs}
+      const _num = toFiniteNumber;
       ${runningPresentationBrowserJs}
       const _formatRunningClock = formatRunningClock;
       const _formatRunningDistance = formatRunningDistance;
@@ -391,10 +389,10 @@ test('375px running detail card hydrates the full route without overlap or clipp
 test('calendar source propagates route refs and loads the full route automatically', () => {
   assert.match(calendarJs, /loadRunningRoute,/);
   assert.match(calendarJs, /createRunningRouteHydrationController/);
-  assert.match(calendarJs, /from '\.\/workout\/running-presentation\.js'/);
+  assert.match(calendarDetailTemplateJs, /from '\.\.\/workout\/running-presentation\.js'/);
   assert.match(calendarJs, /runRouteRef:\s*null/);
   assert.match(runningModelJs, /runRouteRef:\s*_clone\(source\.runRouteRef, null\)/);
-  assert.match(calendarJs, /routeRef:\s*_clonePlain\(session\.runRouteRef\s*\|\|\s*null\)/);
+  assert.match(calendarSessionStateJs, /routeRef:\s*_clonePlain\(session\.runRouteRef\s*\|\|\s*null\)/);
   assert.match(calendarActivityModelJs, /routeRef:\s*day\.runRouteRef\s*\|\|\s*null/);
   assert.match(calendarJs, /routeRef:\s*row\.routeRef\s*\|\|\s*null/);
   assert.match(calendarJs, /전체 경로 불러오는 중/);

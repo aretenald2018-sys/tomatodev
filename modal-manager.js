@@ -10,9 +10,7 @@ export const MODALS = Object.freeze([
   { id: 'quest-modal',            path: './modals/quest-modal.js',            export: 'MODAL_HTML' },
   { id: 'quest-edit-modal',       path: './modals/quest-edit-modal.js',       export: 'MODAL_HTML' },
   { id: 'section-title-modal',    path: './modals/section-title-modal.js',    export: 'MODAL_HTML' },
-  { id: 'export-modal',           path: './modals/export-modal.js',           export: 'MODAL_HTML' },
   { id: 'cooking-modal',          path: './modals/cooking-modal.js',          export: 'MODAL_HTML' },
-  { id: 'settings-modal',         path: './modals/settings-modal.js',         export: 'MODAL_HTML' },
   { id: 'diet-plan-modal',        path: './modals/diet-plan-modal.js',        export: 'MODAL_HTML' },
   { id: 'checkin-modal',          path: './modals/checkin-modal.js',          export: 'MODAL_HTML' },
   { id: 'weight-result-modal',    path: './modals/weight-result-modal.js',    export: 'MODAL_HTML' },
@@ -103,11 +101,4 @@ export async function loadAndInjectModals(ids = null) {
   } finally {
     if (!_modalsLoaded) _modalsLoadPromise = null;
   }
-}
-
-/**
- * 모달이 로드되었는지 확인 (nutrition-weight-modal의 함수들을 위해)
- */
-export function areModalsLoaded() {
-  return _modalsLoaded;
 }

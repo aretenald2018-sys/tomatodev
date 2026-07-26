@@ -11,8 +11,30 @@ import {
   WORKOUT_GYM_SESSION_COUNT,
   WORKOUT_RUNNING_SESSION_INDEX,
 } from '../workout/session-policy.js';
+import { extractFunctionSource, sliceFunctionRange } from './helpers/source-function.js';
 
 const calendarJs = readFileSync(new URL('../render-calendar.js', import.meta.url), 'utf8');
+const calendarFormatJs = readFileSync(new URL('../calendar/format.js', import.meta.url), 'utf8');
+const calendarGesturePolicyJs = readFileSync(new URL('../calendar/gesture-policy.js', import.meta.url), 'utf8');
+const calendarDayMetricsJs = readFileSync(new URL('../calendar/day-metrics.js', import.meta.url), 'utf8');
+const calendarWorkoutReadModelJs = readFileSync(new URL('../calendar/workout-read-model.js', import.meta.url), 'utf8');
+const calendarExportTextJs = readFileSync(new URL('../calendar/export-text.js', import.meta.url), 'utf8');
+const calendarSessionStateJs = readFileSync(new URL('../calendar/session-state.js', import.meta.url), 'utf8');
+const calendarDetailTemplateJs = readFileSync(new URL('../calendar/detail-template.js', import.meta.url), 'utf8');
+const calendarSheetStateJs = readFileSync(new URL('../calendar/sheet-state.js', import.meta.url), 'utf8');
+const calendarSetKeyboardJs = readFileSync(new URL('../calendar/set-keyboard.js', import.meta.url), 'utf8');
+const calendarSources = [
+  calendarJs,
+  calendarFormatJs,
+  calendarGesturePolicyJs,
+  calendarDayMetricsJs,
+  calendarWorkoutReadModelJs,
+  calendarExportTextJs,
+  calendarSessionStateJs,
+  calendarDetailTemplateJs,
+  calendarSheetStateJs,
+  calendarSetKeyboardJs,
+];
 const styleCss = readAppCssSync();
 const tm2Css = readFileSync(new URL('../test-mode-v2.css', import.meta.url), 'utf8');
 const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8') + readFileSync(new URL('../runtime-assets.js', import.meta.url), 'utf8');
@@ -25,25 +47,6 @@ const setPresentationJs = readFileSync(new URL('../workout/set-presentation.js',
 const exerciseCompletionJs = readFileSync(new URL('../workout/exercise-completion.js', import.meta.url), 'utf8');
 const runningPresentationJs = readFileSync(new URL('../workout/running-presentation.js', import.meta.url), 'utf8');
 
-function extractFunctionSource(source, name) {
-  const asyncStart = source.indexOf(`async function ${name}(`);
-  const normalStart = source.indexOf(`function ${name}(`);
-  const start = asyncStart >= 0 ? asyncStart : normalStart;
-  assert.ok(start >= 0, `${name} should exist`);
-  const signatureEnd = source.indexOf(') {', start);
-  const braceStart = signatureEnd >= 0 ? signatureEnd + 2 : source.indexOf('{', start);
-  assert.ok(braceStart > start, `${name} body should start`);
-  let depth = 0;
-  for (let i = braceStart; i < source.length; i += 1) {
-    if (source[i] === '{') depth += 1;
-    if (source[i] === '}') {
-      depth -= 1;
-      if (depth === 0) return source.slice(start, i + 1);
-    }
-  }
-  throw new Error(`${name} body should end`);
-}
-
 function buildAddCarouselFocusHarnessScript() {
   const sourceBundle = [
     '_workoutHomeScrollRoot',
@@ -54,7 +57,7 @@ function buildAddCarouselFocusHarnessScript() {
     '_requestWorkoutSheetPendingCarouselFocus',
     '_tryRestorePendingWorkoutSheetCarouselFocus',
     '_refreshWorkoutHomeAfterPickerSelect',
-  ].map(name => extractFunctionSource(calendarJs, name)).join('\n\n');
+  ].map(name => extractFunctionSource(calendarSources, name)).join('\n\n');
 
   return `
     const WORKOUT_GYM_SESSION_COUNT = 2;
@@ -247,7 +250,7 @@ test('sheet tap toggles directly between bar and full without drag or suppressio
 
 test('full sheet isolates background calendar input without restoring sheet drag', () => {
   const bindStart = calendarJs.indexOf('function _bindWorkoutHomeSheetInputIsolation');
-  const bindEnd = calendarJs.indexOf('function _workoutHomeSheetTouchWouldChain', bindStart);
+  const bindEnd = calendarJs.indexOf('function _bindWorkoutCycleRailActions', bindStart);
   assert.ok(bindStart >= 0 && bindEnd > bindStart, 'input isolation source should be present');
   const bindFn = calendarJs.slice(bindStart, bindEnd);
 
@@ -264,16 +267,16 @@ test('full sheet isolates background calendar input without restoring sheet drag
   assert.match(bindFn, /const dx = x - lastTouchX/);
   assert.match(bindFn, /_workoutHomeSheetCarouselShouldOwnTouch\(event, dx, dy\)[\s\S]*event\.stopPropagation\(\)[\s\S]*return/);
   assert.match(bindFn, /_workoutHomeSheetCarouselShouldOwnWheel\(event\)[\s\S]*event\.stopPropagation\(\)[\s\S]*return/);
-  assert.match(calendarJs, /function _workoutHomeSheetCarouselShouldOwnTouch\(event, dx, dy\)/);
-  assert.match(calendarJs, /function _workoutHomeSheetCarouselShouldOwnWheel\(event\)/);
-  assert.match(calendarJs, /closest\?\.\('\[data-wt-day-exercise-carousel-track\]'\)/);
-  assert.match(calendarJs, /return ax >= 4 && ax > ay/);
-  assert.match(calendarJs, /function _workoutHomeSheetTouchWouldChain/);
-  assert.match(calendarJs, /dy > 0 && scrollTop <= 0/);
-  assert.match(calendarJs, /dy < 0 && scrollTop >= maxScrollTop - 1/);
-  assert.match(calendarJs, /function _workoutHomeSheetWheelWouldChain/);
-  assert.match(calendarJs, /deltaY < 0 && scrollTop <= 0/);
-  assert.match(calendarJs, /deltaY > 0 && scrollTop >= maxScrollTop - 1/);
+  assert.match(calendarGesturePolicyJs, /function _workoutHomeSheetCarouselShouldOwnTouch\(event, dx, dy\)/);
+  assert.match(calendarGesturePolicyJs, /function _workoutHomeSheetCarouselShouldOwnWheel\(event\)/);
+  assert.match(calendarGesturePolicyJs, /closest\?\.\('\[data-wt-day-exercise-carousel-track\]'\)/);
+  assert.match(calendarGesturePolicyJs, /return ax >= 4 && ax > ay/);
+  assert.match(calendarGesturePolicyJs, /function _workoutHomeSheetTouchWouldChain/);
+  assert.match(calendarGesturePolicyJs, /dy > 0 && scrollTop <= 0/);
+  assert.match(calendarGesturePolicyJs, /dy < 0 && scrollTop >= maxScrollTop - 1/);
+  assert.match(calendarGesturePolicyJs, /function _workoutHomeSheetWheelWouldChain/);
+  assert.match(calendarGesturePolicyJs, /deltaY < 0 && scrollTop <= 0/);
+  assert.match(calendarGesturePolicyJs, /deltaY > 0 && scrollTop >= maxScrollTop - 1/);
   assert.doesNotMatch(bindFn, /pointerdown|pointermove|pointerup|pointercancel/);
   assert.doesNotMatch(bindFn, /_suppressWorkoutHomeSheetClick|_consumeWorkoutHomeSuppressedClick|_resolveWorkoutHomeSheetDragTarget/);
 });
@@ -312,10 +315,11 @@ test('full sheet header tap collapses through the sheet toggle path', () => {
 });
 
 test('running actions use direct sheet bindings without duplicating controls in the bottom bar', () => {
-  const detailStart = calendarJs.indexOf('function _renderWorkoutHomeDetail');
-  const detailEnd = calendarJs.indexOf('function _renderWorkoutDetailSummaryCard', detailStart);
-  assert.ok(detailStart >= 0 && detailEnd > detailStart, 'workout detail renderer should be present');
-  const detail = calendarJs.slice(detailStart, detailEnd);
+  const detail = sliceFunctionRange(
+    calendarSources,
+    '_renderWorkoutHomeDetailHtml',
+    '_renderWorkoutDetailSummaryCard',
+  );
   assert.match(detail, /data-wt-running-upload-input/);
   assert.doesNotMatch(detail, /class="wt-day-running-actions"/);
   assert.doesNotMatch(detail, /class="wt-day-fab wt-day-fab--running"/);
@@ -339,10 +343,7 @@ test('running actions use direct sheet bindings without duplicating controls in 
 });
 
 test('screenshot running records render the stored route image before GPS fallback', () => {
-  const mapStart = calendarJs.indexOf('function _renderRunningRouteMap');
-  const mapEnd = calendarJs.indexOf('function _renderRunningRouteDetail', mapStart);
-  assert.ok(mapStart >= 0 && mapEnd > mapStart, 'running route renderer should exist');
-  const mapFn = calendarJs.slice(mapStart, mapEnd);
+  const mapFn = sliceFunctionRange(calendarSources, '_renderRunningRouteMap', '_renderRunningRouteDetail');
   assert.match(mapFn, /row\?\.routeSummary\?\.mapImageDataUrl/);
   assert.match(mapFn, /class="wt-running-route-map wt-running-route-map--imported"/);
   assert.match(mapFn, /<img src="\$\{_esc\(importedMapImage\)\}"/);
@@ -356,7 +357,7 @@ test('day sheet add picker stays on the current sheet session', () => {
   const loadStart = calendarJs.indexOf('async function _loadWorkoutStateForSheetSession');
   const loadEnd = calendarJs.indexOf('async function _refreshWorkoutHomeAfterPickerSelect', loadStart);
   const refreshStart = loadEnd;
-  const refreshEnd = calendarJs.indexOf('function _sortedCheckins', refreshStart);
+  const refreshEnd = calendarJs.indexOf('async function _saveWorkoutHomeSessionResult', refreshStart);
   const addStart = calendarJs.indexOf('async function _addWorkoutHomeSession');
   const addEnd = calendarJs.indexOf('async function _openWorkoutHomeRunning', addStart);
   assert.ok(loadStart >= 0 && loadEnd > loadStart, 'sheet state loader should exist');
@@ -388,22 +389,23 @@ test('day sheet add picker stays on the current sheet session', () => {
 });
 
 test('day sheet add picker focuses the selected exercise carousel slide', () => {
-  const pendingState = calendarJs.indexOf('const _workoutSheetPendingCarouselFocus = new Map()');
-  const helperStart = calendarJs.indexOf('function _restoreWorkoutSheetCarouselToSlide');
-  const helperEnd = calendarJs.indexOf('function _requestWorkoutSheetPendingCarouselFocus', helperStart);
-  const pendingStart = helperEnd;
-  const pendingEnd = calendarJs.indexOf('function _workoutSheetInputSelection', pendingStart);
   const refreshStart = calendarJs.indexOf('async function _refreshWorkoutHomeAfterPickerSelect');
-  const refreshEnd = calendarJs.indexOf('function _sortedCheckins', refreshStart);
+  const refreshEnd = calendarJs.indexOf('async function _saveWorkoutHomeSessionResult', refreshStart);
   const renderStart = calendarJs.indexOf('export function renderWorkoutCalendarHome');
   const renderEnd = calendarJs.indexOf('function _renderWorkoutHomeDetail', renderStart);
-  assert.ok(pendingState >= 0, 'pending carousel focus request map should exist');
-  assert.ok(helperStart >= 0 && helperEnd > helperStart, 'selected slide restore helper should exist');
-  assert.ok(pendingStart >= 0 && pendingEnd > pendingStart, 'pending carousel focus helpers should exist');
+  assert.match(calendarSheetStateJs, /const _workoutSheetPendingCarouselFocus = new Map\(\)/);
   assert.ok(refreshStart >= 0 && refreshEnd > refreshStart, 'sheet refresh callback should exist');
   assert.ok(renderStart >= 0 && renderEnd > renderStart, 'workout home render should exist');
-  const helper = calendarJs.slice(helperStart, helperEnd);
-  const pending = calendarJs.slice(pendingStart, pendingEnd);
+  const helper = sliceFunctionRange(
+    calendarSources,
+    '_restoreWorkoutSheetCarouselToSlide',
+    '_requestWorkoutSheetPendingCarouselFocus',
+  );
+  const pending = sliceFunctionRange(
+    calendarSources,
+    '_requestWorkoutSheetPendingCarouselFocus',
+    '_workoutSheetInputSelection',
+  );
   const refresh = calendarJs.slice(refreshStart, refreshEnd);
   const render = calendarJs.slice(renderStart, renderEnd);
 
@@ -412,7 +414,7 @@ test('day sheet add picker focuses the selected exercise carousel slide', () => 
   assert.match(refresh, /if \(entryIndex != null\) _requestWorkoutSheetPendingCarouselFocus\(key, targetIndex, entryIndex\)/);
   assert.match(refresh, /renderWorkoutCalendarHome\(\);[\s\S]*if \(entryIndex != null\) _tryRestorePendingWorkoutSheetCarouselFocus\(key, targetIndex\)/);
   assert.match(helper, /const index = Math\.max\(0, Math\.floor\(Number\(slideIndex\)\)\)/);
-  assert.match(helper, /_rememberWorkoutSheetCarouselSlide\(options\?\.key \?\? _workoutHomeSelectedKey, options\?\.sessionIndex \?\? _workoutHomeSessionIndex, index\)/);
+  assert.match(helper, /_rememberWorkoutSheetCarouselSlide\(options\?\.key \?\? workoutSheetStateRuntime\.getSelectedKey\(\), options\?\.sessionIndex \?\? workoutSheetStateRuntime\.getSessionIndex\(\), index\)/);
   assert.match(helper, /const slide = track\?\.querySelector\?\.\(`\[data-wt-day-exercise-slide="\$\{index\}"\]`\)/);
   assert.match(helper, /if \(!slide\) return false/);
   assert.match(helper, /carouselSlideIndex: index/);
@@ -450,21 +452,16 @@ test('day sheet add picker pending focus survives until the selected slide exist
 });
 
 test('day sheet set rows support mobile value editing, clear-on-focus, and swipe delete', () => {
-  const inputStart = calendarJs.indexOf('function _renderWorkoutSetInput');
-  const rowsStart = calendarJs.indexOf('function _renderWorkoutSetRows');
-  const rowsEnd = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard', rowsStart);
   const bindStart = calendarJs.indexOf('function _bindWorkoutHomeSheetActions');
   const bindEnd = calendarJs.indexOf('function _bindWorkoutHomeSheetInputIsolation', bindStart);
-  assert.ok(inputStart >= 0 && rowsStart > inputStart, 'set input renderer should exist');
-  assert.ok(rowsStart >= 0 && rowsEnd > rowsStart, 'set row renderer should exist');
   assert.ok(bindStart >= 0 && bindEnd > bindStart, 'sheet action binder should exist');
-  const inputFn = calendarJs.slice(inputStart, rowsStart);
-  const rows = calendarJs.slice(rowsStart, rowsEnd);
+  const inputFn = sliceFunctionRange(calendarSources, '_renderWorkoutSetInput', '_renderWorkoutSetRows');
+  const rows = sliceFunctionRange(calendarSources, '_renderWorkoutSetRows', '_renderWorkoutExerciseDetailCard');
   const binder = calendarJs.slice(bindStart, bindEnd);
 
   assert.match(inputFn, /data-wt-set-clear-on-focus/);
   assert.match(calendarJs, /function _focusWorkoutSetInlineFieldFromSheet/);
-  assert.match(calendarJs, /function _renderWorkoutSetInlineInput/);
+  assert.match(calendarDetailTemplateJs, /function _renderWorkoutSetInlineInput/);
   assert.match(calendarJs, /function _focusWorkoutSetEditorFieldFromSheet/);
   assert.match(rows, /data-wt-set-swipe-row/);
   assert.match(rows, /data-wt-set-edit-field="kg"/);
@@ -473,13 +470,13 @@ test('day sheet set rows support mobile value editing, clear-on-focus, and swipe
   assert.match(rows, /_renderWorkoutSetInlineInput/);
   assert.match(binder, /const editField = target\?\.closest\?\.\('\[data-wt-set-edit-field\]'\)/);
   assert.match(binder, /_focusWorkoutSetInlineFieldFromSheet/);
-  assert.match(calendarJs, /function _bindWorkoutSetSwipeDelete/);
+  assert.match(calendarSetKeyboardJs, /function _bindWorkoutSetSwipeDelete/);
   assert.match(calendarJs, /_bindWorkoutSetSwipeDelete\(sheet\)/);
-  assert.match(calendarJs, /dx >= 0 \|\| ax < 8 \|\| ax <= ay/);
-  assert.match(calendarJs, /current\.dx <= -64/);
+  assert.match(calendarSetKeyboardJs, /dx >= 0 \|\| ax < 8 \|\| ax <= ay/);
+  assert.match(calendarSetKeyboardJs, /current\.dx <= -64/);
   assert.match(calendarJs, /focusin[\s\S]*data-wt-set-clear-on-focus/);
   assert.match(binder, /_showWorkoutSetKeyboard\(input\)/);
-  assert.match(calendarJs, /function _moveWorkoutSetKeyboardFocus/);
+  assert.match(calendarSetKeyboardJs, /function _moveWorkoutSetKeyboardFocus/);
   assert.match(styleCss, /\.wt-max-set-main\s*\{[\s\S]*grid-template-columns:\s*32px 32px minmax\(42px,\s*1fr\) minmax\(38px,\s*\.84fr\) 32px 32px/);
   assert.match(styleCss, /\.wt-max-set-value-input\s*\{/);
   assert.match(styleCss, /\.wt-set-keyboard\s*\{/);
@@ -491,9 +488,6 @@ test('day sheet set rows support mobile value editing, clear-on-focus, and swipe
 });
 
 test('day sheet remembers exercise carousel slide across close and reopen', () => {
-  const stateStart = calendarJs.indexOf('const _workoutSheetCarouselSnapshots = new Map()');
-  const helperStart = calendarJs.indexOf('function _workoutSheetCarouselSnapshotKey');
-  const helperEnd = calendarJs.indexOf('function _workoutSheetInputSelection', helperStart);
   const snapshotStart = calendarJs.indexOf('export function applyWorkoutCalendarNavSnapshot');
   const snapshotEnd = calendarJs.indexOf('function _isTodayKey', snapshotStart);
   const setStateStart = calendarJs.indexOf('function _setWorkoutHomeSheetState');
@@ -504,14 +498,17 @@ test('day sheet remembers exercise carousel slide across close and reopen', () =
   const openEnd = calendarJs.indexOf('async function _openWorkoutHomeRoutine', openStart);
   const sessionStart = calendarJs.indexOf('function _selectWorkoutHomeSession');
   const sessionEnd = calendarJs.indexOf('function _selectWorkoutHomeRunning', sessionStart);
-  assert.ok(stateStart >= 0, 'carousel memory map should exist');
-  assert.ok(helperStart >= 0 && helperEnd > helperStart, 'carousel memory helpers should exist');
+  assert.match(calendarSheetStateJs, /const _workoutSheetCarouselSnapshots = new Map\(\)/);
   assert.ok(snapshotStart >= 0 && snapshotEnd > snapshotStart, 'nav snapshot apply should exist');
   assert.ok(setStateStart >= 0 && setStateEnd > setStateStart, 'sheet state setter should exist');
   assert.ok(toggleStart >= 0 && toggleEnd > toggleStart, 'sheet toggle should exist');
   assert.ok(openStart >= 0 && openEnd > openStart, 'day open function should exist');
   assert.ok(sessionStart >= 0 && sessionEnd > sessionStart, 'session switch function should exist');
-  const helpers = calendarJs.slice(helperStart, helperEnd);
+  const helpers = sliceFunctionRange(
+    calendarSources,
+    '_workoutSheetCarouselSnapshotKey',
+    '_workoutSheetInputSelection',
+  );
   const snapshotFn = calendarJs.slice(snapshotStart, snapshotEnd);
   const setStateFn = calendarJs.slice(setStateStart, setStateEnd);
   const toggleFn = calendarJs.slice(toggleStart, toggleEnd);
@@ -532,22 +529,16 @@ test('day sheet remembers exercise carousel slide across close and reopen', () =
 });
 
 test('day sheet detail renders picker-added draft exercise rows', () => {
-  const rowStart = calendarJs.indexOf('function _exerciseRows');
-  const rowEnd = calendarJs.indexOf('function _workoutMetrics', rowStart);
-  const metricsEnd = calendarJs.indexOf('function _renderWorkoutHomeDayBar');
-  const detailStart = calendarJs.indexOf('function _renderWorkoutHomeDetailHtml');
-  const detailEnd = calendarJs.indexOf('function _renderWorkoutDetailSummaryCard', detailStart);
-  const tabStart = calendarJs.indexOf('function _renderWorkoutDetailSessionTabs');
-  const tabEnd = calendarJs.indexOf('function _renderWorkoutDetailRecorded', tabStart);
-  assert.ok(rowStart >= 0 && rowEnd > rowStart, 'exercise row mapper should exist');
-  assert.ok(detailStart >= 0 && detailEnd > detailStart, 'day sheet detail renderer should exist');
-  assert.ok(tabStart >= 0 && tabEnd > tabStart, 'session tab renderer should exist');
-  const rows = calendarJs.slice(rowStart, rowEnd);
-  const metrics = calendarJs.slice(rowEnd, metricsEnd);
-  const detail = calendarJs.slice(detailStart, detailEnd);
-  const tabs = calendarJs.slice(tabStart, tabEnd);
+  const rows = extractFunctionSource(calendarSources, '_exerciseRows');
+  const metrics = extractFunctionSource(calendarSources, '_workoutMetrics');
+  const detail = sliceFunctionRange(calendarSources, '_renderWorkoutHomeDetailHtml', '_renderWorkoutDetailSummaryCard');
+  const tabs = sliceFunctionRange(calendarSources, '_renderWorkoutDetailSessionTabs', '_renderWorkoutDetailRecorded');
 
-  assert.match(calendarJs, /function _hasDraftWorkoutEntry/);
+  assert.match(calendarFormatJs, /function _hasDraftWorkoutEntry/);
+  assert.match(
+    calendarWorkoutReadModelJs,
+    /import\s*\{[\s\S]*?_hasDraftWorkoutEntry,[\s\S]*?\}\s*from '\.\/format\.js'/,
+  );
   assert.match(rows, /includeDraftExercises/);
   assert.match(rows, /rawSetDetails/);
   assert.match(rows, /const hasDraftExercise = includeDraftExercises && _hasDraftWorkoutEntry\(entry\)/);
@@ -561,10 +552,7 @@ test('day sheet detail renders picker-added draft exercise rows', () => {
 });
 
 test('day sheet exercise cards render as a horizontal carousel instead of a vertical stack', () => {
-  const cardsStart = calendarJs.indexOf('function _renderWorkoutDetailCards');
-  const cardsEnd = calendarJs.indexOf('function _renderWorkoutSetInput', cardsStart);
-  assert.ok(cardsStart >= 0 && cardsEnd > cardsStart, 'detail card renderer should exist');
-  const cards = calendarJs.slice(cardsStart, cardsEnd);
+  const cards = sliceFunctionRange(calendarSources, '_renderWorkoutDetailCards', '_renderWorkoutSetInput');
 
   assert.match(cards, /_renderWorkoutExerciseDetailCarousel\(key, sessionIndex, wx\.exercises\)/);
   assert.match(cards, /function _renderWorkoutExerciseDetailCarousel\(key, sessionIndex, exercises = \[\]\)/);
@@ -578,20 +566,14 @@ test('day sheet exercise cards render as a horizontal carousel instead of a vert
 });
 
 test('day sheet preserves exercise carousel position across set saves', () => {
-  const inputStart = calendarJs.indexOf('function _workoutSheetScrollState');
-  const inputEnd = calendarJs.indexOf('function _workoutSheetInputSelection', inputStart);
-  const restoreStart = calendarJs.indexOf('function _restoreWorkoutSheetScrollState');
-  const restoreEnd = calendarJs.indexOf('function _restoreWorkoutSheetInputState', restoreStart);
   const saveStart = calendarJs.indexOf('async function _saveWorkoutHomeSessionResult');
-  const saveEnd = calendarJs.indexOf('function _durationFromMinSec', saveStart);
+  const saveEnd = calendarJs.indexOf('function _renderCalendarModeTabs', saveStart);
   const toggleStart = calendarJs.indexOf('async function _toggleWorkoutExerciseSetDoneFromSheet');
   const toggleEnd = calendarJs.indexOf('async function _completeWorkoutExerciseFromSheet', toggleStart);
-  assert.ok(inputStart >= 0 && inputEnd > inputStart, 'scroll state helpers should exist');
-  assert.ok(restoreStart >= 0 && restoreEnd > restoreStart, 'scroll restore helper should exist');
   assert.ok(saveStart >= 0 && saveEnd > saveStart, 'sheet save function should exist');
   assert.ok(toggleStart >= 0 && toggleEnd > toggleStart, 'set toggle function should exist');
-  const inputHelpers = calendarJs.slice(inputStart, inputEnd);
-  const restoreFn = calendarJs.slice(restoreStart, restoreEnd);
+  const inputHelpers = sliceFunctionRange(calendarSources, '_workoutSheetScrollState', '_workoutSheetInputSelection');
+  const restoreFn = sliceFunctionRange(calendarSources, '_restoreWorkoutSheetScrollState', '_restoreWorkoutSheetInputState');
   const saveFn = calendarJs.slice(saveStart, saveEnd);
   const toggleFn = calendarJs.slice(toggleStart, toggleEnd);
 
@@ -611,10 +593,10 @@ test('day sheet preserves exercise carousel position across set saves', () => {
 });
 
 test('workout keypad keeps digit entry local and commits once with an optimistic render', () => {
-  const markDirty = extractFunctionSource(calendarJs, '_markWorkoutSetKeyboardInputDirty');
-  const commit = extractFunctionSource(calendarJs, '_commitWorkoutSetKeyboardInput');
-  const complete = extractFunctionSource(calendarJs, '_commitWorkoutSetKeyboardDone');
-  const move = extractFunctionSource(calendarJs, '_moveWorkoutSetKeyboardFocus');
+  const markDirty = extractFunctionSource(calendarSources, '_markWorkoutSetKeyboardInputDirty');
+  const commit = extractFunctionSource(calendarSources, '_commitWorkoutSetKeyboardInput');
+  const complete = extractFunctionSource(calendarSources, '_commitWorkoutSetKeyboardDone');
+  const move = extractFunctionSource(calendarSources, '_moveWorkoutSetKeyboardFocus');
 
   assert.match(markDirty, /data-wt-set-keyboard-dirty/);
   assert.match(markDirty, /dispatchEvent\(new Event\('input'/);
@@ -622,29 +604,39 @@ test('workout keypad keeps digit entry local and commits once with an optimistic
   assert.doesNotMatch(calendarJs, /_workoutSetKeyboardDraftQueues|_queueWorkoutSetKeyboardInputDraft|_flushWorkoutSetKeyboardInputDraft/);
   assert.match(commit, /skipRender: options\?\.skipRender === true/);
   assert.match(complete, /\{ preserveSheetScroll: true, optimisticRender: true \}/);
+  for (const dependency of [
+    'cancelInlineField',
+    'defaultSet',
+    'focusEditorField',
+    'focusInlineField',
+    'mutateExercise',
+    'syncNavState',
+  ]) {
+    assert.match(calendarSetKeyboardJs, new RegExp(`workoutSetKeyboardRuntime\\.${dependency}`));
+    assert.match(calendarJs, new RegExp(`${dependency}:`));
+  }
+  assert.match(
+    calendarSetKeyboardJs,
+    /import \{ clearWorkoutExerciseCompletionMarker \} from '\.\.\/workout\/exercise-completion\.js'/,
+  );
+  assert.doesNotMatch(
+    calendarSetKeyboardJs,
+    /\b_(?:cancelWorkoutSetInlineFieldFromSheet|defaultWorkoutSheetSet|focusWorkoutSetEditorFieldFromSheet|focusWorkoutSetInlineFieldFromSheet|mutateWorkoutExerciseFromSheet|syncWorkoutHomeNavState)\b/,
+  );
   assert.match(calendarJs, /if \(_workoutSetKeyboardActiveInput\(\)\) return;[\s\S]*document\.dispatchEvent\(new CustomEvent\('sheet:saved'\)\)/);
   assert.match(move, /const commitPromise = Promise\.resolve\(_commitWorkoutSetKeyboardInput/);
   assert.match(move, /const targetAlreadyMounted = inlineMove && !!_workoutSetKeyboardRenderedInput\(target\)/);
-  assert.match(move, /if \(targetAlreadyMounted\) _workoutSetKeyboardDomLocked = true/);
+  assert.match(move, /if \(targetAlreadyMounted\) workoutSetKeyboardState\.domLocked = true/);
   assert.match(move, /skipRender: targetAlreadyMounted/);
   assert.match(move, /_focusWorkoutSetKeyboardRenderedTarget\(target\)/);
   assert.match(move, /inlineMove && !targetAlreadyMounted/);
-  assert.match(calendarJs, /if \(_workoutSetKeyboardDomLocked && _workoutSetKeyboardElement\(\)\?\.classList\.contains\('is-open'\)\) return/);
+  assert.match(calendarJs, /if \(workoutSetKeyboardState\.domLocked && _workoutSetKeyboardElement\(\)\?\.classList\.contains\('is-open'\)\) return/);
 });
 
 test('day sheet exercise card renders prior workout record instead of today set summary', () => {
-  const rowStart = calendarJs.indexOf('function _exerciseRows');
-  const rowEnd = calendarJs.indexOf('function _workoutMetrics', rowStart);
-  const prevStart = calendarJs.indexOf('function _previousWorkoutRecordForRow');
-  const prevEnd = calendarJs.indexOf('function _exerciseRows', prevStart);
-  const cardStart = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard');
-  const cardEnd = calendarJs.indexOf('function _renderWorkoutRunningDetailCard', cardStart);
-  assert.ok(rowStart >= 0 && rowEnd > rowStart, 'exercise row mapper should exist');
-  assert.ok(prevStart >= 0 && prevEnd > prevStart, 'previous record helper should exist');
-  assert.ok(cardStart >= 0 && cardEnd > cardStart, 'exercise detail card renderer should exist');
-  const rows = calendarJs.slice(rowStart, rowEnd);
-  const previous = calendarJs.slice(prevStart, prevEnd);
-  const card = calendarJs.slice(cardStart, cardEnd);
+  const rows = extractFunctionSource(calendarSources, '_exerciseRows');
+  const previous = extractFunctionSource(calendarSources, '_previousWorkoutRecordForRow');
+  const card = sliceFunctionRange(calendarSources, '_renderWorkoutExerciseDetailCard', '_renderWorkoutRunningDetailCard');
 
   assert.match(previous, /getWorkoutSessions\(source\[key\] \|\| \{\}\)/);
   assert.match(previous, /key < selectedKey/);
@@ -654,19 +646,16 @@ test('day sheet exercise card renders prior workout record instead of today set 
   assert.match(card, /const previousSummary = _workoutPreviousSetSummary\(row\)/);
   assert.match(card, /previousSummary\.label/);
   assert.match(card, /previousSummary\.summary/);
-  assert.match(calendarJs, /지난 기록/);
+  assert.match(calendarDetailTemplateJs, /지난 기록/);
   assert.doesNotMatch(card, /<span>오늘 기록<\/span>/);
 });
 
 test('past workout card copies every previous set into the current exercise draft', () => {
-  const cardStart = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard');
-  const cardEnd = calendarJs.indexOf('function _renderWorkoutRunningDetailCard', cardStart);
-  const action = extractFunctionSource(calendarJs, '_runWorkoutHomeSheetCardAction');
-  const copySet = extractFunctionSource(calendarJs, '_copyPreviousWorkoutSetForSheet');
-  const copyRecord = extractFunctionSource(calendarJs, '_copyPreviousWorkoutRecordSetsForSheet');
-  const copyAction = extractFunctionSource(calendarJs, '_copyPreviousWorkoutExerciseSetsFromSheet');
-  assert.ok(cardStart >= 0 && cardEnd > cardStart, 'exercise detail card renderer should exist');
-  const card = calendarJs.slice(cardStart, cardEnd);
+  const action = extractFunctionSource(calendarSources, '_runWorkoutHomeSheetCardAction');
+  const copySet = extractFunctionSource(calendarSources, '_copyPreviousWorkoutSetForSheet');
+  const copyRecord = extractFunctionSource(calendarSources, '_copyPreviousWorkoutRecordSetsForSheet');
+  const copyAction = extractFunctionSource(calendarSources, '_copyPreviousWorkoutExerciseSetsFromSheet');
+  const card = sliceFunctionRange(calendarSources, '_renderWorkoutExerciseDetailCard', '_renderWorkoutRunningDetailCard');
 
   assert.match(card, /data-wt-sheet-card-action="copy-previous-sets"/);
   assert.match(card, /전체 세트 복사/);
@@ -680,26 +669,30 @@ test('past workout card copies every previous set into the current exercise draf
 });
 
 test('day sheet exercise card uses inline plus row and one complete button', () => {
-  const cardStart = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard');
-  const cardEnd = calendarJs.indexOf('function _renderWorkoutRunningDetailCard', cardStart);
-  const rowsStart = calendarJs.indexOf('function _renderWorkoutSetInput');
-  const rowsEnd = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard', rowsStart);
   const oldEditStart = calendarJs.indexOf('function _editWorkoutHomeSession');
   const oldEditEnd = calendarJs.indexOf('async function _addWorkoutHomeSession', oldEditStart);
   const completeStart = calendarJs.indexOf('async function _completeWorkoutExerciseFromSheet');
   const completeEnd = calendarJs.indexOf('async function _addWorkoutHomeSession', completeStart);
-  assert.ok(cardStart >= 0 && cardEnd > cardStart, 'exercise detail card renderer should exist');
-  assert.ok(rowsStart >= 0 && rowsEnd > rowsStart, 'set row renderer should exist');
   assert.ok(oldEditStart >= 0 && oldEditEnd > oldEditStart, 'legacy edit session function should exist');
   assert.ok(completeStart >= 0 && completeEnd > completeStart, 'exercise complete function should exist');
-  const card = calendarJs.slice(cardStart, cardEnd);
-  const setRows = calendarJs.slice(rowsStart, rowsEnd);
+  const card = sliceFunctionRange(calendarSources, '_renderWorkoutExerciseDetailCard', '_renderWorkoutRunningDetailCard');
+  const setRows = sliceFunctionRange(calendarSources, '_renderWorkoutSetInput', '_renderWorkoutExerciseDetailCard');
   const oldEditFn = calendarJs.slice(oldEditStart, oldEditEnd);
   const completeFn = calendarJs.slice(completeStart, completeEnd);
 
-  assert.match(card, /const collapsed = stamped && _workoutEditingCardId !== cardId/);
+  assert.match(card, /const collapsed = stamped && workoutDetailState\.editingCardId !== cardId/);
   assert.match(card, /const editing = !collapsed/);
   assert.match(calendarJs, /from '\.\/workout\/exercise-completion\.js'/);
+  assert.match(
+    calendarDetailTemplateJs,
+    /import \{ isWorkoutExerciseComplete \} from '\.\.\/workout\/exercise-completion\.js'/,
+  );
+  assert.match(
+    calendarDetailTemplateJs,
+    /import \{ parseDateKey as _parseDateKey \} from '\.\.\/utils\/date-key\.js'/,
+  );
+  assert.match(calendarDetailTemplateJs, /workoutDetailRuntime\.getSelectedKey\(\)/);
+  assert.match(calendarJs, /getSelectedKey:\s*\(\) => _workoutHomeSelectedKey/);
   assert.match(exerciseCompletionJs, /export function workoutExerciseCompletionStampAt\(entry\)/);
   assert.match(exerciseCompletionJs, /export function isWorkoutExerciseComplete\(entry\)/);
   assert.match(exerciseCompletionJs, /if \(workoutExerciseCompletionStampAt\(entry\) == null\) return false/);
@@ -754,7 +747,7 @@ test('day sheet exercise card uses inline plus row and one complete button', () 
   assert.match(calendarJs, /data-wt-set-done-toggle[\s\S]*_toggleWorkoutExerciseSetDoneFromSheet/);
   assert.match(calendarJs, /data-wt-set-remove[\s\S]*_removeWorkoutExerciseSetFromSheet/);
   assert.match(calendarJs, /optimisticRender:\s*true/);
-  assert.match(calendarJs, /sheet\.addEventListener\('touchmove',[\s\S]*\{ passive: false, capture: true \}\)/);
+  assert.match(calendarSetKeyboardJs, /sheet\.addEventListener\('touchmove',[\s\S]*\{ passive: false, capture: true \}\)/);
   assert.match(calendarJs, /upsertWorkoutSession\(day, nextSession, index, \{ now: Date\.now\(\) \}\)/);
   assert.match(styleCss, /\.wt-max-set-editor label input\s*\{/);
   assert.match(styleCss, /\.wt-max-rom-inline\.is-editing input\s*\{/);
@@ -767,8 +760,6 @@ test('day sheet exercise card uses inline plus row and one complete button', () 
 });
 
 test('day sheet complete stamp requires the explicit exercise complete marker', () => {
-  const rowsStart = calendarJs.indexOf('function _exerciseRows');
-  const rowsEnd = calendarJs.indexOf('function _workoutMetrics', rowsStart);
   const updateStart = calendarJs.indexOf('async function _updateWorkoutExerciseSetFromSheet');
   const updateEnd = calendarJs.indexOf('async function _addWorkoutExerciseSetFromSheet', updateStart);
   const addStart = calendarJs.indexOf('async function _addWorkoutExerciseSetFromSheet');
@@ -779,13 +770,12 @@ test('day sheet complete stamp requires the explicit exercise complete marker', 
   const toggleEnd = calendarJs.indexOf('async function _completeWorkoutExerciseFromSheet', toggleStart);
   const completeStart = calendarJs.indexOf('async function _completeWorkoutExerciseFromSheet');
   const completeEnd = calendarJs.indexOf('async function _addWorkoutHomeSession', completeStart);
-  assert.ok(rowsStart >= 0 && rowsEnd > rowsStart, 'exercise row mapper should exist');
   assert.ok(updateStart >= 0 && updateEnd > updateStart, 'set update function should exist');
   assert.ok(addStart >= 0 && addEnd > addStart, 'set add function should exist');
   assert.ok(removeStart >= 0 && removeEnd > removeStart, 'set remove function should exist');
   assert.ok(toggleStart >= 0 && toggleEnd > toggleStart, 'set toggle function should exist');
   assert.ok(completeStart >= 0 && completeEnd > completeStart, 'exercise complete function should exist');
-  const rows = calendarJs.slice(rowsStart, rowsEnd);
+  const rows = extractFunctionSource(calendarSources, '_exerciseRows');
   const updateFn = calendarJs.slice(updateStart, updateEnd);
   const addFn = calendarJs.slice(addStart, addEnd);
   const removeFn = calendarJs.slice(removeStart, removeEnd);
@@ -809,16 +799,13 @@ test('day sheet complete stamp requires the explicit exercise complete marker', 
 
 test('day sheet save syncs saved session over stale active workout draft', () => {
   const saveStart = calendarJs.indexOf('async function _saveWorkoutHomeSessionResult');
-  const saveEnd = calendarJs.indexOf('function _durationFromMinSec', saveStart);
-  const syncStart = calendarJs.indexOf('function _syncWorkoutHomeSavedSessionState');
-  const syncEnd = calendarJs.indexOf('function _hasWorkoutHomeMealRecord', syncStart);
+  const saveEnd = calendarJs.indexOf('function _renderCalendarModeTabs', saveStart);
   assert.ok(saveStart >= 0 && saveEnd > saveStart, 'sheet save function should exist');
-  assert.ok(syncStart >= 0 && syncEnd > syncStart, 'sheet sync function should exist');
   const saveFn = calendarJs.slice(saveStart, saveEnd);
-  const syncFn = calendarJs.slice(syncStart, syncEnd);
+  const syncFn = extractFunctionSource(calendarSources, '_syncWorkoutHomeSavedSessionState');
 
   assert.match(calendarJs, /import \{ S \} from '\.\/workout\/state\.js'/);
-  assert.match(calendarJs, /import \{[\s\S]*?wtReplaceActiveWorkoutDraftSession[\s\S]*?\} from '\.\/workout\/timers\.js'/);
+  assert.match(calendarSessionStateJs, /import \{ wtReplaceActiveWorkoutDraftSession \} from '\.\.\/workout\/timers\.js'/);
   assert.match(saveFn, /const savePromise = saveDay\(key, payload, \{ mode: 'merge', rethrow: true \}\)/);
   assert.match(saveFn, /const cache = getCache\(\) \|\| \{\}[\s\S]*cache\[key\] = \{ \.\.\.currentDay, \.\.\.payload \}/);
   assert.match(saveFn, /if \(options\?\.optimisticRender\)[\s\S]*_syncWorkoutHomeSavedSessionState\(key, result, options\.sessionIndex\)[\s\S]*await savePromise[\s\S]*return/);
@@ -833,13 +820,10 @@ test('day sheet save syncs saved session over stale active workout draft', () =>
 });
 
 test('day sheet set done toggle uses explicit state and compact 70-percent-height controls', () => {
-  const rowsStart = calendarJs.indexOf('function _exerciseRows');
-  const rowsEnd = calendarJs.indexOf('function _workoutMetrics', rowsStart);
   const toggleStart = calendarJs.indexOf('async function _toggleWorkoutExerciseSetDoneFromSheet');
   const toggleEnd = calendarJs.indexOf('async function _addWorkoutHomeSession', toggleStart);
-  assert.ok(rowsStart >= 0 && rowsEnd > rowsStart, 'exercise row mapper should exist');
   assert.ok(toggleStart >= 0 && toggleEnd > toggleStart, 'set done toggle function should exist');
-  const rows = calendarJs.slice(rowsStart, rowsEnd);
+  const rows = extractFunctionSource(calendarSources, '_exerciseRows');
   const toggleFn = calendarJs.slice(toggleStart, toggleEnd);
 
   assert.match(rows, /rawSetDetails:[\s\S]*done: set\.done === true/);
@@ -856,25 +840,16 @@ test('day sheet set done toggle uses explicit state and compact 70-percent-heigh
 });
 
 test('day sheet set rows preserve wendler set role chips', () => {
-  const actualStart = calendarJs.indexOf('function _isActualWorkoutSet');
-  const actualEnd = calendarJs.indexOf('function _hasDraftWorkoutEntry', actualStart);
-  const rowsStart = calendarJs.indexOf('function _exerciseRows');
-  const rowsEnd = calendarJs.indexOf('function _workoutMetrics', rowsStart);
-  const renderStart = calendarJs.indexOf('function _renderWorkoutSetRows');
-  const renderEnd = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard', renderStart);
-  assert.ok(actualStart >= 0 && actualEnd > actualStart, 'actual set filter should exist');
-  assert.ok(rowsStart >= 0 && rowsEnd > rowsStart, 'exercise row mapper should exist');
-  assert.ok(renderStart >= 0 && renderEnd > renderStart, 'set row renderer should exist');
-  const actualFn = calendarJs.slice(actualStart, actualEnd);
-  const rows = calendarJs.slice(rowsStart, rowsEnd);
-  const renderFn = calendarJs.slice(renderStart, renderEnd);
+  const actualFn = extractFunctionSource(calendarSources, '_isActualWorkoutSet');
+  const rows = extractFunctionSource(calendarSources, '_exerciseRows');
+  const renderFn = sliceFunctionRange(calendarSources, '_renderWorkoutSetRows', '_renderWorkoutExerciseDetailCard');
 
   assert.match(actualFn, /type === 'deload'/);
   assert.match(actualFn, /role === 'deload'/);
   assert.match(rows, /wendlerRole:\s*set\.wendlerRole \|\| ''/);
   assert.match(rows, /supplementalKind:\s*set\.supplementalKind \|\| ''/);
   assert.match(rows, /wendlerPct/);
-  assert.match(calendarJs, /from '\.\/workout\/set-presentation\.js'/);
+  assert.match(calendarDetailTemplateJs, /from '\.\.\/workout\/set-presentation\.js'/);
   assert.match(setPresentationJs, /export function workoutSetTypeLabel\(setOrType = \{\}\)/);
   assert.match(setPresentationJs, /set\.wendlerRole === 'warmup'[\s\S]*return '웜업'/);
   assert.match(setPresentationJs, /set\.wendlerRole === 'main'[\s\S]*return '메인'/);
@@ -887,22 +862,17 @@ test('day sheet set rows preserve wendler set role chips', () => {
 
 test('day sheet set inputs preserve keyboard next focus without restoring the changed source input', () => {
   const saveStart = calendarJs.indexOf('async function _saveWorkoutHomeSessionResult');
-  const saveEnd = calendarJs.indexOf('function _durationFromMinSec', saveStart);
-  const inputStart = calendarJs.indexOf('function _captureWorkoutSheetInputState');
-  const inputEnd = calendarJs.indexOf('function _workoutHomeScrollTop', inputStart);
+  const saveEnd = calendarJs.indexOf('function _renderCalendarModeTabs', saveStart);
   const updateStart = calendarJs.indexOf('async function _updateWorkoutExerciseSetFromSheet');
   const updateEnd = calendarJs.indexOf('async function _addWorkoutExerciseSetFromSheet', updateStart);
-  const rowsStart = calendarJs.indexOf('function _renderWorkoutSetInput');
-  const rowsEnd = calendarJs.indexOf('function _renderWorkoutSetRows', rowsStart);
   assert.ok(saveStart >= 0 && saveEnd > saveStart, 'sheet save function should exist');
-  assert.ok(inputStart >= 0 && inputEnd > inputStart, 'input state helpers should exist');
   assert.ok(updateStart >= 0 && updateEnd > updateStart, 'set update function should exist');
   const saveFn = calendarJs.slice(saveStart, saveEnd);
-  const inputHelpers = calendarJs.slice(inputStart, inputEnd);
+  const inputHelpers = sliceFunctionRange(calendarSources, '_captureWorkoutSheetInputState', '_workoutHomeScrollTop');
   const updateFn = calendarJs.slice(updateStart, updateEnd);
-  const inputFn = calendarJs.slice(rowsStart, rowsEnd);
+  const inputFn = sliceFunctionRange(calendarSources, '_renderWorkoutSetInput', '_renderWorkoutSetRows');
 
-  assert.match(calendarJs, /const WORKOUT_SHEET_SET_INPUT_SELECTOR = '\[data-wt-set-input\]'/);
+  assert.match(calendarSheetStateJs, /const WORKOUT_SHEET_SET_INPUT_SELECTOR = '\[data-wt-set-input\]'/);
   assert.match(inputFn, /type="text" inputmode="none"/);
   assert.match(inputFn, /data-wt-set-input data-wt-set-keyboard-input data-date-key="\$\{_esc\(key\)\}" data-session-index="\$\{sessionIndex\}"/);
   assert.match(inputFn, /data-exercise-index="\$\{exerciseIndex\}"/);
@@ -917,7 +887,7 @@ test('day sheet set inputs preserve keyboard next focus without restoring the ch
   assert.ok(keyboardButtonStart >= 0 && keyboardButtonEnd > keyboardButtonStart, 'keyboard button rule should exist');
   assert.doesNotMatch(styleCss.slice(keyboardButtonStart, keyboardButtonEnd), /vh/);
   assert.match(inputHelpers, /\.wt-day-sheet-scroll/);
-  assert.match(calendarJs, /_workoutSetKeyboardInput\?\.isConnected && _workoutSetKeyboardInput\.matches/);
+  assert.match(calendarSetKeyboardJs, /workoutSetKeyboardState\.input\?\.isConnected && workoutSetKeyboardState\.input\.matches/);
   assert.match(inputHelpers, /function _captureWorkoutSheetInputState\(sourceInput = null, options = \{\}\)/);
   assert.match(inputHelpers, /const focused = document\.activeElement/);
   assert.match(inputHelpers, /const ignoreSourceInput = options\?\.ignoreSourceInput === true/);
@@ -949,18 +919,16 @@ test('day sheet added workout sets copy previous user values without completion 
   const updateEnd = calendarJs.indexOf('async function _addWorkoutExerciseSetFromSheet', updateStart);
   const addStart = calendarJs.indexOf('async function _addWorkoutExerciseSetFromSheet');
   const addEnd = calendarJs.indexOf('async function _removeWorkoutExerciseSetFromSheet', addStart);
-  const rowsStart = calendarJs.indexOf('function _renderWorkoutSetRows');
-  const rowsEnd = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard', rowsStart);
   assert.ok(defaultsStart >= 0 && defaultsEnd > defaultsStart, 'default set function should exist');
   assert.ok(addStart >= 0 && addEnd > addStart, 'add set function should exist');
   const defaults = calendarJs.slice(defaultsStart, defaultsEnd);
   const updateFn = calendarJs.slice(updateStart, updateEnd);
   const addFn = calendarJs.slice(addStart, addEnd);
-  const rowsFn = calendarJs.slice(rowsStart, rowsEnd);
+  const rowsFn = sliceFunctionRange(calendarSources, '_renderWorkoutSetRows', '_renderWorkoutExerciseDetailCard');
 
-  assert.match(calendarJs, /function _isBlankWorkoutSheetNumber/);
-  assert.match(calendarJs, /function _workoutSheetInputValue/);
-  assert.match(calendarJs, /function _workoutSheetRawNumber/);
+  assert.match(calendarFormatJs, /function _isBlankWorkoutSheetNumber/);
+  assert.match(calendarFormatJs, /function _workoutSheetInputValue/);
+  assert.match(calendarFormatJs, /function _workoutSheetRawNumber/);
   assert.match(defaults, /const kg = _workoutSheetRawNumber\(prev\?\.kg\)/);
   assert.match(defaults, /const reps = _workoutSheetRawNumber\(prev\?\.reps\)/);
   assert.match(defaults, /kg:\s*kg === '' \? 40 : kg/);
@@ -989,24 +957,15 @@ test('day sheet added workout sets copy previous user values without completion 
 });
 
 test('day sheet set rows keep goal/history blocks and use minimal collapsed editing', () => {
-  const cardStart = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard');
-  const cardEnd = calendarJs.indexOf('function _renderRunningRouteMap', cardStart);
-  const menuStart = calendarJs.indexOf('function _renderWorkoutSetTypeMenu');
-  const menuEnd = calendarJs.indexOf('function _renderWorkoutSetRows', menuStart);
-  const rowsStart = calendarJs.indexOf('function _renderWorkoutSetRows');
-  const rowsEnd = calendarJs.indexOf('function _renderWorkoutExerciseDetailCard', rowsStart);
-  assert.ok(cardStart >= 0 && cardEnd > cardStart, 'exercise detail card renderer should exist');
-  assert.ok(menuStart >= 0 && menuEnd > menuStart, 'set type menu renderer should exist');
-  assert.ok(rowsStart >= 0 && rowsEnd > rowsStart, 'set row renderer should exist');
-  const card = calendarJs.slice(cardStart, cardEnd);
-  const menu = calendarJs.slice(menuStart, menuEnd);
-  const rows = calendarJs.slice(rowsStart, rowsEnd);
+  const card = sliceFunctionRange(calendarSources, '_renderWorkoutExerciseDetailCard', '_renderRunningRouteMap');
+  const menu = sliceFunctionRange(calendarSources, '_renderWorkoutSetTypeMenu', '_renderWorkoutSetRows');
+  const rows = sliceFunctionRange(calendarSources, '_renderWorkoutSetRows', '_renderWorkoutExerciseDetailCard');
 
   assert.match(card, /const goalText = hasSetDetails \? `\$\{bestKg\}kg × \$\{bestReps\}회` : '세트 입력 대기'/);
   assert.match(card, /const previousSummary = _workoutPreviousSetSummary\(row\)/);
   assert.match(card, /<div class="wt-max-last">/);
-  assert.match(calendarJs, /const WORKOUT_SET_TYPE_OPTIONS = \[/);
-  assert.match(calendarJs, /const _workoutOpenSetTypeMenus = new Set\(\)/);
+  assert.match(calendarDetailTemplateJs, /const WORKOUT_SET_TYPE_OPTIONS = \[/);
+  assert.match(calendarDetailTemplateJs, /const _workoutOpenSetTypeMenus = new Set\(\)/);
   assert.match(setPresentationJs, /type === 'failure'[\s\S]*return '실패'/);
   assert.match(rows, /wt-max-set-type-btn/);
   assert.match(rows, /data-wt-sheet-card-action="toggle-set-type"/);
@@ -1023,8 +982,8 @@ test('day sheet set rows keep goal/history blocks and use minimal collapsed edit
 });
 
 test('set type menu flips above and scrolls into the visible sheet area near bottom', () => {
-  const positionFn = extractFunctionSource(calendarJs, '_positionOpenWorkoutSetTypeMenu');
-  const toggleFn = extractFunctionSource(calendarJs, '_toggleWorkoutSetTypeMenuFromSheet');
+  const positionFn = extractFunctionSource(calendarSources, '_positionOpenWorkoutSetTypeMenu');
+  const toggleFn = extractFunctionSource(calendarSources, '_toggleWorkoutSetTypeMenuFromSheet');
 
   assert.match(positionFn, /getBoundingClientRect\(\)/);
   assert.match(positionFn, /is-menu-above/);
@@ -1043,20 +1002,17 @@ test('set type menu flips above and scrolls into the visible sheet area near bot
 });
 
 test('workout bottom sheet replaces the third gym session with a dedicated running tab', () => {
-  const tabStart = calendarJs.indexOf('function _renderWorkoutDetailSessionTabs');
-  const tabEnd = calendarJs.indexOf('function _renderWorkoutDetailRecorded', tabStart);
   const openStart = calendarJs.indexOf('async function _openWorkoutHomeRunning');
-  const openEnd = calendarJs.indexOf('function _formatWorkoutExportText', openStart);
-  assert.ok(tabStart >= 0 && tabEnd > tabStart, 'session tab renderer should be present');
+  const openEnd = calendarJs.indexOf('async function _exportWorkoutHomeSession', openStart);
   assert.ok(openStart >= 0 && openEnd > openStart, 'running opener should be present');
-  const tabs = calendarJs.slice(tabStart, tabEnd);
+  const tabs = sliceFunctionRange(calendarSources, '_renderWorkoutDetailSessionTabs', '_renderWorkoutDetailRecorded');
   const opener = calendarJs.slice(openStart, openEnd);
 
   assert.equal(WORKOUT_GYM_SESSION_COUNT, 2);
   assert.equal(WORKOUT_RUNNING_SESSION_INDEX, 2);
   assert.match(tabs, /\.slice\(0, WORKOUT_GYM_SESSION_COUNT\)/);
   assert.match(tabs, /const hasRecord = _hasWorkoutHomeSessionRecord\(session\)/);
-  assert.match(calendarJs, /function _hasWorkoutHomeSessionRecord\(session\) \{\s*return hasWorkoutGymCardData\(session\);\s*\}/);
+  assert.match(calendarDetailTemplateJs, /function _hasWorkoutHomeSessionRecord\(session\) \{\s*return hasWorkoutGymCardData\(session\);\s*\}/);
   assert.match(tabs, /data-wt-sheet-card-action="select-running"/);
   assert.match(tabs, />\s*러닝\$\{hasRunning \? '<b><\/b>' : ''\}\s*<\/button>/);
   assert.doesNotMatch(tabs, /3회차/);
@@ -1074,18 +1030,13 @@ test('workout bottom sheet replaces the third gym session with a dedicated runni
 
 test('running detail card uses the workout read-card shell with aggregated running metrics and splits', () => {
   const metricStart = runningPresentationJs.indexOf('export function runningMetricItems');
-  const mapStart = calendarJs.indexOf('function _renderRunningRouteMap');
-  const cardStart = calendarJs.indexOf('function _renderWorkoutRunningDetailCard');
-  const cardEnd = calendarJs.indexOf('function _renderWorkoutActivityDetailCard', cardStart);
   assert.ok(metricStart >= 0, 'running metric builder should be extracted into the presentation module');
-  assert.ok(mapStart >= 0 && mapStart < cardStart, 'running map renderer should exist before the card');
-  assert.ok(cardStart >= 0 && cardEnd > cardStart, 'running detail card renderer should exist');
   const metricBuilder = runningPresentationJs.slice(metricStart);
-  const mapRenderer = calendarJs.slice(mapStart, cardStart);
-  const card = calendarJs.slice(cardStart, cardEnd);
+  const mapRenderer = sliceFunctionRange(calendarSources, '_renderRunningRouteMap', '_renderWorkoutRunningDetailCard');
+  const card = sliceFunctionRange(calendarSources, '_renderWorkoutRunningDetailCard', '_renderWorkoutActivityDetailCard');
 
   assert.match(calendarJs, /loadRunningRoute,/);
-  assert.match(calendarJs, /from '\.\/workout\/running-presentation\.js'/);
+  assert.match(calendarDetailTemplateJs, /from '\.\.\/workout\/running-presentation\.js'/);
   assert.match(calendarJs, /import \{ destroyRunningMaps, renderRunningMap \} from '\.\/workout\/running-map\.js'/);
   assert.match(calendarJs, /createRunningRouteHydrationController/);
   assert.match(calendarJs, /function _mountWorkoutRunningMaps/);
@@ -1094,7 +1045,7 @@ test('running detail card uses the workout read-card shell with aggregated runni
   assert.match(runningModelJs, /runRouteRef:\s*_clone\(source\.runRouteRef, null\)/);
   assert.match(calendarActivityModelJs, /routeRef:\s*day\.runRouteRef \|\| null/);
   assert.match(calendarJs, /routeRef:\s*row\.routeRef \|\| null/);
-  assert.match(calendarJs, /전체 경로 불러오는 중/);
+  assert.match(calendarDetailTemplateJs, /전체 경로 불러오는 중/);
   assert.match(calendarJs, /전체 경로를 불러오지 못했어요/);
   assert.match(calendarActivityModelJs, /runRouteSummary && typeof day\.runRouteSummary === 'object'/);
   assert.match(calendarActivityModelJs, /distanceKm:\s*runDistance/);
@@ -1105,7 +1056,7 @@ test('running detail card uses the workout read-card shell with aggregated runni
   assert.match(calendarActivityModelJs, /avgHeartRateBpm:\s*Number\(runSummary\.avgHeartRateBpm\) > 0/);
   assert.match(calendarActivityModelJs, /bestPaceSecPerKm:\s*num\(runSummary\.bestPaceSecPerKm\)/);
   assert.match(calendarActivityModelJs, /splits:\s*Array\.isArray\(runSummary\.splits\)/);
-  assert.match(calendarJs, /if \(row\?\.key === 'running'\) return _renderWorkoutRunningDetailCard/);
+  assert.match(calendarDetailTemplateJs, /if \(row\?\.key === 'running'\) return _renderWorkoutRunningDetailCard/);
   assert.match(card, /wt-day-ex-card wt-max-read-card wt-running-read-card/);
   assert.match(card, /data-wt-sheet-card-action="delete-activity"/);
   assert.doesNotMatch(card, /data-wt-sheet-card-action="toggle-card"/);
@@ -1140,11 +1091,11 @@ test('running detail card uses the workout read-card shell with aggregated runni
   assert.match(metricBuilder, /row\.cadenceSpm == null \? '--'/);
   assert.doesNotMatch(card, /REP|RIR|KG|_renderWorkoutSetRows|wt-max-set-row/);
   assert.doesNotMatch(card, /wt-max-plan wt-running-plan|wt-running-route-mini|경로 포인트|GPS 평균 정확도|대한민국 위치 기록|오늘 러닝|row\.detail/);
-  assert.match(calendarJs, /function _renderRunningRouteDetail\(row\) \{/);
-  assert.match(calendarJs, /최고 페이스/);
-  assert.match(calendarJs, /경과 시간/);
-  assert.match(calendarJs, /최대 심박수/);
-  assert.match(calendarJs, /wt-running-split-table/);
+  assert.match(calendarDetailTemplateJs, /function _renderRunningRouteDetail\(row\) \{/);
+  assert.match(calendarDetailTemplateJs, /최고 페이스/);
+  assert.match(calendarDetailTemplateJs, /경과 시간/);
+  assert.match(calendarDetailTemplateJs, /최대 심박수/);
+  assert.match(calendarDetailTemplateJs, /wt-running-split-table/);
   assert.match(styleCss, /\.wt-running-read-card/);
   assert.match(styleCss, /\.wt-running-route-map/);
   assert.match(styleCss, /\.wt-running-route-place/);
@@ -1157,10 +1108,7 @@ test('running detail card uses the workout read-card shell with aggregated runni
 });
 
 test('running tab stacks multiple running session cards after the gym sessions', () => {
-  const detailStart = calendarJs.indexOf('function _renderWorkoutHomeDetailHtml');
-  const detailEnd = calendarJs.indexOf('function _renderWorkoutDetailSummaryCard', detailStart);
-  assert.ok(detailStart >= 0 && detailEnd > detailStart, 'detail renderer should exist');
-  const detail = calendarJs.slice(detailStart, detailEnd);
+  const detail = sliceFunctionRange(calendarSources, '_renderWorkoutHomeDetailHtml', '_renderWorkoutDetailSummaryCard');
 
   assert.match(detail, /runningStackSession/);
   assert.match(detail, /runningInfo\.runningSessions/);
@@ -1229,10 +1177,7 @@ test('running tab stacks multiple running session cards after the gym sessions',
 });
 
 test('generic activity detail card uses delegated sheet card actions', () => {
-  const cardStart = calendarJs.indexOf('function _renderWorkoutActivityDetailCard');
-  const cardEnd = calendarJs.indexOf('function _renderWorkoutDetailEmpty', cardStart);
-  assert.ok(cardStart >= 0 && cardEnd > cardStart, 'activity detail card renderer should exist');
-  const card = calendarJs.slice(cardStart, cardEnd);
+  const card = sliceFunctionRange(calendarSources, '_renderWorkoutActivityDetailCard', '_renderWorkoutDetailEmpty');
 
   assert.match(card, /wt-day-activity-card/);
   assert.match(card, /data-wt-sheet-card-action="toggle-card"/);
@@ -1309,8 +1254,8 @@ test('workout calendar week rail restores the plain weekly summary without goals
   const weekdayEnd = calendarJs.indexOf('const gridHtml = isWorkoutHome', weekdayStart);
   const weekday = calendarJs.slice(weekdayStart, weekdayEnd);
 
-  assert.match(calendarJs, /function _isoWeekNumber\(date\)/);
-  assert.match(calendarJs, /function _formatWorkoutWeekHours\(seconds\)/);
+  assert.match(calendarFormatJs, /function _isoWeekNumber\(date\)/);
+  assert.match(calendarFormatJs, /function _formatWorkoutWeekHours\(seconds\)/);
   assert.match(calendarJs, /const dayMetrics = new Map\(\)/);
   assert.match(calendarJs, /dayMetrics\.set\(d, wx\)/);
   assert.match(grid, /let weekDurationSec = 0/);
@@ -1404,15 +1349,9 @@ test('workout calendar home header and monthly workout card stay compact', () =>
 });
 
 test('workout volume summary delegates to the mass-aware track metrics module', () => {
-  const summaryStart = calendarJs.indexOf('function _renderWorkoutDetailSummaryCard');
-  const summaryEnd = calendarJs.indexOf('function _renderWorkoutDetailSessionTabs', summaryStart);
-  const exportStart = calendarJs.indexOf('function _formatWorkoutExportText');
-  const exportEnd = calendarJs.indexOf('async function _shareOrCopyText', exportStart);
-  const summary = calendarJs.slice(summaryStart, summaryEnd);
-  const exported = calendarJs.slice(exportStart, exportEnd);
+  const summary = sliceFunctionRange(calendarSources, '_renderWorkoutDetailSummaryCard', '_renderWorkoutDetailSessionTabs');
+  const exported = extractFunctionSource(calendarSources, '_formatWorkoutExportText');
 
-  assert.ok(summaryStart >= 0 && summaryEnd > summaryStart, 'day summary renderer should exist');
-  assert.ok(exportStart >= 0 && exportEnd > exportStart, 'workout export formatter should exist');
   assert.match(calendarJs, /from '\.\/workout\/track-metrics\.js'/);
   assert.match(trackMetricsJs, /export function formatWorkoutTrackValue\(track, value\)/);
   assert.match(trackMetricsJs, /if \(number >= 1000\) return `\$\{_fmtNum\(number \/ 1000, 1\)\}t`/);

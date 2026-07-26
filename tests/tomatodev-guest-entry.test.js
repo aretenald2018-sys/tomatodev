@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const core = readFileSync(new URL('../data/data-core.js', import.meta.url), 'utf8');
-const login = readFileSync(new URL('../feature-login.js', import.meta.url), 'utf8');
+const login = readFileSync(new URL('../auth/login-screen.js', import.meta.url), 'utf8');
 const app = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 
 function bootMode(storage) {

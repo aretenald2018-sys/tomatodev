@@ -38,6 +38,11 @@ test('verify-deploy rejects a Pages artifact without the TomatoDev HTML marker',
   assert.match(verifyDeploy, /index\.html TomatoDev environment marker missing/);
 });
 
+test('verify-deploy checks the current build-info surface contract', () => {
+  assert.match(verifyDeploy, /utils\/build-info\.js', marker: 'export function initBuildInfoSurface'/);
+  assert.doesNotMatch(verifyDeploy, /renderBuildInfo/);
+});
+
 test('deployed marker verification is a script, not PowerShell node -e quoting', () => {
   assert.match(verifyMarkers, /Usage: node scripts\/verify-deployed-markers\.mjs/);
   assert.match(verifyMarkers, /const sep = raw\.indexOf\('::'\)/);

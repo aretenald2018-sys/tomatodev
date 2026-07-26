@@ -16,6 +16,7 @@ function sliceBetween(source, startToken, endToken) {
 
 const indexHtml = read('index.html');
 const appJs = read('app.js');
+const shellActionsJs = read('app/shell-actions.js');
 const navigationJs = read('navigation.js');
 const swJs = read('sw.js') + read('runtime-assets.js');
 
@@ -53,12 +54,12 @@ test('app shell markup uses data-app actions instead of inline handlers', () => 
 });
 
 test('app module binds app shell actions with one idempotent bridge', () => {
-  assert.match(appJs, /const APP_SHELL_ACTION_SCOPE = /);
-  assert.doesNotMatch(appJs, /APP_SHELL_ACTION_SCOPE = '[^']*\.top-nav/);
-  assert.match(appJs, /function _bindAppShellActions\(root = document\)/);
-  assert.match(appJs, /appShellActionsBound/);
-  assert.match(appJs, /target\?\.closest\?\.\('\[data-app-action\]'\)/);
-  assert.match(appJs, /control\.id === 'tab-settings-modal' && event\.target !== control/);
+  assert.match(shellActionsJs, /const APP_SHELL_ACTION_SCOPE = /);
+  assert.doesNotMatch(shellActionsJs, /APP_SHELL_ACTION_SCOPE = '[^']*\.top-nav/);
+  assert.match(shellActionsJs, /function _bindAppShellActions\(root = document\)/);
+  assert.match(shellActionsJs, /appShellActionsBound/);
+  assert.match(shellActionsJs, /target\?\.closest\?\.\('\[data-app-action\]'\)/);
+  assert.match(shellActionsJs, /control\.id === 'tab-settings-modal' && event\.target !== control/);
   assert.match(appJs, /_bindAppShellActions\(\);/);
   assert.match(appJs, /configureNavigation\(\{ getCurrentTab: \(\) => _currentTab, switchTab \}\);/);
   assert.match(appJs, /configureNavigation\([\s\S]*\);\s*\ninit\(\);/);
@@ -79,18 +80,19 @@ test('app module binds app shell actions with one idempotent bridge', () => {
     'close-tab-settings',
     'save-tab-settings'
   ]) {
-    assert.match(appJs, new RegExp(`case '${action}':`));
+    assert.match(shellActionsJs, new RegExp(`case '${action}':`));
   }
 
-  assert.match(appJs, /moreBtn\.dataset\.appAction = adminOnlyMode \? 'switch-tab' : 'toggle-more-menu'/);
-  assert.match(appJs, /moreBtn\.dataset\.tab = adminOnlyMode \? 'admin' : 'more'/);
-  assert.match(appJs, /moreBtn\.onclick = null/);
-  assert.match(appJs, /window\.__requestTomatoAppRefresh\(\{ control, source: 'more-menu' \}\)/);
-  assert.doesNotMatch(appJs, /tomato-mobile-debug\.apk/);
-  assert.match(appJs, /import \{ logoutAccount, openLetterModal \} from '\.\/feature-login\.js';/);
+  assert.match(shellActionsJs, /moreBtn\.dataset\.appAction = adminOnlyMode \? 'switch-tab' : 'toggle-more-menu'/);
+  assert.match(shellActionsJs, /moreBtn\.dataset\.tab = adminOnlyMode \? 'admin' : 'more'/);
+  assert.match(shellActionsJs, /moreBtn\.onclick = null/);
+  assert.match(shellActionsJs, /requestTomatoAppRefresh\(\{ control, source: 'more-menu' \}\)/);
+  assert.doesNotMatch(shellActionsJs, /window\.__requestTomatoAppRefresh\(\{/);
+  assert.doesNotMatch(appJs + shellActionsJs, /tomato-mobile-debug\.apk/);
+  assert.match(shellActionsJs, /import \{ logoutAccount, openLetterModal \} from '\.\.\/feature-login\.js';/);
   assert.match(appJs, /dismissPWAInstallBanner/);
-  assert.match(appJs, /function _toggleMoreMenu\(\)/);
-  assert.doesNotMatch(appJs, /_runWindowAction\(/);
+  assert.match(shellActionsJs, /function _toggleMoreMenu\(\)/);
+  assert.doesNotMatch(shellActionsJs, /_runWindowAction\(/);
 });
 
 test('dynamic more menu items inherit the app shell action contract', () => {

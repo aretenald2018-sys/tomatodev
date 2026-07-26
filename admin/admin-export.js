@@ -1,11 +1,7 @@
+import { toFiniteNumber } from '../utils/number.js';
+const _num = (value, fallback = null) => toFiniteNumber(value, fallback);
+import { escapeHtml as _esc } from '../utils/escape-html.js';
 import { TODAY, getDeveloperLetterStatus, getDeveloperLetterStatusMeta } from '../data.js';
-
-function _esc(value) {
-  if (value === null || value === undefined) return '';
-  const s = String(value);
-  if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g, '""')}"`;
-  return s;
-}
 
 function _row(values) {
   return values.map(_esc).join(',');
@@ -13,11 +9,6 @@ function _row(values) {
 
 function _dateStamp(date = TODAY) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function _num(value) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
 }
 
 function _fmtNum(value, digits = 1) {

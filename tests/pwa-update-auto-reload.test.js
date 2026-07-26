@@ -7,6 +7,7 @@ const pwaRegisterJs = readFileSync(new URL('../pwa-register.js', import.meta.url
 const buildInfoJs = readFileSync(new URL('../utils/build-info.js', import.meta.url), 'utf8');
 const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const appJs = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+const shellActionsJs = readFileSync(new URL('../app/shell-actions.js', import.meta.url), 'utf8');
 const swJs = readFileSync(new URL('../sw.js', import.meta.url), 'utf8') + readFileSync(new URL('../runtime-assets.js', import.meta.url), 'utf8');
 
 function loadPwaRegisterHarness({ activeDraft = false } = {}) {
@@ -188,8 +189,8 @@ test('development app uses canonical asset URLs and one service worker cache nam
 test('more-menu manual app refresh uses build-info update helper', () => {
   assert.doesNotMatch(indexHtml, /class="[^"]*\btop-nav\b/);
   assert.match(indexHtml, /more-menu-section--app-actions[\s\S]*id="app-refresh-btn"[^>]+data-app-action="refresh-app-update"/);
-  assert.match(appJs, /case 'refresh-app-update':/);
-  assert.match(appJs, /window\.__requestTomatoAppRefresh\(\{ control, source: 'more-menu' \}\)/);
+  assert.match(shellActionsJs, /case 'refresh-app-update':/);
+  assert.match(shellActionsJs, /requestTomatoAppRefresh\(\{ control, source: 'more-menu' \}\)/);
   assert.match(buildInfoJs, /export async function requestTomatoAppRefresh/);
   assert.match(buildInfoJs, /window\.__requestTomatoAppRefresh = requestTomatoAppRefresh/);
   assert.match(buildInfoJs, /__refreshTomatoAppSWRegistration/);

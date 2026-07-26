@@ -5,6 +5,7 @@ import test from 'node:test';
 const manifest = readFileSync('android/app/src/main/AndroidManifest.xml', 'utf8');
 const activity = readFileSync('android/app/src/main/java/com/lifestreak/app/MainActivity.java', 'utf8');
 const app = readFileSync('app.js', 'utf8');
+const deepLinkEntry = readFileSync('app/deep-link-entry.js', 'utf8');
 const gradle = readFileSync('android/app/build.gradle', 'utf8');
 
 test('TomatoDev exposes the dashboard module deep-link contract', () => {
@@ -19,10 +20,10 @@ test('TomatoDev exposes the dashboard module deep-link contract', () => {
 });
 
 test('dashboard destinations open their exact TomatoDev screens', () => {
-  assert.match(app, /action === 'diet'[\s\S]*switchTab\('diet'\)/);
-  assert.match(app, /action === 'season' \|\| action === 'season-overview'[\s\S]*switchTab\('workout'\)[\s\S]*openWorkoutSeasonOverview/);
-  assert.match(app, /action === 'running'[\s\S]*switchTab\('workout'\)[\s\S]*wtOpenRunningSession\(\)/);
-  assert.match(app, /\['diet', 'season', 'season-overview', 'running'\]\.includes\(entry\)/);
+  assert.match(deepLinkEntry, /action === 'diet'[\s\S]*_switchTab\('diet'\)/);
+  assert.match(deepLinkEntry, /action === 'season' \|\| action === 'season-overview'[\s\S]*_switchTab\('workout'\)[\s\S]*openWorkoutSeasonOverview/);
+  assert.match(deepLinkEntry, /action === 'running'[\s\S]*_switchTab\('workout'\)[\s\S]*wtOpenRunningSession\(\)/);
+  assert.match(deepLinkEntry, /\['diet', 'season', 'season-overview', 'running'\]\.includes\(entry\)/);
 });
 
 test('the distributable TomatoDev APK keeps the dev id and an ever-increasing version', () => {

@@ -1,4 +1,8 @@
 import { showToast } from '../ui/toast.js';
+import { requestTomatoApkInstall } from './apk-install.js';
+import { requestWearAppRefreshOrInstall } from './wear-refresh.js';
+
+export { requestTomatoApkInstall };
 // ================================================================
 // utils/build-info.js — 배포 버전 확인 + 서비스워커 업데이트 안내
 // ================================================================
@@ -12,12 +16,6 @@ const APP_SW_SCOPE = (() => {
     return '/tomatodev/';
   }
 })();
-const WEAR_APP_REFRESH_TIMEOUT_MS = 1200;
-const TOMATODEV_APK_DOWNLOAD_PATH = '../public/downloads/tomatodev.apk';
-const TOMATODEV_APK_DOWNLOAD_NAME = 'tomatodev.apk';
-// APK 셸은 www/만 담고 있어 public/ 경로가 존재하지 않는다. 네이티브에서는
-// 배포된 절대 URL을 열어야 Capacitor가 외부 브라우저로 넘겨 설치가 시작된다.
-const TOMATODEV_APK_REMOTE_URL = 'https://aretenald2018-sys.github.io/tomatodev/public/downloads/tomatodev.apk';
 
 function _updateBannerState() {
   if (typeof window === 'undefined') {
@@ -61,35 +59,6 @@ function _fallbackBuildInfo(error = null) {
   };
 }
 
-function _shortCommit(info) {
-  const raw = String(info?.shortCommit || info?.commit || '').trim();
-  if (!raw) return 'unknown';
-  return raw.length > 12 ? raw.slice(0, 12) : raw;
-}
-
-function _formatDateTime(value) {
-  if (!value || value === 'local' || value === 'unknown') return value || 'unknown';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleString('ko-KR', {
-    year: '2-digit',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function _esc(value) {
-  return String(value ?? '').replace(/[&<>"']/g, c => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  }[c]));
-}
-
 export async function loadBuildInfo({ force = false } = {}) {
   if (_buildInfoCache && !force) return _buildInfoCache;
   try {
@@ -106,37 +75,6 @@ export async function loadBuildInfo({ force = false } = {}) {
   }
   window.__BUILD_INFO = _buildInfoCache;
   return _buildInfoCache;
-}
-
-export async function renderBuildInfo({ targetId = 'settings-build-info', force = true } = {}) {
-  const target = document.getElementById(targetId);
-  if (!target) return null;
-  target.innerHTML = '<div class="settings-build-info-loading">버전 확인 중...</div>';
-  const info = await loadBuildInfo({ force });
-  const commit = _shortCommit(info);
-  const cacheVersion = info?.cacheVersion || 'unknown';
-  const branch = info?.branch || 'unknown';
-  const deployedAt = _formatDateTime(info?.deployedAt);
-  const errorLine = info?.error
-    ? `<div class="settings-build-info-error">build-info 확인 실패: ${_esc(info.error)}</div>`
-    : '';
-  target.innerHTML = `
-    <div class="settings-build-info-head">
-      <span>현재 앱 버전</span>
-      <strong>${_esc(commit)}</strong>
-    </div>
-    <div class="settings-build-info-grid">
-      <span>브랜치</span><b>${_esc(branch)}</b>
-      <span>캐시</span><b>${_esc(cacheVersion)}</b>
-      <span>배포</span><b>${_esc(deployedAt)}</b>
-    </div>
-    ${errorLine}
-    <button type="button" class="settings-build-info-refresh" id="settings-build-info-refresh">다시 확인</button>
-  `;
-  document.getElementById('settings-build-info-refresh')?.addEventListener('click', () => {
-    renderBuildInfo({ targetId, force: true });
-  });
-  return info;
 }
 
 function _setAppUpdatePanelOpen(open) {
@@ -296,123 +234,6 @@ function _toastAppRefresh(message, type = 'info') {
   } catch {}
 }
 
-function _wearAppRefreshPayload(source) {
-  const info = window.__BUILD_INFO || _buildInfoCache || {};
-  return {
-    source,
-    cacheVersion: info.cacheVersion || 'unknown',
-    commit: info.commit || info.shortCommit || 'unknown',
-  };
-}
-
-function _timeoutWearAppRefresh(promise, timeoutMs = WEAR_APP_REFRESH_TIMEOUT_MS) {
-  return new Promise((resolve) => {
-    let settled = false;
-    const finish = (value) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      resolve(value);
-    };
-    const timer = setTimeout(() => finish({ timedOut: true }), timeoutMs);
-    Promise.resolve(promise)
-      .then((value) => finish(value || null))
-      .catch((error) => finish({ error }));
-  });
-}
-
-function _wearAppRefreshPlugin() {
-  if (typeof window === 'undefined') return null;
-  const plugin = window.Capacitor?.Plugins?.TomatoWearAppUpdate;
-  return typeof plugin?.requestRefreshOrInstall === 'function' ? plugin : null;
-}
-
-async function _requestWearAppRefreshOrInstall({ source = 'manual' } = {}) {
-  const plugin = _wearAppRefreshPlugin();
-  if (!plugin) return null;
-
-  const result = await _timeoutWearAppRefresh(
-    plugin.requestRefreshOrInstall(_wearAppRefreshPayload(source)),
-  );
-  if (result?.timedOut) return result;
-  if (result?.error) {
-    console.warn('[WearOS] 갤럭시워치 업데이트 확인 실패:', result.error?.message || result.error);
-    return result;
-  }
-
-  const installPrompted = Number(result?.installPrompted || 0);
-  const refreshSent = Number(result?.refreshSent || 0);
-  if (installPrompted > 0) {
-    _toastAppRefresh('갤럭시워치 설치 화면을 열었어요.', 'info');
-  } else if (refreshSent > 0) {
-    _toastAppRefresh('갤럭시워치에도 새로고침 신호를 보냈어요.', 'info');
-  }
-  return result;
-}
-
-function _isNativeAppShell() {
-  try {
-    return window.Capacitor?.isNativePlatform?.() === true;
-  } catch {
-    return false;
-  }
-}
-
-function _tomatodevApkDownloadUrl() {
-  if (_isNativeAppShell()) return TOMATODEV_APK_REMOTE_URL;
-  return new URL(TOMATODEV_APK_DOWNLOAD_PATH, import.meta.url).href;
-}
-
-function _startTomatodevApkDownload() {
-  const downloadUrl = _tomatodevApkDownloadUrl();
-  if (typeof document === 'undefined') {
-    return { started: false, reason: 'document-unavailable', downloadUrl };
-  }
-
-  // WebView는 download 속성을 무시한다. 앱 바깥 호스트로 여는 창은 Capacitor가
-  // ACTION_VIEW 인텐트로 넘겨서 안드로이드 다운로드 매니저가 처리한다.
-  if (_isNativeAppShell()) {
-    const opened = window.open(downloadUrl, '_blank');
-    if (opened === null && typeof window.location?.assign === 'function') {
-      window.location.assign(downloadUrl);
-    }
-    return { started: true, reason: 'native-browser-handoff', downloadUrl };
-  }
-
-  const link = document.createElement('a');
-  if (!link || typeof link.click !== 'function') {
-    return { started: false, reason: 'download-link-unavailable', downloadUrl };
-  }
-
-  link.href = downloadUrl;
-  link.download = TOMATODEV_APK_DOWNLOAD_NAME;
-  link.rel = 'noopener';
-  link.style.display = 'none';
-  document.body?.appendChild?.(link);
-  link.click();
-  link.remove?.();
-  return { started: true, downloadUrl };
-}
-
-// TomatoDev는 자신의 개발 APK(com.lifestreak.dev)만 배포한다. 운영 APK는
-// 이 저장소에서 노출하지도 내려받지도 않는다.
-export async function requestTomatoApkInstall({ control = null, source = 'manual' } = {}) {
-  const button = control || (typeof document !== 'undefined' ? document.getElementById('app-refresh-btn') : null);
-  if (button?.disabled) return { started: false, reason: 'busy', source };
-  _setRefreshControlBusy(button, true);
-
-  try {
-    const download = _startTomatodevApkDownload();
-    if (download.started) {
-      return { started: true, reason: download.reason || 'browser-download', downloadUrl: download.downloadUrl, source };
-    }
-    _toastAppRefresh('APK 다운로드를 시작하지 못했어요. 브라우저에서 다운로드를 허용해주세요.', 'warning');
-    return { started: false, reason: download.reason, downloadUrl: download.downloadUrl, source };
-  } finally {
-    _setRefreshControlBusy(button, false);
-  }
-}
-
 export async function requestTomatoAppRefresh({ control = null, source = 'manual' } = {}) {
   const button = control || document.getElementById('app-refresh-btn');
   if (button?.disabled) return { started: false, reason: 'busy', source };
@@ -421,7 +242,7 @@ export async function requestTomatoAppRefresh({ control = null, source = 'manual
   _toastAppRefresh('최신 앱 버전을 확인하고 있어요.', 'info');
 
   try {
-    const wearRefresh = await _requestWearAppRefreshOrInstall({ source });
+    const wearRefresh = await requestWearAppRefreshOrInstall({ source });
     const registration = await _resolveLatestAppSWRegistration();
     const waiting = registration?.waiting;
     if (waiting) {

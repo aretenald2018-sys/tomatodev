@@ -11,7 +11,8 @@ import {
   isSameInstance
 } from '../data.js';
 import { CONFIG } from '../config.js';
-import { escapeHtml, resolveNickname, showToast } from './utils.js';
+import { escapeHtml, resolveNickname } from './utils.js';
+import { showToast } from '../ui/toast.js';
 import { getRunningLiveState } from '../workout/running-live-state.js';
 import {
   buildVworldTileUrl,

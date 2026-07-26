@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { sumDayNutrient } from '../diet/day-nutrition.js';
+import { KOREAN_WEEKDAYS } from '../utils/weekdays.js';
 
 const homeSource = readFileSync(new URL('../home/index.js', import.meta.url), 'utf8');
 const tomatoSource = readFileSync(new URL('../home/tomato.js', import.meta.url), 'utf8');
@@ -83,6 +85,7 @@ test('TomatoDev Home settlement is a write-free in-memory preview', async () => 
       getTomatoCycles: () => state.cycles,
       getDiet: () => ({}),
       getDay: () => ({}),
+      sumDayNutrient,
       calcDayTarget: () => 2000,
       evaluateCycleResult: () => ({
         dietSuccesses: [false, false, false],
@@ -169,6 +172,8 @@ test('render defaults and milestone markers never call _saveSetting wrappers', a
       isToday: () => false,
       getDiet: () => ({}),
       getDayTargetKcal: () => 1800,
+      sumDayNutrient,
+      KOREAN_WEEKDAYS,
     });
     renderUnitGoal();
 

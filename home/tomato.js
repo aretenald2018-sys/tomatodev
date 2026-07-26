@@ -2,25 +2,29 @@
 // home/tomato.js — 토마토 사이클, 히어로, 바스켓, 통합 카드
 // ================================================================
 
-import { TODAY, getDiet, getDietPlan, calcDietMetrics, getBodyCheckins,
+import { TODAY, getDiet, getDietPlan, getBodyCheckins,
          getExercises, calcStreaks, getDay, getAllDateKeys,
-         getUnitGoalStart, rememberUnitGoalStartInMemory, getDayTargetKcal,
+         getUnitGoalStart, rememberUnitGoalStartInMemory,
          getTomatoState, rememberTomatoStateInMemory, rememberTomatoCycleInMemory,
          getTomatoCycles, dateKey,
          getStreakFreezes, useStreakFreeze,
          getMyFriends, getAccountList, trackEvent,
          daysSinceLastCheckin, hasDietRecord }  from '../data.js';
 import { calcTomatoCycle, evaluateCycleResult, getQuarterKey,
+         calcDietMetrics,
          isDietDaySuccess, isExerciseDaySuccess,
          streakToCharacterMood,
          getDayTargetKcal as calcDayTarget }  from '../calc.js';
 import { checkStreakMilestone } from './hero.js';
 import { renderCharacterSVG } from './character.js';
 import { hydrateLifeZoneCard, renderLifeZoneCard, renderLifeZoneSummary } from './life-zone.js';
-import { showToast, haptic, resolveNickname, showConfetti } from './utils.js';
+import { haptic, resolveNickname, showConfetti } from './utils.js';
+import { showToast } from '../ui/toast.js';
 import { confirmSimple } from '../utils/confirm-modal.js';
 import { openCheckinModal } from '../feature-checkin.js';
 import { openTomatoGiftModal } from './friend-profile.js';
+import { hasPositiveDayNutrient, sumDayNutrient } from '../diet/day-nutrition.js';
+import { KOREAN_WEEKDAYS } from '../utils/weekdays.js';
 
 const TOMATO_STAGES = [
   { icon: '🌱', label: '씨앗을 심었어요' },
@@ -52,7 +56,7 @@ export function renderTomatoHero(el) {
     if (dayDate > TODAY) return 'future';
     if (!hasDietRecord(y, m - 1, d)) return i < cycle.dayIndex ? 'fail' : 'pending';
     const dayData = getDay(y, m - 1, d);
-    const totalKcal = (dayData.bKcal || 0) + (dayData.lKcal || 0) + (dayData.dKcal || 0) + (dayData.sKcal || 0);
+    const totalKcal = sumDayNutrient(dayData, 'kcal');
     const target = calcDayTarget(plan, y, m - 1, d, dayData);
     const tolerance = plan.advancedMode ? (plan.dietTolerance ?? 50) : 50;
     return isDietDaySuccess(totalKcal, target, tolerance) ? 'success' : 'fail';
@@ -69,7 +73,7 @@ export function renderTomatoHero(el) {
   });
 
   const todayDiet = getDiet(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
-  const todayKcal = (todayDiet.bKcal || 0) + (todayDiet.lKcal || 0) + (todayDiet.dKcal || 0) + (todayDiet.sKcal || 0);
+  const todayKcal = sumDayNutrient(todayDiet, 'kcal');
   const todayTarget = calcDayTarget(plan, TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
 
   const dietPriorFail = dietStatuses.slice(0, cycle.dayIndex).some(s => s === 'fail');
@@ -95,7 +99,7 @@ export function renderTomatoHero(el) {
     if (cycle.dayIndex === 2) stageIcon = '🌿';
   }
 
-  const dayNames = ['일','월','화','수','목','금','토'];
+  const dayNames = KOREAN_WEEKDAYS;
   const dateStr = `${TODAY.getMonth()+1}월 ${TODAY.getDate()}일 ${dayNames[TODAY.getDay()]}요일`;
 
   const makeDots = (statuses) => statuses.map((s, i) => {
@@ -392,7 +396,7 @@ export function settleTomatoCycleIfNeeded() {
       dd.setDate(dd.getDate() + di);
       const y = dd.getFullYear(), m = dd.getMonth(), d = dd.getDate();
       const diet = getDiet(y, m, d);
-      const totalKcal = (diet.bKcal || 0) + (diet.lKcal || 0) + (diet.dKcal || 0) + (diet.sKcal || 0);
+      const totalKcal = sumDayNutrient(diet, 'kcal');
       const dayData = getDay(y, m, d);
       const target = calcDayTarget(plan, y, m, d, dayData);
       dayResults.push({ date: dateKey(y, m, d), intake: totalKcal, target, dayData });
@@ -566,7 +570,7 @@ export function renderTomatoBasket() {
   while (startDate <= qEnd && startDate <= TODAY) {
     const y = startDate.getFullYear(), m = startDate.getMonth(), d = startDate.getDate();
     const dayData = getDay(y, m, d);
-    const totalKcal = (dayData.bKcal || 0) + (dayData.lKcal || 0) + (dayData.dKcal || 0) + (dayData.sKcal || 0);
+    const totalKcal = sumDayNutrient(dayData, 'kcal');
     const target = calcDayTarget(_heatmapPlan, y, m, d, dayData);
     let cls = 'tomato-heatmap-cell';
     if (hasDietRecord(y, m, d)) {
@@ -715,7 +719,7 @@ export function renderTomatoCard() {
   const todayDiet = getDiet(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
   const todayExercises = getExercises(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
   const hasRecordedToday = (todayExercises && todayExercises.length > 0) ||
-    (todayDiet && ((todayDiet.bKcal||0) + (todayDiet.lKcal||0) + (todayDiet.dKcal||0) > 0));
+    hasPositiveDayNutrient(todayDiet, 'kcal');
   const now = new Date();
   const hour = now.getHours();
   const hoursLeft = 23 - hour;
@@ -737,7 +741,7 @@ export function renderTomatoCard() {
   }
 
   const todayDietForKcal = getDiet(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
-  const todayKcal = (todayDietForKcal.bKcal||0) + (todayDietForKcal.lKcal||0) + (todayDietForKcal.dKcal||0) + (todayDietForKcal.sKcal||0);
+  const todayKcal = sumDayNutrient(todayDietForKcal, 'kcal');
   const isRefeed = (plan.refeedDays || []).includes(dow);
   const dayTarget = isRefeed ? metrics.refeed : metrics.deficit;
   const todayTarget = dayTarget.kcal || 0;
@@ -830,7 +834,7 @@ export function renderTomatoCard() {
 
   const homeHero = document.getElementById('home-hero');
   const todayDietData = getDiet(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
-  const totalIntake = (todayDietData.bKcal||0) + (todayDietData.lKcal||0) + (todayDietData.dKcal||0) + (todayDietData.sKcal||0);
+  const totalIntake = sumDayNutrient(todayDietData, 'kcal');
   const kcalPct = todayTarget > 0 ? Math.min(Math.round(totalIntake / todayTarget * 100), 100) : 0;
   const kcalState = totalIntake <= 0 ? '' : totalIntake <= todayTarget + 50 ? 'ok' : 'over';
   const remaining = Math.max(todayTarget - totalIntake, 0);
