@@ -1,5 +1,6 @@
 import { toFiniteNumber as _num } from '../utils/number.js';
 import { escapeHtml as _esc } from '../utils/escape-html.js';
+import { parseDateKey as _parseDateKey } from '../utils/date-key.js';
 import {
   getCache,
   getExList,
@@ -78,6 +79,7 @@ const WORKOUT_SET_TYPE_OPTIONS = [
 ];
 
 const workoutDetailRuntime = {
+  getSelectedKey: () => '',
   getSessionIndex: () => 0,
   setSessionIndex: () => {},
   recordOrdinal: () => 0,
@@ -379,7 +381,7 @@ export function _renderWorkoutSetInput(key, sessionIndex, exerciseIndex, setInde
 
 export function _workoutSetEditorKey(key, sessionIndex, exerciseIndex, setIndex) {
   return [
-    _parseDateKey(key) ? key : _workoutHomeSelectedKey,
+    _parseDateKey(key) ? key : workoutDetailRuntime.getSelectedKey(),
     Math.max(0, Math.floor(Number(sessionIndex) || 0)),
     Math.max(0, Math.floor(Number(exerciseIndex) || 0)),
     Math.max(0, Math.floor(Number(setIndex) || 0)),
@@ -407,7 +409,7 @@ export function _isWorkoutSetTypeMenuOpen(key, sessionIndex, exerciseIndex, setI
 
 export function _clearWorkoutSetEditorsForExercise(key, sessionIndex, exerciseIndex) {
   const prefix = [
-    _parseDateKey(key) ? key : _workoutHomeSelectedKey,
+    _parseDateKey(key) ? key : workoutDetailRuntime.getSelectedKey(),
     Math.max(0, Math.floor(Number(sessionIndex) || 0)),
     Math.max(0, Math.floor(Number(exerciseIndex) || 0)),
   ].join(':') + ':';

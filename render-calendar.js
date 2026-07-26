@@ -1127,6 +1127,7 @@ function _registerWorkoutRunningMapPayload(row = {}) {
 }
 
 configureWorkoutDetailTemplate({
+  getSelectedKey: () => _workoutHomeSelectedKey,
   getSessionIndex: () => _workoutHomeSessionIndex,
   setSessionIndex: (index) => { _workoutHomeSessionIndex = index; },
   recordOrdinal: _workoutRecordOrdinalForKey,

@@ -668,6 +668,12 @@ test('day sheet exercise card uses inline plus row and one complete button', () 
     calendarDetailTemplateJs,
     /import \{ isWorkoutExerciseComplete \} from '\.\.\/workout\/exercise-completion\.js'/,
   );
+  assert.match(
+    calendarDetailTemplateJs,
+    /import \{ parseDateKey as _parseDateKey \} from '\.\.\/utils\/date-key\.js'/,
+  );
+  assert.match(calendarDetailTemplateJs, /workoutDetailRuntime\.getSelectedKey\(\)/);
+  assert.match(calendarJs, /getSelectedKey:\s*\(\) => _workoutHomeSelectedKey/);
   assert.match(exerciseCompletionJs, /export function workoutExerciseCompletionStampAt\(entry\)/);
   assert.match(exerciseCompletionJs, /export function isWorkoutExerciseComplete\(entry\)/);
   assert.match(exerciseCompletionJs, /if \(workoutExerciseCompletionStampAt\(entry\) == null\) return false/);
