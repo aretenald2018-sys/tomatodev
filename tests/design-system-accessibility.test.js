@@ -4,7 +4,12 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
-import { closeModal, openModal } from '../app/overlay-stack.js';
+import {
+  acquireBodyScrollLock,
+  closeModal,
+  openModal,
+  releaseBodyScrollLock,
+} from '../app/overlay-stack.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -57,6 +62,34 @@ test('overlay stack moves focus into dialogs and restores the opener', () => {
   } finally {
     globalThis.document = previousDocument;
   }
+});
+
+test('body scroll remains locked until every overlay owner releases it', () => {
+  const previousDocument = globalThis.document;
+  globalThis.document = { body: { style: { overflow: 'clip' } } };
+  const firstOwner = Symbol('first');
+  const secondOwner = Symbol('second');
+
+  try {
+    assert.equal(acquireBodyScrollLock(firstOwner), true);
+    assert.equal(acquireBodyScrollLock(secondOwner), true);
+    assert.equal(globalThis.document.body.style.overflow, 'hidden');
+    assert.equal(releaseBodyScrollLock(firstOwner), true);
+    assert.equal(globalThis.document.body.style.overflow, 'hidden');
+    assert.equal(releaseBodyScrollLock(secondOwner), true);
+    assert.equal(globalThis.document.body.style.overflow, 'clip');
+  } finally {
+    releaseBodyScrollLock(firstOwner);
+    releaseBodyScrollLock(secondOwner);
+    globalThis.document = previousDocument;
+  }
+});
+
+test('the overlay stack is the only modal focus-trap owner', async () => {
+  const uxPolish = await readFile(resolve(root, 'utils/ux-polish.js'), 'utf8');
+  const overlayStack = await readFile(resolve(root, 'app/overlay-stack.js'), 'utf8');
+  assert.doesNotMatch(uxPolish, /initModalFocusTrap|e\.key !== 'Tab'/);
+  assert.match(overlayStack, /event\.key !== 'Tab'/);
 });
 
 test('design system owns tokens, primitives, accessibility, and CSS order', async () => {

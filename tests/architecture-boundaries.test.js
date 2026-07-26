@@ -65,15 +65,17 @@ test('window assignments are limited to platform, PWA, and debug bridges', () =>
     '__requestTomatoApkInstall', '__requestTomatoAppRefresh', '__showAppUpdateBanner',
     '__showDietPremiumReportPreview', '__tomatoAppReady', '__tomatoAppSWRegistration',
     '__tomatoAppSWRegistrationPromise', '__tomatoFcmSWRegistrationPromise',
-    '__tomatoUpdateBannerState', '__tomatoWearWorkoutBridge', '__wtHasActiveDraft',
+    '__tomatoRunningGoogleMapsReady', '__tomatoUpdateBannerState', '__tomatoWearWorkoutBridge', '__wtHasActiveDraft',
     '__wtPersistActiveDraft', 'haptic',
   ]);
   const assignmentPattern = /window\.([A-Za-z_$][A-Za-z0-9_$]*)\s*=(?!=)/g;
+  const computedAssignmentPattern = /window\s*\[[^\]]+\]\s*=(?!=)/;
   const offenders = [];
   for (const file of jsFiles) {
     for (const match of file.source.matchAll(assignmentPattern)) {
       if (!allowedGlobals.has(match[1])) offenders.push(`${file.path}:${match[1]}`);
     }
+    if (computedAssignmentPattern.test(file.source)) offenders.push(`${file.path}:[computed]`);
   }
   assert.deepEqual(offenders, [], `unauthorized business globals remain: ${JSON.stringify(offenders)}`);
 });

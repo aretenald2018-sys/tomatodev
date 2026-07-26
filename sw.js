@@ -2,7 +2,7 @@
 // Cache names are deliberately owned by this app because TomatoDev and the
 // production app currently share the github.io origin.
 const CACHE_PREFIX = 'tomatodev-';
-const CACHE_VERSION = 'tomatodev-v20260722z7-widget-card-redesign';
+const CACHE_VERSION = 'tomatodev-v20260726z1-refactor-p0-runtime-guards';
 const RUNTIME_CACHE = 'tomatodev-runtime';
 importScripts('./runtime-assets.js');
 const STATIC_ASSETS = self.TOMATO_STATIC_ASSETS;

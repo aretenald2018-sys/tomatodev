@@ -85,7 +85,8 @@ test('app module binds app shell actions with one idempotent bridge', () => {
   assert.match(appJs, /moreBtn\.dataset\.appAction = adminOnlyMode \? 'switch-tab' : 'toggle-more-menu'/);
   assert.match(appJs, /moreBtn\.dataset\.tab = adminOnlyMode \? 'admin' : 'more'/);
   assert.match(appJs, /moreBtn\.onclick = null/);
-  assert.match(appJs, /window\.__requestTomatoAppRefresh\(\{ control, source: 'more-menu' \}\)/);
+  assert.match(appJs, /requestTomatoAppRefresh\(\{ control, source: 'more-menu' \}\)/);
+  assert.doesNotMatch(appJs, /window\.__requestTomatoAppRefresh\(\{/);
   assert.doesNotMatch(appJs, /tomato-mobile-debug\.apk/);
   assert.match(appJs, /import \{ logoutAccount, openLetterModal \} from '\.\/feature-login\.js';/);
   assert.match(appJs, /dismissPWAInstallBanner/);

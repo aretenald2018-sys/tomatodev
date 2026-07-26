@@ -189,7 +189,7 @@ test('more-menu manual app refresh uses build-info update helper', () => {
   assert.doesNotMatch(indexHtml, /class="[^"]*\btop-nav\b/);
   assert.match(indexHtml, /more-menu-section--app-actions[\s\S]*id="app-refresh-btn"[^>]+data-app-action="refresh-app-update"/);
   assert.match(appJs, /case 'refresh-app-update':/);
-  assert.match(appJs, /window\.__requestTomatoAppRefresh\(\{ control, source: 'more-menu' \}\)/);
+  assert.match(appJs, /requestTomatoAppRefresh\(\{ control, source: 'more-menu' \}\)/);
   assert.match(buildInfoJs, /export async function requestTomatoAppRefresh/);
   assert.match(buildInfoJs, /window\.__requestTomatoAppRefresh = requestTomatoAppRefresh/);
   assert.match(buildInfoJs, /__refreshTomatoAppSWRegistration/);

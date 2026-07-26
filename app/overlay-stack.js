@@ -1,5 +1,7 @@
 const openModalStack = [];
 const modalFocusOrigins = new Map();
+const bodyScrollLockOwners = new Set();
+let bodyOverflowBeforeLock;
 let initialized = false;
 
 const FOCUSABLE_SELECTOR = [
@@ -31,7 +33,30 @@ export function prepareModalAccessibility(element) {
 
 function syncBodyScroll() {
   if (typeof document === 'undefined') return;
-  document.body.style.overflow = openModalStack.length ? 'hidden' : '';
+  const shouldLock = openModalStack.length > 0 || bodyScrollLockOwners.size > 0;
+  if (shouldLock) {
+    if (bodyOverflowBeforeLock === undefined) {
+      bodyOverflowBeforeLock = document.body.style.overflow || '';
+    }
+    document.body.style.overflow = 'hidden';
+    return;
+  }
+  document.body.style.overflow = bodyOverflowBeforeLock ?? '';
+  bodyOverflowBeforeLock = undefined;
+}
+
+export function acquireBodyScrollLock(owner) {
+  if (owner == null) return false;
+  bodyScrollLockOwners.add(owner);
+  syncBodyScroll();
+  return true;
+}
+
+export function releaseBodyScrollLock(owner) {
+  if (owner == null) return false;
+  const released = bodyScrollLockOwners.delete(owner);
+  if (released) syncBodyScroll();
+  return released;
 }
 
 export function openModal(id) {
@@ -100,10 +125,11 @@ export function initOverlayStack() {
     if (!focusable.length) return;
     const first = focusable[0];
     const last = focusable.at(-1);
-    if (event.shiftKey && document.activeElement === first) {
+    const activeIsOutside = !modal?.contains?.(document.activeElement);
+    if (event.shiftKey && (document.activeElement === first || activeIsOutside)) {
       event.preventDefault();
       last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
+    } else if (!event.shiftKey && (document.activeElement === last || activeIsOutside)) {
       event.preventDefault();
       first.focus();
     }

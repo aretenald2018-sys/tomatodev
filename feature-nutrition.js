@@ -20,6 +20,8 @@ let _nutritionSearchCache = { db: [], csv: [], recent: [], raw: [], brand: [] };
 let _nutritionSearchTimer = null;
 let _lastSearchQuery = null;
 let _nutritionCSVLoaded = false;
+const _nutritionItemCache = new Map();
+let _nutritionItemCacheSequence = 0;
 
 // NOTE: _loadPublicFoodDB / _loadAgriFoodDB는 과거에 19,495건을 localStorage에
 // 적재했지만 검색에 쓰지 않아 비용 대비 효용이 없었음. 2026-04-17 제거.
@@ -93,8 +95,8 @@ function _renderNutritionRow(item, { icon = '🏠', removable = false, isCSV = f
   const display = canonicalNutritionDisplay(item);
   if (!display) return '';
   const canonical = display.canonical;
-  const itemDataKey = `_nutritionItem_${item.id}`;
-  window[itemDataKey] = canonical;
+  const itemDataKey = `nutrition-item-${++_nutritionItemCacheSequence}`;
+  _nutritionItemCache.set(itemDataKey, canonical);
   const name = _escapeHtml(canonical.name || '이름 없는 식품');
   const manufacturer = _escapeHtml(canonical.brand || '');
   const { kcal, carbs, protein, fat } = display.nutrition;
@@ -126,6 +128,7 @@ function _renderNutritionSection(title, items, options = {}) {
 export function renderNutritionSearchInitial() {
   const container = document.getElementById('nutrition-search-results');
   if (!container) return;
+  _nutritionItemCache.clear();
   const recentItems = getRecentNutritionItems(10);
 
   let html = _renderNutritionSection('⭐ 최근 항목', recentItems, { removable: true });
@@ -143,6 +146,7 @@ export async function renderNutritionSearchResults() {
   const input = document.getElementById('nutrition-search-input');
   const container = document.getElementById('nutrition-search-results');
   if (!input || !container) return;
+  _nutritionItemCache.clear();
   const q = (input.value || '').trim();
 
   let html = '';
@@ -414,7 +418,7 @@ export function selectNutritionItem(itemId) {
 }
 
 export function selectNutritionItemFromCache(itemDataKey) {
-  const item = window[itemDataKey];
+  const item = _nutritionItemCache.get(itemDataKey);
 
   if (!item) {
     console.error('[selectNutritionItemFromCache] 항목을 찾을 수 없습니다:', itemDataKey);

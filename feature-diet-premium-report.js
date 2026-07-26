@@ -1,4 +1,5 @@
 import { showToast } from './ui/toast.js';
+import { closeModal, openModal } from './app/overlay-stack.js';
 // ================================================================
 // feature-diet-premium-report.js
 // Targeted one-time premium diet reports for selected users.
@@ -417,8 +418,8 @@ function _renderReport(report) {
 async function _closeReport({ persist = true } = {}) {
   const overlay = document.getElementById('diet-premium-report-modal');
   if (!overlay) return;
+  closeModal('diet-premium-report-modal');
   overlay.remove();
-  document.body.style.overflow = _activeReport?.previousOverflow || '';
 
   const userId = _activeReport?.userId;
   const reportId = _activeReport?.reportId || DEFAULT_REPORT_ID;
@@ -446,10 +447,9 @@ function _showReport(userId, { persist = true, reportId = DEFAULT_REPORT_ID } = 
   overlay.className = 'dpr-overlay';
   overlay.innerHTML = `<div class="dpr-sheet" role="dialog" aria-modal="true" aria-label="식단 프리미엄 리포트">${_renderReport(report)}</div>`;
 
-  const previousOverflow = document.body.style.overflow;
-  _activeReport = { userId, reportId, previousOverflow };
-  document.body.style.overflow = 'hidden';
+  _activeReport = { userId, reportId };
   document.body.appendChild(overlay);
+  openModal('diet-premium-report-modal');
 
   const sheet = overlay.querySelector('.dpr-sheet');
   sheet?.addEventListener('click', (event) => event.stopPropagation());

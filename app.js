@@ -30,7 +30,11 @@ import { registerStaticActions } from './app/static-actions.js';
 import { loadLazyModule } from './app/lazy-loader.js';
 import { getTabDefinition, isRegisteredTab } from './app/tab-registry.js';
 import { initOverlayStack } from './app/overlay-stack.js';
-import { initBuildInfoSurface, requestTomatoApkInstall } from './utils/build-info.js';
+import {
+  initBuildInfoSurface,
+  requestTomatoApkInstall,
+  requestTomatoAppRefresh,
+} from './utils/build-info.js';
 import {
   enableWorkoutPwaHistory,
   getWorkoutNavSnapshot,
@@ -349,11 +353,7 @@ function _runAppShellAction(action, control, event) {
       break;
     case 'refresh-app-update':
       _closeMoreMenu();
-      if (typeof window.__requestTomatoAppRefresh === 'function') {
-        void window.__requestTomatoAppRefresh({ control, source: 'more-menu' });
-      } else {
-        window.location.reload();
-      }
+      void requestTomatoAppRefresh({ control, source: 'more-menu' });
       break;
     case 'logout-account':
       _closeMoreMenu();
@@ -602,10 +602,9 @@ async function switchTab(tab, options = {}) {
       && Number.isFinite(Number(targetDate.d));
     if (hasTargetDate) {
       const key = _dateKeyFromParts(Number(targetDate.y), Number(targetDate.m), Number(targetDate.d));
-      const targetSessionIndex = _takeWorkoutTargetSessionIndex(0);
       const parsed = _parseWorkoutDateKey(key);
       openWorkoutDaySheet(key, {
-        sessionIndex: targetSessionIndex,
+        sessionIndex: 0,
         sheetState: 'full',
         viewYear: parsed?.y ?? TODAY.getFullYear(),
         viewMonth: parsed?.m ?? TODAY.getMonth(),
@@ -769,7 +768,7 @@ document.addEventListener('app:start-user-session', (event) => {
 function openWorkoutTab(y, m, d) {
   const key = _dateKeyFromParts(y, m, d);
   if (key) {
-    openWorkoutDaySheetFromAction(key, _takeWorkoutTargetSessionIndex(0), {
+    openWorkoutDaySheetFromAction(key, 0, {
       history: 'replace',
       action: 'sheet:open-from-tab-date',
     });

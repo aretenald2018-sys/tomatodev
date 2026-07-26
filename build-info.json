@@ -1,10 +1,10 @@
 {
   "app": "tomatodev",
-  "commit": "364fa354d1258a6e3edfb52e4f0f09630318788e",
-  "shortCommit": "364fa354d125",
-  "branch": "main",
-  "deployedAt": "2026-07-22T01:08:02.231Z",
-  "cacheVersion": "tomatodev-v20260722z7-widget-card-redesign",
+  "commit": "8f351b4e73c948dacf03661a043aea88d01a8949",
+  "shortCommit": "8f351b4e73c9",
+  "branch": "codex/tomatodev-ssot-refactor",
+  "deployedAt": "2026-07-26T12:24:06.463Z",
+  "cacheVersion": "tomatodev-v20260726z1-refactor-p0-runtime-guards",
   "runId": null,
   "runAttempt": null
 }

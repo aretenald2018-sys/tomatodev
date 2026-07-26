@@ -104,6 +104,10 @@ test('nutrition views use diet APIs instead of importing the workout renderer', 
   assert.doesNotMatch(feature, /render-workout\.js/);
   assert.doesNotMatch(weightModal, /render-workout\.js/);
   assert.match(feature, /canonicalNutritionDisplay/);
+  assert.match(feature, /const _nutritionItemCache = new Map\(\)/);
+  assert.doesNotMatch(feature, /window\s*\[[^\]]+\]\s*=/);
+  assert.match(cooking, /let _ingredientSearchResults = \{ db: \[\], csv: \[\] \}/);
+  assert.doesNotMatch(cooking, /window\s*\[[^\]]+\]\s*=/);
   assert.match(cooking, /setNutritionItemSavedHandler/);
   assert.match(renderer, /addMealFood/);
   assert.match(aiEstimate, /runDietPhotoEstimatePipeline/);

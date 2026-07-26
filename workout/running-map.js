@@ -247,7 +247,7 @@ async function _loadGoogleMaps(key) {
   if (_googleLoader) return _googleLoader;
 
   _googleLoader = new Promise((resolve, reject) => {
-    window[GOOGLE_CALLBACK] = () => resolve(window.google.maps);
+    window.__tomatoRunningGoogleMapsReady = () => resolve(window.google.maps);
     const script = document.createElement('script');
     script.src = buildGoogleMapsScriptUrl(key);
     script.async = true;
