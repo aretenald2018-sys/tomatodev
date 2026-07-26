@@ -135,6 +135,49 @@ function _goalTrackIds(override = {}) {
   return ['volume', 'intensity'].filter(track => _normalTrackReady(override.tracks?.[track]));
 }
 
+// ── 종목별 기간 ─────────────────────────────────────────────────
+// 비워두면 그 종목은 시즌 전체 기간을 쓴다. 저장 시 시즌 범위로 잘린다.
+function _exerciseWindowValue(exerciseId, field) {
+  const window = _state?.exerciseWindows?.[exerciseId];
+  if (window?.[field]) return window[field];
+  return field === 'startDate' ? _state?.season?.startDate || '' : _state?.season?.endDate || '';
+}
+
+function _exerciseWindowHint(exerciseId) {
+  const window = _state?.exerciseWindows?.[exerciseId];
+  if (!window?.startDate && !window?.endDate) return '시즌 전체 기간을 사용합니다';
+  const start = _exerciseWindowValue(exerciseId, 'startDate');
+  const end = _exerciseWindowValue(exerciseId, 'endDate');
+  if (start > end) return '시작일이 종료일보다 늦습니다';
+  return `${start.replace(/-/g, '.')} ~ ${end.replace(/-/g, '.')}`;
+}
+
+function _setExerciseWindow(exerciseId, field, rawValue) {
+  if (!_state) return;
+  if (!_state.exerciseWindows) _state.exerciseWindows = {};
+  const seasonStart = _state.season.startDate;
+  const seasonEnd = _state.season.endDate;
+  const current = { ..._state.exerciseWindows[exerciseId] };
+  const value = String(rawValue || '').trim();
+  if (!value) delete current[field];
+  else current[field] = value < seasonStart ? seasonStart : value > seasonEnd ? seasonEnd : value;
+  const startDate = current.startDate || seasonStart;
+  const endDate = current.endDate || seasonEnd;
+  // 시즌 기간과 같아지면 종목별 기간을 둘 이유가 없다.
+  if (startDate === seasonStart && endDate === seasonEnd) delete _state.exerciseWindows[exerciseId];
+  else _state.exerciseWindows[exerciseId] = { startDate, endDate };
+}
+
+// 저장 직전에 시즌 담당 종목만 남긴다.
+function _collectExerciseWindows() {
+  const windows = {};
+  for (const exerciseId of _state.selectedExerciseIds) {
+    const window = _state.exerciseWindows?.[exerciseId];
+    if (window?.startDate && window?.endDate) windows[exerciseId] = { ...window };
+  }
+  return windows;
+}
+
 function _refreshSelectedExerciseIds() {
   if (!_state) return;
   _state.selectedExerciseIds = new Set(_state.exerciseSetup.configurations
@@ -266,6 +309,10 @@ function _initialState(editingSeasonId = null) {
       ? { ...editingSeason }
       : { name: _seasonName(startDate), startDate, endDate: addSeasonDays(startDate, 41) },
     benchmarkMappings: {},
+    // 종목별 기간. 편집 시 기존 값을 이어받고, 없으면 시즌 전체 기간을 쓴다.
+    exerciseWindows: editingSeason?.exerciseWindows
+      ? Object.fromEntries(Object.entries(editingSeason.exerciseWindows).map(([id, window]) => [id, { ...window }]))
+      : {},
     exerciseSetup: null,
     overrides: editingSeason ? _overridesFromBoard(board || {}) : {},
     weeklySessionTarget: Number(existingWorkoutPlan?.weeklySessionTarget) || 3,
@@ -401,6 +448,11 @@ function _exerciseStep() {
           </header>
           <div class="season-recent-reference${history ? '' : ' is-empty'}"><span>최근 수행${history ? ` · ${_esc(history.dateKey.slice(5).replace('-', '.'))}` : ''}</span><strong>${_esc(_recentSetSummary(history))}</strong></div>
           <div class="season-card-settings">
+            ${selected ? `<div class="season-exercise-window">
+              <label class="season-compact-field"><span>시작</span><input type="date" data-season-exercise-window="start" min="${_esc(_state.season.startDate)}" max="${_esc(_state.season.endDate)}" value="${_esc(_exerciseWindowValue(id, 'startDate'))}"></label>
+              <label class="season-compact-field"><span>종료</span><input type="date" data-season-exercise-window="end" min="${_esc(_state.season.startDate)}" max="${_esc(_state.season.endDate)}" value="${_esc(_exerciseWindowValue(id, 'endDate'))}"></label>
+              <small class="season-window-hint">${_esc(_exerciseWindowHint(id))}</small>
+            </div>` : ''}
             <label class="season-compact-field season-program-field"><span>목표 방식</span><select data-season-program="program"><option value="none" ${config.program === 'none' ? 'selected' : ''}>목표 없음</option><option value="stair" ${isStair ? 'selected' : ''}>일반 · 3주 증량</option><option value="wendler" ${isWendler ? 'selected' : ''}>8/6/3</option></select></label>
             ${isWendler ? `<div class="season-wendler-goal"><div class="season-wendler-summary"><span>1RM <b>${_esc(wendler.oneRmKg)}kg</b></span><span>TM <b>${_esc(tmKg)}kg</b></span></div><button type="button" class="season-wendler-open" data-season-action="open-wendler" data-exercise-id="${_esc(id)}">목표 설정</button></div>` : ''}
             ${isStair ? `<div class="season-track-grid">${[['volume', '볼륨 트랙'], ['intensity', '강도 트랙']].map(([track, label]) => {
@@ -702,6 +754,13 @@ function _handleInput(event) {
     if (tmOutput) tmOutput.textContent = `${Number(draft.tmKg) || 0}kg`;
     return;
   }
+  const windowEdge = target.getAttribute('data-season-exercise-window');
+  if (configuredExerciseId && windowEdge) {
+    _setExerciseWindow(configuredExerciseId, windowEdge === 'start' ? 'startDate' : 'endDate', target.value);
+    const hint = exerciseRoot?.querySelector('.season-window-hint');
+    if (hint) hint.textContent = _exerciseWindowHint(configuredExerciseId);
+    return;
+  }
   const normalTrack = target.getAttribute('data-season-normal-track');
   const normalField = target.getAttribute('data-season-normal-field');
   if (configuredExerciseId && normalTrack && normalField) {
@@ -785,8 +844,8 @@ async function _save() {
   try {
     const input = {
       season: _state.editingSeasonId
-        ? { ..._state.season, id: _state.editingSeasonId, exerciseIds: [..._state.selectedExerciseIds] }
-        : { ..._state.season, exerciseIds: [..._state.selectedExerciseIds] },
+        ? { ..._state.season, id: _state.editingSeasonId, exerciseIds: [..._state.selectedExerciseIds], exerciseWindows: _collectExerciseWindows() }
+        : { ..._state.season, exerciseIds: [..._state.selectedExerciseIds], exerciseWindows: _collectExerciseWindows() },
       clientRequestId: _state.clientRequestId,
       selectedExerciseIds: [..._state.selectedExerciseIds],
       registeredExerciseIds: _state.exercises.map(exercise => String(exercise.id)),

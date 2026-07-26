@@ -89,11 +89,12 @@ test('시즌 마법사는 선택 확인을 포함한 다섯 단계와 생성·�
 test('기존 직전 기록·PR API는 현재 시즌 decision cache를 사용한다', () => {
   const api = read('data/data-api.js');
   const expert = read('workout/expert.js');
-  assert.match(api, /getVolumeHistory = .*getSeasonDecisionCache\(\)/);
-  assert.match(api, /detectPRs = .*getSeasonDecisionCache\(\)/);
-  assert.match(api, /getLastSession = .*getSeasonDecisionCache\(excludeDateKey\)/);
+  // 종목별 기간을 지원하려면 decision cache가 어떤 종목을 묻는지 알아야 한다.
+  assert.match(api, /getVolumeHistory = .*getSeasonDecisionCache\(null, exerciseId\)/);
+  assert.match(api, /detectPRs = .*getSeasonDecisionCache\(null, exerciseId\)/);
+  assert.match(api, /getLastSession = .*getSeasonDecisionCache\(excludeDateKey, exerciseId\)/);
   assert.match(expert, /getSeasonDecisionCache as getCache/);
-  assert.match(expert, /_getLastSessionCalc\(getCache\(todayKey\)/);
+  assert.match(expert, /_getLastSessionCalc\(getCache\(todayKey, ex\.id\)/);
 });
 
 test('현재 시즌 성장 보드는 시즌 문서와 활성 보드를 한 트랜잭션으로 함께 저장한다', () => {
@@ -204,4 +205,31 @@ test('러닝 추이 그래프는 점마다 날짜와 평균 페이스를 함께 
   assert.match(provider, /canvas\.drawText\(paceLabel/);
   assert.match(provider, /canvas\.drawText\(dateLabel/);
   assert.match(provider, /shortDate/);
+});
+
+test('시즌 마법사는 목표를 세운 종목마다 시즌 안에서 개별 기간을 지정한다', () => {
+  const source = read('workout/season-manager.js');
+  const styles = read('styles/features/seasons.css');
+  // 종목 카드 안의 기간 입력. 시즌 범위를 벗어나지 못하도록 min/max를 시즌 경계로 묶는다.
+  assert.match(source, /data-season-exercise-window="start"/);
+  assert.match(source, /data-season-exercise-window="end"/);
+  assert.match(source, /min="\$\{_esc\(_state\.season\.startDate\)\}" max="\$\{_esc\(_state\.season\.endDate\)\}"/);
+  // 입력 핸들러와 저장 경로가 연결돼 있어야 실제로 반영된다.
+  assert.match(source, /_setExerciseWindow\(configuredExerciseId/);
+  assert.match(source, /exerciseWindows: _collectExerciseWindows\(\)/);
+  // 편집 진입 시 기존 종목별 기간을 이어받는다.
+  assert.match(source, /exerciseWindows: editingSeason\?\.exerciseWindows/);
+  assert.match(styles, /\.season-exercise-window/);
+});
+
+test('종목별 기간은 시즌 모델과 조회 경로에서 함께 지켜진다', () => {
+  const model = read('data/season-model.js');
+  const api = read('data/data-api.js');
+  assert.match(model, /export function seasonExerciseRange/);
+  assert.match(model, /export function filterCacheToSeasonExercise/);
+  // 공유 백엔드 계약: 스키마 버전은 올리지 않고 선택 필드로만 확장한다.
+  assert.match(model, /export const SEASON_REGISTRY_SCHEMA_VERSION = 3;/);
+  // 어느 시즌에도 없는 종목은 시즌으로 자르지 않는다.
+  assert.match(model, /if \(!normalized\.seasons\.some\(season => seasonContainsExercise\(season, exerciseId\)\)\) return cache;/);
+  assert.match(api, /function _seasonDecisionCacheForExercises/);
 });

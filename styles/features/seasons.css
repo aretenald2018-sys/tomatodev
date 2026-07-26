@@ -270,6 +270,31 @@
 .season-recent-reference.is-empty span, .season-recent-reference.is-empty strong { color: var(--season-color-8a9299); }
 .season-card-settings { border-top: 1px solid var(--season-color-edf0f2); background: var(--season-color-fafbfc); transition: opacity .16s ease; }
 .season-program-field { padding: 8px 10px; }
+.season-exercise-window {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+  padding: 8px 10px 0;
+}
+.season-exercise-window input[type="date"] {
+  width: 100%;
+  min-height: 38px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  border: 1px solid var(--season-color-d8dde2);
+  border-radius: 9px;
+  background: var(--season-color-ffffff);
+  color: var(--season-color-303940);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+}
+.season-window-hint {
+  grid-column: 1 / -1;
+  color: var(--season-color-8a9299);
+  font-size: 9px;
+  font-weight: 700;
+}
 .season-compact-field { display: grid; min-width: 0; gap: 4px; }
 .season-compact-field > span:first-child { color: var(--season-color-66717a); font-size: 9px; font-weight: 800; }
 .season-compact-field select {

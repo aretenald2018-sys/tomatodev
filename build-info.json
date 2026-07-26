@@ -1,10 +1,10 @@
 {
   "app": "tomatodev",
-  "commit": "82ac70cdd223fafba270a68af3dafa68f6a02ed3",
-  "shortCommit": "82ac70cdd223",
-  "branch": "claude/refactoring-plan-q2tblk",
-  "deployedAt": "2026-07-26T19:59:28.924Z",
-  "cacheVersion": "tomatodev-v20260726z18-running-wake-lock",
+  "commit": "bb080657468240c902f4fea82cb3c45b5345e397",
+  "shortCommit": "bb0806574682",
+  "branch": "main",
+  "deployedAt": "2026-07-26T22:17:00.958Z",
+  "cacheVersion": "tomatodev-v20260726z19-season-exercise-windows",
   "runId": null,
   "runAttempt": null
 }
