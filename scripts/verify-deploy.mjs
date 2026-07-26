@@ -122,7 +122,7 @@ for (const asset of staticAssets) {
 const keyFiles = [
   { path: 'index.html', marker: 'app.js' },
   { path: 'app.js', marker: 'initBuildInfoSurface' },
-  { path: 'utils/build-info.js', marker: 'renderBuildInfo' },
+  { path: 'utils/build-info.js', marker: 'export function initBuildInfoSurface' },
   { path: 'workout/save.js', marker: './save-pure.js' },
   { path: 'workout/save-pure.js', marker: 'shouldKeepMaxDraftExercisesForSavePure' },
   { path: 'workout/expert/max-benchmark-picker.js', marker: 'resolveMaxBenchmarkPickerItems' },
