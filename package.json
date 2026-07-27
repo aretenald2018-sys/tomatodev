@@ -20,6 +20,7 @@
     "build": "node scripts/generate-style-entry.mjs && node scripts/bump-cache.js && node scripts/generate-build-info.mjs && node scripts/copy-www.js",
     "cap:sync": "npm run build && npx cap sync android",
     "build:mobile-apk": "node scripts/build-mobile-apk.mjs",
+    "build:wear-apk": "node scripts/build-mobile-apk.mjs --target wear",
     "cap:open": "npx cap open android",
     "server": "node tools/api-server.js",
     "audit:ai-diet": "node scripts/audit-ai-diet-account.mjs",

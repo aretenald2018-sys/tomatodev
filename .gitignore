@@ -4,6 +4,9 @@ node_modules/
 # 배포되는 개발 APK만 예외. 서명키가 매번 바뀌지 않도록 로컬 debug 키로 빌드해
 # 커밋한다(scripts/build-mobile-apk.mjs).
 !public/downloads/tomatodev.apk
+# 개발용 워치 APK도 같은 debug 키로 빌드해 게시한다. 워치가 토마토데브 폰 앱에
+# 러닝 기록을 보내려면 같은 applicationId(com.lifestreak.dev) 워치 앱이 필요하다.
+!public/downloads/tomatodev-wear.apk
 .claude/
 .omo/
 .codex-worktrees/

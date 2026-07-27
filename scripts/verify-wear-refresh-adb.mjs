@@ -7,13 +7,23 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const defaultEvidenceDir = path.join(root, '.test-results', 'wear-app-refresh-update-install');
-const appPackage = 'com.lifestreak.app';
+// TomatoDev의 개발용 application id. 폰과 워치가 같은 applicationId와 같은 debug
+// 키를 쓸 때만 Wear Data Layer가 두 앱을 같은 앱으로 취급해 러닝 기록을 전달한다.
+// 운영 패키지(com.lifestreak.app)를 검사하면 개발용 설치본을 못 찾는다.
+const appPackage = 'com.lifestreak.dev';
 const prefsName = 'tomato_wear_app_refresh.xml';
 const prefsPath = `shared_prefs/${prefsName}`;
 const marketPackageDefault = 'com.android.vending';
-const defaultAppApk = path.join(root, 'android', 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk');
-const defaultWearApk = path.join(root, 'android', 'wear', 'build', 'outputs', 'apk', 'debug', 'wear-debug.apk');
-const debugBuildCommand = '.\\android\\gradlew.bat -p android :app:assembleDebug :wear:assembleDebug';
+const builtAppApk = path.join(root, 'android', 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk');
+const builtWearApk = path.join(root, 'android', 'wear', 'build', 'outputs', 'apk', 'debug', 'wear-debug.apk');
+const publishedAppApk = path.join(root, 'public', 'downloads', 'tomatodev.apk');
+const publishedWearApk = path.join(root, 'public', 'downloads', 'tomatodev-wear.apk');
+// 로컬 Gradle 산출물이 있으면 그것을, 없으면 게시된 APK를 설치한다. 둘 다
+// 같은 로컬 debug 키로 서명되므로 기존 설치본을 업데이트할 수 있다.
+const defaultAppApk = existsSync(builtAppApk) ? builtAppApk : publishedAppApk;
+const defaultWearApk = existsSync(builtWearApk) ? builtWearApk : publishedWearApk;
+const debugBuildCommand = 'npm run build:mobile-apk';
+const debugWearBuildCommand = 'npm run build:wear-apk';
 
 function parseArgs(argv) {
   const args = {
@@ -72,7 +82,7 @@ function usage() {
     '',
     'Watch-only install flow:',
     '  1. Build the Wear debug APK in a normal terminal:',
-    `     ${debugBuildCommand}`,
+    `     ${debugWearBuildCommand}`,
     '  2. Connect the watch with adb pair/connect.',
     '  3. Run this script with --mode install-watch. If exactly one watch is visible to adb, --watch is optional.',
     '',
@@ -493,7 +503,7 @@ async function installWatch(adb, args) {
   if (!target.ok || !wearApkExists) {
     lines.push('result=not verified yet');
     if (!wearApkExists) {
-      lines.push(`buildCommand=${debugBuildCommand}`);
+      lines.push(`buildCommand=${debugWearBuildCommand}`);
       lines.push('blocker: wear debug APK is missing.');
     }
     const evidence = await writeEvidence(args, 'wear-watch-install-adb-verification.txt', lines);

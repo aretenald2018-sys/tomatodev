@@ -55,7 +55,9 @@ export async function requestWearAppRefreshOrInstall({ source = 'manual' } = {})
   const installPrompted = Number(result?.installPrompted || 0);
   const refreshSent = Number(result?.refreshSent || 0);
   if (installPrompted > 0) {
-    _toastAppRefresh('갤럭시워치 설치 화면을 열었어요.', 'info');
+    // 개발용 워치 앱(com.lifestreak.dev)은 스토어에 없다. 워치가 토마토데브에
+    // 러닝 기록을 보내려면 PC에서 개발 APK를 직접 설치해야 한다.
+    _toastAppRefresh('워치에 개발용 앱이 없어요. PC에서 npm run install:wear-watch 로 설치해 주세요.', 'warning');
   } else if (refreshSent > 0) {
     _toastAppRefresh('갤럭시워치에도 새로고침 신호를 보냈어요.', 'info');
   }
