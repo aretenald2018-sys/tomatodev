@@ -1,7 +1,21 @@
 import { showToast } from '../ui/toast.js';
+import { loadBuildInfo } from './build-info.js';
 
 const TOMATODEV_APK_DOWNLOAD_PATH = '../public/downloads/tomatodev.apk';
 const TOMATODEV_APK_DOWNLOAD_NAME = 'tomatodev.apk';
+
+// 내려받은 파일이 어느 배포본인지 파일명만 보고 알 수 있어야 한다.
+// build-info.json의 배포 시각을 로컬 시간대로 붙인다.
+export function tomatodevApkFileName(buildInfo = null) {
+  const deployedAt = String(buildInfo?.deployedAt || '');
+  const stamp = Date.parse(deployedAt);
+  if (!Number.isFinite(stamp)) return TOMATODEV_APK_DOWNLOAD_NAME;
+  const at = new Date(stamp);
+  const pad = value => String(value).padStart(2, '0');
+  const date = `${at.getFullYear()}${pad(at.getMonth() + 1)}${pad(at.getDate())}`;
+  const time = `${pad(at.getHours())}${pad(at.getMinutes())}`;
+  return `tomatodev-${date}-${time}.apk`;
+}
 // APK 셸은 www/만 담고 있어 public/ 경로가 존재하지 않는다. 네이티브에서는
 // 배포된 절대 URL을 열어야 Capacitor가 외부 브라우저로 넘겨 설치가 시작된다.
 const TOMATODEV_APK_REMOTE_URL = 'https://aretenald2018-sys.github.io/tomatodev/public/downloads/tomatodev.apk';
@@ -32,7 +46,7 @@ function _tomatodevApkDownloadUrl() {
   return new URL(TOMATODEV_APK_DOWNLOAD_PATH, import.meta.url).href;
 }
 
-function _startTomatodevApkDownload() {
+function _startTomatodevApkDownload(downloadName = TOMATODEV_APK_DOWNLOAD_NAME) {
   const downloadUrl = _tomatodevApkDownloadUrl();
   if (typeof document === 'undefined') {
     return { started: false, reason: 'document-unavailable', downloadUrl };
@@ -54,7 +68,7 @@ function _startTomatodevApkDownload() {
   }
 
   link.href = downloadUrl;
-  link.download = TOMATODEV_APK_DOWNLOAD_NAME;
+  link.download = downloadName;
   link.rel = 'noopener';
   link.style.display = 'none';
   document.body?.appendChild?.(link);
@@ -71,9 +85,14 @@ export async function requestTomatoApkInstall({ control = null, source = 'manual
   _setRefreshControlBusy(button, true);
 
   try {
-    const download = _startTomatodevApkDownload();
+    // 배포 시각을 파일명에 담는다. 실패해도 다운로드 자체는 막지 않는다.
+    let downloadName = TOMATODEV_APK_DOWNLOAD_NAME;
+    try {
+      downloadName = tomatodevApkFileName(await loadBuildInfo());
+    } catch {}
+    const download = _startTomatodevApkDownload(downloadName);
     if (download.started) {
-      return { started: true, reason: download.reason || 'browser-download', downloadUrl: download.downloadUrl, source };
+      return { started: true, reason: download.reason || 'browser-download', downloadUrl: download.downloadUrl, downloadName, source };
     }
     _toastAppRefresh('APK 다운로드를 시작하지 못했어요. 브라우저에서 다운로드를 허용해주세요.', 'warning');
     return { started: false, reason: download.reason, downloadUrl: download.downloadUrl, source };

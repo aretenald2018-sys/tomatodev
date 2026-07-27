@@ -104,12 +104,6 @@ export function _isoWeekNumber(date) {
   return Math.ceil((((value - yearStart) / 86400000) + 1) / 7);
 }
 
-export function _formatWorkoutWeekHours(seconds) {
-  const sec = Math.max(0, Math.round(_num(seconds)));
-  if (sec <= 0) return '—';
-  const hours = Math.round((sec / 3600) * 10) / 10;
-  return `${String(hours).replace(/\.0$/, '')}h`;
-}
 
 export function _dateDistanceLabel(key) {
   const target = _dateFromKey(key);

@@ -233,3 +233,52 @@ test('종목별 기간은 시즌 모델과 조회 경로에서 함께 지켜진�
   assert.match(model, /if \(!normalized\.seasons\.some\(season => seasonContainsExercise\(season, exerciseId\)\)\) return cache;/);
   assert.match(api, /function _seasonDecisionCacheForExercises/);
 });
+
+test('이미 만들어진 시즌은 5단계 대신 한 화면 관리 시트로 연다', () => {
+  const source = read('workout/season-manager.js');
+  const styles = read('styles/features/seasons.css');
+  // 편집 진입은 기본이 관리 모드다.
+  assert.match(source, /_state\.mode = options\.mode \|\| \(_state\.editingSeasonId \? 'manage' : 'wizard'\)/);
+  // 관리 모드에서는 단계 표시를 감추고 바로 저장한다.
+  assert.match(source, /\$\{isManage \? '' : _stepper\(\)\}/);
+  assert.match(source, /isManage \? _manageBody\(\) : _stepBody\(\)/);
+  // 종목 줄을 펼쳐 기간을 그 자리에서 고친다.
+  assert.match(source, /data-season-action="toggle-manage-row"/);
+  assert.match(source, /data-season-action="clear-exercise-window"/);
+  assert.match(source, /data-season-action="edit-exercise-goal"/);
+  assert.match(source, /data-season-action="remove-exercise"/);
+  assert.match(source, /data-season-action="go-to-wizard"/);
+  assert.match(source, /'back-to-manage' : 'close'/);
+  assert.match(source, /action === 'back-to-manage'/);
+  // 관리 시트의 종목 줄에도 종목 기간 입력이 있다.
+  assert.match(source, /season-manage-window[\s\S]{0,400}data-season-exercise-window="start"/);
+  // 목표 수정은 같은 상태를 들고 위저드 종목 단계로 이어진다(입력값 유지).
+  assert.match(source, /_state\.mode = 'wizard';\s*\n\s*_state\.step = 1;/);
+  // 단계를 걷지 않고 저장하므로 모든 관문을 한 번에 검사한다.
+  assert.match(source, /_state\.mode === 'manage' \? _validateAllSteps\(\) : _validateCurrentStep\(\)/);
+  assert.match(source, /function _validateAllSteps\(\)/);
+  assert.match(styles, /\.season-manage-row-head/);
+  assert.match(styles, /\.season-manage-row-period\.is-custom/);
+});
+
+test('주차 레일은 시즌 목표를 미니 캐러셀로 보여주고 달성은 체크로 표기한다', () => {
+  const calendar = read('render-calendar.js');
+  const styles = read('styles/features/calendar-home.css');
+  assert.match(calendar, /function _buildWeekGoalsByMonday/);
+  assert.match(calendar, /function _renderWeekGoalRail/);
+  // 위젯/개요와 같은 판정을 재사용한다.
+  assert.match(calendar, /buildSeasonOverview\(\{[\s\S]{0,200}board: getSeasonTestBoardV2\(season\.id\)/);
+  assert.match(calendar, /state === 'achieved'\) return '✓'/);
+  // 레일 안에서만 세로로 굴러야 달력 스크롤을 뺏지 않는다.
+  assert.match(styles, /\.cal-week-goals\s*\{[\s\S]*overflow-y:\s*auto;[\s\S]*overscroll-behavior:\s*contain;/);
+  assert.match(styles, /\.cal-week-goal\.is-achieved/);
+});
+
+test('APK 내려받기 파일명에 마지막 배포 시각이 들어간다', () => {
+  const source = read('utils/apk-install.js');
+  assert.match(source, /export function tomatodevApkFileName/);
+  assert.match(source, /tomatodev-\$\{date\}-\$\{time\}\.apk/);
+  assert.match(source, /tomatodevApkFileName\(await loadBuildInfo\(\)\)/);
+  // 파일명을 못 만들어도 다운로드 자체는 막지 않는다.
+  assert.match(source, /let downloadName = TOMATODEV_APK_DOWNLOAD_NAME;/);
+});

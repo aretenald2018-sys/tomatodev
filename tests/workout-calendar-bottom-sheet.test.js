@@ -1255,15 +1255,14 @@ test('workout calendar week rail restores the plain weekly summary without goals
   const weekday = calendarJs.slice(weekdayStart, weekdayEnd);
 
   assert.match(calendarFormatJs, /function _isoWeekNumber\(date\)/);
-  assert.match(calendarFormatJs, /function _formatWorkoutWeekHours\(seconds\)/);
   assert.match(calendarJs, /const dayMetrics = new Map\(\)/);
   assert.match(calendarJs, /dayMetrics\.set\(d, wx\)/);
-  assert.match(grid, /let weekDurationSec = 0/);
-  assert.match(grid, /let weekSets = 0/);
   assert.match(grid, /const weekNo = _isoWeekNumber\(new Date\(y, m, anchorDay\)\)/);
   assert.match(grid, /<strong>\$\{weekNo\}주<\/strong>/);
-  assert.match(grid, /_formatWorkoutWeekHours\(weekDurationSec\)/);
-  assert.match(grid, /weekSets > 0 \? `\$\{weekSets\}s` : '—'/);
+  // 주차 레일은 누적 기록 대신 시즌 설정에서 나온 이번 주 목표를 보여준다.
+  assert.match(grid, /_renderWeekGoalRail\(weekGoals\)/);
+  assert.match(grid, /weekGoalsByMonday\?\.get\(startOfSeasonWeek\(railAnchorKey\)\)/);
+  assert.doesNotMatch(grid, /weekDurationSec|weekSets/);
   assert.match(weekday, /<div class="cal-week-rail-spacer" aria-hidden="true"><\/div>/);
   assert.doesNotMatch(weekday, /data-cal-goal-input|목표입력/);
   assert.doesNotMatch(grid, /cal-cycle-branch|cal-goal-exercise|cal-goal-card|data-cal-cycle-target/);

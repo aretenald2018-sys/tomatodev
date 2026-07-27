@@ -344,6 +344,35 @@
 .season-review-item b { color: var(--season-color-28323a); font-size: 12px; }
 .season-review-item small { overflow: hidden; color: var(--season-color-6f7981); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .season-review-item i { flex: none; color: var(--season-color-2d7a4f); font-size: 9px; font-style: normal; font-weight: 900; }
+/* 확인 단계에서도 종목 기간을 바로 보고 고칠 수 있게 한다. */
+.season-review-item { flex-wrap: wrap; }
+.season-review-window {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding-top: 8px;
+  border-top: 1px dashed var(--season-color-edf0f2);
+}
+.season-review-window-label { color: var(--season-color-66717a); font-size: 9px; font-weight: 800; }
+.season-review-window input[type="date"] {
+  width: 100%;
+  min-height: 34px;
+  box-sizing: border-box;
+  padding: 0 7px;
+  border: 1px solid var(--season-color-d8dde2);
+  border-radius: 8px;
+  background: var(--season-color-ffffff);
+  color: var(--season-color-303940);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+}
+.season-review-window .season-window-hint { grid-column: 1 / -1; }
+.season-window-title { color: var(--season-color-66717a); font-size: 9px; font-weight: 800; }
+.season-exercise-window .season-window-title { grid-column: 1 / -1; }
+
 .season-review-empty { padding: 18px; border: 1px dashed var(--season-color-dca29c); border-radius: 12px; background: var(--season-color-fff8f6); color: var(--season-color-8b4c46); font-size: 11px; line-height: 1.5; text-align: center; }
 
 .season-running-presets { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin-bottom: 13px; }
@@ -493,4 +522,99 @@
   .cal-season-actions { gap: 5px; }
   .cal-season-control button { min-width: 76px; min-height: 38px; padding: 0 10px; font-size: 12px; }
   .cal-season-control .cal-season-settings { min-width: 36px; width: 36px; min-height: 36px; }
+}
+
+/* ── 시즌 관리 시트 ─────────────────────────────────────────────
+   이미 만들어진 시즌은 5단계를 다시 걷지 않고 이 한 화면에서 고친다. */
+.season-manage { display: grid; gap: 12px; padding: 4px 0 8px; }
+.season-manage-block { border: 1px solid var(--season-color-e1e5e8); border-radius: 12px; background: var(--season-color-ffffff); overflow: hidden; }
+.season-manage-block > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 11px;
+  border-bottom: 1px solid var(--season-color-edf0f2);
+  background: var(--season-color-fafbfc);
+}
+.season-manage-block > header strong { color: var(--season-color-28323a); font-size: 11px; font-weight: 800; }
+.season-manage-block > header button {
+  flex: none;
+  padding: 6px 10px;
+  border: 1px solid var(--season-color-dfe3e7);
+  border-radius: 999px;
+  background: var(--season-color-ffffff);
+  color: var(--season-color-a9473e);
+  font-size: 10px;
+  font-weight: 800;
+}
+.season-manage-period { display: grid; gap: 3px; padding: 10px 11px; }
+.season-manage-period b { color: var(--season-color-28323a); font-size: 12px; }
+.season-manage-period small { color: var(--season-color-6f7981); font-size: 10px; }
+.season-manage-rows { display: grid; }
+.season-manage-row + .season-manage-row { border-top: 1px solid var(--season-color-edf0f2); }
+.season-manage-row.is-open { background: var(--season-color-fafbfc); }
+.season-manage-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 9px 11px;
+  border: 0;
+  background: none;
+  text-align: left;
+}
+.season-manage-row-copy { display: grid; min-width: 0; gap: 2px; }
+.season-manage-row-copy b { color: var(--season-color-28323a); font-size: 12px; }
+.season-manage-row-copy small { overflow: hidden; color: var(--season-color-6f7981); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.season-manage-row-period {
+  flex: none;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--season-color-f2f4f7);
+  color: var(--season-color-6f7981);
+  font-size: 9px;
+  font-weight: 800;
+}
+.season-manage-row-period.is-custom { background: var(--season-color-fff2ef); color: var(--season-color-a9473e); }
+.season-manage-row-body { display: grid; gap: 9px; padding: 0 11px 11px; }
+.season-manage-window { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
+.season-manage-window .season-window-title { grid-column: 1 / -1; }
+.season-manage-window .season-window-hint { grid-column: 1 / -1; }
+.season-manage-window input[type="date"] {
+  width: 100%;
+  min-height: 38px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  border: 1px solid var(--season-color-d8dde2);
+  border-radius: 9px;
+  background: var(--season-color-ffffff);
+  color: var(--season-color-303940);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+}
+.season-manage-row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.season-manage-row-actions button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--season-color-dfe3e7);
+  border-radius: 999px;
+  background: var(--season-color-ffffff);
+  color: var(--season-color-53616b);
+  font-size: 10px;
+  font-weight: 800;
+}
+.season-manage-row-actions button.is-danger { border-color: var(--season-color-dca29c); color: var(--season-color-a9473e); }
+.season-manage-full {
+  width: 100%;
+  min-height: 42px;
+  border: 1px dashed var(--season-color-dfe3e7);
+  border-radius: 12px;
+  background: var(--season-color-ffffff);
+  color: var(--season-color-66717a);
+  font-size: 11px;
+  font-weight: 800;
 }
