@@ -315,6 +315,20 @@
   './admin/admin-actions.js',
   './admin/admin-export.js',
   './admin/admin-cheers.js',
+  // modal-manager.js가 동적 import 하는 템플릿 모듈은 전부 precache 대상이다.
+  // 하나라도 빠지면 캐시 버전 교체 직후 오프라인/불안정 네트워크에서 그 모달만
+  // import 실패하고, 해당 버튼(종목 추가 ＋ 등)이 아무 반응 없이 죽는다.
+  './modals/ex-picker-modal.js',
+  './modals/ex-editor-modal.js',
+  './modals/goal-modal.js',
+  './modals/quest-modal.js',
+  './modals/quest-edit-modal.js',
+  './modals/section-title-modal.js',
+  './modals/cooking-modal.js',
+  './modals/diet-plan-modal.js',
+  './modals/checkin-modal.js',
+  './modals/nutrition-search-modal.js',
+  './modals/guild-modal.js',
   './modals/weight-result-modal.js',
   './modals/streak-milestone-modal.js',
   './modals/nutrition-item-modal.js',

@@ -94,6 +94,11 @@ export async function loadAndInjectModals(ids = null) {
     const loadedCount = results.filter((result) => result.status === 'fulfilled').length;
     _modalsLoaded = loadedCount === MODALS.length;
     console.log('[modal-manager] 모달 로드 완료 (' + loadedCount + '/' + MODALS.length + ')');
+    // 실패를 이름 없이 삼키면 "이 버튼만 무반응"인 증상의 원인을 찾을 수 없다.
+    results.forEach((result, index) => {
+      if (result.status !== 'rejected') return;
+      console.warn(`[modal-manager] ${MODALS[index].id} 로드 실패:`, result.reason?.message || result.reason);
+    });
   })();
 
   try {

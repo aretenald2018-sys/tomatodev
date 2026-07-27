@@ -1875,7 +1875,10 @@ function _bindWorkoutHomeSheetActions(root) {
     if (doneToggle && sheet.contains(doneToggle)) {
       event.preventDefault();
       event.stopPropagation();
-      Promise.resolve(_toggleWorkoutExerciseSetDoneFromSheet(
+      // 입력 중인 중량/횟수를 먼저 확정한다. 완료 토글은 저장된 세트를 읽어
+      // 낙관적 렌더로 행을 교체하므로, 커밋 전에 토글하면 방금 입력한 값이
+      // 사라지고 예전 값으로 되돌아간 것처럼 보인다.
+      _afterPendingWorkoutSheetSetInput(() => _toggleWorkoutExerciseSetDoneFromSheet(
         doneToggle.getAttribute('data-date-key') || _workoutHomeSelectedKey,
         doneToggle.getAttribute('data-session-index'),
         doneToggle.getAttribute('data-exercise-index'),
@@ -1889,7 +1892,7 @@ function _bindWorkoutHomeSheetActions(root) {
     if (setRemove && sheet.contains(setRemove)) {
       event.preventDefault();
       event.stopPropagation();
-      Promise.resolve(_removeWorkoutExerciseSetFromSheet(
+      _afterPendingWorkoutSheetSetInput(() => _removeWorkoutExerciseSetFromSheet(
         setRemove.getAttribute('data-date-key') || _workoutHomeSelectedKey,
         setRemove.getAttribute('data-session-index'),
         setRemove.getAttribute('data-exercise-index'),
@@ -1904,12 +1907,16 @@ function _bindWorkoutHomeSheetActions(root) {
       event.preventDefault();
       event.stopPropagation();
       const action = cardAction.getAttribute('data-wt-sheet-card-action') || '';
-      const result = _runWorkoutHomeSheetCardAction(action, cardAction);
-      if (result === false) {
-        console.warn('[workout-calendar] unknown sheet card action:', action);
-        return;
-      }
-      Promise.resolve(result).catch((e) => {
+      // 종목완료·세트 추가·회차 전환도 저장된 세트를 다시 읽는다. 입력 확정을
+      // 먼저 해야 타이핑 중이던 값이 유실되지 않는다.
+      _afterPendingWorkoutSheetSetInput(() => {
+        const result = _runWorkoutHomeSheetCardAction(action, cardAction);
+        if (result === false) {
+          console.warn('[workout-calendar] unknown sheet card action:', action);
+          return undefined;
+        }
+        return result;
+      }).catch((e) => {
         console.warn('[workout-calendar] sheet card action failed:', e);
       });
       return;
@@ -1952,6 +1959,30 @@ function _bindWorkoutHomeSheetActions(root) {
       showToast('종목 추가 화면을 열지 못했어요', 2200, 'error');
     });
   }, true);
+}
+
+// 시트 안에서 아직 확정되지 않은 세트 입력(중량/횟수)을 찾는다. 커스텀 키패드는
+// 값을 프로그램으로 넣기 때문에 change 이벤트가 없고, blur 커밋은 setTimeout(0)로
+// 밀린다. 그래서 클릭 액션이 먼저 렌더를 갈아치우면 입력이 그대로 사라진다.
+function _pendingWorkoutSheetSetInput() {
+  const active = _workoutSetKeyboardActiveInput();
+  if (active?.getAttribute?.('data-wt-set-keyboard-dirty') === 'true') return active;
+  if (typeof document === 'undefined') return null;
+  const sheet = _workoutHomeScrollRoot()?.querySelector?.('[data-wt-day-sheet]')
+    || document.querySelector?.('#workout-calendar-root [data-wt-day-sheet]');
+  return sheet?.querySelector?.('[data-wt-set-inline-input][data-wt-set-keyboard-dirty="true"]') || null;
+}
+
+// 입력을 먼저 확정한 뒤 세트를 다시 읽는 액션을 실행한다.
+function _afterPendingWorkoutSheetSetInput(run) {
+  const input = _pendingWorkoutSheetSetInput();
+  if (!input) return Promise.resolve(run());
+  return Promise.resolve(_commitWorkoutSetKeyboardInput(input, {
+    closeInline: false,
+    skipRender: true,
+  })).catch((error) => {
+    console.warn('[workout-calendar] pending set input commit failed:', error);
+  }).then(() => run());
 }
 
 function _clearWorkoutSetInputOnFocus(input) {

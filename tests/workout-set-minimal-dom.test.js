@@ -60,6 +60,8 @@ function buildHarnessScript() {
     '_workoutDayExportMenuParts',
     '_toggleWorkoutDayExportMenu',
     '_closeWorkoutDayExportMenu',
+    '_pendingWorkoutSheetSetInput',
+    '_afterPendingWorkoutSheetSetInput',
     '_clearWorkoutSetInputOnFocus',
     '_workoutSetKeyboardElement',
     '_workoutSetKeyboardSheet',
@@ -138,6 +140,7 @@ function buildHarnessScript() {
     window.__mutationDelayMs = 0;
     window.__pendingMutationRender = null;
     window.__scrollerTouchMoveBlocks = 0;
+    window.__doneToggleCalls = [];
 
     function _esc(value = '') {
       return String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -175,7 +178,14 @@ function buildHarnessScript() {
     function _toggleWorkoutHomeSheet() {}
     function _openWorkoutHomeRunning() { return false; }
     function _addWorkoutHomeSession() { return false; }
-    function _toggleWorkoutExerciseSetDoneFromSheet() { return false; }
+    // 완료 토글은 저장된 세트를 다시 읽는다. 호출 시점의 세트 값을 기록해 두면
+    // 입력 확정이 토글보다 먼저 일어났는지 검증할 수 있다.
+    function _toggleWorkoutExerciseSetDoneFromSheet(targetKey, targetSessionIndex, exerciseIndex, setIndex) {
+      const index = Math.max(0, Math.floor(Number(setIndex) || 0));
+      const set = (window.__entry.sets || [])[index] || {};
+      window.__doneToggleCalls.push({ setIndex: index, kg: set.kg, reps: set.reps, done: set.done === true });
+      return false;
+    }
     function _completeWorkoutExerciseFromSheet() { return false; }
     function _editWorkoutExerciseCard() { return false; }
     function _toggleWorkoutDetailCard() { return false; }
@@ -920,4 +930,64 @@ test('set type menu click mutates only the target set type and clears completion
   assert.equal(result.mutateCalls[0].targetSessionIndex, 0);
   assert.equal(result.mutateCalls[0].exerciseIndex, '0');
   assert.deepEqual(result.mutateCalls[0].options, { preserveSheetScroll: true });
+});
+
+test('typing a weight and tapping the left check commits the value before toggling', { timeout: 30000 }, async () => {
+  const result = await runHarnessPage(async (page) => {
+    await page.evaluate(() => {
+      window.__entry = {
+        sets: [
+          { kg: 20, reps: 10, rir: 2, romPct: 100, setType: 'main', done: false },
+          { kg: 20, reps: 10, rir: 2, romPct: 100, setType: 'main', done: false },
+        ],
+      };
+      window.__doneToggleCalls = [];
+      window.__mutateCalls = [];
+      window.renderWorkoutCalendarHome();
+    });
+
+    async function tapSelector(selector) {
+      const handle = await page.waitForSelector(selector, { visible: true });
+      const box = await handle.boundingBox();
+      assert.ok(box, `${selector} should have a bounding box`);
+      await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    }
+
+    await tapSelector('[data-wt-set-edit-field="kg"][data-set-index="0"]');
+    await page.waitForFunction(() => document.activeElement?.matches?.('[data-wt-set-inline-input][data-field="kg"][data-set-index="0"]'));
+
+    // 커스텀 키패드는 값을 프로그램으로 넣으므로 change 이벤트가 없다. dirty 표시만
+    // 남은 상태에서 왼쪽 체크를 누르는 것이 사용자가 겪은 초기화 상황이다.
+    await page.$eval('[data-wt-set-inline-input][data-field="kg"][data-set-index="0"]', (input) => {
+      input.value = '40';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    const beforeTap = await page.evaluate(() => ({
+      dirty: document.querySelector('[data-wt-set-inline-input][data-field="kg"][data-set-index="0"]')?.getAttribute('data-wt-set-keyboard-dirty'),
+      storedKg: window.__entry.sets[0].kg,
+    }));
+
+    await tapSelector('[data-wt-set-done-toggle][data-set-index="0"]');
+    await page.waitForFunction(() => window.__doneToggleCalls.length === 1);
+
+    return {
+      beforeTap,
+      doneToggleCalls: await page.evaluate(() => window.__doneToggleCalls),
+      entry: await page.evaluate(() => window.__entry),
+      lastToast: await page.evaluate(() => window.__lastToast || null),
+    };
+  });
+
+  // 탭 직전에는 아직 저장되지 않은 입력이 남아 있다.
+  assert.equal(result.beforeTap.dirty, 'true');
+  assert.equal(result.beforeTap.storedKg, 20);
+  // 완료 토글이 실행될 때 이미 40이 반영돼 있어야 한다. 그렇지 않으면 토글이
+  // 예전 값(20)으로 행을 다시 그리면서 입력이 초기화된다.
+  assert.equal(result.doneToggleCalls.length, 1);
+  assert.equal(result.doneToggleCalls[0].setIndex, 0);
+  assert.equal(result.doneToggleCalls[0].kg, 40);
+  assert.equal(result.entry.sets[0].kg, 40);
+  assert.equal(result.entry.sets[0].reps, 10);
+  // 다른 세트는 건드리지 않는다.
+  assert.equal(result.entry.sets[1].kg, 20);
 });

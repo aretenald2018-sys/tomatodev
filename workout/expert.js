@@ -2992,20 +2992,30 @@ async function _switchToGym(gymId) {
 
 // ── 새 헬스장 추가 — 바텀시트 폼 (P1-6: window.prompt 교체) ─────────
 // 네이티브 prompt는 2026년 프로덕트 앱에서 신뢰 손상. 인라인 폼으로 대체.
-export function wtExcAddNewGym() {
+// options.startEquipmentSetup=false — 저장 후 기구 등록 위저드를 열지 않는다.
+//   종목 피커처럼 이미 모달 안에서 호출하는 경로가 모달을 겹쳐 쌓지 않도록.
+// options.afterSave(gymId) — 호출한 화면이 자기 목록을 갱신할 수 있게 한다.
+export function wtExcAddNewGym(options = {}) {
   document.querySelectorAll('.wt-gym-sheet-back').forEach(el => el.remove());
+  // 기구 위저드를 열지 않는 호출에서 '저장하고 기구 등록하기'라고 쓰면 문구가
+  // 실제 동작과 어긋난다.
+  const startsEquipmentSetup = options.startEquipmentSetup !== false;
+  const saveLabel = startsEquipmentSetup ? '저장하고 기구 등록하기' : '헬스장 저장';
+  const subText = startsEquipmentSetup
+    ? '이름을 입력하면 다음 단계에서 기구를 등록할 수 있어요.'
+    : '저장하면 목록에 바로 추가돼요. 기구는 헬스장 관리에서 등록할 수 있어요.';
   const back = document.createElement('div');
   back.className = 'wt-gym-sheet-back';
   back.innerHTML = `
     <div class="wt-gym-sheet wt-gym-addform">
       <div class="wt-gym-sheet-title">새 헬스장 추가</div>
-      <div class="wt-gym-sheet-sub">이름을 입력하면 다음 단계에서 기구를 등록할 수 있어요.</div>
+      <div class="wt-gym-sheet-sub">${subText}</div>
       <div class="tf" style="margin-top:12px;">
         <input class="tf-input" id="wt-gym-addform-name" type="text" maxlength="40"
                placeholder="예: 애니타임 강남점" autocomplete="off" />
         <div class="tf-hint" id="wt-gym-addform-hint">최대 40자</div>
       </div>
-      <button type="button" class="wt-gym-sheet-add" data-action="save">저장하고 기구 등록하기</button>
+      <button type="button" class="wt-gym-sheet-add" data-action="save">${saveLabel}</button>
       <button type="button" class="wt-gym-sheet-close" data-action="cancel">취소</button>
     </div>
   `;
@@ -3034,9 +3044,17 @@ export function wtExcAddNewGym() {
       await saveGym({ id, name, createdAt: Date.now() });
       await saveExpertPreset({ currentGymId: id });
       S.workout.currentGymId = id;
-      _toast(`${name} 추가 완료! 기구 등록을 시작할게요`, 'success');
+      _toast(
+        startsEquipmentSetup ? `${name} 추가 완료! 기구 등록을 시작할게요` : `${name} 추가 완료`,
+        'success',
+      );
       close();
       renderExpertTopArea();
+      if (typeof options.afterSave === 'function') {
+        try { options.afterSave(id); }
+        catch (error) { console.warn('[wtExcAddNewGym.afterSave]:', error); }
+      }
+      if (!startsEquipmentSetup) return;
       setTimeout(() => {
         if (typeof expertOnbOpenForNewGym === 'function') expertOnbOpenForNewGym();
         else if (typeof expertOnbOpen === 'function') expertOnbOpen();
@@ -3044,7 +3062,7 @@ export function wtExcAddNewGym() {
     } catch (e) {
       console.warn('[wtExcAddNewGym]:', e);
       _toast('헬스장 추가에 실패했어요', 'error');
-      saveBtn.disabled = false; saveBtn.textContent = '저장하고 기구 등록하기';
+      saveBtn.disabled = false; saveBtn.textContent = saveLabel;
     }
   };
 
