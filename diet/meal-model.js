@@ -9,6 +9,17 @@ export function mealConfig(meal) {
   return MEAL_CONFIG[meal] || MEAL_CONFIG.snack;
 }
 
+// 위젯처럼 끼니를 고르지 않고 들어오는 경로가 어느 끼니에 입력할지 정한다.
+// 식사 시간대 밖(늦은 밤/새벽)은 간식으로 보낸다.
+export function mealForHour(hour) {
+  const value = Math.floor(Number(hour));
+  if (!Number.isFinite(value) || value < 0 || value > 23) return 'snack';
+  if (value >= 4 && value <= 10) return 'breakfast';
+  if (value >= 11 && value <= 15) return 'lunch';
+  if (value >= 16 && value <= 21) return 'dinner';
+  return 'snack';
+}
+
 export function foodAmountLabel(food = {}) {
   const grams = Number(food?.grams);
   if (Number.isFinite(grams) && grams > 0) return `${Math.round(grams)}g`;

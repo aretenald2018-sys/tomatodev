@@ -84,6 +84,8 @@ public class MainActivity extends BridgeActivity {
         String host = uri.getHost();
         String path = uri.getPath();
         if ("diet".equals(host) && "/today".equals(path)) return "diet";
+        if ("diet".equals(host) && "/input".equals(path)) return "diet-input";
+        if ("workout".equals(host) && "/goal".equals(path)) return "workout-goal";
         if ("workout".equals(host) && ("/season".equals(path) || "/season-overview".equals(path))) return "season-overview";
         if ("workout".equals(host) && "/running".equals(path)) return "running";
         return null;
@@ -91,6 +93,8 @@ public class MainActivity extends BridgeActivity {
 
     private boolean isAllowedWidgetAction(String action) {
         return "diet".equals(action)
+            || "diet-input".equals(action)
+            || "workout-goal".equals(action)
             || "season".equals(action)
             || "season-overview".equals(action)
             || "running".equals(action)

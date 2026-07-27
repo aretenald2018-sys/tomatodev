@@ -41,8 +41,10 @@ object TomatoMetricWidgetRenderer {
     fun update(context: Context, manager: AppWidgetManager, widgetId: Int, provider: Class<*>) {
         val views = RemoteViews(context.packageName, R.layout.widget_tomato_metric)
         val (sectionKey, title, action, requestOffset) = when (provider) {
-            FoodIntakeWidget::class.java -> Quadruple("food", "일일 음식 섭취", "diet", 0)
-            HealthGoalWidget::class.java -> Quadruple("strength", "주간 헬스 목표", "season-overview", 1)
+            // 각 칸은 그 값을 입력하는 화면으로 들어간다. 식단은 지금 시간대의 끼니
+            // 입력, 헬스 목표는 목표입력 시트.
+            FoodIntakeWidget::class.java -> Quadruple("food", "일일 음식 섭취", "diet-input", 0)
+            HealthGoalWidget::class.java -> Quadruple("strength", "주간 헬스 목표", "workout-goal", 1)
             else -> Quadruple("running", "러닝 추이", "running", 2)
         }
         views.setOnClickPendingIntent(R.id.tomato_metric_widget_root, openIntent(context, action, widgetId * 10 + requestOffset))
@@ -175,11 +177,11 @@ object TomatoStatusDashboardRenderer {
         )
         views.setOnClickPendingIntent(
             R.id.tomato_dashboard_food_root,
-            openIntent(context, "diet", widgetId * 10 + 1),
+            openIntent(context, "diet-input", widgetId * 10 + 1),
         )
         views.setOnClickPendingIntent(
             R.id.tomato_dashboard_strength_root,
-            openIntent(context, "season-overview", widgetId * 10 + 2),
+            openIntent(context, "workout-goal", widgetId * 10 + 2),
         )
         views.setOnClickPendingIntent(
             R.id.tomato_dashboard_running_root,

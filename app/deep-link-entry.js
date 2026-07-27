@@ -29,9 +29,31 @@ export async function openDashboardDestination(action) {
     await _switchTab('diet');
     return;
   }
+  // 위젯의 식단 칸은 "오늘 얼마나 먹었나"를 보여준다. 눌렀을 때 탭만 열면
+  // 사용자가 다시 끼니를 찾아 눌러야 하므로, 지금 시간대의 끼니 입력을 바로 연다.
+  if (action === 'diet-input') {
+    await _switchTab('diet');
+    const [{ openNutritionSearch }, { mealForHour }] = await Promise.all([
+      import('../feature-nutrition.js'),
+      import('../diet/meal-model.js'),
+    ]);
+    await openNutritionSearch(mealForHour(new Date().getHours()));
+    return;
+  }
   if (action === 'season' || action === 'season-overview') {
     await _switchTab('workout');
     const calendarModule = await _renderWorkoutCalendarHome();
+    calendarModule.openWorkoutSeasonOverview?.();
+    return;
+  }
+  // 운동 목표 칸도 같은 이유로 목표 조회가 아니라 목표 입력 시트를 연다.
+  if (action === 'workout-goal') {
+    await _switchTab('workout');
+    const calendarModule = await _renderWorkoutCalendarHome();
+    if (typeof calendarModule.openWorkoutGoalInput === 'function') {
+      calendarModule.openWorkoutGoalInput();
+      return;
+    }
     calendarModule.openWorkoutSeasonOverview?.();
     return;
   }
@@ -46,7 +68,7 @@ export async function openDashboardDestination(action) {
 function readDashboardEntry() {
   const params = new URLSearchParams(window.location.search);
   const entry = String(params.get('entry') || '');
-  return ['diet', 'season', 'season-overview', 'running'].includes(entry) ? entry : '';
+  return ['diet', 'diet-input', 'season', 'season-overview', 'running', 'workout-goal'].includes(entry) ? entry : '';
 }
 
 function clearDashboardEntry() {

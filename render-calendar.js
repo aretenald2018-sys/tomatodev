@@ -270,6 +270,12 @@ export function openWorkoutSeasonOverview(seasonId = '') {
   _openWorkoutSeasonOverview(seasonId);
 }
 
+// 위젯/딥링크에서 목표입력 시트로 바로 들어오는 진입점. 주차는 캘린더 레일이
+// 넘겨주던 값과 같은 의미로, 지정하지 않으면 시트가 현재 주차로 동작한다.
+export function openWorkoutGoalInput(weekStart = '') {
+  _openWorkoutGoalInputSheet(weekStart);
+}
+
 function _workoutGoalExerciseMuscleIds(ex = {}) {
   return Array.from(new Set([
     ex.muscleId,
