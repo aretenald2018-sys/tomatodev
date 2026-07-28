@@ -20,16 +20,28 @@ function _number(value) {
   return Number.isFinite(number) ? number : 0;
 }
 
-function _weekCount(season) {
-  return Math.max(1, Math.ceil((_number(Date.parse(`${season.endDate}T00:00:00Z`)) - _number(Date.parse(`${season.startDate}T00:00:00Z`)) + 86400000) / (7 * 86400000)));
-}
-
+// 시즌 주차는 달력 주(월~일)에 맞춘다. 시즌 시작일부터 7일씩 끊으면 시즌이
+// 월요일에 시작하지 않는 한 주차 구간과 그 주차를 그릴 달력 행(goalWeekStart =
+// 그 구간 시작일의 월요일)이 어긋난다. 7/15(수) 시작 시즌이라면 오늘(7/28)이
+// 든 주차는 7/22~7/28인데 앵커는 7/20이라 한 행 위에 그려지고, 오늘이 든
+// 달력 행에는 아직 시작도 안 한 다음 주차가 올라온다.
+// 색칠 기록(weekLog)도 월요일 키로 저장되므로 월요일 정렬이 유일하게 맞는 기준이다.
+// season-selectors의 "이번 주"(startOfSeasonWeek)와 위젯 스트릭도 같은 기준을 쓴다.
 function _weekRanges(season) {
-  return Array.from({ length: _weekCount(season) }, (_, index) => {
-    const startDate = addSeasonDays(season.startDate, index * 7);
-    const endDate = startDate > season.endDate ? season.endDate : addSeasonDays(startDate, 6) > season.endDate ? season.endDate : addSeasonDays(startDate, 6);
-    return { index: index + 1, startDate, endDate, goalWeekStart: mondayOf(startDate) };
-  }).filter(range => range.startDate <= season.endDate);
+  const ranges = [];
+  let weekStart = mondayOf(season.startDate);
+  while (weekStart <= season.endDate) {
+    const weekEnd = addSeasonDays(weekStart, 6);
+    ranges.push({
+      index: ranges.length + 1,
+      // 시즌 밖으로 삐져나온 앞뒤는 잘라 낸다. 앵커는 잘리기 전 월요일 그대로다.
+      startDate: weekStart < season.startDate ? season.startDate : weekStart,
+      endDate: weekEnd > season.endDate ? season.endDate : weekEnd,
+      goalWeekStart: weekStart,
+    });
+    weekStart = addSeasonDays(weekStart, 7);
+  }
+  return ranges;
 }
 
 function _strengthItems(board = {}, week, todayKey) {
@@ -50,7 +62,9 @@ function _strengthItems(board = {}, week, todayKey) {
       const log = (wendler
         ? benchmark.wendlerLog?.[week.goalWeekStart]
         : step?.weekLog?.[week.goalWeekStart]) || {};
-      const future = week.goalWeekStart > todayKey;
+      // 러닝 항목과 같은 기준을 쓴다. 예전에는 헬스만 goalWeekStart로 판단해서,
+      // 아직 시작 안 한 주차가 헬스는 ×(미달)·러닝은 ·(예정)으로 갈렸다.
+      const future = week.startDate > todayKey;
       const attempted = log.attempted === true || log.performed === true || !!log.missedAt;
       const state = future ? 'planned' : log.paintedAt || log.done ? 'achieved' : attempted ? 'attempted' : 'not-achieved';
       const program = wendler

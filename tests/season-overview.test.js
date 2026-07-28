@@ -18,7 +18,8 @@ test('시즌 개요는 주차별 헬스·러닝 목표와 달성 상태를 함�
     },
   });
   assert.equal(snapshot.state, 'ready');
-  assert.equal(snapshot.weeks.length, 3);
+  // 7/1(수)~7/21 시즌은 달력 주 기준으로 6/29·7/6·7/13·7/20 네 주에 걸친다.
+  assert.equal(snapshot.weeks.length, 4);
   assert.ok(snapshot.weeks[0].items.some(item => item.kind === 'strength'));
   assert.ok(snapshot.weeks[0].items.some(item => item.kind === 'running'));
   assert.equal(snapshot.weeks[0].state, 'partial');
@@ -88,4 +89,46 @@ test('색칠하지 않은 웬들러 종목은 달성으로 잡히지 않는다',
   const item = snapshot.weeks[0].items.find(row => row.label === '스쿼트(와이드)');
   assert.ok(item);
   assert.equal(item.state, 'not-achieved');
+});
+
+// 시즌이 월요일에 시작하지 않으면 주차 구간과 그 주차를 그릴 달력 행이 어긋났다.
+// 7/15(수) 시작 시즌에서 오늘(7/28)이 든 주차는 7/22~7/28인데 앵커는 7/20이라
+// 한 행 위에 그려졌고, 오늘이 든 달력 행에는 아직 시작도 안 한 다음 주차가 올라왔다.
+test('시즌 주차는 달력 주에 맞춰 끊겨 오늘이 든 주차가 오늘 행에 올라온다', () => {
+  const todayKey = '2026-07-28';
+  const snapshot = buildSeasonOverview({
+    todayKey,
+    season: { id: 'wed-season', name: '수요일 시작 시즌', startDate: '2026-07-15', endDate: '2026-08-31' },
+    runningPlan: { weeklyDistanceKm: 10, weeklySessions: 2 },
+    board: {
+      benchmarks: [{ id: 'squat-1', label: '스쿼트(와이드)', status: 'active', tracks: ['volume'] }],
+      steps: [{ benchmarkId: 'squat-1', track: 'volume', weekStart: '2026-07-13', span: 8, kg: 103.8, reps: 3, weekLog: {} }],
+    },
+    cache: {},
+  });
+
+  // 주차 경계는 모두 월요일이고, 앵커는 그 주의 월요일 그대로다.
+  const current = snapshot.weeks.find(week => week.startDate <= todayKey && todayKey <= week.endDate);
+  assert.ok(current, '오늘이 든 주차가 있어야 한다');
+  assert.equal(current.startDate, '2026-07-27');
+  assert.equal(current.endDate, '2026-08-02');
+  // 달력은 오늘이 든 행에서 startOfSeasonWeek(수요일)=2026-07-27 앵커를 찾는다.
+  assert.equal(current.goalWeekStart, '2026-07-27');
+
+  // 시즌 첫 주는 시작일 앞을 잘라 내되 앵커는 그 주 월요일을 유지한다.
+  assert.equal(snapshot.weeks[0].startDate, '2026-07-15');
+  assert.equal(snapshot.weeks[0].goalWeekStart, '2026-07-13');
+  // 마지막 주는 시즌 종료일에서 잘린다.
+  assert.equal(snapshot.weeks.at(-1).endDate, '2026-08-31');
+
+  // 시작한 주차는 헬스도 러닝도 '예정'이 아니다. 예전에는 헬스만 goalWeekStart로
+  // 판단해서 같은 주차가 헬스 ×(미달) · 러닝 ·(예정)으로 갈렸다.
+  assert.deepEqual(
+    [...new Set(current.items.map(item => item.state === 'planned'))],
+    [false],
+  );
+  // 아직 시작 안 한 주차는 모든 항목이 '예정'이다.
+  const next = snapshot.weeks.find(week => week.startDate > todayKey);
+  assert.ok(next);
+  assert.deepEqual([...new Set(next.items.map(item => item.state))], ['planned']);
 });
