@@ -21,6 +21,7 @@ import {
   getSeasonWorkoutPlan,
   loadRunningRoute,
   saveDay,
+  saveTestBoardV2,
 } from './data.js';
 import {
   calcDietMetrics,
@@ -28,6 +29,8 @@ import {
 } from './calc.js';
 import { dateKey, TODAY, isFuture, isBeforeStart } from './data/data-date.js';
 import { findSeasonForDate, findSeasonsForDate, startOfSeasonWeek } from './data/season-model.js';
+// 주간 목표 색칠은 보드와 같은 판정·같은 저장 경로를 쓴다.
+import { judgeWorkoutSetsAgainstPlan, paintWeek } from './workout/test-v2/board-core.js';
 import { openModal, closeModal } from './app/overlay-stack.js';
 import { confirmAction } from './utils/confirm-modal.js';
 import {
@@ -2744,10 +2747,57 @@ async function _toggleWorkoutExerciseSetDoneFromSheet(key, sessionIndex, exercis
   }
 }
 
+// 종목완료로 주간 목표 칸을 색칠한다.
+//
+// 성장 보드의 "운동 완료"만 색칠하도록 두면 주간 목표는 사실상 켤 수 없다.
+// 운동 탭은 달력 홈 모드로 고정돼 있고(app.js _setWorkoutSurface) 그 모드에서는
+// 운동 방식 목록(#expert-top-area)이 통째로 숨겨져 보드로 들어갈 길이 없다.
+// 그래서 사람이 실제로 누르는 이 버튼이 같은 판정을 돌려 색칠까지 해야 한다.
+//
+// 성공했을 때만 색칠한다. 미달이면 아무것도 하지 않는다 — 계획 조정은 보드의
+// 일이고, 여기서 조정 시트를 띄우면 기록 흐름을 가로챈다.
+async function _paintSeasonWeekForCompletedExercise(key, entry) {
+  const meta = entry?.recommendationMeta || null;
+  const prescription = entry?.maxPrescription || null;
+  const benchmarkId = meta?.boardV2BenchmarkId || prescription?.benchmarkId || '';
+  const weekStart = meta?.boardV2WeekStart || '';
+  if (meta?.source !== 'test_board_v2' || !benchmarkId || !weekStart) return null;
+
+  const planKg = Number(prescription?.startKg);
+  const planReps = Number(prescription?.repsLow);
+  if (!(planKg > 0) || !(planReps > 0)) return null;
+
+  const judged = judgeWorkoutSetsAgainstPlan(entry?.sets || [], { kg: planKg, reps: planReps });
+  if (!judged.hit) return { painted: false, reason: 'missed' };
+
+  const season = findSeasonForDate(getSeasonRegistry(), key);
+  const board = season ? getSeasonTestBoardV2(season.id) : null;
+  if (!board) return { painted: false, reason: 'board-unavailable' };
+
+  const track = String(meta.track || prescription?.track) === 'H' ? 'intensity' : 'volume';
+  const best = judged.best || {};
+  const ok = paintWeek(board, {
+    benchmarkId,
+    track,
+    weekStart,
+    log: {
+      at: Date.now(),
+      actualReps: judged.working.map(set => set.reps).join(' · '),
+      rir: best.rir === '' || best.rir == null ? null : Number(best.rir),
+      amrapReps: Number(best.reps) || null,
+      note: '',
+    },
+  });
+  if (!ok) return { painted: false, reason: 'no-cell' };
+  await saveTestBoardV2(board);
+  return { painted: true, weekStart, track };
+}
+
 async function _completeWorkoutExerciseFromSheet(cardId, key, sessionIndex, exerciseIndex) {
   try {
     let completedCount = 0;
     let lastCompletedSetIndex = null;
+    let completedEntry = null;
     const ok = await _mutateWorkoutExerciseFromSheet(key, sessionIndex, exerciseIndex, (entry) => {
       const now = Date.now();
       const sets = Array.isArray(entry.sets) ? entry.sets : [];
@@ -2771,6 +2821,7 @@ async function _completeWorkoutExerciseFromSheet(cardId, key, sessionIndex, exer
       }
       entry.sets = nextSets;
       markWorkoutExerciseEntryComplete(entry, now);
+      completedEntry = _clonePlain(entry);
       return true;
     }, { preserveSheetScroll: true, optimisticRender: true });
     if (!ok) return;
@@ -2779,8 +2830,15 @@ async function _completeWorkoutExerciseFromSheet(cardId, key, sessionIndex, exer
     }
     if (workoutDetailState.editingCardId === cardId) workoutDetailState.editingCardId = null;
     _markWorkoutExerciseCompletionStamp(cardId);
+    // 색칠은 기록 저장에 딸린 부수 작업이다. 실패해도 기록은 이미 저장됐다.
+    let painted = null;
+    try {
+      painted = await _paintSeasonWeekForCompletedExercise(key, completedEntry);
+    } catch (error) {
+      console.warn('[workout-calendar] season week paint failed:', error?.message || error);
+    }
     renderWorkoutCalendarHome();
-    showToast('종목 기록을 저장했어요', 1200, 'success');
+    showToast(painted?.painted ? '종목 기록 저장 · 이번 주 목표 달성 🟩' : '종목 기록을 저장했어요', 1200, 'success');
   } catch (e) {
     console.warn('[workout-calendar] exercise complete failed:', e);
     showToast('종목 완료 저장에 실패했어요', 2200, 'error');

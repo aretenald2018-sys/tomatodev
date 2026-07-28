@@ -27,6 +27,7 @@ import {
   groupIdForPart, visibleGroupIdsForSelectedParts,
   trackSetsOf,
   expandColumnCells, projectFutureCells, paintWeek, recordMiss, previewAdjust,
+  judgeWorkoutSetsAgainstPlan,
   isSettleDue, buildSettleRows, applySettle,
   archiveBenchmark, addBenchmark, buildOnboardingCandidates, buildRecentMap,
   mergeSessionExercises, sessionRecentMap, resolveSessionEntryGroupId,
@@ -1346,18 +1347,8 @@ async function _commitWorkoutCard() {
     }
 
     // 2) 목표 달성 판정 → 색칠 or 조정 (채워진 본세트 기준)
-    // 계획을 채운 세트가 하나라도 있으면 달성이다. 대표 세트를 무게로만 고르면
-    // 계획보다 무겁고 횟수는 적은 세트(5/3/1의 싱글 126kg×1)가 뽑혀서, 정작
-    // 계획을 채운 세트(103kg×3)가 있어도 횟수 미달로 떨어진다.
-    const working = doneSets.filter(s => s.setType !== 'warmup' && filled(s));
-    const heavier = (candidate, current) => !current
-      || Number(candidate.kg) > Number(current.kg)
-      || (Number(candidate.kg) === Number(current.kg) && Number(candidate.reps) > Number(current.reps));
-    const pickHeaviest = (list) => list.reduce((m, s) => (heavier(s, m) ? s : m), null);
-    const hitSet = pickHeaviest(working.filter(s => Number(s.kg) >= plan.kg && Number(s.reps) >= plan.reps));
-    // 미달일 때는 종전대로 가장 무거운 세트를 기록/조정 시트에 남긴다.
-    const best = hitSet || pickHeaviest(working);
-    const hit = !!hitSet;
+    // 판정 규칙은 board-core에 한 곳뿐이다. 달력 시트의 "종목완료"도 같은 걸 쓴다.
+    const { working, best, hit } = judgeWorkoutSetsAgainstPlan(doneSets, plan);
 
     if (hit) {
       if (!_isCompletionStamped(bm, track, weekStart)) {

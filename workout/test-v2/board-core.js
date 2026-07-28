@@ -921,6 +921,36 @@ export function projectFutureCells(board, benchmarkId, track, minAheadWeeks = 12
 // 색칠 / 못 채움 (계약 4·5)
 // ----------------------------------------------------------------
 
+/**
+ * 오늘 세트가 이번 주 계획을 채웠는지 판정한다.
+ *
+ * 계획(kg·횟수)을 모두 채운 세트가 하나라도 있으면 달성이다. 대표 세트를 무게로만
+ * 고르면 계획보다 무겁고 횟수는 적은 세트(5/3/1의 헤비 싱글 126kg×1)가 뽑혀서,
+ * 정작 계획을 채운 세트(103kg×3)가 있어도 미달로 떨어진다.
+ *
+ * 성장 보드의 "운동 완료"와 달력 시트의 "종목완료"가 같은 규칙을 써야 하므로
+ * 여기 한 곳에만 둔다.
+ */
+export function judgeWorkoutSetsAgainstPlan(sets = [], plan = {}) {
+  const value = (input) => Number(input) || 0;
+  const filled = set => value(set?.kg) > 0 && value(set?.reps) > 0;
+  const working = (Array.isArray(sets) ? sets : []).filter(set => set?.setType !== 'warmup' && filled(set));
+  const heavier = (candidate, current) => !current
+    || value(candidate.kg) > value(current.kg)
+    || (value(candidate.kg) === value(current.kg) && value(candidate.reps) > value(current.reps));
+  const pickHeaviest = list => list.reduce((max, set) => (heavier(set, max) ? set : max), null);
+  const planKg = value(plan?.kg);
+  const planReps = value(plan?.reps);
+  const hitSet = pickHeaviest(working.filter(set => value(set.kg) >= planKg && value(set.reps) >= planReps));
+  return {
+    working,
+    hitSet,
+    // 미달일 때 기록/조정 시트에 남기는 대표는 종전대로 가장 무거운 세트다.
+    best: hitSet || pickHeaviest(working),
+    hit: !!hitSet,
+  };
+}
+
 /** 달성 색칠 — 유저의 명시적 액션. log: { at, actualReps, rir, note, amrapReps, suppDone } */
 export function paintWeek(board, { benchmarkId, track = 'volume', weekStart, log = {} }) {
   const bm = benchmarkById(board, benchmarkId);
