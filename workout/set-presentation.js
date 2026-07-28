@@ -34,6 +34,34 @@ export function formatWorkoutRir(set) {
   return '-';
 }
 
+function intensityValue(value) {
+  if (value == null || value === '') return null;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  return Math.max(0, Math.min(10, number));
+}
+
+// RIR과 RPE는 같은 강도를 반대로 센 값이다(RPE = 10 - RIR). 기록 화면마다 저장하는
+// 쪽이 달라서 — 운동 화면은 rpe를, 달력 상세 시트는 rir을 남긴다 — 한쪽만 읽으면
+// 같은 기록인데도 어떤 세트에는 강도가 붙고 어떤 세트에는 빠진다. 저장된 쪽에서
+// 나머지를 환산해 항상 둘 다 돌려준다.
+export function workoutSetIntensity(set) {
+  const rir = intensityValue(set?.rir);
+  if (rir !== null) {
+    const storedRpe = intensityValue(set?.rpe);
+    return { rir, rpe: storedRpe && storedRpe > 0 ? storedRpe : Math.max(0, 10 - rir) };
+  }
+  const rpe = intensityValue(set?.rpe);
+  if (rpe !== null && rpe > 0) return { rir: Math.max(0, 10 - rpe), rpe };
+  return null;
+}
+
+export function formatWorkoutIntensityText(set) {
+  const intensity = workoutSetIntensity(set);
+  if (!intensity) return '';
+  return `RIR ${formatNumber(intensity.rir, 1)} · RPE ${formatNumber(intensity.rpe, 1)}`;
+}
+
 export function formatWorkoutVolumeTon(value) {
   const tons = numberValue(value) / 1000;
   if (tons <= 0) return '0t';

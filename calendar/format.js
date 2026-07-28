@@ -1,6 +1,7 @@
 import { toFiniteNumber as _num } from '../utils/number.js';
 import { dateFromKey as _dateFromKey, parseDateKey as _parseDateKey } from '../utils/date-key.js';
 import { TODAY } from '../data/data-date.js';
+import { formatWorkoutIntensityText } from '../workout/set-presentation.js';
 
 export function _fmtNum(value, digits = 1) {
   const number = _num(value);
@@ -45,13 +46,14 @@ export function _hasDraftWorkoutEntry(entry) {
 export function _formatSetText(set) {
   const kg = _num(set?.kg);
   const reps = _num(set?.reps);
-  const rpe = _num(set?.rpe);
   const base = [
     kg > 0 ? `${_fmtNum(kg)}kg` : '',
     reps > 0 ? `${_fmtNum(reps)}회` : '',
   ].filter(Boolean).join(' x ');
-  const rpeText = rpe > 0 ? ` · RPE ${_fmtNum(rpe)}` : '';
-  return `${base || '세트 기록'}${rpeText}`;
+  // 운동 화면은 rpe를, 달력 상세 시트는 rir을 남긴다. rpe만 읽으면 시트에서
+  // 기록한 세트는 강도 없이 빠져나간다.
+  const intensity = formatWorkoutIntensityText(set);
+  return `${base || '세트 기록'}${intensity ? ` · ${intensity}` : ''}`;
 }
 
 export function _formatDuration(seconds) {

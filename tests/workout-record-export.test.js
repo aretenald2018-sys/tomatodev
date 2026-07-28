@@ -100,3 +100,47 @@ test('export writes to the clipboard rather than the share sheet', () => {
   assert.match(copyFn, /clipboard\?\.writeText/);
   assert.match(copyFn, /document\.execCommand\('copy'\)/);
 });
+
+// 운동 화면은 세트에 rpe를, 달력 상세 시트는 rir을 남긴다. 내보내기가 rpe만 읽던
+// 동안에는 같은 주 기록인데도 시트에서 적은 세트만 강도가 통째로 빠져나갔다.
+test('every exported set carries RIR and RPE no matter which screen recorded it', async () => {
+  const { _formatSetText } = await import('../calendar/format.js');
+  // export-text.js는 data.js를 통해 원격 Firebase 모듈까지 끌고 온다.
+  // 조립 로직만 소스에서 떼어와 스텁 위에서 돌린다.
+  const buildExportText = new Function(`
+    function _dateTitle(key) { return key; }
+    function _formatDuration(sec) { return \`\${Math.round(sec / 60)}분\`; }
+    function _sessionLabel(index) { return \`\${Number(index) + 1}회차\`; }
+    function formatWorkoutTrackValue() { return ''; }
+    function _cardioSummaryText() { return ''; }
+    ${extractFunctionSource([calendarExportTextJs], '_formatWorkoutExportText')}
+    return _formatWorkoutExportText;
+  `)();
+
+  // 운동 화면 기록: rpe만 있다.
+  assert.equal(_formatSetText({ kg: 60, reps: 8, rpe: 8 }), '60kg x 8회 · RIR 2 · RPE 8');
+  // 달력 상세 시트 기록: rir만 있다.
+  assert.equal(_formatSetText({ kg: 60, reps: 8, rir: 2 }), '60kg x 8회 · RIR 2 · RPE 8');
+  // 둘 다 있으면 저장된 값을 그대로 쓴다.
+  assert.equal(_formatSetText({ kg: 50, reps: 10, rir: 1, rpe: 9 }), '50kg x 10회 · RIR 1 · RPE 9');
+  // 소수 RIR도 잃지 않는다.
+  assert.equal(_formatSetText({ kg: 40, reps: 12, rir: 1.5 }), '40kg x 12회 · RIR 1.5 · RPE 8.5');
+  // 강도를 안 적은 세트에 값을 지어내지는 않는다.
+  assert.equal(_formatSetText({ kg: 40, reps: 12 }), '40kg x 12회');
+  assert.equal(_formatSetText({ kg: 40, reps: 12, rpe: 0 }), '40kg x 12회');
+
+  const text = buildExportText('2026-07-21', 0, { memo: '' }, {
+    durationSec: 3600,
+    setCount: 2,
+    volume: 0,
+    burned: { total: 0 },
+    exercises: [
+      { name: '벤치프레스', setTexts: [_formatSetText({ kg: 60, reps: 8, rpe: 8 })] },
+      { name: '스쿼트', setTexts: [_formatSetText({ kg: 100, reps: 5, rir: 3 })] },
+    ],
+    activities: [],
+  });
+  // 한 기록 안에서 두 화면의 세트가 같은 형식으로 나란히 나와야 한다.
+  assert.match(text, /벤치프레스\n- 1세트: 60kg x 8회 · RIR 2 · RPE 8/);
+  assert.match(text, /스쿼트\n- 1세트: 100kg x 5회 · RIR 3 · RPE 7/);
+});
