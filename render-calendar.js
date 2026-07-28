@@ -133,6 +133,9 @@ import {
   configureWorkoutDetailTemplate,
   workoutDetailState,
   _renderWorkoutHomeDetailHtml,
+  _renderWorkoutDetailSummaryCard,
+  _renderWorkoutExerciseSlides,
+  _workoutHomeDetailModel,
 } from './calendar/detail-template.js';
 import {
   WORKOUT_SHEET_SET_INPUT_SELECTOR,
@@ -607,8 +610,11 @@ async function _saveWorkoutHomeSessionResult(key, result, options = {}) {
     const nextRestoreState = restoreState;
     _workoutDetailCollapsed.clear();
     if (options?.skipRender !== true) {
-      renderWorkoutCalendarHome();
-      if (nextRestoreState) _restoreWorkoutSheetInputState(nextRestoreState);
+      // 세트 값만 바뀐 낙관적 갱신은 시트 구조를 건드리지 않는다. 부분 갱신이
+      // 먹으면 스크롤/입력 상태를 되돌릴 일도 없다.
+      if (_renderWorkoutSheetAfterSetEdit() && nextRestoreState) {
+        _restoreWorkoutSheetInputState(nextRestoreState);
+      }
     }
     await savePromise;
     // A previous field can finish saving after the user already moved to the
@@ -1278,6 +1284,50 @@ function _mountWorkoutSummaryElapsedTimers(root = document) {
     }
     _syncWorkoutSummaryElapsedTimers(document);
   }, 1000) || null;
+}
+
+// 세트 값 편집은 달력도 시트 구조도 바꾸지 않는다. 그런데 renderWorkoutCalendarHome()은
+// #workout-calendar-root를 통째로 다시 그려서(월 달력 + 시트 + 러닝 지도 재장착) 한 행에
+// 값을 넣을 때마다 화면 전체가 교체되고, 그게 입력 중 깜빡임으로 보인다.
+// 값이 걸린 두 곳 — 회차 요약 카드와 종목 카드 슬라이드 — 만 갈아끼운다. 스크롤
+// 컨테이너와 시트 엘리먼트는 그대로 두므로 스크롤 위치도, 시트에 걸린 위임
+// 리스너도 살아 있다. 갈아끼울 자리를 못 찾으면 false를 돌려 전체 렌더로 넘긴다.
+function _patchWorkoutSheetSetSurfaces() {
+  if (typeof document === 'undefined') return false;
+  const root = document.getElementById('workout-calendar-root');
+  const sheet = root?.querySelector?.('[data-wt-day-sheet]');
+  const track = sheet?.querySelector?.('[data-wt-day-exercise-carousel-track]');
+  if (!track) return false;
+
+  const key = _workoutHomeSelectedKey;
+  const model = _workoutHomeDetailModel({
+    cache: getCache() || {},
+    plan: getDietPlan() || null,
+    checkins: _sortedCheckins(),
+    key,
+  });
+  // 종목이 사라지거나 늘어난 변화는 캐러셀 껍데기까지 바뀐다. 전체 렌더에 맡긴다.
+  const rows = Array.isArray(model.wx?.exercises) ? model.wx.exercises : [];
+  if (!rows.length || rows.length !== track.children.length) return false;
+
+  const scrollLeft = track.scrollLeft;
+  track.innerHTML = _renderWorkoutExerciseSlides(key, model.sessionIndex, rows);
+  track.scrollLeft = scrollLeft;
+
+  const summary = sheet.querySelector('.wt-day-sheet-summary') || sheet.querySelector('.wt-day-head');
+  if (summary) {
+    const card = summary.querySelector('.wt-day-summary-card');
+    if (card) card.outerHTML = _renderWorkoutDetailSummaryCard(model.wx);
+    _mountWorkoutSummaryElapsedTimers(root);
+  }
+  return true;
+}
+
+// 세트 편집 뒤 화면 갱신. 부분 갱신이 가능하면 그걸 쓰고, 아니면 전체를 다시 그린다.
+function _renderWorkoutSheetAfterSetEdit() {
+  if (_patchWorkoutSheetSetSurfaces()) return false;
+  renderWorkoutCalendarHome();
+  return true;
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -2282,7 +2332,9 @@ async function _focusWorkoutSetInlineFieldFromSheet(key, sessionIndex, exerciseI
   _workoutHomeSessionIndex = targetSessionIndex;
   _workoutHomeSheetState = 'full';
   _syncWorkoutHomeNavState({ history: 'replace', action: 'sheet:set-inline-field' });
-  if (!shouldCommitActiveInput) renderWorkoutCalendarHome();
+  // 값 버튼을 입력칸으로 바꾸는 건 그 행 안에서 끝나는 변화다. 달력까지 다시
+  // 그리면 행을 옮길 때마다 화면이 통째로 교체돼 깜빡인다.
+  if (!shouldCommitActiveInput) _renderWorkoutSheetAfterSetEdit();
   const focusInput = () => {
     _restoreWorkoutSheetScrollState(restoreState);
     if (typeof document === 'undefined') return false;

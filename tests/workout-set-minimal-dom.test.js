@@ -102,6 +102,9 @@ function buildHarnessScript() {
     '_copyPreviousWorkoutSetForSheet',
     '_copyPreviousWorkoutRecordSetsForSheet',
     '_copyPreviousWorkoutExerciseSetsFromSheet',
+    '_renderWorkoutExerciseSlides',
+    '_patchWorkoutSheetSetSurfaces',
+    '_renderWorkoutSheetAfterSetEdit',
   ];
   const sourceBundle = [
     setPresentationJs.replace(/^export /gmu, ''),
@@ -199,6 +202,15 @@ function buildHarnessScript() {
     function _previousWorkoutRecordForRow() { return window.__previousRecord || null; }
     function _workoutEntryName(entry = {}) { return String(entry?.name || entry?.exerciseId || ''); }
     function getCache() { return window.__cache || {}; }
+    function getDietPlan() { return null; }
+    function _sortedCheckins() { return []; }
+    function _renderWorkoutDetailSummaryCard() { return '<div class="wt-day-summary-card"></div>'; }
+    function _mountWorkoutSummaryElapsedTimers() {}
+    // 부분 갱신은 시트 모델을 다시 읽어 카드만 갈아끼운다. 하네스는 종목 하나만
+    // 세우므로 같은 모양의 모델을 돌려준다.
+    function _workoutHomeDetailModel() {
+      return { sessionIndex: 0, wx: { exercises: [_rowFromEntry()] } };
+    }
     function _defaultWorkoutSheetSet(prev = {}) {
       return { kg: prev.kg ?? '', reps: prev.reps ?? '', setType: prev.setType || 'main', done: false };
     }
@@ -240,7 +252,9 @@ function buildHarnessScript() {
       const ok = mutator(window.__entry);
       window.__mutateCalls.push({ targetKey, targetSessionIndex, exerciseIndex, options });
       if (options?.skipRender !== true && (options?.optimisticRender || !window.__deferSetMutationRender)) {
-        renderWorkoutCalendarHome();
+        // 실제 저장 경로(_saveWorkoutHomeSessionResult)와 같이 부분 갱신을 먼저 쓴다.
+        if (options?.optimisticRender) _renderWorkoutSheetAfterSetEdit();
+        else renderWorkoutCalendarHome();
       } else {
         window.__pendingMutationRender = { targetKey, targetSessionIndex, exerciseIndex, options };
       }
@@ -990,4 +1004,78 @@ test('typing a weight and tapping the left check commits the value before toggli
   assert.equal(result.entry.sets[0].reps, 10);
   // 다른 세트는 건드리지 않는다.
   assert.equal(result.entry.sets[1].kg, 20);
+});
+
+// 세트 값을 넣을 때마다 #workout-calendar-root를 통째로 다시 그리면(월 달력 +
+// 시트 + 러닝 지도 재장착) 행을 옮길 때마다 화면 전체가 교체돼 깜빡인다.
+// 값 편집은 시트 구조를 바꾸지 않으므로 요약 카드와 종목 카드만 갈아끼워야 한다.
+test('entering set values across a row patches the cards instead of rerendering the calendar', async () => {
+  const result = await runHarnessPage(async (page) => {
+    await page.evaluate(() => {
+      window.__entry = {
+        name: '벤치프레스',
+        exerciseId: 'bench-press',
+        sets: [
+          { kg: 70, reps: 10, rir: 2, romPct: 100, setType: 'main', done: false },
+          { kg: 40, reps: 12, rir: 2, romPct: 100, setType: 'main', done: false },
+        ],
+      };
+      window.__mutateCalls = [];
+      window.renderWorkoutCalendarHome();
+      window.__renderCalls = 0;
+      window.__scroller = document.querySelector('.wt-day-sheet-scroll');
+      window.__sheet = document.querySelector('[data-wt-day-sheet]');
+    });
+
+    async function tapSelector(selector) {
+      const handle = await page.waitForSelector(selector, { visible: true });
+      const box = await handle.boundingBox();
+      assert.ok(box, `${selector} should have a bounding box`);
+      await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    }
+
+    // 첫 행에 들어간다. 값 버튼이 입력칸으로 바뀌는 구조 변화다.
+    await tapSelector('[data-wt-set-edit-field="kg"][data-set-index="0"]');
+    await page.waitForFunction(() => document.activeElement?.matches?.('[data-wt-set-inline-input][data-field="kg"][data-set-index="0"]'));
+    const enteredRow = await page.evaluate(() => ({
+      renderCalls: window.__renderCalls,
+      // 스크롤 컨테이너와 시트가 살아 있어야 스크롤 위치도 위임 리스너도 유지된다.
+      sameScroller: window.__scroller === document.querySelector('.wt-day-sheet-scroll'),
+      sameSheet: window.__sheet === document.querySelector('[data-wt-day-sheet]'),
+      inlineMounted: !!document.querySelector('[data-wt-set-inline-input][data-field="kg"][data-set-index="0"]'),
+    }));
+
+    // 값을 넣고 다음 행으로 넘어간다. 여기서 저장(낙관적 갱신)이 일어난다.
+    await tapSelector('[data-wt-set-keyboard-key="9"]');
+    await tapSelector('[data-wt-set-keyboard-key="5"]');
+    await tapSelector('[data-wt-set-edit-field="kg"][data-set-index="1"]');
+    await page.waitForFunction(() => (
+      window.__entry.sets[0]?.kg === 95
+      && document.activeElement?.matches?.('[data-wt-set-inline-input][data-field="kg"][data-set-index="1"]')
+    ), { timeout: 2000 });
+    const movedRow = await page.evaluate(() => ({
+      renderCalls: window.__renderCalls,
+      sameScroller: window.__scroller === document.querySelector('.wt-day-sheet-scroll'),
+      sameSheet: window.__sheet === document.querySelector('[data-wt-day-sheet]'),
+      storedKg: window.__entry.sets[0]?.kg ?? null,
+      // 앞 행은 다시 값 버튼으로 돌아가 있어야 한다.
+      firstRowButton: !!document.querySelector('[data-wt-set-edit-field="kg"][data-set-index="0"]'),
+      secondRowInline: !!document.querySelector('[data-wt-set-inline-input][data-field="kg"][data-set-index="1"]'),
+    }));
+
+    return { enteredRow, movedRow };
+  });
+
+  // 행에 들어가고 값 넣고 다음 행으로 옮기는 동안 전체 렌더는 한 번도 돌지 않는다.
+  assert.equal(result.enteredRow.renderCalls, 0);
+  assert.equal(result.movedRow.renderCalls, 0);
+  assert.equal(result.enteredRow.inlineMounted, true);
+  assert.equal(result.enteredRow.sameScroller, true);
+  assert.equal(result.enteredRow.sameSheet, true);
+  assert.equal(result.movedRow.sameScroller, true);
+  assert.equal(result.movedRow.sameSheet, true);
+  // 깜빡임을 없애면서 화면은 실제로 갱신돼야 한다.
+  assert.equal(result.movedRow.storedKg, 95);
+  assert.equal(result.movedRow.firstRowButton, true);
+  assert.equal(result.movedRow.secondRowInline, true);
 });

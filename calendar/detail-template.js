@@ -102,7 +102,9 @@ export function configureWorkoutDetailTemplate(runtime = {}) {
 
 let _workoutTrackGraphSeq = 0;
 
-export function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, includeHead = true }) {
+// 시트 본문(요약 카드 + 종목 카드)이 읽는 모델은 하나다. 전체 렌더와 세트 편집용
+// 부분 갱신이 같은 값을 보도록 여기서만 만든다.
+export function _workoutHomeDetailModel({ cache, plan, checkins, key }) {
   const lookup = _buildWorkoutLookup();
   const day = cache[key] || {};
   const sessions = getWorkoutSessions(day, { minCount: WORKOUT_RUNNING_SESSION_INDEX + 1 });
@@ -138,6 +140,12 @@ export function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, inclu
     wx.primaryLabel = wx.labels[0] || '';
     wx.hasWorkout = true;
   }
+  return { lookup, sessions, runningInfo, runningActive, sessionIndex, wx };
+}
+
+export function _renderWorkoutHomeDetailHtml({ cache, plan, checkins, key, includeHead = true }) {
+  const { lookup, sessions, runningInfo, runningActive, sessionIndex, wx } =
+    _workoutHomeDetailModel({ cache, plan, checkins, key });
   const ordinal = workoutDetailRuntime.recordOrdinal(cache, key, plan, checkins, lookup);
   const recordText = ordinal > 0 ? `${ordinal}번째 기록` : '운동 기록 없음';
   const sessionTabs = _renderWorkoutDetailSessionTabs(sessions, runningActive ? WORKOUT_RUNNING_SESSION_INDEX : sessionIndex, runningInfo);
@@ -264,15 +272,23 @@ export function _renderWorkoutDetailCards(key, sessionIndex, wx) {
   return `<div class="wt-day-card-list">${exerciseCards}${activityCards.join('')}</div>`;
 }
 
-export function _renderWorkoutExerciseDetailCarousel(key, sessionIndex, exercises = []) {
+// 세트 값 편집은 카드 안쪽만 바꾼다. 캐러셀 껍데기를 남긴 채 슬라이드만
+// 갈아끼울 수 있도록 슬라이드 마크업을 따로 만든다.
+export function _renderWorkoutExerciseSlides(key, sessionIndex, exercises = []) {
   const rows = Array.isArray(exercises) ? exercises : [];
-  if (!rows.length) return '';
   const count = rows.length;
-  const slides = rows.map((row, index) => `
+  return rows.map((row, index) => `
     <div class="wt-day-exercise-slide" data-wt-day-exercise-slide="${index}" aria-label="${index + 1}/${count} ${_esc(row?.name || '운동종목')}">
       ${_renderWorkoutExerciseDetailCard(key, sessionIndex, row, index)}
     </div>
   `).join('');
+}
+
+export function _renderWorkoutExerciseDetailCarousel(key, sessionIndex, exercises = []) {
+  const rows = Array.isArray(exercises) ? exercises : [];
+  if (!rows.length) return '';
+  const count = rows.length;
+  const slides = _renderWorkoutExerciseSlides(key, sessionIndex, rows);
   return `
     <section class="wt-day-exercise-carousel ${count > 1 ? 'has-multiple' : 'is-single'}" aria-label="운동종목 카드">
       <div class="wt-day-exercise-carousel-track" data-wt-day-exercise-carousel-track>

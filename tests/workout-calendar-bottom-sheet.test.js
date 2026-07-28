@@ -531,7 +531,7 @@ test('day sheet remembers exercise carousel slide across close and reopen', () =
 test('day sheet detail renders picker-added draft exercise rows', () => {
   const rows = extractFunctionSource(calendarSources, '_exerciseRows');
   const metrics = extractFunctionSource(calendarSources, '_workoutMetrics');
-  const detail = sliceFunctionRange(calendarSources, '_renderWorkoutHomeDetailHtml', '_renderWorkoutDetailSummaryCard');
+  const detail = sliceFunctionRange(calendarSources, '_workoutHomeDetailModel', '_renderWorkoutDetailSummaryCard');
   const tabs = sliceFunctionRange(calendarSources, '_renderWorkoutDetailSessionTabs', '_renderWorkoutDetailRecorded');
 
   assert.match(calendarFormatJs, /function _hasDraftWorkoutEntry/);
@@ -1108,7 +1108,7 @@ test('running detail card uses the workout read-card shell with aggregated runni
 });
 
 test('running tab stacks multiple running session cards after the gym sessions', () => {
-  const detail = sliceFunctionRange(calendarSources, '_renderWorkoutHomeDetailHtml', '_renderWorkoutDetailSummaryCard');
+  const detail = sliceFunctionRange(calendarSources, '_workoutHomeDetailModel', '_renderWorkoutDetailSummaryCard');
 
   assert.match(detail, /runningStackSession/);
   assert.match(detail, /runningInfo\.runningSessions/);
