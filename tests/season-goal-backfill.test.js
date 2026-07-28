@@ -162,14 +162,11 @@ test('보드 저장이 실패해도 던지지 않고 다음 실행에 다시 시
   assert.deepEqual(result.seasons, []);
 });
 
-test('앱은 로그인 후 한 번 소급 색칠을 돌리고 위젯을 갱신한다', () => {
-  assert.match(appJs, /import \{ backfillSeasonGoalPaints \} from '\.\/workout\/season-goal-backfill\.js'/);
-  assert.match(appJs, /async function _backfillSeasonGoalsOnce\(\)/);
-  assert.match(appJs, /void _backfillSeasonGoalsOnce\(\);/);
-  assert.match(appJs, /seasonContains: seasonContainsDate/);
-  assert.match(appJs, /scheduleSeasonDashboardWidgetSync\('season-goals-backfilled', 0\)/);
-  // 레일은 보드를 읽어 그리므로 색칠 후 달력을 다시 그려야 ✓가 뜬다.
-  assert.match(appJs, /await _lazyRenderWorkoutCalendarHome\(\)\.catch\(\(\) => \{\}\)/);
-  // 색칠이 실패해도 앱 부팅을 막지 않는다.
-  assert.match(appJs, /catch \(error\) \{\s*console\.warn\('\[season-goal-backfill\]/);
+test('소급 색칠은 자동 실행하지 않는다 — 시즌을 가려 저장하는 경로가 없다', () => {
+  // data.js saveTestBoardV2는 저장 대상 시즌을 인자가 아니라 "오늘이 속한 시즌"으로
+  // 정한다. 지난 시즌 보드를 넘기면 현재 시즌 슬롯을 덮어써서 등록해 둔 종목·계획이
+  // 사라진다. 시즌 인자를 받는 저장 경로가 생기기 전까지 앱은 이걸 부르지 않는다.
+  assert.doesNotMatch(appJs, /backfillSeasonGoalPaints/);
+  assert.doesNotMatch(appJs, /_backfillSeasonGoalsOnce/);
+  assert.match(appJs, /소급 색칠은 중단됐다/);
 });
