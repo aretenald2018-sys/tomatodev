@@ -84,20 +84,68 @@ test('복구가 필요한 상태에서만 동작한다', () => {
   assert.equal(needsSeasonBoardRecovery(SEASON_ID, restored), false);
 });
 
-test('한 번만 저장하고, 두 번째 실행은 아무것도 하지 않는다', async () => {
+// 06:09 종목완료로 찍힌 색칠이 06:40 덮어쓰기에 지워졌다. 완료 도장 때문에
+// 버튼이 "수정하기"로 바뀌어 다시 누를 수도 없으니, 복구가 같이 되살려야 한다.
+const SQUAT_DAY = {
+  '2026-07-28': {
+    exercises: [{
+      name: '스쿼트(와이드)',
+      exerciseCompletedAt: 1785218981810,
+      recommendationMeta: { source: 'test_board_v2', track: 'M', boardV2BenchmarkId: 'bm_mrr8n0zq_2', boardV2WeekStart: '2026-07-27' },
+      maxPrescription: { benchmarkId: 'bm_mrr8n0zq_2', track: 'M', startKg: 103.8, repsLow: 3 },
+      sets: [
+        { kg: 46.3, reps: 5, setType: 'warmup', done: true },
+        { kg: 103.8, reps: 3, done: true },
+        { kg: 126.3, reps: 1, done: true },
+      ],
+    }],
+  },
+};
+
+test('종목 설정과 함께 잃어버린 색칠도 되살린다', async () => {
   let board = clobberedBoard();
   const saved = [];
   const io = { getBoard: () => board, saveBoard: async (next) => { saved.push(next); board = next; } };
 
-  const first = await recoverSeasonBoardOnce({ seasonId: SEASON_ID, ...io });
+  const first = await recoverSeasonBoardOnce({ seasonId: SEASON_ID, cache: SQUAT_DAY, todayKey: '2026-07-28', ...io });
   assert.equal(first.done, true);
   assert.deepEqual(first.restored, ['스모데드', '스쿼트(와이드)']);
+  assert.deepEqual(first.painted, ['2026-07-27']);
   assert.equal(saved.length, 1);
+  // 레일과 위젯이 읽는 자리에 색칠이 남아야 한다.
+  const squat = board.benchmarks.find(item => item.id === 'bm_mrr8n0zq_2');
+  assert.ok(squat.wendlerLog['2026-07-27']?.paintedAt);
 
-  const second = await recoverSeasonBoardOnce({ seasonId: SEASON_ID, ...io });
+  // 두 번째 실행은 종목도 색칠도 이미 있으므로 저장하지 않는다.
+  const second = await recoverSeasonBoardOnce({ seasonId: SEASON_ID, cache: SQUAT_DAY, todayKey: '2026-07-28', ...io });
   assert.equal(second.done, false);
   assert.equal(second.reason, 'not-needed');
   assert.equal(saved.length, 1);
+});
+
+test('종목이 이미 돌아왔어도 색칠이 비어 있으면 그것만 채운다', async () => {
+  let board = mergeRecoveredBoard(clobberedBoard(), buildRecoveredBenchmarks());
+  const saved = [];
+  const result = await recoverSeasonBoardOnce({
+    seasonId: SEASON_ID, cache: SQUAT_DAY, todayKey: '2026-07-28',
+    getBoard: () => board, saveBoard: async (next) => { saved.push(next); board = next; },
+  });
+  assert.equal(result.done, true);
+  assert.deepEqual(result.restored, []);
+  assert.deepEqual(result.painted, ['2026-07-27']);
+  assert.equal(saved.length, 1);
+});
+
+test('계획 미달 기록은 색칠하지 않는다', async () => {
+  let board = mergeRecoveredBoard(clobberedBoard(), buildRecoveredBenchmarks());
+  const missed = JSON.parse(JSON.stringify(SQUAT_DAY));
+  missed['2026-07-28'].exercises[0].sets = [{ kg: 95, reps: 3, done: true }, { kg: 126.3, reps: 1, done: true }];
+  const result = await recoverSeasonBoardOnce({
+    seasonId: SEASON_ID, cache: missed, todayKey: '2026-07-28',
+    getBoard: () => board, saveBoard: async () => { throw new Error('저장하면 안 된다'); },
+  });
+  assert.equal(result.done, false);
+  assert.equal(result.reason, 'not-needed');
 });
 
 test('보드가 비어 있어도 두 종목을 세우고 저장한다', async () => {
@@ -123,7 +171,7 @@ test('다른 시즌이면 읽기만 하고 저장하지 않는다', async () => 
     saveBoard: async () => { saveCalls += 1; },
   });
   assert.equal(result.done, false);
-  assert.equal(result.reason, 'not-needed');
+  assert.equal(result.reason, 'other-season');
   assert.equal(saveCalls, 0);
 });
 

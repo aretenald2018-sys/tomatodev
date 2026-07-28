@@ -13,8 +13,13 @@
 // 일회성이다. 복구가 끝나면 이 모듈과 호출부를 지운다.
 import {
   buildExerciseProgramWorkoutPrescription,
+  paintWeek,
   upsertExerciseProgramBenchmark,
 } from './test-v2/board-core.js';
+import {
+  collectSeasonGoalBackfillPaints,
+  seasonGoalPaintLog,
+} from './season-goal-backfill.js';
 
 const SEASON_ID = 'season-2026-07-15-140256dac0';
 const PROGRAM_START = '2026-07-13';
@@ -115,7 +120,7 @@ export function mergeRecoveredBoard(currentBoard, recovered) {
   return next;
 }
 
-/** 아직 복구가 필요한 상태인지. 이미 복구됐거나 다른 시즌이면 건드리지 않는다. */
+/** 종목 설정이 아직 안 돌아왔는지. */
 export function needsSeasonBoardRecovery(seasonId, board) {
   if (seasonId !== SEASON_ID) return false;
   const benchmarks = board?.benchmarks || [];
@@ -123,19 +128,48 @@ export function needsSeasonBoardRecovery(seasonId, board) {
 }
 
 /**
- * 앱 진입점. 조건이 맞고 검증을 통과할 때만 저장한다.
- * getBoard/saveBoard를 주입받아 데이터 계층 없이도 돌릴 수 있게 한다.
+ * 앱 진입점. 종목 설정과 색칠 기록을 함께 되살린다.
+ *
+ * 색칠도 같이 날아갔다. 06:09에 종목완료로 찍힌 색칠이 06:40 덮어쓰기에 지워졌고,
+ * 그 뒤 "종목완료" 버튼은 완료 도장 때문에 "수정하기"로 바뀌어 다시 누를 수단이 없다.
+ * 그래서 이 시즌 기록 중 계획을 채운 주차를 다시 칠한다.
+ *
+ * 사고를 낸 소급 보정과 다른 점: **오늘 날짜의 시즌 하나만** 다룬다.
+ * saveTestBoardV2가 저장하는 대상이 바로 그 시즌이라 엇갈릴 여지가 없다.
  */
-export async function recoverSeasonBoardOnce({ seasonId, getBoard, saveBoard, todayKey } = {}) {
+export async function recoverSeasonBoardOnce({
+  seasonId, getBoard, saveBoard, todayKey, cache = {}, isInSeason = () => true,
+} = {}) {
   if (typeof getBoard !== 'function' || typeof saveBoard !== 'function') return { done: false, reason: 'no-io' };
+  if (seasonId !== SEASON_ID) return { done: false, reason: 'other-season' };
   const current = getBoard(seasonId) || null;
-  if (!needsSeasonBoardRecovery(seasonId, current)) return { done: false, reason: 'not-needed' };
 
-  const recovered = buildRecoveredBenchmarks({ todayKey });
-  const merged = mergeRecoveredBoard(current, recovered);
+  // 종목이 이미 돌아왔으면 그대로 두고, 색칠만 다시 본다.
+  const needsBenchmarks = needsSeasonBoardRecovery(seasonId, current);
+  const merged = needsBenchmarks
+    ? mergeRecoveredBoard(current, buildRecoveredBenchmarks({ todayKey }))
+    : _clone(current);
+  if (!merged) return { done: false, reason: 'no-board' };
   // 검증에 실패하면 쓰지 않는다. 틀린 처방을 남기느니 손상된 채로 두는 편이 낫다.
   if (!verifyRecoveredBoard(merged)) return { done: false, reason: 'verify-failed' };
 
+  const paints = collectSeasonGoalBackfillPaints({ cache, board: merged, todayKey, isInSeason });
+  const painted = [];
+  for (const paint of paints) {
+    const ok = paintWeek(merged, {
+      benchmarkId: paint.benchmarkId,
+      track: paint.track,
+      weekStart: paint.weekStart,
+      log: seasonGoalPaintLog(paint.judged, Date.now()),
+    });
+    if (ok) painted.push(`${paint.weekStart}`);
+  }
+
+  if (!needsBenchmarks && !painted.length) return { done: false, reason: 'not-needed' };
   await saveBoard(merged);
-  return { done: true, restored: SPECS.map(spec => spec.exercise.name) };
+  return {
+    done: true,
+    restored: needsBenchmarks ? SPECS.map(spec => spec.exercise.name) : [],
+    painted,
+  };
 }

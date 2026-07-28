@@ -173,3 +173,11 @@ test('day sheet 종목완료 paints the season week with the same rule the board
   // 주중 아무 날로 색칠해도 그 주 월요일 칸에 남는다 — 달력 레일이 읽는 키다.
   assert.ok(board.steps[0].weekLog['2026-07-27']?.paintedAt);
 });
+
+// 지난 시즌 날짜의 기록을 완료하면 그 시즌 보드를 읽어 saveTestBoardV2로 저장하는데,
+// saveTestBoardV2는 "오늘 날짜의 시즌"에 쓴다. 소급 색칠을 중단시킨 것과 같은 사고다.
+test('종목완료 색칠은 오늘과 같은 시즌일 때만 저장한다', () => {
+  const paint = sliceByFirstBrace(calendarJs, 'async function _paintSeasonWeekForCompletedExercise');
+  assert.match(paint, /const todaySeason = findSeasonForDate\(getSeasonRegistry\(\), dateKey\(TODAY/);
+  assert.match(paint, /season\.id !== todaySeason\?\.id\) return \{ painted: false, reason: 'season-mismatch' \}/);
+});

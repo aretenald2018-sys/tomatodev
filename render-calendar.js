@@ -2765,7 +2765,12 @@ async function _paintSeasonWeekForCompletedExercise(key, entry) {
   if (!judged.hit) return { painted: false, reason: 'missed' };
 
   const season = findSeasonForDate(getSeasonRegistry(), key);
-  const board = season ? getSeasonTestBoardV2(season.id) : null;
+  // saveTestBoardV2는 저장 대상을 "오늘 날짜의 시즌"으로 정한다. 지난 시즌 날짜의
+  // 기록을 완료하면 그 시즌 보드를 읽어 현재 시즌 슬롯에 써서 현재 시즌 설정을
+  // 덮어쓴다 — 소급 색칠을 중단시킨 것과 같은 사고다. 같은 시즌일 때만 칠한다.
+  const todaySeason = findSeasonForDate(getSeasonRegistry(), dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate()));
+  if (!season?.id || season.id !== todaySeason?.id) return { painted: false, reason: 'season-mismatch' };
+  const board = getSeasonTestBoardV2(season.id);
   if (!board) return { painted: false, reason: 'board-unavailable' };
 
   const ok = paintWeek(board, {

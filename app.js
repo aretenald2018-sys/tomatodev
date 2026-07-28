@@ -82,15 +82,19 @@ async function _recoverSeasonBoardOnce() {
     const todayKey = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
     const season = data.findSeasonForDate(data.getSeasonRegistry(), todayKey);
     if (!season?.id) return null;
+    const { seasonContainsDate } = await import('./data/season-model.js');
     const result = await recoverSeasonBoardOnce({
       seasonId: season.id,
       todayKey,
+      cache: data.getCache() || {},
+      isInSeason: dateKey => seasonContainsDate(season, dateKey),
       getBoard: seasonId => data.getSeasonTestBoardV2(seasonId),
       saveBoard: board => data.saveTestBoardV2(board),
     });
     if (result?.done) {
-      console.log('[season-board-recovery] 복구 완료:', result.restored.join(', '));
-      showToast(`시즌 목표 복구됨 — ${result.restored.join(', ')}`, 3200, 'success');
+      const parts = [...(result.restored || []), ...(result.painted?.length ? [`${result.painted.length}주 색칠`] : [])];
+      console.log('[season-board-recovery] 복구 완료:', parts.join(', '));
+      showToast(`시즌 목표 복구됨 — ${parts.join(', ')}`, 3200, 'success');
       if (document.getElementById('workout-calendar-root')?.childElementCount) {
         await _lazyRenderWorkoutCalendarHome().catch(() => {});
       }
