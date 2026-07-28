@@ -961,7 +961,8 @@ test('day sheet set rows keep goal/history blocks and use minimal collapsed edit
   const menu = sliceFunctionRange(calendarSources, '_renderWorkoutSetTypeMenu', '_renderWorkoutSetRows');
   const rows = sliceFunctionRange(calendarSources, '_renderWorkoutSetRows', '_renderWorkoutExerciseDetailCard');
 
-  assert.match(card, /const goalText = hasSetDetails \? `\$\{bestKg\}kg × \$\{bestReps\}회` : '세트 입력 대기'/);
+  assert.match(card, /const goal = _workoutCardGoal\(row, \{ bestKg, bestReps, hasSetDetails \}\)/);
+  assert.match(card, /<span>\$\{_esc\(goal\.label\)\}<\/span>/);
   assert.match(card, /const previousSummary = _workoutPreviousSetSummary\(row\)/);
   assert.match(card, /<div class="wt-max-last">/);
   assert.match(calendarDetailTemplateJs, /const WORKOUT_SET_TYPE_OPTIONS = \[/);

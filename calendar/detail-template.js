@@ -590,6 +590,24 @@ export function _renderWorkoutCardioDetailCard(key, sessionIndex, row, index) {
   `;
 }
 
+// 카드 머리의 목표 문구. 처방이 있으면 처방을 적고, 없으면 오늘 최고 세트를
+// 적되 그렇게 말한다. 오늘 내 세트를 "성공 기준"이라고 부르면 무엇을 하든
+// 기준을 채운 것처럼 보여서, 주간 목표가 왜 안 켜지는지 읽을 수 없다.
+export function _workoutCardGoal(row, { bestKg = '-', bestReps = '-', hasSetDetails = false } = {}) {
+  const prescription = row?.maxPrescription || null;
+  const planKg = Number(prescription?.startKg);
+  const planRepsLow = Number(prescription?.repsLow);
+  const planRepsHigh = Number(prescription?.repsHigh);
+  if (Number.isFinite(planKg) && planKg > 0 && Number.isFinite(planRepsLow) && planRepsLow > 0) {
+    const reps = Number.isFinite(planRepsHigh) && planRepsHigh > planRepsLow
+      ? `${planRepsLow}-${planRepsHigh}`
+      : `${planRepsLow}`;
+    return { label: '오늘 성공 기준', text: `${formatWorkoutKg(planKg)}kg × ${reps}회`, kind: 'prescription' };
+  }
+  if (hasSetDetails) return { label: '오늘 최고 세트', text: `${bestKg}kg × ${bestReps}회`, kind: 'best-set' };
+  return { label: '오늘 성공 기준', text: '세트 입력 대기', kind: 'empty' };
+}
+
 export function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) {
   if (row?.cardio) return _renderWorkoutCardioDetailCard(key, sessionIndex, row, index);
   const cardId = `ex:${key}:${sessionIndex}:${index}`;
@@ -604,7 +622,8 @@ export function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) 
   const hasSetDetails = Array.isArray(row?.setDetails) && row.setDetails.length > 0;
   const activeTrack = activeWorkoutTrack(row, bestSet);
   const activeTrackLabel = workoutTrackLabel(activeTrack);
-  const goalText = hasSetDetails ? `${bestKg}kg × ${bestReps}회` : '세트 입력 대기';
+  const goal = _workoutCardGoal(row, { bestKg, bestReps, hasSetDetails });
+  const goalText = goal.text;
   const trackText = hasSetDetails ? `오늘 ${activeTrackLabel} 트랙 · ${row.setCount}세트` : '+ 행으로 세트를 입력하세요';
   return `
     <article class="wt-day-ex-card wt-max-read-card ${collapsed ? 'is-collapsed' : 'is-expanded'} ${editing ? 'is-editing' : ''} ${stamped ? 'is-complete-stamped' : ''}">
@@ -616,7 +635,7 @@ export function _renderWorkoutExerciseDetailCard(key, sessionIndex, row, index) 
       <div class="wt-max-card-name">${_esc(row.name)}</div>
       <div class="wt-max-plan">
         <div class="wt-max-plan-goal">
-          <span>오늘 성공 기준</span>
+          <span>${_esc(goal.label)}</span>
           <strong>${_esc(goalText)}</strong>
           <em>${_esc(trackText)}</em>
         </div>

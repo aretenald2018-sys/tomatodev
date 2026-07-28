@@ -54,6 +54,7 @@ function buildHarnessScript() {
     '_renderWorkoutSetTypeMenu',
     '_renderWorkoutSetRows',
     '_workoutPreviousSetSummary',
+    '_workoutCardGoal',
     '_renderWorkoutExerciseDetailCard',
     '_clearWorkoutSetEditorsForExercise',
     '_runWorkoutHomeSheetCardAction',
@@ -234,6 +235,8 @@ function buildHarnessScript() {
         setDetails: rawSetDetails,
         rawSetDetails,
         previousRecord: window.__previousRecord,
+        // 실제 읽기 모델(workout-read-model.js)도 처방을 행에 실어 준다.
+        maxPrescription: window.__entry.maxPrescription || null,
       };
     }
     function renderWorkoutCalendarHome() {
@@ -1078,4 +1081,35 @@ test('entering set values across a row patches the cards instead of rerendering 
   assert.equal(result.movedRow.storedKg, 95);
   assert.equal(result.movedRow.firstRowButton, true);
   assert.equal(result.movedRow.secondRowInline, true);
+});
+
+// 처방이 붙은 종목 카드는 처방을, 아닌 카드는 "오늘 최고 세트"를 브라우저에서 그린다.
+test('exercise card goal block renders the prescription or labels the best set in a browser DOM', async () => {
+  const result = await runHarnessPage(page => page.evaluate(() => {
+    const read = () => {
+      const block = document.querySelector('.wt-max-plan-goal');
+      return { label: block?.querySelector('span')?.textContent?.trim(), value: block?.querySelector('strong')?.textContent?.trim() };
+    };
+    window.__entry = {
+      name: '스쿼트(와이드)',
+      exerciseId: 'squat-wide',
+      sets: [
+        { kg: 103.8, reps: 3, rir: 2, romPct: 100, setType: 'main', done: true },
+        { kg: 126.3, reps: 1, rir: 2, romPct: 100, setType: 'main', done: true },
+      ],
+    };
+    window.renderWorkoutCalendarHome();
+    const bestOnly = read();
+    window.__entry.maxPrescription = { startKg: 60, repsLow: 8, repsHigh: 12 };
+    window.renderWorkoutCalendarHome();
+    return { bestOnly, planned: read() };
+  }));
+
+  // 처방이 없으면 오늘 최고 세트라고 밝힌다. 예전에는 이걸 "성공 기준"이라 불렀다.
+  // bestWorkoutSet은 kg×reps가 최대인 세트다(103.8×3=311 > 126.3×1=126).
+  assert.equal(result.bestOnly.label, '오늘 최고 세트');
+  assert.equal(result.bestOnly.value, '103.8kg × 3회');
+  // 처방이 있으면 처방을 적는다. 오늘 든 최고 중량이 아니라.
+  assert.equal(result.planned.label, '오늘 성공 기준');
+  assert.equal(result.planned.value, '60kg × 8-12회');
 });
