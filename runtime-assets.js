@@ -269,6 +269,7 @@
   './utils/wear-refresh.js',
   './utils/apk-install.js',
   './workout/season-goal-backfill.js',
+  './workout/season-board-recovery.js',
   './utils/id.js',
   './home/personalize.js',
   './home/streak-warning.js',
