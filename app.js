@@ -72,6 +72,37 @@ import {
   initSeasonDashboardWidgetSync,
   scheduleSeasonDashboardWidgetSync,
 } from './workout/season-widget-bridge.js';
+import { backfillSeasonGoalPaints } from './workout/season-goal-backfill.js';
+
+// 색칠 배선이 생기기 전에 완료해 둔 기록은 "종목완료" 버튼이 "수정하기"로 바뀌어
+// 다시 누를 수단이 없다. 로그인 후 한 번, 이미 완료된 기록으로 주간 목표 칸을
+// 소급해서 채운다. 색칠만 하고 지우지 않으며, 이미 칠해진 칸은 건드리지 않는다.
+async function _backfillSeasonGoalsOnce() {
+  try {
+    const data = await import('./data.js');
+    const { seasonContainsDate } = await import('./data/season-model.js');
+    const result = await backfillSeasonGoalPaints({
+      seasons: data.getSeasonRegistry()?.seasons || [],
+      cache: data.getCache() || {},
+      todayKey: dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate()),
+      getBoard: seasonId => data.getSeasonTestBoardV2(seasonId),
+      saveBoard: board => data.saveTestBoardV2(board),
+      seasonContains: seasonContainsDate,
+    });
+    if (result.painted > 0) {
+      document.dispatchEvent(new CustomEvent('season:goals-backfilled', { detail: result }));
+      scheduleSeasonDashboardWidgetSync('season-goals-backfilled', 0);
+      // 레일은 보드를 읽어 그린다. 이미 그려진 달력이 있으면 다시 그려야 ✓가 뜬다.
+      if (document.getElementById('workout-calendar-root')?.childElementCount) {
+        await _lazyRenderWorkoutCalendarHome().catch(() => {});
+      }
+    }
+    return result;
+  } catch (error) {
+    console.warn('[season-goal-backfill] 실패:', error?.message || error);
+    return null;
+  }
+}
 
 // ── 레이지 로딩 탭 캐시 ──
 const _lazy = loadLazyModule;
@@ -552,6 +583,7 @@ async function _initializeAppSession() {
     // 홈/관리자 첫 화면이 준비되면, 보조 네트워크 작업을 기다리지 않고 닫는다.
     _hideLoadingOverlay();
     scheduleSeasonDashboardWidgetSync('initial-load', 0);
+    void _backfillSeasonGoalsOnce();
 
     // 나머지 초기화는 비동기로 (체감 속도 개선)
     const bellBtn = document.getElementById('notif-bell');

@@ -951,6 +951,15 @@ export function judgeWorkoutSetsAgainstPlan(sets = [], plan = {}) {
   };
 }
 
+/** 그 주 칸이 이미 색칠됐는지. 웬들러는 benchmark.wendlerLog, 나머지는 step.weekLog에 남는다. */
+export function isWeekPainted(board, { benchmarkId, track = 'volume', weekStart } = {}) {
+  const bm = benchmarkById(board || {}, benchmarkId);
+  if (!bm || !weekStart) return false;
+  const wk = mondayOf(weekStart);
+  if (bm.program === 'wendler') return !!bm.wendlerLog?.[wk]?.paintedAt;
+  return !!_stepCoveringWeek(board, benchmarkId, track, wk)?.weekLog?.[wk]?.paintedAt;
+}
+
 /** 달성 색칠 — 유저의 명시적 액션. log: { at, actualReps, rir, note, amrapReps, suppDone } */
 export function paintWeek(board, { benchmarkId, track = 'volume', weekStart, log = {} }) {
   const bm = benchmarkById(board, benchmarkId);

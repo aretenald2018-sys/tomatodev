@@ -31,6 +31,7 @@ import { dateKey, TODAY, isFuture, isBeforeStart } from './data/data-date.js';
 import { findSeasonForDate, findSeasonsForDate, startOfSeasonWeek } from './data/season-model.js';
 // 주간 목표 색칠은 보드와 같은 판정·같은 저장 경로를 쓴다.
 import { judgeWorkoutSetsAgainstPlan, paintWeek } from './workout/test-v2/board-core.js';
+import { seasonGoalPaintLog, seasonGoalTargetForEntry } from './workout/season-goal-backfill.js';
 import { openModal, closeModal } from './app/overlay-stack.js';
 import { confirmAction } from './utils/confirm-modal.js';
 import {
@@ -2757,40 +2758,25 @@ async function _toggleWorkoutExerciseSetDoneFromSheet(key, sessionIndex, exercis
 // 성공했을 때만 색칠한다. 미달이면 아무것도 하지 않는다 — 계획 조정은 보드의
 // 일이고, 여기서 조정 시트를 띄우면 기록 흐름을 가로챈다.
 async function _paintSeasonWeekForCompletedExercise(key, entry) {
-  const meta = entry?.recommendationMeta || null;
-  const prescription = entry?.maxPrescription || null;
-  const benchmarkId = meta?.boardV2BenchmarkId || prescription?.benchmarkId || '';
-  const weekStart = meta?.boardV2WeekStart || '';
-  if (meta?.source !== 'test_board_v2' || !benchmarkId || !weekStart) return null;
+  const target = seasonGoalTargetForEntry(entry);
+  if (!target) return null;
 
-  const planKg = Number(prescription?.startKg);
-  const planReps = Number(prescription?.repsLow);
-  if (!(planKg > 0) || !(planReps > 0)) return null;
-
-  const judged = judgeWorkoutSetsAgainstPlan(entry?.sets || [], { kg: planKg, reps: planReps });
+  const judged = judgeWorkoutSetsAgainstPlan(entry?.sets || [], target.plan);
   if (!judged.hit) return { painted: false, reason: 'missed' };
 
   const season = findSeasonForDate(getSeasonRegistry(), key);
   const board = season ? getSeasonTestBoardV2(season.id) : null;
   if (!board) return { painted: false, reason: 'board-unavailable' };
 
-  const track = String(meta.track || prescription?.track) === 'H' ? 'intensity' : 'volume';
-  const best = judged.best || {};
   const ok = paintWeek(board, {
-    benchmarkId,
-    track,
-    weekStart,
-    log: {
-      at: Date.now(),
-      actualReps: judged.working.map(set => set.reps).join(' · '),
-      rir: best.rir === '' || best.rir == null ? null : Number(best.rir),
-      amrapReps: Number(best.reps) || null,
-      note: '',
-    },
+    benchmarkId: target.benchmarkId,
+    track: target.track,
+    weekStart: target.weekStart,
+    log: seasonGoalPaintLog(judged, Date.now()),
   });
   if (!ok) return { painted: false, reason: 'no-cell' };
   await saveTestBoardV2(board);
-  return { painted: true, weekStart, track };
+  return { painted: true, weekStart: target.weekStart, track: target.track };
 }
 
 async function _completeWorkoutExerciseFromSheet(cardId, key, sessionIndex, exerciseIndex) {

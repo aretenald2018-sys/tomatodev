@@ -268,6 +268,7 @@
   './utils/build-info.js',
   './utils/wear-refresh.js',
   './utils/apk-install.js',
+  './workout/season-goal-backfill.js',
   './utils/id.js',
   './home/personalize.js',
   './home/streak-warning.js',

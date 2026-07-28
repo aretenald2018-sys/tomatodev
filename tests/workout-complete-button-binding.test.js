@@ -144,13 +144,13 @@ test('day sheet 종목완료 paints the season week with the same rule the board
   const paint = sliceByFirstBrace(calendarJs, 'async function _paintSeasonWeekForCompletedExercise');
 
   // 보드와 같은 판정·같은 색칠 함수를 쓴다.
-  assert.match(paint, /judgeWorkoutSetsAgainstPlan\(entry\?\.sets \|\| \[\], \{ kg: planKg, reps: planReps \}\)/);
+  assert.match(paint, /judgeWorkoutSetsAgainstPlan\(entry\?\.sets \|\| \[\], target\.plan\)/);
   assert.match(paint, /paintWeek\(board, \{/);
   assert.match(paint, /await saveTestBoardV2\(board\)/);
-  // 보드가 만든 카드에만 적용한다. 처방이 없으면 손대지 않는다.
-  assert.match(paint, /meta\?\.source !== 'test_board_v2'/);
-  assert.match(paint, /boardV2BenchmarkId/);
-  assert.match(paint, /boardV2WeekStart/);
+  // 보드가 만든 카드인지 판별하는 규칙은 소급 보정과 한 곳을 쓴다.
+  assert.match(paint, /const target = seasonGoalTargetForEntry\(entry\);/);
+  assert.match(paint, /if \(!target\) return null;/);
+  assert.match(paint, /seasonGoalPaintLog\(judged, Date\.now\(\)\)/);
   // 성공했을 때만 색칠한다. 미달이면 아무것도 하지 않는다.
   assert.match(paint, /if \(!judged\.hit\) return \{ painted: false, reason: 'missed' \};/);
   assert.doesNotMatch(paint, /recordMiss|openMissSheet/);
