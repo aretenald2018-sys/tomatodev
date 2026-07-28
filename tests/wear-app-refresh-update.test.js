@@ -208,6 +208,113 @@ test('TomatoDev APK helper downloads the dev APK without touching the Wear bridg
   }
 });
 
+// 게시된 APK는 로컬에서 수동으로 빌드해 커밋할 때만 갱신된다. 웹 배포 정보로
+// APK를 설명하면 몇 주 전 바이너리가 최신 배포본인 척하게 되므로, APK 자신의
+// 빌드 정보를 따로 게시하고 그 값으로만 파일명/캐시 키/최신 여부를 정한다.
+test('the published APK manifest describes the APK itself, not the latest web deploy', () => {
+  const builder = readProjectFile('scripts/build-mobile-apk.mjs');
+  const apkInfo = JSON.parse(readProjectFile('public/downloads/tomatodev-apk-info.json'));
+
+  assert.match(builder, /publishApkInfo/);
+  assert.match(builder, /tomatodev-apk-info\.json/);
+  assert.match(builder, /tomatodev-wear-apk-info\.json/);
+  // versionCode는 범프한 값을 그대로 기록해야 기기에 설치된 버전과 대조할 수 있다.
+  assert.match(builder, /versionCodes\.get\(target\.name\)/);
+  assert.match(builder, /builtAt: new Date\(\)\.toISOString\(\)/);
+
+  assert.equal(apkInfo.app, 'tomatodev');
+  assert.equal(apkInfo.file, 'tomatodev.apk');
+  assert.match(apkInfo.cacheVersion, /^tomatodev-v\d{8}z\d+-/);
+  assert.match(apkInfo.builtAt, /^\d{4}-\d{2}-\d{2}T/);
+  assert.equal(Number.isInteger(apkInfo.versionCode), true);
+});
+
+test('APK download names, versions, and warns from the published APK build, not the web deploy', async () => {
+  const previousWindow = globalThis.window;
+  const previousDocument = globalThis.document;
+  const previousFetch = globalThis.fetch;
+  const previousRaf = globalThis.requestAnimationFrame;
+  const toasts = [];
+  const anchor = { rel: '', href: '', download: '', style: {}, clicks: 0, click() { this.clicks += 1; }, remove() {} };
+
+  // APK는 07/22 빌드, 웹은 07/27 배포 — 흔한 실제 상태다.
+  const apkInfo = {
+    app: 'tomatodev',
+    file: 'tomatodev.apk',
+    commit: 'aaaaaaaaaaaabbbbbbbbbbbbccccccccccccdddd',
+    shortCommit: 'aaaaaaaaaaaa',
+    builtAt: '2026-07-22T01:08:51.000Z',
+    cacheVersion: 'tomatodev-v20260722z7-widget-card-redesign',
+    versionCode: 12,
+  };
+  const buildInfo = {
+    app: 'tomatodev',
+    commit: 'ffffffffffff1111111111112222222222223333',
+    deployedAt: '2026-07-27T00:26:41.300Z',
+    cacheVersion: 'tomatodev-v20260727z7-running-manual-start-slots',
+  };
+
+  globalThis.window = {};
+  globalThis.requestAnimationFrame = (fn) => { fn(); };
+  // 실제 ui/toast.js가 그리는 토스트를 body에서 주워 담는다.
+  globalThis.document = {
+    getElementById() {
+      return null;
+    },
+    createElement(tag) {
+      if (tag === 'a') return anchor;
+      return {
+        dataset: {},
+        style: {},
+        textContent: '',
+        classList: { add() {}, remove() {} },
+        appendChild() {},
+        remove() {},
+      };
+    },
+    body: {
+      appendChild(element) {
+        if (element?.id === 'tds-toast') toasts.push({ type: element.dataset.type, message: element.textContent });
+      },
+    },
+  };
+  globalThis.fetch = async (input) => {
+    const href = String(input);
+    const body = href.includes('tomatodev-apk-info.json') ? apkInfo : buildInfo;
+    return { ok: true, async json() { return body; } };
+  };
+
+  try {
+    const moduleUrl = new URL(`../utils/apk-install.js?apk-manifest=${Date.now()}`, import.meta.url);
+    const { requestTomatoApkInstall, tomatodevApkFileName, isTomatodevApkBehindDeploy } = await import(moduleUrl.href);
+
+    // 파일명은 APK 빌드 시각(로컬 시간대)에서 나온다.
+    const at = new Date(Date.parse(apkInfo.builtAt));
+    const pad = value => String(value).padStart(2, '0');
+    const expectedName = `tomatodev-${at.getFullYear()}${pad(at.getMonth() + 1)}${pad(at.getDate())}`
+      + `-${pad(at.getHours())}${pad(at.getMinutes())}.apk`;
+    assert.equal(tomatodevApkFileName(apkInfo), expectedName);
+    assert.equal(isTomatodevApkBehindDeploy(apkInfo, buildInfo), true);
+    assert.equal(isTomatodevApkBehindDeploy(apkInfo, { ...buildInfo, cacheVersion: apkInfo.cacheVersion }), false);
+
+    const result = await requestTomatoApkInstall({ source: 'test' });
+
+    assert.equal(result.started, true);
+    assert.equal(result.downloadName, expectedName);
+    assert.equal(anchor.download, expectedName);
+    // 고정 경로는 브라우저/CDN 캐시가 이전 바이너리를 돌려줄 수 있다.
+    assert.match(result.downloadUrl, /public\/downloads\/tomatodev\.apk\?v=aaaaaaaaaaaa$/);
+    // 최신 배포판을 담지 않은 APK를 조용히 내려주면 안 된다.
+    assert.equal(result.behindDeploy, true);
+    assert.equal(toasts.some(toast => toast.type === 'warning' && /최신 배포판보다 이전/.test(toast.message)), true);
+  } finally {
+    globalThis.window = previousWindow;
+    globalThis.document = previousDocument;
+    globalThis.fetch = previousFetch;
+    globalThis.requestAnimationFrame = previousRaf;
+  }
+});
+
 test('local paired install helper can sideload phone and wear debug APKs', () => {
   const packageJson = readProjectFile('package.json');
   const verifier = readProjectFile('scripts/verify-wear-refresh-adb.mjs');
@@ -253,7 +360,8 @@ test('the watch running channel ships a dev wear APK under the dev application i
   assert.match(builder, /public', 'downloads', 'tomatodev-wear\.apk/);
   assert.match(builder, /gradleFile: path\.join\(androidRoot, 'wear', 'build\.gradle'\)/);
   // 워치 APK도 매 게시마다 versionCode가 올라가야 이전 설치본을 교체한다.
-  assert.match(builder, /targets\.forEach\(target => bumpVersionCode\(target\.gradleFile\)\)/);
+  // 게시하는 두 타깃 모두 versionCode를 올려야 기존 설치본을 교체할 수 있다.
+  assert.match(builder, /targets\.map\(target => \[target\.name, bumpVersionCode\(target\.gradleFile\)\]\)/);
   // 워치 앱은 Capacitor 웹 자산을 쓰지 않으므로 워치 단독 빌드는 cap:sync를 건너뛴다.
   assert.match(builder, /if \(targets\.some\(target => target\.needsCapSync\)\) run\(npm, \['run', 'cap:sync'\]\)/);
 

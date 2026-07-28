@@ -1,4 +1,4 @@
-import { cpSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,8 +27,10 @@ const localGradle = path.join(androidRoot, process.platform === 'win32' ? 'gradl
 const gradle = process.env.TOMATO_GRADLE || (existsSync(localGradle) ? wrapperName : '');
 const builtApk = path.join(androidRoot, 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk');
 const publishedApk = path.join(root, 'public', 'downloads', 'tomatodev.apk');
+const publishedApkInfo = path.join(root, 'public', 'downloads', 'tomatodev-apk-info.json');
 const builtWearApk = path.join(androidRoot, 'wear', 'build', 'outputs', 'apk', 'debug', 'wear-debug.apk');
 const publishedWearApk = path.join(root, 'public', 'downloads', 'tomatodev-wear.apk');
+const publishedWearApkInfo = path.join(root, 'public', 'downloads', 'tomatodev-wear-apk-info.json');
 
 const TARGETS = Object.freeze({
   app: {
@@ -38,6 +40,7 @@ const TARGETS = Object.freeze({
     gradleFile: path.join(androidRoot, 'app', 'build.gradle'),
     builtApk,
     publishedApk,
+    publishedApkInfo,
     // 웹 자산을 www/로 복사한 뒤에만 폰 APK가 최신 화면을 담는다.
     needsCapSync: true,
   },
@@ -48,6 +51,7 @@ const TARGETS = Object.freeze({
     gradleFile: path.join(androidRoot, 'wear', 'build.gradle'),
     builtApk: builtWearApk,
     publishedApk: publishedWearApk,
+    publishedApkInfo: publishedWearApkInfo,
     // 워치 앱은 네이티브 전용이라 Capacitor 웹 자산을 쓰지 않는다.
     needsCapSync: false,
   },
@@ -129,17 +133,76 @@ function bumpVersionCode(gradleFile) {
   return next;
 }
 
+function readVersionName(gradleFile) {
+  return readFileSync(gradleFile, 'utf8').match(/versionName\s+"([^"]+)"/)?.[1] || 'unknown';
+}
+
+function git(args) {
+  try {
+    return execFileSync('git', args, {
+      cwd: root,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    return '';
+  }
+}
+
+// 게시한 APK가 어느 빌드인지 앱이 스스로 알 수 있어야 한다. 웹은 배포마다
+// build-info.json이 새로 써지지만 APK는 이 스크립트를 돌려 커밋할 때만 갱신되므로,
+// 웹 배포 정보로 APK를 설명하면 낡은 바이너리가 최신 배포본인 척하게 된다.
+// cacheVersion은 이 APK가 담고 있는 웹 빌드의 것이라, 배포본과 비교하면
+// APK 안의 화면이 지금 배포된 화면과 같은지 정확히 판별할 수 있다.
+function publishApkInfo(target, versionCode, webBuild) {
+  const info = {
+    app: 'tomatodev',
+    target: target.name,
+    file: path.basename(target.publishedApk),
+    commit: webBuild.commit,
+    shortCommit: webBuild.shortCommit,
+    branch: webBuild.branch,
+    builtAt: new Date().toISOString(),
+    cacheVersion: webBuild.cacheVersion,
+    versionCode,
+    versionName: readVersionName(target.gradleFile),
+    sizeBytes: statSync(target.publishedApk).size,
+  };
+  writeFileSync(target.publishedApkInfo, `${JSON.stringify(info, null, 2)}\n`, 'utf8');
+  console.log(`[build-mobile-apk] published ${target.surface} info ${path.relative(root, target.publishedApkInfo)} (${info.cacheVersion})`);
+}
+
+// cap:sync가 build-info.json과 sw.js CACHE_VERSION을 먼저 갱신하므로,
+// APK 빌드 직전의 build-info.json이 곧 APK가 담고 있는 웹 빌드다.
+function readWebBuild() {
+  const commit = git(['rev-parse', 'HEAD']) || 'local';
+  const fallback = {
+    commit,
+    shortCommit: commit === 'local' ? 'local' : commit.slice(0, 12),
+    branch: git(['branch', '--show-current']) || 'local',
+    cacheVersion: 'unknown',
+  };
+  try {
+    const info = JSON.parse(readFileSync(path.join(root, 'build-info.json'), 'utf8'));
+    return { ...fallback, cacheVersion: info.cacheVersion || 'unknown' };
+  } catch {
+    return fallback;
+  }
+}
+
 const targets = parseTargets(process.argv.slice(2));
 console.log(`[build-mobile-apk] targets ${targets.map(target => target.name).join(', ')}`);
-targets.forEach(target => bumpVersionCode(target.gradleFile));
+const versionCodes = new Map(targets.map(target => [target.name, bumpVersionCode(target.gradleFile)]));
 if (targets.some(target => target.needsCapSync)) run(npm, ['run', 'cap:sync']);
 if (!gradle) throw new Error('Android Gradle wrapper is missing. Set TOMATO_GRADLE to a Gradle executable.');
 run(gradle, targets.map(target => target.gradleTask), androidRoot);
 
+const webBuild = readWebBuild();
 for (const target of targets) {
   if (!existsSync(target.builtApk)) {
     throw new Error(`Android debug APK missing: ${target.builtApk}`);
   }
   cpSync(target.builtApk, target.publishedApk);
   console.log(`[build-mobile-apk] published ${target.surface} ${path.relative(root, target.publishedApk)}`);
+  publishApkInfo(target, versionCodes.get(target.name), webBuild);
 }

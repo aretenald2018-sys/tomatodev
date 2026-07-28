@@ -274,11 +274,15 @@ test('주차 레일은 시즌 목표를 미니 캐러셀로 보여주고 달성�
   assert.match(styles, /\.cal-week-goal\.is-achieved/);
 });
 
-test('APK 내려받기 파일명에 마지막 배포 시각이 들어간다', () => {
+test('APK 내려받기 파일명에 APK가 실제로 빌드된 시각이 들어간다', () => {
   const source = read('utils/apk-install.js');
   assert.match(source, /export function tomatodevApkFileName/);
   assert.match(source, /tomatodev-\$\{date\}-\$\{time\}\.apk/);
-  assert.match(source, /tomatodevApkFileName\(await loadBuildInfo\(\)\)/);
+  // 웹 배포 시각이 아니라 게시된 APK 자신의 빌드 시각을 붙인다. 웹 배포 시각을
+  // 붙이면 몇 주 전에 빌드한 바이너리가 최신 배포본인 척하게 된다.
+  assert.match(source, /builtAt/);
+  assert.match(source, /tomatodevApkFileName\(apkInfo\)/);
+  assert.doesNotMatch(source, /tomatodevApkFileName\(await loadBuildInfo\(\)\)/);
   // 파일명을 못 만들어도 다운로드 자체는 막지 않는다.
   assert.match(source, /let downloadName = TOMATODEV_APK_DOWNLOAD_NAME;/);
 });

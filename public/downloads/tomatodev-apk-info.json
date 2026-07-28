@@ -1,0 +1,13 @@
+{
+  "app": "tomatodev",
+  "target": "app",
+  "file": "tomatodev.apk",
+  "commit": "8f351b4e73c948dacf03661a043aea88d01a8949",
+  "shortCommit": "8f351b4e73c9",
+  "branch": "main",
+  "builtAt": "2026-07-22T01:08:51.000Z",
+  "cacheVersion": "tomatodev-v20260722z7-widget-card-redesign",
+  "versionCode": 12,
+  "versionName": "1.4",
+  "sizeBytes": 42354300
+}
