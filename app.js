@@ -73,40 +73,6 @@ import {
   scheduleSeasonDashboardWidgetSync,
 } from './workout/season-widget-bridge.js';
 
-// 2026-07-28 시즌 보드 유실 일회성 복구. 조건이 맞고 처방 재현 검증을 통과할 때만
-// 저장한다. 복구가 끝나면 이 호출과 workout/season-board-recovery.js를 지운다.
-async function _recoverSeasonBoardOnce() {
-  try {
-    const data = await import('./data.js');
-    const { recoverSeasonBoardOnce } = await import('./workout/season-board-recovery.js');
-    const todayKey = dateKey(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
-    const season = data.findSeasonForDate(data.getSeasonRegistry(), todayKey);
-    if (!season?.id) return null;
-    const { seasonContainsDate } = await import('./data/season-model.js');
-    const result = await recoverSeasonBoardOnce({
-      seasonId: season.id,
-      todayKey,
-      cache: data.getCache() || {},
-      isInSeason: dateKey => seasonContainsDate(season, dateKey),
-      getBoard: seasonId => data.getSeasonTestBoardV2(seasonId),
-      saveBoard: board => data.saveTestBoardV2(board),
-    });
-    if (result?.done) {
-      const parts = [...(result.restored || []), ...(result.painted?.length ? [`${result.painted.length}주 색칠`] : [])];
-      console.log('[season-board-recovery] 복구 완료:', parts.join(', '));
-      showToast(`시즌 목표 복구됨 — ${parts.join(', ')}`, 3200, 'success');
-      if (document.getElementById('workout-calendar-root')?.childElementCount) {
-        await _lazyRenderWorkoutCalendarHome().catch(() => {});
-      }
-    } else if (result?.reason === 'verify-failed') {
-      console.warn('[season-board-recovery] 처방 재현 검증 실패 — 쓰지 않음');
-    }
-    return result;
-  } catch (error) {
-    console.warn('[season-board-recovery] 실패:', error?.message || error);
-    return null;
-  }
-}
 
 // 소급 색칠은 중단됐다. data.js saveTestBoardV2는 저장 대상 시즌을 인자가 아니라
 // "오늘이 속한 시즌"으로 정한다. 그래서 지난 시즌 보드를 넘기면 그 보드가 현재 시즌
@@ -599,7 +565,6 @@ async function _initializeAppSession() {
     // 홈/관리자 첫 화면이 준비되면, 보조 네트워크 작업을 기다리지 않고 닫는다.
     _hideLoadingOverlay();
     scheduleSeasonDashboardWidgetSync('initial-load', 0);
-    void _recoverSeasonBoardOnce();
 
     // 나머지 초기화는 비동기로 (체감 속도 개선)
     const bellBtn = document.getElementById('notif-bell');
